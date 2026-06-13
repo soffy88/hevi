@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH for private deps
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HELIOS_DEPLOY_KEY }}
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Setup Python 3.14
+        run: uv python install 3.14
+
+      - name: Install deps
+        run: uv sync
+
+      - name: Ruff
+        run: uv run ruff check hevi tests
+
+      - name: Mypy
+        run: uv run mypy --strict hevi
+
+      - name: Pytest
+        run: uv run pytest tests/ --cov=hevi --cov-report=term --cov-fail-under=80
