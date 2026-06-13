@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()  # 标准: 在所有本地 import 之前
 
+from hevi.api.routers.tasks import router as tasks_router  # noqa: E402
 from hevi.monitoring.middleware import PrometheusMiddleware  # noqa: E402
 from hevi.monitoring.router import router as metrics_router  # noqa: E402
 from hevi.providers.registry import register_all_providers  # noqa: E402
@@ -34,6 +35,7 @@ app.add_middleware(
 app.add_middleware(PrometheusMiddleware)
 
 app.include_router(metrics_router)
+app.include_router(tasks_router, prefix="/api")
 
 
 @app.get("/api/health")
