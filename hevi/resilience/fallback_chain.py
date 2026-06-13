@@ -2,6 +2,7 @@ import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
 
+from hevi.observability import log_event
 from hevi.resilience.retry_policy import RetryPolicy, with_retry
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ async def run_with_fallback[T](
     for idx, provider in enumerate(chain):
         try:
             logger.info(f"Attempting task with provider: {provider} (idx={idx})")
+            log_event(stage="resilience", event="provider_attempt", provider=provider, attempt=idx)
 
             def make_runner(p: str) -> Callable[[], Coroutine[Any, Any, T]]:
                 return lambda: runner(p)
@@ -46,12 +48,22 @@ async def run_with_fallback[T](
             last_exc = e
             if idx < len(chain) - 1:
                 next_provider = chain[idx + 1]
+                log_event(
+                    stage="resilience",
+                    event="provider_failed_switching",
+                    old_provider=provider,
+                    next_provider=next_provider,
+                    error=str(e),
+                )
                 logger.warning(
                     f"Provider {provider} failed after retries. "
                     f"Falling back to {next_provider}. Error: {e}"
                 )
                 await on_fallback(provider, next_provider, e)
             else:
+                log_event(
+                    stage="resilience", event="all_providers_failed", level="error", error=str(e)
+                )
                 logger.error(f"All providers in chain {chain} failed.")
 
     if last_exc:

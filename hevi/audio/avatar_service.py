@@ -3,6 +3,9 @@ from typing import Any
 
 from oprim import avatar_generate
 
+from hevi.audio.audio_config import AudioProvider
+from hevi.observability import track_provider_call
+
 
 async def generate_avatar_clip(
     *,
@@ -12,10 +15,11 @@ async def generate_avatar_clip(
     output_path: Path,
 ) -> Path:
     """Duix digital human avatar clip generation (lip-sync)."""
-    return await avatar_generate(  # type: ignore[no-any-return, operator]
-        config=config,
-        provider="duix",
-        portrait_image=portrait_image,
-        audio_path=audio_path,
-        output_path=output_path,
-    )
+    async with track_provider_call(AudioProvider.DUIX):
+        return await avatar_generate(  # type: ignore[no-any-return, operator]
+            config=config,
+            provider="duix",
+            portrait_image=portrait_image,
+            audio_path=audio_path,
+            output_path=output_path,
+        )

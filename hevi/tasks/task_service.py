@@ -9,6 +9,7 @@ from hevi.cost import (
     estimate_cost,
     monitor_during_run,
 )
+from hevi.observability import log_event, set_trace_id
 from hevi.pipeline import orchestrate_longvideo
 from hevi.resilience import RetryPolicy, run_with_fallback
 from hevi.tasks.repository import TaskRepository
@@ -55,8 +56,14 @@ class TaskService:
 
     async def run_task(self, task_id: uuid.UUID) -> dict[str, Any]:
         """Run a task using the orchestration pipeline with fallback and cost monitoring."""
+        set_trace_id(task_id)
+        log_event(stage="task_service", event="run_task_start", task_id=str(task_id))
+
         task = await self.repository.get_task(task_id)
         if not task:
+            log_event(
+                stage="task_service", event="task_not_found", level="error", task_id=str(task_id)
+            )
             raise ValueError(f"Task {task_id} not found")
 
         # Update status to running
@@ -70,6 +77,7 @@ class TaskService:
             # Monitor actual cost before each attempt (if applicable)
             await monitor_during_run(cost_tracker.total_usd)
 
+            log_event(stage="task_service", event="orchestration_start", provider=provider)
             result = await orchestrate_longvideo(
                 topic=task["topic"],
                 duration_archetype=task["duration_archetype"],
@@ -87,6 +95,13 @@ class TaskService:
             return result
 
         async def on_fallback(old_p: str, new_p: str, exc: Exception) -> None:
+            log_event(
+                stage="task_service",
+                event="fallback_trigger",
+                old_provider=old_p,
+                new_provider=new_p,
+                error=str(exc),
+            )
             # Re-estimate for the new provider
             new_est = await estimate_cost(
                 duration_archetype=task["duration_archetype"],
@@ -130,9 +145,11 @@ class TaskService:
                 "config_json": {**task["config_json"], "actual_usd": cost_tracker.total_usd},
             }
             await self.repository.update_task(task_id, update_data)
+            log_event(stage="task_service", event="run_task_completed", result_url=result["url"])
             return {**task, **update_data}
 
         except Exception as e:
+            log_event(stage="task_service", event="run_task_failed", level="error", error=str(e))
             logger.exception(f"Task {task_id} failed")
             update_data = {
                 "status": "failed",

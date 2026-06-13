@@ -3,7 +3,9 @@ from typing import Any
 
 from obase.cost_tracker import CostTracker, PricingEntry, PricingTable
 
+from hevi.core.config import settings
 from hevi.cost.pricing_table import get_pricing_table
+from hevi.monitoring.metrics import credits_consumed_total
 
 logger = logging.getLogger(__name__)
 
@@ -38,23 +40,32 @@ class HeviCostTracker:
     def __init__(self, budget_usd: float | None = None):
         self.internal = create_hevi_tracker(budget_usd=budget_usd)
         
+    def _record_credits(self, cost_usd: float) -> None:
+        credits = int(cost_usd * settings.credits_per_usd)
+        if credits > 0:
+            credits_consumed_total.labels(user_tier="free").inc(credits)
+
     def record_video(self, provider: str, duration_s: float) -> float:
-        return self.internal.record(
+        cost = self.internal.record(
             category="video",
             provider=provider,
             model_or_tier="default",
             unit="per_second",
-            quantity=duration_s
+            quantity=duration_s,
         )
+        self._record_credits(cost)
+        return cost
 
     def record_audio(self, provider: str, duration_m: float) -> float:
-        return self.internal.record(
+        cost = self.internal.record(
             category="audio",
             provider=provider,
             model_or_tier="default",
             unit="per_minute",
-            quantity=duration_m
+            quantity=duration_m,
         )
+        self._record_credits(cost)
+        return cost
         
     def get_summary(self) -> dict[str, Any]:
         return self.internal.summary()

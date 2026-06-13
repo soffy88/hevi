@@ -2,6 +2,7 @@ from typing import Any
 
 from omodul.agentic_longvideo_pipeline import agentic_longvideo_pipeline
 
+from hevi.observability import track_video_generation
 from hevi.pipeline.config_builder import build_longvideo_config
 from hevi.pipeline.result_mapper import map_longvideo_result
 
@@ -45,5 +46,6 @@ async def orchestrate_longvideo(
         **kwargs,
     )
 
-    result = await agentic_longvideo_pipeline(config=lv_config)
-    return map_longvideo_result(result)
+    async with track_video_generation(video_provider, duration_archetype):
+        result = await agentic_longvideo_pipeline(config=lv_config)
+        return map_longvideo_result(result)
