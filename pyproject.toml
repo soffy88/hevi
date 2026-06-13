@@ -20,7 +20,7 @@ dependencies = [
     # oprim: v3.6.1
     "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.6.1",
     "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.22.0",
-    "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.26.0",
+    "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.28.0",
     "prometheus-client>=0.25.0",
 ]
 

@@ -115,7 +115,7 @@ async def test_run_task_success(task_service, repository):
         "hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock
     ) as mock_orch:
 
-        mock_orch.return_value = {"url": "video.mp4", "metadata": {"shots": 10}}
+        mock_orch.return_value = {"url": "video.mp4", "duration": 180.0, "metadata": {"shots": 10}}
 
         res = await task_service.run_task(task_id)
         assert res["status"] == "completed"

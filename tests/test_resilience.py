@@ -247,7 +247,7 @@ async def test_task_service_run_task_with_fallback_integration():
         def orch_side_effect(**kwargs: Any):
             if kwargs["video_provider"] == "ltx2_cloud":
                 raise httpx.TimeoutException("ltx2 fail")
-            return {"url": "video.mp4", "metadata": {"shots": 5}}
+            return {"url": "video.mp4", "duration": 180.0, "metadata": {"shots": 5}}
 
         mock_orch.side_effect = orch_side_effect
 
