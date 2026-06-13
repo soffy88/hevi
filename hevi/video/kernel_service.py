@@ -49,7 +49,7 @@ async def generate_clip(
     async with track_provider_call(provider_str):
         if provider_str == VideoProvider.LTX2_CLOUD:
             # Mypy might think ltx2_cloud_generate is a module; it's a function.
-            return await ltx2_cloud_generate(  # type: ignore[operator, no-any-return]
+            return await ltx2_cloud_generate(  # type: ignore[no-any-return]
                 config=config,
                 mode=mode,
                 prompt=prompt,
@@ -62,7 +62,7 @@ async def generate_clip(
         elif provider_str == VideoProvider.WAN_CLOUD:
             # wan_cloud in oprim.video_generate might not support resolution/audio_enabled
             # directly in M2 signature following the provided snippet exactly.
-            return await video_generate(  # type: ignore[operator, no-any-return]
+            return await video_generate(  # type: ignore[no-any-return]
                 config=config,
                 provider="wan_cloud",
                 mode=mode,

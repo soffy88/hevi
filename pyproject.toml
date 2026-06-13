@@ -16,10 +16,10 @@ dependencies = [
     "pyjwt[crypto]>=2.10",
     # 主库 B路径 git+ssh (L-024)
     # obase[cache]: redis extra; PgPool 依赖 asyncpg (已在 base)
-    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.12.1",
-    # oprim: v3.1.1 — oskill v3.19.0 已解除 oprim<3.0.0 约束 (P10.B-B0)
-    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.1.1",
-    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.19.0",
+    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.14.1",
+    # oprim: v3.6.1
+    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.6.1",
+    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.22.0",
     "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.26.0",
     "prometheus-client>=0.25.0",
 ]

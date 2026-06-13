@@ -23,7 +23,7 @@ async def synthesize_dialogue(
         raise ValueError("Script cannot be empty")
 
     async with track_provider_call(AudioProvider.VIBEVOICE):
-        return await vibevoice_synthesize(  # type: ignore[no-any-return, operator]
+        return await vibevoice_synthesize(  # type: ignore[no-any-return]
             config=config,
             script=script,
             output_path=output_path,

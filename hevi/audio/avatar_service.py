@@ -16,7 +16,7 @@ async def generate_avatar_clip(
 ) -> Path:
     """Duix digital human avatar clip generation (lip-sync)."""
     async with track_provider_call(AudioProvider.DUIX):
-        return await avatar_generate(  # type: ignore[no-any-return, operator]
+        return await avatar_generate(  # type: ignore[no-any-return]
             config=config,
             provider="duix",
             portrait_image=portrait_image,
