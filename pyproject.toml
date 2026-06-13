@@ -24,6 +24,7 @@ dependencies = [
     "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v2.39.0",
     "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.17.0",
     "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.25.1",
+    "prometheus-client>=0.25.0",
 ]
 
 [dependency-groups]

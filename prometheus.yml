@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: hevi
+    static_configs:
+      # host.docker.internal resolves to the host on Docker Desktop (Mac/Windows/WSL2)
+      # Linux bare Docker: replace with 172.17.0.1 or use network_mode: host
+      - targets: ["host.docker.internal:9001"]
+    metrics_path: /metrics

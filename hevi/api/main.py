@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()  # 标准: 在所有本地 import 之前
 
+from hevi.monitoring.middleware import PrometheusMiddleware  # noqa: E402
+from hevi.monitoring.router import router as metrics_router  # noqa: E402
 from hevi.providers.registry import register_all_providers  # noqa: E402
 
 
@@ -19,7 +21,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 app = FastAPI(
     title="hevi v6",
     lifespan=lifespan,
-    redirect_slashes=False,  # 标准
+    redirect_slashes=False,
 )
 
 app.add_middleware(
@@ -29,6 +31,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(PrometheusMiddleware)
+
+app.include_router(metrics_router)
 
 
 @app.get("/api/health")
