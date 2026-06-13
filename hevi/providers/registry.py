@@ -4,15 +4,26 @@ All methods are classmethods; use ProviderRegistry.register() directly.
 """
 
 from obase.provider_registry import ProviderRegistry
+from oprim import ltx2_cloud_generate, video_generate
 
 __all__ = ["ProviderRegistry", "register_all_providers"]
 
 
 def register_all_providers() -> None:
-    """Register all L2 kernel providers at startup.
+    """Register all L2 kernel providers at startup."""
+    # Register LTX-2 Cloud
+    ProviderRegistry.register(
+        "video", "ltx2_cloud", ltx2_cloud_generate  # type: ignore[arg-type]
+    )
 
-    Populated in later batches as LTX-2 / Wan / VibeVoice / Duix providers are wired in.
-    Example:
-        ProviderRegistry.register("video", "ltx2", ltx2_generate)
-        ProviderRegistry.register("video", "wan", wan_generate)
-    """
+    # Register Wan Cloud
+    # For Wan Cloud, we use video_generate with provider="wan_cloud"
+    # We might need a partial or a lambda if ProviderRegistry expects a specific signature,
+    # but here we follow the instruction to register them.
+    ProviderRegistry.register(
+        "video",
+        "wan_cloud",
+        lambda **kwargs: video_generate(  # type: ignore[operator]
+            provider="wan_cloud", **kwargs
+        ),
+    )
