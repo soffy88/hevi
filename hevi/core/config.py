@@ -17,5 +17,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
 
+    # Cost settings
+    ltx2_price_usd: float = 0.04  # per second
+    wan_price_usd: float = 0.05   # per second
+    max_cost_per_task_usd: float = 50.0
+    max_duration_per_task_s: float = 3600.0
+    credits_per_usd: int = 100
+
 
 settings = Settings()
