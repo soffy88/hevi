@@ -40,7 +40,7 @@ def test_shot_state_model_instantiation():
 @pytest.mark.asyncio
 async def test_repository_direct_methods(repository, mock_pool):
     task_id = uuid.uuid4()
-    
+
     # get_task
     with patch("hevi.tasks.repository.read_one", new_callable=AsyncMock) as mock_read:
         mock_read.return_value = {"id": task_id}
@@ -51,7 +51,9 @@ async def test_repository_direct_methods(repository, mock_pool):
     with patch("hevi.tasks.repository.update_one", new_callable=AsyncMock) as mock_update:
         mock_update.return_value = True
         await repository.update_task(task_id, {"status": "completed"})
-        mock_update.assert_called_once_with(mock_pool, table="video_tasks", id=task_id, data={"status": "completed"})
+        mock_update.assert_called_once_with(
+            mock_pool, table="video_tasks", id=task_id, data={"status": "completed"}
+        )
 
     # create_shot_state
     with patch("hevi.tasks.repository.insert_one", new_callable=AsyncMock) as mock_insert:
