@@ -16,14 +16,11 @@ dependencies = [
     "pyjwt[crypto]>=2.10",
     # 主库 B路径 git+ssh (L-024)
     # obase[cache]: redis extra; PgPool 依赖 asyncpg (已在 base)
-    "obase[cache] @ git+ssh://git@github.com/helios-plat/obase.git@v0.12.1",
-    # oprim: pin v2.39.0(非 v3.0.0)。冲突: oskill@v3.17.0 硬约束 oprim<3.0.0
-    #   (oskill 仍使用已被 v3.0 移除的 docker_*/db_* API)。
-    #   v2.39.0 = oprim 进入 v3.0 前的最后稳定版。
-    #   升级路径: oskill 支持 oprim v3.0.0 后改为 @v3.0.0。(L-022)
-    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v2.39.0",
-    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.17.0",
-    "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.25.1",
+    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.12.1",
+    # oprim: v3.1.1 — oskill v3.19.0 已解除 oprim<3.0.0 约束 (P10.B-B0)
+    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.1.1",
+    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.19.0",
+    "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.26.0",
     "prometheus-client>=0.25.0",
 ]
 
