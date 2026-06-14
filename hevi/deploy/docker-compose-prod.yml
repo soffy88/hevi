@@ -1,0 +1,118 @@
+---
+# hevi v6 — production compose (app + postgres + minio + nginx)
+# Usage: docker compose -f hevi/deploy/docker-compose-prod.yml up -d
+# Requires: .env at repo root (copy from .env.example and fill all values)
+
+name: hevi-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: hevi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hevi}
+      POSTGRES_DB: hevi
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hevi -d hevi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - internal
+
+  minio:
+    image: minio/minio:latest
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - internal
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: on-failure
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set prod http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY &&
+      mc mb prod/$$MINIO_BUCKET --ignore-existing &&
+      echo 'MinIO bucket ready.'
+      "
+    networks:
+      - internal
+
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      ssh:
+        - default
+    restart: always
+    env_file:
+      - path: ../../.env
+        required: false   # 生产环境由外部注入,dev 阶段可缺失
+    environment:
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      MINIO_ENDPOINT: minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/hevi.conf:/etc/nginx/conf.d/hevi.conf:ro
+      - nginx_certs:/etc/letsencrypt:ro
+      - nginx_www:/var/www/certbot:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - internal
+      - external
+
+volumes:
+  pg_data:
+  minio_data:
+  nginx_certs:
+  nginx_www:
+
+networks:
+  internal:
+    driver: bridge
+  external:
+    driver: bridge

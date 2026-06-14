@@ -1,0 +1,65 @@
+---
+# hevi v6 — dev compose (postgres + minio only)
+# App runs locally via: uv run uvicorn hevi.api.main:app --reload
+# Usage: docker compose -f hevi/deploy/docker-compose-dev.yml up -d
+
+name: hevi-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hevi
+      POSTGRES_PASSWORD: hevi
+      POSTGRES_DB: hevi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hevi -d hevi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-hevi}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-hevi1234}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: on-failure
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-hevi}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-hevi1234}
+      MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY &&
+      mc mb local/$$MINIO_BUCKET --ignore-existing &&
+      echo 'MinIO bucket ready.'
+      "
+
+volumes:
+  pg_data:
+  minio_data:

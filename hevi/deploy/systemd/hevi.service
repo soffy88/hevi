@@ -1,0 +1,39 @@
+[Unit]
+Description=hevi v6 Video Generation API
+Documentation=https://github.com/soffy88/hevi
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=hevi
+Group=hevi
+WorkingDirectory=/opt/hevi
+EnvironmentFile=/opt/hevi/.env
+
+# uv run 确保使用正确虚拟环境
+ExecStart=/usr/local/bin/uv run uvicorn hevi.api.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 4 \
+    --log-level info
+
+ExecReload=/bin/kill -HUP $MAINPID
+
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# 安全加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hevi
+
+[Install]
+WantedBy=multi-user.target
