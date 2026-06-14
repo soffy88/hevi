@@ -6,6 +6,8 @@ from omodul.agentic_longvideo_pipeline import LongVideoConfig
 from hevi.audio import AudioProvider
 from hevi.video import DURATION_ARCHETYPES, VideoProvider
 
+__all__ = ["build_longvideo_config", "build_longvideo_config_with_prompt"]
+
 
 def build_longvideo_config(
     *,
@@ -49,5 +51,47 @@ def build_longvideo_config(
         language=language,
         output_dir=output_dir or Path("output/hevi_v2"),
         fallback_video_provider=fb_v_provider,
+        **kwargs,
+    )
+
+
+async def build_longvideo_config_with_prompt(
+    *,
+    topic: str,
+    duration_archetype: str,
+    video_provider: str | VideoProvider,
+    audio_provider: str | AudioProvider,
+    style_preset: str | None = None,
+    prompt_style: str | None = None,
+    prompt_lighting: str | None = None,
+    prompt_camera: str | None = None,
+    prompt_color_grade: str | None = None,
+    **kwargs: Any,
+) -> LongVideoConfig:
+    """Build LongVideoConfig after running prompt engineering on the topic.
+
+    Calls engineer_prompt_from_preset to apply visual-style injection and
+    provider-specific adaptation before handing the topic to M8.
+
+    Prompt engineering scope — hevi layer only:
+    - Processes the *top-level* topic/style description supplied by the caller.
+    - M8's internal shot-level prompt generation is not touched.
+    """
+    from hevi.prompt.prompt_pipeline import engineer_prompt_from_preset
+
+    engineered_topic = await engineer_prompt_from_preset(
+        raw_prompt=topic,
+        target_provider=str(video_provider),
+        preset_name=style_preset,
+        style=prompt_style,
+        lighting=prompt_lighting,
+        camera=prompt_camera,
+        color_grade=prompt_color_grade,
+    )
+    return build_longvideo_config(
+        topic=engineered_topic,
+        duration_archetype=duration_archetype,
+        video_provider=video_provider,
+        audio_provider=audio_provider,
         **kwargs,
     )
