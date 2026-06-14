@@ -11,6 +11,7 @@ from hevi.api.routers.audio_library import router as audio_router  # noqa: E402
 from hevi.api.routers.auth import router as auth_router  # noqa: E402
 from hevi.api.routers.canvas import router as canvas_router  # noqa: E402
 from hevi.api.routers.creative import router as creative_router  # noqa: E402
+from hevi.api.routers.credits import router as credits_router  # noqa: E402
 from hevi.api.routers.subjects import router as subjects_router  # noqa: E402
 from hevi.api.routers.tasks import router as tasks_router  # noqa: E402
 from hevi.api.routers.templates import router as templates_router  # noqa: E402
@@ -42,6 +43,7 @@ app.add_middleware(PrometheusMiddleware)
 
 app.include_router(metrics_router)
 app.include_router(auth_router, prefix="/api")
+app.include_router(credits_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(subjects_router, prefix="/api")
 app.include_router(creative_router, prefix="/api")

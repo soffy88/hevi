@@ -1,6 +1,7 @@
 from hevi.audio_library.audio_lib_models import AudioAsset
 from hevi.auth.models import User
 from hevi.canvas.graph_models import CanvasGraph
+from hevi.credits.models import CreditAccount, CreditTransaction
 from hevi.db.base import Base
 from hevi.subjects.models import Subject
 from hevi.tasks.models import ShotState, VideoTask
@@ -15,4 +16,6 @@ __all__ = [
     "AudioAsset",
     "User",
     "Subject",
+    "CreditAccount",
+    "CreditTransaction",
 ]

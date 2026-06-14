@@ -80,8 +80,11 @@ def task_service(repository):
 
 @pytest.mark.asyncio
 async def test_create_task_persistence(task_service):
-    with patch("hevi.tasks.repository.insert_one", new_callable=AsyncMock) as mock_insert:
-        mock_insert.return_value = {"id": uuid.uuid4(), "status": "pending"}
+    task_id = uuid.uuid4()
+    with patch("hevi.tasks.repository.insert_one", new_callable=AsyncMock) as mock_insert, \
+         patch("hevi.tasks.repository.read_one", new_callable=AsyncMock) as mock_read:
+        mock_insert.return_value = task_id
+        mock_read.return_value = {"id": task_id, "status": "pending"}
         res = await task_service.create_task(
             topic="Space",
             duration_archetype="1-5min",

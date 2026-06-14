@@ -16,6 +16,7 @@ class VideoTask(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     topic: Mapped[str] = mapped_column(String(255))
+    user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     duration_archetype: Mapped[str] = mapped_column(String(50))
     video_provider: Mapped[str] = mapped_column(String(50))
     audio_provider: Mapped[str] = mapped_column(String(50))

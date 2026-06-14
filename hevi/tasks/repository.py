@@ -13,7 +13,8 @@ class TaskRepository:
         # Ensure ID is present if not provided
         if "id" not in data:
             data["id"] = uuid.uuid4()
-        return await insert_one(self.pool, table="video_tasks", data=data)  # type: ignore
+        task_id = await insert_one(self.pool, table="video_tasks", data=data, returning="id")
+        return await self.get_task(task_id) or {}
 
     async def get_task(self, task_id: uuid.UUID) -> dict[str, Any] | None:
         """Retrieve a task by ID."""
