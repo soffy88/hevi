@@ -3,40 +3,45 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from obase.observability import get_metrics, reset_metrics
 
 from hevi.monitoring.metrics import (
-    provider_api_calls_total,
     video_generation_in_progress,
     video_generation_total,
 )
 from hevi.observability import (
     get_trace_id,
     log_event,
-    set_trace_id,
+    start_trace,
     track_provider_call,
     track_video_generation,
 )
 
 
+@pytest.fixture(autouse=True)
+def _reset_obase_metrics():
+    reset_metrics()
+
+
 @pytest.mark.asyncio
 async def test_track_provider_call_success():
     provider = "test_p"
-    before = provider_api_calls_total.labels(provider=provider, status="success")._value.get()
     async with track_provider_call(provider):
         pass
-    after = provider_api_calls_total.labels(provider=provider, status="success")._value.get()
-    assert after == before + 1
+    metrics = get_metrics()
+    assert metrics[f"{provider}:generate"]["calls_total"] == 1
+    assert metrics[f"{provider}:generate"]["errors_total"] == 0
 
 
 @pytest.mark.asyncio
 async def test_track_provider_call_error():
     provider = "test_err"
-    before = provider_api_calls_total.labels(provider=provider, status="error")._value.get()
     with pytest.raises(ValueError):
         async with track_provider_call(provider):
             raise ValueError("fail")
-    after = provider_api_calls_total.labels(provider=provider, status="error")._value.get()
-    assert after == before + 1
+    metrics = get_metrics()
+    assert metrics[f"{provider}:generate"]["calls_total"] == 1
+    assert metrics[f"{provider}:generate"]["errors_total"] == 1
 
 
 @pytest.mark.asyncio
@@ -64,21 +69,22 @@ async def test_video_generation_in_progress():
 
 def test_trace_id_context():
     tid = uuid.uuid4()
-    set_trace_id(tid)
-    assert get_trace_id() == str(tid)
+    with start_trace(str(tid)):
+        assert get_trace_id() == str(tid)
 
 
 def test_structured_log_format(caplog):
     caplog.set_level("INFO", logger="hevi.structured")
     tid = str(uuid.uuid4())
-    set_trace_id(tid)
-    log_event(stage="test", event="hello", key="val")
-    assert len(caplog.records) == 1
-    data = json.loads(caplog.records[0].message)
-    assert data["trace_id"] == tid
-    assert data["stage"] == "test"
-    assert data["event"] == "hello"
-    assert data["key"] == "val"
+    with start_trace(tid):
+        log_event(stage="test", event="hello", key="val")
+        
+        assert len(caplog.records) == 1
+        data = json.loads(caplog.records[0].message)
+        assert data["trace_id"] == tid
+        assert data["stage"] == "test"
+        assert data["event"] == "hello"
+        assert data["key"] == "val"
 
 
 @pytest.mark.asyncio
@@ -132,12 +138,12 @@ async def test_task_service_trace_id_injection():
     }
     service = TaskService(repo)
 
-    with patch("hevi.tasks.task_service.set_trace_id") as mock_set, patch(
+    with patch("hevi.tasks.task_service.start_trace") as mock_set, patch(
         "hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock
     ) as mock_orch:
         mock_orch.return_value = {"url": "v", "duration": 10, "metadata": {"shots": 1}}
         await service.run_task(tid)
-        mock_set.assert_called_with(tid)
+        mock_set.assert_called_with(str(tid))
 
 
 def test_structured_log_error(caplog):
@@ -154,15 +160,13 @@ def test_structured_log_warning(caplog):
 
 @pytest.mark.asyncio
 async def test_instrumentation_exception_propagation():
-    """Verify track_provider_call propagates exception but logs error status."""
-    from hevi.monitoring.metrics import provider_api_calls_total
-
+    """Verify track_provider_call propagates exception and records error in obase metrics."""
     p = "test_prop"
     with pytest.raises(RuntimeError):
         async with track_provider_call(p):
             raise RuntimeError("prop")
-    val = provider_api_calls_total.labels(provider=p, status="error")._value.get()
-    assert val > 0
+    metrics = get_metrics()
+    assert metrics[f"{p}:generate"]["errors_total"] >= 1
 
 
 @pytest.mark.asyncio
@@ -183,21 +187,22 @@ async def test_trace_id_propagation_orchestrator():
     from hevi.pipeline import orchestrate_longvideo
 
     tid = uuid.uuid4()
-    set_trace_id(tid)
-    with patch(
-        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline", new_callable=AsyncMock
-    ) as mock_pipe:
-        mock_pipe.return_value = MagicMock(
-            video_path=MagicMock(stem="test"),
-            duration_s=10,
-            chapters=1,
-            shots_generated=1,
-            provider_used={},
-        )
-        await orchestrate_longvideo(
-            topic="test",
-            duration_archetype="1-5min",
-            video_provider="ltx2_cloud",
-            audio_provider="vibevoice",
-        )
-        assert get_trace_id() == str(tid)
+    with start_trace(str(tid)):
+        with patch(
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            new_callable=AsyncMock,
+        ) as mock_pipe:
+            mock_pipe.return_value = MagicMock(
+                video_path=MagicMock(stem="test"),
+                duration_s=10,
+                chapters=1,
+                shots_generated=1,
+                provider_used={},
+            )
+            await orchestrate_longvideo(
+                topic="test",
+                duration_archetype="1-5min",
+                video_provider="ltx2_cloud",
+                audio_provider="vibevoice",
+            )
+            assert get_trace_id() == str(tid)

@@ -1,6 +1,7 @@
-"""P10.A-B5 monitoring tests — 10 metrics, middleware, /metrics endpoint."""
+"""P10.A-B5 monitoring tests — metrics, middleware, /metrics endpoint."""
 
 from httpx import AsyncClient
+from obase.observability import get_metrics, reset_metrics
 from prometheus_client import REGISTRY
 
 import hevi.monitoring.metrics as m
@@ -13,8 +14,12 @@ def _sample(name: str, labels: dict[str, str] | None = None) -> float:
 
 # ── 1. Metric definitions ─────────────────────────────────────────────────────
 
-def test_ten_metrics_defined() -> None:
-    """All 10 metric names exist on the metrics module."""
+def test_metrics_defined() -> None:
+    """All hevi Prometheus metrics exist on the metrics module.
+
+    Provider-layer metrics (provider_api_calls_total / provider_api_latency_seconds)
+    moved to obase.observability in P10.F1 and are no longer Prometheus metrics.
+    """
     names = [
         "http_requests_total",
         "http_request_duration_seconds",
@@ -23,8 +28,6 @@ def test_ten_metrics_defined() -> None:
         "video_generation_duration_seconds",
         "video_generation_in_progress",
         "credits_consumed_total",
-        "provider_api_calls_total",
-        "provider_api_latency_seconds",
         "app_info",
     ]
     for name in names:
@@ -43,7 +46,8 @@ async def test_metrics_endpoint_content_type_is_plain_text(client: AsyncClient) 
     assert "text/plain" in response.headers["content-type"]
 
 
-async def test_metrics_body_contains_all_ten_names(client: AsyncClient) -> None:
+async def test_metrics_body_contains_business_metrics(client: AsyncClient) -> None:
+    """Business and HTTP metrics appear in /metrics; provider metrics now live in obase."""
     response = await client.get("/metrics")
     body = response.text
     expected = [
@@ -54,8 +58,6 @@ async def test_metrics_body_contains_all_ten_names(client: AsyncClient) -> None:
         "video_generation_duration_seconds",
         "video_generation_in_progress",
         "credits_consumed_total",
-        "provider_api_calls_total",
-        "provider_api_latency_seconds",
         "app_info",
     ]
     for name in expected:
@@ -108,9 +110,12 @@ def test_video_metrics_labels_accessible() -> None:
     m.credits_consumed_total.labels(user_tier="pro")
 
 
-def test_provider_metrics_labels_accessible() -> None:
-    """Provider metrics are callable with expected label sets."""
-    m.provider_api_calls_total.labels(provider="ltx2", status="ok")
-    m.provider_api_calls_total.labels(provider="wan", status="error")
-    m.provider_api_latency_seconds.labels(provider="vibevoice")
-    m.provider_api_latency_seconds.labels(provider="duix")
+async def test_provider_metrics_tracked_by_obase() -> None:
+    """Provider metrics are tracked via obase.observability (P10.F1 downstream)."""
+    reset_metrics()
+    from hevi.observability import track_provider_call
+
+    async with track_provider_call("ltx2"):
+        pass
+    metrics = get_metrics()
+    assert metrics["ltx2:generate"]["calls_total"] == 1

@@ -39,18 +39,6 @@ credits_consumed_total = Counter(
     ["user_tier"],
 )
 
-# ── Provider layer — ltx2 / wan / vibevoice / duix ───────────────────────────
-provider_api_calls_total = Counter(
-    "provider_api_calls_total",
-    "Total provider API calls",
-    ["provider", "status"],
-)
-provider_api_latency_seconds = Histogram(
-    "provider_api_latency_seconds",
-    "Provider API latency in seconds",
-    ["provider"],
-)
-
 # ── System ────────────────────────────────────────────────────────────────────
 app_info = Info("app", "Application information")
 app_info.info({"version": "6.0.0", "name": "hevi"})
