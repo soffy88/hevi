@@ -55,7 +55,7 @@ async def trigger_pipeline(api_base: str) -> str:
 
     payload = {
         "topic": "宇宙探险家发现外星文明",
-        "duration_archetype": "medium",
+        "duration_archetype": "1-5min",
         "video_provider": "fal_ltx2",
         "audio_provider": "vibevoice",
         "style": "sci-fi cinematic",

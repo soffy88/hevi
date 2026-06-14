@@ -125,7 +125,7 @@ async def test_task_service_create_task_limit_rejection():
     service = TaskService(repo)
 
     # Large duration archetype
-    with patch.object(settings, "max_cost_per_task_usd", 1.0):
+    with patch.object(settings, "cost_limit_per_task_usd", 1.0):
         with pytest.raises(CostLimitExceeded):
             await service.create_task(
                 topic="Epic",

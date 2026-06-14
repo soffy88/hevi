@@ -82,7 +82,7 @@ async def start_task(api_base: str) -> str:
     """Start a long-video task. Returns task_id."""
     payload: dict[str, object] = {
         "topic": "蒸汽朋克城市的日落",
-        "duration_archetype": "medium",
+        "duration_archetype": "1-5min",
         "video_provider": "fal_ltx2",
         "audio_provider": "vibevoice",
         "style": "steampunk",

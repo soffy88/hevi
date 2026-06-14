@@ -12,7 +12,7 @@ class CostLimitExceeded(Exception):
 
 @dataclass
 class CostLimit:
-    max_per_task_usd: float = settings.max_cost_per_task_usd
+    max_per_task_usd: float = settings.cost_limit_per_task_usd
     max_per_task_seconds: float = settings.max_duration_per_task_s
 
 

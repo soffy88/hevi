@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     ltx2_price_usd: float = 0.04  # per second (legacy; 2D pricing in pricing_table.py)
     ltx2_default_tier: str = "fast"  # fal.ai tier: "fast" | "pro"
     wan_price_usd: float = 0.05   # per second
-    max_cost_per_task_usd: float = 50.0
+    cost_limit_per_task_usd: float = 50.0
     max_duration_per_task_s: float = 3600.0
     credits_per_usd: int = 100
 
