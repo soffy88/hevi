@@ -1,8 +1,11 @@
 import hashlib
 import json
-import asyncpg
+
+import asyncpg  # type: ignore[import-untyped]
 from obase.persistence import PgPool
+
 from hevi.core.config import settings
+
 
 async def init_hevi_db_codecs(conn: asyncpg.Connection) -> None:
     """Register JSONB and other necessary codecs for hevi."""

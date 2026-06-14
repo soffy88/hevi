@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from obase.persistence import PgPool
 
-from hevi.core.config import settings
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository

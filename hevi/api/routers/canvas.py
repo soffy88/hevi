@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from hevi.canvas.executor_service import ExecutorService
 from hevi.canvas.graph_repository import GraphRepository
 from hevi.canvas.graph_service import GraphService
-from hevi.core.config import settings
+from hevi.db.pg_pool import get_hevi_pg_pool
 
 router = APIRouter(prefix="/canvas", tags=["canvas"])
 
@@ -131,6 +131,4 @@ async def execute_graph(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-c:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
-from hevi.core.config import settings
+from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 
@@ -95,6 +95,4 @@ async def delete_subject(
     deleted = await svc.delete_subject(subject_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Subject not found")
-    return {"status": "deleted", "subject_id": subject_id}
-ct not found")
     return {"status": "deleted", "subject_id": subject_id}
