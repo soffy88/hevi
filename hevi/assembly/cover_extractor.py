@@ -3,7 +3,7 @@ from pathlib import Path
 from obase.ffmpeg import run
 
 
-async def extract_cover(input_video: Path, output_path: Path, timestamp: float = 1.0) -> Path:
+async def extract_cover(input_video: Path, output_path: Path, timestamp: float = 0.5) -> Path:
     """Extract a cover frame from the video at a specific timestamp."""
     args = [
         "-ss", str(timestamp),
