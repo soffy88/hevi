@@ -4,23 +4,28 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, String, Text
+from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hevi.db.base import Base
 
 
-class CanvasGraph(Base):
-    __tablename__ = "canvas_graphs"
+class Subject(Base):
+    __tablename__ = "subjects"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    name: Mapped[str] = mapped_column(String(255), default="Untitled")
-    description: Mapped[str] = mapped_column(Text, default="")
-    nodes_json: Mapped[Any] = mapped_column(JSONB, default=list)
-    edges_json: Mapped[Any] = mapped_column(JSONB, default=list)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    subject_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    reference_images: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, nullable=False, default=dict
+    )
+    tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
