@@ -44,10 +44,16 @@ async def test_estimate_cost_multi_character():
     assert est.audio_cost_usd == 10.8
 
 
-def test_pricing_table_from_settings():
-    with patch.object(settings, "ltx2_price_usd", 0.99):
-        pricing = get_pricing_table()
-        assert pricing["ltx2_cloud"]["price_usd"] == 0.99
+def test_pricing_table_structure():
+    pricing = get_pricing_table()
+    # ltx2_cloud exposes Fast-1080p as default price and the full 2D table
+    assert pricing["ltx2_cloud"]["price_usd"] == 0.04
+    assert "pricing_2d" in pricing["ltx2_cloud"]
+    assert pricing["ltx2_cloud"]["pricing_2d"]["fast"]["1080p"] == 0.04
+    assert pricing["ltx2_cloud"]["pricing_2d"]["pro"]["2160p"] == 0.24
+    # wan_cloud still read from settings
+    with patch.object(settings, "wan_price_usd", 0.99):
+        assert get_pricing_table()["wan_cloud"]["price_usd"] == 0.99
 
 
 @pytest.mark.asyncio
@@ -65,32 +71,37 @@ async def test_circuit_breaker_during_run():
 
 
 @pytest.mark.asyncio
-async def test_selector_quality_is_king():
-    # ltx2 (10), wan (9)
-    # If floor is 10, should pick ltx2 even if wan is cheaper
+async def test_selector_quality_floor():
+    # ltx2_cloud quality=10, wan_cloud quality=9 (see selector.PROVIDER_QUALITY)
+    # Real pricing: ltx2 Fast-1080p=0.04/s, wan=0.05/s (ltx2 always cheaper)
     candidates = ["ltx2_cloud", "wan_cloud"]
 
-    with patch.object(settings, "ltx2_price_usd", 1.0), patch.object(
-        settings, "wan_price_usd", 0.1
-    ):
+    # Floor 10 — only ltx2 qualifies (wan quality=9 < 10)
+    p = await select_cheapest_provider(
+        duration_archetype="1-5min",
+        candidates=candidates,
+        audio_provider="vibevoice",
+        quality_floor=10,
+    )
+    assert p == "ltx2_cloud"
 
-        # Floor 10 -> LTX2
-        p = await select_cheapest_provider(
+    # Floor 9 — both qualify; ltx2 cheaper (0.04/s < wan 0.05/s)
+    p9 = await select_cheapest_provider(
+        duration_archetype="1-5min",
+        candidates=candidates,
+        audio_provider="vibevoice",
+        quality_floor=9,
+    )
+    assert p9 == "ltx2_cloud"
+
+    # Floor 11 — no provider meets floor → ValueError
+    with pytest.raises(ValueError):
+        await select_cheapest_provider(
             duration_archetype="1-5min",
             candidates=candidates,
             audio_provider="vibevoice",
-            quality_floor=10,
+            quality_floor=11,
         )
-        assert p == "ltx2_cloud"
-
-        # Floor 9 -> Wan (cheaper)
-        p9 = await select_cheapest_provider(
-            duration_archetype="1-5min",
-            candidates=candidates,
-            audio_provider="vibevoice",
-            quality_floor=9,
-        )
-        assert p9 == "wan_cloud"
 
 
 def test_tracker_recording():

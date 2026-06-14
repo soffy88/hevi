@@ -42,8 +42,9 @@ async def test_generate_clip_ltx2_t2v(mock_config, output_path):
             output_path=output_path,
         )
         assert res == output_path
+        expected_config = {**mock_config, "FAL_BASE_URL": "https://fal.run/fal-ai/ltx-video"}
         mock_ltx2.assert_called_once_with(
-            config=mock_config,
+            config=expected_config,
             mode="t2v",
             prompt="A sunset",
             reference_image=None,
@@ -72,8 +73,9 @@ async def test_generate_clip_ltx2_i2v(mock_config, output_path, reference_image)
             output_path=output_path,
         )
         assert res == output_path
+        expected_config = {**mock_config, "FAL_BASE_URL": "https://fal.run/fal-ai/ltx-video"}
         mock_ltx2.assert_called_once_with(
-            config=mock_config,
+            config=expected_config,
             mode="i2v",
             prompt="A sunset",
             reference_image=reference_image,

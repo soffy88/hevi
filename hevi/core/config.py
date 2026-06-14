@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60 * 24 * 7
 
     # Cost settings
-    ltx2_price_usd: float = 0.04  # per second
+    ltx2_price_usd: float = 0.04  # per second (legacy; 2D pricing in pricing_table.py)
+    ltx2_default_tier: str = "fast"  # fal.ai tier: "fast" | "pro"
     wan_price_usd: float = 0.05   # per second
     max_cost_per_task_usd: float = 50.0
     max_duration_per_task_s: float = 3600.0

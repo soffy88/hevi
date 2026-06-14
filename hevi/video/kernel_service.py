@@ -3,6 +3,7 @@ from typing import Any, Literal
 
 from oprim import ltx2_cloud_generate, video_generate
 
+from hevi.cost.pricing_table import LTX2_ENDPOINTS
 from hevi.observability import track_provider_call
 from hevi.video.provider_config import VideoProvider
 from hevi.video.quality_profile import DEFAULT_QUALITY, get_quality_profile
@@ -22,6 +23,7 @@ async def generate_clip(
     audio_enabled: bool = True,
     output_path: Path,
     quality: str = DEFAULT_QUALITY,
+    ltx2_tier: Literal["fast", "pro"] = "fast",
 ) -> Path:
     """Pluggable double-cloud video generation dispatch with quality params.
 
@@ -36,6 +38,9 @@ async def generate_clip(
         audio_enabled: Whether to enable audio generation if supported.
         output_path: Path where the generated video will be saved.
         quality: Quality tier name ('standard', 'high', 'ultra'). Defaults to 'standard'.
+        ltx2_tier: fal.ai LTX-2 billing tier ('fast' or 'pro'). Passed via FAL_BASE_URL
+            config override. M1 ltx2_cloud_generate has no native tier param — endpoint
+            is selected by setting "FAL_BASE_URL" in the config dict.
 
     Returns:
         Path: The path to the generated video file.
@@ -51,8 +56,11 @@ async def generate_clip(
 
     async with track_provider_call(provider_str):
         if provider_str == VideoProvider.LTX2_CLOUD:
+            # Merge tier endpoint into config; M1 reads FAL_BASE_URL from the config dict
+            ltx2_config: dict[str, Any] = dict(config) if isinstance(config, dict) else {}
+            ltx2_config["FAL_BASE_URL"] = LTX2_ENDPOINTS[ltx2_tier]
             return await ltx2_cloud_generate(  # type: ignore[no-any-return]
-                config=config,
+                config=ltx2_config,
                 mode=mode,
                 prompt=prompt,
                 reference_image=reference_image,
