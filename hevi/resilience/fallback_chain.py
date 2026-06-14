@@ -2,6 +2,8 @@ import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
 
+from oprim.provider_health_check import provider_health_check
+
 from hevi.observability import log_event
 from hevi.resilience.retry_policy import RetryPolicy, with_retry
 
@@ -22,10 +24,14 @@ async def run_with_fallback[T](
 ) -> T:
     """Execute a runner function with provider-level fallback.
 
+    Before calling on_fallback and switching to a candidate provider, a health
+    probe is performed. Unhealthy candidates are skipped immediately without
+    consuming a retry cycle and without triggering on_fallback.
+
     Args:
         initial_provider: The first provider to try.
         runner: A function that takes a provider name and returns a result coroutine.
-        on_fallback: Callback called when switching providers.
+        on_fallback: Callback called only when switching to a *healthy* fallback provider.
         retry_policy: Retry configuration for each provider attempt. Defaults to RetryPolicy().
 
     Returns:
@@ -46,8 +52,24 @@ async def run_with_fallback[T](
             return await with_retry(make_runner(provider), policy=p_policy)
         except Exception as e:
             last_exc = e
-            if idx < len(chain) - 1:
-                next_provider = chain[idx + 1]
+
+            # Find the next candidate, skipping any that fail health check.
+            switched = False
+            for next_idx in range(idx + 1, len(chain)):
+                next_provider = chain[next_idx]
+
+                # Health probe before committing to this provider.
+                healthy = await provider_health_check(next_provider)
+                if not healthy:
+                    log_event(
+                        stage="resilience",
+                        event="provider_unhealthy_skipped",
+                        provider=next_provider,
+                    )
+                    logger.warning(f"Provider {next_provider} failed health check — skipping.")
+                    continue
+
+                # Healthy: notify caller and proceed.
                 log_event(
                     stage="resilience",
                     event="provider_failed_switching",
@@ -60,11 +82,14 @@ async def run_with_fallback[T](
                     f"Falling back to {next_provider}. Error: {e}"
                 )
                 await on_fallback(provider, next_provider, e)
-            else:
+                switched = True
+                break
+
+            if not switched:
                 log_event(
                     stage="resilience", event="all_providers_failed", level="error", error=str(e)
                 )
-                logger.error(f"All providers in chain {chain} failed.")
+                logger.error(f"All providers in chain {chain} failed or were unhealthy.")
 
     if last_exc:
         raise last_exc

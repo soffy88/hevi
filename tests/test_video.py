@@ -51,6 +51,8 @@ async def test_generate_clip_ltx2_t2v(mock_config, output_path):
             resolution=(1280, 720),
             audio_enabled=True,
             output_path=output_path,
+            fps=24,
+            bitrate_kbps=2500,
         )
 
 
@@ -79,6 +81,8 @@ async def test_generate_clip_ltx2_i2v(mock_config, output_path, reference_image)
             resolution=(1280, 720),
             audio_enabled=True,
             output_path=output_path,
+            fps=24,
+            bitrate_kbps=2500,
         )
 
 
@@ -103,6 +107,8 @@ async def test_generate_clip_wan_t2v(mock_config, output_path):
             reference_image=None,
             duration_s=10.0,
             output_path=output_path,
+            fps=24,
+            bitrate_kbps=2500,
         )
 
 
@@ -128,6 +134,8 @@ async def test_generate_clip_wan_i2v(mock_config, output_path, reference_image):
             reference_image=reference_image,
             duration_s=10.0,
             output_path=output_path,
+            fps=24,
+            bitrate_kbps=2500,
         )
 
 

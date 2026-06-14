@@ -4,6 +4,7 @@ from typing import Any
 from hevi.core.config import settings
 from hevi.cost.pricing_table import get_pricing_table
 from hevi.video import get_duration_config
+from hevi.video.quality_profile import DEFAULT_QUALITY, get_quality_cost_multiplier
 
 
 @dataclass
@@ -21,20 +22,27 @@ async def estimate_cost(
     video_provider: str,
     audio_provider: str,
     num_characters: int = 1,
+    quality: str = DEFAULT_QUALITY,
 ) -> CostEstimate:
-    """Estimate total cost before running a long video generation task."""
+    """Estimate total cost before running a long video generation task.
+
+    The ``quality`` tier scales video cost: ultra quality requires higher compute
+    and bitrate budget, so its multiplier (2.5×) is applied to the raw video cost.
+    Audio cost is unaffected by quality.
+    """
 
     duration_cfg = get_duration_config(duration_archetype)
     total_seconds = float(duration_cfg["target_s"])
     pricing = get_pricing_table()
+    quality_multiplier = get_quality_cost_multiplier(quality)
 
-    # 1. Video Cost
+    # 1. Video Cost (scaled by quality tier)
     v_pricing = pricing.get(video_provider, {"unit": "per_second", "price_usd": 0.05})
     video_cost = 0.0
     if v_pricing["unit"] == "per_second":
-        video_cost = total_seconds * v_pricing["price_usd"]
+        video_cost = total_seconds * v_pricing["price_usd"] * quality_multiplier
     elif v_pricing["unit"] == "per_minute":
-        video_cost = (total_seconds / 60.0) * v_pricing["price_usd"]
+        video_cost = (total_seconds / 60.0) * v_pricing["price_usd"] * quality_multiplier
 
     # 2. Audio Cost
     # Simple logic: base duration + small overhead per character for complexity
@@ -59,6 +67,8 @@ async def estimate_cost(
             video_provider: video_cost,
             audio_provider: audio_cost,
             "duration_s": total_seconds,
+            "quality": quality,
+            "quality_multiplier": quality_multiplier,
         },
         estimated_credits=int(total_usd * settings.credits_per_usd),
     )

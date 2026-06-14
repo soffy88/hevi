@@ -167,9 +167,19 @@ async def test_fallback_cost_reestimate():
     service = TaskService(repo)
 
     # Mock fallback sequence: ltx2 fails, wan succeeds
-    with patch("hevi.tasks.task_service.orchestrate_longvideo") as mock_orch, patch(
-        "hevi.tasks.task_service.run_with_fallback", wraps=from_resilience_run_with_fallback
-    ), patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock):
+    with (
+        patch("hevi.tasks.task_service.orchestrate_longvideo") as mock_orch,
+        patch(
+            "hevi.tasks.task_service.run_with_fallback",
+            wraps=from_resilience_run_with_fallback,
+        ),
+        patch(
+            "hevi.resilience.fallback_chain.provider_health_check",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock),
+    ):
 
         def orch_side_effect(**kwargs: Any):
             if kwargs["video_provider"] == "ltx2_cloud":

@@ -101,7 +101,14 @@ async def test_run_with_fallback_switching():
     runner = AsyncMock(side_effect=runner_side_effect)
     on_fallback = AsyncMock()
 
-    with patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock):
+    with (
+        patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "hevi.resilience.fallback_chain.provider_health_check",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+    ):
         res = await run_with_fallback(
             initial_provider="ltx2_cloud",
             runner=runner,
@@ -119,7 +126,14 @@ async def test_run_with_fallback_all_failed():
     runner = AsyncMock(side_effect=httpx.TimeoutException("all down"))
     on_fallback = AsyncMock()
 
-    with patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock):
+    with (
+        patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "hevi.resilience.fallback_chain.provider_health_check",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+    ):
         with pytest.raises(httpx.TimeoutException):
             await run_with_fallback(
                 initial_provider="ltx2_cloud",
@@ -242,7 +256,15 @@ async def test_task_service_run_task_with_fallback_integration():
 
     service = TaskService(repo)
 
-    with patch("hevi.tasks.task_service.orchestrate_longvideo") as mock_orch:
+    with (
+        patch("hevi.tasks.task_service.orchestrate_longvideo") as mock_orch,
+        patch(
+            "hevi.resilience.fallback_chain.provider_health_check",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock),
+    ):
 
         def orch_side_effect(**kwargs: Any):
             if kwargs["video_provider"] == "ltx2_cloud":
@@ -251,15 +273,14 @@ async def test_task_service_run_task_with_fallback_integration():
 
         mock_orch.side_effect = orch_side_effect
 
-        with patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock):
-            res = await service.run_task(task_id)
+        res = await service.run_task(task_id)
 
-        assert res["status"] == "completed"
-        assert repo.update_task.call_count >= 3
-        # Check fallback call
-        fallback_call = [
-            c
-            for c in repo.update_task.call_args_list
-            if c.args[1].get("video_provider") == "wan_cloud"
-        ]
-        assert len(fallback_call) == 1
+    assert res["status"] == "completed"
+    assert repo.update_task.call_count >= 3
+    # Check fallback call
+    fallback_call = [
+        c
+        for c in repo.update_task.call_args_list
+        if c.args[1].get("video_provider") == "wan_cloud"
+    ]
+    assert len(fallback_call) == 1

@@ -95,8 +95,14 @@ async def test_fallback_chain_instrumentation():
     runner = AsyncMock(side_effect=[ValueError("f1"), "done"])
     on_fallback = AsyncMock()
 
-    with patch("hevi.resilience.fallback_chain.log_event") as mock_log, patch(
-        "hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock
+    with (
+        patch("hevi.resilience.fallback_chain.log_event") as mock_log,
+        patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "hevi.resilience.fallback_chain.provider_health_check",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
     ):
         await run_with_fallback(
             initial_provider="ltx2_cloud", runner=runner, on_fallback=on_fallback
