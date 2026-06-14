@@ -40,7 +40,7 @@ class ExecuteGraphRequest(BaseModel):
 
 
 async def get_pg_pool() -> PgPool:
-    return await PgPool.get_or_create(dsn=settings.database_url)
+    return await get_hevi_pg_pool()
 
 
 async def get_graph_service(
@@ -131,4 +131,6 @@ async def execute_graph(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+c:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

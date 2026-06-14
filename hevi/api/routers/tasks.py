@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from obase.persistence import PgPool
 
 from hevi.core.config import settings
+from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository
 
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 async def get_pg_pool() -> PgPool:
     """Dependency to get the PostgreSQL pool."""
-    return await PgPool.get_or_create(dsn=settings.database_url)
+    return await get_hevi_pg_pool()
 
 
 async def get_repository(pool: Annotated[PgPool, Depends(get_pg_pool)]) -> TaskRepository:

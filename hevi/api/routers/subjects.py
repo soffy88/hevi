@@ -26,7 +26,7 @@ class SubjectUpdateRequest(BaseModel):
 
 
 async def get_pg_pool() -> PgPool:
-    return await PgPool.get_or_create(dsn=settings.database_url)
+    return await get_hevi_pg_pool()
 
 
 async def get_subject_service(
@@ -95,4 +95,6 @@ async def delete_subject(
     deleted = await svc.delete_subject(subject_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Subject not found")
+    return {"status": "deleted", "subject_id": subject_id}
+ct not found")
     return {"status": "deleted", "subject_id": subject_id}

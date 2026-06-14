@@ -22,6 +22,8 @@ dependencies = [
     "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.22.0",
     "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.28.0",
     "prometheus-client>=0.25.0",
+    "psycopg2-binary>=2.9.12",
+    "minio>=7.2.20",
 ]
 
 [dependency-groups]
