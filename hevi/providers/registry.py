@@ -22,40 +22,88 @@ def register_all_providers() -> None:
     class AsyncDashScopeAdapter:
         """Adapter that behaves like a coroutine but has a .get() method.
         
-        This satisfies:
-        1. oprim.llm_complete (expects coroutine or awaitable)
-        2. oskill.script_writer (calls it sync and then calls .get() on result)
+        Satisfies oprim.llm_complete (async) and oskill.script_writer (sync + .get()).
+        Includes robust JSON coercion to satisfy Pydantic models in oskill.
         """
         def __init__(self, **kwargs: Any):
-            # Ensure result_format is message for consistent parsing
             kwargs["result_format"] = "message"
-            # oskill.script_writer provides messages, we need to pass it to dashscope.Generation.call
-            # raw_dashscope is a function that calls Generation.call
-            self._resp = raw_dashscope(**kwargs)
-            # Convert DashScope response to dict if it's an object
-            if not isinstance(self._resp, dict):
-                self._resp = dict(self._resp)
+            resp = raw_dashscope(**kwargs)
+            if not isinstance(resp, dict):
+                resp = dict(resp)
                 
-            choices = self._resp.get("output", {}).get("choices", [])
+            choices = resp.get("output", {}).get("choices", [])
             if choices:
                 text = choices[0].get("message", {}).get("content", "")
-                # Map DashScope 'message' format to oprim 'content' format
+                
+                # SaaS-2/P10.F2 Fix: Coerce numeric IDs and string-list scenes
+                import json
+                import re
+                try:
+                    # 1. Strip Markdown code blocks if present
+                    clean_text = text.strip()
+                    if clean_text.startswith("```"):
+                        # Extract content between first and last ```
+                        match = re.search(r"```(?:json)?\n?(.*?)\n?```", clean_text, re.DOTALL)
+                        if match:
+                            clean_text = match.group(1).strip()
+
+                    # 2. Coerce numeric IDs and list fields
+                    json_match = re.search(r'(\{.*\}|\[.*\])', clean_text, re.DOTALL)
+                    if json_match:
+                        json_str = json_match.group(1)
+                        data = json.loads(json_str)
+                        
+                        def _coerce_fields(obj: Any) -> Any:
+                            if isinstance(obj, dict):
+                                res = {}
+                                for k, v in obj.items():
+                                    # 1. Coerce IDs to string
+                                    if (k.endswith("_id") or k == "id") and isinstance(v, (int, float)):
+                                        res[k] = str(v)
+                                    # 2. Coerce specific numeric fields to int (rounding if float)
+                                    elif k in ("importance", "index", "scene_index") and isinstance(v, (int, float)):
+                                        res[k] = int(round(v))
+                                    # 3. Handle list fields like 'scenes' or 'shots'
+                                    elif k in ("scenes", "shots") and isinstance(v, list):
+                                        res[k] = []
+                                        for i, item in enumerate(v):
+                                            if isinstance(item, str):
+                                                # Convert string item to dict
+                                                field_name = "visual_description" if k == "scenes" else "narration"
+                                                res[k].append({
+                                                    "id": str(i + 1), # Fallback id
+                                                    field_name: item
+                                                })
+                                            else:
+                                                res[k].append(_coerce_fields(item))
+                                    else:
+                                        res[k] = _coerce_fields(v)
+                                return res
+                            elif isinstance(obj, list):
+                                return [_coerce_fields(i) for i in obj]
+                            return obj
+
+                        coerced = _coerce_fields(data)
+                        text = json.dumps(coerced, ensure_ascii=False)
+                except Exception as e:
+                    logger.debug(f"LLM Coercion failed: {e}")
+
+                self._resp = resp
                 self._resp["content"] = text
+            else:
+                self._resp = resp
         
         def __await__(self) -> Any:
-            # Make it awaitable for oprim.llm_complete
             async def _dummy():
                 return self._resp
             return _dummy().__await__()
             
         def get(self, key: str, default: Any = None) -> Any:
-            # Provide .get() for oskill.script_writer (sync use case)
             return self._resp.get(key, default)
             
         def __getitem__(self, key: str) -> Any:
             return self._resp[key]
 
-    # Register the adapter as the default LLM
     ProviderRegistry.register("llm", "default", AsyncDashScopeAdapter, replace=True)
 
     # 2. Video Providers

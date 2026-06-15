@@ -78,5 +78,24 @@ async def orchestrate_longvideo(
     )
 
     async with track_video_generation(video_provider, duration_archetype):
-        result = await agentic_longvideo_pipeline(config=lv_config)
+        # SaaS-2/P10.F2 Fix: oskill.storyboard_planner has a bug where it calls .model_dump() 
+        # on scenes, but Chapter model defines them as list[dict].
+        from oskill.storyboard_planner import storyboard_planner
+
+        async def patched_storyboard_fn(*, script: Any, llm: Any) -> Any:
+            # If scenes are dicts, wrap them in a mock object that has model_dump()
+            if hasattr(script, "scenes"):
+                class ModelDict(dict):
+                    def model_dump(self) -> dict[str, Any]:
+                        return self
+                
+                script.scenes = [
+                    ModelDict(s) if isinstance(s, dict) else s for s in script.scenes
+                ]
+            return await storyboard_planner(script=script, llm=llm)
+
+        result = await agentic_longvideo_pipeline(
+            config=lv_config,
+            _providers={"storyboard_fn": patched_storyboard_fn}
+        )
         return map_longvideo_result(result)

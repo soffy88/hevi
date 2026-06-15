@@ -52,4 +52,5 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
         "wan_cloud": {"unit": "per_second", "price_usd": settings.wan_price_usd},
         "vibevoice": {"unit": "per_minute", "price_usd": 0.0},
         "duix": {"unit": "per_minute", "price_usd": 0.0},
+        "ltx2_native": {"unit": "per_minute", "price_usd": 0.0},
     }
