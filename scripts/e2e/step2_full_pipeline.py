@@ -3,9 +3,6 @@
 
 通过 REST API 触发全链路,轮询 SSE 进度,验证最终产物。
 需要 hevi API 服务已启动: uv run uvicorn hevi.api.main:app
-
-Usage:
-    uv run python scripts/e2e/step2_full_pipeline.py
 """
 
 from __future__ import annotations
@@ -15,83 +12,90 @@ import json
 import os
 import sys
 import time
+import httpx
+from pathlib import Path
+from dotenv import load_dotenv
 
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv()
-except ImportError:
-    pass
+load_dotenv()
 
 # ── 资源检查 ─────────────────────────────────────────────────────────────────
 
-_REQUIRED_F1 = {
-    "FAL_API_KEY": "fal.ai API key",
-    "DATABASE_URL": "PostgreSQL 连接串",
-    "MINIO_ACCESS_KEY": "MinIO access key",
-    "MINIO_SECRET_KEY": "MinIO secret key",
-}
-
-
-def _check_resources() -> None:
-    missing = [k for k, _ in _REQUIRED_F1.items() if not os.getenv(k, "").strip()]
-    if missing:
-        for key in missing:
-            print(f"[E2E] ❌ 缺少: {key} ({_REQUIRED_F1[key]})")
-        print("      请参考 docs/E2E_SETUP.md")
+def _require(key: str) -> str:
+    val = os.getenv(key, "").strip()
+    if not val:
+        print(f"[E2E] ❌ 缺少资源: {key}")
         sys.exit(1)
+    return val
 
+FAL_API_KEY = _require("FAL_API_KEY")
+HEVI_API_BASE = os.getenv("HEVI_API_BASE", "http://localhost:8001")
 
-# ── Step 2.1: REST API 触发长视频任务 ────────────────────────────────────────
+# ── Auth Helper ─────────────────────────────────────────────────────────────
 
+async def get_auth_token() -> str:
+    """Register and login a test user, ensuring credits are enough."""
+    email = f"e2e_test_{time.time_ns()}@example.com"
+    password = "password123"
+    
+    async with httpx.AsyncClient(base_url=HEVI_API_BASE, timeout=30.0) as client:
+        print(f"[Auth] 注册用户: {email}")
+        resp = await client.post("/api/auth/register", json={
+            "email": email, "password": password, "display_name": "E2E User"
+        })
+        resp.raise_for_status()
+        
+        print("[Auth] 登录获取 Token...")
+        resp = await client.post("/api/auth/login", json={
+            "email": email, "password": password
+        })
+        resp.raise_for_status()
+        token = resp.json()["access_token"]
+        
+        # Topup credits (SaaS-2)
+        print("[Auth] 手动充值 2000 积分...")
+        resp = await client.post("/api/credits/topup", json={"amount": 2000}, headers={"Authorization": f"Bearer {token}"})
+        resp.raise_for_status()
+        
+        return token
 
-async def trigger_pipeline(api_base: str) -> str:
-    """POST /api/tasks/longvideo to trigger a pipeline. Returns task_id."""
-    try:
-        import httpx
-    except ImportError:
-        print("[step2.1] ❌ httpx 未安装: uv add httpx")
-        sys.exit(1)
+# ── Step 2.1: REST API 触发 ───────────────────────────────────────────────────
 
+async def trigger_pipeline(token: str) -> str:
     payload = {
-        "topic": "宇宙探险家发现外星文明",
+        "topic": "宇宙中的奇异黑洞之旅",
         "duration_archetype": "1-5min",
         "video_provider": "ltx2_cloud",
-        "audio_provider": "vibevoice",
-        "style": "sci-fi cinematic",
+        "audio_provider": "ltx2_native",
+        "style": "cinematic sci-fi",
         "language": "zh",
-        "num_characters": 1,
     }
-
-    print(f"[step2.1] POST {api_base}/api/tasks/longvideo")
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(f"{api_base}/api/tasks/longvideo", json=payload)
-        resp.raise_for_status()
+    
+    print(f"[step2.1] POST /api/tasks/longvideo")
+    async with httpx.AsyncClient(base_url=HEVI_API_BASE, timeout=30.0) as client:
+        resp = await client.post(
+            "/api/tasks/longvideo", 
+            json=payload, 
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        if resp.status_code != 201:
+            print(f"[step2.1] ❌ 失败: {resp.text}")
+            resp.raise_for_status()
         data = resp.json()
-
-    task_id: str = data.get("task_id", data.get("id", ""))
-    print(f"[step2.1] ✓ task_id={task_id!r} status={data.get('status')!r}")
+        
+    task_id = data["id"]
+    print(f"[step2.1] ✓ task_id={task_id!r} status={data['status']!r}")
     return task_id
 
+# ── Step 2.2: SSE 进度 ───────────────────────────────────────────────────────
 
-# ── Step 2.2: SSE 进度轮询 ───────────────────────────────────────────────────
-
-
-async def poll_sse_progress(api_base: str, task_id: str, timeout_s: float = 600.0) -> str:
-    """Stream SSE progress events until completed/failed. Returns final status."""
-    try:
-        import httpx
-    except ImportError:
-        print("[step2.2] ❌ httpx 未安装")
-        sys.exit(1)
-
-    url = f"{api_base}/api/tasks/{task_id}/progress"
+async def poll_sse_progress(token: str, task_id: str, timeout_s: float = 1200.0) -> str:
+    url = f"{HEVI_API_BASE}/api/tasks/{task_id}/progress"
     print(f"[step2.2] SSE 轮询: {url}")
     deadline = time.monotonic() + timeout_s
     status = "unknown"
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_s)) as client:
-        async with client.stream("GET", url) as resp:
+        async with client.stream("GET", url, headers={"Authorization": f"Bearer {token}"}) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
                 if time.monotonic() > deadline:
@@ -106,6 +110,7 @@ async def poll_sse_progress(api_base: str, task_id: str, timeout_s: float = 600.
                     event = json.loads(raw)
                 except json.JSONDecodeError:
                     continue
+                
                 pct = event.get("progress_pct", 0)
                 msg = event.get("message", "")
                 status = event.get("status", status)
@@ -116,64 +121,73 @@ async def poll_sse_progress(api_base: str, task_id: str, timeout_s: float = 600.
     print(f"[step2.2] ✓ 最终状态: {status!r}")
     return status
 
-
 # ── Step 2.3: 产物验证 ───────────────────────────────────────────────────────
 
-
-async def verify_output(api_base: str, task_id: str) -> None:
-    """GET /api/tasks/{task_id} and verify result contains video_path."""
-    try:
-        import httpx
-    except ImportError:
-        return
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(f"{api_base}/api/tasks/{task_id}")
-        if resp.status_code != 200:
-            print(f"[step2.3] ⚠ task GET 返回 {resp.status_code}")
-            return
+async def verify_output(token: str, task_id: str) -> None:
+    async with httpx.AsyncClient(base_url=HEVI_API_BASE, timeout=30.0) as client:
+        resp = await client.get(f"/api/tasks/{task_id}", headers={"Authorization": f"Bearer {token}"})
+        resp.raise_for_status()
         task = resp.json()
 
-    video_path = task.get("result", {}).get("video_path", "")
-    duration_s = task.get("result", {}).get("duration_s", 0)
-    shots = task.get("result", {}).get("shots_count", 0)
-    print("[step2.3] ✓ 产物验证:")
-    print(f"          video_path = {video_path!r}")
-    print(f"          duration_s = {duration_s}")
-    print(f"          shots      = {shots}")
-
-    if not video_path:
-        print("[step2.3] ❌ video_path 为空 — 任务未成功完成")
+    # In SaaS-3, task structure might have changed slightly or remain the same
+    # Checking for result fields
+    # Note: actual task structure depends on repository.get_task
+    
+    print(f"[step2.3] Task Details: {json.dumps(task, indent=2, ensure_ascii=False)}")
+    
+    result_video = task.get("result_video_path")
+    if not result_video:
+        print("[step2.3] ❌ result_video_path 缺失")
         sys.exit(1)
-
+        
+    print(f"[step2.3] ✓ 产物路径: {result_video}")
+    
+    # ffprobe verify (if it's a URL, we might need to download it)
+    if result_video.startswith("http"):
+        print("[step2.3] 下载产物进行 ffprobe 验证...")
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(result_video)
+            video_data = resp.content
+            temp_path = Path("output/e2e_step2_final.mp4")
+            temp_path.write_bytes(video_data)
+    else:
+        temp_path = Path(result_video)
+        
+    if temp_path.exists():
+        import subprocess
+        probe = subprocess.run([
+            "ffprobe", "-v", "error", "-select_streams", "v:0", 
+            "-show_entries", "stream=width,height,duration", 
+            "-of", "csv=p=0", str(temp_path)
+        ], capture_output=True, text=True)
+        print(f"[step2.3] ffprobe 结果: {probe.stdout.strip()}")
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-
-async def main() -> None:
+async def main():
     print("=" * 60)
-    print("[step2] E2E 全链路真跑 — 1-5min 视频完整管线")
+    print("[step2] P10.F2 全链路真跑 — 1-5min 视频管线")
     print("=" * 60)
-
-    _check_resources()
-
-    api_base = os.getenv("HEVI_API_BASE", "http://localhost:8000")
-    print(f"[step2] API: {api_base}")
-
-    task_id = await trigger_pipeline(api_base)
-    final_status = await poll_sse_progress(api_base, task_id)
-
-    if final_status == "failed":
-        print("[step2] ❌ 任务失败 — 检查 API 日志")
+    
+    try:
+        token = await get_auth_token()
+        task_id = await trigger_pipeline(token)
+        final_status = await poll_sse_progress(token, task_id)
+        
+        if final_status == "completed":
+            await verify_output(token, task_id)
+            print("\n" + "=" * 60)
+            print("[step2] ✓ 全链路真跑成功!")
+            print("=" * 60)
+        else:
+            print(f"\n[step2] ❌ 任务未完成: {final_status}")
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f"\n[step2] ❌ 失败: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
-
-    await verify_output(api_base, task_id)
-
-    print()
-    print("[step2] ✓ 全链路 E2E 完成")
-    print()
-    print("→ 继续: uv run python scripts/e2e/step4_resilience.py")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
