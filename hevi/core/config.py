@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["*"]
 
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = "supersecret"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
 
@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     cost_limit_per_task_usd: float = 50.0
     max_duration_per_task_s: float = 3600.0
     credits_per_usd: int = 100
+
+    # Paddle
+    paddle_api_key: str | None = None
+    paddle_webhook_secret: str | None = None
+    paddle_environment: str = "sandbox"
 
 
 settings = Settings()
