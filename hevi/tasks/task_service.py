@@ -1,6 +1,7 @@
 import logging
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from hevi.cost import (
@@ -124,6 +125,7 @@ class TaskService:
                     duration_archetype=task["duration_archetype"],
                     video_provider=provider,
                     audio_provider=task["audio_provider"],
+                    output_dir=Path("output/tasks") / str(task_id),
                     **task["config_json"],
                 )
 
