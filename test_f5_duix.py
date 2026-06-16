@@ -10,21 +10,14 @@
 from __future__ import annotations
 
 import asyncio
-import shutil
 import subprocess
 import time
 from pathlib import Path
 
-
-DUIX_DATA_DIR = Path.home() / "duix_avatar_data/face2face"
-OUTPUT_DIR = Path("output/f5_duix")
-PORTRAIT_SRC = Path("output/e2e_step1_processed/cover.jpg")
+# Face portrait verified to work with Duix (from Duix container /code/result.jpg)
+PORTRAIT_SRC = Path.home() / "duix_avatar_data/face2face/test_result.jpg"
 AUDIO_SRC = Path("output/f4a_tts/single_speaker.wav")
-
-# Duix container mounts ~/duix_avatar_data/face2face → /code/data
-# Pass paths as seen from inside container
-PORTRAIT_IN_CONTAINER = "/code/data/portrait.jpg"
-AUDIO_IN_CONTAINER = "/code/data/audio.wav"
+OUTPUT_DIR = Path("output/f5_duix")
 
 
 def _mem_mib() -> int:
@@ -51,22 +44,13 @@ async def run_f5() -> None:
     from hevi.audio.avatar_service import generate_avatar_clip
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    DUIX_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Stage files into the mounted volume so the container can read them
-    portrait_staged = DUIX_DATA_DIR / "portrait.jpg"
-    audio_staged = DUIX_DATA_DIR / "audio.wav"
-    shutil.copy2(PORTRAIT_SRC, portrait_staged)
-    shutil.copy2(AUDIO_SRC, audio_staged)
-    print(f"[F5] 文件已复制到容器挂载目录: {DUIX_DATA_DIR}")
-    print(f"     portrait: {portrait_staged} ({portrait_staged.stat().st_size} bytes)")
-    print(f"     audio:    {audio_staged} ({audio_staged.stat().st_size} bytes)")
+    print(f"[F5] Portrait:  {PORTRAIT_SRC} ({PORTRAIT_SRC.stat().st_size} bytes)")
+    print(f"[F5] Audio:     {AUDIO_SRC} ({AUDIO_SRC.stat().st_size} bytes)")
 
-    # Check GPU before
     mem_before = _mem_mib()
     print(f"\n[F5] GPU 显存(调用前): {mem_before} MiB")
 
-    # Call through hevi's avatar_service
     out_path = OUTPUT_DIR / "f5_lipsync.mp4"
     print(f"\n[F5] 调用 generate_avatar_clip ...")
     t0 = time.perf_counter()
@@ -74,8 +58,8 @@ async def run_f5() -> None:
     try:
         result = await generate_avatar_clip(
             config=None,
-            portrait_image=Path(PORTRAIT_IN_CONTAINER),
-            audio_path=Path(AUDIO_IN_CONTAINER),
+            portrait_image=PORTRAIT_SRC,
+            audio_path=AUDIO_SRC,
             output_path=out_path,
         )
         elapsed = time.perf_counter() - t0
@@ -101,8 +85,8 @@ async def run_f5() -> None:
     print("\n" + "=" * 60)
     print("[F5] Duix 唇形合成真跑总结")
     print("=" * 60)
-    print(f"  Portrait:         {PORTRAIT_SRC} → {PORTRAIT_IN_CONTAINER}")
-    print(f"  Audio (F4a):      {AUDIO_SRC} → {AUDIO_IN_CONTAINER}")
+    print(f"  Portrait:         {PORTRAIT_SRC}")
+    print(f"  Audio (F4a):      {AUDIO_SRC}")
     print(f"  输出视频:          {out_path}")
     print(f"  GPU 显存峰值:      {mem_after} MiB")
     print(f"  GPU 增量:          +{mem_after - mem_before} MiB")
@@ -114,7 +98,6 @@ def main() -> None:
     print("[F5] Duix 唇形合成 真跑")
     print(f"     服务地址: http://127.0.0.1:8383")
 
-    # Quick ping to confirm service is up
     print("[F5] 检查 Duix 服务连通性 ...")
     if not _check_service():
         print("[F5] ERROR: Duix 服务未响应 http://127.0.0.1:8383")
