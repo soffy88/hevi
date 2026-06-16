@@ -1,0 +1,67 @@
+---
+# hevi v6 — Cloudflare Tunnel 本地全栈部署
+#
+# 依赖: 平台 pg/minio 容器已在运行(hevi-dev-postgres-1 @ :5432, hevi-dev-minio-1 @ :9100)
+# 不起 pg/minio/nginx/Redis 容器(obase.cache=文件系统 pickle)
+#
+# 起服务:
+#   eval $(ssh-agent -s) && ssh-add ~/.ssh/id_ed25519
+#   DOCKER_BUILDKIT=1 docker compose -f deploy/docker-compose-cftunnel.yml up -d --build
+#
+# 隧道目标(交 Wiki cloudflared 配置):
+#   hevi-api : http://localhost:8200   →  https://api.hevi.uex.hk  (或路径路由 /api/*)
+#   hevi-web : http://localhost:3200   →  https://hevi.uex.hk
+
+name: hevi-cftunnel
+
+services:
+  hevi-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      ssh:
+        - default
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://hevi:hevi@host.docker.internal:5432/hevi
+      MINIO_ENDPOINT: host.docker.internal:9100
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-hevi}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-hevi1234}
+      MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+      CORS_ORIGINS: https://hevi.uex.hk
+    ports:
+      - "8200:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: >
+      sh -c "uv run alembic upgrade head &&
+             uv run uvicorn hevi.api.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  hevi-web:
+    build:
+      context: ../hevi-web
+      dockerfile: ../deploy/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_BASE: https://hevi.uex.hk
+        NEXT_PUBLIC_USE_MOCK: "false"
+    restart: unless-stopped
+    ports:
+      - "3200:3000"
+    depends_on:
+      hevi-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

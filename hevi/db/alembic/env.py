@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -8,6 +9,12 @@ from hevi.db.models import Base
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# DATABASE_URL env var overrides alembic.ini (needed for Docker deployments)
+if db_url := os.getenv("DATABASE_URL"):
+    # sqlalchemy requires +psycopg2 driver suffix; replace bare postgresql:// scheme
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 
