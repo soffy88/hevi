@@ -82,7 +82,7 @@ async def estimate_credits(
         quality_profile=body.quality_profile,
         num_characters=body.num_characters,
     )
-    return {"credits_needed": credits_needed}
+    return {"credits": credits_needed, "credits_needed": credits_needed}
 
 
 @router.post("/topup")

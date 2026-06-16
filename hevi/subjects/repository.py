@@ -21,8 +21,8 @@ class SubjectRepository:
         data.setdefault("updated_at", now)
         data.setdefault("deleted_at", None)
         data.setdefault("version", 1)
-        result: dict[str, Any] = await insert_one(self._pool, table="subjects", data=data)
-        return result
+        new_id = await insert_one(self._pool, table="subjects", data=data)
+        return (await self.get(str(new_id))) or data
 
     async def get(self, subject_id: str) -> dict[str, Any] | None:
         result: dict[str, Any] | None = await read_one(

@@ -11,6 +11,10 @@ from hevi.subjects.subject_service import SubjectService
 router = APIRouter(prefix="/subjects", tags=["subjects"])
 
 
+def _serialize_subject(s: dict) -> dict:
+    return {**s, "subject_id": s.get("id"), "kind": s.get("subject_type")}
+
+
 class SubjectCreateRequest(BaseModel):
     kind: str
     name: str
@@ -41,7 +45,7 @@ async def create_subject(
     svc: Annotated[SubjectService, Depends(get_subject_service)],
 ) -> dict[str, Any]:
     try:
-        return await svc.create_subject(
+        return _serialize_subject(await svc.create_subject(
             kind=body.kind,
             name=body.name,
             description=body.description,
@@ -49,7 +53,7 @@ async def create_subject(
             metadata=body.metadata,
             tags=body.tags,
             user_id=body.user_id,
-        )
+        ))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -61,7 +65,7 @@ async def list_subjects(
     query: str | None = None,
     user_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    return await svc.search_subjects(kind=kind, query=query, user_id=user_id)
+    return [_serialize_subject(s) for s in await svc.search_subjects(kind=kind, query=query, user_id=user_id)]
 
 
 @router.get("/{subject_id}")
@@ -72,7 +76,7 @@ async def get_subject(
     subject = await svc.get_subject(subject_id)
     if subject is None:
         raise HTTPException(status_code=404, detail="Subject not found")
-    return subject
+    return _serialize_subject(subject)
 
 
 @router.patch("/{subject_id}")
@@ -84,7 +88,7 @@ async def update_subject(
     result = await svc.update_subject_metadata(subject_id, metadata=body.metadata)
     if result is None:
         raise HTTPException(status_code=404, detail="Subject not found")
-    return result
+    return _serialize_subject(result)
 
 
 @router.delete("/{subject_id}", status_code=200)

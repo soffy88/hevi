@@ -31,6 +31,7 @@ async def get_template_service(
     return TemplateService(TemplateRepository(pool))
 
 
+@router.post("", status_code=201)
 @router.post("/", status_code=201)
 async def create_template(
     body: TemplateCreateRequest,
@@ -47,6 +48,7 @@ async def create_template(
     )
 
 
+@router.get("")
 @router.get("/")
 async def list_templates(
     svc: Annotated[TemplateService, Depends(get_template_service)],

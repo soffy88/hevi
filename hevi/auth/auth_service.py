@@ -7,6 +7,13 @@ from hevi.auth.password import hash_password, verify_password
 from hevi.auth.repository import UserRepository
 
 
+_SENSITIVE_FIELDS = {"password_hash", "oauth_sub"}
+
+
+def _safe_user(user: dict) -> dict:
+    return {k: v for k, v in user.items() if k not in _SENSITIVE_FIELDS}
+
+
 class AuthService:
     def __init__(self, repo: UserRepository) -> None:
         self._repo = repo
@@ -30,7 +37,7 @@ class AuthService:
             "auth_provider": "local",
             "is_active": True,
         }
-        return await self._repo.create(data)
+        return _safe_user(await self._repo.create(data))
 
     async def login(self, email: str, password: str) -> tuple[dict[str, Any], str]:
         user = await self._repo.get_by_email(email)
@@ -41,15 +48,12 @@ class AuthService:
             raise ValueError("Invalid email or password")
 
         token = sign_access_token(str(user["id"]))
-        return user, token
+        return _safe_user(user), token
 
     async def oauth_callback(
         self, provider: Literal["google"], code: str
     ) -> tuple[dict[str, Any], str]:
         """Skeleton for OAuth2 callback. Actual implementation pending credentials."""
-        # This would call obase.oauth2_provider.exchange_code_for_token
-        # then fetch_userinfo_raw, then find or create user.
-        # For now, we mock a successful login if code is 'test_code'
         if code == "test_code":
             email = "oauth_test@example.com"
             user = await self._repo.get_by_email(email)
@@ -62,6 +66,6 @@ class AuthService:
                     "is_active": True
                 })
             token = sign_access_token(str(user["id"]))
-            return user, token
-        
+            return _safe_user(user), token
+
         raise ValueError("Invalid OAuth code")

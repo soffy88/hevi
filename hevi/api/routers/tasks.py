@@ -27,6 +27,16 @@ class LongVideoRequest(BaseModel):
     video_provider: str = "ltx2_cloud"
     audio_provider: str = "vibevoice"
     num_characters: int = 1
+    quality_profile: str = "standard"
+    style_preset: str | None = None
+
+
+class EstimateRequest(BaseModel):
+    duration_archetype: str
+    video_provider: str = "ltx2_cloud"
+    audio_provider: str = "vibevoice"
+    num_characters: int = 1
+    quality_profile: str = "standard"
 
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
@@ -55,17 +65,22 @@ async def get_task_service(
     return TaskService(repo, billing_svc)
 
 
+# ── Serialization ────────────────────────────────────────────────────────────
+
+
+def _serialize_task(t: dict) -> dict:
+    return {**t, "task_id": str(t.get("id", "")), "percent": t.get("progress_pct", 0)}
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 
-@router.post("/longvideo", status_code=201)
-async def create_longvideo_task(
+async def _create_task(
     body: LongVideoRequest,
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-    svc: Annotated[TaskService, Depends(get_task_service)],
+    user: dict[str, Any],
+    svc: TaskService,
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
-    """Create and start a long video task."""
     try:
         task = await svc.create_task(
             topic=body.topic,
@@ -75,27 +90,59 @@ async def create_longvideo_task(
             user_id=str(user["id"]),
             num_characters=body.num_characters,
         )
-        # Run in background
         background_tasks.add_task(svc.run_task, task["id"])
-        return task
+        return _serialize_task(task)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        # Check if it's InsufficientCredits (could use custom exception mapper but simpler here)
         if "Insufficient credits" in str(exc):
             raise HTTPException(status_code=402, detail=str(exc)) from exc
         raise
+
+
+@router.post("/estimate")
+async def estimate_task_credits(
+    body: EstimateRequest,
+    svc: Annotated[BillingService, Depends(get_billing_service)],
+) -> dict:
+    credits = await svc.estimate_credits(
+        duration_archetype=body.duration_archetype,
+        video_provider=body.video_provider,
+        audio_provider=body.audio_provider,
+        quality_profile=body.quality_profile,
+        num_characters=body.num_characters,
+    )
+    return {"credits": credits, "credits_needed": credits}
+
+
+@router.post("", status_code=201)
+async def create_task_alias(
+    body: LongVideoRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    svc: Annotated[TaskService, Depends(get_task_service)],
+    background_tasks: BackgroundTasks,
+) -> dict:
+    return await _create_task(body, user, svc, background_tasks)
+
+
+@router.post("/longvideo", status_code=201)
+async def create_longvideo_task(
+    body: LongVideoRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[TaskService, Depends(get_task_service)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    return await _create_task(body, user, svc, background_tasks)
 
 
 @router.get("/{task_id}")
 async def get_task_details(
     task_id: UUID, repo: Annotated[TaskRepository, Depends(get_repository)]
 ) -> dict[str, Any]:
-    """Retrieve task details and status."""
     task = await repo.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    return _serialize_task(task)
 
 
 @router.get("/{task_id}/progress")

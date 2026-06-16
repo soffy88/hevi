@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/home/soffy/projects/hevi/scripts/e2e/step3_dual_cloud.py", line 144, in main
+    await test_scenario(
+    ...<4 lines>...
+    )
+  File "/home/soffy/projects/hevi/scripts/e2e/step3_dual_cloud.py", line 134, in test_scenario
+    await run_pipeline(token, provider, expected, name)
+  File "/home/soffy/projects/hevi/scripts/e2e/step3_dual_cloud.py", line 101, in run_pipeline
+    raise RuntimeError(f"Task failed with status {status}")
+RuntimeError: Task failed with status failed
+============================================================
+[step3] 场景: Wan单独
+============================================================
+    -> 触发任务: wan_cloud
+    -> 轮询 SSE...
+      [  0%] running - 
+      [  0%] failed - 
+
+❌ 验证失败: Task failed with status failed

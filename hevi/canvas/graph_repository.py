@@ -17,8 +17,8 @@ class GraphRepository:
         now = datetime.utcnow()
         data.setdefault("created_at", now)
         data.setdefault("updated_at", now)
-        result: dict[str, Any] = await insert_one(self._pool, table="canvas_graphs", data=data)
-        return result
+        new_id = await insert_one(self._pool, table="canvas_graphs", data=data)
+        return (await self.get(str(new_id))) or data
 
     async def get(self, graph_id: str) -> dict[str, Any] | None:
         result: dict[str, Any] | None = await read_one(
