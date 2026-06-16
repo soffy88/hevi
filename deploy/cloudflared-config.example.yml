@@ -1,0 +1,13 @@
+tunnel: <YOUR-TUNNEL-UUID>
+credentials-file: /home/soffy/.cloudflared/<YOUR-TUNNEL-UUID>.json
+
+ingress:
+  # /api/* → hevi-api container (port 8200)
+  - hostname: hevi.uex.hk
+    path: /api/.*
+    service: http://localhost:8200
+  # everything else → hevi-web container (port 3200)
+  - hostname: hevi.uex.hk
+    service: http://localhost:3200
+  # catch-all
+  - service: http_status:404
