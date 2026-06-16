@@ -27,6 +27,7 @@ class OAuthRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    token: str           # alias for frontend compatibility
     token_type: str = "bearer"
     user: dict[str, Any]
 
@@ -57,7 +58,7 @@ async def login(
 ) -> TokenResponse:
     try:
         user, token = await svc.login(email=body.email, password=body.password)
-        return TokenResponse(access_token=token, user=user)
+        return TokenResponse(access_token=token, token=token, user=user)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
@@ -76,6 +77,6 @@ async def google_oauth(
 ) -> TokenResponse:
     try:
         user, token = await svc.oauth_callback(provider="google", code=body.code)
-        return TokenResponse(access_token=token, user=user)
+        return TokenResponse(access_token=token, token=token, user=user)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

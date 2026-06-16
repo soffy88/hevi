@@ -32,6 +32,7 @@ async def get_audio_service(
     return AudioLibraryService(AudioLibraryRepository(pool))
 
 
+@router.post("", status_code=201)
 @router.post("/", status_code=201)
 async def create_audio_asset(
     body: AudioAssetCreateRequest,
@@ -49,6 +50,7 @@ async def create_audio_asset(
     )
 
 
+@router.get("")
 @router.get("/")
 async def search_audio(
     svc: Annotated[AudioLibraryService, Depends(get_audio_service)],

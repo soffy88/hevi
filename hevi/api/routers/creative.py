@@ -87,6 +87,26 @@ async def get_workflow_service() -> WorkflowService:
     return WorkflowService()
 
 
+# ── Discovery ────────────────────────────────────────────────────────────────
+
+_CAPABILITIES = [
+    {"id": "three-view",   "label": "三视图生成",   "description": "角色正/侧/背三视图",  "returns": "data"},
+    {"id": "storyboard",   "label": "分镜脚本",     "description": "剧本→分镜",           "returns": "data"},
+    {"id": "story-predict","label": "故事预测",     "description": "参考帧推演剧情走向",  "returns": "data"},
+    {"id": "multi-angle",  "label": "多角度描述",   "description": "主体多机位 prompt",   "returns": "prompt"},
+    {"id": "transition",   "label": "转场生成",     "description": "首尾帧生成过渡视频",  "returns": "media"},
+    {"id": "element-edit", "label": "元素编辑",     "description": "时间线元素批量操作",  "returns": "data"},
+    {"id": "workflow/character-consistency", "label": "角色一致性工作流", "returns": "media"},
+    {"id": "workflow/storyboard",           "label": "分镜工作流",       "returns": "media"},
+    {"id": "workflow/comic-to-animation",   "label": "漫画转动画",       "returns": "media"},
+]
+
+
+@router.get("/capabilities")
+async def list_capabilities() -> list[dict]:
+    return _CAPABILITIES
+
+
 # ── oprim routes (6) ─────────────────────────────────────────────────────────
 
 

@@ -135,6 +135,15 @@ async def create_longvideo_task(
     return await _create_task(body, user, svc, background_tasks)
 
 
+@router.get("")
+async def list_tasks(
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> list[dict[str, Any]]:
+    tasks = await repo.list_tasks(user_id=str(user["id"]))
+    return [_serialize_task(t) for t in tasks]
+
+
 @router.get("/{task_id}")
 async def get_task_details(
     task_id: UUID, repo: Annotated[TaskRepository, Depends(get_repository)]

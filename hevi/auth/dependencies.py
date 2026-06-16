@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from obase.persistence import PgPool
 
+from hevi.auth.auth_service import _safe_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.auth.repository import UserRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
@@ -41,4 +42,4 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
         )
-    return user
+    return _safe_user(user)

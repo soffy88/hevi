@@ -24,8 +24,15 @@ class TaskRepository:
         """Update task data."""
         return await update_one(self.pool, table="video_tasks", id=task_id, data=data)
 
-    async def list_tasks(self, limit: int = 100) -> list[dict[str, Any]]:
-        """List recent tasks."""
+    async def list_tasks(self, limit: int = 100, user_id: str | None = None) -> list[dict[str, Any]]:
+        """List recent tasks, optionally filtered by user."""
+        if user_id:
+            return await query(
+                self.pool,
+                sql="SELECT * FROM video_tasks WHERE user_id = $1 ORDER BY created_at DESC",
+                params=[user_id],
+                limit=limit,
+            )
         return await query(
             self.pool, sql="SELECT * FROM video_tasks ORDER BY created_at DESC", limit=limit
         )

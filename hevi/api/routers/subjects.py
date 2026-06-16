@@ -39,6 +39,7 @@ async def get_subject_service(
     return SubjectService(SubjectRepository(pool))
 
 
+@router.post("", status_code=201)
 @router.post("/", status_code=201)
 async def create_subject(
     body: SubjectCreateRequest,
@@ -58,6 +59,7 @@ async def create_subject(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@router.get("")
 @router.get("/")
 async def list_subjects(
     svc: Annotated[SubjectService, Depends(get_subject_service)],
