@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://hevi:hevi@localhost:5432/hevi"
     redis_url: str = "redis://localhost:6379/0"
 
-    cors_origins: list[str] = ["*"]
+    # Stored as str; parsed to list[str] by _cors_list() in main.py.
+    # Accepts: "*", "https://a.com", "https://a.com,https://b.com", or JSON '["https://a.com"]'
+    cors_origins: str = "*"
 
     jwt_secret: str = "supersecret"
     jwt_algorithm: str = "HS256"

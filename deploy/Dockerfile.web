@@ -26,8 +26,6 @@ ENV NODE_ENV=production
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
-# public/ folder optional
-COPY --from=builder /app/public ./public 2>/dev/null || true
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --retries=3 CMD curl -sf http://localhost:3000 || exit 1
 CMD ["npm", "start"]

@@ -1,4 +1,4 @@
-.venv/
+# .venv/ is intentionally NOT excluded — Dockerfile.api copies host venv into image
 __pycache__/
 *.pyc
 *.pyo

@@ -18,9 +18,7 @@ services:
   hevi-api:
     build:
       context: ..
-      dockerfile: Dockerfile
-      ssh:
-        - default
+      dockerfile: deploy/Dockerfile.api
     restart: unless-stopped
     env_file:
       - path: ../.env
@@ -37,8 +35,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: >
-      sh -c "uv run alembic upgrade head &&
-             uv run uvicorn hevi.api.main:app --host 0.0.0.0 --port 8000 --workers 2"
+      sh -c "alembic upgrade head &&
+             uvicorn hevi.api.main:app --host 0.0.0.0 --port 8000 --workers 2"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
       interval: 15s
