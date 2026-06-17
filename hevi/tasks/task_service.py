@@ -13,6 +13,7 @@ from hevi.cost import (
 from hevi.credits.billing_service import BillingService
 from hevi.observability import log_event, start_trace
 from hevi.pipeline import orchestrate_longvideo
+from hevi.queue.task_queue import enqueue
 from hevi.resilience import RetryPolicy, run_with_fallback
 from hevi.tasks.repository import TaskRepository
 
@@ -23,6 +24,17 @@ class TaskService:
     def __init__(self, repository: TaskRepository, billing_svc: BillingService | None = None):
         self.repository = repository
         self.billing_svc = billing_svc
+
+    def is_local_provider(self, video_provider: str) -> bool:
+        """Determine if a provider requires local GPU resources."""
+        # Heuristic: anything not containing 'cloud' or explicitly local
+        local_names = {"qwen_local", "wan_local", "ltx2_local", "local"}
+        if video_provider in local_names or "_local" in video_provider:
+            return True
+        if "cloud" not in video_provider.lower():
+            if video_provider in ("wan", "ltx2", "ltx"):
+                return True
+        return False
 
     async def create_task(
         self,
@@ -229,3 +241,18 @@ class TaskService:
     async def get_task_status(self, task_id: uuid.UUID) -> dict[str, Any] | None:
         """Get the current status of a task."""
         return await self.repository.get_task(task_id)
+
+    async def submit_task(self, task_id: uuid.UUID) -> dict[str, Any]:
+        """Submit a task. Enqueues if local, returns immediately for cloud background run."""
+        task = await self.repository.get_task(task_id)
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+
+        if self.is_local_provider(task["video_provider"]):
+            await enqueue(self.repository, task_id)
+            refreshed = await self.repository.get_task(task_id)
+            if refreshed is None:
+                raise ValueError(f"Task {task_id} disappeared after enqueue")
+            return refreshed
+
+        return task

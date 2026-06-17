@@ -90,7 +90,12 @@ async def _create_task(
             user_id=str(user["id"]),
             num_characters=body.num_characters,
         )
-        background_tasks.add_task(svc.run_task, task["id"])
+        # Decision: Enqueue local tasks, run cloud tasks immediately in background
+        task = await svc.submit_task(task["id"])
+        
+        if task["status"] != "queued":
+            background_tasks.add_task(svc.run_task, task["id"])
+            
         return _serialize_task(task)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

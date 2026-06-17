@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Any
 
 from obase.persistence import PgPool, insert_one, query, read_one, update_one
@@ -24,7 +25,9 @@ class TaskRepository:
         """Update task data."""
         return await update_one(self.pool, table="video_tasks", id=task_id, data=data)
 
-    async def list_tasks(self, limit: int = 100, user_id: str | None = None) -> list[dict[str, Any]]:
+    async def list_tasks(
+        self, limit: int = 100, user_id: str | None = None
+    ) -> list[dict[str, Any]]:
         """List recent tasks, optionally filtered by user."""
         if user_id:
             return await query(
@@ -50,3 +53,34 @@ class TaskRepository:
             sql="SELECT * FROM shot_states WHERE task_id = $1 ORDER BY shot_index ASC",
             params=[task_id],
         )
+
+    async def get_next_queued_task(self) -> dict[str, Any] | None:
+        """Get the oldest queued task."""
+        results = await query(
+            self.pool,
+            sql=(
+                "SELECT * FROM video_tasks WHERE status = 'queued'"
+                " ORDER BY queued_at ASC, created_at ASC LIMIT 1"
+            )
+        )
+        return results[0] if results else None
+
+    async def get_queued_count(self) -> int:
+        """Get total number of queued tasks."""
+        results = await query(
+            self.pool,
+            sql="SELECT COUNT(*) as count FROM video_tasks WHERE status = 'queued'"
+        )
+        return int(results[0]["count"]) if results else 0
+
+    async def get_tasks_ahead(self, queued_at: datetime) -> int:
+        """Get count of tasks queued before the given timestamp."""
+        results = await query(
+            self.pool,
+            sql=(
+                "SELECT COUNT(*) as count FROM video_tasks"
+                " WHERE status = 'queued' AND queued_at < $1"
+            ),
+            params=[queued_at]
+        )
+        return int(results[0]["count"]) if results else 0

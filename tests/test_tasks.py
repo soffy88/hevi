@@ -127,11 +127,13 @@ async def test_run_task_success(task_service, repository):
 
         # Should be called for 'running' and then 'completed'
         assert mock_update.call_count >= 2
+        from unittest.mock import ANY
         mock_orch.assert_called_once_with(
             topic="test",
             duration_archetype="1-5min",
             video_provider="ltx2_cloud",
             audio_provider="vibevoice",
+            output_dir=ANY,
             style="cinematic",
         )
 
