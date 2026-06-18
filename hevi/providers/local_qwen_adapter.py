@@ -1,8 +1,8 @@
 """Local Qwen LLM adapter — routes LLM calls to ollama OpenAI-compatible endpoint.
 
 Registered as "llm"/"local" when HEVI_LLM_PROVIDER=qwen_local is set.
-Implements the same sync-callable + async protocol as AsyncDashScopeAdapter
-so oskill script_writer / storyboard_planner work without changes.
+True async: httpx.AsyncClient, non-blocking, returns a plain dict.
+oskill storyboard_planner/script_writer: result = await llm(messages=...)
 """
 from __future__ import annotations
 
@@ -19,86 +19,6 @@ logger = logging.getLogger(__name__)
 _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 _OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
 _TIMEOUT = 600.0
-
-
-def _call_ollama(**kwargs: Any) -> dict[str, Any]:
-    payload = {
-        "model": _OLLAMA_MODEL,
-        "messages": kwargs.get("messages", []),
-        "max_tokens": kwargs.get("max_tokens", 4096),
-        "temperature": kwargs.get("temperature", 0.7),
-        "stream": False,
-        "think": False,  # disable extended thinking for structured JSON output
-    }
-    r = httpx.post(
-        f"{_OLLAMA_BASE}/v1/chat/completions",
-        json=payload,
-        timeout=_TIMEOUT,
-    )
-    r.raise_for_status()
-    data = r.json()
-    oa_choices = data.get("choices", [])
-    native_choices = [
-        {"message": c.get("message", {}), "finish_reason": c.get("finish_reason", "")}
-        for c in oa_choices
-    ]
-    return {"output": {"choices": native_choices}, "usage": data.get("usage", {})}
-
-
-class LocalQwenAdapter:
-    """Sync-callable LLM adapter backed by ollama (qwen3.5:9b).
-
-    Same interface as AsyncDashScopeAdapter:
-      resp = llm(messages=...)   # sync call
-      content = resp.get("content")
-      await llm(messages=...)    # async via __await__
-    """
-
-    def __init__(self, **kwargs: Any):
-        kwargs.pop("result_format", None)
-        resp = _call_ollama(**kwargs)
-
-        choices = resp.get("output", {}).get("choices", [])
-        if choices:
-            raw = choices[0].get("message", {}).get("content", "")
-
-            # Strip <think>...</think> blocks (qwen3.5 thinking traces)
-            text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
-
-            # Fallback: qwen3.5 sometimes puts all output inside the think block.
-            # If text is empty after stripping, try to extract JSON from inside think.
-            if not text:
-                think_match = re.search(r"<think>(.*?)</think>", raw, flags=re.DOTALL)
-                if think_match:
-                    text = think_match.group(1).strip()
-                    logger.debug("LocalQwenAdapter: extracted content from think block")
-
-            # Coerce JSON: strip markdown fences, parse, normalise id types
-            try:
-                clean = text.strip()
-                if clean.startswith("```"):
-                    m = re.search(r"```(?:json)?\n?(.*?)\n?```", clean, re.DOTALL)
-                    if m:
-                        clean = m.group(1).strip()
-                match = re.search(r"(\{.*\}|\[.*\])", clean, re.DOTALL)
-                if match:
-                    data = json.loads(match.group(1))
-                    text = json.dumps(_coerce(data), ensure_ascii=False)
-            except Exception as e:
-                logger.debug("LocalQwenAdapter coercion skipped: %s", e)
-
-            self._resp = resp
-            self._resp["content"] = text
-        else:
-            self._resp = resp
-
-    def __await__(self) -> Any:
-        async def _dummy() -> dict[str, Any]:
-            return self._resp
-        return _dummy().__await__()
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return self._resp.get(key, default)
 
 
 def _coerce(obj: Any) -> Any:
@@ -134,15 +54,80 @@ def _coerce(obj: Any) -> Any:
     return obj
 
 
+def _extract_content(raw: str) -> str:
+    """Strip think blocks, extract JSON, coerce types."""
+    text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+
+    if not text:
+        think_match = re.search(r"<think>(.*?)</think>", raw, flags=re.DOTALL)
+        if think_match:
+            text = think_match.group(1).strip()
+            logger.debug("LocalQwenAdapter: extracted content from think block")
+
+    try:
+        clean = text.strip()
+        if clean.startswith("```"):
+            m = re.search(r"```(?:json)?\n?(.*?)\n?```", clean, re.DOTALL)
+            if m:
+                clean = m.group(1).strip()
+        match = re.search(r"(\{.*\}|\[.*\])", clean, re.DOTALL)
+        if match:
+            data = json.loads(match.group(1))
+            text = json.dumps(_coerce(data), ensure_ascii=False)
+    except Exception as e:
+        logger.debug("LocalQwenAdapter coercion skipped: %s", e)
+
+    return text
+
+
+async def local_qwen_adapter(**kwargs: Any) -> dict[str, Any]:
+    """Async LLM adapter backed by ollama (qwen3.5:9b).
+
+    Returns a plain dict: {"content": str, "output": {...}, "usage": {...}}
+    Compatible with oskill's `result = await llm(messages=...)` protocol.
+    """
+    kwargs.pop("result_format", None)
+    payload = {
+        "model": _OLLAMA_MODEL,
+        "messages": kwargs.get("messages", []),
+        "max_tokens": kwargs.get("max_tokens", 4096),
+        "temperature": kwargs.get("temperature", 0.7),
+        "stream": False,
+        "think": False,
+    }
+
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        r = await client.post(f"{_OLLAMA_BASE}/v1/chat/completions", json=payload)
+    r.raise_for_status()
+    data = r.json()
+
+    oa_choices = data.get("choices", [])
+    native_choices = [
+        {"message": c.get("message", {}), "finish_reason": c.get("finish_reason", "")}
+        for c in oa_choices
+    ]
+    resp: dict[str, Any] = {
+        "output": {"choices": native_choices},
+        "usage": data.get("usage", {}),
+        "content": "",
+    }
+
+    if oa_choices:
+        raw = oa_choices[0].get("message", {}).get("content", "")
+        resp["content"] = _extract_content(raw)
+
+    return resp
+
+
 def register_if_local() -> bool:
-    """Register LocalQwenAdapter as "llm"/"local" (always) and as "llm"/"default"
+    """Register local_qwen_adapter as "llm"/"local" (always) and as "llm"/"default"
     when HEVI_LLM_PROVIDER=qwen_local. Returns True if default was overridden."""
     from obase.provider_registry import ProviderRegistry
 
-    ProviderRegistry.register("llm", "local", LocalQwenAdapter, replace=True)
+    ProviderRegistry.register("llm", "local", local_qwen_adapter, replace=True)
 
     if os.getenv("HEVI_LLM_PROVIDER") == "qwen_local":
-        ProviderRegistry.register("llm", "default", LocalQwenAdapter, replace=True)
-        logger.info("LLM provider: LocalQwenAdapter (qwen3.5:9b via ollama)")
+        ProviderRegistry.register("llm", "default", local_qwen_adapter, replace=True)
+        logger.info("LLM provider: local_qwen_adapter (qwen3.5:9b via ollama)")
         return True
     return False

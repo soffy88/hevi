@@ -1,12 +1,18 @@
-"""Patch vibevoice==0.0.1 for compatibility with transformers>=5.x.
+"""Patch vibevoice==0.0.1 for compatibility with transformers>=5.x and oprim imports.
 
-vibevoice 0.0.1 was built against transformers==4.51.3. Running it against
-transformers 5.x (which hevi venv uses via Python 3.14) requires 12 patches.
+vibevoice 0.0.1 has two package-level bugs and was built against transformers==4.51.3.
+This script applies all patches so a fresh venv works after `uv sync`.
 
 Usage:
-    python scripts/patch_vibevoice_transformers5.py [venv_dir]
+    python scripts/patch_vibevoice.py [venv_dir]
 
 If venv_dir is omitted, uses the `.venv` in the current directory.
+
+Patches applied:
+  Bug A: vibevoice/__init__.py — re-export classes oprim needs (empty stub in 0.0.1)
+  P1-P12: transformers 5.x compatibility (AutoModel.register, Qwen2TokenizerFast,
+           dpm_solver meta-device, tie_weights, generation_config API, DynamicCache, etc.)
+  P10 covers Bug B: speech_tensors None guard (no voice_ref case)
 """
 from __future__ import annotations
 
@@ -44,8 +50,27 @@ def main(venv_dir: str | None = None) -> None:
 
     print(f"Patching vibevoice in: {vv}")
     modular = vv / "modular"
+    inf = modular / "modeling_vibevoice_inference.py"
 
-    # ── Patch 1: exist_ok in modular_vibevoice_tokenizer.py ─────────────────
+    # ── Bug A: vibevoice/__init__.py — re-export classes oprim needs ──────────
+    # vibevoice 0.0.1 ships classes in submodules but __init__.py is an empty stub.
+    # oprim._vibevoice_synthesize does `from vibevoice import X` expecting top-level access.
+    init_py = vv / "__init__.py"
+    _BUG_A_SENTINEL = "VibeVoiceForConditionalGenerationInference"
+    if _BUG_A_SENTINEL in init_py.read_text():
+        print("  [SKIP] Bug A: vibevoice/__init__.py — already patched")
+    else:
+        init_py.write_text(
+            "# vibevoice 0.0.1 ships classes in submodules but does not re-export them.\n"
+            "# oprim._vibevoice_synthesize does `from vibevoice import X` expecting top-level access.\n"
+            "from vibevoice.modular.modeling_vibevoice_inference import (  # noqa: F401\n"
+            "    VibeVoiceForConditionalGenerationInference,\n"
+            ")\n"
+            "from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor  # noqa: F401\n"
+        )
+        print("  [OK]   Bug A: vibevoice/__init__.py — re-exported VibeVoiceForConditionalGenerationInference + VibeVoiceProcessor")
+
+    # ── P1: exist_ok in modular_vibevoice_tokenizer.py ───────────────────────
     patch(
         modular / "modular_vibevoice_tokenizer.py",
         "AutoModel.register(VibeVoiceAcousticTokenizerConfig, VibeVoiceAcousticTokenizerModel)\n"
@@ -55,7 +80,7 @@ def main(venv_dir: str | None = None) -> None:
         "P1: AutoModel.register exist_ok=True (transformers 5.x already has vibevoice built-in)",
     )
 
-    # ── Patch 2: Qwen2TokenizerFast missing in transformers 5.x ─────────────
+    # ── P2: Qwen2TokenizerFast missing in transformers 5.x ───────────────────
     patch(
         modular / "modular_vibevoice_text_tokenizer.py",
         "from transformers.models.qwen2.tokenization_qwen2_fast import Qwen2TokenizerFast",
@@ -66,10 +91,9 @@ def main(venv_dir: str | None = None) -> None:
         "P2: Qwen2TokenizerFast fallback (removed in transformers 5.x)",
     )
 
-    # ── Patch 3a/3b: dpm_solver.py is_meta guard for __init__ ───────────────
+    # ── P3a/3b: dpm_solver.py is_meta guard for __init__ ────────────────────
     dpm = vv / "schedule" / "dpm_solver.py"
     dpm_text = dpm.read_text()
-    # Two .to("cpu") calls in __init__ that blow up on meta tensors
     new_dpm = dpm_text.replace(
         'self.sigmas = self.sigmas.to("cpu")  # to avoid too much CPU/GPU communication',
         'if not self.sigmas.is_meta:  # skip on meta device (transformers 5.x from_pretrained context)\n'
@@ -81,7 +105,7 @@ def main(venv_dir: str | None = None) -> None:
     else:
         print("  [SKIP] P3: dpm_solver is_meta guard — already patched or not found")
 
-    # ── Patch 4: dpm_solver set_timesteps reinit if lambda_t is meta ─────────
+    # ── P4: dpm_solver set_timesteps reinit if lambda_t is meta ──────────────
     patch(
         dpm,
         "        if num_inference_steps is None and timesteps is None:\n"
@@ -98,9 +122,7 @@ def main(venv_dir: str | None = None) -> None:
         "P4: dpm_solver set_timesteps reinit if lambda_t still on meta device",
     )
 
-    inf = modular / "modeling_vibevoice_inference.py"
-
-    # ── Patch 5: tie_weights **kwargs ─────────────────────────────────────────
+    # ── P5: tie_weights **kwargs ──────────────────────────────────────────────
     patch(
         inf,
         "    def tie_weights(self):",
@@ -108,7 +130,7 @@ def main(venv_dir: str | None = None) -> None:
         "P5: tie_weights **kwargs (transformers 5.x passes recompute_mapping=False)",
     )
 
-    # ── Patch 6: tie_weights check decoder_config.tie_word_embeddings ─────────
+    # ── P6: tie_weights check decoder_config.tie_word_embeddings ─────────────
     patch(
         inf,
         "        if not getattr(self.config, 'tie_word_embeddings', False):\n"
@@ -127,7 +149,7 @@ def main(venv_dir: str | None = None) -> None:
         "P6: tie_weights fallback to decoder_config.tie_word_embeddings (VibeVoiceConfig top-level is None)",
     )
 
-    # ── Patch 7: _prepare_generation_config remove True positional arg ────────
+    # ── P7: _prepare_generation_config remove True positional arg ────────────
     patch(
         inf,
         "        generation_config, model_kwargs = self._prepare_generation_config(\n"
@@ -141,7 +163,7 @@ def main(venv_dir: str | None = None) -> None:
         "P7: _prepare_generation_config remove True positional arg (removed in transformers 5.x)",
     )
 
-    # ── Patch 8: _prepare_cache_for_generation remove device arg ─────────────
+    # ── P8: _prepare_cache_for_generation remove device arg ──────────────────
     patch(
         inf,
         "        self._prepare_cache_for_generation(generation_config, model_kwargs, None, batch_size, max_cache_length, device)",
@@ -149,7 +171,7 @@ def main(venv_dir: str | None = None) -> None:
         "P8: _prepare_cache_for_generation remove device arg (removed in transformers 5.x)",
     )
 
-    # ── Patch 9: VibeVoiceConfig num_hidden_layers + get_text_config ─────────
+    # ── P9: VibeVoiceConfig num_hidden_layers + get_text_config ──────────────
     cfg = modular / "configuration_vibevoice.py"
     patch(
         cfg,
@@ -165,7 +187,9 @@ def main(venv_dir: str | None = None) -> None:
         "P9: VibeVoiceConfig num_hidden_layers property + get_text_config (transformers 5.x DynamicCache)",
     )
 
-    # ── Patch 10: speech_tensors None guard (prefill) ─────────────────────────
+    # ── P10: speech_tensors None guard / Bug B ────────────────────────────────
+    # Covers Bug B: no voice_ref → speech_tensors is None → .to(device) crashes.
+    # Applied as an if-block on fresh installs; inline-ternary form (manual patch) is also accepted.
     patch(
         inf,
         "            if is_prefill:\n"
@@ -187,10 +211,10 @@ def main(venv_dir: str | None = None) -> None:
         "                else:\n"
         "                    prefill_inputs = {}\n"
         "                is_prefill = False",
-        "P10: speech_tensors None guard (no voice_ref means None speech tensors)",
+        "P10/BugB: speech_tensors None guard (no voice_ref means None speech tensors)",
     )
 
-    # ── Patch 11: key_cache → layers compat (speech_begin block) ─────────────
+    # ── P11a: key_cache → layers compat (speech_begin block) ─────────────────
     patch(
         inf,
         "                for layer_idx, (k_cache, v_cache) in enumerate(zip(negative_model_kwargs['past_key_values'].key_cache, \n"
@@ -218,7 +242,7 @@ def main(venv_dir: str | None = None) -> None:
         "P11b: DynamicCache key_cache/value_cache → layers compat (non-diffusion shift block)",
     )
 
-    # ── Patch 12: inputs_embeds KeyError → .get() ────────────────────────────
+    # ── P12: inputs_embeds KeyError → .get() ─────────────────────────────────
     patch(
         inf,
         "                    if negative_model_inputs['inputs_embeds'] is None and inputs_embeds is not None:",

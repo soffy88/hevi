@@ -15,6 +15,9 @@ RUN --mount=type=ssh pip install uv
 COPY pyproject.toml uv.lock* ./
 RUN --mount=type=ssh uv sync --no-dev --frozen
 
+COPY scripts/ ./scripts/
+RUN python scripts/patch_vibevoice.py
+
 COPY hevi/ ./hevi/
 
 EXPOSE 8000
