@@ -80,9 +80,13 @@ def register_all_providers() -> None:
         return {"output": {"choices": native_choices}, "usage": data.get("usage", {})}
 
     class AsyncDashScopeAdapter:
-        """Adapter that behaves like a coroutine but has a .get() method.
+        """Sync-callable LLM adapter with async protocol and .get() fallback.
 
-        Satisfies oprim.llm_complete (async) and oskill.script_writer (sync + .get()).
+        oskill.storyboard_planner calls the LLM synchronously:
+            result = llm(messages=...)        # sync call
+            content = result.get("content")  # sync .get()
+        All other oskill callers use `await llm(...)`.
+        This adapter satisfies both patterns via __await__ + get().
         Includes robust JSON coercion to satisfy Pydantic models in oskill.
         """
         def __init__(self, **kwargs: Any):
@@ -180,9 +184,6 @@ def register_all_providers() -> None:
             
         def get(self, key: str, default: Any = None) -> Any:
             return self._resp.get(key, default)
-            
-        def __getitem__(self, key: str) -> Any:
-            return self._resp[key]
 
     ProviderRegistry.register("llm", "default", AsyncDashScopeAdapter, replace=True)
 

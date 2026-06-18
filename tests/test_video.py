@@ -233,7 +233,8 @@ async def test_wan_local_generate_calls_provider(tmp_path):
         mock_sched.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
         import unittest.mock
-        with unittest.mock.patch("hevi.video.wan_local_service.asyncio.get_running_loop") as mock_loop:
+        patch_target = "hevi.video.wan_local_service.asyncio.get_running_loop"
+        with unittest.mock.patch(patch_target) as mock_loop:
             mock_loop.return_value.run_in_executor = AsyncMock(return_value=None)
             result = await wan_local_generate(prompt="test", output_path=out)
 

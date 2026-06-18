@@ -15,12 +15,19 @@ def create_hevi_tracker(budget_usd: float | None = None) -> CostTracker:
     pricing = get_pricing_table()
     entries = []
     
+    _VIDEO = {"ltx2_cloud", "wan_cloud", "wan_local", "ltx2_native"}
+    _AUDIO = {"vibevoice", "duix"}
+    _LLM = {"qwen_local", "qwen_dashscope"}
+
     for provider, p_info in pricing.items():
-        # Mapping to obase format
-        # category is 'video' or 'audio'
-        category = "video" if "cloud" in provider or provider in ("ltx2", "wan") else "audio"
-        if provider in ("vibevoice", "duix"):
+        if provider in _VIDEO:
+            category = "video"
+        elif provider in _AUDIO:
             category = "audio"
+        elif provider in _LLM:
+            category = "llm"
+        else:
+            category = "other"
             
         entries.append(PricingEntry(
             category=category,

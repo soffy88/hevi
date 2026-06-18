@@ -30,6 +30,11 @@ LTX2_ENDPOINTS: dict[str, str] = {
     "pro": "https://fal.run/fal-ai/ltx-video-pro",  # placeholder; verify with fal.ai
 }
 
+# DashScope Qwen token pricing (美元/1k tokens)
+# Source: console.aliyun.com/billing — Qwen-Plus 2026-06 (TODO: re-verify quarterly)
+# Input: ¥0.0008/1k → $0.00011; Output: ¥0.002/1k → $0.00028; blended ~$0.0002/1k
+QWEN_DASHSCOPE_PRICE_PER_1K_TOKENS: float = 0.0002  # blended; TODO: split input/output
+
 
 def get_ltx2_price_per_second(tier: str, resolution: str) -> float:
     """Return fal.ai LTX-2 price per second for (tier, resolution_key) pair."""
@@ -42,15 +47,45 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
 
     ltx2_cloud: price_usd is the Fast-1080p default; use pricing_2d for
     resolution-aware billing or call get_ltx2_price_per_second() directly.
+    wan_cloud: ¥0.24/s 720p; loaded from settings.wan_price_usd ($0.033/s).
+    wan_local / qwen_local: $0 (local GPU, no API cost).
+    qwen_dashscope: blended token price; TODO verify rate quarterly.
     """
     return {
+        # --- video providers ---
         "ltx2_cloud": {
             "unit": "per_second",
             "price_usd": get_ltx2_price_per_second(DEFAULT_LTX2_TIER, "1080p"),
             "pricing_2d": LTX2_PRICING,
         },
-        "wan_cloud": {"unit": "per_second", "price_usd": settings.wan_price_usd},
-        "vibevoice": {"unit": "per_minute", "price_usd": 0.0},
-        "duix": {"unit": "per_minute", "price_usd": 0.0},
-        "ltx2_native": {"unit": "per_minute", "price_usd": 0.0},
+        "wan_cloud": {
+            "unit": "per_second",
+            "price_usd": settings.wan_price_usd,
+        },
+        "wan_local": {
+            "unit": "per_second",
+            "price_usd": 0.0,
+        },
+        "ltx2_native": {
+            "unit": "per_minute",
+            "price_usd": 0.0,
+        },
+        # --- audio providers ---
+        "vibevoice": {
+            "unit": "per_minute",
+            "price_usd": 0.0,
+        },
+        "duix": {
+            "unit": "per_minute",
+            "price_usd": 0.0,
+        },
+        # --- LLM providers ---
+        "qwen_local": {
+            "unit": "per_1k_tokens",
+            "price_usd": 0.0,
+        },
+        "qwen_dashscope": {
+            "unit": "per_1k_tokens",
+            "price_usd": QWEN_DASHSCOPE_PRICE_PER_1K_TOKENS,
+        },
     }

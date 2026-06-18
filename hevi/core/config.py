@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     # Cost settings
     ltx2_price_usd: float = 0.04  # per second (legacy; 2D pricing in pricing_table.py)
     ltx2_default_tier: str = "fast"  # fal.ai tier: "fast" | "pro"
-    wan_price_usd: float = 0.05   # per second
+    # ¥0.24/s 720p ÷ 7.25 CNY/USD; source: Alibaba Cloud billing 2026-06
+    wan_price_usd: float = 0.033  # per second
     cost_limit_per_task_usd: float = 50.0
     max_duration_per_task_s: float = 3600.0
     credits_per_usd: int = 100

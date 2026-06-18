@@ -76,7 +76,11 @@ async def estimate_cost(
 
     total_usd = video_cost + audio_cost
 
-    # 3. obase CostBreakdown for per-step visibility
+    # 3. obase CostBreakdown for per-step visibility.
+    # TODO(obase): StepUsage.category field missing; _tracker_estimate_steps()
+    # hardcodes category="default" → PricingTable lookup fails for video/audio
+    # entries. Until obase adds StepUsage.category, we build CostBreakdown directly
+    # instead of going through tracker.estimate_steps(). Track: owner obase issue.
     per_step = CostBreakdown(
         per_step={
             "video": Decimal(str(video_cost)),

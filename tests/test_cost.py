@@ -40,8 +40,8 @@ async def test_estimate_cost_multi_character():
     )
     # 180s video
     # Audio: 180 * (1 + (3-1)*0.1) = 180 * 1.2 = 216s
-    # Price: 216 * 0.05 = 10.8
-    assert est.audio_cost_usd == 10.8
+    # Price: 216 * 0.033 = 7.128 (wan_cloud ¥0.24/s ÷ 7.25 CNY/USD; calibrated 2026-06)
+    assert est.audio_cost_usd == pytest.approx(7.128, rel=1e-4)
 
 
 def test_pricing_table_structure():
@@ -73,7 +73,8 @@ async def test_circuit_breaker_during_run():
 @pytest.mark.asyncio
 async def test_selector_quality_floor():
     # ltx2_cloud quality=10, wan_cloud quality=9 (see selector.PROVIDER_QUALITY)
-    # Real pricing: ltx2 Fast-1080p=0.04/s, wan=0.05/s (ltx2 always cheaper)
+    # Real pricing (2026-06): ltx2 Fast-1080p=$0.04/s, wan_cloud=$0.033/s (¥0.24÷7.25)
+    # wan_cloud is now cheaper than ltx2 at Fast tier.
     candidates = ["ltx2_cloud", "wan_cloud"]
 
     # Floor 10 — only ltx2 qualifies (wan quality=9 < 10)
@@ -85,14 +86,14 @@ async def test_selector_quality_floor():
     )
     assert p == "ltx2_cloud"
 
-    # Floor 9 — both qualify; ltx2 cheaper (0.04/s < wan 0.05/s)
+    # Floor 9 — both qualify; wan_cloud cheaper ($0.033/s < ltx2 $0.04/s)
     p9 = await select_cheapest_provider(
         duration_archetype="1-5min",
         candidates=candidates,
         audio_provider="vibevoice",
         quality_floor=9,
     )
-    assert p9 == "ltx2_cloud"
+    assert p9 == "wan_cloud"
 
     # Floor 11 — no provider meets floor → ValueError
     with pytest.raises(ValueError):
@@ -202,13 +203,16 @@ async def test_fallback_cost_reestimate():
         await service.run_task(task_id)
 
         # Check repo update for wan_cloud with new estimated_usd
-        # wan price is 0.05, 180 * 0.05 = 9.0
+        # wan price is $0.033/s (¥0.24/s ÷ 7.25 CNY/USD; calibrated 2026-06)
+        # 180s * 0.033 = 5.94 (standard quality, multiplier=1.0)
         fallback_updates = [
             c
             for c in repo.update_task.call_args_list
             if c.args[1].get("video_provider") == "wan_cloud"
         ]
-        assert fallback_updates[0].args[1]["config_json"]["estimated_usd"] == 9.0
+        assert fallback_updates[0].args[1]["config_json"]["estimated_usd"] == pytest.approx(
+            5.94, rel=1e-4
+        )
 
 
 async def from_resilience_run_with_fallback(**kwargs: Any):
