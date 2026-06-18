@@ -11,7 +11,7 @@ from hevi.subjects.subject_service import SubjectService
 router = APIRouter(prefix="/subjects", tags=["subjects"])
 
 
-def _serialize_subject(s: dict) -> dict:
+def _serialize_subject(s: dict[str, Any]) -> dict[str, Any]:
     return {**s, "subject_id": s.get("id"), "kind": s.get("subject_type")}
 
 
@@ -67,7 +67,8 @@ async def list_subjects(
     query: str | None = None,
     user_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    return [_serialize_subject(s) for s in await svc.search_subjects(kind=kind, query=query, user_id=user_id)]
+    results = await svc.search_subjects(kind=kind, query=query, user_id=user_id)
+    return [_serialize_subject(s) for s in results]
 
 
 @router.get("/{subject_id}")

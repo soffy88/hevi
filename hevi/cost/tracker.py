@@ -31,7 +31,7 @@ def create_hevi_tracker(budget_usd: float | None = None) -> CostTracker:
         ))
         
     table = PricingTable(entries=entries)
-    return CostTracker(pricing_table=table, budget_usd=budget_usd)
+    return CostTracker(pricing_table=table, budget_usd=budget_usd, strict_pricing=False)
 
 
 class HeviCostTracker:
@@ -68,7 +68,7 @@ class HeviCostTracker:
         return cost
         
     def get_summary(self) -> dict[str, Any]:
-        return self.internal.summary()
+        return {"total_usd": self.internal.total_usd, "entries": self.internal._entries}
     
     @property
     def total_usd(self) -> float:

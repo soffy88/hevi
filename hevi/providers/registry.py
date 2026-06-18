@@ -54,7 +54,7 @@ def register_all_providers() -> None:
     import httpx as _httpx
 
     def _compat_llm_call(**kwargs: Any) -> dict[str, Any]:
-        """Call DashScope via OpenAI-compatible REST endpoint (bypasses native SDK billing block)."""
+        """Call DashScope via OpenAI-compatible REST endpoint."""
         api_key = _os.getenv("DASHSCOPE_API_KEY", "")
         payload = {
             "model": kwargs.get("model") or "qwen-plus",
@@ -113,10 +113,11 @@ def register_all_providers() -> None:
                         
                         def _coerce_fields(obj: Any) -> Any:
                             if isinstance(obj, dict):
-                                res = {}
+                                res: dict[str, Any] = {}
                                 for k, v in obj.items():
                                     # 1. Coerce IDs to string
-                                    if (k.endswith("_id") or k == "id") and isinstance(v, (int, float)):
+                                    is_id = k.endswith("_id") or k == "id"
+                                    if is_id and isinstance(v, (int, float)):
                                         res[k] = str(v)
                                     # 2. Coerce specific numeric fields to int (rounding if float)
                                     elif k in ("importance", "index", "scene_index"):
@@ -124,21 +125,28 @@ def register_all_providers() -> None:
                                             res[k] = int(round(v))
                                         elif isinstance(v, str):
                                             vl = v.lower()
-                                            if vl in ("low", "minor"): res[k] = 1
-                                            elif vl in ("medium", "normal"): res[k] = 2
-                                            elif vl in ("high", "major"): res[k] = 3
-                                            elif vl in ("critical", "extreme"): res[k] = 4
+                                            if vl in ("low", "minor"):
+                                                res[k] = 1
+                                            elif vl in ("medium", "normal"):
+                                                res[k] = 2
+                                            elif vl in ("high", "major"):
+                                                res[k] = 3
+                                            elif vl in ("critical", "extreme"):
+                                                res[k] = 4
                                             else:
-                                                try: res[k] = int(v)
-                                                except ValueError: res[k] = 0
-                                        else: res[k] = 0
+                                                try:
+                                                    res[k] = int(v)
+                                                except ValueError:
+                                                    res[k] = 0
+                                        else:
+                                            res[k] = 0
                                     # 3. Handle list fields like 'scenes' or 'shots'
                                     elif k in ("scenes", "shots") and isinstance(v, list):
+                                        fld = "visual_description" if k == "scenes" else "narration"
                                         res[k] = []
                                         for i, item in enumerate(v):
                                             if isinstance(item, str):
-                                                field_name = "visual_description" if k == "scenes" else "narration"
-                                                res[k].append({"id": str(i + 1), field_name: item})
+                                                res[k].append({"id": str(i + 1), fld: item})
                                             else:
                                                 res[k].append(_coerce_fields(item))
                                     # 4. Handle None/null values (fix for Path(None) crash)
@@ -164,7 +172,7 @@ def register_all_providers() -> None:
                 self._resp = resp
         
         def __await__(self) -> Any:
-            async def _dummy():
+            async def _dummy() -> dict[str, Any]:
                 return self._resp
             return _dummy().__await__()
             
@@ -217,6 +225,9 @@ def register_all_providers() -> None:
         "audio",
         "duix",
         lambda **kwargs: avatar_generate(
-            provider="duix", **kwargs
+            provider="duix",
+            portrait_image=kwargs["portrait_image"],
+            audio_path=kwargs["audio_path"],
+            output_path=kwargs["output_path"],
         ),
     )

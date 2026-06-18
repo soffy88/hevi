@@ -26,7 +26,7 @@ def _cors_list(raw: str) -> list[str]:
     import json as _json
     raw = raw.strip()
     if raw.startswith("["):
-        return _json.loads(raw)
+        return list(_json.loads(raw))
     return [o.strip() for o in raw.split(",") if o.strip()] or ["*"]
 
 

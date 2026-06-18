@@ -14,7 +14,7 @@ from hevi.db.pg_pool import get_hevi_pg_pool
 router = APIRouter(prefix="/canvas", tags=["canvas"])
 
 
-def _serialize_graph(g: dict) -> dict:
+def _serialize_graph(g: dict[str, Any]) -> dict[str, Any]:
     return {**g, "nodes": g.get("nodes_json", []), "edges": g.get("edges_json", [])}
 
 
@@ -80,7 +80,9 @@ async def _do_get_graph(graph_id: str, svc: GraphService) -> dict[str, Any]:
     return _serialize_graph(graph)
 
 
-async def _do_update_graph(graph_id: str, body: UpdateGraphRequest, svc: GraphService) -> dict[str, Any]:
+async def _do_update_graph(
+    graph_id: str, body: UpdateGraphRequest, svc: GraphService
+) -> dict[str, Any]:
     result = await svc.update_graph(
         graph_id, name=body.name, description=body.description,
         nodes=body.nodes, edges=body.edges,
@@ -97,7 +99,9 @@ async def _do_delete_graph(graph_id: str, svc: GraphService) -> dict[str, str]:
     return {"status": "deleted", "graph_id": graph_id}
 
 
-async def _do_execute_graph(graph_id: str, body: ExecuteGraphRequest, exe: ExecutorService) -> dict[str, Any]:
+async def _do_execute_graph(
+    graph_id: str, body: ExecuteGraphRequest, exe: ExecutorService
+) -> dict[str, Any]:
     try:
         return await exe.execute_graph(graph_id, on_error=body.on_error)
     except ValueError as exc:

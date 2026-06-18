@@ -68,7 +68,7 @@ async def get_task_service(
 # ── Serialization ────────────────────────────────────────────────────────────
 
 
-def _serialize_task(t: dict) -> dict:
+def _serialize_task(t: dict[str, Any]) -> dict[str, Any]:
     return {**t, "task_id": str(t.get("id", "")), "percent": t.get("progress_pct", 0)}
 
 
@@ -109,7 +109,7 @@ async def _create_task(
 async def estimate_task_credits(
     body: EstimateRequest,
     svc: Annotated[BillingService, Depends(get_billing_service)],
-) -> dict:
+) -> dict[str, Any]:
     credits = await svc.estimate_credits(
         duration_archetype=body.duration_archetype,
         video_provider=body.video_provider,
@@ -123,10 +123,10 @@ async def estimate_task_credits(
 @router.post("", status_code=201)
 async def create_task_alias(
     body: LongVideoRequest,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[TaskService, Depends(get_task_service)],
     background_tasks: BackgroundTasks,
-) -> dict:
+) -> dict[str, Any]:
     return await _create_task(body, user, svc, background_tasks)
 
 

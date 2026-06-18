@@ -127,7 +127,6 @@ async def test_generate_avatar_clip_duix(mock_config, portrait_image, audio_path
         )
         assert res == out
         mock_avatar.assert_called_once_with(
-            config=mock_config,
             provider="duix",
             portrait_image=portrait_image,
             audio_path=audio_path,

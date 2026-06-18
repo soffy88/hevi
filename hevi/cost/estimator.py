@@ -1,8 +1,13 @@
+"""hevi cost estimator — proven calculation + obase.CostBreakdown for per-step output."""
+from __future__ import annotations
+
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Literal
 
+from obase.cost_tracker import CostBreakdown
+
 from hevi.core.config import settings
-from hevi.cost.pricing_table import get_ltx2_price_per_second, get_pricing_table
 from hevi.video import get_duration_config
 from hevi.video.quality_profile import (
     DEFAULT_QUALITY,
@@ -18,6 +23,7 @@ class CostEstimate:
     total_usd: float
     breakdown: dict[str, Any]
     estimated_credits: int
+    per_step: CostBreakdown | None = None
 
 
 async def estimate_cost(
@@ -32,11 +38,14 @@ async def estimate_cost(
     """Estimate total cost before running a long video generation task.
 
     For ltx2_cloud, cost is derived from the 2D fal.ai pricing table
-    (tier × resolution) rather than a flat rate.  For other providers
-    a flat rate with a quality multiplier is applied.
+    (tier × resolution).  For other providers a flat rate with a quality
+    multiplier is applied.  Returns an obase CostBreakdown in ``per_step``
+    for per-step visibility.
     """
+    from hevi.cost.pricing_table import get_ltx2_price_per_second, get_pricing_table
+
     duration_cfg = get_duration_config(duration_archetype)
-    total_seconds = float(duration_cfg["target_s"])
+    total_s = float(duration_cfg["target_s"])
     pricing = get_pricing_table()
 
     # 1. Video cost
@@ -45,27 +54,36 @@ async def estimate_cost(
     if video_provider == "ltx2_cloud":
         pricing_key = get_ltx2_pricing_key(quality)
         price_per_s = get_ltx2_price_per_second(ltx2_tier, pricing_key)
-        video_cost = total_seconds * price_per_s
+        video_cost = total_s * price_per_s
         breakdown_extra = {"ltx2_tier": ltx2_tier, "ltx2_pricing_key": pricing_key}
     else:
         v_pricing = pricing.get(video_provider, {"unit": "per_second", "price_usd": 0.05})
-        quality_multiplier = get_quality_cost_multiplier(quality)
+        quality_mult = get_quality_cost_multiplier(quality)
         if v_pricing["unit"] == "per_second":
-            video_cost = total_seconds * v_pricing["price_usd"] * quality_multiplier
+            video_cost = total_s * v_pricing["price_usd"] * quality_mult
         elif v_pricing["unit"] == "per_minute":
-            video_cost = (total_seconds / 60.0) * v_pricing["price_usd"] * quality_multiplier
-        breakdown_extra = {"quality_multiplier": quality_multiplier}
+            video_cost = (total_s / 60.0) * v_pricing["price_usd"] * quality_mult
+        breakdown_extra = {"quality_multiplier": quality_mult}
 
-    # 2. Audio cost — 10% more per extra character for complexity
+    # 2. Audio cost — 10% more per extra character
     a_pricing = pricing.get(audio_provider, {"unit": "per_minute", "price_usd": 0.0})
-    audio_seconds = total_seconds * (1.0 + (num_characters - 1) * 0.1)
+    audio_s = total_s * (1.0 + (num_characters - 1) * 0.1)
     audio_cost = 0.0
     if a_pricing["unit"] == "per_second":
-        audio_cost = audio_seconds * a_pricing["price_usd"]
+        audio_cost = audio_s * a_pricing["price_usd"]
     elif a_pricing["unit"] == "per_minute":
-        audio_cost = (audio_seconds / 60.0) * a_pricing["price_usd"]
+        audio_cost = (audio_s / 60.0) * a_pricing["price_usd"]
 
     total_usd = video_cost + audio_cost
+
+    # 3. obase CostBreakdown for per-step visibility
+    per_step = CostBreakdown(
+        per_step={
+            "video": Decimal(str(video_cost)),
+            "audio": Decimal(str(audio_cost)),
+        },
+        total=Decimal(str(total_usd)),
+    )
 
     return CostEstimate(
         video_cost_usd=video_cost,
@@ -74,9 +92,10 @@ async def estimate_cost(
         breakdown={
             video_provider: video_cost,
             audio_provider: audio_cost,
-            "duration_s": total_seconds,
+            "duration_s": total_s,
             "quality": quality,
             **breakdown_extra,
         },
         estimated_credits=int(total_usd * settings.credits_per_usd),
+        per_step=per_step,
     )

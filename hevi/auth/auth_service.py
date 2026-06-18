@@ -9,7 +9,7 @@ from hevi.auth.repository import UserRepository
 _SENSITIVE_FIELDS = {"password_hash", "oauth_sub"}
 
 
-def _safe_user(user: dict) -> dict:
+def _safe_user(user: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in user.items() if k not in _SENSITIVE_FIELDS}
 
 

@@ -5,11 +5,10 @@ from typing import Any
 from omodul.agentic_longvideo_pipeline import agentic_longvideo_pipeline
 
 from hevi.observability import track_video_generation
-
-logger = logging.getLogger(__name__)
-
 from hevi.pipeline.config_builder import build_longvideo_config
 from hevi.pipeline.result_mapper import map_longvideo_result
+
+logger = logging.getLogger(__name__)
 
 
 async def orchestrate_longvideo(
@@ -93,7 +92,7 @@ async def orchestrate_longvideo(
                 def __init__(self, orig: Any):
                     self._orig = orig
                     
-                    class ModelDict(dict):
+                    class ModelDict(dict[str, Any]):
                         def model_dump(self) -> dict[str, Any]:
                             return dict(self)
                             
@@ -108,11 +107,11 @@ async def orchestrate_longvideo(
                     return getattr(self._orig, name)
 
             wrapped_script = ScriptWrapper(script)
-            return await storyboard_planner(script=wrapped_script, llm=llm)
+            return await storyboard_planner(script=wrapped_script, llm=llm)  # type: ignore[arg-type]
 
         # SaaS-2/P10.F2 Fix: omodul has a hardcoded import for vibevoice_synthesize that fails.
         # We inject the actual audio provider from the registry.
-        async def injected_audio_fn(*, script: list, output_path: Any) -> None:
+        async def injected_audio_fn(*, script: list[Any], output_path: Any) -> None:
             from obase.provider_registry import ProviderRegistry
             caller = ProviderRegistry.get().generic("audio", audio_provider)
             await caller(script=script, output_path=output_path)
