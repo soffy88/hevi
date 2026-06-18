@@ -147,26 +147,30 @@ def _synthesize_sync(
     return output_path
 
 
+async def vibevoice_synthesize(
+    *,
+    config: Any,  # API compat — not used in native impl
+    script: list[SpeakerLine],
+    output_path: Path,
+    watermark: bool = True,  # handled by vibevoice package
+) -> Path:
+    model_dir = _get_model_dir()
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _synthesize_sync, script, output_path, model_dir)
+
+
 async def synthesize_dialogue(
     *,
     config: Any,
     script: list[SpeakerLine],
     output_path: Path,
-    watermark: bool = True,  # safety flag; oprim placeholder — real impl is in vibevoice pkg
+    watermark: bool = True,
 ) -> Path:
-    """Multi-speaker TTS using native VibeVoice 1.5B.
-
-    Single speaker = script of length 1.
-    watermark=True is the default (Microsoft Responsible AI requirement);
-    the actual watermarking logic lives in the vibevoice package.
-    """
+    """Multi-speaker TTS using native VibeVoice 1.5B."""
     if not script:
         raise ValueError("Script cannot be empty")
 
-    model_dir = _get_model_dir()
-
     async with track_provider_call(AudioProvider.VIBEVOICE):
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, _synthesize_sync, script, output_path, model_dir
+        return await vibevoice_synthesize(
+            config=config, script=script, output_path=output_path, watermark=watermark
         )

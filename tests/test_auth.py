@@ -15,8 +15,7 @@ async def test_register_success(client):
     assert resp.status_code == 201
     data = resp.json()
     assert data["email"] == email
-    assert "password_hash" in data
-    assert data["password_hash"] != "strongpassword123" # Must be hashed
+    assert "password_hash" not in data
 
 @pytest.mark.asyncio
 async def test_register_duplicate_email(client):

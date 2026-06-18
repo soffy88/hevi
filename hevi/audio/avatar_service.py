@@ -102,14 +102,15 @@ async def _submit_and_poll(
     raise RuntimeError(f"Duix job {job_code} timed out after {_TIMEOUT_S}s")
 
 
-async def generate_avatar_clip(
+async def avatar_generate(
     *,
     config: Any,
+    provider: str,  # "duix" — API compat
     portrait_image: Path,
     audio_path: Path,
     output_path: Path,
 ) -> Path:
-    """Duix digital human avatar clip generation (lip-sync)."""
+    """Core avatar generation — provider param kept for API compat."""
     async with track_provider_call(AudioProvider.DUIX):
         DUIX_HOST_DIR.mkdir(parents=True, exist_ok=True)
         if not portrait_image.exists():
@@ -142,3 +143,20 @@ async def generate_avatar_clip(
         finally:
             audio_staged.unlink(missing_ok=True)
             portrait_staged.unlink(missing_ok=True)
+
+
+async def generate_avatar_clip(
+    *,
+    config: Any,
+    portrait_image: Path,
+    audio_path: Path,
+    output_path: Path,
+) -> Path:
+    """Duix digital human avatar clip generation (lip-sync)."""
+    return await avatar_generate(
+        config=config,
+        provider=str(AudioProvider.DUIX),
+        portrait_image=portrait_image,
+        audio_path=audio_path,
+        output_path=output_path,
+    )
