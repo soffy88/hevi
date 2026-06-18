@@ -82,7 +82,14 @@ def _make_edge(
 async def test_save_graph_calls_insert() -> None:
     repo, _ = _make_repo()
     _target = "hevi.canvas.graph_repository.insert_one"
-    with patch(_target, new_callable=AsyncMock, return_value=_STORED) as m:
+    with (
+        patch(_target, new_callable=AsyncMock, return_value=uuid.UUID(_GID)) as m,
+        patch(
+            "hevi.canvas.graph_repository.read_one",
+            new_callable=AsyncMock,
+            return_value=_STORED,
+        ),
+    ):
         svc = GraphService(repo)
         result = await svc.save_graph(
             name="Test Graph", nodes=_STORED["nodes_json"], edges=_STORED["edges_json"]

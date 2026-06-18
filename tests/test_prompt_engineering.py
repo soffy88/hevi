@@ -283,6 +283,7 @@ async def test_orchestrate_with_style_preset_engineers_topic():
         shots_generated=1,
         provider_used={},
     )
+    mock_result.video_path.stat.return_value.st_size = 2048
     with (
         patch(
             "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
@@ -321,6 +322,7 @@ async def test_orchestrate_without_style_preset_skips_engineering():
         shots_generated=1,
         provider_used={},
     )
+    mock_result.video_path.stat.return_value.st_size = 2048
     with (
         patch(
             "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",

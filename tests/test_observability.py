@@ -198,13 +198,15 @@ async def test_trace_id_propagation_orchestrator():
             "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
         ) as mock_pipe:
-            mock_pipe.return_value = MagicMock(
+            mock_result = MagicMock(
                 video_path=MagicMock(stem="test"),
                 duration_s=10,
                 chapters=1,
                 shots_generated=1,
                 provider_used={},
             )
+            mock_result.video_path.stat.return_value.st_size = 2048
+            mock_pipe.return_value = mock_result
             await orchestrate_longvideo(
                 topic="test",
                 duration_archetype="1-5min",

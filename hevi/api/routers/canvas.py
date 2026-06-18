@@ -125,41 +125,7 @@ async def list_graphs(
     return await _do_list_graphs(svc, user_id)
 
 
-@router.get("/{graph_id}")
-async def get_graph(
-    graph_id: str,
-    svc: Annotated[GraphService, Depends(get_graph_service)],
-) -> dict[str, Any]:
-    return await _do_get_graph(graph_id, svc)
-
-
-@router.patch("/{graph_id}")
-async def update_graph(
-    graph_id: str,
-    body: UpdateGraphRequest,
-    svc: Annotated[GraphService, Depends(get_graph_service)],
-) -> dict[str, Any]:
-    return await _do_update_graph(graph_id, body, svc)
-
-
-@router.delete("/{graph_id}", status_code=200)
-async def delete_graph(
-    graph_id: str,
-    svc: Annotated[GraphService, Depends(get_graph_service)],
-) -> dict[str, str]:
-    return await _do_delete_graph(graph_id, svc)
-
-
-@router.post("/{graph_id}/execute")
-async def execute_graph(
-    graph_id: str,
-    body: ExecuteGraphRequest,
-    exe: Annotated[ExecutorService, Depends(get_executor_service)],
-) -> dict[str, Any]:
-    return await _do_execute_graph(graph_id, body, exe)
-
-
-# ── Legacy /graphs/* aliases ──────────────────────────────────────────────────
+# ── Legacy /graphs/* aliases (must come before /{graph_id}) ──────────────────
 
 
 @router.post("/graphs", status_code=201)
@@ -205,6 +171,43 @@ async def delete_graph_legacy(
 
 @router.post("/graphs/{graph_id}/execute")
 async def execute_graph_legacy(
+    graph_id: str,
+    body: ExecuteGraphRequest,
+    exe: Annotated[ExecutorService, Depends(get_executor_service)],
+) -> dict[str, Any]:
+    return await _do_execute_graph(graph_id, body, exe)
+
+
+# ── Parameterised routes (after fixed-path aliases) ───────────────────────────
+
+
+@router.get("/{graph_id}")
+async def get_graph(
+    graph_id: str,
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, Any]:
+    return await _do_get_graph(graph_id, svc)
+
+
+@router.patch("/{graph_id}")
+async def update_graph(
+    graph_id: str,
+    body: UpdateGraphRequest,
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, Any]:
+    return await _do_update_graph(graph_id, body, svc)
+
+
+@router.delete("/{graph_id}", status_code=200)
+async def delete_graph(
+    graph_id: str,
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, str]:
+    return await _do_delete_graph(graph_id, svc)
+
+
+@router.post("/{graph_id}/execute")
+async def execute_graph(
     graph_id: str,
     body: ExecuteGraphRequest,
     exe: Annotated[ExecutorService, Depends(get_executor_service)],

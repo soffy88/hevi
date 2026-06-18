@@ -52,7 +52,14 @@ def test_subject_kinds_values() -> None:
 async def test_create_subject_all_kinds(kind: str) -> None:
     repo, _ = _make_repo()
     stored = {**_STORED, "subject_type": kind}
-    with patch("hevi.subjects.repository.insert_one", new_callable=AsyncMock, return_value=stored):
+    with (
+        patch(
+            "hevi.subjects.repository.insert_one",
+            new_callable=AsyncMock,
+            return_value=uuid.UUID(_SUBJECT_ID),
+        ),
+        patch("hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=stored),
+    ):
         svc = _make_svc(repo)
         result = await svc.create_subject(
             kind=kind,
@@ -90,7 +97,14 @@ async def test_create_subject_empty_reference_list_raises() -> None:
 @pytest.mark.asyncio
 async def test_create_subject_user_id_nullable() -> None:
     repo, _ = _make_repo()
-    with patch("hevi.subjects.repository.insert_one", new_callable=AsyncMock, return_value=_STORED):
+    with (
+        patch(
+            "hevi.subjects.repository.insert_one",
+            new_callable=AsyncMock,
+            return_value=uuid.UUID(_SUBJECT_ID),
+        ),
+        patch("hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=_STORED),
+    ):
         svc = _make_svc(repo)
         result = await svc.create_subject(kind="character", name="Ada", user_id=None)
     assert result["user_id"] is None
@@ -120,10 +134,14 @@ def test_reference_store_subject_dir() -> None:
 @pytest.mark.asyncio
 async def test_repository_create_calls_insert_one() -> None:
     repo, pool = _make_repo()
-    mock_insert = patch(
-        "hevi.subjects.repository.insert_one", new_callable=AsyncMock, return_value=_STORED
-    )
-    with mock_insert as m:
+    with (
+        patch(
+            "hevi.subjects.repository.insert_one",
+            new_callable=AsyncMock,
+            return_value=uuid.UUID(_SUBJECT_ID),
+        ) as m,
+        patch("hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=_STORED),
+    ):
         await repo.create({"name": "Ada", "subject_type": "character"})
         m.assert_called_once()
         assert m.call_args.kwargs["table"] == "subjects"
