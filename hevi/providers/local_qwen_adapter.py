@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 _OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
-_TIMEOUT = 300.0
+_TIMEOUT = 600.0
 
 
 def _call_ollama(**kwargs: Any) -> dict[str, Any]:

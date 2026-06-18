@@ -185,6 +185,23 @@ def test_bgm_library_get_bgm_path(tmp_path):
     assert lib.get_bgm_path("invalid.mp3") is None
 
 
+@pytest.mark.asyncio
+async def test_synthesize_dialogue_subprocess_isolated(mock_config, output_path):
+    """synthesize_dialogue must route through the subprocess worker, not in-process."""
+    from hevi.audio import tts_service
+
+    with patch.object(tts_service, "_run_worker", new_callable=AsyncMock) as mock_worker:
+        mock_worker.return_value = output_path
+        script = [MockSpeakerLine(speaker_id="spk1", text="Hello subprocess")]
+        res = await synthesize_dialogue(config=mock_config, script=script, output_path=output_path)
+        assert res == output_path
+        mock_worker.assert_called_once()
+        kw = mock_worker.call_args.kwargs
+        assert kw["script"] == script
+        assert kw["output_path"] == output_path
+        assert isinstance(kw["model_dir"], str)  # model_dir resolved to a string
+
+
 def test_register_all_providers_audio():
     ProviderRegistry.clear()
     with patch("hevi.providers.registry.ltx2_cloud_generate"), patch(
