@@ -60,10 +60,18 @@ class LocalQwenAdapter:
 
         choices = resp.get("output", {}).get("choices", [])
         if choices:
-            text = choices[0].get("message", {}).get("content", "")
+            raw = choices[0].get("message", {}).get("content", "")
 
             # Strip <think>...</think> blocks (qwen3.5 thinking traces)
-            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+            text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+
+            # Fallback: qwen3.5 sometimes puts all output inside the think block.
+            # If text is empty after stripping, try to extract JSON from inside think.
+            if not text:
+                think_match = re.search(r"<think>(.*?)</think>", raw, flags=re.DOTALL)
+                if think_match:
+                    text = think_match.group(1).strip()
+                    logger.debug("LocalQwenAdapter: extracted content from think block")
 
             # Coerce JSON: strip markdown fences, parse, normalise id types
             try:

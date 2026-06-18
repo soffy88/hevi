@@ -1,11 +1,13 @@
 """hevi GPU model providers — LocalModelProvider implementations for each local model.
 
-VRAM budgets (MB):
-  vibevoice     6461   (VibeVoice 1.5B bf16)
-  qwen_local    7766   (Qwen3.5-9B via ollama — measured 2026-06-18, RTX 3080)
+VRAM budgets (MB, measured on RTX 3080 2026-06-18):
+  vibevoice     8513   (VibeVoice 1.5B bf16 — synthesis peak)
+  qwen_local    7766   (Qwen3.5-9B via ollama — inference + thinking peak)
   gemma_vision     0   (gemma4:e4b via ollama — TBD pending VRAM test)
   duix          5242   (Duix container)
-  wan_local     5407   (Wan2GP+CausVid 8-step subprocess — measured 2026-06-18, RTX 3080)
+  wan_local     5407   (Wan2GP+CausVid 8-step subprocess — mmgp profile 5)
+
+All pairs exceed RTX 3080 total (10240 MiB) → strict serial scheduling required.
 """
 from __future__ import annotations
 
@@ -18,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 # ─── VRAM constants (MB) ────────────────────────────────────────────────────
 
-VRAM_VIBEVOICE = 6461.0
+# Measured: 8513 MiB peak (vibevoice 1.5B bf16, RTX 3080, 2026-06-18, synthesis)
+VRAM_VIBEVOICE = 8513.0
 # Measured: 7766 MiB peak (nvidia-smi dmon fb, RTX 3080, 2026-06-18, inference + thinking)
 VRAM_QWEN_LOCAL = 7766.0
 VRAM_GEMMA_VISION = 0.0  # TBD — gemma4:e4b VRAM not yet measured
@@ -131,7 +134,7 @@ class GemmaVisionProvider:
 class DuixProvider:
     """Manages Duix avatar container lifecycle (docker start/stop)."""
 
-    CONTAINER = "duix_avatar"
+    CONTAINER = "duix-avatar-gen-video"
 
     def __init__(self) -> None:
         self._loaded = False
