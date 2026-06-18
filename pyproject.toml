@@ -14,8 +14,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "argon2-cffi>=23.1",
     "pyjwt[crypto]>=2.10",
-    # 主库 B路径 git+ssh (L-024) — B0'' pin 升级三批: obase v0.15.9 / oprim v3.10.15 / oskill v3.25.5
-    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.15.9",
+    # 主库 B路径 git+ssh (L-024) — obase v0.15.10 (StepUsage.category) / oprim v3.10.15 / oskill v3.25.5
+    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.15.10",
     "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.15",
     "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.25.5",
     "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.28.0",
