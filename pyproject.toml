@@ -14,12 +14,13 @@ dependencies = [
     "python-dotenv>=1.0",
     "argon2-cffi>=23.1",
     "pyjwt[crypto]>=2.10",
-    # 主库 B路径 git+ssh (L-024) — B0'' pin 升级三批
-    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.15.8",
-    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.10",
-    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.25.2",
+    # 主库 B路径 git+ssh (L-024) — B0'' pin 升级三批: obase v0.15.9 / oprim v3.10.15 / oskill v3.25.5
+    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.15.9",
+    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.15",
+    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.25.5",
     "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.28.0",
     "python-frontmatter>=1.3.0",  # oprim v3.10 transitive dep (not declared in oprim)
+    "vibevoice==0.0.1",  # oprim._vibevoice_synthesize runtime dep (not declared in oprim metadata)
     "prometheus-client>=0.25.0",
     "psycopg2-binary>=2.9.12",
     "minio>=7.2.20",
