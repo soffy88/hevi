@@ -12,6 +12,7 @@ from obase.gpu import GpuScheduler
 
 from hevi.gpu.providers import (
     VRAM_DUIX,
+    VRAM_GEMMA_VISION,
     VRAM_QWEN_LOCAL,
     VRAM_VIBEVOICE,
     VRAM_WAN_LOCAL,
@@ -23,6 +24,7 @@ __all__ = [
     "scheduler",
     "VRAM_VIBEVOICE",
     "VRAM_QWEN_LOCAL",
+    "VRAM_GEMMA_VISION",
     "VRAM_DUIX",
     "VRAM_WAN_LOCAL",
     "wan_local_provider",

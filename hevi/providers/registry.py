@@ -187,6 +187,11 @@ def register_all_providers() -> None:
 
     ProviderRegistry.register("llm", "default", AsyncDashScopeAdapter, replace=True)
 
+    # 1.1 Local LLM fallback — register LocalQwenAdapter as "local";
+    # overrides "default" when HEVI_LLM_PROVIDER=qwen_local
+    from hevi.providers.local_qwen_adapter import register_if_local
+    register_if_local()
+
     # 2. Video Providers
     ProviderRegistry.register(
         "video",

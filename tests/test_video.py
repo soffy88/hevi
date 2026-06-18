@@ -224,21 +224,17 @@ async def test_generate_clip_wan_local(mock_config, output_path):
 async def test_wan_local_generate_calls_provider(tmp_path):
     out = tmp_path / "clip.mp4"
     with (
-        patch("hevi.video.wan_local_service.wan_local_provider") as mock_provider,
         patch("hevi.video.wan_local_service.scheduler") as mock_sched,
+        patch("hevi.video.wan_local_service._run_wgp", new_callable=AsyncMock) as mock_wgp,
     ):
-        mock_provider.is_loaded.return_value = True
-        mock_provider.get_model.return_value.generate.return_value = None
         mock_sched.acquire.return_value.__aenter__ = AsyncMock(return_value=None)
         mock_sched.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_wgp.return_value = out
 
-        import unittest.mock
-        patch_target = "hevi.video.wan_local_service.asyncio.get_running_loop"
-        with unittest.mock.patch(patch_target) as mock_loop:
-            mock_loop.return_value.run_in_executor = AsyncMock(return_value=None)
-            result = await wan_local_generate(prompt="test", output_path=out)
+        result = await wan_local_generate(prompt="test", output_path=out)
 
         assert result == out
+        mock_wgp.assert_called_once()
 
 
 def test_register_all_providers():
