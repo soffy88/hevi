@@ -316,3 +316,161 @@ html, body {
 .hevi-account__settings { display: flex; flex-direction: column; gap: 16px; max-width: 400px; }
 .hevi-account__credits { display: flex; flex-direction: column; gap: 4px; }
 .hevi-account__credits-val { font-size: var(--text-2xl); font-weight: 780; font-variant-numeric: tabular-nums; }
+
+/* ── 顶部导航 ── */
+.hevi-topnav {
+  display: flex; align-items: center; gap: 32px;
+  padding: 0 24px; height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+.hevi-topnav__logo { font-size: var(--text-xl); font-weight: 780; letter-spacing: -0.02em; color: var(--foreground); text-decoration: none; }
+.hevi-topnav__links { display: flex; gap: 4px; }
+.hevi-topnav__link {
+  padding: 7px 14px; border-radius: 8px; font-size: var(--text-sm);
+  color: var(--muted-foreground); text-decoration: none;
+}
+.hevi-topnav__link:hover { background: var(--muted); color: var(--foreground); }
+.hevi-topnav__link[data-active="true"] { background: color-mix(in oklch, var(--primary) 16%, transparent); color: var(--primary); font-weight: 600; }
+
+/* ── 首页简单生成 ── */
+.hevi-home {
+  min-height: calc(100dvh - 56px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 48px 24px;
+  background: var(--background);
+}
+.hevi-home__panel {
+  width: 100%; max-width: 680px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+.hevi-home__headline {
+  font-size: var(--text-3xl, 1.875rem); font-weight: 780; letter-spacing: -0.03em;
+  text-align: center; margin: 12px 0 8px;
+}
+.hevi-home__title { font-size: var(--text-2xl); font-weight: 780; letter-spacing: -0.02em; }
+.hevi-home__prompt {
+  width: 100%; resize: none; border-radius: 14px;
+  border: 1.5px solid var(--border); background: var(--card);
+  padding: 18px 20px; font-size: var(--text-base); font-family: inherit;
+  color: var(--foreground); line-height: 1.6;
+}
+.hevi-home__prompt:focus { outline: none; border-color: var(--primary); }
+.hevi-home__options {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;
+}
+.hevi-home__opt { display: flex; flex-direction: column; gap: 6px; }
+.hevi-home__opt label { font-size: var(--text-xs); color: var(--muted-foreground); }
+.hevi-home__opt select {
+  padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--foreground); font-size: var(--text-sm); cursor: pointer;
+}
+.hevi-home__aspect { display: flex; gap: 4px; }
+.hevi-home__aspect button {
+  flex: 1; padding: 9px 0; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--muted-foreground); font-size: var(--text-xs); cursor: pointer;
+}
+.hevi-home__aspect button[data-active="true"] { background: var(--primary); color: var(--primary-foreground, #fff); border-color: transparent; }
+.hevi-home__footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+}
+.hevi-home__estimate { font-size: var(--text-sm); color: var(--muted-foreground); }
+.hevi-home__estimate strong { font-size: var(--text-lg); color: var(--foreground); font-variant-numeric: tabular-nums; }
+.hevi-home__usd { font-variant-numeric: tabular-nums; }
+.hevi-home__generate {
+  padding: 12px 32px; border-radius: 10px; border: none;
+  background: var(--primary); color: var(--primary-foreground, #fff);
+  font-size: var(--text-base); font-weight: 600; cursor: pointer;
+}
+.hevi-home__generate:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* 画布返回首页入口 */
+.hevi-canvas__home-link {
+  display: inline-flex; align-items: center; padding: 6px 12px;
+  border-radius: 7px; border: 1px solid var(--border); background: var(--card);
+  color: var(--foreground); font-size: var(--text-sm); text-decoration: none; margin-right: 8px;
+}
+.hevi-canvas__home-link:hover { background: var(--muted); }
+
+/* ── 首页分区 tab ── */
+.hevi-home__categories { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.hevi-home__cat {
+  padding: 7px 16px; border-radius: 99px; border: 1px solid var(--border);
+  background: var(--card); color: var(--muted-foreground); font-size: var(--text-sm); cursor: pointer;
+  transition: all var(--duration-fast, 120ms);
+}
+.hevi-home__cat:hover { border-color: var(--primary); }
+.hevi-home__cat[data-active="true"] { background: var(--primary); color: var(--primary-foreground, #fff); border-color: transparent; font-weight: 600; }
+
+/* ── 作品画廊 ── */
+.hevi-gallery { max-width: 1000px; margin: 32px auto 0; padding: 0 24px 48px; width: 100%; }
+.hevi-gallery__head { font-size: var(--text-sm); font-weight: 600; color: var(--muted-foreground); margin-bottom: 16px; text-align: center; }
+.hevi-gallery__empty { text-align: center; color: var(--muted-foreground); font-size: var(--text-sm); padding: 40px 16px; }
+.hevi-gallery__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.hevi-gallery-card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card); display: flex; flex-direction: column; }
+.hevi-gallery-card__thumb { aspect-ratio: 16/10; background: var(--muted); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.hevi-gallery-card__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.hevi-gallery-card__placeholder { font-size: 32px; color: var(--muted-foreground); opacity: 0.4; }
+.hevi-gallery-card__body { padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.hevi-gallery-card__title { font-size: var(--text-sm); font-weight: 600; }
+.hevi-gallery-card__desc { font-size: var(--text-xs); color: var(--muted-foreground); line-height: 1.4; }
+.hevi-gallery-card__use {
+  margin-top: 8px; padding: 6px 0; border-radius: 7px; border: 1px solid var(--primary);
+  background: color-mix(in oklch, var(--primary) 10%, transparent); color: var(--primary);
+  font-size: var(--text-sm); cursor: pointer;
+}
+.hevi-gallery-card__use:hover { background: color-mix(in oklch, var(--primary) 20%, transparent); }
+
+/* ── 逐步 provider 选择 ── */
+.hevi-provider { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border); }
+
+.hevi-preset-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.hevi-preset-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 14px 8px; border-radius: 12px; border: 1.5px solid var(--border);
+  background: var(--card); cursor: pointer; text-align: center;
+}
+.hevi-preset-card:hover { border-color: var(--primary); }
+.hevi-preset-card[data-active="true"] { border-color: var(--primary); background: color-mix(in oklch, var(--primary) 8%, var(--card)); }
+.hevi-preset-card__icon { font-size: 22px; }
+.hevi-preset-card__label { font-size: var(--text-sm); font-weight: 700; }
+.hevi-preset-card__tag { font-size: 10px; color: var(--muted-foreground); }
+.hevi-preset-card__cost { font-size: var(--text-base); font-weight: 700; color: var(--primary); margin-top: 2px; }
+.hevi-preset-card__meta { font-size: 10px; color: var(--muted-foreground); }
+
+.hevi-provider__advanced-toggle {
+  align-self: flex-start; background: none; border: none; cursor: pointer;
+  color: var(--muted-foreground); font-size: var(--text-sm); padding: 4px 0;
+}
+.hevi-provider__advanced-toggle:hover { color: var(--foreground); }
+
+.hevi-provider__steps { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 10px; background: var(--muted); }
+.hevi-step-row { display: flex; align-items: center; gap: 12px; }
+.hevi-step-row__label { font-size: var(--text-sm); width: 80px; flex-shrink: 0; color: var(--muted-foreground); }
+.hevi-step-row__options { display: flex; gap: 6px; flex: 1; }
+.hevi-step-opt {
+  flex: 1; display: flex; flex-direction: column; gap: 1px; align-items: flex-start;
+  padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--background); cursor: pointer; text-align: left;
+}
+.hevi-step-opt[data-active="true"] { border-color: var(--primary); background: color-mix(in oklch, var(--primary) 12%, transparent); }
+.hevi-step-opt__label { font-size: var(--text-sm); font-weight: 600; }
+.hevi-step-opt__hint { font-size: 10px; color: var(--muted-foreground); }
+
+.hevi-provider__estimate { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hevi-provider__cost { font-size: var(--text-sm); color: var(--muted-foreground); }
+.hevi-provider__cost strong { font-size: var(--text-lg); color: var(--foreground); font-variant-numeric: tabular-nums; }
+.hevi-provider__credits { margin-left: 6px; }
+.hevi-provider__time { font-size: var(--text-sm); color: var(--muted-foreground); }
+.hevi-provider__breakdown { display: flex; gap: 8px; flex-wrap: wrap; }
+.hevi-provider__breakdown-item { font-size: var(--text-xs); padding: 2px 8px; border-radius: 99px; background: var(--muted); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+
+.hevi-provider__local-notice {
+  padding: 10px 14px; border-radius: 8px; font-size: var(--text-xs); line-height: 1.5;
+  background: color-mix(in oklch, oklch(0.70 0.15 80) 12%, transparent);
+  color: color-mix(in oklch, oklch(0.70 0.15 80) 85%, var(--foreground));
+}
+
+/* SSE 排队状态 */
+.hevi-queue-notice { padding: 12px 16px; border-radius: 10px; background: color-mix(in oklch, var(--primary) 10%, transparent); font-size: var(--text-sm); color: var(--foreground); margin-bottom: 12px; }

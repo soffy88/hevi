@@ -1,4 +1,11 @@
-import { HeviCanvas } from '@/components/canvas/HeviCanvas';
+import { TopNav } from '@/components/TopNav';
+import { SimpleGenerate } from '@/components/home/SimpleGenerate';
+
 export default function Page() {
-  return <HeviCanvas />;
+  return (
+    <>
+      <TopNav />
+      <SimpleGenerate />
+    </>
+  );
 }

@@ -56,9 +56,15 @@ export interface LongVideoTaskReq {
   video_provider: VideoProvider;
   audio_provider?: string;
   style_preset?: string;
+  aspect_ratio?: AspectRatio;
   num_characters?: number;
   quality_profile: QualityProfile;
+  step_providers?: StepProviders;
 }
+
+export type AspectRatio = '9:16' | '16:9' | '1:1';
+export const STYLE_PRESETS = ['科普', '严肃', '搞笑'] as const;
+export type StylePreset = typeof STYLE_PRESETS[number];
 
 export interface TaskInfo {
   task_id: string;
@@ -128,4 +134,71 @@ export interface AuthRes {
 }
 export interface CreditsBalance {
   balance: number;
+}
+
+// ── 首页画廊(§5)──────────────────────────────────
+export type GalleryCategory = 'long_video' | 'short_video' | 'avatar_narration' | 'animation' | 'image';
+
+export interface GenParams {
+  category: GalleryCategory;
+  duration_archetype?: DurationArchetype;
+  style_preset?: string;
+  quality_profile?: QualityProfile;
+  aspect_ratio?: AspectRatio;
+  [key: string]: unknown;
+}
+
+export interface GalleryItem {
+  item_id: string;
+  category: GalleryCategory;
+  title: string;
+  description?: string;
+  media_url?: string;
+  thumbnail_url?: string;
+  prompt: string;
+  gen_params: GenParams;
+  sort_order?: number;
+}
+
+// ── 逐步 provider 选项(§3)──────────────────────────
+export type ProviderChoice = 'local' | 'cloud';
+
+export interface StepProviders {
+  llm: string;     // qwen_local | dashscope
+  video: string;   // wan_local | ltx2_cloud
+  audio: string;   // vibevoice_local | cloud
+  avatar?: string; // duix_local | cloud(仅头像解说)
+}
+
+export type PresetId = 'economy' | 'balanced' | 'turbo';
+
+export interface GenPreset {
+  id: PresetId;
+  label: string;
+  icon: string;
+  tagline: string;        // 全本地 / 推荐 / 全云
+  step_providers: StepProviders;
+  est_cost_usd: number;
+  est_credits: number;
+  est_time_min: number;
+  quality: string;        // 480P / 720P
+}
+
+export interface ProviderOption {
+  id: string;
+  label: string;
+  choice: ProviderChoice;
+  hint: string;           // 慢,免费 / 快,$7.2 等
+}
+
+export interface StepEstimate {
+  step: string;
+  cost_usd: number;
+}
+
+export interface CostEstimateV2 {
+  per_step: StepEstimate[];
+  total_usd: number;
+  total_credits: number;
+  est_time_min: number;
 }

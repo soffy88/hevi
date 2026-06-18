@@ -58,3 +58,76 @@ export function mockEstimate(durationArchetype: string, quality: string): CostEs
     ],
   };
 }
+
+// ── 画廊 mock(官方示例,冷启动)──────────────────
+import type { GalleryItem } from '@/types/api';
+export const MOCK_GALLERY: GalleryItem[] = [
+  { item_id: 'g1', category: 'long_video', title: '宇宙的尺度', description: '从地球到可观测宇宙的震撼之旅', prompt: '制作一部介绍宇宙尺度的科普长片,从地球出发逐级放大到可观测宇宙边缘,画面震撼,旁白沉稳',
+    gen_params: { category: 'long_video', duration_archetype: '15-45min', style_preset: '科普', quality_profile: 'high', aspect_ratio: '16:9' }, sort_order: 1 },
+  { item_id: 'g2', category: 'short_video', title: '咖啡的一天', description: '竖屏短片 · 治愈系', prompt: '一杯咖啡从烘焙到冲煮的治愈系短视频,暖色调,慢镜头',
+    gen_params: { category: 'short_video', duration_archetype: '1-5min', style_preset: '严肃', quality_profile: 'high', aspect_ratio: '9:16' }, sort_order: 2 },
+  { item_id: 'g3', category: 'avatar_narration', title: 'AI 主播播报', description: '数字人口播 · 新闻风', prompt: '数字人主播播报今日科技新闻,专业播音腔',
+    gen_params: { category: 'avatar_narration', style_preset: '严肃', quality_profile: 'high' }, sort_order: 3 },
+  { item_id: 'g4', category: 'animation', title: '像素小镇', description: 'LTX-2 真动作动画', prompt: '一个像素风格的小镇,居民们日常活动,复古游戏画风',
+    gen_params: { category: 'animation', duration_archetype: '1-5min', style_preset: '搞笑', quality_profile: 'standard' }, sort_order: 4 },
+  { item_id: 'g5', category: 'image', title: '角色三视图', description: '创意辅助 · 概念设计', prompt: '一个赛博朋克风格的女性角色,生成正侧背三视图',
+    gen_params: { category: 'image', style_preset: '科普' }, sort_order: 5 },
+  { item_id: 'g6', category: 'long_video', title: '黑洞的秘密', description: '科普长片', prompt: '介绍黑洞的形成、特性和最新观测,画面震撼有旁白',
+    gen_params: { category: 'long_video', duration_archetype: '15-45min', style_preset: '科普', quality_profile: 'ultra', aspect_ratio: '16:9' }, sort_order: 6 },
+];
+
+// ── 逐步 provider:三预设(§4)+ provider 选项(§3)──────
+import type { GenPreset, ProviderOption, CostEstimateV2, StepProviders } from '@/types/api';
+
+export const PRESETS: GenPreset[] = [
+  { id: 'economy', label: '省钱', icon: '💰', tagline: '全本地',
+    step_providers: { llm: 'qwen_local', video: 'wan_local', audio: 'vibevoice_local' },
+    est_cost_usd: 0, est_credits: 0, est_time_min: 16, quality: '480P' },
+  { id: 'balanced', label: '均衡', icon: '⚖️', tagline: '推荐(默认)',
+    step_providers: { llm: 'dashscope', video: 'wan_local', audio: 'vibevoice_local' },
+    est_cost_usd: 0.01, est_credits: 1, est_time_min: 16, quality: '480P' },
+  { id: 'turbo', label: '极速', icon: '⚡', tagline: '全云',
+    step_providers: { llm: 'dashscope', video: 'ltx2_cloud', audio: 'cloud' },
+    est_cost_usd: 7.7, est_credits: 770, est_time_min: 2, quality: '720P' },
+];
+
+// 各步 provider 选项(§3,后端 GET /api/providers 就绪前硬编码)
+export const PROVIDER_OPTIONS: Record<string, ProviderOption[]> = {
+  llm: [
+    { id: 'qwen_local', label: '本地 Qwen', choice: 'local', hint: '慢,免费' },
+    { id: 'dashscope',  label: '云 Qwen',   choice: 'cloud', hint: '快' },
+  ],
+  video: [
+    { id: 'wan_local',  label: '本地 Wan',  choice: 'local', hint: '480P,慢,免费' },
+    { id: 'ltx2_cloud', label: '云 LTX-2',  choice: 'cloud', hint: '720P,快,$7.2' },
+  ],
+  audio: [
+    { id: 'vibevoice_local', label: '本地 VibeVoice', choice: 'local', hint: '免费' },
+    { id: 'cloud',           label: '云',             choice: 'cloud', hint: '快' },
+  ],
+  avatar: [
+    { id: 'duix_local', label: '本地 Duix', choice: 'local', hint: '免费' },
+    { id: 'cloud',      label: '云',        choice: 'cloud', hint: '快' },
+  ],
+};
+
+// mock 逐步成本估算(后端 cost_model 就绪前)
+export function mockEstimateV2(sp: StepProviders, hasVideo: boolean, hasAudio: boolean): CostEstimateV2 {
+  const cost = (id: string) => {
+    if (id === 'ltx2_cloud') return 7.2;
+    if (id === 'dashscope') return 0.01;
+    if (id === 'cloud') return 0.3;
+    return 0; // 本地免费
+  };
+  const per_step = [{ step: '脚本', cost_usd: cost(sp.llm) }];
+  if (hasVideo) per_step.push({ step: '视频', cost_usd: cost(sp.video) });
+  if (hasAudio) per_step.push({ step: '配音', cost_usd: cost(sp.audio) });
+  const total = per_step.reduce((s, x) => s + x.cost_usd, 0);
+  // 本地视频慢
+  const isLocalVideo = sp.video.includes('local');
+  return {
+    per_step, total_usd: Number(total.toFixed(2)),
+    total_credits: Math.round(total * 100),
+    est_time_min: isLocalVideo ? 16 : 2,
+  };
+}

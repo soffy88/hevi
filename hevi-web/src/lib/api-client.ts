@@ -99,3 +99,10 @@ export const assetApi = {
   templates: (category?: string) => req<{ id: string; name: string; desc?: string }[]>(`/api/templates${category ? `?category=${category}` : ''}`),
   audio:     (type?: string) => req<{ id: string; name: string; dur?: string }[]>(`/api/audio${type ? `?type=${type}` : ''}`),
 };
+
+// ── 画廊(§5,公开无需 token)──────────────────────
+import type { GalleryItem, GalleryCategory } from '@/types/api';
+export const galleryApi = {
+  list: (category?: GalleryCategory) => req<GalleryItem[]>(`/api/gallery${category ? `?category=${category}` : ''}`),
+  get:  (itemId: string) => req<GalleryItem>(`/api/gallery/${itemId}`),
+};

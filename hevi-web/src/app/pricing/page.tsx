@@ -1,9 +1,12 @@
 'use client';
 import { OPricingPage } from '@helios/oui';
+import { TopNav } from '@/components/TopNav';
 
 export default function PricingPage() {
   return (
-    <OPricingPage
+    <>
+      <TopNav />
+      <OPricingPage
       title="选择你的创作套餐"
       subtitle="按 credits 计费,随时升级或取消"
       plans={[
@@ -41,6 +44,7 @@ export default function PricingPage() {
           ],
         },
       ]}
-    />
+      />
+    </>
   );
 }

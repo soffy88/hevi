@@ -123,6 +123,7 @@ function CanvasInner() {
 
       <div className="hevi-canvas__flow">
         <div className="hevi-canvas__topbar">
+          <a href="/" className="hevi-canvas__home-link">← 首页</a>
           <button type="button" className="hevi-topbar-btn" onClick={onSave}>保存</button>
           <button type="button" className="hevi-topbar-btn hevi-topbar-btn--primary"
             onClick={onExecute} disabled={executing}>
