@@ -204,17 +204,15 @@ def test_duration_mapper_unknown():
 
 
 def test_register_all_providers():
-    # Clear registry for clean test
-    ProviderRegistry._providers = {}
+    ProviderRegistry.clear()
 
     with patch("hevi.providers.registry.ltx2_cloud_generate"), patch(
         "hevi.providers.registry.video_generate"
     ):
         register_all_providers()
 
-        # Verify registration
-        assert ("video", "ltx2_cloud") in ProviderRegistry._providers
-        assert ("video", "wan_cloud") in ProviderRegistry._providers
+        assert ProviderRegistry.has("video", "ltx2_cloud")
+        assert ProviderRegistry.has("video", "wan_cloud")
 
 
 def test_video_provider_enum():

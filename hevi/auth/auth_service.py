@@ -6,7 +6,6 @@ from hevi.auth.jwt_handler import sign_access_token
 from hevi.auth.password import hash_password, verify_password
 from hevi.auth.repository import UserRepository
 
-
 _SENSITIVE_FIELDS = {"password_hash", "oauth_sub"}
 
 

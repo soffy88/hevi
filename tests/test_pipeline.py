@@ -114,13 +114,13 @@ def test_result_mapper(mock_lv_result):
 
 
 def test_register_all_providers_full():
-    ProviderRegistry._providers = {}
+    ProviderRegistry.clear()
     register_all_providers()
 
-    assert ("video", "ltx2_cloud") in ProviderRegistry._providers
-    assert ("video", "wan_cloud") in ProviderRegistry._providers
-    assert ("audio", "vibevoice") in ProviderRegistry._providers
-    assert ("audio", "duix") in ProviderRegistry._providers
+    assert ProviderRegistry.has("video", "ltx2_cloud")
+    assert ProviderRegistry.has("video", "wan_cloud")
+    assert ProviderRegistry.has("audio", "vibevoice")
+    assert ProviderRegistry.has("audio", "duix")
 
 
 @pytest.mark.asyncio

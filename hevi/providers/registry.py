@@ -3,11 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import oprim.providers.dashscope as dashscope
 from obase.provider_registry import ProviderRegistry
 from oprim import avatar_generate, ltx2_cloud_generate, vibevoice_synthesize, video_generate
-import oprim.providers.dashscope as dashscope
-import oprim._providers.wan_cloud
-import oprim._config
 
 __all__ = ["ProviderRegistry", "register_all_providers"]
 
@@ -51,7 +49,9 @@ def register_all_providers() -> None:
     # SaaS-3/P10.F3 Fix: oprim's native DashScope SDK raises 400 "Access denied" due to
     # account billing restrictions on the native endpoint. The OpenAI-compatible endpoint
     # does NOT have this restriction. We route all LLM calls through it.
-    import os as _os, httpx as _httpx
+    import os as _os
+
+    import httpx as _httpx
 
     def _compat_llm_call(**kwargs: Any) -> dict[str, Any]:
         """Call DashScope via OpenAI-compatible REST endpoint (bypasses native SDK billing block)."""

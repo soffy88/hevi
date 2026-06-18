@@ -173,10 +173,10 @@ async def test_validate_fps_not_in_options_raises():
 async def test_validate_mode_unsupported_via_obase_caps():
     """When obase registers a provider with limited caps, unsupported mode is caught."""
     from obase.provider_registry import ProviderRegistry
-    ProviderRegistry.register_with_capability(
-        "video", "ltx2_cloud", lambda: None,
-        capabilities=["t2v"],  # only t2v registered
-        replace=True,
+    # v0.15.8: instance method, capabilities dict with "modes" key, no category/replace
+    ProviderRegistry.get().register_with_capability(
+        "ltx2_cloud", lambda: None,
+        capabilities={"modes": ["t2v"]},
     )
     try:
         with pytest.raises(CapabilityError, match="do not include mode"):
@@ -192,14 +192,14 @@ async def test_validate_mode_unsupported_via_obase_caps():
 
 @pytest.mark.asyncio
 async def test_capabilities_called_for_mode_check():
-    """validate_request calls ProviderRegistry.capabilities."""
+    """validate_request calls ProviderRegistry.get().capabilities(name)."""
     with patch("hevi.video.capability_guard.ProviderRegistry") as mock_reg:
-        mock_reg.capabilities.return_value = []  # not registered → use PROVIDER_LIMITS
+        mock_reg.get.return_value.capabilities.return_value = {}  # empty → use PROVIDER_LIMITS
         await validate_request(
             provider="ltx2_cloud", mode="t2v",
             resolution=(720, 1280), duration_s=10.0, fps=24,
         )
-        mock_reg.capabilities.assert_called_once_with("video", "ltx2_cloud")
+        mock_reg.get.return_value.capabilities.assert_called_once_with("ltx2_cloud")
 
 
 # ── 6. Health-check before fallback ──────────────────────────────────────────

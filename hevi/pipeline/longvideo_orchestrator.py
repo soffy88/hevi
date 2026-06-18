@@ -114,9 +114,7 @@ async def orchestrate_longvideo(
         # We inject the actual audio provider from the registry.
         async def injected_audio_fn(*, script: list, output_path: Any) -> None:
             from obase.provider_registry import ProviderRegistry
-            caller = ProviderRegistry.get("audio", audio_provider)
-            if not caller:
-                raise ValueError(f"Unknown audio provider: {audio_provider}")
+            caller = ProviderRegistry.get().generic("audio", audio_provider)
             await caller(script=script, output_path=output_path)
 
         # SaaS-3/P10.F3: Inject video_fn to allow registry-based overrides and chaos monkey.
@@ -125,9 +123,7 @@ async def orchestrate_longvideo(
             from obase.provider_registry import ProviderRegistry
             try:
                 # Use video_provider from orchestrate_longvideo closure
-                caller = ProviderRegistry.get("video", video_provider)
-                if not caller:
-                    raise ValueError(f"Unknown video provider: {video_provider}")
+                caller = ProviderRegistry.get().generic("video", video_provider)
                 
                 # Call the registered function (might be a lambda or a direct operation)
                 res = await caller(prompt=prompt, output_path=output_path, **kw)

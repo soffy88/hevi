@@ -94,7 +94,6 @@ def _build_script_str(script: list[SpeakerLine]) -> tuple[str, list[str | None]]
 
 def _wav_bytes_from_tensor(audio_tensor: Any, sample_rate: int = 24000) -> bytes:
     """Encode a float32/bfloat16 waveform tensor as 16-bit PCM WAV bytes."""
-    import numpy as np
 
     arr = audio_tensor.squeeze().cpu().float().numpy()
     pcm = (arr * 32767).clip(-32768, 32767).astype("int16")

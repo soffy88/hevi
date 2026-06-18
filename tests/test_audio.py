@@ -187,7 +187,7 @@ def test_bgm_library_get_bgm_path(tmp_path):
 
 
 def test_register_all_providers_audio():
-    ProviderRegistry._providers = {}
+    ProviderRegistry.clear()
     with patch("hevi.providers.registry.ltx2_cloud_generate"), patch(
         "hevi.providers.registry.video_generate"
     ), patch("hevi.providers.registry.vibevoice_synthesize"), patch(
@@ -195,7 +195,6 @@ def test_register_all_providers_audio():
     ):
         register_all_providers()
 
-        assert ("audio", "vibevoice") in ProviderRegistry._providers
-        assert ("audio", "duix") in ProviderRegistry._providers
-        # Also ensure video still there
-        assert ("video", "ltx2_cloud") in ProviderRegistry._providers
+        assert ProviderRegistry.has("audio", "vibevoice")
+        assert ProviderRegistry.has("audio", "duix")
+        assert ProviderRegistry.has("video", "ltx2_cloud")

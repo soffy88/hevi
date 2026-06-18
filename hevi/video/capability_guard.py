@@ -53,11 +53,13 @@ async def validate_request(
     limits = PROVIDER_LIMITS[provider]
 
     # Use obase-registered tags for mode check when available.
-    registered_caps = ProviderRegistry.capabilities("video", provider)
-    if registered_caps:
-        if mode not in registered_caps:
+    # v0.15.8: capabilities() is an instance method, returns dict {modes: [...]} or {}.
+    cap_meta = ProviderRegistry.get().capabilities(provider)
+    registered_modes = cap_meta.get("modes", []) if cap_meta else []
+    if registered_modes:
+        if mode not in registered_modes:
             raise CapabilityError(
-                f"Provider {provider!r} registered capabilities {registered_caps!r} "
+                f"Provider {provider!r} registered capabilities {registered_modes!r} "
                 f"do not include mode {mode!r}"
             )
     elif mode not in limits.modes:
