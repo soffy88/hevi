@@ -7,6 +7,8 @@ import oprim.providers.dashscope as dashscope
 from obase.provider_registry import ProviderRegistry
 from oprim import avatar_generate, ltx2_cloud_generate, vibevoice_synthesize, video_generate
 
+from hevi.video.wan_local_service import wan_local_generate
+
 __all__ = ["ProviderRegistry", "register_all_providers"]
 
 logger = logging.getLogger(__name__)
@@ -202,6 +204,7 @@ def register_all_providers() -> None:
             provider="wan_cloud", **kwargs
         ),
     )
+    ProviderRegistry.register("video", "wan_local", wan_local_generate)
 
     # 0.1 Chaos Monkey Overrides (SaaS-3 / P10.F3 fallback verification)
     import os

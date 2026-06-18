@@ -6,6 +6,7 @@ from hevi.providers.registry import ProviderRegistry, register_all_providers
 from hevi.video.duration_mapper import DURATION_ARCHETYPES, get_duration_config
 from hevi.video.kernel_service import generate_clip
 from hevi.video.provider_config import VideoProvider
+from hevi.video.wan_local_service import wan_local_generate
 
 
 @pytest.fixture
@@ -203,6 +204,42 @@ def test_duration_mapper_unknown():
         get_duration_config("invalid")
 
 
+@pytest.mark.asyncio
+async def test_generate_clip_wan_local(mock_config, output_path):
+    with patch("hevi.video.kernel_service.wan_local_generate", new_callable=AsyncMock) as mock_wl:
+        mock_wl.return_value = output_path
+        res = await generate_clip(
+            config=mock_config,
+            provider="wan_local",
+            mode="t2v",
+            prompt="A mountain scene",
+            duration_s=5.0,
+            output_path=output_path,
+        )
+        assert res == output_path
+        mock_wl.assert_called_once_with(prompt="A mountain scene", output_path=output_path)
+
+
+@pytest.mark.asyncio
+async def test_wan_local_generate_calls_provider(tmp_path):
+    out = tmp_path / "clip.mp4"
+    with (
+        patch("hevi.video.wan_local_service.wan_local_provider") as mock_provider,
+        patch("hevi.video.wan_local_service.scheduler") as mock_sched,
+    ):
+        mock_provider.is_loaded.return_value = True
+        mock_provider.get_model.return_value.generate.return_value = None
+        mock_sched.acquire.return_value.__aenter__ = AsyncMock(return_value=None)
+        mock_sched.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        import unittest.mock
+        with unittest.mock.patch("hevi.video.wan_local_service.asyncio.get_running_loop") as mock_loop:
+            mock_loop.return_value.run_in_executor = AsyncMock(return_value=None)
+            result = await wan_local_generate(prompt="test", output_path=out)
+
+        assert result == out
+
+
 def test_register_all_providers():
     ProviderRegistry.clear()
 
@@ -213,11 +250,13 @@ def test_register_all_providers():
 
         assert ProviderRegistry.has("video", "ltx2_cloud")
         assert ProviderRegistry.has("video", "wan_cloud")
+        assert ProviderRegistry.has("video", "wan_local")
 
 
 def test_video_provider_enum():
     assert VideoProvider.LTX2_CLOUD == "ltx2_cloud"
     assert VideoProvider.WAN_CLOUD == "wan_cloud"
+    assert VideoProvider.WAN_LOCAL == "wan_local"
 
 
 @pytest.mark.asyncio

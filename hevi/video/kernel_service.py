@@ -7,8 +7,9 @@ from hevi.cost.pricing_table import LTX2_ENDPOINTS
 from hevi.observability import track_provider_call
 from hevi.video.provider_config import VideoProvider
 from hevi.video.quality_profile import DEFAULT_QUALITY, get_quality_profile
+from hevi.video.wan_local_service import wan_local_generate
 
-VideoProviderLiteral = Literal["ltx2_cloud", "wan_cloud"]
+VideoProviderLiteral = Literal["ltx2_cloud", "wan_cloud", "wan_local"]
 
 
 async def generate_clip(
@@ -82,6 +83,11 @@ async def generate_clip(
                 output_path=output_path,
                 fps=profile.fps,
                 bitrate_kbps=profile.bitrate_kbps,
+            )
+        elif provider_str == VideoProvider.WAN_LOCAL:
+            return await wan_local_generate(
+                prompt=prompt,
+                output_path=output_path,
             )
         else:
             raise ValueError(f"Unknown video provider: {provider_str}")

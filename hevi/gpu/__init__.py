@@ -16,6 +16,7 @@ from hevi.gpu.providers import (
     VRAM_VIBEVOICE,
     VRAM_WAN_LOCAL,
     setup_model_registry,
+    wan_local_provider,
 )
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "VRAM_QWEN_LOCAL",
     "VRAM_DUIX",
     "VRAM_WAN_LOCAL",
+    "wan_local_provider",
 ]
 
 # Singleton scheduler with hevi model registry
