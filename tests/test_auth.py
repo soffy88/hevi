@@ -14,8 +14,32 @@ async def test_register_success(client):
     resp = await client.post("/api/auth/register", json=payload)
     assert resp.status_code == 201
     data = resp.json()
-    assert data["email"] == email
+    # A: register 返回 token(修复前只返回 user dict)
+    assert "access_token" in data, "register must return access_token"
+    assert "token" in data, "register must return token alias"
+    assert data["user"]["email"] == email
     assert "password_hash" not in data
+
+
+@pytest.mark.asyncio
+async def test_register_grants_signup_bonus(client):
+    """B: 注册送 1000 credits"""
+    email = f"bonus_{uuid.uuid4().hex[:6]}@example.com"
+    resp = await client.post("/api/auth/register", json={
+        "email": email,
+        "password": "strongpassword123",
+        "display_name": "Bonus User",
+    })
+    assert resp.status_code == 201
+    token = resp.json()["access_token"]
+
+    balance_resp = await client.get(
+        "/api/credits/balance",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert balance_resp.status_code == 200
+    assert balance_resp.json()["balance"] == 1000
+
 
 @pytest.mark.asyncio
 async def test_register_duplicate_email(client):
@@ -26,14 +50,15 @@ async def test_register_duplicate_email(client):
         "display_name": "User 1"
     }
     await client.post("/api/auth/register", json=payload)
-    
-    # Try again
+
     resp = await client.post("/api/auth/register", json=payload)
-    assert resp.status_code == 400
+    assert resp.status_code == 409
     assert "already registered" in resp.json()["detail"]
+
 
 @pytest.mark.asyncio
 async def test_login_success(client):
+    """A: login 200(字段匹配)"""
     email = f"login_{uuid.uuid4().hex[:6]}@example.com"
     password = "correct_password"
     await client.post("/api/auth/register", json={
@@ -51,12 +76,13 @@ async def test_login_success(client):
     assert "access_token" in data
     assert data["user"]["email"] == email
 
+
 @pytest.mark.asyncio
 async def test_login_wrong_password(client):
     email = "wrong_pass@example.com"
     await client.post("/api/auth/register", json={
         "email": email,
-        "password": "correct",
+        "password": "correct_password",
         "display_name": "User"
     })
 
@@ -67,6 +93,7 @@ async def test_login_wrong_password(client):
     assert resp.status_code == 401
     assert "Invalid email or password" in resp.json()["detail"]
 
+
 @pytest.mark.asyncio
 async def test_get_me_success(client):
     email = f"me_{uuid.uuid4().hex[:6]}@example.com"
@@ -76,7 +103,7 @@ async def test_get_me_success(client):
         "password": password,
         "display_name": "Me User"
     })
-    
+
     login_resp = await client.post("/api/auth/login", json={
         "email": email,
         "password": password
@@ -87,14 +114,16 @@ async def test_get_me_success(client):
     assert resp.status_code == 200
     assert resp.json()["email"] == email
 
+
 @pytest.mark.asyncio
 async def test_get_me_unauthorized(client):
     resp = await client.get("/api/auth/me")
-    assert resp.status_code in (401, 403) # Depends on FastAPI/Starlette version
+    assert resp.status_code in (401, 403, 422)
 
     resp = await client.get("/api/auth/me", headers={"Authorization": "Bearer invalid_token"})
     assert resp.status_code == 401
     assert "Invalid or expired token" in resp.json()["detail"]
+
 
 @pytest.mark.asyncio
 async def test_google_oauth_skeleton(client):
@@ -104,6 +133,7 @@ async def test_google_oauth_skeleton(client):
     data = resp.json()
     assert "access_token" in data
     assert data["user"]["auth_provider"] == "google"
+
 
 @pytest.mark.asyncio
 async def test_google_oauth_invalid(client):

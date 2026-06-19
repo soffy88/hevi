@@ -57,7 +57,7 @@ class TaskService:
         # 2. Check limits (Circuit Breaker)
         await check_before_run(estimate)
 
-        # 3. Credit Check (SaaS-2)
+        # 3. Credit Check (SaaS-2): 全本地(cost==0)跳过,含云步才检查余额
         credits_needed = 0
         if self.billing_svc and user_id:
             credits_needed = await self.billing_svc.estimate_credits(
@@ -65,7 +65,8 @@ class TaskService:
                 video_provider=video_provider,
                 **kwargs
             )
-            await self.billing_svc.check_and_reserve(user_id, credits_needed)
+            if credits_needed > 0:
+                await self.billing_svc.check_and_reserve(user_id, credits_needed)
 
         data = {
             "topic": topic,

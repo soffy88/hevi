@@ -1,11 +1,15 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from obase.persistence import PgPool
 from pydantic import BaseModel, EmailStr
 
 from hevi.auth.auth_service import AuthService
 from hevi.auth.dependencies import get_current_user, get_user_repository
 from hevi.auth.repository import UserRepository
+from hevi.credits.account_service import AccountService
+from hevi.credits.repository import CreditRepository
+from hevi.db.pg_pool import get_hevi_pg_pool
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -34,21 +38,29 @@ class TokenResponse(BaseModel):
 
 async def get_auth_service(
     repo: Annotated[UserRepository, Depends(get_user_repository)],
+    pool: Annotated[PgPool, Depends(get_hevi_pg_pool)],
 ) -> AuthService:
-    return AuthService(repo)
+    account_svc = AccountService(CreditRepository(pool))
+    return AuthService(repo, account_svc=account_svc)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(
     body: RegisterRequest,
     svc: Annotated[AuthService, Depends(get_auth_service)],
-) -> dict[str, Any]:
+) -> TokenResponse:
     try:
-        return await svc.register(
+        user, token = await svc.register(
             email=body.email, password=body.password, display_name=body.display_name
         )
+        return TokenResponse(access_token=token, token=token, user=user)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        status_code = (
+            status.HTTP_409_CONFLICT
+            if "already registered" in str(exc)
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
 @router.post("/login")
