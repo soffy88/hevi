@@ -10,7 +10,7 @@ def sign_access_token(user_id: str) -> str:
     return jwt_create(
         payload={"sub": user_id},
         secret=settings.jwt_secret,
-        expires_in_minutes=60, # 1 hour
+        expires_in_minutes=settings.jwt_expire_minutes,
     )
 
 

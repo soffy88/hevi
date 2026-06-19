@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -34,7 +35,30 @@ def _cors_list(raw: str) -> list[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     register_all_providers()  # L-021
+
+    from hevi.credits.billing_service import BillingService
+    from hevi.credits.account_service import AccountService
+    from hevi.credits.repository import CreditRepository
+    from hevi.db.pg_pool import get_hevi_pg_pool
+    from hevi.queue.worker import QueueWorker
+    from hevi.tasks.repository import TaskRepository
+    from hevi.tasks.task_service import TaskService
+
+    pool = await get_hevi_pg_pool()
+    repo = TaskRepository(pool)
+    billing = BillingService(AccountService(CreditRepository(pool)))
+    svc = TaskService(repo, billing_svc=billing)
+    worker = QueueWorker(svc, poll_interval=5.0)
+    worker_task = asyncio.create_task(worker.run())
+
     yield
+
+    worker.stop()
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(

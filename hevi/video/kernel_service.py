@@ -84,7 +84,8 @@ async def generate_clip(
                 fps=profile.fps,
                 bitrate_kbps=profile.bitrate_kbps,
             )
-        elif provider_str == VideoProvider.WAN_LOCAL:
+        elif provider_str in (VideoProvider.WAN_LOCAL, VideoProvider.LTX2_LOCAL):
+            # ltx2_local 路由到 wan_local: 本机无独立 LTX2 local 推理实现
             return await wan_local_generate(
                 prompt=prompt,
                 output_path=output_path,

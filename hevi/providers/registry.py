@@ -211,6 +211,8 @@ def register_all_providers() -> None:
         ),
     )
     ProviderRegistry.register("video", "wan_local", wan_local_generate)
+    # ltx2_local: 路由到 wan_local(本机无独立 LTX2 local 推理实现)
+    ProviderRegistry.register("video", "ltx2_local", wan_local_generate)
 
     # 0.1 Chaos Monkey Overrides (SaaS-3 / P10.F3 fallback verification)
     import os
