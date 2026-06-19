@@ -1,6 +1,6 @@
 {
   "name": "hevi-web",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,7 +14,7 @@
     "react-dom": "^19.0.0",
     "reactflow": "^11.11.4",
     "@helios/blocks": "file:./vendor/helios-blocks-2.7.1.tgz",
-    "@helios/oui": "file:./vendor/helios-oui-1.6.0.tgz"
+    "@helios/oui": "file:./vendor/helios-oui-1.7.0.tgz"
   },
   "devDependencies": {
     "@types/node": "^20",
