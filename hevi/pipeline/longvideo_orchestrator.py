@@ -153,7 +153,14 @@ async def orchestrate_longvideo(
                 output_path=output_path,
             )
 
+        # omodul._default_llm() calls ProviderRegistry.get(category=...) which is
+        # incompatible with obase's singleton .get(). Inject the registered LLM directly.
+        # LLM is stored in _llms dict (via register_llm), not _generic — use .llm() not .generic().
+        from obase.provider_registry import ProviderRegistry as _PR
+        _llm = _PR.get().llm("default")
+
         _providers: dict[str, Any] = {
+            "llm": _llm,
             "storyboard_fn": patched_storyboard_fn,
             "video_fn": injected_video_fn,
             "assembler_fn": bridged_assembler_fn,
