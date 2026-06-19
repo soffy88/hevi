@@ -9,6 +9,7 @@ load_dotenv()  # 标准: 在所有本地 import 之前
 
 from hevi.api.routers.audio_library import router as audio_router  # noqa: E402
 from hevi.api.routers.auth import router as auth_router  # noqa: E402
+from hevi.api.routers.gallery import router as gallery_router  # noqa: E402
 from hevi.api.routers.canvas import router as canvas_router  # noqa: E402
 from hevi.api.routers.creative import router as creative_router  # noqa: E402
 from hevi.api.routers.credits import router as credits_router  # noqa: E402
@@ -61,6 +62,7 @@ app.include_router(creative_router, prefix="/api")
 app.include_router(canvas_router, prefix="/api")
 app.include_router(templates_router, prefix="/api")
 app.include_router(audio_router, prefix="/api")
+app.include_router(gallery_router, prefix="/api")
 
 
 @app.get("/api/health")
