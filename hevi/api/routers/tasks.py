@@ -159,6 +159,24 @@ async def get_task_details(
     return _serialize_task(task)
 
 
+@router.post("/{task_id}/resume")
+async def resume_task(
+    task_id: UUID,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[TaskService, Depends(get_task_service)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    task = await svc.repository.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.get("user_id") and task["user_id"] != str(user["id"]):
+        raise HTTPException(status_code=403, detail="Not your task")
+    if task["status"] in ("completed", "running", "queued"):
+        return _serialize_task(task)
+    background_tasks.add_task(svc.resume_task, task_id)
+    return _serialize_task(task)
+
+
 @router.get("/{task_id}/progress")
 async def stream_task_progress(
     task_id: UUID, repo: Annotated[TaskRepository, Depends(get_repository)]

@@ -1,3 +1,6 @@
+import sys
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,9 +18,17 @@ class Settings(BaseSettings):
     # Accepts: "*", "https://a.com", "https://a.com,https://b.com", or JSON '["https://a.com"]'
     cors_origins: str = "*"
 
-    jwt_secret: str = "supersecret"
+    jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def jwt_secret_required(cls, v: str) -> str:
+        if not v:
+            print("FATAL: JWT_SECRET must be set in .env", file=sys.stderr)
+            sys.exit(1)
+        return v
 
     # Cost settings
     ltx2_price_usd: float = 0.04  # per second (legacy; 2D pricing in pricing_table.py)
