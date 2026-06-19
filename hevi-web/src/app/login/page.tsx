@@ -38,7 +38,13 @@ export default function LoginPage() {
       errorMessage={error || undefined}
       loading={loading}
       onEmailLogin={handleLogin}
-      links={<a href="/pricing">查看套餐</a>}
+      links={
+        <span>
+          还没有账号？<a href="/register" style={{ color: 'var(--primary)' }}>立即注册</a>
+          {' · '}
+          <a href="/pricing">查看套餐</a>
+        </span>
+      }
     />
   );
 }

@@ -8,6 +8,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { isAuthenticated } from '@/lib/auth-store';
 import { OCostConfirmDialog, OTaskProgress, useSSEProgress } from '@helios/oui';
 import type {
   DurationArchetype, QualityProfile, AspectRatio, LongVideoTaskReq,
@@ -44,6 +46,7 @@ const QUALITIES: { id: QualityProfile; label: string }[] = [
 const ASPECTS: AspectRatio[] = ['9:16', '16:9', '1:1'];
 
 export function SimpleGenerate() {
+  const router = useRouter();
   const [category, setCategory] = useState<GalleryCategory>('short_video');
   const [topic, setTopic] = useState('');
   const [duration, setDuration] = useState<DurationArchetype>('1-5min');
@@ -104,8 +107,14 @@ export function SimpleGenerate() {
   const start = async () => {
     setConfirming(false);
     if (USE_MOCK) { setTaskId('mock-task'); return; }
-    const t = await taskApi.create(buildReq());
-    setTaskId(t.task_id);
+    // 生成需登录:未登录跳登录页
+    if (!isAuthenticated()) { router.push('/login'); return; }
+    try {
+      const t = await taskApi.create(buildReq());
+      setTaskId(t.task_id);
+    } catch (e: unknown) {
+      if ((e as { message?: string })?.message === 'NOT_AUTHENTICATED') router.push('/login');
+    }
   };
 
   // 生成中 → 进度
