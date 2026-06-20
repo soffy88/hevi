@@ -21,7 +21,8 @@ from hevi.gpu import VRAM_WAN_LOCAL, scheduler
 
 logger = logging.getLogger(__name__)
 
-_WAN2GP_DIR = Path.home() / "Wan2GP"
+_wan2gp_env = os.environ.get("WAN2GP_DIR", "")
+_WAN2GP_DIR = Path(_wan2gp_env) if _wan2gp_env else Path.home() / "Wan2GP"
 _WAN2GP_PYTHON = _WAN2GP_DIR / "venv_wan/bin/python"
 _WAN2GP_SCRIPT = _WAN2GP_DIR / "wgp.py"
 _CAUSVID_LORA = "Wan21_CausVid_bidirect2_T2V_1_3B_lora_rank32.safetensors"

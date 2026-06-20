@@ -1,12 +1,13 @@
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
 from hevi.auth.dependencies import get_current_user
+from hevi.credits.billing_service import InsufficientCredits
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService
 from hevi.credits.repository import CreditRepository
@@ -97,12 +98,17 @@ async def _create_task(
             background_tasks.add_task(svc.run_task, task["id"])
             
         return _serialize_task(task)
+    except InsufficientCredits as exc:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "insufficient_credits",
+                "credits_needed": exc.credits_needed,
+                "credits_available": exc.credits_available,
+            },
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        if "Insufficient credits" in str(exc):
-            raise HTTPException(status_code=402, detail=str(exc)) from exc
-        raise
 
 
 @router.post("/estimate")
@@ -144,8 +150,12 @@ async def create_longvideo_task(
 async def list_tasks(
     repo: Annotated[TaskRepository, Depends(get_repository)],
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    status: Annotated[
+        list[str] | None,
+        Query(description="Filter by status (repeatable). E.g. ?status=queued&status=running"),
+    ] = None,
 ) -> list[dict[str, Any]]:
-    tasks = await repo.list_tasks(user_id=str(user["id"]))
+    tasks = await repo.list_tasks(user_id=str(user["id"]), statuses=status)
     return [_serialize_task(t) for t in tasks]
 
 

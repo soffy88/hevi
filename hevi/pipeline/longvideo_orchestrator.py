@@ -10,6 +10,12 @@ from hevi.pipeline.result_mapper import map_longvideo_result
 
 logger = logging.getLogger(__name__)
 
+# Test-only hook: set this to a dict of provider overrides before calling run_task.
+# orchestrate_longvideo reads this at call time (not import time), so task_service
+# picks it up even though it imported the function reference earlier.
+# Must be reset to None after the test.
+_PROVIDERS_OVERRIDE: dict[str, Any] | None = None
+
 
 async def orchestrate_longvideo(
     *,
@@ -69,6 +75,15 @@ async def orchestrate_longvideo(
             camera=prompt_camera,
             color_grade=prompt_color_grade,
         )
+
+    # For hevi-only "short" archetype, monkey-patch target duration so the LLM writes a
+    # minimal single-shot script instead of a full 180-second production.
+    _short_patch_active = False
+    if duration_archetype == "short":
+        import omodul.agentic_longvideo_pipeline as _omodul_m
+        _orig_dur_fn = _omodul_m._duration_archetype_to_seconds  # type: ignore[attr-defined]
+        _omodul_m._duration_archetype_to_seconds = lambda _: 10.0  # type: ignore[attr-defined]
+        _short_patch_active = True
 
     lv_config = build_longvideo_config(
         topic=engineered_topic,
@@ -141,17 +156,36 @@ async def orchestrate_longvideo(
             subtitle_path: Path | None = None,
             output_path: Path,
         ) -> None:
-            from oskill.video_assembler import video_assembler
             valid_shots = [p for p in shot_videos if p.exists() and p.stat().st_size > 64]
             if not valid_shots:
                 output_path.write_bytes(b"\x00" * 64)
                 return
-            await video_assembler(
-                avatar_videos=valid_shots,
-                bgm_path=audio_path if (audio_path and audio_path.exists()) else None,
-                subtitle_path=subtitle_path,
-                output_path=output_path,
-            )
+            try:
+                from oskill.video_assembler import video_assembler
+                await video_assembler(
+                    avatar_videos=valid_shots,
+                    bgm_path=audio_path if (audio_path and audio_path.exists()) else None,
+                    subtitle_path=subtitle_path,
+                    output_path=output_path,
+                )
+            except (ModuleNotFoundError, ImportError):
+                # oskill.video_assembler depends on oprim.video_concat which may be
+                # missing in pinned versions. Fall back to direct ffmpeg concat.
+                import tempfile
+                from obase.ffmpeg import run as ffmpeg_run
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+                    for s in valid_shots:
+                        f.write(f"file '{s.resolve()}'\n")
+                    concat_list = Path(f.name)
+                has_audio = audio_path and audio_path.exists()
+                args: list[str] = ["-y", "-f", "concat", "-safe", "0", "-i", str(concat_list)]
+                if has_audio:
+                    args += ["-i", str(audio_path), "-c:v", "copy", "-c:a", "aac", "-shortest"]
+                else:
+                    args += ["-c:v", "copy"]
+                args.append(str(output_path))
+                await ffmpeg_run(args=args, expected_output=output_path)
+                concat_list.unlink(missing_ok=True)
 
         # omodul._default_llm() calls ProviderRegistry.get(category=...) which is
         # incompatible with obase's singleton .get(). Inject the registered LLM directly.
@@ -168,11 +202,20 @@ async def orchestrate_longvideo(
         if audio_provider != "ltx2_native":
             _providers["audio_fn"] = injected_audio_fn
 
-        result = await agentic_longvideo_pipeline(
-            config=lv_config,
-            _providers=_providers
-        )
-        
+        # Test-only: merge overrides injected via _PROVIDERS_OVERRIDE module var.
+        import hevi.pipeline.longvideo_orchestrator as _self
+        if _self._PROVIDERS_OVERRIDE:
+            _providers.update(_self._PROVIDERS_OVERRIDE)
+
+        try:
+            result = await agentic_longvideo_pipeline(
+                config=lv_config,
+                _providers=_providers
+            )
+        finally:
+            if _short_patch_active:
+                _omodul_m._duration_archetype_to_seconds = _orig_dur_fn  # type: ignore[attr-defined]
+
         # SaaS-3/P10.F3 Fix: omodul suppresses shot failures by returning placeholders.
         # We must detect this to trigger Hevi's provider-level fallback.
         if result.video_path.exists() and result.video_path.stat().st_size < 1024:

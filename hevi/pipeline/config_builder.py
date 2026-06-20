@@ -9,6 +9,17 @@ from hevi.video import DURATION_ARCHETYPES, VideoProvider
 __all__ = ["build_longvideo_config", "build_longvideo_config_with_prompt"]
 
 
+_OMODUL_ARCHETYPE_MAP: dict[str, str] = {
+    "short": "1-5min",
+}
+
+# Per-archetype overrides for LongVideoConfig fields not exposed in the hevi API.
+# "short" disables shot retries to keep total Wan2GP runs to 2×N_shots instead of 6×N.
+_ARCHETYPE_CONFIG_OVERRIDES: dict[str, dict[str, Any]] = {
+    "short": {"max_shot_retries": 0},
+}
+
+
 def build_longvideo_config(
     *,
     topic: str,
@@ -41,9 +52,16 @@ def build_longvideo_config(
     if a_provider not in valid_audio:
         raise ValueError(f"Invalid audio provider: {a_provider}")
 
+    # omodul only accepts the four production archetypes; map hevi-only archetypes
+    omodul_archetype = _OMODUL_ARCHETYPE_MAP.get(duration_archetype, duration_archetype)
+
+    # Merge per-archetype config overrides (caller kwargs take precedence)
+    archetype_overrides = _ARCHETYPE_CONFIG_OVERRIDES.get(duration_archetype, {})
+    merged = {**archetype_overrides, **kwargs}
+
     return LongVideoConfig(
         topic=topic,
-        duration_archetype=duration_archetype,  # type: ignore[arg-type]
+        duration_archetype=omodul_archetype,  # type: ignore[arg-type]
         video_provider=v_provider,
         audio_provider=a_provider,
         style=style,
@@ -51,7 +69,7 @@ def build_longvideo_config(
         language=language,
         output_dir=output_dir or Path("output/hevi_v2"),
         fallback_video_provider=fb_v_provider,
-        **kwargs,
+        **merged,
     )
 
 

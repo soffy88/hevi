@@ -1,11 +1,14 @@
 """Local Qwen LLM adapter — routes LLM calls to ollama OpenAI-compatible endpoint.
 
 Registered as "llm"/"local" when HEVI_LLM_PROVIDER=qwen_local is set.
-True async: httpx.AsyncClient, non-blocking, returns a plain dict.
-oskill storyboard_planner/script_writer: result = await llm(messages=...)
+Uses sync httpx (run via asyncio.to_thread) to support both oskill calling conventions:
+  sync:  result = llm(messages=...); result.get("content")   (storyboard_planner)
+  async: result = await llm(messages=...); result.get("content")
 """
 from __future__ import annotations
 
+import asyncio
+import functools
 import json
 import logging
 import os
@@ -18,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 _OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
-_TIMEOUT = 600.0
+_TIMEOUT = 300.0  # 120s for own generation + 180s queue wait behind AII
 
 
 def _coerce(obj: Any) -> Any:
@@ -80,43 +83,86 @@ def _extract_content(raw: str) -> str:
     return text
 
 
-async def local_qwen_adapter(**kwargs: Any) -> dict[str, Any]:
-    """Async LLM adapter backed by ollama (qwen3.5:9b).
-
-    Returns a plain dict: {"content": str, "output": {...}, "usage": {...}}
-    Compatible with oskill's `result = await llm(messages=...)` protocol.
-    """
+def _call_ollama(**kwargs: Any) -> dict[str, Any]:
+    """Sync HTTP call to Ollama. Safe to run in a thread (not on event loop)."""
     kwargs.pop("result_format", None)
+    kwargs.pop("image_paths", None)  # VLM images not supported by text qwen
     payload = {
         "model": _OLLAMA_MODEL,
         "messages": kwargs.get("messages", []),
-        "max_tokens": kwargs.get("max_tokens", 4096),
+        # 2048 cap: storyboard needs ~1000 tokens; select_reference/consistency only ~50.
+        # qwen2.5:7b at ~50 tok/s → 2048 tokens ≈ 41s, well within _TIMEOUT=300s.
+        "max_tokens": kwargs.get("max_tokens", 2048),
         "temperature": kwargs.get("temperature", 0.7),
         "stream": False,
-        "think": False,
     }
-
-    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-        r = await client.post(f"{_OLLAMA_BASE}/v1/chat/completions", json=payload)
+    r = httpx.post(f"{_OLLAMA_BASE}/v1/chat/completions", json=payload, timeout=_TIMEOUT)
     r.raise_for_status()
     data = r.json()
+    # Unload model immediately after each call so Wan2GP (5407 MB) can use the GPU.
+    # qwen2.5:7b + Wan2GP = 10155 MB vs 10240 MB total — can't coexist with KV cache.
+    try:
+        httpx.post(
+            f"{_OLLAMA_BASE}/api/generate",
+            json={"model": _OLLAMA_MODEL, "keep_alive": 0},
+            timeout=5.0,
+        )
+    except Exception:
+        pass  # best-effort unload
 
     oa_choices = data.get("choices", [])
     native_choices = [
         {"message": c.get("message", {}), "finish_reason": c.get("finish_reason", "")}
         for c in oa_choices
     ]
-    resp: dict[str, Any] = {
-        "output": {"choices": native_choices},
-        "usage": data.get("usage", {}),
-        "content": "",
-    }
-
+    content = ""
     if oa_choices:
         raw = oa_choices[0].get("message", {}).get("content", "")
-        resp["content"] = _extract_content(raw)
+        content = _extract_content(raw)
 
-    return resp
+    return {
+        "output": {"choices": native_choices},
+        "usage": data.get("usage", {}),
+        "content": content,
+    }
+
+
+class LocalQwenAdapter:
+    """Sync-callable LLM adapter with async protocol — mirrors AsyncDashScopeAdapter.
+
+    oskill calling conventions supported:
+      sync:  result = llm(messages=...); result.get("content")
+      async: result = await llm(messages=...); result.get("content")
+
+    When called in sync context (storyboard_planner), _call_ollama runs directly.
+    When awaited, it runs in asyncio.to_thread so the event loop stays free.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        self._kwargs = kwargs
+        self._resp: dict[str, Any] | None = None
+
+    def _ensure_resp(self) -> dict[str, Any]:
+        if self._resp is None:
+            self._resp = _call_ollama(**self._kwargs)
+        return self._resp
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._ensure_resp().get(key, default)
+
+    def __await__(self) -> Any:
+        async def _run() -> dict[str, Any]:
+            if self._resp is not None:
+                return self._resp
+            fn = functools.partial(_call_ollama, **self._kwargs)
+            self._resp = await asyncio.to_thread(fn)
+            return self._resp
+        return _run().__await__()
+
+
+def local_qwen_adapter(**kwargs: Any) -> "LocalQwenAdapter":
+    """Factory that returns a LocalQwenAdapter (sync-callable + awaitable)."""
+    return LocalQwenAdapter(**kwargs)
 
 
 def register_if_local() -> bool:
@@ -128,6 +174,6 @@ def register_if_local() -> bool:
 
     if os.getenv("HEVI_LLM_PROVIDER") == "qwen_local":
         ProviderRegistry.register("llm", "default", local_qwen_adapter, replace=True)
-        logger.info("LLM provider: local_qwen_adapter (qwen3.5:9b via ollama)")
+        logger.info("LLM provider: local_qwen_adapter (%s via ollama)", _OLLAMA_MODEL)
         return True
     return False

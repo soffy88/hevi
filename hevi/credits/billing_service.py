@@ -9,7 +9,13 @@ from hevi.credits.account_service import AccountService
 
 class InsufficientCredits(Exception):
     """Raised when user balance is below requested amount."""
-    pass
+
+    def __init__(self, credits_needed: int, credits_available: int) -> None:
+        self.credits_needed = credits_needed
+        self.credits_available = credits_available
+        super().__init__(
+            f"Insufficient credits: needed {credits_needed}, have {credits_available}"
+        )
 
 
 class BillingService:
@@ -47,7 +53,7 @@ class BillingService:
         balance = await self._account_svc.get_balance(user_id)
         if balance < credits_needed:
             raise InsufficientCredits(
-                f"Insufficient credits: needed {credits_needed}, have {balance}"
+                credits_needed=credits_needed, credits_available=balance
             )
         return True
 

@@ -26,19 +26,27 @@ class TaskRepository:
         return await update_one(self.pool, table="video_tasks", id=task_id, data=data)
 
     async def list_tasks(
-        self, limit: int = 100, user_id: str | None = None
+        self,
+        limit: int = 100,
+        user_id: str | None = None,
+        statuses: list[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """List recent tasks, optionally filtered by user."""
+        """List recent tasks, optionally filtered by user and/or status."""
+        conditions: list[str] = []
+        params: list[Any] = []
+
         if user_id:
-            return await query(
-                self.pool,
-                sql="SELECT * FROM video_tasks WHERE user_id = $1 ORDER BY created_at DESC",
-                params=[user_id],
-                limit=limit,
-            )
-        return await query(
-            self.pool, sql="SELECT * FROM video_tasks ORDER BY created_at DESC", limit=limit
-        )
+            params.append(user_id)
+            conditions.append(f"user_id = ${len(params)}")
+
+        if statuses:
+            placeholders = ", ".join(f"${len(params) + i + 1}" for i in range(len(statuses)))
+            conditions.append(f"status IN ({placeholders})")
+            params.extend(statuses)
+
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        sql = f"SELECT * FROM video_tasks {where} ORDER BY created_at DESC"
+        return await query(self.pool, sql=sql, params=params or None, limit=limit)
 
     async def create_shot_state(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a shot state entry."""

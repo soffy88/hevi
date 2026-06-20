@@ -20,6 +20,13 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.api
     restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     env_file:
       - path: ../.env
         required: false
@@ -30,6 +37,15 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-hevi1234}
       MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
       CORS_ORIGINS: https://hevi.uex.hk
+      VIBEVOICE_MODEL_DIR: /models/vibevoice-1.5b
+      WAN2GP_DIR: /Wan2GP
+      HEVI_LLM_PROVIDER: qwen_local
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: qwen2.5:7b
+    volumes:
+      - /home/soffy/models:/models:ro
+      - /home/soffy/Wan2GP:/Wan2GP:ro
+      - /home/soffy/projects/hevi/output:/app/output
     ports:
       - "8200:8000"
     extra_hosts:
