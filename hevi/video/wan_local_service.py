@@ -14,6 +14,7 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,46 @@ _CAUSVID_LORA = "Wan21_CausVid_bidirect2_T2V_1_3B_lora_rank32.safetensors"
 _DEFAULT_SIZE = (832, 480)   # 480P 16:9 (W×H)
 _DEFAULT_FRAMES = 81          # ~5s @ 16fps
 
+# Model files that wgp.py loads for T2V-1.3B (profile 5).
+# Pre-warming ensures they're in OS page cache before the subprocess starts,
+# preventing the 59-min cold-load penalty when cache is evicted under memory pressure.
+# Combined size ~11.9 GB; at 1.3 GB/s clean disk ≈ 9s. If already cached: <1s.
+_WAN_CACHE_FILES: list[Path] = [
+    _WAN2GP_DIR / "ckpts/umt5-xxl/models_t5_umt5-xxl-enc-quanto_int8.safetensors",  # 6.3 GB
+    _WAN2GP_DIR / "ckpts/wan2.1_text2video_1.3B_mbf16.safetensors",                  # 2.7 GB
+    _WAN2GP_DIR / "ckpts/xlm-roberta-large/models_clip_open-clip-xlm-roberta-large-vit-huge-14-bf16.safetensors",  # 2.3 GB
+    _WAN2GP_DIR / "ckpts/Wan2.1_VAE.safetensors",                                    # 485 MB
+]
+_PREWARM_CHUNK = 64 * 1024 * 1024  # 64 MB — balances syscall overhead vs responsiveness
+
+
+def _read_file_to_cache(path: Path) -> float:
+    """Read file sequentially to populate OS page cache. Returns elapsed seconds."""
+    t0 = time.monotonic()
+    with open(path, "rb") as f:
+        while f.read(_PREWARM_CHUNK):
+            pass
+    return time.monotonic() - t0
+
+
+async def prewarm_wan_cache() -> None:
+    """Pre-warm Wan2GP model files into OS page cache.
+
+    Call before acquiring GPU scheduler lock so there is no I/O competition
+    with an active Wan2GP subprocess or Ollama. If files are already cached
+    (common between shots) the reads return from RAM in <1 second total.
+    """
+    for model_file in _WAN_CACHE_FILES:
+        if not model_file.exists():
+            continue
+        size_mb = model_file.stat().st_size / 1024 / 1024
+        elapsed = await asyncio.to_thread(_read_file_to_cache, model_file)
+        speed_mbs = size_mb / max(elapsed, 0.001)
+        logger.info(
+            "wan_local: cache-warm %s  %.0f MB in %.1fs (%.0f MB/s)",
+            model_file.name, size_mb, elapsed, speed_mbs,
+        )
+
 
 async def wan_local_generate(
     *,
@@ -42,6 +83,12 @@ async def wan_local_generate(
 ) -> Path:
     """Generate a 5s clip via Wan2GP + CausVid LoRA (8 steps, ~3m46s).
 
+    Pre-warms model files into OS page cache before acquiring the GPU scheduler
+    lock. This prevents the 59-min cold-load penalty when page cache is evicted
+    under memory pressure (observed when T5 6.3 GB was re-read at 1.9 MB/s due
+    to I/O thrashing from concurrent Ollama + swap). Clean disk reads at 1.3 GB/s
+    warm all 11.9 GB of model weights in ~9s instead.
+
     Holds GPU scheduler lock for full subprocess duration so qwen/duix cannot
     overlap. Subprocess (wgp.py) self-manages mmgp offloading internally.
 
@@ -49,6 +96,9 @@ async def wan_local_generate(
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Pre-warm before acquiring GPU lock — no subprocess running yet, I/O is free.
+    await prewarm_wan_cache()
 
     async with scheduler.acquire(VRAM_WAN_LOCAL):
         return await _run_wgp(
