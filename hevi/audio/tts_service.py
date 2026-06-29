@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 _WORKER = Path(__file__).parent / "vibevoice_worker.py"
 # Project venv python — same venv has oprim/vibevoice/torch installed.
 _HEVI_PYTHON = Path(__file__).parent.parent.parent / ".venv/bin/python"
+# A hung worker holds ~8 GB VRAM and blocks the whole task. Kill past this.
+_TTS_TIMEOUT_S = 900
 
 __all__ = ["synthesize_dialogue", "vibevoice_synthesize"]
 
@@ -105,15 +107,29 @@ async def _run_worker(
             stderr=asyncio.subprocess.STDOUT,
         )
 
-        assert proc.stdout is not None
-        async for raw in proc.stdout:
-            txt = raw.decode(errors="replace").rstrip()
-            if txt:
-                logger.debug("vibevoice_worker: %s", txt)
+        tail: list[str] = []
 
-        rc = await proc.wait()
+        async def _consume_and_wait() -> int:
+            assert proc.stdout is not None
+            async for raw in proc.stdout:
+                txt = raw.decode(errors="replace").rstrip()
+                if txt:
+                    logger.debug("vibevoice_worker: %s", txt)
+                    tail.append(txt)
+                    del tail[:-20]  # keep last 20 lines for diagnostics
+            return await proc.wait()
+
+        try:
+            rc = await asyncio.wait_for(_consume_and_wait(), timeout=_TTS_TIMEOUT_S)
+        except (TimeoutError, asyncio.CancelledError):
+            # Don't orphan the worker (leaks ~8 GB VRAM) on timeout/cancel.
+            logger.error("vibevoice: worker timed out/cancelled — killing subprocess")
+            proc.kill()
+            await proc.wait()
+            raise
         if rc != 0:
-            raise RuntimeError(f"vibevoice_worker exited with code {rc}")
+            last = "\n".join(tail[-10:])
+            raise RuntimeError(f"vibevoice_worker exited with code {rc}\n{last}")
 
         if not output_path.exists():
             raise RuntimeError(f"vibevoice_worker produced no output: {output_path}")

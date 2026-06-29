@@ -9,6 +9,7 @@ Replaces native wan.WanT2V (40 min / 30 steps) with Wan2GP + CausVid (3m46s / 8 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -30,6 +31,22 @@ _CAUSVID_LORA = "Wan21_CausVid_bidirect2_T2V_1_3B_lora_rank32.safetensors"
 
 _DEFAULT_SIZE = (832, 480)   # 480P 16:9 (W×H)
 _DEFAULT_FRAMES = 81          # ~5s @ 16fps
+# Generous ceiling: a clip is ~226s; a >30min run means wgp.py has hung and is
+# holding the GPU scheduler lock, starving every other local task. Kill it.
+_WAN_TIMEOUT_S = 1800
+
+
+def _seed_for(output_path: Path) -> int:
+    """Derive a deterministic seed from the output filename.
+
+    omodul writes shot variants/retries to distinct paths (shot_0001_v0.mp4 vs
+    shot_0001_v1.mp4). A hardcoded seed made every variant byte-identical —
+    wasting 2x compute and making consistency-selection meaningless. Deriving the
+    seed from the filename keeps generation reproducible while making variants
+    genuinely different.
+    """
+    digest = hashlib.sha256(output_path.stem.encode("utf-8")).hexdigest()
+    return int(digest[:8], 16)
 
 # Model files that wgp.py loads for T2V-1.3B (profile 5).
 # Pre-warming ensures they're in OS page cache before the subprocess starts,
@@ -79,7 +96,7 @@ async def wan_local_generate(
     output_path: Path | str,
     size: tuple[int, int] = _DEFAULT_SIZE,
     frame_num: int = _DEFAULT_FRAMES,
-    seed: int = 42,
+    seed: int | None = None,
     **_: Any,
 ) -> Path:
     """Generate a 5s clip via Wan2GP + CausVid LoRA (8 steps, ~3m46s).
@@ -97,6 +114,8 @@ async def wan_local_generate(
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    if seed is None:
+        seed = _seed_for(output_path)
 
     # Pre-warm before acquiring GPU lock — no subprocess running yet, I/O is free.
     await prewarm_wan_cache()
@@ -163,13 +182,22 @@ async def _run_wgp(
             stderr=asyncio.subprocess.STDOUT,
         )
 
-        assert proc.stdout is not None
-        async for line in proc.stdout:
-            txt = line.decode(errors="replace").rstrip()
-            if txt:
-                logger.debug("wgp: %s", txt)
+        async def _consume_and_wait() -> int:
+            assert proc.stdout is not None
+            async for line in proc.stdout:
+                txt = line.decode(errors="replace").rstrip()
+                if txt:
+                    logger.debug("wgp: %s", txt)
+            return await proc.wait()
 
-        rc = await proc.wait()
+        try:
+            rc = await asyncio.wait_for(_consume_and_wait(), timeout=_WAN_TIMEOUT_S)
+        except (TimeoutError, asyncio.CancelledError):
+            # Never leave a hung/orphaned subprocess holding the GPU scheduler lock.
+            logger.error("wan_local: subprocess timed out/cancelled — killing wgp.py")
+            proc.kill()
+            await proc.wait()
+            raise
         if rc != 0:
             raise RuntimeError(f"Wan2GP subprocess failed (exit {rc})")
 
