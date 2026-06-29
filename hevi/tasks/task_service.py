@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from hevi.core.config import settings
 from hevi.cost import (
     HeviCostTracker,
     check_before_run,
@@ -199,6 +200,24 @@ class TaskService:
                     on_fallback=on_fallback,
                     retry_policy=RetryPolicy(),
                 )
+
+                # Settle reserved (estimate) vs actual cost. We charged
+                # credits_reserved up front; reconcile the difference now so a
+                # fallback to a pricier/cheaper provider doesn't leak revenue or
+                # over-charge the user. Idempotent via the ":settle" reference.
+                if self.billing_svc and user_id and credits_reserved > 0:
+                    actual_credits = int(cost_tracker.total_usd * settings.credits_per_usd)
+                    delta = actual_credits - credits_reserved
+                    settle_ref = f"{task_id}:settle"
+                    try:
+                        if delta > 0:
+                            await self.billing_svc.consume(user_id, delta, settle_ref)
+                        elif delta < 0:
+                            await self.billing_svc.refund(user_id, -delta, settle_ref)
+                    except Exception as exc:
+                        # Settle-up can fail if the user spent their balance meanwhile;
+                        # the video is already produced, so log rather than fail.
+                        logger.warning(f"Cost settlement failed for task {task_id}: {exc}")
 
                 # Task level completion
                 update_data = {

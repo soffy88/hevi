@@ -166,6 +166,41 @@ async def test_task_integration_credits(client):
 
 
 @pytest.mark.asyncio
+async def test_cost_settlement_refunds_cheaper_actual(client):
+    """实际成本 < 预扣(估算) → 完成后结算退差价,余额回升。"""
+    import asyncio
+
+    user_email = f"settle_{uuid.uuid4().hex[:6]}@example.com"
+    await client.post("/api/auth/register", json={
+        "email": user_email, "password": "password123", "display_name": "Settle"
+    })
+    login_resp = await client.post("/api/auth/login", json={
+        "email": user_email, "password": "password123"
+    })
+    token = login_resp.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 估算按 1-5min(~180s) 预扣 720;实际只产出很短的视频 → 应退差价
+    payload = {"topic": "Sci-fi", "duration_archetype": "1-5min", "video_provider": "ltx2_cloud"}
+    with patch(
+        "hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock
+    ) as mock_orch:
+        mock_orch.return_value = {
+            "url": "http://video.mp4", "duration": 20, "metadata": {"shots": 1}
+        }
+        resp = await client.post("/api/tasks/longvideo", json=payload, headers=headers)
+        assert resp.status_code == 201
+        await asyncio.sleep(0.5)
+
+    balance = (await client.get("/api/credits/balance", headers=headers)).json()["balance"]
+    # 预扣后是 280;实际成本远低 → 退差价 → 余额 > 280
+    assert balance > SIGNUP_BONUS - 720
+    txs = (await client.get("/api/credits/transactions", headers=headers)).json()
+    assert any(t["tx_type"] == "refund" and str(t.get("reference", "")).endswith(":settle")
+               for t in txs)
+
+
+@pytest.mark.asyncio
 async def test_task_cloud_insufficient_credits(client):
     """C 红线: 云任务余额不足 → 402(signup bonus 消耗完后)"""
     user_email = f"broke_{uuid.uuid4().hex[:6]}@example.com"
