@@ -20,7 +20,9 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
+# qwen2.5:7b(非 thinking)与 deploy compose 一致;qwen3.5:9b 是 thinking 模型,
+# 其推理 token 会吃光 max_tokens=2048 预算导致 content 为空(剧本阶段直接崩)。
+_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
 _TIMEOUT = 300.0  # 120s for own generation + 180s queue wait behind AII
 
 
@@ -75,7 +77,14 @@ def _extract_content(raw: str) -> str:
                 clean = m.group(1).strip()
         match = re.search(r"(\{.*\}|\[.*\])", clean, re.DOTALL)
         if match:
-            data = json.loads(match.group(1))
+            candidate = match.group(1)
+            # 本地模型(qwen2.5)常输出非严格 JSON:行内 // 注释、/* */ 块注释、尾逗号。
+            # vendored oskill(select_reference/script_writer)用严格 json.loads,会崩。
+            # 在此清洗成严格 JSON;(?<!:) 负向后顾保护 https:// 之类 URL。
+            candidate = re.sub(r"/\*.*?\*/", "", candidate, flags=re.DOTALL)
+            candidate = re.sub(r"(?<!:)//[^\n]*", "", candidate)
+            candidate = re.sub(r",(\s*[}\]])", r"\1", candidate)
+            data = json.loads(candidate)
             text = json.dumps(_coerce(data), ensure_ascii=False)
     except Exception as e:
         logger.debug("LocalQwenAdapter coercion skipped: %s", e)
