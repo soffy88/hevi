@@ -10,11 +10,11 @@
 - ✅ **P0-2 拼接顺序/去重 已修**: `longvideo_orchestrator._order_and_dedup_shots`
   在 `bridged_assembler_fn` 里按镜头序号排序 + 每序号保留最大(选中)变体,
   消除 omodul `glob("*.mp4")` 的乱序与重复变体。(单测覆盖,无需 GPU)
-- ⛔ **P0-1 参考帧条件化 仍阻塞**: 经核实 omodul v1.28.0 `_generate_shot_with_retry`
-  只用 `current_fn(prompt=, output_path=)` 调 video_fn,`ref_set` 只喂给
-  `consistency_fn` 打分,**根本不传给生成函数**。E4 `asset_reference_inject` 只把
-  `_assets` 盖进 shot_spec dict,不喂生成。→ 需 **omodul 升级**(让 video_fn 收
-  reference)或 hevi 深度覆盖 `_generate_shot_with_retry`。
+- ✅ **P0-1 参考帧条件化 已闭合** (2026-06-29, omodul v1.33.1): 直接在主库修复并
+  发布 —— omodul `_select_ref_image`(角色优先,环境兜底)把 ref_set 作为
+  `reference_image` 透传给 video_fn(commit c948cd0,已推 origin + tag,15 测试过)。
+  hevi 升 omodul v1.33.1 + `injected_video_fn` 收 reference_image → 非空设 mode=i2v
+  转发,空则走 t2v。成片实际连续性待 GPU E2E 终验。
 - ⏸️ **E2 video_cost_proposal / E5 render_shot / code-render**: 是并行成本系统/
   新特性(代码渲染镜头需 Playwright+chromium),非 RFC 既有缺陷的修复;swap 现有
   estimator 风险高,留作单独特性接线。
