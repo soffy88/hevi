@@ -12,8 +12,7 @@ build/
 venv/
 .Python
 
-# uv
-uv.lock
+# uv (uv.lock is committed for reproducible builds)
 .uv/
 
 # Env
@@ -44,6 +43,16 @@ coverage.xml
 # OS
 .DS_Store
 Thumbs.db
+*.Zone.Identifier
+*:Zone.Identifier
+
+# Logs
+*.log
+
+# Generated media & task artifacts
+*.mp4
+*.wav
+output/
 
 # Docker
 *.pid

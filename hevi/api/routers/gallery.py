@@ -28,8 +28,8 @@ def _row_to_item(row: dict[str, Any]) -> dict[str, Any]:
 
 @router.get("")
 async def list_gallery(
+    pool: Annotated[PgPool, Depends(_get_pool)],
     category: str | None = None,
-    pool: PgPool = Depends(_get_pool),
 ) -> dict[str, Any]:
     async with pool.acquire() as conn:
         if category:
@@ -51,7 +51,7 @@ async def list_gallery(
 @router.get("/{item_id}")
 async def get_gallery_item(
     item_id: str,
-    pool: PgPool = Depends(_get_pool),
+    pool: Annotated[PgPool, Depends(_get_pool)],
 ) -> dict[str, Any]:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(

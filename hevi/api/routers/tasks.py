@@ -7,9 +7,8 @@ from obase.persistence import PgPool
 from pydantic import BaseModel
 
 from hevi.auth.dependencies import get_current_user
-from hevi.credits.billing_service import InsufficientCredits
 from hevi.credits.account_service import AccountService
-from hevi.credits.billing_service import BillingService
+from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.tasks.progress import get_task_progress_stream

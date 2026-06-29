@@ -81,8 +81,8 @@ async def orchestrate_longvideo(
     _short_patch_active = False
     if duration_archetype == "short":
         import omodul.agentic_longvideo_pipeline as _omodul_m
-        _orig_dur_fn = _omodul_m._duration_archetype_to_seconds  # type: ignore[attr-defined]
-        _omodul_m._duration_archetype_to_seconds = lambda _: 10.0  # type: ignore[attr-defined]
+        _orig_dur_fn = _omodul_m._duration_archetype_to_seconds
+        _omodul_m._duration_archetype_to_seconds = lambda _: 10.0
         _short_patch_active = True
 
     lv_config = build_longvideo_config(
@@ -172,6 +172,7 @@ async def orchestrate_longvideo(
                 # oskill.video_assembler depends on oprim.video_concat which may be
                 # missing in pinned versions. Fall back to direct ffmpeg concat.
                 import tempfile
+
                 from obase.ffmpeg import run as ffmpeg_run
                 with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
                     for s in valid_shots:
@@ -214,7 +215,7 @@ async def orchestrate_longvideo(
             )
         finally:
             if _short_patch_active:
-                _omodul_m._duration_archetype_to_seconds = _orig_dur_fn  # type: ignore[attr-defined]
+                _omodul_m._duration_archetype_to_seconds = _orig_dur_fn
 
         # SaaS-3/P10.F3 Fix: omodul suppresses shot failures by returning placeholders.
         # We must detect this to trigger Hevi's provider-level fallback.

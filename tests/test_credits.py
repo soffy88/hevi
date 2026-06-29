@@ -161,4 +161,7 @@ async def test_task_cloud_insufficient_credits(client):
         "/api/tasks/longvideo", json=payload, headers={"Authorization": f"Bearer {token}"}
     )
     assert resp.status_code == 402
-    assert "Insufficient credits" in resp.json()["detail"]
+    detail = resp.json()["detail"]
+    assert detail["error"] == "insufficient_credits"
+    assert detail["credits_needed"] > 0
+    assert detail["credits_available"] == 0

@@ -37,9 +37,10 @@ _DEFAULT_FRAMES = 81          # ~5s @ 16fps
 # Combined size ~11.9 GB; at 1.3 GB/s clean disk ≈ 9s. If already cached: <1s.
 _WAN_CACHE_FILES: list[Path] = [
     _WAN2GP_DIR / "ckpts/umt5-xxl/models_t5_umt5-xxl-enc-quanto_int8.safetensors",  # 6.3 GB
-    _WAN2GP_DIR / "ckpts/wan2.1_text2video_1.3B_mbf16.safetensors",                  # 2.7 GB
-    _WAN2GP_DIR / "ckpts/xlm-roberta-large/models_clip_open-clip-xlm-roberta-large-vit-huge-14-bf16.safetensors",  # 2.3 GB
-    _WAN2GP_DIR / "ckpts/Wan2.1_VAE.safetensors",                                    # 485 MB
+    _WAN2GP_DIR / "ckpts/wan2.1_text2video_1.3B_mbf16.safetensors",  # 2.7 GB
+    _WAN2GP_DIR
+    / "ckpts/xlm-roberta-large/models_clip_open-clip-xlm-roberta-large-vit-huge-14-bf16.safetensors",  # noqa: E501
+    _WAN2GP_DIR / "ckpts/Wan2.1_VAE.safetensors",  # 485 MB
 ]
 _PREWARM_CHUNK = 64 * 1024 * 1024  # 64 MB — balances syscall overhead vs responsiveness
 

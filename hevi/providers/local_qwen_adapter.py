@@ -160,7 +160,7 @@ class LocalQwenAdapter:
         return _run().__await__()
 
 
-def local_qwen_adapter(**kwargs: Any) -> "LocalQwenAdapter":
+def local_qwen_adapter(**kwargs: Any) -> LocalQwenAdapter:
     """Factory that returns a LocalQwenAdapter (sync-callable + awaitable)."""
     return LocalQwenAdapter(**kwargs)
 

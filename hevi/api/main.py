@@ -10,10 +10,10 @@ load_dotenv()  # 标准: 在所有本地 import 之前
 
 from hevi.api.routers.audio_library import router as audio_router  # noqa: E402
 from hevi.api.routers.auth import router as auth_router  # noqa: E402
-from hevi.api.routers.gallery import router as gallery_router  # noqa: E402
 from hevi.api.routers.canvas import router as canvas_router  # noqa: E402
 from hevi.api.routers.creative import router as creative_router  # noqa: E402
 from hevi.api.routers.credits import router as credits_router  # noqa: E402
+from hevi.api.routers.gallery import router as gallery_router  # noqa: E402
 from hevi.api.routers.payment import router as payment_router  # noqa: E402
 from hevi.api.routers.subjects import router as subjects_router  # noqa: E402
 from hevi.api.routers.tasks import router as tasks_router  # noqa: E402
@@ -36,8 +36,8 @@ def _cors_list(raw: str) -> list[str]:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     register_all_providers()  # L-021
 
-    from hevi.credits.billing_service import BillingService
     from hevi.credits.account_service import AccountService
+    from hevi.credits.billing_service import BillingService
     from hevi.credits.repository import CreditRepository
     from hevi.db.pg_pool import get_hevi_pg_pool
     from hevi.queue.worker import QueueWorker

@@ -68,7 +68,7 @@ async def test_cloud_task_raises_402_when_insufficient() -> None:
     """C: 含云步余额不足 → InsufficientCredits"""
     svc, billing = _make_task_service(credits_needed=500)
     billing.check_and_reserve = AsyncMock(
-        side_effect=InsufficientCredits("Insufficient credits: needed 500, have 0")
+        side_effect=InsufficientCredits(credits_needed=500, credits_available=0)
     )
 
     with patch("hevi.tasks.task_service.estimate_cost", new_callable=AsyncMock) as mock_est, \
