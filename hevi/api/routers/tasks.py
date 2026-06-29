@@ -16,6 +16,7 @@ from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
+from hevi.video import resolve_preset
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -26,10 +27,13 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 class LongVideoRequest(BaseModel):
     topic: str
     duration_archetype: str
-    video_provider: str = "ltx2_cloud"
-    audio_provider: str = "vibevoice"
+    # E3 execution preset (economy/balanced/fast). When set, fills provider/quality
+    # defaults; any explicitly-set field below still overrides the preset.
+    preset: str | None = None
+    video_provider: str | None = None
+    audio_provider: str | None = None
     num_characters: int = 1
-    quality_profile: str = "standard"
+    quality_profile: str | None = None
     style_preset: str | None = None
 
 
@@ -84,11 +88,18 @@ async def _create_task(
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     try:
+        # E3: expand preset → provider defaults; explicit fields still override.
+        resolved = resolve_preset(
+            body.preset,
+            video_provider=body.video_provider,
+            audio_provider=body.audio_provider,
+            quality_profile=body.quality_profile,
+        )
         task = await svc.create_task(
             topic=body.topic,
             duration_archetype=body.duration_archetype,
-            video_provider=body.video_provider,
-            audio_provider=body.audio_provider,
+            video_provider=resolved.get("video_provider", "ltx2_cloud"),
+            audio_provider=resolved.get("audio_provider", "vibevoice"),
             user_id=str(user["id"]),
             num_characters=body.num_characters,
         )
