@@ -68,6 +68,17 @@ class CreditRepository:
                 "SELECT balance FROM credit_accounts WHERE user_id = $1 FOR UPDATE",
                 user_uuid
             )
+            # Idempotency: under the per-user row lock, if a ledger entry for this
+            # (user, reference, tx_type) already exists, this op was already applied
+            # — return it WITHOUT touching the balance (prevents double charge/refund).
+            if reference is not None:
+                existing = await conn.fetchrow(
+                    "SELECT * FROM credit_transactions "
+                    "WHERE user_id = $1 AND reference = $2 AND tx_type = $3",
+                    user_uuid, reference, tx_type,
+                )
+                if existing:
+                    return dict(existing)
             if not row:
                 # If account doesn't exist, create it within the same transaction
                 # Include created_at/updated_at if not handled by default/trigger

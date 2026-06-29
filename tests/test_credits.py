@@ -104,6 +104,35 @@ async def test_consume_and_refund(client):
 
 
 @pytest.mark.asyncio
+async def test_consume_refund_idempotent(client):
+    """重复 consume/refund 同一 (user, reference, tx_type) 不得重复扣/退。"""
+    user_email = f"idem_{uuid.uuid4().hex[:6]}@example.com"
+    await client.post("/api/auth/register", json={
+        "email": user_email, "password": "password123", "display_name": "Idem"
+    })
+    login_resp = await client.post("/api/auth/login", json={
+        "email": user_email, "password": "password123"
+    })
+    user_id = login_resp.json()["user"]["id"]
+
+    from hevi.db.pg_pool import get_hevi_pg_pool
+    pool = await get_hevi_pg_pool()
+    billing_svc = BillingService(AccountService(CreditRepository(pool)))
+
+    # 重复 consume 同一 TASK-X：只扣一次
+    await billing_svc.consume(user_id, 300, "TASK-X")
+    await billing_svc.consume(user_id, 300, "TASK-X")
+    await billing_svc.consume(user_id, 300, "TASK-X")
+    acct = AccountService(CreditRepository(pool))
+    assert await acct.get_balance(user_id) == SIGNUP_BONUS - 300
+
+    # 重复 refund 同一 TASK-X：只退一次
+    await billing_svc.refund(user_id, 300, "TASK-X")
+    await billing_svc.refund(user_id, 300, "TASK-X")
+    assert await acct.get_balance(user_id) == SIGNUP_BONUS
+
+
+@pytest.mark.asyncio
 async def test_task_integration_credits(client):
     user_email = f"task_cred_{uuid.uuid4().hex[:6]}@example.com"
     await client.post("/api/auth/register", json={

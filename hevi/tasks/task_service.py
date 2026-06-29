@@ -103,6 +103,18 @@ class TaskService:
                 )
                 raise ValueError(f"Task {task_id} not found")
 
+            # Guard against double-execution (double dequeue / resume + worker race).
+            # Combined with idempotent consume this prevents double-charge AND wasted
+            # GPU. A failed task is still resumable (status == "failed" falls through).
+            if task.get("status") in ("running", "completed"):
+                log_event(
+                    stage="task_service",
+                    event="run_task_skipped_already_active",
+                    task_id=str(task_id),
+                    status=task.get("status"),
+                )
+                return task
+
             user_id = task.get("user_id")
             credits_reserved = task["config_json"].get("credits_reserved", 0)
 
