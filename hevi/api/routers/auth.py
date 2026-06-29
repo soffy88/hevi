@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from obase.persistence import PgPool
 from pydantic import BaseModel, EmailStr
 
+from hevi.api.rate_limit import rate_limit
 from hevi.auth.auth_service import AuthService
 from hevi.auth.dependencies import get_current_user, get_user_repository
 from hevi.auth.repository import UserRepository
@@ -44,7 +45,11 @@ async def get_auth_service(
     return AuthService(repo, account_svc=account_svc)
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit("auth_register", max_requests=5, window_s=60))],
+)
 async def register(
     body: RegisterRequest,
     svc: Annotated[AuthService, Depends(get_auth_service)],
@@ -63,7 +68,10 @@ async def register(
         raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    dependencies=[Depends(rate_limit("auth_login", max_requests=10, window_s=60))],
+)
 async def login(
     body: LoginRequest,
     svc: Annotated[AuthService, Depends(get_auth_service)],
@@ -82,7 +90,10 @@ async def get_me(
     return current_user
 
 
-@router.post("/oauth/google")
+@router.post(
+    "/oauth/google",
+    dependencies=[Depends(rate_limit("auth_oauth", max_requests=10, window_s=60))],
+)
 async def google_oauth(
     body: OAuthRequest,
     svc: Annotated[AuthService, Depends(get_auth_service)],

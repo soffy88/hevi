@@ -7,10 +7,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from oskill._schemas import Script, SubjectRef
 from pydantic import BaseModel
 
+from hevi.api.rate_limit import rate_limit
 from hevi.creative.assist_service import AssistService
 from hevi.creative.workflow_service import WorkflowService
 
-router = APIRouter(prefix="/creative", tags=["creative"])
+# Expensive GPU/LLM endpoints — throttle per-IP to bound resource abuse cost.
+router = APIRouter(
+    prefix="/creative",
+    tags=["creative"],
+    dependencies=[Depends(rate_limit("creative", max_requests=30, window_s=60))],
+)
 
 
 # ── Request schemas ───────────────────────────────────────────────────────────

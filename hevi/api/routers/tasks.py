@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
+from hevi.api.rate_limit import rate_limit
 from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.credits.account_service import AccountService
@@ -126,7 +127,11 @@ async def estimate_task_credits(
     return {"credits": credits, "credits_needed": credits}
 
 
-@router.post("", status_code=201)
+@router.post(
+    "",
+    status_code=201,
+    dependencies=[Depends(rate_limit("task_create", max_requests=20, window_s=60))],
+)
 async def create_task_alias(
     body: LongVideoRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
@@ -136,7 +141,11 @@ async def create_task_alias(
     return await _create_task(body, user, svc, background_tasks)
 
 
-@router.post("/longvideo", status_code=201)
+@router.post(
+    "/longvideo",
+    status_code=201,
+    dependencies=[Depends(rate_limit("task_create", max_requests=20, window_s=60))],
+)
 async def create_longvideo_task(
     body: LongVideoRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
