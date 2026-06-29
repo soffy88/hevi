@@ -10,6 +10,15 @@ from hevi.pipeline.result_mapper import map_longvideo_result
 from hevi.providers.registry import ProviderRegistry, register_all_providers
 
 
+@pytest.fixture(autouse=True)
+def _register_providers():
+    """orchestrate_longvideo looks up the 'default' LLM from the global registry.
+    Register providers so these tests don't depend on another test file having
+    populated the process-wide ProviderRegistry singleton first."""
+    register_all_providers()
+    yield
+
+
 @pytest.fixture
 def mock_lv_result():
     return LongVideoResult(

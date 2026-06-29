@@ -14,13 +14,15 @@ dependencies = [
     "python-dotenv>=1.0",
     "argon2-cffi>=23.1",
     "pyjwt[crypto]>=2.10",
-    # 主库 B路径 git+ssh (L-024) — obase v0.15.10 (StepUsage.category) / oprim v3.10.15 / oskill v3.25.5
-    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.15.10",
-    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.15",
-    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v3.25.5",
+    # 主库 B路径 git+ssh (L-024) — E1-E6 升级: obase v0.16.0 (provider 契约) /
+    # oprim v3.10.33 (多镜头衔接+code-render) / oskill v4.3.0 (render_shot+成本估算+资产前置)
+    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.16.0",
+    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.33",
+    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v4.3.0",
     "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.28.0",
     "python-frontmatter>=1.3.0",  # oprim v3.10 transitive dep (not declared in oprim)
     "vibevoice==0.0.1",  # oprim._vibevoice_synthesize runtime dep (not declared in oprim metadata)
+    "dashscope>=1.20",  # oprim v3.10.33 embedding.qwen3_dashscope runtime dep (undeclared)
     "prometheus-client>=0.25.0",
     "psycopg2-binary>=2.9.12",
     "minio>=7.2.20",
