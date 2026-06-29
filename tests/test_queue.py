@@ -235,6 +235,11 @@ async def test_claim_is_atomic_no_double_dequeue(client) -> None:
     pool = await get_hevi_pg_pool()
     repo = TaskRepository(pool)
 
+    # Isolate: the DB persists across tests/runs, so park any pre-existing queued
+    # tasks (e.g. an economy-preset task) out of the way before our exact-count check.
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE video_tasks SET status='failed' WHERE status='queued'")
+
     ids = [await _make_queued_task(repo) for _ in range(5)]
 
     # 10 个并发 claim 抢 5 个任务

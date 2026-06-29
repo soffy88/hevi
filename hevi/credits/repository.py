@@ -113,10 +113,24 @@ class CreditRepository:
             )
             return dict(tx_row)
 
+    async def get_transaction(
+        self, user_id: str, reference: str, tx_type: str
+    ) -> dict[str, Any] | None:
+        """Fetch a single ledger entry by its idempotency key, if any."""
+        rows = await query(
+            self._pool,
+            sql=(
+                "SELECT * FROM credit_transactions "
+                "WHERE user_id = $1 AND reference = $2 AND tx_type = $3 LIMIT 1"
+            ),
+            params=[uuid.UUID(user_id), reference, tx_type],
+        )
+        return rows[0] if rows else None
+
     async def list_transactions(
-        self, 
-        user_id: str, 
-        limit: int = 20, 
+        self,
+        user_id: str,
+        limit: int = 20,
         offset: int = 0
     ) -> list[dict[str, Any]]:
         sql = (

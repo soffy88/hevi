@@ -40,6 +40,26 @@ class AccountService:
             user_id=user_id, amount=amount, tx_type="refund", reference=task_ref
         )
 
+    async def refund_for_task(self, user_id: str, task_ref: str) -> dict[str, Any]:
+        """Refund exactly what a task consumed — and only if it actually consumed.
+
+        Avoids over-refunding: a task can be marked 'running' before consume()
+        runs (crash window) or after a 0-credit local run, so blindly refunding
+        credits_reserved would gift the user credits they never spent. We look up
+        the consume ledger entry and refund its magnitude; the refund itself is
+        idempotent via the (user, task_ref, 'refund') unique key.
+        """
+        consume_tx = await self._repo.get_transaction(user_id, task_ref, "consume")
+        if consume_tx is None:
+            return {"refunded": 0, "reason": "no_consume"}
+        amount = abs(int(consume_tx["amount"]))
+        if amount <= 0:
+            return {"refunded": 0, "reason": "zero_consume"}
+        result = await self._repo.update_balance_with_ledger(
+            user_id=user_id, amount=amount, tx_type="refund", reference=task_ref
+        )
+        return {"refunded": amount, **result}
+
     async def list_transactions(
         self, user_id: str, limit: int = 20, offset: int = 0
     ) -> list[dict[str, Any]]:

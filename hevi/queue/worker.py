@@ -42,8 +42,7 @@ class QueueWorker:
         logger.warning("zombie recovery: found %d zombie task(s)", len(rows))
         for row in rows:
             task_id = row["id"]
-            user_id = str(row["user_id"])
-            credits_reserved = int((row["config_json"] or {}).get("credits_reserved", 0))
+            user_id = str(row["user_id"]) if row["user_id"] else None
             try:
                 await repo.update_task(
                     task_id,
@@ -53,14 +52,16 @@ class QueueWorker:
                         "updated_at": datetime.now(UTC).replace(tzinfo=None),
                     },
                 )
-                if billing and user_id and credits_reserved > 0:
-                    await billing.refund(user_id, credits_reserved, str(task_id))
+                # Refund only what was actually consumed (idempotent; a task can be
+                # 'running'/'claimed' before consume() ran → no over-refund).
+                if billing and user_id:
+                    res = await billing.refund_for_task(user_id, str(task_id))
                     logger.info(
-                        "zombie recovery: task %s → failed, refunded %d credits to %s",
-                        task_id, credits_reserved, user_id,
+                        "zombie recovery: task %s → failed, refunded %s to %s",
+                        task_id, res.get("refunded", 0), user_id,
                     )
                 else:
-                    logger.info("zombie recovery: task %s → failed (0 credits)", task_id)
+                    logger.info("zombie recovery: task %s → failed (no user)", task_id)
             except Exception as exc:
                 logger.error("zombie recovery: failed for task %s: %s", task_id, exc)
 

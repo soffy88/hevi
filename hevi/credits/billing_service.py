@@ -68,3 +68,7 @@ class BillingService:
     ) -> dict[str, Any]:
         """Refund credits for failed task."""
         return await self._account_svc.refund(user_id, credits, task_ref=task_id)
+
+    async def refund_for_task(self, user_id: str, task_id: str) -> dict[str, Any]:
+        """Refund exactly what the task consumed (idempotent, never over-refunds)."""
+        return await self._account_svc.refund_for_task(user_id, task_id)

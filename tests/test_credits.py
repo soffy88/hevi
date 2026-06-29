@@ -133,6 +133,39 @@ async def test_consume_refund_idempotent(client):
 
 
 @pytest.mark.asyncio
+async def test_refund_for_task_no_over_refund(client):
+    """退款收口: 只退实际消费额;未消费则退 0;重复退款幂等。"""
+    user_email = f"reftask_{uuid.uuid4().hex[:6]}@example.com"
+    await client.post("/api/auth/register", json={
+        "email": user_email, "password": "password123", "display_name": "R"
+    })
+    login_resp = await client.post("/api/auth/login", json={
+        "email": user_email, "password": "password123"
+    })
+    user_id = login_resp.json()["user"]["id"]
+
+    from hevi.db.pg_pool import get_hevi_pg_pool
+    pool = await get_hevi_pg_pool()
+    acct = AccountService(CreditRepository(pool))
+
+    # 未消费的任务 → 退款应为 0(防止 running-before-consume 崩溃窗口的超退)
+    res0 = await acct.refund_for_task(user_id, "TASK-NEVER-RAN")
+    assert res0["refunded"] == 0
+    assert await acct.get_balance(user_id) == SIGNUP_BONUS
+
+    # 消费 250 后 refund_for_task → 精确退 250
+    await acct.consume(user_id, 250, task_ref="TASK-R")
+    assert await acct.get_balance(user_id) == SIGNUP_BONUS - 250
+    res1 = await acct.refund_for_task(user_id, "TASK-R")
+    assert res1["refunded"] == 250
+    assert await acct.get_balance(user_id) == SIGNUP_BONUS
+
+    # 重复退款幂等 → 余额不变
+    await acct.refund_for_task(user_id, "TASK-R")
+    assert await acct.get_balance(user_id) == SIGNUP_BONUS
+
+
+@pytest.mark.asyncio
 async def test_task_integration_credits(client):
     user_email = f"task_cred_{uuid.uuid4().hex[:6]}@example.com"
     await client.post("/api/auth/register", json={

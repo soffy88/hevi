@@ -255,10 +255,11 @@ class TaskService:
                 )
                 logger.exception(f"Task {task_id} failed")
 
-                # 5. Refund credits on failure (SaaS-2)
-                if self.billing_svc and user_id and credits_reserved > 0:
+                # 5. Refund credits on failure (SaaS-2) — refund the actually-consumed
+                # amount, only if consumed (no over-refund if we failed before consume).
+                if self.billing_svc and user_id:
                     try:
-                        await self.billing_svc.refund(user_id, credits_reserved, str(task_id))
+                        await self.billing_svc.refund_for_task(user_id, str(task_id))
                     except Exception as refund_exc:
                         logger.error(f"Credit refund failed for task {task_id}: {refund_exc}")
 
