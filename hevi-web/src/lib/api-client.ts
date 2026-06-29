@@ -112,7 +112,9 @@ export const taskApi = {
   list:     () => authedReq<TaskInfo[]>('/api/tasks'),
   get:      (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}`),
   resume:   (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}/resume`, { method: 'POST' }),
-  progressUrl: (id: string) => `${API_BASE}/api/tasks/${id}/progress`,
+  // SSE 进度:EventSource 无法带 Authorization 头,token 以查询参数传递
+  progressUrl: (id: string) =>
+    `${API_BASE}/api/tasks/${id}/progress${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
   // 成本预估
   estimate: (r: LongVideoTaskReq) => req<CostEstimateRes>('/api/tasks/estimate', { method: 'POST', body: JSON.stringify(r) }),
 };

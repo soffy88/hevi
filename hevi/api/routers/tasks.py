@@ -7,6 +7,7 @@ from obase.persistence import PgPool
 from pydantic import BaseModel
 
 from hevi.auth.dependencies import get_current_user
+from hevi.auth.jwt_handler import decode_access_token
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
@@ -160,10 +161,12 @@ async def list_tasks(
 
 @router.get("/{task_id}")
 async def get_task_details(
-    task_id: UUID, repo: Annotated[TaskRepository, Depends(get_repository)]
+    task_id: UUID,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[TaskRepository, Depends(get_repository)],
 ) -> dict[str, Any]:
     task = await repo.get_task(task_id)
-    if not task:
+    if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
         raise HTTPException(status_code=404, detail="Task not found")
     return _serialize_task(task)
 
@@ -188,12 +191,26 @@ async def resume_task(
 
 @router.get("/{task_id}/progress")
 async def stream_task_progress(
-    task_id: UUID, repo: Annotated[TaskRepository, Depends(get_repository)]
+    task_id: UUID,
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    token: Annotated[str | None, Query(description="JWT (SSE can't send headers)")] = None,
 ) -> StreamingResponse:
-    """SSE endpoint for task progress tracking."""
-    # First check if task exists
+    """SSE endpoint for task progress tracking.
+
+    EventSource cannot set Authorization headers, so the JWT is passed as a
+    `?token=` query parameter and validated here (signed token → owner check).
+    """
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+    try:
+        user_id = decode_access_token(token).get("sub")
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     task = await repo.get_task(task_id)
-    if not task:
+    if not task or (task.get("user_id") and task["user_id"] != str(user_id)):
         raise HTTPException(status_code=404, detail="Task not found")
 
     return StreamingResponse(

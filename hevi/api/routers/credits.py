@@ -1,10 +1,11 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
 from hevi.auth.dependencies import get_current_user
+from hevi.core.config import settings
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService
 from hevi.credits.repository import CreditRepository
@@ -91,7 +92,11 @@ async def manual_topup(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[AccountService, Depends(get_account_service)],
 ) -> dict[str, Any]:
-    """Manual topup for dev/webhook use."""
+    """Manual topup — DEV ONLY. Real top-ups must go through the Paddle order/webhook
+    flow (hevi/payment). Exposing self-service top-up in production = unlimited free
+    credits, so this is hard-gated behind debug mode."""
+    if not settings.debug:
+        raise HTTPException(status_code=404, detail="Not found")
     return await svc.topup(
         user_id=str(user["id"]), 
         amount=body.amount, 

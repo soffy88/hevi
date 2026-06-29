@@ -5,6 +5,7 @@ from typing import Any, Literal
 from hevi.auth.jwt_handler import sign_access_token
 from hevi.auth.password import hash_password, verify_password
 from hevi.auth.repository import UserRepository
+from hevi.core.config import settings
 from hevi.credits.account_service import AccountService
 
 _SENSITIVE_FIELDS = {"password_hash", "oauth_sub"}
@@ -66,7 +67,9 @@ class AuthService:
         self, provider: Literal["google"], code: str
     ) -> tuple[dict[str, Any], str]:
         """Skeleton for OAuth2 callback. Actual implementation pending credentials."""
-        if code == "test_code":
+        # SECURITY: the test_code shortcut mints a valid JWT for a shared account.
+        # It must never be reachable in production — gate behind debug mode.
+        if code == "test_code" and settings.debug:
             email = "oauth_test@example.com"
             user = await self._repo.get_by_email(email)
             if not user:

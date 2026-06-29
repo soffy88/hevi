@@ -34,9 +34,10 @@ class PaddleService:
         Format: hmac_sha256=... (or similar, depending on Paddle API version)
         """
         if not self._webhook_secret:
-            # TODO: WARNING - In production this must be enabled
-            # For dev without secret, we skip verification
-            return True
+            # SECURITY: fail-closed. With no secret configured we cannot trust any
+            # incoming webhook, so reject rather than accept (accepting = free credits
+            # to anyone who can POST to /api/payment/webhook).
+            return False
 
         # Simplified Paddle verification logic (actual header parsing depends on version)
         # Assuming signature is the hex digest for simplicity in this skeleton

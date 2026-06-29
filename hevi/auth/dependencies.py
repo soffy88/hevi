@@ -30,14 +30,17 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token: missing sub",
             )
+    except HTTPException:
+        raise
     except Exception as exc:
+        # Don't leak exception internals (stack/impl detail) to the client.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid or expired token: {exc}",
+            detail="Invalid or expired token",
         ) from exc
 
     user = await repo.get(user_id)
-    if not user:
+    if not user or not user.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",

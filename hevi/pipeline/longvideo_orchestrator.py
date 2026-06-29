@@ -82,7 +82,7 @@ async def orchestrate_longvideo(
     if duration_archetype == "short":
         import omodul.agentic_longvideo_pipeline as _omodul_m
         _orig_dur_fn = _omodul_m._duration_archetype_to_seconds
-        _omodul_m._duration_archetype_to_seconds = lambda _: 10.0
+        _omodul_m._duration_archetype_to_seconds = lambda _: 10.0  # type: ignore[assignment]
         _short_patch_active = True
 
     lv_config = build_longvideo_config(

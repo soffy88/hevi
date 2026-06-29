@@ -67,10 +67,14 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
+_cors_origins = _cors_list(settings.cors_origins)
+# Wildcard origins + credentials is browser-invalid AND insecure (any site could read
+# credentialed responses). When origins are wildcarded, disable credentials.
+_cors_allow_credentials = _cors_origins != ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_list(settings.cors_origins),
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
