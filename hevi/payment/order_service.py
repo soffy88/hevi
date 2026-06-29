@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from hevi.credits.account_service import AccountService
@@ -60,7 +60,7 @@ class OrderService:
             order_id, 
             {
                 "status": "completed", 
-                "completed_at": datetime.utcnow(),
+                "completed_at": datetime.now(UTC).replace(tzinfo=None),
                 "paddle_event_id": event_id
             }
         )

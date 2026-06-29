@@ -13,8 +13,8 @@ class UserRepository:
     async def create(self, data: dict[str, Any]) -> dict[str, Any]:
         if "id" not in data:
             data["id"] = uuid.uuid4()
-        from datetime import datetime
-        now = datetime.utcnow()
+        from datetime import UTC, datetime
+        now = datetime.now(UTC).replace(tzinfo=None)
         data.setdefault("created_at", now)
         data.setdefault("updated_at", now)
         

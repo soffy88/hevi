@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from obase.persistence import PgPool, insert_one, query, read_one, update_one
@@ -14,7 +14,7 @@ class GraphRepository:
     async def create(self, data: dict[str, Any]) -> dict[str, Any]:
         if "id" not in data:
             data["id"] = uuid.uuid4()
-        now = datetime.utcnow()
+        now = datetime.now(UTC).replace(tzinfo=None)
         data.setdefault("created_at", now)
         data.setdefault("updated_at", now)
         new_id = await insert_one(self._pool, table="canvas_graphs", data=data)
@@ -30,7 +30,7 @@ class GraphRepository:
         existing = await self.get(graph_id)
         if existing is None:
             return None
-        updates["updated_at"] = datetime.utcnow()
+        updates["updated_at"] = datetime.now(UTC).replace(tzinfo=None)
         await update_one(
             self._pool, table="canvas_graphs", id=uuid.UUID(graph_id), data=updates
         )
@@ -44,7 +44,7 @@ class GraphRepository:
             self._pool,
             table="canvas_graphs",
             id=uuid.UUID(graph_id),
-            data={"deleted_at": datetime.utcnow()},
+            data={"deleted_at": datetime.now(UTC).replace(tzinfo=None)},
         )
         return bool(success)
 

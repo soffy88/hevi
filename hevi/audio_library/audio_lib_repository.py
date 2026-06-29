@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from obase.persistence import PgPool, insert_one, query, soft_delete_one
@@ -14,7 +14,7 @@ class AudioLibraryRepository:
     async def create(self, data: dict[str, Any]) -> dict[str, Any]:
         if "id" not in data:
             data["id"] = uuid.uuid4()
-        now = datetime.utcnow()
+        now = datetime.now(UTC).replace(tzinfo=None)
         data.setdefault("created_at", now)
         data.setdefault("updated_at", now)
         data.setdefault("is_official", False)
