@@ -43,6 +43,23 @@ hevi 的成片质量核心逻辑在 vendored 依赖 `omodul.agentic_longvideo_pi
 > ⚠️ 验证：所有改动都需要 GPU + 真 provider 跑 E2E 才能确认成片质量，本机
 > 无 GPU，因此本 RFC 只给设计与改法，不含已验证实现。
 
+## P1 状态 (2026-06-29)
+
+- ✅ **P1-3 逐镜头 prompt 工程**: injected_video_fn 对每个 shot prompt 跑
+  engineer_prompt_from_preset(provider 适配 + 风格),不再绕过 hevi prompt 工程。
+- ✅ **P1-4 负向提示**: wan_local 负向从 3 词扩为完整集 + 参数化。云 provider
+  (ltx2_cloud/wan_cloud)API 无 negative 参数,折叠进正向对扩散有反效果故不做;
+  云端原生负向需 provider/API 层支持(主库 + API 能力确认后再做)。
+- ✅ **P1-6 TTS 错误可见性**: Wave D 已加超时+杀进程+末 10 行输出。
+- ⏸️ **P1-1 -c copy 拼接**: 当前每任务单 provider → 编码一致,且主路径走
+  oprim.video_concat;实际无碰撞,低优先(回退路径可改 concat_filter 兜底)。
+- ⏸️ **P1-2 末帧→首帧 i2v 衔接**: 与 P0-1 角色参考 i2v 互斥(i2v 仅一张参考图),
+  属编排策略选择(角色一致 vs 时间连续);需设计决策 + omodul 支持双策略。
+- ⏸️ **P1-5 镜头级 checkpoint**: 仅对 resume(同 provider)正确,fallback(换
+  provider)复用旧片不合理;且"哪个变体被选中"未持久化,正确实现需 provider 标记
+  + 重打分,只能 GPU E2E 验证。需主库改 + E2E。
+- ⏸️ **P1-7 Duix 数字人接入长视频**: 类 II 大特性(数字人讲解 + B-roll 镜头编排)。
+
 ---
 
 ## P0 — 摧毁核心卖点（镜头连续性 / 成片可用性）
