@@ -48,7 +48,7 @@ async def test_dequeue_task(repository):
     task_id = uuid.uuid4()
     task_data = {"id": task_id, "status": "queued"}
     
-    with patch.object(repository, "get_next_queued_task", return_value=task_data):
+    with patch.object(repository, "claim_next_queued_task", return_value=task_data):
         task = await dequeue(repository)
         assert task["id"] == task_id
 
@@ -210,3 +210,39 @@ async def test_enqueue_non_existent_task(repository):
     with patch.object(repository, "get_task", return_value=None):
         with pytest.raises(ValueError, match="Task .* not found"):
             await enqueue(repository, uuid.uuid4())
+
+
+# ── Atomic claim (real DB) — horizontal-scaling safety ───────────────────────
+
+
+async def _make_queued_task(repo: TaskRepository) -> uuid.UUID:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    task = await repo.create_task({
+        "topic": "t", "duration_archetype": "short",
+        "video_provider": "wan_local", "audio_provider": "vibevoice",
+        "status": "queued", "progress_pct": 0.0,
+        "total_shots": 0, "completed_shots": 0,
+        "config_json": {}, "queued_at": now,
+        "created_at": now, "updated_at": now,
+    })
+    return task["id"]
+
+
+@pytest.mark.asyncio
+async def test_claim_is_atomic_no_double_dequeue(client) -> None:
+    """N 个 worker 并发 claim N 个排队任务 → 每个任务恰好被领取一次,无重复。"""
+    from hevi.db.pg_pool import get_hevi_pg_pool
+    pool = await get_hevi_pg_pool()
+    repo = TaskRepository(pool)
+
+    ids = [await _make_queued_task(repo) for _ in range(5)]
+
+    # 10 个并发 claim 抢 5 个任务
+    claimed = await asyncio.gather(*[repo.claim_next_queued_task() for _ in range(10)])
+    got = [c["id"] for c in claimed if c is not None]
+
+    assert len(got) == 5                 # 恰好领走 5 个(不多不少)
+    assert len(set(got)) == 5            # 无重复领取
+    assert set(got) == set(ids)
+    for c in (c for c in claimed if c is not None):
+        assert c["status"] == "claimed"

@@ -28,7 +28,8 @@ class QueueWorker:
         try:
             async with repo.pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT id, user_id, config_json FROM video_tasks WHERE status='running'"
+                    "SELECT id, user_id, config_json FROM video_tasks "
+                    "WHERE status IN ('running', 'claimed')"
                 )
         except Exception as exc:
             logger.error("zombie recovery: failed to query running tasks: %s", exc)

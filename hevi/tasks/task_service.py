@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -20,11 +21,22 @@ from hevi.tasks.repository import TaskRepository
 
 logger = logging.getLogger(__name__)
 
+# Backpressure for cloud tasks run via FastAPI BackgroundTasks (which otherwise
+# spawn unboundedly in the API event loop). Excess submissions wait here instead
+# of all running concurrently. Local tasks go through the serial queue worker.
+_CLOUD_CONCURRENCY = 8
+_cloud_semaphore = asyncio.Semaphore(_CLOUD_CONCURRENCY)
+
 
 class TaskService:
     def __init__(self, repository: TaskRepository, billing_svc: BillingService | None = None):
         self.repository = repository
         self.billing_svc = billing_svc
+
+    async def run_task_background(self, task_id: uuid.UUID) -> dict[str, Any]:
+        """Run a cloud task with bounded concurrency (backpressure)."""
+        async with _cloud_semaphore:
+            return await self.run_task(task_id)
 
     def is_local_provider(self, video_provider: str) -> bool:
         """Determine if a provider requires local GPU resources."""

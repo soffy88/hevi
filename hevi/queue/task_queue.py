@@ -25,8 +25,8 @@ async def enqueue(repository: TaskRepository, task_id: uuid.UUID) -> int:
     return ahead
 
 async def dequeue(repository: TaskRepository) -> dict[str, Any] | None:
-    """Get the next task from the queue."""
-    return await repository.get_next_queued_task()
+    """Atomically claim the next task (safe for concurrent workers)."""
+    return await repository.claim_next_queued_task()
 
 async def queue_position(repository: TaskRepository, task_id: uuid.UUID) -> int:
     """Return how many tasks are ahead of this task in the queue."""

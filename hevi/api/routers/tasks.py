@@ -96,7 +96,7 @@ async def _create_task(
         task = await svc.submit_task(task["id"])
         
         if task["status"] != "queued":
-            background_tasks.add_task(svc.run_task, task["id"])
+            background_tasks.add_task(svc.run_task_background, task["id"])
             
         return _serialize_task(task)
     except InsufficientCredits as exc:

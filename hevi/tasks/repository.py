@@ -63,7 +63,7 @@ class TaskRepository:
         )
 
     async def get_next_queued_task(self) -> dict[str, Any] | None:
-        """Get the oldest queued task."""
+        """Get the oldest queued task (read-only peek; NOT a claim)."""
         results = await query(
             self.pool,
             sql=(
@@ -72,6 +72,25 @@ class TaskRepository:
             )
         )
         return results[0] if results else None
+
+    async def claim_next_queued_task(self) -> dict[str, Any] | None:
+        """Atomically claim the oldest queued task (queued → claimed).
+
+        FOR UPDATE SKIP LOCKED makes this safe for multiple concurrent workers /
+        horizontally-scaled replicas: each gets a distinct task, no double-dequeue.
+        The intermediate 'claimed' status removes it from the queue while letting
+        run_task's running/completed guard still fire (claimed ∉ {running,completed}).
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "UPDATE video_tasks SET status = 'claimed', updated_at = NOW() "
+                "WHERE id = ("
+                "  SELECT id FROM video_tasks WHERE status = 'queued'"
+                "  ORDER BY queued_at ASC, created_at ASC"
+                "  FOR UPDATE SKIP LOCKED LIMIT 1"
+                ") RETURNING *"
+            )
+            return dict(row) if row else None
 
     async def get_queued_count(self) -> int:
         """Get total number of queued tasks."""
