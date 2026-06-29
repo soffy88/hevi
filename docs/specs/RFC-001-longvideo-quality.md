@@ -2,6 +2,32 @@
 
 状态: Draft · 作者: 2026-06-29 全面审计 · 范围: L1 编排 / L2 视频内核 / L3 音频数字人 / L4 合成
 
+## 升级后状态 (2026-06-29, obase v0.16.0 / oprim v3.10.33 / oskill v4.3.0)
+
+上游 E1-E6 已交付并被 hevi 采用。**但 omodul 仍为 v1.28.0(未升级)**,它是编排
+管线本体,因此受其约束的项无法仅靠本次升级闭合:
+
+- ✅ **P0-2 拼接顺序/去重 已修**: `longvideo_orchestrator._order_and_dedup_shots`
+  在 `bridged_assembler_fn` 里按镜头序号排序 + 每序号保留最大(选中)变体,
+  消除 omodul `glob("*.mp4")` 的乱序与重复变体。(单测覆盖,无需 GPU)
+- ⛔ **P0-1 参考帧条件化 仍阻塞**: 经核实 omodul v1.28.0 `_generate_shot_with_retry`
+  只用 `current_fn(prompt=, output_path=)` 调 video_fn,`ref_set` 只喂给
+  `consistency_fn` 打分,**根本不传给生成函数**。E4 `asset_reference_inject` 只把
+  `_assets` 盖进 shot_spec dict,不喂生成。→ 需 **omodul 升级**(让 video_fn 收
+  reference)或 hevi 深度覆盖 `_generate_shot_with_retry`。
+- ⏸️ **E2 video_cost_proposal / E5 render_shot / code-render**: 是并行成本系统/
+  新特性(代码渲染镜头需 Playwright+chromium),非 RFC 既有缺陷的修复;swap 现有
+  estimator 风险高,留作单独特性接线。
+- 🔒 **仍需保留的 workaround(经核实上游 bug 未修)**: `patched_storyboard_fn`
+  (oskill storyboard_planner 对 Chapter.scenes=list[dict] 调 .model_dump());
+  `bridged_assembler_fn`(video_assembler 仍是 avatar_videos/bgm_path 签名);
+  registry `_patched_wan_invoke`(新 oprim 默认转 wan2.6/generation 端点,hevi
+  仍需 wan2.1/video-synthesis + 参数过滤)。
+
+**结论: 要完成 P0-1 及其余深层项,下一步是升级/改 omodul 让其把 ref_set 透传给
+video_fn(或在 hevi 覆盖该内部函数)。本次已闭合 P0-2。**
+
+
 ## 背景
 
 hevi 的成片质量核心逻辑在 vendored 依赖 `omodul.agentic_longvideo_pipeline` +

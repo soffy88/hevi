@@ -1,4 +1,5 @@
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,41 @@ from hevi.pipeline.config_builder import build_longvideo_config
 from hevi.pipeline.result_mapper import map_longvideo_result
 
 logger = logging.getLogger(__name__)
+
+_SHOT_INDEX_RE = re.compile(r"shot[_-]?(\d+)")
+
+
+def _safe_size(p: Path) -> int:
+    try:
+        return p.stat().st_size
+    except OSError:
+        return -1
+
+
+def _order_and_dedup_shots(paths: list[Path]) -> list[Path]:
+    """Order shots by numeric index and keep one variant per shot (RFC-001 P0-2).
+
+    omodul (v1.28.0) names shots ``shot_XXXX_vN.mp4`` and the pipeline collects
+    them with ``glob("*.mp4")`` — filesystem order, UNSORTED, keeping every
+    retry/variant. Assembled as-is the video plays shots out of order and each
+    shot appears 2×. Here we sort by shot index and, per index, keep the largest
+    file (proxy for the most-complete / consistency-selected render). Paths with
+    no parseable index are appended in name order, unchanged (no dedup).
+    """
+    indexed: dict[int, Path] = {}
+    unparsed: list[Path] = []
+    for p in paths:
+        m = _SHOT_INDEX_RE.search(p.name)
+        if not m:
+            unparsed.append(p)
+            continue
+        idx = int(m.group(1))
+        cur = indexed.get(idx)
+        if cur is None or _safe_size(p) > _safe_size(cur):
+            indexed[idx] = p
+    ordered = [indexed[i] for i in sorted(indexed)]
+    ordered.extend(sorted(unparsed, key=lambda p: p.name))
+    return ordered
 
 # Test-only hook: set this to a dict of provider overrides before calling run_task.
 # orchestrate_longvideo reads this at call time (not import time), so task_service
@@ -157,6 +193,9 @@ async def orchestrate_longvideo(
             output_path: Path,
         ) -> None:
             valid_shots = [p for p in shot_videos if p.exists() and p.stat().st_size > 64]
+            # RFC-001 P0-2: omodul globs shots unsorted and keeps every variant —
+            # order by shot index + keep one variant each before assembling.
+            valid_shots = _order_and_dedup_shots(valid_shots)
             if not valid_shots:
                 output_path.write_bytes(b"\x00" * 64)
                 return

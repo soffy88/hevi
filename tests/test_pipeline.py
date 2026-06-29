@@ -5,9 +5,38 @@ import pytest
 from omodul.agentic_longvideo_pipeline import LongVideoConfig, LongVideoResult
 
 from hevi.pipeline.config_builder import build_longvideo_config
-from hevi.pipeline.longvideo_orchestrator import orchestrate_longvideo
+from hevi.pipeline.longvideo_orchestrator import (
+    _order_and_dedup_shots,
+    orchestrate_longvideo,
+)
 from hevi.pipeline.result_mapper import map_longvideo_result
 from hevi.providers.registry import ProviderRegistry, register_all_providers
+
+
+def test_order_and_dedup_shots(tmp_path):
+    """RFC-001 P0-2: 按镜头序号排序 + 每序号只留最大(选中)变体。"""
+    def _mk(name: str, size: int) -> Path:
+        p = tmp_path / name
+        p.write_bytes(b"\x00" * size)
+        return p
+
+    # 乱序输入;index 1 有两个变体(v1 更大 → 选中)
+    s2 = _mk("shot_0002_v0.mp4", 100)
+    s0 = _mk("shot_0000_v0.mp4", 100)
+    _s1v0 = _mk("shot_0001_v0.mp4", 50)
+    s1v1 = _mk("shot_0001_v1.mp4", 200)
+
+    out = _order_and_dedup_shots([s2, s0, _s1v0, s1v1])
+    assert out == [s0, s1v1, s2]  # 有序 + index1 去重保留更大的 v1
+
+
+def test_order_and_dedup_shots_unparsed_appended(tmp_path):
+    a = tmp_path / "shot_0000_v0.mp4"
+    a.write_bytes(b"\x00" * 10)
+    z = tmp_path / "intro.mp4"
+    z.write_bytes(b"\x00" * 10)
+    out = _order_and_dedup_shots([z, a])
+    assert out == [a, z]  # 可解析的在前(按序号),不可解析的按名追加
 
 
 @pytest.fixture(autouse=True)
