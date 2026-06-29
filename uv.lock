@@ -1140,7 +1140,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "minio", specifier = ">=7.2.20" },
     { name = "obase", extras = ["cache", "docker"], git = "ssh://git@github.com/helios-plat/obase.git?rev=v0.16.1" },
-    { name = "omodul", git = "ssh://git@github.com/helios-plat/omodul.git?rev=v1.28.0" },
+    { name = "omodul", git = "ssh://git@github.com/helios-plat/omodul.git?rev=v1.33.1" },
     { name = "oprim", git = "ssh://git@github.com/helios-plat/oprim.git?rev=v3.10.37" },
     { name = "oskill", git = "ssh://git@github.com/helios-plat/oskill.git?rev=v4.3.1" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
@@ -2045,8 +2045,8 @@ docker = [
 
 [[package]]
 name = "omodul"
-version = "1.28.0"
-source = { git = "ssh://git@github.com/helios-plat/omodul.git?rev=v1.28.0#5ac98ffb41ab084fa2f72c80a3ae8bcf3788f254" }
+version = "1.33.1"
+source = { git = "ssh://git@github.com/helios-plat/omodul.git?rev=v1.33.1#50583c8e2457845f344eff82cc555da8fa50e695" }
 dependencies = [
     { name = "apscheduler" },
     { name = "numpy" },

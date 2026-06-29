@@ -169,13 +169,26 @@ async def orchestrate_longvideo(
 
         # SaaS-3/P10.F3: Inject video_fn to allow registry-based overrides and chaos monkey.
         # We MUST use the registry directly to avoid oprim.video_generate's hardcoded dispatch.
-        async def injected_video_fn(*, prompt: str, output_path: Path, **kw: Any) -> Path:
+        async def injected_video_fn(
+            *,
+            prompt: str,
+            output_path: Path,
+            reference_image: Path | None = None,
+            **kw: Any,
+        ) -> Path:
             from obase.provider_registry import ProviderRegistry
             try:
                 # Use video_provider from orchestrate_longvideo closure
                 caller = ProviderRegistry.get().generic("video", video_provider)
-                
-                # Call the registered function (might be a lambda or a direct operation)
+
+                # RFC-001 P0-1: omodul v1.33+ passes the selected reference frame.
+                # When present, condition generation on it via i2v for shot-to-shot
+                # continuity; when None, stay on t2v (omit the kwarg so providers
+                # that don't accept it aren't handed reference_image=None).
+                if reference_image is not None:
+                    kw["reference_image"] = reference_image
+                    kw.setdefault("mode", "i2v")
+
                 res = await caller(prompt=prompt, output_path=output_path, **kw)
                 return Path(res) if res else output_path
             except Exception as e:
