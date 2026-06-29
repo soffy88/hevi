@@ -86,10 +86,10 @@ export const canvasApi = {
   progressUrl: (id: string) => `${API_BASE}/api/canvas/${id}/execute/progress`,
 };
 
-// ── 创意辅助 ──────────────────────────────────────
+// ── 创意辅助 (需登录) ─────────────────────────────
 export const creativeApi = {
-  capabilities: () => req<CreativeCapability[]>('/api/creative/capabilities'),
-  call: (id: string, body: unknown) => req<unknown>(`/api/creative/${id}`, { method: 'POST', body: JSON.stringify(body) }),
+  capabilities: () => authedReq<CreativeCapability[]>('/api/creative/capabilities'),
+  call: (id: string, body: unknown) => authedReq<unknown>(`/api/creative/${id}`, { method: 'POST', body: JSON.stringify(body) }),
 };
 
 // ── 主体库 ────────────────────────────────────────
@@ -121,10 +121,10 @@ export const taskApi = {
 
 export { USE_MOCK, API_BASE };
 
-// ── 模板/音效(P11.F)──────────────────────────────
+// ── 模板/音效(P11.F,需登录:返回官方+自有)──────────
 export const assetApi = {
-  templates: (category?: string) => req<{ id: string; name: string; desc?: string }[]>(`/api/templates${category ? `?category=${category}` : ''}`),
-  audio:     (type?: string) => req<{ id: string; name: string; dur?: string }[]>(`/api/audio${type ? `?type=${type}` : ''}`),
+  templates: (category?: string) => authedReq<{ id: string; name: string; desc?: string }[]>(`/api/templates${category ? `?category=${category}` : ''}`),
+  audio:     (type?: string) => authedReq<{ id: string; name: string; dur?: string }[]>(`/api/audio${type ? `?type=${type}` : ''}`),
 };
 
 // ── 画廊(§5,公开无需 token)──────────────────────

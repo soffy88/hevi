@@ -8,14 +8,19 @@ from oskill._schemas import Script, SubjectRef
 from pydantic import BaseModel
 
 from hevi.api.rate_limit import rate_limit
+from hevi.auth.dependencies import get_current_user
 from hevi.creative.assist_service import AssistService
 from hevi.creative.workflow_service import WorkflowService
 
-# Expensive GPU/LLM endpoints — throttle per-IP to bound resource abuse cost.
+# Expensive GPU/LLM endpoints — require login AND throttle per-IP to bound
+# resource-abuse cost. Auth applies to every route in this router.
 router = APIRouter(
     prefix="/creative",
     tags=["creative"],
-    dependencies=[Depends(rate_limit("creative", max_requests=30, window_s=60))],
+    dependencies=[
+        Depends(get_current_user),
+        Depends(rate_limit("creative", max_requests=30, window_s=60)),
+    ],
 )
 
 

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from hevi.audio_library.audio_lib_repository import AudioLibraryRepository
 from hevi.audio_library.audio_lib_service import AudioLibraryService
+from hevi.auth.dependencies import get_current_user
 from hevi.db.pg_pool import get_hevi_pg_pool
 
 router = APIRouter(prefix="/audio", tags=["audio_library"])
@@ -18,8 +19,7 @@ class AudioAssetCreateRequest(BaseModel):
     mood: str | None = None
     duration_s: float = 0.0
     tags: list[str] = []
-    is_official: bool = False
-    user_id: str | None = None
+    # is_official / user_id are server-controlled (see templates router rationale).
 
 
 async def get_pg_pool() -> PgPool:
@@ -32,10 +32,15 @@ async def get_audio_service(
     return AudioLibraryService(AudioLibraryRepository(pool))
 
 
+def _visible(asset: dict[str, Any], user: dict[str, Any]) -> bool:
+    return bool(asset.get("is_official")) or asset.get("user_id") == str(user["id"])
+
+
 @router.post("", status_code=201)
 @router.post("/", status_code=201)
 async def create_audio_asset(
     body: AudioAssetCreateRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[AudioLibraryService, Depends(get_audio_service)],
 ) -> dict[str, Any]:
     return await svc.create_audio_asset(
@@ -45,37 +50,38 @@ async def create_audio_asset(
         mood=body.mood,
         duration_s=body.duration_s,
         tags=body.tags,
-        is_official=body.is_official,
-        user_id=body.user_id,
+        is_official=False,  # server-controlled
+        user_id=str(user["id"]),
     )
 
 
 @router.get("")
 @router.get("/")
 async def search_audio(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[AudioLibraryService, Depends(get_audio_service)],
     asset_type: str | None = None,
     mood: str | None = None,
     tags: Annotated[list[str] | None, Query()] = None,
     query: str | None = None,
-    user_id: str | None = None,
 ) -> list[dict[str, Any]]:
     return await svc.search_audio(
         asset_type=asset_type,
         mood=mood,
         tags=tags or [],
         query=query,
-        user_id=user_id
+        user_id=str(user["id"]),  # official OR caller-owned
     )
 
 
 @router.get("/{asset_id}")
 async def get_audio_asset(
     asset_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[AudioLibraryService, Depends(get_audio_service)],
 ) -> dict[str, Any]:
     asset = await svc.get_audio_asset(asset_id)
-    if asset is None:
+    if asset is None or not _visible(asset, user):
         raise HTTPException(status_code=404, detail="Audio asset not found")
     return asset
 
@@ -83,8 +89,12 @@ async def get_audio_asset(
 @router.delete("/{asset_id}")
 async def delete_audio_asset(
     asset_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[AudioLibraryService, Depends(get_audio_service)],
 ) -> dict[str, str]:
+    asset = await svc.get_audio_asset(asset_id)
+    if asset is None or asset.get("user_id") != str(user["id"]):
+        raise HTTPException(status_code=404, detail="Audio asset not found")
     success = await svc.delete_audio_asset(asset_id)
     if not success:
         raise HTTPException(status_code=404, detail="Audio asset not found")

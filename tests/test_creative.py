@@ -8,10 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from hevi.auth.dependencies import get_current_user
 from hevi.creative.assist_registry import ASSIST_REGISTRY
 from hevi.creative.assist_service import AssistService
 from hevi.creative.reference_link import resolve_reference
 from hevi.creative.workflow_service import WorkflowService
+
+_AUTH_USER = {"id": "00000000-0000-0000-0000-000000000001", "is_active": True}
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
@@ -444,6 +447,7 @@ async def test_api_three_view(client: Any) -> None:
         return_value=ThreeViewResult(front_prompt="fp", side_prompt="sp", back_prompt="bp")
     )
     app.dependency_overrides[get_assist_service] = lambda: svc
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/three-view",
         json={"character_description": "A samurai", "style": "anime"},
@@ -467,6 +471,7 @@ async def test_api_storyboard(client: Any) -> None:
         )
     )
     app.dependency_overrides[get_assist_service] = lambda: svc
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/storyboard",
         json={"script_text": "Scene 1", "shots": 6},
@@ -490,6 +495,7 @@ async def test_api_story_predict(client: Any) -> None:
         )
     )
     app.dependency_overrides[get_assist_service] = lambda: svc
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/story-predict",
         json={"reference_image": "/tmp/frame.png", "direction": "forward"},
@@ -513,6 +519,7 @@ async def test_api_multi_angle(client: Any) -> None:
         )
     )
     app.dependency_overrides[get_assist_service] = lambda: svc
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/multi-angle",
         json={"subject_description": "red car"},
@@ -532,6 +539,7 @@ async def test_api_transition(client: Any) -> None:
         return_value=Path("/tmp/out.mp4")
     )
     app.dependency_overrides[get_assist_service] = lambda: svc
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/transition",
         json={
@@ -557,6 +565,7 @@ async def test_api_element_edit(client: Any) -> None:
         return_value=[{"type": "title", "text": "New"}]
     )
     app.dependency_overrides[get_assist_service] = lambda: svc
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/element-edit",
         json={
@@ -589,6 +598,7 @@ async def test_api_character_consistency(client: Any) -> None:
         )
     )
     app.dependency_overrides[get_workflow_service] = lambda: wf
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/workflow/character-consistency",
         json={
@@ -617,6 +627,7 @@ async def test_api_storyboard_workflow(client: Any) -> None:
         )
     )
     app.dependency_overrides[get_workflow_service] = lambda: wf
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/workflow/storyboard",
         json={
@@ -654,6 +665,7 @@ async def test_api_comic_to_animation(client: Any) -> None:
         return_value=Path("/tmp/anim.mp4")
     )
     app.dependency_overrides[get_workflow_service] = lambda: wf
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
     resp = await client.post(
         "/api/creative/workflow/comic-to-animation",
         json={
