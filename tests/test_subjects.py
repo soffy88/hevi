@@ -6,9 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from hevi.auth.dependencies import get_current_user
 from hevi.subjects.reference_store import ReferenceStore
 from hevi.subjects.repository import SUBJECT_KINDS, SubjectRepository
 from hevi.subjects.subject_service import SubjectService
+
+_AUTH_USER = {"id": str(uuid.uuid4()), "is_active": True}
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -253,6 +256,7 @@ async def test_api_create_subject(client: Any) -> None:
     svc = _mock_svc()
     with patch.object(svc, "create_subject", new_callable=AsyncMock, return_value=_STORED):
         app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.post(
             "/api/subjects/",
             json={"kind": "character", "name": "Ada", "reference_images": ["img/ada.jpg"]},
@@ -270,6 +274,7 @@ async def test_api_get_subject(client: Any) -> None:
     svc = _mock_svc()
     with patch.object(svc, "get_subject", new_callable=AsyncMock, return_value=_STORED):
         app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.get(f"/api/subjects/{_SUBJECT_ID}")
         app.dependency_overrides.clear()
     assert resp.status_code == 200
@@ -284,6 +289,7 @@ async def test_api_get_subject_404(client: Any) -> None:
     svc = _mock_svc()
     with patch.object(svc, "get_subject", new_callable=AsyncMock, return_value=None):
         app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.get(f"/api/subjects/{_SUBJECT_ID}")
         app.dependency_overrides.clear()
     assert resp.status_code == 404
@@ -297,6 +303,7 @@ async def test_api_list_subjects(client: Any) -> None:
     svc = _mock_svc()
     with patch.object(svc, "search_subjects", new_callable=AsyncMock, return_value=[_STORED]):
         app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.get("/api/subjects/")
         app.dependency_overrides.clear()
     assert resp.status_code == 200
@@ -310,8 +317,12 @@ async def test_api_update_subject(client: Any) -> None:
 
     updated = {**_STORED, "metadata": {"mood": "calm"}, "version": 2}
     svc = _mock_svc()
-    with patch.object(svc, "update_subject_metadata", new_callable=AsyncMock, return_value=updated):
+    with (
+        patch.object(svc, "get_subject", new_callable=AsyncMock, return_value=_STORED),
+        patch.object(svc, "update_subject_metadata", new_callable=AsyncMock, return_value=updated),
+    ):
         app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.patch(
             f"/api/subjects/{_SUBJECT_ID}",
             json={"metadata": {"mood": "calm"}},
@@ -327,8 +338,12 @@ async def test_api_delete_subject(client: Any) -> None:
     from hevi.api.routers.subjects import get_subject_service
 
     svc = _mock_svc()
-    with patch.object(svc, "delete_subject", new_callable=AsyncMock, return_value=True):
+    with (
+        patch.object(svc, "get_subject", new_callable=AsyncMock, return_value=_STORED),
+        patch.object(svc, "delete_subject", new_callable=AsyncMock, return_value=True),
+    ):
         app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.delete(f"/api/subjects/{_SUBJECT_ID}")
         app.dependency_overrides.clear()
     assert resp.status_code == 200
@@ -341,8 +356,12 @@ async def test_api_delete_subject_404(client: Any) -> None:
     from hevi.api.routers.subjects import get_subject_service
 
     svc = _mock_svc()
-    with patch.object(svc, "delete_subject", new_callable=AsyncMock, return_value=False):
+    with (
+        patch.object(svc, "get_subject", new_callable=AsyncMock, return_value=_STORED),
+        patch.object(svc, "delete_subject", new_callable=AsyncMock, return_value=False),
+    ):
         app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.delete(f"/api/subjects/{_SUBJECT_ID}")
         app.dependency_overrides.clear()
     assert resp.status_code == 404
@@ -358,12 +377,57 @@ async def test_api_create_invalid_kind(client: Any) -> None:
         svc, "create_subject", new_callable=AsyncMock, side_effect=ValueError("Invalid kind")
     ):
         app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.post(
             "/api/subjects/",
             json={"kind": "alien", "name": "Zork"},
         )
         app.dependency_overrides.clear()
     assert resp.status_code == 422
+
+
+# ── 10b. IDOR / 鉴权 (end-to-end, 真 DB) ──────────────────────────────────────
+
+
+async def _register(client: Any) -> dict[str, str]:
+    email = f"idor_{uuid.uuid4().hex[:8]}@example.com"
+    await client.post("/api/auth/register", json={
+        "email": email, "password": "password123", "display_name": "U"
+    })
+    login = await client.post("/api/auth/login", json={
+        "email": email, "password": "password123"
+    })
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+@pytest.mark.asyncio
+async def test_subjects_require_auth(client: Any) -> None:
+    """无 token → 401。"""
+    resp = await client.get("/api/subjects/")
+    assert resp.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_subjects_idor_cross_user_404(client: Any) -> None:
+    """用户 A 的 subject,用户 B 读取/删除 → 404。"""
+    a = await _register(client)
+    b = await _register(client)
+    created = await client.post(
+        "/api/subjects/",
+        json={"kind": "character", "name": "Ada", "reference_images": ["img/ada.jpg"]},
+        headers=a,
+    )
+    assert created.status_code == 201
+    sid = created.json()["id"]
+
+    # 拥有者可读
+    assert (await client.get(f"/api/subjects/{sid}", headers=a)).status_code == 200
+    # 他人 404
+    assert (await client.get(f"/api/subjects/{sid}", headers=b)).status_code == 404
+    assert (await client.delete(f"/api/subjects/{sid}", headers=b)).status_code == 404
+    # 列表按 owner 隔离:B 看不到 A 的 subject
+    b_list = await client.get("/api/subjects/", headers=b)
+    assert all(s["id"] != sid for s in b_list.json())
 
 
 # ── 11. Route order — list route before /{id} ─────────────────────────────────

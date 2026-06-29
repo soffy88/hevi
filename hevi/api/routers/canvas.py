@@ -6,12 +6,26 @@ from fastapi import APIRouter, Depends, HTTPException
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
+from hevi.auth.dependencies import get_current_user
 from hevi.canvas.executor_service import ExecutorService
 from hevi.canvas.graph_repository import GraphRepository
 from hevi.canvas.graph_service import GraphService
 from hevi.db.pg_pool import get_hevi_pg_pool
 
 router = APIRouter(prefix="/canvas", tags=["canvas"])
+
+
+async def _load_owned_graph(
+    graph_id: str, svc: GraphService, user: dict[str, Any]
+) -> dict[str, Any]:
+    """Load a graph and 404 if it doesn't exist or belongs to another user
+    (legacy rows with no owner stay accessible)."""
+    graph = await svc.load_graph(graph_id)
+    if graph is None:
+        raise HTTPException(status_code=404, detail="Graph not found")
+    if graph.get("user_id") and graph["user_id"] != str(user["id"]):
+        raise HTTPException(status_code=404, detail="Graph not found")
+    return graph
 
 
 def _serialize_graph(g: dict[str, Any]) -> dict[str, Any]:
@@ -62,27 +76,30 @@ async def get_executor_service(
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 
-async def _do_save_graph(body: SaveGraphRequest, svc: GraphService) -> dict[str, Any]:
+async def _do_save_graph(
+    body: SaveGraphRequest, svc: GraphService, user: dict[str, Any]
+) -> dict[str, Any]:
     return _serialize_graph(await svc.save_graph(
         name=body.name, description=body.description,
-        nodes=body.nodes, edges=body.edges, user_id=body.user_id,
+        nodes=body.nodes, edges=body.edges,
+        user_id=str(user["id"]),  # owner is the authenticated user
     ))
 
 
-async def _do_list_graphs(svc: GraphService, user_id: str | None) -> list[dict[str, Any]]:
-    return [_serialize_graph(g) for g in await svc.list_graphs(user_id=user_id)]
+async def _do_list_graphs(svc: GraphService, user: dict[str, Any]) -> list[dict[str, Any]]:
+    return [_serialize_graph(g) for g in await svc.list_graphs(user_id=str(user["id"]))]
 
 
-async def _do_get_graph(graph_id: str, svc: GraphService) -> dict[str, Any]:
-    graph = await svc.load_graph(graph_id)
-    if graph is None:
-        raise HTTPException(status_code=404, detail="Graph not found")
-    return _serialize_graph(graph)
+async def _do_get_graph(
+    graph_id: str, svc: GraphService, user: dict[str, Any]
+) -> dict[str, Any]:
+    return _serialize_graph(await _load_owned_graph(graph_id, svc, user))
 
 
 async def _do_update_graph(
-    graph_id: str, body: UpdateGraphRequest, svc: GraphService
+    graph_id: str, body: UpdateGraphRequest, svc: GraphService, user: dict[str, Any]
 ) -> dict[str, Any]:
+    await _load_owned_graph(graph_id, svc, user)
     result = await svc.update_graph(
         graph_id, name=body.name, description=body.description,
         nodes=body.nodes, edges=body.edges,
@@ -92,7 +109,10 @@ async def _do_update_graph(
     return _serialize_graph(result)
 
 
-async def _do_delete_graph(graph_id: str, svc: GraphService) -> dict[str, str]:
+async def _do_delete_graph(
+    graph_id: str, svc: GraphService, user: dict[str, Any]
+) -> dict[str, str]:
+    await _load_owned_graph(graph_id, svc, user)
     deleted = await svc.delete_graph(graph_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Graph not found")
@@ -100,8 +120,13 @@ async def _do_delete_graph(graph_id: str, svc: GraphService) -> dict[str, str]:
 
 
 async def _do_execute_graph(
-    graph_id: str, body: ExecuteGraphRequest, exe: ExecutorService
+    graph_id: str,
+    body: ExecuteGraphRequest,
+    exe: ExecutorService,
+    svc: GraphService,
+    user: dict[str, Any],
 ) -> dict[str, Any]:
+    await _load_owned_graph(graph_id, svc, user)  # owner check before spending resources
     try:
         return await exe.execute_graph(graph_id, on_error=body.on_error)
     except ValueError as exc:
@@ -116,17 +141,18 @@ async def _do_execute_graph(
 @router.post("", status_code=201)
 async def save_graph(
     body: SaveGraphRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, Any]:
-    return await _do_save_graph(body, svc)
+    return await _do_save_graph(body, svc, user)
 
 
 @router.get("")
 async def list_graphs(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
-    user_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    return await _do_list_graphs(svc, user_id)
+    return await _do_list_graphs(svc, user)
 
 
 # ── Legacy /graphs/* aliases (must come before /{graph_id}) ──────────────────
@@ -135,51 +161,57 @@ async def list_graphs(
 @router.post("/graphs", status_code=201)
 async def save_graph_legacy(
     body: SaveGraphRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, Any]:
-    return await _do_save_graph(body, svc)
+    return await _do_save_graph(body, svc, user)
 
 
 @router.get("/graphs")
 async def list_graphs_legacy(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
-    user_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    return await _do_list_graphs(svc, user_id)
+    return await _do_list_graphs(svc, user)
 
 
 @router.get("/graphs/{graph_id}")
 async def get_graph_legacy(
     graph_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, Any]:
-    return await _do_get_graph(graph_id, svc)
+    return await _do_get_graph(graph_id, svc, user)
 
 
 @router.patch("/graphs/{graph_id}")
 async def update_graph_legacy(
     graph_id: str,
     body: UpdateGraphRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, Any]:
-    return await _do_update_graph(graph_id, body, svc)
+    return await _do_update_graph(graph_id, body, svc, user)
 
 
 @router.delete("/graphs/{graph_id}", status_code=200)
 async def delete_graph_legacy(
     graph_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, str]:
-    return await _do_delete_graph(graph_id, svc)
+    return await _do_delete_graph(graph_id, svc, user)
 
 
 @router.post("/graphs/{graph_id}/execute")
 async def execute_graph_legacy(
     graph_id: str,
     body: ExecuteGraphRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     exe: Annotated[ExecutorService, Depends(get_executor_service)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, Any]:
-    return await _do_execute_graph(graph_id, body, exe)
+    return await _do_execute_graph(graph_id, body, exe, svc, user)
 
 
 # ── Parameterised routes (after fixed-path aliases) ───────────────────────────
@@ -188,32 +220,37 @@ async def execute_graph_legacy(
 @router.get("/{graph_id}")
 async def get_graph(
     graph_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, Any]:
-    return await _do_get_graph(graph_id, svc)
+    return await _do_get_graph(graph_id, svc, user)
 
 
 @router.patch("/{graph_id}")
 async def update_graph(
     graph_id: str,
     body: UpdateGraphRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, Any]:
-    return await _do_update_graph(graph_id, body, svc)
+    return await _do_update_graph(graph_id, body, svc, user)
 
 
 @router.delete("/{graph_id}", status_code=200)
 async def delete_graph(
     graph_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, str]:
-    return await _do_delete_graph(graph_id, svc)
+    return await _do_delete_graph(graph_id, svc, user)
 
 
 @router.post("/{graph_id}/execute")
 async def execute_graph(
     graph_id: str,
     body: ExecuteGraphRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     exe: Annotated[ExecutorService, Depends(get_executor_service)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> dict[str, Any]:
-    return await _do_execute_graph(graph_id, body, exe)
+    return await _do_execute_graph(graph_id, body, exe, svc, user)

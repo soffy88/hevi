@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from oprim._hevi_types import CanvasEdge, CanvasNode
 
+from hevi.auth.dependencies import get_current_user
 from hevi.canvas.executor_service import ExecutorService
 from hevi.canvas.graph_repository import GraphRepository
 from hevi.canvas.graph_service import GraphService
@@ -28,6 +29,7 @@ from hevi.canvas.validation import (
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 _GID = str(uuid.uuid4())
+_AUTH_USER = {"id": str(uuid.uuid4()), "is_active": True}
 _STORED: dict[str, Any] = {
     "id": _GID,
     "name": "Test Graph",
@@ -411,6 +413,7 @@ async def test_api_save_graph(client: Any) -> None:
     svc = _make_svc()
     with patch.object(svc, "save_graph", new_callable=AsyncMock, return_value=_STORED):
         app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.post(
             "/api/canvas/graphs",
             json={"name": "Test Graph", "nodes": [], "edges": []},
@@ -428,6 +431,7 @@ async def test_api_list_graphs(client: Any) -> None:
     svc = _make_svc()
     with patch.object(svc, "list_graphs", new_callable=AsyncMock, return_value=[_STORED]):
         app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.get("/api/canvas/graphs")
         app.dependency_overrides.clear()
     assert resp.status_code == 200
@@ -443,6 +447,7 @@ async def test_api_get_graph(client: Any) -> None:
     svc = _make_svc()
     with patch.object(svc, "load_graph", new_callable=AsyncMock, return_value=_STORED):
         app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.get(f"/api/canvas/graphs/{_GID}")
         app.dependency_overrides.clear()
     assert resp.status_code == 200
@@ -457,6 +462,7 @@ async def test_api_get_graph_404(client: Any) -> None:
     svc = _make_svc()
     with patch.object(svc, "load_graph", new_callable=AsyncMock, return_value=None):
         app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.get("/api/canvas/graphs/nonexistent")
         app.dependency_overrides.clear()
     assert resp.status_code == 404
@@ -469,8 +475,12 @@ async def test_api_update_graph(client: Any) -> None:
 
     updated = {**_STORED, "name": "Renamed"}
     svc = _make_svc()
-    with patch.object(svc, "update_graph", new_callable=AsyncMock, return_value=updated):
+    with (
+        patch.object(svc, "load_graph", new_callable=AsyncMock, return_value=_STORED),
+        patch.object(svc, "update_graph", new_callable=AsyncMock, return_value=updated),
+    ):
         app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.patch(
             f"/api/canvas/graphs/{_GID}",
             json={"name": "Renamed"},
@@ -486,8 +496,12 @@ async def test_api_delete_graph(client: Any) -> None:
     from hevi.api.routers.canvas import get_graph_service
 
     svc = _make_svc()
-    with patch.object(svc, "delete_graph", new_callable=AsyncMock, return_value=True):
+    with (
+        patch.object(svc, "load_graph", new_callable=AsyncMock, return_value=_STORED),
+        patch.object(svc, "delete_graph", new_callable=AsyncMock, return_value=True),
+    ):
         app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.delete(f"/api/canvas/graphs/{_GID}")
         app.dependency_overrides.clear()
     assert resp.status_code == 200
@@ -497,7 +511,7 @@ async def test_api_delete_graph(client: Any) -> None:
 @pytest.mark.asyncio
 async def test_api_execute_graph(client: Any) -> None:
     from hevi.api.main import app
-    from hevi.api.routers.canvas import get_executor_service
+    from hevi.api.routers.canvas import get_executor_service, get_graph_service
 
     exe_result = {
         "graph_id": _GID,
@@ -507,8 +521,13 @@ async def test_api_execute_graph(client: Any) -> None:
     }
     svc = _make_svc()
     exe = ExecutorService(svc)
-    with patch.object(exe, "execute_graph", new_callable=AsyncMock, return_value=exe_result):
+    with (
+        patch.object(exe, "execute_graph", new_callable=AsyncMock, return_value=exe_result),
+        patch.object(svc, "load_graph", new_callable=AsyncMock, return_value=_STORED),
+    ):
         app.dependency_overrides[get_executor_service] = lambda: exe
+        app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.post(
             f"/api/canvas/graphs/{_GID}/execute",
             json={"on_error": "rollback"},
@@ -521,13 +540,18 @@ async def test_api_execute_graph(client: Any) -> None:
 @pytest.mark.asyncio
 async def test_api_execute_graph_not_found(client: Any) -> None:
     from hevi.api.main import app
-    from hevi.api.routers.canvas import get_executor_service
+    from hevi.api.routers.canvas import get_executor_service, get_graph_service
 
     svc = _make_svc()
     exe = ExecutorService(svc)
     err = ValueError("Graph not found")
-    with patch.object(exe, "execute_graph", new_callable=AsyncMock, side_effect=err):
+    with (
+        patch.object(exe, "execute_graph", new_callable=AsyncMock, side_effect=err),
+        patch.object(svc, "load_graph", new_callable=AsyncMock, return_value=None),
+    ):
         app.dependency_overrides[get_executor_service] = lambda: exe
+        app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
         resp = await client.post(
             "/api/canvas/graphs/missing/execute",
             json={},
