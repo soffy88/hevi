@@ -5,7 +5,11 @@ from typing import Any
 
 import oprim.providers.dashscope as dashscope
 from obase.provider_registry import ProviderRegistry
-from oprim import avatar_generate, ltx2_cloud_generate, vibevoice_synthesize, video_generate
+from oprim import avatar_generate, ltx2_cloud_generate, vibevoice_synthesize
+
+# oprim 3.10.37 added a facade submodule oprim/video_generate.py that shadows the
+# function for static analysis; import the function from the facade explicitly.
+from oprim.video_generate import video_generate
 
 from hevi.video.wan_local_service import wan_local_generate
 
@@ -202,6 +206,7 @@ def register_all_providers() -> None:
             resolution=kwargs.pop("resolution", (1080, 1920)),
             **kwargs
         ),
+        replace=True,
     )
     ProviderRegistry.register(
         "video",
@@ -209,10 +214,11 @@ def register_all_providers() -> None:
         lambda **kwargs: video_generate(
             provider="wan_cloud", **kwargs
         ),
+        replace=True,
     )
-    ProviderRegistry.register("video", "wan_local", wan_local_generate)
+    ProviderRegistry.register("video", "wan_local", wan_local_generate, replace=True)
     # ltx2_local: 路由到 wan_local(本机无独立 LTX2 local 推理实现)
-    ProviderRegistry.register("video", "ltx2_local", wan_local_generate)
+    ProviderRegistry.register("video", "ltx2_local", wan_local_generate, replace=True)
 
     # 0.1 Chaos Monkey Overrides (SaaS-3 / P10.F3 fallback verification)
     import os
@@ -230,7 +236,7 @@ def register_all_providers() -> None:
 
     # 3. Audio Providers
     ProviderRegistry.register(
-        "audio", "vibevoice", vibevoice_synthesize
+        "audio", "vibevoice", vibevoice_synthesize, replace=True
     )
     ProviderRegistry.register(
         "audio",
@@ -241,4 +247,5 @@ def register_all_providers() -> None:
             audio_path=kwargs["audio_path"],
             output_path=kwargs["output_path"],
         ),
+        replace=True,
     )
