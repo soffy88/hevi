@@ -31,6 +31,13 @@ _CAUSVID_LORA = "Wan21_CausVid_bidirect2_T2V_1_3B_lora_rank32.safetensors"
 
 _DEFAULT_SIZE = (832, 480)   # 480P 16:9 (W×H)
 _DEFAULT_FRAMES = 81          # ~5s @ 16fps
+# RFC-001 P1-4: richer default negative prompt (was 3 words). Wan honors a native
+# negative; cloud providers don't expose one, so this is wan_local-specific.
+_DEFAULT_NEGATIVE = (
+    "blurry, distorted, low quality, low resolution, deformed, disfigured, "
+    "extra limbs, bad anatomy, watermark, text, jpeg artifacts, flickering, "
+    "oversaturated, washed out"
+)
 # Generous ceiling: a clip is ~226s; a >30min run means wgp.py has hung and is
 # holding the GPU scheduler lock, starving every other local task. Kill it.
 _WAN_TIMEOUT_S = 1800
@@ -97,6 +104,7 @@ async def wan_local_generate(
     size: tuple[int, int] = _DEFAULT_SIZE,
     frame_num: int = _DEFAULT_FRAMES,
     seed: int | None = None,
+    negative_prompt: str | None = None,
     **_: Any,
 ) -> Path:
     """Generate a 5s clip via Wan2GP + CausVid LoRA (8 steps, ~3m46s).
@@ -116,6 +124,8 @@ async def wan_local_generate(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if seed is None:
         seed = _seed_for(output_path)
+    if not negative_prompt:
+        negative_prompt = _DEFAULT_NEGATIVE
 
     # Pre-warm before acquiring GPU lock — no subprocess running yet, I/O is free.
     await prewarm_wan_cache()
@@ -127,6 +137,7 @@ async def wan_local_generate(
             size=size,
             frame_num=frame_num,
             seed=seed,
+            negative_prompt=negative_prompt,
         )
 
 
@@ -137,6 +148,7 @@ async def _run_wgp(
     size: tuple[int, int],
     frame_num: int,
     seed: int,
+    negative_prompt: str = _DEFAULT_NEGATIVE,
 ) -> Path:
     with tempfile.TemporaryDirectory(prefix="wan_gen_") as tmp_dir:
         task_json = Path(tmp_dir) / "task.json"
@@ -147,7 +159,7 @@ async def _run_wgp(
             json.dumps({
                 "model_type": "t2v_1.3B",
                 "prompt": prompt,
-                "negative_prompt": "blurry, distorted, low quality",
+                "negative_prompt": negative_prompt,
                 "width": size[0],
                 "height": size[1],
                 "video_length": frame_num,

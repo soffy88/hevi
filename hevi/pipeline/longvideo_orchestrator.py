@@ -181,6 +181,23 @@ async def orchestrate_longvideo(
                 # Use video_provider from orchestrate_longvideo closure
                 caller = ProviderRegistry.get().generic("video", video_provider)
 
+                # RFC-001 P1-3: omodul's per-shot LLM prompt otherwise bypasses all
+                # hevi prompt engineering. Re-apply provider adaptation + style here
+                # so every shot gets the provider suffix and a consistent look.
+                try:
+                    from hevi.prompt.prompt_pipeline import engineer_prompt_from_preset
+                    prompt = await engineer_prompt_from_preset(
+                        raw_prompt=prompt,
+                        target_provider=video_provider,
+                        preset_name=style_preset,
+                        style=prompt_style,
+                        lighting=prompt_lighting,
+                        camera=prompt_camera,
+                        color_grade=prompt_color_grade,
+                    )
+                except Exception as pe:  # never fail a shot over prompt polishing
+                    logger.warning(f"per-shot prompt engineering skipped: {pe}")
+
                 # RFC-001 P0-1: omodul v1.33+ passes the selected reference frame.
                 # When present, condition generation on it via i2v for shot-to-shot
                 # continuity; when None, stay on t2v (omit the kwarg so providers
