@@ -35,6 +35,13 @@ class LongVideoRequest(BaseModel):
     num_characters: int = 1
     quality_profile: str | None = None
     style_preset: str | None = None
+    # RFC-002 item 10: 暴露成片控制面 —— 转场风格 + 逐项镜头语言(风格/光照/
+    # 运镜/调色)。这些过去仅 orchestrate_longvideo 内部支持,API 未暴露。
+    transition: str = "fade"  # fade | cut | wipeleft | slideup ... (ffmpeg xfade)
+    prompt_style: str | None = None
+    prompt_lighting: str | None = None
+    prompt_camera: str | None = None  # 运镜: "slow push in" / "pan left" ...
+    prompt_color_grade: str | None = None
 
 
 class EstimateRequest(BaseModel):
@@ -95,6 +102,17 @@ async def _create_task(
             audio_provider=body.audio_provider,
             quality_profile=body.quality_profile,
         )
+        # RFC-002 item 10: 控制参数全程透传进 config_json → orchestrate_longvideo。
+        # 此前 quality_profile/style_preset 未传, 对生成无效 —— 一并修复。
+        ctrl: dict[str, Any] = {
+            "quality_profile": body.quality_profile or resolved.get("quality_profile", "standard"),
+            "transition": body.transition,
+        }
+        for k in ("style_preset", "prompt_style", "prompt_lighting",
+                  "prompt_camera", "prompt_color_grade"):
+            v = getattr(body, k)
+            if v is not None:
+                ctrl[k] = v
         task = await svc.create_task(
             topic=body.topic,
             duration_archetype=body.duration_archetype,
@@ -102,6 +120,7 @@ async def _create_task(
             audio_provider=resolved.get("audio_provider", "vibevoice"),
             user_id=str(user["id"]),
             num_characters=body.num_characters,
+            **ctrl,
         )
         # Decision: Enqueue local tasks, run cloud tasks immediately in background
         task = await svc.submit_task(task["id"])

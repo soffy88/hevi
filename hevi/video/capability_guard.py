@@ -28,7 +28,22 @@ PROVIDER_LIMITS: dict[str, ProviderLimits] = {
         modes=frozenset({"t2v", "i2v"}),
         max_resolution=(1080, 1920),
         max_duration_s=120.0,
-        fps_options=frozenset({24}),
+        fps_options=frozenset({24, 30}),  # kernel 对 high 档传 30fps
+    ),
+    # 本地 wan2.1-1.3B: 原生 480p@16fps,但内核按朝向夹取 + 装配器可缩放到目标,
+    # 故接受目标分辨率(上采样)与 16/24/30 目标帧率;单片时长上限 ~10s。
+    # i2v 经 VACE 参考条件化支持(RFC-002 item 1)。
+    "wan_local": ProviderLimits(
+        modes=frozenset({"t2v", "i2v"}),
+        max_resolution=(2160, 3840),
+        max_duration_s=10.0,
+        fps_options=frozenset({16, 24, 30}),
+    ),
+    "ltx2_local": ProviderLimits(
+        modes=frozenset({"t2v", "i2v"}),
+        max_resolution=(2160, 3840),
+        max_duration_s=10.0,
+        fps_options=frozenset({16, 24, 30}),
     ),
 }
 
@@ -68,9 +83,11 @@ async def validate_request(
             f"(supported: {set(limits.modes)})"
         )
 
-    w, h = resolution
-    max_w, max_h = limits.max_resolution
-    if w > max_w or h > max_h:
+    # 朝向无关的分辨率比较: 把请求与上限各自按长短边排序后逐边比较,
+    # 这样 1280×720(横) 不会被 1080×1920(竖) 的上限误拒。
+    req_long, req_short = sorted(resolution, reverse=True)
+    max_long, max_short = sorted(limits.max_resolution, reverse=True)
+    if req_long > max_long or req_short > max_short:
         raise CapabilityError(
             f"Resolution {resolution} exceeds {provider!r} max {limits.max_resolution}"
         )

@@ -77,6 +77,15 @@ async def generate_clip(
     profile = get_quality_profile(quality)
     provider_str = str(provider)
 
+    # RFC-002 item 9: 单片内核入口校验 provider 能力,非法分辨率/时长/fps/模式
+    # 在消耗算力/API 前 fail-fast(此前 validate_request 是死代码)。
+    from hevi.video.capability_guard import PROVIDER_LIMITS, validate_request
+    if provider_str in PROVIDER_LIMITS:
+        await validate_request(
+            provider=provider_str, mode=mode, resolution=resolution,
+            duration_s=duration_s, fps=profile.fps,
+        )
+
     async with track_provider_call(provider_str):
         if provider_str == VideoProvider.LTX2_CLOUD:
             # Merge tier endpoint into config; M1 reads FAL_BASE_URL from the config dict
