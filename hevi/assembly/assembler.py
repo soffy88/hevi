@@ -169,6 +169,38 @@ def build_audio_filter(
 # ── 主装配 ──────────────────────────────────────────────────────────
 
 
+async def compose_avatar_broll(
+    *,
+    broll_video: Path,
+    avatar_video: Path,
+    output_path: Path,
+    position: str = "br",     # tl|tr|bl|br 角落
+    scale: float = 0.28,      # 数字人占画面宽度比例
+) -> Path:
+    """RFC-002 item 11: 数字人讲解 + B-roll 画中画合成。
+
+    B-roll 全屏铺底, 数字人(Duix 讲解)缩放到角落叠加; 音频取数字人轨(含口型对白)。
+    纯 ffmpeg overlay, 确定性可测。
+    """
+    pos = {
+        "tl": "10:10", "tr": "W-w-10:10",
+        "bl": "10:H-h-10", "br": "W-w-10:H-h-10",
+    }.get(position, "W-w-10:H-h-10")
+    fc = (
+        f"[1:v]scale=iw*{scale}:-1[av];"
+        f"[0:v][av]overlay={pos}:format=auto[vout]"
+    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    args = [
+        "-y", "-i", str(broll_video), "-i", str(avatar_video),
+        "-filter_complex", fc, "-map", "[vout]", "-map", "1:a?",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(output_path),
+    ]
+    await ffmpeg_run(args=args, expected_output=output_path)
+    return output_path
+
+
 async def assemble_longvideo(
     *,
     shots: list[ShotSegment],

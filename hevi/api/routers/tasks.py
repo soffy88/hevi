@@ -42,6 +42,7 @@ class LongVideoRequest(BaseModel):
     prompt_lighting: str | None = None
     prompt_camera: str | None = None  # 运镜: "slow push in" / "pan left" ...
     prompt_color_grade: str | None = None
+    avatar_portrait: str | None = None  # item 11: 数字人讲解肖像图(启用数字人 PiP)
 
 
 class EstimateRequest(BaseModel):
@@ -109,7 +110,7 @@ async def _create_task(
             "transition": body.transition,
         }
         for k in ("style_preset", "prompt_style", "prompt_lighting",
-                  "prompt_camera", "prompt_color_grade"):
+                  "prompt_camera", "prompt_color_grade", "avatar_portrait"):
             v = getattr(body, k)
             if v is not None:
                 ctrl[k] = v

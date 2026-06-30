@@ -13,6 +13,7 @@ from hevi.assembly.assembler import (
     assemble_longvideo,
     build_audio_filter,
     build_xfade_chain,
+    compose_avatar_broll,
     load_timing_manifest,
     probe_duration,
 )
@@ -149,6 +150,25 @@ async def test_assemble_with_narration_and_bgm(tmp_path: Path) -> None:
     )
     assert out.exists()
     assert _has_audio_stream(out)
+
+
+@ffmpeg_only
+async def test_compose_avatar_broll(tmp_path: Path) -> None:
+    """数字人 PiP 合成: B-roll 铺底 + 数字人(带音轨)角落叠加,取数字人音频。"""
+    broll, avatar = tmp_path / "broll.mp4", tmp_path / "avatar.mp4"
+    _make_clip(broll, 4.0, "blue")
+    # 数字人片带音轨
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=duration=4:size=320x320:rate=24",
+         "-f", "lavfi", "-i", "sine=frequency=300:duration=4",
+         "-pix_fmt", "yuv420p", "-shortest", str(avatar)],
+        check=True, capture_output=True,
+    )
+    out = tmp_path / "composed.mp4"
+    await compose_avatar_broll(broll_video=broll, avatar_video=avatar, output_path=out)
+    assert out.exists()
+    assert _has_audio_stream(out)  # 取数字人音轨
+    assert await probe_duration(out) == pytest.approx(4.0, abs=0.5)
 
 
 @ffmpeg_only

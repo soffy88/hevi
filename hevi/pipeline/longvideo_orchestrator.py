@@ -74,6 +74,7 @@ async def orchestrate_longvideo(
     prompt_color_grade: str | None = None,
     quality_profile: str = "standard",
     transition: str = "fade",
+    avatar_portrait: str | None = None,  # RFC-002 item 11: 数字人讲解肖像图路径
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Orchestrate long video generation using omodul agentic pipeline.
@@ -355,6 +356,31 @@ async def orchestrate_longvideo(
                     transition="cut",
                 )
 
+            # RFC-002 item 11: 数字人讲解接入 —— 提供肖像图且有旁白时,用 Duix 由旁白
+            # 驱动生成讲解口型视频,再与 B-roll 成片做画中画合成(数字人角落叠加)。
+            if avatar_portrait and has_audio:
+                assert audio_path is not None
+                try:
+                    from hevi.assembly.assembler import compose_avatar_broll
+                    from hevi.audio.avatar_service import generate_avatar_clip
+                    av_clip = output_path.parent / "avatar.mp4"
+                    await generate_avatar_clip(
+                        config=config or {},
+                        portrait_image=Path(avatar_portrait),
+                        audio_path=audio_path,
+                        output_path=av_clip,
+                    )
+                    if av_clip.exists() and av_clip.stat().st_size > 1024:
+                        composed = output_path.parent / "with_avatar.mp4"
+                        await compose_avatar_broll(
+                            broll_video=output_path, avatar_video=av_clip,
+                            output_path=composed,
+                        )
+                        import shutil as _sh
+                        _sh.move(str(composed), str(output_path))
+                except Exception as av_e:  # 数字人非关键路径, 失败仍出 B-roll 成片
+                    logger.error(f"avatar compose skipped: {av_e}")
+
         # omodul._default_llm() calls ProviderRegistry.get(category=...) which is
         # incompatible with obase's singleton .get(). Inject the registered LLM directly.
         # LLM is stored in _llms dict (via register_llm), not _generic — use .llm() not .generic().
@@ -388,5 +414,23 @@ async def orchestrate_longvideo(
         # We must detect this to trigger Hevi's provider-level fallback.
         if result.video_path.exists() and result.video_path.stat().st_size < 1024:
             raise RuntimeError(f"Pipeline produced placeholder/empty output with {video_provider}")
+
+        # RFC-002 item 13: 成片质量体检纳入主链路(非阻塞)。规格/连续性写日志,
+        # 便于回归对比与监控;不因体检失败而拒绝成片。
+        try:
+            from hevi.video.quality_check import quality_report
+            rep = await quality_report(
+                result.video_path,
+                expected_resolution=(_target_w, _target_h),
+                require_audio=(audio_provider != "ltx2_native"),
+            )
+            logger.info(
+                "quality_report: %.2fs %dx%d fps=%.1f audio=%s consistency=%.2f passed=%s %s",
+                rep.stats.duration, rep.stats.width, rep.stats.height, rep.stats.fps,
+                rep.stats.has_audio, rep.consistency, rep.passed,
+                ("violations=" + "; ".join(rep.violations)) if rep.violations else "",
+            )
+        except Exception as qe:
+            logger.warning(f"quality_report skipped: {qe}")
 
         return map_longvideo_result(result)
