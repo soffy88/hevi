@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from pathlib import Path
@@ -71,6 +72,8 @@ async def orchestrate_longvideo(
     prompt_lighting: str | None = None,
     prompt_camera: str | None = None,
     prompt_color_grade: str | None = None,
+    quality_profile: str = "standard",
+    transition: str = "fade",
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Orchestrate long video generation using omodul agentic pipeline.
@@ -111,6 +114,24 @@ async def orchestrate_longvideo(
             camera=prompt_camera,
             color_grade=prompt_color_grade,
         )
+
+    # RFC-002 item 3: 解析目标分辨率/帧率(成片规格)。装配器据此重编码统一规格;
+    # 本地 wan 按朝向夹取到 480p 级生成,装配器再缩放到目标。
+    from hevi.video.quality_profile import get_quality_profile
+    try:
+        _qp = get_quality_profile(quality_profile)
+    except ValueError:
+        _qp = get_quality_profile("standard")
+    _target_w, _target_h = _qp.resolution
+    _target_fps = _qp.fps
+    _is_local_video = "_local" in video_provider or video_provider in ("wan_local", "ltx2_local")
+
+    def _wan_size_for_orientation() -> tuple[int, int]:
+        if _target_w < _target_h:
+            return (480, 832)
+        if _target_w > _target_h:
+            return (832, 480)
+        return (576, 576)
 
     # For hevi-only "short" archetype, monkey-patch target duration so the LLM writes a
     # minimal single-shot script instead of a full 180-second production.
@@ -166,6 +187,17 @@ async def orchestrate_longvideo(
             from obase.provider_registry import ProviderRegistry
             caller = ProviderRegistry.get().generic("audio", audio_provider)
             await caller(script=script, output_path=output_path)
+            # RFC-002 item 2: 落盘旁白总时长 side-channel,供装配器做音频驱动时长
+            # (使成片总长 == 旁白总长,杜绝 -shortest 截断/漂移)。
+            try:
+                from hevi.assembly.assembler import probe_duration
+                ap = Path(output_path)
+                total = await probe_duration(ap)
+                if total > 0:
+                    manifest = ap.with_suffix(ap.suffix + ".timing.json")
+                    manifest.write_text(json.dumps({"total": total}))
+            except Exception as me:  # 非致命: 装配器有回退
+                logger.warning(f"audio timing manifest skipped: {me}")
 
         # SaaS-3/P10.F3: Inject video_fn to allow registry-based overrides and chaos monkey.
         # We MUST use the registry directly to avoid oprim.video_generate's hardcoded dispatch.
@@ -206,15 +238,18 @@ async def orchestrate_longvideo(
                     kw["reference_image"] = reference_image
                     kw.setdefault("mode", "i2v")
 
+                # RFC-002 item 3: 本地 wan 按目标朝向夹取生成尺寸(480p 级)。
+                if _is_local_video:
+                    kw.setdefault("size", _wan_size_for_orientation())
+
                 res = await caller(prompt=prompt, output_path=output_path, **kw)
                 return Path(res) if res else output_path
             except Exception as e:
                 logger.error(f"injected_video_fn FAILED for {video_provider}: {e}")
                 raise
 
-        # SaaS-3/P10.F3 Fix: omodul calls assembler_fn(shot_videos=..., audio_path=...)
-        # but oskill.video_assembler expects avatar_videos=..., bgm_path=...
-        # We bridge the mismatch here so real shot videos are assembled correctly.
+        # RFC-002 item 2/4/5/14: hevi 原生装配器为主路径 —— 音频驱动镜头时长 +
+        # xfade 转场重编码 + 旁白 loudnorm。取代旧的硬切 + 整轨 -shortest 盲贴。
         async def bridged_assembler_fn(
             *,
             shot_videos: list[Path],
@@ -229,33 +264,52 @@ async def orchestrate_longvideo(
             if not valid_shots:
                 output_path.write_bytes(b"\x00" * 64)
                 return
-            try:
-                from oskill.video_assembler import video_assembler
-                await video_assembler(
-                    avatar_videos=valid_shots,
-                    bgm_path=audio_path if (audio_path and audio_path.exists()) else None,
-                    subtitle_path=subtitle_path,
-                    output_path=output_path,
-                )
-            except (ModuleNotFoundError, ImportError):
-                # oskill.video_assembler depends on oprim.video_concat which may be
-                # missing in pinned versions. Fall back to direct ffmpeg concat.
-                import tempfile
 
-                from obase.ffmpeg import run as ffmpeg_run
-                with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-                    for s in valid_shots:
-                        f.write(f"file '{s.resolve()}'\n")
-                    concat_list = Path(f.name)
-                has_audio = audio_path and audio_path.exists()
-                args: list[str] = ["-y", "-f", "concat", "-safe", "0", "-i", str(concat_list)]
-                if has_audio:
-                    args += ["-i", str(audio_path), "-c:v", "copy", "-c:a", "aac", "-shortest"]
+            from hevi.assembly.assembler import (
+                ShotSegment,
+                assemble_longvideo,
+                load_timing_manifest,
+                probe_duration,
+            )
+
+            has_audio = audio_path is not None and audio_path.exists()
+            # RFC-002 item 2: 按各镜头原时长比例分配旁白总时长 → 成片总长 == 旁白总长。
+            native = [await probe_duration(p) for p in valid_shots]
+            total_audio = 0.0
+            if has_audio:
+                assert audio_path is not None
+                manifest = load_timing_manifest(audio_path)
+                total_audio = manifest[0] if manifest else await probe_duration(audio_path)
+            segments: list[ShotSegment] = []
+            sum_native = sum(d for d in native if d > 0) or float(len(valid_shots))
+            for p, nat in zip(valid_shots, native, strict=False):
+                if total_audio > 0:
+                    share = (nat if nat > 0 else sum_native / len(valid_shots)) / sum_native
+                    segments.append(ShotSegment(p, target_duration=max(0.8, total_audio * share)))
                 else:
-                    args += ["-c:v", "copy"]
-                args.append(str(output_path))
-                await ffmpeg_run(args=args, expected_output=output_path)
-                concat_list.unlink(missing_ok=True)
+                    segments.append(ShotSegment(p, target_duration=None))
+
+            try:
+                await assemble_longvideo(
+                    shots=segments,
+                    output_path=output_path,
+                    narration_audio=audio_path if has_audio else None,
+                    subtitle_path=subtitle_path,
+                    width=_target_w,
+                    height=_target_h,
+                    fps=_target_fps,
+                    transition=transition,
+                )
+            except Exception as ae:
+                # 装配失败兜底: 统一规格硬切(仍重编码,不用 -c:v copy 防花屏)。
+                logger.error(f"hevi assembler failed, fallback to hard-cut: {ae}")
+                await assemble_longvideo(
+                    shots=[ShotSegment(p) for p in valid_shots],
+                    output_path=output_path,
+                    narration_audio=audio_path if has_audio else None,
+                    width=_target_w, height=_target_h, fps=_target_fps,
+                    transition="cut",
+                )
 
         # omodul._default_llm() calls ProviderRegistry.get(category=...) which is
         # incompatible with obase's singleton .get(). Inject the registered LLM directly.

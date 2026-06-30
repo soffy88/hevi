@@ -217,7 +217,16 @@ async def test_generate_clip_wan_local(mock_config, output_path):
             output_path=output_path,
         )
         assert res == output_path
-        mock_wl.assert_called_once_with(prompt="A mountain scene", output_path=output_path)
+        # RFC-002 item 1/3: kernel 现贯通分辨率/帧数(按朝向夹取到 wan 480p 级)
+        # 与 i2v 参考图(t2v 模式下为 None),不再丢弃所有质量参数。
+        mock_wl.assert_called_once_with(
+            prompt="A mountain scene",
+            output_path=output_path,
+            size=(832, 480),
+            frame_num=80,
+            negative_prompt=None,
+            reference_image=None,
+        )
 
 
 @pytest.mark.asyncio

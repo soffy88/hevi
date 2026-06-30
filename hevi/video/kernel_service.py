@@ -11,6 +11,28 @@ from hevi.video.wan_local_service import wan_local_generate
 
 VideoProviderLiteral = Literal["ltx2_cloud", "wan_cloud", "wan_local"]
 
+# wan2.1-1.3B 原生约 16fps,显存上限决定分辨率约 480p 级。下列函数把上层
+# quality_profile 的目标(可能是竖屏 720×1280@24/30)夹取到 wan 可行规格,
+# 并保留朝向;最终成片由装配器重编码到真实目标分辨率/帧率。
+_WAN_LOCAL_FPS = 16
+_WAN_MAX_FRAMES = 161  # ~10s @16fps,1.3B 单卡 10GB 的务实上限
+
+
+def _wan_local_size(resolution: tuple[int, int]) -> tuple[int, int]:
+    """把目标分辨率夹取为 wan 可行的 480p 级,保留朝向(竖/横/方)。"""
+    w, h = resolution
+    if w < h:        # 竖屏
+        return (480, 832)
+    if w > h:        # 横屏
+        return (832, 480)
+    return (576, 576)  # 方形
+
+
+def _wan_local_frames(duration_s: float, _target_fps: int) -> int:
+    """由目标时长换算 wan 帧数(按 16fps 原生),夹取到 [16, _WAN_MAX_FRAMES]。"""
+    frames = int(round(max(1.0, duration_s) * _WAN_LOCAL_FPS))
+    return max(16, min(frames, _WAN_MAX_FRAMES))
+
 
 async def generate_clip(
     *,
@@ -85,10 +107,18 @@ async def generate_clip(
                 bitrate_kbps=profile.bitrate_kbps,
             )
         elif provider_str in (VideoProvider.WAN_LOCAL, VideoProvider.LTX2_LOCAL):
-            # ltx2_local 路由到 wan_local: 本机无独立 LTX2 local 推理实现
+            # ltx2_local 路由到 wan_local: 本机无独立 LTX2 local 推理实现。
+            # RFC-002 item 1/3: 贯通分辨率/帧数 + i2v 参考图(wan2.1-1.3B 上限 ~480p,
+            # 按目标朝向夹取; reference_image 非空 → VACE 参考条件化)。
+            w, h = _wan_local_size(resolution)
+            frames = _wan_local_frames(duration_s, profile.fps)
             return await wan_local_generate(
                 prompt=prompt,
                 output_path=output_path,
+                size=(w, h),
+                frame_num=frames,
+                negative_prompt=None,
+                reference_image=reference_image if mode == "i2v" else None,
             )
         else:
             raise ValueError(f"Unknown video provider: {provider_str}")

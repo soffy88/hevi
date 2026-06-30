@@ -31,6 +31,7 @@ _CAUSVID_LORA = "Wan21_CausVid_bidirect2_T2V_1_3B_lora_rank32.safetensors"
 
 _DEFAULT_SIZE = (832, 480)   # 480P 16:9 (W×H)
 _DEFAULT_FRAMES = 81          # ~5s @ 16fps
+_VACE_STEPS = 15             # VACE 参考条件化无 CausVid 加速, 用标准步数(质量/速度折中)
 # RFC-001 P1-4: richer default negative prompt (was 3 words). Wan honors a native
 # negative; cloud providers don't expose one, so this is wan_local-specific.
 _DEFAULT_NEGATIVE = (
@@ -105,6 +106,7 @@ async def wan_local_generate(
     frame_num: int = _DEFAULT_FRAMES,
     seed: int | None = None,
     negative_prompt: str | None = None,
+    reference_image: Path | str | None = None,
     **_: Any,
 ) -> Path:
     """Generate a 5s clip via Wan2GP + CausVid LoRA (8 steps, ~3m46s).
@@ -130,6 +132,11 @@ async def wan_local_generate(
     # Pre-warm before acquiring GPU lock — no subprocess running yet, I/O is free.
     await prewarm_wan_cache()
 
+    ref = Path(reference_image) if reference_image else None
+    if ref is not None and not ref.exists():
+        logger.warning("wan_local: reference_image %s 不存在, 退回 t2v", ref)
+        ref = None
+
     async with scheduler.acquire(VRAM_WAN_LOCAL):
         return await _run_wgp(
             prompt=prompt,
@@ -138,6 +145,7 @@ async def wan_local_generate(
             frame_num=frame_num,
             seed=seed,
             negative_prompt=negative_prompt,
+            reference_image=ref,
         )
 
 
@@ -149,14 +157,34 @@ async def _run_wgp(
     frame_num: int,
     seed: int,
     negative_prompt: str = _DEFAULT_NEGATIVE,
+    reference_image: Path | None = None,
 ) -> Path:
     with tempfile.TemporaryDirectory(prefix="wan_gen_") as tmp_dir:
         task_json = Path(tmp_dir) / "task.json"
         out_dir = Path(tmp_dir) / "out"
         out_dir.mkdir()
 
-        task_json.write_text(
-            json.dumps({
+        # RFC-002 item 1: 有参考图 → 走 VACE 1.3B 做参考条件化(跨镜头一致性)。
+        # CausVid LoRA 与 vace 架构不兼容(wgp 判定 invalid),故 vace 走标准步数;
+        # 无参考图 → t2v_1.3B + CausVid 8 步快路径(单片 ~3m46s)。
+        if reference_image is not None:
+            task: dict[str, Any] = {
+                "model_type": "vace_1.3B",
+                "prompt": prompt,
+                "negative_prompt": negative_prompt,
+                "width": size[0],
+                "height": size[1],
+                "video_length": frame_num,
+                "num_inference_steps": _VACE_STEPS,
+                "guidance_scale": 6,
+                "video_prompt_type": "I",
+                "image_refs": [str(reference_image)],
+                "seed": seed,
+            }
+            model_flag = "--vace-1-3B"
+            logger.info("wan_local: VACE i2v 参考条件化 (%d steps)", _VACE_STEPS)
+        else:
+            task = {
                 "model_type": "t2v_1.3B",
                 "prompt": prompt,
                 "negative_prompt": negative_prompt,
@@ -171,19 +199,20 @@ async def _run_wgp(
                 "activated_loras": [_CAUSVID_LORA],
                 "loras_multipliers": "1",
                 "seed": seed,
-            }, ensure_ascii=False),
-            encoding="utf-8",
-        )
+            }
+            model_flag = "--t2v-1-3B"
+            logger.info("wan_local: starting Wan2GP+CausVid subprocess (8 steps)")
+
+        task_json.write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
 
         cmd = [
             str(_WAN2GP_PYTHON),
             str(_WAN2GP_SCRIPT),
-            "--t2v-1-3B", "--profile", "5",
+            model_flag, "--profile", "5",
             "--process", str(task_json),
             "--output-dir", str(out_dir),
         ]
 
-        logger.info("wan_local: starting Wan2GP+CausVid subprocess (8 steps)")
         env = {**os.environ, "PYTHONUNBUFFERED": "1"}
 
         proc = await asyncio.create_subprocess_exec(
