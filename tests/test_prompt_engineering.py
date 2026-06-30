@@ -133,12 +133,17 @@ async def test_adapt_unknown_provider_passthrough():
 # ── 4. Style presets ──────────────────────────────────────────────────────────
 
 def test_style_presets_keys():
-    assert set(STYLE_PRESETS) == {"科普", "严肃", "搞笑"}
+    # RFC-002 item 12: 扩到 20+ 题材, 原 3 个仍为子集。
+    assert {"科普", "严肃", "搞笑"} <= set(STYLE_PRESETS)
+    assert len(STYLE_PRESETS) >= 20
+    # 每个预设含 inject_visual_style 的键 + negative
+    for p in STYLE_PRESETS.values():
+        assert {"style", "lighting", "camera", "color_grade", "negative"} <= set(p)
 
 
 def test_style_preset_kp_fields():
     p = STYLE_PRESETS["科普"]
-    assert p["style"] == "educational clear"
+    assert p["style"] == "educational clear, informative"
     assert p["lighting"] == "bright even"
     assert p["camera"] == "smooth pan"
 
@@ -150,7 +155,7 @@ def test_style_preset_yj_fields():
 
 def test_style_preset_gx_fields():
     p = STYLE_PRESETS["搞笑"]
-    assert p["style"] == "playful vibrant"
+    assert p["style"] == "playful vibrant, comedic"
 
 
 def test_get_style_preset_unknown_raises():
@@ -178,7 +183,8 @@ async def test_engineer_prompt_from_preset_uses_preset_style():
         )
 
     kw = mock_inj.call_args.kwargs
-    assert kw["style"] == "educational clear"
+    # RFC-002 item 12: 科普预设 style 已丰富(原 "educational clear")
+    assert kw["style"] == "educational clear, informative"
     assert kw["lighting"] == "bright even"
     assert kw["camera"] == "smooth pan"
 

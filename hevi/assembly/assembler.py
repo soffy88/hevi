@@ -270,4 +270,11 @@ async def assemble_longvideo(
 
         import shutil
         shutil.move(str(muxed), str(output_path))
+
+    # RFC-002 item 14: 接入 cover_extractor —— 成片旁产出封面帧(供画廊缩略图)。
+    try:
+        from hevi.assembly.cover_extractor import extract_cover
+        await extract_cover(output_path, output_path.with_suffix(".cover.jpg"))
+    except Exception:
+        pass  # 封面非关键路径
     return output_path
