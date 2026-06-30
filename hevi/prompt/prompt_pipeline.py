@@ -107,3 +107,37 @@ async def engineer_prompt_from_preset(
         color_grade=color_grade,
         negative_prompt=negative_prompt,
     )
+
+
+async def engineer_prompt_pair_from_preset(
+    *,
+    raw_prompt: str,
+    target_provider: str,
+    preset_name: str | None = None,
+    style: str | None = None,
+    lighting: str | None = None,
+    camera: str | None = None,
+    color_grade: str | None = None,
+    negative_prompt: str = "",
+) -> tuple[str, str]:
+    """同 engineer_prompt_from_preset,但返回 (正向, 负向) 二元组。
+
+    RFC-002 item 8: 旧 engineer_prompt 只返回 result["prompt"],丢弃了
+    adapt_prompt_for_provider 算出的负向。此函数保留负向,供接受负向的 provider
+    (wan_local)逐镜头下发;云 provider API 暂无原生负向参数(provider 层支持后接线)。
+    """
+    sp = get_style_preset(preset_name) if preset_name is not None else {}
+    styled = inject_visual_style(
+        raw_prompt,
+        style=sp.get("style", style),
+        lighting=sp.get("lighting", lighting),
+        color_grade=sp.get("color_grade", color_grade),
+        camera=sp.get("camera", camera),
+    )
+    oprim_provider = HEVI_TO_OPRIM_PROVIDER.get(target_provider, target_provider)
+    # 合并预设负向(item 12 起预设带 negative)与调用方负向
+    merged_neg = ", ".join(s for s in (sp.get("negative", ""), negative_prompt) if s)
+    result: dict[str, str] = await adapt_prompt_for_provider(
+        styled, provider=oprim_provider, negative_prompt=merged_neg,
+    )
+    return result["prompt"], result.get("negative_prompt", merged_neg)

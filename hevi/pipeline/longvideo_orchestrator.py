@@ -209,6 +209,20 @@ async def orchestrate_longvideo(
             **kw: Any,
         ) -> Path:
             from obase.provider_registry import ProviderRegistry
+
+            # RFC-002 item 7: 镜头级 checkpoint。已成功生成且 marker 记录的 provider
+            # 与当前一致 → 跳过重生成(resume 提速);provider 不同(fallback)→ 重生成,
+            # 不复用旧 provider 的废片。marker 落盘在镜头文件旁。
+            outp = Path(output_path)
+            marker = outp.with_suffix(outp.suffix + ".done.json")
+            if outp.exists() and outp.stat().st_size > 1024 and marker.exists():
+                try:
+                    if json.loads(marker.read_text()).get("provider") == video_provider:
+                        logger.info("shot checkpoint hit, skip regen: %s", outp.name)
+                        return outp
+                except (json.JSONDecodeError, OSError):
+                    pass
+
             try:
                 # Use video_provider from orchestrate_longvideo closure
                 caller = ProviderRegistry.get().generic("video", video_provider)
@@ -217,8 +231,10 @@ async def orchestrate_longvideo(
                 # hevi prompt engineering. Re-apply provider adaptation + style here
                 # so every shot gets the provider suffix and a consistent look.
                 try:
-                    from hevi.prompt.prompt_pipeline import engineer_prompt_from_preset
-                    prompt = await engineer_prompt_from_preset(
+                    from hevi.prompt.prompt_pipeline import (
+                        engineer_prompt_pair_from_preset,
+                    )
+                    prompt, _neg = await engineer_prompt_pair_from_preset(
                         raw_prompt=prompt,
                         target_provider=video_provider,
                         preset_name=style_preset,
@@ -227,6 +243,10 @@ async def orchestrate_longvideo(
                         camera=prompt_camera,
                         color_grade=prompt_color_grade,
                     )
+                    # RFC-002 item 8: 负向不再被丢弃 —— 接受负向的本地 provider
+                    # 逐镜头下发(云 provider API 暂无原生负向参数)。
+                    if _is_local_video and _neg:
+                        kw.setdefault("negative_prompt", _neg)
                 except Exception as pe:  # never fail a shot over prompt polishing
                     logger.warning(f"per-shot prompt engineering skipped: {pe}")
 
@@ -243,7 +263,16 @@ async def orchestrate_longvideo(
                     kw.setdefault("size", _wan_size_for_orientation())
 
                 res = await caller(prompt=prompt, output_path=output_path, **kw)
-                return Path(res) if res else output_path
+                final = Path(res) if res else output_path
+                # item 7: 落盘 checkpoint marker(记录生成 provider)。
+                if final.exists() and final.stat().st_size > 1024:
+                    try:
+                        final.with_suffix(final.suffix + ".done.json").write_text(
+                            json.dumps({"provider": video_provider})
+                        )
+                    except OSError:
+                        pass
+                return final
             except Exception as e:
                 logger.error(f"injected_video_fn FAILED for {video_provider}: {e}")
                 raise
@@ -289,12 +318,27 @@ async def orchestrate_longvideo(
                 else:
                     segments.append(ShotSegment(p, target_duration=None))
 
+            # RFC-002 item 6: 旁白存在 → ASR 强制对齐字幕(取代 omodul 规划时长字幕)。
+            sub = subtitle_path
+            if has_audio:
+                assert audio_path is not None
+                try:
+                    from hevi.assembly.subtitle_align import align_subtitles
+                    asr_srt = await align_subtitles(
+                        audio_path, output_path.parent / "subtitles_asr.srt",
+                        language=language,
+                    )
+                    if asr_srt is not None:
+                        sub = asr_srt
+                except Exception as se:
+                    logger.warning(f"ASR subtitle alignment skipped: {se}")
+
             try:
                 await assemble_longvideo(
                     shots=segments,
                     output_path=output_path,
                     narration_audio=audio_path if has_audio else None,
-                    subtitle_path=subtitle_path,
+                    subtitle_path=sub,
                     width=_target_w,
                     height=_target_h,
                     fps=_target_fps,
