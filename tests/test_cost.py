@@ -225,3 +225,82 @@ def test_credits_conversion():
     with patch.object(settings, "credits_per_usd", 500):
         # Implicitly tested via logic in estimate_cost_basic but kept for structure
         pass
+
+
+# ── §7-2 成本感知路由 v1 ─────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_route_filters_capability_and_health():
+    """路由候选 = 能力支持 mode ∧ 活状态可路由;欠费的被排除。"""
+    from unittest.mock import patch as _patch
+
+    from hevi.cost import router as R
+    from hevi.resilience import live_state
+
+    live_state._reset_for_tests()
+    try:
+        for _ in range(live_state._WINDOW):  # veo3 灌满 403 → 不可路由
+            live_state.record_provider_outcome("veo3", is_403=True)
+        cap = {}
+
+        async def fake_cheapest(**kw):
+            cap["candidates"] = kw["candidates"]
+            return kw["candidates"][0]
+
+        with _patch("hevi.cost.router.select_cheapest_provider", fake_cheapest):
+            chosen = await R.route_video_provider(
+                duration_archetype="short", audio_provider="vibevoice", mode="t2v"
+            )
+        assert "veo3" not in cap["candidates"]  # 欠费排除
+        assert "ltx2_cloud" in cap["candidates"]  # 可路由 t2v
+        assert chosen in cap["candidates"]
+    finally:
+        live_state._reset_for_tests()
+
+
+@pytest.mark.asyncio
+async def test_route_i2v_excludes_t2v_only_providers():
+    """mode=i2v → veo3/kling/hailuo(能力矩阵里 t2v-only)被排除。"""
+    from unittest.mock import patch as _patch
+
+    from hevi.cost import router as R
+    from hevi.resilience import live_state
+
+    live_state._reset_for_tests()
+    try:
+        cap = {}
+
+        async def fake_cheapest(**kw):
+            cap["candidates"] = kw["candidates"]
+            return kw["candidates"][0]
+
+        with _patch("hevi.cost.router.select_cheapest_provider", fake_cheapest):
+            await R.route_video_provider(
+                duration_archetype="short", audio_provider="vibevoice", mode="i2v"
+            )
+        for p in ("veo3", "kling_v2", "hailuo"):
+            assert p not in cap["candidates"]
+        assert "wan_local" in cap["candidates"]  # i2v 可
+    finally:
+        live_state._reset_for_tests()
+
+
+@pytest.mark.asyncio
+async def test_route_raises_when_none_routable():
+    from hevi.cost import router as R
+    from hevi.resilience import live_state
+    from hevi.video.capability_guard import PROVIDER_LIMITS
+
+    live_state._reset_for_tests()
+    try:
+        for p, lim in PROVIDER_LIMITS.items():
+            if "t2v" in lim.modes:
+                for _ in range(live_state._WINDOW):
+                    live_state.record_provider_outcome(p, is_403=True)
+        with pytest.raises(ValueError):
+            await R.route_video_provider(
+                duration_archetype="short", audio_provider="vibevoice", mode="t2v"
+            )
+    finally:
+        live_state._reset_for_tests()
