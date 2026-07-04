@@ -143,6 +143,76 @@ async def test_run_task_success(task_service, repository):
 
 
 @pytest.mark.asyncio
+async def test_run_task_auto_rework_on_failed_quality(task_service, repository):
+    """L3 体检闭环:体检不过 + 镜头一致性偏低 → run_task 触发定向返工(封顶 1 轮)。"""
+    task_id = uuid.uuid4()
+    task_data = {
+        "id": task_id,
+        "topic": "t",
+        "duration_archetype": "1-5min",
+        "video_provider": "wan_local",
+        "audio_provider": "vibevoice",
+        "config_json": {},  # auto_rework 走 settings 默认(1 轮)
+        "status": "pending",
+        "progress_pct": 0.0,
+    }
+    failing_shots = [
+        {"shot_index": 0, "selection_json": {"passed": False, "consistency_score": 0.1}}
+    ]
+
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(repository, "update_task", new_callable=AsyncMock),
+        patch.object(repository, "get_shots", new_callable=AsyncMock, return_value=failing_shots),
+        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+        patch.object(task_service, "regenerate_task_shots", new_callable=AsyncMock) as mock_regen,
+    ):
+        mock_orch.return_value = {
+            "url": "v.mp4",
+            "duration": 180.0,
+            "metadata": {"shots": 1},
+            "quality": {"passed": False, "violations": ["dur"], "consistency": 0.5},
+        }
+        await task_service.run_task(task_id)
+        # 封顶 1 轮 → 恰好定向返工一次,shot_ids 来自 Editor 裁决。
+        mock_regen.assert_awaited_once()
+        assert mock_regen.await_args.kwargs["shot_ids"] == [0]
+
+
+@pytest.mark.asyncio
+async def test_run_task_no_rework_when_quality_passes(task_service, repository):
+    """L3:体检过 + 镜头合格 → 不返工(合格片零额外开销)。"""
+    task_id = uuid.uuid4()
+    task_data = {
+        "id": task_id,
+        "topic": "t",
+        "duration_archetype": "1-5min",
+        "video_provider": "wan_local",
+        "audio_provider": "vibevoice",
+        "config_json": {},
+        "status": "pending",
+        "progress_pct": 0.0,
+    }
+    good_shots = [{"shot_index": 0, "selection_json": {"passed": True, "consistency_score": 0.95}}]
+
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(repository, "update_task", new_callable=AsyncMock),
+        patch.object(repository, "get_shots", new_callable=AsyncMock, return_value=good_shots),
+        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+        patch.object(task_service, "regenerate_task_shots", new_callable=AsyncMock) as mock_regen,
+    ):
+        mock_orch.return_value = {
+            "url": "v.mp4",
+            "duration": 180.0,
+            "metadata": {"shots": 1},
+            "quality": {"passed": True, "violations": [], "consistency": 0.95},
+        }
+        await task_service.run_task(task_id)
+        mock_regen.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_run_task_failure(task_service, repository):
     task_id = uuid.uuid4()
     task_data = {

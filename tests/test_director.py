@@ -294,3 +294,92 @@ async def test_plan_from_text_end_to_end():
     assert out["shot_prompts"] == ["fox runs in snow", "fox catches prey"]
     assert len([n for n in out["graph"]["nodes"] if n["node_type"] == "video"]) == 2
     assert out["plan"].video_provider == "wan_local"
+
+
+# ── /api/director 路由(直调 handler)────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_director_api_plan_serializes_plan():
+    """POST /director/plan:返回 intent + 可行性 plan(dataclass→dict)+ 分镜 + 图。"""
+    import uuid
+
+    from hevi.api.routers.director import PlanRequest, director_plan
+
+    fake = {
+        "intent": {"topic": "狐狸雪地"},
+        "plan": _plan("wan_local"),
+        "shot_prompts": ["a", "b"],
+        "graph": {"name": "g", "nodes": [], "edges": []},
+    }
+    with patch(
+        "hevi.api.routers.director.plan_from_text", new_callable=AsyncMock, return_value=fake
+    ):
+        out = await director_plan(PlanRequest(text="拍狐狸", num_shots=2), user={"id": uuid.uuid4()})
+    assert out["intent"]["topic"] == "狐狸雪地"
+    assert isinstance(out["plan"], dict)  # ProducerPlan 已序列化
+    assert out["plan"]["video_provider"] == "wan_local"
+
+
+@pytest.mark.asyncio
+async def test_director_api_episode_creates_and_queues():
+    """POST /director/episodes:可行 → 建任务 + 提交/后台跑,回 task_id。"""
+    import uuid
+
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.director import EpisodeRequest, director_create_episode
+
+    tid = uuid.uuid4()
+    svc = AsyncMock()
+    svc.create_task.return_value = {"id": tid, "status": "pending"}
+    svc.submit_task.return_value = {"status": "queued"}
+    with (
+        patch(
+            "hevi.api.routers.director.parse_intent",
+            new_callable=AsyncMock,
+            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+        ),
+        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")),
+    ):
+        out = await director_create_episode(
+            EpisodeRequest(text="拍狐狸"),
+            user={"id": uuid.uuid4()},
+            svc=svc,
+            background_tasks=BackgroundTasks(),
+        )
+    assert out["task_id"] == str(tid)
+    assert out["status"] == "queued"
+    svc.create_task.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_director_api_episode_infeasible_402():
+    """预算不够 → 402,不建任务。"""
+    import uuid
+
+    from fastapi import BackgroundTasks, HTTPException
+
+    from hevi.api.routers.director import EpisodeRequest, director_create_episode
+
+    infeasible = _plan("wan_cloud")
+    infeasible.feasible = False
+    infeasible.notes = ["预算不足"]
+    svc = AsyncMock()
+    with (
+        patch(
+            "hevi.api.routers.director.parse_intent",
+            new_callable=AsyncMock,
+            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+        ),
+        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=infeasible),
+    ):
+        with pytest.raises(HTTPException) as ei:
+            await director_create_episode(
+                EpisodeRequest(text="拍狐狸", budget_usd=0.01),
+                user={"id": uuid.uuid4()},
+                svc=svc,
+                background_tasks=BackgroundTasks(),
+            )
+    assert ei.value.status_code == 402
+    svc.create_task.assert_not_called()

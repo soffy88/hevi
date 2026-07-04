@@ -14,6 +14,7 @@ from hevi.api.routers.auth import router as auth_router  # noqa: E402
 from hevi.api.routers.canvas import router as canvas_router  # noqa: E402
 from hevi.api.routers.creative import router as creative_router  # noqa: E402
 from hevi.api.routers.credits import router as credits_router  # noqa: E402
+from hevi.api.routers.director import router as director_router  # noqa: E402
 from hevi.api.routers.gallery import router as gallery_router  # noqa: E402
 from hevi.api.routers.payment import router as payment_router  # noqa: E402
 from hevi.api.routers.series import router as series_router  # noqa: E402
@@ -94,6 +95,7 @@ app.include_router(templates_router, prefix="/api")
 app.include_router(audio_router, prefix="/api")
 app.include_router(series_router, prefix="/api")
 app.include_router(style_router, prefix="/api")
+app.include_router(director_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)
