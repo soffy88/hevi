@@ -123,6 +123,30 @@ class TaskService:
                 )
                 return task
 
+            # 成本感知路由 v1(§7-2):video_provider="auto" → 在(能力 mode ∧ 活状态可路由 ∧
+            # 质量下限)的 provider 中选最便宜。解析失败回退零成本本地 wan。
+            if task.get("video_provider") == "auto":
+                try:
+                    from hevi.cost.router import route_video_provider
+
+                    _char = await self._resolve_character_reference(task)
+                    routed = await route_video_provider(
+                        duration_archetype=task["duration_archetype"],
+                        audio_provider=task["audio_provider"],
+                        mode="i2v" if _char else "t2v",
+                    )
+                except Exception as re:
+                    logger.warning(f"cost-aware routing failed → wan_local: {re}")
+                    routed = "wan_local"
+                task["video_provider"] = routed
+                await self.repository.update_task(task_id, {"video_provider": routed})
+                log_event(
+                    stage="task_service",
+                    event="provider_routed",
+                    task_id=str(task_id),
+                    provider=routed,
+                )
+
             user_id = task.get("user_id")
             credits_reserved = task["config_json"].get("credits_reserved", 0)
 
