@@ -12,9 +12,7 @@ from hevi.db.base import Base
 class VideoTask(Base):
     __tablename__ = "video_tasks"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     topic: Mapped[str] = mapped_column(String(255))
     user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     duration_archetype: Mapped[str] = mapped_column(String(50))
@@ -43,14 +41,15 @@ class VideoTask(Base):
 class ShotState(Base):
     __tablename__ = "shot_states"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("video_tasks.id"))
     shot_index: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     output_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     reference_set_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # C3 落库:双变体选优明细(provider/variant_chosen/consistency_score/passed/duration_s),
+    # 来自 omodul v1.36.0 的 LongVideoResult.shots(此前算了即弃)。现在开始攒,分析后置。
+    selection_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 

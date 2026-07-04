@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from obase.persistence import PgPool, insert_one, query, read_one, update_one
@@ -52,6 +52,9 @@ class TaskRepository:
         """Create a shot state entry."""
         if "id" not in data:
             data["id"] = uuid.uuid4()
+        # created_at 是 NOT NULL 且无 server_default(ORM 默认不经 insert_one 生效);此前
+        # 该方法零调用故未暴露。补默认,任何调用方无需操心。
+        data.setdefault("created_at", datetime.now(UTC).replace(tzinfo=None))
         return await insert_one(self.pool, table="shot_states", data=data)  # type: ignore
 
     async def get_shots(self, task_id: uuid.UUID) -> list[dict[str, Any]]:
@@ -62,6 +65,11 @@ class TaskRepository:
             params=[task_id],
         )
 
+    async def delete_shots(self, task_id: uuid.UUID) -> None:
+        """删某 task 的所有 shot_states(C3 regenerate 前清旧,再落新)。"""
+        async with self.pool.acquire() as conn:
+            await conn.execute("DELETE FROM shot_states WHERE task_id = $1", task_id)
+
     async def get_next_queued_task(self) -> dict[str, Any] | None:
         """Get the oldest queued task (read-only peek; NOT a claim)."""
         results = await query(
@@ -69,7 +77,7 @@ class TaskRepository:
             sql=(
                 "SELECT * FROM video_tasks WHERE status = 'queued'"
                 " ORDER BY queued_at ASC, created_at ASC LIMIT 1"
-            )
+            ),
         )
         return results[0] if results else None
 
@@ -95,8 +103,7 @@ class TaskRepository:
     async def get_queued_count(self) -> int:
         """Get total number of queued tasks."""
         results = await query(
-            self.pool,
-            sql="SELECT COUNT(*) as count FROM video_tasks WHERE status = 'queued'"
+            self.pool, sql="SELECT COUNT(*) as count FROM video_tasks WHERE status = 'queued'"
         )
         return int(results[0]["count"]) if results else 0
 
@@ -108,6 +115,6 @@ class TaskRepository:
                 "SELECT COUNT(*) as count FROM video_tasks"
                 " WHERE status = 'queued' AND queued_at < $1"
             ),
-            params=[queued_at]
+            params=[queued_at],
         )
         return int(results[0]["count"]) if results else 0
