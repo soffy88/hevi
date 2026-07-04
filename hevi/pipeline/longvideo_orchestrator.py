@@ -76,9 +76,23 @@ async def orchestrate_longvideo(
     prompt_lighting: str | None = None,
     prompt_camera: str | None = None,
     prompt_color_grade: str | None = None,
+    mood: str | None = None,  # 情绪基调:独立于 20 个 style_preset 的额外视觉维度
+    genre: str | None = None,  # 题材类型(剧情/科普/广告/vlog…):影响内容而非画面,注入 topic
+    narrative_hook: str | None = None,  # 叙事钩子:开场 3 秒抓手,注入 topic(LLM 指令而非硬切)
+    scene_notes: str | None = None,  # 场景设定(地点/室内外/时间):注入 topic(全片级,非逐镜)
+    props: str | None = None,  # 关键道具/陈设:注入 topic
+    characters: str | None = None,  # 角色名+人设roster文本(由多角色绑定解析而来):注入 topic
     quality_profile: str = "standard",
     aspect_ratio: str = "9:16",  # 画幅:9:16 竖 / 16:9 横 / 1:1 方(解锁 portrait 锁死)
     bgm: str | None = None,  # 背景音乐:情绪名(→assets/audio/bgm/<mood>/)或文件路径;装配器压于旁白下
+    sfx: str | None = None,  # 音效名(→assets/audio/sfx/,前缀匹配)或文件路径;混入成片(不 duck)
+    voice_rate: str | None = None,  # 旁白语速,edge_tts 格式如 "+15%"/"-20%";仅 edge_tts 生效
+    voice_pitch: str | None = None,  # 旁白音高,edge_tts 格式如 "+2Hz";仅 edge_tts 生效
+    voice_name: str | None = None,  # 旁白音色(edge_tts 神经语音 ID),覆盖语言自动选音色
+    subtitle_style: str = "default",  # 字幕烧录样式:default/bold_yellow/large_white/compact
+    bilingual_language: str | None = None,  # 双语字幕:目标语种(如 "en"),与原字幕逐行合并
+    intro_clip: str | None = None,  # 片头视频文件路径,装配前拼接
+    outro_clip: str | None = None,  # 片尾视频文件路径,装配后拼接
     transition: str = "fade",
     # route v2(设计 §3 L0):逐镜头选 provider。开启后按每个镜头 prompt 判质量需求
     # (主角特写→云高质量 / 空镜 B-roll→免费本地 wan),而非全片一个 provider。默认关,
@@ -136,8 +150,32 @@ async def orchestrate_longvideo(
 
     await _report("准备生成", 3.0)
 
+    # 立意/场景/角色层:题材/钩子/场景/道具/角色 roster 是"内容该拍什么"而非"画面怎么调",
+    # 作为 LLM 指令前缀并入 topic(同 storyboard/script_writer 已有的 subjects 注入模式)——
+    # 影响整片叙事走向,是软指令而非硬性保证(与其它 19 个 style_preset 同性质)。
+    _directives: list[str] = []
+    if narrative_hook:
+        _directives.append(f"开场 3 秒需以强钩子抓住观众:{narrative_hook}")
+    if genre:
+        _directives.append(f"题材类型:{genre}")
+    if characters:
+        _directives.append(f"角色:{characters}")
+    if scene_notes:
+        _directives.append(f"场景设定:{scene_notes}")
+    if props:
+        _directives.append(f"关键道具/陈设:{props}")
+    if _directives:
+        topic = "。".join(_directives) + "。" + topic
+
     engineered_topic = topic
-    if style_preset or prompt_style or prompt_lighting or prompt_camera or prompt_color_grade:
+    if (
+        style_preset
+        or prompt_style
+        or prompt_lighting
+        or prompt_camera
+        or prompt_color_grade
+        or mood
+    ):
         from hevi.prompt.prompt_pipeline import engineer_prompt_from_preset
 
         engineered_topic = await engineer_prompt_from_preset(
@@ -148,6 +186,7 @@ async def orchestrate_longvideo(
             lighting=prompt_lighting,
             camera=prompt_camera,
             color_grade=prompt_color_grade,
+            mood=mood,
         )
 
     # RFC-002 item 3: 解析目标分辨率/帧率(成片规格)。装配器据此重编码统一规格;
@@ -164,17 +203,33 @@ async def orchestrate_longvideo(
     _target_w, _target_h = resolve_resolution(quality_profile, aspect_ratio)
     _target_fps = _qp.fps
 
-    # BGM:情绪名/文件路径 → 具体文件(装配器已内建旁白 ducking 混音)。无素材则 None,静默跳过。
+    # BGM/音效:情绪名或文件名/路径 → 具体文件(装配器已内建旁白 ducking 混音)。无素材则
+    # None,静默跳过,不报错(素材库允许空)。
+    from hevi.audio.bgm_library import BGMLibrary
+
+    _bgm_lib = BGMLibrary()
     _bgm_path = None
     if bgm:
         try:
-            from hevi.audio.bgm_library import BGMLibrary
-
-            _bgm_path = BGMLibrary().select_bgm(bgm)
+            _bgm_path = _bgm_lib.select_bgm(bgm)
             if _bgm_path is None:
                 logger.info("bgm mood %r 无素材,跳过配乐", bgm)
         except Exception as _be:
             logger.warning("bgm 解析失败,跳过: %s", _be)
+    _sfx_path = None
+    if sfx:
+        try:
+            direct = Path(sfx)
+            _sfx_path = direct if direct.is_file() else _bgm_lib.get_sfx(sfx)
+            if _sfx_path is None:
+                logger.info("sfx %r 无素材,跳过音效", sfx)
+        except Exception as _se:
+            logger.warning("sfx 解析失败,跳过: %s", _se)
+
+    # 片头/片尾:文件路径存在则用于装配前后拼接(不存在则静默跳过)。
+    _intro_path = Path(intro_clip) if intro_clip and Path(intro_clip).is_file() else None
+    _outro_path = Path(outro_clip) if outro_clip and Path(outro_clip).is_file() else None
+
     _is_local_video = "_local" in video_provider or video_provider in ("wan_local", "ltx2_local")
 
     # RFC/SaaS-4 item 5(提速):omodul 每镜头硬编码生成 2 变体(v0/v1)再选优,
@@ -249,7 +304,23 @@ async def orchestrate_longvideo(
         async def injected_audio_fn(*, script: list[Any], output_path: Any) -> None:
             from obase.provider_registry import ProviderRegistry
 
-            caller = ProviderRegistry.get().generic("audio", audio_provider)
+            # 音色/语速/音高覆盖:仅 edge_tts 支持(vibevoice 无 rate/pitch 参数),且仅当
+            # 调用方显式给了其中之一才走 hevi 自有实现;否则用回 registry 默认,零行为变化。
+            _voice_ctrl = audio_provider == "edge_tts" and (voice_rate or voice_pitch or voice_name)
+            if _voice_ctrl:
+                from hevi.audio.edge_tts_custom import synthesize_with_voice_control
+
+                async def caller(*, config: dict[str, Any], script: Any, output_path: Any) -> Any:
+                    return await synthesize_with_voice_control(
+                        config=config,
+                        script=script,
+                        output_path=output_path,
+                        rate=voice_rate,
+                        pitch=voice_pitch,
+                        voice=voice_name,
+                    )
+            else:
+                caller = ProviderRegistry.get().generic("audio", audio_provider)
             await _report("合成配音旁白", 82.0)
             # SaaS-4 Fix: omodul 对 audio_fn 无容错(pipeline.py:180 直接 await,
             # 抛异常即整条链崩)。旁白合成属"增强"而非"必需" —— TTS 不可用(如
@@ -382,6 +453,7 @@ async def orchestrate_longvideo(
                         lighting=prompt_lighting,
                         camera=prompt_camera,
                         color_grade=prompt_color_grade,
+                        mood=mood,
                     )
                     # RFC-002 item 8 + SaaS-4:负向逐镜头下发 —— 本地 provider 与高写实
                     # 云 provider(Veo3/Kling v2/海螺,均原生支持 negative_prompt)。
@@ -505,29 +577,46 @@ async def orchestrate_longvideo(
                     segments.append(ShotSegment(p, target_duration=None))
 
             # RFC-002 item 6: 旁白存在 → ASR 强制对齐字幕(取代 omodul 规划时长字幕)。
+            # bilingual_language 给了 → 转写+翻译合并成双语字幕(每条 cue 两行,同时间码)。
             sub = subtitle_path
             if has_audio:
                 assert audio_path is not None
                 try:
-                    from hevi.assembly.subtitle_align import align_subtitles
+                    if bilingual_language:
+                        from hevi.assembly.subtitle_align import align_subtitles_bilingual
 
-                    asr_srt = await align_subtitles(
-                        audio_path,
-                        output_path.parent / "subtitles_asr.srt",
-                        language=language,
-                    )
+                        asr_srt = await align_subtitles_bilingual(
+                            audio_path,
+                            output_path.parent / "subtitles_bilingual.srt",
+                            source_language=language,
+                            target_language=bilingual_language,
+                        )
+                    else:
+                        from hevi.assembly.subtitle_align import align_subtitles
+
+                        asr_srt = await align_subtitles(
+                            audio_path,
+                            output_path.parent / "subtitles_asr.srt",
+                            language=language,
+                        )
                     if asr_srt is not None:
                         sub = asr_srt
                 except Exception as se:
                     logger.warning(f"ASR subtitle alignment skipped: {se}")
 
+            # 片头/片尾:装配前后拼接(保原时长,不参与音频驱动时长分配)。
+            intro_seg = [ShotSegment(_intro_path)] if _intro_path is not None else []
+            outro_seg = [ShotSegment(_outro_path)] if _outro_path is not None else []
+
             try:
                 await assemble_longvideo(
-                    shots=segments,
+                    shots=[*intro_seg, *segments, *outro_seg],
                     output_path=output_path,
                     narration_audio=audio_path if has_audio else None,
                     bgm_path=_bgm_path,
+                    sfx_path=_sfx_path,
                     subtitle_path=sub,
+                    subtitle_style=subtitle_style,
                     width=_target_w,
                     height=_target_h,
                     fps=_target_fps,
@@ -537,10 +626,11 @@ async def orchestrate_longvideo(
                 # 装配失败兜底: 统一规格硬切(仍重编码,不用 -c:v copy 防花屏)。
                 logger.error(f"hevi assembler failed, fallback to hard-cut: {ae}")
                 await assemble_longvideo(
-                    shots=[ShotSegment(p) for p in valid_shots],
+                    shots=[*intro_seg, *[ShotSegment(p) for p in valid_shots], *outro_seg],
                     output_path=output_path,
                     narration_audio=audio_path if has_audio else None,
                     bgm_path=_bgm_path,
+                    sfx_path=_sfx_path,
                     width=_target_w,
                     height=_target_h,
                     fps=_target_fps,

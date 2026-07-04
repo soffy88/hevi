@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # faster-whisper 模型目录: 优先 env, 兜底本地 base。
 _MODEL_DIR = os.environ.get(
@@ -47,7 +48,10 @@ def cues_to_srt(cues: list[Cue]) -> str:
 
 
 def transcribe_to_cues(
-    audio_path: Path, *, language: str | None = None, model_dir: str | None = None,
+    audio_path: Path,
+    *,
+    language: str | None = None,
+    model_dir: str | None = None,
 ) -> list[Cue]:
     """用 faster-whisper 转写音频为带时间码的字幕段(强制对齐)。"""
     from faster_whisper import WhisperModel  # type: ignore[import-untyped]
@@ -63,7 +67,10 @@ def transcribe_to_cues(
 
 
 async def align_subtitles(
-    audio_path: Path, output_srt: Path, *, language: str | None = None,
+    audio_path: Path,
+    output_srt: Path,
+    *,
+    language: str | None = None,
 ) -> Path | None:
     """转写旁白 → 写 ASR 对齐 SRT。失败返回 None(装配器据此跳过烧字幕)。
 
@@ -75,7 +82,9 @@ async def align_subtitles(
         return None
     try:
         cues = await asyncio.to_thread(
-            transcribe_to_cues, audio_path, language=language,
+            transcribe_to_cues,
+            audio_path,
+            language=language,
         )
     except Exception:
         return None
@@ -83,4 +92,54 @@ async def align_subtitles(
         return None
     output_srt.parent.mkdir(parents=True, exist_ok=True)
     output_srt.write_text(cues_to_srt(cues), encoding="utf-8")
+    return output_srt
+
+
+def merge_bilingual_cues(primary: list[Cue], secondary: list[Cue]) -> list[Cue]:
+    """两份同时间码的字幕(原文 + 译文)→ 每条 cue 两行文本(原文换行译文)。
+
+    标准双语字幕做法:同一 cue 块内两行文本,而非两条独立 cue(避免叠字幕/抢时间轴)。
+    以 primary 的时间码为准;secondary 缺对应行则只留原文那一行。
+    """
+    merged: list[Cue] = []
+    for i, c in enumerate(primary):
+        t = secondary[i].text if i < len(secondary) else ""
+        text = f"{c.text}\n{t}" if t else c.text
+        merged.append(Cue(start=c.start, end=c.end, text=text))
+    return merged
+
+
+async def align_subtitles_bilingual(
+    audio_path: Path,
+    output_srt: Path,
+    *,
+    source_language: str | None = None,
+    target_language: str,
+    llm: Any = None,
+) -> Path | None:
+    """转写旁白 → 翻译 → 双语 SRT(每条 cue 原文+译文两行,同时间码)。
+
+    复用 transcribe_to_cues(ASR)+ translate_cues(§3 L2 已有的 dub 翻译步骤,保时间码)。
+    任一步失败 → None,装配器据此跳过烧字幕(不阻断出片)。
+    """
+    import asyncio
+
+    from hevi.dub.translate import translate_cues
+
+    if not audio_path.exists():
+        return None
+    try:
+        cues = await asyncio.to_thread(
+            transcribe_to_cues,
+            audio_path,
+            language=source_language,
+        )
+        if not cues:
+            return None
+        tcues = await translate_cues(cues, target_language=target_language, llm=llm)
+        merged = merge_bilingual_cues(cues, tcues)
+    except Exception:
+        return None
+    output_srt.parent.mkdir(parents=True, exist_ok=True)
+    output_srt.write_text(cues_to_srt(merged), encoding="utf-8")
     return output_srt

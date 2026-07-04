@@ -300,18 +300,9 @@ async def stream_task_progress(
     )
 
 
-@router.get("/{task_id}/video")
-async def get_task_video(
-    task_id: UUID,
-    repo: Annotated[TaskRepository, Depends(get_repository)],
-    token: Annotated[str | None, Query(description="JWT (<video> can't send headers)")] = None,
-) -> FileResponse:
-    """成片文件服务:返回该任务的 final.mp4。
-
-    此前成片只落 result_video_path(容器本地路径),API 未暴露任何取片端点,前端
-    "查看成片"无处可看。这里补上:同 progress 的 token 鉴权(<video src> 不能带
-    Authorization 头,故 JWT 走 ?token=),校验任务归属,再回传 mp4(支持 Range,
-    浏览器可拖动进度条)。
+async def _authorize_task_video(task_id: UUID, repo: TaskRepository, token: str | None) -> Path:
+    """<video>/<img> 标签鉴权(不能带 Authorization 头,故 JWT 走 ?token=)+ 校验任务归属,
+    返回该任务成片(final.mp4)的绝对路径。三个取片端点(video/cover/export)共用。
     """
     if not token:
         raise HTTPException(status_code=401, detail="Missing token")
@@ -336,5 +327,67 @@ async def get_task_video(
         video_path = (Path.cwd() / video_path).resolve()
     if not video_path.exists():
         raise HTTPException(status_code=404, detail="Video file missing")
+    return video_path
 
+
+@router.get("/{task_id}/video")
+async def get_task_video(
+    task_id: UUID,
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    token: Annotated[str | None, Query(description="JWT (<video> can't send headers)")] = None,
+) -> FileResponse:
+    """成片文件服务:返回该任务的 final.mp4。
+
+    此前成片只落 result_video_path(容器本地路径),API 未暴露任何取片端点,前端
+    "查看成片"无处可看。这里补上:同 progress 的 token 鉴权(<video src> 不能带
+    Authorization 头,故 JWT 走 ?token=),校验任务归属,再回传 mp4(支持 Range,
+    浏览器可拖动进度条)。
+    """
+    video_path = await _authorize_task_video(task_id, repo, token)
     return FileResponse(str(video_path), media_type="video/mp4", filename=f"{task_id}.mp4")
+
+
+@router.get("/{task_id}/cover")
+async def get_task_cover(
+    task_id: UUID,
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    token: Annotated[str | None, Query(description="JWT (<img> can't send headers)")] = None,
+) -> FileResponse:
+    """封面文件服务:装配器已在成片旁自动产出 <final>.cover.jpg(assembler.py extract_cover),
+    此前从未通过 API 暴露过,前端无处可见。鉴权/归属校验同 /video。
+    """
+    video_path = await _authorize_task_video(task_id, repo, token)
+    cover_path = video_path.with_suffix(".cover.jpg")
+    if not cover_path.exists():
+        raise HTTPException(status_code=404, detail="Cover not available")
+    return FileResponse(str(cover_path), media_type="image/jpeg", filename=f"{task_id}.jpg")
+
+
+@router.get("/{task_id}/export")
+async def export_task_video(
+    task_id: UUID,
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    token: Annotated[str | None, Query(description="JWT")] = None,
+    format: Annotated[str, Query(description="mp4/mov/webm/gif")] = "mp4",
+) -> FileResponse:
+    """按格式导出成片:mp4 直传;mov 换封装(remux);webm/gif 真转码。产物缓存在成片旁,
+    重复请求同格式不用重转。
+    """
+    from hevi.assembly.exporter import EXPORT_FORMATS, content_type_for, export_video
+
+    if format not in EXPORT_FORMATS:
+        raise HTTPException(status_code=400, detail=f"unsupported format, valid: {EXPORT_FORMATS}")
+
+    video_path = await _authorize_task_video(task_id, repo, token)
+    if format == "mp4":
+        return FileResponse(str(video_path), media_type="video/mp4", filename=f"{task_id}.mp4")
+
+    out_path = video_path.with_suffix(f".{format}")
+    if not out_path.exists():
+        try:
+            await export_video(video_path, out_path, format)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"export failed: {exc}") from exc
+    return FileResponse(
+        str(out_path), media_type=content_type_for(format), filename=f"{task_id}.{format}"
+    )

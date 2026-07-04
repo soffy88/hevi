@@ -308,6 +308,8 @@ html, body {
 .hevi-account__card-status[data-status="completed"] { color: var(--success, oklch(0.62 0.18 145)); }
 .hevi-account__card-status[data-status="failed"] { color: var(--destructive); }
 .hevi-account__card-date { font-size: var(--text-xs); color: var(--muted-foreground); }
+.hevi-account__export-fmt { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--foreground); font-size: var(--text-sm); }
 .hevi-account__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 12px; }
 .hevi-account__canvas, .hevi-account__subject { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); text-decoration: none; align-items: center; }
 .hevi-account__canvas-thumb { font-size: 28px; color: var(--muted-foreground); }
@@ -487,6 +489,18 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .dc-field--soon { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px;
   opacity: 0.55; border: 1px dashed var(--border); border-radius: 8px; padding: 8px 10px; }
 .dc-field--soon .dc-field__label { font-weight: 500; }
+.dc-field--unsupported { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+  border: 1px dashed color-mix(in oklch, var(--destructive, #d33) 40%, var(--border)); border-radius: 8px;
+  padding: 8px 10px; cursor: help; }
+.dc-field--unsupported .dc-field__label { font-weight: 500; }
+.dc-field__reason { flex-basis: 100%; font-size: var(--text-xs); color: var(--muted-foreground); }
+
+.dc-charlist { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.dc-char { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--card); font-size: var(--text-sm); cursor: pointer; }
+.dc-char input { width: auto; }
+.dc-char__lock { font-size: 10px; padding: 1px 6px; border-radius: 999px; color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 14%, transparent); }
 
 .dc-seg { display: flex; gap: 6px; }
 .dc-seg button {
@@ -498,6 +512,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 
 .dc-chip { font-family: var(--font-mono, monospace); font-size: 10.5px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
 .dc-chip--soon { color: var(--muted-foreground); background: color-mix(in oklch, var(--muted-foreground) 14%, transparent); }
+.dc-chip--unsupported { color: var(--destructive, #d33); background: color-mix(in oklch, var(--destructive, #d33) 14%, transparent); }
 
 .dc-actions { display: flex; gap: 10px; margin-top: 24px; }
 .dc-btn { padding: 11px 22px; border-radius: 9px; border: 1px solid var(--border);

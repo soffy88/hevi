@@ -378,10 +378,13 @@ async def test_director_api_episode_creates_and_queues():
             return_value=_plan("wan_local"),
         ),
     ):
+        from unittest.mock import MagicMock
+
         out = await director_create_episode(
             EpisodeRequest(text="拍狐狸"),
             user={"id": uuid.uuid4()},
             svc=svc,
+            pool=MagicMock(),
             background_tasks=BackgroundTasks(),
         )
     assert out["task_id"] == str(tid)
@@ -415,11 +418,14 @@ async def test_director_api_episode_infeasible_402():
         ),
         patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=infeasible),
     ):
+        from unittest.mock import MagicMock
+
         with pytest.raises(HTTPException) as ei:
             await director_create_episode(
                 EpisodeRequest(text="拍狐狸", budget_usd=0.01),
                 user={"id": uuid.uuid4()},
                 svc=svc,
+                pool=MagicMock(),
                 background_tasks=BackgroundTasks(),
             )
     assert ei.value.status_code == 402
@@ -456,6 +462,8 @@ async def test_director_api_episode_passes_structured_fields():
             return_value=_plan("wan_local"),
         ) as mp,
     ):
+        from unittest.mock import MagicMock
+
         out = await director_create_episode(
             EpisodeRequest(
                 text="拍狐狸",
@@ -466,9 +474,20 @@ async def test_director_api_episode_passes_structured_fields():
                 duration_archetype="short",
                 per_shot_routing=True,
                 bgm="warm",
+                mood="温暖",
+                genre="纪录片",
+                narrative_hook="悬念开场",
+                scene_notes="雪山之巅",
+                props="登山杖",
+                sfx="whoosh",
+                voice_rate="+10%",
+                subtitle_style="large_white",
+                bilingual_language="en",
+                intro_clip="/tmp/intro.mp4",
             ),
             user={"id": uuid.uuid4()},
             svc=svc,
+            pool=MagicMock(),
             background_tasks=BackgroundTasks(),
         )
     # 绑了主体 → produce 用 i2v;时长档覆盖 LLM 猜的
@@ -483,6 +502,16 @@ async def test_director_api_episode_passes_structured_fields():
     assert ck["subject_id"] == "sub-1"
     assert ck["per_shot_routing"] is True
     assert ck["bgm"] == "warm"
+    assert ck["mood"] == "温暖"
+    assert ck["genre"] == "纪录片"
+    assert ck["narrative_hook"] == "悬念开场"
+    assert ck["scene_notes"] == "雪山之巅"
+    assert ck["props"] == "登山杖"
+    assert ck["sfx"] == "whoosh"
+    assert ck["voice_rate"] == "+10%"
+    assert ck["subtitle_style"] == "large_white"
+    assert ck["bilingual_language"] == "en"
+    assert ck["intro_clip"] == "/tmp/intro.mp4"
     # 回执 spec
     assert out["spec"]["aspect_ratio"] == "16:9"
     assert out["spec"]["subject_locked"] is True
@@ -517,10 +546,13 @@ async def test_director_api_episode_preset_sets_provider_base():
             return_value=_plan("wan_local"),
         ) as mp,
     ):
+        from unittest.mock import MagicMock
+
         await director_create_episode(
             EpisodeRequest(text="x", preset="economy"),
             user={"id": uuid.uuid4()},
             svc=svc,
+            pool=MagicMock(),
             background_tasks=BackgroundTasks(),
         )
     # economy 预设 → video_provider=wan_local, audio=edge_tts 作底传给 produce
@@ -633,3 +665,52 @@ async def test_render_graph_episode_collects_and_assembles(tmp_path):
     assert upd["status"] == "completed"
     assert upd["total_shots"] == 2
     assert upd["result_video_path"].endswith("final.mp4")
+
+
+@pytest.mark.asyncio
+async def test_director_api_episode_multi_character_roster():
+    """多角色绑定:character_subject_ids 解析成 roster 文本注入 characters kwarg,
+    首个 id 用于 i2v 锁脸(誠实边界:其余角色只影响文本描述,不做画面身份锁定)。"""
+    import uuid
+    from unittest.mock import MagicMock
+
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.director import EpisodeRequest, director_create_episode
+
+    tid = uuid.uuid4()
+    svc = AsyncMock()
+    svc.create_task.return_value = {"id": tid, "status": "pending"}
+    svc.submit_task.return_value = {"status": "queued"}
+
+    subjects = {
+        "sub-a": {"name": "阿狐", "description": "机灵的向导"},
+        "sub-b": {"name": "阿熊", "description": "沉默的守护者"},
+    }
+
+    async def fake_get_subject(self, subject_id):
+        return subjects.get(subject_id)
+
+    with (
+        patch(
+            "hevi.api.routers.director.parse_intent",
+            new_callable=AsyncMock,
+            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 2, "style": "cinematic"},
+        ),
+        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")) as mp,
+        patch("hevi.subjects.subject_service.SubjectService.get_subject", fake_get_subject),
+    ):
+        out = await director_create_episode(
+            EpisodeRequest(text="拍雪山冒险", character_subject_ids=["sub-a", "sub-b"]),
+            user={"id": uuid.uuid4()},
+            svc=svc,
+            pool=MagicMock(),
+            background_tasks=BackgroundTasks(),
+        )
+    # 首个角色(sub-a)驱动 i2v 锁脸
+    assert mp.await_args.kwargs["mode"] == "i2v"
+    ck = svc.create_task.await_args.kwargs
+    assert ck["subject_id"] == "sub-a"
+    assert "阿狐" in ck["characters"] and "阿熊" in ck["characters"]
+    assert out["spec"]["character_count"] == 2
+    assert out["spec"]["subject_locked"] is True

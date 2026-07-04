@@ -28,6 +28,8 @@ from hevi.director.graph_render import render_graph_episode
 from hevi.director.intent import parse_intent
 from hevi.director.planner import plan_from_text
 from hevi.director.producer import produce
+from hevi.subjects.repository import SubjectRepository
+from hevi.subjects.subject_service import SubjectService
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 from hevi.video.presets import EXECUTION_PRESETS
@@ -57,10 +59,17 @@ class EpisodeRequest(BaseModel):
     # ① 立意
     duration_archetype: str | None = None  # 覆盖 LLM 猜的时长档
     aspect_ratio: str = "9:16"  # 9:16 竖 / 16:9 横 / 1:1 方
+    mood: str | None = None  # 情绪基调(独立于 style_preset)
+    genre: str | None = None  # 题材类型(剧情/科普/广告/vlog…)
+    narrative_hook: str | None = None  # 叙事钩子:开场 3 秒抓手
     # ② 角色
-    subject_id: str | None = None  # 绑主体 → i2v 跨镜一致
+    character_subject_ids: list[str] = []  # 多角色绑定;首个用于 i2v 跨镜锁脸,其余仅入人设描述
+    subject_id: str | None = None  # 兼容单角色写法(优先于 character_subject_ids[0])
     avatar_portrait: str | None = None  # 数字人肖像
     num_characters: int | None = None
+    # ③ 场景
+    scene_notes: str | None = None  # 场景设定(地点/室内外/时间)
+    props: str | None = None  # 关键道具/陈设
     # ④ 视觉风格
     style_preset: str | None = None  # 20 预设之一
     prompt_style: str | None = None
@@ -74,8 +83,16 @@ class EpisodeRequest(BaseModel):
     language: str = "zh"
     audio_provider: str | None = None
     bgm: str | None = None  # 背景音乐情绪(→ assets/audio/bgm/<mood>/)或文件路径
+    sfx: str | None = None  # 音效名(前缀匹配 assets/audio/sfx/)或文件路径
+    voice_rate: str | None = None  # 旁白语速,仅 edge_tts 生效,如 "+15%"
+    voice_pitch: str | None = None  # 旁白音高,仅 edge_tts 生效,如 "+2Hz"
+    voice_name: str | None = None  # 旁白音色(见 edge_tts_custom.CURATED_VOICES),仅 edge_tts 生效
     # ⑦ 成片规格
     quality_profile: str = "standard"
+    subtitle_style: str = "default"  # default/bold_yellow/large_white/compact
+    bilingual_language: str | None = None  # 双语字幕目标语种(如 "en")
+    intro_clip: str | None = None  # 片头视频文件路径
+    outro_clip: str | None = None  # 片尾视频文件路径
     # ⑧ 生产
     preset: str | None = None  # economy/balanced/fast(provider/quality 底,显式字段覆盖)
     video_provider: str | None = None  # None → auto 成本路由
@@ -97,11 +114,34 @@ async def director_plan(
     return {**result, "plan": asdict(result["plan"])}
 
 
+async def _resolve_character_roster(pool: PgPool, subject_ids: list[str]) -> tuple[str | None, str]:
+    """多角色绑定 → (首个 id 供 i2v 锁脸, 人设 roster 文本供 topic 注入)。
+
+    "多身份锁定"的诚实边界:provider 的 i2v 每镜只吃 1 张参考图(omodul 硬限制),故仍只有
+    首个角色的脸被跨镜锁定;其余角色仅以"姓名+描述"文本形式影响 storyboard LLM 的写作,
+    不做画面身份锁定。
+    """
+    if not subject_ids:
+        return None, ""
+    svc = SubjectService(SubjectRepository(pool))
+    parts: list[str] = []
+    for sid in subject_ids:
+        try:
+            subj = await svc.get_subject(sid)
+        except Exception:
+            subj = None
+        if subj:
+            desc = subj.get("description") or ""
+            parts.append(f"{subj.get('name', sid)}({desc})" if desc else subj.get("name", sid))
+    return subject_ids[0], "、".join(parts)
+
+
 @router.post("/episodes")
 async def director_create_episode(
     body: EpisodeRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[TaskService, Depends(get_task_service)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     """NL + 片表单 → 可行性门 → 建任务 → 后台出片。结构化字段逐条驱动 orchestrate。"""
@@ -113,6 +153,11 @@ async def director_create_episode(
         body.num_characters if body.num_characters is not None else intent.get("num_characters", 1)
     )
 
+    roster_subject_id, characters_text = await _resolve_character_roster(
+        pool, body.character_subject_ids
+    )
+    effective_subject_id = body.subject_id or roster_subject_id
+
     # 执行预设作 provider/quality 的底,显式字段覆盖。
     base_video, base_audio, base_quality = "auto", "vibevoice", body.quality_profile
     if body.preset and body.preset in EXECUTION_PRESETS:
@@ -122,7 +167,7 @@ async def director_create_episode(
     audio_provider = body.audio_provider or base_audio
     quality_profile = body.quality_profile if body.quality_profile != "standard" else base_quality
 
-    mode = "i2v" if body.subject_id else "t2v"  # 绑了角色 → i2v 锁定
+    mode = "i2v" if effective_subject_id else "t2v"  # 绑了角色 → i2v 锁定
     try:
         plan = await produce(
             topic=intent["topic"],
@@ -147,16 +192,30 @@ async def director_create_episode(
         "transition": body.transition,
         "per_shot_routing": body.per_shot_routing,
         "language": body.language,
+        "subtitle_style": body.subtitle_style,
     }
     for k, v in (
         ("style_preset", body.style_preset),
         ("prompt_style", body.prompt_style),
         ("prompt_lighting", body.prompt_lighting),
-        ("prompt_camera", body.prompt_camera),
         ("prompt_color_grade", body.prompt_color_grade),
+        ("prompt_camera", body.prompt_camera),
+        ("mood", body.mood),
+        ("genre", body.genre),
+        ("narrative_hook", body.narrative_hook),
+        ("scene_notes", body.scene_notes),
+        ("props", body.props),
+        ("characters", characters_text or None),
         ("avatar_portrait", body.avatar_portrait),
-        ("subject_id", body.subject_id),
+        ("subject_id", effective_subject_id),
         ("bgm", body.bgm),
+        ("sfx", body.sfx),
+        ("voice_rate", body.voice_rate),
+        ("voice_pitch", body.voice_pitch),
+        ("voice_name", body.voice_name),
+        ("bilingual_language", body.bilingual_language),
+        ("intro_clip", body.intro_clip),
+        ("outro_clip", body.outro_clip),
     ):
         if v:
             kwargs[k] = v
@@ -192,7 +251,9 @@ async def director_create_episode(
             "video_provider": plan.video_provider,
             "audio_provider": audio_provider,
             "num_characters": num_chars,
-            "subject_locked": bool(body.subject_id),
+            "subject_locked": bool(effective_subject_id),
+            "character_count": len(body.character_subject_ids)
+            or (1 if effective_subject_id else 0),
             "avatar": bool(body.avatar_portrait),
         },
     }
@@ -209,6 +270,9 @@ class RenderRequest(BaseModel):
     aspect_ratio: str = "9:16"
     transition: str = "fade"
     bgm: str | None = None
+    sfx: str | None = None
+    intro_clip: str | None = None
+    outro_clip: str | None = None
 
 
 @router.post("/render")
@@ -265,6 +329,9 @@ async def director_render(
         fps=fps,
         transition=body.transition,
         bgm=body.bgm,
+        sfx=body.sfx,
+        intro_clip=body.intro_clip,
+        outro_clip=body.outro_clip,
     )
     return {
         "task_id": str(task["id"]),

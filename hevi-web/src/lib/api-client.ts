@@ -152,6 +152,12 @@ export const taskApi = {
   // 成片播放/下载:<video src> 同样不能带 header,token 走查询参数
   videoUrl: (id: string) =>
     `${API_BASE}/api/tasks/${id}/video${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
+  // 封面:装配器自动产出,此前无端点暴露;<img src> 同样走 ?token=
+  coverUrl: (id: string) =>
+    `${API_BASE}/api/tasks/${id}/cover${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
+  // 按格式导出(mp4/mov/webm/gif);mp4 直传,其余按需转码
+  exportUrl: (id: string, format: string) =>
+    `${API_BASE}/api/tasks/${id}/export?format=${format}${authToken ? `&token=${encodeURIComponent(authToken)}` : ''}`,
   // 成本预估
   estimate: (r: LongVideoTaskReq) => req<CostEstimateRes>('/api/tasks/estimate', { method: 'POST', body: JSON.stringify(r) }),
 };

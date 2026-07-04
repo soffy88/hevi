@@ -83,6 +83,13 @@ class SeriesService:
         if subject_ids:
             ctrl.setdefault("subject_id", subject_ids[0])
 
+        # 片头/片尾:此前只存不消费(orchestrate_longvideo 无从得知)。当前语义 =
+        # 直接文件路径(非 canvas 模板渲染,那是更重的独立工程)——每集继承同一份。
+        if series.get("intro_template_id"):
+            ctrl.setdefault("intro_clip", series["intro_template_id"])
+        if series.get("outro_template_id"):
+            ctrl.setdefault("outro_clip", series["outro_template_id"])
+
         # StylePack↔Series 自动展开:series 引用 StylePack → resolve 成 prompt_*(覆盖 preset,
         # 保证该 Series 用的是它锁定的那份风格资产)。需注入 style_service。
         pack_id = series.get("style_pack_id")

@@ -24,6 +24,15 @@ HEVI_TO_OPRIM_PROVIDER: dict[str, str] = {
 }
 
 
+def _append_mood(styled: str, mood: str | None) -> str:
+    """情绪基调:独立于 style/lighting/camera/color_grade 的额外维度,追加方式同
+    inject_visual_style 自身的后缀约定("{value} {label}", 逗号相接)。"""
+    if not mood:
+        return styled
+    suffix = f"{mood} mood"
+    return f"{styled}, {suffix}" if styled else suffix
+
+
 async def engineer_prompt(
     *,
     raw_prompt: str,
@@ -32,6 +41,7 @@ async def engineer_prompt(
     lighting: str | None = None,
     camera: str | None = None,
     color_grade: str | None = None,
+    mood: str | None = None,
     negative_prompt: str = "",
 ) -> str:
     """Run the full prompt engineering chain for a single clip.
@@ -47,6 +57,7 @@ async def engineer_prompt(
         lighting: Lighting descriptor (e.g. "bright even").
         camera: Camera motion descriptor (e.g. "smooth pan").
         color_grade: Color grade descriptor (e.g. "warm tones").
+        mood: 情绪基调(与 20 个 style_preset 独立的额外维度,如"温暖"/"紧张")。
         negative_prompt: Negative prompt passed through to provider adapter.
 
     Returns:
@@ -60,6 +71,7 @@ async def engineer_prompt(
         color_grade=color_grade,
         camera=camera,
     )
+    styled = _append_mood(styled, mood)
 
     # Step 2: provider adaptation (async)
     oprim_provider = HEVI_TO_OPRIM_PROVIDER.get(target_provider, target_provider)
@@ -80,12 +92,14 @@ async def engineer_prompt_from_preset(
     lighting: str | None = None,
     camera: str | None = None,
     color_grade: str | None = None,
+    mood: str | None = None,
     negative_prompt: str = "",
 ) -> str:
     """engineer_prompt with optional style-preset shortcut.
 
     If ``preset_name`` is given, its values override individual style params.
     Individual params (style/lighting/camera/color_grade) are used otherwise.
+    mood 独立于 preset,始终按调用方传入值追加。
     """
     if preset_name is not None:
         preset = get_style_preset(preset_name)
@@ -96,6 +110,7 @@ async def engineer_prompt_from_preset(
             lighting=preset.get("lighting"),
             camera=preset.get("camera"),
             color_grade=preset.get("color_grade"),
+            mood=mood,
             negative_prompt=negative_prompt,
         )
     return await engineer_prompt(
@@ -105,6 +120,7 @@ async def engineer_prompt_from_preset(
         lighting=lighting,
         camera=camera,
         color_grade=color_grade,
+        mood=mood,
         negative_prompt=negative_prompt,
     )
 
@@ -118,6 +134,7 @@ async def engineer_prompt_pair_from_preset(
     lighting: str | None = None,
     camera: str | None = None,
     color_grade: str | None = None,
+    mood: str | None = None,
     negative_prompt: str = "",
 ) -> tuple[str, str]:
     """同 engineer_prompt_from_preset,但返回 (正向, 负向) 二元组。
@@ -134,10 +151,13 @@ async def engineer_prompt_pair_from_preset(
         color_grade=sp.get("color_grade", color_grade),
         camera=sp.get("camera", camera),
     )
+    styled = _append_mood(styled, mood)
     oprim_provider = HEVI_TO_OPRIM_PROVIDER.get(target_provider, target_provider)
     # 合并预设负向(item 12 起预设带 negative)与调用方负向
     merged_neg = ", ".join(s for s in (sp.get("negative", ""), negative_prompt) if s)
     result: dict[str, str] = await adapt_prompt_for_provider(
-        styled, provider=oprim_provider, negative_prompt=merged_neg,
+        styled,
+        provider=oprim_provider,
+        negative_prompt=merged_neg,
     )
     return result["prompt"], result.get("negative_prompt", merged_neg)

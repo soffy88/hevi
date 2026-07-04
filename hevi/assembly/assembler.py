@@ -173,38 +173,69 @@ def build_audio_filter(
     lufs: float,
     bgm_gain_db: float,
     total_dur: float,
+    *,
+    has_sfx: bool = False,
+    sfx_idx: int = -1,
+    sfx_gain_db: float = -6.0,
 ) -> tuple[str, str | None]:
-    """构造音频 filter_complex: 旁白 loudnorm + BGM 侧链闪避 + amix。
+    """构造音频 filter_complex: 旁白 loudnorm + BGM 侧链闪避(+可选音效)+ amix。
 
+    音效(sfx)是一次性提示音,不参与旁白侧链闪避(非持续底噪,闪避无意义),只按固定
+    电平叠加进混音;有旁白时随旁白轨一起 amix,无旁白时随 BGM(若有)一起 amix。
     返回 (filter_complex_片段, 末级音频标签或 None)。
     """
-    if not has_narration and not has_bgm:
+    if not has_narration and not has_bgm and not has_sfx:
         return "", None
-    if has_narration and not has_bgm:
-        # apad=whole_dur:旁白比画面短时(如脚本旁白过短)补静音到画面总长,避免下游
-        # -shortest 把整片截到旁白长度(曾致 1-5min 视频被压成几秒)。用有限 whole_dur
-        # 而非裸 apad(后者产生无限音频流,与 -shortest+copy 组合会挂死)。
+
+    # 单轨情形(其余两轨都无):narration 走 loudnorm+apad;bgm/sfx 走 volume+fade。
+    if has_narration and not has_bgm and not has_sfx:
         return (
             f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,"
             f"apad=whole_dur={max(total_dur, 0.1):.3f}[aout]",
             "[aout]",
         )
-    if has_bgm and not has_narration:
+    if has_bgm and not has_narration and not has_sfx:
         return (
             f"[{bgm_idx}:a]volume={bgm_gain_db}dB,"
             f"afade=t=out:st={max(0, total_dur - 2):.2f}:d=2[aout]",
             "[aout]",
         )
-    # 二者都有: 旁白归一 → 作为侧链压 BGM(旁白响时压低 BGM) → amix
-    f = (
-        f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,asplit=2[narr][narrsc];"
-        f"[{bgm_idx}:a]volume={bgm_gain_db}dB[bgmv];"
-        f"[bgmv][narrsc]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=300[bgmduck];"
-        # 旁白 apad 补静音到画面长 + amix duration=longest:成片总长随画面而非被旁白截短。
-        f"[narr]apad=whole_dur={max(total_dur, 0.1):.3f}[narrp];"
-        f"[narrp][bgmduck]amix=inputs=2:duration=longest:dropout_transition=2[aout]"
+    if has_sfx and not has_narration and not has_bgm:
+        return (f"[{sfx_idx}:a]volume={sfx_gain_db}dB[aout]", "[aout]")
+
+    # 多轨:旁白(若有)归一 + 侧链压 BGM;音效独立轨,最后统一 amix。asplit 仅在确实
+    # 要喂侧链时才用(否则会留一个没人接的 output pad)。
+    parts: list[str] = []
+    mix_inputs: list[str] = []
+    if has_narration:
+        if has_bgm:
+            parts.append(f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,asplit=2[narr][narrsc]")
+            parts.append(f"[{bgm_idx}:a]volume={bgm_gain_db}dB[bgmv]")
+            parts.append(
+                "[bgmv][narrsc]sidechaincompress=threshold=0.03:ratio=8:"
+                "attack=20:release=300[bgmduck]"
+            )
+            parts.append(f"[narr]apad=whole_dur={max(total_dur, 0.1):.3f}[narrp]")
+            mix_inputs.append("[narrp]")
+            mix_inputs.append("[bgmduck]")
+        else:
+            parts.append(
+                f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,"
+                f"apad=whole_dur={max(total_dur, 0.1):.3f}[narrp]"
+            )
+            mix_inputs.append("[narrp]")
+    elif has_bgm:
+        parts.append(f"[{bgm_idx}:a]volume={bgm_gain_db}dB[bgmv]")
+        mix_inputs.append("[bgmv]")
+    if has_sfx:
+        parts.append(f"[{sfx_idx}:a]volume={sfx_gain_db}dB[sfxv]")
+        mix_inputs.append("[sfxv]")
+
+    n = len(mix_inputs)
+    parts.append(
+        "".join(mix_inputs) + f"amix=inputs={n}:duration=longest:dropout_transition=2[aout]"
     )
-    return f, "[aout]"
+    return ";".join(parts), "[aout]"
 
 
 # ── 主装配 ──────────────────────────────────────────────────────────
@@ -266,7 +297,9 @@ async def assemble_longvideo(
     output_path: Path,
     narration_audio: Path | None = None,
     bgm_path: Path | None = None,
+    sfx_path: Path | None = None,
     subtitle_path: Path | None = None,
+    subtitle_style: str = "default",
     width: int = 832,
     height: int = 480,
     fps: int = 24,
@@ -274,11 +307,12 @@ async def assemble_longvideo(
     transition_duration: float = 0.5,
     loudness_lufs: float = -14.0,
     bgm_gain_db: float = -18.0,
+    sfx_gain_db: float = -6.0,
 ) -> Path:
     """装配长视频成片。返回 output_path。
 
     步骤: ①逐镜头归一化(统一规格 + 音频驱动时长) ②xfade/硬切拼接(重编码)
-    ③旁白 loudnorm + BGM ducking 混音 ④可选烧字幕。
+    ③旁白 loudnorm + BGM ducking(+可选音效)混音 ④可选烧字幕(可选样式)。
     """
     import tempfile
 
@@ -350,12 +384,13 @@ async def assemble_longvideo(
         # ③ 音频混音
         has_narr = narration_audio is not None and narration_audio.exists()
         has_bgm = bgm_path is not None and bgm_path.exists()
-        if not has_narr and not has_bgm:
+        has_sfx = sfx_path is not None and sfx_path.exists()
+        if not has_narr and not has_bgm and not has_sfx:
             muxed = silent
         else:
             muxed = tmp_dir / "muxed.mp4"
             args = ["-y", "-i", str(silent)]
-            narr_idx = bgm_idx = -1
+            narr_idx = bgm_idx = sfx_idx = -1
             nxt = 1
             if has_narr:
                 args += ["-i", str(narration_audio)]
@@ -365,6 +400,10 @@ async def assemble_longvideo(
                 args += ["-i", str(bgm_path)]
                 bgm_idx = nxt
                 nxt += 1
+            if has_sfx:
+                args += ["-i", str(sfx_path)]
+                sfx_idx = nxt
+                nxt += 1
             af, alabel = build_audio_filter(
                 has_narr,
                 has_bgm,
@@ -373,8 +412,11 @@ async def assemble_longvideo(
                 loudness_lufs,
                 bgm_gain_db,
                 video_dur,
+                has_sfx=has_sfx,
+                sfx_idx=sfx_idx,
+                sfx_gain_db=sfx_gain_db,
             )
-            assert alabel is not None  # has_narr or has_bgm → 必非空
+            assert alabel is not None  # has_narr/has_bgm/has_sfx 任一 → 必非空
             args += [
                 "-filter_complex",
                 af,
@@ -403,7 +445,7 @@ async def assemble_longvideo(
                 "-i",
                 str(muxed),
                 "-vf",
-                get_subtitle_filter(subtitle_path),
+                get_subtitle_filter(subtitle_path, style=subtitle_style),
                 "-c:a",
                 "copy",
                 "-c:v",
