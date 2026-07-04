@@ -15,6 +15,7 @@ from hevi.providers.registry import ProviderRegistry, register_all_providers
 
 def test_order_and_dedup_shots(tmp_path):
     """RFC-001 P0-2: 按镜头序号排序 + 每序号只留最大(选中)变体。"""
+
     def _mk(name: str, size: int) -> Path:
         p = tmp_path / name
         p.write_bytes(b"\x00" * size)
@@ -149,6 +150,74 @@ def test_result_mapper(mock_lv_result):
     assert mapped["duration"] == 120.5
     assert mapped["metadata"]["shots"] == 15
     assert mapped["metadata"]["providers"]["video"] == "ltx2_cloud"
+    assert mapped["shots"] == []  # 无 shots(老 omodul) → 空列表
+
+
+def test_result_mapper_exposes_shot_records():
+    """C3: result_mapper 把 omodul v1.36.0 的 per-shot 明细透出(Path→str,供 ShotState 落库)。"""
+    from omodul.agentic_longvideo_pipeline import LongVideoResult, ShotRecord
+
+    r = LongVideoResult(
+        video_path=Path("output/v.mp4"),
+        duration_s=5.0,
+        chapters=1,
+        shots_generated=2,
+        provider_used={"video": "wan_local", "audio": "vibevoice"},
+        shots=[
+            ShotRecord(
+                index=0,
+                path=Path("s0_v1.mp4"),
+                provider="wan_local",
+                variant_chosen=1,
+                consistency_score=0.94,
+                passed=True,
+            ),
+            ShotRecord(
+                index=1,
+                path=Path("s1_v0.mp4"),
+                provider="wan_local",
+                variant_chosen=0,
+                consistency_score=0.88,
+                passed=True,
+            ),
+        ],
+    )
+    mapped = map_longvideo_result(r)
+    assert len(mapped["shots"]) == 2
+    s0 = mapped["shots"][0]
+    assert s0["index"] == 0 and s0["variant_chosen"] == 1
+    assert s0["consistency_score"] == 0.94
+    assert isinstance(s0["path"], str)  # mode="json" → 可直接落 JSONB
+
+
+@pytest.mark.asyncio
+async def test_orchestrate_regenerate_dispatches_to_omodul(mock_lv_result):
+    """C3 verdict→返工:regenerate_shot_ids 设置 → 走 omodul.regenerate_shots(非整片重跑)。"""
+    register_all_providers()  # 确保 default llm 等已注册(standalone 安全)
+    with (
+        patch(
+            "omodul.agentic_longvideo_pipeline.regenerate_shots", new_callable=AsyncMock
+        ) as mock_regen,
+        patch(
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            new_callable=AsyncMock,
+        ) as mock_full,
+    ):
+        mock_regen.return_value = mock_lv_result
+        res = await orchestrate_longvideo(
+            topic="t",
+            duration_archetype="1-5min",
+            video_provider="ltx2_cloud",
+            audio_provider="vibevoice",
+            regenerate_shot_ids=[1],
+            shot_hints={1: "brighter lighting"},
+        )
+        mock_regen.assert_awaited_once()
+        mock_full.assert_not_awaited()  # 没走整片生成
+        kw = mock_regen.call_args.kwargs
+        assert kw["shot_ids"] == [1]
+        assert kw["hints"] == {1: "brighter lighting"}
+        assert res["id"] == "hevi_test_video"
 
 
 def test_register_all_providers_full():

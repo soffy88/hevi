@@ -85,6 +85,10 @@ async def orchestrate_longvideo(
     # 角色库(2D 参考锁定):选定角色的参考图路径。设置后,**每个镜头**都以它做 i2v
     # 参考图,锁定角色身份 → 视频里始终是同一个人(治"驴头不对马嘴")。为显式参数。
     character_reference: str | None = None,
+    # C3 verdict→定向返工:仅重生成这些镜头(shot_hints[idx] 并入 prompt),其余复用既有产物。
+    # None/空 = 正常整片生成。需该 task 已跑过一次(output_dir 有 per-shot 边车)。
+    regenerate_shot_ids: list[int] | None = None,
+    shot_hints: dict[int, str] | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Orchestrate long video generation using omodul agentic pipeline.
@@ -620,7 +624,19 @@ async def orchestrate_longvideo(
             _providers.update(_self._PROVIDERS_OVERRIDE)
 
         try:
-            result = await agentic_longvideo_pipeline(config=lv_config, _providers=_providers)
+            if regenerate_shot_ids:
+                # C3 verdict→返工:复用已建好的 _providers,只重生成指定镜头(hints 并入 prompt)。
+                from omodul.agentic_longvideo_pipeline import regenerate_shots as _regen
+
+                result = await _regen(
+                    task_dir=lv_config.output_dir,
+                    shot_ids=regenerate_shot_ids,
+                    hints=shot_hints or {},
+                    config=lv_config,
+                    _providers=_providers,
+                )
+            else:
+                result = await agentic_longvideo_pipeline(config=lv_config, _providers=_providers)
         finally:
             if _short_patch_active:
                 _omodul_m._duration_archetype_to_seconds = _orig_dur_fn

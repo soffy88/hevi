@@ -1,8 +1,9 @@
+from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
@@ -43,12 +44,13 @@ class LongVideoRequest(BaseModel):
     prompt_camera: str | None = None  # 运镜: "slow push in" / "pan left" ...
     prompt_color_grade: str | None = None
     avatar_portrait: str | None = None  # item 11: 数字人讲解肖像图(启用数字人 PiP)
+    subject_id: str | None = None  # 角色库:选定角色 → 每镜头以其参考图 i2v 锁定身份
 
 
 class EstimateRequest(BaseModel):
     duration_archetype: str
     video_provider: str = "ltx2_cloud"
-    audio_provider: str = "vibevoice"
+    audio_provider: str = "edge_tts"
     num_characters: int = 1
     quality_profile: str = "standard"
 
@@ -109,8 +111,15 @@ async def _create_task(
             "quality_profile": body.quality_profile or resolved.get("quality_profile", "standard"),
             "transition": body.transition,
         }
-        for k in ("style_preset", "prompt_style", "prompt_lighting",
-                  "prompt_camera", "prompt_color_grade", "avatar_portrait"):
+        for k in (
+            "style_preset",
+            "prompt_style",
+            "prompt_lighting",
+            "prompt_camera",
+            "prompt_color_grade",
+            "avatar_portrait",
+            "subject_id",
+        ):
             v = getattr(body, k)
             if v is not None:
                 ctrl[k] = v
@@ -118,17 +127,17 @@ async def _create_task(
             topic=body.topic,
             duration_archetype=body.duration_archetype,
             video_provider=resolved.get("video_provider", "ltx2_cloud"),
-            audio_provider=resolved.get("audio_provider", "vibevoice"),
+            audio_provider=resolved.get("audio_provider", "edge_tts"),
             user_id=str(user["id"]),
             num_characters=body.num_characters,
             **ctrl,
         )
         # Decision: Enqueue local tasks, run cloud tasks immediately in background
         task = await svc.submit_task(task["id"])
-        
+
         if task["status"] != "queued":
             background_tasks.add_task(svc.run_task_background, task["id"])
-            
+
         return _serialize_task(task)
     except InsufficientCredits as exc:
         raise HTTPException(
@@ -229,6 +238,39 @@ async def resume_task(
     return _serialize_task(task)
 
 
+class RegenerateRequest(BaseModel):
+    """C3 verdict→定向返工请求体。hints 键为镜头 idx(JSON 字符串键会被 pydantic 转 int)。"""
+
+    shot_ids: list[int]
+    hints: dict[int, str] | None = None
+
+
+@router.post("/{task_id}/regenerate")
+async def regenerate_task_shots(
+    task_id: UUID,
+    body: RegenerateRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[TaskService, Depends(get_task_service)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    """C3 verdict→定向返工:后台重生成指定镜头(hints[idx] 并入 prompt),其余复用。"""
+    task = await svc.repository.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.get("user_id") and task["user_id"] != str(user["id"]):
+        raise HTTPException(status_code=403, detail="Not your task")
+    if not body.shot_ids:
+        raise HTTPException(status_code=400, detail="shot_ids must not be empty")
+    if task["status"] != "completed":
+        raise HTTPException(
+            status_code=409, detail="task must be completed before regenerating shots"
+        )
+    background_tasks.add_task(
+        svc.regenerate_task_shots, task_id, shot_ids=body.shot_ids, hints=body.hints
+    )
+    return _serialize_task(task)
+
+
 @router.get("/{task_id}/progress")
 async def stream_task_progress(
     task_id: UUID,
@@ -256,3 +298,43 @@ async def stream_task_progress(
     return StreamingResponse(
         get_task_progress_stream(task_id, repo), media_type="text/event-stream"
     )
+
+
+@router.get("/{task_id}/video")
+async def get_task_video(
+    task_id: UUID,
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    token: Annotated[str | None, Query(description="JWT (<video> can't send headers)")] = None,
+) -> FileResponse:
+    """成片文件服务:返回该任务的 final.mp4。
+
+    此前成片只落 result_video_path(容器本地路径),API 未暴露任何取片端点,前端
+    "查看成片"无处可看。这里补上:同 progress 的 token 鉴权(<video src> 不能带
+    Authorization 头,故 JWT 走 ?token=),校验任务归属,再回传 mp4(支持 Range,
+    浏览器可拖动进度条)。
+    """
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+    try:
+        user_id = decode_access_token(token).get("sub")
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    task = await repo.get_task(task_id)
+    if not task or (task.get("user_id") and task["user_id"] != str(user_id)):
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    path_str = task.get("result_video_path")
+    if not path_str:
+        raise HTTPException(status_code=409, detail="Video not ready")
+    # result_video_path 由本服务写入(相对 app cwd 的 output/tasks/<id>/final.mp4),
+    # 非用户输入;相对路径按 cwd 解析为绝对路径。
+    video_path = Path(path_str)
+    if not video_path.is_absolute():
+        video_path = (Path.cwd() / video_path).resolve()
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Video file missing")
+
+    return FileResponse(str(video_path), media_type="video/mp4", filename=f"{task_id}.mp4")

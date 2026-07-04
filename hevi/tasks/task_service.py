@@ -44,10 +44,7 @@ class TaskService:
         local_names = {"qwen_local", "wan_local", "ltx2_local", "local"}
         if video_provider in local_names or "_local" in video_provider:
             return True
-        if "cloud" not in video_provider.lower():
-            if video_provider in ("wan", "ltx2", "ltx"):
-                return True
-        return False
+        return "cloud" not in video_provider.lower() and video_provider in ("wan", "ltx2", "ltx")
 
     async def create_task(
         self,
@@ -74,9 +71,7 @@ class TaskService:
         credits_needed = 0
         if self.billing_svc and user_id:
             credits_needed = await self.billing_svc.estimate_credits(
-                duration_archetype=duration_archetype,
-                video_provider=video_provider,
-                **kwargs
+                duration_archetype=duration_archetype, video_provider=video_provider, **kwargs
             )
             if credits_needed > 0:
                 await self.billing_svc.check_and_reserve(user_id, credits_needed)
@@ -92,9 +87,9 @@ class TaskService:
             "total_shots": 0,
             "completed_shots": 0,
             "config_json": {
-                **kwargs, 
+                **kwargs,
                 "estimated_usd": estimate.total_usd,
-                "credits_reserved": credits_needed
+                "credits_reserved": credits_needed,
             },
             "created_at": datetime.now(UTC).replace(tzinfo=None),
             "updated_at": datetime.now(UTC).replace(tzinfo=None),
@@ -153,6 +148,35 @@ class TaskService:
 
             cost_tracker = HeviCostTracker()
 
+            # SaaS-4 item:逐阶段进度回写。orchestrate 内注入的各阶段函数(分镜/逐镜头/
+            # 配音/装配)通过此回调把 stage 文案 + 百分比 + 已完成镜头数写入 DB,SSE 流
+            # 据此向前端展示"正在生成第 N 镜头"等实时步骤,取代过去全程 0%→100% 的黑盒。
+            _base_cfg = task["config_json"]
+
+            async def progress_cb(
+                stage: str,
+                pct: float,
+                completed_shots: int | None = None,
+                total_shots: int | None = None,
+            ) -> None:
+                data: dict[str, Any] = {
+                    "progress_pct": float(pct),
+                    "config_json": {**_base_cfg, "stage": stage},
+                    "updated_at": datetime.now(UTC).replace(tzinfo=None),
+                }
+                if completed_shots is not None:
+                    data["completed_shots"] = completed_shots
+                if total_shots is not None:
+                    data["total_shots"] = total_shots
+                try:
+                    await self.repository.update_task(task_id, data)
+                except Exception as pe:  # 进度回写绝不可拖垮生成
+                    logger.debug(f"progress update skipped: {pe}")
+
+            # 角色库(2D 锁定):按 subject_id 解析角色参考图路径,交给 orchestrate 让每个
+            # 镜头以其做 i2v 参考 → 视频里始终是同一个人。解析失败不阻断生成。
+            character_reference = await self._resolve_character_reference(task)
+
             async def runner(provider: str) -> dict[str, Any]:
                 # Monitor actual cost before each attempt (if applicable)
                 await monitor_during_run(cost_tracker.total_usd)
@@ -164,6 +188,8 @@ class TaskService:
                     video_provider=provider,
                     audio_provider=task["audio_provider"],
                     output_dir=Path("output/tasks") / str(task_id),
+                    progress_cb=progress_cb,
+                    character_reference=character_reference,
                     **task["config_json"],
                 )
 
@@ -244,6 +270,10 @@ class TaskService:
                     "config_json": {**task["config_json"], "actual_usd": cost_tracker.total_usd},
                 }
                 await self.repository.update_task(task_id, update_data)
+
+                # C3 落库:逐镜头选优明细 → shot_states(omodul v1.36.0 的 result.shots)。
+                await self._persist_shots(task_id, result.get("shots", []))
+
                 log_event(
                     stage="task_service", event="run_task_completed", result_url=result["url"]
                 )
@@ -282,6 +312,98 @@ class TaskService:
 
         # M8 is currently a black box for shots, so we resume by re-running the task.
         return await self.run_task(task_id)
+
+    async def _resolve_character_reference(self, task: dict[str, Any]) -> str | None:
+        """按 config_json.subject_id 解析角色参考图路径(i2v 锁定)。失败返回 None,不阻断。"""
+        _subject_id = task["config_json"].get("subject_id")
+        if not _subject_id:
+            return None
+        try:
+            from hevi.subjects.repository import SubjectRepository
+            from hevi.subjects.subject_service import SubjectService
+
+            _subj = await SubjectService(SubjectRepository(self.repository.pool)).get_subject(
+                _subject_id
+            )
+            _refs = (_subj or {}).get("reference_images") or []
+            return _refs[0] if _refs else None
+        except Exception as se:
+            logger.warning(f"subject reference resolve failed: {se}")
+            return None
+
+    async def _persist_shots(self, task_id: uuid.UUID, shots: list[dict[str, Any]]) -> None:
+        """C3 落库:逐镜头选优明细 → shot_states。best-effort(已成片,失败仅告警)。"""
+        try:
+            for shot in shots:
+                await self.repository.create_shot_state(
+                    {
+                        "task_id": task_id,
+                        "shot_index": shot.get("index", 0),
+                        "status": "completed" if shot.get("passed", True) else "failed",
+                        "output_path": shot.get("path"),
+                        "selection_json": {
+                            "provider": shot.get("provider"),
+                            "variant_chosen": shot.get("variant_chosen"),
+                            "consistency_score": shot.get("consistency_score"),
+                            "passed": shot.get("passed"),
+                            "duration_s": shot.get("duration_s"),
+                        },
+                    }
+                )
+        except Exception as exc:
+            logger.warning(f"ShotState 落库 failed for task {task_id}: {exc}")
+
+    async def regenerate_task_shots(
+        self,
+        task_id: uuid.UUID,
+        *,
+        shot_ids: list[int],
+        hints: dict[int, str] | None = None,
+    ) -> dict[str, Any]:
+        """C3 verdict→定向返工:只重生成 shot_ids(hints[idx] 并入 prompt),其余复用,重装配。
+
+        闭环下游端:评分卡不及格的镜头 + 失败原因 hints → 这里定向重烧,不必整片重跑。
+        需该 task 已跑过一次(output_dir 有 per-shot 边车)。重刷 shot_states(删旧落新)。
+        """
+        task = await self.repository.get_task(task_id)
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+        if not shot_ids:
+            raise ValueError("shot_ids must not be empty")
+
+        character_reference = await self._resolve_character_reference(task)
+        result = await orchestrate_longvideo(
+            topic=task["topic"],
+            duration_archetype=task["duration_archetype"],
+            video_provider=task["video_provider"],
+            audio_provider=task["audio_provider"],
+            output_dir=Path("output/tasks") / str(task_id),
+            character_reference=character_reference,
+            regenerate_shot_ids=shot_ids,
+            shot_hints=hints or {},
+            **task["config_json"],
+        )
+
+        # 重刷 shot_states:regenerate 的 result.shots 覆盖全部镜头 → 删旧落新。
+        try:
+            await self.repository.delete_shots(task_id)
+        except Exception as exc:
+            logger.warning(f"delete_shots failed for {task_id}: {exc}")
+        await self._persist_shots(task_id, result.get("shots", []))
+        await self.repository.update_task(
+            task_id,
+            {
+                "result_video_path": result["url"],
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+        log_event(
+            stage="task_service",
+            event="regenerate_shots_completed",
+            task_id=str(task_id),
+            shot_ids=shot_ids,
+        )
+        return {**task, "result_video_path": result["url"], "shots": result.get("shots", [])}
 
     async def get_task_status(self, task_id: uuid.UUID) -> dict[str, Any] | None:
         """Get the current status of a task."""
