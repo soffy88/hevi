@@ -106,7 +106,7 @@ export function AccountCenter() {
                         preload="metadata"
                         style={{ width: '100%', maxHeight: '60vh', borderRadius: 8, background: '#000' }}
                       />
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <a className="oui-btn" href={taskApi.videoUrl(t.task_id)} download>下载</a>
                         <select
                           className="hevi-account__export-fmt"
@@ -120,6 +120,23 @@ export function AccountCenter() {
                           <option value="mov">导出 mov</option>
                           <option value="webm">导出 webm</option>
                           <option value="gif">导出 gif</option>
+                        </select>
+                        <select
+                          className="hevi-account__export-fmt"
+                          defaultValue=""
+                          title="翻译配音导出:ASR+翻译+目标语种配音,首次生成较慢"
+                          onChange={e => {
+                            const lang = e.target.value;
+                            if (!lang) return;
+                            window.open(taskApi.dubUrl(t.task_id, lang), '_blank');
+                            e.target.value = '';
+                          }}
+                        >
+                          <option value="" disabled>导出配音版…</option>
+                          <option value="en">English 配音</option>
+                          <option value="ja">日本語 配音</option>
+                          <option value="ko">한국어 配音</option>
+                          <option value="es">Español 配音</option>
                         </select>
                       </div>
                     </div>

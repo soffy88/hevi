@@ -158,6 +158,9 @@ export const taskApi = {
   // 按格式导出(mp4/mov/webm/gif);mp4 直传,其余按需转码
   exportUrl: (id: string, format: string) =>
     `${API_BASE}/api/tasks/${id}/export?format=${format}${authToken ? `&token=${encodeURIComponent(authToken)}` : ''}`,
+  // 翻译配音导出(§3 L2 护城河):ASR+翻译+目标语种 TTS+mux,首次现算较慢,产物缓存
+  dubUrl: (id: string, language: string) =>
+    `${API_BASE}/api/tasks/${id}/dub?language=${language}${authToken ? `&token=${encodeURIComponent(authToken)}` : ''}`,
   // 成本预估
   estimate: (r: LongVideoTaskReq) => req<CostEstimateRes>('/api/tasks/estimate', { method: 'POST', body: JSON.stringify(r) }),
 };

@@ -408,3 +408,70 @@ async def test_export_task_video_bad_format_400():
     with pytest.raises(HTTPException) as ei:
         await export_task_video(uuid.uuid4(), repo, token="tok", format="avi")
     assert ei.value.status_code == 400
+
+
+# ── /dub 翻译配音导出(§3 L2 护城河 —— 此前只有核心逻辑,无 API 出口)────────
+
+
+@pytest.mark.asyncio
+async def test_dub_task_video_generates_and_caches(tmp_path):
+    """首次请求现算(mock dub_video)→ 落盘缓存;鉴权/归属校验同 /video。"""
+    from hevi.api.routers.tasks import dub_task_video
+
+    video = tmp_path / "final.mp4"
+    video.write_bytes(b"\x00" * 128)
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
+
+    async def fake_dub(*, video_path, target_language, output_path):
+        output_path.write_bytes(b"\x00" * 64)
+        return {"output": str(output_path), "language": target_language, "cues": 3}
+
+    with (
+        patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}),
+        patch("hevi.dub.dub_video", new_callable=AsyncMock, side_effect=fake_dub),
+    ):
+        resp = await dub_task_video(uuid.uuid4(), repo, token="tok", language="en")
+    expected = tmp_path / "final.dub_en.mp4"
+    assert resp.path == str(expected)
+    assert expected.exists()
+
+
+@pytest.mark.asyncio
+async def test_dub_task_video_reuses_cached_file(tmp_path):
+    """同语种已生成过 → 不重新跑 dub_video,直接回传缓存。"""
+    from hevi.api.routers.tasks import dub_task_video
+
+    video = tmp_path / "final.mp4"
+    video.write_bytes(b"\x00" * 128)
+    cached = tmp_path / "final.dub_en.mp4"
+    cached.write_bytes(b"\x00" * 32)
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
+    with (
+        patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}),
+        patch("hevi.dub.dub_video", new_callable=AsyncMock) as mdub,
+    ):
+        resp = await dub_task_video(uuid.uuid4(), repo, token="tok", language="en")
+    mdub.assert_not_awaited()
+    assert resp.path == str(cached)
+
+
+@pytest.mark.asyncio
+async def test_dub_task_video_failure_returns_500(tmp_path):
+    from hevi.api.routers.tasks import dub_task_video
+
+    video = tmp_path / "final.mp4"
+    video.write_bytes(b"\x00" * 128)
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
+    with (
+        patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}),
+        patch("hevi.dub.dub_video", new_callable=AsyncMock, side_effect=RuntimeError("asr down")),
+    ):
+        with pytest.raises(Exception) as ei:
+            await dub_task_video(uuid.uuid4(), repo, token="tok", language="en")
+    assert getattr(ei.value, "status_code", None) == 500
