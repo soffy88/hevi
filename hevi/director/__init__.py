@@ -6,14 +6,17 @@
 把 L0 路由 / L1 落库 / L3 体检+评分卡 / verdict→返工闭环 串成一个导演回路。
 """
 
+from hevi.director.agent import DirectorResult, run_director_loop
 from hevi.director.director import build_canvas_graph
 from hevi.director.editor import EditDecision, review
 from hevi.director.producer import ProducerPlan, produce
 
 __all__ = [
+    "DirectorResult",
     "EditDecision",
     "ProducerPlan",
     "build_canvas_graph",
     "produce",
     "review",
+    "run_director_loop",
 ]
