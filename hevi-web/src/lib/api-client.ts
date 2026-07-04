@@ -135,9 +135,34 @@ export const subjectApi = {
     form.append('file', file);
     return authedFormReq<Subject>(`/api/subjects/${subjectId}/reference`, form);
   },
+  // 一次批量传多张参考图(替代逐张调 uploadReference)
+  uploadReferences: (subjectId: string, files: File[]) => {
+    const form = new FormData();
+    files.forEach(f => form.append('files', f));
+    return authedFormReq<Subject>(`/api/subjects/${subjectId}/references`, form);
+  },
+  // 整体替换参考图列表 —— 设封面(挪到第 0 位)/ 删除 / 排序,前端传目标顺序
+  reorderReferences: (subjectId: string, referenceImages: string[]) =>
+    authedReq<Subject>(`/api/subjects/${subjectId}/references`, {
+      method: 'PUT',
+      body: JSON.stringify({ reference_images: referenceImages }),
+    }),
+  // 上传声音参考片段(VibeVoice 零样本声音克隆用,存进 metadata.voice_ref)
+  uploadVoice: (subjectId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<Subject>(`/api/subjects/${subjectId}/voice`, form);
+  },
+  // 上传造型/服装参考图(与身份参考图分开管理,存进 metadata.wardrobe_images)
+  uploadWardrobe: (subjectId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<Subject>(`/api/subjects/${subjectId}/wardrobe`, form);
+  },
   // 角色参考图预览:<img src> 不能带 header,token 走查询参数(同 progressUrl/videoUrl)
-  imageUrl: (subjectId: string, idx = 0) =>
-    `${API_BASE}/api/subjects/${subjectId}/image?token=${authToken ? encodeURIComponent(authToken) : ''}&idx=${idx}`,
+  // source='reference'(身份参考图,默认)| 'wardrobe'(造型参考图)
+  imageUrl: (subjectId: string, idx = 0, source: 'reference' | 'wardrobe' = 'reference') =>
+    `${API_BASE}/api/subjects/${subjectId}/image?token=${authToken ? encodeURIComponent(authToken) : ''}&idx=${idx}&source=${source}`,
 };
 
 // ── 长视频任务 ────────────────────────────────────
@@ -158,6 +183,9 @@ export const taskApi = {
   // 按格式导出(mp4/mov/webm/gif);mp4 直传,其余按需转码
   exportUrl: (id: string, format: string) =>
     `${API_BASE}/api/tasks/${id}/export?format=${format}${authToken ? `&token=${encodeURIComponent(authToken)}` : ''}`,
+  // 翻译配音导出(§3 L2 护城河):ASR+翻译+目标语种 TTS+mux,首次现算较慢,产物缓存
+  dubUrl: (id: string, language: string) =>
+    `${API_BASE}/api/tasks/${id}/dub?language=${language}${authToken ? `&token=${encodeURIComponent(authToken)}` : ''}`,
   // 成本预估
   estimate: (r: LongVideoTaskReq) => req<CostEstimateRes>('/api/tasks/estimate', { method: 'POST', body: JSON.stringify(r) }),
 };

@@ -82,6 +82,11 @@ async def orchestrate_longvideo(
     scene_notes: str | None = None,  # 场景设定(地点/室内外/时间):注入 topic(全片级,非逐镜)
     props: str | None = None,  # 关键道具/陈设:注入 topic
     characters: str | None = None,  # 角色名+人设roster文本(由多角色绑定解析而来):注入 topic
+    character_voices: dict[str, str] | None = None,  # {"speaker_0": voice_ref_path, ...} 尽力而为
+    # 的角色→音色映射:script_writer 提示 LLM 用 speaker_0/speaker_1... 做对白说话人标签,
+    # 但 LLM 输出是自由文本、不保证严格对应 —— 匹配上就换音色克隆,没匹配上就走默认音色,
+    # 不报错。仅 audio_provider=vibevoice 生效(voice_ref 零样本声音克隆)。
+    extra_negative: str | None = None,  # 角色专属负向提示(如"避免多指"),并入每镜负向
     quality_profile: str = "standard",
     aspect_ratio: str = "9:16",  # 画幅:9:16 竖 / 16:9 横 / 1:1 方(解锁 portrait 锁死)
     bgm: str | None = None,  # 背景音乐:情绪名(→assets/audio/bgm/<mood>/)或文件路径;装配器压于旁白下
@@ -322,6 +327,25 @@ async def orchestrate_longvideo(
             else:
                 caller = ProviderRegistry.get().generic("audio", audio_provider)
             await _report("合成配音旁白", 82.0)
+
+            # 角色专属音色(仅 vibevoice):script_writer 提示 LLM 用 speaker_0/speaker_1...
+            # 做对白说话人标签(尽力而为,非严格保证)。speaker_id 命中 character_voices
+            # 就换成该角色的声音参考(零样本克隆);没命中保留原样,走该说话人默认音色。
+            _script = script
+            if audio_provider == "vibevoice" and character_voices:
+                from types import SimpleNamespace
+
+                _script = [
+                    SimpleNamespace(
+                        speaker_id=getattr(line, "speaker_id", "host"),
+                        text=getattr(line, "text", str(line)),
+                        voice_ref=character_voices.get(
+                            getattr(line, "speaker_id", ""), getattr(line, "voice_ref", None)
+                        ),
+                    )
+                    for line in script
+                ]
+
             # SaaS-4 Fix: omodul 对 audio_fn 无容错(pipeline.py:180 直接 await,
             # 抛异常即整条链崩)。旁白合成属"增强"而非"必需" —— TTS 不可用(如
             # vibevoice 模型缺失/显存不足)时降级为纯视频出片:不落 audio.wav,
@@ -331,7 +355,7 @@ async def orchestrate_longvideo(
                 # config 透传 language,edge_tts 据此选音色(vibevoice 忽略多余键)。
                 await caller(
                     config={"language": language},
-                    script=script,
+                    script=_script,
                     output_path=output_path,
                 )
             except Exception as ae:
@@ -454,6 +478,8 @@ async def orchestrate_longvideo(
                         camera=prompt_camera,
                         color_grade=prompt_color_grade,
                         mood=mood,
+                        # 角色专属负向(如"避免多指")并入预设负向,同一条合并逻辑。
+                        negative_prompt=extra_negative or "",
                     )
                     # RFC-002 item 8 + SaaS-4:负向逐镜头下发 —— 本地 provider 与高写实
                     # 云 provider(Veo3/Kling v2/海螺,均原生支持 negative_prompt)。

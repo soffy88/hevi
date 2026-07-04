@@ -391,3 +391,26 @@ async def export_task_video(
     return FileResponse(
         str(out_path), media_type=content_type_for(format), filename=f"{task_id}.{format}"
     )
+
+
+@router.get("/{task_id}/dub")
+async def dub_task_video(
+    task_id: UUID,
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    token: Annotated[str | None, Query(description="JWT")] = None,
+    language: Annotated[str, Query(description="目标语种,如 en/ja/ko")] = "en",
+) -> FileResponse:
+    """翻译配音导出(§3 L2 护城河):ASR 转写 + 翻译 + 目标语种 TTS + mux 回成片。
+    该模块此前只有核心逻辑(hevi.dub)而无 API 出口 —— 这里补上。首次请求现算
+    (ASR+LLM+TTS+ffmpeg,较慢),产物缓存在成片旁,同语种重复请求直接回传。
+    """
+    from hevi.dub import dub_video
+
+    video_path = await _authorize_task_video(task_id, repo, token)
+    out_path = video_path.parent / f"{video_path.stem}.dub_{language}.mp4"
+    if not out_path.exists():
+        try:
+            await dub_video(video_path=video_path, target_language=language, output_path=out_path)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"dub failed: {exc}") from exc
+    return FileResponse(str(out_path), media_type="video/mp4", filename=f"{task_id}.{language}.mp4")

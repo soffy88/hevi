@@ -4,11 +4,17 @@
  */
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { OTaskProgress } from '@helios/oui';
 import { MOCK_TASKS, MOCK_CANVASES, MOCK_SUBJECTS } from '@/lib/mock-data';
 import { taskApi, canvasApi, subjectApi, creditsApi, USE_MOCK } from '@/lib/api-client';
-import type { TaskInfo, CanvasGraph, Subject } from '@/types/api';
+import type { TaskInfo, CanvasGraph, Subject, SubjectKind } from '@/types/api';
+import { CharacterEditor } from './CharacterEditor';
+
+const KIND_OPTIONS: { v: SubjectKind; l: string }[] = [
+  { v: 'character', l: '角色' }, { v: 'portrait', l: '人像' },
+  { v: 'product', l: '产品' }, { v: 'scene', l: '场景' },
+];
 
 type Tab = 'videos' | 'canvases' | 'subjects' | 'settings';
 
@@ -25,34 +31,30 @@ export function AccountCenter() {
   const [subjects, setSubjects] = useState<Subject[]>(USE_MOCK ? MOCK_SUBJECTS : []);
   const [balance, setBalance] = useState<number>(USE_MOCK ? 3500 : 0);
 
-  // 主体库上传态
+  // 主体库:建角色表单态
   const [subjectBusy, setSubjectBusy] = useState(false);
   const [subjectError, setSubjectError] = useState<string | null>(null);
-  const createSubjectRef = useRef<HTMLInputElement>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newKind, setNewKind] = useState<SubjectKind>('character');
+  const [newDescription, setNewDescription] = useState('');
+  const [newPhoto, setNewPhoto] = useState<File | null>(null);
 
   const refreshSubjects = () => subjectApi.list().then(setSubjects).catch(() => {});
 
-  // 上传照片建新角色
-  const onCreateSubject = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
+  // 真建角色表单(姓名/kind/描述/可选首照)—— 替代此前"上传照片"硬编码"我的角色"、
+  // 描述永远空白的一键流程。
+  const onCreateSubject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim()) { setSubjectError('请填角色姓名'); return; }
     setSubjectError(null);
     setSubjectBusy(true);
-    try { await subjectApi.fromPhoto(file); await refreshSubjects(); }
-    catch { setSubjectError('上传失败,请重试'); }
-    finally { setSubjectBusy(false); }
-  };
-
-  // 给已有角色添加参考图
-  const onAddReference = async (subjectId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setSubjectError(null);
-    setSubjectBusy(true);
-    try { await subjectApi.uploadReference(subjectId, file); await refreshSubjects(); }
-    catch { setSubjectError('添加参考图失败,请重试'); }
+    try {
+      const created = await subjectApi.create({ kind: newKind, name: newName.trim(), description: newDescription });
+      if (newPhoto) await subjectApi.uploadReference(created.subject_id, newPhoto);
+      setNewName(''); setNewDescription(''); setNewPhoto(null); setShowCreateForm(false);
+      await refreshSubjects();
+    } catch { setSubjectError('创建失败,请重试'); }
     finally { setSubjectBusy(false); }
   };
 
@@ -106,7 +108,7 @@ export function AccountCenter() {
                         preload="metadata"
                         style={{ width: '100%', maxHeight: '60vh', borderRadius: 8, background: '#000' }}
                       />
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <a className="oui-btn" href={taskApi.videoUrl(t.task_id)} download>下载</a>
                         <select
                           className="hevi-account__export-fmt"
@@ -120,6 +122,23 @@ export function AccountCenter() {
                           <option value="mov">导出 mov</option>
                           <option value="webm">导出 webm</option>
                           <option value="gif">导出 gif</option>
+                        </select>
+                        <select
+                          className="hevi-account__export-fmt"
+                          defaultValue=""
+                          title="翻译配音导出:ASR+翻译+目标语种配音,首次生成较慢"
+                          onChange={e => {
+                            const lang = e.target.value;
+                            if (!lang) return;
+                            window.open(taskApi.dubUrl(t.task_id, lang), '_blank');
+                            e.target.value = '';
+                          }}
+                        >
+                          <option value="" disabled>导出配音版…</option>
+                          <option value="en">English 配音</option>
+                          <option value="ja">日本語 配音</option>
+                          <option value="ko">한국어 配音</option>
+                          <option value="es">Español 配音</option>
                         </select>
                       </div>
                     </div>
@@ -149,35 +168,43 @@ export function AccountCenter() {
         {tab === 'subjects' && (
           <section>
             <h2 className="hevi-account__title">我的主体库</h2>
-            {/* 上传照片建角色 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <button type="button" className="oui-btn-primary" disabled={subjectBusy}
-                onClick={() => createSubjectRef.current?.click()}>
-                {subjectBusy ? '处理中…' : '上传照片建角色'}
+
+            <div className="hevi-account__subject-create">
+              <button type="button" className="oui-btn-primary" onClick={() => setShowCreateForm(v => !v)}>
+                {showCreateForm ? '收起' : '+ 新建角色'}
               </button>
-              {subjectError && <span style={{ color: '#e5484d', fontSize: 13 }}>{subjectError}</span>}
-              <input ref={createSubjectRef} type="file" accept="image/*" hidden onChange={onCreateSubject} />
+              {subjectError && <span className="hevi-account__subject-err">{subjectError}</span>}
             </div>
-            <div className="hevi-account__grid">
-              {subjects.map(s => (
-                <div key={s.subject_id} className="hevi-account__subject">
-                  {s.reference_images && s.reference_images.length > 0 ? (
-                    <img src={subjectApi.imageUrl(s.subject_id)} alt={s.name}
-                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                      style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '50%', background: '#f0f0f4' }} />
-                  ) : (
-                    <div className="hevi-account__subject-avatar">{s.name[0]}</div>
-                  )}
-                  <span className="hevi-account__canvas-name">{s.name}</span>
-                  <span className="hevi-account__card-date">{s.kind}</span>
-                  {/* 添加参考图 */}
-                  <label className="oui-btn" style={{ marginTop: 6, fontSize: 12, cursor: 'pointer' }}>
-                    添加参考图
-                    <input type="file" accept="image/*" hidden disabled={subjectBusy}
-                      onChange={e => onAddReference(s.subject_id, e)} />
-                  </label>
+
+            {showCreateForm && (
+              <form className="hevi-account__subject-form" onSubmit={onCreateSubject}>
+                <div className="hevi-account__subject-form-row">
+                  <select value={newKind} onChange={e => setNewKind(e.target.value as SubjectKind)}>
+                    {KIND_OPTIONS.map(k => <option key={k.v} value={k.v}>{k.l}</option>)}
+                  </select>
+                  <input placeholder="姓名 *" value={newName} onChange={e => setNewName(e.target.value)} required />
                 </div>
+                <input placeholder="描述 / 人设(可选)" value={newDescription} onChange={e => setNewDescription(e.target.value)} />
+                <label className="hevi-account__subject-photo">
+                  {newPhoto ? `已选:${newPhoto.name}` : '+ 首张参考照片(可选,建号后也能加)'}
+                  <input type="file" accept="image/*" hidden onChange={e => setNewPhoto(e.target.files?.[0] ?? null)} />
+                </label>
+                <button type="submit" className="oui-btn-primary" disabled={subjectBusy}>
+                  {subjectBusy ? '创建中…' : '创建角色'}
+                </button>
+              </form>
+            )}
+
+            <div className="hevi-account__char-list">
+              {subjects.map(s => (
+                <CharacterEditor
+                  key={s.subject_id}
+                  subject={s}
+                  onUpdated={updated => setSubjects(prev => prev.map(x => x.subject_id === updated.subject_id ? updated : x))}
+                  onDeleted={() => setSubjects(prev => prev.filter(x => x.subject_id !== s.subject_id))}
+                />
               ))}
+              {subjects.length === 0 && <p className="hevi-account__subject-empty">还没有角色,点上面「+ 新建角色」建一个。</p>}
             </div>
           </section>
         )}

@@ -714,3 +714,96 @@ async def test_director_api_episode_multi_character_roster():
     assert "阿狐" in ck["characters"] and "阿熊" in ck["characters"]
     assert out["spec"]["character_count"] == 2
     assert out["spec"]["subject_locked"] is True
+
+
+@pytest.mark.asyncio
+async def test_director_api_episode_roster_includes_metadata_and_voice_negative():
+    """角色卡的 metadata(人设/年龄/语言风格/关系)并入 roster 文本;voice_ref → 尽力而为
+    的 speaker_i 映射;negative_notes 合并成 extra_negative。"""
+    import uuid
+    from unittest.mock import MagicMock
+
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.director import EpisodeRequest, director_create_episode
+
+    tid = uuid.uuid4()
+    svc = AsyncMock()
+    svc.create_task.return_value = {"id": tid, "status": "pending"}
+    svc.submit_task.return_value = {"status": "queued"}
+
+    subjects = {
+        "sub-a": {
+            "name": "阿狐", "description": "机灵的向导",
+            "metadata": {
+                "age": "20多岁", "persona": "毒舌但重情义", "speech_style": "爱用东北方言",
+                "relationships": "与阿熊是竞争对手", "voice_ref": "output/voice_references/sub-a/v.wav",
+                "negative_notes": "避免多指",
+            },
+        },
+        "sub-b": {
+            "name": "阿熊", "description": "沉默的守护者",
+            "metadata": {"voice_ref": "output/voice_references/sub-b/v2.wav", "negative_notes": "避免崩脸"},
+        },
+    }
+
+    async def fake_get_subject(self, subject_id):
+        return subjects.get(subject_id)
+
+    with (
+        patch(
+            "hevi.api.routers.director.parse_intent",
+            new_callable=AsyncMock,
+            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 2, "style": "cinematic"},
+        ),
+        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")),
+        patch("hevi.subjects.subject_service.SubjectService.get_subject", fake_get_subject),
+    ):
+        await director_create_episode(
+            EpisodeRequest(text="拍雪山冒险", character_subject_ids=["sub-a", "sub-b"]),
+            user={"id": uuid.uuid4()},
+            svc=svc,
+            pool=MagicMock(),
+            background_tasks=BackgroundTasks(),
+        )
+    ck = svc.create_task.await_args.kwargs
+    assert "20多岁" in ck["characters"] and "毒舌但重情义" in ck["characters"]
+    assert "东北方言" in ck["characters"] and "竞争对手" in ck["characters"]
+    assert ck["character_voices"] == {
+        "speaker_0": "output/voice_references/sub-a/v.wav",
+        "speaker_1": "output/voice_references/sub-b/v2.wav",
+    }
+    assert "避免多指" in ck["extra_negative"] and "避免崩脸" in ck["extra_negative"]
+
+
+@pytest.mark.asyncio
+async def test_director_api_episode_no_characters_no_voice_negative_keys():
+    """没绑角色 → character_voices/extra_negative 干脆不出现在 kwargs 里(而非空字典/空串)。"""
+    import uuid
+    from unittest.mock import MagicMock
+
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.director import EpisodeRequest, director_create_episode
+
+    svc = AsyncMock()
+    svc.create_task.return_value = {"id": uuid.uuid4(), "status": "pending"}
+    svc.submit_task.return_value = {"status": "queued"}
+    with (
+        patch(
+            "hevi.api.routers.director.parse_intent",
+            new_callable=AsyncMock,
+            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+        ),
+        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")),
+    ):
+        await director_create_episode(
+            EpisodeRequest(text="x"),
+            user={"id": uuid.uuid4()},
+            svc=svc,
+            pool=MagicMock(),
+            background_tasks=BackgroundTasks(),
+        )
+    ck = svc.create_task.await_args.kwargs
+    assert "character_voices" not in ck
+    assert "extra_negative" not in ck

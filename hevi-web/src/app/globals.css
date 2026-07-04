@@ -197,6 +197,17 @@ html, body {
   padding: 8px; border-radius: 8px; border: 1px dashed var(--border);
   background: none; color: var(--muted-foreground); font-size: var(--text-sm); cursor: pointer;
 }
+.hevi-subjects__add-form { display: flex; flex-direction: column; gap: 6px; }
+.hevi-subjects__add-input {
+  padding: 7px 9px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--background); color: var(--foreground); font-size: var(--text-sm);
+}
+.hevi-subjects__add-actions { display: flex; gap: 6px; }
+.hevi-subjects__add-actions button {
+  flex: 1; padding: 6px 0; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--foreground); font-size: var(--text-xs); cursor: pointer;
+}
+.hevi-subjects__add-confirm { border-color: var(--primary) !important; color: var(--primary) !important; }
 
 /* ── 创意辅助面板 ── */
 .hevi-creative { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
@@ -318,6 +329,66 @@ html, body {
 .hevi-account__settings { display: flex; flex-direction: column; gap: 16px; max-width: 400px; }
 .hevi-account__credits { display: flex; flex-direction: column; gap: 4px; }
 .hevi-account__credits-val { font-size: var(--text-2xl); font-weight: 780; font-variant-numeric: tabular-nums; }
+
+/* ── 我的主体库:建角色表单 + 角色卡列表 ── */
+.hevi-account__subject-create { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.hevi-account__subject-err { color: var(--destructive, #d33); font-size: var(--text-sm); }
+.hevi-account__subject-form { display: flex; flex-direction: column; gap: 8px; max-width: 480px; margin-bottom: 20px;
+  padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.hevi-account__subject-form-row { display: flex; gap: 8px; }
+.hevi-account__subject-form-row select { flex: 0 0 100px; }
+.hevi-account__subject-form-row input { flex: 1; }
+.hevi-account__subject-form input, .hevi-account__subject-form select {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--background); color: var(--foreground); font-size: var(--text-sm);
+}
+.hevi-account__subject-photo { font-size: var(--text-xs); color: var(--muted-foreground); cursor: pointer; }
+.hevi-account__subject-empty { color: var(--muted-foreground); font-size: var(--text-sm); }
+.hevi-account__char-list { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
+
+.hevi-char { border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+.hevi-char__head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
+  background: none; border: none; cursor: pointer; text-align: left; }
+.hevi-char__avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; }
+.hevi-char__avatar--placeholder { background: var(--primary); color: var(--primary-foreground,#fff);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.hevi-char__name { flex: 1; font-weight: 600; font-size: var(--text-sm); }
+.hevi-char__tier { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; color: var(--muted-foreground);
+  background: color-mix(in oklch, var(--muted-foreground) 14%, transparent); }
+.hevi-char__tier[data-tier="protagonist"] { color: var(--primary); background: color-mix(in oklch, var(--primary) 14%, transparent); }
+.hevi-char__chevron { font-size: var(--text-xs); color: var(--muted-foreground); }
+.hevi-char__body { padding: 0 14px 16px; display: flex; flex-direction: column; gap: 16px; border-top: 1px solid var(--border); }
+.hevi-char__err { margin-top: 10px; color: var(--destructive, #d33); font-size: var(--text-sm); }
+.hevi-char__section { display: flex; flex-direction: column; gap: 8px; }
+.hevi-char__section-head { font-size: var(--text-xs); font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted-foreground); margin-top: 8px; }
+.hevi-char__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.hevi-char__field { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-xs); color: var(--muted-foreground); }
+.hevi-char__field--wide { grid-column: 1 / -1; }
+.hevi-char__field input, .hevi-char__field select {
+  padding: 7px 9px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--background); color: var(--foreground); font-size: var(--text-sm);
+}
+.hevi-char__voice-row { display: flex; align-items: center; gap: 10px; font-size: var(--text-xs); color: var(--muted-foreground); }
+.hevi-char__upload-btn { font-size: 12px !important; padding: 5px 10px !important; cursor: pointer; }
+.hevi-char__refs { display: flex; flex-wrap: wrap; gap: 10px; }
+.hevi-char__ref { position: relative; width: 88px; height: 88px; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--muted); }
+.hevi-char__ref img { width: 100%; height: 100%; object-fit: cover; }
+.hevi-char__ref-cover { position: absolute; top: 4px; left: 4px; font-size: 10px; padding: 1px 6px;
+  border-radius: 999px; background: var(--primary); color: var(--primary-foreground,#fff); }
+.hevi-char__ref-actions { position: absolute; inset: auto 0 0 0; display: flex; opacity: 0;
+  transition: opacity .15s; }
+.hevi-char__ref:hover .hevi-char__ref-actions { opacity: 1; }
+.hevi-char__ref-actions button { flex: 1; border: none; background: rgba(0,0,0,.65); color: #fff;
+  font-size: 10px; padding: 4px 2px; cursor: pointer; }
+.hevi-char__ref--add {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border-style: dashed; color: var(--muted-foreground); font-size: 11px; cursor: pointer; padding: 4px;
+}
+.hevi-char__footer { display: flex; align-items: center; gap: 10px; padding-top: 4px; }
+.hevi-char__delete { margin-left: auto; background: none; border: 1px solid var(--destructive, #d33);
+  color: var(--destructive, #d33); border-radius: 8px; padding: 8px 14px; font-size: var(--text-sm); cursor: pointer; }
 
 /* ── 顶部导航 ── */
 .hevi-topnav {

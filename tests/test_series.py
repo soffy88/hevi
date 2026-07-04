@@ -155,3 +155,39 @@ async def test_create_episode_expands_stylepack_to_prompts():
     assert call["prompt_style"] == "cinematic noir"
     assert call["prompt_color_grade"] == "teal orange"
     assert call["prompt_camera"] == "dolly"
+
+
+@pytest.mark.asyncio
+async def test_create_episode_overrides_win_over_inherited_defaults():
+    """逐集覆盖:显式给的键覆盖 Series 继承的默认值,没给的键仍按继承。"""
+    series = {
+        "id": _SID, "subject_ids": ["hero"], "style_preset": "赛博朋克", "episode_count": 2,
+        "spec_json": {
+            "duration_archetype": "1-5min", "video_provider": "wan_local",
+            "audio_provider": "vibevoice", "quality_profile": "high",
+        },
+    }
+    tsvc = _FakeTaskSvc()
+    await SeriesService(_FakeSeriesRepo(series), tsvc).create_episode(
+        _SID, topic="第3集换套衣服",
+        overrides={"subject_id": "villain", "video_provider": "ltx2_cloud", "prompt_style": "雨夜"},
+    )
+    call = tsvc.create_calls[0]
+    assert call["subject_id"] == "villain"  # 覆盖了继承的 "hero"
+    assert call["video_provider"] == "ltx2_cloud"  # 覆盖了继承的 "wan_local"
+    assert call["prompt_style"] == "雨夜"  # 新增键
+    assert call["quality_profile"] == "high"  # 没被覆盖的键仍按继承
+    assert call["audio_provider"] == "vibevoice"  # 同上
+
+
+@pytest.mark.asyncio
+async def test_create_episode_no_overrides_behaves_as_before():
+    series = {
+        "id": _SID, "subject_ids": ["hero"], "episode_count": 0,
+        "spec_json": {"video_provider": "wan_local"},
+    }
+    tsvc = _FakeTaskSvc()
+    await SeriesService(_FakeSeriesRepo(series), tsvc).create_episode(_SID, topic="ep1")
+    call = tsvc.create_calls[0]
+    assert call["subject_id"] == "hero"
+    assert call["video_provider"] == "wan_local"

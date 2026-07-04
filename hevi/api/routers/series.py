@@ -53,6 +53,10 @@ class SeriesCreateRequest(BaseModel):
 
 class EpisodeCreateRequest(BaseModel):
     topic: str
+    # 逐集覆盖(如仅本集换套造型、临时锁另一个角色)—— 键与 create_task 的 config_json
+    # 键同一命名空间(subject_id/prompt_*/style_preset/avatar_portrait 等),覆盖优先于
+    # Series 继承的默认值,不覆盖的键仍按 Series 继承。
+    overrides: dict[str, Any] = {}
 
 
 @router.post("")
@@ -124,7 +128,7 @@ async def create_episode(
         raise HTTPException(status_code=404, detail="Series not found")
     _check_owner(s, user)
     try:
-        ep = await svc.create_episode(series_id, topic=body.topic)
+        ep = await svc.create_episode(series_id, topic=body.topic, overrides=body.overrides)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     # 提交 + 后台跑(与普通任务一致)。
