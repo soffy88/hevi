@@ -59,9 +59,19 @@ class SeriesService:
         return await self._repo.episodes(series_id)
 
     async def create_episode(
-        self, series_id: str, *, topic: str, task_service: Any = None
+        self,
+        series_id: str,
+        *,
+        topic: str,
+        task_service: Any = None,
+        overrides: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """做第 N 集:继承 Series 的角色组/风格/规格,只写新 topic → 创建 inheriting VideoTask。"""
+        """做第 N 集:继承 Series 的角色组/风格/规格,只写新 topic → 创建 inheriting VideoTask。
+
+        overrides:逐集覆盖(如"这一集临时换角色/改风格"),键与 create_task 的
+        config_json 同命名空间;给了就覆盖 Series 继承的默认值,没给的键仍按继承 ——
+        覆盖在 StylePack 展开之后应用,即显式逐集覆盖 > StylePack > style_preset 名。
+        """
         svc = task_service or self._task_service
         if svc is None:
             raise ValueError("task_service required (via ctor or arg)")
@@ -106,6 +116,14 @@ class SeriesService:
                         ctrl[dst] = resolved[src]  # 显式覆盖(StylePack 优先于 preset 名)
             except Exception:  # 解析失败 → 回退 style_preset,不阻断建集
                 pass
+
+        # 逐集覆盖:显式给了值就覆盖 Series 继承的默认(不给的键仍按继承)。三个顶层参数
+        # (provider/时长档)单独弹出,其余键直接并入 ctrl。
+        ov = dict(overrides or {})
+        video_provider = ov.pop("video_provider", video_provider)
+        audio_provider = ov.pop("audio_provider", audio_provider)
+        duration_archetype = ov.pop("duration_archetype", duration_archetype)
+        ctrl.update(ov)
 
         episode_index = int(series.get("episode_count", 0))
         task = await svc.create_task(

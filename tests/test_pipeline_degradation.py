@@ -241,3 +241,136 @@ async def test_short_single_variant_reuses_v0(tmp_path):
     assert (shots / "shot_0000_v0.mp4").stat().st_size == (
         shots / "shot_0000_v1.mp4"
     ).stat().st_size
+
+
+@pytest.mark.asyncio
+async def test_character_voices_maps_matching_speaker_id(tmp_path):
+    """character_voices 尽力而为映射:speaker_id 命中 → 换成该角色声音参考(vibevoice);
+    没命中(如 LLM 没按约定用 speaker_0/1)→ 保留原样,不报错。"""
+    voice_a = tmp_path / "voice_a.wav"
+    voice_a.write_bytes(b"RIFF")
+    seen: list[dict] = []
+
+    async def capturing_audio(**kwargs):
+        for line in kwargs["script"]:
+            seen.append({"speaker_id": line.speaker_id, "voice_ref": line.voice_ref})
+        Path(kwargs["output_path"]).write_bytes(b"\x00" * 64)
+
+    ProviderRegistry.register("audio", "vibevoice", capturing_audio, replace=True)
+    out_dir = tmp_path / "task"
+
+    async def fake_pipeline(*, config, _providers):
+        out_dir.mkdir(parents=True, exist_ok=True)
+        audio_fn = _providers["audio_fn"]
+        script = [
+            SimpleNamespace(speaker_id="speaker_0", text="你好", voice_ref=None),  # 命中映射
+            SimpleNamespace(speaker_id="speaker_9", text="旁白", voice_ref=None),  # 未命中,保留原样
+        ]
+        await audio_fn(script=script, output_path=out_dir / "audio.wav")
+        vp = out_dir / "final.mp4"
+        vp.write_bytes(b"\x00" * 2048)
+        return LongVideoResult(
+            video_path=vp, duration_s=5.0, chapters=1, shots_generated=1,
+            provider_used={"video": "ltx2_cloud", "audio": "vibevoice"},
+        )
+
+    with patch(
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+        side_effect=fake_pipeline,
+    ):
+        await orchestrate_longvideo(
+            topic="t",
+            duration_archetype="short",
+            video_provider="ltx2_cloud",
+            audio_provider="vibevoice",
+            output_dir=out_dir,
+            character_voices={"speaker_0": str(voice_a)},
+        )
+
+    assert seen[0] == {"speaker_id": "speaker_0", "voice_ref": str(voice_a)}
+    assert seen[1] == {"speaker_id": "speaker_9", "voice_ref": None}
+
+
+@pytest.mark.asyncio
+async def test_character_voices_ignored_for_edge_tts(tmp_path):
+    """character_voices 仅 vibevoice 生效;edge_tts 时脚本原样透传,不做任何改写。"""
+    seen: list[dict] = []
+
+    async def capturing_audio(**kwargs):
+        for line in kwargs["script"]:
+            seen.append({"speaker_id": getattr(line, "speaker_id", None)})
+        Path(kwargs["output_path"]).write_bytes(b"\x00" * 64)
+
+    ProviderRegistry.register("audio", "edge_tts", capturing_audio, replace=True)
+    out_dir = tmp_path / "task"
+
+    async def fake_pipeline(*, config, _providers):
+        out_dir.mkdir(parents=True, exist_ok=True)
+        audio_fn = _providers["audio_fn"]
+        await audio_fn(
+            script=[SimpleNamespace(speaker_id="speaker_0", text="hi", voice_ref=None)],
+            output_path=out_dir / "audio.wav",
+        )
+        vp = out_dir / "final.mp4"
+        vp.write_bytes(b"\x00" * 2048)
+        return LongVideoResult(
+            video_path=vp, duration_s=5.0, chapters=1, shots_generated=1,
+            provider_used={"video": "ltx2_cloud", "audio": "edge_tts"},
+        )
+
+    with patch(
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+        side_effect=fake_pipeline,
+    ):
+        await orchestrate_longvideo(
+            topic="t",
+            duration_archetype="short",
+            video_provider="ltx2_cloud",
+            audio_provider="edge_tts",
+            output_dir=out_dir,
+            character_voices={"speaker_0": "/some/voice.wav"},
+        )
+    assert seen == [{"speaker_id": "speaker_0"}]  # 未被 character_voices 逻辑触碰
+
+
+@pytest.mark.asyncio
+async def test_extra_negative_merges_into_per_shot_negative(tmp_path):
+    """extra_negative(角色专属负向)并入每镜负向提示,随 style_preset 的负向一起下发。"""
+    seen: list[str | None] = []
+
+    async def capturing_video(**kwargs):
+        seen.append(kwargs.get("negative_prompt"))
+        outp = Path(kwargs["output_path"])
+        outp.parent.mkdir(parents=True, exist_ok=True)
+        outp.write_bytes(b"\x00" * 4096)
+        return outp
+
+    ProviderRegistry.register("video", "wan_local", capturing_video, replace=True)
+    shots = tmp_path / "task" / "shots"
+
+    async def fake_pipeline(*, config, _providers):
+        shots.mkdir(parents=True, exist_ok=True)
+        vfn = _providers["video_fn"]
+        await vfn(prompt="p", output_path=shots / "shot_0000_v0.mp4", reference_image=None)
+        vp = tmp_path / "task" / "final.mp4"
+        vp.write_bytes(b"\x00" * 2048)
+        return LongVideoResult(
+            video_path=vp, duration_s=5.0, chapters=1, shots_generated=1,
+            provider_used={"video": "wan_local", "audio": "edge_tts"},
+        )
+
+    with patch(
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+        side_effect=fake_pipeline,
+    ):
+        await orchestrate_longvideo(
+            topic="t",
+            duration_archetype="short",
+            video_provider="wan_local",
+            audio_provider="ltx2_native",
+            output_dir=tmp_path / "task",
+            extra_negative="避免多指",
+        )
+
+    assert seen, "video_fn 未被调用"
+    assert "避免多指" in (seen[0] or "")

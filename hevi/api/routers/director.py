@@ -114,26 +114,56 @@ async def director_plan(
     return {**result, "plan": asdict(result["plan"])}
 
 
-async def _resolve_character_roster(pool: PgPool, subject_ids: list[str]) -> tuple[str | None, str]:
-    """多角色绑定 → (首个 id 供 i2v 锁脸, 人设 roster 文本供 topic 注入)。
+_ROSTER_META_LABELS: tuple[tuple[str, str], ...] = (
+    ("年龄", "age"),
+    ("性别", "gender"),
+    ("体型", "build"),
+    ("人设", "persona"),
+    ("语言风格", "speech_style"),
+    ("关系", "relationships"),
+)
+
+
+async def _resolve_character_roster(
+    pool: PgPool, subject_ids: list[str]
+) -> tuple[str | None, str, dict[str, str], str]:
+    """多角色绑定 → (首个 id 供 i2v 锁脸, 人设 roster 文本供 topic 注入,
+    speaker_i→声音参考的尽力而为映射, 各角色专属负向提示合并后的字符串)。
 
     "多身份锁定"的诚实边界:provider 的 i2v 每镜只吃 1 张参考图(omodul 硬限制),故仍只有
-    首个角色的脸被跨镜锁定;其余角色仅以"姓名+描述"文本形式影响 storyboard LLM 的写作,
-    不做画面身份锁定。
+    首个角色的脸被跨镜锁定;其余角色仅以人设文本(含年龄/性别/人设/语言风格/关系等
+    metadata 字段)影响 storyboard LLM 的写作,不做画面身份锁定。
+
+    声音映射同样尽力而为:script_writer 提示 LLM 用 speaker_0/speaker_1... 做说话人标签,
+    但 LLM 输出是自由文本、不保证严格对应第 i 个角色 —— 这里按角色列表顺序假设对应关系,
+    命中就真的换声音,没命中由 orchestrator 端优雅降级(见 injected_audio_fn)。
     """
     if not subject_ids:
-        return None, ""
+        return None, "", {}, ""
     svc = SubjectService(SubjectRepository(pool))
     parts: list[str] = []
-    for sid in subject_ids:
+    voices: dict[str, str] = {}
+    negatives: list[str] = []
+    for i, sid in enumerate(subject_ids):
         try:
             subj = await svc.get_subject(sid)
         except Exception:
             subj = None
-        if subj:
-            desc = subj.get("description") or ""
-            parts.append(f"{subj.get('name', sid)}({desc})" if desc else subj.get("name", sid))
-    return subject_ids[0], "、".join(parts)
+        if not subj:
+            continue
+        meta = subj.get("metadata") or {}
+        desc_parts = [subj.get("description") or ""]
+        for label, key in _ROSTER_META_LABELS:
+            v = meta.get(key)
+            if v:
+                desc_parts.append(f"{label}:{v}")
+        desc = "、".join(p for p in desc_parts if p)
+        parts.append(f"{subj.get('name', sid)}({desc})" if desc else subj.get("name", sid))
+        if meta.get("voice_ref"):
+            voices[f"speaker_{i}"] = meta["voice_ref"]
+        if meta.get("negative_notes"):
+            negatives.append(meta["negative_notes"])
+    return subject_ids[0], "、".join(parts), voices, "、".join(negatives)
 
 
 @router.post("/episodes")
@@ -153,9 +183,12 @@ async def director_create_episode(
         body.num_characters if body.num_characters is not None else intent.get("num_characters", 1)
     )
 
-    roster_subject_id, characters_text = await _resolve_character_roster(
-        pool, body.character_subject_ids
-    )
+    (
+        roster_subject_id,
+        characters_text,
+        character_voices,
+        characters_negative,
+    ) = await _resolve_character_roster(pool, body.character_subject_ids)
     effective_subject_id = body.subject_id or roster_subject_id
 
     # 执行预设作 provider/quality 的底,显式字段覆盖。
@@ -216,9 +249,12 @@ async def director_create_episode(
         ("bilingual_language", body.bilingual_language),
         ("intro_clip", body.intro_clip),
         ("outro_clip", body.outro_clip),
+        ("extra_negative", characters_negative or None),
     ):
         if v:
             kwargs[k] = v
+    if character_voices:
+        kwargs["character_voices"] = character_voices
     if body.auto_rework_rounds is not None:
         kwargs["auto_rework_rounds"] = body.auto_rework_rounds
 

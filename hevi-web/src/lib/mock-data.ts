@@ -27,7 +27,7 @@ export const MOCK_CAPABILITIES: CreativeCapability[] = [
 ];
 
 export const MOCK_SUBJECTS: Subject[] = [
-  { subject_id: 'sub-1', kind: 'character', name: '小明', reference_images: [], metadata: { age: 12 } },
+  { subject_id: 'sub-1', kind: 'character', name: '小明', reference_images: [], metadata: { age: '12岁' } },
   { subject_id: 'sub-2', kind: 'character', name: '老师', reference_images: [], metadata: {} },
   { subject_id: 'sub-3', kind: 'scene',     name: '教室',  reference_images: [], metadata: {} },
   { subject_id: 'sub-4', kind: 'product',   name: '产品A', reference_images: [], metadata: {} },

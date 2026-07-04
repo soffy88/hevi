@@ -107,13 +107,32 @@ export interface CreativeCapability {
 
 // ── 主体库 ────────────────────────────────────────
 export type SubjectKind = 'character' | 'portrait' | 'product' | 'scene';
+export type CastingTier = 'protagonist' | 'supporting' | 'extra';
+
+// 角色卡的专业要素(§ 角色配置规格)—— 全走 Subject.metadata 自由字段,不用改表结构。
+export interface CharacterMetadata {
+  age?: string;             // 年龄段,自由文本(如"20多岁")
+  gender?: string;          // 性别
+  build?: string;           // 体型
+  persona?: string;         // 人设/性格(注入分镜 LLM 的 roster 文本)
+  speech_style?: string;    // 语言风格 / 口头禅
+  casting_tier?: CastingTier; // 戏份分级:主角/配角/龙套
+  relationships?: string;   // 人物关系(自由文本,如"与阿熊是竞争对手")
+  negative_notes?: string;  // 角色专属负向提示(如"避免多指")
+  voice_ref?: string;       // 声音参考音频路径(Phase 3,上传后端写入)
+  wardrobe_images?: string[]; // 造型参考图路径(与身份参考图分开管理)
+  [key: string]: unknown;
+}
 
 export interface Subject {
   subject_id: string;
   kind: SubjectKind;
   name: string;
+  description?: string;
   reference_images: string[];
-  metadata: Record<string, unknown>;
+  tags?: string[];
+  metadata: CharacterMetadata;
+  version?: number;
 }
 
 // ── 成本预估 ──────────────────────────────────────
