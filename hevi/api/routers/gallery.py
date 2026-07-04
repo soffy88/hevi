@@ -4,12 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from obase.persistence import PgPool
 
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.gallery.repository import GalleryRepository
+from hevi.gallery.service import GalleryService
 
 router = APIRouter(prefix="/gallery", tags=["gallery"])
-
-
-async def _get_pool(pool: Annotated[PgPool, Depends(get_hevi_pg_pool)]) -> PgPool:
-    return pool
 
 
 def _row_to_item(row: dict[str, Any]) -> dict[str, Any]:
@@ -26,23 +24,22 @@ def _row_to_item(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+async def get_pg_pool() -> PgPool:
+    return await get_hevi_pg_pool()
+
+
+async def get_gallery_service(
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> GalleryService:
+    return GalleryService(GalleryRepository(pool))
+
+
 @router.get("")
 async def list_gallery(
-    pool: Annotated[PgPool, Depends(_get_pool)],
+    svc: Annotated[GalleryService, Depends(get_gallery_service)],
     category: str | None = None,
 ) -> dict[str, Any]:
-    async with pool.acquire() as conn:
-        if category:
-            rows = await conn.fetch(
-                "SELECT * FROM showcase_items WHERE is_active = true AND category = $1"
-                " ORDER BY sort_order, created_at",
-                category,
-            )
-        else:
-            rows = await conn.fetch(
-                "SELECT * FROM showcase_items WHERE is_active = true"
-                " ORDER BY sort_order, created_at"
-            )
+    rows = await svc.list_gallery(category=category)
     items = [_row_to_item(dict(r)) for r in rows]
     categories = list({it["category"] for it in items})
     return {"items": items, "categories": categories}
@@ -51,13 +48,9 @@ async def list_gallery(
 @router.get("/{item_id}")
 async def get_gallery_item(
     item_id: str,
-    pool: Annotated[PgPool, Depends(_get_pool)],
+    svc: Annotated[GalleryService, Depends(get_gallery_service)],
 ) -> dict[str, Any]:
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM showcase_items WHERE id = $1 AND is_active = true",
-            item_id,
-        )
+    row = await svc.get_gallery_item(item_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     return _row_to_item(dict(row))

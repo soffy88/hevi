@@ -4,10 +4,10 @@ from hevi.canvas.node_mapper import NODE_EXECUTORS, VALID_NODE_TYPES, create_nod
 from hevi.canvas.validation import GraphValidationError
 
 __all__ = [
-    "GraphService",
-    "ExecutorService",
-    "create_node_executor",
     "NODE_EXECUTORS",
     "VALID_NODE_TYPES",
+    "ExecutorService",
+    "GraphService",
     "GraphValidationError",
+    "create_node_executor",
 ]

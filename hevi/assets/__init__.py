@@ -7,4 +7,4 @@ asset_loader contract by pre-fetching referenced assets into a dict first.
 from hevi.assets.loader import load_asset_map, make_asset_loader
 from hevi.assets.repository import ASSET_TYPES, AssetRepository
 
-__all__ = ["AssetRepository", "ASSET_TYPES", "load_asset_map", "make_asset_loader"]
+__all__ = ["ASSET_TYPES", "AssetRepository", "load_asset_map", "make_asset_loader"]

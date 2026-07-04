@@ -46,8 +46,8 @@ export type EdgeValidation = { valid: boolean; reason?: string };
 // ── 任务/进度 ─────────────────────────────────────
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'paused';
 
-export type DurationArchetype = '1-5min' | '5-15min' | '15-45min' | '45min+';
-export type VideoProvider = 'ltx2_cloud' | 'wan_cloud';
+export type DurationArchetype = 'short' | '1-5min' | '5-15min' | '15-45min' | '45min+';
+export type VideoProvider = 'wan_local' | 'veo3' | 'kling_v2' | 'hailuo' | 'ltx2_cloud' | 'wan_cloud';
 export type QualityProfile = 'standard' | 'high' | 'ultra';
 
 export interface LongVideoTaskReq {
@@ -60,6 +60,7 @@ export interface LongVideoTaskReq {
   num_characters?: number;
   quality_profile: QualityProfile;
   step_providers?: StepProviders;
+  subject_id?: string;   // 选中角色后带上,后端用其参考图锁定每个镜头的人物身份
 }
 
 export type AspectRatio = '9:16' | '16:9' | '1:1';

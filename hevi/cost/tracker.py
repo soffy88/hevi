@@ -14,9 +14,9 @@ def create_hevi_tracker(budget_usd: float | None = None) -> CostTracker:
     """Create a CostTracker pre-populated with hevi pricing."""
     pricing = get_pricing_table()
     entries = []
-    
-    _VIDEO = {"ltx2_cloud", "wan_cloud", "wan_local", "ltx2_native"}
-    _AUDIO = {"vibevoice", "duix"}
+
+    _VIDEO = {"ltx2_cloud", "wan_cloud", "wan_local", "ltx2_native", "veo3", "kling_v2", "hailuo"}
+    _AUDIO = {"edge_tts", "vibevoice", "duix"}
     _LLM = {"qwen_local", "qwen_dashscope"}
 
     for provider, p_info in pricing.items():
@@ -28,25 +28,27 @@ def create_hevi_tracker(budget_usd: float | None = None) -> CostTracker:
             category = "llm"
         else:
             category = "other"
-            
-        entries.append(PricingEntry(
-            category=category,
-            provider=provider,
-            model_or_tier="default",
-            unit=p_info["unit"],
-            price_usd=p_info["price_usd"]
-        ))
-        
+
+        entries.append(
+            PricingEntry(
+                category=category,
+                provider=provider,
+                model_or_tier="default",
+                unit=p_info["unit"],
+                price_usd=p_info["price_usd"],
+            )
+        )
+
     table = PricingTable(entries=entries)
     return CostTracker(pricing_table=table, budget_usd=budget_usd, strict_pricing=False)
 
 
 class HeviCostTracker:
     """Convenience wrapper for actual cost tracking in hevi."""
-    
+
     def __init__(self, budget_usd: float | None = None):
         self.internal = create_hevi_tracker(budget_usd=budget_usd)
-        
+
     def _record_credits(self, cost_usd: float) -> None:
         credits = int(cost_usd * settings.credits_per_usd)
         if credits > 0:
@@ -73,10 +75,10 @@ class HeviCostTracker:
         )
         self._record_credits(cost)
         return cost
-        
+
     def get_summary(self) -> dict[str, Any]:
         return {"total_usd": self.internal.total_usd, "entries": self.internal._entries}
-    
+
     @property
     def total_usd(self) -> float:
         return float(self.internal.total_usd)

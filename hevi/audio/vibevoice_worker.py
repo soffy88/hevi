@@ -43,7 +43,7 @@ async def _main(args_path: str) -> None:
         for line in data["script"]
     ]
 
-    from oprim import vibevoice_synthesize  # noqa: PLC0415
+    from oprim import vibevoice_synthesize
 
     await vibevoice_synthesize(
         config={"VIBEVOICE_MODEL_DIR": data["model_dir"]},

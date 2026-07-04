@@ -13,7 +13,7 @@ from hevi.observability import track_provider_call
 
 # avatar_generate is imported at module level so tests can patch
 # hevi.audio.avatar_service.avatar_generate
-__all__ = ["generate_avatar_clip", "avatar_generate"]
+__all__ = ["avatar_generate", "generate_avatar_clip"]
 
 _DUIX_CFG_KEYS = ("DUIX_HOST_DATA_DIR", "DUIX_CONTAINER_DATA_DIR")
 
@@ -35,12 +35,11 @@ async def generate_avatar_clip(
         for key in _DUIX_CFG_KEYS:
             if val := config.get(key):
                 os.environ[key] = str(val)
-    async with scheduler.acquire(VRAM_DUIX):
-        async with track_provider_call(AudioProvider.DUIX):
-            result = await avatar_generate(
-                provider=str(AudioProvider.DUIX),
-                portrait_image=portrait_image,
-                audio_path=audio_path,
-                output_path=output_path,
-            )
-            return Path(result)
+    async with scheduler.acquire(VRAM_DUIX), track_provider_call(AudioProvider.DUIX):
+        result = await avatar_generate(
+            provider=str(AudioProvider.DUIX),
+            portrait_image=portrait_image,
+            audio_path=audio_path,
+            output_path=output_path,
+        )
+        return Path(result)

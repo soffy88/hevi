@@ -151,12 +151,11 @@ async def synthesize_dialogue(
     if not script:
         raise ValueError("Script cannot be empty")
 
-    async with scheduler.acquire(VRAM_VIBEVOICE):
-        async with track_provider_call(AudioProvider.VIBEVOICE):
-            result = await vibevoice_synthesize(
-                config=config if isinstance(config, dict) else None,
-                script=script,
-                output_path=output_path,
-                watermark=watermark,
-            )
-            return Path(result)
+    async with scheduler.acquire(VRAM_VIBEVOICE), track_provider_call(AudioProvider.VIBEVOICE):
+        result = await vibevoice_synthesize(
+            config=config if isinstance(config, dict) else None,
+            script=script,
+            output_path=output_path,
+            watermark=watermark,
+        )
+        return Path(result)

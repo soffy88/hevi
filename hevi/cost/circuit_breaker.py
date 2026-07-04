@@ -7,7 +7,6 @@ from hevi.cost.estimator import CostEstimate
 class CostLimitExceeded(Exception):
     """Raised when cost exceeds configured limits."""
 
-    pass
 
 
 @dataclass

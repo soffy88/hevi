@@ -9,8 +9,9 @@
 #   DOCKER_BUILDKIT=1 docker compose -f deploy/docker-compose-cftunnel.yml up -d --build
 #
 # 隧道目标(交 Wiki cloudflared 配置):
-#   hevi-api : http://localhost:8200   →  https://api.hevi.uex.hk  (或路径路由 /api/*)
+#   hevi-api : http://localhost:8201   →  https://api.hevi.uex.hk  (或路径路由 /api/*)
 #   hevi-web : http://localhost:3200   →  https://hevi.uex.hk
+#   注: 8200 与 tide-api 冲突,已改用 8201(2026-07-02)
 
 name: hevi-cftunnel
 
@@ -47,7 +48,7 @@ services:
       - /home/soffy/Wan2GP:/Wan2GP:ro
       - /home/soffy/projects/hevi/output:/app/output
     ports:
-      - "8200:8000"
+      - "8201:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: >
@@ -73,9 +74,20 @@ services:
     depends_on:
       hevi-api:
         condition: service_healthy
+    # Next.js 生产镜像不含 curl → 原 curl healthcheck 恒失败(假 unhealthy)。
+    # 改用 node 自带 http 探活(node 必然存在)。
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:3000"]
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://localhost:3000',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))"
       interval: 15s
       timeout: 10s
       retries: 3
       start_period: 30s
+
+networks:
+  default:
+    name: hevi-cftunnel_default
+    external: true

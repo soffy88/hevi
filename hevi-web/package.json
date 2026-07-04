@@ -6,11 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@helios/blocks": "file:./vendor/helios-blocks-2.7.1.tgz",
-    "@helios/oui": "file:./vendor/helios-oui-1.7.0.tgz",
+    "@helios/blocks": "file:./vendor/helios-blocks-3.0.0.tgz",
+    "@helios/oui": "file:./vendor/helios-oui-2.0.0.tgz",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "next": "^16.0.0",
@@ -25,6 +26,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.9"
   }
 }

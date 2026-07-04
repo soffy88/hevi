@@ -44,11 +44,13 @@ def _make_svc(repo: SubjectRepository | None = None) -> SubjectService:
 
 # ── 1. SUBJECT_KINDS constant ─────────────────────────────────────────────────
 
+
 def test_subject_kinds_values() -> None:
-    assert SUBJECT_KINDS == frozenset({"character", "portrait", "product", "scene"})
+    assert frozenset({"character", "portrait", "product", "scene"}) == SUBJECT_KINDS
 
 
 # ── 2. create_subject — 4 valid kinds ────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["character", "portrait", "product", "scene"])
@@ -74,6 +76,7 @@ async def test_create_subject_all_kinds(kind: str) -> None:
 
 # ── 3. create_subject — validation errors ────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_create_subject_empty_name_raises() -> None:
     svc = _make_svc()
@@ -97,6 +100,7 @@ async def test_create_subject_empty_reference_list_raises() -> None:
 
 # ── 4. user_id nullable ───────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_create_subject_user_id_nullable() -> None:
     repo, _ = _make_repo()
@@ -114,6 +118,7 @@ async def test_create_subject_user_id_nullable() -> None:
 
 
 # ── 5. ReferenceStore ─────────────────────────────────────────────────────────
+
 
 def test_reference_store_path_for() -> None:
     rs = ReferenceStore(base_dir="/data/refs")
@@ -134,9 +139,10 @@ def test_reference_store_subject_dir() -> None:
 
 # ── 6. Repository methods ─────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_repository_create_calls_insert_one() -> None:
-    repo, pool = _make_repo()
+    repo, _pool = _make_repo()
     with (
         patch(
             "hevi.subjects.repository.insert_one",
@@ -172,6 +178,7 @@ async def test_repository_soft_delete_returns_false_for_missing() -> None:
 
 # ── 7. search_subjects ────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_search_by_kind() -> None:
     repo, _ = _make_repo()
@@ -199,6 +206,7 @@ async def test_search_by_query_text() -> None:
 
 # ── 8. update_subject_metadata ────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_update_subject_metadata_merges() -> None:
     repo, _ = _make_repo()
@@ -211,9 +219,7 @@ async def test_update_subject_metadata_merges() -> None:
         # get is called 3×: service exists-check, repo.update exists-check, repo.update return
         with patch.object(repo, "get", new_callable=AsyncMock, side_effect=[base, base, updated]):
             svc = _make_svc(repo)
-            result = await svc.update_subject_metadata(
-                _SUBJECT_ID, metadata={"mood": "happy"}
-            )
+            result = await svc.update_subject_metadata(_SUBJECT_ID, metadata={"mood": "happy"})
     assert result is not None
     assert result["metadata"]["mood"] == "happy"
 
@@ -229,6 +235,7 @@ async def test_update_subject_metadata_nonexistent_returns_none() -> None:
 
 # ── 9. soft delete ────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_soft_delete_returns_true() -> None:
     repo, _ = _make_repo()
@@ -241,6 +248,7 @@ async def test_soft_delete_returns_true() -> None:
 
 
 # ── 10. API routes ────────────────────────────────────────────────────────────
+
 
 def _mock_svc() -> SubjectService:
     pool = MagicMock()
@@ -391,12 +399,10 @@ async def test_api_create_invalid_kind(client: Any) -> None:
 
 async def _register(client: Any) -> dict[str, str]:
     email = f"idor_{uuid.uuid4().hex[:8]}@example.com"
-    await client.post("/api/auth/register", json={
-        "email": email, "password": "password123", "display_name": "U"
-    })
-    login = await client.post("/api/auth/login", json={
-        "email": email, "password": "password123"
-    })
+    await client.post(
+        "/api/auth/register", json={"email": email, "password": "password123", "display_name": "U"}
+    )
+    login = await client.post("/api/auth/login", json={"email": email, "password": "password123"})
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
 
@@ -432,8 +438,61 @@ async def test_subjects_idor_cross_user_404(client: Any) -> None:
 
 # ── 11. Route order — list route before /{id} ─────────────────────────────────
 
+
 def test_list_route_before_detail_route() -> None:
     from hevi.api.routers.subjects import router
 
     paths = [r.path for r in router.routes]
     assert paths.index("/subjects/") < paths.index("/subjects/{subject_id}")
+
+
+# ── 角色库:上传照片 → 参考图(2D 锁定入口)──────────────────────────────────
+
+
+def test_reference_store_save_upload(tmp_path) -> None:
+    """save_upload:字节落盘到 subject 目录 + 防路径穿越,返回可读回路径。"""
+    store = ReferenceStore(base_dir=tmp_path)
+    p = store.save_upload(_SUBJECT_ID, "my photo!.jpg", b"\xff\xd8jpegbytes")
+    from pathlib import Path as _P
+
+    assert _P(p).exists()
+    assert _P(p).read_bytes() == b"\xff\xd8jpegbytes"
+    # 恶意文件名被清洗(无路径穿越)
+    p2 = store.save_upload(_SUBJECT_ID, "../../etc/passwd", b"x")
+    assert "etc/passwd" not in p2 and _P(p2).parent == store.subject_dir(_SUBJECT_ID)
+
+
+@pytest.mark.asyncio
+async def test_add_reference_upload_appends(tmp_path) -> None:
+    """add_reference_upload:落盘 + 把新路径追加到 subject.reference_images。"""
+    repo, _ = _make_repo()
+    captured: dict[str, Any] = {}
+
+    async def _fake_update(sid, data):
+        captured.update(data)
+        return {**_STORED, **data}
+
+    with (
+        patch(
+            "hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=dict(_STORED)
+        ),
+        patch.object(repo, "update", side_effect=_fake_update),
+    ):
+        svc = SubjectService(repo, ref_store=ReferenceStore(base_dir=tmp_path))
+        result = await svc.add_reference_upload(_SUBJECT_ID, filename="new.jpg", data=b"abc")
+        assert result is not None
+        refs = captured["reference_images"]
+        assert len(refs) == 2  # 原有 1 张 + 新增 1 张
+        from pathlib import Path as _P
+
+        assert _P(refs[-1]).read_bytes() == b"abc"
+
+
+@pytest.mark.asyncio
+async def test_add_reference_upload_missing_subject(tmp_path) -> None:
+    repo, _ = _make_repo()
+    with patch("hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=None):
+        svc = SubjectService(repo, ref_store=ReferenceStore(base_dir=tmp_path))
+        assert (
+            await svc.add_reference_upload(str(uuid.uuid4()), filename="x.jpg", data=b"y") is None
+        )
