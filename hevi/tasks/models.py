@@ -29,6 +29,11 @@ class VideoTask(Base):
 
     queued_at: Mapped[datetime | None] = mapped_column(nullable=True)
     queue_position: Mapped[int] = mapped_column(Integer, default=0)
+    # Series 资产化(§3 L2):第 N 集属于哪个 Series + 集序号。None = 独立任务(非系列)。
+    series_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("series.id"), nullable=True, index=True
+    )
+    episode_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=datetime.utcnow, onupdate=datetime.utcnow)
