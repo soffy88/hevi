@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import signal
 from datetime import UTC, datetime
@@ -7,6 +8,7 @@ from hevi.queue.task_queue import dequeue
 from hevi.tasks.task_service import TaskService
 
 logger = logging.getLogger(__name__)
+
 
 class QueueWorker:
     def __init__(self, task_service: TaskService, poll_interval: float = 5.0):
@@ -58,7 +60,9 @@ class QueueWorker:
                     res = await billing.refund_for_task(user_id, str(task_id))
                     logger.info(
                         "zombie recovery: task %s → failed, refunded %s to %s",
-                        task_id, res.get("refunded", 0), user_id,
+                        task_id,
+                        res.get("refunded", 0),
+                        user_id,
                     )
                 else:
                     logger.info("zombie recovery: task %s → failed (no user)", task_id)
@@ -70,15 +74,13 @@ class QueueWorker:
         self._running = True
         logger.info("Queue worker started")
         await self._recover_zombie_tasks()
-        
+
         # Setup signal handlers for graceful shutdown
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
-            try:
+            # Signal handlers not supported on all platforms (e.g. Windows)
+            with contextlib.suppress(NotImplementedError):
                 loop.add_signal_handler(sig, self.stop)
-            except NotImplementedError:
-                # Signal handlers not supported on all platforms (e.g. Windows)
-                pass
 
         while self._running:
             try:

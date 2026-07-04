@@ -5,12 +5,16 @@ from typing import Any
 
 import oprim.providers.dashscope as dashscope
 from obase.provider_registry import ProviderRegistry
-from oprim import avatar_generate, ltx2_cloud_generate, vibevoice_synthesize
+from oprim import avatar_generate, ltx2_cloud_generate
 
 # oprim 3.10.37 added a facade submodule oprim/video_generate.py that shadows the
 # function for static analysis; import the function from the facade explicitly.
 from oprim.video_generate import video_generate
 
+# SaaS-4 Fix: 音频走 hevi 子进程隔离版(退出即释放 ~8GB VRAM),而非 oprim 原生
+# 主进程内加载 —— 后者与 ollama(qwen)/Wan2GP 抢 10GB 显存,是 wan_local
+# "zombie: worker restarted" 的诱因。此版本还遵循 VIBEVOICE_MODEL_DIR。
+from hevi.audio.tts_service import vibevoice_synthesize
 from hevi.video.wan_local_service import wan_local_generate
 
 __all__ = ["ProviderRegistry", "register_all_providers"]
@@ -21,33 +25,27 @@ logger = logging.getLogger(__name__)
 def register_all_providers() -> None:
     """Register all L2 kernel providers at startup."""
     # 0. Patch Main Library Bugs (pending owner RFC)
+    # [B1 已回迁 oprim v3.11.0:wan_cloud 默认值(endpoint/model)+ 不支持参数过滤已在
+    #  上游修复,原 _patched_wan_invoke 猴补丁删除。]
+
     try:
-        import oprim._providers.wan_cloud as wan_cloud_mod
-        _orig_wan_invoke = wan_cloud_mod.invoke
+        # vibevoice PyPI 0.0.1 (the only release published) ships an empty
+        # top-level __init__.py — the classes oprim._vibevoice_synthesize needs
+        # only exist in submodules. Re-export them so `from vibevoice import
+        # VibeVoiceForConditionalGenerationInference, VibeVoiceProcessor` works.
+        import vibevoice
+        from vibevoice.modular.modeling_vibevoice_inference import (
+            VibeVoiceForConditionalGenerationInference,
+        )
+        from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
 
-        async def _patched_wan_invoke(*args: Any, **kwargs: Any) -> Any:
-            # SaaS-3 Fix: oprim 3.6.1 uses broken defaults for Wan 2.1
-            # 1. Correct the endpoint URL
-            kwargs["base_url"] = (
-                "https://dashscope.aliyuncs.com/api/v1/services/aigc/"
-                "video-generation/video-synthesis"
-            )
-            # 2. Correct the model name
-            if "model" not in kwargs or kwargs.get("model") == "wanx2.6-t2v-turbo":
-                kwargs["model"] = "wanx2.1-t2v-turbo"
-            
-            # 3. Filter unsupported arguments (like 'fps') passed by video_generate
-            supported = {
-                "mode", "prompt", "reference_image", "output_path", "api_key",
-                "base_url", "model", "poll_interval_s", "timeout_s"
-            }
-            filtered = {k: v for k, v in kwargs.items() if k in supported}
-            return await _orig_wan_invoke(*args, **filtered)
-
-        wan_cloud_mod.invoke = _patched_wan_invoke
-        logger.info("Main library bug patched: oprim.wan_cloud.invoke (model/args fix)")
+        vibevoice.VibeVoiceForConditionalGenerationInference = (
+            VibeVoiceForConditionalGenerationInference
+        )
+        vibevoice.VibeVoiceProcessor = VibeVoiceProcessor
+        logger.info("Main library bug patched: vibevoice top-level exports (empty __init__.py)")
     except Exception as e:
-        logger.error(f"Failed to patch main library: {e}")
+        logger.error(f"Failed to patch vibevoice exports: {e}")
 
     # 1. LLM Providers (for agentic orchestration)
     dashscope.register(replace=True)
@@ -93,19 +91,21 @@ def register_all_providers() -> None:
         This adapter satisfies both patterns via __await__ + get().
         Includes robust JSON coercion to satisfy Pydantic models in oskill.
         """
+
         def __init__(self, **kwargs: Any):
             kwargs.pop("result_format", None)
             resp = _compat_llm_call(**kwargs)
             if not isinstance(resp, dict):
                 resp = dict(resp)
-                
+
             choices = resp.get("output", {}).get("choices", [])
             if choices:
                 text = choices[0].get("message", {}).get("content", "")
-                
+
                 # SaaS-2/P10.F2 Fix: Coerce numeric IDs and string-list scenes
                 import json
                 import re
+
                 try:
                     # 1. Strip Markdown code blocks if present
                     clean_text = text.strip()
@@ -116,11 +116,11 @@ def register_all_providers() -> None:
                             clean_text = match.group(1).strip()
 
                     # 2. Coerce numeric IDs and list fields
-                    json_match = re.search(r'(\{.*\}|\[.*\])', clean_text, re.DOTALL)
+                    json_match = re.search(r"(\{.*\}|\[.*\])", clean_text, re.DOTALL)
                     if json_match:
                         json_str = json_match.group(1)
                         data = json.loads(json_str)
-                        
+
                         def _coerce_fields(obj: Any) -> Any:
                             if isinstance(obj, dict):
                                 res: dict[str, Any] = {}
@@ -132,7 +132,7 @@ def register_all_providers() -> None:
                                     # 2. Coerce specific numeric fields to int (rounding if float)
                                     elif k in ("importance", "index", "scene_index"):
                                         if isinstance(v, (int, float)):
-                                            res[k] = int(round(v))
+                                            res[k] = round(v)
                                         elif isinstance(v, str):
                                             vl = v.lower()
                                             if vl in ("low", "minor"):
@@ -165,9 +165,9 @@ def register_all_providers() -> None:
                                     else:
                                         res[k] = _coerce_fields(v)
                                 return res
-                            elif isinstance(obj, list):
+                            if isinstance(obj, list):
                                 return [_coerce_fields(i) for i in obj]
-                            elif obj is None:
+                            if obj is None:
                                 return ""
                             return obj
 
@@ -180,12 +180,13 @@ def register_all_providers() -> None:
                 self._resp["content"] = text
             else:
                 self._resp = resp
-        
+
         def __await__(self) -> Any:
             async def _dummy() -> dict[str, Any]:
                 return self._resp
+
             return _dummy().__await__()
-            
+
         def get(self, key: str, default: Any = None) -> Any:
             return self._resp.get(key, default)
 
@@ -194,6 +195,7 @@ def register_all_providers() -> None:
     # 1.1 Local LLM fallback — register LocalQwenAdapter as "local";
     # overrides "default" when HEVI_LLM_PROVIDER=qwen_local
     from hevi.providers.local_qwen_adapter import register_if_local
+
     register_if_local()
 
     # 2. Video Providers
@@ -204,40 +206,53 @@ def register_all_providers() -> None:
             mode=kwargs.pop("mode", "t2v"),
             duration_s=kwargs.pop("duration_s", 5.0),
             resolution=kwargs.pop("resolution", (1080, 1920)),
-            **kwargs
+            **kwargs,
         ),
         replace=True,
     )
     ProviderRegistry.register(
         "video",
         "wan_cloud",
-        lambda **kwargs: video_generate(
-            provider="wan_cloud", **kwargs
-        ),
+        lambda **kwargs: video_generate(provider="wan_cloud", **kwargs),
         replace=True,
     )
     ProviderRegistry.register("video", "wan_local", wan_local_generate, replace=True)
+
+    # 高写实云 provider(fal):Veo3 / Kling v2 / 海螺 —— A2 已回迁 oprim v3.11.0,直接导入。
+    from oprim import hailuo_generate, kling_v2_generate, veo3_generate
+
+    ProviderRegistry.register("video", "veo3", veo3_generate, replace=True)
+    ProviderRegistry.register("video", "kling_v2", kling_v2_generate, replace=True)
+    ProviderRegistry.register("video", "hailuo", hailuo_generate, replace=True)
+
     # ltx2_local: 路由到 wan_local(本机无独立 LTX2 local 推理实现)
     ProviderRegistry.register("video", "ltx2_local", wan_local_generate, replace=True)
 
     # 0.1 Chaos Monkey Overrides (SaaS-3 / P10.F3 fallback verification)
     import os
+
     if os.getenv("HEVI_CHAOS_FAIL_LTX2") == "true":
+
         async def failing_ltx2(**kwargs: Any) -> Any:
             raise RuntimeError("Chaos Monkey: LTX2 failure injected")
+
         ProviderRegistry.register("video", "ltx2_cloud", failing_ltx2, replace=True)
         logger.warning("Chaos Monkey ACTIVE: ltx2_cloud will fail.")
 
     if os.getenv("HEVI_CHAOS_FAIL_WAN") == "true":
+
         async def failing_wan(**kwargs: Any) -> Any:
             raise RuntimeError("Chaos Monkey: Wan failure injected")
+
         ProviderRegistry.register("video", "wan_cloud", failing_wan, replace=True)
         logger.warning("Chaos Monkey ACTIVE: wan_cloud will fail.")
 
     # 3. Audio Providers
-    ProviderRegistry.register(
-        "audio", "vibevoice", vibevoice_synthesize, replace=True
-    )
+    # edge_tts:默认音频 provider(多语言云 TTS)。A1 已回迁 oprim v3.11.0,直接导入。
+    from oprim import edge_tts_synthesize
+
+    ProviderRegistry.register("audio", "edge_tts", edge_tts_synthesize, replace=True)
+    ProviderRegistry.register("audio", "vibevoice", vibevoice_synthesize, replace=True)
     ProviderRegistry.register(
         "audio",
         "duix",

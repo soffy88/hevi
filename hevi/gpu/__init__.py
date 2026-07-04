@@ -21,12 +21,12 @@ from hevi.gpu.providers import (
 )
 
 __all__ = [
-    "scheduler",
-    "VRAM_VIBEVOICE",
-    "VRAM_QWEN_LOCAL",
-    "VRAM_GEMMA_VISION",
     "VRAM_DUIX",
+    "VRAM_GEMMA_VISION",
+    "VRAM_QWEN_LOCAL",
+    "VRAM_VIBEVOICE",
     "VRAM_WAN_LOCAL",
+    "scheduler",
     "wan_local_provider",
 ]
 

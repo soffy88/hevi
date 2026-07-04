@@ -7,16 +7,17 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth-store';
 import { OCostConfirmDialog, OTaskProgress, useSSEProgress } from '@helios/oui';
 import type {
-  DurationArchetype, QualityProfile, AspectRatio, LongVideoTaskReq,
-  GalleryCategory, GalleryItem, StepProviders, PresetId,
+  DurationArchetype, QualityProfile, AspectRatio, LongVideoTaskReq, VideoProvider,
+  GalleryCategory, GalleryItem, StepProviders, PresetId, Subject,
 } from '@/types/api';
 import { STYLE_PRESETS } from '@/types/api';
-import { taskApi, USE_MOCK } from '@/lib/api-client';
+import { taskApi, subjectApi, USE_MOCK } from '@/lib/api-client';
+import { humanizeTaskError } from '@/lib/errorMessages';
 import { mockEstimate } from '@/lib/mock-data';
 import { Gallery } from './Gallery';
 import { ProviderSelector } from './ProviderSelector';
@@ -24,14 +25,15 @@ import { PRESETS } from '@/lib/mock-data';
 
 const CATEGORIES: { id: GalleryCategory; label: string; durations: DurationArchetype[]; defaultAspect: AspectRatio }[] = [
   { id: 'long_video',       label: '长视频',   durations: ['15-45min', '45min+'], defaultAspect: '16:9' },
-  { id: 'short_video',      label: '短视频',   durations: ['1-5min'],             defaultAspect: '9:16' },
+  { id: 'short_video',      label: '短视频',   durations: ['short', '1-5min'],    defaultAspect: '9:16' },
   { id: 'avatar_narration', label: '头像解说', durations: ['1-5min', '5-15min'],  defaultAspect: '9:16' },
   { id: 'animation',        label: '动画',     durations: ['1-5min', '5-15min'],  defaultAspect: '16:9' },
   { id: 'image',            label: '图片',     durations: [],                     defaultAspect: '1:1' },
 ];
 
 const DURATIONS: { id: DurationArchetype; label: string }[] = [
-  { id: '1-5min', label: '1–5 分钟' },
+  { id: 'short', label: '极速单片 (~10秒·连贯单镜头)' },
+  { id: '1-5min', label: '1–5 分钟 (多镜头分场景)' },
   { id: '5-15min', label: '5–15 分钟' },
   { id: '15-45min', label: '15–45 分钟' },
   { id: '45min+', label: '45 分钟+' },
@@ -45,14 +47,25 @@ const QUALITIES: { id: QualityProfile; label: string }[] = [
 
 const ASPECTS: AspectRatio[] = ['9:16', '16:9', '1:1'];
 
+// 视频模型/画质档(真人写实)。value 对应后端 video_provider
+// 成本从低到高排序;默认本地免费档(fal 云档偏贵,按需选用)。
+const VIDEO_PROVIDERS: { id: VideoProvider; label: string }[] = [
+  { id: 'wan_local',  label: '本地免费(Wan·零成本·需本机GPU)' },
+  { id: 'ltx2_cloud', label: '极速草稿(fal·便宜·画质弱)' },
+  { id: 'hailuo',     label: '海螺(fal·写实·💰中)' },
+  { id: 'kling_v2',   label: '可灵v2(fal·写实·💰💰)' },
+  { id: 'veo3',       label: 'Veo3(fal·最写实·💰💰💰最贵)' },
+];
+
 export function SimpleGenerate() {
   const router = useRouter();
   const [category, setCategory] = useState<GalleryCategory>('short_video');
   const [topic, setTopic] = useState('');
-  const [duration, setDuration] = useState<DurationArchetype>('1-5min');
+  const [duration, setDuration] = useState<DurationArchetype>('short');
   const [style, setStyle] = useState<string>(STYLE_PRESETS[0]);
   const [quality, setQuality] = useState<QualityProfile>('standard');
   const [aspect, setAspect] = useState<AspectRatio>('9:16');
+  const [videoProvider, setVideoProvider] = useState<VideoProvider>('wan_local');  // 默认本地免费档
   const [stepProviders, setStepProviders] = useState<StepProviders>(
     PRESETS.find(p => p.id === 'balanced')!.step_providers
   );
@@ -60,6 +73,13 @@ export function SimpleGenerate() {
   const [estimate, setEstimate] = useState({ credits: 0, usd: 0 });
   const [confirming, setConfirming] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(null);
+
+  // 角色库(可选):选中后生成时锁定人物身份
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [subjectUploading, setSubjectUploading] = useState(false);
+  const [subjectError, setSubjectError] = useState<string | null>(null);
+  const subjectFileRef = useRef<HTMLInputElement>(null);
 
   const catDef = CATEGORIES.find(c => c.id === category)!;
   const isImage = category === 'image';
@@ -87,10 +107,40 @@ export function SimpleGenerate() {
   const progress = useSSEProgress(taskId && !USE_MOCK ? taskApi.progressUrl(taskId) : null);
 
   const buildReq = (): LongVideoTaskReq => ({
-    topic, duration_archetype: duration, video_provider: 'ltx2_cloud',
+    topic, duration_archetype: duration, video_provider: videoProvider,
     quality_profile: quality, style_preset: style, aspect_ratio: aspect,
     step_providers: stepProviders,
+    ...(selectedSubjectId ? { subject_id: selectedSubjectId } : {}),
   });
+
+  // 拉取角色列表(仅非图片分类、已登录、非 mock 时)
+  const refreshSubjects = async () => {
+    try { setSubjects(await subjectApi.list('character')); }
+    catch { /* 未登录/失败:静默,保持空列表 */ }
+  };
+  useEffect(() => {
+    if (USE_MOCK || isImage || !isAuthenticated()) { setSubjects([]); return; }
+    refreshSubjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
+
+  // 上传照片建角色 → 刷新列表并自动选中
+  const onSubjectFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';   // 允许再次选同一文件
+    if (!file) return;
+    setSubjectError(null);
+    setSubjectUploading(true);
+    try {
+      const s = await subjectApi.fromPhoto(file);
+      await refreshSubjects();
+      setSelectedSubjectId(s.subject_id);
+    } catch (err: unknown) {
+      setSubjectError((err as { message?: string })?.message === 'NOT_AUTHENTICATED' ? '请先登录' : '上传失败,请重试');
+    } finally {
+      setSubjectUploading(false);
+    }
+  };
 
   // 选项变化 → 实时预估成本
   useEffect(() => {
@@ -102,7 +152,7 @@ export function SimpleGenerate() {
     })();
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [duration, quality, style, aspect, category]);
+  }, [duration, quality, style, aspect, category, videoProvider]);
 
   const start = async () => {
     setConfirming(false);
@@ -126,24 +176,46 @@ export function SimpleGenerate() {
         { id: 's3', label: '配音合成', status: 'pending' as const },
       ] };
     const p = USE_MOCK ? mockP : progress;
+    const queueInfo = p as typeof p & { ahead?: number; estimated_wait_s?: number };
     const isLocalVideo = stepProviders.video.includes('local');
+    const isQueued = !USE_MOCK && queueInfo.ahead != null;
     return (
       <div className="hevi-home">
         <div className="hevi-home__panel">
           <h1 className="hevi-home__title">生成中</h1>
           {/* 本地任务排队提示(§2)*/}
-          {isLocalVideo && (
+          {isLocalVideo && isQueued && (
             <div className="hevi-queue-notice">
-              ⏳ 本地任务已进队列。当前排队中(前面 2 个),预计等待约 8 分钟。
+              ⏳ 本地任务已进队列。当前排队中(前面 {queueInfo.ahead} 个),
+              预计等待约 {Math.ceil((queueInfo.estimated_wait_s ?? 0) / 60)} 分钟。
               可关闭页面,稍后在「我的」查看进度。
             </div>
           )}
           <OTaskProgress
             percent={p.percent} stage={p.stage} status={p.status} stages={p.stages}
             etaSeconds={USE_MOCK ? 360 : undefined}
+            errorMessage={USE_MOCK ? undefined : humanizeTaskError(progress.error)}
             onResume={() => taskId && taskApi.resume(taskId)}
             onCancel={() => setTaskId(null)}
-            resultSlot={<button className="oui-btn-primary" onClick={() => setTaskId(null)}>查看成片</button>}
+            resultSlot={
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+                {!USE_MOCK && progress.status === 'completed' && (
+                  <video
+                    src={taskApi.videoUrl(taskId)}
+                    controls
+                    autoPlay
+                    playsInline
+                    style={{ width: '100%', maxHeight: '70vh', borderRadius: 8, background: '#000' }}
+                  />
+                )}
+                <div style={{ display: 'flex', gap: 12 }}>
+                  {!USE_MOCK && progress.status === 'completed' && (
+                    <a className="oui-btn" href={taskApi.videoUrl(taskId)} download>下载</a>
+                  )}
+                  <button className="oui-btn-primary" onClick={() => setTaskId(null)}>再生成一个</button>
+                </div>
+              </div>
+            }
           />
         </div>
       </div>
@@ -199,6 +271,14 @@ export function SimpleGenerate() {
           </div>
           {!isImage && (
             <div className="hevi-home__opt">
+              <label>模型/画质</label>
+              <select value={videoProvider} onChange={e => setVideoProvider(e.target.value as VideoProvider)}>
+                {VIDEO_PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </select>
+            </div>
+          )}
+          {!isImage && (
+            <div className="hevi-home__opt">
               <label>画幅</label>
               <div className="hevi-home__aspect">
                 {ASPECTS.map(a => (
@@ -215,6 +295,58 @@ export function SimpleGenerate() {
             </div>
           )}
         </div>
+
+        {/* 角色(可选):选中后生成时锁定人物身份(图片类型不显示)*/}
+        {!isImage && (
+          <div className="hevi-home__opt" style={{ display: 'block' }}>
+            <label>角色(可选)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6, alignItems: 'stretch' }}>
+              {/* 不锁定角色(默认)*/}
+              <button type="button"
+                data-active={selectedSubjectId == null ? 'true' : undefined}
+                onClick={() => setSelectedSubjectId(null)}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  width: 72, height: 88, borderRadius: 8, fontSize: 12, cursor: 'pointer',
+                  border: selectedSubjectId == null ? '2px solid var(--oui-accent, #6366f1)' : '1px solid #d0d0d8',
+                  background: 'transparent',
+                }}>
+                不锁定角色
+              </button>
+
+              {subjects.map(s => {
+                const active = selectedSubjectId === s.subject_id;
+                return (
+                  <button key={s.subject_id} type="button"
+                    data-active={active ? 'true' : undefined}
+                    onClick={() => setSelectedSubjectId(s.subject_id)}
+                    title={s.name}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                      width: 72, padding: 4, borderRadius: 8, cursor: 'pointer',
+                      border: active ? '2px solid var(--oui-accent, #6366f1)' : '1px solid #d0d0d8',
+                      background: 'transparent',
+                    }}>
+                    <img src={subjectApi.imageUrl(s.subject_id)} alt={s.name}
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }}
+                      style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, background: '#f0f0f4' }} />
+                    <span style={{ fontSize: 12, maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                  </button>
+                );
+              })}
+
+              {/* + 上传照片建角色 */}
+              <button type="button" className="oui-btn"
+                disabled={subjectUploading}
+                onClick={() => subjectFileRef.current?.click()}
+                style={{ width: 72, height: 88, borderRadius: 8, fontSize: 12, borderStyle: 'dashed' }}>
+                {subjectUploading ? '上传中…' : '+ 上传照片'}
+              </button>
+              <input ref={subjectFileRef} type="file" accept="image/*" hidden onChange={onSubjectFile} />
+            </div>
+            {subjectError && <div style={{ color: '#e5484d', fontSize: 12, marginTop: 4 }}>{subjectError}</div>}
+          </div>
+        )}
 
         {/* 逐步 provider 选择(图片类型只有出图一步,不显示)*/}
         {!isImage && (

@@ -11,6 +11,7 @@ import type {
 } from '@/types/api';
 import { QUALITY_SPECS } from '@/types/api';
 import { taskApi, USE_MOCK } from '@/lib/api-client';
+import { humanizeTaskError } from '@/lib/errorMessages';
 import { mockEstimate } from '@/lib/mock-data';
 
 const DURATIONS: { id: DurationArchetype; label: string }[] = [
@@ -62,8 +63,28 @@ export function LongVideoForm() {
           status={p.status}
           stages={p.stages}
           etaSeconds={USE_MOCK ? 480 : undefined}
+          errorMessage={USE_MOCK ? undefined : humanizeTaskError(progress.error)}
           onResume={() => taskId && taskApi.resume(taskId)}
           onCancel={() => setTaskId(null)}
+          resultSlot={
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+              {!USE_MOCK && progress.status === 'completed' && (
+                <video
+                  src={taskApi.videoUrl(taskId)}
+                  controls
+                  autoPlay
+                  playsInline
+                  style={{ width: '100%', maxHeight: '70vh', borderRadius: 8, background: '#000' }}
+                />
+              )}
+              <div style={{ display: 'flex', gap: 12 }}>
+                {!USE_MOCK && progress.status === 'completed' && (
+                  <a className="oui-btn" href={taskApi.videoUrl(taskId)} download>下载</a>
+                )}
+                <button className="oui-btn-primary" onClick={() => setTaskId(null)}>再生成一个</button>
+              </div>
+            </div>
+          }
         />
       </div>
     );

@@ -9,21 +9,15 @@ class GraphValidationError(Exception):
     """Raised when canvas graph fails validation."""
 
 
-def validate_edges(
-    nodes: list[CanvasNode], edges: list[CanvasEdge]
-) -> list[str]:
+def validate_edges(nodes: list[CanvasNode], edges: list[CanvasEdge]) -> list[str]:
     """Return list of incompatible edge descriptions (empty = all valid)."""
     node_types: dict[str, str] = {n.node_id: n.node_type for n in nodes}
     errors: list[str] = []
     for edge in edges:
         from_type = edge.from_type or node_types.get(edge.from_node_id, "")
         to_type = edge.to_type or node_types.get(edge.to_node_id, "")
-        if from_type and to_type:
-            if not canvas_edge_validate(from_type=from_type, to_type=to_type):
-                errors.append(
-                    f"Incompatible edge {edge.edge_id!r}: "
-                    f"{from_type!r} → {to_type!r}"
-                )
+        if from_type and to_type and not canvas_edge_validate(from_type=from_type, to_type=to_type):
+            errors.append(f"Incompatible edge {edge.edge_id!r}: {from_type!r} → {to_type!r}")
     return errors
 
 
@@ -57,8 +51,6 @@ def validate_graph(nodes: list[CanvasNode], edges: list[CanvasEdge]) -> None:
 
     edge_errors = validate_edges(nodes, edges)
     if edge_errors:
-        raise GraphValidationError(
-            "Invalid edges: " + "; ".join(edge_errors)
-        )
+        raise GraphValidationError("Invalid edges: " + "; ".join(edge_errors))
 
     detect_cycle(nodes, edges)

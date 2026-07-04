@@ -30,7 +30,7 @@ def _wan_local_size(resolution: tuple[int, int]) -> tuple[int, int]:
 
 def _wan_local_frames(duration_s: float, _target_fps: int) -> int:
     """由目标时长换算 wan 帧数(按 16fps 原生),夹取到 [16, _WAN_MAX_FRAMES]。"""
-    frames = int(round(max(1.0, duration_s) * _WAN_LOCAL_FPS))
+    frames = round(max(1.0, duration_s) * _WAN_LOCAL_FPS)
     return max(16, min(frames, _WAN_MAX_FRAMES))
 
 
@@ -103,7 +103,7 @@ async def generate_clip(
                 fps=profile.fps,
                 bitrate_kbps=profile.bitrate_kbps,
             )
-        elif provider_str == VideoProvider.WAN_CLOUD:
+        if provider_str == VideoProvider.WAN_CLOUD:
             return await video_generate(  # type: ignore[no-any-return]
                 config=config,
                 provider="wan_cloud",
@@ -115,7 +115,7 @@ async def generate_clip(
                 fps=profile.fps,
                 bitrate_kbps=profile.bitrate_kbps,
             )
-        elif provider_str in (VideoProvider.WAN_LOCAL, VideoProvider.LTX2_LOCAL):
+        if provider_str in (VideoProvider.WAN_LOCAL, VideoProvider.LTX2_LOCAL):
             # ltx2_local 路由到 wan_local: 本机无独立 LTX2 local 推理实现。
             # RFC-002 item 1/3: 贯通分辨率/帧数 + i2v 参考图(wan2.1-1.3B 上限 ~480p,
             # 按目标朝向夹取; reference_image 非空 → VACE 参考条件化)。
@@ -129,5 +129,4 @@ async def generate_clip(
                 negative_prompt=None,
                 reference_image=reference_image if mode == "i2v" else None,
             )
-        else:
-            raise ValueError(f"Unknown video provider: {provider_str}")
+        raise ValueError(f"Unknown video provider: {provider_str}")

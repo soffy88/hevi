@@ -25,8 +25,7 @@ def _tool_map(server: Any) -> dict[str, Any]:
 
 
 def _handler_of(server: Any, name: str) -> Any:
-    tool = _tool_map(server)[name]
-    return tool
+    return _tool_map(server)[name]
 
 
 def _make_assist() -> AssistService:
@@ -114,9 +113,7 @@ async def test_list_capabilities_returns_registry() -> None:
         workflow_svc=MagicMock(spec=WorkflowService),
     )
     tool = _tool_map(server)["hevi.list_capabilities"]
-    result: dict[str, Any] = await tool.fn(
-        **{}  # no args required
-    )
+    result: dict[str, Any] = await tool.fn()
     assert "capabilities" in result
     assert "count" in result
     assert result["count"] == len(ASSIST_REGISTRY)

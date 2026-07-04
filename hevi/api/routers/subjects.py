@@ -1,15 +1,32 @@
+from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
 from hevi.auth.dependencies import get_current_user
+from hevi.auth.jwt_handler import decode_access_token
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 
 router = APIRouter(prefix="/subjects", tags=["subjects"])
+
+_MAX_IMAGE_BYTES = 12 * 1024 * 1024  # 12MB 单张参考图上限
+
+
+async def _read_image_upload(file: UploadFile) -> bytes:
+    """校验并读取上传的图片(类型/大小),返回字节。"""
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(status_code=422, detail="只接受图片文件")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=422, detail="空文件")
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="图片过大(上限 12MB)")
+    return data
 
 
 def _check_owner(resource: dict[str, Any], user: dict[str, Any]) -> None:
@@ -55,17 +72,67 @@ async def create_subject(
     svc: Annotated[SubjectService, Depends(get_subject_service)],
 ) -> dict[str, Any]:
     try:
-        return _serialize_subject(await svc.create_subject(
-            kind=body.kind,
-            name=body.name,
-            description=body.description,
-            reference_images=body.reference_images if body.reference_images else None,
-            metadata=body.metadata,
-            tags=body.tags,
-            user_id=str(user["id"]),  # owner is the authenticated user, not client-supplied
-        ))
+        return _serialize_subject(
+            await svc.create_subject(
+                kind=body.kind,
+                name=body.name,
+                description=body.description,
+                reference_images=body.reference_images if body.reference_images else None,
+                metadata=body.metadata,
+                tags=body.tags,
+                user_id=str(user["id"]),  # owner is the authenticated user, not client-supplied
+            )
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/from-photo", status_code=201)
+async def create_subject_from_photo(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[SubjectService, Depends(get_subject_service)],
+    file: Annotated[UploadFile, File(description="角色照片")],
+    name: Annotated[str, Form()] = "我的角色",
+    kind: Annotated[str, Form()] = "character",
+    description: Annotated[str, Form()] = "",
+) -> dict[str, Any]:
+    """上传一张照片 → 直接建一个角色(把照片存为其参考图)。
+
+    这是"我上传一张照片,生成此照片的角色"的落地入口。存下的照片随后可在生成时选中,
+    作为每个镜头的 i2v 参考图锁定角色身份,让视频里始终是同一个人。
+    """
+    data = await _read_image_upload(file)
+    try:
+        subject = await svc.create_subject(
+            kind=kind, name=name, description=description, user_id=str(user["id"])
+        )
+        updated = await svc.add_reference_upload(
+            str(subject["id"]), filename=file.filename or "photo.jpg", data=data
+        )
+        return _serialize_subject(updated or subject)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/{subject_id}/reference", status_code=201)
+async def upload_subject_reference(
+    subject_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[SubjectService, Depends(get_subject_service)],
+    file: Annotated[UploadFile, File(description="参考图")],
+) -> dict[str, Any]:
+    """给已有角色再上传一张参考图(多角度参考提升锁定效果)。"""
+    subject = await svc.get_subject(subject_id)
+    if subject is None:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    _check_owner(subject, user)
+    data = await _read_image_upload(file)
+    updated = await svc.add_reference_upload(
+        subject_id, filename=file.filename or "photo.jpg", data=data
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    return _serialize_subject(updated)
 
 
 @router.get("")
@@ -79,6 +146,35 @@ async def list_subjects(
     # Scope to the caller — never honor a client-supplied user_id.
     results = await svc.search_subjects(kind=kind, query=query, user_id=str(user["id"]))
     return [_serialize_subject(s) for s in results]
+
+
+@router.get("/{subject_id}/image")
+async def get_subject_image(
+    subject_id: str,
+    svc: Annotated[SubjectService, Depends(get_subject_service)],
+    token: Annotated[str | None, Query(description="JWT (<img> can't send headers)")] = None,
+    idx: int = 0,
+) -> FileResponse:
+    """返回角色的第 idx 张参考图(供前端 <img> 显示)。<img> 不能带 header,token
+    走 ?token=,同成片视频端点。"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+    try:
+        user_id = decode_access_token(token).get("sub")
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+    subject = await svc.get_subject(subject_id)
+    if not subject or (subject.get("user_id") and subject["user_id"] != str(user_id)):
+        raise HTTPException(status_code=404, detail="Subject not found")
+    refs = subject.get("reference_images") or []
+    if not (0 <= idx < len(refs)):
+        raise HTTPException(status_code=404, detail="Reference image not found")
+    path = Path(refs[idx])
+    if not path.is_absolute():
+        path = (Path.cwd() / path).resolve()
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Image file missing")
+    return FileResponse(str(path))
 
 
 @router.get("/{subject_id}")

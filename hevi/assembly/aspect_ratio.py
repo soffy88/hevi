@@ -19,11 +19,10 @@ def get_aspect_ratio_filter(
     if r == AspectRatio.RATIO_9_16:
         # Assuming input is 16:9, we crop the sides
         return "crop=ih*9/16:ih"
-    elif r == AspectRatio.RATIO_16_9:
+    if r == AspectRatio.RATIO_16_9:
         # Assuming input is 16:9, no crop
         return "scale=1920:1080"
-    elif r == AspectRatio.RATIO_1_1:
+    if r == AspectRatio.RATIO_1_1:
         # Crop to center square
         return "crop=ih:ih"
-    else:
-        raise ValueError(f"Unsupported aspect ratio: {r}")
+    raise ValueError(f"Unsupported aspect ratio: {r}")

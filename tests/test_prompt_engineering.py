@@ -227,25 +227,24 @@ async def test_build_longvideo_config_with_prompt_engineers_topic():
     with patch(
         "hevi.pipeline.config_builder.build_longvideo_config_with_prompt",
         wraps=build_longvideo_config_with_prompt,
+    ), patch(
+        "hevi.prompt.prompt_pipeline.adapt_prompt_for_provider",
+        new_callable=AsyncMock,
+        return_value={
+            "prompt": "engineered topic, cinematic, 4K",
+            "negative_prompt": "",
+            "provider": "ltx2",
+        },
     ):
-        with patch(
-            "hevi.prompt.prompt_pipeline.adapt_prompt_for_provider",
-            new_callable=AsyncMock,
-            return_value={
-                "prompt": "engineered topic, cinematic, 4K",
-                "negative_prompt": "",
-                "provider": "ltx2",
-            },
-        ):
-            from hevi.pipeline.config_builder import build_longvideo_config_with_prompt
+        from hevi.pipeline.config_builder import build_longvideo_config_with_prompt
 
-            cfg = await build_longvideo_config_with_prompt(
-                topic="raw topic",
-                duration_archetype="1-5min",
-                video_provider="ltx2_cloud",
-                audio_provider="vibevoice",
-                style_preset="科普",
-            )
+        cfg = await build_longvideo_config_with_prompt(
+            topic="raw topic",
+            duration_archetype="1-5min",
+            video_provider="ltx2_cloud",
+            audio_provider="vibevoice",
+            style_preset="科普",
+        )
 
     assert "engineered topic" in cfg.topic
     assert cfg.duration_archetype == "1-5min"

@@ -81,8 +81,10 @@ def task_service(repository):
 @pytest.mark.asyncio
 async def test_create_task_persistence(task_service):
     task_id = uuid.uuid4()
-    with patch("hevi.tasks.repository.insert_one", new_callable=AsyncMock) as mock_insert, \
-         patch("hevi.tasks.repository.read_one", new_callable=AsyncMock) as mock_read:
+    with (
+        patch("hevi.tasks.repository.insert_one", new_callable=AsyncMock) as mock_insert,
+        patch("hevi.tasks.repository.read_one", new_callable=AsyncMock) as mock_read,
+    ):
         mock_insert.return_value = task_id
         mock_read.return_value = {"id": task_id, "status": "pending"}
         res = await task_service.create_task(
@@ -112,12 +114,11 @@ async def test_run_task_success(task_service, repository):
         "progress_pct": 0.0,
     }
 
-    with patch.object(repository, "get_task", return_value=task_data), patch.object(
-        repository, "update_task", new_callable=AsyncMock
-    ) as mock_update, patch(
-        "hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock
-    ) as mock_orch:
-
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(repository, "update_task", new_callable=AsyncMock) as mock_update,
+        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+    ):
         mock_orch.return_value = {"url": "video.mp4", "duration": 180.0, "metadata": {"shots": 10}}
 
         res = await task_service.run_task(task_id)
@@ -128,6 +129,7 @@ async def test_run_task_success(task_service, repository):
         # Should be called for 'running' and then 'completed'
         assert mock_update.call_count >= 2
         from unittest.mock import ANY
+
         mock_orch.assert_called_once_with(
             topic="test",
             duration_archetype="1-5min",
@@ -135,6 +137,8 @@ async def test_run_task_success(task_service, repository):
             audio_provider="vibevoice",
             output_dir=ANY,
             style="cinematic",
+            progress_cb=ANY,  # SaaS-4:逐阶段进度回调随调用注入
+            character_reference=ANY,  # 角色库:按 subject_id 解析的参考图(此处 None)
         )
 
 
@@ -151,12 +155,13 @@ async def test_run_task_failure(task_service, repository):
         "status": "pending",
     }
 
-    with patch.object(repository, "get_task", return_value=task_data), patch.object(
-        repository, "update_task", new_callable=AsyncMock
-    ) as mock_update, patch(
-        "hevi.tasks.task_service.orchestrate_longvideo", side_effect=Exception("API Overload")
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(repository, "update_task", new_callable=AsyncMock) as mock_update,
+        patch(
+            "hevi.tasks.task_service.orchestrate_longvideo", side_effect=Exception("API Overload")
+        ),
     ):
-
         res = await task_service.run_task(task_id)
         assert res["status"] == "failed"
         assert res["error"] == "API Overload"
@@ -168,10 +173,10 @@ async def test_resume_task_from_failed(task_service, repository):
     task_id = uuid.uuid4()
     task_data = {"id": task_id, "status": "failed", "topic": "t"}
 
-    with patch.object(repository, "get_task", return_value=task_data), patch.object(
-        task_service, "run_task", new_callable=AsyncMock
-    ) as mock_run:
-
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(task_service, "run_task", new_callable=AsyncMock) as mock_run,
+    ):
         await task_service.resume_task(task_id)
         mock_run.assert_called_once_with(task_id)
 
@@ -181,10 +186,10 @@ async def test_resume_task_already_running(task_service, repository):
     task_id = uuid.uuid4()
     task_data = {"id": task_id, "status": "running"}
 
-    with patch.object(repository, "get_task", return_value=task_data), patch.object(
-        task_service, "run_task", new_callable=AsyncMock
-    ) as mock_run:
-
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(task_service, "run_task", new_callable=AsyncMock) as mock_run,
+    ):
         res = await task_service.resume_task(task_id)
         assert res["status"] == "running"
         mock_run.assert_not_called()

@@ -74,7 +74,24 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
             "unit": "per_minute",
             "price_usd": 0.0,
         },
+        # --- 高写实云档(fal,按秒近似)---
+        "veo3": {  # Veo3 fast ≈ $0.40 / 8s
+            "unit": "per_second",
+            "price_usd": 0.05,
+        },
+        "kling_v2": {  # Kling v2 master ≈ $0.14 / 5s
+            "unit": "per_second",
+            "price_usd": 0.028,
+        },
+        "hailuo": {  # 海螺 02 standard ≈ $0.045 / 6s
+            "unit": "per_second",
+            "price_usd": 0.0075,
+        },
         # --- audio providers ---
+        "edge_tts": {
+            "unit": "per_minute",
+            "price_usd": 0.0,  # 微软 Edge 神经语音免费
+        },
         "vibevoice": {
             "unit": "per_minute",
             "price_usd": 0.0,

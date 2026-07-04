@@ -20,10 +20,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy pre-installed venv (Linux amd64 Python 3.14)
 # Scripts in .venv/bin/ have shebangs pointing to the host path
-# /home/soffy/projects/hevi/.venv/bin/python3 — create a symlink so they resolve
+# /data/soffy/projects/hevi/.venv/bin/python3 — create a symlink so they resolve
 COPY .venv/ ./.venv/
-RUN mkdir -p /home/soffy/projects/hevi && \
-    ln -s /app/.venv /home/soffy/projects/hevi/.venv
+RUN mkdir -p /data/soffy/projects/hevi && \
+    ln -s /app/.venv /data/soffy/projects/hevi/.venv
 
 # App source
 COPY hevi/ ./hevi/

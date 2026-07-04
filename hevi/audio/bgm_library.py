@@ -36,12 +36,12 @@ class BGMLibrary:
             ]
 
         # Return all BGM files recursively
-        bgm_files = []
-        for root, _, files in os.walk(self.bgm_dir):
-            for f in files:
-                if not f.startswith("."):
-                    bgm_files.append(Path(root) / f)
-        return bgm_files
+        return [
+            Path(root) / f
+            for root, _, files in os.walk(self.bgm_dir)
+            for f in files
+            if not f.startswith(".")
+        ]
 
     def get_sfx(self, name: str) -> Path | None:
         """Get SFX file by name."""
