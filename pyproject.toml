@@ -14,12 +14,16 @@ dependencies = [
     "python-dotenv>=1.0",
     "argon2-cffi>=23.1",
     "pyjwt[crypto]>=2.10",
-    # 主库 B路径 git+ssh (L-024) — E1-E6 批次: obase v0.16.1 (ProviderContract 契约派生定价) /
-    # oprim v3.10.37 (多镜头衔接+code-render) / oskill v4.3.1 (render_shot+成本估算+资产前置)
-    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.16.1",
-    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.10.37",
-    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v4.3.1",
-    "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.33.1",
+    # 主库 B路径 git+ssh (L-024)。SaaS-4 回迁批次(2026-07-03):hevi 本地原语/猴补丁下沉 3O:
+    #   obase  v0.17.0 = C5 provider_live_state(ProviderLiveState + fal_balance_probe)+ lint/config 批次
+    #   oprim v3.11.0  = edge_tts/veo3/kling_v2/hailuo/fal_queue + wan/ltx2/video_generate 修复
+    #     (v3.11.1 新增全为 Tide/A股量化元素,hevi 不用 → 保持 v3.11.0)
+    #   oskill v4.4.0  = docker 导入修正 + storyboard dict-scenes + 旁白量目标
+    #   omodul v1.36.0 = ...RFC-003并发 + C3(ShotRecord/LongVideoResult.shots + regenerate_shots)
+    "obase[cache,docker] @ git+ssh://git@github.com/helios-plat/obase.git@v0.17.0",
+    "oprim @ git+ssh://git@github.com/helios-plat/oprim.git@v3.11.0",
+    "oskill @ git+ssh://git@github.com/helios-plat/oskill.git@v4.4.0",
+    "omodul @ git+ssh://git@github.com/helios-plat/omodul.git@v1.36.0",
     "python-frontmatter>=1.3.0",  # oprim v3.10 transitive dep (not declared in oprim)
     "vibevoice==0.0.1",  # oprim._vibevoice_synthesize runtime dep (not declared in oprim metadata)
     "dashscope>=1.20",  # oprim v3.10.33 embedding.qwen3_dashscope runtime dep (undeclared)
@@ -31,6 +35,8 @@ dependencies = [
     "diffusers>=0.30",
     "accelerate>=1.6.0",
     "faster-whisper>=1.2.1",
+    "edge-tts>=7.2.8",
+    "av>=12",  # 3O §C4: PyAV 解码抽帧(自带 ffmpeg 库,不依赖系统 ffmpeg 二进制)
 ]
 
 [dependency-groups]
@@ -48,7 +54,13 @@ target-version = "py314"
 extend-exclude = ["hevi/db/alembic/"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RET", "PERF", "PIE", "RUF"]
+# RUF001/002/003 = 歧义 unicode 字符:本项目大量中文注释/文案,全是误报,禁用。
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试惯用法:嵌套 with patch(...)、async-for-append、pytest.raises 正则 —— 放宽。
+"tests/**" = ["SIM117", "SIM102", "PERF401", "RUF043"]
 
 [tool.mypy]
 strict = true
@@ -61,6 +73,9 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# 只收集单元测试目录;scripts/integration/*.py 是需 GPU/服务的手动集成脚本,
+# 不应被 `pytest`(根目录)误收集导致 collection 报错(见 CI 与本地一致性)。
+testpaths = ["tests"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
