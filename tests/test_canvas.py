@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -282,7 +283,7 @@ def test_node_executors_registry_has_5_types() -> None:
 
 
 def test_valid_node_types_has_5() -> None:
-    assert VALID_NODE_TYPES == frozenset({"text", "image", "video", "audio", "script"})
+    assert frozenset({"text", "image", "video", "audio", "script"}) == VALID_NODE_TYPES
 
 
 @pytest.mark.asyncio
@@ -290,9 +291,38 @@ def test_valid_node_types_has_5() -> None:
 async def test_node_executor_dispatches_all_types(node_type: str) -> None:
     executor = create_node_executor()
     node = _make_node("n1", node_type)
-    result = await executor(node, {})
+    # video/kernel 现在走真实生成(§7-7),mock 掉底层单片生成以只测分发。
+    with patch(
+        "hevi.video.kernel_service.generate_clip",
+        new_callable=AsyncMock,
+        return_value=Path("output/canvas/n1.mp4"),
+    ):
+        result = await executor(node, {})
     assert isinstance(result, dict)
     assert result["type"] == node_type
+
+
+@pytest.mark.asyncio
+async def test_video_kernel_node_calls_real_generation() -> None:
+    """§7-7:video/kernel 节点调真实 generate_clip(非回声桩);prompt 取上游 text。"""
+    executor = create_node_executor()
+    node = CanvasNode(
+        node_id="v1",
+        node_type="video",
+        config={"sub_type": "kernel", "provider": "wan_local", "duration_s": 5.0},
+    )
+    upstream = {"t1": {"type": "text", "output": "a red fox in snow"}}
+    with patch(
+        "hevi.video.kernel_service.generate_clip",
+        new_callable=AsyncMock,
+        return_value=Path("output/canvas/v1.mp4"),
+    ) as gen:
+        result = await executor(node, upstream)
+    gen.assert_awaited_once()
+    kw = gen.call_args.kwargs
+    assert kw["provider"] == "wan_local"
+    assert kw["prompt"] == "a red fox in snow"  # 用上游 text 做 prompt
+    assert result["type"] == "video" and result["output"] == "output/canvas/v1.mp4"
 
 
 @pytest.mark.asyncio
