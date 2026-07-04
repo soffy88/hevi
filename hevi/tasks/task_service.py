@@ -316,6 +316,45 @@ class TaskService:
                 # C3 落库:逐镜头选优明细 → shot_states(omodul v1.36.0 的 result.shots)。
                 await self._persist_shots(task_id, result.get("shots", []))
 
+                # L3 体检闭环(§7-4):体检/评分卡不及格 → Editor 定向返工,封顶轮数。裁决权此前
+                # 只 log 就丢;此处在 worker 产线路径真正闭合"不合格→重烧,合格→放行"。仅在不
+                # 合格时触发(合格片零额外开销);返工失败不影响已交付的成片。
+                _rework_rounds = int(
+                    task["config_json"].get("auto_rework_rounds", settings.auto_rework_max_rounds)
+                )
+                if _rework_rounds > 0:
+                    try:
+                        from hevi.director.agent import _shot_view
+                        from hevi.director.editor import review
+
+                        _done = 0
+                        while _done < _rework_rounds:
+                            _views = [
+                                _shot_view(r) for r in await self.repository.get_shots(task_id)
+                            ]
+                            _decision = review(
+                                quality=quality,
+                                shots=_views,
+                                consistency_floor=settings.rework_consistency_floor,
+                            )
+                            if _decision.deliver or not _decision.regenerate_shot_ids:
+                                break
+                            await self.regenerate_task_shots(
+                                task_id,
+                                shot_ids=_decision.regenerate_shot_ids,
+                                hints=_decision.hints,
+                            )
+                            _done += 1
+                        if _done:
+                            log_event(
+                                stage="task_service",
+                                event="auto_rework_done",
+                                task_id=str(task_id),
+                                rounds=_done,
+                            )
+                    except Exception as _rex:
+                        logger.warning(f"auto-rework skipped for {task_id}: {_rex}")
+
                 log_event(
                     stage="task_service", event="run_task_completed", result_url=result["url"]
                 )

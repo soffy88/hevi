@@ -422,6 +422,22 @@ html, body {
 }
 .hevi-gallery-card__use:hover { background: color-mix(in oklch, var(--primary) 20%, transparent); }
 
+/* ── 展示墙(独立页)── */
+.hevi-showcase-page { min-height: calc(100vh - 56px); }
+.hevi-showcase .hevi-gallery__head { font-size: var(--text-lg); color: var(--foreground); }
+.hevi-showcase__tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 24px; }
+.hevi-showcase__tab {
+  padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--card); color: var(--muted-foreground); font-size: var(--text-sm); cursor: pointer;
+}
+.hevi-showcase__tab:hover { border-color: var(--primary); color: var(--foreground); }
+.hevi-showcase__tab[data-active='true'] {
+  border-color: var(--primary); color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+}
+a.hevi-gallery-card { text-decoration: none; color: inherit; transition: border-color 0.15s; }
+a.hevi-gallery-card:hover { border-color: var(--primary); }
+
 /* ── 逐步 provider 选择 ── */
 .hevi-provider { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border); }
 

@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     max_duration_per_task_s: float = 3600.0
     credits_per_usd: int = 100
 
+    # L3 体检闭环(§7-4):确定性体检/评分卡不及格 → 定向返工的封顶轮数(0=关,只 log 不返工)。
+    # 只在不合格时触发,合格片零额外开销;可用 task config_json["auto_rework_rounds"] 覆盖。
+    auto_rework_max_rounds: int = 1
+    rework_consistency_floor: float = 0.75
+
     # Paddle
     paddle_api_key: str | None = None
     paddle_webhook_secret: str | None = None
