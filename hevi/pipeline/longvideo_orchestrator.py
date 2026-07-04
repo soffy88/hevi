@@ -78,6 +78,7 @@ async def orchestrate_longvideo(
     prompt_color_grade: str | None = None,
     quality_profile: str = "standard",
     aspect_ratio: str = "9:16",  # 画幅:9:16 竖 / 16:9 横 / 1:1 方(解锁 portrait 锁死)
+    bgm: str | None = None,  # 背景音乐:情绪名(→assets/audio/bgm/<mood>/)或文件路径;装配器压于旁白下
     transition: str = "fade",
     # route v2(设计 §3 L0):逐镜头选 provider。开启后按每个镜头 prompt 判质量需求
     # (主角特写→云高质量 / 空镜 B-roll→免费本地 wan),而非全片一个 provider。默认关,
@@ -162,6 +163,18 @@ async def orchestrate_longvideo(
 
     _target_w, _target_h = resolve_resolution(quality_profile, aspect_ratio)
     _target_fps = _qp.fps
+
+    # BGM:情绪名/文件路径 → 具体文件(装配器已内建旁白 ducking 混音)。无素材则 None,静默跳过。
+    _bgm_path = None
+    if bgm:
+        try:
+            from hevi.audio.bgm_library import BGMLibrary
+
+            _bgm_path = BGMLibrary().select_bgm(bgm)
+            if _bgm_path is None:
+                logger.info("bgm mood %r 无素材,跳过配乐", bgm)
+        except Exception as _be:
+            logger.warning("bgm 解析失败,跳过: %s", _be)
     _is_local_video = "_local" in video_provider or video_provider in ("wan_local", "ltx2_local")
 
     # RFC/SaaS-4 item 5(提速):omodul 每镜头硬编码生成 2 变体(v0/v1)再选优,
@@ -513,6 +526,7 @@ async def orchestrate_longvideo(
                     shots=segments,
                     output_path=output_path,
                     narration_audio=audio_path if has_audio else None,
+                    bgm_path=_bgm_path,
                     subtitle_path=sub,
                     width=_target_w,
                     height=_target_h,
@@ -526,6 +540,7 @@ async def orchestrate_longvideo(
                     shots=[ShotSegment(p) for p in valid_shots],
                     output_path=output_path,
                     narration_audio=audio_path if has_audio else None,
+                    bgm_path=_bgm_path,
                     width=_target_w,
                     height=_target_h,
                     fps=_target_fps,

@@ -197,11 +197,20 @@ async def test_director_loop_reworks_then_delivers():
     )
     svc = _FakeTaskService(repo)
     with (
-        patch("hevi.cost.router.route_video_provider", new_callable=AsyncMock, return_value="wan_local"),
-        patch("hevi.director.producer.estimate_cost", new_callable=AsyncMock, return_value=SimpleNamespace(total_usd=0.5)),
+        patch(
+            "hevi.cost.router.route_video_provider",
+            new_callable=AsyncMock,
+            return_value="wan_local",
+        ),
+        patch(
+            "hevi.director.producer.estimate_cost",
+            new_callable=AsyncMock,
+            return_value=SimpleNamespace(total_usd=0.5),
+        ),
     ):
         res = await run_director_loop(
-            task_id="t1", task_service=svc,
+            task_id="t1",
+            task_service=svc,
             intent={"topic": "x", "duration_archetype": "1-5min", "budget_usd": 5.0},
         )
     assert svc.run_called == 1
@@ -217,11 +226,19 @@ async def test_director_loop_aborts_when_infeasible():
 
     svc = _FakeTaskService(_FakeRepo({"config_json": {}}, [[]]))
     with patch(
-        "hevi.director.producer.estimate_cost", new_callable=AsyncMock, return_value=SimpleNamespace(total_usd=99.0)
+        "hevi.director.producer.estimate_cost",
+        new_callable=AsyncMock,
+        return_value=SimpleNamespace(total_usd=99.0),
     ):
         res = await run_director_loop(
-            task_id="t1", task_service=svc,
-            intent={"topic": "x", "duration_archetype": "1-5min", "video_provider": "wan_cloud", "budget_usd": 2.0},
+            task_id="t1",
+            task_service=svc,
+            intent={
+                "topic": "x",
+                "duration_archetype": "1-5min",
+                "video_provider": "wan_cloud",
+                "budget_usd": 2.0,
+            },
         )
     assert res.delivered is False
     assert svc.run_called == 0  # 没跑管线
@@ -286,8 +303,16 @@ async def test_plan_from_text_end_to_end():
         ]
     )
     with (
-        patch("hevi.cost.router.route_video_provider", new_callable=AsyncMock, return_value="wan_local"),
-        patch("hevi.director.producer.estimate_cost", new_callable=AsyncMock, return_value=SimpleNamespace(total_usd=0.0)),
+        patch(
+            "hevi.cost.router.route_video_provider",
+            new_callable=AsyncMock,
+            return_value="wan_local",
+        ),
+        patch(
+            "hevi.director.producer.estimate_cost",
+            new_callable=AsyncMock,
+            return_value=SimpleNamespace(total_usd=0.0),
+        ),
     ):
         out = await plan_from_text(text="拍个狐狸在雪地的短片", num_shots=2, llm=llm)
     assert out["intent"]["topic"] == "狐狸雪地"
@@ -315,7 +340,9 @@ async def test_director_api_plan_serializes_plan():
     with patch(
         "hevi.api.routers.director.plan_from_text", new_callable=AsyncMock, return_value=fake
     ):
-        out = await director_plan(PlanRequest(text="拍狐狸", num_shots=2), user={"id": uuid.uuid4()})
+        out = await director_plan(
+            PlanRequest(text="拍狐狸", num_shots=2), user={"id": uuid.uuid4()}
+        )
     assert out["intent"]["topic"] == "狐狸雪地"
     assert isinstance(out["plan"], dict)  # ProducerPlan 已序列化
     assert out["plan"]["video_provider"] == "wan_local"
@@ -338,9 +365,18 @@ async def test_director_api_episode_creates_and_queues():
         patch(
             "hevi.api.routers.director.parse_intent",
             new_callable=AsyncMock,
-            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+            return_value={
+                "topic": "x",
+                "duration_archetype": "1-5min",
+                "num_characters": 1,
+                "style": "cinematic",
+            },
         ),
-        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")),
+        patch(
+            "hevi.api.routers.director.produce",
+            new_callable=AsyncMock,
+            return_value=_plan("wan_local"),
+        ),
     ):
         out = await director_create_episode(
             EpisodeRequest(text="拍狐狸"),
@@ -370,7 +406,12 @@ async def test_director_api_episode_infeasible_402():
         patch(
             "hevi.api.routers.director.parse_intent",
             new_callable=AsyncMock,
-            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+            return_value={
+                "topic": "x",
+                "duration_archetype": "1-5min",
+                "num_characters": 1,
+                "style": "cinematic",
+            },
         ),
         patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=infeasible),
     ):
@@ -402,15 +443,29 @@ async def test_director_api_episode_passes_structured_fields():
         patch(
             "hevi.api.routers.director.parse_intent",
             new_callable=AsyncMock,
-            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+            return_value={
+                "topic": "x",
+                "duration_archetype": "1-5min",
+                "num_characters": 1,
+                "style": "cinematic",
+            },
         ),
-        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")) as mp,
+        patch(
+            "hevi.api.routers.director.produce",
+            new_callable=AsyncMock,
+            return_value=_plan("wan_local"),
+        ) as mp,
     ):
         out = await director_create_episode(
             EpisodeRequest(
-                text="拍狐狸", aspect_ratio="16:9", quality_profile="high",
-                subject_id="sub-1", style_preset="赛博朋克", duration_archetype="short",
+                text="拍狐狸",
+                aspect_ratio="16:9",
+                quality_profile="high",
+                subject_id="sub-1",
+                style_preset="赛博朋克",
+                duration_archetype="short",
                 per_shot_routing=True,
+                bgm="warm",
             ),
             user={"id": uuid.uuid4()},
             svc=svc,
@@ -427,6 +482,7 @@ async def test_director_api_episode_passes_structured_fields():
     assert ck["style_preset"] == "赛博朋克"
     assert ck["subject_id"] == "sub-1"
     assert ck["per_shot_routing"] is True
+    assert ck["bgm"] == "warm"
     # 回执 spec
     assert out["spec"]["aspect_ratio"] == "16:9"
     assert out["spec"]["subject_locked"] is True
@@ -448,9 +504,18 @@ async def test_director_api_episode_preset_sets_provider_base():
         patch(
             "hevi.api.routers.director.parse_intent",
             new_callable=AsyncMock,
-            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+            return_value={
+                "topic": "x",
+                "duration_archetype": "1-5min",
+                "num_characters": 1,
+                "style": "cinematic",
+            },
         ),
-        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")) as mp,
+        patch(
+            "hevi.api.routers.director.produce",
+            new_callable=AsyncMock,
+            return_value=_plan("wan_local"),
+        ) as mp,
     ):
         await director_create_episode(
             EpisodeRequest(text="x", preset="economy"),
@@ -461,3 +526,110 @@ async def test_director_api_episode_preset_sets_provider_base():
     # economy 预设 → video_provider=wan_local, audio=edge_tts 作底传给 produce
     assert mp.await_args.kwargs["video_provider"] == "wan_local"
     assert mp.await_args.kwargs["audio_provider"] == "edge_tts"
+
+
+@pytest.mark.asyncio
+async def test_director_api_render_edit_loop():
+    """POST /director/render:存图 + 建任务 + 排后台渲染,回 task_id/graph_id/镜头数。"""
+    import uuid
+    from unittest.mock import MagicMock
+
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.director import RenderRequest, director_render
+
+    tid = uuid.uuid4()
+    svc = AsyncMock()
+    svc.create_task.return_value = {"id": tid, "status": "pending"}
+    gsvc = AsyncMock()
+    gsvc.save_graph.return_value = {"id": "g1"}
+    bg = BackgroundTasks()
+    with (
+        patch("hevi.api.routers.director.GraphService", return_value=gsvc),
+        patch("hevi.api.routers.director.GraphRepository"),
+        patch("hevi.api.routers.director.ExecutorService"),
+    ):
+        out = await director_render(
+            RenderRequest(
+                name="x",
+                aspect_ratio="16:9",
+                quality_profile="high",
+                bgm="epic",
+                nodes=[
+                    {"node_id": "topic", "node_type": "text", "config": {}},
+                    {"node_id": "shot_0000", "node_type": "video", "config": {"prompt": "a"}},
+                    {"node_id": "shot_0001", "node_type": "video", "config": {"prompt": "b"}},
+                ],
+                edges=[],
+            ),
+            user={"id": uuid.uuid4()},
+            svc=svc,
+            pool=MagicMock(),
+            background_tasks=bg,
+        )
+    assert out["task_id"] == str(tid)
+    assert out["graph_id"] == "g1"
+    assert out["shot_count"] == 2
+    assert len(bg.tasks) == 1  # 后台渲染已排入
+    gsvc.save_graph.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_director_api_render_no_shots_400():
+    """图里没有 video 节点 → 400。"""
+    import uuid
+    from unittest.mock import MagicMock
+
+    from fastapi import BackgroundTasks, HTTPException
+
+    from hevi.api.routers.director import RenderRequest, director_render
+
+    with pytest.raises(HTTPException) as ei:
+        await director_render(
+            RenderRequest(nodes=[{"node_id": "topic", "node_type": "text"}], edges=[]),
+            user={"id": uuid.uuid4()},
+            svc=AsyncMock(),
+            pool=MagicMock(),
+            background_tasks=BackgroundTasks(),
+        )
+    assert ei.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_render_graph_episode_collects_and_assembles(tmp_path):
+    """逐镜编辑回路:执行结果里的 clip → 装配 → 任务标 completed + result_video_path。"""
+    import uuid
+
+    clip0 = tmp_path / "shot_0000.mp4"
+    clip0.write_bytes(b"\x00" * 128)
+    clip1 = tmp_path / "shot_0001.mp4"
+    clip1.write_bytes(b"\x00" * 128)
+    exe = AsyncMock()
+    exe.execute_graph.return_value = {
+        "results": {
+            "shot_0001": {"node_type": "video", "success": True, "output": {"output": str(clip1)}},
+            "shot_0000": {"node_type": "video", "success": True, "output": {"output": str(clip0)}},
+            "topic": {"node_type": "text", "success": True, "output": {"output": "x"}},
+        }
+    }
+    tsvc = AsyncMock()
+    with patch("hevi.assembly.assembler.assemble_longvideo", new_callable=AsyncMock) as masm:
+        from hevi.director.graph_render import render_graph_episode
+
+        await render_graph_episode(
+            graph_id="g1",
+            task_id=uuid.uuid4(),
+            executor_service=exe,
+            task_service=tsvc,
+            width=1280,
+            height=720,
+            fps=24,
+            transition="fade",
+            bgm=None,
+        )
+    masm.assert_awaited_once()
+    assert len(masm.await_args.kwargs["shots"]) == 2  # 两镜都收进装配
+    upd = tsvc.repository.update_task.await_args.args[1]
+    assert upd["status"] == "completed"
+    assert upd["total_shots"] == 2
+    assert upd["result_video_path"].endswith("final.mp4")

@@ -57,3 +57,17 @@ class BGMLibrary:
         if potential_path.exists() and potential_path.is_file():
             return potential_path
         return None
+
+    def select_bgm(self, mood_or_path: str | None) -> Path | None:
+        """按情绪(目录名)选一支 BGM,或直接接受文件路径。装配器据此混入并压于旁白之下。
+
+        情绪目录取排序后第一支(确定性,便于复现);目录空或不存在 → None(装配器静默跳过)。
+        音频素材放 assets/audio/bgm/<mood>/ 下即可生效,无需改代码。
+        """
+        if not mood_or_path:
+            return None
+        direct = Path(mood_or_path)
+        if direct.is_file():
+            return direct
+        files = sorted(self.list_bgm(mood_or_path))
+        return files[0] if files else None

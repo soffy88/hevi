@@ -16,17 +16,22 @@ from obase.persistence import PgPool
 from pydantic import BaseModel
 
 from hevi.auth.dependencies import get_current_user
+from hevi.canvas.executor_service import ExecutorService
+from hevi.canvas.graph_repository import GraphRepository
+from hevi.canvas.graph_service import GraphService
 from hevi.cost.circuit_breaker import CostLimitExceeded
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.director.graph_render import render_graph_episode
 from hevi.director.intent import parse_intent
 from hevi.director.planner import plan_from_text
 from hevi.director.producer import produce
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 from hevi.video.presets import EXECUTION_PRESETS
+from hevi.video.quality_profile import get_quality_profile, resolve_resolution
 
 router = APIRouter(prefix="/director", tags=["director"])
 
@@ -68,6 +73,7 @@ class EpisodeRequest(BaseModel):
     # ⑥ 音频
     language: str = "zh"
     audio_provider: str | None = None
+    bgm: str | None = None  # 背景音乐情绪(→ assets/audio/bgm/<mood>/)或文件路径
     # ⑦ 成片规格
     quality_profile: str = "standard"
     # ⑧ 生产
@@ -150,6 +156,7 @@ async def director_create_episode(
         ("prompt_color_grade", body.prompt_color_grade),
         ("avatar_portrait", body.avatar_portrait),
         ("subject_id", body.subject_id),
+        ("bgm", body.bgm),
     ):
         if v:
             kwargs[k] = v
@@ -188,4 +195,80 @@ async def director_create_episode(
             "subject_locked": bool(body.subject_id),
             "avatar": bool(body.avatar_portrait),
         },
+    }
+
+
+class RenderRequest(BaseModel):
+    """逐镜编辑回路:提交(编辑过的)canvas 分镜图 → 执行 + 装配成片。"""
+
+    name: str = "导演分镜"
+    topic: str = ""
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    quality_profile: str = "standard"
+    aspect_ratio: str = "9:16"
+    transition: str = "fade"
+    bgm: str | None = None
+
+
+@router.post("/render")
+async def director_render(
+    body: RenderRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[TaskService, Depends(get_task_service)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    """逐镜编辑回路:存图 → 建任务 → 后台按用户改过的每镜出片 + 装配(不重跑 storyboard)。"""
+    shot_nodes = [n for n in body.nodes if n.get("node_type") == "video"]
+    if not shot_nodes:
+        raise HTTPException(status_code=400, detail="图里没有 video 镜头节点")
+
+    graph_svc = GraphService(GraphRepository(pool))
+    graph = await graph_svc.save_graph(
+        name=body.name,
+        description="导演逐镜编辑",
+        nodes=body.nodes,
+        edges=body.edges,
+        user_id=str(user["id"]),
+    )
+    graph_id = str(graph["id"])
+
+    w, h = resolve_resolution(body.quality_profile, body.aspect_ratio)
+    try:
+        fps = get_quality_profile(body.quality_profile).fps
+    except ValueError:
+        fps = 24
+
+    # 任务记录:逐镜编辑属本地装配,零云成本 → wan_local 走计费快路。
+    try:
+        task = await svc.create_task(
+            topic=body.topic or body.name,
+            duration_archetype="short",
+            video_provider="wan_local",
+            audio_provider="vibevoice",
+            user_id=str(user["id"]),
+            quality_profile=body.quality_profile,
+            aspect_ratio=body.aspect_ratio,
+        )
+    except (CostLimitExceeded, ValueError) as e:
+        raise HTTPException(status_code=402, detail=str(e)) from e
+
+    background_tasks.add_task(
+        render_graph_episode,
+        graph_id=graph_id,
+        task_id=task["id"],
+        executor_service=ExecutorService(graph_svc),
+        task_service=svc,
+        width=w,
+        height=h,
+        fps=fps,
+        transition=body.transition,
+        bgm=body.bgm,
+    )
+    return {
+        "task_id": str(task["id"]),
+        "graph_id": graph_id,
+        "status": "rendering",
+        "shot_count": len(shot_nodes),
     }

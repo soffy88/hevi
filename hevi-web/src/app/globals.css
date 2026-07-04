@@ -514,6 +514,14 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .dc-kv span { color: var(--muted-foreground); }
 .dc-mono { font-family: var(--font-mono, monospace); font-size: var(--text-xs); word-break: break-all; }
 .dc-shots { margin: 14px 0 0; padding-left: 20px; font-size: var(--text-sm); line-height: 1.6; }
+.dc-edit { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.dc-edit__head { font-size: var(--text-sm); font-weight: 600; }
+.dc-edit__row { display: flex; gap: 10px; align-items: flex-start; }
+.dc-edit__idx { flex: 0 0 auto; font-family: var(--font-mono, monospace); font-size: var(--text-xs);
+  color: var(--primary); font-weight: 600; padding-top: 8px; min-width: 40px; }
+.dc-edit__row textarea { flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--background); color: var(--foreground); font-size: var(--text-sm); resize: vertical; font-family: inherit; }
+.dc-edit .dc-btn { align-self: flex-start; margin-top: 4px; }
 
 /* ── 系列 / 风格包(§3 L2)── */
 .hevi-series-page { min-height: calc(100vh - 56px); }
