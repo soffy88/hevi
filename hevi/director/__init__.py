@@ -9,13 +9,19 @@
 from hevi.director.agent import DirectorResult, run_director_loop
 from hevi.director.director import build_canvas_graph
 from hevi.director.editor import EditDecision, review
+from hevi.director.intent import parse_intent
+from hevi.director.planner import plan_from_text
 from hevi.director.producer import ProducerPlan, produce
+from hevi.director.storyboard import plan_shots
 
 __all__ = [
     "DirectorResult",
     "EditDecision",
     "ProducerPlan",
     "build_canvas_graph",
+    "parse_intent",
+    "plan_from_text",
+    "plan_shots",
     "produce",
     "review",
     "run_director_loop",
