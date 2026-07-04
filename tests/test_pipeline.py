@@ -296,3 +296,37 @@ async def test_orchestrate_with_fallback(mock_lv_result):
         )
         config = mock_pipeline.call_args.kwargs["config"]
         assert config.fallback_video_provider == "wan_cloud"
+
+
+@pytest.mark.asyncio
+async def test_orchestrate_attaches_quality_report(mock_lv_result):
+    """§7-4:quality_report 结果透出到 result['quality'](此前算了只 log 就丢)。"""
+    from types import SimpleNamespace
+
+    register_all_providers()
+    fake_rep = SimpleNamespace(
+        passed=False,
+        violations=["时长 3.00s 偏离预期"],
+        consistency=0.72,
+        stats=SimpleNamespace(duration=3.0, width=832, height=480, fps=16, has_audio=True),
+    )
+    with (
+        patch(
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            new_callable=AsyncMock,
+        ) as mp,
+        patch(
+            "hevi.video.quality_check.quality_report", new_callable=AsyncMock
+        ) as mq,
+    ):
+        mp.return_value = mock_lv_result
+        mq.return_value = fake_rep
+        res = await orchestrate_longvideo(
+            topic="t",
+            duration_archetype="1-5min",
+            video_provider="ltx2_cloud",
+            audio_provider="vibevoice",
+        )
+    assert res["quality"]["passed"] is False
+    assert res["quality"]["violations"] == ["时长 3.00s 偏离预期"]
+    assert res["quality"]["consistency"] == 0.72

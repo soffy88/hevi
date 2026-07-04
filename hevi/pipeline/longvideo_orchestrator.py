@@ -646,8 +646,10 @@ async def orchestrate_longvideo(
         if result.video_path.exists() and result.video_path.stat().st_size < 1024:
             raise RuntimeError(f"Pipeline produced placeholder/empty output with {video_provider}")
 
-        # RFC-002 item 13: 成片质量体检纳入主链路(非阻塞)。规格/连续性写日志,
-        # 便于回归对比与监控;不因体检失败而拒绝成片。
+        # RFC-002 item 13 / §7-4:成片质量体检纳入主链路。规格/连续性写日志 **并透出到结果**,
+        # 供 task_service 判定交付/驱动返工(此前 rep.passed/violations 算了只 log 就丢)。
+        # 仍不在此硬拒成片(已花算力);把裁决权交上层。
+        _quality: dict[str, Any] | None = None
         try:
             from hevi.video.quality_check import quality_report
 
@@ -656,6 +658,11 @@ async def orchestrate_longvideo(
                 expected_resolution=(_target_w, _target_h),
                 require_audio=(audio_provider != "ltx2_native"),
             )
+            _quality = {
+                "passed": rep.passed,
+                "violations": list(rep.violations),
+                "consistency": rep.consistency,
+            }
             logger.info(
                 "quality_report: %.2fs %dx%d fps=%.1f audio=%s consistency=%.2f passed=%s %s",
                 rep.stats.duration,
@@ -670,4 +677,7 @@ async def orchestrate_longvideo(
         except Exception as qe:
             logger.warning(f"quality_report skipped: {qe}")
 
-        return map_longvideo_result(result)
+        mapped = map_longvideo_result(result)
+        if _quality is not None:
+            mapped["quality"] = _quality
+        return mapped
