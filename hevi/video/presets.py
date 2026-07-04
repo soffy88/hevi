@@ -15,9 +15,9 @@ from dataclasses import dataclass
 from typing import Literal
 
 __all__ = [
-    "ExecutionPreset",
-    "EXECUTION_PRESETS",
     "DEFAULT_PRESET",
+    "EXECUTION_PRESETS",
+    "ExecutionPreset",
     "get_execution_preset",
     "resolve_preset",
 ]
@@ -40,7 +40,7 @@ EXECUTION_PRESETS: dict[str, ExecutionPreset] = {
     "economy": ExecutionPreset(
         name="economy",
         video_provider="wan_local",
-        audio_provider="vibevoice",
+        audio_provider="edge_tts",
         quality_profile="standard",
         render_runtime="mixed",  # prefer code_render (zero-cost) where applicable
         ltx2_tier="fast",
@@ -49,7 +49,7 @@ EXECUTION_PRESETS: dict[str, ExecutionPreset] = {
     "balanced": ExecutionPreset(
         name="balanced",
         video_provider="ltx2_cloud",
-        audio_provider="vibevoice",
+        audio_provider="edge_tts",
         quality_profile="standard",
         render_runtime="generative",
         ltx2_tier="fast",
@@ -58,7 +58,7 @@ EXECUTION_PRESETS: dict[str, ExecutionPreset] = {
     "fast": ExecutionPreset(
         name="fast",
         video_provider="ltx2_cloud",
-        audio_provider="vibevoice",
+        audio_provider="edge_tts",
         quality_profile="high",
         render_runtime="generative",
         ltx2_tier="fast",

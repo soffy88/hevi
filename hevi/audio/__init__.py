@@ -5,7 +5,7 @@ from hevi.audio.tts_service import synthesize_dialogue
 
 __all__ = [
     "AudioProvider",
-    "synthesize_dialogue",
-    "generate_avatar_clip",
     "BGMLibrary",
+    "generate_avatar_clip",
+    "synthesize_dialogue",
 ]

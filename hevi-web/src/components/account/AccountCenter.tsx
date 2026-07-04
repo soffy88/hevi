@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { OTaskProgress } from '@helios/oui';
 import { MOCK_TASKS, MOCK_CANVASES, MOCK_SUBJECTS } from '@/lib/mock-data';
 import { taskApi, canvasApi, subjectApi, creditsApi, USE_MOCK } from '@/lib/api-client';
@@ -24,6 +24,37 @@ export function AccountCenter() {
   const [canvases, setCanvases] = useState<CanvasGraph[]>(USE_MOCK ? MOCK_CANVASES : []);
   const [subjects, setSubjects] = useState<Subject[]>(USE_MOCK ? MOCK_SUBJECTS : []);
   const [balance, setBalance] = useState<number>(USE_MOCK ? 3500 : 0);
+
+  // 主体库上传态
+  const [subjectBusy, setSubjectBusy] = useState(false);
+  const [subjectError, setSubjectError] = useState<string | null>(null);
+  const createSubjectRef = useRef<HTMLInputElement>(null);
+
+  const refreshSubjects = () => subjectApi.list().then(setSubjects).catch(() => {});
+
+  // 上传照片建新角色
+  const onCreateSubject = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setSubjectError(null);
+    setSubjectBusy(true);
+    try { await subjectApi.fromPhoto(file); await refreshSubjects(); }
+    catch { setSubjectError('上传失败,请重试'); }
+    finally { setSubjectBusy(false); }
+  };
+
+  // 给已有角色添加参考图
+  const onAddReference = async (subjectId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setSubjectError(null);
+    setSubjectBusy(true);
+    try { await subjectApi.uploadReference(subjectId, file); await refreshSubjects(); }
+    catch { setSubjectError('添加参考图失败,请重试'); }
+    finally { setSubjectBusy(false); }
+  };
 
   useEffect(() => {
     if (USE_MOCK) return;
@@ -65,6 +96,19 @@ export function AccountCenter() {
                     <OTaskProgress percent={t.percent} stage={t.stage} status="failed"
                       errorMessage="配音阶段失败" onResume={() => {}} />
                   )}
+                  {t.status === 'completed' && !USE_MOCK && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <video
+                        src={taskApi.videoUrl(t.task_id)}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        style={{ width: '100%', maxHeight: '60vh', borderRadius: 8, background: '#000' }}
+                      />
+                      <a className="oui-btn" href={taskApi.videoUrl(t.task_id)} download
+                        style={{ alignSelf: 'flex-start' }}>下载</a>
+                    </div>
+                  )}
                   <span className="hevi-account__card-date">{t.created_at}</span>
                 </div>
               ))}
@@ -90,12 +134,33 @@ export function AccountCenter() {
         {tab === 'subjects' && (
           <section>
             <h2 className="hevi-account__title">我的主体库</h2>
+            {/* 上传照片建角色 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <button type="button" className="oui-btn-primary" disabled={subjectBusy}
+                onClick={() => createSubjectRef.current?.click()}>
+                {subjectBusy ? '处理中…' : '上传照片建角色'}
+              </button>
+              {subjectError && <span style={{ color: '#e5484d', fontSize: 13 }}>{subjectError}</span>}
+              <input ref={createSubjectRef} type="file" accept="image/*" hidden onChange={onCreateSubject} />
+            </div>
             <div className="hevi-account__grid">
               {subjects.map(s => (
                 <div key={s.subject_id} className="hevi-account__subject">
-                  <div className="hevi-account__subject-avatar">{s.name[0]}</div>
+                  {s.reference_images && s.reference_images.length > 0 ? (
+                    <img src={subjectApi.imageUrl(s.subject_id)} alt={s.name}
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '50%', background: '#f0f0f4' }} />
+                  ) : (
+                    <div className="hevi-account__subject-avatar">{s.name[0]}</div>
+                  )}
                   <span className="hevi-account__canvas-name">{s.name}</span>
                   <span className="hevi-account__card-date">{s.kind}</span>
+                  {/* 添加参考图 */}
+                  <label className="oui-btn" style={{ marginTop: 6, fontSize: 12, cursor: 'pointer' }}>
+                    添加参考图
+                    <input type="file" accept="image/*" hidden disabled={subjectBusy}
+                      onChange={e => onAddReference(s.subject_id, e)} />
+                  </label>
                 </div>
               ))}
             </div>

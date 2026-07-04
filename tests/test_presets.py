@@ -1,4 +1,5 @@
 """E3 execution presets (economy/balanced/fast)."""
+
 import uuid
 
 import pytest
@@ -29,7 +30,7 @@ def test_unknown_preset_raises():
 def test_resolve_preset_explicit_overrides():
     out = resolve_preset("economy", video_provider="ltx2_cloud")
     assert out["video_provider"] == "ltx2_cloud"  # explicit wins
-    assert out["audio_provider"] == "vibevoice"   # from preset
+    assert out["audio_provider"] == "edge_tts"  # from preset (SaaS-4: 默认 edge_tts)
 
 
 def test_resolve_preset_none_returns_only_explicit():
@@ -41,12 +42,10 @@ def test_resolve_preset_none_returns_only_explicit():
 async def test_api_create_task_with_preset(client):
     """POST /api/tasks with preset=economy → task uses wan_local (local → queued)."""
     email = f"preset_{uuid.uuid4().hex[:6]}@example.com"
-    await client.post("/api/auth/register", json={
-        "email": email, "password": "password123", "display_name": "P"
-    })
-    login = await client.post("/api/auth/login", json={
-        "email": email, "password": "password123"
-    })
+    await client.post(
+        "/api/auth/register", json={"email": email, "password": "password123", "display_name": "P"}
+    )
+    login = await client.post("/api/auth/login", json={"email": email, "password": "password123"})
     token = login.json()["access_token"]
 
     resp = await client.post(

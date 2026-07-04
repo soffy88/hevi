@@ -15,7 +15,7 @@ from oprim.inject_visual_style import inject_visual_style
 
 from hevi.prompt.style_presets import get_style_preset
 
-__all__ = ["engineer_prompt", "engineer_prompt_from_preset", "HEVI_TO_OPRIM_PROVIDER"]
+__all__ = ["HEVI_TO_OPRIM_PROVIDER", "engineer_prompt", "engineer_prompt_from_preset"]
 
 # Map hevi provider names → oprim provider keys used by _PROVIDER_RULES.
 HEVI_TO_OPRIM_PROVIDER: dict[str, str] = {

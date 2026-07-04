@@ -193,24 +193,23 @@ async def test_trace_id_propagation_orchestrator():
     from hevi.pipeline import orchestrate_longvideo
 
     tid = uuid.uuid4()
-    with start_trace(str(tid)):
-        with patch(
-            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
-            new_callable=AsyncMock,
-        ) as mock_pipe:
-            mock_result = MagicMock(
-                video_path=MagicMock(stem="test"),
-                duration_s=10,
-                chapters=1,
-                shots_generated=1,
-                provider_used={},
-            )
-            mock_result.video_path.stat.return_value.st_size = 2048
-            mock_pipe.return_value = mock_result
-            await orchestrate_longvideo(
-                topic="test",
-                duration_archetype="1-5min",
-                video_provider="ltx2_cloud",
-                audio_provider="vibevoice",
-            )
-            assert get_trace_id() == str(tid)
+    with start_trace(str(tid)), patch(
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+        new_callable=AsyncMock,
+    ) as mock_pipe:
+        mock_result = MagicMock(
+            video_path=MagicMock(stem="test"),
+            duration_s=10,
+            chapters=1,
+            shots_generated=1,
+            provider_used={},
+        )
+        mock_result.video_path.stat.return_value.st_size = 2048
+        mock_pipe.return_value = mock_result
+        await orchestrate_longvideo(
+            topic="test",
+            duration_archetype="1-5min",
+            video_provider="ltx2_cloud",
+            audio_provider="vibevoice",
+        )
+        assert get_trace_id() == str(tid)

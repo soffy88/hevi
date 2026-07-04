@@ -6,7 +6,7 @@ from hevi.assets.repository import ASSET_TYPES
 
 
 def test_asset_types_taxonomy():
-    assert ASSET_TYPES == frozenset({"character", "scene", "voice", "prop", "fx"})
+    assert frozenset({"character", "scene", "voice", "prop", "fx"}) == ASSET_TYPES
 
 
 @pytest.mark.asyncio

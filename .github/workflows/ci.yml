@@ -33,3 +33,28 @@ jobs:
 
       - name: Pytest
         run: uv run pytest tests/ --cov=hevi --cov-report=term --cov-fail-under=80
+
+      # 依赖漏洞扫描(先非阻塞:报告已知 CVE,后续可转阻塞)
+      - name: Dependency audit (pip-audit)
+        continue-on-error: true
+        run: uvx pip-audit || true
+
+  # 前端构建门禁 —— 拦住"tsc 过但 next build 崩"(如 @helios/oui 升版删了导出)。
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hevi-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install web deps
+        run: npm ci --prefer-offline --no-audit
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Unit tests (vitest)
+        run: npm run test
+      - name: Build
+        run: npm run build

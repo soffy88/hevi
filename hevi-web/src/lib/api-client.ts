@@ -57,6 +57,22 @@ async function authedReq<T>(path: string, init?: RequestInit): Promise<T> {
   return req<T>(path, init);
 }
 
+/**
+ * authedFormReq — 需登录的 multipart/form-data 上传。
+ * 不设 Content-Type(交给浏览器带 boundary),只带 Authorization。
+ */
+async function authedFormReq<T>(path: string, form: FormData): Promise<T> {
+  if (!authToken) throw new Error('NOT_AUTHENTICATED');
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${authToken}` },
+    body: form,
+  });
+  if (res.status === 401) { fireUnauthorized(); throw new Error('401 Unauthorized'); }
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json() as Promise<T>;
+}
+
 /** 当前是否有 token(供组件判断是否调认证接口)。 */
 export function hasToken(): boolean { return authToken != null; }
 
@@ -104,6 +120,24 @@ export const subjectApi = {
   get:    (id: string) => authedReq<Subject>(`/api/subjects/${id}`),
   update: (id: string, patch: Partial<Subject>) => authedReq<Subject>(`/api/subjects/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   remove: (id: string) => authedReq<void>(`/api/subjects/${id}`, { method: 'DELETE' }),
+  // 上传一张照片直接建角色
+  fromPhoto: (file: File, name = '我的角色', kind: SubjectKind = 'character', description?: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('name', name);
+    form.append('kind', kind);
+    if (description) form.append('description', description);
+    return authedFormReq<Subject>('/api/subjects/from-photo', form);
+  },
+  // 给已有角色再加一张参考图
+  uploadReference: (subjectId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<Subject>(`/api/subjects/${subjectId}/reference`, form);
+  },
+  // 角色参考图预览:<img src> 不能带 header,token 走查询参数(同 progressUrl/videoUrl)
+  imageUrl: (subjectId: string, idx = 0) =>
+    `${API_BASE}/api/subjects/${subjectId}/image?token=${authToken ? encodeURIComponent(authToken) : ''}&idx=${idx}`,
 };
 
 // ── 长视频任务 ────────────────────────────────────
@@ -115,6 +149,9 @@ export const taskApi = {
   // SSE 进度:EventSource 无法带 Authorization 头,token 以查询参数传递
   progressUrl: (id: string) =>
     `${API_BASE}/api/tasks/${id}/progress${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
+  // 成片播放/下载:<video src> 同样不能带 header,token 走查询参数
+  videoUrl: (id: string) =>
+    `${API_BASE}/api/tasks/${id}/video${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
   // 成本预估
   estimate: (r: LongVideoTaskReq) => req<CostEstimateRes>('/api/tasks/estimate', { method: 'POST', body: JSON.stringify(r) }),
 };

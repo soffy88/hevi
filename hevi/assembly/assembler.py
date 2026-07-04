@@ -12,10 +12,13 @@ RFC-002 P0-2/P1-4/P1-5 收敛于此:
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 from obase.ffmpeg import run as ffmpeg_run
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -34,14 +37,21 @@ async def probe_duration(path: Path) -> float:
     import asyncio
 
     proc = await asyncio.create_subprocess_exec(
-        "ffprobe", "-v", "error", "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1", str(path),
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(path),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
     )
     out, _ = await proc.communicate()
     try:
         return float(out.decode().strip())
-    except (ValueError, AttributeError):
+    except ValueError, AttributeError:
         return 0.0
 
 
@@ -58,7 +68,7 @@ def load_timing_manifest(audio_path: Path) -> list[float] | None:
         durs = data.get("durations")
         if isinstance(durs, list) and all(isinstance(d, (int, float)) for d in durs):
             return [float(d) for d in durs]
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         return None
     return None
 
@@ -76,8 +86,12 @@ def _normalize_vf(width: int, height: int, fps: int) -> str:
 
 
 async def _normalize_shot(
-    shot: ShotSegment, idx: int, tmp_dir: Path,
-    width: int, height: int, fps: int,
+    shot: ShotSegment,
+    idx: int,
+    tmp_dir: Path,
+    width: int,
+    height: int,
+    fps: int,
 ) -> tuple[Path, float]:
     """把单镜头归一化到统一规格 + 目标时长,返回(归一化文件, 实际时长)。
 
@@ -100,8 +114,18 @@ async def _normalize_shot(
         args += ["-vf", vf]
         actual = src_dur
 
-    args += ["-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-             "-pix_fmt", "yuv420p", str(out)]
+    args += [
+        "-an",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "20",
+        "-pix_fmt",
+        "yuv420p",
+        str(out),
+    ]
     await ffmpeg_run(args=args, expected_output=out)
     return out, actual
 
@@ -110,7 +134,9 @@ async def _normalize_shot(
 
 
 def build_xfade_chain(
-    durations: list[float], transition: str, xfade_d: float,
+    durations: list[float],
+    transition: str,
+    xfade_d: float,
 ) -> tuple[str, str, float]:
     """构造 N 段 xfade 链 filter_complex。
 
@@ -140,8 +166,13 @@ def build_xfade_chain(
 
 
 def build_audio_filter(
-    has_narration: bool, has_bgm: bool, narr_idx: int, bgm_idx: int,
-    lufs: float, bgm_gain_db: float, total_dur: float,
+    has_narration: bool,
+    has_bgm: bool,
+    narr_idx: int,
+    bgm_idx: int,
+    lufs: float,
+    bgm_gain_db: float,
+    total_dur: float,
 ) -> tuple[str, str | None]:
     """构造音频 filter_complex: 旁白 loudnorm + BGM 侧链闪避 + amix。
 
@@ -150,18 +181,28 @@ def build_audio_filter(
     if not has_narration and not has_bgm:
         return "", None
     if has_narration and not has_bgm:
-        return f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11[aout]", "[aout]"
+        # apad=whole_dur:旁白比画面短时(如脚本旁白过短)补静音到画面总长,避免下游
+        # -shortest 把整片截到旁白长度(曾致 1-5min 视频被压成几秒)。用有限 whole_dur
+        # 而非裸 apad(后者产生无限音频流,与 -shortest+copy 组合会挂死)。
+        return (
+            f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,"
+            f"apad=whole_dur={max(total_dur, 0.1):.3f}[aout]",
+            "[aout]",
+        )
     if has_bgm and not has_narration:
         return (
             f"[{bgm_idx}:a]volume={bgm_gain_db}dB,"
-            f"afade=t=out:st={max(0, total_dur - 2):.2f}:d=2[aout]", "[aout]"
+            f"afade=t=out:st={max(0, total_dur - 2):.2f}:d=2[aout]",
+            "[aout]",
         )
     # 二者都有: 旁白归一 → 作为侧链压 BGM(旁白响时压低 BGM) → amix
     f = (
         f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,asplit=2[narr][narrsc];"
         f"[{bgm_idx}:a]volume={bgm_gain_db}dB[bgmv];"
         f"[bgmv][narrsc]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=300[bgmduck];"
-        f"[narr][bgmduck]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        # 旁白 apad 补静音到画面长 + amix duration=longest:成片总长随画面而非被旁白截短。
+        f"[narr]apad=whole_dur={max(total_dur, 0.1):.3f}[narrp];"
+        f"[narrp][bgmduck]amix=inputs=2:duration=longest:dropout_transition=2[aout]"
     )
     return f, "[aout]"
 
@@ -174,8 +215,8 @@ async def compose_avatar_broll(
     broll_video: Path,
     avatar_video: Path,
     output_path: Path,
-    position: str = "br",     # tl|tr|bl|br 角落
-    scale: float = 0.28,      # 数字人占画面宽度比例
+    position: str = "br",  # tl|tr|bl|br 角落
+    scale: float = 0.28,  # 数字人占画面宽度比例
 ) -> Path:
     """RFC-002 item 11: 数字人讲解 + B-roll 画中画合成。
 
@@ -183,19 +224,37 @@ async def compose_avatar_broll(
     纯 ffmpeg overlay, 确定性可测。
     """
     pos = {
-        "tl": "10:10", "tr": "W-w-10:10",
-        "bl": "10:H-h-10", "br": "W-w-10:H-h-10",
+        "tl": "10:10",
+        "tr": "W-w-10:10",
+        "bl": "10:H-h-10",
+        "br": "W-w-10:H-h-10",
     }.get(position, "W-w-10:H-h-10")
-    fc = (
-        f"[1:v]scale=iw*{scale}:-1[av];"
-        f"[0:v][av]overlay={pos}:format=auto[vout]"
-    )
+    fc = f"[1:v]scale=iw*{scale}:-1[av];[0:v][av]overlay={pos}:format=auto[vout]"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     args = [
-        "-y", "-i", str(broll_video), "-i", str(avatar_video),
-        "-filter_complex", fc, "-map", "[vout]", "-map", "1:a?",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-        "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(output_path),
+        "-y",
+        "-i",
+        str(broll_video),
+        "-i",
+        str(avatar_video),
+        "-filter_complex",
+        fc,
+        "-map",
+        "[vout]",
+        "-map",
+        "1:a?",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "20",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-shortest",
+        str(output_path),
     ]
     await ffmpeg_run(args=args, expected_output=output_path)
     return output_path
@@ -246,17 +305,44 @@ async def assemble_longvideo(
             args = ["-y"]
             for p, _ in norm:
                 args += ["-i", str(p)]
-            args += ["-filter_complex", fc, "-map", vlabel,
-                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                     "-pix_fmt", "yuv420p", str(silent)]
+            args += [
+                "-filter_complex",
+                fc,
+                "-map",
+                vlabel,
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "20",
+                "-pix_fmt",
+                "yuv420p",
+                str(silent),
+            ]
             await ffmpeg_run(args=args, expected_output=silent)
         else:
             # 硬切: 归一化后规格一致,concat demuxer + 重编码(稳妥)
             concat_list = tmp_dir / "concat.txt"
             concat_list.write_text("".join(f"file '{p.resolve()}'\n" for p, _ in norm))
-            args = ["-y", "-f", "concat", "-safe", "0", "-i", str(concat_list),
-                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                    "-pix_fmt", "yuv420p", str(silent)]
+            args = [
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(concat_list),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "20",
+                "-pix_fmt",
+                "yuv420p",
+                str(silent),
+            ]
             await ffmpeg_run(args=args, expected_output=silent)
 
         video_dur = await probe_duration(silent)
@@ -280,13 +366,31 @@ async def assemble_longvideo(
                 bgm_idx = nxt
                 nxt += 1
             af, alabel = build_audio_filter(
-                has_narr, has_bgm, narr_idx, bgm_idx,
-                loudness_lufs, bgm_gain_db, video_dur,
+                has_narr,
+                has_bgm,
+                narr_idx,
+                bgm_idx,
+                loudness_lufs,
+                bgm_gain_db,
+                video_dur,
             )
             assert alabel is not None  # has_narr or has_bgm → 必非空
-            args += ["-filter_complex", af, "-map", "0:v", "-map", alabel,
-                     "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-                     "-shortest", str(muxed)]
+            args += [
+                "-filter_complex",
+                af,
+                "-map",
+                "0:v",
+                "-map",
+                alabel,
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-shortest",
+                str(muxed),
+            ]
             await ffmpeg_run(args=args, expected_output=muxed)
 
         # ④ 字幕(可选)
@@ -294,19 +398,36 @@ async def assemble_longvideo(
             from hevi.assembly.subtitle_burner import get_subtitle_filter
 
             final = tmp_dir / "final.mp4"
-            args = ["-y", "-i", str(muxed), "-vf", get_subtitle_filter(subtitle_path),
-                    "-c:a", "copy", "-c:v", "libx264", "-preset", "veryfast",
-                    "-crf", "20", "-pix_fmt", "yuv420p", str(final)]
+            args = [
+                "-y",
+                "-i",
+                str(muxed),
+                "-vf",
+                get_subtitle_filter(subtitle_path),
+                "-c:a",
+                "copy",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-crf",
+                "20",
+                "-pix_fmt",
+                "yuv420p",
+                str(final),
+            ]
             await ffmpeg_run(args=args, expected_output=final)
             muxed = final
 
         import shutil
+
         shutil.move(str(muxed), str(output_path))
 
     # RFC-002 item 14: 接入 cover_extractor —— 成片旁产出封面帧(供画廊缩略图)。
     try:
         from hevi.assembly.cover_extractor import extract_cover
+
         await extract_cover(output_path, output_path.with_suffix(".cover.jpg"))
-    except Exception:
-        pass  # 封面非关键路径
+    except Exception as ce:
+        logger.warning("cover extraction skipped (non-critical): %s", ce)  # 降级但不静默吞
     return output_path

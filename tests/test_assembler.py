@@ -59,7 +59,7 @@ def test_audio_filter_ducking() -> None:
 
 
 def test_audio_filter_none() -> None:
-    f, label = build_audio_filter(False, False, -1, -1, -14.0, -18.0, 10.0)
+    _f, label = build_audio_filter(False, False, -1, -1, -14.0, -18.0, 10.0)
     assert label is None
 
 
