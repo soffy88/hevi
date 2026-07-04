@@ -28,6 +28,9 @@ class Series(Base):
     # 风格:引用内置/用户 StylePack 名 + 版本(每集同一 StylePack@version = 风格不漂移)。
     style_preset: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     style_pack_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # 引用一个 StylePack 资产(可选)。设置则每集 create_episode 时 resolve 展开成 prompt_*;
+    # 未设则回退用 style_preset 名。style_pack_version 记录建集时锁定的版本。
+    style_pack_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # 规格锁:{duration_archetype, video_provider, audio_provider, num_characters, quality_profile,
     #         prompt_* 等} —— 每集继承,保证画幅/时长档/provider 一致。
     spec_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)

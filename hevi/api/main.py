@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -16,6 +16,8 @@ from hevi.api.routers.creative import router as creative_router  # noqa: E402
 from hevi.api.routers.credits import router as credits_router  # noqa: E402
 from hevi.api.routers.gallery import router as gallery_router  # noqa: E402
 from hevi.api.routers.payment import router as payment_router  # noqa: E402
+from hevi.api.routers.series import router as series_router  # noqa: E402
+from hevi.api.routers.style import router as style_router  # noqa: E402
 from hevi.api.routers.subjects import router as subjects_router  # noqa: E402
 from hevi.api.routers.tasks import router as tasks_router  # noqa: E402
 from hevi.api.routers.templates import router as templates_router  # noqa: E402
@@ -27,6 +29,7 @@ from hevi.providers.registry import register_all_providers  # noqa: E402
 
 def _cors_list(raw: str) -> list[str]:
     import json as _json
+
     raw = raw.strip()
     if raw.startswith("["):
         return list(_json.loads(raw))
@@ -56,10 +59,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     worker.stop()
     worker_task.cancel()
-    try:
+    with suppress(asyncio.CancelledError):
         await worker_task
-    except asyncio.CancelledError:
-        pass
 
 
 app = FastAPI(
@@ -91,6 +92,8 @@ app.include_router(creative_router, prefix="/api")
 app.include_router(canvas_router, prefix="/api")
 app.include_router(templates_router, prefix="/api")
 app.include_router(audio_router, prefix="/api")
+app.include_router(series_router, prefix="/api")
+app.include_router(style_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)

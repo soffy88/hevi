@@ -150,10 +150,10 @@ async def test_task_service_run_task_with_monitoring_and_recording():
     }
     service = TaskService(repo)
 
-    with patch(
-        "hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock
-    ) as mock_orch, patch("hevi.tasks.task_service.HeviCostTracker") as mock_tracker_class:
-
+    with (
+        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+        patch("hevi.tasks.task_service.HeviCostTracker") as mock_tracker_class,
+    ):
         mock_tracker = mock_tracker_class.return_value
         mock_tracker.total_usd = 0.0
         mock_orch.return_value = {"url": "v.mp4", "duration": 180.0, "metadata": {"shots": 10}}
@@ -304,3 +304,46 @@ async def test_route_raises_when_none_routable():
             )
     finally:
         live_state._reset_for_tests()
+
+
+def test_shot_router_classify_quality_floor():
+    """route v2:镜头 prompt → 质量下限。空镜降档(可用免费本地),主角特写抬档(只上云)。"""
+    from hevi.cost.shot_router import classify_shot_quality_floor
+
+    assert classify_shot_quality_floor("空镜 城市天际线 establishing shot") == 7
+    assert classify_shot_quality_floor("主角特写,close-up on hero's face") == 10
+    assert classify_shot_quality_floor("两人走在街上") == 9  # 无关键词 → 默认
+    assert classify_shot_quality_floor("", default=8) == 8
+
+
+@pytest.mark.asyncio
+async def test_shot_router_propagates_floor_to_route():
+    """route_shot_provider 把分类得到的 floor 透传给 route_video_provider。"""
+    from unittest.mock import patch as _patch
+
+    from hevi.cost import shot_router as SR
+
+    seen: dict[str, Any] = {}
+
+    async def fake_route(**kw):
+        seen.update(kw)
+        return "wan_local"
+
+    with _patch("hevi.cost.shot_router.route_video_provider", fake_route):
+        # 空镜 → floor 7
+        await SR.route_shot_provider(
+            prompt="空镜 远景 landscape",
+            duration_archetype="short",
+            audio_provider="vibevoice",
+            mode="t2v",
+        )
+        assert seen["quality_floor"] == 7
+        # 主角特写 → floor 10
+        await SR.route_shot_provider(
+            prompt="主角特写 portrait",
+            duration_archetype="short",
+            audio_provider="vibevoice",
+            mode="i2v",
+        )
+        assert seen["quality_floor"] == 10
+        assert seen["mode"] == "i2v"
