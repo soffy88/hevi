@@ -4,20 +4,24 @@ from hevi.canvas.graph_models import CanvasGraph
 from hevi.credits.models import CreditAccount, CreditTransaction
 from hevi.db.base import Base
 from hevi.payment.models import Order
+from hevi.series.models import Series
+from hevi.style.models import StylePack
 from hevi.subjects.models import Subject
 from hevi.tasks.models import ShotState, VideoTask
 from hevi.templates.template_models import Template
 
 __all__ = [
-    "Base",
-    "VideoTask",
-    "ShotState",
-    "CanvasGraph",
-    "Template",
     "AudioAsset",
-    "User",
-    "Subject",
+    "Base",
+    "CanvasGraph",
     "CreditAccount",
     "CreditTransaction",
     "Order",
+    "Series",
+    "ShotState",
+    "StylePack",
+    "Subject",
+    "Template",
+    "User",
+    "VideoTask",
 ]
