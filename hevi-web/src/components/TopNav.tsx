@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 
 const NAV = [
   { href: '/', label: '生成' },
+  { href: '/director', label: '导演' },
   { href: '/studio', label: '画布工作台' },
   { href: '/gallery', label: '展示墙' },
   { href: '/account', label: '我的' },

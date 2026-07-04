@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { galleryApi, USE_MOCK } from '@/lib/api-client';
 import { MOCK_GALLERY } from '@/lib/mock-data';
 import type { GalleryItem, GalleryCategory } from '@/types/api';
@@ -23,10 +23,16 @@ const TABS: { key: GalleryCategory | 'all'; label: string }[] = [
   { key: 'image', label: '图片' },
 ];
 
+const EMPTY_FORM = { category: 'long_video' as GalleryCategory, title: '', media_url: '', description: '', prompt: '' };
+
 export function ShowcaseWall() {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<GalleryCategory | 'all'>('all');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -41,11 +47,51 @@ export function ShowcaseWall() {
     return () => { live = false; };
   }, []);
 
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!form.title.trim()) { setMsg('请填标题'); return; }
+    setSubmitting(true); setMsg(null);
+    try {
+      const created = await galleryApi.create({
+        category: form.category,
+        title: form.title.trim(),
+        media_url: form.media_url.trim() || undefined,
+        description: form.description.trim() || undefined,
+        prompt: form.prompt.trim() || undefined,
+      });
+      setItems(prev => [created, ...prev]);
+      setForm(EMPTY_FORM); setShowForm(false);
+      setMsg('已上墙 ✓');
+    } catch (err) {
+      setMsg(err instanceof Error && err.message === 'NOT_AUTHENTICATED' ? '请先登录再投稿' : '投稿失败,请重试');
+    } finally { setSubmitting(false); }
+  }
+
   const filtered = tab === 'all' ? items : items.filter(i => i.category === tab);
 
   return (
     <div className="hevi-gallery hevi-showcase">
-      <div className="hevi-gallery__head">展示墙 · 官方精选作品</div>
+      <div className="hevi-showcase__bar">
+        <div className="hevi-gallery__head">展示墙 · 官方精选作品</div>
+        <button className="hevi-showcase__submit-btn" onClick={() => { setShowForm(v => !v); setMsg(null); }}>
+          {showForm ? '收起' : '+ 投稿'}
+        </button>
+      </div>
+      {showForm && (
+        <form className="hevi-showcase__form" onSubmit={submit}>
+          <div className="hevi-showcase__form-row">
+            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as GalleryCategory })}>
+              {TABS.filter(t => t.key !== 'all').map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+            <input placeholder="标题 *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+          </div>
+          <input placeholder="作品链接 media_url(视频/图片)" value={form.media_url} onChange={e => setForm({ ...form, media_url: e.target.value })} />
+          <input placeholder="一句话简介(可选)" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <input placeholder="生成 prompt(可选)" value={form.prompt} onChange={e => setForm({ ...form, prompt: e.target.value })} />
+          <button type="submit" disabled={submitting}>{submitting ? '提交中…' : '上墙'}</button>
+        </form>
+      )}
+      {msg && <div className="hevi-showcase__msg">{msg}</div>}
       <div className="hevi-showcase__tabs">
         {TABS.map(t => (
           <button

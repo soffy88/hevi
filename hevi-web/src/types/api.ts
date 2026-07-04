@@ -161,6 +161,47 @@ export interface GalleryItem {
   sort_order?: number;
 }
 
+// ── L4 导演层(§3)──────────────────────────────────
+export interface ProducerPlan {
+  topic: string;
+  duration_archetype: string;
+  video_provider: string;
+  audio_provider: string;
+  style: string;
+  num_characters: number;
+  estimated_usd: number;
+  budget_usd: number | null;
+  budget_ok: boolean;
+  feasible: boolean;
+  notes: string[];
+}
+
+export interface DirectorPlanResult {
+  intent: Record<string, unknown>;
+  plan: ProducerPlan;
+  shot_prompts: string[];
+  graph: { name: string; nodes: unknown[]; edges: unknown[] };
+}
+
+export interface DirectorEpisodeResult {
+  task_id: string;
+  status: string;
+  intent: Record<string, unknown>;
+  plan: ProducerPlan;
+}
+
+// 投稿:成片上墙(需登录)
+export interface GalleryCreatePayload {
+  category: GalleryCategory;
+  title: string;
+  media_url?: string;
+  description?: string;
+  thumbnail_url?: string;
+  prompt?: string;
+  gen_params?: Record<string, unknown>;
+  sort_order?: number;
+}
+
 // ── 逐步 provider 选项(§3)──────────────────────────
 export type ProviderChoice = 'local' | 'cloud';
 

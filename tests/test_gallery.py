@@ -124,6 +124,47 @@ async def test_service_get_delegates() -> None:
     m.assert_awaited_once_with(_ITEM_ID)
 
 
+# ── 3b. Service — create_gallery_item(投稿)─────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_service_create_rejects_bad_category() -> None:
+    svc = _make_svc()
+    with pytest.raises(ValueError):
+        await svc.create_gallery_item(category="bogus", title="x")
+
+
+@pytest.mark.asyncio
+async def test_service_create_rejects_empty_title() -> None:
+    svc = _make_svc()
+    with pytest.raises(ValueError):
+        await svc.create_gallery_item(category="long_video", title="   ")
+
+
+@pytest.mark.asyncio
+async def test_service_create_inserts_active_and_returns() -> None:
+    repo, _ = _make_repo()
+    svc = _make_svc(repo)
+    with (
+        patch.object(repo, "create_gallery_item", new_callable=AsyncMock, return_value="nid") as mc,
+        patch.object(
+            repo,
+            "get_gallery_item",
+            new_callable=AsyncMock,
+            return_value={**_STORED, "category": "long_video"},
+        ),
+    ):
+        row = await svc.create_gallery_item(
+            category="long_video", title="T", media_url="u", gen_params={"a": 1}
+        )
+    data = mc.await_args.args[0]
+    assert data["category"] == "long_video"
+    assert data["title"] == "T"
+    assert data["is_active"] is True  # 投稿即时可见
+    assert data["gen_params"] == {"a": 1}
+    assert row is not None
+
+
 # ── 4. API routes ────────────────────────────────────────────────────────────
 
 
@@ -175,6 +216,46 @@ async def test_api_get_gallery_item(client: Any) -> None:
         app.dependency_overrides.clear()
     assert resp.status_code == 200
     assert resp.json()["item_id"] == _ITEM_ID
+
+
+@pytest.mark.asyncio
+async def test_api_create_gallery_item(client: Any) -> None:
+    from hevi.api.main import app
+    from hevi.api.routers.gallery import get_gallery_service
+    from hevi.auth.dependencies import get_current_user
+
+    svc = _mock_svc()
+    created = {**_STORED, "category": "long_video"}
+    with patch.object(
+        svc, "create_gallery_item", new_callable=AsyncMock, return_value=created
+    ) as m:
+        app.dependency_overrides[get_gallery_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: {"id": "u1"}
+        resp = await client.post(
+            "/api/gallery",
+            json={"category": "long_video", "title": "Sunset", "media_url": "media/sunset.mp4"},
+        )
+        app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    assert resp.json()["item_id"] == _ITEM_ID
+    m.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_api_create_gallery_item_bad_category_400(client: Any) -> None:
+    from hevi.api.main import app
+    from hevi.api.routers.gallery import get_gallery_service
+    from hevi.auth.dependencies import get_current_user
+
+    svc = _mock_svc()
+    with patch.object(
+        svc, "create_gallery_item", new_callable=AsyncMock, side_effect=ValueError("未知分区")
+    ):
+        app.dependency_overrides[get_gallery_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: {"id": "u1"}
+        resp = await client.post("/api/gallery", json={"category": "bogus", "title": "x"})
+        app.dependency_overrides.clear()
+    assert resp.status_code == 400
 
 
 @pytest.mark.asyncio

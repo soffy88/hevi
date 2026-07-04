@@ -164,11 +164,28 @@ export const assetApi = {
   audio:     (type?: string) => authedReq<{ id: string; name: string; dur?: string }[]>(`/api/audio${type ? `?type=${type}` : ''}`),
 };
 
-// ── 画廊(§5,公开无需 token)──────────────────────
-import type { GalleryItem, GalleryCategory } from '@/types/api';
+// ── 画廊 / 展示墙(§4-5,读公开无需 token;投稿需登录)──────────────────────
+import type { GalleryItem, GalleryCategory, GalleryCreatePayload } from '@/types/api';
 export const galleryApi = {
   list: (category?: GalleryCategory) =>
     req<{ items: GalleryItem[] } | GalleryItem[]>(`/api/gallery${category ? `?category=${category}` : ''}`)
       .then(r => (Array.isArray(r) ? r : (r as { items: GalleryItem[] }).items ?? [])),
   get:  (itemId: string) => req<GalleryItem>(`/api/gallery/${itemId}`),
+  create: (payload: GalleryCreatePayload) =>
+    authedReq<GalleryItem>('/api/gallery', { method: 'POST', body: JSON.stringify(payload) }),
+};
+
+// ── 导演层(§3 L4,需登录)一句话 → 可行性预览 / 直接产集 ──────────
+import type { DirectorPlanResult, DirectorEpisodeResult } from '@/types/api';
+export const directorApi = {
+  plan: (text: string, numShots = 4) =>
+    authedReq<DirectorPlanResult>('/api/director/plan', {
+      method: 'POST',
+      body: JSON.stringify({ text, num_shots: numShots }),
+    }),
+  createEpisode: (text: string, budgetUsd?: number) =>
+    authedReq<DirectorEpisodeResult>('/api/director/episodes', {
+      method: 'POST',
+      body: JSON.stringify({ text, budget_usd: budgetUsd }),
+    }),
 };
