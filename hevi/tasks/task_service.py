@@ -282,6 +282,9 @@ class TaskService:
                         logger.warning(f"Cost settlement failed for task {task_id}: {exc}")
 
                 # Task level completion
+                quality = result.get(
+                    "quality"
+                )  # §7-4:确定性体检结果(passed/violations/consistency)
                 update_data = {
                     "status": "completed",
                     "progress_pct": 100.0,
@@ -290,10 +293,25 @@ class TaskService:
                     "completed_shots": result["metadata"].get("shots", 0),
                     "error": None,
                     "updated_at": datetime.now(UTC).replace(tzinfo=None),
-                    # Record final actual cost in metadata
-                    "config_json": {**task["config_json"], "actual_usd": cost_tracker.total_usd},
+                    # Record final actual cost + 体检结果 in config_json
+                    "config_json": {
+                        **task["config_json"],
+                        "actual_usd": cost_tracker.total_usd,
+                        **({"quality": quality} if quality is not None else {}),
+                    },
                 }
                 await self.repository.update_task(task_id, update_data)
+
+                # §7-4:确定性体检不及格 → 发独立事件(供 Editor/UI/告警消费,不再仅 log 就丢)。
+                # 不硬拒交付(算力已花);裁决权在上层——可据此调 regenerate_task_shots 定向返工。
+                if quality is not None and not quality.get("passed", True):
+                    log_event(
+                        stage="task_service",
+                        event="quality_check_failed",
+                        task_id=str(task_id),
+                        violations=quality.get("violations", []),
+                        consistency=quality.get("consistency"),
+                    )
 
                 # C3 落库:逐镜头选优明细 → shot_states(omodul v1.36.0 的 result.shots)。
                 await self._persist_shots(task_id, result.get("shots", []))
