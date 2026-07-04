@@ -175,6 +175,27 @@ export const galleryApi = {
     authedReq<GalleryItem>('/api/gallery', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
+// ── 系列 / 风格包(§3 L2,需登录)──────────────────────
+import type { Series, SeriesCreatePayload, Episode, StylePack, StylePackCreatePayload } from '@/types/api';
+export const seriesApi = {
+  list:   () => authedReq<Series[]>('/api/series'),
+  get:    (id: string) => authedReq<Series>(`/api/series/${id}`),
+  create: (payload: SeriesCreatePayload) =>
+    authedReq<Series>('/api/series', { method: 'POST', body: JSON.stringify(payload) }),
+  episodes: (id: string) => authedReq<Episode[]>(`/api/series/${id}/episodes`),
+  createEpisode: (id: string, topic: string) =>
+    authedReq<Episode>(`/api/series/${id}/episodes`, { method: 'POST', body: JSON.stringify({ topic }) }),
+};
+export const styleApi = {
+  get:     (id: string) => authedReq<StylePack>(`/api/style-packs/${id}`),
+  create:  (payload: StylePackCreatePayload) =>
+    authedReq<StylePack>('/api/style-packs', { method: 'POST', body: JSON.stringify(payload) }),
+  resolve: (id: string) =>
+    authedReq<{ resolved: Record<string, string>; version: number }>(`/api/style-packs/${id}/resolve`),
+  update:  (id: string, overrides: Record<string, string>) =>
+    authedReq<StylePack>(`/api/style-packs/${id}`, { method: 'PATCH', body: JSON.stringify({ overrides }) }),
+};
+
 // ── 导演层(§3 L4,需登录)一句话 → 可行性预览 / 直接产集 ──────────
 import type { DirectorPlanResult, DirectorEpisodeResult } from '@/types/api';
 export const directorApi = {

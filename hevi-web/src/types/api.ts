@@ -190,6 +190,51 @@ export interface DirectorEpisodeResult {
   plan: ProducerPlan;
 }
 
+// ── L2 系列 / 风格包(§3 L2)──────────────────────────
+export interface Series {
+  id: string;
+  name: string;
+  style_preset?: string;
+  style_pack_id?: string | null;
+  style_pack_version?: number;
+  subject_ids?: string[];
+  episode_count?: number;
+  created_at?: string;
+}
+
+export interface SeriesCreatePayload {
+  name: string;
+  subject_ids?: string[];
+  style_preset?: string;
+  style_pack_id?: string | null;
+  spec?: Record<string, unknown>;
+  intro_template_id?: string | null;
+  outro_template_id?: string | null;
+}
+
+export interface Episode {
+  id: string;
+  topic?: string;
+  status?: string;
+  episode_index?: number;
+  result_video_path?: string | null;
+  task_id?: string;
+}
+
+export interface StylePack {
+  id: string;
+  name: string;
+  base_preset?: string;
+  version?: number;
+  overrides_json?: Record<string, string>;
+}
+
+export interface StylePackCreatePayload {
+  name: string;
+  base_preset?: string;
+  overrides?: Record<string, string>;
+}
+
 // 投稿:成片上墙(需登录)
 export interface GalleryCreatePayload {
   category: GalleryCategory;
