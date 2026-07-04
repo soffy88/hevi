@@ -188,6 +188,40 @@ export interface DirectorEpisodeResult {
   status: string;
   intent: Record<string, unknown>;
   plan: ProducerPlan;
+  spec?: {
+    duration_archetype?: string;
+    aspect_ratio?: string;
+    quality_profile?: string;
+    video_provider?: string;
+    audio_provider?: string;
+    num_characters?: number;
+    subject_locked?: boolean;
+    avatar?: boolean;
+  };
+}
+
+// 导演台片表单 → 建集(8 层结构化字段)
+export interface DirectorEpisodePayload {
+  text: string;
+  duration_archetype?: string;
+  aspect_ratio?: string;
+  subject_id?: string | null;
+  avatar_portrait?: string | null;
+  num_characters?: number;
+  style_preset?: string | null;
+  prompt_style?: string | null;
+  prompt_lighting?: string | null;
+  prompt_camera?: string | null;
+  prompt_color_grade?: string | null;
+  transition?: string;
+  per_shot_routing?: boolean;
+  language?: string;
+  audio_provider?: string | null;
+  quality_profile?: string;
+  preset?: string | null;
+  video_provider?: string | null;
+  budget_usd?: number;
+  auto_rework_rounds?: number;
 }
 
 // ── L2 系列 / 风格包(§3 L2)──────────────────────────

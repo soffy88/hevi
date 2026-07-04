@@ -196,17 +196,17 @@ export const styleApi = {
     authedReq<StylePack>(`/api/style-packs/${id}`, { method: 'PATCH', body: JSON.stringify({ overrides }) }),
 };
 
-// ── 导演层(§3 L4,需登录)一句话 → 可行性预览 / 直接产集 ──────────
-import type { DirectorPlanResult, DirectorEpisodeResult } from '@/types/api';
+// ── 导演层(§3 L4,需登录)片表单 → 可行性预览 / 直接产集 ──────────
+import type { DirectorPlanResult, DirectorEpisodeResult, DirectorEpisodePayload } from '@/types/api';
 export const directorApi = {
   plan: (text: string, numShots = 4) =>
     authedReq<DirectorPlanResult>('/api/director/plan', {
       method: 'POST',
       body: JSON.stringify({ text, num_shots: numShots }),
     }),
-  createEpisode: (text: string, budgetUsd?: number) =>
+  createEpisode: (payload: DirectorEpisodePayload) =>
     authedReq<DirectorEpisodeResult>('/api/director/episodes', {
       method: 'POST',
-      body: JSON.stringify({ text, budget_usd: budgetUsd }),
+      body: JSON.stringify(payload),
     }),
 };
