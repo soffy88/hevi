@@ -217,11 +217,31 @@ export interface DirectorEpisodePayload {
   per_shot_routing?: boolean;
   language?: string;
   audio_provider?: string | null;
+  bgm?: string | null;
   quality_profile?: string;
   preset?: string | null;
   video_provider?: string | null;
   budget_usd?: number;
   auto_rework_rounds?: number;
+}
+
+// 逐镜编辑回路:提交编辑过的分镜图 → 执行装配成片
+export interface DirectorRenderPayload {
+  name?: string;
+  topic?: string;
+  nodes: Record<string, unknown>[];
+  edges: Record<string, unknown>[];
+  quality_profile?: string;
+  aspect_ratio?: string;
+  transition?: string;
+  bgm?: string | null;
+}
+
+export interface DirectorRenderResult {
+  task_id: string;
+  graph_id: string;
+  status: string;
+  shot_count: number;
 }
 
 // ── L2 系列 / 风格包(§3 L2)──────────────────────────

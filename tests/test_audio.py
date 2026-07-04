@@ -50,7 +50,9 @@ async def test_synthesize_dialogue_single(mock_config, output_path):
         mock_vv.return_value = output_path
         script = [MockSpeakerLine(speaker_id="spk1", text="Hello")]
         res = await synthesize_dialogue(
-            config=mock_config, script=script, output_path=output_path  # type: ignore
+            config=mock_config,
+            script=script,
+            output_path=output_path,  # type: ignore
         )
         assert res == output_path
         mock_vv.assert_called_once_with(
@@ -69,7 +71,9 @@ async def test_synthesize_dialogue_multi(mock_config, output_path):
             MockSpeakerLine(speaker_id="spk3", text="Good morning"),
         ]
         await synthesize_dialogue(
-            config=mock_config, script=script, output_path=output_path  # type: ignore
+            config=mock_config,
+            script=script,
+            output_path=output_path,  # type: ignore
         )
         assert mock_vv.call_args.kwargs["script"] == script
 
@@ -80,7 +84,9 @@ async def test_synthesize_dialogue_voice_ref(mock_config, output_path):
         mock_vv.return_value = output_path
         script = [MockSpeakerLine(speaker_id="spk1", text="Hello", voice_ref="ref.wav")]
         await synthesize_dialogue(
-            config=mock_config, script=script, output_path=output_path  # type: ignore
+            config=mock_config,
+            script=script,
+            output_path=output_path,  # type: ignore
         )
         assert mock_vv.call_args.kwargs["script"][0].voice_ref == "ref.wav"
 
@@ -166,6 +172,26 @@ def test_bgm_library_list_bgm(tmp_path):
     assert lib.list_bgm(mood="sad") == []
 
 
+def test_bgm_library_select_bgm(tmp_path):
+    """按情绪选曲(确定性取第一支)、接受直接文件路径、空目录返回 None。"""
+    lib = BGMLibrary(root_dir=tmp_path)
+    mood_dir = tmp_path / "bgm" / "epic"
+    mood_dir.mkdir(parents=True)
+    (mood_dir / "b_track.mp3").write_text("x")
+    (mood_dir / "a_track.mp3").write_text("x")
+
+    # 情绪 → 排序后第一支(a_track)
+    sel = lib.select_bgm("epic")
+    assert sel is not None and sel.name == "a_track.mp3"
+    # 空/未知
+    assert lib.select_bgm(None) is None
+    assert lib.select_bgm("mystery") is None
+    # 直接文件路径
+    direct = tmp_path / "custom.mp3"
+    direct.write_text("x")
+    assert lib.select_bgm(str(direct)) == direct
+
+
 def test_bgm_library_get_sfx(tmp_path):
     lib = BGMLibrary(root_dir=tmp_path)
     sfx_file = tmp_path / "sfx" / "boom.wav"
@@ -204,10 +230,11 @@ async def test_synthesize_dialogue_subprocess_isolated(mock_config, output_path)
 
 def test_register_all_providers_audio():
     ProviderRegistry.clear()
-    with patch("hevi.providers.registry.ltx2_cloud_generate"), patch(
-        "hevi.providers.registry.video_generate"
-    ), patch("hevi.providers.registry.vibevoice_synthesize"), patch(
-        "hevi.providers.registry.avatar_generate"
+    with (
+        patch("hevi.providers.registry.ltx2_cloud_generate"),
+        patch("hevi.providers.registry.video_generate"),
+        patch("hevi.providers.registry.vibevoice_synthesize"),
+        patch("hevi.providers.registry.avatar_generate"),
     ):
         register_all_providers()
 

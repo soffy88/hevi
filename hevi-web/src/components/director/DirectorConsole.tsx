@@ -7,7 +7,7 @@
 
 import { useState, useEffect, type FormEvent } from 'react';
 import { directorApi, subjectApi } from '@/lib/api-client';
-import type { DirectorPlanResult, DirectorEpisodeResult, DirectorEpisodePayload, Subject } from '@/types/api';
+import type { DirectorPlanResult, DirectorEpisodeResult, DirectorEpisodePayload, DirectorRenderResult, Subject } from '@/types/api';
 
 const PRESETS = [
   '科普', '严肃', '搞笑', '电影感', '赛博朋克', '国风水墨', '治愈系', '商务专业', '美食', '旅行Vlog',
@@ -28,12 +28,14 @@ const VIDEO = [{ v: 'auto', l: '自动路由(最省)' }, { v: 'wan_local', l: 'W
   { v: 'hailuo', l: '海螺 02' }, { v: 'wan_cloud', l: 'Wan 云' }];
 const EXEC = [{ v: '', l: '不用预设' }, { v: 'economy', l: '经济(本地零成本)' },
   { v: 'balanced', l: '均衡(默认)' }, { v: 'fast', l: '极速(云高清)' }];
+const BGM_MOODS = [{ v: '', l: '无配乐' }, { v: 'warm', l: '温暖' }, { v: 'upbeat', l: '轻快' },
+  { v: 'tense', l: '紧张' }, { v: 'epic', l: '史诗' }, { v: 'mystery', l: '悬疑' }];
 
 const EMPTY: DirectorEpisodePayload = {
   text: '', duration_archetype: '1-5min', aspect_ratio: '9:16', subject_id: '', avatar_portrait: '',
   num_characters: 1, style_preset: '电影感', prompt_style: '', prompt_lighting: '', prompt_camera: '',
   prompt_color_grade: '', transition: 'fade', per_shot_routing: false, language: 'zh',
-  audio_provider: 'vibevoice', quality_profile: 'standard', preset: '', video_provider: 'auto',
+  audio_provider: 'vibevoice', bgm: '', quality_profile: 'standard', preset: '', video_provider: 'auto',
   budget_usd: undefined, auto_rework_rounds: undefined,
 };
 
@@ -57,9 +59,11 @@ export function DirectorConsole() {
   const [f, setF] = useState<DirectorEpisodePayload>(EMPTY);
   const [numShots, setNumShots] = useState(4);
   const [chars, setChars] = useState<Subject[]>([]);
-  const [busy, setBusy] = useState<'plan' | 'episode' | null>(null);
+  const [busy, setBusy] = useState<'plan' | 'episode' | 'render' | null>(null);
   const [plan, setPlan] = useState<DirectorPlanResult | null>(null);
   const [episode, setEpisode] = useState<DirectorEpisodeResult | null>(null);
+  const [shots, setShots] = useState<string[]>([]);
+  const [rendered, setRendered] = useState<DirectorRenderResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -81,9 +85,34 @@ export function DirectorConsole() {
 
   async function preview() {
     if (!f.text.trim()) { setErr('先写一句剧情'); return; }
-    setBusy('plan'); setErr(null); setEpisode(null);
-    try { setPlan(await directorApi.plan(f.text.trim(), numShots)); }
-    catch (e) { setErr(errText(e)); } finally { setBusy(null); }
+    setBusy('plan'); setErr(null); setEpisode(null); setRendered(null);
+    try {
+      const p = await directorApi.plan(f.text.trim(), numShots);
+      setPlan(p);
+      setShots(p.shot_prompts);  // 逐镜编辑种子
+    } catch (e) { setErr(errText(e)); } finally { setBusy(null); }
+  }
+
+  // 逐镜编辑回路:用改过的每镜 prompt 覆盖图节点 → 执行 + 装配成片
+  async function render() {
+    if (!plan) return;
+    setBusy('render'); setErr(null);
+    try {
+      const gnodes = (plan.graph.nodes as Record<string, unknown>[]).map(n => ({ ...n }));
+      let si = 0;
+      for (const n of gnodes) {
+        if (n.node_type === 'video') {
+          n.config = { ...(n.config as Record<string, unknown> ?? {}), prompt: shots[si] ?? '' };
+          si++;
+        }
+      }
+      setRendered(await directorApi.render({
+        name: '导演分镜', topic: f.text.slice(0, 60),
+        nodes: gnodes, edges: plan.graph.edges as Record<string, unknown>[],
+        quality_profile: f.quality_profile, aspect_ratio: f.aspect_ratio,
+        transition: f.transition, bgm: f.bgm || undefined,
+      }));
+    } catch (e) { setErr(errText(e)); } finally { setBusy(null); }
   }
 
   async function produce(e: FormEvent) {
@@ -218,7 +247,12 @@ export function DirectorConsole() {
               {AUDIO.map(a => <option key={a.v} value={a.v}>{a.l}</option>)}
             </select>
           </label>
-          <Soon label="音色 / 语速 / 情绪" /><Soon label="BGM 配乐" /><Soon label="音效 / 混音" />
+          <label className="dc-field"><span className="dc-field__label">BGM 配乐(压于旁白下)</span>
+            <select value={f.bgm ?? ''} onChange={e => set('bgm', e.target.value)}>
+              {BGM_MOODS.map(b => <option key={b.v} value={b.v}>{b.l}</option>)}
+            </select>
+          </label>
+          <Soon label="音色 / 语速 / 情绪" /><Soon label="音效 / 混音" />
         </div>
       </section>
 
@@ -278,9 +312,33 @@ export function DirectorConsole() {
             <span>时长档</span><b>{plan.plan.duration_archetype}</b>
             <span>视频引擎</span><b>{plan.plan.video_provider}</b>
             <span>预估成本</span><b>${plan.plan.estimated_usd.toFixed(2)}</b>
-            <span>分镜</span><b>{plan.shot_prompts.length}</b>
+            <span>分镜</span><b>{shots.length}</b>
           </div>
-          <ol className="dc-shots">{plan.shot_prompts.map((s, i) => <li key={i}>{s}</li>)}</ol>
+          <div className="dc-edit">
+            <div className="dc-edit__head">逐镜编辑 —— 改哪镜就重出哪镜,其余复用</div>
+            {shots.map((s, i) => (
+              <div className="dc-edit__row" key={i}>
+                <span className="dc-edit__idx">镜 {i + 1}</span>
+                <textarea rows={2} value={s}
+                  onChange={e => setShots(prev => prev.map((x, j) => (j === i ? e.target.value : x)))} />
+              </div>
+            ))}
+            <button type="button" className="dc-btn dc-btn--primary" onClick={render} disabled={busy !== null}>
+              {busy === 'render' ? '出片装配中…' : '按这些镜头生成成片'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {rendered && (
+        <div className="dc-card dc-card--ok">
+          <div className="dc-card__head">逐镜成片 · 后台装配中</div>
+          <div className="dc-kv">
+            <span>任务 ID</span><b className="dc-mono">{rendered.task_id}</b>
+            <span>镜头数</span><b>{rendered.shot_count}</b>
+            <span>状态</span><b>{rendered.status}</b>
+          </div>
+          <p className="dc-hint">逐镜渲染 + 装配(可混 BGM,压于旁白下);完成后在「我的」查看。</p>
         </div>
       )}
 
