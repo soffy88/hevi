@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from obase.persistence import PgPool, query
+from obase.persistence import PgPool, insert_one, query
 
 
 class GalleryRepository:
     def __init__(self, pool: PgPool) -> None:
         self._pool = pool
+
+    async def create_gallery_item(self, data: dict[str, Any]) -> str:
+        return await insert_one(self._pool, table="showcase_items", data=data, returning="id")
 
     async def list_gallery(
         self,
