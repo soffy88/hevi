@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from obase.provider_registry import ProviderRegistry
 
-__all__ = ["CapabilityError", "ProviderLimits", "PROVIDER_LIMITS", "validate_request"]
+__all__ = ["PROVIDER_LIMITS", "CapabilityError", "ProviderLimits", "validate_request"]
 
 
 class CapabilityError(ValueError):
@@ -45,6 +45,28 @@ PROVIDER_LIMITS: dict[str, ProviderLimits] = {
         max_duration_s=10.0,
         fps_options=frozenset({16, 24, 30}),
     ),
+    # 高写实云档(fal)。这些 provider 已在 registry 注册但此前无能力声明,
+    # 导致能力矩阵只覆盖 4/7 provider。此处补齐 —— 值为近似上限(fal 内部管理实际
+    # 编码;非路由消费前不生效),待 L0 成本感知路由落地时按 fal 文档校准。
+    # 注:oprim 现注册的是 t2v 原语;三者上游均有 i2v 端点,但 hevi 未接线,故声明 t2v。
+    "veo3": ProviderLimits(
+        modes=frozenset({"t2v"}),
+        max_resolution=(1080, 1920),
+        max_duration_s=8.0,  # veo3/fast 固定 8s
+        fps_options=frozenset({24, 30}),
+    ),
+    "kling_v2": ProviderLimits(
+        modes=frozenset({"t2v"}),
+        max_resolution=(1080, 1920),
+        max_duration_s=10.0,  # v2 master 支持 5s/10s
+        fps_options=frozenset({24, 30}),
+    ),
+    "hailuo": ProviderLimits(
+        modes=frozenset({"t2v"}),
+        max_resolution=(1080, 1920),
+        max_duration_s=10.0,  # 海螺02 standard 支持 6s/10s
+        fps_options=frozenset({24, 30}),
+    ),
 }
 
 
@@ -79,8 +101,7 @@ async def validate_request(
             )
     elif mode not in limits.modes:
         raise CapabilityError(
-            f"Provider {provider!r} does not support mode {mode!r} "
-            f"(supported: {set(limits.modes)})"
+            f"Provider {provider!r} does not support mode {mode!r} (supported: {set(limits.modes)})"
         )
 
     # 朝向无关的分辨率比较: 把请求与上限各自按长短边排序后逐边比较,
