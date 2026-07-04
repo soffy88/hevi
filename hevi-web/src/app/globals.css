@@ -494,6 +494,49 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .hevi-director__shots ol { margin: 0; padding-left: 20px; font-size: var(--text-sm); line-height: 1.6; }
 .hevi-director__hint { margin: 12px 0 0; font-size: var(--text-xs); color: var(--muted-foreground); }
 
+/* ── 系列 / 风格包(§3 L2)── */
+.hevi-series-page { min-height: calc(100vh - 56px); }
+.hevi-series { max-width: 960px; margin: 40px auto 0; padding: 0 24px 64px; }
+.hevi-series__title { font-size: var(--text-2xl); font-weight: 700; }
+.hevi-series__sub { color: var(--muted-foreground); font-size: var(--text-sm); margin: 6px 0 16px; }
+.hevi-series__err { color: var(--destructive, #d33); font-size: var(--text-sm); margin-bottom: 12px; }
+.hevi-series__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 720px) { .hevi-series__cols { grid-template-columns: 1fr; } }
+.hevi-series__col { display: flex; flex-direction: column; gap: 16px; }
+.hevi-series__form { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.hevi-series__form--row { flex-direction: row; }
+.hevi-series__form--row input { flex: 1; }
+.hevi-series__form-head { font-size: var(--text-sm); font-weight: 600; }
+.hevi-series__form input, .hevi-series__form select {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--background); color: var(--foreground); font-size: var(--text-sm); width: 100%;
+}
+.hevi-series__form label { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-xs); color: var(--muted-foreground); }
+.hevi-series__form button { padding: 8px 0; border-radius: 8px; border: none; background: var(--primary); color: var(--primary-foreground); font-size: var(--text-sm); cursor: pointer; }
+.hevi-series__form button:disabled { opacity: 0.6; cursor: default; }
+.hevi-series__list { display: flex; flex-direction: column; gap: 6px; }
+.hevi-series__item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); cursor: pointer; text-align: left; }
+.hevi-series__item[data-active='true'] { border-color: var(--primary); }
+.hevi-series__item-name { font-size: var(--text-sm); font-weight: 600; color: var(--foreground); }
+.hevi-series__item-meta { font-size: var(--text-xs); color: var(--muted-foreground); }
+.hevi-series__detail-head { font-size: var(--text-lg); font-weight: 700; }
+.hevi-series__detail-meta { font-size: var(--text-xs); color: var(--muted-foreground); margin: 4px 0 12px; }
+.hevi-series__eps { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.hevi-series__ep { display: flex; gap: 10px; align-items: baseline; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: var(--text-sm); }
+.hevi-series__ep-idx { flex: 0 0 auto; font-weight: 600; color: var(--primary); }
+.hevi-series__ep-topic { flex: 1; }
+.hevi-series__ep-status { flex: 0 0 auto; font-size: var(--text-xs); color: var(--muted-foreground); }
+.hevi-series__empty { color: var(--muted-foreground); font-size: var(--text-sm); padding: 12px; text-align: center; }
+.hevi-series__empty--big { padding: 48px 12px; }
+.hevi-series__pack { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; }
+.hevi-series__pack-toggle { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--primary); background: color-mix(in oklch, var(--primary) 10%, transparent); color: var(--primary); font-size: var(--text-sm); cursor: pointer; }
+.hevi-series__pack .hevi-series__form { margin-top: 12px; max-width: 480px; }
+.hevi-series__pack-result { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--primary); border-radius: 10px; font-size: var(--text-sm); }
+.hevi-series__resolved { margin: 8px 0; font-size: var(--text-xs); color: var(--muted-foreground); display: flex; flex-direction: column; gap: 2px; }
+.hevi-series__resolved span { color: var(--foreground); font-weight: 600; margin-right: 6px; }
+.hevi-series__pack-result button { margin-top: 8px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); font-size: var(--text-xs); cursor: pointer; }
+.hevi-series__mono { font-family: var(--font-mono, monospace); font-size: var(--text-xs); word-break: break-all; }
+
 /* ── 逐步 provider 选择 ── */
 .hevi-provider { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border); }
 
