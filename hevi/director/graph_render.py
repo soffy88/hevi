@@ -40,8 +40,11 @@ async def render_graph_episode(
     fps: int,
     transition: str = "fade",
     bgm: str | None = None,
+    sfx: str | None = None,
+    intro_clip: str | None = None,
+    outro_clip: str | None = None,
 ) -> None:
-    """后台:执行图 → 收集逐镜 clip → 装配(可混 BGM)→ 更新任务(result_video_path/status)。"""
+    """后台:执行图 → 收集逐镜 clip → 装配(可混 BGM/音效、拼片头尾)→ 更新任务。"""
     from hevi.assembly.assembler import ShotSegment, assemble_longvideo
     from hevi.pipeline.longvideo_orchestrator import _order_and_dedup_shots
 
@@ -56,16 +59,28 @@ async def render_graph_episode(
         out_dir.mkdir(parents=True, exist_ok=True)
         final = out_dir / "final.mp4"
 
-        bgm_path = None
-        if bgm:
-            from hevi.audio.bgm_library import BGMLibrary
+        from hevi.audio.bgm_library import BGMLibrary
 
-            bgm_path = BGMLibrary().select_bgm(bgm)
+        _lib = BGMLibrary()
+        bgm_path = _lib.select_bgm(bgm) if bgm else None
+        sfx_path = None
+        if sfx:
+            _direct = Path(sfx)
+            sfx_path = _direct if _direct.is_file() else _lib.get_sfx(sfx)
+        intro_path = Path(intro_clip) if intro_clip and Path(intro_clip).is_file() else None
+        outro_path = Path(outro_clip) if outro_clip and Path(outro_clip).is_file() else None
+
+        segments = [ShotSegment(p) for p in clips]
+        if intro_path is not None:
+            segments.insert(0, ShotSegment(intro_path))
+        if outro_path is not None:
+            segments.append(ShotSegment(outro_path))
 
         await assemble_longvideo(
-            shots=[ShotSegment(p) for p in clips],
+            shots=segments,
             output_path=final,
             bgm_path=bgm_path,
+            sfx_path=sfx_path,
             width=width,
             height=height,
             fps=fps,

@@ -318,3 +318,93 @@ async def test_repository_get_shots(repository, mock_pool):
         mock_query.assert_called_once()
         assert "shot_states" in mock_query.call_args.kwargs["sql"]
         assert mock_query.call_args.kwargs["params"] == [task_id]
+
+
+# ── /video, /cover, /export 取片端点(§7 成片规格 —— 封面此前只落盘从未暴露)────
+
+
+@pytest.mark.asyncio
+async def test_get_task_cover_serves_sidecar_jpg(tmp_path):
+    """装配器自动产出的 <final>.cover.jpg —— 之前无端点暴露,现在能取到。"""
+    from hevi.api.routers.tasks import get_task_cover
+
+    video = tmp_path / "final.mp4"
+    video.write_bytes(b"\x00" * 128)
+    cover = tmp_path / "final.cover.jpg"
+    cover.write_bytes(b"\xff\xd8\xff" + b"\x00" * 32)
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
+    with patch(
+        "hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}
+    ):
+        resp = await get_task_cover(uuid.uuid4(), repo, token="tok")
+    assert resp.path == str(cover)
+    assert resp.media_type == "image/jpeg"
+
+
+@pytest.mark.asyncio
+async def test_get_task_cover_404_when_missing(tmp_path):
+    """封面还没生成(装配失败等)→ 404,不是裸异常。"""
+    from hevi.api.routers.tasks import get_task_cover
+
+    video = tmp_path / "final.mp4"
+    video.write_bytes(b"\x00" * 128)  # 没有对应 .cover.jpg
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
+    with patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}):
+        with pytest.raises(Exception) as ei:
+            await get_task_cover(uuid.uuid4(), repo, token="tok")
+    assert getattr(ei.value, "status_code", None) == 404
+
+
+@pytest.mark.asyncio
+async def test_export_task_video_mp4_passthrough(tmp_path):
+    """format=mp4(默认)→ 直传 final.mp4,不转码。"""
+    from hevi.api.routers.tasks import export_task_video
+
+    video = tmp_path / "final.mp4"
+    video.write_bytes(b"\x00" * 128)
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
+    with patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}):
+        resp = await export_task_video(uuid.uuid4(), repo, token="tok", format="mp4")
+    assert resp.path == str(video)
+    assert resp.media_type == "video/mp4"
+
+
+@pytest.mark.asyncio
+async def test_export_task_video_mov_remuxes_via_exporter(tmp_path):
+    """format=mov → 调 export_video 产出 .mov,缓存在成片旁(不重复转)。"""
+    from hevi.api.routers.tasks import export_task_video
+
+    video = tmp_path / "final.mp4"
+    video.write_bytes(b"\x00" * 128)
+
+    async def fake_export(input_path, output_path, fmt):
+        output_path.write_bytes(b"\x00" * 64)
+        return output_path
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
+    with (
+        patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}),
+        patch("hevi.assembly.exporter.export_video", new_callable=AsyncMock, side_effect=fake_export),
+    ):
+        resp = await export_task_video(uuid.uuid4(), repo, token="tok", format="mov")
+    assert resp.path == str(video.with_suffix(".mov"))
+    assert resp.media_type == "video/quicktime"
+
+
+@pytest.mark.asyncio
+async def test_export_task_video_bad_format_400():
+    from fastapi import HTTPException
+
+    from hevi.api.routers.tasks import export_task_video
+
+    repo = AsyncMock()
+    with pytest.raises(HTTPException) as ei:
+        await export_task_video(uuid.uuid4(), repo, token="tok", format="avi")
+    assert ei.value.status_code == 400

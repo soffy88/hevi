@@ -1,7 +1,8 @@
 /**
  * DirectorConsole — 导演控制台(§3 L4,专业片表单)
  * 一句话剧情 + 8 层结构化片表单 →「预览可行性」(不建任务)或「直接产集」(建任务+后台出片,含 L3 返工)。
- * 已接后端的字段做实控件;缺素材/模型/独立工程的标「规划中」禁用,不作假。
+ * 已接后端的字段做实控件;缺素材/模型/独立工程的标「规划中」禁用;当前 provider 架构性
+ * 不支持的(如额外风格参考图条件化)标「不支持」并写明原因 —— 两者都不作假。
  */
 'use client';
 
@@ -13,6 +14,8 @@ const PRESETS = [
   '科普', '严肃', '搞笑', '电影感', '赛博朋克', '国风水墨', '治愈系', '商务专业', '美食', '旅行Vlog',
   '产品广告', '新闻播报', '悬疑', '史诗', '复古胶片', '动漫', '极简', '自然纪录片', '时尚', '运动',
 ];
+const MOODS = ['', '温暖', '悲伤', '紧张', '浪漫', '幽默', '励志', '平静', '惊悚', '怀旧', '梦幻'];
+const GENRES = ['', '剧情', '科普', '广告', 'Vlog', '新闻', '纪录片', '教学', '宣传片'];
 const DURATIONS = [
   { v: 'short', l: '极短 ~10s' }, { v: '1-5min', l: '1–5 分钟' }, { v: '5-15min', l: '5–15 分钟' },
   { v: '15-45min', l: '15–45 分钟' }, { v: '45min+', l: '45 分钟+' },
@@ -21,6 +24,7 @@ const ASPECTS = [{ v: '9:16', l: '竖 9:16' }, { v: '16:9', l: '横 16:9' }, { v
 const QUALITIES = [{ v: 'standard', l: '标清 720p' }, { v: 'high', l: '高清 1080p' }, { v: 'ultra', l: '超清 4K' }];
 const TRANSITIONS = ['fade', 'cut', 'wipeleft', 'slideup', 'dissolve'];
 const LANGUAGES = [{ v: 'zh', l: '中文' }, { v: 'en', l: 'English' }, { v: 'ja', l: '日本語' }];
+const BILINGUAL_TARGETS = [{ v: 'en', l: 'English' }, { v: 'ja', l: '日本語' }, { v: 'ko', l: '한국어' }, { v: 'es', l: 'Español' }];
 const AUDIO = [{ v: 'vibevoice', l: 'VibeVoice(本地多说话人)' }, { v: 'edge_tts', l: 'Edge TTS(多语云)' },
   { v: 'ltx2_native', l: 'LTX-2 原生音' }, { v: 'duix', l: 'DUIX 数字人口型' }];
 const VIDEO = [{ v: 'auto', l: '自动路由(最省)' }, { v: 'wan_local', l: 'Wan 本地(零成本)' },
@@ -30,12 +34,29 @@ const EXEC = [{ v: '', l: '不用预设' }, { v: 'economy', l: '经济(本地零
   { v: 'balanced', l: '均衡(默认)' }, { v: 'fast', l: '极速(云高清)' }];
 const BGM_MOODS = [{ v: '', l: '无配乐' }, { v: 'warm', l: '温暖' }, { v: 'upbeat', l: '轻快' },
   { v: 'tense', l: '紧张' }, { v: 'epic', l: '史诗' }, { v: 'mystery', l: '悬疑' }];
+const SFX_OPTS = [{ v: '', l: '无音效' }, { v: 'whoosh', l: '呼啸' }, { v: 'ding', l: '叮' },
+  { v: 'impact', l: '砰(冲击)' }, { v: 'pop', l: '啵' }, { v: 'chime', l: '叮铃(过场)' }];
+// 与 hevi/audio/edge_tts_custom.py CURATED_VOICES 对齐,仅 audio_provider=edge_tts 时生效。
+const VOICE_OPTS = [{ v: '', l: '自动(按语言)' }, { v: 'zh_female_standard', l: '中文女声·标准' },
+  { v: 'zh_female_warm', l: '中文女声·温暖' }, { v: 'zh_male_standard', l: '中文男声·标准' },
+  { v: 'zh_male_deep', l: '中文男声·低沉' }, { v: 'en_female_standard', l: '英文女声·标准' },
+  { v: 'en_male_standard', l: '英文男声·标准' }];
+const RATE_OPTS = [{ v: '', l: '正常' }, { v: '-20%', l: '慢 -20%' }, { v: '-10%', l: '略慢 -10%' },
+  { v: '+10%', l: '略快 +10%' }, { v: '+20%', l: '快 +20%' }, { v: '+30%', l: '很快 +30%' }];
+const SUBTITLE_STYLES = [{ v: 'default', l: '默认' }, { v: 'bold_yellow', l: '粗体黄' },
+  { v: 'large_white', l: '大号白字' }, { v: 'compact', l: '紧凑' }];
 
 const EMPTY: DirectorEpisodePayload = {
-  text: '', duration_archetype: '1-5min', aspect_ratio: '9:16', subject_id: '', avatar_portrait: '',
-  num_characters: 1, style_preset: '电影感', prompt_style: '', prompt_lighting: '', prompt_camera: '',
-  prompt_color_grade: '', transition: 'fade', per_shot_routing: false, language: 'zh',
-  audio_provider: 'vibevoice', bgm: '', quality_profile: 'standard', preset: '', video_provider: 'auto',
+  text: '', duration_archetype: '1-5min', aspect_ratio: '9:16',
+  mood: '', genre: '', narrative_hook: '',
+  character_subject_ids: [], subject_id: '', avatar_portrait: '',
+  num_characters: 1, scene_notes: '', props: '',
+  style_preset: '电影感', prompt_style: '', prompt_lighting: '', prompt_camera: '', prompt_color_grade: '',
+  transition: 'fade', per_shot_routing: false, language: 'zh',
+  audio_provider: 'vibevoice', bgm: '', sfx: '', voice_rate: '', voice_pitch: '', voice_name: '',
+  quality_profile: 'standard', subtitle_style: 'default', bilingual_language: '',
+  intro_clip: '', outro_clip: '',
+  preset: '', video_provider: 'auto',
   budget_usd: undefined, auto_rework_rounds: undefined,
 };
 
@@ -45,7 +66,7 @@ function errText(e: unknown): string {
   return e instanceof Error ? e.message : '出错了';
 }
 
-// 规划中(未实装)条目 —— 展示但禁用,不作假
+// 规划中(未实装,缺素材/模型/独立工程)—— 展示但禁用,不作假
 function Soon({ label }: { label: string }) {
   return (
     <div className="dc-field dc-field--soon">
@@ -55,10 +76,22 @@ function Soon({ label }: { label: string }) {
   );
 }
 
+// 当前 provider 架构性不支持(非"还没做",是"做不了")—— 写明原因,不藏
+function NotSupported({ label, reason }: { label: string; reason: string }) {
+  return (
+    <div className="dc-field dc-field--unsupported" title={reason}>
+      <span className="dc-field__label">{label}</span>
+      <span className="dc-chip dc-chip--unsupported">不支持</span>
+      <span className="dc-field__reason">{reason}</span>
+    </div>
+  );
+}
+
 export function DirectorConsole() {
   const [f, setF] = useState<DirectorEpisodePayload>(EMPTY);
   const [numShots, setNumShots] = useState(4);
   const [chars, setChars] = useState<Subject[]>([]);
+  const [bilingual, setBilingual] = useState(false);
   const [busy, setBusy] = useState<'plan' | 'episode' | 'render' | null>(null);
   const [plan, setPlan] = useState<DirectorPlanResult | null>(null);
   const [episode, setEpisode] = useState<DirectorEpisodeResult | null>(null);
@@ -73,13 +106,24 @@ export function DirectorConsole() {
   const set = <K extends keyof DirectorEpisodePayload>(k: K, v: DirectorEpisodePayload[K]) =>
     setF(prev => ({ ...prev, [k]: v }));
 
+  function toggleCharacter(id: string) {
+    setF(prev => {
+      const cur = prev.character_subject_ids ?? [];
+      const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+      return { ...prev, character_subject_ids: next };
+    });
+  }
+
   function buildPayload(): DirectorEpisodePayload {
-    const p: DirectorEpisodePayload = { ...f };
+    const p: DirectorEpisodePayload = { ...f, bilingual_language: bilingual ? (f.bilingual_language || 'en') : '' };
     // 空串 → 省略,交后端默认/自动
     (['subject_id', 'avatar_portrait', 'prompt_style', 'prompt_lighting', 'prompt_camera',
-      'prompt_color_grade', 'preset'] as (keyof DirectorEpisodePayload)[]).forEach(k => {
+      'prompt_color_grade', 'preset', 'mood', 'genre', 'narrative_hook', 'scene_notes', 'props',
+      'sfx', 'voice_rate', 'voice_pitch', 'voice_name', 'bilingual_language', 'intro_clip',
+      'outro_clip'] as (keyof DirectorEpisodePayload)[]).forEach(k => {
       if (!p[k]) delete p[k];
     });
+    if (!p.character_subject_ids?.length) delete p.character_subject_ids;
     return p;
   }
 
@@ -110,7 +154,8 @@ export function DirectorConsole() {
         name: '导演分镜', topic: f.text.slice(0, 60),
         nodes: gnodes, edges: plan.graph.edges as Record<string, unknown>[],
         quality_profile: f.quality_profile, aspect_ratio: f.aspect_ratio,
-        transition: f.transition, bgm: f.bgm || undefined,
+        transition: f.transition, bgm: f.bgm || undefined, sfx: f.sfx || undefined,
+        intro_clip: f.intro_clip || undefined, outro_clip: f.outro_clip || undefined,
       }));
     } catch (e) { setErr(errText(e)); } finally { setBusy(null); }
   }
@@ -147,7 +192,20 @@ export function DirectorConsole() {
               ))}
             </div>
           </div>
-          <Soon label="情绪基调" /><Soon label="题材类型" /><Soon label="叙事结构 / 3 秒钩子" />
+          <label className="dc-field"><span className="dc-field__label">情绪基调</span>
+            <select value={f.mood ?? ''} onChange={e => set('mood', e.target.value)}>
+              {MOODS.map(m => <option key={m} value={m}>{m || '不指定'}</option>)}
+            </select>
+          </label>
+          <label className="dc-field"><span className="dc-field__label">题材类型</span>
+            <select value={f.genre ?? ''} onChange={e => set('genre', e.target.value)}>
+              {GENRES.map(g => <option key={g} value={g}>{g || '不指定'}</option>)}
+            </select>
+          </label>
+          <label className="dc-field dc-field--wide"><span className="dc-field__label">叙事钩子(开场 3 秒抓手)</span>
+            <input placeholder="例:一声枪响划破雪原的寂静" value={f.narrative_hook ?? ''}
+              onChange={e => set('narrative_hook', e.target.value)} />
+          </label>
         </div>
       </section>
 
@@ -155,12 +213,22 @@ export function DirectorConsole() {
       <section className="dc-sec">
         <div className="dc-sec__head"><span className="dc-sec__num">②</span><h2>角色</h2></div>
         <div className="dc-grid">
-          <label className="dc-field"><span className="dc-field__label">绑定主角(跨镜一致)</span>
-            <select value={f.subject_id ?? ''} onChange={e => set('subject_id', e.target.value)}>
-              <option value="">不绑定</option>
-              {chars.map(c => <option key={c.subject_id} value={c.subject_id}>{c.name}</option>)}
-            </select>
-          </label>
+          <div className="dc-field dc-field--wide"><span className="dc-field__label">角色(多选;首个跨镜锁脸,其余仅入人设)</span>
+            {chars.length === 0 ? (
+              <p className="dc-hint">主体库还没有角色 —— 去「主体库」建一个带参考图的角色,这里就能绑定。</p>
+            ) : (
+              <div className="dc-charlist">
+                {chars.map(c => (
+                  <label key={c.subject_id} className="dc-char">
+                    <input type="checkbox" checked={(f.character_subject_ids ?? []).includes(c.subject_id)}
+                      onChange={() => toggleCharacter(c.subject_id)} />
+                    <span>{c.name}</span>
+                    {f.character_subject_ids?.[0] === c.subject_id && <span className="dc-char__lock">锁脸</span>}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           <label className="dc-field"><span className="dc-field__label">角色数</span>
             <input type="number" min={1} max={6} value={f.num_characters}
               onChange={e => set('num_characters', Number(e.target.value))} />
@@ -169,21 +237,28 @@ export function DirectorConsole() {
             <input placeholder="留空=不用数字人" value={f.avatar_portrait ?? ''}
               onChange={e => set('avatar_portrait', e.target.value)} />
           </label>
-          <Soon label="多身份锁定" /><Soon label="角色对白" />
+          <NotSupported label="多身份锁脸" reason="provider 的 i2v 每镜只吃 1 张参考图,仅首个角色的脸能跨镜锁定" />
         </div>
-        {chars.length === 0 && <p className="dc-hint">主体库还没有角色 —— 去「主体库」建一个带参考图的角色,这里就能绑定锁脸。</p>}
       </section>
 
       {/* ③ 场景 */}
       <section className="dc-sec">
         <div className="dc-sec__head"><span className="dc-sec__num">③</span><h2>场景</h2></div>
         <div className="dc-grid">
-          <label className="dc-field dc-field--wide"><span className="dc-field__label">光线 / 时间氛围</span>
+          <label className="dc-field"><span className="dc-field__label">光线 / 时间氛围</span>
             <input placeholder="例:黄昏暖光 / 夜晚霓虹 / 清晨薄雾" value={f.prompt_lighting ?? ''}
               onChange={e => set('prompt_lighting', e.target.value)} />
           </label>
-          <Soon label="场景表(地点/室内外)" /><Soon label="道具 / 陈设" />
+          <label className="dc-field dc-field--wide"><span className="dc-field__label">场景设定(地点/室内外)</span>
+            <input placeholder="例:雪山之巅的破旧木屋,室外为主" value={f.scene_notes ?? ''}
+              onChange={e => set('scene_notes', e.target.value)} />
+          </label>
+          <label className="dc-field dc-field--wide"><span className="dc-field__label">关键道具 / 陈设</span>
+            <input placeholder="例:一把生锈的猎枪,一盏油灯" value={f.props ?? ''}
+              onChange={e => set('props', e.target.value)} />
+          </label>
         </div>
+        <p className="dc-hint">场景/道具是全片级的 LLM 软指令(影响整体叙事走向),不是逐镜强制约束。</p>
       </section>
 
       {/* ④ 视觉风格 */}
@@ -207,7 +282,7 @@ export function DirectorConsole() {
             <input placeholder="可选,追加视觉描述" value={f.prompt_style ?? ''}
               onChange={e => set('prompt_style', e.target.value)} />
           </label>
-          <Soon label="风格参考图 mood board" />
+          <NotSupported label="风格参考图 mood board" reason="当前 provider(wan/ltx2/veo3/kling)均只支持 1 张身份锁定参考图,不支持额外风格参考图条件化" />
         </div>
       </section>
 
@@ -229,8 +304,9 @@ export function DirectorConsole() {
               onChange={e => set('per_shot_routing', e.target.checked)} />
             <span>逐镜路由(主角特写走云,空镜走本地)</span>
           </label>
-          <Soon label="逐镜编辑(景别/动作/台词)" /><Soon label="首尾帧" />
+          <NotSupported label="首尾帧关键帧" reason="同上:provider 每镜只吃 1 张参考图,无法分别指定首帧/尾帧两张条件图" />
         </div>
+        <p className="dc-hint">逐镜编辑(改景别/动作/台词)在下方「预览可行性」后的分镜列表里直接改 prompt 即可。</p>
       </section>
 
       {/* ⑥ 音频 */}
@@ -247,13 +323,33 @@ export function DirectorConsole() {
               {AUDIO.map(a => <option key={a.v} value={a.v}>{a.l}</option>)}
             </select>
           </label>
+          <label className="dc-field"><span className="dc-field__label">音色(仅 Edge TTS 生效)</span>
+            <select value={f.voice_name ?? ''} onChange={e => set('voice_name', e.target.value)}
+              disabled={f.audio_provider !== 'edge_tts'}>
+              {VOICE_OPTS.map(v => <option key={v.v} value={v.v}>{v.l}</option>)}
+            </select>
+          </label>
+          <label className="dc-field"><span className="dc-field__label">语速(仅 Edge TTS 生效)</span>
+            <select value={f.voice_rate ?? ''} onChange={e => set('voice_rate', e.target.value)}
+              disabled={f.audio_provider !== 'edge_tts'}>
+              {RATE_OPTS.map(r => <option key={r.v} value={r.v}>{r.l}</option>)}
+            </select>
+          </label>
           <label className="dc-field"><span className="dc-field__label">BGM 配乐(压于旁白下)</span>
             <select value={f.bgm ?? ''} onChange={e => set('bgm', e.target.value)}>
               {BGM_MOODS.map(b => <option key={b.v} value={b.v}>{b.l}</option>)}
             </select>
           </label>
-          <Soon label="音色 / 语速 / 情绪" /><Soon label="音效 / 混音" />
+          <label className="dc-field"><span className="dc-field__label">音效</span>
+            <select value={f.sfx ?? ''} onChange={e => set('sfx', e.target.value)}>
+              {SFX_OPTS.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
+            </select>
+          </label>
+          <NotSupported label="情绪化配音" reason="当前 TTS(edge-tts / vibevoice)均无情绪参数,无法调节配音情绪" />
         </div>
+        {f.audio_provider === 'vibevoice' && (f.character_subject_ids?.length ?? 0) > 1 && (
+          <p className="dc-hint">已选多角色 + VibeVoice:脚本里不同角色的台词会自动分配不同音色(无需额外设置)。</p>
+        )}
       </section>
 
       {/* ⑦ 成片规格 */}
@@ -265,8 +361,32 @@ export function DirectorConsole() {
               {QUALITIES.map(q => <option key={q.v} value={q.v}>{q.l}</option>)}
             </select>
           </label>
-          <Soon label="字幕样式 / 双语" /><Soon label="片头 / 片尾" /><Soon label="封面 / 导出格式" />
+          <label className="dc-field"><span className="dc-field__label">字幕样式</span>
+            <select value={f.subtitle_style} onChange={e => set('subtitle_style', e.target.value)}>
+              {SUBTITLE_STYLES.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
+            </select>
+          </label>
+          <label className="dc-field dc-field--check">
+            <input type="checkbox" checked={bilingual} onChange={e => setBilingual(e.target.checked)} />
+            <span>双语字幕</span>
+          </label>
+          {bilingual && (
+            <label className="dc-field"><span className="dc-field__label">译文语种</span>
+              <select value={f.bilingual_language || 'en'} onChange={e => set('bilingual_language', e.target.value)}>
+                {BILINGUAL_TARGETS.map(l => <option key={l.v} value={l.v}>{l.l}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="dc-field"><span className="dc-field__label">片头视频(文件路径,可选)</span>
+            <input placeholder="留空=无片头" value={f.intro_clip ?? ''}
+              onChange={e => set('intro_clip', e.target.value)} />
+          </label>
+          <label className="dc-field"><span className="dc-field__label">片尾视频(文件路径,可选)</span>
+            <input placeholder="留空=无片尾" value={f.outro_clip ?? ''}
+              onChange={e => set('outro_clip', e.target.value)} />
+          </label>
         </div>
+        <p className="dc-hint">封面(自动抽帧)与导出格式(mp4/mov/webm/gif)在成片完成后可于「我的」页查看/下载 —— 建集这一步还没有成片,不在此填。</p>
       </section>
 
       {/* ⑧ 生产 */}
@@ -338,7 +458,7 @@ export function DirectorConsole() {
             <span>镜头数</span><b>{rendered.shot_count}</b>
             <span>状态</span><b>{rendered.status}</b>
           </div>
-          <p className="dc-hint">逐镜渲染 + 装配(可混 BGM,压于旁白下);完成后在「我的」查看。</p>
+          <p className="dc-hint">逐镜渲染 + 装配(可混 BGM/音效、拼片头尾);完成后在「我的」查看。</p>
         </div>
       )}
 
@@ -353,7 +473,7 @@ export function DirectorConsole() {
             <span>锁脸</span><b>{episode.spec?.subject_locked ? '是' : '否'}</b>
             <span>预估成本</span><b>${episode.plan.estimated_usd.toFixed(2)}</b>
           </div>
-          <p className="dc-hint">出片后体检不合格会自动定向返工(L3);完成后在「我的」查看。</p>
+          <p className="dc-hint">出片后体检不合格会自动定向返工(L3);完成后在「我的」查看(含封面/多格式导出)。</p>
         </div>
       )}
     </form>

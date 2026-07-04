@@ -184,3 +184,31 @@ async def test_assemble_hard_cut(tmp_path: Path) -> None:
     )
     assert out.exists()
     assert await probe_duration(out) == pytest.approx(6.0, abs=0.5)
+
+
+def test_audio_filter_narration_bgm_sfx_all_three() -> None:
+    """三轨都有 → 旁白侧链压 BGM,音效独立轨,统一 amix(不留 asplit 悬空 pad)。"""
+    f, label = build_audio_filter(
+        True, True, 1, 2, -14.0, -18.0, 30.0, has_sfx=True, sfx_idx=3, sfx_gain_db=-6.0
+    )
+    assert label == "[aout]"
+    assert "sidechaincompress" in f
+    assert "amix=inputs=3" in f
+
+
+def test_audio_filter_narration_and_sfx_no_bgm() -> None:
+    """旁白+音效、无 BGM → 不应出现 asplit(没有侧链消费者)。"""
+    f, label = build_audio_filter(
+        True, False, 1, -1, -14.0, -18.0, 10.0, has_sfx=True, sfx_idx=2, sfx_gain_db=-6.0
+    )
+    assert label == "[aout]"
+    assert "asplit" not in f
+    assert "amix=inputs=2" in f
+
+
+def test_audio_filter_sfx_only() -> None:
+    f, label = build_audio_filter(
+        False, False, -1, -1, -14.0, -18.0, 10.0, has_sfx=True, sfx_idx=0, sfx_gain_db=-6.0
+    )
+    assert label == "[aout]"
+    assert "volume=-6.0dB" in f

@@ -39,7 +39,9 @@ class _FakeTaskSvc:
         self.repository = _FakeTaskRepo()
         self.create_calls = []
 
-    async def create_task(self, *, topic, duration_archetype, video_provider, audio_provider, user_id=None, **kw):
+    async def create_task(
+        self, *, topic, duration_archetype, video_provider, audio_provider, user_id=None, **kw
+    ):
         self.create_calls.append(
             {
                 "topic": topic,
@@ -55,11 +57,17 @@ class _FakeTaskSvc:
 @pytest.mark.asyncio
 async def test_create_episode_inherits_all_but_topic():
     series = {
-        "id": _SID, "user_id": "u1", "subject_ids": ["hero"], "style_preset": "赛博朋克",
+        "id": _SID,
+        "user_id": "u1",
+        "subject_ids": ["hero"],
+        "style_preset": "赛博朋克",
         "episode_count": 3,
         "spec_json": {
-            "duration_archetype": "short", "video_provider": "wan_local",
-            "audio_provider": "vibevoice", "num_characters": 2, "quality_profile": "high",
+            "duration_archetype": "short",
+            "video_provider": "wan_local",
+            "audio_provider": "vibevoice",
+            "num_characters": 2,
+            "quality_profile": "high",
         },
     }
     repo = _FakeSeriesRepo(series)
@@ -74,6 +82,24 @@ async def test_create_episode_inherits_all_but_topic():
     assert ep["episode_index"] == 3  # 继承 episode_count
     assert tsvc.repository.updates[0][1]["episode_index"] == 3  # FK 绑定
     assert repo.updated[-1]["episode_count"] == 4  # 集数递增
+
+
+@pytest.mark.asyncio
+async def test_create_episode_inherits_intro_outro_clips():
+    """片头/片尾:此前只存不消费,现在 create_episode 把它们透传进 create_task。"""
+    series = {
+        "id": _SID,
+        "subject_ids": [],
+        "episode_count": 0,
+        "spec_json": {"video_provider": "wan_local"},
+        "intro_template_id": "/assets/intro.mp4",
+        "outro_template_id": "/assets/outro.mp4",
+    }
+    tsvc = _FakeTaskSvc()
+    await SeriesService(_FakeSeriesRepo(series), tsvc).create_episode(_SID, topic="ep1")
+    call = tsvc.create_calls[0]
+    assert call["intro_clip"] == "/assets/intro.mp4"
+    assert call["outro_clip"] == "/assets/outro.mp4"
 
 
 @pytest.mark.asyncio
@@ -115,8 +141,12 @@ class _FakeStyleSvc:
 async def test_create_episode_expands_stylepack_to_prompts():
     """Series 引用 StylePack → create_episode resolve 展开成 prompt_*(覆盖 preset)。"""
     series = {
-        "id": _SID, "style_pack_id": _SID, "style_preset": "电影感", "subject_ids": [],
-        "episode_count": 0, "spec_json": {"video_provider": "wan_local"},
+        "id": _SID,
+        "style_pack_id": _SID,
+        "style_preset": "电影感",
+        "subject_ids": [],
+        "episode_count": 0,
+        "spec_json": {"video_provider": "wan_local"},
     }
     tsvc = _FakeTaskSvc()
     svc = SeriesService(_FakeSeriesRepo(series), tsvc, _FakeStyleSvc())

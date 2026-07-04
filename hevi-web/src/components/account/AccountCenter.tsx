@@ -100,13 +100,28 @@ export function AccountCenter() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <video
                         src={taskApi.videoUrl(t.task_id)}
+                        poster={taskApi.coverUrl(t.task_id)}
                         controls
                         playsInline
                         preload="metadata"
                         style={{ width: '100%', maxHeight: '60vh', borderRadius: 8, background: '#000' }}
                       />
-                      <a className="oui-btn" href={taskApi.videoUrl(t.task_id)} download
-                        style={{ alignSelf: 'flex-start' }}>下载</a>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <a className="oui-btn" href={taskApi.videoUrl(t.task_id)} download>下载</a>
+                        <select
+                          className="hevi-account__export-fmt"
+                          defaultValue="mp4"
+                          onChange={e => {
+                            const fmt = e.target.value;
+                            window.open(taskApi.exportUrl(t.task_id, fmt), '_blank');
+                          }}
+                        >
+                          <option value="mp4">导出 mp4</option>
+                          <option value="mov">导出 mov</option>
+                          <option value="webm">导出 webm</option>
+                          <option value="gif">导出 gif</option>
+                        </select>
+                      </div>
                     </div>
                   )}
                   <span className="hevi-account__card-date">{t.created_at}</span>

@@ -196,6 +196,7 @@ export interface DirectorEpisodeResult {
     audio_provider?: string;
     num_characters?: number;
     subject_locked?: boolean;
+    character_count?: number;
     avatar?: boolean;
   };
 }
@@ -205,9 +206,15 @@ export interface DirectorEpisodePayload {
   text: string;
   duration_archetype?: string;
   aspect_ratio?: string;
+  mood?: string | null;
+  genre?: string | null;
+  narrative_hook?: string | null;
+  character_subject_ids?: string[];
   subject_id?: string | null;
   avatar_portrait?: string | null;
   num_characters?: number;
+  scene_notes?: string | null;
+  props?: string | null;
   style_preset?: string | null;
   prompt_style?: string | null;
   prompt_lighting?: string | null;
@@ -218,7 +225,15 @@ export interface DirectorEpisodePayload {
   language?: string;
   audio_provider?: string | null;
   bgm?: string | null;
+  sfx?: string | null;
+  voice_rate?: string | null;
+  voice_pitch?: string | null;
+  voice_name?: string | null;
   quality_profile?: string;
+  subtitle_style?: string;
+  bilingual_language?: string | null;
+  intro_clip?: string | null;
+  outro_clip?: string | null;
   preset?: string | null;
   video_provider?: string | null;
   budget_usd?: number;
@@ -235,6 +250,9 @@ export interface DirectorRenderPayload {
   aspect_ratio?: string;
   transition?: string;
   bgm?: string | null;
+  sfx?: string | null;
+  intro_clip?: string | null;
+  outro_clip?: string | null;
 }
 
 export interface DirectorRenderResult {
