@@ -77,6 +77,7 @@ async def orchestrate_longvideo(
     prompt_camera: str | None = None,
     prompt_color_grade: str | None = None,
     quality_profile: str = "standard",
+    aspect_ratio: str = "9:16",  # 画幅:9:16 竖 / 16:9 横 / 1:1 方(解锁 portrait 锁死)
     transition: str = "fade",
     # route v2(设计 §3 L0):逐镜头选 provider。开启后按每个镜头 prompt 判质量需求
     # (主角特写→云高质量 / 空镜 B-roll→免费本地 wan),而非全片一个 provider。默认关,
@@ -156,7 +157,10 @@ async def orchestrate_longvideo(
         _qp = get_quality_profile(quality_profile)
     except ValueError:
         _qp = get_quality_profile("standard")
-    _target_w, _target_h = _qp.resolution
+    # 画幅按 aspect_ratio 重排朝向(档位定清晰度,画幅定横竖)。
+    from hevi.video.quality_profile import resolve_resolution
+
+    _target_w, _target_h = resolve_resolution(quality_profile, aspect_ratio)
     _target_fps = _qp.fps
     _is_local_video = "_local" in video_provider or video_provider in ("wan_local", "ltx2_local")
 

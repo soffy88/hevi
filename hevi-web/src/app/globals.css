@@ -459,40 +459,61 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .hevi-showcase__form button[type='submit']:disabled { opacity: 0.6; cursor: default; }
 .hevi-showcase__msg { text-align: center; font-size: var(--text-sm); color: var(--muted-foreground); margin-bottom: 12px; }
 
-/* ── 导演控制台(§3 L4)── */
+/* ── 导演控制台(§3 L4,8 层片表单)── */
 .hevi-director-page { min-height: calc(100vh - 56px); }
-.hevi-director { max-width: 720px; margin: 40px auto 0; padding: 0 24px 64px; }
-.hevi-director__title { font-size: var(--text-2xl); font-weight: 700; }
-.hevi-director__sub { color: var(--muted-foreground); font-size: var(--text-sm); margin: 6px 0 20px; }
-.hevi-director__input {
+.dc { max-width: 860px; margin: 40px auto 0; padding: 0 24px 72px; }
+.dc__title { font-size: var(--text-2xl); font-weight: 700; }
+.dc__sub { color: var(--muted-foreground); font-size: var(--text-sm); margin: 6px 0 24px; }
+
+.dc-sec { border-top: 1px solid var(--border); padding: 18px 0; }
+.dc-sec__head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.dc-sec__num { font-family: var(--font-mono, monospace); font-weight: 700; color: var(--primary); font-size: var(--text-lg); }
+.dc-sec__head h2 { font-size: var(--text-lg); font-weight: 700; margin: 0; }
+
+.dc-text {
   width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border);
-  background: var(--card); color: var(--foreground); font-size: var(--text-base); resize: vertical;
+  background: var(--card); color: var(--foreground); font-size: var(--text-base); resize: vertical; margin-bottom: 14px;
 }
-.hevi-director__controls { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.hevi-director__budget {
-  flex: 0 0 180px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--card); color: var(--foreground); font-size: var(--text-sm);
+.dc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; }
+.dc-field { display: flex; flex-direction: column; gap: 5px; }
+.dc-field--wide { grid-column: 1 / -1; }
+.dc-field__label { font-size: var(--text-xs); color: var(--muted-foreground); font-weight: 600; }
+.dc-field select, .dc-field input[type="text"], .dc-field input[type="number"], .dc-field input:not([type]) {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--foreground); font-size: var(--text-sm); width: 100%;
 }
-.hevi-director__btn {
-  padding: 10px 18px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--card); color: var(--foreground); font-size: var(--text-sm); cursor: pointer;
+.dc-field--check { flex-direction: row; align-items: center; gap: 8px; font-size: var(--text-sm); }
+.dc-field--check input { width: auto; }
+.dc-field--soon { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px;
+  opacity: 0.55; border: 1px dashed var(--border); border-radius: 8px; padding: 8px 10px; }
+.dc-field--soon .dc-field__label { font-weight: 500; }
+
+.dc-seg { display: flex; gap: 6px; }
+.dc-seg button {
+  flex: 1; padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--muted-foreground); font-size: var(--text-xs); cursor: pointer;
 }
-.hevi-director__btn:disabled { opacity: 0.6; cursor: default; }
-.hevi-director__btn--primary { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
-.hevi-director__err { margin-top: 14px; color: var(--destructive, #d33); font-size: var(--text-sm); }
-.hevi-director__card {
-  margin-top: 20px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--card);
-}
-.hevi-director__card--ok { border-color: var(--primary); }
-.hevi-director__card-head { font-weight: 600; margin-bottom: 12px; }
-.hevi-director__grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: var(--text-sm); }
-.hevi-director__grid span { color: var(--muted-foreground); }
-.hevi-director__mono { font-family: var(--font-mono, monospace); font-size: var(--text-xs); word-break: break-all; }
-.hevi-director__notes { margin: 12px 0 0; padding-left: 18px; font-size: var(--text-xs); color: var(--muted-foreground); }
-.hevi-director__shots { margin-top: 14px; }
-.hevi-director__shots-head { font-size: var(--text-sm); font-weight: 600; margin-bottom: 6px; }
-.hevi-director__shots ol { margin: 0; padding-left: 20px; font-size: var(--text-sm); line-height: 1.6; }
-.hevi-director__hint { margin: 12px 0 0; font-size: var(--text-xs); color: var(--muted-foreground); }
+.dc-seg button[data-on="true"] { border-color: var(--primary); color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 12%, transparent); font-weight: 600; }
+
+.dc-chip { font-family: var(--font-mono, monospace); font-size: 10.5px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.dc-chip--soon { color: var(--muted-foreground); background: color-mix(in oklch, var(--muted-foreground) 14%, transparent); }
+
+.dc-actions { display: flex; gap: 10px; margin-top: 24px; }
+.dc-btn { padding: 11px 22px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--card); color: var(--foreground); font-size: var(--text-sm); cursor: pointer; }
+.dc-btn:disabled { opacity: 0.6; cursor: default; }
+.dc-btn--primary { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); font-weight: 600; }
+
+.dc-err { margin-top: 14px; color: var(--destructive, #d33); font-size: var(--text-sm); }
+.dc-hint { margin: 12px 0 0; font-size: var(--text-xs); color: var(--muted-foreground); }
+.dc-card { margin-top: 20px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.dc-card--ok { border-color: var(--primary); }
+.dc-card__head { font-weight: 600; margin-bottom: 12px; }
+.dc-kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: var(--text-sm); }
+.dc-kv span { color: var(--muted-foreground); }
+.dc-mono { font-family: var(--font-mono, monospace); font-size: var(--text-xs); word-break: break-all; }
+.dc-shots { margin: 14px 0 0; padding-left: 20px; font-size: var(--text-sm); line-height: 1.6; }
 
 /* ── 系列 / 风格包(§3 L2)── */
 .hevi-series-page { min-height: calc(100vh - 56px); }

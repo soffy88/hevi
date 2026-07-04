@@ -11,9 +11,30 @@ from hevi.video.quality_profile import (
     QualityProfile,
     get_quality_cost_multiplier,
     get_quality_profile,
+    resolve_resolution,
 )
 
+
+# ── 画幅解锁:档位定清晰度,画幅定朝向 ──────────────────────────────────────
+
+
+def test_resolve_resolution_reorients_by_aspect():
+    # standard 短边 720:竖→(720,1280) 横→(1280,720) 方→(720,720)
+    assert resolve_resolution("standard", "9:16") == (720, 1280)
+    assert resolve_resolution("standard", "16:9") == (1280, 720)
+    assert resolve_resolution("standard", "1:1") == (720, 720)
+    # 高档同规则
+    assert resolve_resolution("high", "16:9") == (1920, 1080)
+    assert resolve_resolution("ultra", "1:1") == (2160, 2160)
+
+
+def test_resolve_resolution_fallbacks():
+    assert resolve_resolution("standard", "bogus") == (720, 1280)  # 未知画幅→9:16
+    assert resolve_resolution("bogus", "16:9") == (1280, 720)  # 未知档→standard
+
+
 # ── 1. Quality profile definitions ───────────────────────────────────────────
+
 
 def test_quality_profiles_exist():
     assert set(QUALITY_PROFILES) == {"standard", "high", "ultra"}
@@ -57,14 +78,20 @@ def test_get_quality_profile_unknown_raises():
 
 # ── 2. generate_clip quality param transparently passes fps/bitrate ───────────
 
+
 @pytest.mark.asyncio
 async def test_generate_clip_standard_fps_bitrate(tmp_path):
     out = tmp_path / "o.mp4"
     with patch("hevi.video.kernel_service.ltx2_cloud_generate", new_callable=AsyncMock) as m:
         m.return_value = out
         await generate_clip(
-            config={}, provider="ltx2_cloud", mode="t2v",
-            prompt="x", duration_s=5.0, output_path=out, quality="standard",
+            config={},
+            provider="ltx2_cloud",
+            mode="t2v",
+            prompt="x",
+            duration_s=5.0,
+            output_path=out,
+            quality="standard",
         )
         kw = m.call_args.kwargs
         assert kw["fps"] == 24
@@ -77,8 +104,13 @@ async def test_generate_clip_ultra_fps_bitrate(tmp_path):
     with patch("hevi.video.kernel_service.ltx2_cloud_generate", new_callable=AsyncMock) as m:
         m.return_value = out
         await generate_clip(
-            config={}, provider="ltx2_cloud", mode="t2v",
-            prompt="x", duration_s=5.0, output_path=out, quality="ultra",
+            config={},
+            provider="ltx2_cloud",
+            mode="t2v",
+            prompt="x",
+            duration_s=5.0,
+            output_path=out,
+            quality="ultra",
         )
         kw = m.call_args.kwargs
         assert kw["fps"] == 30
@@ -91,8 +123,12 @@ async def test_generate_clip_default_quality_is_standard(tmp_path):
     with patch("hevi.video.kernel_service.ltx2_cloud_generate", new_callable=AsyncMock) as m:
         m.return_value = out
         await generate_clip(
-            config={}, provider="ltx2_cloud", mode="t2v",
-            prompt="x", duration_s=5.0, output_path=out,
+            config={},
+            provider="ltx2_cloud",
+            mode="t2v",
+            prompt="x",
+            duration_s=5.0,
+            output_path=out,
         )
         kw = m.call_args.kwargs
         assert kw["fps"] == 24
@@ -105,8 +141,13 @@ async def test_generate_clip_wan_passes_quality_params(tmp_path):
     with patch("hevi.video.kernel_service.video_generate", new_callable=AsyncMock) as m:
         m.return_value = out
         await generate_clip(
-            config={}, provider="wan_cloud", mode="t2v",
-            prompt="x", duration_s=5.0, output_path=out, quality="high",
+            config={},
+            provider="wan_cloud",
+            mode="t2v",
+            prompt="x",
+            duration_s=5.0,
+            output_path=out,
+            quality="high",
         )
         kw = m.call_args.kwargs
         assert kw["fps"] == 30
@@ -115,30 +156,41 @@ async def test_generate_clip_wan_passes_quality_params(tmp_path):
 
 # ── 3. Capability guard — valid requests pass ─────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_validate_request_ltx2_valid():
     await validate_request(
-        provider="ltx2_cloud", mode="t2v",
-        resolution=(1080, 1920), duration_s=60.0, fps=24,
+        provider="ltx2_cloud",
+        mode="t2v",
+        resolution=(1080, 1920),
+        duration_s=60.0,
+        fps=24,
     )
 
 
 @pytest.mark.asyncio
 async def test_validate_request_wan_valid():
     await validate_request(
-        provider="wan_cloud", mode="i2v",
-        resolution=(720, 1280), duration_s=30.0, fps=24,
+        provider="wan_cloud",
+        mode="i2v",
+        resolution=(720, 1280),
+        duration_s=30.0,
+        fps=24,
     )
 
 
 # ── 4. Capability guard — violations raise CapabilityError ───────────────────
 
+
 @pytest.mark.asyncio
 async def test_validate_unknown_provider_raises():
     with pytest.raises(CapabilityError, match="Unknown provider"):
         await validate_request(
-            provider="bogus_cloud", mode="t2v",
-            resolution=(720, 1280), duration_s=10.0, fps=24,
+            provider="bogus_cloud",
+            mode="t2v",
+            resolution=(720, 1280),
+            duration_s=10.0,
+            fps=24,
         )
 
 
@@ -146,8 +198,11 @@ async def test_validate_unknown_provider_raises():
 async def test_validate_resolution_exceeds_max_raises():
     with pytest.raises(CapabilityError, match="Resolution"):
         await validate_request(
-            provider="wan_cloud", mode="t2v",
-            resolution=(4096, 4096), duration_s=10.0, fps=24,
+            provider="wan_cloud",
+            mode="t2v",
+            resolution=(4096, 4096),
+            duration_s=10.0,
+            fps=24,
         )
 
 
@@ -155,8 +210,11 @@ async def test_validate_resolution_exceeds_max_raises():
 async def test_validate_duration_exceeds_max_raises():
     with pytest.raises(CapabilityError, match="Duration"):
         await validate_request(
-            provider="wan_cloud", mode="t2v",
-            resolution=(720, 1280), duration_s=999.0, fps=24,
+            provider="wan_cloud",
+            mode="t2v",
+            resolution=(720, 1280),
+            duration_s=999.0,
+            fps=24,
         )
 
 
@@ -164,8 +222,11 @@ async def test_validate_duration_exceeds_max_raises():
 async def test_validate_fps_not_in_options_raises():
     with pytest.raises(CapabilityError, match="fps="):
         await validate_request(
-            provider="wan_cloud", mode="t2v",
-            resolution=(720, 1280), duration_s=10.0, fps=60,
+            provider="wan_cloud",
+            mode="t2v",
+            resolution=(720, 1280),
+            duration_s=10.0,
+            fps=60,
         )
 
 
@@ -173,16 +234,21 @@ async def test_validate_fps_not_in_options_raises():
 async def test_validate_mode_unsupported_via_obase_caps():
     """When obase registers a provider with limited caps, unsupported mode is caught."""
     from obase.provider_registry import ProviderRegistry
+
     # v0.15.8: instance method, capabilities dict with "modes" key, no category/replace
     ProviderRegistry.get().register_with_capability(
-        "ltx2_cloud", lambda: None,
+        "ltx2_cloud",
+        lambda: None,
         capabilities={"modes": ["t2v"]},
     )
     try:
         with pytest.raises(CapabilityError, match="do not include mode"):
             await validate_request(
-                provider="ltx2_cloud", mode="i2v",
-                resolution=(720, 1280), duration_s=10.0, fps=24,
+                provider="ltx2_cloud",
+                mode="i2v",
+                resolution=(720, 1280),
+                duration_s=10.0,
+                fps=24,
             )
     finally:
         ProviderRegistry.clear()
@@ -190,19 +256,24 @@ async def test_validate_mode_unsupported_via_obase_caps():
 
 # ── 5. Capability guard — obase capabilities() is consulted ──────────────────
 
+
 @pytest.mark.asyncio
 async def test_capabilities_called_for_mode_check():
     """validate_request calls ProviderRegistry.get().capabilities(name)."""
     with patch("hevi.video.capability_guard.ProviderRegistry") as mock_reg:
         mock_reg.get.return_value.capabilities.return_value = {}  # empty → use PROVIDER_LIMITS
         await validate_request(
-            provider="ltx2_cloud", mode="t2v",
-            resolution=(720, 1280), duration_s=10.0, fps=24,
+            provider="ltx2_cloud",
+            mode="t2v",
+            resolution=(720, 1280),
+            duration_s=10.0,
+            fps=24,
         )
         mock_reg.get.return_value.capabilities.assert_called_once_with("ltx2_cloud")
 
 
 # ── 6. Health-check before fallback ──────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_fallback_skips_unhealthy_provider():
@@ -210,15 +281,14 @@ async def test_fallback_skips_unhealthy_provider():
     runner = AsyncMock(side_effect=ValueError("p1 down"))
     on_fallback = AsyncMock()
 
-    hc_patch = patch(
-        "hevi.resilience.fallback_chain.provider_health_check", new_callable=AsyncMock
-    )
+    hc_patch = patch("hevi.resilience.fallback_chain.provider_health_check", new_callable=AsyncMock)
     sleep_patch = patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock)
     with hc_patch as mock_hc, sleep_patch:
         mock_hc.return_value = False  # second provider unhealthy
         # last_exc from first provider is re-raised when all candidates exhausted
         with pytest.raises(ValueError, match="p1 down"):
             from hevi.resilience import run_with_fallback
+
             await run_with_fallback(
                 initial_provider="ltx2_cloud",
                 runner=runner,
@@ -234,13 +304,12 @@ async def test_fallback_uses_healthy_provider():
     runner = AsyncMock(side_effect=[ValueError("p1 down"), "ok"])
     on_fallback = AsyncMock()
 
-    hc_patch = patch(
-        "hevi.resilience.fallback_chain.provider_health_check", new_callable=AsyncMock
-    )
+    hc_patch = patch("hevi.resilience.fallback_chain.provider_health_check", new_callable=AsyncMock)
     sleep_patch = patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock)
     with hc_patch as mock_hc, sleep_patch:
         mock_hc.return_value = True  # second provider healthy
         from hevi.resilience import run_with_fallback
+
         result = await run_with_fallback(
             initial_provider="ltx2_cloud",
             runner=runner,
@@ -260,6 +329,7 @@ async def test_health_check_not_called_for_first_provider():
         "hevi.resilience.fallback_chain.provider_health_check", new_callable=AsyncMock
     ) as mock_hc:
         from hevi.resilience import run_with_fallback
+
         await run_with_fallback(
             initial_provider="ltx2_cloud",
             runner=runner,
@@ -269,6 +339,7 @@ async def test_health_check_not_called_for_first_provider():
 
 
 # ── 7. Cost coupling — ultra costs more than standard ────────────────────────
+
 
 def test_quality_cost_multiplier_ordering():
     assert get_quality_cost_multiplier("standard") < get_quality_cost_multiplier("high")

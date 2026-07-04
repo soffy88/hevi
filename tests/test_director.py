@@ -383,3 +383,81 @@ async def test_director_api_episode_infeasible_402():
             )
     assert ei.value.status_code == 402
     svc.create_task.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_director_api_episode_passes_structured_fields():
+    """POST /director/episodes:8 层结构化字段透传 —— 画幅/画质/风格进 create_task,绑角色→i2v。"""
+    import uuid
+
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.director import EpisodeRequest, director_create_episode
+
+    tid = uuid.uuid4()
+    svc = AsyncMock()
+    svc.create_task.return_value = {"id": tid, "status": "pending"}
+    svc.submit_task.return_value = {"status": "queued"}
+    with (
+        patch(
+            "hevi.api.routers.director.parse_intent",
+            new_callable=AsyncMock,
+            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+        ),
+        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")) as mp,
+    ):
+        out = await director_create_episode(
+            EpisodeRequest(
+                text="拍狐狸", aspect_ratio="16:9", quality_profile="high",
+                subject_id="sub-1", style_preset="赛博朋克", duration_archetype="short",
+                per_shot_routing=True,
+            ),
+            user={"id": uuid.uuid4()},
+            svc=svc,
+            background_tasks=BackgroundTasks(),
+        )
+    # 绑了主体 → produce 用 i2v;时长档覆盖 LLM 猜的
+    assert mp.await_args.kwargs["mode"] == "i2v"
+    assert mp.await_args.kwargs["duration_archetype"] == "short"
+    # 结构化字段进 create_task → config_json
+    ck = svc.create_task.await_args.kwargs
+    assert ck["duration_archetype"] == "short"
+    assert ck["aspect_ratio"] == "16:9"
+    assert ck["quality_profile"] == "high"
+    assert ck["style_preset"] == "赛博朋克"
+    assert ck["subject_id"] == "sub-1"
+    assert ck["per_shot_routing"] is True
+    # 回执 spec
+    assert out["spec"]["aspect_ratio"] == "16:9"
+    assert out["spec"]["subject_locked"] is True
+
+
+@pytest.mark.asyncio
+async def test_director_api_episode_preset_sets_provider_base():
+    """执行预设 economy → 底层 provider/quality 走本地;显式字段仍可覆盖。"""
+    import uuid
+
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.director import EpisodeRequest, director_create_episode
+
+    svc = AsyncMock()
+    svc.create_task.return_value = {"id": uuid.uuid4(), "status": "pending"}
+    svc.submit_task.return_value = {"status": "queued"}
+    with (
+        patch(
+            "hevi.api.routers.director.parse_intent",
+            new_callable=AsyncMock,
+            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+        ),
+        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")) as mp,
+    ):
+        await director_create_episode(
+            EpisodeRequest(text="x", preset="economy"),
+            user={"id": uuid.uuid4()},
+            svc=svc,
+            background_tasks=BackgroundTasks(),
+        )
+    # economy 预设 → video_provider=wan_local, audio=edge_tts 作底传给 produce
+    assert mp.await_args.kwargs["video_provider"] == "wan_local"
+    assert mp.await_args.kwargs["audio_provider"] == "edge_tts"
