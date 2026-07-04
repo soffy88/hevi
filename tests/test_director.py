@@ -226,3 +226,71 @@ async def test_director_loop_aborts_when_infeasible():
     assert res.delivered is False
     assert svc.run_called == 0  # 没跑管线
     assert "infeasible" in res.reason
+
+
+# ── NL 意图 + 自动分镜(LLM 外壳)─────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_parse_intent_from_llm():
+    from hevi.director import parse_intent
+
+    llm = AsyncMock(
+        return_value={
+            "content": '{"topic":"猫的一天","duration_archetype":"5-15min",'
+            '"num_characters":2,"style":"治愈","budget_usd":3.5}'
+        }
+    )
+    intent = await parse_intent("做个治愈系猫咪视频,两个角色,预算3.5刀", llm=llm)
+    assert intent["topic"] == "猫的一天"
+    assert intent["duration_archetype"] == "5-15min"
+    assert intent["num_characters"] == 2
+    assert intent["budget_usd"] == 3.5
+
+
+@pytest.mark.asyncio
+async def test_parse_intent_invalid_archetype_and_failure_fallback():
+    from hevi.director import parse_intent
+
+    bad = AsyncMock(return_value={"content": '{"topic":"x","duration_archetype":"nonsense"}'})
+    assert (await parse_intent("x", llm=bad))["duration_archetype"] == "1-5min"
+
+    down = AsyncMock(side_effect=RuntimeError("llm down"))
+    intent = await parse_intent("原始需求文本", llm=down)
+    assert intent["topic"] == "原始需求文本"  # 兜底用原文
+    assert intent["duration_archetype"] == "1-5min"
+
+
+@pytest.mark.asyncio
+async def test_plan_shots_from_llm_and_fallback():
+    from hevi.director import plan_shots
+
+    llm = AsyncMock(return_value={"content": '["a cat wakes","a cat eats","a cat sleeps"]'})
+    shots = await plan_shots(topic="猫的一天", num_shots=3, llm=llm)
+    assert shots == ["a cat wakes", "a cat eats", "a cat sleeps"]
+
+    down = AsyncMock(side_effect=RuntimeError("down"))
+    fb = await plan_shots(topic="狐狸", num_shots=2, llm=down)
+    assert len(fb) == 2 and all("狐狸" in s for s in fb)
+
+
+@pytest.mark.asyncio
+async def test_plan_from_text_end_to_end():
+    """输入剧情文本 → 意图 + 可行性 + 分镜 + 可执行 canvas 图。"""
+    from hevi.director import plan_from_text
+
+    llm = AsyncMock(
+        side_effect=[
+            {"content": '{"topic":"狐狸雪地","duration_archetype":"1-5min","style":"电影感"}'},
+            {"content": '["fox runs in snow","fox catches prey"]'},
+        ]
+    )
+    with (
+        patch("hevi.cost.router.route_video_provider", new_callable=AsyncMock, return_value="wan_local"),
+        patch("hevi.director.producer.estimate_cost", new_callable=AsyncMock, return_value=SimpleNamespace(total_usd=0.0)),
+    ):
+        out = await plan_from_text(text="拍个狐狸在雪地的短片", num_shots=2, llm=llm)
+    assert out["intent"]["topic"] == "狐狸雪地"
+    assert out["shot_prompts"] == ["fox runs in snow", "fox catches prey"]
+    assert len([n for n in out["graph"]["nodes"] if n["node_type"] == "video"]) == 2
+    assert out["plan"].video_provider == "wan_local"
