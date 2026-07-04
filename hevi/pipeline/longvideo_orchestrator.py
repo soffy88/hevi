@@ -78,6 +78,10 @@ async def orchestrate_longvideo(
     prompt_color_grade: str | None = None,
     quality_profile: str = "standard",
     transition: str = "fade",
+    # route v2(设计 §3 L0):逐镜头选 provider。开启后按每个镜头 prompt 判质量需求
+    # (主角特写→云高质量 / 空镜 B-roll→免费本地 wan),而非全片一个 provider。默认关,
+    # 不改既有行为。
+    per_shot_routing: bool = False,
     avatar_portrait: str | None = None,  # RFC-002 item 11: 数字人讲解肖像图路径
     # SaaS-4:逐阶段进度回调 async (stage:str, pct:float, completed_shots=None,
     # total_shots=None)。必须为显式参数,否则会落入 **kwargs → LongVideoConfig 报错。
@@ -305,21 +309,45 @@ async def orchestrate_longvideo(
                     _pct = min(75.0, 25.0 + _idx * 8.0)
                 await _report(_label, _pct, completed=_idx, total=_total or None)
 
+            # route v2:逐镜头选 provider(开启时)。i2v/t2v 由是否有参考图判定;质量需求
+            # 从镜头 prompt 启发式分类。失败/未开 → 回退全片 video_provider。在 checkpoint
+            # 之前算好,使 marker 比对与 provider 后缀都用逐镜头结果。
+            _prov = video_provider
+            if per_shot_routing:
+                try:
+                    from hevi.cost.shot_router import route_shot_provider
+
+                    _prov = await route_shot_provider(
+                        prompt=prompt,
+                        duration_archetype=duration_archetype,
+                        audio_provider=audio_provider,
+                        mode="i2v" if reference_image else "t2v",
+                    )
+                    if _prov != video_provider:
+                        logger.info(
+                            "route v2: shot %s → %s (task provider %s)",
+                            outp.name,
+                            _prov,
+                            video_provider,
+                        )
+                except Exception as re:
+                    logger.warning("route v2 failed, using task provider: %s", re)
+                    _prov = video_provider
+
             # RFC-002 item 7: 镜头级 checkpoint。已成功生成且 marker 记录的 provider
-            # 与当前一致 → 跳过重生成(resume 提速);provider 不同(fallback)→ 重生成,
-            # 不复用旧 provider 的废片。marker 落盘在镜头文件旁。
+            # 与当前一致 → 跳过重生成(resume 提速);provider 不同(fallback/route v2)→
+            # 重生成,不复用旧 provider 的废片。marker 落盘在镜头文件旁。
             marker = outp.with_suffix(outp.suffix + ".done.json")
             if outp.exists() and outp.stat().st_size > 1024 and marker.exists():
                 try:
-                    if json.loads(marker.read_text()).get("provider") == video_provider:
+                    if json.loads(marker.read_text()).get("provider") == _prov:
                         logger.info("shot checkpoint hit, skip regen: %s", outp.name)
                         return outp
                 except json.JSONDecodeError, OSError:
                     pass
 
             try:
-                # Use video_provider from orchestrate_longvideo closure
-                caller = ProviderRegistry.get().generic("video", video_provider)
+                caller = ProviderRegistry.get().generic("video", _prov)
 
                 # RFC-001 P1-3: omodul's per-shot LLM prompt otherwise bypasses all
                 # hevi prompt engineering. Re-apply provider adaptation + style here
@@ -331,7 +359,7 @@ async def orchestrate_longvideo(
 
                     prompt, _neg = await engineer_prompt_pair_from_preset(
                         raw_prompt=prompt,
-                        target_provider=video_provider,
+                        target_provider=_prov,
                         preset_name=style_preset,
                         style=prompt_style,
                         lighting=prompt_lighting,
@@ -402,7 +430,7 @@ async def orchestrate_longvideo(
                 if final.exists() and final.stat().st_size > 1024:
                     with contextlib.suppress(OSError):
                         final.with_suffix(final.suffix + ".done.json").write_text(
-                            json.dumps({"provider": video_provider})
+                            json.dumps({"provider": _prov})
                         )
                 return final
             except Exception as e:

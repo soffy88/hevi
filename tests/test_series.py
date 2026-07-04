@@ -98,3 +98,30 @@ async def test_create_episode_without_task_service_raises():
         await SeriesService(_FakeSeriesRepo({"id": _SID, "spec_json": {}}), None).create_episode(
             _SID, topic="t"
         )
+
+
+class _FakeStyleSvc:
+    async def resolve(self, pid):
+        return {
+            "style": "cinematic noir",
+            "lighting": "soft",
+            "camera": "dolly",
+            "color_grade": "teal orange",
+            "negative": "text",
+        }
+
+
+@pytest.mark.asyncio
+async def test_create_episode_expands_stylepack_to_prompts():
+    """Series 引用 StylePack → create_episode resolve 展开成 prompt_*(覆盖 preset)。"""
+    series = {
+        "id": _SID, "style_pack_id": _SID, "style_preset": "电影感", "subject_ids": [],
+        "episode_count": 0, "spec_json": {"video_provider": "wan_local"},
+    }
+    tsvc = _FakeTaskSvc()
+    svc = SeriesService(_FakeSeriesRepo(series), tsvc, _FakeStyleSvc())
+    await svc.create_episode(_SID, topic="ep1")
+    call = tsvc.create_calls[0]
+    assert call["prompt_style"] == "cinematic noir"
+    assert call["prompt_color_grade"] == "teal orange"
+    assert call["prompt_camera"] == "dolly"

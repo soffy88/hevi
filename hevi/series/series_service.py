@@ -13,9 +13,12 @@ from hevi.series.repository import SeriesRepository
 
 
 class SeriesService:
-    def __init__(self, repo: SeriesRepository, task_service: Any = None) -> None:
+    def __init__(
+        self, repo: SeriesRepository, task_service: Any = None, style_service: Any = None
+    ) -> None:
         self._repo = repo
         self._task_service = task_service
+        self._style_service = style_service  # StylePackService,用于 create_episode 展开风格
 
     async def create_series(
         self,
@@ -23,6 +26,7 @@ class SeriesService:
         name: str,
         subject_ids: list[str] | None = None,
         style_preset: str = "",
+        style_pack_id: str | None = None,
         spec: dict[str, Any] | None = None,
         user_id: str | None = None,
         intro_template_id: str | None = None,
@@ -36,6 +40,7 @@ class SeriesService:
                 "user_id": user_id,
                 "subject_ids": subject_ids or [],
                 "style_preset": style_preset,
+                "style_pack_id": uuid.UUID(style_pack_id) if style_pack_id else None,
                 "style_pack_version": 1,
                 "spec_json": spec or {},
                 "intro_template_id": intro_template_id,
@@ -77,6 +82,23 @@ class SeriesService:
         subject_ids = series.get("subject_ids") or []
         if subject_ids:
             ctrl.setdefault("subject_id", subject_ids[0])
+
+        # StylePack↔Series 自动展开:series 引用 StylePack → resolve 成 prompt_*(覆盖 preset,
+        # 保证该 Series 用的是它锁定的那份风格资产)。需注入 style_service。
+        pack_id = series.get("style_pack_id")
+        if pack_id and self._style_service is not None:
+            try:
+                resolved = await self._style_service.resolve(str(pack_id))
+                for src, dst in (
+                    ("style", "prompt_style"),
+                    ("lighting", "prompt_lighting"),
+                    ("camera", "prompt_camera"),
+                    ("color_grade", "prompt_color_grade"),
+                ):
+                    if resolved.get(src):
+                        ctrl[dst] = resolved[src]  # 显式覆盖(StylePack 优先于 preset 名)
+            except Exception:  # 解析失败 → 回退 style_preset,不阻断建集
+                pass
 
         episode_index = int(series.get("episode_count", 0))
         task = await svc.create_task(
