@@ -4,8 +4,8 @@
 中文名"导演台"——这里是"资治通鉴原文 → 历史解说/叙事视频"的垂直编译器式流水线,
 命名空间独立以免混淆。
 
-L0 史料预处理 → L1 立意 → L2 剧本 → ...(后续层逐步建)。每层出口有校验门(G0/G1/...),
-门失败 → 重试/降级,流水线永不卡死。
+L0 史料预处理 → L1 立意 → L2 剧本 → L3 配音 → ...(后续层逐步建)。每层出口有
+校验门(G0/G1/...),门失败 → 重试/降级,流水线永不卡死。
 """
 
 from hevi.tongjian.chapter_ir import extract_chapter_ir
@@ -14,6 +14,7 @@ from hevi.tongjian.constitution import build_constitution, gate_constitution, ge
 from hevi.tongjian.gates import gate_chapter_ir
 from hevi.tongjian.schemas import (
     Act,
+    AudioSegment,
     CharacterBible,
     CharacterBibleEntry,
     CharacterIR,
@@ -25,12 +26,16 @@ from hevi.tongjian.schemas import (
     QuoteIR,
     Script,
     ScriptLine,
+    Timeline,
+    TimelineGap,
     VisualStyle,
 )
 from hevi.tongjian.script import build_script, gate_script, generate_script
+from hevi.tongjian.voiceover import build_voiceover, gate_voiceover, synthesize_voiceover
 
 __all__ = [
     "Act",
+    "AudioSegment",
     "CharacterBible",
     "CharacterBibleEntry",
     "CharacterIR",
@@ -42,15 +47,20 @@ __all__ = [
     "QuoteIR",
     "Script",
     "ScriptLine",
+    "Timeline",
+    "TimelineGap",
     "VisualStyle",
     "build_constitution",
     "build_script",
+    "build_voiceover",
     "extract_chapter_ir",
     "gate_chapter_ir",
     "gate_character_bible",
     "gate_constitution",
     "gate_script",
+    "gate_voiceover",
     "generate_character_bible",
     "generate_constitution",
     "generate_script",
+    "synthesize_voiceover",
 ]

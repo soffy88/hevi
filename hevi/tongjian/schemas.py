@@ -120,6 +120,32 @@ class Script(BaseModel):
     lines: list[ScriptLine] = Field(default_factory=list)
 
 
+# ── L3 配音时间轴(timeline.json)—— HEVI-SPEC-01 §4.3 ────────────────────
+
+
+class AudioSegment(BaseModel):
+    """一行剧本对应的 TTS 音频片段。"""
+    line_id: str
+    file: str = ""  # 相对路径,如 "audio/ln001_a3f8.wav"
+    duration_ms: int = 0
+    t_start_ms: int = 0
+    t_end_ms: int = 0
+
+
+class TimelineGap(BaseModel):
+    """幕间/段间空隙(音乐呼吸位)。"""
+    after_line: str
+    duration_ms: int = 1500
+    purpose: str = "act_transition"
+
+
+class Timeline(BaseModel):
+    audio_segments: list[AudioSegment] = Field(default_factory=list)
+    total_duration_ms: int = 0
+    gaps: list[TimelineGap] = Field(default_factory=list)
+
+
+
 # ── L5 角色卡(character_bible.json)—— HEVI-SPEC-01 §5.2 ─────────────────
 #
 # 本次只实现步骤 2(LLM 依据 chapter_ir + 宪法生成外形描述,纯文本)。步骤 3-4
