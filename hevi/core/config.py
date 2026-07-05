@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Accepts: "*", "https://a.com", "https://a.com,https://b.com", or JSON '["https://a.com"]'
     cors_origins: str = "*"
 
+    # CosyVoice TTS (local GPU) configuration
+    cosyvoice_model_dir: str = "/opt/cosyvoice/model"
+    cosyvoice_use_watermark: bool = False
+
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7

@@ -253,6 +253,7 @@ def register_all_providers() -> None:
 
     ProviderRegistry.register("audio", "edge_tts", edge_tts_synthesize, replace=True)
     ProviderRegistry.register("audio", "vibevoice", vibevoice_synthesize, replace=True)
+    ProviderRegistry.register("audio", "cosyvoice", vibevoice_synthesize, replace=True)
     ProviderRegistry.register(
         "audio",
         "duix",
