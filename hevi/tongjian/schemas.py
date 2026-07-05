@@ -125,6 +125,7 @@ class Script(BaseModel):
 
 class AudioSegment(BaseModel):
     """一行剧本对应的 TTS 音频片段。"""
+
     line_id: str
     file: str = ""  # 相对路径,如 "audio/ln001_a3f8.wav"
     duration_ms: int = 0
@@ -134,6 +135,7 @@ class AudioSegment(BaseModel):
 
 class TimelineGap(BaseModel):
     """幕间/段间空隙(音乐呼吸位)。"""
+
     after_line: str
     duration_ms: int = 1500
     purpose: str = "act_transition"
@@ -144,6 +146,34 @@ class Timeline(BaseModel):
     total_duration_ms: int = 0
     gaps: list[TimelineGap] = Field(default_factory=list)
 
+
+# ── L4 分镜(shotlist.json)—— HEVI-SPEC-01 §6.2 ──────────────────────────
+
+
+class ShotCamera(BaseModel):
+    """镜头景别与运镜。"""
+
+    shot_size: str = "medium"  # wide/medium/medium_close/close_up/extreme_close
+    movement: str = (
+        "static"  # static/slow_push_in/slow_pull_out/pan_left/pan_right/tilt_up/tilt_down
+    )
+
+
+class Shot(BaseModel):
+    shot_id: str
+    line_ids: list[str] = Field(default_factory=list)
+    t_start_ms: int = 0
+    t_end_ms: int = 0
+    scene_id: str = ""
+    characters: list[str] = Field(default_factory=list)  # character_id 列表
+    camera: ShotCamera = Field(default_factory=ShotCamera)
+    visual_prompt: str = ""
+    motion_mode: str = "ken_burns"  # ken_burns / img2video / static
+    is_transition: bool = False  # True = 覆盖 timeline.gaps 的过场镜头,非台词镜头
+
+
+class ShotList(BaseModel):
+    shots: list[Shot] = Field(default_factory=list)
 
 
 # ── L5 角色卡(character_bible.json)—— HEVI-SPEC-01 §5.2 ─────────────────
