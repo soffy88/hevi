@@ -1,26 +1,66 @@
+# hevi-vault — HEVI-SPEC-03 资产库(MinIO + pgvector-postgres),独立于 hevi-dev 的
+# 应用主库,不消费同一个 Postgres 实例(避免触碰已在服务 hevi.uex.hk 的 hevi-dev 栈)。
+# Usage: docker compose up -d --build
+
+name: hevi-vault
+
 services:
   postgres:
     image: pgvector/pgvector:pg17
+    restart: unless-stopped
     environment:
       POSTGRES_USER: hevi
       POSTGRES_PASSWORD: hevi
-      POSTGRES_DB: hevi
+      POSTGRES_DB: hevi_vault
     ports:
-      - "5432:5432"
+      - "5441:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hevi -d hevi_vault"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   minio:
     image: minio/minio:latest
+    restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${VAULT_MINIO_ACCESS_KEY:-hevi}
+      MINIO_ROOT_PASSWORD: ${VAULT_MINIO_SECRET_KEY:-hevi1234}
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: on-failure
+    environment:
+      VAULT_MINIO_ACCESS_KEY: ${VAULT_MINIO_ACCESS_KEY:-hevi}
+      VAULT_MINIO_SECRET_KEY: ${VAULT_MINIO_SECRET_KEY:-hevi1234}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$VAULT_MINIO_ACCESS_KEY $$VAULT_MINIO_SECRET_KEY &&
+      mc mb local/vault-identity --ignore-existing &&
+      mc mb local/vault-style --ignore-existing &&
+      mc mb local/vault-scene --ignore-existing &&
+      mc mb local/vault-audio --ignore-existing &&
+      mc mb local/vault-derived --ignore-existing &&
+      echo 'hevi-vault buckets ready.'
+      "
 
   redis:
     image: redis:7-alpine

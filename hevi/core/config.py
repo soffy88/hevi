@@ -14,6 +14,16 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://hevi:hevi@localhost:5432/hevi"
     redis_url: str = "redis://localhost:6379/0"
 
+    # HEVI-SPEC-03 资产库(hevi-vault docker-compose 项目,独立于上面的主库/主 MinIO)
+    vault_database_url: str = "postgresql://hevi:hevi@localhost:5441/hevi_vault"
+    vault_minio_endpoint: str = "localhost:9000"
+    vault_minio_access_key: str = "hevi"
+    vault_minio_secret_key: str = "hevi1234"
+    vault_minio_secure: bool = False
+
+    # HEVI-EXEC-01 §0:「智伯索地」C-P0 单 run 预算熔断线(soffy 选定区间 $5-10 的上限)
+    tongjian_run_budget_usd: float = 10.0
+
     # Stored as str; parsed to list[str] by _cors_list() in main.py.
     # Accepts: "*", "https://a.com", "https://a.com,https://b.com", or JSON '["https://a.com"]'
     cors_origins: str = "*"
