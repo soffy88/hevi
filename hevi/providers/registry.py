@@ -28,9 +28,13 @@ def register_all_providers() -> None:
     # [B1 已回迁 oprim v3.11.0:wan_cloud 默认值(endpoint/model)+ 不支持参数过滤已在
     #  上游修复,原 _patched_wan_invoke 猴补丁删除。]
 
-    from hevi.audio.vibevoice_patch import patch_vibevoice_exports
+    from hevi.audio.vibevoice_patch import (
+        patch_vibevoice_exports,
+        patch_vibevoice_reference_audio_kwarg,
+    )
 
     patch_vibevoice_exports()
+    patch_vibevoice_reference_audio_kwarg()
 
     # 1. LLM Providers (for agentic orchestration)
     dashscope.register(replace=True)
