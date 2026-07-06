@@ -83,6 +83,34 @@ def subject_embed(
         raise SubjectEmbedError(f"embed failed for {p}: {e}") from e
 
 
+def text_embed(text: str) -> list[float]:
+    """一段文字 → L2-归一化 CLIP 文本向量(与 subject_embed 同一 512 维空间,可直接
+    与图像向量算余弦相似度 —— tongjian L6 G6 门的 CLIP 相似度检查(生成帧 vs
+    visual_prompt)用这个,不需要额外模型)。
+    """
+    if not text:
+        raise SubjectEmbedError("text must not be empty")
+    try:
+        import torch
+    except ImportError as e:  # pragma: no cover
+        raise SubjectEmbedError(f"text_embed 需要 torch: {e}") from e
+
+    model, processor = _ensure_model()
+    try:
+        with torch.no_grad():
+            inputs = processor(text=[text], return_tensors="pt", padding=True, truncation=True)
+            feats = model.get_text_features(**inputs)
+        v = feats[0]
+        norm = v.norm()
+        if float(norm) == 0.0:
+            raise SubjectEmbedError("zero-norm embedding")
+        return (v / norm).tolist()
+    except SubjectEmbedError:
+        raise
+    except Exception as e:
+        raise SubjectEmbedError(f"text embed failed for {text!r}: {e}") from e
+
+
 def cosine_similarity(a: list[float], b: list[float]) -> float:
     """两个(已归一化)向量的余弦相似度。维度不匹配/空 → 0.0。"""
     if not a or not b or len(a) != len(b):

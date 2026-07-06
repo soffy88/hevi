@@ -38,8 +38,35 @@ def main() -> None:
         variant="fp16",
         use_safetensors=True,
     )
-    pipe = pipe.to("cuda")
-    pipe.enable_attention_slicing()
+
+    extra_kwargs: dict = {}
+    ip_adapter_image_path = task.get("ip_adapter_image")
+    if ip_adapter_image_path:
+        # L6 角色一致性:场景底图 + 角色参考图(IP-Adapter)+ 动作 prompt。load_ip_adapter
+        # must run before the pipeline is placed on a device.
+        from PIL import Image
+
+        pipe.load_ip_adapter(
+            "h94/IP-Adapter",
+            subfolder="sdxl_models",
+            weight_name="ip-adapter_sdxl.bin",
+            cache_dir=task.get("cache_dir") or None,
+        )
+        pipe.set_ip_adapter_scale(float(task.get("ip_adapter_weight", 0.6)))
+        extra_kwargs["ip_adapter_image"] = Image.open(ip_adapter_image_path).convert("RGB")
+
+    if ip_adapter_image_path:
+        # IP-Adapter's CLIP-ViT-H image encoder (~2.5GB) pushes the base pipeline's
+        # 8.6GB peak past this GPU's free VRAM — enable_model_cpu_offload() keeps
+        # only the actively-running submodule on GPU instead of the whole pipeline.
+        pipe.enable_model_cpu_offload()
+        # enable_attention_slicing() after load_ip_adapter() corrupts the IP-Adapter
+        # cross-attention processor's encoder_hidden_states (becomes a bare tuple,
+        # not the (text, image) pair the processor expects) — skip slicing here;
+        # cpu_offload already keeps VRAM in check for the IP-Adapter path.
+    else:
+        pipe = pipe.to("cuda")
+        pipe.enable_attention_slicing()
     pipe.vae.enable_tiling()
 
     generator = torch.Generator(device="cuda").manual_seed(int(task["seed"]))
@@ -51,6 +78,7 @@ def main() -> None:
         num_inference_steps=int(task["num_inference_steps"]),
         guidance_scale=float(task["guidance_scale"]),
         generator=generator,
+        **extra_kwargs,
     ).images[0]
 
     image.save(task["output_path"])

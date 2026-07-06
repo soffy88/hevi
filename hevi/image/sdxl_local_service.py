@@ -1,14 +1,27 @@
-"""SDXL local image generation — subprocess-isolated txt2img for L5 角色卡参考图。
+"""SDXL local image generation — subprocess-isolated txt2img for L5 角色卡参考图
+and L6 场景/角色一致性画面(IP-Adapter conditioning)。
 
-见 HEVI-SPEC-01 §5.1 步骤3:文生图产出候选立绘。生成在独立子进程里做(同
+见 HEVI-SPEC-01 §5.1 步骤3 / §7.1-7.2。生成在独立子进程里做(同
 hevi/video/wan_local_service.py 的隔离方式),进程退出即释放 VRAM,不占用
 主 API 进程常驻显存。
 
-Measured performance (RTX 3080, 2026-07-06): VRAM peak 8631 MiB (1024×1024,
-20 steps, attention slicing + VAE tiling, madebyollin/sdxl-vae-fp16-fix — the
-stock SDXL fp16 VAE overflows to NaN at decode unless upcast to fp32, and that
-upcast alone OOMs on this GPU's free VRAM; the fp16-fix VAE avoids it entirely).
-~8s for the denoise loop once weights are warm.
+Measured performance (RTX 3080, 2026-07-06):
+- Plain txt2img: VRAM peak 8631 MiB (1024×1024, 20 steps, attention slicing +
+  VAE tiling, madebyollin/sdxl-vae-fp16-fix — the stock SDXL fp16 VAE overflows
+  to NaN at decode unless upcast to fp32, and that upcast alone OOMs on this
+  GPU's free VRAM; the fp16-fix VAE avoids it entirely). ~8s denoise once warm.
+- IP-Adapter conditioning (`extra.ip_adapter_image`, L6 角色一致性): adds a
+  ~2.5GB CLIP-ViT-H image encoder on top of the base pipeline, which OOMs with
+  plain `.to("cuda")` on this 10GB card. `_sdxl_worker.py` switches to
+  `enable_model_cpu_offload()` for this path instead (peak ~7.1GB, ~13s denoise
+  — slower due to CPU↔GPU weight shuffling, but fits). Also: `enable_attention_
+  slicing()` must NOT be called after `load_ip_adapter()` — it corrupts the
+  IP-Adapter cross-attention processor's `encoder_hidden_states` (ends up a
+  bare tuple instead of the (text, image) pair it expects) and crashes with
+  `AttributeError: 'tuple' object has no attribute 'shape'`. Real end-to-end
+  verified: generated a reference portrait, then a differently-composed scene
+  frame conditioned on it — robe style, palette, and facial structure carried
+  over correctly.
 """
 
 from __future__ import annotations
@@ -83,6 +96,8 @@ async def sdxl_local_generate(
             seed=seed,
             num_inference_steps=extra.get("num_inference_steps", _DEFAULT_STEPS),
             guidance_scale=extra.get("guidance_scale", _DEFAULT_GUIDANCE),
+            ip_adapter_image=extra.get("ip_adapter_image"),
+            ip_adapter_weight=extra.get("ip_adapter_weight", 0.6),
         )
 
     return {"output_path": str(output_path), "seed": seed}
