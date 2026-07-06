@@ -228,6 +228,11 @@ def register_all_providers() -> None:
     # ltx2_local: 路由到 wan_local(本机无独立 LTX2 local 推理实现)
     ProviderRegistry.register("video", "ltx2_local", wan_local_generate, replace=True)
 
+    # HEVI-EXEC-01 §0:视频生成主通道(Reference-to-Video,animated 强项)。
+    from hevi.video.vidu_service import vidu_reference_to_video
+
+    ProviderRegistry.register("video", "vidu", vidu_reference_to_video, replace=True)
+
     # 0.1 Chaos Monkey Overrides (SaaS-3 / P10.F3 fallback verification)
     import os
 
