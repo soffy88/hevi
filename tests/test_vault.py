@@ -14,6 +14,7 @@ import pytest
 from hevi.core.config import settings
 from hevi.vault import (
     asset_create,
+    asset_promote,
     asset_resolve,
     asset_verify,
     get_minio_client,
@@ -22,7 +23,7 @@ from hevi.vault import (
     record_lineage,
     store_embedding,
 )
-from hevi.vault.schemas import Manifest
+from hevi.vault.schemas import Manifest, StabilityCheck
 
 
 async def _cleanup(pool, pack_id: str) -> None:
@@ -239,3 +240,78 @@ async def test_record_lineage_and_query(vault_pool):
 async def test_manifest_rejects_invalid_pack_type():
     with pytest.raises(ValueError):
         Manifest(pack_id="x/1", pack_type="not-a-real-type", version="1.0.0", name="x")
+
+
+# ── asset_promote(EXEC-01 M2)──────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_asset_promote_passing_stability_check_sets_validated(vault_pool):
+    minio = get_minio_client()
+    pack_id = "identity/TEST-PROMOTE-OK"
+    await _cleanup(vault_pool, pack_id)
+
+    await asset_create(
+        vault_pool,
+        minio,
+        pack_id=pack_id,
+        pack_type="identity",
+        name="x",
+        version="1.0.0",
+        files={"refs/front.png": b"v1"},
+    )
+    manifest = await asset_promote(
+        vault_pool,
+        pack_id=pack_id,
+        version="1.0.0",
+        stability_check=StabilityCheck(passed=True, score="3/3"),
+    )
+
+    assert manifest.lifecycle == "validated"
+    assert manifest.stability_check.passed is True
+    assert manifest.stability_check.score == "3/3"
+
+    resolved = await asset_resolve(vault_pool, pack_id=pack_id)
+    assert resolved["manifest"].lifecycle == "validated"
+
+    await _cleanup(vault_pool, pack_id)
+
+
+@pytest.mark.asyncio
+async def test_asset_promote_rejects_failing_stability_check(vault_pool):
+    minio = get_minio_client()
+    pack_id = "identity/TEST-PROMOTE-FAIL"
+    await _cleanup(vault_pool, pack_id)
+
+    await asset_create(
+        vault_pool,
+        minio,
+        pack_id=pack_id,
+        pack_type="identity",
+        name="x",
+        version="1.0.0",
+        files={"refs/front.png": b"v1"},
+    )
+    with pytest.raises(ValueError, match="not passed"):
+        await asset_promote(
+            vault_pool,
+            pack_id=pack_id,
+            version="1.0.0",
+            stability_check=StabilityCheck(passed=False, score="1/3"),
+        )
+
+    resolved = await asset_resolve(vault_pool, pack_id=pack_id)
+    assert resolved["manifest"].lifecycle == "draft"  # 未通过则不改状态
+
+    await _cleanup(vault_pool, pack_id)
+
+
+@pytest.mark.asyncio
+async def test_asset_promote_unknown_version_raises(vault_pool):
+    with pytest.raises(KeyError):
+        await asset_promote(
+            vault_pool,
+            pack_id="identity/DOES-NOT-EXIST",
+            version="9.9.9",
+            stability_check=StabilityCheck(passed=True, score="3/3"),
+        )
