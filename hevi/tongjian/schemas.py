@@ -223,3 +223,38 @@ class ShotFrame(BaseModel):
 class FrameManifest(BaseModel):
     scenes: list[SceneAsset] = Field(default_factory=list)
     frames: list[ShotFrame] = Field(default_factory=list)
+
+
+# ── L7 音乐与音效(music_plan.json)—— HEVI-SPEC-01 §8 ───────────────────
+
+
+class MusicCue(BaseModel):
+    """一幕的 BGM 选曲 + 该幕在 timeline 上的时间范围(供装配时定位交叉淡入淡出点)。"""
+
+    act: int
+    mood: str = ""
+    bgm_path: str = ""
+    t_start_ms: int = 0
+    t_end_ms: int = 0
+
+
+class SfxCue(BaseModel):
+    shot_id: str
+    sfx_name: str
+    sfx_path: str = ""
+    t_start_ms: int = 0
+
+
+class MusicPlan(BaseModel):
+    cues: list[MusicCue] = Field(default_factory=list)
+    sfx: list[SfxCue] = Field(default_factory=list)
+
+
+# ── L8 字幕与剪辑合成(final.mp4)—— HEVI-SPEC-01 §9 ─────────────────────
+
+
+class FinalVideo(BaseModel):
+    video_path: str = ""
+    cover_path: str = ""
+    srt_path: str = ""
+    duration_ms: int = 0
