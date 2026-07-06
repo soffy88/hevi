@@ -28,24 +28,9 @@ def register_all_providers() -> None:
     # [B1 已回迁 oprim v3.11.0:wan_cloud 默认值(endpoint/model)+ 不支持参数过滤已在
     #  上游修复,原 _patched_wan_invoke 猴补丁删除。]
 
-    try:
-        # vibevoice PyPI 0.0.1 (the only release published) ships an empty
-        # top-level __init__.py — the classes oprim._vibevoice_synthesize needs
-        # only exist in submodules. Re-export them so `from vibevoice import
-        # VibeVoiceForConditionalGenerationInference, VibeVoiceProcessor` works.
-        import vibevoice
-        from vibevoice.modular.modeling_vibevoice_inference import (
-            VibeVoiceForConditionalGenerationInference,
-        )
-        from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
+    from hevi.audio.vibevoice_patch import patch_vibevoice_exports
 
-        vibevoice.VibeVoiceForConditionalGenerationInference = (
-            VibeVoiceForConditionalGenerationInference
-        )
-        vibevoice.VibeVoiceProcessor = VibeVoiceProcessor
-        logger.info("Main library bug patched: vibevoice top-level exports (empty __init__.py)")
-    except Exception as e:
-        logger.error(f"Failed to patch vibevoice exports: {e}")
+    patch_vibevoice_exports()
 
     # 1. LLM Providers (for agentic orchestration)
     dashscope.register(replace=True)

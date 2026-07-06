@@ -15,6 +15,7 @@ Args JSON schema:
       "watermark": false
     }
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -42,6 +43,10 @@ async def _main(args_path: str) -> None:
         )
         for line in data["script"]
     ]
+
+    from hevi.audio.vibevoice_patch import patch_vibevoice_exports
+
+    patch_vibevoice_exports()
 
     from oprim import vibevoice_synthesize
 
