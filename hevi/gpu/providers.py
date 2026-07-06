@@ -6,9 +6,11 @@ VRAM budgets (MB, measured on RTX 3080 2026-06-18):
   gemma_vision     0   (gemma4:e4b via ollama — TBD pending VRAM test)
   duix          5242   (Duix container)
   wan_local     5407   (Wan2GP+CausVid 8-step subprocess — mmgp profile 5)
+  sdxl_local    8631   (SDXL base 1.0 fp16 subprocess, 1024x1024/20 steps, measured 2026-07-06)
 
 All pairs exceed RTX 3080 total (10240 MiB) → strict serial scheduling required.
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,9 +31,13 @@ VRAM_DUIX = 5242.0
 # Measured: 5407 MiB peak (Wan2GP+CausVid 8-step, profile 5, RTX 3080, 2026-06-18)
 # Down from 9917 MiB (native 30-step); subprocess-managed via wgp.py mmgp offloading
 VRAM_WAN_LOCAL = 5407.0
+# Measured: 8631 MiB peak (SDXL base 1.0 fp16, 1024x1024, 20 steps, attention
+# slicing + VAE tiling, sdxl-vae-fp16-fix VAE, RTX 3080, 2026-07-06, subprocess)
+VRAM_SDXL_LOCAL = 8631.0
 
 
 # ─── VibeVoice provider ──────────────────────────────────────────────────────
+
 
 class VibeVoiceProvider:
     """Manages VibeVoice model lifecycle (load = no-op; oprim handles it)."""
@@ -46,6 +52,7 @@ class VibeVoiceProvider:
     async def unload(self) -> None:
         try:
             import torch
+
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except ImportError:
@@ -59,6 +66,7 @@ class VibeVoiceProvider:
 
 # ─── Qwen local provider (ollama) ───────────────────────────────────────────
 
+
 class QwenLocalProvider:
     """Manages qwen_local (Qwen3.5-9B) via ollama CLI."""
 
@@ -71,7 +79,9 @@ class QwenLocalProvider:
         try:
             subprocess.run(
                 ["ollama", "pull", self.MODEL],
-                check=True, capture_output=True, timeout=300,
+                check=True,
+                capture_output=True,
+                timeout=300,
             )
         except Exception as e:
             logger.warning(f"GPU: qwen_local pull warning: {e}")
@@ -82,7 +92,9 @@ class QwenLocalProvider:
         try:
             subprocess.run(
                 ["ollama", "stop", self.MODEL],
-                check=False, capture_output=True, timeout=30,
+                check=False,
+                capture_output=True,
+                timeout=30,
             )
         except Exception as e:
             logger.warning(f"GPU: qwen_local stop warning: {e}")
@@ -94,6 +106,7 @@ class QwenLocalProvider:
 
 
 # ─── Gemma vision provider (ollama, optional) ───────────────────────────────
+
 
 class GemmaVisionProvider:
     """Manages gemma_vision (gemma4:e4b) via ollama CLI — optional image understanding."""
@@ -107,7 +120,9 @@ class GemmaVisionProvider:
         try:
             subprocess.run(
                 ["ollama", "pull", self.MODEL],
-                check=True, capture_output=True, timeout=300,
+                check=True,
+                capture_output=True,
+                timeout=300,
             )
         except Exception as e:
             logger.warning(f"GPU: gemma_vision pull warning: {e}")
@@ -118,7 +133,9 @@ class GemmaVisionProvider:
         try:
             subprocess.run(
                 ["ollama", "stop", self.MODEL],
-                check=False, capture_output=True, timeout=30,
+                check=False,
+                capture_output=True,
+                timeout=30,
             )
         except Exception as e:
             logger.warning(f"GPU: gemma_vision stop warning: {e}")
@@ -130,6 +147,7 @@ class GemmaVisionProvider:
 
 
 # ─── Duix container provider ────────────────────────────────────────────────
+
 
 class DuixProvider:
     """Manages Duix avatar container lifecycle (docker start/stop)."""
@@ -143,7 +161,9 @@ class DuixProvider:
         try:
             subprocess.run(
                 ["docker", "start", self.CONTAINER],
-                check=True, capture_output=True, timeout=60,
+                check=True,
+                capture_output=True,
+                timeout=60,
             )
         except Exception as e:
             logger.warning(f"GPU: duix container start warning: {e}")
@@ -154,7 +174,9 @@ class DuixProvider:
         try:
             subprocess.run(
                 ["docker", "stop", self.CONTAINER],
-                check=False, capture_output=True, timeout=30,
+                check=False,
+                capture_output=True,
+                timeout=30,
             )
         except Exception as e:
             logger.warning(f"GPU: duix container stop warning: {e}")
@@ -166,6 +188,7 @@ class DuixProvider:
 
 
 # ─── Wan local provider ──────────────────────────────────────────────────────
+
 
 class WanLocalProvider:
     """Sentinel for wan_local in GpuScheduler registry.
@@ -194,7 +217,38 @@ class WanLocalProvider:
 wan_local_provider = WanLocalProvider()
 
 
+# ─── SDXL local provider ─────────────────────────────────────────────────────
+
+
+class SdxlLocalProvider:
+    """Sentinel for sdxl_local in GpuScheduler registry.
+
+    Generation is handled by sdxl_local_service._run_worker() (subprocess). The
+    subprocess loads the pipeline, generates one image, and exits — releasing
+    VRAM on its own. load()/unload() are no-ops; GpuScheduler.acquire() provides
+    the serial lock (mirrors WanLocalProvider).
+    """
+
+    def __init__(self) -> None:
+        self._loaded = False
+
+    async def load(self) -> None:
+        self._loaded = True
+        logger.info("GPU: sdxl_local marked active (subprocess manages VRAM)")
+
+    async def unload(self) -> None:
+        self._loaded = False
+        logger.info("GPU: sdxl_local released (subprocess exited, VRAM freed by OS)")
+
+    def is_loaded(self) -> bool:
+        return self._loaded
+
+
+sdxl_local_provider = SdxlLocalProvider()
+
+
 # ─── Registry setup ─────────────────────────────────────────────────────────
+
 
 def setup_model_registry() -> ModelRegistry:
     """Create and populate a ModelRegistry with all hevi local model providers."""
@@ -204,5 +258,5 @@ def setup_model_registry() -> ModelRegistry:
     registry.register("gemma_vision", GemmaVisionProvider())
     registry.register("duix", DuixProvider())
     registry.register("wan_local", wan_local_provider)
+    registry.register("sdxl_local", sdxl_local_provider)
     return registry
-

@@ -265,3 +265,20 @@ def register_all_providers() -> None:
         ),
         replace=True,
     )
+
+    # 4. Image-gen provider (L5 tongjian 角色卡参考图,本地 SDXL,subprocess 隔离)
+    from hevi.image.sdxl_local_service import sdxl_local_generate
+
+    ProviderRegistry.register("image_gen", "sdxl_local", sdxl_local_generate, replace=True)
+    ProviderRegistry.register("image_gen", "default", sdxl_local_generate, replace=True)
+
+    # 5. VLM provider (L5 tongjian 年代审 + 3O §C2 mllm 双变体一致性,复用同一个本地
+    # qwen2.5vl adapter;之前只在 longvideo_orchestrator 里临时注入,这里注册成全局
+    # 默认,让 tongjian 也能走 ProviderRegistry.get().vlm("default") 同款惯例。
+    from hevi.providers.local_qwen_vl_adapter import local_qwen_vl_adapter, vl_model_available
+
+    if vl_model_available():
+        ProviderRegistry.register("vlm", "default", local_qwen_vl_adapter, replace=True)
+        logger.info("VLM provider: local_qwen_vl_adapter (qwen2.5vl via ollama)")
+    else:
+        logger.warning("VLM provider: 本地 qwen2.5vl 不可用,vlm/default 未注册")

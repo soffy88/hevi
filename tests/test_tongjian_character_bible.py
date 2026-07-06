@@ -7,11 +7,17 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from hevi.tongjian.character_bible import gate_character_bible, generate_character_bible
+from hevi.tongjian.character_bible import (
+    gate_character_bible,
+    generate_character_bible,
+    generate_reference_images,
+)
 from hevi.tongjian.schemas import (
     Act,
     ChapterIR,
     ChapterMeta,
+    CharacterBible,
+    CharacterBibleEntry,
     CharacterIR,
     Constitution,
     QuoteIR,
@@ -175,3 +181,190 @@ async def test_gate_fails_on_anachronism_term():
 
     assert result.passed is False
     assert any("年代错误词" in e and "唐装" in e for e in result.errors)
+
+
+# ── generate_reference_images(步骤3-4:候选立绘 + VLM 年代审)────────────────
+
+
+def _make_bible(entries: list[dict] | None = None) -> CharacterBible:
+    if entries is None:
+        entries = [
+            {
+                "character_id": "C001",
+                "name": "智伯",
+                "appearance": "魁伟美髯,玄色深衣",
+                "era_check": "战国早期服制",
+            },
+        ]
+    return CharacterBible(characters=[CharacterBibleEntry(**e) for e in entries])
+
+
+def _mock_image_gen() -> AsyncMock:
+    """真实 provider 会把图片写到 output_path;mock 同样落一个假文件,行为更贴近真实。"""
+
+    async def _gen(*, prompt, output_path, seed, extra):
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"fake-png")
+        return {"output_path": str(output_path), "seed": seed}
+
+    return AsyncMock(side_effect=_gen)
+
+
+def _mock_vlm(*responses: str) -> AsyncMock:
+    """按调用顺序依次返回给定的 JSON 字符串(候选一个个审)。"""
+    return AsyncMock(side_effect=[{"content": r} for r in responses])
+
+
+@pytest.mark.asyncio
+async def test_locks_first_passing_candidate(tmp_path):
+    bible = _make_bible()
+    image_gen = _mock_image_gen()
+    vlm = _mock_vlm('{"passes": true, "violations": []}')
+
+    result = await generate_reference_images(
+        bible,
+        CONSTITUTION,
+        output_dir=tmp_path,
+        image_gen=image_gen,
+        vlm=vlm,
+    )
+
+    c001 = result.characters[0]
+    assert c001.ref_image == str(tmp_path / "c001_v0.png")
+    assert c001.gen_lock is not None
+    assert c001.gen_lock["ip_adapter_weight"] == 0.6
+    assert isinstance(c001.gen_lock["seed"], int)
+    image_gen.assert_awaited_once()
+    vlm.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_falls_back_to_next_candidate_when_first_fails_audit(tmp_path):
+    bible = _make_bible()
+    image_gen = _mock_image_gen()
+    vlm = _mock_vlm(
+        '{"passes": false, "violations": ["穿了唐装"]}',
+        '{"passes": true, "violations": []}',
+    )
+
+    result = await generate_reference_images(
+        bible,
+        CONSTITUTION,
+        output_dir=tmp_path,
+        image_gen=image_gen,
+        vlm=vlm,
+    )
+
+    c001 = result.characters[0]
+    assert c001.ref_image == str(tmp_path / "c001_v1.png")
+    assert image_gen.await_count == 2
+    assert vlm.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_leaves_ref_image_none_when_all_candidates_fail_audit(tmp_path):
+    bible = _make_bible()
+    image_gen = _mock_image_gen()
+    vlm = _mock_vlm(*(['{"passes": false, "violations": ["x"]}'] * 3))
+
+    result = await generate_reference_images(
+        bible,
+        CONSTITUTION,
+        output_dir=tmp_path,
+        image_gen=image_gen,
+        vlm=vlm,
+        num_candidates=3,
+    )
+
+    c001 = result.characters[0]
+    assert c001.ref_image is None
+    assert c001.gen_lock is None
+    assert image_gen.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_leaves_ref_image_none_when_image_gen_always_fails(tmp_path):
+    bible = _make_bible()
+    image_gen = AsyncMock(side_effect=RuntimeError("GPU OOM"))
+    vlm = AsyncMock()
+
+    result = await generate_reference_images(
+        bible,
+        CONSTITUTION,
+        output_dir=tmp_path,
+        image_gen=image_gen,
+        vlm=vlm,
+    )
+
+    c001 = result.characters[0]
+    assert c001.ref_image is None
+    vlm.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_skips_entry_that_already_has_ref_image(tmp_path):
+    bible = _make_bible(
+        [
+            {
+                "character_id": "C001",
+                "name": "智伯",
+                "appearance": "魁伟美髯",
+                "era_check": "战国早期服制",
+                "ref_image": "already/locked.png",
+            },
+        ]
+    )
+    image_gen = _mock_image_gen()
+    vlm = _mock_vlm('{"passes": true}')
+
+    result = await generate_reference_images(
+        bible,
+        CONSTITUTION,
+        output_dir=tmp_path,
+        image_gen=image_gen,
+        vlm=vlm,
+    )
+
+    assert result.characters[0].ref_image == "already/locked.png"
+    image_gen.assert_not_awaited()
+    vlm.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_skips_entry_with_no_appearance(tmp_path):
+    bible = _make_bible(
+        [
+            {"character_id": "C001", "name": "智伯", "appearance": "", "era_check": ""},
+        ]
+    )
+    image_gen = _mock_image_gen()
+    vlm = AsyncMock()
+
+    result = await generate_reference_images(
+        bible,
+        CONSTITUTION,
+        output_dir=tmp_path,
+        image_gen=image_gen,
+        vlm=vlm,
+    )
+
+    assert result.characters[0].ref_image is None
+    image_gen.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_gate_no_longer_warns_once_ref_image_locked(tmp_path):
+    bible = _make_bible()
+    image_gen = _mock_image_gen()
+    vlm = _mock_vlm('{"passes": true, "violations": []}')
+
+    result = await generate_reference_images(
+        bible,
+        CONSTITUTION,
+        output_dir=tmp_path,
+        image_gen=image_gen,
+        vlm=vlm,
+    )
+    gate = gate_character_bible(result)
+
+    assert not any("尚无权威参考图" in w for w in gate.warnings)
