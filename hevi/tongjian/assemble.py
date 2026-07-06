@@ -276,7 +276,10 @@ async def mix_sfx_master(
         labels.append(f"[sfx{i}]")
 
     n = len(labels)
-    parts.append("".join(labels) + f"amix=inputs={n}:duration=longest:dropout_transition=0[aout]")
+    total_s = max(total_duration_ms, 1) / 1000.0
+    # -t only truncates — it can't extend a shorter mix, so pad explicitly with apad.
+    parts.append("".join(labels) + f"amix=inputs={n}:duration=longest:dropout_transition=0[mixed]")
+    parts.append(f"[mixed]apad=whole_dur={total_s:.3f}[aout]")
     out = output_dir / "sfx_master.wav"
     args = [
         *inputs,
@@ -285,7 +288,7 @@ async def mix_sfx_master(
         "-map",
         "[aout]",
         "-t",
-        f"{max(total_duration_ms, 1) / 1000:.3f}",
+        f"{total_s:.3f}",
         str(out),
     ]
     await ffmpeg_run(args=args, expected_output=out)
