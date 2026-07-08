@@ -10,6 +10,8 @@ import { usePathname } from 'next/navigation';
 const NAV = [
   { href: '/', label: '生成' },
   { href: '/director', label: '导演' },
+  { href: '/tongjian', label: '通鉴' },
+  { href: '/explainer', label: '解说' },
   { href: '/series', label: '系列' },
   { href: '/studio', label: '画布工作台' },
   { href: '/gallery', label: '展示墙' },

@@ -252,3 +252,32 @@ export const directorApi = {
       body: JSON.stringify(payload),
     }),
 };
+
+// ── 通鉴全自动流水线(HEVI-SPEC-01,需登录)────────────────────────────────────
+import type { TongjianRunRequest, TongjianRunStatus } from '@/types/api';
+export const tongjianApi = {
+  startRun: (payload: TongjianRunRequest) =>
+    authedReq<{ run_id: string; status: string }>('/api/tongjian/run', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getStatus: (runId: string) =>
+    authedReq<TongjianRunStatus>(`/api/tongjian/runs/${runId}`),
+  listRuns: () =>
+    authedReq<TongjianRunStatus[]>('/api/tongjian/runs'),
+};
+
+// ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────
+import type { ExplainerRunRequest, ExplainerRunStatus } from '@/types/api';
+export const explainerApi = {
+  startRun: (payload: ExplainerRunRequest) =>
+    authedReq<{ run_id: string; status: string }>('/api/explainer/run', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getStatus: (runId: string) =>
+    authedReq<ExplainerRunStatus>(`/api/explainer/runs/${runId}`),
+  listRuns: () =>
+    authedReq<ExplainerRunStatus[]>('/api/explainer/runs'),
+};
+
