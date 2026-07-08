@@ -266,6 +266,15 @@ def register_all_providers() -> None:
     ProviderRegistry.register("image_gen", "sdxl_local", sdxl_local_generate, replace=True)
     ProviderRegistry.register("image_gen", "default", sdxl_local_generate, replace=True)
 
+    # 4.1 json2video 云端场景底图(仅供 L6 generate_scene_assets 无角色镜头用,本地 GPU
+    # 不可用时手动切换;不注册成 default——有角色的镜头必须走 sdxl_local 的 IP-Adapter
+    # 一致性条件化,见 hevi/image/json2video_scene_service.py 模块 docstring)。
+    from hevi.image.json2video_scene_service import json2video_scene_generate
+
+    ProviderRegistry.register(
+        "image_gen", "json2video_scene", json2video_scene_generate, replace=True
+    )
+
     # 5. VLM provider (L5 tongjian 年代审 + 3O §C2 mllm 双变体一致性,复用同一个本地
     # qwen2.5vl adapter;之前只在 longvideo_orchestrator 里临时注入,这里注册成全局
     # 默认,让 tongjian 也能走 ProviderRegistry.get().vlm("default") 同款惯例。
