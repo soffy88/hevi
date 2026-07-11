@@ -303,13 +303,36 @@ export interface SeriesCreatePayload {
   outro_template_id?: string | null;
 }
 
+// 剧集看板幕级结构:dispatch 塞进 task.config_json.episode_plan(SPEC-001 §3.3 子集)
+export interface EpisodePlanLite {
+  ep_number?: number;
+  title?: string;
+  beats?: string[];
+  event_ids?: string[];
+  characters_present?: string[];
+  locations?: string[];
+  target_emotion_arc?: string;
+}
+
 export interface Episode {
-  id: string;
+  id: string;                 // = 底层 video_task id(分集 endpoint 直接返 video_tasks 行)
   topic?: string;
   status?: string;
   episode_index?: number;
   result_video_path?: string | null;
-  task_id?: string;
+  task_id?: string;           // 通常为空,任务 id 用 id 字段
+  config_json?: { episode_plan?: EpisodePlanLite } & Record<string, unknown>;
+}
+
+// 剧集看板镜级卡片(GET /api/tasks/{id}/shots 投影)
+export interface TaskShot {
+  shot_index: number;
+  status: string;
+  has_output: boolean;
+  consistency_score?: number | null;
+  passed?: boolean | null;
+  diagnosis_category?: string | null;
+  retry_count?: number | null;
 }
 
 export interface StylePack {

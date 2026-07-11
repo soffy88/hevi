@@ -475,3 +475,44 @@ async def test_dub_task_video_failure_returns_500(tmp_path):
         with pytest.raises(Exception) as ei:
             await dub_task_video(uuid.uuid4(), repo, token="tok", language="en")
     assert getattr(ei.value, "status_code", None) == 500
+
+
+async def test_list_task_shots_projects_shot_cards():
+    from hevi.api.routers.tasks import list_task_shots
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1"}
+    repo.get_shots.return_value = [
+        {
+            "shot_index": 0,
+            "status": "completed",
+            "output_path": "shots/0.mp4",
+            "selection_json": {"passed": True, "consistency_score": 0.9, "retry_count": 0},
+        },
+        {
+            "shot_index": 1,
+            "status": "failed",
+            "output_path": None,
+            "selection_json": {"passed": False, "consistency_score": 0.2,
+                               "diagnosis_category": "参考图角色错配", "retry_count": 2},
+        },
+    ]
+    shots = await list_task_shots(uuid.uuid4(), {"id": "u1"}, repo)
+    assert len(shots) == 2
+    assert shots[0] == {
+        "shot_index": 0, "status": "completed", "has_output": True,
+        "consistency_score": 0.9, "passed": True, "diagnosis_category": None, "retry_count": 0,
+    }
+    assert shots[1]["has_output"] is False
+    assert shots[1]["diagnosis_category"] == "参考图角色错配"
+
+
+@pytest.mark.asyncio
+async def test_list_task_shots_404_for_other_users_task():
+    from hevi.api.routers.tasks import list_task_shots
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "someone-else"}
+    with pytest.raises(Exception) as ei:
+        await list_task_shots(uuid.uuid4(), {"id": "u1"}, repo)
+    assert getattr(ei.value, "status_code", None) == 404

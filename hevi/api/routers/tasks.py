@@ -88,6 +88,20 @@ def _serialize_task(t: dict[str, Any]) -> dict[str, Any]:
     return {**t, "task_id": str(t.get("id", "")), "percent": t.get("progress_pct", 0)}
 
 
+def _serialize_shot(s: dict[str, Any]) -> dict[str, Any]:
+    """剧集看板镜头卡片投影:从已落库的 shot_states 行取逐镜状态 + 一致性/诊断摘要。"""
+    sel = s.get("selection_json") or {}
+    return {
+        "shot_index": s.get("shot_index"),
+        "status": s.get("status"),
+        "has_output": bool(s.get("output_path")),
+        "consistency_score": sel.get("consistency_score"),
+        "passed": sel.get("passed"),
+        "diagnosis_category": sel.get("diagnosis_category"),
+        "retry_count": sel.get("retry_count"),
+    }
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 
@@ -414,3 +428,17 @@ async def dub_task_video(
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"dub failed: {exc}") from exc
     return FileResponse(str(out_path), media_type="video/mp4", filename=f"{task_id}.{language}.mp4")
+
+
+@router.get("/{task_id}/shots")
+async def list_task_shots(
+    task_id: UUID,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+) -> list[dict[str, Any]]:
+    """剧集看板镜头级视图:某任务的逐镜状态 + 一致性/诊断摘要(纯聚合 shot_states,零计算)。"""
+    task = await repo.get_task(task_id)
+    if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
+        raise HTTPException(status_code=404, detail="Task not found")
+    shots = await repo.get_shots(task_id)
+    return [_serialize_shot(s) for s in shots]

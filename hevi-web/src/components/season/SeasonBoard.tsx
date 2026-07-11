@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { useSSEProgress } from '@helios/oui';
 import { seriesApi, taskApi, USE_MOCK } from '@/lib/api-client';
-import type { Series, Episode } from '@/types/api';
+import type { Series, Episode, TaskShot } from '@/types/api';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: '待生成',
@@ -138,16 +138,32 @@ export function SeasonBoard() {
 
 function EpisodeCard({ ep }: { ep: Episode }) {
   const [open, setOpen] = useState(false);
+  const [shots, setShots] = useState<TaskShot[] | null>(null);
+  // 分集 endpoint 直接返 video_tasks 行,故任务 id = ep.id(ep.task_id 通常为空)。
+  const taskId = ep.task_id ?? ep.id;
   const running = ep.status === 'running';
   // 每集一个 SSE 订阅(仅在生成中且非 mock 时开);hook 必须无条件调用,靠 url=null 关闭。
   const progress = useSSEProgress(
-    running && !USE_MOCK && ep.task_id ? taskApi.progressUrl(ep.task_id) : null
+    running && !USE_MOCK && taskId ? taskApi.progressUrl(taskId) : null
   );
 
   const status = ep.status || 'pending';
   const percent = running ? progress?.percent ?? 0 : status === 'completed' ? 100 : 0;
   const firstLine = (ep.topic || '').split('\n')[0] || '(未命名)';
-  const completed = status === 'completed' && ep.task_id;
+  const completed = status === 'completed';
+  const plan = ep.config_json?.episode_plan;
+
+  // 展开时拉镜头级卡片(仅非 mock);拉一次即缓存。
+  useEffect(() => {
+    if (!open || USE_MOCK || !taskId || shots !== null) return;
+    (async () => {
+      try {
+        setShots(await taskApi.shots(taskId));
+      } catch {
+        setShots([]);
+      }
+    })();
+  }, [open, taskId, shots]);
 
   return (
     <div className="hevi-sb__ep" data-status={status}>
@@ -174,13 +190,53 @@ function EpisodeCard({ ep }: { ep: Episode }) {
           {completed && (
             <video
               className="hevi-sb__ep-video"
-              src={taskApi.videoUrl(ep.task_id!)}
-              poster={taskApi.coverUrl(ep.task_id!)}
+              src={taskApi.videoUrl(taskId)}
+              poster={taskApi.coverUrl(taskId)}
               controls
               playsInline
             />
           )}
-          {/* 本集剧情简报(派发时合成的 topic)—— 幕/镜级视图待 shot-list API 接入 */}
+
+          {/* 幕:本集节拍序列(来自 config_json.episode_plan) */}
+          {plan?.beats && plan.beats.length > 0 && (
+            <div className="hevi-sb__row">
+              <span className="hevi-sb__row-label">幕 · 节拍</span>
+              <div className="hevi-sb__beats">
+                {plan.beats.map((b, i) => (
+                  <span key={i} className="hevi-sb__beat">
+                    {b}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 镜:逐镜卡片(来自 shot_states) */}
+          {shots && shots.length > 0 && (
+            <div className="hevi-sb__row">
+              <span className="hevi-sb__row-label">镜 · {shots.length}</span>
+              <div className="hevi-sb__shots">
+                {shots.map((s) => (
+                  <div
+                    key={s.shot_index}
+                    className="hevi-sb__shot"
+                    data-passed={s.passed === false ? 'no' : s.passed ? 'yes' : undefined}
+                  >
+                    <span className="hevi-sb__shot-idx">#{s.shot_index}</span>
+                    <span className="hevi-sb__shot-status">{s.status}</span>
+                    {typeof s.consistency_score === 'number' && (
+                      <span className="hevi-sb__shot-score">一致性 {s.consistency_score.toFixed(2)}</span>
+                    )}
+                    {s.diagnosis_category && (
+                      <span className="hevi-sb__shot-diag">{s.diagnosis_category}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 本集剧情简报(派发时合成的 topic) */}
           <pre className="hevi-sb__ep-brief">{ep.topic || '(无简报)'}</pre>
         </div>
       )}
