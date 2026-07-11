@@ -27,6 +27,7 @@ dependencies = [
     "python-frontmatter>=1.3.0",  # oprim v3.10 transitive dep (not declared in oprim)
     "vibevoice==0.0.1",  # oprim._vibevoice_synthesize runtime dep (not declared in oprim metadata)
     "dashscope>=1.20",  # oprim v3.10.33 embedding.qwen3_dashscope runtime dep (undeclared)
+    "edge-tts>=7.0",  # hevi.explainer.voiceover —— 短视频解说通道配音(词级时间戳)
     "prometheus-client>=0.25.0",
     "psycopg2-binary>=2.9.12",
     "minio>=7.2.20",

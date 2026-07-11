@@ -28,24 +28,13 @@ def register_all_providers() -> None:
     # [B1 已回迁 oprim v3.11.0:wan_cloud 默认值(endpoint/model)+ 不支持参数过滤已在
     #  上游修复,原 _patched_wan_invoke 猴补丁删除。]
 
-    try:
-        # vibevoice PyPI 0.0.1 (the only release published) ships an empty
-        # top-level __init__.py — the classes oprim._vibevoice_synthesize needs
-        # only exist in submodules. Re-export them so `from vibevoice import
-        # VibeVoiceForConditionalGenerationInference, VibeVoiceProcessor` works.
-        import vibevoice
-        from vibevoice.modular.modeling_vibevoice_inference import (
-            VibeVoiceForConditionalGenerationInference,
-        )
-        from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
+    from hevi.audio.vibevoice_patch import (
+        patch_vibevoice_exports,
+        patch_vibevoice_reference_audio_kwarg,
+    )
 
-        vibevoice.VibeVoiceForConditionalGenerationInference = (
-            VibeVoiceForConditionalGenerationInference
-        )
-        vibevoice.VibeVoiceProcessor = VibeVoiceProcessor
-        logger.info("Main library bug patched: vibevoice top-level exports (empty __init__.py)")
-    except Exception as e:
-        logger.error(f"Failed to patch vibevoice exports: {e}")
+    patch_vibevoice_exports()
+    patch_vibevoice_reference_audio_kwarg()
 
     # 1. LLM Providers (for agentic orchestration)
     dashscope.register(replace=True)
@@ -228,6 +217,11 @@ def register_all_providers() -> None:
     # ltx2_local: 路由到 wan_local(本机无独立 LTX2 local 推理实现)
     ProviderRegistry.register("video", "ltx2_local", wan_local_generate, replace=True)
 
+    # HEVI-EXEC-01 §0:视频生成主通道(Reference-to-Video,animated 强项)。
+    from hevi.video.vidu_service import vidu_reference_to_video
+
+    ProviderRegistry.register("video", "vidu", vidu_reference_to_video, replace=True)
+
     # 0.1 Chaos Monkey Overrides (SaaS-3 / P10.F3 fallback verification)
     import os
 
@@ -265,3 +259,29 @@ def register_all_providers() -> None:
         ),
         replace=True,
     )
+
+    # 4. Image-gen provider (L5 tongjian 角色卡参考图,本地 SDXL,subprocess 隔离)
+    from hevi.image.sdxl_local_service import sdxl_local_generate
+
+    ProviderRegistry.register("image_gen", "sdxl_local", sdxl_local_generate, replace=True)
+    ProviderRegistry.register("image_gen", "default", sdxl_local_generate, replace=True)
+
+    # 4.1 json2video 云端场景底图(仅供 L6 generate_scene_assets 无角色镜头用,本地 GPU
+    # 不可用时手动切换;不注册成 default——有角色的镜头必须走 sdxl_local 的 IP-Adapter
+    # 一致性条件化,见 hevi/image/json2video_scene_service.py 模块 docstring)。
+    from hevi.image.json2video_scene_service import json2video_scene_generate
+
+    ProviderRegistry.register(
+        "image_gen", "json2video_scene", json2video_scene_generate, replace=True
+    )
+
+    # 5. VLM provider (L5 tongjian 年代审 + 3O §C2 mllm 双变体一致性,复用同一个本地
+    # qwen2.5vl adapter;之前只在 longvideo_orchestrator 里临时注入,这里注册成全局
+    # 默认,让 tongjian 也能走 ProviderRegistry.get().vlm("default") 同款惯例。
+    from hevi.providers.local_qwen_vl_adapter import local_qwen_vl_adapter, vl_model_available
+
+    if vl_model_available():
+        ProviderRegistry.register("vlm", "default", local_qwen_vl_adapter, replace=True)
+        logger.info("VLM provider: local_qwen_vl_adapter (qwen2.5vl via ollama)")
+    else:
+        logger.warning("VLM provider: 本地 qwen2.5vl 不可用,vlm/default 未注册")

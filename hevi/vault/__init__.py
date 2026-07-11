@@ -10,11 +10,13 @@ V-P0(本次实现)范围:manifest schema + DDL + `asset_resolve`/`asset_create`/
 """
 
 from hevi.vault.blob_store import get_blob, get_minio_client, put_blob
+from hevi.vault.identity_pack import build_identity_pack, lint_shot_prompt
 from hevi.vault.pg_pool import get_vault_pg_pool
 from hevi.vault.schema_ddl import init_vault_schema
 from hevi.vault.schemas import Manifest, ManifestFile, Provenance, StabilityCheck
 from hevi.vault.service import (
     asset_create,
+    asset_promote,
     asset_resolve,
     asset_verify,
     record_lineage,
@@ -27,12 +29,15 @@ __all__ = [
     "Provenance",
     "StabilityCheck",
     "asset_create",
+    "asset_promote",
     "asset_resolve",
     "asset_verify",
+    "build_identity_pack",
     "get_blob",
     "get_minio_client",
     "get_vault_pg_pool",
     "init_vault_schema",
+    "lint_shot_prompt",
     "put_blob",
     "record_lineage",
     "store_embedding",

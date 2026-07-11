@@ -380,3 +380,69 @@ export interface CostEstimateV2 {
   total_credits: number;
   est_time_min: number;
 }
+
+// ── 通鉴流水线(HEVI-SPEC-01)──────────────────────────────────────────────────
+export type TongjianLayerStatus = 'PENDING' | 'RUNNING' | 'PASSED' | 'DEGRADED' | 'FAILED';
+export type TongjianRunStatusVal = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+
+export interface TongjianLayerState {
+  layer: string;                // L0..L8
+  status: TongjianLayerStatus;
+  retry_count: number;
+  degraded: boolean;
+  artifact_path: string | null;
+  gate_report: Record<string, unknown> | null;
+  started_at: string | null;
+  finished_at: string | null;
+  error: string | null;
+}
+
+export interface TongjianRunStatus {
+  run_id: string;
+  status: TongjianRunStatusVal;
+  source_name: string;
+  created_at: string;
+  completed_at: string | null;
+  current_layer: string | null;
+  layers: TongjianLayerState[];
+  result_video_path: string | null;
+  error: string | null;
+}
+
+export interface TongjianRunRequest {
+  source_name: string;
+  raw_text: string;
+  target_duration_sec?: number;
+  aspect_ratio?: string;
+}
+
+// ── 自媒体解说短视频通道(hevi.explainer)────────────────────────────────────
+export type ExplainerLayerStatus = 'PENDING' | 'RUNNING' | 'PASSED' | 'FAILED';
+export type ExplainerRunStatusVal = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+
+export interface ExplainerLayerState {
+  layer: string;                // E0/E1/E2
+  status: ExplainerLayerStatus;
+  started_at: string | null;
+  finished_at: string | null;
+  error: string | null;
+  gate_report: Record<string, unknown> | null;
+}
+
+export interface ExplainerRunStatus {
+  run_id: string;
+  status: ExplainerRunStatusVal;
+  topic: string;
+  created_at: string;
+  completed_at: string | null;
+  current_layer: string | null;
+  layers: ExplainerLayerState[];
+  result_portrait_path: string | null;
+  result_landscape_path: string | null;
+  error: string | null;
+}
+
+export interface ExplainerRunRequest {
+  topic: string;
+}
+

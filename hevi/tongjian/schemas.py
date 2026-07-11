@@ -125,6 +125,7 @@ class Script(BaseModel):
 
 class AudioSegment(BaseModel):
     """一行剧本对应的 TTS 音频片段。"""
+
     line_id: str
     file: str = ""  # 相对路径,如 "audio/ln001_a3f8.wav"
     duration_ms: int = 0
@@ -134,6 +135,7 @@ class AudioSegment(BaseModel):
 
 class TimelineGap(BaseModel):
     """幕间/段间空隙(音乐呼吸位)。"""
+
     after_line: str
     duration_ms: int = 1500
     purpose: str = "act_transition"
@@ -145,13 +147,37 @@ class Timeline(BaseModel):
     gaps: list[TimelineGap] = Field(default_factory=list)
 
 
+# ── L4 分镜(shotlist.json)—— HEVI-SPEC-01 §6.2 ──────────────────────────
+
+
+class ShotCamera(BaseModel):
+    """镜头景别与运镜。"""
+
+    shot_size: str = "medium"  # wide/medium/medium_close/close_up/extreme_close
+    movement: str = (
+        "static"  # static/slow_push_in/slow_pull_out/pan_left/pan_right/tilt_up/tilt_down
+    )
+
+
+class Shot(BaseModel):
+    shot_id: str
+    line_ids: list[str] = Field(default_factory=list)
+    t_start_ms: int = 0
+    t_end_ms: int = 0
+    scene_id: str = ""
+    characters: list[str] = Field(default_factory=list)  # character_id 列表
+    camera: ShotCamera = Field(default_factory=ShotCamera)
+    visual_prompt: str = ""
+    motion_mode: str = "ken_burns"  # ken_burns / img2video / static
+    is_transition: bool = False  # True = 覆盖 timeline.gaps 的过场镜头,非台词镜头
+
+
+class ShotList(BaseModel):
+    shots: list[Shot] = Field(default_factory=list)
+
 
 # ── L5 角色卡(character_bible.json)—— HEVI-SPEC-01 §5.2 ─────────────────
-#
-# 本次只实现步骤 2(LLM 依据 chapter_ir + 宪法生成外形描述,纯文本)。步骤 3-4
-# (文生图产出候选立绘 + VLM 年代审 → 锁定 ref_image/gen_lock)需要本地 GPU 图像
-# 生成能力,当前环境 GPU 不可用(nvidia-smi/torch.cuda 均报错),先留空等环境恢复。
-# voice_id 同理待 L3 TTS 声音库接入后再填。
+# voice_id 待 L3 多声线(P1)接入后再填。
 
 
 class CharacterBibleEntry(BaseModel):
@@ -159,10 +185,76 @@ class CharacterBibleEntry(BaseModel):
     name: str
     appearance: str = ""
     era_check: str = ""
-    ref_image: str | None = None  # 待图像生成阶段(GPU 恢复后)接入
+    ref_image: str | None = None  # 步骤3-4 锁定的候选立绘路径
     gen_lock: dict | None = None  # {"seed":..., "ip_adapter_weight":...}
     voice_id: str | None = None  # 待 L3 TTS 接入后填入
 
 
 class CharacterBible(BaseModel):
     characters: list[CharacterBibleEntry] = Field(default_factory=list)
+
+
+# ── L6 场景与画面生成(帧资产)—— HEVI-SPEC-01 §7 ─────────────────────────
+
+
+class SceneAsset(BaseModel):
+    """场景底图(不含角色):同 scene_id 的多个 shot 共用一张,省成本+保证背景一致。"""
+
+    scene_id: str
+    image_path: str = ""
+    prompt: str = ""
+    seed: int = 0
+
+
+class ShotFrame(BaseModel):
+    shot_id: str
+    scene_id: str
+    frame_path: str = ""
+    characters: list[str] = Field(default_factory=list)
+    clip_score: float = 0.0  # 生成帧 vs visual_prompt 的 CLIP 文本-图像相似度
+    character_consistency: float | None = (
+        None  # 帧 vs 角色 ref_image 的 CLIP 相似度(P1 简化:非人脸专用向量)
+    )
+    passed_vlm_audit: bool | None = None  # 本地 VLM 年代穿帮审核
+    degraded: bool = False  # True = 走了降级链(丢角色/复用相邻场景),非首选路径产出
+    degrade_reason: str = ""
+
+
+class FrameManifest(BaseModel):
+    scenes: list[SceneAsset] = Field(default_factory=list)
+    frames: list[ShotFrame] = Field(default_factory=list)
+
+
+# ── L7 音乐与音效(music_plan.json)—— HEVI-SPEC-01 §8 ───────────────────
+
+
+class MusicCue(BaseModel):
+    """一幕的 BGM 选曲 + 该幕在 timeline 上的时间范围(供装配时定位交叉淡入淡出点)。"""
+
+    act: int
+    mood: str = ""
+    bgm_path: str = ""
+    t_start_ms: int = 0
+    t_end_ms: int = 0
+
+
+class SfxCue(BaseModel):
+    shot_id: str
+    sfx_name: str
+    sfx_path: str = ""
+    t_start_ms: int = 0
+
+
+class MusicPlan(BaseModel):
+    cues: list[MusicCue] = Field(default_factory=list)
+    sfx: list[SfxCue] = Field(default_factory=list)
+
+
+# ── L8 字幕与剪辑合成(final.mp4)—— HEVI-SPEC-01 §9 ─────────────────────
+
+
+class FinalVideo(BaseModel):
+    video_path: str = ""
+    cover_path: str = ""
+    srt_path: str = ""
+    duration_ms: int = 0

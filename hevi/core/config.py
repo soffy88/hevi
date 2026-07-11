@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     cosyvoice_model_dir: str = "/opt/cosyvoice/model"
     cosyvoice_use_watermark: bool = False
 
+    # L5 角色卡参考图(SDXL 本地文生图,tongjian §5.1 步骤3-4)。权重 ~7GB,
+    # 根分区(/)只剩 20G 空闲,故缓存目录放 /data 而非默认 ~/.cache/huggingface。
+    sdxl_model_dir: str = "/data/models/huggingface"
+
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7

@@ -1,7 +1,9 @@
-"""HEVI-SPEC-03 §6 oskill 接口(V-P0 三个)+ 血缘落库。
+"""HEVI-SPEC-03 §6 oskill 接口(V-P0 三个 + `asset_promote`)+ 血缘落库。
 
 服务层零业务逻辑(EXEC-01 执行红线):manifest 结构校验交给 pydantic;embedding 距离
-比对是纯数学;平台绑定懒同步(§5)、稳定性预检自动化是 V-P1 范围,`asset_resolve` 这里
+比对是纯数学;`asset_promote` 只做"stability_check.passed 才允许 draft→validated"
+这一条状态机判断,真正的稳定性预检(生成 N 次候选 + 挑选)在 hevi.vault.identity_pack
+(EXEC-01 M2,业务逻辑层)。平台绑定懒同步(§5)是 V-P1 范围,`asset_resolve` 这里
 先只做"本地 refs + 已有绑定直读"这条路径,platform 参数占位,不做懒同步上传。
 
 `obase.persistence.query()` 会在没写 LIMIT 的 SQL 后面自动追加 `LIMIT n`——对 SELECT
@@ -15,7 +17,7 @@ import hashlib
 
 from obase.persistence import PgPool, query
 
-from hevi.vault.schemas import Manifest, ManifestFile
+from hevi.vault.schemas import Manifest, ManifestFile, StabilityCheck
 
 _BUCKET_BY_PACK_TYPE = {
     "identity": "vault-identity",
@@ -218,3 +220,38 @@ async def record_lineage(
         params=[derived_sha256, run_id, shot_id, pack_id, version],
         limit=0,
     )
+
+
+async def asset_promote(
+    pool: PgPool,
+    *,
+    pack_id: str,
+    version: str,
+    stability_check: StabilityCheck,
+) -> Manifest:
+    """draft → validated(EXEC-01 M2 的 asset_promote 门):仅当 stability_check.passed
+    才允许晋级。只更新 manifest 的 stability_check + lifecycle 字段,files/manifest_hash
+    不变(内容没变,只是元数据状态转移,不是新版本)。
+    """
+    if not stability_check.passed:
+        raise ValueError(
+            f"cannot promote {pack_id}@{version}: stability_check not passed "
+            f"(score={stability_check.score!r})"
+        )
+    rows = await query(
+        pool,
+        sql="SELECT manifest FROM vault_versions WHERE pack_id=$1 AND version=$2",
+        params=[pack_id, version],
+    )
+    if not rows:
+        raise KeyError(f"vault version not found: {pack_id!r} @ {version!r}")
+    manifest = Manifest.model_validate_json(rows[0]["manifest"])
+    manifest.stability_check = stability_check
+    manifest.lifecycle = "validated"
+    await query(
+        pool,
+        sql="UPDATE vault_versions SET manifest = $3::jsonb WHERE pack_id=$1 AND version=$2",
+        params=[pack_id, version, manifest.model_dump_json()],
+        limit=0,
+    )
+    return manifest
