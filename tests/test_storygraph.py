@@ -106,6 +106,17 @@ _GOOD_DRAFT = {
         {"name": "出租屋", "type": "住所", "event_indices": [0, 1]},
         {"name": "阳台", "type": "住所", "event_indices": [2]},
     ],
+    "relationships": [
+        {
+            "from": "林夏",
+            "to": "陈默",
+            "relation_type": "疏远的发小",
+            "valence": 0.1,
+            "evolution": [
+                {"event_index": 1, "relation_type": "感激/亏欠", "valence": 0.6},
+            ],
+        }
+    ],
 }
 
 
@@ -147,8 +158,16 @@ async def test_extract_story_graph_resolves_real_spans():
     assert sg.quotes[0].original in RAW_TEXT
     assert sg.quotes[0].event_id == "E002"
 
-    # 阶段 1:relationships / arcs 结构存在但不填充
-    assert sg.relationships == []
+    # 阶段 2:relationships 填充(含 evolution),arcs 仍留空
+    assert len(sg.relationships) == 1
+    rel = sg.relationships[0]
+    assert rel.from_char == "C001"  # 林夏
+    assert rel.to_char == "C002"  # 陈默
+    assert rel.valence == pytest.approx(0.1)
+    assert len(rel.evolution) == 1
+    assert rel.evolution[0]["event_id"] == "E002"
+    assert rel.evolution[0]["relation_type"] == "感激/亏欠"
+    assert rel.evolution[0]["valence"] == pytest.approx(0.6)
     assert sg.arcs == []
 
 
@@ -192,3 +211,23 @@ async def test_extract_story_graph_maps_locations_to_events():
     home = next(loc for loc in sg.locations if loc.name == "出租屋")
     assert home.location_id == "L001"
     assert home.events == ["E001", "E002"]
+
+
+@pytest.mark.asyncio
+async def test_extract_story_graph_drops_relationship_with_unknown_character():
+    """relationship 引用了 characters 列表里没有的人名 → 整条丢弃,不杜撰人物。"""
+    draft = {
+        **_GOOD_DRAFT,
+        "relationships": [
+            {
+                "from": "林夏",
+                "to": "杜撰出来的路人",
+                "relation_type": "陌生人",
+                "valence": 0.0,
+                "evolution": [],
+            }
+        ],
+    }
+    llm = _mock_llm(json.dumps(draft, ensure_ascii=False))
+    sg = await extract_story_graph(source_name="test", raw_text=RAW_TEXT, llm=llm)
+    assert sg.relationships == []

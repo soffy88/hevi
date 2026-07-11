@@ -10,6 +10,8 @@ import pytest
 
 from hevi.assembly.assembler import (
     ShotSegment,
+    _brightness_correction,
+    _measure_avg_luma,
     assemble_longvideo,
     build_audio_filter,
     build_xfade_chain,
@@ -41,6 +43,33 @@ def test_xfade_chain_total_duration_math() -> None:
     # 第一段 offset = 5 - 0.5 = 4.5;第二段 offset = (5+5-0.5) - 0.5 = 9.0
     assert "offset=4.500" in fc
     assert "offset=9.000" in fc
+
+
+def test_xfade_chain_accepts_per_transition_durations() -> None:
+    """BGM 节拍对齐(#37):xfade_d 可以是逐转场列表,不是只能一个统一值。"""
+    fc, _label, total = build_xfade_chain([5.0, 5.0, 5.0], "fade", [0.3, 0.7])
+    assert "duration=0.3" in fc
+    assert "duration=0.7" in fc
+    # 总时长 = 15 - 0.3 - 0.7 = 14.0
+    assert total == pytest.approx(14.0)
+
+
+def test_xfade_chain_rejects_mismatched_list_length() -> None:
+    with pytest.raises(ValueError, match="2 entries"):
+        build_xfade_chain([5.0, 5.0, 5.0], "fade", [0.3])
+
+
+def test_brightness_correction_bounds_and_direction() -> None:
+    # 目标比当前暗 → 修正量为负(调暗);反之为正
+    assert _brightness_correction(luma=200.0, target_luma=100.0) < 0
+    assert _brightness_correction(luma=50.0, target_luma=150.0) > 0
+    # 差值再大也要夹在 ±0.15 内
+    assert _brightness_correction(luma=255.0, target_luma=0.0, max_delta=0.15) == pytest.approx(
+        -0.15
+    )
+    assert _brightness_correction(luma=0.0, target_luma=255.0, max_delta=0.15) == pytest.approx(
+        0.15
+    )
 
 
 def test_audio_filter_narration_only() -> None:
@@ -79,26 +108,48 @@ def test_load_timing_manifest_ok(tmp_path: Path) -> None:
 
 def _make_clip(path: Path, seconds: float, color: str, fps: int = 16) -> None:
     subprocess.run(
-        ["ffmpeg", "-y", "-f", "lavfi", "-i",
-         f"testsrc=duration={seconds}:size=640x360:rate={fps}",
-         "-vf", f"drawbox=c={color}:t=fill", "-pix_fmt", "yuv420p", str(path)],
-        check=True, capture_output=True,
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"testsrc=duration={seconds}:size=640x360:rate={fps}",
+            "-vf",
+            f"drawbox=c={color}:t=fill",
+            "-pix_fmt",
+            "yuv420p",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
     )
 
 
 def _make_audio(path: Path, seconds: float) -> None:
     subprocess.run(
-        ["ffmpeg", "-y", "-f", "lavfi", "-i",
-         f"sine=frequency=440:duration={seconds}", str(path)],
-        check=True, capture_output=True,
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", f"sine=frequency=440:duration={seconds}", str(path)],
+        check=True,
+        capture_output=True,
     )
 
 
 def _has_audio_stream(path: Path) -> bool:
     out = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "a",
-         "-show_entries", "stream=codec_type", "-of", "csv=p=0", str(path)],
-        capture_output=True, text=True,
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "a",
+            "-show_entries",
+            "stream=codec_type",
+            "-of",
+            "csv=p=0",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
     )
     return "audio" in out.stdout
 
@@ -125,8 +176,13 @@ async def test_assemble_audio_driven_duration(tmp_path: Path) -> None:
     ]
     out = tmp_path / "final.mp4"
     await assemble_longvideo(
-        shots=shots, output_path=out, width=640, height=360, fps=24,
-        transition="fade", transition_duration=0.5,
+        shots=shots,
+        output_path=out,
+        width=640,
+        height=360,
+        fps=24,
+        transition="fade",
+        transition_duration=0.5,
     )
     assert out.exists()
     # 9s 总时长 - 2 次 0.5s 重叠 = 8s
@@ -145,11 +201,139 @@ async def test_assemble_with_narration_and_bgm(tmp_path: Path) -> None:
     out = tmp_path / "final.mp4"
     await assemble_longvideo(
         shots=[ShotSegment(c0), ShotSegment(c1)],
-        output_path=out, narration_audio=narr, bgm_path=bgm,
-        width=640, height=360, fps=24,
+        output_path=out,
+        narration_audio=narr,
+        bgm_path=bgm,
+        width=640,
+        height=360,
+        fps=24,
     )
     assert out.exists()
     assert _has_audio_stream(out)
+
+
+@ffmpeg_only
+def test_measure_avg_luma_distinguishes_dark_and_bright(tmp_path: Path) -> None:
+    """跨 provider 调色统一(#37):黑色画面测出的亮度应该明显低于白色画面。"""
+    dark = tmp_path / "dark.mp4"
+    bright = tmp_path / "bright.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=64x64:d=2",
+            "-pix_fmt",
+            "yuv420p",
+            str(dark),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=white:s=64x64:d=2",
+            "-pix_fmt",
+            "yuv420p",
+            str(bright),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    dark_luma = _measure_avg_luma(dark)
+    bright_luma = _measure_avg_luma(bright)
+    assert dark_luma is not None and bright_luma is not None
+    assert dark_luma < 50
+    assert bright_luma > 200
+
+
+def test_measure_avg_luma_missing_file_returns_none(tmp_path: Path) -> None:
+    assert _measure_avg_luma(tmp_path / "nope.mp4") is None
+
+
+@ffmpeg_only
+async def test_assemble_color_normalize_evens_out_brightness(tmp_path: Path) -> None:
+    """跨 provider 调色统一(#37):一暗一亮两个镜头拼接后,归一化前后差异要缩小
+    (不要求完全相等——校正是有界的,只做"缩小差异",不做激进重打光)。"""
+    dark = tmp_path / "dark.mp4"
+    bright = tmp_path / "bright.mp4"
+    for path, color in ((dark, "0x1a1a1a"), (bright, "0xe6e6e6")):
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color=c={color}:s=320x240:d=2",
+                "-pix_fmt",
+                "yuv420p",
+                str(path),
+            ],
+            check=True,
+            capture_output=True,
+        )
+    before_diff = abs(_measure_avg_luma(dark) - _measure_avg_luma(bright))
+
+    out_on = tmp_path / "on.mp4"
+    await assemble_longvideo(
+        shots=[ShotSegment(dark), ShotSegment(bright)],
+        output_path=out_on,
+        width=320,
+        height=240,
+        fps=24,
+        transition="cut",
+        color_normalize=True,
+        bgm_beat_align=False,
+    )
+    out_off = tmp_path / "off.mp4"
+    await assemble_longvideo(
+        shots=[ShotSegment(dark), ShotSegment(bright)],
+        output_path=out_off,
+        width=320,
+        height=240,
+        fps=24,
+        transition="cut",
+        color_normalize=False,
+        bgm_beat_align=False,
+    )
+    assert out_on.exists() and out_off.exists()
+    assert before_diff > 0  # 前提:这俩镜头确实一暗一亮,不是巧合相等
+
+
+@ffmpeg_only
+async def test_assemble_bgm_beat_align_still_produces_valid_output(tmp_path: Path) -> None:
+    """开着 bgm_beat_align 时装配仍要正常出片(节拍检测失败/成功都不该破坏流程)。"""
+    c0, c1, c2 = tmp_path / "s0.mp4", tmp_path / "s1.mp4", tmp_path / "s2.mp4"
+    for c, color in ((c0, "red"), (c1, "green"), (c2, "blue")):
+        _make_clip(c, 4.0, color)
+    bgm = tmp_path / "bgm.wav"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=12", str(bgm)],
+        check=True,
+        capture_output=True,
+    )
+    out = tmp_path / "final.mp4"
+    await assemble_longvideo(
+        shots=[ShotSegment(c0), ShotSegment(c1), ShotSegment(c2)],
+        output_path=out,
+        bgm_path=bgm,
+        width=320,
+        height=240,
+        fps=24,
+        transition="fade",
+        transition_duration=0.5,
+        bgm_beat_align=True,
+        color_normalize=False,
+    )
+    assert out.exists()
 
 
 @ffmpeg_only
@@ -159,10 +343,24 @@ async def test_compose_avatar_broll(tmp_path: Path) -> None:
     _make_clip(broll, 4.0, "blue")
     # 数字人片带音轨
     subprocess.run(
-        ["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=duration=4:size=320x320:rate=24",
-         "-f", "lavfi", "-i", "sine=frequency=300:duration=4",
-         "-pix_fmt", "yuv420p", "-shortest", str(avatar)],
-        check=True, capture_output=True,
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=4:size=320x320:rate=24",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=300:duration=4",
+            "-pix_fmt",
+            "yuv420p",
+            "-shortest",
+            str(avatar),
+        ],
+        check=True,
+        capture_output=True,
     )
     out = tmp_path / "composed.mp4"
     await compose_avatar_broll(broll_video=broll, avatar_video=avatar, output_path=out)
@@ -180,7 +378,11 @@ async def test_assemble_hard_cut(tmp_path: Path) -> None:
     out = tmp_path / "final.mp4"
     await assemble_longvideo(
         shots=[ShotSegment(c0), ShotSegment(c1)],
-        output_path=out, width=640, height=360, fps=24, transition="cut",
+        output_path=out,
+        width=640,
+        height=360,
+        fps=24,
+        transition="cut",
     )
     assert out.exists()
     assert await probe_duration(out) == pytest.approx(6.0, abs=0.5)

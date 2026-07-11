@@ -8,6 +8,7 @@ from oskill.canvas_workflow_executor import canvas_workflow_executor
 
 from hevi.canvas.graph_service import GraphService
 from hevi.canvas.node_mapper import create_node_executor
+from hevi.canvas.preflight import PreflightError, run_preflight
 from hevi.canvas.validation import validate_graph
 
 
@@ -22,16 +23,21 @@ class ExecutorService:
         graph_id: str,
         *,
         on_error: str = "rollback",
+        budget_usd: float | None = None,
+        target_duration_s: float | None = None,
     ) -> dict[str, Any]:
-        """Load graph, validate, and execute via canvas_workflow_executor.
+        """Load graph, validate, preflight-critique, and execute.
 
         Returns:
-            Dict with graph_id, status, and per-node CanvasNodeResult dicts.
+            Dict with graph_id, status, preflight report, and per-node
+            CanvasNodeResult dicts.
 
         Raises:
             ValueError: if graph not found.
-            GraphValidationError: if graph is invalid.
+            GraphValidationError: if graph is invalid (structural).
             CycleError: if graph contains a cycle.
+            PreflightError: 计划级自我批判(HEVI 路线图 Phase4 #44)发现硬性问题
+                (目前只有预算超支)——执行前打回,不烧算力。
             CanvasWorkflowError: if execution fails in rollback mode.
         """
         graph = await self._graph_svc.load_graph(graph_id)
@@ -46,6 +52,13 @@ class ExecutorService:
 
         validate_graph(nodes, edges)
 
+        # 计划级自我批判(#44):跟结构校验(validate_graph)不同——那是"这张图能不能
+        # 跑",这里是"这张图值不值得跑"。零生成成本,发生在真花钱之前。
+        preflight = run_preflight(nodes, budget_usd=budget_usd, target_duration_s=target_duration_s)
+        if not preflight.passed:
+            errors = [i.message for i in preflight.issues if i.severity == "error"]
+            raise PreflightError("; ".join(errors))
+
         executor = create_node_executor()
         results: dict[str, CanvasNodeResult] = await canvas_workflow_executor(
             nodes=nodes,
@@ -54,9 +67,7 @@ class ExecutorService:
             on_error=on_error,
         )
 
-        node_results: dict[str, Any] = {
-            nid: r.model_dump() for nid, r in results.items()
-        }
+        node_results: dict[str, Any] = {nid: r.model_dump() for nid, r in results.items()}
         all_success = all(r.success for r in results.values())
 
         return {
@@ -64,4 +75,8 @@ class ExecutorService:
             "status": "completed" if all_success else "partial",
             "node_count": len(nodes),
             "results": node_results,
+            "preflight": {
+                "estimated_cost_usd": preflight.estimated_cost_usd,
+                "warnings": [i.message for i in preflight.issues if i.severity == "warning"],
+            },
         }

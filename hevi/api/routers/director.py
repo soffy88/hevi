@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict
 from typing import Annotated, Any
 
@@ -28,6 +29,7 @@ from hevi.director.graph_render import render_graph_episode
 from hevi.director.intent import parse_intent
 from hevi.director.planner import plan_from_text
 from hevi.director.producer import produce
+from hevi.prompt.ip_safety import rewrite_for_ip_safety
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 from hevi.tasks.repository import TaskRepository
@@ -35,6 +37,7 @@ from hevi.tasks.task_service import TaskService
 from hevi.video.presets import EXECUTION_PRESETS
 from hevi.video.quality_profile import get_quality_profile, resolve_resolution
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/director", tags=["director"])
 
 
@@ -106,10 +109,15 @@ async def director_plan(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
     """预览:剧情文本 → 意图 + 可行性 plan + 分镜 prompts + 可执行 canvas 图(不建任务)。"""
+    from hevi.creative.assist_service import AssistService
+
     result = await plan_from_text(
         text=body.text,
         num_shots=body.num_shots,
         character_reference=body.character_reference,
+        # 创意工具动态编排(HEVI 路线图 Phase4 #45):给了 assist_service,
+        # Director 判断题材需要 three-view 时才会真的调用,不是每次预览都调。
+        assist_service=AssistService(),
     )
     return {**result, "plan": asdict(result["plan"])}
 
@@ -190,6 +198,16 @@ async def director_create_episode(
         characters_negative,
     ) = await _resolve_character_roster(pool, body.character_subject_ids)
     effective_subject_id = body.subject_id or roster_subject_id
+
+    # IP 安全改写(HEVI 路线图 Phase2 #36):topic/角色描述是用户自由文本,建任务
+    # 花钱之前先过一遍——涉及真人/名人/版权角色/品牌就改写成安全等价物。
+    # best-effort,不阻断(见 hevi/prompt/ip_safety.py 的设计说明)。
+    intent["topic"], _ip_flags_topic = await rewrite_for_ip_safety(intent["topic"])
+    if characters_text:
+        characters_text, _ip_flags_chars = await rewrite_for_ip_safety(characters_text)
+        _ip_flags_topic = _ip_flags_topic + _ip_flags_chars
+    if _ip_flags_topic:
+        logger.info("ip_safety: episode intent flagged and rewritten: %s", _ip_flags_topic)
 
     # 执行预设作 provider/quality 的底,显式字段覆盖。
     base_video, base_audio, base_quality = "auto", "vibevoice", body.quality_profile

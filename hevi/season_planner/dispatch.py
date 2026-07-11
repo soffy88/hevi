@@ -105,6 +105,15 @@ async def dispatch_season(
     # season = series:回填 plan.season_id(内存对象,便于调用方拿到绑定)
     plan.season_id = series_id
 
+    # SPEC-001 §5:跨集角色关系一致性守护(Tier0)要在生成后核对本集台词跟 StoryGraph
+    # 关系状态是否矛盾,但 task_service/run_task 侧拿不到 StoryGraph 对象——同 episode_plan
+    # 的做法,把它需要的那一小份(relationships + characters 的 name/aliases)也塞进
+    # config_json,零建表、零迁移。全季共用同一份,每集都塞一份(JSONB,代价可忽略)。
+    story_relationships = [r.model_dump() for r in story.relationships]
+    story_characters = [
+        {"char_id": c.char_id, "name": c.name, "aliases": c.aliases} for c in story.characters
+    ]
+
     episodes: list[dict[str, Any]] = []
     for ep in plan.episodes:
         brief = episode_brief(ep, story)
@@ -114,7 +123,11 @@ async def dispatch_season(
             series_id,
             topic=brief,
             task_service=task_service,
-            overrides={"episode_plan": ep.model_dump()},
+            overrides={
+                "episode_plan": ep.model_dump(),
+                "story_relationships": story_relationships,
+                "story_characters": story_characters,
+            },
         )
         episodes.append(task)
 

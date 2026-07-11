@@ -9,6 +9,7 @@ from hevi.core.config import settings
 from hevi.cost import (
     HeviCostTracker,
     check_before_run,
+    check_daily_budget,
     estimate_cost,
     monitor_during_run,
 )
@@ -64,10 +65,14 @@ class TaskService:
             num_characters=kwargs.get("num_characters", 1),
         )
 
-        # 2. Check limits (Circuit Breaker)
+        # 2. Check limits (Circuit Breaker) —— 第1层:单任务上限。
         await check_before_run(estimate)
 
-        # 3. Credit Check (SaaS-2): 全本地(cost==0)跳过,含云步才检查余额
+        # 2b. 三层预算熔断第3层(HEVI 路线图 Phase1 #30):全局每日聚合上限,独立于上面的
+        # 单任务上限和下面的用户 credit 余额。daily_budget_usd 未配置(默认 None)时不检查。
+        await check_daily_budget(self.repository.pool, additional_usd=estimate.total_usd)
+
+        # 3. Credit Check (SaaS-2): 全本地(cost==0)跳过,含云步才检查余额 —— 第2层。
         credits_needed = 0
         if self.billing_svc and user_id:
             credits_needed = await self.billing_svc.estimate_credits(
@@ -200,6 +205,8 @@ class TaskService:
             # 角色库(2D 锁定):按 subject_id 解析角色参考图路径,交给 orchestrate 让每个
             # 镜头以其做 i2v 参考 → 视频里始终是同一个人。解析失败不阻断生成。
             character_reference = await self._resolve_character_reference(task)
+            # shot_verdict 版本快照(HEVI 路线图 Phase1):见 _resolve_subject_version。
+            subject_version = await self._resolve_subject_version(task)
 
             async def runner(provider: str) -> dict[str, Any]:
                 # Monitor actual cost before each attempt (if applicable)
@@ -214,6 +221,7 @@ class TaskService:
                     output_dir=Path("output/tasks") / str(task_id),
                     progress_cb=progress_cb,
                     character_reference=character_reference,
+                    subject_version=subject_version,
                     **task["config_json"],
                 )
 
@@ -339,6 +347,15 @@ class TaskService:
                             )
                             if _decision.deliver or not _decision.regenerate_shot_ids:
                                 break
+                            # 诊断分类 taxonomy(HEVI 路线图 §4.3):独立于 auto_rework_done
+                            # 单发一条事件,供按分类统计返工原因分布(见 shot_verdict §6.2)。
+                            log_event(
+                                stage="task_service",
+                                event="editor_regenerate_triggered",
+                                task_id=str(task_id),
+                                shot_ids=_decision.regenerate_shot_ids,
+                                diagnosis=_decision.diagnosis,
+                            )
                             await self.regenerate_task_shots(
                                 task_id,
                                 shot_ids=_decision.regenerate_shot_ids,
@@ -412,6 +429,25 @@ class TaskService:
             logger.warning(f"subject reference resolve failed: {se}")
             return None
 
+    async def _resolve_subject_version(self, task: dict[str, Any]) -> int | None:
+        """shot_verdict 版本快照(HEVI 路线图 Phase1):记生成当时 Subject 是第几版,
+        而不是"当前版本引用"——Subject 改参考图后,历史校验记录不应该跟着失真。
+        失败/无 subject_id 返回 None,不阻断生成。"""
+        _subject_id = task["config_json"].get("subject_id")
+        if not _subject_id:
+            return None
+        try:
+            from hevi.subjects.repository import SubjectRepository
+            from hevi.subjects.subject_service import SubjectService
+
+            _subj = await SubjectService(SubjectRepository(self.repository.pool)).get_subject(
+                _subject_id
+            )
+            return (_subj or {}).get("version")
+        except Exception as se:
+            logger.warning(f"subject reference resolve failed: {se}")
+            return None
+
     async def _persist_shots(self, task_id: uuid.UUID, shots: list[dict[str, Any]]) -> None:
         """C3 落库:逐镜头选优明细 → shot_states。best-effort(已成片,失败仅告警)。"""
         try:
@@ -428,6 +464,23 @@ class TaskService:
                             "consistency_score": shot.get("consistency_score"),
                             "passed": shot.get("passed"),
                             "duration_s": shot.get("duration_s"),
+                            # shot_verdict 扩展(HEVI 路线图 Phase1):见
+                            # hevi/pipeline/result_mapper.py::map_longvideo_result。
+                            # style/vlm 打分尚无实装信号源(#33/#34/#38)时为 None,不是 0。
+                            "style_score": shot.get("style_score"),
+                            "vlm_score": shot.get("vlm_score"),
+                            "vlm_violations": shot.get("vlm_violations"),
+                            "diagnosis_category": shot.get("diagnosis_category"),
+                            "subject_id": shot.get("subject_id"),
+                            "subject_version": shot.get("subject_version"),
+                            "style_pack_id": shot.get("style_pack_id"),
+                            "style_pack_version": shot.get("style_pack_version"),
+                            "model_version": shot.get("model_version"),
+                            "tier0_passed": shot.get("tier0_passed"),
+                            "tier1_passed": shot.get("tier1_passed"),
+                            # 重试次数硬上限(设计文档 §4.3):首次生成落 0,regenerate_task_shots
+                            # 在整片删旧落新前把旧计数读出来揉进 shots 里,这里原样透传。
+                            "retry_count": shot.get("retry_count", 0),
                         },
                     }
                 )
@@ -445,6 +498,12 @@ class TaskService:
 
         闭环下游端:评分卡不及格的镜头 + 失败原因 hints → 这里定向重烧,不必整片重跑。
         需该 task 已跑过一次(output_dir 有 per-shot 边车)。重刷 shot_states(删旧落新)。
+
+        重试次数硬上限(设计文档 §4.3):retry_count 钉在每个镜头的 selection_json 里,
+        整片删旧落新时按 shot_index 读旧值带过去,不会因为重刷就清零。已到
+        settings.shot_retry_max 的镜头会被剔出本轮请求(不再空耗算力);剔完后
+        shot_ids 为空则直接报错——调用方(run_task 的自动返工循环 / regenerate API)
+        据此走降级交付,不是无限重试。
         """
         task = await self.repository.get_task(task_id)
         if not task:
@@ -452,7 +511,23 @@ class TaskService:
         if not shot_ids:
             raise ValueError("shot_ids must not be empty")
 
+        existing_shots = await self.repository.get_shots(task_id)
+        retry_by_index: dict[int, int] = {
+            s["shot_index"]: int((s.get("selection_json") or {}).get("retry_count") or 0)
+            for s in existing_shots
+        }
+        retry_max = settings.shot_retry_max
+        capped = [idx for idx in shot_ids if retry_by_index.get(idx, 0) >= retry_max]
+        shot_ids = [idx for idx in shot_ids if idx not in capped]
+        if capped:
+            logger.warning(
+                f"task {task_id}: shots {capped} already at retry cap ({retry_max}), skipping"
+            )
+        if not shot_ids:
+            raise ValueError(f"all requested shots already at retry cap ({retry_max}): {capped}")
+
         character_reference = await self._resolve_character_reference(task)
+        subject_version = await self._resolve_subject_version(task)
         result = await orchestrate_longvideo(
             topic=task["topic"],
             duration_archetype=task["duration_archetype"],
@@ -460,10 +535,17 @@ class TaskService:
             audio_provider=task["audio_provider"],
             output_dir=Path("output/tasks") / str(task_id),
             character_reference=character_reference,
+            subject_version=subject_version,
             regenerate_shot_ids=shot_ids,
             shot_hints=hints or {},
             **task["config_json"],
         )
+
+        # 重生成的镜头 retry_count +1,其余(本轮没点名的)沿用旧值,不是清零重记。
+        for shot in result.get("shots", []):
+            idx = shot.get("index")
+            old = retry_by_index.get(idx, 0)
+            shot["retry_count"] = old + 1 if idx in shot_ids else old
 
         # 重刷 shot_states:regenerate 的 result.shots 覆盖全部镜头 → 删旧落新。
         try:

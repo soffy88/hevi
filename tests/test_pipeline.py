@@ -188,6 +188,54 @@ def test_result_mapper_exposes_shot_records():
     assert s0["index"] == 0 and s0["variant_chosen"] == 1
     assert s0["consistency_score"] == 0.94
     assert isinstance(s0["path"], str)  # mode="json" → 可直接落 JSONB
+    # shot_verdict 扩展(Phase1):没传 scorecards/subject/stylepack → 全部 None,不是 0/假数据。
+    assert s0["style_score"] is None
+    assert s0["vlm_score"] is None
+    assert s0["diagnosis_category"] is None
+    assert s0["subject_id"] is None
+    assert s0["style_pack_id"] is None
+    assert s0["tier1_passed"] is None
+    assert s0["model_version"] == "wan_local"  # 暂用 provider 名做代理
+
+
+def test_result_mapper_merges_scorecard_and_version_snapshot():
+    """shot_verdict 扩展(Phase1):scorecards(按 index) + subject/stylepack 版本快照
+    要正确合并进每个 shot,且身份不符的镜头要能推出粗粒度诊断分类。"""
+    from omodul.agentic_longvideo_pipeline import LongVideoResult, ShotRecord
+
+    from hevi.verdict.scorecard import Scorecard
+
+    r = LongVideoResult(
+        video_path=Path("output/v.mp4"),
+        duration_s=5.0,
+        chapters=1,
+        shots_generated=1,
+        provider_used={"video": "wan_local", "audio": "vibevoice"},
+        shots=[
+            ShotRecord(
+                index=0, path=Path("s0_v0.mp4"), provider="wan_local", consistency_score=0.1
+            ),
+        ],
+    )
+    scorecards = {
+        0: Scorecard(best_frame=Path("s0_v0.mp4"), best_index=0, passed=False, identity_score=0.1)
+    }
+    mapped = map_longvideo_result(
+        r,
+        scorecards=scorecards,
+        subject_id="sub-1",
+        subject_version=3,
+        style_pack_id="pack-1",
+        style_pack_version=2,
+        tier0_passed=True,
+    )
+    s0 = mapped["shots"][0]
+    assert s0["diagnosis_category"] == "参考图角色错配"
+    assert s0["subject_id"] == "sub-1"
+    assert s0["subject_version"] == 3
+    assert s0["style_pack_id"] == "pack-1"
+    assert s0["style_pack_version"] == 2
+    assert s0["tier0_passed"] is True
 
 
 @pytest.mark.asyncio
@@ -309,15 +357,15 @@ async def test_orchestrate_attaches_quality_report(mock_lv_result):
         violations=["时长 3.00s 偏离预期"],
         consistency=0.72,
         stats=SimpleNamespace(duration=3.0, width=832, height=480, fps=16, has_audio=True),
+        loudness_lufs=-20.0,
+        subtitle_alignment_rate=0.9,
     )
     with (
         patch(
             "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
         ) as mp,
-        patch(
-            "hevi.video.quality_check.quality_report", new_callable=AsyncMock
-        ) as mq,
+        patch("hevi.video.quality_check.quality_report", new_callable=AsyncMock) as mq,
     ):
         mp.return_value = mock_lv_result
         mq.return_value = fake_rep
@@ -330,3 +378,6 @@ async def test_orchestrate_attaches_quality_report(mock_lv_result):
     assert res["quality"]["passed"] is False
     assert res["quality"]["violations"] == ["时长 3.00s 偏离预期"]
     assert res["quality"]["consistency"] == 0.72
+    # Tier0 补全(HEVI 路线图 Phase1):响度/字幕对齐率也透出到 result["quality"]。
+    assert res["quality"]["loudness_lufs"] == -20.0
+    assert res["quality"]["subtitle_alignment_rate"] == 0.9

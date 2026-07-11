@@ -48,6 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from hevi.credits.repository import CreditRepository
     from hevi.db.pg_pool import get_hevi_pg_pool
     from hevi.queue.worker import QueueWorker
+    from hevi.resilience.balance_prober import BalanceProber
     from hevi.tasks.repository import TaskRepository
     from hevi.tasks.task_service import TaskService
 
@@ -58,12 +59,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     worker = QueueWorker(svc, poll_interval=5.0)
     worker_task = asyncio.create_task(worker.run())
 
+    # 余额探针(HEVI 路线图 Phase1 #30):此前 refresh_fal_balance 写了但从没被调度过。
+    prober = BalanceProber(poll_interval=3600.0)
+    prober_task = asyncio.create_task(prober.run())
+
     yield
 
     worker.stop()
     worker_task.cancel()
     with suppress(asyncio.CancelledError):
         await worker_task
+
+    prober.stop()
+    prober_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await prober_task
 
 
 app = FastAPI(

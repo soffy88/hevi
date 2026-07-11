@@ -77,6 +77,13 @@ class ReferenceOrderRequest(BaseModel):
     reference_images: list[str]
 
 
+class ReferenceRoleRequest(BaseModel):
+    """给某张参考图打正交角色标签(设计文档 §5.2),如 identity_anchor / composition_ref。"""
+
+    path: str
+    role: str
+
+
 async def get_pg_pool() -> PgPool:
     return await get_hevi_pg_pool()
 
@@ -192,6 +199,28 @@ async def reorder_subject_references(
         raise HTTPException(status_code=404, detail="Subject not found")
     _check_owner(subject, user)
     updated = await svc.update_references(subject_id, reference_images=body.reference_images)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    return _serialize_subject(updated)
+
+
+@router.put("/{subject_id}/reference-role")
+async def set_subject_reference_role(
+    subject_id: str,
+    body: ReferenceRoleRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[SubjectService, Depends(get_subject_service)],
+) -> dict[str, Any]:
+    """给某张参考图打正交角色标签(设计文档 §5.2)——跟 kind 无关的另一个维度:同一张图
+    可能是身份锚点(identity_anchor),也可能只是构图/氛围参考(composition_ref)。"""
+    subject = await svc.get_subject(subject_id)
+    if subject is None:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    _check_owner(subject, user)
+    try:
+        updated = await svc.set_reference_role(subject_id, path=body.path, role=body.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     if updated is None:
         raise HTTPException(status_code=404, detail="Subject not found")
     return _serialize_subject(updated)

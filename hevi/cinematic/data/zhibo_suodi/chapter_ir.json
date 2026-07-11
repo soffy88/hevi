@@ -1,0 +1,139 @@
+{
+  "meta": {
+    "source": "资治通鉴·周纪一",
+    "year_range": [
+      -453,
+      -453
+    ],
+    "char_count": 101
+  },
+  "characters": [
+    {
+      "character_id": "zhibo",
+      "canonical_name": "智伯",
+      "aliases": [
+        "智襄子",
+        "智瑶"
+      ],
+      "role_in_chapter": "antagonist",
+      "faction": "智氏",
+      "fate": "后为韩赵魏三家所灭",
+      "source_spans": [
+        [
+          0,
+          5
+        ]
+      ]
+    },
+    {
+      "character_id": "hankangzi",
+      "canonical_name": "韩康子",
+      "aliases": [
+        "韩虎"
+      ],
+      "role_in_chapter": "supporting",
+      "faction": "韩氏",
+      "fate": "",
+      "source_spans": [
+        [
+          6,
+          10
+        ]
+      ]
+    },
+    {
+      "character_id": "duangui",
+      "canonical_name": "段规",
+      "aliases": [],
+      "role_in_chapter": "supporting",
+      "faction": "韩氏",
+      "fate": "",
+      "source_spans": [
+        [
+          13,
+          15
+        ]
+      ]
+    }
+  ],
+  "events": [
+    {
+      "event_id": "E001",
+      "summary": "智伯向韩康子索要土地,韩康子不欲给予",
+      "actors": [
+        "zhibo",
+        "hankangzi"
+      ],
+      "location": "韩氏封地",
+      "year": -453,
+      "causes": [],
+      "effects": [
+        "E002"
+      ],
+      "dramatic_weight": 3,
+      "source_span": [
+        0,
+        12
+      ]
+    },
+    {
+      "event_id": "E002",
+      "summary": "段规向韩康子进言:智伯贪利刚愎,不如暂且给地以骄智伯,待其树敌自毙",
+      "actors": [
+        "duangui",
+        "hankangzi"
+      ],
+      "location": "韩氏封地",
+      "year": -453,
+      "causes": [
+        "E001"
+      ],
+      "effects": [
+        "E003"
+      ],
+      "dramatic_weight": 5,
+      "source_span": [
+        12,
+        70
+      ]
+    },
+    {
+      "event_id": "E003",
+      "summary": "韩康子采纳段规建议,遣使献万家之邑于智伯,智伯大悦",
+      "actors": [
+        "hankangzi",
+        "zhibo"
+      ],
+      "location": "韩氏封地",
+      "year": -453,
+      "causes": [
+        "E002"
+      ],
+      "effects": [],
+      "dramatic_weight": 3,
+      "source_span": [
+        70,
+        90
+      ]
+    }
+  ],
+  "quotes": [
+    {
+      "quote_id": "Q001",
+      "speaker": "duangui",
+      "original": "智伯好利而愎，不與，將伐我；不如與之。彼狃於得地，必請於他人；他人不與，必向之以兵。然則我得免於患而待事之變矣。",
+      "modern": "智伯贪利又刚愎,不给他,他必定兴兵伐我;不如给他。他每每得手,必又向别人索求;别人不给,他自会兴兵。如此我们才能免于祸患,静待时变。",
+      "event_id": "E002",
+      "emotion": "沉稳献策"
+    },
+    {
+      "quote_id": "Q002",
+      "speaker": "hankangzi",
+      "original": "善。",
+      "modern": "好。",
+      "event_id": "E003",
+      "emotion": "决断"
+    }
+  ],
+  "locations": []
+}

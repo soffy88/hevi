@@ -157,6 +157,46 @@ html, body {
 .hevi-side-title { font-size: var(--text-sm); font-weight: 700; color: var(--foreground); }
 .hevi-side-empty { padding: 24px; text-align: center; color: var(--muted-foreground); font-size: var(--text-sm); }
 
+/* ── 节点属性面板(选中 video 节点时浮现)── */
+.hevi-inspector {
+  position: absolute;
+  top: 60px; right: 16px;
+  width: 240px;
+  padding: var(--space-3, 12px);
+  border-radius: var(--radius, 0.5rem);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.hevi-inspector__title {
+  font-size: var(--text-sm); font-weight: 700; color: var(--foreground);
+}
+.hevi-inspector__label {
+  font-size: var(--text-xs, 0.6875rem); color: var(--muted-foreground);
+}
+.hevi-inspector__textarea {
+  width: 100%; resize: vertical;
+  border: 1px solid var(--border); border-radius: var(--radius, 0.5rem);
+  padding: 6px 8px; font-size: var(--text-sm); background: var(--background);
+  color: var(--foreground);
+}
+.hevi-inspector__upload-btn { display: inline-flex; justify-content: center; cursor: pointer; }
+.hevi-inspector__upload-btn[data-disabled] { opacity: 0.6; pointer-events: none; }
+.hevi-inspector__ref-set {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: var(--text-sm);
+}
+.hevi-inspector__ref-path {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--foreground);
+}
+.hevi-inspector__ref-clear {
+  border: none; background: none; color: var(--destructive); cursor: pointer;
+  font-size: var(--text-xs, 0.6875rem);
+}
+
 /* ── 画布顶栏 ── */
 .hevi-canvas__topbar {
   position: absolute; top: 12px; left: 12px; z-index: 5;
@@ -737,8 +777,11 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 
 /* 输入字段 */
 .tj-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.tj-field--check { flex-direction: row; align-items: flex-start; gap: 8px; }
+.tj-field--check input { width: auto; margin-top: 2px; flex: none; }
+.tj-field--check .tj-field__label { flex: 1; min-width: 0; }
 .tj-field__label { font-size: var(--text-xs); color: var(--muted-foreground); font-weight: 600; }
-.tj-field input, .tj-field textarea {
+.tj-field input:not([type="checkbox"]), .tj-field textarea {
   padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
   background: var(--card); color: var(--foreground); font-size: var(--text-sm);
   width: 100%; transition: border-color 0.15s; }
@@ -812,8 +855,41 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .tj-result--fail { background: color-mix(in oklch, var(--destructive, #d33) 8%, var(--card));
   border-color: color-mix(in oklch, var(--destructive, #d33) 20%, transparent); }
 .tj-result__head { font-weight: 700; margin-bottom: 6px; }
+.tj-result__video { width: 100%; max-height: 60vh; margin: 8px 0; border-radius: 8px;
+  background: #000; display: block; }
+.tj-result__actions { display: flex; gap: 8px; margin: 8px 0; }
 .tj-result__path { font-family: var(--font-mono, monospace); font-size: var(--text-xs);
   color: var(--muted-foreground); word-break: break-all; }
+
+/* 剧本人工审核台 */
+.tj-review { margin-top: 16px; padding: 14px 16px; border-radius: 10px;
+  background: color-mix(in oklch, oklch(0.70 0.14 55) 8%, var(--card));
+  border: 1px solid color-mix(in oklch, oklch(0.70 0.14 55) 28%, transparent); }
+.tj-review__head { font-weight: 700; margin-bottom: 4px; }
+.tj-review__stat { font-size: var(--text-xs); color: var(--muted-foreground); margin-bottom: 10px; }
+.tj-review__note { font-size: var(--text-xs); color: oklch(0.62 0.16 155); margin-top: 6px; }
+.tj-rev-table { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.tj-rev-row { padding: 8px; border-radius: 8px; border: 1px solid var(--border, #333);
+  background: color-mix(in oklch, var(--card) 60%, transparent); }
+.tj-rev-row--dialogue { border-left: 3px solid oklch(0.65 0.18 25); }
+.tj-rev-row--commentary { border-left: 3px solid oklch(0.65 0.14 275); }
+.tj-rev-row--narration { border-left: 3px solid color-mix(in oklch, var(--muted-foreground) 50%, transparent); }
+.tj-rev-row__meta { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+.tj-rev-row__n { font-size: var(--text-xs); color: var(--muted-foreground); min-width: 20px; }
+.tj-rev-row__sp { flex: 1; }
+.tj-rev-row__spk { width: 110px; }
+.tj-rev-row__emo { width: 80px; }
+.tj-rev-row__meta select, .tj-rev-row__meta input { padding: 3px 6px; font-size: var(--text-xs);
+  border-radius: 6px; border: 1px solid var(--border, #333); background: var(--background); color: inherit; }
+.tj-rev-row__meta button { padding: 2px 7px; border-radius: 6px; border: 1px solid var(--border, #333);
+  background: transparent; color: inherit; cursor: pointer; font-size: var(--text-xs); }
+.tj-rev-row__del:hover { border-color: var(--destructive, #d33); }
+.tj-rev-row textarea { width: 100%; padding: 6px 8px; border-radius: 6px; font-size: var(--text-sm);
+  border: 1px solid var(--border, #333); background: var(--background); color: inherit; resize: vertical; }
+.tj-rev-add { margin: 4px 0 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px dashed var(--border, #444); background: transparent; color: var(--muted-foreground); }
+.tj-review__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.oui-btn--primary { background: oklch(0.62 0.16 155); color: #fff; border-color: transparent; }
 
 /* ── 自媒体解说短视频控制台(hevi.explainer)── 同 .tj- 结构,换个色系区分产品线 */
 .hevi-explainer-page { min-height: calc(100vh - 56px); background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklch, oklch(0.35 0.08 80) 30%, transparent), transparent); }
@@ -976,3 +1052,8 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .hevi-sb__shot-status { color: var(--muted-foreground); }
 .hevi-sb__shot-score { color: var(--foreground); }
 .hevi-sb__shot-diag { color: #dc2626; }
+.hevi-sb__shot-check { margin: 0; cursor: pointer; }
+.hevi-sb__shot-actions { display: flex; align-items: center; gap: 10px; flex: 1 1 100%; }
+.hevi-sb__regen-btn { font-size: var(--text-xs); padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--background); cursor: pointer; }
+.hevi-sb__regen-btn:disabled { opacity: 0.5; cursor: not-allowed; }

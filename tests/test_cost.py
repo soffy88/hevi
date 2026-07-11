@@ -10,8 +10,12 @@ from hevi.cost import (
     CostLimitExceeded,
     HeviCostTracker,
     check_before_run,
+    check_daily_budget,
+    check_series_budget,
     estimate_cost,
     get_pricing_table,
+    get_series_spend_usd,
+    get_todays_spend_usd,
     monitor_during_run,
     select_cheapest_provider,
 )
@@ -68,6 +72,103 @@ async def test_circuit_breaker_before_run():
 async def test_circuit_breaker_during_run():
     with pytest.raises(CostLimitExceeded):
         await monitor_during_run(60.0, limit=CostLimit(max_per_task_usd=50.0))
+
+
+# 三层预算熔断第3层(HEVI 路线图 Phase1 #30):全局每日聚合上限。
+
+
+@pytest.mark.asyncio
+async def test_get_todays_spend_usd_sums_actual_cost():
+    pool = MagicMock()
+    with patch(
+        "obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 12.5}]
+    ) as mock_query:
+        total = await get_todays_spend_usd(pool)
+    assert total == 12.5
+    mock_query.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_check_daily_budget_noop_when_unconfigured():
+    pool = MagicMock()
+    with patch("obase.persistence.query", new_callable=AsyncMock) as mock_query:
+        await check_daily_budget(pool, additional_usd=999.0, daily_budget_usd=None)
+    mock_query.assert_not_awaited()  # 未配置 → 连查都不查,不是查了但放行
+
+
+@pytest.mark.asyncio
+async def test_check_daily_budget_raises_when_exceeded():
+    pool = MagicMock()
+    with patch("obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 18.0}]):
+        with pytest.raises(CostLimitExceeded):
+            await check_daily_budget(pool, additional_usd=5.0, daily_budget_usd=20.0)
+
+
+@pytest.mark.asyncio
+async def test_check_daily_budget_passes_within_limit():
+    pool = MagicMock()
+    with patch("obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 5.0}]):
+        await check_daily_budget(pool, additional_usd=5.0, daily_budget_usd=20.0)  # 不抛
+
+
+@pytest.mark.asyncio
+async def test_task_service_create_task_respects_daily_budget():
+    repo = AsyncMock()
+    service = TaskService(repo)
+    with (
+        patch.object(settings, "daily_budget_usd", 5.0),
+        patch("obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 4.0}]),
+    ):
+        with pytest.raises(CostLimitExceeded):
+            await service.create_task(
+                topic="t",
+                duration_archetype="1-5min",  # 180s * 0.04 = $7.2,4+7.2 > 5.0
+                video_provider="ltx2_cloud",
+                audio_provider="vibevoice",
+            )
+
+
+# SPEC-001 §6:季级预算熔断(独立于全局日预算,按 series_id 聚合)。
+
+
+@pytest.mark.asyncio
+async def test_get_series_spend_usd_sums_actual_cost():
+    pool = MagicMock()
+    with patch(
+        "obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 8.0}]
+    ) as mock_query:
+        total = await get_series_spend_usd(pool, series_id="series-1")
+    assert total == 8.0
+    mock_query.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_check_series_budget_noop_when_unconfigured():
+    pool = MagicMock()
+    with patch("obase.persistence.query", new_callable=AsyncMock) as mock_query:
+        await check_series_budget(
+            pool, series_id="series-1", additional_usd=999.0, series_budget_usd=None
+        )
+    mock_query.assert_not_awaited()  # 该季没配预算 → 连查都不查
+
+
+@pytest.mark.asyncio
+async def test_check_series_budget_raises_when_exceeded():
+    pool = MagicMock()
+    with patch("obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 18.0}]):
+        with pytest.raises(CostLimitExceeded):
+            await check_series_budget(
+                pool, series_id="series-1", additional_usd=5.0, series_budget_usd=20.0
+            )
+
+
+@pytest.mark.asyncio
+async def test_check_series_budget_passes_within_limit():
+    pool = MagicMock()
+    with patch("obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 5.0}]):
+        await check_series_budget(
+            pool, series_id="series-1", additional_usd=5.0, series_budget_usd=20.0
+        )  # 不抛
 
 
 @pytest.mark.asyncio
@@ -306,6 +407,84 @@ async def test_route_raises_when_none_routable():
         live_state._reset_for_tests()
 
 
+# ── lip-sync 作为可路由能力(HEVI 路线图 Phase3 #42)──────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_route_require_lip_sync_narrows_to_native_providers():
+    """require_lip_sync=True → 只剩能力矩阵里标了 lip_sync=True 的 provider(现在
+    只有 veo3——hevi 里没有 lip-sync 后处理实现,不该假装能路由到别的)。"""
+    from unittest.mock import patch as _patch
+
+    from hevi.cost import router as R
+    from hevi.resilience import live_state
+
+    live_state._reset_for_tests()
+    try:
+        cap = {}
+
+        async def fake_cheapest(**kw):
+            cap["candidates"] = kw["candidates"]
+            return kw["candidates"][0]
+
+        with _patch("hevi.cost.router.select_cheapest_provider", fake_cheapest):
+            chosen = await R.route_video_provider(
+                duration_archetype="short",
+                audio_provider="vibevoice",
+                mode="t2v",
+                require_lip_sync=True,
+            )
+        assert cap["candidates"] == ["veo3"]
+        assert chosen == "veo3"
+    finally:
+        live_state._reset_for_tests()
+
+
+@pytest.mark.asyncio
+async def test_route_require_lip_sync_raises_when_native_provider_unroutable():
+    from hevi.cost import router as R
+    from hevi.resilience import live_state
+
+    live_state._reset_for_tests()
+    try:
+        for _ in range(live_state._WINDOW):
+            live_state.record_provider_outcome("veo3", is_403=True)
+        with pytest.raises(ValueError, match="lip_sync"):
+            await R.route_video_provider(
+                duration_archetype="short",
+                audio_provider="vibevoice",
+                mode="t2v",
+                require_lip_sync=True,
+            )
+    finally:
+        live_state._reset_for_tests()
+
+
+@pytest.mark.asyncio
+async def test_route_without_require_lip_sync_unaffected():
+    """不要求 lip_sync 时行为完全不变(向后兼容)。"""
+    from unittest.mock import patch as _patch
+
+    from hevi.cost import router as R
+    from hevi.resilience import live_state
+
+    live_state._reset_for_tests()
+    try:
+        cap = {}
+
+        async def fake_cheapest(**kw):
+            cap["candidates"] = kw["candidates"]
+            return kw["candidates"][0]
+
+        with _patch("hevi.cost.router.select_cheapest_provider", fake_cheapest):
+            await R.route_video_provider(
+                duration_archetype="short", audio_provider="vibevoice", mode="t2v"
+            )
+        assert "wan_local" in cap["candidates"]  # 没被 lip_sync 过滤掉
+    finally:
+        live_state._reset_for_tests()
+
+
 def test_shot_router_classify_quality_floor():
     """route v2:镜头 prompt → 质量下限。空镜降档(可用免费本地),主角特写抬档(只上云)。"""
     from hevi.cost.shot_router import classify_shot_quality_floor
@@ -347,3 +526,25 @@ async def test_shot_router_propagates_floor_to_route():
         )
         assert seen["quality_floor"] == 10
         assert seen["mode"] == "i2v"
+
+
+@pytest.mark.asyncio
+async def test_shot_router_propagates_require_lip_sync():
+    from unittest.mock import patch as _patch
+
+    from hevi.cost import shot_router as SR
+
+    seen: dict[str, Any] = {}
+
+    async def fake_route(**kw):
+        seen.update(kw)
+        return "veo3"
+
+    with _patch("hevi.cost.shot_router.route_video_provider", fake_route):
+        await SR.route_shot_provider(
+            prompt="主角对白特写",
+            duration_archetype="short",
+            audio_provider="vibevoice",
+            require_lip_sync=True,
+        )
+    assert seen["require_lip_sync"] is True

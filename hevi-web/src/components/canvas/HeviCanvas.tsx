@@ -22,6 +22,7 @@ import { AssetLibrary } from '../panels/AssetLibrary';
 import { validateEdge, NODE_META } from '@/lib/canvas-rules';
 import { canvasApi, USE_MOCK } from '@/lib/api-client';
 import type { NodeType } from '@/types/api';
+import { NodeInspector } from './NodeInspector';
 
 const nodeTypes = { hevi: HeviNode };
 let idCounter = 0;
@@ -36,8 +37,23 @@ function CanvasInner() {
   const [panel, setPanel] = useState<SidePanel>('subjects');
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
   const [executing, setExecuting] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2400); };
+
+  const onNodeClick = useCallback((_e: React.MouseEvent, node: Node) => {
+    setSelectedNodeId(node.id);
+  }, []);
+
+  const onPaneClick = useCallback(() => setSelectedNodeId(null), []);
+
+  const updateNodeConfig = useCallback((nodeId: string, patch: Record<string, unknown>) => {
+    setNodes(ns => ns.map(n => n.id === nodeId
+      ? { ...n, data: { ...n.data, config: { ...n.data.config, ...patch } } }
+      : n));
+  }, [setNodes]);
+
+  const selectedNode = nodes.find(n => n.id === selectedNodeId) ?? null;
 
   const onConnect = useCallback((conn: Connection) => {
     const f = nodes.find(n => n.id === conn.source);
@@ -91,9 +107,14 @@ function CanvasInner() {
   const onSave = async () => {
     if (USE_MOCK) { flash('画布已保存(mock)'); return; }
     try {
+      // 字段名必须匹配后端 oprim.CanvasNode/CanvasEdge(config/edge_id/from_node_id/
+      // to_node_id),否则执行阶段的 model_validate 会静默丢配置或直接报错缺字段。
       await canvasApi.save({ name: '未命名画布',
-        nodes: nodes.map(n => ({ node_id: n.id, node_type: n.data.nodeType, inputs: {}, upstream_ids: [] })),
-        edges: edges.map(e => ({ from_id: e.source, to_id: e.target })) });
+        nodes: nodes.map(n => ({
+          node_id: n.id, node_type: n.data.nodeType,
+          config: n.data.config ?? {}, upstream_ids: [],
+        })),
+        edges: edges.map(e => ({ edge_id: e.id, from_node_id: e.source, to_node_id: e.target })) });
       flash('画布已保存');
     } catch { flash('保存失败'); }
   };
@@ -136,6 +157,7 @@ function CanvasInner() {
           nodes={nodes} edges={edges}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
           onConnect={onConnect} onNodeContextMenu={onNodeContextMenu}
+          onNodeClick={onNodeClick} onPaneClick={onPaneClick}
           nodeTypes={nodeTypes} fitView
           proOptions={{ hideAttribution: true }}>
           <Background gap={16} size={1} />
@@ -145,6 +167,13 @@ function CanvasInner() {
 
         {toast && <div className="hevi-canvas__toast" role="alert">{toast}</div>}
         <NodeContextMenu menu={ctxMenu} onAction={onCtxAction} onClose={() => setCtxMenu(null)} />
+        {selectedNode && (
+          <NodeInspector
+            node={selectedNode}
+            onChange={(patch) => updateNodeConfig(selectedNode.id, patch)}
+            onError={flash}
+          />
+        )}
       </div>
 
       <div className="hevi-sidebar">

@@ -114,6 +114,24 @@ async def orchestrate_longvideo(
     # None/空 = 正常整片生成。需该 task 已跑过一次(output_dir 有 per-shot 边车)。
     regenerate_shot_ids: list[int] | None = None,
     shot_hints: dict[int, str] | None = None,
+    # shot_verdict 版本快照(HEVI 路线图 Phase1):调用方(task_service)在跑之前解析出
+    # 当前 subject/stylepack 的 id+version,这里只透传给 map_longvideo_result 做快照写入,
+    # 不参与生成本身——必须为显式参数,否则会落入 **kwargs → LongVideoConfig 报错。
+    subject_id: str | None = None,
+    subject_version: int | None = None,
+    style_pack_id: str | None = None,
+    style_pack_version: int | None = None,
+    # 非完美事件库(HEVI 路线图 Phase3 #38):verité/真实感类预设专用,opt-in(默认关,
+    # 不改变现有行为)。开启后逐镜头插一个不重复的非完美感描述,全片(这一次调用)
+    # 范围内不重复;库存量有限,用完就不再插,不强行重复凑数。
+    imperfection_events: bool = False,
+    # SPEC-001 §5:跨集角色关系一致性守护(Tier0)。short 剧通道的 dispatch_season 把这三样
+    # 塞进 config_json(hevi/season_planner/dispatch.py)——task_service 侧拿不到 StoryGraph
+    # 对象,只能这样把它需要的一小份数据带过来。为显式参数,否则会落入 **kwargs →
+    # LongVideoConfig 报错(同上面 character_reference 等参数的既有惯例)。
+    story_relationships: list[dict[str, Any]] | None = None,
+    story_characters: list[dict[str, Any]] | None = None,
+    episode_plan: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Orchestrate long video generation using omodul agentic pipeline.
@@ -461,12 +479,30 @@ async def orchestrate_longvideo(
             try:
                 caller = ProviderRegistry.get().generic("video", _prov)
 
+                # 角色库锁定优先:选定角色时,**每个镜头**都以角色参考图做 i2v →
+                # 视频里始终是同一个人(治跨镜头身份漂移)。角色参考覆盖 omodul 的逐镜头
+                # "上一帧"参考。仅当参考图文件存在时启用,避免把不存在的路径传给 provider。
+                # 提到 prompt 工程之前算,因为下面的身份锁定句注入需要知道是否锁了角色。
+                _char_ref = None
+                if character_reference:
+                    _cr = Path(character_reference)
+                    if _cr.exists():
+                        _char_ref = _cr
+
                 # RFC-001 P1-3: omodul's per-shot LLM prompt otherwise bypasses all
                 # hevi prompt engineering. Re-apply provider adaptation + style here
                 # so every shot gets the provider suffix and a consistent look.
+                from hevi.video.provider_config import FAL_PREMIUM_PROVIDERS
+
+                # 生成前 lint(HEVI 路线图 §4.2,#28):这个 provider 会不会实际消费
+                # negative_prompt——和下面下发负向的判定条件保持同一套,不该对本来就
+                # 不支持负向的 provider(如 ltx2_cloud 基础版)误报"负向词块为空"。
+                _negative_expected = _is_local_video or video_provider in FAL_PREMIUM_PROVIDERS
                 try:
                     from hevi.prompt.prompt_pipeline import (
                         engineer_prompt_pair_from_preset,
+                        ensure_identity_lock_sentence,
+                        lint_engineered_prompt,
                     )
 
                     prompt, _neg = await engineer_prompt_pair_from_preset(
@@ -481,12 +517,22 @@ async def orchestrate_longvideo(
                         # 角色专属负向(如"避免多指")并入预设负向,同一条合并逻辑。
                         negative_prompt=extra_negative or "",
                     )
+                    # 身份锁定句(seedance-prompt 方法论的直接应用):角色锁定的镜头
+                    # prompt 里显式加一句"全程保持一致的身份/服装/发型/外貌"。
+                    if _char_ref is not None:
+                        prompt = ensure_identity_lock_sentence(prompt)
+                    # 非完美事件库(HEVI 路线图 Phase3 #38):verité/真实感类预设专用,
+                    # opt-in。库存量有限,用完(pick 返回 None)就不再插,不强行重复。
+                    if imperfection_events:
+                        from hevi.style.imperfection_library import pick_imperfection_event
+
+                        _event = pick_imperfection_event(used=_used_imperfections)
+                        if _event:
+                            prompt = f"{prompt}, {_event}"
                     # RFC-002 item 8 + SaaS-4:负向逐镜头下发 —— 本地 provider 与高写实
                     # 云 provider(Veo3/Kling v2/海螺,均原生支持 negative_prompt)。
                     # ltx2_cloud 基础版 API 不收负向,故不下发(避免报错)。
-                    from hevi.video.provider_config import FAL_PREMIUM_PROVIDERS
-
-                    if _neg and (_is_local_video or video_provider in FAL_PREMIUM_PROVIDERS):
+                    if _neg and _negative_expected:
                         kw.setdefault("negative_prompt", _neg)
                     # 高写实云 provider 支持朝向:按成片规格给 aspect_ratio(9:16/16:9/1:1)。
                     if video_provider in FAL_PREMIUM_PROVIDERS:
@@ -496,17 +542,20 @@ async def orchestrate_longvideo(
                             else ("16:9" if _target_w > _target_h else "1:1")
                         )
                         kw.setdefault("aspect_ratio", _ar)
+
+                    _lint_violations = lint_engineered_prompt(
+                        prompt,
+                        negative_prompt=kw.get("negative_prompt", ""),
+                        character_locked=_char_ref is not None,
+                        negative_expected=_negative_expected,
+                    )
+                    if _lint_violations:
+                        logger.warning(
+                            "prompt lint(shot=%s): %s", outp.name, "; ".join(_lint_violations)
+                        )
                 except Exception as pe:  # never fail a shot over prompt polishing
                     logger.warning(f"per-shot prompt engineering skipped: {pe}")
 
-                # 角色库锁定优先:选定角色时,**每个镜头**都以角色参考图做 i2v →
-                # 视频里始终是同一个人(治跨镜头身份漂移)。角色参考覆盖 omodul 的逐镜头
-                # "上一帧"参考。仅当参考图文件存在时启用,避免把不存在的路径传给 provider。
-                _char_ref = None
-                if character_reference:
-                    _cr = Path(character_reference)
-                    if _cr.exists():
-                        _char_ref = _cr
                 if _char_ref is not None:
                     kw["reference_image"] = _char_ref
                     kw.setdefault("mode", "i2v")
@@ -696,7 +745,14 @@ async def orchestrate_longvideo(
         # LLM is stored in _llms dict (via register_llm), not _generic — use .llm() not .generic().
         from obase.provider_registry import ProviderRegistry as _PR
 
-        _llm = _PR.get().llm("default")
+        # "default" 在本机通常退化成本地 ollama(hevi/providers/local_qwen_adapter.py:225,
+        # 公共 DashScope 欠费停用后的既定回退),对结构化分镜脚本(script→scenes)不可靠——
+        # 同 tongjian L0-L5 当年撞过的坑(e2e-local-llm-json-blocker)。这里比照 tongjian
+        # 的解法,优先选非欠费的 qwen_cloud(阿里云百炼 workspace 端点);没注册才退回 default。
+        try:
+            _llm = _PR.get().llm("qwen_cloud")
+        except Exception:
+            _llm = _PR.get().llm("default")
 
         _providers: dict[str, Any] = {
             "llm": _llm,
@@ -728,6 +784,11 @@ async def orchestrate_longvideo(
 
         _is_short = duration_archetype == "short"
         _shot_budget = {"left": 1}  # short 跨章节总镜头预算(真·单镜头)
+        # SPEC-001 §5:旁路收集每个 shot_plan 的台词/旁白文本(oskill.ShotPlan.tts_text),
+        # 供生成完成后跑 Tier0 跨集关系一致性守护——consistency_fn 那条管线只拿得到渲染完的
+        # 视频帧(见 hevi/verdict/scorecard.py::check_relationship_consistency 顶部注释),
+        # 台词文本只有在这里(shot_gen_fn 阶段)才有。
+        _dialogue_texts: list[str] = []
 
         async def _counting_shot_gen_fn(*, storyboard: Any, llm: Any) -> Any:
             plans = await _default_shot_generator(storyboard=storyboard, llm=llm)
@@ -738,6 +799,10 @@ async def orchestrate_longvideo(
                 _shot_budget["left"] -= len(plans) if plans else 0
             _shot_stats["total"] += len(plans) if plans else 0
             await _report("规划分镜脚本", 20.0, completed=0, total=_shot_stats["total"] or None)
+            for p in plans or []:
+                text = getattr(p, "tts_text", "") or getattr(p, "image_prompt", "")
+                if text:
+                    _dialogue_texts.append(text)
             return plans
 
         _providers["shot_gen_fn"] = _counting_shot_gen_fn
@@ -760,24 +825,42 @@ async def orchestrate_longvideo(
         # 3O §C4:角色锁定时注入"身份锚评分卡"consistency_fn —— 双变体按"更像锁定角色"
         # 选优(C1 向量真·图对图,补 C2 遗留:mllm 一致性只把 reference 当文本发)。仅非
         # short(short 已真单镜头);参考图向量算失败则不注入,回退 mllm/omodul 默认一致性。
+        # shot_verdict(HEVI 路线图 Phase1):consistency_fn 打完分即被 omodul 丢弃大半信息
+        # (只透传 identity_score),这个字典按 shot index 旁路收集完整 Scorecard,供下面
+        # map_longvideo_result 补全 style_score/vlm_score/诊断分类。
+        _scorecards: dict[int, Any] = {}
+        # 非完美事件库(#38):跟这一次 orchestrate_longvideo 调用同生命周期,不是
+        # 全局/跨视频共享——不同视频各自从空集合开始,"不重复"只在这一部影片范围内。
+        _used_imperfections: set[str] = set()
         if not _is_short and character_reference:
             _cref = Path(character_reference)
             if _cref.exists():
 
-                def _embed_ref() -> list[float] | None:
+                def _embed_ref() -> tuple[list[float] | None, list[float] | None]:
+                    """多区域(HEVI 路线图 Phase2 #34):全图 + 脸部区域裁剪各算一份,
+                    scorecard 打分时两者都比一次取更像的那个(见 scorecard.py::_score_one)。
+                    """
                     from hevi.subjects.subject_embed import SubjectEmbedError, subject_embed
 
+                    whole: list[float] | None = None
+                    face: list[float] | None = None
                     try:
-                        return subject_embed(image_path=_cref, kind="face")
+                        whole = subject_embed(image_path=_cref, kind="style")
                     except SubjectEmbedError as _e:
-                        logger.warning("scorecard: 角色参考图向量失败,回退默认一致性: %s", _e)
-                        return None
+                        logger.warning("scorecard: 角色参考图全图向量失败: %s", _e)
+                    try:
+                        face = subject_embed(image_path=_cref, kind="face")
+                    except SubjectEmbedError as _e:
+                        logger.warning("scorecard: 角色参考图脸部区域向量失败: %s", _e)
+                    return whole, face
 
-                _ref_emb = await asyncio.to_thread(_embed_ref)
-                if _ref_emb:
+                _ref_emb, _ref_emb_face = await asyncio.to_thread(_embed_ref)
+                if _ref_emb or _ref_emb_face:
                     from hevi.verdict import make_scorecard_consistency_fn
 
-                    _providers["consistency_fn"] = make_scorecard_consistency_fn(_ref_emb)
+                    _providers["consistency_fn"] = make_scorecard_consistency_fn(
+                        _ref_emb, subject_ref_embedding_face=_ref_emb_face, capture=_scorecards
+                    )
                     logger.info("consistency_fn: 身份锚评分卡已注入(角色锁定 → 双变体按身份选优)")
 
         # Test-only: merge overrides injected via _PROVIDERS_OVERRIDE module var.
@@ -816,31 +899,77 @@ async def orchestrate_longvideo(
         try:
             from hevi.video.quality_check import quality_report
 
+            # Tier0 字幕对齐率(HEVI 路线图 Phase1):omodul 把烧录字幕写在
+            # output_dir/subtitles.srt(固定文件名约定,LongVideoResult 本身不带这个
+            # 路径字段),存在才传,不存在就跳过这一项(不阻断体检)。
+            _subtitle_path = Path(lv_config.output_dir) / "subtitles.srt"
             rep = await quality_report(
                 result.video_path,
                 expected_resolution=(_target_w, _target_h),
                 require_audio=(audio_provider != "ltx2_native"),
+                subtitle_path=_subtitle_path if _subtitle_path.exists() else None,
             )
             _quality = {
                 "passed": rep.passed,
                 "violations": list(rep.violations),
                 "consistency": rep.consistency,
+                "loudness_lufs": rep.loudness_lufs,
+                "subtitle_alignment_rate": rep.subtitle_alignment_rate,
             }
             logger.info(
-                "quality_report: %.2fs %dx%d fps=%.1f audio=%s consistency=%.2f passed=%s %s",
+                "quality_report: %.2fs %dx%d fps=%.1f audio=%s consistency=%.2f "
+                "loudness=%s subtitle_alignment=%s passed=%s %s",
                 rep.stats.duration,
                 rep.stats.width,
                 rep.stats.height,
                 rep.stats.fps,
                 rep.stats.has_audio,
                 rep.consistency,
+                f"{rep.loudness_lufs:.1f}LUFS" if rep.loudness_lufs is not None else "n/a",
+                f"{rep.subtitle_alignment_rate:.0%}"
+                if rep.subtitle_alignment_rate is not None
+                else "n/a",
                 rep.passed,
                 ("violations=" + "; ".join(rep.violations)) if rep.violations else "",
             )
         except Exception as qe:
             logger.warning(f"quality_report skipped: {qe}")
 
-        mapped = map_longvideo_result(result)
+        # SPEC-001 §5:跨集角色关系一致性守护(Tier0,确定性,无 VLM)。同 quality_report
+        # 一样是整片级检查(没有逐镜头拆分依据),AND 进同一个 `_quality["passed"]`——
+        # 漂移只标记"这集需要人工复核",不会像逐镜头一致性分那样定向触发某个镜头返工
+        # (漂移出在哪句台词、该重生成哪个镜头,现阶段判断不出来)。story_relationships
+        # 为空(没走短剧通道派发,或 StoryGraph 本没抽出关系)时静默跳过,不影响其它调用方。
+        if story_relationships:
+            try:
+                from hevi.storygraph.schemas import StoryCharacter, StoryRelationship
+                from hevi.verdict.scorecard import check_relationship_consistency
+
+                rel_check = check_relationship_consistency(
+                    dialogue_texts=_dialogue_texts,
+                    relationships=[StoryRelationship(**r) for r in story_relationships],
+                    characters=[StoryCharacter(**c) for c in (story_characters or [])],
+                    episode_event_ids=(episode_plan or {}).get("event_ids", []),
+                )
+                if rel_check["drifts"]:
+                    logger.warning("跨集关系一致性守护(Tier0)发现漂移: %s", rel_check["drifts"])
+                if _quality is None:
+                    _quality = {"passed": rel_check["passed"], "violations": []}
+                else:
+                    _quality["passed"] = _quality["passed"] and rel_check["passed"]
+                _quality["relationship_drifts"] = rel_check["drifts"]
+            except Exception as re_:
+                logger.warning(f"check_relationship_consistency skipped: {re_}")
+
+        mapped = map_longvideo_result(
+            result,
+            scorecards=_scorecards,
+            subject_id=subject_id,
+            subject_version=subject_version,
+            style_pack_id=style_pack_id,
+            style_pack_version=style_pack_version,
+            tier0_passed=(_quality.get("passed") if _quality is not None else None),
+        )
         if _quality is not None:
             mapped["quality"] = _quality
         return mapped

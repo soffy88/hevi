@@ -87,6 +87,34 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
             "unit": "per_second",
             "price_usd": 0.0075,
         },
+        # --- WaveSpeed AI(阿里模型聚合网关)--- Source: wavespeed.ai 模型定价页,
+        # 校准于 2026-07。720p 档位价;1080p 档更贵(happyhorse_1_1 $0.189/s,
+        # wan_2_7 $0.15/s)——路由目前只按 720p 单价比较,还没做分辨率感知计费
+        # (同 ltx2_cloud 的 pricing_2d 那套,这两个新 provider 暂沿用简单单价)。
+        "happyhorse_1_1": {  # $0.70 / 5s @720p
+            "unit": "per_second",
+            "price_usd": 0.14,
+        },
+        "wan_2_7": {  # $0.50 / 5s @720p
+            "unit": "per_second",
+            "price_usd": 0.10,
+        },
+        # --- 阿里云百炼直连(alibaba_maas_service.py)--- 阿里官方定价页未核实到逐秒
+        # 单价,沿用 WaveSpeed 转售价当上限估值(直连大概率更便宜,不会更贵)——
+        # 这是"没有精确数据时保守估高"的占位,不是核实过的阿里官方价格,以后拿到
+        # 真实账单再校准。
+        "happyhorse_1_1_maas": {
+            "unit": "per_second",
+            "price_usd": 0.14,
+        },
+        "happyhorse_1_1_maas_lock": {  # 同 happyhorse_1_1_maas,单参考图锁脸窄接口
+            "unit": "per_second",
+            "price_usd": 0.14,
+        },
+        "wan_2_7_maas": {
+            "unit": "per_second",
+            "price_usd": 0.10,
+        },
         # --- audio providers ---
         "edge_tts": {
             "unit": "per_minute",

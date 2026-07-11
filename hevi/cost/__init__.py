@@ -2,6 +2,10 @@ from hevi.cost.circuit_breaker import (
     CostLimit,
     CostLimitExceeded,
     check_before_run,
+    check_daily_budget,
+    check_series_budget,
+    get_series_spend_usd,
+    get_todays_spend_usd,
     monitor_during_run,
 )
 from hevi.cost.estimator import CostEstimate, estimate_cost
@@ -16,8 +20,12 @@ __all__ = [
     "CostLimitExceeded",
     "HeviCostTracker",
     "check_before_run",
+    "check_daily_budget",
+    "check_series_budget",
     "estimate_cost",
     "get_pricing_table",
+    "get_series_spend_usd",
+    "get_todays_spend_usd",
     "monitor_during_run",
     "route_video_provider",
     "select_cheapest_provider",

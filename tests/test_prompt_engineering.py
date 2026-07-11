@@ -6,12 +6,16 @@ import pytest
 
 from hevi.prompt.prompt_pipeline import (
     HEVI_TO_OPRIM_PROVIDER,
+    IDENTITY_LOCK_SENTENCE,
+    ensure_identity_lock_sentence,
     engineer_prompt,
     engineer_prompt_from_preset,
+    lint_engineered_prompt,
 )
 from hevi.prompt.style_presets import STYLE_PRESETS, get_style_preset
 
 # ── 1. engineer_prompt — full chain ──────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_engineer_prompt_full_chain():
@@ -35,9 +39,7 @@ async def test_engineer_prompt_full_chain():
     mock_inj.assert_called_once_with(
         "hello", style="cinematic", lighting="sunset", color_grade=None, camera=None
     )
-    mock_adapt.assert_called_once_with(
-        "styled", provider="ltx2", negative_prompt=""
-    )
+    mock_adapt.assert_called_once_with("styled", provider="ltx2", negative_prompt="")
 
 
 @pytest.mark.asyncio
@@ -57,7 +59,42 @@ async def test_engineer_prompt_inject_result_fed_to_adapt():
     assert mock_adapt.call_args.args[0] == "STYLED_OUT"
 
 
+@pytest.mark.asyncio
+async def test_engineer_prompt_expands_known_mood_to_concrete_phenomena():
+    """抽象词→具象现象(#38):mood 是词典里的已知词时,adapt 收到的应该是展开后的
+    具象描述,而不是原样的"温馨 mood"这种空洞后缀。"""
+    with (
+        patch("hevi.prompt.prompt_pipeline.inject_visual_style", return_value="STYLED"),
+        patch(
+            "hevi.prompt.prompt_pipeline.adapt_prompt_for_provider",
+            new_callable=AsyncMock,
+            return_value={"prompt": "X", "negative_prompt": "", "provider": "ltx2"},
+        ) as mock_adapt,
+    ):
+        await engineer_prompt(raw_prompt="raw", target_provider="ltx2_cloud", mood="温馨")
+
+    styled_with_mood = mock_adapt.call_args.args[0]
+    assert "温馨" not in styled_with_mood  # 已经展开,原词不该再字面出现
+    assert "steam" in styled_with_mood or "clothesline" in styled_with_mood
+
+
+@pytest.mark.asyncio
+async def test_engineer_prompt_unknown_mood_appended_as_is():
+    with (
+        patch("hevi.prompt.prompt_pipeline.inject_visual_style", return_value="STYLED"),
+        patch(
+            "hevi.prompt.prompt_pipeline.adapt_prompt_for_provider",
+            new_callable=AsyncMock,
+            return_value={"prompt": "X", "negative_prompt": "", "provider": "ltx2"},
+        ) as mock_adapt,
+    ):
+        await engineer_prompt(raw_prompt="raw", target_provider="ltx2_cloud", mood="不存在的词")
+
+    assert mock_adapt.call_args.args[0] == "STYLED, 不存在的词"
+
+
 # ── 2. inject_visual_style — param combinations ──────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_all_none_style_passthrough():
@@ -101,6 +138,7 @@ async def test_inject_visual_style_all_none_identity():
 
 # ── 3. Provider mapping ───────────────────────────────────────────────────────
 
+
 def test_hevi_to_oprim_provider_mapping():
     assert HEVI_TO_OPRIM_PROVIDER["ltx2_cloud"] == "ltx2"
     assert HEVI_TO_OPRIM_PROVIDER["wan_cloud"] == "wan22"
@@ -131,6 +169,7 @@ async def test_adapt_unknown_provider_passthrough():
 
 
 # ── 4. Style presets ──────────────────────────────────────────────────────────
+
 
 def test_style_presets_keys():
     # RFC-002 item 12: 扩到 20+ 题材, 原 3 个仍为子集。
@@ -164,6 +203,7 @@ def test_get_style_preset_unknown_raises():
 
 
 # ── 5. engineer_prompt_from_preset ───────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_engineer_prompt_from_preset_uses_preset_style():
@@ -219,22 +259,26 @@ async def test_engineer_prompt_from_preset_unknown_preset_raises():
 
 # ── 6. config_builder integration ────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_build_longvideo_config_with_prompt_engineers_topic():
     """build_longvideo_config_with_prompt calls engineer_prompt and uses result as topic."""
     from hevi.pipeline.config_builder import build_longvideo_config_with_prompt
 
-    with patch(
-        "hevi.pipeline.config_builder.build_longvideo_config_with_prompt",
-        wraps=build_longvideo_config_with_prompt,
-    ), patch(
-        "hevi.prompt.prompt_pipeline.adapt_prompt_for_provider",
-        new_callable=AsyncMock,
-        return_value={
-            "prompt": "engineered topic, cinematic, 4K",
-            "negative_prompt": "",
-            "provider": "ltx2",
-        },
+    with (
+        patch(
+            "hevi.pipeline.config_builder.build_longvideo_config_with_prompt",
+            wraps=build_longvideo_config_with_prompt,
+        ),
+        patch(
+            "hevi.prompt.prompt_pipeline.adapt_prompt_for_provider",
+            new_callable=AsyncMock,
+            return_value={
+                "prompt": "engineered topic, cinematic, 4K",
+                "negative_prompt": "",
+                "provider": "ltx2",
+            },
+        ),
     ):
         from hevi.pipeline.config_builder import build_longvideo_config_with_prompt
 
@@ -276,6 +320,7 @@ async def test_build_longvideo_config_with_prompt_no_preset():
 
 # ── 7. orchestrate_longvideo with style_preset ────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_orchestrate_with_style_preset_engineers_topic():
     """orchestrate_longvideo runs engineer_prompt_from_preset when style_preset given."""
@@ -300,9 +345,7 @@ async def test_orchestrate_with_style_preset_engineers_topic():
             new_callable=AsyncMock,
             return_value={"prompt": "ENGINEERED", "negative_prompt": "", "provider": "ltx2"},
         ),
-        patch(
-            "hevi.pipeline.longvideo_orchestrator.build_longvideo_config"
-        ) as mock_builder,
+        patch("hevi.pipeline.longvideo_orchestrator.build_longvideo_config") as mock_builder,
     ):
         mock_builder.return_value = MagicMock()
         await orchestrate_longvideo(
@@ -334,9 +377,7 @@ async def test_orchestrate_without_style_preset_skips_engineering():
             new_callable=AsyncMock,
             return_value=mock_result,
         ),
-        patch(
-            "hevi.pipeline.longvideo_orchestrator.build_longvideo_config"
-        ) as mock_builder,
+        patch("hevi.pipeline.longvideo_orchestrator.build_longvideo_config") as mock_builder,
     ):
         mock_builder.return_value = MagicMock()
         await orchestrate_longvideo(
@@ -350,6 +391,7 @@ async def test_orchestrate_without_style_preset_skips_engineering():
 
 # ── 8. Edge cases ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_engineer_prompt_empty_string():
     """Empty prompt goes through chain without error."""
@@ -360,3 +402,66 @@ async def test_engineer_prompt_empty_string():
     ):
         result = await engineer_prompt(raw_prompt="", target_provider="ltx2_cloud")
     assert isinstance(result, str)
+
+
+# ── 9. 生成前 lint(HEVI 路线图 §4.2,#28)───────────────────────────────────────
+
+
+def test_ensure_identity_lock_sentence_appends_once():
+    p = ensure_identity_lock_sentence("a hero walks in snow")
+    assert p == f"a hero walks in snow. {IDENTITY_LOCK_SENTENCE}"
+    # 幂等:已经有了就不重复追加
+    assert ensure_identity_lock_sentence(p) == p
+
+
+def test_ensure_identity_lock_sentence_handles_empty_prompt():
+    assert ensure_identity_lock_sentence("") == IDENTITY_LOCK_SENTENCE
+
+
+def test_lint_flags_missing_identity_lock_when_character_locked():
+    violations = lint_engineered_prompt(
+        "a hero walks in snow", negative_prompt="blurry", character_locked=True
+    )
+    assert any("身份锁定句" in v for v in violations)
+
+
+def test_lint_passes_when_identity_lock_present():
+    prompt = ensure_identity_lock_sentence("a hero walks in snow")
+    violations = lint_engineered_prompt(prompt, negative_prompt="blurry", character_locked=True)
+    assert violations == []
+
+
+def test_lint_ignores_identity_lock_when_not_character_locked():
+    violations = lint_engineered_prompt(
+        "a hero walks in snow", negative_prompt="blurry", character_locked=False
+    )
+    assert violations == []
+
+
+def test_lint_flags_empty_negative_when_expected():
+    violations = lint_engineered_prompt("a hero walks in snow", negative_prompt="   ")
+    assert any("负向词块为空" in v for v in violations)
+
+
+def test_lint_skips_negative_check_when_not_expected():
+    """ltx2_cloud 基础版这类不收负向的 provider——空负向不该被判违规。"""
+    violations = lint_engineered_prompt(
+        "a hero walks in snow", negative_prompt="", negative_expected=False
+    )
+    assert violations == []
+
+
+# ── 抽象词→具象现象(HEVI 路线图 Phase3 #38)───────────────────────────────────
+
+
+def test_lint_flags_unexpanded_abstract_mood():
+    violations = lint_engineered_prompt("a scene with 温馨 vibes", negative_prompt="blurry")
+    assert any("抽象情绪词" in v for v in violations)
+
+
+def test_lint_passes_when_mood_already_expanded():
+    from hevi.style.mood_dictionary import expand_mood_to_concrete
+
+    prompt = f"a scene, {expand_mood_to_concrete('温馨')}"
+    violations = lint_engineered_prompt(prompt, negative_prompt="blurry")
+    assert violations == []

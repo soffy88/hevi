@@ -27,7 +27,7 @@ CURATED_VOICES: dict[str, str] = {
     "zh_female_standard": "zh-CN-XiaoxiaoNeural",
     "zh_female_warm": "zh-CN-XiaoyiNeural",
     "zh_male_standard": "zh-CN-YunxiNeural",
-    "zh_male_deep": "zh-CN-YunyeNeural",
+    "zh_male_deep": "zh-CN-YunjianNeural",
     "en_female_standard": "en-US-AriaNeural",
     "en_male_standard": "en-US-GuyNeural",
 }

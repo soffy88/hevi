@@ -139,6 +139,9 @@ export function SeasonBoard() {
 function EpisodeCard({ ep }: { ep: Episode }) {
   const [open, setOpen] = useState(false);
   const [shots, setShots] = useState<TaskShot[] | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [regenBusy, setRegenBusy] = useState(false);
+  const [regenErr, setRegenErr] = useState<string | null>(null);
   // 分集 endpoint 直接返 video_tasks 行,故任务 id = ep.id(ep.task_id 通常为空)。
   const taskId = ep.task_id ?? ep.id;
   const running = ep.status === 'running';
@@ -164,6 +167,43 @@ function EpisodeCard({ ep }: { ep: Episode }) {
       }
     })();
   }, [open, taskId, shots]);
+
+  function toggleShot(idx: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  async function regenerateSelected() {
+    if (selected.size === 0 || !taskId) return;
+    const shotIds = Array.from(selected);
+    if (!confirm(`重新生成第 ${shotIds.join('、')} 个镜头,确定?`)) return;
+    setRegenBusy(true);
+    setRegenErr(null);
+    try {
+      await taskApi.regenerateShots(taskId, shotIds);
+      // fire-and-forget 后台任务:轮询 shots 直到选中镜头的 retry_count 都涨过,再刷新。
+      const before = new Map(shots?.map((s) => [s.shot_index, s.retry_count ?? 0]) ?? []);
+      for (let k = 0; k < 40; k++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const latest = await taskApi.shots(taskId);
+        const allBumped = shotIds.every((idx) => {
+          const s = latest.find((x) => x.shot_index === idx);
+          return s && (s.retry_count ?? 0) > (before.get(idx) ?? 0);
+        });
+        setShots(latest);
+        if (allBumped) break;
+      }
+      setSelected(new Set());
+    } catch (e) {
+      setRegenErr(errText(e));
+    } finally {
+      setRegenBusy(false);
+    }
+  }
 
   return (
     <div className="hevi-sb__ep" data-status={status}>
@@ -211,17 +251,26 @@ function EpisodeCard({ ep }: { ep: Episode }) {
             </div>
           )}
 
-          {/* 镜:逐镜卡片(来自 shot_states) */}
+          {/* 镜:逐镜卡片(来自 shot_states)。已出片才可选中重生成(同后端 409 约束一致)。 */}
           {shots && shots.length > 0 && (
             <div className="hevi-sb__row">
               <span className="hevi-sb__row-label">镜 · {shots.length}</span>
               <div className="hevi-sb__shots">
                 {shots.map((s) => (
-                  <div
+                  <label
                     key={s.shot_index}
                     className="hevi-sb__shot"
                     data-passed={s.passed === false ? 'no' : s.passed ? 'yes' : undefined}
                   >
+                    {completed && (
+                      <input
+                        type="checkbox"
+                        className="hevi-sb__shot-check"
+                        checked={selected.has(s.shot_index)}
+                        disabled={regenBusy}
+                        onChange={() => toggleShot(s.shot_index)}
+                      />
+                    )}
                     <span className="hevi-sb__shot-idx">#{s.shot_index}</span>
                     <span className="hevi-sb__shot-status">{s.status}</span>
                     {typeof s.consistency_score === 'number' && (
@@ -230,9 +279,22 @@ function EpisodeCard({ ep }: { ep: Episode }) {
                     {s.diagnosis_category && (
                       <span className="hevi-sb__shot-diag">{s.diagnosis_category}</span>
                     )}
-                  </div>
+                  </label>
                 ))}
               </div>
+              {completed && (
+                <div className="hevi-sb__shot-actions">
+                  <button
+                    type="button"
+                    className="hevi-sb__regen-btn"
+                    disabled={selected.size === 0 || regenBusy}
+                    onClick={regenerateSelected}
+                  >
+                    {regenBusy ? '重生成中…' : `↻ 重生成选中(${selected.size})`}
+                  </button>
+                  {regenErr && <span className="hevi-sb__err">{regenErr}</span>}
+                </div>
+              )}
             </div>
           )}
 

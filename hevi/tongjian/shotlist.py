@@ -205,11 +205,15 @@ async def generate_shotlist(
     character_bible: CharacterBible,
     *,
     llm: Any = None,
+    split_long_shots: bool = True,
 ) -> ShotList:
     """timeline + script + character_bible → ShotList。
 
     基础切分:每个 audio_segment 对应 1 个 shot;
-    长 shot (>8s) 由 LLM 拆分为 2-3 个子 shot。
+    长 shot (>8s) 由 LLM 拆分为 2-3 个子 shot(仅换机位的静帧/i2v 管线受益)。
+
+    split_long_shots=False:数字人(cloud_avatar)管线用——那里每镜按自己台词**重新生成音频**,
+    拆分会让每个子镜头把整句各说一遍,同一句连播两三次 = 重复段落,故整体关闭拆分。
     """
     if llm is None:
         from obase.provider_registry import ProviderRegistry
@@ -245,8 +249,14 @@ async def generate_shotlist(
             motion_mode="ken_burns",
         )
 
-        # 长 shot 拆分
-        if seg.duration_ms > _LONG_SHOT_THRESHOLD_MS:
+        # 长 shot 拆分:只拆旁白/史论(风景空镜换机位防呆板)。对白行不拆——数字人已把整句演完,
+        # 拆成子镜头会让每个子镜头都拿整句台词各渲一遍,同一角色同一句连播两三次 = 观感"重复段落"。
+        # split_long_shots=False(数字人管线)则整体不拆(旁白同样会因重生成音频而重复)。
+        if (
+            split_long_shots
+            and seg.duration_ms > _LONG_SHOT_THRESHOLD_MS
+            and line.type != "dialogue"
+        ):
             sub_shots = await _split_long_shot(seg, line, base_shot, llm=llm)
             shots.extend(sub_shots)
         else:
@@ -368,6 +378,7 @@ async def build_shotlist(
     character_bible: CharacterBible,
     *,
     llm: Any = None,
+    split_long_shots: bool = True,
 ) -> tuple[ShotList, GateResult]:
     """L4 主入口:生成 → G4 门。"""
     shotlist = await generate_shotlist(
@@ -375,6 +386,7 @@ async def build_shotlist(
         script,
         character_bible,
         llm=llm,
+        split_long_shots=split_long_shots,
     )
     result = gate_shotlist(shotlist, timeline, character_bible)
     return shotlist, result

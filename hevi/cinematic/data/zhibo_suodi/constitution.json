@@ -1,0 +1,46 @@
+{
+  "thesis": "智者好利而愎,是取祸之道;能臣审时度势,委曲求全,方可保家国于危难。",
+  "logline": "晋国四卿之首智伯恃强索地,韩氏家臣段规献策暂且退让,暗藏后招。",
+  "narrative_stance": "第三人称全知,冷峻克制",
+  "tone": [
+    "肃杀",
+    "隐忍",
+    "克制"
+  ],
+  "visual_style": {
+    "art_direction": "国风水墨插画",
+    "palette": [
+      "#1a1a1a",
+      "#3d3d3d",
+      "#8b0000",
+      "#c9a86a"
+    ],
+    "aspect_ratio": "16:9",
+    "negative_style": [
+      "现代元素",
+      "夸张漫画风"
+    ]
+  },
+  "act_structure": [
+    {
+      "act": 1,
+      "title": "索地与进言",
+      "events": [
+        "E001",
+        "E002",
+        "E003"
+      ],
+      "emotion_curve": "紧绷→权衡→释然"
+    }
+  ],
+  "forbidden": [
+    "太监",
+    "圣旨",
+    "陛下万岁"
+  ],
+  "target_duration_sec": 30,
+  "bgm_mood_arc": [
+    "低沉",
+    "克制"
+  ]
+}

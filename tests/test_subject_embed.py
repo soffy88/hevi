@@ -9,6 +9,7 @@ import pytest
 
 from hevi.subjects.subject_embed import (
     SubjectEmbedError,
+    _crop_face_region,
     cosine_similarity,
     embedding_distance,
     subject_embed,
@@ -38,6 +39,28 @@ def test_missing_file_raises_before_loading_model(tmp_path):
         subject_embed(image_path=tmp_path / "nope.png", kind="face")
 
 
+# 多区域 embedding(HEVI 路线图 Phase2 #34):kind="face" 几何裁剪启发式。
+
+
+def test_crop_face_region_takes_top_center_portion():
+    from PIL import Image
+
+    img = Image.new("RGB", (200, 300))
+    cropped = _crop_face_region(img)
+    # 高度 = 55%(_FACE_CROP_TOP_RATIO),宽度 = 居中 70%(_FACE_CROP_WIDTH_RATIO)
+    assert cropped.size == (140, 165)
+
+
+def test_crop_face_region_is_centered_horizontally():
+    from PIL import Image
+
+    img = Image.new("RGB", (100, 100))
+    cropped = _crop_face_region(img)
+    # 左右各切掉 15%(= (1-0.7)/2),裁剪结果水平居中
+    left_margin = int(100 * (1 - 0.7) / 2)
+    assert cropped.size == (100 - 2 * left_margin, 55)
+
+
 @pytest.mark.skipif(
     importlib.util.find_spec("transformers") is None,
     reason="transformers not installed",
@@ -50,6 +73,36 @@ def test_real_embed_is_normalized_512(tmp_path):
     v = subject_embed(image_path=p, kind="face")
     assert len(v) == 512
     assert cosine_similarity(v, v) == pytest.approx(1.0, abs=1e-4)  # L2-normalized
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("transformers") is None,
+    reason="transformers not installed",
+)
+def test_kind_face_actually_crops_end_to_end(tmp_path):
+    """多区域 embedding(#34):kind="face" 要真的把 kind="style"(全图)排除掉的
+    下半部分内容排除在外——上下两半用差异悬殊的纯色拼图,face 向量应该更贴近
+    只用上半部分算出来的向量,而不是跟全图向量完全一致(证明真的裁剪了,不是
+    labels 摆设)。"""
+    from PIL import Image
+
+    img = Image.new("RGB", (100, 100))
+    top = Image.new("RGB", (100, 55), (255, 0, 0))
+    bottom = Image.new("RGB", (100, 45), (0, 0, 255))
+    img.paste(top, (0, 0))
+    img.paste(bottom, (0, 55))
+    p = tmp_path / "split.png"
+    img.save(p)
+
+    top_only = tmp_path / "top_only.png"
+    top.save(top_only)
+
+    face_vec = subject_embed(image_path=p, kind="face")
+    whole_vec = subject_embed(image_path=p, kind="style")
+    top_vec = subject_embed(image_path=top_only, kind="style")
+
+    assert face_vec != whole_vec
+    assert cosine_similarity(face_vec, top_vec) > cosine_similarity(whole_vec, top_vec)
 
 
 def test_text_embed_empty_raises():

@@ -197,7 +197,7 @@ async def test_gate_script_detects_hallucinated_content():
         content = messages[0]["content"]
         if "忠实改写自原引语" in content:
             return {"content": '{"violations": []}'}
-        if "编造的内容" in content:
+        if "编造的**史实**内容" in content:
             return {
                 "content": json.dumps(
                     {"violations": [{"line_id": "LN001", "reason": "原文没有三家大夫赴宴的记载"}]},
@@ -220,7 +220,7 @@ async def test_build_script_rewrites_violating_line_until_pass():
 
     async def fake_llm(*, messages, max_tokens=None):
         content = messages[0]["content"]
-        if "你是历史解说短片编剧" in content:
+        if "你是历史正剧编剧" in content:
             return {"content": json.dumps(_good_draft(), ensure_ascii=False)}
         if "被审查判定违规" in content:
             return {"content": '{"text": "祸乱要来,也得我来挑起,谁人敢应?"}'}
@@ -240,7 +240,7 @@ async def test_build_script_deletes_line_after_max_rewrite_attempts():
 
     async def fake_llm(*, messages, max_tokens=None):
         content = messages[0]["content"]
-        if "你是历史解说短片编剧" in content:
+        if "你是历史正剧编剧" in content:
             return {"content": json.dumps(_good_draft(), ensure_ascii=False)}
         if "被审查判定违规" in content:
             # 重写永远修不好(依旧命中违禁词),逼出"3 次仍违规 → 删除该行"的降级路径

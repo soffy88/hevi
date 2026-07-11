@@ -3,6 +3,8 @@
 from hevi.verdict.frame_extract import FrameExtractError, extract_representative_frame
 from hevi.verdict.scorecard import (
     Scorecard,
+    check_relationship_consistency,
+    coarse_diagnosis,
     make_scorecard_consistency_fn,
     shot_scorecard,
 )
@@ -10,6 +12,8 @@ from hevi.verdict.scorecard import (
 __all__ = [
     "FrameExtractError",
     "Scorecard",
+    "check_relationship_consistency",
+    "coarse_diagnosis",
     "extract_representative_frame",
     "make_scorecard_consistency_fn",
     "shot_scorecard",

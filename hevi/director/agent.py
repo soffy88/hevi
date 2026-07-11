@@ -73,7 +73,10 @@ async def run_director_loop(
     quality = (task.get("config_json") or {}).get("quality")
     shots = [_shot_view(r) for r in await task_service.repository.get_shots(task_id)]
     decision = review(quality=quality, shots=shots, consistency_floor=consistency_floor)
-    trail.append(f"round0: deliver={decision.deliver} regen={decision.regenerate_shot_ids}")
+    trail.append(
+        f"round0: deliver={decision.deliver} regen={decision.regenerate_shot_ids}"
+        f" diagnosis={decision.diagnosis}"
+    )
 
     # 3) Editor→返工循环:不及格且有可返工镜头 → 定向重烧 → 再评审。
     rounds = 0
@@ -89,6 +92,7 @@ async def run_director_loop(
         decision = review(quality=quality, shots=shots, consistency_floor=consistency_floor)
         trail.append(
             f"round{rounds}: deliver={decision.deliver} regen={decision.regenerate_shot_ids}"
+            f" diagnosis={decision.diagnosis}"
         )
 
     reason = "delivered" if decision.deliver else f"stopped after {rounds} rework round(s)"

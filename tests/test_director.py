@@ -12,6 +12,20 @@ from oprim._hevi_types import CanvasNode
 from hevi.director import ProducerPlan, build_canvas_graph, produce, review
 
 
+@pytest.fixture(autouse=True)
+def _no_real_ip_safety_llm_call(monkeypatch):
+    """IP 安全改写(#36)接进 director_create_episode 后,不显式 mock 就会去
+    ProviderRegistry 找真实注册的本地 LLM 并真的调用它——这个文件里绝大多数用例
+    测的是 Producer/Director/Editor 编排逻辑,不该因为这一步意外打真实 LLM、拖慢
+    (观测到从几十毫秒拖到 10+ 秒/用例)甚至因为真实调用的不确定性偶发失败。默认
+    改写成直通(不改文本、不命中),专门测 IP 安全改写路由的用例自己覆盖这个 patch。
+    """
+    monkeypatch.setattr(
+        "hevi.api.routers.director.rewrite_for_ip_safety",
+        AsyncMock(side_effect=lambda text, **_kw: (text, [])),
+    )
+
+
 def _plan(provider: str = "wan_local") -> ProducerPlan:
     return ProducerPlan(
         topic="a fox in snow",
@@ -127,6 +141,24 @@ def test_editor_flags_low_consistency_and_failed_shots():
     assert d.regenerate_shot_ids == [1, 2]
     assert d.deliver is False
     assert 1 in d.hints and 2 in d.hints
+
+
+def test_editor_diagnosis_uses_fixed_taxonomy():
+    """HEVI 路线图 §4.3:返工原因要落在固定分类表里,不是自由文本——目前唯一有真实
+    信号支撑的分类是"参考图角色错配"(身份/一致性分),其余 7 类要等 Tier0/Tier1 信号
+    接入(#32/#33)才有依据填充,现在不该被瞎猜的启发式占用。"""
+    from hevi.director.editor import DIAGNOSIS_CATEGORIES, REFERENCE_MISMATCH
+
+    shots = [
+        {"index": 0, "passed": True, "consistency_score": 0.60},
+        {"index": 1, "passed": False, "consistency_score": 0.90},
+    ]
+    d = review(quality={"passed": True}, shots=shots, consistency_floor=0.75)
+    assert d.diagnosis == {0: REFERENCE_MISMATCH, 1: REFERENCE_MISMATCH}
+    assert REFERENCE_MISMATCH in DIAGNOSIS_CATEGORIES
+    assert len(DIAGNOSIS_CATEGORIES) == 8
+    # hints 字符串带分类前缀,供人读日志/regenerate prompt 直接看出原因类别
+    assert d.hints[0].startswith(f"[{REFERENCE_MISMATCH}]")
 
 
 def test_editor_delivers_when_all_good():
@@ -300,6 +332,7 @@ async def test_plan_from_text_end_to_end():
         side_effect=[
             {"content": '{"topic":"狐狸雪地","duration_archetype":"1-5min","style":"电影感"}'},
             {"content": '["fox runs in snow","fox catches prey"]'},
+            {"content": "[]"},  # 创意工具编排(#45):普通题材不需要任何工具
         ]
     )
     with (
@@ -318,7 +351,56 @@ async def test_plan_from_text_end_to_end():
     assert out["intent"]["topic"] == "狐狸雪地"
     assert out["shot_prompts"] == ["fox runs in snow", "fox catches prey"]
     assert len([n for n in out["graph"]["nodes"] if n["node_type"] == "video"]) == 2
+    assert out["creative_tool_recommendations"] == []
+    assert out["three_view"] is None
     assert out["plan"].video_provider == "wan_local"
+
+
+@pytest.mark.asyncio
+async def test_plan_from_text_invokes_three_view_when_recommended():
+    """创意工具动态编排(#45):题材涉及需要多视角一致性的具体角色 → Director 自己
+    决定调用 three-view,不需要用户在菜单里手动挑。"""
+    from types import SimpleNamespace
+
+    from hevi.director import plan_from_text
+
+    llm = AsyncMock(
+        side_effect=[
+            {"content": '{"topic":"骑士三视图","duration_archetype":"1-5min","style":"电影感"}'},
+            {"content": '["knight walks forward"]'},
+            {"content": '[{"tool_id": "three-view", "reason": "需要角色多视角一致性"}]'},
+        ]
+    )
+    assist = AsyncMock()
+    assist.gen_three_view.return_value = SimpleNamespace(
+        model_dump=lambda: {
+            "front_prompt": "a knight, front view",
+            "side_prompt": "",
+            "back_prompt": "",
+        }
+    )
+    with (
+        patch(
+            "hevi.cost.router.route_video_provider",
+            new_callable=AsyncMock,
+            return_value="wan_local",
+        ),
+        patch(
+            "hevi.director.producer.estimate_cost",
+            new_callable=AsyncMock,
+            return_value=SimpleNamespace(total_usd=0.0),
+        ),
+    ):
+        out = await plan_from_text(
+            text="拍个骑士的三视图", num_shots=1, llm=llm, assist_service=assist
+        )
+    assert out["creative_tool_recommendations"] == [
+        {"tool_id": "three-view", "reason": "需要角色多视角一致性"}
+    ]
+    assert out["three_view"]["front_prompt"] == "a knight, front view"
+    assist.gen_three_view.assert_awaited_once_with(
+        character_description="骑士三视图", style="电影感"
+    )
 
 
 # ── /api/director 路由(直调 handler)────────────────────────────────────────
@@ -390,6 +472,54 @@ async def test_director_api_episode_creates_and_queues():
     assert out["task_id"] == str(tid)
     assert out["status"] == "queued"
     svc.create_task.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_director_api_episode_applies_ip_safety_rewrite():
+    """IP 安全改写(HEVI 路线图 Phase2 #36):topic 经 rewrite_for_ip_safety 处理后
+    的结果(而不是 parse_intent 的原始输出)才是真正建任务用的 topic。"""
+    import uuid
+    from unittest.mock import MagicMock
+
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.director import EpisodeRequest, director_create_episode
+
+    tid = uuid.uuid4()
+    svc = AsyncMock()
+    svc.create_task.return_value = {"id": tid, "status": "pending"}
+    svc.submit_task.return_value = {"status": "queued"}
+    with (
+        patch(
+            "hevi.api.routers.director.parse_intent",
+            new_callable=AsyncMock,
+            return_value={
+                "topic": "蜘蛛侠在城市里荡绳摆动",
+                "duration_archetype": "1-5min",
+                "num_characters": 1,
+                "style": "cinematic",
+            },
+        ),
+        patch(
+            "hevi.api.routers.director.rewrite_for_ip_safety",
+            new_callable=AsyncMock,
+            return_value=("一个戴面具的原创英雄在城市里荡绳摆动", ["蜘蛛侠"]),
+        ) as mock_rewrite,
+        patch(
+            "hevi.api.routers.director.produce",
+            new_callable=AsyncMock,
+            return_value=_plan("wan_local"),
+        ) as mock_produce,
+    ):
+        await director_create_episode(
+            EpisodeRequest(text="拍蜘蛛侠"),
+            user={"id": uuid.uuid4()},
+            svc=svc,
+            pool=MagicMock(),
+            background_tasks=BackgroundTasks(),
+        )
+    mock_rewrite.assert_any_await("蜘蛛侠在城市里荡绳摆动")
+    assert mock_produce.await_args.kwargs["topic"] == "一个戴面具的原创英雄在城市里荡绳摆动"
 
 
 @pytest.mark.asyncio
@@ -695,9 +825,18 @@ async def test_director_api_episode_multi_character_roster():
         patch(
             "hevi.api.routers.director.parse_intent",
             new_callable=AsyncMock,
-            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 2, "style": "cinematic"},
+            return_value={
+                "topic": "x",
+                "duration_archetype": "1-5min",
+                "num_characters": 2,
+                "style": "cinematic",
+            },
         ),
-        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")) as mp,
+        patch(
+            "hevi.api.routers.director.produce",
+            new_callable=AsyncMock,
+            return_value=_plan("wan_local"),
+        ) as mp,
         patch("hevi.subjects.subject_service.SubjectService.get_subject", fake_get_subject),
     ):
         out = await director_create_episode(
@@ -734,16 +873,24 @@ async def test_director_api_episode_roster_includes_metadata_and_voice_negative(
 
     subjects = {
         "sub-a": {
-            "name": "阿狐", "description": "机灵的向导",
+            "name": "阿狐",
+            "description": "机灵的向导",
             "metadata": {
-                "age": "20多岁", "persona": "毒舌但重情义", "speech_style": "爱用东北方言",
-                "relationships": "与阿熊是竞争对手", "voice_ref": "output/voice_references/sub-a/v.wav",
+                "age": "20多岁",
+                "persona": "毒舌但重情义",
+                "speech_style": "爱用东北方言",
+                "relationships": "与阿熊是竞争对手",
+                "voice_ref": "output/voice_references/sub-a/v.wav",
                 "negative_notes": "避免多指",
             },
         },
         "sub-b": {
-            "name": "阿熊", "description": "沉默的守护者",
-            "metadata": {"voice_ref": "output/voice_references/sub-b/v2.wav", "negative_notes": "避免崩脸"},
+            "name": "阿熊",
+            "description": "沉默的守护者",
+            "metadata": {
+                "voice_ref": "output/voice_references/sub-b/v2.wav",
+                "negative_notes": "避免崩脸",
+            },
         },
     }
 
@@ -754,9 +901,18 @@ async def test_director_api_episode_roster_includes_metadata_and_voice_negative(
         patch(
             "hevi.api.routers.director.parse_intent",
             new_callable=AsyncMock,
-            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 2, "style": "cinematic"},
+            return_value={
+                "topic": "x",
+                "duration_archetype": "1-5min",
+                "num_characters": 2,
+                "style": "cinematic",
+            },
         ),
-        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")),
+        patch(
+            "hevi.api.routers.director.produce",
+            new_callable=AsyncMock,
+            return_value=_plan("wan_local"),
+        ),
         patch("hevi.subjects.subject_service.SubjectService.get_subject", fake_get_subject),
     ):
         await director_create_episode(
@@ -793,9 +949,18 @@ async def test_director_api_episode_no_characters_no_voice_negative_keys():
         patch(
             "hevi.api.routers.director.parse_intent",
             new_callable=AsyncMock,
-            return_value={"topic": "x", "duration_archetype": "1-5min", "num_characters": 1, "style": "cinematic"},
+            return_value={
+                "topic": "x",
+                "duration_archetype": "1-5min",
+                "num_characters": 1,
+                "style": "cinematic",
+            },
         ),
-        patch("hevi.api.routers.director.produce", new_callable=AsyncMock, return_value=_plan("wan_local")),
+        patch(
+            "hevi.api.routers.director.produce",
+            new_callable=AsyncMock,
+            return_value=_plan("wan_local"),
+        ),
     ):
         await director_create_episode(
             EpisodeRequest(text="x"),

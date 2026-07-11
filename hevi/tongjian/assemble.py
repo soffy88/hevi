@@ -298,6 +298,165 @@ async def mix_sfx_master(
 # ── 主装配 ───────────────────────────────────────────────────────────────
 
 
+def _ffprobe_dur_sync(p: Path) -> float:
+    import subprocess
+
+    out = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(p),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    return float(out)
+
+
+def _xfade_concat_clips(
+    clips: list[Path], out: Path, width: int, height: int, fps: int, crossfade: float = 0.5
+) -> None:
+    """把各镜头 talking clip(自带音轨)用 xfade/acrossfade 溶解拼接。"""
+    import subprocess
+
+    durs = [_ffprobe_dur_sync(c) for c in clips]
+    inputs: list[str] = []
+    for c in clips:
+        inputs += ["-i", str(c)]
+    n = len(clips)
+    scale = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps={fps}"
+    if n == 1:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                *inputs,
+                "-vf",
+                scale,
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                str(out),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        return
+    vf, af = [], []
+    for i in range(n):
+        vf.append(f"[{i}:v]{scale},setsar=1[cv{i}]")
+    prev_v, prev_a = "[cv0]", "[0:a]"
+    cum = durs[0]
+    for i in range(1, n):
+        off = max(cum - crossfade, 0.0)
+        vout = f"[v{i}]" if i < n - 1 else "[vout]"
+        aout = f"[a{i}]" if i < n - 1 else "[aout]"
+        vf.append(
+            f"{prev_v}[cv{i}]xfade=transition=fade:duration={crossfade}:offset={off:.3f}{vout}"
+        )
+        af.append(f"{prev_a}[{i}:a]acrossfade=d={crossfade}{aout}")
+        prev_v, prev_a = vout, aout
+        cum = cum + durs[i] - crossfade
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            *inputs,
+            "-filter_complex",
+            ";".join(vf + af),
+            "-map",
+            "[vout]",
+            "-map",
+            "[aout]",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            str(out),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
+async def _assemble_avatar_clips(
+    shotlist: ShotList,
+    frame_manifest: FrameManifest,
+    timeline: Timeline,
+    script: Script,
+    constitution: Constitution,
+    *,
+    output_dir: Path,
+    width: int,
+    height: int,
+    fps: int,
+    vlm: Any = None,
+) -> tuple[FinalVideo, GateResult]:
+    """L8 avatar 装配:各镜 talking clip(自带配音+口型)→ xfade 溶解拼接 + 字幕。旁白/对白音
+    已在 clip 内,不再另配旁白轨;BGM 留待后续(可在此叠加低音量 bgm)。"""
+    frames_by_shot = {f.shot_id: f for f in frame_manifest.frames}
+    clips = [
+        Path(f.clip_path)
+        for shot in shotlist.shots
+        if (f := frames_by_shot.get(shot.shot_id)) and f.clip_path and Path(f.clip_path).exists()
+    ]
+    if not clips:
+        raise RuntimeError("avatar 装配:无可用 talking clip(L6 应已产出 clip_path)")
+
+    final_path = output_dir / "final.mp4"
+    # 用 clip 的原生分辨率(L6 resolution 参数决定,如 720P/1080P),不降到宪法画幅默认档。
+    import subprocess as _sp
+
+    _wh = _sp.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=p=0:s=x",
+            str(clips[0]),
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    try:
+        cw, ch = (int(x) for x in _wh.split("x")[:2])
+    except Exception:
+        cw, ch = width, height
+    _xfade_concat_clips(clips, final_path, cw, ch, fps, crossfade=0.5)
+
+    srt_path = output_dir / "subtitles.srt"
+    srt_path.write_text(generate_srt(timeline, script), encoding="utf-8")
+    duration_ms = round(await probe_duration(final_path) * 1000)
+    final_video = FinalVideo(
+        video_path=str(final_path),
+        cover_path="",
+        srt_path=str(srt_path),
+        duration_ms=duration_ms,
+    )
+    errors: list[str] = []
+    if duration_ms <= 0:
+        errors.append("成片时长为 0")
+    missing = len(shotlist.shots) - len(clips)
+    warnings = [f"{missing} 个镜头缺 talking clip,已跳过"] if missing else []
+    return final_video, GateResult(passed=not errors, errors=errors, warnings=warnings)
+
+
 async def build_final_video(
     shotlist: ShotList,
     frame_manifest: FrameManifest,
@@ -321,6 +480,22 @@ async def build_final_video(
         width, height = _dimensions_for_aspect_ratio(constitution.visual_style.aspect_ratio)
     output_dir.mkdir(parents=True, exist_ok=True)
     frames_by_shot = {f.shot_id: f for f in frame_manifest.frames}
+
+    # avatar 渲染模式(L6 cloud_avatar):每镜是自带配音+口型的 talking clip → 直接 xfade 拼接,
+    # 跳过"静帧化 + 另配旁白/字幕混音"这条(音已在 clip 里)。
+    if any(f.clip_path for f in frame_manifest.frames):
+        return await _assemble_avatar_clips(
+            shotlist,
+            frame_manifest,
+            timeline,
+            script,
+            constitution,
+            output_dir=output_dir,
+            width=width,
+            height=height,
+            fps=fps,
+            vlm=vlm,
+        )
 
     shot_segments: list[ShotSegment] = []
     for shot in shotlist.shots:

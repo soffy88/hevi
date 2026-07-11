@@ -5,9 +5,15 @@
   - L3:审片时算"当前帧 vs Subject 基准"(身份)/"vs StylePack 基准帧"(风格)距离。
 
 后端选型:hevi 的 subject 多为**风格化/AI 生成角色**(非真人脸),CLIP 通用视觉向量比
-人脸 ArcFace 更贴域,且 transformers+torch 已在 .venv、无新重依赖、CPU 可跑(不抢 GPU)。
-`kind` 现记录用途但 face/style 同用 CLIP 全图向量;后续可为 kind="face" 接 insightface
-+ 人脸裁剪。CPU 运行,避免与 stratum/wan/vibevoice 抢 3080。
+人脸 ArcFace 更贴域(ArcFace 是真人脸几何训练出来的,对插画/二次元风格角色经常检测
+失败或区分度很差)——HEVI 路线图 Phase2 #34 明确评估过 ArcFace/InsightFace,决定
+**不引入**,继续用 CLIP,理由同上。CPU 运行,避免与 stratum/wan/vibevoice 抢 3080。
+
+多区域(#34):`kind="face"` 现在会先按几何比例裁剪出"人像框常见的脸部区域"(图片
+上半部、居中)再算 CLIP 向量,`kind="style"`/其余取值仍是全图向量。这是**纯几何
+裁剪启发式,不是真的人脸检测**——不保证裁到的区域里真的有脸(背影/侧身镜头裁出来
+的可能是头发或背景),所以下游(scorecard.py)拿两个区域的向量都算一遍距离、取
+更像的那个,而不是假装能可靠判断"这帧到底有没有露脸"。
 """
 
 from __future__ import annotations
@@ -18,6 +24,12 @@ import os
 import threading
 from pathlib import Path
 from typing import Any
+
+# 人像框裁剪启发式(#34):正面半身/证件照式参考图里,脸部通常在上半部、水平居中。
+# 高度比例更大(0.55)是因为常见参考图是"半身像"而非纯头像特写,裁太窄容易连下巴
+# 都切掉;宽度收窄到中间 70% 避免裁进两侧背景。
+_FACE_CROP_TOP_RATIO = 0.55
+_FACE_CROP_WIDTH_RATIO = 0.7
 
 logger = logging.getLogger(__name__)
 
@@ -50,19 +62,40 @@ def _ensure_model() -> tuple[Any, Any]:
     return _model, _processor
 
 
+def _crop_face_region(img: Any) -> Any:
+    """几何裁剪启发式(#34):图片上半部、水平居中 —— 见模块顶部常量注释。"""
+    w, h = img.size
+    top = 0
+    bottom = int(h * _FACE_CROP_TOP_RATIO)
+    side_margin = int(w * (1 - _FACE_CROP_WIDTH_RATIO) / 2)
+    return img.crop((side_margin, top, w - side_margin, bottom))
+
+
+def _embed_image(img: Any, model: Any, processor: Any) -> list[float]:
+    import torch
+
+    with torch.no_grad():
+        feats = model.get_image_features(**processor(images=img, return_tensors="pt"))
+    v = feats[0]
+    norm = v.norm()
+    if float(norm) == 0.0:
+        raise SubjectEmbedError("zero-norm embedding")
+    return (v / norm).tolist()
+
+
 def subject_embed(
     *, image_path: Path | str, kind: str = "face", config: dict[str, Any] | None = None
 ) -> list[float]:
     """一张图 → L2-归一化视觉向量(list[float],CLIP ViT-B/32 = 512 维)。
 
-    kind: "face"(身份)| "style"(风格)—— 现同用 CLIP 全图向量,语义留待后端分化。
+    kind="face":先按几何裁剪启发式取上半部/居中区域再算 CLIP 向量(#34,多区域
+    embedding 的"脸部"信号)。kind="style" 或其它取值:全图向量,不裁剪。
     抛 SubjectEmbedError:图不存在/不可读/模型不可用。
     """
     p = Path(image_path)
     if not p.exists():
         raise SubjectEmbedError(f"image not found: {p}")
     try:
-        import torch
         from PIL import Image
     except ImportError as e:  # pragma: no cover
         raise SubjectEmbedError(f"subject_embed 需要 Pillow+torch: {e}") from e
@@ -70,13 +103,9 @@ def subject_embed(
     model, processor = _ensure_model()
     try:
         img = Image.open(p).convert("RGB")
-        with torch.no_grad():
-            feats = model.get_image_features(**processor(images=img, return_tensors="pt"))
-        v = feats[0]
-        norm = v.norm()
-        if float(norm) == 0.0:
-            raise SubjectEmbedError("zero-norm embedding")
-        return (v / norm).tolist()
+        if kind == "face":
+            img = _crop_face_region(img)
+        return _embed_image(img, model, processor)
     except SubjectEmbedError:
         raise
     except Exception as e:

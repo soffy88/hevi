@@ -57,12 +57,19 @@ async def route_shot_provider(
     audio_provider: str,
     mode: str = "t2v",
     default_floor: int = 9,
+    require_lip_sync: bool = False,
 ) -> str:
-    """单镜头选 provider:按 prompt 判质量需求 → route_video_provider(能力×活状态×最便宜)。"""
+    """单镜头选 provider:按 prompt 判质量需求 → route_video_provider(能力×活状态×最便宜)。
+
+    require_lip_sync(HEVI 路线图 Phase3 #42):这个镜头有对白/需要对口型时传 True,
+    只在原生支持 lip_sync 的 provider 里选(目前只有 veo3——hevi 没有 lip-sync 后处理
+    实现,不假装能路由到别的)。
+    """
     floor = classify_shot_quality_floor(prompt, default=default_floor)
     return await route_video_provider(
         duration_archetype=duration_archetype,
         audio_provider=audio_provider,
         mode=mode,
         quality_floor=floor,
+        require_lip_sync=require_lip_sync,
     )

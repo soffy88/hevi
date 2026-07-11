@@ -10,7 +10,10 @@ export type NodeType = 'text' | 'image' | 'video' | 'audio' | 'script';
 export interface CanvasNode {
   node_id: string;
   node_type: NodeType;
-  inputs: Record<string, unknown>;   // 因 type 而异
+  // 后端 oprim.CanvasNode 的真实字段名是 config,不是 inputs(HEVI 路线图 Phase1 #31
+  // 修复:此前 onSave 一直发 inputs,执行时 CanvasNode.model_validate 静默丢弃,
+  // 导致任何节点配置——包括视频节点的 prompt/reference_image——从未真正到达后端)。
+  config?: Record<string, unknown>;
   upstream_ids: string[];
   // 前端补充(画布位置 + 执行状态)
   position?: { x: number; y: number };
@@ -26,8 +29,11 @@ export interface NodeResult {
 }
 
 export interface CanvasEdge {
-  from_id: string;
-  to_id: string;
+  // 后端 oprim.CanvasEdge 的真实字段名(同上,此前 from_id/to_id 送到执行阶段的
+  // CanvasEdge.model_validate 会直接因缺必填字段报错)。
+  edge_id: string;
+  from_node_id: string;
+  to_node_id: string;
 }
 
 export interface CanvasGraph {
@@ -406,7 +412,28 @@ export interface CostEstimateV2 {
 
 // ── 通鉴流水线(HEVI-SPEC-01)──────────────────────────────────────────────────
 export type TongjianLayerStatus = 'PENDING' | 'RUNNING' | 'PASSED' | 'DEGRADED' | 'FAILED';
-export type TongjianRunStatusVal = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+export type TongjianRunStatusVal = 'PENDING' | 'RUNNING' | 'AWAITING_REVIEW' | 'COMPLETED' | 'FAILED';
+
+// 一行剧本(对应后端 hevi.tongjian.schemas.ScriptLine)。人工审核台里逐行可编辑。
+export interface TongjianScriptLine {
+  line_id: string;
+  act: number;
+  type: string;            // narration / dialogue / commentary
+  speaker: string;         // NARRATOR 或角色 character_id
+  text: string;
+  event_id: string | null;
+  quote_id: string | null;
+  dramatized: boolean;     // true=戏剧化改编对白(非逐字引语)
+  emotion: string;
+  visual_hint: string;
+}
+
+// 待审核的立意+剧本(GET /runs/{id}/script)。constitution 用宽松形状,只取展示/可编辑字段。
+export interface TongjianScriptReview {
+  constitution: Record<string, unknown> & { logline?: string; tone?: string[]; thesis?: string };
+  script: { lines: TongjianScriptLine[] };
+  status: TongjianRunStatusVal;
+}
 
 export interface TongjianLayerState {
   layer: string;                // L0..L8
@@ -432,11 +459,22 @@ export interface TongjianRunStatus {
   error: string | null;
 }
 
+// 单层的模型选择 + 可调参数(后端 hevi.tongjian.schemas.LayerConfig)。全自动生成有偏差时
+// 逐层调参重跑。model=空走该层默认;params 由各层解释(如 L6 avatar: style/say_char_sec)。
+export interface TongjianLayerConfig {
+  model?: string | null;
+  params?: Record<string, unknown>;
+}
+
 export interface TongjianRunRequest {
   source_name: string;
   raw_text: string;
   target_duration_sec?: number;
   aspect_ratio?: string;
+  // ="L2" 时跑完剧本暂停等人工审核(AWAITING_REVIEW),审核后 resume 再渲染;省略=一口气跑完。
+  pause_after?: string | null;
+  // 每层配置,键 "L0".."L8"。例:{ L6: { model: "cloud_avatar", params: { style: "..." } } }
+  layer_config?: Record<string, TongjianLayerConfig>;
 }
 
 // ── 自媒体解说短视频通道(hevi.explainer)────────────────────────────────────

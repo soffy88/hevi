@@ -32,7 +32,9 @@ from hevi.tongjian.schemas import (
     Constitution,
     FrameManifest,
     GateResult,
+    LayerConfig,
     SceneAsset,
+    Script,
     Shot,
     ShotFrame,
     ShotList,
@@ -378,3 +380,35 @@ def gate_frame_manifest(manifest: FrameManifest, shotlist: ShotList) -> GateResu
     covered = sum(1 for f in manifest.frames if f.frame_path)
     coverage = (covered / total) if total else 1.0
     return GateResult(passed=not errors, coverage=coverage, errors=errors, warnings=warnings)
+
+
+async def render_shots(
+    shotlist: ShotList,
+    character_bible: CharacterBible,
+    constitution: Constitution,
+    *,
+    run_dir: Path,
+    script: Script | None = None,
+    config: LayerConfig | None = None,
+    image_gen: Any = None,
+    vlm: Any = None,
+) -> FrameManifest:
+    """L6 主入口(按 LayerConfig.model 路由,统一只回 FrameManifest):
+    - `"cloud_avatar"`:云端 happyhorse 数字人 talking clip(见 scene_render_avatar,frames[].clip_path
+      已填,自带配音+口型);需要传 script 取每镜台词。
+    - 其它/缺省(如 `"sdxl_local"`):本地 SDXL 静帧(build_frame_manifest)。
+    (之前 api/routers/tongjian.py import 的 `render_shots` 此前并不存在——这里补上,兼容旧调用。)
+    """
+    model = config.model if config else None
+    if model == "cloud_avatar":
+        from hevi.tongjian.scene_render_avatar import build_frame_manifest_avatar
+
+        if script is None:
+            raise ValueError("cloud_avatar 渲染需要 script(逐镜取台词)")
+        return await build_frame_manifest_avatar(
+            shotlist, script, character_bible, constitution, run_dir=run_dir, config=config
+        )
+    manifest, _gate = await build_frame_manifest(
+        shotlist, character_bible, constitution, output_dir=run_dir, image_gen=image_gen, vlm=vlm
+    )
+    return manifest

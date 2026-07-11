@@ -100,6 +100,12 @@ export const canvasApi = {
   execute:(id: string) => authedReq<{ task_id: string }>(`/api/canvas/${id}/execute`, { method: 'POST' }),
   // SSE 进度 URL(配合 useSSEProgress)
   progressUrl: (id: string) => `${API_BASE}/api/canvas/${id}/execute/progress`,
+  // 通用 i2v 参考图上传(不经过角色库,直接给某个视频节点做参考图)
+  uploadReferenceImage: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<{ path: string }>('/api/canvas/reference-image', form);
+  },
 };
 
 // ── 创意辅助 (需登录) ─────────────────────────────
@@ -172,6 +178,12 @@ export const taskApi = {
   get:      (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}`),
   // 镜头级卡片(剧集看板)——逐镜状态 + 一致性/诊断摘要
   shots:    (id: string) => authedReq<TaskShot[]>(`/api/tasks/${id}/shots`),
+  // C3 verdict→定向返工(剧集看板可编辑,SPEC-001 §4.3):后台重生成指定镜头,fire-and-forget
+  regenerateShots: (id: string, shotIds: number[], hints?: Record<number, string>) =>
+    authedReq<TaskInfo>(`/api/tasks/${id}/regenerate`, {
+      method: 'POST',
+      body: JSON.stringify({ shot_ids: shotIds, hints: hints ?? null }),
+    }),
   resume:   (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}/resume`, { method: 'POST' }),
   // SSE 进度:EventSource 无法带 Authorization 头,token 以查询参数传递
   progressUrl: (id: string) =>
@@ -256,7 +268,7 @@ export const directorApi = {
 };
 
 // ── 通鉴全自动流水线(HEVI-SPEC-01,需登录)────────────────────────────────────
-import type { TongjianRunRequest, TongjianRunStatus } from '@/types/api';
+import type { TongjianRunRequest, TongjianRunStatus, TongjianScriptReview, TongjianScriptLine } from '@/types/api';
 export const tongjianApi = {
   startRun: (payload: TongjianRunRequest) =>
     authedReq<{ run_id: string; status: string }>('/api/tongjian/run', {
@@ -267,6 +279,23 @@ export const tongjianApi = {
     authedReq<TongjianRunStatus>(`/api/tongjian/runs/${runId}`),
   listRuns: () =>
     authedReq<TongjianRunStatus[]>('/api/tongjian/runs'),
+  // 人工审核:取回待审的立意+剧本
+  getScript: (runId: string) =>
+    authedReq<TongjianScriptReview>(`/api/tongjian/runs/${runId}/script`),
+  // 提交编辑后的剧本(+可选立意);只保存不续跑
+  updateScript: (runId: string, payload: { script: { lines: TongjianScriptLine[] }; constitution?: Record<string, unknown> }) =>
+    authedReq<{ run_id: string; status: string; lines: string }>(`/api/tongjian/runs/${runId}/script`, {
+      method: 'PUT', body: JSON.stringify(payload),
+    }),
+  // 审核通过 → 续跑 L3-L8 渲染
+  resume: (runId: string) =>
+    authedReq<{ run_id: string; status: string }>(`/api/tongjian/runs/${runId}/resume`, { method: 'POST' }),
+  // 剧本不满意 → 重出一版(仍停在审核态)
+  regenerate: (runId: string) =>
+    authedReq<{ run_id: string; status: string }>(`/api/tongjian/runs/${runId}/regenerate`, { method: 'POST' }),
+  // 成片播放/下载:<video src>/<a download> 不能带 header,token 走查询参数
+  videoUrl: (runId: string) =>
+    `${API_BASE}/api/tongjian/runs/${runId}/video${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
 };
 
 // ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────

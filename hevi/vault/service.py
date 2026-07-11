@@ -3,8 +3,10 @@
 服务层零业务逻辑(EXEC-01 执行红线):manifest 结构校验交给 pydantic;embedding 距离
 比对是纯数学;`asset_promote` 只做"stability_check.passed 才允许 draft→validated"
 这一条状态机判断,真正的稳定性预检(生成 N 次候选 + 挑选)在 hevi.vault.identity_pack
-(EXEC-01 M2,业务逻辑层)。平台绑定懒同步(§5)是 V-P1 范围,`asset_resolve` 这里
-先只做"本地 refs + 已有绑定直读"这条路径,platform 参数占位,不做懒同步上传。
+(EXEC-01 M2,业务逻辑层)。平台绑定懒同步(§5)的读路径(`asset_resolve` 按 platform
+读 `remote_ref_id`)V-P0 就有;写路径(`get_platform_binding`/`upsert_platform_binding`)
+EXEC-01 M3 补上,"要不要同步""同步成什么"这类业务判断在
+hevi.cinematic.platform_binding,这里仍然只是纯 CRUD。
 
 `obase.persistence.query()` 会在没写 LIMIT 的 SQL 后面自动追加 `LIMIT n`——对 SELECT
 没问题,但 `INSERT ... RETURNING * LIMIT n` 是非法语法(实测验证过)。所以本文件里所有
@@ -14,6 +16,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 from obase.persistence import PgPool, query
 
@@ -195,6 +198,58 @@ async def store_embedding(
             "ON CONFLICT (pack_id, version, kind) DO UPDATE SET embedding = EXCLUDED.embedding"
         ),
         params=[pack_id, version, kind, embedding],
+        limit=0,
+    )
+
+
+async def get_platform_binding(
+    pool: PgPool, *, pack_id: str, version: str, platform: str
+) -> dict | None:
+    """查一条平台绑定记录(有没有就直接返回 None,不抛异常——"没绑定过"是正常状态,
+    不是错误)。"""
+    rows = await query(
+        pool,
+        sql=(
+            "SELECT remote_ref_id, remote_kind, synced_files, status, last_verified "
+            "FROM vault_platform_bindings WHERE pack_id=$1 AND version=$2 AND platform=$3"
+        ),
+        params=[pack_id, version, platform],
+    )
+    return dict(rows[0]) if rows else None
+
+
+async def upsert_platform_binding(
+    pool: PgPool,
+    *,
+    pack_id: str,
+    version: str,
+    platform: str,
+    remote_ref_id: str,
+    remote_kind: str | None = None,
+    synced_files: dict | None = None,
+    status: str = "active",
+) -> None:
+    """写/更新一条平台绑定记录。业务判断("要不要同步""同步成什么")在调用方
+    (hevi.cinematic.platform_binding)——这里只是纯 CRUD。"""
+    await query(
+        pool,
+        sql=(
+            "INSERT INTO vault_platform_bindings "
+            "(pack_id, version, platform, remote_ref_id, remote_kind, synced_files, status, last_verified) "
+            "VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,now()) "
+            "ON CONFLICT (pack_id, version, platform) DO UPDATE SET "
+            "remote_ref_id=EXCLUDED.remote_ref_id, remote_kind=EXCLUDED.remote_kind, "
+            "synced_files=EXCLUDED.synced_files, status=EXCLUDED.status, last_verified=now()"
+        ),
+        params=[
+            pack_id,
+            version,
+            platform,
+            remote_ref_id,
+            remote_kind,
+            json.dumps(synced_files) if synced_files is not None else None,
+            status,
+        ],
         limit=0,
     )
 
