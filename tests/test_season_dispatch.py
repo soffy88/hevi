@@ -132,7 +132,7 @@ class _FakeSeriesService:
 
     async def create_episode(self, series_id, *, topic, task_service=None, overrides=None):
         idx = len(self.episode_calls)
-        self.episode_calls.append({"series_id": series_id, "topic": topic})
+        self.episode_calls.append({"series_id": series_id, "topic": topic, "overrides": overrides})
         return {"id": f"task-{idx}", "series_id": series_id, "episode_index": idx}
 
 
@@ -187,6 +187,11 @@ async def test_dispatch_season_creates_series_and_all_episodes():
     assert result["series_id"] == "series-uuid-123"
     assert len(result["episodes"]) == 3
     assert plan.season_id == "series-uuid-123"
+
+    # 幕级结构塞进 config_json["episode_plan"](经 overrides round-trip),供看板幕级视图
+    ov0 = svc.episode_calls[0]["overrides"]
+    assert ov0["episode_plan"]["beats"] == ["铺垫", "冲突"]
+    assert ov0["episode_plan"]["event_ids"] == ["E001", "E002"]
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@
  */
 import type {
   CanvasGraph, CanvasNode, CanvasEdge,
-  LongVideoTaskReq, TaskInfo, CostEstimateRes,
+  LongVideoTaskReq, TaskInfo, TaskShot, CostEstimateRes,
   CreativeCapability, Subject, SubjectKind,
   AuthRes, AuthUser, CreditsBalance,
 } from '@/types/api';
@@ -170,6 +170,8 @@ export const taskApi = {
   create:   (r: LongVideoTaskReq) => authedReq<TaskInfo>('/api/tasks', { method: 'POST', body: JSON.stringify(r) }),
   list:     () => authedReq<TaskInfo[]>('/api/tasks'),
   get:      (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}`),
+  // 镜头级卡片(剧集看板)——逐镜状态 + 一致性/诊断摘要
+  shots:    (id: string) => authedReq<TaskShot[]>(`/api/tasks/${id}/shots`),
   resume:   (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}/resume`, { method: 'POST' }),
   // SSE 进度:EventSource 无法带 Authorization 头,token 以查询参数传递
   progressUrl: (id: string) =>

@@ -108,8 +108,13 @@ async def dispatch_season(
     episodes: list[dict[str, Any]] = []
     for ep in plan.episodes:
         brief = episode_brief(ep, story)
+        # 把本集节拍结构塞进 task.config_json["episode_plan"](经 overrides round-trip),
+        # 供剧集看板做幕级视图 —— 零建表、零迁移(config_json 是 JSONB)。
         task = await series_service.create_episode(
-            series_id, topic=brief, task_service=task_service
+            series_id,
+            topic=brief,
+            task_service=task_service,
+            overrides={"episode_plan": ep.model_dump()},
         )
         episodes.append(task)
 
