@@ -436,12 +436,14 @@ html, body {
   padding: 0 24px; height: 56px;
   border-bottom: 1px solid var(--border);
   background: var(--card);
+  overflow-x: auto;
 }
-.hevi-topnav__logo { font-size: var(--text-xl); font-weight: 780; letter-spacing: -0.02em; color: var(--foreground); text-decoration: none; }
-.hevi-topnav__links { display: flex; gap: 4px; }
+.hevi-topnav__logo { flex-shrink: 0; font-size: var(--text-xl); font-weight: 780; letter-spacing: -0.02em; color: var(--foreground); text-decoration: none; }
+.hevi-topnav__links { display: flex; gap: 4px; flex-shrink: 0; }
 .hevi-topnav__link {
   padding: 7px 14px; border-radius: 8px; font-size: var(--text-sm);
   color: var(--muted-foreground); text-decoration: none;
+  white-space: nowrap; flex-shrink: 0;
 }
 .hevi-topnav__link:hover { background: var(--muted); color: var(--foreground); }
 .hevi-topnav__link[data-active="true"] { background: color-mix(in oklch, var(--primary) 16%, transparent); color: var(--primary); font-weight: 600; }
