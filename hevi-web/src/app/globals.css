@@ -904,3 +904,59 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
   color: var(--muted-foreground); word-break: break-all; }
 .ex-result__videos { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
 .ex-result video { max-width: 260px; border-radius: 10px; background: #000; }
+
+/* ── 剧集看板(SPEC-001 §4 短剧通道)──────────────────────────── */
+.hevi-sb { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
+.hevi-sb__title { font-size: var(--text-2xl); font-weight: 700; }
+.hevi-sb__sub { color: var(--muted-foreground); font-size: var(--text-sm); margin: 6px 0 20px; }
+.hevi-sb__err { color: #dc2626; font-size: var(--text-sm); margin-bottom: 12px; }
+.hevi-sb__cols { display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
+@media (max-width: 720px) { .hevi-sb__cols { grid-template-columns: 1fr; } }
+
+.hevi-sb__side-head { font-weight: 600; font-size: var(--text-sm); margin-bottom: 10px; }
+.hevi-sb__season { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
+  padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; cursor: pointer; }
+.hevi-sb__season[data-active='true'] { border-color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 8%, transparent); }
+.hevi-sb__season-name { font-weight: 600; }
+.hevi-sb__season-meta { font-size: var(--text-xs); color: var(--muted-foreground); }
+
+.hevi-sb__season-head { font-size: var(--text-lg); font-weight: 700; margin-bottom: 14px; }
+.hevi-sb__panels { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+.hevi-sb__panel { flex: 1 1 200px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; }
+.hevi-sb__panel-label { font-size: var(--text-xs); color: var(--muted-foreground); margin-bottom: 6px; }
+.hevi-sb__panel-val { font-weight: 600; font-size: var(--text-sm); }
+.hevi-sb__panel-none { font-size: var(--text-sm); color: var(--muted-foreground); }
+.hevi-sb__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hevi-sb__chip { font-family: var(--font-mono, monospace); font-size: var(--text-xs);
+  padding: 2px 8px; border-radius: 999px; background: color-mix(in oklch, var(--primary) 10%, transparent);
+  color: var(--primary); }
+
+.hevi-sb__eps { display: flex; flex-direction: column; gap: 10px; }
+.hevi-sb__ep { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.hevi-sb__ep-head { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 12px 14px; background: transparent; border: none; cursor: pointer; }
+.hevi-sb__ep-idx { flex: 0 0 auto; font-weight: 600; color: var(--primary); font-size: var(--text-sm); }
+.hevi-sb__ep-title { flex: 1; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hevi-sb__ep-status { flex: 0 0 auto; font-size: var(--text-xs); padding: 2px 8px; border-radius: 4px;
+  background: color-mix(in oklch, var(--muted-foreground) 12%, transparent); color: var(--muted-foreground); }
+.hevi-sb__ep-status[data-status='completed'] { background: color-mix(in oklch, #16a34a 14%, transparent); color: #16a34a; }
+.hevi-sb__ep-status[data-status='running'] { background: color-mix(in oklch, var(--primary) 14%, transparent); color: var(--primary); }
+.hevi-sb__ep-status[data-status='failed'] { background: color-mix(in oklch, #dc2626 14%, transparent); color: #dc2626; }
+.hevi-sb__ep-toggle { flex: 0 0 auto; font-size: var(--text-xs); color: var(--muted-foreground); }
+
+.hevi-sb__bar { position: relative; height: 18px; margin: 0 14px 10px; border-radius: 999px;
+  background: color-mix(in oklch, var(--muted-foreground) 12%, transparent); overflow: hidden; }
+.hevi-sb__bar-fill { height: 100%; background: var(--primary); transition: width .4s ease; }
+.hevi-sb__bar-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: var(--text-xs); color: var(--foreground); }
+
+.hevi-sb__ep-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.hevi-sb__ep-video { width: 100%; max-height: 60vh; border-radius: 8px; background: #000; }
+.hevi-sb__ep-brief { white-space: pre-wrap; font-family: var(--font-mono, monospace); font-size: var(--text-xs);
+  color: var(--muted-foreground); background: color-mix(in oklch, var(--border) 30%, transparent);
+  padding: 10px 12px; border-radius: 8px; margin: 0; }
+
+.hevi-sb__empty { color: var(--muted-foreground); font-size: var(--text-sm); padding: 12px; text-align: center; }
+.hevi-sb__empty--big { padding: 64px 12px; }

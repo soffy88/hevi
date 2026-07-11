@@ -13,6 +13,7 @@ const NAV = [
   { href: '/tongjian', label: '通鉴' },
   { href: '/explainer', label: '解说' },
   { href: '/series', label: '系列' },
+  { href: '/season-board', label: '短剧' },
   { href: '/studio', label: '画布工作台' },
   { href: '/gallery', label: '展示墙' },
   { href: '/account', label: '我的' },
