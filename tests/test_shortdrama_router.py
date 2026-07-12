@@ -238,6 +238,51 @@ async def test_confirm_dispatches_and_records_series_id_with_budget_threaded():
 
 
 @pytest.mark.asyncio
+async def test_confirm_reports_progress_while_auto_building_characters(tmp_path, monkeypatch):
+    """派发中不该是一整块黑箱——每建一个角色参考图,rec["progress"] 要能看出是第几个、
+    是谁,派发完清空(2026-07-12:客户反馈"派发中"卡半小时看不出进度)。"""
+    monkeypatch.setattr(sd, "_OUTPUT_DIR", tmp_path / "shortdrama")
+    run_id = str(uuid.uuid4())
+    _seed_run(run_id)
+
+    progress_snapshots: list[str | None] = []
+
+    async def _fake_qwen_image_generate(*, prompt, output_path):
+        progress_snapshots.append(sd._RUNS[run_id]["progress"])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"fake")
+        return output_path
+
+    async def _fake_dispatch(plan_arg, story_arg, **kwargs):
+        return {"series_id": "SER-777", "episodes": []}
+
+    with (
+        patch.object(sd, "get_hevi_pg_pool", AsyncMock(return_value=object())),
+        patch.object(sd, "dispatch_season", AsyncMock(side_effect=_fake_dispatch)),
+        patch(
+            "hevi.image.qwen_image_service.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_image_generate),
+        ),
+        patch.object(
+            sd.SubjectService,
+            "create_subject",
+            AsyncMock(return_value={"id": "AUTO-SUB"}),
+        ),
+    ):
+        bg = BackgroundTasks()
+        # 两个角色都留空绑定 → 都走自动生成分支
+        await sd.confirm_run(run_id, sd.ConfirmRequest(), bg, _USER)
+        await _run_bg(bg)
+
+    assert progress_snapshots == [
+        "建角色参考图 1/2: 王生",
+        "建角色参考图 2/2: 师父",
+    ]
+    assert sd._RUNS[run_id]["status"] == "DISPATCHED"
+    assert sd._RUNS[run_id]["progress"] is None
+
+
+@pytest.mark.asyncio
 async def test_confirm_uses_pre_bound_upload_over_body_binding():
     """上传参考图预绑定的角色,confirm 时不应再走 body.bindings 或自动生成。"""
     run_id = str(uuid.uuid4())

@@ -573,6 +573,8 @@ export interface ShortdramaRunStatus {
   created_at: string;
   series_id: string | null;
   error: string | null;
+  // 派发中的当前步骤(如"建角色参考图 2/3: 道士"),派发完/未开始派发时为 null
+  progress: string | null;
   story_graph?: StoryGraphLite;
   characters?: ShortdramaCharacterBindingState[];
   season_plan?: SeasonPlanLite;

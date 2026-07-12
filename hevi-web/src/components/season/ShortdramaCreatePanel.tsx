@@ -41,6 +41,9 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
   const [status, setStatus] = useState<ShortdramaRunStatus | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // 每次轮询成功都自增——单纯给"派发中"这类长时间不变的状态提供肉眼可见的心跳,
+  // 不然用户看着同一句"派发中…"半小时不动,分不清是卡住了还是后台真的在跑。
+  const [pollCount, setPollCount] = useState(0);
 
   const [charChoices, setCharChoices] = useState<Record<string, CharChoice>>({});
   const [existingSubjects, setExistingSubjects] = useState<Subject[] | null>(null);
@@ -79,6 +82,7 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
         syncAuthToken();
         const s = await shortdramaApi.getStatus(runId);
         setStatus(s);
+        setPollCount(c => c + 1);
         if (s.status === 'DISPATCHED' || s.status === 'FAILED') {
           if (pollRef.current) clearInterval(pollRef.current);
           pollRef.current = null;
@@ -280,7 +284,18 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
             <span className={`tj-run-badge tj-run-badge--${dispatching ? 'running' : failed ? 'failed' : 'completed'}`}>
               {dispatching ? '⟳ 派发中…' : failed ? '✗ 失败' : '📝 待审阅 + 角色绑定'}
             </span>
+            {dispatching && (
+              <span className="tj-progress__count">已轮询 {pollCount} 次 · 每 3 秒刷新一次,页面没卡住</span>
+            )}
           </div>
+
+          {dispatching && (
+            <p className="tj-hint">
+              {status.progress ?? '正在补齐角色绑定…'}
+              {' '}
+              (角色参考图 + 派发通常几分钟内完成;若长时间无变化请联系客服)
+            </p>
+          )}
 
           {failed && <p className="tj-hint">{status.error ?? '未知错误'}</p>}
 

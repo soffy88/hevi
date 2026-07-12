@@ -57,8 +57,17 @@ def _ensure_model() -> tuple[Any, Any]:
             except ImportError as e:  # pragma: no cover - env guard
                 raise SubjectEmbedError(f"subject_embed 需要 torch+transformers: {e}") from e
             logger.info("subject_embed: loading CLIP %s (CPU)", _CLIP_MODEL_ID)
-            _model = CLIPModel.from_pretrained(_CLIP_MODEL_ID).eval()
-            _processor = CLIPProcessor.from_pretrained(_CLIP_MODEL_ID)
+            try:
+                # 优先只读本地缓存,不发任何网络请求——有些部署环境(如 hevi-cftunnel
+                # 容器)压根没有到 huggingface.co 的出口,联网校验请求会挂起(上层
+                # subject_service._compute_identity_embeddings 的 20s 超时是最后
+                # 一道保险,这里先尝试走更快的路径)。
+                _model = CLIPModel.from_pretrained(_CLIP_MODEL_ID, local_files_only=True).eval()
+                _processor = CLIPProcessor.from_pretrained(_CLIP_MODEL_ID, local_files_only=True)
+            except Exception as local_exc:
+                logger.warning("subject_embed: 本地缓存未命中(%s),回退联网下载...", local_exc)
+                _model = CLIPModel.from_pretrained(_CLIP_MODEL_ID).eval()
+                _processor = CLIPProcessor.from_pretrained(_CLIP_MODEL_ID)
     return _model, _processor
 
 

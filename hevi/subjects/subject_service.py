@@ -117,7 +117,15 @@ class SubjectService:
             return _mean_unit(whole_vecs), _mean_unit(face_vecs)
 
         try:
-            return await asyncio.to_thread(_embed_all)
+            # 20s 硬顶:CLIP 模型首次加载若命中 transformers 联网校验(HEAD 请求),
+            # 在没有公网出口的容器里会无限重试挂起——2026-07-12 真实撞见:某次短剧
+            # 派发卡在 DISPATCHING 半小时不动,root cause 是这里挂死,不是任何"进度
+            # 显示"的问题。有超时兜底,才对得起上面这句"任何失败都降级为 None"的
+            # 设计意图(之前这句话只是文档,没有真的做到)。
+            return await asyncio.wait_for(asyncio.to_thread(_embed_all), timeout=20.0)
+        except TimeoutError:
+            logger.warning("identity_embedding timed out after 20s (CLIP 模型不可达?),降级为 None")
+            return None, None
         except Exception as e:  # 线程池/导入等意外,仍不阻断建角色
             logger.warning("identity_embedding thread failed: %s", e)
             return None, None

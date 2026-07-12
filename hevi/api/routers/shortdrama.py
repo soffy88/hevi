@@ -46,6 +46,7 @@ _RUNS: dict[str, dict[str, Any]] = {}
 
 _MAX_PLAN_ATTEMPTS = 5
 _ART_DIRECTION = "cinematic character portrait, front facing, neutral expression, detailed"
+_OUTPUT_DIR = Path("output/shortdrama")  # 模块级常量,便于测试 monkeypatch 到临时目录
 
 
 async def get_pg_pool() -> PgPool:
@@ -91,6 +92,7 @@ def _init_run(
         "bindings": {},  # char_id -> {"mode": "existing", "subject_id": ...}(如上传参考图预绑定)
         "series_id": None,
         "error": None,
+        "progress": None,  # 人类可读的当前步骤(如"建角色 2/3: 道士"),供前端展示进度
     }
     _RUNS[run_id] = rec
     return rec
@@ -215,6 +217,7 @@ def _rec_to_status(rec: dict[str, Any]) -> dict[str, Any]:
         "created_at": rec["created_at"],
         "series_id": rec.get("series_id"),
         "error": rec.get("error"),
+        "progress": rec.get("progress"),
     }
     if rec.get("story") is not None:
         out["story_graph"] = _story_summary(rec["story"])
@@ -336,6 +339,16 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
         pool = await get_hevi_pg_pool()
         subject_svc = SubjectService(SubjectRepository(pool))
 
+        auto_chars = [
+            c
+            for c in story.characters
+            if rec["bindings"].get(c.char_id) is None
+            and not (
+                (b := body.bindings.get(c.char_id)) is not None
+                and b.mode == "existing"
+                and b.subject_id
+            )
+        ]
         subject_id_map: dict[str, str] = {}
         for c in story.characters:
             pre = rec["bindings"].get(c.char_id)
@@ -347,9 +360,12 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
                 subject_id_map[c.char_id] = binding.subject_id
                 continue
 
+            idx = auto_chars.index(c) + 1
+            rec["progress"] = f"建角色参考图 {idx}/{len(auto_chars)}: {c.name}"
+
             from hevi.image.qwen_image_service import qwen_image_generate
 
-            portrait_dir = Path("output/shortdrama") / run_id / "subjects" / c.char_id
+            portrait_dir = _OUTPUT_DIR / run_id / "subjects" / c.char_id
             portrait_dir.mkdir(parents=True, exist_ok=True)
             portrait_path = portrait_dir / "portrait.png"
             prompt = f"{_ART_DIRECTION}, {c.name}, {c.description or '角色肖像'}"
@@ -363,6 +379,7 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
             )
             subject_id_map[c.char_id] = str(subject["id"])
 
+        rec["progress"] = "派发剧集(建 Series + 逐集任务)..."
         task_repo = TaskRepository(pool)
         task_service = TaskService(task_repo)
         series_service = SeriesService(SeriesRepository(pool), task_service=task_service)
@@ -384,6 +401,7 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
         )
         rec["series_id"] = dispatched["series_id"]
         rec["status"] = "DISPATCHED"
+        rec["progress"] = None
         logger.info("shortdrama run %s 派发完成: series_id=%s", run_id, dispatched["series_id"])
     except Exception as e:
         logger.exception("shortdrama run %s 派发失败: %s", run_id, e)
