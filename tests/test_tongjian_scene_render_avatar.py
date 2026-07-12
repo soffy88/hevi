@@ -15,6 +15,7 @@ import pytest
 from hevi.tongjian.scene_render_avatar import (
     _MAX_CLIP_DURATION_S,
     _NARRATOR_DESC,
+    _resolve_dimensions,
     _say_dur,
     _split_text_for_dialogue,
     build_frame_manifest_avatar,
@@ -28,6 +29,7 @@ from hevi.tongjian.schemas import (
     ScriptLine,
     Shot,
     ShotList,
+    VisualStyle,
 )
 
 _LONG_QUOTE_TEXT = (
@@ -66,6 +68,23 @@ def test_say_dur_capped_at_platform_limit():
     assert _say_dur(_LONG_QUOTE_TEXT, 0.32) == _MAX_CLIP_DURATION_S
 
 
+# ── _resolve_dimensions ──────────────────────────────────────────────────────
+
+
+def test_resolve_dimensions_landscape_default():
+    assert _resolve_dimensions("720P", "16:9") == (1280, 720)
+
+
+def test_resolve_dimensions_portrait_swaps_wh():
+    """2026-07-12 真实撞见:短剧设计上是 9:16 竖屏,但此前这里从不读 aspect_ratio,
+    真实跑出来的成片是 1280×720 横屏——9:16 必须把 _RES 的横屏尺寸转置。"""
+    assert _resolve_dimensions("720P", "9:16") == (720, 1280)
+
+
+def test_resolve_dimensions_unknown_resolution_falls_back_to_720p():
+    assert _resolve_dimensions("bogus", "16:9") == (1280, 720)
+
+
 # ── build_frame_manifest_avatar ─────────────────────────────────────────────
 
 
@@ -77,6 +96,51 @@ def _bible(ref_image: str | None = None) -> CharacterBible:
             )
         ]
     )
+
+
+@pytest.mark.asyncio
+async def test_portrait_aspect_ratio_reaches_final_crop_dimensions(tmp_path):
+    """2026-07-12 真实撞见:短剧设计上是 9:16 竖屏(手机观看),但 Constitution.
+    visual_style.aspect_ratio 此前从没被读过,真实跑出来的成片是 1280×720 横屏。
+    aspect_ratio="9:16" 必须让最终交付给 _fit_dialogue 的 w×h 是竖屏(720×1280)。
+    """
+    script = Script(
+        lines=[ScriptLine(line_id="LN001", type="dialogue", speaker="C003", text="请分宗。")]
+    )
+    shotlist = ShotList(shots=[Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"])])
+
+    async def _write(*, output_path, **_kwargs):
+        output_path.write_bytes(b"fake")
+        return output_path
+
+    fit_calls = []
+
+    with (
+        patch("hevi.tongjian.scene_render_avatar.qwen_image_edit", AsyncMock(side_effect=_write)),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate", AsyncMock(side_effect=_write)
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate", AsyncMock(side_effect=_write)
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: (fit_calls.append((w, h)), clip.write_bytes(b"c")),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            _bible(),
+            Constitution(visual_style=VisualStyle(aspect_ratio="9:16")),
+            run_dir=tmp_path,
+        )
+
+    assert fit_calls == [(720, 1280)]
 
 
 @pytest.mark.asyncio

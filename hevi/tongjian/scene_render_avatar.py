@@ -204,8 +204,22 @@ def _extract_frame(clip: Path, out: Path) -> None:
     )
 
 
-# resolution 参数 → 输出画幅(宽,高)。前端下拉直接给这些键。
+# resolution 参数(前端下拉直接给这些键)→ 横屏画幅(宽,高)。
 _RES = {"480P": (854, 480), "720P": (1280, 720), "1080P": (1920, 1080)}
+
+
+def _resolve_dimensions(resolution: str, aspect_ratio: str) -> tuple[int, int]:
+    """resolution 分档 + Constitution.visual_style.aspect_ratio → 最终交付画幅。
+
+    2026-07-12 真实撞见:短剧设计上是 9:16 竖屏(手机观看),但此前这里只按 _RES
+    出横屏尺寸,aspect_ratio 字段设了从没人读过——真实跑出来的成片是 1280×720
+    横屏。happyhorse/i2v 底层云端 API 的 resolution 参数只是画质分档(480P/720P/
+    1080P),不控制横竖(见 dashscope_i2v_service.py),真正决定最终画幅的是
+    _fit_dialogue/_fit_narration 那步 ffmpeg scale+crop——所以只需要把交付宽高
+    按 aspect_ratio 转置,不用碰 API 调用本身。
+    """
+    w, h = _RES.get(resolution, _RES["720P"])
+    return (h, w) if aspect_ratio == "9:16" else (w, h)
 
 
 def _fit_dialogue(clip: Path, out: Path, w: int, h: int) -> None:
@@ -289,7 +303,7 @@ async def build_frame_manifest_avatar(
     style = _p(config, "style", _DEFAULT_STYLE)
     per_char = float(_p(config, "say_char_sec", 0.32))
     reso = str(_p(config, "resolution", "720P"))
-    w, h = _RES.get(reso, (1280, 720))
+    w, h = _resolve_dimensions(reso, constitution.visual_style.aspect_ratio)
     narr_tone = str(_p(config, "narr_tone", "沉稳"))  # 旁白语气(沉稳/激昂/凝重…)
     narrator_desc = str(_p(config, "narrator_desc", _NARRATOR_DESC))
 
