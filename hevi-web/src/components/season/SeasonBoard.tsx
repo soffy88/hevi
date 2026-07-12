@@ -44,12 +44,12 @@ export function SeasonBoard() {
     // 面板自己会在挂载时找回该 run 的完整状态(见 ShortdramaCreatePanel 的恢复 effect)。
     (async () => {
       try {
-        const runs = await shortdramaApi.listRuns();
-        const active = runs.find(
-          r => r.status === 'PENDING' || r.status === 'RUNNING' ||
-               r.status === 'AWAITING_CHARACTERS' || r.status === 'DISPATCHING'
-        );
-        if (active) setCreating(true);
+        const runs = await shortdramaApi.listRuns(); // 已按 created_at 倒序
+        // 只看最近一条,FAILED 也算(派发阶段失败可直接重试,不该被当成"没有活跃
+        // run"而漏掉——2026-07-12 真实撞见);只有真派发成功(DISPATCHED)才不用
+        // 自动切回创建面板。
+        const mostRecent = runs[0];
+        if (mostRecent && mostRecent.status !== 'DISPATCHED') setCreating(true);
       } catch {
         // 静默:未登录/网络问题不影响正常查看看板
       }

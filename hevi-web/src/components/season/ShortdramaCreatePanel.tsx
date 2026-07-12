@@ -62,11 +62,14 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
     (async () => {
       try {
         syncAuthToken();
-        const runs = await shortdramaApi.listRuns();
-        const active = runs.find(
-          r => r.status === 'PENDING' || r.status === 'RUNNING' ||
-               r.status === 'AWAITING_CHARACTERS' || r.status === 'DISPATCHING'
-        );
+        const runs = await shortdramaApi.listRuns(); // 已按 created_at 倒序
+        // 只看最近一条:FAILED 也算"找回"——之前漏了这个状态,导致派发阶段失败
+        // (角色/分集数据都还在,本可以直接重试)的 run 一旦页面刷新/重挂载就再也
+        // 找不回来,只能眼睁睁看着变回空表单(2026-07-12 真实撞见)。只看最近一条
+        // 而不是找"第一个非 DISPATCHED"——否则如果最近一次其实已经派发成功,会
+        // 误把更早的一条旧失败记录翻出来。
+        const mostRecent = runs[0];
+        const active = mostRecent && mostRecent.status !== 'DISPATCHED' ? mostRecent : undefined;
         if (active && !cancelled) {
           setStatus(active);
           setRunId(active.run_id);
