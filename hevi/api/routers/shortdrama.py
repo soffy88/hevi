@@ -30,6 +30,8 @@ from hevi.auth.dependencies import get_current_user
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.season_planner.dispatch import dispatch_season
 from hevi.season_planner.planner import build_season_plan
+from hevi.season_planner.schemas import EpisodePlan
+from hevi.season_planner.tongjian_bridge import render_episode
 from hevi.series.repository import SeriesRepository
 from hevi.series.series_service import SeriesService
 from hevi.storygraph.extract import extract_story_graph
@@ -38,6 +40,7 @@ from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
+from hevi.video.duration_mapper import get_duration_config
 
 logger = logging.getLogger(__name__)
 
@@ -336,6 +339,84 @@ async def upload_character_reference(
     return {"char_id": char_id, "subject_id": subject_id}
 
 
+async def _run_episode_via_tongjian(
+    *,
+    task_repo: TaskRepository,
+    task_id: uuid.UUID,
+    ep: EpisodePlan,
+    story: StoryGraph,
+    duration_archetype: str,
+) -> None:
+    """真实生成一集:StoryGraph/EpisodePlan → hevi.season_planner.tongjian_bridge
+    (复用通鉴 cloud_avatar 对白+口型管线,见该模块 docstring)。
+
+    不走 task_service.run_task()——那条路是 dispatch_season 建好 VideoTask 后"该由谁
+    去跑"的默认答案,但它接的是通用长视频管线(无对白能力,2026-07-12 真实验证效果
+    远不如通鉴)。这里直接更新 video_tasks/shot_states,让 SeasonBoard 现有 UI
+    (taskApi.videoUrl/shots)零改动继续可用。
+    """
+    await task_repo.update_task(
+        task_id, {"status": "running", "updated_at": datetime.now(UTC).replace(tzinfo=None)}
+    )
+    try:
+        duration_cfg = get_duration_config(duration_archetype)
+        result = await render_episode(
+            ep,
+            story,
+            run_dir=Path("output/tasks") / str(task_id),
+            target_duration_sec=int(duration_cfg["target_s"]),
+        )
+        final_video = result["final_video"]
+        shots = result["shots"]
+        task = await task_repo.get_task(task_id)
+        config_json = dict((task or {}).get("config_json") or {})
+        # actual_usd 严格来说应该是真实计费,但 task_service 自己也从不回填这个字段
+        # (STATUS.md 早前记过的既有坑)——退而求其次,沿用派发时算好的预估值,让
+        # B3 季预算熔断至少看得到"这一集大概花了多少",而不是永远读到 $0。
+        config_json["actual_usd"] = config_json.get("estimated_usd", 0.0)
+        await task_repo.update_task(
+            task_id,
+            {
+                "status": "completed",
+                "progress_pct": 100.0,
+                "result_video_path": final_video.video_path,
+                "total_shots": len(shots),
+                "completed_shots": len(shots),
+                "error": None,
+                "config_json": config_json,
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+        await task_repo.delete_shots(task_id)
+        for shot in shots:
+            await task_repo.create_shot_state(
+                {
+                    "task_id": task_id,
+                    "shot_index": shot["index"],
+                    "status": "completed" if shot["passed"] else "failed",
+                    "output_path": shot["path"],
+                    "selection_json": {
+                        "provider": shot["provider"],
+                        "consistency_score": shot["consistency_score"],
+                        "passed": shot["passed"],
+                        "diagnosis_category": shot["diagnosis_category"],
+                        "retry_count": shot["retry_count"],
+                    },
+                }
+            )
+        logger.info("shortdrama episode %s 渲染完成(通鉴桥接): %s", task_id, final_video.video_path)
+    except Exception as e:
+        logger.exception("shortdrama episode %s 渲染失败(通鉴桥接): %s", task_id, e)
+        await task_repo.update_task(
+            task_id,
+            {
+                "status": "failed",
+                "error": str(e)[:500],
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+
+
 async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> None:
     """角色绑定确认后:补齐未绑定角色的 Subject(auto 生成参考图)→ dispatch_season。"""
     rec = _RUNS[run_id]
@@ -430,22 +511,28 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
             spec=spec,
             user_id=user_id,
         )
-        # dispatch_season 只建 VideoTask 行(status="pending"),并不会触发真实生成——
-        # 这是 2026-07-12 真实撞见的一个严重疏漏:云端 provider(happyhorse_1_1_maas_lock
-        # 等)的任务不会被 QueueWorker 的串行队列捞走(那条队列走 status="queued",
-        # 只有 submit_task() 对本地 provider 才会转过去),必须像
-        # hevi/api/routers/series.py::create_episode 那样显式 submit_task()+
-        # (非本地 provider 时)调 run_task_background 才会真的开始生成。此前这一步
-        # 完全缺失,派发"成功"但视频永远停在 pending,不会有人去跑它。
-        for ep in dispatched["episodes"]:
-            ep_id = uuid.UUID(str(ep["id"]))
-            submitted = await task_service.submit_task(ep_id)
-            if submitted.get("status") != "queued" and not task_service.is_local_provider(
-                body.video_provider
-            ):
-                t = asyncio.create_task(task_service.run_task_background(ep_id))
-                _RUN_TASKS.add(t)
-                t.add_done_callback(_RUN_TASKS.discard)
+        # dispatch_season 只建 VideoTask 行(status="pending"),不会自己触发真实生成
+        # ——2026-07-12 真实撞见的严重疏漏,已修(见下面 _run_episode_via_tongjian 的
+        # docstring)。同时,真实跑出来的效果比通鉴差远了:通用长视频管线
+        # (hevi/pipeline/longvideo_orchestrator.py)没有"对白 vs 旁白"的区分能力,
+        # 产出的是纯第三人称诗化旁白、零人物对话——所以这里改用
+        # hevi/season_planner/tongjian_bridge.py,复用通鉴已验证的 L2(戏剧化剧本)→
+        # L3(配音)→L4(分镜)→L6(cloud_avatar 角色对白+口型)→L8(装配) 管线,不再走
+        # task_service.run_task/orchestrate_longvideo 那条通用管线。
+        for idx, ep_dict in enumerate(dispatched["episodes"]):
+            ep_id = uuid.UUID(str(ep_dict["id"]))
+            episode_plan = plan.episodes[idx]
+            t = asyncio.create_task(
+                _run_episode_via_tongjian(
+                    task_repo=task_repo,
+                    task_id=ep_id,
+                    ep=episode_plan,
+                    story=story,
+                    duration_archetype=body.duration_archetype,
+                )
+            )
+            _RUN_TASKS.add(t)
+            t.add_done_callback(_RUN_TASKS.discard)
 
         rec["series_id"] = dispatched["series_id"]
         rec["status"] = "DISPATCHED"
