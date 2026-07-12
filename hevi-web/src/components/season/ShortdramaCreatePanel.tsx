@@ -301,7 +301,10 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
 
           {status.gate && !status.gate.passed && (
             <div className="sd-gate-warn">
-              <div className="sd-gate-warn__head">⚠ 剧集规划自我批判门未完全通过（仍可继续，或重新规划）</div>
+              <div className="sd-gate-warn__head">
+                ⚠ 剧集规划自我批判门未完全通过——不会阻止派发，可以往下滑到角色绑定，
+                直接点底部"确认无误，开始真实生成"按钮继续；或点下面"重新规划"换一版
+              </div>
               <ul>{status.gate.errors.map((m, i) => <li key={i}>{m}</li>)}</ul>
             </div>
           )}
