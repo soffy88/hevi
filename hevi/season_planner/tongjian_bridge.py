@@ -156,6 +156,7 @@ async def render_episode(
     aspect_ratio: str = DEFAULT_ASPECT_RATIO,
     resolution: str = "720P",
     llm: Any = None,
+    tts_fn: Any = None,
     dramatize: bool = True,
 ) -> dict[str, Any]:
     """本集真实渲染主入口:StoryGraph/EpisodePlan → 通鉴 L2-L8(cloud_avatar)→ 真实成片。
@@ -173,6 +174,15 @@ async def render_episode(
         from obase.provider_registry import ProviderRegistry
 
         llm = ProviderRegistry.get().llm("qwen_cloud")
+    if tts_fn is None:
+        from obase.provider_registry import ProviderRegistry
+
+        # L3 配音显式选 edge_tts,不用 build_voiceover 的默认值——那个默认值是
+        # "cosyvoice"(其实注册成 vibevoice 的别名,见 providers/registry.py),要吃
+        # 本机共享的、反复从 PCIe 总线掉线的 3080。通鉴自己验证过真实可用的"云水墨
+        # 数字人"配置(_apply_cloud_avatar_preset)明确把 L3 换成 edge_tts(云端、零
+        # GPU 依赖),这里跟着用同一份已验证配置,不要用回本地模型。
+        tts_fn = ProviderRegistry.get().generic("audio", "edge_tts")
 
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -195,7 +205,7 @@ async def render_episode(
         raise RuntimeError(f"剧本生成为空壳(L2 门:{g2.errors})")
 
     timeline, g3 = await build_voiceover(
-        script=script, constitution=constitution, output_dir=run_dir
+        script=script, constitution=constitution, output_dir=run_dir, tts_fn=tts_fn
     )
     gate_reports["voiceover"] = g3
 

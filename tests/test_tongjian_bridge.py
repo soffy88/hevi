@@ -173,7 +173,7 @@ async def test_render_episode_wires_l2_to_l8_and_maps_shots(tmp_path):
         ),
     ):
         result = await bridge.render_episode(
-            _episode(), _story(), run_dir=tmp_path, llm=AsyncMock()
+            _episode(), _story(), run_dir=tmp_path, llm=AsyncMock(), tts_fn=AsyncMock()
         )
 
     assert result["final_video"] is final_video
@@ -210,7 +210,9 @@ async def test_render_episode_raises_when_script_is_empty_shell(tmp_path):
         AsyncMock(return_value=(empty_script, failing_gate)),
     ):
         with pytest.raises(RuntimeError, match="剧本生成为空壳"):
-            await bridge.render_episode(_episode(), _story(), run_dir=tmp_path, llm=AsyncMock())
+            await bridge.render_episode(
+                _episode(), _story(), run_dir=tmp_path, llm=AsyncMock(), tts_fn=AsyncMock()
+            )
 
 
 @pytest.mark.asyncio
@@ -250,7 +252,7 @@ async def test_render_episode_degrades_gracefully_when_music_plan_fails(tmp_path
         ) as mock_final,
     ):
         result = await bridge.render_episode(
-            _episode(), _story(), run_dir=tmp_path, llm=AsyncMock()
+            _episode(), _story(), run_dir=tmp_path, llm=AsyncMock(), tts_fn=AsyncMock()
         )
 
     assert result["final_video"] is final_video
