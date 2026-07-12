@@ -283,6 +283,85 @@ async def test_confirm_reports_progress_while_auto_building_characters(tmp_path,
 
 
 @pytest.mark.asyncio
+async def test_confirm_retries_transient_portrait_failure(tmp_path, monkeypatch):
+    """qwen-image 偶发瞬时失败(2026-07-12 真实撞见对方服务端 bug)不该拖垮整条派发——
+    重试几次,单次抖动能扛过去。"""
+    monkeypatch.setattr(sd, "_OUTPUT_DIR", tmp_path / "shortdrama")
+    monkeypatch.setattr(sd, "_PORTRAIT_RETRY_DELAY_S", 0.0)
+    run_id = str(uuid.uuid4())
+    _seed_run(run_id)
+
+    calls = {"n": 0}
+
+    async def _flaky_qwen_image_generate(*, prompt, output_path):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("InternalError.Algo: DashscopeLogger has no attribute warning")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"fake")
+        return output_path
+
+    async def _fake_dispatch(plan_arg, story_arg, **kwargs):
+        return {"series_id": "SER-RETRY", "episodes": []}
+
+    with (
+        patch.object(sd, "get_hevi_pg_pool", AsyncMock(return_value=object())),
+        patch.object(sd, "dispatch_season", AsyncMock(side_effect=_fake_dispatch)),
+        patch(
+            "hevi.image.qwen_image_service.qwen_image_generate",
+            AsyncMock(side_effect=_flaky_qwen_image_generate),
+        ),
+        patch.object(
+            sd.SubjectService, "create_subject", AsyncMock(return_value={"id": "AUTO-SUB"})
+        ),
+    ):
+        bg = BackgroundTasks()
+        await sd.confirm_run(run_id, sd.ConfirmRequest(), bg, _USER)
+        await _run_bg(bg)
+
+    assert sd._RUNS[run_id]["status"] == "DISPATCHED"
+    assert calls["n"] >= 2  # 第一次失败,重试后成功
+
+
+@pytest.mark.asyncio
+async def test_confirm_retriable_after_dispatch_failure_without_replan():
+    """派发阶段失败(story/plan 都还在)不该逼用户重新规划——直接允许再调一次 confirm,
+    已经建好的角色(落进 rec["bindings"])不会被重新生成。"""
+    run_id = str(uuid.uuid4())
+    _seed_run(
+        run_id,
+        status="FAILED",
+        error="qwen-image 任务失败(FAILED): ...",
+        bindings={"C001": {"mode": "existing", "subject_id": "ALREADY-BUILT"}},
+    )
+
+    captured: dict = {}
+
+    async def _fake_dispatch(plan_arg, story_arg, **kwargs):
+        captured.update(kwargs)
+        return {"series_id": "SER-RECOVER", "episodes": []}
+
+    with (
+        patch.object(sd, "get_hevi_pg_pool", AsyncMock(return_value=object())),
+        patch.object(sd, "dispatch_season", AsyncMock(side_effect=_fake_dispatch)),
+    ):
+        bg = BackgroundTasks()
+        body = sd.ConfirmRequest(
+            bindings={"C002": sd.CharacterBinding(mode="existing", subject_id="S2")}
+        )
+        resp = await sd.confirm_run(run_id, body, bg, _USER)
+        assert resp["status"] == "DISPATCHING"
+        await _run_bg(bg)
+
+    rec = sd._RUNS[run_id]
+    assert rec["status"] == "DISPATCHED"
+    assert rec["series_id"] == "SER-RECOVER"
+    assert rec["error"] is None
+    # C001 沿用之前已经建好的 Subject,没有重新生成
+    assert captured["subject_id_map"] == {"C001": "ALREADY-BUILT", "C002": "S2"}
+
+
+@pytest.mark.asyncio
 async def test_confirm_uses_pre_bound_upload_over_body_binding():
     """上传参考图预绑定的角色,confirm 时不应再走 body.bindings 或自动生成。"""
     run_id = str(uuid.uuid4())

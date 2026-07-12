@@ -208,6 +208,10 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
   const dispatching = status?.status === 'DISPATCHING';
   const dispatched = status?.status === 'DISPATCHED';
   const failed = status?.status === 'FAILED';
+  // 失败但角色/分集数据还在(=规划阶段其实成功了,是派发阶段——建角色参考图或
+  // dispatch_season——失败),不该逼用户重新规划、白白丢掉已经生成好的 StoryGraph/
+  // SeasonPlan,应该让他直接重试(后端 confirm 现在也接受从 FAILED 状态重试)。
+  const canBindCharacters = (awaitingCharacters || failed) && !!status?.characters;
 
   return (
     <div className="tj sd">
@@ -297,7 +301,12 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
             </p>
           )}
 
-          {failed && <p className="tj-hint">{status.error ?? '未知错误'}</p>}
+          {failed && (
+            <p className="tj-hint">
+              {status.error ?? '未知错误'}
+              {canBindCharacters && '（规划本身没问题，是派发/建角色这一步失败了，可以直接点下面按钮重试，不必重新规划）'}
+            </p>
+          )}
 
           {status.gate && !status.gate.passed && (
             <div className="sd-gate-warn">
@@ -354,7 +363,7 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
             </div>
           )}
 
-          {awaitingCharacters && status.characters && (
+          {canBindCharacters && status.characters && (
             <>
               <div className="sd-review__label" style={{ marginTop: 16 }}>②角色绑定</div>
               <div className="sd-chars">
