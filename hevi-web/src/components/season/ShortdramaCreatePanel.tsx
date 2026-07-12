@@ -34,7 +34,11 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
   const [targetEpisodes, setTargetEpisodes] = useState(3);
   const [videoProvider, setVideoProvider] = useState(VIDEO_PROVIDER_OPTIONS[0].value);
   const [durationArchetype, setDurationArchetype] = useState(DURATION_OPTIONS[0].value);
-  const [seriesBudgetUsd, setSeriesBudgetUsd] = useState(20);
+  // 默认 $20 是错的实测教训(2026-07-12):happyhorse_1_1_maas_lock + 1-5min 档,
+  // 单集默认时长下单集就约 $25(还没算返工重生成——G1 真实跑发现返工几乎必然触发,
+  // 实际常翻倍),3 集默认目标下 $20 连第一集都不够,一定会被 check_series_budget
+  // 秒拒。改成按目标集数估的更现实的默认值,并在下面加一行提示说明怎么估的。
+  const [seriesBudgetUsd, setSeriesBudgetUsd] = useState(3 * 50);
 
   const [busy, setBusy] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
@@ -242,6 +246,11 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
                 <span className="tj-field__label">季预算上限（美元 · 派发后由后台队列自动真实生成，超线熔断）</span>
                 <input type="number" min={1} step={1}
                   value={seriesBudgetUsd} onChange={e => setSeriesBudgetUsd(Number(e.target.value))} />
+                <span className="tj-hint">
+                  参考:默认档单集约 $25(不含返工;返工几乎必然触发,实际常翻倍),
+                  {targetEpisodes} 集建议至少 ${targetEpisodes * 50}——设太低会在派发时被
+                  预算熔断直接拒绝(不是卡住,是秒拒,报错里会写清楚超了多少)
+                </span>
               </label>
             </div>
             <div className="tj-field">
