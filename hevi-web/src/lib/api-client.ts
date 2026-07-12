@@ -298,6 +298,37 @@ export const tongjianApi = {
     `${API_BASE}/api/tongjian/runs/${runId}/video${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
 };
 
+// ── 短剧创建入口(SPEC-001 §7 阶段1,需登录)──────────────────────────────────
+import type { ShortdramaRunRequest, ShortdramaRunStatus, ShortdramaConfirmRequest } from '@/types/api';
+export const shortdramaApi = {
+  startRun: (payload: ShortdramaRunRequest) =>
+    authedReq<{ run_id: string; status: string }>('/api/shortdrama/runs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getStatus: (runId: string) =>
+    authedReq<ShortdramaRunStatus>(`/api/shortdrama/runs/${runId}`),
+  listRuns: () =>
+    authedReq<ShortdramaRunStatus[]>('/api/shortdrama/runs'),
+  // 对抽取/分集结果不满意 → 重新抽取+规划
+  replan: (runId: string) =>
+    authedReq<{ run_id: string; status: string }>(`/api/shortdrama/runs/${runId}/replan`, { method: 'POST' }),
+  // 给某个角色上传参考图建号并绑定(confirm 时该角色不再自动生成)
+  uploadCharacterReference: (runId: string, charId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<{ char_id: string; subject_id: string }>(
+      `/api/shortdrama/runs/${runId}/characters/${charId}/upload`, form,
+    );
+  },
+  // 角色绑定确认 → 派发(真实生成,由后台队列自动执行)
+  confirm: (runId: string, payload: ShortdramaConfirmRequest) =>
+    authedReq<{ run_id: string; status: string }>(`/api/shortdrama/runs/${runId}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+};
+
 // ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────
 import type { ExplainerRunRequest, ExplainerRunStatus } from '@/types/api';
 export const explainerApi = {

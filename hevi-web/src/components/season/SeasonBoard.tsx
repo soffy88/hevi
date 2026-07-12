@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { useSSEProgress } from '@helios/oui';
 import { seriesApi, taskApi, USE_MOCK } from '@/lib/api-client';
 import type { Series, Episode, TaskShot } from '@/types/api';
+import { ShortdramaCreatePanel } from './ShortdramaCreatePanel';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: '待生成',
@@ -29,6 +30,7 @@ export function SeasonBoard() {
   const [selected, setSelected] = useState<Series | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -51,14 +53,41 @@ export function SeasonBoard() {
     }
   }
 
+  // 短剧创建入口派发成功:刷新季列表并直接选中新建的季
+  async function handleDispatched(seriesId: string) {
+    setCreating(false);
+    try {
+      const refreshed = await seriesApi.list();
+      setList(refreshed);
+      const s = refreshed.find((x) => x.id === seriesId);
+      if (s) await selectSeries(s);
+    } catch (e) {
+      setErr(errText(e));
+    }
+  }
+
   const doneCount = episodes.filter((e) => e.status === 'completed').length;
 
   return (
     <div className="hevi-sb">
-      <h1 className="hevi-sb__title">剧集看板</h1>
-      <p className="hevi-sb__sub">一部短剧 = 一个系列。逐集查看结构、生成进度与成片,角色/风格全季锁定。</p>
+      <div className="hevi-sb__head-row">
+        <div>
+          <h1 className="hevi-sb__title">剧集看板</h1>
+          <p className="hevi-sb__sub">一部短剧 = 一个系列。逐集查看结构、生成进度与成片,角色/风格全季锁定。</p>
+        </div>
+        <button
+          type="button"
+          className="hevi-sb__new-btn"
+          onClick={() => setCreating((v) => !v)}
+        >
+          {creating ? '← 返回看板' : '+ 新建短剧'}
+        </button>
+      </div>
       {err && <div className="hevi-sb__err">{err}</div>}
 
+      {creating ? (
+        <ShortdramaCreatePanel onDispatched={handleDispatched} />
+      ) : (
       <div className="hevi-sb__cols">
         {/* 左:季列表 */}
         <div className="hevi-sb__side">
@@ -132,6 +161,7 @@ export function SeasonBoard() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

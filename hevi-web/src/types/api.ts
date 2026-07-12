@@ -507,3 +507,95 @@ export interface ExplainerRunRequest {
   topic: string;
 }
 
+// ── 短剧创建入口(SPEC-001 §7 阶段1,建季能力)──────────────────────────────
+export type ShortdramaRunStatusVal =
+  | 'PENDING' | 'RUNNING' | 'AWAITING_CHARACTERS' | 'DISPATCHING' | 'DISPATCHED' | 'FAILED';
+
+export interface ShortdramaCharacterLite {
+  char_id: string;
+  name: string;
+  aliases: string[];
+  description: string;
+  role: string;
+}
+
+export interface ShortdramaRelationshipLite {
+  from_char: string;
+  to_char: string;
+  relation_type: string;
+  valence: number;
+}
+
+export interface ShortdramaEventLite {
+  event_id: string;
+  summary: string;
+  beat_type: string;
+}
+
+export interface StoryGraphLite {
+  characters: ShortdramaCharacterLite[];
+  relationships: ShortdramaRelationshipLite[];
+  events: ShortdramaEventLite[];
+}
+
+export interface ShortdramaEpisodeLite {
+  ep_number: number;
+  title: string;
+  characters_present: string[];
+  target_emotion_arc: string;
+  beats: string[];
+}
+
+export interface SeasonPlanLite {
+  target_episodes: number;
+  episodes: ShortdramaEpisodeLite[];
+}
+
+// 每个角色当前的绑定状态(GET /runs/{id} 里的 characters 数组投影)
+export interface ShortdramaCharacterBindingState {
+  char_id: string;
+  name: string;
+  bound: boolean;
+  subject_id: string | null;
+}
+
+export interface ShortdramaGateResult {
+  passed: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ShortdramaRunStatus {
+  run_id: string;
+  status: ShortdramaRunStatusVal;
+  source_name: string;
+  target_episodes: number;
+  created_at: string;
+  series_id: string | null;
+  error: string | null;
+  story_graph?: StoryGraphLite;
+  characters?: ShortdramaCharacterBindingState[];
+  season_plan?: SeasonPlanLite;
+  gate?: ShortdramaGateResult;
+}
+
+export interface ShortdramaRunRequest {
+  source_name: string;
+  raw_text: string;
+  target_episodes?: number;
+}
+
+// 提交绑定时用的选择(mode="auto" 默认自动生成参考图 | "existing" 复用已有角色/刚上传的)
+export interface ShortdramaCharacterBinding {
+  mode: 'auto' | 'existing';
+  subject_id?: string | null;
+}
+
+export interface ShortdramaConfirmRequest {
+  bindings: Record<string, ShortdramaCharacterBinding>;
+  video_provider?: string;
+  duration_archetype?: string;
+  series_budget_usd?: number;
+  style_pack_id?: string | null;
+}
+
