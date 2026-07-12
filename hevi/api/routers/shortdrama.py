@@ -44,6 +44,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/shortdrama", tags=["shortdrama"])
 
 _RUNS: dict[str, dict[str, Any]] = {}
+# fire-and-forget 真实生成任务的强引用(asyncio 文档明确警告:create_task() 返回值
+# 不留引用会被当垃圾提前回收/取消)。任务完成后从集合里移除,不无限增长。
+_RUN_TASKS: set[asyncio.Task[Any]] = set()
 
 _MAX_PLAN_ATTEMPTS = 5
 _ART_DIRECTION = "cinematic character portrait, front facing, neutral expression, detailed"
@@ -427,6 +430,23 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
             spec=spec,
             user_id=user_id,
         )
+        # dispatch_season 只建 VideoTask 行(status="pending"),并不会触发真实生成——
+        # 这是 2026-07-12 真实撞见的一个严重疏漏:云端 provider(happyhorse_1_1_maas_lock
+        # 等)的任务不会被 QueueWorker 的串行队列捞走(那条队列走 status="queued",
+        # 只有 submit_task() 对本地 provider 才会转过去),必须像
+        # hevi/api/routers/series.py::create_episode 那样显式 submit_task()+
+        # (非本地 provider 时)调 run_task_background 才会真的开始生成。此前这一步
+        # 完全缺失,派发"成功"但视频永远停在 pending,不会有人去跑它。
+        for ep in dispatched["episodes"]:
+            ep_id = uuid.UUID(str(ep["id"]))
+            submitted = await task_service.submit_task(ep_id)
+            if submitted.get("status") != "queued" and not task_service.is_local_provider(
+                body.video_provider
+            ):
+                t = asyncio.create_task(task_service.run_task_background(ep_id))
+                _RUN_TASKS.add(t)
+                t.add_done_callback(_RUN_TASKS.discard)
+
         rec["series_id"] = dispatched["series_id"]
         rec["status"] = "DISPATCHED"
         rec["progress"] = None

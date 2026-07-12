@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
@@ -235,6 +236,56 @@ async def test_confirm_dispatches_and_records_series_id_with_budget_threaded():
     # season_budget_usd 传递到 dispatch_season 的 spec(create_episode 靠这个键驱动 B3 熔断)
     assert captured["spec"]["budget_usd"] == 7.5
     assert captured["subject_id_map"] == {"C001": "S1", "C002": "S2"}
+
+
+@pytest.mark.asyncio
+async def test_confirm_actually_triggers_generation_for_cloud_episodes():
+    """2026-07-12 真实撞见的大漏洞:dispatch_season 只建 pending 的 VideoTask,不会
+    自动被云端 provider 的 QueueWorker 捞走——必须显式 submit_task + 非本地 provider
+    时调 run_task_background,否则视频永远不会真的开始生成。"""
+    run_id = str(uuid.uuid4())
+    _seed_run(run_id)
+
+    ep_id = uuid.uuid4()
+
+    async def _fake_dispatch(plan_arg, story_arg, **kwargs):
+        return {
+            "series_id": "SER-GEN",
+            "episodes": [{"id": str(ep_id), "series_id": "SER-GEN", "episode_index": 0}],
+        }
+
+    submit_calls = []
+    run_bg_calls = []
+
+    async def _fake_submit(self, task_id):
+        submit_calls.append(task_id)
+        return {"status": "pending"}  # 云端 provider 不会被转成 "queued"
+
+    async def _fake_run_bg(self, task_id):
+        run_bg_calls.append(task_id)
+
+    with (
+        patch.object(sd, "get_hevi_pg_pool", AsyncMock(return_value=object())),
+        patch.object(sd, "dispatch_season", AsyncMock(side_effect=_fake_dispatch)),
+        patch.object(sd.TaskService, "submit_task", _fake_submit),
+        patch.object(sd.TaskService, "run_task_background", _fake_run_bg),
+    ):
+        bg = BackgroundTasks()
+        body = sd.ConfirmRequest(
+            bindings={
+                "C001": sd.CharacterBinding(mode="existing", subject_id="S1"),
+                "C002": sd.CharacterBinding(mode="existing", subject_id="S2"),
+            },
+            video_provider="happyhorse_1_1_maas_lock",
+        )
+        await sd.confirm_run(run_id, body, bg, _USER)
+        await _run_bg(bg)
+        pending = list(sd._RUN_TASKS)
+        if pending:
+            await asyncio.gather(*pending)
+
+    assert submit_calls == [ep_id]
+    assert run_bg_calls == [ep_id]
 
 
 @pytest.mark.asyncio
