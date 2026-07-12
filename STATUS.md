@@ -54,6 +54,26 @@
 ## ✅ Done
 
 - **Tongjian pipeline L0–L8** — full 9-layer 资治通鉴→video pipeline, each layer + gate, committed (`a0478a7`…`e97e374`). Self-media explainer channel + Tongjian console shipped (`5306070`). json2video cloud provider for character-free scene backgrounds (`da92410`).
+- **短剧创建入口生产事故排查 + 修复 2026-07-12(commits 9e09486/832a327/0d16260)** —
+  soffy 在 hevi.uex.hk 上真实测试时连续撞见两个真实 bug(不是显示问题):(1) 容器
+  没有到 huggingface.co 的公网出口,建角色 Subject 算 CLIP 身份向量时联网校验请求
+  无限重试,把 `_confirm_pipeline` 挂死。第一版修复(20s `asyncio.wait_for`)不够——
+  超时只让调用方不再等,杀不掉 `asyncio.to_thread` 的后台线程,"僵尸重试线程"占满
+  默认线程池,连不碰 CLIP 的 `dispatch_season` 都被拖累卡住半小时。真正修复:彻底
+  去掉"本地缓存未命中就联网下载"这条路径,只读本地缓存,未命中直接降级为 None,
+  不再有任何网络请求。已知副作用:这个容器里的 `identity_embedding` 会一直是
+  None(容器本来就连不上网),要恢复需要把 CLIP 权重打进镜像,未做。(2) 阿里云
+  qwen-image 服务端偶发内部 bug(`'DashscopeLogger' object has
+  no attribute 'warning'`)导致某个角色参考图生成失败,直接拖垮整条派发到 FAILED,而
+  前端只在 `AWAITING_CHARACTERS` 显示角色绑定/确认 UI,FAILED 时只剩"重新规划"(会
+  丢掉已经跑通的 StoryGraph/SeasonPlan,逼用户重新出更贵的 LLM 调用)——修:建角色
+  参考图加 3 次重试;每个角色建号成功立刻落进 `rec["bindings"]`(重试不会重建已成功
+  的角色);`confirm` 端点放开 status=="FAILED" 且 story/plan 仍在时可重新调用;前端
+  在这种"派发阶段失败"场景下也展示角色绑定+确认 UI,不再只剩重新规划。同时按 soffy
+  要求加了派发进度可见性:后端逐步写 `rec["progress"]`(如"建角色参考图 2/3: 道士"),
+  前端显示这句话 + "已轮询 N 次"心跳,不再是半小时不动的裸图标。`tests/test_shortdrama_router.py`
+  13/13 过,全量 1020 测试过,tsc 干净。hevi.uex.hk 已用两版修复分别 rebuild+重启,
+  **每次容器重启都会清空内存里未完结的 run,soffy 需要重新走一遍手稿提交流程**。
 - **Tongjian L6 画面风格可切换(卡通/水墨)2026-07-12** — soffy: 水墨风格现代观众/小孩不喜欢。查出 `hevi/tongjian/scene_render_avatar.py`(cloud_avatar 渲染路径)里"国画水墨"文案写死在 7 处 prompt 拼接点(旁白像描述、canonical 肖像、对白/旁白/场景 prompt、i2v motion prompt),`params.style` 此前只在其中一处生效、其余全被写死文案盖过。改成统一从 `style`(默认 `_DEFAULT_STYLE`=水墨)取词,所有拼接点改用同一个变量;顺带把只适合水墨的装饰性词("写意笔触,宣纸质感"、canonical 像上的"竖排题字与朱红印章")从公共函数里去掉,不再对所有风格都强加。前端 `TongjianConsole.tsx` 加"画面风格"预设选择器(国画水墨默认 / 卡通动画),点选自动填风格词输入框,仍可手写覆盖。**范围限定**:只对 `cloud_avatar`(云数字人)渲染模式生效——`sdxl_local`(本地静帧)走固定 SDXL LoRA 融合,`params.style` 在那条路径完全不生效(硬件已弃用,不值得为它换 LoRA),UI 里该模式下风格选择器禁用并有提示。`tests/test_tongjian_scene_render_avatar.py` 6/6 仍过(无用例断言具体文案字符串,未受影响);`tsc --noEmit` 干净;真实浏览器验证预设按钮渲染 + 点击卡通预设正确填充风格词输入框。未做真实视频生成对比(不花钱验证到 UI 层为止)。
 - **HEVI-EXEC-01 M1** (vault MinIO+pgvector asset store, `2aa0ec8`).
 - **HEVI-EXEC-01 M2** (identity pack pipeline, `6ce6796`) — 智伯/韩康子/段规 all `lifecycle=validated`, `stability_check=3/3`, vault `identity/*@0.1.2`. Built on local CPU, $0.00 spend.
