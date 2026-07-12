@@ -51,6 +51,9 @@ _NARRATOR_DESC = (
     "一位年长儒雅的说书人史官,须发斑白,身着素色长袍,面容睿智平和,"
     "正襟危坐,近景半身像,身后淡淡书卷与薄雾"
 )
+# 描述的是"人物本身"(古装说书人史官),不是画风形容词——跟 style 一样解耦,可通过
+# LayerConfig.params["narrator_desc"] 按调用方覆盖(短剧走"现代都市"风格,旁白该是
+# 当代讲述者而不是古装史官,见 tongjian_bridge.py 的 DEFAULT_SHORTDRAMA_NARRATOR_DESC)。
 _EDIT_PREFIX = "严格保持画中人物的相貌、胡须、服饰、头冠和画风完全不变,只改变神态动作:"
 
 
@@ -146,13 +149,51 @@ def _concat_clips(clips: list[Path], out: Path) -> None:
     )
 
 
-async def _canonical(cid: str, appearance: str, work: Path, style: str) -> Path:
-    """角色云端水墨 canonical(缓存)。appearance 来自 CharacterBible。"""
+async def _canonical(
+    cid: str, appearance: str, work: Path, style: str, *, ref_image: str | None = None
+) -> Path:
+    """角色 canonical(缓存)。优先复用 Subject 的真实参考图(`ref_image`,来自
+    CharacterBible.ref_image,见 tongjian_bridge.py::character_bible_for_episode)——
+    锁的是同一张真实照片/生成像,而不是"同一段文字 + 固定 seed"这种弱一致性假设
+    (2026-07-12 前的行为:每次都用 qwen-image 从文字重新生成一张陌生的脸,集内靠
+    文件缓存凑巧一致,跨集/跨角色绑定的参考图完全没被用上)。ref_image 缺失时
+    (如 narrator,或该角色未绑定 Subject)才退回原来的文生图。
+    """
     out = work / f"canon_{cid}.png"
-    if not out.exists():
-        prompt = f"{style},{appearance},近景半身像,身后朝堂木柱与淡淡薄雾"
-        await qwen_image_generate(prompt=prompt, output_path=out, size="1280*720", seed=42)
+    if out.exists():
+        return out
+    if ref_image and Path(ref_image).exists():
+        from PIL import Image
+
+        Image.open(ref_image).convert("RGB").save(out)
+        return out
+    # "朝堂木柱"是资治通鉴的宫廷场景描述,2026-07-12 前跟 style 完全解耦、对所有画风
+    # 硬编码——短剧接进来后用"现代都市"风格也会生出这句宫廷背景,不再写死具体场景,
+    # 交给 style 前缀词自己定调(同上面"人物角色描述本身跟画风解耦"的既有设计)。
+    prompt = f"{style},{appearance},近景半身像,背景虚化"
+    await qwen_image_generate(prompt=prompt, output_path=out, size="1280*720", seed=42)
     return out
+
+
+def _score_consistency(frame_path: Path, canon_path: Path) -> float | None:
+    """镜头首帧 vs canonical 的 CLIP 余弦相似度——身份漂移信号(复用 verdict 主管线
+    同一套打分原语 subject_embed/cosine_similarity,见 hevi/verdict/scorecard.py,不是
+    另起一套)。canon 是这一集里该角色实际用来生成画面的那张锚图(真实 Subject 参考图
+    或退化文生图,见 _canonical()),分数低说明生成出来的脸跟锚图对不上,而不是跟某个
+    抽象"标准脸"比——衡量的正是这条 cloud_avatar 管线本该有、之前完全没有的信号:
+    生成结果有没有跑偏。抽帧/嵌入失败 → None,不阻断渲染,只是这一帧没有漂移信号。
+    """
+    from hevi.subjects.subject_embed import SubjectEmbedError, cosine_similarity, subject_embed
+
+    try:
+        frame_emb = subject_embed(image_path=frame_path, kind="style")
+        canon_emb = subject_embed(image_path=canon_path, kind="style")
+        return cosine_similarity(frame_emb, canon_emb)
+    except SubjectEmbedError as e:
+        logger.warning(
+            "scene_render_avatar: consistency score 失败(%s vs %s): %s", frame_path, canon_path, e
+        )
+        return None
 
 
 def _extract_frame(clip: Path, out: Path) -> None:
@@ -250,12 +291,16 @@ async def build_frame_manifest_avatar(
     reso = str(_p(config, "resolution", "720P"))
     w, h = _RES.get(reso, (1280, 720))
     narr_tone = str(_p(config, "narr_tone", "沉稳"))  # 旁白语气(沉稳/激昂/凝重…)
+    narrator_desc = str(_p(config, "narrator_desc", _NARRATOR_DESC))
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
     appearance_by_id = {
         c.character_id: (c.appearance or c.name) for c in character_bible.characters
     }
-    narrator_ref = await _canonical("narrator", _NARRATOR_DESC, work, style)
+    ref_image_by_id = {
+        c.character_id: c.ref_image for c in character_bible.characters if c.ref_image
+    }
+    narrator_ref = await _canonical("narrator", narrator_desc, work, style)
 
     frames: list[ShotFrame] = []
     for shot in shotlist.shots:
@@ -286,7 +331,13 @@ async def build_frame_manifest_avatar(
                 pass
             elif is_dialogue and lead:
                 # 对白:角色 keyframe(qwen-image-edit 上情绪+动作)→ happyhorse 说台词
-                canon = await _canonical(lead, appearance_by_id.get(lead, lead), work, style)
+                canon = await _canonical(
+                    lead,
+                    appearance_by_id.get(lead, lead),
+                    work,
+                    style,
+                    ref_image=ref_image_by_id.get(lead),
+                )
                 kf = work / f"{sid}_kf.png"
                 if not kf.exists():
                     instruction = _EDIT_PREFIX + emotion
@@ -354,7 +405,11 @@ async def build_frame_manifest_avatar(
                 if not vis.exists():
                     if lead:
                         canon = await _canonical(
-                            lead, appearance_by_id.get(lead, lead), work, style
+                            lead,
+                            appearance_by_id.get(lead, lead),
+                            work,
+                            style,
+                            ref_image=ref_image_by_id.get(lead),
                         )
                         kf = work / f"{sid}_kf.png"
                         if not kf.exists():
@@ -388,6 +443,11 @@ async def build_frame_manifest_avatar(
 
             first = work / f"{sid}_first.png"
             _extract_frame(clip, first)
+            consistency = None
+            if lead:
+                canon_path = work / f"canon_{lead}.png"
+                if canon_path.exists():
+                    consistency = _score_consistency(first, canon_path)
             frames.append(
                 ShotFrame(
                     shot_id=sid,
@@ -395,6 +455,7 @@ async def build_frame_manifest_avatar(
                     clip_path=str(clip),
                     frame_path=str(first),
                     characters=shot.characters,
+                    character_consistency=consistency,
                 )
             )
             logger.info(

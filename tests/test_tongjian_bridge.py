@@ -120,6 +120,72 @@ def test_character_bible_only_includes_characters_present_in_episode():
     assert [c.character_id for c in bible.characters] == ["C001"]
 
 
+def test_character_bible_fills_ref_image_from_subject_ref_paths():
+    """2026-07-12 补:短剧建号阶段真的会存 Subject 参考图,但此前 CharacterBible.ref_image
+    (scene_render_avatar.py 的 _canonical() 本来就设计成"优先用它")从没被填过——canonical
+    像全靠文字描述现场重新生成。传入 subject_ref_paths 后必须真的落进 ref_image。"""
+    bible = bridge.character_bible_for_episode(
+        _episode(), _story(), subject_ref_paths={"C001": "/refs/lin_xia.png"}
+    )
+    lin_xia = next(c for c in bible.characters if c.character_id == "C001")
+    chen_mo = next(c for c in bible.characters if c.character_id == "C002")
+    assert lin_xia.ref_image == "/refs/lin_xia.png"
+    assert chen_mo.ref_image is None  # 没绑定参考图的角色,退回原来的文生图行为
+
+
+# ── _frame_manifest_to_shot_states:身份漂移分诊断(2026-07-12 补)────────────
+
+
+def test_low_consistency_score_flags_reference_mismatch():
+    """character_consistency 此前只是透传,从不影响 passed——分数低于 floor 时必须真的
+    标成 REFERENCE_MISMATCH 并 passed=False,SeasonBoard 的"重新生成选中"才对得上号。"""
+    manifest = FrameManifest(
+        frames=[ShotFrame(shot_id="1-1", scene_id="", character_consistency=0.3, degraded=False)]
+    )
+    shots = bridge._frame_manifest_to_shot_states(manifest)
+    assert shots[0]["passed"] is False
+    assert shots[0]["diagnosis_category"] == "参考图角色错配"
+
+
+def test_consistency_score_above_floor_passes():
+    manifest = FrameManifest(
+        frames=[ShotFrame(shot_id="1-1", scene_id="", character_consistency=0.9, degraded=False)]
+    )
+    shots = bridge._frame_manifest_to_shot_states(manifest)
+    assert shots[0]["passed"] is True
+    assert shots[0]["diagnosis_category"] is None
+
+
+def test_missing_consistency_score_does_not_flag():
+    """空镜/没有 lead 角色的镜头,consistency_score 本来就是 None(没有身份可评),不能
+    被 floor 检查误伤成"错配"。"""
+    manifest = FrameManifest(
+        frames=[ShotFrame(shot_id="1-1", scene_id="", character_consistency=None, degraded=False)]
+    )
+    shots = bridge._frame_manifest_to_shot_states(manifest)
+    assert shots[0]["passed"] is True
+    assert shots[0]["diagnosis_category"] is None
+
+
+def test_degraded_takes_priority_over_coincidental_low_score():
+    """生成调用本身失败(degraded)比一个巧合的低分更严重,degrade_reason 不该被
+    REFERENCE_MISMATCH 覆盖掉。"""
+    manifest = FrameManifest(
+        frames=[
+            ShotFrame(
+                shot_id="1-1",
+                scene_id="",
+                character_consistency=0.1,
+                degraded=True,
+                degrade_reason="avatar 生成失败: timeout",
+            )
+        ]
+    )
+    shots = bridge._frame_manifest_to_shot_states(manifest)
+    assert shots[0]["passed"] is False
+    assert shots[0]["diagnosis_category"] == "avatar 生成失败: timeout"
+
+
 # ── render_episode 端到端(mock 掉真正花钱的通鉴 L2-L8 调用)──────────────────
 
 

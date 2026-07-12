@@ -334,8 +334,14 @@ async def upload_character_reference(
     updated = await svc.add_reference_upload(
         str(subject["id"]), filename=file.filename or "photo.jpg", data=data
     )
-    subject_id = str((updated or subject)["id"])
-    rec["bindings"][char_id] = {"mode": "existing", "subject_id": subject_id}
+    final = updated or subject
+    subject_id = str(final["id"])
+    refs = final.get("reference_images") or []
+    rec["bindings"][char_id] = {
+        "mode": "existing",
+        "subject_id": subject_id,
+        "ref_image": refs[0] if refs else None,
+    }
     return {"char_id": char_id, "subject_id": subject_id}
 
 
@@ -346,6 +352,7 @@ async def _run_episode_via_tongjian(
     ep: EpisodePlan,
     story: StoryGraph,
     duration_archetype: str,
+    subject_ref_paths: dict[str, str],
 ) -> None:
     """真实生成一集:StoryGraph/EpisodePlan → hevi.season_planner.tongjian_bridge
     (复用通鉴 cloud_avatar 对白+口型管线,见该模块 docstring)。
@@ -365,6 +372,7 @@ async def _run_episode_via_tongjian(
             story,
             run_dir=Path("output/tasks") / str(task_id),
             target_duration_sec=int(duration_cfg["target_s"]),
+            subject_ref_paths=subject_ref_paths,
         )
         final_video = result["final_video"]
         shots = result["shots"]
@@ -436,15 +444,41 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
                 and b.subject_id
             )
         ]
+        # char_id → 该角色参考图路径(reference_images[0],"设封面"约定里下游锁脸统一
+        # 读的那张)。2026-07-12 补:建号阶段真的会存参考图,但通鉴 cloud_avatar 渲染
+        # 路径(见下面 _run_episode_via_tongjian/render_episode)此前完全没读过这个
+        # 字段——canonical 像是从文字描述现场重新生成的,身份参考图建了却没人用。
+        subject_ref_paths: dict[str, str] = {}
         subject_id_map: dict[str, str] = {}
         for c in story.characters:
             pre = rec["bindings"].get(c.char_id)
             if pre is not None:
                 subject_id_map[c.char_id] = pre["subject_id"]
+                if pre.get("ref_image"):
+                    subject_ref_paths[c.char_id] = pre["ref_image"]
                 continue
             binding = body.bindings.get(c.char_id)
             if binding is not None and binding.mode == "existing" and binding.subject_id:
                 subject_id_map[c.char_id] = binding.subject_id
+                # 选的是这次 run 之外已存在的 Subject,本地没有它的数据,唯一需要一次
+                # 真实 get_subject 的分支(其余两种情况——上传预绑定/本 run 内 auto 建号
+                # ——参考图路径在各自建号的地方就已经拿到手,不用回查数据库)。参考图
+                # 本身是"增强,非必需"(同 subject_embed.py 的既有设计意图)——查不到就
+                # 退回原来的文字描述生成,不能因为一个角色的查询失败拖垮整条派发。
+                try:
+                    existing_subj = await subject_svc.get_subject(binding.subject_id)
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(
+                        "shortdrama run %s 角色 %s 查询已存在 Subject %s 参考图失败: %s",
+                        run_id,
+                        c.name,
+                        binding.subject_id,
+                        e,
+                    )
+                    existing_subj = None
+                existing_refs = (existing_subj or {}).get("reference_images") or []
+                if existing_refs:
+                    subject_ref_paths[c.char_id] = existing_refs[0]
                 continue
 
             idx = auto_chars.index(c) + 1
@@ -483,12 +517,14 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
                 user_id=user_id,
             )
             subject_id_map[c.char_id] = str(subject["id"])
+            subject_ref_paths[c.char_id] = str(portrait_path)
             # 立即落进 rec["bindings"](同上传预绑定的存法)——这个角色的 Subject 已经
             # 真建好了,即便后面某个角色/dispatch_season 失败导致整体重试,也不会把
             # 这个已经成功的角色重新生成一遍参考图、建出一个重复 Subject。
             rec["bindings"][c.char_id] = {
                 "mode": "existing",
                 "subject_id": subject_id_map[c.char_id],
+                "ref_image": str(portrait_path),
             }
 
         rec["progress"] = "派发剧集(建 Series + 逐集任务)..."
@@ -529,6 +565,7 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
                     ep=episode_plan,
                     story=story,
                     duration_archetype=body.duration_archetype,
+                    subject_ref_paths=subject_ref_paths,
                 )
             )
             _RUN_TASKS.add(t)

@@ -19,6 +19,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from hevi.director.editor import REFERENCE_MISMATCH
 from hevi.season_planner.schemas import EpisodePlan
 from hevi.storygraph.schemas import StoryGraph
 from hevi.tongjian.schemas import (
@@ -42,6 +43,11 @@ logger = logging.getLogger(__name__)
 # 三者是三套独立预设,互不干扰(见 scene_render_avatar.py 的 style 参数化改造)。
 DEFAULT_SHORTDRAMA_STYLE = "现代都市剧情片质感,写实电影摄影,自然光效,浅景深,柔和色调,竖屏构图"
 DEFAULT_ASPECT_RATIO = "9:16"  # 短剧默认竖屏(手机观看),不是通鉴历史解说的 16:9
+# scene_render_avatar.py 的旁白角色默认长相是"古装说书人史官"(须发斑白/素色长袍/
+# 书卷薄雾)——那是资治通鉴专用形象,跟画风词(style)一样跟场景耦合,不能对短剧这种
+# 现代都市题材硬套。短剧旁白改成当代讲述者形象,通过 LayerConfig.params["narrator_desc"]
+# 覆盖(见该模块 build_frame_manifest_avatar 的 _p(config, "narrator_desc", ...))。
+DEFAULT_SHORTDRAMA_NARRATOR_DESC = "一位气质沉稳的当代讲述者,便装,面容平和自然,近景半身像,背景虚化"
 
 
 def story_to_chapter_ir(story: StoryGraph) -> ChapterIR:
@@ -127,9 +133,18 @@ def episode_to_constitution(
     )
 
 
-def character_bible_for_episode(ep: EpisodePlan, story: StoryGraph) -> CharacterBible:
+def character_bible_for_episode(
+    ep: EpisodePlan, story: StoryGraph, subject_ref_paths: dict[str, str] | None = None
+) -> CharacterBible:
     """本集出场角色的外形描述——直接用 StoryGraph 抽取时已经填好的 description,不再
-    额外调 LLM 生成一遍(B0 抽取 prompt 本来就要求"外貌与性格的可视化特征")。"""
+    额外调 LLM 生成一遍(B0 抽取 prompt 本来就要求"外貌与性格的可视化特征")。
+
+    `subject_ref_paths`(char_id → 该角色绑定 Subject 的参考图路径,通常是
+    `reference_images[0]`,即"设封面"约定里下游锁脸用的那张):填进
+    `CharacterBibleEntry.ref_image`——这个字段 scene_render_avatar.py 的 `_canonical()`
+    本来就设计成"优先用它",此前只是没人在短剧这条路上填过,变成了摆设。填上后
+    角色 canonical 像直接复用真实参考图,不再靠"文字描述+固定seed"重新生成。
+    """
     by_id = {c.char_id: c for c in story.characters}
     entries = []
     for cid in ep.characters_present:
@@ -141,6 +156,7 @@ def character_bible_for_episode(ep: EpisodePlan, story: StoryGraph) -> Character
                 character_id=c.char_id,
                 name=c.name,
                 appearance=c.description or f"{c.name},{c.role or '角色'}",
+                ref_image=(subject_ref_paths or {}).get(cid),
             )
         )
     return CharacterBible(characters=entries)
@@ -158,6 +174,7 @@ async def render_episode(
     llm: Any = None,
     tts_fn: Any = None,
     dramatize: bool = True,
+    subject_ref_paths: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """本集真实渲染主入口:StoryGraph/EpisodePlan → 通鉴 L2-L8(cloud_avatar)→ 真实成片。
 
@@ -209,7 +226,7 @@ async def render_episode(
     )
     gate_reports["voiceover"] = g3
 
-    character_bible = character_bible_for_episode(ep, story)
+    character_bible = character_bible_for_episode(ep, story, subject_ref_paths)
 
     shotlist, g4 = await build_shotlist(
         timeline=timeline,
@@ -226,7 +243,14 @@ async def render_episode(
         character_bible=character_bible,
         constitution=constitution,
         run_dir=run_dir,
-        config=LayerConfig(model="cloud_avatar", params={"style": style, "resolution": resolution}),
+        config=LayerConfig(
+            model="cloud_avatar",
+            params={
+                "style": style,
+                "resolution": resolution,
+                "narrator_desc": DEFAULT_SHORTDRAMA_NARRATOR_DESC,
+            },
+        ),
     )
     g6 = gate_avatar_manifest(frame_manifest)
     gate_reports["avatar_manifest"] = g6
@@ -258,23 +282,35 @@ async def render_episode(
     return {"final_video": final_video, "shots": shots, "gate_reports": gate_reports}
 
 
-def _frame_manifest_to_shot_states(frame_manifest: Any) -> list[dict[str, Any]]:
+def _frame_manifest_to_shot_states(
+    frame_manifest: Any, *, consistency_floor: float = 0.75
+) -> list[dict[str, Any]]:
     """FrameManifest.frames → task_service._persist_shots() 认的 shot 字典形状,供
     SeasonBoard 既有的逐镜头卡片(taskApi.shots())直接复用,不用改前端一行代码。
 
     shot_states.shot_index 是整数列,按 frame_manifest 顺序(= shotlist 顺序)编号,
     不用 shot.shot_id(那是 "1-1" 这种字符串,给人看的,不是数据库列的形状)。
+
+    2026-07-12 补:`character_consistency`(scene_render_avatar.py 新算的 CLIP 漂移分)
+    此前只是透传,从不影响 passed/diagnosis_category——生成时锚定了身份,但没人事后
+    校验有没有漂移。分数低于 floor 时按 `hevi.director.editor` 同一套诊断分类标记
+    REFERENCE_MISMATCH(阈值复用 editor.review() 的默认 consistency_floor=0.75,同一
+    套语义,不是另定一个标准),SeasonBoard 现有的"重新生成选中"就能对上这些镜头。
+    生成调用本身失败(degraded)优先级更高,不会被一个巧合的低分覆盖。
     """
     out: list[dict[str, Any]] = []
     for idx, frame in enumerate(frame_manifest.frames):
+        score = frame.character_consistency
+        drifted = not frame.degraded and score is not None and score < consistency_floor
+        diagnosis = frame.degrade_reason or (REFERENCE_MISMATCH if drifted else None)
         out.append(
             {
                 "index": idx,
                 "path": frame.clip_path or frame.frame_path or None,
-                "passed": not frame.degraded,
+                "passed": not frame.degraded and not drifted,
                 "provider": "cloud_avatar",
-                "consistency_score": frame.character_consistency,
-                "diagnosis_category": frame.degrade_reason or None,
+                "consistency_score": score,
+                "diagnosis_category": diagnosis,
                 "retry_count": 0,
             }
         )

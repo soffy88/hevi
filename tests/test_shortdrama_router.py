@@ -258,7 +258,7 @@ async def test_confirm_actually_triggers_generation_via_tongjian_bridge():
     render_calls = []
     from hevi.tongjian.schemas import FinalVideo as _FinalVideo
 
-    async def _fake_render_episode(ep, story, *, run_dir, target_duration_sec):
+    async def _fake_render_episode(ep, story, *, run_dir, target_duration_sec, subject_ref_paths):
         render_calls.append((ep.ep_number, story.meta.source, target_duration_sec))
         return {
             "final_video": _FinalVideo(video_path="output/tasks/x/final.mp4"),
