@@ -265,6 +265,59 @@ async def test_render_episode_wires_l2_to_l8_and_maps_shots(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_render_episode_passes_shortdrama_persona_and_event_locations(tmp_path):
+    """2026-07-12 短剧真实反馈"大部分是旁白没对话"+"场景乱切"根因都在这两处没接:
+    build_script 用的是通鉴默认人设(没参数化),build_shotlist 没拿到 event 的地点信息。
+    这里只断言这两处真的把短剧专属的值传下去了,不重复测 script.py/shotlist.py 自己的逻辑。
+    """
+    story = _story()
+    story.events[0].location = "写字楼工位"
+    story.events[1].location = "写字楼工位"  # 两个事件同地点,应共用一个 scene_id
+
+    script = Script(
+        lines=[ScriptLine(line_id="LN001", type="dialogue", speaker="C002", text="你被开除了。")]
+    )
+    timeline = Timeline(audio_segments=[AudioSegment(line_id="LN001", duration_ms=2000)])
+    shotlist = ShotList(shots=[Shot(shot_id="1-1", line_ids=["LN001"], characters=["C002"])])
+    frame_manifest = FrameManifest(frames=[ShotFrame(shot_id="1-1", scene_id="", degraded=False)])
+    final_video = FinalVideo(video_path=str(tmp_path / "final.mp4"))
+
+    build_script_mock = AsyncMock(return_value=(script, _passing_gate()))
+    build_shotlist_mock = AsyncMock(return_value=(shotlist, _passing_gate()))
+
+    with (
+        patch("hevi.tongjian.script.build_script", build_script_mock),
+        patch(
+            "hevi.tongjian.voiceover.build_voiceover",
+            AsyncMock(return_value=(timeline, _passing_gate())),
+        ),
+        patch("hevi.tongjian.shotlist.build_shotlist", build_shotlist_mock),
+        patch(
+            "hevi.tongjian.scene_render_avatar.build_frame_manifest_avatar",
+            AsyncMock(return_value=frame_manifest),
+        ),
+        patch(
+            "hevi.tongjian.music_plan.build_music_plan",
+            AsyncMock(return_value=(MusicPlan(), _passing_gate())),
+        ),
+        patch(
+            "hevi.tongjian.assemble.build_final_video",
+            AsyncMock(return_value=(final_video, _passing_gate())),
+        ),
+    ):
+        await bridge.render_episode(
+            _episode(), story, run_dir=tmp_path, llm=AsyncMock(), tts_fn=AsyncMock()
+        )
+
+    _, script_kwargs = build_script_mock.call_args
+    assert script_kwargs["screenwriter_persona"] == bridge.DEFAULT_SHORTDRAMA_SCREENWRITER_PERSONA
+    assert script_kwargs["include_commentary"] is False
+
+    _, shotlist_kwargs = build_shotlist_mock.call_args
+    assert shotlist_kwargs["event_locations"] == {"E001": "写字楼工位", "E002": "写字楼工位"}
+
+
+@pytest.mark.asyncio
 async def test_render_episode_raises_when_script_is_empty_shell(tmp_path):
     """L2 剧本生成 LLM 失败会返回空壳(script.py 既有降级行为)——不该假装成功继续跑
     后面几层空耗真钱,直接抛出去让调用方标 failed。"""

@@ -83,11 +83,20 @@ def _infer_camera(line: ScriptLine) -> ShotCamera:
     return ShotCamera(shot_size=size, movement=movement)
 
 
-def _infer_scene_id(line: ScriptLine, prev_scene: str) -> str:
-    """根据 event_id + visual_hint 推断 scene_id。
+def _infer_scene_id(line: ScriptLine, prev_scene: str, *, location: str | None = None) -> str:
+    """根据 event_id(+ 可选地点)推断 scene_id。
 
-    P0 简单策略:event_id 变 → 新 scene;否则沿用上一个 scene。
+    有地点信息(location,来自 StoryEvent/EventIR.location,调用方按 event_id 查出来传入)
+    时:scene_id 直接用地点名——同一地点连续发生的多个事件/节拍自然沿用同一个 scene_id,
+    不会因为换事件就误切场景。2026-07-12 短剧真实反馈"场景乱切":P0 老策略(event_id
+    变就换 scene)没有场景连贯性概念,通鉴(资治通鉴)事件密度低、真实跨年代跨地点还
+    凑合,短剧里同一场戏经常横跨好几个事件,旧策略会把一场戏拆成好几个不相关的场景。
+
+    location 缺失(如通鉴很多历史事件未标注,或调用方没传)→ 退回 P0 旧策略,不影响
+    未接这条新参数的既有调用方(hevi/tongjian/routers/tongjian.py 等)。
     """
+    if location:
+        return location
     if line.event_id and line.event_id != prev_scene:
         return line.event_id
     return prev_scene or "S001"
@@ -206,6 +215,7 @@ async def generate_shotlist(
     *,
     llm: Any = None,
     split_long_shots: bool = True,
+    event_locations: dict[str, str] | None = None,
 ) -> ShotList:
     """timeline + script + character_bible → ShotList。
 
@@ -214,6 +224,9 @@ async def generate_shotlist(
 
     split_long_shots=False:数字人(cloud_avatar)管线用——那里每镜按自己台词**重新生成音频**,
     拆分会让每个子镜头把整句各说一遍,同一句连播两三次 = 重复段落,故整体关闭拆分。
+
+    event_locations:event_id → 地点名(调用方从 chapter_ir.events[].location 建的
+    映射),缺失的事件/不传都退回 P0 老策略,见 _infer_scene_id。
     """
     if llm is None:
         from obase.provider_registry import ProviderRegistry
@@ -232,7 +245,8 @@ async def generate_shotlist(
             continue
 
         shot_idx += 1
-        scene_id = _infer_scene_id(line, prev_scene)
+        location = (event_locations or {}).get(line.event_id) if line.event_id else None
+        scene_id = _infer_scene_id(line, prev_scene, location=location)
         camera = _infer_camera(line)
         characters = _extract_characters(line, character_bible)
         visual_prompt = _build_visual_prompt(line)
@@ -379,6 +393,7 @@ async def build_shotlist(
     *,
     llm: Any = None,
     split_long_shots: bool = True,
+    event_locations: dict[str, str] | None = None,
 ) -> tuple[ShotList, GateResult]:
     """L4 主入口:生成 → G4 门。"""
     shotlist = await generate_shotlist(
@@ -387,6 +402,7 @@ async def build_shotlist(
         character_bible,
         llm=llm,
         split_long_shots=split_long_shots,
+        event_locations=event_locations,
     )
     result = gate_shotlist(shotlist, timeline, character_bible)
     return shotlist, result
