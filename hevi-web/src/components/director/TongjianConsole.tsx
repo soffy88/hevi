@@ -38,6 +38,13 @@ const STATUS_CLASS: Record<string, string> = {
   FAILED: 'tj-layer--failed',
 };
 
+// L6 画面风格预设(仅 cloud_avatar 模式生效)。prompt="" 代表留空,交给后端默认水墨风格。
+const STYLE_PRESETS: { value: string; label: string; prompt: string }[] = [
+  { value: 'ink', label: '国画水墨（默认）', prompt: '' },
+  { value: 'cartoon', label: '卡通动画（现代/儿童向）',
+    prompt: '现代卡通动画风格,鲜艳色彩,简洁线条,可爱插画风,3D渲染质感' },
+];
+
 const DEMO_TEXTS: { label: string; source: string; text: string }[] = [
   {
     label: '周纪一·智宣子立嗣（智果识人）',
@@ -298,10 +305,23 @@ export function TongjianConsole() {
               placeholder="沉稳 / 激昂 / 凝重 …" />
           </label>
         </div>
+        <div className="tj-field">
+          <span className="tj-field__label">
+            画面风格（L6 · 云数字人模式可切换；本地静帧固定水墨 LoRA，暂不支持）
+          </span>
+          <div className="tj-seg">
+            {STYLE_PRESETS.map(p => (
+              <button type="button" key={p.value} data-on={inkStyle === p.prompt ? 'true' : undefined}
+                disabled={renderMode === 'sdxl_local'}
+                onClick={() => setInkStyle(p.prompt)}>{p.label}</button>
+            ))}
+          </div>
+        </div>
         <label className="tj-field">
-          <span className="tj-field__label">水墨风格词（L6 · 可留空用默认）</span>
+          <span className="tj-field__label">风格词（可留空用默认水墨，或从上面选预设，也可手写覆盖）</span>
           <input value={inkStyle} onChange={e => setInkStyle(e.target.value)}
-            placeholder="国画水墨写意人物画,单色水墨" />
+            disabled={renderMode === 'sdxl_local'}
+            placeholder="国画水墨写意人物画,单色水墨,写意笔触,宣纸质感" />
         </label>
         <label className="tj-field">
           <span className="tj-field__label">逐层参数（高级 · JSON · 可留空，再覆盖上面没含的层/参数）</span>

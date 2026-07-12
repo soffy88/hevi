@@ -54,6 +54,7 @@
 ## ✅ Done
 
 - **Tongjian pipeline L0–L8** — full 9-layer 资治通鉴→video pipeline, each layer + gate, committed (`a0478a7`…`e97e374`). Self-media explainer channel + Tongjian console shipped (`5306070`). json2video cloud provider for character-free scene backgrounds (`da92410`).
+- **Tongjian L6 画面风格可切换(卡通/水墨)2026-07-12** — soffy: 水墨风格现代观众/小孩不喜欢。查出 `hevi/tongjian/scene_render_avatar.py`(cloud_avatar 渲染路径)里"国画水墨"文案写死在 7 处 prompt 拼接点(旁白像描述、canonical 肖像、对白/旁白/场景 prompt、i2v motion prompt),`params.style` 此前只在其中一处生效、其余全被写死文案盖过。改成统一从 `style`(默认 `_DEFAULT_STYLE`=水墨)取词,所有拼接点改用同一个变量;顺带把只适合水墨的装饰性词("写意笔触,宣纸质感"、canonical 像上的"竖排题字与朱红印章")从公共函数里去掉,不再对所有风格都强加。前端 `TongjianConsole.tsx` 加"画面风格"预设选择器(国画水墨默认 / 卡通动画),点选自动填风格词输入框,仍可手写覆盖。**范围限定**:只对 `cloud_avatar`(云数字人)渲染模式生效——`sdxl_local`(本地静帧)走固定 SDXL LoRA 融合,`params.style` 在那条路径完全不生效(硬件已弃用,不值得为它换 LoRA),UI 里该模式下风格选择器禁用并有提示。`tests/test_tongjian_scene_render_avatar.py` 6/6 仍过(无用例断言具体文案字符串,未受影响);`tsc --noEmit` 干净;真实浏览器验证预设按钮渲染 + 点击卡通预设正确填充风格词输入框。未做真实视频生成对比(不花钱验证到 UI 层为止)。
 - **HEVI-EXEC-01 M1** (vault MinIO+pgvector asset store, `2aa0ec8`).
 - **HEVI-EXEC-01 M2** (identity pack pipeline, `6ce6796`) — 智伯/韩康子/段规 all `lifecycle=validated`, `stability_check=3/3`, vault `identity/*@0.1.2`. Built on local CPU, $0.00 spend.
 - **Audio real-path bugs fixed** — vibevoice export monkeypatch in worker subprocess (`cff2722`), `reference_audio`→`voice_samples` kwarg translation (`976c4f1`), CosyVoice2 provider (`7a75596`). Real synthesis verified (non-silent, non-clipped audio).

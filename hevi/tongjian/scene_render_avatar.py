@@ -2,20 +2,24 @@
 happyhorse 数字人流程接进通鉴的 ShotList/Script/CharacterBible 契约。
 
 跟本地 SDXL 静帧路(`scene_render.build_frame_manifest`)并列,由 `render_shots` 按
-`LayerConfig.model` 路由。核心:**happyhorse-1.1-r2v 是"会说话的数字人"**——喂水墨参考图
+`LayerConfig.model` 路由。核心:**happyhorse-1.1-r2v 是"会说话的数字人"**——喂参考图
 + 台词,一步生成带**配音+口型同步+动作**的视频(用 ALIBABA_MAAS key)。所以:
-- **对白镜头**(shot 命中 dialogue 行):happyhorse(角色水墨像 + 该角色台词)→ 直接用它自带
-  的配音和口型,存 ShotFrame.clip_path。
+- **对白镜头**(shot 命中 dialogue 行):happyhorse(角色 canonical 像 + 该角色台词)→ 直接用它
+  自带的配音和口型,存 ShotFrame.clip_path。
 - **旁白镜头**:happyhorse(史官像 + 旁白文本)取音轨 + wan2.2-i2v(人物闭嘴/场景空镜)画面,
   合成后存 clip_path。
-- **纯场景/过场**(无角色):qwen-image 文生水墨场景 + i2v。
+- **纯场景/过场**(无角色):qwen-image 文生场景 + i2v。
 
 全云端、零本地 GPU。角色参考图:优先用 CharacterBible.ref_image;缺失/本地失效时按
-appearance 用 qwen-image 现出一张云端水墨 canonical(缓存)。产物是逐镜头 talking clip,
+appearance 用 qwen-image 现出一张云端 canonical(缓存)。产物是逐镜头 talking clip,
 L8 装配识别 clip_path 直接 concat(见 assemble.py)。
 
+**画风由 `params.style` 统一驱动**(默认 `_DEFAULT_STYLE` = 国画水墨),前端可切换成
+其它风格预设(如卡通动画)——所有 prompt 拼接点都从这一个变量取词,不再各处写死
+"国画水墨"(2026-07-12 前是写死的,现代观众/小孩不吃这套,故改成可切换)。
+
 可调参数(LayerConfig.params):
-  style(水墨风格词)/resolution/watermark/crossfade(留给 L8)/seed/say_char_sec(每字秒数)。
+  style(画风词,默认水墨)/resolution/watermark/crossfade(留给 L8)/seed/say_char_sec(每字秒数)。
 """
 
 from __future__ import annotations
@@ -40,11 +44,14 @@ from hevi.video.dashscope_i2v_service import happyhorse_animate, i2v_animate
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_STYLE = "国画水墨写意人物画,单色水墨,写意笔触,宣纸质感"
+# 人物角色描述本身跟画风解耦——style 参数已经在 _canonical() 里前缀画风,这里只留
+# 外貌/身份描述,不再重复写死"国画水墨",否则跟卡通等其它 style 预设叠在一起会打架。
 _NARRATOR_DESC = (
-    "国画水墨写意人物画,一位年长儒雅的说书人史官,须发斑白,身着素色长袍,面容睿智平和,"
-    "正襟危坐,近景半身像,身后淡淡书卷与薄雾,单色水墨,写意笔触,宣纸质感"
+    "一位年长儒雅的说书人史官,须发斑白,身着素色长袍,面容睿智平和,"
+    "正襟危坐,近景半身像,身后淡淡书卷与薄雾"
 )
-_EDIT_PREFIX = "严格保持画中人物的相貌、胡须、服饰、头冠和水墨画风完全不变,只改变神态动作:"
+_EDIT_PREFIX = "严格保持画中人物的相貌、胡须、服饰、头冠和画风完全不变,只改变神态动作:"
 
 
 def _p(config: LayerConfig | None, key: str, default: Any) -> Any:
@@ -143,10 +150,7 @@ async def _canonical(cid: str, appearance: str, work: Path, style: str) -> Path:
     """角色云端水墨 canonical(缓存)。appearance 来自 CharacterBible。"""
     out = work / f"canon_{cid}.png"
     if not out.exists():
-        prompt = (
-            f"{style},{appearance},近景半身像,身后朝堂木柱与淡淡薄雾,写意笔触,宣纸质感,"
-            "右侧竖排题字与朱红印章"
-        )
+        prompt = f"{style},{appearance},近景半身像,身后朝堂木柱与淡淡薄雾"
         await qwen_image_generate(prompt=prompt, output_path=out, size="1280*720", seed=42)
     return out
 
@@ -241,7 +245,7 @@ async def build_frame_manifest_avatar(
     """L6 云数字人主入口。逐 shot 出 talking clip,返回 FrameManifest(frames[].clip_path 已填)。"""
     work = run_dir
     work.mkdir(parents=True, exist_ok=True)
-    style = _p(config, "style", "国画水墨写意人物画,单色水墨")
+    style = _p(config, "style", _DEFAULT_STYLE)
     per_char = float(_p(config, "say_char_sec", 0.32))
     reso = str(_p(config, "resolution", "720P"))
     w, h = _RES.get(reso, (1280, 720))
@@ -295,7 +299,7 @@ async def build_frame_manifest_avatar(
                     if len(text_chunks) == 1:
                         await happyhorse_animate(
                             image_path=kf,
-                            prompt=f"国画水墨写意画风,单色水墨,保持画风不变,画中人物{emotion},"
+                            prompt=f"{style},保持画风不变,画中人物{emotion},"
                             f'郑重说道:"{text}",嘴巴随说话自然清晰地张合',
                             output_path=talk,
                             duration=dur,
@@ -310,7 +314,7 @@ async def build_frame_manifest_avatar(
                             if not chunk_out.exists():
                                 await happyhorse_animate(
                                     image_path=kf,
-                                    prompt=f"国画水墨写意画风,单色水墨,保持画风不变,画中人物{emotion},"
+                                    prompt=f"{style},保持画风不变,画中人物{emotion},"
                                     f'郑重说道:"{chunk}",嘴巴随说话自然清晰地张合',
                                     output_path=chunk_out,
                                     duration=_say_dur(chunk, per_char),
@@ -325,7 +329,7 @@ async def build_frame_manifest_avatar(
                 if not narr.exists():
                     await happyhorse_animate(
                         image_path=narrator_ref,
-                        prompt=f'国画水墨画风,一位史官说书人{narr_tone}地讲述:"{text or shot.visual_prompt}"',
+                        prompt=f'{style},一位史官说书人{narr_tone}地讲述:"{text or shot.visual_prompt}"',
                         output_path=narr,
                         duration=dur,
                         resolution=reso,
@@ -368,7 +372,7 @@ async def build_frame_manifest_avatar(
                         scene = work / f"{sid}_scene.png"
                         if not scene.exists():
                             await qwen_image_generate(
-                                prompt=f"{style},{shot.visual_prompt},写意笔触,宣纸质感",
+                                prompt=f"{style},{shot.visual_prompt}",
                                 output_path=scene,
                                 size="1280*720",
                             )
@@ -376,7 +380,7 @@ async def build_frame_manifest_avatar(
                         motion = "画面细微流动,烟云飘动"
                     await i2v_animate(
                         image_path=vis_src,
-                        prompt=f"水墨画风保持不变,{motion}",
+                        prompt=f"{style}保持不变,{motion}",
                         output_path=vis,
                         resolution=reso,
                     )
