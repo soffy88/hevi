@@ -47,6 +47,30 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
   const [uploadingChar, setUploadingChar] = useState<string | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
 
+  // run 状态存在后端(内存),切走页面再回来这个组件会重新挂载、丢光 state——挂载时
+  // 找回仍未完结的 run,否则用户会以为任务凭空消失了(其实后端还在跑)。同
+  // TongjianConsole 的惯例。
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        syncAuthToken();
+        const runs = await shortdramaApi.listRuns();
+        const active = runs.find(
+          r => r.status === 'PENDING' || r.status === 'RUNNING' ||
+               r.status === 'AWAITING_CHARACTERS' || r.status === 'DISPATCHING'
+        );
+        if (active && !cancelled) {
+          setStatus(active);
+          setRunId(active.run_id);
+        }
+      } catch {
+        // 静默:找回失败不影响正常"新建一次"流程
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // 轮询进度(提交后 / 重新规划后)
   useEffect(() => {
     if (!runId) return;

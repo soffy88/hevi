@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSSEProgress } from '@helios/oui';
-import { seriesApi, taskApi, USE_MOCK } from '@/lib/api-client';
+import { seriesApi, shortdramaApi, taskApi, USE_MOCK } from '@/lib/api-client';
 import type { Series, Episode, TaskShot } from '@/types/api';
 import { ShortdramaCreatePanel } from './ShortdramaCreatePanel';
 
@@ -38,6 +38,20 @@ export function SeasonBoard() {
         setList(await seriesApi.list());
       } catch (e) {
         setErr(errText(e));
+      }
+    })();
+    // 有未完结的短剧创建 run(切走页面再回来也不该"丢"),自动切回创建面板——
+    // 面板自己会在挂载时找回该 run 的完整状态(见 ShortdramaCreatePanel 的恢复 effect)。
+    (async () => {
+      try {
+        const runs = await shortdramaApi.listRuns();
+        const active = runs.find(
+          r => r.status === 'PENDING' || r.status === 'RUNNING' ||
+               r.status === 'AWAITING_CHARACTERS' || r.status === 'DISPATCHING'
+        );
+        if (active) setCreating(true);
+      } catch {
+        // 静默:未登录/网络问题不影响正常查看看板
       }
     })();
   }, []);
