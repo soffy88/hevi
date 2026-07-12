@@ -56,18 +56,25 @@ def _ensure_model() -> tuple[Any, Any]:
                 from transformers import CLIPModel, CLIPProcessor
             except ImportError as e:  # pragma: no cover - env guard
                 raise SubjectEmbedError(f"subject_embed 需要 torch+transformers: {e}") from e
-            logger.info("subject_embed: loading CLIP %s (CPU)", _CLIP_MODEL_ID)
+            logger.info("subject_embed: loading CLIP %s (CPU, local_files_only)", _CLIP_MODEL_ID)
+            # 只读本地缓存,绝不联网——2026-07-12 真实撞见:曾经"本地未命中就回退联网
+            # 下载"的分支,在没有 huggingface.co 出口的容器里会卡在 huggingface_hub
+            # 自己的重试退避里(每个文件 5 次重试、总计 20+ 秒),而且**这发生在
+            # asyncio.to_thread 起的后台线程里,上层的超时只会让调用方不再等,并不能
+            # 杀掉这个线程**——线程会一直重试到 huggingface_hub 自己放弃为止(可能是
+            # 几分钟),期间占着进程默认线程池的一个 worker 槽位不放。角色一多、
+            # 反复重试几次,线程池被这些"值不了班但也下不了班"的僵尸线程占满,连
+            # dispatch_season 这种完全不碰 CLIP 的后续步骤都会因为拿不到线程池 worker
+            # 陪着一起卡住(2026-07-12 真实撞见:客户卡在"派发剧集..."半小时,这才是
+            # 真正 root cause,不是 20s 超时不够长)。身份向量本来就是"增强,非必需"
+            # (见模块顶部注释),本地没缓存就该直接放弃,不该临时现下载一个 600MB 模型。
             try:
-                # 优先只读本地缓存,不发任何网络请求——有些部署环境(如 hevi-cftunnel
-                # 容器)压根没有到 huggingface.co 的出口,联网校验请求会挂起(上层
-                # subject_service._compute_identity_embeddings 的 20s 超时是最后
-                # 一道保险,这里先尝试走更快的路径)。
                 _model = CLIPModel.from_pretrained(_CLIP_MODEL_ID, local_files_only=True).eval()
                 _processor = CLIPProcessor.from_pretrained(_CLIP_MODEL_ID, local_files_only=True)
-            except Exception as local_exc:
-                logger.warning("subject_embed: 本地缓存未命中(%s),回退联网下载...", local_exc)
-                _model = CLIPModel.from_pretrained(_CLIP_MODEL_ID).eval()
-                _processor = CLIPProcessor.from_pretrained(_CLIP_MODEL_ID)
+            except Exception as e:
+                raise SubjectEmbedError(
+                    f"CLIP 模型本地缓存未命中且不联网下载(见本函数注释): {e}"
+                ) from e
     return _model, _processor
 
 
