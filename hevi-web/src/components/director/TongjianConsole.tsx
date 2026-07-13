@@ -174,7 +174,8 @@ export function TongjianConsole() {
       });
       setRunId(r.run_id);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : '出错了');
+      if (e instanceof Error && e.message === 'NOT_AUTHENTICATED') setErr('请先登录');
+      else setErr(e instanceof Error ? e.message : '出错了');
     } finally {
       setBusy(false);
     }
