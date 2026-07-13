@@ -280,6 +280,7 @@ def register_all_providers() -> None:
     # 记录。名字加 _maas 后缀,不跟上面 WaveSpeed 版本的 "happyhorse_1_1"/"wan_2_7"
     # 混用——两者密钥/host 配置完全不同,选错了会打到错的账号上。
     from hevi.video.alibaba_maas_service import (
+        alibaba_maas_keyframe_lock_generate,
         happyhorse_1_1_maas_generate,
         happyhorse_1_1_maas_lock_generate,
         happyhorse_1_1_maas_reference_to_video,
@@ -302,6 +303,16 @@ def register_all_providers() -> None:
         "video",
         "happyhorse_1_1_maas_lock",
         happyhorse_1_1_maas_lock_generate,
+        replace=True,
+    )
+    # 首尾帧关键帧(2026-07-13):`oprim.first_last_frame_transition`/
+    # `AssistService.make_transition`(Creative API)此前调用任何 video_provider 值都
+    # 100% 撞 FrameTransitionProviderNotFoundError——category="image_to_video" 从没
+    # 注册过任何 provider,是个保证失败的孤立桩。这里补上第一个真实实现。
+    ProviderRegistry.register(
+        "image_to_video",
+        "wan22_kf2v_maas",
+        alibaba_maas_keyframe_lock_generate,
         replace=True,
     )
 

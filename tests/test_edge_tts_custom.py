@@ -16,6 +16,7 @@ import pytest
 from hevi.audio.edge_tts_custom import (
     CURATED_VOICES,
     edge_tts_synthesize_smart,
+    emotion_to_rate_pitch,
     synthesize_with_voice_control,
 )
 
@@ -101,6 +102,74 @@ async def test_synthesize_empty_script_raises(tmp_path: Path) -> None:
         await synthesize_with_voice_control(script=[], output_path=tmp_path / "out.wav")
 
 
+# ── emotion_to_rate_pitch(2026-07-13,治"ScriptLine.emotion 填了但 TTS 从不读")────
+
+
+class TestEmotionToRatePitch:
+    def test_no_emotion_is_neutral(self) -> None:
+        assert emotion_to_rate_pitch(None) == ("+0%", "+0Hz")
+        assert emotion_to_rate_pitch("") == ("+0%", "+0Hz")
+
+    def test_unknown_emotion_falls_back_neutral(self) -> None:
+        assert emotion_to_rate_pitch("莫名其妙的心情") == ("+0%", "+0Hz")
+
+    def test_sad_slows_down_and_lowers_pitch(self) -> None:
+        rate, pitch = emotion_to_rate_pitch("悲怆")
+        assert rate == "-15%"
+        assert pitch == "-15Hz"
+
+    def test_fear_speeds_up(self) -> None:
+        rate, _pitch = emotion_to_rate_pitch("惊惧")
+        assert rate == "+20%"
+
+    def test_multi_keyword_label_matches_first_bucket(self) -> None:
+        """ "倨傲/决绝"(LLM 常见的多关键词标签格式)命中"怒/愤/...倨傲"桶。"""
+        rate, pitch = emotion_to_rate_pitch("倨傲/决绝")
+        assert (rate, pitch) == ("-5%", "-10Hz")
+
+
+@pytest.mark.asyncio
+async def test_voice_control_derives_rate_pitch_from_emotion(tmp_path: Path) -> None:
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[SimpleNamespace(text="你好")],
+                output_path=out,
+                emotion="悲怆",
+            )
+        assert calls[0]["rate"] == "-15%"
+        assert calls[0]["pitch"] == "-15Hz"
+    finally:
+        del sys.modules["edge_tts"]
+
+
+@pytest.mark.asyncio
+async def test_voice_control_explicit_rate_pitch_overrides_emotion(tmp_path: Path) -> None:
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[SimpleNamespace(text="你好")],
+                output_path=out,
+                rate="+15%",
+                pitch="+2Hz",
+                emotion="悲怆",
+            )
+        assert calls[0]["rate"] == "+15%"
+        assert calls[0]["pitch"] == "+2Hz"
+    finally:
+        del sys.modules["edge_tts"]
+
+
 # ── edge_tts_synthesize_smart(2026-07-13,"edge_tts" provider 注册的真实入口)─────
 
 
@@ -121,9 +190,29 @@ async def test_smart_routes_to_voice_control_when_voice_given(tmp_path: Path) ->
 
 
 @pytest.mark.asyncio
-async def test_smart_falls_back_to_oprim_when_no_voice(tmp_path: Path) -> None:
-    """没传 voice(旁白/未分配声音的调用方)→ 原样退回 oprim.edge_tts_synthesize,
-    行为完全不变——这条 provider 注册对既有调用方零回归。"""
+async def test_smart_routes_to_voice_control_when_emotion_given_without_voice(
+    tmp_path: Path,
+) -> None:
+    """2026-07-13:没传 voice 但传了 emotion(旁白/未指定音色的对白也要按情绪调语气)
+    → 一样走 synthesize_with_voice_control,不需要先有显式音色才能情绪化配音。"""
+    out = tmp_path / "out.wav"
+    with patch(
+        "hevi.audio.edge_tts_custom.synthesize_with_voice_control",
+        new_callable=AsyncMock,
+    ) as mvc:
+        mvc.return_value = out
+        await edge_tts_synthesize_smart(
+            script=[SimpleNamespace(text="你好")], output_path=out, emotion="惊惧"
+        )
+    mvc.assert_awaited_once()
+    assert mvc.await_args.kwargs["emotion"] == "惊惧"
+    assert mvc.await_args.kwargs["voice"] is None
+
+
+@pytest.mark.asyncio
+async def test_smart_falls_back_to_oprim_when_no_voice_no_emotion(tmp_path: Path) -> None:
+    """没传 voice 也没传 emotion(旁白/未分配声音的调用方)→ 原样退回
+    oprim.edge_tts_synthesize,行为完全不变——这条 provider 注册对既有调用方零回归。"""
     out = tmp_path / "out.wav"
     fake_oprim = AsyncMock(return_value=out)
     with patch("oprim.edge_tts_synthesize", fake_oprim):

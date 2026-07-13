@@ -242,6 +242,14 @@ export const styleApi = {
     authedReq<{ resolved: Record<string, string>; version: number }>(`/api/style-packs/${id}/resolve`),
   update:  (id: string, overrides: Record<string, string>) =>
     authedReq<StylePack>(`/api/style-packs/${id}`, { method: 'PATCH', body: JSON.stringify({ overrides }) }),
+  // 参考图/视频 → VLM 拆解出 style/lighting/camera/color_grade 草稿(不落库,前端确认/编辑后再 create)
+  draftFromReference: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<{ style: string; lighting: string; camera: string; color_grade: string }>(
+      '/api/style-packs/draft-from-reference', form,
+    );
+  },
 };
 
 // ── 导演层(§3 L4,需登录)片表单 → 预览 / 产集 / 逐镜编辑渲染 ──────────

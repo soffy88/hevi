@@ -693,6 +693,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .hevi-series__resolved span { color: var(--foreground); font-weight: 600; margin-right: 6px; }
 .hevi-series__pack-result button { margin-top: 8px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); font-size: var(--text-xs); cursor: pointer; }
 .hevi-series__mono { font-family: var(--font-mono, monospace); font-size: var(--text-xs); word-break: break-all; }
+.hevi-series__pack-draft-busy { color: var(--muted-foreground); font-size: var(--text-xs); }
 
 /* ── 逐步 provider 选择 ── */
 .hevi-provider { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border); }

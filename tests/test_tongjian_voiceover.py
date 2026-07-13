@@ -195,6 +195,45 @@ class TestSynthesizeVoiceover:
         assert by_speaker["NARRATOR"] is None
 
     @pytest.mark.asyncio
+    async def test_emotion_passed_through_for_all_line_types(self, tmp_path):
+        """2026-07-13 治"ScriptLine.emotion 填了但 TTS 从不读":每行(旁白/对白都算,
+        不限 dialogue)原样把 emotion 传给 tts_fn;空字符串传 None,不是空字符串本身。"""
+        script = _make_script(
+            [
+                {
+                    "line_id": "LN001",
+                    "act": 1,
+                    "type": "narration",
+                    "speaker": "NARRATOR",
+                    "text": "智伯设宴。",
+                    "emotion": "倨傲",
+                },
+                {
+                    "line_id": "LN002",
+                    "act": 1,
+                    "type": "dialogue",
+                    "speaker": "C001",
+                    "text": "祸乱要来。",
+                    "emotion": "",
+                },
+            ]
+        )
+        seen_emotions: list[tuple[str, str | None]] = []
+
+        async def _tts(*, script, output_path, voice=None, emotion=None, **kwargs):
+            seen_emotions.append((script[0].speaker_id, emotion))
+            _write_fake_wav(output_path, 1000)
+            return output_path
+
+        mock_dur = AsyncMock(return_value=1000)
+        with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
+            await synthesize_voiceover(script, output_dir=tmp_path, tts_fn=_tts)
+
+        by_speaker = dict(seen_emotions)
+        assert by_speaker["NARRATOR"] == "倨傲"
+        assert by_speaker["C001"] is None
+
+    @pytest.mark.asyncio
     async def test_act_transition_gap(self, tmp_path):
         """幕间切换时应自动插入 1.5s 空隙。"""
         script = _make_script()  # LN001=act1, LN002=act1, LN003=act2

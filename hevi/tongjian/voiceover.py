@@ -63,7 +63,7 @@ async def _synthesize_line(
 ) -> int:
     """调用 TTS 合成单行,返回音频时长(毫秒)。
 
-    tts_fn 签名:async (script=..., output_path=..., voice=..., **kw) -> Path
+    tts_fn 签名:async (script=..., output_path=..., voice=..., emotion=..., **kw) -> Path
     与 ProviderRegistry.generic("audio", ...) 返回的 callable 兼容。
 
     `voice`(2026-07-13 新增):这一行说话人分配到的音色(见 synthesize_voiceover 的
@@ -71,6 +71,11 @@ async def _synthesize_line(
     (`hevi/audio/edge_tts_custom.py::edge_tts_synthesize_smart`)会真的用它切换音色,
     没有按行分音色能力的 provider(如 `vibevoice_synthesize`,它走每行自己的
     `voice_ref` 做声线克隆)接受并忽略这个多余 kwarg,不会因为多传一个参数就报错。
+
+    `emotion`(2026-07-13 新增,治"ScriptLine.emotion 填了但 TTS 从不读"):`line.emotion`
+    原样透传(旁白/对白都传,不限 dialogue),空字符串一律传 None——不传比传空字符串更
+    安全,`edge_tts_synthesize_smart` 拿 falsy emotion 不会触发按情绪调 rate/pitch 的
+    路径,老脚本(没有 emotion 字段)行为完全不变。同样是多余 kwarg 被忽略,不报错。
     """
     from dataclasses import dataclass
 
@@ -82,7 +87,9 @@ async def _synthesize_line(
 
     script_items = [_Line(speaker_id=line.speaker, text=line.text)]
 
-    await tts_fn(script=script_items, output_path=output_path, voice=voice)
+    await tts_fn(
+        script=script_items, output_path=output_path, voice=voice, emotion=line.emotion or None
+    )
 
     # 读取生成文件的时长
     duration_ms = await _get_audio_duration_ms(output_path)

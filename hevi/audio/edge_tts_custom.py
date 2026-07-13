@@ -33,6 +33,26 @@ CURATED_VOICES: dict[str, str] = {
 }
 
 
+# 情绪化配音(2026-07-13):hevi/tongjian/schemas.py::ScriptLine.emotion 是 LLM 填的自由文本
+# 关键词(如"倨傲/决绝""惊惧""悲怆"),不是枚举。用关键词命中分桶映射到 rate/pitch delta——
+# 按出现顺序取第一个命中的桶,命不中任何关键词就回退"+0%"/"+0Hz"(不影响没写情绪的旧脚本)。
+_EMOTION_RATE_PITCH: tuple[tuple[tuple[str, ...], str, str], ...] = (
+    (("悲", "哀", "凄", "无奈", "低落", "怆"), "-15%", "-15Hz"),
+    (("惧", "惊", "慌", "急促", "紧张", "焦"), "+20%", "+15Hz"),
+    (("怒", "愤", "恼", "决绝", "威严", "倨傲", "傲慢", "冷峻"), "-5%", "-10Hz"),
+    (("喜", "欣", "振奋", "豪迈", "激昂"), "+10%", "+10Hz"),
+)
+
+
+def emotion_to_rate_pitch(emotion: str | None) -> tuple[str, str]:
+    """自由文本情绪标签 → (rate, pitch) delta,edge-tts 直接可用的格式。"""
+    if emotion:
+        for keywords, rate, pitch in _EMOTION_RATE_PITCH:
+            if any(k in emotion for k in keywords):
+                return rate, pitch
+    return "+0%", "+0Hz"
+
+
 def _default_voice(text: str, language: str | None) -> str:
     if language:
         base = language.split("-")[0].lower()
@@ -55,6 +75,7 @@ async def edge_tts_synthesize_smart(
     language: str | None = None,
     watermark: bool = False,
     voice: str | None = None,
+    emotion: str | None = None,
     **kwargs: Any,
 ) -> Path:
     """`edge_tts` provider 注册的真实入口(2026-07-13,取代直接指向
@@ -65,10 +86,14 @@ async def edge_tts_synthesize_smart(
     音色)就用 `synthesize_with_voice_control` 真正切换音色;没传(旁白/未分配声音的
     行,或任何其它调用点)原样退回 `oprim.edge_tts_synthesize`,行为完全不变——
     这条 provider 注册对所有既有调用方零回归,只是多接了一条"按行选音色"的路。
+
+    `emotion`(2026-07-13 新增,治"ScriptLine.emotion 填了但 TTS 从不读"):非空就也走
+    `synthesize_with_voice_control`,即使没显式 `voice`——旁白/未分配音色的对白一样能
+    按情绪调 rate/pitch,只是音色仍用默认规则挑。
     """
-    if voice:
+    if voice or emotion:
         return await synthesize_with_voice_control(
-            config=config, script=script, output_path=output_path, voice=voice
+            config=config, script=script, output_path=output_path, voice=voice, emotion=emotion
         )
     from oprim import edge_tts_synthesize
 
@@ -90,10 +115,13 @@ async def synthesize_with_voice_control(
     rate: str | None = None,
     pitch: str | None = None,
     voice: str | None = None,
+    emotion: str | None = None,
 ) -> Path:
     """script(每行需 .text)→ 单个 WAV,逐行套用 rate/pitch/显式音色。
 
     voice 接受 CURATED_VOICES 的键或 edge-tts 原生音色 ID(如 "zh-CN-XiaoxiaoNeural")。
+    rate/pitch 显式传值时优先;否则 emotion 非空就用 `emotion_to_rate_pitch` 换算,
+    两者都空则 "+0%"/"+0Hz"(旧行为不变)。
     """
     import edge_tts
 
@@ -108,6 +136,8 @@ async def synthesize_with_voice_control(
         raise ValueError("synthesize_with_voice_control: empty script")
 
     resolved_voice = CURATED_VOICES.get(voice, voice) if voice else None
+    if rate is None and pitch is None and emotion:
+        rate, pitch = emotion_to_rate_pitch(emotion)
 
     with tempfile.TemporaryDirectory(prefix="hevi_edge_tts_") as td:
         tmp = Path(td)

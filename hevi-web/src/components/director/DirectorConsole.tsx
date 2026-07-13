@@ -213,7 +213,7 @@ export function DirectorConsole() {
       <section className="dc-sec">
         <div className="dc-sec__head"><span className="dc-sec__num">②</span><h2>角色</h2></div>
         <div className="dc-grid">
-          <div className="dc-field dc-field--wide"><span className="dc-field__label">角色(多选;首个跨镜锁脸,其余仅入人设)</span>
+          <div className="dc-field dc-field--wide"><span className="dc-field__label">角色(多选;全部跨镜锁脸)</span>
             {chars.length === 0 ? (
               <p className="dc-hint">主体库还没有角色 —— 去「主体库」建一个带参考图的角色,这里就能绑定。</p>
             ) : (
@@ -223,10 +223,13 @@ export function DirectorConsole() {
                     <input type="checkbox" checked={(f.character_subject_ids ?? []).includes(c.subject_id)}
                       onChange={() => toggleCharacter(c.subject_id)} />
                     <span>{c.name}</span>
-                    {f.character_subject_ids?.[0] === c.subject_id && <span className="dc-char__lock">锁脸</span>}
+                    {(f.character_subject_ids ?? []).includes(c.subject_id) && <span className="dc-char__lock">锁脸</span>}
                   </label>
                 ))}
               </div>
+            )}
+            {(f.character_subject_ids?.length ?? 0) >= 2 && (
+              <p className="dc-hint">2 人以上会合成一张多角色总览图统一锁脸,provider 侧仍只吃一张参考图。</p>
             )}
           </div>
           <label className="dc-field"><span className="dc-field__label">角色数</span>
@@ -237,7 +240,6 @@ export function DirectorConsole() {
             <input placeholder="留空=不用数字人" value={f.avatar_portrait ?? ''}
               onChange={e => set('avatar_portrait', e.target.value)} />
           </label>
-          <NotSupported label="多身份锁脸" reason="provider 的 i2v 每镜只吃 1 张参考图,仅首个角色的脸能跨镜锁定" />
         </div>
       </section>
 

@@ -11,6 +11,8 @@ import pytest
 from hevi.video.alibaba_maas_service import (
     AlibabaMaasError,
     alibaba_maas_generate,
+    alibaba_maas_keyframe_generate,
+    alibaba_maas_keyframe_lock_generate,
     alibaba_maas_reference_generate,
     happyhorse_1_1_maas_generate,
     happyhorse_1_1_maas_reference_to_video,
@@ -381,4 +383,144 @@ async def test_reference_generate_missing_api_key_raises(monkeypatch, tmp_path):
     with pytest.raises(AlibabaMaasError, match="ALIBABA_MAAS_API_KEY"):
         await alibaba_maas_reference_generate(
             prompt="x", reference_images=["http://x/1.png"], output_path=tmp_path / "out.mp4"
+        )
+
+
+# ── 首尾帧生视频(kf2v,2026-07-13 治"category=image_to_video 从没注册过 provider,
+# oprim.first_last_frame_transition 100% 保证失败")────────────────────────────
+
+
+def _keyframe_success_responses() -> list[_FakeResponse]:
+    return [
+        _FakeResponse(json_data={"output": {"task_id": "T1", "task_status": "PENDING"}}),
+        _FakeResponse(
+            json_data={
+                "output": {
+                    "task_id": "T1",
+                    "task_status": "SUCCEEDED",
+                    "video_url": "http://cdn/v.mp4",
+                }
+            }
+        ),
+        _FakeResponse(content=b"x" * 2000),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_keyframe_generate_hits_image2video_endpoint_with_correct_model(
+    monkeypatch, tmp_path
+):
+    _set_env(monkeypatch)
+    calls = _patch_client(monkeypatch, _keyframe_success_responses())
+
+    result = await alibaba_maas_keyframe_generate(
+        first_frame="http://x/first.png",
+        last_frame="http://x/last.png",
+        output_path=tmp_path / "out.mp4",
+        poll_interval_s=0.01,
+    )
+
+    assert result.exists()
+    assert calls[0] == (
+        "POST",
+        "https://ws-test123.ap-southeast-1.maas.aliyuncs.com"
+        "/api/v1/services/aigc/image2video/video-synthesis",
+    )
+
+
+@pytest.mark.asyncio
+async def test_keyframe_generate_builds_first_last_frame_payload(monkeypatch, tmp_path):
+    _set_env(monkeypatch)
+    captured_payloads = []
+
+    class _CapturingClient(_FakeAsyncClient):
+        async def post(self, url, json=None, **kw):
+            captured_payloads.append(json)
+            return await super().post(url, **kw)
+
+    calls: list[tuple[str, str]] = []
+    import hevi.video.alibaba_maas_service as maas_mod
+
+    monkeypatch.setattr(
+        maas_mod.httpx,
+        "AsyncClient",
+        lambda **kw: _CapturingClient(_keyframe_success_responses(), calls),
+    )
+
+    await alibaba_maas_keyframe_generate(
+        first_frame="http://x/first.png",
+        last_frame="http://x/last.png",
+        output_path=tmp_path / "out.mp4",
+        prompt="镜头缓缓拉远",
+        duration_s=4.0,
+        poll_interval_s=0.01,
+    )
+
+    payload = captured_payloads[0]
+    assert payload["model"] == "wan2.2-kf2v-flash"
+    assert payload["input"]["first_frame_url"] == "http://x/first.png"
+    assert payload["input"]["last_frame_url"] == "http://x/last.png"
+    assert payload["input"]["prompt"] == "镜头缓缓拉远"
+    assert payload["parameters"]["duration"] == 4
+
+
+@pytest.mark.asyncio
+async def test_keyframe_generate_encodes_local_paths_as_data_uri(monkeypatch, tmp_path):
+    _set_env(monkeypatch)
+    first = tmp_path / "first.png"
+    last = tmp_path / "last.png"
+    first.write_bytes(b"\x89PNG\r\n\x1a\n" + b"a" * 50)
+    last.write_bytes(b"\x89PNG\r\n\x1a\n" + b"b" * 50)
+    captured_payloads = []
+
+    class _CapturingClient(_FakeAsyncClient):
+        async def post(self, url, json=None, **kw):
+            captured_payloads.append(json)
+            return await super().post(url, **kw)
+
+    calls: list[tuple[str, str]] = []
+    import hevi.video.alibaba_maas_service as maas_mod
+
+    monkeypatch.setattr(
+        maas_mod.httpx,
+        "AsyncClient",
+        lambda **kw: _CapturingClient(_keyframe_success_responses(), calls),
+    )
+
+    await alibaba_maas_keyframe_generate(
+        first_frame=first, last_frame=last, output_path=tmp_path / "out.mp4", poll_interval_s=0.01
+    )
+
+    payload = captured_payloads[0]
+    assert payload["input"]["first_frame_url"].startswith("data:image/png;base64,")
+    assert payload["input"]["last_frame_url"].startswith("data:image/png;base64,")
+
+
+@pytest.mark.asyncio
+async def test_keyframe_lock_generate_matches_oprim_transition_contract(monkeypatch, tmp_path):
+    """`alibaba_maas_keyframe_lock_generate` 是给 `ProviderRegistry.register("image_to_video",
+    ...)` 用的窄接口,必须匹配 `oprim.first_last_frame_transition` 的固定调用契约——
+    只传 first_frame/last_frame/duration_s/output_path/timeout_s,没有 prompt。"""
+    _set_env(monkeypatch)
+    _patch_client(monkeypatch, _keyframe_success_responses())
+
+    result = await alibaba_maas_keyframe_lock_generate(
+        first_frame="http://x/first.png",
+        last_frame="http://x/last.png",
+        duration_s=3.0,
+        output_path=tmp_path / "out.mp4",
+        timeout_s=60.0,
+    )
+    assert result.exists()
+
+
+@pytest.mark.asyncio
+async def test_keyframe_generate_missing_api_key_raises(monkeypatch, tmp_path):
+    monkeypatch.delenv("ALIBABA_MAAS_API_KEY", raising=False)
+    monkeypatch.setenv("ALIBABA_MAAS_HOST", "ws-test123.ap-southeast-1.maas.aliyuncs.com")
+    with pytest.raises(AlibabaMaasError, match="ALIBABA_MAAS_API_KEY"):
+        await alibaba_maas_keyframe_generate(
+            first_frame="http://x/first.png",
+            last_frame="http://x/last.png",
+            output_path=tmp_path / "out.mp4",
         )

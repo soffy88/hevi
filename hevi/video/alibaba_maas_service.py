@@ -74,6 +74,14 @@ _REFERENCE_MODEL_IDS = {
 }
 _MAX_REFERENCE_IMAGES = 9
 
+# 首尾帧生视频(kf2v = keyframe-to-video)—— 独立的 image2video 端点,跟 t2v/参考图
+# 锁定生成的 video-generation 端点不是一回事(见 _submit_and_download 的 submit_path)。
+# flash 档:官方文档标称比 plus 档快、便宜,hevi 全项目对云端生成默认走便宜档的既定
+# 惯例(如 happyhorse_1_1 而非更贵型号)。
+# Source: https://help.aliyun.com/zh/model-studio/image-to-video-by-first-and-last-frame-api-reference
+_KEYFRAME_MODEL_ID = "wan2.2-kf2v-flash"
+_KEYFRAME_SUBMIT_PATH = "/api/v1/services/aigc/image2video/video-synthesis"
+
 
 class AlibabaMaasError(Exception):
     """阿里云 Model Studio 生成失败(缺 key/host、未知 model、提交/轮询失败、超时,或产物为空)。"""
@@ -105,6 +113,23 @@ def _headers(api_key: str) -> tuple[dict[str, str], dict[str, str]]:
     return submit_headers, poll_headers
 
 
+def _to_data_uri_if_local(ref: str) -> str:
+    """本机文件路径 → data: base64 URI;已经是 URL/data: 的原样透传(同
+    `happyhorse_1_1_maas_lock_generate` 的转法)——阿里这几个端点都只吃 http(s) URL
+    或 data: URI,不会去读本机文件路径(真实调用实测报 InvalidParameter "Failed to
+    download <本地路径>")。"""
+    if ref.startswith(("http://", "https://", "data:")):
+        return ref
+    import base64
+
+    suffix = Path(ref).suffix.lower().lstrip(".") or "png"
+    mime = "jpeg" if suffix in ("jpg", "jpeg") else suffix
+    return f"data:image/{mime};base64,{base64.b64encode(Path(ref).read_bytes()).decode()}"
+
+
+_DEFAULT_SUBMIT_PATH = "/api/v1/services/aigc/video-generation/video-synthesis"
+
+
 async def _submit_and_download(
     client: httpx.AsyncClient,
     *,
@@ -116,12 +141,16 @@ async def _submit_and_download(
     model: str,
     poll_interval_s: float,
     timeout_s: float,
+    submit_path: str = _DEFAULT_SUBMIT_PATH,
 ) -> Path:
-    """提交任务、轮询至完成、下载视频到 output_path。t2v 和参考图锁定生成共用这一段
-    (二者只有 payload 不同,提交/轮询/下载/校验产物这套壳完全一样)。"""
+    """提交任务、轮询至完成、下载视频到 output_path。t2v/参考图锁定/首尾帧生视频共用
+    这一段(仨只有 payload 和提交 path 不同,轮询/下载/校验产物这套壳完全一样)。
+    `submit_path` 默认是 t2v/参考图锁定用的 video-generation 端点;首尾帧生视频是
+    阿里另一个端点(image2video),见 `alibaba_maas_keyframe_generate`。
+    """
     try:
         resp = await client.post(
-            f"https://{host}/api/v1/services/aigc/video-generation/video-synthesis",
+            f"https://{host}{submit_path}",
             json=payload,
             headers=submit_headers,
         )
@@ -395,4 +424,98 @@ async def happyhorse_1_1_maas_lock_generate(
         output_path=output_path,
         config=config,
         **kw,
+    )
+
+
+async def alibaba_maas_keyframe_generate(
+    *,
+    first_frame: Path | str,
+    last_frame: Path | str,
+    output_path: Path,
+    prompt: str = "",
+    negative_prompt: str = "",
+    resolution: str = "720P",
+    duration_s: float = 5.0,
+    seed: int | None = None,
+    watermark: bool = False,
+    config: dict[str, Any] | None = None,
+    poll_interval_s: float = 5.0,
+    timeout_s: float = 600.0,
+    **_kw: Any,
+) -> Path:
+    """首尾帧生视频(wan2.2-kf2v-flash,阿里官方文档:
+    https://help.aliyun.com/zh/model-studio/image-to-video-by-first-and-last-frame-api-reference)。
+
+    2026-07-13:这是"首尾帧关键帧"能力此前完全没有真实 provider 的根因修复——
+    `oprim.first_last_frame_transition`(`hevi/creative/assist_service.py::make_transition`
+    包了一层)一直存在,但 `ProviderRegistry` 从没注册过任何 `category="image_to_video"`
+    的 provider,任何 `video_provider` 值都会 100% 撞 `FrameTransitionProviderNotFoundError`
+    ——这是个孤立的、保证失败的桩,不是能真用的功能。这里补上真实实现 +
+    `alibaba_maas_keyframe_lock_generate`(下面,转译成 oprim 那份契约的窄接口)并注册进
+    registry,首尾帧生视频才第一次是条能跑通的真实调用路径。
+
+    first_frame/last_frame: 本机文件路径或已有 URL/data: URI 均可(内部按需转 data
+    URI,见 `_to_data_uri_if_local`——跟阿里其余端点同样只吃 URL/data:,不认本机路径)。
+    duration_s: 官方文档时长参数是整数秒,这里按秒取整传给 API。
+    """
+    api_key = _api_key(config)
+    host = _host(config)
+    output_path = Path(output_path)
+    submit_headers, poll_headers = _headers(api_key)
+
+    payload: dict[str, Any] = {
+        "model": _KEYFRAME_MODEL_ID,
+        "input": {
+            "first_frame_url": _to_data_uri_if_local(str(first_frame)),
+            "last_frame_url": _to_data_uri_if_local(str(last_frame)),
+        },
+        "parameters": {
+            "resolution": resolution,
+            "duration": int(duration_s),
+            "watermark": watermark,
+        },
+    }
+    if prompt:
+        payload["input"]["prompt"] = prompt
+    if negative_prompt:
+        payload["input"]["negative_prompt"] = negative_prompt
+    if seed is not None:
+        payload["parameters"]["seed"] = seed
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+        return await _submit_and_download(
+            client,
+            host=host,
+            payload=payload,
+            submit_headers=submit_headers,
+            poll_headers=poll_headers,
+            output_path=output_path,
+            model=_KEYFRAME_MODEL_ID,
+            poll_interval_s=poll_interval_s,
+            timeout_s=timeout_s,
+            submit_path=_KEYFRAME_SUBMIT_PATH,
+        )
+
+
+async def alibaba_maas_keyframe_lock_generate(
+    *,
+    first_frame: Path,
+    last_frame: Path,
+    duration_s: float,
+    output_path: Path,
+    timeout_s: float = 600.0,
+    **_kw: Any,
+) -> Path:
+    """`ProviderRegistry.register("image_to_video", ...)` 用的窄接口——匹配
+    `oprim.first_last_frame_transition` 的固定调用契约(`first_frame`/`last_frame`/
+    `duration_s`/`output_path`/`timeout_s`,没有 `prompt`,见其函数签名)。不额外加
+    prompt/negative_prompt/resolution 等旋钮——那些留给
+    `alibaba_maas_keyframe_generate` 本体给需要更细控制的调用方直接用。
+    """
+    return await alibaba_maas_keyframe_generate(
+        first_frame=first_frame,
+        last_frame=last_frame,
+        output_path=output_path,
+        duration_s=duration_s,
+        timeout_s=timeout_s,
     )
