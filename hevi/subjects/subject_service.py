@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import uuid
+from pathlib import Path
 from typing import Any
 
 from hevi.subjects.reference_store import ReferenceStore
@@ -349,6 +350,31 @@ class SubjectService:
         if path not in wardrobe:
             wardrobe.append(path)
         metadata["wardrobe_images"] = wardrobe
+        return await self._repo.update(subject_id, {"metadata": metadata})
+
+    async def generate_subject3d(
+        self, subject_id: str, *, output_root: str = "output/subject3d"
+    ) -> dict[str, Any] | None:
+        """本地 Subject3D 生成(HEVI-ARCHITECTURE.md v3.0 §5.7 主路A,2026-07-13 探路,
+        见 subject3d_local.py 模块顶部的真实质量特征说明)。用 reference_images[0](跟
+        身份向量、下游 i2v 锁脸同一张"封面"图,既定约定)当输入,存进
+        metadata.subject3d = {glb_path, views: {front/left/right/back: path}}。
+
+        不影响 reference_images/identity_embedding 这条既有 2D 通道——3D 是并行的
+        补充档,不是替换(同一角色可以同时有 2D 参考图和 3D 渲染帧)。
+        """
+        existing = await self._repo.get(subject_id)
+        if existing is None:
+            return None
+        refs = existing.get("reference_images") or []
+        if not refs:
+            raise ValueError("subject 没有 reference_images,无法生成 Subject3D")
+
+        from hevi.subjects.subject3d_local import generate_subject3d as _generate
+
+        result = await _generate(Path(refs[0]), output_dir=Path(output_root) / subject_id)
+        metadata = dict(existing.get("metadata", {}))
+        metadata["subject3d"] = result
         return await self._repo.update(subject_id, {"metadata": metadata})
 
     async def delete_subject(self, subject_id: str) -> bool:

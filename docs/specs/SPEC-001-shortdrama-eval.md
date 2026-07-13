@@ -107,11 +107,26 @@ Spec 口号"短剧通道 = 3 个新增件 + 全链复用":
 
 ## 6. 冻结决策(soffy 已拍板 2026-07-11)
 
-- [x] **红旗 1:砍 Subject3D**,阶段 2 跨集一致性压在现有 2D CLIP identity lock 上。3D 若做,单列高风险探索,不进主线、不作 G2 门槛。
+- [x] ~~红旗 1:砍 Subject3D~~ **2026-07-13 重开**,阶段 2 跨集一致性压在现有 2D CLIP identity lock 上。3D 若做,单列高风险探索,不进主线、不作 G2 门槛。
 - [x] **红旗 2:B0 基于 tongjian 泛化**(从 `hevi/tongjian/` ChapterIR 起步,补 relationships.evolution + arcs + 跨章合并),不接外部 Stratum。
 - [x] **红旗 3:剧集规划器 = 新规划层**(仿 tongjian Constitution,季粒度,消费 StoryGraph 产出 SeasonPlan),不改 `producer.py`。
 - [x] **LLM 前置:用 `qwen_cloud`**(阿里云百炼 workspace 端点,已接好线 + 已验证 + 凭证在 `.env`)。逐层显式选,零额外工作。
 
 **SPEC-001 冻结,进入阶段 1。** 修正后的阶段 1 最小闭环见 §5。
 
-*评估结束。*
+*评估结束(2026-07-11)。*
+
+---
+
+## 7. 红旗 1 重开(soffy 2026-07-13)
+
+**决策:** soffy 判断"短剧当前实现有巨大问题",指示重开红旗 1(砍 Subject3D),按 `docs/HEVI-ARCHITECTURE.md` v3.0 §5.7 的 Subject3D 方向执行。这条决定**取代**本文档 §6 红旗 1 的"砍 Subject3D"结论——2D CLIP identity lock(§6 红旗 1 原方案)已实现并在 2026-07-12/13 多轮真实生成中验证:身份复用参考图可行(consistency ≈ 0.77–0.84)、风格/竖屏/对白比例/场景连贯性等问题已定位修复,但 soffy 认为这仍不够,判断问题根源需要 3D 资产而非继续在 2D 手段上打磨。
+
+**范围(按 v3.0 §5.7.1 主路 A + §9 Phase 3"探路"标准,不是 Phase 4 全量落地):**
+- 先做**单角色可行性探路**:外采图生3D(候选:Hunyuan3D / TripoSR 一类,作为 L0 一种能力,不自建)→ 归一化成 `Subject3D` → 按镜头机位渲染身份帧 → 喂现有 i2v 管线(`_canonical()`/`character_bible_for_episode` 现在吃的 `ref_image` 那个位置,替换/增补为 3D 渲染帧)。
+- **不做**:纯 3D 直渲成片(v3.0 路线 B,降级为可选 provider,非当前范围)、自建渲染农场、场景 3D(v3.0 里场景 3D 与角色平级但优先级见探路阶段是否有余量,先角色单点跑通)。
+- 与现有 2D CLIP identity lock **共存,不是替换**——3D 渲染帧本身还是可以喂 `subject_embed`/`shot_scorecard` 做事后校验(v3.0 §6.2:3D ground truth 反哺 verdict),两层不冲突。
+
+**待办(非本次会话已完成,记录决策与范围,实现见后续 commit):** 选型图生3D provider、设计 `Subject3D` 数据模型、接线渲染服务、跑通最小闭环(单角色、单机位、一次真实付费验证)。
+
+*重开记录结束。*

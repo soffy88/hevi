@@ -203,6 +203,11 @@ class CharacterBibleEntry(BaseModel):
     appearance: str = ""
     era_check: str = ""
     ref_image: str | None = None  # 步骤3-4 锁定的候选立绘路径
+    # Subject3D 多机位渲染帧(HEVI-ARCHITECTURE.md v3.0 §5.7.0 机位驱动渲染,2026-07-13
+    # 探路落地),{"front"/"left"/"right"/"back": path}。目前只是数据透传——消费侧
+    # (build_frame_manifest_avatar)还没有"这一镜是什么机位"的信息(ShotCamera 只有
+    # shot_size/movement,没有方位角),按机位选用对应视图是后续工作,不在这次范围。
+    ref_image_views: dict[str, str] | None = None
     gen_lock: dict | None = None  # {"seed":..., "ip_adapter_weight":...}
     voice_id: str | None = None  # 待 L3 TTS 接入后填入
 

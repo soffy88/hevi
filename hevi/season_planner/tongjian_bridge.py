@@ -142,7 +142,10 @@ def episode_to_constitution(
 
 
 def character_bible_for_episode(
-    ep: EpisodePlan, story: StoryGraph, subject_ref_paths: dict[str, str] | None = None
+    ep: EpisodePlan,
+    story: StoryGraph,
+    subject_ref_paths: dict[str, str] | None = None,
+    subject3d_views: dict[str, dict[str, str]] | None = None,
 ) -> CharacterBible:
     """本集出场角色的外形描述——直接用 StoryGraph 抽取时已经填好的 description,不再
     额外调 LLM 生成一遍(B0 抽取 prompt 本来就要求"外貌与性格的可视化特征")。
@@ -152,6 +155,15 @@ def character_bible_for_episode(
     `CharacterBibleEntry.ref_image`——这个字段 scene_render_avatar.py 的 `_canonical()`
     本来就设计成"优先用它",此前只是没人在短剧这条路上填过,变成了摆设。填上后
     角色 canonical 像直接复用真实参考图,不再靠"文字描述+固定seed"重新生成。
+
+    `subject3d_views`(char_id → {"front"/"left"/"right"/"back": path},来自
+    `SubjectService.generate_subject3d()` 的本地 TripoSR 渲染产物):**优先级低于
+    `subject_ref_paths`**——2026-07-13 真实生成 + 真实短剧镜头对比过,当前 TripoSR
+    渲染帧喂进生成管线后身份一致性实测低于清晰的 2D 照片(0.61 vs 0.77-0.84,细节
+    丢失导致下游模型认错人),不是"3D更先进就该优先用"。只有该角色没有任何 2D
+    参考图时,才退回 3D 正面渲染帧当 ref_image;其余视图存进 `ref_image_views`
+    供未来机位驱动渲染消费(见 CharacterBibleEntry.ref_image_views 的字段注释,
+    目前分镜还没有机位信息,这部分数据先透传、暂未被消费)。
     """
     by_id = {c.char_id: c for c in story.characters}
     entries = []
@@ -159,12 +171,17 @@ def character_bible_for_episode(
         c = by_id.get(cid)
         if c is None:
             continue
+        ref_image = (subject_ref_paths or {}).get(cid)
+        views = (subject3d_views or {}).get(cid)
+        if not ref_image and views:
+            ref_image = views.get("front")
         entries.append(
             CharacterBibleEntry(
                 character_id=c.char_id,
                 name=c.name,
                 appearance=c.description or f"{c.name},{c.role or '角色'}",
-                ref_image=(subject_ref_paths or {}).get(cid),
+                ref_image=ref_image,
+                ref_image_views=views,
             )
         )
     return CharacterBible(characters=entries)
@@ -183,6 +200,7 @@ async def render_episode(
     tts_fn: Any = None,
     dramatize: bool = True,
     subject_ref_paths: dict[str, str] | None = None,
+    subject3d_views: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """本集真实渲染主入口:StoryGraph/EpisodePlan → 通鉴 L2-L8(cloud_avatar)→ 真实成片。
 
@@ -241,7 +259,7 @@ async def render_episode(
     )
     gate_reports["voiceover"] = g3
 
-    character_bible = character_bible_for_episode(ep, story, subject_ref_paths)
+    character_bible = character_bible_for_episode(ep, story, subject_ref_paths, subject3d_views)
 
     # event_id → 地点名,供 build_shotlist 判断场景连贯性(同地点连续事件不误切场景,
     # 见 shotlist.py::_infer_scene_id 的 2026-07-12 改动)。StoryGraph 抽取时已经填了

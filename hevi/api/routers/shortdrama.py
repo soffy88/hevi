@@ -345,6 +345,23 @@ async def upload_character_reference(
     return {"char_id": char_id, "subject_id": subject_id}
 
 
+async def _generate_subject3d_background(subject_id: str, char_id: str, run_id: str) -> None:
+    """派发后台建 Subject3D(见调用点注释)。独立 pool 连接——这是脱离请求生命周期的
+    fire-and-forget 任务,不能借用某个已随请求结束而关闭的连接。"""
+    try:
+        pool = await get_hevi_pg_pool()
+        subject_svc = SubjectService(SubjectRepository(pool))
+        await subject_svc.generate_subject3d(subject_id)
+        logger.info("shortdrama run %s 角色 %s Subject3D 生成完成", run_id, char_id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "shortdrama run %s 角色 %s Subject3D 生成失败(降级为纯2D,不影响出片): %s",
+            run_id,
+            char_id,
+            e,
+        )
+
+
 async def _run_episode_via_tongjian(
     *,
     task_repo: TaskRepository,
@@ -353,6 +370,7 @@ async def _run_episode_via_tongjian(
     story: StoryGraph,
     duration_archetype: str,
     subject_ref_paths: dict[str, str],
+    subject_id_map: dict[str, str],
 ) -> None:
     """真实生成一集:StoryGraph/EpisodePlan → hevi.season_planner.tongjian_bridge
     (复用通鉴 cloud_avatar 对白+口型管线,见该模块 docstring)。
@@ -367,12 +385,37 @@ async def _run_episode_via_tongjian(
     )
     try:
         duration_cfg = get_duration_config(duration_archetype)
+        # 每集渲染前现查一遍 Subject3D 是否就绪(而不是沿用 confirm 时刻的快照)——
+        # 本地 TripoSR 生成要约3分钟(CPU,见 subject3d_local.py),confirm→dispatch
+        # 通常几秒内就完成,大概率赶不上第一集;后面几集渲染时如果已经生成完,
+        # 这里能捡到,不需要重新触发生成(character_bible_for_episode 2D 优先于3D,
+        # 拿不到也不影响出片,只是拿不到"机位驱动渲染"的补充数据)。
+        subject3d_views: dict[str, dict[str, str]] = {}
+        if subject_id_map:
+            pool = await get_hevi_pg_pool()
+            subject_svc = SubjectService(SubjectRepository(pool))
+            for char_id, subj_id in subject_id_map.items():
+                try:
+                    subj = await subject_svc.get_subject(subj_id)
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(
+                        "shortdrama episode %s 角色 %s 查询 Subject3D 失败(降级为纯2D): %s",
+                        task_id,
+                        char_id,
+                        e,
+                    )
+                    continue
+                views = ((subj or {}).get("metadata") or {}).get("subject3d", {}).get("views")
+                if views:
+                    subject3d_views[char_id] = views
+
         result = await render_episode(
             ep,
             story,
             run_dir=Path("output/tasks") / str(task_id),
             target_duration_sec=int(duration_cfg["target_s"]),
             subject_ref_paths=subject_ref_paths,
+            subject3d_views=subject3d_views,
         )
         final_video = result["final_video"]
         shots = result["shots"]
@@ -566,10 +609,21 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
                     story=story,
                     duration_archetype=body.duration_archetype,
                     subject_ref_paths=subject_ref_paths,
+                    subject_id_map=subject_id_map,
                 )
             )
             _RUN_TASKS.add(t)
             t.add_done_callback(_RUN_TASKS.discard)
+
+        # Subject3D 后台补建(HEVI-ARCHITECTURE.md v3.0 §5.7,2026-07-13 探路落地)——
+        # 本地 TripoSR 推理约3分钟/角色(CPU,GPU 被同机其他租户占满,见
+        # subject3d_local.py),不能同步阻塞派发。fire-and-forget:失败只记日志,
+        # 不影响本集出片(_run_episode_via_tongjian 拿不到 3D 数据会自动退回 2D
+        # 参考图,这是已验证工作正常的既有路径)。赶不上第一集就等下一集捡漏。
+        for char_id, subj_id in subject_id_map.items():
+            t3d = asyncio.create_task(_generate_subject3d_background(subj_id, char_id, run_id))
+            _RUN_TASKS.add(t3d)
+            t3d.add_done_callback(_RUN_TASKS.discard)
 
         rec["series_id"] = dispatched["series_id"]
         rec["status"] = "DISPATCHED"
