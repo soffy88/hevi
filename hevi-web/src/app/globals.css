@@ -447,6 +447,8 @@ html, body {
 }
 .hevi-topnav__link:hover { background: var(--muted); color: var(--foreground); }
 .hevi-topnav__link[data-active="true"] { background: color-mix(in oklch, var(--primary) 16%, transparent); color: var(--primary); font-weight: 600; }
+.hevi-topnav__link--btn { border: none; background: none; font: inherit; cursor: pointer; }
+.hevi-topnav__link--auth { margin-left: auto; }
 
 /* ── 首页简单生成 ── */
 .hevi-home {
