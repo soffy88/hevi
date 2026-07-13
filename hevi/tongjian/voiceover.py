@@ -59,11 +59,18 @@ async def _synthesize_line(
     output_path: Path,
     *,
     tts_fn: Any,
+    voice: str | None = None,
 ) -> int:
     """调用 TTS 合成单行,返回音频时长(毫秒)。
 
-    tts_fn 签名:async (script=..., output_path=..., **kw) -> Path
+    tts_fn 签名:async (script=..., output_path=..., voice=..., **kw) -> Path
     与 ProviderRegistry.generic("audio", ...) 返回的 callable 兼容。
+
+    `voice`(2026-07-13 新增):这一行说话人分配到的音色(见 synthesize_voiceover 的
+    `voice_by_speaker` 参数)。始终作为 kwarg 传给 tts_fn——`edge_tts` provider
+    (`hevi/audio/edge_tts_custom.py::edge_tts_synthesize_smart`)会真的用它切换音色,
+    没有按行分音色能力的 provider(如 `vibevoice_synthesize`,它走每行自己的
+    `voice_ref` 做声线克隆)接受并忽略这个多余 kwarg,不会因为多传一个参数就报错。
     """
     from dataclasses import dataclass
 
@@ -75,7 +82,7 @@ async def _synthesize_line(
 
     script_items = [_Line(speaker_id=line.speaker, text=line.text)]
 
-    await tts_fn(script=script_items, output_path=output_path)
+    await tts_fn(script=script_items, output_path=output_path, voice=voice)
 
     # 读取生成文件的时长
     duration_ms = await _get_audio_duration_ms(output_path)
@@ -88,8 +95,14 @@ async def _get_audio_duration_ms(path: Path) -> int:
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "ffprobe", "-v", "quiet", "-show_entries", "format=duration",
-            "-of", "csv=p=0", str(path),
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "csv=p=0",
+            str(path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -110,9 +123,14 @@ async def _get_loudness_lufs(path: Path) -> float | None:
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-i", str(path),
-            "-af", "loudnorm=print_format=json",
-            "-f", "null", "-",
+            "ffmpeg",
+            "-i",
+            str(path),
+            "-af",
+            "loudnorm=print_format=json",
+            "-f",
+            "null",
+            "-",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -140,10 +158,14 @@ async def _compute_cer(original: str, audio_path: Path) -> float:
 
         # 尝试用 whisper CLI
         proc = await asyncio.create_subprocess_exec(
-            "whisper", str(audio_path),
-            "--language", "zh",
-            "--output_format", "txt",
-            "--output_dir", str(audio_path.parent),
+            "whisper",
+            str(audio_path),
+            "--language",
+            "zh",
+            "--output_format",
+            "txt",
+            "--output_dir",
+            str(audio_path.parent),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -188,6 +210,7 @@ async def synthesize_voiceover(
     *,
     output_dir: Path | None = None,
     tts_fn: Any = None,
+    voice_by_speaker: dict[str, str] | None = None,
 ) -> Timeline:
     """L3 主合成:script → Timeline(含音频文件 + 时间轴)。
 
@@ -196,6 +219,10 @@ async def synthesize_voiceover(
         output_dir: 音频文件输出目录;None 时使用临时目录。
         tts_fn: TTS callable,签名同 ProviderRegistry audio provider。
                  None 时从 ProviderRegistry 取 cosyvoice(P0 默认)。
+        voice_by_speaker(2026-07-13 新增,治"多角色对话只有一个默认声音"):
+                 character_id → CURATED_VOICES 键/edge-tts 原生音色 ID。dialogue
+                 行按 speaker 查这张表拿到专属音色;查不到(旁白、未分配声音的
+                 角色)保持模块顶部说的"P0 单声线"退化行为,不是全量重构。
     """
     import tempfile
 
@@ -206,6 +233,7 @@ async def synthesize_voiceover(
 
     if tts_fn is None:
         from obase.provider_registry import ProviderRegistry
+
         tts_fn = ProviderRegistry.get().generic("audio", "cosyvoice")
 
     segments: list[AudioSegment] = []
@@ -230,8 +258,9 @@ async def synthesize_voiceover(
         filename = _audio_filename(line)
         file_path = output_dir / filename
 
+        voice = (voice_by_speaker or {}).get(line.speaker) if line.type == "dialogue" else None
         try:
-            duration_ms = await _synthesize_line(line, file_path, tts_fn=tts_fn)
+            duration_ms = await _synthesize_line(line, file_path, tts_fn=tts_fn, voice=voice)
         except Exception as e:
             logger.warning("L3: 行 %s TTS 合成失败,跳过: %s", line.line_id, e)
             duration_ms = 0
@@ -305,9 +334,7 @@ async def gate_voiceover(
         cer_checked += 1
         if cer > _CER_THRESHOLD:
             cer_failed += 1
-            errors.append(
-                f"行 {seg.line_id} ASR 反打 CER={cer:.1%} 超过 {_CER_THRESHOLD:.0%} 门槛"
-            )
+            errors.append(f"行 {seg.line_id} ASR 反打 CER={cer:.1%} 超过 {_CER_THRESHOLD:.0%} 门槛")
 
     if cer_checked == 0 and output_dir:
         warnings.append("ASR 反打未执行(whisper 不可用或无音频文件),CER 检查跳过")
@@ -326,11 +353,12 @@ async def gate_voiceover(
                 f"超过 ±{_LUFS_TOLERANCE} dB"
             )
 
-    coverage = (
-        (cer_checked - cer_failed) / cer_checked if cer_checked else 1.0
-    )
+    coverage = (cer_checked - cer_failed) / cer_checked if cer_checked else 1.0
     return GateResult(
-        passed=not errors, coverage=coverage, errors=errors, warnings=warnings,
+        passed=not errors,
+        coverage=coverage,
+        errors=errors,
+        warnings=warnings,
     )
 
 
@@ -340,15 +368,22 @@ async def build_voiceover(
     *,
     output_dir: Path | None = None,
     tts_fn: Any = None,
+    voice_by_speaker: dict[str, str] | None = None,
 ) -> tuple[Timeline, GateResult]:
     """L3 主入口:合成 → G3 门。
 
     与 build_script / build_constitution 同一模式:返回 (产物, GateResult)。
     """
     timeline = await synthesize_voiceover(
-        script, output_dir=output_dir, tts_fn=tts_fn,
+        script,
+        output_dir=output_dir,
+        tts_fn=tts_fn,
+        voice_by_speaker=voice_by_speaker,
     )
     result = await gate_voiceover(
-        timeline, script, constitution, output_dir=output_dir,
+        timeline,
+        script,
+        constitution,
+        output_dir=output_dir,
     )
     return timeline, result

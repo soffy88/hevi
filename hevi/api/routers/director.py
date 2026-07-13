@@ -66,7 +66,7 @@ class EpisodeRequest(BaseModel):
     genre: str | None = None  # 题材类型(剧情/科普/广告/vlog…)
     narrative_hook: str | None = None  # 叙事钩子:开场 3 秒抓手
     # ② 角色
-    character_subject_ids: list[str] = []  # 多角色绑定;首个用于 i2v 跨镜锁脸,其余仅入人设描述
+    character_subject_ids: list[str] = []  # 多角色绑定;2+人合成总览图统一锁脸(见 director.py)
     subject_id: str | None = None  # 兼容单角色写法(优先于 character_subject_ids[0])
     avatar_portrait: str | None = None  # 数字人肖像
     num_characters: int | None = None
@@ -135,12 +135,16 @@ _ROSTER_META_LABELS: tuple[tuple[str, str], ...] = (
 async def _resolve_character_roster(
     pool: PgPool, subject_ids: list[str]
 ) -> tuple[str | None, str, dict[str, str], str]:
-    """多角色绑定 → (首个 id 供 i2v 锁脸, 人设 roster 文本供 topic 注入,
+    """多角色绑定 → (首个 id 供旧版单角色兼容字段, 人设 roster 文本供 topic 注入,
     speaker_i→声音参考的尽力而为映射, 各角色专属负向提示合并后的字符串)。
 
-    "多身份锁定"的诚实边界:provider 的 i2v 每镜只吃 1 张参考图(omodul 硬限制),故仍只有
-    首个角色的脸被跨镜锁定;其余角色仅以人设文本(含年龄/性别/人设/语言风格/关系等
-    metadata 字段)影响 storyboard LLM 的写作,不做画面身份锁定。
+    2026-07-13 前的"诚实边界"是:provider 的 i2v 每镜只吃 1 张参考图(omodul 硬限制),故
+    只有首个角色的脸被跨镜锁定,其余角色仅以人设文本影响 storyboard 写作。现已解决——
+    `director_create_episode` 把完整 `body.character_subject_ids` 存进 config_json,
+    `TaskService._resolve_character_reference` 在 2 个以上角色都有真实参考图时,用
+    qwen-image-edit 的多图融合把大家的长相合成到一张"角色总览图"里再喂给 i2v,
+    provider 侧仍只需要吃一张图。这里返回的首个 id 只作为没有多角色合成时的
+    旧版单角色兼容路径(`effective_subject_id = body.subject_id or roster_subject_id`)。
 
     声音映射同样尽力而为:script_writer 提示 LLM 用 speaker_0/speaker_1... 做说话人标签,
     但 LLM 输出是自由文本、不保证严格对应第 i 个角色 —— 这里按角色列表顺序假设对应关系,
@@ -259,6 +263,7 @@ async def director_create_episode(
         ("characters", characters_text or None),
         ("avatar_portrait", body.avatar_portrait),
         ("subject_id", effective_subject_id),
+        ("character_subject_ids", body.character_subject_ids or None),
         ("bgm", body.bgm),
         ("sfx", body.sfx),
         ("voice_rate", body.voice_rate),

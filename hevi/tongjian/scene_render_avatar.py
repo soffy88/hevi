@@ -314,6 +314,7 @@ async def build_frame_manifest_avatar(
     ref_image_by_id = {
         c.character_id: c.ref_image for c in character_bible.characters if c.ref_image
     }
+    name_by_id = {c.character_id: c.name for c in character_bible.characters}
     narrator_ref = await _canonical("narrator", narrator_desc, work, style)
 
     frames: list[ShotFrame] = []
@@ -417,7 +418,45 @@ async def build_frame_manifest_avatar(
                     )
                 vis = work / f"{sid}_vis.mp4"
                 if not vis.exists():
-                    if lead:
+                    present = [cid for cid in shot.characters if cid in appearance_by_id]
+                    if len(present) >= 2:
+                        # 多角色同框(2026-07-13 真实反馈:provider 的 i2v/happyhorse 每镜
+                        # 只吃1张参考图,此前这里跟对白分支一样只锁 shot.characters[0],
+                        # 同框的其他角色完全没有身份锚点,靠模型瞎猜脸)。qwen-image-edit
+                        # 官方文档实测确认支持1-3张输入图的多图融合——在"出关键帧"这一步
+                        # 把每个在场角色的真实 canonical 像都传进去合成同一张图,i2v 只需要
+                        # 吃这一张已经每张脸都对的合成关键帧,不需要 provider 支持多图。
+                        # 硬上限3张(qwen-image-edit 的 API 约束),超出的角色仍靠文字描述,
+                        # 不再新起一个模型请求把限制推到别处。
+                        present = present[:3]
+                        canons = [
+                            await _canonical(
+                                cid,
+                                appearance_by_id.get(cid, cid),
+                                work,
+                                style,
+                                ref_image=ref_image_by_id.get(cid),
+                            )
+                            for cid in present
+                        ]
+                        kf = work / f"{sid}_kf.png"
+                        if not kf.exists():
+                            names = "、".join(name_by_id.get(cid, cid) for cid in present)
+                            instruction = (
+                                f"这{len(present)}张图分别是{names}各自的真实长相,"
+                                f"把他们合成到同一个画面里,每个人物的相貌、服饰、画风都要"
+                                f"跟各自对应的参考图保持一致,神情{emotion},都闭着嘴"
+                            )
+                            if action_hint:
+                                instruction += f",动作:{action_hint}"
+                            await qwen_image_edit(
+                                image_path=canons,
+                                instruction=instruction,
+                                output_path=kf,
+                            )
+                        vis_src = kf
+                        motion = f"人物{emotion},细微神态与身体动作,闭着嘴不说话"
+                    elif lead:
                         canon = await _canonical(
                             lead,
                             appearance_by_id.get(lead, lead),

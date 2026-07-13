@@ -104,15 +104,24 @@ async def qwen_image_generate(
 
 async def qwen_image_edit(
     *,
-    image_path: Path,
+    image_path: Path | list[Path],
     instruction: str,
     output_path: Path,
     api_key: str | None = None,
     host: str | None = None,
 ) -> Path:
     """qwen-image-edit 参考图编辑(**同步调用**,不能带 async 头)→ 落到 output_path。
-    instruction 描述要改什么(表情/姿势/场景),并强调保持相貌与水墨画风不变。"""
+    instruction 描述要改什么(表情/姿势/场景),并强调保持相貌与水墨画风不变。
+
+    `image_path` 可传单张(原有用法)或最多 3 张(多图融合,官方文档"模型支持输入
+    1-3张图像",仅支持一段 text)——多人同框镜头把每个在场角色各自的 canonical
+    像都传进去,一次编辑把所有人的真实长相合成进同一张关键帧,而不是只能锁一张脸。
+    见 hevi/tongjian/scene_render_avatar.py 的多角色镜头调用点。
+    """
     key, h = _creds(api_key, host)
+    images = image_path if isinstance(image_path, list) else [image_path]
+    if not 1 <= len(images) <= 3:
+        raise QwenImageError(f"qwen-image-edit 只支持 1-3 张输入图,收到 {len(images)} 张")
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
     payload = {
         "model": "qwen-image-edit",
@@ -120,7 +129,7 @@ async def qwen_image_edit(
             "messages": [
                 {
                     "role": "user",
-                    "content": [{"image": _data_uri(image_path)}, {"text": instruction}],
+                    "content": [{"image": _data_uri(p)} for p in images] + [{"text": instruction}],
                 }
             ]
         },

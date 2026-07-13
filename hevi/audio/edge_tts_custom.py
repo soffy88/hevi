@@ -47,6 +47,41 @@ def _default_voice(text: str, language: str | None) -> str:
     )
 
 
+async def edge_tts_synthesize_smart(
+    *,
+    config: dict[str, Any] | None = None,
+    script: list[Any],
+    output_path: Path,
+    language: str | None = None,
+    watermark: bool = False,
+    voice: str | None = None,
+    **kwargs: Any,
+) -> Path:
+    """`edge_tts` provider 注册的真实入口(2026-07-13,取代直接指向
+    `oprim.edge_tts_synthesize`)——多角色对话此前只有一个默认声音的根因是
+    `oprim.edge_tts_synthesize` 完全不读 `speaker_id`/不接受显式音色,`hevi/tongjian/
+    voiceover.py` 逐行调用时又从没传过 `voice_ref` 之外的东西。这里做的是:调用方
+    (`voiceover.py::_synthesize_line`)传了 `voice`(该行说话人分配到的 CURATED_VOICES
+    音色)就用 `synthesize_with_voice_control` 真正切换音色;没传(旁白/未分配声音的
+    行,或任何其它调用点)原样退回 `oprim.edge_tts_synthesize`,行为完全不变——
+    这条 provider 注册对所有既有调用方零回归,只是多接了一条"按行选音色"的路。
+    """
+    if voice:
+        return await synthesize_with_voice_control(
+            config=config, script=script, output_path=output_path, voice=voice
+        )
+    from oprim import edge_tts_synthesize
+
+    return await edge_tts_synthesize(
+        config=config,
+        script=script,
+        output_path=output_path,
+        language=language,
+        watermark=watermark,
+        **kwargs,
+    )
+
+
 async def synthesize_with_voice_control(
     *,
     config: dict[str, Any] | None = None,

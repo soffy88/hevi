@@ -134,7 +134,7 @@ class TaskService:
                 try:
                     from hevi.cost.router import route_video_provider
 
-                    _char = await self._resolve_character_reference(task)
+                    _char = await self._resolve_character_reference(task, task_id=task_id)
                     routed = await route_video_provider(
                         duration_archetype=task["duration_archetype"],
                         audio_provider=task["audio_provider"],
@@ -202,9 +202,10 @@ class TaskService:
                 except Exception as pe:  # 进度回写绝不可拖垮生成
                     logger.debug(f"progress update skipped: {pe}")
 
-            # 角色库(2D 锁定):按 subject_id 解析角色参考图路径,交给 orchestrate 让每个
-            # 镜头以其做 i2v 参考 → 视频里始终是同一个人。解析失败不阻断生成。
-            character_reference = await self._resolve_character_reference(task)
+            # 角色库(2D 锁定,多角色时合成一张总览图):按 config_json 解析角色参考图路径,
+            # 交给 orchestrate 让每个镜头以其做 i2v 参考 → 视频里始终是同一批人。
+            # 解析失败不阻断生成。
+            character_reference = await self._resolve_character_reference(task, task_id=task_id)
             # shot_verdict 版本快照(HEVI 路线图 Phase1):见 _resolve_subject_version。
             subject_version = await self._resolve_subject_version(task)
 
@@ -411,22 +412,85 @@ class TaskService:
         # M8 is currently a black box for shots, so we resume by re-running the task.
         return await self.run_task(task_id)
 
-    async def _resolve_character_reference(self, task: dict[str, Any]) -> str | None:
-        """按 config_json.subject_id 解析角色参考图路径(i2v 锁定)。失败返回 None,不阻断。"""
-        _subject_id = task["config_json"].get("subject_id")
-        if not _subject_id:
+    async def _resolve_character_reference(
+        self, task: dict[str, Any], *, task_id: uuid.UUID | None = None
+    ) -> str | None:
+        """按 config_json 解析角色参考图路径(i2v 锁定)。失败返回 None,不阻断。
+
+        "诚实边界"曾经是(见 director.py::_resolve_character_roster 的 docstring):
+        provider 的 i2v 每镜只吃1张参考图,故只有 `subject_id`(首个角色)的脸被锁定,
+        其余角色仅入人设文本。2026-07-13 补上多角色合成:`config_json.
+        character_subject_ids`(director.py 新存的完整角色列表)有 2 个以上真实建了
+        参考图的角色时,用 `qwen_image_edit` 的多图融合(1-3张输入图,阿里云文档
+        实测确认,同一个原语已用于 hevi/tongjian/scene_render_avatar.py 的多角色
+        同框镜头)把他们的真实长相合成到一张"角色总览图"里,返回这张合成图当
+        character_reference——下游 i2v 只需要吃一张图,不需要 provider 支持多图。
+
+        只有 1 个角色(或没有 character_subject_ids,只有旧的单数 subject_id)时,
+        走原来的路径,不产生任何多余的合成调用。
+        """
+        cfg = task["config_json"]
+        subject_ids = list(cfg.get("character_subject_ids") or [])
+        if not subject_ids:
+            legacy = cfg.get("subject_id")
+            subject_ids = [legacy] if legacy else []
+        if not subject_ids:
             return None
+
         try:
             from hevi.subjects.repository import SubjectRepository
             from hevi.subjects.subject_service import SubjectService
 
-            _subj = await SubjectService(SubjectRepository(self.repository.pool)).get_subject(
-                _subject_id
-            )
-            _refs = (_subj or {}).get("reference_images") or []
-            return _refs[0] if _refs else None
+            svc = SubjectService(SubjectRepository(self.repository.pool))
+            ref_paths: list[str] = []
+            for sid in subject_ids:
+                subj = await svc.get_subject(sid)
+                refs = (subj or {}).get("reference_images") or []
+                if refs:
+                    ref_paths.append(refs[0])
+
+            if len(ref_paths) <= 1:
+                return ref_paths[0] if ref_paths else None
+
+            return await self._compose_character_roster(ref_paths, task_id=task_id)
         except Exception as se:
             logger.warning(f"subject reference resolve failed: {se}")
+            return None
+
+    async def _compose_character_roster(
+        self, ref_paths: list[str], *, task_id: uuid.UUID | None = None
+    ) -> str | None:
+        """多角色参考图 → 一张合成"角色总览图"(qwen-image-edit 多图融合,硬上限3张,
+        超出的角色仍只以文本描述影响 storyboard,不新起一套绕过 API 限制的方案)。
+
+        落盘到 output/tasks/{task_id}/character_roster.png 并缓存——同一 task 可能因
+        路由探测(video_provider="auto")+ 实际生成各调一次本函数,不该重复付费合成。
+        失败返回 None(调用方已有 try/except 兜底,这里再兜一层不阻断生成)。
+        """
+        cache_path = (
+            Path("output/tasks") / str(task_id) / "character_roster.png"
+            if task_id
+            else Path("output/tasks/_no_task_id/character_roster.png")
+        )
+        if cache_path.exists():
+            return str(cache_path)
+
+        from hevi.image.qwen_image_service import QwenImageError, qwen_image_edit
+
+        try:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            await qwen_image_edit(
+                image_path=[Path(p) for p in ref_paths[:3]],
+                instruction=(
+                    f"这{min(len(ref_paths), 3)}张图分别是不同角色各自的真实长相,"
+                    "把他们排列在同一张图里,每个人物的相貌、服饰都要跟各自对应的"
+                    "参考图保持一致,自然站姿,正面半身"
+                ),
+                output_path=cache_path,
+            )
+            return str(cache_path)
+        except QwenImageError as qe:
+            logger.warning(f"character roster composition failed: {qe}")
             return None
 
     async def _resolve_subject_version(self, task: dict[str, Any]) -> int | None:
@@ -526,7 +590,7 @@ class TaskService:
         if not shot_ids:
             raise ValueError(f"all requested shots already at retry cap ({retry_max}): {capped}")
 
-        character_reference = await self._resolve_character_reference(task)
+        character_reference = await self._resolve_character_reference(task, task_id=task_id)
         subject_version = await self._resolve_subject_version(task)
         result = await orchestrate_longvideo(
             topic=task["topic"],

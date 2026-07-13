@@ -351,6 +351,74 @@ async def test_shot_frame_consistency_none_when_no_lead_character(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_multi_character_narration_shot_composes_all_canonicals(tmp_path):
+    """2026-07-13 真实反馈:i2v/happyhorse 每镜只吃1张参考图,此前多角色同框的旁白/
+    场景镜头只锁 shot.characters[0],同框的其他角色完全没有身份锚点。qwen-image-edit
+    支持1-3张输入图的多图融合(阿里云文档实测确认)——多角色同框时必须把每个在场
+    角色的 canonical 像都传给它,不能仍然只传第一个人的。
+    """
+    bible = CharacterBible(
+        characters=[
+            CharacterBibleEntry(character_id="C001", name="王生", appearance="青衫书生"),
+            CharacterBibleEntry(character_id="C002", name="道士", appearance="白须道人"),
+        ]
+    )
+    script = Script(lines=[ScriptLine(line_id="LN001", type="narration", text="二人对坐无言。")])
+    shotlist = ShotList(
+        shots=[
+            Shot(
+                shot_id="SH001",
+                line_ids=["LN001"],
+                characters=["C001", "C002"],
+                visual_prompt="对坐",
+            )
+        ]
+    )
+
+    edit_calls: list[list] = []
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        edit_calls.append(image_path if isinstance(image_path, list) else [image_path])
+        output_path.write_bytes(b"fake-kf")
+        return output_path
+
+    async def _write(*, output_path, **_kwargs):
+        output_path.write_bytes(b"fake")
+        return output_path
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate", AsyncMock(side_effect=_write)
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate", AsyncMock(side_effect=_write)
+        ),
+        patch("hevi.tongjian.scene_render_avatar.i2v_animate", AsyncMock(side_effect=_write)),
+        patch(
+            "hevi.tongjian.scene_render_avatar.subprocess.run",
+            lambda cmd, **kwargs: Path(cmd[-1]).write_bytes(b"a"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_narration",
+            lambda vis, audio, out, w, h: out.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(shotlist, script, bible, Constitution(), run_dir=tmp_path)
+
+    assert len(edit_calls) == 1
+    canon_names = {Path(p).name for p in edit_calls[0]}
+    assert canon_names == {"canon_C001.png", "canon_C002.png"}
+
+
+@pytest.mark.asyncio
 async def test_narrator_desc_overridable_via_config(tmp_path):
     """旁白/说书人形象默认写死"古装说书人史官"(资治通鉴专用),短剧走"现代都市"风格时
     不该套这身行头——LayerConfig.params["narrator_desc"] 传了就该覆盖默认值,不传则

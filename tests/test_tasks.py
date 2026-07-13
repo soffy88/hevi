@@ -1,5 +1,6 @@
 import json
 import uuid
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -327,6 +328,91 @@ async def test_resolve_subject_version_swallows_errors(task_service):
     ) as mock_get:
         mock_get.side_effect = RuntimeError("db down")
         assert await task_service._resolve_subject_version(task) is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_character_reference_none_without_subject(task_service):
+    task = {"config_json": {}}
+    assert await task_service._resolve_character_reference(task) is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_character_reference_single_subject_unchanged(task_service):
+    """只绑 1 个角色(旧版单数 subject_id 或 character_subject_ids 长度为1)时直接返回
+    其参考图,不触发任何合成调用(多图融合只在 2+ 角色时才有意义)。"""
+    task = {"config_json": {"subject_id": "sub-1"}}
+    with (
+        patch(
+            "hevi.subjects.subject_service.SubjectService.get_subject", new_callable=AsyncMock
+        ) as mock_get,
+        patch("hevi.image.qwen_image_service.qwen_image_edit") as mock_edit,
+    ):
+        mock_get.return_value = {"id": "sub-1", "reference_images": ["ref1.png"]}
+        ref = await task_service._resolve_character_reference(task)
+        assert ref == "ref1.png"
+        mock_edit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resolve_character_reference_multi_subject_composes_roster(
+    task_service, tmp_path, monkeypatch
+):
+    """2+ 角色都有真实参考图 → 合成一张"角色总览图"当 character_reference,provider 侧
+    仍只吃一张图(director.py 的多身份锁脸修复)。"""
+    monkeypatch.chdir(tmp_path)
+    task_id = uuid.uuid4()
+    task = {"config_json": {"character_subject_ids": ["sub-a", "sub-b"]}}
+
+    async def fake_get_subject(sid):
+        return {"id": sid, "reference_images": [f"{sid}.png"]}
+
+    async def fake_qwen_edit(*, image_path, instruction, output_path, **_kw):
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"roster")
+        return output_path
+
+    with (
+        patch(
+            "hevi.subjects.subject_service.SubjectService.get_subject",
+            side_effect=fake_get_subject,
+        ),
+        patch(
+            "hevi.image.qwen_image_service.qwen_image_edit", side_effect=fake_qwen_edit
+        ) as mock_edit,
+    ):
+        ref = await task_service._resolve_character_reference(task, task_id=task_id)
+
+        assert mock_edit.call_count == 1
+        called_images = mock_edit.call_args.kwargs["image_path"]
+        assert [str(p) for p in called_images] == ["sub-a.png", "sub-b.png"]
+        assert ref == str(Path("output/tasks") / str(task_id) / "character_roster.png")
+
+
+@pytest.mark.asyncio
+async def test_resolve_character_reference_multi_subject_caches_roster(
+    task_service, tmp_path, monkeypatch
+):
+    """两次调用(run_task 里 routing 探测 + 实际生成各调一次)不重复付费合成。"""
+    monkeypatch.chdir(tmp_path)
+    task_id = uuid.uuid4()
+    task = {"config_json": {"character_subject_ids": ["sub-a", "sub-b"]}}
+    cache_path = Path("output/tasks") / str(task_id) / "character_roster.png"
+    cache_path.parent.mkdir(parents=True)
+    cache_path.write_bytes(b"cached")
+
+    async def fake_get_subject(sid):
+        return {"id": sid, "reference_images": [f"{sid}.png"]}
+
+    with (
+        patch(
+            "hevi.subjects.subject_service.SubjectService.get_subject",
+            side_effect=fake_get_subject,
+        ),
+        patch("hevi.image.qwen_image_service.qwen_image_edit") as mock_edit,
+    ):
+        ref = await task_service._resolve_character_reference(task, task_id=task_id)
+        assert ref == str(cache_path)
+        mock_edit.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -734,15 +820,24 @@ async def test_list_task_shots_projects_shot_cards():
             "shot_index": 1,
             "status": "failed",
             "output_path": None,
-            "selection_json": {"passed": False, "consistency_score": 0.2,
-                               "diagnosis_category": "参考图角色错配", "retry_count": 2},
+            "selection_json": {
+                "passed": False,
+                "consistency_score": 0.2,
+                "diagnosis_category": "参考图角色错配",
+                "retry_count": 2,
+            },
         },
     ]
     shots = await list_task_shots(uuid.uuid4(), {"id": "u1"}, repo)
     assert len(shots) == 2
     assert shots[0] == {
-        "shot_index": 0, "status": "completed", "has_output": True,
-        "consistency_score": 0.9, "passed": True, "diagnosis_category": None, "retry_count": 0,
+        "shot_index": 0,
+        "status": "completed",
+        "has_output": True,
+        "consistency_score": 0.9,
+        "passed": True,
+        "diagnosis_category": None,
+        "retry_count": 0,
     }
     assert shots[1]["has_output"] is False
     assert shots[1]["diagnosis_category"] == "参考图角色错配"

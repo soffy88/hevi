@@ -325,10 +325,14 @@ def register_all_providers() -> None:
         logger.warning("Chaos Monkey ACTIVE: wan_cloud will fail.")
 
     # 3. Audio Providers
-    # edge_tts:默认音频 provider(多语言云 TTS)。A1 已回迁 oprim v3.11.0,直接导入。
-    from oprim import edge_tts_synthesize
+    # edge_tts:默认音频 provider(多语言云 TTS)。A1 已回迁 oprim v3.11.0。
+    # 2026-07-13:改注册 hevi 自己的 edge_tts_synthesize_smart(不是直接指向
+    # oprim.edge_tts_synthesize)——多角色对话此前只有一个默认声音的根因就是
+    # oprim 那个原始实现完全不支持按行选音色,见 edge_tts_custom.py 顶部注释。
+    # 没传 voice kwarg 时原样退回 oprim 实现,对所有既有调用方零回归。
+    from hevi.audio.edge_tts_custom import edge_tts_synthesize_smart
 
-    ProviderRegistry.register("audio", "edge_tts", edge_tts_synthesize, replace=True)
+    ProviderRegistry.register("audio", "edge_tts", edge_tts_synthesize_smart, replace=True)
     ProviderRegistry.register("audio", "vibevoice", vibevoice_synthesize, replace=True)
     ProviderRegistry.register("audio", "cosyvoice", vibevoice_synthesize, replace=True)
     ProviderRegistry.register(

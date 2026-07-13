@@ -265,6 +265,54 @@ async def test_render_episode_wires_l2_to_l8_and_maps_shots(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_render_episode_assigns_distinct_voices_per_present_character(tmp_path):
+    """2026-07-13 治"导演台多身份锁脸"的音频版:多角色对话此前只有一个默认声音。
+    render_episode 现在给 characters_present 里每个角色轮流分配一个 CURATED_VOICES
+    音色,不是留空让下游全用同一个默认值。"""
+    script = Script(
+        lines=[ScriptLine(line_id="LN001", type="dialogue", speaker="C002", text="你被开除了。")]
+    )
+    timeline = Timeline(audio_segments=[AudioSegment(line_id="LN001", duration_ms=2000)])
+    shotlist = ShotList(shots=[Shot(shot_id="1-1", line_ids=["LN001"], characters=["C002"])])
+    frame_manifest = FrameManifest(frames=[ShotFrame(shot_id="1-1", scene_id="", degraded=False)])
+    final_video = FinalVideo(video_path=str(tmp_path / "final.mp4"))
+
+    build_voiceover_mock = AsyncMock(return_value=(timeline, _passing_gate()))
+
+    with (
+        patch(
+            "hevi.tongjian.script.build_script", AsyncMock(return_value=(script, _passing_gate()))
+        ),
+        patch("hevi.tongjian.voiceover.build_voiceover", build_voiceover_mock),
+        patch(
+            "hevi.tongjian.shotlist.build_shotlist",
+            AsyncMock(return_value=(shotlist, _passing_gate())),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.build_frame_manifest_avatar",
+            AsyncMock(return_value=frame_manifest),
+        ),
+        patch(
+            "hevi.tongjian.music_plan.build_music_plan",
+            AsyncMock(return_value=(MusicPlan(), _passing_gate())),
+        ),
+        patch(
+            "hevi.tongjian.assemble.build_final_video",
+            AsyncMock(return_value=(final_video, _passing_gate())),
+        ),
+    ):
+        await bridge.render_episode(
+            _episode(), _story(), run_dir=tmp_path, llm=AsyncMock(), tts_fn=AsyncMock()
+        )
+
+    _, kwargs = build_voiceover_mock.call_args
+    voice_by_speaker = kwargs["voice_by_speaker"]
+    # _episode() 的 characters_present = ["C001", "C002"]——两个角色必须拿到不同音色。
+    assert voice_by_speaker["C001"] != voice_by_speaker["C002"]
+    assert set(voice_by_speaker) == {"C001", "C002"}
+
+
+@pytest.mark.asyncio
 async def test_render_episode_passes_shortdrama_persona_and_event_locations(tmp_path):
     """2026-07-12 短剧真实反馈"大部分是旁白没对话"+"场景乱切"根因都在这两处没接:
     build_script 用的是通鉴默认人设(没参数化),build_shotlist 没拿到 event 的地点信息。

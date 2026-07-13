@@ -799,8 +799,9 @@ async def test_render_graph_episode_collects_and_assembles(tmp_path):
 
 @pytest.mark.asyncio
 async def test_director_api_episode_multi_character_roster():
-    """多角色绑定:character_subject_ids 解析成 roster 文本注入 characters kwarg,
-    首个 id 用于 i2v 锁脸(誠实边界:其余角色只影响文本描述,不做画面身份锁定)。"""
+    """多角色绑定:character_subject_ids 解析成 roster 文本注入 characters kwarg,同时把完整
+    id 列表原样存进 config_json(供 TaskService._resolve_character_reference 合成多角色
+    "角色总览图"用),首个 id 仍写入旧版单数 subject_id 字段做兼容。"""
     import uuid
     from unittest.mock import MagicMock
 
@@ -850,6 +851,7 @@ async def test_director_api_episode_multi_character_roster():
     assert mp.await_args.kwargs["mode"] == "i2v"
     ck = svc.create_task.await_args.kwargs
     assert ck["subject_id"] == "sub-a"
+    assert ck["character_subject_ids"] == ["sub-a", "sub-b"]
     assert "阿狐" in ck["characters"] and "阿熊" in ck["characters"]
     assert out["spec"]["character_count"] == 2
     assert out["spec"]["subject_locked"] is True

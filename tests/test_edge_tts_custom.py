@@ -13,7 +13,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from hevi.audio.edge_tts_custom import CURATED_VOICES, synthesize_with_voice_control
+from hevi.audio.edge_tts_custom import (
+    CURATED_VOICES,
+    edge_tts_synthesize_smart,
+    synthesize_with_voice_control,
+)
 
 
 def _install_fake_edge_tts(calls: list[dict]) -> None:
@@ -95,3 +99,33 @@ async def test_synthesize_raw_edge_tts_voice_id_passthrough(tmp_path: Path) -> N
 async def test_synthesize_empty_script_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
         await synthesize_with_voice_control(script=[], output_path=tmp_path / "out.wav")
+
+
+# ── edge_tts_synthesize_smart(2026-07-13,"edge_tts" provider 注册的真实入口)─────
+
+
+@pytest.mark.asyncio
+async def test_smart_routes_to_voice_control_when_voice_given(tmp_path: Path) -> None:
+    """provider 收到显式 voice → 真的换音色(治多角色对话只有一个默认声音)。"""
+    out = tmp_path / "out.wav"
+    with patch(
+        "hevi.audio.edge_tts_custom.synthesize_with_voice_control",
+        new_callable=AsyncMock,
+    ) as mvc:
+        mvc.return_value = out
+        await edge_tts_synthesize_smart(
+            script=[SimpleNamespace(text="你好")], output_path=out, voice="zh_male_deep"
+        )
+    mvc.assert_awaited_once()
+    assert mvc.await_args.kwargs["voice"] == "zh_male_deep"
+
+
+@pytest.mark.asyncio
+async def test_smart_falls_back_to_oprim_when_no_voice(tmp_path: Path) -> None:
+    """没传 voice(旁白/未分配声音的调用方)→ 原样退回 oprim.edge_tts_synthesize,
+    行为完全不变——这条 provider 注册对既有调用方零回归。"""
+    out = tmp_path / "out.wav"
+    fake_oprim = AsyncMock(return_value=out)
+    with patch("oprim.edge_tts_synthesize", fake_oprim):
+        await edge_tts_synthesize_smart(script=[SimpleNamespace(text="你好")], output_path=out)
+    fake_oprim.assert_awaited_once()

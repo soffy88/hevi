@@ -56,6 +56,15 @@ DEFAULT_SHORTDRAMA_SCREENWRITER_PERSONA = (
     "都市情感短剧编剧(对标热门竖屏短剧),擅长写现代年轻人的日常对话与冲突,"
     "台词要接地气、有来有回,不要写成播音腔解说"
 )
+# 多角色对话音色轮流分配池(HEVI-ARCHITECTURE.md 附录 A"声线档案"的最小可行版——
+# 没有真实声线样本前,先保证"同一集不同角色声音不同、同一角色跨镜头声音一致",
+# 不是完整的声线档案系统)。男女声交替,避免相邻分配到的角色刚好同性别听感接近。
+_DIALOGUE_VOICE_POOL = (
+    "zh_male_standard",
+    "zh_female_standard",
+    "zh_male_deep",
+    "zh_female_warm",
+)
 
 
 def story_to_chapter_ir(story: StoryGraph) -> ChapterIR:
@@ -254,8 +263,21 @@ async def render_episode(
     if not script.lines:
         raise RuntimeError(f"剧本生成为空壳(L2 门:{g2.errors})")
 
+    # 每个在场角色轮流分配一个 CURATED_VOICES 音色(2026-07-13,治"导演台多身份锁脸"
+    # 的音频版——多角色对话此前只有一个默认声音,现在至少保证同一集里不同角色声音
+    # 不同、同一角色跨镜头声音一致)。没有真实声线样本可用之前,这是能做到的最好
+    # 近似;有真实 voice_ref 时应优先用那个(见 voiceover.py 的 _Line.voice_ref,
+    # vibevoice 声线克隆走这条路,不受这里影响)。
+    voice_by_speaker = {
+        cid: _DIALOGUE_VOICE_POOL[i % len(_DIALOGUE_VOICE_POOL)]
+        for i, cid in enumerate(ep.characters_present)
+    }
     timeline, g3 = await build_voiceover(
-        script=script, constitution=constitution, output_dir=run_dir, tts_fn=tts_fn
+        script=script,
+        constitution=constitution,
+        output_dir=run_dir,
+        tts_fn=tts_fn,
+        voice_by_speaker=voice_by_speaker,
     )
     gate_reports["voiceover"] = g3
 
