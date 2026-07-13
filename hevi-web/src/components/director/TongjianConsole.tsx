@@ -38,11 +38,12 @@ const STATUS_CLASS: Record<string, string> = {
   FAILED: 'tj-layer--failed',
 };
 
-// L6 画面风格预设(仅 cloud_avatar 模式生效)。prompt="" 代表留空,交给后端默认水墨风格。
+// L6 画面风格预设(仅 cloud_avatar 模式生效)。prompt="" 代表留空,交给后端默认风格。
+// 2026-07-13:默认从国画水墨换成卡通动画——水墨是成年观众取向,小孩不喜欢。
 const STYLE_PRESETS: { value: string; label: string; prompt: string }[] = [
-  { value: 'ink', label: '国画水墨（默认）', prompt: '' },
-  { value: 'cartoon', label: '卡通动画（现代/儿童向）',
-    prompt: '现代卡通动画风格,鲜艳色彩,简洁线条,可爱插画风,3D渲染质感' },
+  { value: 'cartoon', label: '卡通动画（默认/现代儿童向）', prompt: '' },
+  { value: 'ink', label: '国画水墨（成人向）',
+    prompt: '国画水墨写意人物画,单色水墨,写意笔触,宣纸质感' },
 ];
 
 const DEMO_TEXTS: { label: string; source: string; text: string }[] = [
@@ -318,10 +319,10 @@ export function TongjianConsole() {
           </div>
         </div>
         <label className="tj-field">
-          <span className="tj-field__label">风格词（可留空用默认水墨，或从上面选预设，也可手写覆盖）</span>
+          <span className="tj-field__label">风格词（可留空用默认卡通动画，或从上面选预设，也可手写覆盖）</span>
           <input value={inkStyle} onChange={e => setInkStyle(e.target.value)}
             disabled={renderMode === 'sdxl_local'}
-            placeholder="国画水墨写意人物画,单色水墨,写意笔触,宣纸质感" />
+            placeholder="现代卡通动画风格,鲜艳色彩,简洁线条,可爱插画风,3D渲染质感" />
         </label>
         <label className="tj-field">
           <span className="tj-field__label">逐层参数（高级 · JSON · 可留空，再覆盖上面没含的层/参数）</span>
