@@ -79,9 +79,18 @@ class EpisodeRequest(BaseModel):
     prompt_lighting: str | None = None
     prompt_camera: str | None = None
     prompt_color_grade: str | None = None
+    # SPEC-002 B2:风格参考图(图路径/URL)。没手填上面 4 个文本字段时,自动用本地
+    # VL 拆解补空;若视频 provider 恰好是 happyhorse_1_1_maas_lock,额外做真实图片
+    # 条件化(该 provider 支持 2 张参考图)。见 orchestrate_longvideo 同名参数。
+    style_reference_image: str | None = None
     # ⑤ 分镜
     transition: str = "fade"
     per_shot_routing: bool = False
+    # SPEC-002 B3:每镜头首尾两张条件图。key 是分镜索引(字符串,JSON dict key 惯例),
+    # value 是 {"first_frame": 图路径/URL, "last_frame": 图路径/URL, "duration_s": 可选}。
+    # 命中的镜头绕开单图 i2v,走首尾帧生视频;其余镜头零影响。见 orchestrate_longvideo
+    # 同名参数(那边是 int key,这里转一次)。
+    shot_keyframes: dict[str, dict[str, str]] | None = None
     # ⑥ 音频
     language: str = "zh"
     audio_provider: str | None = None
@@ -90,6 +99,9 @@ class EpisodeRequest(BaseModel):
     voice_rate: str | None = None  # 旁白语速,仅 edge_tts 生效,如 "+15%"
     voice_pitch: str | None = None  # 旁白音高,仅 edge_tts 生效,如 "+2Hz"
     voice_name: str | None = None  # 旁白音色(见 edge_tts_custom.CURATED_VOICES),仅 edge_tts 生效
+    # SPEC-002 B1:开启后台词批量推断逐行情绪,驱动配音语速/音高逐行变化(与 tongjian
+    # 已验证效果对齐)。opt-in(涉及一次额外 LLM 调用),仅 audio_provider=edge_tts 生效。
+    emotion_aware_voiceover: bool = False
     # ⑦ 成片规格
     quality_profile: str = "standard"
     subtitle_style: str = "default"  # default/bold_yellow/large_white/compact
@@ -246,6 +258,7 @@ async def director_create_episode(
         "quality_profile": quality_profile,
         "transition": body.transition,
         "per_shot_routing": body.per_shot_routing,
+        "emotion_aware_voiceover": body.emotion_aware_voiceover,
         "language": body.language,
         "subtitle_style": body.subtitle_style,
     }
@@ -255,6 +268,8 @@ async def director_create_episode(
         ("prompt_lighting", body.prompt_lighting),
         ("prompt_color_grade", body.prompt_color_grade),
         ("prompt_camera", body.prompt_camera),
+        ("style_reference_image", body.style_reference_image),
+        ("shot_keyframes", body.shot_keyframes or None),
         ("mood", body.mood),
         ("genre", body.genre),
         ("narrative_hook", body.narrative_hook),

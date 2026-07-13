@@ -120,8 +120,12 @@ async def synthesize_with_voice_control(
     """script(每行需 .text)→ 单个 WAV,逐行套用 rate/pitch/显式音色。
 
     voice 接受 CURATED_VOICES 的键或 edge-tts 原生音色 ID(如 "zh-CN-XiaoxiaoNeural")。
-    rate/pitch 显式传值时优先;否则 emotion 非空就用 `emotion_to_rate_pitch` 换算,
-    两者都空则 "+0%"/"+0Hz"(旧行为不变)。
+    rate/pitch 显式传值时优先(对全部行统一生效);否则:每行若自带 `.emotion` 属性
+    (2026-07-13,SPEC-002 B1——`longvideo_orchestrator.py::injected_audio_fn` 用
+    `infer_line_emotions` 批量推断后包进 hevi 侧 SimpleNamespace,不改 oskill 的
+    ShotPlan schema),该行单独用 `emotion_to_rate_pitch` 换算;没有 `.emotion` 属性
+    的行(tongjian 的 `_Line`、任何普通调用方)退回整批统一的 `emotion` 参数换算,
+    再退回 "+0%"/"+0Hz"(旧行为完全不变)。
     """
     import edge_tts
 
@@ -130,23 +134,29 @@ async def synthesize_with_voice_control(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    lines = [getattr(ln, "text", str(ln)) for ln in script]
-    lines = [t.strip() for t in lines if t and t.strip()]
-    if not lines:
+    _pairs = [(ln, str(getattr(ln, "text", str(ln))).strip()) for ln in script]
+    _pairs = [(ln, t) for ln, t in _pairs if t]
+    if not _pairs:
         raise ValueError("synthesize_with_voice_control: empty script")
 
     resolved_voice = CURATED_VOICES.get(voice, voice) if voice else None
-    if rate is None and pitch is None and emotion:
-        rate, pitch = emotion_to_rate_pitch(emotion)
+    _batch_rate, _batch_pitch = rate, pitch
+    if _batch_rate is None and _batch_pitch is None and emotion:
+        _batch_rate, _batch_pitch = emotion_to_rate_pitch(emotion)
 
     with tempfile.TemporaryDirectory(prefix="hevi_edge_tts_") as td:
         tmp = Path(td)
         parts: list[Path] = []
-        for i, text in enumerate(lines):
+        for i, (ln, text) in enumerate(_pairs):
             v = resolved_voice or _default_voice(text, language)
+            _line_emotion = getattr(ln, "emotion", None)
+            if _line_emotion and rate is None and pitch is None:
+                _r, _p = emotion_to_rate_pitch(_line_emotion)
+            else:
+                _r, _p = _batch_rate, _batch_pitch
             seg = tmp / f"seg_{i:04d}.mp3"
             try:
-                comm = edge_tts.Communicate(text, v, rate=rate or "+0%", pitch=pitch or "+0Hz")
+                comm = edge_tts.Communicate(text, v, rate=_r or "+0%", pitch=_p or "+0Hz")
                 await comm.save(str(seg))
             except Exception as e:
                 logger.warning("edge-tts(rate/pitch) segment %d failed: %s", i, e)

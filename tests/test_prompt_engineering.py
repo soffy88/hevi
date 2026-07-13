@@ -389,6 +389,109 @@ async def test_orchestrate_without_style_preset_skips_engineering():
         assert mock_builder.call_args.kwargs["topic"] == "raw unchanged"
 
 
+# ── 7b. SPEC-002 B2: style_reference_image 自动派生风格文本字段 ──────────────
+
+
+@pytest.mark.asyncio
+async def test_orchestrate_style_reference_image_derives_text_fields(tmp_path):
+    """style_reference_image + 用户没手填任何风格文本字段 → 用本地 VL 拆解自动补,
+    触发跟 style_preset 一样的 topic engineering 路径。"""
+    from hevi.pipeline.longvideo_orchestrator import orchestrate_longvideo
+    from hevi.providers.registry import register_all_providers
+
+    register_all_providers()
+    ref_img = tmp_path / "style_ref.png"
+    ref_img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 50)
+
+    mock_result = MagicMock(
+        video_path=MagicMock(stem="test"),
+        duration_s=10,
+        chapters=1,
+        shots_generated=1,
+        provider_used={},
+    )
+    mock_result.video_path.stat.return_value.st_size = 2048
+    fake_draft = AsyncMock(
+        return_value={
+            "style": "cinematic noir",
+            "lighting": "harsh shadows",
+            "camera": "low angle",
+            "color_grade": "high contrast",
+        }
+    )
+    with (
+        patch(
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ),
+        patch(
+            "hevi.prompt.prompt_pipeline.adapt_prompt_for_provider",
+            new_callable=AsyncMock,
+            return_value={"prompt": "ENGINEERED", "negative_prompt": "", "provider": "ltx2"},
+        ),
+        patch("hevi.pipeline.longvideo_orchestrator.build_longvideo_config") as mock_builder,
+        patch("hevi.providers.local_qwen_vl_adapter.vl_model_available", return_value=True),
+        patch("hevi.style.draft_from_reference.draft_style_from_reference", fake_draft),
+    ):
+        mock_builder.return_value = MagicMock()
+        await orchestrate_longvideo(
+            topic="test topic",
+            duration_archetype="1-5min",
+            video_provider="ltx2_cloud",
+            audio_provider="vibevoice",
+            style_reference_image=str(ref_img),
+        )
+        assert mock_builder.call_args.kwargs["topic"] == "ENGINEERED"
+    fake_draft.assert_awaited_once()
+    assert fake_draft.await_args.args[0] == ref_img
+
+
+@pytest.mark.asyncio
+async def test_orchestrate_style_reference_image_does_not_override_explicit_text(tmp_path):
+    """用户已手填 prompt_style 等文本字段 → 不调用 VL 拆解,不覆盖用户的显式设定。"""
+    from hevi.pipeline.longvideo_orchestrator import orchestrate_longvideo
+    from hevi.providers.registry import register_all_providers
+
+    register_all_providers()
+    ref_img = tmp_path / "style_ref.png"
+    ref_img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"x" * 50)
+
+    mock_result = MagicMock(
+        video_path=MagicMock(stem="test"),
+        duration_s=10,
+        chapters=1,
+        shots_generated=1,
+        provider_used={},
+    )
+    mock_result.video_path.stat.return_value.st_size = 2048
+    fake_draft = AsyncMock()
+    with (
+        patch(
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ),
+        patch(
+            "hevi.prompt.prompt_pipeline.adapt_prompt_for_provider",
+            new_callable=AsyncMock,
+            return_value={"prompt": "ENGINEERED", "negative_prompt": "", "provider": "ltx2"},
+        ),
+        patch("hevi.pipeline.longvideo_orchestrator.build_longvideo_config") as mock_builder,
+        patch("hevi.style.draft_from_reference.draft_style_from_reference", fake_draft),
+    ):
+        mock_builder.return_value = MagicMock()
+        await orchestrate_longvideo(
+            topic="test topic",
+            duration_archetype="1-5min",
+            video_provider="ltx2_cloud",
+            audio_provider="vibevoice",
+            prompt_style="already set by user",
+            style_reference_image=str(ref_img),
+        )
+    fake_draft.assert_not_awaited()
+
+
 # ── 8. Edge cases ─────────────────────────────────────────────────────────────
 
 

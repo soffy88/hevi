@@ -245,6 +245,8 @@ export interface DirectorEpisodePayload {
   prompt_lighting?: string | null;
   prompt_camera?: string | null;
   prompt_color_grade?: string | null;
+  style_reference_image?: string | null;
+  shot_keyframes?: Record<string, { first_frame: string; last_frame: string }>;
   transition?: string;
   per_shot_routing?: boolean;
   language?: string;
@@ -254,6 +256,7 @@ export interface DirectorEpisodePayload {
   voice_rate?: string | null;
   voice_pitch?: string | null;
   voice_name?: string | null;
+  emotion_aware_voiceover?: boolean;
   quality_profile?: string;
   subtitle_style?: string;
   bilingual_language?: string | null;

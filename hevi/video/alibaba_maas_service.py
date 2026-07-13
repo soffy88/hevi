@@ -389,6 +389,7 @@ async def happyhorse_1_1_maas_lock_generate(
     prompt: str,
     output_path: Path,
     reference_image: Path | str | None = None,
+    style_reference_image: Path | str | None = None,
     config: dict[str, Any] | None = None,
     **kw: Any,
 ) -> Path:
@@ -403,24 +404,24 @@ async def happyhorse_1_1_maas_lock_generate(
     `happyhorse_1_1_maas_ref`/`vidu` 注册给主线管线用,会在 i2v 分支炸
     `unexpected keyword argument 'reference_image'` 或吃不到参考图退化成纯 t2v。
     这个函数只做转译,不改任一边的既有约定。
+
+    `style_reference_image`(2026-07-13,SPEC-002 B2):可选的第二张图,只影响画面
+    风格(不是身份锁脸)——happyhorse-1.1-r2v 端点本就支持 1-9 张参考图(见
+    `alibaba_maas_reference_generate` 文档),这里只是把它用满 2 张而非 1 张。没传时
+    (绝大多数调用)行为跟以前完全一样,只传 `reference_images=[ref]`。这是唯一支持
+    "额外风格参考图条件化"的主线 provider——orchestrator 侧只在 provider 恰好是
+    `happyhorse_1_1_maas_lock` 时才会传这个参数(见 longvideo_orchestrator.py),
+    其余 provider(wan/ltx2/veo3/kling)不认识这个 kwarg,不会被塞进去。
     """
     if not reference_image:
         raise ValueError("happyhorse_1_1_maas_lock 需要 reference_image(角色锁脸场景专用)")
-    ref = str(reference_image)
-    # 阿里这个端点只吃 http(s) URL 或 data: URI(见模块 docstring),不会去读本机文件
-    # 路径——真实调用实测报 InvalidParameter "Failed to download <本地路径>"。主线
-    # 管线传来的 character_reference 是本机文件路径,这里现算成 data URI(同
-    # hevi/cinematic/platform_binding.py::ensure_platform_binding 的转法,但这里不需要
-    # 它那份 vault 血缘记账,就地转,不跨模块耦合)。已经是 URL/data: 的直接透传。
-    if not ref.startswith(("http://", "https://", "data:")):
-        import base64
-
-        suffix = Path(ref).suffix.lower().lstrip(".") or "png"
-        mime = "jpeg" if suffix in ("jpg", "jpeg") else suffix
-        ref = f"data:image/{mime};base64,{base64.b64encode(Path(ref).read_bytes()).decode()}"
+    ref = _to_data_uri_if_local(str(reference_image))
+    refs = [ref]
+    if style_reference_image:
+        refs.append(_to_data_uri_if_local(str(style_reference_image)))
     return await happyhorse_1_1_maas_reference_to_video(
         prompt=prompt,
-        reference_images=[ref],
+        reference_images=refs,
         output_path=output_path,
         config=config,
         **kw,

@@ -94,6 +94,11 @@ async def orchestrate_longvideo(
     voice_rate: str | None = None,  # 旁白语速,edge_tts 格式如 "+15%"/"-20%";仅 edge_tts 生效
     voice_pitch: str | None = None,  # 旁白音高,edge_tts 格式如 "+2Hz";仅 edge_tts 生效
     voice_name: str | None = None,  # 旁白音色(edge_tts 神经语音 ID),覆盖语言自动选音色
+    # SPEC-002 B1(主线情绪配音,opt-in——涉及一次额外 LLM 调用,默认关不改变现有
+    # 行为/成本):开启后台词批量推断逐行情绪,驱动 edge_tts 逐行 rate/pitch,跟
+    # tongjian 已验证的效果对齐。仅 audio_provider=edge_tts 生效(vibevoice 无
+    # rate/pitch 概念)。见 injected_audio_fn 里的 emotion_aware_voiceover 分支。
+    emotion_aware_voiceover: bool = False,
     subtitle_style: str = "default",  # 字幕烧录样式:default/bold_yellow/large_white/compact
     bilingual_language: str | None = None,  # 双语字幕:目标语种(如 "en"),与原字幕逐行合并
     intro_clip: str | None = None,  # 片头视频文件路径,装配前拼接
@@ -110,6 +115,15 @@ async def orchestrate_longvideo(
     # 角色库(2D 参考锁定):选定角色的参考图路径。设置后,**每个镜头**都以它做 i2v
     # 参考图,锁定角色身份 → 视频里始终是同一个人(治"驴头不对马嘴")。为显式参数。
     character_reference: str | None = None,
+    # SPEC-002 B2:风格参考图(不是身份锁脸)。见上面 engineered_topic 前的 VLM 拆解
+    # 逻辑(全 provider 通用,派生文本字段)+ injected_video_fn 里 happyhorse_1_1_maas_lock
+    # 专属的真实图片条件化(仅该 provider,更强但覆盖更窄)。为显式参数。
+    style_reference_image: str | None = None,
+    # SPEC-002 B3(主线欠账:每镜头首尾两张条件图):{shot_idx: {"first_frame": path,
+    # "last_frame": path, "duration_s": 可选}}。命中的镜头整个绕开单图 i2v,走首尾帧
+    # 生视频(见 injected_video_fn 里的 shot_keyframes 路由,alibaba_maas_keyframe_lock_generate)。
+    # 纯 hevi 侧字典,不触 oskill 的 ShotPlan schema。未命中的镜头零影响。为显式参数。
+    shot_keyframes: dict[int, dict[str, str]] | None = None,
     # C3 verdict→定向返工:仅重生成这些镜头(shot_hints[idx] 并入 prompt),其余复用既有产物。
     # None/空 = 正常整片生成。需该 task 已跑过一次(output_dir 有 per-shot 边车)。
     regenerate_shot_ids: list[int] | None = None,
@@ -159,6 +173,12 @@ async def orchestrate_longvideo(
     Returns:
         dict: Hevi-mapped business result.
     """
+    # SPEC-002 B3:config_json 走 JSONB 落库/回读(task_service.py 的 **task["config_json"]
+    # 惯例),JSON 对象的 key 只能是字符串——dict[int,...] 在 DB 往返后会变成
+    # dict[str,...]。归一化成 int key,injected_video_fn 才能用 int 型 _idx 查到。
+    # 直接 Python 调用传 int key(如测试里那样)也兼容,这行是幂等的。
+    if shot_keyframes:
+        shot_keyframes = {int(k): v for k, v in shot_keyframes.items()}
 
     async def _report(
         stage: str, pct: float, completed: int | None = None, total: int | None = None
@@ -189,6 +209,38 @@ async def orchestrate_longvideo(
         _directives.append(f"关键道具/陈设:{props}")
     if _directives:
         topic = "。".join(_directives) + "。" + topic
+
+    # SPEC-002 B2("额外风格参考图条件化"主线欠账):给一张风格参考图,自动推导
+    # style/lighting/camera/color_grade(本地 VLM 拆解,复用 tongjian 侧已验证的
+    # draft_style_from_reference,见 hevi/style/draft_from_reference.py——不重造)。
+    # 只在用户没手填任一对应文本字段时才用推导值补空,用户显式填的文本字段永远优先,
+    # 不会被图片派生值覆盖。best-effort:VLM 不可用/拆解失败不阻断生成,只是拿不到
+    # 风格草稿(与 identity_embedding 同一降级哲学)。这条覆盖全部 7 个主线 provider
+    # (文本字段走既有的 engineer_prompt_from_preset,provider 无关);另见下面
+    # injected_video_fn 里 happyhorse_1_1_maas_lock 专属的真实图片条件化(覆盖更小,
+    # 但更强)。
+    if style_reference_image and not any(
+        [prompt_style, prompt_lighting, prompt_camera, prompt_color_grade]
+    ):
+        try:
+            _sref = Path(style_reference_image)
+            if _sref.exists():
+                from hevi.providers.local_qwen_vl_adapter import (
+                    local_qwen_vl_adapter,
+                    vl_model_available,
+                )
+                from hevi.style.draft_from_reference import draft_style_from_reference
+
+                if vl_model_available():
+                    _draft = await draft_style_from_reference(_sref, vlm=local_qwen_vl_adapter)
+                    prompt_style = _draft.get("style") or prompt_style
+                    prompt_lighting = _draft.get("lighting") or prompt_lighting
+                    prompt_camera = _draft.get("camera") or prompt_camera
+                    prompt_color_grade = _draft.get("color_grade") or prompt_color_grade
+                else:
+                    logger.info("style_reference_image 提供但本地 VL 模型不可用,跳过风格拆解")
+        except Exception as _se:
+            logger.warning("style_reference_image 风格拆解失败,跳过: %s", _se)
 
     engineered_topic = topic
     if (
@@ -329,7 +381,12 @@ async def orchestrate_longvideo(
 
             # 音色/语速/音高覆盖:仅 edge_tts 支持(vibevoice 无 rate/pitch 参数),且仅当
             # 调用方显式给了其中之一才走 hevi 自有实现;否则用回 registry 默认,零行为变化。
-            _voice_ctrl = audio_provider == "edge_tts" and (voice_rate or voice_pitch or voice_name)
+            # SPEC-002 B1(主线情绪配音):emotion_aware_voiceover 开启时也走这条路——
+            # 逐行情绪需要 synthesize_with_voice_control 读每行 .emotion,registry 默认
+            # provider(edge_tts_synthesize_smart)只接受整批一个 emotion,做不到逐行。
+            _voice_ctrl = audio_provider == "edge_tts" and (
+                voice_rate or voice_pitch or voice_name or emotion_aware_voiceover
+            )
             if _voice_ctrl:
                 from hevi.audio.edge_tts_custom import synthesize_with_voice_control
 
@@ -362,6 +419,31 @@ async def orchestrate_longvideo(
                         ),
                     )
                     for line in script
+                ]
+            elif audio_provider == "edge_tts" and emotion_aware_voiceover and script:
+                # SPEC-002 B1:oskill 私有库的台词对象没有"情绪"概念,不改它的 schema——
+                # 台词文本产出后另起一次批量(全片一次,不是逐行)LLM 分类补情绪标注,
+                # 包进 hevi 自己的 SimpleNamespace(同上面 vibevoice 分支的既有模式)。
+                # best-effort:分类失败 → 每行 emotion="" → synthesize_with_voice_control
+                # 退化为跟没开这个开关时完全一样的 "+0%"/"+0Hz"。
+                from types import SimpleNamespace
+
+                from hevi.prompt.emotion_inference import infer_line_emotions
+
+                try:
+                    _texts = [getattr(line, "text", str(line)) for line in script]
+                    _emotions = await infer_line_emotions(_texts)
+                except Exception as ee:
+                    logger.warning("emotion_aware_voiceover: 情绪推断失败,跳过: %s", ee)
+                    _emotions = [""] * len(script)
+                _script = [
+                    SimpleNamespace(
+                        speaker_id=getattr(line, "speaker_id", "host"),
+                        text=getattr(line, "text", str(line)),
+                        voice_ref=getattr(line, "voice_ref", None),
+                        emotion=_emotions[i] if i < len(_emotions) else "",
+                    )
+                    for i, line in enumerate(script)
                 ]
 
             # SaaS-4 Fix: omodul 对 audio_fn 无容错(pipeline.py:180 直接 await,
@@ -410,6 +492,10 @@ async def orchestrate_longvideo(
             from obase.provider_registry import ProviderRegistry
 
             outp = Path(output_path)
+            # SPEC-002 B3(每镜头首尾帧):镜头索引改成每次调用(v0/v1 都要)都算,不再
+            # 只在 v0 分支里算——下面的 shot_keyframes 路由两个变体都要能查到同一个 idx。
+            _m = _SHOT_INDEX_RE.search(outp.name)
+            _idx = int(_m.group(1)) if _m else 0
 
             # item 5(单变体提速):omodul 对同一镜头以 _v0/_v1 连调本函数两次。
             # 单变体模式下,_v1 直接复用已生成的 _v0(同 prompt/同 ref),省一半
@@ -428,8 +514,6 @@ async def orchestrate_longvideo(
             # 给出真实的 "第 N/总 个镜头" 文案 + 在 25–75% 区间按 N/总 线性推进,
             # 修复此前从第 7 镜头起恒显 75%("看着卡住")的问题。
             if outp.name.endswith("_v0.mp4"):
-                _m = _SHOT_INDEX_RE.search(outp.name)
-                _idx = int(_m.group(1)) if _m else 0
                 _total = _shot_stats.get("total", 0)
                 if _total > 0:
                     _label = f"生成第 {_idx + 1}/{_total} 个镜头"
@@ -476,6 +560,45 @@ async def orchestrate_longvideo(
                 except json.JSONDecodeError, OSError:
                     pass
 
+            # SPEC-002 B3(主线欠账:每镜头首尾两张条件图):shot_keyframes 是 hevi 侧的
+            # 纯字典(不触 oskill 的 ShotPlan schema),按上面已经算出的 _idx 查——命中
+            # 且首尾帧文件都存在时,这一个镜头整个绕开正常的 "video" category caller,
+            # 直接走 image_to_video 类别的首尾帧生视频(见 alibaba_maas_keyframe_lock_generate,
+            # SPEC-002 B3/首尾帧关键帧 provider)。查不到/文件缺失/生成失败 → 原样落回
+            # 正常单图 i2v 生成,不阻断整个镜头(best-effort,同 identity_embedding 的
+            # 降级哲学)。
+            _kf = (shot_keyframes or {}).get(_idx)
+            if _kf and _kf.get("first_frame") and _kf.get("last_frame"):
+                _ff, _lf = Path(_kf["first_frame"]), Path(_kf["last_frame"])
+                if _ff.exists() and _lf.exists():
+                    try:
+                        from hevi.video.alibaba_maas_service import (
+                            alibaba_maas_keyframe_lock_generate,
+                        )
+
+                        _kf_timeout = float(os.getenv("HEVI_SHOT_TIMEOUT_S", "240"))
+                        res = await asyncio.wait_for(
+                            alibaba_maas_keyframe_lock_generate(
+                                first_frame=_ff,
+                                last_frame=_lf,
+                                duration_s=float(_kf.get("duration_s") or 5.0),
+                                output_path=output_path,
+                                timeout_s=_kf_timeout,
+                            ),
+                            timeout=_kf_timeout,
+                        )
+                        final = Path(res) if res else output_path
+                        if final.exists() and final.stat().st_size > 1024:
+                            with contextlib.suppress(OSError):
+                                final.with_suffix(final.suffix + ".done.json").write_text(
+                                    json.dumps({"provider": "wan22_kf2v_maas"})
+                                )
+                            return final
+                    except Exception as kfe:
+                        logger.warning(
+                            "shot %s 首尾帧生视频失败,回退正常单图 i2v: %s", outp.name, kfe
+                        )
+
             try:
                 caller = ProviderRegistry.get().generic("video", _prov)
 
@@ -488,6 +611,15 @@ async def orchestrate_longvideo(
                     _cr = Path(character_reference)
                     if _cr.exists():
                         _char_ref = _cr
+
+                # SPEC-002 B2:风格参考图的真实图片条件化——只有 happyhorse_1_1_maas_lock
+                # 认识 style_reference_image 这个 kwarg(见该 provider 函数文档),其余
+                # provider(wan/ltx2/veo3/kling/…)不认识,不会被塞进去,零回归。
+                _style_ref = None
+                if style_reference_image and _prov == "happyhorse_1_1_maas_lock":
+                    _sr = Path(style_reference_image)
+                    if _sr.exists():
+                        _style_ref = _sr
 
                 # RFC-001 P1-3: omodul's per-shot LLM prompt otherwise bypasses all
                 # hevi prompt engineering. Re-apply provider adaptation + style here
@@ -559,6 +691,8 @@ async def orchestrate_longvideo(
                 if _char_ref is not None:
                     kw["reference_image"] = _char_ref
                     kw.setdefault("mode", "i2v")
+                    if _style_ref is not None:
+                        kw["style_reference_image"] = _style_ref
                 # RFC-001 P0-1: 无角色锁定时,回退 omodul 选中的参考帧(镜头间连续性)。
                 elif reference_image is not None:
                     kw["reference_image"] = reference_image

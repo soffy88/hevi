@@ -170,6 +170,82 @@ async def test_voice_control_explicit_rate_pitch_overrides_emotion(tmp_path: Pat
         del sys.modules["edge_tts"]
 
 
+# ── 逐行情绪(2026-07-13,SPEC-002 B1:主线情绪配音,line 对象自带 .emotion)──────
+
+
+@pytest.mark.asyncio
+async def test_per_line_emotion_overrides_batch_default(tmp_path: Path) -> None:
+    """script 里每行各自带 .emotion(hevi 侧 SimpleNamespace 包装,主线 injected_audio_fn
+    的用法)→ 每行按自己的情绪算 rate/pitch,不是整批统一一个值。"""
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[
+                    SimpleNamespace(text="城破在即", emotion="惊惧"),
+                    SimpleNamespace(text="三家终于罢兵", emotion="悲怆"),
+                ],
+                output_path=out,
+            )
+        assert calls[0]["rate"] == "+20%"  # 惊惧
+        assert calls[1]["rate"] == "-15%"  # 悲怆
+        assert calls[1]["pitch"] == "-15Hz"
+    finally:
+        del sys.modules["edge_tts"]
+
+
+@pytest.mark.asyncio
+async def test_line_without_emotion_attribute_falls_back_to_batch_emotion(tmp_path: Path) -> None:
+    """混合场景:部分行有 .emotion,部分没有(如 tongjian 的 _Line dataclass)——
+    没有的行退回整批统一的 emotion 参数,不报错也不错位。"""
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[
+                    SimpleNamespace(text="有情绪的行", emotion="惊惧"),
+                    SimpleNamespace(text="没情绪属性的行"),  # 无 .emotion
+                ],
+                output_path=out,
+                emotion="悲怆",  # 整批兜底
+            )
+        assert calls[0]["rate"] == "+20%"  # 用自己的 .emotion
+        assert calls[1]["rate"] == "-15%"  # 退回整批 emotion 参数
+    finally:
+        del sys.modules["edge_tts"]
+
+
+@pytest.mark.asyncio
+async def test_explicit_rate_pitch_overrides_per_line_emotion_too(tmp_path: Path) -> None:
+    """显式 rate/pitch 优先级最高——连每行自带的 .emotion 都不能覆盖它,跟"整批
+    emotion 参数被显式 rate/pitch 盖过"是同一条规则,行级也不例外。"""
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[SimpleNamespace(text="行", emotion="惊惧")],
+                output_path=out,
+                rate="+5%",
+                pitch="+1Hz",
+            )
+        assert calls[0]["rate"] == "+5%"
+        assert calls[0]["pitch"] == "+1Hz"
+    finally:
+        del sys.modules["edge_tts"]
+
+
 # ── edge_tts_synthesize_smart(2026-07-13,"edge_tts" provider 注册的真实入口)─────
 
 

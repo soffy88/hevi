@@ -15,6 +15,7 @@ from hevi.video.alibaba_maas_service import (
     alibaba_maas_keyframe_lock_generate,
     alibaba_maas_reference_generate,
     happyhorse_1_1_maas_generate,
+    happyhorse_1_1_maas_lock_generate,
     happyhorse_1_1_maas_reference_to_video,
     wan_2_7_maas_generate,
 )
@@ -524,3 +525,152 @@ async def test_keyframe_generate_missing_api_key_raises(monkeypatch, tmp_path):
             last_frame="http://x/last.png",
             output_path=tmp_path / "out.mp4",
         )
+
+
+# ── happyhorse_1_1_maas_lock_generate 的 style_reference_image(SPEC-002 B2:
+# "额外风格参考图条件化",happyhorse-1.1-r2v 本就支持 1-9 张参考图,这里用满 2 张)──
+
+
+@pytest.mark.asyncio
+async def test_lock_generate_requires_reference_image(tmp_path):
+    with pytest.raises(ValueError, match="reference_image"):
+        await happyhorse_1_1_maas_lock_generate(prompt="x", output_path=tmp_path / "out.mp4")
+
+
+@pytest.mark.asyncio
+async def test_lock_generate_without_style_ref_sends_single_image(monkeypatch, tmp_path):
+    """没传 style_reference_image(绝大多数调用)→ 行为跟以前完全一样,只有 1 张参考图。"""
+    _set_env(monkeypatch)
+    captured_payloads = []
+
+    class _CapturingClient(_FakeAsyncClient):
+        async def post(self, url, json=None, **kw):
+            captured_payloads.append(json)
+            return await super().post(url, **kw)
+
+    calls: list[tuple[str, str]] = []
+    import hevi.video.alibaba_maas_service as maas_mod
+
+    monkeypatch.setattr(
+        maas_mod.httpx,
+        "AsyncClient",
+        lambda **kw: _CapturingClient(
+            [
+                _FakeResponse(json_data={"output": {"task_id": "T1", "task_status": "PENDING"}}),
+                _FakeResponse(
+                    json_data={
+                        "output": {
+                            "task_id": "T1",
+                            "task_status": "SUCCEEDED",
+                            "video_url": "http://cdn/v.mp4",
+                        }
+                    }
+                ),
+                _FakeResponse(content=b"x" * 2000),
+            ],
+            calls,
+        ),
+    )
+
+    await happyhorse_1_1_maas_lock_generate(
+        prompt="a warrior walking",
+        reference_image="http://x/face.png",
+        output_path=tmp_path / "out.mp4",
+        poll_interval_s=0.01,
+    )
+    assert captured_payloads[0]["input"]["media"] == [
+        {"type": "reference_image", "url": "http://x/face.png"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_lock_generate_with_style_ref_sends_two_images(monkeypatch, tmp_path):
+    _set_env(monkeypatch)
+    captured_payloads = []
+
+    class _CapturingClient(_FakeAsyncClient):
+        async def post(self, url, json=None, **kw):
+            captured_payloads.append(json)
+            return await super().post(url, **kw)
+
+    calls: list[tuple[str, str]] = []
+    import hevi.video.alibaba_maas_service as maas_mod
+
+    monkeypatch.setattr(
+        maas_mod.httpx,
+        "AsyncClient",
+        lambda **kw: _CapturingClient(
+            [
+                _FakeResponse(json_data={"output": {"task_id": "T1", "task_status": "PENDING"}}),
+                _FakeResponse(
+                    json_data={
+                        "output": {
+                            "task_id": "T1",
+                            "task_status": "SUCCEEDED",
+                            "video_url": "http://cdn/v.mp4",
+                        }
+                    }
+                ),
+                _FakeResponse(content=b"x" * 2000),
+            ],
+            calls,
+        ),
+    )
+
+    await happyhorse_1_1_maas_lock_generate(
+        prompt="a warrior walking",
+        reference_image="http://x/face.png",
+        style_reference_image="http://x/style.png",
+        output_path=tmp_path / "out.mp4",
+        poll_interval_s=0.01,
+    )
+    assert captured_payloads[0]["input"]["media"] == [
+        {"type": "reference_image", "url": "http://x/face.png"},
+        {"type": "reference_image", "url": "http://x/style.png"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_lock_generate_encodes_local_style_ref_as_data_uri(monkeypatch, tmp_path):
+    _set_env(monkeypatch)
+    style_img = tmp_path / "style.png"
+    style_img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"s" * 50)
+    captured_payloads = []
+
+    class _CapturingClient(_FakeAsyncClient):
+        async def post(self, url, json=None, **kw):
+            captured_payloads.append(json)
+            return await super().post(url, **kw)
+
+    calls: list[tuple[str, str]] = []
+    import hevi.video.alibaba_maas_service as maas_mod
+
+    monkeypatch.setattr(
+        maas_mod.httpx,
+        "AsyncClient",
+        lambda **kw: _CapturingClient(
+            [
+                _FakeResponse(json_data={"output": {"task_id": "T1", "task_status": "PENDING"}}),
+                _FakeResponse(
+                    json_data={
+                        "output": {
+                            "task_id": "T1",
+                            "task_status": "SUCCEEDED",
+                            "video_url": "http://cdn/v.mp4",
+                        }
+                    }
+                ),
+                _FakeResponse(content=b"x" * 2000),
+            ],
+            calls,
+        ),
+    )
+
+    await happyhorse_1_1_maas_lock_generate(
+        prompt="x",
+        reference_image="http://x/face.png",
+        style_reference_image=style_img,
+        output_path=tmp_path / "out.mp4",
+        poll_interval_s=0.01,
+    )
+    assert captured_payloads[0]["input"]["media"][1]["url"].startswith("data:image/png;base64,")
