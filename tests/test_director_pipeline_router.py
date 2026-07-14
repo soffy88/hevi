@@ -330,3 +330,30 @@ async def test_produce_builds_task_and_threads_locked_shot_list_and_voices():
     assert call_kwargs["character_voices"] == {"智伯": "zh_male_deep"}
     # shot 0 出场"智伯"和"韩康子",只有智伯锁了 subject_id → 只解析出智伯这一个参考图。
     assert call_kwargs["shot_character_refs"] == {0: ["output/subj-zhibo/ref.png"]}
+    assert "budget_usd" not in call_kwargs  # 留空不传,让下游 LongVideoConfig 默认值生效
+
+
+@pytest.mark.asyncio
+async def test_produce_insufficient_credits_returns_402_not_500():
+    """线上真实复现:积分不够时 InsufficientCredits 原样往外冒,没接住 → 空的 500。"""
+    from fastapi import BackgroundTasks
+
+    from hevi.credits.billing_service import InsufficientCredits
+
+    work_id = str(uuid.uuid4())
+    rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
+    rec["concept"] = _concept().model_dump()
+    rec["design_list"] = _design_list().model_dump()
+    rec["shot_list"] = _shot_list().model_dump()
+    rec["locked_through"] = 3
+
+    svc = AsyncMock()
+    svc.create_task.side_effect = InsufficientCredits(credits_needed=3000, credits_available=1000)
+
+    with pytest.raises(HTTPException) as ei:
+        await dp.produce_work(
+            work_id, dp.ProduceRequest(), BackgroundTasks(), _USER, svc, AsyncMock()
+        )
+    assert ei.value.status_code == 402
+    assert ei.value.detail["credits_needed"] == 3000
+    assert ei.value.detail["credits_available"] == 1000

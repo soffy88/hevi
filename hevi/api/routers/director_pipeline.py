@@ -35,7 +35,7 @@ from pydantic import BaseModel
 from hevi.auth.dependencies import get_current_user
 from hevi.cost.circuit_breaker import CostLimitExceeded
 from hevi.credits.account_service import AccountService
-from hevi.credits.billing_service import BillingService
+from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.director.concept import generate_concept_draft
@@ -566,6 +566,18 @@ async def produce_work(
         task = await svc.create_task(**create_kwargs)
     except CostLimitExceeded as e:
         raise HTTPException(status_code=402, detail=str(e)) from e
+    except InsufficientCredits as e:
+        # 同 tasks.py::create_new_task 既有惯例——余额不够是用户可操作的正常情况
+        # (充值/换便宜档),不该原样炸成 500。此前这里没接住,线上用户点"确认生成"
+        # 撞到这个就是一个空的 500,看不出任何原因。
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "insufficient_credits",
+                "credits_needed": e.credits_needed,
+                "credits_available": e.credits_available,
+            },
+        ) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

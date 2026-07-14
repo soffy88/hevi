@@ -22,6 +22,7 @@ const STAGE_LABELS = ['①立意', '②剧本', '③设计清单', '④分镜'] 
 
 function errText(e: unknown): string {
   if (e instanceof Error && e.message === 'NOT_AUTHENTICATED') return '请先登录';
+  if (e instanceof Error && e.message.startsWith('402')) return '积分余额不足,请先到「我的」页充值';
   return e instanceof Error ? e.message : '出错了';
 }
 
