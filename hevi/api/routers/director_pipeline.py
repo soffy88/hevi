@@ -21,6 +21,7 @@ work 状态存内存 map(同 tongjian/shortdrama 的既有 P0 兜底,不建表�
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -288,7 +289,9 @@ async def _lock_design_list_assets(
 ) -> DesignList:
     """③锁定的核心动作:清单里每个还没建过 Subject 的角色/场景/道具,建成真实资产
     (character/scene/prop 三种 kind,复用既有 SubjectService,不建新表)。已有 subject_id
-    的项(比如回退后重锁,或人工在草稿里就填了已有 subject_id)原样跳过,不重复建号。"""
+    的项(比如回退后重锁,或人工在草稿里就填了已有 subject_id)原样跳过,不重复建号。
+    各资产的参考图生成互不依赖,并发发起——这一步顺序调用曾在线上把整个锁定请求拖到
+    反向代理超时(Cloudflare 524),角色一多就必现。"""
     portrait_dir = _OUTPUT_DIR / work_id / "design_assets"
     portrait_dir.mkdir(parents=True, exist_ok=True)
 
@@ -318,30 +321,39 @@ async def _lock_design_list_assets(
         )
         return str(subject["id"])
 
-    for c in design_list.characters:
-        if c.subject_id:
-            continue
-        c.subject_id = await _ensure_subject(
+    async def _assign(item: Any, *, kind: str, name: str, description: str, slug: str) -> None:
+        if item.subject_id:
+            return
+        item.subject_id = await _ensure_subject(
+            kind=kind, name=name, description=description, slug=slug
+        )
+
+    tasks = [
+        _assign(
+            c,
             kind="character",
             name=c.name,
             description=f"{c.appearance} {c.wardrobe} {c.hairstyle}".strip(),
             slug=f"char_{c.name}",
         )
-    for s in design_list.scenes:
-        if s.subject_id:
-            continue
-        s.subject_id = await _ensure_subject(
+        for c in design_list.characters
+    ]
+    tasks += [
+        _assign(
+            s,
             kind="scene",
             name=s.name,
             description=f"{s.environment} {s.mood}".strip(),
             slug=f"scene_{s.name}",
         )
-    for p in design_list.props:
-        if p.subject_id:
-            continue
-        p.subject_id = await _ensure_subject(
-            kind="product", name=p.name, description=p.appearance, slug=f"prop_{p.name}"
-        )
+        for s in design_list.scenes
+    ]
+    tasks += [
+        _assign(p, kind="product", name=p.name, description=p.appearance, slug=f"prop_{p.name}")
+        for p in design_list.props
+    ]
+    if tasks:
+        await asyncio.gather(*tasks)
     return design_list
 
 
