@@ -340,9 +340,22 @@ async def _lock_design_list_assets(
         if p.subject_id:
             continue
         p.subject_id = await _ensure_subject(
-            kind="prop", name=p.name, description=p.appearance, slug=f"prop_{p.name}"
+            kind="product", name=p.name, description=p.appearance, slug=f"prop_{p.name}"
         )
     return design_list
+
+
+def _seed_design_list_subject_ids(body: DesignList, prior: dict[str, Any] | None) -> None:
+    """重试幂等:上一次锁定(哪怕因某个资产建号失败而整体报错)已经建好的 Subject,
+    按 name 对上就直接复用,不再重复调 qwen_image_generate 重建——避免每次点"重试"都
+    把角色/场景参考图真实生成一遍、重复花钱。"""
+    if not prior:
+        return
+    for key in ("characters", "scenes", "props"):
+        prior_by_name = {item.get("name"): item.get("subject_id") for item in prior.get(key, [])}
+        for item in getattr(body, key):
+            if not item.subject_id and prior_by_name.get(item.name):
+                item.subject_id = prior_by_name[item.name]
 
 
 @router.post("/works/{work_id}/design-list/lock")
@@ -353,9 +366,14 @@ async def lock_design_list(
     subject_svc: Annotated[SubjectService, Depends(get_subject_service)],
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
-    locked = await _lock_design_list_assets(
-        body, user_id=str(user["id"]), work_id=work_id, subject_svc=subject_svc
-    )
+    _seed_design_list_subject_ids(body, rec.get("design_list"))
+    try:
+        locked = await _lock_design_list_assets(
+            body, user_id=str(user["id"]), work_id=work_id, subject_svc=subject_svc
+        )
+    except Exception:
+        rec["design_list"] = body.model_dump()
+        raise
     rec["design_list"] = locked.model_dump()
     rec["locked_through"] = _stage_index("design_list")
     screenplay = Screenplay.model_validate(rec["screenplay"])
