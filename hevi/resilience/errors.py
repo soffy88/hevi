@@ -62,13 +62,6 @@ _RETRYABLE_KEYS = (
     "temporarily",
     "try again",
     "service unavailable",
-    # longvideo_orchestrator.py 检测 omodul 静默吞掉的镜头失败(返回占位/空文件)时抛出
-    # "Pipeline produced placeholder/empty output with {provider}"——这条错误存在的
-    # 目的注释里写得很明确,就是"触发 provider 级 fallback",但它不匹配上面任何关键词,
-    # 会被 classify_error 兜底成 UnretryableError,直接跟自己的设计意图相反:线上真实
-    # 撞过(kling_v2 单镜头返回空文件),run_with_fallback 直接放弃、不重试也不切
-    # provider。这里补上关键词,让它真的按"瞬时故障"处理。
-    "placeholder/empty output",
     "bad gateway",
 )
 
