@@ -337,6 +337,53 @@ export const shortdramaApi = {
     }),
 };
 
+// ── SPEC-003 主线导演流水线(director-pipeline,需登录)───────────────────────
+// 立意→剧本→设计清单→分镜,逐级人审核锁定才放行下游,详见
+// docs/specs/SPEC-003-mainline-director-pipeline.md。
+import type {
+  DpConcept, DpScreenplay, DpDesignList, DpShotList, DpWork, DpProduceRequest,
+} from '@/types/api';
+export const directorPipelineApi = {
+  createWork: (materialText: string, intentHint = '') =>
+    authedReq<DpWork>('/api/director-pipeline/works', {
+      method: 'POST',
+      body: JSON.stringify({ material_text: materialText, intent_hint: intentHint }),
+    }),
+  listWorks: () => authedReq<DpWork[]>('/api/director-pipeline/works'),
+  getWork: (workId: string) => authedReq<DpWork>(`/api/director-pipeline/works/${workId}`),
+  // 重新生成本级草稿;若本级此前已锁定(或更下游已锁定),后端会先回退+清空全部下游
+  regenerateConcept: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/concept`, { method: 'POST' }),
+  regenerateScreenplay: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/screenplay`, { method: 'POST' }),
+  regenerateDesignList: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list`, { method: 'POST' }),
+  regenerateShotList: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/shot-list`, { method: 'POST' }),
+  // 锁定(可能已编辑的)内容 → 自动生成下一级草稿
+  lockConcept: (workId: string, body: DpConcept) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/concept/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  lockScreenplay: (workId: string, body: DpScreenplay) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/screenplay/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  lockDesignList: (workId: string, body: DpDesignList) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  lockShotList: (workId: string, body: DpShotList) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/shot-list/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  // 仅 shot_list_locked 才允许,建真实 video_task 出片
+  produce: (workId: string, body: DpProduceRequest) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/produce`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+};
+
 // ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────
 import type { ExplainerRunRequest, ExplainerRunStatus } from '@/types/api';
 export const explainerApi = {

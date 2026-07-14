@@ -18,6 +18,7 @@ import { isAuthenticated, logout } from '@/lib/auth-store';
 const NAV = [
   { href: '/', label: '生成' },
   { href: '/director', label: '导演' },
+  { href: '/director-pipeline', label: '导演流水线' },
   { href: '/tongjian', label: '通鉴' },
   { href: '/explainer', label: '解说' },
   { href: '/series', label: '系列' },

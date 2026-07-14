@@ -752,6 +752,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 
 /* ── 通鉴全自动流水线控制台(HEVI-SPEC-01)── */
 .hevi-tongjian-page { min-height: calc(100vh - 56px); background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklch, oklch(0.35 0.08 30) 30%, transparent), transparent); }
+.hevi-director-pipeline-page { min-height: calc(100vh - 56px); background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklch, oklch(0.35 0.08 55) 30%, transparent), transparent); }
 .tj { max-width: 780px; margin: 0 auto; padding: 32px 24px 80px; }
 
 /* 英雄区 */
@@ -919,6 +920,19 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .sd-char-row__opt--upload input[type="file"] { font-size: var(--text-xs); max-width: 160px; }
 .sd-confirm-btn { background: color-mix(in oklch, var(--destructive, #d33) 12%, oklch(0.70 0.14 55));
   border-color: color-mix(in oklch, var(--destructive, #d33) 40%, oklch(0.70 0.14 55)); }
+
+/* ── SPEC-003 主线导演流水线(DirectorPipelineConsole,复用 .tj-* 结构)── */
+.dp-steps { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+.dp-step { font-size: var(--text-xs); padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted-foreground); }
+.dp-step[data-state="locked"] { border-color: oklch(0.60 0.18 155); color: oklch(0.60 0.18 155); }
+.dp-step[data-state="active"] { border-color: oklch(0.70 0.14 55); color: oklch(0.70 0.14 55); font-weight: 700; background: color-mix(in oklch, oklch(0.70 0.14 55) 10%, transparent); }
+.dp-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; background: var(--card); }
+.dp-card__head { font-weight: 700; font-size: var(--text-sm); margin-bottom: 10px; }
+.dp-dialogue-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.dp-dialogue-row__speaker { flex: 0 0 120px; }
+.dp-dialogue-row__text { flex: 1; }
+.dp-dialogue-row input { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--background); color: inherit; font-size: var(--text-sm); }
+.dp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
 /* ── 自媒体解说短视频控制台(hevi.explainer)── 同 .tj- 结构,换个色系区分产品线 */
 .hevi-explainer-page { min-height: calc(100vh - 56px); background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklch, oklch(0.35 0.08 80) 30%, transparent), transparent); }

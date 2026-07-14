@@ -124,6 +124,19 @@ async def orchestrate_longvideo(
     # 生视频(见 injected_video_fn 里的 shot_keyframes 路由,alibaba_maas_keyframe_lock_generate)。
     # 纯 hevi 侧字典,不触 oskill 的 ShotPlan schema。未命中的镜头零影响。为显式参数。
     shot_keyframes: dict[int, dict[str, str]] | None = None,
+    # SPEC-003 主线导演流水线:①-④已在 director_pipeline.py 走完人审核锁定的 ShotList
+    # (dict 形式,JSON 可序列化,见 hevi/director/pipeline_schemas.py::ShotList)。存在时,
+    # oskill 自己的 script_writer/storyboard_planner/shot_generator 整段跳过,直接用锁定
+    # 内容——见 patched_storyboard_fn 之后的 _locked_script_fn/_locked_storyboard_fn 与
+    # _counting_shot_gen_fn 里的 locked_shot_list 分支。None(默认)= 旧路径,零回归。
+    locked_shot_list: dict[str, Any] | None = None,
+    # 配合 locked_shot_list:{0-based 镜头序号: [该镜头出场角色的参考图文件路径,...]}。
+    # 命中的镜头绕开全片统一的 character_reference,改用该镜头自己的角色参考图(2+ 张走
+    # qwen-image-edit 多图合成,复用 SPEC-002 B2 已验证的同一原语)。由调用方
+    # (director_pipeline.py 的 produce)预先把 DesignList 锁定的 subject_id 解析成参考图
+    # 路径——orchestrator 侧不做数据库查询,只处理文件路径,跟 character_reference 现有
+    # 处理方式保持一致。
+    shot_character_refs: dict[int, list[str]] | None = None,
     # C3 verdict→定向返工:仅重生成这些镜头(shot_hints[idx] 并入 prompt),其余复用既有产物。
     # None/空 = 正常整片生成。需该 task 已跑过一次(output_dir 有 per-shot 边车)。
     regenerate_shot_ids: list[int] | None = None,
@@ -179,6 +192,10 @@ async def orchestrate_longvideo(
     # 直接 Python 调用传 int key(如测试里那样)也兼容,这行是幂等的。
     if shot_keyframes:
         shot_keyframes = {int(k): v for k, v in shot_keyframes.items()}
+    # 同上,SPEC-003 的 shot_character_refs 也是走 config_json JSONB 落库/回读的
+    # int-keyed dict,同样需要归一化。
+    if shot_character_refs:
+        shot_character_refs = {int(k): v for k, v in shot_character_refs.items()}
 
     async def _report(
         stage: str, pct: float, completed: int | None = None, total: int | None = None
@@ -373,6 +390,48 @@ async def orchestrate_longvideo(
             await _report("规划分镜脚本", 15.0)
             wrapped_script = ScriptWrapper(script)
             return await storyboard_planner(script=wrapped_script, llm=llm)  # type: ignore[arg-type]
+
+        # SPEC-003(主线导演流水线):locked_shot_list 存在时,①-④级已经在
+        # hevi/api/routers/director_pipeline.py 走完人审核锁定,不需要 oskill 自己的
+        # script_writer/storyboard_planner/shot_generator 再规划一遍(省钱,且锁定内容
+        # 才是唯一真相源)。三个规划期钩子都替换成"直接转换锁定数据"的版本:
+        #   script_fn      → 台词行(带 speaker)转 SpeakerLine,喂进全片配音轨(音频侧
+        #                     真正的对白来源是 chapter.dialogues,不是 ShotPlan.tts_text,
+        #                     见 SPEC-003 plan 里对 omodul 源码的实测)。
+        #                     不改 character_voices 的既有消费逻辑,只是这里 speaker_id
+        #                     现在真的按角色区分,不再全部落到同一个默认说话人。
+        #   storyboard_fn  → 返回一个占位 Storyboard,不做真实 LLM 规划调用(下面
+        #                     shot_gen_fn 分支根本不读它的内容)。
+        #   shot_gen_fn    → 见 _counting_shot_gen_fn 内的 locked_shot_list 分支。
+        if locked_shot_list is not None:
+            from oskill._schemas import Chapter, ChapterScript, SpeakerLine, Storyboard
+
+            async def _locked_script_fn(**_kw: Any) -> Any:
+                dialogues = [
+                    SpeakerLine(
+                        speaker_id=line.get("character_name") or "", text=line.get("text", "")
+                    )
+                    for shot in locked_shot_list.get("shots", [])
+                    for line in shot.get("dialogue_lines", [])
+                    if line.get("text")
+                ]
+                chapter = Chapter(chapter_id="locked", title="", scenes=[], dialogues=dialogues)
+                return ChapterScript(
+                    chapters=[chapter],
+                    total_duration_s=sum(
+                        float(s.get("duration_s") or 0) for s in locked_shot_list.get("shots", [])
+                    ),
+                    characters=[],
+                )
+
+            async def _locked_storyboard_fn(**_kw: Any) -> Any:
+                return Storyboard(shots=[])
+
+            _providers_script_fn = _locked_script_fn
+            _providers_storyboard_fn = _locked_storyboard_fn
+        else:
+            _providers_script_fn = None
+            _providers_storyboard_fn = patched_storyboard_fn
 
         # SaaS-2/P10.F2 Fix: omodul has a hardcoded import for vibevoice_synthesize that fails.
         # We inject the actual audio provider from the registry.
@@ -611,6 +670,43 @@ async def orchestrate_longvideo(
                     _cr = Path(character_reference)
                     if _cr.exists():
                         _char_ref = _cr
+
+                # SPEC-003:这一镜若在 shot_character_refs 里有自己的角色参考图,覆盖掉
+                # 上面全片统一的 _char_ref——根治"人物/场景乱跳"(每镜头锁自己该出场的
+                # 角色,而不是全片焊死一张参考图)。1 张直接用;2+ 张走跟 SPEC-002 B2
+                # 同一个 qwen-image-edit 多图合成原语,按镜头缓存,避免同一镜的 v0/v1
+                # 两次调用重复合成。查不到/文件不存在/合成失败 → 静默回退上面的全片参考图,
+                # 不阻断这一镜。
+                _shot_refs = (shot_character_refs or {}).get(_idx)
+                if _shot_refs:
+                    _existing_refs = [p for p in _shot_refs if Path(p).exists()]
+                    if len(_existing_refs) == 1:
+                        _char_ref = Path(_existing_refs[0])
+                    elif len(_existing_refs) >= 2:
+                        _roster = Path(lv_config.output_dir) / f"shot_{_idx}_character_roster.png"
+                        if _roster.exists():
+                            _char_ref = _roster
+                        else:
+                            try:
+                                from hevi.image.qwen_image_service import qwen_image_edit
+
+                                await qwen_image_edit(
+                                    image_path=[Path(p) for p in _existing_refs[:3]],
+                                    instruction=(
+                                        f"这{min(len(_existing_refs), 3)}张图分别是不同角色"
+                                        "各自的真实长相,把他们排列在同一张图里,每个人物的"
+                                        "相貌、服饰都要跟各自对应的参考图保持一致,自然站姿,"
+                                        "正面半身"
+                                    ),
+                                    output_path=_roster,
+                                )
+                                _char_ref = _roster
+                            except Exception as _rce:
+                                logger.warning(
+                                    "shot %s 角色参考图合成失败,回退全片统一参考图: %s",
+                                    outp.name,
+                                    _rce,
+                                )
 
                 # SPEC-002 B2:风格参考图的真实图片条件化——只有 happyhorse_1_1_maas_lock
                 # 认识 style_reference_image 这个 kwarg(见该 provider 函数文档),其余
@@ -890,10 +986,12 @@ async def orchestrate_longvideo(
 
         _providers: dict[str, Any] = {
             "llm": _llm,
-            "storyboard_fn": patched_storyboard_fn,
+            "storyboard_fn": _providers_storyboard_fn,
             "video_fn": injected_video_fn,
             "assembler_fn": bridged_assembler_fn,
         }
+        if _providers_script_fn is not None:
+            _providers["script_fn"] = _providers_script_fn
         if audio_provider != "ltx2_native":
             _providers["audio_fn"] = injected_audio_fn
 
@@ -924,13 +1022,45 @@ async def orchestrate_longvideo(
         # 台词文本只有在这里(shot_gen_fn 阶段)才有。
         _dialogue_texts: list[str] = []
 
+        def _shot_plans_from_locked_shot_list() -> list[Any]:
+            """SPEC-003:locked_shot_list 的每一镜转成 ShotPlan 兼容对象(鸭子类型——
+            下游只按属性访问,见本文件 injected_video_fn/_dialogue_texts 收集逻辑,不需要
+            真的是 oskill.ShotPlan 实例)。short 档的单镜头预算裁剪在这条分支不生效——
+            用户已经在④分镜级人工锁定了具体镜头数,不该被自动裁到 1 镜。"""
+            from types import SimpleNamespace
+
+            out = []
+            for shot in locked_shot_list.get("shots", []):  # type: ignore[union-attr]
+                narration_bits = [
+                    ln.get("text", "")
+                    for ln in shot.get("dialogue_lines", [])
+                    if not ln.get("character_name")
+                ]
+                dialogue_bits = [
+                    f"{ln.get('character_name')}:{ln.get('text', '')}"
+                    for ln in shot.get("dialogue_lines", [])
+                    if ln.get("character_name")
+                ]
+                out.append(
+                    SimpleNamespace(
+                        shot_id=shot.get("shot_id", ""),
+                        image_prompt=shot.get("visual_prompt", ""),
+                        tts_text="。".join([*narration_bits, *dialogue_bits]),
+                        duration_s=float(shot.get("duration_s") or 5.0),
+                    )
+                )
+            return out
+
         async def _counting_shot_gen_fn(*, storyboard: Any, llm: Any) -> Any:
-            plans = await _default_shot_generator(storyboard=storyboard, llm=llm)
-            if _is_short:
-                if _shot_budget["left"] <= 0:
-                    return []
-                plans = plans[: _shot_budget["left"]] if plans else plans
-                _shot_budget["left"] -= len(plans) if plans else 0
+            if locked_shot_list is not None:
+                plans = _shot_plans_from_locked_shot_list()
+            else:
+                plans = await _default_shot_generator(storyboard=storyboard, llm=llm)
+                if _is_short:
+                    if _shot_budget["left"] <= 0:
+                        return []
+                    plans = plans[: _shot_budget["left"]] if plans else plans
+                    _shot_budget["left"] -= len(plans) if plans else 0
             _shot_stats["total"] += len(plans) if plans else 0
             await _report("规划分镜脚本", 20.0, completed=0, total=_shot_stats["total"] or None)
             for p in plans or []:

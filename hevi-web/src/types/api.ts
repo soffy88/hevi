@@ -604,3 +604,125 @@ export interface ShortdramaConfirmRequest {
   style_pack_id?: string | null;
 }
 
+// ── SPEC-003 主线导演流水线(director-pipeline)—— 立意→剧本→设计清单→分镜 ──────
+// 类型跟 hevi/director/pipeline_schemas.py 的 Pydantic 模型逐字段对齐。
+
+export interface DpConcept {
+  theme: string;
+  tone: string;
+  style: string;
+  target_audience: string;
+  duration_archetype: string;
+  quality_bar: string;
+}
+
+export interface DpScreenplayDialogueLine {
+  character_name: string;
+  text: string;
+}
+
+export interface DpScreenplayScene {
+  scene_no: number;
+  time: string;
+  location: string;
+  characters_present: string[];
+  narration: string;
+  dialogue: DpScreenplayDialogueLine[];
+  event_summary: string;
+}
+
+export interface DpScreenplay {
+  scenes: DpScreenplayScene[];
+}
+
+export interface DpDesignCharacter {
+  name: string;
+  appearance: string;
+  wardrobe: string;
+  hairstyle: string;
+  personality: string;
+  is_lead: boolean;
+  voice_hint: string;
+  subject_id: string | null;
+  voice_id: string | null;
+}
+
+export interface DpDesignScene {
+  name: string;
+  environment: string;
+  lighting: string;
+  mood: string;
+  is_primary: boolean;
+  subject_id: string | null;
+}
+
+export interface DpDesignProp {
+  name: string;
+  appearance: string;
+  subject_id: string | null;
+}
+
+export interface DpDesignList {
+  characters: DpDesignCharacter[];
+  scenes: DpDesignScene[];
+  props: DpDesignProp[];
+}
+
+export interface DpShotDialogueLine {
+  character_name: string; // 空 = 旁白
+  text: string;
+}
+
+export interface DpShotBlocking {
+  character_name: string;
+  position: string;
+  facing: string;
+}
+
+export interface DpShotListItem {
+  shot_id: string;
+  scene_no: number;
+  shot_size: string;
+  camera: string;
+  visual_prompt: string;
+  dialogue_lines: DpShotDialogueLine[];
+  blocking: DpShotBlocking[];
+  character_names: string[];
+  scene_name: string;
+  prop_names: string[];
+  duration_s: number;
+}
+
+export interface DpShotList {
+  shots: DpShotListItem[];
+}
+
+export type DpWorkStatus =
+  | 'concept_draft' | 'concept_locked'
+  | 'screenplay_draft' | 'screenplay_locked'
+  | 'design_list_draft' | 'design_list_locked'
+  | 'shot_list_draft' | 'shot_list_locked'
+  | 'producing';
+
+export interface DpWork {
+  work_id: string;
+  status: DpWorkStatus;
+  locked_through: number; // -1..3,已锁定到第几级(见后端 _STAGES 顺序)
+  material_text: string;
+  created_at: string;
+  concept: DpConcept | null;
+  screenplay: DpScreenplay | null;
+  design_list: DpDesignList | null;
+  shot_list: DpShotList | null;
+  video_task_id: string | null;
+  error: string | null;
+}
+
+export interface DpProduceRequest {
+  video_provider?: string;
+  audio_provider?: string;
+  quality_profile?: string;
+  aspect_ratio?: string;
+  budget_usd?: number | null;
+}
+
