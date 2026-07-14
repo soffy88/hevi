@@ -21,6 +21,17 @@ function errText(e: unknown): string {
   return e instanceof Error ? e.message : '出错了';
 }
 
+// ③锁定/④重新生成这两步在后端是 background task 跑(角色/场次一多容易顶到反向代理
+// 超时,已经改成"接口立即返回、真正的重活在后台跑",见 director_pipeline.py),
+// 这里轮询到状态离开"进行中"为止。
+async function pollUntilSettled(workId: string, pendingStatus: string): Promise<DpWork> {
+  for (;;) {
+    await new Promise(r => setTimeout(r, 2500));
+    const w = await directorPipelineApi.getWork(workId);
+    if (w.status !== pendingStatus) return w;
+  }
+}
+
 const DURATION_OPTIONS = [
   { value: 'short', label: '极短 ~10s' }, { value: '1-5min', label: '1-5 分钟' },
   { value: '5-15min', label: '5-15 分钟' }, { value: '15-45min', label: '15-45 分钟' },
@@ -74,9 +85,13 @@ export function DirectorPipelineConsole() {
         design_list: directorPipelineApi.regenerateDesignList,
         shot_list: directorPipelineApi.regenerateShotList,
       }[stage];
-      const w = await fn(work.work_id);
-      setWork(w);
-      syncDrafts(w);
+      let w = await fn(work.work_id);
+      setWork(w); syncDrafts(w);
+      if (w.status === 'shot_list_generating') {
+        w = await pollUntilSettled(work.work_id, 'shot_list_generating');
+        setWork(w); syncDrafts(w);
+      }
+      if (w.status === 'shot_list_regenerate_failed') setErr(w.error || '分镜生成失败');
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
   }
 
@@ -103,8 +118,13 @@ export function DirectorPipelineConsole() {
     if (!confirm('锁定设计清单会为每个角色/场景/道具真实生成参考图并建立资产(真实花钱),确定吗?')) return;
     setBusy(true); setErr(null);
     try {
-      const w = await directorPipelineApi.lockDesignList(work.work_id, designListDraft);
+      let w = await directorPipelineApi.lockDesignList(work.work_id, designListDraft);
       setWork(w); syncDrafts(w);
+      if (w.status === 'design_list_locking') {
+        w = await pollUntilSettled(work.work_id, 'design_list_locking');
+        setWork(w); syncDrafts(w);
+      }
+      if (w.status === 'design_list_lock_failed') setErr(w.error || '设计清单锁定失败');
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
   }
 

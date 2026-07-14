@@ -200,6 +200,8 @@ async def test_regenerate_screenplay_on_advanced_work_clears_downstream_only():
 async def test_lock_design_list_creates_subjects_and_advances_to_shot_list_draft(
     tmp_path, monkeypatch
 ):
+    from fastapi import BackgroundTasks
+
     monkeypatch.chdir(tmp_path)
     work_id = str(uuid.uuid4())
     rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
@@ -215,12 +217,16 @@ async def test_lock_design_list_creates_subjects_and_advances_to_shot_list_draft
         output_path.write_bytes(b"\x89PNG")
         return output_path
 
+    bg = BackgroundTasks()
     with (
         patch("hevi.image.qwen_image_service.qwen_image_generate", fake_qwen_generate),
         patch.object(dp, "generate_shot_list_draft", AsyncMock(return_value=_shot_list())),
     ):
-        resp = await dp.lock_design_list(work_id, _design_list(), _USER, subject_svc)
+        immediate = await dp.lock_design_list(work_id, _design_list(), _USER, subject_svc, bg)
+        assert immediate["status"] == "design_list_locking"
+        await bg()
 
+    resp = dp._work_status(rec)
     assert resp["locked_through"] == 2
     assert resp["status"] == "shot_list_draft"
     char_subject_ids = [c["subject_id"] for c in resp["design_list"]["characters"]]
@@ -231,6 +237,8 @@ async def test_lock_design_list_creates_subjects_and_advances_to_shot_list_draft
 @pytest.mark.asyncio
 async def test_lock_design_list_skips_already_locked_assets(tmp_path, monkeypatch):
     """回退后重锁:已有 subject_id 的项不重复建号(不重复花钱)。"""
+    from fastapi import BackgroundTasks
+
     monkeypatch.chdir(tmp_path)
     work_id = str(uuid.uuid4())
     rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
@@ -249,12 +257,15 @@ async def test_lock_design_list_skips_already_locked_assets(tmp_path, monkeypatc
         output_path.write_bytes(b"\x89PNG")
         return output_path
 
+    bg = BackgroundTasks()
     with (
         patch("hevi.image.qwen_image_service.qwen_image_generate", fake_qwen_generate),
         patch.object(dp, "generate_shot_list_draft", AsyncMock(return_value=_shot_list())),
     ):
-        resp = await dp.lock_design_list(work_id, design_list, _USER, subject_svc)
+        await dp.lock_design_list(work_id, design_list, _USER, subject_svc, bg)
+        await bg()
 
+    resp = dp._work_status(rec)
     assert resp["design_list"]["characters"][0]["subject_id"] == "already-locked-subj"
     assert subject_svc.create_subject.await_count == 2  # 只建剩下的 1 角色 + 1 场景
 

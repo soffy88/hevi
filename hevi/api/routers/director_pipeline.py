@@ -379,50 +379,88 @@ def _seed_design_list_subject_ids(body: DesignList, prior: dict[str, Any] | None
                 item.subject_id = prior_by_name[item.name]
 
 
+async def _run_design_list_lock(
+    work_id: str, body: DesignList, *, user_id: str, subject_svc: SubjectService
+) -> None:
+    """③锁定的真正重活(N 个资产建号 + ④分镜逐场 LLM 生成)——角色/场次一多,就算每个
+    调用本身都做了并发/超时收敛,总和还是可能顶到反向代理超时(线上已经实测 524/挂起
+    好几轮)。放到 background task 里跑,HTTP 响应不再等它,前端轮询 GET /works/{id}
+    直到状态变化即可,彻底摆脱"一个请求扛所有重活"这类超时。"""
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        locked = await _lock_design_list_assets(
+            body, user_id=user_id, work_id=work_id, subject_svc=subject_svc
+        )
+        rec["design_list"] = locked.model_dump()
+        rec["locked_through"] = _stage_index("design_list")
+        screenplay = Screenplay.model_validate(rec["screenplay"])
+        shot_list = await generate_shot_list_draft(
+            screenplay=screenplay, design_list=locked, llm=_resolve_llm()
+        )
+        rec["shot_list"] = shot_list.model_dump()
+        rec["status"] = "shot_list_draft"
+    except Exception as e:
+        logger.exception("design-list 后台锁定失败: work_id=%s", work_id)
+        rec["design_list"] = body.model_dump()
+        rec["status"] = "design_list_lock_failed"
+        rec["error"] = str(e)
+
+
 @router.post("/works/{work_id}/design-list/lock")
 async def lock_design_list(
     work_id: str,
     body: DesignList,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     subject_svc: Annotated[SubjectService, Depends(get_subject_service)],
+    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
     _seed_design_list_subject_ids(body, rec.get("design_list"))
-    try:
-        locked = await _lock_design_list_assets(
-            body, user_id=str(user["id"]), work_id=work_id, subject_svc=subject_svc
-        )
-    except Exception:
-        rec["design_list"] = body.model_dump()
-        raise
-    rec["design_list"] = locked.model_dump()
-    rec["locked_through"] = _stage_index("design_list")
-    screenplay = Screenplay.model_validate(rec["screenplay"])
-    shot_list = await generate_shot_list_draft(
-        screenplay=screenplay, design_list=locked, llm=_resolve_llm()
+    rec["design_list"] = body.model_dump()
+    rec["status"] = "design_list_locking"
+    rec["error"] = None
+    background_tasks.add_task(
+        _run_design_list_lock, work_id, body, user_id=str(user["id"]), subject_svc=subject_svc
     )
-    rec["shot_list"] = shot_list.model_dump()
-    rec["status"] = "shot_list_draft"
     return _work_status(rec)
 
 
 # ── ④分镜头剧本 ────────────────────────────────────────────────────────────
 
 
+async def _run_shot_list_regenerate(work_id: str) -> None:
+    """同 _run_design_list_lock:逐场 LLM 生成放后台跑,场次一多不顶到反向代理超时。"""
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        screenplay = Screenplay.model_validate(rec["screenplay"])
+        design_list = DesignList.model_validate(rec["design_list"])
+        shot_list = await generate_shot_list_draft(
+            screenplay=screenplay, design_list=design_list, llm=_resolve_llm()
+        )
+        rec["shot_list"] = shot_list.model_dump()
+        rec["status"] = "shot_list_draft"
+    except Exception as e:
+        logger.exception("shot-list 后台重新生成失败: work_id=%s", work_id)
+        rec["status"] = "shot_list_regenerate_failed"
+        rec["error"] = str(e)
+
+
 @router.post("/works/{work_id}/shot-list")
 async def regenerate_shot_list(
-    work_id: str, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
     _require_stage_ready(rec, "shot_list")
     _rollback_downstream(rec, "shot_list")
-    screenplay = Screenplay.model_validate(rec["screenplay"])
-    design_list = DesignList.model_validate(rec["design_list"])
-    shot_list = await generate_shot_list_draft(
-        screenplay=screenplay, design_list=design_list, llm=_resolve_llm()
-    )
-    rec["shot_list"] = shot_list.model_dump()
-    rec["status"] = "shot_list_draft"
+    rec["status"] = "shot_list_generating"
+    rec["error"] = None
+    background_tasks.add_task(_run_shot_list_regenerate, work_id)
     return _work_status(rec)
 
 

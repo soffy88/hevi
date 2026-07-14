@@ -700,8 +700,8 @@ export interface DpShotList {
 export type DpWorkStatus =
   | 'concept_draft' | 'concept_locked'
   | 'screenplay_draft' | 'screenplay_locked'
-  | 'design_list_draft' | 'design_list_locked'
-  | 'shot_list_draft' | 'shot_list_locked'
+  | 'design_list_draft' | 'design_list_locking' | 'design_list_lock_failed' | 'design_list_locked'
+  | 'shot_list_draft' | 'shot_list_generating' | 'shot_list_regenerate_failed' | 'shot_list_locked'
   | 'producing';
 
 export interface DpWork {
