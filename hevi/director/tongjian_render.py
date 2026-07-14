@@ -102,10 +102,15 @@ def build_tongjian_inputs(
                 )
             )
             shot_line_ids.append(line_id)
-        if not shot_line_ids:
-            continue  # 无对白镜头丢弃
         shot_chars = [c for c in (shot.character_names or []) if c in bible_names]
-        if not shot_chars:  # 兜底:至少放该镜第一句台词的说话人
+        visual = (shot.visual_prompt or "").strip()
+        if not shot_line_ids:
+            # 无对白镜头:保留为静默动作/建场空镜(电影语言:开场空镜、人物动作、
+            # 刺杀/擒拿等动作镜头,渲染为无配音的画面动作,见 render 侧 silent_action)。
+            # 什么视觉描述都没有才真丢——那种镜头没内容可生成。
+            if not visual:
+                continue
+        elif not shot_chars:  # 对白镜头兜底:至少放该镜第一句台词的说话人
             shot_chars = [lines[-len(shot_line_ids)].speaker]
         scene_id = (
             shot.scene_name if shot.scene_name in scene_names else (shot.scene_name or "scene")
@@ -117,7 +122,7 @@ def build_tongjian_inputs(
                 scene_id=scene_id,
                 characters=shot_chars,
                 camera=ShotCamera(shot_size=_map_shot_size(shot.shot_size or shot.camera)),
-                visual_prompt=shot.visual_prompt or "",
+                visual_prompt=visual,
                 motion_mode="img2video",
             )
         )
@@ -155,24 +160,30 @@ def _build_constitution(
     )
 
 
+_ACTION_SHOT_MS = 4000  # 静默动作/建场镜头的名义时长(无对白音频驱动,给个视觉节拍)
+
+
 def _fill_shot_timings(shotlist: TjShotList, timeline: Any) -> TjShotList:
-    """L3 timeline(逐行音频段)→ 回填每个 shot 的 t_start_ms/t_end_ms(取该 shot 覆盖
-    的所有 line 的音频段的最小起点/最大终点)。build_frame_manifest_avatar / build_final_video
-    都要这两个时间边界。line 顺序即 shot 顺序,音频段也按行顺序,故 shot 边界天然连续。"""
+    """L3 timeline(逐行音频段)→ 回填每个 shot 的 t_start_ms/t_end_ms。对白镜头取其覆盖
+    的所有 line 音频段的最小起点/最大终点;静默动作镜头(无 line_ids/无音频段)按名义时长
+    顺序接在时间轴上。装配(_assemble_avatar_clips)是按 shotlist 顺序拼 clip,时间边界只
+    要连续不崩即可,精确对齐由每个 clip 自带时长保证。"""
     seg_by_line = {seg.line_id: seg for seg in timeline.audio_segments}
     new_shots: list[Shot] = []
+    cursor_ms = 0
     for shot in shotlist.shots:
         segs = [seg_by_line[lid] for lid in shot.line_ids if lid in seg_by_line]
-        if not segs:
-            continue
-        new_shots.append(
-            shot.model_copy(
-                update={
-                    "t_start_ms": min(s.t_start_ms for s in segs),
-                    "t_end_ms": max(s.t_end_ms for s in segs),
-                }
-            )
-        )
+        if segs:
+            start = min(s.t_start_ms for s in segs)
+            end = max(s.t_end_ms for s in segs)
+        elif shot.visual_prompt:
+            # 静默动作/建场镜头:接在游标后,名义 4s。
+            start = cursor_ms
+            end = cursor_ms + _ACTION_SHOT_MS
+        else:
+            continue  # 既无对白又无画面 → 丢
+        cursor_ms = max(cursor_ms, end)
+        new_shots.append(shot.model_copy(update={"t_start_ms": start, "t_end_ms": end}))
     return TjShotList(shots=new_shots)
 
 
@@ -282,6 +293,9 @@ async def render_director_episode(
                 "style": style,
                 "resolution": "720P",
                 "narrator_desc": DEFAULT_SHORTDRAMA_NARRATOR_DESC,
+                # 导演流水线要电影语言:非对白镜头渲成纯静默动作/建场空镜,不加史官旁白配音
+                # (用户要求"不要旁白、要有场景/动作")。
+                "non_dialogue_mode": "silent_action",
             },
         ),
     )

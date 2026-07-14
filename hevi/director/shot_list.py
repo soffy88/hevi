@@ -23,19 +23,32 @@ from hevi.director.pipeline_schemas import (
 
 logger = logging.getLogger(__name__)
 
-_SHOT_LIST_PROMPT = """把下面这一场剧本切成镜头序列(通常 2-5 镜)。**台词行是重中之重:
-这一场剧本里的每一句人物对白,必须原样落到某个镜头的 dialogue_lines 里,并标出是谁说的
-(character_name);场景描述/过渡性文字才归入没有 character_name 的旁白行。不要把对白揉进
-旁白里一笔带过。**
+_SHOT_LIST_PROMPT = """你是电影分镜师。把下面这一场剧本切成**有电影语言的镜头序列**(通常 4-8 镜)。
+
+**电影不是一路大头对白。一场戏要有三类镜头,穿插着来:**
+1. **建场镜头(动作镜头,无对白)**:开场先交代环境和人物在干什么——比如"远景:宫廷茅厕外
+   窄廊,豫让扮成刑徒,低头提着石灰桶进来,警惕地环顾"。dialogue_lines 留空,visual_prompt
+   写清楚**画面里正在发生的动作**(谁在干什么),不是写旁白台词。
+2. **动作镜头(无对白)**:推进剧情的动作——"赵襄子带着两名侍卫从廊子那头走来""侍卫一把
+   拽住豫让的胳膊,从他袖中搜出匕首""豫让被按倒在地"。同样 dialogue_lines 留空,
+   visual_prompt 写动作。
+3. **对白镜头**:人物开口说话的镜头。**每一句人物对白必须原样落到某个镜头的 dialogue_lines
+   里并标出说话人(character_name)。**
+
+**硬性要求:**
+- 开场至少一个建场/动作镜头(别一上来就是大头怼脸说话)。
+- 关键情节(如刺杀、擒拿、搜身)要用**动作镜头**演出来,别只靠台词交代。
+- 非对白镜头的 visual_prompt 必须是**具体的画面动作描述**,绝不是"旁白:xxx"这种念白文字。
+- 每场镜头数别贪多也别只有对白,按剧情节奏来。
 
 已锁定的出场人物(只能引用这些名字):{character_names}
 已锁定的场景:{scene_name}
 
 只输出 JSON:
 {{"shots": [
-  {{"shot_size": "远/全/中/近/特写", "camera": "机位/摄法(如 平视/仰拍/推镜)",
-    "visual_prompt": "画面内容描述",
-    "dialogue_lines": [{{"character_name": "人物名或留空(留空=旁白)", "text": "台词/旁白"}}],
+  {{"shot_size": "远/全/中/近/特写", "camera": "机位/摄法(如 平视/仰拍/推镜/手持跟拍)",
+    "visual_prompt": "画面里正在发生的具体动作(建场/动作镜头必填,写动作不写台词)",
+    "dialogue_lines": [{{"character_name": "人物名(动作镜头留空数组)", "text": "台词"}}],
     "blocking": [{{"character_name": "人物名", "position": "如 画面左侧", "facing": "如 面向"}}],
     "character_names": ["本镜出场人物名"],
     "duration_s": 5}}

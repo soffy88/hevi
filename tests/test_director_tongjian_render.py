@@ -64,18 +64,21 @@ def test_build_tongjian_inputs_drops_narration_and_maps_dialogue():
         concept=Concept(theme="索地", tone="压抑"),
         voice_by_speaker={"智伯": "zh_male_deep", "韩康子": "zh_male_standard"},
     )
-    # 旁白两行都被丢:只剩两句对白
+    # 旁白行不进配音轨:script.lines 只剩两句对白(旁白不配音)
     assert [(ln.speaker, ln.text) for ln in script.lines] == [
         ("智伯", "把地给我。"),
         ("韩康子", "不给。"),
     ]
     assert all(ln.type == "dialogue" for ln in script.lines)
-    # 纯旁白的第 2 镜整个丢弃 → 只剩 1 个镜头,引用两条对白 line
-    assert len(shotlist.shots) == 1
+    # 但非对白镜头保留为静默动作/建场镜头:第 1 镜=对白镜头,第 2 镜(纯旁白+空镜)=动作镜头
+    assert len(shotlist.shots) == 2
     sh = shotlist.shots[0]
-    assert sh.line_ids == [script.lines[0].line_id, script.lines[1].line_id]
+    assert sh.line_ids == [script.lines[0].line_id, script.lines[1].line_id]  # 对白镜头
     assert sh.characters == ["智伯", "韩康子"]
     assert sh.camera.shot_size == "medium_close"  # "近景" → medium_close
+    action = shotlist.shots[1]  # 静默动作镜头:无对白 line,靠 visual_prompt 生成
+    assert action.line_ids == []
+    assert action.visual_prompt == "纯旁白空镜"
     # CharacterBible:每角色带分配的音色
     voices = {e.character_id: e.voice_id for e in bible.characters}
     assert voices == {"智伯": "zh_male_deep", "韩康子": "zh_male_standard"}
@@ -97,8 +100,12 @@ def test_fill_shot_timings_from_timeline():
         ]
     )
     filled = _fill_shot_timings(shotlist, timeline)
+    assert len(filled.shots) == 2
     assert filled.shots[0].t_start_ms == 0
-    assert filled.shots[0].t_end_ms == 2800  # 覆盖该镜两条 line 的最小起点/最大终点
+    assert filled.shots[0].t_end_ms == 2800  # 对白镜:覆盖两条 line 的最小起点/最大终点
+    # 静默动作镜(无音频段):接在对白镜后,名义 4s,不被丢
+    assert filled.shots[1].t_start_ms == 2800
+    assert filled.shots[1].t_end_ms == 2800 + 4000
 
 
 def test_constitution_carries_concept_and_aspect():

@@ -289,6 +289,46 @@ def _fit_narration(visual: Path, audio: Path, out: Path, w: int, h: int) -> None
     )
 
 
+def _fit_silent(visual: Path, out: Path, w: int, h: int, duration: float) -> None:
+    """静默动作/空镜:画面循环填满 `duration` 秒 + zoompan(轻微运镜),挂一条静音音轨
+    (让每个 clip 都有音频流,跟对白 clip 一致,xfade 拼接不会因缺流出错)。不加任何旁白。"""
+    hold = max(1.5, duration)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-stream_loop",
+            "-1",
+            "-i",
+            str(visual),
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=channel_layout=stereo:sample_rate=44100",
+            "-filter_complex",
+            f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
+            f"trim=0:{hold:.3f},setpts=PTS-STARTPTS,fps=24,"
+            f"zoompan=z='min(zoom+0.0004,1.08)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+            f"s={w}x{h}:fps=24[v]",
+            "-map",
+            "[v]",
+            "-map",
+            "1:a:0",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-t",
+            f"{hold:.3f}",
+            str(out),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
 async def build_frame_manifest_avatar(
     shotlist: ShotList,
     script: Script,
@@ -307,6 +347,12 @@ async def build_frame_manifest_avatar(
     w, h = _resolve_dimensions(reso, constitution.visual_style.aspect_ratio)
     narr_tone = str(_p(config, "narr_tone", "沉稳"))  # 旁白语气(沉稳/激昂/凝重…)
     narrator_desc = str(_p(config, "narrator_desc", _NARRATOR_DESC))
+    # 非对白镜头怎么处理:"narrator"=史官旁白配音(通鉴/短剧默认,行为不变);
+    # "silent_action"=纯静默动作/空镜(只有画面动作,不加任何旁白配音)——导演流水线用,
+    # 治"全是大头对白、没有场景/动作镜头"(用户要求电影语言:开场空镜、人物动作、
+    # 刺杀/擒拿等动作镜头,不要旁白念白)。silent_action 下动作镜头时长按视觉节拍给,
+    # 不跟旁白文字长度走。
+    non_dialogue_mode = str(_p(config, "non_dialogue_mode", "narrator"))
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
     appearance_by_id = {
@@ -391,32 +437,8 @@ async def build_frame_manifest_avatar(
                         _concat_clips(chunk_clips, talk)
                 _fit_dialogue(talk, clip, w, h)
             else:
-                # 旁白/场景:史官音轨 + 画面(角色闭嘴 or 纯场景空镜)
-                narr = work / f"{sid}_narr.mp4"
-                if not narr.exists():
-                    await happyhorse_animate(
-                        image_path=narrator_ref,
-                        prompt=f'{style},一位史官说书人{narr_tone}地讲述:"{text or shot.visual_prompt}"',
-                        output_path=narr,
-                        duration=dur,
-                        resolution=reso,
-                    )
-                narr_audio = work / f"{sid}_narr.aac"
-                if not narr_audio.exists():
-                    subprocess.run(
-                        [
-                            "ffmpeg",
-                            "-y",
-                            "-i",
-                            str(narr),
-                            "-vn",
-                            "-acodec",
-                            "copy",
-                            str(narr_audio),
-                        ],
-                        check=True,
-                        capture_output=True,
-                    )
+                # 非对白镜头:先出"静默动作/空镜"画面(vis)——角色闭嘴做动作 or 纯场景
+                # 空镜。再按 non_dialogue_mode 决定挂史官旁白配音,还是纯静默(见 vis 之后)。
                 vis = work / f"{sid}_vis.mp4"
                 if not vis.exists():
                     present = [cid for cid in shot.characters if cid in appearance_by_id]
@@ -493,7 +515,39 @@ async def build_frame_manifest_avatar(
                         output_path=vis,
                         resolution=reso,
                     )
-                _fit_narration(vis, narr_audio, clip, w, h)
+                if non_dialogue_mode == "silent_action":
+                    # 纯静默动作/空镜:不加任何旁白配音,只保留画面动作(电影建场/动作镜头)。
+                    # 时长按视觉节拍(封顶 6s),不跟旁白文字长度走。
+                    _fit_silent(vis, clip, w, h, min(float(dur), 6.0))
+                else:
+                    # 史官旁白配音(通鉴/短剧默认):旁白 talking clip → 抽音轨 → 挂到 vis 上。
+                    narr = work / f"{sid}_narr.mp4"
+                    _narr_text = text or shot.visual_prompt
+                    if not narr.exists():
+                        await happyhorse_animate(
+                            image_path=narrator_ref,
+                            prompt=f'{style},一位史官说书人{narr_tone}地讲述:"{_narr_text}"',
+                            output_path=narr,
+                            duration=dur,
+                            resolution=reso,
+                        )
+                    narr_audio = work / f"{sid}_narr.aac"
+                    if not narr_audio.exists():
+                        subprocess.run(
+                            [
+                                "ffmpeg",
+                                "-y",
+                                "-i",
+                                str(narr),
+                                "-vn",
+                                "-acodec",
+                                "copy",
+                                str(narr_audio),
+                            ],
+                            check=True,
+                            capture_output=True,
+                        )
+                    _fit_narration(vis, narr_audio, clip, w, h)
 
             first = work / f"{sid}_first.png"
             _extract_frame(clip, first)
