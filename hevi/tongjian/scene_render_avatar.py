@@ -56,6 +56,13 @@ _NARRATOR_DESC = (
 # LayerConfig.params["narrator_desc"] 按调用方覆盖(短剧走"现代都市"风格,旁白该是
 # 当代讲述者而不是古装史官,见 tongjian_bridge.py 的 DEFAULT_SHORTDRAMA_NARRATOR_DESC)。
 _EDIT_PREFIX = "严格保持画中人物的相貌、胡须、服饰、头冠和画风完全不变,只改变神态动作:"
+# 表情克制约束(2026-07-14 用户反馈"说话时瞪大眼睛、AI 痕迹太大"):情绪推断出的强词
+# (惊惧/大惊等)被 qwen-image-edit 渲成夸张瞪眼、五官变形。给关键帧统一加一句"真人演员
+# 微表演、眼神平和不瞪眼、五官比例正常"的约束,把表演压回自然区间。
+_EXPRESSION_GUARD = (
+    ",但表情要自然克制、像真人演员的微表演:眼睛正常睁开不要瞪大瞪圆、"
+    "五官比例正常不变形、情绪含蓄不夸张"
+)
 
 
 def _p(config: LayerConfig | None, key: str, default: Any) -> Any:
@@ -405,6 +412,7 @@ async def build_frame_manifest_avatar(
                     instruction = _EDIT_PREFIX + emotion
                     if action_hint:
                         instruction += f",动作:{action_hint}"
+                    instruction += _EXPRESSION_GUARD
                     await qwen_image_edit(image_path=canon, instruction=instruction, output_path=kf)
                 talk = work / f"{sid}_talk.mp4"
                 if not talk.exists():
@@ -472,6 +480,7 @@ async def build_frame_manifest_avatar(
                             )
                             if action_hint:
                                 instruction += f",动作:{action_hint}"
+                            instruction += _EXPRESSION_GUARD
                             await qwen_image_edit(
                                 image_path=canons,
                                 instruction=instruction,
@@ -492,6 +501,7 @@ async def build_frame_manifest_avatar(
                             instruction = _EDIT_PREFIX + emotion + ",闭着嘴"
                             if action_hint:
                                 instruction += f",动作:{action_hint}"
+                            instruction += _EXPRESSION_GUARD
                             await qwen_image_edit(
                                 image_path=canon,
                                 instruction=instruction,
