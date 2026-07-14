@@ -228,6 +228,7 @@ async def test_lock_design_list_creates_subjects_and_advances_to_shot_list_draft
 
     subject_svc = AsyncMock()
     subject_svc.create_subject.side_effect = lambda **kw: {"id": f"subj-{kw['name']}"}
+    subject_svc.search_subjects.return_value = []  # 无同名已有资产 → 走新建
 
     async def fake_qwen_generate(*, prompt, output_path):
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -252,6 +253,58 @@ async def test_lock_design_list_creates_subjects_and_advances_to_shot_list_draft
 
 
 @pytest.mark.asyncio
+async def test_lock_design_list_reuses_existing_same_name_subject(tmp_path, monkeypatch):
+    """去重(2026-07-14):锁定时同名(同 kind、同 user)已有 Subject 直接复用,不重建、
+    不重新生成参考图——治"每次锁定都新建、角色库堆几十份同名"。"""
+    from fastapi import BackgroundTasks
+
+    monkeypatch.chdir(tmp_path)
+    work_id = str(uuid.uuid4())
+    rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
+    rec["concept"] = _concept().model_dump()
+    rec["screenplay"] = _screenplay().model_dump()
+    rec["locked_through"] = 1
+
+    subject_svc = AsyncMock()
+    subject_svc.create_subject.side_effect = lambda **kw: {"id": f"new-{kw['name']}"}
+
+    async def fake_search(*, kind, query, user_id):
+        # 智伯已有一版(复用);韩康子/场景没有(新建)。ILIKE 可能带回近似项,
+        # _ensure_subject 只认精确同名。
+        if query == "智伯":
+            return [{"id": "existing-智伯", "name": "智伯"}, {"id": "noise", "name": "智伯他爹"}]
+        return []
+
+    subject_svc.search_subjects.side_effect = fake_search
+
+    generated: list[str] = []
+
+    async def fake_qwen_generate(*, prompt, output_path):
+        generated.append(str(output_path))
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"\x89PNG")
+        return output_path
+
+    bg = BackgroundTasks()
+    with (
+        patch("hevi.image.qwen_image_service.qwen_image_generate", fake_qwen_generate),
+        patch.object(dp, "generate_shot_list_draft", AsyncMock(return_value=_shot_list())),
+    ):
+        await dp.lock_design_list(work_id, _design_list(), _USER, subject_svc, bg)
+        await bg()
+
+    resp = dp._work_status(rec)
+    ids = {c["name"]: c["subject_id"] for c in resp["design_list"]["characters"]}
+    assert ids["智伯"] == "existing-智伯"  # 复用,精确同名(不误取"智伯他爹")
+    assert ids["韩康子"] == "new-韩康子"  # 无同名 → 新建
+    # 智伯复用 → 没为它生成参考图,也没为它建号
+    assert not any("智伯" in g for g in generated)
+    created_names = {c.kwargs["name"] for c in subject_svc.create_subject.await_args_list}
+    assert "智伯" not in created_names
+    assert "韩康子" in created_names
+
+
+@pytest.mark.asyncio
 async def test_lock_design_list_skips_already_locked_assets(tmp_path, monkeypatch):
     """回退后重锁:已有 subject_id 的项不重复建号(不重复花钱)。"""
     from fastapi import BackgroundTasks
@@ -268,6 +321,7 @@ async def test_lock_design_list_skips_already_locked_assets(tmp_path, monkeypatc
 
     subject_svc = AsyncMock()
     subject_svc.create_subject.side_effect = lambda **kw: {"id": f"subj-{kw['name']}"}
+    subject_svc.search_subjects.return_value = []  # 无同名已有资产 → 走新建
 
     async def fake_qwen_generate(*, prompt, output_path):
         output_path.parent.mkdir(parents=True, exist_ok=True)

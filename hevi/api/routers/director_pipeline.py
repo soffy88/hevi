@@ -313,6 +313,18 @@ async def _lock_design_list_assets(
 
         from hevi.image.qwen_image_service import QwenImageError, qwen_image_generate
 
+        # 复用已有同名资产(2026-07-14):此前每次锁定都重建,角色库里同一个角色堆几十份
+        # (豫让 ×12…),还每次重新花钱生成参考图。先查同名(同 kind、同 user)未删除的
+        # 最新一版,有就直接复用其 subject_id,不重建、不再生成参考图。
+        try:
+            existing = await subject_svc.search_subjects(kind=kind, query=name, user_id=user_id)
+            match = next((s for s in existing if (s.get("name") or "") == name), None)
+            if match:
+                logger.info("design-list 资产 %s 复用已有 Subject %s", name, match["id"])
+                return str(match["id"])
+        except Exception as e:
+            logger.warning("design-list 资产 %s 查重失败,退回新建: %s", name, e)
+
         portrait_path = portrait_dir / f"{slug}.png"
         prompt = f"{_ART_DIRECTION}, {name}, {description or kind}"
         last_exc: Exception | None = None
