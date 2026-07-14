@@ -291,11 +291,17 @@ async def _lock_design_list_assets(
     (character/scene/prop 三种 kind,复用既有 SubjectService,不建新表)。已有 subject_id
     的项(比如回退后重锁,或人工在草稿里就填了已有 subject_id)原样跳过,不重复建号。
     各资产的参考图生成互不依赖,并发发起——这一步顺序调用曾在线上把整个锁定请求拖到
-    反向代理超时(Cloudflare 524),角色一多就必现。"""
+    反向代理超时(Cloudflare 524),角色一多就必现。但完全不限流并发又会把 qwen-image
+    提交接口打出 429(实测线上角色一多就触发,429 是原始 httpx.HTTPStatusError,不是
+    QwenImageError,不受下面的重试保护,会直接把整个请求炸成 500)——用信号量把真实
+    并发压到 2,并把 429/5xx 也纳入重试范围。"""
     portrait_dir = _OUTPUT_DIR / work_id / "design_assets"
     portrait_dir.mkdir(parents=True, exist_ok=True)
+    _concurrency = asyncio.Semaphore(2)
 
     async def _ensure_subject(*, kind: str, name: str, description: str, slug: str) -> str | None:
+        import httpx
+
         from hevi.image.qwen_image_service import QwenImageError, qwen_image_generate
 
         portrait_path = portrait_dir / f"{slug}.png"
@@ -303,12 +309,15 @@ async def _lock_design_list_assets(
         last_exc: Exception | None = None
         for attempt in range(1, _PORTRAIT_MAX_ATTEMPTS + 1):
             try:
-                await qwen_image_generate(prompt=prompt, output_path=portrait_path)
+                async with _concurrency:
+                    await qwen_image_generate(prompt=prompt, output_path=portrait_path)
                 last_exc = None
                 break
-            except QwenImageError as e:
+            except (QwenImageError, httpx.HTTPStatusError) as e:
                 last_exc = e
                 logger.warning("design-list 资产 %s 参考图第%d次失败: %s", name, attempt, e)
+                if attempt < _PORTRAIT_MAX_ATTEMPTS:
+                    await asyncio.sleep(2.0 * attempt)
         if last_exc is not None:
             logger.warning("design-list 资产 %s 参考图最终失败,跳过建号: %s", name, last_exc)
             return None
