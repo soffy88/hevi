@@ -16,6 +16,13 @@ from hevi.pipeline.result_mapper import map_longvideo_result
 logger = logging.getLogger(__name__)
 
 _SHOT_INDEX_RE = re.compile(r"shot[_-]?(\d+)")
+# 舞台提示/动作说明括号(中英文),如"（一把拽过胳膊）"——是给分镜看的动作描述,
+# 不是要念出来或打进字幕的台词,配音/字幕两处都剥掉。
+_STAGE_DIR_RE = re.compile(r"[（(][^）)]*[）)]")
+
+
+def _strip_stage_directions(text: str) -> str:
+    return _STAGE_DIR_RE.sub("", text or "").strip()
 
 
 def _safe_size(p: Path) -> int:
@@ -407,14 +414,19 @@ async def orchestrate_longvideo(
             from oskill._schemas import Chapter, ChapterScript, SpeakerLine, Storyboard
 
             async def _locked_script_fn(**_kw: Any) -> Any:
-                dialogues = [
-                    SpeakerLine(
-                        speaker_id=line.get("character_name") or "", text=line.get("text", "")
-                    )
-                    for shot in locked_shot_list.get("shots", [])
-                    for line in shot.get("dialogue_lines", [])
-                    if line.get("text")
-                ]
+                # 2026-07-14 用户要求:彻底不要旁白。只保留有说话人的对白行
+                # (character_name 非空);旁白行(character_name 为空)完全丢弃,不进配音轨。
+                # 台词里的舞台提示括号也剥掉(不是要念的话)。speaker_id 用角色名,命中
+                # produce 传入的 character_voices 就换成该角色专属音色(见 injected_audio_fn)。
+                dialogues = []
+                for shot in locked_shot_list.get("shots", []):
+                    for line in shot.get("dialogue_lines", []):
+                        speaker = (line.get("character_name") or "").strip()
+                        if not speaker:
+                            continue
+                        text = _strip_stage_directions(line.get("text", ""))
+                        if text:
+                            dialogues.append(SpeakerLine(speaker_id=speaker, text=text))
                 chapter = Chapter(chapter_id="locked", title="", scenes=[], dialogues=dialogues)
                 return ChapterScript(
                     chapters=[chapter],
@@ -443,8 +455,16 @@ async def orchestrate_longvideo(
             # SPEC-002 B1(主线情绪配音):emotion_aware_voiceover 开启时也走这条路——
             # 逐行情绪需要 synthesize_with_voice_control 读每行 .emotion,registry 默认
             # provider(edge_tts_synthesize_smart)只接受整批一个 emotion,做不到逐行。
+            # character_voices(2026-07-14):edge_tts 也要按角色换音色。此前只有 vibevoice
+            # 分支消费 character_voices,edge_tts 多角色对白全是一个默认声音(用户实测抱怨
+            # "对话也像旁白")。有 character_voices 就走 synthesize_with_voice_control,逐行
+            # 按说话人挑音色(见下面 _script 构造 + edge_tts_custom.py 的每行 .voice 支持)。
             _voice_ctrl = audio_provider == "edge_tts" and (
-                voice_rate or voice_pitch or voice_name or emotion_aware_voiceover
+                voice_rate
+                or voice_pitch
+                or voice_name
+                or emotion_aware_voiceover
+                or character_voices
             )
             if _voice_ctrl:
                 from hevi.audio.edge_tts_custom import synthesize_with_voice_control
@@ -479,26 +499,34 @@ async def orchestrate_longvideo(
                     )
                     for line in script
                 ]
-            elif audio_provider == "edge_tts" and emotion_aware_voiceover and script:
-                # SPEC-002 B1:oskill 私有库的台词对象没有"情绪"概念,不改它的 schema——
-                # 台词文本产出后另起一次批量(全片一次,不是逐行)LLM 分类补情绪标注,
-                # 包进 hevi 自己的 SimpleNamespace(同上面 vibevoice 分支的既有模式)。
-                # best-effort:分类失败 → 每行 emotion="" → synthesize_with_voice_control
-                # 退化为跟没开这个开关时完全一样的 "+0%"/"+0Hz"。
+            elif (
+                audio_provider == "edge_tts"
+                and (emotion_aware_voiceover or character_voices)
+                and script
+            ):
+                # SPEC-002 B1(情绪)+ 2026-07-14(角色音色):edge_tts 逐行包进 hevi 自己的
+                # SimpleNamespace。.voice = 该行说话人在 character_voices 里分到的音色键
+                # (synthesize_with_voice_control 逐行读 .voice,见 edge_tts_custom.py);
+                # emotion 仅在 emotion_aware_voiceover 开启时补(全片一次批量分类)。
+                # best-effort:任一推断失败 → 退化为默认音色/中性语气,不影响出片。
                 from types import SimpleNamespace
 
-                from hevi.prompt.emotion_inference import infer_line_emotions
+                _emotions: list[str] = [""] * len(script)
+                if emotion_aware_voiceover:
+                    from hevi.prompt.emotion_inference import infer_line_emotions
 
-                try:
-                    _texts = [getattr(line, "text", str(line)) for line in script]
-                    _emotions = await infer_line_emotions(_texts)
-                except Exception as ee:
-                    logger.warning("emotion_aware_voiceover: 情绪推断失败,跳过: %s", ee)
-                    _emotions = [""] * len(script)
+                    try:
+                        _texts = [getattr(line, "text", str(line)) for line in script]
+                        _emotions = await infer_line_emotions(_texts)
+                    except Exception as ee:
+                        logger.warning("emotion_aware_voiceover: 情绪推断失败,跳过: %s", ee)
+                        _emotions = [""] * len(script)
+                _cv = character_voices or {}
                 _script = [
                     SimpleNamespace(
                         speaker_id=getattr(line, "speaker_id", "host"),
                         text=getattr(line, "text", str(line)),
+                        voice=_cv.get(getattr(line, "speaker_id", "")),
                         voice_ref=getattr(line, "voice_ref", None),
                         emotion=_emotions[i] if i < len(_emotions) else "",
                     )
@@ -1031,21 +1059,19 @@ async def orchestrate_longvideo(
 
             out = []
             for shot in locked_shot_list.get("shots", []):  # type: ignore[union-attr]
-                narration_bits = [
-                    ln.get("text", "")
-                    for ln in shot.get("dialogue_lines", [])
-                    if not ln.get("character_name")
-                ]
+                # 2026-07-14 用户要求:字幕也彻底不要旁白——只收有说话人的对白,且不带
+                # "角色名:" 前缀(像正片字幕那样只显示台词本身),舞台提示括号剥掉。
                 dialogue_bits = [
-                    f"{ln.get('character_name')}:{ln.get('text', '')}"
+                    _strip_stage_directions(ln.get("text", ""))
                     for ln in shot.get("dialogue_lines", [])
-                    if ln.get("character_name")
+                    if (ln.get("character_name") or "").strip()
                 ]
+                dialogue_bits = [t for t in dialogue_bits if t]
                 out.append(
                     SimpleNamespace(
                         shot_id=shot.get("shot_id", ""),
                         image_prompt=shot.get("visual_prompt", ""),
-                        tts_text="。".join([*narration_bits, *dialogue_bits]),
+                        tts_text="。".join(dialogue_bits),
                         duration_s=float(shot.get("duration_s") or 5.0),
                     )
                 )

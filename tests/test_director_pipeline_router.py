@@ -68,6 +68,23 @@ def _design_list() -> DesignList:
     )
 
 
+def test_assign_character_voices_distinct_and_gendered() -> None:
+    dl = DesignList(
+        characters=[
+            DesignCharacter(name="豫让", voice_hint="低沉沙哑"),
+            DesignCharacter(name="赵襄子"),
+            DesignCharacter(name="侍女", voice_hint="清亮女声"),
+            DesignCharacter(name="老将军", voice_id="zh_male_mature"),  # 显式锁定优先
+        ]
+    )
+    cv = dp._assign_character_voices(dl)
+    assert cv["老将军"] == "zh_male_mature"  # 显式 voice_id 原样用
+    assert cv["侍女"].startswith("zh_female")  # 女声进女池
+    assert "deep" in cv["豫让"]  # "低沉沙哑" → deep 音色
+    male_voices = [cv["豫让"], cv["赵襄子"]]
+    assert len(set(male_voices)) == 2  # 同性别不同角色 → 不同音色(治"都一个声音")
+
+
 def _shot_list() -> ShotList:
     return ShotList(
         shots=[
@@ -327,7 +344,11 @@ async def test_produce_builds_task_and_threads_locked_shot_list_and_voices():
     assert resp["video_task_id"] == str(task_id)
     call_kwargs = svc.create_task.await_args.kwargs
     assert call_kwargs["locked_shot_list"] == rec["shot_list"]
-    assert call_kwargs["character_voices"] == {"智伯": "zh_male_deep"}
+    # 智伯显式锁了 voice_id → 原样用;韩康子没锁 → _assign_character_voices 自动分到
+    # 另一个不同的男声(治"对话也像旁白——所有人一个声音")。两人音色必须不同。
+    cv = call_kwargs["character_voices"]
+    assert cv["智伯"] == "zh_male_deep"
+    assert cv["韩康子"] and cv["韩康子"] != cv["智伯"]
     # shot 0 出场"智伯"和"韩康子",只有智伯锁了 subject_id → 只解析出智伯这一个参考图。
     assert call_kwargs["shot_character_refs"] == {0: ["output/subj-zhibo/ref.png"]}
     assert "budget_usd" not in call_kwargs  # 留空不传,让下游 LongVideoConfig 默认值生效

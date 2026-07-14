@@ -626,23 +626,28 @@ async def test_character_voices_maps_matching_speaker_id(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_character_voices_ignored_for_edge_tts(tmp_path):
-    """character_voices 仅 vibevoice 生效;edge_tts 时脚本原样透传,不做任何改写。"""
-    seen: list[dict] = []
+async def test_character_voices_applied_per_line_for_edge_tts(tmp_path):
+    """2026-07-14:edge_tts 也按角色换音色(此前只有 vibevoice 消费 character_voices,
+    edge_tts 多角色对白全一个声音,用户实测抱怨"对话也像旁白")。有 character_voices 时
+    走 synthesize_with_voice_control,每行 .voice = 该说话人分到的音色。"""
+    seen: dict = {}
 
-    async def capturing_audio(**kwargs):
-        for line in kwargs["script"]:
-            seen.append({"speaker_id": getattr(line, "speaker_id", None)})
-        Path(kwargs["output_path"]).write_bytes(b"\x00" * 64)
+    async def fake_voice_ctrl(*, config, script, output_path, **kwargs):
+        seen["speakers"] = [getattr(line, "speaker_id", None) for line in script]
+        seen["voices"] = [getattr(line, "voice", None) for line in script]
+        Path(output_path).write_bytes(b"\x00" * 64)
+        return Path(output_path)
 
-    ProviderRegistry.register("audio", "edge_tts", capturing_audio, replace=True)
     out_dir = tmp_path / "task"
 
     async def fake_pipeline(*, config, _providers):
         out_dir.mkdir(parents=True, exist_ok=True)
         audio_fn = _providers["audio_fn"]
         await audio_fn(
-            script=[SimpleNamespace(speaker_id="speaker_0", text="hi", voice_ref=None)],
+            script=[
+                SimpleNamespace(speaker_id="智伯", text="把地给我", voice_ref=None),
+                SimpleNamespace(speaker_id="韩康子", text="不给", voice_ref=None),
+            ],
             output_path=out_dir / "audio.wav",
         )
         vp = out_dir / "final.mp4"
@@ -655,9 +660,15 @@ async def test_character_voices_ignored_for_edge_tts(tmp_path):
             provider_used={"video": "ltx2_cloud", "audio": "edge_tts"},
         )
 
-    with patch(
-        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
-        side_effect=fake_pipeline,
+    with (
+        patch(
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            side_effect=fake_pipeline,
+        ),
+        patch(
+            "hevi.audio.edge_tts_custom.synthesize_with_voice_control",
+            side_effect=fake_voice_ctrl,
+        ),
     ):
         await orchestrate_longvideo(
             topic="t",
@@ -665,9 +676,10 @@ async def test_character_voices_ignored_for_edge_tts(tmp_path):
             video_provider="ltx2_cloud",
             audio_provider="edge_tts",
             output_dir=out_dir,
-            character_voices={"speaker_0": "/some/voice.wav"},
+            character_voices={"智伯": "zh_male_deep", "韩康子": "zh_male_standard"},
         )
-    assert seen == [{"speaker_id": "speaker_0"}]  # 未被 character_voices 逻辑触碰
+    assert seen["speakers"] == ["智伯", "韩康子"]
+    assert seen["voices"] == ["zh_male_deep", "zh_male_standard"]  # 两角色不同音色
 
 
 @pytest.mark.asyncio

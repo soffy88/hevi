@@ -52,9 +52,10 @@ def _locked_shot_list() -> dict:
 
 @pytest.mark.asyncio
 async def test_locked_shot_list_produces_multi_speaker_dialogues_and_shot_plans(tmp_path):
-    """治"只有旁白没对白":真实走一遍 script_fn→storyboard_fn→shot_gen_fn,验证
-    产出的 chapter.dialogues 每行都带正确 speaker_id,shot_gen_fn 产出的 plans 数量
-    跟锁定的镜头数一致。"""
+    """治"只有旁白没对白" + "对话也像旁白":真实走一遍 script_fn→storyboard_fn→
+    shot_gen_fn。验证 chapter.dialogues 只保留有说话人的对白行(旁白行 character_name
+    为空,2026-07-14 用户要求彻底丢弃,不进配音轨),shot_gen_fn 产出的 plans 数量仍
+    跟锁定镜头数一致(纯旁白镜头保留画面,只是没台词)。"""
     captured: dict = {}
 
     async def fake_pipeline(*, config, _providers):
@@ -92,14 +93,16 @@ async def test_locked_shot_list_produces_multi_speaker_dialogues_and_shot_plans(
         )
 
     speakers = [(d.speaker_id, d.text) for d in captured["dialogues"]]
+    # 旁白行("","三家终于罢兵。")被丢弃 —— 只剩两句有说话人的对白。
     assert speakers == [
         ("智伯", "把地给我。"),
         ("韩康子", "不给。"),
-        ("", "三家终于罢兵。"),
     ]
+    # 纯旁白的第 2 镜仍产出 plan(画面保留),只是 tts_text 为空(无台词)。
     assert len(captured["plans"]) == 2
     assert captured["plans"][0].shot_id == "SH001_01"
     assert captured["plans"][0].duration_s == 6.0
+    assert captured["plans"][1].tts_text == ""
 
 
 @pytest.mark.asyncio

@@ -316,7 +316,7 @@ async def test_fallback_skips_unhealthy_provider():
                 runner=runner,
                 on_fallback=on_fallback,
             )
-        mock_hc.assert_called_once_with("wan_cloud")
+        mock_hc.assert_called_once_with("happyhorse_1_1_maas_lock")
         on_fallback.assert_not_called()
 
 
@@ -338,7 +338,7 @@ async def test_fallback_uses_healthy_provider():
             on_fallback=on_fallback,
         )
         assert result == "ok"
-        mock_hc.assert_called_once_with("wan_cloud")
+        mock_hc.assert_called_once_with("happyhorse_1_1_maas_lock")
 
 
 @pytest.mark.asyncio

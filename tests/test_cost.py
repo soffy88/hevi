@@ -303,16 +303,15 @@ async def test_fallback_cost_reestimate():
 
         await service.run_task(task_id)
 
-        # Check repo update for wan_cloud with new estimated_usd
-        # wan price is $0.033/s (¥0.24/s ÷ 7.25 CNY/USD; calibrated 2026-06)
-        # 180s * 0.033 = 5.94 (standard quality, multiplier=1.0)
+        # ltx2_cloud(fal,已欠费)的降级目标现在是 happyhorse_1_1_maas_lock(见
+        # fallback_chain.py 的 _TERMINAL),on_fallback 对新 provider 重新估价并写回。
         fallback_updates = [
             c
             for c in repo.update_task.call_args_list
-            if c.args[1].get("video_provider") == "wan_cloud"
+            if c.args[1].get("video_provider") == "happyhorse_1_1_maas_lock"
         ]
         assert fallback_updates[0].args[1]["config_json"]["estimated_usd"] == pytest.approx(
-            5.94, rel=1e-4
+            25.2, rel=1e-4
         )
 
 

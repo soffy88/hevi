@@ -26,11 +26,29 @@ _CJK_RE = re.compile(r"[一-鿿぀-ヿ가-힯]")
 CURATED_VOICES: dict[str, str] = {
     "zh_female_standard": "zh-CN-XiaoxiaoNeural",
     "zh_female_warm": "zh-CN-XiaoyiNeural",
+    "zh_female_mature": "zh-CN-liaoning-XiaobeiNeural",
     "zh_male_standard": "zh-CN-YunxiNeural",
     "zh_male_deep": "zh-CN-YunjianNeural",
+    "zh_male_young": "zh-CN-YunyangNeural",
+    "zh_male_mature": "zh-CN-YunxiaNeural",
     "en_female_standard": "en-US-AriaNeural",
     "en_male_standard": "en-US-GuyNeural",
 }
+
+# 按性别分池,供"每个角色分到一个不同音色"的轮询分配(见
+# hevi/api/routers/director_pipeline.py::_assign_character_voices)。多角色对话时,同性别
+# 的不同角色至少落到不同音色,不再全部一个声音。
+MALE_VOICE_POOL: tuple[str, ...] = (
+    "zh_male_standard",
+    "zh_male_deep",
+    "zh_male_young",
+    "zh_male_mature",
+)
+FEMALE_VOICE_POOL: tuple[str, ...] = (
+    "zh_female_standard",
+    "zh_female_warm",
+    "zh_female_mature",
+)
 
 
 # 情绪化配音(2026-07-13):hevi/tongjian/schemas.py::ScriptLine.emotion 是 LLM 填的自由文本
@@ -148,7 +166,12 @@ async def synthesize_with_voice_control(
         tmp = Path(td)
         parts: list[Path] = []
         for i, (ln, text) in enumerate(_pairs):
-            v = resolved_voice or _default_voice(text, language)
+            # 每行优先用该行自带的 .voice(角色专属音色,见 injected_audio_fn 的 edge_tts
+            # 多角色分支);没有再退回整批的 voice,最后回退语言默认音色。
+            _line_voice = getattr(ln, "voice", None)
+            v = (CURATED_VOICES.get(_line_voice, _line_voice) if _line_voice else None) or (
+                resolved_voice or _default_voice(text, language)
+            )
             _line_emotion = getattr(ln, "emotion", None)
             if _line_emotion and rate is None and pitch is None:
                 _r, _p = emotion_to_rate_pitch(_line_emotion)

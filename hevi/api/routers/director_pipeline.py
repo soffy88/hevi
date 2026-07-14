@@ -40,7 +40,13 @@ from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.director.concept import generate_concept_draft
 from hevi.director.design_list import generate_design_list_draft
-from hevi.director.pipeline_schemas import Concept, DesignList, Screenplay, ShotList
+from hevi.director.pipeline_schemas import (
+    Concept,
+    DesignCharacter,
+    DesignList,
+    Screenplay,
+    ShotList,
+)
 from hevi.director.screenplay import generate_screenplay_draft
 from hevi.director.shot_list import generate_shot_list_draft
 from hevi.subjects.repository import SubjectRepository
@@ -486,6 +492,48 @@ class ProduceRequest(BaseModel):
     budget_usd: float | None = None
 
 
+_FEMALE_HINT_KEYS = ("女", "母", "姑", "妃", "娘", "婆", "少女", "女声", "女性", "姐", "妹")
+
+
+def _guess_gender(character: DesignCharacter) -> str:
+    """从 voice_hint / personality / 名字粗判性别,用于挑音色池。判不出默认 male
+    (历史题材男性角色居多),不追求精确——只求同一部片里角色声音有区分度。"""
+    blob = f"{character.voice_hint} {character.personality} {character.name}"
+    if any(k in blob for k in _FEMALE_HINT_KEYS):
+        return "female"
+    return "male"
+
+
+def _assign_character_voices(design_list: DesignList) -> dict[str, str]:
+    """给每个角色分一个不同的 edge_tts 音色(键为角色名,对应 character_voices)。
+    优先用人工在设计清单里显式填的 voice_id;否则按 voice_hint 粗判的性别,在该性别
+    音色池里轮询分配,保证同性别的不同角色也落到不同声音(治"对话也像旁白——所有人
+    一个声音")。声线倾向里带"低沉/沙哑/浑厚"的优先挑 deep 音色。"""
+    from hevi.audio.edge_tts_custom import FEMALE_VOICE_POOL, MALE_VOICE_POOL
+
+    pools = {"male": list(MALE_VOICE_POOL), "female": list(FEMALE_VOICE_POOL)}
+    used: dict[str, int] = {"male": 0, "female": 0}
+    out: dict[str, str] = {}
+    for c in design_list.characters:
+        if not c.name:
+            continue
+        if c.voice_id:
+            out[c.name] = c.voice_id
+            continue
+        gender = _guess_gender(c)
+        pool = pools[gender]
+        # 声线倾向明确"低沉/沙哑"的,若该性别池里有 deep 音色且还没被占,优先给它。
+        deep_pref = any(k in c.voice_hint for k in ("低沉", "沙哑", "浑厚", "低沉沙哑", "苍老"))
+        pick = None
+        if deep_pref:
+            pick = next((v for v in pool if "deep" in v or "mature" in v), None)
+        if pick is None or pick in out.values():
+            pick = pool[used[gender] % len(pool)]
+            used[gender] += 1
+        out[c.name] = pick
+    return out
+
+
 async def _resolve_shot_character_refs(
     shot_list: dict[str, Any], design_list: DesignList, *, subject_svc: SubjectService
 ) -> dict[int, list[str]]:
@@ -536,7 +584,7 @@ async def produce_work(
     # orchestrator 侧的 _locked_script_fn 用 ShotListDialogueLine.character_name
     # 原样当 SpeakerLine.speaker_id(见 hevi/pipeline/longvideo_orchestrator.py),
     # 两边用同一个字符串,不引入"角色顺序索引"这种需要两处保持一致的隐式约定。
-    character_voices = {c.name: c.voice_id for c in design_list.characters if c.voice_id}
+    character_voices = _assign_character_voices(design_list)
     shot_character_refs = await _resolve_shot_character_refs(
         rec["shot_list"], design_list, subject_svc=subject_svc
     )
