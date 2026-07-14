@@ -512,24 +512,31 @@ def _assign_character_voices(design_list: DesignList) -> dict[str, str]:
     from hevi.audio.edge_tts_custom import FEMALE_VOICE_POOL, MALE_VOICE_POOL
 
     pools = {"male": list(MALE_VOICE_POOL), "female": list(FEMALE_VOICE_POOL)}
-    used: dict[str, int] = {"male": 0, "female": 0}
+    rr = {"male": 0, "female": 0}  # 池用尽后的兜底轮询计数
+    used_voices: set[str] = set()  # 已占用的音色,保证还有余量时不重复
     out: dict[str, str] = {}
     for c in design_list.characters:
         if not c.name:
             continue
         if c.voice_id:
             out[c.name] = c.voice_id
+            used_voices.add(c.voice_id)
             continue
         gender = _guess_gender(c)
         pool = pools[gender]
-        # 声线倾向明确"低沉/沙哑"的,若该性别池里有 deep 音色且还没被占,优先给它。
-        deep_pref = any(k in c.voice_hint for k in ("低沉", "沙哑", "浑厚", "低沉沙哑", "苍老"))
+        # 声线倾向明确"低沉/沙哑"的,若池里有 deep/mature 音色且还没被占,优先给它。
+        deep_pref = any(k in c.voice_hint for k in ("低沉", "沙哑", "浑厚", "苍老"))
         pick = None
         if deep_pref:
-            pick = next((v for v in pool if "deep" in v or "mature" in v), None)
-        if pick is None or pick in out.values():
-            pick = pool[used[gender] % len(pool)]
-            used[gender] += 1
+            pick = next(
+                (v for v in pool if ("deep" in v or "mature" in v) and v not in used_voices), None
+            )
+        if pick is None:  # 池里第一个还没被占的音色 → 同性别角色尽量互不撞声
+            pick = next((v for v in pool if v not in used_voices), None)
+        if pick is None:  # 池已用尽(角色数 > 音色数),只能轮询复用
+            pick = pool[rr[gender] % len(pool)]
+            rr[gender] += 1
+        used_voices.add(pick)
         out[c.name] = pick
     return out
 
