@@ -140,7 +140,9 @@ async def test_run_with_fallback_switching():
             retry_policy=RetryPolicy(max_attempts=1),  # No retries to speed up fallback
         )
 
-    assert res == "done_wan_cloud"
+    # ltx2_cloud 的降级目标现在是 happyhorse_1_1_maas_lock(fal 欠费后唯一有余额的通道,
+    # 见 fallback_chain.py 的 _TERMINAL)。
+    assert res == "done_happyhorse_1_1_maas_lock"
     assert runner.call_count == 2
     on_fallback.assert_called_once()
 
@@ -299,9 +301,11 @@ async def test_task_service_run_task_with_fallback_integration():
 
     assert res["status"] == "completed"
     assert repo.update_task.call_count >= 3
-    # Check fallback call
+    # Check fallback call —— ltx2_cloud 降级到 happyhorse_1_1_maas_lock(见 _TERMINAL)。
     fallback_call = [
-        c for c in repo.update_task.call_args_list if c.args[1].get("video_provider") == "wan_cloud"
+        c
+        for c in repo.update_task.call_args_list
+        if c.args[1].get("video_provider") == "happyhorse_1_1_maas_lock"
     ]
     assert len(fallback_call) == 1
 
@@ -313,11 +317,13 @@ async def test_live_state_gates_unroutable_provider():
 
     live_state._reset_for_tests()
     try:
-        # 门测:无记录→可路由;灌满 403→不可路由
-        assert live_state.provider_routable("wan_cloud") is True
+        # 门测:无记录→可路由;灌满 403→不可路由。用 ltx2_cloud 的降级目标
+        # happyhorse_1_1_maas_lock 做被门掉的那一个(链 [ltx2_cloud, happyhorse_1_1_maas_lock])。
+        gated = "happyhorse_1_1_maas_lock"
+        assert live_state.provider_routable(gated) is True
         for _ in range(live_state._WINDOW):
-            live_state.record_provider_outcome("wan_cloud", is_403=True)
-        assert live_state.provider_routable("wan_cloud") is False
+            live_state.record_provider_outcome(gated, is_403=True)
+        assert live_state.provider_routable(gated) is False
 
         attempted: list[str] = []
 
@@ -334,14 +340,15 @@ async def test_live_state_gates_unroutable_provider():
             return_value=True,
         ):
             with pytest.raises(Exception):
+                # 链 [ltx2_cloud, happyhorse_1_1_maas_lock]
                 await run_with_fallback(
-                    initial_provider="ltx2_cloud",  # 链 [ltx2_cloud, wan_cloud]
+                    initial_provider="ltx2_cloud",
                     runner=runner,
                     on_fallback=on_fallback,
                 )
-        # ltx2_cloud 可路由被 attempt(失败);wan_cloud 不可路由 → 从未 attempt
+        # ltx2_cloud 可路由被 attempt(失败);降级目标不可路由 → 从未 attempt
         assert attempted == ["ltx2_cloud"]
-        assert "wan_cloud" not in attempted
+        assert gated not in attempted
     finally:
         live_state._reset_for_tests()  # 防污染后续测试(全局单例)
 
