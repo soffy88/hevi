@@ -541,21 +541,29 @@ async def produce_work(
         rec["shot_list"], design_list, subject_svc=subject_svc
     )
 
+    # budget_usd 不填(前端留空传 None)不能原样透传——create_task 把它整个塞进
+    # config_json,worker 起 LongVideoConfig(**config_json) 时字面 budget_usd=None
+    # 会覆盖掉 omodul.BaseConfig 的 budget_usd: float = 5.0 默认值,Pydantic 拒绝
+    # None(要求非空 float),线上已实测产集刚起步就整任务 failed(用户完全看不到
+    # 任何报错,流水线那边只显示"已产集"就没下文了)。None 就不传这个 key,让
+    # 下游默认值生效。
+    create_kwargs: dict[str, Any] = {
+        "topic": concept.theme or rec["material_text"][:200],
+        "duration_archetype": concept.duration_archetype,
+        "video_provider": body.video_provider,
+        "audio_provider": body.audio_provider,
+        "user_id": str(user["id"]),
+        "quality_profile": body.quality_profile,
+        "aspect_ratio": body.aspect_ratio,
+        "style": concept.style or "cinematic",
+        "locked_shot_list": rec["shot_list"],
+        "character_voices": character_voices or None,
+        "shot_character_refs": shot_character_refs or None,
+    }
+    if body.budget_usd is not None:
+        create_kwargs["budget_usd"] = body.budget_usd
     try:
-        task = await svc.create_task(
-            topic=concept.theme or rec["material_text"][:200],
-            duration_archetype=concept.duration_archetype,
-            video_provider=body.video_provider,
-            audio_provider=body.audio_provider,
-            user_id=str(user["id"]),
-            quality_profile=body.quality_profile,
-            aspect_ratio=body.aspect_ratio,
-            budget_usd=body.budget_usd,
-            style=concept.style or "cinematic",
-            locked_shot_list=rec["shot_list"],
-            character_voices=character_voices or None,
-            shot_character_refs=shot_character_refs or None,
-        )
+        task = await svc.create_task(**create_kwargs)
     except CostLimitExceeded as e:
         raise HTTPException(status_code=402, detail=str(e)) from e
     except ValueError as e:

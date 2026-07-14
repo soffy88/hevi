@@ -79,6 +79,8 @@ export interface TaskInfo {
   percent: number;
   stage?: string;
   created_at?: string;
+  error?: string | null;
+  result_video_path?: string | null;
 }
 
 // 质量档(文档 1.9)

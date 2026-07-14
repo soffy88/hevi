@@ -7,12 +7,16 @@
  */
 'use client';
 
-import { useState } from 'react';
-import { directorPipelineApi } from '@/lib/api-client';
+import { useEffect, useState } from 'react';
+import { directorPipelineApi, taskApi } from '@/lib/api-client';
 import type {
   DpConcept, DpScreenplay, DpScreenplayScene, DpDesignList, DpDesignCharacter, DpDesignScene,
-  DpDesignProp, DpShotList, DpShotListItem, DpWork,
+  DpDesignProp, DpShotList, DpShotListItem, DpWork, TaskInfo,
 } from '@/types/api';
+
+const TASK_STATUS_LABEL: Record<string, string> = {
+  pending: '排队中…', running: '生成中…', paused: '已暂停', failed: '✗ 生成失败', completed: '✓ 已完成',
+};
 
 const STAGE_LABELS = ['①立意', '②剧本', '③设计清单', '④分镜'] as const;
 
@@ -44,6 +48,28 @@ export function DirectorPipelineConsole() {
   const [work, setWork] = useState<DpWork | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null);
+
+  // produce() 只是把生成任务建好排进队列,不代表视频已经生成完——之前这里一看到
+  // video_task_id 就显示"✓ 已产集",用户会误以为片子已经出来了。真实状态得轮询
+  // /api/tasks/{id}(同 taskApi.get,主线现有能力),直到 completed/failed 才算数。
+  useEffect(() => {
+    const taskId = work?.video_task_id;
+    if (!taskId) { setTaskInfo(null); return; }
+    let cancelled = false;
+    async function poll() {
+      try {
+        const t = await taskApi.get(taskId as string);
+        if (!cancelled) setTaskInfo(t);
+        if (!cancelled && (t.status === 'completed' || t.status === 'failed')) return;
+        if (!cancelled) timer = setTimeout(poll, 4000);
+      } catch {
+        if (!cancelled) timer = setTimeout(poll, 4000);
+      }
+    }
+    let timer: ReturnType<typeof setTimeout> = setTimeout(poll, 0);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [work?.video_task_id]);
 
   // 每级各自一份编辑态草稿,切到该级时从 work 同步(见 syncDrafts)。
   const [conceptDraft, setConceptDraft] = useState<DpConcept | null>(null);
@@ -229,8 +255,14 @@ export function DirectorPipelineConsole() {
       {work && producing && (
         <div className="tj-progress">
           <div className="tj-progress__head">
-            <span className="tj-run-badge tj-run-badge--completed">
-              {work.video_task_id ? '✓ 已产集' : '📝 分镜已锁定，可以产集'}
+            <span
+              className={`tj-run-badge ${taskInfo?.status === 'failed' ? 'tj-run-badge--failed' : taskInfo?.status === 'completed' ? 'tj-run-badge--completed' : 'tj-run-badge--running'}`}
+            >
+              {!work.video_task_id
+                ? '📝 分镜已锁定，可以产集'
+                : taskInfo
+                  ? `${TASK_STATUS_LABEL[taskInfo.status] ?? taskInfo.status}${taskInfo.status === 'running' ? `（${Math.round(taskInfo.percent)}%）` : ''}`
+                  : '查询进度中…'}
             </span>
           </div>
           {!work.video_task_id && (
@@ -279,8 +311,14 @@ export function DirectorPipelineConsole() {
               </div>
             </>
           )}
-          {work.video_task_id && (
-            <p className="tj-hint">任务 ID: {work.video_task_id}，请在「我的」页查看生成进度。</p>
+          {work.video_task_id && taskInfo?.status === 'failed' && (
+            <p className="tj-err">生成失败：{taskInfo.error || '未知错误'}</p>
+          )}
+          {work.video_task_id && taskInfo?.status === 'completed' && (
+            <video className="dp-result-video" controls src={taskApi.videoUrl(work.video_task_id)} />
+          )}
+          {work.video_task_id && taskInfo?.status !== 'completed' && (
+            <p className="tj-hint">任务 ID: {work.video_task_id}，也可在「我的」页查看生成进度。</p>
           )}
           <div className="tj-actions">
             <button type="button" className="tj-btn" onClick={reset}>+ 再建一部</button>

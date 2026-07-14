@@ -933,6 +933,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .dp-dialogue-row__text { flex: 1; }
 .dp-dialogue-row input { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--background); color: inherit; font-size: var(--text-sm); }
 .dp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.dp-result-video { width: 100%; max-width: 420px; border-radius: 10px; margin-top: 12px; display: block; }
 
 /* ── 自媒体解说短视频控制台(hevi.explainer)── 同 .tj- 结构,换个色系区分产品线 */
 .hevi-explainer-page { min-height: calc(100vh - 56px); background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklch, oklch(0.35 0.08 80) 30%, transparent), transparent); }
