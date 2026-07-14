@@ -316,7 +316,10 @@ async def test_produce_rejected_before_shot_list_locked():
 
 
 @pytest.mark.asyncio
-async def test_produce_builds_task_and_threads_locked_shot_list_and_voices():
+async def test_produce_schedules_tongjian_render_with_voices_and_refs():
+    """产集不走通用长视频管线(orchestrate_longvideo),改后台跑通鉴对白+口型管线
+    (_run_director_via_tongjian)。验证:create_task 只用于建行/计费(不 submit_task),
+    后台任务拿到按角色分配的不同音色 + 角色参考图。"""
     from fastapi import BackgroundTasks
 
     work_id = str(uuid.uuid4())
@@ -332,7 +335,6 @@ async def test_produce_builds_task_and_threads_locked_shot_list_and_voices():
     task_id = uuid.uuid4()
     svc = AsyncMock()
     svc.create_task.return_value = {"id": task_id, "status": "pending"}
-    svc.submit_task.return_value = {"status": "queued"}
 
     subject_svc = AsyncMock()
     subject_svc.get_subject.return_value = {"reference_images": ["output/subj-zhibo/ref.png"]}
@@ -342,16 +344,20 @@ async def test_produce_builds_task_and_threads_locked_shot_list_and_voices():
 
     assert resp["status"] == "producing"
     assert resp["video_task_id"] == str(task_id)
+    svc.submit_task.assert_not_awaited()  # 明确不走 orchestrate_longvideo 执行路径
+
+    # create_task 建行/计费用真实的数字人 provider 估价
     call_kwargs = svc.create_task.await_args.kwargs
-    assert call_kwargs["locked_shot_list"] == rec["shot_list"]
-    # 智伯显式锁了 voice_id → 原样用;韩康子没锁 → _assign_character_voices 自动分到
-    # 另一个不同的男声(治"对话也像旁白——所有人一个声音")。两人音色必须不同。
-    cv = call_kwargs["character_voices"]
+    assert call_kwargs["video_provider"] == "happyhorse_1_1_maas_lock"
+
+    # 后台调度了通鉴渲染,且拿到了正确的音色映射 + 角色参考图
+    assert len(bg.tasks) == 1
+    bt = bg.tasks[0]
+    assert bt.func is dp._run_director_via_tongjian
+    cv = bt.kwargs["voice_by_speaker"]
     assert cv["智伯"] == "zh_male_deep"
-    assert cv["韩康子"] and cv["韩康子"] != cv["智伯"]
-    # shot 0 出场"智伯"和"韩康子",只有智伯锁了 subject_id → 只解析出智伯这一个参考图。
-    assert call_kwargs["shot_character_refs"] == {0: ["output/subj-zhibo/ref.png"]}
-    assert "budget_usd" not in call_kwargs  # 留空不传,让下游 LongVideoConfig 默认值生效
+    assert cv["韩康子"] and cv["韩康子"] != cv["智伯"]  # 同性别不同角色 → 不同音色
+    assert bt.kwargs["subject_ref_paths"] == {"智伯": "output/subj-zhibo/ref.png"}
 
 
 @pytest.mark.asyncio

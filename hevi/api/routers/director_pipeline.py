@@ -49,10 +49,12 @@ from hevi.director.pipeline_schemas import (
 )
 from hevi.director.screenplay import generate_screenplay_draft
 from hevi.director.shot_list import generate_shot_list_draft
+from hevi.director.tongjian_render import render_director_episode
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
+from hevi.video.duration_mapper import get_duration_config
 
 logger = logging.getLogger(__name__)
 
@@ -571,6 +573,105 @@ async def _resolve_shot_character_refs(
     return out
 
 
+async def _resolve_subject_ref_paths(
+    design_list: DesignList, *, subject_svc: SubjectService
+) -> dict[str, str]:
+    """角色名 → 设计清单锁定时建的参考图路径(数字人 keyframe 的脸从这来)。查不到的角色
+    静默跳过(scene_render_avatar 侧对没有 ref_image 的角色有兜底)。"""
+    out: dict[str, str] = {}
+    for c in design_list.characters:
+        if not c.name or not c.subject_id:
+            continue
+        try:
+            subj = await subject_svc.get_subject(c.subject_id)
+        except Exception as e:
+            logger.warning("解析角色 %s 参考图失败: %s", c.name, e)
+            continue
+        refs = (subj or {}).get("reference_images") or []
+        if refs:
+            out[c.name] = refs[0]
+    return out
+
+
+async def _run_director_via_tongjian(
+    *,
+    task_repo: TaskRepository,
+    task_id: Any,
+    shot_list: ShotList,
+    design_list: DesignList,
+    concept: Concept,
+    subject_ref_paths: dict[str, str],
+    voice_by_speaker: dict[str, str],
+    aspect_ratio: str,
+    target_duration_sec: int,
+) -> None:
+    """后台真实生成:导演锁定内容 → 通鉴对白+口型管线(render_director_episode)。
+    直接更新 video_tasks/shot_states,复用前端既有 taskApi.videoUrl/shots(零改动)。
+    镜像 shortdrama._run_episode_via_tongjian 的落库方式。"""
+    await task_repo.update_task(
+        task_id, {"status": "running", "updated_at": datetime.now(UTC).replace(tzinfo=None)}
+    )
+    try:
+        result = await render_director_episode(
+            shot_list=shot_list,
+            design_list=design_list,
+            concept=concept,
+            run_dir=Path("output/tasks") / str(task_id),
+            subject_ref_paths=subject_ref_paths,
+            voice_by_speaker=voice_by_speaker,
+            aspect_ratio=aspect_ratio,
+            target_duration_sec=target_duration_sec,
+        )
+        final_video = result["final_video"]
+        shots = result["shots"]
+        task = await task_repo.get_task(task_id)
+        config_json = dict((task or {}).get("config_json") or {})
+        config_json["actual_usd"] = config_json.get("estimated_usd", 0.0)
+        await task_repo.update_task(
+            task_id,
+            {
+                "status": "completed",
+                "progress_pct": 100.0,
+                "result_video_path": final_video.video_path,
+                "total_shots": len(shots),
+                "completed_shots": len(shots),
+                "error": None,
+                "config_json": config_json,
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+        await task_repo.delete_shots(task_id)
+        for shot in shots:
+            await task_repo.create_shot_state(
+                {
+                    "task_id": task_id,
+                    "shot_index": shot["index"],
+                    "status": "completed" if shot["passed"] else "failed",
+                    "output_path": shot["path"],
+                    "selection_json": {
+                        "provider": shot["provider"],
+                        "consistency_score": shot["consistency_score"],
+                        "passed": shot["passed"],
+                        "diagnosis_category": shot["diagnosis_category"],
+                        "retry_count": shot["retry_count"],
+                    },
+                }
+            )
+        logger.info(
+            "director-pipeline task %s 渲染完成(通鉴口型管线): %s", task_id, final_video.video_path
+        )
+    except Exception as e:
+        logger.exception("director-pipeline task %s 渲染失败(通鉴口型管线): %s", task_id, e)
+        await task_repo.update_task(
+            task_id,
+            {
+                "status": "failed",
+                "error": str(e)[:500],
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+
+
 @router.post("/works/{work_id}/produce")
 async def produce_work(
     work_id: str,
@@ -587,33 +688,30 @@ async def produce_work(
     design_list = DesignList.model_validate(rec["design_list"])
     concept = Concept.model_validate(rec["concept"])
 
-    # character_voices:DesignList 锁定的角色声线映射,直接用角色名当 key——
-    # orchestrator 侧的 _locked_script_fn 用 ShotListDialogueLine.character_name
-    # 原样当 SpeakerLine.speaker_id(见 hevi/pipeline/longvideo_orchestrator.py),
-    # 两边用同一个字符串,不引入"角色顺序索引"这种需要两处保持一致的隐式约定。
+    # 每个角色一个不同音色(治"对话也像旁白");用角色名当 key,通鉴 voice_by_speaker
+    # 也是按 speaker(=角色名)查。
     character_voices = _assign_character_voices(design_list)
-    shot_character_refs = await _resolve_shot_character_refs(
-        rec["shot_list"], design_list, subject_svc=subject_svc
-    )
+    # 角色名 → 设计清单锁定的参考图(数字人 keyframe 的脸)。
+    subject_ref_paths = await _resolve_subject_ref_paths(design_list, subject_svc=subject_svc)
+    shot_list = ShotList.model_validate(rec["shot_list"])
+    duration_cfg = get_duration_config(concept.duration_archetype)
 
-    # budget_usd 不填(前端留空传 None)不能原样透传——create_task 把它整个塞进
-    # config_json,worker 起 LongVideoConfig(**config_json) 时字面 budget_usd=None
-    # 会覆盖掉 omodul.BaseConfig 的 budget_usd: float = 5.0 默认值,Pydantic 拒绝
-    # None(要求非空 float),线上已实测产集刚起步就整任务 failed(用户完全看不到
-    # 任何报错,流水线那边只显示"已产集"就没下文了)。None 就不传这个 key,让
-    # 下游默认值生效。
+    # create_task 只用来:建 video_tasks 行 + 预算熔断 + 积分预留(计费一致性)。真正的
+    # 生成不走 submit_task/run_task(那条是通用长视频管线 orchestrate_longvideo——把全片
+    # 对白拼一条轨、镜头拉伸去填,对白跟画面对不上、看不到说话人,2026-07-14 用户实测
+    # 弃用),改成后台跑 render_director_episode(通鉴对白+口型管线)。budget_usd 留空
+    # 不透传(见历史注释:None 会撞下游 Pydantic float 校验)。
     create_kwargs: dict[str, Any] = {
         "topic": concept.theme or rec["material_text"][:200],
         "duration_archetype": concept.duration_archetype,
-        "video_provider": body.video_provider,
-        "audio_provider": body.audio_provider,
+        "video_provider": "happyhorse_1_1_maas_lock",  # 数字人管线的真实 provider,计费按它估
+        "audio_provider": "edge_tts",
         "user_id": str(user["id"]),
         "quality_profile": body.quality_profile,
         "aspect_ratio": body.aspect_ratio,
         "style": concept.style or "cinematic",
         "locked_shot_list": rec["shot_list"],
         "character_voices": character_voices or None,
-        "shot_character_refs": shot_character_refs or None,
     }
     if body.budget_usd is not None:
         create_kwargs["budget_usd"] = body.budget_usd
@@ -637,14 +735,20 @@ async def produce_work(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     task_id = task["id"]
-    # 跟 director.py::director_create_episode 同一惯例:submit_task 内部区分本地/云端
-    # provider——本地档已经被 enqueue 到 worker 队列,不需要(也不能)再额外 add_task,
-    # 否则本地任务会被跑两次。
-    sub = await svc.submit_task(task_id)
-    if sub.get("status") != "queued":
-        background_tasks.add_task(svc.run_task_background, task_id)
+    background_tasks.add_task(
+        _run_director_via_tongjian,
+        task_repo=svc.repository,
+        task_id=task_id,
+        shot_list=shot_list,
+        design_list=design_list,
+        concept=concept,
+        subject_ref_paths=subject_ref_paths,
+        voice_by_speaker=character_voices,
+        aspect_ratio=body.aspect_ratio,
+        target_duration_sec=int(duration_cfg["target_s"]),
+    )
 
     rec["video_task_id"] = str(task_id)
     rec["status"] = "producing"
-    logger.info("director-pipeline work %s → task %s 产集", work_id, task_id)
+    logger.info("director-pipeline work %s → task %s 产集(通鉴口型管线)", work_id, task_id)
     return _work_status(rec)
