@@ -57,7 +57,18 @@ def _resolve_llm(llm: Any) -> Any:
 
 
 async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
-    resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+    # qwen_cloud/dashscope 适配器(hevi/providers/registry.py:_SyncLLMAdapter)在构造时就
+    # 同步发出 HTTP 请求(不是真正的 async I/O)——`await llm(...)` 挡不住它,会把单线程
+    # event loop 整个卡住到那次调用返回为止。这是本函数上一版并发化"名不副实"的根因:
+    # generate_shot_list_draft 用 asyncio.gather 逐场发起调用,但只要 event loop 被卡住,
+    # 所有 gather 出去的 task 依然只能一个个排队跑,总耗时=场数×单次调用耗时,场次一多
+    # 照样堆到反向代理超时(甚至比超时更糟——曾实测卡满 8×120s 单次超时上限,挂起 16
+    # 分钟没有任何响应)。把"构造 llm(...)"这一步扔进线程池,才是真并发。
+    def _invoke() -> Any:
+        return llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+
+    obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
+    resp = await obj if hasattr(obj, "__await__") else obj
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
     m = re.search(r"\{.*\}", content, re.DOTALL)
     if not m:

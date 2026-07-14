@@ -6,6 +6,7 @@ G1 阶段"够用即可"(生成质量专项是 SPEC-003 §6 阶段2),复用 hevi/
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -30,7 +31,15 @@ _CONCEPT_PROMPT = """根据下面的素材,提炼视频立意,只输出 JSON:
 
 
 async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
-    resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
+    # qwen_cloud/dashscope 适配器(hevi/providers/registry.py:_SyncLLMAdapter)在构造时就
+    # 同步发出 HTTP 请求(不是真正的 async I/O),`await llm(...)` 挡不住它——会把单线程
+    # event loop 整个卡住到那次调用返回为止。这里把"构造 llm(...)"这一步扔进线程池,让
+    # 真正的并发(asyncio.gather 逐场调用 shot-list LLM)名副其实,而不是排队串行。
+    def _invoke() -> Any:
+        return llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
+
+    obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
+    resp = await obj if hasattr(obj, "__await__") else obj
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
     m = re.search(r"\{.*\}", content, re.DOTALL)
     if not m:

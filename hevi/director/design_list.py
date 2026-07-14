@@ -7,6 +7,7 @@ Subject 资产)。**这里只产出草稿,不建 Subject——建 Subject 是锁
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -49,7 +50,13 @@ def _screenplay_to_text(screenplay: Screenplay) -> str:
 
 
 async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
-    resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+    # 见 concept.py 同名函数注释:qwen_cloud 适配器构造时同步发 HTTP 请求,不放线程池
+    # 会把单线程 event loop 卡住到调用返回为止。
+    def _invoke() -> Any:
+        return llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+
+    obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
+    resp = await obj if hasattr(obj, "__await__") else obj
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
     m = re.search(r"\{.*\}", content, re.DOTALL)
     if not m:
