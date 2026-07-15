@@ -9,8 +9,8 @@
 #   DOCKER_BUILDKIT=1 docker compose -f deploy/docker-compose-cftunnel.yml up -d --build
 #
 # 隧道目标(交 Wiki cloudflared 配置):
-#   hevi-api : http://localhost:8201   →  https://api.hevi.uex.hk  (或路径路由 /api/*)
-#   hevi-web : http://localhost:3200   →  https://hevi.uex.hk
+#   hevi-api : http://localhost:8201   →  https://api.hevi.kanpan.co  (或路径路由 /api/*)
+#   hevi-web : http://localhost:3200   →  https://hevi.kanpan.co
 #   注: 8200 与 tide-api 冲突,已改用 8201(2026-07-02)
 
 name: hevi-cftunnel
@@ -37,7 +37,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-hevi}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-hevi1234}
       MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
-      CORS_ORIGINS: https://hevi.uex.hk
+      CORS_ORIGINS: https://hevi.kanpan.co
       VIBEVOICE_MODEL_DIR: /models/vibevoice-1.5b
       WAN2GP_DIR: /Wan2GP
       HEVI_LLM_PROVIDER: qwen_local
@@ -47,6 +47,14 @@ services:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro
       - /home/soffy/projects/hevi/output:/app/output
+      # 主机已有的 HF 缓存(含 openai/clip-vit-base-patch32)只读挂进来,让
+      # subjects/subject_embed.py 能算角色身份向量(local_files_only=True)——
+      # 治"人物存了但没向量资产化",同时启用角色一致性 CLIP 打分。
+      - /home/soffy/.cache/huggingface:/root/.cache/huggingface:ro
+      # SDXL base + IP-Adapter + fp16 VAE 权重(settings.sdxl_model_dir 默认路径),
+      # 让容器内 sdxl_local 关键帧引擎(engine="local")能加载模型在 GPU 上出锁脸/摆姿势
+      # 关键帧——不挂则 engine=local 找不到权重、退回云端 edit(免费额度墙)→ canon。
+      - /data/models/huggingface:/data/models/huggingface:ro
     ports:
       - "8201:8000"
     extra_hosts:
@@ -66,7 +74,7 @@ services:
       context: ../hevi-web
       dockerfile: ../deploy/Dockerfile.web
       args:
-        NEXT_PUBLIC_API_BASE: https://hevi.uex.hk
+        NEXT_PUBLIC_API_BASE: https://hevi.kanpan.co
         NEXT_PUBLIC_USE_MOCK: "false"
     restart: unless-stopped
     ports:

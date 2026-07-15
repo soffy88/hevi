@@ -1,5 +1,5 @@
 # hevi-vault — HEVI-SPEC-03 资产库(MinIO + pgvector-postgres),独立于 hevi-dev 的
-# 应用主库,不消费同一个 Postgres 实例(避免触碰已在服务 hevi.uex.hk 的 hevi-dev 栈)。
+# 应用主库,不消费同一个 Postgres 实例(避免触碰已在服务 hevi.kanpan.co 的 hevi-dev 栈)。
 # Usage: docker compose up -d --build
 
 name: hevi-vault
