@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { directorPipelineApi, taskApi } from '@/lib/api-client';
+import ShotPreparationPanel from './ShotPreparationPanel';
 import type {
   DpConcept, DpScreenplay, DpScreenplayScene, DpDesignList, DpDesignCharacter, DpDesignScene,
   DpDesignProp, DpShotList, DpShotListItem, DpWork, TaskInfo,
@@ -84,6 +85,8 @@ export function DirectorPipelineConsole() {
   const [qualityProfile, setQualityProfile] = useState('standard');
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [budgetUsd, setBudgetUsd] = useState<number | ''>('');
+  // INC-001 §L.2:准备台报上来的产集拦截项(提取后仍待确认的镜),非空则禁用产集按钮。
+  const [prepBlockers, setPrepBlockers] = useState<string[]>([]);
 
   function syncDrafts(w: DpWork) {
     setConceptDraft(w.concept);
@@ -268,6 +271,14 @@ export function DirectorPipelineConsole() {
           </div>
           {!work.video_task_id && (
             <>
+              {work.shot_list && work.design_list && (
+                <ShotPreparationPanel
+                  workId={work.work_id}
+                  shotList={work.shot_list}
+                  designList={work.design_list}
+                  onBlockersChange={setPrepBlockers}
+                />
+              )}
               <div className="tj-grid">
                 <label className="tj-field">
                   <span className="tj-field__label">视频引擎</span>
@@ -306,9 +317,17 @@ export function DirectorPipelineConsole() {
                 </label>
               </div>
               <div className="tj-actions">
-                <button type="button" className="tj-btn tj-btn--primary" onClick={produce} disabled={busy}>
+                <button
+                  type="button" className="tj-btn tj-btn--primary" onClick={produce}
+                  disabled={busy || prepBlockers.length > 0}
+                >
                   {busy ? '提交中…' : '⚠ 确认无误，开始真实生成'}
                 </button>
+                {prepBlockers.length > 0 && (
+                  <span className="tj-err">
+                    还有 {prepBlockers.length} 个镜头提取后未完成确认，先在准备台处理
+                  </span>
+                )}
               </div>
             </>
           )}

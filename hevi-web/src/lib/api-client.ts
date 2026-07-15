@@ -342,6 +342,7 @@ export const shortdramaApi = {
 // docs/specs/SPEC-003-mainline-director-pipeline.md。
 import type {
   DpConcept, DpScreenplay, DpDesignList, DpShotList, DpWork, DpProduceRequest,
+  DpPrepState, DpPrepMutation, DpPrepOverview,
 } from '@/types/api';
 export const directorPipelineApi = {
   createWork: (materialText: string, intentHint = '') =>
@@ -382,6 +383,27 @@ export const directorPipelineApi = {
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/produce`, {
       method: 'POST', body: JSON.stringify(body),
     }),
+  // ── INC-001 §A/§G/§I/§L 逐镜头准备台 ──
+  preparationOverview: (workId: string) =>
+    authedReq<DpPrepOverview>(`/api/director-pipeline/works/${workId}/preparation-overview`),
+  preparationState: (workId: string, shotId: string) =>
+    authedReq<DpPrepState>(
+      `/api/director-pipeline/works/${workId}/shots/${shotId}/preparation-state`),
+  extractShot: (workId: string, shotId: string) =>
+    authedReq<DpPrepMutation>(
+      `/api/director-pipeline/works/${workId}/shots/${shotId}/extract`, { method: 'POST' }),
+  confirmCandidate: (
+    workId: string, shotId: string, candidateId: string,
+    body: { kind: 'asset' | 'dialogue'; status: string;
+      linked_entity_id?: string | null; linked_dialog_line_id?: string | null },
+  ) =>
+    authedReq<DpPrepMutation>(
+      `/api/director-pipeline/works/${workId}/shots/${shotId}/candidates/${candidateId}/confirm`,
+      { method: 'POST', body: JSON.stringify(body) }),
+  setReadiness: (workId: string, shotId: string, skipExtraction: boolean) =>
+    authedReq<DpPrepMutation>(
+      `/api/director-pipeline/works/${workId}/shots/${shotId}/readiness`,
+      { method: 'PATCH', body: JSON.stringify({ skip_extraction: skipExtraction }) }),
 };
 
 // ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────

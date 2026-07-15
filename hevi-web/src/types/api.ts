@@ -673,6 +673,7 @@ export interface DpDesignList {
 export interface DpShotDialogueLine {
   character_name: string; // 空 = 旁白
   text: string;
+  target_name?: string; // INC-001 §H 对谁说 → eyeline
 }
 
 export interface DpShotBlocking {
@@ -693,10 +694,54 @@ export interface DpShotListItem {
   scene_name: string;
   prop_names: string[];
   duration_s: number;
+  action_beats?: string[]; // INC-001 §B 动作弧拍点
 }
 
 export interface DpShotList {
   shots: DpShotListItem[];
+}
+
+// ── INC-001 §A/§G/§I/§L 逐镜头准备台 ──────────────────────────────────────────
+export interface DpAssetCandidate {
+  id: string;
+  candidate_type: string; // character / scene / prop / costume
+  candidate_name: string;
+  candidate_status: string; // pending / linked / ignored
+  linked_entity_id: string | null;
+}
+export interface DpDialogueCandidate {
+  id: string;
+  line_index: number;
+  text: string;
+  speaker_name: string | null;
+  target_name: string | null; // §H
+  candidate_status: string; // pending / accepted / ignored
+  linked_dialog_line_id: string | null;
+}
+export interface DpPrepState {
+  shot_id: string;
+  status: string; // pending / ready
+  skip_extraction: boolean;
+  extracted: boolean;
+  assets_overview: DpAssetCandidate[];
+  dialogue_candidates: DpDialogueCandidate[];
+  saved_dialogue_lines: DpDialogueCandidate[];
+  pending_confirm_count: number;
+  ready_for_generation: boolean;
+}
+export interface DpPrepMutation {
+  action: string;
+  state: DpPrepState;
+}
+export interface DpPrepOverviewShot {
+  shot_id: string;
+  status: string;
+  extracted: boolean;
+  skip_extraction: boolean;
+}
+export interface DpPrepOverview {
+  shots: DpPrepOverviewShot[];
+  blockers: string[];
 }
 
 export type DpWorkStatus =
