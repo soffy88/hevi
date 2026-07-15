@@ -115,6 +115,35 @@ async def test_edit_retries_on_transient_403_then_succeeds(tmp_path, monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_edit_fails_fast_on_free_tier_quota_wall(tmp_path, monkeypatch):
+    """额度耗尽的 403(AllocationQuota.FreeTierOnly)不是瞬时限流,退避永远治不好。
+    必须**一次就抛**清晰错误(别每镜傻等 78s×N),提示去控制台关「仅免费额度」。"""
+    monkeypatch.setenv("ALIBABA_MAAS_API_KEY", "test-key")
+    monkeypatch.setenv("ALIBABA_MAAS_HOST", "test-host")
+    sleep = AsyncMock()
+    monkeypatch.setattr("hevi.image.qwen_image_service.asyncio.sleep", sleep)
+
+    img = tmp_path / "a.png"
+    img.write_bytes(b"fake-a")
+
+    quota_resp = MagicMock()
+    quota_resp.status_code = 403
+    quota_resp.text = '{"code":"AllocationQuota.FreeTierOnly","message":"free quota exhausted"}'
+    forbidden = MagicMock()
+    forbidden.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError("403", request=MagicMock(), response=quota_resp)
+    )
+    client = _fake_client(forbidden, _fake_response({}))
+    client.post = AsyncMock(return_value=forbidden)
+
+    with patch("httpx.AsyncClient", return_value=client):
+        with pytest.raises(QwenImageError, match="仅使用免费额度"):
+            await qwen_image_edit(image_path=img, instruction="x", output_path=tmp_path / "out.png")
+    assert client.post.await_count == 1  # 不重试
+    sleep.assert_not_awaited()  # 不退避空等
+
+
+@pytest.mark.asyncio
 async def test_edit_raises_after_exhausting_retries(tmp_path, monkeypatch):
     """持续 403(5 次退避后仍失败)→ 抛 QwenImageError,不静默返回。"""
     monkeypatch.setenv("ALIBABA_MAAS_API_KEY", "test-key")

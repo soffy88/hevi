@@ -56,7 +56,10 @@ async def _submit_with_retry(
     """MaaS 端点提交带指数退避重试。整集逐镜高频出关键帧(每镜 1-2 张 qwen-image-edit/
     generate)会间歇 403 Forbidden / 429 限流,隔几十秒自恢复(实测直接重试即成功)。一次
     失败就抛出 → scene_render_avatar 整镜降级空镜 → 成片只剩零星几镜(用户实测"8 镜只出 1
-    镜、成片 6 秒")。5 次指数退避(~78s)够清瞬时限流。"""
+    镜、成片 6 秒")。5 次指数退避(~78s)够清瞬时限流。
+
+    但**额度/计费类 403 不是瞬时限流,退避永远治不好**(实测 qwen-image-edit 免费额度耗尽
+    后每镜傻等 78s×N 才失败)——识别到 AllocationQuota/FreeTierOnly 立刻抛清晰错误,不重试。"""
     last_err: Exception | None = None
     for attempt in range(5):
         try:
@@ -65,7 +68,14 @@ async def _submit_with_retry(
             return r
         except httpx.HTTPError as e:
             last_err = e
-            code = getattr(getattr(e, "response", None), "status_code", None)
+            resp = getattr(e, "response", None)
+            code = getattr(resp, "status_code", None)
+            body = str(getattr(resp, "text", "") or "")
+            if "AllocationQuota" in body or "FreeTierOnly" in body:
+                raise QwenImageError(
+                    f"{label} 免费额度已用尽:需在阿里云百炼控制台关闭「仅使用免费额度」模式"
+                    f"(或为该模型开通付费)。退避重试无用,已快速失败。原始响应: {body[:200]}"
+                ) from e
             if attempt == 4:
                 break
             wait = min(30, 4 * (2**attempt))
