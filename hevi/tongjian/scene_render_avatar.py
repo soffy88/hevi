@@ -432,6 +432,8 @@ async def _edit_keyframe(
     # 1. 本地 sdxl_local(IP-Adapter 锁脸 + 任意姿势/构图)—— 仅 local 引擎且备好本地素材时
     if engine == "local" and local_prompt and ip_adapter_image and Path(ip_adapter_image).exists():
         try:
+            # 每帧独立子进程:冷启动加载 SDXL+IP-Adapter+VAE(~90s)再出图(~60s),约 137s/帧。
+            # worker 超时是模块常量 _SDXL_TIMEOUT_S=600s,够;离线加载见 sdxl_local_service。
             await sdxl_local_generate(
                 prompt=local_prompt,
                 output_path=output_path,

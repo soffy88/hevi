@@ -242,7 +242,16 @@ async def _run_batch_worker(
             sys.executable,
             str(_BATCH_WORKER_SCRIPT),
             str(task_json),
-            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            # 离线加载:所有权重已在 settings.sdxl_model_dir 缓存(SDXL base+VAE+IP-Adapter
+            # 含其 CLIP-ViT-H image_encoder)。不设离线标志时,无网环境(生产容器连不上
+            # huggingface.co)下 diffusers 仍会联网校验 revision 而无限卡住,直到 worker
+            # 600s 超时被杀(实测容器内 IP-Adapter 关键帧即撞)。离线后容器内 137s 正常出图。
+            env={
+                **os.environ,
+                "PYTHONUNBUFFERED": "1",
+                "HF_HUB_OFFLINE": "1",
+                "TRANSFORMERS_OFFLINE": "1",
+            },
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -307,7 +316,16 @@ async def _run_worker(**task: Any) -> None:
             sys.executable,
             str(_WORKER_SCRIPT),
             str(task_json),
-            env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            # 离线加载:所有权重已在 settings.sdxl_model_dir 缓存(SDXL base+VAE+IP-Adapter
+            # 含其 CLIP-ViT-H image_encoder)。不设离线标志时,无网环境(生产容器连不上
+            # huggingface.co)下 diffusers 仍会联网校验 revision 而无限卡住,直到 worker
+            # 600s 超时被杀(实测容器内 IP-Adapter 关键帧即撞)。离线后容器内 137s 正常出图。
+            env={
+                **os.environ,
+                "PYTHONUNBUFFERED": "1",
+                "HF_HUB_OFFLINE": "1",
+                "TRANSFORMERS_OFFLINE": "1",
+            },
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
