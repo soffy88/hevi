@@ -56,11 +56,19 @@ class Settings(BaseSettings):
     cost_limit_per_task_usd: float = 50.0
     max_duration_per_task_s: float = 3600.0
     credits_per_usd: int = 100
+    # 三层预算熔断第3层(HEVI 路线图 Phase1 #30):全局每日聚合上限,跟 cost_limit_per_task_usd
+    # (单任务)、用户 credit 余额(BillingService)是独立的三层。None = 未配置,不做这层检查
+    # (向后兼容——不是每个部署都想开,具体额度没有客观默认值,需要显式配置才生效)。
+    daily_budget_usd: float | None = None
 
     # L3 体检闭环(§7-4):确定性体检/评分卡不及格 → 定向返工的封顶轮数(0=关,只 log 不返工)。
     # 只在不合格时触发,合格片零额外开销;可用 task config_json["auto_rework_rounds"] 覆盖。
     auto_rework_max_rounds: int = 1
     rework_consistency_floor: float = 0.75
+    # 设计文档 §4.3:单个镜头的重试次数硬上限——跟 auto_rework_max_rounds(整任务返工
+    # 轮数)是两个维度:一轮返工可能同时点名好几个镜头,这个上限管的是"这一个镜头"
+    # 累计被重烧了几次,超限即视为该镜头降级交付,不再消耗算力空转。
+    shot_retry_max: int = 3
 
     # Paddle
     paddle_api_key: str | None = None

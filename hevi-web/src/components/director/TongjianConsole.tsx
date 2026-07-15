@@ -6,7 +6,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { tongjianApi } from '@/lib/api-client';
+import { syncAuthToken } from '@/lib/auth-store';
 import type { TongjianRunStatus } from '@/types/api';
+import { ScriptReviewPanel } from './ScriptReviewPanel';
 
 const LAYER_LABELS: Record<string, string> = {
   L0: '史料预处理',
@@ -36,7 +38,20 @@ const STATUS_CLASS: Record<string, string> = {
   FAILED: 'tj-layer--failed',
 };
 
+// L6 画面风格预设(仅 cloud_avatar 模式生效)。prompt="" 代表留空,交给后端默认风格。
+// 2026-07-13:默认从国画水墨换成卡通动画——水墨是成年观众取向,小孩不喜欢。
+const STYLE_PRESETS: { value: string; label: string; prompt: string }[] = [
+  { value: 'cartoon', label: '卡通动画（默认/现代儿童向）', prompt: '' },
+  { value: 'ink', label: '国画水墨（成人向）',
+    prompt: '国画水墨写意人物画,单色水墨,写意笔触,宣纸质感' },
+];
+
 const DEMO_TEXTS: { label: string; source: string; text: string }[] = [
+  {
+    label: '周纪一·智宣子立嗣（智果识人）',
+    source: '资治通鉴·周纪一',
+    text: `智宣子将以瑶为后。智果曰："不如宵也。瑶之贤于人者五，其不逮者一也。美鬓长大则贤，射御足力则贤，伎艺毕给则贤，巧文辩惠则贤，强毅果敢则贤；如是而甚不仁。夫以其五贤陵人，而以不仁行之，其谁能待之？若果立瑶也，智宗必灭。"弗听。智果别族于太史为辅氏。`,
+  },
   {
     label: '周纪一·三家分晋',
     source: '资治通鉴·周纪一',
@@ -53,11 +68,47 @@ export function TongjianConsole() {
   const [rawText, setRawText] = useState('');
   const [targetDuration, setTargetDuration] = useState(180);
   const [aspectRatio, setAspectRatio] = useState('16:9');
+  // L6 渲染模式(可选模型):cloud_avatar=云 happyhorse 数字人(配音+口型) / sdxl_local=本地静帧
+  const [renderMode, setRenderMode] = useState('cloud_avatar');
+  // 逐层常用参数(接进后端 layer_config.params)
+  const [candidateN, setCandidateN] = useState(3);       // L1 立意候选数
+  const [dramatize, setDramatize] = useState(true);      // L2 戏剧化改编(为无引语事件创作对白)
+  const [reviewMode, setReviewMode] = useState(true);    // 剧本出来后先人工审核(pause_after=L2)
+  const [resolution, setResolution] = useState('720P');  // L6 画面分辨率
+  const [inkStyle, setInkStyle] = useState('');          // L6 水墨风格词(空=默认)
+  const [sayCharSec, setSayCharSec] = useState(0.32);    // L6 语速(每字秒)
+  const [narrTone, setNarrTone] = useState('沉稳');       // L6 旁白语气
+  // 高级:逐层 {model,params} 覆盖(JSON),补充上面没覆盖的层/参数。
+  const [layerConfigJson, setLayerConfigJson] = useState('');
   const [busy, setBusy] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
   const [status, setStatus] = useState<TongjianRunStatus | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // run 状态存在后端(内存/DB),刷新页面只是丢了前端 state——挂载时找回仍在跑的 run,
+  // 否则用户一刷新就以为流水线被中断了(其实后端还在跑,只是前端没了引用)。
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // AuthProvider 也在自己的 useEffect 里做这件事,但子组件的 effect 比父组件先跑,
+        // 这里不能赌 AuthProvider 已经把 token 同步进 api-client——自己同步一遍(幂等)。
+        syncAuthToken();
+        const runs = await tongjianApi.listRuns();
+        const active = runs.find(
+          r => r.status === 'RUNNING' || r.status === 'PENDING' || r.status === 'AWAITING_REVIEW'
+        );
+        if (active && !cancelled) {
+          setStatus(active);
+          setRunId(active.run_id);
+        }
+      } catch {
+        // 静默:找回失败不影响正常"新建一次"流程
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // 轮询进度
   useEffect(() => {
@@ -89,16 +140,42 @@ export function TongjianConsole() {
     setErr(null);
     setBusy(true);
     setStatus(null);
+    // 组装逐层配置:渲染模式 → L6.model;表单参数 → L1/L6.params;高级 JSON 再覆盖/补充。
+    let layerConfig: Record<string, { model?: string | null; params?: Record<string, unknown> }> = {};
+    if (renderMode) layerConfig.L6 = { model: renderMode };
+    layerConfig.L1 = { ...(layerConfig.L1 || {}), params: { n: candidateN } };
+    layerConfig.L2 = { ...(layerConfig.L2 || {}), params: { dramatize } };
+    const l6params: Record<string, unknown> = {
+      resolution, say_char_sec: sayCharSec, narr_tone: narrTone,
+    };
+    if (inkStyle.trim()) l6params.style = inkStyle.trim();
+    layerConfig.L6 = { ...(layerConfig.L6 || {}), params: l6params };
+    if (layerConfigJson.trim()) {
+      try {
+        const adv = JSON.parse(layerConfigJson);
+        for (const [k, v] of Object.entries(adv as Record<string, { model?: string; params?: Record<string, unknown> }>)) {
+          layerConfig[k] = {
+            ...(layerConfig[k] || {}), ...v,
+            params: { ...(layerConfig[k]?.params || {}), ...(v.params || {}) },
+          };
+        }
+      } catch {
+        setErr('逐层参数 JSON 格式错误'); setBusy(false); return;
+      }
+    }
     try {
       const r = await tongjianApi.startRun({
         source_name: sourceName,
         raw_text: rawText,
         target_duration_sec: targetDuration,
         aspect_ratio: aspectRatio,
+        pause_after: reviewMode ? 'L2' : undefined,
+        layer_config: layerConfig,
       });
       setRunId(r.run_id);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : '出错了');
+      if (e instanceof Error && e.message === 'NOT_AUTHENTICATED') setErr('请先登录');
+      else setErr(e instanceof Error ? e.message : '出错了');
     } finally {
       setBusy(false);
     }
@@ -181,6 +258,79 @@ export function TongjianConsole() {
             </div>
           </div>
         </div>
+        <div className="tj-field">
+          <span className="tj-field__label">渲染模式（L6 可选模型）</span>
+          <div className="tj-seg">
+            <button type="button" data-on={renderMode === 'cloud_avatar' ? 'true' : undefined}
+              onClick={() => setRenderMode('cloud_avatar')}>云数字人（配音+口型）</button>
+            <button type="button" data-on={renderMode === 'sdxl_local' ? 'true' : undefined}
+              onClick={() => setRenderMode('sdxl_local')}>本地静帧</button>
+          </div>
+        </div>
+        <div className="tj-grid">
+          <label className="tj-field">
+            <span className="tj-field__label">立意候选数（L1 · 越多越优但更慢）</span>
+            <input type="number" min={1} max={5} step={1}
+              value={candidateN} onChange={e => setCandidateN(Number(e.target.value))} />
+          </label>
+          <div className="tj-field">
+            <span className="tj-field__label">画面分辨率（L6）</span>
+            <div className="tj-seg">
+              {(['480P', '720P', '1080P'] as const).map(r => (
+                <button type="button" key={r} data-on={resolution === r ? 'true' : undefined}
+                  onClick={() => setResolution(r)}>{r}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <label className="tj-field tj-field--check">
+          <input type="checkbox" checked={dramatize} onChange={e => setDramatize(e.target.checked)} />
+          <span className="tj-field__label">
+            戏剧化改编（L2 · 为原文无引语的事件创作时代口吻对白，出对峙戏剧；关闭则仅逐字引语成对白、其余纯旁白）
+          </span>
+        </label>
+        <label className="tj-field tj-field--check">
+          <input type="checkbox" checked={reviewMode} onChange={e => setReviewMode(e.target.checked)} />
+          <span className="tj-field__label">
+            剧本先人工审核（推荐 · 出立意+剧本后暂停，审核/编辑确认后再渲染，避免在错的剧本上白烧渲染时间）
+          </span>
+        </label>
+        <div className="tj-grid">
+          <label className="tj-field">
+            <span className="tj-field__label">语速（L6 · 每字秒 · 越大越慢）</span>
+            <input type="number" min={0.2} max={0.5} step={0.02}
+              value={sayCharSec} onChange={e => setSayCharSec(Number(e.target.value))} />
+          </label>
+          <label className="tj-field">
+            <span className="tj-field__label">旁白语气（L6）</span>
+            <input value={narrTone} onChange={e => setNarrTone(e.target.value)}
+              placeholder="沉稳 / 激昂 / 凝重 …" />
+          </label>
+        </div>
+        <div className="tj-field">
+          <span className="tj-field__label">
+            画面风格（L6 · 云数字人模式可切换；本地静帧固定水墨 LoRA，暂不支持）
+          </span>
+          <div className="tj-seg">
+            {STYLE_PRESETS.map(p => (
+              <button type="button" key={p.value} data-on={inkStyle === p.prompt ? 'true' : undefined}
+                disabled={renderMode === 'sdxl_local'}
+                onClick={() => setInkStyle(p.prompt)}>{p.label}</button>
+            ))}
+          </div>
+        </div>
+        <label className="tj-field">
+          <span className="tj-field__label">风格词（可留空用默认卡通动画，或从上面选预设，也可手写覆盖）</span>
+          <input value={inkStyle} onChange={e => setInkStyle(e.target.value)}
+            disabled={renderMode === 'sdxl_local'}
+            placeholder="现代卡通动画风格,鲜艳色彩,简洁线条,可爱插画风,3D渲染质感" />
+        </label>
+        <label className="tj-field">
+          <span className="tj-field__label">逐层参数（高级 · JSON · 可留空，再覆盖上面没含的层/参数）</span>
+          <textarea rows={2} value={layerConfigJson}
+            onChange={e => setLayerConfigJson(e.target.value)}
+            placeholder='{"L2":{"model":"qwen_cloud"},"L6":{"params":{"watermark":false}}}' />
+        </label>
       </section>
 
       {/* ── 启动按钮 ── */}
@@ -205,6 +355,7 @@ export function TongjianConsole() {
           <div className="tj-progress__head">
             <span className={`tj-run-badge tj-run-badge--${status.status.toLowerCase()}`}>
               {status.status === 'RUNNING' ? '⟳ 运行中' :
+               status.status === 'AWAITING_REVIEW' ? '📝 待人工审核' :
                status.status === 'COMPLETED' ? '✓ 已完成' :
                status.status === 'FAILED' ? '✗ 失败' : '待机'}
             </span>
@@ -231,17 +382,49 @@ export function TongjianConsole() {
                 <span className="tj-layer__name">{LAYER_LABELS[l.layer] ?? l.layer}</span>
                 {l.status === 'RUNNING' && <span className="tj-layer__spin" />}
                 {l.degraded && <span className="tj-chip tj-chip--warn">降级</span>}
+                {(() => {
+                  const gr = l.gate_report as { errors?: string[]; warnings?: string[] } | null;
+                  const items = [...(gr?.errors ?? []), ...(gr?.warnings ?? [])];
+                  return items.length > 0 ? (
+                    <span className="tj-chip tj-chip--warn" title={items.join('\n')}>
+                      门禁 {items.length} 项
+                    </span>
+                  ) : null;
+                })()}
                 {l.error && <span className="tj-layer__err" title={l.error}>！</span>}
               </div>
             ))}
           </div>
 
+          {/* 剧本人工审核台(卡在 L2) */}
+          {status.status === 'AWAITING_REVIEW' && runId && (
+            <ScriptReviewPanel
+              runId={runId}
+              onResumed={() => setStatus(s => (s ? { ...s, status: 'RUNNING', current_layer: 'L3' } : s))}
+            />
+          )}
+
           {/* 成片结果 */}
-          {status.status === 'COMPLETED' && status.result_video_path && (
+          {status.status === 'COMPLETED' && status.result_video_path && runId && (
             <div className="tj-result">
               <div className="tj-result__head">🎬 成片已完成</div>
+              <video
+                className="tj-result__video"
+                src={tongjianApi.videoUrl(runId)}
+                controls
+                playsInline
+                preload="metadata"
+              />
+              <div className="tj-result__actions">
+                <a
+                  className="oui-btn"
+                  href={tongjianApi.videoUrl(runId)}
+                  download={`tongjian_${runId.slice(0, 8)}.mp4`}
+                >
+                  ⬇ 下载成片
+                </a>
+              </div>
               <p className="tj-result__path">{status.result_video_path}</p>
-              <p className="tj-hint">成片已落盘，可在「我的」任务列表查看或下载。</p>
             </div>
           )}
 

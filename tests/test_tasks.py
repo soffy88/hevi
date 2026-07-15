@@ -1,5 +1,6 @@
 import json
 import uuid
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -139,7 +140,279 @@ async def test_run_task_success(task_service, repository):
             style="cinematic",
             progress_cb=ANY,  # SaaS-4:逐阶段进度回调随调用注入
             character_reference=ANY,  # 角色库:按 subject_id 解析的参考图(此处 None)
+            subject_version=ANY,  # shot_verdict 版本快照(此处 None,无 subject_id)
         )
+
+
+@pytest.mark.asyncio
+async def test_persist_shots_writes_verdict_extension_fields(task_service, repository):
+    """shot_verdict 扩展(HEVI 路线图 Phase1):_persist_shots 要把 result_mapper 补上的
+    style_score/diagnosis_category/subject 快照等字段原样带进 selection_json,不是只落
+    旧的 provider/consistency_score/passed/duration_s 五件套。"""
+    task_id = uuid.uuid4()
+    shots = [
+        {
+            "index": 0,
+            "path": "s0.mp4",
+            "provider": "wan_local",
+            "variant_chosen": 0,
+            "consistency_score": 0.9,
+            "passed": True,
+            "duration_s": 3.0,
+            "style_score": None,
+            "vlm_score": None,
+            "diagnosis_category": None,
+            "subject_id": "sub-1",
+            "subject_version": 2,
+            "style_pack_id": "pack-1",
+            "style_pack_version": 4,
+            "model_version": "wan_local",
+            "tier0_passed": True,
+            "tier1_passed": None,
+        }
+    ]
+    with patch.object(repository, "create_shot_state", new_callable=AsyncMock) as mock_create:
+        await task_service._persist_shots(task_id, shots)
+        mock_create.assert_called_once()
+        payload = mock_create.call_args.args[0]
+        sel = payload["selection_json"]
+        assert sel["subject_id"] == "sub-1"
+        assert sel["subject_version"] == 2
+        assert sel["style_pack_id"] == "pack-1"
+        assert sel["style_pack_version"] == 4
+        assert sel["tier0_passed"] is True
+        assert sel["tier1_passed"] is None
+        assert sel["retry_count"] == 0  # 未传入时默认 0(首次生成),不是 None
+
+
+@pytest.mark.asyncio
+async def test_regenerate_task_shots_increments_retry_count_only_for_regenerated(
+    task_service, repository
+):
+    """重试次数硬上限(设计文档 §4.3):regenerate 整片删旧落新,但 retry_count 要按
+    shot_index 从旧 shot_states 里读回来接着累加,本轮没点名的镜头保持原值不变。"""
+    task_id = uuid.uuid4()
+    task_data = {
+        "id": task_id,
+        "topic": "t",
+        "duration_archetype": "1-5min",
+        "video_provider": "wan_local",
+        "audio_provider": "vibevoice",
+        "config_json": {},
+        "status": "completed",
+    }
+    old_shots = [
+        {"shot_index": 0, "selection_json": {"retry_count": 1}},
+        {"shot_index": 1, "selection_json": {"retry_count": 0}},
+    ]
+
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(repository, "get_shots", new_callable=AsyncMock, return_value=old_shots),
+        patch.object(repository, "delete_shots", new_callable=AsyncMock),
+        patch.object(repository, "create_shot_state", new_callable=AsyncMock) as mock_create,
+        patch.object(repository, "update_task", new_callable=AsyncMock),
+        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+    ):
+        mock_orch.return_value = {
+            "url": "v.mp4",
+            "shots": [
+                {"index": 0, "provider": "wan_local", "passed": True},
+                {"index": 1, "provider": "wan_local", "passed": True},
+            ],
+        }
+        await task_service.regenerate_task_shots(task_id, shot_ids=[0])
+
+        persisted = {
+            c.args[0]["shot_index"]: c.args[0]["selection_json"]["retry_count"]
+            for c in mock_create.call_args_list
+        }
+        assert persisted[0] == 2  # regenerated this round → 1 + 1
+        assert persisted[1] == 0  # untouched → carried over unchanged
+
+
+@pytest.mark.asyncio
+async def test_regenerate_task_shots_raises_when_all_requested_shots_at_retry_cap(
+    task_service, repository
+):
+    task_id = uuid.uuid4()
+    task_data = {"id": task_id, "status": "completed", "config_json": {}}
+    capped_shots = [{"shot_index": 0, "selection_json": {"retry_count": 3}}]
+
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(repository, "get_shots", new_callable=AsyncMock, return_value=capped_shots),
+        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+    ):
+        with pytest.raises(ValueError, match="retry cap"):
+            await task_service.regenerate_task_shots(task_id, shot_ids=[0])
+        mock_orch.assert_not_awaited()  # 到上限就不该再花算力
+
+
+@pytest.mark.asyncio
+async def test_regenerate_task_shots_skips_capped_shot_but_proceeds_with_others(
+    task_service, repository
+):
+    task_id = uuid.uuid4()
+    task_data = {
+        "id": task_id,
+        "topic": "t",
+        "duration_archetype": "1-5min",
+        "video_provider": "wan_local",
+        "audio_provider": "vibevoice",
+        "status": "completed",
+        "config_json": {},
+    }
+    mixed_shots = [
+        {"shot_index": 0, "selection_json": {"retry_count": 3}},  # 已到上限
+        {"shot_index": 1, "selection_json": {"retry_count": 0}},
+    ]
+
+    with (
+        patch.object(repository, "get_task", return_value=task_data),
+        patch.object(repository, "get_shots", new_callable=AsyncMock, return_value=mixed_shots),
+        patch.object(repository, "delete_shots", new_callable=AsyncMock),
+        patch.object(repository, "create_shot_state", new_callable=AsyncMock),
+        patch.object(repository, "update_task", new_callable=AsyncMock),
+        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+    ):
+        mock_orch.return_value = {"url": "v.mp4", "shots": [{"index": 1, "passed": True}]}
+        await task_service.regenerate_task_shots(task_id, shot_ids=[0, 1])
+        # 剔掉已到上限的 0,只把 1 传给 orchestrate。
+        assert mock_orch.call_args.kwargs["regenerate_shot_ids"] == [1]
+
+
+@pytest.mark.asyncio
+async def test_regenerate_endpoint_409_when_all_shots_at_retry_cap():
+    """fire-and-forget 端点:到上限这件事必须同步查完就 409,不能让请求看似成功、
+    实际后台任务里悄悄抛 ValueError 没人看到(设计文档 §4.3)。"""
+    from fastapi import BackgroundTasks
+
+    from hevi.api.routers.tasks import RegenerateRequest
+    from hevi.api.routers.tasks import regenerate_task_shots as regenerate_endpoint
+
+    task_id = uuid.uuid4()
+    svc = AsyncMock()
+    svc.repository.get_task.return_value = {"id": task_id, "user_id": "u1", "status": "completed"}
+    svc.repository.get_shots.return_value = [
+        {"shot_index": 0, "selection_json": {"retry_count": 3}}
+    ]
+    body = RegenerateRequest(shot_ids=[0], hints=None)
+
+    with pytest.raises(Exception) as ei:
+        await regenerate_endpoint(task_id, body, {"id": "u1"}, svc, BackgroundTasks())
+    assert getattr(ei.value, "status_code", None) == 409
+
+
+@pytest.mark.asyncio
+async def test_resolve_subject_version_returns_none_without_subject_id(task_service):
+    task = {"config_json": {}}
+    assert await task_service._resolve_subject_version(task) is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_subject_version_reads_subject_service(task_service):
+    task = {"config_json": {"subject_id": "sub-1"}}
+    with patch(
+        "hevi.subjects.subject_service.SubjectService.get_subject", new_callable=AsyncMock
+    ) as mock_get:
+        mock_get.return_value = {"id": "sub-1", "version": 7}
+        assert await task_service._resolve_subject_version(task) == 7
+
+
+@pytest.mark.asyncio
+async def test_resolve_subject_version_swallows_errors(task_service):
+    task = {"config_json": {"subject_id": "sub-1"}}
+    with patch(
+        "hevi.subjects.subject_service.SubjectService.get_subject", new_callable=AsyncMock
+    ) as mock_get:
+        mock_get.side_effect = RuntimeError("db down")
+        assert await task_service._resolve_subject_version(task) is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_character_reference_none_without_subject(task_service):
+    task = {"config_json": {}}
+    assert await task_service._resolve_character_reference(task) is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_character_reference_single_subject_unchanged(task_service):
+    """只绑 1 个角色(旧版单数 subject_id 或 character_subject_ids 长度为1)时直接返回
+    其参考图,不触发任何合成调用(多图融合只在 2+ 角色时才有意义)。"""
+    task = {"config_json": {"subject_id": "sub-1"}}
+    with (
+        patch(
+            "hevi.subjects.subject_service.SubjectService.get_subject", new_callable=AsyncMock
+        ) as mock_get,
+        patch("hevi.image.qwen_image_service.qwen_image_edit") as mock_edit,
+    ):
+        mock_get.return_value = {"id": "sub-1", "reference_images": ["ref1.png"]}
+        ref = await task_service._resolve_character_reference(task)
+        assert ref == "ref1.png"
+        mock_edit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resolve_character_reference_multi_subject_composes_roster(
+    task_service, tmp_path, monkeypatch
+):
+    """2+ 角色都有真实参考图 → 合成一张"角色总览图"当 character_reference,provider 侧
+    仍只吃一张图(director.py 的多身份锁脸修复)。"""
+    monkeypatch.chdir(tmp_path)
+    task_id = uuid.uuid4()
+    task = {"config_json": {"character_subject_ids": ["sub-a", "sub-b"]}}
+
+    async def fake_get_subject(sid):
+        return {"id": sid, "reference_images": [f"{sid}.png"]}
+
+    async def fake_qwen_edit(*, image_path, instruction, output_path, **_kw):
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"roster")
+        return output_path
+
+    with (
+        patch(
+            "hevi.subjects.subject_service.SubjectService.get_subject",
+            side_effect=fake_get_subject,
+        ),
+        patch(
+            "hevi.image.qwen_image_service.qwen_image_edit", side_effect=fake_qwen_edit
+        ) as mock_edit,
+    ):
+        ref = await task_service._resolve_character_reference(task, task_id=task_id)
+
+        assert mock_edit.call_count == 1
+        called_images = mock_edit.call_args.kwargs["image_path"]
+        assert [str(p) for p in called_images] == ["sub-a.png", "sub-b.png"]
+        assert ref == str(Path("output/tasks") / str(task_id) / "character_roster.png")
+
+
+@pytest.mark.asyncio
+async def test_resolve_character_reference_multi_subject_caches_roster(
+    task_service, tmp_path, monkeypatch
+):
+    """两次调用(run_task 里 routing 探测 + 实际生成各调一次)不重复付费合成。"""
+    monkeypatch.chdir(tmp_path)
+    task_id = uuid.uuid4()
+    task = {"config_json": {"character_subject_ids": ["sub-a", "sub-b"]}}
+    cache_path = Path("output/tasks") / str(task_id) / "character_roster.png"
+    cache_path.parent.mkdir(parents=True)
+    cache_path.write_bytes(b"cached")
+
+    async def fake_get_subject(sid):
+        return {"id": sid, "reference_images": [f"{sid}.png"]}
+
+    with (
+        patch(
+            "hevi.subjects.subject_service.SubjectService.get_subject",
+            side_effect=fake_get_subject,
+        ),
+        patch("hevi.image.qwen_image_service.qwen_image_edit") as mock_edit,
+    ):
+        ref = await task_service._resolve_character_reference(task, task_id=task_id)
+        assert ref == str(cache_path)
+        mock_edit.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -335,9 +608,7 @@ async def test_get_task_cover_serves_sidecar_jpg(tmp_path):
 
     repo = AsyncMock()
     repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
-    with patch(
-        "hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}
-    ):
+    with patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}):
         resp = await get_task_cover(uuid.uuid4(), repo, token="tok")
     assert resp.path == str(cover)
     assert resp.media_type == "image/jpeg"
@@ -391,7 +662,9 @@ async def test_export_task_video_mov_remuxes_via_exporter(tmp_path):
     repo.get_task.return_value = {"id": "t1", "user_id": "u1", "result_video_path": str(video)}
     with (
         patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}),
-        patch("hevi.assembly.exporter.export_video", new_callable=AsyncMock, side_effect=fake_export),
+        patch(
+            "hevi.assembly.exporter.export_video", new_callable=AsyncMock, side_effect=fake_export
+        ),
     ):
         resp = await export_task_video(uuid.uuid4(), repo, token="tok", format="mov")
     assert resp.path == str(video.with_suffix(".mov"))
@@ -477,6 +750,60 @@ async def test_dub_task_video_failure_returns_500(tmp_path):
     assert getattr(ei.value, "status_code", None) == 500
 
 
+# ── 连续性报告(HEVI 路线图 Phase3 #41)────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_continuity_report_aggregates_shots():
+    from hevi.api.routers.tasks import get_continuity_report
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "u1"}
+    repo.get_shots.return_value = [
+        {
+            "shot_index": 0,
+            "status": "completed",
+            "selection_json": {"passed": True, "consistency_score": 0.9, "provider": "wan_local"},
+        },
+        {
+            "shot_index": 1,
+            "status": "failed",
+            "selection_json": {
+                "passed": False,
+                "consistency_score": 0.2,
+                "diagnosis_category": "参考图角色错配",
+            },
+        },
+    ]
+    report = await get_continuity_report(uuid.uuid4(), {"id": "u1"}, repo)
+    assert report["summary"]["total_shots"] == 2
+    assert report["summary"]["passed_shots"] == 1
+    assert report["summary"]["diagnosis_breakdown"] == {"参考图角色错配": 1}
+
+
+@pytest.mark.asyncio
+async def test_get_continuity_report_404_for_missing_task():
+    from hevi.api.routers.tasks import get_continuity_report
+
+    repo = AsyncMock()
+    repo.get_task.return_value = None
+    with pytest.raises(Exception) as ei:
+        await get_continuity_report(uuid.uuid4(), {"id": "u1"}, repo)
+    assert getattr(ei.value, "status_code", None) == 404
+
+
+@pytest.mark.asyncio
+async def test_get_continuity_report_404_for_other_users_task():
+    from hevi.api.routers.tasks import get_continuity_report
+
+    repo = AsyncMock()
+    repo.get_task.return_value = {"id": "t1", "user_id": "someone-else"}
+    with pytest.raises(Exception) as ei:
+        await get_continuity_report(uuid.uuid4(), {"id": "u1"}, repo)
+    assert getattr(ei.value, "status_code", None) == 404
+
+
+@pytest.mark.asyncio
 async def test_list_task_shots_projects_shot_cards():
     from hevi.api.routers.tasks import list_task_shots
 
@@ -493,15 +820,24 @@ async def test_list_task_shots_projects_shot_cards():
             "shot_index": 1,
             "status": "failed",
             "output_path": None,
-            "selection_json": {"passed": False, "consistency_score": 0.2,
-                               "diagnosis_category": "参考图角色错配", "retry_count": 2},
+            "selection_json": {
+                "passed": False,
+                "consistency_score": 0.2,
+                "diagnosis_category": "参考图角色错配",
+                "retry_count": 2,
+            },
         },
     ]
     shots = await list_task_shots(uuid.uuid4(), {"id": "u1"}, repo)
     assert len(shots) == 2
     assert shots[0] == {
-        "shot_index": 0, "status": "completed", "has_output": True,
-        "consistency_score": 0.9, "passed": True, "diagnosis_category": None, "retry_count": 0,
+        "shot_index": 0,
+        "status": "completed",
+        "has_output": True,
+        "consistency_score": 0.9,
+        "passed": True,
+        "diagnosis_category": None,
+        "retry_count": 0,
     }
     assert shots[1]["has_output"] is False
     assert shots[1]["diagnosis_category"] == "参考图角色错配"

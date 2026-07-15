@@ -15,10 +15,12 @@ from hevi.api.routers.canvas import router as canvas_router  # noqa: E402
 from hevi.api.routers.creative import router as creative_router  # noqa: E402
 from hevi.api.routers.credits import router as credits_router  # noqa: E402
 from hevi.api.routers.director import router as director_router  # noqa: E402
+from hevi.api.routers.director_pipeline import router as director_pipeline_router  # noqa: E402
 from hevi.api.routers.explainer import router as explainer_router  # noqa: E402
 from hevi.api.routers.gallery import router as gallery_router  # noqa: E402
 from hevi.api.routers.payment import router as payment_router  # noqa: E402
 from hevi.api.routers.series import router as series_router  # noqa: E402
+from hevi.api.routers.shortdrama import router as shortdrama_router  # noqa: E402
 from hevi.api.routers.style import router as style_router  # noqa: E402
 from hevi.api.routers.subjects import router as subjects_router  # noqa: E402
 from hevi.api.routers.tasks import router as tasks_router  # noqa: E402
@@ -48,6 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     from hevi.credits.repository import CreditRepository
     from hevi.db.pg_pool import get_hevi_pg_pool
     from hevi.queue.worker import QueueWorker
+    from hevi.resilience.balance_prober import BalanceProber
     from hevi.tasks.repository import TaskRepository
     from hevi.tasks.task_service import TaskService
 
@@ -58,12 +61,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     worker = QueueWorker(svc, poll_interval=5.0)
     worker_task = asyncio.create_task(worker.run())
 
+    # 余额探针(HEVI 路线图 Phase1 #30):此前 refresh_fal_balance 写了但从没被调度过。
+    prober = BalanceProber(poll_interval=3600.0)
+    prober_task = asyncio.create_task(prober.run())
+
     yield
 
     worker.stop()
     worker_task.cancel()
     with suppress(asyncio.CancelledError):
         await worker_task
+
+    prober.stop()
+    prober_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await prober_task
 
 
 app = FastAPI(
@@ -98,7 +110,9 @@ app.include_router(audio_router, prefix="/api")
 app.include_router(series_router, prefix="/api")
 app.include_router(style_router, prefix="/api")
 app.include_router(director_router, prefix="/api")
+app.include_router(director_pipeline_router, prefix="/api")
 app.include_router(tongjian_router, prefix="/api")
+app.include_router(shortdrama_router, prefix="/api")
 app.include_router(explainer_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
 

@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict
 from typing import Annotated, Any
 
@@ -28,6 +29,7 @@ from hevi.director.graph_render import render_graph_episode
 from hevi.director.intent import parse_intent
 from hevi.director.planner import plan_from_text
 from hevi.director.producer import produce
+from hevi.prompt.ip_safety import rewrite_for_ip_safety
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 from hevi.tasks.repository import TaskRepository
@@ -35,6 +37,7 @@ from hevi.tasks.task_service import TaskService
 from hevi.video.presets import EXECUTION_PRESETS
 from hevi.video.quality_profile import get_quality_profile, resolve_resolution
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/director", tags=["director"])
 
 
@@ -63,7 +66,7 @@ class EpisodeRequest(BaseModel):
     genre: str | None = None  # 题材类型(剧情/科普/广告/vlog…)
     narrative_hook: str | None = None  # 叙事钩子:开场 3 秒抓手
     # ② 角色
-    character_subject_ids: list[str] = []  # 多角色绑定;首个用于 i2v 跨镜锁脸,其余仅入人设描述
+    character_subject_ids: list[str] = []  # 多角色绑定;2+人合成总览图统一锁脸(见 director.py)
     subject_id: str | None = None  # 兼容单角色写法(优先于 character_subject_ids[0])
     avatar_portrait: str | None = None  # 数字人肖像
     num_characters: int | None = None
@@ -76,9 +79,18 @@ class EpisodeRequest(BaseModel):
     prompt_lighting: str | None = None
     prompt_camera: str | None = None
     prompt_color_grade: str | None = None
+    # SPEC-002 B2:风格参考图(图路径/URL)。没手填上面 4 个文本字段时,自动用本地
+    # VL 拆解补空;若视频 provider 恰好是 happyhorse_1_1_maas_lock,额外做真实图片
+    # 条件化(该 provider 支持 2 张参考图)。见 orchestrate_longvideo 同名参数。
+    style_reference_image: str | None = None
     # ⑤ 分镜
     transition: str = "fade"
     per_shot_routing: bool = False
+    # SPEC-002 B3:每镜头首尾两张条件图。key 是分镜索引(字符串,JSON dict key 惯例),
+    # value 是 {"first_frame": 图路径/URL, "last_frame": 图路径/URL, "duration_s": 可选}。
+    # 命中的镜头绕开单图 i2v,走首尾帧生视频;其余镜头零影响。见 orchestrate_longvideo
+    # 同名参数(那边是 int key,这里转一次)。
+    shot_keyframes: dict[str, dict[str, str]] | None = None
     # ⑥ 音频
     language: str = "zh"
     audio_provider: str | None = None
@@ -87,6 +99,9 @@ class EpisodeRequest(BaseModel):
     voice_rate: str | None = None  # 旁白语速,仅 edge_tts 生效,如 "+15%"
     voice_pitch: str | None = None  # 旁白音高,仅 edge_tts 生效,如 "+2Hz"
     voice_name: str | None = None  # 旁白音色(见 edge_tts_custom.CURATED_VOICES),仅 edge_tts 生效
+    # SPEC-002 B1:开启后台词批量推断逐行情绪,驱动配音语速/音高逐行变化(与 tongjian
+    # 已验证效果对齐)。opt-in(涉及一次额外 LLM 调用),仅 audio_provider=edge_tts 生效。
+    emotion_aware_voiceover: bool = False
     # ⑦ 成片规格
     quality_profile: str = "standard"
     subtitle_style: str = "default"  # default/bold_yellow/large_white/compact
@@ -106,10 +121,15 @@ async def director_plan(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
     """预览:剧情文本 → 意图 + 可行性 plan + 分镜 prompts + 可执行 canvas 图(不建任务)。"""
+    from hevi.creative.assist_service import AssistService
+
     result = await plan_from_text(
         text=body.text,
         num_shots=body.num_shots,
         character_reference=body.character_reference,
+        # 创意工具动态编排(HEVI 路线图 Phase4 #45):给了 assist_service,
+        # Director 判断题材需要 three-view 时才会真的调用,不是每次预览都调。
+        assist_service=AssistService(),
     )
     return {**result, "plan": asdict(result["plan"])}
 
@@ -127,12 +147,16 @@ _ROSTER_META_LABELS: tuple[tuple[str, str], ...] = (
 async def _resolve_character_roster(
     pool: PgPool, subject_ids: list[str]
 ) -> tuple[str | None, str, dict[str, str], str]:
-    """多角色绑定 → (首个 id 供 i2v 锁脸, 人设 roster 文本供 topic 注入,
+    """多角色绑定 → (首个 id 供旧版单角色兼容字段, 人设 roster 文本供 topic 注入,
     speaker_i→声音参考的尽力而为映射, 各角色专属负向提示合并后的字符串)。
 
-    "多身份锁定"的诚实边界:provider 的 i2v 每镜只吃 1 张参考图(omodul 硬限制),故仍只有
-    首个角色的脸被跨镜锁定;其余角色仅以人设文本(含年龄/性别/人设/语言风格/关系等
-    metadata 字段)影响 storyboard LLM 的写作,不做画面身份锁定。
+    2026-07-13 前的"诚实边界"是:provider 的 i2v 每镜只吃 1 张参考图(omodul 硬限制),故
+    只有首个角色的脸被跨镜锁定,其余角色仅以人设文本影响 storyboard 写作。现已解决——
+    `director_create_episode` 把完整 `body.character_subject_ids` 存进 config_json,
+    `TaskService._resolve_character_reference` 在 2 个以上角色都有真实参考图时,用
+    qwen-image-edit 的多图融合把大家的长相合成到一张"角色总览图"里再喂给 i2v,
+    provider 侧仍只需要吃一张图。这里返回的首个 id 只作为没有多角色合成时的
+    旧版单角色兼容路径(`effective_subject_id = body.subject_id or roster_subject_id`)。
 
     声音映射同样尽力而为:script_writer 提示 LLM 用 speaker_0/speaker_1... 做说话人标签,
     但 LLM 输出是自由文本、不保证严格对应第 i 个角色 —— 这里按角色列表顺序假设对应关系,
@@ -191,6 +215,16 @@ async def director_create_episode(
     ) = await _resolve_character_roster(pool, body.character_subject_ids)
     effective_subject_id = body.subject_id or roster_subject_id
 
+    # IP 安全改写(HEVI 路线图 Phase2 #36):topic/角色描述是用户自由文本,建任务
+    # 花钱之前先过一遍——涉及真人/名人/版权角色/品牌就改写成安全等价物。
+    # best-effort,不阻断(见 hevi/prompt/ip_safety.py 的设计说明)。
+    intent["topic"], _ip_flags_topic = await rewrite_for_ip_safety(intent["topic"])
+    if characters_text:
+        characters_text, _ip_flags_chars = await rewrite_for_ip_safety(characters_text)
+        _ip_flags_topic = _ip_flags_topic + _ip_flags_chars
+    if _ip_flags_topic:
+        logger.info("ip_safety: episode intent flagged and rewritten: %s", _ip_flags_topic)
+
     # 执行预设作 provider/quality 的底,显式字段覆盖。
     base_video, base_audio, base_quality = "auto", "vibevoice", body.quality_profile
     if body.preset and body.preset in EXECUTION_PRESETS:
@@ -224,6 +258,7 @@ async def director_create_episode(
         "quality_profile": quality_profile,
         "transition": body.transition,
         "per_shot_routing": body.per_shot_routing,
+        "emotion_aware_voiceover": body.emotion_aware_voiceover,
         "language": body.language,
         "subtitle_style": body.subtitle_style,
     }
@@ -233,6 +268,8 @@ async def director_create_episode(
         ("prompt_lighting", body.prompt_lighting),
         ("prompt_color_grade", body.prompt_color_grade),
         ("prompt_camera", body.prompt_camera),
+        ("style_reference_image", body.style_reference_image),
+        ("shot_keyframes", body.shot_keyframes or None),
         ("mood", body.mood),
         ("genre", body.genre),
         ("narrative_hook", body.narrative_hook),
@@ -241,6 +278,7 @@ async def director_create_episode(
         ("characters", characters_text or None),
         ("avatar_portrait", body.avatar_portrait),
         ("subject_id", effective_subject_id),
+        ("character_subject_ids", body.character_subject_ids or None),
         ("bgm", body.bgm),
         ("sfx", body.sfx),
         ("voice_rate", body.voice_rate),

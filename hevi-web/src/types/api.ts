@@ -10,7 +10,10 @@ export type NodeType = 'text' | 'image' | 'video' | 'audio' | 'script';
 export interface CanvasNode {
   node_id: string;
   node_type: NodeType;
-  inputs: Record<string, unknown>;   // 因 type 而异
+  // 后端 oprim.CanvasNode 的真实字段名是 config,不是 inputs(HEVI 路线图 Phase1 #31
+  // 修复:此前 onSave 一直发 inputs,执行时 CanvasNode.model_validate 静默丢弃,
+  // 导致任何节点配置——包括视频节点的 prompt/reference_image——从未真正到达后端)。
+  config?: Record<string, unknown>;
   upstream_ids: string[];
   // 前端补充(画布位置 + 执行状态)
   position?: { x: number; y: number };
@@ -26,8 +29,11 @@ export interface NodeResult {
 }
 
 export interface CanvasEdge {
-  from_id: string;
-  to_id: string;
+  // 后端 oprim.CanvasEdge 的真实字段名(同上,此前 from_id/to_id 送到执行阶段的
+  // CanvasEdge.model_validate 会直接因缺必填字段报错)。
+  edge_id: string;
+  from_node_id: string;
+  to_node_id: string;
 }
 
 export interface CanvasGraph {
@@ -73,6 +79,8 @@ export interface TaskInfo {
   percent: number;
   stage?: string;
   created_at?: string;
+  error?: string | null;
+  result_video_path?: string | null;
 }
 
 // 质量档(文档 1.9)
@@ -239,6 +247,8 @@ export interface DirectorEpisodePayload {
   prompt_lighting?: string | null;
   prompt_camera?: string | null;
   prompt_color_grade?: string | null;
+  style_reference_image?: string | null;
+  shot_keyframes?: Record<string, { first_frame: string; last_frame: string }>;
   transition?: string;
   per_shot_routing?: boolean;
   language?: string;
@@ -248,6 +258,7 @@ export interface DirectorEpisodePayload {
   voice_rate?: string | null;
   voice_pitch?: string | null;
   voice_name?: string | null;
+  emotion_aware_voiceover?: boolean;
   quality_profile?: string;
   subtitle_style?: string;
   bilingual_language?: string | null;
@@ -406,7 +417,28 @@ export interface CostEstimateV2 {
 
 // ── 通鉴流水线(HEVI-SPEC-01)──────────────────────────────────────────────────
 export type TongjianLayerStatus = 'PENDING' | 'RUNNING' | 'PASSED' | 'DEGRADED' | 'FAILED';
-export type TongjianRunStatusVal = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+export type TongjianRunStatusVal = 'PENDING' | 'RUNNING' | 'AWAITING_REVIEW' | 'COMPLETED' | 'FAILED';
+
+// 一行剧本(对应后端 hevi.tongjian.schemas.ScriptLine)。人工审核台里逐行可编辑。
+export interface TongjianScriptLine {
+  line_id: string;
+  act: number;
+  type: string;            // narration / dialogue / commentary
+  speaker: string;         // NARRATOR 或角色 character_id
+  text: string;
+  event_id: string | null;
+  quote_id: string | null;
+  dramatized: boolean;     // true=戏剧化改编对白(非逐字引语)
+  emotion: string;
+  visual_hint: string;
+}
+
+// 待审核的立意+剧本(GET /runs/{id}/script)。constitution 用宽松形状,只取展示/可编辑字段。
+export interface TongjianScriptReview {
+  constitution: Record<string, unknown> & { logline?: string; tone?: string[]; thesis?: string };
+  script: { lines: TongjianScriptLine[] };
+  status: TongjianRunStatusVal;
+}
 
 export interface TongjianLayerState {
   layer: string;                // L0..L8
@@ -432,11 +464,22 @@ export interface TongjianRunStatus {
   error: string | null;
 }
 
+// 单层的模型选择 + 可调参数(后端 hevi.tongjian.schemas.LayerConfig)。全自动生成有偏差时
+// 逐层调参重跑。model=空走该层默认;params 由各层解释(如 L6 avatar: style/say_char_sec)。
+export interface TongjianLayerConfig {
+  model?: string | null;
+  params?: Record<string, unknown>;
+}
+
 export interface TongjianRunRequest {
   source_name: string;
   raw_text: string;
   target_duration_sec?: number;
   aspect_ratio?: string;
+  // ="L2" 时跑完剧本暂停等人工审核(AWAITING_REVIEW),审核后 resume 再渲染;省略=一口气跑完。
+  pause_after?: string | null;
+  // 每层配置,键 "L0".."L8"。例:{ L6: { model: "cloud_avatar", params: { style: "..." } } }
+  layer_config?: Record<string, TongjianLayerConfig>;
 }
 
 // ── 自媒体解说短视频通道(hevi.explainer)────────────────────────────────────
@@ -467,5 +510,221 @@ export interface ExplainerRunStatus {
 
 export interface ExplainerRunRequest {
   topic: string;
+}
+
+// ── 短剧创建入口(SPEC-001 §7 阶段1,建季能力)──────────────────────────────
+export type ShortdramaRunStatusVal =
+  | 'PENDING' | 'RUNNING' | 'AWAITING_CHARACTERS' | 'DISPATCHING' | 'DISPATCHED' | 'FAILED';
+
+export interface ShortdramaCharacterLite {
+  char_id: string;
+  name: string;
+  aliases: string[];
+  description: string;
+  role: string;
+}
+
+export interface ShortdramaRelationshipLite {
+  from_char: string;
+  to_char: string;
+  relation_type: string;
+  valence: number;
+}
+
+export interface ShortdramaEventLite {
+  event_id: string;
+  summary: string;
+  beat_type: string;
+}
+
+export interface StoryGraphLite {
+  characters: ShortdramaCharacterLite[];
+  relationships: ShortdramaRelationshipLite[];
+  events: ShortdramaEventLite[];
+}
+
+export interface ShortdramaEpisodeLite {
+  ep_number: number;
+  title: string;
+  characters_present: string[];
+  target_emotion_arc: string;
+  beats: string[];
+}
+
+export interface SeasonPlanLite {
+  target_episodes: number;
+  episodes: ShortdramaEpisodeLite[];
+}
+
+// 每个角色当前的绑定状态(GET /runs/{id} 里的 characters 数组投影)
+export interface ShortdramaCharacterBindingState {
+  char_id: string;
+  name: string;
+  bound: boolean;
+  subject_id: string | null;
+}
+
+export interface ShortdramaGateResult {
+  passed: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ShortdramaRunStatus {
+  run_id: string;
+  status: ShortdramaRunStatusVal;
+  source_name: string;
+  target_episodes: number;
+  created_at: string;
+  series_id: string | null;
+  error: string | null;
+  // 派发中的当前步骤(如"建角色参考图 2/3: 道士"),派发完/未开始派发时为 null
+  progress: string | null;
+  story_graph?: StoryGraphLite;
+  characters?: ShortdramaCharacterBindingState[];
+  season_plan?: SeasonPlanLite;
+  gate?: ShortdramaGateResult;
+}
+
+export interface ShortdramaRunRequest {
+  source_name: string;
+  raw_text: string;
+  target_episodes?: number;
+}
+
+// 提交绑定时用的选择(mode="auto" 默认自动生成参考图 | "existing" 复用已有角色/刚上传的)
+export interface ShortdramaCharacterBinding {
+  mode: 'auto' | 'existing';
+  subject_id?: string | null;
+}
+
+export interface ShortdramaConfirmRequest {
+  bindings: Record<string, ShortdramaCharacterBinding>;
+  video_provider?: string;
+  duration_archetype?: string;
+  series_budget_usd?: number;
+  style_pack_id?: string | null;
+}
+
+// ── SPEC-003 主线导演流水线(director-pipeline)—— 立意→剧本→设计清单→分镜 ──────
+// 类型跟 hevi/director/pipeline_schemas.py 的 Pydantic 模型逐字段对齐。
+
+export interface DpConcept {
+  theme: string;
+  tone: string;
+  style: string;
+  target_audience: string;
+  duration_archetype: string;
+  quality_bar: string;
+}
+
+export interface DpScreenplayDialogueLine {
+  character_name: string;
+  text: string;
+}
+
+export interface DpScreenplayScene {
+  scene_no: number;
+  time: string;
+  location: string;
+  characters_present: string[];
+  narration: string;
+  dialogue: DpScreenplayDialogueLine[];
+  event_summary: string;
+}
+
+export interface DpScreenplay {
+  scenes: DpScreenplayScene[];
+}
+
+export interface DpDesignCharacter {
+  name: string;
+  appearance: string;
+  wardrobe: string;
+  hairstyle: string;
+  personality: string;
+  is_lead: boolean;
+  voice_hint: string;
+  subject_id: string | null;
+  voice_id: string | null;
+}
+
+export interface DpDesignScene {
+  name: string;
+  environment: string;
+  lighting: string;
+  mood: string;
+  is_primary: boolean;
+  subject_id: string | null;
+}
+
+export interface DpDesignProp {
+  name: string;
+  appearance: string;
+  subject_id: string | null;
+}
+
+export interface DpDesignList {
+  characters: DpDesignCharacter[];
+  scenes: DpDesignScene[];
+  props: DpDesignProp[];
+}
+
+export interface DpShotDialogueLine {
+  character_name: string; // 空 = 旁白
+  text: string;
+}
+
+export interface DpShotBlocking {
+  character_name: string;
+  position: string;
+  facing: string;
+}
+
+export interface DpShotListItem {
+  shot_id: string;
+  scene_no: number;
+  shot_size: string;
+  camera: string;
+  visual_prompt: string;
+  dialogue_lines: DpShotDialogueLine[];
+  blocking: DpShotBlocking[];
+  character_names: string[];
+  scene_name: string;
+  prop_names: string[];
+  duration_s: number;
+}
+
+export interface DpShotList {
+  shots: DpShotListItem[];
+}
+
+export type DpWorkStatus =
+  | 'concept_draft' | 'concept_locked'
+  | 'screenplay_draft' | 'screenplay_locked'
+  | 'design_list_draft' | 'design_list_locking' | 'design_list_lock_failed' | 'design_list_locked'
+  | 'shot_list_draft' | 'shot_list_generating' | 'shot_list_regenerate_failed' | 'shot_list_locked'
+  | 'producing';
+
+export interface DpWork {
+  work_id: string;
+  status: DpWorkStatus;
+  locked_through: number; // -1..3,已锁定到第几级(见后端 _STAGES 顺序)
+  material_text: string;
+  created_at: string;
+  concept: DpConcept | null;
+  screenplay: DpScreenplay | null;
+  design_list: DpDesignList | null;
+  shot_list: DpShotList | null;
+  video_task_id: string | null;
+  error: string | null;
+}
+
+export interface DpProduceRequest {
+  video_provider?: string;
+  audio_provider?: string;
+  quality_profile?: string;
+  aspect_ratio?: string;
+  budget_usd?: number | null;
 }
 

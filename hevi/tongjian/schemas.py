@@ -8,7 +8,18 @@ source_span 是 [start, end) 字符下标,指向 meta 之外传入的原文(raw_
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
+
+
+class LayerConfig(BaseModel):
+    """通鉴流水线**单层的模型选择 + 可调参数**——每层(L0..L8)可独立配置,便于全自动生成
+    有偏差时逐层调参重跑。`model=None` 走该层默认模型;`params` 覆盖该层默认参数(具体键值
+    由各层 build_* 自行解释,见各层 docstring)。前端 RunRequest 表单直接填这个结构。"""
+
+    model: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
 class CharacterIR(BaseModel):
@@ -111,9 +122,16 @@ class ScriptLine(BaseModel):
     speaker: str = "NARRATOR"
     text: str = ""
     event_id: str | None = None
-    quote_id: str | None = None  # 仅 dialogue 行:必须引用 chapter_ir.quotes 里真实存在的 quote_id
+    quote_id: str | None = (
+        None  # dialogue 行:引用 chapter_ir.quotes 里真实存在的 quote_id(逐字引语改写)
+    )
+    # dramatized=True 表示"戏剧化改编"台词:原文该事件无直接引语,由编剧为真实事件创作符合时代
+    # 口吻的对白(忠于事件,措辞是创作)。这类行 quote_id 可为空,不受"逐字引语"红线约束,
+    # 但仍受 G2 事实幻觉门约束(不得编造原文没有的情节/官职/称谓)。
+    dramatized: bool = False
     emotion: str = ""
     visual_hint: str = ""
+    target: str = ""  # INC-001 §H 受话对象(对谁说)→ L6 关键帧 eyeline(说话者目光看向该角色)
 
 
 class Script(BaseModel):
@@ -170,6 +188,9 @@ class Shot(BaseModel):
     visual_prompt: str = ""
     motion_mode: str = "ken_burns"  # ken_burns / img2video / static
     is_transition: bool = False  # True = 覆盖 timeline.gaps 的过场镜头,非台词镜头
+    # INC-001 §B 动作弧拍点(见 ShotListItem.action_beats);L6 kf2v 首帧抓 trigger、
+    # (3point)关键帧抓 peak、尾帧抓 aftermath。为空则退回现状(单帧微动/visual_prompt 切片)。
+    action_beats: list[str] = Field(default_factory=list)
 
 
 class ShotList(BaseModel):
@@ -186,6 +207,11 @@ class CharacterBibleEntry(BaseModel):
     appearance: str = ""
     era_check: str = ""
     ref_image: str | None = None  # 步骤3-4 锁定的候选立绘路径
+    # Subject3D 多机位渲染帧(HEVI-ARCHITECTURE.md v3.0 §5.7.0 机位驱动渲染,2026-07-13
+    # 探路落地),{"front"/"left"/"right"/"back": path}。目前只是数据透传——消费侧
+    # (build_frame_manifest_avatar)还没有"这一镜是什么机位"的信息(ShotCamera 只有
+    # shot_size/movement,没有方位角),按机位选用对应视图是后续工作,不在这次范围。
+    ref_image_views: dict[str, str] | None = None
     gen_lock: dict | None = None  # {"seed":..., "ip_adapter_weight":...}
     voice_id: str | None = None  # 待 L3 TTS 接入后填入
 
@@ -210,6 +236,10 @@ class ShotFrame(BaseModel):
     shot_id: str
     scene_id: str
     frame_path: str = ""
+    # avatar 渲染模式(cloud_avatar)下,这一镜是一段**自带配音+口型+动作**的 talking 视频
+    # (happyhorse 数字人),clip_path 指向该 mp4;L8 装配时识别到 clip_path 就直接拼这段
+    # (不再走"静帧 Ken Burns + 另配旁白"那条)。frame_path 仍存该 clip 的首帧供门禁打分。
+    clip_path: str = ""
     characters: list[str] = Field(default_factory=list)
     clip_score: float = 0.0  # 生成帧 vs visual_prompt 的 CLIP 文本-图像相似度
     character_consistency: float | None = (

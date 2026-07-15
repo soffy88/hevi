@@ -1,0 +1,59 @@
+{
+  "lines": [
+    {
+      "line_id": "LN001",
+      "act": 1,
+      "type": "narration",
+      "speaker": "NARRATOR",
+      "text": "晋阳城外,智氏的使者已在韩府门前等候多时。",
+      "event_id": "E001",
+      "quote_id": null,
+      "emotion": "",
+      "visual_hint": "远景,建立镜头,使者持书信立于府门"
+    },
+    {
+      "line_id": "LN002",
+      "act": 1,
+      "type": "narration",
+      "speaker": "NARRATOR",
+      "text": "韩康子踌躇难决,唤来家臣段规商议。",
+      "event_id": "E001",
+      "quote_id": null,
+      "emotion": "",
+      "visual_hint": "中景,韩康子眉头紧锁"
+    },
+    {
+      "line_id": "LN003",
+      "act": 1,
+      "type": "dialogue",
+      "speaker": "duangui",
+      "text": "智伯贪利刚愎,不给必遭兴兵之祸。不如暂且予之,静待他日生变。",
+      "event_id": "E002",
+      "quote_id": "Q001",
+      "emotion": "沉稳献策",
+      "visual_hint": "中近景,段规垂目进言"
+    },
+    {
+      "line_id": "LN004",
+      "act": 1,
+      "type": "dialogue",
+      "speaker": "hankangzi",
+      "text": "好。",
+      "event_id": "E003",
+      "quote_id": "Q002",
+      "emotion": "决断",
+      "visual_hint": "中近景,韩康子颔首"
+    },
+    {
+      "line_id": "LN005",
+      "act": 1,
+      "type": "narration",
+      "speaker": "NARRATOR",
+      "text": "韩康子遂遣使者,以万家之邑献予智伯。智伯大悦。",
+      "event_id": "E003",
+      "quote_id": null,
+      "emotion": "",
+      "visual_hint": "远景,使者持邑册离府,智伯得书而喜"
+    }
+  ]
+}

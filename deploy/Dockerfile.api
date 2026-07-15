@@ -14,6 +14,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg curl git \
+    fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/* \
     # venv scripts have shebang #!/usr/bin/python3.14 (host system Python path)
     && ln -sf /usr/local/bin/python3.14 /usr/bin/python3.14

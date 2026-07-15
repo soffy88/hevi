@@ -13,7 +13,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from hevi.audio.edge_tts_custom import CURATED_VOICES, synthesize_with_voice_control
+from hevi.audio.edge_tts_custom import (
+    CURATED_VOICES,
+    edge_tts_synthesize_smart,
+    emotion_to_rate_pitch,
+    synthesize_with_voice_control,
+)
 
 
 def _install_fake_edge_tts(calls: list[dict]) -> None:
@@ -95,3 +100,197 @@ async def test_synthesize_raw_edge_tts_voice_id_passthrough(tmp_path: Path) -> N
 async def test_synthesize_empty_script_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError):
         await synthesize_with_voice_control(script=[], output_path=tmp_path / "out.wav")
+
+
+# ── emotion_to_rate_pitch(2026-07-13,治"ScriptLine.emotion 填了但 TTS 从不读")────
+
+
+class TestEmotionToRatePitch:
+    def test_no_emotion_is_neutral(self) -> None:
+        assert emotion_to_rate_pitch(None) == ("+0%", "+0Hz")
+        assert emotion_to_rate_pitch("") == ("+0%", "+0Hz")
+
+    def test_unknown_emotion_falls_back_neutral(self) -> None:
+        assert emotion_to_rate_pitch("莫名其妙的心情") == ("+0%", "+0Hz")
+
+    def test_sad_slows_down_and_lowers_pitch(self) -> None:
+        rate, pitch = emotion_to_rate_pitch("悲怆")
+        assert rate == "-15%"
+        assert pitch == "-15Hz"
+
+    def test_fear_speeds_up(self) -> None:
+        rate, _pitch = emotion_to_rate_pitch("惊惧")
+        assert rate == "+20%"
+
+    def test_multi_keyword_label_matches_first_bucket(self) -> None:
+        """ "倨傲/决绝"(LLM 常见的多关键词标签格式)命中"怒/愤/...倨傲"桶。"""
+        rate, pitch = emotion_to_rate_pitch("倨傲/决绝")
+        assert (rate, pitch) == ("-5%", "-10Hz")
+
+
+@pytest.mark.asyncio
+async def test_voice_control_derives_rate_pitch_from_emotion(tmp_path: Path) -> None:
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[SimpleNamespace(text="你好")],
+                output_path=out,
+                emotion="悲怆",
+            )
+        assert calls[0]["rate"] == "-15%"
+        assert calls[0]["pitch"] == "-15Hz"
+    finally:
+        del sys.modules["edge_tts"]
+
+
+@pytest.mark.asyncio
+async def test_voice_control_explicit_rate_pitch_overrides_emotion(tmp_path: Path) -> None:
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[SimpleNamespace(text="你好")],
+                output_path=out,
+                rate="+15%",
+                pitch="+2Hz",
+                emotion="悲怆",
+            )
+        assert calls[0]["rate"] == "+15%"
+        assert calls[0]["pitch"] == "+2Hz"
+    finally:
+        del sys.modules["edge_tts"]
+
+
+# ── 逐行情绪(2026-07-13,SPEC-002 B1:主线情绪配音,line 对象自带 .emotion)──────
+
+
+@pytest.mark.asyncio
+async def test_per_line_emotion_overrides_batch_default(tmp_path: Path) -> None:
+    """script 里每行各自带 .emotion(hevi 侧 SimpleNamespace 包装,主线 injected_audio_fn
+    的用法)→ 每行按自己的情绪算 rate/pitch,不是整批统一一个值。"""
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[
+                    SimpleNamespace(text="城破在即", emotion="惊惧"),
+                    SimpleNamespace(text="三家终于罢兵", emotion="悲怆"),
+                ],
+                output_path=out,
+            )
+        assert calls[0]["rate"] == "+20%"  # 惊惧
+        assert calls[1]["rate"] == "-15%"  # 悲怆
+        assert calls[1]["pitch"] == "-15Hz"
+    finally:
+        del sys.modules["edge_tts"]
+
+
+@pytest.mark.asyncio
+async def test_line_without_emotion_attribute_falls_back_to_batch_emotion(tmp_path: Path) -> None:
+    """混合场景:部分行有 .emotion,部分没有(如 tongjian 的 _Line dataclass)——
+    没有的行退回整批统一的 emotion 参数,不报错也不错位。"""
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[
+                    SimpleNamespace(text="有情绪的行", emotion="惊惧"),
+                    SimpleNamespace(text="没情绪属性的行"),  # 无 .emotion
+                ],
+                output_path=out,
+                emotion="悲怆",  # 整批兜底
+            )
+        assert calls[0]["rate"] == "+20%"  # 用自己的 .emotion
+        assert calls[1]["rate"] == "-15%"  # 退回整批 emotion 参数
+    finally:
+        del sys.modules["edge_tts"]
+
+
+@pytest.mark.asyncio
+async def test_explicit_rate_pitch_overrides_per_line_emotion_too(tmp_path: Path) -> None:
+    """显式 rate/pitch 优先级最高——连每行自带的 .emotion 都不能覆盖它,跟"整批
+    emotion 参数被显式 rate/pitch 盖过"是同一条规则,行级也不例外。"""
+    calls: list[dict] = []
+    _install_fake_edge_tts(calls)
+    try:
+        out = tmp_path / "out.wav"
+        with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
+            mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
+            await synthesize_with_voice_control(
+                config={"language": "zh"},
+                script=[SimpleNamespace(text="行", emotion="惊惧")],
+                output_path=out,
+                rate="+5%",
+                pitch="+1Hz",
+            )
+        assert calls[0]["rate"] == "+5%"
+        assert calls[0]["pitch"] == "+1Hz"
+    finally:
+        del sys.modules["edge_tts"]
+
+
+# ── edge_tts_synthesize_smart(2026-07-13,"edge_tts" provider 注册的真实入口)─────
+
+
+@pytest.mark.asyncio
+async def test_smart_routes_to_voice_control_when_voice_given(tmp_path: Path) -> None:
+    """provider 收到显式 voice → 真的换音色(治多角色对话只有一个默认声音)。"""
+    out = tmp_path / "out.wav"
+    with patch(
+        "hevi.audio.edge_tts_custom.synthesize_with_voice_control",
+        new_callable=AsyncMock,
+    ) as mvc:
+        mvc.return_value = out
+        await edge_tts_synthesize_smart(
+            script=[SimpleNamespace(text="你好")], output_path=out, voice="zh_male_deep"
+        )
+    mvc.assert_awaited_once()
+    assert mvc.await_args.kwargs["voice"] == "zh_male_deep"
+
+
+@pytest.mark.asyncio
+async def test_smart_routes_to_voice_control_when_emotion_given_without_voice(
+    tmp_path: Path,
+) -> None:
+    """2026-07-13:没传 voice 但传了 emotion(旁白/未指定音色的对白也要按情绪调语气)
+    → 一样走 synthesize_with_voice_control,不需要先有显式音色才能情绪化配音。"""
+    out = tmp_path / "out.wav"
+    with patch(
+        "hevi.audio.edge_tts_custom.synthesize_with_voice_control",
+        new_callable=AsyncMock,
+    ) as mvc:
+        mvc.return_value = out
+        await edge_tts_synthesize_smart(
+            script=[SimpleNamespace(text="你好")], output_path=out, emotion="惊惧"
+        )
+    mvc.assert_awaited_once()
+    assert mvc.await_args.kwargs["emotion"] == "惊惧"
+    assert mvc.await_args.kwargs["voice"] is None
+
+
+@pytest.mark.asyncio
+async def test_smart_falls_back_to_oprim_when_no_voice_no_emotion(tmp_path: Path) -> None:
+    """没传 voice 也没传 emotion(旁白/未分配声音的调用方)→ 原样退回
+    oprim.edge_tts_synthesize,行为完全不变——这条 provider 注册对既有调用方零回归。"""
+    out = tmp_path / "out.wav"
+    fake_oprim = AsyncMock(return_value=out)
+    with patch("oprim.edge_tts_synthesize", fake_oprim):
+        await edge_tts_synthesize_smart(script=[SimpleNamespace(text="你好")], output_path=out)
+    fake_oprim.assert_awaited_once()

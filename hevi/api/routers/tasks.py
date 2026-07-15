@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from hevi.api.rate_limit import rate_limit
 from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
+from hevi.core.config import settings
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
@@ -279,6 +280,20 @@ async def regenerate_task_shots(
         raise HTTPException(
             status_code=409, detail="task must be completed before regenerating shots"
         )
+    # 重试次数硬上限(设计文档 §4.3):regenerate 是 fire-and-forget 后台任务,
+    # TaskService.regenerate_task_shots 内部的 ValueError 不会传回这次 HTTP 请求——
+    # 所以已到上限这件事要在这里同步查一遍,提前给调用方一个明确的 409,
+    # 而不是让请求看似成功、实际后台悄悄丢弃。
+    existing_shots = await svc.repository.get_shots(task_id)
+    retry_by_index = {
+        s["shot_index"]: int((s.get("selection_json") or {}).get("retry_count") or 0)
+        for s in existing_shots
+    }
+    if all(retry_by_index.get(idx, 0) >= settings.shot_retry_max for idx in body.shot_ids):
+        raise HTTPException(
+            status_code=409,
+            detail=f"all requested shots already at retry cap ({settings.shot_retry_max})",
+        )
     background_tasks.add_task(
         svc.regenerate_task_shots, task_id, shot_ids=body.shot_ids, hints=body.hints
     )
@@ -428,6 +443,24 @@ async def dub_task_video(
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"dub failed: {exc}") from exc
     return FileResponse(str(out_path), media_type="video/mp4", filename=f"{task_id}.{language}.mp4")
+
+
+@router.get("/{task_id}/continuity-report")
+async def get_continuity_report(
+    task_id: UUID,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+) -> dict[str, Any]:
+    """连续性报告(HEVI 路线图 Phase3 #41):从 shot_states(#27 扩展后的
+    selection_json)派生的镜头清单 + 一致性/诊断明细 + Subject/StylePack 版本快照
+    说明——纯聚合已落库数据,零增量计算成本。"""
+    from hevi.tasks.continuity_report import build_continuity_report
+
+    task = await repo.get_task(task_id)
+    if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
+        raise HTTPException(status_code=404, detail="Task not found")
+    shots = await repo.get_shots(task_id)
+    return build_continuity_report(shots)
 
 
 @router.get("/{task_id}/shots")

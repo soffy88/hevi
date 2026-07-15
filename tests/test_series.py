@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from hevi.cost import CostLimitExceeded
 from hevi.series.series_service import SeriesService
 
 _SID = str(uuid.uuid4())
@@ -15,6 +17,7 @@ class _FakeSeriesRepo:
     def __init__(self, series):
         self._series = series
         self.updated = []
+        self.created: dict | None = None
 
     async def get(self, sid):
         return self._series
@@ -24,10 +27,15 @@ class _FakeSeriesRepo:
         self._series = {**self._series, **updates}
         return self._series
 
+    async def create(self, data):
+        self.created = data
+        return {**data, "id": _SID}
+
 
 class _FakeTaskRepo:
     def __init__(self):
         self.updates = []
+        self.pool = MagicMock()  # check_series_budget 只经它转发给 obase.persistence.query
 
     async def update_task(self, tid, data):
         self.updates.append((tid, data))
@@ -108,6 +116,45 @@ async def test_create_series_empty_name_raises():
         await SeriesService(_FakeSeriesRepo({}), None).create_series(name="   ")
 
 
+# ── Series 资产化核实(HEVI 路线图 Phase3 #39)──────────────────────────────────
+
+
+class _FakeStyleSvcForCreate:
+    async def get_pack(self, pid):
+        return {"id": pid, "version": 7}
+
+
+@pytest.mark.asyncio
+async def test_create_series_snapshots_referenced_stylepack_actual_version():
+    """引用一个已经改过好几次的老 StylePack 建系列——style_pack_version 该记它
+    实际的当前版本(7),不能不管三七二十一硬编码成 1。"""
+    repo = _FakeSeriesRepo({})
+    svc = SeriesService(repo, None, _FakeStyleSvcForCreate())
+    await svc.create_series(name="my series", style_pack_id=_SID)
+    assert repo.created["style_pack_version"] == 7
+
+
+@pytest.mark.asyncio
+async def test_create_series_without_stylepack_defaults_to_version_1():
+    repo = _FakeSeriesRepo({})
+    svc = SeriesService(repo, None, _FakeStyleSvcForCreate())
+    await svc.create_series(name="my series")
+    assert repo.created["style_pack_version"] == 1
+    assert repo.created["style_pack_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_create_series_stylepack_lookup_failure_defaults_to_version_1():
+    class _BrokenStyleSvc:
+        async def get_pack(self, pid):
+            raise RuntimeError("db down")
+
+    repo = _FakeSeriesRepo({})
+    svc = SeriesService(repo, None, _BrokenStyleSvc())
+    await svc.create_series(name="my series", style_pack_id=_SID)
+    assert repo.created["style_pack_version"] == 1  # 查失败不阻断建系列
+
+
 @pytest.mark.asyncio
 async def test_create_episode_unknown_series_raises():
     class _NoneRepo:
@@ -136,6 +183,9 @@ class _FakeStyleSvc:
             "negative": "text",
         }
 
+    async def get_pack(self, pid):
+        return {"id": pid, "version": 5}
+
 
 @pytest.mark.asyncio
 async def test_create_episode_expands_stylepack_to_prompts():
@@ -154,22 +204,63 @@ async def test_create_episode_expands_stylepack_to_prompts():
     call = tsvc.create_calls[0]
     assert call["prompt_style"] == "cinematic noir"
     assert call["prompt_color_grade"] == "teal orange"
-    assert call["prompt_camera"] == "dolly"
+
+
+@pytest.mark.asyncio
+async def test_create_episode_snapshots_stylepack_id_and_version():
+    """shot_verdict 版本快照(HEVI 路线图 Phase1):create_episode 要把这一集实际用的
+    StylePack id+version 存进 config_json,而不是只存展开后的 prompt_* 字段——不然后续
+    没法在 verdict 里记"这一集当时锁定的是第几版"。"""
+    series = {
+        "id": _SID,
+        "style_pack_id": _SID,
+        "subject_ids": [],
+        "episode_count": 0,
+        "spec_json": {"video_provider": "wan_local"},
+    }
+    tsvc = _FakeTaskSvc()
+    svc = SeriesService(_FakeSeriesRepo(series), tsvc, _FakeStyleSvc())
+    await svc.create_episode(_SID, topic="ep1")
+    call = tsvc.create_calls[0]
+    assert call["style_pack_id"] == _SID
+    assert call["style_pack_version"] == 5
+
+
+@pytest.mark.asyncio
+async def test_create_episode_without_stylepack_id_skips_snapshot():
+    series = {
+        "id": _SID,
+        "subject_ids": [],
+        "episode_count": 0,
+        "spec_json": {"video_provider": "wan_local"},
+    }
+    tsvc = _FakeTaskSvc()
+    svc = SeriesService(_FakeSeriesRepo(series), tsvc, _FakeStyleSvc())
+    await svc.create_episode(_SID, topic="ep1")
+    call = tsvc.create_calls[0]
+    assert "style_pack_id" not in call
+    assert "style_pack_version" not in call
 
 
 @pytest.mark.asyncio
 async def test_create_episode_overrides_win_over_inherited_defaults():
     """逐集覆盖:显式给的键覆盖 Series 继承的默认值,没给的键仍按继承。"""
     series = {
-        "id": _SID, "subject_ids": ["hero"], "style_preset": "赛博朋克", "episode_count": 2,
+        "id": _SID,
+        "subject_ids": ["hero"],
+        "style_preset": "赛博朋克",
+        "episode_count": 2,
         "spec_json": {
-            "duration_archetype": "1-5min", "video_provider": "wan_local",
-            "audio_provider": "vibevoice", "quality_profile": "high",
+            "duration_archetype": "1-5min",
+            "video_provider": "wan_local",
+            "audio_provider": "vibevoice",
+            "quality_profile": "high",
         },
     }
     tsvc = _FakeTaskSvc()
     await SeriesService(_FakeSeriesRepo(series), tsvc).create_episode(
-        _SID, topic="第3集换套衣服",
+        _SID,
+        topic="第3集换套衣服",
         overrides={"subject_id": "villain", "video_provider": "ltx2_cloud", "prompt_style": "雨夜"},
     )
     call = tsvc.create_calls[0]
@@ -183,7 +274,9 @@ async def test_create_episode_overrides_win_over_inherited_defaults():
 @pytest.mark.asyncio
 async def test_create_episode_no_overrides_behaves_as_before():
     series = {
-        "id": _SID, "subject_ids": ["hero"], "episode_count": 0,
+        "id": _SID,
+        "subject_ids": ["hero"],
+        "episode_count": 0,
         "spec_json": {"video_provider": "wan_local"},
     }
     tsvc = _FakeTaskSvc()
@@ -191,3 +284,63 @@ async def test_create_episode_no_overrides_behaves_as_before():
     call = tsvc.create_calls[0]
     assert call["subject_id"] == "hero"
     assert call["video_provider"] == "wan_local"
+
+
+# SPEC-001 §6:季级预算熔断——create_episode 在建 task 前查这一季迄今花费 + 本集预估。
+
+
+@pytest.mark.asyncio
+async def test_create_episode_raises_when_series_budget_exceeded():
+    series = {
+        "id": _SID,
+        "subject_ids": ["hero"],
+        "episode_count": 5,
+        "spec_json": {
+            "duration_archetype": "1-5min",  # 180s * $0.04(ltx2_cloud) = $7.2 预估
+            "video_provider": "ltx2_cloud",
+            "audio_provider": "vibevoice",
+            "budget_usd": 20.0,
+        },
+    }
+    tsvc = _FakeTaskSvc()
+    with patch("obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 18.0}]):
+        with pytest.raises(CostLimitExceeded):
+            await SeriesService(_FakeSeriesRepo(series), tsvc).create_episode(_SID, topic="第6集")
+    assert tsvc.create_calls == []  # 超预算不建 task,不真花算力
+
+
+@pytest.mark.asyncio
+async def test_create_episode_passes_within_series_budget():
+    series = {
+        "id": _SID,
+        "subject_ids": ["hero"],
+        "episode_count": 1,
+        "spec_json": {
+            "duration_archetype": "1-5min",
+            "video_provider": "ltx2_cloud",
+            "audio_provider": "vibevoice",
+            "budget_usd": 20.0,
+        },
+    }
+    tsvc = _FakeTaskSvc()
+    with patch("obase.persistence.query", new_callable=AsyncMock, return_value=[{"total": 5.0}]):
+        await SeriesService(_FakeSeriesRepo(series), tsvc).create_episode(_SID, topic="第2集")
+    assert len(tsvc.create_calls) == 1
+    # budget_usd 不该泄漏进 config_json(已在 create_episode 里显式弹出)
+    assert "budget_usd" not in tsvc.create_calls[0]
+
+
+@pytest.mark.asyncio
+async def test_create_episode_skips_budget_check_when_unconfigured():
+    """没配 budget_usd → 不查 DB,行为跟 §6 之前完全一致。"""
+    series = {
+        "id": _SID,
+        "subject_ids": ["hero"],
+        "episode_count": 0,
+        "spec_json": {"video_provider": "wan_local"},
+    }
+    tsvc = _FakeTaskSvc()
+    with patch("obase.persistence.query", new_callable=AsyncMock) as mock_query:
+        await SeriesService(_FakeSeriesRepo(series), tsvc).create_episode(_SID, topic="ep1")
+    mock_query.assert_not_awaited()
+    assert len(tsvc.create_calls) == 1

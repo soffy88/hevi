@@ -38,14 +38,51 @@ logger = logging.getLogger(__name__)
 _OLLAMA_VL_MODEL = os.getenv("OLLAMA_VL_MODEL", "qwen2.5vl:3b")
 
 
-def _b64_data_uri(path: Path) -> str | None:
-    """Read an image file → data: URI (OpenAI-compat image_url). None if unreadable."""
+_VIDEO_EXTS = {"mp4", "mov", "webm", "mkv", "avi"}
+
+
+def _video_frame_to_temp_png(path: Path) -> Path | None:
+    """视频直出 provider(happyhorse 等)产的候选是 .mp4,不是静帧——2026-07-12 真实
+    撞见:此前 `_b64_data_uri` 不管扩展名直接把原始字节 base64、贴上
+    "data:image/mp4"这种假 mime,ollama 正确地把这当非法图片数据秒拒(400)。
+    先用 ffmpeg 抽第一帧存临时 PNG,再走正常的图片编码路径。"""
+    import subprocess
+    import tempfile
+
+    out = Path(tempfile.gettempdir()) / f"vl_frame_{path.stem}_{os.getpid()}.png"
     try:
-        raw = path.read_bytes()
-    except OSError as e:
-        logger.warning("VL adapter: cannot read image %s: %s", path, e)
+        subprocess.run(
+            ["ffmpeg", "-y", "-ss", "0", "-i", str(path), "-frames:v", "1", str(out)],
+            check=True,
+            capture_output=True,
+            timeout=30,
+        )
+        return out
+    except Exception as e:  # noqa: BLE001 — 抽帧失败不阻断,退化为跳过这张图
+        logger.warning("VL adapter: 视频抽帧失败 %s: %s", path, e)
         return None
-    ext = path.suffix.lower().lstrip(".") or "png"
+
+
+def _b64_data_uri(path: Path) -> str | None:
+    """Read an image (or video — first frame gets extracted) file → data: URI
+    (OpenAI-compat image_url). None if unreadable."""
+    src = path
+    tmp_frame: Path | None = None
+    if path.suffix.lower().lstrip(".") in _VIDEO_EXTS:
+        tmp_frame = _video_frame_to_temp_png(path)
+        if tmp_frame is None:
+            return None
+        src = tmp_frame
+    try:
+        raw = src.read_bytes()
+    except OSError as e:
+        logger.warning("VL adapter: cannot read image %s: %s", src, e)
+        return None
+    finally:
+        if tmp_frame is not None:
+            with contextlib.suppress(OSError):
+                tmp_frame.unlink()
+    ext = src.suffix.lower().lstrip(".") or "png"
     mime = "jpeg" if ext in ("jpg", "jpeg") else ext
     return f"data:image/{mime};base64,{base64.b64encode(raw).decode('ascii')}"
 

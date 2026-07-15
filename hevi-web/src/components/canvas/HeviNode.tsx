@@ -11,7 +11,9 @@ import { NODE_META } from '@/lib/canvas-rules';
 export interface HeviNodeData {
   nodeType: NodeType;
   label?: string;
-  inputs?: Record<string, unknown>;
+  // 节点配置(prompt/reference_image/mode 等,因 type 而异)——保存时映射到后端
+  // CanvasNode.config 字段名,不是 inputs(见 types/api.ts 的注释)。
+  config?: Record<string, unknown>;
   status?: TaskStatus;
   result?: NodeResult;
 }

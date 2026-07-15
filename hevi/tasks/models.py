@@ -13,7 +13,9 @@ class VideoTask(Base):
     __tablename__ = "video_tasks"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    topic: Mapped[str] = mapped_column(String(255))
+    # Text 而非 String(255):episode_brief()(hevi/season_planner/dispatch.py)把一集的
+    # 节拍/角色/事件摘要/原文对白降维成一段 topic 文本喂给现有 Director,常年超 255 字。
+    topic: Mapped[str] = mapped_column(Text)
     user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     duration_archetype: Mapped[str] = mapped_column(String(50))
     video_provider: Mapped[str] = mapped_column(String(50))

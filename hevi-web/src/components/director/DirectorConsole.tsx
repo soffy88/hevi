@@ -1,8 +1,8 @@
 /**
  * DirectorConsole — 导演控制台(§3 L4,专业片表单)
  * 一句话剧情 + 8 层结构化片表单 →「预览可行性」(不建任务)或「直接产集」(建任务+后台出片,含 L3 返工)。
- * 已接后端的字段做实控件;缺素材/模型/独立工程的标「规划中」禁用;当前 provider 架构性
- * 不支持的(如额外风格参考图条件化)标「不支持」并写明原因 —— 两者都不作假。
+ * 已接后端的字段做实控件;缺素材/模型/独立工程的标「规划中」禁用。SPEC-002:多身份锁脸/
+ * 风格参考图/首尾帧关键帧/情绪化配音此前标过「不支持」,主线能力补齐后徽章均已摘除。
  */
 'use client';
 
@@ -52,7 +52,8 @@ const EMPTY: DirectorEpisodePayload = {
   character_subject_ids: [], subject_id: '', avatar_portrait: '',
   num_characters: 1, scene_notes: '', props: '',
   style_preset: '电影感', prompt_style: '', prompt_lighting: '', prompt_camera: '', prompt_color_grade: '',
-  transition: 'fade', per_shot_routing: false, language: 'zh',
+  style_reference_image: '',
+  transition: 'fade', per_shot_routing: false, emotion_aware_voiceover: false, language: 'zh',
   audio_provider: 'vibevoice', bgm: '', sfx: '', voice_rate: '', voice_pitch: '', voice_name: '',
   quality_profile: 'standard', subtitle_style: 'default', bilingual_language: '',
   intro_clip: '', outro_clip: '',
@@ -76,17 +77,6 @@ function Soon({ label }: { label: string }) {
   );
 }
 
-// 当前 provider 架构性不支持(非"还没做",是"做不了")—— 写明原因,不藏
-function NotSupported({ label, reason }: { label: string; reason: string }) {
-  return (
-    <div className="dc-field dc-field--unsupported" title={reason}>
-      <span className="dc-field__label">{label}</span>
-      <span className="dc-chip dc-chip--unsupported">不支持</span>
-      <span className="dc-field__reason">{reason}</span>
-    </div>
-  );
-}
-
 export function DirectorConsole() {
   const [f, setF] = useState<DirectorEpisodePayload>(EMPTY);
   const [numShots, setNumShots] = useState(4);
@@ -96,6 +86,15 @@ export function DirectorConsole() {
   const [plan, setPlan] = useState<DirectorPlanResult | null>(null);
   const [episode, setEpisode] = useState<DirectorEpisodeResult | null>(null);
   const [shots, setShots] = useState<string[]>([]);
+  // SPEC-002 B3:每镜头首尾帧(仅「直接产集」生效,不影响上面「按这些镜头生成成片」
+  // 的画布渲染路径)。key 是分镜索引字符串,跟 shots 数组下标对齐。
+  const [shotKeyframes, setShotKeyframes] = useState<Record<string, { first_frame: string; last_frame: string }>>({});
+  function setShotKeyframe(idx: number, field: 'first_frame' | 'last_frame', value: string) {
+    setShotKeyframes(prev => {
+      const cur = prev[idx] ?? { first_frame: '', last_frame: '' };
+      return { ...prev, [idx]: { ...cur, [field]: value } };
+    });
+  }
   const [rendered, setRendered] = useState<DirectorRenderResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -118,12 +117,18 @@ export function DirectorConsole() {
     const p: DirectorEpisodePayload = { ...f, bilingual_language: bilingual ? (f.bilingual_language || 'en') : '' };
     // 空串 → 省略,交后端默认/自动
     (['subject_id', 'avatar_portrait', 'prompt_style', 'prompt_lighting', 'prompt_camera',
-      'prompt_color_grade', 'preset', 'mood', 'genre', 'narrative_hook', 'scene_notes', 'props',
-      'sfx', 'voice_rate', 'voice_pitch', 'voice_name', 'bilingual_language', 'intro_clip',
-      'outro_clip'] as (keyof DirectorEpisodePayload)[]).forEach(k => {
+      'prompt_color_grade', 'style_reference_image', 'preset', 'mood', 'genre', 'narrative_hook',
+      'scene_notes', 'props', 'sfx', 'voice_rate', 'voice_pitch', 'voice_name', 'bilingual_language',
+      'intro_clip', 'outro_clip'] as (keyof DirectorEpisodePayload)[]).forEach(k => {
       if (!p[k]) delete p[k];
     });
     if (!p.character_subject_ids?.length) delete p.character_subject_ids;
+    // 只带首尾帧都填了的镜头(单填一张不满足后端条件,过滤掉避免传半条数据)。
+    const kfEntries = Object.entries(shotKeyframes).filter(
+      ([, v]) => v.first_frame.trim() && v.last_frame.trim(),
+    );
+    if (kfEntries.length) p.shot_keyframes = Object.fromEntries(kfEntries);
+    else delete p.shot_keyframes;
     return p;
   }
 
@@ -213,7 +218,7 @@ export function DirectorConsole() {
       <section className="dc-sec">
         <div className="dc-sec__head"><span className="dc-sec__num">②</span><h2>角色</h2></div>
         <div className="dc-grid">
-          <div className="dc-field dc-field--wide"><span className="dc-field__label">角色(多选;首个跨镜锁脸,其余仅入人设)</span>
+          <div className="dc-field dc-field--wide"><span className="dc-field__label">角色(多选;全部跨镜锁脸)</span>
             {chars.length === 0 ? (
               <p className="dc-hint">主体库还没有角色 —— 去「主体库」建一个带参考图的角色,这里就能绑定。</p>
             ) : (
@@ -223,10 +228,13 @@ export function DirectorConsole() {
                     <input type="checkbox" checked={(f.character_subject_ids ?? []).includes(c.subject_id)}
                       onChange={() => toggleCharacter(c.subject_id)} />
                     <span>{c.name}</span>
-                    {f.character_subject_ids?.[0] === c.subject_id && <span className="dc-char__lock">锁脸</span>}
+                    {(f.character_subject_ids ?? []).includes(c.subject_id) && <span className="dc-char__lock">锁脸</span>}
                   </label>
                 ))}
               </div>
+            )}
+            {(f.character_subject_ids?.length ?? 0) >= 2 && (
+              <p className="dc-hint">2 人以上会合成一张多角色总览图统一锁脸,provider 侧仍只吃一张参考图。</p>
             )}
           </div>
           <label className="dc-field"><span className="dc-field__label">角色数</span>
@@ -237,7 +245,6 @@ export function DirectorConsole() {
             <input placeholder="留空=不用数字人" value={f.avatar_portrait ?? ''}
               onChange={e => set('avatar_portrait', e.target.value)} />
           </label>
-          <NotSupported label="多身份锁脸" reason="provider 的 i2v 每镜只吃 1 张参考图,仅首个角色的脸能跨镜锁定" />
         </div>
       </section>
 
@@ -282,8 +289,12 @@ export function DirectorConsole() {
             <input placeholder="可选,追加视觉描述" value={f.prompt_style ?? ''}
               onChange={e => set('prompt_style', e.target.value)} />
           </label>
-          <NotSupported label="风格参考图 mood board" reason="当前 provider(wan/ltx2/veo3/kling)均只支持 1 张身份锁定参考图,不支持额外风格参考图条件化" />
+          <label className="dc-field dc-field--wide"><span className="dc-field__label">风格参考图(图路径/URL)</span>
+            <input placeholder="留空=不用;没手填上面文本字段时自动拆解出风格" value={f.style_reference_image ?? ''}
+              onChange={e => set('style_reference_image', e.target.value)} />
+          </label>
         </div>
+        <p className="dc-hint">风格参考图:没手填风格文本字段时,自动用本地视觉模型拆解出风格/光照/镜头/调色;若视频引擎正好路由到 happyhorse_1_1_maas_lock,额外做真实图片条件化(该引擎支持 2 张参考图)。其余引擎仅吃拆解出的文本。</p>
       </section>
 
       {/* ⑤ 分镜 */}
@@ -304,9 +315,8 @@ export function DirectorConsole() {
               onChange={e => set('per_shot_routing', e.target.checked)} />
             <span>逐镜路由(主角特写走云,空镜走本地)</span>
           </label>
-          <NotSupported label="首尾帧关键帧" reason="同上:provider 每镜只吃 1 张参考图,无法分别指定首帧/尾帧两张条件图" />
         </div>
-        <p className="dc-hint">逐镜编辑(改景别/动作/台词)在下方「预览可行性」后的分镜列表里直接改 prompt 即可。</p>
+        <p className="dc-hint">逐镜编辑(改景别/动作/台词)、首尾帧关键帧,都在下方「预览可行性」后的分镜列表里配置。</p>
       </section>
 
       {/* ⑥ 音频 */}
@@ -345,7 +355,12 @@ export function DirectorConsole() {
               {SFX_OPTS.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
             </select>
           </label>
-          <NotSupported label="情绪化配音" reason="当前 TTS(edge-tts / vibevoice)均无情绪参数,无法调节配音情绪" />
+          <label className="dc-field dc-field--check">
+            <input type="checkbox" checked={f.emotion_aware_voiceover ?? false}
+              disabled={f.audio_provider !== 'edge_tts'}
+              onChange={e => set('emotion_aware_voiceover', e.target.checked)} />
+            <span>情绪化配音(仅 Edge TTS 生效;台词逐行推断情绪,驱动语速/音高变化)</span>
+          </label>
         </div>
         {f.audio_provider === 'vibevoice' && (f.character_subject_ids?.length ?? 0) > 1 && (
           <p className="dc-hint">已选多角色 + VibeVoice:脚本里不同角色的台词会自动分配不同音色(无需额外设置)。</p>
@@ -446,6 +461,19 @@ export function DirectorConsole() {
             <button type="button" className="dc-btn dc-btn--primary" onClick={render} disabled={busy !== null}>
               {busy === 'render' ? '出片装配中…' : '按这些镜头生成成片'}
             </button>
+          </div>
+
+          <div className="dc-edit">
+            <div className="dc-edit__head">首尾帧关键帧(可选,仅「直接产集」生效;某镜头首尾两张图都填才启用,该镜头绕开普通生成走首尾帧过渡)</div>
+            {shots.map((_s, i) => (
+              <div className="dc-edit__row" key={i}>
+                <span className="dc-edit__idx">镜 {i + 1}</span>
+                <input placeholder="首帧图(路径/URL)" value={shotKeyframes[i]?.first_frame ?? ''}
+                  onChange={e => setShotKeyframe(i, 'first_frame', e.target.value)} />
+                <input placeholder="尾帧图(路径/URL)" value={shotKeyframes[i]?.last_frame ?? ''}
+                  onChange={e => setShotKeyframe(i, 'last_frame', e.target.value)} />
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -272,6 +272,28 @@ async def test_capabilities_called_for_mode_check():
         mock_reg.get.return_value.capabilities.assert_called_once_with("ltx2_cloud")
 
 
+# ── 5b. 能力矩阵补列(HEVI 路线图 Phase2 #35)──────────────────────────────────
+
+
+def test_provider_limits_native_audio_and_lip_sync_have_real_evidence():
+    """native_audio/lip_sync 只在有真实依据时标 True——不是每个 provider 瞎猜。"""
+    from hevi.video.capability_guard import PROVIDER_LIMITS
+
+    assert PROVIDER_LIMITS["ltx2_cloud"].native_audio is True
+    assert PROVIDER_LIMITS["veo3"].native_audio is True
+    assert PROVIDER_LIMITS["veo3"].lip_sync is True
+    # 没有依据的 provider 默认 False,不是留空/None
+    assert PROVIDER_LIMITS["wan_cloud"].native_audio is False
+    assert PROVIDER_LIMITS["kling_v2"].lip_sync is False
+
+
+def test_provider_limits_last_verified_is_set():
+    from hevi.video.capability_guard import PROVIDER_LIMITS
+
+    for name, limits in PROVIDER_LIMITS.items():
+        assert limits.last_verified, f"{name} missing last_verified"
+
+
 # ── 6. Health-check before fallback ──────────────────────────────────────────
 
 
@@ -294,7 +316,7 @@ async def test_fallback_skips_unhealthy_provider():
                 runner=runner,
                 on_fallback=on_fallback,
             )
-        mock_hc.assert_called_once_with("wan_cloud")
+        mock_hc.assert_called_once_with("happyhorse_1_1_maas_lock")
         on_fallback.assert_not_called()
 
 
@@ -316,7 +338,7 @@ async def test_fallback_uses_healthy_provider():
             on_fallback=on_fallback,
         )
         assert result == "ok"
-        mock_hc.assert_called_once_with("wan_cloud")
+        mock_hc.assert_called_once_with("happyhorse_1_1_maas_lock")
 
 
 @pytest.mark.asyncio

@@ -73,16 +73,88 @@ def load_timing_manifest(audio_path: Path) -> list[float] | None:
     return None
 
 
-# ── 单镜头归一化(统一尺寸/帧率/SAR + 音频驱动时长) ─────────────────────
+# ── 单镜头归一化(统一尺寸/帧率/SAR + 音频驱动时长 + 跨 provider 亮度归一) ─────
 
 
-def _normalize_vf(width: int, height: int, fps: int) -> str:
-    """统一画面: 等比缩放进 W×H 黑边填充 + 方形像素 + 目标帧率。"""
-    return (
+def _normalize_vf(width: int, height: int, fps: int, *, brightness: float = 0.0) -> str:
+    """统一画面: 等比缩放进 W×H 黑边填充 + 方形像素 + 目标帧率 + 可选亮度修正。"""
+    vf = (
         f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,"
         f"setsar=1,fps={fps}"
     )
+    if brightness:
+        vf += f",eq=brightness={brightness:.4f}"
+    return vf
+
+
+def _measure_avg_luma(path: Path) -> float | None:
+    """取视频中点一帧,算平均灰度亮度(0-255)。
+
+    跨 provider 调色统一(HEVI 路线图 Phase2 #37)的度量基准——不同 provider 对
+    同一 prompt 输出的整体明暗有系统性差异,直接硬切/xfade 拼接会看出接缝。采样
+    单帧而非逐帧统计,足够代表整个镜头的曝光基调,换来速度。失败(无法探测/
+    解码)→ None,不阻断装配。
+    """
+    import subprocess
+    import tempfile
+
+    from PIL import Image
+
+    dur_out = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    try:
+        dur = float(dur_out)
+    except ValueError:
+        return None
+    with tempfile.TemporaryDirectory(prefix="luma_") as td:
+        frame = Path(td) / "f.png"
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-ss",
+                f"{dur / 2:.3f}",
+                "-i",
+                str(path),
+                "-frames:v",
+                "1",
+                "-q:v",
+                "3",
+                str(frame),
+            ],
+            capture_output=True,
+        )
+        if not frame.exists():
+            return None
+        with Image.open(frame) as im:
+            hist = im.convert("L").histogram()
+            total = sum(hist)
+            if total == 0:
+                return None
+            return sum(i * c for i, c in enumerate(hist)) / total
+
+
+def _brightness_correction(luma: float, target_luma: float, *, max_delta: float = 0.15) -> float:
+    """luma/target_luma 是 0-255 平均灰度。ffmpeg `eq` 的 brightness 参数是 -1..1
+    的加性偏移。把两者的相对差值转成修正量,夹在 ±max_delta 内——只做"缩小组间
+    差异",不做激进的重新打光,避免过度修正把正常的明暗节奏(比如刻意的夜戏)
+    拉平成一个亮度。
+    """
+    diff = (target_luma - luma) / 255.0
+    return max(-max_delta, min(max_delta, diff))
 
 
 async def _normalize_shot(
@@ -92,14 +164,16 @@ async def _normalize_shot(
     width: int,
     height: int,
     fps: int,
+    *,
+    brightness: float = 0.0,
 ) -> tuple[Path, float]:
-    """把单镜头归一化到统一规格 + 目标时长,返回(归一化文件, 实际时长)。
+    """把单镜头归一化到统一规格 + 目标时长 + 亮度修正,返回(归一化文件, 实际时长)。
 
     时长策略: target 比视频短→裁(-t);比视频长→末帧保持(tpad clone)补足。
     """
     src_dur = await probe_duration(shot.video_path)
     out = tmp_dir / f"norm_{idx:04d}.mp4"
-    vf = _normalize_vf(width, height, fps)
+    vf = _normalize_vf(width, height, fps, brightness=brightness)
 
     target = shot.target_duration
     args = ["-y", "-i", str(shot.video_path)]
@@ -136,28 +210,37 @@ async def _normalize_shot(
 def build_xfade_chain(
     durations: list[float],
     transition: str,
-    xfade_d: float,
+    xfade_d: float | list[float],
 ) -> tuple[str, str, float]:
     """构造 N 段 xfade 链 filter_complex。
 
     返回 (filter_complex, 末级标签, 成片总时长)。
-    offset_i = (已合并总时长) - xfade_d。每次 xfade 重叠 xfade_d,故总时长
-    = sum(durations) - (N-1)*xfade_d。
+    offset_i = (已合并总时长) - xfade_d_i。每次 xfade 重叠 xfade_d_i,故总时长
+    = sum(durations) - sum(xfade_d_i)。
+
+    `xfade_d` 可以是单一值(所有转场同一重叠时长,原有行为)或逐转场的列表——
+    BGM 节拍对齐(HEVI 路线图 Phase2 #37)按节拍点微调每处转场的重叠时长,不是
+    整条链统一一个数,故需要这个泛化。
     """
     n = len(durations)
     if n == 1:
         return "", "0:v", durations[0]
+    xfade_ds = xfade_d if isinstance(xfade_d, list) else [xfade_d] * (n - 1)
+    if len(xfade_ds) != n - 1:
+        raise ValueError(
+            f"xfade_d list must have {n - 1} entries for {n} shots, got {len(xfade_ds)}"
+        )
     parts: list[str] = []
     prev = "[0:v]"
     merged = durations[0]
     for i in range(1, n):
-        offset = merged - xfade_d
+        d = xfade_ds[i - 1]
+        offset = merged - d
         out_label = f"[vx{i}]" if i < n - 1 else "[vout]"
         parts.append(
-            f"{prev}[{i}:v]xfade=transition={transition}:"
-            f"duration={xfade_d}:offset={offset:.3f}{out_label}"
+            f"{prev}[{i}:v]xfade=transition={transition}:duration={d}:offset={offset:.3f}{out_label}"
         )
-        merged = merged + durations[i] - xfade_d
+        merged = merged + durations[i] - d
         prev = out_label
     return ";".join(parts), "[vout]", merged
 
@@ -308,11 +391,21 @@ async def assemble_longvideo(
     loudness_lufs: float = -14.0,
     bgm_gain_db: float = -18.0,
     sfx_gain_db: float = -6.0,
+    color_normalize: bool = True,
+    bgm_beat_align: bool = True,
 ) -> Path:
     """装配长视频成片。返回 output_path。
 
-    步骤: ①逐镜头归一化(统一规格 + 音频驱动时长) ②xfade/硬切拼接(重编码)
-    ③旁白 loudnorm + BGM ducking(+可选音效)混音 ④可选烧字幕(可选样式)。
+    步骤: ①逐镜头归一化(统一规格 + 音频驱动时长 + 跨 provider 亮度归一)
+    ②xfade/硬切拼接(重编码,转场可选贴 BGM 节拍点) ③旁白 loudnorm + BGM
+    ducking(+可选音效)混音 ④可选烧字幕(可选样式)。
+
+    `color_normalize`(HEVI 路线图 Phase2 #37):度量每个原始镜头的平均亮度,往
+    全片平均值方向做一个有界修正(±0.15,ffmpeg eq brightness 单位),缓解不同
+    provider 输出的系统性明暗差异造成的混剪接缝。只做亮度,不做色相/饱和度——
+    没有跨 provider 校准数据支撑更激进的调色,不该编造。
+    `bgm_beat_align`:有 BGM 时用 librosa 检测节拍,转场点贴最近节拍(±0.3s 内),
+    检测失败/无 BGM 时静默回退成原有的统一转场时长,不阻断装配。
     """
     import tempfile
 
@@ -323,16 +416,48 @@ async def assemble_longvideo(
     with tempfile.TemporaryDirectory(prefix="hevi_assemble_") as td:
         tmp_dir = Path(td)
 
+        # 跨 provider 调色统一:先测原始镜头的亮度,算出每镜头的修正量,直接并入
+        # 下面的归一化编码(①同一趟 ffmpeg 调用完成,不需要额外一趟重编码)。
+        brightness_by_shot = [0.0] * len(shots)
+        if color_normalize:
+            import asyncio
+
+            lumas = await asyncio.gather(
+                *(asyncio.to_thread(_measure_avg_luma, s.video_path) for s in shots)
+            )
+            valid = [x for x in lumas if x is not None]
+            if valid:
+                target_luma = sum(valid) / len(valid)
+                brightness_by_shot = [
+                    _brightness_correction(lm, target_luma) if lm is not None else 0.0
+                    for lm in lumas
+                ]
+
         # ① 归一化每个镜头
         norm: list[tuple[Path, float]] = []
         for i, shot in enumerate(shots):
-            norm.append(await _normalize_shot(shot, i, tmp_dir, width, height, fps))
+            norm.append(
+                await _normalize_shot(
+                    shot, i, tmp_dir, width, height, fps, brightness=brightness_by_shot[i]
+                )
+            )
         durations = [d for _, d in norm]
 
         # ② 视频拼接
         silent = tmp_dir / "video_silent.mp4"
-        xfade_d = min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
+        xfade_d: float | list[float] = (
+            min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
+        )
         use_xfade = transition != "cut" and len(durations) > 1 and xfade_d > 0.05
+
+        if use_xfade and bgm_beat_align and bgm_path is not None and bgm_path.exists():
+            import asyncio
+
+            from hevi.assembly.beat_align import beat_snapped_xfade_durations, detect_beat_times
+
+            beats = await asyncio.to_thread(detect_beat_times, bgm_path)
+            if beats:
+                xfade_d = beat_snapped_xfade_durations(durations, base_xfade_d=xfade_d, beats=beats)
 
         if use_xfade:
             fc, vlabel, _ = build_xfade_chain(durations, transition, xfade_d)

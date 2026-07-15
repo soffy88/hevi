@@ -1,8 +1,14 @@
 """L2 剧本 —— constitution + chapter_ir → script.json。见 HEVI-SPEC-01 §3。
 
-史实红线:dialogue 行只能改写自 chapter_ir.quotes,LLM 不得原创台词。生成阶段就地强制——
-quote_id 对不上 chapter_ir 里真实存在的引语 → 整行丢弃,不降级成"改成旁白"。这里比 L0
-丢弃幻觉引语更严格,因为留着不丢就是让观众听见一句编出来的台词。
+对白两类,史实红线分层把关:
+1. 逐字引语改写(dramatized=False):text 必须是某条 chapter_ir.quote 的白话改写,quote_id
+   必填且指向真实引语。生成阶段强制——quote_id 对不上真实引语 → 整行丢弃。G2 还会 LLM
+   语义比对台词与原引语是否一致。
+2. 戏剧化改编(dramatized=True):《资治通鉴》是极简叙述体,索地/拒地/怒而攻伐这类戏剧核心
+   往往只有叙述、没有直接引语。允许编剧为这些**真实发生的事件**创作符合时代口吻的对白
+   (忠于事件,措辞是创作),quote_id 可空、不受"逐字引语"红线约束。但仍受 G2 事实幻觉门
+   约束:不得编造原文没有的情节/官职/称谓/人物关系。这是"有戏剧、有对峙"与"不编史实"的
+   折中——把创作自由放在措辞上,把红线守在史实上。是否开启由 dramatize 参数控制(默认开)。
 
 line_id 一律由代码顺序分配(LN001/LN002/...),不采信 LLM 自报的 ID——理由与 L0 的
 character_id/event_id 分配策略相同:LLM 引用它、不发明它。
@@ -24,7 +30,7 @@ import re
 from typing import Any
 
 from hevi.tongjian.chapter_ir import _call_llm_json, _extract_json_obj
-from hevi.tongjian.schemas import ChapterIR, Constitution, GateResult, Script, ScriptLine
+from hevi.tongjian.schemas import ChapterIR, Constitution, EventIR, GateResult, Script, ScriptLine
 
 logger = logging.getLogger(__name__)
 
@@ -50,41 +56,86 @@ _MODERN_VOCAB_BLACKLIST = [
     "拜拜",
 ]
 
-_SCRIPT_PROMPT_TEMPLATE = """你是历史解说短片编剧。基于下面的创作宪法和分幕事件/引语,写逐行剧本。
+_DEFAULT_SCREENWRITER_PERSONA = "历史正剧编剧(对标《大秦帝国》《贞观之治》)"
+# 2026-07-12 短剧真实反馈:"大部分都是旁白,没有对话"——这份 prompt 原样照抄自通鉴
+# (资治通鉴)模块,人设("历史正剧编剧")从没为短剧改过。短剧复用这套 L2 生成/G2 校验
+# 机制是对的(不新建平行管线),但人设需要按体裁参数化,不能让 LLM 一直以为自己在写
+# 历史解说——见 tongjian_bridge.py 的 DEFAULT_SHORTDRAMA_SCREENWRITER_PERSONA。
+_COMMENTARY_RULE = "4. 史论(臣光曰)用 type=commentary,speaker=NARRATOR。\n"
+
+_SCRIPT_PROMPT_TEMPLATE = """你是{screenwriter_persona}。基于下面的创作宪法和分幕事件/引语,写一集**有对峙、有冲突、人物开口说话**的逐行剧本,不要写成解说旁白的堆砌。
 
 创作宪法:
 基调: {tone}
 叙事视角: {narrative_stance}
 禁忌: {forbidden}
 
+人物名册(dialogue 的 speaker 必须用左边的 character_id,不要写人名):
+{roster}
+
 分幕事件与引语:
 {act_blocks}
 
 目标字数: 约 {target_chars} 字(对应 {target_duration_sec} 秒口播)
 
+语言要求(重要):**对白一律用现代白话(口语),不要文言腔**。像给历史正剧配现代台词——
+自然、有性格、说人话,现代观众一听就懂。不要"之乎者也"、不要"尔/汝/寡人/岂不"这类文言词,
+不要把白话硬拗成半文半白。旁白也用通顺的现代白话叙述。唯一例外:史论(臣光曰)保留原文语句。
+
+台词有两类,务必用对:
+- **引语改写对白**(有 [引语Qxxx] 的事件):text 是把该引语翻成**现代白话**,dramatized=false,quote_id 填那条引语的 id。
+- **戏剧化对白**(标了「可戏剧化」的事件,原文无直接引语):由你为这个**真实发生的事件**用**现代白话**创作对白,dramatized=true,quote_id 留空。写出人物性格与对峙张力(如智伯傲慢逼着要地、赵襄子硬顶回去),但**只能就事件本身发挥,不得编造事件列表里没有的情节、官职、封号、人物关系**。
+
 只输出一个 JSON 对象:
 {{"lines": [
   {{"act": 1, "type": "narration|dialogue|commentary",
-    "speaker": "NARRATOR 或人物 character_id(仅 dialogue 用)",
-    "text": "这一行的文本", "event_id": "锚定的 event_id",
-    "quote_id": "仅 dialogue 行填,必须是上面列出的引语 quote_id,一字不差",
-    "emotion": "情绪", "visual_hint": "画面提示"}}
+    "speaker": "NARRATOR 或说话人物的 character_id(dialogue 用,如 C005;必须取自上面人物名册)",
+    "text": "这一行的文本",
+    "dramatized": true 或 false,
+    "event_id": "锚定的 event_id",
+    "quote_id": "仅引语改写对白填,必须是上面列出的 quote_id,一字不差;戏剧化对白留空",
+    "emotion": "情绪(如 倨傲/决绝/惊惧)", "visual_hint": "画面提示(景别/动作/场景)"}}
 ]}}
 
 硬性规则:
-1. type=dialogue 的行,text 必须是对应 quote_id 原引语的白话改写,不得脱离原引语另编台词。
-2. 每行必须填 event_id,且必须是上面分幕列出的 event_id 之一。
-3. 不得使用禁忌清单里的元素,不得加入原文没有的情节/官职/称谓。
-4. 总字数尽量贴近目标字数。
+1. 尽量以对白推动戏剧,旁白只做必要的时空桥接;高潮事件(dramatic_weight 高)必须有人物开口对峙,不要用旁白一笔带过。
+2. type=dialogue 且 dramatized=false 的行,text 必须忠实改写自对应 quote_id 的原引语。
+3. type=dialogue 且 dramatized=true 的行,忠于事件事实,措辞可创作,但不得引入事件列表之外的史实细节。
+{commentary_rule}5. 每行必须填 event_id,且是上面分幕列出的 event_id 之一。不得使用禁忌清单里的元素。
+6. **必须写足时长**:总字数要贴近目标字数({target_chars} 字)。在同一事件内展开多轮白话对白往复
+   (要地可以有威逼、试探、回绝好几个来回)、给关键场面配充分的场景旁白与人物神态描写。只在既有
+   事件内扩展戏剧密度,不得新增事件列表之外的情节。宁可多写几轮对白,也不要一两句就把高潮带过。
 """
 
+# dramatize 关闭时(严格模式)用的旧规则:对白只能来自逐字引语,不得原创。
+_STRICT_DIALOGUE_RULE = (
+    "本片为严格考据模式:type=dialogue 的行 text 必须是对应 quote_id 原引语的白话改写,"
+    "dramatized 一律 false,不得脱离原引语另编台词;无引语的事件一律写成 narration。"
+)
 
-def _build_script_prompt(constitution: Constitution, chapter_ir: ChapterIR) -> str:
+
+def _build_script_prompt(
+    constitution: Constitution,
+    chapter_ir: ChapterIR,
+    *,
+    dramatize: bool = True,
+    screenwriter_persona: str = _DEFAULT_SCREENWRITER_PERSONA,
+    include_commentary: bool = True,
+) -> str:
     events_by_id = {e.event_id: e for e in chapter_ir.events}
     quotes_by_event: dict[str, list] = {}
     for q in chapter_ir.quotes:
         if q.event_id:
             quotes_by_event.setdefault(q.event_id, []).append(q)
+
+    # 人物名册:让编剧知道每个角色的 character_id,dialogue 的 speaker 必须用 id(下游按 id 取
+    # 角色水墨像保持一致性),不能用人名。
+    roster = "\n".join(
+        f"  {c.character_id} = {c.canonical_name}"
+        + (f"(又称 {', '.join(c.aliases)})" if c.aliases else "")
+        + (f" — {c.role_in_chapter}" if c.role_in_chapter else "")
+        for c in chapter_ir.characters
+    )
 
     act_blocks = []
     for act in constitution.act_structure:
@@ -93,22 +144,30 @@ def _build_script_prompt(constitution: Constitution, chapter_ir: ChapterIR) -> s
             e = events_by_id.get(eid)
             if not e:
                 continue
-            block_lines.append(f"  {e.event_id}: {e.summary}")
-            for q in quotes_by_event.get(eid, []):
+            evq = quotes_by_event.get(eid, [])
+            # 无引语的事件标「可戏剧化」,提示编剧可为其创作对白(戏剧化模式下)。
+            tag = "" if evq or not dramatize else "  [可戏剧化]"
+            block_lines.append(f"  {e.event_id}(戏剧权重{e.dramatic_weight}): {e.summary}{tag}")
+            for q in evq:
                 block_lines.append(
                     f"    引语[{q.quote_id}] {q.speaker} 说(原文):{q.original} | 白话:{q.modern}"
                 )
         act_blocks.append("\n".join(block_lines))
 
-    target_chars = round(constitution.target_duration_sec * _CHARS_PER_SEC * _PAUSE_FACTOR)
-    return _SCRIPT_PROMPT_TEMPLATE.format(
+    prompt = _SCRIPT_PROMPT_TEMPLATE.format(
+        screenwriter_persona=screenwriter_persona,
         tone=", ".join(constitution.tone),
         narrative_stance=constitution.narrative_stance,
         forbidden=", ".join(constitution.forbidden),
+        roster=roster,
         act_blocks="\n".join(act_blocks),
-        target_chars=target_chars,
+        target_chars=round(constitution.target_duration_sec * _CHARS_PER_SEC * _PAUSE_FACTOR),
         target_duration_sec=constitution.target_duration_sec,
+        commentary_rule=_COMMENTARY_RULE if include_commentary else "",
     )
+    if not dramatize:
+        prompt += "\n" + _STRICT_DIALOGUE_RULE + "\n"
+    return prompt
 
 
 def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
@@ -122,9 +181,18 @@ def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
 
         quote_id = ln.get("quote_id")
         quote_id = str(quote_id) if quote_id else None
+        dramatized = bool(ln.get("dramatized"))
         if line_type == "dialogue" and quote_id not in known_quote_ids:
-            logger.warning("dialogue 行引用了不存在的 quote_id %r,整行丢弃(史实红线)", quote_id)
-            continue
+            # 戏剧化对白允许无 quote_id(为无引语的真实事件创作台词);
+            # 非戏剧化对白 quote_id 对不上真实引语 → 整行丢弃(逐字引语红线)。
+            if dramatized:
+                quote_id = None
+            else:
+                logger.warning(
+                    "非戏剧化 dialogue 行引用了不存在的 quote_id %r,整行丢弃(逐字引语红线)",
+                    quote_id,
+                )
+                continue
 
         event_id = ln.get("event_id")
         event_id = str(event_id) if event_id and str(event_id) in known_event_ids else None
@@ -138,6 +206,7 @@ def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
                 text=str(ln.get("text") or ""),
                 event_id=event_id,
                 quote_id=quote_id,
+                dramatized=dramatized and line_type == "dialogue",
                 emotion=str(ln.get("emotion") or ""),
                 visual_hint=str(ln.get("visual_hint") or ""),
             )
@@ -146,7 +215,13 @@ def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
 
 
 async def generate_script(
-    constitution: Constitution, chapter_ir: ChapterIR, *, llm: Any = None
+    constitution: Constitution,
+    chapter_ir: ChapterIR,
+    *,
+    llm: Any = None,
+    dramatize: bool = True,
+    screenwriter_persona: str = _DEFAULT_SCREENWRITER_PERSONA,
+    include_commentary: bool = True,
 ) -> Script:
     """constitution + chapter_ir → 剧本草稿。LLM 调用失败 → 返回空壳(降级,不阻塞)。"""
     if llm is None:
@@ -154,13 +229,52 @@ async def generate_script(
 
         llm = ProviderRegistry.get().llm("default")
 
-    prompt = _build_script_prompt(constitution, chapter_ir)
+    prompt = _build_script_prompt(
+        constitution,
+        chapter_ir,
+        dramatize=dramatize,
+        screenwriter_persona=screenwriter_persona,
+        include_commentary=include_commentary,
+    )
     try:
         draft = await _call_llm_json(llm, prompt)
     except Exception as e:
         logger.warning("script 生成 LLM 调用失败,返回空壳: %s", e)
         draft = {}
     return _coerce_script(draft, chapter_ir)
+
+
+_MIN_DIALOGUE_WEIGHT = 4  # dramatic_weight 1-5,>=4 视为"高潮"级别,必须有人物开口对峙
+# _rewrite_line 靠这个子串识别"该转对白"这类违规(区别于文本瑕疵类违规),走专门的
+# 旁白→对白转换 prompt,而不是通用的"重写 text 字段"prompt。
+_NO_DIALOGUE_MARKER = "只有旁白、没有对白"
+
+
+def _check_dialogue_coverage(script: Script, chapter_ir: ChapterIR) -> list[str]:
+    """高戏剧权重事件必须至少有一行真对白,不能被旁白一笔带过。
+
+    prompt 里"硬性规则1"("高潮事件必须有人物开口对峙")只是软提示,没有代码层面的
+    校验拦截——LLM 选择偷懒写旁白时没人挡它(2026-07-12 短剧真实反馈:"大部分都是
+    旁白,没有对话")。这里补一道真正拦截的门,命中就交给 _rewrite_line 定点转写成对白。
+
+    只处理"事件已经有旁白行覆盖、但没有对白行"的情况——事件完全没有任何行覆盖是
+    另一个问题(剧本生成漏掉了整个事件),不在这个门的职责范围内。
+    """
+    dialogue_events = {ln.event_id for ln in script.lines if ln.type == "dialogue" and ln.event_id}
+    errors: list[str] = []
+    for e in chapter_ir.events:
+        if e.dramatic_weight < _MIN_DIALOGUE_WEIGHT or e.event_id in dialogue_events:
+            continue
+        narration_line = next(
+            (ln for ln in script.lines if ln.event_id == e.event_id and ln.type == "narration"),
+            None,
+        )
+        if narration_line:
+            errors.append(
+                f"剧本行 {narration_line.line_id} 对应高戏剧权重事件 {e.event_id}"
+                f"(权重{e.dramatic_weight}){_NO_DIALOGUE_MARKER},需要改写成对白"
+            )
+    return errors
 
 
 def _check_forbidden_terms(script: Script, constitution: Constitution) -> list[str]:
@@ -221,10 +335,18 @@ async def _check_dialogue_consistency(script: Script, chapter_ir: ChapterIR, llm
 
 async def _check_hallucinated_content(script: Script, chapter_ir: ChapterIR, llm: Any) -> list[str]:
     known_events = "\n".join(f"{e.event_id}: {e.summary}" for e in chapter_ir.events)
-    script_lines = "\n".join(f"{ln.line_id}[{ln.type}]: {ln.text}" for ln in script.lines)
+    # 标注戏剧化行,让审查区别对待:戏剧化对白的"措辞创作"不算幻觉,只有引入事件之外的
+    # 新史实(新情节/官职/封号/人物关系)才算。否则每句创作对白都会被判违规、被重写抹平成旁白。
+    script_lines = "\n".join(
+        f"{ln.line_id}[{ln.type}{'·戏剧化' if ln.dramatized else ''}]: {ln.text}"
+        for ln in script.lines
+    )
     prompt = (
         "下面是史料事件列表和一份剧本逐行文本。逐行检查剧本是否出现了事件列表里没有的情节、"
-        "官职、称谓或人物关系,即编造的内容。"
+        "官职、称谓或人物关系,即编造的**史实**内容。\n"
+        "重要:标了「·戏剧化」的行是编剧为无引语的真实事件创作的对白,其**措辞属于允许的艺术创作**,"
+        "只要没有引入事件列表之外的新史实(新事件/官职/封号/结盟/人物关系)就算合规,不要因为"
+        "'原文没有这句话'或'措辞是编的'而判它违规;只有当它**捏造了新的史实**时才列入 violations。\n"
         '只输出 JSON: {"violations": [{"line_id": "...", "reason": "..."}]}'
         "(没问题的行不列入 violations)\n\n"
         f"事件列表:\n{known_events}\n\n剧本:\n{script_lines}"
@@ -255,17 +377,19 @@ async def gate_script(
     errors: list[str] = []
     errors.extend(_check_forbidden_terms(script, constitution))
     errors.extend(_check_duration(script, constitution))
+    errors.extend(_check_dialogue_coverage(script, chapter_ir))
     errors.extend(await _check_dialogue_consistency(script, chapter_ir, llm))
     errors.extend(await _check_hallucinated_content(script, chapter_ir, llm))
 
-    dialogue_lines = [ln for ln in script.lines if ln.type == "dialogue"]
-    missing_quote = [ln.line_id for ln in dialogue_lines if not ln.quote_id]
+    # 只有"非戏剧化对白"要求 quote_id;戏剧化对白(dramatized=True)本就无逐字引语,豁免。
+    strict_dialogue = [ln for ln in script.lines if ln.type == "dialogue" and not ln.dramatized]
+    missing_quote = [ln.line_id for ln in strict_dialogue if not ln.quote_id]
     if missing_quote:
-        # 生成阶段已经把无 quote_id 的 dialogue 行丢弃了,这里只是双重保险。
-        errors.append(f"dialogue 行缺少 quote_id: {missing_quote}")
+        # 生成阶段已经把无 quote_id 的非戏剧化 dialogue 行丢弃了,这里只是双重保险。
+        errors.append(f"非戏剧化 dialogue 行缺少 quote_id: {missing_quote}")
     coverage = (
-        ((len(dialogue_lines) - len(missing_quote)) / len(dialogue_lines))
-        if dialogue_lines
+        ((len(strict_dialogue) - len(missing_quote)) / len(strict_dialogue))
+        if strict_dialogue
         else 1.0
     )
 
@@ -284,11 +408,50 @@ def _violations_by_line(errors: list[str]) -> dict[str, list[str]]:
     return grouped
 
 
+async def _convert_to_dialogue(line: ScriptLine, event: EventIR | None, llm: Any) -> ScriptLine:
+    """把一行旁白改写成对白(_check_dialogue_coverage 命中的定点修复)。挑事件的
+    actors[0] 当说话人(找不到就保持原 speaker,读起来会怪但不阻断整条链)。
+    dramatized=True——这类事件本来就没有逐字引语,属于跟 build_script prompt 里
+    "戏剧化对白"同一条规则的创作范畴,不是凭空捏造。
+    """
+    speaker = event.actors[0] if event and event.actors else line.speaker
+    context = f"事件: {event.summary if event else '(未知)'}"
+    prompt = (
+        "下面这行剧本目前是旁白,但对应一个高戏剧权重的关键事件,审查判定必须改写成"
+        "人物对白,不能继续用旁白带过。\n"
+        f"{context}\n"
+        f"原旁白: {line.text!r}\n"
+        f"请把它改写成说话人 {speaker} 的一句对白,忠于事件事实,措辞可创作,但不得"
+        "引入事件之外的新情节/官职/称谓/人物关系。"
+        '只输出 JSON: {"text": "对白文本"}'
+    )
+    try:
+        resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=300)
+        content = resp.get("content") if hasattr(resp, "get") else str(resp)
+        verdict = _extract_json_obj(content)
+        new_text = verdict.get("text")
+        if new_text:
+            return line.model_copy(
+                update={
+                    "type": "dialogue",
+                    "speaker": speaker,
+                    "text": str(new_text),
+                    "dramatized": True,
+                    "quote_id": None,
+                }
+            )
+    except Exception as e:
+        logger.warning("旁白转对白改写行 %s 失败: %s", line.line_id, e)
+    return line
+
+
 async def _rewrite_line(
     line: ScriptLine, violation_reason: str, chapter_ir: ChapterIR, llm: Any
 ) -> ScriptLine:
     """定点重写单行:只喂这一行的上下文,不重跑整篇剧本(省 token)。"""
     event = next((e for e in chapter_ir.events if e.event_id == line.event_id), None)
+    if _NO_DIALOGUE_MARKER in violation_reason:
+        return await _convert_to_dialogue(line, event, llm)
     quote = (
         next((q for q in chapter_ir.quotes if q.quote_id == line.quote_id), None)
         if line.quote_id
@@ -297,12 +460,20 @@ async def _rewrite_line(
     context = f"事件: {event.summary if event else '(未知)'}"
     if quote:
         context += f"\n原引语: {quote.original}(白话:{quote.modern})"
+    if line.dramatized:
+        rule = (
+            "这是戏剧化对白(为无引语的真实事件创作):忠于上述事件事实、保持人物口吻,"
+            "措辞可创作,但不得引入事件之外的新史实。"
+        )
+    elif line.quote_id:
+        rule = "这是逐字引语改写对白:text 必须忠实改写自上述原引语,不得另编台词。"
+    else:
+        rule = "保持史实,不得加入原文没有的情节/官职/称谓。"
     prompt = (
         f"下面这行剧本被审查判定违规,原因:{violation_reason}\n"
-        f"原行: type={line.type} speaker={line.speaker} text={line.text!r}\n"
+        f"原行: type={line.type} speaker={line.speaker} dramatized={line.dramatized} text={line.text!r}\n"
         f"{context}\n"
-        "请只重写 text 字段以消除违规,保持 type/speaker/event_id/quote_id 不变,"
-        "dialogue 行不得脱离原引语另编台词。"
+        f"请只重写 text 字段以消除违规,保持 type/speaker/event_id/quote_id 不变。{rule}"
         '只输出 JSON: {"text": "重写后的文本"}'
     )
     try:
@@ -318,7 +489,13 @@ async def _rewrite_line(
 
 
 async def build_script(
-    constitution: Constitution, chapter_ir: ChapterIR, *, llm: Any = None
+    constitution: Constitution,
+    chapter_ir: ChapterIR,
+    *,
+    llm: Any = None,
+    dramatize: bool = True,
+    screenwriter_persona: str = _DEFAULT_SCREENWRITER_PERSONA,
+    include_commentary: bool = True,
 ) -> tuple[Script, GateResult]:
     """L2 主入口:生成 → G2 门 → 违规行定点重写(最多 3 次)→ 仍不过则删除该行。"""
     if llm is None:
@@ -326,7 +503,14 @@ async def build_script(
 
         llm = ProviderRegistry.get().llm("default")
 
-    script = await generate_script(constitution, chapter_ir, llm=llm)
+    script = await generate_script(
+        constitution,
+        chapter_ir,
+        llm=llm,
+        dramatize=dramatize,
+        screenwriter_persona=screenwriter_persona,
+        include_commentary=include_commentary,
+    )
     result = await gate_script(script, chapter_ir, constitution, llm=llm)
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}

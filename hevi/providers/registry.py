@@ -22,6 +22,81 @@ __all__ = ["ProviderRegistry", "register_all_providers"]
 logger = logging.getLogger(__name__)
 
 
+def _coerce_llm_json_text(text: str) -> str:
+    """SaaS-2/P10.F2 Fix:纠正 LLM 回复里常见的 JSON 形状漂移(数字 ID 该是字符串、
+    scenes/shots 该是字典列表却给了字符串列表、null 值),满足 oskill 里 pydantic
+    模型的校验。原是 `AsyncDashScopeAdapter.__init__` 内的私有闭包,只喂给 "default"
+    (公共 DashScope)。`_qwen_cloud_llm`(阿里云百炼 workspace 端点)接的是同一套
+    oskill 消费方(script_writer/storyboard_planner),回复一样会漂移形状,故抽成
+    共用函数——两边都用同一套纠正,而不是只修一边。任何失败都原样返回 text,不阻断。
+    """
+    import json
+    import re
+
+    try:
+        clean_text = text.strip()
+        if clean_text.startswith("```"):
+            match = re.search(r"```(?:json)?\n?(.*?)\n?```", clean_text, re.DOTALL)
+            if match:
+                clean_text = match.group(1).strip()
+
+        json_match = re.search(r"(\{.*\}|\[.*\])", clean_text, re.DOTALL)
+        if not json_match:
+            return text
+        data = json.loads(json_match.group(1))
+
+        def _coerce_fields(obj: Any) -> Any:
+            if isinstance(obj, dict):
+                res: dict[str, Any] = {}
+                for k, v in obj.items():
+                    is_id = k.endswith("_id") or k == "id"
+                    if is_id and isinstance(v, (int, float)):
+                        res[k] = str(v)
+                    elif k in ("importance", "index", "scene_index"):
+                        if isinstance(v, (int, float)):
+                            res[k] = round(v)
+                        elif isinstance(v, str):
+                            vl = v.lower()
+                            if vl in ("low", "minor"):
+                                res[k] = 1
+                            elif vl in ("medium", "normal"):
+                                res[k] = 2
+                            elif vl in ("high", "major"):
+                                res[k] = 3
+                            elif vl in ("critical", "extreme"):
+                                res[k] = 4
+                            else:
+                                try:
+                                    res[k] = int(v)
+                                except ValueError:
+                                    res[k] = 0
+                        else:
+                            res[k] = 0
+                    elif k in ("scenes", "shots") and isinstance(v, list):
+                        fld = "visual_description" if k == "scenes" else "narration"
+                        res[k] = []
+                        for i, item in enumerate(v):
+                            if isinstance(item, str):
+                                res[k].append({"id": str(i + 1), fld: item})
+                            else:
+                                res[k].append(_coerce_fields(item))
+                    elif v is None:
+                        res[k] = ""
+                    else:
+                        res[k] = _coerce_fields(v)
+                return res
+            if isinstance(obj, list):
+                return [_coerce_fields(i) for i in obj]
+            if obj is None:
+                return ""
+            return obj
+
+        return json.dumps(_coerce_fields(data), ensure_ascii=False)
+    except Exception as e:
+        logger.debug(f"LLM Coercion failed: {e}")
+        return text
+
+
 def register_all_providers() -> None:
     """Register all L2 kernel providers at startup."""
     # 0. Patch Main Library Bugs (pending owner RFC)
@@ -70,116 +145,79 @@ def register_all_providers() -> None:
         ]
         return {"output": {"choices": native_choices}, "usage": data.get("usage", {})}
 
-    class AsyncDashScopeAdapter:
-        """Sync-callable LLM adapter with async protocol and .get() fallback.
+    def _make_sync_llm_adapter(call_fn: Any) -> type:
+        """工厂:给一个同步 HTTP 调用函数(签名同 `_compat_llm_call`),生产一个满足
+        oskill 两种调用约定的适配器类。
 
-        oskill.storyboard_planner calls the LLM synchronously:
-            result = llm(messages=...)        # sync call
+        oskill.storyboard_planner/shot_generator 同步调用 LLM:
+            result = llm(messages=...)        # sync call(构造实例即已发出请求)
             content = result.get("content")  # sync .get()
-        All other oskill callers use `await llm(...)`.
-        This adapter satisfies both patterns via __await__ + get().
-        Includes robust JSON coercion to satisfy Pydantic models in oskill.
+        其余 oskill 调用方用 `await llm(...)`。两条约定都要满足,故实例要同时支持
+        `__await__` + `.get()`——`AsyncDashScopeAdapter`("default")和 `qwen_cloud`
+        （之前误注册成 plain async 函数,只满足 await 一条,shot_generator 走 sync
+        调用时会拿到未执行的 coroutine)都走这个工厂,不重复实现三份一样的壳。
         """
 
-        def __init__(self, **kwargs: Any):
-            kwargs.pop("result_format", None)
-            resp = _compat_llm_call(**kwargs)
-            if not isinstance(resp, dict):
-                resp = dict(resp)
+        class _SyncLLMAdapter:
+            def __init__(self, **kwargs: Any):
+                kwargs.pop("result_format", None)
+                resp = call_fn(**kwargs)
+                if not isinstance(resp, dict):
+                    resp = dict(resp)
 
-            choices = resp.get("output", {}).get("choices", [])
-            if choices:
-                text = choices[0].get("message", {}).get("content", "")
+                choices = resp.get("output", {}).get("choices", [])
+                if choices:
+                    text = choices[0].get("message", {}).get("content", "")
+                    text = _coerce_llm_json_text(text)
+                    self._resp = resp
+                    self._resp["content"] = text
+                else:
+                    self._resp = resp
 
-                # SaaS-2/P10.F2 Fix: Coerce numeric IDs and string-list scenes
-                import json
-                import re
+            def __await__(self) -> Any:
+                async def _dummy() -> dict[str, Any]:
+                    return self._resp
 
-                try:
-                    # 1. Strip Markdown code blocks if present
-                    clean_text = text.strip()
-                    if clean_text.startswith("```"):
-                        # Extract content between first and last ```
-                        match = re.search(r"```(?:json)?\n?(.*?)\n?```", clean_text, re.DOTALL)
-                        if match:
-                            clean_text = match.group(1).strip()
+                return _dummy().__await__()
 
-                    # 2. Coerce numeric IDs and list fields
-                    json_match = re.search(r"(\{.*\}|\[.*\])", clean_text, re.DOTALL)
-                    if json_match:
-                        json_str = json_match.group(1)
-                        data = json.loads(json_str)
+            def get(self, key: str, default: Any = None) -> Any:
+                return self._resp.get(key, default)
 
-                        def _coerce_fields(obj: Any) -> Any:
-                            if isinstance(obj, dict):
-                                res: dict[str, Any] = {}
-                                for k, v in obj.items():
-                                    # 1. Coerce IDs to string
-                                    is_id = k.endswith("_id") or k == "id"
-                                    if is_id and isinstance(v, (int, float)):
-                                        res[k] = str(v)
-                                    # 2. Coerce specific numeric fields to int (rounding if float)
-                                    elif k in ("importance", "index", "scene_index"):
-                                        if isinstance(v, (int, float)):
-                                            res[k] = round(v)
-                                        elif isinstance(v, str):
-                                            vl = v.lower()
-                                            if vl in ("low", "minor"):
-                                                res[k] = 1
-                                            elif vl in ("medium", "normal"):
-                                                res[k] = 2
-                                            elif vl in ("high", "major"):
-                                                res[k] = 3
-                                            elif vl in ("critical", "extreme"):
-                                                res[k] = 4
-                                            else:
-                                                try:
-                                                    res[k] = int(v)
-                                                except ValueError:
-                                                    res[k] = 0
-                                        else:
-                                            res[k] = 0
-                                    # 3. Handle list fields like 'scenes' or 'shots'
-                                    elif k in ("scenes", "shots") and isinstance(v, list):
-                                        fld = "visual_description" if k == "scenes" else "narration"
-                                        res[k] = []
-                                        for i, item in enumerate(v):
-                                            if isinstance(item, str):
-                                                res[k].append({"id": str(i + 1), fld: item})
-                                            else:
-                                                res[k].append(_coerce_fields(item))
-                                    # 4. Handle None/null values (fix for Path(None) crash)
-                                    elif v is None:
-                                        res[k] = ""
-                                    else:
-                                        res[k] = _coerce_fields(v)
-                                return res
-                            if isinstance(obj, list):
-                                return [_coerce_fields(i) for i in obj]
-                            if obj is None:
-                                return ""
-                            return obj
+        return _SyncLLMAdapter
 
-                        coerced = _coerce_fields(data)
-                        text = json.dumps(coerced, ensure_ascii=False)
-                except Exception as e:
-                    logger.debug(f"LLM Coercion failed: {e}")
-
-                self._resp = resp
-                self._resp["content"] = text
-            else:
-                self._resp = resp
-
-        def __await__(self) -> Any:
-            async def _dummy() -> dict[str, Any]:
-                return self._resp
-
-            return _dummy().__await__()
-
-        def get(self, key: str, default: Any = None) -> Any:
-            return self._resp.get(key, default)
-
+    AsyncDashScopeAdapter = _make_sync_llm_adapter(_compat_llm_call)
     ProviderRegistry.register("llm", "default", AsyncDashScopeAdapter, replace=True)
+
+    # 1.0.1 云 qwen(阿里云百炼 workspace 专属端点,非欠费)——通鉴 cloud_avatar 管道的 LLM。
+    # 公共 dashscope.aliyuncs.com 那把 DASHSCOPE_API_KEY 账户欠费,只有 workspace(ALIBABA_MAAS_*)
+    # 的 compatible-mode 端点可用(2026-07-10 端到端验证过)。qwen-plus 出剧本质量远好于本地 llama3.2。
+    def _compat_llm_call_maas(**kwargs: Any) -> dict[str, Any]:
+        """Call ALIBABA_MAAS workspace 专属端点(同步,同 `_compat_llm_call` 约定)。"""
+        host = _os.getenv("ALIBABA_MAAS_HOST", "")
+        key = _os.getenv("ALIBABA_MAAS_API_KEY", "")
+        payload = {
+            "model": kwargs.get("model") or "qwen-plus",
+            "messages": kwargs.get("messages", []),
+            "max_tokens": kwargs.get("max_tokens", 4096),
+            "temperature": kwargs.get("temperature", 0.7),
+        }
+        r = _httpx.post(
+            f"https://{host}/compatible-mode/v1/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=120.0,
+        )
+        r.raise_for_status()
+        data = r.json()
+        oa_choices = data.get("choices", [])
+        native_choices = [
+            {"message": c.get("message", {}), "finish_reason": c.get("finish_reason", "")}
+            for c in oa_choices
+        ]
+        return {"output": {"choices": native_choices}, "usage": data.get("usage", {})}
+
+    AsyncQwenCloudAdapter = _make_sync_llm_adapter(_compat_llm_call_maas)
+    ProviderRegistry.register("llm", "qwen_cloud", AsyncQwenCloudAdapter, replace=True)
 
     # 1.1 Local LLM fallback — register LocalQwenAdapter as "local";
     # overrides "default" when HEVI_LLM_PROVIDER=qwen_local
@@ -222,6 +260,62 @@ def register_all_providers() -> None:
 
     ProviderRegistry.register("video", "vidu", vidu_reference_to_video, replace=True)
 
+    # WaveSpeed AI(阿里模型聚合网关)—— HappyHorse 1.1 / Wan 2.7 文生视频。
+    from hevi.video.wavespeed_service import (
+        happyhorse_1_1_generate,
+        happyhorse_1_1_reference_to_video,
+        wan_2_7_generate,
+    )
+
+    ProviderRegistry.register("video", "happyhorse_1_1", happyhorse_1_1_generate, replace=True)
+    ProviderRegistry.register("video", "wan_2_7", wan_2_7_generate, replace=True)
+    # 单独一个 provider 名——跟上面的 t2v 版本调用约定不同(吃 reference_images,
+    # 跟 vidu 同一层级),不能共用 "happyhorse_1_1" 这个名字。
+    ProviderRegistry.register(
+        "video", "happyhorse_1_1_ref", happyhorse_1_1_reference_to_video, replace=True
+    )
+
+    # 阿里云百炼(Model Studio)业务空间专属域名 —— 同样是 HappyHorse 1.1 / Wan 2.7,
+    # 但走阿里官方直连(而非 WaveSpeed 转售),见 alibaba_maas_service.py 顶部的排错
+    # 记录。名字加 _maas 后缀,不跟上面 WaveSpeed 版本的 "happyhorse_1_1"/"wan_2_7"
+    # 混用——两者密钥/host 配置完全不同,选错了会打到错的账号上。
+    from hevi.video.alibaba_maas_service import (
+        alibaba_maas_keyframe_lock_generate,
+        happyhorse_1_1_maas_generate,
+        happyhorse_1_1_maas_lock_generate,
+        happyhorse_1_1_maas_reference_to_video,
+        wan_2_7_maas_generate,
+    )
+
+    ProviderRegistry.register(
+        "video", "happyhorse_1_1_maas", happyhorse_1_1_maas_generate, replace=True
+    )
+    ProviderRegistry.register("video", "wan_2_7_maas", wan_2_7_maas_generate, replace=True)
+    ProviderRegistry.register(
+        "video",
+        "happyhorse_1_1_maas_ref",
+        happyhorse_1_1_maas_reference_to_video,
+        replace=True,
+    )
+    # 主线管线(create_episode/Series/orchestrate_longvideo)专用——单张 reference_image
+    # 约定,见 happyhorse_1_1_maas_lock_generate 顶部注释。
+    ProviderRegistry.register(
+        "video",
+        "happyhorse_1_1_maas_lock",
+        happyhorse_1_1_maas_lock_generate,
+        replace=True,
+    )
+    # 首尾帧关键帧(2026-07-13):`oprim.first_last_frame_transition`/
+    # `AssistService.make_transition`(Creative API)此前调用任何 video_provider 值都
+    # 100% 撞 FrameTransitionProviderNotFoundError——category="image_to_video" 从没
+    # 注册过任何 provider,是个保证失败的孤立桩。这里补上第一个真实实现。
+    ProviderRegistry.register(
+        "image_to_video",
+        "wan22_kf2v_maas",
+        alibaba_maas_keyframe_lock_generate,
+        replace=True,
+    )
+
     # 0.1 Chaos Monkey Overrides (SaaS-3 / P10.F3 fallback verification)
     import os
 
@@ -242,10 +336,14 @@ def register_all_providers() -> None:
         logger.warning("Chaos Monkey ACTIVE: wan_cloud will fail.")
 
     # 3. Audio Providers
-    # edge_tts:默认音频 provider(多语言云 TTS)。A1 已回迁 oprim v3.11.0,直接导入。
-    from oprim import edge_tts_synthesize
+    # edge_tts:默认音频 provider(多语言云 TTS)。A1 已回迁 oprim v3.11.0。
+    # 2026-07-13:改注册 hevi 自己的 edge_tts_synthesize_smart(不是直接指向
+    # oprim.edge_tts_synthesize)——多角色对话此前只有一个默认声音的根因就是
+    # oprim 那个原始实现完全不支持按行选音色,见 edge_tts_custom.py 顶部注释。
+    # 没传 voice kwarg 时原样退回 oprim 实现,对所有既有调用方零回归。
+    from hevi.audio.edge_tts_custom import edge_tts_synthesize_smart
 
-    ProviderRegistry.register("audio", "edge_tts", edge_tts_synthesize, replace=True)
+    ProviderRegistry.register("audio", "edge_tts", edge_tts_synthesize_smart, replace=True)
     ProviderRegistry.register("audio", "vibevoice", vibevoice_synthesize, replace=True)
     ProviderRegistry.register("audio", "cosyvoice", vibevoice_synthesize, replace=True)
     ProviderRegistry.register(

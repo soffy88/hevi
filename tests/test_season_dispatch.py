@@ -193,6 +193,16 @@ async def test_dispatch_season_creates_series_and_all_episodes():
     assert ov0["episode_plan"]["beats"] == ["铺垫", "冲突"]
     assert ov0["episode_plan"]["event_ids"] == ["E001", "E002"]
 
+    # SPEC-001 §5:relationships/characters 也塞进 config_json,供 Tier0 跨集关系一致性
+    # 守护在生成后核对(task_service 侧拿不到 StoryGraph 对象)。全季每集都有同一份。
+    assert ov0["story_characters"] == [
+        {"char_id": "C001", "name": "林夏", "aliases": []},
+        {"char_id": "C002", "name": "陈默", "aliases": []},
+        {"char_id": "C003", "name": "赵总", "aliases": []},
+    ]
+    assert ov0["story_relationships"] == []
+    assert svc.episode_calls[1]["overrides"]["story_characters"] == ov0["story_characters"]
+
 
 @pytest.mark.asyncio
 async def test_dispatch_season_without_subjects_leaves_group_empty():

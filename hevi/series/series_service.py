@@ -34,6 +34,19 @@ class SeriesService:
     ) -> dict[str, Any]:
         if not name.strip():
             raise ValueError("name must not be empty")
+        # HEVI 路线图 Phase3 #39:建系列时如果引用了一个已存在的 StylePack,应该记它
+        # 当前实际是第几版,而不是硬编码 1——用户完全可能引用一个已经改过好几次的
+        # 老 pack,硬编码 1 会让这个字段从一开始就是错的(create_episode 每次建集时
+        # 重新 resolve 拿的是实时版本,不受这个字段影响,但 API 直接把 Series 记录
+        # 返回给前端,这个字段本身该反映事实)。
+        style_pack_version = 1
+        if style_pack_id and self._style_service is not None:
+            try:
+                pack = await self._style_service.get_pack(style_pack_id)
+                if pack is not None:
+                    style_pack_version = int(pack.get("version", 1))
+            except Exception:  # 查不到就用默认值 1,不阻断建系列
+                pass
         return await self._repo.create(
             {
                 "name": name.strip(),
@@ -41,7 +54,7 @@ class SeriesService:
                 "subject_ids": subject_ids or [],
                 "style_preset": style_preset,
                 "style_pack_id": uuid.UUID(style_pack_id) if style_pack_id else None,
-                "style_pack_version": 1,
+                "style_pack_version": style_pack_version,
                 "spec_json": spec or {},
                 "intro_template_id": intro_template_id,
                 "outro_template_id": outro_template_id,
@@ -83,6 +96,9 @@ class SeriesService:
         video_provider = spec.pop("video_provider", "ltx2_cloud")
         audio_provider = spec.pop("audio_provider", "edge_tts")
         duration_archetype = spec.pop("duration_archetype", "1-5min")
+        # SPEC-001 §6:季级预算熔断(独立于 create_task 内部的单任务/日预算熔断)。
+        # 塞进 spec_json,不建新列——沿用本函数已有的"Series 配置走 spec_json JSONB"惯例。
+        series_budget_usd = spec.pop("budget_usd", None)
 
         # 其余 spec 键(num_characters / quality_profile / prompt_* / transition …)+ 风格 + 角色
         # → config_json(create_task 的 **kwargs)。这就是"继承全部"。
@@ -114,6 +130,13 @@ class SeriesService:
                 ):
                     if resolved.get(src):
                         ctrl[dst] = resolved[src]  # 显式覆盖(StylePack 优先于 preset 名)
+                # shot_verdict 版本快照(HEVI 路线图 Phase1):记这一集生成时 StylePack 实际
+                # 是哪个版本,而不是"当前版本引用"——StylePack 升级后,这一集的历史校验
+                # 记录不应该跟着失真。
+                pack = await self._style_service.get_pack(str(pack_id))
+                if pack is not None:
+                    ctrl["style_pack_id"] = str(pack_id)
+                    ctrl["style_pack_version"] = pack.get("version")
             except Exception:  # 解析失败 → 回退 style_preset,不阻断建集
                 pass
 
@@ -124,6 +147,26 @@ class SeriesService:
         audio_provider = ov.pop("audio_provider", audio_provider)
         duration_archetype = ov.pop("duration_archetype", duration_archetype)
         ctrl.update(ov)
+
+        # SPEC-001 §6:季级预算熔断——在真建 task(真花算力)之前查这一季迄今实际花费
+        # + 这一集预估是否会突破 Series 自己配置的 budget_usd。series_budget_usd 为
+        # None(该季没配)则不查,零额外开销。
+        if series_budget_usd is not None:
+            from hevi.cost.circuit_breaker import check_series_budget
+            from hevi.cost.estimator import estimate_cost
+
+            estimate = await estimate_cost(
+                duration_archetype=duration_archetype,
+                video_provider=video_provider,
+                audio_provider=audio_provider,
+                num_characters=ctrl.get("num_characters", 1),
+            )
+            await check_series_budget(
+                svc.repository.pool,
+                series_id=series_id,
+                additional_usd=estimate.total_usd,
+                series_budget_usd=float(series_budget_usd),
+            )
 
         episode_index = int(series.get("episode_count", 0))
         task = await svc.create_task(

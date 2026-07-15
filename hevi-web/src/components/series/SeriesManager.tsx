@@ -46,6 +46,7 @@ export function SeriesManager() {
   const [pPreset, setPPreset] = useState('电影感');
   const [pOverrides, setPOverrides] = useState<Record<string, string>>({});
   const [newPack, setNewPack] = useState<{ pack: StylePack; resolved: Record<string, string> } | null>(null);
+  const [drafting, setDrafting] = useState(false);
 
   async function loadList() {
     try { setList(await seriesApi.list()); } catch (e) { setErr(errText(e)); }
@@ -83,6 +84,14 @@ export function SeriesManager() {
       setTopic('');
       setEpisodes(await seriesApi.episodes(selected.id));
     } catch (e2) { setErr(errText(e2)); } finally { setBusy(false); }
+  }
+
+  async function draftFromReference(file: File) {
+    setDrafting(true); setErr(null);
+    try {
+      const draft = await styleApi.draftFromReference(file);
+      setPOverrides({ ...pOverrides, ...draft });
+    } catch (e) { setErr(errText(e)); } finally { setDrafting(false); }
   }
 
   async function createPack(e: FormEvent) {
@@ -181,6 +190,16 @@ export function SeriesManager() {
               <select value={pPreset} onChange={e => setPPreset(e.target.value)}>
                 {PRESETS.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
+            </label>
+            <label className="hevi-series__pack-draft">
+              上传参考图,自动填风格草稿(可选)
+              <input
+                type="file"
+                accept="image/*,video/*"
+                disabled={drafting}
+                onChange={e => { const f = e.target.files?.[0]; if (f) draftFromReference(f); e.target.value = ''; }}
+              />
+              {drafting && <span className="hevi-series__pack-draft-busy">拆解中…</span>}
             </label>
             {OVERRIDE_KEYS.map(({ k, label }) => (
               <input

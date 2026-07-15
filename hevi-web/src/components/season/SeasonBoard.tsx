@@ -8,8 +8,9 @@
 
 import { useEffect, useState } from 'react';
 import { useSSEProgress } from '@helios/oui';
-import { seriesApi, taskApi, USE_MOCK } from '@/lib/api-client';
+import { seriesApi, shortdramaApi, taskApi, USE_MOCK } from '@/lib/api-client';
 import type { Series, Episode, TaskShot } from '@/types/api';
+import { ShortdramaCreatePanel } from './ShortdramaCreatePanel';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: '待生成',
@@ -29,6 +30,7 @@ export function SeasonBoard() {
   const [selected, setSelected] = useState<Series | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -36,6 +38,20 @@ export function SeasonBoard() {
         setList(await seriesApi.list());
       } catch (e) {
         setErr(errText(e));
+      }
+    })();
+    // 有未完结的短剧创建 run(切走页面再回来也不该"丢"),自动切回创建面板——
+    // 面板自己会在挂载时找回该 run 的完整状态(见 ShortdramaCreatePanel 的恢复 effect)。
+    (async () => {
+      try {
+        const runs = await shortdramaApi.listRuns(); // 已按 created_at 倒序
+        // 只看最近一条,FAILED 也算(派发阶段失败可直接重试,不该被当成"没有活跃
+        // run"而漏掉——2026-07-12 真实撞见);只有真派发成功(DISPATCHED)才不用
+        // 自动切回创建面板。
+        const mostRecent = runs[0];
+        if (mostRecent && mostRecent.status !== 'DISPATCHED') setCreating(true);
+      } catch {
+        // 静默:未登录/网络问题不影响正常查看看板
       }
     })();
   }, []);
@@ -51,14 +67,41 @@ export function SeasonBoard() {
     }
   }
 
+  // 短剧创建入口派发成功:刷新季列表并直接选中新建的季
+  async function handleDispatched(seriesId: string) {
+    setCreating(false);
+    try {
+      const refreshed = await seriesApi.list();
+      setList(refreshed);
+      const s = refreshed.find((x) => x.id === seriesId);
+      if (s) await selectSeries(s);
+    } catch (e) {
+      setErr(errText(e));
+    }
+  }
+
   const doneCount = episodes.filter((e) => e.status === 'completed').length;
 
   return (
     <div className="hevi-sb">
-      <h1 className="hevi-sb__title">剧集看板</h1>
-      <p className="hevi-sb__sub">一部短剧 = 一个系列。逐集查看结构、生成进度与成片,角色/风格全季锁定。</p>
+      <div className="hevi-sb__head-row">
+        <div>
+          <h1 className="hevi-sb__title">剧集看板</h1>
+          <p className="hevi-sb__sub">一部短剧 = 一个系列。逐集查看结构、生成进度与成片,角色/风格全季锁定。</p>
+        </div>
+        <button
+          type="button"
+          className="hevi-sb__new-btn"
+          onClick={() => setCreating((v) => !v)}
+        >
+          {creating ? '← 返回看板' : '+ 新建短剧'}
+        </button>
+      </div>
       {err && <div className="hevi-sb__err">{err}</div>}
 
+      {creating ? (
+        <ShortdramaCreatePanel onDispatched={handleDispatched} />
+      ) : (
       <div className="hevi-sb__cols">
         {/* 左:季列表 */}
         <div className="hevi-sb__side">
@@ -132,6 +175,7 @@ export function SeasonBoard() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -139,6 +183,9 @@ export function SeasonBoard() {
 function EpisodeCard({ ep }: { ep: Episode }) {
   const [open, setOpen] = useState(false);
   const [shots, setShots] = useState<TaskShot[] | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [regenBusy, setRegenBusy] = useState(false);
+  const [regenErr, setRegenErr] = useState<string | null>(null);
   // 分集 endpoint 直接返 video_tasks 行,故任务 id = ep.id(ep.task_id 通常为空)。
   const taskId = ep.task_id ?? ep.id;
   const running = ep.status === 'running';
@@ -164,6 +211,43 @@ function EpisodeCard({ ep }: { ep: Episode }) {
       }
     })();
   }, [open, taskId, shots]);
+
+  function toggleShot(idx: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  async function regenerateSelected() {
+    if (selected.size === 0 || !taskId) return;
+    const shotIds = Array.from(selected);
+    if (!confirm(`重新生成第 ${shotIds.join('、')} 个镜头,确定?`)) return;
+    setRegenBusy(true);
+    setRegenErr(null);
+    try {
+      await taskApi.regenerateShots(taskId, shotIds);
+      // fire-and-forget 后台任务:轮询 shots 直到选中镜头的 retry_count 都涨过,再刷新。
+      const before = new Map(shots?.map((s) => [s.shot_index, s.retry_count ?? 0]) ?? []);
+      for (let k = 0; k < 40; k++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const latest = await taskApi.shots(taskId);
+        const allBumped = shotIds.every((idx) => {
+          const s = latest.find((x) => x.shot_index === idx);
+          return s && (s.retry_count ?? 0) > (before.get(idx) ?? 0);
+        });
+        setShots(latest);
+        if (allBumped) break;
+      }
+      setSelected(new Set());
+    } catch (e) {
+      setRegenErr(errText(e));
+    } finally {
+      setRegenBusy(false);
+    }
+  }
 
   return (
     <div className="hevi-sb__ep" data-status={status}>
@@ -211,17 +295,26 @@ function EpisodeCard({ ep }: { ep: Episode }) {
             </div>
           )}
 
-          {/* 镜:逐镜卡片(来自 shot_states) */}
+          {/* 镜:逐镜卡片(来自 shot_states)。已出片才可选中重生成(同后端 409 约束一致)。 */}
           {shots && shots.length > 0 && (
             <div className="hevi-sb__row">
               <span className="hevi-sb__row-label">镜 · {shots.length}</span>
               <div className="hevi-sb__shots">
                 {shots.map((s) => (
-                  <div
+                  <label
                     key={s.shot_index}
                     className="hevi-sb__shot"
                     data-passed={s.passed === false ? 'no' : s.passed ? 'yes' : undefined}
                   >
+                    {completed && (
+                      <input
+                        type="checkbox"
+                        className="hevi-sb__shot-check"
+                        checked={selected.has(s.shot_index)}
+                        disabled={regenBusy}
+                        onChange={() => toggleShot(s.shot_index)}
+                      />
+                    )}
                     <span className="hevi-sb__shot-idx">#{s.shot_index}</span>
                     <span className="hevi-sb__shot-status">{s.status}</span>
                     {typeof s.consistency_score === 'number' && (
@@ -230,9 +323,22 @@ function EpisodeCard({ ep }: { ep: Episode }) {
                     {s.diagnosis_category && (
                       <span className="hevi-sb__shot-diag">{s.diagnosis_category}</span>
                     )}
-                  </div>
+                  </label>
                 ))}
               </div>
+              {completed && (
+                <div className="hevi-sb__shot-actions">
+                  <button
+                    type="button"
+                    className="hevi-sb__regen-btn"
+                    disabled={selected.size === 0 || regenBusy}
+                    onClick={regenerateSelected}
+                  >
+                    {regenBusy ? '重生成中…' : `↻ 重生成选中(${selected.size})`}
+                  </button>
+                  {regenErr && <span className="hevi-sb__err">{regenErr}</span>}
+                </div>
+              )}
             </div>
           )}
 

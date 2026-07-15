@@ -10,9 +10,34 @@ from hevi.resilience.retry_policy import RetryPolicy, with_retry
 
 logger = logging.getLogger(__name__)
 
+# provider 失败(含 omodul 静默吞掉镜头后返回的占位/空文件,longvideo_orchestrator.py
+# 会检测并抛错)时的降级链。终点落到 happyhorse_1_1_maas_lock——它走阿里云百炼
+# workspace 专属账户(ALIBABA_MAAS_*),是本机当前唯一有余额的视频通道。
+#
+# 2026-07-14 实测:所有 fal 系 provider(ltx2_cloud/kling_v2/veo3/hailuo)都撞
+# "fal.ai 403 User is locked. Exhausted balance"——fal 账户已欠费停用,历史上 ltx2_cloud
+# 的 342 次成功全部发生在欠费之前。公共 DashScope 账户(wan_cloud 用的 DASHSCOPE_API_KEY)
+# 同样欠费。wan_local 因 GPU 反复掉 PCIe 总线基本必失败(1042 失败 / 4 成功)。故三者都
+# 不能作为降级目标;唯一有钱的是 MAAS workspace(同一把 key 刚成功生成了本任务的角色
+# 参考图),对应的主线视频 provider 就是 happyhorse_1_1_maas_lock。
+#
+# 占位/空输出被 classify_error 判为 unretryable(见 errors.py 默认分支),with_retry 立刻
+# 放弃当前 provider(不浪费钱重跑同一个坏 provider 的整条管线),由这里的链切到下一个。
+_TERMINAL = "happyhorse_1_1_maas_lock"
 PROVIDER_FALLBACK = {
-    "ltx2_cloud": ["ltx2_cloud", "wan_cloud"],  # ltx2 失败切 wan
-    "wan_cloud": ["wan_cloud", "ltx2_cloud"],
+    # fal/公共 DashScope 系(可能欠费)失败/空输出 → 落到有余额的 MAAS provider。
+    "ltx2_cloud": ["ltx2_cloud", _TERMINAL],
+    "wan_cloud": ["wan_cloud", _TERMINAL],
+    "kling_v2": ["kling_v2", _TERMINAL],
+    "veo3": ["veo3", _TERMINAL],
+    "hailuo": ["hailuo", _TERMINAL],
+    "happyhorse_1_1": ["happyhorse_1_1", _TERMINAL],
+    "happyhorse_1_1_ref": ["happyhorse_1_1_ref", _TERMINAL],
+    "happyhorse_1_1_maas": ["happyhorse_1_1_maas", _TERMINAL],
+    "wan_2_7": ["wan_2_7", _TERMINAL],
+    "vidu": ["vidu", _TERMINAL],
+    # 终点自身:无更多降级目标(已是有余额的账户)。
+    "happyhorse_1_1_maas_lock": ["happyhorse_1_1_maas_lock"],
 }
 
 # 欠费/403 信号(fal/DashScope 欠费表现为 403 / "exhausted balance" / "user is locked")。

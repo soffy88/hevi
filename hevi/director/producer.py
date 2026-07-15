@@ -6,7 +6,11 @@
   - 预算门 —— 估价 vs budget
 
 输出 `ProducerPlan`(下发给 Director 建图 / 直接跑管线的约束)。
-NL 意图解析(自然语言 → 这些字段)是更上层的薄 LLM 层,后续增量。
+NL 意图解析(自然语言 → 这些字段)是更上层的薄 LLM 层——已实现,见
+`hevi.director.intent.parse_intent`(text → intent dict)+
+`hevi.director.planner.plan_from_text`(串起 parse_intent → produce → plan_shots →
+build_canvas_graph 的完整"输入剧情文本 → 可执行分镜图"链路,HEVI 路线图 Phase3 #43
+核实后确认此前的"后续增量"说法已过时)。
 """
 
 from __future__ import annotations

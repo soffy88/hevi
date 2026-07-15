@@ -34,12 +34,27 @@ from hevi.tongjian.voiceover import (
 def _make_script(lines: list[dict] | None = None) -> Script:
     if lines is None:
         lines = [
-            {"line_id": "LN001", "act": 1, "type": "narration", "speaker": "NARRATOR",
-             "text": "智伯设宴,韩魏赵三家大夫皆列席。"},
-            {"line_id": "LN002", "act": 1, "type": "dialogue", "speaker": "C001",
-             "text": "祸乱要来,也得我来挑起。"},
-            {"line_id": "LN003", "act": 2, "type": "narration", "speaker": "NARRATOR",
-             "text": "赵襄子拒绝割地,智伯怒而兴兵。"},
+            {
+                "line_id": "LN001",
+                "act": 1,
+                "type": "narration",
+                "speaker": "NARRATOR",
+                "text": "智伯设宴,韩魏赵三家大夫皆列席。",
+            },
+            {
+                "line_id": "LN002",
+                "act": 1,
+                "type": "dialogue",
+                "speaker": "C001",
+                "text": "祸乱要来,也得我来挑起。",
+            },
+            {
+                "line_id": "LN003",
+                "act": 2,
+                "type": "narration",
+                "speaker": "NARRATOR",
+                "text": "赵襄子拒绝割地,智伯怒而兴兵。",
+            },
         ]
     return Script(lines=[ScriptLine(**ln) for ln in lines])
 
@@ -80,9 +95,11 @@ def _write_fake_wav(path: Path, duration_ms: int = 2000) -> None:
 
 def _mock_tts_fn(duration_ms: int = 2000):
     """返回一个 mock TTS 函数,合成时写假 WAV 文件。"""
+
     async def _tts(*, script, output_path, **kwargs):
         _write_fake_wav(output_path, duration_ms)
         return output_path
+
     return _tts
 
 
@@ -140,7 +157,9 @@ class TestSynthesizeVoiceover:
 
         with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
             timeline = await synthesize_voiceover(
-                script, output_dir=tmp_path, tts_fn=tts_fn,
+                script,
+                output_dir=tmp_path,
+                tts_fn=tts_fn,
             )
 
         assert len(timeline.audio_segments) == 3
@@ -150,6 +169,71 @@ class TestSynthesizeVoiceover:
         assert timeline.audio_segments[0].t_end_ms == 2000
 
     @pytest.mark.asyncio
+    async def test_voice_by_speaker_resolves_per_dialogue_line(self, tmp_path):
+        """2026-07-13 治"多角色对话只有一个默认声音":dialogue 行按 speaker 查
+        voice_by_speaker 拿到专属音色,旁白行(NARRATOR)不受这张表影响,恒传 None
+        (P0 单声线退化行为不变)。"""
+        script = _make_script()  # LN001=narration/NARRATOR, LN002=dialogue/C001, LN003=narration
+        seen_voices: list[tuple[str, str | None]] = []
+
+        async def _tts(*, script, output_path, voice=None, **kwargs):
+            seen_voices.append((script[0].speaker_id, voice))
+            _write_fake_wav(output_path, 1000)
+            return output_path
+
+        mock_dur = AsyncMock(return_value=1000)
+        with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
+            await synthesize_voiceover(
+                script,
+                output_dir=tmp_path,
+                tts_fn=_tts,
+                voice_by_speaker={"C001": "zh_male_deep"},
+            )
+
+        by_speaker = dict(seen_voices)
+        assert by_speaker["C001"] == "zh_male_deep"
+        assert by_speaker["NARRATOR"] is None
+
+    @pytest.mark.asyncio
+    async def test_emotion_passed_through_for_all_line_types(self, tmp_path):
+        """2026-07-13 治"ScriptLine.emotion 填了但 TTS 从不读":每行(旁白/对白都算,
+        不限 dialogue)原样把 emotion 传给 tts_fn;空字符串传 None,不是空字符串本身。"""
+        script = _make_script(
+            [
+                {
+                    "line_id": "LN001",
+                    "act": 1,
+                    "type": "narration",
+                    "speaker": "NARRATOR",
+                    "text": "智伯设宴。",
+                    "emotion": "倨傲",
+                },
+                {
+                    "line_id": "LN002",
+                    "act": 1,
+                    "type": "dialogue",
+                    "speaker": "C001",
+                    "text": "祸乱要来。",
+                    "emotion": "",
+                },
+            ]
+        )
+        seen_emotions: list[tuple[str, str | None]] = []
+
+        async def _tts(*, script, output_path, voice=None, emotion=None, **kwargs):
+            seen_emotions.append((script[0].speaker_id, emotion))
+            _write_fake_wav(output_path, 1000)
+            return output_path
+
+        mock_dur = AsyncMock(return_value=1000)
+        with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
+            await synthesize_voiceover(script, output_dir=tmp_path, tts_fn=_tts)
+
+        by_speaker = dict(seen_emotions)
+        assert by_speaker["NARRATOR"] == "倨傲"
+        assert by_speaker["C001"] is None
+
+    @pytest.mark.asyncio
     async def test_act_transition_gap(self, tmp_path):
         """幕间切换时应自动插入 1.5s 空隙。"""
         script = _make_script()  # LN001=act1, LN002=act1, LN003=act2
@@ -157,7 +241,9 @@ class TestSynthesizeVoiceover:
 
         with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
             timeline = await synthesize_voiceover(
-                script, output_dir=tmp_path, tts_fn=_mock_tts_fn(1000),
+                script,
+                output_dir=tmp_path,
+                tts_fn=_mock_tts_fn(1000),
             )
 
         assert len(timeline.gaps) == 1
@@ -171,31 +257,55 @@ class TestSynthesizeVoiceover:
     @pytest.mark.asyncio
     async def test_empty_text_skipped(self, tmp_path):
         """空文本行应跳过不合成。"""
-        script = _make_script([
-            {"line_id": "LN001", "act": 1, "type": "narration", "speaker": "NARRATOR",
-             "text": "有内容的行"},
-            {"line_id": "LN002", "act": 1, "type": "narration", "speaker": "NARRATOR",
-             "text": ""},
-        ])
+        script = _make_script(
+            [
+                {
+                    "line_id": "LN001",
+                    "act": 1,
+                    "type": "narration",
+                    "speaker": "NARRATOR",
+                    "text": "有内容的行",
+                },
+                {
+                    "line_id": "LN002",
+                    "act": 1,
+                    "type": "narration",
+                    "speaker": "NARRATOR",
+                    "text": "",
+                },
+            ]
+        )
         mock_dur = AsyncMock(return_value=1000)
         with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
             timeline = await synthesize_voiceover(
-                script, output_dir=tmp_path, tts_fn=_mock_tts_fn(1000),
+                script,
+                output_dir=tmp_path,
+                tts_fn=_mock_tts_fn(1000),
             )
         assert len(timeline.audio_segments) == 1
 
     @pytest.mark.asyncio
     async def test_tts_failure_graceful(self, tmp_path):
         """TTS 合成失败不应崩溃,跳过该行。"""
+
         async def _failing_tts(*, script, output_path, **kwargs):
             raise RuntimeError("GPU OOM")
 
-        script = _make_script([
-            {"line_id": "LN001", "act": 1, "type": "narration", "speaker": "NARRATOR",
-             "text": "正常行"},
-        ])
+        script = _make_script(
+            [
+                {
+                    "line_id": "LN001",
+                    "act": 1,
+                    "type": "narration",
+                    "speaker": "NARRATOR",
+                    "text": "正常行",
+                },
+            ]
+        )
         timeline = await synthesize_voiceover(
-            script, output_dir=tmp_path, tts_fn=_failing_tts,
+            script,
+            output_dir=tmp_path,
+            tts_fn=_failing_tts,
         )
         assert len(timeline.audio_segments) == 0
 
@@ -206,7 +316,9 @@ class TestSynthesizeVoiceover:
         mock_dur = AsyncMock(return_value=1000)
         with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
             timeline = await synthesize_voiceover(
-                script, output_dir=tmp_path, tts_fn=_mock_tts_fn(1000),
+                script,
+                output_dir=tmp_path,
+                tts_fn=_mock_tts_fn(1000),
             )
         # 3 segments × 1000ms + 1 gap × 1500ms = 4500ms
         assert timeline.total_duration_ms == 4500
@@ -214,14 +326,23 @@ class TestSynthesizeVoiceover:
     @pytest.mark.asyncio
     async def test_filenames_follow_spec(self, tmp_path):
         """文件名应为 audio/ln001_XXXX.wav 格式。"""
-        script = _make_script([
-            {"line_id": "LN001", "act": 1, "type": "narration", "speaker": "NARRATOR",
-             "text": "测试"},
-        ])
+        script = _make_script(
+            [
+                {
+                    "line_id": "LN001",
+                    "act": 1,
+                    "type": "narration",
+                    "speaker": "NARRATOR",
+                    "text": "测试",
+                },
+            ]
+        )
         mock_dur = AsyncMock(return_value=1000)
         with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
             timeline = await synthesize_voiceover(
-                script, output_dir=tmp_path, tts_fn=_mock_tts_fn(1000),
+                script,
+                output_dir=tmp_path,
+                tts_fn=_mock_tts_fn(1000),
             )
         assert timeline.audio_segments[0].file.startswith("audio/ln001_")
         assert timeline.audio_segments[0].file.endswith(".wav")
@@ -245,12 +366,27 @@ class TestGateVoiceover:
         """无音频文件时(纯 schema 校验),只做基本完整性检查。"""
         timeline = Timeline(
             audio_segments=[
-                AudioSegment(line_id="LN001", file="audio/ln001.wav",
-                             duration_ms=60000, t_start_ms=0, t_end_ms=60000),
-                AudioSegment(line_id="LN002", file="audio/ln002.wav",
-                             duration_ms=60000, t_start_ms=60000, t_end_ms=120000),
-                AudioSegment(line_id="LN003", file="audio/ln003.wav",
-                             duration_ms=60000, t_start_ms=120000, t_end_ms=180000),
+                AudioSegment(
+                    line_id="LN001",
+                    file="audio/ln001.wav",
+                    duration_ms=60000,
+                    t_start_ms=0,
+                    t_end_ms=60000,
+                ),
+                AudioSegment(
+                    line_id="LN002",
+                    file="audio/ln002.wav",
+                    duration_ms=60000,
+                    t_start_ms=60000,
+                    t_end_ms=120000,
+                ),
+                AudioSegment(
+                    line_id="LN003",
+                    file="audio/ln003.wav",
+                    duration_ms=60000,
+                    t_start_ms=120000,
+                    t_end_ms=180000,
+                ),
             ],
             total_duration_ms=180000,
         )
@@ -264,8 +400,13 @@ class TestGateVoiceover:
         """时长偏差 > 20% 应产生 warning(非 error)。"""
         timeline = Timeline(
             audio_segments=[
-                AudioSegment(line_id="LN001", file="audio/ln001.wav",
-                             duration_ms=50000, t_start_ms=0, t_end_ms=50000),
+                AudioSegment(
+                    line_id="LN001",
+                    file="audio/ln001.wav",
+                    duration_ms=50000,
+                    t_start_ms=0,
+                    t_end_ms=50000,
+                ),
             ],
             total_duration_ms=50000,
         )
@@ -288,8 +429,10 @@ class TestBuildVoiceover:
 
         with patch("hevi.tongjian.voiceover._get_audio_duration_ms", mock_dur):
             timeline, result = await build_voiceover(
-                script, constitution,
-                output_dir=tmp_path, tts_fn=_mock_tts_fn(2500),
+                script,
+                constitution,
+                output_dir=tmp_path,
+                tts_fn=_mock_tts_fn(2500),
             )
 
         assert len(timeline.audio_segments) == 3

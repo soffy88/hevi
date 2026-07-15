@@ -8,13 +8,14 @@
 
 from hevi.director.agent import DirectorResult, run_director_loop
 from hevi.director.director import build_canvas_graph
-from hevi.director.editor import EditDecision, review
+from hevi.director.editor import DIAGNOSIS_CATEGORIES, EditDecision, review
 from hevi.director.intent import parse_intent
 from hevi.director.planner import plan_from_text
 from hevi.director.producer import ProducerPlan, produce
 from hevi.director.storyboard import plan_shots
 
 __all__ = [
+    "DIAGNOSIS_CATEGORIES",
     "DirectorResult",
     "EditDecision",
     "ProducerPlan",

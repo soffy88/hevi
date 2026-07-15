@@ -171,6 +171,21 @@ class TestInferSceneId:
         line = ScriptLine(line_id="LN001", speaker="NARRATOR", text="x", event_id=None)
         assert _infer_scene_id(line, "") == "S001"
 
+    def test_location_used_as_scene_id(self):
+        line = ScriptLine(line_id="LN001", speaker="NARRATOR", text="x", event_id="E001")
+        assert _infer_scene_id(line, "", location="崂山绝顶道观") == "崂山绝顶道观"
+
+    def test_same_location_keeps_scene_even_across_event_change(self):
+        """2026-07-12 短剧真实反馈"场景乱切":P0 老策略(event_id 变就换 scene)没有
+        场景连贯性概念。地点没变,即使事件变了也不该切场景。"""
+        line = ScriptLine(line_id="LN001", speaker="NARRATOR", text="x", event_id="E002")
+        assert _infer_scene_id(line, "崂山绝顶道观", location="崂山绝顶道观") == "崂山绝顶道观"
+
+    def test_missing_location_falls_back_to_p0_strategy(self):
+        """不传 location(通鉴自己的既有调用方)时行为不能变。"""
+        line = ScriptLine(line_id="LN001", speaker="NARRATOR", text="x", event_id="E002")
+        assert _infer_scene_id(line, "E001", location=None) == "E002"
+
 
 class TestExtractCharacters:
     def test_dialogue_speaker_included(self):
@@ -210,6 +225,67 @@ class TestGenerateShotlist:
         assert shotlist.shots[0].t_end_ms == 3000
         assert shotlist.shots[1].t_start_ms == 3000
         assert shotlist.shots[1].t_end_ms == 5000
+
+    @pytest.mark.asyncio
+    async def test_event_locations_keep_same_scene_across_events(self):
+        """2026-07-12 短剧真实反馈"场景乱切":同一地点连续发生的两个不同事件,
+        传了 event_locations 后不该被切成两个场景。"""
+        script = _make_script(
+            lines=[
+                {
+                    "line_id": "LN001",
+                    "act": 1,
+                    "type": "narration",
+                    "speaker": "NARRATOR",
+                    "text": "王生跪在观门前。",
+                    "event_id": "E001",
+                },
+                {
+                    "line_id": "LN002",
+                    "act": 1,
+                    "type": "dialogue",
+                    "speaker": "C001",
+                    "text": "弟子愿留观中修行。",
+                    "event_id": "E002",
+                },
+            ]
+        )
+        shotlist = await generate_shotlist(
+            _make_timeline_no_gap(),
+            script,
+            _make_bible(),
+            llm=AsyncMock(),
+            event_locations={"E001": "崂山绝顶道观", "E002": "崂山绝顶道观"},
+        )
+        assert shotlist.shots[0].scene_id == shotlist.shots[1].scene_id == "崂山绝顶道观"
+
+    @pytest.mark.asyncio
+    async def test_without_event_locations_keeps_old_per_event_scene_split(self):
+        """不传 event_locations(通鉴自己的既有调用方)时行为不能变:换事件就换场景。"""
+        script = _make_script(
+            lines=[
+                {
+                    "line_id": "LN001",
+                    "act": 1,
+                    "type": "narration",
+                    "speaker": "NARRATOR",
+                    "text": "王生跪在观门前。",
+                    "event_id": "E001",
+                },
+                {
+                    "line_id": "LN002",
+                    "act": 1,
+                    "type": "dialogue",
+                    "speaker": "C001",
+                    "text": "弟子愿留观中修行。",
+                    "event_id": "E002",
+                },
+            ]
+        )
+        shotlist = await generate_shotlist(
+            _make_timeline_no_gap(), script, _make_bible(), llm=AsyncMock()
+        )
+        assert shotlist.shots[0].scene_id != shotlist.shots[1].scene_id
 
     @pytest.mark.asyncio
     async def test_gap_gets_transition_shot(self):

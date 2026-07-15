@@ -42,6 +42,16 @@ def _make_svc(repo: SubjectRepository | None = None) -> SubjectService:
     return SubjectService(repo)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_vlm_probe(monkeypatch):
+    """IP 安全 pass 的图像半边(#36)会在有新参考图上传时探测本地 VL 模型可用性——
+    这个探测是真实 HTTP 调用(hevi.providers.local_qwen_vl_adapter.vl_model_available),
+    这个测试文件里绝大多数用例测的是身份向量/参考图管理逻辑,不该因为这一步意外
+    打真实网络/拖慢整个文件。默认视为"不可用"(_screen_new_uploads 短路返回 []),
+    专门测 IP screening 的用例自己覆盖这个 patch。"""
+    monkeypatch.setattr("hevi.providers.local_qwen_vl_adapter.vl_model_available", lambda: False)
+
+
 # ── 1. SUBJECT_KINDS constant ─────────────────────────────────────────────────
 
 
@@ -518,9 +528,9 @@ async def test_add_reference_uploads_batch_appends_all(tmp_path) -> None:
         patch.object(repo, "update", side_effect=_fake_update),
         patch.object(
             SubjectService,
-            "_compute_identity_embedding",
+            "_compute_identity_embeddings",
             new_callable=AsyncMock,
-            return_value=[0.1, 0.2],
+            return_value=([0.1, 0.2], [0.3, 0.4]),
         ) as memb,
     ):
         svc = SubjectService(repo, ref_store=ReferenceStore(base_dir=tmp_path))
@@ -530,6 +540,7 @@ async def test_add_reference_uploads_batch_appends_all(tmp_path) -> None:
     assert result is not None
     refs = captured["reference_images"]
     assert len(refs) == 3  # 原有 1 张 + 批量 2 张
+    assert captured["identity_embedding_face"] == [0.3, 0.4]
     memb.assert_awaited_once()  # 只重算一次,不是每张图重算
 
 
@@ -558,7 +569,10 @@ async def test_update_references_reorders_sets_cover(tmp_path) -> None:
         ),
         patch.object(repo, "update", side_effect=_fake_update),
         patch.object(
-            SubjectService, "_compute_identity_embedding", new_callable=AsyncMock, return_value=None
+            SubjectService,
+            "_compute_identity_embeddings",
+            new_callable=AsyncMock,
+            return_value=(None, None),
         ),
     ):
         svc = SubjectService(repo)
@@ -573,6 +587,93 @@ async def test_update_references_missing_subject() -> None:
     with patch("hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=None):
         svc = SubjectService(repo)
         assert await svc.update_references(str(uuid.uuid4()), reference_images=["x.jpg"]) is None
+
+
+# ── reference_role (设计文档 §5.2:参考素材正交角色标签) ─────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_set_reference_role_tags_existing_image() -> None:
+    repo, _ = _make_repo()
+    stored = {**_STORED, "reference_images": ["a.jpg", "b.jpg"]}
+    captured: dict[str, Any] = {}
+
+    async def _fake_update(sid, data):
+        captured.update(data)
+        return {**stored, **data}
+
+    with (
+        patch(
+            "hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=dict(stored)
+        ),
+        patch.object(repo, "update", side_effect=_fake_update),
+    ):
+        svc = SubjectService(repo)
+        result = await svc.set_reference_role(_SUBJECT_ID, path="a.jpg", role="identity_anchor")
+    assert result is not None
+    assert captured["reference_roles"] == {"a.jpg": "identity_anchor"}
+
+
+@pytest.mark.asyncio
+async def test_set_reference_role_merges_with_existing_tags() -> None:
+    repo, _ = _make_repo()
+    stored = {
+        **_STORED,
+        "reference_images": ["a.jpg", "b.jpg"],
+        "reference_roles": {"a.jpg": "identity_anchor"},
+    }
+    captured: dict[str, Any] = {}
+
+    async def _fake_update(sid, data):
+        captured.update(data)
+        return {**stored, **data}
+
+    with (
+        patch(
+            "hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=dict(stored)
+        ),
+        patch.object(repo, "update", side_effect=_fake_update),
+    ):
+        svc = SubjectService(repo)
+        await svc.set_reference_role(_SUBJECT_ID, path="b.jpg", role="composition_ref")
+    # 已有的 a.jpg 标签保留,不因为只打 b.jpg 就被冲掉。
+    assert captured["reference_roles"] == {
+        "a.jpg": "identity_anchor",
+        "b.jpg": "composition_ref",
+    }
+
+
+@pytest.mark.asyncio
+async def test_set_reference_role_rejects_path_not_in_reference_images() -> None:
+    repo, _ = _make_repo()
+    stored = {**_STORED, "reference_images": ["a.jpg"]}
+    with patch(
+        "hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=dict(stored)
+    ):
+        svc = SubjectService(repo)
+        with pytest.raises(ValueError, match="not a reference image"):
+            await svc.set_reference_role(_SUBJECT_ID, path="not-there.jpg", role="identity_anchor")
+
+
+@pytest.mark.asyncio
+async def test_set_reference_role_rejects_empty_role() -> None:
+    repo, _ = _make_repo()
+    stored = {**_STORED, "reference_images": ["a.jpg"]}
+    with patch(
+        "hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=dict(stored)
+    ):
+        svc = SubjectService(repo)
+        with pytest.raises(ValueError, match="role must not be empty"):
+            await svc.set_reference_role(_SUBJECT_ID, path="a.jpg", role="   ")
+
+
+@pytest.mark.asyncio
+async def test_set_reference_role_missing_subject() -> None:
+    repo, _ = _make_repo()
+    with patch("hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=None):
+        svc = SubjectService(repo)
+        result = await svc.set_reference_role(str(uuid.uuid4()), path="a.jpg", role="x")
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -630,7 +731,7 @@ async def test_update_subject_fields_noop_returns_existing() -> None:
 
 
 @pytest.mark.asyncio
-async def test_compute_identity_embedding_averages_multiple_refs() -> None:
+async def test_compute_identity_embeddings_averages_multiple_refs() -> None:
     """多张参考图 → 逐张算向量后取平均 + L2 重归一化(而非只用第一张)。"""
     repo, _ = _make_repo()
     svc = SubjectService(repo)
@@ -640,17 +741,19 @@ async def test_compute_identity_embedding_averages_multiple_refs() -> None:
         return {"a.jpg": [1.0, 0.0], "b.jpg": [0.0, 1.0]}[str(image_path)]
 
     with patch("hevi.subjects.subject_embed.subject_embed", side_effect=_fake_embed):
-        vec = await svc._compute_identity_embedding(["a.jpg", "b.jpg"])
-    assert vec is not None
+        whole, face = await svc._compute_identity_embeddings(["a.jpg", "b.jpg"])
+    assert whole is not None and face is not None
     import math
 
-    assert math.isclose(vec[0], vec[1], rel_tol=1e-6)
-    assert math.isclose(math.sqrt(vec[0] ** 2 + vec[1] ** 2), 1.0, rel_tol=1e-6)  # 归一化
+    for vec in (whole, face):
+        assert math.isclose(vec[0], vec[1], rel_tol=1e-6)
+        assert math.isclose(math.sqrt(vec[0] ** 2 + vec[1] ** 2), 1.0, rel_tol=1e-6)  # 归一化
 
 
 @pytest.mark.asyncio
-async def test_compute_identity_embedding_caps_at_five_refs() -> None:
-    """超过 5 张只取前 5 张算,避免角色攒几十张图后每次都线性变慢。"""
+async def test_compute_identity_embeddings_caps_at_five_refs() -> None:
+    """超过 5 张只取前 5 张算,避免角色攒几十张图后每次都线性变慢(每张图 2 次
+    调用:全图 + 脸部区域各一次)。"""
     repo, _ = _make_repo()
     svc = SubjectService(repo)
     calls: list[str] = []
@@ -661,12 +764,13 @@ async def test_compute_identity_embedding_caps_at_five_refs() -> None:
 
     refs = [f"img{i}.jpg" for i in range(8)]
     with patch("hevi.subjects.subject_embed.subject_embed", side_effect=_fake_embed):
-        await svc._compute_identity_embedding(refs)
-    assert calls == refs[:5]
+        await svc._compute_identity_embeddings(refs)
+    assert set(calls) == set(refs[:5])
+    assert len(calls) == 10  # 5 张 * (全图 + 脸部) = 10 次
 
 
 @pytest.mark.asyncio
-async def test_compute_identity_embedding_skips_failed_images() -> None:
+async def test_compute_identity_embeddings_skips_failed_images() -> None:
     """某张图算失败(文件缺失等)→ 跳过它,用剩下能算的图平均,不整体失败。"""
     from hevi.subjects.subject_embed import SubjectEmbedError
 
@@ -679,8 +783,93 @@ async def test_compute_identity_embedding_skips_failed_images() -> None:
         return [1.0, 0.0]
 
     with patch("hevi.subjects.subject_embed.subject_embed", side_effect=_fake_embed):
-        vec = await svc._compute_identity_embedding(["bad.jpg", "good.jpg"])
-    assert vec == [1.0, 0.0]
+        whole, face = await svc._compute_identity_embeddings(["bad.jpg", "good.jpg"])
+    assert whole == [1.0, 0.0]
+    assert face == [1.0, 0.0]
+
+
+# ── IP 安全 pass —— 图像半边(HEVI 路线图 Phase2 #36)────────────────────────────
+
+
+async def test_screen_new_uploads_returns_empty_when_vlm_unavailable() -> None:
+    # 依赖上面的 autouse fixture(vl_model_available → False)
+    svc = _make_svc()
+    assert await svc._screen_new_uploads(["a.jpg"]) == []
+
+
+async def test_screen_new_uploads_returns_empty_for_no_paths(monkeypatch) -> None:
+    monkeypatch.setattr("hevi.providers.local_qwen_vl_adapter.vl_model_available", lambda: True)
+    svc = _make_svc()
+    assert await svc._screen_new_uploads([]) == []
+
+
+async def test_screen_new_uploads_flags_when_vlm_available(monkeypatch) -> None:
+    monkeypatch.setattr("hevi.providers.local_qwen_vl_adapter.vl_model_available", lambda: True)
+    monkeypatch.setattr(
+        "hevi.subjects.ip_screening.flag_if_recognizable_person",
+        AsyncMock(return_value=["疑似某公众人物"]),
+    )
+    svc = _make_svc()
+    flags = await svc._screen_new_uploads(["a.jpg", "b.jpg"])
+    assert flags == ["疑似某公众人物", "疑似某公众人物"]  # 逐张检查,各自结果累加
+
+
+async def test_create_subject_stores_ip_safety_flags_in_metadata(monkeypatch) -> None:
+    """建角色时命中 IP 顾虑 → 写进 metadata.ip_safety_flags,不阻断建号。"""
+    repo, _ = _make_repo()
+    svc = SubjectService(repo)
+    captured: dict[str, Any] = {}
+
+    async def _fake_create(data):
+        captured.update(data)
+        return data
+
+    monkeypatch.setattr("hevi.providers.local_qwen_vl_adapter.vl_model_available", lambda: True)
+    monkeypatch.setattr(
+        "hevi.subjects.ip_screening.flag_if_recognizable_person",
+        AsyncMock(return_value=["疑似某公众人物"]),
+    )
+    with (
+        patch.object(repo, "create", side_effect=_fake_create),
+        patch.object(
+            SubjectService,
+            "_compute_identity_embeddings",
+            new_callable=AsyncMock,
+            return_value=(None, None),
+        ),
+    ):
+        await svc.create_subject(kind="character", name="X", reference_images=["a.jpg"])
+    assert captured["metadata"]["ip_safety_flags"] == ["疑似某公众人物"]
+
+
+async def test_add_reference_upload_only_screens_the_newly_added_file(monkeypatch) -> None:
+    """只该检查这次新加的文件,不该把已有的 reference_images 也重新过一遍
+    (否则每次加图都要把历史图片全跑一遍 VLM,累积开销线性爆炸)。"""
+    repo, _ = _make_repo()
+    svc = SubjectService(repo, ref_store=ReferenceStore(base_dir="/tmp"))
+    checked: list[str] = []
+
+    async def _fake_flag(path, *, vlm):
+        checked.append(str(path))
+        return []
+
+    monkeypatch.setattr("hevi.providers.local_qwen_vl_adapter.vl_model_available", lambda: True)
+    monkeypatch.setattr("hevi.subjects.ip_screening.flag_if_recognizable_person", _fake_flag)
+    with (
+        patch(
+            "hevi.subjects.repository.read_one", new_callable=AsyncMock, return_value=dict(_STORED)
+        ),
+        patch.object(repo, "update", new_callable=AsyncMock, return_value=_STORED),
+        patch.object(
+            SubjectService,
+            "_compute_identity_embeddings",
+            new_callable=AsyncMock,
+            return_value=(None, None),
+        ),
+    ):
+        await svc.add_reference_upload(_SUBJECT_ID, filename="new.jpg", data=b"data")
+    assert len(checked) == 1
+    assert checked[0].endswith("new.jpg")
 
 
 # ── Phase 1 API:批量传图 / 参考图重排 / PATCH 姓名描述标签 ──────────────────────
@@ -748,6 +937,73 @@ async def test_api_reorder_references_404(client: Any) -> None:
         )
         app.dependency_overrides.clear()
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_set_reference_role(client: Any) -> None:
+    from hevi.api.main import app
+    from hevi.api.routers.subjects import get_subject_service
+
+    svc = _mock_svc()
+    updated = {**_STORED, "reference_roles": {"img/ada.jpg": "identity_anchor"}}
+    with (
+        patch.object(svc, "get_subject", new_callable=AsyncMock, return_value=_STORED),
+        patch.object(
+            svc, "set_reference_role", new_callable=AsyncMock, return_value=updated
+        ) as mset,
+    ):
+        app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
+        resp = await client.put(
+            f"/api/subjects/{_SUBJECT_ID}/reference-role",
+            json={"path": "img/ada.jpg", "role": "identity_anchor"},
+        )
+        app.dependency_overrides.clear()
+    assert resp.status_code == 200
+    assert resp.json()["reference_roles"] == {"img/ada.jpg": "identity_anchor"}
+    mset.assert_awaited_once_with(_SUBJECT_ID, path="img/ada.jpg", role="identity_anchor")
+
+
+@pytest.mark.asyncio
+async def test_api_set_reference_role_404_for_missing_subject(client: Any) -> None:
+    from hevi.api.main import app
+    from hevi.api.routers.subjects import get_subject_service
+
+    svc = _mock_svc()
+    with patch.object(svc, "get_subject", new_callable=AsyncMock, return_value=None):
+        app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
+        resp = await client.put(
+            f"/api/subjects/{_SUBJECT_ID}/reference-role",
+            json={"path": "img/ada.jpg", "role": "identity_anchor"},
+        )
+        app.dependency_overrides.clear()
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_set_reference_role_422_for_unknown_path(client: Any) -> None:
+    from hevi.api.main import app
+    from hevi.api.routers.subjects import get_subject_service
+
+    svc = _mock_svc()
+    with (
+        patch.object(svc, "get_subject", new_callable=AsyncMock, return_value=_STORED),
+        patch.object(
+            svc,
+            "set_reference_role",
+            new_callable=AsyncMock,
+            side_effect=ValueError("'nope.jpg' is not a reference image of this subject"),
+        ),
+    ):
+        app.dependency_overrides[get_subject_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
+        resp = await client.put(
+            f"/api/subjects/{_SUBJECT_ID}/reference-role",
+            json={"path": "nope.jpg", "role": "identity_anchor"},
+        )
+        app.dependency_overrides.clear()
+    assert resp.status_code == 422
 
 
 @pytest.mark.asyncio

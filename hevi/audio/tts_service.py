@@ -7,6 +7,7 @@ VRAM (same pattern as wan_local_service / Wan2GP).
 Tests patch the module-level vibevoice_synthesize name:
     patch("hevi.audio.tts_service.vibevoice_synthesize", ...)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,6 +41,8 @@ async def vibevoice_synthesize(
     output_path: Path,
     watermark: bool = True,
     _inference_fn: Any = None,  # accepted for interface compat; ignored in subprocess mode
+    **_kwargs: Any,  # e.g. voice= from voiceover.py's per-speaker resolution; vibevoice
+    # does per-speaker voice via each line's own .voice_ref instead, ignore top-level voice
 ) -> Path:
     """Subprocess-isolated vibevoice synthesis (same interface as oprim.vibevoice_synthesize).
 
@@ -50,9 +53,8 @@ async def vibevoice_synthesize(
         patch("hevi.audio.tts_service.vibevoice_synthesize", AsyncMock(...))
     """
     cfg = config or {}
-    model_dir = (
-        cfg.get("VIBEVOICE_MODEL_DIR")
-        or os.environ.get("VIBEVOICE_MODEL_DIR", "vendor/vibevoice")
+    model_dir = cfg.get("VIBEVOICE_MODEL_DIR") or os.environ.get(
+        "VIBEVOICE_MODEL_DIR", "vendor/vibevoice"
     )
     return await _run_worker(
         script=script,
@@ -121,7 +123,7 @@ async def _run_worker(
 
         try:
             rc = await asyncio.wait_for(_consume_and_wait(), timeout=_TTS_TIMEOUT_S)
-        except (TimeoutError, asyncio.CancelledError):
+        except TimeoutError, asyncio.CancelledError:
             # Don't orphan the worker (leaks ~8 GB VRAM) on timeout/cancel.
             logger.error("vibevoice: worker timed out/cancelled — killing subprocess")
             proc.kill()

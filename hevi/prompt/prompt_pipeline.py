@@ -14,8 +14,66 @@ from oprim.adapt_prompt_for_provider import adapt_prompt_for_provider
 from oprim.inject_visual_style import inject_visual_style
 
 from hevi.prompt.style_presets import get_style_preset
+from hevi.style.mood_dictionary import expand_mood_to_concrete
 
-__all__ = ["HEVI_TO_OPRIM_PROVIDER", "engineer_prompt", "engineer_prompt_from_preset"]
+__all__ = [
+    "HEVI_TO_OPRIM_PROVIDER",
+    "IDENTITY_LOCK_SENTENCE",
+    "ensure_identity_lock_sentence",
+    "engineer_prompt",
+    "engineer_prompt_from_preset",
+    "lint_engineered_prompt",
+]
+
+# 生成前 lint(HEVI 路线图 §4.2,#28):角色锁定时,prompt 里要显式带一句身份锁定
+# 指令("在整个视频中保持一致的身份/服装/发型/外貌"),这是 seedance-prompt 方法论里
+# "identity-lock sentence" 的直接应用——不是等 lint 事后发现缺失再报错,是生成前就
+# 确定性地补上,lint 只做双重保险(同 shot_planning.py::gate_shotlist 对 plan_shots
+# 硬规则的"双重保险"是同一个设计惯例)。
+IDENTITY_LOCK_SENTENCE = (
+    "Maintain consistent identity, clothing, hairstyle, and appearance throughout."
+)
+
+
+def ensure_identity_lock_sentence(prompt: str) -> str:
+    """角色锁定的镜头 prompt 里没有身份锁定句就补一句(幂等,已存在则不重复追加)。"""
+    if IDENTITY_LOCK_SENTENCE in prompt:
+        return prompt
+    return f"{prompt}. {IDENTITY_LOCK_SENTENCE}" if prompt else IDENTITY_LOCK_SENTENCE
+
+
+def lint_engineered_prompt(
+    prompt: str,
+    *,
+    negative_prompt: str = "",
+    character_locked: bool = False,
+    negative_expected: bool = True,
+) -> list[str]:
+    """生成前确定性自检(HEVI 路线图 §4.2,#28)——零生成成本,发生在真调用付费 API
+    之前,拦"这条 prompt 大概率生成出来就不合格"的问题。
+
+    ①角色锁定时是否已有身份锁定句(`ensure_identity_lock_sentence` 应该已经补过,
+      这里是双重保险,防止有调用路径绕过了那一步)
+    ②负向词块是否非空(仅当这个 provider 实际会消费 negative_prompt 时才检查,
+      `negative_expected=False` 的 provider 本来就不传负向,不该被判违规)
+    ③抽象情绪词是否原样漏进了 prompt 没展开成具象现象(`_append_mood` 应该已经
+      查过 StylePack 的抽象→具象词典替换掉了,这里同样是双重保险)
+
+    "IP 安全改写"依赖改写 pass(#36,已落地,但那是话题/角色描述级别的一次性
+    改写,不是逐镜头 prompt 都要过一遍,故不在这里重复检查)。
+    """
+    from hevi.style.mood_dictionary import list_known_moods
+
+    violations: list[str] = []
+    if character_locked and IDENTITY_LOCK_SENTENCE not in prompt:
+        violations.append("角色锁定但 prompt 里缺身份锁定句")
+    if negative_expected and not negative_prompt.strip():
+        violations.append("负向词块为空")
+    unexpanded = [w for w in list_known_moods() if w in prompt]
+    if unexpanded:
+        violations.append(f"抽象情绪词未展开为具象现象: {unexpanded}")
+    return violations
+
 
 # Map hevi provider names → oprim provider keys used by _PROVIDER_RULES.
 HEVI_TO_OPRIM_PROVIDER: dict[str, str] = {
@@ -25,11 +83,15 @@ HEVI_TO_OPRIM_PROVIDER: dict[str, str] = {
 
 
 def _append_mood(styled: str, mood: str | None) -> str:
-    """情绪基调:独立于 style/lighting/camera/color_grade 的额外维度,追加方式同
-    inject_visual_style 自身的后缀约定("{value} {label}", 逗号相接)。"""
+    """情绪基调:独立于 style/lighting/camera/color_grade 的额外维度。
+
+    抽象词→具象现象(HEVI 路线图 Phase3 #38):情绪词本身喂给视频生成模型往往
+    落地成空洞的滤镜式氛围,先查 StylePack 共享的抽象→具象词典,查到就换成
+    可拍摄的具体现象;没有词条就原样追加(不编造这个词没有的具象化描述)。
+    """
     if not mood:
         return styled
-    suffix = f"{mood} mood"
+    suffix = expand_mood_to_concrete(mood)
     return f"{styled}, {suffix}" if styled else suffix
 
 

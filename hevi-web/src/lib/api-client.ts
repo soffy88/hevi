@@ -100,6 +100,12 @@ export const canvasApi = {
   execute:(id: string) => authedReq<{ task_id: string }>(`/api/canvas/${id}/execute`, { method: 'POST' }),
   // SSE 进度 URL(配合 useSSEProgress)
   progressUrl: (id: string) => `${API_BASE}/api/canvas/${id}/execute/progress`,
+  // 通用 i2v 参考图上传(不经过角色库,直接给某个视频节点做参考图)
+  uploadReferenceImage: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<{ path: string }>('/api/canvas/reference-image', form);
+  },
 };
 
 // ── 创意辅助 (需登录) ─────────────────────────────
@@ -172,6 +178,12 @@ export const taskApi = {
   get:      (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}`),
   // 镜头级卡片(剧集看板)——逐镜状态 + 一致性/诊断摘要
   shots:    (id: string) => authedReq<TaskShot[]>(`/api/tasks/${id}/shots`),
+  // C3 verdict→定向返工(剧集看板可编辑,SPEC-001 §4.3):后台重生成指定镜头,fire-and-forget
+  regenerateShots: (id: string, shotIds: number[], hints?: Record<number, string>) =>
+    authedReq<TaskInfo>(`/api/tasks/${id}/regenerate`, {
+      method: 'POST',
+      body: JSON.stringify({ shot_ids: shotIds, hints: hints ?? null }),
+    }),
   resume:   (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}/resume`, { method: 'POST' }),
   // SSE 进度:EventSource 无法带 Authorization 头,token 以查询参数传递
   progressUrl: (id: string) =>
@@ -230,6 +242,14 @@ export const styleApi = {
     authedReq<{ resolved: Record<string, string>; version: number }>(`/api/style-packs/${id}/resolve`),
   update:  (id: string, overrides: Record<string, string>) =>
     authedReq<StylePack>(`/api/style-packs/${id}`, { method: 'PATCH', body: JSON.stringify({ overrides }) }),
+  // 参考图/视频 → VLM 拆解出 style/lighting/camera/color_grade 草稿(不落库,前端确认/编辑后再 create)
+  draftFromReference: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<{ style: string; lighting: string; camera: string; color_grade: string }>(
+      '/api/style-packs/draft-from-reference', form,
+    );
+  },
 };
 
 // ── 导演层(§3 L4,需登录)片表单 → 预览 / 产集 / 逐镜编辑渲染 ──────────
@@ -256,7 +276,7 @@ export const directorApi = {
 };
 
 // ── 通鉴全自动流水线(HEVI-SPEC-01,需登录)────────────────────────────────────
-import type { TongjianRunRequest, TongjianRunStatus } from '@/types/api';
+import type { TongjianRunRequest, TongjianRunStatus, TongjianScriptReview, TongjianScriptLine } from '@/types/api';
 export const tongjianApi = {
   startRun: (payload: TongjianRunRequest) =>
     authedReq<{ run_id: string; status: string }>('/api/tongjian/run', {
@@ -267,6 +287,101 @@ export const tongjianApi = {
     authedReq<TongjianRunStatus>(`/api/tongjian/runs/${runId}`),
   listRuns: () =>
     authedReq<TongjianRunStatus[]>('/api/tongjian/runs'),
+  // 人工审核:取回待审的立意+剧本
+  getScript: (runId: string) =>
+    authedReq<TongjianScriptReview>(`/api/tongjian/runs/${runId}/script`),
+  // 提交编辑后的剧本(+可选立意);只保存不续跑
+  updateScript: (runId: string, payload: { script: { lines: TongjianScriptLine[] }; constitution?: Record<string, unknown> }) =>
+    authedReq<{ run_id: string; status: string; lines: string }>(`/api/tongjian/runs/${runId}/script`, {
+      method: 'PUT', body: JSON.stringify(payload),
+    }),
+  // 审核通过 → 续跑 L3-L8 渲染
+  resume: (runId: string) =>
+    authedReq<{ run_id: string; status: string }>(`/api/tongjian/runs/${runId}/resume`, { method: 'POST' }),
+  // 剧本不满意 → 重出一版(仍停在审核态)
+  regenerate: (runId: string) =>
+    authedReq<{ run_id: string; status: string }>(`/api/tongjian/runs/${runId}/regenerate`, { method: 'POST' }),
+  // 成片播放/下载:<video src>/<a download> 不能带 header,token 走查询参数
+  videoUrl: (runId: string) =>
+    `${API_BASE}/api/tongjian/runs/${runId}/video${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
+};
+
+// ── 短剧创建入口(SPEC-001 §7 阶段1,需登录)──────────────────────────────────
+import type { ShortdramaRunRequest, ShortdramaRunStatus, ShortdramaConfirmRequest } from '@/types/api';
+export const shortdramaApi = {
+  startRun: (payload: ShortdramaRunRequest) =>
+    authedReq<{ run_id: string; status: string }>('/api/shortdrama/runs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getStatus: (runId: string) =>
+    authedReq<ShortdramaRunStatus>(`/api/shortdrama/runs/${runId}`),
+  listRuns: () =>
+    authedReq<ShortdramaRunStatus[]>('/api/shortdrama/runs'),
+  // 对抽取/分集结果不满意 → 重新抽取+规划
+  replan: (runId: string) =>
+    authedReq<{ run_id: string; status: string }>(`/api/shortdrama/runs/${runId}/replan`, { method: 'POST' }),
+  // 给某个角色上传参考图建号并绑定(confirm 时该角色不再自动生成)
+  uploadCharacterReference: (runId: string, charId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<{ char_id: string; subject_id: string }>(
+      `/api/shortdrama/runs/${runId}/characters/${charId}/upload`, form,
+    );
+  },
+  // 角色绑定确认 → 派发(真实生成,由后台队列自动执行)
+  confirm: (runId: string, payload: ShortdramaConfirmRequest) =>
+    authedReq<{ run_id: string; status: string }>(`/api/shortdrama/runs/${runId}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+};
+
+// ── SPEC-003 主线导演流水线(director-pipeline,需登录)───────────────────────
+// 立意→剧本→设计清单→分镜,逐级人审核锁定才放行下游,详见
+// docs/specs/SPEC-003-mainline-director-pipeline.md。
+import type {
+  DpConcept, DpScreenplay, DpDesignList, DpShotList, DpWork, DpProduceRequest,
+} from '@/types/api';
+export const directorPipelineApi = {
+  createWork: (materialText: string, intentHint = '') =>
+    authedReq<DpWork>('/api/director-pipeline/works', {
+      method: 'POST',
+      body: JSON.stringify({ material_text: materialText, intent_hint: intentHint }),
+    }),
+  listWorks: () => authedReq<DpWork[]>('/api/director-pipeline/works'),
+  getWork: (workId: string) => authedReq<DpWork>(`/api/director-pipeline/works/${workId}`),
+  // 重新生成本级草稿;若本级此前已锁定(或更下游已锁定),后端会先回退+清空全部下游
+  regenerateConcept: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/concept`, { method: 'POST' }),
+  regenerateScreenplay: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/screenplay`, { method: 'POST' }),
+  regenerateDesignList: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list`, { method: 'POST' }),
+  regenerateShotList: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/shot-list`, { method: 'POST' }),
+  // 锁定(可能已编辑的)内容 → 自动生成下一级草稿
+  lockConcept: (workId: string, body: DpConcept) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/concept/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  lockScreenplay: (workId: string, body: DpScreenplay) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/screenplay/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  lockDesignList: (workId: string, body: DpDesignList) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  lockShotList: (workId: string, body: DpShotList) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/shot-list/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  // 仅 shot_list_locked 才允许,建真实 video_task 出片
+  produce: (workId: string, body: DpProduceRequest) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/produce`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
 };
 
 // ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────

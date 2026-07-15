@@ -375,6 +375,61 @@ async def test_execute_graph_calls_canvas_workflow_executor() -> None:
 
 
 @pytest.mark.asyncio
+async def test_execute_graph_preflight_blocks_over_budget() -> None:
+    """计划级自我批判(#44):预计成本超预算 → 执行前打回,不烧算力(不该调用
+    canvas_workflow_executor)。"""
+    from hevi.canvas.preflight import PreflightError
+
+    graph_svc = _make_svc()
+    exe = ExecutorService(graph_svc)
+    expensive_graph = {
+        **_STORED,
+        "nodes_json": [
+            {
+                "node_id": "v1",
+                "node_type": "video",
+                "label": "V",
+                "config": {"provider": "veo3", "duration_s": 100.0},
+                "position": {},
+            }
+        ],
+        "edges_json": [],
+    }
+    with (
+        patch.object(graph_svc, "load_graph", new_callable=AsyncMock, return_value=expensive_graph),
+        patch(
+            "hevi.canvas.executor_service.canvas_workflow_executor", new_callable=AsyncMock
+        ) as mock_exec,
+    ):
+        with pytest.raises(PreflightError):
+            await exe.execute_graph(_GID, budget_usd=1.0)
+    mock_exec.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_graph_preflight_report_included_in_result() -> None:
+    from oprim.canvas_node_execute import CanvasNodeResult
+
+    graph_svc = _make_svc()
+    exe = ExecutorService(graph_svc)
+    node_result = CanvasNodeResult(
+        node_id="n1", output={"type": "text"}, node_type="text", success=True
+    )
+    with (
+        patch.object(graph_svc, "load_graph", new_callable=AsyncMock, return_value=_STORED),
+        patch(
+            "hevi.canvas.executor_service.canvas_workflow_executor",
+            new_callable=AsyncMock,
+            return_value={"n1": node_result},
+        ),
+    ):
+        result = await exe.execute_graph(_GID, budget_usd=100.0)
+    assert "preflight" in result
+    assert result["preflight"]["estimated_cost_usd"] == 0.0  # _STORED 没有 video 节点
+    assert result["preflight"]["warnings"] == []
+
+
+@pytest.mark.asyncio
 async def test_execute_graph_not_found_raises() -> None:
     graph_svc = _make_svc()
     exe = ExecutorService(graph_svc)
@@ -588,3 +643,93 @@ async def test_api_execute_graph_not_found(client: Any) -> None:
         )
         app.dependency_overrides.clear()
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_api_execute_graph_preflight_over_budget_returns_402(client: Any) -> None:
+    """计划级自我批判(#44):预算超支 → 402,同其它预算类熔断的既有约定。"""
+    from hevi.api.main import app
+    from hevi.api.routers.canvas import get_executor_service, get_graph_service
+    from hevi.canvas.preflight import PreflightError
+
+    svc = _make_svc()
+    exe = ExecutorService(svc)
+    with (
+        patch.object(
+            exe,
+            "execute_graph",
+            new_callable=AsyncMock,
+            side_effect=PreflightError("预计成本 $5.00 超出预算 $1.00"),
+        ),
+        patch.object(svc, "load_graph", new_callable=AsyncMock, return_value=_STORED),
+    ):
+        app.dependency_overrides[get_executor_service] = lambda: exe
+        app.dependency_overrides[get_graph_service] = lambda: svc
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
+        resp = await client.post(
+            f"/api/canvas/graphs/{_GID}/execute",
+            json={"budget_usd": 1.0},
+        )
+        app.dependency_overrides.clear()
+    assert resp.status_code == 402
+
+
+# ── 通用 i2v 参考图上传(HEVI 路线图 Phase1 #31)────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_api_upload_canvas_reference_image(client: Any) -> None:
+    from hevi.api.main import app
+
+    with patch(
+        "hevi.subjects.reference_store.ReferenceStore.save_upload",
+        return_value="output/reference_images/canvas-x/photo.jpg",
+    ) as mock_save:
+        app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
+        resp = await client.post(
+            "/api/canvas/reference-image",
+            files={"file": ("photo.jpg", b"\xff\xd8fake", "image/jpeg")},
+        )
+        app.dependency_overrides.clear()
+    assert resp.status_code == 201
+    assert resp.json()["path"] == "output/reference_images/canvas-x/photo.jpg"
+    mock_save.assert_called_once()
+    # 不该复用真实 subject_id 命名空间——每次上传独立,不挂进任何角色记录。
+    assert mock_save.call_args.args[0].startswith("canvas-")
+
+
+@pytest.mark.asyncio
+async def test_api_upload_canvas_reference_image_rejects_non_image(client: Any) -> None:
+    from hevi.api.main import app
+
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
+    resp = await client.post(
+        "/api/canvas/reference-image",
+        files={"file": ("clip.mp4", b"fake", "video/mp4")},
+    )
+    app.dependency_overrides.clear()
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_api_upload_canvas_reference_image_rejects_oversized(client: Any) -> None:
+    from hevi.api.main import app
+    from hevi.api.routers.canvas import _MAX_REFERENCE_IMAGE_BYTES
+
+    app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
+    oversized = b"\xff" * (_MAX_REFERENCE_IMAGE_BYTES + 1)
+    resp = await client.post(
+        "/api/canvas/reference-image",
+        files={"file": ("big.jpg", oversized, "image/jpeg")},
+    )
+    app.dependency_overrides.clear()
+    assert resp.status_code == 413
+
+
+@pytest.mark.asyncio
+async def test_api_upload_canvas_reference_image_requires_auth(client: Any) -> None:
+    resp = await client.post(
+        "/api/canvas/reference-image",
+        files={"file": ("photo.jpg", b"\xff\xd8fake", "image/jpeg")},
+    )
+    assert resp.status_code in (401, 403)

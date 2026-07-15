@@ -157,6 +157,46 @@ html, body {
 .hevi-side-title { font-size: var(--text-sm); font-weight: 700; color: var(--foreground); }
 .hevi-side-empty { padding: 24px; text-align: center; color: var(--muted-foreground); font-size: var(--text-sm); }
 
+/* ── 节点属性面板(选中 video 节点时浮现)── */
+.hevi-inspector {
+  position: absolute;
+  top: 60px; right: 16px;
+  width: 240px;
+  padding: var(--space-3, 12px);
+  border-radius: var(--radius, 0.5rem);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.hevi-inspector__title {
+  font-size: var(--text-sm); font-weight: 700; color: var(--foreground);
+}
+.hevi-inspector__label {
+  font-size: var(--text-xs, 0.6875rem); color: var(--muted-foreground);
+}
+.hevi-inspector__textarea {
+  width: 100%; resize: vertical;
+  border: 1px solid var(--border); border-radius: var(--radius, 0.5rem);
+  padding: 6px 8px; font-size: var(--text-sm); background: var(--background);
+  color: var(--foreground);
+}
+.hevi-inspector__upload-btn { display: inline-flex; justify-content: center; cursor: pointer; }
+.hevi-inspector__upload-btn[data-disabled] { opacity: 0.6; pointer-events: none; }
+.hevi-inspector__ref-set {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: var(--text-sm);
+}
+.hevi-inspector__ref-path {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--foreground);
+}
+.hevi-inspector__ref-clear {
+  border: none; background: none; color: var(--destructive); cursor: pointer;
+  font-size: var(--text-xs, 0.6875rem);
+}
+
 /* ── 画布顶栏 ── */
 .hevi-canvas__topbar {
   position: absolute; top: 12px; left: 12px; z-index: 5;
@@ -396,15 +436,19 @@ html, body {
   padding: 0 24px; height: 56px;
   border-bottom: 1px solid var(--border);
   background: var(--card);
+  overflow-x: auto;
 }
-.hevi-topnav__logo { font-size: var(--text-xl); font-weight: 780; letter-spacing: -0.02em; color: var(--foreground); text-decoration: none; }
-.hevi-topnav__links { display: flex; gap: 4px; }
+.hevi-topnav__logo { flex-shrink: 0; font-size: var(--text-xl); font-weight: 780; letter-spacing: -0.02em; color: var(--foreground); text-decoration: none; }
+.hevi-topnav__links { display: flex; gap: 4px; flex-shrink: 0; }
 .hevi-topnav__link {
   padding: 7px 14px; border-radius: 8px; font-size: var(--text-sm);
   color: var(--muted-foreground); text-decoration: none;
+  white-space: nowrap; flex-shrink: 0;
 }
 .hevi-topnav__link:hover { background: var(--muted); color: var(--foreground); }
 .hevi-topnav__link[data-active="true"] { background: color-mix(in oklch, var(--primary) 16%, transparent); color: var(--primary); font-weight: 600; }
+.hevi-topnav__link--btn { border: none; background: none; font: inherit; cursor: pointer; }
+.hevi-topnav__link--auth { margin-left: auto; }
 
 /* ── 首页简单生成 ── */
 .hevi-home {
@@ -651,6 +695,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .hevi-series__resolved span { color: var(--foreground); font-weight: 600; margin-right: 6px; }
 .hevi-series__pack-result button { margin-top: 8px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); font-size: var(--text-xs); cursor: pointer; }
 .hevi-series__mono { font-family: var(--font-mono, monospace); font-size: var(--text-xs); word-break: break-all; }
+.hevi-series__pack-draft-busy { color: var(--muted-foreground); font-size: var(--text-xs); }
 
 /* ── 逐步 provider 选择 ── */
 .hevi-provider { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border); }
@@ -707,6 +752,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 
 /* ── 通鉴全自动流水线控制台(HEVI-SPEC-01)── */
 .hevi-tongjian-page { min-height: calc(100vh - 56px); background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklch, oklch(0.35 0.08 30) 30%, transparent), transparent); }
+.hevi-director-pipeline-page { min-height: calc(100vh - 56px); background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklch, oklch(0.35 0.08 55) 30%, transparent), transparent); }
 .tj { max-width: 780px; margin: 0 auto; padding: 32px 24px 80px; }
 
 /* 英雄区 */
@@ -737,8 +783,11 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 
 /* 输入字段 */
 .tj-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.tj-field--check { flex-direction: row; align-items: flex-start; gap: 8px; }
+.tj-field--check input { width: auto; margin-top: 2px; flex: none; }
+.tj-field--check .tj-field__label { flex: 1; min-width: 0; }
 .tj-field__label { font-size: var(--text-xs); color: var(--muted-foreground); font-weight: 600; }
-.tj-field input, .tj-field textarea {
+.tj-field input:not([type="checkbox"]), .tj-field textarea {
   padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
   background: var(--card); color: var(--foreground); font-size: var(--text-sm);
   width: 100%; transition: border-color 0.15s; }
@@ -812,8 +861,79 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .tj-result--fail { background: color-mix(in oklch, var(--destructive, #d33) 8%, var(--card));
   border-color: color-mix(in oklch, var(--destructive, #d33) 20%, transparent); }
 .tj-result__head { font-weight: 700; margin-bottom: 6px; }
+.tj-result__video { width: 100%; max-height: 60vh; margin: 8px 0; border-radius: 8px;
+  background: #000; display: block; }
+.tj-result__actions { display: flex; gap: 8px; margin: 8px 0; }
 .tj-result__path { font-family: var(--font-mono, monospace); font-size: var(--text-xs);
   color: var(--muted-foreground); word-break: break-all; }
+
+/* 剧本人工审核台 */
+.tj-review { margin-top: 16px; padding: 14px 16px; border-radius: 10px;
+  background: color-mix(in oklch, oklch(0.70 0.14 55) 8%, var(--card));
+  border: 1px solid color-mix(in oklch, oklch(0.70 0.14 55) 28%, transparent); }
+.tj-review__head { font-weight: 700; margin-bottom: 4px; }
+.tj-review__stat { font-size: var(--text-xs); color: var(--muted-foreground); margin-bottom: 10px; }
+.tj-review__note { font-size: var(--text-xs); color: oklch(0.62 0.16 155); margin-top: 6px; }
+.tj-rev-table { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.tj-rev-row { padding: 8px; border-radius: 8px; border: 1px solid var(--border, #333);
+  background: color-mix(in oklch, var(--card) 60%, transparent); }
+.tj-rev-row--dialogue { border-left: 3px solid oklch(0.65 0.18 25); }
+.tj-rev-row--commentary { border-left: 3px solid oklch(0.65 0.14 275); }
+.tj-rev-row--narration { border-left: 3px solid color-mix(in oklch, var(--muted-foreground) 50%, transparent); }
+.tj-rev-row__meta { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+.tj-rev-row__n { font-size: var(--text-xs); color: var(--muted-foreground); min-width: 20px; }
+.tj-rev-row__sp { flex: 1; }
+.tj-rev-row__spk { width: 110px; }
+.tj-rev-row__emo { width: 80px; }
+.tj-rev-row__meta select, .tj-rev-row__meta input { padding: 3px 6px; font-size: var(--text-xs);
+  border-radius: 6px; border: 1px solid var(--border, #333); background: var(--background); color: inherit; }
+.tj-rev-row__meta button { padding: 2px 7px; border-radius: 6px; border: 1px solid var(--border, #333);
+  background: transparent; color: inherit; cursor: pointer; font-size: var(--text-xs); }
+.tj-rev-row__del:hover { border-color: var(--destructive, #d33); }
+.tj-rev-row textarea { width: 100%; padding: 6px 8px; border-radius: 6px; font-size: var(--text-sm);
+  border: 1px solid var(--border, #333); background: var(--background); color: inherit; resize: vertical; }
+.tj-rev-add { margin: 4px 0 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px dashed var(--border, #444); background: transparent; color: var(--muted-foreground); }
+.tj-review__actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.oui-btn--primary { background: oklch(0.62 0.16 155); color: #fff; border-color: transparent; }
+
+/* ── 短剧创建入口(SeasonBoard 内嵌,复用 .tj-* 结构)── */
+.sd-gate-warn { margin-bottom: 14px; padding: 10px 14px; border-radius: 8px;
+  background: color-mix(in oklch, oklch(0.70 0.15 80) 10%, var(--card)); border: 1px solid color-mix(in oklch, oklch(0.70 0.15 80) 30%, var(--border)); }
+.sd-gate-warn__head { font-weight: 600; font-size: var(--text-sm); margin-bottom: 4px; }
+.sd-gate-warn ul { margin: 0; padding-left: 18px; font-size: var(--text-xs); color: var(--muted-foreground); }
+.sd-review { display: flex; flex-direction: column; gap: 14px; margin-bottom: 8px; }
+.sd-review__block {}
+.sd-review__label { font-size: var(--text-xs); font-weight: 700; color: var(--muted-foreground); margin-bottom: 6px; }
+.sd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sd-chip { font-size: var(--text-xs); padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--card); }
+.sd-list { margin: 0; padding-left: 18px; font-size: var(--text-sm); display: flex; flex-direction: column; gap: 4px; }
+.sd-chars { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.sd-char-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
+.sd-char-row__name { font-weight: 600; min-width: 80px; }
+.sd-char-row__bound { color: oklch(0.60 0.18 155); font-size: var(--text-sm); }
+.sd-char-row__opts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: var(--text-sm); }
+.sd-char-row__opt { display: flex; align-items: center; gap: 6px; }
+.sd-char-row__opt select { margin-left: 4px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--background); color: inherit; }
+.sd-char-row__opt--upload input[type="file"] { font-size: var(--text-xs); max-width: 160px; }
+.sd-confirm-btn { background: color-mix(in oklch, var(--destructive, #d33) 12%, oklch(0.70 0.14 55));
+  border-color: color-mix(in oklch, var(--destructive, #d33) 40%, oklch(0.70 0.14 55)); }
+
+/* ── SPEC-003 主线导演流水线(DirectorPipelineConsole,复用 .tj-* 结构)── */
+.dp-steps { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+.dp-step { font-size: var(--text-xs); padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted-foreground); }
+.dp-step[data-state="locked"] { border-color: oklch(0.60 0.18 155); color: oklch(0.60 0.18 155); }
+.dp-step[data-state="active"] { border-color: oklch(0.70 0.14 55); color: oklch(0.70 0.14 55); font-weight: 700; background: color-mix(in oklch, oklch(0.70 0.14 55) 10%, transparent); }
+.dp-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; background: var(--card); }
+.dp-card__head { font-weight: 700; font-size: var(--text-sm); margin-bottom: 10px; }
+.dp-dialogue-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.dp-dialogue-row__speaker { flex: 0 0 120px; }
+.dp-dialogue-row__text { flex: 1; }
+.dp-dialogue-row input { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--background); color: inherit; font-size: var(--text-sm); }
+.dp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.dp-result-video { width: 100%; max-width: 420px; border-radius: 10px; margin-top: 12px; display: block; }
 
 /* ── 自媒体解说短视频控制台(hevi.explainer)── 同 .tj- 结构,换个色系区分产品线 */
 .hevi-explainer-page { min-height: calc(100vh - 56px); background: radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklch, oklch(0.35 0.08 80) 30%, transparent), transparent); }
@@ -907,8 +1027,12 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 
 /* ── 剧集看板(SPEC-001 §4 短剧通道)──────────────────────────── */
 .hevi-sb { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
+.hevi-sb__head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .hevi-sb__title { font-size: var(--text-2xl); font-weight: 700; }
 .hevi-sb__sub { color: var(--muted-foreground); font-size: var(--text-sm); margin: 6px 0 20px; }
+.hevi-sb__new-btn { flex: none; padding: 10px 18px; border-radius: 10px; font-weight: 700;
+  border: 1px solid oklch(0.70 0.14 55); background: oklch(0.70 0.14 55); color: oklch(0.12 0.03 55); cursor: pointer; }
+.hevi-sb__new-btn:hover { background: oklch(0.65 0.16 55); }
 .hevi-sb__err { color: #dc2626; font-size: var(--text-sm); margin-bottom: 12px; }
 .hevi-sb__cols { display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
 @media (max-width: 720px) { .hevi-sb__cols { grid-template-columns: 1fr; } }
@@ -976,3 +1100,8 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .hevi-sb__shot-status { color: var(--muted-foreground); }
 .hevi-sb__shot-score { color: var(--foreground); }
 .hevi-sb__shot-diag { color: #dc2626; }
+.hevi-sb__shot-check { margin: 0; cursor: pointer; }
+.hevi-sb__shot-actions { display: flex; align-items: center; gap: 10px; flex: 1 1 100%; }
+.hevi-sb__regen-btn { font-size: var(--text-xs); padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--background); cursor: pointer; }
+.hevi-sb__regen-btn:disabled { opacity: 0.5; cursor: not-allowed; }

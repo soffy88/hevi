@@ -34,6 +34,11 @@ def test_all_expected_providers_registered():
         assert reg.generic("video", name) is not None, f"video/{name} missing"
     for name in ("edge_tts", "vibevoice", "duix"):
         assert reg.generic("audio", name) is not None, f"audio/{name} missing"
+    # 首尾帧关键帧(2026-07-13):此前 category="image_to_video" 从未注册过任何 provider,
+    # oprim.first_last_frame_transition 100% 保证撞 FrameTransitionProviderNotFoundError。
+    assert reg.generic("image_to_video", "wan22_kf2v_maas") is not None, (
+        "image_to_video/wan22_kf2v_maas missing"
+    )
     assert reg.llm("default") is not None
     assert reg.llm("local") is not None
 

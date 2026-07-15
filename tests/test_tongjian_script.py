@@ -7,8 +7,23 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from hevi.tongjian.schemas import Act, ChapterIR, ChapterMeta, Constitution, EventIR, QuoteIR
-from hevi.tongjian.script import build_script, gate_script, generate_script
+from hevi.tongjian.schemas import (
+    Act,
+    ChapterIR,
+    ChapterMeta,
+    Constitution,
+    EventIR,
+    QuoteIR,
+    Script,
+    ScriptLine,
+)
+from hevi.tongjian.script import (
+    _build_script_prompt,
+    _check_dialogue_coverage,
+    build_script,
+    gate_script,
+    generate_script,
+)
 
 CHAPTER_IR = ChapterIR(
     meta=ChapterMeta(source="test", char_count=100),
@@ -197,7 +212,7 @@ async def test_gate_script_detects_hallucinated_content():
         content = messages[0]["content"]
         if "忠实改写自原引语" in content:
             return {"content": '{"violations": []}'}
-        if "编造的内容" in content:
+        if "编造的**史实**内容" in content:
             return {
                 "content": json.dumps(
                     {"violations": [{"line_id": "LN001", "reason": "原文没有三家大夫赴宴的记载"}]},
@@ -220,7 +235,7 @@ async def test_build_script_rewrites_violating_line_until_pass():
 
     async def fake_llm(*, messages, max_tokens=None):
         content = messages[0]["content"]
-        if "你是历史解说短片编剧" in content:
+        if "你是历史正剧编剧" in content:
             return {"content": json.dumps(_good_draft(), ensure_ascii=False)}
         if "被审查判定违规" in content:
             return {"content": '{"text": "祸乱要来,也得我来挑起,谁人敢应?"}'}
@@ -240,7 +255,7 @@ async def test_build_script_deletes_line_after_max_rewrite_attempts():
 
     async def fake_llm(*, messages, max_tokens=None):
         content = messages[0]["content"]
-        if "你是历史解说短片编剧" in content:
+        if "你是历史正剧编剧" in content:
             return {"content": json.dumps(_good_draft(), ensure_ascii=False)}
         if "被审查判定违规" in content:
             # 重写永远修不好(依旧命中违禁词),逼出"3 次仍违规 → 删除该行"的降级路径
@@ -255,3 +270,96 @@ async def test_build_script_deletes_line_after_max_rewrite_attempts():
     # 不再是"命中违禁词"这个已经解决的问题。
     assert not any("命中违禁词" in e for e in result.errors)
     assert any("偏差" in e for e in result.errors)
+
+
+# ── 人设/体裁参数化(2026-07-12,短剧复用同一套 L2,不该套通鉴人设)────────────
+
+
+def test_prompt_defaults_to_tongjian_persona_and_includes_commentary_rule():
+    """不传新参数(通鉴自己的调用方)时行为不能变。"""
+    constitution = _make_constitution(_good_target_duration_sec())
+    prompt = _build_script_prompt(constitution, CHAPTER_IR)
+    assert "你是历史正剧编剧(对标《大秦帝国》《贞观之治》)" in prompt
+    assert "史论(臣光曰)用 type=commentary" in prompt
+
+
+def test_prompt_honors_custom_persona_and_omits_commentary_rule():
+    constitution = _make_constitution(_good_target_duration_sec())
+    prompt = _build_script_prompt(
+        constitution,
+        CHAPTER_IR,
+        screenwriter_persona="都市情感短剧编剧",
+        include_commentary=False,
+    )
+    assert "你是都市情感短剧编剧" in prompt
+    assert "你是历史正剧编剧" not in prompt
+    assert "史论(臣光曰)用 type=commentary" not in prompt
+
+
+# ── _check_dialogue_coverage(2026-07-12,短剧真实反馈"大部分是旁白没对话")───
+
+
+def test_check_dialogue_coverage_flags_high_weight_event_with_only_narration():
+    script = Script(
+        lines=[
+            ScriptLine(
+                line_id="LN001", type="narration", event_id="E002", text="智伯提出了索地的要求。"
+            )
+        ]
+    )
+    errors = _check_dialogue_coverage(script, CHAPTER_IR)  # E002 权重 5
+    assert any("LN001" in e and "需要改写成对白" in e for e in errors)
+
+
+def test_check_dialogue_coverage_ignores_low_weight_event():
+    script = Script(
+        lines=[ScriptLine(line_id="LN001", type="narration", event_id="E001", text="设宴。")]
+    )
+    assert _check_dialogue_coverage(script, CHAPTER_IR) == []  # E001 权重 3,低于门槛
+
+
+def test_check_dialogue_coverage_passes_when_dialogue_already_covers_event():
+    script = Script(
+        lines=[
+            ScriptLine(line_id="LN001", type="dialogue", speaker="C001", event_id="E002", text="x")
+        ]
+    )
+    assert _check_dialogue_coverage(script, CHAPTER_IR) == []
+
+
+@pytest.mark.asyncio
+async def test_build_script_converts_narration_to_dialogue_for_high_weight_event():
+    """高戏剧权重事件生成出来只有旁白 → 定点转成对白,而不是继续旁白带过
+    (硬性规则1 此前只是软提示,没有真正拦截)。"""
+    constitution = _make_constitution(target_duration_sec=100)
+    only_narration_draft = {
+        "lines": [
+            {
+                "act": 1,
+                "type": "narration",
+                "speaker": "NARRATOR",
+                "text": "智伯提出了索地的要求,赵襄子当场回绝。",
+                "event_id": "E002",
+            }
+        ]
+    }
+
+    async def fake_llm(*, messages, max_tokens=None):
+        content = messages[0]["content"]
+        if "你是历史正剧编剧" in content:
+            return {"content": json.dumps(only_narration_draft, ensure_ascii=False)}
+        if "必须改写成" in content and "人物对白" in content:
+            return {"content": '{"text": "地,给是不给?"}'}
+        return {"content": '{"violations": []}'}
+
+    script, result = await build_script(constitution, CHAPTER_IR, llm=fake_llm)
+
+    # 不断言 result.passed 整体(重写换了文本长度,可能碰上不相关的字数偏差门)——
+    # 只断言这个测试真正关心的事:coverage 违规消失、旁白行确实被转成了对白。
+    assert not any("需要改写成对白" in e for e in result.errors)
+    e002_lines = [ln for ln in script.lines if ln.event_id == "E002"]
+    assert len(e002_lines) == 1
+    assert e002_lines[0].type == "dialogue"
+    assert e002_lines[0].dramatized is True
+    assert e002_lines[0].speaker == "NARRATOR"  # E002 无 actors,退回原 speaker
+    assert e002_lines[0].text == "地,给是不给?"
