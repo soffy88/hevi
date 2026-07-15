@@ -12,6 +12,19 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _stub_sdxl_local():
+    """关键帧引擎默认 engine="local"(本地 sdxl_local + IP-Adapter)。测试里不真跑本地 GPU
+    (151s/帧),默认桩成"GPU 不可用"→ 让关键帧退到各测试自己 patch 的云端 qwen-image-edit,
+    使既有断言(围绕 qwen-image-edit 的行为)保持有效。要测本地引擎本身的测试,自行覆盖它。"""
+    with patch(
+        "hevi.tongjian.scene_render_avatar.sdxl_local_generate",
+        AsyncMock(side_effect=RuntimeError("GPU 不可用(测试桩)")),
+    ):
+        yield
+
+
 from hevi.image.qwen_image_service import QwenImageError
 from hevi.tongjian.scene_render_avatar import (
     _MAX_CLIP_DURATION_S,
@@ -97,6 +110,11 @@ def _bible(ref_image: str | None = None) -> CharacterBible:
             )
         ]
     )
+
+
+async def _fake_hh(*, image_path, prompt, output_path, duration, resolution):
+    Path(output_path).write_bytes(b"fake-talk")
+    return output_path
 
 
 @pytest.mark.asyncio
@@ -671,3 +689,118 @@ async def test_keyframe_falls_back_to_canonical_when_edit_unavailable(tmp_path):
 
     assert not manifest.frames[0].degraded  # 没有因 edit 失败而降级空镜
     assert kf_bytes_seen == [b"CANON-BYTES"]  # happyhorse 拿到的正是 canonical 像
+
+
+def _one_dialogue_shot():
+    script = Script(
+        lines=[
+            ScriptLine(
+                line_id="LN001",
+                type="dialogue",
+                speaker="C003",
+                text="请分宗。",
+                emotion="决绝",
+                visual_hint="掷玉珏于阶前",
+            )
+        ]
+    )
+    shotlist = ShotList(shots=[Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"])])
+    return script, shotlist
+
+
+@pytest.mark.asyncio
+async def test_local_engine_uses_sdxl_not_cloud(tmp_path):
+    """engine="local"(默认):关键帧走本地 sdxl_local + IP-Adapter,不调云端 qwen-image-edit。
+    验证本地引擎优先、且拿 canon 当 IP-Adapter 参考(锁脸)。"""
+    script, shotlist = _one_dialogue_shot()
+
+    sdxl_calls: list[dict] = []
+
+    async def _fake_sdxl(*, prompt, output_path, width, height, extra, require_gpu):
+        sdxl_calls.append({"prompt": prompt, "extra": extra})
+        Path(output_path).write_bytes(b"sdxl-kf" * 200)  # >1024B,过 _edit_keyframe 的有效性门槛
+        return {"output_path": str(output_path)}
+
+    async def _fake_qwen_gen(*, prompt, output_path, size, seed=None):
+        output_path.write_bytes(b"fake-canon")
+        return output_path
+
+    qwen_edit = AsyncMock()  # 不应被调到
+    with (
+        patch("hevi.tongjian.scene_render_avatar.sdxl_local_generate", _fake_sdxl),
+        patch("hevi.tongjian.scene_render_avatar.qwen_image_edit", qwen_edit),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate",
+            AsyncMock(side_effect=_fake_hh),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist, script, _bible(), Constitution(), run_dir=tmp_path
+        )
+
+    assert len(sdxl_calls) == 1  # 本地引擎被用
+    assert sdxl_calls[0]["extra"].get("ip_adapter_image")  # 拿 canon 锁脸
+    qwen_edit.assert_not_awaited()  # 没走云端
+
+
+@pytest.mark.asyncio
+async def test_cloud_engine_skips_local(tmp_path):
+    """engine="cloud"(可切换):跳过本地 sdxl_local,直接走云端 qwen-image-edit。
+    验证开关生效——本地引擎完全不被调用。"""
+    script, shotlist = _one_dialogue_shot()
+
+    sdxl = AsyncMock(side_effect=RuntimeError("本地不该被调用"))
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        output_path.write_bytes(b"cloud-kf")
+        return output_path
+
+    async def _fake_qwen_gen(*, prompt, output_path, size, seed=None):
+        output_path.write_bytes(b"fake-canon")
+        return output_path
+
+    with (
+        patch("hevi.tongjian.scene_render_avatar.sdxl_local_generate", sdxl),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate",
+            AsyncMock(side_effect=_fake_hh),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            _bible(),
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(params={"keyframe_engine": "cloud"}),
+        )
+
+    sdxl.assert_not_awaited()  # cloud 引擎下本地完全不碰

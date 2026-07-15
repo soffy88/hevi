@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from hevi.image.qwen_image_service import QwenImageError, qwen_image_edit, qwen_image_generate
+from hevi.image.sdxl_local_service import sdxl_local_generate
 from hevi.tongjian.schemas import (
     CharacterBible,
     Constitution,
@@ -383,25 +384,74 @@ def _fit_silent(visual: Path, out: Path, w: int, h: int, duration: float) -> Non
     )
 
 
+def _local_kf_prompt(
+    style: str,
+    appearance: str,
+    emotion: str,
+    action_hint: str,
+    *,
+    mouth_closed: bool = False,
+    wide: bool = False,
+) -> str:
+    """拼 sdxl_local 关键帧生成 prompt(中文实测可用,风格/人物/场景都跟得住;精确姿势跟不住
+    是 base SDXL 无 ControlNet 的已知代价,靠 kf2v 运动补动作感)。IP-Adapter 另传 canon 锁脸。"""
+    parts = [style, appearance, emotion]
+    if action_hint:
+        parts.append(f"动作:{action_hint}")
+    if mouth_closed:
+        parts.append("闭着嘴不说话")
+    if wide:
+        parts.append("全身,宽景,交代环境与站位")
+    return ",".join(p for p in parts if p)
+
+
 async def _edit_keyframe(
     *,
     image_path: Path | list[Path],
     instruction: str,
     output_path: Path,
     fallback_from: Path,
+    engine: str = "local",
+    local_prompt: str | None = None,
+    ip_adapter_image: Path | None = None,
+    size: tuple[int, int] = (1024, 1024),
 ) -> Path:
-    """出关键帧:qwen-image-edit 把该镜情绪+动作叠到 canonical 像上。
+    """出关键帧:把该镜的情绪+动作+构图落成一张锁脸的关键帧。引擎可切(config.keyframe_engine):
 
-    **降级路线(用户 2026-07-15 决定:不为 qwen-image-edit 开付费)**:edit 不可用时——
-    典型是免费额度墙 `AllocationQuota.FreeTierOnly`(账户开了「仅使用免费额度」),也含其它
-    生成失败——直接复制 canonical 像当关键帧。身份/画风保住(用的是真 canon 脸),只是少了
-    "把情绪/动作烤进关键帧"那步(happyhorse 后面仍会加口型+表情),整镜不至于降级空镜、
-    整集不至于卡在 G6 装配门。多角色镜头降级只保 lead 一张脸(fallback_from 传 canons[0])。"""
+    - **engine="local"(默认,免费)**:本地 sdxl_local + IP-Adapter,拿角色 canon 脸做身份
+      条件,按 `local_prompt`(风格+相貌+情绪+动作)生成**任意构图/姿势**——能真正摆动作、出
+      宽景,而不只是把情绪叠回原构图。GPU 在总线上时走这条,不花钱(用户 2026-07-15 决定走
+      本地而非为云端 edit 开付费,且要求做成可切换选项、不写死)。IP-Adapter 保脸偏软(权重
+      0.6),身份漂移由 verdict 的 CLIP 打分兜底。
+    - **engine="cloud"**:直接走云端 qwen-image-edit 参考图编辑(精确姿势/多脸合成更强),
+      随时可切回;但该模型免费额度墙(AllocationQuota.FreeTierOnly)时会快速抛。
+
+    两种引擎都以 canon 复制保底:本地/云端都不可用时直接用 canonical 像当关键帧,整镜不降级
+    空镜、整集不卡 G6 装配门(只少了动作/情绪注入,happyhorse 后面仍加口型+表情)。多角色镜头
+    保底只保 lead 一张脸(fallback_from 传 canons[0])。"""
+    # 1. 本地 sdxl_local(IP-Adapter 锁脸 + 任意姿势/构图)—— 仅 local 引擎且备好本地素材时
+    if engine == "local" and local_prompt and ip_adapter_image and Path(ip_adapter_image).exists():
+        try:
+            await sdxl_local_generate(
+                prompt=local_prompt,
+                output_path=output_path,
+                width=size[0],
+                height=size[1],
+                extra={"ip_adapter_image": str(ip_adapter_image), "ip_adapter_weight": 0.6},
+                require_gpu=True,
+            )
+            if output_path.exists() and output_path.stat().st_size > 1024:
+                return output_path
+        except Exception as e:  # GPU 掉总线/本地失败都退云端,不拖垮整镜
+            logger.warning("sdxl_local 关键帧失败,退云端 edit: %s", e)
+
+    # 2. 云 qwen-image-edit
     try:
         return await qwen_image_edit(
             image_path=image_path, instruction=instruction, output_path=output_path
         )
     except QwenImageError as e:
+        # 3. canon 复制保底
         logger.warning(
             "qwen-image-edit 不可用,关键帧降级直接用 canonical 像(%s): %s", fallback_from.name, e
         )
@@ -433,6 +483,9 @@ async def build_frame_manifest_avatar(
     # 刺杀/擒拿等动作镜头,不要旁白念白)。silent_action 下动作镜头时长按视觉节拍给,
     # 不跟旁白文字长度走。
     non_dialogue_mode = str(_p(config, "non_dialogue_mode", "narrator"))
+    # 关键帧引擎开关(用户 2026-07-15 要求可切换、不写死):"local"=本地 sdxl_local+IP-Adapter
+    # (免费,默认);"cloud"=云端 qwen-image-edit(精确姿势/多脸更强,随时可切回)。见 _edit_keyframe。
+    keyframe_engine = str(_p(config, "keyframe_engine", "local"))
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
     appearance_by_id = {
@@ -493,6 +546,12 @@ async def build_frame_manifest_avatar(
                         instruction=instruction,
                         output_path=kf,
                         fallback_from=canon,
+                        engine=keyframe_engine,
+                        local_prompt=_local_kf_prompt(
+                            style, appearance_by_id.get(lead, lead), emotion, action_hint
+                        ),
+                        ip_adapter_image=canon,
+                        size=(w, h),
                     )
                 talk = work / f"{sid}_talk.mp4"
                 if not talk.exists():
@@ -566,6 +625,20 @@ async def build_frame_manifest_avatar(
                                 instruction=instruction,
                                 output_path=kf,
                                 fallback_from=canons[0],
+                                engine=keyframe_engine,
+                                # 本地 IP-Adapter 只吃 1 张参考,只能锁 lead 一张脸,其余角色
+                                # 靠文字描述(多脸精确合成是云端 edit 的强项,可切 cloud)。
+                                local_prompt=_local_kf_prompt(
+                                    style,
+                                    f"{names}同框:"
+                                    + "、".join(appearance_by_id.get(cid, cid) for cid in present),
+                                    emotion,
+                                    action_hint,
+                                    mouth_closed=True,
+                                    wide=True,
+                                ),
+                                ip_adapter_image=canons[0],
+                                size=(w, h),
                             )
                         vis_src = kf
                         motion = f"人物{emotion},细微神态与身体动作,闭着嘴不说话"
@@ -588,6 +661,17 @@ async def build_frame_manifest_avatar(
                                 instruction=instruction,
                                 output_path=kf,
                                 fallback_from=canon,
+                                engine=keyframe_engine,
+                                local_prompt=_local_kf_prompt(
+                                    style,
+                                    appearance_by_id.get(lead, lead),
+                                    emotion,
+                                    action_hint,
+                                    mouth_closed=True,
+                                    wide=True,
+                                ),
+                                ip_adapter_image=canon,
+                                size=(w, h),
                             )
                         vis_src = kf
                         motion = f"人物{emotion},细微神态与身体动作,闭着嘴不说话"
