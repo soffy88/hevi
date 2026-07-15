@@ -43,6 +43,7 @@ from hevi.tongjian.schemas import (
     ShotFrame,
     ShotList,
 )
+from hevi.video.alibaba_maas_service import alibaba_maas_keyframe_generate
 from hevi.video.dashscope_i2v_service import happyhorse_animate, i2v_animate
 
 logger = logging.getLogger(__name__)
@@ -461,6 +462,51 @@ async def _edit_keyframe(
         return output_path
 
 
+def _resolve_llm() -> Any:
+    """取 qwen_cloud LLM(拆动作起止状态用,funded、结构化可靠;见 e2e-local-llm-json-blocker)。"""
+    from obase.provider_registry import ProviderRegistry
+
+    try:
+        return ProviderRegistry.get().llm("qwen_cloud")
+    except Exception:
+        try:
+            return ProviderRegistry.get().llm("default")
+        except Exception:
+            return None
+
+
+_ACTION_END_PROMPT = """一个电影动作镜头的画面描述如下:
+{action}
+
+请只输出这个动作**完成之后那一瞬间**的静止画面描述(动作的结果态),用于生成结束关键帧。
+例:动作是"张飞举剑自刎,刘备扑上夺剑掷地,一把抱住他"→ 结束态是"宝剑被打落在地上,
+刘备双手紧紧箍住张飞的肩膀,两人贴在一起"。
+只输出一句中文画面描述,不要解释、不要加引号。"""
+
+
+async def _action_end_state(action: str, llm: Any) -> str:
+    """把动作描述拆出"完成态"结束画面(kf2v 的尾帧)。LLM 失败则退化成动作原文 + 完成态提示,
+    至少让尾帧 prompt 跟首帧(未完成态)不同,kf2v 才有得插。"""
+    if llm is not None and action.strip():
+
+        def _invoke() -> Any:
+            return llm(
+                messages=[{"role": "user", "content": _ACTION_END_PROMPT.format(action=action)}],
+                max_tokens=200,
+            )
+
+        try:
+            obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=30.0)
+            resp = await obj if hasattr(obj, "__await__") else obj
+            content = resp.get("content") if hasattr(resp, "get") else str(resp)
+            text = str(content or "").strip().strip('"').strip()
+            if text:
+                return text
+        except Exception as e:  # LLM 失败不阻断,退化提示
+            logger.warning("动作结束态 LLM 拆解失败,退化: %s", e)
+    return f"{action}(动作已完成、结果态)"
+
+
 async def build_frame_manifest_avatar(
     shotlist: ShotList,
     script: Script,
@@ -488,6 +534,11 @@ async def build_frame_manifest_avatar(
     # 关键帧引擎开关(用户 2026-07-15 要求可切换、不写死):"local"=本地 sdxl_local+IP-Adapter
     # (免费,默认);"cloud"=云端 qwen-image-edit(精确姿势/多脸更强,随时可切回)。见 _edit_keyframe。
     keyframe_engine = str(_p(config, "keyframe_engine", "local"))
+    # 动作镜引擎开关(P3):"kf2v"=动作镜生成起始帧+结束帧→wan2.2-kf2v-flash 插真运动(默认,
+    # 治"演不出动作");"i2v"=旧的单帧微动。只作用于非对白的动作镜(有反应链动作),纯场景镜
+    # 与对白镜不受影响。见非对白分支。
+    action_engine = str(_p(config, "action_engine", "kf2v"))
+    resolved_llm = _resolve_llm() if action_engine == "kf2v" else None
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
     appearance_by_id = {
@@ -591,6 +642,10 @@ async def build_frame_manifest_avatar(
                 vis = work / f"{sid}_vis.mp4"
                 if not vis.exists():
                     present = [cid for cid in shot.characters if cid in appearance_by_id]
+                    # P3 动作镜:首帧=已生成的 kf(未完成态),尾帧另生成;下面按分支填 action_ip
+                    # (kf2v 尾帧用的锁脸参考)+ action_appear(尾帧 prompt 的人物相貌)。
+                    action_ip: Path | None = None
+                    action_appear = ""
                     if len(present) >= 2:
                         # 多角色同框(2026-07-13 真实反馈:provider 的 i2v/happyhorse 每镜
                         # 只吃1张参考图,此前这里跟对白分支一样只锁 shot.characters[0],
@@ -643,6 +698,10 @@ async def build_frame_manifest_avatar(
                                 size=(w, h),
                             )
                         vis_src = kf
+                        action_ip = canons[0]
+                        action_appear = f"{names}同框:" + "、".join(
+                            appearance_by_id.get(cid, cid) for cid in present
+                        )
                         motion = f"人物{emotion},细微神态与身体动作,闭着嘴不说话"
                     elif lead:
                         canon = await _canonical(
@@ -676,6 +735,8 @@ async def build_frame_manifest_avatar(
                                 size=(w, h),
                             )
                         vis_src = kf
+                        action_ip = canon
+                        action_appear = appearance_by_id.get(lead, lead)
                         motion = f"人物{emotion},细微神态与身体动作,闭着嘴不说话"
                     else:
                         scene = work / f"{sid}_scene.png"
@@ -687,12 +748,60 @@ async def build_frame_manifest_avatar(
                             )
                         vis_src = scene
                         motion = "画面细微流动,烟云飘动"
-                    await i2v_animate(
-                        image_path=vis_src,
-                        prompt=f"{style}保持不变,{motion}",
-                        output_path=vis,
-                        resolution=reso,
-                    )
+                    # P3 动作镜:有反应链动作(_incomplete 非空)+ 有锁脸参考 + kf2v 引擎 →
+                    # 首帧(kf,未完成态)+ 结束帧(完成态)喂 wan2.2-kf2v-flash 插出真运动,
+                    # 治"演不出动作"。否则(纯场景镜/非动作镜/i2v 引擎)走旧的单帧微动。
+                    did_kf2v = False
+                    if (
+                        action_engine == "kf2v"
+                        and action_ip is not None
+                        and _incomplete
+                        and vis_src == kf
+                    ):
+                        end_kf = work / f"{sid}_kf_end.png"
+                        action_desc = action_hint or text or shot.visual_prompt
+                        if not end_kf.exists():
+                            end_desc = await _action_end_state(action_desc, resolved_llm)
+                            await _edit_keyframe(
+                                image_path=action_ip,
+                                instruction=_EDIT_PREFIX
+                                + emotion
+                                + ",闭着嘴,动作:"
+                                + end_desc
+                                + _EXPRESSION_GUARD,
+                                output_path=end_kf,
+                                fallback_from=action_ip,
+                                engine=keyframe_engine,
+                                local_prompt=_local_kf_prompt(
+                                    style,
+                                    action_appear,
+                                    emotion,
+                                    end_desc,
+                                    mouth_closed=True,
+                                    wide=True,
+                                ),
+                                ip_adapter_image=action_ip,
+                                size=(w, h),
+                            )
+                        try:
+                            await alibaba_maas_keyframe_generate(
+                                first_frame=kf,
+                                last_frame=end_kf,
+                                output_path=vis,
+                                prompt=f"{style},{action_desc}",
+                                resolution=reso,
+                                duration_s=min(5.0, max(3.0, float(dur))),
+                            )
+                            did_kf2v = True
+                        except Exception as e:
+                            logger.warning("kf2v 首尾帧生视频失败,退 i2v 单帧微动: %s", e)
+                    if not did_kf2v:
+                        await i2v_animate(
+                            image_path=vis_src,
+                            prompt=f"{style}保持不变,{motion}",
+                            output_path=vis,
+                            resolution=reso,
+                        )
                 if non_dialogue_mode == "silent_action":
                     # 纯静默动作/空镜:不加任何旁白配音,只保留画面动作(电影建场/动作镜头)。
                     # 时长按视觉节拍(封顶 6s),不跟旁白文字长度走。

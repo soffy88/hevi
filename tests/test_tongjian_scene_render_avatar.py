@@ -13,14 +13,29 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 
+async def _fake_kf2v(*, first_frame, last_frame, output_path, **_kw):
+    Path(output_path).write_bytes(b"kf2v-vis")
+    return output_path
+
+
 @pytest.fixture(autouse=True)
 def _stub_sdxl_local():
     """关键帧引擎默认 engine="local"(本地 sdxl_local + IP-Adapter)。测试里不真跑本地 GPU
     (151s/帧),默认桩成"GPU 不可用"→ 让关键帧退到各测试自己 patch 的云端 qwen-image-edit,
-    使既有断言(围绕 qwen-image-edit 的行为)保持有效。要测本地引擎本身的测试,自行覆盖它。"""
-    with patch(
-        "hevi.tongjian.scene_render_avatar.sdxl_local_generate",
-        AsyncMock(side_effect=RuntimeError("GPU 不可用(测试桩)")),
+    使既有断言(围绕 qwen-image-edit 的行为)保持有效。要测本地引擎本身的测试,自行覆盖它。
+
+    同时桩掉 P3 动作镜的云端依赖:kf2v 首尾帧(不打真 MAAS)+ _resolve_llm(返回 None,
+    _action_end_state 走无 LLM 退化),测试不触网。要测 kf2v 行为的测试自行覆盖。"""
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.sdxl_local_generate",
+            AsyncMock(side_effect=RuntimeError("GPU 不可用(测试桩)")),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.alibaba_maas_keyframe_generate",
+            AsyncMock(side_effect=_fake_kf2v),
+        ),
+        patch("hevi.tongjian.scene_render_avatar._resolve_llm", lambda: None),
     ):
         yield
 
@@ -804,3 +819,139 @@ async def test_cloud_engine_skips_local(tmp_path):
         )
 
     sdxl.assert_not_awaited()  # cloud 引擎下本地完全不碰
+
+
+@pytest.mark.asyncio
+async def test_action_shot_uses_kf2v_not_i2v(tmp_path):
+    """P3:非对白动作镜(含反应链动词"拔")→ 生成起始帧+结束帧喂 kf2v 插真运动,
+    不走 i2v 单帧微动。验证:kf2v 被调(首帧=SH001_kf、尾帧=SH001_kf_end),i2v 没被调。"""
+    bible = _bible()  # C003
+    script = Script(lines=[ScriptLine(line_id="LN001", type="action", text="张飞拔剑要自刎")])
+    shotlist = ShotList(
+        shots=[
+            Shot(
+                shot_id="SH001",
+                line_ids=["LN001"],
+                characters=["C003"],
+                visual_prompt="张飞拔剑自刎",
+            )
+        ]
+    )
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        output_path.write_bytes(b"kf" * 600)  # >1024,过有效性门槛
+        return output_path
+
+    async def _fake_qwen_gen(*, output_path, **_k):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    kf2v_calls: list[tuple[str, str]] = []
+
+    async def _spy_kf2v(*, first_frame, last_frame, output_path, **_k):
+        kf2v_calls.append((Path(first_frame).name, Path(last_frame).name))
+        Path(output_path).write_bytes(b"kf2v-vis")
+        return output_path
+
+    async def _i2v(*, output_path, **_k):
+        output_path.write_bytes(b"i2v")
+        return output_path
+
+    i2v_spy = AsyncMock(side_effect=_i2v)
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.alibaba_maas_keyframe_generate",
+            AsyncMock(side_effect=_spy_kf2v),
+        ),
+        patch("hevi.tongjian.scene_render_avatar.i2v_animate", i2v_spy),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_silent",
+            lambda vis, out, w, h, dur: out.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                params={"non_dialogue_mode": "silent_action", "action_engine": "kf2v"}
+            ),
+        )
+
+    assert kf2v_calls == [("SH001_kf.png", "SH001_kf_end.png")]  # 首帧+结束帧喂 kf2v
+    i2v_spy.assert_not_awaited()  # 动作镜不走 i2v 单帧微动
+
+
+@pytest.mark.asyncio
+async def test_action_engine_i2v_keeps_old_single_frame_path(tmp_path):
+    """开关可切回:action_engine="i2v" 时动作镜仍走旧的单帧微动,不碰 kf2v。"""
+    bible = _bible()
+    script = Script(lines=[ScriptLine(line_id="LN001", type="action", text="张飞拔剑要自刎")])
+    shotlist = ShotList(
+        shots=[Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"], visual_prompt="拔剑")]
+    )
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        output_path.write_bytes(b"kf" * 600)
+        return output_path
+
+    async def _fake_qwen_gen(*, output_path, **_k):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    kf2v = AsyncMock(side_effect=_fake_kf2v)
+
+    async def _i2v(*, output_path, **_k):
+        output_path.write_bytes(b"i2v")
+        return output_path
+
+    i2v_spy = AsyncMock(side_effect=_i2v)
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch("hevi.tongjian.scene_render_avatar.alibaba_maas_keyframe_generate", kf2v),
+        patch("hevi.tongjian.scene_render_avatar.i2v_animate", i2v_spy),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_silent",
+            lambda vis, out, w, h, dur: out.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                params={"non_dialogue_mode": "silent_action", "action_engine": "i2v"}
+            ),
+        )
+
+    kf2v.assert_not_awaited()  # i2v 开关下不碰 kf2v
+    i2v_spy.assert_awaited()  # 走旧单帧微动
