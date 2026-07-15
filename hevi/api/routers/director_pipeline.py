@@ -51,6 +51,7 @@ from hevi.director.pipeline_schemas import (
 from hevi.director.screenplay import generate_screenplay_draft
 from hevi.director.shot_list import generate_shot_list_draft
 from hevi.director.tongjian_render import render_director_episode
+from hevi.director.verdict_checks import ShotVerdict, verdict_shot
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 from hevi.tasks.repository import TaskRepository
@@ -606,6 +607,141 @@ async def _resolve_subject_ref_paths(
     return out
 
 
+_VERDICT_MAX_RETAKE = 1  # 尝试预算(§4.1.2):失败镜最多重掷 1 次,不无限烧钱
+
+
+def _derive_shot_id(clip_path: str | None) -> str:
+    """从 clip 路径反推 tongjian shot_id:.../SH003_02_clip.mp4 → SH003_02。"""
+    if not clip_path:
+        return ""
+    stem = Path(clip_path).stem  # SH003_02_clip
+    for suf in ("_clip", "_talk", "_narr", "_vis"):
+        if stem.endswith(suf):
+            return stem[: -len(suf)]
+    return stem
+
+
+def _purge_shot_artifacts(run_dir: Path, shot_id: str, *, hard: bool) -> None:
+    """删掉某镜头的产物,逼 tongjian 渲染重生成它(其余镜头 clip 仍在 → 缓存复用不重跑)。
+    re_roll(hard=False)只删动画/成片产物,保留关键帧 kf(同 prompt 重掷);
+    rewrite(hard=True)连 kf 一起删,逼重出关键帧(治身份漂移)。"""
+    if not shot_id:
+        return
+    pats = [f"{shot_id}_clip*", f"{shot_id}_talk*", f"{shot_id}_vis*", f"{shot_id}_narr*"]
+    if hard:
+        pats += [f"{shot_id}_kf*", f"{shot_id}_first*"]
+    for pat in pats:
+        for p in run_dir.glob(pat):
+            with contextlib.suppress(Exception):
+                p.unlink()
+
+
+async def _run_verdict(shots: list[dict[str, Any]], vlm: Any) -> list[ShotVerdict]:
+    out: list[ShotVerdict] = []
+    for s in shots:
+        clip = Path(s["path"]) if s.get("path") else None
+        sid = _derive_shot_id(s.get("path"))
+        if clip is None or not clip.exists():
+            out.append(
+                ShotVerdict(
+                    shot_index=s["index"],
+                    shot_id=sid,
+                    passed=False,
+                    diagnosis_category="动作",
+                    retake_tier="re_roll",
+                )
+            )
+            continue
+        out.append(
+            await verdict_shot(
+                shot_index=s["index"],
+                shot_id=sid,
+                clip_path=clip,
+                identity_score=s.get("consistency_score"),
+                vlm=vlm,
+            )
+        )
+    return out
+
+
+async def _persist_verdicts(
+    pool: Any, task_id: Any, verdicts: list[ShotVerdict], attempt: int
+) -> None:
+    import json
+    import uuid as _uuid
+
+    async with pool.acquire() as conn:
+        for v in verdicts:
+            with contextlib.suppress(Exception):  # 落库失败不该拖垮出片
+                await conn.execute(
+                    "INSERT INTO shot_verdict (id, task_id, shot_index, shot_id, provider, "
+                    "identity_score, black_ratio, hand_safety_ok, checks_json, "
+                    "diagnosis_category, retake_tier, attempt, passed) "
+                    "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13)",
+                    _uuid.uuid4(),
+                    task_id,
+                    v.shot_index,
+                    v.shot_id,
+                    v.provider,
+                    v.identity_score,
+                    v.black_ratio,
+                    v.hand_safety_ok,
+                    json.dumps(v.checks),
+                    v.diagnosis_category,
+                    v.retake_tier,
+                    attempt,
+                    v.passed,
+                )
+
+
+async def _verdict_and_retake(
+    *,
+    run_dir: Path,
+    result: dict[str, Any],
+    render_kwargs: dict[str, Any],
+    task_repo: Any,
+    task_id: Any,
+) -> dict[str, Any]:
+    """成片逐镜头裁决 + 五档返工(§6.1/§4.1.2)。失败镜按 tier 清产物重掷,最多 1 次;
+    每一轮 verdict 都落 shot_verdict 表(护城河②数据资产)。返回最终 result。"""
+    from obase.provider_registry import ProviderRegistry
+
+    try:
+        vlm = ProviderRegistry.get().vlm("default")
+    except Exception:
+        vlm = None
+
+    verdicts = await _run_verdict(result["shots"], vlm)
+    await _persist_verdicts(task_repo.pool, task_id, verdicts, attempt=0)
+
+    attempt = 0
+    while attempt < _VERDICT_MAX_RETAKE and any(not v.passed for v in verdicts):
+        failed = [v for v in verdicts if not v.passed]
+        logger.info(
+            "director task %s verdict 第%d轮:%d 镜不过 → 返工 %s",
+            task_id,
+            attempt,
+            len(failed),
+            [(v.shot_id, v.retake_tier) for v in failed],
+        )
+        for v in failed:
+            _purge_shot_artifacts(run_dir, v.shot_id, hard=(v.retake_tier == "rewrite"))
+        attempt += 1
+        result = await render_director_episode(**render_kwargs)  # 只重生成被清掉的镜头
+        verdicts = await _run_verdict(result["shots"], vlm)
+        await _persist_verdicts(task_repo.pool, task_id, verdicts, attempt=attempt)
+
+    n_fail = sum(1 for v in verdicts if not v.passed)
+    logger.info(
+        "director task %s verdict 完成:%d/%d 镜通过(返工 %d 轮)",
+        task_id,
+        len(verdicts) - n_fail,
+        len(verdicts),
+        attempt,
+    )
+    return result
+
+
 async def _run_director_via_tongjian(
     *,
     task_repo: TaskRepository,
@@ -658,17 +794,26 @@ async def _run_director_via_tongjian(
             except Exception:  # 进度回写绝不可拖垮生成
                 pass
 
+    render_kwargs = {
+        "shot_list": shot_list,
+        "design_list": design_list,
+        "concept": concept,
+        "run_dir": run_dir,
+        "subject_ref_paths": subject_ref_paths,
+        "voice_by_speaker": voice_by_speaker,
+        "aspect_ratio": aspect_ratio,
+        "target_duration_sec": target_duration_sec,
+    }
     poller = asyncio.ensure_future(_progress_poller())
     try:
-        result = await render_director_episode(
-            shot_list=shot_list,
-            design_list=design_list,
-            concept=concept,
+        result = await render_director_episode(**render_kwargs)
+        # 成片逐镜头裁决 + 五档返工(黑帧/崩手/身份漂移 → re_roll/rewrite),落 shot_verdict。
+        result = await _verdict_and_retake(
             run_dir=run_dir,
-            subject_ref_paths=subject_ref_paths,
-            voice_by_speaker=voice_by_speaker,
-            aspect_ratio=aspect_ratio,
-            target_duration_sec=target_duration_sec,
+            result=result,
+            render_kwargs=render_kwargs,
+            task_repo=task_repo,
+            task_id=task_id,
         )
         final_video = result["final_video"]
         shots = result["shots"]
