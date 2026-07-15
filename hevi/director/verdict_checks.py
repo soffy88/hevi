@@ -181,14 +181,13 @@ async def verdict_shot(
         "hand_note": note,
     }
 
-    # 决策(§4.1.2 五档,当前接 re_roll/rewrite 两档)
+    # 决策(§4.1.2 五档,当前只自动接 re_roll/rewrite 两档,且要可靠信号才动)。
+    # hand_safety 只记录不触发返工——本地 VLM 对手部判定太飘(实测同一好镜第0轮判崩、
+    # 第1轮判好),据它 re_roll 会把好镜白白重掷、烧钱又撞限流。黑帧/身份是可靠信号,留作
+    # 自动返工触发;hand_safety 进 checks_json 供人工复核。
     if v.black_ratio is not None and v.black_ratio >= _BLACK_FAIL_RATIO:
         v.passed = False
-        v.diagnosis_category = "动作"  # 生成失败/空镜,归"动作"档
-        v.retake_tier = "re_roll"
-    elif v.hand_safety_ok is False:
-        v.passed = False
-        v.diagnosis_category = "构图"  # 手部崩坏归"构图/画面"
+        v.diagnosis_category = "动作"  # 真实成片却全黑(生成返回空画面)→ 重掷
         v.retake_tier = "re_roll"
     elif v.identity_score is not None and v.identity_score < consistency_floor:
         v.passed = False

@@ -143,19 +143,35 @@ async def _submit_video(
     submit_timeout = httpx.Timeout(180.0, connect=20.0)
     async with httpx.AsyncClient(timeout=poll_timeout) as client:
         resp = None
+        ok = False
         last_err: Exception | None = None
-        for attempt in range(3):
+        # MaaS 端点突发多请求(整集逐镜生成 + verdict 返工)会间歇 403 Forbidden / 429
+        # 限流一阵子,隔几十秒自己恢复(实测直接重试即成功)。一次失败就丢镜头降级空镜 →
+        # 成片只剩零星几镜(用户实测"11秒只有开头")。改 5 次指数退避(~78s),够清瞬时限流。
+        # 之前的 bug:3 次全败后 resp 是最后那个 403 响应(非 None),漏进下面报"缺 task_id"。
+        for attempt in range(5):
             try:
-                resp = await client.post(
+                r = await client.post(
                     submit_url, json=payload, headers=submit_headers, timeout=submit_timeout
                 )
-                resp.raise_for_status()
+                r.raise_for_status()
+                resp = r
+                ok = True
                 break
             except httpx.HTTPError as e:
                 last_err = e
-                logger.warning("%s 提交第 %d 次失败(%s),重试", model, attempt + 1, type(e).__name__)
-                await asyncio.sleep(3)
-        if resp is None:
+                code = getattr(getattr(e, "response", None), "status_code", None)
+                wait = min(30, 4 * (2**attempt))
+                logger.warning(
+                    "%s 提交第 %d 次失败(%s code=%s),%ds 后重试",
+                    model,
+                    attempt + 1,
+                    type(e).__name__,
+                    code,
+                    wait,
+                )
+                await asyncio.sleep(wait)
+        if not ok or resp is None:
             raise DashScopeI2VError(
                 f"{model} i2v 提交多次失败: {type(last_err).__name__} {last_err}"
             )
