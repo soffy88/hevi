@@ -40,6 +40,41 @@ def _clear_works():
     dp._WORKS.clear()
 
 
+class _FakeConn:
+    def __init__(self, fetch_rows: list) -> None:
+        self._rows = fetch_rows
+
+    async def fetch(self, *a, **k) -> list:
+        return self._rows
+
+    async def fetchrow(self, *a, **k):
+        return None
+
+    async def execute(self, *a, **k) -> None:
+        return None
+
+
+class _FakeAcquire:
+    def __init__(self, conn: _FakeConn) -> None:
+        self._conn = conn
+
+    async def __aenter__(self) -> _FakeConn:
+        return self._conn
+
+    async def __aexit__(self, *a) -> bool:
+        return False
+
+
+class _FakePool:
+    """produce_blockers 等 PgPool 裸 SQL 调用的最小假 pool:fetch 默认返回空(无拦截)。"""
+
+    def __init__(self, fetch_rows: list | None = None) -> None:
+        self._conn = _FakeConn(fetch_rows or [])
+
+    def acquire(self) -> _FakeAcquire:
+        return _FakeAcquire(self._conn)
+
+
 def _concept() -> Concept:
     return Concept(theme="权臣索地", tone="压抑蓄力", duration_archetype="1-5min")
 
@@ -364,7 +399,7 @@ async def test_produce_rejected_before_shot_list_locked():
     rec["locked_through"] = 2
     with pytest.raises(HTTPException) as ei:
         await dp.produce_work(
-            work_id, dp.ProduceRequest(), object(), _USER, AsyncMock(), AsyncMock()
+            work_id, dp.ProduceRequest(), object(), _USER, AsyncMock(), AsyncMock(), _FakePool()
         )
     assert ei.value.status_code == 409
 
@@ -394,7 +429,9 @@ async def test_produce_schedules_tongjian_render_with_voices_and_refs():
     subject_svc.get_subject.return_value = {"reference_images": ["output/subj-zhibo/ref.png"]}
 
     bg = BackgroundTasks()
-    resp = await dp.produce_work(work_id, dp.ProduceRequest(), bg, _USER, svc, subject_svc)
+    resp = await dp.produce_work(
+        work_id, dp.ProduceRequest(), bg, _USER, svc, subject_svc, _FakePool()
+    )
 
     assert resp["status"] == "producing"
     assert resp["video_task_id"] == str(task_id)
@@ -433,8 +470,164 @@ async def test_produce_insufficient_credits_returns_402_not_500():
 
     with pytest.raises(HTTPException) as ei:
         await dp.produce_work(
-            work_id, dp.ProduceRequest(), BackgroundTasks(), _USER, svc, AsyncMock()
+            work_id, dp.ProduceRequest(), BackgroundTasks(), _USER, svc, AsyncMock(), _FakePool()
         )
     assert ei.value.status_code == 402
     assert ei.value.detail["credits_needed"] == 3000
     assert ei.value.detail["credits_available"] == 1000
+
+
+# ── 逐镜头准备台端点(INC-001 §A/§G/§I/§L)────────────────────────────────────
+
+
+def _locked_work() -> str:
+    work_id = str(uuid.uuid4())
+    rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
+    rec["concept"] = _concept().model_dump()
+    rec["design_list"] = _design_list().model_dump()
+    rec["shot_list"] = _shot_list().model_dump()
+    rec["locked_through"] = 3
+    return work_id
+
+
+@pytest.mark.asyncio
+async def test_extract_endpoint_passes_shotlistitem_to_service():
+    """§G:extract 端点从锁定的 shot_list 取出该 shot 的 ShotListItem 交给服务物化候选。"""
+    work_id = _locked_work()
+    with (
+        patch.object(dp._prep, "extract_shot", AsyncMock()) as ex,
+        patch.object(
+            dp._prep, "get_preparation_state", AsyncMock(return_value={"status": "pending"})
+        ),
+    ):
+        resp = await dp.extract_shot_candidates(work_id, "SH001_01", _USER, _FakePool())
+    assert resp["action"] == "extract"
+    assert ex.await_args.args[2].shot_id == "SH001_01"  # 传的是该镜的 ShotListItem
+
+
+@pytest.mark.asyncio
+async def test_extract_endpoint_404_for_unknown_shot():
+    work_id = _locked_work()
+    with pytest.raises(HTTPException) as ei:
+        await dp.extract_shot_candidates(work_id, "NOPE", _USER, _FakePool())
+    assert ei.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_confirm_asset_invalid_status_rejected_422():
+    work_id = _locked_work()
+    with pytest.raises(HTTPException) as ei:
+        await dp.confirm_shot_candidate(
+            work_id,
+            "SH001_01",
+            str(uuid.uuid4()),
+            dp.ConfirmCandidateRequest(kind="asset", status="bogus"),
+            _USER,
+            _FakePool(),
+        )
+    assert ei.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_confirm_invalid_candidate_uuid_422():
+    work_id = _locked_work()
+    with pytest.raises(HTTPException) as ei:
+        await dp.confirm_shot_candidate(
+            work_id,
+            "SH001_01",
+            "not-a-uuid",
+            dp.ConfirmCandidateRequest(kind="asset", status="linked"),
+            _USER,
+            _FakePool(),
+        )
+    assert ei.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_confirm_dialogue_calls_service_with_status():
+    work_id = _locked_work()
+    with (
+        patch.object(dp._prep, "set_dialogue_candidate", AsyncMock()) as s,
+        patch.object(
+            dp._prep, "get_preparation_state", AsyncMock(return_value={"status": "ready"})
+        ),
+    ):
+        resp = await dp.confirm_shot_candidate(
+            work_id,
+            "SH001_01",
+            str(uuid.uuid4()),
+            dp.ConfirmCandidateRequest(
+                kind="dialogue", status="accepted", linked_dialog_line_id="ln1"
+            ),
+            _USER,
+            _FakePool(),
+        )
+    assert resp["action"] == "confirm"
+    assert s.await_args.kwargs["status"] == "accepted"
+
+
+@pytest.mark.asyncio
+async def test_patch_readiness_sets_skip_extraction():
+    """§I:PATCH readiness 置 skip_extraction。"""
+    work_id = _locked_work()
+    with (
+        patch.object(dp._prep, "set_skip_extraction", AsyncMock()) as s,
+        patch.object(
+            dp._prep, "get_preparation_state", AsyncMock(return_value={"status": "ready"})
+        ),
+    ):
+        resp = await dp.patch_shot_readiness(
+            work_id, "SH001_01", dp.ReadinessPatch(skip_extraction=True), _USER, _FakePool()
+        )
+    assert resp["action"] == "skip_extraction"
+    assert s.await_args.args[3] is True  # skip 值透传
+
+
+@pytest.mark.asyncio
+async def test_produce_blocked_when_shots_unprepared():
+    """§L.2 就绪门:提取后仍 pending 的镜头拦产集(409)。"""
+    from fastapi import BackgroundTasks
+
+    work_id = _locked_work()
+    with (
+        patch.object(dp._prep, "produce_blockers", AsyncMock(return_value=["SH001_01"])),
+        pytest.raises(HTTPException) as ei,
+    ):
+        await dp.produce_work(
+            work_id,
+            dp.ProduceRequest(),
+            BackgroundTasks(),
+            _USER,
+            AsyncMock(),
+            AsyncMock(),
+            _FakePool(),
+        )
+    assert ei.value.status_code == 409
+    assert "未完成准备" in ei.value.detail
+
+
+@pytest.mark.asyncio
+async def test_preparation_overview_merges_shotlist_with_readiness():
+    """§L.1:概览把锁定 shot_list 的每镜与就绪行合并;未准备过的镜默认 pending。"""
+    work_id = _locked_work()
+    with (
+        patch.object(
+            dp._prep,
+            "readiness_overview",
+            AsyncMock(
+                return_value=[
+                    {
+                        "shot_id": "SH001_01",
+                        "status": "ready",
+                        "extracted": True,
+                        "skip_extraction": False,
+                    }
+                ]
+            ),
+        ),
+        patch.object(dp._prep, "produce_blockers", AsyncMock(return_value=[])),
+    ):
+        resp = await dp.preparation_overview(work_id, _USER, _FakePool())
+    assert resp["shots"][0]["shot_id"] == "SH001_01"
+    assert resp["shots"][0]["status"] == "ready"
+    assert resp["blockers"] == []

@@ -133,6 +133,27 @@ def _fallback_shots_for_scene(scene, scene_idx: int) -> list[ShotListItem]:
     ]
 
 
+# INC-001 §K.1 质量闸:visual_prompt/action_beats 只描述画面本身,不该混入参考图映射说明。
+_CONTAM_MARKERS = ("图1", "图2", "图3", "图片内容说明", "参考图")
+_QC_CORRECTION = (
+    "\n\n**修正要求:上次输出把参考图映射说明混进了画面描述。visual_prompt 与 action_beats "
+    "只描述画面本身,绝不能出现「图1/图2/参考图/图片内容说明」这类工程说明文字。**"
+)
+
+
+def _contaminated(data: dict[str, Any]) -> bool:
+    """§K.1:LLM 输出是否混入「图1/图2/图片内容说明/参考图」这类参考图映射说明。"""
+    for raw in data.get("shots") or []:
+        if not isinstance(raw, dict):
+            continue
+        blob = str(raw.get("visual_prompt") or "") + " ".join(
+            str(b) for b in (raw.get("action_beats") or [])
+        )
+        if any(m in blob for m in _CONTAM_MARKERS):
+            return True
+    return False
+
+
 async def _shots_for_scene(
     idx: int,
     scene: Any,
@@ -159,6 +180,16 @@ async def _shots_for_scene(
             "shot list draft LLM failed for scene %d, using fallback: %s", scene.scene_no, e
         )
         data = {}
+
+    # §K.1 轻量质量闸:输出混入参考图映射说明 → 带修正要求重试一次,再决定落库。
+    if _contaminated(data):
+        logger.info("shot list scene %d 输出含参考图映射污染,带修正重试一次", scene.scene_no)
+        try:
+            retry = await _call_llm_json(resolved_llm, prompt + _QC_CORRECTION)
+            if retry.get("shots"):
+                data = retry
+        except Exception as e:
+            logger.warning("shot list scene %d QC 修正重试失败,沿用原输出: %s", scene.scene_no, e)
 
     raw_shots = data.get("shots")
     if not isinstance(raw_shots, list) or not raw_shots:

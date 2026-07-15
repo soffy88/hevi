@@ -226,3 +226,52 @@ async def test_shot_list_draft_parses_target_name_on_dialogue():
     )
     sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
     assert sl.shots[0].dialogue_lines[0].target_name == "韩康子"
+
+
+# ── INC-001 §K.1 质量闸(参考图映射污染 → 修正重试)────────────────────────────
+
+
+def test_contaminated_detects_reference_mapping_markers():
+    from hevi.director.shot_list import _contaminated
+
+    assert _contaminated({"shots": [{"visual_prompt": "图1里的人递给图2"}]})
+    assert _contaminated({"shots": [{"visual_prompt": "正常", "action_beats": ["参考图中的动作"]}]})
+    assert not _contaminated({"shots": [{"visual_prompt": "智伯把地图递给韩康子"}]})
+    assert not _contaminated({})
+
+
+async def test_shot_list_qc_retries_on_reference_contamination():
+    """§K.1:LLM 首次输出混入「图1/图2」→ 带修正重试一次,落库用干净的重试结果。"""
+    contaminated = (
+        '{"shots": [{"visual_prompt": "图1中的智伯把地图递给图2的韩康子", '
+        '"dialogue_lines": [], "character_names": ["智伯"], "duration_s": 5}]}'
+    )
+    clean = (
+        '{"shots": [{"visual_prompt": "智伯把地图递给韩康子", '
+        '"dialogue_lines": [], "character_names": ["智伯"], "duration_s": 5}]}'
+    )
+
+    calls = {"n": 0}
+
+    def _llm_alt(*, messages, **kw):
+        content = contaminated if calls["n"] == 0 else clean
+        calls["n"] += 1
+        return {"content": content}
+
+    screenplay = Screenplay(
+        scenes=[
+            ScreenplayScene(
+                scene_no=1, location="宫殿", characters_present=["智伯", "韩康子"], narration="x"
+            )
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="智伯"), DesignCharacter(name="韩康子")],
+        scenes=[DesignScene(name="宫殿")],
+    )
+    sl = await generate_shot_list_draft(
+        screenplay=screenplay, design_list=design_list, llm=_llm_alt
+    )
+    assert calls["n"] == 2  # 重试了一次
+    assert "图1" not in sl.shots[0].visual_prompt
+    assert sl.shots[0].visual_prompt == "智伯把地图递给韩康子"
