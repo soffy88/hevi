@@ -14,10 +14,15 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg curl git \
-    fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/* \
     # venv scripts have shebang #!/usr/bin/python3.14 (host system Python path)
     && ln -sf /usr/local/bin/python3.14 /usr/bin/python3.14
+
+# CJK 字体单独一层:烧录中文字幕必需(否则 libass 无字形 → 豆腐块)。单独 RUN 是为了
+# 不动上面 ffmpeg 那一层的缓存——ffmpeg 的依赖树巨大,慢镜像源上整层重装要几十分钟。
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-noto-cjk \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy pre-installed venv (Linux amd64 Python 3.14)
 # Scripts in .venv/bin/ have shebangs pointing to the host path
