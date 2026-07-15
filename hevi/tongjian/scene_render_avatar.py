@@ -40,6 +40,7 @@ from hevi.tongjian.schemas import (
     CharacterBible,
     Constitution,
     FrameManifest,
+    GateResult,
     LayerConfig,
     Script,
     ShotFrame,
@@ -1040,8 +1041,6 @@ def gate_avatar_manifest(manifest: FrameManifest) -> GateResult:
     - 无 clip 的镜头(降级)计入 warnings。
     (逐字口型/CER 需 ASR,留待接入 ASR 后细化;此处先给确定性代理指标。)
     """
-    from hevi.tongjian.schemas import GateResult
-
     errors: list[str] = []
     warnings: list[str] = []
     checked = 0
