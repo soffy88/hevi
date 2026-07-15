@@ -732,6 +732,7 @@ async def build_frame_manifest_avatar(
             )
             for role in ("first", "peak", "aftermath")
         }
+        did_kf2v = False  # §K 可观察性用;下面动作镜分支若走 kf2v 会置 True
         dur = _say_dur(text or shot.visual_prompt, per_char)
         clip = work / f"{sid}_clip.mp4"
 
@@ -1022,6 +1023,41 @@ async def build_frame_manifest_avatar(
                 canon_path = work / f"canon_{lead}.png"
                 if canon_path.exists():
                     consistency = _score_consistency(first, canon_path)
+            # INC-001 §K:关键帧编译的 decision_trail(实际用了哪些风格/情绪/动作弧阶段/视线/轴线)。
+            debug_context = {
+                "style": style,
+                "emotion": emotion,
+                "is_dialogue": is_dialogue,
+                "lead": lead,
+                "action_hint": act_hint,
+                "action_beats": list(shot.action_beats or []),
+                "phases": {"trigger": _trigger, "peak": _peak, "aftermath": _aftermath},
+                "frame_consumes": (
+                    {"keyframe": "trigger"}
+                    if is_dialogue
+                    else {
+                        "first": "trigger",
+                        "peak": (
+                            "peak"
+                            if action_arc == "3point" and _peak and _peak != _aftermath
+                            else None
+                        ),
+                        "last": "aftermath",
+                    }
+                ),
+                "eyeline": _eyeline.lstrip("，,"),
+                "same_scene_axis": _axis,
+                "carry": _carry,
+                "lead_out": _lead_out,
+                "action_arc": action_arc,
+            }
+            quality_checks = {
+                "incomplete_state_applied": bool(_incomplete),  # §C
+                "eyeline_applied": bool(_eyeline),  # §H
+                "continuity_applied": bool(_axis or _carry or _lead_out),  # §J
+                "kf2v_action_arc": bool(did_kf2v),  # §B(真动作弧生视频)
+                "has_action_beats": bool(shot.action_beats),
+            }
             frames.append(
                 ShotFrame(
                     shot_id=sid,
@@ -1030,6 +1066,8 @@ async def build_frame_manifest_avatar(
                     frame_path=str(first),
                     characters=shot.characters,
                     character_consistency=consistency,
+                    debug_context=debug_context,
+                    quality_checks=quality_checks,
                 )
             )
             logger.info(

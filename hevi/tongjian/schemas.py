@@ -248,6 +248,10 @@ class ShotFrame(BaseModel):
     passed_vlm_audit: bool | None = None  # 本地 VLM 年代穿帮审核
     degraded: bool = False  # True = 走了降级链(丢角色/复用相邻场景),非首选路径产出
     degrade_reason: str = ""
+    # INC-001 §K 可观察性:这一镜关键帧编译的 decision_trail(实际用的风格/情绪/动作弧阶段/
+    # 视线/轴线),排查"为什么生成成这样";前端关键帧预览可直接展示,保证所见=实际所用。
+    debug_context: dict[str, Any] = Field(default_factory=dict)
+    quality_checks: dict[str, Any] = Field(default_factory=dict)
 
 
 class FrameManifest(BaseModel):

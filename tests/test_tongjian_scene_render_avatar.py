@@ -1366,3 +1366,72 @@ def test_adjacent_context_uses_beats_edges_same_scene_only():
     carry0, lead0 = _adjacent_context(shots, 0)  # A:无上镜,下镜B同场景
     assert carry0 == ""  # 首镜无承接
     assert "乙触发" in lead0  # 过渡到下一镜(B)的触发拍
+
+
+# ── INC-001 §K 可观察性:debug_context + quality_checks ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_shot_frame_carries_debug_context_and_quality_checks(tmp_path):
+    """§K:动作镜(带 action_beats)生成的 ShotFrame 带 decision_trail——动作弧阶段 + 各项
+    质量检查(未完成态/kf2v/有无 beats)。"""
+    bible = _bible()  # C003
+    script = Script(lines=[ScriptLine(line_id="LN001", type="action", text="张飞拔剑要自刎")])
+    shotlist = ShotList(
+        shots=[
+            Shot(
+                shot_id="SH001",
+                line_ids=["LN001"],
+                characters=["C003"],
+                visual_prompt="张飞拔剑自刎",
+                action_beats=["张飞猛地抽剑架颈", "刘备扑上夺剑", "宝剑坠地紧抱"],
+            )
+        ]
+    )
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        output_path.write_bytes(b"kf" * 600)
+        return output_path
+
+    async def _fake_qwen_gen(*, output_path, **_k):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_silent",
+            lambda vis, out, w, h, dur: out.write_bytes(b"c"),
+        ),
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                params={"non_dialogue_mode": "silent_action", "action_engine": "kf2v"}
+            ),
+        )
+
+    dctx = manifest.frames[0].debug_context
+    qc = manifest.frames[0].quality_checks
+    assert dctx["phases"]["trigger"] == "张飞猛地抽剑架颈"
+    assert dctx["phases"]["aftermath"] == "宝剑坠地紧抱"
+    assert dctx["frame_consumes"]["first"] == "trigger"  # 首帧抓 trigger
+    assert dctx["frame_consumes"]["last"] == "aftermath"  # 尾帧抓 aftermath
+    assert qc["has_action_beats"] is True
+    assert qc["kf2v_action_arc"] is True  # 走了 kf2v 真动作弧
+    assert qc["incomplete_state_applied"] is True  # 含"拔/猛地"反应链 → §C
