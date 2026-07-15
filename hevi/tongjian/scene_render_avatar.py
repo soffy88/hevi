@@ -140,22 +140,73 @@ def _infer_action_phases(beats: list[str]) -> tuple[str, str, str]:
     return trigger, peak, aftermath
 
 
-_CONTINUITY_SUFFIX = (
-    ",与上一镜是同一场景的连续镜头:保持人物左右站位与面部朝向稳定、空间轴线一致,避免跳轴和朝向突变"
-)
+_AXIS_CONSTRAINT = "保持人物左右站位与面部朝向稳定、空间轴线一致,避免跳轴和朝向突变"
 
 
-def _continuity_suffix(shots: list, idx: int, shot) -> str:
-    """INC-001 §J(计划态双向连续性的落地简版):当前镜与上一镜同场景且有共同在场角色 →
-    返回"保持朝向/轴线稳定"约束,减少切镜突兀。首镜或换场镜返回空串。"""
+def _same_scene_shared(shots: list, idx: int, shot) -> bool:
+    """§J:当前镜与上一镜同场景且有共同在场角色 → True(轴线连续风险,该守稳)。"""
     if idx <= 0:
-        return ""
+        return False
     prev = shots[idx - 1]
-    if not shot.scene_id or prev.scene_id != shot.scene_id:
-        return ""
-    if not (set(prev.characters) & set(shot.characters)):
-        return ""
-    return _CONTINUITY_SUFFIX
+    return (
+        bool(shot.scene_id)
+        and prev.scene_id == shot.scene_id
+        and bool(set(prev.characters) & set(shot.characters))
+    )
+
+
+def _shot_edge(shot, *, end: bool) -> str:
+    """一个镜的"结尾/起始"文本:优先取 action_beats 收束拍/触发拍,无 beats 退回 visual_prompt。"""
+    beats = shot.action_beats or []
+    if beats:
+        return (beats[-1] if end else beats[0]).strip()
+    return (shot.visual_prompt or "").strip()
+
+
+def _adjacent_context(shots: list, idx: int) -> tuple[str, str]:
+    """INC-001 §J 完整版:相邻镜头上下文。返回(承接上镜, 过渡下镜)两句连续性建议——
+    当前镜与相邻镜同场景时,用相邻镜的收束/触发态(见 _shot_edge)提示承接与过渡。换场不给。
+    (与观察态 4.0.1b 叠加:此处是计划态双向照应;实际末帧覆盖起始态由观察态另行处理。)"""
+    shot = shots[idx]
+    carry = lead_out = ""
+    if idx > 0 and shot.scene_id and shots[idx - 1].scene_id == shot.scene_id:
+        prev_end = _shot_edge(shots[idx - 1], end=True)
+        if prev_end:
+            carry = f"承接上一镜的收束态({prev_end}),延续其动作、视线与空间方向"
+    if idx < len(shots) - 1 and shot.scene_id and shots[idx + 1].scene_id == shot.scene_id:
+        next_start = _shot_edge(shots[idx + 1], end=False)
+        if next_start:
+            lead_out = f"收束到能自然过渡到下一镜({next_start})的停留态"
+    return carry, lead_out
+
+
+def _director_command_summary(
+    *, frame_role: str, incomplete: str, eyeline: str, axis: bool, carry: str, lead_out: str
+) -> str:
+    """INC-001 §E:导演命令摘要——把各项 guidance 按帧风险**动态分级并排序**,不是扁平拼接。
+
+    风险提级到「必须」级:同场景连续(轴线,§J)、对视(对白受话者,§H)。§C 未完成态在触发/
+    峰值帧是「必须」、收束帧不强加。相邻镜承接/过渡(§J)为「优先」级。因此首(first)/关
+    (peak)/尾(aftermath)帧看到的必须/优先摘要并不相同。返回附加到关键帧 instruction 的有序块。
+    """
+    must: list[str] = []
+    prefer: list[str] = []
+    if axis:  # §J 同场景连续 → 轴线必守
+        must.append(_AXIS_CONSTRAINT)
+    if eyeline and frame_role != "aftermath":  # §H 对视风险 → 视线必守(收束帧弱化)
+        must.append("说话者" + eyeline.lstrip("，,"))
+    if incomplete and frame_role in ("first", "peak"):  # §C 未完成态:触发/峰值必守
+        must.append(incomplete.lstrip("，,"))
+    if carry and frame_role in ("first", "peak"):  # 承接上镜:起势帧优先
+        prefer.append(carry)
+    if lead_out and frame_role in ("first", "aftermath"):  # 过渡下镜:收束帧优先
+        prefer.append(lead_out)
+    blocks: list[str] = []
+    if must:
+        blocks.append("必须:" + ";".join(must))
+    if prefer:
+        blocks.append("优先:" + ";".join(prefer))
+    return ("。" + "。".join(blocks)) if blocks else ""
 
 
 def _p(config: LayerConfig | None, key: str, default: Any) -> Any:
@@ -561,14 +612,21 @@ async def _gen_action_keyframe(
     out_path: Path,
     engine: str,
     size: tuple[int, int],
+    command_summary: str = "",
 ) -> None:
     """从锁脸参考(action_ip)+ 相貌(appear)生成一张"闭嘴做某动作(desc)"的关键帧,供 kf2v
-    的首/中(peak)/尾(aftermath)帧复用。已存在则跳过(缓存)。"""
+    的首/中(peak)/尾(aftermath)帧复用。command_summary=§E 该帧的导演命令摘要(必须/优先约束)。
+    已存在则跳过(缓存)。"""
     if out_path.exists():
         return
     await _edit_keyframe(
         image_path=action_ip,
-        instruction=_EDIT_PREFIX + emotion + ",闭着嘴,动作:" + desc + _EXPRESSION_GUARD,
+        instruction=_EDIT_PREFIX
+        + emotion
+        + ",闭着嘴,动作:"
+        + desc
+        + _EXPRESSION_GUARD
+        + command_summary,
         output_path=out_path,
         fallback_from=action_ip,
         engine=engine,
@@ -659,8 +717,21 @@ async def build_frame_manifest_avatar(
         _eyeline = ""
         if dlg_line and getattr(dlg_line, "target", ""):
             _eyeline = f",目光看向{name_by_id.get(dlg_line.target, dlg_line.target)}"
-        # INC-001 §J:与上一镜同场景且有共同人物 → 保持朝向/左右站位稳定,减少跳轴突兀。
-        _continuity = _continuity_suffix(shotlist.shots, idx, shot)
+        # INC-001 §J:同场景连续轴线(必守)+ 相邻镜承接/过渡上下文(优先)。
+        _axis = _same_scene_shared(shotlist.shots, idx, shot)
+        _carry, _lead_out = _adjacent_context(shotlist.shots, idx)
+        # INC-001 §E:各帧的导演命令摘要(必须/优先分级,首/关/尾帧不同)。
+        _cmd = {
+            role: _director_command_summary(
+                frame_role=role,
+                incomplete=_incomplete,
+                eyeline=_eyeline,
+                axis=_axis,
+                carry=_carry,
+                lead_out=_lead_out,
+            )
+            for role in ("first", "peak", "aftermath")
+        }
         dur = _say_dur(text or shot.visual_prompt, per_char)
         clip = work / f"{sid}_clip.mp4"
 
@@ -681,7 +752,7 @@ async def build_frame_manifest_avatar(
                     instruction = _EDIT_PREFIX + emotion
                     if action_hint:
                         instruction += f",动作:{action_hint}"
-                    instruction += _EXPRESSION_GUARD + _incomplete + _eyeline + _continuity
+                    instruction += _EXPRESSION_GUARD + _cmd["first"]
                     await _edit_keyframe(
                         image_path=canon,
                         instruction=instruction,
@@ -764,7 +835,7 @@ async def build_frame_manifest_avatar(
                             )
                             if act_hint:
                                 instruction += f",动作:{act_hint}"
-                            instruction += _EXPRESSION_GUARD + _incomplete + _continuity
+                            instruction += _EXPRESSION_GUARD + _cmd["first"]
                             await _edit_keyframe(
                                 image_path=canons,
                                 instruction=instruction,
@@ -804,7 +875,7 @@ async def build_frame_manifest_avatar(
                             instruction = _EDIT_PREFIX + emotion + ",闭着嘴"
                             if act_hint:
                                 instruction += f",动作:{act_hint}"
-                            instruction += _EXPRESSION_GUARD + _incomplete + _continuity
+                            instruction += _EXPRESSION_GUARD + _cmd["first"]
                             await _edit_keyframe(
                                 image_path=canon,
                                 instruction=instruction,
@@ -863,6 +934,7 @@ async def build_frame_manifest_avatar(
                                 out_path=end_kf,
                                 engine=keyframe_engine,
                                 size=(w, h),
+                                command_summary=_cmd["aftermath"],
                             )
                         # 关键帧序列:首帧(trigger)→[peak]→尾帧(aftermath)。
                         seq = [kf]
@@ -877,6 +949,7 @@ async def build_frame_manifest_avatar(
                                 out_path=peak_kf,
                                 engine=keyframe_engine,
                                 size=(w, h),
+                                command_summary=_cmd["peak"],
                             )
                             seq.append(peak_kf)
                         seq.append(end_kf)

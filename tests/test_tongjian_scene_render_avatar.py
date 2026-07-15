@@ -1296,3 +1296,73 @@ async def test_action_end_state_runs_llm_path_no_nameerror():
     # llm=None 仍安全退化(不触发 asyncio)
     fallback = await _action_end_state("张飞拔剑", None)
     assert "动作已完成、结果态" in fallback
+
+
+# ── INC-001 §E 导演命令摘要(必须/优先动态分级) + §J 完整版相邻镜上下文 ──────────
+
+
+def test_director_command_summary_levels_and_risk_promotion():
+    """§E:对视(eyeline)+同场景连续(axis)+未完成态 → 首帧全进「必须」级,承接/过渡进「优先」。"""
+    from hevi.tongjian.scene_render_avatar import _director_command_summary
+
+    s = _director_command_summary(
+        frame_role="first",
+        incomplete="，动作未完成态",
+        eyeline="，目光看向赵襄子",
+        axis=True,
+        carry="承接上一镜收束态",
+        lead_out="收束到可过渡下一镜",
+    )
+    assert s.startswith("。必须:")
+    assert "避免跳轴" in s  # axis 必守
+    assert "说话者目光看向赵襄子" in s  # eyeline 必守
+    assert "动作未完成态" in s  # §C 必守
+    assert "优先:" in s and "承接上一镜收束态" in s
+
+
+def test_director_command_summary_differs_by_frame_role():
+    """§E:尾帧(aftermath)不强加未完成态、弱化视线 → 与首帧摘要不同。"""
+    from hevi.tongjian.scene_render_avatar import _director_command_summary
+
+    kw = {
+        "incomplete": "，动作未完成态",
+        "eyeline": "，目光看向赵襄子",
+        "axis": True,
+        "carry": "",
+        "lead_out": "",
+    }
+    first = _director_command_summary(frame_role="first", **kw)
+    after = _director_command_summary(frame_role="aftermath", **kw)
+    assert "目光看向赵襄子" in first and "目光看向赵襄子" not in after  # 视线仅起势帧必守
+    assert "动作未完成态" in first and "动作未完成态" not in after  # 未完成态尾帧不强加
+    assert "避免跳轴" in after  # 轴线两帧都守
+    assert first != after
+
+
+def test_director_command_summary_empty_when_no_constraints():
+    from hevi.tongjian.scene_render_avatar import _director_command_summary
+
+    assert (
+        _director_command_summary(
+            frame_role="first", incomplete="", eyeline="", axis=False, carry="", lead_out=""
+        )
+        == ""
+    )
+
+
+def test_adjacent_context_uses_beats_edges_same_scene_only():
+    """§J 完整版:相邻镜同场景 → 用相邻镜 action_beats 的收束/触发拍给承接/过渡;换场不给。"""
+    from hevi.tongjian.scene_render_avatar import _adjacent_context
+
+    shots = [
+        Shot(shot_id="A", scene_id="宫殿", action_beats=["起", "承", "甲收束"]),
+        Shot(shot_id="B", scene_id="宫殿", action_beats=["乙触发", "乙峰"]),
+        Shot(shot_id="C", scene_id="郊野", visual_prompt="换场"),  # 不同场景
+    ]
+    carry, lead_out = _adjacent_context(shots, 1)  # B:上镜A同场景,下镜C换场
+    assert "甲收束" in carry  # 承接上一镜(A)的收束拍
+    assert lead_out == ""  # 下一镜(C)换场 → 无过渡
+
+    carry0, lead0 = _adjacent_context(shots, 0)  # A:无上镜,下镜B同场景
+    assert carry0 == ""  # 首镜无承接
+    assert "乙触发" in lead0  # 过渡到下一镜(B)的触发拍
