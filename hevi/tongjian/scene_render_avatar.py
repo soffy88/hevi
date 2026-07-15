@@ -27,11 +27,12 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
-from hevi.image.qwen_image_service import qwen_image_edit, qwen_image_generate
+from hevi.image.qwen_image_service import QwenImageError, qwen_image_edit, qwen_image_generate
 from hevi.tongjian.schemas import (
     CharacterBible,
     Constitution,
@@ -382,6 +383,32 @@ def _fit_silent(visual: Path, out: Path, w: int, h: int, duration: float) -> Non
     )
 
 
+async def _edit_keyframe(
+    *,
+    image_path: Path | list[Path],
+    instruction: str,
+    output_path: Path,
+    fallback_from: Path,
+) -> Path:
+    """出关键帧:qwen-image-edit 把该镜情绪+动作叠到 canonical 像上。
+
+    **降级路线(用户 2026-07-15 决定:不为 qwen-image-edit 开付费)**:edit 不可用时——
+    典型是免费额度墙 `AllocationQuota.FreeTierOnly`(账户开了「仅使用免费额度」),也含其它
+    生成失败——直接复制 canonical 像当关键帧。身份/画风保住(用的是真 canon 脸),只是少了
+    "把情绪/动作烤进关键帧"那步(happyhorse 后面仍会加口型+表情),整镜不至于降级空镜、
+    整集不至于卡在 G6 装配门。多角色镜头降级只保 lead 一张脸(fallback_from 传 canons[0])。"""
+    try:
+        return await qwen_image_edit(
+            image_path=image_path, instruction=instruction, output_path=output_path
+        )
+    except QwenImageError as e:
+        logger.warning(
+            "qwen-image-edit 不可用,关键帧降级直接用 canonical 像(%s): %s", fallback_from.name, e
+        )
+        shutil.copyfile(fallback_from, output_path)
+        return output_path
+
+
 async def build_frame_manifest_avatar(
     shotlist: ShotList,
     script: Script,
@@ -461,7 +488,12 @@ async def build_frame_manifest_avatar(
                     if action_hint:
                         instruction += f",动作:{action_hint}"
                     instruction += _EXPRESSION_GUARD + _incomplete
-                    await qwen_image_edit(image_path=canon, instruction=instruction, output_path=kf)
+                    await _edit_keyframe(
+                        image_path=canon,
+                        instruction=instruction,
+                        output_path=kf,
+                        fallback_from=canon,
+                    )
                 talk = work / f"{sid}_talk.mp4"
                 if not talk.exists():
                     text_chunks = _split_text_for_dialogue(text, per_char)
@@ -529,10 +561,11 @@ async def build_frame_manifest_avatar(
                             if action_hint:
                                 instruction += f",动作:{action_hint}"
                             instruction += _EXPRESSION_GUARD + _incomplete
-                            await qwen_image_edit(
+                            await _edit_keyframe(
                                 image_path=canons,
                                 instruction=instruction,
                                 output_path=kf,
+                                fallback_from=canons[0],
                             )
                         vis_src = kf
                         motion = f"人物{emotion},细微神态与身体动作,闭着嘴不说话"
@@ -550,10 +583,11 @@ async def build_frame_manifest_avatar(
                             if action_hint:
                                 instruction += f",动作:{action_hint}"
                             instruction += _EXPRESSION_GUARD + _incomplete
-                            await qwen_image_edit(
+                            await _edit_keyframe(
                                 image_path=canon,
                                 instruction=instruction,
                                 output_path=kf,
+                                fallback_from=canon,
                             )
                         vis_src = kf
                         motion = f"人物{emotion},细微神态与身体动作,闭着嘴不说话"
@@ -631,7 +665,7 @@ async def build_frame_manifest_avatar(
                 dur,
                 clip.name,
             )
-        except Exception as e:  # noqa: BLE001 —— 单镜失败不拖垮整条,标降级
+        except Exception as e:
             logger.warning("[avatar %s] 生成失败,降级空镜: %s", sid, e)
             frames.append(
                 ShotFrame(
@@ -699,7 +733,7 @@ def _audio_video_dur(clip: Path) -> tuple[float, float, float]:
     return _dur("v:0"), _dur("a:0"), mean
 
 
-def gate_avatar_manifest(manifest: FrameManifest) -> "GateResult":
+def gate_avatar_manifest(manifest: FrameManifest) -> GateResult:
     """avatar 成片门禁(影响观感的语音/口型/音画同步项,确定性检查,不阻塞):
     - 每镜 talking clip **有人声**(mean_volume > -40dB);
     - **音画不脱节**(|视频时长 - 音频时长| ≤ 1.0s;抓"口型比语音慢/快"那类偏移);
@@ -718,7 +752,7 @@ def gate_avatar_manifest(manifest: FrameManifest) -> "GateResult":
         checked += 1
         try:
             vdur, adur, mean = _audio_video_dur(Path(f.clip_path))
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             warnings.append(f"{f.shot_id}: 探测失败 {e}")
             continue
         if mean <= -40.0:

@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from hevi.image.qwen_image_service import QwenImageError
 from hevi.tongjian.scene_render_avatar import (
     _MAX_CLIP_DURATION_S,
     _NARRATOR_DESC,
@@ -607,3 +608,66 @@ async def test_long_dialogue_line_renders_as_multiple_chunks(tmp_path):
         assert duration <= _MAX_CLIP_DURATION_S
     assert len(concat_calls) == 1
     assert len(concat_calls[0]) == len(happyhorse_calls)
+
+
+@pytest.mark.asyncio
+async def test_keyframe_falls_back_to_canonical_when_edit_unavailable(tmp_path):
+    """用户 2026-07-15 决定走降级路线(不为 qwen-image-edit 开付费):edit 撞免费额度墙
+    (QwenImageError)时,直接用 canonical 像当关键帧,整镜照常出片、不降级空镜。
+    验证:(1) 该镜没有降级;(2) 喂给 happyhorse 的关键帧就是 canonical 那张(fallback 复制)。"""
+    script = Script(
+        lines=[
+            ScriptLine(
+                line_id="LN001",
+                type="dialogue",
+                speaker="C003",
+                text="请分宗。",
+                emotion="决绝",
+                visual_hint="智果掷玉珏于阶前",
+            )
+        ]
+    )
+    shotlist = ShotList(shots=[Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"])])
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        raise QwenImageError("qwen-image-edit 免费额度已用尽:仅使用免费额度模式")
+
+    async def _fake_qwen_gen(*, prompt, output_path, size, seed=None):
+        output_path.write_bytes(b"CANON-BYTES")  # canonical 像的可识别内容
+        return output_path
+
+    kf_bytes_seen: list[bytes] = []
+
+    async def _fake_happyhorse(*, image_path, prompt, output_path, duration, resolution):
+        kf_bytes_seen.append(Path(image_path).read_bytes())  # happyhorse 实际拿到的关键帧
+        output_path.write_bytes(b"fake-talk")
+        return output_path
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate",
+            AsyncMock(side_effect=_fake_happyhorse),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist, script, _bible(), Constitution(), run_dir=tmp_path
+        )
+
+    assert not manifest.frames[0].degraded  # 没有因 edit 失败而降级空镜
+    assert kf_bytes_seen == [b"CANON-BYTES"]  # happyhorse 拿到的正是 canonical 像
