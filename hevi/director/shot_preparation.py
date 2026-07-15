@@ -336,3 +336,26 @@ async def all_shots_ready(pool: Any, work_id: str, shot_ids: list[str]) -> bool:
         )
     by_id = {r["shot_id"]: r["status"] for r in rows}
     return all(by_id.get(sid) == "ready" for sid in shot_ids)
+
+
+async def produce_blockers(pool: Any, work_id: str) -> list[str]:
+    """§L.2 产集拦截:被用户实际动过(extracted=true)却仍 pending 的镜头 shot_id。空 = 可产集。
+    只看 extracted+pending——只 GET 看过状态(extracted=false)或从未准备的旧 work 不拦(向后兼容)。"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT shot_id FROM shot_readiness "
+            "WHERE work_id=$1 AND extracted=true AND status='pending'",
+            work_id,
+        )
+    return [r["shot_id"] for r in rows]
+
+
+async def readiness_overview(pool: Any, work_id: str) -> list[dict[str, Any]]:
+    """§L.1 全片就绪概览(已被准备过的镜头行);前端与 shot_list 合并出完整视图。"""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT shot_id, status, skip_extraction, extracted "
+            "FROM shot_readiness WHERE work_id=$1",
+            work_id,
+        )
+    return [dict(r) for r in rows]

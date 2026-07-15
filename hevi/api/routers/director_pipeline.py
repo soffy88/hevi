@@ -39,6 +39,7 @@ from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.director import shot_preparation as _prep
 from hevi.director.concept import generate_concept_draft
 from hevi.director.design_list import generate_design_list_draft
 from hevi.director.pipeline_schemas import (
@@ -47,6 +48,7 @@ from hevi.director.pipeline_schemas import (
     DesignList,
     Screenplay,
     ShotList,
+    ShotListItem,
 )
 from hevi.director.screenplay import generate_screenplay_draft
 from hevi.director.shot_list import generate_shot_list_draft
@@ -497,6 +499,140 @@ async def lock_shot_list(
     return _work_status(rec)
 
 
+# ── 逐镜头准备台(INC-001 §A/§G/§I/§L)──────────────────────────────────────
+#
+# §L.2 职责边界:准备台(本组端点)负责提取资产/对白候选 → 确认 → 把镜头推进到 ready;
+# 生成台(/produce)负责真实生成。所有 mutation 统一返回 {action, state}(§L.1 聚合态),
+# 前端不再自己拼 pendingConfirmCount / 推导 shot.status。
+
+
+def _find_shot(rec: dict[str, Any], shot_id: str) -> ShotListItem | None:
+    for s in (rec.get("shot_list") or {}).get("shots", []):
+        if s.get("shot_id") == shot_id:
+            return ShotListItem.model_validate(s)
+    return None
+
+
+def _parse_candidate_id(candidate_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(candidate_id)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail="candidate_id 不是合法 UUID") from e
+
+
+class ConfirmCandidateRequest(BaseModel):
+    kind: str  # "asset" | "dialogue"
+    status: str  # asset: linked/ignored/pending;dialogue: accepted/ignored/pending
+    linked_entity_id: str | None = None  # asset 确认时的 subject_id
+    linked_dialog_line_id: str | None = None  # dialogue 接受时的 ShotDialogLine id
+
+
+class ReadinessPatch(BaseModel):
+    skip_extraction: bool
+
+
+@router.get("/works/{work_id}/preparation-overview")
+async def preparation_overview(
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """§L.1 全片就绪概览:每镜 status/extracted/skip_extraction + 产集拦截项。生成台用它
+    判断"能不能生成、还差哪些镜"。未准备过的镜合并出默认 pending。"""
+    rec = _require_work(work_id, user)
+    overview = {r["shot_id"]: r for r in await _prep.readiness_overview(pool, work_id)}
+    shots = [
+        {
+            "shot_id": s.get("shot_id"),
+            "status": overview.get(s.get("shot_id"), {}).get("status", "pending"),
+            "extracted": overview.get(s.get("shot_id"), {}).get("extracted", False),
+            "skip_extraction": overview.get(s.get("shot_id"), {}).get("skip_extraction", False),
+        }
+        for s in (rec.get("shot_list") or {}).get("shots", [])
+    ]
+    return {"shots": shots, "blockers": await _prep.produce_blockers(pool, work_id)}
+
+
+@router.get("/works/{work_id}/shots/{shot_id}/preparation-state")
+async def get_shot_preparation_state(
+    work_id: str,
+    shot_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    rec = _require_work(work_id, user)
+    return await _prep.get_preparation_state(pool, work_id, shot_id, _find_shot(rec, shot_id))
+
+
+@router.post("/works/{work_id}/shots/{shot_id}/extract")
+async def extract_shot_candidates(
+    work_id: str,
+    shot_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """§G 提取:从已锁 ShotListItem 确定性物化候选(不另调 LLM)。"""
+    rec = _require_work(work_id, user)
+    shot = _find_shot(rec, shot_id)
+    if shot is None:
+        raise HTTPException(status_code=404, detail="shot 不存在(分镜未锁定或 shot_id 错误)")
+    await _prep.extract_shot(pool, work_id, shot)
+    state = await _prep.get_preparation_state(pool, work_id, shot_id, shot)
+    return {"action": "extract", "state": state}
+
+
+@router.post("/works/{work_id}/shots/{shot_id}/candidates/{candidate_id}/confirm")
+async def confirm_shot_candidate(
+    work_id: str,
+    shot_id: str,
+    candidate_id: str,
+    body: ConfirmCandidateRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """§G/§A.2 确认(或回退)一条候选,后端按 §A.1 重算就绪。"""
+    rec = _require_work(work_id, user)
+    cand = _parse_candidate_id(candidate_id)
+    if body.kind == "asset":
+        if body.status not in ("linked", "ignored", "pending"):
+            raise HTTPException(status_code=422, detail="asset 候选状态须为 linked/ignored/pending")
+        await _prep.set_asset_candidate(
+            pool, work_id, shot_id, cand, status=body.status, linked_entity_id=body.linked_entity_id
+        )
+    elif body.kind == "dialogue":
+        if body.status not in ("accepted", "ignored", "pending"):
+            raise HTTPException(
+                status_code=422, detail="dialogue 候选状态须为 accepted/ignored/pending"
+            )
+        await _prep.set_dialogue_candidate(
+            pool,
+            work_id,
+            shot_id,
+            cand,
+            status=body.status,
+            linked_dialog_line_id=body.linked_dialog_line_id,
+        )
+    else:
+        raise HTTPException(status_code=422, detail="kind 须为 asset 或 dialogue")
+    state = await _prep.get_preparation_state(pool, work_id, shot_id, _find_shot(rec, shot_id))
+    return {"action": "confirm", "state": state}
+
+
+@router.patch("/works/{work_id}/shots/{shot_id}/readiness")
+async def patch_shot_readiness(
+    work_id: str,
+    shot_id: str,
+    body: ReadinessPatch,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """§I skip_extraction 逃生阀:置 true → 该镜直达 ready。"""
+    rec = _require_work(work_id, user)
+    await _prep.set_skip_extraction(pool, work_id, shot_id, body.skip_extraction)
+    state = await _prep.get_preparation_state(pool, work_id, shot_id, _find_shot(rec, shot_id))
+    return {"action": "skip_extraction", "state": state}
+
+
 # ── ⑤产集(现有 L1,不改)────────────────────────────────────────────────────
 
 
@@ -877,10 +1013,20 @@ async def produce_work(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[TaskService, Depends(get_task_service)],
     subject_svc: Annotated[SubjectService, Depends(get_subject_service)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
     if rec["locked_through"] < _stage_index("shot_list"):
         raise HTTPException(status_code=409, detail=f"分镜还没锁定(当前 {rec['status']}),不能产集")
+
+    # §L.2 就绪门:被实际准备过(extracted)却仍有待确认候选的镜头拦产集(未准备过的镜不拦,
+    # 向后兼容"锁分镜直接产集"的旧路径)。
+    blockers = await _prep.produce_blockers(pool, work_id)
+    if blockers:
+        raise HTTPException(
+            status_code=409,
+            detail=f"还有 {len(blockers)} 个镜头未完成准备(提取后仍有待确认候选):{blockers[:5]}",
+        )
 
     design_list = DesignList.model_validate(rec["design_list"])
     concept = Concept.model_validate(rec["concept"])
