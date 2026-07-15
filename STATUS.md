@@ -1,7 +1,7 @@
 # Hevi · STATUS
 
 > Canonical project status. Read at the start of any non-trivial task.
-> Last updated: 2026-07-11
+> Last updated: 2026-07-15
 > Sources: git log, `.claude` project memory (tongjian-pipeline-handoff, deploy-topology, e2e-local-llm-json-blocker, gpu-pcie-fallen-off-bus).
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
 
@@ -13,13 +13,14 @@
 - **Never route json2video/flux-schnell to character/portrait generation.** Confirmed 2026-07-08: technically succeeds but generates unrelated buildings/landscapes for Chinese person prompts. `hevi/image/json2video_scene_service.py` is scene-background-only (no-character). Keep it out of `resilient_image_gen` person fallback chains.
 - **Never let dialogue exist without provenance.** Tongjian/cinematic台词 must be either paraphrased from `chapter_ir.quotes` (has `quote_id`) or explicitly `BeatDialogue.is_performative=True`. "Neither quote_id nor is_performative" = violation. This is the史实 red-line CG2.5 gate enforces — preserve that check in any edit.
 - **Never rebuild main branch state blindly after a PR merge.** ff-merge `origin/main` into local `main` after each merge or the working tree drifts into a stale superposition. (see memory: git-sync-main-after-merge)
-- **Never assume merging a PR / applying a migration updates the public site.** `hevi.uex.hk` is the `hevi-cftunnel` docker-compose stack (build-time image snapshot). Must `build` + `up -d` `hevi-api hevi-web` after code/migration. DB-ahead-of-image migration set → API crash-loop. Production op — confirm before running.
+- **Never assume merging a PR / applying a migration updates the public site.** `hevi.kanpan.co` is the `hevi-cftunnel` docker-compose stack (build-time image snapshot). Must `build` + `up -d` `hevi-api hevi-web` after code/migration. DB-ahead-of-image migration set → API crash-loop. Production op — confirm before running.
 - **Never swap the SDXL fp16 VAE back to the official one** (`_sdxl_worker.py` uses `madebyollin/sdxl-vae-fp16-fix`; official needs fp32, no VRAM headroom). And never merge the IP-Adapter vs plain-txt2img code paths without re-testing (attention-slicing + IP-Adapter crashes).
 
 ---
 
 ## 🔄 In Progress
 
+- **主线现已是 SPEC-003 导演流水线 + INC-001 电影级补强(2026-07-15,PR #23 已合并并部署上线 hevi.kanpan.co)。** Concept→Screenplay→DesignList→ShotList→L6 生成的全自动导演管线(`hevi/director/`),叠加 INC-001 电影级三件套:§B action_beats 动作弧(首帧 trigger/关键帧 peak/尾帧 aftermath;`action_arc` 默认 2point 零成本,3point 可开峰值弧成本 2×)、§C 首帧未完成态、§H target_name→eyeline、§F 编译规范(输出口径/主体优先级/实体名硬规则)、§J 相邻镜头连续性。INC-001 §A/§G/§I/§L 依赖"交互式准备台+候选表",本全自动管线无对应物→跳过;§D/§F.4 已天然满足;§E 折进 §H+§J;§K 略过。**尚未做真实渲染验证**(§B 是否真出连续动作,要真实花费,待 soffy 定预算)。下方 SPEC-001 骨架条目均已随 PR #21-23 合并,作为历史留存。
 - **SPEC-001 短剧/漫剧通道 — FROZEN, 阶段 1 in progress.** Eval + 4 settled decisions at `docs/specs/SPEC-001-shortdrama-eval.md` (2026-07-11). Decisions: (1) drop Subject3D, rest on 2D CLIP lock; (2) build B0 by generalizing tongjian L0-L2; (3) 剧集规划器 is a new planning layer (not Producer ext); (4) LLM via `qwen_cloud` (already wired + verified). **阶段 1 min-loop** (eval §5): B0 story graph → SeasonPlan splits 3 episodes → reuse Director/L1 per-episode → read-only Season Board. G1 gate: short novel → 3 episodes → cross-episode identity consistent (identity_distance ok via 2D CLIP).
   - ✅ **Step 1 — B0 story parsing done.** New module `hevi/storygraph/` (schemas + extract), novel-general generalization of tongjian L0. Reuses tongjian's deterministic span/ID/hallucination-guard machinery (imports `_find_span`/`_call_llm_json` from `chapter_ir`, the established shared-helper convention). StoryGraph per SPEC §2.3 (relationships/arcs structured but deferred to阶段 2). Selects `qwen_cloud` LLM explicitly. `tests/test_storygraph.py` 4/4 green; tongjian no regression. Not yet committed.
   - ✅ **Step 2 — Episode Planner (剧集规划器) done.** New module `hevi/season_planner/` (schemas + planner), a new planning layer (not Producer ext). `build_season_plan(story, target_episodes)` mirrors tongjian L1: LLM splits timeline into N episodes (best-of-N + LLM-judge), code deterministically assembles characters_present/locations/beats from StoryGraph. `gate_season_plan()` = SPEC §3.4 pre-gen self-critique (all deterministic): event coverage/no-dup/no-orphan, per-episode beat completeness (no all-过场 episode), episode-count feasibility, character non-discontinuity (主角凭空消失). Reuses tongjian `GateResult` + `_call_llm_json`. Selects `qwen_cloud`. `tests/test_season_planner.py` 8/8 green. Not yet committed.
@@ -53,9 +54,11 @@
 
 ## ✅ Done
 
+- **SPEC-003 导演流水线 + INC-001 电影级补强 — merged (PR #23) + deployed 2026-07-15.** 全自动导演管线(`hevi/director/`:concept/screenplay/design_list/shot_list/tongjian_render)+ 五档逐镜 verdict/返工 + ⑤生成接通鉴对白+口型(治音画不同步/看不到说话人)。INC-001:§B action_beats(`_infer_action_phases`,L6 首/关/尾帧分抓 trigger/peak/aftermath;`action_arc` 默认 2point)、§C 首帧未完成态、§F 编译规范、§H eyeline、§J 连续性。**顺带修复**:`scene_render_avatar.py` 自 fd01988 起漏 `import asyncio`→`_action_end_state` kf2v 尾帧 LLM 拆解一直静默退化,已补(见 memory scene-render-asyncio-latent-bug);`GateResult` import 提顶层消 ruff F821 误报。相关面 409 tests passed,无回归。
+- **部署域名迁移 hevi.uex.hk → hevi.kanpan.co(2026-07-15,`b8d6ba1`)** — cloudflared/CORS/web 构建参数全切;Dockerfile.api CJK 字体拆独立层;compose 挂 HF 缓存 + `/data/models/huggingface`(CLIP 身份向量 + sdxl_local 关键帧权重)。`up -d --build` 重建 cftunnel 栈,公网 web/api 均 200。**不需要 ssh-agent**(Dockerfile.api 是 `COPY .venv/`);CI test job 因 ssh-private-key secret 为空在 Setup SSH 步就红,与代码无关。
 - **Tongjian pipeline L0–L8** — full 9-layer 资治通鉴→video pipeline, each layer + gate, committed (`a0478a7`…`e97e374`). Self-media explainer channel + Tongjian console shipped (`5306070`). json2video cloud provider for character-free scene backgrounds (`da92410`).
 - **短剧创建入口生产事故排查 + 修复 2026-07-12(commits 9e09486/832a327/0d16260)** —
-  soffy 在 hevi.uex.hk 上真实测试时连续撞见两个真实 bug(不是显示问题):(1) 容器
+  soffy 在 hevi.kanpan.co 上真实测试时连续撞见两个真实 bug(不是显示问题):(1) 容器
   没有到 huggingface.co 的公网出口,建角色 Subject 算 CLIP 身份向量时联网校验请求
   无限重试,把 `_confirm_pipeline` 挂死。第一版修复(20s `asyncio.wait_for`)不够——
   超时只让调用方不再等,杀不掉 `asyncio.to_thread` 的后台线程,"僵尸重试线程"占满
@@ -72,7 +75,7 @@
   在这种"派发阶段失败"场景下也展示角色绑定+确认 UI,不再只剩重新规划。同时按 soffy
   要求加了派发进度可见性:后端逐步写 `rec["progress"]`(如"建角色参考图 2/3: 道士"),
   前端显示这句话 + "已轮询 N 次"心跳,不再是半小时不动的裸图标。`tests/test_shortdrama_router.py`
-  13/13 过,全量 1020 测试过,tsc 干净。hevi.uex.hk 已用两版修复分别 rebuild+重启,
+  13/13 过,全量 1020 测试过,tsc 干净。hevi.kanpan.co 已用两版修复分别 rebuild+重启,
   **每次容器重启都会清空内存里未完结的 run,soffy 需要重新走一遍手稿提交流程**。
 - **Tongjian L6 画面风格可切换(卡通/水墨)2026-07-12** — soffy: 水墨风格现代观众/小孩不喜欢。查出 `hevi/tongjian/scene_render_avatar.py`(cloud_avatar 渲染路径)里"国画水墨"文案写死在 7 处 prompt 拼接点(旁白像描述、canonical 肖像、对白/旁白/场景 prompt、i2v motion prompt),`params.style` 此前只在其中一处生效、其余全被写死文案盖过。改成统一从 `style`(默认 `_DEFAULT_STYLE`=水墨)取词,所有拼接点改用同一个变量;顺带把只适合水墨的装饰性词("写意笔触,宣纸质感"、canonical 像上的"竖排题字与朱红印章")从公共函数里去掉,不再对所有风格都强加。前端 `TongjianConsole.tsx` 加"画面风格"预设选择器(国画水墨默认 / 卡通动画),点选自动填风格词输入框,仍可手写覆盖。**范围限定**:只对 `cloud_avatar`(云数字人)渲染模式生效——`sdxl_local`(本地静帧)走固定 SDXL LoRA 融合,`params.style` 在那条路径完全不生效(硬件已弃用,不值得为它换 LoRA),UI 里该模式下风格选择器禁用并有提示。`tests/test_tongjian_scene_render_avatar.py` 6/6 仍过(无用例断言具体文案字符串,未受影响);`tsc --noEmit` 干净;真实浏览器验证预设按钮渲染 + 点击卡通预设正确填充风格词输入框。未做真实视频生成对比(不花钱验证到 UI 层为止)。
 - **HEVI-EXEC-01 M1** (vault MinIO+pgvector asset store, `2aa0ec8`).

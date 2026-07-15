@@ -2,7 +2,7 @@
 
 角色/风格/场景/声音资产的持久化底座:MinIO(内容寻址 blob)+ PostgreSQL(元数据/血缘)+
 pgvector(身份/风格 embedding)。独立于 hevi 主库(见 docker-compose.yml 的 hevi-vault
-项目),不与主 app 共享 Postgres 实例,避免触碰已在服务 hevi.uex.hk 的 hevi-dev 栈。
+项目),不与主 app 共享 Postgres 实例,避免触碰已在服务 hevi.kanpan.co 的 hevi-dev 栈。
 
 V-P0(本次实现)范围:manifest schema + DDL + `asset_resolve`/`asset_create`/`asset_verify`
 三个 oskill 接口 + 血缘落库。平台绑定懒同步(§5)、稳定性预检自动化、GC 任务是 V-P1;
