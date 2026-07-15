@@ -45,6 +45,42 @@ def _data_uri(image_path: Path) -> str:
     return f"data:image/{mime};base64,{base64.b64encode(image_path.read_bytes()).decode()}"
 
 
+async def _submit_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    json: dict[str, Any],
+    headers: dict[str, str],
+    label: str,
+) -> httpx.Response:
+    """MaaS 端点提交带指数退避重试。整集逐镜高频出关键帧(每镜 1-2 张 qwen-image-edit/
+    generate)会间歇 403 Forbidden / 429 限流,隔几十秒自恢复(实测直接重试即成功)。一次
+    失败就抛出 → scene_render_avatar 整镜降级空镜 → 成片只剩零星几镜(用户实测"8 镜只出 1
+    镜、成片 6 秒")。5 次指数退避(~78s)够清瞬时限流。"""
+    last_err: Exception | None = None
+    for attempt in range(5):
+        try:
+            r = await client.post(url, json=json, headers=headers)
+            r.raise_for_status()
+            return r
+        except httpx.HTTPError as e:
+            last_err = e
+            code = getattr(getattr(e, "response", None), "status_code", None)
+            if attempt == 4:
+                break
+            wait = min(30, 4 * (2**attempt))
+            logger.warning(
+                "%s 提交第 %d 次失败(%s code=%s),%ds 后重试",
+                label,
+                attempt + 1,
+                type(e).__name__,
+                code,
+                wait,
+            )
+            await asyncio.sleep(wait)
+    raise QwenImageError(f"{label} 提交多次失败: {type(last_err).__name__} {last_err}")
+
+
 async def qwen_image_generate(
     *,
     prompt: str,
@@ -74,8 +110,9 @@ async def qwen_image_generate(
     submit_url = f"https://{h}/api/v1/services/aigc/text2image/image-synthesis"
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=15.0)) as client:
-        r = await client.post(submit_url, json=payload, headers=submit_headers)
-        r.raise_for_status()
+        r = await _submit_with_retry(
+            client, submit_url, json=payload, headers=submit_headers, label="qwen-image"
+        )
         task_id = (r.json().get("output") or {}).get("task_id")
         if not task_id:
             raise QwenImageError(f"qwen-image 提交无 task_id: {r.text[:300]}")
@@ -137,8 +174,9 @@ async def qwen_image_edit(
     }
     url = f"https://{h}/api/v1/services/aigc/multimodal-generation/generation"
     async with httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=15.0)) as client:
-        r = await client.post(url, json=payload, headers=headers)
-        r.raise_for_status()
+        r = await _submit_with_retry(
+            client, url, json=payload, headers=headers, label="qwen-image-edit"
+        )
         out = r.json().get("output") or {}
         img_url = None
         for choice in out.get("choices") or []:

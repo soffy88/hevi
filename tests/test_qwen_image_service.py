@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from hevi.image.qwen_image_service import QwenImageError, qwen_image_edit
@@ -81,6 +82,59 @@ async def test_single_image_edit_still_works_unchanged(tmp_path, monkeypatch):
 
     content = client.post.await_args.kwargs["json"]["input"]["messages"][0]["content"]
     assert len([c for c in content if "image" in c]) == 1
+
+
+@pytest.mark.asyncio
+async def test_edit_retries_on_transient_403_then_succeeds(tmp_path, monkeypatch):
+    """MaaS 端点整集逐镜高频出关键帧会间歇 403 限流,几十秒自恢复。提交要指数退避重试,
+    不能一次 403 就抛(否则 scene_render_avatar 整镜降级空镜,用户实测"8 镜只出 1 镜")。"""
+    monkeypatch.setenv("ALIBABA_MAAS_API_KEY", "test-key")
+    monkeypatch.setenv("ALIBABA_MAAS_HOST", "test-host")
+    monkeypatch.setattr("hevi.image.qwen_image_service.asyncio.sleep", AsyncMock())  # 不真等退避
+
+    img = tmp_path / "a.png"
+    img.write_bytes(b"fake-a")
+
+    forbidden = MagicMock()
+    forbidden.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError("403", request=MagicMock(), response=MagicMock())
+    )
+    ok = _fake_response(
+        {"output": {"choices": [{"message": {"content": [{"image": "https://x/y.png"}]}}]}}
+    )
+    download_response = _fake_response({})
+    client = _fake_client(ok, download_response)
+    # 前两次提交 403,第三次成功 → 应重试到成功,不抛
+    client.post = AsyncMock(side_effect=[forbidden, forbidden, ok])
+
+    with patch("httpx.AsyncClient", return_value=client):
+        await qwen_image_edit(
+            image_path=img, instruction="改表情", output_path=tmp_path / "out.png"
+        )
+    assert client.post.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_edit_raises_after_exhausting_retries(tmp_path, monkeypatch):
+    """持续 403(5 次退避后仍失败)→ 抛 QwenImageError,不静默返回。"""
+    monkeypatch.setenv("ALIBABA_MAAS_API_KEY", "test-key")
+    monkeypatch.setenv("ALIBABA_MAAS_HOST", "test-host")
+    monkeypatch.setattr("hevi.image.qwen_image_service.asyncio.sleep", AsyncMock())
+
+    img = tmp_path / "a.png"
+    img.write_bytes(b"fake-a")
+
+    forbidden = MagicMock()
+    forbidden.raise_for_status = MagicMock(
+        side_effect=httpx.HTTPStatusError("403", request=MagicMock(), response=MagicMock())
+    )
+    client = _fake_client(forbidden, _fake_response({}))
+    client.post = AsyncMock(return_value=forbidden)
+
+    with patch("httpx.AsyncClient", return_value=client):
+        with pytest.raises(QwenImageError, match="提交多次失败"):
+            await qwen_image_edit(image_path=img, instruction="x", output_path=tmp_path / "out.png")
+    assert client.post.await_count == 5
 
 
 @pytest.mark.asyncio
