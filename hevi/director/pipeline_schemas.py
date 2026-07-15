@@ -102,6 +102,9 @@ class ShotListDialogueLine(BaseModel):
 
     character_name: str = ""  # 空 = 旁白;非空须能在 DesignList.characters 里按 name 找到
     text: str
+    # INC-001 §H 对谁说:A 对 B 说话 → target_name=B。直接驱动 eyeline(说话者看向受话者),
+    # 是 v3.2 eyeline 维度的数据源,不用另标注。空 = 未指明受话对象(独白/对众)。
+    target_name: str = ""
 
 
 class ShotBlocking(BaseModel):
@@ -120,6 +123,10 @@ class ShotListItem(BaseModel):
     visual_prompt: str = ""  # 画面内容描述(生成用的视觉 prompt 主体)
     dialogue_lines: list[ShotListDialogueLine] = Field(default_factory=list)
     blocking: list[ShotBlocking] = Field(default_factory=list)
+    # INC-001 §B 动作弧:一组有序动作拍点(字符串列表,不做结构化对象)。首帧抓 trigger、
+    # (3point)关键帧抓 peak、尾帧抓 aftermath——喂 kf2v 的首尾帧因此构成有起承转合的运动,
+    # 而不是一张图微微动一下。为空则退回按 visual_prompt 自然语言切片(现状行为不变)。
+    action_beats: list[str] = Field(default_factory=list)
     character_names: list[str] = Field(default_factory=list)  # 本镜出场角色(剧本阶段名字)
     scene_name: str = ""  # 本镜所在场景(对应 DesignScene.name)
     prop_names: list[str] = Field(default_factory=list)

@@ -177,3 +177,52 @@ async def test_shot_list_draft_llm_failure_falls_back_per_scene():
     scene2_shot = next(s for s in sl.shots if s.scene_no == 2)
     assert scene2_shot.dialogue_lines[0].character_name == ""  # 旁白
     assert scene2_shot.dialogue_lines[0].text == "第二场旁白"
+
+
+async def test_shot_list_draft_parses_action_beats():
+    """INC-001 §B:LLM 产出的 action_beats(有序动作拍点)被解析到 ShotListItem 上;
+    空/纯空白拍点被剔除。"""
+    llm = _llm(
+        '{"shots": [{"shot_size": "全景", "visual_prompt": "张飞拔剑", '
+        '"action_beats": ["张飞猛地抽剑架颈", "  ", "刘备扑上夺剑", "宝剑坠地紧抱"], '
+        '"dialogue_lines": [], "character_names": ["张飞", "刘备"], "duration_s": 5}]}'
+    )
+    screenplay = Screenplay(
+        scenes=[
+            ScreenplayScene(
+                scene_no=1, location="军帐", characters_present=["张飞", "刘备"], narration="拔剑"
+            )
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="张飞"), DesignCharacter(name="刘备")],
+        scenes=[DesignScene(name="军帐")],
+    )
+    sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
+    assert sl.shots[0].action_beats == ["张飞猛地抽剑架颈", "刘备扑上夺剑", "宝剑坠地紧抱"]
+
+
+async def test_shot_list_draft_parses_target_name_on_dialogue():
+    """INC-001 §H:对白行解析出 target_name(对谁说),驱动后续 eyeline。"""
+    llm = _llm(
+        '{"shots": [{"shot_size": "中景", "visual_prompt": "二人对峙", '
+        '"dialogue_lines": [{"character_name": "智伯", "text": "把地给我。", '
+        '"target_name": "韩康子"}], '
+        '"character_names": ["智伯", "韩康子"], "duration_s": 5}]}'
+    )
+    screenplay = Screenplay(
+        scenes=[
+            ScreenplayScene(
+                scene_no=1,
+                location="宫殿",
+                characters_present=["智伯", "韩康子"],
+                dialogue=[ScreenplayDialogueLine(character_name="智伯", text="把地给我。")],
+            )
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="智伯"), DesignCharacter(name="韩康子")],
+        scenes=[DesignScene(name="宫殿")],
+    )
+    sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
+    assert sl.shots[0].dialogue_lines[0].target_name == "韩康子"

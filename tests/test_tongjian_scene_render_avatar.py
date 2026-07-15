@@ -955,3 +955,328 @@ async def test_action_engine_i2v_keeps_old_single_frame_path(tmp_path):
 
     kf2v.assert_not_awaited()  # i2v 开关下不碰 kf2v
     i2v_spy.assert_awaited()  # 走旧单帧微动
+
+
+# ── INC-001 §B 动作弧 action_beats ──────────────────────────────────────────
+
+
+def test_infer_action_phases_empty_returns_blanks():
+    """无 action_beats → 三阶段全空,调用方据此退回现状(§C 未完成态 + LLM 拆完成态)。"""
+    from hevi.tongjian.scene_render_avatar import _infer_action_phases
+
+    assert _infer_action_phases([]) == ("", "", "")
+    assert _infer_action_phases(["  ", ""]) == ("", "", "")
+
+
+def test_infer_action_phases_single_beat_same_all():
+    """只有一拍 → trigger/peak/aftermath 同拍。"""
+    from hevi.tongjian.scene_render_avatar import _infer_action_phases
+
+    assert _infer_action_phases(["张飞拔剑"]) == ("张飞拔剑", "张飞拔剑", "张飞拔剑")
+
+
+def test_infer_action_phases_picks_ends_and_densest_middle_peak():
+    """首拍=trigger、末拍=aftermath、峰值=中间拍里动作动词最密的一拍。"""
+    from hevi.tongjian.scene_render_avatar import _infer_action_phases
+
+    trigger, peak, aftermath = _infer_action_phases(
+        [
+            "张飞猛地抽剑架上脖颈",  # trigger
+            "两人静静站着",  # 中间-弱(0 动作词)
+            "刘备一把攥住剑身猛地扑上夺剑",  # 中间-强(一把/猛地/扑/夺)→ 峰值
+            "宝剑坠地,刘备紧抱住张飞",  # aftermath
+        ]
+    )
+    assert trigger == "张飞猛地抽剑架上脖颈"
+    assert aftermath == "宝剑坠地,刘备紧抱住张飞"
+    assert peak == "刘备一把攥住剑身猛地扑上夺剑"
+
+
+@pytest.mark.asyncio
+async def test_action_arc_default_2point_uses_aftermath_beat(tmp_path):
+    """默认 2point:有 action_beats 的动作镜 → 单段 kf2v(首帧→尾帧),尾帧关键帧直接用
+    aftermath 拍文本(省掉 _action_end_state LLM 拆解),不产生 peak 段。"""
+    bible = _bible()  # C003
+    script = Script(lines=[ScriptLine(line_id="LN001", type="action", text="张飞拔剑要自刎")])
+    shotlist = ShotList(
+        shots=[
+            Shot(
+                shot_id="SH001",
+                line_ids=["LN001"],
+                characters=["C003"],
+                visual_prompt="张飞拔剑自刎",
+                action_beats=["张飞猛地抽剑架颈", "刘备扑上攥住剑身", "宝剑坠地刘备紧抱住张飞"],
+            )
+        ]
+    )
+
+    edit_instructions: list[str] = []
+
+    async def _spy_qwen_edit(*, image_path, instruction, output_path):
+        edit_instructions.append(instruction)
+        output_path.write_bytes(b"kf" * 600)
+        return output_path
+
+    async def _fake_qwen_gen(*, output_path, **_k):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    kf2v_calls: list[tuple[str, str]] = []
+
+    async def _spy_kf2v(*, first_frame, last_frame, output_path, **_k):
+        kf2v_calls.append((Path(first_frame).name, Path(last_frame).name))
+        Path(output_path).write_bytes(b"kf2v-vis")
+        return output_path
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_spy_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.alibaba_maas_keyframe_generate",
+            AsyncMock(side_effect=_spy_kf2v),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_silent",
+            lambda vis, out, w, h, dur: out.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                params={"non_dialogue_mode": "silent_action", "action_engine": "kf2v"}
+            ),
+        )
+
+    assert kf2v_calls == [("SH001_kf.png", "SH001_kf_end.png")]  # 单段,无 peak
+    # 尾帧关键帧用 aftermath 拍文本,不是 LLM 退化的"(动作已完成、结果态)"
+    end_instrs = [i for i in edit_instructions if "宝剑坠地刘备紧抱住张飞" in i]
+    assert end_instrs, "尾帧关键帧未使用 aftermath 拍文本"
+    assert not any("动作已完成、结果态" in i for i in edit_instructions)
+
+
+@pytest.mark.asyncio
+async def test_action_arc_3point_inserts_peak_segment(tmp_path):
+    """action_arc="3point":有独立 peak 拍时,首帧→peak→尾帧两段 kf2v 拼接(成本翻倍)。"""
+    bible = _bible()
+    script = Script(lines=[ScriptLine(line_id="LN001", type="action", text="张飞拔剑要自刎")])
+    shotlist = ShotList(
+        shots=[
+            Shot(
+                shot_id="SH001",
+                line_ids=["LN001"],
+                characters=["C003"],
+                visual_prompt="张飞拔剑自刎",
+                action_beats=["张飞猛地抽剑架颈", "刘备一把扑上攥住剑身", "宝剑坠地刘备紧抱住张飞"],
+            )
+        ]
+    )
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        output_path.write_bytes(b"kf" * 600)
+        return output_path
+
+    async def _fake_qwen_gen(*, output_path, **_k):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    kf2v_calls: list[tuple[str, str]] = []
+
+    async def _spy_kf2v(*, first_frame, last_frame, output_path, **_k):
+        kf2v_calls.append((Path(first_frame).name, Path(last_frame).name))
+        Path(output_path).write_bytes(b"kf2v-vis")
+        return output_path
+
+    concat_calls: list[int] = []
+
+    def _spy_concat(clips, out):
+        concat_calls.append(len(clips))
+        Path(out).write_bytes(b"concat")
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.alibaba_maas_keyframe_generate",
+            AsyncMock(side_effect=_spy_kf2v),
+        ),
+        patch("hevi.tongjian.scene_render_avatar._concat_clips", _spy_concat),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_silent",
+            lambda vis, out, w, h, dur: out.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                params={
+                    "non_dialogue_mode": "silent_action",
+                    "action_engine": "kf2v",
+                    "action_arc": "3point",
+                }
+            ),
+        )
+
+    assert kf2v_calls == [
+        ("SH001_kf.png", "SH001_kf_peak.png"),
+        ("SH001_kf_peak.png", "SH001_kf_end.png"),
+    ]
+    assert concat_calls == [2]  # 两段拼接
+
+
+# ── INC-001 §H 视线(target→eyeline) + §J 相邻镜头连续性 ──────────────────────
+
+
+def _bible2() -> CharacterBible:
+    return CharacterBible(
+        characters=[
+            CharacterBibleEntry(character_id="C003", name="智果", appearance="清瘦谋士"),
+            CharacterBibleEntry(character_id="C005", name="赵襄子", appearance="华服君主"),
+        ]
+    )
+
+
+@pytest.mark.asyncio
+async def test_dialogue_keyframe_includes_eyeline_toward_target(tmp_path):
+    """INC-001 §H:对白行带 target → 关键帧 instruction 里说话者"目光看向"受话者(赵襄子)。"""
+    script = Script(
+        lines=[
+            ScriptLine(
+                line_id="LN001",
+                type="dialogue",
+                speaker="C003",
+                text="请分宗。",
+                emotion="决绝",
+                target="C005",
+            )
+        ]
+    )
+    shotlist = ShotList(shots=[Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"])])
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        output_path.write_bytes(b"kf" * 600)
+        return output_path
+
+    async def _fake_qwen_gen(*, output_path, **_k):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    async def _fake_happyhorse(*, image_path, prompt, output_path, duration, resolution):
+        output_path.write_bytes(b"talk")
+        return output_path
+
+    qwen_edit = AsyncMock(side_effect=_fake_qwen_edit)
+    with (
+        patch("hevi.tongjian.scene_render_avatar.qwen_image_edit", qwen_edit),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate",
+            AsyncMock(side_effect=_fake_happyhorse),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist, script, _bible2(), Constitution(), run_dir=tmp_path
+        )
+
+    assert "目光看向赵襄子" in qwen_edit.await_args.kwargs["instruction"]
+
+
+@pytest.mark.asyncio
+async def test_consecutive_same_scene_shots_get_continuity_hint(tmp_path):
+    """INC-001 §J:同场景连续镜头(有共同人物)→ 第 2 镜关键帧带"保持朝向/轴线稳定"约束;
+    首镜不带。"""
+    script = Script(
+        lines=[
+            ScriptLine(line_id="LN001", type="dialogue", speaker="C003", text="其一。"),
+            ScriptLine(line_id="LN002", type="dialogue", speaker="C003", text="其二。"),
+        ]
+    )
+    shotlist = ShotList(
+        shots=[
+            Shot(shot_id="SH001", line_ids=["LN001"], scene_id="宫殿", characters=["C003"]),
+            Shot(shot_id="SH002", line_ids=["LN002"], scene_id="宫殿", characters=["C003"]),
+        ]
+    )
+
+    instrs: list[str] = []
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        instrs.append(instruction)
+        output_path.write_bytes(b"kf" * 600)
+        return output_path
+
+    async def _fake_qwen_gen(*, output_path, **_k):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    async def _fake_happyhorse(*, image_path, prompt, output_path, duration, resolution):
+        output_path.write_bytes(b"talk")
+        return output_path
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate",
+            AsyncMock(side_effect=_fake_happyhorse),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist, script, _bible(), Constitution(), run_dir=tmp_path
+        )
+
+    assert len(instrs) == 2
+    assert "避免跳轴" not in instrs[0]  # 首镜无上镜可承接
+    assert "避免跳轴" in instrs[1]  # 第 2 镜同场景连续 → 稳轴线

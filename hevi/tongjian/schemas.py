@@ -131,6 +131,7 @@ class ScriptLine(BaseModel):
     dramatized: bool = False
     emotion: str = ""
     visual_hint: str = ""
+    target: str = ""  # INC-001 §H 受话对象(对谁说)→ L6 关键帧 eyeline(说话者目光看向该角色)
 
 
 class Script(BaseModel):
@@ -187,6 +188,9 @@ class Shot(BaseModel):
     visual_prompt: str = ""
     motion_mode: str = "ken_burns"  # ken_burns / img2video / static
     is_transition: bool = False  # True = 覆盖 timeline.gaps 的过场镜头,非台词镜头
+    # INC-001 §B 动作弧拍点(见 ShotListItem.action_beats);L6 kf2v 首帧抓 trigger、
+    # (3point)关键帧抓 peak、尾帧抓 aftermath。为空则退回现状(单帧微动/visual_prompt 切片)。
+    action_beats: list[str] = Field(default_factory=list)
 
 
 class ShotList(BaseModel):

@@ -91,6 +91,10 @@ def build_tongjian_inputs(
                 continue  # 旁白 / 空行:丢弃
             n += 1
             line_id = f"ln{n:03d}"
+            # INC-001 §H:受话对象须是已锁定角色且不是说话人本人,才作 eyeline 数据源;否则丢弃。
+            target = (dl.target_name or "").strip()
+            if target not in bible_names or target == speaker:
+                target = ""
             lines.append(
                 ScriptLine(
                     line_id=line_id,
@@ -99,6 +103,7 @@ def build_tongjian_inputs(
                     speaker=speaker,
                     text=text,
                     dramatized=True,
+                    target=target,
                 )
             )
             shot_line_ids.append(line_id)
@@ -124,6 +129,7 @@ def build_tongjian_inputs(
                 camera=ShotCamera(shot_size=_map_shot_size(shot.shot_size or shot.camera)),
                 visual_prompt=visual,
                 motion_mode="img2video",
+                action_beats=list(shot.action_beats or []),  # INC-001 §B 动作弧透传到 L6 kf2v
             )
         )
 

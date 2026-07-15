@@ -29,6 +29,7 @@ import logging
 import re
 import shutil
 import subprocess
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -112,6 +113,47 @@ _INCOMPLETE_STATE_SUFFIX = (
 def _incomplete_state_suffix(action_src: str) -> str:
     """动作源文本里出现连续反应链动词 → 返回"未完成态"约束,否则空串。"""
     return _INCOMPLETE_STATE_SUFFIX if any(k in action_src for k in _REACTION_CHAIN_KEYS) else ""
+
+
+def _action_keyword_score(text: str) -> int:
+    """一段动作文本里命中多少连续反应链动词——动作强度的粗代理,用来在中间拍里挑峰值拍。"""
+    return sum(1 for k in _REACTION_CHAIN_KEYS if k in text)
+
+
+def _infer_action_phases(beats: list[str]) -> tuple[str, str, str]:
+    """INC-001 §B:有序 action_beats → (trigger, peak, aftermath) 三阶段文本(轻量启发式)。
+
+    首拍=trigger(动作触发),末拍=aftermath(收束/结果),峰值=中间拍里动作动词最密的一拍
+    (只有两拍时取两拍中动作更强者;只有一拍时三阶段同拍)。beats 为空 → 三个空串,
+    调用方据此退回现状行为(§C 未完成态 + _action_end_state,不依赖 beats)。
+    """
+    beats = [b.strip() for b in beats if b and b.strip()]
+    if not beats:
+        return "", "", ""
+    if len(beats) == 1:
+        return beats[0], beats[0], beats[0]
+    trigger, aftermath = beats[0], beats[-1]
+    middle = beats[1:-1]
+    peak = max(middle or beats, key=_action_keyword_score)
+    return trigger, peak, aftermath
+
+
+_CONTINUITY_SUFFIX = (
+    ",与上一镜是同一场景的连续镜头:保持人物左右站位与面部朝向稳定、空间轴线一致,避免跳轴和朝向突变"
+)
+
+
+def _continuity_suffix(shots: list, idx: int, shot) -> str:
+    """INC-001 §J(计划态双向连续性的落地简版):当前镜与上一镜同场景且有共同在场角色 →
+    返回"保持朝向/轴线稳定"约束,减少切镜突兀。首镜或换场镜返回空串。"""
+    if idx <= 0:
+        return ""
+    prev = shots[idx - 1]
+    if not shot.scene_id or prev.scene_id != shot.scene_id:
+        return ""
+    if not (set(prev.characters) & set(shot.characters)):
+        return ""
+    return _CONTINUITY_SUFFIX
 
 
 def _p(config: LayerConfig | None, key: str, default: Any) -> Any:
@@ -507,6 +549,33 @@ async def _action_end_state(action: str, llm: Any) -> str:
     return f"{action}(动作已完成、结果态)"
 
 
+async def _gen_action_keyframe(
+    *,
+    action_ip: Path,
+    style: str,
+    appear: str,
+    emotion: str,
+    desc: str,
+    out_path: Path,
+    engine: str,
+    size: tuple[int, int],
+) -> None:
+    """从锁脸参考(action_ip)+ 相貌(appear)生成一张"闭嘴做某动作(desc)"的关键帧,供 kf2v
+    的首/中(peak)/尾(aftermath)帧复用。已存在则跳过(缓存)。"""
+    if out_path.exists():
+        return
+    await _edit_keyframe(
+        image_path=action_ip,
+        instruction=_EDIT_PREFIX + emotion + ",闭着嘴,动作:" + desc + _EXPRESSION_GUARD,
+        output_path=out_path,
+        fallback_from=action_ip,
+        engine=engine,
+        local_prompt=_local_kf_prompt(style, appear, emotion, desc, mouth_closed=True, wide=True),
+        ip_adapter_image=action_ip,
+        size=size,
+    )
+
+
 async def build_frame_manifest_avatar(
     shotlist: ShotList,
     script: Script,
@@ -538,6 +607,11 @@ async def build_frame_manifest_avatar(
     # 治"演不出动作");"i2v"=旧的单帧微动。只作用于非对白的动作镜(有反应链动作),纯场景镜
     # 与对白镜不受影响。见非对白分支。
     action_engine = str(_p(config, "action_engine", "kf2v"))
+    # 动作弧采样档(INC-001 §B):"2point"=首帧(trigger)→尾帧(aftermath)单段 kf2v(默认,
+    # 零额外成本);"3point"=首帧→关键帧(peak)→尾帧,中间多插一张 peak 关键帧并做两段 kf2v
+    # 拼接,动作弧有真正的峰值,但每个动作镜的视频生成调用数翻倍(成本约 2×)。仅当有
+    # 结构化 action_beats 时 3point 才生效;无 beats 一律退回单段(现状)。
+    action_arc = str(_p(config, "action_arc", "2point"))
     resolved_llm = _resolve_llm() if action_engine == "kf2v" else None
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
@@ -551,7 +625,7 @@ async def build_frame_manifest_avatar(
     narrator_ref = await _canonical("narrator", narrator_desc, work, style)
 
     frames: list[ShotFrame] = []
-    for shot in shotlist.shots:
+    for idx, shot in enumerate(shotlist.shots):
         sid = shot.shot_id
         lines = [lines_by_id[lid] for lid in shot.line_ids if lid in lines_by_id]
         text = "".join(ln.text for ln in lines).strip()
@@ -571,8 +645,20 @@ async def build_frame_manifest_avatar(
         action_hint = (
             dlg_line.visual_hint if dlg_line else (lines[0].visual_hint if lines else "")
         ) or ""
+        # INC-001 §B:结构化动作弧 → (trigger, peak, aftermath)。首帧动作源优先取 trigger 拍,
+        # 否则退回剧本 visual_hint(现状不变)。尾帧优先取 aftermath 拍(省掉一次 LLM 拆解)。
+        _trigger, _peak, _aftermath = _infer_action_phases(list(shot.action_beats or []))
+        act_hint = _trigger or action_hint  # 动作镜首帧关键帧的动作描述
         # INC-001 §C:该镜含连续反应链动词 → 关键帧拉到"动作未完成态",治"没有真动作"。
-        _incomplete = _incomplete_state_suffix(f"{text} {shot.visual_prompt} {action_hint}")
+        _incomplete = _incomplete_state_suffix(
+            f"{text} {shot.visual_prompt} {action_hint} {' '.join(shot.action_beats or [])}"
+        )
+        # INC-001 §H:说话者目光看向受话者(eyeline)——target 是桥接层已校验的已锁定角色。
+        _eyeline = ""
+        if dlg_line and getattr(dlg_line, "target", ""):
+            _eyeline = f",目光看向{name_by_id.get(dlg_line.target, dlg_line.target)}"
+        # INC-001 §J:与上一镜同场景且有共同人物 → 保持朝向/左右站位稳定,减少跳轴突兀。
+        _continuity = _continuity_suffix(shotlist.shots, idx, shot)
         dur = _say_dur(text or shot.visual_prompt, per_char)
         clip = work / f"{sid}_clip.mp4"
 
@@ -593,7 +679,7 @@ async def build_frame_manifest_avatar(
                     instruction = _EDIT_PREFIX + emotion
                     if action_hint:
                         instruction += f",动作:{action_hint}"
-                    instruction += _EXPRESSION_GUARD + _incomplete
+                    instruction += _EXPRESSION_GUARD + _incomplete + _eyeline + _continuity
                     await _edit_keyframe(
                         image_path=canon,
                         instruction=instruction,
@@ -674,9 +760,9 @@ async def build_frame_manifest_avatar(
                                 f"把他们合成到同一个画面里,每个人物的相貌、服饰、画风都要"
                                 f"跟各自对应的参考图保持一致,神情{emotion},都闭着嘴"
                             )
-                            if action_hint:
-                                instruction += f",动作:{action_hint}"
-                            instruction += _EXPRESSION_GUARD + _incomplete
+                            if act_hint:
+                                instruction += f",动作:{act_hint}"
+                            instruction += _EXPRESSION_GUARD + _incomplete + _continuity
                             await _edit_keyframe(
                                 image_path=canons,
                                 instruction=instruction,
@@ -690,7 +776,7 @@ async def build_frame_manifest_avatar(
                                     f"{names}同框:"
                                     + "、".join(appearance_by_id.get(cid, cid) for cid in present),
                                     emotion,
-                                    action_hint,
+                                    act_hint,
                                     mouth_closed=True,
                                     wide=True,
                                 ),
@@ -714,9 +800,9 @@ async def build_frame_manifest_avatar(
                         kf = work / f"{sid}_kf.png"
                         if not kf.exists():
                             instruction = _EDIT_PREFIX + emotion + ",闭着嘴"
-                            if action_hint:
-                                instruction += f",动作:{action_hint}"
-                            instruction += _EXPRESSION_GUARD + _incomplete
+                            if act_hint:
+                                instruction += f",动作:{act_hint}"
+                            instruction += _EXPRESSION_GUARD + _incomplete + _continuity
                             await _edit_keyframe(
                                 image_path=canon,
                                 instruction=instruction,
@@ -727,7 +813,7 @@ async def build_frame_manifest_avatar(
                                     style,
                                     appearance_by_id.get(lead, lead),
                                     emotion,
-                                    action_hint,
+                                    act_hint,
                                     mouth_closed=True,
                                     wide=True,
                                 ),
@@ -748,50 +834,68 @@ async def build_frame_manifest_avatar(
                             )
                         vis_src = scene
                         motion = "画面细微流动,烟云飘动"
-                    # P3 动作镜:有反应链动作(_incomplete 非空)+ 有锁脸参考 + kf2v 引擎 →
-                    # 首帧(kf,未完成态)+ 结束帧(完成态)喂 wan2.2-kf2v-flash 插出真运动,
-                    # 治"演不出动作"。否则(纯场景镜/非动作镜/i2v 引擎)走旧的单帧微动。
+                    # P3 动作镜:有动作弧(结构化 action_beats 或反应链动词)+ 锁脸参考 + kf2v
+                    # 引擎 → 关键帧序列喂 wan2.2-kf2v-flash 插出真运动,治"演不出动作"。首帧
+                    # (kf,trigger/未完成态)已在上面出好;尾帧取 aftermath 拍(§B,有则省一次
+                    # LLM),否则 LLM 拆完成态。action_arc="3point" 且有独立 peak 拍时,中间多插
+                    # 一张 peak 关键帧做两段拼接(成本翻倍,默认关)。纯场景镜/i2v 引擎走旧单帧微动。
                     did_kf2v = False
                     if (
                         action_engine == "kf2v"
                         and action_ip is not None
-                        and _incomplete
+                        and (_incomplete or shot.action_beats)
                         and vis_src == kf
                     ):
+                        action_desc = act_hint or text or shot.visual_prompt
                         end_kf = work / f"{sid}_kf_end.png"
-                        action_desc = action_hint or text or shot.visual_prompt
                         if not end_kf.exists():
-                            end_desc = await _action_end_state(action_desc, resolved_llm)
-                            await _edit_keyframe(
-                                image_path=action_ip,
-                                instruction=_EDIT_PREFIX
-                                + emotion
-                                + ",闭着嘴,动作:"
-                                + end_desc
-                                + _EXPRESSION_GUARD,
-                                output_path=end_kf,
-                                fallback_from=action_ip,
+                            end_desc = _aftermath or await _action_end_state(
+                                action_desc, resolved_llm
+                            )
+                            await _gen_action_keyframe(
+                                action_ip=action_ip,
+                                style=style,
+                                appear=action_appear,
+                                emotion=emotion,
+                                desc=end_desc,
+                                out_path=end_kf,
                                 engine=keyframe_engine,
-                                local_prompt=_local_kf_prompt(
-                                    style,
-                                    action_appear,
-                                    emotion,
-                                    end_desc,
-                                    mouth_closed=True,
-                                    wide=True,
-                                ),
-                                ip_adapter_image=action_ip,
                                 size=(w, h),
                             )
-                        try:
-                            await alibaba_maas_keyframe_generate(
-                                first_frame=kf,
-                                last_frame=end_kf,
-                                output_path=vis,
-                                prompt=f"{style},{action_desc}",
-                                resolution=reso,
-                                duration_s=min(5.0, max(3.0, float(dur))),
+                        # 关键帧序列:首帧(trigger)→[peak]→尾帧(aftermath)。
+                        seq = [kf]
+                        if action_arc == "3point" and _peak and _peak != _aftermath:
+                            peak_kf = work / f"{sid}_kf_peak.png"
+                            await _gen_action_keyframe(
+                                action_ip=action_ip,
+                                style=style,
+                                appear=action_appear,
+                                emotion=emotion,
+                                desc=_peak,
+                                out_path=peak_kf,
+                                engine=keyframe_engine,
+                                size=(w, h),
                             )
+                            seq.append(peak_kf)
+                        seq.append(end_kf)
+                        pairs = list(pairwise(seq))
+                        seg_dur = min(5.0, max(3.0, float(dur) / len(pairs)))
+                        try:
+                            seg_clips: list[Path] = []
+                            for i, (a, b) in enumerate(pairs):
+                                seg_out = vis if len(pairs) == 1 else work / f"{sid}_seg{i + 1}.mp4"
+                                if not seg_out.exists():
+                                    await alibaba_maas_keyframe_generate(
+                                        first_frame=a,
+                                        last_frame=b,
+                                        output_path=seg_out,
+                                        prompt=f"{style},{action_desc}",
+                                        resolution=reso,
+                                        duration_s=seg_dur,
+                                    )
+                                seg_clips.append(seg_out)
+                            if len(seg_clips) > 1:
+                                _concat_clips(seg_clips, vis)
                             did_kf2v = True
                         except Exception as e:
                             logger.warning("kf2v 首尾帧生视频失败,退 i2v 单帧微动: %s", e)

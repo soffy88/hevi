@@ -130,3 +130,66 @@ def test_incomplete_state_suffix_reaction_chain():
     assert _incomplete_state_suffix("侍卫一把拽住他胳膊")  # "一把/拽"
     assert not _incomplete_state_suffix("两人平静地对坐饮茶")  # 无反应链动词
     assert not _incomplete_state_suffix("")
+
+
+def test_build_tongjian_inputs_passes_action_beats_to_shot():
+    """INC-001 §B:ShotListItem.action_beats 确定性透传到通鉴 Shot.action_beats(供 L6 kf2v)。"""
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="张飞拔剑自刎",
+                action_beats=["张飞猛地抽剑架颈", "刘备扑上夺剑", "宝剑坠地紧抱"],
+                dialogue_lines=[ShotListDialogueLine(character_name="刘备", text="三弟不可!")],
+                character_names=["张飞", "刘备"],
+                scene_name="军帐",
+            )
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="张飞"), DesignCharacter(name="刘备")],
+        scenes=[DesignScene(name="军帐")],
+    )
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list,
+        design_list=design_list,
+        concept=Concept(),
+        voice_by_speaker={},
+    )
+    assert shotlist.shots[0].action_beats == ["张飞猛地抽剑架颈", "刘备扑上夺剑", "宝剑坠地紧抱"]
+
+
+def test_build_tongjian_inputs_threads_valid_target_drops_invalid():
+    """INC-001 §H:受话对象是已锁定角色且非说话人本人 → 写入 ScriptLine.target;
+    未锁定名/自指 → 丢成空串(不污染 eyeline)。"""
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                dialogue_lines=[
+                    ShotListDialogueLine(
+                        character_name="智伯", text="把地给我。", target_name="韩康子"
+                    ),
+                    ShotListDialogueLine(
+                        character_name="韩康子", text="不给。", target_name="路人甲"
+                    ),
+                    ShotListDialogueLine(character_name="智伯", text="哼。", target_name="智伯"),
+                ],
+                character_names=["智伯", "韩康子"],
+                scene_name="宫殿",
+            )
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="智伯"), DesignCharacter(name="韩康子")],
+        scenes=[DesignScene(name="宫殿")],
+    )
+    script, _, _ = build_tongjian_inputs(
+        shot_list=shot_list, design_list=design_list, concept=Concept(), voice_by_speaker={}
+    )
+    by_speaker_text = {(ln.speaker, ln.text): ln.target for ln in script.lines}
+    assert by_speaker_text[("智伯", "把地给我。")] == "韩康子"  # 有效受话人
+    assert by_speaker_text[("韩康子", "不给。")] == ""  # 未锁定名 → 丢
+    assert by_speaker_text[("智伯", "哼。")] == ""  # 自指 → 丢
