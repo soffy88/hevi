@@ -25,6 +25,7 @@ L8 装配识别 clip_path 直接 concat(见 assemble.py)。
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import shutil

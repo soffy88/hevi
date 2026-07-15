@@ -1280,3 +1280,19 @@ async def test_consecutive_same_scene_shots_get_continuity_hint(tmp_path):
     assert len(instrs) == 2
     assert "避免跳轴" not in instrs[0]  # 首镜无上镜可承接
     assert "避免跳轴" in instrs[1]  # 第 2 镜同场景连续 → 稳轴线
+
+
+@pytest.mark.asyncio
+async def test_action_end_state_runs_llm_path_no_nameerror():
+    """回归:scene_render_avatar 从前漏 import asyncio,_action_end_state 的 asyncio.to_thread
+    一直 NameError → 静默退化。修复后 LLM 路真实跑通,返回 LLM 结果而非退化文案。"""
+    from hevi.tongjian.scene_render_avatar import _action_end_state
+
+    def _fake_llm(*, messages, **_kw):
+        return {"content": "宝剑坠地,刘备紧抱住张飞"}
+
+    out = await _action_end_state("张飞拔剑,刘备夺剑", _fake_llm)
+    assert out == "宝剑坠地,刘备紧抱住张飞"  # LLM 结果,不是"(动作已完成、结果态)"退化
+    # llm=None 仍安全退化(不触发 asyncio)
+    fallback = await _action_end_state("张飞拔剑", None)
+    assert "动作已完成、结果态" in fallback
