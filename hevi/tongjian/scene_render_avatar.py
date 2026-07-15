@@ -64,6 +64,52 @@ _EXPRESSION_GUARD = (
     "五官比例正常不变形、情绪含蓄不夸张"
 )
 
+# INC-001 §C 首帧未完成态:i2v 只能让关键帧"微微动一下"。若关键帧生成的是动作**完成态**
+# (人已经转过身/已经站定),动画里就没有真动作,只有静态图呼吸感。检测到连续反应链动词时,
+# 把关键帧拉到"动作刚开始、进行到一半、尚未完成"的那一瞬间,happyhorse 才能补出真正的运动。
+# 这直接治用户反馈的"人物没有连续的电影一样真实动作"。
+_REACTION_CHAIN_KEYS = (
+    "突然",
+    "下意识",
+    "脱手",
+    "蹲下",
+    "转身",
+    "回头",
+    "伸手",
+    "抬手",
+    "挥",
+    "扑",
+    "跌",
+    "摔",
+    "推",
+    "拉",
+    "拽",
+    "起身",
+    "冲",
+    "猛地",
+    "一把",
+    "瞬间",
+    "夺",
+    "扑向",
+    "抓住",
+    "举起",
+    "抬起",
+    "低头",
+    "俯身",
+    "跪",
+    "站起",
+    "拔",
+)
+_INCOMPLETE_STATE_SUFFIX = (
+    ",这一帧要抓拍这个动作**刚开始、进行到一半、尚未完成**的那一瞬间"
+    "(身体正处在动态过程中,不是动作做完后的定格姿态)"
+)
+
+
+def _incomplete_state_suffix(action_src: str) -> str:
+    """动作源文本里出现连续反应链动词 → 返回"未完成态"约束,否则空串。"""
+    return _INCOMPLETE_STATE_SUFFIX if any(k in action_src for k in _REACTION_CHAIN_KEYS) else ""
+
 
 def _p(config: LayerConfig | None, key: str, default: Any) -> Any:
     return config.params.get(key, default) if config and config.params else default
@@ -392,6 +438,8 @@ async def build_frame_manifest_avatar(
         action_hint = (
             dlg_line.visual_hint if dlg_line else (lines[0].visual_hint if lines else "")
         ) or ""
+        # INC-001 §C:该镜含连续反应链动词 → 关键帧拉到"动作未完成态",治"没有真动作"。
+        _incomplete = _incomplete_state_suffix(f"{text} {shot.visual_prompt} {action_hint}")
         dur = _say_dur(text or shot.visual_prompt, per_char)
         clip = work / f"{sid}_clip.mp4"
 
@@ -412,7 +460,7 @@ async def build_frame_manifest_avatar(
                     instruction = _EDIT_PREFIX + emotion
                     if action_hint:
                         instruction += f",动作:{action_hint}"
-                    instruction += _EXPRESSION_GUARD
+                    instruction += _EXPRESSION_GUARD + _incomplete
                     await qwen_image_edit(image_path=canon, instruction=instruction, output_path=kf)
                 talk = work / f"{sid}_talk.mp4"
                 if not talk.exists():
@@ -480,7 +528,7 @@ async def build_frame_manifest_avatar(
                             )
                             if action_hint:
                                 instruction += f",动作:{action_hint}"
-                            instruction += _EXPRESSION_GUARD
+                            instruction += _EXPRESSION_GUARD + _incomplete
                             await qwen_image_edit(
                                 image_path=canons,
                                 instruction=instruction,
@@ -501,7 +549,7 @@ async def build_frame_manifest_avatar(
                             instruction = _EDIT_PREFIX + emotion + ",闭着嘴"
                             if action_hint:
                                 instruction += f",动作:{action_hint}"
-                            instruction += _EXPRESSION_GUARD
+                            instruction += _EXPRESSION_GUARD + _incomplete
                             await qwen_image_edit(
                                 image_path=canon,
                                 instruction=instruction,

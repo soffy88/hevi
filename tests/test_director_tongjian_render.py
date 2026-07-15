@@ -119,3 +119,14 @@ def test_constitution_carries_concept_and_aspect():
     assert c.visual_style.aspect_ratio == "9:16"
     assert c.visual_style.art_direction == "水墨"
     assert c.target_duration_sec == 120
+
+
+def test_incomplete_state_suffix_reaction_chain():
+    """INC-001 §C:连续反应链动词 → 关键帧加"未完成态"约束;平铺动作不加。"""
+    from hevi.tongjian.scene_render_avatar import _incomplete_state_suffix
+
+    assert _incomplete_state_suffix("豫让突然拔出匕首")  # "突然/拔" → 未完成态
+    assert _incomplete_state_suffix("她回头看向门口")  # "回头"
+    assert _incomplete_state_suffix("侍卫一把拽住他胳膊")  # "一把/拽"
+    assert not _incomplete_state_suffix("两人平静地对坐饮茶")  # 无反应链动词
+    assert not _incomplete_state_suffix("")
