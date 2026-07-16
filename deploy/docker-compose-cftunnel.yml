@@ -47,6 +47,9 @@ services:
       # CUDA OOM(2026-07-16 实证:加此 env 后本地出图/img2img 才成)。缺它 → engine=local
       # 关键帧全挂、退云端额度墙 → canon,v1/v2 关键帧路(含 SPEC-004 v2 朝向 img2img)全废。
       PYTORCH_CUDA_ALLOC_CONF: "expandable_segments:True"
+      # 消耗单价:credits_per_usd 默认 100(estimated_credits = cost_usd × 此值)。这台是 soffy
+      # 自用测试实例,降到 10(每次产集扣的积分 1/10),配合手动授信足够反复测,不受额度墙卡。
+      CREDITS_PER_USD: "10"
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro
