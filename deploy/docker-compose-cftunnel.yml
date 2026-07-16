@@ -43,6 +43,10 @@ services:
       HEVI_LLM_PROVIDER: qwen_local
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: qwen2.5:7b
+      # 共享 RTX 3080 上另有租户常占 ~2.4GiB,不加这个 sdxl_local 关键帧 VAE decode 峰值会
+      # CUDA OOM(2026-07-16 实证:加此 env 后本地出图/img2img 才成)。缺它 → engine=local
+      # 关键帧全挂、退云端额度墙 → canon,v1/v2 关键帧路(含 SPEC-004 v2 朝向 img2img)全废。
+      PYTORCH_CUDA_ALLOC_CONF: "expandable_segments:True"
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro
