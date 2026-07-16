@@ -55,12 +55,25 @@ log = logging.getLogger("gs1")
 _STYLE = "电影感写实,暖色调,古装"
 _SCENE_DESC = "破败乡野客栈内,昏黄油灯,墙皮剥落,清冷压抑"  # 断链#3 场景描述(两组都给,不是变量)
 
-# 3 个角色(名字/外貌都固定,canon 复用)
+# 3 个角色(名字固定,用于 SceneStage char_id 与中文 projection 文本)
 _CHARS = {
     "王生": "青年书生,清秀白净,青色长衫,书卷气",
     "老道": "白须老道士,鹤发,灰色道袍,仙风道骨",
     "店家": "中年掌柜,络腮胡,粗布短打,精明",
 }
+# 画脸用英文外貌(首跑教训:base SDXL 对中文老者/道士 prompt 会渲成通用少女,英文对年龄/
+# 性别/胡须控制好得多——已验证英文 prompt 出正确的白胡子老道士)。canon 与关键帧都用这个。
+_CHARS_EN = {
+    "王生": "a young Chinese male scholar in his early 20s, handsome clean face, "
+    "black hair topknot, blue traditional scholar robe",
+    "老道": "an elderly Chinese Taoist priest, very long flowing white beard, white hair "
+    "topknot, wrinkled wise face, gray traditional Taoist robe",
+    "店家": "a middle-aged Chinese innkeeper man in his 40s, full dark beard, weathered face, "
+    "brown coarse cloth short jacket",
+}
+_CANON_NEG = (
+    "woman, female, girl, child, anime, cartoon, deformed, extra limbs, multiple people, text"
+)
 # 每拍的情绪(给关键帧)
 _EMOTION = {
     "bt001": "恳切央求",
@@ -216,8 +229,8 @@ def _find_ref(char: str, ref_dir: Path) -> Path | None:
 
 
 async def _canon(char: str, out: Path, ref_dir: Path | None) -> Path:
-    """角色 canon:优先用提供的真人肖像(本地 IP-Adapter 锁真脸,角色可辨认);缺失才退回
-    sdxl 文生图(base SDXL 对中文老者/道士 prompt 会渲成通用少女,识别不出角色,见 G-S1 首跑)。"""
+    """角色 canon:优先用提供的真人肖像(本地 IP-Adapter 锁真脸);缺失则用**英文 prompt** 的
+    sdxl 文生图(已验证英文出正确白胡子老者/中年男,不再是中文 prompt 的通用少女,见 G-S1 首跑)。"""
     from PIL import Image
 
     ref = _find_ref(char, ref_dir) if ref_dir else None
@@ -229,9 +242,11 @@ async def _canon(char: str, out: Path, ref_dir: Path | None) -> Path:
 
     if out.exists() and out.stat().st_size > 1024:
         return out
-    log.warning("canon[%s] 无真人肖像,退回 sdxl 文生图(角色可能不可辨认)", char)
+    log.info("canon[%s] 用英文 prompt 本地 sdxl 生成", char)
     await sdxl_local_generate(
-        prompt=f"{_STYLE},{_CHARS[char]},近景半身像,正面,背景虚化",
+        prompt=f"{_CHARS_EN[char]}, cinematic realistic photograph, upper body portrait, "
+        "plain background, sharp focus",
+        negative_prompt=_CANON_NEG,
         output_path=out,
         width=768,
         height=768,
@@ -338,7 +353,7 @@ async def main(args: argparse.Namespace) -> None:
         )
         focus_by_shot[shot.shot_id] = focus
         emotion = _EMOTION.get(beat, "神情自然")
-        appearance = _CHARS.get(focus, focus)
+        appearance = _CHARS_EN.get(focus, focus)  # 英文外貌(IP-Adapter 锁脸 + 英文描述,防漂移)
         proj = project_shot_space(stage, shot)
 
         exp_space = "；".join(x for x in (_SCENE_DESC, proj) if x)  # 实验组:场景 + 场事实投影
