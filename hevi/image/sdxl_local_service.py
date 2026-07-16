@@ -199,6 +199,10 @@ async def sdxl_local_generate(
             guidance_scale=extra.get("guidance_scale", _DEFAULT_GUIDANCE),
             ip_adapter_image=extra.get("ip_adapter_image"),
             ip_adapter_weight=extra.get("ip_adapter_weight", 0.6),
+            # SPEC-004 v2:extra.init_image 存在 → worker 走 img2img(从 Subject3D 朝向视图带朝向)。
+            # 统一 str 化(payload 要 json 序列化,Path 会炸——同 ip_adapter_image 由调用方 str 化)。
+            init_image=(str(iv) if (iv := extra.get("init_image")) else None),
+            strength=float(extra.get("strength", 0.5)),
         )
 
     return {"output_path": str(output_path), "seed": seed}

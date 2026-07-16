@@ -189,8 +189,13 @@ class SceneBeat(BaseModel):
 class InitialPosition(BaseModel):
     char_id: str  # 对应 DesignCharacter.name
     zone_id: str = ""
-    facing: str = ""  # 朝向,如"面向门口""侧对乙"
+    facing: str = ""  # 朝向,自由文本(如"面向门口""侧对乙")——给人看/给 prompt
     posture: str = ""  # 姿态,如"站立""端坐"
+    # SPEC-004 v2:角色朝向的**结构化场景方位角**(0-359°,0=场景"正前/朝镜头 master 侧")。
+    # 与 CameraSetup.azimuth_deg 一起,几何算出这镜这角色该用 Subject3D 的哪个视图(front/left/
+    # right/back)当 img2img 底图,让朝向真正落到画面(见 scene_stage.resolve_subject_view)。
+    # None = 未定 → 退回正面(用 2D 真照,身份最强)。
+    facing_deg: int | None = None
 
 
 class BlockingMove(BaseModel):
@@ -252,6 +257,9 @@ class CameraSetup(BaseModel):
     shot_size: str = ""  # 默认景别
     serves_beats: list[str] = Field(default_factory=list)  # beat_id 列表
     subjects: list[str] = Field(default_factory=list)  # 主要拍谁(char_id)
+    # SPEC-004 v2:机位在场景里的**结构化方位角**(0-359°,= 从被摄角色看向相机的方向)。
+    # 与角色 facing_deg 一起几何算 Subject3D 视图。None = 未定 → 该镜各角色退回正面视图。
+    azimuth_deg: int | None = None
 
 
 class CoveragePlan(BaseModel):

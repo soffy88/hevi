@@ -347,3 +347,39 @@ def test_project_shot_space_uses_moved_zone_within_beat_range():
         shot_id="SH0", scene_no=1, character_names=["王生"], beat_range=["bt001"]
     )
     assert "王生在门口" in project_shot_space(stage, shot_before)  # 未移动
+
+
+# ── SPEC-004 v2:几何选 Subject3D 视图 ──────────────────────────────────────
+
+
+def test_resolve_subject_view_cardinal_deltas():
+    """相机方位角 − 角色朝向,量化到 front/right/back/left。"""
+    from hevi.director.scene_stage import resolve_subject_view
+
+    # 角色朝向 0°:相机在 0°(角色正对相机)→ front;180°(背对)→ back
+    assert resolve_subject_view(0, 0) == "front"
+    assert resolve_subject_view(180, 0) == "back"
+    assert resolve_subject_view(90, 0) == "right"
+    assert resolve_subject_view(270, 0) == "left"
+    # 相对量:角色朝 90°、相机在 90° → 仍是 front(相机在角色正对方向)
+    assert resolve_subject_view(90, 90) == "front"
+    assert resolve_subject_view(180, 90) == "right"
+
+
+def test_resolve_subject_view_quantizes_and_wraps():
+    """非整 90° → 量化到最近;负/超界 → 取模。"""
+    from hevi.director.scene_stage import resolve_subject_view
+
+    assert resolve_subject_view(100, 0) == "right"  # 100→90
+    assert resolve_subject_view(44, 0) == "front"  # 44→0
+    assert resolve_subject_view(46, 0) == "right"  # 46→90
+    assert resolve_subject_view(-90, 0) == "left"  # -90 ≡ 270
+
+
+def test_resolve_subject_view_missing_angle_falls_back_to_front():
+    """任一角度缺失 → front(退回 2D 真照)。"""
+    from hevi.director.scene_stage import resolve_subject_view
+
+    assert resolve_subject_view(None, 0) == "front"
+    assert resolve_subject_view(90, None) == "front"
+    assert resolve_subject_view(None, None) == "front"

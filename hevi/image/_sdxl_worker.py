@@ -19,7 +19,18 @@ def main() -> None:
         task = json.load(f)
 
     import torch
-    from diffusers import AutoencoderKL, StableDiffusionXLPipeline
+    from diffusers import AutoencoderKL
+
+    # SPEC-004 v2:init_image 存在 → img2img 分支(从 Subject3D 朝向视图当底图,让朝向真正落到
+    # 画面,见 gs1 验证 2026-07-16)。与 IP-Adapter 互斥(img2img 的底图本身就是身份+朝向源,
+    # 不叠 IP-Adapter)。否则走原 txt2img 路(含 IP-Adapter 子路)。
+    init_image_path = task.get("init_image")
+    if init_image_path and task.get("ip_adapter_image"):
+        raise RuntimeError("init_image(img2img)与 ip_adapter_image 互斥,不能同时给")
+    if init_image_path:
+        from diffusers import StableDiffusionXLImg2ImgPipeline as _PipeCls
+    else:
+        from diffusers import StableDiffusionXLPipeline as _PipeCls
 
     # CPU 回退(2026-07-08:GPU 掉 PCIe 总线期间验证全链路用,慢但能跑通)——CPU 上
     # fp16 大量算子要么不支持要么极慢,必须切 float32;fp16-variant 权重文件在纯
@@ -38,7 +49,7 @@ def main() -> None:
         cache_dir=task.get("cache_dir") or None,
         torch_dtype=dtype,
     )
-    pipe = StableDiffusionXLPipeline.from_pretrained(
+    pipe = _PipeCls.from_pretrained(
         task["model_id"],
         vae=vae,
         cache_dir=task.get("cache_dir") or None,
@@ -97,6 +108,12 @@ def main() -> None:
         # cross-attention processor's encoder_hidden_states (becomes a bare tuple,
         # not the (text, image) pair the processor expects) — skip slicing here;
         # cpu_offload already keeps VRAM in check for the IP-Adapter path.
+    elif init_image_path:
+        # img2img:同机共享 GPU 另有租户占 ~2.4GiB,cpu_offload 控峰值(gs1 验证过);
+        # 无 IP-Adapter,slicing 安全可开。
+        pipe.enable_model_cpu_offload()
+        if device == "cuda":
+            pipe.enable_attention_slicing()
     else:
         pipe = pipe.to(device)
         if device == "cuda":
@@ -104,16 +121,28 @@ def main() -> None:
     pipe.vae.enable_tiling()
 
     generator = torch.Generator(device=device).manual_seed(int(task["seed"]))
-    image = pipe(
-        prompt=task["prompt"],
-        negative_prompt=task.get("negative_prompt") or None,
-        width=int(task["width"]),
-        height=int(task["height"]),
-        num_inference_steps=int(task["num_inference_steps"]),
-        guidance_scale=float(task["guidance_scale"]),
-        generator=generator,
+    call_kwargs: dict = {
+        "prompt": task["prompt"],
+        "negative_prompt": task.get("negative_prompt") or None,
+        "num_inference_steps": int(task["num_inference_steps"]),
+        "guidance_scale": float(task["guidance_scale"]),
+        "generator": generator,
         **extra_kwargs,
-    ).images[0]
+    }
+    if init_image_path:
+        from PIL import Image
+
+        # img2img 用底图尺寸;把 3D 视图缩到目标尺寸,strength 控保留多少朝向/构图。
+        call_kwargs["image"] = (
+            Image.open(init_image_path)
+            .convert("RGB")
+            .resize((int(task["width"]), int(task["height"])))
+        )
+        call_kwargs["strength"] = float(task.get("strength", 0.5))
+    else:
+        call_kwargs["width"] = int(task["width"])
+        call_kwargs["height"] = int(task["height"])
+    image = pipe(**call_kwargs).images[0]
 
     image.save(task["output_path"])
     print(f"saved {task['output_path']}")

@@ -408,6 +408,20 @@ _INTENSITY_ZH = {
     "shared": "群像并置",
 }
 
+# SPEC-004 v2:相机方位角 − 角色朝向 → 相机看到角色的哪个视图。delta 量化到最近 90°:
+# 0=front(相机在角色正对的方向)/ 90=right / 180=back / 270=left。left/right 是约定(跟
+# TripoSR 视图标签对齐),若实测反了改这一行即可。
+_VIEW_BY_DELTA = ("front", "right", "back", "left")
+
+
+def resolve_subject_view(cam_azimuth_deg: int | None, char_facing_deg: int | None) -> str:
+    """这镜的相机看向该角色时,看到 Subject3D 的哪个视图(front/left/right/back)。
+    任一角度缺失 → "front"(退回 2D 真照,身份最强,不冒 3D 帧身份变弱的险)。"""
+    if cam_azimuth_deg is None or char_facing_deg is None:
+        return "front"
+    delta = round(((cam_azimuth_deg - char_facing_deg) % 360) / 90) % 4
+    return _VIEW_BY_DELTA[delta]
+
 
 def project_shot_space(stage: SceneStage, shot: ShotListItem) -> str:
     """SPEC-004 §3.2 桥接层确定性投影:从 SceneStage + 镜头的场事实引用,算出"这机位这一拍看到
