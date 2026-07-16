@@ -518,6 +518,8 @@ async def _edit_keyframe(
     engine: str = "local",
     local_prompt: str | None = None,
     ip_adapter_image: Path | None = None,
+    init_image: Path | None = None,
+    init_strength: float = 0.45,
     size: tuple[int, int] = (1024, 1024),
 ) -> Path:
     """出关键帧:把该镜的情绪+动作+构图落成一张锁脸的关键帧。引擎可切(config.keyframe_engine):
@@ -533,6 +535,23 @@ async def _edit_keyframe(
     两种引擎都以 canon 复制保底:本地/云端都不可用时直接用 canonical 像当关键帧,整镜不降级
     空镜、整集不卡 G6 装配门(只少了动作/情绪注入,happyhorse 后面仍加口型+表情)。多角色镜头
     保底只保 lead 一张脸(fallback_from 传 canons[0])。"""
+    # 0. SPEC-004 v2:非正面朝向镜 → img2img 从 Subject3D 朝向视图当底图(朝向真落画面,不走
+    #    IP-Adapter[只迁身份不迁姿势]。gs1 2026-07-16 验证)。仅 local 引擎且备好朝向视图时。
+    if engine == "local" and local_prompt and init_image and Path(init_image).exists():
+        try:
+            await sdxl_local_generate(
+                prompt=local_prompt,
+                output_path=output_path,
+                width=size[0],
+                height=size[1],
+                extra={"init_image": str(init_image), "strength": init_strength},
+                require_gpu=True,
+            )
+            if output_path.exists() and output_path.stat().st_size > 1024:
+                return output_path
+        except Exception as e:  # img2img 失败退下面的 IP-Adapter/云端路,不拖垮整镜
+            logger.warning("sdxl_local img2img(朝向视图)失败,退 IP-Adapter/云端: %s", e)
+
     # 1. 本地 sdxl_local(IP-Adapter 锁脸 + 任意姿势/构图)—— 仅 local 引擎且备好本地素材时
     if engine == "local" and local_prompt and ip_adapter_image and Path(ip_adapter_image).exists():
         try:
@@ -688,6 +707,12 @@ async def build_frame_manifest_avatar(
     scene_desc_by_id = _p(config, "scene_desc_by_id", None) or {}
     # SPEC-004 阶段 3:逐镜场事实投影(shot_id → 落位/焦点/正方向,从 SceneStage 确定性投影)。
     shot_space_by_id = _p(config, "shot_space_by_id", None) or {}
+    # SPEC-004 v2:逐镜每角色该用的 Subject3D 视图(shot_id → {char_id: front/left/right/back})+
+    # 每角色各视图的图片路径(char_id → {view: path})。非正面视图 → 该镜 lead 走 img2img 从该
+    # 视图当底图(朝向落地);正面/无 3D 视图 → 退回原 IP-Adapter 路(2D 真照,身份最强)。
+    # 都不传(tongjian 管线/未建 3D 视图)→ 空 dict,行为完全不变。
+    shot_view_by_id = _p(config, "shot_view_by_id", None) or {}
+    subject3d_views_by_id = _p(config, "subject3d_views_by_id", None) or {}
     resolved_llm = _resolve_llm() if action_engine == "kf2v" else None
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
@@ -780,6 +805,14 @@ async def build_frame_manifest_avatar(
                     if action_hint:
                         instruction += f",动作:{action_hint}"
                     instruction += _EXPRESSION_GUARD + _cmd["first"]
+                    # SPEC-004 v2:lead 该镜的 Subject3D 视图非正面且已建 → img2img 从该视图当底图
+                    # (朝向落地);否则 init_view=None → 走原 IP-Adapter(2D 真照,身份最强)。
+                    _view = shot_view_by_id.get(sid, {}).get(lead, "front")
+                    _init_view = (
+                        subject3d_views_by_id.get(lead, {}).get(_view)
+                        if _view and _view != "front"
+                        else None
+                    )
                     await _edit_keyframe(
                         image_path=canon,
                         instruction=instruction,
@@ -794,6 +827,7 @@ async def build_frame_manifest_avatar(
                             scene_space=scene_space,
                         ),
                         ip_adapter_image=canon,
+                        init_image=Path(_init_view) if _init_view else None,
                         size=(w, h),
                     )
                 talk = work / f"{sid}_talk.mp4"

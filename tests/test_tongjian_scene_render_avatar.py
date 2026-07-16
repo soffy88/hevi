@@ -361,6 +361,81 @@ async def test_shot_space_projection_reaches_keyframe_prompt(tmp_path):
     assert "焦点在C003" in local_prompt  # 阶段 3 焦点投影
 
 
+async def _run_manifest_with_views(tmp_path, view_map, views_by_id, tag="a"):
+    """跑一遍 build_frame_manifest_avatar,patch 掉 _edit_keyframe 捕获 init_image kwarg。
+    每次用独立子目录(否则 SH001_kf.png 缓存会让第二次跳过关键帧生成)。"""
+    from hevi.tongjian.schemas import LayerConfig
+
+    tmp_path = tmp_path / tag
+    tmp_path.mkdir(parents=True, exist_ok=True)
+
+    script = Script(
+        lines=[ScriptLine(line_id="LN001", type="dialogue", speaker="C003", text="请分宗。")]
+    )
+    shotlist = ShotList(shots=[Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"])])
+    edit_kf = AsyncMock(
+        side_effect=lambda **kw: (kw["output_path"].write_bytes(b"kf"), kw["output_path"])[1]
+    )
+
+    async def _gen(*, prompt, output_path, size, seed=None):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    async def _hh(*, image_path, prompt, output_path, duration, resolution):
+        output_path.write_bytes(b"talk")
+        return output_path
+
+    with (
+        patch("hevi.tongjian.scene_render_avatar._edit_keyframe", edit_kf),
+        patch("hevi.tongjian.scene_render_avatar.qwen_image_generate", AsyncMock(side_effect=_gen)),
+        patch("hevi.tongjian.scene_render_avatar.happyhorse_animate", AsyncMock(side_effect=_hh)),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            _bible(),
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                model="cloud_avatar",
+                params={"shot_view_by_id": view_map, "subject3d_views_by_id": views_by_id},
+            ),
+        )
+    return edit_kf.await_args.kwargs
+
+
+@pytest.mark.asyncio
+async def test_nonfront_view_routes_keyframe_to_img2img_init_image(tmp_path):
+    """SPEC-004 v2:lead 视图=right 且已建 3D 视图 → _edit_keyframe 收到 init_image(img2img)。"""
+    kw = await _run_manifest_with_views(
+        tmp_path,
+        {"SH001": {"C003": "right"}},
+        {"C003": {"right": "/fake/c003_right.png"}},
+    )
+    assert kw["init_image"] is not None
+    assert str(kw["init_image"]).endswith("c003_right.png")
+
+
+@pytest.mark.asyncio
+async def test_front_view_keeps_2d_ref_no_init_image(tmp_path):
+    """视图=front(或无 3D 视图)→ init_image=None,退回原 IP-Adapter 2D 真照路。"""
+    kw = await _run_manifest_with_views(
+        tmp_path, {"SH001": {"C003": "front"}}, {"C003": {"right": "/fake/x.png"}}, tag="front"
+    )
+    assert kw["init_image"] is None
+    # 无任何 3D 视图映射时同理
+    kw2 = await _run_manifest_with_views(tmp_path, {"SH001": {"C003": "right"}}, {}, tag="noviews")
+    assert kw2["init_image"] is None
+
+
 @pytest.mark.asyncio
 async def test_canonical_reuses_subject_reference_image_when_present(tmp_path):
     """CharacterBible.ref_image(Subject 真实参考图路径)存在时,canonical 像必须直接

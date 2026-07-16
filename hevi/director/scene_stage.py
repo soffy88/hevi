@@ -423,6 +423,32 @@ def resolve_subject_view(cam_azimuth_deg: int | None, char_facing_deg: int | Non
     return _VIEW_BY_DELTA[delta]
 
 
+def compute_shot_views(
+    shot_list: ShotList, scene_stage_set: SceneStageSet
+) -> dict[str, dict[str, str]]:
+    """SPEC-004 v2 桥接:每镜每出场角色该用哪个 Subject3D 视图(shot_id → {char_id: view})。
+    从镜头的 camera_setup(azimuth_deg)+ 该角色 blocking 落位(facing_deg)几何算出。角度缺失
+    的角色算出 "front"(渲染层据此退回 2D 真照)。未接场事实的镜头不产条目。"""
+    stage_by_ref = {s.scene_ref: s for s in scene_stage_set.stages}
+    out: dict[str, dict[str, str]] = {}
+    for shot in shot_list.shots:
+        stage = stage_by_ref.get(shot.scene_stage_ref) if shot.scene_stage_ref is not None else None
+        if stage is None:
+            continue
+        setups = {c.setup_id: c for c in stage.coverage_plan.setups}
+        if stage.coverage_plan.master:
+            setups.setdefault(stage.coverage_plan.master.setup_id, stage.coverage_plan.master)
+        cam = setups.get(shot.camera_setup_ref)
+        azimuth = cam.azimuth_deg if cam else None
+        facing_by_char = {p.char_id: p.facing_deg for p in stage.blocking.initial_positions}
+        views = {
+            cid: resolve_subject_view(azimuth, facing_by_char.get(cid))
+            for cid in (shot.character_names or [])
+        }
+        out[shot.shot_id] = views
+    return out
+
+
 def project_shot_space(stage: SceneStage, shot: ShotListItem) -> str:
     """SPEC-004 §3.2 桥接层确定性投影:从 SceneStage + 镜头的场事实引用,算出"这机位这一拍看到
     什么"的空间文本(落位/朝向 + 焦点 + 画面正方向)。**纯确定性字符串工程,不经 LLM**——这正是

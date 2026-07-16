@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from hevi.director.pipeline_schemas import Concept, DesignList, SceneStageSet, ShotList
-from hevi.director.scene_stage import project_shot_space
+from hevi.director.scene_stage import compute_shot_views, project_shot_space
 from hevi.tongjian.schemas import (
     Act,
     CharacterBible,
@@ -208,6 +208,7 @@ async def render_director_episode(
     llm: Any = None,
     tts_fn: Any = None,
     scene_stage: SceneStageSet | None = None,
+    subject3d_views: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """导演流水线锁定内容 → 通鉴 L3-L8 → 真实成片(对白+口型+按角色配音+情绪)。
 
@@ -315,6 +316,10 @@ async def render_director_episode(
             if text:
                 shot_space_by_id[shot.shot_id] = text
 
+    # SPEC-004 v2:每镜每角色该用哪个 Subject3D 视图(几何算),+ 各角色视图图片路径。
+    # subject3d_views 为空(未建 3D 视图)→ 渲染层一律退回正面 2D 真照,行为不变。
+    shot_view_by_id = compute_shot_views(shot_list, scene_stage) if scene_stage is not None else {}
+
     frame_manifest = await build_frame_manifest_avatar(
         shotlist=shotlist,
         script=script,
@@ -334,6 +339,10 @@ async def render_director_episode(
                 "scene_desc_by_id": scene_desc_by_id,
                 # SPEC-004 阶段 3:逐镜场事实投影(落位/焦点/正方向),渲染层按 shot.shot_id 取。
                 "shot_space_by_id": shot_space_by_id,
+                # SPEC-004 v2:逐镜每角色的 Subject3D 视图选择 + 各视图图片路径。非正面 → 渲染层
+                # 走 img2img 从该视图当底图(朝向落地);空/正面/未建 → 退回 IP-Adapter 2D 真照。
+                "shot_view_by_id": shot_view_by_id,
+                "subject3d_views_by_id": subject3d_views or {},
             },
         ),
     )

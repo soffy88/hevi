@@ -383,3 +383,70 @@ def test_resolve_subject_view_missing_angle_falls_back_to_front():
     assert resolve_subject_view(None, 0) == "front"
     assert resolve_subject_view(90, None) == "front"
     assert resolve_subject_view(None, None) == "front"
+
+
+def test_compute_shot_views_from_geometry():
+    """每镜每角色的视图 = resolve_subject_view(该镜机位 azimuth, 该角色 facing_deg)。"""
+    from hevi.director.pipeline_schemas import (
+        CameraSetup,
+        CoveragePlan,
+        InitialPosition,
+        SceneBlocking,
+    )
+    from hevi.director.scene_stage import compute_shot_views
+
+    stage = SceneStage(
+        scene_ref=1,
+        blocking=SceneBlocking(
+            initial_positions=[
+                InitialPosition(char_id="甲", facing_deg=0),
+                InitialPosition(char_id="乙", facing_deg=180),
+            ]
+        ),
+        coverage_plan=CoveragePlan(setups=[CameraSetup(setup_id="s1", azimuth_deg=90)]),
+    )
+    shots = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH1",
+                scene_no=1,
+                scene_stage_ref=1,
+                camera_setup_ref="s1",
+                character_names=["甲", "乙"],
+            ),
+            ShotListItem(shot_id="SH2", scene_no=99, character_names=["甲"]),  # 无场事实 → 不产条目
+        ]
+    )
+    views = compute_shot_views(shots, SceneStageSet(stages=[stage]))
+    # 机位 azimuth=90:甲 facing 0 → delta 90 → right;乙 facing 180 → delta -90≡270 → left
+    assert views["SH1"] == {"甲": "right", "乙": "left"}
+    assert "SH2" not in views  # 未接场事实的镜头不产条目
+
+
+def test_compute_shot_views_missing_azimuth_falls_back_front():
+    """机位无 azimuth_deg → 该镜所有角色 front(渲染层退回 2D 真照)。"""
+    from hevi.director.pipeline_schemas import (
+        CameraSetup,
+        CoveragePlan,
+        InitialPosition,
+        SceneBlocking,
+    )
+    from hevi.director.scene_stage import compute_shot_views
+
+    stage = SceneStage(
+        scene_ref=1,
+        blocking=SceneBlocking(initial_positions=[InitialPosition(char_id="甲", facing_deg=90)]),
+        coverage_plan=CoveragePlan(setups=[CameraSetup(setup_id="s1")]),  # azimuth_deg=None
+    )
+    shots = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH1",
+                scene_no=1,
+                scene_stage_ref=1,
+                camera_setup_ref="s1",
+                character_names=["甲"],
+            )
+        ]
+    )
+    assert compute_shot_views(shots, SceneStageSet(stages=[stage]))["SH1"] == {"甲": "front"}
