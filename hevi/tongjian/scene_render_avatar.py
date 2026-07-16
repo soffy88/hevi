@@ -486,12 +486,17 @@ def _local_kf_prompt(
     emotion: str,
     action_hint: str,
     *,
+    scene_space: str = "",
     mouth_closed: bool = False,
     wide: bool = False,
 ) -> str:
     """拼 sdxl_local 关键帧生成 prompt(中文实测可用,风格/人物/场景都跟得住;精确姿势跟不住
-    是 base SDXL 无 ControlNet 的已知代价,靠 kf2v 运动补动作感)。IP-Adapter 另传 canon 锁脸。"""
-    parts = [style, appearance, emotion]
+    是 base SDXL 无 ControlNet 的已知代价,靠 kf2v 运动补动作感)。IP-Adapter 另传 canon 锁脸。
+
+    scene_space:SPEC-004 断链#3——场景空间描述(环境/光照/氛围,来自 DesignScene)。此前
+    DesignScene 的空间描述从桥接层到这里全程零消费,画面里根本没有场景。按 §F.1 口径空间项
+    靠前(风格→空间→相貌→情绪→动作)。空串则行为不变(向后兼容 tongjian 管线)。"""
+    parts = [style, scene_space, appearance, emotion]
     if action_hint:
         parts.append(f"动作:{action_hint}")
     if mouth_closed:
@@ -613,10 +618,11 @@ async def _gen_action_keyframe(
     engine: str,
     size: tuple[int, int],
     command_summary: str = "",
+    scene_space: str = "",
 ) -> None:
     """从锁脸参考(action_ip)+ 相貌(appear)生成一张"闭嘴做某动作(desc)"的关键帧,供 kf2v
     的首/中(peak)/尾(aftermath)帧复用。command_summary=§E 该帧的导演命令摘要(必须/优先约束)。
-    已存在则跳过(缓存)。"""
+    scene_space=SPEC-004 断链#3 场景空间描述(见 _local_kf_prompt)。已存在则跳过(缓存)。"""
     if out_path.exists():
         return
     await _edit_keyframe(
@@ -630,7 +636,9 @@ async def _gen_action_keyframe(
         output_path=out_path,
         fallback_from=action_ip,
         engine=engine,
-        local_prompt=_local_kf_prompt(style, appear, emotion, desc, mouth_closed=True, wide=True),
+        local_prompt=_local_kf_prompt(
+            style, appear, emotion, desc, scene_space=scene_space, mouth_closed=True, wide=True
+        ),
         ip_adapter_image=action_ip,
         size=size,
     )
@@ -672,6 +680,11 @@ async def build_frame_manifest_avatar(
     # 拼接,动作弧有真正的峰值,但每个动作镜的视频生成调用数翻倍(成本约 2×)。仅当有
     # 结构化 action_beats 时 3point 才生效;无 beats 一律退回单段(现状)。
     action_arc = str(_p(config, "action_arc", "2point"))
+    # SPEC-004 断链#3:场景空间描述(scene_id → "环境,光照,氛围",来自 DesignScene)。
+    # 桥接层 render_director_episode 经 config.params 传入;不传即空 dict(tongjian 管线行为不变)。
+    scene_desc_by_id = _p(config, "scene_desc_by_id", None) or {}
+    # SPEC-004 阶段 3:逐镜场事实投影(shot_id → 落位/焦点/正方向,从 SceneStage 确定性投影)。
+    shot_space_by_id = _p(config, "shot_space_by_id", None) or {}
     resolved_llm = _resolve_llm() if action_engine == "kf2v" else None
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
@@ -687,6 +700,16 @@ async def build_frame_manifest_avatar(
     frames: list[ShotFrame] = []
     for idx, shot in enumerate(shotlist.shots):
         sid = shot.shot_id
+        # SPEC-004:关键帧空间项 = 场景描述(断链#3,per-scene)+ 逐镜场事实投影(阶段 3,per-shot,
+        # 落位/焦点/正方向)。都空则各关键帧退回原行为(向后兼容)。
+        scene_space = "；".join(
+            x
+            for x in (
+                str(scene_desc_by_id.get(shot.scene_id, "") or ""),
+                str(shot_space_by_id.get(sid, "") or ""),
+            )
+            if x
+        )
         lines = [lines_by_id[lid] for lid in shot.line_ids if lid in lines_by_id]
         text = "".join(ln.text for ln in lines).strip()
         dlg_line = next(
@@ -761,7 +784,11 @@ async def build_frame_manifest_avatar(
                         fallback_from=canon,
                         engine=keyframe_engine,
                         local_prompt=_local_kf_prompt(
-                            style, appearance_by_id.get(lead, lead), emotion, action_hint
+                            style,
+                            appearance_by_id.get(lead, lead),
+                            emotion,
+                            action_hint,
+                            scene_space=scene_space,
                         ),
                         ip_adapter_image=canon,
                         size=(w, h),
@@ -851,6 +878,7 @@ async def build_frame_manifest_avatar(
                                     + "、".join(appearance_by_id.get(cid, cid) for cid in present),
                                     emotion,
                                     act_hint,
+                                    scene_space=scene_space,
                                     mouth_closed=True,
                                     wide=True,
                                 ),
@@ -888,6 +916,7 @@ async def build_frame_manifest_avatar(
                                     appearance_by_id.get(lead, lead),
                                     emotion,
                                     act_hint,
+                                    scene_space=scene_space,
                                     mouth_closed=True,
                                     wide=True,
                                 ),
@@ -936,6 +965,7 @@ async def build_frame_manifest_avatar(
                                 engine=keyframe_engine,
                                 size=(w, h),
                                 command_summary=_cmd["aftermath"],
+                                scene_space=scene_space,
                             )
                         # 关键帧序列:首帧(trigger)→[peak]→尾帧(aftermath)。
                         seq = [kf]
@@ -951,6 +981,7 @@ async def build_frame_manifest_avatar(
                                 engine=keyframe_engine,
                                 size=(w, h),
                                 command_summary=_cmd["peak"],
+                                scene_space=scene_space,
                             )
                             seq.append(peak_kf)
                         seq.append(end_kf)

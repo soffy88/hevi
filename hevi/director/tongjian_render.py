@@ -24,7 +24,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from hevi.director.pipeline_schemas import Concept, DesignList, ShotList
+from hevi.director.pipeline_schemas import Concept, DesignList, SceneStageSet, ShotList
+from hevi.director.scene_stage import project_shot_space
 from hevi.tongjian.schemas import (
     Act,
     CharacterBible,
@@ -206,6 +207,7 @@ async def render_director_episode(
     style: str | None = None,
     llm: Any = None,
     tts_fn: Any = None,
+    scene_stage: SceneStageSet | None = None,
 ) -> dict[str, Any]:
     """导演流水线锁定内容 → 通鉴 L3-L8 → 真实成片(对白+口型+按角色配音+情绪)。
 
@@ -287,6 +289,32 @@ async def render_director_episode(
     if not shotlist.shots:
         raise RuntimeError("回填时间轴后没有任何镜头")
 
+    # SPEC-004 断链#3:DesignScene 的空间描述(environment/lighting/mood)此前从这里到 L6 全程
+    # 零消费,画面里根本没有场景。按 scene_id(= DesignScene.name,见 build_tongjian_inputs 的
+    # scene_id 赋值)建 name→"环境,光照,氛围" 映射,经 config.params 传进渲染层拼进关键帧 prompt。
+    scene_desc_by_id = {
+        s.name: "，".join(x for x in (s.environment, s.lighting, s.mood) if x).strip()
+        for s in design_list.scenes
+        if s.name
+    }
+    scene_desc_by_id = {k: v for k, v in scene_desc_by_id.items() if v}
+
+    # SPEC-004 阶段 3(§3.2):从 SceneStage + 每镜的场事实引用,确定性投影出"这机位这一拍看到
+    # 什么"的空间文本(落位/朝向 + 焦点 + 画面正方向)。逐镜(按 shot_id)传进渲染层,与断链#3 的
+    # 场景描述一起拼进关键帧 prompt 空间项。镜头间天然一致——都从同一 SceneStage 投影,不各自想象。
+    shot_space_by_id: dict[str, str] = {}
+    if scene_stage is not None:
+        stage_by_ref = {s.scene_ref: s for s in scene_stage.stages}
+        for shot in shot_list.shots:
+            if shot.scene_stage_ref is None:
+                continue
+            stage = stage_by_ref.get(shot.scene_stage_ref)
+            if stage is None:
+                continue
+            text = project_shot_space(stage, shot)
+            if text:
+                shot_space_by_id[shot.shot_id] = text
+
     frame_manifest = await build_frame_manifest_avatar(
         shotlist=shotlist,
         script=script,
@@ -302,6 +330,10 @@ async def render_director_episode(
                 # 导演流水线要电影语言:非对白镜头渲成纯静默动作/建场空镜,不加史官旁白配音
                 # (用户要求"不要旁白、要有场景/动作")。
                 "non_dialogue_mode": "silent_action",
+                # SPEC-004 断链#3:场景空间描述,渲染层按 shot.scene_id 取切片拼进关键帧 prompt。
+                "scene_desc_by_id": scene_desc_by_id,
+                # SPEC-004 阶段 3:逐镜场事实投影(落位/焦点/正方向),渲染层按 shot.shot_id 取。
+                "shot_space_by_id": shot_space_by_id,
             },
         ),
     )

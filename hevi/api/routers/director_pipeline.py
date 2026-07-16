@@ -25,6 +25,7 @@ import asyncio
 import contextlib
 import logging
 import uuid
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
@@ -46,10 +47,13 @@ from hevi.director.pipeline_schemas import (
     Concept,
     DesignCharacter,
     DesignList,
+    SceneStageSet,
     Screenplay,
     ShotList,
     ShotListItem,
 )
+from hevi.director.scene_stage import generate_scene_stage_draft, link_shots_to_scene_stage
+from hevi.director.scene_stage_lint import lint_scene_stage
 from hevi.director.screenplay import generate_screenplay_draft
 from hevi.director.shot_list import generate_shot_list_draft
 from hevi.director.tongjian_render import render_director_episode
@@ -69,12 +73,15 @@ _OUTPUT_DIR = Path("output/director_pipeline")
 _ART_DIRECTION = "cinematic character portrait, front facing, neutral expression, detailed"
 _PORTRAIT_MAX_ATTEMPTS = 3
 
-# ①→②→③→④,每级有 _draft/_locked 两态。
-_STAGES = ("concept", "screenplay", "design_list", "shot_list")
+# ①→②→③→③.5→④,每级有 _draft/_locked 两态。scene_stage(SPEC-004 场面调度)插在
+# design_list 与 shot_list 之间:未锁 scene_stage 则 shot_list 无法锁(_require_stage_ready
+# 走 _STAGES 顺序,自动成立),产集门 _stage_index("shot_list") 也随之右移,无需另改。
+_STAGES = ("concept", "screenplay", "design_list", "scene_stage", "shot_list")
 _STAGE_KEY = {  # 内存记录里存内容用的 key(跟 URL path 段独立,path 用连字符,dict 用下划线)
     "concept": "concept",
     "screenplay": "screenplay",
     "design_list": "design_list",
+    "scene_stage": "scene_stage",
     "shot_list": "shot_list",
 }
 
@@ -114,7 +121,9 @@ def _init_work(
         "concept": None,
         "screenplay": None,
         "design_list": None,
+        "scene_stage": None,
         "shot_list": None,
+        "scene_stage_lint": [],  # SPEC-004 §4:链接后跑的四条确定性 lint findings(生成后守护)
         "video_task_id": None,
         "error": None,
     }
@@ -171,7 +180,9 @@ def _work_status(rec: dict[str, Any]) -> dict[str, Any]:
         "concept": rec["concept"],
         "screenplay": rec["screenplay"],
         "design_list": rec["design_list"],
+        "scene_stage": rec["scene_stage"],
         "shot_list": rec["shot_list"],
+        "scene_stage_lint": rec.get("scene_stage_lint", []),
         "video_task_id": rec["video_task_id"],
         "error": rec["error"],
     }
@@ -403,13 +414,25 @@ def _seed_design_list_subject_ids(body: DesignList, prior: dict[str, Any] | None
                 item.subject_id = prior_by_name[item.name]
 
 
+async def _build_scene_stage_set(screenplay: Screenplay, design_list: DesignList) -> SceneStageSet:
+    """SPEC-004 ③.5:逐场生成 SceneStage 草案(每场一个,scene_ref=scene_no)。逐场 LLM,
+    场次一多同 design-list 的重活,放后台跑。单场失败不拖垮整体——退回最小可锁草稿。"""
+    stages = []
+    for scene in screenplay.scenes:
+        stage = await generate_scene_stage_draft(
+            scene=scene, design_list=design_list, llm=_resolve_llm()
+        )
+        stages.append(stage)
+    return SceneStageSet(stages=stages)
+
+
 async def _run_design_list_lock(
     work_id: str, body: DesignList, *, user_id: str, subject_svc: SubjectService
 ) -> None:
-    """③锁定的真正重活(N 个资产建号 + ④分镜逐场 LLM 生成)——角色/场次一多,就算每个
-    调用本身都做了并发/超时收敛,总和还是可能顶到反向代理超时(线上已经实测 524/挂起
+    """③锁定的真正重活(N 个资产建号 + ③.5 场面调度逐场 LLM 生成)——角色/场次一多,就算
+    每个调用本身都做了并发/超时收敛,总和还是可能顶到反向代理超时(线上已实测 524/挂起
     好几轮)。放到 background task 里跑,HTTP 响应不再等它,前端轮询 GET /works/{id}
-    直到状态变化即可,彻底摆脱"一个请求扛所有重活"这类超时。"""
+    直到状态变化即可。SPEC-004:③锁定后自动生成的下一级不再是④分镜,而是③.5 场面调度草案。"""
     rec = _WORKS.get(work_id)
     if rec is None:
         return
@@ -420,11 +443,9 @@ async def _run_design_list_lock(
         rec["design_list"] = locked.model_dump()
         rec["locked_through"] = _stage_index("design_list")
         screenplay = Screenplay.model_validate(rec["screenplay"])
-        shot_list = await generate_shot_list_draft(
-            screenplay=screenplay, design_list=locked, llm=_resolve_llm()
-        )
-        rec["shot_list"] = shot_list.model_dump()
-        rec["status"] = "shot_list_draft"
+        scene_stage = await _build_scene_stage_set(screenplay, locked)
+        rec["scene_stage"] = scene_stage.model_dump()
+        rec["status"] = "scene_stage_draft"
     except Exception as e:
         logger.exception("design-list 后台锁定失败: work_id=%s", work_id)
         rec["design_list"] = body.model_dump()
@@ -451,6 +472,87 @@ async def lock_design_list(
     return _work_status(rec)
 
 
+# ── ③.5 场面调度 SceneStage(SPEC-004)────────────────────────────────────────
+#
+# ③设计清单锁定后自动生成本级草案(每场一个 SceneStage);人在 Construction-First 下攻击
+# 落位/注意力/机位后锁定,才放行④分镜。未锁本级则 shot-list 无法锁(_require_stage_ready
+# 自动成立)。逐场 LLM 生成同 design-list 是重活,放 background task。
+
+
+async def _run_scene_stage_regenerate(work_id: str) -> None:
+    """③.5 逐场场面调度草案后台重生成(场次一多不顶反向代理超时,同 design-list 模式)。"""
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        screenplay = Screenplay.model_validate(rec["screenplay"])
+        design_list = DesignList.model_validate(rec["design_list"])
+        scene_stage = await _build_scene_stage_set(screenplay, design_list)
+        rec["scene_stage"] = scene_stage.model_dump()
+        rec["status"] = "scene_stage_draft"
+    except Exception as e:
+        logger.exception("scene-stage 后台重新生成失败: work_id=%s", work_id)
+        rec["status"] = "scene_stage_regenerate_failed"
+        rec["error"] = str(e)
+
+
+@router.post("/works/{work_id}/scene-stage")
+async def regenerate_scene_stage(
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    rec = _require_work(work_id, user)
+    _require_stage_ready(rec, "scene_stage")
+    _rollback_downstream(rec, "scene_stage")
+    rec["status"] = "scene_stage_generating"
+    rec["error"] = None
+    background_tasks.add_task(_run_scene_stage_regenerate, work_id)
+    return _work_status(rec)
+
+
+async def _run_scene_stage_lock(work_id: str) -> None:
+    """③.5 锁定后自动生成④分镜草案(逐场 LLM,放后台)。SPEC-004:shot_list 生成本身此级
+    暂不接 SceneStage 引用(那是阶段 3 的桥接层投影),仅由本级门控放行——保持阶段 2 聚焦状态机。"""
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        screenplay = Screenplay.model_validate(rec["screenplay"])
+        design_list = DesignList.model_validate(rec["design_list"])
+        shot_list = await generate_shot_list_draft(
+            screenplay=screenplay, design_list=design_list, llm=_resolve_llm()
+        )
+        # SPEC-004 阶段 3:确定性填充每镜的场事实引用(scene_stage_ref/beat_range/
+        # camera_setup_ref/attention_ref),画面空间/焦点由桥接层从 SceneStage 投影。
+        scene_stage = SceneStageSet.model_validate(rec["scene_stage"])
+        shot_list = link_shots_to_scene_stage(shot_list, scene_stage)
+        rec["shot_list"] = shot_list.model_dump()
+        # SPEC-004 §4:链接后跑四条确定性 lint(跳轴/反打/eyeline/剪辑冗余),findings 暴露给前端。
+        rec["scene_stage_lint"] = [asdict(f) for f in lint_scene_stage(shot_list, scene_stage)]
+        rec["status"] = "shot_list_draft"
+    except Exception as e:
+        logger.exception("scene-stage 锁定后生成分镜失败: work_id=%s", work_id)
+        rec["status"] = "scene_stage_lock_failed"
+        rec["error"] = str(e)
+
+
+@router.post("/works/{work_id}/scene-stage/lock")
+async def lock_scene_stage(
+    work_id: str,
+    body: SceneStageSet,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    rec = _require_work(work_id, user)
+    rec["scene_stage"] = body.model_dump()
+    rec["locked_through"] = _stage_index("scene_stage")
+    rec["status"] = "scene_stage_locking"
+    rec["error"] = None
+    background_tasks.add_task(_run_scene_stage_lock, work_id)
+    return _work_status(rec)
+
+
 # ── ④分镜头剧本 ────────────────────────────────────────────────────────────
 
 
@@ -465,6 +567,10 @@ async def _run_shot_list_regenerate(work_id: str) -> None:
         shot_list = await generate_shot_list_draft(
             screenplay=screenplay, design_list=design_list, llm=_resolve_llm()
         )
+        if rec.get("scene_stage"):  # SPEC-004 阶段 3:重新链接场事实引用 + §4 lint
+            scene_stage = SceneStageSet.model_validate(rec["scene_stage"])
+            shot_list = link_shots_to_scene_stage(shot_list, scene_stage)
+            rec["scene_stage_lint"] = [asdict(f) for f in lint_scene_stage(shot_list, scene_stage)]
         rec["shot_list"] = shot_list.model_dump()
         rec["status"] = "shot_list_draft"
     except Exception as e:
@@ -889,6 +995,7 @@ async def _run_director_via_tongjian(
     voice_by_speaker: dict[str, str],
     aspect_ratio: str,
     target_duration_sec: int,
+    scene_stage: SceneStageSet | None = None,
 ) -> None:
     """后台真实生成:导演锁定内容 → 通鉴对白+口型管线(render_director_episode)。
     直接更新 video_tasks/shot_states,复用前端既有 taskApi.videoUrl/shots(零改动)。
@@ -939,6 +1046,8 @@ async def _run_director_via_tongjian(
         "voice_by_speaker": voice_by_speaker,
         "aspect_ratio": aspect_ratio,
         "target_duration_sec": target_duration_sec,
+        # SPEC-004 阶段 3:场事实 → render_director_episode 逐镜投影空间/焦点进关键帧 prompt。
+        "scene_stage": scene_stage,
     }
     poller = asyncio.ensure_future(_progress_poller())
     try:
@@ -1037,6 +1146,10 @@ async def produce_work(
     # 角色名 → 设计清单锁定的参考图(数字人 keyframe 的脸)。
     subject_ref_paths = await _resolve_subject_ref_paths(design_list, subject_svc=subject_svc)
     shot_list = ShotList.model_validate(rec["shot_list"])
+    # SPEC-004 阶段 3:场事实(逐镜投影空间/焦点)。旧 work 无 scene_stage → None,渲染退回断链#3。
+    scene_stage = (
+        SceneStageSet.model_validate(rec["scene_stage"]) if rec.get("scene_stage") else None
+    )
     duration_cfg = get_duration_config(concept.duration_archetype)
 
     # create_task 只用来:建 video_tasks 行 + 预算熔断 + 积分预留(计费一致性)。真正的
@@ -1089,6 +1202,7 @@ async def produce_work(
         voice_by_speaker=character_voices,
         aspect_ratio=body.aspect_ratio,
         target_duration_sec=int(duration_cfg["target_s"]),
+        scene_stage=scene_stage,
     )
 
     rec["video_task_id"] = str(task_id)
