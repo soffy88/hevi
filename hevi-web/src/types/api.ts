@@ -709,7 +709,10 @@ export interface DpSceneSpaceMap { zones: DpSceneZone[]; landmarks: DpSceneLandm
 export interface DpSceneBeat {
   beat_id: string; order: number; trigger: string; dialogue_ref: string; duration_hint: number;
 }
-export interface DpInitialPosition { char_id: string; zone_id: string; facing: string; posture: string }
+export interface DpInitialPosition {
+  char_id: string; zone_id: string; facing: string; posture: string;
+  facing_deg?: number | null; // SPEC-004 v2:朝向角(0前/90画右/180背/270画左)→ Subject3D 选视图
+}
 export interface DpBlockingMove {
   char_id: string; at_beat: string; from_zone: string; to_zone: string; action: string;
 }
@@ -727,6 +730,7 @@ export interface DpAttentionBeat {
 export interface DpCameraSetup {
   setup_id: string; position: string; axis_side: string; shot_size: string;
   serves_beats: string[]; subjects: string[];
+  azimuth_deg?: number | null; // SPEC-004 v2:机位方位角(0正面/90画右侧/180背后/270画左侧)
 }
 export interface DpCoveragePlan { master: DpCameraSetup | null; setups: DpCameraSetup[] }
 export interface DpSceneStage {

@@ -56,6 +56,10 @@ _SCENE_STAGE_PROMPT = """你是电影场面调度师(blocking)。下面是一场
 - attention_script 和 coverage_plan 的 at_beat / serves_beats 必须引用给定的 beat_id。
 - axis_side 必须声明机位在主轴哪一侧(left 或 right)。
 - 每个 beat 至少被 2 个 camera_setup 覆盖(留剪辑余地)。
+- **朝向/机位用角度(SPEC-004 v2,让朝向落到画面)**:每个 initial_position 给 facing_deg=角色
+  朝向(0=面向观众/正前, 90=面向画右, 180=背对观众, 270=面向画左);每个 camera_setup 给
+  azimuth_deg=机位所在方位(0=正面/观众席, 90=画右侧, 180=背后, 270=画左侧)。对话中两人通常
+  互相面对:画左的人 facing≈90、画右的人 facing≈270。拿不准就按此约定给整数。
 
 只输出 JSON(字段说明见约束):
 {{"space_map": {{
@@ -63,7 +67,8 @@ _SCENE_STAGE_PROMPT = """你是电影场面调度师(blocking)。下面是一场
     "landmarks": [{{"name": "道具名", "zone_id": "z1"}}]}},
  "blocking": {{
     "initial_positions": [{{
-      "char_id": "人物名", "zone_id": "z1", "facing": "朝向", "posture": "姿态"}}],
+      "char_id": "人物名", "zone_id": "z1", "facing": "朝向", "facing_deg": 90,
+      "posture": "姿态"}}],
     "moves": [{{
       "char_id": "人物名", "at_beat": "beat_id", "from_zone": "z1", "to_zone": "z2",
       "action": "动作"}}],
@@ -83,8 +88,8 @@ _SCENE_STAGE_PROMPT = """你是电影场面调度师(blocking)。下面是一场
       "setup_id": "master", "position": "机位描述", "axis_side": "left", "shot_size": "全景",
       "serves_beats": ["beat_id"], "subjects": ["人物名"]}},
     "setups": [{{
-      "setup_id": "s1", "position": "机位描述", "axis_side": "left", "shot_size": "中景",
-      "serves_beats": ["beat_id"], "subjects": ["人物名"]}}]}}}}
+      "setup_id": "s1", "position": "机位描述", "axis_side": "left", "azimuth_deg": 0,
+      "shot_size": "中景", "serves_beats": ["beat_id"], "subjects": ["人物名"]}}]}}}}
 
 第{scene_no}场 {time} {location}
 出场:{characters_present}
@@ -157,9 +162,20 @@ def _parse_positions(raw: Any, present: set[str]) -> list[InitialPosition]:
                 zone_id=str(p.get("zone_id") or "").strip(),
                 facing=str(p.get("facing") or "").strip(),
                 posture=str(p.get("posture") or "").strip(),
+                facing_deg=_parse_deg(p.get("facing_deg")),
             )
         )
     return out
+
+
+def _parse_deg(v: Any) -> int | None:
+    """角度解析:整数化并归一到 0-359;非数/空 → None(渲染层据此退回正面 2D 真照)。"""
+    if v is None or v == "":
+        return None
+    try:
+        return round(float(v)) % 360
+    except Exception:
+        return None
 
 
 def _parse_camera_setup(raw: Any, beat_ids: set[str], present: set[str]) -> CameraSetup | None:
@@ -175,6 +191,7 @@ def _parse_camera_setup(raw: Any, beat_ids: set[str], present: set[str]) -> Came
         shot_size=str(raw.get("shot_size") or "").strip(),
         serves_beats=[b for b in (raw.get("serves_beats") or []) if str(b) in beat_ids],
         subjects=[s for s in (raw.get("subjects") or []) if str(s) in present],
+        azimuth_deg=_parse_deg(raw.get("azimuth_deg")),
     )
 
 

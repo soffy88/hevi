@@ -849,6 +849,44 @@ async def _resolve_subject_ref_paths(
     return out
 
 
+def _scene_stage_has_angles(scene_stage: SceneStageSet | None) -> bool:
+    """SceneStage 里有没有任何结构化角度(facing_deg/azimuth_deg)——没有就没必要建 Subject3D
+    视图(建了也一律 front、白花 ~172s/角色)。"""
+    if scene_stage is None:
+        return False
+    for s in scene_stage.stages:
+        if any(p.facing_deg is not None for p in s.blocking.initial_positions):
+            return True
+        if any(cs.azimuth_deg is not None for cs in s.coverage_plan.setups):
+            return True
+        if s.coverage_plan.master and s.coverage_plan.master.azimuth_deg is not None:
+            return True
+    return False
+
+
+async def _resolve_subject3d_views(
+    design_list: DesignList, *, subject_svc: SubjectService
+) -> dict[str, dict[str, str]]:
+    """SPEC-004 v2:角色名 → Subject3D 4 视图路径({view: path})。已建(metadata.subject3d.views)
+    直接用;未建则调 generate_subject3d 现建(TripoSR CPU ~172s/角色,缓存进 metadata)。单个角色
+    建失败静默跳过(该角色渲染时退回正面 2D 真照)。仅在 scene_stage 有角度时才调这里(见 gate)。"""
+    out: dict[str, dict[str, str]] = {}
+    for c in design_list.characters:
+        if not c.name or not c.subject_id:
+            continue
+        try:
+            subj = await subject_svc.get_subject(c.subject_id)
+            views = ((subj or {}).get("metadata") or {}).get("subject3d", {}).get("views")
+            if not views:
+                built = await subject_svc.generate_subject3d(c.subject_id)
+                views = (built or {}).get("views")
+            if views:
+                out[c.name] = views
+        except Exception as e:
+            logger.warning("角色 %s Subject3D 视图解析/生成失败,退回正面: %s", c.name, e)
+    return out
+
+
 _VERDICT_MAX_RETAKE = 1  # 尝试预算(§4.1.2):失败镜最多重掷 1 次,不无限烧钱
 
 
@@ -996,6 +1034,7 @@ async def _run_director_via_tongjian(
     aspect_ratio: str,
     target_duration_sec: int,
     scene_stage: SceneStageSet | None = None,
+    subject_svc: SubjectService | None = None,
 ) -> None:
     """后台真实生成:导演锁定内容 → 通鉴对白+口型管线(render_director_episode)。
     直接更新 video_tasks/shot_states,复用前端既有 taskApi.videoUrl/shots(零改动)。
@@ -1037,6 +1076,12 @@ async def _run_director_via_tongjian(
             except Exception:  # 进度回写绝不可拖垮生成
                 pass
 
+    # SPEC-004 v2:仅当 SceneStage 真设了角度时,才建/取每角色的 Subject3D 视图(否则一律 front,
+    # 建了白费 ~172s/角色)。非正面朝向的镜届时走 img2img 从对应视图当底图,让朝向落到画面。
+    subject3d_views: dict[str, dict[str, str]] = {}
+    if subject_svc is not None and _scene_stage_has_angles(scene_stage):
+        subject3d_views = await _resolve_subject3d_views(design_list, subject_svc=subject_svc)
+
     render_kwargs = {
         "shot_list": shot_list,
         "design_list": design_list,
@@ -1048,6 +1093,8 @@ async def _run_director_via_tongjian(
         "target_duration_sec": target_duration_sec,
         # SPEC-004 阶段 3:场事实 → render_director_episode 逐镜投影空间/焦点进关键帧 prompt。
         "scene_stage": scene_stage,
+        # SPEC-004 v2:每角色 Subject3D 视图,非正面镜走 img2img 从对应视图带朝向。
+        "subject3d_views": subject3d_views,
     }
     poller = asyncio.ensure_future(_progress_poller())
     try:
@@ -1203,6 +1250,7 @@ async def produce_work(
         aspect_ratio=body.aspect_ratio,
         target_duration_sec=int(duration_cfg["target_s"]),
         scene_stage=scene_stage,
+        subject_svc=subject_svc,  # SPEC-004 v2:后台建/取 Subject3D 视图用
     )
 
     rec["video_task_id"] = str(task_id)

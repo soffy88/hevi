@@ -188,6 +188,42 @@ async def test_llm_draft_parsed_and_out_of_scope_refs_filtered():
 
 
 @pytest.mark.asyncio
+async def test_angles_parsed_from_llm_draft():
+    """SPEC-004 v2:LLM 给的 facing_deg/azimuth_deg 解析并归一到 0-359;非数→None。"""
+    stage = await _draft(
+        {
+            "blocking": {
+                "initial_positions": [
+                    {"char_id": "王生", "facing_deg": 90},
+                    {"char_id": "老道", "facing_deg": "270"},
+                    {"char_id": "店家", "facing_deg": 450},  # 归一到 90
+                ]
+            },
+            "coverage_plan": {
+                "setups": [
+                    {
+                        "setup_id": "s1",
+                        "azimuth_deg": 0,
+                        "serves_beats": ["bt001"],
+                        "subjects": ["王生"],
+                    },
+                    {
+                        "setup_id": "s2",
+                        "azimuth_deg": "bad",
+                        "serves_beats": ["bt002"],
+                        "subjects": ["老道"],
+                    },
+                ]
+            },
+        }
+    )
+    deg = {p.char_id: p.facing_deg for p in stage.blocking.initial_positions}
+    assert deg == {"王生": 90, "老道": 270, "店家": 90}
+    az = {c.setup_id: c.azimuth_deg for c in stage.coverage_plan.setups}
+    assert az == {"s1": 0, "s2": None}  # 非数 → None
+
+
+@pytest.mark.asyncio
 async def test_invalid_transition_and_intensity_default():
     """非法 transition/intensity → 回落 cut/primary。"""
     stage = await _draft(

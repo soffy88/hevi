@@ -397,6 +397,68 @@ async def test_lock_design_list_skips_already_locked_assets(tmp_path, monkeypatc
 # ── ③.5 场面调度(SPEC-004)────────────────────────────────────────────────────
 
 
+def test_scene_stage_has_angles():
+    """SPEC-004 v2:只有真设了 facing_deg/azimuth_deg 才算有角度(否则不值当建 Subject3D 视图)。"""
+    from hevi.director.pipeline_schemas import (
+        CameraSetup,
+        CoveragePlan,
+        InitialPosition,
+        SceneBlocking,
+        SceneStage,
+    )
+
+    empty = SceneStageSet(stages=[SceneStage(scene_ref=1)])
+    assert dp._scene_stage_has_angles(empty) is False
+    assert dp._scene_stage_has_angles(None) is False
+    with_facing = SceneStageSet(
+        stages=[
+            SceneStage(
+                scene_ref=1,
+                blocking=SceneBlocking(
+                    initial_positions=[InitialPosition(char_id="甲", facing_deg=90)]
+                ),
+            )
+        ]
+    )
+    assert dp._scene_stage_has_angles(with_facing) is True
+    with_az = SceneStageSet(
+        stages=[
+            SceneStage(
+                scene_ref=1,
+                coverage_plan=CoveragePlan(setups=[CameraSetup(setup_id="s1", azimuth_deg=0)]),
+            )
+        ]
+    )
+    assert dp._scene_stage_has_angles(with_az) is True
+
+
+@pytest.mark.asyncio
+async def test_resolve_subject3d_views_cached_and_built():
+    """已建(metadata.subject3d.views)直接用;未建则调 generate_subject3d 现建。"""
+    dl = DesignList(
+        characters=[
+            DesignCharacter(name="有视图", subject_id="s-cached"),
+            DesignCharacter(name="没视图", subject_id="s-build"),
+            DesignCharacter(name="无号", subject_id=None),  # 跳过
+        ]
+    )
+    svc = AsyncMock()
+
+    async def _get(sid):
+        if sid == "s-cached":
+            return {"metadata": {"subject3d": {"views": {"front": "/f.png", "right": "/r.png"}}}}
+        return {"metadata": {}}  # 没视图 → 触发生成
+
+    svc.get_subject.side_effect = _get
+    svc.generate_subject3d.return_value = {"views": {"front": "/nf.png", "left": "/nl.png"}}
+
+    out = await dp._resolve_subject3d_views(dl, subject_svc=svc)
+    assert out["有视图"] == {"front": "/f.png", "right": "/r.png"}
+    assert out["没视图"] == {"front": "/nf.png", "left": "/nl.png"}
+    assert "无号" not in out
+    svc.generate_subject3d.assert_awaited_once_with("s-build")  # 只为没视图的那个建
+
+
 @pytest.mark.asyncio
 async def test_regenerate_scene_stage_rejected_before_design_list_locked():
     """③.5 未就绪守卫:design_list 没锁,重生成场面调度 → 409。"""

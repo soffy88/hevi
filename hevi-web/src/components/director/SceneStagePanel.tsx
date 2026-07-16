@@ -115,6 +115,10 @@ function StageCard({ stage, onChange }: {
             </select></label>
           <label className="tj-field"><span className="tj-field__label">朝向</span>
             <input value={p.facing} onChange={e => updatePos(i, { facing: e.target.value })} /></label>
+          <label className="tj-field">
+            <span className="tj-field__label" title="0前/90画右/180背/270画左 → 选 Subject3D 视图">朝向角°</span>
+            <input type="number" min={0} max={359} value={p.facing_deg ?? ''}
+              onChange={e => updatePos(i, { facing_deg: e.target.value === '' ? null : Number(e.target.value) })} /></label>
           <label className="tj-field"><span className="tj-field__label">姿态</span>
             <input value={p.posture} onChange={e => updatePos(i, { posture: e.target.value })} /></label>
         </div>
@@ -156,8 +160,8 @@ function StageCard({ stage, onChange }: {
             )}
             {stage.coverage_plan.setups.map(s => (
               <span key={s.setup_id} className="sd-chip"
-                title={`轴侧 ${s.axis_side} · 拍 ${s.subjects.join('、')} · 服务 ${s.serves_beats.join(',')}`}>
-                {s.setup_id}｜{s.shot_size}｜{s.axis_side}
+                title={`轴侧 ${s.axis_side} · 方位角 ${s.azimuth_deg ?? '—'}° · 拍 ${s.subjects.join('、')} · 服务 ${s.serves_beats.join(',')}`}>
+                {s.setup_id}｜{s.shot_size}｜{s.axis_side}{s.azimuth_deg != null ? `｜${s.azimuth_deg}°` : ''}
               </span>
             ))}
           </div>
