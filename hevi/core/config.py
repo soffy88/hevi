@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # 根分区(/)只剩 20G 空闲,故缓存目录放 /data 而非默认 ~/.cache/huggingface。
     sdxl_model_dir: str = "/data/models/huggingface"
 
+    # LibLib.tv (libtv) agent-im:电影级生视频专业平台。hevi 产出加厚剧本 → 中继给 agent-im
+    # 出片(见 hevi/video/libtv_service.py)。key 走 .env,不硬编码。
+    libtv_access_key: str = ""
+    libtv_im_base: str = "https://im.liblib.tv"
+
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7

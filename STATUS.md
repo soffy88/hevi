@@ -20,6 +20,9 @@
 
 ## 🔄 In Progress
 
+- **★方向转向:接 LibLib.tv(libtv)出片,不再自造渲染(2026-07-16)。** 实测 hevi 自造导演产集出"大头念台词/穿戴像圣斗士/走位丢失",实证根因:导演路完全不走 oskill、自造了薄版本(参考图无 seed 随机+精确同名才复用→身份漂移;服饰文本零约束叠画风词→夸张;④走位/对白动作/语气到渲染层多处断链)。soffy 指向 libtv-skills(github.com/libtv-labs/libtv-skills)——LibLib.tv 专业生视频平台的 agent-im 客户端,核心原则"用户侧不做创作、只做传话"。**决定:hevi 定位改为"用 LLM 产加厚剧本(它擅长),把剧本作创作指令中继给 LibLib.tv 出电影级视频(它擅长)"。** 已建 `hevi/video/libtv_service.py`(agent-im 客户端:会话/轮询/提取结果URL/下载,Bearer settings.libtv_access_key 走.env)+ `scripts/libtv_relay.py`(剧本→创作指令中继,可 --manuscript 现产剧本)+ settings + 测试 4/4。**待 soffy 给 LIBTV_ACCESS_KEY 真跑验证方向,成了再深接进 produce(作 render backend 选项)。** 注:oskill 的"电影 skill"实证是空壳(consistency=文件存在率、image_generate 无参考图参数、storyboard 只有 motion 无景别/轴线)——接 oskill 反而更糟,故不走。
+
+
 - **②剧本层加厚:小说语言→剧本语言(2026-07-16)。** 实测反馈:产集出来"一个个大头念台词、没动作没感情"——根因是 ②剧本太薄(只给"谁说了句什么",数字人只能演大头对白)。改厚 `screenplay.py` 的 `_SCREENPLAY_PROMPT`:强制①把每个情节点展开成一连串可拍的物理动作+走位+环境+表情;②一场一情绪/动作拍点,不把多轮对白挤进一个大头场;③narration 写成分镜级可拍画面(非情节概要);④文言转白话但保名句/意象/语气分量。带一段"小说一句→剧本四场"的张飞失徐州 few-shot 锚定粒度。纯 prompt 改动,schema/解析不变(43 测试过、lint 干净)。**注意副作用**:场分得越细→下游 design_list/scene_stage/shot_list 逐场 LLM 调用越多→产集更慢更贵(这是要电影感的必然代价)。**下一步**:③设计清单/④分镜的 prompt 可能也要相应加厚(让 narration 的动作真切成动作镜)。
 
 - **SPEC-004 v2:接通 Subject3D 机位消费 —— 让场事实第一次真正落到画面(2026-07-16,方案待拍板)。** G-S1 铁证:身份靠参考图锁=有效,靠文字描述=无效;朝向/落位现在还在用文字喂,注定同样执行不出来。正解=把朝向/落位变成结构化条件 = Subject3D 机位渲染帧(不是 ControlNet 2D 补丁,那和 Subject3D 路线撞车)。**两张只读测绘的关键事实**:
