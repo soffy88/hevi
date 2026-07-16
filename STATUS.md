@@ -20,6 +20,8 @@
 
 ## 🔄 In Progress
 
+- **②剧本层加厚:小说语言→剧本语言(2026-07-16)。** 实测反馈:产集出来"一个个大头念台词、没动作没感情"——根因是 ②剧本太薄(只给"谁说了句什么",数字人只能演大头对白)。改厚 `screenplay.py` 的 `_SCREENPLAY_PROMPT`:强制①把每个情节点展开成一连串可拍的物理动作+走位+环境+表情;②一场一情绪/动作拍点,不把多轮对白挤进一个大头场;③narration 写成分镜级可拍画面(非情节概要);④文言转白话但保名句/意象/语气分量。带一段"小说一句→剧本四场"的张飞失徐州 few-shot 锚定粒度。纯 prompt 改动,schema/解析不变(43 测试过、lint 干净)。**注意副作用**:场分得越细→下游 design_list/scene_stage/shot_list 逐场 LLM 调用越多→产集更慢更贵(这是要电影感的必然代价)。**下一步**:③设计清单/④分镜的 prompt 可能也要相应加厚(让 narration 的动作真切成动作镜)。
+
 - **SPEC-004 v2:接通 Subject3D 机位消费 —— 让场事实第一次真正落到画面(2026-07-16,方案待拍板)。** G-S1 铁证:身份靠参考图锁=有效,靠文字描述=无效;朝向/落位现在还在用文字喂,注定同样执行不出来。正解=把朝向/落位变成结构化条件 = Subject3D 机位渲染帧(不是 ControlNet 2D 补丁,那和 Subject3D 路线撞车)。**两张只读测绘的关键事实**:
   - **Subject3D 活着(重开,非 drop)**:`hevi/subjects/subject3d_local.py::generate_subject3d`(TripoSR,单图→4 视图 front/left/right/back,CPU ~172s),存 `Subject.metadata.subject3d.views`;仅在短剧通道接了(`shortdrama.py` 后台派发)。SPEC-001 §6 的"drop Subject3D"已被 soffy 2026-07-13 重开(单角色探索,不进主线 G2)。vault identity_pack 的"multiview"是**另一套**(2D SDXL 9 宫格,无 3D)。
   - **管道两头都有、中间断,断点精确**:4 视图一路传到 `CharacterBibleEntry.ref_image_views`(schemas.py:214)——**写 3 处读 0 处,死数据**;`_canonical`(scene_render_avatar.py:304)只用单张 front `ref_image`,无角度参数。接线 = 4 触点:①**结构化朝向(真拦路石:facing 自由文本+axis_side 只 left/right,推不出视图)** → ②桥接层加 `shot_id→view` 映射(并 shot_space_by_id)→ ③`ref_image_by_id`(:694)消费 `ref_image_views` → ④`_canonical` 加角度参数+按(cid,view)缓存。
