@@ -486,12 +486,20 @@ def _local_kf_prompt(
     emotion: str,
     action_hint: str,
     *,
+    scene_space: str = "",
     mouth_closed: bool = False,
     wide: bool = False,
 ) -> str:
-    """拼 sdxl_local 关键帧生成 prompt(中文实测可用,风格/人物/场景都跟得住;精确姿势跟不住
-    是 base SDXL 无 ControlNet 的已知代价,靠 kf2v 运动补动作感)。IP-Adapter 另传 canon 锁脸。"""
-    parts = [style, appearance, emotion]
+    """拼 sdxl_local 关键帧生成 prompt。**语言:此处拼的是中文(appearance/scene_space 都是中文
+    作者写的),但 base SDXL 对中文人物 prompt 会渲成通用少女(G-S1 2026-07-16 实证:中文"白胡子
+    老道士"→银发少女);中→英转换由唯一漏斗 `sdxl_local_generate` 统一做(prompt_language),此处
+    不用管。** 精确姿势跟不住是 base SDXL 无 ControlNet 的已知代价(SPEC-004 v2 拟接 Subject3D 机位
+    帧解决朝向),靠 kf2v 运动补动作感。IP-Adapter 另传 canon 锁脸。
+
+    scene_space:SPEC-004 断链#3——场景空间描述(环境/光照/氛围,来自 DesignScene)。此前
+    DesignScene 的空间描述从桥接层到这里全程零消费,画面里根本没有场景。按 §F.1 口径空间项
+    靠前(风格→空间→相貌→情绪→动作)。空串则行为不变(向后兼容 tongjian 管线)。"""
+    parts = [style, scene_space, appearance, emotion]
     if action_hint:
         parts.append(f"动作:{action_hint}")
     if mouth_closed:
@@ -510,6 +518,8 @@ async def _edit_keyframe(
     engine: str = "local",
     local_prompt: str | None = None,
     ip_adapter_image: Path | None = None,
+    init_image: Path | None = None,
+    init_strength: float = 0.45,
     size: tuple[int, int] = (1024, 1024),
 ) -> Path:
     """出关键帧:把该镜的情绪+动作+构图落成一张锁脸的关键帧。引擎可切(config.keyframe_engine):
@@ -525,6 +535,23 @@ async def _edit_keyframe(
     两种引擎都以 canon 复制保底:本地/云端都不可用时直接用 canonical 像当关键帧,整镜不降级
     空镜、整集不卡 G6 装配门(只少了动作/情绪注入,happyhorse 后面仍加口型+表情)。多角色镜头
     保底只保 lead 一张脸(fallback_from 传 canons[0])。"""
+    # 0. SPEC-004 v2:非正面朝向镜 → img2img 从 Subject3D 朝向视图当底图(朝向真落画面,不走
+    #    IP-Adapter[只迁身份不迁姿势]。gs1 2026-07-16 验证)。仅 local 引擎且备好朝向视图时。
+    if engine == "local" and local_prompt and init_image and Path(init_image).exists():
+        try:
+            await sdxl_local_generate(
+                prompt=local_prompt,
+                output_path=output_path,
+                width=size[0],
+                height=size[1],
+                extra={"init_image": str(init_image), "strength": init_strength},
+                require_gpu=True,
+            )
+            if output_path.exists() and output_path.stat().st_size > 1024:
+                return output_path
+        except Exception as e:  # img2img 失败退下面的 IP-Adapter/云端路,不拖垮整镜
+            logger.warning("sdxl_local img2img(朝向视图)失败,退 IP-Adapter/云端: %s", e)
+
     # 1. 本地 sdxl_local(IP-Adapter 锁脸 + 任意姿势/构图)—— 仅 local 引擎且备好本地素材时
     if engine == "local" and local_prompt and ip_adapter_image and Path(ip_adapter_image).exists():
         try:
@@ -613,10 +640,11 @@ async def _gen_action_keyframe(
     engine: str,
     size: tuple[int, int],
     command_summary: str = "",
+    scene_space: str = "",
 ) -> None:
     """从锁脸参考(action_ip)+ 相貌(appear)生成一张"闭嘴做某动作(desc)"的关键帧,供 kf2v
     的首/中(peak)/尾(aftermath)帧复用。command_summary=§E 该帧的导演命令摘要(必须/优先约束)。
-    已存在则跳过(缓存)。"""
+    scene_space=SPEC-004 断链#3 场景空间描述(见 _local_kf_prompt)。已存在则跳过(缓存)。"""
     if out_path.exists():
         return
     await _edit_keyframe(
@@ -630,7 +658,9 @@ async def _gen_action_keyframe(
         output_path=out_path,
         fallback_from=action_ip,
         engine=engine,
-        local_prompt=_local_kf_prompt(style, appear, emotion, desc, mouth_closed=True, wide=True),
+        local_prompt=_local_kf_prompt(
+            style, appear, emotion, desc, scene_space=scene_space, mouth_closed=True, wide=True
+        ),
         ip_adapter_image=action_ip,
         size=size,
     )
@@ -672,6 +702,17 @@ async def build_frame_manifest_avatar(
     # 拼接,动作弧有真正的峰值,但每个动作镜的视频生成调用数翻倍(成本约 2×)。仅当有
     # 结构化 action_beats 时 3point 才生效;无 beats 一律退回单段(现状)。
     action_arc = str(_p(config, "action_arc", "2point"))
+    # SPEC-004 断链#3:场景空间描述(scene_id → "环境,光照,氛围",来自 DesignScene)。
+    # 桥接层 render_director_episode 经 config.params 传入;不传即空 dict(tongjian 管线行为不变)。
+    scene_desc_by_id = _p(config, "scene_desc_by_id", None) or {}
+    # SPEC-004 阶段 3:逐镜场事实投影(shot_id → 落位/焦点/正方向,从 SceneStage 确定性投影)。
+    shot_space_by_id = _p(config, "shot_space_by_id", None) or {}
+    # SPEC-004 v2:逐镜每角色该用的 Subject3D 视图(shot_id → {char_id: front/left/right/back})+
+    # 每角色各视图的图片路径(char_id → {view: path})。非正面视图 → 该镜 lead 走 img2img 从该
+    # 视图当底图(朝向落地);正面/无 3D 视图 → 退回原 IP-Adapter 路(2D 真照,身份最强)。
+    # 都不传(tongjian 管线/未建 3D 视图)→ 空 dict,行为完全不变。
+    shot_view_by_id = _p(config, "shot_view_by_id", None) or {}
+    subject3d_views_by_id = _p(config, "subject3d_views_by_id", None) or {}
     resolved_llm = _resolve_llm() if action_engine == "kf2v" else None
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
@@ -687,6 +728,16 @@ async def build_frame_manifest_avatar(
     frames: list[ShotFrame] = []
     for idx, shot in enumerate(shotlist.shots):
         sid = shot.shot_id
+        # SPEC-004:关键帧空间项 = 场景描述(断链#3,per-scene)+ 逐镜场事实投影(阶段 3,per-shot,
+        # 落位/焦点/正方向)。都空则各关键帧退回原行为(向后兼容)。
+        scene_space = "；".join(
+            x
+            for x in (
+                str(scene_desc_by_id.get(shot.scene_id, "") or ""),
+                str(shot_space_by_id.get(sid, "") or ""),
+            )
+            if x
+        )
         lines = [lines_by_id[lid] for lid in shot.line_ids if lid in lines_by_id]
         text = "".join(ln.text for ln in lines).strip()
         dlg_line = next(
@@ -754,6 +805,14 @@ async def build_frame_manifest_avatar(
                     if action_hint:
                         instruction += f",动作:{action_hint}"
                     instruction += _EXPRESSION_GUARD + _cmd["first"]
+                    # SPEC-004 v2:lead 该镜的 Subject3D 视图非正面且已建 → img2img 从该视图当底图
+                    # (朝向落地);否则 init_view=None → 走原 IP-Adapter(2D 真照,身份最强)。
+                    _view = shot_view_by_id.get(sid, {}).get(lead, "front")
+                    _init_view = (
+                        subject3d_views_by_id.get(lead, {}).get(_view)
+                        if _view and _view != "front"
+                        else None
+                    )
                     await _edit_keyframe(
                         image_path=canon,
                         instruction=instruction,
@@ -761,9 +820,14 @@ async def build_frame_manifest_avatar(
                         fallback_from=canon,
                         engine=keyframe_engine,
                         local_prompt=_local_kf_prompt(
-                            style, appearance_by_id.get(lead, lead), emotion, action_hint
+                            style,
+                            appearance_by_id.get(lead, lead),
+                            emotion,
+                            action_hint,
+                            scene_space=scene_space,
                         ),
                         ip_adapter_image=canon,
+                        init_image=Path(_init_view) if _init_view else None,
                         size=(w, h),
                     )
                 talk = work / f"{sid}_talk.mp4"
@@ -851,6 +915,7 @@ async def build_frame_manifest_avatar(
                                     + "、".join(appearance_by_id.get(cid, cid) for cid in present),
                                     emotion,
                                     act_hint,
+                                    scene_space=scene_space,
                                     mouth_closed=True,
                                     wide=True,
                                 ),
@@ -888,6 +953,7 @@ async def build_frame_manifest_avatar(
                                     appearance_by_id.get(lead, lead),
                                     emotion,
                                     act_hint,
+                                    scene_space=scene_space,
                                     mouth_closed=True,
                                     wide=True,
                                 ),
@@ -936,6 +1002,7 @@ async def build_frame_manifest_avatar(
                                 engine=keyframe_engine,
                                 size=(w, h),
                                 command_summary=_cmd["aftermath"],
+                                scene_space=scene_space,
                             )
                         # 关键帧序列:首帧(trigger)→[peak]→尾帧(aftermath)。
                         seq = [kf]
@@ -951,6 +1018,7 @@ async def build_frame_manifest_avatar(
                                 engine=keyframe_engine,
                                 size=(w, h),
                                 command_summary=_cmd["peak"],
+                                scene_space=scene_space,
                             )
                             seq.append(peak_kf)
                         seq.append(end_kf)

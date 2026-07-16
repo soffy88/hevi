@@ -40,6 +40,10 @@ class ScreenplayDialogueLine(BaseModel):
 
     character_name: str
     text: str  # 白话,不是文言/书面语
+    # SPEC-004:对谁说(A 对 B 说 → target_name=B)。升到②剧本级,让"谁对谁说"成为场事实的
+    # 一部分——③.5 SceneStage.sightlines 从此确定性派生(INC-001 §H 升格),④ShotList 保持一致。
+    # 空 = 未指明受话对象(独白/对众)。
+    target_name: str = ""
 
 
 class ScreenplayScene(BaseModel):
@@ -131,7 +135,156 @@ class ShotListItem(BaseModel):
     scene_name: str = ""  # 本镜所在场景(对应 DesignScene.name)
     prop_names: list[str] = Field(default_factory=list)
     duration_s: float = 5.0
+    # SPEC-004 ③.5 场事实引用(阶段 3)——画面空间/落位/焦点从 SceneStage 确定性投影(桥接层),
+    # 不再由本镜自由想象。v1 由 link_shots_to_scene_stage 按对白锚定的 beats 确定性填充
+    # (非 LLM);None/空 = 未接场事实(向后兼容旧 work)。见 SPEC-004 §3.1。
+    scene_stage_ref: int | None = None  # 引用哪个 SceneStage(= SceneStage.scene_ref = scene_no)
+    beat_range: list[str] = Field(default_factory=list)  # 覆盖 SceneStage 的哪些 beat_id
+    camera_setup_ref: str = ""  # coverage_plan 里的 setup_id(自带 axis_side/shot_size)
+    attention_ref: str = ""  # 服务哪个 attention_beat(= at_beat,带出 focus_target/intensity)
 
 
 class ShotList(BaseModel):
     shots: list[ShotListItem] = Field(default_factory=list)
+
+
+# ── ③.5 场面调度 SceneStage(场事实,SPEC-004)──────────────────────────────
+# 每场一个,插在 ③设计清单 与 ④分镜 之间。该场所有镜头从同一"场事实"切视角,而不是各自
+# 想象空间(§0.3 根因)。v1 = 纯结构化 JSON + 从 zones 确定性派生的俯视示意(不做 3D,不让
+# AI 自由画图,§7 单一真相源)。AI 出完整草案、人在 Construction-First 下攻击落位/注意力/机位后锁定。
+
+
+class SceneZone(BaseModel):
+    """空间关键区域(俯视示意用)。如 门口 / 沙发区 / 窗边 / 桌旁。"""
+
+    zone_id: str
+    name: str = ""
+    rel_position: str = ""  # 相对位置,如"左上""画面中心"(供 layout_sketch 派生)
+
+
+class SceneLandmark(BaseModel):
+    """关键家具/道具落位(引用 DesignProp.name)。"""
+
+    name: str
+    zone_id: str = ""
+
+
+class SceneSpaceMap(BaseModel):
+    """空间图。layout_sketch 不存字段——需要时从 zones 确定性派生(§7 单一真相源)。"""
+
+    zones: list[SceneZone] = Field(default_factory=list)
+    landmarks: list[SceneLandmark] = Field(default_factory=list)
+
+
+class SceneBeat(BaseModel):
+    """节拍:整场戏的时间轴单元,一切按节拍组织。action_beats(镜头内动作弧)挂在其下。"""
+
+    beat_id: str
+    order: int = 0
+    trigger: str = ""  # 本拍触发(某句台词/某个动作/某个进场)
+    dialogue_ref: str = ""  # 关联④分镜台词行(speaker→target 文本或 line_id)
+    duration_hint: float = 0.0
+
+
+class InitialPosition(BaseModel):
+    char_id: str  # 对应 DesignCharacter.name
+    zone_id: str = ""
+    facing: str = ""  # 朝向,自由文本(如"面向门口""侧对乙")——给人看/给 prompt
+    posture: str = ""  # 姿态,如"站立""端坐"
+    # SPEC-004 v2:角色朝向的**结构化场景方位角**(0-359°,0=场景"正前/朝镜头 master 侧")。
+    # 与 CameraSetup.azimuth_deg 一起,几何算出这镜这角色该用 Subject3D 的哪个视图(front/left/
+    # right/back)当 img2img 底图,让朝向真正落到画面(见 scene_stage.resolve_subject_view)。
+    # None = 未定 → 退回正面(用 2D 真照,身份最强)。
+    facing_deg: int | None = None
+
+
+class BlockingMove(BaseModel):
+    char_id: str
+    at_beat: str = ""  # beat_id:谁在第几拍从哪移到哪
+    from_zone: str = ""
+    to_zone: str = ""
+    action: str = ""
+
+
+class Sightline(BaseModel):
+    """视线关系。★直接从对白 speaker→target 派生(INC-001 §H 升格);无对白时刻由 AI 补
+    (assumed=True),人审核。"""
+
+    at_beat: str = ""
+    char_id: str = ""
+    looking_at: str = ""  # char_id / landmark / zone
+    assumed: bool = False
+
+
+class SceneBlocking(BaseModel):
+    """人物落位与动线(核心之一)。"""
+
+    initial_positions: list[InitialPosition] = Field(default_factory=list)
+    moves: list[BlockingMove] = Field(default_factory=list)
+    sightlines: list[Sightline] = Field(default_factory=list)
+
+
+class AxisShift(BaseModel):
+    at_beat: str = ""
+    new_axis: list[str] = Field(default_factory=list)  # [char_a, char_b] 或 [char, landmark]
+    reason: str = ""
+
+
+class SceneAxis(BaseModel):
+    """轴线(the line,180°规则基准)。人物大幅移动后可合法重建,但必须显式声明 axis_shift。"""
+
+    primary_axis: list[str] = Field(default_factory=list)  # 通常是两主要角色连线
+    axis_shifts: list[AxisShift] = Field(default_factory=list)
+    side_convention: str = ""  # 约定正方向,如"甲恒在画左,乙恒在画右"
+
+
+class AttentionBeat(BaseModel):
+    """注意力节拍(核心之二,"该看谁"的答案)。"""
+
+    at_beat: str = ""
+    focus_target: str = ""  # 此刻观众该看谁/什么(char_id 或 prop_id)
+    reason: str = ""  # speaking/reacting/key_action/about_to_speak/reveal/entrance
+    transition: str = "cut"  # cut/pan/push/rack_focus/follow
+    intensity: str = "primary"  # exclusive(独占虚化他人)/primary(主焦点保留环境)/shared(群像)
+
+
+class CameraSetup(BaseModel):
+    """覆盖机位。对着"已存在的调度事实"架,不是对着想象。"""
+
+    setup_id: str
+    position: str = ""  # 相对 space_map 的机位
+    axis_side: str = ""  # ★必须声明:在 primary_axis 的哪一侧(如 left/right / A侧/B侧)
+    shot_size: str = ""  # 默认景别
+    serves_beats: list[str] = Field(default_factory=list)  # beat_id 列表
+    subjects: list[str] = Field(default_factory=list)  # 主要拍谁(char_id)
+    # SPEC-004 v2:机位在场景里的**结构化方位角**(0-359°,= 从被摄角色看向相机的方向)。
+    # 与角色 facing_deg 一起几何算 Subject3D 视图。None = 未定 → 该镜各角色退回正面视图。
+    azimuth_deg: int | None = None
+
+
+class CoveragePlan(BaseModel):
+    """机位方案(核心之三)。master=能看清全场地理的宽景;setups=覆盖机位。"""
+
+    master: CameraSetup | None = None
+    setups: list[CameraSetup] = Field(default_factory=list)
+
+
+class SceneStage(BaseModel):
+    """场事实。该场所有 ShotListItem 通过 scene_stage_ref/beat_range/camera_setup_ref/
+    attention_ref 引用它,画面内容全部从它确定性推导(SPEC-004 §3)。"""
+
+    scene_ref: int  # 引用 Screenplay.scene_no
+    space_map: SceneSpaceMap = Field(default_factory=SceneSpaceMap)
+    beats: list[SceneBeat] = Field(default_factory=list)
+    blocking: SceneBlocking = Field(default_factory=SceneBlocking)
+    axis: SceneAxis = Field(default_factory=SceneAxis)
+    attention_script: list[AttentionBeat] = Field(default_factory=list)
+    coverage_plan: CoveragePlan = Field(default_factory=CoveragePlan)
+    assumed: bool = False  # 是否含 AI 假设字段(§2.1),人锁定前应攻击确认
+
+
+class SceneStageSet(BaseModel):
+    """一个 work 的场面调度集合——每场一个 SceneStage(scene_ref = Screenplay.scene_no)。
+    作 ③.5 级的 draft/lock 端点 body 与内存存储(director_pipeline._WORKS["scene_stage"])。"""
+
+    stages: list[SceneStage] = Field(default_factory=list)

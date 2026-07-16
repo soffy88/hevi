@@ -43,14 +43,16 @@ _SCREENPLAY_PROMPT = """把下面的素材改写成白话分场剧本。
 
 分场时把每场的文字拆成两块:
 - narration:非对白的叙述文字(白话,忠实原文情节,不删减关键动作/转折)
-- dialogue:人物开口说的话,每句标出是谁说的(白话口语,但保留原文的完整意思与力度)
+- dialogue:人物开口说的话,每句标出是谁说的(白话口语,但保留原文的完整意思与力度);
+  再标出这句是**对谁说的**(target_name,须是本场在场人物;独白/对众留空)
 
 只输出 JSON:
 {{"scenes": [
   {{"scene_no": 1, "time": "时间", "location": "地点",
     "characters_present": ["人物名", ...],
     "narration": "该场叙述(白话)",
-    "dialogue": [{{"character_name": "人物名", "text": "白话台词"}}],
+    "dialogue": [{{
+      "character_name": "人物名", "text": "白话台词", "target_name": "受话人物名或留空"}}],
     "event_summary": "该场事件概要"}}
 ]}}
 
@@ -121,6 +123,7 @@ async def generate_screenplay_draft(
             ScreenplayDialogueLine(
                 character_name=str(d.get("character_name") or "").strip(),
                 text=str(d.get("text") or "").strip(),
+                target_name=str(d.get("target_name") or "").strip(),
             )
             for d in raw_dialogue
             if isinstance(d, dict) and str(d.get("text") or "").strip()

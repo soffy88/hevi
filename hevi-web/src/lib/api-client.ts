@@ -341,7 +341,7 @@ export const shortdramaApi = {
 // 立意→剧本→设计清单→分镜,逐级人审核锁定才放行下游,详见
 // docs/specs/SPEC-003-mainline-director-pipeline.md。
 import type {
-  DpConcept, DpScreenplay, DpDesignList, DpShotList, DpWork, DpProduceRequest,
+  DpConcept, DpScreenplay, DpDesignList, DpSceneStageSet, DpShotList, DpWork, DpProduceRequest,
   DpPrepState, DpPrepMutation, DpPrepOverview,
 } from '@/types/api';
 export const directorPipelineApi = {
@@ -359,6 +359,9 @@ export const directorPipelineApi = {
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/screenplay`, { method: 'POST' }),
   regenerateDesignList: (workId: string) =>
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list`, { method: 'POST' }),
+  // SPEC-004 ③.5 场面调度:重新生成本级草稿(逐场 SceneStage)
+  regenerateSceneStage: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/scene-stage`, { method: 'POST' }),
   regenerateShotList: (workId: string) =>
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/shot-list`, { method: 'POST' }),
   // 锁定(可能已编辑的)内容 → 自动生成下一级草稿
@@ -372,6 +375,11 @@ export const directorPipelineApi = {
     }),
   lockDesignList: (workId: string, body: DpDesignList) =>
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list/lock`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  // SPEC-004 ③.5:锁定(可能已攻击过的)场面调度 → 后台生成④分镜草稿 + 跑 §4 lint
+  lockSceneStage: (workId: string, body: DpSceneStageSet) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/scene-stage/lock`, {
       method: 'POST', body: JSON.stringify(body),
     }),
   lockShotList: (workId: string, body: DpShotList) =>

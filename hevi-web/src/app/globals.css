@@ -935,6 +935,13 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .dp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .dp-result-video { width: 100%; max-width: 420px; border-radius: 10px; margin-top: 12px; display: block; }
 
+/* ── SPEC-004 ③.5 场面调度人审(SceneStagePanel)── */
+.dp-ss-sketch { width: 100%; max-width: 320px; height: auto; border: 1px solid var(--border); border-radius: 8px; margin: 6px 0 12px; background: var(--background); display: block; }
+.dp-ss-row { align-items: end; gap: 8px; margin-bottom: 8px; }
+.dp-ss-row .sd-chip { align-self: center; }
+.dp-ss-lint { border: 1px solid var(--warning, #d9a441); border-radius: 10px; padding: 12px; margin-bottom: 14px; background: color-mix(in srgb, var(--warning, #d9a441) 8%, var(--card)); }
+.dp-ss-lint__item { display: flex; align-items: baseline; gap: 8px; font-size: var(--text-sm); margin: 4px 0; }
+
 /* ── INC-001 §L.2 逐镜头准备台(ShotPreparationPanel)── */
 .dp-prep { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 14px; background: var(--card); }
 .dp-prep__head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }

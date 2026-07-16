@@ -10,16 +10,17 @@
 import { useEffect, useState } from 'react';
 import { directorPipelineApi, taskApi } from '@/lib/api-client';
 import ShotPreparationPanel from './ShotPreparationPanel';
+import SceneStagePanel from './SceneStagePanel';
 import type {
   DpConcept, DpScreenplay, DpScreenplayScene, DpDesignList, DpDesignCharacter, DpDesignScene,
-  DpDesignProp, DpShotList, DpShotListItem, DpWork, TaskInfo,
+  DpDesignProp, DpSceneStageSet, DpShotList, DpShotListItem, DpLintFinding, DpWork, TaskInfo,
 } from '@/types/api';
 
 const TASK_STATUS_LABEL: Record<string, string> = {
   pending: '排队中…', running: '生成中…', paused: '已暂停', failed: '✗ 生成失败', completed: '✓ 已完成',
 };
 
-const STAGE_LABELS = ['①立意', '②剧本', '③设计清单', '④分镜'] as const;
+const STAGE_LABELS = ['①立意', '②剧本', '③设计清单', '③.5场面调度', '④分镜'] as const;
 
 function errText(e: unknown): string {
   if (e instanceof Error && e.message === 'NOT_AUTHENTICATED') return '请先登录';
@@ -77,6 +78,7 @@ export function DirectorPipelineConsole() {
   const [conceptDraft, setConceptDraft] = useState<DpConcept | null>(null);
   const [screenplayDraft, setScreenplayDraft] = useState<DpScreenplay | null>(null);
   const [designListDraft, setDesignListDraft] = useState<DpDesignList | null>(null);
+  const [sceneStageDraft, setSceneStageDraft] = useState<DpSceneStageSet | null>(null);
   const [shotListDraft, setShotListDraft] = useState<DpShotList | null>(null);
 
   // 产集参数
@@ -92,6 +94,7 @@ export function DirectorPipelineConsole() {
     setConceptDraft(w.concept);
     setScreenplayDraft(w.screenplay);
     setDesignListDraft(w.design_list);
+    setSceneStageDraft(w.scene_stage);
     setShotListDraft(w.shot_list);
   }
 
@@ -105,7 +108,7 @@ export function DirectorPipelineConsole() {
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
   }
 
-  async function regenerate(stage: 'concept' | 'screenplay' | 'design_list' | 'shot_list') {
+  async function regenerate(stage: 'concept' | 'screenplay' | 'design_list' | 'scene_stage' | 'shot_list') {
     if (!work) return;
     setBusy(true); setErr(null);
     try {
@@ -113,14 +116,16 @@ export function DirectorPipelineConsole() {
         concept: directorPipelineApi.regenerateConcept,
         screenplay: directorPipelineApi.regenerateScreenplay,
         design_list: directorPipelineApi.regenerateDesignList,
+        scene_stage: directorPipelineApi.regenerateSceneStage,
         shot_list: directorPipelineApi.regenerateShotList,
       }[stage];
       let w = await fn(work.work_id);
       setWork(w); syncDrafts(w);
-      if (w.status === 'shot_list_generating') {
-        w = await pollUntilSettled(work.work_id, 'shot_list_generating');
-        setWork(w); syncDrafts(w);
+      // scene_stage / shot_list 重生成是后台任务(逐场 LLM),轮询到落地。
+      for (const pending of ['scene_stage_generating', 'shot_list_generating'] as const) {
+        if (w.status === pending) { w = await pollUntilSettled(work.work_id, pending); setWork(w); syncDrafts(w); }
       }
+      if (w.status === 'scene_stage_regenerate_failed') setErr(w.error || '场面调度生成失败');
       if (w.status === 'shot_list_regenerate_failed') setErr(w.error || '分镜生成失败');
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
   }
@@ -158,6 +163,20 @@ export function DirectorPipelineConsole() {
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
   }
 
+  async function lockSceneStage() {
+    if (!work || !sceneStageDraft) return;
+    setBusy(true); setErr(null);
+    try {
+      let w = await directorPipelineApi.lockSceneStage(work.work_id, sceneStageDraft);
+      setWork(w); syncDrafts(w);
+      if (w.status === 'scene_stage_locking') {
+        w = await pollUntilSettled(work.work_id, 'scene_stage_locking');
+        setWork(w); syncDrafts(w);
+      }
+      if (w.status === 'scene_stage_lock_failed') setErr(w.error || '场面调度锁定失败');
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
   async function lockShotList() {
     if (!work || !shotListDraft) return;
     setBusy(true); setErr(null);
@@ -185,12 +204,13 @@ export function DirectorPipelineConsole() {
 
   function reset() {
     setWork(null); setMaterialText(''); setIntentHint(''); setErr(null);
-    setConceptDraft(null); setScreenplayDraft(null); setDesignListDraft(null); setShotListDraft(null);
+    setConceptDraft(null); setScreenplayDraft(null); setDesignListDraft(null);
+    setSceneStageDraft(null); setShotListDraft(null);
   }
 
   const lockedThrough = work?.locked_through ?? -1;
-  const currentStageIdx = Math.min(lockedThrough + 1, 3);
-  const producing = work && work.locked_through >= 3;
+  const currentStageIdx = Math.min(lockedThrough + 1, 4);
+  const producing = work && work.locked_through >= 4; // shot_list 是 index 4(SPEC-004 插 scene_stage 后)
 
   return (
     <div className="tj dp">
@@ -249,9 +269,17 @@ export function DirectorPipelineConsole() {
         />
       )}
 
-      {work && lockedThrough === 2 && shotListDraft && (
+      {work && lockedThrough === 2 && sceneStageDraft && (
+        <SceneStagePanel
+          draft={sceneStageDraft} onChange={setSceneStageDraft}
+          onRegenerate={() => regenerate('scene_stage')} onLock={lockSceneStage} busy={busy}
+        />
+      )}
+
+      {work && lockedThrough === 3 && shotListDraft && (
         <ShotListStep
           draft={shotListDraft} onChange={setShotListDraft} designList={work.design_list}
+          lint={work.scene_stage_lint}
           onRegenerate={() => regenerate('shot_list')} onLock={lockShotList} busy={busy}
         />
       )}
@@ -506,7 +534,7 @@ function DesignListStep({ draft, onChange, onRegenerate, onLock, busy }: {
       <div className="tj-actions">
         <button type="button" className="tj-btn" onClick={onRegenerate} disabled={busy}>↻ 重新生成</button>
         <button type="button" className="tj-btn tj-btn--primary" onClick={onLock} disabled={busy}>
-          {busy ? '建立资产中…' : '锁定设计清单（建立角色/场景/道具资产），生成④分镜草稿'}
+          {busy ? '建立资产中…' : '锁定设计清单（建立角色/场景/道具资产），生成③.5场面调度草稿'}
         </button>
       </div>
     </div>
@@ -515,8 +543,13 @@ function DesignListStep({ draft, onChange, onRegenerate, onLock, busy }: {
 
 // ── ④分镜头剧本 ────────────────────────────────────────────────────────────
 
-function ShotListStep({ draft, onChange, designList, onRegenerate, onLock, busy }: {
+const LINT_LABEL: Record<string, string> = {
+  L1: '跳轴', L2: '反打差异', L3: 'eyeline', L4: '剪辑冗余',
+};
+
+function ShotListStep({ draft, onChange, designList, lint, onRegenerate, onLock, busy }: {
   draft: DpShotList; onChange: (s: DpShotList) => void; designList: DpDesignList | null;
+  lint?: DpLintFinding[];
   onRegenerate: () => void; onLock: () => void; busy: boolean;
 }) {
   function updateShot(i: number, patch: Partial<DpShotListItem>) {
@@ -530,6 +563,18 @@ function ShotListStep({ draft, onChange, designList, onRegenerate, onLock, busy 
   const characterNames = designList?.characters.map(c => c.name) ?? [];
   return (
     <div className="tj-progress">
+      {lint && lint.length > 0 && (
+        <div className="dp-ss-lint">
+          <div className="sd-review__label">⚠ 场面调度守护(SPEC-004 §4,{lint.length} 项确定性告警)</div>
+          {lint.map((f, i) => (
+            <div key={i} className="dp-ss-lint__item">
+              <span className="sd-chip" title={f.rule}>{LINT_LABEL[f.rule] ?? f.rule}</span>
+              <span>{f.message}</span>
+            </div>
+          ))}
+          <p className="tj-hint">跳轴/反打/eyeline/剪辑冗余是零成本规则检查——可回退③.5场面调度或④分镜修正。</p>
+        </div>
+      )}
       {draft.shots.map((shot, i) => (
         <div key={i} className="dp-card">
           <div className="dp-card__head">{shot.shot_id}（第{shot.scene_no}场）</div>

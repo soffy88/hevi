@@ -109,6 +109,51 @@ async def check_gpu_available(timeout_s: float = _GPU_PREFLIGHT_TIMEOUT_S) -> No
         )
 
 
+# ── prompt_language:base SDXL 是英文偏好 provider ──────────────────────────────
+# 已验证事实(G-S1 2026-07-16):base SDXL 对中文人物/场景 prompt 会渲成通用少女/风景
+# (中文"白胡子老道士"→银发少女),英文正常。sdxl_local_generate 是所有 sdxl 路径的唯一
+# 漏斗,这里把含中文的 prompt 自动译成英文——调用方(tongjian/director 的中文 appearance/
+# 场景文本)一律不用改。译失败/无中文则原样返回,绝不阻断出图。见 HEVI-ARCHITECTURE §5.3.4
+# provider 默认行为对照表(sdxl_local: prompt_language=en)。
+_EN_PROMPT_CACHE: dict[str, str] = {}  # 缓存:canon 复用会重复同一 prompt,不重复调 LLM
+
+
+def _has_chinese(s: str) -> bool:
+    return any("一" <= c <= "鿿" for c in (s or ""))
+
+
+async def _ensure_english_prompt(prompt: str) -> str:
+    """含中文的 prompt → 英文(qwen_cloud 翻译,带缓存);无中文或翻译失败则原样返回。"""
+    if not _has_chinese(prompt):
+        return prompt
+    if prompt in _EN_PROMPT_CACHE:
+        return _EN_PROMPT_CACHE[prompt]
+    try:
+        from obase.provider_registry import ProviderRegistry
+
+        llm = ProviderRegistry.get().llm("qwen_cloud")
+        instruction = (
+            "Translate this Chinese image-generation prompt into a concise natural English "
+            "prompt for Stable Diffusion. Preserve every visual detail (age, gender, beard, "
+            "hair, clothing, scene, lighting, composition). Output ONLY the English prompt.\n\n"
+            + prompt
+        )
+
+        def _invoke() -> Any:
+            return llm(messages=[{"role": "user", "content": instruction}], max_tokens=512)
+
+        obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=30.0)
+        resp = await obj if hasattr(obj, "__await__") else obj
+        en = ((resp.get("content") if hasattr(resp, "get") else str(resp)) or "").strip()
+        if en and not _has_chinese(en):
+            _EN_PROMPT_CACHE[prompt] = en
+            logger.info("sdxl prompt 中→英: %.36s… → %.36s…", prompt, en)
+            return en
+    except Exception as e:
+        logger.warning("sdxl prompt 中→英翻译失败,用原文(可能渲染跑偏): %s", e)
+    return prompt
+
+
 async def sdxl_local_generate(
     *,
     prompt: str,
@@ -138,6 +183,7 @@ async def sdxl_local_generate(
     if seed is None:
         seed = _seed_for(output_path)
     extra = extra or {}
+    prompt = await _ensure_english_prompt(prompt)  # prompt_language:sdxl 偏英文,中文自动译
 
     if require_gpu:
         await check_gpu_available()
@@ -153,6 +199,10 @@ async def sdxl_local_generate(
             guidance_scale=extra.get("guidance_scale", _DEFAULT_GUIDANCE),
             ip_adapter_image=extra.get("ip_adapter_image"),
             ip_adapter_weight=extra.get("ip_adapter_weight", 0.6),
+            # SPEC-004 v2:extra.init_image 存在 → worker 走 img2img(从 Subject3D 朝向视图带朝向)。
+            # 统一 str 化(payload 要 json 序列化,Path 会炸——同 ip_adapter_image 由调用方 str 化)。
+            init_image=(str(iv) if (iv := extra.get("init_image")) else None),
+            strength=float(extra.get("strength", 0.5)),
         )
 
     return {"output_path": str(output_path), "seed": seed}
@@ -194,6 +244,10 @@ async def sdxl_local_generate_batch(
     """
     if not requests:
         return []
+    # prompt_language:每条 prompt 中文自动译成英文(sdxl 偏英文),调用方不用改。
+    for r in requests:
+        if r.get("prompt"):
+            r["prompt"] = await _ensure_english_prompt(str(r["prompt"]))
     if require_gpu:
         await check_gpu_available()
     async with scheduler.acquire(VRAM_SDXL_LOCAL):

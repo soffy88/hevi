@@ -695,6 +695,57 @@ export interface DpShotListItem {
   prop_names: string[];
   duration_s: number;
   action_beats?: string[]; // INC-001 §B 动作弧拍点
+  // SPEC-004 ③.5 场事实引用(阶段 3,确定性链接填充)
+  scene_stage_ref?: number | null;
+  beat_range?: string[];
+  camera_setup_ref?: string;
+  attention_ref?: string;
+}
+
+// ── SPEC-004 ③.5 场面调度 SceneStage ─────────────────────────────────────────
+export interface DpSceneZone { zone_id: string; name: string; rel_position: string }
+export interface DpSceneLandmark { name: string; zone_id: string }
+export interface DpSceneSpaceMap { zones: DpSceneZone[]; landmarks: DpSceneLandmark[] }
+export interface DpSceneBeat {
+  beat_id: string; order: number; trigger: string; dialogue_ref: string; duration_hint: number;
+}
+export interface DpInitialPosition {
+  char_id: string; zone_id: string; facing: string; posture: string;
+  facing_deg?: number | null; // SPEC-004 v2:朝向角(0前/90画右/180背/270画左)→ Subject3D 选视图
+}
+export interface DpBlockingMove {
+  char_id: string; at_beat: string; from_zone: string; to_zone: string; action: string;
+}
+export interface DpSightline { at_beat: string; char_id: string; looking_at: string; assumed: boolean }
+export interface DpSceneBlocking {
+  initial_positions: DpInitialPosition[]; moves: DpBlockingMove[]; sightlines: DpSightline[];
+}
+export interface DpAxisShift { at_beat: string; new_axis: string[]; reason: string }
+export interface DpSceneAxis { primary_axis: string[]; axis_shifts: DpAxisShift[]; side_convention: string }
+export interface DpAttentionBeat {
+  at_beat: string; focus_target: string; reason: string;
+  transition: string; // cut/pan/push/rack_focus/follow
+  intensity: string; // exclusive/primary/shared
+}
+export interface DpCameraSetup {
+  setup_id: string; position: string; axis_side: string; shot_size: string;
+  serves_beats: string[]; subjects: string[];
+  azimuth_deg?: number | null; // SPEC-004 v2:机位方位角(0正面/90画右侧/180背后/270画左侧)
+}
+export interface DpCoveragePlan { master: DpCameraSetup | null; setups: DpCameraSetup[] }
+export interface DpSceneStage {
+  scene_ref: number;
+  space_map: DpSceneSpaceMap;
+  beats: DpSceneBeat[];
+  blocking: DpSceneBlocking;
+  axis: DpSceneAxis;
+  attention_script: DpAttentionBeat[];
+  coverage_plan: DpCoveragePlan;
+  assumed: boolean;
+}
+export interface DpSceneStageSet { stages: DpSceneStage[] }
+export interface DpLintFinding {
+  rule: string; scene_no: number; shot_ids: string[]; message: string; severity: string;
 }
 
 export interface DpShotList {
@@ -748,19 +799,23 @@ export type DpWorkStatus =
   | 'concept_draft' | 'concept_locked'
   | 'screenplay_draft' | 'screenplay_locked'
   | 'design_list_draft' | 'design_list_locking' | 'design_list_lock_failed' | 'design_list_locked'
+  | 'scene_stage_draft' | 'scene_stage_generating' | 'scene_stage_regenerate_failed'
+  | 'scene_stage_locking' | 'scene_stage_lock_failed'
   | 'shot_list_draft' | 'shot_list_generating' | 'shot_list_regenerate_failed' | 'shot_list_locked'
   | 'producing';
 
 export interface DpWork {
   work_id: string;
   status: DpWorkStatus;
-  locked_through: number; // -1..3,已锁定到第几级(见后端 _STAGES 顺序)
+  locked_through: number; // -1..4,已锁定到第几级(concept0/screenplay1/design_list2/scene_stage3/shot_list4)
   material_text: string;
   created_at: string;
   concept: DpConcept | null;
   screenplay: DpScreenplay | null;
   design_list: DpDesignList | null;
+  scene_stage: DpSceneStageSet | null; // SPEC-004 ③.5 场面调度(每场一个 SceneStage)
   shot_list: DpShotList | null;
+  scene_stage_lint: DpLintFinding[]; // SPEC-004 §4 链接后的确定性 lint findings
   video_task_id: string | null;
   error: string | null;
 }
