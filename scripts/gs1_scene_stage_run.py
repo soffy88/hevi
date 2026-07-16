@@ -206,11 +206,30 @@ def build_scene() -> tuple[Screenplay, DesignList, SceneStage, ShotList]:
     return screenplay, design, stage, linked
 
 
-async def _canon(char: str, out: Path) -> Path:
+def _find_ref(char: str, ref_dir: Path) -> Path | None:
+    """在 ref_dir 里找该角色的真人肖像(按角色名匹配,支持常见图片后缀)。"""
+    for ext in (".png", ".jpg", ".jpeg", ".webp"):
+        p = ref_dir / f"{char}{ext}"
+        if p.exists() and p.stat().st_size > 1024:
+            return p
+    return None
+
+
+async def _canon(char: str, out: Path, ref_dir: Path | None) -> Path:
+    """角色 canon:优先用提供的真人肖像(本地 IP-Adapter 锁真脸,角色可辨认);缺失才退回
+    sdxl 文生图(base SDXL 对中文老者/道士 prompt 会渲成通用少女,识别不出角色,见 G-S1 首跑)。"""
+    from PIL import Image
+
+    ref = _find_ref(char, ref_dir) if ref_dir else None
+    if ref is not None:
+        Image.open(ref).convert("RGB").save(out)  # 归一到 canon 路径(ref 存在则每次覆盖,让真脸生效)
+        log.info("canon[%s] 用真人肖像:%s", char, ref)
+        return out
     from hevi.image.sdxl_local_service import sdxl_local_generate
 
     if out.exists() and out.stat().st_size > 1024:
         return out
+    log.warning("canon[%s] 无真人肖像,退回 sdxl 文生图(角色可能不可辨认)", char)
     await sdxl_local_generate(
         prompt=f"{_STYLE},{_CHARS[char]},近景半身像,正面,背景虚化",
         output_path=out,
@@ -294,8 +313,17 @@ async def main(args: argparse.Namespace) -> None:
         print("\n(dry-run:未生成图片。加 --real 用本地 sdxl 出对照关键帧。)")
         return
 
-    # ── 3 角色 canon(本地,复用缓存)────────────────────────────────────────
-    canons = {c: await _canon(c, out_dir / f"canon_{c}.png") for c in _CHARS}
+    # ── 3 角色 canon(优先真人肖像 ref_dir/{角色名}.png,缺失退回 sdxl)────────────
+    ref_dir = Path(args.ref_dir)
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    have = [c for c in _CHARS if _find_ref(c, ref_dir)]
+    log.info(
+        "真人肖像目录 %s:命中 %s;缺失 %s",
+        ref_dir,
+        have or "无",
+        [c for c in _CHARS if c not in have] or "无",
+    )
+    canons = {c: await _canon(c, out_dir / f"canon_{c}.png", ref_dir) for c in _CHARS}
     log.info("canon 就绪:%s", {c: str(p) for c, p in canons.items()})
 
     # ── 逐镜出实验组/对照组关键帧 ────────────────────────────────────────────
@@ -353,4 +381,9 @@ async def main(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="SPEC-004 G-S1 垂直切片验收")
     p.add_argument("--real", action="store_true", help="用本地 sdxl 真出对照关键帧(免费,需 GPU)")
+    p.add_argument(
+        "--ref-dir",
+        default="output/gs1_scene_stage/refs",
+        help="真人肖像目录:放 王生.png/老道.png/店家.png,本地 IP-Adapter 锁真脸(缺失退回 sdxl)",
+    )
     asyncio.run(main(p.parse_args()))
