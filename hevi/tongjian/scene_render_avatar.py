@@ -490,8 +490,11 @@ def _local_kf_prompt(
     mouth_closed: bool = False,
     wide: bool = False,
 ) -> str:
-    """拼 sdxl_local 关键帧生成 prompt(中文实测可用,风格/人物/场景都跟得住;精确姿势跟不住
-    是 base SDXL 无 ControlNet 的已知代价,靠 kf2v 运动补动作感)。IP-Adapter 另传 canon 锁脸。
+    """拼 sdxl_local 关键帧生成 prompt。**语言:此处拼的是中文(appearance/scene_space 都是中文
+    作者写的),但 base SDXL 对中文人物 prompt 会渲成通用少女(G-S1 2026-07-16 实证:中文"白胡子
+    老道士"→银发少女);中→英转换由唯一漏斗 `sdxl_local_generate` 统一做(prompt_language),此处
+    不用管。** 精确姿势跟不住是 base SDXL 无 ControlNet 的已知代价(SPEC-004 v2 拟接 Subject3D 机位
+    帧解决朝向),靠 kf2v 运动补动作感。IP-Adapter 另传 canon 锁脸。
 
     scene_space:SPEC-004 断链#3——场景空间描述(环境/光照/氛围,来自 DesignScene)。此前
     DesignScene 的空间描述从桥接层到这里全程零消费,画面里根本没有场景。按 §F.1 口径空间项
