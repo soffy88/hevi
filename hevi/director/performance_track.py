@@ -105,6 +105,54 @@ _SYNC_CN = {
     "character_breath": "与人物呼吸同步",
     "emotional_intensity": "随情绪强度起伏",
 }
+# ── INC-002 v0.2:道具/光 枚举 → 中文 ──
+_CONTACT_STATE_CN = {
+    # 枪械
+    "guard": "手指搭在扳机护圈",
+    "face": "手指滑上扳机面",
+    "pressure_building": "施加初始压力",
+    "threshold": "压力停在临界(将扣未扣)",
+    "releasing": "压力减轻",
+    "lifted": "手指抬起悬停",
+    "off": "手指松开搭回护圈",
+    # 弓箭
+    "nocked": "箭已搭弦",
+    "drawing": "拉弦中",
+    "full_draw": "满弓",
+    "holding": "满弓停住",
+    "creeping": "走弦",
+    "released": "撒放",
+    "slack": "松弦",
+}
+_SHADOW_DELTA_CN = {"deepen": "阴影加深", "lighten": "阴影变浅", "shift": "阴影移动"}
+_PATTERN_CN = {
+    "rembrandt": "伦勃朗光",
+    "split": "分割光",
+    "rim": "轮廓光",
+    "top": "顶光",
+    "practical_bare_bulb": "裸灯泡硬光",
+}
+# P7:道具接触状态机的合法转移图(按 prop_type 分组;不在图内的 prop_type 不校验)。
+_PROP_STATE_GRAPH: dict[str, dict[str, set[str]]] = {
+    "firearm": {
+        "guard": {"guard", "face"},
+        "face": {"face", "pressure_building", "guard"},
+        "pressure_building": {"pressure_building", "threshold", "releasing"},
+        "threshold": {"threshold", "releasing"},
+        "releasing": {"releasing", "lifted", "face"},
+        "lifted": {"lifted", "off", "face"},
+        "off": {"off", "guard"},
+    },
+    "bow": {
+        "nocked": {"nocked", "drawing"},
+        "drawing": {"drawing", "full_draw"},
+        "full_draw": {"full_draw", "holding", "released"},
+        "holding": {"holding", "creeping", "released"},
+        "creeping": {"creeping", "released", "full_draw"},
+        "released": {"released", "slack"},
+        "slack": {"slack", "nocked"},
+    },
+}
 
 
 def _cn(mapping: dict[str, str], key: str) -> str:
@@ -222,9 +270,77 @@ def _compile_camera(cc: CameraCurve | None) -> str:
     return "运镜:" + "、".join(bits) if bits else ""
 
 
+def _compile_prop(props: list) -> str:
+    """PropPerformance[] → 道具表演自然语言(状态机/位移/指向偏移/颤动/表面/画面位置)。空 → ''。"""
+    bits: list[str] = []
+    for p in props or []:
+        name = p.prop_ref or p.prop_type or "道具"
+        seg: list[str] = []
+        cs = p.contact_state
+        if cs.state:
+            s = _cn(_CONTACT_STATE_CN, cs.state)
+            if cs.hold_reason:
+                s += f"({cs.hold_reason})"
+            seg.append(s)
+        md = p.micro_displacement
+        if md.distance_mm:
+            m = f"{md.axis or ''}位移{_fmt_s(md.distance_mm)}mm"
+            if md.suspended:
+                m += "悬停"
+            seg.append(m)
+        ao = p.aim_offset
+        if ao.magnitude_desc:
+            seg.append(f"指向偏移{ao.magnitude_desc}")
+        elif (ao.start.x, ao.start.y) != (ao.end.x, ao.end.y):
+            seg.append(
+                f"指向从({_fmt_s(ao.start.x)},{_fmt_s(ao.start.y)})"
+                f"移到({_fmt_s(ao.end.x)},{_fmt_s(ao.end.y)})"
+            )
+        if p.tremor.amplitude_mm:
+            seg.append(f"颤动{_fmt_s(p.tremor.amplitude_mm)}mm")
+        if p.surface_response.material_highlight:
+            seg.append(p.surface_response.material_highlight)
+        if p.surface_response.deformation_state:
+            seg.append(p.surface_response.deformation_state)
+        if p.frame_presence.position_desc:
+            seg.append(f"位于{p.frame_presence.position_desc}")
+        if seg:
+            bits.append(f"{name}:" + "、".join(seg))
+    return "道具:" + ";".join(bits) if bits else ""
+
+
+def _compile_lighting(lr) -> str:
+    """LightingResponse → 光的响应自然语言(明暗比/遮挡阴影/高光/光型)。未填 → ''。"""
+    if lr is None:
+        return ""
+    bits: list[str] = []
+    kr = lr.key_ratio
+    if kr.lit_side or kr.shadow_side:
+        s = f"受光{kr.lit_side}" if kr.lit_side else ""
+        if kr.shadow_side:
+            s += ("、" if s else "") + f"阴影{kr.shadow_side}"
+        if kr.contrast_level:
+            s += f"(明暗比{_fmt_s(kr.contrast_level)})"
+        bits.append(s)
+    oc = lr.occlusion
+    delta = _cn(_SHADOW_DELTA_CN, oc.shadow_delta)
+    if delta:
+        bits.append(
+            f"{oc.cause}使{oc.affected_area or '面部'}{delta}"
+            if oc.cause
+            else f"{oc.affected_area or '面部'}{delta}"
+        )
+    if lr.specular_targets:
+        bits.append("高光:" + "、".join(lr.specular_targets))
+    pat = _cn(_PATTERN_CN, lr.pattern)
+    if pat:
+        bits.append(pat)
+    return "光:" + ";".join(bits) if bits else ""
+
+
 def _phase_parts(ph: PerformancePhase, *, include_camera: bool = True) -> list[str]:
     """一段表演的内容部分(不含 [时间窗] 头)。include_camera=False 用于静态关键帧注入
-    (运镜是运动、静帧渲不出,只给面部/视线/情绪/身体)。"""
+    (运镜是运动、静帧渲不出,只给面部/视线/情绪/身体/道具/光)。"""
     parts: list[str] = []
 
     el = ph.eyeline_track
@@ -265,6 +381,14 @@ def _phase_parts(ph: PerformancePhase, *, include_camera: bool = True) -> list[s
     facial = _compile_facial(ph.facial_performance)
     if facial:
         parts.append(facial)
+
+    prop = _compile_prop(ph.prop_performance)
+    if prop:
+        parts.append(prop)
+
+    lighting = _compile_lighting(ph.lighting_response)
+    if lighting:
+        parts.append(lighting)
 
     if include_camera:
         camera = _compile_camera(ph.camera_curve)
@@ -484,6 +608,42 @@ def lint_performance_track(
         for ph in phases
         if _facial_density(ph.facial_performance) >= 4
         and ph.body.tension in ("trembling", "collapsing")
+    )
+
+    # ── P7(v0.2):道具接触状态机跨 phase 转移合法(按 prop_type 图;guard→threshold 非法)──
+    for a, b in pairwise(phases):
+        prev_by_type = {
+            p.prop_type: p.contact_state.state for p in a.prop_performance if p.prop_type
+        }
+        for p in b.prop_performance:
+            graph = _PROP_STATE_GRAPH.get(p.prop_type)
+            prev = prev_by_type.get(p.prop_type)
+            cur = p.contact_state.state
+            if not graph or not prev or not cur or prev not in graph:
+                continue
+            if cur not in graph[prev]:
+                findings.append(
+                    PerformanceLintFinding(
+                        "P7",
+                        shot_id,
+                        [a.phase_id, b.phase_id],
+                        f"道具({p.prop_type})状态跳变 {prev}→{cur}(非法转移,须逐级经中间态)",
+                    )
+                )
+
+    # ── P9(v0.2):光的响应——阴影变化必须说明遮挡原因(source 在 SceneStage 的校验在桥接层做)──
+    findings.extend(
+        PerformanceLintFinding(
+            "P9",
+            shot_id,
+            [ph.phase_id],
+            f"阴影{_cn(_SHADOW_DELTA_CN, ph.lighting_response.occlusion.shadow_delta)}"
+            f"但未说明遮挡原因(occlusion.cause 空)——恐凭空改光",
+        )
+        for ph in phases
+        if ph.lighting_response
+        and ph.lighting_response.occlusion.shadow_delta
+        and not ph.lighting_response.occlusion.cause
     )
     return findings
 

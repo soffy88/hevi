@@ -260,6 +260,109 @@ class CameraCurve(BaseModel):
     breathing: CameraBreathing = Field(default_factory=CameraBreathing)
 
 
+# ── INC-002 v0.2 第三批半:PropPerformance(道具表演,§4.5)——道具是第二条叙事线 ──
+
+
+class PropGrip(BaseModel):
+    hand: str = ""
+    firmness: str = ""  # rigid / firm / loose / slack
+
+
+class PropContactState(BaseModel):
+    """接触状态机(按道具类型分组的枚举,见 §4.5 / performance_track._PROP_STATE_GRAPH)。"""
+
+    state: str = (
+        ""  # 枪械:guard/face/pressure_building/threshold/releasing/lifted/off;弓箭:nocked/…
+    )
+    transition_from: str = ""  # 上一状态(P7 校验转移合法)
+    hold_reason: str = ""  # 停在此状态的动机("将扣未扣"的心理)
+
+
+class MicroDisplacement(BaseModel):
+    """亚毫米/毫米级位移(标尺"抬起不到一毫米")。"""
+
+    axis: str = ""
+    distance_mm: float = 0.0
+    suspended: bool = False  # 是否悬停在该位移处
+
+
+class ScreenCoord(BaseModel):
+    """画面归一化坐标,0.5/0.5 = 正中。"""
+
+    x: float = 0.5
+    y: float = 0.5
+
+
+class AimOffset(BaseModel):
+    """指向偏移轨迹(画面坐标系,不是三维仿真)。start=起始指向,end=结束指向。"""
+
+    start: ScreenCoord = Field(default_factory=ScreenCoord)
+    end: ScreenCoord = Field(default_factory=ScreenCoord)
+    magnitude_desc: str = ""  # 人可读("下垂约两寸")
+    easing: str = "linear"
+
+
+class PropTremor(BaseModel):
+    """道具颤动(与 body.tension 咬合)。"""
+
+    amplitude_mm: float = 0.0
+    frequency: str = ""
+    source: str = ""  # muscle_fatigue / emotional / recoil
+
+
+class PropSurfaceResponse(BaseModel):
+    material_highlight: str = ""  # 金属反光/张力变化/压痕深浅
+    deformation_state: str = ""  # 形变(弓弦压脸的深坑变浅)
+
+
+class PropFramePresence(BaseModel):
+    position_desc: str = ""  # 在画面哪("下方三分之一处")
+    moves_out_of_frame: bool = False
+
+
+class PropPerformance(BaseModel):
+    """道具表演(INC-002 §4.5)——状态机 + 亚毫米位移 + 画面偏移轨迹 + 颤动。与 facial_performance
+    平级(单人特写里两条并列表演线)。全部可选、inert。prop_type/material 供 P7 状态图与声音/负面
+    自动派生用。"""
+
+    prop_ref: str = ""  # 引用 ③设计清单锁定的 prop 资产
+    prop_type: str = ""  # firearm / bow / blade / …(决定 contact_state 合法转移图)
+    material: str = ""  # metal / wood / …(声音派生用)
+    grip: PropGrip = Field(default_factory=PropGrip)
+    contact_state: PropContactState = Field(default_factory=PropContactState)
+    micro_displacement: MicroDisplacement = Field(default_factory=MicroDisplacement)
+    aim_offset: AimOffset = Field(default_factory=AimOffset)
+    tremor: PropTremor = Field(default_factory=PropTremor)
+    surface_response: PropSurfaceResponse = Field(default_factory=PropSurfaceResponse)
+    frame_presence: PropFramePresence = Field(default_factory=PropFramePresence)
+
+
+# ── INC-002 v0.2 第三批半:LightingResponse(光的响应,§4.7)——光源不变,遮挡随表演变 ──
+
+
+class LightingOcclusion(BaseModel):
+    cause: str = ""  # 什么造成的("头部低垂")
+    affected_area: str = ""  # 受影响区域("面部"/"眼窝")
+    shadow_delta: str = ""  # deepen / lighten / shift
+
+
+class LightingKeyRatio(BaseModel):
+    lit_side: str = ""  # 受光侧("右半脸+持枪手+枪身金属")
+    shadow_side: str = ""  # 阴影侧("左半脸沉入深阴影")
+    contrast_level: float = 0.0  # 0-1(硬光/伦勃朗通常 >0.8)
+
+
+class LightingResponse(BaseModel):
+    """光的响应(INC-002 §4.7)——光源仍是场级资产(source_ref 只引用),这里只描述"这一段光怎么落"。
+    occlusion 可由 body.posture 变化自动派生(低头 → 面部 deepen)。未填 → 继承场级常量(inert)。"""
+
+    source_ref: str = ""  # 引用 SceneStage.lighting 的光源(不新建)
+    occlusion: LightingOcclusion = Field(default_factory=LightingOcclusion)
+    key_ratio: LightingKeyRatio = Field(default_factory=LightingKeyRatio)
+    specular_targets: list[str] = Field(default_factory=list)  # 高光落点
+    pattern: str = ""  # rembrandt / split / rim / top / practical_bare_bulb
+
+
 class PerformancePhase(BaseModel):
     """表演阶段——镜头内部时间轴的一段(INC-002 §2)。t_start_s/t_end_s 精确到秒的时间窗。"""
 
@@ -276,6 +379,9 @@ class PerformancePhase(BaseModel):
     facial_performance: FacialPerformance | None = None
     # INC-002 第三批:运镜曲线(可选,inert)。
     camera_curve: CameraCurve | None = None
+    # INC-002 v0.2 第三批半:道具表演(第二条叙事线,可多个)+ 光的响应。可选、inert。
+    prop_performance: list[PropPerformance] = Field(default_factory=list)
+    lighting_response: LightingResponse | None = None
 
 
 class PerformanceTrack(BaseModel):
@@ -298,6 +404,44 @@ class PerformancePreset(BaseModel):
     scalable_to_duration: bool = True
 
 
+# ── INC-002 v0.2 第三批半:audio_track(声音时间轴,§4.6)+ NegativeConstraints(§5.5)──
+# audio_track 与 performance_track 平级(声音时间边界不必与表演阶段对齐)。
+
+
+class AudioSegment(BaseModel):
+    """声音段。derived_sounds 后端从 physiology/prop 确定性派生;manual_sounds 人/LLM 补。"""
+
+    t_start_s: float = 0.0
+    t_end_s: float = 0.0
+    derived_sounds: list[str] = Field(default_factory=list)  # 自动派生(§4.6.1)
+    manual_sounds: list[str] = Field(default_factory=list)
+    mix_note: str = ""  # 混音意图("极微弱"/"渐显")
+
+
+class AudioAmbient(BaseModel):
+    bed: str = ""  # 环境底噪("远处环境低鸣")
+    evolution: str = "constant"  # constant / fade_in / fade_out / swell
+    evolution_start_s: float = 0.0
+    evolution_end_s: float = 0.0
+
+
+class AudioTrack(BaseModel):
+    """声音时间轴(INC-002 §4.6)——与 performance_track 平级。music/dialogue 空 = 无(标尺明确
+    要求无配乐无台词)。segments 的时间边界不必与 performance phase 对齐。未填 → inert。"""
+
+    music: str = ""  # "" = 无配乐
+    dialogue: str = ""  # "" = 无台词
+    segments: list[AudioSegment] = Field(default_factory=list)
+    ambient: AudioAmbient = Field(default_factory=AudioAmbient)
+
+
+class NegativeConstraints(BaseModel):
+    """负面约束(INC-002 §5.5)——derived 由 schema 自动派生(零遗漏),manual 人工补。"""
+
+    derived: list[str] = Field(default_factory=list)
+    manual: list[str] = Field(default_factory=list)
+
+
 class ShotListItem(BaseModel):
     shot_id: str
     scene_no: int  # 引用 Screenplay 的 scene_no
@@ -312,6 +456,9 @@ class ShotListItem(BaseModel):
     action_beats: list[str] = Field(default_factory=list)
     # INC-002 镜头内部时间轴(细粒度表演单元)。None/空 → 走 action_beats 老路,行为不变(inert)。
     performance_track: PerformanceTrack | None = None
+    # INC-002 v0.2:声音时间轴(与 performance_track 平级)+ 手工负面约束(derived 编译时派生)。inert。
+    audio_track: AudioTrack | None = None
+    manual_negatives: list[str] = Field(default_factory=list)
     character_names: list[str] = Field(default_factory=list)  # 本镜出场角色(剧本阶段名字)
     scene_name: str = ""  # 本镜所在场景(对应 DesignScene.name)
     prop_names: list[str] = Field(default_factory=list)
