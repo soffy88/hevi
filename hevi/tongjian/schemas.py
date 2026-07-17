@@ -199,6 +199,9 @@ class Shot(BaseModel):
     # director/performance_track.py::compile_temporal_prompt),拼在基础提示词之后喂 L6 时序渲染。
     # 空 = 未填 performance_track(inert,行为不变)。
     temporal_prompt: str = ""
+    # INC-002 §1.1 phase→beat 映射:表演时间轴按 first/peak/aftermath 三时刻切片,注入渲染对应
+    # 关键帧(首/关键/尾帧)。{} = 未填(inert)。见 performance_track.py::beat_slices。
+    temporal_by_role: dict[str, str] = Field(default_factory=dict)
 
 
 class ShotList(BaseModel):

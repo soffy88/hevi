@@ -788,6 +788,12 @@ async def build_frame_manifest_avatar(
         _blocking_hint = (
             ("。按走位安排各人位置与朝向:" + ";".join(shot.blocking)) if shot.blocking else ""
         )
+        # INC-002 §1.1 render 消费:把该时刻(首/关键/尾)的表演切片并进导演命令,一处并入 →
+        # 下面 5 个 _cmd[role] 注入点(对白/多角色/动作首帧 + kf2v 关键/尾帧)全自动带上。空 → inert。
+        _temporal_role = shot.temporal_by_role or {}
+        for _role in ("first", "peak", "aftermath"):
+            if _temporal_role.get(_role):
+                _cmd[_role] = _cmd[_role] + "。该时刻表演:" + _temporal_role[_role]
         did_kf2v = False  # §K 可观察性用;下面动作镜分支若走 kf2v 会置 True
         dur = _say_dur(text or shot.visual_prompt, per_char)
         clip = work / f"{sid}_clip.mp4"

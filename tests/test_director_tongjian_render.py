@@ -251,6 +251,10 @@ def test_build_tongjian_inputs_compiles_performance_track_to_temporal_prompt():
     assert tp.splitlines()[0].startswith("[0–3s] 锁定 → ") and "视线锁定" in tp
     assert "[3–6s] 游离 → " in tp and "视线开始游离" in tp
     assert shotlist.shots[1].temporal_prompt == ""  # 未填 → inert
+    # §1.1 phase→beat 切片也随 Shot 透传(render 消费用):first=锁定段、aftermath=游离段
+    by_role = shotlist.shots[0].temporal_by_role
+    assert "视线锁定" in by_role["first"] and "视线开始游离" in by_role["aftermath"]
+    assert shotlist.shots[1].temporal_by_role == {}  # 未填 → inert
 
 
 def test_build_tongjian_inputs_threads_valid_target_drops_invalid():

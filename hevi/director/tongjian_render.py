@@ -24,7 +24,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from hevi.director.performance_track import compile_temporal_prompt
+from hevi.director.performance_track import beat_slices, compile_temporal_prompt
 from hevi.director.pipeline_schemas import Concept, DesignList, SceneStageSet, ShotList
 from hevi.director.scene_stage import compute_shot_views, project_shot_space
 from hevi.tongjian.schemas import (
@@ -142,6 +142,8 @@ def build_tongjian_inputs(
                 ],
                 # INC-002:performance_track 在桥接层编译成时序提示词随 Shot 透传。空 → 空串(inert)。
                 temporal_prompt=compile_temporal_prompt(shot.performance_track),
+                # §1.1 phase→beat 时刻切片,注入渲染首/关键/尾帧。空 → {}(inert)。
+                temporal_by_role=beat_slices(shot.performance_track),
             )
         )
 

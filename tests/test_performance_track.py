@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from hevi.director.performance_track import (
+    beat_slices,
     camera_curve_match,
     compile_temporal_prompt,
     compile_temporal_prompt_at_tier,
@@ -502,3 +503,29 @@ def test_compile_at_tier_downsamples_without_error():
     assert "面部:" not in l1 and "运镜:" not in l1 and "视线开始游离" in l1
     l2 = compile_temporal_prompt_at_tier(track, "L2")
     assert "面部:" in l2 and "运镜:" in l2 and "眉头痛苦紧皱" in l2
+
+
+# ── render 消费:§1.1 phase→beat 时刻切片 ──────────────────────────────────────
+
+
+def test_beat_slices_maps_first_peak_aftermath():
+    """表演时间轴按 首(t=0)/关键(中点)/尾(末)三时刻切片,映射到对应关键帧。"""
+    slices = beat_slices(_five_phase_15s())
+    assert "视线锁定" in slices["first"]  # t=0 → 理智克制/locked
+    assert "视线回避移开" in slices["peak"]  # t=7.5 → averted 段
+    assert "双眼闭合" in slices["aftermath"]  # t=15 → closed 段
+    assert "[" not in slices["first"]  # 注入关键帧用,无时间窗头
+
+
+def test_beat_slices_excludes_camera_for_stills():
+    """静帧渲不出运镜 → beat_slices 不含运镜(只面部/视线/情绪/身体)。"""
+    track = PerformanceTrack(
+        total_duration_s=4.0, phases=[_cam_phase(1, 0.0, 4.0, freq=(0.2, 0.9))]
+    )
+    s = beat_slices(track)
+    assert "运镜:" not in s["first"] and "手持" not in s["first"]
+
+
+def test_beat_slices_empty_inert():
+    assert beat_slices(None) == {}
+    assert beat_slices(PerformanceTrack()) == {}

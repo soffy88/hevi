@@ -222,11 +222,9 @@ def _compile_camera(cc: CameraCurve | None) -> str:
     return "运镜:" + "、".join(bits) if bits else ""
 
 
-def _compile_phase(ph: PerformancePhase) -> str:
-    head = f"[{_fmt_s(ph.t_start_s)}–{_fmt_s(ph.t_end_s)}s]"
-    if ph.label:
-        head += f" {ph.label}"
-
+def _phase_parts(ph: PerformancePhase, *, include_camera: bool = True) -> list[str]:
+    """一段表演的内容部分(不含 [时间窗] 头)。include_camera=False 用于静态关键帧注入
+    (运镜是运动、静帧渲不出,只给面部/视线/情绪/身体)。"""
     parts: list[str] = []
 
     el = ph.eyeline_track
@@ -268,10 +266,19 @@ def _compile_phase(ph: PerformancePhase) -> str:
     if facial:
         parts.append(facial)
 
-    camera = _compile_camera(ph.camera_curve)
-    if camera:
-        parts.append(camera)
+    if include_camera:
+        camera = _compile_camera(ph.camera_curve)
+        if camera:
+            parts.append(camera)
 
+    return parts
+
+
+def _compile_phase(ph: PerformancePhase) -> str:
+    head = f"[{_fmt_s(ph.t_start_s)}–{_fmt_s(ph.t_end_s)}s]"
+    if ph.label:
+        head += f" {ph.label}"
+    parts = _phase_parts(ph)
     return head + " → " + ";".join(parts) if parts else head
 
 
@@ -281,6 +288,35 @@ def compile_temporal_prompt(track: PerformanceTrack | None) -> str:
         return ""
     phases = sorted(track.phases, key=lambda p: (p.order, p.t_start_s))
     return "\n".join(_compile_phase(ph) for ph in phases)
+
+
+def phase_at_time(track: PerformanceTrack | None, t: float) -> PerformancePhase | None:
+    """时刻 t 落在哪一段(半开区间 [start, end))。越界钳到首/末段。空 → None。"""
+    if track is None or not track.phases:
+        return None
+    phases = sorted(track.phases, key=lambda p: (p.order, p.t_start_s))
+    for ph in phases:
+        if ph.t_start_s <= t < ph.t_end_s:
+            return ph
+    return phases[-1] if t >= phases[-1].t_end_s else phases[0]
+
+
+def beat_slices(track: PerformanceTrack | None) -> dict[str, str]:
+    """§1.1 phase→beat 时间映射:表演时间轴按 first(t=0)/peak(中点)/aftermath(末)三个
+    时刻切片,注入渲染对应关键帧(首/关键/尾帧)。静帧渲不出运镜 → 只给面部/视线/情绪/身体
+    (include_camera=False)。空 track → {}(inert,渲染层无副作用)。"""
+    if track is None or not track.phases:
+        return {}
+    total = track.total_duration_s or max((p.t_end_s for p in track.phases), default=0.0)
+    if total <= 0:
+        return {}
+    out: dict[str, str] = {}
+    for role, t in (("first", 0.0), ("peak", total / 2.0), ("aftermath", total - _EPS)):
+        ph = phase_at_time(track, t)
+        parts = _phase_parts(ph, include_camera=False) if ph else []
+        if parts:
+            out[role] = "；".join(parts)
+    return out
 
 
 # ── 确定性 lint(零模型成本)──────────────────────────────────────────────────
