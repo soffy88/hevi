@@ -797,7 +797,7 @@ export interface DpPrepOverview {
 
 export type DpWorkStatus =
   | 'concept_draft' | 'concept_locked'
-  | 'screenplay_draft' | 'screenplay_locked'
+  | 'screenplay_generating' | 'screenplay_generate_failed' | 'screenplay_draft' | 'screenplay_locked'
   | 'design_list_draft' | 'design_list_locking' | 'design_list_lock_failed' | 'design_list_locked'
   | 'scene_stage_draft' | 'scene_stage_generating' | 'scene_stage_regenerate_failed'
   | 'scene_stage_locking' | 'scene_stage_lock_failed'

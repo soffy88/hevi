@@ -44,6 +44,11 @@ from hevi.image.qwen_image_service import QwenImageError
 from hevi.tongjian.scene_render_avatar import (
     _MAX_CLIP_DURATION_S,
     _NARRATOR_DESC,
+    _compose_layout_base,
+    _compose_pose_control,
+    _layout_col,
+    _observe_end_state,
+    _parse_blocking_positions,
     _resolve_dimensions,
     _say_dur,
     _split_text_for_dialogue,
@@ -234,6 +239,207 @@ async def test_dialogue_keyframe_includes_visual_hint(tmp_path):
 
     instruction = qwen_edit.await_args.kwargs["instruction"]
     assert "智果解下腰间玉珏掷于阶前" in instruction
+
+
+@pytest.mark.asyncio
+async def test_director_command_reaches_local_prompt_not_only_cloud_instruction(tmp_path):
+    """F-0 回归(2026-07-17 审计):INC-001 §E 的导演命令摘要(§C 未完成态/§H eyeline/§J 轴线)
+    此前**只拼进云端 edit 的 instruction**,而 `_local_kf_prompt` 的签名里根本没有这个参数——
+    默认引擎恰恰是 local。等于这四节的全部约束只在 GPU 掉线走云端兜底时才生效,正常成功路径
+    上一个字都不进 prompt。更糟的是 §K 的 quality_checks 按 `bool(_eyeline)`(字符串构造成功
+    与否)报 `eyeline_applied: True`,于是全是假阳性,这个断链半个月没被任何验收抓到。
+
+    这里钉的是**两条引擎路都得给**:instruction(云端)和 local_prompt(本地)必须同时带上
+    eyeline。用 SH002 而非 SH001,以便同时触发 §J 同场景轴线约束。"""
+    script = Script(
+        lines=[
+            ScriptLine(line_id="LN001", type="dialogue", speaker="C003", text="请分宗。"),
+            ScriptLine(
+                line_id="LN002",
+                type="dialogue",
+                speaker="C003",
+                text="您三思。",
+                emotion="决绝",
+                target="C004",  # §H:说话者目光看向受话者
+            ),
+        ]
+    )
+    shotlist = ShotList(
+        shots=[
+            Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"], scene_id="堂上"),
+            # 与上一镜同场景 + 有共同在场角色 → §J 轴线必守
+            Shot(shot_id="SH002", line_ids=["LN002"], characters=["C003"], scene_id="堂上"),
+        ]
+    )
+    bible = CharacterBible(
+        characters=[
+            CharacterBibleEntry(character_id="C003", name="智果", appearance="清瘦谋士"),
+            CharacterBibleEntry(character_id="C004", name="智宣子", appearance="威严家主"),
+        ]
+    )
+
+    edit_kf = AsyncMock(
+        side_effect=lambda **kw: (kw["output_path"].write_bytes(b"kf"), "sdxl_ip_adapter")[1]
+    )
+
+    async def _fake_qwen_gen(*, prompt, output_path, size, seed=None):
+        output_path.write_bytes(b"canon")
+        return output_path
+
+    with (
+        patch("hevi.tongjian.scene_render_avatar._edit_keyframe", edit_kf),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate",
+            AsyncMock(side_effect=_fake_hh),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist, script, bible, Constitution(), run_dir=tmp_path
+        )
+
+    # SH002 那一镜的关键帧调用(第二次 await)
+    kw = edit_kf.await_args_list[1].kwargs
+    assert "目光看向智宣子" in kw["instruction"]  # 云端路(此前就有)
+    assert "目光看向智宣子" in kw["local_prompt"]  # 本地路 = 默认路(此前完全缺失)
+    assert "轴线" in kw["local_prompt"]  # §J 同场景连续 → 轴线必守也得进本地路
+    assert "必须:" in kw["local_prompt"]  # §E 的必须/优先分级结构保留
+
+    # §K 可观察性说真话:关键帧真生成了(非 canon 复制)→ eyeline 确实落地了。
+    checks = manifest.frames[1].quality_checks
+    assert checks["eyeline_applied"] is True
+    assert checks["continuity_applied"] is True
+    assert checks["keyframe_degraded"] is False
+
+
+@pytest.mark.asyncio
+async def test_wardrobe_negative_reaches_sdxl_keyframe_in_english(tmp_path):
+    """缺口#4 回归(2026-07-17 审计):压"奇幻铠甲/尖角肩甲"的那组强负面词此前**只在参考图
+    阶段生效**(director_pipeline._PORTRAIT_NEGATIVE),关键帧走 sdxl 的 _DEFAULT_NEGATIVE,
+    里面一个铠甲词都没有 → "参考图是干净定妆照、一进关键帧就长出圣斗士肩甲"。
+
+    钉两点:(1) 服饰负面词确实到了 sdxl 的 negative_prompt;(2) **必须是英文**——
+    sdxl_local_service 只翻译正向 prompt(:186),负面词原样透传(:195),base SDXL 不认中文,
+    照抄中文的 _PORTRAIT_NEGATIVE 会是个无声空操作。同时验证调用方自带的负面词不被顶掉。"""
+    from hevi.image.sdxl_local_service import _has_chinese
+
+    script, shotlist = _one_dialogue_shot()
+    shotlist.shots[0].negative_prompt = "caller-supplied-negative"
+
+    sdxl = AsyncMock(
+        side_effect=lambda **kw: kw["output_path"].write_bytes(b"x" * 2048)  # >1024 才算成功
+    )
+    with (
+        patch("hevi.tongjian.scene_render_avatar.sdxl_local_generate", sdxl),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: (
+                    kw["output_path"].write_bytes(b"canon") or kw["output_path"]
+                )
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate", AsyncMock(side_effect=_fake_hh)
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist, script, _bible(), Constitution(), run_dir=tmp_path
+        )
+
+    neg = sdxl.await_args.kwargs["negative_prompt"]
+    assert "spiked pauldrons" in neg  # 服饰负面词到了关键帧
+    assert "fantasy armor" in neg
+    assert not _has_chinese(neg)  # 中文负面词对 base SDXL 是空操作,必须英文
+    assert "caller-supplied-negative" in neg  # 调用方自带的负面词没被顶掉
+
+
+@pytest.mark.asyncio
+async def test_quality_checks_report_false_when_keyframe_degraded_to_canon(tmp_path):
+    """F-0 的另一半:关键帧降级成定妆照时,§K 不许再报 eyeline/连续性"已应用"。
+
+    旧判据是 `bool(_eyeline)`——只要那个字符串构造出来了就报 True,哪怕实际用的关键帧是抄的
+    定妆照(导演命令一个字都没落地)。这正是断链能长期隐身的原因:可观察性在替它打掩护。"""
+    script = Script(
+        lines=[
+            ScriptLine(
+                line_id="LN001",
+                type="dialogue",
+                speaker="C003",
+                text="请分宗。",
+                target="C004",
+            ),
+        ]
+    )
+    shotlist = ShotList(shots=[Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"])])
+    bible = CharacterBible(
+        characters=[
+            CharacterBibleEntry(character_id="C003", name="智果", appearance="清瘦谋士"),
+            CharacterBibleEntry(character_id="C004", name="智宣子", appearance="威严家主"),
+        ]
+    )
+
+    async def _fake_qwen_edit(*, image_path, instruction, output_path):
+        raise QwenImageError("qwen-image-edit 免费额度已用尽")  # 云端墙
+
+    async def _fake_qwen_gen(*, prompt, output_path, size, seed=None):
+        output_path.write_bytes(b"CANON-BYTES")
+        return output_path
+
+    with (
+        # 本地 sdxl 也不可用(GPU 掉总线/争用)→ 两条腿全断 → 抄定妆照
+        patch(
+            "hevi.tongjian.scene_render_avatar.sdxl_local_generate",
+            AsyncMock(side_effect=RuntimeError("GPU fell off the bus")),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_edit",
+            AsyncMock(side_effect=_fake_qwen_edit),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(side_effect=_fake_qwen_gen),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate",
+            AsyncMock(side_effect=_fake_hh),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist, script, bible, Constitution(), run_dir=tmp_path
+        )
+
+    checks = manifest.frames[0].quality_checks
+    assert checks["keyframe_degraded"] is True
+    assert checks["eyeline_applied"] is False  # 构造出来了 ≠ 落地了
+    assert manifest.frames[0].degraded
 
 
 @pytest.mark.asyncio
@@ -847,7 +1053,15 @@ async def test_long_dialogue_line_renders_as_multiple_chunks(tmp_path):
 async def test_keyframe_falls_back_to_canonical_when_edit_unavailable(tmp_path):
     """用户 2026-07-15 决定走降级路线(不为 qwen-image-edit 开付费):edit 撞免费额度墙
     (QwenImageError)时,直接用 canonical 像当关键帧,整镜照常出片、不降级空镜。
-    验证:(1) 该镜没有降级;(2) 喂给 happyhorse 的关键帧就是 canonical 那张(fallback 复制)。"""
+
+    2026-07-17 修订:出片照旧(clip 仍在,不退空镜),但**这一镜必须被标成 degraded**。旧版
+    断言的是 `not degraded`,把"抄定妆照"当成了无代价的兜底——实证代价极大:一次真实产集
+    20 镜里 14 镜的关键帧是定妆照的字节级复制品,成片退化成"大头念台词",而 verdict 三项检查
+    对这种镜全过(画面不黑;身份分满分——它就是那张 canon 本人),于是静默交付。degraded 的
+    既有语义就是"走了降级链、非首选路径产出",canon 复制正属此列 → 进 verdict 的 rewrite 闸。
+
+    验证:(1) 喂给 happyhorse 的关键帧就是 canonical 那张(fallback 复制);(2) 该镜出了片
+    (clip_path 非空,没退空镜);(3) 该镜被标 degraded + 写明原因;(4) §K quality_checks 不撒谎。"""
     script = Script(
         lines=[
             ScriptLine(
@@ -902,8 +1116,13 @@ async def test_keyframe_falls_back_to_canonical_when_edit_unavailable(tmp_path):
             shotlist, script, _bible(), Constitution(), run_dir=tmp_path
         )
 
-    assert not manifest.frames[0].degraded  # 没有因 edit 失败而降级空镜
+    frame = manifest.frames[0]
     assert kf_bytes_seen == [b"CANON-BYTES"]  # happyhorse 拿到的正是 canonical 像
+    assert frame.clip_path  # 仍然出片,没退空镜(这条是 2026-07-15 决定的兜底行为,不变)
+    assert frame.degraded  # 但抄定妆照 = 走了降级链,必须标出来送 verdict 返工
+    assert "定妆照" in frame.degrade_reason
+    assert frame.quality_checks["keyframe_degraded"] is True
+    assert frame.debug_context["keyframe_source"] == "canon_copy"
 
 
 def _one_dialogue_shot():
@@ -931,7 +1150,7 @@ async def test_local_engine_uses_sdxl_not_cloud(tmp_path):
 
     sdxl_calls: list[dict] = []
 
-    async def _fake_sdxl(*, prompt, output_path, width, height, extra, require_gpu):
+    async def _fake_sdxl(*, prompt, output_path, width, height, extra, require_gpu, **_):
         sdxl_calls.append({"prompt": prompt, "extra": extra})
         Path(output_path).write_bytes(b"sdxl-kf" * 200)  # >1024B,过 _edit_keyframe 的有效性门槛
         return {"output_path": str(output_path)}
@@ -1653,3 +1872,392 @@ async def test_shot_frame_carries_debug_context_and_quality_checks(tmp_path):
     assert qc["has_action_beats"] is True
     assert qc["kf2v_action_arc"] is True  # 走了 kf2v 真动作弧
     assert qc["incomplete_state_applied"] is True  # 含"拔/猛地"反应链 → §C
+
+
+# ── Gap 1 阶段1:多角色走位几何底图 ─────────────────────────────────────────────
+
+
+def test_layout_col_keyword_and_spread():
+    """走位文本 → 画布水平中心比例。命中 左/中/右 用词表;没命中按顺序均匀铺开。"""
+    assert _layout_col("阶下左侧", 0, 2) == 0.22
+    assert _layout_col("画面右方", 1, 2) == 0.78
+    assert _layout_col("居中而立", 0, 1) == 0.5
+    # 没命中方位词 → 均匀铺开(2 人 → 1/3, 2/3)
+    assert _layout_col("", 0, 2) == pytest.approx(1 / 3)
+    assert _layout_col("", 1, 2) == pytest.approx(2 / 3)
+
+
+def test_parse_blocking_positions_maps_names_to_cids():
+    """ "角色名:位置" → {cid: 位置文本}。blocking 用显示名,present 是 cid,按 name_by_id 对齐。"""
+    blocking = ["张飞:阶下左侧,面向刘备", "刘备:居中端坐", "旁人:角落"]
+    present = ["C_张飞", "C_刘备"]
+    name_by_id = {"C_张飞": "张飞", "C_刘备": "刘备"}
+    got = _parse_blocking_positions(blocking, present, name_by_id)
+    assert got == {"C_张飞": "阶下左侧,面向刘备", "C_刘备": "居中端坐"}  # 旁人不在 present,丢弃
+
+
+def _fake_subject3d_view(path, fill=(60, 90, 160)) -> None:
+    """造一张 Subject3D 风格的视图:近白底(251,251,252)+ 中间一个纯色人形块,无 alpha。"""
+    from PIL import Image
+
+    im = Image.new("RGB", (256, 256), (251, 251, 252))
+    for y in range(40, 230):
+        for x in range(90, 166):
+            im.putpixel((x, y), fill)
+    im.save(path)
+
+
+def test_compose_layout_base_knocks_out_bg_and_positions(tmp_path):
+    """核心几何底图:≥2 张视图按走位落位合成。验证 (1) 近白底被抠掉(灰画布透出);
+    (2) 左侧角色的人形块落在画布左半,右侧角色落在右半。纯 PIL,零 GPU。"""
+    from PIL import Image
+
+    va, vb = tmp_path / "a.png", tmp_path / "b.png"
+    _fake_subject3d_view(va, fill=(200, 40, 40))  # 红:左侧角色
+    _fake_subject3d_view(vb, fill=(40, 40, 200))  # 蓝:右侧角色
+    out = _compose_layout_base(
+        present=["A", "B"],
+        view_path_by_cid={"A": va, "B": vb},
+        pos_desc_by_cid={"A": "左侧", "B": "右侧"},
+        size=(1280, 720),
+        out_path=tmp_path / "layout.png",
+    )
+    assert out is not None and out.exists()
+    canvas = Image.open(out).convert("RGB")
+    w, h = canvas.size
+    assert (w, h) == (1280, 720)
+
+    # 近白底被抠掉 → 画布该处是中性灰(128),不是白;上方中带(人形只占 85% 高、脚底贴底,
+    # 顶部一条是纯背景)取样。
+    assert canvas.getpixel((w // 2, 8))[0] < 200  # 灰,不是白底残留
+
+    # 红色人形块的重心在左半,蓝色在右半:按列扫描找每种颜色的平均 x。
+    def _mean_x(target):
+        xs = [
+            x
+            for x in range(0, w, 4)
+            for y in range(0, h, 8)
+            if _close(canvas.getpixel((x, y)), target)
+        ]
+        return sum(xs) / len(xs) if xs else None
+
+    red_x = _mean_x((200, 40, 40))
+    blue_x = _mean_x((40, 40, 200))
+    assert red_x is not None and blue_x is not None
+    assert red_x < w / 2 < blue_x  # 红在左、蓝在右 = 走位落地
+
+
+def _close(px, target, tol=60) -> bool:
+    return all(abs(a - b) <= tol for a, b in zip(px, target, strict=False))
+
+
+def test_compose_layout_base_none_when_fewer_than_two_views(tmp_path):
+    """只有 1 张视图 → None(单角色走 SPEC-004 单 lead 路,不需要合成)。"""
+    va = tmp_path / "a.png"
+    _fake_subject3d_view(va)
+    out = _compose_layout_base(
+        present=["A", "B"],
+        view_path_by_cid={"A": va},  # B 无视图
+        pos_desc_by_cid={},
+        size=(1280, 720),
+        out_path=tmp_path / "layout.png",
+    )
+    assert out is None
+
+
+@pytest.mark.asyncio
+async def test_multichar_shot_feeds_layout_base_as_img2img_init(tmp_path):
+    """端到端接线:多角色同框镜,当每个在场角色都有非正面 Subject3D 视图时,走位几何底图被合成
+    并作为 init_image 传给关键帧生成(→ 触发 img2img 几何路)。这是"多角色走位零覆盖"的补齐。"""
+    # 两个非对白角色同框(action_beats 触发 vis 路)
+    script = Script(
+        lines=[ScriptLine(line_id="LN001", type="narration", speaker="NARRATOR", text="二人对峙。")]
+    )
+    shot = Shot(
+        shot_id="SH001",
+        line_ids=["LN001"],
+        characters=["C_张飞", "C_刘备"],
+        scene_id="堂上",
+        blocking=["张飞:左侧,面向刘备", "刘备:右侧"],
+    )
+    shotlist = ShotList(shots=[shot])
+    bible = CharacterBible(
+        characters=[
+            CharacterBibleEntry(character_id="C_张飞", name="张飞", appearance="豹头环眼"),
+            CharacterBibleEntry(character_id="C_刘备", name="刘备", appearance="双耳垂肩"),
+        ]
+    )
+    # 每个角色备一张非正面 Subject3D 视图
+    va, vb = tmp_path / "zf_left.png", tmp_path / "lb_right.png"
+    _fake_subject3d_view(va, fill=(200, 40, 40))
+    _fake_subject3d_view(vb, fill=(40, 40, 200))
+
+    seen_init: list = []
+
+    async def _spy_sdxl(**kw):
+        seen_init.append(kw.get("extra", {}).get("init_image"))
+        kw["output_path"].write_bytes(b"x" * 2048)
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.sdxl_local_generate",
+            AsyncMock(side_effect=_spy_sdxl),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: (
+                    kw["output_path"].write_bytes(b"canon") or kw["output_path"]
+                )
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.i2v_animate",
+            AsyncMock(
+                side_effect=lambda **kw: kw["output_path"].write_bytes(b"vis") or kw["output_path"]
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_silent",
+            lambda vis, out, w, h, duration: out.write_bytes(b"c"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_narration",
+            lambda vis, audio, out, w, h: out.write_bytes(b"c"),
+        ),
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                model="cloud_avatar",
+                params={
+                    "keyframe_engine": "local",
+                    "non_dialogue_mode": "silent_action",  # 纯静默,避开旁白 provider
+                    "action_engine": "i2v",  # 不走 kf2v,收窄到关键帧一次生成
+                    "shot_view_by_id": {"SH001": {"C_张飞": "left", "C_刘备": "right"}},
+                    "subject3d_views_by_id": {
+                        "C_张飞": {"left": str(va)},
+                        "C_刘备": {"right": str(vb)},
+                    },
+                },
+            ),
+        )
+
+    # 关键帧生成收到的 init_image 就是合成出来的走位底图
+    layout = tmp_path / "SH001_layout.png"
+    assert layout.exists()  # 底图真的合成了
+    assert str(layout) in seen_init  # 且作为 img2img init 传给了 sdxl
+    assert manifest.frames[0].debug_context["layout_base"] is True
+
+
+# ── Gap 2:观察态注入(镜间连贯) ──────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_observe_end_state_returns_vlm_description(tmp_path):
+    """VLM 看真实末帧 → 一句停留态。抽帧走 mock,验证 VLM 拿到的是末帧图 + 返回被清洗。"""
+    clip = tmp_path / "SH001_clip.mp4"
+    clip.write_bytes(b"fake-clip")
+    seen_images: list = []
+
+    async def _fake_vlm(*, messages, image_paths, max_tokens):
+        seen_images.extend(image_paths)
+        return {"content": '"张飞已收刀入鞘、立于画面左侧、面向右方"'}
+
+    with patch(
+        "hevi.tongjian.scene_render_avatar._extract_last_frame",
+        lambda clip, out: out.write_bytes(b"endframe"),
+    ):
+        got = await _observe_end_state(clip, _fake_vlm, tmp_path / "obs.png")
+
+    assert got == "张飞已收刀入鞘、立于画面左侧、面向右方"  # 引号被清掉
+    assert seen_images == [str(tmp_path / "obs.png")]  # VLM 拿到的是抽出的末帧
+
+
+@pytest.mark.asyncio
+async def test_observe_end_state_falls_back_when_no_vlm(tmp_path):
+    """vlm=None(取不到模型)→ 返回 ""(调用方退回计划态 _carry,不阻断)。"""
+    clip = tmp_path / "c.mp4"
+    clip.write_bytes(b"x")
+    assert await _observe_end_state(clip, None, tmp_path / "o.png") == ""
+
+
+@pytest.mark.asyncio
+async def test_second_shot_carry_uses_observed_end_state_of_first(tmp_path):
+    """端到端:同场景两连镜,第二镜的承接锚来自 VLM 观察第一镜真实末帧,而非剧本计划态文本。
+    _adjacent_context 的 docstring 承诺过"实际末帧覆盖起始态由观察态另行处理",此前没实现。"""
+    script = Script(
+        lines=[
+            ScriptLine(line_id="LN001", type="dialogue", speaker="C003", text="请分宗。"),
+            ScriptLine(line_id="LN002", type="dialogue", speaker="C003", text="您三思。"),
+        ]
+    )
+    shotlist = ShotList(
+        shots=[
+            Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"], scene_id="堂上"),
+            Shot(shot_id="SH002", line_ids=["LN002"], characters=["C003"], scene_id="堂上"),
+        ]
+    )
+
+    async def _fake_vlm(*, messages, image_paths, max_tokens):
+        return {"content": "谋士已起身、立于画面右侧、面向左方"}
+
+    edit_kf = AsyncMock(
+        side_effect=lambda **kw: (kw["output_path"].write_bytes(b"kf"), "sdxl_ip_adapter")[1]
+    )
+
+    with (
+        patch("hevi.tongjian.scene_render_avatar._edit_keyframe", edit_kf),
+        patch(
+            "hevi.tongjian.scene_render_avatar._resolve_vlm",
+            lambda: _fake_vlm,
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: kw["output_path"].write_bytes(b"c") or kw["output_path"]
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate", AsyncMock(side_effect=_fake_hh)
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_last_frame",
+            lambda clip, out: out.write_bytes(b"end"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist, script, _bible(), Constitution(), run_dir=tmp_path
+        )
+
+    # 第一镜无上文,observed_carry 空;第二镜承接锚来自 VLM 观察
+    assert manifest.frames[0].debug_context["observed_carry"] == ""
+    assert (
+        manifest.frames[1].debug_context["observed_carry"] == "谋士已起身、立于画面右侧、面向左方"
+    )
+    # 且该观察态真的进了第二镜的关键帧 prompt(命令摘要 → local_prompt,承 Gap F-0)
+    sh002_kw = edit_kf.await_args_list[1].kwargs
+    assert "谋士已起身" in sh002_kw["local_prompt"]
+
+
+@pytest.mark.asyncio
+async def test_continuity_observation_off_keeps_plan_state(tmp_path):
+    """observe_continuity=False → 不调 VLM,承接锚退回计划态(observed_carry 空)。"""
+    script = Script(
+        lines=[
+            ScriptLine(line_id="LN001", type="dialogue", speaker="C003", text="请分宗。"),
+            ScriptLine(line_id="LN002", type="dialogue", speaker="C003", text="您三思。"),
+        ]
+    )
+    shotlist = ShotList(
+        shots=[
+            Shot(shot_id="SH001", line_ids=["LN001"], characters=["C003"], scene_id="堂上"),
+            Shot(shot_id="SH002", line_ids=["LN002"], characters=["C003"], scene_id="堂上"),
+        ]
+    )
+    # 给上一镜一个 visual_prompt,让 _adjacent_context 的计划态 carry 非空(验证关掉观察后它仍在)
+    shotlist.shots[0].visual_prompt = "谋士拱手而立"
+    vlm_called: list = []
+
+    def _spy_resolve_vlm():
+        vlm_called.append(True)
+        return object()
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar._edit_keyframe",
+            AsyncMock(
+                side_effect=lambda **kw: (kw["output_path"].write_bytes(b"kf"), "sdxl_ip_adapter")[
+                    1
+                ]
+            ),
+        ),
+        patch("hevi.tongjian.scene_render_avatar._resolve_vlm", _spy_resolve_vlm),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: kw["output_path"].write_bytes(b"c") or kw["output_path"]
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate", AsyncMock(side_effect=_fake_hh)
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            _bible(),
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(model="cloud_avatar", params={"observe_continuity": False}),
+        )
+
+    assert vlm_called == []  # 关掉时根本不取 VLM
+    assert manifest.frames[1].debug_context["observed_carry"] == ""
+    # 但计划态 carry 仍在(§J 没被关掉)
+    assert manifest.frames[1].debug_context["carry"]
+
+
+# ── Gap 1 阶段2:骨架控制图(ControlNet 地基) ─────────────────────────────────
+
+
+def test_compose_pose_control_draws_skeletons_by_position(tmp_path):
+    """OpenPose 骨架控制图:黑底,每个在场角色一副骨架,按走位落列。验证 (1) 黑底;(2) 有彩色
+    骨架线(非全黑);(3) 左位角色骨架在左半、右位在右半。纯 PIL,零 GPU。"""
+    from PIL import Image
+
+    out = _compose_pose_control(
+        present=["A", "B"],
+        pos_desc_by_cid={"A": "左侧", "B": "右侧"},
+        size=(1280, 720),
+        out_path=tmp_path / "pose.png",
+    )
+    assert out is not None and out.exists()
+    canvas = Image.open(out).convert("RGB")
+    w, h = canvas.size
+    assert (w, h) == (1280, 720)
+    assert canvas.getpixel((5, 5)) == (0, 0, 0)  # 角落黑底
+
+    # 每半画布都有非黑像素(= 两副骨架各就位)
+    def _has_ink(x0, x1):
+        return any(
+            canvas.getpixel((x, y)) != (0, 0, 0) for x in range(x0, x1, 6) for y in range(0, h, 12)
+        )
+
+    assert _has_ink(0, w // 2)  # 左半有骨架
+    assert _has_ink(w // 2, w)  # 右半有骨架
+
+
+def test_compose_pose_control_none_for_single_char(tmp_path):
+    """单人不需要走位约束 → None。"""
+    out = _compose_pose_control(
+        present=["A"],
+        pos_desc_by_cid={"A": "中"},
+        size=(1280, 720),
+        out_path=tmp_path / "pose.png",
+    )
+    assert out is None

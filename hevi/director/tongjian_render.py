@@ -24,6 +24,12 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from hevi.director.performance_derive import (
+    compile_audio_prompt,
+    derive_audio_track,
+    derive_negatives,
+)
+from hevi.director.performance_track import beat_slices, compile_temporal_prompt
 from hevi.director.pipeline_schemas import Concept, DesignList, SceneStageSet, ShotList
 from hevi.director.scene_stage import compute_shot_views, project_shot_space
 from hevi.tongjian.schemas import (
@@ -131,6 +137,23 @@ def build_tongjian_inputs(
                 visual_prompt=visual,
                 motion_mode="img2video",
                 action_beats=list(shot.action_beats or []),  # INC-001 §B 动作弧透传到 L6 kf2v
+                # 走位透传(治"走位乱七八糟"):把 shot_list 生成的 blocking 格式化成
+                # "角色:位置,朝向"短句,喂给 L6 多角色关键帧指令定位每个人。只收在场且锁定的角色。
+                blocking=[
+                    f"{b.character_name}:{b.position or '画面中'}"
+                    + (f",面向{b.facing}" if b.facing else "")
+                    for b in (shot.blocking or [])
+                    if b.character_name in bible_names
+                ],
+                # INC-002:performance_track 在桥接层编译成时序提示词随 Shot 透传。空 → 空串(inert)。
+                temporal_prompt=compile_temporal_prompt(shot.performance_track),
+                # §1.1 phase→beat 时刻切片,注入渲染首/关键/尾帧。空 → {}(inert)。
+                temporal_by_role=beat_slices(shot.performance_track),
+                # INC-002 v0.2:负面约束从 schema 自动派生(注入 sdxl 关键帧);声音第四层编译备用。
+                negative_prompt="，".join(derive_negatives(shot)),
+                audio_prompt=compile_audio_prompt(
+                    derive_audio_track(shot.performance_track, shot.audio_track)
+                ),
             )
         )
 

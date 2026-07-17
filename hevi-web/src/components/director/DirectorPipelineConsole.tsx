@@ -121,10 +121,11 @@ export function DirectorPipelineConsole() {
       }[stage];
       let w = await fn(work.work_id);
       setWork(w); syncDrafts(w);
-      // scene_stage / shot_list 重生成是后台任务(逐场 LLM),轮询到落地。
-      for (const pending of ['scene_stage_generating', 'shot_list_generating'] as const) {
+      // screenplay(含自审)/ scene_stage / shot_list 重生成都是后台任务,轮询到落地。
+      for (const pending of ['screenplay_generating', 'scene_stage_generating', 'shot_list_generating'] as const) {
         if (w.status === pending) { w = await pollUntilSettled(work.work_id, pending); setWork(w); syncDrafts(w); }
       }
+      if (w.status === 'screenplay_generate_failed') setErr(w.error || '剧本生成失败');
       if (w.status === 'scene_stage_regenerate_failed') setErr(w.error || '场面调度生成失败');
       if (w.status === 'shot_list_regenerate_failed') setErr(w.error || '分镜生成失败');
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
@@ -134,8 +135,14 @@ export function DirectorPipelineConsole() {
     if (!work || !conceptDraft) return;
     setBusy(true); setErr(null);
     try {
-      const w = await directorPipelineApi.lockConcept(work.work_id, conceptDraft);
+      let w = await directorPipelineApi.lockConcept(work.work_id, conceptDraft);
       setWork(w); syncDrafts(w);
+      // ②剧本草案含 LLM 自审二遍(~106s),后台跑,轮询到落地。
+      if (w.status === 'screenplay_generating') {
+        w = await pollUntilSettled(work.work_id, 'screenplay_generating');
+        setWork(w); syncDrafts(w);
+      }
+      if (w.status === 'screenplay_generate_failed') setErr(w.error || '剧本生成失败');
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
   }
 

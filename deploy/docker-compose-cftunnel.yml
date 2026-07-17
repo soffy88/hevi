@@ -43,6 +43,20 @@ services:
       HEVI_LLM_PROVIDER: qwen_local
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: qwen2.5:7b
+      # 共享 RTX 3080 上另有租户常占 ~2.4GiB,不加这个 sdxl_local 关键帧 VAE decode 峰值会
+      # CUDA OOM(2026-07-16 实证:加此 env 后本地出图/img2img 才成)。缺它 → engine=local
+      # 关键帧全挂、退云端额度墙 → canon,v1/v2 关键帧路(含 SPEC-004 v2 朝向 img2img)全废。
+      PYTORCH_CUDA_ALLOC_CONF: "expandable_segments:True"
+      # 消耗单价:credits_per_usd 默认 100(estimated_credits = cost_usd × 此值)。这台是 soffy
+      # 自用测试实例,降到 10(每次产集扣的积分 1/10),配合手动授信足够反复测,不受额度墙卡。
+      CREDITS_PER_USD: "10"
+      # 测试用:剧本只取前 4 场(下游 ~20 镜/~90s),快速小规模验证剧本细节达标。验证 OK 后
+      # 删掉这行重建即恢复全量(一段故事 ~11 场/~53 镜/~4min)。见 config.director_max_scenes。
+      DIRECTOR_MAX_SCENES: "4"
+      # INC-002:每镜 LLM 生成 performance_track(镜头内部表演时间轴)的密度档。L2=eyeline+情绪+
+      # 面部生理+运镜曲线。每镜一次 LLM 调用(并发,后台路径),分镜生成会明显变慢+花钱。见
+      # config.performance_track_tier。不想填时删掉这行或设 L0。
+      PERFORMANCE_TRACK_TIER: "L2"
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro

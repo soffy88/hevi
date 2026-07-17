@@ -73,6 +73,24 @@ async def test_screenplay_draft_llm_failure_falls_back_to_single_scene():
     assert sp.scenes[0].narration == "原文素材"
 
 
+async def test_screenplay_draft_caps_scenes_when_configured(monkeypatch):
+    """settings.director_max_scenes 设正整数 → 只取前 N 场(测试小规模验证);None/0 = 全量。"""
+    from hevi.core.config import settings
+
+    five = (
+        '{"scenes": ['
+        + ",".join(f'{{"scene_no": {i}, "narration": "第{i}场"}}' for i in range(1, 6))
+        + "]}"
+    )
+    llm = _llm(five)
+    monkeypatch.setattr(settings, "director_max_scenes", 2)
+    sp = await generate_screenplay_draft(concept=Concept(), material_text="x", llm=llm)
+    assert len(sp.scenes) == 2
+    monkeypatch.setattr(settings, "director_max_scenes", None)
+    sp_full = await generate_screenplay_draft(concept=Concept(), material_text="x", llm=llm)
+    assert len(sp_full.scenes) == 5
+
+
 async def test_screenplay_draft_drops_empty_dialogue_text():
     llm = _llm(
         '{"scenes": [{"scene_no": 1, "dialogue": [{"character_name": "甲", "text": ""}, '

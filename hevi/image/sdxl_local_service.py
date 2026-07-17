@@ -190,7 +190,11 @@ async def sdxl_local_generate(
     async with scheduler.acquire(VRAM_SDXL_LOCAL):
         await _run_worker(
             prompt=prompt,
-            negative_prompt=negative_prompt or _DEFAULT_NEGATIVE,
+            # 调用方传的负面词(如 INC-002 从 schema 派生的"不要多余手指/枪械变形")追加到通用
+            # 质量负面词后,而不是替换掉——两者都要保。
+            negative_prompt=(
+                f"{_DEFAULT_NEGATIVE}, {negative_prompt}" if negative_prompt else _DEFAULT_NEGATIVE
+            ),
             width=width,
             height=height,
             output_path=output_path,

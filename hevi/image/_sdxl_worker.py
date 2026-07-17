@@ -32,6 +32,26 @@ def main() -> None:
     else:
         from diffusers import StableDiffusionXLPipeline as _PipeCls
 
+    # ── Gap 1 阶段2:ControlNet-OpenPose 分支(未接,骨架控制图上游已就绪)────────────────
+    # 场面调度层已能产出 OpenPose 骨架控制图(scene_render_avatar._compose_pose_control,毫秒级
+    # 纯 CPU,多角色镜自动落 {sid}_pose.png)。这里是**唯一缺的消费端**。接它前有三件真机事项,
+    # 都无法在本进程里替代,不接则骨架图只是备着、无害:
+    #   1) 权重下宿主机(容器 :ro 挂载,联网在容器外下到 settings.sdxl_model_dir):
+    #      ~2.5GB `xinsir/controlnet-openpose-sdxl-1.0`(或 ~700MB 的 -small 变体先验证)。
+    #   2) 实测 VRAM:CN(~+1.3–2.5GB)叠现有 IP-Adapter 路峰值 7.1GB / 空闲 ~7.4GB,可行性
+    #      报告判定"genuinely marginal, real OOM risk",必须真跑量,不能预测。OOM 时退路:
+    #      768² 出图 / -small 变体 / enable_sequential_cpu_offload(更慢)。
+    #   3) diffusers 0.38 的 StableDiffusionXLControlNetPipeline 同时继承 IPAdapterMixin —— CN
+    #      与 IP-Adapter **可共存**(几何 + 锁脸同时要),这正是它比阶段1 img2img 强的地方。接线:
+    #        - control_image_path = task.get("control_image")
+    #        - _PipeCls = ...ControlNetPipeline / ...ControlNetImg2ImgPipeline(注意 image= vs
+    #          control_image= 语义在两个类里相反,弄反不报错只出垃圾)
+    #        - controlnet=ControlNetModel.from_pretrained(..., cache_dir=...) 传进 from_pretrained
+    #        - offload 分支复用 IP-Adapter 那条(enable_model_cpu_offload,不能 attention slicing)
+    #        - 调用 kwargs 加 image=<control map>, controlnet_conditioning_scale=<~0.6>
+    #      同样的改动 _sdxl_batch_worker.py 要再做一遍(它硬编码了 txt2img pipeline)。
+    #    VRAM 常量 hevi/gpu/providers.py:VRAM_SDXL_LOCAL 接后需重新量。
+
     # CPU 回退(2026-07-08:GPU 掉 PCIe 总线期间验证全链路用,慢但能跑通)——CPU 上
     # fp16 大量算子要么不支持要么极慢,必须切 float32;fp16-variant 权重文件在纯
     # float32 场景下没有对应件,variant 也得跟着置空,否则 from_pretrained 会找不到文件。
