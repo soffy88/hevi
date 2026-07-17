@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     # 前端轮询 screenplay_generating),这里可安全开启。关掉则只出初稿、省一次 LLM 调用。
     screenplay_llm_review: bool = True
 
+    # INC-002 单镜表演密度档:给每个镜头 LLM 生成 performance_track(镜头内部表演时间轴)的深度。
+    # L0=不生成(默认,inert,走 action_beats 老路);L1 eyeline+emotional+body;L2 +facial+camera;
+    # L3 +muscle。每镜一次 LLM 调用(并发),开高档会显著加长分镜生成时间与花费,按需开。
+    performance_track_tier: str = "L0"
+
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
