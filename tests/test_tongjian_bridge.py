@@ -251,6 +251,7 @@ async def test_render_episode_wires_l2_to_l8_and_maps_shots(tmp_path):
             "provider": "cloud_avatar",
             "consistency_score": 0.8,
             "diagnosis_category": None,
+            "degraded": False,
             "retry_count": 0,
         }
     ]

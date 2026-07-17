@@ -372,6 +372,10 @@ def _frame_manifest_to_shot_states(
                 "provider": "cloud_avatar",
                 "consistency_score": score,
                 "diagnosis_category": diagnosis,
+                # 渲染层自己判定的降级(生成失败退空镜 / 关键帧抄了定妆照)。透出来给
+                # director 的 verdict 用:这类降级 clip 本身可能完好(黑帧/身份两项都过),
+                # verdict 自己查不出,必须尊重渲染层的结论,否则会静默判它通过。
+                "degraded": frame.degraded,
                 "retry_count": 0,
             }
         )

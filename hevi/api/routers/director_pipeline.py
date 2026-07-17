@@ -978,6 +978,24 @@ async def _run_verdict(shots: list[dict[str, Any]], vlm: Any) -> list[ShotVerdic
                 )
             )
             continue
+        if s.get("degraded"):
+            # 渲染层已判这一镜走了降级链(最典型:关键帧抄了 canon 定妆照 → 成片是"大头念
+            # 台词")。verdict 的三项检查对这种镜**全部会通过**——画面不黑,身份分还满分
+            # (它就是那张 canon 本人)。2026-07-17 审计实证:一次真实产集 20 镜里 14 镜如此,
+            # 交付门全绿放行。故不重跑检查,直接尊重上游结论 → rewrite(hard purge 连 kf 一起
+            # 删,逼重出关键帧;re_roll 保 kf 会把同一张定妆照再拼一遍,白烧钱)。
+            out.append(
+                ShotVerdict(
+                    shot_index=s["index"],
+                    shot_id=sid,
+                    identity_score=s.get("consistency_score"),
+                    passed=False,
+                    diagnosis_category=s.get("diagnosis_category") or "构图",
+                    retake_tier="rewrite",
+                    checks={"upstream_degraded": True},
+                )
+            )
+            continue
         out.append(
             await verdict_shot(
                 shot_index=s["index"],
@@ -1158,6 +1176,19 @@ async def _run_director_via_tongjian(
         task = await task_repo.get_task(task_id)
         config_json = dict((task or {}).get("config_json") or {})
         config_json["actual_usd"] = config_json.get("estimated_usd", 0.0)
+        # 返工预算(_VERDICT_MAX_RETAKE)用尽后仍不过的镜:成片存在、可看,但它是残的。
+        # 此前 completed_shots 恒填 len(shots),等于宣称"每一镜都成了"——2026-07-17 审计那次
+        # 产集 20 镜里 14 镜关键帧是定妆照,任务照样报 completed/100%/20 镜全完成。数字必须说真话。
+        n_failed = sum(1 for s in shots if not s.get("passed", True))
+        config_json["failed_shots"] = n_failed
+        if n_failed:
+            logger.error(
+                "director-pipeline task %s 成片交付但 %d/%d 镜未过裁决(返工已用尽):%s",
+                task_id,
+                n_failed,
+                len(shots),
+                [s.get("diagnosis_category") for s in shots if not s.get("passed", True)][:5],
+            )
         await task_repo.update_task(
             task_id,
             {
@@ -1165,7 +1196,7 @@ async def _run_director_via_tongjian(
                 "progress_pct": 100.0,
                 "result_video_path": final_video.video_path,
                 "total_shots": len(shots),
-                "completed_shots": len(shots),
+                "completed_shots": len(shots) - n_failed,
                 "error": None,
                 "config_json": config_json,
                 "updated_at": datetime.now(UTC).replace(tzinfo=None),
