@@ -783,6 +783,11 @@ async def build_frame_manifest_avatar(
             )
             for role in ("first", "peak", "aftermath")
         }
+        # 走位提示(治"走位乱七八糟"):shot.blocking 已是"角色:位置,朝向"短句,拼进多角色
+        # 关键帧指令,让 qwen-image-edit/sdxl 按走位摆人,而不是把人瞎堆到同一画面。
+        _blocking_hint = (
+            ("。按走位安排各人位置与朝向:" + ";".join(shot.blocking)) if shot.blocking else ""
+        )
         did_kf2v = False  # §K 可观察性用;下面动作镜分支若走 kf2v 会置 True
         dur = _say_dur(text or shot.visual_prompt, per_char)
         clip = work / f"{sid}_clip.mp4"
@@ -895,7 +900,7 @@ async def build_frame_manifest_avatar(
                             names = "、".join(name_by_id.get(cid, cid) for cid in present)
                             instruction = (
                                 f"这{len(present)}张图分别是{names}各自的真实长相,"
-                                f"把他们合成到同一个画面里,每个人物的相貌、服饰、画风都要"
+                                f"把他们合成到同一个画面里{_blocking_hint},每个人物的相貌、服饰、画风都要"
                                 f"跟各自对应的参考图保持一致,神情{emotion},都闭着嘴"
                             )
                             if act_hint:
@@ -912,7 +917,8 @@ async def build_frame_manifest_avatar(
                                 local_prompt=_local_kf_prompt(
                                     style,
                                     f"{names}同框:"
-                                    + "、".join(appearance_by_id.get(cid, cid) for cid in present),
+                                    + "、".join(appearance_by_id.get(cid, cid) for cid in present)
+                                    + _blocking_hint,
                                     emotion,
                                     act_hint,
                                     scene_space=scene_space,

@@ -41,6 +41,17 @@ class Settings(BaseSettings):
     libtv_access_key: str = ""
     libtv_im_base: str = "https://im.liblib.tv"
 
+    # 剧本场数上限(测试用):加厚剧本后一段故事常产出 10+ 场 → 下游 50+ 镜、~4min 成片,
+    # 渲染久且接近 tongjian_run_budget_usd 熔断线。设一个正整数只取前 N 场做快速小规模验证
+    # (剧本层截断,下游 design/scene_stage/shot 全派生自它,一处生效)。None/0 = 不限(全量)。
+    director_max_scenes: int | None = None
+
+    # 剧本 LLM 自审-修订(2026-07-16):初稿产出后再跑一道"审核员挑毛病并改好"的二遍
+    # (见 screenplay.py::_REVIEW_PROMPT)。实测质量显著提升(10→13 场、画面从概要变分镜级)。
+    # 总延迟 ~106s > 同步反代 100s,故②剧本阶段已改后台任务(_run_screenplay_generate,
+    # 前端轮询 screenplay_generating),这里可安全开启。关掉则只出初稿、省一次 LLM 调用。
+    screenplay_llm_review: bool = True
+
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7

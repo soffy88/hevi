@@ -9,6 +9,7 @@ from hevi.director.pipeline_schemas import (
     DesignCharacter,
     DesignList,
     DesignScene,
+    ShotBlocking,
     ShotList,
     ShotListDialogueLine,
     ShotListItem,
@@ -158,6 +159,39 @@ def test_build_tongjian_inputs_passes_action_beats_to_shot():
         voice_by_speaker={},
     )
     assert shotlist.shots[0].action_beats == ["张飞猛地抽剑架颈", "刘备扑上夺剑", "宝剑坠地紧抱"]
+
+
+def test_build_tongjian_inputs_passes_blocking_to_shot():
+    """走位透传:ShotListItem.blocking 格式化成"角色:位置,朝向"喂给 L6 多角色关键帧;
+    未锁定角色的走位丢弃(治"走位乱七八糟"——此前 blocking 在桥接层被整个丢掉)。"""
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="张飞跪地,刘备关羽立于案后",
+                blocking=[
+                    ShotBlocking(character_name="张飞", position="画面左侧", facing="刘备"),
+                    ShotBlocking(character_name="刘备", position="画面中央"),
+                    ShotBlocking(character_name="路人", position="画面右", facing="张飞"),
+                ],
+                character_names=["张飞", "刘备"],
+                scene_name="军帐",
+            )
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="张飞"), DesignCharacter(name="刘备")],
+        scenes=[DesignScene(name="军帐")],
+    )
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list,
+        design_list=design_list,
+        concept=Concept(),
+        voice_by_speaker={},
+    )
+    # 未锁定的"路人"被丢;锁定角色格式化为"名:位置[,面向X]"
+    assert shotlist.shots[0].blocking == ["张飞:画面左侧,面向刘备", "刘备:画面中央"]
 
 
 def test_build_tongjian_inputs_threads_valid_target_drops_invalid():

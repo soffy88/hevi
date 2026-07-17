@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import logging
 import uuid
 from dataclasses import asdict
@@ -70,7 +71,20 @@ router = APIRouter(prefix="/director-pipeline", tags=["director-pipeline"])
 
 _WORKS: dict[str, dict[str, Any]] = {}
 _OUTPUT_DIR = Path("output/director_pipeline")
-_ART_DIRECTION = "cinematic character portrait, front facing, neutral expression, detailed"
+# 身份锚图 art direction(2026-07-16 实证重写):旧值 "cinematic character portrait" + 战败场
+# 的戏剧化 appearance(浴血/怒目)→ qwen-image 脑补成发光红眼、金龙肩甲的恶鬼(实测)。锚图
+# 是下游 canonical/关键帧的派生源,必须是**干净中性定妆照**:平静表情、纯背景、写实真人。
+_ART_DIRECTION = (
+    "写实历史正剧定妆照,真人演员,平静自然的中性表情,正面半身像,柔和自然布光,"
+    "纯色中性摄影棚背景,写实肤色、正常五官比例"
+)
+# 强负面词(实测能压住 qwen-image 的"电影级奇幻战场"风格惯性):发光眼/血污/游戏动漫/
+# 奇幻夸张铠甲、金属鬼脸龙纹肩甲、瞪眼变形——这些是模型自行脑补加的,正向词压不住,靠负面词。
+_PORTRAIT_NEGATIVE = (
+    "发光的眼睛,红色眼睛,红眼,异色瞳,眼睛发光,血污,血迹,伤口,伤疤,恐怖,魔化,獠牙,"
+    "游戏角色,动漫风,奇幻铠甲,发光盔甲,尖角肩甲,金属鬼脸肩甲,龙纹肩甲,浮夸金饰,夸张装饰,"
+    "瞪大眼睛,凶神恶煞,五官变形,战场火光背景,烟雾"
+)
 _PORTRAIT_MAX_ATTEMPTS = 3
 
 # ①→②→③→③.5→④,每级有 _draft/_locked 两态。scene_stage(SPEC-004 场面调度)插在
@@ -245,35 +259,56 @@ async def regenerate_concept(
 
 @router.post("/works/{work_id}/concept/lock")
 async def lock_concept(
-    work_id: str, body: Concept, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    body: Concept,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
     rec["concept"] = body.model_dump()
     rec["locked_through"] = _stage_index("concept")
-    screenplay = await generate_screenplay_draft(
-        concept=body, material_text=rec["material_text"], llm=_resolve_llm()
-    )
-    rec["screenplay"] = screenplay.model_dump()
-    rec["status"] = "screenplay_draft"
+    # ②剧本草案含 LLM 自审-修订二遍(~106s),超同步反代 100s → 放后台跑,前端轮询
+    # screenplay_generating 落地(同 scene_stage/shot_list 模式)。
+    rec["status"] = "screenplay_generating"
+    rec["error"] = None
+    background_tasks.add_task(_run_screenplay_generate, work_id)
     return _work_status(rec)
 
 
 # ── ②剧本 ─────────────────────────────────────────────────────────────────
 
 
+async def _run_screenplay_generate(work_id: str) -> None:
+    """②剧本草案后台生成:含 LLM 自审-修订二遍(初稿→审核员挑毛病并改好,总延迟 ~106s),
+    超同步反代 100s → 放后台,前端轮询 screenplay_generating 落地。concept 已由调用端锁进 rec。"""
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        concept = Concept.model_validate(rec["concept"])
+        screenplay = await generate_screenplay_draft(
+            concept=concept, material_text=rec["material_text"], llm=_resolve_llm()
+        )
+        rec["screenplay"] = screenplay.model_dump()
+        rec["status"] = "screenplay_draft"
+    except Exception as e:
+        logger.exception("screenplay 后台生成失败: work_id=%s", work_id)
+        rec["status"] = "screenplay_generate_failed"
+        rec["error"] = str(e)
+
+
 @router.post("/works/{work_id}/screenplay")
 async def regenerate_screenplay(
-    work_id: str, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
     _require_stage_ready(rec, "screenplay")
     _rollback_downstream(rec, "screenplay")
-    concept = Concept.model_validate(rec["concept"])
-    screenplay = await generate_screenplay_draft(
-        concept=concept, material_text=rec["material_text"], llm=_resolve_llm()
-    )
-    rec["screenplay"] = screenplay.model_dump()
-    rec["status"] = "screenplay_draft"
+    rec["status"] = "screenplay_generating"
+    rec["error"] = None
+    background_tasks.add_task(_run_screenplay_generate, work_id)
     return _work_status(rec)
 
 
@@ -340,12 +375,23 @@ async def _lock_design_list_assets(
             logger.warning("design-list 资产 %s 查重失败,退回新建: %s", name, e)
 
         portrait_path = portrait_dir / f"{slug}.png"
-        prompt = f"{_ART_DIRECTION}, {name}, {description or kind}"
+        prompt = f"{_ART_DIRECTION},{name},{description or kind}"
+        # character 才压这套"发光眼/奇幻甲"负面词(scene/prop 不需要,免得误伤道具材质)。
+        negative = _PORTRAIT_NEGATIVE if kind == "character" else ""
+        # 确定性 seed(治"每次测同一段故事人物形象都不一样"):按角色名派生稳定 seed,同名
+        # 永远同脸——即便查重没命中要新建、或跨产集/跨进程重生成。hashlib(非内置 hash())
+        # 保证跨进程稳定,不受 PYTHONHASHSEED 影响。
+        seed = int(hashlib.sha256(name.encode("utf-8")).hexdigest(), 16) % (2**31)
         last_exc: Exception | None = None
         for attempt in range(1, _PORTRAIT_MAX_ATTEMPTS + 1):
             try:
                 async with _concurrency:
-                    await qwen_image_generate(prompt=prompt, output_path=portrait_path)
+                    await qwen_image_generate(
+                        prompt=prompt,
+                        output_path=portrait_path,
+                        seed=seed,
+                        negative_prompt=negative,
+                    )
                 last_exc = None
                 break
             except (QwenImageError, httpx.HTTPStatusError) as e:

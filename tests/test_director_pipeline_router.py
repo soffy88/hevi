@@ -177,13 +177,19 @@ async def test_get_work_scoped_to_owner():
 
 @pytest.mark.asyncio
 async def test_lock_concept_advances_to_screenplay_draft():
+    from fastapi import BackgroundTasks
+
     work_id = str(uuid.uuid4())
     dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
+    bg = BackgroundTasks()
     with patch.object(dp, "generate_screenplay_draft", AsyncMock(return_value=_screenplay())):
-        resp = await dp.lock_concept(work_id, _concept(), _USER)
-    assert resp["locked_through"] == 0
-    assert resp["status"] == "screenplay_draft"
-    assert resp["screenplay"]["scenes"][0]["location"] == "宫殿"
+        resp = await dp.lock_concept(work_id, _concept(), _USER, bg)
+        assert resp["locked_through"] == 0
+        assert resp["status"] == "screenplay_generating"  # ②剧本改后台(含自审)
+        await bg()  # 跑后台任务
+    settled = dp._work_status(dp._WORKS[work_id])
+    assert settled["status"] == "screenplay_draft"
+    assert settled["screenplay"]["scenes"][0]["location"] == "宫殿"
 
 
 # ── 阶段顺序守卫:上游没锁,下游操作 409 ──────────────────────────────────────
@@ -191,10 +197,12 @@ async def test_lock_concept_advances_to_screenplay_draft():
 
 @pytest.mark.asyncio
 async def test_regenerate_screenplay_rejected_before_concept_locked():
+    from fastapi import BackgroundTasks
+
     work_id = str(uuid.uuid4())
     dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
     with pytest.raises(HTTPException) as ei:
-        await dp.regenerate_screenplay(work_id, _USER)
+        await dp.regenerate_screenplay(work_id, _USER, BackgroundTasks())
     assert ei.value.status_code == 409
 
 
@@ -247,10 +255,13 @@ async def test_regenerate_screenplay_on_advanced_work_clears_downstream_only():
     rec["design_list"] = _design_list().model_dump()
     rec["locked_through"] = 2
 
-    with patch.object(dp, "generate_screenplay_draft", AsyncMock(return_value=_screenplay())):
-        resp = await dp.regenerate_screenplay(work_id, _USER)
+    from fastapi import BackgroundTasks
 
+    resp = await dp.regenerate_screenplay(work_id, _USER, BackgroundTasks())
+
+    # 回退语义是同步的(_rollback_downstream):concept 保留、下游清空,与后台化无关
     assert resp["locked_through"] == 0  # 退回到 concept 锁定但 screenplay 未锁
+    assert resp["status"] == "screenplay_generating"
     assert resp["concept"] is not None
     assert resp["design_list"] is None
 
@@ -275,7 +286,7 @@ async def test_lock_design_list_creates_subjects_and_advances_to_scene_stage_dra
     subject_svc.create_subject.side_effect = lambda **kw: {"id": f"subj-{kw['name']}"}
     subject_svc.search_subjects.return_value = []  # 无同名已有资产 → 走新建
 
-    async def fake_qwen_generate(*, prompt, output_path):
+    async def fake_qwen_generate(*, prompt, output_path, **kwargs):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_bytes(b"\x89PNG")
         return output_path
@@ -328,7 +339,7 @@ async def test_lock_design_list_reuses_existing_same_name_subject(tmp_path, monk
 
     generated: list[str] = []
 
-    async def fake_qwen_generate(*, prompt, output_path):
+    async def fake_qwen_generate(*, prompt, output_path, **kwargs):
         generated.append(str(output_path))
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_bytes(b"\x89PNG")
@@ -374,7 +385,7 @@ async def test_lock_design_list_skips_already_locked_assets(tmp_path, monkeypatc
     subject_svc.create_subject.side_effect = lambda **kw: {"id": f"subj-{kw['name']}"}
     subject_svc.search_subjects.return_value = []  # 无同名已有资产 → 走新建
 
-    async def fake_qwen_generate(*, prompt, output_path):
+    async def fake_qwen_generate(*, prompt, output_path, **kwargs):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_bytes(b"\x89PNG")
         return output_path

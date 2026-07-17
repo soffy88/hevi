@@ -50,6 +50,9 @@ services:
       # 消耗单价:credits_per_usd 默认 100(estimated_credits = cost_usd × 此值)。这台是 soffy
       # 自用测试实例,降到 10(每次产集扣的积分 1/10),配合手动授信足够反复测,不受额度墙卡。
       CREDITS_PER_USD: "10"
+      # 测试用:剧本只取前 4 场(下游 ~20 镜/~90s),快速小规模验证剧本细节达标。验证 OK 后
+      # 删掉这行重建即恢复全量(一段故事 ~11 场/~53 镜/~4min)。见 config.director_max_scenes。
+      DIRECTOR_MAX_SCENES: "4"
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro
