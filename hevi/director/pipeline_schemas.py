@@ -119,6 +119,60 @@ class ShotBlocking(BaseModel):
     facing: str = ""  # 如"面向镜头""侧对角色B"
 
 
+# ── INC-002 单镜表演密度层:镜头内部时间轴 ──────────────────────────────────
+# ShotListItem 此前是"静态镜头描述";performance_track 把它升级成"有内部时间轴的表演单元"。
+# 与 action_beats(粗3段 trigger/peak/aftermath,服务选首/关/尾帧)是两级粒度:performance_track
+# 是细粒度 N 段,服务"时序提示词"编译。未填 → 行为完全不变(inert,走 action_beats 老路)。
+# 第一批只落 eyeline_track/emotional_state/body;facial_performance(第二批)、camera_curve
+# (第三批)后续加,现留可选空位。
+
+
+class EyelineTrack(BaseModel):
+    """镜头内视线时序(INC-002 缺口①)——一个 PerformancePhase 内的视线状态。"""
+
+    state: str = "locked"  # locked / breaking / averted / returning / closed
+    direction: str = "center"  # center / down / down_left / down_right / up / left / right ...
+    target_ref: str = ""  # 看向谁/什么;空 = 无目标/回避
+    transition_speed: str = "slow"  # snap / quick / slow / trembling
+
+
+class EmotionalStateCurve(BaseModel):
+    """情绪状态(承接 v3.2 挂载树 emotional_state 维度)——本阶段的主情绪与强度。"""
+
+    primary: str = ""  # 主情绪
+    intensity: float = 0.0  # 0.0–1.0
+    conflict_with: str = ""  # 内心交战的对立面;空 = 无
+
+
+class PerformanceBody(BaseModel):
+    """身体(即使"无夸张肢体"也要写清楚)。"""
+
+    posture: str = ""
+    tension: str = ""  # rigid / taut / trembling / slack / collapsing
+    breath: str = ""  # held / shallow_rapid / ragged / deep / none
+
+
+class PerformancePhase(BaseModel):
+    """表演阶段——镜头内部时间轴的一段(INC-002 §2)。t_start_s/t_end_s 精确到秒的时间窗。"""
+
+    phase_id: str = ""
+    order: int = 0
+    t_start_s: float = 0.0
+    t_end_s: float = 0.0
+    label: str = ""  # 人可读:"理智断裂与向下看的退缩"
+    trigger: str = ""  # 本阶段由什么触发(内心/外部事件)
+    eyeline_track: EyelineTrack = Field(default_factory=EyelineTrack)
+    emotional_state: EmotionalStateCurve = Field(default_factory=EmotionalStateCurve)
+    body: PerformanceBody = Field(default_factory=PerformanceBody)
+
+
+class PerformanceTrack(BaseModel):
+    """镜头内部时间轴(INC-002 §1.1)——N 段 PerformancePhase(不限 3 段)。"""
+
+    total_duration_s: float = 0.0
+    phases: list[PerformancePhase] = Field(default_factory=list)
+
+
 class ShotListItem(BaseModel):
     shot_id: str
     scene_no: int  # 引用 Screenplay 的 scene_no
@@ -131,6 +185,8 @@ class ShotListItem(BaseModel):
     # (3point)关键帧抓 peak、尾帧抓 aftermath——喂 kf2v 的首尾帧因此构成有起承转合的运动,
     # 而不是一张图微微动一下。为空则退回按 visual_prompt 自然语言切片(现状行为不变)。
     action_beats: list[str] = Field(default_factory=list)
+    # INC-002 镜头内部时间轴(细粒度表演单元)。None/空 → 走 action_beats 老路,行为不变(inert)。
+    performance_track: PerformanceTrack | None = None
     character_names: list[str] = Field(default_factory=list)  # 本镜出场角色(剧本阶段名字)
     scene_name: str = ""  # 本镜所在场景(对应 DesignScene.name)
     prop_names: list[str] = Field(default_factory=list)

@@ -9,6 +9,9 @@ from hevi.director.pipeline_schemas import (
     DesignCharacter,
     DesignList,
     DesignScene,
+    EyelineTrack,
+    PerformancePhase,
+    PerformanceTrack,
     ShotBlocking,
     ShotList,
     ShotListDialogueLine,
@@ -192,6 +195,62 @@ def test_build_tongjian_inputs_passes_blocking_to_shot():
     )
     # 未锁定的"路人"被丢;锁定角色格式化为"名:位置[,面向X]"
     assert shotlist.shots[0].blocking == ["张飞:画面左侧,面向刘备", "刘备:画面中央"]
+
+
+def test_build_tongjian_inputs_compiles_performance_track_to_temporal_prompt():
+    """INC-002:performance_track 在桥接层编译成 Shot.temporal_prompt;未填 → 空串(inert)。"""
+    track = PerformanceTrack(
+        total_duration_s=6.0,
+        phases=[
+            PerformancePhase(
+                phase_id="ph1",
+                order=1,
+                t_start_s=0.0,
+                t_end_s=3.0,
+                label="锁定",
+                eyeline_track=EyelineTrack(state="locked", direction="center"),
+            ),
+            PerformancePhase(
+                phase_id="ph2",
+                order=2,
+                t_start_s=3.0,
+                t_end_s=6.0,
+                label="游离",
+                eyeline_track=EyelineTrack(
+                    state="breaking", direction="down", transition_speed="quick"
+                ),
+            ),
+        ],
+    )
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="特写",
+                performance_track=track,
+                character_names=["张飞"],
+                scene_name="军帐",
+            ),
+            ShotListItem(
+                shot_id="SH002",
+                scene_no=1,
+                visual_prompt="空镜",
+                character_names=["张飞"],
+                scene_name="军帐",
+            ),  # 无 performance_track
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="张飞")], scenes=[DesignScene(name="军帐")]
+    )
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list, design_list=design_list, concept=Concept(), voice_by_speaker={}
+    )
+    tp = shotlist.shots[0].temporal_prompt
+    assert tp.splitlines()[0].startswith("[0–3s] 锁定 → ") and "视线锁定" in tp
+    assert "[3–6s] 游离 → " in tp and "视线开始游离" in tp
+    assert shotlist.shots[1].temporal_prompt == ""  # 未填 → inert
 
 
 def test_build_tongjian_inputs_threads_valid_target_drops_invalid():

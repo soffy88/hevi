@@ -24,6 +24,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from hevi.director.performance_track import compile_temporal_prompt
 from hevi.director.pipeline_schemas import Concept, DesignList, SceneStageSet, ShotList
 from hevi.director.scene_stage import compute_shot_views, project_shot_space
 from hevi.tongjian.schemas import (
@@ -139,6 +140,8 @@ def build_tongjian_inputs(
                     for b in (shot.blocking or [])
                     if b.character_name in bible_names
                 ],
+                # INC-002:performance_track 在桥接层编译成时序提示词随 Shot 透传。空 → 空串(inert)。
+                temporal_prompt=compile_temporal_prompt(shot.performance_track),
             )
         )
 

@@ -195,6 +195,10 @@ class Shot(BaseModel):
     # 精心生成的走位在桥接层被整个丢弃,多角色关键帧只说"合成到同一画面"、不说谁站哪面朝谁,
     # 渲染器只能瞎摆——这是"走位乱七八糟"的直接根因。透传到 L6 关键帧指令里定位每个人。
     blocking: list[str] = Field(default_factory=list)
+    # INC-002 时序提示词:performance_track 已在桥接层编译成的逐段时间窗自然语言(见
+    # director/performance_track.py::compile_temporal_prompt),拼在基础提示词之后喂 L6 时序渲染。
+    # 空 = 未填 performance_track(inert,行为不变)。
+    temporal_prompt: str = ""
 
 
 class ShotList(BaseModel):
