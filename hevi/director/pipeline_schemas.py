@@ -152,6 +152,64 @@ class PerformanceBody(BaseModel):
     breath: str = ""  # held / shallow_rapid / ragged / deep / none
 
 
+# ── INC-002 第二批:FacialPerformance(面部表演层,§3)—— 肌肉/生理/肌理三块 ──
+# Hevi 从没有过的一层。全部可选、inert:未填 → 编译时降级为 emotional_state 的自然语言。
+
+
+class MuscleAction(BaseModel):
+    """解剖级肌肉动作(FACS 思路)。visible_result 必填(编译进 prompt 的就是它,模型认"眉头
+    紧皱"不认"降眉肌");muscle 可选结构化标注(给 verdict 校验和未来 3D/ControlNet 精控用)。"""
+
+    muscle: str = ""  # corrugator/masseter/orbicularis_oculi/levator/frontalis/mentalis/platysma
+    action: str = ""  # contract / relax / twitch / tremor
+    intensity: float = 0.0  # 0.0–1.0
+    visible_result: str = ""  # 可观察结果,如"眉头痛苦紧皱""下颌线咬合紧绷"
+
+
+class TearDetail(BaseModel):
+    side: str = ""  # left / right / both
+    path: str = ""  # 沿哪条轨迹
+    gravity_compliant: bool = True  # 必须遵循重力与表面张力
+
+
+class Pupil(BaseModel):
+    dilation: float = 0.0  # 0.0–1.0
+    movement: str = ""
+
+
+class FacialPhysiology(BaseModel):
+    """生理反应(时序性的)——泪/血管/瞳孔/眨眼/吞咽/唇/潮红。"""
+
+    tear_state: str = "none"  # none / welling / film / brimming / falling / dried
+    tear_detail: TearDetail = Field(default_factory=TearDetail)
+    eye_vasculature: str = ""  # clear / faint / congested(充血泛红)
+    pupil: Pupil = Field(default_factory=Pupil)
+    blink: str = ""  # none / normal / rapid / forced_open / closing
+    swallow: bool = False  # 是否吞咽(→ 喉结动作)
+    swallow_difficulty: str = ""  # 如"艰难"
+    lip_state: str = ""  # pressed / parting / trembling / slack
+    skin_flush: str = ""  # none / cheeks / neck
+
+
+class SkinTexture(BaseModel):
+    """肌理(通常镜头级常量,但可随情绪变化)。"""
+
+    quality: str = ""  # natural_imperfect(自然微瑕) / clean / weathered
+    pores: str = ""  # visible / subtle / none
+    blemishes: list[str] = Field(default_factory=list)  # 战损擦痕/灰尘/疤痕(带位置)
+    lip_texture: str = ""  # 唇纹真实度/干燥度
+    sweat: str = ""  # none / sheen / beads
+    preserve_base_tone: bool = False  # "不掩盖原本的面部底色"
+
+
+class FacialPerformance(BaseModel):
+    """面部表演层(INC-002 §3):肌肉/生理/肌理三块。全部可选、inert。"""
+
+    muscle_actions: list[MuscleAction] = Field(default_factory=list)
+    physiology: FacialPhysiology = Field(default_factory=FacialPhysiology)
+    skin_texture: SkinTexture = Field(default_factory=SkinTexture)
+
+
 class PerformancePhase(BaseModel):
     """表演阶段——镜头内部时间轴的一段(INC-002 §2)。t_start_s/t_end_s 精确到秒的时间窗。"""
 
@@ -164,6 +222,8 @@ class PerformancePhase(BaseModel):
     eyeline_track: EyelineTrack = Field(default_factory=EyelineTrack)
     emotional_state: EmotionalStateCurve = Field(default_factory=EmotionalStateCurve)
     body: PerformanceBody = Field(default_factory=PerformanceBody)
+    # INC-002 第二批:面部表演层(可选,inert)。未填 → 编译时降级为 emotional_state 自然语言。
+    facial_performance: FacialPerformance | None = None
 
 
 class PerformanceTrack(BaseModel):

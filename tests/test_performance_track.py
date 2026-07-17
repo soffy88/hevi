@@ -9,9 +9,15 @@ from hevi.director.performance_track import (
 from hevi.director.pipeline_schemas import (
     EmotionalStateCurve,
     EyelineTrack,
+    FacialPerformance,
+    FacialPhysiology,
+    MuscleAction,
     PerformanceBody,
     PerformancePhase,
     PerformanceTrack,
+    Pupil,
+    SkinTexture,
+    TearDetail,
 )
 
 
@@ -107,3 +113,125 @@ def test_empty_track_is_inert():
     assert compile_temporal_prompt(None) == ""
     assert compile_temporal_prompt(PerformanceTrack()) == ""
     assert lint_performance_track(None) == []
+
+
+# ── 第二批:FacialPerformance(面部生理层)──────────────────────────────────
+
+
+def _facial_phase(order, t0, t1, tear, *, muscle_visible="", skin=False):
+    fp = FacialPerformance(
+        muscle_actions=(
+            [
+                MuscleAction(
+                    muscle="corrugator",
+                    action="contract",
+                    intensity=0.8,
+                    visible_result=muscle_visible,
+                )
+            ]
+            if muscle_visible
+            else []
+        ),
+        physiology=FacialPhysiology(
+            tear_state=tear,
+            tear_detail=TearDetail(side="right"),
+            eye_vasculature="congested",
+            pupil=Pupil(dilation=0.6, movement="微微震颤"),
+            blink="forced_open",
+            swallow=True,
+            swallow_difficulty="艰难",
+            lip_state="trembling",
+            skin_flush="cheeks",
+        ),
+        skin_texture=(
+            SkinTexture(
+                quality="natural_imperfect",
+                pores="visible",
+                blemishes=["左颊一道战损擦痕"],
+                sweat="beads",
+                preserve_base_tone=True,
+            )
+            if skin
+            else SkinTexture()
+        ),
+    )
+    return PerformancePhase(
+        phase_id=f"ph{order}",
+        order=order,
+        t_start_s=t0,
+        t_end_s=t1,
+        label="面部",
+        facial_performance=fp,
+    )
+
+
+def test_facial_physiology_compiles():
+    """面部生理逐项编译进时序提示词(泪/血管/瞳孔/眨眼/吞咽/唇/潮红)。"""
+    track = PerformanceTrack(
+        total_duration_s=3.0, phases=[_facial_phase(1, 0.0, 3.0, "brimming", skin=True)]
+    )
+    line = compile_temporal_prompt(track)
+    assert "面部:" in line
+    assert "右眼泪水将溢未溢" in line  # tear_state + tear_detail.side
+    assert "眼白充血泛红" in line and "瞳孔放大0.6" in line and "强撑着睁大不闭" in line
+    assert "艰难吞咽,喉结滚动" in line and "嘴唇颤抖" in line and "双颊泛红" in line
+    # 肤质肌理进 prompt(第二批验收)
+    assert (
+        "自然微瑕的真实肤质" in line
+        and "左颊一道战损擦痕" in line
+        and "保留原本面部底色不掩盖" in line
+    )
+
+
+def test_muscle_action_compiles_visible_result_not_anatomy():
+    """muscle_actions 编译输出 visible_result,绝不输出解剖学名词(§6 编译纪律)。"""
+    track = PerformanceTrack(
+        total_duration_s=2.0,
+        phases=[_facial_phase(1, 0.0, 2.0, "none", muscle_visible="眉头痛苦紧皱")],
+    )
+    line = compile_temporal_prompt(track)
+    assert "眉头痛苦紧皱" in line
+    assert "corrugator" not in line and "降眉肌" not in line
+
+
+def test_p3_tear_evolution_clean_and_violations():
+    """P3:泪水单调演化(welling→film→brimming)过;倒流/跳跃被拦。"""
+    ok = PerformanceTrack(
+        total_duration_s=9.0,
+        phases=[
+            _facial_phase(1, 0.0, 3.0, "welling"),
+            _facial_phase(2, 3.0, 6.0, "film"),
+            _facial_phase(3, 6.0, 9.0, "brimming"),
+        ],
+    )
+    assert [f for f in lint_performance_track(ok) if f.rule == "P3"] == []
+
+    backflow = PerformanceTrack(
+        total_duration_s=6.0,
+        phases=[_facial_phase(1, 0.0, 3.0, "falling"), _facial_phase(2, 3.0, 6.0, "welling")],
+    )
+    assert any(f.rule == "P3" and "倒流" in f.message for f in lint_performance_track(backflow))
+
+    jump = PerformanceTrack(
+        total_duration_s=6.0,
+        phases=[_facial_phase(1, 0.0, 3.0, "none"), _facial_phase(2, 3.0, 6.0, "brimming")],
+    )
+    assert any(f.rule == "P3" and "跳跃" in f.message for f in lint_performance_track(jump))
+
+
+def test_facial_absent_is_inert():
+    """未填 facial_performance → 时序提示词无"面部:"段(降级为 emotional_state,inert)。"""
+    track = PerformanceTrack(
+        total_duration_s=3.0,
+        phases=[
+            PerformancePhase(
+                phase_id="ph1",
+                order=1,
+                t_start_s=0.0,
+                t_end_s=3.0,
+                label="x",
+                emotional_state=EmotionalStateCurve(primary="悲"),
+            ),
+        ],
+    )
+    assert "面部:" not in compile_temporal_prompt(track)
