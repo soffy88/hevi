@@ -53,6 +53,10 @@ services:
       # 测试用:剧本只取前 4 场(下游 ~20 镜/~90s),快速小规模验证剧本细节达标。验证 OK 后
       # 删掉这行重建即恢复全量(一段故事 ~11 场/~53 镜/~4min)。见 config.director_max_scenes。
       DIRECTOR_MAX_SCENES: "4"
+      # INC-002:每镜 LLM 生成 performance_track(镜头内部表演时间轴)的密度档。L2=eyeline+情绪+
+      # 面部生理+运镜曲线。每镜一次 LLM 调用(并发,后台路径),分镜生成会明显变慢+花钱。见
+      # config.performance_track_tier。不想填时删掉这行或设 L0。
+      PERFORMANCE_TRACK_TIER: "L2"
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro
