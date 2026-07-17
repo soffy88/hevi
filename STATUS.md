@@ -1,7 +1,7 @@
 # Hevi · STATUS
 
 > Canonical project status. Read at the start of any non-trivial task.
-> Last updated: 2026-07-15
+> Last updated: 2026-07-17
 > Sources: git log, `.claude` project memory (tongjian-pipeline-handoff, deploy-topology, e2e-local-llm-json-blocker, gpu-pcie-fallen-off-bus).
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
 
@@ -15,10 +15,25 @@
 - **Never rebuild main branch state blindly after a PR merge.** ff-merge `origin/main` into local `main` after each merge or the working tree drifts into a stale superposition. (see memory: git-sync-main-after-merge)
 - **Never assume merging a PR / applying a migration updates the public site.** `hevi.kanpan.co` is the `hevi-cftunnel` docker-compose stack (build-time image snapshot). Must `build` + `up -d` `hevi-api hevi-web` after code/migration. DB-ahead-of-image migration set → API crash-loop. Production op — confirm before running.
 - **Never swap the SDXL fp16 VAE back to the official one** (`_sdxl_worker.py` uses `madebyollin/sdxl-vae-fp16-fix`; official needs fp32, no VRAM headroom). And never merge the IP-Adapter vs plain-txt2img code paths without re-testing (attention-slicing + IP-Adapter crashes).
+- **Never re-silence the keyframe canon-copy fallback** (`scene_render_avatar._edit_keyframe` → `_KF_CANON_COPY`/`_is_canon_copy` → `ShotFrame.degraded` → verdict `rewrite`). It exists because抄定妆照 passes both verdict checks (画面不黑 + 身份满分,它就是那张 canon)——2026-07-17 审计实证 task `da0bbeff` 20镜里14镜如此,静默交付成"大头念台词"。Downgrading it back to a bare `logger.warning`, or making verdict ignore上游 `degraded`, re-opens the exact silent-delivery hole. Preserve the chain in any edit (commit `1799dd8`).
 
 ---
 
 ## 🔄 In Progress
+
+- **自造渲染消费层四断链整改 — 审计+修复已提交,真机验证悬空(2026-07-17,commit `1799dd8`,未 push)。** 三个 Explore 子代理审计导演流水线,实证 ①-④ 锁定的导演决策大面积不落到画面,根因是"锁定"被实现成**存储动作而非约束动作**(人在③锁的服饰④看不见、③.5锁的机位④看不见、④锁的景别⑤零引用)。**铁证**:task `da0bbeff`(105s/20镜/三国)一次真实产集,20镜里 **14镜关键帧与 canon 定妆照字节级相同**(md5 相等,非"生成得像"),final.mp4 第90秒抽帧就是刘备定妆照——这就是"大头念台词"的实物。已修四处:
+  - **F-0(最要命)**:INC-001 §C/§E/§H/§J + INC-002 时刻切片此前只拼进云端 edit 的 instruction,而 `_local_kf_prompt` 签名里没这个参数、local 才是默认引擎 → 这些导演命令**只在 GPU 掉线走云端兜底时才生效**。更糟 §K `quality_checks` 按"字符串构造成功"报 `eyeline_applied:True` 假阳性,断链半月没被验收抓到。已给 `command_summary` 参数两条引擎路都注入,§K 改按"是否真落进实际用的关键帧"判定。
+  - **canon 兜底不再静默**:`_edit_keyframe` 返回引擎标签,`_is_canon_copy` 字节比对作权威判据,抄定妆照 → `degraded` → verdict `rewrite` 返工闸;`completed_shots` 不再恒等于总镜数。
+  - **Gap 3 服饰约束**:`_WARDROBE_NEGATIVE_EN`(英文)在 `_edit_keyframe` 一处注入,压"奇幻铠甲/尖角肩甲"。此前强负面词只在参考图阶段生效,关键帧走 sdxl 默认负面词无铠甲词 → "参考图干净、一进关键帧长圣斗士肩甲"。**必须英文**:`sdxl_local_service` 只翻译正向 prompt(:186),负面词原样透传(:195),base SDXL 不认中文——INC-002 `derive_negatives` 派生的中文负面词至今就是这么死的。
+  - **Gap 1 阶段1 + Gap 2**:见下方各自条目。
+  - **验证边界**:全量 1316 passed(+12 回归,三处新接线均反向验证过=摘掉修复测试变红);合成图用真实 Subject3D 产物肉眼验证。**未做真实付费端到端**——GPU 两条腿(本地 sdxl `require_gpu` 争用 / 云端 qwen-image-edit `FreeTierOnly` 额度墙)现均断,证明的是接线正确性,**非画质结论**。要画质结论须先让两条腿至少活一条。
+  - **与 LibLib 转向的关系**:本轮加固的是**自造渲染路**(即 `da0bbeff` 实际跑的那条),与下条 LibLib 转向不冲突——LibLib 尚待 KEY 验证方向,在它成为主路前,自造路仍是当前唯一在产集的路,该修的漏得修。
+
+- **Gap 1 几何控制:多角色走位(阶段1已接,阶段2地基就绪待真机,2026-07-17)。** 走位/朝向/落位全程中文文本喂 prompt、渲染层无几何控制;SPEC-004 img2img 朝向视图此前只接对白镜 lead 一人,多角色同框(走位最需要几何处)零覆盖。
+  - **阶段1(已接,commit `1799dd8`)**:`_compose_layout_base` 把在场角色 Subject3D 朝向视图按走位(复用前端俯视图 左/中/右 单一真相源词表)合成 img2img 底图,接进多角色分支。真实 Subject3D 帧验证过(抠底干净、浅袍没误抠、左右落位对)。**已知取舍**:img2img 与 IP-Adapter 在 `_sdxl_worker.py` 互斥,走这条=让出锁脸、身份押在较糊的 Subject3D 视图(CLIP 0.61 vs 真照 0.77-0.84),多角色划算但需真跑判定。
+  - **阶段2(地基就绪,消费端悬空)**:`_compose_pose_control` 产 OpenPose 骨架控制图(标准配色/黑底/按走位落列,已落盘)。**worker ControlNet 分支未接**(`_sdxl_worker.py` 有精确 TODO)。**三件真机阻塞**:①权重下宿主机(容器 `:ro` 挂载,联网在容器外下 ~2.5GB `xinsir/controlnet-openpose-sdxl-1.0` 或 ~700MB `-small` 到 `settings.sdxl_model_dir`);②VRAM 实测(CN +1.3–2.5GB 叠 IP-Adapter 路峰值 7.1GB/空闲7.4GB,可行性报告判"real OOM risk",必须真量);③骨架当前只落站位不落朝向(需按 shot_view 出侧/背面骨架或从 GLB 渲)。CN 与 IP-Adapter 在 diffusers 0.38 可共存(几何+锁脸同时要),这是它比阶段1强的地方。事实纠正:该模型目录是 ext4 非 NTFS;GPU 非90容器共享(实测1个计算进程/7.4GB空闲);"huggingface_hub dist-info landmine"只在 Wan2GP venv 有效,hevi venv 干净。
+
+- **Gap 2 跨镜连贯:观察态注入(已接,2026-07-17,commit `1799dd8`)。** 镜间此前是硬 concat,`_adjacent_context` docstring 承诺的"实际末帧覆盖起始态由观察态另行处理"审计 grep 全仓不存在。`_observe_end_state` 用 VLM 看上一镜真实末帧、产停留态当下一镜承接锚,取代计划态文本。**走状态连续非像素连续**(否定了"末帧直接当下镜首帧"的字面接法——切镜换机位,像素直连=剪辑点变 morph、景别机位全废)。可 config `observe_continuity` 关,默认开,免费本地 VLM。
 
 - **★方向转向:接 LibLib.tv(libtv)出片,不再自造渲染(2026-07-16)。** 实测 hevi 自造导演产集出"大头念台词/穿戴像圣斗士/走位丢失",实证根因:导演路完全不走 oskill、自造了薄版本(参考图无 seed 随机+精确同名才复用→身份漂移;服饰文本零约束叠画风词→夸张;④走位/对白动作/语气到渲染层多处断链)。soffy 指向 libtv-skills(github.com/libtv-labs/libtv-skills)——LibLib.tv 专业生视频平台的 agent-im 客户端,核心原则"用户侧不做创作、只做传话"。**决定:hevi 定位改为"用 LLM 产加厚剧本(它擅长),把剧本作创作指令中继给 LibLib.tv 出电影级视频(它擅长)"。** 已建 `hevi/video/libtv_service.py`(agent-im 客户端:会话/轮询/提取结果URL/下载,Bearer settings.libtv_access_key 走.env)+ `scripts/libtv_relay.py`(剧本→创作指令中继,可 --manuscript 现产剧本)+ settings + 测试 4/4。**待 soffy 给 LIBTV_ACCESS_KEY 真跑验证方向,成了再深接进 produce(作 render backend 选项)。** 注:oskill 的"电影 skill"实证是空壳(consistency=文件存在率、image_generate 无参考图参数、storyboard 只有 motion 无景别/轴线)——接 oskill 反而更糟,故不走。
 
@@ -138,3 +153,4 @@
 - Local GPU needs host reboot to recover (shared host — can't reboot without soffy).
 - fal.ai account balance exhausted (2026-07-08, 403 Exhausted balance) — needs top-up.
 - CosyVoice "default seed voice" chicken-and-egg is worked around (identity_pack default tts_fn now uses edge_tts), but真实高质量 default voice still needs a human voice sample if desired.
+- **关键帧两条腿现均断 → 兜底抄定妆照成常态(2026-07-17 整改后会被 verdict 抓,但不会自动变好)**:本地 sdxl `require_gpu=True`(GPU 现状见上)+ 云端 qwen-image-edit `AllocationQuota.FreeTierOnly` 额度墙。任一活一条,自造导演路才谈得上真实画质验证;两条都断时 `1799dd8` 的整改只保证"坏片被判 degraded+返工+如实报 failed_shots",不保证出好片。Gap 1/2/3 与 F-0 的**画质效果全部待此解锁**(接线正确性已单测+真实产物证明)。
