@@ -257,6 +257,58 @@ def test_build_tongjian_inputs_compiles_performance_track_to_temporal_prompt():
     assert shotlist.shots[1].temporal_by_role == {}  # 未填 → inert
 
 
+def test_build_tongjian_inputs_derives_negatives_and_audio():
+    """INC-002 v0.2:桥接层从 schema 派生 negative_prompt(注入 sdxl)+ audio_prompt;未填 inert。"""
+    from hevi.director.pipeline_schemas import (
+        FacialPerformance,
+        FacialPhysiology,
+        PropPerformance,
+    )
+
+    track = PerformanceTrack(
+        total_duration_s=3.0,
+        phases=[
+            PerformancePhase(
+                phase_id="ph1",
+                order=1,
+                t_start_s=0.0,
+                t_end_s=3.0,
+                prop_performance=[PropPerformance(prop_type="firearm", material="metal")],
+                facial_performance=FacialPerformance(physiology=FacialPhysiology(swallow=True)),
+            )
+        ],
+    )
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="举枪",
+                performance_track=track,
+                character_names=["刺客"],
+                scene_name="厕所",
+            ),
+            ShotListItem(
+                shot_id="SH002",
+                scene_no=1,
+                visual_prompt="空镜",
+                character_names=["刺客"],
+                scene_name="厕所",
+            ),  # 无 INC-002 → inert
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="刺客")], scenes=[DesignScene(name="厕所")]
+    )
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list, design_list=design_list, concept=Concept(), voice_by_speaker={}
+    )
+    neg = shotlist.shots[0].negative_prompt
+    assert "不要多余或畸形的手指" in neg and "不要枪械结构变形" in neg  # 有枪+手自动派生
+    assert "吞咽" in shotlist.shots[0].audio_prompt  # 喉结吞咽自动派生进声音层
+    assert shotlist.shots[1].negative_prompt == "" and shotlist.shots[1].audio_prompt == ""  # inert
+
+
 def test_build_tongjian_inputs_threads_valid_target_drops_invalid():
     """INC-001 §H:受话对象是已锁定角色且非说话人本人 → 写入 ScriptLine.target;
     未锁定名/自指 → 丢成空串(不污染 eyeline)。"""

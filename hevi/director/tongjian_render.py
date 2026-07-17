@@ -24,6 +24,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from hevi.director.performance_derive import (
+    compile_audio_prompt,
+    derive_audio_track,
+    derive_negatives,
+)
 from hevi.director.performance_track import beat_slices, compile_temporal_prompt
 from hevi.director.pipeline_schemas import Concept, DesignList, SceneStageSet, ShotList
 from hevi.director.scene_stage import compute_shot_views, project_shot_space
@@ -144,6 +149,11 @@ def build_tongjian_inputs(
                 temporal_prompt=compile_temporal_prompt(shot.performance_track),
                 # §1.1 phase→beat 时刻切片,注入渲染首/关键/尾帧。空 → {}(inert)。
                 temporal_by_role=beat_slices(shot.performance_track),
+                # INC-002 v0.2:负面约束从 schema 自动派生(注入 sdxl 关键帧);声音第四层编译备用。
+                negative_prompt="，".join(derive_negatives(shot)),
+                audio_prompt=compile_audio_prompt(
+                    derive_audio_track(shot.performance_track, shot.audio_track)
+                ),
             )
         )
 

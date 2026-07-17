@@ -111,7 +111,11 @@ def derive_occlusion(body) -> LightingOcclusion | None:
 
 # ── §5.5 负面约束自动派生 ──────────────────────────────────────────────────────
 def derive_negatives(shot: ShotListItem, *, photoreal: bool = True) -> list[str]:
-    """从 schema 自动派生负面约束(§5.5)——有枪+手自动"不要多余手指/枪械变形",漏写不可能。"""
+    """从 schema 自动派生负面约束(§5.5)——有枪+手自动"不要多余手指/枪械变形",漏写不可能。
+    无任何 INC-002 信号(performance_track/audio_track/manual_negatives)→ 返回 [],保持 inert
+    (不给老镜头凭空加负面词、不改现有行为)。"""
+    if not shot.performance_track and shot.audio_track is None and not shot.manual_negatives:
+        return []
     neg: list[str] = ["不要字幕水印"]
     track = shot.performance_track
     phases = track.phases if track else []

@@ -521,6 +521,7 @@ async def _edit_keyframe(
     init_image: Path | None = None,
     init_strength: float = 0.45,
     size: tuple[int, int] = (1024, 1024),
+    negative_prompt: str = "",  # INC-002 v0.2:schema 派生的负面词,追加到 sdxl 默认负面后
 ) -> Path:
     """出关键帧:把该镜的情绪+动作+构图落成一张锁脸的关键帧。引擎可切(config.keyframe_engine):
 
@@ -545,6 +546,7 @@ async def _edit_keyframe(
                 width=size[0],
                 height=size[1],
                 extra={"init_image": str(init_image), "strength": init_strength},
+                negative_prompt=negative_prompt,
                 require_gpu=True,
             )
             if output_path.exists() and output_path.stat().st_size > 1024:
@@ -563,6 +565,7 @@ async def _edit_keyframe(
                 width=size[0],
                 height=size[1],
                 extra={"ip_adapter_image": str(ip_adapter_image), "ip_adapter_weight": 0.6},
+                negative_prompt=negative_prompt,
                 require_gpu=True,
             )
             if output_path.exists() and output_path.stat().st_size > 1024:
@@ -641,6 +644,7 @@ async def _gen_action_keyframe(
     size: tuple[int, int],
     command_summary: str = "",
     scene_space: str = "",
+    negative_prompt: str = "",  # INC-002 v0.2:透传到 _edit_keyframe → sdxl 负面词
 ) -> None:
     """从锁脸参考(action_ip)+ 相貌(appear)生成一张"闭嘴做某动作(desc)"的关键帧,供 kf2v
     的首/中(peak)/尾(aftermath)帧复用。command_summary=§E 该帧的导演命令摘要(必须/优先约束)。
@@ -663,6 +667,7 @@ async def _gen_action_keyframe(
         ),
         ip_adapter_image=action_ip,
         size=size,
+        negative_prompt=negative_prompt,
     )
 
 
@@ -840,6 +845,7 @@ async def build_frame_manifest_avatar(
                         ip_adapter_image=canon,
                         init_image=Path(_init_view) if _init_view else None,
                         size=(w, h),
+                        negative_prompt=shot.negative_prompt,
                     )
                 talk = work / f"{sid}_talk.mp4"
                 if not talk.exists():
@@ -933,6 +939,7 @@ async def build_frame_manifest_avatar(
                                 ),
                                 ip_adapter_image=canons[0],
                                 size=(w, h),
+                                negative_prompt=shot.negative_prompt,
                             )
                         vis_src = kf
                         action_ip = canons[0]
@@ -971,6 +978,7 @@ async def build_frame_manifest_avatar(
                                 ),
                                 ip_adapter_image=canon,
                                 size=(w, h),
+                                negative_prompt=shot.negative_prompt,
                             )
                         vis_src = kf
                         action_ip = canon
@@ -1015,6 +1023,7 @@ async def build_frame_manifest_avatar(
                                 size=(w, h),
                                 command_summary=_cmd["aftermath"],
                                 scene_space=scene_space,
+                                negative_prompt=shot.negative_prompt,
                             )
                         # 关键帧序列:首帧(trigger)→[peak]→尾帧(aftermath)。
                         seq = [kf]
@@ -1031,6 +1040,7 @@ async def build_frame_manifest_avatar(
                                 size=(w, h),
                                 command_summary=_cmd["peak"],
                                 scene_space=scene_space,
+                                negative_prompt=shot.negative_prompt,
                             )
                             seq.append(peak_kf)
                         seq.append(end_kf)

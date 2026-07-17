@@ -202,6 +202,11 @@ class Shot(BaseModel):
     # INC-002 §1.1 phase→beat 映射:表演时间轴按 first/peak/aftermath 三时刻切片,注入渲染对应
     # 关键帧(首/关键/尾帧)。{} = 未填(inert)。见 performance_track.py::beat_slices。
     temporal_by_role: dict[str, str] = Field(default_factory=dict)
+    # INC-002 v0.2:从 schema 自动派生的负面约束(注入 sdxl 关键帧 negative_prompt),空 = inert。
+    negative_prompt: str = ""
+    # INC-002 v0.2:编译好的声音提示词(第四层)。当前 funded 栈无 foley 引擎消费,先随 Shot 备着,
+    # 有音频能力的 provider(如 Veo3)接入即用。空 = inert。
+    audio_prompt: str = ""
 
 
 class ShotList(BaseModel):

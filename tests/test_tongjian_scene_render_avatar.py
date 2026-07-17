@@ -931,7 +931,7 @@ async def test_local_engine_uses_sdxl_not_cloud(tmp_path):
 
     sdxl_calls: list[dict] = []
 
-    async def _fake_sdxl(*, prompt, output_path, width, height, extra, require_gpu):
+    async def _fake_sdxl(*, prompt, output_path, width, height, extra, require_gpu, **_):
         sdxl_calls.append({"prompt": prompt, "extra": extra})
         Path(output_path).write_bytes(b"sdxl-kf" * 200)  # >1024B,过 _edit_keyframe 的有效性门槛
         return {"output_path": str(output_path)}
