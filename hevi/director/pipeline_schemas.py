@@ -210,6 +210,56 @@ class FacialPerformance(BaseModel):
     skin_texture: SkinTexture = Field(default_factory=SkinTexture)
 
 
+# ── INC-002 第三批:CameraCurve(运镜曲线,§4)—— 运镜是表演的一部分,不是死机位参数 ──
+
+
+class HandheldCurve(BaseModel):
+    """手持感(可随时间演化)——频率与幅度解耦(可频率高但幅度小)。"""
+
+    enabled: bool = False
+    frequency_start: float = 0.0  # 0.0–1.0 本阶段起始晃动频率
+    frequency_end: float = 0.0  # 0.0–1.0 本阶段结束频率
+    amplitude_start: float = 0.0
+    amplitude_end: float = 0.0
+    easing: str = "linear"  # linear / ease_in / ease_out / accelerate
+
+
+class FocusCurve(BaseModel):
+    """焦点(可锁死,可漂移)。"""
+
+    lock_target: str = ""  # 锁在哪:"女子双眼"
+    lock_strictness: str = "soft"  # absolute(100%死锁) / soft / rack(变焦点)
+    depth_of_field: str = ""  # f-stop 或 shallow/medium/deep
+    rack_to: str = ""  # 若 rack:焦点移向哪(+ 何时);absolute 时不得填(P2)
+
+
+class CameraMovement(BaseModel):
+    """推拉摇移(可选)。"""
+
+    type: str = "static"  # static / push_in / pull_out / pan / tilt / follow
+    speed_start: float = 0.0
+    speed_end: float = 0.0
+    easing: str = "linear"
+    distance: str = ""
+
+
+class CameraBreathing(BaseModel):
+    """镜头呼吸感(与 handheld 区分:有机的微起伏)。sync_to=character_breath 是 Hevi 独有高级项。"""
+
+    enabled: bool = False
+    sync_to: str = "none"  # none / character_breath(与人物呼吸同步) / emotional_intensity
+
+
+class CameraCurve(BaseModel):
+    """运镜曲线(INC-002 §4)——晃动频率曲线/焦点锁死度/镜头呼吸。全部可选、inert。"""
+
+    base_setup_ref: str = ""  # 引用 SceneStage.coverage_plan 的机位(静态骨架)
+    handheld: HandheldCurve = Field(default_factory=HandheldCurve)
+    focus: FocusCurve = Field(default_factory=FocusCurve)
+    movement: CameraMovement = Field(default_factory=CameraMovement)
+    breathing: CameraBreathing = Field(default_factory=CameraBreathing)
+
+
 class PerformancePhase(BaseModel):
     """表演阶段——镜头内部时间轴的一段(INC-002 §2)。t_start_s/t_end_s 精确到秒的时间窗。"""
 
@@ -224,6 +274,8 @@ class PerformancePhase(BaseModel):
     body: PerformanceBody = Field(default_factory=PerformanceBody)
     # INC-002 第二批:面部表演层(可选,inert)。未填 → 编译时降级为 emotional_state 自然语言。
     facial_performance: FacialPerformance | None = None
+    # INC-002 第三批:运镜曲线(可选,inert)。
+    camera_curve: CameraCurve | None = None
 
 
 class PerformanceTrack(BaseModel):
@@ -231,6 +283,19 @@ class PerformanceTrack(BaseModel):
 
     total_duration_s: float = 0.0
     phases: list[PerformancePhase] = Field(default_factory=list)
+
+
+# ── INC-002 第四批:PerformancePreset(表演预设库,§5.2)——情绪弧跨镜头/跨剧集复用 ──
+
+
+class PerformancePreset(BaseModel):
+    """表演预设(类比 StylePack):一次写好的情绪弧,可复用、可拉伸。**phases 的 t_start_s/t_end_s
+    是相对比例(0.0–1.0)而非绝对秒**;scale_preset_to_duration 按 total_duration_s 拉伸成
+    PerformanceTrack(见 performance_track.py)。这是散文标尺给不了的能力。"""
+
+    preset_id: str = ""
+    phases: list[PerformancePhase] = Field(default_factory=list)  # t 为 0–1 比例
+    scalable_to_duration: bool = True
 
 
 class ShotListItem(BaseModel):

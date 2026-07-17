@@ -14,8 +14,11 @@ from dataclasses import dataclass
 from itertools import pairwise
 
 from hevi.director.pipeline_schemas import (
+    CameraCurve,
     FacialPerformance,
+    MuscleAction,
     PerformancePhase,
+    PerformancePreset,
     PerformanceTrack,
 )
 
@@ -86,6 +89,22 @@ _SKIN_QUALITY_CN = {
 }
 # P3:泪水单调演化的等级(none→welling→film→brimming→falling→dried,不可跳跃/倒流)。
 _TEAR_RANK = {"none": 0, "welling": 1, "film": 2, "brimming": 3, "falling": 4, "dried": 5}
+# ── INC-002 第三批:运镜曲线枚举 → 中文 ──
+_EASING_CN = {"linear": "匀速", "ease_in": "渐入", "ease_out": "渐出", "accelerate": "加速"}
+_MOVEMENT_CN = {
+    "static": "",
+    "push_in": "推近",
+    "pull_out": "拉远",
+    "pan": "横摇",
+    "tilt": "纵摇",
+    "follow": "跟拍",
+}
+_STRICTNESS_CN = {"absolute": "死锁", "soft": "软锁", "rack": "变焦点"}
+_SYNC_CN = {
+    "none": "",
+    "character_breath": "与人物呼吸同步",
+    "emotional_intensity": "随情绪强度起伏",
+}
 
 
 def _cn(mapping: dict[str, str], key: str) -> str:
@@ -156,6 +175,53 @@ def _compile_facial(fp: FacialPerformance | None) -> str:
     return "面部:" + "、".join(bits) if bits else ""
 
 
+def _compile_camera(cc: CameraCurve | None) -> str:
+    """CameraCurve → 运镜自然语言(晃动频率曲线/焦点锁死度/推拉/镜头呼吸)。未填 → 空串(inert)。"""
+    if cc is None:
+        return ""
+    bits: list[str] = []
+
+    hh = cc.handheld
+    if hh and hh.enabled:
+        s = f"手持晃动 频率{_fmt_s(hh.frequency_start)}→{_fmt_s(hh.frequency_end)}"
+        if hh.amplitude_start or hh.amplitude_end:
+            s += f"、幅度{_fmt_s(hh.amplitude_start)}→{_fmt_s(hh.amplitude_end)}"
+        eas = _cn(_EASING_CN, hh.easing)
+        if eas and eas != "匀速":
+            s += f"({eas})"
+        bits.append(s)
+
+    fc = cc.focus
+    if fc and (fc.lock_target or fc.lock_strictness in ("absolute", "rack") or fc.depth_of_field):
+        f = f"焦点{_cn(_STRICTNESS_CN, fc.lock_strictness)}"
+        if fc.lock_target:
+            f += f"在{fc.lock_target}"
+        if fc.lock_strictness == "rack" and fc.rack_to:
+            f += f",移向{fc.rack_to}"
+        if fc.depth_of_field:
+            f += f",景深{fc.depth_of_field}"
+        bits.append(f)
+
+    mv = cc.movement
+    if mv and mv.type and mv.type != "static":
+        m = _cn(_MOVEMENT_CN, mv.type) or mv.type
+        if mv.speed_start or mv.speed_end:
+            m += f"(速度{_fmt_s(mv.speed_start)}→{_fmt_s(mv.speed_end)})"
+        if mv.distance:
+            m += f",{mv.distance}"
+        bits.append(m)
+
+    br = cc.breathing
+    if br and br.enabled:
+        b = "镜头呼吸感"
+        sync = _cn(_SYNC_CN, br.sync_to)
+        if sync:
+            b += f"({sync})"
+        bits.append(b)
+
+    return "运镜:" + "、".join(bits) if bits else ""
+
+
 def _compile_phase(ph: PerformancePhase) -> str:
     head = f"[{_fmt_s(ph.t_start_s)}–{_fmt_s(ph.t_end_s)}s]"
     if ph.label:
@@ -201,6 +267,10 @@ def _compile_phase(ph: PerformancePhase) -> str:
     facial = _compile_facial(ph.facial_performance)
     if facial:
         parts.append(facial)
+
+    camera = _compile_camera(ph.camera_curve)
+    if camera:
+        parts.append(camera)
 
     return head + " → " + ";".join(parts) if parts else head
 
@@ -334,4 +404,162 @@ def lint_performance_track(
                     f"泪水跳跃 {fa.physiology.tear_state}→{fb.physiology.tear_state}(须逐级演化)",
                 )
             )
+
+    # ── P2(第三批):焦点 absolute 死锁时不得同时有 rack_to(自相矛盾)──
+    findings.extend(
+        PerformanceLintFinding(
+            "P2",
+            shot_id,
+            [ph.phase_id],
+            f"焦点 absolute 死锁却又指定 rack_to={ph.camera_curve.focus.rack_to}(自相矛盾)",
+        )
+        for ph in phases
+        if ph.camera_curve
+        and ph.camera_curve.focus.lock_strictness == "absolute"
+        and ph.camera_curve.focus.rack_to
+    )
+
+    # ── P4(第三批):handheld 频率跨 phase 边界必须连续(前 end = 后 start),否则晃动突变 ──
+    for a, b in pairwise(phases):
+        ca, cb = a.camera_curve, b.camera_curve
+        if ca is None or cb is None or not ca.handheld.enabled or not cb.handheld.enabled:
+            continue
+        if abs(ca.handheld.frequency_end - cb.handheld.frequency_start) > _EPS:
+            findings.append(
+                PerformanceLintFinding(
+                    "P4",
+                    shot_id,
+                    [a.phase_id, b.phase_id],
+                    f"手持频率跨边界突变:{_fmt_s(ca.handheld.frequency_end)} vs "
+                    f"{_fmt_s(cb.handheld.frequency_start)}",
+                )
+            )
+
+    # ── P6(第三批):守恒律——面部细节密度高 且 身体大幅运动 → 警告(细节×运动超上限,v3.2 §7.2b)──
+    findings.extend(
+        PerformanceLintFinding(
+            "P6",
+            shot_id,
+            [ph.phase_id],
+            f"面部细节密度({_facial_density(ph.facial_performance)})与身体大幅运动"
+            f"({ph.body.tension})并存,恐超「细节×运动」上限,建议二选一或降采样",
+            severity="warn",
+        )
+        for ph in phases
+        if _facial_density(ph.facial_performance) >= 4
+        and ph.body.tension in ("trembling", "collapsing")
+    )
     return findings
+
+
+def _facial_density(fp: FacialPerformance | None) -> int:
+    """面部细节密度粗量(P6 守恒律用):muscle_actions 条数 + 生理非默认字段数。"""
+    if fp is None:
+        return 0
+    phy = fp.physiology
+    return len(fp.muscle_actions) + sum(
+        bool(x)
+        for x in (
+            phy.tear_state not in ("none", ""),
+            phy.eye_vasculature,
+            phy.pupil.dilation,
+            phy.blink,
+            phy.swallow,
+            phy.lip_state,
+            phy.skin_flush,
+        )
+    )
+
+
+def expected_handheld_trend(cc: CameraCurve | None) -> str:
+    """从 handheld 频率推期望晃动趋势(camera_curve_match 用):increasing/decreasing/flat。"""
+    if cc is None or not cc.handheld.enabled:
+        return "flat"
+    d = cc.handheld.frequency_end - cc.handheld.frequency_start
+    return "increasing" if d > _EPS else "decreasing" if d < -_EPS else "flat"
+
+
+def camera_curve_match(
+    motion_magnitudes: list[float], expected_trend: str, *, min_frames: int = 6
+) -> dict:
+    """INC-002 §5.3 camera_curve_match:给逐帧运动幅度序列(光流抽帧算得,确定性、零模型),
+    验其趋势是否符合预期("晃动频率是否递增")。用线性回归斜率符号判 increasing/decreasing/flat。
+    帧数不足 → match=None(无法判)。真实视频→motion_magnitudes 的抽取(cv2 光流)是接入时的
+    薄封装,核心趋势判定在此,可用合成序列确定性测。"""
+    if len(motion_magnitudes) < min_frames:
+        return {"match": None, "reason": "帧数不足", "actual_trend": None}
+    n = len(motion_magnitudes)
+    xs = range(n)
+    mx = (n - 1) / 2.0
+    my = sum(motion_magnitudes) / n
+    num = sum((x - mx) * (y - my) for x, y in zip(xs, motion_magnitudes, strict=False))
+    den = sum((x - mx) ** 2 for x in xs)
+    slope = num / den if den else 0.0
+    scale = (max(motion_magnitudes) - min(motion_magnitudes)) or 1.0
+    norm = slope * n / scale  # 归一化:整段跨度相对于幅度量级
+    actual = "increasing" if norm > 0.15 else "decreasing" if norm < -0.15 else "flat"
+    return {"match": actual == expected_trend, "actual_trend": actual, "slope": slope}
+
+
+# ── INC-002 第四批:PerformancePreset 拉伸 + L0–L3 密度档降采样(§5.2 / §5.4)──────
+
+# 密度档位(按 provider 能力路由):L0 只有 action_beats(现状);L1 +eyeline+emotional;
+# L2 +facial_performance+camera_curve;L3 +muscle_actions(FACS 级)。
+DENSITY_TIERS = ("L0", "L1", "L2", "L3")
+_BASELINE_TIER = {
+    "economy": "L0",
+    "minimal": "L0",
+    "standard": "L1",
+    "cinematic": "L2",
+    "flagship": "L3",
+    "anatomical": "L3",
+}
+
+
+def tier_for_baseline(baseline: str) -> str:
+    """按 Concept.quality_baseline 选密度档(§5.4)。未知/空 → L1(standard)。"""
+    return _BASELINE_TIER.get((baseline or "").strip().lower(), "L1")
+
+
+def scale_preset_to_duration(
+    preset: PerformancePreset, total_duration_s: float
+) -> PerformanceTrack:
+    """把预设的相对时间(0–1 比例)拉伸成绝对秒的 PerformanceTrack(§5.2 可复用/可拉伸)。"""
+    phases: list[PerformancePhase] = []
+    for ph in preset.phases:
+        p = ph.model_copy(deep=True)
+        p.t_start_s = round(ph.t_start_s * total_duration_s, 3)
+        p.t_end_s = round(ph.t_end_s * total_duration_s, 3)
+        phases.append(p)
+    return PerformanceTrack(total_duration_s=total_duration_s, phases=phases)
+
+
+def downsample_track(track: PerformanceTrack | None, tier: str) -> PerformanceTrack | None:
+    """按密度档裁剪(§5.4:低档 provider 收到高档 schema → 编译器自动降采样,不报错)。
+    - L3:全保。
+    - L2:丢 muscle_actions 的解剖结构标注,只保 visible_result(仍进 prompt)。
+    - L1:丢 facial_performance + camera_curve,保 eyeline + emotional + body。
+    - L0:整条 performance_track 丢掉(返回 None)→ 走 action_beats 老路。
+    """
+    if track is None or tier == "L3":
+        return track
+    if tier == "L0":
+        return None
+    out = track.model_copy(deep=True)
+    for ph in out.phases:
+        if tier == "L1":
+            ph.facial_performance = None
+            ph.camera_curve = None
+        elif tier == "L2" and ph.facial_performance:
+            # 丢 muscle/action/intensity 结构标注,只留 visible_result(§5.4)
+            ph.facial_performance.muscle_actions = [
+                MuscleAction(visible_result=m.visible_result)
+                for m in ph.facial_performance.muscle_actions
+                if m.visible_result
+            ]
+    return out
+
+
+def compile_temporal_prompt_at_tier(track: PerformanceTrack | None, tier: str) -> str:
+    """先按密度档降采样再编译——低档 provider 拿到高档 schema 也不报错(§5.4)。"""
+    return compile_temporal_prompt(downsample_track(track, tier))
