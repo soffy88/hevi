@@ -63,6 +63,7 @@ from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
+from hevi.tongjian.scene_render_avatar import multichar_chain_log
 from hevi.video.duration_mapper import get_duration_config
 
 logger = logging.getLogger(__name__)
@@ -1188,11 +1189,19 @@ async def _run_director_via_tongjian(
         _scene_stage_has_angles(scene_stage) or _has_multichar_shots(shot_list)
     ):
         subject3d_views = await _resolve_subject3d_views(design_list, subject_svc=subject_svc)
+    multichar_chain_log(
+        "A",
+        "_has_multichar_shots=%s subject3d_views keys=%s (per-char view keys=%s)",
+        _has_multichar_shots(shot_list),
+        list(subject3d_views.keys()),
+        {k: list(v.keys()) for k, v in subject3d_views.items()},
+    )
 
     # INC-003:每场景空景板路径(多角色 img2img 底图画布)。无则渲染层退回中性灰。
     scene_bg_paths: dict[str, str] = {}
     if subject_svc is not None and _has_multichar_shots(shot_list):
         scene_bg_paths = await _resolve_scene_ref_paths(design_list, subject_svc=subject_svc)
+    multichar_chain_log("B", "scene_bg_paths keys=%s", list(scene_bg_paths.keys()))
 
     render_kwargs = {
         "shot_list": shot_list,

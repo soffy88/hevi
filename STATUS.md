@@ -16,7 +16,7 @@
 - **Never assume merging a PR / applying a migration updates the public site.** `hevi.kanpan.co` is the `hevi-cftunnel` docker-compose stack (build-time image snapshot). Must `build` + `up -d` `hevi-api hevi-web` after code/migration. DB-ahead-of-image migration set → API crash-loop. Production op — confirm before running.
 - **Never swap the SDXL fp16 VAE back to the official one** (`_sdxl_worker.py` uses `madebyollin/sdxl-vae-fp16-fix`; official needs fp32, no VRAM headroom). And never merge the IP-Adapter vs plain-txt2img code paths without re-testing (attention-slicing + IP-Adapter crashes).
 - **Never re-silence the keyframe canon-copy fallback** (`scene_render_avatar._edit_keyframe` → `_KF_CANON_COPY`/`_is_canon_copy` → `ShotFrame.degraded` → verdict `rewrite`). It exists because抄定妆照 passes both verdict checks (画面不黑 + 身份满分,它就是那张 canon)——2026-07-17 审计实证 task `da0bbeff` 20镜里14镜如此,静默交付成"大头念台词"。Downgrading it back to a bare `logger.warning`, or making verdict ignore上游 `degraded`, re-opens the exact silent-delivery hole. Preserve the chain in any edit (commit `1799dd8`).
-- **Never trust `ShotFrame.degraded`/CLIP-gap 读数来判多角色镜头的身份质量,直到 P0 fallback-撒谎 bug 修复(见下方 ✅ Done · INC-003 收线)。** `_edit_keyframe` fallback 链对多角色镜头耗尽时会静默降级成 canon_copy——单人照被当成双人合成图交付,`degraded=True` 与"两条 fallback 都可用但质量差"共用同一出口。负的 CLIP gap(如 INC-003 run-2 的 -0.282)可能就是这个假象在作祟,不是真身份渗透。修复前,不要拿这些数字做 retake 分级/自动判优劣的依据,尤其是多角色镜头。
+- **多角色镜头的 fallback 判据必须按"expected_character_count vs 实际能覆盖的人数"统一判定,不许按具体崩在哪一级分别打补丁(2026-07-18 修复,两版)。** `_edit_keyframe` 现在按 `expected_character_count` 参数逐级检查每一级 fallback 结构上是否覆盖得了这么多人——IP-Adapter(单张脸)/canon 复制(单人)对 `expected_character_count>=2` 直接跳过或拒绝,不采信;云端 edit 要求参考图张数够。任何一级都覆盖不了 → 抛 `MultiCharKeyframeFallbackExhausted`,整镜显式失败(空 clip + degraded + 专属 reason),不静默交付"看似成功、实则少了人"的帧。**第一版(只堵 canon_copy 那个洞)不够**——2026-07-18 第一次整机产集真实撞见:compose img2img 崩溃退到 IP-Adapter,IP-Adapter"成功"返回单人图,不进第一版判据,verdict 完全看不出来。改代码前先挂 debug log 真机复现(见下方 ✅ Done · INC-003 P0 第二版),不要臆测断点在哪。
 
 ---
 
@@ -141,6 +141,61 @@
 
 ## ✅ Done
 
+- **INC-003 P0 第二版:多角色镜头"静默退化成单人"根因定位 + 统一修复(2026-07-18)。**
+  第一次整机产集(work_id=21a72719...、task_id=b3d18fff-38bb-4cdc-9923-77d7ca2f5229,真花钱约
+  $25,一集2人对话戏、38镜)跑完后肉眼核验:**11 个双人镜头,`output/tasks/.../SH*_layout.png`
+  一张没有**——包括真正的对白双人镜(SH002_05、SH007_06)。CLIP `character_consistency` 分数
+  (mean 0.831,36/38 通过)对此**完全没有信号**(只测"画面里那个人像不像 canon",不知道该有
+  第二个人),verdict/自动裁决全被这个假象骗过。
+  - **排查方法(挂 debug log 本地免费复现,不臆测)**:把当时真实锁定的 concept/screenplay/
+    design_list/scene_stage/shot_list 从抓拍的 JSON 快照重建,配真实 SubjectService(同一个
+    dev postgres,Subject3D 视图/参考图路径都是那次真实建好的),六个会打外部付费 API 的函数
+    (`qwen_image_edit`/`qwen_image_generate`/`alibaba_maas_keyframe_generate`/
+    `happyhorse_animate`/`i2v_animate`/`sdxl_local_generate`)全部打桩,在 `build_frame_manifest_
+    avatar → 判在场人数 → 选 compose 还是单锁 → _view_path_by_cid → 拼底图 → _edit_keyframe`
+    这条链的每一步插日志,重放真实数据。**过程中真出过一次事故**:第一次挂 log 漏了
+    `alibaba_maas_keyframe_generate`(kf2v 动作弧那条视频生成函数,以为只有 happyhorse/i2v 两个
+    要打桩),真花了钱(约1-3刀,已停止)——教训是打桩前必须先系统 grep 一遍所有外部调用函数
+    列成清单,不能凭记忆打桩,这次系统 grep 后重来零花钱复现成功。
+  - **确认结果:present / `_view_path_by_cid` / 走位合成底图,全程正确**,跟真机production 里
+    的实际数据一模一样,合成底图真的建出来了。**真根因在更后一步**:`_edit_keyframe` 第0级
+    (img2img,吃合成底图)偶发失败(复现的正是本轮会话第一次真跑撞见过的
+    "SDXL worker subprocess failed"),失败后代码退到第1级(IP-Adapter,结构上只锁 `canons[0]`
+    一张脸)——**这一级"成功"了**,返回 `_KF_SDXL_IP_ADAPTER`(不是 `_KF_CANON_COPY`),完全
+    绕开了此前(2026-07-18 更早)那版 P0 修复的 degraded 判据。这才是 11 个双人镜一个没同框的
+    真实机制,不是路由/present 计算错了。
+  - **img2img 为什么崩:倾向共享 GPU 主机瞬时资源争用,不是 compose 本身的稳定性问题。**
+    用真实 `sdxl_local_generate`(非直调 worker 脚本,后者绕过了自动派生 seed 的逻辑,首次
+    诊断因此误判)对同一份走位底图 + strength 0.55 连续跑 3 次,3/3 全部干净成功,没有一次
+    复现崩溃。结合本机长期有据可查的"~90 个无关容器共享一块 RTX 3080"(STATUS 🔒Never 区)、
+    以及本轮会话此前也在别的时间点撞见过同类瞬时崩溃——证据指向共享主机资源争用这类瞬时因素,
+    不是 compose img2img 路径本身有确定性 bug。**没有做到 100% 排除**(没有在真实产集运行期间
+    同步监控 GPU/主机负载),但"连续3次干净成功"至少说明这不是"只要传合成底图就必崩"级别的
+    确定性问题。
+  - **修复:不再按"崩在哪一级"分别打补丁,改成统一判据(见 🔒Never)。** `_edit_keyframe` 新参数
+    `expected_character_count`(替换第一版的 `allow_canon_fallback: bool`)——每一级 fallback
+    只有结构上真能覆盖这么多人才被采纳:IP-Adapter(单脸)对 `expected_character_count>=2`
+    直接跳过、不尝试;云端 edit 要求参考图张数够;两条腿都覆盖不了 → 抛
+    `MultiCharKeyframeFallbackExhausted`,整镜显式失败,不再有"某一级悄悄成功、其实少了人"
+    这种情况。**顺带牵出并修了两个关联缺口**:①非对白分支的 `_view_path_by_cid` 构造此前那次
+    "反转 front 判据"的 replace_all 因缩进不同没匹配到,静默漏了一处,这次一并修上;②kf2v
+    峰值/尾帧(`_gen_action_keyframe`)结构上只锁 `action_ip` 一张脸,不接 compose——多角色
+    动作镜头此前会让它跑、然后被新判据拦下(整镜连累失败),现在改成对多角色镜头(`len(present)
+    >= 2`)干脆不尝试 kf2v 强化,退回用已经出好的(真·N 人同框)首帧 + 简单动效,不因为一个
+    强化功能做不到就搭上整镜。
+  - **诊断思路固化为可复用工具,没有删**:三次同类"多角色镜头静默退化成单人" bug 都是靠临时
+    log 一步步跟出来的,这次固化成 `HEVI_DEBUG_MULTICHAR_CHAIN=1` 环境变量开关
+    (`multichar_chain_log()`,定义在 `scene_render_avatar.py`,`director_pipeline.py`/
+    `tongjian_render.py` 复用同一个),默认静音,开了就在 `build_frame_manifest_avatar` 的
+    present/view_path_by_cid/kf_source 判定点 + `_run_director_via_tongjian`/
+    `render_director_episode` 的 subject3d_views/scene_bg_paths/shot_view_by_id 解析点全部打印。
+    下次同类问题不用重新现挂现删。
+  - 回归测试 +3(img2img 崩溃退化不许被采纳为单人成功、多角色动作镜跳过 kf2v、非对白分支
+    front 判据回归覆盖),全量 1344 passed,ruff 干净。**未做**:带着这次的修复重新真跑一次
+    整机产集验证(这次排查全程零花钱,只在本地免费复现层面验证过修复生效;要不要再花一次
+    happyhorse 钱做端到端确认,留给 soffy 决定)。scene_id 长句/短名不匹配那个(空景板传不进去)
+    仍未修——soffy 明确定性"背景问题不是能力问题",记录不动。
+
 - **INC-003 生产化收线,2026-07-18:导演流水线现在能出多人片** —— compose 底图(走位+空景板)+
   strength 0.55 + happyhorse 认说话人只动 TA 的脸,已在生产入口(`build_frame_manifest_avatar`,
   不是探路脚本)真机验证(2 次真实 happyhorse + 1 次免费本地复测,`scripts/inc003_prod_accept_e2e.py`)。
@@ -191,9 +246,58 @@
 
 ## 🚨 Needs Human
 
+**★ 渲染层两洞修复 + 真实链路复验(2026-07-18 第二轮):① present/side_convention 解耦——
+到位;② scene_id 长句/短名匹配——到位;但发现了①解耦之后仍然存在、根因不同的新轴线
+不一致,是数据层(④分镜 blocking 文本与③.5 side_convention 互相矛盾)问题,不是渲染层
+接线问题,优先级判定留 soffy 定。**
+
+- **① present 解耦(`compute_shot_sides` 读 `SceneStage.axis.side_convention`,
+  `_layout_col` 按"显式 blocking 文本 > side_hint > present 顺序兜底"三级判优先):
+  机制本身验证正确。** 独立单测(`_layout_col`/`compute_shot_sides` 直接调用,不经渲染管线)
+  证实 `side_hint` 已与"谁是说话人/lead 排序"完全解耦——不再受对白分支 present 重排影响。
+- **但真实链路复验发现:SH003_01 与 SH003_05(同场,scene_ref=3)左右仍然反了,根因换了
+  一个,不是①要修的那个洞。** SH003_01 两角色 blocking 都没显式"左/右"(老道士退到
+  side_hint=right,王生因 blocking 文本"石阶中央"里的"中"字被 `_layout_col` 第一优先级
+  误命中→画中,视觉上仍偏左于老道士,方向对);但 **SH003_05 的 blocking 文本显式写了
+  "老道士:画面左侧"/"王生:画面右侧"——④分镜层这句话本身就和③.5 SceneStage 锁定的
+  `side_convention`("王生恒在画左,老道士恒在画右")互相矛盾**,而 `_layout_col` 的优先级
+  设计是"显式 blocking 最具体、优先级最高",于是 SH003_05 忠实按矛盾的 blocking 文本渲染,
+  产出老道士画左/王生画右——跟 SH003_01 反了。
+  - **这不是①那次改动引入的新 bug**,显式 blocking 优先于 side_convention 的判优先顺序在
+    ①之前就是这样;①解决的是"没有显式 blocking 时的兜底选谁"(present 顺序 vs
+    side_convention),这个子问题①确实解决了。这次撞见的是另一个更上游的问题:**④分镜层
+    生成的 blocking 文本本身可能和③.5 场级 side_convention 不一致,没有校验/纠偏机制**。
+  - **待 soffy 定:是否要把优先级反过来**(side_convention 是"恒"字面意思上的场级不变量,
+    专门为防跳轴设计;如果它的优先级低于逐镜 blocking 文本,一旦 blocking 文本措辞和它冲突,
+    防跳轴的设计目的就被架空——这次 SH003_05 就是活生生的例子),**或者在④分镜生成/L1 lint
+    阶段加一道"blocking 左右词 vs side_convention 一致性"校验**(把问题挡在渲染层之前,而不是
+    渲染层各退一步)。两条路都没做,渲染层这次没有再往深猜测/擅自改优先级。
+  - 证据:`output/tasks/ce9bdace-36cb-45ad-96b1-68c29c2b113a/SH003_01_layout.png`、
+    `SH003_05_layout.png`(同场,肉眼可见左右互换)。
+- **② scene_id 长句/短名匹配:✓ 到位,真实链路 28/28 镜全部命中。** 用真实产集最终锁定数据
+  (`v3_produce.json`,非中途快照)逐镜核对,`build_tongjian_inputs` 新的子串匹配对这一集
+  100% 命中,`scene_bg_by_id` 正确传入,`SH003_01/05`、`SH005_01/02` 等镜的 `_layout.png`
+  背景确认是真实崂山道观空景板(山门+石阶+云雾),不是纯灰。**排查过程中我自己中途一度得出
+  "只有 2/7 场景组命中"的错误结论——那是拿了同一份材料早一次锁定(38 镜、被后续重锁定覆盖)
+  的过期快照在核对,不是这次真实产集实际用的最终数据(28 镜)。已用最终数据复核纠正,
+  不构成这次修复的真实结论,记录在此避免以后又被同一份过期快照误导。**
+- **多人同框(INC-003 P0 主线,expected_character_count 统一判据):✓ 真实基础设施故障下
+  确认正确工作。** 这次复验里 SH004_04 等镜撞见真实 img2img 崩溃 + 真实 qwen-image-edit
+  免费额度墙(双重真实故障,非模拟),系统正确抛 `MultiCharKeyframeFallbackExhausted`、
+  镜头显式失败(空 clip + degraded),没有静默退化成单人——修复在真实故障下按设计工作。
+
 **SPEC-001 freeze decisions — all 4 settled 2026-07-11** (see `docs/specs/SPEC-001-shortdrama-eval.md` §6). Nothing pending here; LLM prerequisite resolved via `qwen_cloud` (the prior `e2e-local-llm-json-blocker` memory is now stale — updated with resolution).
 
 **SPEC-001 G1 real run 2026-07-11 — check 阿里云百炼 billing console.** `scripts/g1_shortdrama_run.py --real` made 11+ real `happyhorse_1_1_maas_lock` video-gen calls (episode 0, 10 shots + 1 regenerate) before being killed for cost-control reasons — hevi's own `config_json.actual_usd` tracking is unpopulated (stays `0.0`), so there's no in-repo record of real dollars spent. If precise spend matters, check the workspace billing directly.
+
+**`output/` 目录 dev/prod 混用,靠手工 chown 续命(2026-07-18 撞见)。** `hevi-cftunnel` 生产容器
+以 root 身份把 `output/` bind-mount 到这台宿主机,子目录(如 `output/director_pipeline/<work_id>`)
+留下 root:root 属主;本地 `uv run uvicorn`(soffy 用户)要在同一路径树下建自己的 work 目录时因
+父目录属主不对而 `PermissionError`,只能靠 `sudo chown soffy:soffy output/director_pipeline` 一次性
+续命,下次容器再写一个新 work 目录、下次本地再起一个新 work,又会撞同一个坑。**治本方案(未做)**:
+本地开发与生产容器分用不同输出根路径(如 `output/` 只给容器/生产用,本地开发走 `output-dev/`,
+经 settings/env 可配,不写死),而不是共享同一棵树靠手工 chown 来回续命——这本就是 local-dev 与
+cloud-prod 该分离的东西,只是目前没分。
 
 **Standing infra blockers** (any one unblocks GPU/cloud re-runs):
 - Local GPU needs host reboot to recover (shared host — can't reboot without soffy).
