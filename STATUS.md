@@ -16,10 +16,22 @@
 - **Never assume merging a PR / applying a migration updates the public site.** `hevi.kanpan.co` is the `hevi-cftunnel` docker-compose stack (build-time image snapshot). Must `build` + `up -d` `hevi-api hevi-web` after code/migration. DB-ahead-of-image migration set → API crash-loop. Production op — confirm before running.
 - **Never swap the SDXL fp16 VAE back to the official one** (`_sdxl_worker.py` uses `madebyollin/sdxl-vae-fp16-fix`; official needs fp32, no VRAM headroom). And never merge the IP-Adapter vs plain-txt2img code paths without re-testing (attention-slicing + IP-Adapter crashes).
 - **Never re-silence the keyframe canon-copy fallback** (`scene_render_avatar._edit_keyframe` → `_KF_CANON_COPY`/`_is_canon_copy` → `ShotFrame.degraded` → verdict `rewrite`). It exists because抄定妆照 passes both verdict checks (画面不黑 + 身份满分,它就是那张 canon)——2026-07-17 审计实证 task `da0bbeff` 20镜里14镜如此,静默交付成"大头念台词"。Downgrading it back to a bare `logger.warning`, or making verdict ignore上游 `degraded`, re-opens the exact silent-delivery hole. Preserve the chain in any edit (commit `1799dd8`).
+- **Never trust `ShotFrame.degraded`/CLIP-gap 读数来判多角色镜头的身份质量,直到 P0 fallback-撒谎 bug 修复(见下方 ✅ Done · INC-003 收线)。** `_edit_keyframe` fallback 链对多角色镜头耗尽时会静默降级成 canon_copy——单人照被当成双人合成图交付,`degraded=True` 与"两条 fallback 都可用但质量差"共用同一出口。负的 CLIP gap(如 INC-003 run-2 的 -0.282)可能就是这个假象在作祟,不是真身份渗透。修复前,不要拿这些数字做 retake 分级/自动判优劣的依据,尤其是多角色镜头。
 
 ---
 
 ## 🔄 In Progress
+
+- **SPEC-005 通鉴管线改造 · 第一批(讲解段)已实现,待真实产集验证,2026-07-18。** spec 见
+  `docs/specs/SPEC-005-tongjian-pipeline-refactor.md`——通鉴一集 = 讲解主干 + 演绎插段(形态C),
+  讲解段今天就能做(不需角色 Subject / SceneStage / 多人同框)。新增
+  `hevi/tongjian/{schemas.EventUnit+Segment、event_unit.py、narration_script.py、diagram_gen.py、
+  narration_episode.py}` + `gates.py` T1(版权 lint)/T2(画面节奏 lint)+ `edge_tts_custom.py`
+  narrator 声线(不入角色轮询池,靠物理隔离满足"narrator≠剧中人声线"硬约束)。**全部复用现有
+  L3/L4/L6/L8 执行层**(voiceover/shotlist/scene_render/assemble),零新装配代码——只新增"从原文到
+  讲解 Script"的产出侧。4 个新测试文件 23 个用例全绿,全量回归 1336 passed,ruff 干净。**未做真实
+  LLM/TTS/图像生成实跑**(real-spend,待 soffy 确认预算)——mock 全链路验证的是接线正确性,非讲解
+  质量/画质结论。batch2(演绎段接 SPEC-003 导演链)/batch3(装配接缝 + T3/T4 lint)未开始。
 
 - **INC-003 多角色同框身份层 — 实测归档(不是收缩),2026-07-18。** spec 主命题是"IP-Adapter 单脸对多人是死路,LoRA 是唯一原生解"。三次真机探路(零训练、零 GPU 增量,走现有 compose→img2img 路,王生/老道 G-S1 canon;脚本 `scripts/incr003_multichar_composite_verify.py` + `scripts/incr003_scene_and_facing.py`,产物 `output/incr003_*/`)把"多角色身份"拆成四格,各归各的解:
 
@@ -129,6 +141,21 @@
 
 ## ✅ Done
 
+- **INC-003 生产化收线,2026-07-18:导演流水线现在能出多人片** —— compose 底图(走位+空景板)+
+  strength 0.55 + happyhorse 认说话人只动 TA 的脸,已在生产入口(`build_frame_manifest_avatar`,
+  不是探路脚本)真机验证(2 次真实 happyhorse + 1 次免费本地复测,`scripts/inc003_prod_accept_e2e.py`)。
+  四件生产化(工作区未提交):①`_compose_layout_base` 加 `background` 画布参数;②`init_strength`
+  定档 0.55;③锁场景资产改用无人空景板口径(`_SCENE_PLATE_DIRECTION`,原口径带人,当底图会
+  变三人);④对白分支补 compose 路由(此前只接了非对白分支,同框对白镜仍锁单 lead)+
+  `_view_path_by_cid` 排除 front 视图的判据反转(探路证明正面才是验证过的安全档,原判据方向
+  反了)。回归测试 +2,全量 1339 passed。验收:④口型落对说话人脸/⑤旁人不动嘴——买断,与 style
+  无关不需重验;②落位——过;①③换回历史正剧 style(`render_director_episode` 真实装配点
+  `DEFAULT_SHORTDRAMA_STYLE`,首轮测试脚本裸调用漏传落到了通鉴讲解专用的卡通兜底)后方向确认
+  改善,strength 不再调。归档三条不在这条线修:①王生 CLIP 间距薄(+0.048)→③设计清单角色特征
+  鲜明度 lint;③抠图白边→StylePack `img2img_strength` 字段(架构问题,§5.3 三张表待实现的槽位,
+  不同 style 需要不同 strength,现在硬调会破坏已验证的 0.55);**P0 fallback 撒谎**→见
+  🔒Never——两条 fallback 耗尽后静默降级成单人 canon_copy 冒充多人合成图交付,产物性质是
+  "假",不是"差"。
 - **INC-001 A–L 补齐(§E/§J 完整 + 逐镜头准备台 A/G/I/L + §K)— merged (PR #25) + deployed 2026-07-15,迁移已建表.** (a) §E `_director_command_summary`(约束按帧风险动态分必须/优先级)+ §J `_adjacent_context`(相邻镜收束/触发拍注入承接过渡)。(b) 交互式导演台加**逐镜头准备台**:迁移 `c7d8e9f0a1b2` 建 3 表(`shot_readiness`/`shot_extracted_candidates`/`shot_extracted_dialogue_candidates`,按 work_id+shot_id 定位),服务层 `hevi/director/shot_preparation.py`(§A.1 就绪五规则重算[纯函数]、§G 从已锁 ShotListItem 确定性物化候选[不调 LLM]、§I skip_extraction、§L 聚合;PgPool 裸 SQL 同 `_persist_verdicts`),router 5 端点(extract/confirm/preparation-state/readiness/overview,mutation 返 {action,state})+ §L.2 产集就绪门(只拦"提取后仍待确认"的镜,向后兼容旧"锁分镜直接产集"),前端 `ShotPreparationPanel.tsx` + 产集按钮 blockers 门禁。§K:ShotFrame 加 debug_context(动作弧三阶段 + 各帧消费哪阶段 + 视线/轴线)+ quality_checks;§K.1 shot_list 输出混"图1/图2/参考图"→ 修正重试一次。全量 1209 passed,tsc 干净,CI web(next build)过。**部署时序**:先合并→重建镜像,由容器启动 `alembic upgrade head` 建表(`alembic current`=c7d8e9f0a1b2 已验证),未手动碰库。
 - **SPEC-003 导演流水线 + INC-001 电影级补强 — merged (PR #23) + deployed 2026-07-15.** 全自动导演管线(`hevi/director/`:concept/screenplay/design_list/shot_list/tongjian_render)+ 五档逐镜 verdict/返工 + ⑤生成接通鉴对白+口型(治音画不同步/看不到说话人)。INC-001:§B action_beats(`_infer_action_phases`,L6 首/关/尾帧分抓 trigger/peak/aftermath;`action_arc` 默认 2point)、§C 首帧未完成态、§F 编译规范、§H eyeline、§J 连续性。**顺带修复**:`scene_render_avatar.py` 自 fd01988 起漏 `import asyncio`→`_action_end_state` kf2v 尾帧 LLM 拆解一直静默退化,已补(见 memory scene-render-asyncio-latent-bug);`GateResult` import 提顶层消 ruff F821 误报。相关面 409 tests passed,无回归。
 - **部署域名迁移 hevi.uex.hk → hevi.kanpan.co(2026-07-15,`b8d6ba1`)** — cloudflared/CORS/web 构建参数全切;Dockerfile.api CJK 字体拆独立层;compose 挂 HF 缓存 + `/data/models/huggingface`(CLIP 身份向量 + sdxl_local 关键帧权重)。`up -d --build` 重建 cftunnel 栈,公网 web/api 均 200。**不需要 ssh-agent**(Dockerfile.api 是 `COPY .venv/`);CI test job 因 ssh-private-key secret 为空在 Setup SSH 步就红,与代码无关。

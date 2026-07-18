@@ -232,6 +232,7 @@ async def render_director_episode(
     tts_fn: Any = None,
     scene_stage: SceneStageSet | None = None,
     subject3d_views: dict[str, dict[str, str]] | None = None,
+    scene_bg_paths: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """导演流水线锁定内容 → 通鉴 L3-L8 → 真实成片(对白+口型+按角色配音+情绪)。
 
@@ -366,6 +367,9 @@ async def render_director_episode(
                 # 走 img2img 从该视图当底图(朝向落地);空/正面/未建 → 退回 IP-Adapter 2D 真照。
                 "shot_view_by_id": shot_view_by_id,
                 "subject3d_views_by_id": subject3d_views or {},
+                # INC-003:每 scene_id(= DesignScene.name)→ ③生成的空景板路径,多角色镜头的
+                # img2img 底图画布。空 → 渲染层退回中性灰(向后兼容)。
+                "scene_bg_by_id": scene_bg_paths or {},
             },
         ),
     )

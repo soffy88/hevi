@@ -85,6 +85,14 @@ _PORTRAIT_NEGATIVE = (
     "游戏角色,动漫风,奇幻铠甲,发光盔甲,尖角肩甲,金属鬼脸肩甲,龙纹肩甲,浮夸金饰,夸张装饰,"
     "瞪大眼睛,凶神恶煞,五官变形,战场火光背景,烟雾"
 )
+# INC-003 场景资产走**空景板**口径(不是定妆照):要一张能当多角色 img2img 底图画布的**无人**
+# 环境图。此前 scene 也套 _ART_DIRECTION(定妆照:"正面半身像,摄影棚背景"),环境描述压过口径 →
+# 出来是"带一个人的环境图"(当底图会变三个人)。且 scene 参考图此前从没进渲染层(死资产),改
+# 口径零回归。空景板经桥接层 scene_bg_by_id 进渲染层当画布。
+_SCENE_PLATE_DIRECTION = (
+    "写实历史正剧场景空镜,电影感建场镜头,广角全景,只有环境没有任何人物,自然布光,写实质感"
+)
+_SCENE_PLATE_NEGATIVE = "人物,人,角色,人群,肖像,半身像,面孔,行人,演员"
 _PORTRAIT_MAX_ATTEMPTS = 3
 
 # ①→②→③→③.5→④,每级有 _draft/_locked 两态。scene_stage(SPEC-004 场面调度)插在
@@ -375,9 +383,14 @@ async def _lock_design_list_assets(
             logger.warning("design-list 资产 %s 查重失败,退回新建: %s", name, e)
 
         portrait_path = portrait_dir / f"{slug}.png"
-        prompt = f"{_ART_DIRECTION},{name},{description or kind}"
-        # character 才压这套"发光眼/奇幻甲"负面词(scene/prop 不需要,免得误伤道具材质)。
-        negative = _PORTRAIT_NEGATIVE if kind == "character" else ""
+        if kind == "scene":
+            # 空景板:无人环境图,当多角色 img2img 底图画布(INC-003)。
+            prompt = f"{_SCENE_PLATE_DIRECTION},{name},{description or ''}"
+            negative = _SCENE_PLATE_NEGATIVE
+        else:
+            prompt = f"{_ART_DIRECTION},{name},{description or kind}"
+            # character 才压这套"发光眼/奇幻甲"负面词(prop 不需要,免得误伤道具材质)。
+            negative = _PORTRAIT_NEGATIVE if kind == "character" else ""
         # 确定性 seed(治"每次测同一段故事人物形象都不一样"):按角色名派生稳定 seed,同名
         # 永远同脸——即便查重没命中要新建、或跨产集/跨进程重生成。hashlib(非内置 hash())
         # 保证跨进程稳定,不受 PYTHONHASHSEED 影响。
@@ -895,6 +908,33 @@ async def _resolve_subject_ref_paths(
     return out
 
 
+async def _resolve_scene_ref_paths(
+    design_list: DesignList, *, subject_svc: SubjectService
+) -> dict[str, str]:
+    """INC-003:场景名 → ③锁定时建的空景板路径(多角色 img2img 底图画布)。scene 参考图口径已改
+    成"无人环境图"(见 _SCENE_PLATE_DIRECTION)。key = DesignScene.name(= 渲染层 shot.scene_id)。
+    查不到静默跳过 → 渲染层退回中性灰。"""
+    out: dict[str, str] = {}
+    for s in design_list.scenes:
+        if not s.name or not s.subject_id:
+            continue
+        try:
+            subj = await subject_svc.get_subject(s.subject_id)
+        except Exception as e:
+            logger.warning("解析场景 %s 空景板失败: %s", s.name, e)
+            continue
+        refs = (subj or {}).get("reference_images") or []
+        if refs:
+            out[s.name] = refs[0]
+    return out
+
+
+def _has_multichar_shots(shot_list: ShotList) -> bool:
+    """有没有任何 ≥2 角色同框镜头(INC-003 compose 路由:有则需给出场角色建 Subject3D 视图,
+    不再只在 scene_stage 有角度时建)。"""
+    return any(len(sh.character_names or []) >= 2 for sh in shot_list.shots)
+
+
 def _scene_stage_has_angles(scene_stage: SceneStageSet | None) -> bool:
     """SceneStage 里有没有任何结构化角度(facing_deg/azimuth_deg)——没有就没必要建 Subject3D
     视图(建了也一律 front、白花 ~172s/角色)。"""
@@ -1140,11 +1180,19 @@ async def _run_director_via_tongjian(
             except Exception:  # 进度回写绝不可拖垮生成
                 pass
 
-    # SPEC-004 v2:仅当 SceneStage 真设了角度时,才建/取每角色的 Subject3D 视图(否则一律 front,
-    # 建了白费 ~172s/角色)。非正面朝向的镜届时走 img2img 从对应视图当底图,让朝向落到画面。
+    # 建/取每角色的 Subject3D 视图。两种情形要建:①SPEC-004 v2 SceneStage 设了角度(非正面镜走
+    # img2img 从对应视图带朝向);②INC-003 有 ≥2 角色同框镜头(compose 路由:多角色关键帧从各角色
+    # front 视图按走位拼底图,需要视图)。都不满足则一律 front、建了白费 ~172s/角色,跳过。
     subject3d_views: dict[str, dict[str, str]] = {}
-    if subject_svc is not None and _scene_stage_has_angles(scene_stage):
+    if subject_svc is not None and (
+        _scene_stage_has_angles(scene_stage) or _has_multichar_shots(shot_list)
+    ):
         subject3d_views = await _resolve_subject3d_views(design_list, subject_svc=subject_svc)
+
+    # INC-003:每场景空景板路径(多角色 img2img 底图画布)。无则渲染层退回中性灰。
+    scene_bg_paths: dict[str, str] = {}
+    if subject_svc is not None and _has_multichar_shots(shot_list):
+        scene_bg_paths = await _resolve_scene_ref_paths(design_list, subject_svc=subject_svc)
 
     render_kwargs = {
         "shot_list": shot_list,
@@ -1159,6 +1207,8 @@ async def _run_director_via_tongjian(
         "scene_stage": scene_stage,
         # SPEC-004 v2:每角色 Subject3D 视图,非正面镜走 img2img 从对应视图带朝向。
         "subject3d_views": subject3d_views,
+        # INC-003:每场景空景板,多角色镜头 img2img 底图画布。
+        "scene_bg_paths": scene_bg_paths,
     }
     poller = asyncio.ensure_future(_progress_poller())
     try:
