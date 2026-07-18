@@ -1,7 +1,7 @@
 # Hevi · STATUS
 
 > Canonical project status. Read at the start of any non-trivial task.
-> Last updated: 2026-07-17
+> Last updated: 2026-07-18
 > Sources: git log, `.claude` project memory (tongjian-pipeline-handoff, deploy-topology, e2e-local-llm-json-blocker, gpu-pcie-fallen-off-bus).
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
 
@@ -20,6 +20,25 @@
 ---
 
 ## 🔄 In Progress
+
+- **INC-003 多角色同框身份层 — 实测归档(不是收缩),2026-07-18。** spec 主命题是"IP-Adapter 单脸对多人是死路,LoRA 是唯一原生解"。三次真机探路(零训练、零 GPU 增量,走现有 compose→img2img 路,王生/老道 G-S1 canon;脚本 `scripts/incr003_multichar_composite_verify.py` + `scripts/incr003_scene_and_facing.py`,产物 `output/incr003_*/`)把"多角色身份"拆成四格,各归各的解:
+
+  | 子问题 | compose→img2img | 要不要 LoRA | 证据 |
+  |---|---|---|---|
+  | 正面双人身份 | **能** | 不要 | 左半vs王生 0.790、右半vs老道 0.850,无渗透(VLM 左无须/右有须白发) |
+  | 场景融合(同处一室) | **能(已坐实)** | 不要 | 真实客栈底图+靠近下移+统一光照+strength 0.55 → 两人同桌共享暖光/透视,肉眼确凿同一空间(`scenefix_s55_twoshot.png`,老道 0.870/正面/大白须);纯灰底的"贴上去"是构图 artifact |
+  | 对视侧脸·特征鲜明角色 | **能** | 不要 | 老道侧脸间距 +0.16(白须撑住),绝对分 0.85→0.66 但不认错 |
+  | 对视侧脸·通用脸角色 | **崩** | **这里才真有价值** | 王生侧脸 0.661,交叉(左vs老 0.680)反超,间距转负,渲成中性动漫青年 |
+  | 打斗接触 | 从没测(静态图测不了) | 也解不了 | 需模型原生理解接触物理 = provider 的活 |
+
+  **补三条(重要):**
+  1. **归档不是收缩。** 四格里三格 compose 已解,只剩"通用脸侧脸"一格。而这一格有**三条比训 LoRA 便宜的路都没试**:(a)**角色特征鲜明度**——王生正面间距只有 +0.08 是**角色设计问题不是技术问题**,应在③设计清单加 lint"每角色必须有强可辨特征";(b)**机位避开纯侧脸**——真实对话戏大量用过肩正打(后景那人接近正面),这是 SceneStage `coverage_plan` 该管的;(c)**strength 调参**——0.65 没探到底。打斗接触那格 compose/LoRA 都解不了(provider 的活)。**结论:LoRA 没有一个格子是它必须的**,故不建 kohya_ss 训练子系统(那是 GPU-blocked 的大投资)。上一轮"确认自造路先做无 GPU 骨架"的 SubjectLora schema/路由骨架**也一并暂缓**——先验证了"哪个格子真需要 LoRA",没有一个,就不先落结构。
+  2. **CLIP 分只看间距不看绝对值。** 共享服化/画风会把绝对分整体抬高(正面交叉分都 0.6-0.7),真信号是"身份分 − 交叉分"的间距。这条纪律留给后来人:别拿 0.85 当"身份好",要看它比交叉高多少。
+  3. **VLM 判断都要旁证,整体判断直接不采信。** "像不像拼贴"这种 holistic 判断 VLM 不可靠(判"拼贴"但肉眼明显同一空间);连"有没有胡子"这种极简问题也会错(scenefix_s55 老道明明一把大白须,VLM 答"无")。**真正可信的是肉眼 + 身份分间距的收敛**,别信任何单个 VLM 答案。渗透测用极简问题但必须和身份分/肉眼对齐才采信。
+
+  **(a) 姿势失控已修(2026-07-18)**:场景融合图里老道在 strength 0.6 下自己转身(front 视图被过度重绘),污染了他那格身份数。降到 **strength 0.55** 即保住正面,老道身份 0.736→**0.870**(间距 +0.226),王生 0.774,场景仍确凿融合。**姿势失控是独立于身份的问题**(strength 太高 → 角色自己转身/改姿势),compose/LoRA 都不直接解,靠 strength 调参或 ControlNet/几何锁。
+
+  **边界(别过度解读)**:单 seed、单对角色、静态图;CLIP 分只看间距。
 
 - **自造渲染消费层四断链整改 — 审计+修复已提交,真机验证悬空(2026-07-17,commit `1799dd8`,未 push)。** 三个 Explore 子代理审计导演流水线,实证 ①-④ 锁定的导演决策大面积不落到画面,根因是"锁定"被实现成**存储动作而非约束动作**(人在③锁的服饰④看不见、③.5锁的机位④看不见、④锁的景别⑤零引用)。**铁证**:task `da0bbeff`(105s/20镜/三国)一次真实产集,20镜里 **14镜关键帧与 canon 定妆照字节级相同**(md5 相等,非"生成得像"),final.mp4 第90秒抽帧就是刘备定妆照——这就是"大头念台词"的实物。已修四处:
   - **F-0(最要命)**:INC-001 §C/§E/§H/§J + INC-002 时刻切片此前只拼进云端 edit 的 instruction,而 `_local_kf_prompt` 签名里没这个参数、local 才是默认引擎 → 这些导演命令**只在 GPU 掉线走云端兜底时才生效**。更糟 §K `quality_checks` 按"字符串构造成功"报 `eyeline_applied:True` 假阳性,断链半月没被验收抓到。已给 `command_summary` 参数两条引擎路都注入,§K 改按"是否真落进实际用的关键帧"判定。
