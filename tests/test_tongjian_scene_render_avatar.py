@@ -2040,13 +2040,24 @@ async def test_shot_frame_carries_debug_context_and_quality_checks(tmp_path):
 
 
 def test_layout_col_keyword_and_spread():
-    """走位文本 → 画布水平中心比例。命中 左/中/右 用词表;没命中按顺序均匀铺开。"""
+    """走位文本 → 画布水平中心比例。没有 side_hint 时命中 左/中/右 用词表;都没命中按顺序均匀铺开。"""
     assert _layout_col("阶下左侧", 0, 2) == 0.22
     assert _layout_col("画面右方", 1, 2) == 0.78
     assert _layout_col("居中而立", 0, 1) == 0.5
     # 没命中方位词 → 均匀铺开(2 人 → 1/3, 2/3)
     assert _layout_col("", 0, 2) == pytest.approx(1 / 3)
     assert _layout_col("", 1, 2) == pytest.approx(2 / 3)
+
+
+def test_layout_col_side_hint_overrides_conflicting_blocking_text():
+    """渲染层洞#1 second 改(2026-07-18,soffy 定):side_hint(side_convention)优先于显式
+    blocking 文本——③.5 锁定的场级契约不许被④分镜的具体措辞推翻。这里故意让 blocking 文本
+    写"画面右方"、side_hint 却说"left",验证结果服从 side_hint。矛盾本身归 L5 lint
+    (`scene_stage_lint._lint_side_convention_conflicts`)去曝光,渲染层只管别被矛盾带偏。"""
+    assert _layout_col("画面右方", 0, 2, side_hint="left") == 0.22
+    assert _layout_col("阶下左侧", 1, 2, side_hint="right") == 0.78
+    # 没有 side_hint(该角色不在 side_convention 覆盖范围)才退回 blocking 文本
+    assert _layout_col("画面右方", 0, 2, side_hint="") == 0.78
 
 
 def test_parse_blocking_positions_maps_names_to_cids():
@@ -2148,6 +2159,45 @@ def test_compose_layout_base_side_by_cid_wins_over_present_order(tmp_path):
     blue_x = _mean_x((40, 40, 200))  # B
     assert red_x is not None and blue_x is not None
     assert red_x < w / 2 < blue_x  # A(红)在左、B(蓝)在右——服从 side_by_cid,不是 present 顺序
+
+
+def test_compose_layout_base_side_by_cid_overrides_conflicting_blocking_text(tmp_path):
+    """渲染层洞#1 second 改(2026-07-18):真机复验撞见的真实场景——SH003_05 的 blocking 文本
+    显式写"老道士:画面左侧"，直接矛盾同场 side_convention"王生恒在画左"。旧优先级(blocking
+    文本最高)会忠实渲染出矛盾画面,side_convention 形同虚设。这里复现同样的矛盾(A 的 blocking
+    文本说"右"、side_by_cid 却说 A 该在左),验证 side_by_cid 赢——不再被④分镜的具体措辞带偏。"""
+    from PIL import Image
+
+    va, vb = tmp_path / "a.png", tmp_path / "b.png"
+    _fake_subject3d_view(va, fill=(200, 40, 40))  # 红:A
+    _fake_subject3d_view(vb, fill=(40, 40, 200))  # 蓝:B
+    out = _compose_layout_base(
+        present=["A", "B"],
+        view_path_by_cid={"A": va, "B": vb},
+        pos_desc_by_cid={"A": "画面右侧", "B": "画面左侧"},  # blocking 文本跟 side_by_cid 矛盾
+        size=(1280, 720),
+        out_path=tmp_path / "layout_conflict.png",
+        side_by_cid={"A": "left", "B": "right"},
+    )
+    assert out is not None and out.exists()
+    canvas = Image.open(out).convert("RGB")
+    w, h = canvas.size
+
+    def _mean_x(target):
+        xs = [
+            x
+            for x in range(0, w, 4)
+            for y in range(0, h, 8)
+            if _close(canvas.getpixel((x, y)), target)
+        ]
+        return sum(xs) / len(xs) if xs else None
+
+    red_x = _mean_x((200, 40, 40))  # A
+    blue_x = _mean_x((40, 40, 200))  # B
+    assert red_x is not None and blue_x is not None
+    assert (
+        red_x < w / 2 < blue_x
+    )  # A(红)在左、B(蓝)在右——服从 side_by_cid,不服从矛盾的 blocking 文本
 
 
 def test_compose_layout_base_none_when_fewer_than_two_views(tmp_path):

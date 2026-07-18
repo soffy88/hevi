@@ -571,13 +571,22 @@ def _is_canon_copy(kf: Path, canon: Path | None) -> bool:
 # 没有锁脸(只 canons[0] 一张),用几何换"全员位置对"在多角色场合大概率划算,但**需真跑验证**,
 # 不是纸面定论。阶段2 的 ControlNet+IP-Adapter 共存才是架构正解,阶段1 是它的次优近似。
 def _layout_col(pos_desc: str, order: int, total: int, side_hint: str = "") -> float:
-    """走位文本 → 画布水平中心比例(0..1)。命中"左/中/右"用词表(同前端俯视图单一真相源);
-    没命中则退 `side_hint`(SceneStage.axis.side_convention 解析出的 "left"/"right",跟"谁是
-    说话人"无关——见 `hevi.director.scene_stage.compute_shot_sides`);连 side_hint 都没有才
-    按在场顺序均匀铺开(2 人→0.3/0.7,3 人→0.2/0.5/0.8,保证至少不重叠堆一起)。**顺序很
-    重要**:显式 blocking 文本(镜头级、最具体)优先于 side_convention(场级、跨镜一致)优先于
-    present 顺序(2026-07-18 前的唯一判据,会被对白分支"lead 排首位"重排,导致同场因说话人
-    切换而跳轴——真机复验撞见 SH003_04/05)。"""
+    """走位文本 → 画布水平中心比例(0..1)。**顺序(2026-07-18 second 改,soffy 定)**:
+    `side_hint`(SceneStage.axis.side_convention 解析出的 "left"/"right")优先于显式 blocking
+    文本优先于 present 顺序兜底。side_convention 是③.5 锁定的场级契约("恒"字面意思上的承诺,
+    专为防跳轴设计),④分镜 blocking 是镜级描述——上游(③.5)约束下游(④),不许④的具体
+    措辞推翻③.5 已锁定的契约(SPEC-004 上下游原则)。真机复验撞见过 SH003_05 的 blocking 文本
+    显式写"老道士:画面左侧"、直接矛盾同场 side_convention"王生恒在画左"——旧顺序(blocking 优先)
+    会忠实渲染出矛盾的画面,side_convention 形同虚设;新顺序下矛盾被 side_convention 压下(运行时
+    保命),矛盾本身则交给生成侧 `scene_stage_lint._lint_side_convention_conflicts`(L5)曝出来
+    (让人看见 LLM 写反了,而不是被默默纠正、永远不知道)。连 side_hint 都没有(该角色不在
+    side_convention 覆盖范围内)才退回显式 blocking 文本,再没有才按在场顺序均匀铺开(2 人→
+    0.3/0.7,3 人→0.2/0.5/0.8,保证至少不重叠堆一起;present 顺序会被对白分支"lead 排首位"
+    重排,是 2026-07-18 第一版此函数的唯一判据、也是当时跳轴的根因之一)。"""
+    if side_hint == "left":
+        return 0.22
+    if side_hint == "right":
+        return 0.78
     t = pos_desc or ""
     if "左" in t:
         return 0.22
@@ -585,10 +594,6 @@ def _layout_col(pos_desc: str, order: int, total: int, side_hint: str = "") -> f
         return 0.78
     if "中" in t or "居中" in t:
         return 0.5
-    if side_hint == "left":
-        return 0.22
-    if side_hint == "right":
-        return 0.78
     return (order + 1) / (total + 1)
 
 

@@ -1,10 +1,12 @@
-"""SPEC-004 §4 确定性守护 —— 四条零模型成本的分镜 lint(生成后跑)。
+"""SPEC-004 §4 确定性守护 —— 五条零模型成本的分镜 lint(生成后跑)。
 
 镜头引用了同一 SceneStage 后,一批穿帮就能纯规则拦下(不花一分钱、不调 LLM):
 - L1 跳轴:相邻同场镜头的机位不得跨轴换侧,除非该拍有已声明的 axis_shift。
 - L2 反打差异:对话反打的相邻两镜,景别至少差 2 档(否则镜像感跳切)。
 - L3 eyeline 一致:镜头对白的 speaker→target 必须与 SceneStage.sightlines 在该拍一致。
 - L4 剪辑冗余:每个被拍到的 beat 至少被 2 个不同机位覆盖(否则一条废全废,无剪辑余地)。
+- L5 落位契约:④分镜 blocking 文本写的左右不能跟③.5 SceneStage.axis.side_convention 矛盾
+  (2026-07-18 加,见下方 `_lint_side_convention_conflicts` docstring)。
 
 输入是 link_shots_to_scene_stage 之后的 (ShotList, SceneStageSet)。未接场事实的镜头(无
 scene_stage_ref)整体跳过——lint 只作用于走了 SPEC-004 场事实链路的镜头。
@@ -22,6 +24,7 @@ from hevi.director.pipeline_schemas import (
     ShotList,
     ShotListItem,
 )
+from hevi.director.scene_stage import _parse_side_convention
 
 
 @dataclass
@@ -169,6 +172,44 @@ def _lint_coverage_redundancy(shots: list[ShotListItem], stage: SceneStage) -> l
     return findings
 
 
+def _lint_side_convention_conflicts(
+    shots: list[ShotListItem], stage: SceneStage
+) -> list[LintFinding]:
+    """L5 落位契约:④分镜 blocking 文本写的左右,不能跟③.5 SceneStage.axis.side_convention
+    矛盾。side_convention 是场级契约("恒"字面意思上的承诺,专为防跳轴设计),渲染层
+    (`hevi.tongjian.scene_render_avatar._layout_col`)2026-07-18 起已改成 side_convention
+    优先于 blocking 文本——矛盾发生时渲染层会压下矛盾按 side_convention 来(运行时保命),
+    但那样矛盾本身就被默默纠正、没人知道 LLM 在这一镜写反了。这条 lint 就是把矛盾曝出来:
+    检查"结果层"(blocking 具体写了什么)是否符合"计划层"(side_convention 的约定),而不是
+    只查 L1-L4 那种"计划本身是否齐全/自洽"——查产出对不对,是这类 lint 的第一个实例。"""
+    text = stage.axis.side_convention
+    if not text:
+        return []
+    char_names = {b.character_name for shot in shots for b in shot.blocking if b.character_name}
+    expected = _parse_side_convention(text, char_names)
+    if not expected:
+        return []
+    findings: list[LintFinding] = []
+    for shot in shots:
+        for b in shot.blocking:
+            want = expected.get(b.character_name)
+            got = _axis_side(b.position)
+            if want and got and want != got:
+                findings.append(
+                    LintFinding(
+                        rule="L5",
+                        scene_no=stage.scene_ref,
+                        shot_ids=[shot.shot_id],
+                        message=(
+                            f"{shot.shot_id}:{b.character_name} blocking 写「{b.position}」"
+                            f"(→{got}),跟 side_convention 约定的「{want}」矛盾——"
+                            f"LLM 这一镜写反了,已按 side_convention 渲染"
+                        ),
+                    )
+                )
+    return findings
+
+
 def lint_scene_stage(shot_list: ShotList, scene_stage_set: SceneStageSet) -> list[LintFinding]:
     """跑四条确定性 lint,返回全部 findings(空 = 干净)。只作用于接了场事实的镜头。"""
     stage_by_ref = {s.scene_ref: s for s in scene_stage_set.stages}
@@ -187,4 +228,5 @@ def lint_scene_stage(shot_list: ShotList, scene_stage_set: SceneStageSet) -> lis
         findings += _lint_reverse_size(shots, stage)
         findings += _lint_eyeline(shots, stage)
         findings += _lint_coverage_redundancy(shots, stage)
+        findings += _lint_side_convention_conflicts(shots, stage)
     return findings

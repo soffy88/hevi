@@ -1,4 +1,4 @@
-"""SPEC-004 §4 四条确定性 lint 测试(L1 跳轴 / L2 反打差异 / L3 eyeline / L4 剪辑冗余)。"""
+"""SPEC-004 §4 五条确定性 lint 测试(L1 跳轴 / L2 反打差异 / L3 eyeline / L4 剪辑冗余 / L5 落位契约)。"""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from hevi.director.pipeline_schemas import (
     SceneBlocking,
     SceneStage,
     SceneStageSet,
+    ShotBlocking,
     ShotList,
     ShotListDialogueLine,
     ShotListItem,
@@ -32,7 +33,7 @@ def _stage(**kw) -> SceneStage:
     return SceneStage(**base)
 
 
-def _shot(sid, *, setup="", size="", beats=None, attn="", dlg=None) -> ShotListItem:
+def _shot(sid, *, setup="", size="", beats=None, attn="", dlg=None, blocking=None) -> ShotListItem:
     return ShotListItem(
         shot_id=sid,
         scene_no=1,
@@ -45,6 +46,7 @@ def _shot(sid, *, setup="", size="", beats=None, attn="", dlg=None) -> ShotListI
             ShotListDialogueLine(character_name=s, text=t, target_name=tg)
             for s, t, tg in (dlg or [])
         ],
+        blocking=blocking or [],
     )
 
 
@@ -162,3 +164,78 @@ def test_unlinked_shots_skipped():
     """未接场事实(scene_stage_ref=None)的镜头整体跳过,不产生任何 finding。"""
     sl = ShotList(shots=[ShotListItem(shot_id="SH1", scene_no=1, camera_setup_ref="s_right")])
     assert lint_scene_stage(sl, SceneStageSet(stages=[_stage()])) == []
+
+
+def test_l5_blocking_conflicts_with_side_convention_flagged():
+    """2026-07-18 真机复验撞见的真实场景复现:blocking 文本写"老道士:画面左侧"，
+    直接矛盾 side_convention"王生恒在画左,老道士恒在画右"→ L5。"""
+    stage = _stage(axis=SceneAxis(side_convention="王生恒在画左，老道士恒在画右"))
+    sl = ShotList(
+        shots=[
+            _shot(
+                "SH1",
+                setup="s_left",
+                beats=["bt001"],
+                blocking=[
+                    ShotBlocking(character_name="老道士", position="画面左侧"),
+                    ShotBlocking(character_name="王生", position="画面右侧"),
+                ],
+            )
+        ]
+    )
+    findings = lint_scene_stage(sl, SceneStageSet(stages=[stage]))
+    l5 = [f for f in findings if f.rule == "L5"]
+    assert len(l5) == 2  # 两个角色都写反了
+    assert any("老道士" in f.message for f in l5)
+    assert any("王生" in f.message for f in l5)
+
+
+def test_l5_blocking_consistent_with_side_convention_no_finding():
+    """blocking 文本跟 side_convention 一致 → 不报 L5。"""
+    stage = _stage(axis=SceneAxis(side_convention="王生恒在画左，老道士恒在画右"))
+    sl = ShotList(
+        shots=[
+            _shot(
+                "SH1",
+                setup="s_left",
+                beats=["bt001"],
+                blocking=[
+                    ShotBlocking(character_name="王生", position="画面左侧"),
+                    ShotBlocking(character_name="老道士", position="画面右侧"),
+                ],
+            )
+        ]
+    )
+    assert "L5" not in _rules(lint_scene_stage(sl, SceneStageSet(stages=[stage])))
+
+
+def test_l5_no_side_convention_no_finding():
+    """SceneStage 没锁 side_convention(空串)→ 无从判矛盾,不报 L5。"""
+    stage = _stage()  # side_convention 默认空串
+    sl = ShotList(
+        shots=[
+            _shot(
+                "SH1",
+                setup="s_left",
+                beats=["bt001"],
+                blocking=[ShotBlocking(character_name="王生", position="画面右侧")],
+            )
+        ]
+    )
+    assert "L5" not in _rules(lint_scene_stage(sl, SceneStageSet(stages=[stage])))
+
+
+def test_l5_blocking_without_explicit_side_no_finding():
+    """blocking 文本没写左右(如"居中而立")→ 无法判定,不报 L5(不是矛盾,是没信息)。"""
+    stage = _stage(axis=SceneAxis(side_convention="王生恒在画左，老道士恒在画右"))
+    sl = ShotList(
+        shots=[
+            _shot(
+                "SH1",
+                setup="s_left",
+                beats=["bt001"],
+                blocking=[ShotBlocking(character_name="王生", position="石阶中央，伏地")],
+            )
+        ]
+    )
+    assert "L5" not in _rules(lint_scene_stage(sl, SceneStageSet(stages=[stage])))

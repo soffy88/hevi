@@ -141,6 +141,34 @@
 
 ## ✅ Done
 
+- **INC-003 渲染层第三轮:side_convention 优先级 + L5 落位契约 lint(2026-07-18,soffy 决策
+  已实现并真机复验)。** 上一轮发现 SH003_01/SH003_05 左右反了,根因是④分镜 blocking 文本
+  ("老道士:画面左侧")跟③.5 SceneStage.side_convention("王生恒在画左")互相矛盾,而
+  `_layout_col` 当时判"显式 blocking 最具体、优先级最高"——矛盾发生时忠实渲染出矛盾画面,
+  side_convention 形同虚设。soffy 决策:①优先级反过来(side_convention > blocking 文字,
+  SPEC-004 上游③.5 约束下游④、"恒"是承诺不能被 LLM 措辞毁约)②同时加一条上游 lint(不是
+  只压不曝光)。两条都做了:
+  - `hevi/tongjian/scene_render_avatar._layout_col`:优先级改成 `side_hint`(来自
+    `SceneStage.axis.side_convention`)> 显式 blocking 文本 > present 顺序兜底。
+  - `hevi/director/scene_stage_lint.py` 新增 **L5 落位契约**:`_lint_side_convention_conflicts`
+    ——④分镜锁定时若某角色 blocking 写的左右跟同场 side_convention 矛盾,报 finding(带
+    shot_id/角色名/矛盾双方)。这是"查产出对不对"而非"查计划齐不齐"的第一条 lint(L1-L4 都是
+    后者)。复用 `scene_stage._parse_side_convention` 同一份解析逻辑,跟渲染层判据不会各说各话。
+  - **真机复验**(重放 v3_produce.json 的真实最终锁定数据,零花费):优先级反转后
+    SH003_01/SH003_05 王生恒画左、老道士恒画右,不再跳轴(`output/inc003_v3_scene_check2/
+    SH003_0{1,5}_layout.png`,已核对肉眼一致,产物用完即删)。L5 lint 跑同一份真实数据,
+    精确报出 `SH003_05`(soffy 点名的那对)+ 额外发现 `SH005_05` 也是同一种矛盾(此前不知道)——
+    证明 lint 在真实数据上确实能揪出"LLM 写反了"而不是漏报。
+  - 副作用(顺带修好,非目标):SH003_01 里王生的 blocking 文本"石阶中央"曾被 `_layout_col`
+    的"中"关键词误命中(描述"哪级台阶"被误读成"画面居中"指令),新优先级下 side_hint 直接
+    生效、不再被这个假阳性带偏。
+  - 回归:6 个新测试(`_layout_col`/`_compose_layout_base` 侧 2 个 + L5 lint 侧 4 个),全量
+    1355 passed。
+  - **导演流水线四个核心能力(对白/朝向/多人/场事实)在真实链路的复验状态:全部到位**——
+    这是这一轮(INC-003 P0 + 两洞 + 优先级反转)以来第一次可以这么说,前提是"场事实"里
+    "背景真实"(② scene_id 匹配)和"左右不跳轴"(① + 优先级反转 + L5)都已用真实产集最终
+    数据核对过,不是中途快照或手工单点验证。
+
 - **INC-003 P0 第二版:多角色镜头"静默退化成单人"根因定位 + 统一修复(2026-07-18)。**
   第一次整机产集(work_id=21a72719...、task_id=b3d18fff-38bb-4cdc-9923-77d7ca2f5229,真花钱约
   $25,一集2人对话戏、38镜)跑完后肉眼核验:**11 个双人镜头,`output/tasks/.../SH*_layout.png`
@@ -245,46 +273,6 @@
 ---
 
 ## 🚨 Needs Human
-
-**★ 渲染层两洞修复 + 真实链路复验(2026-07-18 第二轮):① present/side_convention 解耦——
-到位;② scene_id 长句/短名匹配——到位;但发现了①解耦之后仍然存在、根因不同的新轴线
-不一致,是数据层(④分镜 blocking 文本与③.5 side_convention 互相矛盾)问题,不是渲染层
-接线问题,优先级判定留 soffy 定。**
-
-- **① present 解耦(`compute_shot_sides` 读 `SceneStage.axis.side_convention`,
-  `_layout_col` 按"显式 blocking 文本 > side_hint > present 顺序兜底"三级判优先):
-  机制本身验证正确。** 独立单测(`_layout_col`/`compute_shot_sides` 直接调用,不经渲染管线)
-  证实 `side_hint` 已与"谁是说话人/lead 排序"完全解耦——不再受对白分支 present 重排影响。
-- **但真实链路复验发现:SH003_01 与 SH003_05(同场,scene_ref=3)左右仍然反了,根因换了
-  一个,不是①要修的那个洞。** SH003_01 两角色 blocking 都没显式"左/右"(老道士退到
-  side_hint=right,王生因 blocking 文本"石阶中央"里的"中"字被 `_layout_col` 第一优先级
-  误命中→画中,视觉上仍偏左于老道士,方向对);但 **SH003_05 的 blocking 文本显式写了
-  "老道士:画面左侧"/"王生:画面右侧"——④分镜层这句话本身就和③.5 SceneStage 锁定的
-  `side_convention`("王生恒在画左,老道士恒在画右")互相矛盾**,而 `_layout_col` 的优先级
-  设计是"显式 blocking 最具体、优先级最高",于是 SH003_05 忠实按矛盾的 blocking 文本渲染,
-  产出老道士画左/王生画右——跟 SH003_01 反了。
-  - **这不是①那次改动引入的新 bug**,显式 blocking 优先于 side_convention 的判优先顺序在
-    ①之前就是这样;①解决的是"没有显式 blocking 时的兜底选谁"(present 顺序 vs
-    side_convention),这个子问题①确实解决了。这次撞见的是另一个更上游的问题:**④分镜层
-    生成的 blocking 文本本身可能和③.5 场级 side_convention 不一致,没有校验/纠偏机制**。
-  - **待 soffy 定:是否要把优先级反过来**(side_convention 是"恒"字面意思上的场级不变量,
-    专门为防跳轴设计;如果它的优先级低于逐镜 blocking 文本,一旦 blocking 文本措辞和它冲突,
-    防跳轴的设计目的就被架空——这次 SH003_05 就是活生生的例子),**或者在④分镜生成/L1 lint
-    阶段加一道"blocking 左右词 vs side_convention 一致性"校验**(把问题挡在渲染层之前,而不是
-    渲染层各退一步)。两条路都没做,渲染层这次没有再往深猜测/擅自改优先级。
-  - 证据:`output/tasks/ce9bdace-36cb-45ad-96b1-68c29c2b113a/SH003_01_layout.png`、
-    `SH003_05_layout.png`(同场,肉眼可见左右互换)。
-- **② scene_id 长句/短名匹配:✓ 到位,真实链路 28/28 镜全部命中。** 用真实产集最终锁定数据
-  (`v3_produce.json`,非中途快照)逐镜核对,`build_tongjian_inputs` 新的子串匹配对这一集
-  100% 命中,`scene_bg_by_id` 正确传入,`SH003_01/05`、`SH005_01/02` 等镜的 `_layout.png`
-  背景确认是真实崂山道观空景板(山门+石阶+云雾),不是纯灰。**排查过程中我自己中途一度得出
-  "只有 2/7 场景组命中"的错误结论——那是拿了同一份材料早一次锁定(38 镜、被后续重锁定覆盖)
-  的过期快照在核对,不是这次真实产集实际用的最终数据(28 镜)。已用最终数据复核纠正,
-  不构成这次修复的真实结论,记录在此避免以后又被同一份过期快照误导。**
-- **多人同框(INC-003 P0 主线,expected_character_count 统一判据):✓ 真实基础设施故障下
-  确认正确工作。** 这次复验里 SH004_04 等镜撞见真实 img2img 崩溃 + 真实 qwen-image-edit
-  免费额度墙(双重真实故障,非模拟),系统正确抛 `MultiCharKeyframeFallbackExhausted`、
-  镜头显式失败(空 clip + degraded),没有静默退化成单人——修复在真实故障下按设计工作。
 
 **SPEC-001 freeze decisions — all 4 settled 2026-07-11** (see `docs/specs/SPEC-001-shortdrama-eval.md` §6). Nothing pending here; LLM prerequisite resolved via `qwen_cloud` (the prior `e2e-local-llm-json-blocker` memory is now stale — updated with resolution).
 
