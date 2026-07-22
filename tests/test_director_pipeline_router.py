@@ -1,7 +1,14 @@
-"""SPEC-003 主线导演流水线路由测试(hevi/api/routers/director_pipeline.py)。
+"""主线导演流水线路由测试(hevi/api/routers/director_pipeline.py)。
 
 直接调用路由函数(同 test_shortdrama_router.py/test_tasks.py 的既有惯例),mock 掉
 真实 LLM 草稿生成 + SubjectService + TaskService,验证状态机推进/回退/守卫逻辑本身。
+
+V1→V2 原地升级(2026-07-21):④/⑤两级从 V1 的 scene_stage/shot_list 换成 V2 的
+world_bible/scene_script,`/produce` 真正调度的也从 `_run_director_via_tongjian` 换成
+`_run_v2_produce_task`。逐镜头准备台(INC-001 §A/§G/§I/§L)端点已整段删除,对应测试
+一并删除,不是遗漏。V1 专属但仍保留在文件里的辅助函数(`_scene_stage_has_angles`/
+`_resolve_subject3d_views`)测试维持不动——那些函数本身没删,只是不再是这五级流程
+的一部分。
 """
 
 from __future__ import annotations
@@ -14,18 +21,20 @@ from fastapi import HTTPException
 
 from hevi.api.routers import director_pipeline as dp
 from hevi.director.pipeline_schemas import (
+    CharacterVolumeEntry,
     Concept,
     DesignCharacter,
     DesignList,
     DesignScene,
-    SceneStage,
-    SceneStageSet,
+    SceneScript,
+    SceneScriptDialogueLine,
+    SceneScriptSegment,
+    SceneScriptSet,
     Screenplay,
     ScreenplayDialogueLine,
     ScreenplayScene,
-    ShotList,
-    ShotListDialogueLine,
-    ShotListItem,
+    VisualVolume,
+    WorldBible,
 )
 from hevi.providers.registry import register_all_providers
 
@@ -68,7 +77,7 @@ class _FakeAcquire:
 
 
 class _FakePool:
-    """produce_blockers 等 PgPool 裸 SQL 调用的最小假 pool:fetch 默认返回空(无拦截)。"""
+    """裸 SQL 调用的最小假 pool:fetch 默认返回空。"""
 
     def __init__(self, fetch_rows: list | None = None) -> None:
         self._conn = _FakeConn(fetch_rows or [])
@@ -122,22 +131,36 @@ def test_assign_character_voices_distinct_and_gendered() -> None:
     assert len(set(male_voices)) == 2  # 同性别不同角色 → 不同音色(治"都一个声音")
 
 
-def _scene_stage_set() -> SceneStageSet:
-    return SceneStageSet(stages=[SceneStage(scene_ref=1)])
+def _world_bible() -> WorldBible:
+    return WorldBible(
+        characters=[
+            CharacterVolumeEntry(name="智伯", identity_lock_sentence="智伯身份始终一致。"),
+            CharacterVolumeEntry(name="韩康子", identity_lock_sentence="韩康子身份始终一致。"),
+        ],
+        visual=VisualVolume(style_manifesto="写实历史正剧质感。"),
+    )
 
 
-def _shot_list() -> ShotList:
-    return ShotList(
-        shots=[
-            ShotListItem(
-                shot_id="SH001_01",
-                scene_no=1,
-                dialogue_lines=[
-                    ShotListDialogueLine(character_name="智伯", text="把地给我。"),
-                    ShotListDialogueLine(character_name="韩康子", text="不给。"),
+def _scene_script_set() -> SceneScriptSet:
+    return SceneScriptSet(
+        scripts=[
+            SceneScript(
+                scene_ref=1,
+                characters_present=["智伯", "韩康子"],
+                segments=[
+                    SceneScriptSegment(
+                        segment_id="sg001",
+                        order=1,
+                        t_start_s=0.0,
+                        t_end_s=5.0,
+                        narrative_text="智伯设宴索地。",
+                        camera_movement="静态对话",
+                        dialogue=[
+                            SceneScriptDialogueLine(character_name="智伯", text="把地给我。"),
+                            SceneScriptDialogueLine(character_name="韩康子", text="不给。"),
+                        ],
+                    )
                 ],
-                character_names=["智伯", "韩康子"],
-                scene_name="宫殿",
             )
         ]
     )
@@ -227,10 +250,10 @@ async def test_regenerate_concept_on_advanced_work_clears_all_downstream():
     rec["concept"] = _concept().model_dump()
     rec["screenplay"] = _screenplay().model_dump()
     rec["design_list"] = _design_list().model_dump()
-    rec["scene_stage"] = _scene_stage_set().model_dump()
-    rec["shot_list"] = _shot_list().model_dump()
+    rec["world_bible"] = _world_bible().model_dump()
+    rec["scene_script"] = _scene_script_set().model_dump()
     rec["locked_through"] = (
-        4  # 全部锁定过(concept0/screenplay1/design_list2/scene_stage3/shot_list4)
+        4  # 全部锁定过(concept0/screenplay1/design_list2/world_bible3/scene_script4)
     )
     rec["video_task_id"] = "some-task-id"
 
@@ -240,8 +263,8 @@ async def test_regenerate_concept_on_advanced_work_clears_all_downstream():
     assert resp["locked_through"] == -1
     assert resp["screenplay"] is None
     assert resp["design_list"] is None
-    assert resp["scene_stage"] is None
-    assert resp["shot_list"] is None
+    assert resp["world_bible"] is None
+    assert resp["scene_script"] is None
     assert resp["video_task_id"] is None
 
 
@@ -270,7 +293,7 @@ async def test_regenerate_screenplay_on_advanced_work_clears_downstream_only():
 
 
 @pytest.mark.asyncio
-async def test_lock_design_list_creates_subjects_and_advances_to_scene_stage_draft(
+async def test_lock_design_list_creates_subjects_and_advances_to_world_bible_draft(
     tmp_path, monkeypatch
 ):
     from fastapi import BackgroundTasks
@@ -294,19 +317,17 @@ async def test_lock_design_list_creates_subjects_and_advances_to_scene_stage_dra
     bg = BackgroundTasks()
     with (
         patch("hevi.image.qwen_image_service.qwen_image_generate", fake_qwen_generate),
-        patch.object(
-            dp, "generate_scene_stage_draft", AsyncMock(return_value=SceneStage(scene_ref=1))
-        ),
+        patch.object(dp, "generate_world_bible_draft", AsyncMock(return_value=_world_bible())),
     ):
         immediate = await dp.lock_design_list(work_id, _design_list(), _USER, subject_svc, bg)
         assert immediate["status"] == "design_list_locking"
         await bg()
 
-    # SPEC-004:③锁定后自动生成的下一级是③.5 场面调度(每场一个 SceneStage),不再直接跳④分镜。
+    # V1→V2:③锁定后自动生成的下一级是④World Bible 草案,不再是 V1 的③.5 场面调度。
     resp = dp._work_status(rec)
     assert resp["locked_through"] == 2  # design_list 锁定(index 2 未变)
-    assert resp["status"] == "scene_stage_draft"
-    assert len(resp["scene_stage"]["stages"]) == 1  # 剧本 1 场 → 1 个 SceneStage
+    assert resp["status"] == "world_bible_draft"
+    assert len(resp["world_bible"]["characters"]) == 2
     char_subject_ids = [c["subject_id"] for c in resp["design_list"]["characters"]]
     assert char_subject_ids == ["subj-智伯", "subj-韩康子"]
     assert subject_svc.create_subject.await_count == 3  # 2 角色 + 1 场景
@@ -348,9 +369,7 @@ async def test_lock_design_list_reuses_existing_same_name_subject(tmp_path, monk
     bg = BackgroundTasks()
     with (
         patch("hevi.image.qwen_image_service.qwen_image_generate", fake_qwen_generate),
-        patch.object(
-            dp, "generate_scene_stage_draft", AsyncMock(return_value=SceneStage(scene_ref=1))
-        ),
+        patch.object(dp, "generate_world_bible_draft", AsyncMock(return_value=_world_bible())),
     ):
         await dp.lock_design_list(work_id, _design_list(), _USER, subject_svc, bg)
         await bg()
@@ -393,9 +412,7 @@ async def test_lock_design_list_skips_already_locked_assets(tmp_path, monkeypatc
     bg = BackgroundTasks()
     with (
         patch("hevi.image.qwen_image_service.qwen_image_generate", fake_qwen_generate),
-        patch.object(
-            dp, "generate_scene_stage_draft", AsyncMock(return_value=SceneStage(scene_ref=1))
-        ),
+        patch.object(dp, "generate_world_bible_draft", AsyncMock(return_value=_world_bible())),
     ):
         await dp.lock_design_list(work_id, design_list, _USER, subject_svc, bg)
         await bg()
@@ -405,17 +422,20 @@ async def test_lock_design_list_skips_already_locked_assets(tmp_path, monkeypatc
     assert subject_svc.create_subject.await_count == 2  # 只建剩下的 1 角色 + 1 场景
 
 
-# ── ③.5 场面调度(SPEC-004)────────────────────────────────────────────────────
+# ── V1 遗留辅助函数(仍保留在文件里,不属于这五级流程,但函数本身没删)──────────────
 
 
 def test_scene_stage_has_angles():
-    """SPEC-004 v2:只有真设了 facing_deg/azimuth_deg 才算有角度(否则不值当建 Subject3D 视图)。"""
+    """SPEC-004 v2:只有真设了 facing_deg/azimuth_deg 才算有角度(否则不值当建 Subject3D 视图)。
+    `_scene_stage_has_angles` 是 V1 遗留辅助函数,当前五级流程不再调用它,但函数本身
+    没删(见模块 docstring),这个测试继续覆盖它没坏。"""
     from hevi.director.pipeline_schemas import (
         CameraSetup,
         CoveragePlan,
         InitialPosition,
         SceneBlocking,
         SceneStage,
+        SceneStageSet,
     )
 
     empty = SceneStageSet(stages=[SceneStage(scene_ref=1)])
@@ -470,9 +490,12 @@ async def test_resolve_subject3d_views_cached_and_built():
     svc.generate_subject3d.assert_awaited_once_with("s-build")  # 只为没视图的那个建
 
 
+# ── ④World Bible 锁定 → ⑤Scene Script 草案自动生成 ────────────────────────────
+
+
 @pytest.mark.asyncio
-async def test_regenerate_scene_stage_rejected_before_design_list_locked():
-    """③.5 未就绪守卫:design_list 没锁,重生成场面调度 → 409。"""
+async def test_regenerate_world_bible_rejected_before_design_list_locked():
+    """④未就绪守卫:design_list 没锁,重生成 World Bible → 409。"""
     from fastapi import BackgroundTasks
 
     work_id = str(uuid.uuid4())
@@ -480,13 +503,14 @@ async def test_regenerate_scene_stage_rejected_before_design_list_locked():
     rec["concept"] = _concept().model_dump()
     rec["locked_through"] = 1  # 只锁到 screenplay
     with pytest.raises(HTTPException) as ei:
-        await dp.regenerate_scene_stage(work_id, _USER, BackgroundTasks())
+        await dp.regenerate_world_bible(work_id, _USER, BackgroundTasks())
     assert ei.value.status_code == 409
 
 
 @pytest.mark.asyncio
-async def test_lock_scene_stage_advances_and_generates_shot_list_draft():
-    """③.5 锁定 → locked_through 推进到 scene_stage(index 3),后台自动生成④分镜草案。"""
+async def test_lock_world_bible_advances_and_generates_scene_script_draft():
+    """④锁定 → locked_through 推进到 world_bible(index 3),后台自动生成⑤Scene Script
+    草案(逐场链式生成)。"""
     from fastapi import BackgroundTasks
 
     work_id = str(uuid.uuid4())
@@ -494,57 +518,55 @@ async def test_lock_scene_stage_advances_and_generates_shot_list_draft():
     rec["concept"] = _concept().model_dump()
     rec["screenplay"] = _screenplay().model_dump()
     rec["design_list"] = _design_list().model_dump()
-    rec["scene_stage"] = _scene_stage_set().model_dump()
     rec["locked_through"] = 2  # design_list 锁定
 
     bg = BackgroundTasks()
-    with patch.object(dp, "generate_shot_list_draft", AsyncMock(return_value=_shot_list())):
-        immediate = await dp.lock_scene_stage(work_id, _scene_stage_set(), _USER, bg)
-        assert immediate["status"] == "scene_stage_locking"
-        assert immediate["locked_through"] == 3  # scene_stage 锁定(index 3)
+    with patch.object(
+        dp, "generate_scene_script_draft", AsyncMock(return_value=_scene_script_set().scripts[0])
+    ):
+        immediate = await dp.lock_world_bible(work_id, _world_bible(), _USER, bg)
+        assert immediate["status"] == "world_bible_locking"
+        assert immediate["locked_through"] == 3  # world_bible 锁定(index 3)
         await bg()
 
     resp = dp._work_status(rec)
-    assert resp["status"] == "shot_list_draft"
-    assert resp["shot_list"]["shots"][0]["shot_id"] == "SH001_01"
-    # SPEC-004 阶段 3:分镜已链接场事实(scene_no=1 → scene_stage_ref=1)
-    assert resp["shot_list"]["shots"][0]["scene_stage_ref"] == 1
-    # SPEC-004 §4:链接后跑了 lint,findings 暴露在 work status(此处最小场事实 → 干净)
-    assert isinstance(resp["scene_stage_lint"], list)
+    assert resp["status"] == "scene_script_draft"
+    assert resp["scene_script"]["scripts"][0]["scene_ref"] == 1
+    assert resp["scene_script"]["scripts"][0]["segments"][0]["segment_id"] == "sg001"
 
 
 @pytest.mark.asyncio
-async def test_regenerate_concept_clears_scene_stage_too():
-    """回退到①立意 → 下游(含③.5 场面调度)全清。"""
+async def test_regenerate_concept_clears_world_bible_too():
+    """回退到①立意 → 下游(含④World Bible)全清。"""
     work_id = str(uuid.uuid4())
     rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
     rec["concept"] = _concept().model_dump()
-    rec["scene_stage"] = _scene_stage_set().model_dump()
-    rec["locked_through"] = 3  # scene_stage 锁定
+    rec["world_bible"] = _world_bible().model_dump()
+    rec["locked_through"] = 3  # world_bible 锁定
     with patch.object(dp, "generate_concept_draft", AsyncMock(return_value=_concept())):
         resp = await dp.regenerate_concept(work_id, _USER)
-    assert resp["scene_stage"] is None
+    assert resp["world_bible"] is None
     assert resp["locked_through"] == -1
 
 
-# ── ④分镜锁定 ─────────────────────────────────────────────────────────────
+# ── ⑤Scene Script 锁定 ────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_lock_shot_list_advances_locked_through():
+async def test_lock_scene_script_advances_locked_through():
     work_id = str(uuid.uuid4())
     rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
-    rec["locked_through"] = 3  # scene_stage 已锁(shot_list 是 index 4)
-    resp = await dp.lock_shot_list(work_id, _shot_list(), _USER)
+    rec["locked_through"] = 3  # world_bible 已锁(scene_script 是 index 4)
+    resp = await dp.lock_scene_script(work_id, _scene_script_set(), _USER)
     assert resp["locked_through"] == 4
-    assert resp["status"] == "shot_list_locked"
+    assert resp["status"] == "scene_script_locked"
 
 
-# ── ⑤产集 ─────────────────────────────────────────────────────────────────
+# ── ⑥产集 ─────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_produce_rejected_before_shot_list_locked():
+async def test_produce_rejected_before_scene_script_locked():
     work_id = str(uuid.uuid4())
     rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
     rec["locked_through"] = 2
@@ -556,28 +578,39 @@ async def test_produce_rejected_before_shot_list_locked():
 
 
 @pytest.mark.asyncio
-async def test_produce_schedules_tongjian_render_with_voices_and_refs():
-    """产集不走通用长视频管线(orchestrate_longvideo),改后台跑通鉴对白+口型管线
-    (_run_director_via_tongjian)。验证:create_task 只用于建行/计费(不 submit_task),
-    后台任务拿到按角色分配的不同音色 + 角色参考图。"""
+async def test_produce_schedules_v2_produce_with_voices_and_refs():
+    """产集不走通用长视频管线(orchestrate_longvideo),也不走 V1 通鉴口型管线,改后台跑
+    `_run_v2_produce_task`(document-first 多角色 reference-to-video 管线)。验证:
+    create_task 只用于建行/计费(不 submit_task),后台任务拿到按角色分配的不同音色 +
+    角色参考图 + 场景参考图。"""
     from fastapi import BackgroundTasks
 
     work_id = str(uuid.uuid4())
     rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
     rec["concept"] = _concept().model_dump()
+    rec["screenplay"] = _screenplay().model_dump()
     design_list = _design_list()
     design_list.characters[0].voice_id = "zh_male_deep"
     design_list.characters[0].subject_id = "subj-zhibo"
+    design_list.scenes[0].subject_id = "subj-scene"
     rec["design_list"] = design_list.model_dump()
-    rec["shot_list"] = _shot_list().model_dump()
-    rec["locked_through"] = 4  # shot_list 锁定(index 4)
+    rec["world_bible"] = _world_bible().model_dump()
+    rec["scene_script"] = _scene_script_set().model_dump()
+    rec["locked_through"] = 4  # scene_script 锁定(index 4)
 
     task_id = uuid.uuid4()
     svc = AsyncMock()
-    svc.create_task.return_value = {"id": task_id, "status": "pending"}
+    svc.create_task.return_value = {"id": task_id, "status": "pending", "config_json": {}}
 
     subject_svc = AsyncMock()
-    subject_svc.get_subject.return_value = {"reference_images": ["output/subj-zhibo/ref.png"]}
+
+    async def _get_subject(sid):
+        return {
+            "subj-zhibo": {"reference_images": ["output/subj-zhibo/ref.png"]},
+            "subj-scene": {"reference_images": ["output/subj-scene/ref.png"]},
+        }.get(sid, {"reference_images": []})
+
+    subject_svc.get_subject.side_effect = _get_subject
 
     bg = BackgroundTasks()
     resp = await dp.produce_work(
@@ -588,18 +621,21 @@ async def test_produce_schedules_tongjian_render_with_voices_and_refs():
     assert resp["video_task_id"] == str(task_id)
     svc.submit_task.assert_not_awaited()  # 明确不走 orchestrate_longvideo 执行路径
 
-    # create_task 建行/计费用真实的数字人 provider 估价
+    # create_task 建行/计费用真实的 V2 provider 估价
     call_kwargs = svc.create_task.await_args.kwargs
-    assert call_kwargs["video_provider"] == "happyhorse_1_1_maas_lock"
+    assert call_kwargs["video_provider"] == "happyhorse_1_1_maas_ref"
 
-    # 后台调度了通鉴渲染,且拿到了正确的音色映射 + 角色参考图
+    # 后台调度了 V2 产集,且拿到了正确的音色映射 + 角色/场景参考图
     assert len(bg.tasks) == 1
     bt = bg.tasks[0]
-    assert bt.func is dp._run_director_via_tongjian
+    assert bt.func is dp._run_v2_produce_task
     cv = bt.kwargs["voice_by_speaker"]
     assert cv["智伯"] == "zh_male_deep"
     assert cv["韩康子"] and cv["韩康子"] != cv["智伯"]  # 同性别不同角色 → 不同音色
     assert bt.kwargs["subject_ref_paths"] == {"智伯": "output/subj-zhibo/ref.png"}
+    assert bt.kwargs["scene_ref_paths"] == {"宫殿": "output/subj-scene/ref.png"}
+    assert bt.kwargs["world_bible"].characters[0].name == "智伯"
+    assert bt.kwargs["scene_script_set"].scripts[0].scene_ref == 1
 
 
 @pytest.mark.asyncio
@@ -612,9 +648,11 @@ async def test_produce_insufficient_credits_returns_402_not_500():
     work_id = str(uuid.uuid4())
     rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
     rec["concept"] = _concept().model_dump()
+    rec["screenplay"] = _screenplay().model_dump()
     rec["design_list"] = _design_list().model_dump()
-    rec["shot_list"] = _shot_list().model_dump()
-    rec["locked_through"] = 4  # shot_list 锁定(index 4)
+    rec["world_bible"] = _world_bible().model_dump()
+    rec["scene_script"] = _scene_script_set().model_dump()
+    rec["locked_through"] = 4  # scene_script 锁定(index 4)
 
     svc = AsyncMock()
     svc.create_task.side_effect = InsufficientCredits(credits_needed=3000, credits_available=1000)
@@ -626,159 +664,3 @@ async def test_produce_insufficient_credits_returns_402_not_500():
     assert ei.value.status_code == 402
     assert ei.value.detail["credits_needed"] == 3000
     assert ei.value.detail["credits_available"] == 1000
-
-
-# ── 逐镜头准备台端点(INC-001 §A/§G/§I/§L)────────────────────────────────────
-
-
-def _locked_work() -> str:
-    work_id = str(uuid.uuid4())
-    rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
-    rec["concept"] = _concept().model_dump()
-    rec["design_list"] = _design_list().model_dump()
-    rec["shot_list"] = _shot_list().model_dump()
-    rec["locked_through"] = 4  # shot_list 锁定(index 4,SPEC-004 插 scene_stage 后)
-    return work_id
-
-
-@pytest.mark.asyncio
-async def test_extract_endpoint_passes_shotlistitem_to_service():
-    """§G:extract 端点从锁定的 shot_list 取出该 shot 的 ShotListItem 交给服务物化候选。"""
-    work_id = _locked_work()
-    with (
-        patch.object(dp._prep, "extract_shot", AsyncMock()) as ex,
-        patch.object(
-            dp._prep, "get_preparation_state", AsyncMock(return_value={"status": "pending"})
-        ),
-    ):
-        resp = await dp.extract_shot_candidates(work_id, "SH001_01", _USER, _FakePool())
-    assert resp["action"] == "extract"
-    assert ex.await_args.args[2].shot_id == "SH001_01"  # 传的是该镜的 ShotListItem
-
-
-@pytest.mark.asyncio
-async def test_extract_endpoint_404_for_unknown_shot():
-    work_id = _locked_work()
-    with pytest.raises(HTTPException) as ei:
-        await dp.extract_shot_candidates(work_id, "NOPE", _USER, _FakePool())
-    assert ei.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_confirm_asset_invalid_status_rejected_422():
-    work_id = _locked_work()
-    with pytest.raises(HTTPException) as ei:
-        await dp.confirm_shot_candidate(
-            work_id,
-            "SH001_01",
-            str(uuid.uuid4()),
-            dp.ConfirmCandidateRequest(kind="asset", status="bogus"),
-            _USER,
-            _FakePool(),
-        )
-    assert ei.value.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_confirm_invalid_candidate_uuid_422():
-    work_id = _locked_work()
-    with pytest.raises(HTTPException) as ei:
-        await dp.confirm_shot_candidate(
-            work_id,
-            "SH001_01",
-            "not-a-uuid",
-            dp.ConfirmCandidateRequest(kind="asset", status="linked"),
-            _USER,
-            _FakePool(),
-        )
-    assert ei.value.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_confirm_dialogue_calls_service_with_status():
-    work_id = _locked_work()
-    with (
-        patch.object(dp._prep, "set_dialogue_candidate", AsyncMock()) as s,
-        patch.object(
-            dp._prep, "get_preparation_state", AsyncMock(return_value={"status": "ready"})
-        ),
-    ):
-        resp = await dp.confirm_shot_candidate(
-            work_id,
-            "SH001_01",
-            str(uuid.uuid4()),
-            dp.ConfirmCandidateRequest(
-                kind="dialogue", status="accepted", linked_dialog_line_id="ln1"
-            ),
-            _USER,
-            _FakePool(),
-        )
-    assert resp["action"] == "confirm"
-    assert s.await_args.kwargs["status"] == "accepted"
-
-
-@pytest.mark.asyncio
-async def test_patch_readiness_sets_skip_extraction():
-    """§I:PATCH readiness 置 skip_extraction。"""
-    work_id = _locked_work()
-    with (
-        patch.object(dp._prep, "set_skip_extraction", AsyncMock()) as s,
-        patch.object(
-            dp._prep, "get_preparation_state", AsyncMock(return_value={"status": "ready"})
-        ),
-    ):
-        resp = await dp.patch_shot_readiness(
-            work_id, "SH001_01", dp.ReadinessPatch(skip_extraction=True), _USER, _FakePool()
-        )
-    assert resp["action"] == "skip_extraction"
-    assert s.await_args.args[3] is True  # skip 值透传
-
-
-@pytest.mark.asyncio
-async def test_produce_blocked_when_shots_unprepared():
-    """§L.2 就绪门:提取后仍 pending 的镜头拦产集(409)。"""
-    from fastapi import BackgroundTasks
-
-    work_id = _locked_work()
-    with (
-        patch.object(dp._prep, "produce_blockers", AsyncMock(return_value=["SH001_01"])),
-        pytest.raises(HTTPException) as ei,
-    ):
-        await dp.produce_work(
-            work_id,
-            dp.ProduceRequest(),
-            BackgroundTasks(),
-            _USER,
-            AsyncMock(),
-            AsyncMock(),
-            _FakePool(),
-        )
-    assert ei.value.status_code == 409
-    assert "未完成准备" in ei.value.detail
-
-
-@pytest.mark.asyncio
-async def test_preparation_overview_merges_shotlist_with_readiness():
-    """§L.1:概览把锁定 shot_list 的每镜与就绪行合并;未准备过的镜默认 pending。"""
-    work_id = _locked_work()
-    with (
-        patch.object(
-            dp._prep,
-            "readiness_overview",
-            AsyncMock(
-                return_value=[
-                    {
-                        "shot_id": "SH001_01",
-                        "status": "ready",
-                        "extracted": True,
-                        "skip_extraction": False,
-                    }
-                ]
-            ),
-        ),
-        patch.object(dp._prep, "produce_blockers", AsyncMock(return_value=[])),
-    ):
-        resp = await dp.preparation_overview(work_id, _USER, _FakePool())
-    assert resp["shots"][0]["shot_id"] == "SH001_01"
-    assert resp["shots"][0]["status"] == "ready"
-    assert resp["blockers"] == []

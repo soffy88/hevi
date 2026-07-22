@@ -341,8 +341,7 @@ export const shortdramaApi = {
 // 立意→剧本→设计清单→分镜,逐级人审核锁定才放行下游,详见
 // docs/specs/SPEC-003-mainline-director-pipeline.md。
 import type {
-  DpConcept, DpScreenplay, DpDesignList, DpSceneStageSet, DpShotList, DpWork, DpProduceRequest,
-  DpPrepState, DpPrepMutation, DpPrepOverview,
+  DpConcept, DpScreenplay, DpDesignList, DpWorldBible, DpSceneScriptSet, DpWork, DpProduceRequest,
 } from '@/types/api';
 export const directorPipelineApi = {
   createWork: (materialText: string, intentHint = '') =>
@@ -359,11 +358,12 @@ export const directorPipelineApi = {
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/screenplay`, { method: 'POST' }),
   regenerateDesignList: (workId: string) =>
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list`, { method: 'POST' }),
-  // SPEC-004 ③.5 场面调度:重新生成本级草稿(逐场 SceneStage)
-  regenerateSceneStage: (workId: string) =>
-    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/scene-stage`, { method: 'POST' }),
-  regenerateShotList: (workId: string) =>
-    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/shot-list`, { method: 'POST' }),
+  // V1→V2(2026-07-21):④World Bible 替换 V1 的③.5 场面调度,重新生成本级草稿(四卷)
+  regenerateWorldBible: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/world-bible`, { method: 'POST' }),
+  // ⑤Scene Script 替换 V1 的④分镜,重新生成本级草稿(逐场链式)
+  regenerateSceneScript: (workId: string) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/scene-script`, { method: 'POST' }),
   // 锁定(可能已编辑的)内容 → 自动生成下一级草稿
   lockConcept: (workId: string, body: DpConcept) =>
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/concept/lock`, {
@@ -377,41 +377,24 @@ export const directorPipelineApi = {
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list/lock`, {
       method: 'POST', body: JSON.stringify(body),
     }),
-  // SPEC-004 ③.5:锁定(可能已攻击过的)场面调度 → 后台生成④分镜草稿 + 跑 §4 lint
-  lockSceneStage: (workId: string, body: DpSceneStageSet) =>
-    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/scene-stage/lock`, {
+  // V1→V2(2026-07-21):锁定(可能已编辑的)World Bible → 后台生成⑤Scene Script 草稿(逐场链式)
+  lockWorldBible: (workId: string, body: DpWorldBible) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/world-bible/lock`, {
       method: 'POST', body: JSON.stringify(body),
     }),
-  lockShotList: (workId: string, body: DpShotList) =>
-    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/shot-list/lock`, {
+  lockSceneScript: (workId: string, body: DpSceneScriptSet) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/scene-script/lock`, {
       method: 'POST', body: JSON.stringify(body),
     }),
-  // 仅 shot_list_locked 才允许,建真实 video_task 出片
+  // 仅 scene_script_locked 才允许,走 V2 document-first 管线出真实成片
   produce: (workId: string, body: DpProduceRequest) =>
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/produce`, {
       method: 'POST', body: JSON.stringify(body),
     }),
-  // ── INC-001 §A/§G/§I/§L 逐镜头准备台 ──
-  preparationOverview: (workId: string) =>
-    authedReq<DpPrepOverview>(`/api/director-pipeline/works/${workId}/preparation-overview`),
-  preparationState: (workId: string, shotId: string) =>
-    authedReq<DpPrepState>(
-      `/api/director-pipeline/works/${workId}/shots/${shotId}/preparation-state`),
-  extractShot: (workId: string, shotId: string) =>
-    authedReq<DpPrepMutation>(
-      `/api/director-pipeline/works/${workId}/shots/${shotId}/extract`, { method: 'POST' }),
-  confirmCandidate: (
-    workId: string, shotId: string, candidateId: string,
-    body: { kind: 'asset' | 'dialogue'; status: string;
-      linked_entity_id?: string | null; linked_dialog_line_id?: string | null },
-  ) =>
-    authedReq<DpPrepMutation>(
-      `/api/director-pipeline/works/${workId}/shots/${shotId}/candidates/${candidateId}/confirm`,
-      { method: 'POST', body: JSON.stringify(body) }),
-  setReadiness: (workId: string, shotId: string, skipExtraction: boolean) =>
-    authedReq<DpPrepMutation>(
-      `/api/director-pipeline/works/${workId}/shots/${shotId}/readiness`,
-      { method: 'PATCH', body: JSON.stringify({ skip_extraction: skipExtraction }) }),
+  // V1→V2(2026-07-21):逐镜头准备台(INC-001 §A/§G/§I/§L)端点已随后端一起删除,
+  // V2 没有对应的候选确认流程——world_bible/scene_script 的 draft→人审→lock 循环本身
+  // 就是生成前的人工确认门。preparationOverview/preparationState/extractShot/
+  // confirmCandidate/setReadiness 不再存在,不留占位。
 };
 
 // ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────

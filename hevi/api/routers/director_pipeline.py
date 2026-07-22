@@ -1,19 +1,30 @@
-"""SPEC-003 主线导演流水线 API —— 立意→剧本→设计清单→分镜,逐级人审核锁定才放行下游。
+"""主线导演流水线 API —— 立意→剧本→设计清单→World Bible→Scene Script,逐级人审核锁定
+才放行下游。
 
   - POST /director-pipeline/works                          素材 → 建 work + 生成①立意草稿
   - GET  /director-pipeline/works / /works/{id}             列出/查询 work 全量状态
-  - POST /works/{id}/concept | /screenplay | /design-list | /shot-list
+  - POST /works/{id}/concept | /screenplay | /design-list | /world-bible | /scene-script
                                                              重新生成本级草稿(未锁定可反复调;
                                                              已锁定再调 = 回退该级 + 清空全部下游)
-  - POST /works/{id}/concept/lock(及对应 screenplay/design-list/shot-list/lock)
+  - POST /works/{id}/concept/lock(及对应 screenplay/design-list/world-bible/scene-script/lock)
                                                              存入(可能已编辑的)内容 → 锁定 →
                                                              自动生成下一级草稿
-  - POST /works/{id}/produce                                仅 shotlist_locked 才允许,建真实
-                                                             video_task 出片(现有 L1,不改)
+  - POST /works/{id}/produce                                仅 scene_script_locked 才允许,
+                                                             走 V2 document-first 管线
+                                                             (`hevi.director.produce_v2::
+                                                             run_v2_produce`)出真实成片
 
-跟现有 `director.py::director_create_episode`(一句话直接产集)并行存在,不替换——
-SPEC-003 §7 说旧路径该废弃,但那是较大 UX 变更,本次先新增不删旧,详见
-docs/specs/SPEC-003-mainline-director-pipeline.md 的实施取舍记录。
+V1→V2 原地升级(2026-07-21,替换不并行):第4/5 级从 V1 的③.5 场面调度 SceneStage/④分镜
+ShotList 换成 V2 的④World Bible/⑤Scene Script(`docs/specs/SPEC-007-cinematic-pipeline.md`,
+G-FINAL 真机验证过),`/produce` 真正发起生成也从通鉴口型管线(`_run_director_via_tongjian`)
+换成 `run_v2_produce`(多角色 reference-to-video,身份/风格/去重闸门齐全)。V1 那条路径
+(`_run_director_via_tongjian` 及其 `scene_stage.py`/`shot_list.py`/`shot_preparation.py`/
+`verdict_checks.py`/`tongjian_render.py` 依赖)标记 deprecated、不再被这个路由调用,但
+**代码不删**——`scene_stage.py`/`scene_stage_lint.py` 有几个私有函数被 V2 自己的
+`scene_stage_extract.py` 复用,`scene_render_avatar.py` 仍是通鉴/短剧频道的生产依赖,动不得。
+
+跟现有 `director.py::director_create_episode`(一句话直接产集)并行存在,不替换——那是
+另一条更早的极简路径,不是这次升级的范围。
 
 work 状态存内存 map(同 tongjian/shortdrama 的既有 P0 兜底,不建表——`video_tasks` 只在
 `/produce` 真正建生成任务时才创建那一行)。
@@ -26,7 +37,6 @@ import contextlib
 import hashlib
 import logging
 import uuid
-from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
@@ -41,30 +51,30 @@ from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
-from hevi.director import shot_preparation as _prep
 from hevi.director.concept import generate_concept_draft
 from hevi.director.design_list import generate_design_list_draft
 from hevi.director.pipeline_schemas import (
     Concept,
     DesignCharacter,
     DesignList,
+    SceneScriptSet,
     SceneStageSet,
     Screenplay,
     ShotList,
-    ShotListItem,
+    WorldBible,
 )
-from hevi.director.scene_stage import generate_scene_stage_draft, link_shots_to_scene_stage
-from hevi.director.scene_stage_lint import lint_scene_stage
+from hevi.director.produce_v2 import run_v2_produce
+from hevi.director.scene_script import generate_scene_script_draft
+from hevi.director.scene_stage import generate_scene_stage_draft
 from hevi.director.screenplay import generate_screenplay_draft
-from hevi.director.shot_list import generate_shot_list_draft
 from hevi.director.tongjian_render import render_director_episode
 from hevi.director.verdict_checks import ShotVerdict, verdict_shot
+from hevi.director.world_bible import generate_world_bible_draft
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 from hevi.tongjian.scene_render_avatar import multichar_chain_log
-from hevi.video.duration_mapper import get_duration_config
 
 logger = logging.getLogger(__name__)
 
@@ -96,16 +106,18 @@ _SCENE_PLATE_DIRECTION = (
 _SCENE_PLATE_NEGATIVE = "人物,人,角色,人群,肖像,半身像,面孔,行人,演员"
 _PORTRAIT_MAX_ATTEMPTS = 3
 
-# ①→②→③→③.5→④,每级有 _draft/_locked 两态。scene_stage(SPEC-004 场面调度)插在
-# design_list 与 shot_list 之间:未锁 scene_stage 则 shot_list 无法锁(_require_stage_ready
-# 走 _STAGES 顺序,自动成立),产集门 _stage_index("shot_list") 也随之右移,无需另改。
-_STAGES = ("concept", "screenplay", "design_list", "scene_stage", "shot_list")
+# V1→V2 原地升级(2026-07-21):①→②→③→④→⑤,同槽位替换不是插入新槽位——第4/5 槽从
+# V1 的 scene_stage/shot_list 换成 V2 的 world_bible/scene_script,_stage_index 的下标
+# 语义不变(_require_stage_ready/产集门槛照样按 _STAGES 顺序走,不用另改)。V1 的
+# scene_stage/shot_list 生成函数仍保留在文件里(标记 deprecated,给 `_run_director_via_
+# tongjian` 这条不再被调用但也不删除的旧路径用),只是不再是这五级流程的一部分。
+_STAGES = ("concept", "screenplay", "design_list", "world_bible", "scene_script")
 _STAGE_KEY = {  # 内存记录里存内容用的 key(跟 URL path 段独立,path 用连字符,dict 用下划线)
     "concept": "concept",
     "screenplay": "screenplay",
     "design_list": "design_list",
-    "scene_stage": "scene_stage",
-    "shot_list": "shot_list",
+    "world_bible": "world_bible",
+    "scene_script": "scene_script",
 }
 
 
@@ -144,9 +156,8 @@ def _init_work(
         "concept": None,
         "screenplay": None,
         "design_list": None,
-        "scene_stage": None,
-        "shot_list": None,
-        "scene_stage_lint": [],  # SPEC-004 §4:链接后跑的四条确定性 lint findings(生成后守护)
+        "world_bible": None,
+        "scene_script": None,
         "video_task_id": None,
         "error": None,
     }
@@ -203,9 +214,8 @@ def _work_status(rec: dict[str, Any]) -> dict[str, Any]:
         "concept": rec["concept"],
         "screenplay": rec["screenplay"],
         "design_list": rec["design_list"],
-        "scene_stage": rec["scene_stage"],
-        "shot_list": rec["shot_list"],
-        "scene_stage_lint": rec.get("scene_stage_lint", []),
+        "world_bible": rec["world_bible"],
+        "scene_script": rec["scene_script"],
         "video_task_id": rec["video_task_id"],
         "error": rec["error"],
     }
@@ -489,10 +499,11 @@ async def _build_scene_stage_set(screenplay: Screenplay, design_list: DesignList
 async def _run_design_list_lock(
     work_id: str, body: DesignList, *, user_id: str, subject_svc: SubjectService
 ) -> None:
-    """③锁定的真正重活(N 个资产建号 + ③.5 场面调度逐场 LLM 生成)——角色/场次一多,就算
-    每个调用本身都做了并发/超时收敛,总和还是可能顶到反向代理超时(线上已实测 524/挂起
-    好几轮)。放到 background task 里跑,HTTP 响应不再等它,前端轮询 GET /works/{id}
-    直到状态变化即可。SPEC-004:③锁定后自动生成的下一级不再是④分镜,而是③.5 场面调度草案。"""
+    """③锁定的真正重活(N 个资产建号 + ④World Bible 四卷并发 LLM 生成)——角色/场次一多,
+    就算每个调用本身都做了并发/超时收敛,总和还是可能顶到反向代理超时(线上已实测
+    524/挂起好几轮)。放到 background task 里跑,HTTP 响应不再等它,前端轮询
+    GET /works/{id} 直到状态变化即可。V1→V2 原地升级(2026-07-21):③锁定后自动生成的
+    下一级不再是 V1 的③.5 场面调度草案,是 V2 的④World Bible 草案。"""
     rec = _WORKS.get(work_id)
     if rec is None:
         return
@@ -502,10 +513,15 @@ async def _run_design_list_lock(
         )
         rec["design_list"] = locked.model_dump()
         rec["locked_through"] = _stage_index("design_list")
-        screenplay = Screenplay.model_validate(rec["screenplay"])
-        scene_stage = await _build_scene_stage_set(screenplay, locked)
-        rec["scene_stage"] = scene_stage.model_dump()
-        rec["status"] = "scene_stage_draft"
+        concept = Concept.model_validate(rec["concept"])
+        world_bible = await generate_world_bible_draft(
+            concept=concept,
+            material_text=rec["material_text"],
+            design_list=locked,
+            llm=_resolve_llm(),
+        )
+        rec["world_bible"] = world_bible.model_dump()
+        rec["status"] = "world_bible_draft"
     except Exception as e:
         logger.exception("design-list 后台锁定失败: work_id=%s", work_id)
         rec["design_list"] = body.model_dump()
@@ -532,274 +548,167 @@ async def lock_design_list(
     return _work_status(rec)
 
 
-# ── ③.5 场面调度 SceneStage(SPEC-004)────────────────────────────────────────
+# ── ④World Bible(V1→V2 原地升级,2026-07-21,替换原③.5 场面调度 SceneStage)──────
 #
-# ③设计清单锁定后自动生成本级草案(每场一个 SceneStage);人在 Construction-First 下攻击
-# 落位/注意力/机位后锁定,才放行④分镜。未锁本级则 shot-list 无法锁(_require_stage_ready
-# 自动成立)。逐场 LLM 生成同 design-list 是重活,放 background task。
+# ③设计清单锁定后自动生成本级草案(四卷并发生成,`generate_world_bible_draft`);人审
+# 编辑后锁定,才放行⑤Scene Script。逐卷并发 LLM 是重活,放 background task(同
+# design-list 既有模式)。
 
 
-async def _run_scene_stage_regenerate(work_id: str) -> None:
-    """③.5 逐场场面调度草案后台重生成(场次一多不顶反向代理超时,同 design-list 模式)。"""
+async def _run_world_bible_generate(work_id: str) -> None:
+    """④World Bible 草案后台生成(四卷并发 LLM,不顶反向代理超时,同 design-list 模式)。"""
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        concept = Concept.model_validate(rec["concept"])
+        design_list = DesignList.model_validate(rec["design_list"])
+        world_bible = await generate_world_bible_draft(
+            concept=concept,
+            material_text=rec["material_text"],
+            design_list=design_list,
+            llm=_resolve_llm(),
+        )
+        rec["world_bible"] = world_bible.model_dump()
+        rec["status"] = "world_bible_draft"
+    except Exception as e:
+        logger.exception("world-bible 后台生成失败: work_id=%s", work_id)
+        rec["status"] = "world_bible_generate_failed"
+        rec["error"] = str(e)
+
+
+@router.post("/works/{work_id}/world-bible")
+async def regenerate_world_bible(
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    rec = _require_work(work_id, user)
+    _require_stage_ready(rec, "world_bible")
+    _rollback_downstream(rec, "world_bible")
+    rec["status"] = "world_bible_generating"
+    rec["error"] = None
+    background_tasks.add_task(_run_world_bible_generate, work_id)
+    return _work_status(rec)
+
+
+async def _build_scene_script_set(
+    screenplay: Screenplay, design_list: DesignList, world_bible: WorldBible
+) -> SceneScriptSet:
+    """逐场生成 SceneScript 草案,**链式** `prev_handoff_out`/`prev_camera_movement`/
+    `prev_no_cut_to` 传递(V1 `_build_scene_stage_set` 没有这层链式逻辑——V2 的段间承接
+    [开场姿态是否咬合上一段收尾/运镜标签是否雷同/禁切清单延续]必须靠这条链,不是各场
+    独立生成再机械拼接,G-FINAL 真机验证过这个链式生成机制)。单场失败不拖垮整体,继续
+    下一场(同 `_build_scene_stage_set` 的"退回最小可锁草稿"精神)。"""
+    scripts = []
+    prev_handoff_out = ""
+    prev_camera_movement = ""
+    prev_no_cut_to: list[str] = []
+    for scene in screenplay.scenes:
+        script = await generate_scene_script_draft(
+            scene=scene,
+            design_list=design_list,
+            world_bible=world_bible,
+            llm=_resolve_llm(),
+            prev_handoff_out=prev_handoff_out,
+            prev_camera_movement=prev_camera_movement,
+            prev_no_cut_to=prev_no_cut_to,
+        )
+        scripts.append(script)
+        if script.segments:
+            prev_handoff_out = script.segments[-1].handoff_out
+            prev_camera_movement = script.segments[-1].camera_movement
+        prev_no_cut_to = script.no_cut_to
+    return SceneScriptSet(scripts=scripts)
+
+
+async def _run_world_bible_lock(work_id: str) -> None:
+    """④锁定后自动生成⑤Scene Script 草案(逐场链式 LLM,放后台)。"""
     rec = _WORKS.get(work_id)
     if rec is None:
         return
     try:
         screenplay = Screenplay.model_validate(rec["screenplay"])
         design_list = DesignList.model_validate(rec["design_list"])
-        scene_stage = await _build_scene_stage_set(screenplay, design_list)
-        rec["scene_stage"] = scene_stage.model_dump()
-        rec["status"] = "scene_stage_draft"
+        world_bible = WorldBible.model_validate(rec["world_bible"])
+        scene_script_set = await _build_scene_script_set(screenplay, design_list, world_bible)
+        rec["scene_script"] = scene_script_set.model_dump()
+        rec["status"] = "scene_script_draft"
     except Exception as e:
-        logger.exception("scene-stage 后台重新生成失败: work_id=%s", work_id)
-        rec["status"] = "scene_stage_regenerate_failed"
+        logger.exception("world-bible 锁定后生成 scene-script 失败: work_id=%s", work_id)
+        rec["status"] = "world_bible_lock_failed"
         rec["error"] = str(e)
 
 
-@router.post("/works/{work_id}/scene-stage")
-async def regenerate_scene_stage(
+@router.post("/works/{work_id}/world-bible/lock")
+async def lock_world_bible(
     work_id: str,
+    body: WorldBible,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
-    _require_stage_ready(rec, "scene_stage")
-    _rollback_downstream(rec, "scene_stage")
-    rec["status"] = "scene_stage_generating"
+    rec["world_bible"] = body.model_dump()
+    rec["locked_through"] = _stage_index("world_bible")
+    rec["status"] = "world_bible_locking"
     rec["error"] = None
-    background_tasks.add_task(_run_scene_stage_regenerate, work_id)
+    background_tasks.add_task(_run_world_bible_lock, work_id)
     return _work_status(rec)
 
 
-async def _run_scene_stage_lock(work_id: str) -> None:
-    """③.5 锁定后自动生成④分镜草案(逐场 LLM,放后台)。SPEC-004:shot_list 生成本身此级
-    暂不接 SceneStage 引用(那是阶段 3 的桥接层投影),仅由本级门控放行——保持阶段 2 聚焦状态机。"""
+# ── ⑤Scene Script ───────────────────────────────────────────────────────────
+
+
+async def _run_scene_script_regenerate(work_id: str) -> None:
+    """同 `_run_design_list_lock`:逐场链式 LLM 生成放后台跑,场次一多不顶到反向代理超时。"""
     rec = _WORKS.get(work_id)
     if rec is None:
         return
     try:
         screenplay = Screenplay.model_validate(rec["screenplay"])
         design_list = DesignList.model_validate(rec["design_list"])
-        shot_list = await generate_shot_list_draft(
-            screenplay=screenplay, design_list=design_list, llm=_resolve_llm()
-        )
-        # SPEC-004 阶段 3:确定性填充每镜的场事实引用(scene_stage_ref/beat_range/
-        # camera_setup_ref/attention_ref),画面空间/焦点由桥接层从 SceneStage 投影。
-        scene_stage = SceneStageSet.model_validate(rec["scene_stage"])
-        shot_list = link_shots_to_scene_stage(shot_list, scene_stage)
-        rec["shot_list"] = shot_list.model_dump()
-        # SPEC-004 §4:链接后跑四条确定性 lint(跳轴/反打/eyeline/剪辑冗余),findings 暴露给前端。
-        rec["scene_stage_lint"] = [asdict(f) for f in lint_scene_stage(shot_list, scene_stage)]
-        rec["status"] = "shot_list_draft"
+        world_bible = WorldBible.model_validate(rec["world_bible"])
+        scene_script_set = await _build_scene_script_set(screenplay, design_list, world_bible)
+        rec["scene_script"] = scene_script_set.model_dump()
+        rec["status"] = "scene_script_draft"
     except Exception as e:
-        logger.exception("scene-stage 锁定后生成分镜失败: work_id=%s", work_id)
-        rec["status"] = "scene_stage_lock_failed"
+        logger.exception("scene-script 后台重新生成失败: work_id=%s", work_id)
+        rec["status"] = "scene_script_regenerate_failed"
         rec["error"] = str(e)
 
 
-@router.post("/works/{work_id}/scene-stage/lock")
-async def lock_scene_stage(
-    work_id: str,
-    body: SceneStageSet,
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-    background_tasks: BackgroundTasks,
-) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
-    rec["scene_stage"] = body.model_dump()
-    rec["locked_through"] = _stage_index("scene_stage")
-    rec["status"] = "scene_stage_locking"
-    rec["error"] = None
-    background_tasks.add_task(_run_scene_stage_lock, work_id)
-    return _work_status(rec)
-
-
-# ── ④分镜头剧本 ────────────────────────────────────────────────────────────
-
-
-async def _run_shot_list_regenerate(work_id: str) -> None:
-    """同 _run_design_list_lock:逐场 LLM 生成放后台跑,场次一多不顶到反向代理超时。"""
-    rec = _WORKS.get(work_id)
-    if rec is None:
-        return
-    try:
-        screenplay = Screenplay.model_validate(rec["screenplay"])
-        design_list = DesignList.model_validate(rec["design_list"])
-        shot_list = await generate_shot_list_draft(
-            screenplay=screenplay, design_list=design_list, llm=_resolve_llm()
-        )
-        if rec.get("scene_stage"):  # SPEC-004 阶段 3:重新链接场事实引用 + §4 lint
-            scene_stage = SceneStageSet.model_validate(rec["scene_stage"])
-            shot_list = link_shots_to_scene_stage(shot_list, scene_stage)
-            rec["scene_stage_lint"] = [asdict(f) for f in lint_scene_stage(shot_list, scene_stage)]
-        rec["shot_list"] = shot_list.model_dump()
-        rec["status"] = "shot_list_draft"
-    except Exception as e:
-        logger.exception("shot-list 后台重新生成失败: work_id=%s", work_id)
-        rec["status"] = "shot_list_regenerate_failed"
-        rec["error"] = str(e)
-
-
-@router.post("/works/{work_id}/shot-list")
-async def regenerate_shot_list(
+@router.post("/works/{work_id}/scene-script")
+async def regenerate_scene_script(
     work_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
-    _require_stage_ready(rec, "shot_list")
-    _rollback_downstream(rec, "shot_list")
-    rec["status"] = "shot_list_generating"
+    _require_stage_ready(rec, "scene_script")
+    _rollback_downstream(rec, "scene_script")
+    rec["status"] = "scene_script_generating"
     rec["error"] = None
-    background_tasks.add_task(_run_shot_list_regenerate, work_id)
+    background_tasks.add_task(_run_scene_script_regenerate, work_id)
     return _work_status(rec)
 
 
-@router.post("/works/{work_id}/shot-list/lock")
-async def lock_shot_list(
-    work_id: str, body: ShotList, user: Annotated[dict[str, Any], Depends(get_current_user)]
+@router.post("/works/{work_id}/scene-script/lock")
+async def lock_scene_script(
+    work_id: str, body: SceneScriptSet, user: Annotated[dict[str, Any], Depends(get_current_user)]
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
-    rec["shot_list"] = body.model_dump()
-    rec["locked_through"] = _stage_index("shot_list")
-    rec["status"] = "shot_list_locked"
+    rec["scene_script"] = body.model_dump()
+    rec["locked_through"] = _stage_index("scene_script")
+    rec["status"] = "scene_script_locked"
     return _work_status(rec)
 
 
-# ── 逐镜头准备台(INC-001 §A/§G/§I/§L)──────────────────────────────────────
-#
-# §L.2 职责边界:准备台(本组端点)负责提取资产/对白候选 → 确认 → 把镜头推进到 ready;
-# 生成台(/produce)负责真实生成。所有 mutation 统一返回 {action, state}(§L.1 聚合态),
-# 前端不再自己拼 pendingConfirmCount / 推导 shot.status。
+# ── V1→V2 原地升级(2026-07-21):逐镜头准备台(INC-001 §A/§G/§I/§L)已整段删除。
+# 那套 candidate-confirm 状态机是 V1 专属(shot_preparation.py 的读写就绪门),V2 没有
+# 对应的候选确认流程——world_bible/scene_script 各自的 draft→人审编辑→lock 循环本身
+# 就是"生成前人工确认"的门,不需要另建一套。soffy 拍板直接删,不保留占位。
 
-
-def _find_shot(rec: dict[str, Any], shot_id: str) -> ShotListItem | None:
-    for s in (rec.get("shot_list") or {}).get("shots", []):
-        if s.get("shot_id") == shot_id:
-            return ShotListItem.model_validate(s)
-    return None
-
-
-def _parse_candidate_id(candidate_id: str) -> uuid.UUID:
-    try:
-        return uuid.UUID(candidate_id)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail="candidate_id 不是合法 UUID") from e
-
-
-class ConfirmCandidateRequest(BaseModel):
-    kind: str  # "asset" | "dialogue"
-    status: str  # asset: linked/ignored/pending;dialogue: accepted/ignored/pending
-    linked_entity_id: str | None = None  # asset 确认时的 subject_id
-    linked_dialog_line_id: str | None = None  # dialogue 接受时的 ShotDialogLine id
-
-
-class ReadinessPatch(BaseModel):
-    skip_extraction: bool
-
-
-@router.get("/works/{work_id}/preparation-overview")
-async def preparation_overview(
-    work_id: str,
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-    pool: Annotated[PgPool, Depends(get_pg_pool)],
-) -> dict[str, Any]:
-    """§L.1 全片就绪概览:每镜 status/extracted/skip_extraction + 产集拦截项。生成台用它
-    判断"能不能生成、还差哪些镜"。未准备过的镜合并出默认 pending。"""
-    rec = _require_work(work_id, user)
-    overview = {r["shot_id"]: r for r in await _prep.readiness_overview(pool, work_id)}
-    shots = [
-        {
-            "shot_id": s.get("shot_id"),
-            "status": overview.get(s.get("shot_id"), {}).get("status", "pending"),
-            "extracted": overview.get(s.get("shot_id"), {}).get("extracted", False),
-            "skip_extraction": overview.get(s.get("shot_id"), {}).get("skip_extraction", False),
-        }
-        for s in (rec.get("shot_list") or {}).get("shots", [])
-    ]
-    return {"shots": shots, "blockers": await _prep.produce_blockers(pool, work_id)}
-
-
-@router.get("/works/{work_id}/shots/{shot_id}/preparation-state")
-async def get_shot_preparation_state(
-    work_id: str,
-    shot_id: str,
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-    pool: Annotated[PgPool, Depends(get_pg_pool)],
-) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
-    return await _prep.get_preparation_state(pool, work_id, shot_id, _find_shot(rec, shot_id))
-
-
-@router.post("/works/{work_id}/shots/{shot_id}/extract")
-async def extract_shot_candidates(
-    work_id: str,
-    shot_id: str,
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-    pool: Annotated[PgPool, Depends(get_pg_pool)],
-) -> dict[str, Any]:
-    """§G 提取:从已锁 ShotListItem 确定性物化候选(不另调 LLM)。"""
-    rec = _require_work(work_id, user)
-    shot = _find_shot(rec, shot_id)
-    if shot is None:
-        raise HTTPException(status_code=404, detail="shot 不存在(分镜未锁定或 shot_id 错误)")
-    await _prep.extract_shot(pool, work_id, shot)
-    state = await _prep.get_preparation_state(pool, work_id, shot_id, shot)
-    return {"action": "extract", "state": state}
-
-
-@router.post("/works/{work_id}/shots/{shot_id}/candidates/{candidate_id}/confirm")
-async def confirm_shot_candidate(
-    work_id: str,
-    shot_id: str,
-    candidate_id: str,
-    body: ConfirmCandidateRequest,
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-    pool: Annotated[PgPool, Depends(get_pg_pool)],
-) -> dict[str, Any]:
-    """§G/§A.2 确认(或回退)一条候选,后端按 §A.1 重算就绪。"""
-    rec = _require_work(work_id, user)
-    cand = _parse_candidate_id(candidate_id)
-    if body.kind == "asset":
-        if body.status not in ("linked", "ignored", "pending"):
-            raise HTTPException(status_code=422, detail="asset 候选状态须为 linked/ignored/pending")
-        await _prep.set_asset_candidate(
-            pool, work_id, shot_id, cand, status=body.status, linked_entity_id=body.linked_entity_id
-        )
-    elif body.kind == "dialogue":
-        if body.status not in ("accepted", "ignored", "pending"):
-            raise HTTPException(
-                status_code=422, detail="dialogue 候选状态须为 accepted/ignored/pending"
-            )
-        await _prep.set_dialogue_candidate(
-            pool,
-            work_id,
-            shot_id,
-            cand,
-            status=body.status,
-            linked_dialog_line_id=body.linked_dialog_line_id,
-        )
-    else:
-        raise HTTPException(status_code=422, detail="kind 须为 asset 或 dialogue")
-    state = await _prep.get_preparation_state(pool, work_id, shot_id, _find_shot(rec, shot_id))
-    return {"action": "confirm", "state": state}
-
-
-@router.patch("/works/{work_id}/shots/{shot_id}/readiness")
-async def patch_shot_readiness(
-    work_id: str,
-    shot_id: str,
-    body: ReadinessPatch,
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-    pool: Annotated[PgPool, Depends(get_pg_pool)],
-) -> dict[str, Any]:
-    """§I skip_extraction 逃生阀:置 true → 该镜直达 ready。"""
-    rec = _require_work(work_id, user)
-    await _prep.set_skip_extraction(pool, work_id, shot_id, body.skip_extraction)
-    state = await _prep.get_preparation_state(pool, work_id, shot_id, _find_shot(rec, shot_id))
-    return {"action": "skip_extraction", "state": state}
-
-
-# ── ⑤产集(现有 L1,不改)────────────────────────────────────────────────────
+# ── ⑤产集 ─────────────────────────────────────────────────────────────────
 
 
 class ProduceRequest(BaseModel):
@@ -1008,6 +917,9 @@ async def _run_verdict(shots: list[dict[str, Any]], vlm: Any) -> list[ShotVerdic
     for s in shots:
         clip = Path(s["path"]) if s.get("path") else None
         sid = _derive_shot_id(s.get("path"))
+        # INC-004 §4.3:渲染层算出的这一镜实付美元(L4 路由才非 None),原样带进
+        # ShotVerdict.cost_usd 落库——三条构造路径都要带上,不只是"正常通过"那条。
+        cost_usd = s.get("cost_usd")
         if clip is None or not clip.exists():
             out.append(
                 ShotVerdict(
@@ -1016,6 +928,7 @@ async def _run_verdict(shots: list[dict[str, Any]], vlm: Any) -> list[ShotVerdic
                     passed=False,
                     diagnosis_category="动作",
                     retake_tier="re_roll",
+                    cost_usd=cost_usd,
                 )
             )
             continue
@@ -1034,18 +947,19 @@ async def _run_verdict(shots: list[dict[str, Any]], vlm: Any) -> list[ShotVerdic
                     diagnosis_category=s.get("diagnosis_category") or "构图",
                     retake_tier="rewrite",
                     checks={"upstream_degraded": True},
+                    cost_usd=cost_usd,
                 )
             )
             continue
-        out.append(
-            await verdict_shot(
-                shot_index=s["index"],
-                shot_id=sid,
-                clip_path=clip,
-                identity_score=s.get("consistency_score"),
-                vlm=vlm,
-            )
+        v = await verdict_shot(
+            shot_index=s["index"],
+            shot_id=sid,
+            clip_path=clip,
+            identity_score=s.get("consistency_score"),
+            vlm=vlm,
         )
+        v.cost_usd = cost_usd
+        out.append(v)
     return out
 
 
@@ -1061,8 +975,8 @@ async def _persist_verdicts(
                 await conn.execute(
                     "INSERT INTO shot_verdict (id, task_id, shot_index, shot_id, provider, "
                     "identity_score, black_ratio, hand_safety_ok, checks_json, "
-                    "diagnosis_category, retake_tier, attempt, passed) "
-                    "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13)",
+                    "diagnosis_category, retake_tier, attempt, passed, cost_usd) "
+                    "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14)",
                     _uuid.uuid4(),
                     task_id,
                     v.shot_index,
@@ -1076,6 +990,7 @@ async def _persist_verdicts(
                     v.retake_tier,
                     attempt,
                     v.passed,
+                    v.cost_usd,
                 )
 
 
@@ -1297,6 +1212,31 @@ async def _run_director_via_tongjian(
             await poller
 
 
+async def _run_v2_produce_task(**kwargs: Any) -> None:
+    """`run_v2_produce` 的 background-task 外壳——`BackgroundTasks` 不会捕获任务里抛出的
+    异常并回写状态(FastAPI 只是把异常打进服务端日志),`run_v2_produce` 自己在"整条流水线
+    走不下去"(比如一场戏一个可用段都没有)时会抛 `ProduceV2Error`,不接住的话
+    `video_tasks.status` 会永远卡在生成前的旧状态,前端轮询卡死等不到 `failed`。这层
+    镜像 `_run_director_via_tongjian` 自己内建的 `except Exception` 兜底,不是重复造轮子——
+    `run_v2_produce` 本身保持"该抛就抛"是为了让它自己的单测能直接断言
+    `pytest.raises(ProduceV2Error)`,捕获-回写状态是 background task 边界该做的事,两层
+    职责分开。"""
+    task_id = kwargs["task_id"]
+    task_repo = kwargs["task_repo"]
+    try:
+        await run_v2_produce(**kwargs)
+    except Exception as e:
+        logger.exception("V2 产集失败: task_id=%s", task_id)
+        await task_repo.update_task(
+            task_id,
+            {
+                "status": "failed",
+                "error": str(e)[:500],
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+
+
 @router.post("/works/{work_id}/produce")
 async def produce_work(
     work_id: str,
@@ -1308,48 +1248,43 @@ async def produce_work(
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
-    if rec["locked_through"] < _stage_index("shot_list"):
-        raise HTTPException(status_code=409, detail=f"分镜还没锁定(当前 {rec['status']}),不能产集")
-
-    # §L.2 就绪门:被实际准备过(extracted)却仍有待确认候选的镜头拦产集(未准备过的镜不拦,
-    # 向后兼容"锁分镜直接产集"的旧路径)。
-    blockers = await _prep.produce_blockers(pool, work_id)
-    if blockers:
+    if rec["locked_through"] < _stage_index("scene_script"):
         raise HTTPException(
-            status_code=409,
-            detail=f"还有 {len(blockers)} 个镜头未完成准备(提取后仍有待确认候选):{blockers[:5]}",
+            status_code=409, detail=f"Scene Script 还没锁定(当前 {rec['status']}),不能产集"
         )
+    # V1→V2 原地升级(2026-07-21):V1 §L.2 逐镜头准备台就绪门已删除(见上方"逐镜头准备台"
+    # 段落注释)。V2 产集门槛就是 world_bible+scene_script 都锁了,不需要另一套候选确认。
 
     design_list = DesignList.model_validate(rec["design_list"])
     concept = Concept.model_validate(rec["concept"])
+    screenplay = Screenplay.model_validate(rec["screenplay"])
+    world_bible = WorldBible.model_validate(rec["world_bible"])
+    scene_script_set = SceneScriptSet.model_validate(rec["scene_script"])
 
-    # 每个角色一个不同音色(治"对话也像旁白");用角色名当 key,通鉴 voice_by_speaker
-    # 也是按 speaker(=角色名)查。
+    # 每个角色一个不同音色(治"对话也像旁白");用角色名当 key,run_v2_produce 的
+    # voice_by_speaker 也是按 speaker(=角色名)查。
     character_voices = _assign_character_voices(design_list)
-    # 角色名 → 设计清单锁定的参考图(数字人 keyframe 的脸)。
+    # 角色名 → 设计清单锁定的参考图(multirole 生成的角色 canon)。
     subject_ref_paths = await _resolve_subject_ref_paths(design_list, subject_svc=subject_svc)
-    shot_list = ShotList.model_validate(rec["shot_list"])
-    # SPEC-004 阶段 3:场事实(逐镜投影空间/焦点)。旧 work 无 scene_stage → None,渲染退回断链#3。
-    scene_stage = (
-        SceneStageSet.model_validate(rec["scene_stage"]) if rec.get("scene_stage") else None
-    )
-    duration_cfg = get_duration_config(concept.duration_archetype)
+    # 场景名 → 设计清单锁定的空景板(multirole 生成的 scene_plate_path)。
+    scene_ref_paths = await _resolve_scene_ref_paths(design_list, subject_svc=subject_svc)
 
     # create_task 只用来:建 video_tasks 行 + 预算熔断 + 积分预留(计费一致性)。真正的
     # 生成不走 submit_task/run_task(那条是通用长视频管线 orchestrate_longvideo——把全片
     # 对白拼一条轨、镜头拉伸去填,对白跟画面对不上、看不到说话人,2026-07-14 用户实测
-    # 弃用),改成后台跑 render_director_episode(通鉴对白+口型管线)。budget_usd 留空
-    # 不透传(见历史注释:None 会撞下游 Pydantic float 校验)。
+    # 弃用),改成后台跑 run_v2_produce(document-first 多角色 reference-to-video 管线,
+    # G-FINAL 真机验证过)。budget_usd 留空不透传(见历史注释:None 会撞下游 Pydantic
+    # float 校验)。
     create_kwargs: dict[str, Any] = {
         "topic": concept.theme or rec["material_text"][:200],
         "duration_archetype": concept.duration_archetype,
-        "video_provider": "happyhorse_1_1_maas_lock",  # 数字人管线的真实 provider,计费按它估
+        "video_provider": "happyhorse_1_1_maas_ref",  # V2 真实调用的 provider,计价按它估
         "audio_provider": "edge_tts",
         "user_id": str(user["id"]),
         "quality_profile": body.quality_profile,
         "aspect_ratio": body.aspect_ratio,
         "style": concept.style or "cinematic",
-        "locked_shot_list": rec["shot_list"],
+        "locked_scene_script": rec["scene_script"],
         "character_voices": character_voices or None,
     }
     if body.budget_usd is not None:
@@ -1374,22 +1309,37 @@ async def produce_work(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     task_id = task["id"]
+
+    async def _progress_cb(
+        stage: str, pct: float, completed: int | None = None, total: int | None = None
+    ) -> None:
+        await svc.repository.update_task(
+            task_id,
+            {
+                "progress_pct": pct,
+                "config_json": {**task.get("config_json", {}), "stage": stage},
+                **({"completed_shots": completed} if completed is not None else {}),
+                **({"total_shots": total} if total is not None else {}),
+            },
+        )
+
     background_tasks.add_task(
-        _run_director_via_tongjian,
+        _run_v2_produce_task,
         task_repo=svc.repository,
         task_id=task_id,
-        shot_list=shot_list,
+        screenplay=screenplay,
         design_list=design_list,
-        concept=concept,
+        world_bible=world_bible,
+        scene_script_set=scene_script_set,
         subject_ref_paths=subject_ref_paths,
+        scene_ref_paths=scene_ref_paths,
         voice_by_speaker=character_voices,
-        aspect_ratio=body.aspect_ratio,
-        target_duration_sec=int(duration_cfg["target_s"]),
-        scene_stage=scene_stage,
-        subject_svc=subject_svc,  # SPEC-004 v2:后台建/取 Subject3D 视图用
+        progress_cb=_progress_cb,
     )
 
     rec["video_task_id"] = str(task_id)
     rec["status"] = "producing"
-    logger.info("director-pipeline work %s → task %s 产集(通鉴口型管线)", work_id, task_id)
+    logger.info(
+        "director-pipeline work %s → task %s 产集(V2 document-first 管线)", work_id, task_id
+    )
     return _work_status(rec)

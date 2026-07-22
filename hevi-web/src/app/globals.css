@@ -787,6 +787,9 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .tj-field--check input { width: auto; margin-top: 2px; flex: none; }
 .tj-field--check .tj-field__label { flex: 1; min-width: 0; }
 .tj-field__label { font-size: var(--text-xs); color: var(--muted-foreground); font-weight: 600; }
+.tj-field__readonly { padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--border);
+  background: color-mix(in oklch, var(--muted) 40%, var(--card)); color: var(--muted-foreground);
+  font-size: var(--text-sm); width: 100%; }
 .tj-field input:not([type="checkbox"]), .tj-field textarea {
   padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
   background: var(--card); color: var(--foreground); font-size: var(--text-sm);
@@ -928,6 +931,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .dp-step[data-state="active"] { border-color: oklch(0.70 0.14 55); color: oklch(0.70 0.14 55); font-weight: 700; background: color-mix(in oklch, oklch(0.70 0.14 55) 10%, transparent); }
 .dp-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; background: var(--card); }
 .dp-card__head { font-weight: 700; font-size: var(--text-sm); margin-bottom: 10px; }
+.dp-card--nested { margin-left: 12px; background: var(--background); }
 .dp-dialogue-row { display: flex; gap: 8px; margin-bottom: 6px; }
 .dp-dialogue-row__speaker { flex: 0 0 120px; }
 .dp-dialogue-row__text { flex: 1; }

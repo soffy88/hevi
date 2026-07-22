@@ -17,6 +17,8 @@ character_ids/scene_id/prop_ids 引用的就是这些 subject_id,不是清单里
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 # ── ① 立意 Concept ───────────────────────────────────────────────────────
@@ -470,6 +472,18 @@ class ShotListItem(BaseModel):
     beat_range: list[str] = Field(default_factory=list)  # 覆盖 SceneStage 的哪些 beat_id
     camera_setup_ref: str = ""  # coverage_plan 里的 setup_id(自带 axis_side/shot_size)
     attention_ref: str = ""  # 服务哪个 attention_beat(= at_beat,带出 focus_target/intensity)
+    # INC-004 §1.1:镜头类型(治"单人像跳来跳去"病1——④分镜只切 clean_single 轮播,没有让
+    # 观众感知"两人同处一室"的镜头类型)。master(建立空间关系的多人全景)| two_shot(双人
+    # 中景同框)| ots(过肩,前景一人背影/后脑+后景另一人脸)| clean_single(干净单人,此前
+    # 唯一会切的类型)| insert(道具/手部/环境特写)。空串 = 未分类(向后兼容旧 work)。
+    shot_type: str = ""
+    ots_foreground: str = ""  # 仅 shot_type=ots 时填:前景(背对镜头)那个角色名
+    # INC-004 §4.1:质量分级(治"电影级多人复杂姿态,本地 compose 路到顶"——第2、3步真机验证
+    # 坐实了这个天花板,不是所有镜都需要买旗舰,只有"本地做不出来"的关键镜才值得)。key=值得
+    # 路由到 L4 旗舰 provider;standard=本地免费路够用(默认)。纯规则判定(见
+    # hevi.director.shot_list.classify_quality_tier),不上 LLM 判——不确定的判据不该让 LLM
+    # 猜权重,规则说不准的宁可漏标(标 standard),不误标高估成本。
+    quality_tier: str = "standard"
 
 
 class ShotList(BaseModel):
@@ -616,3 +630,168 @@ class SceneStageSet(BaseModel):
     作 ③.5 级的 draft/lock 端点 body 与内存存储(director_pipeline._WORKS["scene_stage"])。"""
 
     stages: list[SceneStage] = Field(default_factory=list)
+
+
+# ── V2 文档优先架构(SPEC-006)──────────────────────────────────────────────
+# 核心反转:创作文档优先,结构(上面 SceneStageSet/ShotList 那套)是文档的校验影子。
+# World Bible(四卷高密度自然语言)+ Scene Script(逐段时间轴)才是 prompt 的真正来源;
+# SceneStage 改由 SceneScript 抽取产出,只用来跑既有 6 条 lint(scene_stage_lint.py)
+# 做矛盾校验,不再是生成源。G-V2 垂直切片范围:①World Bible ②Scene Script+抽取器
+# ③Generation Packet 组装,均为纯文本 LLM,不接入现有 API/lock 状态机/渲染管线。
+
+_CAMERA_PERSONA_IDS = ("dv_friend", "invisible_cine", "doc_crew", "static_watch")
+
+
+class CharacterVolumeEntry(BaseModel):
+    """World Bible 角色卷一段。name 对应 DesignCharacter.name,用于跨级关联(下游
+    Generation Packet 组装器按 name 取 canon 图路径)。profile_text 是主体——服装逐件、
+    发型细节、性格气质写成一段连续长文本,不拆细字段(V2 核心反转,拒绝重蹈 V1 覆辙)。
+    identity_lock_sentence 独立成字段(而非埋进 profile_text 末尾),让"是否已写身份锁定句"
+    变成可程序校验的事实(非空即通过),不必对长文本做脆弱的正则/句子边界解析。"""
+
+    name: str
+    profile_text: str = ""
+    identity_lock_sentence: str = ""
+    source_design_ref: str = ""  # 溯源 DesignCharacter.name(若有),纯记录,不做强校验
+    # 2026-07-19:原始素材(material_text)未明确写到、由 LLM 推测/合理补全的具体细节,逐条列出
+    # (不是整段 profile_text 是不是"assumed"这种粗粒度标记——人审时要能定位到具体哪句话没有
+    # 素材依据)。空列表 = LLM 自认为全部有素材依据(不代表真的没有遗漏,人审仍需过一遍)。
+    assumed_details: list[str] = Field(default_factory=list)
+
+
+class WorldVolumeEntry(BaseModel):
+    """World Bible 世界卷一段(每场景)。negative_list 天然是枚举体裁(逐条"不要出现XX"),
+    拆成 list[str] 不损失密度,跟 profile_text 拆成 environment/lighting 等细分字段是两回事。"""
+
+    name: str
+    profile_text: str = ""
+    negative_list: list[str] = Field(default_factory=list)
+    source_design_ref: str = ""
+    assumed_details: list[str] = Field(default_factory=list)  # 见 CharacterVolumeEntry 同名字段注释
+
+
+class CameraPersona(BaseModel):
+    """摄像机人格(V2 新一等公民)。定义在影像卷,全片一致。persona_id 4 选 1
+    (∈ _CAMERA_PERSONA_IDS),behavior_derivation_text 是这个人格具体怎么运镜的一段自由
+    文本行为派生规则——"不完美是人格表达"的落点在这里:呼吸感/介入感/手持幅度按人格写死
+    一次,Scene Script 每段的摄像机行为文本从这段规则派生,不产出逐段的独立字段留痕
+    (避免变成新的"V1 式摄像机坐标字段"入口)。"""
+
+    persona_id: str = "invisible_cine"
+    persona_rationale: str = ""  # 为什么这部作品选这个人格(导演意图,短文本)
+    behavior_derivation_text: str = ""
+
+
+class VisualVolume(BaseModel):
+    """World Bible 影像卷。"""
+
+    style_manifesto: str = ""  # 视觉风格宣言,长文本
+    camera_persona: CameraPersona = Field(default_factory=CameraPersona)
+    photographic_flaw_aesthetics: list[str] = Field(default_factory=list)  # 摄影缺陷美学清单
+    negative_list: list[str] = Field(default_factory=list)
+    assumed_details: list[str] = Field(default_factory=list)  # 见 CharacterVolumeEntry 同名字段注释
+
+
+class SoundVolume(BaseModel):
+    """World Bible 声音卷。"""
+
+    ambient_soundscape_text: str = ""  # 环境音谱系,长文本(不拆场次字段)
+    music_stance_text: str = ""  # 音乐立场宣言(有没有配乐/何时用/情绪功能),长文本
+    negative_list: list[str] = Field(default_factory=list)
+    # 2026-07-19(soffy 真机撞见):声音卷的输入只有全局 material_text,没有本场具体台词——
+    # 容易在举例佐证时"编"出剧本里不存在的具体台词/事件当参照物(不是推测风格,是编造
+    # 事实)。这类必须逐条列出让人审时能直接定位,不是泛泛"本卷含推测内容"。
+    assumed_details: list[str] = Field(default_factory=list)
+
+
+class WorldBible(BaseModel):
+    """一部作品一份,创作一次全局锁定。四卷。"""
+
+    characters: list[CharacterVolumeEntry] = Field(default_factory=list)
+    world: list[WorldVolumeEntry] = Field(default_factory=list)
+    visual: VisualVolume = Field(default_factory=VisualVolume)
+    sound: SoundVolume = Field(default_factory=SoundVolume)
+
+
+class SceneScriptDialogueLine(BaseModel):
+    """场文档时间轴里点出的一句台词——speaker/target 结构化标注供下游消费(TTS 音色路由 +
+    SceneStage 抽取器的 L3 eyeline lint 匹配用),不是脱离 narrative_text 的转述。
+    **text 必须与该段 narrative_text 里引述的台词逐字一致**:SceneStage 抽取器产出的
+    beat.trigger 要靠这个字段跟 scene_stage.py::_match_beats_for_shot 的逐字匹配对上,
+    改写/转述会让 lint 静默失效(看起来跑通,其实没匹配上任何镜头)。"""
+
+    character_name: str = ""
+    text: str = ""
+    target_name: str = ""
+
+
+class SceneScriptSegment(BaseModel):
+    """场文档一段(打磨第二轮起改成按戏剧节拍切段,5-10 秒粒度,不再是固定 2-4s 窗口)。
+    narrative_text 是【动作+摄像机行为一体】的连续描述——不拆 action 字段和 camera 字段,
+    这是 V2 对 V1 的核心反转。
+
+    2026-07-19 打磨第二轮(场内链式生成):加 handoff_out/handoff_in 两个接缝字段,供链式
+    生成时"段 N 末帧 → 段 N+1 条件"这件事在文本层面也有对应的承接描述(不只是图像层面的
+    末帧传递)。handoff_out 是这段收尾时人物的可承接停留点(位置/朝向/动作收束到什么状态),
+    handoff_in 是这段开场从何承接(应与上一段的 handoff_out 呼应)——相邻段文本因此"咬合",
+    不是各自独立的孤岛描述。"""
+
+    segment_id: str = ""  # sgNNN
+    order: int = 0
+    t_start_s: float = 0.0
+    t_end_s: float = 0.0
+    narrative_text: str = ""
+    dialogue: list[SceneScriptDialogueLine] = Field(default_factory=list)
+    handoff_out: str = ""
+    handoff_in: str = ""
+    # 2026-07-19 链式打磨:这段的运镜类型标签(如"定场推"/"静态对话"/"反应插入"/"峰值轻推",
+    # 不是穷举枚举,LLM 可以用其它贴切的词)。**这不是要拆解 narrative_text 里的自然语言运镜
+    # 描述**(那条"不产出逐段独立摄像机字段"的原则不变,narrative_text 仍是运镜的唯一权威
+    # 描述)——这只是给这段运镜"贴一个粗粒度分类标签"供 `lint_camera_movement_variety` 检查
+    # "相邻段是否雷同""push-in 占比是否超标"用,标签本身不进最终 prompt。
+    camera_movement: str = ""
+    # SPEC-007 §6.4(2026-07-20):这段动作如果是被画外音效触发的反应(如"画外传来击球声→
+    # 角色转头"),这里写触发源;没有画外触发就留空。跟 camera_movement 同类定位——粗粒度
+    # 标注供下游消费(音效/表演联动),不是要从 narrative_text 拆出一个新的权威字段。
+    offscreen_trigger: str = ""
+    # SPEC-007(2026-07-20):这段对应的具体戏剧节拍,一句话概括(如"王生额头触地的一瞬")。
+    # prompt 已经要求"整场戏只挑最有戏剧张力的1个核心节拍",但"是否真的踩中了节拍"是语义
+    # 判断、没法公式化验证——加这个字段让 LLM 显式点名,把"节拍边界"从"prompt 里的一句期望"
+    # 变成"每段是否显式声明了自己对应的节拍"这个可查信号,供 `lint_beat_and_dialogue_
+    # boundary` 使用。
+    beat_description: str = ""
+
+
+class SceneScript(BaseModel):
+    """场文档,每场一份。"""
+
+    scene_ref: int  # 对应 Screenplay.scene_no,命名对齐 SceneStage.scene_ref
+    characters_present: list[str] = Field(default_factory=list)  # 从 ScreenplayScene 透传,
+    # 不由 LLM/正则从 narrative_text 重新推断——避免"沉默在场的角色"被抽取器漏判
+    segments: list[SceneScriptSegment] = Field(default_factory=list)
+    total_duration_s: float = 0.0
+    # SPEC-007 §6.3(2026-07-20):这场戏禁切清单——不该切到的画外空间/不该用的景别(如
+    # "不切到球场""不切侧脸大特写")。场级生成一次,不是逐段;有"该切什么"(coverage 配比,
+    # V1 SceneStage 层的事)也该有"禁切什么"防模型自由发挥,这里先给 V2 Scene Script 层
+    # 一个轻量对应。
+    no_cut_to: list[str] = Field(default_factory=list)
+
+
+class SceneScriptSet(BaseModel):
+    """一个 work 的场文档集合——每场一份 SceneScript(scene_ref = Screenplay.scene_no)。
+    作 V2 ⑤级 draft/lock 端点 body 与内存存储(director_pipeline._WORKS["scene_script"]),
+    镜像 `SceneStageSet` 之于 V1 ③.5 级的角色。"""
+
+    scripts: list[SceneScript] = Field(default_factory=list)
+
+
+class GenerationPacket(BaseModel):
+    """③生成包——段落级(World Bible 切片 + Scene Script 一段时间轴 + canon 参考图)组装出
+    的 prompt。这次垂直切片只产出 prompt_text 供人工审阅,不接入渲染调用。"""
+
+    scene_ref: int
+    segment_ids: list[str] = Field(default_factory=list)
+    duration_s: float = 0.0
+    prompt_text: str = ""
+    reference_image_names: list[str] = Field(default_factory=list)
+    source_trace: dict[str, Any] = Field(default_factory=dict)  # 记录用了哪几卷/哪几段,便于审阅
