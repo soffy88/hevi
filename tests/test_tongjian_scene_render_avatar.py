@@ -42,14 +42,17 @@ def _stub_sdxl_local():
 
 from hevi.image.qwen_image_service import QwenImageError
 from hevi.tongjian.scene_render_avatar import (
+    _DEFAULT_COMPOSE_STRENGTH,
     _KF_DEGRADE_REASON,
     _MAX_CLIP_DURATION_S,
     _NARRATOR_DESC,
     _compose_layout_base,
     _compose_pose_control,
+    _compose_strength_for_style,
     _layout_col,
     _observe_end_state,
     _parse_blocking_positions,
+    _posture_scale,
     _resolve_dimensions,
     _say_dur,
     _split_text_for_dialogue,
@@ -2036,6 +2039,22 @@ async def test_shot_frame_carries_debug_context_and_quality_checks(tmp_path):
     assert qc["incomplete_state_applied"] is True  # 含"拔/猛地"反应链 → §C
 
 
+# ── INC-004 backlog:compose img2img strength 按 style 分档 ──────────────────
+
+
+def test_compose_strength_for_style_known_preset():
+    assert _compose_strength_for_style("写实历史正剧") == 0.55
+
+
+def test_compose_strength_for_style_matches_substring():
+    """style 是长描述句、不是精确等于档名时,包含匹配也要命中。"""
+    assert _compose_strength_for_style("长句子里含有写实历史正剧字样的描述") == 0.55
+
+
+def test_compose_strength_for_style_unknown_falls_back_to_default():
+    assert _compose_strength_for_style("国风水墨") == _DEFAULT_COMPOSE_STRENGTH
+
+
 # ── Gap 1 阶段1:多角色走位几何底图 ─────────────────────────────────────────────
 
 
@@ -2122,6 +2141,63 @@ def test_compose_layout_base_knocks_out_bg_and_positions(tmp_path):
 
 def _close(px, target, tol=60) -> bool:
     return all(abs(a - b) <= tol for a, b in zip(px, target, strict=False))
+
+
+# ── INC-004 §2.2:blocking 姿态关键词 → compose 几何(有效高度/下沉)──────────────
+
+
+def test_posture_scale_keyword_tiers():
+    assert _posture_scale("石阶中央，伏地") == 0.45
+    assert _posture_scale("画面右侧，双膝跪地仰面") == 0.45
+    assert _posture_scale("端坐蒲团") == 0.7
+    assert _posture_scale("画面左侧，站姿如松") == 1.0
+    assert _posture_scale("") == 1.0  # 没写姿态 → 维持现状,向后兼容
+
+
+def test_compose_layout_base_prostrate_character_shrinks_and_sinks(tmp_path):
+    """INC-004 §2.2 查②修复:此前 `_compose_layout_base` 对每个角色用同一个 fig_h + 同一条
+    脚底基线,blocking 写"伏地"也好"居高俯视"也好,两人在合成底图里永远同等身高、同一水平线
+    (2026-07-18 真机验收撞见:文本已经带了"伏地",SH003_01 还是渲成两人额头相抵)。这里验证
+    修复后,"伏地"角色在底图里 (1) 像素高度更矮 (2) 整体位置更靠下(近似"更贴近地面")。"""
+    from PIL import Image
+
+    va, vb = tmp_path / "a.png", tmp_path / "b.png"
+    _fake_subject3d_view(va, fill=(200, 40, 40))  # 红:伏地
+    _fake_subject3d_view(vb, fill=(40, 40, 200))  # 蓝:居高俯视(维持满高)
+    out = _compose_layout_base(
+        present=["A", "B"],
+        view_path_by_cid={"A": va, "B": vb},
+        pos_desc_by_cid={"A": "画面左侧，伏地", "B": "画面右侧，居高俯视"},
+        size=(720, 1280),
+        out_path=tmp_path / "layout_posture.png",
+    )
+    assert out is not None and out.exists()
+    canvas = Image.open(out).convert("RGB")
+    w, h = canvas.size
+
+    def _rows_with_color(target):
+        return [
+            y
+            for y in range(0, h, 2)
+            for x in range(0, w, 4)
+            if _close(canvas.getpixel((x, y)), target)
+        ]
+
+    red_rows = _rows_with_color((200, 40, 40))
+    blue_rows = _rows_with_color((40, 40, 200))
+    assert red_rows and blue_rows
+
+    red_span = max(red_rows) - min(red_rows)
+    blue_span = max(blue_rows) - min(blue_rows)
+    assert red_span < blue_span  # 伏地(红)像素跨度更矮
+
+    # 伏地角色整体下沉:红色最高点(头顶,y 最小)比蓝色的最高点更靠下(y 更大)。
+    assert min(red_rows) > min(blue_rows)
+
+
+def test_compose_layout_base_no_posture_keyword_unchanged_height():
+    """没写姿态关键词 → 有效高度比例仍是 1.0,行为跟 INC-004 之前一致(向后兼容)。"""
+    assert _posture_scale("石阶下两级，阶沿处") == 1.0
 
 
 def test_compose_layout_base_side_by_cid_wins_over_present_order(tmp_path):
@@ -2572,6 +2648,106 @@ async def test_multichar_dialogue_shot_routes_through_compose(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_multichar_dialogue_shot_blocking_text_reaches_local_prompt(tmp_path):
+    """INC-004 §2.2 查②修复:对白分支此前漏了 _blocking_hint,跟非对白分支不对称——同样是
+    双人 compose 镜,非对白分支的 img2img prompt 里能看到"伏地"这类走位文本,对白分支看不到。
+    这里用带明确姿态词的 blocking 复现 SH003_05 的真实场景,断言 sdxl 收到的 prompt 里
+    确实带上了这句话,不再是纯外貌+情绪的描述。"""
+    script = Script(
+        lines=[
+            ScriptLine(
+                line_id="LN001",
+                type="dialogue",
+                speaker="C_老道士",
+                text="尘心未净，回去罢。",
+                emotion="平静",
+                target="C_王生",
+            )
+        ]
+    )
+    shot = Shot(
+        shot_id="SH001",
+        line_ids=["LN001"],
+        characters=["C_老道士", "C_王生"],
+        scene_id="山门",
+        blocking=["王生:伏地,面向石阶", "老道士:居高俯视,面向王生"],
+    )
+    shotlist = ShotList(shots=[shot])
+    bible = CharacterBible(
+        characters=[
+            CharacterBibleEntry(character_id="C_老道士", name="老道士", appearance="鹤发童颜"),
+            CharacterBibleEntry(character_id="C_王生", name="王生", appearance="眉目清秀"),
+        ]
+    )
+    va, vb = tmp_path / "wg_front.png", tmp_path / "ld_front.png"
+    _fake_subject3d_view(va, fill=(200, 40, 40))
+    _fake_subject3d_view(vb, fill=(40, 40, 200))
+    from PIL import Image
+
+    plate = tmp_path / "scene_山门.png"
+    Image.new("RGB", (400, 300), (30, 60, 90)).save(plate)
+
+    seen_prompts: list = []
+
+    async def _spy_sdxl(**kw):
+        seen_prompts.append(kw.get("prompt", ""))
+        kw["output_path"].write_bytes(b"x" * 2048)
+
+    async def _fake_hh(*, image_path, prompt, output_path, duration, resolution):
+        output_path.write_bytes(b"fake-talk")
+        return output_path
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.sdxl_local_generate",
+            AsyncMock(side_effect=_spy_sdxl),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: (
+                    kw["output_path"].write_bytes(b"canon") or kw["output_path"]
+                )
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate", AsyncMock(side_effect=_fake_hh)
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                model="cloud_avatar",
+                params={
+                    "keyframe_engine": "local",
+                    "subject3d_views_by_id": {
+                        "C_王生": {"front": str(va)},
+                        "C_老道士": {"front": str(vb)},
+                    },
+                    "scene_bg_by_id": {"山门": str(plate)},
+                },
+            ),
+        )
+
+    assert seen_prompts, "sdxl_local_generate 应该被调用过"
+    assert any("伏地" in p and "居高俯视" in p for p in seen_prompts), (
+        f"走位姿态词没有出现在任何 sdxl prompt 里: {seen_prompts}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_single_char_dialogue_shot_unaffected_by_compose_routing(tmp_path):
     """INC-003 路由:单人对白镜行为不变(inert)——不建走位底图、不传 init_image/strength。"""
     script = Script(
@@ -2811,3 +2987,303 @@ def test_compose_pose_control_none_for_single_char(tmp_path):
         out_path=tmp_path / "pose.png",
     )
     assert out is None
+
+
+# ── INC-004 §4 L4 路由(quality_tier=key → alibaba_maas 旗舰) ──────────────────
+
+
+def _l4_bible():
+    return CharacterBible(
+        characters=[
+            CharacterBibleEntry(character_id="C_老道士", name="老道士", appearance="鹤发童颜"),
+            CharacterBibleEntry(character_id="C_王生", name="王生", appearance="眉目清秀"),
+        ]
+    )
+
+
+@pytest.mark.asyncio
+async def test_key_shot_non_dialogue_routes_to_l4_and_records_cost(tmp_path):
+    """INC-004 §4.1/§4.3:quality_tier=key 的非对白镜 → 路由 alibaba_maas 旗舰(2 张 canon
+    参考图),不进本地 compose;实付按测得时长 × 单价记进 ShotFrame.cost_usd。"""
+    script = Script(lines=[ScriptLine(line_id="LN001", type="action", text="二人对峙。")])
+    shot = Shot(
+        shot_id="SH001",
+        line_ids=["LN001"],
+        characters=["C_老道士", "C_王生"],
+        scene_id="山门",
+        blocking=["王生:伏地,面向石阶", "老道士:居高俯视,面向王生"],
+        quality_tier="key",
+    )
+    shotlist = ShotList(shots=[shot])
+    bible = _l4_bible()
+
+    l4_calls: list = []
+
+    async def _fake_l4(*, prompt, reference_images, output_path, **kw):
+        l4_calls.append({"prompt": prompt, "reference_images": reference_images, **kw})
+        output_path.write_bytes(b"fake-l4-video")
+        return output_path
+
+    fit_calls: list = []
+
+    def _fake_fit_l4(visual, out, w, h, audio=None):
+        fit_calls.append({"visual": visual, "audio": audio})
+        out.write_bytes(b"clip")
+
+    with (
+        patch(
+            "hevi.video.alibaba_maas_service.happyhorse_1_1_maas_reference_to_video",
+            AsyncMock(side_effect=_fake_l4),
+        ),
+        patch("hevi.tongjian.scene_render_avatar._ffprobe_dur", lambda p: 5.0),
+        patch("hevi.tongjian.scene_render_avatar._fit_l4_clip", _fake_fit_l4),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: (
+                    kw["output_path"].write_bytes(b"canon") or kw["output_path"]
+                )
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch("hevi.tongjian.scene_render_avatar.sdxl_local_generate", AsyncMock()) as sdxl_mock,
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(model="cloud_avatar", params={"keyframe_engine": "local"}),
+        )
+
+    assert not sdxl_mock.called, "key 镜必须绕开本地 compose,不是先试本地再叠 L4"
+    assert len(l4_calls) == 1
+    assert len(l4_calls[0]["reference_images"]) == 2
+    frame = manifest.frames[0]
+    assert frame.cost_usd == pytest.approx(5.0 * 0.14)
+    assert frame.debug_context["keyframe_source"] == "L4:happyhorse_r2v"
+    assert frame.degraded is False
+    # 非对白 key 镜:静音轨,不合成台词音频。
+    assert fit_calls[0]["audio"] is None
+
+
+@pytest.mark.asyncio
+async def test_key_shot_dialogue_mixes_synthesized_audio_over_l4_video(tmp_path):
+    """INC-004 §4.2(soffy 定):L4 没有唇形同步能力,对白 key 镜单独合成这句台词音频跟
+    L4 视频合流——要有声音、不追求对嘴型。"""
+    script = Script(
+        lines=[
+            ScriptLine(
+                line_id="LN001",
+                type="dialogue",
+                speaker="C_老道士",
+                text="尘心未净，回去罢。",
+                emotion="平静",
+                target="C_王生",
+            )
+        ]
+    )
+    shot = Shot(
+        shot_id="SH001",
+        line_ids=["LN001"],
+        characters=["C_老道士", "C_王生"],
+        scene_id="山门",
+        blocking=["王生:伏地,面向石阶", "老道士:居高俯视,面向王生"],
+        quality_tier="key",
+    )
+    shotlist = ShotList(shots=[shot])
+    bible = _l4_bible()
+
+    async def _fake_l4(*, prompt, reference_images, output_path, **kw):
+        output_path.write_bytes(b"fake-l4-video")
+        return output_path
+
+    synth_calls: list = []
+
+    async def _fake_synth(line, output_path, *, tts_fn, voice=None):
+        synth_calls.append(line.line_id)
+        output_path.write_bytes(b"fake-audio")
+        return 1200
+
+    fit_calls: list = []
+
+    def _fake_fit_l4(visual, out, w, h, audio=None):
+        fit_calls.append({"audio": audio})
+        out.write_bytes(b"clip")
+
+    with (
+        patch(
+            "hevi.video.alibaba_maas_service.happyhorse_1_1_maas_reference_to_video",
+            AsyncMock(side_effect=_fake_l4),
+        ),
+        patch("hevi.tongjian.scene_render_avatar._ffprobe_dur", lambda p: 4.0),
+        patch("hevi.tongjian.scene_render_avatar._fit_l4_clip", _fake_fit_l4),
+        patch("hevi.tongjian.voiceover._synthesize_line", AsyncMock(side_effect=_fake_synth)),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: (
+                    kw["output_path"].write_bytes(b"canon") or kw["output_path"]
+                )
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+    ):
+        await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(model="cloud_avatar", params={"keyframe_engine": "local"}),
+        )
+
+    assert synth_calls == ["LN001"]
+    assert fit_calls[0]["audio"] is not None
+
+
+@pytest.mark.asyncio
+async def test_key_shot_l4_failure_is_explicit_not_silent_local_fallback(tmp_path):
+    """INC-004 §4.2(沿用 expected_character_count 的规矩):L4 调用失败(额度墙/超时)必须
+    显式失败进 retake,不能悄悄退回本地 compose——本地对这类镜头已证到顶,降级 = 交付已知
+    会崩的东西。"""
+    script = Script(lines=[ScriptLine(line_id="LN001", type="action", text="二人对峙。")])
+    shot = Shot(
+        shot_id="SH001",
+        line_ids=["LN001"],
+        characters=["C_老道士", "C_王生"],
+        scene_id="山门",
+        blocking=["王生:伏地,面向石阶", "老道士:居高俯视,面向王生"],
+        quality_tier="key",
+    )
+    shotlist = ShotList(shots=[shot])
+    bible = _l4_bible()
+
+    with (
+        patch(
+            "hevi.video.alibaba_maas_service.happyhorse_1_1_maas_reference_to_video",
+            AsyncMock(side_effect=RuntimeError("quota wall")),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: (
+                    kw["output_path"].write_bytes(b"canon") or kw["output_path"]
+                )
+            ),
+        ),
+        patch("hevi.tongjian.scene_render_avatar.sdxl_local_generate", AsyncMock()) as sdxl_mock,
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(model="cloud_avatar", params={"keyframe_engine": "local"}),
+        )
+
+    frame = manifest.frames[0]
+    assert frame.degraded is True
+    assert "quota wall" in frame.degrade_reason
+    assert frame.cost_usd is None
+    assert not sdxl_mock.called, "L4 失败不能静默退回本地 compose"
+
+
+@pytest.mark.asyncio
+async def test_standard_tier_multichar_shot_never_routes_to_l4(tmp_path):
+    """INC-004 §4.4 inert 保证:quality_tier=standard(默认)的多角色镜,即便走位文本带姿态
+    落差词,也完全不碰 L4——继续走既有本地 compose 路,行为不变。"""
+    script = Script(
+        lines=[
+            ScriptLine(
+                line_id="LN001",
+                type="dialogue",
+                speaker="C_老道士",
+                text="尘心未净，回去罢。",
+                emotion="平静",
+                target="C_王生",
+            )
+        ]
+    )
+    shot = Shot(
+        shot_id="SH001",
+        line_ids=["LN001"],
+        characters=["C_老道士", "C_王生"],
+        scene_id="山门",
+        blocking=["王生:伏地,面向石阶", "老道士:居高俯视,面向王生"],
+        # quality_tier 未设 → 默认 "standard"
+    )
+    shotlist = ShotList(shots=[shot])
+    bible = _l4_bible()
+
+    va, vb = tmp_path / "wg_front.png", tmp_path / "ld_front.png"
+    _fake_subject3d_view(va, fill=(200, 40, 40))
+    _fake_subject3d_view(vb, fill=(40, 40, 200))
+    from PIL import Image
+
+    plate = tmp_path / "scene_山门.png"
+    Image.new("RGB", (400, 300), (30, 60, 90)).save(plate)
+
+    async def _fake_hh(*, image_path, prompt, output_path, duration, resolution):
+        output_path.write_bytes(b"fake-talk")
+        return output_path
+
+    with (
+        patch(
+            "hevi.tongjian.scene_render_avatar.sdxl_local_generate",
+            AsyncMock(side_effect=lambda **kw: kw["output_path"].write_bytes(b"x" * 2048)),
+        ) as sdxl_mock,
+        patch(
+            "hevi.tongjian.scene_render_avatar.qwen_image_generate",
+            AsyncMock(
+                side_effect=lambda **kw: (
+                    kw["output_path"].write_bytes(b"canon") or kw["output_path"]
+                )
+            ),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar.happyhorse_animate", AsyncMock(side_effect=_fake_hh)
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._extract_frame",
+            lambda clip, out: out.write_bytes(b"f"),
+        ),
+        patch(
+            "hevi.tongjian.scene_render_avatar._fit_dialogue",
+            lambda talk, clip, w, h: clip.write_bytes(b"c"),
+        ),
+        patch(
+            "hevi.video.alibaba_maas_service.happyhorse_1_1_maas_reference_to_video",
+            AsyncMock(),
+        ) as l4_mock,
+    ):
+        manifest = await build_frame_manifest_avatar(
+            shotlist,
+            script,
+            bible,
+            Constitution(),
+            run_dir=tmp_path,
+            config=LayerConfig(
+                model="cloud_avatar",
+                params={
+                    "keyframe_engine": "local",
+                    "subject3d_views_by_id": {
+                        "C_王生": {"front": str(va)},
+                        "C_老道士": {"front": str(vb)},
+                    },
+                    "scene_bg_by_id": {"山门": str(plate)},
+                },
+            ),
+        )
+
+    assert not l4_mock.called, "standard 镜必须完全绕开 L4"
+    assert sdxl_mock.called, "standard 镜照旧走本地 compose"
+    assert manifest.frames[0].cost_usd is None

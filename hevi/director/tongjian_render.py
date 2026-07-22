@@ -152,6 +152,9 @@ def build_tongjian_inputs(
                     for b in (shot.blocking or [])
                     if b.character_name in bible_names
                 ],
+                # INC-004 §4.2:key/standard 路由判定,从④分镜层透传(见
+                # hevi.director.shot_list.classify_quality_tier)。
+                quality_tier=shot.quality_tier or "standard",
                 # INC-002:performance_track 在桥接层编译成时序提示词随 Shot 透传。空 → 空串(inert)。
                 temporal_prompt=compile_temporal_prompt(shot.performance_track),
                 # §1.1 phase→beat 时刻切片,注入渲染首/关键/尾帧。空 → {}(inert)。

@@ -377,6 +377,9 @@ def _frame_manifest_to_shot_states(
                 # verdict 自己查不出,必须尊重渲染层的结论,否则会静默判它通过。
                 "degraded": frame.degraded,
                 "retry_count": 0,
+                # INC-004 §4.3:L4 路由这一镜的实付美元,None=本地免费路。透出来给 director
+                # 的 _run_verdict 落进 ShotVerdict.cost_usd。
+                "cost_usd": frame.cost_usd,
             }
         )
     return out

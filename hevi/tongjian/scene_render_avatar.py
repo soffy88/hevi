@@ -71,6 +71,29 @@ def multichar_chain_log(tag: str, msg: str, *args: Any) -> None:
 
 
 _DEFAULT_STYLE = "现代卡通动画风格,鲜艳色彩,简洁线条,可爱插画风,3D渲染质感"
+# INC-004 backlog:compose img2img 的 strength 此前全局硬编码 0.55(INC-003 探路唯一跑过的
+# 档),不同画风对"底图保多少几何/放多少画风进来"的容忍度不一样,理应按 style 分档,不是
+# 一刀切。这里先把"按 style 查 strength"这个机制立起来——**当前所有档位仍是占位的 0.55
+# (跟改之前行为一致),没有一档是真做过 A/B 实测调出来的数字**,包括"写实历史正剧"这档;
+# 2026-07-18 那次 $2.9 真机验收撞见的画风跑偏问题,复验判断根因主要在 `_compose_layout_base`
+# 的合成底图本身(TripoSR 贴纸感 + 无姿态/身高层次,见该函数 docstring),不在 strength 数值——
+# 调 strength 这个杠杆预期效果有限,该不该真花时间实测调档、调了收益多大,留 soffy 定。
+_COMPOSE_STRENGTH_BY_STYLE: dict[str, float] = {
+    "写实历史正剧": 0.55,
+}
+_DEFAULT_COMPOSE_STRENGTH = 0.55
+
+
+def _compose_strength_for_style(style: str) -> float:
+    """按 style 查 compose img2img 的 strength;没有专门档位 → 退回全局默认(向后兼容)。
+    `style` 是自由文本(可能是"写实历史正剧"这种短标签,也可能是更长的描述句),用包含匹配
+    (in),不要求逐字相等。"""
+    for key, val in _COMPOSE_STRENGTH_BY_STYLE.items():
+        if key in style:
+            return val
+    return _DEFAULT_COMPOSE_STRENGTH
+
+
 # 人物角色描述本身跟画风解耦——style 参数已经在 _canonical() 里前缀画风,这里只留
 # 外貌/身份描述,不重复写死具体某个画风,否则跟水墨等其它 style 预设叠在一起会打架。
 _NARRATOR_DESC = (
@@ -528,6 +551,46 @@ def _fit_silent(visual: Path, out: Path, w: int, h: int, duration: float) -> Non
     )
 
 
+def _fit_l4_clip(visual: Path, out: Path, w: int, h: int, audio: Path | None = None) -> None:
+    """INC-004 §4.2:L4 旗舰 provider 视频落地——视觉本身已经是真实运镜(旗舰生成的),
+    不能再套 `_fit_silent`/`_fit_narration` 那套 zoompan+循环(那是给静态图/短循环设计的,
+    叠在已经在动的视频上会双重运动、很怪)。只做缩放裁剪到目标尺寸 + 换音轨,输出时长跟着
+    视频原长走(`-shortest` 防音频比视频长时拖尾黑屏/静音)。`audio=None` → 挂静音音轨
+    (跟 `_fit_silent` 同样理由:每个 clip 都要有音频流,xfade 拼接不因缺流出错);非对白
+    key 镜用这个。`audio` 给了 → 换成这条音轨(对白 key 镜:L4 视频没有唇形同步能力,
+    2026-07-19 soffy 定"要有声音、不追求对嘴型",单独合成对白音频后在这里合流)。"""
+    audio_input = (
+        ["-i", str(audio)]
+        if audio
+        else ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"]
+    )
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(visual),
+            *audio_input,
+            "-filter_complex",
+            f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}[v]",
+            "-map",
+            "[v]",
+            "-map",
+            "1:a:0",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
+            str(out),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
 # _edit_keyframe 实际走通的引擎标签(返回值)。canon 复制 = 导演层完全没落地,视为降级。
 _KF_SDXL_IMG2IMG = "sdxl_img2img"  # SPEC-004 v2:从 Subject3D 朝向视图 img2img
 _KF_SDXL_IP_ADAPTER = "sdxl_ip_adapter"  # 默认路:本地 sdxl + IP-Adapter 锁脸
@@ -630,6 +693,29 @@ def _parse_blocking_positions(
     return out
 
 
+# INC-004 §2.2:关键词直接取自实测 blocking 文本(伏地/跪/趴/俯首/叩首/坐/蹲),十个以内。
+_POSTURE_LOW = ("伏地", "跪", "趴", "俯首", "叩首")  # 伏地哀求类 → 有效高度大幅收缩
+_POSTURE_MID = ("坐", "蹲")  # 介于站与伏地之间
+
+
+def _posture_scale(pos_desc: str) -> float:
+    """走位文本 → 该角色在合成底图里的有效高度比例(1.0=站立满高)。治"伏地哀求 vs 居高
+    俯视"这种权力关系被 compose 几何拉平的问题——`_compose_layout_base` 此前对每个角色用
+    同一个 fig_h(画布 78% 高)+ 同一条脚底基线,不管 blocking 写"伏地"还是"居高",两人在
+    init_image 里永远同等身高、同一水平线;img2img 在这张图上重绘,文本描述的姿态差异拗不过
+    图里"两人一样高"这个几何事实(2026-07-18 真机验收撞见:文本已经带了"伏地"，SH003_01
+    还是渲成额头相抵)。缩小比例后配合脚底贴底(`y = h - fig.height`)会自然让人物整体下沉——
+    不是精确的躺姿(手头只有站立姿态的 Subject3D 渲染图,拼不出真实卧姿轮廓),是用"更矮更低"
+    近似"更卑微/更贴近地面"这个构图关系,给 img2img 一个不再自相矛盾的起点。没识别到关键词
+    → 1.0(维持现状,向后兼容)。"""
+    t = pos_desc or ""
+    if any(k in t for k in _POSTURE_LOW):
+        return 0.45
+    if any(k in t for k in _POSTURE_MID):
+        return 0.7
+    return 1.0
+
+
 def _compose_layout_base(
     *,
     present: list[str],
@@ -672,13 +758,16 @@ def _compose_layout_base(
     try:
         for order, cid in enumerate(placeable):
             fig = _knockout_near_white(Image.open(view_path_by_cid[cid]))
-            scale = fig_h / fig.height
-            fig = fig.resize((max(1, int(fig.width * scale)), fig_h))
+            # INC-004 §2.2:按 blocking 关键词(伏地/坐/站等)收缩这个角色的有效高度,不再
+            # 所有人同一个 fig_h——见 _posture_scale docstring。
+            target_h = max(1, int(fig_h * _posture_scale(pos_desc_by_cid.get(cid, ""))))
+            scale = target_h / fig.height
+            fig = fig.resize((max(1, int(fig.width * scale)), target_h))
             cx = _layout_col(
                 pos_desc_by_cid.get(cid, ""), order, total, (side_by_cid or {}).get(cid, "")
             )
             x = int(cx * w - fig.width / 2)
-            y = h - fig.height  # 脚底贴画布底,近地面站位
+            y = h - fig.height  # 脚底贴画布底;矮个体(伏地/坐)因此整体下沉,近似"更贴近地面"
             canvas.paste(fig, (x, y), fig)  # 第三参 = alpha 蒙版
         canvas.save(out_path)
         return out_path
@@ -1291,10 +1380,79 @@ async def build_frame_manifest_avatar(
         _pose_control: Path | None = None  # Gap 1 阶段2:骨架控制图(已产出,worker 消费端待接)
         dur = _say_dur(text or shot.visual_prompt, per_char)
         clip = work / f"{sid}_clip.mp4"
+        # INC-004 §4.3:这一镜若路由 L4 旗舰 provider,记实付美元;None=本地免费路(默认)。
+        _l4_cost_usd: float | None = None
 
         try:
             if clip.exists():
                 pass
+            elif shot.quality_tier == "key" and (
+                len(_l4_present := [cid for cid in shot.characters if cid in appearance_by_id]) >= 2
+            ):
+                # INC-004 §4.2(2026-07-19,soffy 定):本地 compose 路对"多人+构图级姿态差异/
+                # 双人复杂关系镜"这两类已真机验证到顶(见 quality_tier 判定注释),不再尝试
+                # 本地 compose,直接路由 L4 旗舰(alibaba_maas_reference_generate,跟本地 compose
+                # 分支互斥——不是"L4 失败退本地",本地对这类镜头已知会崩,退回去 = 交付已知会崩
+                # 的东西,不是兜底,是新的一种撒谎)。失败(额度墙/超时/网络)就让异常自然抛到
+                # 外层 except(第 1941 行左右),按现有"整镜显式失败→retake"机制处理,这里不接
+                # 自己的 try/except 吞掉重试或静默退化。
+                present = _l4_present[:9]  # API 硬上限 1-9 张参考图
+                canons = [
+                    await _canonical(
+                        cid,
+                        appearance_by_id.get(cid, cid),
+                        work,
+                        style,
+                        ref_image=ref_image_by_id.get(cid),
+                    )
+                    for cid in present
+                ]
+                kf_canon = canons[0]
+                names = "、".join(name_by_id.get(cid, cid) for cid in present)
+                l4_prompt = (
+                    f"{style}，{scene_space}。{names}同框："
+                    + "、".join(appearance_by_id.get(cid, cid) for cid in present)
+                    + _blocking_hint
+                    + f"，神情{emotion}"
+                    + (f"，动作：{act_hint}" if act_hint else "")
+                    + "。写实质感，电影感，无文字水印。"
+                )
+                l4_duration = min(max(int(dur), 3), 15)  # API 文档标称 3-15s
+                from hevi.cost.pricing_table import get_pricing_table
+                from hevi.video.alibaba_maas_service import (
+                    _to_data_uri_if_local,
+                    happyhorse_1_1_maas_reference_to_video,
+                )
+
+                l4_visual = work / f"{sid}_l4_visual.mp4"
+                await happyhorse_1_1_maas_reference_to_video(
+                    prompt=l4_prompt,
+                    reference_images=[_to_data_uri_if_local(str(p)) for p in canons],
+                    output_path=l4_visual,
+                    duration=l4_duration,
+                    resolution=reso,
+                    ratio="9:16" if h >= w else "16:9",
+                )
+                _l4_actual_dur = _ffprobe_dur(l4_visual)
+                _l4_price_per_s = get_pricing_table()["happyhorse_1_1_maas_lock"]["price_usd"]
+                _l4_cost_usd = _l4_actual_dur * _l4_price_per_s
+                kf_source = "L4:happyhorse_r2v"
+
+                if is_dialogue and dlg_line:
+                    # 对白 key 镜:L4(alibaba_maas_reference_generate)没有唇形同步能力——
+                    # 2026-07-19 soffy 定"要有声音、不追求对嘴型",单独合成这句台词的音频,
+                    # 跟 L4 视频合流(不接自己的 voice_by_speaker 映射,这次先用 edge_tts 默认
+                    # 规则音色——按说话人分音色的映射没有传到这一层,是已知的简化,不是遗漏)。
+                    from hevi.audio.edge_tts_custom import edge_tts_synthesize_smart
+                    from hevi.tongjian.voiceover import _synthesize_line
+
+                    l4_audio = work / f"{sid}_l4_dialogue_audio.mp3"
+                    await _synthesize_line(
+                        dlg_line, l4_audio, tts_fn=edge_tts_synthesize_smart, voice=None
+                    )
+                    _fit_l4_clip(l4_visual, clip, w, h, audio=l4_audio)
+                else:
+                    _fit_l4_clip(l4_visual, clip, w, h)
             elif is_dialogue and lead:
                 # 对白:角色 keyframe(qwen-image-edit 上情绪+动作)→ happyhorse 说台词
                 present = [cid for cid in shot.characters if cid in appearance_by_id]
@@ -1385,10 +1543,15 @@ async def build_frame_manifest_avatar(
                             engine=keyframe_engine,
                             # 本地 IP-Adapter 只吃 1 张参考,只能锁 lead(说话人)一张脸,其余
                             # 在场角色靠文字描述(同§非对白分支)。
+                            # INC-004 §2.2 查②修复:此前这里漏了 _blocking_hint(伏地/居高俯视
+                            # 这类姿态/位置文本),跟非对白分支(下方另一处同名调用)不对称——
+                            # 那边早就把 _blocking_hint 拼进 appearance 参数了,这里没有,导致
+                            # 对白镜(如 SH003_05)的 img2img prompt 完全看不到走位姿态描述。
                             local_prompt=_local_kf_prompt(
                                 style,
                                 f"{names}同框:"
-                                + "、".join(appearance_by_id.get(cid, cid) for cid in present),
+                                + "、".join(appearance_by_id.get(cid, cid) for cid in present)
+                                + _blocking_hint,
                                 emotion,
                                 action_hint,
                                 scene_space=scene_space,
@@ -1398,8 +1561,9 @@ async def build_frame_manifest_avatar(
                             # 有走位底图 → img2img 从它起(几何软约束 + INC-003 空景板融合);
                             # 无 → None,走原多图 edit + IP-Adapter lead 锁脸路。
                             init_image=_layout_base,
-                            # INC-003 定档 0.55(见 _compose_layout_base docstring)。
-                            init_strength=0.55,
+                            # INC-003 定档 0.55,INC-004 起按 style 查档(见
+                            # _compose_strength_for_style;当前各档仍是占位值,未实测调过)。
+                            init_strength=_compose_strength_for_style(style),
                             size=(w, h),
                             negative_prompt=shot.negative_prompt,
                             # P0(2026-07-18):这是 N 人合成图,统一判据按 present 实际人数——
@@ -1611,7 +1775,9 @@ async def build_frame_manifest_avatar(
                                 # INC-003 定档 0.55(2026-07-18 探路证明:够高才跳出 TripoSR 卡通、
                                 # 重绘成写实融进场景,又不至于让角色自己转身丢姿势/身份)。仅在
                                 # init_image 存在(走位底图命中)时生效,否则 _edit_keyframe 忽略。
-                                init_strength=0.55,
+                                # INC-004 起按 style 查档(见 _compose_strength_for_style;当前
+                                # 各档仍是占位值,未实测调过)。
+                                init_strength=_compose_strength_for_style(style),
                                 size=(w, h),
                                 negative_prompt=shot.negative_prompt,
                                 # P0(2026-07-18):这是 N 人合成图,统一判据按 present 实际
@@ -1871,6 +2037,7 @@ async def build_frame_manifest_avatar(
                     degrade_reason=(_KF_DEGRADE_REASON if kf_degraded else ""),
                     debug_context=debug_context,
                     quality_checks=quality_checks,
+                    cost_usd=_l4_cost_usd,
                 )
             )
             logger.info(
