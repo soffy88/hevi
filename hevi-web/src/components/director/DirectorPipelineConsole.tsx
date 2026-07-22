@@ -111,7 +111,10 @@ export function DirectorPipelineConsole() {
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
   }
 
-  async function regenerate(stage: 'concept' | 'screenplay' | 'design_list' | 'world_bible' | 'scene_script') {
+  async function regenerate(
+    stage: 'concept' | 'screenplay' | 'design_list' | 'world_bible' | 'scene_script',
+    visualStyle?: 'realistic' | 'inkwash',
+  ) {
     if (!work) return;
     setBusy(true); setErr(null);
     try {
@@ -122,7 +125,10 @@ export function DirectorPipelineConsole() {
         world_bible: directorPipelineApi.regenerateWorldBible,
         scene_script: directorPipelineApi.regenerateSceneScript,
       }[stage];
-      let w = await fn(work.work_id);
+      // world_bible 重生成可带画风预设切换(realistic/inkwash);其余级无此参数。
+      let w = stage === 'world_bible'
+        ? await directorPipelineApi.regenerateWorldBible(work.work_id, visualStyle)
+        : await fn(work.work_id);
       setWork(w); syncDrafts(w);
       // screenplay(含自审)/ world_bible / scene_script 重生成都是后台任务,轮询到落地。
       for (const pending of ['screenplay_generating', 'world_bible_generating', 'scene_script_generating'] as const) {
@@ -281,8 +287,8 @@ export function DirectorPipelineConsole() {
 
       {work && lockedThrough === 2 && worldBibleDraft && (
         <WorldBibleReviewPanel
-          draft={worldBibleDraft} onChange={setWorldBibleDraft}
-          onRegenerate={() => regenerate('world_bible')} onLock={lockWorldBible} busy={busy}
+          draft={worldBibleDraft} visualStyle={work.visual_style} onChange={setWorldBibleDraft}
+          onRegenerate={vs => regenerate('world_bible', vs)} onLock={lockWorldBible} busy={busy}
         />
       )}
 

@@ -28,9 +28,12 @@ function StringListField({ label, value, onChange }: {
   );
 }
 
-export default function WorldBibleReviewPanel({ draft, onChange, onRegenerate, onLock, busy }: {
-  draft: DpWorldBible; onChange: (w: DpWorldBible) => void;
-  onRegenerate: () => void; onLock: () => void; busy: boolean;
+export default function WorldBibleReviewPanel({ draft, visualStyle, onChange, onRegenerate, onLock, busy }: {
+  draft: DpWorldBible; visualStyle: 'realistic' | 'inkwash';
+  onChange: (w: DpWorldBible) => void;
+  // 不带参 = 用当前画风重新生成;带参 = 切换到该画风并重新生成。
+  onRegenerate: (visualStyle?: 'realistic' | 'inkwash') => void;
+  onLock: () => void; busy: boolean;
 }) {
   function updateChar(i: number, patch: Partial<DpCharacterVolumeEntry>) {
     onChange({ ...draft, characters: draft.characters.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
@@ -119,8 +122,25 @@ export default function WorldBibleReviewPanel({ draft, onChange, onRegenerate, o
           onChange={v => setSound('assumed_details', v)} />
       </div>
 
+      <div className="dp-visual-style">
+        <span className="tj-field__label">画风预设</span>
+        <div className="tj-seg">
+          <button type="button"
+            className={`tj-btn${visualStyle === 'realistic' ? ' tj-btn--primary' : ''}`}
+            onClick={() => visualStyle !== 'realistic' && onRegenerate('realistic')} disabled={busy}>
+            真人写实
+          </button>
+          <button type="button"
+            className={`tj-btn${visualStyle === 'inkwash' ? ' tj-btn--primary' : ''}`}
+            onClick={() => visualStyle !== 'inkwash' && onRegenerate('inkwash')} disabled={busy}>
+            国风水墨
+          </button>
+        </div>
+        <span className="dp-visual-style__hint">切换画风会按新预设重新生成四卷</span>
+      </div>
+
       <div className="tj-actions">
-        <button type="button" className="tj-btn" onClick={onRegenerate} disabled={busy}>↻ 重新生成</button>
+        <button type="button" className="tj-btn" onClick={() => onRegenerate()} disabled={busy}>↻ 重新生成</button>
         <button type="button" className="tj-btn tj-btn--primary" onClick={onLock} disabled={busy}>
           {busy ? '处理中…' : '锁定 World Bible，生成⑤Scene Script 草稿'}
         </button>

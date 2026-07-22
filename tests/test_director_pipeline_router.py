@@ -508,7 +508,40 @@ async def test_regenerate_world_bible_rejected_before_design_list_locked():
 
 
 @pytest.mark.asyncio
-async def test_lock_world_bible_advances_and_generates_scene_script_draft():
+async def test_work_default_visual_style_is_realistic():
+    """新建 work 的画风预设默认 realistic(短剧产品目标),_work_status 回显。"""
+    work_id = str(uuid.uuid4())
+    rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
+    assert rec["visual_style"] == "realistic"
+    assert dp._work_status(rec)["visual_style"] == "realistic"
+
+
+@pytest.mark.asyncio
+async def test_regenerate_world_bible_visual_style_switch_reaches_generator():
+    """④重生成带 visual_style=inkwash → 更新 work 偏好 + _work_status 回显 + 真正透传给
+    generate_world_bible_draft(不是只存字段)。"""
+    from fastapi import BackgroundTasks
+
+    work_id = str(uuid.uuid4())
+    rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
+    rec["concept"] = _concept().model_dump()
+    rec["design_list"] = _design_list().model_dump()
+    rec["locked_through"] = 2  # design_list 锁定,④就绪
+
+    captured: dict = {}
+
+    async def _fake_gen(**kwargs):
+        captured.update(kwargs)
+        return _world_bible()
+
+    bg = BackgroundTasks()
+    with patch.object(dp, "generate_world_bible_draft", _fake_gen):
+        immediate = await dp.regenerate_world_bible(work_id, _USER, bg, visual_style="inkwash")
+        assert immediate["visual_style"] == "inkwash"  # _work_status 回显切换后的偏好
+        assert rec["visual_style"] == "inkwash"
+        await bg()
+
+    assert captured.get("visual_style") == "inkwash"  # 真正到达生成函数,不是只存字段
     """④锁定 → locked_through 推进到 world_bible(index 3),后台自动生成⑤Scene Script
     草案(逐场链式生成)。"""
     from fastapi import BackgroundTasks

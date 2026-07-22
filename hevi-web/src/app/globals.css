@@ -932,6 +932,8 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .dp-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; background: var(--card); }
 .dp-card__head { font-weight: 700; font-size: var(--text-sm); margin-bottom: 10px; }
 .dp-card--nested { margin-left: 12px; background: var(--background); }
+.dp-visual-style { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
+.dp-visual-style__hint { font-size: var(--text-xs); color: var(--muted-foreground); }
 .dp-dialogue-row { display: flex; gap: 8px; margin-bottom: 6px; }
 .dp-dialogue-row__speaker { flex: 0 0 120px; }
 .dp-dialogue-row__text { flex: 1; }

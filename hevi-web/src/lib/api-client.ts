@@ -358,9 +358,15 @@ export const directorPipelineApi = {
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/screenplay`, { method: 'POST' }),
   regenerateDesignList: (workId: string) =>
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/design-list`, { method: 'POST' }),
-  // V1→V2(2026-07-21):④World Bible 替换 V1 的③.5 场面调度,重新生成本级草稿(四卷)
-  regenerateWorldBible: (workId: string) =>
-    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/world-bible`, { method: 'POST' }),
+  // V1→V2(2026-07-21):④World Bible 替换 V1 的③.5 场面调度,重新生成本级草稿(四卷)。
+  // visualStyle(2026-07-22):影像美学预设(realistic 真人写实 / inkwash 国风水墨),
+  // 传入即切换该 work 的画风偏好后重新生成;不传保持既有偏好。
+  regenerateWorldBible: (workId: string, visualStyle?: 'realistic' | 'inkwash') =>
+    authedReq<DpWork>(
+      `/api/director-pipeline/works/${workId}/world-bible` +
+        (visualStyle ? `?visual_style=${visualStyle}` : ''),
+      { method: 'POST' },
+    ),
   // ⑤Scene Script 替换 V1 的④分镜,重新生成本级草稿(逐场链式)
   regenerateSceneScript: (workId: string) =>
     authedReq<DpWork>(`/api/director-pipeline/works/${workId}/scene-script`, { method: 'POST' }),

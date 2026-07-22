@@ -855,6 +855,9 @@ export interface DpWork {
   scene_script: DpSceneScriptSet | null;
   video_task_id: string | null;
   error: string | null;
+  // 影像美学预设(realistic 真人写实 / inkwash 国风水墨),控制 World Bible 的 style_manifesto
+  // 画风方向。默认 realistic;用户在 World Bible 面板切换后重新生成生效。
+  visual_style: 'realistic' | 'inkwash';
 }
 
 export interface DpProduceRequest {

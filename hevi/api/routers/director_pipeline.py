@@ -152,6 +152,10 @@ def _init_work(
         "locked_through": -1,
         "material_text": material_text,
         "intent_hint": intent_hint,
+        # 影像美学预设(realistic 真人写实 / inkwash 国风水墨),控制 World Bible 的
+        # style_manifesto 画风方向。默认写实(短剧产品目标);用户可在 World Bible 审阅面板
+        # 切换后重新生成(见 regenerate_world_bible 的 visual_style 参数)。
+        "visual_style": "realistic",
         "created_at": datetime.now(UTC),
         "concept": None,
         "screenplay": None,
@@ -218,6 +222,7 @@ def _work_status(rec: dict[str, Any]) -> dict[str, Any]:
         "scene_script": rec["scene_script"],
         "video_task_id": rec["video_task_id"],
         "error": rec["error"],
+        "visual_style": rec.get("visual_style", "realistic"),
     }
 
 
@@ -519,6 +524,7 @@ async def _run_design_list_lock(
             material_text=rec["material_text"],
             design_list=locked,
             llm=_resolve_llm(),
+            visual_style=rec.get("visual_style", "realistic"),
         )
         rec["world_bible"] = world_bible.model_dump()
         rec["status"] = "world_bible_draft"
@@ -568,6 +574,7 @@ async def _run_world_bible_generate(work_id: str) -> None:
             material_text=rec["material_text"],
             design_list=design_list,
             llm=_resolve_llm(),
+            visual_style=rec.get("visual_style", "realistic"),
         )
         rec["world_bible"] = world_bible.model_dump()
         rec["status"] = "world_bible_draft"
@@ -582,9 +589,14 @@ async def regenerate_world_bible(
     work_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     background_tasks: BackgroundTasks,
+    visual_style: str | None = None,
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
     _require_stage_ready(rec, "world_bible")
+    # 影像美学预设切换(写实/水墨)——用户在 World Bible 面板切换后重新生成时透传;
+    # 未识别值忽略,保持既有偏好不变。
+    if visual_style in ("realistic", "inkwash"):
+        rec["visual_style"] = visual_style
     _rollback_downstream(rec, "world_bible")
     rec["status"] = "world_bible_generating"
     rec["error"] = None
