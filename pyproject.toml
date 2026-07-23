@@ -35,9 +35,17 @@ dependencies = [
     "transformers==4.51.3",
     "diffusers>=0.30",
     "accelerate>=1.6.0",
+    "peft>=0.19",  # _sdxl_worker.py/_sdxl_batch_worker.py::load_lora_weights 的 LoRA 后端
+    # (国风水墨 LoRA)——此前只是venv里游离的 ad-hoc 装包、未声明,这次加 native_dialogue
+    # 新依赖跑 `uv sync` 时差点被当无主包一起清掉,顺手把这个既有缺口声明掉。
     "faster-whisper>=1.2.1",
     "edge-tts>=7.2.8",
+    "resemblyzer>=0.1.4",  # hevi.audio.voice_embed —— 原声对白音色一致性代理(d-vector)
+    "opencc-python-reimplemented>=0.1.7",  # 转写繁体→简体,跟 script 台词逐字比对前必需
+    "pypinyin>=0.55.0",  # 拼音级发音错误率(过滤 ASR 同音字混淆,见 native_dialogue.py)
     "av>=12",  # 3O §C4: PyAV 解码抽帧(自带 ffmpeg 库,不依赖系统 ffmpeg 二进制)
+    "pillow>=11.0",  # hevi/tongjian/diagram_gen.py 确定性地图/时间线渲染(SPEC-005 §1.4)。
+    # 此前只随 diffusers 传递安装、未直接声明;现在直接 import 了,显式声明依赖。
 ]
 
 [dependency-groups]

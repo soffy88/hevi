@@ -34,7 +34,13 @@ CURATED_VOICES: dict[str, str] = {
     "zh_male_mature": "zh-CN-YunxiaNeural",
     "en_female_standard": "en-US-AriaNeural",
     "en_male_standard": "en-US-GuyNeural",
+    # SPEC-005 §2.1 讲解段旁白人设(narrator_plain):平实、清晰、不表演,语速中等偏慢。
+    # 刻意不放进下面的 MALE_VOICE_POOL/FEMALE_VOICE_POOL——那两个池是"分配给剧中角色"的轮询池,
+    # narrator 声线必须与任何剧中人声线明显区分(§4.2 硬约束),靠不进池天然满足,不需要额外校验。
+    "zh_narrator_plain": "zh-CN-YunyeNeural",
 }
+
+NARRATOR_VOICE = "zh_narrator_plain"
 
 # 按性别分池,供"每个角色分到一个不同音色"的轮询分配(见
 # hevi/api/routers/director_pipeline.py::_assign_character_voices)。多角色对话时,同性别

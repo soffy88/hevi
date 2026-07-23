@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -51,7 +52,48 @@ from hevi.video.dashscope_i2v_service import happyhorse_animate, i2v_animate
 
 logger = logging.getLogger(__name__)
 
+# 多角色链路诊断开关(2026-07-18,INC-003 P0 排查沉淀)。三次同类"多角色镜头静默退化成单人"
+# bug 都是靠临时加 print/log 一步步跟出来的(present 数量、_view_path_by_cid、最终 kf_source
+# 各环节),第三次干脆固化成一个可复用工具——环境变量开,不用每次重新现挂现删。跨
+# scene_render_avatar.py / director_pipeline.py / tongjian_render.py 三个文件复用同一个开关名。
+MULTICHAR_CHAIN_DEBUG = os.getenv("HEVI_DEBUG_MULTICHAR_CHAIN", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+
+def multichar_chain_log(tag: str, msg: str, *args: Any) -> None:
+    """`HEVI_DEBUG_MULTICHAR_CHAIN=1` 时才打印,链路排查专用(不是常规日志,默认静音)。
+    warning 级(不是 debug)是故意的——排查时图省事直接看 stdout,不用额外调日志等级。"""
+    if MULTICHAR_CHAIN_DEBUG:
+        logger.warning("MULTICHAR-CHAIN[%s] " + msg, tag, *args)
+
+
 _DEFAULT_STYLE = "现代卡通动画风格,鲜艳色彩,简洁线条,可爱插画风,3D渲染质感"
+# INC-004 backlog:compose img2img 的 strength 此前全局硬编码 0.55(INC-003 探路唯一跑过的
+# 档),不同画风对"底图保多少几何/放多少画风进来"的容忍度不一样,理应按 style 分档,不是
+# 一刀切。这里先把"按 style 查 strength"这个机制立起来——**当前所有档位仍是占位的 0.55
+# (跟改之前行为一致),没有一档是真做过 A/B 实测调出来的数字**,包括"写实历史正剧"这档;
+# 2026-07-18 那次 $2.9 真机验收撞见的画风跑偏问题,复验判断根因主要在 `_compose_layout_base`
+# 的合成底图本身(TripoSR 贴纸感 + 无姿态/身高层次,见该函数 docstring),不在 strength 数值——
+# 调 strength 这个杠杆预期效果有限,该不该真花时间实测调档、调了收益多大,留 soffy 定。
+_COMPOSE_STRENGTH_BY_STYLE: dict[str, float] = {
+    "写实历史正剧": 0.55,
+}
+_DEFAULT_COMPOSE_STRENGTH = 0.55
+
+
+def _compose_strength_for_style(style: str) -> float:
+    """按 style 查 compose img2img 的 strength;没有专门档位 → 退回全局默认(向后兼容)。
+    `style` 是自由文本(可能是"写实历史正剧"这种短标签,也可能是更长的描述句),用包含匹配
+    (in),不要求逐字相等。"""
+    for key, val in _COMPOSE_STRENGTH_BY_STYLE.items():
+        if key in style:
+            return val
+    return _DEFAULT_COMPOSE_STRENGTH
+
+
 # 人物角色描述本身跟画风解耦——style 参数已经在 _canonical() 里前缀画风,这里只留
 # 外貌/身份描述,不重复写死具体某个画风,否则跟水墨等其它 style 预设叠在一起会打架。
 _NARRATOR_DESC = (
@@ -509,6 +551,46 @@ def _fit_silent(visual: Path, out: Path, w: int, h: int, duration: float) -> Non
     )
 
 
+def _fit_l4_clip(visual: Path, out: Path, w: int, h: int, audio: Path | None = None) -> None:
+    """INC-004 §4.2:L4 旗舰 provider 视频落地——视觉本身已经是真实运镜(旗舰生成的),
+    不能再套 `_fit_silent`/`_fit_narration` 那套 zoompan+循环(那是给静态图/短循环设计的,
+    叠在已经在动的视频上会双重运动、很怪)。只做缩放裁剪到目标尺寸 + 换音轨,输出时长跟着
+    视频原长走(`-shortest` 防音频比视频长时拖尾黑屏/静音)。`audio=None` → 挂静音音轨
+    (跟 `_fit_silent` 同样理由:每个 clip 都要有音频流,xfade 拼接不因缺流出错);非对白
+    key 镜用这个。`audio` 给了 → 换成这条音轨(对白 key 镜:L4 视频没有唇形同步能力,
+    2026-07-19 soffy 定"要有声音、不追求对嘴型",单独合成对白音频后在这里合流)。"""
+    audio_input = (
+        ["-i", str(audio)]
+        if audio
+        else ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"]
+    )
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(visual),
+            *audio_input,
+            "-filter_complex",
+            f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}[v]",
+            "-map",
+            "[v]",
+            "-map",
+            "1:a:0",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
+            str(out),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
 # _edit_keyframe 实际走通的引擎标签(返回值)。canon 复制 = 导演层完全没落地,视为降级。
 _KF_SDXL_IMG2IMG = "sdxl_img2img"  # SPEC-004 v2:从 Subject3D 朝向视图 img2img
 _KF_SDXL_IP_ADAPTER = "sdxl_ip_adapter"  # 默认路:本地 sdxl + IP-Adapter 锁脸
@@ -551,9 +633,23 @@ def _is_canon_copy(kf: Path, canon: Path | None) -> bool:
 # 实测比 2D 真照糊(CLIP 0.61 vs 0.77-0.84,见 subject3d_local.py)。多角色镜本来 lead 之外就
 # 没有锁脸(只 canons[0] 一张),用几何换"全员位置对"在多角色场合大概率划算,但**需真跑验证**,
 # 不是纸面定论。阶段2 的 ControlNet+IP-Adapter 共存才是架构正解,阶段1 是它的次优近似。
-def _layout_col(pos_desc: str, order: int, total: int) -> float:
-    """走位文本 → 画布水平中心比例(0..1)。命中"左/中/右"用词表(同前端俯视图单一真相源);
-    没命中则按在场顺序均匀铺开(2 人→0.3/0.7,3 人→0.2/0.5/0.8),保证至少不重叠堆一起。"""
+def _layout_col(pos_desc: str, order: int, total: int, side_hint: str = "") -> float:
+    """走位文本 → 画布水平中心比例(0..1)。**顺序(2026-07-18 second 改,soffy 定)**:
+    `side_hint`(SceneStage.axis.side_convention 解析出的 "left"/"right")优先于显式 blocking
+    文本优先于 present 顺序兜底。side_convention 是③.5 锁定的场级契约("恒"字面意思上的承诺,
+    专为防跳轴设计),④分镜 blocking 是镜级描述——上游(③.5)约束下游(④),不许④的具体
+    措辞推翻③.5 已锁定的契约(SPEC-004 上下游原则)。真机复验撞见过 SH003_05 的 blocking 文本
+    显式写"老道士:画面左侧"、直接矛盾同场 side_convention"王生恒在画左"——旧顺序(blocking 优先)
+    会忠实渲染出矛盾的画面,side_convention 形同虚设;新顺序下矛盾被 side_convention 压下(运行时
+    保命),矛盾本身则交给生成侧 `scene_stage_lint._lint_side_convention_conflicts`(L5)曝出来
+    (让人看见 LLM 写反了,而不是被默默纠正、永远不知道)。连 side_hint 都没有(该角色不在
+    side_convention 覆盖范围内)才退回显式 blocking 文本,再没有才按在场顺序均匀铺开(2 人→
+    0.3/0.7,3 人→0.2/0.5/0.8,保证至少不重叠堆一起;present 顺序会被对白分支"lead 排首位"
+    重排,是 2026-07-18 第一版此函数的唯一判据、也是当时跳轴的根因之一)。"""
+    if side_hint == "left":
+        return 0.22
+    if side_hint == "right":
+        return 0.78
     t = pos_desc or ""
     if "左" in t:
         return 0.22
@@ -597,6 +693,29 @@ def _parse_blocking_positions(
     return out
 
 
+# INC-004 §2.2:关键词直接取自实测 blocking 文本(伏地/跪/趴/俯首/叩首/坐/蹲),十个以内。
+_POSTURE_LOW = ("伏地", "跪", "趴", "俯首", "叩首")  # 伏地哀求类 → 有效高度大幅收缩
+_POSTURE_MID = ("坐", "蹲")  # 介于站与伏地之间
+
+
+def _posture_scale(pos_desc: str) -> float:
+    """走位文本 → 该角色在合成底图里的有效高度比例(1.0=站立满高)。治"伏地哀求 vs 居高
+    俯视"这种权力关系被 compose 几何拉平的问题——`_compose_layout_base` 此前对每个角色用
+    同一个 fig_h(画布 78% 高)+ 同一条脚底基线,不管 blocking 写"伏地"还是"居高",两人在
+    init_image 里永远同等身高、同一水平线;img2img 在这张图上重绘,文本描述的姿态差异拗不过
+    图里"两人一样高"这个几何事实(2026-07-18 真机验收撞见:文本已经带了"伏地"，SH003_01
+    还是渲成额头相抵)。缩小比例后配合脚底贴底(`y = h - fig.height`)会自然让人物整体下沉——
+    不是精确的躺姿(手头只有站立姿态的 Subject3D 渲染图,拼不出真实卧姿轮廓),是用"更矮更低"
+    近似"更卑微/更贴近地面"这个构图关系,给 img2img 一个不再自相矛盾的起点。没识别到关键词
+    → 1.0(维持现状,向后兼容)。"""
+    t = pos_desc or ""
+    if any(k in t for k in _POSTURE_LOW):
+        return 0.45
+    if any(k in t for k in _POSTURE_MID):
+        return 0.7
+    return 1.0
+
+
 def _compose_layout_base(
     *,
     present: list[str],
@@ -604,28 +723,51 @@ def _compose_layout_base(
     pos_desc_by_cid: dict[str, str],
     size: tuple[int, int],
     out_path: Path,
+    background: Path | None = None,
+    side_by_cid: dict[str, str] | None = None,
 ) -> Path | None:
-    """把在场角色的 Subject3D 朝向视图按走位落位合成一张几何底图。≥2 张视图才产(单角色走
-    SPEC-004 单 lead 路,不需要合成)。任一角色无视图 → 返回 None,调用方退回原文本路。
+    """把在场角色的 Subject3D 朝向视图按走位落位合成一张几何底图,当多角色关键帧的 img2img 底图。
+    ≥2 张视图才产(单角色走 SPEC-004 单 lead 路,不需要合成)。任一角色无视图 → 返回 None,调用方
+    退回原文本路。
 
-    确定性、纯 PIL、零模型调用、零花费——可脱离 GPU 单测。"""
+    background:③DesignScene 生成的空景板(environment/lighting/mood,无人)。有则当画布 → img2img
+    重绘时两人融进真实场景(2026-07-18 探路证明:纯灰底出"并排肖像贴上去感",换真实空景板 +
+    strength 0.55 → 同处一室,老道身份 0.870);无(或读失败)则退回中性灰(向后兼容)。
+
+    side_by_cid:`compute_shot_sides` 从 SceneStage.axis.side_convention 解析出的
+    {char_id: "left"/"right"},跟 present 顺序无关——`_layout_col` 优先级见其 docstring。
+
+    落位/取景用探路定档的参数:两人靠近(_layout_col 命中左/右 → 0.22/0.78,均分兜底)、半身
+    (0.78 画布高)、脚底贴底有地面重叠。确定性、纯 PIL、零模型、可脱离 GPU 单测。"""
     from PIL import Image
 
     placeable = [c for c in present if c in view_path_by_cid and view_path_by_cid[c].exists()]
     if len(placeable) < 2:
         return None
     w, h = size
-    canvas = Image.new("RGB", (w, h), (128, 128, 128))  # 中性灰:img2img 要清晰的图/地分离
-    fig_h = int(h * 0.85)
+    canvas: Image.Image | None = None
+    if background is not None and Path(background).exists():
+        try:
+            canvas = Image.open(background).convert("RGB").resize((w, h))
+        except OSError as e:
+            logger.warning("空景板读失败,退回中性灰 %s: %s", background, e)
+    if canvas is None:  # 无空景板/读失败 → 中性灰(img2img 要清晰的图/地分离)
+        canvas = Image.new("RGB", (w, h), (128, 128, 128))
+    fig_h = int(h * 0.78)
     total = len(placeable)
     try:
         for order, cid in enumerate(placeable):
             fig = _knockout_near_white(Image.open(view_path_by_cid[cid]))
-            scale = fig_h / fig.height
-            fig = fig.resize((max(1, int(fig.width * scale)), fig_h))
-            cx = _layout_col(pos_desc_by_cid.get(cid, ""), order, total)
+            # INC-004 §2.2:按 blocking 关键词(伏地/坐/站等)收缩这个角色的有效高度,不再
+            # 所有人同一个 fig_h——见 _posture_scale docstring。
+            target_h = max(1, int(fig_h * _posture_scale(pos_desc_by_cid.get(cid, ""))))
+            scale = target_h / fig.height
+            fig = fig.resize((max(1, int(fig.width * scale)), target_h))
+            cx = _layout_col(
+                pos_desc_by_cid.get(cid, ""), order, total, (side_by_cid or {}).get(cid, "")
+            )
             x = int(cx * w - fig.width / 2)
-            y = h - fig.height  # 脚底贴画布底,近地面站位
+            y = h - fig.height  # 脚底贴画布底;矮个体(伏地/坐)因此整体下沉,近似"更贴近地面"
             canvas.paste(fig, (x, y), fig)  # 第三参 = alpha 蒙版
         canvas.save(out_path)
         return out_path
@@ -678,6 +820,7 @@ def _compose_pose_control(
     pos_desc_by_cid: dict[str, str],
     size: tuple[int, int],
     out_path: Path,
+    side_by_cid: dict[str, str] | None = None,
 ) -> Path | None:
     """Gap 1 阶段2 地基:多角色 OpenPose 骨架控制图(黑底 + 每个在场角色一副正面站立骨架,按
     走位落列)。给 ControlNet-OpenPose 当 control image——**与 img2img 底图互补**:img2img 给
@@ -703,7 +846,12 @@ def _compose_pose_control(
     total = len(present)
     try:
         for order, cid in enumerate(present):
-            cx = _layout_col(pos_desc_by_cid.get(cid, ""), order, total) * w
+            cx = (
+                _layout_col(
+                    pos_desc_by_cid.get(cid, ""), order, total, (side_by_cid or {}).get(cid, "")
+                )
+                * w
+            )
             pts = {name: (cx + rx * half_w, ry * h) for name, (rx, ry) in _POSE_KEYPOINTS.items()}
             for a, b, color in _POSE_LIMBS:
                 draw.line([pts[a], pts[b]], fill=color, width=max(2, int(h * 0.012)))
@@ -756,6 +904,19 @@ def _local_kf_prompt(
     return ",".join(p for p in parts if p)
 
 
+class MultiCharKeyframeFallbackExhausted(RuntimeError):
+    """INC-003 P0(2026-07-18 soffy 定性,"fallback 撒谎" bug,2026-07-18 真机产集实测扩大范围
+    修复第二版):`expected_character_count>=2` 的镜头,没有任何一级 fallback 能真正产出
+    "≥N 人同框"的图时抛出——不管是哪一级导致的(compose img2img 崩、IP-Adapter 结构上只能锁
+    1 张脸、云端 edit 参考图张数不够、两条 fallback 全灭)。**统一判据只有一条:这一镜最终
+    产出的引擎标签能不能兑现 expected_character_count,不能就不算成功**,不再按"崩在哪一级"
+    分别处理(第一版只堵了"两条 fallback 全灭→canon_copy"这一个洞,真机产集实测证明 compose
+    img2img 一崩就退到 IP-Adapter——单人图,但 IP-Adapter"成功"了,不进这个判据,verdict
+    完全看不出来;详见 STATUS.md)。调用方(`build_frame_manifest_avatar` 外层 per-shot
+    try/except)据此把整镜标成显式失败(空 clip_path + degraded=True + 专属 degrade_reason),
+    交给 retake/人工,不静默交付"看似成功、实则少了人"的帧。"""
+
+
 async def _edit_keyframe(
     *,
     image_path: Path | list[Path],
@@ -769,6 +930,7 @@ async def _edit_keyframe(
     init_strength: float = 0.45,
     size: tuple[int, int] = (1024, 1024),
     negative_prompt: str = "",  # INC-002 v0.2:schema 派生的负面词,追加到 sdxl 默认负面后
+    expected_character_count: int = 1,
 ) -> str:
     """出关键帧:把该镜的情绪+动作+构图落成一张锁脸的关键帧。**返回实际走通的引擎标签**
     (见 _KF_*):调用方据此判断这一镜的关键帧是真生成的还是抄的定妆照。引擎可切
@@ -782,15 +944,30 @@ async def _edit_keyframe(
     - **engine="cloud"**:直接走云端 qwen-image-edit 参考图编辑(精确姿势/多脸合成更强),
       随时可切回;但该模型免费额度墙(AllocationQuota.FreeTierOnly)时会快速抛。
 
-    两种引擎都以 canon 复制保底:本地/云端都不可用时直接用 canonical 像当关键帧,整镜不降级
-    空镜、整集不卡 G6 装配门(只少了动作/情绪注入,happyhorse 后面仍加口型+表情)。多角色镜头
-    保底只保 lead 一张脸(fallback_from 传 canons[0])。
+    **`expected_character_count`(2026-07-18 P0 第二版,统一判据,替换第一版的
+    `allow_canon_fallback: bool`)**:这一镜画面里该有几个人。每一级 fallback 只有在**结构上
+    真能覆盖这么多人**时才允许被采纳为终态:
+      - 第0级(img2img,`init_image`=走位合成底图)——能覆盖 compose 时准备的所有在场角色,
+        任何 `expected_character_count` 都可尝试。
+      - 第1级(IP-Adapter,`ip_adapter_image` 单张)——**结构上只能锁 1 张脸**,
+        `expected_character_count>=2` 时直接跳过,不尝试、不采信(2026-07-18 真机产集实测:
+        compose img2img 一崩,代码退到这一级,IP-Adapter"成功"了,返回一张单人图,但因为
+        `_KF_SDXL_IP_ADAPTER` 不是 `_KF_CANON_COPY`,不进第一版的 degraded 判据,verdict/
+        CLIP 分/人眼全被瞒过——这才是这次真机产集 11 个双人镜一个都没同框的真根因,不是
+        present/view_path_by_cid 算错,那两个环节全程是对的)。
+      - 第2级(云 qwen-image-edit)——只有 `image_path` 真是一份 `len >= expected_character_
+        count` 的参考图列表时才有资格覆盖那么多人;单张 Path(如 kf2v 尾帧只传 `action_ip`
+        一张)结构上也覆盖不了,同样跳过。
+      - 第3级(canon 复制)——`expected_character_count<=1` 时是合理的"轻"降级(至少还是
+        那个人),返回 `_KF_CANON_COPY` 让调用方标 degraded 送 verdict 返工;
+        `expected_character_count>=2` 时直接抛 `MultiCharKeyframeFallbackExhausted`,不产出
+        替代帧——单人照被当成 N 人合成图交付是产物性质错了,不是画质差一点。
 
     **保底不是免费的**(2026-07-17 审计实证:task da0bbeff 一次真实产集,20 镜里 14 镜的关键帧
     与 canon 定妆照字节级相同,成片退化成"大头念台词",而当时只有一条 warning、交付门全过)。
-    两条腿同时不可用时,保底就从"兜底"变成常态路径。**那次两条腿各自为何失败没有留下证据**
-    (无日志),只知道结果;别据此臆断成因。故返回 _KF_CANON_COPY 让调用方标成 degraded →
-    进 verdict 返工闸,把"没人知道"变成"当场就知道"。"""
+    单角色场合两条腿同时不可用时,保底就从"兜底"变成常态路径,**那次两条腿各自为何失败没有
+    留下证据**(无日志),只知道结果;别据此臆断成因——这也是这次 P0 排查坚持挂 debug log 真机
+    复现、不臆测的原因。"""
     # 服饰负面词跨阶段落地(缺口#4):这里是所有**角色**关键帧的唯一漏斗(纯场景空镜走
     # qwen_image_generate,不经过本函数),一处注入即覆盖对白/多角色/单角色静默/kf2v 首中尾
     # 全部调用点。只对 sdxl 两条路生效——云端 qwen_image_edit 没有负面词入参(它靠
@@ -798,8 +975,11 @@ async def _edit_keyframe(
     negative_prompt = (
         f"{_WARDROBE_NEGATIVE_EN}, {negative_prompt}" if negative_prompt else _WARDROBE_NEGATIVE_EN
     )
+    _mc_diag: list[str] = []  # 多角色路各级为何没被采纳,凑进最终异常消息,便于排查
     # 0. SPEC-004 v2:非正面朝向镜 → img2img 从 Subject3D 朝向视图当底图(朝向真落画面,不走
     #    IP-Adapter[只迁身份不迁姿势]。gs1 2026-07-16 验证)。仅 local 引擎且备好朝向视图时。
+    #    多角色场合 init_image 就是 compose 走位底图,能覆盖全部在场角色,任何 expected_
+    #    character_count 都可尝试。
     if engine == "local" and local_prompt and init_image and Path(init_image).exists():
         try:
             await sdxl_local_generate(
@@ -815,9 +995,18 @@ async def _edit_keyframe(
                 return _KF_SDXL_IMG2IMG
         except Exception as e:  # img2img 失败退下面的 IP-Adapter/云端路,不拖垮整镜
             logger.warning("sdxl_local img2img(朝向视图)失败,退 IP-Adapter/云端: %s", e)
+            _mc_diag.append(f"第0级 img2img 失败: {e}")
 
-    # 1. 本地 sdxl_local(IP-Adapter 锁脸 + 任意姿势/构图)—— 仅 local 引擎且备好本地素材时
-    if engine == "local" and local_prompt and ip_adapter_image and Path(ip_adapter_image).exists():
+    # 1. 本地 sdxl_local(IP-Adapter 锁脸 + 任意姿势/构图)—— 仅 local 引擎且备好本地素材时。
+    #    结构上只锁 1 张脸(ip_adapter_image 是单张 Path),expected_character_count>=2 时
+    #    这一级永远交付不出"N 人同框",直接跳过、不尝试——避免"单人图被当作成功采纳"。
+    if (
+        expected_character_count <= 1
+        and engine == "local"
+        and local_prompt
+        and ip_adapter_image
+        and Path(ip_adapter_image).exists()
+    ):
         try:
             # 每帧独立子进程:冷启动加载 SDXL+IP-Adapter+VAE(~90s)再出图(~60s),约 137s/帧。
             # worker 超时是模块常量 _SDXL_TIMEOUT_S=600s,够;离线加载见 sdxl_local_service。
@@ -834,24 +1023,51 @@ async def _edit_keyframe(
                 return _KF_SDXL_IP_ADAPTER
         except Exception as e:  # GPU 掉总线/本地失败都退云端,不拖垮整镜
             logger.warning("sdxl_local 关键帧失败,退云端 edit: %s", e)
+            _mc_diag.append(f"第1级 IP-Adapter 失败: {e}")
+    elif expected_character_count > 1:
+        _mc_diag.append(
+            "第1级 IP-Adapter 结构上只能锁 1 张脸,跳过(不满足 expected_character_count)"
+        )
 
-    # 2. 云 qwen-image-edit
-    try:
-        await qwen_image_edit(
-            image_path=image_path, instruction=instruction, output_path=output_path
+    # 2. 云 qwen-image-edit —— 只有 image_path 真是一份覆盖得了 expected_character_count 的
+    #    参考图列表时才有资格(kf2v 尾帧只传单张 action_ip,覆盖不了多角色,同样跳过)。
+    _cloud_capable = expected_character_count <= 1 or (
+        isinstance(image_path, list) and len(image_path) >= expected_character_count
+    )
+    if _cloud_capable:
+        try:
+            await qwen_image_edit(
+                image_path=image_path, instruction=instruction, output_path=output_path
+            )
+            return _KF_CLOUD_EDIT
+        except QwenImageError as e:
+            _mc_diag.append(f"第2级云端 edit 失败: {e}")
+    else:
+        _mc_diag.append(
+            f"第2级云端 edit 跳过:参考图只有"
+            f"{len(image_path) if isinstance(image_path, list) else 1}张,"
+            f"覆盖不了 expected_character_count={expected_character_count}"
         )
-        return _KF_CLOUD_EDIT
-    except QwenImageError as e:
-        # 3. canon 复制保底 —— 这一镜的导演层(景别/动作/情绪/§E 命令)一个字都没落地。
-        #    error 级:它不是"稍差一点",是这一镜退化成了定妆照。调用方标 degraded 送返工。
-        logger.error(
-            "关键帧降级:本地 sdxl 与云端 edit 均不可用,直接抄 canonical 像(%s)—— "
-            "该镜无关键帧,导演命令未落地: %s",
-            fallback_from.name,
-            e,
+
+    # 3. 终态判定
+    if expected_character_count >= 2:
+        # 多角色 compose 镜头:没有任何一级能真正交付"N 人同框"——不许拿 fallback_from
+        # (canons[0],N 人里的 1 人)冒充交付。拒绝写 output_path,直接抛,调用方按现有
+        # "生成失败"路径把整镜显式标失败。
+        raise MultiCharKeyframeFallbackExhausted(
+            f"多角色关键帧(expected_character_count={expected_character_count})所有 fallback "
+            f"均无法覆盖:{'; '.join(_mc_diag) or '无可用引擎'}"
         )
-        shutil.copyfile(fallback_from, output_path)
-        return _KF_CANON_COPY
+    # canon 复制保底 —— 这一镜的导演层(景别/动作/情绪/§E 命令)一个字都没落地。
+    # error 级:它不是"稍差一点",是这一镜退化成了定妆照。调用方标 degraded 送返工。
+    logger.error(
+        "关键帧降级:本地 sdxl 与云端 edit 均不可用,直接抄 canonical 像(%s)—— "
+        "该镜无关键帧,导演命令未落地: %s",
+        fallback_from.name,
+        "; ".join(_mc_diag),
+    )
+    shutil.copyfile(fallback_from, output_path)
+    return _KF_CANON_COPY
 
 
 def _resolve_llm() -> Any:
@@ -1046,6 +1262,13 @@ async def build_frame_manifest_avatar(
     # 都不传(tongjian 管线/未建 3D 视图)→ 空 dict,行为完全不变。
     shot_view_by_id = _p(config, "shot_view_by_id", None) or {}
     subject3d_views_by_id = _p(config, "subject3d_views_by_id", None) or {}
+    # INC-003 生产化:每 scene_id → ③DesignScene 生成的空景板路径(无人环境图),多角色镜头
+    # 的 img2img 底图画布。空 → 退回中性灰(向后兼容)。
+    scene_bg_by_id = _p(config, "scene_bg_by_id", None) or {}
+    # 渲染层洞#1(2026-07-18):每镜每角色画左还是画右,来自 SceneStage.axis.side_convention,
+    # 与 present 顺序(会被对白分支"lead 排首位"重排)解耦。空 → _layout_col 退回既有判据
+    # (blocking 显式文本 → present 顺序),向后兼容。
+    shot_side_by_id = _p(config, "shot_side_by_id", None) or {}
     resolved_llm = _resolve_llm() if action_engine == "kf2v" else None
     # Gap 2:观察态 VLM(看上一镜真实末帧当下一镜承接锚)。可切关(默认开;取不到 VLM 自动退
     # 计划态)。免费本地模型,一镜一次调用,只在同场景连续镜才触发。
@@ -1157,53 +1380,246 @@ async def build_frame_manifest_avatar(
         _pose_control: Path | None = None  # Gap 1 阶段2:骨架控制图(已产出,worker 消费端待接)
         dur = _say_dur(text or shot.visual_prompt, per_char)
         clip = work / f"{sid}_clip.mp4"
+        # INC-004 §4.3:这一镜若路由 L4 旗舰 provider,记实付美元;None=本地免费路(默认)。
+        _l4_cost_usd: float | None = None
 
         try:
             if clip.exists():
                 pass
+            elif shot.quality_tier == "key" and (
+                len(_l4_present := [cid for cid in shot.characters if cid in appearance_by_id]) >= 2
+            ):
+                # INC-004 §4.2(2026-07-19,soffy 定):本地 compose 路对"多人+构图级姿态差异/
+                # 双人复杂关系镜"这两类已真机验证到顶(见 quality_tier 判定注释),不再尝试
+                # 本地 compose,直接路由 L4 旗舰(alibaba_maas_reference_generate,跟本地 compose
+                # 分支互斥——不是"L4 失败退本地",本地对这类镜头已知会崩,退回去 = 交付已知会崩
+                # 的东西,不是兜底,是新的一种撒谎)。失败(额度墙/超时/网络)就让异常自然抛到
+                # 外层 except(第 1941 行左右),按现有"整镜显式失败→retake"机制处理,这里不接
+                # 自己的 try/except 吞掉重试或静默退化。
+                present = _l4_present[:9]  # API 硬上限 1-9 张参考图
+                canons = [
+                    await _canonical(
+                        cid,
+                        appearance_by_id.get(cid, cid),
+                        work,
+                        style,
+                        ref_image=ref_image_by_id.get(cid),
+                    )
+                    for cid in present
+                ]
+                kf_canon = canons[0]
+                names = "、".join(name_by_id.get(cid, cid) for cid in present)
+                l4_prompt = (
+                    f"{style}，{scene_space}。{names}同框："
+                    + "、".join(appearance_by_id.get(cid, cid) for cid in present)
+                    + _blocking_hint
+                    + f"，神情{emotion}"
+                    + (f"，动作：{act_hint}" if act_hint else "")
+                    + "。写实质感，电影感，无文字水印。"
+                )
+                l4_duration = min(max(int(dur), 3), 15)  # API 文档标称 3-15s
+                from hevi.cost.pricing_table import get_pricing_table
+                from hevi.video.alibaba_maas_service import (
+                    _to_data_uri_if_local,
+                    happyhorse_1_1_maas_reference_to_video,
+                )
+
+                l4_visual = work / f"{sid}_l4_visual.mp4"
+                await happyhorse_1_1_maas_reference_to_video(
+                    prompt=l4_prompt,
+                    reference_images=[_to_data_uri_if_local(str(p)) for p in canons],
+                    output_path=l4_visual,
+                    duration=l4_duration,
+                    resolution=reso,
+                    ratio="9:16" if h >= w else "16:9",
+                )
+                _l4_actual_dur = _ffprobe_dur(l4_visual)
+                _l4_price_per_s = get_pricing_table()["happyhorse_1_1_maas_lock"]["price_usd"]
+                _l4_cost_usd = _l4_actual_dur * _l4_price_per_s
+                kf_source = "L4:happyhorse_r2v"
+
+                if is_dialogue and dlg_line:
+                    # 对白 key 镜:L4(alibaba_maas_reference_generate)没有唇形同步能力——
+                    # 2026-07-19 soffy 定"要有声音、不追求对嘴型",单独合成这句台词的音频,
+                    # 跟 L4 视频合流(不接自己的 voice_by_speaker 映射,这次先用 edge_tts 默认
+                    # 规则音色——按说话人分音色的映射没有传到这一层,是已知的简化,不是遗漏)。
+                    from hevi.audio.edge_tts_custom import edge_tts_synthesize_smart
+                    from hevi.tongjian.voiceover import _synthesize_line
+
+                    l4_audio = work / f"{sid}_l4_dialogue_audio.mp3"
+                    await _synthesize_line(
+                        dlg_line, l4_audio, tts_fn=edge_tts_synthesize_smart, voice=None
+                    )
+                    _fit_l4_clip(l4_visual, clip, w, h, audio=l4_audio)
+                else:
+                    _fit_l4_clip(l4_visual, clip, w, h)
             elif is_dialogue and lead:
                 # 对白:角色 keyframe(qwen-image-edit 上情绪+动作)→ happyhorse 说台词
-                canon = await _canonical(
-                    lead,
-                    appearance_by_id.get(lead, lead),
-                    work,
-                    style,
-                    ref_image=ref_image_by_id.get(lead),
+                present = [cid for cid in shot.characters if cid in appearance_by_id]
+                multichar_chain_log(
+                    "D:dialogue",
+                    "shot=%s shot.characters=%s appearance_by_id.keys=%s present=%s "
+                    "shot_view_by_id.get(sid)=%s subject3d_views_by_id.keys=%s",
+                    sid,
+                    shot.characters,
+                    list(appearance_by_id.keys()),
+                    present,
+                    shot_view_by_id.get(sid),
+                    list(subject3d_views_by_id.keys()),
                 )
-                kf_canon = canon
-                kf = work / f"{sid}_kf.png"
-                if not kf.exists():
-                    instruction = _EDIT_PREFIX + emotion
-                    if action_hint:
-                        instruction += f",动作:{action_hint}"
-                    instruction += _EXPRESSION_GUARD + _cmd["first"]
-                    # SPEC-004 v2:lead 该镜的 Subject3D 视图非正面且已建 → img2img 从该视图当底图
-                    # (朝向落地);否则 init_view=None → 走原 IP-Adapter(2D 真照,身份最强)。
-                    _view = shot_view_by_id.get(sid, {}).get(lead, "front")
-                    _init_view = (
-                        subject3d_views_by_id.get(lead, {}).get(_view)
-                        if _view and _view != "front"
-                        else None
-                    )
-                    kf_source = await _edit_keyframe(
-                        image_path=canon,
-                        instruction=instruction,
-                        output_path=kf,
-                        fallback_from=canon,
-                        engine=keyframe_engine,
-                        local_prompt=_local_kf_prompt(
+                if len(present) >= 2:
+                    # INC-003 路由:双人+同框对白也走 compose(此前对白分支跟 present 人数无关,
+                    # 永远只锁 lead 一张脸——同框的另一人在画面里完全没身份锚点)。lead 排首位,
+                    # 保证 canons[0]/kf_canon 对应说话人(_is_canon_copy 字节比对、happyhorse 的
+                    # 参考图脸选取都靠这个顺序;硬上限3张,同 §非对白分支)。
+                    present = sorted(present, key=lambda c: c != lead)[:3]
+                    canons = [
+                        await _canonical(
+                            cid,
+                            appearance_by_id.get(cid, cid),
+                            work,
                             style,
-                            appearance_by_id.get(lead, lead),
-                            emotion,
-                            action_hint,
-                            scene_space=scene_space,
-                            command_summary=_cmd["first"],
-                        ),
-                        ip_adapter_image=canon,
-                        init_image=Path(_init_view) if _init_view else None,
-                        size=(w, h),
-                        negative_prompt=shot.negative_prompt,
+                            ref_image=ref_image_by_id.get(cid),
+                        )
+                        for cid in present
+                    ]
+                    canon = canons[0]
+                    kf_canon = canon
+                    _views_for_shot = shot_view_by_id.get(sid, {})
+                    _view_path_by_cid: dict[str, Path] = {}
+                    for cid in present:
+                        # 与单 lead 路(SPEC-004 v2)不同:front 也要收——INC-003 实测的验证结论
+                        # 恰恰是"正面+空景板"才是坐实的安全档(老道 0.870),侧脸对通用脸角色反而
+                        # 崩(王生侧脸 0.661、间距转负,见 STATUS §INC-003)。排除 front 会让 compose
+                        # 只在探路标"崩"的朝向上触发、在验证过的朝向上从不触发,方向反了。
+                        v = _views_for_shot.get(cid, "front") or "front"
+                        vp = subject3d_views_by_id.get(cid, {}).get(v)
+                        if vp:
+                            _view_path_by_cid[cid] = Path(vp)
+                    multichar_chain_log(
+                        "E:dialogue",
+                        "shot=%s present=%s _views_for_shot=%s _view_path_by_cid=%s",
+                        sid,
+                        present,
+                        _views_for_shot,
+                        {k: str(v) for k, v in _view_path_by_cid.items()},
                     )
+                    _pos_desc_by_cid = _parse_blocking_positions(shot.blocking, present, name_by_id)
+                    _scene_bg = scene_bg_by_id.get(shot.scene_id)
+                    _side_by_cid = shot_side_by_id.get(sid, {})
+                    _layout_base = _compose_layout_base(
+                        present=present,
+                        view_path_by_cid=_view_path_by_cid,
+                        pos_desc_by_cid=_pos_desc_by_cid,
+                        size=(w, h),
+                        out_path=work / f"{sid}_layout.png",
+                        background=Path(_scene_bg) if _scene_bg else None,
+                        side_by_cid=_side_by_cid,
+                    )
+                    _pose_control = _compose_pose_control(
+                        present=present,
+                        pos_desc_by_cid=_pos_desc_by_cid,
+                        size=(w, h),
+                        out_path=work / f"{sid}_pose.png",
+                        side_by_cid=_side_by_cid,
+                    )
+                    kf = work / f"{sid}_kf.png"
+                    if not kf.exists():
+                        names = "、".join(name_by_id.get(cid, cid) for cid in present)
+                        speaker_name = name_by_id.get(lead, lead)
+                        instruction = (
+                            f"这{len(present)}张图分别是{names}各自的真实长相,"
+                            f"把他们合成到同一个画面里{_blocking_hint},每个人物的相貌、服饰、画风都要"
+                            f"跟各自对应的参考图保持一致,说话者{speaker_name}神情{emotion}"
+                        )
+                        if action_hint:
+                            instruction += f",动作:{action_hint}"
+                        instruction += _EXPRESSION_GUARD + _cmd["first"]
+                        kf_source = await _edit_keyframe(
+                            image_path=canons,
+                            instruction=instruction,
+                            output_path=kf,
+                            fallback_from=canon,
+                            engine=keyframe_engine,
+                            # 本地 IP-Adapter 只吃 1 张参考,只能锁 lead(说话人)一张脸,其余
+                            # 在场角色靠文字描述(同§非对白分支)。
+                            # INC-004 §2.2 查②修复:此前这里漏了 _blocking_hint(伏地/居高俯视
+                            # 这类姿态/位置文本),跟非对白分支(下方另一处同名调用)不对称——
+                            # 那边早就把 _blocking_hint 拼进 appearance 参数了,这里没有,导致
+                            # 对白镜(如 SH003_05)的 img2img prompt 完全看不到走位姿态描述。
+                            local_prompt=_local_kf_prompt(
+                                style,
+                                f"{names}同框:"
+                                + "、".join(appearance_by_id.get(cid, cid) for cid in present)
+                                + _blocking_hint,
+                                emotion,
+                                action_hint,
+                                scene_space=scene_space,
+                                command_summary=_cmd["first"],
+                            ),
+                            ip_adapter_image=canon,
+                            # 有走位底图 → img2img 从它起(几何软约束 + INC-003 空景板融合);
+                            # 无 → None,走原多图 edit + IP-Adapter lead 锁脸路。
+                            init_image=_layout_base,
+                            # INC-003 定档 0.55,INC-004 起按 style 查档(见
+                            # _compose_strength_for_style;当前各档仍是占位值,未实测调过)。
+                            init_strength=_compose_strength_for_style(style),
+                            size=(w, h),
+                            negative_prompt=shot.negative_prompt,
+                            # P0(2026-07-18):这是 N 人合成图,统一判据按 present 实际人数——
+                            # 没有一级 fallback 能覆盖这么多人就显式失败,见
+                            # MultiCharKeyframeFallbackExhausted。
+                            expected_character_count=len(present),
+                        )
+                        multichar_chain_log(
+                            "F:dialogue",
+                            "shot=%s kf_source=%s _layout_base=%s",
+                            sid,
+                            kf_source,
+                            _layout_base,
+                        )
+                else:
+                    canon = await _canonical(
+                        lead,
+                        appearance_by_id.get(lead, lead),
+                        work,
+                        style,
+                        ref_image=ref_image_by_id.get(lead),
+                    )
+                    kf_canon = canon
+                    kf = work / f"{sid}_kf.png"
+                    if not kf.exists():
+                        instruction = _EDIT_PREFIX + emotion
+                        if action_hint:
+                            instruction += f",动作:{action_hint}"
+                        instruction += _EXPRESSION_GUARD + _cmd["first"]
+                        # SPEC-004 v2:lead 该镜的 Subject3D 视图非正面且已建 → img2img 从该视图当
+                        # 底图(朝向落地);否则 init_view=None → 走原 IP-Adapter(2D 真照,身份最强)。
+                        _view = shot_view_by_id.get(sid, {}).get(lead, "front")
+                        _init_view = (
+                            subject3d_views_by_id.get(lead, {}).get(_view)
+                            if _view and _view != "front"
+                            else None
+                        )
+                        kf_source = await _edit_keyframe(
+                            image_path=canon,
+                            instruction=instruction,
+                            output_path=kf,
+                            fallback_from=canon,
+                            engine=keyframe_engine,
+                            local_prompt=_local_kf_prompt(
+                                style,
+                                appearance_by_id.get(lead, lead),
+                                emotion,
+                                action_hint,
+                                scene_space=scene_space,
+                                command_summary=_cmd["first"],
+                            ),
+                            ip_adapter_image=canon,
+                            init_image=Path(_init_view) if _init_view else None,
+                            size=(w, h),
+                            negative_prompt=shot.negative_prompt,
+                        )
                 talk = work / f"{sid}_talk.mp4"
                 if not talk.exists():
                     text_chunks = _split_text_for_dialogue(text, per_char)
@@ -1240,6 +1656,17 @@ async def build_frame_manifest_avatar(
                 vis = work / f"{sid}_vis.mp4"
                 if not vis.exists():
                     present = [cid for cid in shot.characters if cid in appearance_by_id]
+                    multichar_chain_log(
+                        "D:non-dialogue",
+                        "shot=%s shot.characters=%s appearance_by_id.keys=%s present=%s "
+                        "shot_view_by_id.get(sid)=%s subject3d_views_by_id.keys=%s",
+                        sid,
+                        shot.characters,
+                        list(appearance_by_id.keys()),
+                        present,
+                        shot_view_by_id.get(sid),
+                        list(subject3d_views_by_id.keys()),
+                    )
                     # P3 动作镜:首帧=已生成的 kf(未完成态),尾帧另生成;下面按分支填 action_ip
                     # (kf2v 尾帧用的锁脸参考)+ action_appear(尾帧 prompt 的人物相貌)。
                     action_ip: Path | None = None
@@ -1268,26 +1695,37 @@ async def build_frame_manifest_avatar(
                         # Gap 1 阶段1:多角色走位几何底图。每个在场角色的 Subject3D 朝向视图按
                         # 走位落位合成一张 img2img 底图(≥2 张视图才产;任一角色无视图 → None,退
                         # 回原文本路)。命中时 IP-Adapter 让位给 img2img(worker 约束),几何换锁脸。
+                        # 与单 lead 路(SPEC-004 v2)不同:front 也要收——见对白分支同一段注释
+                        # (2026-07-18 first-pass 修复漏了这一处,replace_all 因缩进不同没匹配到,
+                        # 静默留了老逻辑;真机产集实测抓到)。
                         _views_for_shot = shot_view_by_id.get(sid, {})
                         _view_path_by_cid: dict[str, Path] = {}
                         for cid in present:
-                            v = _views_for_shot.get(cid, "front")
-                            vp = (
-                                subject3d_views_by_id.get(cid, {}).get(v)
-                                if v and v != "front"
-                                else None
-                            )
+                            v = _views_for_shot.get(cid, "front") or "front"
+                            vp = subject3d_views_by_id.get(cid, {}).get(v)
                             if vp:
                                 _view_path_by_cid[cid] = Path(vp)
+                        multichar_chain_log(
+                            "E:non-dialogue",
+                            "shot=%s present=%s _views_for_shot=%s _view_path_by_cid=%s",
+                            sid,
+                            present,
+                            _views_for_shot,
+                            {k: str(v) for k, v in _view_path_by_cid.items()},
+                        )
                         _pos_desc_by_cid = _parse_blocking_positions(
                             shot.blocking, present, name_by_id
                         )
+                        _scene_bg = scene_bg_by_id.get(shot.scene_id)
+                        _side_by_cid = shot_side_by_id.get(sid, {})
                         _layout_base = _compose_layout_base(
                             present=present,
                             view_path_by_cid=_view_path_by_cid,
                             pos_desc_by_cid=_pos_desc_by_cid,
                             size=(w, h),
                             out_path=work / f"{sid}_layout.png",
+                            background=Path(_scene_bg) if _scene_bg else None,
+                            side_by_cid=_side_by_cid,
                         )
                         # Gap 1 阶段2 地基:骨架控制图。毫秒级纯 CPU,先备好放盘上;真正吃它的
                         # ControlNet worker 分支未接(见 sdxl_local_service controlnet TODO),等
@@ -1297,6 +1735,7 @@ async def build_frame_manifest_avatar(
                             pos_desc_by_cid=_pos_desc_by_cid,
                             size=(w, h),
                             out_path=work / f"{sid}_pose.png",
+                            side_by_cid=_side_by_cid,
                         )
                         kf = work / f"{sid}_kf.png"
                         if not kf.exists():
@@ -1333,8 +1772,25 @@ async def build_frame_manifest_avatar(
                                 # 有走位底图 → img2img 从它起(几何软约束);无 → None,走原
                                 # 多图 edit + IP-Adapter lead 锁脸路。
                                 init_image=_layout_base,
+                                # INC-003 定档 0.55(2026-07-18 探路证明:够高才跳出 TripoSR 卡通、
+                                # 重绘成写实融进场景,又不至于让角色自己转身丢姿势/身份)。仅在
+                                # init_image 存在(走位底图命中)时生效,否则 _edit_keyframe 忽略。
+                                # INC-004 起按 style 查档(见 _compose_strength_for_style;当前
+                                # 各档仍是占位值,未实测调过)。
+                                init_strength=_compose_strength_for_style(style),
                                 size=(w, h),
                                 negative_prompt=shot.negative_prompt,
+                                # P0(2026-07-18):这是 N 人合成图,统一判据按 present 实际
+                                # 人数——没有一级 fallback 能覆盖这么多人就显式失败,见
+                                # MultiCharKeyframeFallbackExhausted。
+                                expected_character_count=len(present),
+                            )
+                            multichar_chain_log(
+                                "F:non-dialogue",
+                                "shot=%s kf_source=%s _layout_base=%s",
+                                sid,
+                                kf_source,
+                                _layout_base,
                             )
                         vis_src = kf
                         action_ip = canons[0]
@@ -1402,6 +1858,12 @@ async def build_frame_manifest_avatar(
                         and action_ip is not None
                         and (_incomplete or shot.action_beats)
                         and vis_src == kf
+                        # P0(2026-07-18):_gen_action_keyframe 的 peak/aftermath 帧结构上只锁
+                        # action_ip 一张脸(单 Path,不是 compose 底图),多角色镜头交付不出"N
+                        # 人同框"——与其让它跑再被下面统一判据拦下(整镜连带好的 trigger 帧一起
+                        # 显式失败),不如干脆不试这段 kf2v 强化,退回用已出好的(真·N 人同框)
+                        # trigger 帧配合简单动效,保住"最终交付里人没少"这条底线。
+                        and len(present) <= 1
                     ):
                         action_desc = act_hint or text or shot.visual_prompt
                         end_kf = work / f"{sid}_kf_end.png"
@@ -1575,6 +2037,7 @@ async def build_frame_manifest_avatar(
                     degrade_reason=(_KF_DEGRADE_REASON if kf_degraded else ""),
                     debug_context=debug_context,
                     quality_checks=quality_checks,
+                    cost_usd=_l4_cost_usd,
                 )
             )
             logger.info(

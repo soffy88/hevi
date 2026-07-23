@@ -752,72 +752,112 @@ export interface DpShotList {
   shots: DpShotListItem[];
 }
 
-// ── INC-001 §A/§G/§I/§L 逐镜头准备台 ──────────────────────────────────────────
-export interface DpAssetCandidate {
-  id: string;
-  candidate_type: string; // character / scene / prop / costume
-  candidate_name: string;
-  candidate_status: string; // pending / linked / ignored
-  linked_entity_id: string | null;
+// ── V1→V2 原地升级(2026-07-21):World Bible + Scene Script ──────────────────
+// 类型跟 hevi/director/pipeline_schemas.py 的 Pydantic 模型逐字段对齐(同上面 V1 类型
+// 的既定惯例)。替换第4/5级(scene_stage/shot_list → world_bible/scene_script),不是
+// 新增并行的第6/7级。
+
+export interface DpCharacterVolumeEntry {
+  name: string;
+  profile_text: string;
+  identity_lock_sentence: string;
+  source_design_ref: string;
+  assumed_details: string[];
 }
-export interface DpDialogueCandidate {
-  id: string;
-  line_index: number;
+export interface DpWorldVolumeEntry {
+  name: string;
+  profile_text: string;
+  negative_list: string[];
+  source_design_ref: string;
+  assumed_details: string[];
+}
+export interface DpCameraPersona {
+  persona_id: string; // dv_friend / invisible_cine / doc_crew / static_watch
+  persona_rationale: string;
+  behavior_derivation_text: string;
+}
+export interface DpVisualVolume {
+  style_manifesto: string;
+  camera_persona: DpCameraPersona;
+  photographic_flaw_aesthetics: string[];
+  negative_list: string[];
+  assumed_details: string[];
+}
+export interface DpSoundVolume {
+  ambient_soundscape_text: string;
+  music_stance_text: string;
+  negative_list: string[];
+  assumed_details: string[];
+}
+export interface DpWorldBible {
+  characters: DpCharacterVolumeEntry[];
+  world: DpWorldVolumeEntry[];
+  visual: DpVisualVolume;
+  sound: DpSoundVolume;
+}
+
+export interface DpSceneScriptDialogueLine {
+  character_name: string;
   text: string;
-  speaker_name: string | null;
-  target_name: string | null; // §H
-  candidate_status: string; // pending / accepted / ignored
-  linked_dialog_line_id: string | null;
+  target_name: string;
 }
-export interface DpPrepState {
-  shot_id: string;
-  status: string; // pending / ready
-  skip_extraction: boolean;
-  extracted: boolean;
-  assets_overview: DpAssetCandidate[];
-  dialogue_candidates: DpDialogueCandidate[];
-  saved_dialogue_lines: DpDialogueCandidate[];
-  pending_confirm_count: number;
-  ready_for_generation: boolean;
+export interface DpSceneScriptSegment {
+  segment_id: string;
+  order: number;
+  t_start_s: number;
+  t_end_s: number;
+  narrative_text: string;
+  dialogue: DpSceneScriptDialogueLine[];
+  handoff_out: string;
+  handoff_in: string;
+  camera_movement: string; // 粗粒度标签,供 lint 用,不是权威运镜描述(见后端字段注释)
+  offscreen_trigger: string;
+  beat_description: string;
 }
-export interface DpPrepMutation {
-  action: string;
-  state: DpPrepState;
+export interface DpSceneScript {
+  scene_ref: number;
+  characters_present: string[];
+  segments: DpSceneScriptSegment[];
+  total_duration_s: number;
+  no_cut_to: string[];
 }
-export interface DpPrepOverviewShot {
-  shot_id: string;
-  status: string;
-  extracted: boolean;
-  skip_extraction: boolean;
+export interface DpSceneScriptSet {
+  scripts: DpSceneScript[];
 }
-export interface DpPrepOverview {
-  shots: DpPrepOverviewShot[];
-  blockers: string[];
-}
+
+// V1→V2 原地升级(2026-07-21):逐镜头准备台(INC-001 §A/§G/§I/§L,DpAssetCandidate/
+// DpDialogueCandidate/DpPrepState/DpPrepMutation/DpPrepOverview*)的后端端点 +
+// `ShotPreparationPanel.tsx` 已删除,这批类型没有任何调用方了,一并删除,不留孤儿类型。
 
 export type DpWorkStatus =
   | 'concept_draft' | 'concept_locked'
   | 'screenplay_generating' | 'screenplay_generate_failed' | 'screenplay_draft' | 'screenplay_locked'
   | 'design_list_draft' | 'design_list_locking' | 'design_list_lock_failed' | 'design_list_locked'
-  | 'scene_stage_draft' | 'scene_stage_generating' | 'scene_stage_regenerate_failed'
-  | 'scene_stage_locking' | 'scene_stage_lock_failed'
-  | 'shot_list_draft' | 'shot_list_generating' | 'shot_list_regenerate_failed' | 'shot_list_locked'
+  // V1→V2(2026-07-21):④World Bible 替换 V1 的③.5 场面调度 SceneStage
+  | 'world_bible_draft' | 'world_bible_generating' | 'world_bible_generate_failed'
+  | 'world_bible_locking' | 'world_bible_lock_failed'
+  // ⑤Scene Script 替换 V1 的④分镜 ShotList
+  | 'scene_script_draft' | 'scene_script_generating' | 'scene_script_regenerate_failed'
+  | 'scene_script_locked'
   | 'producing';
 
 export interface DpWork {
   work_id: string;
   status: DpWorkStatus;
-  locked_through: number; // -1..4,已锁定到第几级(concept0/screenplay1/design_list2/scene_stage3/shot_list4)
+  // -1..4,已锁定到第几级(concept0/screenplay1/design_list2/world_bible3/scene_script4)
+  locked_through: number;
   material_text: string;
   created_at: string;
   concept: DpConcept | null;
   screenplay: DpScreenplay | null;
   design_list: DpDesignList | null;
-  scene_stage: DpSceneStageSet | null; // SPEC-004 ③.5 场面调度(每场一个 SceneStage)
-  shot_list: DpShotList | null;
-  scene_stage_lint: DpLintFinding[]; // SPEC-004 §4 链接后的确定性 lint findings
+  world_bible: DpWorldBible | null;
+  scene_script: DpSceneScriptSet | null;
   video_task_id: string | null;
   error: string | null;
+  // 影像美学预设(realistic 真人写实 / inkwash 国风水墨),控制 World Bible 的 style_manifesto
+  // 画风方向。默认 realistic;用户在 World Bible 面板切换后重新生成生效。
+  visual_style: 'realistic' | 'inkwash';
 }
 
 export interface DpProduceRequest {

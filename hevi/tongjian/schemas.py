@@ -44,6 +44,31 @@ class EventIR(BaseModel):
     source_span: tuple[int, int] = (0, 0)
 
 
+class Segment(BaseModel):
+    """EventUnit 内的有序段落——SPEC-005 §1.1 选段产出。type 决定生产路径:
+    narration(讲解)走 narration_script.py 的讲解稿模板;drama(演绎)走 SPEC-003 导演五级链
+    (本 schema 不覆盖该链,只负责标记与透传 source_text)。"""
+
+    type: str = "narration"  # narration(讲解) | drama(演绎)
+    source_text: str = ""
+    est_duration_s: int = 0
+    order: int = 0
+
+
+class EventUnit(BaseModel):
+    """一卷原文切出的事件单元(一集候选)——SPEC-005 §1.1。event_unit_id 由代码顺序分配,
+    与 event_id/character_id 同一惯例(LLM 引用它、不发明它)。"""
+
+    event_unit_id: str
+    source_ref: str = ""  # 卷次 + 原文起止,如"资治通鉴·周纪一 12-34页"
+    title: str = ""
+    era: str = ""
+    year: int | None = None  # 公元纪年,负数=公元前
+    summary: str = ""
+    segments: list[Segment] = Field(default_factory=list)
+    characters: list[str] = Field(default_factory=list)  # character_id 列表(演绎段建 Subject 用)
+
+
 class QuoteIR(BaseModel):
     quote_id: str
     speaker: str  # character_id
@@ -132,6 +157,10 @@ class ScriptLine(BaseModel):
     emotion: str = ""
     visual_hint: str = ""
     target: str = ""  # INC-001 §H 受话对象(对谁说)→ L6 关键帧 eyeline(说话者目光看向该角色)
+    # SPEC-005 §1.4 画面来源三档:scene(检索/生成,默认)| map | timeline。由 narration_script
+    # 按讲解稿内容打标,驱动 L6 image_gen 在 diagram_gen(确定性)与常规生成/检索间分发。
+    # 空场景不受影响——drama 行不打标,永远走默认 "scene"。
+    visual_type: str = "scene"
 
 
 class Script(BaseModel):
@@ -195,6 +224,9 @@ class Shot(BaseModel):
     # 精心生成的走位在桥接层被整个丢弃,多角色关键帧只说"合成到同一画面"、不说谁站哪面朝谁,
     # 渲染器只能瞎摆——这是"走位乱七八糟"的直接根因。透传到 L6 关键帧指令里定位每个人。
     blocking: list[str] = Field(default_factory=list)
+    # INC-004 §4.2(见 ShotListItem.quality_tier):key=L6 渲染时路由 L4 旗舰 provider;
+    # standard=本地免费路(默认,行为不变)。从 director 层 ShotListItem.quality_tier 透传。
+    quality_tier: str = "standard"
     # INC-002 时序提示词:performance_track 已在桥接层编译成的逐段时间窗自然语言(见
     # director/performance_track.py::compile_temporal_prompt),拼在基础提示词之后喂 L6 时序渲染。
     # 空 = 未填 performance_track(inert,行为不变)。
@@ -268,6 +300,9 @@ class ShotFrame(BaseModel):
     # 视线/轴线),排查"为什么生成成这样";前端关键帧预览可直接展示,保证所见=实际所用。
     debug_context: dict[str, Any] = Field(default_factory=dict)
     quality_checks: dict[str, Any] = Field(default_factory=dict)
+    # INC-004 §4.3(2026-07-19):L4 旗舰 provider 路由这一镜时的实付美元。None = 本地免费路
+    # (standard tier,绝大多数镜头)。流到 ShotVerdict.cost_usd 落库,攒真实成本数据。
+    cost_usd: float | None = None
 
 
 class FrameManifest(BaseModel):

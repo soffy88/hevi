@@ -170,7 +170,8 @@ def test_lighting_compiles_and_p9():
 
 
 def test_derive_negatives_from_schema():
-    """§5.5:有枪+手 → 自动"不要多余手指/枪械变形";无配乐/无台词 → 自动出现。"""
+    """§5.5:有枪+手 → 自动"不要多余手指/枪械变形"。**只出真图像负面词**:音频负面词
+    ("不要背景音乐/台词")归 compile_audio_prompt,不进这里;正向断言("确保…过渡")已改写。"""
     shot = ShotListItem(
         shot_id="SH001",
         scene_no=1,
@@ -179,8 +180,19 @@ def test_derive_negatives_from_schema():
     )  # music/dialogue 空
     neg = derive_negatives(shot)
     assert "不要枪械结构变形" in neg and "不要多余或畸形的手指" in neg
-    assert "不要背景音乐" in neg and "不要台词/对白声" in neg
     assert "不要卡通/动漫感" in neg
+    # 音频负面词不该混进图像负面槽(错位+冗余,由 compile_audio_prompt 的音频通道表达)
+    assert "不要背景音乐" not in neg and "不要台词/对白声" not in neg
+    # 负面槽里不该有正向断言(会被模型理解成"避免"该正向属性)
+    assert not any("确保" in n or "须遵循" in n for n in neg)
+
+
+def test_derive_negatives_audio_only_shot_is_inert():
+    """只有 audio_track、无 performance_track/manual → 图像负面词为空(audio 与图像负面无关)。
+    无配乐/无台词仍由 compile_audio_prompt 在音频通道表达。"""
+    shot = ShotListItem(shot_id="SH002", scene_no=1, audio_track=AudioTrack())  # 只有 audio_track
+    assert derive_negatives(shot) == []
+    assert compile_audio_prompt(shot.audio_track).startswith("(无配乐、无台词)")
 
 
 def test_compile_audio_prompt():

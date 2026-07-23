@@ -1167,15 +1167,20 @@ dependencies = [
     { name = "minio" },
     { name = "obase", extra = ["cache", "docker"] },
     { name = "omodul" },
+    { name = "opencc-python-reimplemented" },
     { name = "oprim" },
     { name = "oskill" },
+    { name = "peft" },
+    { name = "pillow" },
     { name = "prometheus-client" },
     { name = "psycopg2-binary" },
     { name = "pydantic", extra = ["email"] },
     { name = "pydantic-settings" },
     { name = "pyjwt", extra = ["crypto"] },
+    { name = "pypinyin" },
     { name = "python-dotenv" },
     { name = "python-frontmatter" },
+    { name = "resemblyzer" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "torch" },
     { name = "transformers" },
@@ -1209,15 +1214,20 @@ requires-dist = [
     { name = "minio", specifier = ">=7.2.20" },
     { name = "obase", extras = ["cache", "docker"], git = "ssh://git@github.com/helios-plat/obase.git?rev=v0.17.0" },
     { name = "omodul", git = "ssh://git@github.com/helios-plat/omodul.git?rev=v1.36.0" },
+    { name = "opencc-python-reimplemented", specifier = ">=0.1.7" },
     { name = "oprim", git = "ssh://git@github.com/helios-plat/oprim.git?rev=v3.11.0" },
     { name = "oskill", git = "ssh://git@github.com/helios-plat/oskill.git?rev=v4.4.0" },
+    { name = "peft", specifier = ">=0.19" },
+    { name = "pillow", specifier = ">=11.0" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
+    { name = "pypinyin", specifier = ">=0.55.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-frontmatter", specifier = ">=1.3.0" },
+    { name = "resemblyzer", specifier = ">=0.1.4" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "torch", specifier = ">=2.12.0" },
     { name = "transformers", specifier = "==4.51.3" },
@@ -2151,6 +2161,15 @@ wheels = [
 ]
 
 [[package]]
+name = "opencc-python-reimplemented"
+version = "0.1.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/6d/c6f37eed651dd6b752e50f80a93396cdaa42a6acc6ce05ad7452303ea511/opencc-python-reimplemented-0.1.7.tar.gz", hash = "sha256:4f777ea3461a25257a7b876112cfa90bb6acabc6dfb843bf4d11266e43579dee", size = 482566, upload-time = "2023-02-11T03:58:42.25Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/30/6b/055b7806f320cc8f2cdf23c5f70221c0dc1683fca9ffaf76dfc2ad4b91b6/opencc_python_reimplemented-0.1.7-py2.py3-none-any.whl", hash = "sha256:41b3b92943c7bed291f448e9c7fad4b577c8c2eae30fcfe5a74edf8818493aa6", size = 481813, upload-time = "2023-02-11T03:58:39.66Z" },
+]
+
+[[package]]
 name = "oprim"
 version = "3.11.0"
 source = { git = "ssh://git@github.com/helios-plat/oprim.git?rev=v3.11.0#758e35bef4f983db1156cf90284efa6bb0784070" }
@@ -2290,6 +2309,27 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/be/44/ed13eccdd0519eff265f44b670d46fbb0ec813e2274932dc1c0e48520f7d/patsy-1.0.2.tar.gz", hash = "sha256:cdc995455f6233e90e22de72c37fcadb344e7586fb83f06696f54d92f8ce74c0", size = 399942, upload-time = "2025-10-20T16:17:37.535Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/70/ba4b949bdc0490ab78d545459acd7702b211dfccf7eb89bbc1060f52818d/patsy-1.0.2-py2.py3-none-any.whl", hash = "sha256:37bfddbc58fcf0362febb5f54f10743f8b21dd2aa73dec7e7ef59d1b02ae668a", size = 233301, upload-time = "2025-10-20T16:17:36.563Z" },
+]
+
+[[package]]
+name = "peft"
+version = "0.19.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "accelerate" },
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "psutil" },
+    { name = "pyyaml" },
+    { name = "safetensors" },
+    { name = "torch" },
+    { name = "tqdm" },
+    { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/86/cf/037f1e3d5186496c05513a6754639e2dab3038a05f384284d49a9bd06a2d/peft-0.19.1.tar.gz", hash = "sha256:0d97542fe96dcdaa20d3b81c06f26f988618f416a73544ab23c3618ccb674a40", size = 763738, upload-time = "2026-04-16T15:46:45.105Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/b6/f54d676ed93cc2dd2234c3b172ea9c8c3d7d29361e66b1b23dec57a67465/peft-0.19.1-py3-none-any.whl", hash = "sha256:2113f72a81621b5913ef28f9022204c742df111890c5f49d812716a4a301e356", size = 680692, upload-time = "2026-04-16T15:46:42.886Z" },
 ]
 
 [[package]]
@@ -2722,6 +2762,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pypinyin"
+version = "0.55.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b4/a4/784cf98c09e0dc22776b0d7d8a4a5b761218bcae4608c2416ce1e167c8af/pypinyin-0.55.0.tar.gz", hash = "sha256:b5711b3a0c6f76e67408ec6b2e3c4987a3a806b7c528076e7c7b86fcf0eaa66b", size = 839836, upload-time = "2025-07-20T12:01:50.657Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b9/7b/4cabc76fcc21c3c7d5c671d8783984d30ac9d3bb387c4ba784fca3cdfa3a/pypinyin-0.55.0-py2.py3-none-any.whl", hash = "sha256:d53b1e8ad2cdb815fb2cb604ed3123372f5a28c6f447571244aca36fc62a286f", size = 840203, upload-time = "2025-07-20T12:01:48.535Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -3012,6 +3061,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
+]
+
+[[package]]
+name = "resemblyzer"
+version = "0.1.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "librosa" },
+    { name = "numpy" },
+    { name = "scipy" },
+    { name = "torch" },
+    { name = "typing" },
+    { name = "webrtcvad" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/69/b71d45dca34c51467d0df29154f6eb8c19d4effb95dbbaeef6fc160b29de/Resemblyzer-0.1.4.tar.gz", hash = "sha256:ae98d6eaf1def4b91d353347f7d31f10c29e8e109b5196ab29b390293036ad19", size = 15747774, upload-time = "2023-10-12T09:34:57.809Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/b5/d897d5de5b2123a1ad5d32e8e007d83f76582f5c32c60992577263bd7c7e/Resemblyzer-0.1.4-py3-none-any.whl", hash = "sha256:8f12eb2f1a9982d32e8db7856de754709b59c93a77bcf0ff536584b619a9dd1f", size = 15747704, upload-time = "2023-10-12T09:34:48.452Z" },
 ]
 
 [[package]]
@@ -3616,6 +3682,15 @@ wheels = [
 ]
 
 [[package]]
+name = "typing"
+version = "3.10.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/1b/835d4431805939d2996f8772aca1d2313a57e8860fec0e48e8e7dfe3a477/typing-3.10.0.0.tar.gz", hash = "sha256:13b4ad211f54ddbf93e5901a9967b1e07720c1d1b78d596ac6a439641aa1b130", size = 78962, upload-time = "2021-05-01T18:03:58.186Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/5d/865e17349564eb1772688d8afc5e3081a5964c640d64d1d2880ebaed002d/typing-3.10.0.0-py3-none-any.whl", hash = "sha256:12fbdfbe7d6cca1a42e485229afcb0b0c8259258cfb919b8a5e2a5c953742f89", size = 26320, upload-time = "2021-05-01T18:03:56.398Z" },
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3782,6 +3857,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/25/91/80908e835e100527a9267147b08c0eee1fa6ab0ffec15edc04d1d44885f7/watchfiles-1.2.0-cp315-cp315-musllinux_1_1_aarch64.whl", hash = "sha256:b718bf356bbc15e559bd8ef41782b573b8ae0e3f177ab244b440568d7ea02cfb", size = 630638, upload-time = "2026-05-18T04:30:49.89Z" },
     { url = "https://files.pythonhosted.org/packages/46/4b/95ab2f256bb4af3cb2eb23b9317bda984ee6e0f11733a5c004a6c95b06e3/watchfiles-1.2.0-cp315-cp315-musllinux_1_1_x86_64.whl", hash = "sha256:922c0e019fe68b3ae392965a766b02a71ba1168c932cebc3733cd52c5fe5b377", size = 657684, upload-time = "2026-05-18T04:31:32.027Z" },
 ]
+
+[[package]]
+name = "webrtcvad"
+version = "2.0.10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/34/e2de2d97f3288512b9ea56f92e7452f8207eb5a0096500badf9dfd48f5e6/webrtcvad-2.0.10.tar.gz", hash = "sha256:f1bed2fb25b63fb7b1a55d64090c993c9c9167b28485ae0bcdd81cf6ede96aea", size = 66156, upload-time = "2017-01-07T23:05:18.732Z" }
 
 [[package]]
 name = "websocket-client"
