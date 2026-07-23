@@ -180,7 +180,9 @@ class GenAdapter:
             subject = await service.create_subject(
                 kind=kind, name=name, reference_images=reference_images
             )
-            subject_id = subject["id"] if isinstance(subject, dict) else subject.id
+            # str 化：create_subject 回传的 id 可能是 asyncpg UUID 对象，下游 subject3d
+            # 子进程链按 str 处理（否则撞 'UUID' object has no attribute 'replace'）。
+            subject_id = str(subject["id"] if isinstance(subject, dict) else subject.id)
             if want_3d:
                 await service.generate_subject3d(subject_id)
         except Exception as e:
