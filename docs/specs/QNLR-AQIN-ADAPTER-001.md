@@ -36,6 +36,22 @@
 - 云精修（可选、付费）：`scene_render_avatar.py:920 _edit_keyframe(*, image_path, instruction, output_path, fallback_from, engine="local"|"cloud", ...) -> str`（返回实际用的引擎标签）。
 - **adapter 对外**：`refine_image(*, prompt, init_image=None, negative="", size=(1024,1024), seed=None, engine="local") -> GenImage{path, engine, seed}`。`init_image=None` → txt2img；`engine="local"` 免费；`engine="cloud"` 计帽（额度风险见 §4）。
 
+### 1.4 · 相机与朝向双字段接口（2026-07-23 补，任务 2 · 只定义不实现）
+
+**动因**：G1a 证伪的单角相机（`azimuth_deg` 一个标量）在 naive txt2img 下只是没生效；但 **SPEC-008 走 3D 底模 + ControlNet-depth 后，单字段的语义歧义会直接暴露在新管线上**——一个 `azimuth_deg` 说不清"相机在环轨哪个点"「看向何处」「主体朝哪」三件事，depth 渲染要的是明确的相机外参 + 每主体朝向，含糊值会渲出错误透视/背对镜头。故在 A0/SPEC-008 实现前先把接口冻结成双字段。
+
+**C-1 · 相机（二选一等价表示，adapter 内部归一为同一外参）**：
+- **形式 A（荐，世界坐标绝对）**：`camera = {position: [x,y,z], look_at: [x,y,z], up?: [0,1,0], fov_deg?: 40}` —— 位置 + 注视点，无歧义，直接喂 3D 底模虚拟相机（SPEC-008 §2 逐方位环绕即在此坐标系取点）。
+- **形式 B（等价，场景中心极坐标）**：`camera = {pos: {azimuth_deg, elevation_deg, radius}, heading: {yaw_deg, pitch_deg}}` —— pos = 相机在以场景中心为原点的球面位置，heading = 光轴朝向（**与 pos 解耦**：可站 45° 却横摇看向殿门，正是单字段做不到的）。缺 `heading` 时 adapter 默认 heading 指向场景中心（还原旧 orbit 语义，但显式）。
+- 约束：两形式**必须二选一给全**，不接受"只给 azimuth"的旧单字段（实现期对单字段输入报错要求补 look_at/heading，不静默按指向中心处理——不静默降级）。`SceneStage.space_map`（SPEC-008 B 轨）提供世界坐标真值，形式 A 为其原生表示。
+
+**C-2 · `subject_facing` 数组（每主体朝向，替代 `pos_desc_by_cid`/`side_by_cid` 的文字近似）**：
+- `subject_facing: [{cid, facing_yaw_deg, facing_pitch_deg?=0, anchor_view?}]` —— 每具在场主体一条，`facing_yaw_deg` = 该主体在场景世界坐标里的朝向（非相对相机），adapter 据此 + C-1 相机外参**算出该主体相对相机的视角**，再选 Subject3D 对应视图（front/left/right/back）并做朝向合成；`anchor_view` 可显式钉某视图覆盖自动选择。
+- 与现状衔接：现 `_compose_layout_base` 的 `side_by_cid`（左/右文字）与 `pos_desc_by_cid` 是此接口的退化近似；新接口把"朝向"从文字升为角度，消歧后可喂 depth-ControlNet 的几何约束。
+- 缺省：`subject_facing` 未给某 cid → 该主体朝向默认 = 面向相机（`facing = 相机→主体 反向`），显式记入 trail，不静默。
+
+**落点（实现期，非本文）**：`compose_layout` / SPEC-008 `render_scene_view` 的入参由 `pos_desc_by_cid` 扩为 `camera`(C-1) + `subject_facing`(C-2)；旧字段实现期保留为过渡近似或弃用，由 A0/SPEC-008 实现时定。**本节只冻结接口语义，不实现。**
+
 ---
 
 ## 2. 横切约定（三项，adapter 强制）
@@ -46,6 +62,7 @@
 - 帽内预留：`cost/circuit_breaker.py:40 CostTracker.check_and_reserve(amount_usd, limit)`（改 `spent_usd`）—— adapter **每次付费调用前** `check_and_reserve(est, 金额帽=¥80)`，超帽即抛、暂停（AQIN §3.2）。
 - **§3 熔断第 5 条落点**：付费调用**返回后**，adapter 计 `折算单价 = actual_usd / (视频时长s | 图像张数)`，>¥1/s（视频）或 >¥0.1/张（图像）→ 即时告警 + 暂停 + 出路由核对短报。
 - 单位换算：金额帽以 ¥ 计，provider 计费多为 USD；adapter 需持一个 **¥/USD 折算率**（A0 时由 Wiki 给定或从 config 读，本文标为待填参数 `CNY_PER_USD`）。
+- **★ ledger 落盘（2026-07-23 补，任务 1 已实现）**：内存态 `spent_usd` 不是可查询 ledger——首笔支出只落签核 markdown = 记账不是 ledger（反静默断链）。付费调用（`cost_usd>0`）后 adapter **追加一条结构化记录**到 `docs/ledgers/aqin-cost-ledger.jsonl`（已跟踪、append-only JSONL、可提交可复核；本地免费 op 不写）。落点：`hevi/qnlr/cost_ledger.py`（`append_record`/`read_records`/`total_cny`）；接线在 `GenAdapter.ledger_path`（默认上述路径，None=不落盘供单测）。每条字段契约（缺一即拒落盘）：`ts`(调用方传入,无时钟)、`op`、`provider`、`model_or_tier`、`unit`(per_second|per_image)、`quantity`(时长s|张数)、`unit_price_cny`、`cost_cny`、`cost_usd`、`fingerprint`(vault pack_id|None)、`trail_digest`、`cumulative_cny`、`cap_cny`。G0 首笔 ¥4.725 已回填为第一条。tranche 2 预算的实测单价来源 = 此 ledger，不再取人手写文档。
 
 ### 2.2 决策留痕（decision_trail）
 - 现状：无独立类型，是 `scene_render_avatar.py:1976` 内联构造、挂 `ShotFrame.debug_context: dict`（`tongjian/schemas.py:301`）的扁平 dict。

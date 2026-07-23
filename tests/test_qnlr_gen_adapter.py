@@ -25,7 +25,8 @@ def _reg_ok(**kw: Any) -> str:
 
 
 def _make(cap_cny: float = 80.0, register: bool = True) -> GenAdapter:
-    return GenAdapter(cap_cny=cap_cny, register_fn=_reg_ok if register else None)
+    # ledger_path=None：单测默认不落盘（避免写进已跟踪的真实 ledger）；落盘另有专测。
+    return GenAdapter(cap_cny=cap_cny, register_fn=_reg_ok if register else None, ledger_path=None)
 
 
 # ----------------- T-V 视频（付费路，G0 烟测同一条）-----------------
@@ -261,3 +262,73 @@ async def test_register_none_skips_and_no_pack_id() -> None:
 def test_adapter_result_shape() -> None:
     r = AdapterResult(ok=True, op="T-V")
     assert r.cost_usd == 0.0 and r.pack_id is None and r.decision_trail == {}
+
+
+# ----------------- 付费落盘 ledger（任务 1：内存态→持久可查询）-----------------
+
+
+async def test_paid_call_writes_ledger(tmp_path: Any) -> None:
+    """付费调用把结构化记录落盘：含 fingerprint/provider/模型/时长/单价/金额/trail digest。"""
+    from hevi.qnlr.cost_ledger import read_records
+
+    async def fake_video(prompt: str, output_path: str, **kw: Any) -> str:
+        return output_path
+
+    ledger = tmp_path / "ledger.jsonl"
+    adp = GenAdapter(cap_cny=80.0, register_fn=_reg_ok, ledger_path=ledger)
+    res = await adp.generate_video(
+        prompt="p",
+        output_path="o.mp4",
+        duration_s=5,
+        ts="2026-07-23T00:00:00Z",
+        video_fn=fake_video,
+    )
+    assert res.ok is True
+    rows = read_records(ledger)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["provider"] == "happyhorse_1_1_maas"
+    assert row["model_or_tier"] == "happyhorse_1_1"
+    assert row["unit"] == "per_second" and row["quantity"] == 5
+    assert row["unit_price_cny"] == pytest.approx(0.14 * CNY_PER_USD, rel=1e-3)
+    assert row["cost_cny"] == pytest.approx(0.70 * CNY_PER_USD, rel=1e-3)
+    assert row["fingerprint"] == "pack_test_001"
+    assert row["trail_digest"] and row["ts"] == "2026-07-23T00:00:00Z"
+    assert row["cumulative_cny"] == pytest.approx(0.70 * CNY_PER_USD, rel=1e-3)
+    assert row["cap_cny"] == 80.0
+
+
+async def test_local_free_call_does_not_write_ledger(tmp_path: Any) -> None:
+    """本地免费调用（cost_usd=0）不落 ledger——只记付费。"""
+    from hevi.qnlr.cost_ledger import read_records
+
+    async def fake_gen(**kw: Any) -> None:
+        return None
+
+    ledger = tmp_path / "ledger.jsonl"
+    adp = GenAdapter(register_fn=_reg_ok, ledger_path=ledger)
+    res = await adp.refine_image(prompt="p", output_path="a.png", gen_fn=fake_gen, ts="T")
+    assert res.ok is True and res.cost_usd == 0.0
+    assert read_records(ledger) == []
+
+
+async def test_failed_paid_call_does_not_write_ledger(tmp_path: Any) -> None:
+    """付费调用失败（回滚预留、零支出）不落 ledger——只记真实支出。"""
+    from hevi.qnlr.cost_ledger import read_records
+
+    async def boom(**kw: Any) -> str:
+        raise RuntimeError("provider down")
+
+    ledger = tmp_path / "ledger.jsonl"
+    adp = GenAdapter(register_fn=_reg_ok, ledger_path=ledger)
+    res = await adp.generate_video(prompt="p", output_path="o.mp4", duration_s=5, video_fn=boom)
+    assert res.ok is False
+    assert read_records(ledger) == []
+
+
+def test_cost_ledger_missing_field_rejected(tmp_path: Any) -> None:
+    """记账不完整（缺字段）拒绝落盘——不静默写半条。"""
+    from hevi.qnlr.cost_ledger import append_record
+
+    with pytest.raises(ValueError, match="缺字段"):
+        append_record(tmp_path / "l.jsonl", {"op": "T-V", "provider": "x"})

@@ -21,11 +21,15 @@ from typing import Any
 
 from hevi.cost.circuit_breaker import CostLimit, CostLimitExceeded, CostTracker
 from hevi.cost.pricing_table import get_pricing_table
+from hevi.qnlr.cost_ledger import append_record as _append_ledger
 
 logger = logging.getLogger(__name__)
 
 # Wiki 设定 2026-07-23（AQIN-PROJ §2.1）——provider 计费为 USD，金额帽为 ¥，需折算。
 CNY_PER_USD = 6.75
+
+# 付费支出的落盘 ledger（已跟踪，可提交可复核；见 cost_ledger 模块）。
+DEFAULT_LEDGER_PATH = "docs/ledgers/aqin-cost-ledger.jsonl"
 
 # §3 熔断第 5 条阈值（人民币折算单价）。触阈视为路由异常信号，暂停核对。
 VIDEO_PRICE_CNY_PER_S_CAP = 1.0
@@ -68,6 +72,8 @@ class GenAdapter:
     cap_cny: float = 80.0
     cny_per_usd: float = CNY_PER_USD
     register_fn: Callable[..., str] | None = None
+    # 付费调用（cost_usd>0）落盘的 ledger 路径；None → 不落盘（供纯本地/单测）。
+    ledger_path: str | Path | None = DEFAULT_LEDGER_PATH
     _breaker: CostTracker = field(default_factory=CostTracker)
 
     # ---- 帽与花费 ----
@@ -131,6 +137,32 @@ class GenAdapter:
             return None
         return self.register_fn(
             pack_type=pack_type, name=name, artifact_path=artifact_path, provenance=provenance
+        )
+
+    def _write_ledger(
+        self, *, trail: dict[str, Any], unit: str, quantity: float, cost_usd: float
+    ) -> None:
+        """付费调用后把一条结构化记录落盘（无 ledger_path 则跳过）。累计真值从此可查，
+        不再只靠人手写签核 markdown（DR-1 反静默断链）。"""
+        if self.ledger_path is None or cost_usd <= 0:
+            return
+        _append_ledger(
+            self.ledger_path,
+            {
+                "ts": trail.get("ts"),
+                "op": trail.get("op"),
+                "provider": trail.get("provider"),
+                "model_or_tier": trail.get("model_or_tier"),
+                "unit": unit,
+                "quantity": quantity,
+                "unit_price_cny": trail.get("unit_price_cny"),
+                "cost_cny": round(cost_usd * self.cny_per_usd, 4),
+                "cost_usd": round(cost_usd, 6),
+                "fingerprint": trail.get("fingerprint"),
+                "trail_digest": _digest(trail),
+                "cumulative_cny": round(self.spent_cny, 4),
+                "cap_cny": self.cap_cny,
+            },
         )
 
     # ---- T-1 subject 摄取 / 身份锚（本地/免费）----
@@ -382,6 +414,7 @@ class GenAdapter:
             provenance=trail,
         )
         trail["fingerprint"] = pack_id
+        self._write_ledger(trail=trail, unit=unit, quantity=duration_s, cost_usd=cost_usd)
         return AdapterResult(
             ok=True,
             op="T-V",
