@@ -32,5 +32,10 @@ txt2img **无 3D 场景模型**，相机方位不可由文字控制（"orbit"不
 ## 补记：写实风是提示可修（与方位缺口无关）
 批量那版漂成扁平插画后，单张重生一张写实 D1 master（AZ0，加摄影锚 + 负面 illustration/flat/vector）**成功**——黑漆巨柱/雕纹柱础/木构镶字/侧光烟霭，写实电影感达标（`scratchpad/l2/az000_master_realistic.png`）。故 G1a 表中"写实风❌"实为**提示可修项**，已修；**真正攻不动的只有"同一座殿 8 视点一致"这一条**（架构缺口）。三条路线选项不变——A/B/C 均以此写实 master 为基。
 
+## 裁决（Wiki，2026-07-23）
+**B+C**（3D 场景底模 + ControlNet-depth 渲染，季度级正解）。CC 已起 `SPEC-008-scene-multiview-consistency`（草案 v0.1）：B 供几何真值、C 渲写实，合流于 per-azimuth depth 图。
+- 关键盘点：**C 非从零**——INC-004 已验 ControlNet VRAM、`_sdxl_worker.py:35` 有 ControlNet 分支接线 TODO、控制图管道半就绪；增量 = depth 变体 + 场景 depth 图来源。B 增量 = SceneStage `space_map` 结构化坐标 → 粗 3D → 逐方位 depth。
+- **排期张力（随档，非重开裁决）**：B+C 是 L 级季度投资，EP0 8 月底窗口大概率赶不上；若 EP0 须按窗口出，D1 底版可用写实 master + 人工角度过渡，B+C 并行建、EP5 前切换。
+
 ## 结论
-G1a naive 8 方位路证伪、停。**不烧废片强攻方位**（架构限制非提示问题，攻不动）；写实 master 已备。等 Wiki 在 A/B/C 间裁决 D1 底版路线，再续 tranche 1。
+G1a naive 8 方位路证伪、停。裁决 B+C → SPEC-008 草案已出。tranche 1 的 D1 底版层挂起在 SPEC-008 实施（季度级）；EP0 是否走过渡由排期定。
