@@ -89,10 +89,14 @@ AdapterResult{
 
 **我的判断（待你确认，不擅自实现）**：G0-a。理由：付费通路正是要提前验的最高风险项；happyhorse 是唯一确认可用付费路；单次 5s 视频成本小且直接产出 §3.5 单价校准数据。
 
+**采纳（2026-07-23）**：G0-a；`CNY_PER_USD=6.75`（Wiki 设定）。A0 v0 含 T-V 视频薄封装。happyhorse_1_1_maas $0.14/s → ¥0.945/s < ¥1/s（过 §3.5）；5s ≈ $0.70 ≈ ¥4.73，远在 ¥80 帽内。
+
 ---
 
 ## 5. A0 v0 实现边界（照本文落地时）
 
 **纳入**：T-1/T-2/T-3 三类薄封装 + §2 三横切（cost/trail/vault）+ §3 信封 + circuit_breaker 接线。若 G0 采 G0-a 则加 T-V。
 **暂缓**：多人口型 per-face 校验、8 方位补全、云图像编辑路（额度墙）、provenance_tier 角标（T4，另线）。
-**验收（A0 自身，零成本）**：单测覆盖——①三类各自 mock 底层入口、断言 decision_trail/cost 记全；②超帽 `check_and_reserve` 抛且 `ok=False`；③单价越界触发 §3.5 暂停路径；④产物类调用确有 `asset_create` 落 pack_id。**G0 之前 A0 全绿。**
+**验收（A0 自身，零成本）**：单测覆盖——①三类各自 mock 底层入口、断言 decision_trail/cost 记全；②超帽 `check_and_reserve` 抛且 `ok=False`；③单价越界触发 §3.5 暂停路径；④产物类调用确有登记落 pack_id。
+
+**A0 实现状态（2026-07-23）**：✅ 已落 `hevi/qnlr/gen_adapter.py` + `hevi/qnlr/__init__.py`；单测 `tests/test_qnlr_gen_adapter.py` **13/13 通过、ruff 干净、导入不拉重依赖**。vault 登记做成注入式 `register_fn`（None 则跳过并记日志，供无 vault 基建的烟测；接 live vault `asset_create` 为后续接线）。**G0 之前 A0 全绿——达成。**
