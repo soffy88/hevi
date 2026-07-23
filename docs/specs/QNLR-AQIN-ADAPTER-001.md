@@ -73,6 +73,18 @@
 - **注意（纠误）**：`verdict/scorecard.py:232 make_scorecard_consistency_fn` 是**逐镜 QC 选优**（omodul 身份指纹选片），**不是**资产注册表——身份锚/合成帧/clip 的跨集登记走 vault，不走 scorecard（呼应 CONF-001 §8「omodul 指纹是误名」）。
 - **adapter 约定**：产物类调用（T-1 锚、T-2 合成帧、T-3 图、后续视频 clip）成功后 `asset_create(pack_type=aqin_char|aqin_base|aqin_frame|aqin_clip, provenance=decision_trail, ...)`，返回 `pack_id` 即 fingerprint（DR-1 约束 3）。A-QIN 资产不绑通道、入 vault 新范式（AQIN §0 纪律）。
 
+### 2.4 ★ 产物持久化纪律（2026-07-23 立，凭证↔实物不得分离）
+
+**事故驱动**：G0 支出只存签核 markdown（成本侧，ledger 已补，§2.1）；**资产侧同病未补即复发**——G1a 签核单记"L1 canon 锚集 7/7 可用（嬴政锁脸、荆轲跨视图保持）"，实盘核查（2026-07-23）**盘上 0 具、DB 0 行、reference 图无**，产物全落 scratchpad 已跨会话清；八方位底版 + 写实 master 同样清空。**验收判据引用了不存在的产物**——这是 STATUS 反静默断链纪律在资产侧的漏洞。
+
+**纪律（硬规，G1 起适用，同 ledger 之于成本）**：
+1. **任何计入验收判据的产物**（身份锚、底版、合成帧、clip、master、contact sheet 等，凡被签核单/gate 引用为"可用/通过"依据者）**必须落 durable 路径**（vault，或至少 `output/aqin/<layer>/` 等跨会话存活目录），**严禁只存 scratchpad**。
+2. 落盘即**登记 manifest**：`{fingerprint, 类型(pack_type), 生成参数摘要(prompt/seed/尺寸/provider digest), 所属层(L1/L2/…), 源(subject_id/scene), ts}`。vault 基建在则走 `asset_create`；未在则落 manifest 边车 JSON（`output/aqin/<layer>/manifest.jsonl`），vault 起来后回迁。
+3. **scratchpad 只允许存明确一次性的中间件**（烟测、废片、探针）；凡"要拿去签"的，不进 scratchpad。
+4. **签核纪律联动**：签核单声明"N/N 可用"时，须附产物的 durable 路径或 pack_id 清单；无 durable 凭证的产物**不得计入 gate 通过**（即 G1a 的"7/7"若无凭证，判据视为未达成，非已达成）。
+
+**为何现在做**：L3 压测将产十几条视频（实测单价 + 命中率数据），那批若再丢，压测学费白花、tranche 2 预算失据。此纪律现在做比 L3 后做便宜得多。
+
 ---
 
 ## 3. `AdapterResult` 信封（统一返回）
