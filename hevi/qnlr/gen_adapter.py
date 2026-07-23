@@ -16,6 +16,7 @@ import hashlib
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from hevi.cost.circuit_breaker import CostLimit, CostLimitExceeded, CostTracker
@@ -347,9 +348,10 @@ class GenAdapter:
         if fn is None:
             from hevi.video.alibaba_maas_service import alibaba_maas_generate as fn  # type: ignore
         try:
+            # alibaba_maas_generate 为全关键字签名，output_path 期望 Path。
             path = await fn(
-                prompt,
-                output_path,
+                prompt=prompt,
+                output_path=Path(output_path),
                 model=model,
                 resolution=resolution,
                 ratio=ratio,
