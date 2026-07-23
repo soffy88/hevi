@@ -344,6 +344,7 @@ class GenAdapter:
         config: dict[str, Any] | None = None,
         name: str | None = None,
         ts: str | None = None,
+        reference_images: list[str] | None = None,  # 给了则走图生视频(参考图→视频/i2v)
         video_fn: Callable[..., Any] | None = None,
     ) -> AdapterResult:
         # 1) 计价 + §3.5 单价闸（付费前，已知价即拒越界路由）。
@@ -377,22 +378,49 @@ class GenAdapter:
                 unit_price_cny=round(unit_price_cny, 4),
                 reason=f"超金额帽 ¥{self.cap_cny}: {e}",
             )
-        # 3) 真机调用。
+        # 3) 真机调用。给 reference_images 走图生视频(参考图→视频)，否则文生视频。
+        is_i2v = bool(reference_images)
         fn = video_fn
         if fn is None:
-            from hevi.video.alibaba_maas_service import alibaba_maas_generate as fn  # type: ignore
+            if is_i2v:
+                from hevi.video.alibaba_maas_service import (  # type: ignore
+                    happyhorse_1_1_maas_reference_to_video as fn,
+                )
+            else:
+                from hevi.video.alibaba_maas_service import (
+                    alibaba_maas_generate as fn,  # type: ignore
+                )
         try:
-            # alibaba_maas_generate 为全关键字签名，output_path 期望 Path。
-            path = await fn(
-                prompt=prompt,
-                output_path=Path(output_path),
-                model=model,
-                resolution=resolution,
-                ratio=ratio,
-                duration=duration_s,
-                seed=seed,
-                config=config,
-            )
+            # 全关键字签名，output_path 期望 Path。
+            if is_i2v:
+                # 垫片（DR-1 约束2）：参考图本机路径 → data URI。阿里 r2v 端点只吃
+                # URL/data:，不认本机路径（reference 端点不像 keyframe 端点自转）。
+                from hevi.video.alibaba_maas_service import (  # type: ignore
+                    _to_data_uri_if_local,
+                )
+
+                refs = [_to_data_uri_if_local(str(r)) for r in reference_images]
+                path = await fn(
+                    prompt=prompt,
+                    reference_images=refs,
+                    output_path=Path(output_path),
+                    resolution=resolution,
+                    ratio=ratio,
+                    duration=duration_s,
+                    seed=seed,
+                    config=config,
+                )
+            else:
+                path = await fn(
+                    prompt=prompt,
+                    output_path=Path(output_path),
+                    model=model,
+                    resolution=resolution,
+                    ratio=ratio,
+                    duration=duration_s,
+                    seed=seed,
+                    config=config,
+                )
         except Exception as e:
             self._breaker.spent_usd -= est_usd  # 调用失败，回滚预留
             return AdapterResult(ok=False, op="T-V", cost_usd=0.0, reason=f"provider 调用失败: {e}")
@@ -402,12 +430,17 @@ class GenAdapter:
             op="T-V",
             provider=provider,
             model=model,
-            engine="cloud",
+            engine="cloud/i2v" if is_i2v else "cloud",
             seed=seed,
             cost_usd=cost_usd,
             unit_price_cny=unit_price_cny,
             ts=ts,
-            inputs={"prompt": prompt, "duration_s": duration_s, "resolution": resolution},
+            inputs={
+                "prompt": prompt,
+                "duration_s": duration_s,
+                "resolution": resolution,
+                "reference_images": reference_images,
+            },
         )
         pack_id = self._register(
             pack_type="aqin_clip",

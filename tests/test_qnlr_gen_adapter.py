@@ -67,6 +67,33 @@ async def test_generate_video_happy_path() -> None:
     assert len(calls) == 1
 
 
+async def test_generate_video_i2v_reference_route() -> None:
+    """给 reference_images → 走图生视频路：fake fn 收到 reference_images，trail 记 i2v。"""
+    got: dict[str, Any] = {}
+
+    async def fake_ref_video(
+        prompt: str, reference_images: list[str], output_path: Any, **kw: Any
+    ) -> str:
+        got["refs"] = reference_images
+        return str(output_path)
+
+    adp = _make()
+    res = await adp.generate_video(
+        prompt="推鞘至背动作",
+        output_path="output/s10a.mp4",
+        duration_s=5,
+        # URL ref → 垫片 _to_data_uri_if_local 原样透传（本机路径才转 data URI）
+        reference_images=["https://example.com/s10a.png"],
+        ts="2026-07-23T00:00:00Z",
+        video_fn=fake_ref_video,
+    )
+    assert res.ok is True
+    assert got["refs"] == ["https://example.com/s10a.png"]
+    assert res.decision_trail["engine"] == "cloud/i2v"
+    assert res.decision_trail["inputs_digest"]
+    assert res.cost_usd == pytest.approx(0.14 * 5)
+
+
 async def test_generate_video_cap_exceeded() -> None:
     """②超帽：cap ¥1 → $0.148 限额，5s×$0.14=$0.70 预留即拒，且不发起调用、花费不动。"""
     called = False
