@@ -301,15 +301,16 @@ def test_failures_carry_executable_fix() -> None:
     ]
 
 
-def test_h4_fix_suggests_variant_canonical() -> None:
-    """H4 修法：注册表有简繁变体时荐 canonical(晉→晋)；真缺口(虢公)则荐改述回避。"""
+def test_h4_variant_normalized_pass_true_gap_fails() -> None:
+    """N0-D-013：简繁变体(晉↔晋)归一后 PASS；真缺口(虢公)FAIL 且修法荐改述回避。"""
     draft, refs = _valid()
     refs["name_registry"].add("晋")  # 注册表存简体 canonical
-    draft["beats"][0]["sentences"][0]["entities"] = ["晉", "虢公"]  # 晉=晋变体在表; 虢公真缺
+    draft["beats"][0]["sentences"][0]["entities"] = ["晉", "虢公"]  # 晉=晋变体; 虢公真缺
     rep = run_rhard(draft, refs)
+    h4names = [f["reason"].split(": ")[-1] for f in rep["failures"] if f["gate"] == "H4"]
+    assert "晉" not in h4names, h4names  # 简繁变体归一命中 → 不报缺口
     fx = {f["reason"].split(": ")[-1]: f["fix"] for f in rep["failures"] if f["gate"] == "H4"}
-    assert "晋" in fx.get("晉", ""), fx  # 变体命中 → 荐 canonical『晋』
-    assert "改述" in fx.get("虢公", ""), fx  # 真缺口 → 荐改述回避(不截断误导)
+    assert "虢公" in fx and "改述" in fx["虢公"], fx  # 真缺口 → 改述回避
 
 
 def test_h8_fix_suggests_onscreen_for_long_quote() -> None:

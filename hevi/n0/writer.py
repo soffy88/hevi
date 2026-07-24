@@ -64,7 +64,12 @@ _SCHEMA = """{
 }"""
 
 
-def build_prompt(episode_plan: dict, refs: dict, rhard_feedback: list[dict] | None = None) -> str:
+def build_prompt(
+    episode_plan: dict,
+    refs: dict,
+    rhard_feedback: list[dict] | None = None,
+    frozen: list[dict] | None = None,
+) -> str:
     ku = {
         "events": refs.get("ku_events", {}),
         "accounts": refs.get("ku_accounts", {}),
@@ -90,18 +95,37 @@ def build_prompt(episode_plan: dict, refs: dict, rhard_feedback: list[dict] | No
         "onscreen 引文句不计入 VO、须同拍配 vo 白话转述句）。",
     ]
     if rhard_feedback:
-        # N0-D-011：每条 FAIL 带 `fix` 可执行修法——**逐条照 fix 执行**是本轮首要任务。
+        # N0-D-011/012：分门迭代——本轮**只修下列门的点名 sid**，其余句(尤其冻结清单)一字不动。
         lines = [
             f"- [{f.get('gate')}] sid={f.get('sid')}｜实测: {f.get('reason')}"
             f"\n  → 修法: {f.get('fix') or '（见 reason）'}"
             for f in rhard_feedback
         ]
-        parts.insert(
-            1,  # 置于任务说明之后、KU 之前——修正指令是本轮首要输入，不只是"上轮失败了"
-            "\n## ★本轮首要任务：按下列 R-hard 修正指令逐条修复★"
-            "\n**外科式**：只改被点名 sid 的句、逐条照『修法』执行，其余句一字不动"
-            "（重写全稿会引入新错、打地鼠）。修完重出完整 JSON。\n" + "\n".join(lines),
+        target_gates = sorted({f.get("gate") for f in rhard_feedback})
+        block = (
+            f"\n## ★本轮首要任务：仅修复门 {target_gates}，按修法逐条改★"
+            "\n**外科式**：只改下列被点名 sid 的句、逐条照『修法』执行；未点名句**一字不动**"
+            "（重写全稿会打地鼠、破坏已过门）。修完重出完整 JSON。\n" + "\n".join(lines)
         )
+        if frozen:
+            # N0-D-012：已过门所在拍整句冻结——text + conflict_callouts/presentation/e_banner
+            # 逐字逐字段保留（只锁 text 会丢角标使 H5 回退，故连门相关字段一并冻结）。
+            def _fz_line(fz: dict) -> str:
+                extra = "".join(
+                    f" [{k}={fz[k]}]"
+                    for k in ("conflict_callouts", "presentation", "e_banner")
+                    if fz.get(k)
+                )
+                return f"- sid={fz.get('sid')}: {fz.get('text', '')}{extra}"
+
+            block = (
+                "\n## ★已过门·冻结清单（下列句已通过硬门，**整句连同 [ ] 内字段逐字原样保留、"
+                "严禁改动**）★\n"
+                + "\n".join(_fz_line(fz) for fz in frozen)
+                + "\n（改动冻结句文字**或 conflict_callouts/presentation 字段**都会使已过门回退"
+                "——只动下面『本轮任务』点名的 sid）\n" + block
+            )
+        parts.insert(1, block)  # 置于任务说明后、KU 前——修正指令是本轮首要输入
     parts.append("\n只输出 JSON，不要任何解释。")
     return "\n".join(parts)
 
@@ -127,9 +151,10 @@ async def write_draft(
     model_name: str,
     max_tokens: int = 3000,
     rhard_feedback: list[dict] | None = None,
+    frozen: list[dict] | None = None,
 ) -> tuple[dict, dict]:
     """调 LLM 出一版 ScriptDraft。返回 (draft, usage)。draft.meta 填 model/cost 由 pilot 补。"""
-    prompt = build_prompt(episode_plan, refs, rhard_feedback)
+    prompt = build_prompt(episode_plan, refs, rhard_feedback, frozen)
     result = await llm(
         messages=[{"role": "user", "content": prompt}],
         max_tokens=max_tokens,

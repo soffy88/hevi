@@ -52,16 +52,6 @@ class Failure:
     fix: str = ""  # N0-D-011：可执行修法(门不仅判定、还给修法)，W 循环首要输入
 
 
-def _nearest_name(x: str, names: set[str]) -> str | None:
-    """注册表变体名建议(H4 修法)：仅当注册名与 x 归一后**等价**（简繁/异体差，如晉↔晋）
-    才荐——避免『周平王→平』式截断误导；真缺口(无变体命中)返回 None → 修法改『改述回避』。"""
-    nx = _norm(x)
-    if not nx:
-        return None
-    variants = [n for n in names if _norm(n) == nx and n != x]
-    return min(variants, key=len) if variants else None
-
-
 def _sentences(draft: dict) -> list[tuple[dict, dict]]:
     return [(b, s) for b in draft.get("beats", []) for s in b.get("sentences", [])]
 
@@ -241,6 +231,8 @@ def h3_dates_numbers(draft: dict, refs: dict) -> list[Failure]:
 # ── H4 名从注册表 + 原料池不可引(OP-D-054)────────────────────────────────────
 def h4_names_registry(draft: dict, refs: dict) -> list[Failure]:
     pool, names = set(refs.get("pool_ids", ())), set(refs.get("name_registry", ()))
+    # N0-D-013：注册表名简繁归一后比对——韓萬/韩万等异体不再误判缺口(同 H2/H4 归一族)。
+    names_norm = {_norm(n) for n in names}
     out: list[Failure] = []
     for _b, s in _sentences(draft):
         allrefs = (s.get("fact_refs") or []) + (s.get("thesis_refs") or [])
@@ -258,16 +250,15 @@ def h4_names_registry(draft: dict, refs: dict) -> list[Failure]:
         # 引文外叙述句维持严格(注册表约束叙述、不约束原文，H3 豁免引文内数字同族)。
         quoted = _norm("".join(q.get("text", "") for q in _quotes(s)))
         for nm in s.get("entities") or []:
-            if nm in names or _norm(nm) in quoted:
-                continue
-            near = _nearest_name(nm, names)
-            fix = (
-                f"名『{nm}』不在注册表；改用 canonical 名『{near}』"
-                if near
-                else f"名『{nm}』未注册；若为引文内容则标 quote 豁免，否则改述回避该名"
-            )
+            if _norm(nm) in names_norm or _norm(nm) in quoted:
+                continue  # 简繁归一后命中注册表(N0-D-013)或在引文内(N0-D-007)→ 豁免
             out.append(
-                Failure("H4", s.get("sid"), f"叙述句人名/地名不在注册表(R3 按代取名): {nm}", fix)
+                Failure(
+                    "H4",
+                    s.get("sid"),
+                    f"叙述句人名/地名不在注册表(R3 按代取名): {nm}",
+                    f"名『{nm}』未注册(registry 缺口)；若为引文内容则标 quote 豁免，否则改述回避",
+                )
             )
     return out
 
