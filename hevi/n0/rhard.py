@@ -165,10 +165,13 @@ def h4_names_registry(draft: dict, refs: dict) -> list[Failure]:
             for r in allrefs
             if r in pool
         )
+        # H4 精化(N0-D-007)：quote span 内的名字豁免注册表(源内逐字、H2 已保真、R5 忠实)；
+        # 引文外叙述句维持严格(注册表约束叙述、不约束原文，H3 豁免引文内数字同族)。
+        quoted = _norm("".join(q.get("text", "") for q in _quotes(s)))
         out.extend(
-            Failure("H4", s.get("sid"), f"人名/地名不在注册表(R3 按代取名): {nm}")
+            Failure("H4", s.get("sid"), f"叙述句人名/地名不在注册表(R3 按代取名): {nm}")
             for nm in (s.get("entities") or [])
-            if nm not in names
+            if nm not in names and _norm(nm) not in quoted
         )
     return out
 

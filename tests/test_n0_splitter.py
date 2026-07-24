@@ -192,3 +192,48 @@ def test_boundary_only_inside_marks_unsplittable() -> None:
     split = split_overlong(draft)
     assert len(split["beats"]) == 1  # 引文外无边界 → 不可拆（不掩盖）
     assert split["beats"][0]["sentences"][0]["text"].count("『") == 1  # 引号完整
+
+
+def test_merge_crosses_parent_same_role_not_role_boundary() -> None:
+    """欠窗拍跨 parent 就近合并（同 fact role），但不跨 fact/thesis 边界。"""
+    draft = {
+        "episode_ref": "ep:x",
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {
+                        "sid": "b1-1",
+                        "type": "fact",
+                        "text": "前745封桓叔于曲沃。",
+                        "fact_refs": ["ev:a"],
+                    }
+                ],
+            },
+            {
+                "beat_id": "b2",
+                "sentences": [
+                    {"sid": "b2-1", "type": "fact", "text": "前725弑孝侯。", "fact_refs": ["ev:b"]}
+                ],
+            },
+            {
+                "beat_id": "b3",
+                "sentences": [
+                    {
+                        "sid": "b3-1",
+                        "type": "thesis",
+                        "text": "末大必折之应验昭然。",
+                        "thesis_refs": ["t"],
+                    }
+                ],
+            },
+        ],
+    }
+    # b1(fact,短) b2(fact,短) 应跨 parent 合并；b3(thesis) 不与 fact 合
+    out = split_overlong(draft)["beats"]
+    types_per_beat = [{s["type"] for s in b["sentences"]} for b in out]
+    # 不得出现 fact 与 thesis 混在同一合并拍
+    for t in types_per_beat:
+        assert not ({"fact", "thesis"} <= t), f"跨 fact/thesis 合并了: {t}"
+    # b1+b2 两 fact 短拍应合并(总拍数 < 3)
+    assert len(out) < 3

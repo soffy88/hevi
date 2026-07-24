@@ -116,19 +116,32 @@ def _root(b: dict) -> str:
     return b.get("parent_beat") or b.get("beat_id")
 
 
+def _beat_role(b: dict) -> set[str]:
+    """拍内容 role：非 transition 句的 type 集（{fact}/{thesis}/空=纯 transition）。"""
+    return {s.get("type") for s in b.get("sentences", []) if s.get("type") in ("fact", "thesis")}
+
+
+def _can_merge(a: dict, b: dict) -> bool:
+    """可合并：不跨 fact/thesis 边界（一方纯 transition 或 role 相容即可）。"""
+    ra, rb = _beat_role(a), _beat_role(b)
+    return not (("fact" in ra and "thesis" in rb) or ("thesis" in ra and "fact" in rb))
+
+
 def _merge_underwindow(beats: list[dict], min_secs: float, max_secs: float) -> list[dict]:
-    """把欠窗(<min)子拍并回同 root 相邻拍(合并后 ≤max)——拆分的对偶，保子拍落 [min,max]。"""
+    """把欠窗(<min)子拍就近并回相邻拍(合并后 ≤max)——拆分的对偶，保子拍落 [min,max]。
+    同 root 优先；无同 root 可并时**跨 parent 就近合并**(N0-D-007 splitter 补)，
+    但**不跨 fact/thesis 边界**(_can_merge)。"""
     out: list[dict] = []
     for b in beats:
-        if (
-            out
-            and _root(out[-1]) == _root(b)
-            and (_beat_secs(b) < min_secs or _beat_secs(out[-1]) < min_secs)
-            and _beat_secs(out[-1]) + _beat_secs(b) <= max_secs
-        ):
-            out[-1] = {**out[-1], "sentences": out[-1]["sentences"] + b["sentences"]}
-        else:
-            out.append(b)
+        if out:
+            prev = out[-1]
+            underwin = _beat_secs(b) < min_secs or _beat_secs(prev) < min_secs
+            fits = _beat_secs(prev) + _beat_secs(b) <= max_secs
+            same_root = _root(prev) == _root(b)
+            if underwin and fits and (same_root or _can_merge(prev, b)):
+                out[-1] = {**prev, "sentences": prev["sentences"] + b["sentences"]}
+                continue
+        out.append(b)
     return out
 
 

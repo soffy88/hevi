@@ -197,3 +197,29 @@ def test_h2_unmarked_quote_bypass_fails() -> None:
     rep = run_rhard(draft, refs)
     assert rep["by_gate"]["H2"] == "FAIL"
     assert any(f["gate"] == "H2" and "未标引文" in f["reason"] for f in rep["failures"])
+
+
+def test_h4_quote_internal_name_exempt() -> None:
+    """引文 span 内未注册人名 → H4 豁免 PASS(N0-D-007，源内逐字 H2 已保真)。"""
+    draft, refs = _valid()
+    refs["corpus"]["u:x"] = "王使尹氏武氏助之"
+    draft["beats"][1]["sentences"].append({
+        "sid": "s1-b2-x", "type": "fact", "fact_refs": ["ev:quwo-wugong-mie-yi"],
+        "thesis_refs": [], "text": "王使『尹氏』助伐。", "quote": {"ulid": "u:x", "text": "尹氏"},
+        "entities": ["尹氏"], "display": {"source_display": "《左传》"},
+    })
+    rep = run_rhard(draft, refs)
+    assert rep["by_gate"]["H4"] == "PASS", [f for f in rep["failures"] if f["gate"] == "H4"]
+
+
+def test_h4_narration_name_strict() -> None:
+    """同名(尹氏)出现在叙述句(无引文覆盖) → H4 严格 FAIL。"""
+    draft, refs = _valid()
+    draft["beats"][1]["sentences"].append({
+        "sid": "s1-b2-y", "type": "fact", "fact_refs": ["ev:quwo-wugong-mie-yi"],
+        "thesis_refs": [], "text": "尹氏亦助伐翼。", "entities": ["尹氏"],
+        "display": {"source_display": "《左传》"},
+    })
+    rep = run_rhard(draft, refs)
+    assert rep["by_gate"]["H4"] == "FAIL"
+    assert any(f["gate"] == "H4" and "尹氏" in f["reason"] for f in rep["failures"])
