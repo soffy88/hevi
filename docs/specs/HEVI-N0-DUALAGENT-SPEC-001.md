@@ -49,7 +49,7 @@ ScriptDraft {episode_ref, beats[{beat_id, sentences[
 | H5 冲突不抹平 | EpisodePlan 涉及事件带 S12/角标 hint 的 cf，稿内必须呈现或显式记录不呈现理由 |
 | H6 counterpoint 非装饰 | 按 OP-D-051：呈现 ≥1 次，或 EpisodePlan 已附检索记录的显式无 |
 | H7 E-banner | 涉 E3/E4 事件的拍必须带等级标注指令（R9） |
-| H8 结构 | transition ≤20%；beat 对齐 EpisodePlan；VO 时长估算在 5–15s/拍 |
+| H8 结构 | transition ≤20%；beat 对齐 EpisodePlan；VO **分段估时** 5–15s/拍——非引文口播 5 字/s + H2 锁定的逐字引文按字幕 2 字/s，拍级求和（**N0-D-001** 修订，见 DECISIONS-N0.md；原口径一律 5 字/s 使含长引文拍误超时） |
 
 R-soft（LLM）：叙事节奏、通俗度、开场钩子、深度是否名实相符——**只出意见附审计报告，不设门**。
 

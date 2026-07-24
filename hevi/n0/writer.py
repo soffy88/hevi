@@ -22,7 +22,13 @@ _SYSTEM = (
     "④引原文必逐字照抄给定 corpus 白文并填 quote{ulid,text}(text 是 corpus 的子串)；"
     "⑤稿内任何日期/数量必来自给定 chronology/number_claims 并挂 number_refs，否则删；"
     "⑥transition 句(纯衔接)不带 ref 且全稿占比 ≤20%；"
-    "⑦深度来自论点：throughline 驱动骨架、事实供证，不许照搬白文翻译。"
+    "⑦深度来自论点：throughline 驱动骨架、事实供证，不许照搬白文翻译；"
+    "⑧通俗度：生僻人名/地名/术语(翼侯/汾隰/支庶/大宗)首现即用括号或短句即时解释；"
+    "⑨文言引文后必接一句白话转译(引文作 quote 字幕、转译作口播句)，不留纯文言；"
+    "⑩概引硬规：**每个 quote.text ≤10 汉字**，取最能支撑论点的短句，**绝不整段照抄**"
+    "(H8 引文按 2 字/s 计：10 字=5s，整段 18 字塞多句必超时)；同一 corpus 段不在多句重复引；"
+    "⑪quote.text 从 corpus **逐字复制**(繁体原样、一字不改、是 corpus 值连续子串)；"
+    "⑫entities 与文中人名/地名只能用 name_registry 列出的名字，不在表内的换等价名或删。"
 )
 
 # R-hard 期望的 ScriptDraft JSON 形状（喂给 W，确保结构可审）。
@@ -73,7 +79,8 @@ def build_prompt(episode_plan: dict, refs: dict, rhard_feedback: list[dict] | No
     ]
     if rhard_feedback:
         parts.append(
-            "\n## 上一轮 R-hard 打回（逐条修正后重出完整 JSON）\n"
+            "\n## 上一轮 R-hard 打回——★外科式修正★：**只改下列打回句(按 sid)，其余句一字不动**"
+            "原样保留，切勿重写全稿(重写会引入新错、打地鼠)。修完重出完整 JSON。\n"
             + json.dumps(rhard_feedback, ensure_ascii=False, indent=2)
         )
     parts.append("\n只输出 JSON，不要任何解释。")

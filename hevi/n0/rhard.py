@@ -204,10 +204,15 @@ def h8_structure(draft: dict, refs: dict) -> list[Failure]:
         bid = b.get("beat_id")
         if plan_beats and bid not in plan_beats:
             out.append(Failure("H8", bid, "beat 不对齐 EpisodePlan"))
-        chars = sum(len(s.get("text", "")) for s in b.get("sentences", []))
-        secs = chars / 5.0  # ~5 CJK 字/s VO 估
+        # VO 分段估时(N0-D-001,裁决见 DECISIONS-N0.md)：非引文口播 5 字/s +
+        # H2 锁定的逐字引文按字幕呈现 2 字/s，拍级求和判 5–15s。
+        secs = 0.0
+        for s in b.get("sentences", []):
+            tchars = len(s.get("text", ""))
+            qchars = sum(len(q.get("text", "")) for q in _quotes(s))
+            secs += max(0, tchars - qchars) / 5.0 + qchars / 2.0
         if not 5.0 <= secs <= 15.0:
-            out.append(Failure("H8", bid, f"VO 估时 {secs:.1f}s 不在 5–15s/拍"))
+            out.append(Failure("H8", bid, f"VO 分段估时 {secs:.1f}s 不在 5–15s/拍"))
     return out
 
 

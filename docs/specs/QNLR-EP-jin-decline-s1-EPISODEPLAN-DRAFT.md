@@ -12,7 +12,7 @@
 episode_id: ep:jin-decline-s1
 title: 曲沃代翼
 sub_arc_ref: arc:jin-decline/s1-quwo        # seq=1，七子簇之首
-粒度裁议: 一子簇=一集（送裁点②；本簇 2 事件、单线因果，够一集不需拆段）
+粒度裁议: 一子簇=一集（送裁点②）；**3 拍**——师服论断独立成拍（N0-D-002 薄集拆拍首例，OP-D-051②）
 time_window: 前745（曲沃封桓叔·晋始乱）– 前678（武公灭翼代晋·王命为晋侯）  # 曲沃三世 67 年，成员事件 canonical_date 包络
 
 # ── 论点双轨（thesis_refs 轨）──────────────────────────────────
@@ -28,12 +28,12 @@ counterpoint_search_record:                  # OP-D-045：默认无对立=未查
   result: 未见同题异框架源内论点；shimo-changbian（史墨『社稷无常奉』·左传昭32=前510）晚曲沃代翼 200+ 年、属六卿期君权旁落，非曲沃代翼异框架 → 移除，defer arc 级/s3+
   decided_by: 顾问 Claude · Wiki 授权 2026-07-24
 
-# ── 分镜拍（beats）· fact_refs 轨与 thesis 轨双挂 ──────────────
+# ── 分镜拍（beats·3 拍）· fact 拍与 thesis 拍分离（N0-D-002）──────────────
 beats:
   - beat_id: s1-b1
     title: 曲沃封桓叔·晋始乱
     fact_refs: [ev:quwo-feng-huanshu]        # candidate→KU（送裁；cand:quwo-feng-huanshu）
-    thesis_refs: [thesis:shifu-modabizhe]    # 师服预言落此拍（论/史同拍，R10 区分：论=旁白，史=画面事件）
+    thesis_refs: []                          # fact 拍（论断移 b3）
     evidence_spans:                          # 映射不变式①：一 beat ≥1 逐字白文 span
       - para_ulid: "4YW6S…:0205"
         source: 左传·桓公二年
@@ -44,14 +44,26 @@ beats:
   - beat_id: s1-b2
     title: 曲沃武公灭翼·代晋
     fact_refs: [ev:quwo-wugong-mie-yi]       # candidate→KU（送裁；cand:quwo-wugong-mie-yi）
-    thesis_refs: [thesis:shifu-modabizhe]    # 『末大必折』第一次应验（支庶曲沃并大宗翼）
+    thesis_refs: []                          # fact 拍
     evidence_spans:
       - para_ulid: "4YW6S…:0217"
         source: 左传·桓公三年（武公伐翼逐翼侯于汾隰）
         genre: 编年正史（白文）
         text: "曲沃武公伐翼，逐翼侯于汾隰"
-        note: "后武公灭晋、王命为晋侯（并大宗）——过程性注记，可并陈曲沃三世（桓叔/庄伯/武公）历 67 年代翼"
+        note: "后武公灭晋、王命为晋侯（并大宗）——过程性注记"
     mapstate_cues: [翼, 汾隰]
+    conflict_callouts: []
+  - beat_id: s1-b3
+    title: 末大必折·师服论断（throughline 独立拍）
+    fact_refs: []                            # thesis 拍（N0-D-002 拆出）
+    thesis_refs: [thesis:shifu-modabizhe]    # 师服『末大必折』——曲沃代翼第一次应验
+    evidence_spans:                          # 师服语所在（左传桓2，逐字引文供 H2）
+      - para_ulid: "4YW6S…:0205"
+        source: 左传·桓公二年（师服语）
+        genre: 编年正史（白文）
+        text: "本大而末小是以能固…今晋甸侯也而建国本既弱矣其能久乎"
+    attribution: 我方按（师服·左传，R8/R10 论/史区分）
+    mapstate_cues: []
     conflict_callouts: []
 
 provenance:
