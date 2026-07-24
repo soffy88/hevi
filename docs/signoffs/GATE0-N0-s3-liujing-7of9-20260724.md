@@ -4,7 +4,7 @@
 |---|---|
 | 闸 | **閘⓪** · 送裁 · CC-A · 2026-07-24 |
 | 集 | s3 晋作三军五军·六卿彊(5 叙事拍;mainline 叔向公室将卑 + 并陈 仲尼失度 + counterpoint 显式无) |
-| **结果** | **R-hard 7/9**（H4/H8 残留）——**未达 9/9，撞内容天花板**（诚实报告） |
+| **结果** | **R-hard 7/9**（H4/H8 残留）。★**残留归因核实（DIAG-s3-residual-attribution）更正：两残留均机制/prompt 可解，非内容天花板；下方『qwen-max 建议』作废**——H4 卿族=制度类目词误当 entity(门加豁免)、H8 b4=白话句 splitter 边界漏拆(已证可拆 7+8.6)。W-BACKLOG-1 不触发。 |
 | W 模型 | qwen-plus · cost **¥1.09/¥1.22（两跑，约 2× s1/s2）** |
 | 前置 | CC-B s3 弧灌注(arc/events/s3-liujing.json 2 事件 + F25-jin-liuqing.json 第三事件) |
 
