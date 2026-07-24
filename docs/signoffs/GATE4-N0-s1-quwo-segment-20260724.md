@@ -1,8 +1,23 @@
 # GATE④ · s1 曲沃代翼 成片段 · 送审(不发布)
 
+## ★ 签字工件（閘④）
+
+| 签字项 | 值 |
+|---|---|
+| **判定人** | **Wiki**（顾问 Claude 全权授权代拟,Wiki 裁准） |
+| **日期** | **2026-07-24** |
+| **闸** | 閘④ 成段评审 |
+| **裁决** | ✅ **准入** |
+| **裁决原文** | 「**讲得清楚明白,准入**」 |
+| **钉稿件 sha256（mp4）** | `3bb3d74d8a7155c61a8037eca4f45c5978d7f6082df00eca650eb4cbba95827d` |
+| **成片段** | `output/s1_quwo_daiyi/DELIVER/s1_quwo_daiyi_segment.mp4`(129.4s) |
+| **打磨清单** | 转 backlog `DEBT-REGISTER.md#S1-POLISH-1`,needed-by=G2,不单集修 |
+
+---
+
 | 项 | 值 |
 |---|---|
-| 闸 | **閘④ 成段评审 · ✅ 准入**（soffy 裁准,2026-07-24）——成片段达 G0-D 杆,S13竹简/S12双半幅/地图纸雕观感通过,准入。已知可打磨项转后续(非阻断)。 · 执行 CC-A |
+| 闸 | **閘④ 成段评审 · ✅ 准入**（Wiki 裁准,2026-07-24,裁决原文「讲得清楚明白,准入」）——成片段达 G0-D 杆,S13竹简/S12双半幅/地图纸雕观感通过。已知可打磨项转 backlog S1-POLISH-1(needed-by=G2,非阻断)。 · 执行 CC-A |
 | 集 | s1 曲沃代翼(N0 9/9 净稿 → N1 节拍切分 → N9 段装配) |
 | 成片段 | `output/s1_quwo_daiyi/assemble/s1_quwo_daiyi_segment.mp4`(**129.4s**, 4.19MB, sha256 `3bb3d74d8a7155c6…`) |
 | EDL | `output/s1_quwo_daiyi/assemble/edl.json`(10 拍) |
