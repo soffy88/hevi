@@ -25,6 +25,7 @@ class ForceColor(BaseModel):
     hex: str  # 唯一色值来源
     tier: int = 0  # 0=高饱和主色(预算≤6–8);>=1=灰阶/低饱和 tier(§6.2d)
     successor_of: str | None = None  # §6.2c 继承显式(如 韩/赵/魏 successor_of 晋)
+    active_range: str | None = None  # 活跃期;勢力灭亡则记 retire(§6.2e 回收纪律的登记面)
     note: str = ""
 
     @property
@@ -50,6 +51,31 @@ _REGISTRY: dict[str, ForceColor] = {
         ),
         # 原晋(裂前)
         ForceColor(force_id="jin", name="晋", hex="#7a3030", note="深红(统一态)"),
+        # 曲沃代翼(晋内部大宗/小宗;successor_of=jin 显式,§6.2c)——s1 焦点两方
+        ForceColor(
+            force_id="yi",
+            name="翼",
+            hex="#8f3b34",
+            successor_of="jin",
+            active_range="至 -678(为曲沃武公所灭,retire)",
+            note="赭红(晋大宗/正统,近晋深红=法统承继;与曲沃青灰蓝对比强)",
+        ),
+        ForceColor(
+            force_id="quwo",
+            name="曲沃",
+            hex="#35617e",
+            successor_of="jin",
+            note="青灰蓝(小宗/新兴篡夺方,与翼赭红、周淡米、秦赭棕均≥60)",
+        ),
+        # 智氏(晋六卿,晋阳之战灭;裁决 2026-07-22 入正式条目,立牌用色读此)
+        ForceColor(
+            force_id="zhi",
+            name="智",
+            hex="#3a3430",
+            tier=1,
+            active_range="至 -453(晋阳之战灭,retire)",
+            note="炭黑(G1a 智伯立牌袍色转正;灰阶 tier 不占主色预算)",
+        ),
         # 周边诸侯
         ForceColor(force_id="qin", name="秦", hex="#a07850", note="赭石棕"),
         ForceColor(force_id="chu", name="楚", hex="#c4844a", note="橙棕"),
