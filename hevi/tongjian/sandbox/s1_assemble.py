@@ -32,7 +32,7 @@ from hevi.tongjian.map_anim import (
     animate_standee,
     animate_tear,
 )
-from hevi.tongjian.quote_shots import render_dual_panel, render_quote_slip
+from hevi.tongjian.quote_shots import render_dual_panel, render_quote_slip, render_thesis_title
 
 OUT = Path("output/s1_quwo_daiyi/assemble")
 OUT.mkdir(parents=True, exist_ok=True)
@@ -117,32 +117,16 @@ def render_shot(beat, dur: float, d: Path) -> Path:
         )
     if vi == "split_merge":  # 曲沃吞并翼(撕裂/合并)
         return animate_tear(YI, ABSORBED, d, duration_s=dur, fps=FPS)
-    # hold:题字定格(应验/counterpoint)走吞并态底图
-    still = d / "hold.png"
+    # hold:题字定格(应验/counterpoint)——吞并态底图 + 竖排题字落款(S1-POLISH-1#4)
     d.mkdir(parents=True, exist_ok=True)
-    _static_map(ABSORBED, W, H).convert("RGB").save(still)
-    mp4 = d / "hold.mp4"
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-loglevel",
-            "error",
-            "-loop",
-            "1",
-            "-i",
-            str(still),
-            "-t",
-            f"{dur}",
-            "-r",
-            str(FPS),
-            "-pix_fmt",
-            "yuv420p",
-            str(mp4),
-        ],
-        check=True,
+    base = _static_map(ABSORBED, W, H)
+    accent = (60, 60, 90) if b == "b9" else (150, 30, 20)  # counterpoint 郑伯克段蓝调
+    return render_thesis_title(
+        HOLD_TITLE.get(b, ""), base, d, size=(W, H), fps=FPS, duration_s=dur, accent=accent
     )
-    return mp4
+
+
+HOLD_TITLE = {"b8": "本大末小末大必折", "b9": "郑伯克段同题异国"}
 
 
 def make_sub_png(vo_text: str, places: list[str], path: Path):

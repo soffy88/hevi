@@ -220,3 +220,58 @@ def render_dual_panel(
             fd.line([(cx, top - 4), (cx, top + panel_h + 4)], fill=(90, 66, 40, 120), width=2)
         frame.convert("RGB").save(frames_dir / f"f_{f:04d}.png")
     return _encode(frames_dir, out_dir / "s12_dual_panel.mp4", fps)
+
+
+def render_thesis_title(
+    title: str,
+    base_map: Image.Image,
+    out_dir: Path,
+    *,
+    size: tuple[int, int] = (1168, 784),
+    fps: int = 24,
+    duration_s: float = 4.0,
+    font_path: str = FONT,
+    accent: tuple[int, int, int] = (150, 30, 20),
+) -> Path:
+    """S1-POLISH-1#4 hold 题字层:论点/counterpoint 拍在底图上叠**竖排题字落款**(印章红边纸卡,
+    右上,ease_out_back 渐显),给论点拍以"题跋"视觉权重、区别于底部流动字幕。base_map=hold 底图。"""
+    w, h = size
+    out_dir = Path(out_dir)
+    frames_dir = out_dir / "frames_title"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    n = max(1, int(fps * duration_s))
+    fnt = ImageFont.truetype(font_path, 44)
+    chars = [c for c in title if c not in "，。、；：·"]
+    card_w, ch_h = 84, 60
+    card_h = 40 + len(chars) * ch_h
+    x0, y0 = w - card_w - 46, 70  # 右上落款
+    base_rgba = base_map.convert("RGBA")
+    for f in range(n):
+        t = f / (n - 1) if n > 1 else 1.0
+        e = ease_out_back(max(0.0, min(1.0, (t - 0.08) / 0.5)))
+        frame = base_rgba.copy()
+        if e <= 0:
+            frame.convert("RGB").save(frames_dir / f"f_{f:04d}.png")
+            continue
+        card = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        cd = ImageDraw.Draw(card)
+        dx = int((1 - e) * 40)  # 自右微滑入
+        _torn_rect(
+            cd, (x0 + dx, y0, x0 + card_w + dx, y0 + card_h), (238, 228, 202), seed=88, amp=2.4
+        )
+        cd.rectangle(
+            [x0 + dx + 5, y0 + 5, x0 + card_w + dx - 5, y0 + card_h - 5],
+            outline=(*accent, int(220 * e)),
+            width=3,
+        )
+        if e > 0.85:
+            for j, ch in enumerate(chars):
+                bb = cd.textbbox((0, 0), ch, font=fnt)
+                cx = x0 + dx + card_w // 2 - (bb[2] - bb[0]) // 2
+                cy = y0 + 24 + j * ch_h
+                cd.text((cx + 1, cy + 1), ch, font=fnt, fill=(0, 0, 0, 110))
+                cd.text((cx, cy), ch, font=fnt, fill=(*_INK, 255))
+        frame = Image.alpha_composite(frame, _shadow_from(card, 5, 8, blur=6, alpha=80))
+        frame = Image.alpha_composite(frame, card)
+        frame.convert("RGB").save(frames_dir / f"f_{f:04d}.png")
+    return _encode(frames_dir, out_dir / "hold_title.mp4", fps)

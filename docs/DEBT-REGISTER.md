@@ -33,3 +33,5 @@
 - **#2 竹简字幕叠 → ✅ 已解**：`quote_shots.render_quote_slip` 竹简 top/bot 让位底部字幕带（bot=h-200），简牍不再叠字幕；s1 已应用重渲。
 - **#3 底图河流/裂线/城邑 → ✅ 已解**：`map_anim._geo_layer`（河流蓝双线+裂线+城邑点纸雕）接进 `_static_map` 与 `animate_establish`（随落定渐显）；s1/s2 establish/hold 底图现显黄河/汾水+城邑点。**渲染器级、跨集复用**（G2 批量口径已达）。
 - **#1 R-soft 六条 / #4 hold 题字层 / #5 S10 时间轴拍**：仍挂 needed-by=G2（#1/#5 需净稿/集结构改，#4 需题字数据 plumbing）。
+- **#4 hold 题字层 → ✅ 已解**：`quote_shots.render_thesis_title`（竖排题字落款,印章红边纸卡,右上 ease_out_back 渐显）叠在 hold 底图上;s1(本大末小末大必折/郑伯克段同题异国)、s2(骊姬乱嫡晋无公族/卫宣公嫡庶相残)应验+counterpoint 拍现有"题跋"视觉权重,区别于流动字幕。counterpoint 拍蓝调、mainline 红。**渲染器级、跨集复用**。
+- **进度**：S1-POLISH-1 五项 → #2/#3/#4 三项渲染器级已解(跨集复用);剩 #1 R-soft 六条(需净稿层)、#5 S10 时间轴拍(需集结构)——二者非纯渲染器,续挂 G2。

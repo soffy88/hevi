@@ -20,7 +20,7 @@ from s2_episode import build
 from s2_mapstates import ms_jin_xiangong
 
 from hevi.tongjian.map_anim import _static_map, animate_establish
-from hevi.tongjian.quote_shots import render_dual_panel
+from hevi.tongjian.quote_shots import render_dual_panel, render_thesis_title
 
 OUT = Path("output/s2_liji/assemble")
 OUT.mkdir(parents=True, exist_ok=True)
@@ -51,32 +51,15 @@ def render_shot(beat, dur: float, d: Path) -> Path:
         return render_dual_panel(DUAL_BY[b], d, size=(W, H), fps=FPS, duration_s=dur)
     if beat.visual_intent == "establish":
         return animate_establish(JIN, d, duration_s=dur, fps=FPS)
-    # hold:题字定格(应验/counterpoint)走晋底图
-    still = d / "hold.png"
+    # hold:题字定格(应验/counterpoint)——晋底图 + 竖排题字落款(S1-POLISH-1#4)
     d.mkdir(parents=True, exist_ok=True)
-    _static_map(JIN, W, H).convert("RGB").save(still)
-    mp4 = d / "hold.mp4"
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-loglevel",
-            "error",
-            "-loop",
-            "1",
-            "-i",
-            str(still),
-            "-t",
-            f"{dur}",
-            "-r",
-            str(FPS),
-            "-pix_fmt",
-            "yuv420p",
-            str(mp4),
-        ],
-        check=True,
-    )
-    return mp4
+    base = _static_map(JIN, W, H)
+    title = HOLD_TITLE.get(b, "")
+    accent = (60, 60, 90) if b == "b5" else (150, 30, 20)  # counterpoint 蓝调、mainline 红
+    return render_thesis_title(title, base, d, size=(W, H), fps=FPS, duration_s=dur, accent=accent)
+
+
+HOLD_TITLE = {"b4": "骊姬乱嫡晋无公族", "b5": "卫宣公嫡庶相残"}
 
 
 def make_sub_png(vo_text: str, places: list[str], path: Path):
