@@ -167,3 +167,58 @@ async def write_draft(
     draft["meta"]["model"] = model_name
     draft["meta"].setdefault("prompt_ver", "n0w-v0.1")
     return draft, (result or {}).get("usage", {}) or {}
+
+
+def build_beat_prompt(beat: dict, beat_failures: list[dict], refs: dict, episode_plan: dict) -> str:
+    """拍级重写 prompt（N0-D-014）——只交单拍 + 该拍全部 FAIL+修法，令 W 只重写这一拍。
+    纠缠限一拍内：W 看不到别拍、改不了别拍。"""
+    ku = {
+        "events": refs.get("ku_events", {}),
+        "theses": refs.get("theses", {}),
+        "corpus_白文": refs.get("corpus", {}),
+        "chronology": list(refs.get("chronology", {})),
+        "name_registry": sorted(refs.get("name_registry", ())),
+        "s12_conflict_hints": episode_plan.get("s12_conflict_hints", {}),
+    }
+    fixes = "\n".join(
+        f"- [{f.get('gate')}] sid={f.get('sid')}｜{f.get('reason')}\n  → 修法: {f.get('fix') or ''}"
+        for f in beat_failures
+    )
+    return "\n".join(
+        [
+            f"# 任务：**只重写下面这一拍**（beat_id={beat.get('beat_id')}），"
+            "修好它的全部硬门失败。",
+            '只输出这一拍的 JSON（形如 {"beat_id":..., "sentences":[...]}），'
+            "不得改动或输出别的拍。",
+            "\n## 当前这一拍（待修）\n" + json.dumps(beat, ensure_ascii=False, indent=2),
+            "\n## 这一拍的 R-hard 失败与修法（逐条修好）\n" + fixes,
+            "\n## 可用 KU（输入之外无事实来源）\n" + json.dumps(ku, ensure_ascii=False, indent=2),
+            "\n## 句结构同全稿规范（type/fact_refs/thesis_refs/quote/entities/presentation/"
+            "conflict_callouts/display）。长引文标 presentation=onscreen 并配 vo 白话转述；"
+            "引号内容必挂 quote；名从 name_registry（未注册的源内泛称如尹氏/虢公须放进 quote "
+            "引文内，或改述回避，不得作叙述句 entities）。",
+            "\n只输出这一拍的 JSON，不要任何解释。",
+        ]
+    )
+
+
+async def rewrite_beat(
+    beat: dict,
+    beat_failures: list[dict],
+    refs: dict,
+    episode_plan: dict,
+    *,
+    llm: Any,
+    max_tokens: int = 1800,
+) -> tuple[dict, dict]:
+    """单拍 API：交一拍 + 其 FAIL+修法，W 返回重写后的该拍。返回 (new_beat, usage)。"""
+    prompt = build_beat_prompt(beat, beat_failures, refs, episode_plan)
+    result = await llm(
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        system=_SYSTEM,
+    )
+    choices = (result or {}).get("output", {}).get("choices", [])
+    text = choices[0]["message"]["content"] if choices else ""
+    new_beat = _parse_json(text)
+    return new_beat, (result or {}).get("usage", {}) or {}

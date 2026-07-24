@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hevi.n0.writer import build_prompt
+from hevi.n0.writer import build_beat_prompt, build_prompt
 
 _EP = {"episode_id": "ep:x", "beat_ids": ["b1"]}
 _REFS = {"corpus": {}, "ku_events": {}, "theses": {}, "name_registry": []}
@@ -32,3 +32,16 @@ def test_prompt_feedback_without_frozen() -> None:
     p = build_prompt(_EP, _REFS, rhard_feedback=fb)
     assert "本轮首要任务" in p
     assert "冻结清单" not in p
+
+
+def test_beat_prompt_single_beat_only() -> None:
+    """拍级重写 prompt(N0-D-014)：只含这一拍 + 其 FAIL+修法 + 只重写本拍指令。"""
+    beat = {
+        "beat_id": "s1-b8",
+        "sentences": [{"sid": "b8-1", "type": "thesis", "text": "末大必折。"}],
+    }
+    bfails = [{"gate": "H2", "sid": "b8-1", "reason": "引号未挂 quote", "fix": "挂 quote 或去引号"}]
+    p = build_beat_prompt(beat, bfails, _REFS, _EP)
+    assert "只重写下面这一拍" in p and "s1-b8" in p
+    assert "不得改动或输出别的拍" in p
+    assert "H2" in p and "挂 quote 或去引号" in p  # 该拍的 FAIL+修法入 prompt
