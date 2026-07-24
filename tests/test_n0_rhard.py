@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from hevi.n0.rhard import run_rhard
+from hevi.n0.rhard import anchor_quotes, run_rhard
 
 
 def _valid() -> tuple[dict, dict]:
@@ -344,3 +344,77 @@ def test_h4_narration_name_strict() -> None:
     rep = run_rhard(draft, refs)
     assert rep["by_gate"]["H4"] == "FAIL"
     assert any(f["gate"] == "H4" and "尹氏" in f["reason"] for f in rep["failures"])
+
+
+# ── N0-D-015 quote 自动锚定 ───────────────────────────────────────────────────
+def _anchor_refs() -> dict:
+    return {
+        "corpus": {
+            "u:shifu": "吾聞國家之立也本大而末小是以能固",
+            "u:zheng": "夏五月鄭伯克段于鄢",
+            "u:dup1": "本大而末小",  # 与 u:shifu 都含『本大而末小』→ 多命中
+        }
+    }
+
+
+def _anchor_draft(text: str, sid: str = "s1") -> dict:
+    sent = {"sid": sid, "type": "thesis", "text": text}
+    return {"beats": [{"beat_id": "b1", "sentences": [sent]}]}
+
+
+def test_anchor_unique_hit_auto_attaches() -> None:
+    """引号内容 corpus 逐字唯一命中 → 自动挂 quote{ulid,text,auto_anchored},H2 过。"""
+    refs = {"corpus": {"u:zheng": "夏五月鄭伯克段于鄢"}}
+    draft = _anchor_draft("郑国亦上演『鄭伯克段于鄢』的兄弟相残。")
+    anchored, reports = anchor_quotes(draft, refs)
+    q = anchored["beats"][0]["sentences"][0]["quote"]
+    q = q if isinstance(q, dict) else q[0]
+    assert q["ulid"] == "u:zheng" and q["auto_anchored"] is True
+    assert q["text"] == "鄭伯克段于鄢"  # 一字不改
+    assert any(r["status"] == "anchored" and r["ulid"] == "u:zheng" for r in reports)
+    # H2 扩门此前会 FAIL(未标引文)；锚定后过
+    refs2 = {
+        **refs,
+        "ku_events": {},
+        "theses": {"t": {}},
+        "name_registry": [],
+        "episode_plan": {"counterpoint_search_record": {"x": 1}},
+    }
+    assert run_rhard(anchored, refs2)["by_gate"]["H2"] == "PASS"
+
+
+def test_anchor_zero_hit_not_attached_h2_fails_with_fix() -> None:
+    """引号内容非 corpus 逐字(零命中)→ 不挂,H2 FAIL 且修法提示去引号/改述。"""
+    refs = {
+        "corpus": {"u:zheng": "夏五月鄭伯克段于鄢"},
+        "ku_events": {},
+        "theses": {},
+        "name_registry": [],
+        "episode_plan": {"counterpoint_search_record": {"x": 1}},
+    }
+    draft = _anchor_draft("他说了『这不是原文的句子』。")
+    anchored, reports = anchor_quotes(draft, refs)
+    assert "quote" not in anchored["beats"][0]["sentences"][0]  # 未挂
+    assert any(r["status"] == "none" for r in reports)
+    rep = run_rhard(anchored, refs)
+    assert rep["by_gate"]["H2"] == "FAIL"
+    h2 = [f for f in rep["failures"] if f["gate"] == "H2"]
+    assert any("去掉引号" in f["fix"] or "改白话" in f["fix"] for f in h2)
+
+
+def test_anchor_multi_hit_reports_not_guess() -> None:
+    """引号内容多处命中 → 报回不猜(ambiguous),不自动挂。"""
+    draft = _anchor_draft("师服说『本大而末小』。")
+    anchored, reports = anchor_quotes(draft, _anchor_refs())
+    amb = [r for r in reports if r["status"] == "ambiguous"]
+    assert amb and set(amb[0]["ulids"]) == {"u:shifu", "u:dup1"}
+    assert "quote" not in anchored["beats"][0]["sentences"][0]  # 不猜不挂
+
+
+def test_anchor_idempotent_skips_already_quoted() -> None:
+    """已挂 quote 的引号不重复锚定(幂等)。"""
+    refs = {"corpus": {"u:zheng": "夏五月鄭伯克段于鄢"}}
+    draft = _anchor_draft("『鄭伯克段于鄢』")
+    draft["beats"][0]["sentences"][0]["quote"] = {"ulid": "u:zheng", "text": "鄭伯克段于鄢"}
+    _, reports = anchor_quotes(draft, refs)
+    assert not any(r["status"] == "anchored" for r in reports)  # 已挂,不再锚

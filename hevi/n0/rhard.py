@@ -87,6 +87,66 @@ def _mark_ranges(text: str) -> list[tuple[int, int]]:
     return r
 
 
+def _attach_quote(s: dict, q: dict) -> None:
+    """把 quote 挂到句上（支持 dict/list/None 三态），不动其余字段。"""
+    existing = s.get("quote")
+    if not (isinstance(existing, dict) and existing.get("ulid")) and not existing:
+        s["quote"] = q
+    elif isinstance(existing, dict):
+        s["quote"] = [existing, q]
+    else:
+        s["quote"] = [*list(existing), q]
+
+
+def anchor_quotes(draft: dict, refs: dict) -> tuple[dict, list[dict]]:
+    """R-hard 前置确定性预处理（N0-D-015）——引文自动锚定：句中未挂 quote 的引号内容
+    在 corpus 逐字子串匹配（简繁归一后）；**唯一命中**→自动挂 quote{ulid,text,auto_anchored}
+    （text 用原引号内容一字不改）；**零命中**→不挂（交 H2 判 FAIL）；**多处命中**→报回不猜。
+    只锚定不改字、一字不增删。锚定=字符串匹配（机械），非截取原文（史学判断，N0-D-009 禁）。
+    返回 (锚定后 draft, 报告[{sid,span,status∈{anchored,none,ambiguous},ulid?/ulids?}])。"""
+    corpus = refs.get("corpus", {})
+    norm_corpus = {u: _norm(t) for u, t in corpus.items()}
+    reports: list[dict] = []
+    out_beats = []
+    for b in draft.get("beats", []):
+        sents = []
+        for s0 in b.get("sentences", []):
+            s = dict(s0)
+            text = s.get("text", "")
+            marked = {_norm(q.get("text", "")) for q in _quotes(s)}
+            for a, bnd in _mark_ranges(text):
+                inner = text[a + 1 : bnd - 1]
+                ninner = _norm(inner)
+                if not ninner or any(ninner == m or ninner in m or m in ninner for m in marked):
+                    continue  # 空引号或已挂 quote 覆盖
+                hits = [u for u, nt in norm_corpus.items() if ninner in nt]
+                if len(hits) == 1:
+                    _attach_quote(s, {"ulid": hits[0], "text": inner, "auto_anchored": True})
+                    marked.add(ninner)
+                    reports.append(
+                        {
+                            "sid": s.get("sid"),
+                            "span": inner[:20],
+                            "status": "anchored",
+                            "ulid": hits[0],
+                        }
+                    )
+                elif not hits:
+                    reports.append({"sid": s.get("sid"), "span": inner[:20], "status": "none"})
+                else:
+                    reports.append(
+                        {
+                            "sid": s.get("sid"),
+                            "span": inner[:20],
+                            "status": "ambiguous",
+                            "ulids": hits,
+                        }
+                    )
+            sents.append(s)
+        out_beats.append({**b, "sentences": sents})
+    return {**draft, "beats": out_beats}, reports
+
+
 # ── H1 双溯源 ────────────────────────────────────────────────────────────────
 def h1_dual_source(draft: dict, refs: dict) -> list[Failure]:
     ev, ac, th = refs.get("ku_events", {}), refs.get("ku_accounts", {}), refs.get("theses", {})
