@@ -75,14 +75,14 @@ def render_quote_slip(
     if form == "字幕卡":
         return _render_card(quote_text, frames_dir, out_dir, w, h, n, fps, fnt)
 
-    # ── 竹简竖排右起 ──
-    per_col = max(6, min(12, (h - 220) // 48))
+    # ── 竹简竖排右起 ──(top/bot 让位底部字幕带,S1-POLISH-1#2:简牍不叠字幕)
+    top, bot = 84, h - 200  # 底留 200px 给 ≤3 行字幕带(24+3*42≈150)+ 余量
+    per_col = max(6, min(12, (bot - top - 60) // 46))
     cols = _columns(quote_text, per_col)
     ncol = len(cols)
     slip_w, gap = 56, 14
     total_w = ncol * slip_w + (ncol - 1) * gap
     x_right = (w + total_w) // 2 - slip_w  # 右起第一列 x
-    top, bot = 110, h - 110
     for f in range(n):
         t = f / (n - 1) if n > 1 else 1.0
         frame = _paper_bg(w, h)

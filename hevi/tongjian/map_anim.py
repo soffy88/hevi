@@ -16,10 +16,11 @@ from __future__ import annotations
 import math
 import random
 import subprocess
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from hevi.tongjian.force_colors import get_force_color
 from hevi.tongjian.map_state import MapState
@@ -92,34 +93,70 @@ def _deckle(
     return out
 
 
+def _chaikin(pts, iters=2):
+    """Chaikin 切角平滑:棱角凸多边形 → 有机圆润疆界(去"块状粗糙")。"""
+    for _ in range(iters):
+        new = []
+        n = len(pts)
+        for i in range(n):
+            x0, y0 = pts[i]
+            x1, y1 = pts[(i + 1) % n]
+            new.append((0.75 * x0 + 0.25 * x1, 0.75 * y0 + 0.25 * y1))
+            new.append((0.25 * x0 + 0.75 * x1, 0.25 * y0 + 0.75 * y1))
+        pts = new
+    return pts
+
+
 def _force_layer(ms: MapState, fp, w: int, h: int) -> Image.Image:
-    """单势力 → 全幅 RGBA 层(撕边 + 撕纸白芯 + 纤维颗粒 + 边缘高光)。按势力缓存,只算一次。"""
+    """单势力→RGBA 层。有机疆界(Chaikin)+撕边+撕纸白芯+水墨积墨+中心提亮+细软描边+纤维。缓存。"""
     key = (ms.state_id, fp.force_id, w, h)
     if key in _LAYER_CACHE:
         return _LAYER_CACHE[key]
     proj = ms.projection
     sx, sy = w / proj.svg_w, h / proj.svg_h
     layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
     fc = get_force_color(fp.force_id)
     r, g, b = fc.rgb
     a = int(255 * (0.92 if fc.tier == 0 else 0.72))
     seed = abs(hash(fp.force_id)) % 100000
     for ri, ring in enumerate(fp.rings):
         base_pts = [(proj.ll(lo, la)[0] * sx, proj.ll(lo, la)[1] * sy) for lo, la in ring]
-        torn = _deckle(base_pts, amp=4.0, step=7.0, seed=seed + ri)
-        # 撕纸白芯:先画一圈略大的浅色毛边(纸的纤维断面)
-        core = _deckle(base_pts, amp=6.0, step=7.0, seed=seed + ri + 500)
+        sm = _chaikin(base_pts, 2)  # 有机化
+        torn = _deckle(sm, amp=2.6, step=6.0, seed=seed + ri)
+        closed = [*torn, torn[0]]
+        rs = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        rd = ImageDraw.Draw(rs)
+        # 撕纸白芯(略大浅边)
         pale = tuple(min(255, int(c * 0.5 + 235 * 0.5)) for c in (r, g, b))
-        d.polygon(core, fill=(*pale, a))
-        # 主色块(撕边)
-        d.polygon(torn, fill=(r, g, b, a), outline=(43, 32, 20, 200))
-        # 上缘受光高光(2.5D 厚度)
-        hi = tuple(min(255, int(c * 1.2)) for c in (r, g, b))
-        d.line(torn[: max(2, len(torn) // 2)], fill=(*hi, 130), width=2)
+        rd.polygon(
+            _deckle(_chaikin(base_pts, 2), amp=4.5, step=6, seed=seed + ri + 500), fill=(*pale, a)
+        )
+        rd.polygon(torn, fill=(r, g, b, a))
+        shape_alpha = rs.split()[3]
+        # 水墨积墨:边缘暗色内渗(去平涂,给体量)
+        ink = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        ImageDraw.Draw(ink).line(
+            closed, fill=(int(r * 0.5), int(g * 0.5), int(b * 0.5), 160), width=18
+        )
+        ink = ink.filter(ImageFilter.GaussianBlur(8))
+        ink.putalpha(ImageChops.multiply(ink.split()[3], shape_alpha))
+        rs = Image.alpha_composite(rs, ink)
+        # 中心提亮(体量感,内缩浅色低透明)
+        cx = sum(p[0] for p in torn) / len(torn)
+        cy = sum(p[1] for p in torn) / len(torn)
+        glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        inner = [(cx + (px - cx) * 0.62, cy + (py - cy) * 0.62) for px, py in torn]
+        hi = tuple(min(255, int(c * 1.12)) for c in (r, g, b))
+        ImageDraw.Draw(glow).polygon(inner, fill=(*hi, 60))
+        glow = glow.filter(ImageFilter.GaussianBlur(22))
+        glow.putalpha(ImageChops.multiply(glow.split()[3], shape_alpha))
+        rs = Image.alpha_composite(rs, glow)
+        # 细软墨线描边(替代粗黑)
+        ImageDraw.Draw(rs).line(closed, fill=(60, 45, 30, 140), width=1)
+        layer = Image.alpha_composite(layer, rs)
     # 纤维颗粒(只在 alpha>0 处可见)
     arr = np.asarray(layer, dtype=np.float64)
-    grain = _fibre(w, h, seed=seed % 97 + 3) * 7.0
+    grain = _fibre(w, h, seed=seed % 97 + 3) * 6.0
     arr[..., :3] = np.clip(arr[..., :3] + grain[..., None], 0, 255)
     layer = Image.fromarray(arr.astype(np.uint8), "RGBA")
     _LAYER_CACHE[key] = layer
@@ -220,6 +257,13 @@ def animate_establish(
                 ),
             )
             frame = Image.alpha_composite(frame, _fade_shift(layer, dy, fade))
+        # 河流/裂线/城邑随势力落定渐显(S1-POLISH-1#3)
+        geo_fade = smoothstep((t - 0.58) / 0.36)
+        if geo_fade > 0:
+            geo = _geo_layer(ms, w, h)
+            r, g, b, al = geo.split()
+            geo = Image.merge("RGBA", (r, g, b, al.point(lambda v: int(v * geo_fade))))
+            frame = Image.alpha_composite(frame, geo)
         frame = Image.alpha_composite(frame, _clouds(w, h, phase=t * 0.12))
         frame.convert("RGB").save(frames_dir / f"f_{f:04d}.png")
 
@@ -245,14 +289,44 @@ def animate_establish(
     return mp4
 
 
+def _geo_layer(ms: MapState, w: int, h: int) -> Image.Image:
+    """河流/裂线/城邑点层(纸雕风,叠在势力块上;S1-POLISH-1#3 底图河流裂线补)。
+    R7:不画地名(后期字幕合成),只出水系/裂纹/城点几何。"""
+    proj = ms.projection
+    sx, sy = w / proj.svg_w, h / proj.svg_h
+    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+
+    def pt(lo, la):
+        x, y = proj.ll(lo, la)
+        return (x * sx, y * sy)
+
+    for rv in ms.rivers:  # 河流:深蓝底 + 亮蓝芯(水的体量)
+        pts = [pt(lo, la) for lo, la in rv.points]
+        if len(pts) >= 2:
+            d.line(pts, fill=(58, 96, 148, 150), width=int(rv.width * sx) + 5, joint="curve")
+            d.line(pts, fill=(92, 142, 202, 205), width=int(rv.width * sx) + 1, joint="curve")
+    for fs in ms.fissures:  # 裂线:preset=暗红(裂而未分)、else 暗线
+        pts = [pt(lo, la) for lo, la in fs.points]
+        if len(pts) >= 2:
+            d.line(pts, fill=(150, 30, 20, 205) if fs.preset else (40, 25, 12, 220), width=3)
+    for c in ms.cities:  # 城邑点(纸雕小圈 + 红芯;名 R7 后期)
+        x, y = pt(c.lon, c.lat)
+        d.ellipse(
+            [x - 6, y - 6, x + 6, y + 6], fill=(238, 213, 163, 235), outline=(43, 32, 20, 230)
+        )
+        d.ellipse([x - 3, y - 3, x + 3, y + 3], fill=(120, 40, 30, 255))
+    return layer
+
+
 def _static_map(ms: MapState, w: int, h: int) -> Image.Image:
-    """把 ms 所有势力落定合成一张静态底(供 S2 在其上显裂纹)。"""
+    """把 ms 所有势力落定合成一张静态底(供 S2 在其上显裂纹) + 河流/裂线/城邑层。"""
     frame = _paper_bg(w, h)
     for fp in ms.forces:
         layer = _force_layer(ms, fp, w, h)
         frame = Image.alpha_composite(frame, _shadow_from(layer, 5, 8, blur=6, alpha=70))
         frame = Image.alpha_composite(frame, layer)
-    return frame
+    return Image.alpha_composite(frame, _geo_layer(ms, w, h))
 
 
 def animate_fissure_reveal(
@@ -504,6 +578,252 @@ def animate_timeline(
     return mp4
 
 
+def _densify(pts_px, step=8.0):
+    """把折线密化成步长≈step 的点序列(供纸带分段贴放/水流)。"""
+    out = [pts_px[0]]
+    for (x0, y0), (x1, y1) in pairwise(pts_px):
+        seg = math.hypot(x1 - x0, y1 - y0)
+        k = max(1, int(seg / step))
+        out.extend((x0 + (x1 - x0) * s / k, y0 + (y1 - y0) * s / k) for s in range(1, k + 1))
+    return out
+
+
+def animate_route(
+    path_fracs: list[tuple[float, float]],
+    out_dir: Path,
+    *,
+    base: Image.Image | None = None,
+    color=(74, 120, 190),
+    width: float = 16.0,
+    size: tuple[int, int] = (1168, 784),
+    fps: int = 24,
+    duration_s: float = 3.5,
+    tag: str = "route",
+) -> Path:
+    """S5 路线:纸带沿折线**分段贴放**(恒平贴,不 morph),推进端小幅落定 + 接触阴影。
+    引水/进军皆此。base 给底图则叠其上。B5 断言:标记/终点数。"""
+    w, h = size
+    out_dir = Path(out_dir)
+    frames_dir = out_dir / f"frames_{tag}"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    n = int(fps * duration_s)
+    pts = _densify([(int(xf * w), int(yf * h)) for xf, yf in path_fracs], step=7.0)
+    m = len(pts)
+
+    def band_polygon(seg_pts, wid):
+        left, right = [], []
+        for i, (x, y) in enumerate(seg_pts):
+            x0, y0 = seg_pts[max(0, i - 1)]
+            x1, y1 = seg_pts[min(len(seg_pts) - 1, i + 1)]
+            dx, dy = x1 - x0, y1 - y0
+            ln = math.hypot(dx, dy) or 1.0
+            nx, ny = -dy / ln, dx / ln
+            left.append((x + nx * wid / 2, y + ny * wid / 2))
+            right.append((x - nx * wid / 2, y - ny * wid / 2))
+        return left + right[::-1]
+
+    for f in range(n):
+        t = f / (n - 1) if n > 1 else 1.0
+        frame = base.copy() if base is not None else _paper_bg(w, h)
+        rp = smoothstep(min(1.0, t / 0.9))
+        k = max(2, int(m * rp))
+        seg = pts[:k]
+        if len(seg) >= 2:
+            ribbon = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+            rd = ImageDraw.Draw(ribbon)
+            poly = band_polygon(seg, width)
+            r, g, b = color
+            pale = tuple(min(255, int(c * 0.5 + 235 * 0.5)) for c in color)
+            rd.polygon(_deckle(poly, amp=2.2, step=7, seed=333), fill=(*pale, 210))
+            rd.polygon(
+                _deckle(poly, amp=1.4, step=7, seed=201),
+                fill=(r, g, b, 205),
+                outline=(43, 32, 20, 150),
+            )
+            frame = Image.alpha_composite(frame, _shadow_from(ribbon, 3, 6, blur=5, alpha=60))
+            frame = Image.alpha_composite(frame, ribbon)
+            # 推进端箭头(纸三角)
+            tx, ty = seg[-1]
+            px0, py0 = seg[max(0, len(seg) - 4)]
+            ang = math.atan2(ty - py0, tx - px0)
+            tip = [
+                (tx + 14 * math.cos(ang), ty + 14 * math.sin(ang)),
+                (tx + math.cos(ang + 2.5) * 12, ty + math.sin(ang + 2.5) * 12),
+                (tx + math.cos(ang - 2.5) * 12, ty + math.sin(ang - 2.5) * 12),
+            ]
+            ad = ImageDraw.Draw(frame)
+            ad.polygon(
+                _deckle(tip, amp=1.5, step=5, seed=99),
+                fill=(*color, 235),
+                outline=(43, 32, 20, 180),
+            )
+        frame.convert("RGB").save(frames_dir / f"f_{f:04d}.png")
+
+    mp4 = out_dir / f"s5_{tag}.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            "-framerate",
+            str(fps),
+            "-i",
+            str(frames_dir / "f_%04d.png"),
+            "-pix_fmt",
+            "yuv420p",
+            "-crf",
+            "18",
+            str(mp4),
+        ],
+        check=True,
+    )
+    return mp4
+
+
+_FIGURE_SW, _FIGURE_SH = 280, 440
+
+
+def figure_sprite(accent, trim, *, elder=False, crown=False, seed=1) -> Image.Image:
+    """程序化纸雕人偶(袍服剪影,撕边)。T1 立牌 canonical 纸偶。返回紧致 sprite(底在 SH-14)。"""
+    sw, sh = _FIGURE_SW, _FIGURE_SH
+    sp = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
+    d = ImageDraw.Draw(sp)
+    cx = sw // 2
+    base_y = sh - 14
+    sh_y = base_y - 300  # 肩线
+    # 袍身(梯形,下宽上窄)
+    robe = [(cx - 96, base_y), (cx + 96, base_y), (cx + 58, sh_y), (cx - 58, sh_y)]
+    d.polygon(
+        _deckle(robe, amp=3, step=8, seed=seed), fill=(*accent, 242), outline=(43, 32, 20, 220)
+    )
+    # 两袖
+    d.polygon(
+        _deckle(
+            [
+                (cx - 58, sh_y + 6),
+                (cx - 94, sh_y + 44),
+                (cx - 80, base_y - 46),
+                (cx - 58, base_y - 66),
+            ],
+            amp=2,
+            step=8,
+            seed=seed + 3,
+        ),
+        fill=(*accent, 236),
+        outline=(43, 32, 20, 180),
+    )
+    d.polygon(
+        _deckle(
+            [
+                (cx + 58, sh_y + 6),
+                (cx + 94, sh_y + 44),
+                (cx + 80, base_y - 46),
+                (cx + 58, base_y - 66),
+            ],
+            amp=2,
+            step=8,
+            seed=seed + 5,
+        ),
+        fill=(*accent, 236),
+        outline=(43, 32, 20, 180),
+    )
+    # 镶边(下摆 + 交领 V)
+    d.line([(cx - 92, base_y - 10), (cx + 92, base_y - 10)], fill=(*trim, 235), width=7)
+    d.polygon([(cx - 56, sh_y + 2), (cx + 56, sh_y + 2), (cx, sh_y + 74)], fill=(*trim, 225))
+    # 头
+    hy = sh_y - 40
+    d.ellipse(
+        [cx - 36, hy - 44, cx + 36, hy + 44], fill=(234, 214, 184, 246), outline=(43, 32, 20, 210)
+    )
+    # 冠 / 发髻
+    if crown:
+        d.polygon(
+            [(cx - 30, hy - 40), (cx + 30, hy - 40), (cx + 22, hy - 88), (cx - 22, hy - 88)],
+            fill=(*trim, 242),
+            outline=(43, 32, 20, 200),
+        )
+        d.rectangle([cx - 6, hy - 98, cx + 6, hy - 86], fill=(232, 220, 176, 255))  # 玉簪
+    else:
+        d.chord([cx - 40, hy - 54, cx + 40, hy - 4], 180, 360, fill=(52, 44, 38, 242))
+        d.ellipse([cx - 11, hy - 62, cx + 11, hy - 40], fill=(52, 44, 38, 242))  # 束发髻
+    # 须(长者)
+    if elder:
+        d.polygon(
+            [(cx - 20, hy + 30), (cx + 20, hy + 30), (cx, hy + 82)], fill=(212, 206, 196, 236)
+        )
+    # 眼
+    d.ellipse([cx - 16, hy - 6, cx - 8, hy + 2], fill=(40, 30, 25, 255))
+    d.ellipse([cx + 8, hy - 6, cx + 16, hy + 2], fill=(40, 30, 25, 255))
+    # 纸纹颗粒
+    arr = np.asarray(sp, dtype=np.float64)
+    grain = _fibre(sw, sh, seed=seed % 89 + 5) * 6.0
+    arr[..., :3] = np.clip(arr[..., :3] + grain[..., None], 0, 255)
+    return Image.fromarray(arr.astype(np.uint8), "RGBA")
+
+
+def animate_standee(
+    accent,
+    trim,
+    out_dir: Path,
+    *,
+    elder=False,
+    crown=False,
+    seed=1,
+    tag="standee",
+    size: tuple[int, int] = (1168, 784),
+    fps: int = 24,
+    duration_s: float = 2.2,
+) -> Path:
+    """S7 立牌:纸偶自底折痕**翻立**(竖向从压扁 0.05→1,回弹) + 接触阴影随立起收紧。
+    B7 断言:立牌身份分(此处 by construction 纸偶恒定)。"""
+    w, h = size
+    out_dir = Path(out_dir)
+    frames_dir = out_dir / f"frames_{tag}"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    n = int(fps * duration_s)
+    sprite = figure_sprite(accent, trim, elder=elder, crown=crown, seed=seed)
+    sw, sh = sprite.size
+    cxp, floor_y = w // 2, int(h * 0.93)
+
+    for f in range(n):
+        t = f / (n - 1) if n > 1 else 1.0
+        frame = _paper_bg(w, h)
+        s = max(0.05, min(1.15, ease_out_back(min(1.0, t / 0.62), overshoot=2.2)))
+        sh_s = max(1, int(sh * s))
+        scaled = sprite.resize((sw, sh_s), Image.BICUBIC)
+        px, py = cxp - sw // 2, floor_y - sh_s
+        lay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        lay.paste(scaled, (px, py), scaled)
+        settle = min(1.0, t / 0.62)
+        frame = Image.alpha_composite(
+            frame, _shadow_from(lay, 6, 10, blur=6 + 8 * (1 - settle), alpha=int(80 * settle))
+        )
+        frame = Image.alpha_composite(frame, lay)
+        frame.convert("RGB").save(frames_dir / f"f_{f:04d}.png")
+
+    mp4 = out_dir / f"s7_{tag}.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-loglevel",
+            "error",
+            "-framerate",
+            str(fps),
+            "-i",
+            str(frames_dir / "f_%04d.png"),
+            "-pix_fmt",
+            "yuv420p",
+            "-crf",
+            "18",
+            str(mp4),
+        ],
+        check=True,
+    )
+    return mp4
+
+
 def animate_landing(
     target_xf: float,
     target_yf: float,
@@ -600,8 +920,11 @@ __all__ = [
     "animate_establish",
     "animate_fissure_reveal",
     "animate_landing",
+    "animate_route",
+    "animate_standee",
     "animate_tear",
     "animate_timeline",
     "ease_out_back",
+    "figure_sprite",
     "smoothstep",
 ]
