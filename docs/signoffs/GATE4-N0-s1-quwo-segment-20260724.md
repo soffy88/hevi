@@ -2,7 +2,7 @@
 
 | 项 | 值 |
 |---|---|
-| 闸 | **閘④ 成段评审** · 送审 · 执行 CC-A · 2026-07-24 |
+| 闸 | **閘④ 成段评审 · ✅ 准入**（soffy 裁准,2026-07-24）——成片段达 G0-D 杆,S13竹简/S12双半幅/地图纸雕观感通过,准入。已知可打磨项转后续(非阻断)。 · 执行 CC-A |
 | 集 | s1 曲沃代翼(N0 9/9 净稿 → N1 节拍切分 → N9 段装配) |
 | 成片段 | `output/s1_quwo_daiyi/assemble/s1_quwo_daiyi_segment.mp4`(**129.4s**, 4.19MB, sha256 `3bb3d74d8a7155c6…`) |
 | EDL | `output/s1_quwo_daiyi/assemble/edl.json`(10 拍) |
