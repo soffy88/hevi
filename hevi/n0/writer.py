@@ -20,6 +20,7 @@ _SYSTEM = (
     "③每句必分型 fact|thesis|transition；fact 句必挂 ≥1 个 fact_ref(给定事件 id)、"
     "thesis 句必挂恰好 1 个 thesis_ref 且 display.attribution 用『按…』显式署我方；"
     "④引原文必逐字照抄给定 corpus 白文并填 quote{ulid,text}(text 是 corpus 的子串)；"
+    "无引文的句**不写 quote 字段**(绝不留空 quote 占位如 ulid=''/text='')；"
     "⑤稿内任何日期/数量必来自给定 chronology/number_claims 并挂 number_refs，否则删；"
     "⑥transition 句(纯衔接)不带 ref 且全稿占比 ≤20%；"
     "⑦深度来自论点：throughline 驱动骨架、事实供证，不许照搬白文翻译；"

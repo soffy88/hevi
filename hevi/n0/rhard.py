@@ -57,9 +57,9 @@ def _sentences(draft: dict) -> list[tuple[dict, dict]]:
 
 def _quotes(s: dict) -> list[dict]:
     q = s.get("quote")
-    if isinstance(q, dict):
-        return [q]
-    return list(q or [])
+    qs = [q] if isinstance(q, dict) else list(q or [])
+    # 过滤空占位 quote(ulid/text 空)——空 quote 非引文，H2 不验它(不掩盖真引文)。
+    return [x for x in qs if x.get("ulid") and x.get("text")]
 
 
 # ── H1 双溯源 ────────────────────────────────────────────────────────────────
@@ -202,7 +202,8 @@ def h8_structure(draft: dict, refs: dict) -> list[Failure]:
     plan_beats = set(ep.get("beat_ids") or [])
     for b in draft.get("beats", []):
         bid = b.get("beat_id")
-        if plan_beats and bid not in plan_beats:
+        # splitter 拆出的子拍带 parent_beat 回原拍——认 parent 即对齐(N0-D-003 确定性收尾)。
+        if plan_beats and bid not in plan_beats and b.get("parent_beat") not in plan_beats:
             out.append(Failure("H8", bid, "beat 不对齐 EpisodePlan"))
         # VO 分段估时(N0-D-001,裁决见 DECISIONS-N0.md)：非引文口播 5 字/s +
         # H2 锁定的逐字引文按字幕呈现 2 字/s，拍级求和判 5–15s。

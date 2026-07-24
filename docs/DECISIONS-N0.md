@@ -28,3 +28,17 @@ N0（撰稿 W / 审核 R）落地期决策。判定人=顾问 Claude（Wiki 授�
 **依据**：**OP-D-051② 触发首例**——"一子簇=一集可并可拆，厚薄合并是编辑决策"。s1 薄集拆拍属编辑层粒度调整，成员事件/证据链不变（封桓叔:0205 → 武公灭翼:0217 → 师服论断:0205），counterpoint 显式无不变。判定人=顾问 Claude·Wiki 授权。
 
 **落地**：`docs/specs/QNLR-EP-jin-decline-s1-EPISODEPLAN-DRAFT.md` 定稿改 3 拍；试点 refs 同步。
+
+---
+
+## N0-D-003 · 确定性收尾原则（2026-07-24）
+
+**裁决**：**凡可精确计算的约束（长度/计数/格式）由代码兜底，不交 LLM；LLM 只负责内容与措辞。**
+
+**落地首例**：post-W splitter（`hevi/n0/splitter.py`，置于 W 产出与 R-hard 之间，纯代码零 LLM）——超窗拍（VO 分段估时 >15s）取最长句、按分句边界拆两句、两半分入两拍（parent 链回原拍，H8 对齐认 parent）；继承 type/refs、quote span 与 ref 一字不动；递归至落窗或句不可再分；**句不可拆则原样交 R-hard 判 FAIL，不掩盖**。
+
+**缘起**：s1 试点 W(qwen-plus) 3 轮零不掉 H8（拍时长），每轮打地鼠——因把"长度精度"这种确定量交给 LLM 猜。裁：长度该代码保证。
+
+**同族**：H2（引文逐字机核）、H3（数字须 ref）之后，**确定性代码审判/兜底原则第三次适用**——与"不可欺裁判：LLM 产出、代码审判"同构。
+
+**落地**：`splitter.py` + H8 对齐认 parent_beat；单测 `test_n0_splitter.py`（拆后过 H8 且 H1/H2/H4 不受影响、quote 一字不动、归属不变、不可拆正确 FAIL）4 passed。
