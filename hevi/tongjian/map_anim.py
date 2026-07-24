@@ -262,7 +262,7 @@ def animate_establish(
         if geo_fade > 0:
             geo = _geo_layer(ms, w, h)
             r, g, b, al = geo.split()
-            geo = Image.merge("RGBA", (r, g, b, al.point(lambda v: int(v * geo_fade))))
+            geo = Image.merge("RGBA", (r, g, b, al.point(lambda v, gf=geo_fade: int(v * gf))))
             frame = Image.alpha_composite(frame, geo)
         frame = Image.alpha_composite(frame, _clouds(w, h, phase=t * 0.12))
         frame.convert("RGB").save(frames_dir / f"f_{f:04d}.png")
