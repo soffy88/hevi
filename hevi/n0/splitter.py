@@ -22,6 +22,7 @@ _INHERIT = (
     "number_refs",
     "e_banner",
     "conflict_callouts",
+    "presentation",
 )
 
 
@@ -32,6 +33,9 @@ def _quotes(s: dict) -> list[dict]:
 
 
 def _sent_secs(s: dict) -> float:
+    # onscreen 引文句本体画面呈现、不口播计 0(N0-D-010)——长引文标 onscreen 即不触发拆分。
+    if s.get("presentation") == "onscreen":
+        return 0.0
     tchars = len(s.get("text", ""))
     qchars = sum(len(q.get("text", "")) for q in _quotes(s))
     return max(0, tchars - qchars) / 5.0 + qchars / 2.0

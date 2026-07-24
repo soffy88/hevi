@@ -203,23 +203,106 @@ def test_h4_quote_internal_name_exempt() -> None:
     """引文 span 内未注册人名 → H4 豁免 PASS(N0-D-007，源内逐字 H2 已保真)。"""
     draft, refs = _valid()
     refs["corpus"]["u:x"] = "王使尹氏武氏助之"
-    draft["beats"][1]["sentences"].append({
-        "sid": "s1-b2-x", "type": "fact", "fact_refs": ["ev:quwo-wugong-mie-yi"],
-        "thesis_refs": [], "text": "王使『尹氏』助伐。", "quote": {"ulid": "u:x", "text": "尹氏"},
-        "entities": ["尹氏"], "display": {"source_display": "《左传》"},
-    })
+    draft["beats"][1]["sentences"].append(
+        {
+            "sid": "s1-b2-x",
+            "type": "fact",
+            "fact_refs": ["ev:quwo-wugong-mie-yi"],
+            "thesis_refs": [],
+            "text": "王使『尹氏』助伐。",
+            "quote": {"ulid": "u:x", "text": "尹氏"},
+            "entities": ["尹氏"],
+            "display": {"source_display": "《左传》"},
+        }
+    )
     rep = run_rhard(draft, refs)
     assert rep["by_gate"]["H4"] == "PASS", [f for f in rep["failures"] if f["gate"] == "H4"]
+
+
+def test_h8_onscreen_quote_not_counted_vo() -> None:
+    """长引文标 onscreen → 本体不计 VO(N0-D-010)；同拍配 vo 转述 → H8 PASS。"""
+    draft, refs = _valid()
+    long_q = (
+        "本大而末小是以能固故天子建國諸侯立家卿置側室大夫有貳宗士有隸子弟庶人工商各有分親皆有等衰"
+    )
+    refs["corpus"]["u:long"] = long_q
+    # b2 加一拍：onscreen 长引文(0 VO) + vo 白话转述句(供 VO)。
+    draft["beats"].append(
+        {
+            "beat_id": "s1-b2",  # 复用 plan 拍(对齐)
+            "sentences": [
+                {
+                    "sid": "os-1",
+                    "type": "thesis",
+                    "presentation": "onscreen",
+                    "thesis_refs": [],
+                    "fact_refs": ["ev:quwo-wugong-mie-yi"],
+                    "text": long_q,
+                    "quote": {"ulid": "u:long", "text": long_q},
+                    "display": {"attribution": "按"},
+                },
+                {
+                    "sid": "os-2",
+                    "type": "fact",
+                    "text": "师服此言，谓大宗小宗本末倒置则国不能固久也。",
+                    "fact_refs": ["ev:quwo-wugong-mie-yi"],
+                    "display": {"source_display": "《左传》"},
+                },
+            ],
+        }
+    )
+    from hevi.n0.rhard import _sent_vo_secs
+
+    assert _sent_vo_secs(draft["beats"][-1]["sentences"][0]) == 0.0  # onscreen 计 0
+    rep = run_rhard(draft, refs)
+    # onscreen 拍 VO 仅转述句(~4.4s?)——保证 onscreen 那 45 字引文没被算成 22.5s 超窗
+    os_fail = [f for f in rep["failures"] if f["gate"] == "H8" and "22" in f["reason"]]
+    assert not os_fail, rep["failures"]
+
+
+def test_h8_onscreen_without_vo_reword_fails() -> None:
+    """onscreen 引文拍缺白话转述(vo 口播句) → H8 FAIL(N0-D-010 画面有引文无人念)。"""
+    draft, refs = _valid()
+    long_q = (
+        "本大而末小是以能固故天子建國諸侯立家卿置側室大夫有貳宗士有隸子弟庶人工商各有分親皆有等衰"
+    )
+    refs["corpus"]["u:long"] = long_q
+    draft["beats"].append(
+        {
+            "beat_id": "s1-b2",
+            "sentences": [
+                {
+                    "sid": "os-1",
+                    "type": "thesis",
+                    "presentation": "onscreen",
+                    "thesis_refs": [],
+                    "fact_refs": ["ev:quwo-wugong-mie-yi"],
+                    "text": long_q,
+                    "quote": {"ulid": "u:long", "text": long_q},
+                    "display": {"attribution": "按"},
+                },
+            ],  # 只有 onscreen 引文、无 vo 转述
+        }
+    )
+    rep = run_rhard(draft, refs)
+    assert rep["by_gate"]["H8"] == "FAIL"
+    assert any(f["gate"] == "H8" and "转述" in f["reason"] for f in rep["failures"])
 
 
 def test_h4_narration_name_strict() -> None:
     """同名(尹氏)出现在叙述句(无引文覆盖) → H4 严格 FAIL。"""
     draft, refs = _valid()
-    draft["beats"][1]["sentences"].append({
-        "sid": "s1-b2-y", "type": "fact", "fact_refs": ["ev:quwo-wugong-mie-yi"],
-        "thesis_refs": [], "text": "尹氏亦助伐翼。", "entities": ["尹氏"],
-        "display": {"source_display": "《左传》"},
-    })
+    draft["beats"][1]["sentences"].append(
+        {
+            "sid": "s1-b2-y",
+            "type": "fact",
+            "fact_refs": ["ev:quwo-wugong-mie-yi"],
+            "thesis_refs": [],
+            "text": "尹氏亦助伐翼。",
+            "entities": ["尹氏"],
+            "display": {"source_display": "《左传》"},
+        }
+    )
     rep = run_rhard(draft, refs)
     assert rep["by_gate"]["H4"] == "FAIL"
     assert any(f["gate"] == "H4" and "尹氏" in f["reason"] for f in rep["failures"])

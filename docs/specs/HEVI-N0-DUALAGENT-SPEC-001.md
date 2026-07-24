@@ -28,6 +28,7 @@ EpisodePlan（策展投影，如 QNLR-EP-*）
 ```
 ScriptDraft {episode_ref, beats[{beat_id, sentences[
   {sid, type ∈ {fact | thesis | transition},
+   presentation ∈ {vo | onscreen}  # 默认 vo；onscreen=长引文画面呈现不口播（N0-D-010）
    text,
    fact_refs[]      # type=fact 必填 ≥1，解析到 KU 事件/account（ULID 可达）
    thesis_refs[]    # type=thesis 必填 =1，解析到 thesis 对象
@@ -37,6 +38,7 @@ ScriptDraft {episode_ref, beats[{beat_id, sentences[
 
 - transition 句（过渡/衔接）不带 ref，**全稿占比 ≤20%**（超限即硬门 FAIL）。
 - 引用原文的 quote span 必须逐字命中语料 ULID 段（简繁归一后字节比对）。
+- **引文呈现分离（N0-D-010）**：长引文标 `presentation=onscreen`（竹简/字幕卡画面呈现、本体不口播），VO 时长按其**白话转述句**计（onscreen 句 0 计）；每条 onscreen 引文须同拍配一句 vo 转述。短引可留 vo 内联。**禁机器截断引文**（N0-D-009，截取点属史学判断）——超窗长引文退 W 重述，不删字。
 
 ## 3. R-hard 硬门（全部确定性代码，无 LLM 参与）
 
@@ -49,7 +51,7 @@ ScriptDraft {episode_ref, beats[{beat_id, sentences[
 | H5 冲突不抹平 | EpisodePlan 涉及事件带 S12/角标 hint 的 cf，稿内必须呈现或显式记录不呈现理由 |
 | H6 counterpoint 非装饰 | 按 OP-D-051：呈现 ≥1 次，或 EpisodePlan 已附检索记录的显式无 |
 | H7 E-banner | 涉 E3/E4 事件的拍必须带等级标注指令（R9） |
-| H8 结构 | transition ≤20%；beat 对齐 EpisodePlan；VO **分段估时** 5–15s/拍——非引文口播 5 字/s + H2 锁定的逐字引文按字幕 2 字/s，拍级求和（**N0-D-001** 修订，见 DECISIONS-N0.md；原口径一律 5 字/s 使含长引文拍误超时） |
+| H8 结构 | transition ≤20%；beat 对齐 EpisodePlan；VO **分段估时** 5–15s/拍——非引文口播 5 字/s + H2 锁定的逐字短引按字幕 2 字/s，拍级求和（**N0-D-001**）；**N0-D-010**：`presentation=onscreen` 引文句本体不计 VO（画面呈现），且含 onscreen 句的拍须配 ≥1 vo 白话转述句否则 FAIL |
 | H9 拍-role 一致（**N0-D-005**） | EpisodePlan 声明的拍 role（`beat_roles`: fact/thesis）与实际句 type 分布一致；同一 `thesis_ref` 全稿呈现 >1 次须 EpisodePlan `allow_thesis_repeat` 显式允许，否则 FAIL |
 
 R-soft（LLM）：叙事节奏、通俗度、开场钩子、深度是否名实相符——**只出意见附审计报告，不设门**。

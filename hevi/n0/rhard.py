@@ -62,6 +62,16 @@ def _quotes(s: dict) -> list[dict]:
     return [x for x in qs if x.get("ulid") and x.get("text")]
 
 
+def _sent_vo_secs(s: dict) -> float:
+    """句 VO 实念时长(N0-D-010 引文呈现分离)：presentation=onscreen 的引文句画面呈现
+    (竹简/字幕卡)、本体不口播计 0；vo 句非引文 5 字/s + 逐字短引按字幕 2 字/s。"""
+    if s.get("presentation") == "onscreen":
+        return 0.0
+    tchars = len(s.get("text", ""))
+    qchars = sum(len(q.get("text", "")) for q in _quotes(s))
+    return max(0, tchars - qchars) / 5.0 + qchars / 2.0
+
+
 _OPEN, _CLOSE = "『「“‘", "』」”’"
 
 
@@ -235,15 +245,19 @@ def h8_structure(draft: dict, refs: dict) -> list[Failure]:
         # splitter 拆出的子拍带 parent_beat 回原拍——认 parent 即对齐(N0-D-003 确定性收尾)。
         if plan_beats and bid not in plan_beats and b.get("parent_beat") not in plan_beats:
             out.append(Failure("H8", bid, "beat 不对齐 EpisodePlan"))
-        # VO 分段估时(N0-D-001,裁决见 DECISIONS-N0.md)：非引文口播 5 字/s +
-        # H2 锁定的逐字引文按字幕呈现 2 字/s，拍级求和判 5–15s。
-        secs = 0.0
-        for s in b.get("sentences", []):
-            tchars = len(s.get("text", ""))
-            qchars = sum(len(q.get("text", "")) for q in _quotes(s))
-            secs += max(0, tchars - qchars) / 5.0 + qchars / 2.0
+        # VO 分段估时(N0-D-001/010,裁决见 DECISIONS-N0.md)：按 VO 实念求和——非引文
+        # 口播 5 字/s、逐字短引按字幕 2 字/s；onscreen 引文句本体不口播计 0(呈现分离)。
+        bsents = b.get("sentences", [])
+        secs = sum(_sent_vo_secs(s) for s in bsents)
         if not 5.0 <= secs <= 15.0:
             out.append(Failure("H8", bid, f"VO 分段估时 {secs:.1f}s 不在 5–15s/拍"))
+        # onscreen 引文必配同拍白话转述(N0-D-010)：含 onscreen 句的拍须有 ≥1 个
+        # 非 onscreen 的 fact/thesis 口播句(转述),否则画面有引文而无人念 → FAIL。
+        if any(s.get("presentation") == "onscreen" for s in bsents) and not any(
+            s.get("presentation") != "onscreen" and s.get("type") in ("fact", "thesis")
+            for s in bsents
+        ):
+            out.append(Failure("H8", bid, "onscreen 引文缺同拍白话转述(vo)"))
     return out
 
 

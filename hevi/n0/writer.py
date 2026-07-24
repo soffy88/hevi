@@ -27,9 +27,11 @@ _SYSTEM = (
     "⑧通俗度：生僻人名/地名/术语(翼侯/汾隰/支庶/大宗)首现即用括号或短句即时解释；"
     "⑨文言引文后必接一句白话转译(引文作 quote 字幕、转译作口播句)，不留纯文言；"
     "⑩深度来自论点，事实供证，不照搬白文翻译。"
-    "\n★引文规范(N0-D-008，四条硬规)："
-    "\n(1) 概引≤10 字：每个 quote.text ≤10 汉字、取支撑论点的关键短语；**长引改述**"
-    "(用白话概述事件)+只在必要处**引关键短语**，绝不整段照抄(H8 引文 2 字/s，长引必超时)；"
+    "\n★引文规范(N0-D-008/010，四条硬规)："
+    '\n(1) 引文呈现分离：**长引文(>约15字)标 `presentation:"onscreen"`(画面竹简/字幕卡'
+    "呈现、不口播)，并必配一句白话转述句(presentation 默认 vo、口播)**——onscreen 句本体不计"
+    "口播时长、转述句才是 VO。短引(≤约15字关键短语)可留 vo 内联(按字幕 2 字/s 计)。"
+    "**绝不把长引文留作 vo 整段照抄**(H8 按 VO 实念计时会超窗 FAIL、退你重述)；"
     "\n(2) 引号必挂 quote：**凡文中出现 『』「」 引号，其内容必须是 corpus 逐字子串并填 quote"
     "对象**(ulid+text，繁体原样一字不改)；不想挂 quote 就别用引号(改白话叙述)——严禁未标引文；"
     "\n(3) S12 冲突必出角标：EpisodePlan.s12_conflicts 列出的 cf，相关拍的句必填 "
@@ -47,7 +49,8 @@ _SCHEMA = """{
      "sentences": [
        {"sid": "<唯一,如 b1-1>",
         "type": "fact | thesis | transition",
-        "text": "<该句成稿文字>",
+        "presentation": "vo(默认口播) | onscreen(长引文画面呈现、不口播,须另配 vo 转述句)",
+        "text": "<该句成稿文字;onscreen 句 text=逐字引文本体>",
         "fact_refs": ["<type=fact 必填≥1,给定事件 id>"],
         "thesis_refs": ["<type=thesis 必填恰好1,给定 thesis id>"],
         "quote": {"ulid": "<corpus key>", "text": "<corpus 子串,逐字>"},
@@ -83,7 +86,8 @@ def build_prompt(episode_plan: dict, refs: dict, rhard_feedback: list[dict] | No
         "\n- H2 quote.text 必是 corpus 白文逐字子串；"
         "\n- H3 任何日期/数量挂 number_refs（本集 counterpoint 为显式无，已附检索）；"
         "\n- H6 counterpoint 显式无（EpisodePlan 已附检索记录），不要硬塞对立论点；"
-        "\n- H8 transition ≤20%、beat_id 对齐 EpisodePlan、每拍 VO 约 5–15s（约 25–75 汉字）。",
+        "\n- H8 transition ≤20%、beat_id 对齐 EpisodePlan、每拍 VO 约 5–15s（约 25–75 汉字，"
+        "onscreen 引文句不计入 VO、须同拍配 vo 白话转述句）。",
     ]
     if rhard_feedback:
         parts.append(

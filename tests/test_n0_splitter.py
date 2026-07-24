@@ -194,6 +194,44 @@ def test_boundary_only_inside_marks_unsplittable() -> None:
     assert split["beats"][0]["sentences"][0]["text"].count("『") == 1  # 引号完整
 
 
+def test_onscreen_long_quote_not_split() -> None:
+    """长引文标 presentation=onscreen → 本体计 0 VO(N0-D-010) → 拍不超窗 → 不拆分。"""
+    long_q = (
+        "本大而末小是以能固故天子建國諸侯立家卿置側室大夫有貳宗士有隸子弟庶人工商各有分親皆有等衰"
+    )
+    draft = {
+        "episode_ref": "ep:x",
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {
+                        "sid": "b1-1",
+                        "type": "thesis",
+                        "presentation": "onscreen",
+                        "thesis_refs": ["thesis:t1"],
+                        "fact_refs": [],
+                        "text": long_q,
+                        "quote": {"ulid": "u:long", "text": long_q},
+                        "display": {"attribution": "我方按"},
+                    },
+                    {
+                        "sid": "b1-2",
+                        "type": "thesis",
+                        "text": "师服谓本末倒置则国不固，晋建国而本弱难久也。",
+                        "thesis_refs": ["thesis:t1"],
+                        "display": {"attribution": "我方按"},
+                    },
+                ],
+            }
+        ],
+    }
+    assert _beat_secs(draft["beats"][0]) <= 15.0  # onscreen 不计 → 未超窗
+    split = split_overlong(draft)
+    assert len(split["beats"]) == 1  # 不拆分
+    assert split["beats"][0]["sentences"][0]["presentation"] == "onscreen"  # 字段留存
+
+
 def test_merge_crosses_parent_same_role_not_role_boundary() -> None:
     """欠窗拍跨 parent 就近合并（同 fact role），但不跨 fact/thesis 边界。"""
     draft = {
