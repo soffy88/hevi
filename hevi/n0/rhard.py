@@ -62,6 +62,20 @@ def _quotes(s: dict) -> list[dict]:
     return [x for x in qs if x.get("ulid") and x.get("text")]
 
 
+_OPEN, _CLOSE = "『「“‘", "』」”’"
+
+
+def _mark_ranges(text: str) -> list[tuple[int, int]]:
+    """引号 span（含引号）——『』「」""''。用于 H2 扩门：引号内容必须挂 quote 对象。"""
+    r, stack = [], []
+    for i, ch in enumerate(text):
+        if ch in _OPEN:
+            stack.append(i)
+        elif ch in _CLOSE and stack:
+            r.append((stack.pop(), i + 1))
+    return r
+
+
 # ── H1 双溯源 ────────────────────────────────────────────────────────────────
 def h1_dual_source(draft: dict, refs: dict) -> list[Failure]:
     ev, ac, th = refs.get("ku_events", {}), refs.get("ku_accounts", {}), refs.get("theses", {})
@@ -105,6 +119,19 @@ def h2_quote_fidelity(draft: dict, refs: dict) -> list[Failure]:
                 continue
             if _norm(txt) not in _norm(corpus[u]):
                 out.append(Failure("H2", s.get("sid"), f"quote 未逐字命中语料 ULID 段: {u}"))
+        # 扩门(N0-D-006)：句中引号 span 必须挂 quote 对象并过逐字机核——堵未标引文绕行。
+        text = s.get("text", "")
+        marked = [_norm(q.get("text", "")) for q in _quotes(s)]
+        for a, b in _mark_ranges(text):
+            inner = _norm(text[a + 1 : b - 1])
+            if inner and not any(inner == m or inner in m or m in inner for m in marked):
+                out.append(
+                    Failure(
+                        "H2",
+                        s.get("sid"),
+                        f"引号 span『{text[a + 1 : b - 1][:12]}…』未挂 quote(未标引文绕行)",
+                    )
+                )
     return out
 
 
@@ -217,6 +244,38 @@ def h8_structure(draft: dict, refs: dict) -> list[Failure]:
     return out
 
 
+# ── H9 拍-role 一致性(N0-D-005)────────────────────────────────────────────────
+def h9_beat_role(draft: dict, refs: dict) -> list[Failure]:
+    ep = refs.get("episode_plan", {})
+    roles = ep.get("beat_roles", {})  # plan beat_id → "fact" | "thesis"（未声明则跳过 role 检）
+    allow_repeat = set(ep.get("allow_thesis_repeat", ()))
+    out: list[Failure] = []
+    # ① 拍-role：净稿拍(经 parent 回原 plan 拍)的 fact/thesis 句分布须合声明。
+    for b in draft.get("beats", []):
+        role = roles.get(b.get("parent_beat") or b.get("beat_id"))
+        if role not in ("fact", "thesis"):
+            continue
+        content = {
+            s.get("type") for s in b.get("sentences", []) if s.get("type") in ("fact", "thesis")
+        }
+        if role == "fact" and "thesis" in content:
+            out.append(Failure("H9", b.get("beat_id"), "fact 拍出现 thesis 句(拍-role 不一致)"))
+        if role == "thesis" and "fact" in content:
+            out.append(Failure("H9", b.get("beat_id"), "thesis 拍出现 fact 句(拍-role 不一致)"))
+    # ② 同一 thesis_ref 全稿呈现 >1 次须 EpisodePlan 显式允许(allow_thesis_repeat)。
+    counts: dict[str, int] = {}
+    for _b, s in _sentences(draft):
+        if s.get("type") == "thesis":
+            for r in s.get("thesis_refs") or []:
+                counts[r] = counts.get(r, 0) + 1
+    for ref, n in counts.items():
+        if n > 1 and ref not in allow_repeat:
+            out.append(
+                Failure("H9", None, f"thesis_ref {ref} 全稿呈现 {n} 次 >1，EpisodePlan 未显式允许")
+            )
+    return out
+
+
 _GATES = {
     "H1": h1_dual_source,
     "H2": h2_quote_fidelity,
@@ -226,11 +285,12 @@ _GATES = {
     "H6": h6_counterpoint,
     "H7": h7_e_banner,
     "H8": h8_structure,
+    "H9": h9_beat_role,
 }
 
 
 def run_rhard(draft: dict, refs: dict) -> dict[str, Any]:
-    """跑全部 H1–H8，返回 HardReport。纯确定性，无模型。"""
+    """跑全部 H1–H9，返回 HardReport。纯确定性，无模型。"""
     results = {g: fn(draft, refs) for g, fn in _GATES.items()}
     failures = [vars(f) for fs in results.values() for f in fs]
     return {

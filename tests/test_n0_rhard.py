@@ -31,6 +31,9 @@ def _valid() -> tuple[dict, dict]:
                 "s1-b1": ["ev:quwo-feng-huanshu"],
                 "s1-b2": ["ev:quwo-wugong-mie-yi"],
             },
+            # H9：valid 稿 shifu 论点跨 2 拍呈现，显式允许(否则 H9 判 thesis_ref 重复)；
+            # 无 beat_roles → H9 拍-role 检跳过(混合拍)。
+            "allow_thesis_repeat": ["thesis:shifu-modabizhe"],
         },
     }
     draft = {
@@ -164,3 +167,33 @@ def test_h6_counterpoint_no_search_record_fails() -> None:
     del refs["episode_plan"]["counterpoint_search_record"]
     rep = run_rhard(draft, refs)
     assert rep["by_gate"]["H6"] == "FAIL"
+
+
+def test_h9_thesis_repeat_without_allow_fails() -> None:
+    """同一 thesis_ref 全稿 >1 次且 EpisodePlan 未显式允许 → H9 FAIL(N0-D-005)。"""
+    draft, refs = _valid()
+    del refs["episode_plan"]["allow_thesis_repeat"]  # 撤销允许 → shifu 2 次触发
+    rep = run_rhard(draft, refs)
+    assert rep["by_gate"]["H9"] == "FAIL"
+    assert any(f["gate"] == "H9" and "呈现" in f["reason"] for f in rep["failures"])
+
+
+def test_h9_beat_role_mismatch_fails() -> None:
+    """fact-role plan 拍出现 thesis 句 → H9 FAIL(拍-role 不一致)。"""
+    draft, refs = _valid()
+    refs["episode_plan"]["beat_roles"] = {"s1-b1": "fact", "s1-b2": "fact"}  # b1 声明 fact
+    # valid 的 s1-b1 含 thesis 句(b1-2) → 与 fact-role 冲突
+    rep = run_rhard(draft, refs)
+    assert rep["by_gate"]["H9"] == "FAIL"
+    assert any(f["gate"] == "H9" and "拍-role" in f["reason"] for f in rep["failures"])
+
+
+def test_h2_unmarked_quote_bypass_fails() -> None:
+    """句中引号 span 未挂 quote 对象(未标引文绕行)→ H2 扩门 FAIL(N0-D-006)。"""
+    draft, refs = _valid()
+    # 把 b1-2 的师服论断改成含『』引文却不挂 quote 对象
+    draft["beats"][0]["sentences"][1]["text"] = "师服断言：『本大而末小是以能固』，末大必折。"
+    draft["beats"][0]["sentences"][1].pop("quote", None)  # 不标 quote
+    rep = run_rhard(draft, refs)
+    assert rep["by_gate"]["H2"] == "FAIL"
+    assert any(f["gate"] == "H2" and "未标引文" in f["reason"] for f in rep["failures"])

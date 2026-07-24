@@ -41,6 +41,21 @@ def _beat_secs(beat: dict) -> float:
     return sum(_sent_secs(s) for s in beat.get("sentences", []))
 
 
+_OPEN = "『「“‘"
+_CLOSE = "』」”’"
+
+
+def _mark_ranges(text: str) -> list[tuple[int, int]]:
+    """引号 span 区间（含引号本身）——『』「」""''。用于禁止在引号内拆句（N0-D-004）。"""
+    r, stack = [], []
+    for i, ch in enumerate(text):
+        if ch in _OPEN:
+            stack.append(i)
+        elif ch in _CLOSE and stack:
+            r.append((stack.pop(), i + 1))
+    return r
+
+
 def _quote_ranges(text: str, s: dict) -> list[tuple[int, int]]:
     r = []
     for q in _quotes(s):
@@ -52,17 +67,17 @@ def _quote_ranges(text: str, s: dict) -> list[tuple[int, int]]:
 
 
 def _split_sentence(s: dict) -> list[dict]:
-    """按分句边界拆两句；拆点不落 quote span 内；quote 归含它的半句；继承 type/refs。
-    返回 [s]（不可拆）或 [a, b]。"""
+    """按分句边界拆两句；拆点须**在引文外**（引号 span 与 quote span 内的标点不作边界，
+    N0-D-004）；quote 归含它的半句；继承 type/refs。返回 [s]（不可拆）或 [a, b]。"""
     text = s.get("text", "")
-    qr = _quote_ranges(text, s)
+    forbidden = _quote_ranges(text, s) + _mark_ranges(text)  # 引号内 + 已标 quote 内均不可拆
     cands = [
         i + 1
         for i, ch in enumerate(text)
-        if ch in _BOUND and 0 < i + 1 < len(text) and not any(a < i + 1 <= b for a, b in qr)
+        if ch in _BOUND and 0 < i + 1 < len(text) and not any(a < i + 1 <= b for a, b in forbidden)
     ]
     if not cands:
-        return [s]  # 无可用分句边界（或都落在 quote 内）→ 不可拆
+        return [s]  # 无引文外分句边界 → 不可拆（原样交 R-hard 判）
     mid = len(text) / 2
     cut = min(cands, key=lambda i: abs(i - mid))
     ta, tb = text[:cut], text[cut:]

@@ -127,3 +127,68 @@ def test_unsplittable_pure_quote_beat_fails_not_hidden() -> None:
     split = split_overlong(draft)
     assert len(split["beats"]) == 1  # 不可拆，原样
     assert run_rhard(split, refs)["by_gate"]["H8"] == "FAIL"  # 不掩盖
+
+
+def test_split_keeps_quote_marks_paired() -> None:
+    """含 『』 长引文的拍：拆点须在引号外，拆后每半句引号成对完整（N0-D-004 修 bug）。"""
+    text = (
+        "师服断言：『本大而末小是以能固今晋甸侯也而建国本既弱矣其能久乎』；此乃末大必折之首次"
+        "应验也，曲沃以支庶小宗并吞晋国之大宗，宗本由此折断，权柄下移诸卿之手，乱局由是发端矣。"
+    )
+    draft = {
+        "episode_ref": "ep:x",
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {
+                        "sid": "b1-1",
+                        "type": "thesis",
+                        "thesis_refs": ["thesis:t1"],
+                        "fact_refs": [],
+                        "text": text,
+                        "display": {"attribution": "我方按"},
+                    }
+                ],
+            }
+        ],
+    }
+    assert _beat_secs(draft["beats"][0]) > 15.0
+    split = split_overlong(draft)
+    assert len(split["beats"]) >= 2  # 引号外有边界，可拆
+    for b in split["beats"]:
+        for s in b["sentences"]:
+            t = s["text"]
+            assert t.count("『") == t.count("』"), f"引号被拆散: {t!r}"
+
+
+def test_boundary_only_inside_marks_unsplittable() -> None:
+    """整句为一段长 『引文』、标点全在引号内 → 引文外无边界 → 不可拆，原样交 R-hard。"""
+    inner = (
+        "本大而末小是以能固；今晋甸侯也而建国本既弱矣，其能久乎；甸侯建国而本弱如此安能久长哉；"
+        "末大必折之理昭然若揭而不可易也，晋之衰微其可俟乎；支庶坐大宗本日削，祸乱之萌肇端于此，"
+        "虽有智者亦难为之谋，惜乎晋室不寤而终以覆亡也，可胜叹哉可胜叹哉"
+    )
+    text = f"『{inner}』"
+    draft = {
+        "episode_ref": "ep:x",
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {
+                        "sid": "b1-1",
+                        "type": "thesis",
+                        "thesis_refs": ["thesis:t1"],
+                        "fact_refs": [],
+                        "text": text,
+                        "display": {"attribution": "我方按"},
+                    }
+                ],
+            }
+        ],
+    }
+    assert _beat_secs(draft["beats"][0]) > 15.0
+    split = split_overlong(draft)
+    assert len(split["beats"]) == 1  # 引文外无边界 → 不可拆（不掩盖）
+    assert split["beats"][0]["sentences"][0]["text"].count("『") == 1  # 引号完整

@@ -42,3 +42,33 @@ N0（撰稿 W / 审核 R）落地期决策。判定人=顾问 Claude（Wiki 授�
 **同族**：H2（引文逐字机核）、H3（数字须 ref）之后，**确定性代码审判/兜底原则第三次适用**——与"不可欺裁判：LLM 产出、代码审判"同构。
 
 **落地**：`splitter.py` + H8 对齐认 parent_beat；单测 `test_n0_splitter.py`（拆后过 H8 且 H1/H2/H4 不受影响、quote 一字不动、归属不变、不可拆正确 FAIL）4 passed。
+
+---
+
+## N0-D-004 · 分句边界须在引文外（N0-D-003 修正）（2026-07-24）
+
+**裁决**：splitter 分句边界判定**必须在引文外**——引号 `『』「」""''` 内的标点不作边界；拆点落在引号 span 内即视为不可拆，原样交 R-hard。
+
+**缘起（bug）**：s1 净稿 splitter 把 `『本大而末小…其能久乎？』` 从 `？` 与 `』` 之间拆开，引号被拆散（b1#1 收尾 `其能久乎？`、b1#2 开头 `』——`）。旧实现只排除**已标 quote span**，未排除**引号本身**。
+
+**落地**：`splitter._split_sentence` 拆点排除 `_mark_ranges`（引号区间）∪ `_quote_ranges`；单测『含长引文的拍拆分后引号成对完整』『边界全在引号内则不可拆』。
+
+---
+
+## N0-D-005 · H9 拍-role 一致性（升 hard）（2026-07-24）
+
+**裁决**：新增 **H9**——① EpisodePlan 声明的拍 role（`beat_roles`: fact/thesis）与净稿拍（经 parent 回原 plan 拍）的 fact/thesis 句分布须一致；② 同一 `thesis_ref` 全稿呈现 >1 次须 EpisodePlan `allow_thesis_repeat` 显式允许，否则 FAIL。
+
+**缘起**：s1 净稿 W 未守 plan 拍-role——把师服论断塞进 fact 拍 b1、又在 b3 重述，`thesis:shifu-modabizhe` 全稿呈现两处（R-hard 此前只查 beat 对齐、不查拍-role）。
+
+**落地**：`rhard.h9_beat_role` + `_GATES`；单测『thesis_ref 重复无允许 FAIL』『fact 拍出现 thesis 句 FAIL』。
+
+---
+
+## N0-D-006 · H2 扩门·堵未标引文绕行（2026-07-24）
+
+**裁决**：H2 扩门——句中出现引号 `『』「」""''` span 的，其内容**必须挂 quote 对象并过逐字机核**；未标 quote 的疑似引文 FAIL。
+
+**缘起**：s1 净稿 W 把师服文言引文当**纯 text 写、`quote=None`**，H2 只验标记的 quote、放过了未标引文——文言逐字保真被绕行（③『文言无转译』的底层漏洞）。
+
+**落地**：`rhard.h2_quote_fidelity` 加引号 span 扩门检；单测『引号 span 未挂 quote → H2 FAIL』。**H2/H3/N0-D-003 同族——确定性机核堵绕行。**

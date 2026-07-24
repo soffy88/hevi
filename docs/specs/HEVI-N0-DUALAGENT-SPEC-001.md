@@ -43,13 +43,14 @@ ScriptDraft {episode_ref, beats[{beat_id, sentences[
 | 门 | 判 |
 |---|---|
 | H1 双溯源 | fact 句 fact_refs 全解析、thesis 句 thesis_refs 解析且 attribution 呈现（我方以"按"显式，R8/R10） |
-| H2 引文保真 | quote span 逐字命中语料 ULID（机核，同 fixture 机核标准） |
+| H2 引文保真 | quote span 逐字命中语料 ULID（机核，同 fixture 机核标准）；**扩门（N0-D-006）**：句中引号 `『』「」""` span 必须挂 quote 对象并过机核，未标疑似引文 FAIL（堵未标引文绕行） |
 | H3 日期/数字 | 只出 chronology 注册表与 number_claims（带"《X》载"体例）；稿内任何数字无 ref 即 FAIL（"围两年"事故的制度化根除） |
 | H4 名从注册表 | 人名/地名解析注册表，按代取名（R3）；原料池（OP-D-054）id 不可引 |
 | H5 冲突不抹平 | EpisodePlan 涉及事件带 S12/角标 hint 的 cf，稿内必须呈现或显式记录不呈现理由 |
 | H6 counterpoint 非装饰 | 按 OP-D-051：呈现 ≥1 次，或 EpisodePlan 已附检索记录的显式无 |
 | H7 E-banner | 涉 E3/E4 事件的拍必须带等级标注指令（R9） |
 | H8 结构 | transition ≤20%；beat 对齐 EpisodePlan；VO **分段估时** 5–15s/拍——非引文口播 5 字/s + H2 锁定的逐字引文按字幕 2 字/s，拍级求和（**N0-D-001** 修订，见 DECISIONS-N0.md；原口径一律 5 字/s 使含长引文拍误超时） |
+| H9 拍-role 一致（**N0-D-005**） | EpisodePlan 声明的拍 role（`beat_roles`: fact/thesis）与实际句 type 分布一致；同一 `thesis_ref` 全稿呈现 >1 次须 EpisodePlan `allow_thesis_repeat` 显式允许，否则 FAIL |
 
 R-soft（LLM）：叙事节奏、通俗度、开场钩子、深度是否名实相符——**只出意见附审计报告，不设门**。
 
