@@ -54,6 +54,8 @@ ScriptDraft {episode_ref, beats[{beat_id, sentences[
 | H8 结构 | transition ≤20%；beat 对齐 EpisodePlan；VO **分段估时** 5–15s/拍——非引文口播 5 字/s + H2 锁定的逐字短引按字幕 2 字/s，拍级求和（**N0-D-001**）；**N0-D-010**：`presentation=onscreen` 引文句本体不计 VO（画面呈现），且含 onscreen 句的拍须配 ≥1 vo 白话转述句否则 FAIL |
 | H9 拍-role 一致（**N0-D-005**） | EpisodePlan 声明的拍 role（`beat_roles`: fact/thesis）与实际句 type 分布一致；同一 `thesis_ref` 全稿呈现 >1 次须 EpisodePlan `allow_thesis_repeat` 显式允许，否则 FAIL |
 
+**修正指令（N0-D-011）**：每条 FAIL 除门号 + sid + 违规实测值外，**必附可执行修法 `fix`**（各门修法模板见 DECISIONS-N0.md）；`writer.build_prompt` 将其置为下一轮 W 的**首要输入**，逐条外科式执行；每轮修正指令全文记入审计报告 `rounds[].remediation`。反馈通道宽度是收敛前提——门能判的错，修法方向门也能给（机械问题机械解，第 5 次适用）。
+
 R-soft（LLM）：叙事节奏、通俗度、开场钩子、深度是否名实相符——**只出意见附审计报告，不设门**。
 
 ## 4. W 撰稿约束

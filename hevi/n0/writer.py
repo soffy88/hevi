@@ -90,10 +90,17 @@ def build_prompt(episode_plan: dict, refs: dict, rhard_feedback: list[dict] | No
         "onscreen 引文句不计入 VO、须同拍配 vo 白话转述句）。",
     ]
     if rhard_feedback:
-        parts.append(
-            "\n## 上一轮 R-hard 打回——★外科式修正★：**只改下列打回句(按 sid)，其余句一字不动**"
-            "原样保留，切勿重写全稿(重写会引入新错、打地鼠)。修完重出完整 JSON。\n"
-            + json.dumps(rhard_feedback, ensure_ascii=False, indent=2)
+        # N0-D-011：每条 FAIL 带 `fix` 可执行修法——**逐条照 fix 执行**是本轮首要任务。
+        lines = [
+            f"- [{f.get('gate')}] sid={f.get('sid')}｜实测: {f.get('reason')}"
+            f"\n  → 修法: {f.get('fix') or '（见 reason）'}"
+            for f in rhard_feedback
+        ]
+        parts.insert(
+            1,  # 置于任务说明之后、KU 之前——修正指令是本轮首要输入，不只是"上轮失败了"
+            "\n## ★本轮首要任务：按下列 R-hard 修正指令逐条修复★"
+            "\n**外科式**：只改被点名 sid 的句、逐条照『修法』执行，其余句一字不动"
+            "（重写全稿会引入新错、打地鼠）。修完重出完整 JSON。\n" + "\n".join(lines),
         )
     parts.append("\n只输出 JSON，不要任何解释。")
     return "\n".join(parts)

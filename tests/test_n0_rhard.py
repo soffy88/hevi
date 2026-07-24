@@ -289,6 +289,43 @@ def test_h8_onscreen_without_vo_reword_fails() -> None:
     assert any(f["gate"] == "H8" and "转述" in f["reason"] for f in rep["failures"])
 
 
+def test_failures_carry_executable_fix() -> None:
+    """N0-D-011：每条 FAIL 带非空 fix 可执行修法。"""
+    draft, refs = _valid()
+    del draft["beats"][1]["sentences"][1]["number_refs"]  # H3
+    draft["beats"][1]["sentences"][0]["quote"]["text"] = "逐翼侯於汾水"  # H2 篡字
+    rep = run_rhard(draft, refs)
+    assert rep["failures"], "应有失败"
+    assert all(f.get("fix") for f in rep["failures"]), [
+        f for f in rep["failures"] if not f.get("fix")
+    ]
+
+
+def test_h4_fix_suggests_variant_canonical() -> None:
+    """H4 修法：注册表有简繁变体时荐 canonical(晉→晋)；真缺口(虢公)则荐改述回避。"""
+    draft, refs = _valid()
+    refs["name_registry"].add("晋")  # 注册表存简体 canonical
+    draft["beats"][0]["sentences"][0]["entities"] = ["晉", "虢公"]  # 晉=晋变体在表; 虢公真缺
+    rep = run_rhard(draft, refs)
+    fx = {f["reason"].split(": ")[-1]: f["fix"] for f in rep["failures"] if f["gate"] == "H4"}
+    assert "晋" in fx.get("晉", ""), fx  # 变体命中 → 荐 canonical『晋』
+    assert "改述" in fx.get("虢公", ""), fx  # 真缺口 → 荐改述回避(不截断误导)
+
+
+def test_h8_fix_suggests_onscreen_for_long_quote() -> None:
+    """H8 超窗且拍内有非 onscreen 长引文 → 修法首选标 onscreen + 补转述。"""
+    draft, refs = _valid()
+    long_q = (
+        "本大而末小是以能固故天子建國諸侯立家卿置側室大夫有貳宗士有隸子弟庶人工商各有分親皆有等衰"
+    )
+    refs["corpus"]["u:long"] = long_q
+    draft["beats"][0]["sentences"][0]["quote"] = {"ulid": "u:long", "text": long_q}
+    draft["beats"][0]["sentences"][0]["text"] = long_q  # VO 长引文超窗
+    rep = run_rhard(draft, refs)
+    h8 = [f for f in rep["failures"] if f["gate"] == "H8" and "超窗" in f.get("fix", "")]
+    assert h8 and "onscreen" in h8[0]["fix"], [f for f in rep["failures"] if f["gate"] == "H8"]
+
+
 def test_h4_narration_name_strict() -> None:
     """同名(尹氏)出现在叙述句(无引文覆盖) → H4 严格 FAIL。"""
     draft, refs = _valid()
