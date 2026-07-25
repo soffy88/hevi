@@ -475,3 +475,17 @@ def test_anchor_nested_inner_independent() -> None:
         {"sid": "s1", "type": "fact", "text": "赵衰曰：『郤縠可』，遂用之。"}]}]}
     _, reports = anchor_quotes(draft, refs)
     assert any(r["status"] == "anchored" and r["ulid"] == "u:in" for r in reports)
+
+
+def test_h2_attached_quote_ellipsis_splice_fix() -> None:
+    """N0-D-021c 接挂 quote：quote.text 含省略号=跨段拼引 → H2 FAIL 且修法提示拆两条/改述。"""
+    draft, refs = _valid()
+    refs["corpus"]["u:long"] = "甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥"
+    draft["beats"][1]["sentences"].append({
+        "sid": "s1-b2-sp", "type": "fact", "fact_refs": ["ev:quwo-wugong-mie-yi"], "thesis_refs": [],
+        "text": "史载其事。", "quote": {"ulid": "u:long", "text": "甲乙丙……午未申"},
+        "display": {"source_display": "《左传》"},
+    })
+    rep = run_rhard(draft, refs)
+    assert rep["by_gate"]["H2"] == "FAIL"
+    assert any(f["gate"] == "H2" and "拼接" in f["fix"] for f in rep["failures"])

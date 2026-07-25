@@ -260,15 +260,18 @@ def h2_quote_fidelity(draft: dict, refs: dict) -> list[Failure]:
                 )
                 continue
             if _norm(txt) not in _norm(corpus[u]):
-                out.append(
-                    Failure(
-                        "H2",
-                        s.get("sid"),
-                        f"quote 未逐字命中语料 ULID 段: {u}",
-                        f"quote.text 须是 corpus[{u}] 的逐字子串（繁体一字不改）："
-                        f"『{corpus[u][:40]}…』",
+                # N0-D-021c 接挂 quote：quote.text 内含省略号=跨段拼引(篡改原文顺序)→ 专项修法。
+                if any(e in txt for e in _ELLIPSIS):
+                    fix = (
+                        f"quote.text 含省略号=跨段拼引(把 {u} 不相邻两段用……拼接,篡改原文顺序,"
+                        "同 N0-D-009 禁)：拆成两条 quote(各锚一段连续子串)或改述，不许……拼接"
                     )
-                )
+                else:
+                    fix = (
+                        f"quote.text 须是 corpus[{u}] 的逐字连续子串（繁体一字不改）："
+                        f"『{corpus[u][:40]}…』"
+                    )
+                out.append(Failure("H2", s.get("sid"), f"quote 未逐字命中语料 ULID 段: {u}", fix))
         # 扩门(N0-D-006)：句中引号 span 必须挂 quote 对象并过逐字机核——堵未标引文绕行。
         text = s.get("text", "")
         marked = [_norm(q.get("text", "")) for q in _quotes(s)]
