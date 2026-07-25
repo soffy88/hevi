@@ -98,49 +98,73 @@ def _attach_quote(s: dict, q: dict) -> None:
         s["quote"] = [*list(existing), q]
 
 
+_ELLIPSIS = ("…", "‥", "⋯", "......", "．．．")  # 省略号/跨段跳接标记
+
+
+def _beat_preferred_ulids(refs: dict, beat: dict) -> list[str]:
+    """N0-D-021(b) 多命中消歧：拍上下文 event 所属 account 的 ULID(缩小搜索域)。
+    refs['event_ulids'](event_id→[ulid]) + episode_plan.beat_events(plan拍→[event])。"""
+    ep = refs.get("episode_plan", {})
+    ev_ulids = refs.get("event_ulids", {})
+    plan_beat = beat.get("parent_beat") or beat.get("beat_id")
+    events = ep.get("beat_events", {}).get(plan_beat, [])
+    out: list[str] = []
+    for e in events:
+        out.extend(ev_ulids.get(e, []))
+    return out
+
+
 def anchor_quotes(draft: dict, refs: dict) -> tuple[dict, list[dict]]:
-    """R-hard 前置确定性预处理（N0-D-015）——引文自动锚定：句中未挂 quote 的引号内容
-    在 corpus 逐字子串匹配（简繁归一后）；**唯一命中**→自动挂 quote{ulid,text,auto_anchored}
-    （text 用原引号内容一字不改）；**零命中**→不挂（交 H2 判 FAIL）；**多处命中**→报回不猜。
-    只锚定不改字、一字不增删。锚定=字符串匹配（机械），非截取原文（史学判断，N0-D-009 禁）。
-    返回 (锚定后 draft, 报告[{sid,span,status∈{anchored,none,ambiguous},ulid?/ulids?}])。"""
+    """R-hard 前置确定性预处理（N0-D-015 + N0-D-021 增强）——引文自动锚定。
+
+    句中未挂 quote 的引号内容在 corpus 逐字子串匹配（简繁归一后）：
+    - **唯一命中** → 自动挂 quote{ulid,text,auto_anchored}（text 原样一字不改）；
+    - **零命中** → 不挂（交 H2 判 FAIL）；
+    - **多命中（N0-D-021b 消歧）** → 优先取该拍 event 所属 account 的 ULID(缩小搜索域)；缩小后
+      唯一则挂,仍多则报回 ambiguous 不猜；
+    - **省略号跨段拼引（N0-D-021c）** → 引号内含 …/‥ 等跳接标记 → **不匹配**（拼接=篡改原文顺序，
+      同 N0-D-009 禁截断），status=ellipsis_splice、交 H2 判 FAIL；
+    - **嵌套引（N0-D-021a）** → 逐 _mark_ranges span 独立锚定(内层各挂各自 ULID);外层若因省略号/
+      不连续失配,内层仍独立处理(不被外层拖累)。
+    只锚定不改字、一字不增删。锚定=字符串匹配（机械），非截取/拼接原文（史学判断，N0-D-009 禁）。
+    返回 (锚定后 draft, 报告[{sid,span,status,ulid?/ulids?}])。"""
     corpus = refs.get("corpus", {})
     norm_corpus = {u: _norm(t) for u, t in corpus.items()}
     reports: list[dict] = []
     out_beats = []
     for b in draft.get("beats", []):
+        preferred = _beat_preferred_ulids(refs, b)
         sents = []
         for s0 in b.get("sentences", []):
             s = dict(s0)
             text = s.get("text", "")
             marked = {_norm(q.get("text", "")) for q in _quotes(s)}
-            for a, bnd in _mark_ranges(text):
+            # 嵌套(N0-D-021a)：内层(短)span 先处理，各自独立锚定，不被外层失配拖累。
+            for a, bnd in sorted(_mark_ranges(text), key=lambda r: r[1] - r[0]):
                 inner = text[a + 1 : bnd - 1]
                 ninner = _norm(inner)
-                if not ninner or any(ninner == m or ninner in m or m in ninner for m in marked):
-                    continue  # 空引号或已挂 quote 覆盖
+                if not ninner or any(ninner == m or ninner in m or m in inner for m in marked):
+                    continue  # 空引号或已被(内层)锚定覆盖
+                sid = s.get("sid")
+                if any(e in inner for e in _ELLIPSIS):  # N0-D-021c 禁省略号跨段拼引
+                    reports.append({"sid": sid, "span": inner[:20], "status": "ellipsis_splice"})
+                    continue
                 hits = [u for u, nt in norm_corpus.items() if ninner in nt]
+                if len(hits) > 1 and preferred:  # N0-D-021b 多命中→缩到拍 event 的 ULID 域
+                    narrowed = [u for u in hits if u in preferred]
+                    if narrowed:
+                        hits = narrowed
                 if len(hits) == 1:
                     _attach_quote(s, {"ulid": hits[0], "text": inner, "auto_anchored": True})
                     marked.add(ninner)
                     reports.append(
-                        {
-                            "sid": s.get("sid"),
-                            "span": inner[:20],
-                            "status": "anchored",
-                            "ulid": hits[0],
-                        }
+                        {"sid": sid, "span": inner[:20], "status": "anchored", "ulid": hits[0]}
                     )
                 elif not hits:
-                    reports.append({"sid": s.get("sid"), "span": inner[:20], "status": "none"})
+                    reports.append({"sid": sid, "span": inner[:20], "status": "none"})
                 else:
                     reports.append(
-                        {
-                            "sid": s.get("sid"),
-                            "span": inner[:20],
-                            "status": "ambiguous",
-                            "ulids": hits,
-                        }
+                        {"sid": sid, "span": inner[:20], "status": "ambiguous", "ulids": hits}
                     )
             sents.append(s)
         out_beats.append({**b, "sentences": sents})
@@ -249,15 +273,26 @@ def h2_quote_fidelity(draft: dict, refs: dict) -> list[Failure]:
         text = s.get("text", "")
         marked = [_norm(q.get("text", "")) for q in _quotes(s)]
         for a, b in _mark_ranges(text):
-            inner = _norm(text[a + 1 : b - 1])
+            raw_inner = text[a + 1 : b - 1]
+            inner = _norm(raw_inner)
             if inner and not any(inner == m or inner in m or m in inner for m in marked):
+                # N0-D-021c：引号内含省略号=跨段拼引(篡改原文顺序)→ 专项修法"分两条 quote 或改述"。
+                if any(e in raw_inner for e in _ELLIPSIS):
+                    fix = (
+                        f"sid={s.get('sid')} 引号内含省略号=跨段拼引(篡改原文顺序,同 N0-D-009 禁)："
+                        "拆成两条 quote(各锚一段连续 ULID)，或改述；不许用……拼接原文"
+                    )
+                else:
+                    fix = (
+                        f"sid={s.get('sid')} 引号内容须挂 quote{{ulid,text}} 锚到语料 ULID，"
+                        "或去掉引号改白话叙述（勿用引号包非逐字内容）"
+                    )
                 out.append(
                     Failure(
                         "H2",
                         s.get("sid"),
-                        f"引号 span『{text[a + 1 : b - 1][:12]}…』未挂 quote(未标引文绕行)",
-                        f"sid={s.get('sid')} 引号内容须挂 quote{{ulid,text}} 锚到语料 ULID，"
-                        "或去掉引号改白话叙述（勿用引号包非逐字内容）",
+                        f"引号 span『{raw_inner[:12]}…』未挂 quote(未标引文绕行)",
+                        fix,
                     )
                 )
     return out

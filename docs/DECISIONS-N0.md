@@ -227,3 +227,18 @@ N0（撰稿 W / 审核 R）落地期决策。判定人=顾问 Claude（Wiki 授�
 **缘起**：s3 残留 H8 s3-b4 15.6s——该拍 = onscreen 仲尼长引（0 计，已对）+ b4-1 白话 15.6s（超 0.6s）。实证 `_split_sentence(b4-1)` 可干净拆 7.0+8.6 双落窗，但**交付稿未经终态 split**（pilot 流程 bug：终态锚定后漏补 split）。归因核实判「机制可解（splitter 边界 + pilot 流程）」。
 
 **落地**：① `splitter._split_beat` 拆分对象限定非-onscreen 句（`splittable` 过滤）；② pilot 交付前补 `split_overlong`（终态拆，保证交付稿必落窗）。单测『onscreen + 超窗白话混合拍拆后过 H8、onscreen 句一字不动』。
+
+---
+
+## N0-D-021 · quote 锚定器支持嵌套/多命中消歧,禁省略号跨段拼引（2026-07-25）
+
+**裁决**：`anchor_quotes`（N0-D-015 延伸）三项增强：
+- **(a) 嵌套引**：逐 `_mark_ranges` span 独立锚定，**内层(短)span 先处理**（按长度升序）、各挂各自 ULID；外层若因不连续/省略号失配，内层仍独立锚定不被拖累。
+- **(b) 多命中消歧**：同一短句多命中时，优先取**该拍上下文 event 所属 account 的 ULID**（`refs['event_ulids']` + `episode_plan.beat_events`，拍已知 event_ref 缩小搜索域）；缩小后唯一则挂，仍多则报回 ambiguous 不猜。
+- **(c) 禁省略号跨段拼引**：引号内含 …/‥/⋯ 等跳接标记 → **不匹配**，status=ellipsis_splice，交 H2 判 FAIL、修法「拆两条 quote(各锚一段连续 ULID)或改述，不许用……拼接原文」。**拼接=篡改原文顺序，与 N0-D-009 禁截断同族**（截断删字、拼接乱序，都改了原文）。
+
+**配套 prompt（非替代）**：writer `_SYSTEM` 增 (2b)——长引文优先整段 onscreen，不在 vo 嵌引；确需 vo 引则短引单句、不跨段、不嵌套；多段各引拆成多条独立 quote。
+
+**缘起**：s3 残留 H2——W 在作三军择将密集文言（:1045 含嵌套引『郤縠可』）反复用『A……B』式省略号拼接跨段引 + 多命中。归因核实（DIAG-s3）判「第三个 mechanism/prompt 可解模式」。锚定=字符串匹配（机械可判），消歧/嵌套/禁拼接都是确定性规则，机械做（"机械可判的机械做"第 7 次适用）。
+
+**落地**：`rhard.anchor_quotes`(嵌套/消歧/ellipsis)+ h2 扩门 ellipsis 专项修法 + writer prompt 2b；单测『省略号拒锚 H2 FAIL、多命中拍 event 消歧、嵌套内层独立锚』。

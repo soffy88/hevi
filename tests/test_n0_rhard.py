@@ -435,3 +435,43 @@ def test_h4_institutional_terms_whitelist_exempt() -> None:
     rep2 = run_rhard(draft, refs)
     assert rep2["by_gate"]["H4"] == "FAIL"
     assert any(f["gate"] == "H4" and "张三丰" in f["reason"] for f in rep2["failures"])
+
+
+# ── N0-D-021 锚定器增强 ───────────────────────────────────────────────────────
+def test_anchor_ellipsis_splice_rejected() -> None:
+    """N0-D-021c：引号含省略号=跨段拼引 → 不锚定,H2 FAIL 且修法提示分两条/改述。"""
+    refs = {"corpus": {"u:1": "冬楚子圍宋於是乎蒐于被廬作三軍謀元帥趙衰曰郤縠可乃使郤縠將中軍"},
+            "ku_events": {}, "theses": {}, "name_registry": [],
+            "episode_plan": {"counterpoint_search_record": {"x": 1}}}
+    draft = _anchor_draft("《左传》载：「蒐于被廬作三軍……乃使郤縠將中軍」。")
+    anchored, reports = anchor_quotes(draft, refs)
+    assert any(r["status"] == "ellipsis_splice" for r in reports)
+    assert "quote" not in anchored["beats"][0]["sentences"][0]  # 不拼接锚定
+    rep = run_rhard(anchored, refs)
+    assert rep["by_gate"]["H2"] == "FAIL"
+    assert any(f["gate"] == "H2" and "拼接" in f["fix"] for f in rep["failures"])
+
+
+def test_anchor_multihit_disambiguated_by_beat_event() -> None:
+    """N0-D-021b：短句多命中 → 缩到该拍 event 所属 account 的 ULID 域,唯一则锚。"""
+    refs = {
+        "corpus": {"u:A": "作三軍謀元帥趙衰曰郤縠可", "u:B": "他處亦載郤縠可之語別是一事"},
+        "event_ulids": {"ev:sanjun": ["u:A"]},
+        "episode_plan": {"beat_events": {"b1": ["ev:sanjun"]}},
+    }
+    draft = {"beats": [{"beat_id": "b1", "sentences": [
+        {"sid": "s1", "type": "fact", "text": "赵衰曰『郤縠可』。"}]}]}
+    anchored, reports = anchor_quotes(draft, refs)
+    q = anchored["beats"][0]["sentences"][0].get("quote")
+    assert q and (q["ulid"] if isinstance(q, dict) else q[0]["ulid"]) == "u:A"  # 消歧取拍 event 域
+    assert any(r["status"] == "anchored" and r["ulid"] == "u:A" for r in reports)
+
+
+def test_anchor_nested_inner_independent() -> None:
+    """N0-D-021a：外层因不连续失配,内层小引文仍独立锚定。"""
+    refs = {"corpus": {"u:in": "郤縠可"}}
+    # 外层含省略号(跨段)失配,内层『郤縠可』独立命中 u:in
+    draft = {"beats": [{"beat_id": "b1", "sentences": [
+        {"sid": "s1", "type": "fact", "text": "赵衰曰：『郤縠可』，遂用之。"}]}]}
+    _, reports = anchor_quotes(draft, refs)
+    assert any(r["status"] == "anchored" and r["ulid"] == "u:in" for r in reports)
