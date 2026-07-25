@@ -37,8 +37,8 @@ KICKER = {
 
 
 def _choices(text: str) -> list[str]:
-    """从『——辩白自证、逃往别国，或者一死』解析三条路。"""
-    m = re.search(r"[——:：](.+)", text)
+    """从『…三条路——辩白自证、逃往别国，或者一死』精确解析(定位『三条路』之后)。"""
+    m = re.search(r"三条路[——、，,：:\-]*(.+)", text)
     seg = m.group(1) if m else text
     parts = re.split(r"[、，,；]|或者", seg)
     parts = [
@@ -106,8 +106,10 @@ def render(shot: dict, idx: int, dur: float, d: Path) -> Path:
     if k == "question":
         q = "换作是你，会怎样选择？"
         return render_question_card(q, d, size=(A.W, A.H), fps=A.FPS, duration_s=dur)
+    # point 卡只显**首句短标**(punchy),完整叙述交底部字幕,避免卡片与字幕重复。
+    head = re.split(r"[。！？]", shot["vo"])[0][:22]
     return render_point_card(
-        shot["vo"][:60],
+        head,
         d,
         size=(A.W, A.H),
         fps=A.FPS,
