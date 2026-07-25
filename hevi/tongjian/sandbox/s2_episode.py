@@ -8,6 +8,7 @@ b2 onscreen 史记谮词折入其 cf 的 S12 右 panel(谮词对勘)。VisualFac
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from hevi.tongjian.explainer_contract import (
@@ -18,7 +19,8 @@ from hevi.tongjian.explainer_contract import (
     VisualFact,
 )
 
-_NET = Path("output/n0_s2/s1_full_clean_script.json")
+# S2_NET 环境变量可覆写净稿路径(白话样片对比用，默认旧 s2 净稿)。
+_NET = Path(os.environ.get("S2_NET", "output/n0_s2/s1_full_clean_script.json"))
 
 EPISODE = EpisodePlan(
     episode_id="ep_jin_decline_s2",

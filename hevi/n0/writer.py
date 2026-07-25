@@ -44,6 +44,37 @@ _SYSTEM = (
     "(在 quote 里逐字照抄即可)。"
 )
 
+# ★叙事取向·白话优先（实验，opt-in，N0-D-022/023）——仅当 narrative_style="baihua" 时叠加，
+# 默认不启用（s1/s3 及所有默认调用不受影响；Wiki 认可前不推广）。硬门 H1–H9 全不变。
+_NARRATIVE_BAIHUA = (
+    "\n★叙事取向·白话优先(N0-D-022，实验取向，不改任何硬门)："
+    "\n(甲) 白话为主：正文 vo 用**现代白话**讲清人物处境、动机、因果，讲人话；"
+    "**文言引文默认标 presentation=onscreen(画面呈现、不口播)**，且**其前必先有一句白话转述(vo)"
+    "把大意讲明**，再上屏原文——vo 里不堆文言、不整段照抄古文。仅极短关键短语(≤约8字)可内联 vo；"
+    "整段或多句文言一律 onscreen 呈现+白话先行。宁少引精引，不堆砌未消化的原文。"
+    "\n★吕祖谦掩卷自思框架(N0-D-023，结构建议、非强制、非门)："
+    "\n每集**至多择一个**关键抉择点，可用『呈现处境与选项(此人此刻面对什么、有哪几条路)"
+    "→留一句设身处地的自问(换作是你，会怎么选)→揭古人的实际选择与后果』来处理，令观众先代入再回望。"
+    "**用得自然则用、生硬则不用——宁可不用，不可硬套**；不要每拍都塞、不要为框架而框架、不要滥用反问。"
+)
+
+# ★R-soft 白话优先评审维度（N0-D-022，软评、出意见、不进 R-hard、不打回）。
+# 供 pilot 的 R-soft 调用叠加；纯观感建议，不影响 9/9 判定。
+RSOFT_BAIHUA_DIM = (
+    "\n【白话优先维度(软评，不判 FAIL，只出改进意见)】另就下列各点给意见："
+    "①正文文言引文占比是否过高(vo 里堆文言)？②文言是否缺白话转述先行(未先讲明大意就上原文)？"
+    "③是否原文堆砌未消化(照抄古文、没讲成人话)？④吕祖谦抉择点框架若用了，是否自然(有无生硬硬套)？"
+    "对每条给『可保留/建议改』+一句理由，不给分、不阻断。"
+)
+
+
+def _system_for(narrative_style: str | None) -> str:
+    """默认返回原 _SYSTEM；narrative_style="baihua" 时叠加白话优先取向（opt-in，不推广）。"""
+    if narrative_style == "baihua":
+        return _SYSTEM + _NARRATIVE_BAIHUA
+    return _SYSTEM
+
+
 # R-hard 期望的 ScriptDraft JSON 形状（喂给 W，确保结构可审）。
 _SCHEMA = """{
   "episode_ref": "<EpisodePlan.episode_id>",
@@ -155,13 +186,14 @@ async def write_draft(
     max_tokens: int = 3000,
     rhard_feedback: list[dict] | None = None,
     frozen: list[dict] | None = None,
+    narrative_style: str | None = None,
 ) -> tuple[dict, dict]:
     """调 LLM 出一版 ScriptDraft。返回 (draft, usage)。draft.meta 填 model/cost 由 pilot 补。"""
     prompt = build_prompt(episode_plan, refs, rhard_feedback, frozen)
     result = await llm(
         messages=[{"role": "user", "content": prompt}],
         max_tokens=max_tokens,
-        system=_SYSTEM,
+        system=_system_for(narrative_style),
     )
     choices = (result or {}).get("output", {}).get("choices", [])
     text = choices[0]["message"]["content"] if choices else ""
@@ -213,13 +245,14 @@ async def rewrite_beat(
     *,
     llm: Any,
     max_tokens: int = 1800,
+    narrative_style: str | None = None,
 ) -> tuple[dict, dict]:
     """单拍 API：交一拍 + 其 FAIL+修法，W 返回重写后的该拍。返回 (new_beat, usage)。"""
     prompt = build_beat_prompt(beat, beat_failures, refs, episode_plan)
     result = await llm(
         messages=[{"role": "user", "content": prompt}],
         max_tokens=max_tokens,
-        system=_SYSTEM,
+        system=_system_for(narrative_style),
     )
     choices = (result or {}).get("output", {}).get("choices", [])
     text = choices[0]["message"]["content"] if choices else ""

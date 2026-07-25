@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -22,7 +23,9 @@ from s2_mapstates import ms_jin_xiangong
 from hevi.tongjian.map_anim import _static_map, animate_establish
 from hevi.tongjian.quote_shots import render_dual_panel, render_thesis_title
 
-OUT = Path("output/s2_liji/assemble")
+# S2_OUT 环境变量可覆写成片根目录(白话样片对比用，默认旧 s2)。
+_ROOT = Path(os.environ.get("S2_OUT", "output/s2_liji"))
+OUT = _ROOT / "assemble"
 OUT.mkdir(parents=True, exist_ok=True)
 FONT = "/home/soffy/.local/share/fonts/wqy-zenhei.ttc"
 BGM = "assets/audio/bgm/epic/a_generated_pad.wav"
