@@ -11,7 +11,8 @@ LLM 只负责内容与措辞。H2 引文逐字、H3 数字须 ref 之后，同�
 
 from __future__ import annotations
 
-_BOUND = "。；：！？;:!?｡"  # 分句边界
+_BOUND = "。；：！？;:!?｡"  # 分句边界(强句读)
+_SOFT_BOUND = "，、,"  # 白话软断点(N0-D-026)——仅当无强句读边界时兜底,治白话逗号长句
 _MAX_SECS = 15.0
 _INHERIT = (
     "type",
@@ -75,13 +76,23 @@ def _split_sentence(s: dict) -> list[dict]:
     N0-D-004）；quote 归含它的半句；继承 type/refs。返回 [s]（不可拆）或 [a, b]。"""
     text = s.get("text", "")
     forbidden = _quote_ranges(text, s) + _mark_ranges(text)  # 引号内 + 已标 quote 内均不可拆
-    cands = [
-        i + 1
-        for i, ch in enumerate(text)
-        if ch in _BOUND and 0 < i + 1 < len(text) and not any(a < i + 1 <= b for a, b in forbidden)
-    ]
+
+    def _cands(bounds: str) -> list[int]:
+        return [
+            i + 1
+            for i, ch in enumerate(text)
+            if ch in bounds
+            and 0 < i + 1 < len(text)
+            and not any(a < i + 1 <= b for a, b in forbidden)
+        ]
+
+    cands = _cands(_BOUND)
     if not cands:
-        return [s]  # 无引文外分句边界 → 不可拆（原样交 R-hard 判）
+        # N0-D-026 白话软断点兜底：白话长句常只有逗号/顿号无句读边界，强边界无则退逗号断
+        # (仍避开引文内)——治白话解说长句 splitter 切不动的 H8 超窗。
+        cands = _cands(_SOFT_BOUND)
+    if not cands:
+        return [s]  # 连软断点都无 → 不可拆（原样交 R-hard 判）
     mid = len(text) / 2
     cut = min(cands, key=lambda i: abs(i - mid))
     ta, tb = text[:cut], text[cut:]
