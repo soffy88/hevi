@@ -1,0 +1,3 @@
+{"date":"2026-07-25","episode":"s2-liji","tier":"文言档/默认","model":"qwen-plus","stage":"W生成+拍级重写","cost_cny":0.369,"note":"N0-D-028:文言档维持qwen-plus不涨成本"}
+{"date":"2026-07-25","episode":"s2-liji","tier":"白话档","model":"qwen-max","stage":"白话化改写pass(逐句改语体)","cost_cny":0.0102,"note":"N0-D-028:白话档改写pass走qwen-max;两次调优+onscreen白话解释"}
+{"date":"2026-07-25","episode":"s2-liji","tier":"白话档合计","model":"qwen-plus+qwen-max","stage":"文言生成→白话改写全链","cost_cny":0.3792,"note":"白话档=qwen-plus生成¥0.369+qwen-max改写¥0.0102;qwen-max增量仅¥0.01/集"}
