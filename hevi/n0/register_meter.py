@@ -12,16 +12,60 @@
 
 from __future__ import annotations
 
-# 文言强标记:句末助词/虚词/文言代词/发语词(白话极少单用)
-_WENYAN_FN = set("乎矣焉哉者兮之乃遂亦弗毋於曰夫盖惟厥爰兹曷苟岂尔汝吾聿")
+# 文言强标记:句末助词/虚词/文言代词/发语词/书面连词(白话极少单用)
+_WENYAN_FN = set("乎矣焉哉者兮之乃遂亦弗毋於曰夫盖惟厥爰兹曷苟岂尔汝吾聿则而")
 # 文言单字动词/名词(白话改用多字词)
-_WENYAN_V = set("缢谮嬖壅弑薨崩卒黜诛篡僭诬谒殂薧娶谮")
-# 白话强标记(文言几乎不用)——命中冲抵,防术语误伤
+_WENYAN_V = set("缢谮嬖壅弑薨崩卒黜诛篡僭诬谒殂薧赴")
+# 书面/浅文言词(口语不用)——多字词命中重罚,治"书面白话冒充口语"(自缢/赴死/则/随之 一眼现形)
+_SHUMIAN = (
+    "自缢",
+    "身亡",
+    "赴死",
+    "遭杀",
+    "遇害",
+    "遭受",
+    "始于",
+    "由此",
+    "自此",
+    "并未",
+    "随之",
+    "二人",
+    "诸子",
+    "乃至",
+    "内耗",
+    "纲纪",
+    "式微",
+    "膨胀",
+    "坐大",
+    "专权",
+    "宗法",
+    "遂成",
+    "进谗",
+    "构陷",
+    "嫡庶",
+    "屏藩",
+    "公室",
+    "根源",
+    "局面",
+    "彻底",
+    "先后",
+    "相继",
+    "之乱",
+    "之序",
+    "之叹",
+    "所致",
+    "以致",
+    "从而",
+    "继而",
+    "旋即",
+)
+# 口语强标记(书面/文言几乎不用)——命中冲抵,防术语误伤
 _BAIHUA = (
     "的",
     "了",
     "吗",
     "呢",
+    "吧",
     "把",
     "被",
     "这",
@@ -39,29 +83,43 @@ _BAIHUA = (
     "已经",
     "然后",
     "这样",
+    "怎么",
+    "什么",
+    "结果",
+    "后来",
+    "其实",
+    "说白",
+    "一下",
+    "好好",
+    "根本",
+    "到底",
+    "大家",
+    "一个",
+    "好几",
 )
 
 
 def wenyan_hits(text: str) -> dict:
-    """返回文言/白话标记命中明细(供可视化)。"""
+    """返回文言/书面/白话标记命中明细(供可视化——直接指出哪些词现形)。"""
     wy = [c for c in text if c in _WENYAN_FN or c in _WENYAN_V]
+    sm = [w for w in _SHUMIAN if w in text]
     bh = [w for w in _BAIHUA if w in text]
-    return {"wenyan_chars": wy, "baihua_words": bh}
+    return {"wenyan_chars": wy, "shumian_words": sm, "baihua_words": bh}
 
 
 def wenyan_score(text: str) -> float:
-    """文言度分数∈[0,1]:文言标记字数 / 有效字数,再按白话标记密度下调。
-    越高越文言。纯确定性。"""
+    """文言度分数∈[0,1]:(文言单字 + 书面词覆盖字数×1.5 重罚) / 有效字数,再按口语密度下调。
+    越高越文言/书面。纯确定性。书面词重罚让'自缢/赴死/则/随之'式书面白话也现形。"""
     core = [c for c in text if "一" <= c <= "鿿"]  # 只算汉字
     n = len(core)
     if n == 0:
         return 0.0
     wy = sum(1 for c in core if c in _WENYAN_FN or c in _WENYAN_V)
-    bh = sum(text.count(w) * len(w) for w in _BAIHUA)  # 白话标记覆盖字数
-    raw = wy / n  # 文言标记密度
-    baihua_density = min(1.0, bh / n)  # 白话标记密度(封顶1)
-    # 白话密度越高越压低文言分(口语连接词多=白话)
-    return round(max(0.0, raw * (1.0 - 0.6 * baihua_density)), 4)
+    sm = sum(text.count(w) * len(w) for w in _SHUMIAN)  # 书面词覆盖字数
+    bh = sum(text.count(w) * len(w) for w in _BAIHUA)  # 口语标记覆盖字数
+    raw = (wy + 1.5 * sm) / n  # 文言单字 + 书面词重罚
+    baihua_density = min(1.0, bh / n)
+    return round(max(0.0, raw * (1.0 - 0.5 * baihua_density)), 4)
 
 
 def episode_register(draft: dict) -> dict:
@@ -83,10 +141,11 @@ def episode_register(draft: dict) -> dict:
     }
 
 
-# 白话集阈值(N0-D-027,按 qwen-max s2 白话版实测校准):
-# 文言原版 0.085 / qwen-plus 浅文言 0.058 / qwen-max 白话 0.034。阈值取 0.045——
-# 白话(0.034)达标有余量,浅文言(0.058)与文言(0.085)双双红旗。见 docs/DECISIONS-N0。
-BAIHUA_THRESHOLD = 0.045
+# 白话集阈值(N0-D-027,收紧尺后按 qwen-max 口语版实测校准):
+# 文言原版 0.283 / qwen-plus 浅文言 0.335 / qwen-max 书面 0.228 / qwen-max 口语 0.014。
+# 阈值取 0.08——口语(0.014,最差句0.035)达标有巨大余量,书面(0.228)/文言(0.283)全红旗。
+# (旧松尺 0.045 让"自缢身亡"0.042 钻空过关,已收紧:书面词重罚+则/而/赴入表。)
+BAIHUA_THRESHOLD = 0.08
 
 
 def register_flag(score: float, threshold: float = BAIHUA_THRESHOLD) -> dict:
