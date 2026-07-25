@@ -282,3 +282,141 @@ async def test_run_v2_produce_raises_when_no_segments(tmp_path: Path) -> None:
             llm=_fake_llm,
             **inputs,
         )
+
+
+def _build_inputs_two_scenes() -> dict:
+    """两场:scene 1(暗,室内)+ scene 2(亮,室外),各 2 段。用于验校色基准按场分组。"""
+    base = _build_inputs()
+    seg = lambda sid, order, dlg: SceneScriptSegment(  # noqa: E731
+        segment_id=sid,
+        order=order,
+        t_start_s=0.0,
+        t_end_s=2.0,
+        narrative_text="x",
+        camera_movement="静态对话",
+        dialogue=dlg,
+    )
+    sc1 = SceneScript(
+        scene_ref=1,
+        characters_present=["角色A"],
+        no_cut_to=[],
+        segments=[
+            seg("sg001", 1, []),
+            seg("sg002", 2, [SceneScriptDialogueLine(character_name="角色A", text="你好")]),
+        ],
+    )
+    sc2 = SceneScript(
+        scene_ref=2,
+        characters_present=["角色A"],
+        no_cut_to=[],
+        segments=[
+            seg("sg001", 1, []),
+            seg("sg002", 2, [SceneScriptDialogueLine(character_name="角色A", text="再会")]),
+        ],
+    )
+    base["screenplay"] = Screenplay(
+        scenes=[
+            ScreenplayScene(scene_no=1, location="室内", characters_present=["角色A"]),
+            ScreenplayScene(scene_no=2, location="室外", characters_present=["角色A"]),
+        ]
+    )
+    base["scene_script_set"] = SceneScriptSet(scripts=[sc1, sc2])
+    return base
+
+
+def _clip_mid_luma(clip: Path) -> float:
+    from hevi.assembly.color_match import frame_rgb_mean
+
+    dur = float(
+        subprocess.check_output(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
+                str(clip),
+            ],
+            text=True,
+        ).strip()
+    )
+    frame = clip.parent / f"_probe_{clip.stem}.png"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-v",
+            "error",
+            "-ss",
+            f"{dur / 2:.2f}",
+            "-i",
+            str(clip),
+            "-vframes",
+            "1",
+            str(frame),
+        ],
+        check=True,
+    )
+    r, g, b = frame_rgb_mean(frame)
+    return 0.299 * r + 0.587 * g + 0.114 * b
+
+
+@ffmpeg_only
+async def test_run_v2_produce_color_reference_is_per_scene(tmp_path: Path) -> None:
+    """校色基准按 scene 分组(2026-07-24 诊断修复):亮场(室外)的首段不该被往暗场(室内)基准
+    硬拉。全局单基准的旧实现会把 scene 2 首段拉暗、增益触边界被 L5 误判缺陷;分组后 scene 2 首段
+    = 本场基准,保留合理的室内外反差。"""
+    canon = tmp_path / "canon_a.png"
+    _make_canon(canon, "808080")
+
+    async def _scene_colored_gen(
+        *, prompt, reference_images, output_path, duration, resolution, ratio, seed
+    ):
+        # 按输出文件名里的场号上色:s1→暗(202020),s2→亮(D0D0D0)
+        color = "d0d0d0" if "s2_" in Path(output_path).name else "202020"
+        _make_av_clip(Path(output_path), 2.0, color)
+        return Path(output_path)
+
+    run_dir = tmp_path / "run"
+    await run_v2_produce(
+        task_repo=_make_task_repo(),
+        task_id="task-color",
+        run_dir=run_dir,
+        subject_ref_paths={"角色A": str(canon)},
+        scene_ref_paths={},
+        voice_by_speaker={"角色A": "zh-CN-XiaoxiaoNeural"},
+        gen_fn=_scene_colored_gen,
+        tts_fn=_fake_tts_fn,
+        transcribe_fn=_fake_transcribe_fn,
+        vlm=_fake_vlm,
+        llm=_fake_llm,
+        **_build_inputs_two_scenes(),
+    )
+
+    # 每场首段各有独立基准帧(证明分组发生);不再是单一 _color_ref.png
+    assert (run_dir / "_color_ref_s1.png").exists()
+    assert (run_dir / "_color_ref_s2.png").exists()
+    # scene 2 首段(亮)未被拉向 scene 1(暗):其 luma 明显高于 scene 1 首段
+    luma_s1 = _clip_mid_luma(run_dir / "s1_sg001_color.mp4")
+    luma_s2 = _clip_mid_luma(run_dir / "s2_sg001_color.mp4")
+    assert luma_s2 > luma_s1 + 60, f"跨场反差被抹平:s1={luma_s1:.1f} s2={luma_s2:.1f}"
+
+
+def test_location_negative_list_prefix_matches_world_entry() -> None:
+    # #3 补断链(2026-07-23):world[].name 常是 scene.location 的前缀(location 带括号氛围补充),
+    # 按包含匹配取该地点的 negative_list。
+    from hevi.director.pipeline_schemas import WorldBible, WorldVolumeEntry
+    from hevi.director.produce_v2 import _location_negative_list
+
+    wb = WorldBible(
+        world=[WorldVolumeEntry(name="青石渡口·河岸柳堤", negative_list=["不出现现代电线杆"])]
+    )
+    # 带括号补充的完整 location → 前缀匹配命中
+    got = _location_negative_list(wb, "青石渡口·河岸柳堤（水墨晕染的暮色）")
+    assert got == ["不出现现代电线杆"]
+    # 不匹配的地点 → 空
+    assert _location_negative_list(wb, "别处") == []
+    # world_bible None → 空
+    assert _location_negative_list(None, "青石渡口·河岸柳堤") == []

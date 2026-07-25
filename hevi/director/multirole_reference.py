@@ -46,13 +46,14 @@ style_manifesto 不是孤例,同一模式("字段存在、被某个中间 LLM �
    没有"当前场景对应哪个地点"这个信号,接了要么瞎猜要么加新参数,这次先不做,留作已知
    缺口记录,不是漏掉不提。
 
-**§6 四个字段的逐条判定(camera_movement/offscreen_trigger/beat_description 保持不动,
-只接 no_cut_to)**:回查这四个字段自己当天写的 schema 注释(`pipeline_schemas.py`),
-`camera_movement`/`offscreen_trigger`/`beat_description` 三个都**明确写着"标签本身不进
-最终 prompt"/"不是要拆出一个新的权威字段"**——这三个从设计之初就是**供 lint 校验用的
-粗粒度标签**,narrative_text 才是运镜/画外触发/节拍的唯一权威描述,不接进生成路径是
-按设计如此,不是断链。只有 `no_cut_to` 的注释写的是"防模型自由发挥"——这个措辞本身就是
-冲着"约束生成模型的输出"去的,不接进生成路径才是真断链,这次修的是它。
+**§6 四个字段的逐条判定**:`no_cut_to`(场级禁切,2026-07-20 接入,走上面的负面约束路径)。
+`camera_movement`/`offscreen_trigger`/`beat_description` 曾按"schema 注释写着标签不进
+prompt"判为"设计如此、只供 lint",**2026-07-23 soffy 推翻这个判定**:运镜指令从没进过
+生成端,正是"每段都由远及近推近"的病根——lint 查得干净(相邻段标签互异),但模型拿不到
+"这段该怎么运镜"的指令,只能默认 push-in。这三个字段本质是给模型的**表演指令**,不是校验
+标签。现在经 `_performance_directive` 编译成指令块,紧跟 action_text 拼进真实生成 prompt
+(camera_movement→运镜方式指令、offscreen_trigger→画外事件指令、beat_description→表演
+意图提示);narrative_text 仍是动作的权威描述,这三条是叠加其上的镜头语言,不是替代。
 """
 
 from __future__ import annotations
@@ -114,6 +115,38 @@ async def positive_rephrase_negatives(negative_items: list[str], *, llm: Any = N
         return "务必避免以下内容:" + "；".join(items)
 
 
+_SOFTEN_PROMPT = """下面这段视频生成提示词触发了内容审核(可能因血腥/危险/未成年受害等直白措辞)。
+请把它改写得更含蓄委婉,**保留原本的情节含义、人物、动作走向和画面主体**,只把容易触发审核的
+直白表述换成隐晦、诗意或侧写的说法(例如把直接的溺水/受伤/死亡描写,改成通过环境、水面、神情、
+氛围来暗示)。不要删掉情节,不要改变谁在做什么,只改措辞的直白程度。只输出改写后的提示词本身,
+不要解释、不要加引号。
+
+原提示词:
+{text}"""
+
+
+async def _soften_for_moderation(text: str, *, llm: Any = None) -> str:
+    """审核安全模式:把触发 green-net 的动作文本软化改写(去血腥/危险/未成年受害直白措辞,保留
+    情节)。一次文本 LLM 调用;失败/空 → 原样返回(不阻断,降级重试是增强不是硬门槛)。"""
+    if not text:
+        return text
+    if llm is None:
+        from hevi.director.design_list import _resolve_llm
+
+        llm = _resolve_llm(None)
+    try:
+        obj = llm(
+            messages=[{"role": "user", "content": _SOFTEN_PROMPT.format(text=text)}], max_tokens=600
+        )
+        resp = await obj if hasattr(obj, "__await__") else obj
+        content = resp.get("content") if hasattr(resp, "get") else str(resp)
+        softened = str(content).strip()
+        return softened or text
+    except Exception as e:
+        logger.warning("审核软化改写失败,用原文: %s", e)
+        return text
+
+
 def requires_multirole_reference(character_names: list[str]) -> bool:
     """§1 第8b 步的路由判据本体——2 个以上角色同框才走这条 reference_role 路径,单角色
     走既有的常规链式生成(那条至今仍停在 scratchpad,不在这次范围内)。"""
@@ -140,6 +173,7 @@ def compile_multirole_prompt(
     continuity_reference_path: Path | None = None,
     world_bible: WorldBible | None = None,
     negative_constraints_text: str = "",
+    performance_directive_text: str = "",
 ) -> str:
     """`[Image N]` 角色声明编译——每张参考图在 prompt 里被显式声明角色 + 落位,落位数据
     取自真实 `SceneStage.blocking.initial_positions`(按 `character_names` 顺序过滤),
@@ -149,16 +183,23 @@ def compile_multirole_prompt(
     也不是空景板,独立声明("这一段的开头必须紧接这张图里的状态往下演"),顺序排在空景板
     之后、角色 canon 之前。
 
-    `world_bible`(style-lock 摸查①落地,见模块 docstring):有就把
-    `world_bible.visual.style_manifesto` 前置在 `action_text` 之前,每段统一插一次,不是
-    只在第一段插——漂移正是因为"没有任何一段"读过这段风格宣言,不是"读过但后面被稀释"。
-    同时按角色名匹配 `world_bible.characters[].identity_lock_sentence`,拼进各自的
-    `[Image N]` 声明行。`world_bible` 为 None 或对应字段为空 → 原样不插,零行为变化。
+    `world_bible`(style-lock,见模块 docstring):**2026-07-23 画风锁双改**——①位置:从原来的
+    prompt 中段(实测 34% 位置、被后续 action/运镜/双脸规则盖过)移到 prompt 最末,利用生成模型
+    对尾部的 recency 权重;②形态:进 prompt 的是 `visual.style_render_directive`(30-50 字可执行
+    渲染指令),不是 `style_manifesto`(357 字抽象散文,模型执行不了);directive 为空(老 world_bible)
+    → 回退用 manifesto。补画风优先级/一致性声明治写实↔插画摆动。同时按角色名匹配
+    `characters[].identity_lock_sentence` 拼进各自 `[Image N]` 行。`world_bible` 为 None 或
+    两个风格字段都空 → 原样不插,零行为变化。
 
     `negative_constraints_text`(系统性断链排查②):调用方已经用
     `positive_rephrase_negatives` 改写好的正面描述文本,直接拼进 prompt——这个函数本身
     不做改写(改写要调 LLM,这个函数保持同步纯函数,改写放在 `generate_multirole_segment`
-    里做)。空字符串 → 原样不插。"""
+    里做)。空字符串 → 原样不插。
+
+    `performance_directive_text`(2026-07-23,§6 运镜/表演指令接入生成端):调用方用
+    `_performance_directive` 从 segment 的 camera_movement/offscreen_trigger/
+    beat_description 编译好的指令块,紧跟在 action_text 之后拼进 prompt。空字符串 → 原样
+    不插。"""
     blocking = _blocking_by_char(scene_stage)
     lines: list[str] = []
     idx = 1
@@ -187,16 +228,30 @@ def compile_multirole_prompt(
             + (lock_sentence if lock_sentence else "")
         )
         idx += 1
-    if world_bible is not None and world_bible.visual.style_manifesto:
-        lines.append(f"【整体美术风格,这一帧必须遵守】{world_bible.visual.style_manifesto}")
     if negative_constraints_text:
         lines.append(f"【画面必须呈现的效果(替代负面约束的正面描述)】{negative_constraints_text}")
     lines.append(action_text)
+    if performance_directive_text:
+        lines.append(performance_directive_text)
     if len(character_names) >= 2:
         lines.append(
             "两个人物必须是各自独立、可清楚区分的两张脸,不要融合成同一张脸,"
             "不要把两人的服装/发型混到一起。"
         )
+    # 画风锁 text-layer 迭代(2026-07-23):①位置——从 prompt 中段(实测 34% 位置、被后续
+    # 动作/运镜/双脸规则盖过)移到**最末**,利用生成模型对尾部的 recency 权重;②形态——进 prompt
+    # 的是 `style_render_directive`(30-50 字可执行渲染指令),不是 `style_manifesto`(357 字抽象
+    # 艺术散文,模型执行不了)。directive 为空(老 world_bible 没这字段)→ 回退用 manifesto,
+    # 零行为倒退。再补画风优先级/一致性声明,治"写实↔插画摆动"。
+    if world_bible is not None:
+        style_lock = world_bible.visual.style_render_directive or world_bible.visual.style_manifesto
+        if style_lock:
+            lines.append(
+                f"【整体美术风格·全片统一,这一帧必须严格遵守(优先级高于上面动作细节的清晰度)】"
+                f"{style_lock}"
+                f"——再强调一次:上面所有动作、运镜、人物都必须在这个画风下渲染,画风在全片每一段"
+                f"之间保持完全一致,不要在写实照片感和插画/卡通感之间摇摆。"
+            )
     return "\n".join(lines)
 
 
@@ -229,6 +284,47 @@ def _action_text(segment: SceneScriptSegment) -> str:
     return text
 
 
+def _performance_directive(segment: SceneScriptSegment) -> str:
+    """把 `SceneScriptSegment` 的表演/运镜指令字段(camera_movement/offscreen_trigger/
+    beat_description)编译成给生成模型的显式指令块。这三个字段此前只供 lint 校验、从不进
+    真实 prompt——2026-07-23 判为设计错误:运镜指令没进过生成端,正是"每段都由远及近推近"
+    的病根(lint 查得干净,模型却拿不到"这段该怎么运镜"的指令)。现在编译进 prompt——
+    narrative_text 仍是动作的权威描述,这里是叠加其上的镜头语言/画外事件/节拍意图。字段
+    为空则不发对应行。"""
+    lines: list[str] = []
+    if segment.camera_movement:
+        lines.append(
+            f"【本段运镜】镜头运动方式:{segment.camera_movement}。"
+            "严格按这个运镜方式拍这一段,不要默认使用由远及近的推近(push-in)。"
+        )
+        # 摇/摇向声源弱实现修正(2026-07-23,④):基线实测这类段几乎没摇(光流 0.65/1.57)——
+        # 措辞太泛,模型当静态拍了。补一句明确的摇镜幅度/方向指令。
+        if "摇" in segment.camera_movement:
+            lines.append(
+                "【运镜强化】这一段镜头必须有明显可见的摇镜运动:机位基本不动、镜头绕轴转向"
+                "(向画外声源/触发方向水平摇过去),摇动幅度要肉眼可辨,不是几乎静止的微动——"
+                "让观众清楚感到镜头在'转头看向'那个方向。"
+            )
+        # 强运动×身份互斥(2026-07-23 修正,soffy 定):上一版让大运动段"强制中景+脸清晰"是
+        # 在跟 provider 物理边界对着干——A/B 实证 s9/s10/s11 大运动段照样掉身份(与守恒律同源:
+        # 镜头动得猛,主角在帧里必然糊/变形,认不出)。改成**互斥**:大运动段不承担身份识别任务
+        # ——不安排主角面部特写、不要求认脸,身份交给前后静态段建立。别再试图在运动里锁脸。
+        if any(k in segment.camera_movement for k in ("横移", "跟随", "摇")):
+            lines.append(
+                "【本段构图(强运动段免认脸)】这是横移/跟随/摇类大运动镜头,不要给主角安排面部特写、"
+                "不追求这一段里认出人脸——主角可以背身/侧身/中远景带过,重点放在运动本身和环境/动作上;"
+                "人物身份的清晰识别由这一段前后的静态段负责,不要为了锁脸牺牲运镜。"
+            )
+    if segment.offscreen_trigger:
+        lines.append(
+            f"【画外事件】本段有来自画面之外的触发:{segment.offscreen_trigger}。"
+            "在画面里表现出人物对这个画外事件的反应。"
+        )
+    if segment.beat_description:
+        lines.append(f"【本段表演意图/戏剧节拍】{segment.beat_description}")
+    return "\n".join(lines)
+
+
 async def generate_multirole_segment(
     *,
     scene_stage: SceneStage,
@@ -240,11 +336,13 @@ async def generate_multirole_segment(
     continuity_reference_path: Path | None = None,
     world_bible: WorldBible | None = None,
     no_cut_to: list[str] | None = None,
+    location_negative_list: list[str] | None = None,
     resolution: str = "720P",
     ratio: str = "9:16",
     seed: int | None = None,
     gen_fn: Any = None,
     rephrase_llm: Any = None,
+    moderation_safe: bool = False,
 ) -> Path:
     """生产入口:从 `segment` 拼动作文本,从 `scene_stage` 取落位,编译 prompt + 组参考图,
     调用生成。`gen_fn` 默认 `happyhorse_1_1_maas_reference_to_video`,显式参数注入供测试
@@ -253,28 +351,44 @@ async def generate_multirole_segment(
     `world_bible`:style-lock 摸查①落地 + 系统性断链排查①②,见模块 docstring和
     `compile_multirole_prompt`。`no_cut_to`:调用方传入该场景的 `SceneScript.no_cut_to`
     (场级,同一场所有段共用),没有就不传,不强制要求。`rephrase_llm`:`positive_rephrase_
-    negatives` 的显式依赖注入,None 用其默认解析(同 `tts_fn`/`gen_fn` 约定)。"""
+    negatives` 的显式依赖注入,None 用其默认解析(同 `tts_fn`/`gen_fn` 约定)。
+    `location_negative_list`(2026-07-23,补断链):这段所在地点的 `world[].negative_list`
+    (逐地点年代准确性负面清单)——此前是已知缺口(`compile_multirole_prompt` 没有"当前场景对应
+    哪个地点"信号)。现在由调用方(produce_v2 有 scene_ref→location→world 条目映射)解析后传入,
+    并入负面约束一起正面化改写。None/空 → 不影响。
+    `moderation_safe`(2026-07-23,内容审核自动预案):green-net(`DataInspectionFailed`)拦截后的
+    降级重试模式——**丢掉全部负面约束**(负面清单把 prompt 撑长、且逐条列"现代物/危险物"本身就
+    容易触发审核误判)+ **把动作文本软化改写**(去血腥/危险/未成年受害的直白措辞,保留情节含义)。
+    调用方 produce_v2 在这类失败时置 True 重试一次。"""
     if gen_fn is None:
         from hevi.video.alibaba_maas_service import happyhorse_1_1_maas_reference_to_video
 
         gen_fn = happyhorse_1_1_maas_reference_to_video
 
-    negative_items = list(world_bible.visual.negative_list) if world_bible is not None else []
-    negative_items += no_cut_to or []
+    if moderation_safe:
+        negative_items: list[str] = []  # 降负面强度:审核安全模式丢掉全部负面
+    else:
+        negative_items = list(world_bible.visual.negative_list) if world_bible is not None else []
+        negative_items += no_cut_to or []
+        negative_items += location_negative_list or []
     negative_constraints_text = (
         await positive_rephrase_negatives(negative_items, llm=rephrase_llm)
         if negative_items
         else ""
     )
 
+    action_text = _action_text(segment)
+    if moderation_safe:
+        action_text = await _soften_for_moderation(action_text, llm=rephrase_llm)
     prompt = compile_multirole_prompt(
-        action_text=_action_text(segment),
+        action_text=action_text,
         scene_stage=scene_stage,
         character_names=character_names,
         scene_plate_path=scene_plate_path,
         continuity_reference_path=continuity_reference_path,
         world_bible=world_bible,
         negative_constraints_text=negative_constraints_text,
+        performance_directive_text=_performance_directive(segment),
     )
     reference_images = build_reference_images(
         scene_plate_path=scene_plate_path,

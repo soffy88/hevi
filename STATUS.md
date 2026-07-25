@@ -7,6 +7,38 @@
 
 ---
 
+## 🚨 Needs Human / P0 backlog
+
+- **backlog(2026-07-24):constitution 时长分配对短演绎段偏大**。商鞅立木 constitution 给这段
+  分配 120s(目标 459 字),实际紧凑剧本只 127 字,G2 时长偏差 72% fail。立木本就该短——
+  修 constitution 生成时按事件戏剧密度分配时长(短事件短时长),别让时长门逼剧本注水。soffy 定
+  "接受短段不注水"。待做。
+- **✅✅ 色彩诊断 + 修复 + 真跑验证通过(2026-07-24,实付 $9.681)**。成片
+  `output/tongjian_v2_limu_color/limu_color.mp4`(90.06s,720×1280,可 seek)。走固化 back-half 一个入口
+  跑完(4 演绎插段 + 6 讲解镜 + 装配,不手串)。**结果**:①**L5 色彩全绿**(4/4 插段"增益均未触顶",
+  旧版 fail 3/8);②**跨场反差保住没压平**:室内朝堂 luma 52 / 垦草令 58 vs 室外市集 80 / 宫门 100,
+  跨场 std=19.1(比全局单基准旧法还清晰);场内一致(E001 极差 0.2、E006 7.8);③身份/接缝全绿;
+  ④跨栈接缝保持(讲解写实↔演绎写实同青灰赭褐);⑤canon 考据到位(卫鞅交领深衣木簪无冠)。
+  剩:插段3 s1_sg001 对白时间线 retake(TTS 超时,非色彩,归 constitution 计时 backlog)、运镜多样性
+  advisory(静态对话跟上段雷同,提示非硬缺陷)。**固化 + 色彩一次真跑双验通过。** 下方为诊断/修复详情:
+- **✅ 色彩诊断 + 修复(2026-07-24,零成本,代码已改)**。诊断先于真跑:
+  拿立木 8 演绎镜已有产物实测天然调色板,按场分组量场内 vs 跨场变异。**结论:L5"色彩 fail 3/8"
+  绝大部分是判据太粗,不是画面缺陷**——校色用**全片单一基准 = ordered[0] = s1_sg001(恰是最暗的
+  室内油灯朝堂,luma≈54)**,而 s4 是室外白天市集(luma≈87),跨场 luma std=12 是场内(1–6)的数倍。
+  全局基准把所有亮场往暗场拉、增益触 (0.7,1.4) 边界,L5 又把"触边界"直接判缺陷 → s4_sg001(场内
+  std 仅 1.1)整场被误标。s2 场内那点真变异是景别切换(广角市集/面部中近景/金饼暖特写)造成,非穿帮。
+  **修法=① 改判据不改画面**:`produce_v2.py` 校色基准**按 scene_ref 分组**(每场首段为本场基准,
+  组内匹配、跨场不硬拉)。实测数据模拟:旧法 5 段触边界→新法 **0 段触边界**,场内增益全落 0.85–1.31。
+  测试 `test_run_v2_produce_color_reference_is_per_scene`(亮场首段不被拉暗)+ 全量绿。**不做"全片色调
+  统一"**(会压平金饼暖特写/室外白天,是错的)。相关诊断图存 scratchpad。
+- **backlog(2026-07-24):narration 考据对勘门可扩(现为纯字符串对勘)**。数字/地名/忌讳器物三类
+  已覆盖今天实证的缺口(三丈/咸阳),但地名靠后缀正则(阳/京/城…)+ 器物靠固定词表,是粗粒度锚。
+  更细的年代考据(官职/礼制/称谓的时代一致)仍靠人审 + G2 事件级幻觉门。够用不阻塞,记扩展点。
+
+- **✅ P0 持久化已修(2026-07-23)**:见下方「V2 迭代」条目 ①。`director_works` 表 + repo 落库,
+  wired 进 lock_scene_script/produce,V2 基线 v1 已入库。原风险(内存字典进程死丢作品、批C 脚本
+  不可复原)已闭环。**残留**:历史 works(基线之前的)仍无法复原,只有新产集起才落库。
+
 ## 🔒 Never (hard constraints — do not violate)
 
 - **Never reboot this shared host without asking soffy.** ~90 containers from unrelated projects (aegis/aii/helios/mneme/stratum-aii…) share one RTX 3080. RTX 3080 Xid 79 (GPU fell off PCIe bus) recurs almost every boot even with `pcie_aspm=off` — likely hardware, not a hevi bug.
@@ -36,6 +68,305 @@
 ---
 
 ## 🔄 In Progress
+
+- **★ 通鉴演绎段迁移 V2 · 设计草案落仓,待评审后开工(2026-07-23)。**
+  `docs/specs/SPEC-005-V2-tongjian-v2-migration.md`。soffy 拍板:
+  - **架构=方案 B(桥接)**:不把 tongjian 特化注入 V2 的 ①②(V2 screenplay 硬性自由编造对白=史实
+    反面,重造 quote_id/G2/CG2.5 浪费且危险);复用 tongjian L0-L2 前端产演绎段剧本(史实机制原样),
+    桥接进 produce_v2 渲染栈,拿全 V2 战果。新模块 `tongjian_v2_bridge.py` 是主要新代码。
+  - **口型=先不锁唇但列明确观察项**(对白密集"嘴不动"违和跑完一集人眼判,忍不了再补 avatar 分支)。
+  - **canon=V2 现有 qwen-image 文生图机制已解决**(名+描述+名派生 seed,王六郎同款,从不需真人照);
+    通鉴只需把历史 directive 接到定妆照 prompt + era_check 进 appearance。
+  - **画风 directive=候选 B 史诗厚重**(火把/烛火光源写死治夜戏无光源、禁浅景深糖水治抒情质感)。
+  - **G-T1-V2 验收单**(重写 SPEC-005 定性门,补数值):段数≥95%/画风 std≤3.5+目检/**0 史实+0 认错人
+    defect 硬门·其他≤1**(soffy 修正)/**成本≤$8/集**(soffy 修正,留重掷余量)/史实门 warning→硬门/
+    定妆照考据人审/口型观察项。基准=王六郎 A/B2(14/14、std 2.25、4 defect、$17)。
+  - **最大新风险=跨栈装配**(讲解段 sdxl_local + 演绎段 produce_v2 装一集,王六郎未覆盖)。
+  - **退役=演绎段渲染路径**(scene_render_avatar 的 build_frame_manifest_avatar/cloud_avatar 分支/
+    render_director_episode),非删模块(~14 importer 多数只引 _resolve_vlm)。
+  - 实施顺序:桥接器+schema小改 → 单演绎段真跑(商鞅立木)→ 跨栈装配 → G-T1-V2 全集 → 季度线后议。
+  **soffy 已评审通过 + 两条补充意见落地**:①跨栈装配单设中间门 G-XSTACK(§6a,讲解段+演绎段拼
+  接缝画风/色彩/分辨率/帧率跳变,不过先解决别等全集);②canon 先验前置到开工第一步(零成本几分钟)。
+  史实门升硬门保留 dramatized+speculation_mark 人确认逃生门(防"编造事件"非防"合理推测")。
+  - **★ canon 先验已跑(§7 步0)= PASS**:qwen-image 商鞅/秦孝公定妆照战国形制无误(交领右衽 深衣/
+    玄端、archaic 冠)、无明清穿帮。产物 `output/tongjian_v2_canon_probe/`。经验:描述含时代形制词
+    (era_check→战国深衣/玄端)+ 历史定妆照负面加反穿帮(明清官服/补服/顶戴)。canon 风险转绿,非阻塞。
+  - **开工顺序**(soffy 定):✅canon 先验 → 桥接器 + V2 schema 小改(进行中)→ 单段商鞅立木真跑
+    → 跨栈接缝门 G-XSTACK → G-T1-V2 全集。
+  - **★ 已落(step 1)**:①`SceneScriptDialogueLine` + quote_id/dramatized 史实溯源审计字段
+    (whitelist);②`_STYLE_DIRECTIVE` 加 historical 档(候选B史诗厚重,到达 visual volume);
+    ③**桥接器 `hevi/director/tongjian_v2_bridge.py`**(§1 逐字段确定性映射:Script/ShotList→
+    SceneScriptSet[运镜词表映射/quote_id 透传/scene 分组/过场跳过]、CharacterBible→DesignList
+    [era_check 进 appearance]、id→name)。5 桥接单测,全量 **1575 passed**,ruff 干净。
+  - **step 1 剩余**:①历史 directive 线程到角色/世界/定妆照 prompt(§2.2/§2.3,现只到 visual volume);
+    ②orchestrator 把桥接+`generate_world_bible_draft(historical)` 串起来。
+  - **★ step 1 全完成(全量 1577 passed)**:桥接器 + orchestrator + dialogue 审计字段 + historical
+    directive(visual/角色卷/世界卷/canon 都接了,`_DOMAIN_ENTRY_DIRECTIVE`)。
+  - **★ (a) tongjian 演绎段前端首跑完成(商鞅立木,SPEC-005 batch2 前端史上首次真实材料,~$0.4 纯文本)。**
+    产物 + 人审 `output/tongjian_v2_shangyang_frontend/`(含 REVIEW.md)。**待 soffy 人眼过剧本再往下。**
+    - **切分/白话/溯源三项全对**:立木切为演绎核心 + 背景后果讲解;白话口语化命中 §1.2 商鞅示例;
+      Q001 逐字引语 + 余 5 句 dramatized,溯源精确。
+    - **G2 史实红线全过**(禁词/对白一致/事件幻觉/quote_id);唯一 fail=**时长偏差**(127字 vs 目标459字/120s)
+      ——非史实,是 constitution 给立木分配时长过多,修 constitution 时长或接受短段,不注水。
+    - **★人眼撞出 2 处史实瑕疵(自动门没抓)**:narration 编"咸阳"(初变法国都应=栎阳)+"一丈"(原文=三丈)。
+      G2 不查 narration 地名/数字精度——细粒度考据要人审兜。**印证"源头剧本必须人眼过"。**
+    - **接线备忘**:tongjian 前端默认 `llm("default")`=本地 ollama 返回全空,桥接/真跑**必须显式传
+      qwen_cloud**。
+  - **★★ step 2b 完成 —— 立木整段端到端跑通(2026-07-24,演绎实付 $10.259,~$10.4 总)。**
+    tongjian 前端(chapter_ir→event_unit→constitution→script→timeline→shotlist→character_bible)→
+    桥接(drama 过滤:8 演绎镜进 produce_v2,narration 归讲解段)→ produce_v2 演绎(8 镜写实)+
+    qwen-image 讲解(4 张写实静帧,方向1)→ 装配立木整段 109.5s。产物 `output/tongjian_v2_limu_full/`。
+    - **✅ 质感全程稳**:卫鞅/秦孝公写实战国(考据束发/交领深衣/无冠,历史 directive+考据 world_bible
+      全程生效),讲解段空景/人群也写实同调,明确区别王六郎民间志怪。
+    - **✅ 跨栈接缝过**:讲解写实↔演绎写实同青灰赭褐 palette,smooth(方向1 全段验证成功,不用转场创可贴)。
+    - **⚠ 打磨点(非结构性)**:①演绎 8 镜跨 3 场景有室外市集 vs 室内朝堂 setting variance→L5 色彩 fail 3;
+      ②道具字乱码(竹简"揲木立信"视频模型渲不了汉字);③讲解 qwen-image 静帧轻微穿帮(飞檐/砖偏晚,
+      没复用演绎 canon 那套战国 negatives);④L5 4 defect/8(色彩3+身份1),按 G-T1-V2 色彩其他≤1 超标,
+      根因是①;⑤**装配音频 bug**:演绎 final.mp4 音轨 AAC 损坏,-c copy 拼接可播不可 seek,重编码截断——
+      harness 装配前需音频归一(好修)。
+    - **★★ 坐实(soffy 2026-07-24):通鉴 V2 迁移架构可行。** 端到端跑通(tongjian 前端→桥接→
+      produce_v2 演绎 + qwen-image 讲解→装配)、质感达标(写实历史正剧全程稳、考据到位、明确区别王六郎
+      民间志怪)、**跨栈接缝解决(方向1 讲解段改 qwen-image 写实,彻底路成功,不用转场创可贴)**。
+      G-T1-V2 全集验收等打磨收完再冲。
+    - **五项打磨(soffy 定,2026-07-24)**:
+      - **①音频归一(已修)**:`-c copy` 拼接演绎(produce_v2 音轨 AAC 损坏)PTS 断裂 → 成片报 109.5s
+        幻长、不可 seek。修:拼接前所有 clip 归一(h264 720×1280@24 CFR + aac 44100 2ch,容错解码)。
+        成片实为 64.5s,可 seek(末尾帧抽取验证)。**deliverable=`limu_full_clean.mp4`。**
+      - **②讲解复用 world_bible 战国 negatives(已修)**:又一"考据词没到讲解端"断链——讲解 qwen-image
+        原用手写 negatives(飞檐/砖穿帮),改用 `world_bible.visual.negative_list`(禁砖砌拱券/明清冠服等),
+        重生成 4 讲解帧,夯土墙/克制屋脊、考据明显干净。
+      - **④道具字乱码进 SceneScript 规则(已修,生产)**:`_SCENE_SCRIPT_PROMPT` 加"避免可读文字特写"
+        (竹简/木牍/匾额的字视频模型渲成乱码,实证"徙木立信"→"揲草令")——同强运动×身份,绕开边界不硬修:
+        文字道具只作中远景带过/遮挡/虚焦,信息靠台词旁白后期字幕。测试 19 passed,ruff 干净。
+      - **③per-scene 色调统一 = backlog 优先**:治色彩 4 defect 的根(8 演绎镜跨室外/室内 setting variance
+        导致 palette 跳)。同王六郎"色彩随画风收敛",设定/色调统一后收敛。
+    - **距 G-T1-V2 全绿:主要剩 ③色彩 variance(backlog 优先)。①②④ 已收。**
+    - **★★ 固化完成(soffy 定,2026-07-24):harness 脚本 → 正式管线模块 + HTTP 入口 + 测试 + 接线网守。**
+      从"一个入口跑完通鉴一集"不再靠脚本手串:
+      - `hevi/tongjian/v2_jiangjie.py` 讲解段写实渲染(qwen-image 静帧 + world_bible negatives + ffmpeg 推拉 + VO)。
+      - `hevi/tongjian/v2_assembly.py` 跨栈装配(音频归一→`-c copy` 拼接,音频归一硬要求写进 docstring)。
+      - `hevi/tongjian/v2_episode.py`:`produce_tongjian_v2_episode`(全程:文言→成片)+ `render_tongjian_v2_backhalf`
+        (桥接→按叙事序分组[contiguous drama 插段/narration 讲解镜]→演绎 produce_v2 逐插段/讲解 qwen-image→装配)。
+      - **HTTP 入口**:`POST /tongjian/run` + `/resume` 加 `pipeline_mode="v2"`(+ `location`),`_run_render` 在 L4 后
+        分叉走 V2 后半(前端 L0-L5 含人工审剧本已就绪,不重跑),L6-L8 折叠成一步。
+      - **接线网守**:`test_wiring_completeness` 绿(新函数从 HTTP 入口传递可达);`tests/test_tongjian_v2_episode.py`
+        7 例(分组/讲解 prompt/**固化核心不变量:演绎 canon 与讲解静帧从同一 world_bible 拿到逐字相同的考据
+        negatives**/后半端到端接线)。全量 **1606 passed**,ruff 干净。
+      - **★★ 经验钉进模块注释**:讲解段与演绎段**必须共用同一份 world_bible**(考据 negatives + historical
+        directive)——canon/空景板/讲解静帧的负面与画风锚全从这一份读,是跨栈接缝能接上的根本(v2_episode /
+        v2_jiangjie docstring + 上面那条不变量测试双重钉住)。
+    - **下一步 = ③收色彩(per-scene 色调统一)**:用固化后的管线一次真跑,既验色彩改进又验固化没跑偏。
+      **真跑有实付($10+ 演绎),待 soffy greenlight 再起。**
+
+- **★★ A/B2 完成——V2 这一轮打磨到顶(soffy 判据全达标,2026-07-23,实付 $17.2)。** 成片
+  `output/rerun_wangliulang_v2/produce_ab2/final.mp4` 75.9s,**14/14 全成**。三方对照(基线v1/A/Bv1/A/B2):
+  - **段数:14/14**(基线14 / A/Bv1 12 / **A/B2 14**)。**②精简负面(154字→6项)全程零 green-net**,
+    s2/s7 一次过,③预案作兜底没用上——坐实膨胀负面清单就是上次审核触发源。
+  - **画风:写实统一**。跨段调色板 std **6.35(基线,写实↔卡通摆)→ 4.19(A/Bv1,水墨插画极)→
+    2.25(A/B2,写实电影极)**。目检确认:照片级实拍质感(真实肤质/织物/暮色光),非绘画/插画。
+    **画风现在是 directive 可控旋钮,说写实就锁写实。**
+  - **问题单:只剩真缺陷**。L5 三级规则生效:强运动段 s6/s9 身份下降→**expected(设计接受,不进
+    retake)**;真 defect = s1/s2/s10 身份 + s14 对白 = **4 段**(基线8 / A/Bv1 5 / A/B2 4 defect+2 expected)。
+    **★下限兜底真触发**:s10(横移强运动)身份 QC 分跌破 0.5 → 判 defect(不是正常运动退化,是"变成
+    另一个人"),而 s9(0.677)accepted——三级规则精确区分,没把真 bug 吞掉。
+  - **色彩 fail:归零**(基线4 → A/Bv1 1 → **A/B2 0**)。印证是画风漂移下游症状,画风统一到 std 2.25
+    后色彩 clamp fail 全消。
+  - **运镜分布:维持**(4类 静7/反3/摇2/横2 配比内)。**摇向声源光流本轮偏弱**(s6=1.07/s11=2.60,
+    低于 A/Bv1 的 5.39/8.43,高于基线 0.65/1.57)——生成变异 + ①"免认脸背身带过"可能微抑摇幅;摇仍在
+    但幅度 run-to-run 不稳,非阻塞。
+  - **持久化端到端:PASS**(work_id v2_ab2_styleform_wangliulang 在 director_works)。
+  - **★ soffy 判据(14/14 + 写实统一 + 问题单只剩真缺陷)全达标 → V2 这一轮打磨到顶,下一步谈产线
+    迁移,不是继续调管线。** 剩 4 真缺陷是"可接受天花板"级(s10 强运动身份塌是硬骨头,s1/s2 身份边缘,
+    s14 对白估算不精),属逐段返工决策,不是管线问题。
+
+- **★ A/B 重跑完成(七项改动 vs 基线 v1,2026-07-23,实付 $16.046)。** 成片
+  `output/rerun_wangliulang_v2/produce_ab/final.mp4` 68.3s,**12/14 段**(s2/s7 撞 green-net 掉,见下)。
+  逐项(全部对照基线 v1):
+  - **①画风摆动=收敛(可测可见)**:跨段调色板 std **6.35→4.19(−34%)**;目检**全片统一到水墨插画一极**,
+    不再写实↔卡通摆动。**关键 nuance:收敛到"水墨渲染"极(directive 就是这么写的:水墨渗染质感),
+    非"写实电影"极——基线那些漂亮的写实帧没了,现在通片painterly。真正的 win=画风现在被 directive
+    锁定且可调**(要写实就把 directive 改写实)。
+  - **③s9/s10 身份=没消**:L5 身份 fail 仍含 s9/s10(都是横移强运动段,flow s9=11.9/s10=8.1)。
+    **框景规避(中景)没能消除大运动宽景身份漂,是硬骨头。** 但整体身份 fail **5→3**(s1/s12/s13 恢复)。
+  - **④摇向声源=决定性生效但有副作用**:s6 光流 0.65→**5.39**,s11 1.57→**8.43**,摇镜真动了(5-8×)。
+    **副作用:s11 摇太狠→新进身份 fail**(强运动同样掉身份,与 s9/s10 同根)。
+  - **③L5 retake:8→5**。**④对白超时 [s2,s12,s14]→[s14]**:最严重的 s12(56字)被延长修复;
+    s14 仍 fail(估算说够、实际 TTS 超,估算不精)。**⑥色彩 fail [s10,s11,s12,s2]→[s6]:4→1,
+    印证随画风收敛而降**(色彩是画风漂移下游症状)。**⑦运镜分布=4类配比内不变**。
+    **⑧持久化端到端=PASS**(lock 落库+produce 回填+get_by_task 反查全通,work_id
+    v2_ab_styleform_wangliulang 在 director_works)。
+  - **★ green-net 回归(新发现,独立于七项)**:s2/s7 两段两次 try 都撞 Alibaba 内容审核
+    `DataInspectionFailed`(基线 0 段)。判断=**#3 逐地点负面(16 项现代物+磷火/溺水婴儿题材)把
+    prompt 翻倍**,把边缘段(s7=妇人涉水襁褓落水)推过审核阈值。快速失败 pre-generation 几乎不花钱,
+    但成片缺段。**待定:#3 负面清单是否精简/改为不经 LLM 逐段改写/对 green-net 敏感段降负面强度。**
+  - 详细对照 JSON `output/rerun_wangliulang_v2/produce_ab/ab_vs_baseline.json`。
+
+- **★ A/B 后三修(soffy 定,2026-07-23,全免费,全量 1562 passed / ruff 干净)。**
+  - **①强运动×身份互斥(接受物理边界,停止硬修)**:上一版让大运动段"强制中景+脸清晰"是在跟
+    provider 物理边界对着干(A/B 实证 s9/s10/s11 照样掉身份,与守恒律同源)。**反转**:
+    `_performance_directive` + scene_script 生成 prompt 现在规定横移/跟随/摇段**不承担身份识别**
+    ——不安排主角面部特写、不要求认脸,主角背身/侧身/中远景带过,身份由前后静态段建立。别再试图
+    在运动里锁脸。
+  - **②负面清单精简**:`_WORLD_ENTRY_PROMPT` 改为"只列 5-6 项最可能穿帮、且模型真会画的",
+    明确砍掉低概率项(LED/玻璃幕墙,模型本来不画、白撑 prompt 还触发审核误判)。
+    **bundle `locked_styleform_v2` 的 world 负面已从 154 字单条 → 6 项核心**(下次 A/B 直接验②)。
+  - **③内容审核自动预案**:`generate_multirole_segment` 加 `moderation_safe` 模式(丢全部负面 +
+    `_soften_for_moderation` 软化动作文本去血腥/危险/未成年直白措辞、保情节);produce_v2 检测
+    `DataInspectionFailed`/`Green net` → 自动降级重试一次(不占常规重掷预算),仍失败才报缺段。
+    治这次 s2/s7 直接缺段(基线能过)。
+  - **★ L5 强运动×身份三级规则(soffy 定,2026-07-23)**:`synthesize_final_checklist` 加
+    `strong_motion_ids` 参数,身份 fail 分三级——**强运动段+身份分≥下限(0.5)→ expected**(设计接受,
+    不进 retake,照常显示+标注);**静态段 fail → defect**(原行为);**强运动段但身份分<0.5(变成另
+    一个人)→ 仍 defect**(下限兜底,防"已知边界的正常退化"规则把真 bug 一起吞掉)。`collect_retake_
+    candidates` 排除 expected_scenes;前端 `L5ProblemList` 加"设计接受"区(可见但不追)。produce_v2
+    按 camera_movement 建 strong_motion_ids。**纪律记一笔:已知边界的正常退化 ≠ 无需监控**(反例:
+    VLM 认错人 / fallback 静默降级,都是"以为可忽略"结果污染判断)。3 新测试。
+  - **★ 写实画风(第四项)**:A/B 证 directive 控画风极,但旧 directive(水墨渗染)收敛到插画极;
+    soffy 要写实调性 → bundle directive 改为"照片级真人实拍电影质感…绝不出现绘画/水墨/插画/卡通
+    笔触"(显式压回写实极)。真实 compile 验过进 s9 prompt 末行。
+  - 全量 **1565 passed**,ruff 干净,tsc 无错。
+  - **下次 A/B(locked_styleform_v2,四项就绪)预期**:14/14 全成(②精简+③预案救 s2/s7)+ 写实调性
+    (新 directive)+ 问题单只剩真缺陷(强运动段身份降级 expected)。
+
+- **★ V2 生成端两处修复(soffy 定,2026-07-23)。** 起因=上一轮 V2 转正真实状态核查发现的两个洞。
+  - **①§6 运镜/表演指令接进真实生成端(治"每段都由远及近推"的病根)**:`camera_movement`/
+    `offscreen_trigger`/`beat_description` 三个字段此前判为"设计如此仅供 lint"——soffy 推翻:
+    lint 查得干净(相邻段标签互异),但模型从没拿到运镜指令,只能默认 push-in。现经
+    `multirole_reference._performance_directive` 编译成指令块(运镜方式/画外事件/表演意图),
+    紧跟 action_text 拼进真实 prompt;schema 三处注释同步改写(旧"标签不进 prompt"是误导断链),
+    模块 docstring §6 段落改写。**真机验证(2 段,实付约 $1.4)**:同 canon/blocking/narrative/seed,
+    唯一变量=camera_movement(A=静态 / B=横移),光流量化运镜:**A_static 水平位移 flow_dx=0.34
+    (近零,残余=主体动)、B_pan flow_dx=-8.19(强左移),横移/静态水平位移比 24.18×**;B 目检
+    是干净的真实横移(首帧正面渔夫→末帧侧移到岸边青年,高质量无扭曲),不是 push-in。**结论:
+    camera_movement 指令现在真实驱动运镜,病根解除。** 产物 `output/camera_directive_verify/`。
+    5 新测试(含断言三字段内容真到达传给 gen_fn 的 prompt,满足字段落地三件套第③件)。
+  - **②L5 advisory fail 从"只记录"升级到"列问题单"**:`final_review.collect_retake_candidates`
+    把六项 checklist 里所有 fail 项的 bad_scenes 按段汇成重掷候选(每段列触发了哪几项检查),
+    `produce_v2` 写进 `config_json.retake_candidates`;前端 `DirectorPipelineConsole` 产出页
+    新增 `L5ProblemList` 面板(完成后列问题单表格+失败项原因,全过则显示"六项全过")。
+    `_serialize_task` 本就透传 config_json,`TaskInfo` 补类型。3 新测试。**未做**:重掷按钮直接
+    在本面板触发返工(现指引去「我的」任务页),留待需要时接。
+  - **③已知缺口记 backlog(不急,soffy 定)**:`world[].negative_list`(逐地点年代准确性负面
+    清单)仍未接进生成端——`compile_multirole_prompt` 没有"当前场景对应哪个地点"信号,接了要么
+    瞎猜要么加新参数。待 SceneScript→地点映射信号具备后再接。
+  - 全量相关测试 41+125 passed,改动文件 ruff 干净(agent.py/graph_render.py 两处 E501/SIM105 是
+    既有、非本次)。前端 tsc 无错。**待 soffy**:①的真机运镜验证数(见下)是否达标签字;②面板观感。
+
+- **★ scene_script 生成器运镜多样性修复(soffy 选"先修生成器再谈整片跑",2026-07-23)。**
+  起因:核查发现运镜配比 prompt 是 07-22(ff010c9)才加的,晚于 gfinal(07-20)/批C(07-21)
+  ——**变化 prompt 从没真跑过**。实测当前生成器跑王六郎:13/14 静态(单段场景"相邻段不雷同"
+  弱约束无处着力,LLM 一路默认"静态对话")。**①fix ① 只是把 camera_movement 送进 prompt,
+  瓶颈其实在上游生成端产出的值本身就单一。** 两处改(纯文本层,免费迭代):
+  - **绝对配比不依赖相邻比较**:`generate_scene_script_draft` 加 `camera_tally`/`total_scenes`,
+    `_camera_budget_status` 逐场喂实时预算(推近≤¼、静态≤½、≥3-4 种、带【】硬 flag);
+    `_build_scene_script_set` 逐场累加 tally。让单段场景也有绝对约束可依。
+  - **内容驱动映射**:prompt 给"内容→运镜"规则(首现→定场推/对白→静态或反应插入交替/走位→
+    横移跟随/情绪峰值→峰值轻推(稀缺,全片1-2处)/画外→摇向声源),按"这段发生了什么"选,
+    不靠"避免雷同"。
+  - **★ 代码兜底(免费迭代 3 次实证:prompt 改后 LLM 能出 3-4 种、能压推近,但守不住静态≤½,
+    连硬 flag 都不理,~71-79% 静态)**:`enforce_camera_budget` 确定性把超额静态/推近段按段内
+    信号(画外→摇向声源/对白→反应插入/旁白→横移)改判,等距抽样不聚片尾。这是"LLM 选内容、
+    代码守全片硬预算"的分工。5 新测试。
+  - **免费迭代终态达标(王六郎 14 段,$0 纯文本+兜底)**:**4 种运镜(静态对话7/反应插入3/
+    摇向声源2/横移2)、静态 50%(≤½)、推近 0%(≤¼)**,三项全过 soffy 的"≥3-4 种、静态不过半"
+    杆。且现在是确定性达标(兜底保证配比,不靠 LLM 单次运气)。产物 `output/rerun_wangliulang_v2/`。
+  - 相关测试 17+129 passed,ruff 干净,tsc 无错。
+  - **★ 整片真跑完成(验总和,2026-07-23,实付 $16.232)**:王六郎 14 段,复用修复后已过分布杆的
+    scene_script(4 类:静态7/反应插入3/摇向声源2/横移2)。**产集前先把锁定四件套落盘持久化**
+    (`output/rerun_wangliulang_v2/locked/`,P0 这次性缓解,_WORKS 本体未修)。成片
+    `produce/final.mp4` **74.9s**,14 段全成功、0 失败。dialogue native6/none6/fallback2。
+    - **运镜×光流对照证叠加生效**:静态段实测 mag 0.57-0.77(真静态),两个横移段 s9/s10 实测
+      dx=3.56/-10.9(强水平位移)——全片运动幅度 mag 0.57→12.3 跨 20×+,对比批C 清一色 push-in。
+      指令→实测相关:静态/横移强对应,反应插入 s3 强(切换型)、s1/s13 弱,摇向声源弱实现。
+    - **L5 问题单真列出(②生效)**:8 段进重掷候选——身份保真 5 段(s1/s9/s10/s12/s13)、
+      对白时长 3 段、色彩 4 段;`retake_candidates` 已落库。目检印证:身份失分主要在**横移大运动
+      宽景**(s9/s10 的 t48 帧确实偏成更年轻黑发、真漂),L5 抓得准。
+    - **像不像一场戏(唯一判据)——实质更像了**:单一暮色渡口、连贯人物/补丁蓝袍/发髻/酒坛/油灯/
+      柳影,清晰戏剧弧(独钓→落水救援→与王六郎作别双人镜),运镜给出节奏(静观—横移救援的动势
+      —作别静场)。**残留天花板**:①画风在写实(t3)与插画/卡通感(t20/t40)之间摆动(style_manifesto
+      文本注入缓解未锁死,既有天花板)②横移宽景身份漂(L5 已捕获)。
+    - 交付物齐:成片 + L5 问题单 + 运镜×光流表(`camera_flow_table.json`),脚本归档同目录。
+    **待 soffy**:看片定"总和"是否达标 + 残留天花板(画风锁/横移身份)是否立项。
+
+- **★ 三件事(soffy 排序,2026-07-23)+ V2 基线 v1 归档。全量 1547 passed,ruff 干净。**
+  - **①P0 持久化落库(已做)**:`director_works` 表(migration `c9a1f4e78b23`,五卷各一 JSONB +
+    status/locked_through/video_task_id)+ `hevi/director/works_repository.py`(DirectorWorksRepository,
+    upsert 用 upsert_batch **DO UPDATE**——`write_one` 默认 DO NOTHING 会丢后续锁定,已实测修正)。
+    wired 进 `lock_scene_script`(加 pool 依赖)+ `produce`(回填 work→task 连接),best-effort 不阻断产集。
+    真机 DB 往返验证过(insert+update+get_by_task)。**V2 基线 v1 已入库**(work_id
+    `v2_baseline_v1_wangliulang`)。3 单测。
+  - **②画风锁 text-layer 诊断 + 双改(位置+形态,已做)**:诊断=style_manifesto **占比 31.7% 不小,
+    但位置埋在 34% 中段**(被后续 action/运镜/双脸规则盖过),且是 357 字抽象艺术散文(留白哲学/
+    存在临时性)、非模型可执行的渲染指令。**双改**:①位置——`compile_multirole_prompt` 把 style 移到
+    prompt 最末(recency)+ 画风优先级/一致性声明;②形态(soffy 追加)——WorldBible 新增
+    `style_render_directive` 字段(30-50 字可执行渲染词:媒介/笔触/色调/质感/人物比例 + 一致性锁),
+    `_visual_volume_draft` 生成+解析,进 prompt 末尾的是**这条指令不是散文**(空则回退 manifesto)。
+    字段落地三件套齐(schema+generator+真进 gen_fn prompt,4 新测试)。**视觉改善需下次付费 A/B 坐实。**
+  - **③横移身份漂规避规则(已做,零成本)**:`_performance_directive` 对横移/跟随/摇类大运动段
+    强制加**中景+主角占主体**构图约束(不用大宽景把人拍小);scene_script 生成 prompt 同步加规则。
+    catches LLM 选的和 budget 兜底改判的横移。**不立项修身份,先用规避规则,下次 A/B 看 s9/s10 类
+    身份 fail 是否消。**
+  - **★ V2 基线 v1 归档**(`output/v2_baseline_v1/`,sha256 钉):成片/L5问题单/运镜光流表/锁定四件套
+    + README(基线指标 + 后续对照口径)。**后续每次改进都和它 A/B**。②③ 的效果就靠"同素材重跑
+    vs 基线"验证。
+  - **★ A/B 重跑就绪 + 待验证优化清单(soffy 定攒一次全验,2026-07-23)**:rerun bundle
+    `output/rerun_wangliulang_v2/locked_styleform_v2/`,清单 `PENDING_VALIDATION_CHECKLIST.md`。
+    **一次 $16 重跑对照基线 v1 全验 8 项**。已排队 4 项(画风位置/画风形态/横移规避/持久化端到端)+
+    新补 4 项(全免费做完):
+    - **#1 对白时长兜底**:`enforce_dialogue_duration` 生成前把装不下 TTS 的段撑够(基线 s3=50字/
+      s12=56字实证)。**关键发现:`lint_dialogue_segment_alignment` 此前在 produce_v2/router 零调用**
+      ——那条 lint 建了但从没进生成路径,对白超时全靠 produce_v2 被动重掷 + 重掷耗尽落 L5 fail。
+      现 wired `_build_scene_script_set` + 烘焙进 rerun(s1/s3/s12 已延长)。
+    - **#3 world[].negative_list 补断链**:逐地点年代负面清单接进生成端(`_location_negative_list`
+      前缀匹配 world 条目,produce_v2 解析传入)——补上 compile_multirole_prompt 缺"场景→地点"信号
+      的已知缺口。rerun 地点有丰富年代负面(禁塑料/LED/现代招牌…),此前从没到过生成端。
+    - **#4 摇向声源强化**:含"摇"运镜补明显摇镜幅度/方向指令(基线 s6/s11 摇镜光流仅 0.65/1.57)。
+    - **#2 色彩 fail(s10/s11/s12/s2)= 暂不动**:诊断为 style drift 下游症状(palette 差太大→gain
+      触 clamp,非漏校色),判断随②画风锁收敛;先观察 A/B 不单治。
+    全量 **1555 passed(+8 新测试)**,ruff 干净。真实 compile 验过三改同时落 s9 横移段的 prompt。
+
+- **★ 接线完整性自动化门(soffy 定"别再靠人肉发现第六次",2026-07-23)。** `tests/test_wiring_
+  completeness.py`——两道静态 AST 门,把"建了没接"变成 CI 失败:
+  - **函数门**:所有 `lint_*`/`enforce_*` 必须从真实生产入口(HTTP 路由 handler + main +
+    `_EXTRA_ROOTS`{run_task/run_v2_produce/resume_task})**传递闭包可达**(不是"有任意调用方"——
+    对白 lint 的唯一调用方是同样没接的 lint_beat_and_dialogue_boundary,靠"有调用方"抓不到)。
+    **刻意不把 run_*/_run_* 当 root**(否则死的 `_run_director_via_tongjian` 会把 V1 死代码救活、
+    掩盖断链)。名字级调用图。
+  - **字段门**:所有 pydantic 字段必须在 schema 文件外被引用(`.f`/`"f"`/`'f'`/`f=` 任一)。
+  - **白名单必须写理由 + 反腐烂**:给已可达的函数挂白名单会被 stale 检查揪出(实测抓到我自己把
+    lint_shot_prompt/lint_engineered_prompt 误标 V1 死,其实 wired)。
+  - **首跑真揪出断链(全处理完)**:①`lint_dialogue_segment_alignment`+`lint_beat_and_dialogue_
+    boundary` 生产不可达 → **接进 `_build_scene_script_set`** 当段边界 advisory(顺带把对白 lint 接回)。
+    ②5 个 V1 死 lint(scene_stage/shot_pacing/performance_track/audio_sync/copyright,逐一排查
+    确认零活调用)+ 9 个死 schema 字段(TearDetail/PropContactState 等明细 schema 生产零构造)→
+    白名单登记 + 逐条理由。全量 **1557 passed**,ruff 干净。
+
+- **★ Wan2.2 A14B + SVI 2.0 Pro 本地链式验证(阶段1)· 三验证点全过,2026-07-23。**
+  增量已在(凌晨批次下载):A14B I2V GGUF Q4 高/低噪、SVI 2.0 Pro 双 LoRA(rank128)、
+  4步蒸馏 LoRA 双专家(=8步总)、SageAttention(venv 内,`--use-sage-attention` 生效)、
+  3 个 SVI workflow JSON。社区 lowvram workflow 依赖 VHS/子图格式未直接用——改用本地
+  `ComfyUI-Wan22FMLF` 的 `WanSVIProAdvancedI2V` 节点自建 API graph(脚本归档
+  `output/wan22_svi_phase1/svi_run.py`)。832×480×81f@16fps,8步(高4/低4),shift 5,cfg 1。
+  - **① 10GB 共享卡跑得起来**:VRAM 峰值 9538/9499/7827 MiB,无 OOM;9GB Q4 单专家仅
+    ~720MB 驻留、其余逐层流式(动态加载)。前置门(空闲<7GB 快速失败)真实拦截了一次:
+    stratum `auto_classify_books` 双进程中途上卡占 4.8GB,段2 快速失败,等卡空后续跑成功
+    (断点续跑已内建,`svi_run.py <seg> <latent>`)。
+  - **② 速度不在 3060 同量级**:单段 5s = 601/481/621s(**8-10.4min**,3060 基准 ~5min,
+    慢约 2 倍)。开销大头=权重流式换入+双专家换载;首载后段间也不显著变快(RAM 压力缓存,
+    32GB 内存 18GB 权重会被逐出)。共享卡现实下这就是量级。
+  - **③ 身份(核心需求)= 不漂**:multi-anchor 挂王生 canon(段1 start 满强度;段2/3
+    prev_latent 续接 + start=canon@0.5 + middle=canon@0.8/0.2),连续 3 段 15s,
+    CLIP face vs canon(L5 同套,阈 0.65):段均值 **0.870/0.928/0.849**,全 15 帧无一
+    低于 0.68,段1→段3 漂移仅 **0.021**。左颊疤/发髻/服装逐段清晰保留;prompt 写"青色
+    长袍"被 canon 灰褐衣压过——canon 锚强于文本,利身份。产物+身份报告
+    `output/wan22_svi_phase1/`(joined_3seg_15s.mp4 15.2s 可直接看片)。
+  - **裁决(soffy,2026-07-23)**:身份通路成立,速度接受——**定位=独占卡到位前的过渡通道**。
+  - **★ 新约束(Subject 资产层,进 wardrobe 设计)**:canon 锚压过 prompt 文本已实证
+    (prompt"青色长袍"完全无效,成片保持 canon 灰褐衣)——**换装必须换 canon 图,prompt 改
+    服装描述无效**。落到资产结构:**每角色 × 每套服装 = 一张独立 canon**(wardrobe 是
+    canon 的一个维度,不是 prompt 参数)。设计 Subject/IdentityPack 的 wardrobe 支持时
+    以此为前提。
+  - ComfyUI 服务器已关,卡已还(空闲 9875MiB)。
 
 - **V1→V2 director-pipeline 原地升级 · 批C 真机验收完成(实付 $15.711),抓出并修了一个真 bug,
   2026-07-21。** 批A(后端路由换 V2:WorldBible→SceneScript→`produce_v2.py::run_v2_produce`)+
@@ -74,7 +405,67 @@
     单声,`edge_tts` rate-8%/pitch-2Hz。闸⓪ 选一版。
   - **计量**:闸⓪ 工时 **315s(5.2min)**(含一次性契约 schema 首建,后续集次不再含),台账 `g1a_labor_ledger.md`。
     生成成本地图镜确定性后端=$0。
-  - **待闸⓪ 签字**:讲解稿文本/对勘处理/VO 选版/R8·R9 处理。**签字后方进 N1–N9。**
+  - **闸⓪ 已签(2026-07-21)**:讲解稿定稿,VO v0=云健(纪录片深沉)。进 N1–N9。
+  - **N1+N2 完成**:`hevi/tongjian/sandbox/g1a_episode.py`——11 拍 NarrationBeat + 11 条 VisualFact 手工装配,
+    **契约校验通过(不自造字段)** + 1 处对勘(B06 晋水/汾水,角标并陈不建 S12)。facts 待闸① 速审。
+  - **新模板 S10/S6 建成**(按 G0-D 质量杆,一次性资产账):**S10 时间轴**(纸带轴+游标+事件桩回弹,456/455/453 挤左、
+    403 甩右端"50年空档"一眼可见,R7 文字后期)、**S6 落点**(标记落定回弹+纸屑,可叠地图底,B6 标记数=1)。
+    产物 `output/g0d_deterministic/s10_demo|s6_demo/`。
+  - **★ 四个新模板 S5/S6/S7/S10 全建齐**(+ G0-D 的 S1/S2/S3,本集运动工艺全就位):
+    **S5 路线**(纸带分段贴放+推进端箭头,引水灌城,`s5_demo/`)、**S7 立牌**(程序化纸偶袍服剪影+撕边+房色+底折痕翻立;
+    T1 首批四人 智伯[炭袍红冠]/赵襄子[蓝]/韩康子[红]/魏桓子[金],`s7_demo/s7_lineup_T1.png`+`s7_zhibo.mp4`)。
+    全 `deterministic_layers`,零 provider,7 个 animate_* 模板导出。
+  - **★ N9 装配完成,G1a 全链 N0→N9 端到端跑通**:成片段 `output/g1a_sanjia_fenjin/assemble/sanjia_fenjin_segment.mp4`
+    **98.5s**,11 拍拼接 + 云健 VO(按拍时序) + BGM(epic 低) + **字幕/地名(晋阳)合成 R7 首跑成功** + EDL(`edl.json`)。
+    抽帧验:B02 智伯立牌/B06 引水灌城(+晋阳地名)/B09 三家分晋撕裂/B10 时间轴 字幕全对、VO+BGM 在轨。
+    edge_tts 间歇失败已加重试+消毒+幂等续跑。**生成成本 $0**(确定性 + edge_tts 免费)。
+  - **G1a 判据(spec §14)**:端到端跑通 ✅ / 成本/集 $0 ✅ / 人工分钟(闸⓪=315s,余因跨天时间戳丢部分缺)/ **观感评审待 Wiki**。
+    **剩余 = 闸④ 成段评审(Wiki 看片签字)**,过则 G1a 闭环。
+  - **闸④ 反馈 v1(Wiki:"解说可以,地图有点粗糙")→ 地图渲染升级**:`_force_layer` 加
+    **Chaikin 切角平滑(棱角凸多边形→有机圆润疆界)+ 水墨积墨(边缘沉墨,去平涂)+ 中心提亮(体量)+ 细软墨线(替粗黑描边)**;
+    B11 hold 改走 `_static_map` 同款。7 个地图拍重渲,成片段重生成(仍 98.5s,$0)。**已知残留**:疆域仍是分离色块有纸间隙
+    (非连续陆块),若要"连成一片"是坐标层活,留待反馈。
+  - **计量纪律修正**:gate 计时存 scratchpad 跨天丢失(闸① 数丢),后续改存 `output/`(durable)。台账 `g1a_labor_ledger.md`。
+  - **★ 閘④ 裁决执行完毕(2026-07-22),v3 送閘④"修完再签"**:
+    ①S10 年份 R7 上屏(456/455/453 挤左错行+403 随游标分时显现,帧样张 `assemble/r7_frame_samples/v3_*`)
+    ②B06 晋水/汾水角标合成(文本取自 DualAccountFact,右上纸卡)③SFX v0 占位粗混入轨(lavfi 合成,
+    EDL 记 placeholder=true;審链路完整不審终版音效)④B06 E3→E1/B07 E2→E1 事件级(banner 本就未渲)。
+    成片段 v3 98.7s,$0。**材质三问②对确定性原生模板退役(裁决),①③保留,③随片签。**
+  - **通则回灌 spec(F16 裁决,A 线首次适用)**:R9 补"banner 输入=事件级 evidence_tier,永不因语句夸饰
+    或细节异说升降"+beat 表列名 event_tier;R4 补"数字判定前置同指涉对齐";§14 G2 行改批内自比
+    (首集全闸计时为基线,末集≤首集 60%;**计时=交付物 G2 起硬规,G1a 判据 2a 永久 FAIL 不追补**);
+    §11 VO 依赖注记(edge_tts 非官方免费接口,G3 前重估,换声=大版本);§7 补"具名且露脸=T1,T2 只留匿名群像"。
+  - **閘⓪ 签字工件补钉**:`docs/signoffs/GATE0-ep_sanjia_fenjin-20260721.md`(sha256 钉 v0 讲解稿+两样音,
+    四项裁决逐条+Wiki 原文)。今后全闸口同格式。讲解稿修订走 `narration_script_v1.md`(v0 不动)。
+  - **注册表两项**:智氏入 `force_colors` 正式条目(#3a3430 灰阶 tier,active_range 至-453 retire;
+    `ForceColor` 增 active_range 字段);立牌袍色一律读注册表(`standee_kwargs`),张孟谈补 T1,
+    五人全家福 `s7_demo/s7_lineup_T1v2.png`(`sandbox/g1a_standee_lineup.py`)。
+  - **G1b 对拍 harness 种子入仓**:`tools/g1b_parity_harness.py`(L1/L2/L3 全 PASS+diff_facts 骨架,
+    自对拍零差异冒烟过)。SPEC-007 头部加轨道边界声明+早于 G0 实证警示(分轨成立,冻结解除)。
+    相关测试 15 passed,ruff 干净。
+  - **★★ G1a 闭环(閘④ 已签 2026-07-22,"都先过")**:工件 `docs/signoffs/GATE4-ep_sanjia_fenjin-20260722.md`
+    (钉 v3 成片/EDL/讲解稿v1 sha256)。判据:端到端✅/成本$0✅/观感✅/**2a 永久 FAIL(裁决,不追补)**。
+    材质三问③随片签过(S5/S6/S7/S10 全)。**遗留打磨清单 6 项非阻塞**记在 GATE4 工件 §4
+    (SFX 终版音源/疆域连片/前403早显0.3s/张孟谈新外观/453非焦点撞色/臣光曰题字)。
+    **下一门 = G1b**(同一集改 KU 接口拉取,依赖 AII W-H0 fixtures,与 G1a 逐字段对拍;
+    harness 骨架已入仓 tools/,判据:逐字段一致或差异可解释 + 閘①耗时 < G1a 的 50%)。
+- **★ G1b 首跑完成(2026-07-22),两判据双 PASS,coverage gap 清单交付。**
+  输入钉 stratum tag `history-contract-v0.2` 的 sample.sanjiafenjin.json as-is 字节
+  (sha256 硬编码 harness,不符 FATAL;⚠工作树 m0 分支还是 v0.1 旧字节,钉 tag 是唯一正确取法)。
+  - **判据修订落地**:原"閘①<G1a 50%"作废(G1a 基线丢失)→ 閘① durable 计时 **360s(6.0min,
+    史上第一个閘①数,含一次性投影器首建)** + **diff 全解释(一致12/可解释33/PENDING 0)**。
+  - `tools/g1b_parity_harness.py` 升正式:§8.2 机械投影器(产物过同一契约)+PAIRING 选用声明+
+    三分类规则+密度统计。报告 `output/g1b_sanjia_fenjin/{G1B_REPORT.md,g1b_diff_report.json}`。
+  - **★ 头号交付物 coverage gap**:覆盖拍 4/11;**一集 11 拍 ≈ 5 event + 7 account + 2 conflict
+    + 8 person 的 KU 密度**(W-H1 波次规模第一块实垫)。三条含金量 diff 给 Wiki:
+    ①B06 晋水(手工/通鉴) vs 汾水(sample route_hint 单方取,水源 h-conflict 未建)
+    ②confirmed_by 通鉴 vs KU mainline 史记(叙事主源≠证据主线,G2 建议双轨显式)
+    ③手工 forces 混了底图勢力(G2 起 forces=参战方)。
+  - **待 KU 侧**:7 gap 拍补对象后重跑同一 harness(改 PAIRING 指向即可)。回流建议三条已申报,属 stratum 侧决策。
+  - **★KU 侧已交付(2026-07-22)**:见 `output/g1b_sanjia_fenjin/KU-DELIVERY-20260722.md`——stratum `main@3e58e59`
+    `contracts/samples/ep_sanjia_fenjin/` 每事件一响应(B01-B11 全拍 PAIRING 指向表在交付单;G1b 钉点 sample 字节未动,
+    两 sha256 仍有效)。回流①水源 cf 已建(晋水/汾水 S12)②年数 claim 已抽且升 cf(岁余/三年)③父事件/册命对象已交付。
+    **⚠VO『围两年』四系查无实据→登 G1a 打磨清单改署源表述**(交付单有细节)。改 PAIRING 重跑即闭 G1b 全弧。
 
 - **G0 三家分晋核验(纸雕地图讲解线)· soffy 四裁决执行完,G0 判"不过——门抓出真缺陷",2026-07-21。**
   完整报告 `output/g0_sanjia_fenjin/g0_verify_report.md`(三轮)。
@@ -297,6 +688,26 @@
     - **5060 Ti 出局的理由**:Blackwell 架构适配坑还不少(server 驱动分支不支持消费级
       卡、部分社区反馈的 GGUF 显存回归问题等,详见评估记录),原始算力还比 3080 低
       ~26%——除非"全新卡+官方质保"是硬性需求,否则综合劣于 3080 20G 魔改。
+  - **★ 采购依据更新(2026-07-23,基于 wan22_svi_phase1 实测)**:瓶颈重新定性=
+    **双专家 18GB 权重驻留 + 主机内存 32GB**——10GB 卡上单专家仅 ~720MB 驻留、逐层流式
+    (每步 40-63s),且 32GB RAM 装不下 18GB 双专家+6.3GB umt5,段间缓存被逐出,段间不变快。
+    三档重算(段耗时=5s@832×480×81f/8步;非现状档为**推算区间**,买后须单卡复测):
+    ①现状不动:实测 8-10.4min/段,¥0,共享争抢波动大(实测被别的项目挤掉过一次);
+    ②16G(5060 Ti)+64G 内存:推算 ~3-4.5min/段,约 ¥4,800-6,200,Blackwell 适配坑仍在;
+    ③20G 魔改 3080+64G 内存:推算 ~2.5-3.5min/段,约 ¥3,800-5,400,零适配(同 Ampere 同栈),
+    散热/质保风险照旧(认准 4090 散热模组+质保卖家)。
+    共同前提警示:装卡/加内存都要动这台共享主机=触发 🔒 重启风险(Xid 79 几乎每次开机
+    复发)——若给本机装新卡,同样吃这个 PCIe 隐患,独立盒子方案应一并权衡;
+    3090 24G(~¥5,500-6,500)是唯一双专家全同驻留零换载档,若要 LTX 完整能力仍是原二选一。
+  - **★ 裁决(soffy,2026-07-23):第四选项——独立盒子 + 20G 魔改 3080 + 64G DDR4,
+    sf2 不动一根毛。** 采购清单(二手 AM4:5700X/B550(必须,PCIe4.0 打换载瓶颈)/
+    2×32G D4/2T NVMe/**全新** 850W 金牌/≥350mm 三槽机箱)+ 20G 卡选购验收单(4090 散热
+    模组+店保≥180天+memtest_vulkan 全 20G+结温门槛)+ 环境迁移剧本(栈版本逐项钉死:
+    py3.11.15/torch2.13.0+cu130/**sageattention 1.0.6 纯 pip 免编译**/gguf0.19.0/驱动580分支;
+    rsync 只读拉 sf2,venv 重建不搬)+ 验收复测基准(svi_run.py 期望 2.5-3.5min/段、
+    identity_score.py 期望均值 0.85-0.93 漂移≤0.03)全在
+    `output/wan22_svi_phase1/standalone_box_plan.md`(附 `venv_freeze_sf2.txt` 锁定清单)。
+    总价区间 **~¥6,200-8,600(中位 ~7,000-7,500)**。待:下单与到货装机。
 
 - **SPEC-006 V2(文档优先架构)· 垂直切片 ①②③ 已实现并真机验证,2026-07-19。**
   病理来自 INC-004 终局验收(下条 L4 记录)的实锤:V1"结构化优先"抽取必然有损,免费本地路径

@@ -67,6 +67,8 @@ _CHARACTER_ENTRY_PROMPT = """你是电影美术指导,在为角色写"定妆手�
 肤质/年龄痕迹,性格气质怎么体现在外在举止上。原始素材没写到的细节,可以按基调合理补全,但
 不要跟原始素材矛盾。
 
+{domain_directive}
+
 最后单独给一句"身份锁定句"——强制声明"整个作品中这个角色的身份、服装、发型、外貌保持一致"
 这个意思的一句话(可以按角色语境改写措辞,但这个意思必须在)。
 
@@ -88,7 +90,12 @@ _WORLD_ENTRY_PROMPT = """你是电影美术指导,在为场景写"环境设定"�
 自行车、电线杆、架空电线、树影移动"这种程度),写清楚空间格局、光线、材质、气味/声音暗示、
 时间痕迹。原始素材没写到的细节可以按基调合理补全,但不要跟原始素材矛盾。
 
-再给一份负面清单——逐条列出"这个场景绝不该出现"的东西(跟基调/时代/氛围冲突的元素)。
+{domain_directive}
+
+再给一份**精简**负面清单——**只列 5-6 项最可能穿帮的**"这个场景绝不该出现"的东西(跟基调/
+时代/氛围冲突、且模型真有可能画出来的元素,如古装场景里的塑料/柏油路/现代服装)。**不要堆砌
+低概率项**(LED、玻璃幕墙、共享单车这类模型本来也几乎不会画进古装水墨场景的,列了只是白占
+prompt 长度、还可能触发内容审核误判)——挑最容易破功的几项就够。
 
 **assumed_details(必须如实填写)**:逐条列出 profile_text 里哪些具体物件/细节是原始素材
 没有明确写到、由你推测补全的。没有就给空列表,但要如实——宁可多报,不要漏报。
@@ -117,7 +124,34 @@ _STYLE_DIRECTIVE = {
         "宣纸渗染、墨色晕化、留白构图、青灰冷调、水汽氤氲的柔焦边界,非写实再现而是"
         "以绘画语汇统领全片。negative_list 里应包含「现代写实调色/摄影棚硬光」这类要规避的项。"
     ),
+    # ↓ 见 _DOMAIN_ENTRY_DIRECTIVE:visual volume 用上面这套(style_manifesto 美学方向);角色卷/
+    #   世界卷/定妆照用下面那套(服饰/器物/建筑时代考据)。两处都要,否则画风统一但服饰穿帮。
+    # SPEC-005-V2 §4:通鉴历史正剧(soffy 定候选 B 史诗厚重)。写实电影但比 realistic 更端正厚重,
+    # 火把/烛火光源写死(战国到唐宋大量夜戏/朝堂/军帐无自然光可依),禁浅景深糖水(治抒情质感)。
+    # style_render_directive 侧对应 §4 那句;这里是 style_manifesto 的美学硬约束方向。
+    "historical": (
+        "【本片美学硬约束——史诗历史正剧】style_manifesto 必须描述照片级真人实拍的历史正剧电影帧:"
+        "自然天光与火把/烛火光源、厚重低饱和影调、暗部沉稳、端正稳定构图、写实肤质须发与织物/青铜器"
+        "质感、大景深纵深环境,庄重克制而非抒情。**绝不能**写成水墨/绘画/插画/动画/CG,也不要浅景深"
+        "糖水抒情感。negative_list 里应含「绘画感/水墨/插画/动画/现代元素/浅景深糖水」这类规避项;"
+        "服饰器物建筑须严格考据所述时代(禁年代错误:马镫/纸/椅/明清官服等)。"
+    ),
 }
+
+# SPEC-005-V2 §2.2:角色卷/世界卷/定妆照的时代考据硬约束(与 _STYLE_DIRECTIVE 的画风约束分开——
+# 那套管 style_manifesto 的画风方向,这套管服饰/器物/建筑的时代形制,写实/水墨档不需要,空)。
+_DOMAIN_ENTRY_DIRECTIVE: dict[str, str] = {
+    "historical": (
+        "【时代考据硬约束】这是历史正剧,服饰/器物/发型/建筑/礼制必须严格符合所述时代形制"
+        "(如战国秦:交领右衽深衣玄端、束发戴冠、青铜礼器、夯土木构;写服装器物时落到考据细节),"
+        "**禁年代错误**:马镫/纸/椅/桌/明清官服/补服/顶戴/辫子/现代服饰器物一律不得出现。"
+    ),
+}
+
+
+def _domain_directive(visual_style: str) -> str:
+    return _DOMAIN_ENTRY_DIRECTIVE.get(visual_style, "")
+
 
 _VISUAL_VOLUME_PROMPT = """你是电影摄影指导,在为一部作品定"整体影像风格"(全片一份,后续
 每一场戏都要遵循)。
@@ -127,7 +161,12 @@ _VISUAL_VOLUME_PROMPT = """你是电影摄影指导,在为一部作品定"整体
 请给出:
 
 1. 视觉风格宣言(style_manifesto):一段连续长文本,讲清楚这部作品的整体影像质感、色调倾向、
-   构图哲学(**必须服从上面的美学硬约束**)。
+   构图哲学(**必须服从上面的美学硬约束**)。这段是给人看的美学阐述。
+1b. 可执行渲染指令(style_render_directive):把上面那段宣言**压成 30-50 字的可执行渲染词**,
+   只保留生成模型能直接执行的关键词——媒介/笔触/边缘/色调/质感/人物比例/参考风格,末尾加一句
+   "全片统一,不在写实照片与卡通插画间摇摆"。示例:"水墨渲染质感,柔和边缘,青灰主调,纸本肌理,
+   写实人物比例——全片统一,不在写实照片与卡通插画间摇摆"。**这条才是真正进生成 prompt 的画风锁,
+   不要写成抽象哲学或长句,要像给渲染引擎的参数。**
 2. 摄像机人格(camera_persona):从下面四选一,并写清楚为什么选它(persona_rationale)、
    这个人格具体怎么运镜的行为派生规则(behavior_derivation_text,后续每一场戏的摄像机行为
    都要从这段规则派生,不是每场自己现编)——
@@ -143,7 +182,8 @@ _VISUAL_VOLUME_PROMPT = """你是电影摄影指导,在为一部作品定"整体
 **assumed_details(必须如实填写)**:逐条列出上面内容里哪些具体细节是原始素材没有依据、
 由你推测/发挥的。没有就给空列表,但要如实。
 
-只输出 JSON:{{"style_manifesto": "...", "camera_persona": {{"persona_id": "dv_friend|
+只输出 JSON:{{"style_manifesto": "...", "style_render_directive": "30-50字可执行渲染词",
+"camera_persona": {{"persona_id": "dv_friend|
 invisible_cine|doc_crew|static_watch", "persona_rationale": "...",
 "behavior_derivation_text": "..."}}, "photographic_flaw_aesthetics": ["...", "..."],
 "negative_list": ["...", "..."], "assumed_details": ["推测/补全的具体细节", "..."]}}
@@ -185,10 +225,14 @@ def _tone_style_text(concept: Concept) -> str:
 
 
 async def _character_entry_draft(
-    *, name: str, material_text: str, concept: Concept, llm: Any
+    *, name: str, material_text: str, concept: Concept, llm: Any, visual_style: str = "realistic"
 ) -> CharacterVolumeEntry:
     prompt = _CHARACTER_ENTRY_PROMPT.format(
-        name=name, tone=concept.tone, style=_tone_style_text(concept), material_text=material_text
+        name=name,
+        tone=concept.tone,
+        style=_tone_style_text(concept),
+        material_text=material_text,
+        domain_directive=_domain_directive(visual_style),
     )
     try:
         data = await _call_llm_json(llm, prompt, max_tokens=2048, timeout_s=45.0)
@@ -207,10 +251,14 @@ async def _character_entry_draft(
 
 
 async def _world_entry_draft(
-    *, name: str, material_text: str, concept: Concept, llm: Any
+    *, name: str, material_text: str, concept: Concept, llm: Any, visual_style: str = "realistic"
 ) -> WorldVolumeEntry:
     prompt = _WORLD_ENTRY_PROMPT.format(
-        name=name, tone=concept.tone, style=_tone_style_text(concept), material_text=material_text
+        name=name,
+        tone=concept.tone,
+        style=_tone_style_text(concept),
+        material_text=material_text,
+        domain_directive=_domain_directive(visual_style),
     )
     try:
         data = await _call_llm_json(llm, prompt, max_tokens=2048, timeout_s=45.0)
@@ -253,6 +301,7 @@ async def _visual_volume_draft(
     )
     return VisualVolume(
         style_manifesto=str(data.get("style_manifesto") or "").strip(),
+        style_render_directive=str(data.get("style_render_directive") or "").strip(),
         camera_persona=camera_persona,
         photographic_flaw_aesthetics=[
             str(x).strip()
@@ -307,7 +356,11 @@ async def generate_world_bible_draft(
         asyncio.gather(
             *[
                 _character_entry_draft(
-                    name=n, material_text=material_text, concept=concept, llm=resolved_llm
+                    name=n,
+                    material_text=material_text,
+                    concept=concept,
+                    llm=resolved_llm,
+                    visual_style=visual_style,
                 )
                 for n in char_names
             ]
@@ -315,7 +368,11 @@ async def generate_world_bible_draft(
         asyncio.gather(
             *[
                 _world_entry_draft(
-                    name=n, material_text=material_text, concept=concept, llm=resolved_llm
+                    name=n,
+                    material_text=material_text,
+                    concept=concept,
+                    llm=resolved_llm,
+                    visual_style=visual_style,
                 )
                 for n in scene_names
             ]

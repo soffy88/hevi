@@ -87,6 +87,19 @@ def _scene_name_for(scene_ref: int, screenplay: Any) -> str:
     return ""
 
 
+def _location_negative_list(world_bible: Any, scene_location: str) -> list[str]:
+    """按当前场次 location 找到对应的 `world_bible.world[]` 条目,取它的 negative_list(逐地点
+    年代准确性负面清单)。`world[].name` 常是 location 的前缀(location 带括号氛围补充),
+    按包含匹配;找不到 → 空。补上 compile_multirole_prompt 缺"当前场景对应哪个地点"的断链。"""
+    if world_bible is None or not scene_location:
+        return []
+    for entry in getattr(world_bible, "world", []) or []:
+        name = getattr(entry, "name", "") or ""
+        if name and (name in scene_location or scene_location.startswith(name)):
+            return list(getattr(entry, "negative_list", []) or [])
+    return []
+
+
 async def run_v2_produce(
     *,
     task_repo: Any,
@@ -138,7 +151,11 @@ async def run_v2_produce(
     )
     from hevi.audio.voice_embed import voice_embed
     from hevi.director.cut_style import classify_seam_cut_style
-    from hevi.director.final_review import review_seam, synthesize_final_checklist
+    from hevi.director.final_review import (
+        collect_retake_candidates,
+        review_seam,
+        synthesize_final_checklist,
+    )
     from hevi.director.multirole_reference import generate_multirole_segment
     from hevi.director.pipeline_schemas import SceneScriptDialogueLine, SceneScriptSegment
     from hevi.director.scene_script import lint_camera_movement_variety
@@ -192,6 +209,9 @@ async def run_v2_produce(
         scene_name = _scene_name_for(script.scene_ref, screenplay)
         scene_plate = scene_ref_paths.get(scene_name)
         scene_plate_path = Path(scene_plate) if scene_plate else None
+        # 补断链(2026-07-23):这段所在地点的 world[].negative_list（逐地点年代准确性负面清单）。
+        # world[].name 通常是 scene.location 的前缀（location 带括号补充说明），按前缀/包含匹配。
+        location_negatives = _location_negative_list(world_bible, scene_name)
 
         for segment in script.segments:
             seg_id = f"s{script.scene_ref}_{segment.segment_id or f'sg{segment.order:03d}'}"
@@ -205,6 +225,8 @@ async def run_v2_produce(
             final_clip: Path | None = None
             final_frame: Path | None = None
             qc = None
+            moderation_safe = False  # green-net 拦截后置 True 降级重试一次
+            moderation_retry_used = False
 
             while True:
                 try_path = run_dir / f"{seg_id}_try{attempt}.mp4"
@@ -221,13 +243,23 @@ async def run_v2_produce(
                         continuity_reference_path=prev_frame,
                         world_bible=world_bible,
                         no_cut_to=script.no_cut_to,
+                        location_negative_list=location_negatives,
                         output_path=try_path,
                         seed=seed,
                         gen_fn=gen_fn,
                         rephrase_llm=llm,
+                        moderation_safe=moderation_safe,
                     )
                 except Exception as e:
                     logger.warning("%s try%d 生成失败: %s", seg_id, attempt, e)
+                    # 内容审核自动预案:green-net 拦截 → 降负面强度 + 软化措辞重试一次(不占常规
+                    # 重掷预算),仍失败才报缺段。基线能过、这批因负面清单撑长而被拦的段靠这条救回。
+                    is_green_net = "DataInspectionFailed" in str(e) or "Green net" in str(e)
+                    if is_green_net and not moderation_retry_used:
+                        moderation_retry_used = True
+                        moderation_safe = True
+                        logger.warning("%s green-net 拦截 → 降负面+软化措辞重试一次", seg_id)
+                        continue
                     if attempt >= _MAX_ATTEMPTS - 1:
                         failed_segments.append(seg_id)
                         break
@@ -297,21 +329,28 @@ async def run_v2_produce(
     if not ordered:
         raise ProduceV2Error("所有段落均生成失败,没有可装配的产物")
 
-    # ── ③ 校色 ──────────────────────────────────────────────────────────────
-    await _report("装配", 62.0, completed, total_segments)
-    ref_frame = run_dir / "_color_ref.png"
-    _extract_mid_frame_sync(ordered[0]["clip"], ref_frame)
-    ref_mean = frame_rgb_mean(ref_frame)
-    color_report = []
-    for i, item in enumerate(ordered):
-        out = run_dir / f"{item['segment_id']}_color.mp4"
-        if i == 0:
-            import shutil
+    # ── ③ 校色(按 scene 分组:每场首段为本场基准,只统一场内、保留跨场差异)──────────
+    # 2026-07-24 诊断实证(商鞅立木):跨场影调差异是**合理**的——室内油灯朝堂(luma≈54)本就
+    # 该比室外白天市集(luma≈87)暗得多。此前用全片单一基准(ordered[0]=最暗那场)会把所有亮场
+    # 往暗场硬拉,增益触 (0.7,1.4) 边界被 L5 误判"校正不足"(s4 场内 std 仅 1.1 却整场被标缺陷)。
+    # 改:基准按 scene_ref 分组,组内匹配。跨场 luma std(≈12)是场内(1–6)的数倍,主变异在场间,
+    # 分组后既消掉假缺陷、又保留合理的室内外反差(不把金饼暖特写/室外白天压平)。
+    import shutil
 
+    await _report("装配", 62.0, completed, total_segments)
+    color_report = []
+    scene_ref_mean: dict[Any, tuple[float, float, float]] = {}
+    for item in ordered:
+        sref = item["scene_ref"]
+        out = run_dir / f"{item['segment_id']}_color.mp4"
+        if sref not in scene_ref_mean:  # 本场首段 = 本场基准,原样拷贝
+            rf = run_dir / f"_color_ref_s{sref}.png"
+            _extract_mid_frame_sync(item["clip"], rf)
+            scene_ref_mean[sref] = frame_rgb_mean(rf)
             shutil.copy(item["clip"], out)
             color_report.append({"segment_id": item["segment_id"], "gain": [1.0, 1.0, 1.0]})
         else:
-            info = await match_color_to_reference(item["clip"], ref_mean, out)
+            info = await match_color_to_reference(item["clip"], scene_ref_mean[sref], out)
             color_report.append({"segment_id": item["segment_id"], "gain": list(info["gain"])})
         item["color_clip"] = out
 
@@ -496,12 +535,23 @@ async def run_v2_produce(
         if item["segment_id"] in script_segs_by_id
     ]
     camera_lint = lint_camera_movement_variety(all_segments)
+    # 强运动段(横移/跟随/摇)seg_id 集——喂给 L5 身份三级规则:这些段身份下降是设计接受的
+    # 已知边界(见 _performance_directive 的强运动×身份互斥),不当缺陷追,但身份分<下限仍报。
+    strong_motion_ids = {
+        seg.segment_id
+        for seg in all_segments
+        if seg.segment_id and any(k in seg.camera_movement for k in ("横移", "跟随", "摇"))
+    }
     checklist = synthesize_final_checklist(
         seam_reviews=seam_reviews,
         qc_results=qc_results,
         color_reports=color_report,
         camera_lint_findings=camera_lint,
+        strong_motion_ids=strong_motion_ids,
     )
+    # L5 fail 不阻断出片,但按段汇成重掷候选清单写进 config_json,供前端产出页列问题单
+    # (2026-07-23:此前 advisory fail 只记不列,人审看不到"哪段该重掷")。
+    retake_candidates = collect_retake_candidates(checklist)
 
     # ── 收尾:写真实成本 + 完成状态(V1 同款 DB 契约)────────────────────────
     from datetime import UTC, datetime
@@ -521,6 +571,7 @@ async def run_v2_produce(
                 "failed_segments": failed_segments,
                 "dialogue_decisions": dialogue_decisions,
                 "l5_checklist": checklist,
+                "retake_candidates": retake_candidates,
                 "cut_point_violations": len(cut_violations),
             },
             "updated_at": datetime.now(UTC).replace(tzinfo=None),

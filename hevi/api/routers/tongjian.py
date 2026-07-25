@@ -59,6 +59,11 @@ class RunRequest(BaseModel):
     pause_after: str | None = None
     # 每层的模型选择 + 可调参数(键 "L0".."L8"),前端逐层调参。缺省=各层默认。
     layer_config: dict[str, LayerConfig] = Field(default_factory=dict)
+    # 渲染栈选择:"v1"=既有 L6-L8(sdxl/cloud_avatar 图解片);"v2"=SPEC-005-V2 固化管线
+    # (演绎段 produce_v2 写实 + 讲解段 qwen-image 写实 + 跨栈装配,共用 world_bible)。
+    pipeline_mode: str = "v1"
+    # v2 演绎段的统一取景地点(空景板 + 每场 location),如"栎阳城南门"。
+    location: str = "历史场景"
 
 
 class ScriptReviewUpdate(BaseModel):
@@ -378,6 +383,33 @@ async def _run_render(run_id: str) -> None:
                 run_id, "L4", status="FAILED", error=str(e)[:500], finished_at=datetime.now(UTC)
             )
             _finish_run(run_id, success=False, error=f"L4 failed: {e}")
+            return
+
+        # ── SPEC-005-V2 固化栈:演绎(produce_v2 写实)+ 讲解(qwen-image 写实)+ 跨栈装配 ──
+        # 前端 L0-L5(含人工审核过的剧本)已就绪,V2 只接后半,不重跑前端。L6-L8 折叠成这一步。
+        if req.pipeline_mode == "v2":
+            from hevi.tongjian.v2_episode import render_tongjian_v2_backhalf
+
+            _update_layer(run_id, "L6", status="RUNNING", started_at=datetime.now(UTC))
+            try:
+                result = await render_tongjian_v2_backhalf(
+                    script=script,
+                    shotlist=shotlist,
+                    character_bible=bible,
+                    raw_text=req.raw_text,
+                    output_path=run_dir / "L8" / "episode_v2.mp4",
+                    location=req.location,
+                    llm=_llm("L6"),
+                )
+                for _lyr in ("L6", "L7", "L8"):
+                    _update_layer(run_id, _lyr, status="PASSED", finished_at=datetime.now(UTC))
+                _RUNS[run_id]["v2_result"] = result  # actual_usd / l5_by_insert 供产出页
+                _finish_run(run_id, success=True, result_path=result["final_video"])
+            except Exception as e:
+                _update_layer(
+                    run_id, "L6", status="FAILED", error=str(e)[:500], finished_at=datetime.now(UTC)
+                )
+                _finish_run(run_id, success=False, error=f"V2 render failed: {e}")
             return
 
         # L6 场景/画面生成
