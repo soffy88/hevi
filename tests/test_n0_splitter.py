@@ -323,3 +323,19 @@ def test_mixed_beat_splits_vo_keeps_onscreen_intact() -> None:
     # onscreen 句仍在、text 一字不动
     ons = [s for b in split["beats"] for s in b["sentences"] if s.get("presentation") == "onscreen"]
     assert len(ons) == 1 and ons[0]["text"] == onscreen_q  # 永不拆动
+
+
+def test_multi_sentence_split_preserves_order() -> None:
+    """N0-D-032:多句超窗拍拆分后句序不乱(治抽最长句乱序)。"""
+    from hevi.n0.splitter import split_overlong
+
+    sents = [
+        {"sid": "a", "type": "fact", "text": "第一句" + "甲" * 40, "presentation": "vo"},
+        {"sid": "b", "type": "fact", "text": "第二句短", "presentation": "vo"},
+        {"sid": "c", "type": "fact", "text": "第三句" + "丙" * 60, "presentation": "vo"},
+        {"sid": "d", "type": "fact", "text": "第四句", "presentation": "vo"},
+    ]
+    draft = {"beats": [{"beat_id": "b1", "sentences": sents}]}
+    out = split_overlong(draft, max_secs=15.0, min_secs=5.0)
+    order = [s["sid"][0] for b in out["beats"] for s in b["sentences"]]
+    assert order == ["a", "b", "c", "d"], order  # 句序保持,不因最长句c被抽走而乱

@@ -117,11 +117,10 @@ def _split_beat(beat: dict, max_secs: float) -> list[dict]:
     sents = beat.get("sentences", [])
     if not sents:
         return [beat]
-    # N0-D-020：只在**非-onscreen** 句里挑最长者拆；onscreen 句(0 计)永不选为拆分对象。
+    # N0-D-020：只在**非-onscreen** 句里拆；onscreen 句(0 计)永不选为拆分对象。
     splittable = [i for i, s in enumerate(sents) if s.get("presentation") != "onscreen"]
     if not splittable:
         return [beat]  # 全 onscreen(0 计) → 不可能超窗;防御性兜底，不拆
-    li = max(splittable, key=lambda i: _sent_secs(sents[i]))
     if len(sents) == 1:
         halves = _split_sentence(sents[0])
         if len(halves) == 1:
@@ -129,9 +128,24 @@ def _split_beat(beat: dict, max_secs: float) -> list[dict]:
         left = {**beat, "sentences": [halves[0]]}
         right = {**beat, "sentences": [halves[1]]}
         return _split_beat(left, max_secs) + _split_beat(right, max_secs)
-    # 多句拍：把最长(非-onscreen)句移到新拍，onscreen 句留原拍(随非拆句),递归
-    left = {**beat, "sentences": sents[:li] + sents[li + 1 :]}
-    right = {**beat, "sentences": [sents[li]]}
+    # 多句拍(N0-D-032 保序切分)：先拆本身超窗的单句(原位替换、保序);
+    over_i = next((i for i in splittable if _sent_secs(sents[i]) > max_secs), None)
+    if over_i is not None:
+        halves = _split_sentence(sents[over_i])
+        if len(halves) > 1:
+            new_sents = sents[:over_i] + halves + sents[over_i + 1 :]
+            return _split_beat({**beat, "sentences": new_sents}, max_secs)
+    # 按**句序**累加找切点(不重排句序——治多句拍抽最长句造成的乱序),左半 ≤max、右半递归。
+    acc, cut = 0.0, 0
+    for i, s in enumerate(sents):
+        if i > 0 and acc + _sent_secs(s) > max_secs:
+            cut = i
+            break
+        acc += _sent_secs(s)
+    if cut == 0:
+        cut = 1  # 兜底：首句即超且不可拆 → 单独分出,交 R-hard 判
+    left = {**beat, "sentences": sents[:cut]}
+    right = {**beat, "sentences": sents[cut:]}
     return _split_beat(left, max_secs) + _split_beat(right, max_secs)
 
 

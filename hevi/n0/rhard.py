@@ -523,6 +523,8 @@ def h7_e_banner(draft: dict, refs: dict) -> list[Failure]:
 # ── H8 结构 ──────────────────────────────────────────────────────────────────
 def h8_structure(draft: dict, refs: dict) -> list[Failure]:
     ep = refs.get("episode_plan", {})
+    # N0-D-030 节奏放慢:VO 拍时长窗可按集上调(episode_plan.vo_window=(lo,hi)),默认 5–15。
+    lo, hi = ep.get("vo_window") or (5.0, 15.0)
     out: list[Failure] = []
     sents = [s for _b, s in _sentences(draft)]
     if sents:
@@ -553,7 +555,7 @@ def h8_structure(draft: dict, refs: dict) -> list[Failure]:
         # 口播 5 字/s、逐字短引按字幕 2 字/s；onscreen 引文句本体不口播计 0(呈现分离)。
         bsents = b.get("sentences", [])
         secs = sum(_sent_vo_secs(s) for s in bsents)
-        if not 5.0 <= secs <= 15.0:
+        if not lo <= secs <= hi:
             # 超窗：若拍内有非 onscreen 长引文，首选标 onscreen + 补转述；否则拆句/重述。
             long_q = [
                 s.get("sid")
@@ -561,16 +563,20 @@ def h8_structure(draft: dict, refs: dict) -> list[Failure]:
                 if s.get("presentation") != "onscreen"
                 and sum(len(q.get("text", "")) for q in _quotes(s)) >= 15
             ]
-            if secs > 15.0 and long_q:
+            if secs > hi and long_q:
                 fix = (
                     f"此拍 {secs:.1f}s 超窗；把长引文句 {long_q} 标 presentation=onscreen"
                     "（画面呈现、不计 VO），并在同拍补一句 vo 白话转述句"
                 )
-            elif secs > 15.0:
+            elif secs > hi:
                 fix = f"此拍 {secs:.1f}s 超窗；按分句边界拆为两拍，或改述缩短口播文字"
             else:
-                fix = f"此拍仅 {secs:.1f}s 欠窗；扩写口播内容或与相邻同 role 拍合并至 5–15s"
-            out.append(Failure("H8", bid, f"VO 分段估时 {secs:.1f}s 不在 5–15s/拍", fix))
+                fix = (
+                    f"此拍仅 {secs:.1f}s 欠窗；扩写口播或与相邻同 role 拍合并到 {lo:.0f}–{hi:.0f}s"
+                )
+            out.append(
+                Failure("H8", bid, f"VO 分段估时 {secs:.1f}s 不在 {lo:.0f}–{hi:.0f}s/拍", fix)
+            )
         # onscreen 引文必配同拍白话转述(N0-D-010)：含 onscreen 句的拍须有 ≥1 个
         # 非 onscreen 的 fact/thesis 口播句(转述),否则画面有引文而无人念 → FAIL。
         if any(s.get("presentation") == "onscreen" for s in bsents) and not any(
