@@ -423,11 +423,17 @@ def test_anchor_idempotent_skips_already_quoted() -> None:
 def test_h4_institutional_terms_whitelist_exempt() -> None:
     """N0-D-019：制度类目集合名词(卿族/六卿/三军)豁免 H4;真造名仍 FAIL。"""
     draft, refs = _valid()
-    draft["beats"][1]["sentences"].append({
-        "sid": "s1-b2-inst", "type": "fact", "fact_refs": ["ev:quwo-wugong-mie-yi"],
-        "thesis_refs": [], "text": "卿族坐大、六卿掌三军。",
-        "entities": ["卿族", "六卿", "三军"], "display": {"source_display": "《左传》"},
-    })
+    draft["beats"][1]["sentences"].append(
+        {
+            "sid": "s1-b2-inst",
+            "type": "fact",
+            "fact_refs": ["ev:quwo-wugong-mie-yi"],
+            "thesis_refs": [],
+            "text": "卿族坐大、六卿掌三军。",
+            "entities": ["卿族", "六卿", "三军"],
+            "display": {"source_display": "《左传》"},
+        }
+    )
     rep = run_rhard(draft, refs)
     assert rep["by_gate"]["H4"] == "PASS", [f for f in rep["failures"] if f["gate"] == "H4"]
     # 造名仍抓
@@ -440,9 +446,13 @@ def test_h4_institutional_terms_whitelist_exempt() -> None:
 # ── N0-D-021 锚定器增强 ───────────────────────────────────────────────────────
 def test_anchor_ellipsis_splice_rejected() -> None:
     """N0-D-021c：引号含省略号=跨段拼引 → 不锚定,H2 FAIL 且修法提示分两条/改述。"""
-    refs = {"corpus": {"u:1": "冬楚子圍宋於是乎蒐于被廬作三軍謀元帥趙衰曰郤縠可乃使郤縠將中軍"},
-            "ku_events": {}, "theses": {}, "name_registry": [],
-            "episode_plan": {"counterpoint_search_record": {"x": 1}}}
+    refs = {
+        "corpus": {"u:1": "冬楚子圍宋於是乎蒐于被廬作三軍謀元帥趙衰曰郤縠可乃使郤縠將中軍"},
+        "ku_events": {},
+        "theses": {},
+        "name_registry": [],
+        "episode_plan": {"counterpoint_search_record": {"x": 1}},
+    }
     draft = _anchor_draft("《左传》载：「蒐于被廬作三軍……乃使郤縠將中軍」。")
     anchored, reports = anchor_quotes(draft, refs)
     assert any(r["status"] == "ellipsis_splice" for r in reports)
@@ -459,8 +469,14 @@ def test_anchor_multihit_disambiguated_by_beat_event() -> None:
         "event_ulids": {"ev:sanjun": ["u:A"]},
         "episode_plan": {"beat_events": {"b1": ["ev:sanjun"]}},
     }
-    draft = {"beats": [{"beat_id": "b1", "sentences": [
-        {"sid": "s1", "type": "fact", "text": "赵衰曰『郤縠可』。"}]}]}
+    draft = {
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [{"sid": "s1", "type": "fact", "text": "赵衰曰『郤縠可』。"}],
+            }
+        ]
+    }
     anchored, reports = anchor_quotes(draft, refs)
     q = anchored["beats"][0]["sentences"][0].get("quote")
     assert q and (q["ulid"] if isinstance(q, dict) else q[0]["ulid"]) == "u:A"  # 消歧取拍 event 域
@@ -471,8 +487,16 @@ def test_anchor_nested_inner_independent() -> None:
     """N0-D-021a：外层因不连续失配,内层小引文仍独立锚定。"""
     refs = {"corpus": {"u:in": "郤縠可"}}
     # 外层含省略号(跨段)失配,内层『郤縠可』独立命中 u:in
-    draft = {"beats": [{"beat_id": "b1", "sentences": [
-        {"sid": "s1", "type": "fact", "text": "赵衰曰：『郤縠可』，遂用之。"}]}]}
+    draft = {
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {"sid": "s1", "type": "fact", "text": "赵衰曰：『郤縠可』，遂用之。"}
+                ],
+            }
+        ]
+    }
     _, reports = anchor_quotes(draft, refs)
     assert any(r["status"] == "anchored" and r["ulid"] == "u:in" for r in reports)
 
@@ -481,11 +505,17 @@ def test_h2_attached_quote_ellipsis_splice_fix() -> None:
     """N0-D-021c 接挂 quote：quote.text 含省略号=跨段拼引 → H2 FAIL 且修法提示拆两条/改述。"""
     draft, refs = _valid()
     refs["corpus"]["u:long"] = "甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥"
-    draft["beats"][1]["sentences"].append({
-        "sid": "s1-b2-sp", "type": "fact", "fact_refs": ["ev:quwo-wugong-mie-yi"], "thesis_refs": [],
-        "text": "史载其事。", "quote": {"ulid": "u:long", "text": "甲乙丙……午未申"},
-        "display": {"source_display": "《左传》"},
-    })
+    draft["beats"][1]["sentences"].append(
+        {
+            "sid": "s1-b2-sp",
+            "type": "fact",
+            "fact_refs": ["ev:quwo-wugong-mie-yi"],
+            "thesis_refs": [],
+            "text": "史载其事。",
+            "quote": {"ulid": "u:long", "text": "甲乙丙……午未申"},
+            "display": {"source_display": "《左传》"},
+        }
+    )
     rep = run_rhard(draft, refs)
     assert rep["by_gate"]["H2"] == "FAIL"
     assert any(f["gate"] == "H2" and "拼接" in f["fix"] for f in rep["failures"])
