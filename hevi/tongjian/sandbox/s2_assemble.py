@@ -21,8 +21,11 @@ from s2_episode import build
 from s2_mapstates import ms_jin_xiangong
 
 from hevi.tongjian.map_anim import _static_map, animate_establish
+from hevi.tongjian.modern_shots import render_modern_compare, render_modern_title
 from hevi.tongjian.quote_shots import render_dual_panel, render_thesis_title
 
+# S2_STYLE=modern → 现代白话讲解风(扁平信息卡,N0-D-022 视觉层);默认 classic 古典纸雕。
+STYLE = os.environ.get("S2_STYLE", "classic")
 # S2_OUT 环境变量可覆写成片根目录(白话样片对比用，默认旧 s2)。
 _ROOT = Path(os.environ.get("S2_OUT", "output/s2_liji"))
 OUT = _ROOT / "assemble"
@@ -50,12 +53,30 @@ DUAL_BY = {d.beat_id: d for d in DUALS}
 
 def render_shot(beat, dur: float, d: Path) -> Path:
     b = beat.beat_id
+    d.mkdir(parents=True, exist_ok=True)
+    if STYLE == "modern":  # ── 现代白话讲解风 ──
+        if b in DUAL_BY:  # 两种记载 → 现代扁平对比卡
+            return render_modern_compare(DUAL_BY[b], d, size=(W, H), fps=FPS, duration_s=dur)
+        if beat.visual_intent == "establish":  # establish 保留地图(地理信息,非文言)
+            return animate_establish(JIN, d, duration_s=dur, fps=FPS)
+        accent = (
+            (54, 116, 217) if b == "b5" else (214, 69, 65)
+        )  # counterpoint 蓝、mainline 红(现代色)
+        return render_modern_title(
+            HOLD_TITLE_MODERN.get(b, ""),
+            d,
+            size=(W, H),
+            fps=FPS,
+            duration_s=dur,
+            accent=accent,
+            wenyan=ONSCREEN.get(b, ""),
+        )
+    # ── 古典纸雕风(默认,不变) ──
     if b in DUAL_BY:  # S12 双半幅(三 cf)
         return render_dual_panel(DUAL_BY[b], d, size=(W, H), fps=FPS, duration_s=dur)
     if beat.visual_intent == "establish":
         return animate_establish(JIN, d, duration_s=dur, fps=FPS)
     # hold:题字定格(应验/counterpoint)——晋底图 + 竖排题字落款(S1-POLISH-1#4)
-    d.mkdir(parents=True, exist_ok=True)
     base = _static_map(JIN, W, H)
     title = HOLD_TITLE.get(b, "")
     accent = (60, 60, 90) if b == "b5" else (150, 30, 20)  # counterpoint 蓝调、mainline 红
@@ -63,6 +84,11 @@ def render_shot(beat, dur: float, d: Path) -> Path:
 
 
 HOLD_TITLE = {"b4": "骊姬乱嫡晋无公族", "b5": "卫宣公嫡庶相残"}
+# 现代白话标题(取代文言标题卡)
+HOLD_TITLE_MODERN = {
+    "b4": "骊姬乱权，晋国从此没了自家屏障",
+    "b5": "卫国也上演了同样的嫡庶相残",
+}
 
 
 def make_sub_png(vo_text: str, places: list[str], path: Path):
@@ -197,7 +223,11 @@ def main():
             print(f"{beat.beat_id} [{beat.visual_intent}] VO {dur:.1f}s → 渲染…", flush=True)
             raw = render_shot(beat, dur, d)
             sub = d / "sub.png"
-            make_sub_png(beat.vo_text, _PLACES_OF.get(beat.beat_id, []), sub)
+            # 现代风:地名角标只画在有地图的 establish 拍(卡片拍无地图,地名会悬空)。
+            places = _PLACES_OF.get(beat.beat_id, [])
+            if STYLE == "modern" and beat.visual_intent != "establish":
+                places = []
+            make_sub_png(beat.vo_text, places, sub)
             subprocess.run(
                 [
                     "ffmpeg",
