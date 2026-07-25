@@ -196,7 +196,11 @@ def force_long_vo_onscreen(
     强制 presentation=onscreen(画面呈现、不计 VO)。治「长政论/长文言引留 VO」的 H8 超窗
     (b4 病)：长引本就该上屏而非口播。翻转后该拍若无 vo 转述句，H8 结构门(onscreen 须配非-
     onscreen 句)自会要求补白话转述——即「要求白话转述」由既有 H8 落实。只改 presentation 标记，
-    不动内容/quote(同 N0-D-009 不篡改)。返回 (draft, 报告[{sid,quote_chars}])。"""
+    不动内容/quote(同 N0-D-009 不篡改)。返回 (draft, 报告[{sid,quote_chars}])。
+
+    **仅翻「本体即长引」的句**(引文 >threshold 且白话余量 textlen-qchars ≤ threshold)——句即那段引。
+    白话为主、只嵌短引的句(白话 80 字嵌 20 字引)**不翻**：翻了会把白话从 VO 抹掉(违白话优先);
+    短引留 vo 内联(H8 按 2 字/s 计),超窗则 splitter 处理白话部分。"""
     reports: list[dict] = []
     out_beats = []
     for b in draft.get("beats", []):
@@ -205,7 +209,8 @@ def force_long_vo_onscreen(
             s = dict(s0)
             if s.get("presentation") != "onscreen":
                 qchars = sum(len(q.get("text", "")) for q in _quotes(s))
-                if qchars > threshold:
+                baihua_rest = len(s.get("text", "")) - qchars  # 引文外白话余量
+                if qchars > threshold and baihua_rest <= threshold:
                     s["presentation"] = "onscreen"
                     reports.append(
                         {"sid": s.get("sid"), "quote_chars": qchars, "forced": "onscreen"}

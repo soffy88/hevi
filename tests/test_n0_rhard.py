@@ -457,8 +457,8 @@ def test_force_long_vo_quote_onscreen() -> None:
     }
     out, reports = force_long_vo_onscreen(draft)
     ss = out["beats"][0]["sentences"]
-    assert ss[0]["presentation"] == "onscreen"  # 长引强制 onscreen
-    assert ss[1].get("presentation") != "onscreen"  # 短引不翻
+    assert ss[0]["presentation"] == "onscreen"  # 本体即长引(余量0)→强制 onscreen
+    assert ss[1].get("presentation") != "onscreen"  # 短引(2字)不翻
     assert any(r["sid"] == "s1" and r["forced"] == "onscreen" for r in reports)
     # 已是 onscreen 的不重复处理、无 quote 的 vo 句不翻
     draft2 = {
@@ -473,6 +473,26 @@ def test_force_long_vo_quote_onscreen() -> None:
     }
     _, r2 = force_long_vo_onscreen(draft2)
     assert not r2
+    # ★白话为主、只嵌中长引的句不翻(白话余量 >阈)——治 b3-1 过翻(否则白话被抹出 VO)
+    lq2 = "甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未"  # 18 字 >15 阈
+    baihua_dom = {
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {
+                        "sid": "s4",
+                        "type": "fact",
+                        "text": "重耳夷吾惧祸出奔实因分封失当宗邑空虚引忧惧" + lq2 + "非仅因谮害",
+                        "quote": {"ulid": "u", "text": lq2},
+                    }
+                ],
+            }
+        ]
+    }
+    out3, r3 = force_long_vo_onscreen(baihua_dom)
+    assert out3["beats"][0]["sentences"][0].get("presentation") != "onscreen"  # 白话余量大→不翻
+    assert not r3
 
 
 def test_anchor_multi_hit_reports_not_guess() -> None:
