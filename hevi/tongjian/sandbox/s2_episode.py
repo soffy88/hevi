@@ -50,15 +50,22 @@ def build():
     for b in net["beats"]:
         pb = b.get("parent_beat") or b["beat_id"]
         for s in b["sentences"]:
+            # 按 sid 编码的 plan 显示拍路由(sid 前缀 bN → 显示拍 s2-bN)——W 可能把某 plan 拍的句
+            # 并进别的 beat 容器(如谮词句 sid=b2-1 落在 beat s2-b1),按 sid 归位才对齐 _PLAN。
+            bid = re.match(r"b\d+", s["sid"]).group()
+            sid_pb = "s2-" + bid
             if s.get("presentation") == "onscreen":
                 q = s.get("quote")
-                onscreen_bid[re.match(r"b\d+", s["sid"]).group()] = (
-                    (q["text"] if isinstance(q, dict) else q[0]["text"]) if q else s["text"]
-                )
+                qtext = (q["text"] if isinstance(q, dict) else q[0]["text"]) if q else s["text"]
+                onscreen_bid[bid] = qtext
+                # 白话优先:onscreen 句 text 若是白话转述(不含引文本体)→ 白话入该显示拍 vo 口播;
+                # 文言风(text 即引文本体、含 quote)→ 不入 vo(文言只呈现不口播)。
+                if qtext not in s["text"]:
+                    vo_by.setdefault(sid_pb, []).append(s["text"])
             else:
-                vo_by.setdefault(pb, []).append(s["text"])
+                vo_by.setdefault(sid_pb, []).append(s["text"])
             for cf in s.get("conflict_callouts") or []:
-                cf_by.setdefault(pb, set()).add(cf)
+                cf_by.setdefault(sid_pb, set()).add(cf)
 
     beats, facts = [], []
     for i, (pb, bid, intent, date) in enumerate(_PLAN):
