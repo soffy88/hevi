@@ -100,11 +100,14 @@ def render_modern_title(
             for ln in lines:
                 d.text((cx0 + 60, yy), ln, font=fbig, fill=(*_TEXT, 255))
                 yy += line_h
-        # 文言原文小角标(右下,弱化)
+        # 文言点睛:原文一行居中显在卡片下方(白话为主、文言点睛;避开底部字幕带)
         if wenyan and e > 0.9:
-            tag = "原文：" + wenyan[:22] + ("…" if len(wenyan) > 22 else "")
+            tag = "「" + wenyan + "」"
             bb = d.textbbox((0, 0), tag, font=fsmall)
-            d.text((w - (bb[2] - bb[0]) - 40, h - 52), tag, font=fsmall, fill=(*_SUBTLE, 235))
+            tw = bb[2] - bb[0]
+            ty = cy0 + card_h + dy + 34
+            # 左侧引文竖条 + 原文(弱化灰),整体居中
+            d.text(((w - tw) // 2, ty), tag, font=fsmall, fill=(*_SUBTLE, 240))
         frame.convert("RGB").save(fd / f"f_{f:04d}.png")
     return _encode(fd, out_dir / "modern_title.mp4", fps)
 
