@@ -139,6 +139,7 @@ def anchor_quotes(draft: dict, refs: dict) -> tuple[dict, list[dict]]:
             s = dict(s0)
             text = s.get("text", "")
             marked = {_norm(q.get("text", "")) for q in _quotes(s)}
+            strip_idxs: set[int] = set()  # N0-D-024 零命中剥引号：待删的引号字符位置
             # 嵌套(N0-D-021a)：内层(短)span 先处理，各自独立锚定，不被外层失配拖累。
             for a, bnd in sorted(_mark_ranges(text), key=lambda r: r[1] - r[0]):
                 inner = text[a + 1 : bnd - 1]
@@ -161,10 +162,53 @@ def anchor_quotes(draft: dict, refs: dict) -> tuple[dict, list[dict]]:
                         {"sid": sid, "span": inner[:20], "status": "anchored", "ulid": hits[0]}
                     )
                 elif not hits:
-                    reports.append({"sid": sid, "span": inner[:20], "status": "none"})
+                    # N0-D-024 零命中剥引号(N0-D-015 对称面)：引号内容简繁归一后 corpus 零命中
+                    # → 判为非引文(白话概括)，剥引号标记转普通白话叙述，不触 H2。仅零命中才剥
+                    # (命中照挂/多命中报回消歧)；只去 open+close 两标记、一字不改内容(同 N0-D-009)。
+                    strip_idxs.add(a)
+                    strip_idxs.add(bnd - 1)
+                    reports.append(
+                        {"sid": sid, "span": inner[:20], "status": "stripped_paraphrase"}
+                    )
                 else:
                     reports.append(
                         {"sid": sid, "span": inner[:20], "status": "ambiguous", "ulids": hits}
+                    )
+            if strip_idxs:  # 降序删引号字符(去 open/close 两标记,内容位移安全)——N0-D-024
+                chars = list(text)
+                for i in sorted(strip_idxs, reverse=True):
+                    del chars[i]
+                s["text"] = "".join(chars)
+            sents.append(s)
+        out_beats.append({**b, "sentences": sents})
+    return {**draft, "beats": out_beats}, reports
+
+
+_LONG_VO_QUOTE_CHARS = 15  # vo 内逐字引超此长度即强制 onscreen(> prompt 允许的约15字短引内联)
+
+
+def force_long_vo_onscreen(
+    draft: dict, *, threshold: int = _LONG_VO_QUOTE_CHARS
+) -> tuple[dict, list[dict]]:
+    """N0-D-025 长 vo 引强制 onscreen：确定性预处理(anchor 后、split 前)。
+
+    vo 句(presentation!=onscreen)含逐字 corpus 命中引文(已挂 quote)且引文总长 >threshold →
+    强制 presentation=onscreen(画面呈现、不计 VO)。治「长政论/长文言引留 VO」的 H8 超窗
+    (b4 病)：长引本就该上屏而非口播。翻转后该拍若无 vo 转述句，H8 结构门(onscreen 须配非-
+    onscreen 句)自会要求补白话转述——即「要求白话转述」由既有 H8 落实。只改 presentation 标记，
+    不动内容/quote(同 N0-D-009 不篡改)。返回 (draft, 报告[{sid,quote_chars}])。"""
+    reports: list[dict] = []
+    out_beats = []
+    for b in draft.get("beats", []):
+        sents = []
+        for s0 in b.get("sentences", []):
+            s = dict(s0)
+            if s.get("presentation") != "onscreen":
+                qchars = sum(len(q.get("text", "")) for q in _quotes(s))
+                if qchars > threshold:
+                    s["presentation"] = "onscreen"
+                    reports.append(
+                        {"sid": s.get("sid"), "quote_chars": qchars, "forced": "onscreen"}
                     )
             sents.append(s)
         out_beats.append({**b, "sentences": sents})

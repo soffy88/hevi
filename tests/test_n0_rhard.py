@@ -383,8 +383,9 @@ def test_anchor_unique_hit_auto_attaches() -> None:
     assert run_rhard(anchored, refs2)["by_gate"]["H2"] == "PASS"
 
 
-def test_anchor_zero_hit_not_attached_h2_fails_with_fix() -> None:
-    """引号内容非 corpus 逐字(零命中)→ 不挂,H2 FAIL 且修法提示去引号/改述。"""
+def test_anchor_zero_hit_strips_quotes_paraphrase() -> None:
+    """N0-D-024 零命中剥引号：引号内容 corpus 零命中(白话概括)→ 自动剥引号转白话,不触 H2。
+    只去引号标记、内容一字不改(同 N0-D-009)。"""
     refs = {
         "corpus": {"u:zheng": "夏五月鄭伯克段于鄢"},
         "ku_events": {},
@@ -394,12 +395,84 @@ def test_anchor_zero_hit_not_attached_h2_fails_with_fix() -> None:
     }
     draft = _anchor_draft("他说了『这不是原文的句子』。")
     anchored, reports = anchor_quotes(draft, refs)
-    assert "quote" not in anchored["beats"][0]["sentences"][0]  # 未挂
-    assert any(r["status"] == "none" for r in reports)
-    rep = run_rhard(anchored, refs)
-    assert rep["by_gate"]["H2"] == "FAIL"
-    h2 = [f for f in rep["failures"] if f["gate"] == "H2"]
-    assert any("去掉引号" in f["fix"] or "改白话" in f["fix"] for f in h2)
+    s = anchored["beats"][0]["sentences"][0]
+    assert "quote" not in s  # 未挂(非引文)
+    assert "『" not in s["text"] and "』" not in s["text"]  # 引号已剥
+    assert s["text"] == "他说了这不是原文的句子。"  # 内容一字不改,仅去引号
+    assert any(r["status"] == "stripped_paraphrase" for r in reports)
+    # 剥引号后 H2 不再 FAIL(引号 span 已消失,无未标引文绕行)
+    assert run_rhard(anchored, refs)["by_gate"]["H2"] == "PASS"
+
+
+def test_anchor_hit_still_attaches_not_stripped() -> None:
+    """N0-D-024 边界：命中的引号照挂 quote(不误剥),只有零命中才剥。"""
+    refs = {"corpus": {"u:zheng": "夏五月鄭伯克段于鄢"}}
+    # 一句里:命中『鄭伯克段于鄢』应挂;零命中『这是白话』应剥
+    draft = _anchor_draft("郑国『鄭伯克段于鄢』,后人评『这是白话概括』。")
+    anchored, reports = anchor_quotes(draft, refs)
+    s = anchored["beats"][0]["sentences"][0]
+    q = s["quote"]
+    q = q if isinstance(q, dict) else q[0]
+    assert q["ulid"] == "u:zheng" and q["text"] == "鄭伯克段于鄢"  # 命中照挂
+    assert "鄭伯克段于鄢" in s["text"]  # 命中引号保留(挂了 quote)
+    assert "这是白话概括" in s["text"] and "『这是白话概括』" not in s["text"]  # 零命中被剥
+    assert any(r["status"] == "anchored" for r in reports)
+    assert any(r["status"] == "stripped_paraphrase" for r in reports)
+
+
+def test_anchor_multi_hit_not_stripped_still_ambiguous() -> None:
+    """N0-D-024 边界:多命中不剥,仍报回消歧(N0-D-021)——剥引号只对零命中。"""
+    draft = _anchor_draft("师服说『本大而末小』。")
+    anchored, reports = anchor_quotes(draft, _anchor_refs())
+    assert any(r["status"] == "ambiguous" for r in reports)
+    assert not any(r["status"] == "stripped_paraphrase" for r in reports)
+    assert "『本大而末小』" in anchored["beats"][0]["sentences"][0]["text"]  # 多命中引号不剥
+
+
+def test_force_long_vo_quote_onscreen() -> None:
+    """N0-D-025 长 vo 引强制 onscreen:vo 句含逐字引 >阈长 → 翻 onscreen(不计 VO);短引不翻。"""
+    from hevi.n0.rhard import force_long_vo_onscreen
+
+    long_q = "甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉"  # 18 字 >15 阈
+    draft = {
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {
+                        "sid": "s1",
+                        "type": "fact",
+                        "text": long_q,
+                        "quote": {"ulid": "u", "text": long_q},
+                    },
+                    {
+                        "sid": "s2",
+                        "type": "fact",
+                        "text": "曰『短引』。",
+                        "quote": {"ulid": "u2", "text": "短引"},
+                    },
+                ],
+            }
+        ]
+    }
+    out, reports = force_long_vo_onscreen(draft)
+    ss = out["beats"][0]["sentences"]
+    assert ss[0]["presentation"] == "onscreen"  # 长引强制 onscreen
+    assert ss[1].get("presentation") != "onscreen"  # 短引不翻
+    assert any(r["sid"] == "s1" and r["forced"] == "onscreen" for r in reports)
+    # 已是 onscreen 的不重复处理、无 quote 的 vo 句不翻
+    draft2 = {
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {"sid": "s3", "type": "fact", "text": "纯白话没有引文的长句子铺陈铺陈铺陈"}
+                ],
+            }
+        ]
+    }
+    _, r2 = force_long_vo_onscreen(draft2)
+    assert not r2
 
 
 def test_anchor_multi_hit_reports_not_guess() -> None:
