@@ -418,3 +418,20 @@ def test_anchor_idempotent_skips_already_quoted() -> None:
     draft["beats"][0]["sentences"][0]["quote"] = {"ulid": "u:zheng", "text": "鄭伯克段于鄢"}
     _, reports = anchor_quotes(draft, refs)
     assert not any(r["status"] == "anchored" for r in reports)  # 已挂,不再锚
+
+
+def test_h4_institutional_terms_whitelist_exempt() -> None:
+    """N0-D-019：制度类目集合名词(卿族/六卿/三军)豁免 H4;真造名仍 FAIL。"""
+    draft, refs = _valid()
+    draft["beats"][1]["sentences"].append({
+        "sid": "s1-b2-inst", "type": "fact", "fact_refs": ["ev:quwo-wugong-mie-yi"],
+        "thesis_refs": [], "text": "卿族坐大、六卿掌三军。",
+        "entities": ["卿族", "六卿", "三军"], "display": {"source_display": "《左传》"},
+    })
+    rep = run_rhard(draft, refs)
+    assert rep["by_gate"]["H4"] == "PASS", [f for f in rep["failures"] if f["gate"] == "H4"]
+    # 造名仍抓
+    draft["beats"][1]["sentences"][-1]["entities"] = ["卿族", "张三丰"]
+    rep2 = run_rhard(draft, refs)
+    assert rep2["by_gate"]["H4"] == "FAIL"
+    assert any(f["gate"] == "H4" and "张三丰" in f["reason"] for f in rep2["failures"])

@@ -288,6 +288,36 @@ def h3_dates_numbers(draft: dict, refs: dict) -> list[Failure]:
     return out
 
 
+# N0-D-019：制度类目白名单——叙述句中的制度/集合名词(非具名个体)豁免注册表核。
+# **显式枚举、逐条可审**;新增术语须入册(不做模式匹配式宽泛豁免，H4 抓造名/缺口能力不被掏空)。
+# 按 s1–s3 已见术语初始化;归一(_norm)后比对。
+_INSTITUTIONAL_TERMS = frozenset(
+    _norm(t)
+    for t in (
+        "公族",
+        "卿族",
+        "六卿",
+        "七穆",
+        "三军",
+        "五军",
+        "大宗",
+        "小宗",
+        "诸侯",
+        "群公子",
+        "公室",
+        "卿大夫",
+        "宗族",
+        "支庶",
+        "嫡庶",
+        "宗室",
+        "王室",
+        "诸卿",
+        "百官",
+        "国人",
+    )
+)
+
+
 # ── H4 名从注册表 + 原料池不可引(OP-D-054)────────────────────────────────────
 def h4_names_registry(draft: dict, refs: dict) -> list[Failure]:
     pool, names = set(refs.get("pool_ids", ())), set(refs.get("name_registry", ()))
@@ -312,6 +342,8 @@ def h4_names_registry(draft: dict, refs: dict) -> list[Failure]:
         for nm in s.get("entities") or []:
             if _norm(nm) in names_norm or _norm(nm) in quoted:
                 continue  # 简繁归一后命中注册表(N0-D-013)或在引文内(N0-D-007)→ 豁免
+            if _norm(nm) in _INSTITUTIONAL_TERMS:
+                continue  # N0-D-019：制度类目集合名词(卿族/六卿/三军…白名单)非具名个体，豁免
             out.append(
                 Failure(
                     "H4",

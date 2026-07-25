@@ -275,3 +275,51 @@ def test_merge_crosses_parent_same_role_not_role_boundary() -> None:
         assert not ({"fact", "thesis"} <= t), f"跨 fact/thesis 合并了: {t}"
     # b1+b2 两 fact 短拍应合并(总拍数 < 3)
     assert len(out) < 3
+
+
+def test_mixed_beat_splits_vo_keeps_onscreen_intact() -> None:
+    """N0-D-020 混合拍:onscreen 句(0计)+ 超窗白话句 → 拆后过 H8、onscreen 句一字不动。"""
+    long_vo = (
+        "叔向断言公室将卑政在家门；而诸卿掌军军制屡扩宗族坐大诸族降在皂隶，两代贤者异时同诊，"
+        "指向同一衰亡逻辑而不可挽也，晋室之覆其可俟乎哉惜乎；军制既屡扩而卿位再增，"
+        "权柄尽移诸卿之家，公族日削而卿族日盛，此三家分晋之结构远因肇端于此而积重难返也。"
+    )
+    onscreen_q = (
+        "本大而末小是以能固故天子建國諸侯立家卿置側室大夫有貳宗士有隸子弟庶人工商各有分親皆有等衰"
+    )
+    draft = {
+        "episode_ref": "ep:x",
+        "beats": [
+            {
+                "beat_id": "b1",
+                "sentences": [
+                    {
+                        "sid": "b1-1",
+                        "type": "thesis",
+                        "presentation": "onscreen",
+                        "thesis_refs": ["thesis:t1"],
+                        "fact_refs": [],
+                        "text": onscreen_q,
+                        "quote": {"ulid": "u:long", "text": onscreen_q},
+                        "display": {"attribution": "按"},
+                    },
+                    {
+                        "sid": "b1-2",
+                        "type": "thesis",
+                        "thesis_refs": ["thesis:t1"],
+                        "fact_refs": [],
+                        "text": long_vo,
+                        "display": {"attribution": "按"},
+                    },
+                ],
+            }
+        ],
+    }
+    assert _beat_secs(draft["beats"][0]) > 15.0  # 白话超窗
+    split = split_overlong(draft)
+    assert all(_beat_secs(b) <= 15.0 for b in split["beats"]), [
+        (_beat_secs(b)) for b in split["beats"]
+    ]
+    # onscreen 句仍在、text 一字不动
+    ons = [s for b in split["beats"] for s in b["sentences"] if s.get("presentation") == "onscreen"]
+    assert len(ons) == 1 and ons[0]["text"] == onscreen_q  # 永不拆动
