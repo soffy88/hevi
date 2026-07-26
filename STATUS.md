@@ -23,6 +23,9 @@
   - **follow-up ①(基建挡着,tracked):始皇一句 TTS 静音**——edge_tts 服务/DNS 抽风 + GPU 挂(Error 804)
     跑不了 vibevoice,两条 TTS 都被挡。补声是一次音频叠加,任一 TTS 恢复即补。见换 TTS 立项。
   - **follow-up ②:色彩打磨**——EP0 两插段 L5 色彩 retake(增益触边界),画面看一致,per-scene 校色边界 case。
+    **打磨方向(2026-07-26 定):色度专一校色**——景别差异(广角 master vs 近景 OTS)的 RGB 均值本就该不同,
+    现按均值增益匹配会把景别差当色偏硬拉→触边界。正解=只校色度(R/G、B/G 比)不校曝光/亮度,保住景别
+    差异只修系统性色偏;或改用场内中位段作基准(非首段)。属正经算法活,不急就一个 L5 宽松化(会掩真缺陷)。
   - **follow-up ③:vibevoice 立项需 GPU 恢复**(见换 TTS 立项;GPU 硬件问题不擅自重启共享主机)。
 - **✅✅ 色彩诊断 + 修复 + 真跑验证通过(2026-07-24,实付 $9.681)**。成片
   `output/tongjian_v2_limu_color/limu_color.mp4`(90.06s,720×1280,可 seek)。走固化 back-half 一个入口

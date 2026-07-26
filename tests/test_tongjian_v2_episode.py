@@ -451,3 +451,37 @@ def test_strip_comparative_removes_contrast_clauses() -> None:
     assert "玄端朝服" in got and "须髯修剪" in got  # 本人特征保留
     # 无对比词则原样(逗号归一)
     assert _strip_comparative("玄色深衣,束发冠") == "玄色深衣,束发冠"
+
+
+# ── C1:三档置信角标接生产(_clip_tier 判定 + 装配烧标)─────────────────────────
+def test_clip_tier_default_rules() -> None:
+    from hevi.tongjian.v2_episode import _clip_tier
+
+    lines = {
+        "d_quote": ScriptLine(
+            line_id="d_quote", type="dialogue", speaker="c1", text="曰", quote_id="q1"
+        ),
+        "d_plain": ScriptLine(line_id="d_plain", type="dialogue", speaker="c1", text="演绎对白"),
+        "n1": ScriptLine(line_id="n1", type="narration", text="背景"),
+    }
+    quote_shot = Shot(shot_id="s", line_ids=["d_quote"], characters=["c1"], camera=ShotCamera())
+    plain_shot = Shot(shot_id="s", line_ids=["d_plain"], characters=["c1"], camera=ShotCamera())
+    narr_shot = Shot(shot_id="s", line_ids=["n1"], camera=ShotCamera())
+    # 有真实引语 → 实录;戏剧化对白 → 演绎;讲解 → 推演
+    assert _clip_tier([quote_shot], "drama", lines) == ("实录", "")
+    assert _clip_tier([plain_shot], "drama", lines) == ("演绎", "")
+    assert _clip_tier([narr_shot], "narration", lines) == ("推演", "")
+
+
+def test_clip_tier_honors_explicit() -> None:
+    from hevi.tongjian.v2_episode import _clip_tier
+
+    sh = Shot(
+        shot_id="s",
+        line_ids=[],
+        characters=["c1"],
+        camera=ShotCamera(),
+        provenance_tier="实录",
+        source_cite="史记·秦始皇本纪",
+    )
+    assert _clip_tier([sh], "drama", {}) == ("实录", "史记·秦始皇本纪")

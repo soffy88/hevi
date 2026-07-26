@@ -239,6 +239,11 @@ class Shot(BaseModel):
     # INC-002 v0.2:编译好的声音提示词(第四层)。当前 funded 栈无 foley 引擎消费,先随 Shot 备着,
     # 有音频能力的 provider(如 Veo3)接入即用。空 = inert。
     audio_prompt: str = ""
+    # 三档置信标注(LSXC-EP0-CHARTER §3,频道诚信内核):实录/推演/演绎。装配时按此烧右下角标
+    # (`hevi/assembly/tier_overlay`)。空 = 走 `v2_episode._clip_tier` 的默认规则。source_cite 是
+    # 实录镜的出处(如"史记·秦始皇本纪")。
+    provenance_tier: str = ""
+    source_cite: str = ""
 
 
 class ShotList(BaseModel):

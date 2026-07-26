@@ -194,6 +194,25 @@ def _narration_text(shot: Any, lines_by_id: dict[str, Any]) -> str:
     return " ".join(lines_by_id[lid].text for lid in shot.line_ids if lid in lines_by_id)
 
 
+def _clip_tier(shots: list[Any], kind: str, lines_by_id: dict[str, Any]) -> tuple[str, str]:
+    """一个 clip 的三档置信标注(频道诚信内核,§3.1)。优先用 shot 显式 `provenance_tier`;否则默认规则:
+    演绎段(表演/面容艺术加工)→演绎;讲解段(场景/背景复原推断)→推演。有 quote_id(真实引语)的
+    对白升为实录。cite 用 shot.source_cite。判定规则可后续细化,这里先给自动默认(替代剪辑期人工)。"""
+    for sh in shots:
+        tier = getattr(sh, "provenance_tier", "") or ""
+        if tier:
+            return tier, getattr(sh, "source_cite", "") or ""
+    # 默认:drama 有真实引语对白 → 实录;否则演绎;narration → 推演
+    if kind == "drama":
+        has_quote = any(
+            (ln := lines_by_id.get(lid)) is not None and getattr(ln, "quote_id", None)
+            for sh in shots
+            for lid in sh.line_ids
+        )
+        return ("实录", "") if has_quote else ("演绎", "")
+    return "推演", ""
+
+
 async def produce_tongjian_v2_episode(
     *,
     source_name: str,
@@ -373,6 +392,7 @@ async def render_tongjian_v2_backhalf(
 
     # ── 逐组渲染(叙事序:drama 插段→produce_v2,narration→讲解静帧)──
     episode_clips: list[Path] = []
+    episode_tiers: list[tuple[str, str]] = []  # 每 clip 的 (置信档, 出处),装配时烧角标
     total_usd = 0.0
     l5_by_insert: list[dict] = []
     drama_idx = narr_idx = 0
@@ -404,6 +424,7 @@ async def render_tongjian_v2_backhalf(
                 gen_fn=gen_fn,
             )
             episode_clips.append(clip)
+            episode_tiers.append(_clip_tier(shots, "drama", lines_by_id))
             total_usd += float(cfg.get("actual_usd") or 0.0)
             l5_by_insert.append(
                 {
@@ -426,9 +447,10 @@ async def render_tongjian_v2_backhalf(
                 tts_fn=tts_fn,
             )
             episode_clips.append(clip)
+            episode_tiers.append(_clip_tier(shots, "narration", lines_by_id))
             narr_idx += 1
 
-    final = assemble_episode(clips=episode_clips, output_path=output_path)
+    final = assemble_episode(clips=episode_clips, output_path=output_path, tiers=episode_tiers)
     return {
         "final_video": str(final),
         "actual_usd": round(total_usd, 3),

@@ -53,10 +53,19 @@ def _normalize(src: Path, dst: Path, w: int, h: int, fps: int) -> None:
 
 
 def assemble_episode(
-    *, clips: list[Path], output_path: Path, width: int = 720, height: int = 1280, fps: int = 24
+    *,
+    clips: list[Path],
+    output_path: Path,
+    width: int = 720,
+    height: int = 1280,
+    fps: int = 24,
+    tiers: list[tuple[str, str]] | None = None,
 ) -> Path:
     """按 `clips` 顺序(叙事序:讲解/演绎交错)拼成一集成片。先逐 clip 归一(修坏音轨 + 统一参数),
-    再 `-c copy` 拼接(可 seek)。返回成片路径。"""
+    再 `-c copy` 拼接(可 seek)。返回成片路径。
+
+    `tiers`:与 clips 等长的 (置信档, 出处) 列表——归一后逐 clip 右下角烧三档置信角标(频道视觉契约,
+    见 `hevi/assembly/tier_overlay`)。None 则不烧(§3.2 的"剪辑期人工"退路)。"""
     if not clips:
         raise ValueError("clips 为空,无法装配")
     norm_dir = output_path.parent / "_norm"
@@ -65,6 +74,13 @@ def assemble_episode(
     for i, c in enumerate(clips):
         d = norm_dir / f"{i:03d}.mp4"
         _normalize(Path(c), d, width, height, fps)
+        # 置信角标:归一后逐 clip 烧右下角标(自动,替代剪辑期人工)。
+        if tiers and i < len(tiers) and tiers[i][0]:
+            from hevi.assembly.tier_overlay import burn_tier_overlay
+
+            badged = norm_dir / f"{i:03d}_tier.mp4"
+            burn_tier_overlay(d, badged, tiers[i][0], cite=tiers[i][1] or None)
+            d = badged
         normed.append(d)
 
     concat = output_path.parent / f"{output_path.stem}_concat.txt"
