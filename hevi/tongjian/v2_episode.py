@@ -229,6 +229,7 @@ async def produce_tongjian_v2_episode(
     voice_by_speaker: dict[str, str] | None = None,
     budget_usd: float | None = None,
     landscape: bool = True,
+    intro_theme: str = "",
 ) -> dict[str, Any]:
     """通鉴一集全程入口。返回 {final_video, actual_usd, n_drama, n_narration, l5_by_insert, ...}。
 
@@ -286,6 +287,7 @@ async def produce_tongjian_v2_episode(
         voice_by_speaker=voices,
         budget_usd=budget_usd,
         landscape=landscape,
+        intro_theme=intro_theme,
     )
 
 
@@ -307,6 +309,7 @@ async def render_tongjian_v2_backhalf(
     world_bible: Any = None,
     budget_usd: float | None = None,
     landscape: bool = True,
+    intro_theme: str = "",
 ) -> dict[str, Any]:
     """V2 后半(桥接→分组→演绎/讲解渲染→装配)。**HTTP 入口从这里进**——前端(L0-L5)在路由侧
     已跑完且经人工审核,不在这里重跑(重跑会覆盖审核过的剧本、白烧 LLM)。全程入口
@@ -404,6 +407,26 @@ async def render_tongjian_v2_backhalf(
     total_usd = 0.0
     l5_by_insert: list[dict] = []
     drama_idx = narr_idx = 0
+
+    # 开头点主题(§用户要求):片头一个讲解镜口播主题(如"今天,我们回到栎阳变法的现场…")。
+    # intro_theme 为空则不加(默认由 concept 兜底一句)。
+    intro = intro_theme or f"今天,我们回到{_loc_theme}的现场,看看那段真实发生过的历史。"
+    if intro.strip():
+        first_loc = _loc_for(groups[0][1][0].scene_id) if groups else _loc_theme
+        intro_clip = await render_jiangjie_clip(
+            visual_prompt=f"历史正剧开场空景,{first_loc}",
+            narration_text=intro,
+            world_bible=world_bible,
+            out_dir=run_dir / "jiangjie",
+            clip_id="intro",
+            drift_sign=1,
+            image_gen_fn=image_gen_fn,
+            tts_fn=tts_fn,
+            width=vid_w,
+            height=vid_h,
+        )
+        episode_clips.append(intro_clip)
+        episode_tiers.append(("推演", ""))
     for gi, (kind, shots) in enumerate(groups):
         if kind == "drama":
             # ── $80 熔断:在烧这段之前查帽。会超就暂停,不烧、不静默停,报已花 + 列剩余镜。──

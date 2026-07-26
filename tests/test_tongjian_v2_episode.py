@@ -271,9 +271,10 @@ async def test_backhalf_wires_full_flow(tmp_path: Path, monkeypatch: Any) -> Non
     assert result["n_drama_inserts"] == 2
     assert result["n_narration"] == 3
     assert result["actual_usd"] == 10.0  # 2 插段 × $5,按段汇总
-    assert jiangjie_calls == ["narr_0", "narr_1", "narr_2"]
-    # 装配 clip 顺序 = 叙事序(讲解/演绎交错):讲→演→讲→演→讲,共 5 段
-    assert len(assembled["clips"]) == 5
+    # 片头点主题(#3)默认加一个 intro 讲解镜 → intro + narr_0/1/2
+    assert jiangjie_calls == ["intro", "narr_0", "narr_1", "narr_2"]
+    # 装配 clip 顺序:intro + 讲→演→讲→演→讲,共 6 段
+    assert len(assembled["clips"]) == 6
 
 
 @pytest.mark.asyncio
