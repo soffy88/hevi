@@ -137,6 +137,7 @@ async def run_v2_produce(
     transcribe_fn: Any = None,
     vlm: Any = None,
     llm: Any = None,
+    ratio: str = "16:9",
 ) -> None:
     """`_run_director_via_tongjian` 的 V2 替身。`subject_ref_paths`/`scene_ref_paths`
     是路由侧已经查过库的角色/场景参考图路径(同 `_resolve_subject_ref_paths`/
@@ -271,6 +272,7 @@ async def run_v2_produce(
                         gen_fn=gen_fn,
                         rephrase_llm=llm,
                         moderation_safe=moderation_safe,
+                        ratio=ratio,
                     )
                 except Exception as e:
                     logger.warning("%s try%d 生成失败: %s", seg_id, attempt, e)

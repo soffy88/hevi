@@ -138,6 +138,7 @@ async def _render_drama_insert(
     run_dir: Path,
     llm: Any,
     gen_fn: Any,
+    ratio: str = "16:9",
 ) -> tuple[Path, dict]:
     """一个 contiguous drama 插段 → produce_v2 写实块(组内连续)。返回(块成片, config_json)。"""
     from hevi.director.pipeline_schemas import Screenplay, ScreenplayScene
@@ -186,6 +187,7 @@ async def _render_drama_insert(
         progress_cb=None,
         gen_fn=gen_fn,
         llm=llm,
+        ratio=ratio,
     )
     return Path(repo.state["result_video_path"]), repo.state.get("config_json", {})
 
@@ -226,6 +228,7 @@ async def produce_tongjian_v2_episode(
     tts_fn: Any = None,
     voice_by_speaker: dict[str, str] | None = None,
     budget_usd: float | None = None,
+    landscape: bool = True,
 ) -> dict[str, Any]:
     """通鉴一集全程入口。返回 {final_video, actual_usd, n_drama, n_narration, l5_by_insert, ...}。
 
@@ -282,6 +285,7 @@ async def produce_tongjian_v2_episode(
         tts_fn=tts_fn,
         voice_by_speaker=voices,
         budget_usd=budget_usd,
+        landscape=landscape,
     )
 
 
@@ -302,6 +306,7 @@ async def render_tongjian_v2_backhalf(
     design_list: Any = None,
     world_bible: Any = None,
     budget_usd: float | None = None,
+    landscape: bool = True,
 ) -> dict[str, Any]:
     """V2 后半(桥接→分组→演绎/讲解渲染→装配)。**HTTP 入口从这里进**——前端(L0-L5)在路由侧
     已跑完且经人工审核,不在这里重跑(重跑会覆盖审核过的剧本、白烧 LLM)。全程入口
@@ -325,6 +330,9 @@ async def render_tongjian_v2_backhalf(
         tts_fn = edge_tts_synthesize_smart
     _loc_theme = "/".join(location.values()) if isinstance(location, dict) else location
     concept = concept or Concept(theme=_loc_theme, tone="庄重厚重", style="历史正剧")
+    # 画幅:横屏(默认,历史正剧观感)=1280×720/16:9;竖屏=720×1280/9:16。qwen-image canon/空景板
+    # 默认已是 1280×720 横屏,横屏路无需改;竖屏才需另传 size(暂未接,当前只做横屏/竖屏切 ratio+装配)。
+    vid_w, vid_h, vid_ratio = (1280, 720, "16:9") if landscape else (720, 1280, "9:16")
     id_to_name = character_id_to_name(character_bible)
     voices = voice_by_speaker or {c.name: "zh-CN-YunjianNeural" for c in character_bible.characters}
     run_dir = output_path.parent
@@ -422,6 +430,7 @@ async def render_tongjian_v2_backhalf(
                 run_dir=run_dir / f"yanyi_{drama_idx}",
                 llm=llm,
                 gen_fn=gen_fn,
+                ratio=vid_ratio,
             )
             episode_clips.append(clip)
             episode_tiers.append(_clip_tier(shots, "drama", lines_by_id))
@@ -445,12 +454,16 @@ async def render_tongjian_v2_backhalf(
                 drift_sign=1 if narr_idx % 2 == 0 else -1,
                 image_gen_fn=image_gen_fn,
                 tts_fn=tts_fn,
+                width=vid_w,
+                height=vid_h,
             )
             episode_clips.append(clip)
             episode_tiers.append(_clip_tier(shots, "narration", lines_by_id))
             narr_idx += 1
 
-    final = assemble_episode(clips=episode_clips, output_path=output_path, tiers=episode_tiers)
+    final = assemble_episode(
+        clips=episode_clips, output_path=output_path, width=vid_w, height=vid_h, tiers=episode_tiers
+    )
     return {
         "final_video": str(final),
         "actual_usd": round(total_usd, 3),
