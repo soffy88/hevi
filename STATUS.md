@@ -13,6 +13,17 @@
   分配 120s(目标 459 字),实际紧凑剧本只 127 字,G2 时长偏差 72% fail。立木本就该短——
   修 constitution 生成时按事件戏剧密度分配时长(短事件短时长),别让时长门逼剧本注水。soffy 定
   "接受短段不注水"。待做。
+- **✅✅ EP0《秦统一中国》全集试制通过 + 双形态门通过(2026-07-26,实付 $9.094,74.9s)**。成片
+  `output/ep0_qinunify/ep0.mp4`(手搭 Script/ShotList 走固化 back-half,冷开场荆轲6镜 + 讲解 + 廷议反打
+  + 讲解×2)。**两形态门**:①廷议双人对白正反打(master+OTS×2+御座正面,反打翻转/side_convention/身份
+  /口型/两轴全过)②荆轲强动作(身份不漂)。**场景尺度修复兑现**:廷议大殿从"中等厅堂"变深纵深恢弘
+  (夹道龙柱/丹陛御座/低机位)。做的代码:反打 transform(`reverse_shots.py`)+ "反打=剪切"连续性规则
+  (剪切镜不接上段末帧)+ 渲染消费(`shot_recipes.py` 镜头配方卡库,OTS/frontal/master 唯一真源)+
+  场景尺度进 world_bible 世界卷 + canon 对比剥离 + 始皇 royal + QC/edge_tts 韧性。立项书 LSXC-EP0-CHARTER。
+  - **follow-up ①(基建挡着,tracked):始皇一句 TTS 静音**——edge_tts 服务/DNS 抽风 + GPU 挂(Error 804)
+    跑不了 vibevoice,两条 TTS 都被挡。补声是一次音频叠加,任一 TTS 恢复即补。见换 TTS 立项。
+  - **follow-up ②:色彩打磨**——EP0 两插段 L5 色彩 retake(增益触边界),画面看一致,per-scene 校色边界 case。
+  - **follow-up ③:vibevoice 立项需 GPU 恢复**(见换 TTS 立项;GPU 硬件问题不擅自重启共享主机)。
 - **✅✅ 色彩诊断 + 修复 + 真跑验证通过(2026-07-24,实付 $9.681)**。成片
   `output/tongjian_v2_limu_color/limu_color.mp4`(90.06s,720×1280,可 seek)。走固化 back-half 一个入口
   跑完(4 演绎插段 + 6 讲解镜 + 装配,不手串)。**结果**:①**L5 色彩全绿**(4/4 插段"增益均未触顶",
@@ -31,6 +42,19 @@
   组内匹配、跨场不硬拉)。实测数据模拟:旧法 5 段触边界→新法 **0 段触边界**,场内增益全落 0.85–1.31。
   测试 `test_run_v2_produce_color_reference_is_per_scene`(亮场首段不被拉暗)+ 全量绿。**不做"全片色调
   统一"**(会压平金饼暖特写/室外白天,是错的)。相关诊断图存 scratchpad。
+- **★ 换 TTS 立项(2026-07-26):edge_tts 是产线最脆单点,选型=本地 vibevoice**。edge_tts(微软端点)+
+  本机 DNS 间歇抽风已多次崩掉产线(正反打试跑连崩两次:QC 测时长 / 对白 fallback 合成)。已两层止血:
+  ① edge_tts 单句重试 3→6 次+加长退避;② produce_v2 对白 TTS 非致命(一句哑了记 degraded、不崩整集)。
+  **但根因是依赖不稳外部端点**——止血不治本。
+  - **edge-tts 锁 7.2.7 的假设不成立**(核过 changelog):7.2.7 只是 Voice 类型更新「不影响功能」,7.2.8
+    反而加了 SSL context 缓存(边际改善连接稳定)。我们在 7.2.8 = 已是更稳版本,**不能降级**。Pixelle
+    的 release note 说法与 edge-tts 官方 changelog 不符,不采。
+  - **选型 = 本地 vibevoice**(已装 + 有 `hevi/audio/vibevoice_patch.py`/`vibevoice_worker.py` 部分接线):
+    本地 TTS **彻底去掉网络单点**,才是治本。立项做:vibevoice 接进 voiceover/produce_v2 的 tts_fn 通道
+    (与 edge_tts 同 provider 契约),多角色音色映射,验对白质量/时长稳定,通过后把 edge_tts 降级为 fallback。
+  见 [[gpu-pcie-fallen-off-bus]] 同类基建脆弱。
+- **backlog(2026-07-26):RunningHub(云端 ComfyUI)未评估的 provider 选项**。SVI 那条本地路若要上云,
+  RunningHub 可能比裸租 GPU 更省。记待评估(与换 TTS 立项同属"产线依赖收敛/成本"线)。
 - **backlog(2026-07-24):narration 考据对勘门可扩(现为纯字符串对勘)**。数字/地名/忌讳器物三类
   已覆盖今天实证的缺口(三丈/咸阳),但地名靠后缀正则(阳/京/城…)+ 器物靠固定词表,是粗粒度锚。
   更细的年代考据(官职/礼制/称谓的时代一致)仍靠人审 + G2 事件级幻觉门。够用不阻塞,记扩展点。

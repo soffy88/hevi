@@ -174,6 +174,7 @@ def compile_multirole_prompt(
     world_bible: WorldBible | None = None,
     negative_constraints_text: str = "",
     performance_directive_text: str = "",
+    reverse_shot_directive_text: str = "",
 ) -> str:
     """`[Image N]` 角色声明编译——每张参考图在 prompt 里被显式声明角色 + 落位,落位数据
     取自真实 `SceneStage.blocking.initial_positions`(按 `character_names` 顺序过滤),
@@ -233,11 +234,19 @@ def compile_multirole_prompt(
     lines.append(action_text)
     if performance_directive_text:
         lines.append(performance_directive_text)
+    if reverse_shot_directive_text:
+        lines.append(reverse_shot_directive_text)
     if len(character_names) >= 2:
         lines.append(
             "两个人物必须是各自独立、可清楚区分的两张脸,不要融合成同一张脸,"
             "不要把两人的服装/发型混到一起。"
         )
+    # ④b(2026-07-25 廷辩试跑暴露):始皇台词"天下共苦战斗不休"被渲成了背景牌匾。对白文字绝不能
+    # 泄漏成画面里的可读文字——治"道具字规则没覆盖背景匾额"。
+    lines.append(
+        "画面里绝对不要把任何台词/对白/旁白文字渲染成可读文字——不出现写着台词的背景牌匾、匾额、"
+        "旗幡、条幅、字幕、石刻或竹简特写;对白只由人物开口说出。背景牌匾/旗幡如出现只能是无字或纯纹样。"
+    )
     # 画风锁 text-layer 迭代(2026-07-23):①位置——从 prompt 中段(实测 34% 位置、被后续
     # 动作/运镜/双脸规则盖过)移到**最末**,利用生成模型对尾部的 recency 权重;②形态——进 prompt
     # 的是 `style_render_directive`(30-50 字可执行渲染指令),不是 `style_manifesto`(357 字抽象
@@ -325,6 +334,27 @@ def _performance_directive(segment: SceneScriptSegment) -> str:
     return "\n".join(lines)
 
 
+def _reverse_shot_directive(segment: SceneScriptSegment) -> str:
+    """按 `shot_type` 调用镜头配方卡(`shot_recipes`)生成本段构图指令——OTS/君主御座/双人建立各
+    对应一张已实证的卡,卡是唯一真源(不再在这里散写)。治廷辩试跑暴露的三病:辩论塌成静止双人镜、
+    左右位翻(跳轴)、两人都像在说话。master 叠加宫殿纵深仰拍卡治"大殿不宏伟"。single → 空。"""
+    from hevi.director.shot_recipes import frontal_directive, master_directive, ots_directive
+
+    st = getattr(segment, "shot_type", "single")
+    spk = segment.dialogue[0].character_name if segment.dialogue else ""
+    if st == "master":
+        return master_directive()
+    if st == "ots":
+        return ots_directive(
+            speaker=spk,
+            speaker_side=segment.speaker_side or "画左",
+            foreground=segment.foreground_character,
+        )
+    if st == "frontal":
+        return frontal_directive(speaker=spk)
+    return ""
+
+
 async def generate_multirole_segment(
     *,
     scene_stage: SceneStage,
@@ -389,6 +419,7 @@ async def generate_multirole_segment(
         world_bible=world_bible,
         negative_constraints_text=negative_constraints_text,
         performance_directive_text=_performance_directive(segment),
+        reverse_shot_directive_text=_reverse_shot_directive(segment),
     )
     reference_images = build_reference_images(
         scene_plate_path=scene_plate_path,

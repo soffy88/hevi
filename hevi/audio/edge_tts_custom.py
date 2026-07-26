@@ -186,9 +186,9 @@ async def synthesize_with_voice_control(
                 _r, _p = _batch_rate, _batch_pitch
             seg = tmp / f"seg_{i:04d}.mp3"
             # edge-tts 端点会间歇性抽风,对完全正常的文本/音色也抛 "No audio was received"
-            # (微软侧限流/瞬时故障,实测同一音色反复试成功率飘忽)。不重试就会丢整行
-            # 台词 → 成片里这句变哑。重试 3 次(短退避),仍失败才放弃这一行。
-            for _attempt in range(3):
+            # (微软侧限流/瞬时故障 + 本机 DNS 间歇超时,实测同一音色反复试成功率飘忽)。不重试就会
+            # 丢整行台词 → 成片里这句变哑。重试 6 次、退避加长(覆盖较长瞬断,~15s),仍失败才放弃这行。
+            for _attempt in range(6):
                 try:
                     comm = edge_tts.Communicate(text, v, rate=_r or "+0%", pitch=_p or "+0Hz")
                     await comm.save(str(seg))
@@ -197,7 +197,7 @@ async def synthesize_with_voice_control(
                     seg.unlink(missing_ok=True)
                 if seg.exists() and seg.stat().st_size > 0:
                     break
-                await asyncio.sleep(0.8 * (_attempt + 1))
+                await asyncio.sleep(min(0.8 * (_attempt + 1), 4.0))
             if seg.exists() and seg.stat().st_size > 0:
                 parts.append(seg)
             else:

@@ -90,6 +90,8 @@ _WORLD_ENTRY_PROMPT = """你是电影美术指导,在为场景写"环境设定"�
 自行车、电线杆、架空电线、树影移动"这种程度),写清楚空间格局、光线、材质、气味/声音暗示、
 时间痕迹。原始素材没写到的细节可以按基调合理补全,但不要跟原始素材矛盾。
 
+{scale_directive}
+
 {domain_directive}
 
 再给一份**精简**负面清单——**只列 5-6 项最可能穿帮的**"这个场景绝不该出现"的东西(跟基调/
@@ -106,6 +108,18 @@ prompt 长度、还可能触发内容审核误判)——挑最容易破功的几
 作品基调:{tone}{style}
 原始素材:
 {material_text}"""
+
+# 场景尺度规则(2026-07-26,治"大殿不够宏伟"根因:场景描述只写"是什么"、没写"多大、怎么拍")。
+# 这是**规则不是特判**——历史正剧的宫殿/朝堂/城墙场景都需要尺度感,进 world_bible 世界卷生成,
+# 以后所有集复用。配套镜头配方卡见 `hevi/director/shot_recipes.py::宫殿纵深仰拍`。
+_SCALE_DIRECTIVE = (
+    "【场景尺度感·宏伟空间必写(规则,非本集特判)】若此场景是宫殿/朝堂/大殿/城门/城墙/庙宇/陵墓等"
+    "**宏伟空间**,profile_text 必须写出尺度感,不能只写'是什么'、要写'多大、怎么拍':"
+    "① 尺度描述——具体层高/进深/柱列/台阶(如'层高数丈''殿深数十丈''十二根合抱玄柱夹道''九级丹陛"
+    "御座高台''群臣分列于纵深两侧');"
+    "② 拍法约束——广角镜头、低机位仰拍强化高度、以立柱/丹陛/地砖延伸作纵深引导线、人物占画面比例小"
+    "以反衬空间宏大。非宏伟场景(市井/民居/野外)不套这条,按其本来尺度写。"
+)
 
 # 影像美学预设(2026-07-22 写实度探针坐实:style_manifesto 是水墨感/写实感的主控杠杆,
 # happyhorse-1.1-r2v 在写实 brief 下同一张 canon 同 seed 就能出真人实拍质感,不必换 provider。
@@ -258,6 +272,7 @@ async def _world_entry_draft(
         tone=concept.tone,
         style=_tone_style_text(concept),
         material_text=material_text,
+        scale_directive=_SCALE_DIRECTIVE,
         domain_directive=_domain_directive(visual_style),
     )
     try:

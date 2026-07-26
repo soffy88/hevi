@@ -774,6 +774,14 @@ class SceneScriptSegment(BaseModel):
     # 供 `lint_beat_and_dialogue_boundary` 把"节拍边界"变成可查信号。**2026-07-23:同上,
     # 现在也编译进真实生成 prompt 当该段的表演意图提示(`_performance_directive`)。**
     beat_description: str = ""
+    # 正反打镜序(2026-07-25,双人对白戏):由 `expand_debate_reverse_shots` 生成,produce_v2 消费。
+    #   shot_type: "single"(默认,单人/非辩论)/ "master"(双人建立轴线)/ "ots"(过肩反打)。
+    #   speaker_side: 说话人恒定的屏幕侧("画左"/"画右"),side_convention 契约——反打机位过轴但
+    #     人物左右位不翻(治双人对白最易崩的跳轴)。
+    #   foreground_character: OTS 前景那个人的 name(其肩/背虚焦入前景,不是主体,身份不重要)。
+    shot_type: str = "single"
+    speaker_side: str = ""
+    foreground_character: str = ""
 
 
 class SceneScript(BaseModel):

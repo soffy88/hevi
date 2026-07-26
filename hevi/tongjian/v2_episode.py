@@ -34,8 +34,28 @@ from hevi.tongjian.v2_jiangjie import render_jiangjie_clip
 # 演绎段定妆照取景框(时代/画风靠 world_bible,这里只定"写实定妆照"通用框)
 _CANON_FRAMING = (
     "写实历史正剧定妆照,真人演员,平静中性表情,正面半身像,"
+    "画面中只有一个人物、绝不出现第二个人,"
     "自然柔光,纯色中性摄影棚背景,写实肤色正常五官比例"
 )
+
+# 演绎镜 loaded 估价(立木实测 $1.21/镜;廷辩双人口型更难,取 1.3 作熔断预估)
+_EST_USD_PER_DRAMA_SHOT = 1.3
+
+
+class BudgetPauseError(RuntimeError):
+    """成本熔断(LSXC-EP0-CHARTER §4):累计花费 + 下一演绎插段预估将超帽 → **在烧这段之前**暂停。
+    不自动烧下一段、不自动静默停;报已花 + 列剩余镜,交人工决定(抬帽续跑 / 收工)。"""
+
+    def __init__(
+        self, *, spent: float, cap: float, remaining_shots: list[str], done_clips: list[str]
+    ):
+        self.spent = spent
+        self.cap = cap
+        self.remaining_shots = remaining_shots
+        self.done_clips = done_clips  # 已出的分段(人工决定续跑时可续,不白烧)
+        super().__init__(
+            f"成本熔断:已花 ${spent:.2f} / 帽 ${cap:.2f};还剩 {len(remaining_shots)} 镜未烧,等人工"
+        )
 
 
 def group_shots_by_kind(shotlist: Any, script: Any) -> list[tuple[str, list[Any]]]:
@@ -61,6 +81,21 @@ def group_shots_by_kind(shotlist: Any, script: Any) -> list[tuple[str, list[Any]
     return groups
 
 
+# 对比性描述词——canon 定妆照里出现这些会诱导 qwen-image 把"对比对象"也画进画面(2026-07-25
+# 正反打试跑实证:李斯 appearance 写"与王绾明显区分"→ canon 渲成两个人,身份基准坏)。canon 是
+# 单人定妆照,只留本人特征,凡含对比词的分句一律剔除。
+_COMPARATIVE_MARKERS = ("区分", "区别", "不同于", "有别于", "对比", "相比", "相较", "不像", "而非")
+
+
+def _strip_comparative(appearance: str) -> str:
+    """剔除 appearance 里的对比性分句(按中英逗号/、/;切分,丢掉含对比词的分句)。"""
+    import re
+
+    parts = re.split(r"[,,、;;]", appearance)
+    kept = [p for p in parts if p.strip() and not any(m in p for m in _COMPARATIVE_MARKERS)]
+    return ",".join(s.strip() for s in kept)
+
+
 async def _ensure_canon(
     *,
     names: set[str],
@@ -70,15 +105,17 @@ async def _ensure_canon(
     image_gen_fn: Any,
 ) -> dict[str, str]:
     """演绎段角色定妆照(qwen-image,负面用**共用 world_bible** 的考据 negatives)。name→path。
-    seed 由角色名 sha256 派生(同名同脸,跨进程稳定)。"""
+    seed 由角色名 sha256 派生(同名同脸,跨进程稳定)。appearance 里的对比性描述("与X区分")会剔除,
+    否则 qwen-image 把对比对象也画进 canon(单人定妆照渲成两人,身份基准坏)。"""
     neg = ",".join(getattr(world_bible.visual, "negative_list", []) or []) if world_bible else ""
     out_dir.mkdir(parents=True, exist_ok=True)
     refs: dict[str, str] = {}
     for nm in sorted(names):
         p = out_dir / f"canon_{nm}.png"
         seed = int(hashlib.sha256(nm.encode()).hexdigest(), 16) % (2**31)
+        appr = _strip_comparative(appearance.get(nm, ""))[:200]
         await image_gen_fn(
-            prompt=f"{_CANON_FRAMING},{nm},{appearance.get(nm, '')[:200]}",
+            prompt=f"{_CANON_FRAMING},{nm},{appr}",
             output_path=p,
             seed=seed,
             negative_prompt=neg,
@@ -169,6 +206,7 @@ async def produce_tongjian_v2_episode(
     image_gen_fn: Any = None,
     tts_fn: Any = None,
     voice_by_speaker: dict[str, str] | None = None,
+    budget_usd: float | None = None,
 ) -> dict[str, Any]:
     """通鉴一集全程入口。返回 {final_video, actual_usd, n_drama, n_narration, l5_by_insert, ...}。
 
@@ -224,6 +262,7 @@ async def produce_tongjian_v2_episode(
         image_gen_fn=image_gen_fn,
         tts_fn=tts_fn,
         voice_by_speaker=voices,
+        budget_usd=budget_usd,
     )
 
 
@@ -243,6 +282,7 @@ async def render_tongjian_v2_backhalf(
     voice_by_speaker: dict[str, str] | None = None,
     design_list: Any = None,
     world_bible: Any = None,
+    budget_usd: float | None = None,
 ) -> dict[str, Any]:
     """V2 后半(桥接→分组→演绎/讲解渲染→装配)。**HTTP 入口从这里进**——前端(L0-L5)在路由侧
     已跑完且经人工审核,不在这里重跑(重跑会覆盖审核过的剧本、白烧 LLM)。全程入口
@@ -303,15 +343,20 @@ async def render_tongjian_v2_backhalf(
 
     # 空景板按 location 去重生成(多设定剧集:室内朝堂/室外市集本就该用各自的板,否则影调/构图
     # 被单板拉平,削弱 per-scene 校色的意义)。`location` 可传 str(全片一处)或 {scene_id: str}。
+    from hevi.director.shot_recipes import palace_scale_directive
+
     plate_neg = ",".join(getattr(world_bible.visual, "negative_list", []) or [])
     style_dir = getattr(world_bible.visual, "style_render_directive", "") or ""
+    # 宏伟场景(宫殿/朝堂/大殿/城墙/庙宇)空景板叠加纵深仰拍尺度卡,治"大殿不宏伟"(配方卡真源)。
+    _MONUMENTAL = ("宫", "殿", "朝堂", "城墙", "城门", "庙", "陵", "阙")
     plate_cache: dict[str, str] = {}
 
     async def _plate_for(loc: str) -> str:
         if loc not in plate_cache:
             p = run_dir / f"scene_plate_{len(plate_cache)}.png"
+            scale = palace_scale_directive() if any(k in loc for k in _MONUMENTAL) else ""
             await image_gen_fn(
-                prompt=f"写实历史正剧电影空景,{loc},无人,自然天光,{style_dir}",
+                prompt=f"写实历史正剧电影空景,{loc},无人,自然天光,{style_dir}{scale}",
                 output_path=p,
                 seed=7 + len(plate_cache),
                 negative_prompt=plate_neg,
@@ -331,8 +376,18 @@ async def render_tongjian_v2_backhalf(
     total_usd = 0.0
     l5_by_insert: list[dict] = []
     drama_idx = narr_idx = 0
-    for kind, shots in groups:
+    for gi, (kind, shots) in enumerate(groups):
         if kind == "drama":
+            # ── $80 熔断:在烧这段之前查帽。会超就暂停,不烧、不静默停,报已花 + 列剩余镜。──
+            est_next = len(shots) * _EST_USD_PER_DRAMA_SHOT
+            if budget_usd is not None and total_usd + est_next > budget_usd:
+                remaining = [s.shot_id for _, ss in groups[gi:] for s in ss]
+                raise BudgetPauseError(
+                    spent=round(total_usd, 3),
+                    cap=budget_usd,
+                    remaining_shots=remaining,
+                    done_clips=[str(c) for c in episode_clips],
+                )
             loc = _loc_for(shots[0].scene_id)
             clip, cfg = await _render_drama_insert(
                 shots=shots,

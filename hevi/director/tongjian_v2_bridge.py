@@ -25,6 +25,7 @@ from hevi.director.pipeline_schemas import (
     SceneScriptSegment,
     SceneScriptSet,
 )
+from hevi.director.reverse_shots import expand_scene_script_set_debates
 
 # tongjian ShotCamera.movement → V2 camera_movement(SPEC-005-V2 §1.2)。映射后仍过 V2 的
 # enforce_camera_budget(全片配比)+ 强运动×身份互斥;演绎段镜少配比几乎不触发,主要靠此映射。
@@ -160,6 +161,9 @@ def build_v2_scene_script_set(
         )
         for ref, segs in sorted(segments_by_scene.items())
     ]
+    # 双人对白辩论场 → 正反打镜序(先合并被拆散的同一辩论 ④a,再逐场展开 master+OTS ①)。
+    # 非辩论场(单主角/独白)原样不动。
+    scripts = expand_scene_script_set_debates(scripts)
     return SceneScriptSet(scripts=scripts)
 
 
@@ -210,7 +214,7 @@ async def build_v2_inputs_from_tongjian(
 
     id_to_name = character_id_to_name(character_bible)
     design_list = build_v2_design_list(character_bible=character_bible)
-    # drama_only=True:演绎段只渲染 drama 镜,narration 镜归讲解段(sdxl_local),不进 produce_v2 付费渲染。
+    # drama_only=True:演绎段只渲染 drama 镜,narration 镜归讲解段,不进 produce_v2 付费渲染。
     scene_script_set = build_v2_scene_script_set(
         script=script, shot_list=shot_list, id_to_name=id_to_name, drama_only=True
     )

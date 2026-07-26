@@ -87,6 +87,25 @@ def _scene_name_for(scene_ref: int, screenplay: Any) -> str:
     return ""
 
 
+def _segment_character_names(
+    segment: Any, script: Any, subject_ref_paths: dict[str, str]
+) -> list[str]:
+    """这一段实际入镜的角色(2026-07-25 正反打):
+    - ots 过肩反打 → [说话人, 前景对手](两张脸,前景虚焦但仍给参考图);
+    - frontal 君主独立镜 → [说话人] 一人;
+    - master / single → 场内全部在场角色(默认,同旧行为)。
+    过滤掉没有 canon 的名字;取不到有效名字则退回场内全部(不崩)。"""
+    present = [c for c in (script.characters_present or []) if c in subject_ref_paths]
+    st = getattr(segment, "shot_type", "single")
+    spk = segment.dialogue[0].character_name if segment.dialogue else None
+    if st == "ots":
+        names = [n for n in (spk, segment.foreground_character) if n and n in subject_ref_paths]
+        return names or present
+    if st == "frontal":
+        return [spk] if (spk and spk in subject_ref_paths) else present
+    return present
+
+
 def _location_negative_list(world_bible: Any, scene_location: str) -> list[str]:
     """按当前场次 location 找到对应的 `world_bible.world[]` 条目,取它的 negative_list(逐地点
     年代准确性负面清单)。`world[].name` 常是 location 的前缀(location 带括号氛围补充),
@@ -158,6 +177,7 @@ async def run_v2_produce(
     )
     from hevi.director.multirole_reference import generate_multirole_segment
     from hevi.director.pipeline_schemas import SceneScriptDialogueLine, SceneScriptSegment
+    from hevi.director.reverse_shots import segment_continues_prior
     from hevi.director.scene_script import lint_camera_movement_variety
     from hevi.director.scene_stage_extract import extract_scene_stage_from_script
     from hevi.director.segment_qc import segment_qc
@@ -215,9 +235,7 @@ async def run_v2_produce(
 
         for segment in script.segments:
             seg_id = f"s{script.scene_ref}_{segment.segment_id or f'sg{segment.order:03d}'}"
-            character_names = [
-                c for c in (script.characters_present or []) if c in subject_ref_paths
-            ]
+            character_names = _segment_character_names(segment, script, subject_ref_paths)
             canon_paths = {n: Path(subject_ref_paths[n]) for n in character_names}
             requested_duration = max(segment.t_end_s - segment.t_start_s, 1.0)
             seed: int | None = None
@@ -227,6 +245,10 @@ async def run_v2_produce(
             qc = None
             moderation_safe = False  # green-net 拦截后置 True 降级重试一次
             moderation_retry_used = False
+
+            # 连续性参考按镜头关系传(见 `segment_continues_prior` 的"反打=剪切"规则):连续动作段接
+            # 上段末帧,剪切镜各自从 canon+场景独立起。
+            seg_continuity = prev_frame if segment_continues_prior(segment) else None
 
             while True:
                 try_path = run_dir / f"{seg_id}_try{attempt}.mp4"
@@ -240,7 +262,7 @@ async def run_v2_produce(
                         character_names=character_names,
                         canon_paths=canon_paths,
                         scene_plate_path=scene_plate_path,
-                        continuity_reference_path=prev_frame,
+                        continuity_reference_path=seg_continuity,
                         world_bible=world_bible,
                         no_cut_to=script.no_cut_to,
                         location_negative_list=location_negatives,
@@ -439,28 +461,39 @@ async def run_v2_produce(
                 speaker=speaker,
                 text=expected_text,
             )
-            await fallback_tts_fn(
-                script=[line],
-                output_path=fallback_audio,
-                voice=voice_by_speaker.get(speaker) if speaker else None,
-                emotion=None,
-            )
-            natural_start_ms = int((starts[i] + _XFADE_S + 0.2) * 1000)
-            offset_ms = 0
-            if i > 0:
-                prev_seg = script_segs_by_id.get(ordered[i - 1]["segment_id"])
-                cur_seg = script_segs_by_id.get(item["segment_id"])
-                if prev_seg is not None and cur_seg is not None:
-                    seam = classify_seam_cut_style(prev_seg, cur_seg)
-                    if seam.style == "J":
-                        offset_ms = -int(seam.offset_s * 1000)
-                    elif seam.style == "L":
-                        offset_ms = int(seam.offset_s * 1000)
-            cues.append(
-                DialogueCue(
-                    audio_path=fallback_audio, start_ms=max(0, natural_start_ms + offset_ms)
+            # 对白 TTS 非致命(2026-07-25):edge_tts/DNS 间歇抽风时单句合成重试完仍可能失败——不能
+            # 因一句台词哑了就崩整条产线(实证:一次 fallback TTS 失败让整集 failed)。失败则这句无
+            # 对白音(记 degraded),画面照出、其余台词照常。
+            tts_ok = True
+            try:
+                await fallback_tts_fn(
+                    script=[line],
+                    output_path=fallback_audio,
+                    voice=voice_by_speaker.get(speaker) if speaker else None,
+                    emotion=None,
                 )
-            )
+            except Exception as e:
+                logger.warning(
+                    "段 %s 对白 TTS 失败,该句无对白音(不阻断出片): %s", item["segment_id"], e
+                )
+                tts_ok = False
+            if tts_ok:
+                natural_start_ms = int((starts[i] + _XFADE_S + 0.2) * 1000)
+                offset_ms = 0
+                if i > 0:
+                    prev_seg = script_segs_by_id.get(ordered[i - 1]["segment_id"])
+                    cur_seg = script_segs_by_id.get(item["segment_id"])
+                    if prev_seg is not None and cur_seg is not None:
+                        seam = classify_seam_cut_style(prev_seg, cur_seg)
+                        if seam.style == "J":
+                            offset_ms = -int(seam.offset_s * 1000)
+                        elif seam.style == "L":
+                            offset_ms = int(seam.offset_s * 1000)
+                cues.append(
+                    DialogueCue(
+                        audio_path=fallback_audio, start_ms=max(0, natural_start_ms + offset_ms)
+                    )
+                )
 
     dialogue_track = await build_dialogue_track(
         cues, output_path=run_dir / "dialogue_track.wav", total_duration_ms=total_dur_ms

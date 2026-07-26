@@ -24,6 +24,7 @@ from hevi.tongjian.schemas import (
     ShotList,
 )
 from hevi.tongjian.v2_episode import (
+    BudgetPauseError,
     _ensure_canon,
     group_shots_by_kind,
     render_tongjian_v2_backhalf,
@@ -338,3 +339,115 @@ async def test_backhalf_per_scene_location_and_injected_assets(
     assert screenplay_locs == ["室内朝堂", "室外市集"], "每场演绎用各自 location"
     # 两个不同 location → 两张不同空景板(去重生成)
     assert len(set(plate_prompts)) == 2
+
+
+# ── ⑤ $80 熔断:超帽前暂停,不烧不停,报已花 + 列剩余镜 ────────────────────────
+@pytest.mark.asyncio
+async def test_backhalf_budget_pause_before_overspend(tmp_path: Path, monkeypatch: Any) -> None:
+    """累计 + 下一插段预估将超帽 → 在烧那段之前抛 BudgetPauseError(已花/剩余镜),不继续烧。"""
+    wb = _wb()
+
+    async def _fake_bridge(**kwargs: Any) -> tuple[Any, Any, Any]:
+        return object(), None, wb
+
+    async def _fake_run(*, task_repo: Any, task_id: Any, run_dir: Path, **kw: Any) -> None:
+        vid = Path(run_dir) / "final.mp4"
+        vid.parent.mkdir(parents=True, exist_ok=True)
+        vid.write_bytes(b"x")
+        await task_repo.update_task(
+            task_id, {"result_video_path": str(vid), "config_json": {"actual_usd": 5.0}}
+        )
+
+    async def _fake_jiangjie(*, clip_id: str, out_dir: Path, **kw: Any) -> Path:
+        p = Path(out_dir) / f"{clip_id}.mp4"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x")
+        return p
+
+    async def _noop_img(*, prompt: str, output_path: Path, seed: int, negative_prompt: str) -> None:
+        pass
+
+    monkeypatch.setattr(v2_episode, "build_v2_inputs_from_tongjian", _fake_bridge)
+    monkeypatch.setattr(v2_episode, "render_jiangjie_clip", _fake_jiangjie)
+    monkeypatch.setattr(
+        v2_episode, "assemble_episode", lambda *, clips, output_path, **kw: output_path
+    )
+    monkeypatch.setattr("hevi.director.produce_v2.run_v2_produce", _fake_run)
+
+    # 帽 $4:插段0(2镜 est 2.6)可烧→花掉 $5;插段1(1镜 est 1.3)前查 5+1.3>4 → 熔断
+    with pytest.raises(BudgetPauseError) as ei:
+        await render_tongjian_v2_backhalf(
+            script=_script(),
+            shotlist=_shotlist(),
+            character_bible=_bible(),
+            raw_text="原文",
+            output_path=tmp_path / "ep.mp4",
+            location="栎阳",
+            image_gen_fn=_noop_img,
+            design_list=object(),
+            world_bible=wb,
+            budget_usd=4.0,
+        )
+    err = ei.value
+    assert err.spent == 5.0  # 只烧了插段0
+    assert err.cap == 4.0
+    assert err.remaining_shots == ["s_d3", "s_n2"]  # 从熔断那组起的所有剩余镜
+    assert len(err.done_clips) >= 1  # 已出的分段保留,续跑不白烧
+
+
+@pytest.mark.asyncio
+async def test_backhalf_no_budget_runs_all(tmp_path: Path, monkeypatch: Any) -> None:
+    """budget_usd=None(不设帽)→ 不触发熔断,照常跑完。"""
+    wb = _wb()
+
+    async def _fake_bridge(**kwargs: Any) -> tuple[Any, Any, Any]:
+        return object(), None, wb
+
+    async def _fake_run(*, task_repo: Any, task_id: Any, run_dir: Path, **kw: Any) -> None:
+        vid = Path(run_dir) / "final.mp4"
+        vid.parent.mkdir(parents=True, exist_ok=True)
+        vid.write_bytes(b"x")
+        await task_repo.update_task(
+            task_id, {"result_video_path": str(vid), "config_json": {"actual_usd": 5.0}}
+        )
+
+    async def _fake_jiangjie(*, clip_id: str, out_dir: Path, **kw: Any) -> Path:
+        p = Path(out_dir) / f"{clip_id}.mp4"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"x")
+        return p
+
+    async def _noop_img(*, prompt: str, output_path: Path, seed: int, negative_prompt: str) -> None:
+        pass
+
+    monkeypatch.setattr(v2_episode, "build_v2_inputs_from_tongjian", _fake_bridge)
+    monkeypatch.setattr(v2_episode, "render_jiangjie_clip", _fake_jiangjie)
+    monkeypatch.setattr(
+        v2_episode, "assemble_episode", lambda *, clips, output_path, **kw: output_path
+    )
+    monkeypatch.setattr("hevi.director.produce_v2.run_v2_produce", _fake_run)
+
+    result = await render_tongjian_v2_backhalf(
+        script=_script(),
+        shotlist=_shotlist(),
+        character_bible=_bible(),
+        raw_text="原文",
+        output_path=tmp_path / "ep.mp4",
+        location="栎阳",
+        image_gen_fn=_noop_img,
+        design_list=object(),
+        world_bible=wb,
+        budget_usd=None,
+    )
+    assert result["n_drama_inserts"] == 2  # 两段都烧了
+
+
+# ── 修:canon appearance 剔除对比性描述(防单人定妆照渲成两人)─────────────────
+def test_strip_comparative_removes_contrast_clauses() -> None:
+    from hevi.tongjian.v2_episode import _strip_comparative
+
+    got = _strip_comparative("秦廷尉,玄端朝服,精悍锐利瘦长脸,须髯修剪,与王绾明显区分")
+    assert "王绾" not in got and "区分" not in got  # 对比分句被剔除
+    assert "玄端朝服" in got and "须髯修剪" in got  # 本人特征保留
+    # 无对比词则原样(逗号归一)
+    assert _strip_comparative("玄色深衣,束发冠") == "玄色深衣,束发冠"
