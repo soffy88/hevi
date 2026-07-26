@@ -165,3 +165,69 @@ def test_continuity_rule_cut_vs_continuation() -> None:
     assert segment_continues_prior(SceneScriptSegment(shot_type="single")) is True
     # 缺字段默认 single → 接续
     assert segment_continues_prior(SceneScriptSegment()) is True
+
+
+# ── 反打轴识别 + 合并从严(2026-07-26 商鞅廷辩实证)──────────────────────────
+def _line(lid, spk, tgt, text="x"):
+    return ScriptLine(line_id=lid, type="dialogue", speaker=spk, target=tgt, text=text)
+
+
+def _shot(sid, lid, scene, chars):
+    return Shot(shot_id=sid, line_ids=[lid], scene_id=scene, characters=chars, camera=ShotCamera())
+
+
+def test_reciprocal_pair_is_axis_not_appeal_count() -> None:
+    """卫鞅↔甘龙 互相驳斥=反打轴;孝公被卫鞅+甘龙都 target(appeal=2)但只是裁决者→御座正面,
+    不能因"被≥2人诉诸"把主辩卫鞅误判成君主。"""
+    script = Script(
+        lines=[
+            _line("b1", "C_wei", "C_gong"),  # 卫鞅→孝公
+            _line("b2", "C_gan", "C_wei"),  # 甘龙→卫鞅
+            _line("b3", "C_wei", "C_gan"),  # 卫鞅→甘龙(与甘龙互驳)
+            _line("b4", "C_gong", "C_wei"),  # 孝公→卫鞅(裁决)
+        ]
+    )
+    shots = ShotList(
+        shots=[
+            _shot("s1", "b1", "A", ["C_wei"]),
+            _shot("s2", "b2", "A", ["C_gan"]),
+            _shot("s3", "b3", "A", ["C_wei"]),
+            _shot("s4", "b4", "A", ["C_gong"]),
+        ]
+    )
+    idmap = {"C_wei": "卫鞅", "C_gan": "甘龙", "C_gong": "秦孝公"}
+    sss = build_v2_scene_script_set(
+        script=script, shot_list=shots, id_to_name=idmap, drama_only=True
+    )
+    seq = summarize_shot_sequence(sss.scripts)
+    by_spk = {r["speaker"]: (r["shot_type"], r["side"]) for r in seq if r["speaker"]}
+    assert by_spk["卫鞅"][0] == "ots" and by_spk["甘龙"][0] == "ots"  # 主辩双方 OTS
+    assert by_spk["秦孝公"][0] == "frontal"  # 裁决者御座正面,不上反打轴
+
+
+def test_no_overmerge_soliloquy_scene() -> None:
+    """立木卫鞅宣令(无 target)不该被并进相邻廷辩场——合并要双向跨场 target。"""
+    script = Script(
+        lines=[
+            _line("b1", "C_wei", "C_gan"),
+            _line("b2", "C_gan", "C_wei"),  # 廷辩:卫鞅↔甘龙
+            ScriptLine(
+                line_id="m1", type="dialogue", speaker="C_wei", target="", text="能徙者予五十金"
+            ),
+        ]
+    )
+    shots = ShotList(
+        shots=[
+            _shot("s1", "b1", "BIAN", ["C_wei"]),
+            _shot("s2", "b2", "BIAN", ["C_gan"]),
+            _shot("s3", "m1", "LIMU", ["C_wei"]),  # 立木,单人无 target
+        ]
+    )
+    idmap = {"C_wei": "卫鞅", "C_gan": "甘龙"}
+    sss = build_v2_scene_script_set(
+        script=script, shot_list=shots, id_to_name=idmap, drama_only=True
+    )
+    assert len(sss.scripts) == 2  # 廷辩 + 立木,不合并
+    # 立木那场是单人 single(非辩论,不展开反打)
+    limu = sss.scripts[1]
+    assert all(s.shot_type == "single" for s in limu.segments)

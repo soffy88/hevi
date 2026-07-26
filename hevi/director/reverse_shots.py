@@ -60,19 +60,41 @@ def _identify_axis_and_monarchs(
     speakers: list[str], segments: list[SceneScriptSegment]
 ) -> tuple[list[str], set[str]]:
     """廷议规则(复用所有廷议场,非本集特判):**主辩双方锁反打轴,君主/裁决者另处理**。
-    君主 = 被 ≥2 名不同 speaker 诉诸(target)的人——群臣皆向其陈情、他居中裁决。主辩 = 其余
-    speaker 的前两名。若识别不出清晰双主辩(如都诉诸一人后只剩 1 辩)→ 退回首两名 speaker 当轴、
-    不拉君主(降级不崩)。"""
-    appealed_by: dict[str, set[str]] = {}
+
+    ① 最强信号 = **互相驳斥的一对**(A 的对白 target B、B 的对白 target A):这对就是反打轴,其余
+       (含君主/裁决者)另处理(2026-07-26:商鞅廷辩实证——卫鞅被甘龙+孝公都 target,按"被≥2人诉诸"
+       会把主辩卫鞅误判成君主;而卫鞅↔甘龙 互相驳斥才是真轴)。
+    ② 无互驳对 → 退回:君主 = 被 ≥2 人诉诸**且不是发言最多**的那个(发言最多的必是主辩,不是裁决者);
+       主辩 = 其余首两名。
+    ③ 仍识别不出双主辩 → 首两名 speaker 当轴、不拉君主(降级不崩)。"""
+    targets_of: dict[str, set[str]] = {}
+    turns: dict[str, int] = {}
     for seg in segments:
         for d in seg.dialogue:
-            if d.target_name and d.character_name:
-                appealed_by.setdefault(d.target_name, set()).add(d.character_name)
-    monarchs = {s for s in speakers if len(appealed_by.get(s, ())) >= 2}
+            if d.character_name:
+                turns[d.character_name] = turns.get(d.character_name, 0) + 1
+                if d.target_name:
+                    targets_of.setdefault(d.character_name, set()).add(d.target_name)
+
+    # ① 互驳对(按 speakers 首现序取第一对)
+    for i, a in enumerate(speakers):
+        for b in speakers[i + 1 :]:
+            if b in targets_of.get(a, ()) and a in targets_of.get(b, ()):
+                return [a, b], {s for s in speakers if s not in (a, b)}
+
+    # ② 君主 = 被≥2人诉诸且非发言最多者
+    appealed_by: dict[str, set[str]] = {}
+    for spk, tgts in targets_of.items():
+        for t in tgts:
+            appealed_by.setdefault(t, set()).add(spk)
+    max_turns = max(turns.values(), default=0)
+    monarchs = {
+        s for s in speakers if len(appealed_by.get(s, ())) >= 2 and turns.get(s, 0) < max_turns
+    }
     debaters = [s for s in speakers if s not in monarchs]
-    if len(debaters) < 2:  # 降级:没有清晰双主辩
+    if len(debaters) < 2:  # ③ 降级
         return speakers[:2], set()
-    return debaters[:2], monarchs | set(debaters[2:])  # 首两名主辩上轴,其余(含君主)都另处理
+    return debaters[:2], monarchs | set(debaters[2:])
 
 
 def expand_debate_reverse_shots(
@@ -155,15 +177,16 @@ def expand_debate_reverse_shots(
 
 def _scenes_linked(prev: SceneScript, cur: SceneScript) -> bool:
     """相邻两场是否属**同一辩论**——合并条件从严,只治 ④a「一场辩论被拆散」,不误合并单主角多场:
-    ① 合并后必须是多说话人(combined ≥2),且 ② 有跨场对话(一场对白的 target 指向另一场的 speaker)。
-    单主角在相邻场各自独白(如立木卫鞅跨场)combined<2 或无跨场 target → 不合并。"""
+    合并后多说话人(combined≥2),且**两个方向都有跨场对话**——prev 有对白 target 指向 cur 的 speaker,
+    **且** cur 有对白 target 指向 prev 的 speaker。单方向或无跨场 target 不合并(2026-07-26 商鞅实证:
+    廷辩 target 卫鞅、立木卫鞅无 target,单向不该把立木并进廷辩;拆散的辩论则双向都有跨场 target)。"""
     ps = set(_speakers_in_order(prev.segments))
     cs = set(_speakers_in_order(cur.segments))
     if not ps or not cs or len(ps | cs) < 2:
         return False
     prev_tgt = {d.target_name for seg in prev.segments for d in seg.dialogue if d.target_name}
     cur_tgt = {d.target_name for seg in cur.segments for d in seg.dialogue if d.target_name}
-    return bool(prev_tgt & cs) or bool(cur_tgt & ps)
+    return bool(prev_tgt & cs) and bool(cur_tgt & ps)
 
 
 def _concat_scenes(prev: SceneScript, cur: SceneScript) -> SceneScript:
