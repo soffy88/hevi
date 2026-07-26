@@ -400,6 +400,7 @@ async def _run_render(run_id: str) -> None:
                     output_path=run_dir / "L8" / "episode_v2.mp4",
                     location=req.location,
                     llm=_llm("L6"),
+                    budget_usd=80.0,  # 前端 v2 出片默认 $80 成本熔断
                 )
                 for _lyr in ("L6", "L7", "L8"):
                     _update_layer(run_id, _lyr, status="PASSED", finished_at=datetime.now(UTC))
