@@ -22,6 +22,9 @@
   场景尺度进 world_bible 世界卷 + canon 对比剥离 + 始皇 royal + QC/edge_tts 韧性。立项书 LSXC-EP0-CHARTER。
   - **follow-up ①(基建挡着,tracked):始皇一句 TTS 静音**——edge_tts 服务/DNS 抽风 + GPU 挂(Error 804)
     跑不了 vibevoice,两条 TTS 都被挡。补声是一次音频叠加,任一 TTS 恢复即补。见换 TTS 立项。
+  - **follow-up ⑤(2026-07-26 产品链暴露):jiangjie 讲解静帧道具字没覆盖**——④b 防道具字只在
+    演绎段(multirole prompt),讲解静帧(qwen-image)没这条,讲解里竹简《垦草令》渲出可读字。
+    补:jiangjie prompt 也加避可读文字负面(竹简匾额只作虚焦纹样)。
   - **follow-up ④(2026-07-26 EP7 暴露):手持中景竹简可读文字**——④b 覆盖背景牌匾+竹简特写,但
     卫鞅手持中景竹简的文字溜过(前景道具非背景)。补规则:手持文书类道具也走无字/虚焦。
   - **follow-up ②:色彩打磨**——EP0 两插段 L5 色彩 retake(增益触边界),画面看一致,per-scene 校色边界 case。
@@ -67,6 +70,10 @@
 - **✅ P0 持久化已修(2026-07-23)**:见下方「V2 迭代」条目 ①。`director_works` 表 + repo 落库,
   wired 进 lock_scene_script/produce,V2 基线 v1 已入库。原风险(内存字典进程死丢作品、批C 脚本
   不可复原)已闭环。**残留**:历史 works(基线之前的)仍无法复原,只有新产集起才落库。
+
+- **⚠ 基建(2026-07-26):deploy/docker-compose-cftunnel.yml 的 hevi-api GPU 保留已注掉(未提交)**——
+  GPU 挂(Error 804)时带 nvidia 保留容器起不来(libEGL_nvidia.so 找不到),V2 云出片不需 GPU 故注掉。
+  **GPU 硬件修好后再取消注释**(本地模型 sdxl/vibevoice 才需要)。这是本地工作树改动,别被 reset 掉。
 
 ## 🔒 Never (hard constraints — do not violate)
 

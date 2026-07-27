@@ -60,11 +60,15 @@ class BudgetPauseError(RuntimeError):
 
 def group_shots_by_kind(shotlist: Any, script: Any) -> list[tuple[str, list[Any]]]:
     """按 shotlist 叙事序分组:**同一 scene_id 的**连续 drama 镜合成一个 ('drama', [shots]) 插段;
-    每个 narration 镜单独 ('narration', [shot])。过场镜(is_transition)丢弃。纯函数,可测。
+    narration 镜成 ('narration', [shots])。过场镜(is_transition)丢弃。纯函数,可测。
 
     ★ 在 scene_id 边界断开 drama 插段(不跨场并):不同场是不同设定/时空,不该共享 produce_v2 的连续性
     链、location、空景板——一个插段=单一场,per-scene 的 location/plate/校色基准才对齐(2026-07-24:立木
     E004 室外市集 → E005 室内垦草令 若并成一段,E005 会套 E004 的室外板)。
+
+    ★ **同一 line 被拆成的连续 narration 子镜头合并成一个讲解镜**(2026-07-26:前端 `generate_shotlist`
+    为 V1 肯·伯恩斯换机位把长旁白拆成 SH011_01/02/03 等子镜头、共用同一 line_id;V2 讲解路若逐子镜头各渲
+    整句 → 同一段解说词被渲 2-3 遍。合并后一句旁白=一个讲解镜)。
 
     drama/narration 判定复用桥接器的 `_is_drama_shot`(单一真源,避免和 produce_v2 过滤分叉)。"""
     lines_by_id = {ln.line_id: ln for ln in script.lines}
@@ -73,8 +77,17 @@ def group_shots_by_kind(shotlist: Any, script: Any) -> list[tuple[str, list[Any]
         if shot.is_transition:
             continue
         kind = "drama" if _is_drama_shot(shot, lines_by_id) else "narration"
-        same_scene = groups and groups[-1][1][-1].scene_id == shot.scene_id
+        prev_last = groups[-1][1][-1] if groups else None
+        same_scene = prev_last is not None and prev_last.scene_id == shot.scene_id
+        # narration 子镜头:与上一 narration 镜共享 line_id(同一句被拆)→ 合并,防解说词重复
+        same_line = (
+            prev_last is not None
+            and groups[-1][0] == "narration"
+            and bool(set(prev_last.line_ids or []) & set(shot.line_ids or []))
+        )
         if kind == "drama" and groups and groups[-1][0] == "drama" and same_scene:
+            groups[-1][1].append(shot)
+        elif kind == "narration" and same_line:
             groups[-1][1].append(shot)
         else:
             groups.append((kind, [shot]))

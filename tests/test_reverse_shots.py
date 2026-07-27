@@ -231,3 +231,40 @@ def test_no_overmerge_soliloquy_scene() -> None:
     # 立木那场是单人 single(非辩论,不展开反打)
     limu = sss.scripts[1]
     assert all(s.shot_type == "single" for s in limu.segments)
+
+
+def test_narration_subshots_of_same_line_merge() -> None:
+    """同一 line 拆成的连续 narration 子镜头(共用 line_id)合并成一个讲解镜,防解说词重复渲。"""
+    from hevi.tongjian.v2_episode import group_shots_by_kind
+
+    script = Script(lines=[ScriptLine(line_id="LN9", type="narration", text="一段长旁白")])
+    shots = ShotList(
+        shots=[
+            Shot(shot_id="SH9_01", line_ids=["LN9"], scene_id="E", camera=ShotCamera()),
+            Shot(shot_id="SH9_02", line_ids=["LN9"], scene_id="E", camera=ShotCamera()),
+            Shot(shot_id="SH9_03", line_ids=["LN9"], scene_id="E", camera=ShotCamera()),
+        ]
+    )
+    groups = group_shots_by_kind(shots, script)
+    assert len(groups) == 1  # 三子镜头合并成一个 narration 组 → 一个讲解镜(不重复 3 遍)
+    assert groups[0][0] == "narration" and len(groups[0][1]) == 3
+
+
+def test_distinct_narration_lines_stay_separate() -> None:
+    """不同 line 的相邻 narration 镜不合并(各自成讲解镜)。"""
+    from hevi.tongjian.v2_episode import group_shots_by_kind
+
+    script = Script(
+        lines=[
+            ScriptLine(line_id="L1", type="narration", text="旁白一"),
+            ScriptLine(line_id="L2", type="narration", text="旁白二"),
+        ]
+    )
+    shots = ShotList(
+        shots=[
+            Shot(shot_id="A", line_ids=["L1"], scene_id="E", camera=ShotCamera()),
+            Shot(shot_id="B", line_ids=["L2"], scene_id="E", camera=ShotCamera()),
+        ]
+    )
+    groups = group_shots_by_kind(shots, script)
+    assert len(groups) == 2  # 两句不同旁白 → 两个讲解镜
