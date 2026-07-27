@@ -66,8 +66,8 @@ def group_shots_by_kind(shotlist: Any, script: Any) -> list[tuple[str, list[Any]
     链、location、空景板——一个插段=单一场,per-scene 的 location/plate/校色基准才对齐(2026-07-24:立木
     E004 室外市集 → E005 室内垦草令 若并成一段,E005 会套 E004 的室外板)。
 
-    ★ **同一 line 拆成的连续 narration 子镜头合并成一个讲解镜**(2026-07-26 修):前端为 V1 换机位把长
-    旁白拆成子镜头、共用同一 line_id;V2 讲解路逐子镜头各渲整句 → 解说词重复 2-3 遍。合并后一句=一镜。
+    ★ **同一 line 拆成的连续 narration 子镜头合并成一个讲解镜**(2026-07-26 修):前端为 V1 换机位把
+    长旁白拆成子镜头共用 line_id;V2 逐子镜头各渲整句 → 解说词重复。合并后一句=一镜。
 
     drama/narration 判定复用桥接器的 `_is_drama_shot`(单一真源,避免和 produce_v2 过滤分叉)。"""
     lines_by_id = {ln.line_id: ln for ln in script.lines}
