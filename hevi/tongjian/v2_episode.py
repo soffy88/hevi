@@ -18,7 +18,9 @@
 
 from __future__ import annotations
 
+import difflib
 import hashlib
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +32,32 @@ from hevi.director.tongjian_v2_bridge import (
 )
 from hevi.tongjian.v2_assembly import assemble_episode
 from hevi.tongjian.v2_jiangjie import render_jiangjie_clip
+
+logger = logging.getLogger(__name__)
+
+
+def _char_bigrams(s: str) -> set[str]:
+    core = "".join(ch for ch in s if ch.strip() and ch not in "，。、；:!?,.；：！？…“”‘’")
+    return {core[i : i + 2] for i in range(len(core) - 1)}
+
+
+def _is_redundant_narration(text: str, seen: list[str]) -> bool:
+    """这段讲解词与已出的某段是否高度相似——前端 LLM 有时把同一意思写成不同措辞的多句(求贤令写两遍),
+    line_id 合并抓不到(不同 line)。两路信号任一命中即判冗余,供渲染时跳过,防解说词重复(2026-07-27):
+    ① 逐字序列相似(SequenceMatcher,抓近乎逐字复述);② 字符二元组 Jaccard(抓换措辞的同义复述)。
+    实测:互异内容 seqm≈0.2/jac=0;重复复述 seqm 0.66~1.0 或 jac 0.46~1.0,阈值留足余量。"""
+    t = (text or "").strip()
+    if not t:
+        return False
+    tb = _char_bigrams(t)
+    for s in seen:
+        if difflib.SequenceMatcher(None, t, s).ratio() >= 0.62:
+            return True
+        sb = _char_bigrams(s)
+        if tb and sb and len(tb & sb) / len(tb | sb) >= 0.42:
+            return True
+    return False
+
 
 # 演绎段定妆照取景框(时代/画风靠 world_bible,这里只定"写实定妆照"通用框)
 _CANON_FRAMING = (
@@ -418,6 +446,7 @@ async def render_tongjian_v2_backhalf(
     total_usd = 0.0
     l5_by_insert: list[dict] = []
     drama_idx = narr_idx = 0
+    seen_narr: list[str] = []  # 已出讲解词,用于内容去重(防前端把同一意思写成多句)
 
     # 开头点主题(§用户要求):片头一个讲解镜口播主题(如"今天,我们回到栎阳变法的现场…")。
     # intro_theme 为空则不加(默认由 concept 兜底一句)。
@@ -438,6 +467,7 @@ async def render_tongjian_v2_backhalf(
         )
         episode_clips.append(intro_clip)
         episode_tiers.append(("推演", ""))
+        seen_narr.append(intro)
     for gi, (kind, shots) in enumerate(groups):
         if kind == "drama":
             # ── $80 熔断:在烧这段之前查帽。会超就暂停,不烧、不静默停,报已花 + 列剩余镜。──
@@ -479,9 +509,16 @@ async def render_tongjian_v2_backhalf(
             drama_idx += 1
         else:
             shot = shots[0]
+            narr = _narration_text(shot, lines_by_id)
+            # 内容去重(2026-07-27):前端 LLM 有时把同一意思写成不同措辞的多句(求贤令写两遍),
+            # line_id 合并抓不到(不同 line);按文本相似度跳过已出现过的冗余讲解,防解说词重复。
+            if _is_redundant_narration(narr, seen_narr):
+                logger.info("讲解内容与已出段重复,跳过: %s", narr[:24])
+                continue
+            seen_narr.append(narr)
             clip = await render_jiangjie_clip(
                 visual_prompt=shot.visual_prompt or "",
-                narration_text=_narration_text(shot, lines_by_id),
+                narration_text=narr,
                 world_bible=world_bible,
                 out_dir=run_dir / "jiangjie",
                 clip_id=f"narr_{narr_idx}",

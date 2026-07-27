@@ -268,3 +268,18 @@ def test_distinct_narration_lines_stay_separate() -> None:
     )
     groups = group_shots_by_kind(shots, script)
     assert len(groups) == 2  # 两句不同旁白 → 两个讲解镜
+
+
+# ── 讲解内容去重(2026-07-27:前端 LLM 把同一意思写成多句 → 渲染时跳过冗余)────────────
+def test_redundant_narration_by_content_similarity() -> None:
+    """不同 line_id 但内容高度相似的讲解词判为冗余(求贤令写两遍),line_id 合并抓不到。"""
+    from hevi.tongjian.v2_episode import _is_redundant_narration
+
+    seen = ["秦孝公下求贤令,风吹日晒,南门木杆前无人驻足。"]
+    # 换措辞的同一意思 → 冗余
+    assert _is_redundant_narration("秦孝公发出求贤令,南门的木杆前风吹日晒却无人驻足。", seen)
+    # 全新内容 → 不冗余
+    assert not _is_redundant_narration("十年之后,秦国道不拾遗,山无盗贼。", seen)
+    # 空文本 / 空历史 → 不冗余(不误伤)
+    assert not _is_redundant_narration("", seen)
+    assert not _is_redundant_narration("任意内容", [])
