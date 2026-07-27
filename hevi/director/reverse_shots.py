@@ -186,7 +186,11 @@ def _scenes_linked(prev: SceneScript, cur: SceneScript) -> bool:
         return False
     prev_tgt = {d.target_name for seg in prev.segments for d in seg.dialogue if d.target_name}
     cur_tgt = {d.target_name for seg in cur.segments for d in seg.dialogue if d.target_name}
-    return bool(prev_tgt & cs) and bool(cur_tgt & ps)
+    # 跨场 target 必须指向**对方独有**的角色(prev_only/cur_only),不能只经共享角色搭线——否则同一
+    # 主角在两场各自跟不同对手辩论(完璧归赵:蔺相如在赵廷↔廉颇、在秦廷↔秦王,两场独立完整),会被
+    # 共享的蔺相如虚假搭桥误合并成一场,把赵廷反打轴串进秦廷(2026-07-27 完璧压测实证)。
+    prev_only, cur_only = ps - cs, cs - ps
+    return bool(prev_tgt & cur_only) and bool(cur_tgt & prev_only)
 
 
 def _concat_scenes(prev: SceneScript, cur: SceneScript) -> SceneScript:

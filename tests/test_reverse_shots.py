@@ -233,6 +233,45 @@ def test_no_overmerge_soliloquy_scene() -> None:
     assert all(s.shot_type == "single" for s in limu.segments)
 
 
+def test_shared_protagonist_two_debates_not_merged() -> None:
+    """完璧归赵压测(2026-07-27):同一主角在两场各自跟不同对手辩论(蔺相如在赵廷↔廉颇、秦廷↔秦王),
+    两场独立完整,不该被共享的蔺相如虚假搭桥合并——否则赵廷反打轴(前景廉颇)串进秦廷。"""
+    script = Script(
+        lines=[
+            _line("t1", "C_lian", "C_lin"),  # 赵廷:廉颇↔蔺相如
+            _line("t2", "C_lin", "C_lian"),
+            _line("t3", "C_zhao", "C_lin"),  # 赵王裁
+            _line("q1", "C_lin", "C_qin"),  # 秦廷:蔺相如↔秦王
+            _line("q2", "C_qin", "C_lin"),
+        ]
+    )
+    shots = ShotList(
+        shots=[
+            _shot("s1", "t1", "TING", ["C_lian"]),
+            _shot("s2", "t2", "TING", ["C_lin"]),
+            _shot("s3", "t3", "TING", ["C_zhao"]),
+            _shot("s4", "q1", "QIN", ["C_lin"]),
+            _shot("s5", "q2", "QIN", ["C_qin"]),
+        ]
+    )
+    idmap = {"C_lin": "蔺相如", "C_lian": "廉颇", "C_zhao": "赵王", "C_qin": "秦王"}
+    sss = build_v2_scene_script_set(
+        script=script, shot_list=shots, id_to_name=idmap, drama_only=True
+    )
+    assert len(sss.scripts) == 2  # 两场不合并
+    seq = summarize_shot_sequence(sss.scripts)
+    scenes = {r["scene"] for r in seq}
+    assert len(scenes) == 2
+    # 赵王在赵廷是中立裁决者(frontal);秦王在秦廷进反打轴当对手(ots,非 frontal)
+    by_spk = {r["speaker"]: r["shot_type"] for r in seq if r["speaker"]}
+    assert by_spk["赵王"] == "frontal"
+    assert by_spk["秦王"] == "ots"
+    # 秦廷任何镜的前景都不该是廉颇(廉颇不在秦廷)
+    qin_scene = max(scenes)
+    qin_fg = {r["fg"] for r in seq if r["scene"] == qin_scene}
+    assert "廉颇" not in qin_fg
+
+
 def test_narration_subshots_of_same_line_merge() -> None:
     """同一 line 拆成的连续 narration 子镜头(共用 line_id)合并成一个讲解镜,防解说词重复渲。"""
     from hevi.tongjian.v2_episode import group_shots_by_kind
