@@ -109,9 +109,9 @@ def test_compile_multirole_prompt_continuity_reference_without_scene_plate_start
     assert "[Image 2] 是王生的身份参考图" in prompt
 
 
-def test_compile_multirole_prompt_injects_style_manifesto_before_action_text() -> None:
-    # style-lock 摸查①落地(2026-07-20):有 world_bible.visual.style_manifesto 时,
-    # 每段统一插一次,且必须排在 action_text 之前(风格先声明,动作再描述)。
+def test_compile_multirole_prompt_injects_style_manifesto_at_prompt_tail() -> None:
+    # 画风锁迭代(2026-07-23):style_manifesto 从中段移到 prompt 最末(recency 权重),
+    # 排在 action_text 之后,且是最后一行 + 带画风优先级声明。
     stage = _stage(InitialPosition(char_id="王生", posture="跪伏", facing="俯身叩首"))
     wb = WorldBible(visual=VisualVolume(style_manifesto="水墨渗染质感，留白式构图"))
     prompt = compile_multirole_prompt(
@@ -121,8 +121,12 @@ def test_compile_multirole_prompt_injects_style_manifesto_before_action_text() -
         scene_plate_path=None,
         world_bible=wb,
     )
-    assert "【整体美术风格,这一帧必须遵守】水墨渗染质感，留白式构图" in prompt
-    assert prompt.index("整体美术风格") < prompt.index("王生起身")
+    assert "水墨渗染质感，留白式构图" in prompt
+    # 现在排在 action_text 之后(尾部 recency),不再是中段
+    assert prompt.index("整体美术风格") > prompt.index("王生起身")
+    # 是最后一行,且带优先级 + 一致性声明
+    assert "整体美术风格" in prompt.split("\n")[-1]
+    assert "不要在写实照片感和插画/卡通感之间摇摆" in prompt
 
 
 def test_compile_multirole_prompt_without_world_bible_unchanged() -> None:
@@ -334,7 +338,9 @@ async def test_generate_multirole_segment_threads_world_bible_style_manifesto(
         output_path=tmp_path / "out.mp4",
         gen_fn=gen_fn,
     )
-    assert "【整体美术风格,这一帧必须遵守】水墨渗染质感" in gen_fn.await_args.kwargs["prompt"]
+    prompt = gen_fn.await_args.kwargs["prompt"]
+    assert "整体美术风格" in prompt and "水墨渗染质感" in prompt
+    assert "整体美术风格" in prompt.split("\n")[-1]  # 画风锁迭代:移到 prompt 末尾
 
 
 async def test_generate_multirole_segment_threads_identity_lock_sentence(tmp_path: Path) -> None:
@@ -357,6 +363,181 @@ async def test_generate_multirole_segment_threads_identity_lock_sentence(tmp_pat
         gen_fn=gen_fn,
     )
     assert "王生始终一致。" in gen_fn.await_args.kwargs["prompt"]
+
+
+async def test_generate_multirole_segment_threads_performance_directive_to_gen_fn(
+    tmp_path: Path,
+) -> None:
+    # 2026-07-23:camera_movement/offscreen_trigger/beat_description 三个表演/运镜指令字段
+    # 必须真正到达传给 gen_fn 的 prompt(不是断言字段本身被赋值——那只验证 schema,
+    # 见 STATUS 字段落地三件套第③件)。
+    stage = _stage(InitialPosition(char_id="王生", posture="跪伏", facing="俯身叩首"))
+    canon_a = tmp_path / "canon_a.png"
+    canon_a.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 32)
+    gen_fn = AsyncMock(return_value=tmp_path / "out.mp4")
+    segment = SceneScriptSegment(
+        t_start_s=0.0,
+        t_end_s=5.0,
+        narrative_text="王生凝望水面",
+        camera_movement="缓慢横移",
+        offscreen_trigger="画外传来击水声",
+        beat_description="王生察觉异样的一瞬",
+    )
+
+    await generate_multirole_segment(
+        scene_stage=stage,
+        segment=segment,
+        character_names=["王生"],
+        canon_paths={"王生": canon_a},
+        scene_plate_path=None,
+        output_path=tmp_path / "out.mp4",
+        gen_fn=gen_fn,
+    )
+    prompt = gen_fn.await_args.kwargs["prompt"]
+    assert "缓慢横移" in prompt
+    assert "画外传来击水声" in prompt
+    assert "王生察觉异样的一瞬" in prompt
+    # 运镜指令必须排在动作文本之后(叠加在动作描述上的镜头语言)
+    assert prompt.index("王生凝望水面") < prompt.index("缓慢横移")
+    # 明确压制"默认 push-in"的病根
+    assert "不要默认使用由远及近的推近" in prompt
+
+
+def test_compile_prompt_prefers_style_render_directive_over_manifesto() -> None:
+    # 画风锁②形态:有 style_render_directive 时,进 prompt 的是这条可执行渲染指令,不是抽象散文。
+    stage = _stage(InitialPosition(char_id="王生", posture="立", facing="正面"))
+    wb = WorldBible(
+        visual=VisualVolume(
+            style_manifesto="一大段抽象艺术散文关于留白哲学与存在之临时性……",
+            style_render_directive="水墨渲染质感,青灰主调,纸本肌理,写实人物比例——全片统一",
+        )
+    )
+    prompt = compile_multirole_prompt(
+        action_text="王生起身",
+        scene_stage=stage,
+        character_names=["王生"],
+        scene_plate_path=None,
+        world_bible=wb,
+    )
+    assert "水墨渲染质感,青灰主调" in prompt  # 渲染指令进了
+    assert "留白哲学" not in prompt  # 抽象散文没进
+    assert "水墨渲染质感,青灰主调" in prompt.split("\n")[-1]  # 在末尾
+
+
+def test_compile_prompt_falls_back_to_manifesto_when_no_directive() -> None:
+    # 老 world_bible(只有 manifesto、没 directive)→ 回退用 manifesto,零行为倒退。
+    wb = WorldBible(visual=VisualVolume(style_manifesto="水墨渗染质感"))
+    prompt = compile_multirole_prompt(
+        action_text="王生起身",
+        scene_stage=_stage(InitialPosition(char_id="王生", posture="立", facing="正面")),
+        character_names=["王生"],
+        scene_plate_path=None,
+        world_bible=wb,
+    )
+    assert "水墨渗染质感" in prompt.split("\n")[-1]
+
+
+def test_performance_directive_strong_motion_identity_exclusion() -> None:
+    # 强运动×身份互斥(2026-07-23 修正):大运动段不承担认脸,不锁脸(与 provider 物理边界一致)。
+    from hevi.director.multirole_reference import _performance_directive
+
+    for cam in ("横移", "跟随镜头", "摇向声源"):
+        seg = SceneScriptSegment(narrative_text="人物走动", camera_movement=cam)
+        d = _performance_directive(seg)
+        assert "免认脸" in d and "不要给主角安排面部特写" in d, cam
+        # 明确不再是"锁脸/脸清晰"那条旧约束
+        assert "脸部清晰可辨" not in d
+    # 非大运动段不加这条
+    seg = SceneScriptSegment(narrative_text="对话", camera_movement="静态对话")
+    assert "免认脸" not in _performance_directive(seg)
+
+
+def test_performance_directive_strengthens_pan_wording() -> None:
+    # ④摇向声源弱实现修正(2026-07-23):含"摇"的运镜要补明显摇镜幅度/方向指令。
+    from hevi.director.multirole_reference import _performance_directive
+
+    d = _performance_directive(
+        SceneScriptSegment(narrative_text="转头", camera_movement="摇向声源")
+    )
+    assert "运镜强化" in d and "摇动幅度要肉眼可辨" in d
+    # 不含"摇"的运镜不加这条
+    d2 = _performance_directive(
+        SceneScriptSegment(narrative_text="对话", camera_movement="静态对话")
+    )
+    assert "运镜强化" not in d2
+
+
+async def test_generate_multirole_segment_injects_location_negative_list(tmp_path: Path) -> None:
+    # ③补断链(2026-07-23):world[].negative_list(逐地点)经调用方解析后传入,并入负面约束改写。
+    stage = _stage(InitialPosition(char_id="王生", posture="立", facing="正面"))
+    canon_a = tmp_path / "canon_a.png"
+    canon_a.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 32)
+    gen_fn = AsyncMock(return_value=tmp_path / "out.mp4")
+    rephrase_llm = AsyncMock(return_value={"content": "画面保持年代考据准确。"})
+
+    await generate_multirole_segment(
+        scene_stage=stage,
+        segment=_segment(duration_s=5.0, with_dialogue=False),
+        character_names=["王生"],
+        canon_paths={"王生": canon_a},
+        scene_plate_path=None,
+        location_negative_list=["不出现现代电线杆"],
+        output_path=tmp_path / "out.mp4",
+        gen_fn=gen_fn,
+        rephrase_llm=rephrase_llm,
+    )
+    rephrased_prompt = rephrase_llm.await_args.kwargs["messages"][0]["content"]
+    assert "不出现现代电线杆" in rephrased_prompt  # 逐地点负面进了改写
+    assert "画面保持年代考据准确。" in gen_fn.await_args.kwargs["prompt"]
+
+
+async def test_generate_multirole_segment_moderation_safe_drops_negatives_and_softens(
+    tmp_path: Path,
+) -> None:
+    # ③内容审核预案:moderation_safe=True → 丢全部负面(rephrase 不被调用)+ 软化动作文本。
+    stage = _stage(InitialPosition(char_id="王生", posture="立", facing="正面"))
+    canon_a = tmp_path / "canon_a.png"
+    canon_a.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 32)
+    gen_fn = AsyncMock(return_value=tmp_path / "out.mp4")
+    # rephrase_llm 兼当软化 llm:软化调用返回软化文本;负面改写这次不该被调用
+    rephrase_llm = AsyncMock(return_value={"content": "水面泛起涟漪,神情凝重。"})
+    wb = WorldBible(visual=VisualVolume(negative_list=["绝不出现手持晃动"]))
+    seg = SceneScriptSegment(t_start_s=0.0, t_end_s=5.0, narrative_text="婴儿溺水挣扎")
+
+    await generate_multirole_segment(
+        scene_stage=stage,
+        segment=seg,
+        character_names=["王生"],
+        canon_paths={"王生": canon_a},
+        scene_plate_path=None,
+        world_bible=wb,
+        location_negative_list=["不出现现代电线杆"],
+        output_path=tmp_path / "out.mp4",
+        gen_fn=gen_fn,
+        rephrase_llm=rephrase_llm,
+        moderation_safe=True,
+    )
+    prompt = gen_fn.await_args.kwargs["prompt"]
+    # 负面全丢:原始负面短语不在改写输入里(rephrase 只被软化调用用过,没被负面改写用过)
+    assert "绝不出现手持晃动" not in prompt
+    assert "不出现现代电线杆" not in prompt
+    # 动作文本被软化替换,原直白措辞不在 prompt
+    assert "水面泛起涟漪,神情凝重。" in prompt
+    assert "婴儿溺水挣扎" not in prompt
+
+
+def test_compile_multirole_prompt_empty_performance_directive_not_injected() -> None:
+    # 三个字段全空 → 不插任何表演指令块,零行为变化(旧 segment 无这些字段仍照常工作)。
+    prompt = compile_multirole_prompt(
+        action_text="王生跪地",
+        scene_stage=_stage(InitialPosition(char_id="王生", posture="跪伏", facing="俯身")),
+        character_names=["王生"],
+        scene_plate_path=None,
+        performance_directive_text="",
+    )
+    assert "本段运镜" not in prompt
+    assert "画外事件" not in prompt
+    assert "表演意图" not in prompt
 
 
 async def test_generate_multirole_segment_rephrases_and_injects_negative_constraints(

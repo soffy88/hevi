@@ -15,6 +15,9 @@ from hevi.director.pipeline_schemas import (
     WorldBible,
 )
 from hevi.director.scene_script import (
+    _budget_substitute,
+    enforce_camera_budget,
+    enforce_dialogue_duration,
     generate_scene_script_draft,
     lint_beat_and_dialogue_boundary,
     lint_camera_movement_variety,
@@ -154,6 +157,96 @@ def test_camera_lint_allows_repeated_static_with_no_shift_signal() -> None:
         _cam_seg(camera="静态对话", speaker="许渔夫"),
     ]
     assert lint_camera_movement_variety(segs) == []
+
+
+def test_budget_substitute_picks_by_content_signal() -> None:
+    # 改判目标按段内信号选,不是无脑贴标签:画外触发→摇向声源;对白→反应插入;旁白→横移。
+    assert _budget_substitute(_cam_seg(camera="静态对话", offscreen="画外击水声")) == "摇向声源"
+    assert _budget_substitute(_cam_seg(camera="静态对话", speaker="许渔夫")) == "反应插入"
+    assert _budget_substitute(_cam_seg(camera="静态对话")) == "横移"
+    # 优先级:画外触发压过对白
+    assert (
+        _budget_substitute(_cam_seg(camera="静态对话", speaker="许渔夫", offscreen="击水声"))
+        == "摇向声源"
+    )
+
+
+def test_enforce_camera_budget_flips_excess_static_within_cap() -> None:
+    # 12 段全静态(实测 LLM 会这样),total_scenes=12 → 静态上限 6,须把静态压到 ≤6、多≥3 种、
+    # 不引入 push-in。改判段用内容信号选替代运镜。
+    segs = [_cam_seg(camera="静态对话") for _ in range(9)]  # 旁白静态
+    segs += [_cam_seg(camera="静态对话", speaker="许渔夫") for _ in range(2)]  # 对白静态
+    segs += [_cam_seg(camera="静态对话", offscreen="画外击水声")]  # 画外静态
+    reassigned = enforce_camera_budget(segs, total_scenes=12)
+    cams = [s.camera_movement for s in segs]
+    assert sum(1 for c in cams if "静态" in c) <= 6, cams
+    assert len(reassigned) == 6
+    assert len({c for c in cams if c}) >= 3
+    assert sum(1 for c in cams if "推" in c) == 0  # 兜底不引入推近
+
+
+def test_enforce_dialogue_duration_extends_short_dialogue_segments() -> None:
+    # #1(2026-07-23):台词装不下的段,生成前把 t_end_s 撑够(估算 TTS 4.5 字/秒 + 0.5s 余量)。
+    from hevi.director.pipeline_schemas import SceneScriptDialogueLine
+
+    # 50 字台词、4.5s 段:需 50/4.5+0.5≈11.6s,不够 → 撑到 ~11.6s
+    long_seg = SceneScriptSegment(
+        segment_id="s3",
+        t_start_s=0.0,
+        t_end_s=4.5,
+        narrative_text="对话",
+        dialogue=[SceneScriptDialogueLine(character_name="王生", text="字" * 50)],
+    )
+    # 短台词、够长 → 不动
+    ok_seg = SceneScriptSegment(
+        segment_id="s2",
+        t_start_s=0.0,
+        t_end_s=4.5,
+        narrative_text="对话",
+        dialogue=[SceneScriptDialogueLine(character_name="王生", text="字" * 8)],
+    )
+    adj = enforce_dialogue_duration([long_seg, ok_seg])
+    assert long_seg.t_end_s > 4.5  # 撑长了
+    assert abs(long_seg.t_end_s - 11.6) < 0.2
+    assert ok_seg.t_end_s == 4.5  # 没动
+    assert len(adj) == 1 and adj[0]["segment_id"] == "s3"
+
+
+def test_enforce_dialogue_duration_caps_and_flags_overlong() -> None:
+    # 极长台词撑到上限(13s)仍不够 → 记 still_short=True(该拆节拍的信号)。
+    from hevi.director.pipeline_schemas import SceneScriptDialogueLine
+
+    seg = SceneScriptSegment(
+        segment_id="s12",
+        t_start_s=0.0,
+        t_end_s=4.5,
+        narrative_text="对话",
+        dialogue=[SceneScriptDialogueLine(character_name="王生", text="字" * 80)],
+    )
+    adj = enforce_dialogue_duration([seg])
+    assert seg.t_end_s == 13.0  # 撑到上限
+    assert adj[0]["still_short"] is True
+
+
+def test_enforce_camera_budget_caps_push_in() -> None:
+    # 8 段推近(带"推"),total_scenes=8 → 推近上限 2,须把推近压到 ≤2、且不改成静态。
+    segs = [_cam_seg(camera="定场推") for _ in range(8)]
+    enforce_camera_budget(segs, total_scenes=8)
+    cams = [s.camera_movement for s in segs]
+    assert sum(1 for c in cams if "推" in c) <= 2, cams
+    assert sum(1 for c in cams if "静态" in c) == 0  # 兜底不把推近改成静态
+
+
+def test_enforce_camera_budget_noop_when_within_caps() -> None:
+    segs = [
+        _cam_seg(camera="静态对话"),
+        _cam_seg(camera="横移"),
+        _cam_seg(camera="反应插入", speaker="许渔夫"),
+        _cam_seg(camera="定场推"),
+    ]
+    before = [s.camera_movement for s in segs]
+    assert enforce_camera_budget(segs, total_scenes=4) == []
+    assert [s.camera_movement for s in segs] == before
 
 
 def test_camera_lint_flags_repeated_push_in_as_warning() -> None:

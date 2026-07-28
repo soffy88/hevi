@@ -76,13 +76,29 @@ _SCENE_SCRIPT_PROMPT = """你是电影场记,在把一场戏写成"逐段时间�
 "表情/细节"算三条),不要在一段里堆砌更多——模型一次处理不了太密的指令,堆多了会互相干扰,
 执行出来是模糊的折中,不是精确的叠加。宁可多切一段,不要塞爆一段。
 
-**运镜类型必须显式选定、相邻段不能雷同**:每段给一个 `camera_movement` 分类标签,参考(不是
-穷举,可以用别的贴切词,但意思要清楚属于哪一类):"定场推"(缓慢推近建立空间)、"静态对话"
-(机位不动,靠人物表演撑内容)、"反应插入"(切到旁观者/局部反应)、"峰值轻推"(情绪最高点时
-极轻微推近强调)、"横移"(沿轴线平移)、"仰拍/俯拍切换"等。**同一场戏里,相邻两段不能用同一
-类运镜**——如果上一段是"定场推",这一段就不能也写"定场推",换一种(哪怕这一刻的动作跟上一段
-很像,运镜语言也要变,不然会显得机械重复)。整场戏(多段累计下来)"推近类"运镜(定场推/峰值轻推
-这类带"推"的)占比不要超过四分之一,大部分时间应该是静态对话/反应插入/横移这类非推近运镜。
+**运镜由"这一刻发生了什么"决定,不靠"避免和上一段雷同"**:每段给一个 `camera_movement`
+分类标签。**先看这段的内容属于下面哪一类,就用对应的运镜**(内容→运镜映射,标签用词不必
+逐字照抄,但要清楚属于哪一类):
+- 场景/地点在全片里**首次出现**、需要建立空间 → "定场推"(缓慢推近建立环境)
+- 两人**对白一来一回**、靠表演和台词撑戏 → 在"静态对话"(机位不动)和"反应插入"(切到听者
+  反应)之间**交替**,**不要连续两三段都写"静态对话"**——同是对白段,这一段静态,下一段就切
+  反应插入;有轻微走位就顺势用横移/跟随。静态对话是最容易被滥用的默认值,全片用量必须压在半数以内
+- 人物在空间里**走动/位置变化** → "跟随"或"横移"(镜头随人物平移)。**强运动×身份互斥(实测边界):
+  横移/跟随/摇这类大运动段不承担身份识别——不要写主角面部特写、不要求这段认出脸(镜头动得猛脸必然糊,
+  和 provider 物理边界对着干没用);写成主角背身/侧身/中远景带过,重点放运动和环境/动作,身份靠前后
+  静态段建立。** 别在运动段里锁脸。
+- **全片仅有的那 1-2 个真正情绪最高点**的那一瞬 → "峰值轻推"(极轻微推近强调)。**注意:
+  绝大多数对白段即使带情绪起伏也不算"峰值",一律走静态对话/反应插入——"峰值轻推"是全片省着
+  用的稀缺资源,只留给最关键的一两处,不是每个有情绪的段都能用。**
+- 这段动作是被**画外声音触发**的反应 → "摇向声源"(镜头朝画外事件方向摇)
+- 都不贴切时,选这一刻最能服务叙事的运镜——**但绝不要默认写"静态对话"当省事的兜底**。
+按内容选出来是什么就写什么,不要因为"上一段用过"就刻意回避:真实一场戏里同类运镜本来
+就会重复,**重复不是问题,全片单一才是问题**——所以下面这条全片配比才是硬约束。
+
+**全片运镜配比(硬约束,优先级高于上面的内容映射)**:{camera_budget_status}
+预算里**带【】方括号的指令是硬性覆盖**,必须无条件服从——哪怕按内容映射这段"像"情绪峰值,
+只要预算说"推近类已用满",就不许再选带"推"的,改选反应插入/横移/摇向声源这类非推近类型。
+最终以满足"全片至少 3-4 种运镜、静态不过半、推近不超四分之一"为准。
 
 **接缝设计(链式生成的关键)**:每段结尾要在 `handoff_out` 里写清楚这段收尾时人物的可承接
 停留点——位置(画面左/中/右)、朝向、动作收束到了什么状态(不是动作中途,是一个能被"接住"
@@ -94,7 +110,6 @@ _SCENE_SCRIPT_PROMPT = """你是电影场记,在把一场戏写成"逐段时间�
 `handoff_in` 留空。
 
 上一场收尾状态:{prev_handoff_out}
-上一段运镜类型(这一段不能雷同,留空则无限制):{prev_camera_movement}
 
 **台词处理(关键约束,不能违反)**:如果这一段里有人说话,dialogue 字段里的 text 必须跟
 narrative_text 里引述的台词**逐字一致**,不能改写、不能转述、不能加动作旁注混进 text——
@@ -135,6 +150,12 @@ DV"就可以写"镜头停住,仿佛朋友放下了摄像机"这类,不是每场�
 **运动预算显式分配**:除了写"什么在动",也要点名"什么明确不动"(比如"只有帽檐边缘和几缕
 发丝被风吹动,其余画面静止"),把运动感集中到这一刻真正的关键动作上,不要让全画面同时轻微
 飘动——那样关键动作反而不突出。
+
+**避免可读文字特写(绕开生成模型边界,不硬修)**:视频生成模型渲不出连贯可读的汉字——竹简、
+木牍、匾额、告示、书卷上的字给特写,必然是一堆乱码(实测:商鞅立木"徙木立信"竹简特写出来是
+"揲草令"),反而出戏。所以**不要把有文字的道具(竹简/木牍/匾额/告示/印章)推成能看清字的特写**;
+这类道具只作中远景环境元素带过、或让文字被遮挡/虚焦/侧角,焦点放在人物动作和表情上。文字信息
+靠台词/旁白/后期字幕传达,不靠画面里的字。
 
 上一场禁切清单(如果非空,这场沿用,不重新定义除非剧情明确需要新增):{prev_no_cut_to}
 
@@ -229,6 +250,42 @@ def _fallback_segments(scene: ScreenplayScene) -> list[SceneScriptSegment]:
     return segments
 
 
+_PUSH_IN_MARKER = "推"  # "定场推"/"峰值轻推"这类带"推"字的运镜标签算 push-in
+_STATIC_MARK = "静态"
+
+
+def _camera_budget_status(camera_tally: list[str] | None, total_scenes: int) -> str:
+    """把"全片已选运镜 + 总段数"编成给 LLM 的实时配比预算(2026-07-23,改绝对配比不依赖
+    相邻比较——单段场景也有约束可依)。总段数未知(0)时退成不带数字的软指引。"""
+    tally = [c for c in (camera_tally or []) if c]
+    push_used = sum(1 for c in tally if _PUSH_IN_MARKER in c)
+    static_used = sum(1 for c in tally if _STATIC_MARK in c)
+    distinct = sorted(set(tally))
+    used = "、".join(f"{t}×{tally.count(t)}" for t in distinct) if tally else "(还没有,这是第一段)"
+    if total_scenes <= 0:
+        return (
+            f"已选运镜:{used}。全片目标:推近类(带'推')不超过四分之一、静态对话不过半、"
+            f"至少出现 3-4 种不同运镜类型。已出现 {len(distinct)} 种。"
+        )
+    push_cap = max(1, total_scenes // 4)
+    static_cap = max(1, total_scenes // 2)
+    flags = []
+    if push_used >= push_cap:
+        flags.append("【推近类已用满,这段不要再选带'推'的】")
+    if static_used >= static_cap:
+        flags.append("【静态对话已用满,这段必须选非静态类型】")
+    if len(distinct) < 3:
+        flags.append(
+            f"【全片至今只出现 {len(distinct)} 种运镜,优先选还没出现过的类型补足到 3-4 种】"
+        )
+    return (
+        f"全片共 {total_scenes} 段,已选运镜:{used}(推近 {push_used}/{push_cap} 段、"
+        f"静态 {static_used}/{static_cap} 段、已出现 {len(distinct)} 种)。"
+        f"硬上限:推近类 ≤{push_cap} 段、静态对话 ≤{static_cap} 段、全片至少 3-4 种不同类型。"
+        + ("".join(flags) if flags else "")
+    )
+
+
 async def generate_scene_script_draft(
     *,
     scene: ScreenplayScene,
@@ -238,6 +295,8 @@ async def generate_scene_script_draft(
     prev_handoff_out: str = "",
     prev_camera_movement: str = "",
     prev_no_cut_to: list[str] | None = None,
+    camera_tally: list[str] | None = None,
+    total_scenes: int = 0,
 ) -> SceneScript:
     """锁定 Screenplay(单场)+ DesignList + World Bible → Scene Script 草案。LLM 失败 →
     确定性兜底(叙述整体一段+每句对白各自一段),不阻断。
@@ -247,9 +306,14 @@ async def generate_scene_script_draft(
     `handoff_in` 只能是空的或瞎编的。调用方(逐场循环生成时)应该把上一场结果的最后一段
     `handoff_out` 传进来。空串 = 这是全片第一场,没有上一场可承接。
 
-    `prev_camera_movement`(链式打磨第一轮新增):上一场最后一段的 `camera_movement`
-    标签,同样需要调用方逐场传递——用于"相邻段运镜不能雷同"这条约束,配合
-    `lint_camera_movement_variety` 事后检查。
+    `prev_camera_movement`:**2026-07-23 起 prompt 不再用它做"相邻段不雷同"的主约束**——
+    单段场景相邻比较无处着力,实测生成器仍产出 13/14 静态。改由 `camera_tally`+`total_scenes`
+    的全片绝对配比 + 内容→运镜映射驱动。参数保留(调用方仍传,`lint_camera_movement_variety`
+    事后检查照旧),但不再进 prompt。
+
+    `camera_tally`/`total_scenes`(2026-07-23):全片到这一场为止已选的 camera_movement 列表
+    + 全片总段数,调用方逐场累加传入——`_camera_budget_status` 据此给这一段一份实时配比
+    预算(推近 ≤¼、静态 ≤½、≥3-4 种),让单段场景也有绝对约束可依,不靠相邻比较。
 
     `prev_no_cut_to`(SPEC-007 §6.3 新增):上一场的禁切清单,同样需要调用方逐场传递并把
     这一场返回的 `no_cut_to` 传给下一场——prompt 里默认沿用上一场的清单(除非剧情明确
@@ -268,8 +332,8 @@ async def generate_scene_script_draft(
         narration=scene.narration or "(无)",
         dialogue_text=_dialogue_text(scene),
         prev_handoff_out=prev_handoff_out or "(无,这是全片第一场)",
-        prev_camera_movement=prev_camera_movement or "(无限制)",
         prev_no_cut_to=("、".join(prev_no_cut_to) if prev_no_cut_to else "(无,这是全片第一场)"),
+        camera_budget_status=_camera_budget_status(camera_tally, total_scenes),
     )
     try:
         data = await _call_llm_json(resolved_llm, prompt)
@@ -327,9 +391,6 @@ async def generate_scene_script_draft(
     )
 
 
-_PUSH_IN_MARKER = "推"  # "定场推"/"峰值轻推"这类带"推"字的运镜标签算 push-in
-
-
 def lint_camera_movement_variety(segments: list[SceneScriptSegment]) -> list[str]:
     """链式打磨第一轮新增,零成本确定性检查(不经 LLM)——不是 `scene_stage_lint.py` 那套
     L1-L6 体系(那套吃的是 SceneStage/ShotList,查的是场面调度矛盾),这里查的是
@@ -385,8 +446,88 @@ def lint_camera_movement_variety(segments: list[SceneScriptSegment]) -> list[str
     return findings
 
 
+def _budget_substitute(seg: SceneScriptSegment) -> str:
+    """给一个被兜底改判的段挑一个内容贴切的非静态、非推近运镜——用段内已有的内容信号选,
+    保持"内容驱动"(不是无脑贴一个标签):有画外触发→摇向声源;有对白→反应插入(切到听者);
+    其余(旁白/动作段)→横移(镜头缓慢横移扫过所述场景,始终成立且非推近)。"""
+    if seg.offscreen_trigger.strip():
+        return "摇向声源"
+    if seg.dialogue:
+        return "反应插入"
+    return "横移"
+
+
+def enforce_camera_budget(
+    segments: list[SceneScriptSegment], total_scenes: int
+) -> list[dict[str, Any]]:
+    """LLM 按内容选完运镜后,代码兜底强制全片硬配比(2026-07-23)。实测:改绝对配比 prompt 后
+    LLM 能产出 3-4 种运镜、能压住推近类,但**守不住"静态≤½"**——对白/旁白密集的戏它一路默认
+    "静态对话",连预算里的硬 flag 都不理(三次免费迭代 ~71-79% 静态)。这里把超出上限的
+    "静态对话"段(和超 ¼ 的推近段)确定性改判成 `_budget_substitute` 按段内信号选出的非静态、
+    非推近运镜——改判用段自己的内容信号(画外触发/对白/旁白),不是无脑贴标签。按等距抽样挑
+    要改的段,不聚在片尾。就地改 `segment.camera_movement`,返回改判记录(供落库/审计)。"""
+    static_cap = max(1, total_scenes // 2)
+    push_cap = max(1, total_scenes // 4)
+    reassigned: list[dict[str, Any]] = []
+
+    def _flip_excess(marker: str, cap: int, why: str) -> None:
+        idxs = [i for i, s in enumerate(segments) if marker in s.camera_movement]
+        excess = len(idxs) - cap
+        if excess <= 0:
+            return
+        ratio = len(idxs) / excess
+        picks = sorted({idxs[min(len(idxs) - 1, int(k * ratio))] for k in range(excess)})
+        for i in picks:
+            old = segments[i].camera_movement
+            new = _budget_substitute(segments[i])
+            if new == old:
+                continue
+            segments[i].camera_movement = new
+            reassigned.append({"index": i, "from": old, "to": new, "why": why})
+
+    _flip_excess(_STATIC_MARK, static_cap, "static_over_cap")
+    _flip_excess(_PUSH_IN_MARKER, push_cap, "push_over_cap")
+    return reassigned
+
+
 _CHARS_PER_SECOND = 4.5  # 中文语速经验值,粗估台词 TTS 时长用,不是精确值
 _MIN_HANDLE_S = 0.5  # 说完台词后至少留的剪辑余量
+_MAX_DIALOGUE_SEG_S = 13.0  # 单段延长上限(留在 provider _DURATION_MAX_S=15 之下的头)
+
+
+def enforce_dialogue_duration(segments: list[SceneScriptSegment]) -> list[dict[str, Any]]:
+    """代码兜底:含台词的段,若 `t_end_s - t_start_s` 装不下"估算 TTS + 剪辑余量",**上游就把
+    这段时长撑够**(2026-07-23)。此前只有 `lint_dialogue_segment_alignment` 估算但**从没进过
+    生成路径**(实测:该 lint 在 produce_v2/router 零调用),对白超时全靠 produce_v2 生成后 QC
+    重掷时被动加时——费一次重掷,且重掷预算用尽仍不够就落成 L5"对白时长"fail(基线 s3=50字/
+    s12=56字实证)。这里改成**生成前**按估算把 t_end_s 撑到 required,零成本、免掉那次重掷,
+    也堵住重掷耗尽的漏。超过单段上限(13s)则撑到上限并记警告(这句太长,真正该拆节拍,留信号)。
+    就地改 `segment.t_end_s`,返回调整记录。"""
+    adjustments: list[dict[str, Any]] = []
+    for seg in segments:
+        if not seg.dialogue:
+            continue
+        total_chars = sum(len(d.text) for d in seg.dialogue)
+        required = total_chars / _CHARS_PER_SECOND + _MIN_HANDLE_S
+        cur = seg.t_end_s - seg.t_start_s
+        if cur >= required:
+            continue
+        target = min(required, _MAX_DIALOGUE_SEG_S)
+        if target <= cur:
+            continue
+        old_end = seg.t_end_s
+        seg.t_end_s = round(seg.t_start_s + target, 1)
+        adjustments.append(
+            {
+                "segment_id": seg.segment_id or seg.order,
+                "from_s": round(cur, 1),
+                "to_s": round(target, 1),
+                "chars": total_chars,
+                "still_short": required > _MAX_DIALOGUE_SEG_S,  # 撑到上限仍不够=该拆节拍
+                "old_end_s": old_end,
+            }
+        )
+    return adjustments
 
 
 def lint_dialogue_segment_alignment(segments: list[SceneScriptSegment]) -> list[str]:

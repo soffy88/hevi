@@ -685,7 +685,12 @@ class CameraPersona(BaseModel):
 class VisualVolume(BaseModel):
     """World Bible 影像卷。"""
 
-    style_manifesto: str = ""  # 视觉风格宣言,长文本
+    style_manifesto: str = ""  # 视觉风格宣言,长文本(给人看的美学阐述)
+    # 2026-07-23 画风锁②:把 style_manifesto 那段抽象艺术散文压成 30-50 字的**可执行渲染指令**
+    # (媒介/笔触/色调/质感/参考风格,如"水墨渲染质感,柔和边缘,青灰主调,纸本肌理,写实人物比例
+    # ——全片统一,不在写实照片与卡通插画间摇摆")。散文给人看,这条给模型看——真正进生成 prompt
+    # 末尾的是这条,不是散文(见 multirole_reference.compile_multirole_prompt)。空则回退用 manifesto。
+    style_render_directive: str = ""
     camera_persona: CameraPersona = Field(default_factory=CameraPersona)
     photographic_flaw_aesthetics: list[str] = Field(default_factory=list)  # 摄影缺陷美学清单
     negative_list: list[str] = Field(default_factory=list)
@@ -723,6 +728,14 @@ class SceneScriptDialogueLine(BaseModel):
     character_name: str = ""
     text: str = ""
     target_name: str = ""
+    # 通鉴 V2 迁移(SPEC-005-V2 §1.3):史实溯源审计字段。通鉴演绎段桥接自 tongjian ScriptLine——
+    # `quote_id` 指向 chapter_ir.quotes 里的真实引语(逐字引语改写),`dramatized=True` 表示戏剧化
+    # 改编(真实事件、无直接引语,措辞是创作)。史实门(G2/CG2.5)在桥接前的 tongjian L2 已跑过,
+    # 这两个字段是**审计透传**:让成片每句对白可反查到史料出处,落 director_works。**不进生成端
+    # prompt**(纯溯源标签,非渲染信号)——接线完整性门按此声明管住,不做"字段落地三件套"要求。
+    # 非通鉴内容(如短剧/王六郎)不填,默认 None/False,零行为变化。
+    quote_id: str | None = None
+    dramatized: bool = False
 
 
 class SceneScriptSegment(BaseModel):
@@ -745,21 +758,30 @@ class SceneScriptSegment(BaseModel):
     handoff_out: str = ""
     handoff_in: str = ""
     # 2026-07-19 链式打磨:这段的运镜类型标签(如"定场推"/"静态对话"/"反应插入"/"峰值轻推",
-    # 不是穷举枚举,LLM 可以用其它贴切的词)。**这不是要拆解 narrative_text 里的自然语言运镜
-    # 描述**(那条"不产出逐段独立摄像机字段"的原则不变,narrative_text 仍是运镜的唯一权威
-    # 描述)——这只是给这段运镜"贴一个粗粒度分类标签"供 `lint_camera_movement_variety` 检查
-    # "相邻段是否雷同""push-in 占比是否超标"用,标签本身不进最终 prompt。
+    # 不是穷举枚举,LLM 可以用其它贴切的词)。供 `lint_camera_movement_variety` 检查"相邻段
+    # 是否雷同""push-in 占比是否超标"。**2026-07-23:此前"标签不进最终 prompt"的设计判为错
+    # ——运镜指令从没进过生成端,正是"每段都由远及近推"的病根(lint 查得干净,模型却拿不到
+    # 该怎么运镜的指令)。现在同时编译进真实生成 prompt(`multirole_reference.
+    # _performance_directive`),作为该段运镜指令;narrative_text 仍是动作的权威描述,这是
+    # 叠加其上的镜头语言。**
     camera_movement: str = ""
     # SPEC-007 §6.4(2026-07-20):这段动作如果是被画外音效触发的反应(如"画外传来击球声→
-    # 角色转头"),这里写触发源;没有画外触发就留空。跟 camera_movement 同类定位——粗粒度
-    # 标注供下游消费(音效/表演联动),不是要从 narrative_text 拆出一个新的权威字段。
+    # 角色转头"),这里写触发源;没有画外触发就留空。供音效/表演联动下游消费。**2026-07-23:
+    # 同 camera_movement,现在也编译进真实生成 prompt 当画外事件指令(`_performance_
+    # directive`),让模型在画面里表现出这个由画外触发的反应。**
     offscreen_trigger: str = ""
     # SPEC-007(2026-07-20):这段对应的具体戏剧节拍,一句话概括(如"王生额头触地的一瞬")。
-    # prompt 已经要求"整场戏只挑最有戏剧张力的1个核心节拍",但"是否真的踩中了节拍"是语义
-    # 判断、没法公式化验证——加这个字段让 LLM 显式点名,把"节拍边界"从"prompt 里的一句期望"
-    # 变成"每段是否显式声明了自己对应的节拍"这个可查信号,供 `lint_beat_and_dialogue_
-    # boundary` 使用。
+    # 供 `lint_beat_and_dialogue_boundary` 把"节拍边界"变成可查信号。**2026-07-23:同上,
+    # 现在也编译进真实生成 prompt 当该段的表演意图提示(`_performance_directive`)。**
     beat_description: str = ""
+    # 正反打镜序(2026-07-25,双人对白戏):由 `expand_debate_reverse_shots` 生成,produce_v2 消费。
+    #   shot_type: "single"(默认,单人/非辩论)/ "master"(双人建立轴线)/ "ots"(过肩反打)。
+    #   speaker_side: 说话人恒定的屏幕侧("画左"/"画右"),side_convention 契约——反打机位过轴但
+    #     人物左右位不翻(治双人对白最易崩的跳轴)。
+    #   foreground_character: OTS 前景那个人的 name(其肩/背虚焦入前景,不是主体,身份不重要)。
+    shot_type: str = "single"
+    speaker_side: str = ""
+    foreground_character: str = ""
 
 
 class SceneScript(BaseModel):

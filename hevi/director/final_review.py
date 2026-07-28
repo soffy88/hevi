@@ -85,15 +85,43 @@ def _seam_to_scenes(reviews: list[SeamReview], predicate) -> list[int]:
     return sorted(out)
 
 
+# 强运动段身份分下限(2026-07-23):"运动会掉身份"是接受的已知边界,但"运动段完全变成另一个人"
+# 不是——低于这个分,即使强运动段也判真 defect,兜底避免"已知边界的正常退化"规则把真 bug 一起吞掉。
+_STRONG_MOTION_IDENTITY_FLOOR = 0.5
+
+
+def _identity_reason(defect: list, expected: list) -> str:
+    if not defect and not expected:
+        return "CLIP 身份分 + 接缝观感均一致"
+    parts = []
+    if defect:
+        parts.append(f"真身份缺陷段(需重掷): {defect}")
+    if expected:
+        parts.append(f"强运动段身份下降(设计接受,不进 retake): {expected}")
+    return "; ".join(parts)
+
+
 def synthesize_final_checklist(
     *,
     seam_reviews: list[SeamReview],
     qc_results: list[SegmentQCResult],
     color_reports: list[dict],
     camera_lint_findings: list[str],
+    strong_motion_ids: set[str] | None = None,
 ) -> dict:
-    """六项清单——纯 code 合成已有数据,不二次调用 LLM 综合(数据来源见各字段)。"""
+    """六项清单——纯 code 合成已有数据,不二次调用 LLM 综合(数据来源见各字段)。
+
+    `strong_motion_ids`(2026-07-23,强运动×身份三级规则):横移/跟随/摇这类大运动段的 seg_id
+    集合。身份 fail 分三级——**强运动段 + 身份分≥下限 → expected**(设计如此,不进 retake,但
+    照常显示+标注);**静态段 fail → defect**(原行为);**强运动段但身份分<下限 → 仍 defect**
+    (运动掉身份可接受,变成另一个人不可接受,下限兜底防真 bug 被规则吞掉)。None → 全按 defect
+    (旧行为,不倒退)。"""
     unverified_seams = [r.seam for r in seam_reviews if r.unverified]
+    strong = strong_motion_ids or set()
+    # 每段最低身份分(QC 侧;接缝侧无数值分)——用于强运动段的下限兜底判定
+    identity_min = {
+        r.segment_id: min(r.identity_scores.values()) for r in qc_results if r.identity_scores
+    }
 
     spatial_bad = _seam_to_scenes(seam_reviews, lambda r: r.spatial_jump)
     camera_bad_seams = _seam_to_scenes(seam_reviews, lambda r: r.camera_looks_repeated)
@@ -114,6 +142,15 @@ def synthesize_final_checklist(
     identity_bad_all = sorted(set(bad_identity_qc) | set(identity_bad_seams), key=str)
     color_bad_all = sorted(set(color_bad_seams) | set(color_clamped), key=str)
 
+    # 强运动×身份三级分类:expected(强运动段且身份分≥下限,或无数值分的强运动接缝 fail)不进
+    # defect;强运动段身份分<下限 → 仍 defect(真变成另一个人);静态段 fail → defect。
+    identity_expected = [
+        s
+        for s in identity_bad_all
+        if str(s) in strong and identity_min.get(str(s), 1.0) >= _STRONG_MOTION_IDENTITY_FLOOR
+    ]
+    identity_defect = [s for s in identity_bad_all if s not in identity_expected]
+
     items = [
         {
             "name": "空间连贯性",
@@ -133,11 +170,11 @@ def synthesize_final_checklist(
         },
         {
             "name": "身份保真度",
-            "passed": not identity_bad_all,
-            "reason": f"CLIP 身份分低于阈值或接缝观感漂移的段: {identity_bad_all}"
-            if identity_bad_all
-            else "CLIP 身份分 + 接缝观感均一致",
-            "bad_scenes": identity_bad_all,
+            # passed 只看 defect(强运动段的正常退化不算失败);expected 段照常显示但标注"设计接受"。
+            "passed": not identity_defect,
+            "reason": _identity_reason(identity_defect, identity_expected),
+            "bad_scenes": identity_bad_all,  # 全显示(可见)
+            "expected_scenes": identity_expected,  # 设计接受,不进 retake
         },
         {
             "name": "对白/时间线连续性",
@@ -166,3 +203,21 @@ def synthesize_final_checklist(
         },
     ]
     return {"items": items, "unverified_seams": unverified_seams}
+
+
+def collect_retake_candidates(checklist: dict) -> list[dict]:
+    """把 L5 六项里所有 fail 项的 `bad_scenes` 按段汇成重掷候选清单——每段列出它触发了
+    哪几项检查 fail(2026-07-23)。此前 L5 advisory fail 只写进 `l5_checklist` 记录、
+    没人按段汇总,等于体检报告没人看;这个清单让 produce 结果里能直接列出"哪几段有问题、
+    各是什么问题",人审据此决定重掷哪几段。按 segment_id 排序,确定性输出。"""
+    by_seg: dict[str, list[str]] = {}
+    for item in checklist.get("items", []):
+        if item.get("passed", True):
+            continue
+        # expected_scenes(强运动段身份下降等"设计接受")照常显示但不进 retake 候选。
+        expected = {str(s) for s in item.get("expected_scenes", [])}
+        for seg in item.get("bad_scenes", []):
+            if seg is None or str(seg) in expected:
+                continue
+            by_seg.setdefault(str(seg), []).append(item["name"])
+    return [{"segment_id": seg, "failed_checks": checks} for seg, checks in sorted(by_seg.items())]

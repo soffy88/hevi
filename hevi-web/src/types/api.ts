@@ -73,6 +73,12 @@ export type AspectRatio = '9:16' | '16:9' | '1:1';
 export const STYLE_PRESETS = ['科普', '严肃', '搞笑'] as const;
 export type StylePreset = typeof STYLE_PRESETS[number];
 
+// L5 终审按段汇总的重掷候选(produce_v2 写进 config_json.retake_candidates)
+export interface RetakeCandidate {
+  segment_id: string;
+  failed_checks: string[];
+}
+
 export interface TaskInfo {
   task_id: string;
   status: TaskStatus;
@@ -81,6 +87,21 @@ export interface TaskInfo {
   created_at?: string;
   error?: string | null;
   result_video_path?: string | null;
+  // 后端 _serialize_task 原样透传整行 task,含 config_json(V2 produce 写入终审结果)
+  config_json?: {
+    actual_usd?: number;
+    failed_segments?: string[];
+    retake_candidates?: RetakeCandidate[];
+    l5_checklist?: {
+      items?: {
+        name: string;
+        passed: boolean;
+        reason?: string;
+        bad_scenes?: (string | number)[];
+        expected_scenes?: (string | number)[];
+      }[];
+    };
+  } | null;
 }
 
 // 质量档(文档 1.9)
@@ -480,6 +501,10 @@ export interface TongjianRunRequest {
   pause_after?: string | null;
   // 每层配置,键 "L0".."L8"。例:{ L6: { model: "cloud_avatar", params: { style: "..." } } }
   layer_config?: Record<string, TongjianLayerConfig>;
+  // "v1"=cloud_avatar 数字人;"v2"=固化管线(双人反打/横屏/白话/片头点主题/三档角标)。
+  pipeline_mode?: string;
+  // v2 演绎段的统一取景地点(如"栎阳宫大殿");空=后端默认。
+  location?: string;
 }
 
 // ── 自媒体解说短视频通道(hevi.explainer)────────────────────────────────────

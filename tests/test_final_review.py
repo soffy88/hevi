@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock
 
 from hevi.director.final_review import (
     SeamReview,
+    collect_retake_candidates,
     review_seam,
     synthesize_final_checklist,
 )
@@ -124,3 +125,79 @@ def test_synthesize_final_checklist_surfaces_unverified_seams() -> None:
         seam_reviews=seam_reviews, qc_results=[], color_reports=[], camera_lint_findings=[]
     )
     assert report["unverified_seams"] == ["1->2"]
+
+
+def test_collect_retake_candidates_aggregates_failed_checks_by_segment() -> None:
+    # L5 fail 项的 bad_scenes 按段汇总,每段列出触发了哪几项检查(2026-07-23)。
+    checklist = {
+        "items": [
+            {"name": "空间连贯性", "passed": False, "bad_scenes": [2, 3]},
+            {"name": "身份保真度", "passed": False, "bad_scenes": ["2", "s5_sg001"]},
+            {"name": "运镜多样性", "passed": True, "bad_scenes": []},
+            {"name": "色彩/影调一致性", "passed": False, "bad_scenes": [None]},
+        ]
+    }
+    cands = collect_retake_candidates(checklist)
+    by_seg = {c["segment_id"]: c["failed_checks"] for c in cands}
+    assert by_seg["2"] == ["空间连贯性", "身份保真度"]
+    assert by_seg["3"] == ["空间连贯性"]
+    assert by_seg["s5_sg001"] == ["身份保真度"]
+    # None 段不进清单;确定性按 segment_id 排序
+    assert [c["segment_id"] for c in cands] == sorted(by_seg)
+
+
+def test_collect_retake_candidates_all_passed_is_empty() -> None:
+    checklist = {"items": [{"name": "空间连贯性", "passed": True, "bad_scenes": []}]}
+    assert collect_retake_candidates(checklist) == []
+
+
+def test_identity_three_tier_strong_motion_expected_vs_defect() -> None:
+    # 强运动×身份三级(2026-07-23):
+    #  s_move 强运动段+身份分≥0.5 → expected(设计接受,不进 retake)
+    #  s_static 静态段身份 fail → defect
+    #  s_bad 强运动段但身份分<0.5(变成另一个人)→ 仍 defect(下限兜底)
+    qc = [
+        SegmentQCResult(segment_id="s_move", identity_scores={"王生": 0.60}, dialogue_fits=True),
+        SegmentQCResult(segment_id="s_static", identity_scores={"王生": 0.58}, dialogue_fits=True),
+        SegmentQCResult(segment_id="s_bad", identity_scores={"王生": 0.42}, dialogue_fits=True),
+    ]
+    report = synthesize_final_checklist(
+        seam_reviews=[], qc_results=qc, color_reports=[], camera_lint_findings=[],
+        strong_motion_ids={"s_move", "s_bad"},
+    )
+    ident = {it["name"]: it for it in report["items"]}["身份保真度"]
+    assert set(ident["expected_scenes"]) == {"s_move"}
+    # bad_scenes 全显示(可见)
+    assert set(ident["bad_scenes"]) == {"s_move", "s_static", "s_bad"}
+    # 仍有真缺陷(s_static + s_bad)→ 该项不算 passed
+    assert ident["passed"] is False
+    # retake 候选排除 expected,只留真缺陷
+    retake = {c["segment_id"] for c in collect_retake_candidates(report)}
+    assert retake == {"s_static", "s_bad"}
+    assert "s_move" not in retake
+
+
+def test_identity_all_expected_passes_and_no_retake() -> None:
+    # 全部身份 fail 都是强运动段且≥下限 → 该项 passed(不算失败),retake 为空,但 bad_scenes 仍显示。
+    qc = [SegmentQCResult(segment_id="s9", identity_scores={"王生": 0.55}, dialogue_fits=True)]
+    report = synthesize_final_checklist(
+        seam_reviews=[], qc_results=qc, color_reports=[], camera_lint_findings=[],
+        strong_motion_ids={"s9"},
+    )
+    ident = {it["name"]: it for it in report["items"]}["身份保真度"]
+    assert ident["passed"] is True
+    assert ident["expected_scenes"] == ["s9"]
+    assert ident["bad_scenes"] == ["s9"]  # 照常显示
+    assert collect_retake_candidates(report) == []
+
+
+def test_identity_no_strong_motion_ids_is_old_behavior() -> None:
+    # 不传 strong_motion_ids → 全按 defect(旧行为不倒退)
+    qc = [SegmentQCResult(segment_id="s9", identity_scores={"王生": 0.55}, dialogue_fits=True)]
+    report = synthesize_final_checklist(
+        seam_reviews=[], qc_results=qc, color_reports=[], camera_lint_findings=[],
+    )
+    ident = {it["name"]: it for it in report["items"]}["身份保真度"]
+    assert ident["passed"] is False
+    assert ident["expected_scenes"] == []
+    assert {c["segment_id"] for c in collect_retake_candidates(report)} == {"s9"}

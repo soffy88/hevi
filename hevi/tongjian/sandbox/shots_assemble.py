@@ -1,10 +1,12 @@
-"""N0-D-033 子拍出画装配:显示拍切成 ~12s 子镜,每镜一画面/构图变化,跟旁白节奏走。
-map/compare/choice/question/point 五类镜头;申生抉择点专用 choice(三条路)+question(换作是你)。
-复用 s2_assemble 的 TTS/字幕/音频基建,只改「一拍一静图」为「多子镜」。零 provider。"""
+"""N0-D-033 子拍出画装配(通用)。
+env: SHOTS_ASM(集装配器)/SHOTS_MAP(地图state)/SHOTS_NET/SHOTS_KICKER。
+显示拍切 ~12s 子镜,每镜一画面/构图变化;map/compare/choice/question/point 五类镜头。
+复用各集 assemble 的 TTS/字幕/音频基建,只改「一拍一静图」为「多子镜」。零 provider。"""
 
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 import os
 import re
@@ -13,27 +15,21 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, "hevi/tongjian/sandbox")
-import s2_assemble as A  # 复用 OUT/W/H/FPS/JIN/DUAL_BY/tts_beat/make_sub_png/_probe/音频
+A = importlib.import_module(os.environ.get("SHOTS_ASM", "s2_assemble"))  # 集装配器(复用基建)
+MAPST = getattr(A, os.environ.get("SHOTS_MAP", "JIN"))  # 该集地图 state(s1=YI/s2s3=JIN)
 
-from hevi.tongjian.map_anim import animate_establish
-from hevi.tongjian.modern_shots import (
+from hevi.tongjian.map_anim import animate_establish  # noqa: E402
+from hevi.tongjian.modern_shots import (  # noqa: E402
     render_choice_card,
     render_modern_compare,
     render_point_card,
     render_question_card,
 )
 
-NET = Path(os.environ.get("S2_NET", "output/n0_s2_baihua/s1_full_clean_script.json"))
+NET = Path(os.environ.get("SHOTS_NET", "output/n0_s2_baihua/s1_full_clean_script.json"))
 TARGET = 12.0  # 子镜目标时长(s)
 ACCENTS = [(214, 69, 65), (54, 116, 217), (176, 132, 58)]  # 要点卡轮换强调色
-KICKER = {
-    "b0": "骊姬乱嫡的起点",
-    "b1": "献公娶骊姬",
-    "b2": "太子申生",
-    "b3": "重耳与夷吾出逃",
-    "b4": "晋国公室的崩坏",
-    "b5": "卫国的镜鉴",
-}
+KICKER = json.loads(os.environ.get("SHOTS_KICKER", "{}"))  # bid→小标签,默认空
 
 
 def _choices(text: str) -> list[str]:
@@ -96,7 +92,7 @@ def render(shot: dict, idx: int, dur: float, d: Path) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     k, bid = shot["kind"], shot["bid"]
     if k == "map":
-        return animate_establish(A.JIN, d, duration_s=dur, fps=A.FPS)
+        return animate_establish(MAPST, d, duration_s=dur, fps=A.FPS)
     if k == "compare":
         return render_modern_compare(A.DUAL_BY[bid], d, size=(A.W, A.H), fps=A.FPS, duration_s=dur)
     if k == "choice":
