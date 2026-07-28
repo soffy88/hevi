@@ -31,7 +31,7 @@ from hevi.director.performance_derive import (
 )
 from hevi.director.performance_track import beat_slices, compile_temporal_prompt
 from hevi.director.pipeline_schemas import Concept, DesignList, SceneStageSet, ShotList
-from hevi.director.scene_stage import compute_shot_views, project_shot_space
+from hevi.director.scene_stage import compute_shot_sides, compute_shot_views, project_shot_space
 from hevi.tongjian.schemas import (
     Act,
     CharacterBible,
@@ -124,8 +124,15 @@ def build_tongjian_inputs(
                 continue
         elif not shot_chars:  # 对白镜头兜底:至少放该镜第一句台词的说话人
             shot_chars = [lines[-len(shot_line_ids)].speaker]
-        scene_id = (
-            shot.scene_name if shot.scene_name in scene_names else (shot.scene_name or "scene")
+        # 渲染层洞#2(2026-07-18 真机复验发现):shot.scene_name 是④分镜层写的**长描述句**
+        # (如"道观山门内侧，朱漆斑驳的木门无声向内开启，门轴轻响如叹息"),scene_names 是③
+        # DesignScene 的**短名**集合(如"道观山门内侧")——原来的精确匹配 `in scene_names`
+        # 恒假,scene_id 落到长句本身,下游 scene_bg_by_id(键是短名)永远查不到,空景板传不进
+        # compose,真机产物背景是纯灰影棚底不是场景。实测④分镜层习惯把短名当长描述的开头/子串
+        # 写("{短名}，{补充细节}"),故按"短名是否为长描述的子串"匹配,命中就用短名(与
+        # scene_bg_by_id 的键对齐);一个都不命中才退回原样(向后兼容,不引入新的空值行为)。
+        scene_id = next(
+            (n for n in scene_names if n and n in shot.scene_name), shot.scene_name or "scene"
         )
         tj_shots.append(
             Shot(
@@ -145,6 +152,9 @@ def build_tongjian_inputs(
                     for b in (shot.blocking or [])
                     if b.character_name in bible_names
                 ],
+                # INC-004 §4.2:key/standard 路由判定,从④分镜层透传(见
+                # hevi.director.shot_list.classify_quality_tier)。
+                quality_tier=shot.quality_tier or "standard",
                 # INC-002:performance_track 在桥接层编译成时序提示词随 Shot 透传。空 → 空串(inert)。
                 temporal_prompt=compile_temporal_prompt(shot.performance_track),
                 # §1.1 phase→beat 时刻切片,注入渲染首/关键/尾帧。空 → {}(inert)。
@@ -232,6 +242,7 @@ async def render_director_episode(
     tts_fn: Any = None,
     scene_stage: SceneStageSet | None = None,
     subject3d_views: dict[str, dict[str, str]] | None = None,
+    scene_bg_paths: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """导演流水线锁定内容 → 通鉴 L3-L8 → 真实成片(对白+口型+按角色配音+情绪)。
 
@@ -342,6 +353,22 @@ async def render_director_episode(
     # SPEC-004 v2:每镜每角色该用哪个 Subject3D 视图(几何算),+ 各角色视图图片路径。
     # subject3d_views 为空(未建 3D 视图)→ 渲染层一律退回正面 2D 真照,行为不变。
     shot_view_by_id = compute_shot_views(shot_list, scene_stage) if scene_stage is not None else {}
+    # SPEC-004 §2 桥接(渲染层洞#1,2026-07-18):每镜每角色画左还是画右,从 SceneStage.axis.
+    # side_convention 解析,与"谁是说话人"解耦——此前落位的左右退回按 present 列表顺序,而
+    # present 顺序会被对白分支的"lead 排首位"重排(为了让 canons[0] 对应说话人),两件不相关
+    # 的事共用一个顺序变量,同场镜头因说话人变化而左右反转(真机复验撞见:SH003_04/05 跳轴)。
+    shot_side_by_id = compute_shot_sides(shot_list, scene_stage) if scene_stage is not None else {}
+    from hevi.tongjian.scene_render_avatar import multichar_chain_log
+
+    multichar_chain_log(
+        "C",
+        "shot_view_by_id keys=%s subject3d_views(param) keys=%s "
+        "tongjian shotlist shot_ids=%s tongjian shot.characters=%s",
+        list(shot_view_by_id.keys()),
+        list((subject3d_views or {}).keys()),
+        [s.shot_id for s in shotlist.shots],
+        {s.shot_id: s.characters for s in shotlist.shots},
+    )
 
     frame_manifest = await build_frame_manifest_avatar(
         shotlist=shotlist,
@@ -366,6 +393,12 @@ async def render_director_episode(
                 # 走 img2img 从该视图当底图(朝向落地);空/正面/未建 → 退回 IP-Adapter 2D 真照。
                 "shot_view_by_id": shot_view_by_id,
                 "subject3d_views_by_id": subject3d_views or {},
+                # INC-003:每 scene_id(= DesignScene.name)→ ③生成的空景板路径,多角色镜头的
+                # img2img 底图画布。空 → 渲染层退回中性灰(向后兼容)。
+                "scene_bg_by_id": scene_bg_paths or {},
+                # SPEC-004 §2(渲染层洞#1):每镜每角色画左还是画右,来自 SceneStage 的
+                # side_convention,不是 present 顺序——见上方 shot_side_by_id 注释。
+                "shot_side_by_id": shot_side_by_id,
             },
         ),
     )

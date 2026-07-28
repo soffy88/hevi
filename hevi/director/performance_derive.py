@@ -111,10 +111,17 @@ def derive_occlusion(body) -> LightingOcclusion | None:
 
 # ── §5.5 负面约束自动派生 ──────────────────────────────────────────────────────
 def derive_negatives(shot: ShotListItem, *, photoreal: bool = True) -> list[str]:
-    """从 schema 自动派生负面约束(§5.5)——有枪+手自动"不要多余手指/枪械变形",漏写不可能。
-    无任何 INC-002 信号(performance_track/audio_track/manual_negatives)→ 返回 [],保持 inert
-    (不给老镜头凭空加负面词、不改现有行为)。"""
-    if not shot.performance_track and shot.audio_track is None and not shot.manual_negatives:
+    """从 schema 自动派生**图像**负面约束(§5.5)——有枪+手自动"不要多余手指/枪械变形",漏写
+    不可能。无 performance_track/manual_negatives → 返回 [],保持 inert(不给老镜头凭空加词)。
+
+    **只出真负面词**(拼进 sdxl/关键帧 negative_prompt,消费方 tongjian_render:153)。两类东西
+    此前混进来、现已剔除(2026-07-17):
+    - **正向断言**(如"确保符合解剖学的肌肉过渡""眼泪须遵循重力"):负面槽里=叫模型**避免**
+      解剖学正确的过渡,语义反了。改写成对应的"不要…畸变"式真负面词。
+    - **音频负面词**("不要背景音乐/台词"):这是喂图像模型的,图像模型消费不了;而且无配乐/无
+      台词已由 `compile_audio_prompt`(:155-158)在正规音频通道表达,这里纯属错位+冗余,删。
+      故 `audio_track` 不再是本函数的触发信号(它跟图像负面词无关)。"""
+    if not shot.performance_track and not shot.manual_negatives:
         return []
     neg: list[str] = ["不要字幕水印"]
     track = shot.performance_track
@@ -122,20 +129,14 @@ def derive_negatives(shot: ShotListItem, *, photoreal: bool = True) -> list[str]
     if any(pp.prop_type == "firearm" for ph in phases for pp in ph.prop_performance):
         neg += ["不要枪械结构变形", "不要多余或畸形的手指"]
     if any(ph.facial_performance and ph.facial_performance.muscle_actions for ph in phases):
-        neg += ["不要脸部畸变", "确保符合解剖学的肌肉过渡"]
+        neg += ["不要脸部畸变", "不要违反解剖学的肌肉扭曲"]
     if len(phases) > 1:
         neg.append("不要突然的表情跳变(相邻阶段须连续过渡)")
     if any(
         ph.facial_performance and ph.facial_performance.physiology.tear_state not in ("none", "")
         for ph in phases
     ):
-        neg += ["眼泪须遵循重力与表面张力", "不要夸张哭泣"]
-    at = shot.audio_track
-    if at is not None:
-        if not at.music:
-            neg.append("不要背景音乐")
-        if not at.dialogue:
-            neg.append("不要台词/对白声")
+        neg += ["不要违反重力悬浮的泪滴", "不要夸张哭泣"]
     if photoreal:
         neg.append("不要卡通/动漫感")
     neg += shot.manual_negatives

@@ -68,6 +68,9 @@ export function TongjianConsole() {
   const [rawText, setRawText] = useState('');
   const [targetDuration, setTargetDuration] = useState(180);
   const [aspectRatio, setAspectRatio] = useState('16:9');
+  // 出片管线:v2=固化(双人反打/横屏/白话/片头点主题/三档角标) / v1=cloud_avatar 数字人
+  const [pipelineMode, setPipelineMode] = useState('v2');
+  const [location, setLocation] = useState('');  // v2 演绎段取景地点(空=后端默认)
   // L6 渲染模式(可选模型):cloud_avatar=云 happyhorse 数字人(配音+口型) / sdxl_local=本地静帧
   const [renderMode, setRenderMode] = useState('cloud_avatar');
   // 逐层常用参数(接进后端 layer_config.params)
@@ -171,6 +174,8 @@ export function TongjianConsole() {
         aspect_ratio: aspectRatio,
         pause_after: reviewMode ? 'L2' : undefined,
         layer_config: layerConfig,
+        pipeline_mode: pipelineMode,
+        location: pipelineMode === 'v2' && location.trim() ? location.trim() : undefined,
       });
       setRunId(r.run_id);
     } catch (e) {
@@ -190,7 +195,7 @@ export function TongjianConsole() {
       <div className="tj__hero">
         <h1 className="tj__title">通鉴自动成片</h1>
         <p className="tj__sub">
-          输入《资治通鉴》任一章节原文，零人工干预输出历史解说视频（含配音、字幕、配乐）
+          粘贴一篇文言原文/课文，自动出片：V2 固化管线出横屏、白话解说与对白、双人对峙正反打、片头点主题、三档置信角标
         </p>
         <div className="tj__badges">
           <span className="tj__badge">L0 史料</span>
@@ -259,14 +264,32 @@ export function TongjianConsole() {
           </div>
         </div>
         <div className="tj-field">
-          <span className="tj-field__label">渲染模式（L6 可选模型）</span>
+          <span className="tj-field__label">出片管线</span>
           <div className="tj-seg">
-            <button type="button" data-on={renderMode === 'cloud_avatar' ? 'true' : undefined}
-              onClick={() => setRenderMode('cloud_avatar')}>云数字人（配音+口型）</button>
-            <button type="button" data-on={renderMode === 'sdxl_local' ? 'true' : undefined}
-              onClick={() => setRenderMode('sdxl_local')}>本地静帧</button>
+            <button type="button" data-on={pipelineMode === 'v2' ? 'true' : undefined}
+              onClick={() => setPipelineMode('v2')}>V2 固化（横屏·白话·双人反打·片头点主题）</button>
+            <button type="button" data-on={pipelineMode === 'v1' ? 'true' : undefined}
+              onClick={() => setPipelineMode('v1')}>V1 数字人</button>
           </div>
         </div>
+        {pipelineMode === 'v2' && (
+          <label className="tj-field">
+            <span className="tj-field__label">演绎段取景地点（可选，如“栎阳宫大殿”；空=自动）</span>
+            <input value={location} onChange={e => setLocation(e.target.value)}
+              placeholder="留空则系统按题材自动取景" />
+          </label>
+        )}
+        {pipelineMode === 'v1' && (
+          <div className="tj-field">
+            <span className="tj-field__label">渲染模式（L6 可选模型）</span>
+            <div className="tj-seg">
+              <button type="button" data-on={renderMode === 'cloud_avatar' ? 'true' : undefined}
+                onClick={() => setRenderMode('cloud_avatar')}>云数字人（配音+口型）</button>
+              <button type="button" data-on={renderMode === 'sdxl_local' ? 'true' : undefined}
+                onClick={() => setRenderMode('sdxl_local')}>本地静帧</button>
+            </div>
+          </div>
+        )}
         <div className="tj-grid">
           <label className="tj-field">
             <span className="tj-field__label">立意候选数（L1 · 越多越优但更慢）</span>

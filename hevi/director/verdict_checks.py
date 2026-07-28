@@ -49,6 +49,14 @@ class ShotVerdict:
     diagnosis_category: str | None = None
     retake_tier: str = "keep"  # keep / fix_in_post / edit / re_roll / rewrite
     passed: bool = True
+    # INC-004 §4.3(2026-07-19):L4 旗舰 provider 路由这一镜的实付美元。None = 本地免费路
+    # (standard tier,绝大多数镜头)。攒"key 镜占比 × 单价"的真实数据,判断成本模型(90/10)
+    # 准不准靠它——这类数据没法补录,今天不落库就是永久丢掉从现在起的信号(同 §6.2 四支柱
+    # cost 那条"这类数据没法补录"的既有原则,但那条 cost 记的是校验算力,这条记的是生成
+    # 花费,是两件事,不要混)。shot_verdict 表原来没有这一列,这次新加(见对应 alembic
+    # 迁移),不是塞进 checks_json——想按成本模型聚合查询,一个真正的列比 JSONB 里挖字段
+    # 好查得多。
+    cost_usd: float | None = None
 
 
 def _extract_frame(clip: Path, t: float, out: Path) -> bool:

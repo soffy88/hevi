@@ -366,7 +366,12 @@ async def _check_hallucinated_content(script: Script, chapter_ir: ChapterIR, llm
 
 
 async def gate_script(
-    script: Script, chapter_ir: ChapterIR, constitution: Constitution, *, llm: Any = None
+    script: Script,
+    chapter_ir: ChapterIR,
+    constitution: Constitution,
+    *,
+    llm: Any = None,
+    raw_text: str = "",
 ) -> GateResult:
     """G2 门(史实门)。"""
     if llm is None:
@@ -393,7 +398,18 @@ async def gate_script(
         else 1.0
     )
 
-    return GateResult(passed=not errors, coverage=coverage, errors=errors)
+    # narration 考据对勘门(SPEC-005-V2,2026-07-24 商鞅立木首跑实证缺口):G2 上面几项不查
+    # narration 的地名/数字精度,这里补对勘——数字冲突进 errors(硬门),地名/器物推测进 warnings。
+    # 需要源原文;raw_text 为空(旧调用方未传)则跳过,零行为变化。
+    warnings: list[str] = []
+    if raw_text:
+        from hevi.tongjian.gates import lint_narration_source_parity
+
+        parity = lint_narration_source_parity(script, raw_text)
+        errors.extend(parity.errors)
+        warnings.extend(parity.warnings)
+
+    return GateResult(passed=not errors, coverage=coverage, errors=errors, warnings=warnings)
 
 
 def _violations_by_line(errors: list[str]) -> dict[str, list[str]]:
@@ -496,6 +512,7 @@ async def build_script(
     dramatize: bool = True,
     screenwriter_persona: str = _DEFAULT_SCREENWRITER_PERSONA,
     include_commentary: bool = True,
+    raw_text: str = "",
 ) -> tuple[Script, GateResult]:
     """L2 主入口:生成 → G2 门 → 违规行定点重写(最多 3 次)→ 仍不过则删除该行。"""
     if llm is None:
@@ -511,7 +528,7 @@ async def build_script(
         screenwriter_persona=screenwriter_persona,
         include_commentary=include_commentary,
     )
-    result = await gate_script(script, chapter_ir, constitution, llm=llm)
+    result = await gate_script(script, chapter_ir, constitution, llm=llm, raw_text=raw_text)
 
     lines_by_id = {ln.line_id: ln for ln in script.lines}
     for _ in range(_MAX_REWRITE_ATTEMPTS):
@@ -526,7 +543,7 @@ async def build_script(
                 continue
             lines_by_id[line_id] = await _rewrite_line(line, "; ".join(reasons), chapter_ir, llm)
         script = Script(lines=[lines_by_id[lid] for lid in lines_by_id])
-        result = await gate_script(script, chapter_ir, constitution, llm=llm)
+        result = await gate_script(script, chapter_ir, constitution, llm=llm, raw_text=raw_text)
 
     if not result.passed:
         grouped = _violations_by_line(result.errors)
@@ -534,6 +551,6 @@ async def build_script(
             for line_id in grouped:
                 lines_by_id.pop(line_id, None)
             script = Script(lines=[lines_by_id[lid] for lid in lines_by_id])
-            result = await gate_script(script, chapter_ir, constitution, llm=llm)
+            result = await gate_script(script, chapter_ir, constitution, llm=llm, raw_text=raw_text)
 
     return script, result

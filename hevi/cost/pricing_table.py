@@ -111,6 +111,13 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
             "unit": "per_second",
             "price_usd": 0.14,
         },
+        "happyhorse_1_1_maas_ref": {  # 同 happyhorse_1_1_maas,1-9 张参考图窄接口
+            # (`multirole_reference.py`/G-FINAL 真机验证用的那条真实调用路径)。此前这个
+            # provider key 在这张表里没有条目——strict_pricing=False 会静默按 $0 计价,
+            # 预算熔断对它形同虚设(2026-07-21 V1→V2 路由替换排查时发现)。
+            "unit": "per_second",
+            "price_usd": 0.14,
+        },
         "wan_2_7_maas": {
             "unit": "per_second",
             "price_usd": 0.10,

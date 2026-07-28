@@ -18,6 +18,7 @@ v1 设计决策:
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from hevi.director.design_list import _call_llm_json, _resolve_llm
@@ -463,6 +464,50 @@ def compute_shot_views(
             for cid in (shot.character_names or [])
         }
         out[shot.shot_id] = views
+    return out
+
+
+def _parse_side_convention(text: str, char_names: set[str]) -> dict[str, str]:
+    """`SceneAxis.side_convention` 自由文本(如"王生恒在画左，老道士恒在画右")解析出
+    {char_id: "left"|"right"}。SPEC-004 §2 早就有这字段,渲染层此前没接——落位的画左/画右
+    退回按 present 列表顺序均匀分布,而 present 顺序会被对白分支的"lead 排首位"重排(为了让
+    canons[0] 对应说话人),两件不相关的事共用一个顺序变量,同场镜头因说话人变化而左右反转
+    (2026-07-18 真机复验撞见:SH003_04/SH003_05 跳轴)。按分句解析,每句里出现的角色名 +
+    左/右 关键词配对;解析不出(格式不对/未提及)的角色不进 dict,调用方退回原判据
+    (blocking 显式文本 → present 顺序),不是新故障点。"""
+    if not text:
+        return {}
+    out: dict[str, str] = {}
+    for clause in re.split(r"[，,；;。]", text):
+        if "左" in clause:
+            side = "left"
+        elif "右" in clause:
+            side = "right"
+        else:
+            continue
+        for name in char_names:
+            if name and name in clause:
+                out[name] = side
+    return out
+
+
+def compute_shot_sides(
+    shot_list: ShotList, scene_stage_set: SceneStageSet
+) -> dict[str, dict[str, str]]:
+    """SPEC-004 §2 桥接:每镜每出场角色该画左还是画右(shot_id → {char_id: "left"|"right"}),
+    从该镜所属 SceneStage 的 `axis.side_convention` 解析。同一 SceneStage 下的镜头共享同一份
+    解析结果——这正是"跟谁说话无关、只跟这场戏的场事实有关"这句话的字面意思。解析不出
+    (side_convention 为空或格式不识别)的场次不产条目,渲染层退回既有判据(blocking 显式
+    文本 → present 顺序),向后兼容。"""
+    stage_by_ref = {s.scene_ref: s for s in scene_stage_set.stages}
+    out: dict[str, dict[str, str]] = {}
+    for shot in shot_list.shots:
+        stage = stage_by_ref.get(shot.scene_stage_ref) if shot.scene_stage_ref is not None else None
+        if stage is None:
+            continue
+        sides = _parse_side_convention(stage.axis.side_convention, set(shot.character_names or []))
+        if sides:
+            out[shot.shot_id] = sides
     return out
 
 

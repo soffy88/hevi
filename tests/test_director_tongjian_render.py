@@ -89,6 +89,63 @@ def test_build_tongjian_inputs_drops_narration_and_maps_dialogue():
     assert next(e for e in bible.characters if e.character_id == "智伯").appearance == "魁梧 锦袍"
 
 
+def test_build_tongjian_inputs_scene_id_matches_long_description_to_design_scene_name():
+    """渲染层洞#2(2026-07-18):④分镜层的 scene_name 常是**长描述句**(如"道观山门内侧，朱漆
+    斑驳的木门无声向内开启，门轴轻响如叹息"),不是③ DesignScene 的**短名**("道观山门内侧")
+    原样。原来的精确匹配(`shot.scene_name in scene_names`)对长句恒假,scene_id 落到长句
+    本身——下游 scene_bg_by_id(键是短名)永远查不到,空景板传不进渲染层,真机产物背景是纯灰
+    影棚底(真机复验实证)。这里验证:长描述句只要以短名开头/包含短名,scene_id 就该解析成
+    短名,能跟 scene_bg_by_id 的键对上。"""
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="王生独跪",
+                dialogue_lines=[ShotListDialogueLine(character_name="", text="独自等候。")],
+                character_names=["王生"],
+                scene_name="道观山门内侧，朱漆斑驳的木门无声向内开启，门轴轻响如叹息",
+            )
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="王生")],
+        scenes=[DesignScene(name="道观山门内侧"), DesignScene(name="崂山道观山门前")],
+    )
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list,
+        design_list=design_list,
+        concept=Concept(theme="修道"),
+        voice_by_speaker={},
+    )
+    # scene_id 解析成短名(能对上 scene_bg_by_id 的键),不是原样长句。
+    assert shotlist.shots[0].scene_id == "道观山门内侧"
+
+
+def test_build_tongjian_inputs_scene_id_falls_back_when_no_design_scene_matches():
+    """长描述句里一个 DesignScene 短名都不包含时(格式意外),退回原样——不是新的空值行为,
+    跟修复前的向后兼容路径一致,不会因为解析不出就报错/丢镜头。"""
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="过场",
+                dialogue_lines=[ShotListDialogueLine(character_name="", text="过场旁白。")],
+                scene_name="完全不相关的一段描述",
+            )
+        ]
+    )
+    design_list = DesignList(characters=[], scenes=[DesignScene(name="道观山门内侧")])
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list,
+        design_list=design_list,
+        concept=Concept(theme="修道"),
+        voice_by_speaker={},
+    )
+    assert shotlist.shots[0].scene_id == "完全不相关的一段描述"
+
+
 def test_fill_shot_timings_from_timeline():
     _, shotlist, _ = build_tongjian_inputs(
         shot_list=_shot_list(),
