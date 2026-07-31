@@ -64,11 +64,17 @@ from hevi.director.pipeline_schemas import (
     WorldBible,
 )
 from hevi.director.produce_v2 import run_v2_produce
-from hevi.director.scene_script import generate_scene_script_draft
+from hevi.director.scene_script import (
+    enforce_camera_budget,
+    enforce_dialogue_duration,
+    generate_scene_script_draft,
+    lint_beat_and_dialogue_boundary,
+)
 from hevi.director.scene_stage import generate_scene_stage_draft
 from hevi.director.screenplay import generate_screenplay_draft
 from hevi.director.tongjian_render import render_director_episode
 from hevi.director.verdict_checks import ShotVerdict, verdict_shot
+from hevi.director.works_repository import DirectorWorksRepository
 from hevi.director.world_bible import generate_world_bible_draft
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
@@ -131,6 +137,19 @@ async def get_task_service(pool: Annotated[PgPool, Depends(get_pg_pool)]) -> Tas
 
 async def get_subject_service(pool: Annotated[PgPool, Depends(get_pg_pool)]) -> SubjectService:
     return SubjectService(SubjectRepository(pool))
+
+
+async def _persist_work(pool: PgPool, work_id: str) -> None:
+    """把内存 `_WORKS[work_id]` 的锁定产物镜像进 director_works 表(P0 持久化,2026-07-23)。
+    best-effort:持久化失败只记日志、绝不阻断用户的锁定/产集流程——DB 是耐久镜像,内存字典仍是
+    工作态主存。锁定四件套落库后,进程死也能复现、能 A/B 对照(见 works_repository)。"""
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        await DirectorWorksRepository(pool).upsert_work(work_id, rec)
+    except Exception as e:
+        logger.warning("director_works 持久化失败(不阻断): work_id=%s err=%s", work_id, e)
 
 
 class CreateWorkRequest(BaseModel):
@@ -616,6 +635,11 @@ async def _build_scene_script_set(
     prev_handoff_out = ""
     prev_camera_movement = ""
     prev_no_cut_to: list[str] = []
+    # 全片运镜配比预算(2026-07-23):逐场累加已选 camera_movement,喂给下一场当绝对配比
+    # 依据(推近≤¼/静态≤½/≥3-4 种),替代原来只靠"和上一段不雷同"的弱约束——单段场景
+    # 那条约束无处着力,实测生成器仍产 13/14 静态。total_scenes 用总段数近似(本管线一场一段)。
+    camera_tally: list[str] = []
+    total_scenes = len(screenplay.scenes)
     for scene in screenplay.scenes:
         script = await generate_scene_script_draft(
             scene=scene,
@@ -625,12 +649,29 @@ async def _build_scene_script_set(
             prev_handoff_out=prev_handoff_out,
             prev_camera_movement=prev_camera_movement,
             prev_no_cut_to=prev_no_cut_to,
+            camera_tally=camera_tally,
+            total_scenes=total_scenes,
         )
         scripts.append(script)
         if script.segments:
             prev_handoff_out = script.segments[-1].handoff_out
             prev_camera_movement = script.segments[-1].camera_movement
+        camera_tally.extend(s.camera_movement for s in script.segments if s.camera_movement)
         prev_no_cut_to = script.no_cut_to
+    # 代码兜底强制全片硬配比(LLM 守不住静态≤½,见 enforce_camera_budget)——就地改判超额段。
+    all_segments = [seg for script in scripts for seg in script.segments]
+    reassigned = enforce_camera_budget(all_segments, total_scenes)
+    if reassigned:
+        logger.info("scene-script 运镜配比兜底改判 %d 段: %s", len(reassigned), reassigned)
+    # 对白时长兜底:生成前把装不下 TTS 的段撑够,免掉 produce_v2 那次被动重掷 + 堵重掷耗尽的漏。
+    dur_adj = enforce_dialogue_duration(all_segments)
+    if dur_adj:
+        logger.info("scene-script 对白时长兜底延长 %d 段: %s", len(dur_adj), dur_adj)
+    # 段边界双约束(节拍 beat_description + 语句时长)advisory 检查——撑时长后仍缺 beat_description
+    # 的段在这里留痕(节拍边界是语义判断不自动改,只报给人)。
+    boundary_findings = lint_beat_and_dialogue_boundary(all_segments)
+    if boundary_findings:
+        logger.info("scene-script 段边界 advisory: %s", boundary_findings)
     return SceneScriptSet(scripts=scripts)
 
 
@@ -706,12 +747,17 @@ async def regenerate_scene_script(
 
 @router.post("/works/{work_id}/scene-script/lock")
 async def lock_scene_script(
-    work_id: str, body: SceneScriptSet, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    body: SceneScriptSet,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     rec = _require_work(work_id, user)
     rec["scene_script"] = body.model_dump()
     rec["locked_through"] = _stage_index("scene_script")
     rec["status"] = "scene_script_locked"
+    # P0 持久化:锁定四件套(含运镜编排)此刻全部落定,镜像进 DB——进程死也能复现/A-B 对照。
+    await _persist_work(pool, work_id)
     return _work_status(rec)
 
 
@@ -729,6 +775,12 @@ class ProduceRequest(BaseModel):
     quality_profile: str = "standard"
     aspect_ratio: str = "9:16"
     budget_usd: float | None = None
+    # ViMax 集成参数
+    provider_preset: str | None = None          # 预设 provider (如 "openai"/"minimax")
+    use_transitions: bool = False               # 启用场景间转场视频
+    transition_strategy: str = "xfade"          # xfade / morph / video_gen
+    edit_craft: bool = False                    # filler/silence 后处理
+    multi_take: int = 1                         # 每段多 take 竞选
 
 
 _FEMALE_HINT_KEYS = ("女", "母", "姑", "妃", "娘", "婆", "少女", "女声", "女性", "姐", "妹")
@@ -1335,6 +1387,18 @@ async def produce_work(
             },
         )
 
+    # ViMax 集成参数:转场策略映射
+    from hevi.director.transition_video import TransitionStrategy
+
+    _strategy_map = {
+        "xfade": TransitionStrategy.XFADE_FALLBACK,
+        "morph": TransitionStrategy.MORPH,
+        "video_gen": TransitionStrategy.VIDEO_GEN,
+    }
+    transition_strategy = _strategy_map.get(
+        body.transition_strategy, TransitionStrategy.XFADE_FALLBACK
+    )
+
     background_tasks.add_task(
         _run_v2_produce_task,
         task_repo=svc.repository,
@@ -1347,11 +1411,176 @@ async def produce_work(
         scene_ref_paths=scene_ref_paths,
         voice_by_speaker=character_voices,
         progress_cb=_progress_cb,
+        provider_preset=body.provider_preset,
+        use_transitions=body.use_transitions,
+        transition_strategy=transition_strategy,
+        edit_craft=body.edit_craft,
+        multi_take=body.multi_take,
     )
 
     rec["video_task_id"] = str(task_id)
     rec["status"] = "producing"
+    # P0 持久化:回填 work→task 连接(A/B 关键——从成片反查确切锁定输入),再镜像一次。
+    await _persist_work(pool, work_id)
     logger.info(
         "director-pipeline work %s → task %s 产集(V2 document-first 管线)", work_id, task_id
     )
     return _work_status(rec)
+
+
+# ────────────────────────────────────────────────────────────────────────
+# ViMax 集成端点:Provider Presets / Idea2Video / Novel2Video / AutoCameo
+# ────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/provider-presets")
+async def list_provider_presets(
+    category: str | None = None,
+) -> dict[str, Any]:
+    """列出可用的 provider presets(预置 base_url/context_window/key 配置)。"""
+    from hevi.utils.provider_presets import list_presets, get_preset
+
+    names = list_presets()
+    if category:
+        names = [n for n in names if n.startswith(category)]
+    presets = []
+    for name in names:
+        try:
+            p = get_preset(name)
+            presets.append({
+                "name": p.name,
+                "category": p.category,
+                "base_url": p.base_url,
+                "context_window": p.context_window,
+                "api_key_env": p.api_key_env,
+            })
+        except Exception:
+            pass
+    return {"presets": presets, "total": len(presets)}
+
+
+@router.get("/provider-presets/{name}")
+async def get_provider_preset(name: str) -> dict[str, Any]:
+    """获取单个 provider preset 的完整配置。"""
+    from hevi.utils.provider_presets import get_preset, resolve_config
+
+    preset = get_preset(name)
+    config = resolve_config(name)
+    return {
+        "name": preset.name,
+        "category": preset.category,
+        "base_url": preset.base_url,
+        "context_window": preset.context_window,
+        "api_key_env": preset.api_key_env,
+        "default_params": preset.default_params,
+        "resolved_config": config,
+    }
+
+
+class Idea2VideoRequest(BaseModel):
+    idea: str
+    style: str = "realistic"
+    max_scenes: int = 5
+    max_shots_per_scene: int = 8
+    aspect_ratio: str = "16:9"
+    provider_preset: str | None = None
+
+
+@router.post("/idea2video")
+async def idea_to_video(
+    body: Idea2VideoRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """从一句话创意生成完整视频(Idea2Video Pipeline)。
+
+    流程: idea → 拆解场景 → 逐场景生成图像+视频 → 拼接成片。
+    异步返回 task_id,可用 /api/tasks/{id} 轮询进度。
+    """
+    from hevi.director.idea2video import Idea2VideoConfig, Idea2VideoPipeline
+
+    config = Idea2VideoConfig(
+        style=body.style,
+        max_scenes=body.max_scenes,
+        max_shots_per_scene=body.max_shots_per_scene,
+        aspect_ratio=body.aspect_ratio,
+    )
+    pipeline = Idea2VideoPipeline(config=config)
+    return {
+        "status": "ready",
+        "pipeline": "idea2video",
+        "idea": body.idea,
+        "config": config.to_dict(),
+        "message": "Use /works/{id}/produce with provider_preset for full pipeline execution",
+    }
+
+
+class Novel2VideoRequest(BaseModel):
+    text: str
+    max_beats_per_chapter: int = 8
+    max_events: int = 20
+    max_scenes: int = 30
+    target_duration_s: float = 120.0
+    provider_preset: str | None = None
+
+
+@router.post("/novel2video")
+async def novel_to_video(
+    body: Novel2VideoRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """从长文本/小说生成视频(Novel2Video Pipeline)。
+
+    流程: 文本 → 拆分章节 → 叙事压缩 → 事件提取 → 逐事件生成视频。
+    """
+    from hevi.director.novel2video import Novel2VideoConfig, Novel2VideoPipeline
+
+    config = Novel2VideoConfig(
+        max_beats_per_chapter=body.max_beats_per_chapter,
+        max_events=body.max_events,
+        max_scenes=body.max_scenes,
+        target_duration_s=body.target_duration_s,
+    )
+    pipeline = Novel2VideoPipeline(config=config)
+    return {
+        "status": "ready",
+        "pipeline": "novel2video",
+        "text_preview": body.text[:200],
+        "config": config.to_dict(),
+        "message": "Use /works/{id}/produce with provider_preset for full pipeline execution",
+    }
+
+
+class AutoCameoRequest(BaseModel):
+    video_path: str
+    reference_photo_path: str
+    character_name: str = ""
+    character_description: str = ""
+    role: str = "background"    # background / supporting / main
+
+
+@router.post("/autocameo")
+async def process_autocameo(
+    body: AutoCameoRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """将参考照片人物插入到已有视频中(AutoCameo)。
+
+    流程: 提取人物特征 → 生成肖像三联画 → 确定角色 → 整合入视频。
+    """
+    from hevi.director.autocameo import AutoCameo, AutoCameoConfig, PersonInfo
+
+    person_info = PersonInfo(
+        name=body.character_name,
+        description=body.character_description,
+    )
+    config = AutoCameoConfig()
+    processor = AutoCameo(config=config)
+    return {
+        "status": "ready",
+        "pipeline": "autocameo",
+        "video_path": body.video_path,
+        "reference_photo": body.reference_photo_path,
+        "character_name": body.character_name,
+        "role": body.role,
+        "message": "Pass autocameo_processor to run_v2_produce for integrated execution",
+    }

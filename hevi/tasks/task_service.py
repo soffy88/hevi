@@ -16,7 +16,7 @@ from hevi.cost import (
 from hevi.credits.billing_service import BillingService
 from hevi.observability import log_event, start_trace
 from hevi.pipeline import orchestrate_longvideo
-from hevi.queue.task_queue import enqueue
+from hevi.job_queue.task_queue import enqueue
 from hevi.resilience import RetryPolicy, run_with_fallback
 from hevi.tasks.repository import TaskRepository
 

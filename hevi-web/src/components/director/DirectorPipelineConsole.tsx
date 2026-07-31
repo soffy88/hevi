@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { directorPipelineApi, taskApi } from '@/lib/api-client';
 import WorldBibleReviewPanel from './WorldBibleReviewPanel';
 import SceneScriptReviewPanel from './SceneScriptReviewPanel';
+import { BacklotBoard } from './BacklotBoard';
 import type {
   DpConcept, DpScreenplay, DpScreenplayScene, DpDesignList, DpDesignCharacter, DpDesignScene,
   DpDesignProp, DpWorldBible, DpSceneScriptSet, DpWork, TaskInfo,
@@ -92,6 +93,12 @@ export function DirectorPipelineConsole() {
   const [qualityProfile, setQualityProfile] = useState('standard');
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [budgetUsd, setBudgetUsd] = useState<number | ''>('');
+  // ViMax 集成参数
+  const [providerPreset, setProviderPreset] = useState('');
+  const [useTransitions, setUseTransitions] = useState(false);
+  const [transitionStrategy, setTransitionStrategy] = useState('xfade');
+  const [editCraft, setEditCraft] = useState(false);
+  const [multiTake, setMultiTake] = useState(1);
 
   function syncDrafts(w: DpWork) {
     setConceptDraft(w.concept);
@@ -213,6 +220,12 @@ export function DirectorPipelineConsole() {
         quality_profile: qualityProfile,
         aspect_ratio: aspectRatio,
         budget_usd: budgetUsd === '' ? null : budgetUsd,
+        // ViMax 集成参数
+        provider_preset: providerPreset || null,
+        use_transitions: useTransitions,
+        transition_strategy: transitionStrategy,
+        edit_craft: editCraft,
+        multi_take: multiTake,
       });
       setWork(w);
     } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
@@ -343,6 +356,50 @@ export function DirectorPipelineConsole() {
                     onChange={e => setBudgetUsd(e.target.value ? Number(e.target.value) : '')} />
                 </label>
               </div>
+              {/* ViMax 高级选项 */}
+              <details className="dp-vimax-options">
+                <summary>⚡ ViMax 高级选项</summary>
+                <div className="tj-grid" style={{ marginTop: 12 }}>
+                  <label className="tj-field">
+                    <span className="tj-field__label">Provider Preset</span>
+                    <select value={providerPreset} onChange={e => setProviderPreset(e.target.value)}>
+                      <option value="">默认</option>
+                      <option value="openai">OpenAI</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="minimax">MiniMax</option>
+                      <option value="dashscope">DashScope</option>
+                      <option value="openrouter">OpenRouter</option>
+                    </select>
+                  </label>
+                  <label className="tj-field">
+                    <span className="tj-field__label">转场策略</span>
+                    <select value={transitionStrategy} onChange={e => setTransitionStrategy(e.target.value)}
+                      disabled={!useTransitions}>
+                      <option value="xfade">XFade 淡入淡出</option>
+                      <option value="morph">Morph 帧插值</option>
+                      <option value="video_gen">Video Gen AI生成</option>
+                    </select>
+                  </label>
+                  <label className="tj-field">
+                    <span className="tj-field__label">多 Take 竞选</span>
+                    <select value={multiTake} onChange={e => setMultiTake(Number(e.target.value))}>
+                      <option value={1}>1 Take (默认)</option>
+                      <option value={2}>2 Takes</option>
+                      <option value={3}>3 Takes</option>
+                    </select>
+                  </label>
+                  <label className="tj-field tj-field--checkbox">
+                    <input type="checkbox" checked={useTransitions}
+                      onChange={e => setUseTransitions(e.target.checked)} />
+                    <span>启用场景间转场视频</span>
+                  </label>
+                  <label className="tj-field tj-field--checkbox">
+                    <input type="checkbox" checked={editCraft}
+                      onChange={e => setEditCraft(e.target.checked)} />
+                    <span>启用 Edit Craft 后处理 (去除 filler/silence)</span>
+                  </label>
+                </div>
+              </details>
               <div className="tj-actions">
                 <button
                   type="button" className="tj-btn tj-btn--primary" onClick={produce}
@@ -359,6 +416,15 @@ export function DirectorPipelineConsole() {
           {work.video_task_id && taskInfo?.status === 'completed' && (
             <video className="dp-result-video" controls src={taskApi.videoUrl(work.video_task_id)} />
           )}
+          {work.video_task_id && taskInfo?.status === 'completed' && (
+            <L5ProblemList taskInfo={taskInfo} />
+          )}
+          {work.video_task_id && (
+            <div className="dp-backlot-container">
+              <h3 className="dp-section-title">🎬 制片看板</h3>
+              <BacklotBoard taskId={work.video_task_id} />
+            </div>
+          )}
           {work.video_task_id && taskInfo?.status !== 'completed' && (
             <p className="tj-hint">任务 ID: {work.video_task_id}，也可在「我的」页查看生成进度。</p>
           )}
@@ -367,6 +433,66 @@ export function DirectorPipelineConsole() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── L5 终审问题单 ───────────────────────────────────────────────────────────
+// L5 fail 不阻断出片(既定),但把 config_json.retake_candidates 列成问题单,让人审
+// 看得到"哪几段有什么问题、可以重掷哪几段"——此前只写进 l5_checklist 记录、结果页不展示,
+// 等于体检报告没人看(2026-07-23)。
+function L5ProblemList({ taskInfo }: { taskInfo: TaskInfo }) {
+  const candidates = taskInfo.config_json?.retake_candidates ?? [];
+  const checklist = taskInfo.config_json?.l5_checklist?.items ?? [];
+  const failedChecks = checklist.filter(it => !it.passed);
+  // 设计接受项(强运动段身份下降等):照常显示但标注,不进 retake。段落 → 哪些检查设计接受。
+  const acceptedBySeg = new Map<string, string[]>();
+  for (const it of checklist) {
+    for (const s of it.expected_scenes ?? []) {
+      const key = String(s);
+      acceptedBySeg.set(key, [...(acceptedBySeg.get(key) ?? []), it.name]);
+    }
+  }
+  if (candidates.length === 0 && failedChecks.length === 0 && acceptedBySeg.size === 0) {
+    return <p className="tj-hint dp-l5-ok">✅ 终审六项全过，无待重掷段落。</p>;
+  }
+  return (
+    <div className="dp-l5-problems">
+      <div className="dp-l5-problems__head">⚠ 终审问题单（不阻断出片，供人工决定重掷哪段）</div>
+      {candidates.length > 0 && (
+        <table className="dp-l5-table">
+          <thead><tr><th>段落</th><th>触发的检查项</th></tr></thead>
+          <tbody>
+            {candidates.map(c => (
+              <tr key={c.segment_id}>
+                <td className="dp-l5-seg">{c.segment_id}</td>
+                <td>{c.failed_checks.join('、')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {candidates.length === 0 && failedChecks.length === 0 && (
+        <p className="tj-hint dp-l5-ok">✅ 无真缺陷待重掷。</p>
+      )}
+      {failedChecks.length > 0 && (
+        <ul className="dp-l5-reasons">
+          {failedChecks.map(it => (
+            <li key={it.name}><b>{it.name}</b>：{it.reason || '未通过'}</li>
+          ))}
+        </ul>
+      )}
+      {acceptedBySeg.size > 0 && (
+        <div className="dp-l5-accepted">
+          <span className="dp-l5-accepted__tag">设计接受（已知边界，不计缺陷，仍监控）</span>
+          <ul className="dp-l5-reasons">
+            {[...acceptedBySeg.entries()].map(([seg, checks]) => (
+              <li key={seg}><span className="dp-l5-seg">{seg}</span>：{checks.join('、')}（如强运动段身份自然下降）</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="tj-hint">重掷指定段落可在「我的」任务页对该段返工；整体连贯性问题建议重跑相邻段。</p>
     </div>
   );
 }

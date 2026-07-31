@@ -21,13 +21,15 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.api
     restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    # GPU 保留暂时注掉(2026-07-26:RTX 3080 驱动挂 Error 804,带 nvidia 保留会让容器起不来
+    # libEGL_nvidia.so 找不到)。V2 云出片管线不需要 GPU;GPU 硬件修好后再启用(本地模型才需要)。
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
     env_file:
       - path: ../.env
         required: false

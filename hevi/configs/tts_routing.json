@@ -1,0 +1,7 @@
+{
+  "production_provider": "local-indextts2",
+  "allowed_providers": ["local-indextts2"],
+  "fallback_enabled": false,
+  "voice_reference_sha256": "",
+  "validation_enabled": true
+}

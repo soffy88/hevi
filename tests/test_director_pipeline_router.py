@@ -590,7 +590,7 @@ async def test_lock_scene_script_advances_locked_through():
     work_id = str(uuid.uuid4())
     rec = dp._init_work(work_id, material_text="素材", intent_hint="", user_id=_USER["id"])
     rec["locked_through"] = 3  # world_bible 已锁(scene_script 是 index 4)
-    resp = await dp.lock_scene_script(work_id, _scene_script_set(), _USER)
+    resp = await dp.lock_scene_script(work_id, _scene_script_set(), _USER, _FakePool())
     assert resp["locked_through"] == 4
     assert resp["status"] == "scene_script_locked"
 

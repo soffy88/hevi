@@ -49,7 +49,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
  * authedReq — 需登录的请求。无 token 时直接拒绝,不发请求(避免未登录触发 401 刷屏)。
  * 用于 credits/tasks/canvas/subjects 等认证接口。
  */
-async function authedReq<T>(path: string, init?: RequestInit): Promise<T> {
+export async function authedReq<T>(path: string, init?: RequestInit): Promise<T> {
   if (!authToken) {
     // 未登录:不发请求,抛可识别的错误(调用方静默处理)
     throw new Error('NOT_AUTHENTICATED');
@@ -321,6 +321,9 @@ export const shortdramaApi = {
   // 对抽取/分集结果不满意 → 重新抽取+规划
   replan: (runId: string) =>
     authedReq<{ run_id: string; status: string }>(`/api/shortdrama/runs/${runId}/replan`, { method: 'POST' }),
+  // 重新触发故事开发(不重跑抽取和规划)
+  develop: (runId: string) =>
+    authedReq<{ run_id: string; status: string }>(`/api/shortdrama/runs/${runId}/develop`, { method: 'POST' }),
   // 给某个角色上传参考图建号并绑定(confirm 时该角色不再自动生成)
   uploadCharacterReference: (runId: string, charId: string, file: File) => {
     const form = new FormData();
@@ -415,5 +418,342 @@ export const explainerApi = {
     authedReq<ExplainerRunStatus>(`/api/explainer/runs/${runId}`),
   listRuns: () =>
     authedReq<ExplainerRunStatus[]>('/api/explainer/runs'),
+};
+
+// ── 生产工具集(production-tools,对标 OpenMontage 新能力)──────────────────────
+export interface ReferenceAnalyzeRequest {
+  video_url: string;
+  generate_concepts?: boolean;
+}
+
+export interface ReferenceAnalysis {
+  task_id: string;
+  status: string;
+  pacing: {
+    avg_shot_duration_s: number;
+    cuts_per_minute: number;
+    pacing_category: string;
+  };
+  style: {
+    palette: string[];
+    lighting: string;
+    color_temperature: string;
+    saturation: string;
+    camera_motion: string[];
+    visual_mood: string;
+    aspect_ratio: string;
+  };
+  concepts: Array<{
+    title: string;
+    description: string;
+    style_direction: string;
+    pacing_match: string;
+    estimated_cost_usd: number;
+    differentiation: string;
+  }>;
+}
+
+export interface StockSearchRequest {
+  query: string;
+  provider?: string;
+  per_page?: number;
+  orientation?: string;
+}
+
+export interface StockClip {
+  url: string;
+  provider: string;
+  width: number;
+  height: number;
+  duration_s: number;
+  description: string;
+  license: string;
+}
+
+export interface EnhanceRequest {
+  tool: string;
+  params?: Record<string, any>;
+}
+
+export interface MediaProfile {
+  name: string;
+  width: number;
+  height: number;
+  aspect: string;
+  max_duration_s: number | null;
+  fps: number;
+  notes: string;
+}
+
+export interface RemotionRenderRequest {
+  manifest: Record<string, any>;
+  composition: string;
+  width?: number;
+  height?: number;
+  fps?: number;
+}
+
+export interface BacklotData {
+  task_id: string;
+  title: string;
+  status: string;
+  stage_rail: Array<{ stage: string; state: string }>;
+  scene_cards: Array<{ shot_id: string; index: number; status: string; provider: string; duration_s: number; video_path: string }>;
+  cost_meter: {
+    estimated_usd: number;
+    actual_usd: number;
+    budget_usd: number;
+    remaining_usd: number;
+  };
+}
+
+// ── ViMax 集成(对标 HKUDS/ViMax 高级功能)────────────────────────────────────
+import type {
+  VimMaxPreset, VimMaxIdea2VideoRequest, VimMaxIdea2VideoResponse,
+  VimMaxNovel2VideoRequest, VimMaxNovel2VideoResponse,
+  VimMaxAutoCameoRequest, VimMaxAutoCameoResponse,
+} from '@/types/api';
+
+export const vimaxApi = {
+  // Provider Presets
+  listPresets: (category?: string) =>
+    authedReq<{ presets: VimMaxPreset[]; total: number }>(
+      `/api/director-pipeline/provider-presets${category ? `?category=${category}` : ''}`
+    ),
+  getPreset: (name: string) =>
+    authedReq<VimMaxPreset & { resolved_config: Record<string, string> }>(
+      `/api/director-pipeline/provider-presets/${name}`
+    ),
+
+  // Idea2Video — 一句话创意 → 完整视频
+  idea2Video: (req: VimMaxIdea2VideoRequest) =>
+    authedReq<VimMaxIdea2VideoResponse>('/api/director-pipeline/idea2video', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+
+  // Novel2Video — 长文本/小说 → 视频
+  novel2Video: (req: VimMaxNovel2VideoRequest) =>
+    authedReq<VimMaxNovel2VideoResponse>('/api/director-pipeline/novel2video', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+
+  // AutoCameo — 参考照片人物插入视频
+  autocameo: (req: VimMaxAutoCameoRequest) =>
+    authedReq<VimMaxAutoCameoResponse>('/api/director-pipeline/autocameo', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+};
+
+export const productionToolsApi = {
+  // 参考视频分析
+  analyzeReference: (req: ReferenceAnalyzeRequest) =>
+    authedReq<{ task_id: string; status: string; output_dir: string }>('/api/production/reference-analyze', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  
+  // Stock footage 检索
+  searchStock: (query: string, provider = 'pexels', per_page = 5, orientation = 'portrait') =>
+    req<{ query: string; provider: string; count: number; clips: StockClip[] }>(
+      `/api/production/stock/search?query=${encodeURIComponent(query)}&provider=${provider}&per_page=${per_page}&orientation=${orientation}`
+    ),
+  
+  // 对位校验
+  matchStock: (caption: string, clip_url?: string, clip_description = '') =>
+    req<{ score: number; matched_keywords: string[]; missed_keywords: string[]; eligible: boolean }>(
+      `/api/production/stock/match?caption=${encodeURIComponent(caption)}&clip_url=${encodeURIComponent(clip_url || '')}&clip_description=${encodeURIComponent(clip_description)}`
+    ),
+  
+  // 图像增强
+  enhanceImage: (tool: string, file: File, params: Record<string, any> = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('params', JSON.stringify(params));
+    return authedFormReq<Blob>(`/api/production/enhance/${tool}`, formData);
+  },
+  
+  // Playbook 列表
+  listPlaybooks: () =>
+    authedReq<{ playbooks: Array<{ id: string; name: string; type: string; [key: string]: any }> }>('/api/production/playbooks'),
+  
+  // 编译 Playbook prompt
+  compilePlaybook: (req: { playbook_id: string; provider?: string; genre?: string; scene_description?: string }) =>
+    authedReq<Record<string, string>>('/api/production/playbooks/compile', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  
+  // Remotion 合成
+  renderRemotion: (req: RemotionRenderRequest) =>
+    authedReq<{ task_id: string; status: string; output_path: string }>('/api/production/render/remotion', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  
+  // 媒体 Profile 列表
+  listMediaProfiles: () =>
+    authedReq<{ profiles: MediaProfile[] }>('/api/production/media-profiles'),
+  
+  // 获取 FFmpeg 参数
+  getFFmpegArgs: (profileName: string) =>
+    authedReq<{ profile: string; ffmpeg_args: string[] }>('/api/production/media-profiles/' + profileName + '/ffmpeg-args'),
+  
+  // Backlot 看板数据
+  getBacklotData: (taskId: string) =>
+    authedReq<BacklotData>(`/api/production/backlot/${taskId}`),
+};
+
+// ── 声音工作室(VoiceBox 集成)──────────────────────────────────────────────
+export interface VoiceEffectPreset {
+  name: string;
+  effects: Array<{
+    type: string;
+    params: Record<string, any>;
+    enabled: boolean;
+  }>;
+}
+
+export interface VoicePersonalityPreset {
+  name: string;
+  description: string;
+  speaking_style: string;
+  vocabulary: string[];
+  emotional_tendency: string;
+}
+
+export interface VoiceTTSEngine {
+  id: string;
+  name: string;
+  type: 'cloud' | 'local';
+  description: string;
+  requires_gpu: boolean;
+  languages?: string[];
+  paralinguistic_tags?: string[];
+  voice_categories?: Record<string, number>;
+}
+
+export const voiceStudioApi = {
+  // Effects
+  listEffectPresets: () =>
+    authedReq<{ presets: VoiceEffectPreset[] }>('/api/voice-studio/effects/presets'),
+  previewEffect: (preset: string, text: string) =>
+    authedReq<{ preset: string; effects_count: number; effects: Array<{ type: string; params: Record<string, any> }> }>(
+      '/api/voice-studio/effects/preview',
+      { method: 'POST', body: JSON.stringify({ preset, text }) },
+    ),
+
+  // Personality
+  listPersonalityPresets: () =>
+    authedReq<{ presets: VoicePersonalityPreset[] }>('/api/voice-studio/personality/presets'),
+  rewriteWithPersonality: (text: string, persona: string) =>
+    authedReq<{ original: string; rewritten: string; persona: string; model_used: string; confidence: number }>(
+      '/api/voice-studio/personality/rewrite',
+      { method: 'POST', body: JSON.stringify({ text, persona }) },
+    ),
+
+  // TTS Engines
+  listTTSEngines: () =>
+    authedReq<{ engines: VoiceTTSEngine[] }>('/api/voice-studio/tts/engines'),
+  synthesizeTTS: (text: string, engine: string, voice?: string, language?: string, effects?: string) =>
+    authedReq<{ engine: string; message: string }>(
+      '/api/voice-studio/tts/synthesize',
+      { method: 'POST', body: JSON.stringify({ text, engine, voice, language, effects }) },
+    ),
+
+  // Config validation
+  validateConfig: (voiceEffects?: string, voicePersonas?: Record<string, string>, ttsEngine?: string) =>
+    authedReq<{ valid: boolean; voice_effects: string | null; voice_personas_count: number; tts_engine: string | null }>(
+      '/api/voice-studio/config/validate',
+      { method: 'POST', body: JSON.stringify({ voice_effects: voiceEffects, voice_personas: voicePersonas, tts_engine: ttsEngine }) },
+    ),
+};
+
+// ── 发布工作室(publish_studio.py, prefix /studio)──────────────────────────────
+export const publishStudioApi = {
+  // 多平台发布
+  listPlatforms: () =>
+    authedReq<{ platforms: Array<{ id: string; name: string; enabled: boolean }> }>('/api/studio/publish/platforms'),
+  publish: (body: { platform: string; video_path: string; title: string; description?: string; tags?: string[] }) =>
+    authedReq<{ task_id: string; status: string }>('/api/studio/publish', { method: 'POST', body: JSON.stringify(body) }),
+  confirmPublish: (body: { task_id: string }) =>
+    authedReq<{ status: string; url?: string }>('/api/studio/publish/confirm', { method: 'POST', body: JSON.stringify(body) }),
+  // 动效模板
+  motionTemplates: (category?: string, search?: string) => {
+    const q = new URLSearchParams();
+    if (category) q.set('category', category);
+    if (search) q.set('search', search);
+    return authedReq<{ templates: Array<Record<string, unknown>> }>(`/api/studio/motion/templates${q.toString() ? `?${q}` : ''}`);
+  },
+  motionRender: (body: { template_id: string; params: Record<string, unknown> }) =>
+    authedReq<{ task_id: string; status: string }>('/api/studio/motion/render', { method: 'POST', body: JSON.stringify(body) }),
+  // HTML 视频
+  htmlVideoTemplates: () =>
+    authedReq<{ templates: Array<Record<string, unknown>> }>('/api/studio/html-video/templates'),
+  htmlVideoRender: (body: { template_id: string; content: Record<string, unknown> }) =>
+    authedReq<{ task_id: string; status: string }>('/api/studio/html-video/render', { method: 'POST', body: JSON.stringify(body) }),
+  // 本地语音(OmniVoice)
+  voiceClone: (body: { reference_audio: string; text: string }) =>
+    authedReq<{ task_id: string; status: string }>('/api/studio/voice/clone', { method: 'POST', body: JSON.stringify(body) }),
+  voiceDub: (body: { video_path: string; target_language: string }) =>
+    authedReq<{ task_id: string; status: string }>('/api/studio/voice/dub', { method: 'POST', body: JSON.stringify(body) }),
+  // 音乐编舞
+  danceGpuCheck: () =>
+    authedReq<{ available: boolean; gpu_name?: string; vram_mb?: number }>('/api/studio/dance/gpu-check'),
+  danceGenerate: (body: { audio_path: string; dance_type: string; duration_s?: number }) =>
+    authedReq<{ task_id: string; status: string }>('/api/studio/dance/generate', { method: 'POST', body: JSON.stringify(body) }),
+};
+
+// ── Pro 工作室(pro_studio.py, prefix /pro)─────────────────────────────────────
+export const proStudioApi = {
+  // IndexTTS2 情感语音
+  indexttsSynthesize: (body: { speaker: string; text: string; emo_vector?: Record<string, number>; emo_text?: string; duration_s?: number }) =>
+    authedReq<{ task_id: string; status: string; output_path?: string }>('/api/pro/indextts/synthesize', { method: 'POST', body: JSON.stringify(body) }),
+  indexttsEmotionFromText: (body: { text: string }) =>
+    authedReq<{ emo_vector: Record<string, number> }>('/api/pro/indextts/emotion-from-text', { method: 'POST', body: JSON.stringify(body) }),
+  indexttsEmotions: () =>
+    authedReq<{ emotions: string[] }>('/api/pro/indextts/emotions'),
+  // 素材搜索
+  stockSearch: (body: { query: string; provider?: string; media_type?: string; count?: number }) =>
+    authedReq<{ clips: Array<Record<string, unknown>> }>('/api/pro/stock/search', { method: 'POST', body: JSON.stringify(body) }),
+  // 数字人直播
+  livestreamStart: (body: { avatar_id?: string; scene?: string }) =>
+    authedReq<{ session_id: string; status: string }>('/api/pro/livestream/start', { method: 'POST', body: JSON.stringify(body) }),
+  livestreamStop: (body: { session_id: string }) =>
+    authedReq<{ status: string }>('/api/pro/livestream/stop', { method: 'POST', body: JSON.stringify(body) }),
+  livestreamStatus: (sessionId: string) =>
+    authedReq<{ status: string; viewers?: number; duration_s?: number }>(`/api/pro/livestream/status?session_id=${sessionId}`),
+  // 多 Agent 编排
+  orchestrationCreatePlan: (body: { task: string; agents?: string[] }) =>
+    authedReq<{ plan_id: string; steps: Array<Record<string, unknown>> }>('/api/pro/orchestration/create-plan', { method: 'POST', body: JSON.stringify(body) }),
+  orchestrationExecute: (body: { plan_id: string }) =>
+    authedReq<{ task_id: string; status: string }>('/api/pro/orchestration/execute', { method: 'POST', body: JSON.stringify(body) }),
+  orchestrationRoles: () =>
+    authedReq<{ roles: Array<{ id: string; name: string; description: string }> }>('/api/pro/orchestration/roles'),
+  // 代码解说
+  codeExplainerGenerate: (body: { code: string; language?: string; style?: string }) =>
+    authedReq<{ task_id: string; status: string }>('/api/pro/code-explainer/generate', { method: 'POST', body: JSON.stringify(body) }),
+};
+
+// ── 生产工具 V2(production_tools_v2.py, prefix /production/v2)─────────────────
+export const productionV2Api = {
+  seedanceGenerate: (body: { prompt: string; image_url?: string; duration_s?: number; aspect_ratio?: string }) =>
+    authedReq<{ task_id: string; status: string }>('/api/production/v2/seedance/generate', { method: 'POST', body: JSON.stringify(body) }),
+  clipVideo: (body: { video_path: string; strategy?: string; max_clips?: number }) =>
+    authedReq<{ task_id: string; status: string; clips?: Array<Record<string, unknown>> }>('/api/production/v2/clip-video', { method: 'POST', body: JSON.stringify(body) }),
+  listRecipes: () =>
+    authedReq<{ recipes: Array<{ name: string; description: string; steps: number }> }>('/api/production/v2/recipes'),
+  getRecipe: (name: string) =>
+    authedReq<{ name: string; description: string; steps: Array<Record<string, unknown>> }>(`/api/production/v2/recipes/${name}`),
+  executeRecipe: (name: string, body: { params: Record<string, unknown> }) =>
+    authedReq<{ task_id: string; status: string }>(`/api/production/v2/recipes/${name}/execute`, { method: 'POST', body: JSON.stringify(body) }),
+  digitalHumanPreflight: (body: { script: string; avatar_id?: string }) =>
+    authedReq<{ ready: boolean; warnings?: string[] }>('/api/production/v2/digital-human/preflight', { method: 'POST', body: JSON.stringify(body) }),
+  digitalHumanPreview: (body: { script: string; avatar_id?: string }) =>
+    authedReq<{ task_id: string; status: string; preview_url?: string }>('/api/production/v2/digital-human/preview', { method: 'POST', body: JSON.stringify(body) }),
+  digitalHumanApprove: (body: { task_id: string }) =>
+    authedReq<{ status: string; output_path?: string }>('/api/production/v2/digital-human/approve', { method: 'POST', body: JSON.stringify(body) }),
 };
 

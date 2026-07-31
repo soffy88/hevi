@@ -115,16 +115,18 @@ FACTS = [
         routes=["引晋水灌晋阳"],
         markers=["晋阳"],
         quantities=[Quantity(value=2, unit="年", source_display="《通鉴》载围城", ku_ref="")],
-        evidence_tier="E3",
-        confirmed_by="战国策(悬釜易子=惨状语,夸张,标 E3)",
+        # 裁决 2026-07-22(F16 通则): tier=事件级,不因惨状语夸饰降级;语句级注记归引用体例
+        evidence_tier="E1",
+        confirmed_by="通鉴/战国策(事件级 E1;悬釜易子=惨状语已署源,语句级注记不进 tier)",
     ),
     VisualFact(
         beat_id="B07",
         date=-453,
         scope="晋阳",
         persons=["zhaoxiangzi", "zhangmengtan", "hankangzi", "weihuanzi"],
-        evidence_tier="E2",
-        confirmed_by="通鉴(游说细节史料略异)",
+        # 裁决 2026-07-22(F16 通则): 同 B06,事件级 tier,细节异说不降级
+        evidence_tier="E1",
+        confirmed_by="通鉴(事件级 E1;游说细节史料略异=细节异说,不进 tier)",
     ),
     VisualFact(
         beat_id="B08",

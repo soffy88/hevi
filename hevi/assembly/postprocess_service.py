@@ -38,23 +38,25 @@ async def postprocess_video(
         version_name = ratio.value.replace(":", "_")
         output_path = output_dir / f"video_{version_name}.mp4"
         
-        # Build filter chain
+        # Build filter chain — 字幕必须最后（edit_craft 硬规则 1）
         filters = []
-        
+
         # Aspect Ratio
         filters.append(get_aspect_ratio_filter(ratio))
-        
-        # Subtitles
+
+        # Fade in/out (as a basic 'transition' enhancement)
+        filters.append(get_fade_in_out_filter(duration=10.0))  # dummy duration
+
+        # Watermark before subtitles
+        if watermark:
+            filters.append(
+                f"drawtext=text='{watermark}':x=10:y=10:fontsize=24:fontcolor=white"
+            )
+
+        # Subtitles LAST — otherwise overlays/watermark hide captions
         if subtitle_path:
             filters.append(get_subtitle_filter(subtitle_path, style=subtitle_style))
-            
-        # Fade in/out (as a basic 'transition' enhancement)
-        filters.append(get_fade_in_out_filter(duration=10.0)) # dummy duration
-        
-        # Watermark (simple text overlay for now)
-        if watermark:
-            filters.append(f"drawtext=text='{watermark}':x=10:y=10:fontsize=24:fontcolor=white")
-            
+
         filter_str = ",".join(filters)
         
         args = [

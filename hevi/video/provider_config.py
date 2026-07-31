@@ -22,6 +22,9 @@ class VideoProvider(StrEnum):
     # hevi/video/alibaba_maas_service.py::happyhorse_1_1_maas_lock_generate 顶部注释。
     HAPPYHORSE_1_1_MAAS_LOCK = "happyhorse_1_1_maas_lock"
     WAN_2_7_MAAS = "wan_2_7_maas"  # 阿里云百炼官方直连
+    # 字节跳动 Seedance 2.0(豆包视频):text-to-video / image-to-video / video-extend
+    # 音画原生同步,支持续写。对标 dexhunter/seedance2-skill。
+    SEEDANCE_2 = "seedance_2"
 
 
 # 支持 negative_prompt / aspect_ratio 的高写实云 provider(hevi 侧路由概念:

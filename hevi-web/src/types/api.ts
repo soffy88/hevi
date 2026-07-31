@@ -539,7 +539,46 @@ export interface ExplainerRunRequest {
 
 // ── 短剧创建入口(SPEC-001 §7 阶段1,建季能力)──────────────────────────────
 export type ShortdramaRunStatusVal =
-  | 'PENDING' | 'RUNNING' | 'AWAITING_CHARACTERS' | 'DISPATCHING' | 'DISPATCHED' | 'FAILED';
+  | 'PENDING' | 'RUNNING' | 'AWAITING_CHARACTERS' | 'DISPATCHING' | 'DISPATCHED' | 'FAILED' | 'DEVELOPING';
+
+// 生产形态(对标 drama-skills production_profile)
+export type ProductionFormVal = 'live_action' | 'dynamic_comic_2d' | 'stylized_3d' | 'inkwash' | 'paper_stop_motion';
+
+export interface ProductionFormOption {
+  value: ProductionFormVal;
+  label: string;
+  desc: string;
+}
+
+// 故事开发输出(对标 drama-skills short-drama-develop)
+export interface StoryBrief {
+  theme: string;
+  conflict_engine: string;
+  character_pressures: Record<string, string>;
+  escalation_mechanism: string;
+  termination_conditions: string;
+  audience_payoff: string;
+}
+
+export interface EpisodeMapEntry {
+  ep_number: number;
+  entering_state: string;
+  goal: string;
+  resistance: string;
+  causal_escalation: string;
+  turning_point: string;
+  payoff: string;
+  outgoing_pressure: string;
+  hook: string;
+}
+
+export interface DirectorBrief {
+  visual_direction: string;
+  production_form: string;
+  tone: string;
+  pacing: string;
+  visual_constraints: string[];
+}
 
 export interface ShortdramaCharacterLite {
   char_id: string;
@@ -600,11 +639,18 @@ export interface ShortdramaRunStatus {
   status: ShortdramaRunStatusVal;
   source_name: string;
   target_episodes: number;
+  production_form: ProductionFormVal;
+  genre: string | null;
+  visual_direction: string | null;
   created_at: string;
   series_id: string | null;
   error: string | null;
   // 派发中的当前步骤(如"建角色参考图 2/3: 道士"),派发完/未开始派发时为 null
   progress: string | null;
+  // 故事开发输出
+  story_brief?: StoryBrief;
+  episode_map?: EpisodeMapEntry[];
+  director_brief?: DirectorBrief;
   story_graph?: StoryGraphLite;
   characters?: ShortdramaCharacterBindingState[];
   season_plan?: SeasonPlanLite;
@@ -615,6 +661,9 @@ export interface ShortdramaRunRequest {
   source_name: string;
   raw_text: string;
   target_episodes?: number;
+  production_form?: ProductionFormVal;
+  genre?: string;
+  visual_direction?: string;
 }
 
 // 提交绑定时用的选择(mode="auto" 默认自动生成参考图 | "existing" 复用已有角色/刚上传的)
@@ -891,5 +940,74 @@ export interface DpProduceRequest {
   quality_profile?: string;
   aspect_ratio?: string;
   budget_usd?: number | null;
+  // ViMax 集成参数
+  provider_preset?: string | null;
+  use_transitions?: boolean;
+  transition_strategy?: string;
+  edit_craft?: boolean;
+  multi_take?: number;
+}
+
+// ── ViMax 集成类型 ────────────────────────────────────────────────────────────
+
+export interface VimMaxPreset {
+  name: string;
+  category: 'llm' | 'image' | 'video';
+  base_url: string;
+  context_window: number;
+  api_key_env: string;
+  default_params?: Record<string, unknown>;
+}
+
+export interface VimMaxIdea2VideoRequest {
+  idea: string;
+  style?: string;
+  max_scenes?: number;
+  max_shots_per_scene?: number;
+  aspect_ratio?: string;
+  provider_preset?: string | null;
+}
+
+export interface VimMaxIdea2VideoResponse {
+  status: string;
+  pipeline: 'idea2video';
+  idea: string;
+  config: Record<string, unknown>;
+  message: string;
+}
+
+export interface VimMaxNovel2VideoRequest {
+  text: string;
+  max_beats_per_chapter?: number;
+  max_events?: number;
+  max_scenes?: number;
+  target_duration_s?: number;
+  provider_preset?: string | null;
+}
+
+export interface VimMaxNovel2VideoResponse {
+  status: string;
+  pipeline: 'novel2video';
+  text_preview: string;
+  config: Record<string, unknown>;
+  message: string;
+}
+
+export interface VimMaxAutoCameoRequest {
+  video_path: string;
+  reference_photo_path: string;
+  character_name?: string;
+  character_description?: string;
+  role?: 'background' | 'supporting' | 'main';
+}
+
+export interface VimMaxAutoCameoResponse {
+  status: string;
+  pipeline: 'autocameo';
+  video_path: string;
+  reference_photo: string;
+  character_name: string;
+  role: string;
+  message: string;
 }
 

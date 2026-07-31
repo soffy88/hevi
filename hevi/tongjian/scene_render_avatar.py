@@ -511,6 +511,48 @@ def _fit_narration(visual: Path, audio: Path, out: Path, w: int, h: int) -> None
     )
 
 
+def _fit_avatar_narration(
+    avatar_video: Path, tts_audio: Path, out: Path, w: int, h: int
+) -> None:
+    """数字人半身像讲解(LongCat-Avatar 模式,2026-07-30):把 talking head 视频缩放到 w×h,
+    用 TTS 音轨替换原始音轨(数字人视频的原始音轨可能不匹配实际台词)。
+
+    与 `_fit_narration` 的区别:`_fit_narration` 用静态场景图 + zoompan 循环 + 挂旁白音轨,
+    讲解者不出镜;`_fit_avatar_narration` 用数字人半身像视频(讲解者出镜说话) + TTS 音轨。
+    """
+    hold = _ffprobe_dur(tts_audio) + 0.4
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(avatar_video),
+            "-i",
+            str(tts_audio),
+            "-filter_complex",
+            f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
+            f"trim=0:{hold:.3f},setpts=PTS-STARTPTS,fps=24,"
+            f"zoompan=z='min(zoom+0.0004,1.08)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+            f"s={w}x{h}:fps=24[v]",
+            "-map",
+            "[v]",
+            "-map",
+            "1:a:0",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-t",
+            f"{hold:.3f}",
+            str(out),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
 def _fit_silent(visual: Path, out: Path, w: int, h: int, duration: float) -> None:
     """静默动作/空镜:画面循环填满 `duration` 秒 + zoompan(轻微运镜),挂一条静音音轨
     (让每个 clip 都有音频流,跟对白 clip 一致,xfade 拼接不会因缺流出错)。不加任何旁白。"""
@@ -1238,6 +1280,8 @@ async def build_frame_manifest_avatar(
     # 治"全是大头对白、没有场景/动作镜头"(用户要求电影语言:开场空镜、人物动作、
     # 刺杀/擒拿等动作镜头,不要旁白念白)。silent_action 下动作镜头时长按视觉节拍给,
     # 不跟旁白文字长度走。
+    # "avatar"=LongCat-Avatar 数字人半身像讲解(2026-07-30):talking head 视频 + TTS 音轨,
+    # 讲解者以半身像出镜说话(口型+动作),替代原"静态场景+旁白配音"模式。
     non_dialogue_mode = str(_p(config, "non_dialogue_mode", "narrator"))
     # 关键帧引擎开关(用户 2026-07-15 要求可切换、不写死):"local"=本地 sdxl_local+IP-Adapter
     # (免费,默认);"cloud"=云端 qwen-image-edit(精确姿势/多脸更强,随时可切回)。见 _edit_keyframe。
@@ -1931,7 +1975,35 @@ async def build_frame_manifest_avatar(
                             output_path=vis,
                             resolution=reso,
                         )
-                if non_dialogue_mode == "silent_action":
+                if non_dialogue_mode == "avatar":
+                    # LongCat-Avatar 数字人半身像讲解(2026-07-30):
+                    # talking head 视频保留音轨 + 半身像 prompt + 手势推断 + 表情克制,
+                    # 直接缩放出片。讲解者以半身像出镜说话(口型+动作+手势),
+                    # 替代原"静态场景图+旁白配音"模式(照片只有口动)。
+                    narr = work / f"{sid}_narr.mp4"
+                    _narr_text = text or shot.visual_prompt
+                    if not narr.exists():
+                        from hevi.video.longcat.narrator_prompts import (
+                            NARRATOR_PERSONAS,
+                            NarratorPromptConfig,
+                            build_narrator_prompt,
+                        )
+                        avatar_prompt = build_narrator_prompt(
+                            _narr_text,
+                            NarratorPromptConfig(
+                                persona=NARRATOR_PERSONAS.get("ancient_historian"),
+                                style=style,
+                            ),
+                        )
+                        await happyhorse_animate(
+                            image_path=narrator_ref,
+                            prompt=avatar_prompt,
+                            output_path=narr,
+                            duration=dur,
+                            resolution=reso,
+                        )
+                    _fit_dialogue(narr, clip, w, h)
+                elif non_dialogue_mode == "silent_action":
                     # 纯静默动作/空镜:不加任何旁白配音,只保留画面动作(电影建场/动作镜头)。
                     # 时长按视觉节拍(封顶 6s),不跟旁白文字长度走。
                     _fit_silent(vis, clip, w, h, min(float(dur), 6.0))

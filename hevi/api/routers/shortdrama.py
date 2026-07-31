@@ -66,6 +66,15 @@ class RunRequest(BaseModel):
     source_name: str
     raw_text: str
     target_episodes: int = 3
+    production_form: str = "live_action"
+    """生产形态: live_action / dynamic_comic_2d / stylized_3d / inkwash。
+    决定资产锚点通道、提示词词汇和渲染管线。对标 drama-skills production_profile。"""
+
+    genre: str | None = None
+    """题材标签(如"都市打脸"、"甜宠"、"悬疑")。影响故事开发和钩子取向。"""
+
+    visual_direction: str | None = None
+    """视觉方向(可选)。不传时由故事开发阶段自动生成 DirectorBrief。"""
 
 
 class CharacterBinding(BaseModel):
@@ -85,7 +94,15 @@ class ConfirmRequest(BaseModel):
 
 
 def _init_run(
-    run_id: str, *, source_name: str, raw_text: str, target_episodes: int, user_id: str
+    run_id: str,
+    *,
+    source_name: str,
+    raw_text: str,
+    target_episodes: int,
+    user_id: str,
+    production_form: str = "live_action",
+    genre: str | None = None,
+    visual_direction: str | None = None,
 ) -> dict[str, Any]:
     rec: dict[str, Any] = {
         "run_id": run_id,
@@ -94,7 +111,15 @@ def _init_run(
         "source_name": source_name,
         "raw_text": raw_text,
         "target_episodes": target_episodes,
+        "production_form": production_form,
+        "genre": genre,
+        "visual_direction": visual_direction,
         "created_at": datetime.now(UTC),
+        # 故事开发输出(对标 drama-skills develop)
+        "story_brief": None,
+        "episode_map": None,
+        "director_brief": None,
+        # 原有阶段
         "story": None,
         "plan": None,
         "gate": None,
@@ -120,20 +145,50 @@ def _require_run(run_id: str, user: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _plan_pipeline(run_id: str) -> None:
-    """B0 抽取 StoryGraph + 剧集规划(best-of-N + 5 次重试),落到 AWAITING_CHARACTERS。
+    """故事开发 + StoryGraph 抽取 + 剧集规划,落到 AWAITING_CHARACTERS。
 
-    即便 5 次重试后 G_SEASON 门仍未通过,也不中断——把 gate 结果原样返回给前端,
-    前端展示警告并提供"重新规划"按钮,人工判断是否接受这版分集。
+    流程:
+    1. 故事开发(develop_story):产出 StoryBrief/EpisodeMap/DirectorBrief
+    2. StoryGraph 抽取:从原文提取角色/事件/关系
+    3. 剧集规划(best-of-N + 5 次重试):切分集/分配节拍
+
+    即便 G_SEASON 门未通过也不中断——把 gate 结果原样返回给前端,
+    前端展示警告并提供"重新规划"按钮。
     """
     rec = _RUNS[run_id]
     rec["status"] = "RUNNING"
     try:
+        # ── 阶段 1: 故事开发 ──────────────────────────────────────────────
+        rec["progress"] = "故事开发:分析材料、规划冲突引擎与分集地图…"
+        from hevi.season_planner.story_develop import develop_story
+
+        try:
+            story_brief, episode_map, director_brief = await develop_story(
+                source_name=rec["source_name"],
+                raw_text=rec["raw_text"],
+                production_form=rec.get("production_form", "live_action"),
+                genre=rec.get("genre"),
+                target_episodes=rec["target_episodes"],
+                visual_direction=rec.get("visual_direction"),
+            )
+            rec["story_brief"] = story_brief
+            rec["episode_map"] = episode_map
+            rec["director_brief"] = director_brief
+            logger.info("shortdrama run %s 故事开发完成", run_id)
+        except Exception as e:
+            # 故事开发失败不阻塞下游——使用降级结果
+            logger.warning("shortdrama run %s 故事开发失败(降级): %s", run_id, e)
+
+        # ── 阶段 2: StoryGraph 抽取 ──────────────────────────────────────
+        rec["progress"] = "抽取故事结构:角色、事件、关系…"
         story = await extract_story_graph(source_name=rec["source_name"], raw_text=rec["raw_text"])
         if not story.characters or not story.events:
             rec["status"] = "FAILED"
             rec["error"] = "StoryGraph 抽取结果为空(检查 qwen_cloud 是否可用/手稿是否可读)"
             return
 
+        # ── 阶段 3: 剧集规划 ──────────────────────────────────────────────
+        rec["progress"] = "规划分集:分配节拍与角色…"
         plan = gate = None
         for attempt in range(1, _MAX_PLAN_ATTEMPTS + 1):
             plan, gate = await build_season_plan(story, target_episodes=rec["target_episodes"])
@@ -223,11 +278,21 @@ def _rec_to_status(rec: dict[str, Any]) -> dict[str, Any]:
         "status": rec["status"],
         "source_name": rec["source_name"],
         "target_episodes": rec["target_episodes"],
+        "production_form": rec.get("production_form", "live_action"),
+        "genre": rec.get("genre"),
+        "visual_direction": rec.get("visual_direction"),
         "created_at": rec["created_at"],
         "series_id": rec.get("series_id"),
         "error": rec.get("error"),
         "progress": rec.get("progress"),
     }
+    # 故事开发输出
+    if rec.get("story_brief") is not None:
+        out["story_brief"] = rec["story_brief"].model_dump()
+    if rec.get("episode_map") is not None:
+        out["episode_map"] = [e.model_dump() for e in rec["episode_map"]]
+    if rec.get("director_brief") is not None:
+        out["director_brief"] = rec["director_brief"].model_dump()
     if rec.get("story") is not None:
         out["story_graph"] = _story_summary(rec["story"])
         out["characters"] = _character_bindings(rec)
@@ -260,12 +325,26 @@ async def start_run(
         raise HTTPException(status_code=422, detail="目标集数需在 1-50 之间")
 
     run_id = str(uuid.uuid4())
+
+    # 验证 production_form
+    from hevi.season_planner.schemas import ProductionForm
+
+    valid_forms = [f.value for f in ProductionForm]
+    if body.production_form not in valid_forms:
+        raise HTTPException(
+            status_code=422,
+            detail=f"production_form 必须是 {valid_forms} 之一，收到: {body.production_form}",
+        )
+
     _init_run(
         run_id,
         source_name=body.source_name,
         raw_text=body.raw_text,
         target_episodes=body.target_episodes,
         user_id=str(user["id"]),
+        production_form=body.production_form,
+        genre=body.genre,
+        visual_direction=body.visual_direction,
     )
     background_tasks.add_task(_plan_pipeline, run_id)
     logger.info("shortdrama run %s started: %s", run_id, body.source_name)
@@ -295,6 +374,9 @@ async def replan_run(
     if rec["status"] not in ("AWAITING_CHARACTERS", "FAILED"):
         raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可重新规划")
     rec["status"] = "RUNNING"
+    rec["story_brief"] = None
+    rec["episode_map"] = None
+    rec["director_brief"] = None
     rec["story"] = None
     rec["plan"] = None
     rec["gate"] = None
@@ -302,6 +384,44 @@ async def replan_run(
     rec["error"] = None
     background_tasks.add_task(_plan_pipeline, run_id)
     return {"run_id": run_id, "status": "RUNNING"}
+
+
+@router.post("/runs/{run_id}/develop")
+async def develop_run(
+    run_id: str,
+    background_tasks: BackgroundTasks,
+    user: Annotated[dict, Depends(get_current_user)],
+) -> dict[str, str]:
+    """重新触发故事开发阶段(不重跑抽取和规划)。
+
+    用于:创作者想单独刷新创作简报/分集地图/导演阐述,而不重新抽取 StoryGraph。
+    """
+    rec = _require_run(run_id, user)
+    if rec["status"] not in ("AWAITING_CHARACTERS", "FAILED"):
+        raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可重新开发")
+
+    async def _redevelop(rid: str) -> None:
+        r = _RUNS[rid]
+        try:
+            from hevi.season_planner.story_develop import develop_story
+
+            brief, ep_map, director = await develop_story(
+                source_name=r["source_name"],
+                raw_text=r["raw_text"],
+                production_form=r.get("production_form", "live_action"),
+                genre=r.get("genre"),
+                target_episodes=r["target_episodes"],
+                visual_direction=r.get("visual_direction"),
+            )
+            r["story_brief"] = brief
+            r["episode_map"] = ep_map
+            r["director_brief"] = director
+            logger.info("shortdrama run %s 故事开发刷新完成", rid)
+        except Exception as e:
+            logger.warning("shortdrama run %s 故事开发刷新失败: %s", rid, e)
+
+    background_tasks.add_task(_redevelop, run_id)
+    return {"run_id": run_id, "status": "DEVELOPING"}
 
 
 @router.post("/runs/{run_id}/characters/{char_id}/upload", status_code=201)
@@ -532,7 +652,14 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
             portrait_dir = _OUTPUT_DIR / run_id / "subjects" / c.char_id
             portrait_dir.mkdir(parents=True, exist_ok=True)
             portrait_path = portrait_dir / "portrait.png"
-            prompt = f"{_ART_DIRECTION}, {c.name}, {c.description or '角色肖像'}"
+            # 按 production_form 选择提示词配方(对标 drama-skills production_profile)
+            from hevi.season_planner.schemas import PRODUCTION_FORM_PROMPTS
+
+            form_prompt = PRODUCTION_FORM_PROMPTS.get(
+                rec.get("production_form", "live_action"),
+                _ART_DIRECTION,
+            )
+            prompt = f"{form_prompt}, {c.name}, {c.description or '角色肖像'}"
             # 阿里云 qwen-image 偶发算法侧内部错误(2026-07-12 真实撞见:'DashscopeLogger'
             # object has no attribute 'warning',对方服务端 bug),单次瞬时失败不该
             # 拖垮整条派发——重试几次,仍失败才真的放弃这个角色。

@@ -6,6 +6,7 @@
  */
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import type { AuthUser } from '@/types/api';
 import { setAuthToken } from './api-client';
 
@@ -50,4 +51,22 @@ export function syncAuthToken(): void {
 
 export function isAuthenticated(): boolean {
   return getToken() != null;
+}
+
+/** React hook — 响应式获取当前登录用户,组件挂载后自动同步。 */
+export function useAuth() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    setUser(getUser());
+    setInitialized(true);
+  }, []);
+
+  const logoutFn = useCallback(() => {
+    logout();
+    setUser(null);
+  }, []);
+
+  return { user, logout: logoutFn, initialized };
 }

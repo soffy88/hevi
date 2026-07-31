@@ -4,7 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from hevi.core.config import settings
 
-engine = create_async_engine(settings.database_url, echo=settings.debug)
+# Auto-convert sync postgresql:// → postgresql+asyncpg:// for async SQLAlchemy
+_async_url = settings.database_url
+if _async_url.startswith("postgresql://"):
+    _async_url = _async_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+engine = create_async_engine(_async_url, echo=settings.debug)
 
 AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
     engine,

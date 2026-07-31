@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Voice Manifest Schema",
+  "description": "Schema for voice generation manifest files",
+  "required": ["provider", "input_text", "output_file", "timestamp"],
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": ["local-indextts2", "local-cosyvoice", "local-vits"],
+      "description": "The TTS provider used for generation"
+    },
+    "input_text": {
+      "type": "string",
+      "description": "The input text that was synthesized (truncated for brevity)"
+    },
+    "voice_reference": {
+      "type": ["string", "null"],
+      "description": "Path to the voice reference file used"
+    },
+    "output_file": {
+      "type": "string",
+      "description": "Path to the generated audio output file"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Unix timestamp of generation"
+    },
+    "quality_metrics": {
+      "type": "object",
+      "description": "Quality metrics for the generated audio",
+      "properties": {
+        "similarity_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Voice similarity score"
+        },
+        "naturalness_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Naturalness score"
+        }
+      }
+    }
+  }
+}
