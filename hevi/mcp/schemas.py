@@ -34,9 +34,11 @@ GENERATE_LONGVIDEO_INPUT = _obj(
 
 GENERATE_LONGVIDEO_OUTPUT = _obj(
     {
-        "video_path": {"type": "string"},
-        "shots_count": {"type": "integer"},
-        "status": {"type": "string"},
+        "task_id": {"type": "string", "description": "持久化任务 ID"},
+        "status": {"type": "string", "description": "任务当前状态"},
+        "progress_pct": {"type": "number"},
+        "production_source": {"type": "string"},
+        "status_url": {"type": "string", "description": "任务状态查询地址"},
     }
 )
 

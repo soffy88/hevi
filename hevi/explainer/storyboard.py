@@ -21,6 +21,11 @@ from hevi.explainer.schemas import GateResult, Storyboard, StoryboardSegment, va
 logger = logging.getLogger(__name__)
 
 _SCENE_ORDER = ["hook", "definition", "cards", "reason", "method", "outro"]
+_E0_MAX_ATTEMPTS = 3
+
+
+class StoryboardGenerationError(RuntimeError):
+    """E0 could not produce a usable storyboard draft."""
 
 _STORYBOARD_PROMPT_TEMPLATE = """你是中文自媒体短视频解说文案编剧。给定一个选题,写一期
 85-95 秒左右的解说短视频文案,严格分成 6 段固定结构,每段配一段口语化旁白(自然、可朗读,
@@ -45,7 +50,8 @@ _STORYBOARD_PROMPT_TEMPLATE = """你是中文自媒体短视频解说文案编�
 
 3. sceneType="cards"(2-3 个具体生活化例子,带点幽默)
    props: {{"header": "小标题(6-10字)",
-            "cards": [{{"emoji":"emoji","title":"2-4字场景名","desc":"两行短语,用\\n分隔"}}, ...2-3个]}}
+            "cards": [{{"emoji":"emoji","title":"2-4字场景名",
+                        "desc":"两行短语,用\\n分隔"}}, ...2-3个]}}
 
 4. sceneType="reason"(说理:为什么会这样)
    props: {{"question": "为什么...？",
@@ -56,7 +62,8 @@ _STORYBOARD_PROMPT_TEMPLATE = """你是中文自媒体短视频解说文案编�
 
 5. sceneType="method"(2-3 条实用方法,编号)
    props: {{"header": "实用方法X招",
-            "points": [{{"num":"1","title":"方法一句话(可以是问句)","sub":"补充/示例,8-16字"}}, ...2-3个]}}
+            "points": [{{"num":"1","title":"方法一句话(可以是问句)",
+                         "sub":"补充/示例,8-16字"}}, ...2-3个]}}
 
 6. sceneType="outro"(结尾金句 + 引导关注)
    props: {{"setupLine1":"过渡句1","setupLine2":"过渡句2",
@@ -94,30 +101,31 @@ def _extract_json_obj(content: str | None) -> dict[str, Any]:
 
 
 async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
-    resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+    resp = await llm(
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=4096,
+        result_format="json",
+    )
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
-    return _extract_json_obj(content)
+    if not isinstance(content, str) or not content.strip():
+        raise StoryboardGenerationError("LLM 返回空正文,无法生成解说分镜")
+    draft = _extract_json_obj(content)
+    if not draft:
+        raise StoryboardGenerationError("LLM 返回的内容不是有效 JSON,无法生成解说分镜")
+    if not isinstance(draft.get("segments"), list) or not draft["segments"]:
+        raise StoryboardGenerationError("LLM JSON 缺少 segments,无法生成解说分镜")
+    return draft
 
 
-async def generate_storyboard(topic: str, *, llm: Any = None) -> Storyboard:
-    """选题 → Storyboard(未配音)。LLM 调用/解析失败的段会被跳过,交给 gate_storyboard 判定。"""
-    if llm is None:
-        from obase.provider_registry import ProviderRegistry
-
-        llm = ProviderRegistry.get().llm("default")
-
-    prompt = _STORYBOARD_PROMPT_TEMPLATE.format(topic=topic)
-    try:
-        draft = await _call_llm_json(llm, prompt)
-    except Exception as e:
-        logger.warning("explainer storyboard 生成 LLM 调用失败,返回空壳: %s", e)
-        draft = {}
-
+def _storyboard_from_draft(topic: str, draft: dict[str, Any]) -> Storyboard:
+    """Validate one model draft without allowing an empty storyboard through."""
     segments: list[StoryboardSegment] = []
     for item in draft.get("segments") or []:
+        if not isinstance(item, dict):
+            continue
         scene_type = str(item.get("sceneType") or "")
         if scene_type not in _SCENE_ORDER:
-            logger.warning("explainer storyboard: 未知 sceneType %r,跳过该段", scene_type)
+            logger.warning("explainer storyboard: 未知 sceneType %r,跳过", scene_type)
             continue
         narration = str(item.get("narration") or "").strip()
         if not narration:
@@ -144,10 +152,38 @@ async def generate_storyboard(topic: str, *, llm: Any = None) -> Storyboard:
                 narration=narration,
                 keywords=keywords,
                 props=props,
+                visual_type=item.get("visualType") or item.get("visual_type"),
+                visual_config=item.get("visualConfig") or item.get("visual_config") or {},
             )
         )
-
     return Storyboard(topic=topic, segments=segments)
+
+
+async def generate_storyboard(topic: str, *, llm: Any = None) -> Storyboard:
+    """选题 → Storyboard(未配音)。E0 失败必须显式抛出,不能伪造空 storyboard。"""
+    if llm is None:
+        from obase.provider_registry import ProviderRegistry
+
+        llm = ProviderRegistry.get().llm("default")
+
+    prompt = _STORYBOARD_PROMPT_TEMPLATE.format(topic=topic)
+    last_error = "LLM 未生成完整 6 段结构"
+    for attempt in range(1, _E0_MAX_ATTEMPTS + 1):
+        try:
+            draft = await _call_llm_json(llm, prompt)
+            storyboard = _storyboard_from_draft(topic, draft)
+            got_types = [segment.scene_type for segment in storyboard.segments]
+            if got_types == _SCENE_ORDER:
+                return storyboard
+            last_error = f"LLM 生成结构不完整: 实际 {got_types}"
+        except StoryboardGenerationError as exc:
+            last_error = str(exc)
+        except Exception as exc:
+            last_error = f"LLM 调用失败: {exc}"
+        if attempt < _E0_MAX_ATTEMPTS:
+            logger.warning("explainer E0 第 %d 次生成未通过,重试: %s", attempt, last_error)
+
+    raise StoryboardGenerationError(f"{last_error}（已重试 {_E0_MAX_ATTEMPTS} 次）")
 
 
 def gate_storyboard(storyboard: Storyboard) -> GateResult:

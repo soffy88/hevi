@@ -26,12 +26,13 @@ import contextlib
 import logging
 import uuid
 from datetime import UTC, datetime
+from itertools import pairwise
 from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from obase.persistence import PgPool
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from hevi.auth.dependencies import get_current_user
 from hevi.cost.circuit_breaker import CostLimitExceeded
@@ -46,6 +47,8 @@ from hevi.director.pipeline_schemas import (
     Concept,
     DesignCharacter,
     DesignList,
+    DirectorGateCheck,
+    DirectorGateReport,
     Screenplay,
     ShotList,
     ShotListItem,
@@ -68,6 +71,7 @@ _WORKS: dict[str, dict[str, Any]] = {}
 _OUTPUT_DIR = Path("output/director_pipeline")
 _ART_DIRECTION = "cinematic character portrait, front facing, neutral expression, detailed"
 _PORTRAIT_MAX_ATTEMPTS = 3
+_SEASON_TASKS: set[asyncio.Task[Any]] = set()
 
 # ①→②→③→④,每级有 _draft/_locked 两态。
 _STAGES = ("concept", "screenplay", "design_list", "shot_list")
@@ -96,8 +100,43 @@ class CreateWorkRequest(BaseModel):
     intent_hint: str = ""
 
 
+class ParseWorkRequest(BaseModel):
+    """工业化单流入口：原始文本只进入资产解析，不直接派发生成。"""
+
+    work_name: str = Field(min_length=1, max_length=120)
+    material_text: str = Field(min_length=1, max_length=50_000)
+    target_episodes: int = Field(default=3, ge=1, le=12)
+    episode_duration: str = "1-5min"
+    intent_hint: str = Field(default="", max_length=2_000)
+    season_budget_usd: float = Field(default=150.0, gt=0)
+    video_provider: str = "happyhorse_1_1_maas_lock"
+    audio_provider: str = "vibevoice"
+
+
+class DispatchSeasonRequest(BaseModel):
+    """导演确认资产/分集规划后的一次性整季派发配置。"""
+
+    season_budget_usd: float = Field(gt=0)
+    video_provider: str = "happyhorse_1_1_maas_lock"
+    audio_provider: str = "vibevoice"
+    duration_archetype: str = "1-5min"
+    quality_profile: str = "standard"
+    aspect_ratio: str = "16:9"
+    concept: Concept | None = None
+    screenplay: Screenplay | None = None
+    design_list: DesignList | None = None
+    season_plan: dict[str, Any] | None = None
+
+
 def _init_work(
-    work_id: str, *, material_text: str, intent_hint: str, user_id: str
+    work_id: str,
+    *,
+    material_text: str,
+    intent_hint: str,
+    user_id: str,
+    work_name: str = "",
+    target_episodes: int = 1,
+    episode_duration: str = "1-5min",
 ) -> dict[str, Any]:
     rec: dict[str, Any] = {
         "work_id": work_id,
@@ -110,12 +149,23 @@ def _init_work(
         "locked_through": -1,
         "material_text": material_text,
         "intent_hint": intent_hint,
+        "work_name": work_name or "未命名作品",
+        "target_episodes": target_episodes,
+        "episode_duration": episode_duration,
         "created_at": datetime.now(UTC),
         "concept": None,
         "screenplay": None,
         "design_list": None,
         "shot_list": None,
         "video_task_id": None,
+        "task_ids": [],
+        "series_id": None,
+        "story_graph": None,
+        "season_plan": None,
+        "gate_report": None,
+        "estimated_cost_usd": 0.0,
+        "decision_trail": [],
+        "production_config": {},
         "error": None,
     }
     _WORKS[work_id] = rec
@@ -167,14 +217,308 @@ def _work_status(rec: dict[str, Any]) -> dict[str, Any]:
         "status": rec["status"],
         "locked_through": rec["locked_through"],
         "material_text": rec["material_text"],
+        "work_name": rec.get("work_name", "未命名作品"),
+        "target_episodes": rec.get("target_episodes", 1),
+        "episode_duration": rec.get("episode_duration", "1-5min"),
         "created_at": rec["created_at"],
         "concept": rec["concept"],
         "screenplay": rec["screenplay"],
         "design_list": rec["design_list"],
         "shot_list": rec["shot_list"],
         "video_task_id": rec["video_task_id"],
+        "task_ids": rec.get("task_ids", []),
+        "series_id": rec.get("series_id"),
+        "story_graph": rec.get("story_graph"),
+        "season_plan": rec.get("season_plan"),
+        "gate_report": rec.get("gate_report"),
+        "estimated_cost_usd": rec.get("estimated_cost_usd", 0.0),
+        "decision_trail": rec.get("decision_trail", []),
+        "production_config": rec.get("production_config", {}),
         "error": rec["error"],
     }
+
+
+def _append_trail(rec: dict[str, Any], stage: str, status: str, detail: str) -> None:
+    """记录匿名化编排轨迹；不写用户原文、姓名或密钥。"""
+    rec.setdefault("decision_trail", []).append(
+        {
+            "at": datetime.now(UTC).isoformat(),
+            "stage": stage,
+            "status": status,
+            "detail": detail,
+        }
+    )
+
+
+def _build_director_gate(
+    *,
+    story: Any,
+    season_plan: Any,
+    plan_gate: Any,
+    screenplay: Screenplay,
+    design_list: DesignList,
+    estimated_cost_usd: float,
+    season_budget_usd: float,
+) -> DirectorGateReport:
+    """文本戏剧门 + 生成可行性门；全部为确定性检查，不再额外调用 LLM。"""
+    checks: list[DirectorGateCheck] = []
+
+    graph_ok = bool(story.characters and story.events)
+    checks.append(
+        DirectorGateCheck(
+            key="story_graph",
+            label="故事图谱完整度",
+            passed=graph_ok,
+            score=1.0 if graph_ok else 0.0,
+            detail=f"{len(story.characters)} 个角色 · {len(story.events)} 个事件",
+        )
+    )
+
+    plan_ok = bool(plan_gate.passed)
+    checks.append(
+        DirectorGateCheck(
+            key="dramatic_arc",
+            label="分集戏剧弧线",
+            passed=plan_ok,
+            score=float(plan_gate.coverage if plan_ok else min(plan_gate.coverage, 0.6)),
+            detail=(
+                f"{len(season_plan.episodes)}/{season_plan.target_episodes} 集，"
+                f"事件覆盖 {plan_gate.coverage:.0%}"
+            ),
+        )
+    )
+
+    scenes = screenplay.scenes
+    visible_count = sum(
+        1
+        for scene in scenes
+        if (
+            scene.visual_actions
+            or scene.event_summary.strip()
+            or scene.narration.strip()
+            or scene.dialogue
+        )
+    )
+    visual_score = visible_count / len(scenes) if scenes else 0.0
+    checks.append(
+        DirectorGateCheck(
+            key="visual_action",
+            label="逐场视听可拍性",
+            passed=bool(scenes) and visual_score >= 0.8,
+            score=visual_score,
+            detail=f"{visible_count}/{len(scenes)} 场含视觉动作、叙述或对白",
+        )
+    )
+
+    high_flags = [
+        scene.production_complexity == "high" or scene.cg_level == "high" for scene in scenes
+    ]
+    high_count = sum(high_flags)
+    consecutive_high = any(a and b for a, b in pairwise(high_flags))
+    bidding_ok = not consecutive_high and (not scenes or high_count / len(scenes) <= 0.5)
+    bidding_score = 1.0 if bidding_ok else max(0.0, 1.0 - high_count / max(len(scenes), 1))
+    checks.append(
+        DirectorGateCheck(
+            key="scene_bidding",
+            label="场次竞价与复杂度交替",
+            passed=bidding_ok,
+            score=bidding_score,
+            detail=(
+                f"{high_count}/{len(scenes)} 个高成本场次；"
+                f"连续高成本={'是' if consecutive_high else '否'}"
+            ),
+        )
+    )
+
+    scripted_names = {name for scene in scenes for name in scene.characters_present if name}
+    designed_names = {char.name for char in design_list.characters if char.name}
+    character_coverage = (
+        len(scripted_names & designed_names) / len(scripted_names) if scripted_names else 1.0
+    )
+    anchor_ready = sum(
+        1
+        for char in design_list.characters
+        if char.name.strip() and (char.appearance.strip() or char.wardrobe.strip())
+    )
+    identity_readiness = (
+        anchor_ready / len(design_list.characters) if design_list.characters else 0.0
+    )
+    asset_score = min(character_coverage, identity_readiness)
+    checks.append(
+        DirectorGateCheck(
+            key="visual_anchor",
+            label="角色锁脸锚点",
+            passed=bool(design_list.characters) and asset_score >= 0.8,
+            score=asset_score,
+            detail=f"剧本角色覆盖 {character_coverage:.0%} · 视觉锚点就绪 {identity_readiness:.0%}",
+        )
+    )
+
+    scripted_locations = {scene.location for scene in scenes if scene.location}
+    designed_locations = {scene.name for scene in design_list.scenes if scene.name}
+    location_score = (
+        len(scripted_locations & designed_locations) / len(scripted_locations)
+        if scripted_locations
+        else 1.0
+    )
+    checks.append(
+        DirectorGateCheck(
+            key="production_design",
+            label="场景美术覆盖",
+            passed=location_score >= 0.8,
+            score=location_score,
+            detail=(
+                f"{len(scripted_locations & designed_locations)}/{len(scripted_locations)} "
+                "个剧本场景已有设计卡"
+            ),
+        )
+    )
+
+    budget_ok = estimated_cost_usd <= season_budget_usd
+    budget_score = min(1.0, season_budget_usd / max(estimated_cost_usd, 0.01))
+    checks.append(
+        DirectorGateCheck(
+            key="budget",
+            label="季预算熔断",
+            passed=budget_ok,
+            score=budget_score,
+            detail=f"预计 ${estimated_cost_usd:.2f} / 上限 ${season_budget_usd:.2f}",
+        )
+    )
+
+    errors = [check.detail for check in checks if not check.passed]
+    errors.extend(str(item) for item in plan_gate.errors)
+    warnings = [str(item) for item in plan_gate.warnings]
+    score = sum(check.score for check in checks) / len(checks)
+    return DirectorGateReport(
+        passed=all(check.passed for check in checks),
+        score=score,
+        estimated_cost_usd=estimated_cost_usd,
+        identity_readiness=identity_readiness,
+        checks=checks,
+        errors=list(dict.fromkeys(errors)),
+        warnings=warnings,
+    )
+
+
+async def _estimate_season_cost(
+    *,
+    duration_archetype: str,
+    video_provider: str,
+    audio_provider: str,
+    character_count: int,
+    episode_count: int,
+    quality_profile: str = "standard",
+) -> float:
+    from hevi.cost.estimator import estimate_cost
+
+    estimate = await estimate_cost(
+        duration_archetype=duration_archetype,
+        video_provider=video_provider,
+        audio_provider=audio_provider,
+        num_characters=max(1, character_count),
+        quality=quality_profile,
+    )
+    return round(estimate.total_usd * episode_count, 4)
+
+
+async def _run_industrial_inspection(work_id: str) -> None:
+    """L0→L1→L2→资产卡→双门禁；只产审查数据，不建立付费资产、不派发视频。"""
+    from hevi.season_planner.planner import build_season_plan
+    from hevi.storygraph.extract import extract_story_graph
+
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        llm = _resolve_llm()
+        _append_trail(rec, "intent_concept_parser", "running", "解析创作意图与戏剧方向")
+        concept = await generate_concept_draft(
+            material_text=rec["material_text"], intent_hint=rec["intent_hint"], llm=llm
+        )
+        rec["concept"] = concept.model_dump()
+        _append_trail(rec, "intent_concept_parser", "succeeded", "已形成标准化立意")
+
+        _append_trail(rec, "storygraph_extraction", "running", "抽取角色、事件与场景图谱")
+        story = await extract_story_graph(
+            source_name=rec["work_name"], raw_text=rec["material_text"], llm=llm
+        )
+        if not story.characters or not story.events:
+            raise ValueError("StoryGraph 抽取为空，无法形成角色资产与戏剧事件")
+        rec["story_graph"] = story.model_dump(mode="json")
+        _append_trail(
+            rec,
+            "storygraph_extraction",
+            "succeeded",
+            f"抽取 {len(story.characters)} 个角色、{len(story.events)} 个事件",
+        )
+
+        _append_trail(rec, "beat_sheet", "running", "生成分集节拍并执行内环自批判")
+        season_plan, plan_gate = await build_season_plan(
+            story, target_episodes=rec["target_episodes"], llm=llm
+        )
+        rec["season_plan"] = season_plan.model_dump(mode="json")
+        _append_trail(
+            rec,
+            "beat_sheet",
+            "succeeded" if plan_gate.passed else "degraded",
+            f"形成 {len(season_plan.episodes)} 集规划，覆盖率 {plan_gate.coverage:.0%}",
+        )
+
+        _append_trail(rec, "master_scene_script", "running", "把文学文本转为逐场视听剧本")
+        screenplay = await generate_screenplay_draft(
+            concept=concept, material_text=rec["material_text"], llm=llm
+        )
+        if not screenplay.scenes:
+            raise ValueError("逐场剧本为空，不能进入资产设计")
+        rec["screenplay"] = screenplay.model_dump()
+        rec["locked_through"] = _stage_index("screenplay")
+        _append_trail(
+            rec, "master_scene_script", "succeeded", f"形成 {len(screenplay.scenes)} 个可拍场次"
+        )
+
+        _append_trail(rec, "production_design", "running", "建立角色、场景和道具设计草案")
+        design_list = await generate_design_list_draft(screenplay=screenplay, llm=llm)
+        rec["design_list"] = design_list.model_dump()
+        _append_trail(
+            rec,
+            "production_design",
+            "succeeded",
+            f"形成 {len(design_list.characters)} 个角色锚点、{len(design_list.scenes)} 个场景锚点",
+        )
+
+        cfg = rec["production_config"]
+        estimated = await _estimate_season_cost(
+            duration_archetype=rec["episode_duration"],
+            video_provider=cfg["video_provider"],
+            audio_provider=cfg["audio_provider"],
+            character_count=len(design_list.characters),
+            episode_count=rec["target_episodes"],
+        )
+        gate = _build_director_gate(
+            story=story,
+            season_plan=season_plan,
+            plan_gate=plan_gate,
+            screenplay=screenplay,
+            design_list=design_list,
+            estimated_cost_usd=estimated,
+            season_budget_usd=float(cfg["season_budget_usd"]),
+        )
+        rec["estimated_cost_usd"] = estimated
+        rec["gate_report"] = gate.model_dump()
+        rec["status"] = "inspection_ready"
+        rec["error"] = None
+        _append_trail(
+            rec,
+            "director_gate_critic",
+            "succeeded" if gate.passed else "blocked",
+            f"导演门禁得分 {gate.score:.0%}",
+        )
+    except Exception as exc:
+        logger.exception("director industrial inspection failed: work_id=%s", work_id)
+        rec["status"] = "parse_failed"
+        rec["error"] = str(exc)[:500]
+        _append_trail(rec, "inspection", "failed", type(exc).__name__)
 
 
 # ── work 创建 + 查询 ─────────────────────────────────────────────────────────
@@ -197,6 +541,42 @@ async def create_work(
         material_text=body.material_text, intent_hint=body.intent_hint, llm=_resolve_llm()
     )
     rec["concept"] = concept.model_dump()
+    return _work_status(rec)
+
+
+@router.post("/works/parse", status_code=202)
+async def parse_work(
+    body: ParseWorkRequest,
+    background_tasks: BackgroundTasks,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """启动工业化解析状态机；立即返回，前端通过 work 查询观察演进。"""
+    if not body.material_text.strip():
+        raise HTTPException(status_code=422, detail="material_text 不能为空")
+    try:
+        get_duration_config(body.episode_duration)
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="不支持的单集时长档") from exc
+
+    work_id = str(uuid.uuid4())
+    rec = _init_work(
+        work_id,
+        material_text=body.material_text,
+        intent_hint=body.intent_hint,
+        user_id=str(user["id"]),
+        work_name=body.work_name,
+        target_episodes=body.target_episodes,
+        episode_duration=body.episode_duration,
+    )
+    rec["status"] = "parsing"
+    rec["production_config"] = {
+        "season_budget_usd": body.season_budget_usd,
+        "video_provider": body.video_provider,
+        "audio_provider": body.audio_provider,
+    }
+    rec["concept"] = None
+    _append_trail(rec, "cold_start", "accepted", "导演流水线已接收解析任务")
+    background_tasks.add_task(_run_industrial_inspection, work_id)
     return _work_status(rec)
 
 
@@ -633,7 +1013,191 @@ async def patch_shot_readiness(
     return {"action": "skip_extraction", "state": state}
 
 
-# ── ⑤产集(现有 L1,不改)────────────────────────────────────────────────────
+# ── 工业化整季派发 ─────────────────────────────────────────────────────────
+
+
+async def _run_industrial_dispatch(
+    work_id: str,
+    body: DispatchSeasonRequest,
+    *,
+    user_id: str,
+    svc: TaskService,
+    subject_svc: SubjectService,
+    pool: PgPool,
+) -> None:
+    """确认后才建立视觉锚点并派发；每集最终仍进入统一 Task 执行器。"""
+    from hevi.season_planner.dispatch import dispatch_season
+    from hevi.season_planner.schemas import SeasonPlan
+    from hevi.series.repository import SeriesRepository
+    from hevi.series.series_service import SeriesService
+    from hevi.storygraph.schemas import StoryGraph
+
+    rec = _WORKS.get(work_id)
+    if rec is None:
+        return
+    try:
+        story = StoryGraph.model_validate(rec["story_graph"])
+        plan = SeasonPlan.model_validate(rec["season_plan"])
+        design_list = DesignList.model_validate(rec["design_list"])
+
+        _append_trail(rec, "visual_anchor_lock", "running", "建立角色、场景和道具视觉锚点")
+        locked_design = await _lock_design_list_assets(
+            design_list, user_id=user_id, work_id=work_id, subject_svc=subject_svc
+        )
+        rec["design_list"] = locked_design.model_dump()
+        rec["locked_through"] = _stage_index("design_list")
+
+        subject_by_name = {
+            item.name: item.subject_id for item in locked_design.characters if item.subject_id
+        }
+        subject_id_map = {
+            char.char_id: subject_by_name[char.name]
+            for char in story.characters
+            if char.name in subject_by_name
+        }
+        refs_by_name = await _resolve_subject_ref_paths(locked_design, subject_svc=subject_svc)
+        subject_ref_paths = {
+            char.char_id: refs_by_name[char.name]
+            for char in story.characters
+            if char.name in refs_by_name
+        }
+        _append_trail(
+            rec,
+            "visual_anchor_lock",
+            "succeeded",
+            f"锁定 {len(subject_id_map)}/{len(story.characters)} 个角色身份锚点",
+        )
+
+        series_service = SeriesService(SeriesRepository(pool), task_service=svc)
+        _append_trail(rec, "season_dispatch", "running", "创建系列并逐集编译标准生产任务")
+        dispatched = await dispatch_season(
+            plan,
+            story,
+            series_service=series_service,
+            task_service=svc,
+            subject_id_map=subject_id_map,
+            subject_ref_paths=subject_ref_paths,
+            spec={
+                "video_provider": body.video_provider,
+                "audio_provider": body.audio_provider,
+                "duration_archetype": body.duration_archetype,
+                "budget_usd": body.season_budget_usd,
+                "quality_profile": body.quality_profile,
+                "aspect_ratio": body.aspect_ratio,
+                "prompt_style": (rec.get("concept") or {}).get("style", "cinematic"),
+                "director_pipeline_work_id": work_id,
+            },
+            user_id=user_id,
+        )
+
+        task_ids: list[str] = []
+        for episode in dispatched["episodes"]:
+            task_id = uuid.UUID(str(episode["id"]))
+            submitted = await svc.submit_task(task_id)
+            task_ids.append(str(task_id))
+            if submitted.get("status") != "queued":
+                render_task = asyncio.create_task(svc.run_task_background(task_id))
+                _SEASON_TASKS.add(render_task)
+                render_task.add_done_callback(_SEASON_TASKS.discard)
+
+        rec["series_id"] = dispatched["series_id"]
+        rec["task_ids"] = task_ids
+        rec["video_task_id"] = task_ids[0] if task_ids else None
+        rec["status"] = "dispatched"
+        rec["error"] = None
+        _append_trail(
+            rec, "season_dispatch", "succeeded", f"已派发 {len(task_ids)} 个真实生产任务"
+        )
+    except asyncio.CancelledError:
+        rec["status"] = "dispatch_cancelled"
+        _append_trail(rec, "season_dispatch", "cancelled", "整季派发已取消")
+        raise
+    except Exception as exc:
+        logger.exception("director industrial dispatch failed: work_id=%s", work_id)
+        rec["status"] = "dispatch_failed"
+        rec["error"] = str(exc)[:500]
+        _append_trail(rec, "season_dispatch", "failed", type(exc).__name__)
+
+
+@router.post("/works/{work_id}/dispatch-season", status_code=202)
+async def dispatch_industrial_season(
+    work_id: str,
+    body: DispatchSeasonRequest,
+    background_tasks: BackgroundTasks,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[TaskService, Depends(get_task_service)],
+    subject_svc: Annotated[SubjectService, Depends(get_subject_service)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """重新计算导演门禁，只有通过后才开始付费资产锁定和整季派发。"""
+    from hevi.season_planner.planner import gate_season_plan
+    from hevi.season_planner.schemas import SeasonPlan
+    from hevi.storygraph.schemas import StoryGraph
+
+    rec = _require_work(work_id, user)
+    if rec["status"] not in {"inspection_ready", "dispatch_failed"}:
+        raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可派发")
+    if not rec.get("story_graph") or not rec.get("season_plan"):
+        raise HTTPException(status_code=409, detail="资产图谱或分集规划尚未就绪")
+
+    try:
+        get_duration_config(body.duration_archetype)
+        story = StoryGraph.model_validate(rec["story_graph"])
+        plan = SeasonPlan.model_validate(body.season_plan or rec["season_plan"])
+        concept = body.concept or Concept.model_validate(rec["concept"])
+        screenplay = body.screenplay or Screenplay.model_validate(rec["screenplay"])
+        design_list = body.design_list or DesignList.model_validate(rec["design_list"])
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    plan_gate = gate_season_plan(plan, story)
+    estimated = await _estimate_season_cost(
+        duration_archetype=body.duration_archetype,
+        video_provider=body.video_provider,
+        audio_provider=body.audio_provider,
+        character_count=len(design_list.characters),
+        episode_count=plan.target_episodes,
+        quality_profile=body.quality_profile,
+    )
+    gate = _build_director_gate(
+        story=story,
+        season_plan=plan,
+        plan_gate=plan_gate,
+        screenplay=screenplay,
+        design_list=design_list,
+        estimated_cost_usd=estimated,
+        season_budget_usd=body.season_budget_usd,
+    )
+    rec["concept"] = concept.model_dump()
+    rec["screenplay"] = screenplay.model_dump()
+    rec["design_list"] = design_list.model_dump()
+    rec["season_plan"] = plan.model_dump(mode="json")
+    rec["estimated_cost_usd"] = estimated
+    rec["gate_report"] = gate.model_dump()
+    if not gate.passed:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "DIRECTOR_GATE_FAILED", "gate": gate.model_dump()},
+        )
+
+    rec["production_config"] = body.model_dump(
+        exclude={"concept", "screenplay", "design_list", "season_plan"}
+    )
+    rec["status"] = "dispatching"
+    rec["error"] = None
+    background_tasks.add_task(
+        _run_industrial_dispatch,
+        work_id,
+        body,
+        user_id=str(user["id"]),
+        svc=svc,
+        subject_svc=subject_svc,
+        pool=pool,
+    )
+    return _work_status(rec)
+
+
+# ── ⑤产集(旧单集路径保留兼容)──────────────────────────────────────────────
 
 
 class ProduceRequest(BaseModel):
@@ -642,6 +1206,9 @@ class ProduceRequest(BaseModel):
     quality_profile: str = "standard"
     aspect_ratio: str = "9:16"
     budget_usd: float | None = None
+    # SPEC v6.0 §2.2/§2.3 AutoCameo:角色锁脸/入戏参考(主体库 subject_id 列表)。
+    character_references: list[str] = []
+    autocameo: bool = False
 
 
 _FEMALE_HINT_KEYS = ("女", "母", "姑", "妃", "娘", "婆", "少女", "女声", "女性", "姐", "妹")
@@ -930,7 +1497,7 @@ async def _run_director_via_tongjian(
             except Exception:  # 进度回写绝不可拖垮生成
                 pass
 
-    render_kwargs = {
+    render_kwargs: dict[str, Any] = {
         "shot_list": shot_list,
         "design_list": design_list,
         "concept": concept,
@@ -1058,6 +1625,11 @@ async def produce_work(
     }
     if body.budget_usd is not None:
         create_kwargs["budget_usd"] = body.budget_usd
+    # SPEC v6.0 §2.2 AutoCameo 透传:参考角色(锁脸)与开关落进 config_json,供生成层消费。
+    if body.character_references:
+        create_kwargs["character_references"] = body.character_references
+    if body.autocameo:
+        create_kwargs["autocameo"] = body.autocameo
     try:
         task = await svc.create_task(**create_kwargs)
     except CostLimitExceeded as e:

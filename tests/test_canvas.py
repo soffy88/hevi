@@ -8,7 +8,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from oprim._hevi_types import CanvasEdge, CanvasNode
+from oprim.hevi_types import CanvasEdge, CanvasNode
 
 from hevi.auth.dependencies import get_current_user
 from hevi.canvas.executor_service import ExecutorService

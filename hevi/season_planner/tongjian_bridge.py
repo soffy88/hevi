@@ -16,6 +16,7 @@ EpisodePlan 已经是"立意"(分幕/情感弧),这里全是确定性字段搬�
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -234,7 +235,9 @@ async def render_episode(
         # 本机共享的、反复从 PCIe 总线掉线的 3080。通鉴自己验证过真实可用的"云水墨
         # 数字人"配置(_apply_cloud_avatar_preset)明确把 L3 换成 edge_tts(云端、零
         # GPU 依赖),这里跟着用同一份已验证配置,不要用回本地模型。
-        tts_fn = ProviderRegistry.get().generic("audio", "edge_tts")
+        tts_fn = ProviderRegistry.get().generic(
+            "audio", os.environ.get("HEVI_AUDIO_PROVIDER", "edge_tts")
+        )
 
     run_dir.mkdir(parents=True, exist_ok=True)
 

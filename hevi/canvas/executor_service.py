@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from oprim._hevi_types import CanvasEdge, CanvasNode
 from oprim.canvas_node_execute import CanvasNodeResult
+from oprim.hevi_types import CanvasEdge, CanvasNode
 from oskill.canvas_workflow_executor import canvas_workflow_executor
 
 from hevi.canvas.graph_service import GraphService

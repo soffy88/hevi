@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from oprim._hevi_types import CanvasNode
+from oprim.hevi_types import CanvasNode
 
 logger = logging.getLogger(__name__)
 

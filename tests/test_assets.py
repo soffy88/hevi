@@ -1,8 +1,8 @@
 """Layer4 asset store + E4 asset_loader bridge."""
 import pytest
 
-from hevi.assets import AssetRepository, load_asset_map, make_asset_loader
-from hevi.assets.repository import ASSET_TYPES
+from hevi.sourcing import AssetRepository, load_asset_map, make_asset_loader
+from hevi.sourcing.loader_bridge import ASSET_TYPES
 
 
 def test_asset_types_taxonomy():

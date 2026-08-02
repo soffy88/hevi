@@ -16,7 +16,10 @@ import type {
   GalleryCategory, GalleryItem, StepProviders, PresetId, Subject,
 } from '@/types/api';
 import { STYLE_PRESETS } from '@/types/api';
-import { taskApi, subjectApi, USE_MOCK } from '@/lib/api-client';
+import { presenterApi, productionApi, taskApi, subjectApi, providerApi, USE_MOCK } from '@/lib/api-client';
+import type { ProductionSource, Presenter, ProviderPreset } from '@/types/api';
+import { prefillDirector, type HubAdapterMode, type HubExecutionPreset } from '@/lib/director-prefill';
+import { enhanceIdea, splitIdeaScenes, IDEA_STYLES, type IdeaStyle } from '@/lib/prompt-enhancer';
 import { humanizeTaskError } from '@/lib/errorMessages';
 import { mockEstimate } from '@/lib/mock-data';
 import { Gallery } from './Gallery';
@@ -47,6 +50,29 @@ const QUALITIES: { id: QualityProfile; label: string }[] = [
 
 const ASPECTS: AspectRatio[] = ['9:16', '16:9', '1:1'];
 
+const ADAPTERS: Array<{ id: HubAdapterMode; label: string; icon: string; category: GalleryCategory; source: ProductionSource; hint: string }> = [
+  { id: 'default', label: '极简单片', icon: '⚡', category: 'short_video', source: 'automatic', hint: '一句话 → 自动规划与出片' },
+  { id: 'idea2video', label: '创意极速', icon: '💡', category: 'short_video', source: 'automatic', hint: '一句话 → Prompt 增强 → 直接出片 (Idea2Video)' },
+  { id: 'explainer', label: '头像解说', icon: '🎙️', category: 'avatar_narration', source: 'explainer', hint: '文案 → 配音、字幕与数字人' },
+  { id: 'tongjian', label: '资治通鉴', icon: '📜', category: 'long_video', source: 'tongjian', hint: '史料 → 带出处的讲述成片' },
+  { id: 'shortdrama', label: '故事短剧', icon: '🎬', category: 'short_video', source: 'shortdrama', hint: '梗概 → 分集规划与出片' },
+];
+
+const EXECUTION_PRESETS: Array<{ id: HubExecutionPreset; label: string; hint: string }> = [
+  { id: 'economy', label: '💰 省钱', hint: '本地优先 · 低成本' },
+  { id: 'balanced', label: '⚖️ 均衡', hint: '推荐 · 质量与成本平衡' },
+  { id: 'fast', label: '⚡ 极速', hint: '云端优先 · 更快交付' },
+];
+
+// 字幕烧录样式(与后端 hevi/assembly/subtitle_styles.py + 导演台 SUBTITLE_STYLES 对齐)。
+// 仅「头像解说」适配器显示(§2.2):数字人预设 + 字幕样式。
+const SUBTITLE_STYLES: { v: string; l: string }[] = [
+  { v: 'default', l: '默认' },
+  { v: 'bold_yellow', l: '粗体黄' },
+  { v: 'large_white', l: '大号白字' },
+  { v: 'compact', l: '紧凑' },
+];
+
 // 视频模型/画质档(真人写实)。value 对应后端 video_provider
 // 成本从低到高排序;默认本地免费档(fal 云档偏贵,按需选用)。
 const VIDEO_PROVIDERS: { id: VideoProvider; label: string }[] = [
@@ -60,6 +86,7 @@ const VIDEO_PROVIDERS: { id: VideoProvider; label: string }[] = [
 export function SimpleGenerate() {
   const router = useRouter();
   const [category, setCategory] = useState<GalleryCategory>('short_video');
+  const [adapterMode, setAdapterMode] = useState<HubAdapterMode>('default');
   const [topic, setTopic] = useState('');
   const [duration, setDuration] = useState<DurationArchetype>('short');
   const [style, setStyle] = useState<string>(STYLE_PRESETS[0]);
@@ -73,6 +100,18 @@ export function SimpleGenerate() {
   const [estimate, setEstimate] = useState({ credits: 0, usd: 0 });
   const [confirming, setConfirming] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [executionPreset, setExecutionPreset] = useState<HubExecutionPreset>('balanced');
+  const [presenters, setPresenters] = useState<Presenter[]>([]);
+  const [presenterId, setPresenterId] = useState('');
+  const [subtitleStyle, setSubtitleStyle] = useState('default');
+  const [episodeCount, setEpisodeCount] = useState(1);
+
+  // Idea2Video(SPEC v6.0 §2.1):创意增强 + Provider Preset 选单
+  const [ideaStyle, setIdeaStyle] = useState<IdeaStyle>('cinematic');
+  const [ideaMaxScenes, setIdeaMaxScenes] = useState(4);
+  const [ideaEnhance, setIdeaEnhance] = useState(true);
+  const [providerPresets, setProviderPresets] = useState<ProviderPreset[]>([]);
+  const [providerPreset, setProviderPreset] = useState('wan_local');
 
   // 角色库(可选):选中后生成时锁定人物身份
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -90,6 +129,13 @@ export function SimpleGenerate() {
     const def = CATEGORIES.find(c => c.id === cat)!;
     if (def.durations.length > 0) setDuration(def.durations[0]!);
     setAspect(def.defaultAspect);
+  };
+
+  const switchAdapter = (mode: HubAdapterMode) => {
+    const adapter = ADAPTERS.find(item => item.id === mode)!;
+    setAdapterMode(mode);
+    switchCategory(adapter.category);
+    setPresenterId(mode === 'explainer' ? presenterId : '');
   };
 
   // 用同款:填回 prompt + 切类型 + 预填参数
@@ -123,6 +169,15 @@ export function SimpleGenerate() {
     refreshSubjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category]);
+
+  useEffect(() => {
+    if (USE_MOCK || !isAuthenticated()) return;
+    presenterApi.list().then(setPresenters).catch(() => setPresenters([]));
+    // Provider Preset 预置表(obase 下沉,SPEC v6.0 §2.4)
+    providerApi.listPresets('video')
+      .then(r => { if (r.presets.length > 0) { setProviderPresets(r.presets); setProviderPreset(r.presets[0]!.name); } })
+      .catch(() => setProviderPresets([]));
+  }, []);
 
   // 上传照片建角色 → 刷新列表并自动选中
   const onSubjectFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,7 +215,31 @@ export function SimpleGenerate() {
     // 生成需登录:未登录跳登录页
     if (!isAuthenticated()) { router.push('/login'); return; }
     try {
-      const t = await taskApi.create(buildReq());
+      // Idea2Video:Prompt Enhancer 预处理 → 直接调用统一生成能力(SPEC v6.0 §2.1)
+      const isIdea = adapterMode === 'idea2video';
+      const enhanced = isIdea && ideaEnhance && topic.trim()
+        ? enhanceIdea({ idea: topic.trim(), style: ideaStyle, aspectRatio: aspect, maxScenes: ideaMaxScenes })
+        : null;
+      const t = await productionApi.generate({
+        source_channel: isIdea ? 'hub_idea2video' : 'hub_quick',
+        adapter_type: isIdea ? 'default' : adapterMode,
+        config: {
+          prompt: enhanced ? enhanced.prompt : topic.trim(),
+          duration_archetype: duration,
+          aspect_ratio: aspect,
+          execution_preset: executionPreset,
+          character_references: selectedSubjectId ? [selectedSubjectId] : [],
+          presenter_id: presenterId || null,
+          quality_profile: quality,
+          options: {
+            style_preset: style,
+            provider_preset: isIdea ? providerPreset : undefined,
+            idea_scenes: enhanced ? enhanced.scenes : undefined,
+            subtitle_style: adapterMode === 'explainer' ? subtitleStyle : undefined,
+            episode_count: adapterMode === 'shortdrama' ? episodeCount : undefined,
+          },
+        },
+      });
       setTaskId(t.task_id);
     } catch (e: unknown) {
       if ((e as { message?: string })?.message === 'NOT_AUTHENTICATED') router.push('/login');
@@ -225,25 +304,70 @@ export function SimpleGenerate() {
   return (
     <div className="hevi-home">
       <div className="hevi-home__panel">
-        <h1 className="hevi-home__headline">用一句话,生成你想要的</h1>
+        <p className="hevi-home__eyebrow">Automated Generation Hub</p>
+        <h1 className="hevi-home__headline">生成中心</h1>
 
-        {/* 5 分区 tab */}
-        <div className="hevi-home__categories">
-          {CATEGORIES.map(c => (
-            <button key={c.id} type="button" className="hevi-home__cat"
-              data-active={category === c.id ? 'true' : undefined}
-              onClick={() => switchCategory(c.id)}>{c.label}</button>
+        <div className="hevi-home__categories" role="tablist" aria-label="内容适配器">
+          {ADAPTERS.map(adapter => (
+            <button key={adapter.id} type="button" className="hevi-home__cat"
+              data-active={adapterMode === adapter.id ? 'true' : undefined}
+              onClick={() => switchAdapter(adapter.id)}>
+              <span>{adapter.icon}</span> {adapter.label}
+            </button>
           ))}
         </div>
 
         {/* 大 prompt 框 */}
         <textarea
           className="hevi-home__prompt"
-          placeholder={isImage ? '描述你想要的图片…' : '描述你想要的视频…例如:介绍黑洞的科普短片,画面震撼,有旁白'}
+          placeholder={adapterMode === 'idea2video' ? '输入一句话创意，自动 Prompt 增强与风格润色后直接出片…' : adapterMode === 'tongjian' ? '粘贴史料原文、章节名或 quote_id…' : adapterMode === 'shortdrama' ? '输入小说梗概或故事大纲…' : adapterMode === 'explainer' ? '输入解说文案或主题…' : '用一句话，生成你想要的视频…'}
           value={topic}
           onChange={e => setTopic(e.target.value)}
           rows={4}
         />
+
+        {/* Idea2Video 创意增强区(SPEC v6.0 §2.1) */}
+        {adapterMode === 'idea2video' && (
+          <div className="hevi-home__idea">
+            <div className="hevi-home__idea-bar">
+              <label className="hevi-home__opt">
+                <span className="hevi-home__idea-label">💡 Prompt 增强</span>
+                <select value={ideaEnhance ? 'on' : 'off'} onChange={e => setIdeaEnhance(e.target.value === 'on')}>
+                  <option value="on">开启（推荐）</option>
+                  <option value="off">关闭</option>
+                </select>
+              </label>
+              <label className="hevi-home__opt">
+                <span className="hevi-home__idea-label">风格</span>
+                <select value={ideaStyle} onChange={e => setIdeaStyle(e.target.value as IdeaStyle)}>
+                  {IDEA_STYLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </label>
+              <label className="hevi-home__opt">
+                <span className="hevi-home__idea-label">分镜数</span>
+                <select value={ideaMaxScenes} onChange={e => setIdeaMaxScenes(Number(e.target.value))}>
+                  {[2, 3, 4, 5, 6, 8].map(n => <option key={n} value={n}>{n} 个</option>)}
+                </select>
+              </label>
+              <label className="hevi-home__opt">
+                <span className="hevi-home__idea-label">Provider Preset</span>
+                <select value={providerPreset} onChange={e => setProviderPreset(e.target.value)}>
+                  {providerPresets.length === 0 && <option value="wan_local">wan_local（本地默认）</option>}
+                  {providerPresets.map(p => <option key={p.name} value={p.name}>{p.name} · {p.description}</option>)}
+                </select>
+              </label>
+            </div>
+            {ideaEnhance && topic.trim().length >= 4 && (
+              <div className="hevi-home__idea-preview">
+                <div className="hevi-home__idea-preview-head">🔍 增强预览（{splitIdeaScenes(topic.trim(), ideaMaxScenes).length} 个分镜）</div>
+                <pre>{enhanceIdea({ idea: topic.trim(), style: ideaStyle, aspectRatio: aspect, maxScenes: ideaMaxScenes }).prompt}</pre>
+              </div>
+            )}
+            {adapterMode === 'idea2video' && !ideaEnhance && (
+              <p className="hevi-home__adapter-hint">💡 关闭增强后直接按原句出片（provider_preset 仍生效）。</p>
+            )}
+          </div>
+        )}
 
         {/* 选项(按 category 差异化)*/}
         <div className="hevi-home__options">
@@ -288,10 +412,32 @@ export function SimpleGenerate() {
               </div>
             </div>
           )}
-          {category === 'avatar_narration' && (
+          {adapterMode === 'explainer' && (
             <div className="hevi-home__opt">
-              <label>数字人形象</label>
-              <select><option>主播 A</option><option>主播 B</option></select>
+              <label htmlFor="hub-presenter">数字人预设</label>
+              <select id="hub-presenter" value={presenterId} onChange={e => setPresenterId(e.target.value)}>
+                <option value="">旁白模式</option>
+                {presenters.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+          )}
+          {adapterMode === 'explainer' && (
+            <div className="hevi-home__opt">
+              <label htmlFor="hub-subtitle-style">字幕样式</label>
+              <select id="hub-subtitle-style" value={subtitleStyle} onChange={e => setSubtitleStyle(e.target.value)}>
+                {SUBTITLE_STYLES.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
+              </select>
+            </div>
+          )}
+          {adapterMode === 'tongjian' && (
+            <p className="hevi-home__adapter-hint">📜 自动匹配水墨/古风风格预设,并对史料做 CG2.5 史实出处检测。</p>
+          )}
+          {adapterMode === 'shortdrama' && (
+            <div className="hevi-home__opt">
+              <label>分集数</label>
+              <select value={episodeCount} onChange={e => setEpisodeCount(Number(e.target.value))}>
+                {[1, 3, 5, 10].map(n => <option key={n} value={n}>{n} 集</option>)}
+              </select>
             </div>
           )}
         </div>
@@ -348,14 +494,12 @@ export function SimpleGenerate() {
           </div>
         )}
 
-        {/* 逐步 provider 选择(图片类型只有出图一步,不显示)*/}
-        {!isImage && (
-          <ProviderSelector
-            category={category}
-            stepProviders={stepProviders}
-            onChange={(sp) => setStepProviders(sp)}
-          />
-        )}
+        <div className="hevi-home__preset-block">
+          <label>执行档位</label>
+          <div className="hevi-home__presets">
+            {EXECUTION_PRESETS.map(preset => <button type="button" key={preset.id} data-active={executionPreset === preset.id ? 'true' : undefined} onClick={() => setExecutionPreset(preset.id)}><strong>{preset.label}</strong><span>{preset.hint}</span></button>)}
+          </div>
+        </div>
 
         {/* 预估 + 生成 */}
         <div className="hevi-home__footer">
@@ -365,8 +509,12 @@ export function SimpleGenerate() {
           </span>
           <button className="hevi-home__generate" disabled={!topic.trim()}
             onClick={() => setConfirming(true)}>
-            {isImage ? '生成图片' : '生成视频'}
+            ▶ 开始自动出片
           </button>
+          <button type="button" className="hevi-home__director-link" disabled={!topic.trim()} onClick={() => {
+            prefillDirector({ prompt: topic.trim(), adapterMode, duration, aspectRatio: aspect, characters: selectedSubjectId ? [selectedSubjectId] : [], presetLevel: executionPreset });
+            router.push('/director');
+          }}>🎛️ 转入导演控制台精细调优 →</button>
         </div>
       </div>
 

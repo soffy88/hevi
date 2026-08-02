@@ -179,10 +179,17 @@ async def test_task_integration_credits(client):
     # 新用户有 1000 credits(signup bonus),云任务需 720 → 直接够
     payload = {"topic": "Sci-fi", "duration_archetype": "1-5min", "video_provider": "ltx2_cloud"}
     with patch(
-        "hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock
-    ) as mock_orch:
-        mock_orch.return_value = {
-            "url": "http://video.mp4", "duration": 180, "metadata": {"shots": 5}
+        "hevi.tasks.task_service.execute_standard_operation", new_callable=AsyncMock
+    ) as mock_exec:
+        mock_exec.return_value = {
+            "status": "succeeded",
+            "report": {
+                "video_path": "http://video.mp4",
+                "duration_s": 180.0,
+                "shots_generated": 5,
+                "shots": [],
+                "quality": {"passed": True, "violations": [], "consistency": "ok"},
+            },
         }
         resp = await client.post(
             "/api/tasks/longvideo", json=payload, headers={"Authorization": f"Bearer {token}"}
@@ -216,10 +223,17 @@ async def test_cost_settlement_refunds_cheaper_actual(client):
     # 估算按 1-5min(~180s) 预扣 720;实际只产出很短的视频 → 应退差价
     payload = {"topic": "Sci-fi", "duration_archetype": "1-5min", "video_provider": "ltx2_cloud"}
     with patch(
-        "hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock
-    ) as mock_orch:
-        mock_orch.return_value = {
-            "url": "http://video.mp4", "duration": 20, "metadata": {"shots": 1}
+        "hevi.tasks.task_service.execute_standard_operation", new_callable=AsyncMock
+    ) as mock_exec:
+        mock_exec.return_value = {
+            "status": "succeeded",
+            "report": {
+                "video_path": "http://video.mp4",
+                "duration_s": 20.0,
+                "shots_generated": 1,
+                "shots": [],
+                "quality": {"passed": True, "violations": [], "consistency": "ok"},
+            },
         }
         resp = await client.post("/api/tasks/longvideo", json=payload, headers=headers)
         assert resp.status_code == 201

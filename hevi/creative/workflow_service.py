@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from oskill._schemas import Script, SubjectRef
 from oskill.character_consistency_workflow import (
     CharacterConsistencyResult,
     character_consistency_workflow,
@@ -13,6 +12,7 @@ from oskill.multi_shot_storyboard_workflow import (
     MultiShotStoryboard,
     multi_shot_storyboard_workflow,
 )
+from oskill.schemas import Script, SubjectRef
 
 _VALID_GRID_SIZES: frozenset[int] = frozenset({9, 25})
 

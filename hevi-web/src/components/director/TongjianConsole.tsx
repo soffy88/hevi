@@ -1,6 +1,9 @@
 /**
- * TongjianConsole — 通鉴全自动流水线控制台(HEVI-SPEC-01)
- * 输入《资治通鉴》任一章节原文 → 一键启动 L0-L8 流水线 → 实时轮询各层进度
+ * TongjianConsole — 通鉴 · 【我在历史现场】(Frontend SPEC v4.0 §2.1)
+ * 处理历史素材与史料,以「讲解(分析/铺垫) + 现场演绎(关键节点/高潮高光)」混合呈现,
+ * 重现历史情境。输入史料原文 → 一键启动 L0-L8 九层流水线 → 实时轮询各层进度。
+ * 史实红线(CG2.5 台词出处校验)显式可开关:开启=严格模式(L2 仅允许带 quote_id 的逐字引语
+ * 成对白,无引语事件转纯旁白叙述);关闭=允许为真实事件创作时代口吻的戏剧化对白。
  */
 'use client';
 
@@ -38,12 +41,45 @@ const STATUS_CLASS: Record<string, string> = {
   FAILED: 'tj-layer--failed',
 };
 
-// L6 画面风格预设(仅 cloud_avatar 模式生效)。prompt="" 代表留空,交给后端默认风格。
-// 2026-07-13:默认从国画水墨换成卡通动画——水墨是成年观众取向,小孩不喜欢。
-const STYLE_PRESETS: { value: string; label: string; prompt: string }[] = [
-  { value: 'cartoon', label: '卡通动画（默认/现代儿童向）', prompt: '' },
-  { value: 'ink', label: '国画水墨（成人向）',
-    prompt: '国画水墨写意人物画,单色水墨,写意笔触,宣纸质感' },
+// ── 演绎模式配置(SPEC v4.0 §2.1)──────────────────────────────────────────
+// 演绎比例 → L2 params 组合(include_commentary 讲解评论段 / dramatize 创作对白)。
+const DRILL_RATIOS: { value: string; label: string; desc: string; commentary: boolean }[] = [
+  {
+    value: 'commentary', label: '讲解为主 · 讲解80% + 现场演绎20%',
+    desc: '侧重旁白分析、铺垫与史论,高潮处少量点映', commentary: true,
+  },
+  {
+    value: 'balanced', label: '均衡 · 讲解70% + 现场演绎30%（默认）',
+    desc: '讲解与高潮演绎交错呈现,史料讲解为主轴', commentary: true,
+  },
+  {
+    value: 'drama', label: '演绎为主 · 讲解50% + 现场演绎50%',
+    desc: '重现场景冲突与关键节点演绎,讲解退居串联', commentary: false,
+  },
+];
+
+// 视觉风格三档(SPEC v4.0 §2.1)→ L6 params.style。默认国风水墨。
+const VISUAL_STYLES: { value: string; label: string; prompt: string }[] = [
+  {
+    value: 'ink', label: '🎨 国风水墨（默认）',
+    prompt: '国画水墨写意人物画,单色水墨,写意笔触,宣纸质感,古风留白,沉稳大气',
+  },
+  {
+    value: 'cinema', label: '🎬 拟真电影感',
+    prompt: '电影级实拍质感,自然光影,写实历史场景,史诗构图,胶片色彩,浅景深',
+  },
+  {
+    value: 'lianhuanhua', label: '🖌️ 连环画/工笔',
+    prompt: '工笔重彩连环画风格,线描造型,色彩典雅,传统绘画质感,细节考究',
+  },
+];
+
+// 讲解人预设(SPEC v4.0 §2.1 "📜 历史旁白·老张")→ L6 params.narr_tone(旁白语气)。
+// 数字人出镜时走 L6 cloud_avatar(配音+口型)。
+const NARRATORS: { value: string; label: string; tone: string }[] = [
+  { value: 'laozhang', label: '📜 历史旁白·老张', tone: '沉稳' },
+  { value: 'shusheng', label: '📚 儒生讲史·激昂', tone: '激昂' },
+  { value: 'shiguan', label: '🏯 史官正音·凝重', tone: '凝重' },
 ];
 
 const DEMO_TEXTS: { label: string; source: string; text: string }[] = [
@@ -67,19 +103,26 @@ export function TongjianConsole() {
   const [sourceName, setSourceName] = useState('资治通鉴·周纪一');
   const [rawText, setRawText] = useState('');
   const [targetDuration, setTargetDuration] = useState(180);
+
+  // ── SPEC v4.0 §2.1 演绎与生成模式配置 ──
+  const [drillRatio, setDrillRatio] = useState('balanced');       // 演绎比例
+  const [visualStyle, setVisualStyle] = useState('ink');          // 视觉风格三档
+  const [narrator, setNarrator] = useState('laozhang');           // 讲解人预设
+  const [onCamera, setOnCamera] = useState(false);                // 数字人出镜讲解
+  const [redline, setRedline] = useState(true);                   // CG2.5 史实红线
+
+  // ── 出片规格 ──
   const [aspectRatio, setAspectRatio] = useState('16:9');
-  // L6 渲染模式(可选模型):cloud_avatar=云 happyhorse 数字人(配音+口型) / sdxl_local=本地静帧
-  const [renderMode, setRenderMode] = useState('cloud_avatar');
-  // 逐层常用参数(接进后端 layer_config.params)
+  const [resolution, setResolution] = useState('1080P');
+
+  // ── 高级参数(折叠) ──
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [candidateN, setCandidateN] = useState(3);       // L1 立意候选数
-  const [dramatize, setDramatize] = useState(true);      // L2 戏剧化改编(为无引语事件创作对白)
   const [reviewMode, setReviewMode] = useState(true);    // 剧本出来后先人工审核(pause_after=L2)
-  const [resolution, setResolution] = useState('720P');  // L6 画面分辨率
-  const [inkStyle, setInkStyle] = useState('');          // L6 水墨风格词(空=默认)
   const [sayCharSec, setSayCharSec] = useState(0.32);    // L6 语速(每字秒)
-  const [narrTone, setNarrTone] = useState('沉稳');       // L6 旁白语气
-  // 高级:逐层 {model,params} 覆盖(JSON),补充上面没覆盖的层/参数。
+  const [inkStyle, setInkStyle] = useState('');          // 手写风格词覆盖
   const [layerConfigJson, setLayerConfigJson] = useState('');
+
   const [busy, setBusy] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
   const [status, setStatus] = useState<TongjianRunStatus | null>(null);
@@ -92,8 +135,6 @@ export function TongjianConsole() {
     let cancelled = false;
     (async () => {
       try {
-        // AuthProvider 也在自己的 useEffect 里做这件事,但子组件的 effect 比父组件先跑,
-        // 这里不能赌 AuthProvider 已经把 token 同步进 api-client——自己同步一遍(幂等)。
         syncAuthToken();
         const runs = await tongjianApi.listRuns();
         const active = runs.find(
@@ -136,19 +177,36 @@ export function TongjianConsole() {
   }
 
   async function startPipeline() {
-    if (!rawText.trim()) { setErr('请输入原文'); return; }
+    if (!rawText.trim()) { setErr('请输入史料原文/纪实材料'); return; }
     setErr(null);
     setBusy(true);
     setStatus(null);
-    // 组装逐层配置:渲染模式 → L6.model;表单参数 → L1/L6.params;高级 JSON 再覆盖/补充。
-    let layerConfig: Record<string, { model?: string | null; params?: Record<string, unknown> }> = {};
-    if (renderMode) layerConfig.L6 = { model: renderMode };
-    layerConfig.L1 = { ...(layerConfig.L1 || {}), params: { n: candidateN } };
-    layerConfig.L2 = { ...(layerConfig.L2 || {}), params: { dramatize } };
-    const l6params: Record<string, unknown> = {
-      resolution, say_char_sec: sayCharSec, narr_tone: narrTone,
+
+    const ratio = DRILL_RATIOS.find(r => r.value === drillRatio) ?? DRILL_RATIOS[1];
+    // 史实红线严格模式:对白必须带 quote_id 逐字引语 → dramatize=False;
+    // 否则由演绎比例决定是否允许创作对白。
+    const dramatize = redline ? false : true;
+    const l2params: Record<string, unknown> = {
+      dramatize,
+      include_commentary: ratio.commentary,
     };
-    if (inkStyle.trim()) l6params.style = inkStyle.trim();
+    l2params.screenwriter_persona = redline
+      ? '你是历史纪录片编剧,严守史料红线:凡对白必须逐字引用史料原文引语并标注出处(quote_id),无直接引语的事件一律用旁白叙述,绝不杜撰台词。讲解(分析/铺垫)与现场演绎(关键节点高潮)交错,重现历史情境。'
+      : '你是历史纪录片编剧,以「讲解穿插高潮演绎」重现历史情境:讲解负责分析与铺垫,现场演绎还原关键节点与高潮时刻,可为真实事件创作符合时代口吻的戏剧化对白。';
+
+    const l6params: Record<string, unknown> = {
+      resolution,
+      say_char_sec: sayCharSec,
+      narr_tone: NARRATORS.find(n => n.value === narrator)?.tone ?? '沉稳',
+    };
+    const stylePrompt = inkStyle.trim() || (VISUAL_STYLES.find(v => v.value === visualStyle)?.prompt ?? '');
+    if (stylePrompt) l6params.style = stylePrompt;
+
+    // 组装逐层配置:渲染模式 → L6.model;表单参数 → L1/L2/L6.params;高级 JSON 再覆盖/补充。
+    const layerConfig: Record<string, { model?: string | null; params?: Record<string, unknown> }> = {};
+    if (onCamera) layerConfig.L6 = { model: 'cloud_avatar' };
+    layerConfig.L1 = { params: { n: candidateN } };
+    layerConfig.L2 = { params: l2params };
     layerConfig.L6 = { ...(layerConfig.L6 || {}), params: l6params };
     if (layerConfigJson.trim()) {
       try {
@@ -187,10 +245,13 @@ export function TongjianConsole() {
 
   return (
     <div className="tj">
+      {/* ── 主题头(SPEC v4.0 §2.1) ── */}
       <div className="tj__hero">
-        <h1 className="tj__title">通鉴自动成片</h1>
+        <div className="tj__hero-overline">🏛️ 历史素材与史料大类 · 通鉴通道</div>
+        <h1 className="tj__title">【我在历史现场】</h1>
         <p className="tj__sub">
-          输入《资治通鉴》任一章节原文，零人工干预输出历史解说视频（含配音、字幕、配乐）
+          处理历史素材与史料，以「讲解（分析/铺垫）+ 现场高潮演绎」重现历史情境，
+          台词逐句经 CG2.5 史实出处校验
         </p>
         <div className="tj__badges">
           <span className="tj__badge">L0 史料</span>
@@ -207,11 +268,11 @@ export function TongjianConsole() {
         </div>
       </div>
 
-      {/* ── 输入区 ── */}
+      {/* ── ① 历史素材与纪实文本 ── */}
       <section className="tj-sec">
         <div className="tj-sec__head">
           <span className="tj-sec__num">①</span>
-          <h2>章节原文</h2>
+          <h2>历史素材与纪实文本</h2>
         </div>
         <div className="tj-demos">
           {DEMO_TEXTS.map(d => (
@@ -222,122 +283,164 @@ export function TongjianConsole() {
           ))}
         </div>
         <label className="tj-field">
-          <span className="tj-field__label">章节名（来源标注）</span>
+          <span className="tj-field__label">章节/事件标题</span>
           <input value={sourceName} onChange={e => setSourceName(e.target.value)}
-            placeholder="资治通鉴·周纪一" />
+            placeholder="如: 赤壁之战·草船借箭 / 巨鹿之战" />
         </label>
         <label className="tj-field tj-field--tall">
           <span className="tj-field__label">
-            原文（文言文，{rawText.length} 字）
+            史料原文/纪实材料（文言文，{rawText.length} 字）
           </span>
           <textarea rows={10}
-            placeholder="粘贴资治通鉴原文，L0 层自动完成分段、纪年换算、人物消歧、事件链抽取…"
+            placeholder="粘贴史书原文、历史笔记或文献材料… L0 层自动完成分段、纪年换算、人物消歧、事件链抽取"
             value={rawText} onChange={e => setRawText(e.target.value)} />
         </label>
       </section>
 
-      {/* ── 参数区 ── */}
+      {/* ── ② 演绎与生成模式配置 ── */}
       <section className="tj-sec">
         <div className="tj-sec__head">
           <span className="tj-sec__num">②</span>
-          <h2>成片参数</h2>
+          <h2>演绎与生成模式配置</h2>
+        </div>
+
+        <div className="tj-field">
+          <span className="tj-field__label">演绎比例（讲解 + 现场演绎 混合呈现）</span>
+          <div className="tj-radio-list">
+            {DRILL_RATIOS.map(r => (
+              <button key={r.value} type="button"
+                className={`tj-radio tj-radio--${r.value}`}
+                data-on={drillRatio === r.value ? 'true' : undefined}
+                onClick={() => setDrillRatio(r.value)}>
+                <span className="tj-radio__label">{r.label}</span>
+                <span className="tj-radio__desc">{r.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tj-field">
+          <span className="tj-field__label">视觉风格</span>
+          <div className="tj-seg">
+            {VISUAL_STYLES.map(v => (
+              <button type="button" key={v.value} data-on={visualStyle === v.value ? 'true' : undefined}
+                onClick={() => setVisualStyle(v.value)}>{v.label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tj-grid">
+          <div className="tj-field">
+            <span className="tj-field__label">讲解人 / 数字人（可选出镜）</span>
+            <select value={narrator} onChange={e => setNarrator(e.target.value)}>
+              {NARRATORS.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+            </select>
+          </div>
+          <div className="tj-field">
+            <span className="tj-field__label">讲解呈现</span>
+            <div className="tj-seg">
+              <button type="button" data-on={!onCamera ? 'true' : undefined}
+                onClick={() => setOnCamera(false)}>📜 纯旁白讲解</button>
+              <button type="button" data-on={onCamera ? 'true' : undefined}
+                onClick={() => setOnCamera(true)}>🎙️ 数字人出镜</button>
+            </div>
+          </div>
+        </div>
+
+        <label className={`tj-field tj-field--check ${redline ? 'tj-field--redline' : ''}`}>
+          <input type="checkbox" checked={redline} onChange={e => setRedline(e.target.checked)} />
+          <span className="tj-field__label">
+            <b>严格开启 CG2.5 台词出处校验</b>（史实红线：对白必须有 quote_id 逐字引语引用；
+            无直接引语的事件转为纯旁白叙述，绝不杜撰台词）
+          </span>
+        </label>
+        {redline && (
+          <p className="tj-hint">红线模式下，「演绎为主」比例的戏剧化创作对白将被自动收敛为逐字引语对白。</p>
+        )}
+      </section>
+
+      {/* ── ③ 出片规格 ── */}
+      <section className="tj-sec">
+        <div className="tj-sec__head">
+          <span className="tj-sec__num">③</span>
+          <h2>出片规格</h2>
         </div>
         <div className="tj-grid">
-          <label className="tj-field">
-            <span className="tj-field__label">目标时长（秒）</span>
-            <input type="number" min={60} max={600} step={30}
-              value={targetDuration} onChange={e => setTargetDuration(Number(e.target.value))} />
-          </label>
           <div className="tj-field">
             <span className="tj-field__label">画幅</span>
             <div className="tj-seg">
               {(['16:9', '9:16', '1:1'] as const).map(r => (
                 <button type="button" key={r} data-on={aspectRatio === r ? 'true' : undefined}
-                  onClick={() => setAspectRatio(r)}>{r}</button>
+                  onClick={() => setAspectRatio(r)}>
+                  {r === '16:9' ? '16:9 横屏（纪录片式）' : r === '9:16' ? '9:16 竖屏' : '1:1 方形'}
+                </button>
               ))}
             </div>
           </div>
-        </div>
-        <div className="tj-field">
-          <span className="tj-field__label">渲染模式（L6 可选模型）</span>
-          <div className="tj-seg">
-            <button type="button" data-on={renderMode === 'cloud_avatar' ? 'true' : undefined}
-              onClick={() => setRenderMode('cloud_avatar')}>云数字人（配音+口型）</button>
-            <button type="button" data-on={renderMode === 'sdxl_local' ? 'true' : undefined}
-              onClick={() => setRenderMode('sdxl_local')}>本地静帧</button>
-          </div>
-        </div>
-        <div className="tj-grid">
-          <label className="tj-field">
-            <span className="tj-field__label">立意候选数（L1 · 越多越优但更慢）</span>
-            <input type="number" min={1} max={5} step={1}
-              value={candidateN} onChange={e => setCandidateN(Number(e.target.value))} />
-          </label>
           <div className="tj-field">
-            <span className="tj-field__label">画面分辨率（L6）</span>
+            <span className="tj-field__label">画质</span>
             <div className="tj-seg">
-              {(['480P', '720P', '1080P'] as const).map(r => (
+              {(['1080P', '720P', '480P'] as const).map(r => (
                 <button type="button" key={r} data-on={resolution === r ? 'true' : undefined}
                   onClick={() => setResolution(r)}>{r}</button>
               ))}
             </div>
           </div>
         </div>
-        <label className="tj-field tj-field--check">
-          <input type="checkbox" checked={dramatize} onChange={e => setDramatize(e.target.checked)} />
-          <span className="tj-field__label">
-            戏剧化改编（L2 · 为原文无引语的事件创作时代口吻对白，出对峙戏剧；关闭则仅逐字引语成对白、其余纯旁白）
-          </span>
-        </label>
-        <label className="tj-field tj-field--check">
-          <input type="checkbox" checked={reviewMode} onChange={e => setReviewMode(e.target.checked)} />
-          <span className="tj-field__label">
-            剧本先人工审核（推荐 · 出立意+剧本后暂停，审核/编辑确认后再渲染，避免在错的剧本上白烧渲染时间）
-          </span>
-        </label>
-        <div className="tj-grid">
-          <label className="tj-field">
-            <span className="tj-field__label">语速（L6 · 每字秒 · 越大越慢）</span>
-            <input type="number" min={0.2} max={0.5} step={0.02}
-              value={sayCharSec} onChange={e => setSayCharSec(Number(e.target.value))} />
-          </label>
-          <label className="tj-field">
-            <span className="tj-field__label">旁白语气（L6）</span>
-            <input value={narrTone} onChange={e => setNarrTone(e.target.value)}
-              placeholder="沉稳 / 激昂 / 凝重 …" />
-          </label>
-        </div>
-        <div className="tj-field">
-          <span className="tj-field__label">
-            画面风格（L6 · 云数字人模式可切换；本地静帧固定水墨 LoRA，暂不支持）
-          </span>
-          <div className="tj-seg">
-            {STYLE_PRESETS.map(p => (
-              <button type="button" key={p.value} data-on={inkStyle === p.prompt ? 'true' : undefined}
-                disabled={renderMode === 'sdxl_local'}
-                onClick={() => setInkStyle(p.prompt)}>{p.label}</button>
-            ))}
+      </section>
+
+      {/* ── 高级参数(折叠) ── */}
+      <section className="tj-sec">
+        <button type="button" className="tj-adv-toggle" onClick={() => setShowAdvanced(!showAdvanced)}>
+          {showAdvanced ? '▾' : '▸'} 高级参数（目标时长 / 立意候选 / 语速 / 风格词 / 审核 / 逐层 JSON）
+        </button>
+        {showAdvanced && (
+          <div className="tj-adv-body">
+            <div className="tj-grid">
+              <label className="tj-field">
+                <span className="tj-field__label">目标时长（秒）</span>
+                <input type="number" min={60} max={600} step={30}
+                  value={targetDuration} onChange={e => setTargetDuration(Number(e.target.value))} />
+              </label>
+              <label className="tj-field">
+                <span className="tj-field__label">立意候选数（L1 · 越多越优但更慢）</span>
+                <input type="number" min={1} max={5} step={1}
+                  value={candidateN} onChange={e => setCandidateN(Number(e.target.value))} />
+              </label>
+            </div>
+            <div className="tj-grid">
+              <label className="tj-field">
+                <span className="tj-field__label">语速（L6 · 每字秒 · 越大越慢）</span>
+                <input type="number" min={0.2} max={0.5} step={0.02}
+                  value={sayCharSec} onChange={e => setSayCharSec(Number(e.target.value))} />
+              </label>
+              <label className="tj-field">
+                <span className="tj-field__label">风格词（手写覆盖，可留空用上方预设）</span>
+                <input value={inkStyle} onChange={e => setInkStyle(e.target.value)}
+                  placeholder="现代卡通动画风格,鲜艳色彩,简洁线条…" />
+              </label>
+            </div>
+            <label className="tj-field tj-field--check">
+              <input type="checkbox" checked={reviewMode} onChange={e => setReviewMode(e.target.checked)} />
+              <span className="tj-field__label">
+                剧本先人工审核（推荐 · 出立意+剧本后暂停，审核/编辑确认后再渲染，避免在错的剧本上白烧渲染时间）
+              </span>
+            </label>
+            <label className="tj-field">
+              <span className="tj-field__label">逐层参数（高级 · JSON · 可留空，覆盖上面没含的层/参数）</span>
+              <textarea rows={2} value={layerConfigJson}
+                onChange={e => setLayerConfigJson(e.target.value)}
+                placeholder='{"L2":{"model":"qwen_cloud"},"L6":{"params":{"watermark":false}}}' />
+            </label>
           </div>
-        </div>
-        <label className="tj-field">
-          <span className="tj-field__label">风格词（可留空用默认卡通动画，或从上面选预设，也可手写覆盖）</span>
-          <input value={inkStyle} onChange={e => setInkStyle(e.target.value)}
-            disabled={renderMode === 'sdxl_local'}
-            placeholder="现代卡通动画风格,鲜艳色彩,简洁线条,可爱插画风,3D渲染质感" />
-        </label>
-        <label className="tj-field">
-          <span className="tj-field__label">逐层参数（高级 · JSON · 可留空，再覆盖上面没含的层/参数）</span>
-          <textarea rows={2} value={layerConfigJson}
-            onChange={e => setLayerConfigJson(e.target.value)}
-            placeholder='{"L2":{"model":"qwen_cloud"},"L6":{"params":{"watermark":false}}}' />
-        </label>
+        )}
       </section>
 
       {/* ── 启动按钮 ── */}
       <div className="tj-actions">
         <button type="button" className="tj-btn tj-btn--primary"
           onClick={startPipeline} disabled={busy || (!allDone && !!runId)}>
-          {busy ? '提交中…' : (!allDone && runId) ? '流水线运行中…' : '▶ 一键开始成片'}
+          {busy ? '提交中…' : (!allDone && runId) ? '流水线运行中…' : '🏛️ 重建历史现场（启动 L0-L8 九层流水线）'}
         </button>
         {runId && allDone && (
           <button type="button" className="tj-btn"

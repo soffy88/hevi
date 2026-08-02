@@ -22,11 +22,47 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-# llama3.2:latest(非 thinking)为本地 GPU 默认;需 thinking 模型(如 qwen3.5:9b)时
-# 其推理 token 会吃光 max_tokens=2048 预算导致 content 为空(剧本阶段直接崩)。
-# 可用 OLLAMA_MODEL 覆盖(如 deploy compose 用 qwen2.5:7b)。
-_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:latest")
+# qwen3 等 thinking 模型在当前 OpenAI 兼容适配器下可能把预算耗在 reasoning,
+# 导致 content 为空。qwen2.5vl 是当前部署已验证的非 thinking 兼容模型。
+_OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:7b")
+_OLLAMA_FALLBACK_MODELS = ("qwen2.5vl:7b", "llama3.2:latest")
 _TIMEOUT = 300.0  # 120s for own generation + 180s queue wait behind AII
+
+
+def _available_models() -> set[str]:
+    """Read Ollama's model inventory without making generation calls."""
+    try:
+        response = httpx.get(f"{_OLLAMA_BASE}/api/tags", timeout=5.0)
+        response.raise_for_status()
+        payload = response.json()
+        return {
+            str(item.get("name") or item.get("model"))
+            for item in payload.get("models", [])
+            if isinstance(item, dict) and (item.get("name") or item.get("model"))
+        }
+    except Exception as exc:
+        # Keep the configured model as the last resort. The generation request
+        # will produce a precise error if Ollama itself is unavailable.
+        logger.warning("无法读取 Ollama 模型清单(%s): %s", _OLLAMA_BASE, exc)
+        return set()
+
+
+def _resolve_model() -> str:
+    """Choose a configured model that actually exists on the Ollama host."""
+    available = _available_models()
+    if not available:
+        return _OLLAMA_MODEL
+    if _OLLAMA_MODEL in available:
+        return _OLLAMA_MODEL
+    for candidate in _OLLAMA_FALLBACK_MODELS:
+        if candidate in available:
+            logger.warning(
+                "配置的 Ollama 模型 %s 不存在,自动回退到 %s", _OLLAMA_MODEL, candidate
+            )
+            return candidate
+    raise RuntimeError(
+        f"Ollama 模型不可用: {_OLLAMA_MODEL}; 当前可用模型: {sorted(available)}"
+    )
 
 
 def _coerce(obj: Any) -> Any:
@@ -103,17 +139,19 @@ def _extract_content(raw: str) -> str:
 
 def _call_ollama(**kwargs: Any) -> dict[str, Any]:
     """Sync HTTP call to Ollama. Safe to run in a thread (not on event loop)."""
-    kwargs.pop("result_format", None)
+    result_format = kwargs.pop("result_format", None)
     kwargs.pop("image_paths", None)  # VLM images not supported by text qwen
+    model = _resolve_model()
     payload = {
-        "model": _OLLAMA_MODEL,
+        "model": model,
         "messages": kwargs.get("messages", []),
         # 2048 cap: storyboard needs ~1000 tokens; select_reference/consistency only ~50.
-        # qwen2.5:7b at ~50 tok/s → 2048 tokens ≈ 41s, well within _TIMEOUT=300s.
         "max_tokens": kwargs.get("max_tokens", 2048),
         "temperature": kwargs.get("temperature", 0.7),
         "stream": False,
     }
+    if result_format in ("json", "json_object"):
+        payload["response_format"] = {"type": "json_object"}
     # SaaS-4 Fix: ollama 在模型冷加载 / keep_alive:0 卸载切换的窗口内会对紧接的
     # 下一次请求返回瞬时 500(顺序流水线里每次调用后都卸载,下一镜头的 select_
     # reference 极易撞上)。这类错误可重试即恢复;不重试则整任务失败。对 500/502/
@@ -135,6 +173,8 @@ def _call_ollama(**kwargs: Any) -> dict[str, Any]:
         except (httpx.HTTPStatusError, httpx.TransportError) as exc:
             # 4xx(非上面几个)不重试
             resp = getattr(exc, "response", None)
+            if resp is not None and resp.status_code == 404:
+                raise RuntimeError(f"Ollama 模型不可用: {model}") from exc
             if resp is not None and resp.status_code not in (500, 502, 503):
                 raise
             last_exc = exc
@@ -148,7 +188,7 @@ def _call_ollama(**kwargs: Any) -> dict[str, Any]:
     with contextlib.suppress(Exception):  # best-effort unload
         httpx.post(
             f"{_OLLAMA_BASE}/api/generate",
-            json={"model": _OLLAMA_MODEL, "keep_alive": 0},
+            json={"model": model, "keep_alive": 0},
             timeout=5.0,
         )
 
@@ -166,6 +206,7 @@ def _call_ollama(**kwargs: Any) -> dict[str, Any]:
         "output": {"choices": native_choices},
         "usage": data.get("usage", {}),
         "content": content,
+        "model": model,
     }
 
 

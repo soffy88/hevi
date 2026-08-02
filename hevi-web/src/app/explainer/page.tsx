@@ -1,13 +1,13 @@
 'use client';
 import { TopNav } from '@/components/TopNav';
-import { ExplainerConsole } from '@/components/director/ExplainerConsole';
+import { ExplainerWorkbench } from '@/components/director/ExplainerWorkbench';
 
 export default function ExplainerPage() {
   return (
     <>
       <TopNav />
       <main className="hevi-explainer-page">
-        <ExplainerConsole />
+        <ExplainerWorkbench />
       </main>
     </>
   );

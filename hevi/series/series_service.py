@@ -9,7 +9,9 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from hevi.production.contracts import ProductionRequest
 from hevi.series.repository import SeriesRepository
+from hevi.tasks.task_service import TaskService
 
 
 class SeriesService:
@@ -169,14 +171,29 @@ class SeriesService:
             )
 
         episode_index = int(series.get("episode_count", 0))
-        task = await svc.create_task(
-            topic=topic,
-            duration_archetype=duration_archetype,
-            video_provider=video_provider,
-            audio_provider=audio_provider,
-            user_id=series.get("user_id"),
-            **ctrl,
-        )
+        if isinstance(svc, TaskService):
+            task = await svc.create_production(
+                ProductionRequest(
+                    source="shortdrama",
+                    topic=topic,
+                    duration_archetype=duration_archetype,
+                    video_provider=video_provider,
+                    audio_provider=audio_provider,
+                    num_characters=len(subject_ids) or int(ctrl.get("num_characters", 1)),
+                    subject_ids=subject_ids,
+                    options=ctrl,
+                ),
+                user_id=series.get("user_id"),
+            )
+        else:
+            task = await svc.create_task(
+                topic=topic,
+                duration_archetype=duration_archetype,
+                video_provider=video_provider,
+                audio_provider=audio_provider,
+                user_id=series.get("user_id"),
+                **ctrl,
+            )
         # 绑定 Series FK + 集序号,递增集数。
         await svc.repository.update_task(
             task["id"], {"series_id": uuid.UUID(series_id), "episode_index": episode_index}

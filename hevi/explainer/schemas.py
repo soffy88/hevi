@@ -43,7 +43,7 @@ class HookProps(_CamelModel):
 class SplitSide(_CamelModel):
     emoji: str
     title: str
-    sub: str
+    sub: str = ""
 
 
 class DefinitionProps(_CamelModel):
@@ -68,7 +68,7 @@ class CardsProps(_CamelModel):
 
 class Label(_CamelModel):
     title: str
-    sub: str
+    sub: str = ""
 
 
 class ReasonProps(_CamelModel):
@@ -82,7 +82,7 @@ class ReasonProps(_CamelModel):
 class Point(_CamelModel):
     num: str
     title: str
-    sub: str
+    sub: str = ""
 
 
 class MethodProps(_CamelModel):
@@ -118,6 +118,10 @@ class StoryboardSegment(_CamelModel):
     narration: str
     keywords: list[str] = Field(default_factory=list)
     props: dict  # 校验后是 _PROPS_BY_SCENE_TYPE[scene_type] 的 model_dump(by_alias=True)
+    # v6 visual scaffold metadata.  Remotion can render the six legacy scene
+    # types while the assembly layer retains the original cue intent.
+    visual_type: str | None = None
+    visual_config: dict = Field(default_factory=dict)
 
 
 class Storyboard(_CamelModel):
@@ -143,6 +147,8 @@ class ManifestSegment(_CamelModel):
     keywords: list[str]
     props: dict
     captions: list[CaptionCue]
+    visual_type: str | None = None
+    visual_config: dict = Field(default_factory=dict)
 
 
 def validate_props(scene_type: SceneType, props: dict) -> dict:

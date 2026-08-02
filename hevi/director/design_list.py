@@ -8,6 +8,7 @@ Subject 资产)。**这里只产出草稿,不建 Subject——建 Subject 是锁
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import re
@@ -41,8 +42,13 @@ _DESIGN_LIST_PROMPT = """扫描下面的分场剧本,分解出三张清单:出�
 def _screenplay_to_text(screenplay: Screenplay) -> str:
     lines: list[str] = []
     for s in screenplay.scenes:
-        lines.append(f"第{s.scene_no}场 {s.time} {s.location}")
+        lines.append(
+            f"第{s.scene_no}场 {s.int_ext} {s.day_night} {s.time} {s.location} "
+            f"复杂度={s.production_complexity} CG={s.cg_level}"
+        )
         lines.append(f"出场:{'、'.join(s.characters_present)}")
+        if s.visual_actions:
+            lines.append(f"视觉动作:{'；'.join(s.visual_actions)}")
         if s.narration:
             lines.append(f"叙述:{s.narration}")
         lines.extend(f"{d.character_name}:{d.text}" for d in s.dialogue)
@@ -55,8 +61,13 @@ async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
     def _invoke() -> Any:
         return llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
 
-    obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
-    resp = await obj if hasattr(obj, "__await__") else obj
+    is_async = inspect.iscoroutinefunction(llm) or inspect.iscoroutinefunction(type(llm).__call__)
+    obj = (
+        llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+        if is_async or inspect.isfunction(llm)
+        else await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
+    )
+    resp = await asyncio.wait_for(obj, timeout=45.0) if inspect.isawaitable(obj) else obj
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
     m = re.search(r"\{.*\}", content, re.DOTALL)
     if not m:

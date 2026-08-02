@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from obase.workflow_engine import WorkflowEngine
-from oprim._hevi_types import CanvasEdge, CanvasNode
 from oprim.canvas_edge_validate import canvas_edge_validate
+from oprim.hevi_types import CanvasEdge, CanvasNode
 
 
 class GraphValidationError(Exception):

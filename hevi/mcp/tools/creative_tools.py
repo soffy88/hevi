@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from obase.mcp_server import SkillDef
-from oskill._schemas import Script, SubjectRef
+from oskill.schemas import Script, SubjectRef
 
 from hevi.creative.assist_service import AssistService
 from hevi.creative.workflow_service import WorkflowService

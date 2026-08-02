@@ -1,0 +1,48 @@
+# HEVI Voicebox production overlay.
+# Build context remains the Voicebox checkout; this file is tracked by HEVI so
+# CPU builds do not depend on the nested repository's uncommitted Dockerfile.
+ARG PYTORCH_VARIANT=cpu
+
+FROM oven/bun:1 AS frontend
+WORKDIR /build
+COPY services/voicebox/package.json services/voicebox/bun.lock services/voicebox/CHANGELOG.md ./
+COPY services/voicebox/app/ ./app/
+COPY services/voicebox/web/ ./web/
+RUN sed -i 's/\r$//' package.json && \
+    sed -i '/"tauri"/d; /"landing"/d' package.json && \
+    sed -i -z 's/,\n  ]/\n  ]/' package.json
+RUN bun install --no-save
+RUN cd web && bunx --bun vite build
+
+FROM python:3.11-slim AS backend-builder
+ARG PYTORCH_VARIANT=cpu
+ARG ROCM_VERSION=6.3
+WORKDIR /build
+RUN apt-get update && apt-get install -y --no-install-recommends git build-essential && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir --upgrade pip
+COPY services/voicebox/backend/requirements.txt .
+RUN if [ "$PYTORCH_VARIANT" = "rocm" ]; then \
+      pip install --no-cache-dir --prefix=/install --index-url "https://download.pytorch.org/whl/rocm${ROCM_VERSION}" torch torchaudio && \
+      printf '[global]\nindex-url = https://download.pytorch.org/whl/rocm%s\nextra-index-url = https://pypi.org/simple\n' "$ROCM_VERSION" > /etc/pip.conf; \
+    elif [ "$PYTORCH_VARIANT" = "cpu" ]; then \
+      pip install --no-cache-dir --prefix=/install --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio && \
+      printf '[global]\nindex-url = https://download.pytorch.org/whl/cpu\nextra-index-url = https://pypi.org/simple\n' > /etc/pip.conf; \
+    fi
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install --no-cache-dir --prefix=/install --no-deps chatterbox-tts
+RUN pip install --no-cache-dir --prefix=/install --no-deps hume-tada
+
+FROM python:3.11-slim
+RUN groupadd -r voicebox && useradd -r -g voicebox -m -s /bin/bash voicebox
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg sox curl gosu && rm -rf /var/lib/apt/lists/*
+COPY --from=backend-builder /install /usr/local
+COPY --chown=voicebox:voicebox services/voicebox/backend/ /app/backend/
+COPY --from=frontend --chown=voicebox:voicebox /build/web/dist /app/frontend/
+RUN mkdir -p /app/data/generations /app/data/profiles /app/data/cache /home/voicebox/.cache/huggingface && chown -R voicebox:voicebox /app/data /home/voicebox/.cache
+EXPOSE 17493
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s CMD curl -f http://localhost:17493/health || exit 1
+COPY --chmod=755 services/voicebox/scripts/rocm-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "17493"]

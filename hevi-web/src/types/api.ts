@@ -83,6 +83,73 @@ export interface TaskInfo {
   result_video_path?: string | null;
 }
 
+// ── 统一生产契约 / 数字人 Presenter ───────────────────────────────
+export type ProductionSource = 'studio' | 'automatic' | 'tongjian' | 'shortdrama' | 'explainer';
+export type PresenterPerformance = 'presenter' | 'narrator' | 'character_dialogue';
+export type PresenterMotion = 'still' | 'talking_head' | 'half_body' | 'full_body' | 'picture_in_picture' | 'voice_over';
+export type PresenterLipsync = 'native_audio' | 'dedicated_lipsync' | 'avatar_provider' | 'none';
+
+export interface Presenter {
+  id: string;
+  name: string;
+  subject_id?: string | null;
+  voice_profile_id?: string | null;
+  performance: PresenterPerformance | string;
+  motion: PresenterMotion | string;
+  lipsync: PresenterLipsync | string;
+  delivery?: Record<string, unknown>;
+  description?: string;
+}
+
+export interface PresenterInput {
+  name: string;
+  subject_id?: string | null;
+  voice_profile_id?: string | null;
+  performance: PresenterPerformance;
+  motion: PresenterMotion;
+  lipsync: PresenterLipsync;
+  delivery?: Record<string, unknown>;
+  description?: string;
+}
+
+export interface PresenterReadiness {
+  presenter_id: string;
+  ready: boolean;
+  issues: string[];
+  strategy: Record<string, unknown>;
+}
+
+export interface ProductionRequest {
+  source: ProductionSource;
+  topic: string;
+  duration_archetype?: DurationArchetype;
+  video_provider?: string;
+  audio_provider?: string;
+  quality_profile?: QualityProfile;
+  aspect_ratio?: AspectRatio;
+  budget_usd?: number | null;
+  num_characters?: number;
+  subject_ids?: string[];
+  presenter_id?: string | null;
+  style_pack_id?: string | null;
+  options?: Record<string, unknown>;
+}
+
+export interface ProductionTask extends TaskInfo {
+  production_source: ProductionSource;
+}
+
+/** 后端能力目录的公共投影；不可用时包含真实原因与配置动作。 */
+export interface CapabilityDescriptor {
+  id: string;
+  name: string;
+  routes: string[];
+  available: boolean;
+  status: 'available' | 'unavailable';
+  message: string;
+  setup?: string | null;
+}
+
 // 质量档(文档 1.9)
 export interface QualitySpec {
   profile: QualityProfile;
@@ -512,6 +579,92 @@ export interface ExplainerRunRequest {
   topic: string;
 }
 
+// ── Explainer Master v6: research → human cue review → assembly ───────────
+export type ExplainerVisualType =
+  | 'heygen_avatar'
+  | 'broll_news'
+  | 'browser_broll'
+  | 'broll_stock'
+  | 'data_screenshot'
+  | 'remotion_chart'
+  | 'remotion_code'
+  | 'voiceover';
+
+export interface ExplainerResearchRequest {
+  topic_or_url: string;
+  voice_profile?: string;
+  heygen_presenter_id?: string | null;
+}
+
+export interface ExplainerFact {
+  claim: string;
+  source: string | null;
+  confidence: number;
+}
+
+export interface ExplainerHook {
+  text: string;
+  angle: string;
+  recommended: boolean;
+}
+
+export interface ExplainerCue {
+  time_range: string;
+  visual_type: ExplainerVisualType;
+  text: string;
+  visual_config?: Record<string, unknown>;
+  step_id?: number;
+  time_estimate_s?: number;
+  target_url?: string | null;
+  highlight_selector?: string | null;
+  chart_data?: Record<string, unknown> | null;
+  code_text?: string | null;
+  language?: string | null;
+}
+
+export interface ExplainerScriptDraft {
+  id: string;
+  version_id?: string | null;
+  title: string;
+  viewpoint: string;
+  hook: string;
+  cues: ExplainerCue[];
+}
+
+export interface ExplainerResearchResponse {
+  topic_or_url: string;
+  research_summary: string;
+  facts: ExplainerFact[];
+  hooks: Array<ExplainerHook | string>;
+  hook_details?: ExplainerHook[];
+  scripts: ExplainerScriptDraft[];
+  script_versions: ExplainerScriptDraft[];
+  provider: string;
+  decision_trail: Array<Record<string, unknown>>;
+}
+
+export interface ExplainerAssembleRequest {
+  topic_or_url: string;
+  voice_profile?: string;
+  heygen_presenter_id?: string | null;
+  selected_hook: string;
+  final_script_cues: ExplainerCue[];
+  enable_remotion_code_render: boolean;
+  enable_circle_avatar_mask: boolean;
+  enable_browser_broll: boolean;
+  aspect_ratio: '9:16' | '16:9';
+}
+
+export interface ExplainerAssemblyAccepted {
+  task_id: string;
+  status: string;
+  estimated_seconds: number;
+  sse_channel: string;
+  production_source: string;
+  engine_version: string;
+  adapter_version: string;
+}
+
 // ── 短剧创建入口(SPEC-001 §7 阶段1,建季能力)──────────────────────────────
 export type ShortdramaRunStatusVal =
   | 'PENDING' | 'RUNNING' | 'AWAITING_CHARACTERS' | 'DISPATCHING' | 'DISPATCHED' | 'FAILED';
@@ -627,10 +780,15 @@ export interface DpScreenplayScene {
   scene_no: number;
   time: string;
   location: string;
+  int_ext?: string;
+  day_night?: string;
   characters_present: string[];
   narration: string;
   dialogue: DpScreenplayDialogueLine[];
   event_summary: string;
+  visual_actions?: string[];
+  production_complexity?: string;
+  cg_level?: string;
 }
 
 export interface DpScreenplay {
@@ -701,6 +859,72 @@ export interface DpShotList {
   shots: DpShotListItem[];
 }
 
+export interface DpStoryCharacter {
+  char_id: string;
+  name: string;
+  aliases: string[];
+  description: string;
+  role: string;
+  subject_id?: string | null;
+}
+
+export interface DpStoryGraph {
+  meta: { source: string; char_count: number; chapter_refs: string[] };
+  characters: DpStoryCharacter[];
+  events: Array<{
+    event_id: string; summary: string; beat_type: string; dramatic_weight: number;
+  }>;
+  locations: Array<{ location_id: string; name: string; type: string }>;
+  quotes: Array<{ quote_id: string; speaker: string; original: string; modern: string }>;
+  relationships: Array<Record<string, unknown>>;
+  arcs: Array<Record<string, unknown>>;
+}
+
+export interface DpSeasonEpisode {
+  ep_number: number;
+  title: string;
+  event_ids: string[];
+  beats: string[];
+  characters_present: string[];
+  locations: string[];
+  target_emotion_arc: string;
+}
+
+export interface DpSeasonPlan {
+  season_id: string;
+  story_source: string;
+  target_episodes: number;
+  stylepack_ref: string | null;
+  subject_refs: Array<{ char_id: string; subject_id: string | null; name: string }>;
+  episodes: DpSeasonEpisode[];
+  continuity_constraints: Array<{ char_id: string; present_in_episodes: number[] }>;
+}
+
+export interface DpGateCheck {
+  key: string;
+  label: string;
+  passed: boolean;
+  score: number;
+  detail: string;
+}
+
+export interface DpGateReport {
+  passed: boolean;
+  score: number;
+  estimated_cost_usd: number;
+  identity_readiness: number;
+  checks: DpGateCheck[];
+  errors: string[];
+  warnings: string[];
+}
+
+export interface DpDecisionTrailItem {
+  at: string;
+  stage: string;
+  status: string;
+  detail: string;
+}
+
 // ── INC-001 §A/§G/§I/§L 逐镜头准备台 ──────────────────────────────────────────
 export interface DpAssetCandidate {
   id: string;
@@ -745,6 +969,8 @@ export interface DpPrepOverview {
 }
 
 export type DpWorkStatus =
+  | 'parsing' | 'inspection_ready' | 'parse_failed'
+  | 'dispatching' | 'dispatched' | 'dispatch_failed' | 'dispatch_cancelled'
   | 'concept_draft' | 'concept_locked'
   | 'screenplay_draft' | 'screenplay_locked'
   | 'design_list_draft' | 'design_list_locking' | 'design_list_lock_failed' | 'design_list_locked'
@@ -762,7 +988,42 @@ export interface DpWork {
   design_list: DpDesignList | null;
   shot_list: DpShotList | null;
   video_task_id: string | null;
+  work_name?: string;
+  target_episodes?: number;
+  episode_duration?: string;
+  task_ids?: string[];
+  series_id?: string | null;
+  story_graph?: DpStoryGraph | null;
+  season_plan?: DpSeasonPlan | null;
+  gate_report?: DpGateReport | null;
+  estimated_cost_usd?: number;
+  decision_trail?: DpDecisionTrailItem[];
+  production_config?: Record<string, unknown>;
   error: string | null;
+}
+
+export interface DpParseRequest {
+  work_name: string;
+  material_text: string;
+  target_episodes: number;
+  episode_duration: string;
+  intent_hint: string;
+  season_budget_usd: number;
+  video_provider: string;
+  audio_provider: string;
+}
+
+export interface DpDispatchSeasonRequest {
+  season_budget_usd: number;
+  video_provider: string;
+  audio_provider: string;
+  duration_archetype: string;
+  quality_profile: string;
+  aspect_ratio: string;
+  concept?: DpConcept;
+  screenplay?: DpScreenplay;
+  design_list?: DpDesignList;
+  season_plan?: DpSeasonPlan;
 }
 
 export interface DpProduceRequest {
@@ -771,5 +1032,43 @@ export interface DpProduceRequest {
   quality_profile?: string;
   aspect_ratio?: string;
   budget_usd?: number | null;
+  // SPEC v6.0 §2.2/§2.3 AutoCameo:角色锁脸/入戏参考
+  character_references?: string[];
+  autocameo?: boolean;
 }
 
+// ── 工作室扩展能力（制片工具 / ViMax / 语音工作室） ─────────────────────
+export interface VoiceEffectPreset {
+  name: string;
+  effects: Array<{ type: string; params: Record<string, unknown>; enabled: boolean }>;
+}
+export interface VoicePersonalityPreset {
+  name: string;
+  description: string;
+  speaking_style: string;
+  vocabulary: string[];
+  emotional_tendency: string;
+}
+export interface VoiceTTSEngine {
+  id: string;
+  name: string;
+  type: 'cloud' | 'local';
+  description: string;
+  requires_gpu: boolean;
+  languages?: string[];
+  paralinguistic_tags?: string[];
+  voice_categories?: Record<string, number>;
+}
+
+// Provider Presets 预置策略(SPEC v6.0 §2.4,后端 obase.ProviderRegistry 下沉)
+export interface ProviderPreset {
+  name: string;
+  level: 'economy' | 'fast' | 'balanced' | 'premium';
+  category: 'llm' | 'image' | 'video';
+  provider: string;
+  description: string;
+  base_url: string | null;
+  context_window: number;
+  api_key_env: string | null;
+  strategy: Record<string, unknown>;
+}

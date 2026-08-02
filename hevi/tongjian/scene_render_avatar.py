@@ -214,22 +214,10 @@ def _p(config: LayerConfig | None, key: str, default: Any) -> Any:
 
 
 def _ffprobe_dur(p: Path) -> float:
-    out = subprocess.run(
-        [
-            "ffprobe",
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            str(p),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
-    return float(out)
+    """3O §3 Task 3.2:已收敛到 digital_human.avatar_render.probe_duration。"""
+    from hevi.digital_human.avatar_render import probe_duration
+
+    return probe_duration(p)
 
 
 _MAX_CLIP_DURATION_S = 15  # happyhorse-1.1-r2v 平台硬顶(见 capability_guard.py 同款声明)
@@ -271,34 +259,10 @@ def _split_text_for_dialogue(text: str, per_char: float) -> list[str]:
 
 
 def _concat_clips(clips: list[Path], out: Path) -> None:
-    """按顺序直接首尾拼接(不溶解),用于同一句台词切段渲染后的子 clip 拼回一条。"""
-    inputs: list[str] = []
-    for c in clips:
-        inputs += ["-i", str(c)]
-    n = len(clips)
-    parts = "".join(f"[{i}:v:0][{i}:a:0]" for i in range(n)) + f"concat=n={n}:v=1:a=1[v][a]"
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            *inputs,
-            "-filter_complex",
-            parts,
-            "-map",
-            "[v]",
-            "-map",
-            "[a]",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            str(out),
-        ],
-        check=True,
-        capture_output=True,
-    )
+    """3O §3 Task 3.2:已收敛到 digital_human.avatar_render.concat_clips。"""
+    from hevi.digital_human.avatar_render import concat_clips
+
+    concat_clips(clips, out)
 
 
 async def _canonical(
@@ -328,156 +292,45 @@ async def _canonical(
 
 
 def _score_consistency(frame_path: Path, canon_path: Path) -> float | None:
-    """镜头首帧 vs canonical 的 CLIP 余弦相似度——身份漂移信号(复用 verdict 主管线
-    同一套打分原语 subject_embed/cosine_similarity,见 hevi/verdict/scorecard.py,不是
-    另起一套)。canon 是这一集里该角色实际用来生成画面的那张锚图(真实 Subject 参考图
-    或退化文生图,见 _canonical()),分数低说明生成出来的脸跟锚图对不上,而不是跟某个
-    抽象"标准脸"比——衡量的正是这条 cloud_avatar 管线本该有、之前完全没有的信号:
-    生成结果有没有跑偏。抽帧/嵌入失败 → None,不阻断渲染,只是这一帧没有漂移信号。
-    """
-    from hevi.subjects.subject_embed import SubjectEmbedError, cosine_similarity, subject_embed
+    """3O §3 Task 3.2:已收敛到 digital_human.avatar_render.score_consistency。"""
+    from hevi.digital_human.avatar_render import score_consistency
 
-    try:
-        frame_emb = subject_embed(image_path=frame_path, kind="style")
-        canon_emb = subject_embed(image_path=canon_path, kind="style")
-        return cosine_similarity(frame_emb, canon_emb)
-    except SubjectEmbedError as e:
-        logger.warning(
-            "scene_render_avatar: consistency score 失败(%s vs %s): %s", frame_path, canon_path, e
-        )
-        return None
+    return score_consistency(frame_path, canon_path)
 
 
 def _extract_frame(clip: Path, out: Path) -> None:
-    subprocess.run(
-        ["ffmpeg", "-y", "-ss", "0", "-i", str(clip), "-frames:v", "1", str(out)],
-        check=True,
-        capture_output=True,
-    )
+    """3O §3 Task 3.2:已收敛到 digital_human.avatar_render.extract_frame。"""
+    from hevi.digital_human.avatar_render import extract_frame
 
-
-# resolution 参数(前端下拉直接给这些键)→ 横屏画幅(宽,高)。
-_RES = {"480P": (854, 480), "720P": (1280, 720), "1080P": (1920, 1080)}
+    extract_frame(clip, out)
 
 
 def _resolve_dimensions(resolution: str, aspect_ratio: str) -> tuple[int, int]:
-    """resolution 分档 + Constitution.visual_style.aspect_ratio → 最终交付画幅。
+    """3O §3 Task 3.2:已收敛到 digital_human.avatar_render.resolve_dimensions。"""
+    from hevi.digital_human.avatar_render import resolve_dimensions
 
-    2026-07-12 真实撞见:短剧设计上是 9:16 竖屏(手机观看),但此前这里只按 _RES
-    出横屏尺寸,aspect_ratio 字段设了从没人读过——真实跑出来的成片是 1280×720
-    横屏。happyhorse/i2v 底层云端 API 的 resolution 参数只是画质分档(480P/720P/
-    1080P),不控制横竖(见 dashscope_i2v_service.py),真正决定最终画幅的是
-    _fit_dialogue/_fit_narration 那步 ffmpeg scale+crop——所以只需要把交付宽高
-    按 aspect_ratio 转置,不用碰 API 调用本身。
-    """
-    w, h = _RES.get(resolution, _RES["720P"])
-    return (h, w) if aspect_ratio == "9:16" else (w, h)
+    return resolve_dimensions(resolution, aspect_ratio)
 
 
 def _fit_dialogue(clip: Path, out: Path, w: int, h: int) -> None:
-    """对白 clip 自带配音+口型,保留音轨,只规整到 w×h + 轻微 zoompan 缓推。"""
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-i",
-            str(clip),
-            "-filter_complex",
-            f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},fps=24,"
-            f"zoompan=z='min(zoom+0.0004,1.08)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-            f"s={w}x{h}:fps=24[v]",
-            "-map",
-            "[v]",
-            "-map",
-            "0:a:0",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            str(out),
-        ],
-        check=True,
-        capture_output=True,
-    )
+    """3O §3 Task 3.2:已收敛到 digital_human.avatar_render.fit_dialogue_clip。"""
+    from hevi.digital_human.avatar_render import fit_dialogue_clip
+
+    fit_dialogue_clip(clip, out, w, h)
 
 
 def _fit_narration(visual: Path, audio: Path, out: Path, w: int, h: int) -> None:
-    """旁白:画面循环填满旁白音轨时长(不冻结)+ zoompan;挂旁白音轨,输出 w×h。"""
-    hold = _ffprobe_dur(audio) + 0.4
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-stream_loop",
-            "-1",
-            "-i",
-            str(visual),
-            "-i",
-            str(audio),
-            "-filter_complex",
-            f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
-            f"trim=0:{hold:.3f},setpts=PTS-STARTPTS,fps=24,"
-            f"zoompan=z='min(zoom+0.0004,1.08)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-            f"s={w}x{h}:fps=24[v]",
-            "-map",
-            "[v]",
-            "-map",
-            "1:a:0",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            "-t",
-            f"{hold:.3f}",
-            str(out),
-        ],
-        check=True,
-        capture_output=True,
-    )
+    """3O §3 Task 3.2:已收敛到 digital_human.avatar_render.fit_narration_clip。"""
+    from hevi.digital_human.avatar_render import fit_narration_clip
+
+    fit_narration_clip(visual, audio, out, w, h)
 
 
 def _fit_silent(visual: Path, out: Path, w: int, h: int, duration: float) -> None:
-    """静默动作/空镜:画面循环填满 `duration` 秒 + zoompan(轻微运镜),挂一条静音音轨
-    (让每个 clip 都有音频流,跟对白 clip 一致,xfade 拼接不会因缺流出错)。不加任何旁白。"""
-    hold = max(1.5, duration)
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-stream_loop",
-            "-1",
-            "-i",
-            str(visual),
-            "-f",
-            "lavfi",
-            "-i",
-            "anullsrc=channel_layout=stereo:sample_rate=44100",
-            "-filter_complex",
-            f"[0:v]scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
-            f"trim=0:{hold:.3f},setpts=PTS-STARTPTS,fps=24,"
-            f"zoompan=z='min(zoom+0.0004,1.08)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-            f"s={w}x{h}:fps=24[v]",
-            "-map",
-            "[v]",
-            "-map",
-            "1:a:0",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            "-t",
-            f"{hold:.3f}",
-            str(out),
-        ],
-        check=True,
-        capture_output=True,
-    )
+    """3O §3 Task 3.2:已收敛到 digital_human.avatar_render.fit_silent_clip。"""
+    from hevi.digital_human.avatar_render import fit_silent_clip
+
+    fit_silent_clip(visual, out, w, h, duration)
 
 
 def _local_kf_prompt(

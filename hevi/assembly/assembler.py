@@ -11,6 +11,7 @@ RFC-002 P0-2/P1-4/P1-5 收敛于此:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -33,25 +34,16 @@ class ShotSegment:
 
 
 async def probe_duration(path: Path) -> float:
-    """ffprobe 取媒体时长(秒)。失败返回 0.0。"""
-    import asyncio
+    """ffprobe 取媒体时长(秒)。失败返回 0.0。
 
-    proc = await asyncio.create_subprocess_exec(
-        "ffprobe",
-        "-v",
-        "error",
-        "-show_entries",
-        "format=duration",
-        "-of",
-        "default=noprint_wrappers=1:nokey=1",
-        str(path),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    out, _ = await proc.communicate()
+    3O §2 Task 2.2:已收敛到 oprim.probe_duration 原子(单源);此处保留异步
+    契约与"失败→0.0"的回退语义(asyncio.to_thread 避免阻塞事件循环)。
+    """
+    from oprim import probe_duration as _probe
+
     try:
-        return float(out.decode().strip())
-    except ValueError, AttributeError:
+        return await asyncio.to_thread(_probe, path)
+    except Exception:
         return 0.0
 
 
@@ -205,6 +197,90 @@ async def _normalize_shot(
 
 
 # ── 拼接(xfade 转场 / 硬切) ──────────────────────────────────────────
+
+
+def assemble_talking_clips(
+    clips: list[Path], out: Path, width: int, height: int, fps: int, crossfade: float = 0.5
+) -> None:
+    """把各镜头 talking clip(自带音轨)用 xfade/acrossfade 溶解拼接,保留 clip 内音频。
+
+    3O §5 Task 5.1:自 hevi/tongjian/assemble.py::_xfade_concat_clips 收敛至此
+    (avatar 数字人路径的音频保真装配单源;assemble_longvideo 面向旁白/BGM 混音路径)。
+    """
+    import subprocess
+
+    durs = [_probe_sync(c) for c in clips]
+    inputs: list[str] = []
+    for c in clips:
+        inputs.extend(["-i", str(c)])
+    n = len(clips)
+    scale = (
+        f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{height},fps={fps}"
+    )
+    if n == 1:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                *inputs,
+                "-vf",
+                scale,
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                str(out),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        return
+    vf, af = [], []
+    vf.extend(f"[{i}:v]{scale},setsar=1[cv{i}]" for i in range(n))
+    prev_v, prev_a = "[cv0]", "[0:a]"
+    cum = durs[0]
+    for i in range(1, n):
+        off = max(cum - crossfade, 0.0)
+        vout = f"[v{i}]" if i < n - 1 else "[vout]"
+        aout = f"[a{i}]" if i < n - 1 else "[aout]"
+        vf.append(
+            f"{prev_v}[cv{i}]xfade=transition=fade:duration={crossfade}:offset={off:.3f}{vout}"
+        )
+        af.append(f"{prev_a}[{i}:a]acrossfade=d={crossfade}{aout}")
+        prev_v, prev_a = vout, aout
+        cum = cum + durs[i] - crossfade
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            *inputs,
+            "-filter_complex",
+            ";".join(vf + af),
+            "-map",
+            "[vout]",
+            "-map",
+            "[aout]",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            str(out),
+        ],
+        check=True,
+        capture_output=True,
+    )
+
+
+def _probe_sync(path: Path) -> float:
+    """同步 ffprobe 时长探测(供 assemble_talking_clips 使用)。"""
+    from oprim import probe_duration as _probe
+
+    return _probe(path)
 
 
 def build_xfade_chain(

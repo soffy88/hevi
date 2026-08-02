@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import re
@@ -24,6 +25,17 @@ from hevi.director.pipeline_schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+_HIGH_COMPLEXITY_HINTS = ("战争", "爆炸", "千军", "万人", "舰队", "崩塌", "洪水", "巨兽")
+
+
+def _complexity(raw: Any, text: str) -> str:
+    value = str(raw or "").strip().lower()
+    if value in {"low", "medium", "high"}:
+        return value
+    if any(hint in text for hint in _HIGH_COMPLEXITY_HINTS):
+        return "high"
+    return "medium" if len(text) > 180 else "low"
 
 _SCREENPLAY_PROMPT = """把下面的素材改写成白话分场剧本。
 
@@ -44,14 +56,17 @@ _SCREENPLAY_PROMPT = """把下面的素材改写成白话分场剧本。
 分场时把每场的文字拆成两块:
 - narration:非对白的叙述文字(白话,忠实原文情节,不删减关键动作/转折)
 - dialogue:人物开口说的话,每句标出是谁说的(白话口语,但保留原文的完整意思与力度)
+- visual_actions:把心理描写改写成镜头能直接拍到的动作,禁止只写抽象感受
+- production_complexity/cg_level:按 low/medium/high 标记制片复杂度与 CG 量,大场面不能连续堆叠
 
 只输出 JSON:
 {{"scenes": [
-  {{"scene_no": 1, "time": "时间", "location": "地点",
+  {{"scene_no": 1, "time": "时间", "location": "地点", "int_ext": "内景|外景",
+    "day_night": "日|夜", "production_complexity": "low|medium|high", "cg_level": "low|medium|high",
     "characters_present": ["人物名", ...],
     "narration": "该场叙述(白话)",
     "dialogue": [{{"character_name": "人物名", "text": "白话台词"}}],
-    "event_summary": "该场事件概要"}}
+    "event_summary": "该场事件概要", "visual_actions": ["可拍摄动作1", "可拍摄动作2"]}}
 ]}}
 
 素材:
@@ -64,8 +79,13 @@ async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
     def _invoke() -> Any:
         return llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
 
-    obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
-    resp = await obj if hasattr(obj, "__await__") else obj
+    is_async = inspect.iscoroutinefunction(llm) or inspect.iscoroutinefunction(type(llm).__call__)
+    obj = (
+        llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+        if is_async or inspect.isfunction(llm)
+        else await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
+    )
+    resp = await asyncio.wait_for(obj, timeout=45.0) if inspect.isawaitable(obj) else obj
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
     m = re.search(r"\{.*\}", content, re.DOTALL)
     if not m:
@@ -109,7 +129,14 @@ async def generate_screenplay_draft(
     raw_scenes = data.get("scenes")
     if not isinstance(raw_scenes, list) or not raw_scenes:
         return Screenplay(
-            scenes=[ScreenplayScene(scene_no=1, narration=material_text, event_summary="")]
+            scenes=[
+                ScreenplayScene(
+                    scene_no=1,
+                    narration=material_text,
+                    visual_actions=[material_text[:200]],
+                    production_complexity=_complexity(None, material_text),
+                )
+            ]
         )
 
     scenes: list[ScreenplayScene] = []
@@ -125,17 +152,31 @@ async def generate_screenplay_draft(
             for d in raw_dialogue
             if isinstance(d, dict) and str(d.get("text") or "").strip()
         ]
+        narration = str(raw.get("narration") or "").strip()
+        event_summary = str(raw.get("event_summary") or "").strip()
+        visual_actions = [
+            str(action).strip()
+            for action in (raw.get("visual_actions") or [])
+            if str(action).strip()
+        ]
+        scene_text = f"{event_summary} {narration}"
         scenes.append(
             ScreenplayScene(
                 scene_no=int(raw.get("scene_no") or i + 1),
                 time=str(raw.get("time") or "").strip(),
                 location=str(raw.get("location") or "").strip(),
+                int_ext=str(raw.get("int_ext") or "").strip(),
+                day_night=str(raw.get("day_night") or "").strip(),
                 characters_present=[
                     str(c).strip() for c in (raw.get("characters_present") or []) if str(c).strip()
                 ],
-                narration=str(raw.get("narration") or "").strip(),
+                narration=narration,
                 dialogue=dialogue,
-                event_summary=str(raw.get("event_summary") or "").strip(),
+                event_summary=event_summary,
+                visual_actions=visual_actions
+                or ([event_summary or narration] if scene_text.strip() else []),
+                production_complexity=_complexity(raw.get("production_complexity"), scene_text),
+                cg_level=_complexity(raw.get("cg_level"), scene_text),
             )
         )
     return Screenplay(scenes=scenes or [ScreenplayScene(scene_no=1, narration=material_text)])

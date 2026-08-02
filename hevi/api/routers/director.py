@@ -29,6 +29,7 @@ from hevi.director.graph_render import render_graph_episode
 from hevi.director.intent import parse_intent
 from hevi.director.planner import plan_from_text
 from hevi.director.producer import produce
+from hevi.production.contracts import ProductionRequest
 from hevi.prompt.ip_safety import rewrite_for_ip_safety
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
@@ -69,6 +70,7 @@ class EpisodeRequest(BaseModel):
     character_subject_ids: list[str] = []  # 多角色绑定;2+人合成总览图统一锁脸(见 director.py)
     subject_id: str | None = None  # 兼容单角色写法(优先于 character_subject_ids[0])
     avatar_portrait: str | None = None  # 数字人肖像
+    presenter_id: str | None = None  # Presenter 预设(外观/声音/口型/交付策略)
     num_characters: int | None = None
     # ③ 场景
     scene_notes: str | None = None  # 场景设定(地点/室内外/时间)
@@ -262,7 +264,9 @@ async def director_create_episode(
         "language": body.language,
         "subtitle_style": body.subtitle_style,
     }
-    for k, v in (
+    optional_kwargs = {
+        k: v
+        for k, v in (
         ("style_preset", body.style_preset),
         ("prompt_style", body.prompt_style),
         ("prompt_lighting", body.prompt_lighting),
@@ -277,6 +281,7 @@ async def director_create_episode(
         ("props", body.props),
         ("characters", characters_text or None),
         ("avatar_portrait", body.avatar_portrait),
+        ("presenter_id", body.presenter_id),
         ("subject_id", effective_subject_id),
         ("character_subject_ids", body.character_subject_ids or None),
         ("bgm", body.bgm),
@@ -288,23 +293,41 @@ async def director_create_episode(
         ("intro_clip", body.intro_clip),
         ("outro_clip", body.outro_clip),
         ("extra_negative", characters_negative or None),
-    ):
-        if v:
-            kwargs[k] = v
+        )
+        if v
+    }
+    kwargs.update(optional_kwargs)
     if character_voices:
         kwargs["character_voices"] = character_voices
     if body.auto_rework_rounds is not None:
         kwargs["auto_rework_rounds"] = body.auto_rework_rounds
 
     try:
-        task = await svc.create_task(
-            topic=plan.topic,
-            duration_archetype=duration,
-            video_provider=plan.video_provider,
-            audio_provider=audio_provider,
-            user_id=str(user["id"]),
-            **kwargs,
-        )
+        if isinstance(svc, TaskService):
+            task = await svc.create_production(
+                ProductionRequest(
+                    source="director_graph",
+                    topic=plan.topic,
+                    duration_archetype=duration,
+                    video_provider=plan.video_provider,
+                    audio_provider=audio_provider,
+                    num_characters=num_chars,
+                    subject_ids=body.character_subject_ids
+                    or ([effective_subject_id] if effective_subject_id else []),
+                    presenter_id=body.presenter_id,
+                    options=kwargs,
+                ),
+                user_id=str(user["id"]),
+            )
+        else:
+            task = await svc.create_task(
+                topic=plan.topic,
+                duration_archetype=duration,
+                video_provider=plan.video_provider,
+                audio_provider=audio_provider,
+                user_id=str(user["id"]),
+                **kwargs,
+            )
     except CostLimitExceeded as e:
         raise HTTPException(status_code=402, detail=str(e)) from e
     except ValueError as e:
@@ -380,36 +403,73 @@ async def director_render(
 
     # 任务记录:逐镜编辑属本地装配,零云成本 → wan_local 走计费快路。
     try:
-        task = await svc.create_task(
-            topic=body.topic or body.name,
-            duration_archetype="short",
-            video_provider="wan_local",
-            audio_provider="vibevoice",
-            user_id=str(user["id"]),
-            quality_profile=body.quality_profile,
-            aspect_ratio=body.aspect_ratio,
-        )
+        if isinstance(svc, TaskService):
+            task = await svc.create_production(
+                ProductionRequest(
+                    source="studio",
+                    topic=body.topic or body.name,
+                    duration_archetype="short",
+                    video_provider="wan_local",
+                    audio_provider="vibevoice",
+                    quality_profile=body.quality_profile,
+                    aspect_ratio=body.aspect_ratio,
+                    options={
+                        "graph_id": graph_id,
+                        "render_spec": {
+                            "width": w,
+                            "height": h,
+                            "fps": fps,
+                            "transition": body.transition,
+                            "bgm": body.bgm,
+                            "sfx": body.sfx,
+                            "intro_clip": body.intro_clip,
+                            "outro_clip": body.outro_clip,
+                        },
+                        "quality_profile": body.quality_profile,
+                        "aspect_ratio": body.aspect_ratio,
+                    },
+                ),
+                user_id=str(user["id"]),
+            )
+        else:
+            task = await svc.create_task(
+                topic=body.topic or body.name,
+                duration_archetype="short",
+                video_provider="wan_local",
+                audio_provider="vibevoice",
+                user_id=str(user["id"]),
+                quality_profile=body.quality_profile,
+                aspect_ratio=body.aspect_ratio,
+            )
     except (CostLimitExceeded, ValueError) as e:
         raise HTTPException(status_code=402, detail=str(e)) from e
 
-    background_tasks.add_task(
-        render_graph_episode,
-        graph_id=graph_id,
-        task_id=task["id"],
-        executor_service=ExecutorService(graph_svc),
-        task_service=svc,
-        width=w,
-        height=h,
-        fps=fps,
-        transition=body.transition,
-        bgm=body.bgm,
-        sfx=body.sfx,
-        intro_clip=body.intro_clip,
-        outro_clip=body.outro_clip,
-    )
+    if isinstance(svc, TaskService):
+        submitted = await svc.submit_task(task["id"])
+        if submitted.get("status") != "queued":
+            background_tasks.add_task(svc.run_task_background, task["id"])
+        status = submitted.get("status", task.get("status", "pending"))
+    else:
+        # Compatibility seam for non-TaskService callers and older tests.
+        background_tasks.add_task(
+            render_graph_episode,
+            graph_id=graph_id,
+            task_id=task["id"],
+            executor_service=ExecutorService(graph_svc),
+            task_service=svc,
+            width=w,
+            height=h,
+            fps=fps,
+            transition=body.transition,
+            bgm=body.bgm,
+            sfx=body.sfx,
+            intro_clip=body.intro_clip,
+            outro_clip=body.outro_clip,
+        )
+        status = "rendering"
     return {
         "task_id": str(task["id"]),
         "graph_id": graph_id,
-        "status": "rendering",
+        "status": status,
         "shot_count": len(shot_nodes),
     }

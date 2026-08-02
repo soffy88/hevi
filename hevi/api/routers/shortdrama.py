@@ -1,10 +1,10 @@
 """短剧创建入口 API —— SPEC-001 §7 阶段1"补上的建季"能力。
 
-  - POST /shortdrama/runs                                   手稿 → StoryGraph → SeasonPlan(后台异步跑)
+  - POST /shortdrama/runs                                   手稿 → StoryGraph → SeasonPlan
   - GET  /shortdrama/runs / /shortdrama/runs/{run_id}        列出/查询 run 状态
-  - POST /shortdrama/runs/{run_id}/replan                    对结果不满意 → 重新抽取+规划
-  - POST /shortdrama/runs/{run_id}/characters/{char_id}/upload  上传角色参考图 → 建 Subject 并绑定
-  - POST /shortdrama/runs/{run_id}/confirm                   角色绑定确认 → dispatch_season(真实派发)
+  - POST /shortdrama/runs/{run_id}/replan                    重新抽取+规划
+  - POST /shortdrama/runs/{run_id}/characters/{char_id}/upload  上传角色图并绑定
+  - POST /shortdrama/runs/{run_id}/confirm                   角色绑定确认并派发
 
 run 状态存内存 map(同 hevi/api/routers/tongjian.py 的 P0 兜底),不建表。派发之后
 dispatch_season 建的 VideoTask 会被 hevi/queue/worker.py 的后台队列自动捞走真实生成
@@ -28,6 +28,8 @@ from pydantic import BaseModel
 
 from hevi.auth.dependencies import get_current_user
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.runs.repository import AutomationRunRepository
+from hevi.runs.shortdrama_state import ShortdramaRunStore, load_shortdrama_record
 from hevi.season_planner.dispatch import dispatch_season
 from hevi.season_planner.planner import build_season_plan
 from hevi.season_planner.schemas import EpisodePlan
@@ -60,6 +62,19 @@ _PORTRAIT_RETRY_DELAY_S = 3.0
 
 async def get_pg_pool() -> PgPool:
     return await get_hevi_pg_pool()
+
+
+async def get_run_store() -> ShortdramaRunStore:
+    return ShortdramaRunStore(AutomationRunRepository(await get_hevi_pg_pool()))
+
+
+def _real_store(value: Any) -> ShortdramaRunStore | None:
+    return value if isinstance(value, ShortdramaRunStore) else None
+
+
+async def _persist_record(store: ShortdramaRunStore | None, rec: dict[str, Any]) -> None:
+    if store is not None:
+        await store.save(rec)
 
 
 class RunRequest(BaseModel):
@@ -100,6 +115,7 @@ def _init_run(
         "gate": None,
         "bindings": {},  # char_id -> {"mode": "existing", "subject_id": ...}(如上传参考图预绑定)
         "series_id": None,
+        "task_ids": [],
         "error": None,
         "progress": None,  # 人类可读的当前步骤(如"建角色 2/3: 道士"),供前端展示进度
     }
@@ -119,7 +135,7 @@ def _require_run(run_id: str, user: dict[str, Any]) -> dict[str, Any]:
 # ── 后台任务:B0 抽取 + 剧集规划 ────────────────────────────────────────────
 
 
-async def _plan_pipeline(run_id: str) -> None:
+async def _plan_pipeline(run_id: str, store: ShortdramaRunStore | None = None) -> None:
     """B0 抽取 StoryGraph + 剧集规划(best-of-N + 5 次重试),落到 AWAITING_CHARACTERS。
 
     即便 5 次重试后 G_SEASON 门仍未通过,也不中断——把 gate 结果原样返回给前端,
@@ -132,6 +148,7 @@ async def _plan_pipeline(run_id: str) -> None:
         if not story.characters or not story.events:
             rec["status"] = "FAILED"
             rec["error"] = "StoryGraph 抽取结果为空(检查 qwen_cloud 是否可用/手稿是否可读)"
+            await _persist_record(store, rec)
             return
 
         plan = gate = None
@@ -147,10 +164,12 @@ async def _plan_pipeline(run_id: str) -> None:
         rec["plan"] = plan
         rec["gate"] = gate
         rec["status"] = "AWAITING_CHARACTERS"
+        await _persist_record(store, rec)
     except Exception as e:
         logger.exception("shortdrama run %s 规划失败: %s", run_id, e)
         rec["status"] = "FAILED"
         rec["error"] = str(e)[:500]
+        await _persist_record(store, rec)
 
 
 # ── 序列化 ───────────────────────────────────────────────────────────────────
@@ -225,6 +244,7 @@ def _rec_to_status(rec: dict[str, Any]) -> dict[str, Any]:
         "target_episodes": rec["target_episodes"],
         "created_at": rec["created_at"],
         "series_id": rec.get("series_id"),
+        "task_ids": rec.get("task_ids") or [],
         "error": rec.get("error"),
         "progress": rec.get("progress"),
     }
@@ -249,7 +269,8 @@ def _rec_to_status(rec: dict[str, Any]) -> dict[str, Any]:
 async def start_run(
     body: RunRequest,
     background_tasks: BackgroundTasks,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    store: Annotated[Any, Depends(get_run_store)] = None,
 ) -> dict[str, str]:
     """提交手稿,启动 B0 抽取 + 剧集规划(异步后台跑)。"""
     if not body.raw_text.strip():
@@ -267,19 +288,53 @@ async def start_run(
         target_episodes=body.target_episodes,
         user_id=str(user["id"]),
     )
-    background_tasks.add_task(_plan_pipeline, run_id)
+    real_store = _real_store(store)
+    if real_store is not None:
+        await real_store._repository.create(
+            {
+                "id": uuid.UUID(run_id),
+                "kind": "shortdrama",
+                "user_id": str(user["id"]),
+                "status": "PENDING",
+                "input_json": {
+                    "source_name": body.source_name,
+                    "raw_text": body.raw_text,
+                    "target_episodes": body.target_episodes,
+                },
+                "state_json": {"bindings": {}},
+            },
+        )
+    background_tasks.add_task(_plan_pipeline, run_id, real_store)
     logger.info("shortdrama run %s started: %s", run_id, body.source_name)
     return {"run_id": run_id, "status": "PENDING"}
 
 
 @router.get("/runs")
-async def list_runs(user: Annotated[dict, Depends(get_current_user)]) -> list[dict[str, Any]]:
+async def list_runs(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    store: Annotated[Any, Depends(get_run_store)] = None,
+) -> list[dict[str, Any]]:
+    real_store = _real_store(store)
+    if real_store is not None:
+        rows = await real_store._repository.list_for_user(
+            kind="shortdrama", user_id=str(user["id"])
+        )
+        return [_rec_to_status(load_shortdrama_record(row)) for row in rows]
     mine = [r for r in _RUNS.values() if r.get("user_id") == str(user["id"])]
     return [_rec_to_status(r) for r in sorted(mine, key=lambda r: r["created_at"], reverse=True)]
 
 
 @router.get("/runs/{run_id}")
-async def get_run(run_id: str, user: Annotated[dict, Depends(get_current_user)]) -> dict[str, Any]:
+async def get_run(
+    run_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    store: Annotated[Any, Depends(get_run_store)] = None,
+) -> dict[str, Any]:
+    real_store = _real_store(store)
+    if real_store is not None:
+        rec = await real_store.get_owned(run_id, user_id=str(user["id"]))
+        if rec is not None:
+            return _rec_to_status(rec)
     rec = _require_run(run_id, user)
     return _rec_to_status(rec)
 
@@ -288,7 +343,7 @@ async def get_run(run_id: str, user: Annotated[dict, Depends(get_current_user)])
 async def replan_run(
     run_id: str,
     background_tasks: BackgroundTasks,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, str]:
     """对抽取/分集结果不满意 → 用同一份手稿重新跑一遍抽取+规划(丢弃旧结果)。"""
     rec = _require_run(run_id, user)
@@ -308,7 +363,7 @@ async def replan_run(
 async def upload_character_reference(
     run_id: str,
     char_id: str,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
     file: Annotated[UploadFile, File(description="角色参考图")],
 ) -> dict[str, Any]:
@@ -353,7 +408,7 @@ async def _generate_subject3d_background(subject_id: str, char_id: str, run_id: 
         subject_svc = SubjectService(SubjectRepository(pool))
         await subject_svc.generate_subject3d(subject_id)
         logger.info("shortdrama run %s 角色 %s Subject3D 生成完成", run_id, char_id)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning(
             "shortdrama run %s 角色 %s Subject3D 生成失败(降级为纯2D,不影响出片): %s",
             run_id,
@@ -397,7 +452,7 @@ async def _run_episode_via_tongjian(
             for char_id, subj_id in subject_id_map.items():
                 try:
                     subj = await subject_svc.get_subject(subj_id)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     logger.warning(
                         "shortdrama episode %s 角色 %s 查询 Subject3D 失败(降级为纯2D): %s",
                         task_id,
@@ -468,7 +523,12 @@ async def _run_episode_via_tongjian(
         )
 
 
-async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> None:
+async def _confirm_pipeline(
+    run_id: str,
+    body: ConfirmRequest,
+    user_id: str,
+    store: ShortdramaRunStore | None = None,
+) -> None:
     """角色绑定确认后:补齐未绑定角色的 Subject(auto 生成参考图)→ dispatch_season。"""
     rec = _RUNS[run_id]
     try:
@@ -510,7 +570,7 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
                 # 退回原来的文字描述生成,不能因为一个角色的查询失败拖垮整条派发。
                 try:
                     existing_subj = await subject_svc.get_subject(binding.subject_id)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     logger.warning(
                         "shortdrama run %s 角色 %s 查询已存在 Subject %s 参考图失败: %s",
                         run_id,
@@ -542,7 +602,7 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
                     await qwen_image_generate(prompt=prompt, output_path=portrait_path)
                     last_exc = None
                     break
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     last_exc = e
                     logger.warning(
                         "shortdrama run %s 角色 %s 参考图第%d次失败: %s", run_id, c.name, attempt, e
@@ -586,34 +646,21 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
             series_service=series_service,
             task_service=task_service,
             subject_id_map=subject_id_map,
+            subject_ref_paths=subject_ref_paths,
             style_pack_id=body.style_pack_id,
             spec=spec,
             user_id=user_id,
         )
-        # dispatch_season 只建 VideoTask 行(status="pending"),不会自己触发真实生成
-        # ——2026-07-12 真实撞见的严重疏漏,已修(见下面 _run_episode_via_tongjian 的
-        # docstring)。同时,真实跑出来的效果比通鉴差远了:通用长视频管线
-        # (hevi/pipeline/longvideo_orchestrator.py)没有"对白 vs 旁白"的区分能力,
-        # 产出的是纯第三人称诗化旁白、零人物对话——所以这里改用
-        # hevi/season_planner/tongjian_bridge.py,复用通鉴已验证的 L2(戏剧化剧本)→
-        # L3(配音)→L4(分镜)→L6(cloud_avatar 角色对白+口型)→L8(装配) 管线,不再走
-        # task_service.run_task/orchestrate_longvideo 那条通用管线。
-        for idx, ep_dict in enumerate(dispatched["episodes"]):
+        # 每集绑定已固化在 config_json，由 shortdrama Task 适配器复用通鉴的
+        # 对白/口型实现并通过 presenter_video_produce 验证成片。此处不能直接
+        # 改 video_tasks，否则会绕过取消、SSE 与 ArtifactManifest 语义。
+        for ep_dict in dispatched["episodes"]:
             ep_id = uuid.UUID(str(ep_dict["id"]))
-            episode_plan = plan.episodes[idx]
-            t = asyncio.create_task(
-                _run_episode_via_tongjian(
-                    task_repo=task_repo,
-                    task_id=ep_id,
-                    ep=episode_plan,
-                    story=story,
-                    duration_archetype=body.duration_archetype,
-                    subject_ref_paths=subject_ref_paths,
-                    subject_id_map=subject_id_map,
-                )
-            )
-            _RUN_TASKS.add(t)
-            t.add_done_callback(_RUN_TASKS.discard)
+            submitted = await task_service.submit_task(ep_id)
+            if submitted.get("status") != "queued":
+                render_task = asyncio.create_task(task_service.run_task_background(ep_id))
+                _RUN_TASKS.add(render_task)
+                render_task.add_done_callback(_RUN_TASKS.discard)
 
         # Subject3D 后台补建(HEVI-ARCHITECTURE.md v3.0 §5.7,2026-07-13 探路落地)——
         # 本地 TripoSR 推理约3分钟/角色(CPU,GPU 被同机其他租户占满,见
@@ -626,13 +673,16 @@ async def _confirm_pipeline(run_id: str, body: ConfirmRequest, user_id: str) -> 
             t3d.add_done_callback(_RUN_TASKS.discard)
 
         rec["series_id"] = dispatched["series_id"]
+        rec["task_ids"] = [str(ep["id"]) for ep in dispatched["episodes"]]
         rec["status"] = "DISPATCHED"
         rec["progress"] = None
+        await _persist_record(store, rec)
         logger.info("shortdrama run %s 派发完成: series_id=%s", run_id, dispatched["series_id"])
     except Exception as e:
         logger.exception("shortdrama run %s 派发失败: %s", run_id, e)
         rec["status"] = "FAILED"
         rec["error"] = str(e)[:500]
+        await _persist_record(store, rec)
 
 
 @router.post("/runs/{run_id}/confirm")
@@ -640,7 +690,8 @@ async def confirm_run(
     run_id: str,
     body: ConfirmRequest,
     background_tasks: BackgroundTasks,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    store: Annotated[Any, Depends(get_run_store)] = None,
 ) -> dict[str, str]:
     """角色绑定确认 → 派发(建 Series + 逐集 VideoTask,由后台队列真实生成)。
 
@@ -665,5 +716,7 @@ async def confirm_run(
 
     rec["status"] = "DISPATCHING"
     rec["error"] = None
-    background_tasks.add_task(_confirm_pipeline, run_id, body, str(user["id"]))
+    background_tasks.add_task(
+        _confirm_pipeline, run_id, body, str(user["id"]), _real_store(store)
+    )
     return {"run_id": run_id, "status": "DISPATCHING"}

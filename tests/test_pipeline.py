@@ -240,16 +240,22 @@ def test_result_mapper_merges_scorecard_and_version_snapshot():
 
 @pytest.mark.asyncio
 async def test_orchestrate_regenerate_dispatches_to_omodul(mock_lv_result):
-    """C3 verdict→返工:regenerate_shot_ids 设置 → 走 omodul.regenerate_shots(非整片重跑)。"""
+    """C3 verdict→返工走公开 omodul rework hook，不整片重跑。"""
     register_all_providers()  # 确保 default llm 等已注册(standalone 安全)
     with (
         patch(
-            "omodul.agentic_longvideo_pipeline.regenerate_shots", new_callable=AsyncMock
+            "hevi.pipeline.longvideo_orchestrator.rework_longvideo_shots", new_callable=AsyncMock
         ) as mock_regen,
         patch(
             "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
         ) as mock_full,
+        patch("hevi.providers.local_qwen_vl_adapter.vl_model_available", return_value=False),
+        patch(
+            "hevi.video.quality_check.quality_report",
+            new_callable=AsyncMock,
+            side_effect=FileNotFoundError("fixture has no rendered video"),
+        ),
     ):
         mock_regen.return_value = mock_lv_result
         res = await orchestrate_longvideo(

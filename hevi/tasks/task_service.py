@@ -3,7 +3,7 @@ import logging
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from hevi.core.config import settings
 from hevi.cost import (
@@ -16,6 +16,10 @@ from hevi.cost import (
 from hevi.credits.billing_service import BillingService
 from hevi.observability import log_event, start_trace
 from hevi.pipeline import orchestrate_longvideo
+from hevi.production.adapters import ProductionAdapterRegistry, default_production_adapters
+from hevi.production.artifacts import ArtifactManifest, manifest_from_task
+from hevi.production.contracts import ProductionRequest
+from hevi.production.execution import execute_standard_operation, execution_binding
 from hevi.queue.task_queue import enqueue
 from hevi.resilience import RetryPolicy, run_with_fallback
 from hevi.tasks.repository import TaskRepository
@@ -30,9 +34,15 @@ _cloud_semaphore = asyncio.Semaphore(_CLOUD_CONCURRENCY)
 
 
 class TaskService:
-    def __init__(self, repository: TaskRepository, billing_svc: BillingService | None = None):
+    def __init__(
+        self,
+        repository: TaskRepository,
+        billing_svc: BillingService | None = None,
+        production_adapters: ProductionAdapterRegistry | None = None,
+    ):
         self.repository = repository
         self.billing_svc = billing_svc
+        self.production_adapters = production_adapters or default_production_adapters()
 
     async def run_task_background(self, task_id: uuid.UUID) -> dict[str, Any]:
         """Run a cloud task with bounded concurrency (backpressure)."""
@@ -46,6 +56,151 @@ class TaskService:
         if video_provider in local_names or "_local" in video_provider:
             return True
         return "cloud" not in video_provider.lower() and video_provider in ("wan", "ltx2", "ltx")
+
+    async def create_production(
+        self, request: ProductionRequest, *, user_id: str | None = None
+    ) -> dict[str, Any]:
+        """Create a task from the canonical ProductionRequest boundary."""
+        args = request.to_task_args()
+        args["execution_binding"] = execution_binding(request.source).model_dump(mode="json")
+        topic = str(args.pop("topic"))
+        duration = str(args.pop("duration_archetype"))
+        video = str(args.pop("video_provider"))
+        audio = str(args.pop("audio_provider"))
+        return await self.create_task(
+            topic=topic,
+            duration_archetype=duration,
+            video_provider=video,
+            audio_provider=audio,
+            user_id=user_id,
+            **args,
+        )
+
+    async def _run_adapter_task(self, task: dict[str, Any]) -> dict[str, Any]:
+        """Run an adapter-owned renderer through the shared task lifecycle."""
+        task_id = uuid.UUID(str(task["id"]))
+        await self.repository.update_task(
+            task_id,
+            {
+                "status": "running",
+                "progress_pct": 0.0,
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+        try:
+            async def operation(
+                _config: dict[str, Any], _input_data: dict[str, Any], _output_dir: Path
+            ) -> dict[str, Any]:
+                legacy_result = await self.production_adapters.execute(
+                    task, self.repository.pool
+                )
+                legacy_status = str(legacy_result.get("status", "failed"))
+                status = {
+                    "completed": "succeeded",
+                    "cancelled": "cancelled",
+                }.get(legacy_status, "failed")
+                artifact_path = legacy_result.get("result_video_path")
+                legacy_manifest = manifest_from_task(legacy_result)
+                artifacts = (
+                    legacy_manifest.model_dump(mode="json")["artifacts"]
+                    if legacy_manifest is not None
+                    else (
+                        ArtifactManifest.for_video(artifact_path).model_dump(mode="json")["artifacts"]
+                        if artifact_path
+                        else []
+                    )
+                )
+                return {
+                    "status": status,
+                    "error": legacy_result.get("error"),
+                    "artifacts": artifacts,
+                    "report": {"legacy_result": legacy_result},
+                }
+
+            async def project_event(event: dict[str, Any]) -> None:
+                progress = event.get("progress_pct")
+                if progress is None:
+                    return
+                await self.repository.update_task(
+                    task_id,
+                    {
+                        "progress_pct": float(progress),
+                        "config_json": {
+                            **(task.get("config_json") or {}),
+                            "stage": event.get("stage"),
+                        },
+                        "updated_at": datetime.now(UTC).replace(tzinfo=None),
+                    },
+                )
+
+            engine_result = await execute_standard_operation(
+                operation=operation,
+                config={
+                    "production_source": (task.get("config_json") or {}).get("production_source")
+                },
+                input_data={"task_ref": str(task_id)},
+                output_dir=Path("output/tasks") / str(task_id),
+                event_sink=project_event,
+            )
+            if engine_result.get("status") != "succeeded":
+                error = engine_result.get("error") or {"message": "adapter execution failed"}
+                update = {
+                    "status": "failed",
+                    "error": str(error.get("message", error))[:500],
+                    "updated_at": datetime.now(UTC).replace(tzinfo=None),
+                }
+                await self.repository.update_task(task_id, update)
+                return {**task, **update}
+            result = (engine_result.get("report") or {}).get("legacy_result")
+            if not isinstance(result, dict):
+                error = engine_result.get("error") or {"message": "adapter produced no task result"}
+                raise RuntimeError(str(error.get("message", error)))
+            if engine_result.get("artifacts"):
+                manifest = ArtifactManifest.model_validate(
+                    {"artifacts": engine_result["artifacts"]}
+                )
+                config_json = {
+                    **(result.get("config_json") or task.get("config_json") or {}),
+                    "artifact_manifest": manifest.model_dump(mode="json"),
+                }
+                await self.repository.update_task(task_id, {"config_json": config_json})
+                result = {**result, "config_json": config_json}
+            artifact_path = result.get("result_video_path")
+            if artifact_path:
+                config_json = {
+                    **(result.get("config_json") or task.get("config_json") or {}),
+                    "artifact_manifest": ArtifactManifest.for_video(artifact_path).model_dump(
+                        mode="json"
+                    ),
+                }
+                await self.repository.update_task(task_id, {"config_json": config_json})
+                result = {**result, "config_json": config_json}
+            completion = {
+                "status": "completed",
+                "progress_pct": 100.0,
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            }
+            if artifact_path:
+                completion["result_video_path"] = artifact_path
+            if result.get("total_shots") is not None:
+                completion["total_shots"] = result["total_shots"]
+            if result.get("completed_shots") is not None:
+                completion["completed_shots"] = result["completed_shots"]
+            await self.repository.update_task(task_id, completion)
+            shots = result.get("shots")
+            if isinstance(shots, list):
+                await self.repository.delete_shots(task_id)
+                await self._persist_shots(task_id, shots)
+            return result
+        except Exception as exc:
+            logger.exception("adapter task %s failed", task_id)
+            update = {
+                "status": "failed",
+                "error": str(exc)[:500],
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            }
+            await self.repository.update_task(task_id, update)
+            return {**task, **update}
 
     async def create_task(
         self,
@@ -127,6 +282,15 @@ class TaskService:
                     status=task.get("status"),
                 )
                 return task
+
+            if (task.get("config_json") or {}).get("production_source") in {
+                "director_graph",
+                "explainer",
+                "shortdrama",
+                "tongjian",
+                "voice_studio_tts",
+            }:
+                return await self._run_adapter_task(task)
 
             # 成本感知路由 v1(§7-2):video_provider="auto" → 在(能力 mode ∧ 活状态可路由 ∧
             # 质量下限)的 provider 中选最便宜。解析失败回退零成本本地 wan。
@@ -214,23 +378,60 @@ class TaskService:
                 await monitor_during_run(cost_tracker.total_usd)
 
                 log_event(stage="task_service", event="orchestration_start", provider=provider)
-                result = await orchestrate_longvideo(
-                    topic=task["topic"],
-                    duration_archetype=task["duration_archetype"],
-                    video_provider=provider,
-                    audio_provider=task["audio_provider"],
+                from omodul.longvideo_produce import longvideo_produce
+
+                async def render_legacy_longvideo(
+                    _topic: str, output_dir: Path, _config: dict[str, Any]
+                ) -> dict[str, Any]:
+                    return await orchestrate_longvideo(
+                        topic=task["topic"],
+                        duration_archetype=task["duration_archetype"],
+                        video_provider=provider,
+                        audio_provider=task["audio_provider"],
+                        output_dir=output_dir,
+                        progress_cb=progress_cb,
+                        character_reference=character_reference,
+                        subject_version=subject_version,
+                        **task["config_json"],
+                    )
+
+                engine_result = await execute_standard_operation(
+                    operation=longvideo_produce,
+                    config={
+                        "duration_archetype": task["duration_archetype"],
+                        "video_provider": provider,
+                        "audio_provider": task["audio_provider"],
+                        "style": task["config_json"].get("style", "cinematic"),
+                        "num_characters": task["config_json"].get("num_characters", 1),
+                        "language": task["config_json"].get("language", "zh"),
+                    },
+                    input_data={
+                        "schema_version": 1,
+                        "topic": task["topic"],
+                        "renderer": render_legacy_longvideo,
+                    },
                     output_dir=Path("output/tasks") / str(task_id),
-                    progress_cb=progress_cb,
-                    character_reference=character_reference,
-                    subject_version=subject_version,
-                    **task["config_json"],
                 )
+                if engine_result.get("status") != "succeeded":
+                    error = engine_result.get("error") or {
+                        "message": "longvideo transaction failed"
+                    }
+                    raise RuntimeError(str(error.get("message", error)))
+                report = engine_result.get("report") or {}
+                duration_s = float(report.get("duration_s") or 0.0)
+                result = {
+                    "url": report.get("video_path"),
+                    "duration": duration_s,
+                    "metadata": {"shots": int(report.get("shots_generated") or 0)},
+                    "shots": report.get("shots") or [],
+                    "quality": report.get("quality"),
+                }
 
                 # Record actual cost after success
                 # M8 gives us duration_s
-                cost_tracker.record_video(provider, result["duration"])
+                cost_tracker.record_video(provider, duration_s)
                 # Assuming audio duration is similar
-                cost_tracker.record_audio(task["audio_provider"], result["duration"] / 60.0)
+                cost_tracker.record_audio(task["audio_provider"], duration_s / 60.0)
 
                 return result
 
@@ -306,6 +507,9 @@ class TaskService:
                     "config_json": {
                         **task["config_json"],
                         "actual_usd": cost_tracker.total_usd,
+                        "artifact_manifest": ArtifactManifest.for_video(result["url"]).model_dump(
+                            mode="json"
+                        ),
                         **({"quality": quality} if quality is not None else {}),
                     },
                 }
@@ -592,22 +796,64 @@ class TaskService:
 
         character_reference = await self._resolve_character_reference(task, task_id=task_id)
         subject_version = await self._resolve_subject_version(task)
-        result = await orchestrate_longvideo(
-            topic=task["topic"],
-            duration_archetype=task["duration_archetype"],
-            video_provider=task["video_provider"],
-            audio_provider=task["audio_provider"],
+        from omodul.shot_rework_produce import shot_rework_produce
+
+        async def render_legacy_rework(
+            output_dir: Path,
+            _config: dict[str, Any],
+            selected_shot_ids: list[int],
+            selected_hints: dict[int, str],
+        ) -> dict[str, Any]:
+            return await orchestrate_longvideo(
+                topic=task["topic"],
+                duration_archetype=task["duration_archetype"],
+                video_provider=task["video_provider"],
+                audio_provider=task["audio_provider"],
+                output_dir=output_dir,
+                character_reference=character_reference,
+                subject_version=subject_version,
+                regenerate_shot_ids=selected_shot_ids,
+                shot_hints=selected_hints,
+                **task["config_json"],
+            )
+
+        engine_result = await execute_standard_operation(
+            operation=shot_rework_produce,
+            config={
+                "video_provider": task["video_provider"],
+                "audio_provider": task["audio_provider"],
+                "style": task["config_json"].get("style", "cinematic"),
+                "max_shot_retries": task["config_json"].get("max_shot_retries"),
+                "consistency_threshold": task["config_json"].get("consistency_threshold"),
+            },
+            input_data={
+                "schema_version": 1,
+                "shot_ids": shot_ids,
+                "hints": hints or {},
+                "renderer": render_legacy_rework,
+            },
             output_dir=Path("output/tasks") / str(task_id),
-            character_reference=character_reference,
-            subject_version=subject_version,
-            regenerate_shot_ids=shot_ids,
-            shot_hints=hints or {},
-            **task["config_json"],
+        )
+        if engine_result.get("status") != "succeeded":
+            error = engine_result.get("error") or {"message": "shot rework transaction failed"}
+            raise RuntimeError(str(error.get("message", error)))
+        report = engine_result.get("report") or {}
+        video_path = report.get("video_path")
+        if not isinstance(video_path, str):
+            raise RuntimeError("shot rework transaction returned no video path")
+        raw_shots = report.get("shots")
+        shots = (
+            cast(list[dict[str, Any]], raw_shots)
+            if isinstance(raw_shots, list) and all(isinstance(shot, dict) for shot in raw_shots)
+            else []
         )
 
         # 重生成的镜头 retry_count +1,其余(本轮没点名的)沿用旧值,不是清零重记。
-        for shot in result.get("shots", []):
+        for shot in shots:
             idx = shot.get("index")
+            if isinstance(idx, bool) or not isinstance(idx, int):
+                logger.warning("shot rework result omitted invalid shot index: %r", idx)
+                continue
             old = retry_by_index.get(idx, 0)
             shot["retry_count"] = old + 1 if idx in shot_ids else old
 
@@ -616,11 +862,17 @@ class TaskService:
             await self.repository.delete_shots(task_id)
         except Exception as exc:
             logger.warning(f"delete_shots failed for {task_id}: {exc}")
-        await self._persist_shots(task_id, result.get("shots", []))
+        await self._persist_shots(task_id, shots)
         await self.repository.update_task(
             task_id,
             {
-                "result_video_path": result["url"],
+                "result_video_path": video_path,
+                "config_json": {
+                    **task["config_json"],
+                    "artifact_manifest": ArtifactManifest.for_video(video_path).model_dump(
+                        mode="json"
+                    ),
+                },
                 "updated_at": datetime.now(UTC).replace(tzinfo=None),
             },
         )
@@ -630,7 +882,7 @@ class TaskService:
             task_id=str(task_id),
             shot_ids=shot_ids,
         )
-        return {**task, "result_video_path": result["url"], "shots": result.get("shots", [])}
+        return {**task, "result_video_path": video_path, "shots": shots}
 
     async def get_task_status(self, task_id: uuid.UUID) -> dict[str, Any] | None:
         """Get the current status of a task."""

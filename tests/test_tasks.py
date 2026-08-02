@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from hevi.production.execution import execute_standard_operation
 from hevi.tasks.models import ShotState, VideoTask
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository
@@ -102,7 +103,7 @@ async def test_create_task_persistence(task_service):
 
 
 @pytest.mark.asyncio
-async def test_run_task_success(task_service, repository):
+async def test_run_task_success(task_service, repository, tmp_path: Path):
     task_id = uuid.uuid4()
     task_data = {
         "id": task_id,
@@ -119,13 +120,24 @@ async def test_run_task_success(task_service, repository):
         patch.object(repository, "get_task", return_value=task_data),
         patch.object(repository, "update_task", new_callable=AsyncMock) as mock_update,
         patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+        patch(
+            "hevi.tasks.task_service.execute_standard_operation",
+            wraps=execute_standard_operation,
+        ) as mock_standard_operation,
     ):
-        mock_orch.return_value = {"url": "video.mp4", "duration": 180.0, "metadata": {"shots": 10}}
+        video = tmp_path / "video.mp4"
+        video.write_bytes(b"video")
+        mock_orch.return_value = {
+            "url": str(video),
+            "duration": 180.0,
+            "metadata": {"shots": 10},
+        }
 
         res = await task_service.run_task(task_id)
         assert res["status"] == "completed"
-        assert res["result_video_path"] == "video.mp4"
+        assert res["result_video_path"] == str(video)
         assert res["completed_shots"] == 10
+        mock_standard_operation.assert_awaited_once()
 
         # Should be called for 'running' and then 'completed'
         assert mock_update.call_count >= 2
@@ -187,7 +199,7 @@ async def test_persist_shots_writes_verdict_extension_fields(task_service, repos
 
 @pytest.mark.asyncio
 async def test_regenerate_task_shots_increments_retry_count_only_for_regenerated(
-    task_service, repository
+    task_service, repository, tmp_path: Path
 ):
     """重试次数硬上限(设计文档 §4.3):regenerate 整片删旧落新,但 retry_count 要按
     shot_index 从旧 shot_states 里读回来接着累加,本轮没点名的镜头保持原值不变。"""
@@ -214,8 +226,10 @@ async def test_regenerate_task_shots_increments_retry_count_only_for_regenerated
         patch.object(repository, "update_task", new_callable=AsyncMock),
         patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
     ):
+        video = tmp_path / "reworked.mp4"
+        video.write_bytes(b"video")
         mock_orch.return_value = {
-            "url": "v.mp4",
+            "url": str(video),
             "shots": [
                 {"index": 0, "provider": "wan_local", "passed": True},
                 {"index": 1, "provider": "wan_local", "passed": True},
@@ -251,7 +265,7 @@ async def test_regenerate_task_shots_raises_when_all_requested_shots_at_retry_ca
 
 @pytest.mark.asyncio
 async def test_regenerate_task_shots_skips_capped_shot_but_proceeds_with_others(
-    task_service, repository
+    task_service, repository, tmp_path: Path
 ):
     task_id = uuid.uuid4()
     task_data = {
@@ -276,7 +290,12 @@ async def test_regenerate_task_shots_skips_capped_shot_but_proceeds_with_others(
         patch.object(repository, "update_task", new_callable=AsyncMock),
         patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
     ):
-        mock_orch.return_value = {"url": "v.mp4", "shots": [{"index": 1, "passed": True}]}
+        video = tmp_path / "reworked.mp4"
+        video.write_bytes(b"video")
+        mock_orch.return_value = {
+            "url": str(video),
+            "shots": [{"index": 1, "passed": True}],
+        }
         await task_service.regenerate_task_shots(task_id, shot_ids=[0, 1])
         # 剔掉已到上限的 0,只把 1 传给 orchestrate。
         assert mock_orch.call_args.kwargs["regenerate_shot_ids"] == [1]
@@ -416,7 +435,7 @@ async def test_resolve_character_reference_multi_subject_caches_roster(
 
 
 @pytest.mark.asyncio
-async def test_run_task_auto_rework_on_failed_quality(task_service, repository):
+async def test_run_task_auto_rework_on_failed_quality(task_service, repository, tmp_path: Path):
     """L3 体检闭环:体检不过 + 镜头一致性偏低 → run_task 触发定向返工(封顶 1 轮)。"""
     task_id = uuid.uuid4()
     task_data = {
@@ -440,8 +459,10 @@ async def test_run_task_auto_rework_on_failed_quality(task_service, repository):
         patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
         patch.object(task_service, "regenerate_task_shots", new_callable=AsyncMock) as mock_regen,
     ):
+        video = tmp_path / "failed-quality.mp4"
+        video.write_bytes(b"video")
         mock_orch.return_value = {
-            "url": "v.mp4",
+            "url": str(video),
             "duration": 180.0,
             "metadata": {"shots": 1},
             "quality": {"passed": False, "violations": ["dur"], "consistency": 0.5},
@@ -453,7 +474,7 @@ async def test_run_task_auto_rework_on_failed_quality(task_service, repository):
 
 
 @pytest.mark.asyncio
-async def test_run_task_no_rework_when_quality_passes(task_service, repository):
+async def test_run_task_no_rework_when_quality_passes(task_service, repository, tmp_path: Path):
     """L3:体检过 + 镜头合格 → 不返工(合格片零额外开销)。"""
     task_id = uuid.uuid4()
     task_data = {
@@ -475,8 +496,10 @@ async def test_run_task_no_rework_when_quality_passes(task_service, repository):
         patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
         patch.object(task_service, "regenerate_task_shots", new_callable=AsyncMock) as mock_regen,
     ):
+        video = tmp_path / "passing-quality.mp4"
+        video.write_bytes(b"video")
         mock_orch.return_value = {
-            "url": "v.mp4",
+            "url": str(video),
             "duration": 180.0,
             "metadata": {"shots": 1},
             "quality": {"passed": True, "violations": [], "consistency": 0.95},
@@ -594,6 +617,38 @@ async def test_repository_get_shots(repository, mock_pool):
 
 
 # ── /video, /cover, /export 取片端点(§7 成片规格 —— 封面此前只落盘从未暴露)────
+
+
+@pytest.mark.asyncio
+async def test_get_task_video_prefers_existing_artifact_manifest(tmp_path):
+    """新任务以 manifest 为唯一产物索引，旧 result_video_path 不会遮蔽它。"""
+    from hevi.api.routers.tasks import get_task_video
+
+    manifest_video = tmp_path / "manifest-final.mp4"
+    manifest_video.write_bytes(b"video")
+    repo = AsyncMock()
+    repo.get_task.return_value = {
+        "id": "t1",
+        "user_id": "u1",
+        "result_video_path": str(tmp_path / "obsolete.mp4"),
+        "config_json": {
+            "artifact_manifest": {
+                "version": 1,
+                "artifacts": [
+                    {
+                        "kind": "video",
+                        "path": str(manifest_video),
+                        "media_type": "video/mp4",
+                        "primary": True,
+                    }
+                ],
+            }
+        },
+    }
+
+    with patch("hevi.api.routers.tasks.decode_access_token", return_value={"sub": "u1"}):
+        response = await get_task_video(uuid.uuid4(), repo, token="tok")
+    assert response.path == str(manifest_video)
 
 
 @pytest.mark.asyncio

@@ -62,6 +62,8 @@ export type ManifestSegment = {
   durationSec: number;
   startSec: number;
   captions: CaptionCue[];
+  visualType?: string;
+  visualConfig?: Record<string, unknown>;
 };
 
 export type RunManifest = ManifestSegment[];

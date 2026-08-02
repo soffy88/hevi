@@ -16,18 +16,44 @@
 name: hevi-cftunnel
 
 services:
+  # Voicebox 是解说/通鉴共用的本地 TTS sidecar。模型和 profile 独立持久化，
+  # HEVI 只通过内网 HTTP 调用，不把 PyTorch/Qwen 依赖塞进 API 镜像。
+  hevi-voicebox:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.voicebox
+      args:
+        PYTORCH_VARIANT: cpu
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: info
+      NUMBA_CACHE_DIR: /tmp/numba_cache
+      VOICEBOX_BACKEND_VARIANT: cpu
+      HF_HOME: /home/voicebox/.cache/huggingface
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    volumes:
+      - voicebox-data:/app/data
+      # The model is downloaded by the deployment host (through its proxy)
+      # and mounted read-only. Runtime containers need no outbound network.
+      - ../.voicebox-cache:/home/voicebox/.cache/huggingface/hub
+    ports:
+      - "127.0.0.1:17600:17493"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:17493/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
   hevi-api:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.api
     restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    # GPU binding is temporarily disabled because the host NVIDIA runtime
+    # references a stale driver library (580.159.03 vs host 580.173.02).
+    # Cloud providers and CPU-safe paths remain available until runtime repair.
     env_file:
       - path: ../.env
         required: false
@@ -42,7 +68,16 @@ services:
       WAN2GP_DIR: /Wan2GP
       HEVI_LLM_PROVIDER: qwen_local
       OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: qwen2.5:7b
+      OLLAMA_MODEL: qwen2.5vl:7b
+      HEVI_EXPLAINER_TTS_PROVIDER: voicebox
+      HEVI_AUDIO_PROVIDER: voicebox
+      VOICEBOX_BASE_URL: http://hevi-voicebox:17493
+      VOICEBOX_ENGINE: ${VOICEBOX_ENGINE:-qwen_custom_voice}
+      VOICEBOX_MODEL_SIZE: ${VOICEBOX_MODEL_SIZE:-1.7B}
+      VOICEBOX_PRESET_VOICE: ${VOICEBOX_PRESET_VOICE:-Dylan}
+      VOICEBOX_PROFILE_ID: ${VOICEBOX_PROFILE_ID:-}
+      VOICEBOX_INSTRUCT: ${VOICEBOX_INSTRUCT:-自然、沉稳、有呼吸感的中文纪录片解说，语气有轻微起伏，不要播音腔，不要机械停顿。}
+      VOICEBOX_ALLOW_EDGE_FALLBACK: "0"
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro
@@ -99,3 +134,6 @@ networks:
   default:
     name: hevi-cftunnel_default
     external: true
+
+volumes:
+  voicebox-data:

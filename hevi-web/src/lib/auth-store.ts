@@ -7,7 +7,7 @@
 'use client';
 
 import type { AuthUser } from '@/types/api';
-import { setAuthToken } from './api-client';
+import { setAuthToken, USE_MOCK } from './api-client';
 
 const TOKEN_KEY = 'hevi_token';
 const USER_KEY = 'hevi_user';
@@ -45,9 +45,19 @@ export function logout(): void {
 
 /** 应用启动 / 页面刷新时调用:从 localStorage 恢复 token 到 api-client。 */
 export function syncAuthToken(): void {
-  setAuthToken(getToken());
+  const token = getToken();
+  // 生产环境切换出 mock 后，清掉旧版本遗留的 mock-token，避免工作台
+  // 被误判为已登录，点击任务接口却只得到 401 后静默跳转。
+  if (!USE_MOCK && token === 'mock-token') {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    setAuthToken(null);
+    return;
+  }
+  setAuthToken(token);
 }
 
 export function isAuthenticated(): boolean {
-  return getToken() != null;
+  const token = getToken();
+  return token != null && (USE_MOCK || token !== 'mock-token');
 }

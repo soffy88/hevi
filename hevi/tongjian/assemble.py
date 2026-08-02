@@ -24,7 +24,16 @@ from typing import Any
 
 from obase.ffmpeg import run as ffmpeg_run
 
-from hevi.assembly.assembler import ShotSegment, assemble_longvideo, probe_duration
+from hevi.assembly.assembler import (
+    ShotSegment,
+    assemble_talking_clips,
+    probe_duration,
+)
+from hevi.assembly.video_assemble_workflow import (
+    AssembleConfig,
+    AssembleInput,
+    video_assemble_workflow,
+)
 from hevi.tongjian.chapter_ir import _extract_json_obj
 from hevi.tongjian.schemas import (
     Constitution,
@@ -192,11 +201,9 @@ async def concat_narration_track(
     inputs: list[str] = []
     filter_parts: list[str] = []
     concat_labels: list[str] = []
-    idx = 0
-    for seg in timeline.audio_segments:
+    for idx, seg in enumerate(timeline.audio_segments):
         inputs += ["-i", str(audio_dir / seg.file)]
         concat_labels.append(f"[{idx}:a]")
-        idx += 1
         gap = gaps_by_after.get(seg.line_id)
         if gap:
             sil_label = f"sil{idx}"
@@ -298,98 +305,6 @@ async def mix_sfx_master(
 # ── 主装配 ───────────────────────────────────────────────────────────────
 
 
-def _ffprobe_dur_sync(p: Path) -> float:
-    import subprocess
-
-    out = subprocess.run(
-        [
-            "ffprobe",
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            str(p),
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.strip()
-    return float(out)
-
-
-def _xfade_concat_clips(
-    clips: list[Path], out: Path, width: int, height: int, fps: int, crossfade: float = 0.5
-) -> None:
-    """把各镜头 talking clip(自带音轨)用 xfade/acrossfade 溶解拼接。"""
-    import subprocess
-
-    durs = [_ffprobe_dur_sync(c) for c in clips]
-    inputs: list[str] = []
-    for c in clips:
-        inputs += ["-i", str(c)]
-    n = len(clips)
-    scale = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height},fps={fps}"
-    if n == 1:
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                *inputs,
-                "-vf",
-                scale,
-                "-c:v",
-                "libx264",
-                "-pix_fmt",
-                "yuv420p",
-                "-c:a",
-                "aac",
-                str(out),
-            ],
-            check=True,
-            capture_output=True,
-        )
-        return
-    vf, af = [], []
-    for i in range(n):
-        vf.append(f"[{i}:v]{scale},setsar=1[cv{i}]")
-    prev_v, prev_a = "[cv0]", "[0:a]"
-    cum = durs[0]
-    for i in range(1, n):
-        off = max(cum - crossfade, 0.0)
-        vout = f"[v{i}]" if i < n - 1 else "[vout]"
-        aout = f"[a{i}]" if i < n - 1 else "[aout]"
-        vf.append(
-            f"{prev_v}[cv{i}]xfade=transition=fade:duration={crossfade}:offset={off:.3f}{vout}"
-        )
-        af.append(f"{prev_a}[{i}:a]acrossfade=d={crossfade}{aout}")
-        prev_v, prev_a = vout, aout
-        cum = cum + durs[i] - crossfade
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            *inputs,
-            "-filter_complex",
-            ";".join(vf + af),
-            "-map",
-            "[vout]",
-            "-map",
-            "[aout]",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            str(out),
-        ],
-        check=True,
-        capture_output=True,
-    )
-
-
 async def _assemble_avatar_clips(
     shotlist: ShotList,
     frame_manifest: FrameManifest,
@@ -438,7 +353,8 @@ async def _assemble_avatar_clips(
         cw, ch = (int(x) for x in _wh.split("x")[:2])
     except Exception:
         cw, ch = width, height
-    _xfade_concat_clips(clips, final_path, cw, ch, fps, crossfade=0.5)
+    # 3O §5 Task 5.1:音频保真 xfade 装配已收敛到 hevi.assembly.assembler.assemble_talking_clips。
+    assemble_talking_clips(clips, final_path, cw, ch, fps, crossfade=0.5)
 
     srt_path = output_dir / "subtitles.srt"
     srt_path.write_text(generate_srt(timeline, script), encoding="utf-8")
@@ -521,18 +437,26 @@ async def build_final_video(
     srt_path.write_text(generate_srt(timeline, script), encoding="utf-8")
 
     final_path = output_dir / "final.mp4"
-    await assemble_longvideo(
-        shots=shot_segments,
-        output_path=final_path,
-        narration_audio=narration_path,
-        bgm_path=bgm_path,
-        sfx_path=sfx_path,
-        subtitle_path=srt_path,
-        width=width,
-        height=height,
-        fps=fps,
-        bgm_gain_db=_BGM_DUCK_GAIN_DB,
+    # 3O §5 Task 5.1:最终装配统一走标准 workflow(以 assemble_longvideo 为基底)。
+    result = await video_assemble_workflow(
+        AssembleConfig(
+            shots=shot_segments,
+            output_path=final_path,
+            width=width,
+            height=height,
+            fps=fps,
+            bgm_gain_db=_BGM_DUCK_GAIN_DB,
+        ),
+        AssembleInput(
+            narration_audio=narration_path,
+            bgm_path=bgm_path,
+            sfx_path=sfx_path,
+            subtitle_path=srt_path,
+        ),
+        output_dir=output_dir,
     )
+    if result.get("status") != "completed":
+        raise RuntimeError(f"video_assemble_workflow failed: {result.get('error')}")
 
     cover_path = final_path.with_suffix(".cover.jpg")
     duration_ms = round(await probe_duration(final_path) * 1000)

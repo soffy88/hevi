@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from oprim._hevi_types import CanvasNode
+from oprim.hevi_types import CanvasNode
 
 from hevi.director import ProducerPlan, build_canvas_graph, produce, review
 

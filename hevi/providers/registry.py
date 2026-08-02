@@ -342,8 +342,10 @@ def register_all_providers() -> None:
     # oprim 那个原始实现完全不支持按行选音色,见 edge_tts_custom.py 顶部注释。
     # 没传 voice kwarg 时原样退回 oprim 实现,对所有既有调用方零回归。
     from hevi.audio.edge_tts_custom import edge_tts_synthesize_smart
+    from hevi.audio.voicebox_service import voicebox_synthesize
 
     ProviderRegistry.register("audio", "edge_tts", edge_tts_synthesize_smart, replace=True)
+    ProviderRegistry.register("audio", "voicebox", voicebox_synthesize, replace=True)
     ProviderRegistry.register("audio", "vibevoice", vibevoice_synthesize, replace=True)
     ProviderRegistry.register("audio", "cosyvoice", vibevoice_synthesize, replace=True)
     ProviderRegistry.register(

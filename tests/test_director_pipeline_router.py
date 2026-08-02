@@ -26,6 +26,15 @@ from hevi.director.pipeline_schemas import (
     ShotListItem,
 )
 from hevi.providers.registry import register_all_providers
+from hevi.season_planner.schemas import EpisodePlan, SeasonPlan, SubjectRef
+from hevi.storygraph.schemas import (
+    StoryCharacter,
+    StoryEvent,
+    StoryGraph,
+    StoryLocation,
+    StoryMeta,
+)
+from hevi.tongjian.schemas import GateResult
 
 _USER = {"id": str(uuid.uuid4())}
 
@@ -98,7 +107,10 @@ def _screenplay() -> Screenplay:
 
 def _design_list() -> DesignList:
     return DesignList(
-        characters=[DesignCharacter(name="智伯"), DesignCharacter(name="韩康子")],
+        characters=[
+            DesignCharacter(name="智伯", appearance="高大威严"),
+            DesignCharacter(name="韩康子", appearance="谨慎克制"),
+        ],
         scenes=[DesignScene(name="宫殿")],
     )
 
@@ -137,6 +149,49 @@ def _shot_list() -> ShotList:
     )
 
 
+def _story_graph() -> StoryGraph:
+    return StoryGraph(
+        meta=StoryMeta(source="权臣索地", char_count=8),
+        characters=[
+            StoryCharacter(char_id="C1", name="智伯", description="高大威严", role="antagonist"),
+            StoryCharacter(char_id="C2", name="韩康子", description="谨慎克制", role="protagonist"),
+        ],
+        events=[
+            StoryEvent(
+                event_id="E1",
+                summary="智伯索地",
+                actors=["C1", "C2"],
+                location="宫殿",
+                beat_type="冲突",
+                dramatic_weight=5,
+            )
+        ],
+        locations=[StoryLocation(location_id="L1", name="宫殿", events=["E1"])],
+    )
+
+
+def _season_plan() -> SeasonPlan:
+    return SeasonPlan(
+        story_source="权臣索地",
+        target_episodes=1,
+        subject_refs=[
+            SubjectRef(char_id="C1", name="智伯"),
+            SubjectRef(char_id="C2", name="韩康子"),
+        ],
+        episodes=[
+            EpisodePlan(
+                ep_number=1,
+                title="索地",
+                event_ids=["E1"],
+                beats=["冲突"],
+                characters_present=["C1", "C2"],
+                locations=["宫殿"],
+                target_emotion_arc="压迫→拒绝",
+            )
+        ],
+    )
+
+
 # ── work 创建 ─────────────────────────────────────────────────────────────
 
 
@@ -154,6 +209,122 @@ async def test_create_work_rejects_empty_material():
     with pytest.raises(HTTPException) as ei:
         await dp.create_work(dp.CreateWorkRequest(material_text="   "), _USER)
     assert ei.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_industrial_inspection_builds_review_state_without_dispatching_tasks():
+    work_id = str(uuid.uuid4())
+    rec = dp._init_work(
+        work_id,
+        material_text="智伯求地于韩康子",
+        intent_hint="强调权力压迫",
+        user_id=_USER["id"],
+        work_name="权臣索地",
+        target_episodes=1,
+    )
+    rec["status"] = "parsing"
+    rec["production_config"] = {
+        "season_budget_usd": 150.0,
+        "video_provider": "happyhorse_1_1_maas_lock",
+        "audio_provider": "vibevoice",
+    }
+    gate = GateResult(passed=True, coverage=1.0)
+
+    with (
+        patch.object(dp, "generate_concept_draft", AsyncMock(return_value=_concept())),
+        patch.object(dp, "generate_screenplay_draft", AsyncMock(return_value=_screenplay())),
+        patch.object(dp, "generate_design_list_draft", AsyncMock(return_value=_design_list())),
+        patch(
+            "hevi.storygraph.extract.extract_story_graph",
+            AsyncMock(return_value=_story_graph()),
+        ),
+        patch(
+            "hevi.season_planner.planner.build_season_plan",
+            AsyncMock(return_value=(_season_plan(), gate)),
+        ),
+        patch.object(dp, "_estimate_season_cost", AsyncMock(return_value=32.5)),
+    ):
+        await dp._run_industrial_inspection(work_id)
+
+    status = dp._work_status(rec)
+    assert status["status"] == "inspection_ready"
+    assert status["season_plan"]["target_episodes"] == 1
+    assert status["gate_report"]["passed"] is True
+    assert status["task_ids"] == []
+    assert status["video_task_id"] is None
+
+
+def test_director_gate_blocks_before_dispatch_when_budget_is_insufficient():
+    gate = dp._build_director_gate(
+        story=_story_graph(),
+        season_plan=_season_plan(),
+        plan_gate=GateResult(passed=True, coverage=1.0),
+        screenplay=_screenplay(),
+        design_list=_design_list(),
+        estimated_cost_usd=32.5,
+        season_budget_usd=10.0,
+    )
+    assert gate.passed is False
+    budget = next(check for check in gate.checks if check.key == "budget")
+    assert budget.passed is False
+    assert "上限 $10.00" in budget.detail
+
+
+@pytest.mark.asyncio
+async def test_industrial_dispatch_compiles_season_into_real_task_ids():
+    work_id = str(uuid.uuid4())
+    rec = dp._init_work(
+        work_id,
+        material_text="智伯求地于韩康子",
+        intent_hint="",
+        user_id=_USER["id"],
+        work_name="权臣索地",
+        target_episodes=1,
+    )
+    rec.update(
+        {
+            "status": "dispatching",
+            "concept": _concept().model_dump(),
+            "screenplay": _screenplay().model_dump(),
+            "design_list": _design_list().model_dump(),
+            "story_graph": _story_graph().model_dump(mode="json"),
+            "season_plan": _season_plan().model_dump(mode="json"),
+        }
+    )
+    locked = _design_list()
+    locked.characters[0].subject_id = "subject-1"
+    locked.characters[1].subject_id = "subject-2"
+    task_id = uuid.uuid4()
+    svc = AsyncMock()
+    svc.submit_task.return_value = {"status": "queued"}
+    subject_svc = AsyncMock()
+    body = dp.DispatchSeasonRequest(season_budget_usd=100.0)
+
+    with (
+        patch.object(dp, "_lock_design_list_assets", AsyncMock(return_value=locked)),
+        patch.object(
+            dp,
+            "_resolve_subject_ref_paths",
+            AsyncMock(return_value={"智伯": "/tmp/zhibo.png", "韩康子": "/tmp/han.png"}),
+        ),
+        patch(
+            "hevi.season_planner.dispatch.dispatch_season",
+            AsyncMock(return_value={"series_id": "series-1", "episodes": [{"id": task_id}]}),
+        ),
+    ):
+        await dp._run_industrial_dispatch(
+            work_id,
+            body,
+            user_id=_USER["id"],
+            svc=svc,
+            subject_svc=subject_svc,
+            pool=_FakePool(),
+        )
+
+    assert rec["status"] == "dispatched"
+    assert rec["series_id"] == "series-1"
+    assert rec["task_ids"] == [str(task_id)]
+    svc.submit_task.assert_awaited_once_with(task_id)
 
 
 @pytest.mark.asyncio

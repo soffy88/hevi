@@ -56,6 +56,7 @@ output/
 
 # Docker
 *.pid
+.voicebox-cache/
 
 # Node / Next.js (hevi-web)
 node_modules/

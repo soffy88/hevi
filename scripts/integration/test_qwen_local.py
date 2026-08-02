@@ -90,7 +90,7 @@ async def main() -> None:
         print(f"  ✗ chapter script failed: {e}")
 
     print("\n=== Summary ===")
-    print(f"  qwen2.5:7b via Ollama: working={content != ''}")
+    print(f"  {os.getenv('OLLAMA_MODEL', 'qwen2.5vl:7b')} via Ollama: working={content != ''}")
     print(f"  GPU VRAM peak: ~{max(vram_after, vram_post if 'vram_post' in dir() else 0)} MiB")
     print(f"  DashScope dependency: ELIMINATED for script/storyboard steps")
 

@@ -15,6 +15,8 @@ from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.production.artifacts import manifest_from_task
+from hevi.production.contracts import ProductionRequest
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
@@ -138,15 +140,35 @@ async def _create_task(
             v = getattr(body, k)
             if v is not None:
                 ctrl[k] = v
-        task = await svc.create_task(
-            topic=body.topic,
-            duration_archetype=body.duration_archetype,
-            video_provider=resolved.get("video_provider", "ltx2_cloud"),
-            audio_provider=resolved.get("audio_provider", "edge_tts"),
-            user_id=str(user["id"]),
-            num_characters=body.num_characters,
-            **ctrl,
-        )
+        video_provider = resolved.get("video_provider", "ltx2_cloud")
+        audio_provider = resolved.get("audio_provider", "edge_tts")
+        # All unattended production enters through one contract. Keep the
+        # direct call fallback for lightweight/unit-test service doubles.
+        if isinstance(svc, TaskService):
+            task = await svc.create_production(
+                ProductionRequest(
+                    source="automatic",
+                    topic=body.topic,
+                    duration_archetype=body.duration_archetype,
+                    video_provider=video_provider,
+                    audio_provider=audio_provider,
+                    quality_profile=ctrl["quality_profile"],
+                    num_characters=body.num_characters,
+                    subject_ids=[body.subject_id] if body.subject_id else [],
+                    options=ctrl,
+                ),
+                user_id=str(user["id"]),
+            )
+        else:
+            task = await svc.create_task(
+                topic=body.topic,
+                duration_archetype=body.duration_archetype,
+                video_provider=video_provider,
+                audio_provider=audio_provider,
+                user_id=str(user["id"]),
+                num_characters=body.num_characters,
+                **ctrl,
+            )
         # Decision: Enqueue local tasks, run cloud tasks immediately in background
         task = await svc.submit_task(task["id"])
 
@@ -199,6 +221,7 @@ async def create_task_alias(
 @router.post(
     "/longvideo",
     status_code=201,
+    deprecated=True,
     dependencies=[Depends(rate_limit("task_create", max_requests=20, window_s=60))],
 )
 async def create_longvideo_task(
@@ -207,6 +230,7 @@ async def create_longvideo_task(
     svc: Annotated[TaskService, Depends(get_task_service)],
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
+    """Compatibility alias for POST /api/tasks."""
     return await _create_task(body, user, svc, background_tasks)
 
 
@@ -346,7 +370,9 @@ async def _authorize_task_video(task_id: UUID, repo: TaskRepository, token: str 
     if not task or (task.get("user_id") and task["user_id"] != str(user_id)):
         raise HTTPException(status_code=404, detail="Task not found")
 
-    path_str = task.get("result_video_path")
+    manifest = manifest_from_task(task)
+    manifest_path = manifest.primary_path() if manifest is not None else None
+    path_str = str(manifest_path) if manifest_path is not None else task.get("result_video_path")
     if not path_str:
         raise HTTPException(status_code=409, detail="Video not ready")
     # result_video_path 由本服务写入(相对 app cwd 的 output/tasks/<id>/final.mp4),
@@ -357,6 +383,26 @@ async def _authorize_task_video(task_id: UUID, repo: TaskRepository, token: str 
     if not video_path.exists():
         raise HTTPException(status_code=404, detail="Video file missing")
     return video_path
+
+
+async def _authorize_task_audio(task_id: UUID, repo: TaskRepository, token: str | None) -> Path:
+    """Return a verified audio artifact for a task owned by the token subject."""
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+    try:
+        user_id = decode_access_token(token).get("sub")
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+    task = await repo.get_task(task_id)
+    if not user_id or not task or (task.get("user_id") and task["user_id"] != str(user_id)):
+        raise HTTPException(status_code=404, detail="Task not found")
+    manifest = manifest_from_task(task)
+    audio_path = manifest.path_for("audio") if manifest is not None else None
+    if audio_path is None:
+        raise HTTPException(status_code=409, detail="Audio not ready")
+    if not audio_path.is_file():
+        raise HTTPException(status_code=404, detail="Audio file missing")
+    return audio_path
 
 
 @router.get("/{task_id}/video")
@@ -374,6 +420,17 @@ async def get_task_video(
     """
     video_path = await _authorize_task_video(task_id, repo, token)
     return FileResponse(str(video_path), media_type="video/mp4", filename=f"{task_id}.mp4")
+
+
+@router.get("/{task_id}/audio")
+async def get_task_audio(
+    task_id: UUID,
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    token: Annotated[str | None, Query(description="JWT (<audio> can't send headers)")] = None,
+) -> FileResponse:
+    """Serve a verified Voice Studio WAV artifact from ArtifactManifest."""
+    audio_path = await _authorize_task_audio(task_id, repo, token)
+    return FileResponse(str(audio_path), media_type="audio/wav", filename=f"{task_id}.wav")
 
 
 @router.get("/{task_id}/cover")

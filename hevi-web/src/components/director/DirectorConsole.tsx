@@ -6,8 +6,9 @@
  */
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { directorApi, subjectApi } from '@/lib/api-client';
+import { consumeDirectorPrefill } from '@/lib/director-prefill';
 import type { DirectorPlanResult, DirectorEpisodeResult, DirectorEpisodePayload, DirectorRenderResult, Subject } from '@/types/api';
 
 const PRESETS = [
@@ -81,6 +82,27 @@ export function DirectorConsole() {
   const [f, setF] = useState<DirectorEpisodePayload>(EMPTY);
   const [numShots, setNumShots] = useState(4);
   const [chars, setChars] = useState<Subject[]>([]);
+  const [charUploading, setCharUploading] = useState(false);
+  const [charUploadErr, setCharUploadErr] = useState<string | null>(null);
+  const charFileRef = useRef<HTMLInputElement>(null);
+
+  // AutoCameo(SPEC v6.0 §2.3):上传数字人肖像/照片 → 建角色并自动锁选(照片人物入戏)
+  const onCharFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setCharUploadErr(null); setCharUploading(true);
+    try {
+      const s = await subjectApi.fromPhoto(file, '照片角色', 'character');
+      await subjectApi.list('character').then(setChars).catch(() => setChars([]));
+      setF(prev => {
+        const cur = prev.character_subject_ids ?? [];
+        return { ...prev, character_subject_ids: cur.includes(s.subject_id) ? cur : [...cur, s.subject_id] };
+      });
+    } catch (err: unknown) {
+      setCharUploadErr((err as { message?: string })?.message === 'NOT_AUTHENTICATED' ? '请先登录' : '上传失败,请重试');
+    } finally { setCharUploading(false); }
+  };
   const [bilingual, setBilingual] = useState(false);
   const [busy, setBusy] = useState<'plan' | 'episode' | 'render' | null>(null);
   const [plan, setPlan] = useState<DirectorPlanResult | null>(null);
@@ -100,6 +122,25 @@ export function DirectorConsole() {
 
   useEffect(() => {
     subjectApi.list('character').then(setChars).catch(() => setChars([]));
+  }, []);
+
+  useEffect(() => {
+    const payload = consumeDirectorPrefill();
+    if (!payload) return;
+    setF(prev => ({
+      ...prev,
+      text: payload.prompt,
+      duration_archetype: payload.duration,
+      aspect_ratio: payload.aspectRatio,
+      character_subject_ids: payload.characters,
+      subject_id: payload.characters[0] ?? '',
+      num_characters: Math.max(1, payload.characters.length),
+      preset: payload.presetLevel,
+      narrative_hook: payload.prompt,
+      // §3.1 带参带入:来自通鉴适配器时默认国风水墨(该渠道的水墨/古风风格预设),
+      // 用户仍可在 ④ 视觉风格 里覆盖。
+      style_preset: payload.adapterMode === 'tongjian' ? '国风水墨' : prev.style_preset,
+    }));
   }, []);
 
   const set = <K extends keyof DirectorEpisodePayload>(k: K, v: DirectorEpisodePayload[K]) =>
@@ -236,6 +277,14 @@ export function DirectorConsole() {
             {(f.character_subject_ids?.length ?? 0) >= 2 && (
               <p className="dc-hint">2 人以上会合成一张多角色总览图统一锁脸,provider 侧仍只吃一张参考图。</p>
             )}
+            <div className="dc-char-upload">
+              <button type="button" className="dc-btn" disabled={charUploading} onClick={() => charFileRef.current?.click()}>
+                {charUploading ? '上传中…' : '🎭 上传照片建角色（AutoCameo 照片人物入戏）'}
+              </button>
+              <span className="dc-hint">上传数字人肖像/照片 → 自动建角色并锁选，激活 AutoCameo 人脸特征融合与表情自然度控制。</span>
+              <input ref={charFileRef} type="file" accept="image/*" hidden onChange={onCharFile} />
+            </div>
+            {charUploadErr && <p className="dc-hint" style={{ color: 'var(--destructive, #d33)' }}>⚠ {charUploadErr}</p>}
           </div>
           <label className="dc-field"><span className="dc-field__label">角色数</span>
             <input type="number" min={1} max={6} value={f.num_characters}

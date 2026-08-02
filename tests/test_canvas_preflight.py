@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from oprim._hevi_types import CanvasNode
+from oprim.hevi_types import CanvasNode
 
 from hevi.canvas.preflight import (
     check_duration_budget,

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from oprim._hevi_types import CanvasEdge, CanvasNode
+from oprim.hevi_types import CanvasEdge, CanvasNode
 
 from hevi.director.producer import ProducerPlan
 

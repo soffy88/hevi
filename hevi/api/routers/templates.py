@@ -38,7 +38,7 @@ def _visible(template: dict[str, Any], user: dict[str, Any]) -> bool:
 
 
 @router.post("", status_code=201)
-@router.post("/", status_code=201)
+@router.post("/", status_code=201, include_in_schema=False)
 async def create_template(
     body: TemplateCreateRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
@@ -56,7 +56,7 @@ async def create_template(
 
 
 @router.get("")
-@router.get("/")
+@router.get("/", include_in_schema=False)
 async def list_templates(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[TemplateService, Depends(get_template_service)],

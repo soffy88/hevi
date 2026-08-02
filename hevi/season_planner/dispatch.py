@@ -77,6 +77,7 @@ async def dispatch_season(
     series_service: Any,
     task_service: Any = None,
     subject_id_map: dict[str, str] | None = None,
+    subject_ref_paths: dict[str, str] | None = None,
     style_pack_id: str | None = None,
     spec: dict[str, Any] | None = None,
     user_id: str | None = None,
@@ -127,6 +128,9 @@ async def dispatch_season(
                 "episode_plan": ep.model_dump(),
                 "story_relationships": story_relationships,
                 "story_characters": story_characters,
+                "shortdrama_story": story.model_dump(mode="json"),
+                "shortdrama_subject_id_map": dict(subject_id_map or {}),
+                "shortdrama_subject_ref_paths": dict(subject_ref_paths or {}),
             },
         )
         episodes.append(task)

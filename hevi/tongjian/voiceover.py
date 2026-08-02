@@ -17,8 +17,10 @@ G3 校验门:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -92,29 +94,19 @@ async def _synthesize_line(
     )
 
     # 读取生成文件的时长
-    duration_ms = await _get_audio_duration_ms(output_path)
-    return duration_ms
+    return await _get_audio_duration_ms(output_path)
 
 
 async def _get_audio_duration_ms(path: Path) -> int:
-    """用 ffprobe 读取音频时长(毫秒)。回退:文件大小估算。"""
-    import asyncio
+    """用 oprim.probe_duration(ffprobe)读取音频时长(毫秒)。回退:文件大小估算。
+
+    3O §2 Task 2.2:ffprobe 探测已收敛到 oprim.probe_duration 原子(单源),
+    保留此处的大小估算回退语义。
+    """
+    from oprim import probe_duration
 
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "ffprobe",
-            "-v",
-            "quiet",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "csv=p=0",
-            str(path),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, _ = await proc.communicate()
-        duration_s = float(stdout.decode().strip())
+        duration_s = await asyncio.to_thread(probe_duration, path)
         return round(duration_s * 1000)
     except Exception as e:
         logger.warning("ffprobe 读取时长失败 (%s),按文件大小估算: %s", path, e)
@@ -241,7 +233,8 @@ async def synthesize_voiceover(
     if tts_fn is None:
         from obase.provider_registry import ProviderRegistry
 
-        tts_fn = ProviderRegistry.get().generic("audio", "cosyvoice")
+        provider = os.environ.get("HEVI_AUDIO_PROVIDER", "cosyvoice")
+        tts_fn = ProviderRegistry.get().generic("audio", provider)
 
     segments: list[AudioSegment] = []
     gaps: list[TimelineGap] = []

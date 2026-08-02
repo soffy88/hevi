@@ -7,6 +7,7 @@ G1 阶段"够用即可"(生成质量专项是 SPEC-003 §6 阶段2),复用 hevi/
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import re
@@ -38,8 +39,13 @@ async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
     def _invoke() -> Any:
         return llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
 
-    obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
-    resp = await obj if hasattr(obj, "__await__") else obj
+    is_async = inspect.iscoroutinefunction(llm) or inspect.iscoroutinefunction(type(llm).__call__)
+    obj = (
+        llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
+        if is_async or inspect.isfunction(llm)
+        else await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
+    )
+    resp = await asyncio.wait_for(obj, timeout=45.0) if inspect.isawaitable(obj) else obj
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
     m = re.search(r"\{.*\}", content, re.DOTALL)
     if not m:

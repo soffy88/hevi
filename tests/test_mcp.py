@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from hevi.creative.assist_registry import ASSIST_REGISTRY
 from hevi.creative.assist_service import AssistService
 from hevi.creative.workflow_service import WorkflowService
+from hevi.mcp.auth_context import reset_mcp_actor, set_mcp_actor
 from hevi.mcp.server import build_hevi_mcp_server
 from hevi.mcp.tools.canvas_tools import build_canvas_skills
 from hevi.mcp.tools.creative_tools import build_creative_skills
 from hevi.mcp.tools.subject_tools import build_subject_skills
 from hevi.mcp.tools.video_tools import build_video_skills
+from hevi.tasks.task_service import TaskService
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -124,15 +127,18 @@ async def test_list_capabilities_returns_registry() -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_longvideo_calls_orchestrator() -> None:
-    skills = build_video_skills()
+async def test_generate_longvideo_creates_durable_production_task() -> None:
+    task_service = MagicMock(spec=TaskService)
+    created = {"id": "task-123", "status": "pending", "progress_pct": 0}
+    task_service.create_production = AsyncMock(return_value=created)
+    task_service.submit_task = AsyncMock(return_value={**created, "status": "queued"})
+    skills = build_video_skills(task_svc=task_service)
     assert len(skills) == 1
     skill = skills[0]
     assert skill.name == "hevi.generate_longvideo"
 
-    mock_result = {"video_path": "/tmp/out.mp4", "shots_count": 10, "status": "ok"}
-    _orch = "hevi.mcp.tools.video_tools.orchestrate_longvideo"
-    with patch(_orch, new_callable=AsyncMock, return_value=mock_result) as m:
+    token = set_mcp_actor("user-1")
+    try:
         result = await skill.handler(
             {
                 "topic": "太空探险",
@@ -142,16 +148,32 @@ async def test_generate_longvideo_calls_orchestrator() -> None:
                 "style": "cinematic",
             }
         )
-    assert result["video_path"] == "/tmp/out.mp4"
-    m.assert_awaited_once()
-    assert m.call_args.kwargs["topic"] == "太空探险"
+    finally:
+        reset_mcp_actor(token)
+    assert result == {
+        "task_id": "task-123",
+        "status": "queued",
+        "progress_pct": 0,
+        "production_source": "automatic",
+        "status_url": "/api/tasks/task-123",
+    }
+    request = task_service.create_production.await_args.args[0]
+    assert request.source == "automatic"
+    assert request.duration_archetype == "5-15min"
+    assert request.video_provider == "wan_local"
+    assert request.audio_provider == "edge_tts"
+    assert task_service.create_production.await_args.kwargs["user_id"] == "user-1"
+    task_service.submit_task.assert_awaited_once_with("task-123")
 
 
 @pytest.mark.asyncio
 async def test_generate_longvideo_defaults_style_and_language() -> None:
-    skills = build_video_skills()
-    _orch = "hevi.mcp.tools.video_tools.orchestrate_longvideo"
-    with patch(_orch, new_callable=AsyncMock, return_value={}) as m:
+    task_service = MagicMock(spec=TaskService)
+    task_service.create_production = AsyncMock(return_value={"id": "task-123", "status": "pending"})
+    task_service.submit_task = AsyncMock(return_value={"id": "task-123", "status": "queued"})
+    skills = build_video_skills(task_svc=task_service)
+    token = set_mcp_actor("user-1")
+    try:
         await skills[0].handler(
             {
                 "topic": "测试",
@@ -160,8 +182,52 @@ async def test_generate_longvideo_defaults_style_and_language() -> None:
                 "audio_provider": "tts",
             }
         )
-    assert m.call_args.kwargs["style"] == "cinematic"
-    assert m.call_args.kwargs["language"] == "zh"
+    finally:
+        reset_mcp_actor(token)
+    request = task_service.create_production.await_args.args[0]
+    assert request.options["style"] == "cinematic"
+    assert request.options["language"] == "zh"
+
+
+@pytest.mark.asyncio
+async def test_generate_longvideo_starts_cloud_task_after_persistence() -> None:
+    task_service = MagicMock(spec=TaskService)
+    task_service.create_production = AsyncMock(
+        return_value={"id": "task-cloud", "status": "pending"}
+    )
+    task_service.submit_task = AsyncMock(return_value={"id": "task-cloud", "status": "pending"})
+    task_service.run_task_background = AsyncMock()
+
+    token = set_mcp_actor("user-1")
+    try:
+        await build_video_skills(task_svc=task_service)[0].handler(
+            {
+                "topic": "测试",
+                "duration_archetype": "short",
+                "video_provider": "wan",
+                "audio_provider": "tts",
+            }
+        )
+    finally:
+        reset_mcp_actor(token)
+    await asyncio.sleep(0)
+
+    task_service.run_task_background.assert_awaited_once_with("task-cloud")
+
+
+@pytest.mark.asyncio
+async def test_generate_longvideo_rejects_anonymous_mcp_call() -> None:
+    task_service = MagicMock(spec=TaskService)
+    with pytest.raises(PermissionError, match="authentication"):
+        await build_video_skills(task_svc=task_service)[0].handler(
+            {
+                "topic": "测试",
+                "duration_archetype": "short",
+                "video_provider": "wan",
+                "audio_provider": "tts",
+            }
+        )
+    task_service.create_production.assert_not_called()
 
 
 # ── 4. Creative assist tools ──────────────────────────────────────────────────

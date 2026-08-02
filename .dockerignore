@@ -14,6 +14,7 @@ output/
 !hevi/
 hevi-web/node_modules/
 hevi-web/.next/
+hevi-remotion/node_modules/
 .git/
 tests/
 debug_*.py

@@ -116,6 +116,10 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
             "price_usd": 0.10,
         },
         # --- audio providers ---
+        "voicebox": {
+            "unit": "per_minute",
+            "price_usd": 0.0,  # 本地 sidecar，无第三方调用费
+        },
         "edge_tts": {
             "unit": "per_minute",
             "price_usd": 0.0,  # 微软 Edge 神经语音免费

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from oprim._hevi_types import CanvasNode
+from oprim.hevi_types import CanvasNode
 
 
 class PreflightError(Exception):

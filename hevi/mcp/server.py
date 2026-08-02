@@ -16,6 +16,7 @@ from hevi.mcp.tools.creative_tools import build_creative_skills
 from hevi.mcp.tools.subject_tools import build_subject_skills
 from hevi.mcp.tools.video_tools import build_video_skills
 from hevi.subjects.subject_service import SubjectService
+from hevi.tasks.task_service import TaskService
 
 
 def build_hevi_mcp_server(
@@ -24,6 +25,7 @@ def build_hevi_mcp_server(
     executor_svc: ExecutorService | None = None,
     assist_svc: AssistService | None = None,
     workflow_svc: WorkflowService | None = None,
+    task_svc: TaskService | None = None,
 ) -> MCPServer:
     """Build and return a fully registered hevi MCPServer.
 
@@ -46,7 +48,7 @@ def build_hevi_mcp_server(
         )
     )
 
-    for skill in build_video_skills():
+    for skill in build_video_skills(task_svc=task_svc):
         server.register_skill(skill)
 
     for skill in build_creative_skills(

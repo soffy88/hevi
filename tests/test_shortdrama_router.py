@@ -109,10 +109,17 @@ async def _run_bg(bg: BackgroundTasks) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _clear_runs():
+def _clear_runs(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(sd, "_generate_subject3d_background", AsyncMock())
     sd._RUNS.clear()
+    for task in list(sd._RUN_TASKS):
+        task.cancel()
+    sd._RUN_TASKS.clear()
     yield
     sd._RUNS.clear()
+    for task in list(sd._RUN_TASKS):
+        task.cancel()
+    sd._RUN_TASKS.clear()
 
 
 # ── 提交 → AWAITING_CHARACTERS ──────────────────────────────────────────────
@@ -239,11 +246,8 @@ async def test_confirm_dispatches_and_records_series_id_with_budget_threaded():
 
 
 @pytest.mark.asyncio
-async def test_confirm_actually_triggers_generation_via_tongjian_bridge():
-    """2026-07-12 真实撞见的两个大漏洞:(1) dispatch_season 只建 pending 的
-    VideoTask,不会自动被真实生成捞走;(2) 通用长视频管线没有对白能力,产出纯旁白。
-    现在 confirm 后每集要真的调用 tongjian_bridge.render_episode(对白+口型管线),
-    并把结果写回 video_tasks/shot_states,不是随便扔给 task_service.run_task。"""
+async def test_confirm_submits_each_episode_to_the_unified_task_executor():
+    """确认派发后由 shortdrama 任务适配器执行，路由不再旁路直接改任务表。"""
     run_id = str(uuid.uuid4())
     _seed_run(run_id)
 
@@ -255,54 +259,14 @@ async def test_confirm_actually_triggers_generation_via_tongjian_bridge():
             "episodes": [{"id": str(ep_id), "series_id": "SER-GEN", "episode_index": 0}],
         }
 
-    render_calls = []
-    from hevi.tongjian.schemas import FinalVideo as _FinalVideo
-
-    async def _fake_render_episode(
-        ep, story, *, run_dir, target_duration_sec, subject_ref_paths, subject3d_views
-    ):
-        render_calls.append((ep.ep_number, story.meta.source, target_duration_sec))
-        return {
-            "final_video": _FinalVideo(video_path="output/tasks/x/final.mp4"),
-            "shots": [
-                {
-                    "index": 0,
-                    "path": "clip0.mp4",
-                    "passed": True,
-                    "provider": "cloud_avatar",
-                    "consistency_score": 0.8,
-                    "diagnosis_category": None,
-                    "retry_count": 0,
-                }
-            ],
-            "gate_reports": {},
-        }
-
-    update_calls = []
-    shot_calls = []
-
-    async def _fake_update_task(self, task_id, data):
-        update_calls.append((task_id, data))
-        return True
-
-    async def _fake_get_task(self, task_id):
-        return {"config_json": {"estimated_usd": 12.3}}
-
-    async def _fake_create_shot_state(self, data):
-        shot_calls.append(data)
-        return data
-
-    async def _fake_delete_shots(self, task_id):
-        return None
-
+    submit_mock = AsyncMock(return_value={"status": "pending"})
+    run_mock = AsyncMock(return_value={"status": "completed"})
     with (
         patch.object(sd, "get_hevi_pg_pool", AsyncMock(return_value=object())),
         patch.object(sd, "dispatch_season", AsyncMock(side_effect=_fake_dispatch)),
-        patch.object(sd, "render_episode", AsyncMock(side_effect=_fake_render_episode)),
-        patch.object(sd.TaskRepository, "update_task", _fake_update_task),
-        patch.object(sd.TaskRepository, "get_task", _fake_get_task),
-        patch.object(sd.TaskRepository, "create_shot_state", _fake_create_shot_state),
-        patch.object(sd.TaskRepository, "delete_shots", _fake_delete_shots),
+        patch.object(sd.TaskService, "submit_task", submit_mock) as submit,
+        patch.object(sd.TaskService, "run_task_background", run_mock) as run,
+        patch.object(sd, "_generate_subject3d_background", AsyncMock()),
     ):
         bg = BackgroundTasks()
         body = sd.ConfirmRequest(
@@ -318,60 +282,8 @@ async def test_confirm_actually_triggers_generation_via_tongjian_bridge():
         if pending:
             await asyncio.gather(*pending)
 
-    assert len(render_calls) == 1
-    ep_number, source, target_duration_sec = render_calls[0]
-    assert ep_number == 1
-    assert target_duration_sec == 180  # "1-5min" 档 → duration_mapper 的 target_s
-
-    statuses = [d["status"] for _tid, d in update_calls]
-    assert statuses == ["running", "completed"]
-    completed_update = update_calls[-1][1]
-    assert completed_update["result_video_path"] == "output/tasks/x/final.mp4"
-    assert completed_update["config_json"]["actual_usd"] == 12.3
-
-    assert len(shot_calls) == 1
-    assert shot_calls[0]["selection_json"]["consistency_score"] == 0.8
-
-
-@pytest.mark.asyncio
-async def test_confirm_episode_render_failure_marks_task_failed():
-    run_id = str(uuid.uuid4())
-    _seed_run(run_id)
-    ep_id = uuid.uuid4()
-
-    async def _fake_dispatch(plan_arg, story_arg, **kwargs):
-        return {
-            "series_id": "SER-FAIL",
-            "episodes": [{"id": str(ep_id), "series_id": "SER-FAIL", "episode_index": 0}],
-        }
-
-    update_calls = []
-
-    async def _fake_update_task(self, task_id, data):
-        update_calls.append(dict(data))
-        return True
-
-    with (
-        patch.object(sd, "get_hevi_pg_pool", AsyncMock(return_value=object())),
-        patch.object(sd, "dispatch_season", AsyncMock(side_effect=_fake_dispatch)),
-        patch.object(sd, "render_episode", AsyncMock(side_effect=RuntimeError("剧本生成为空壳"))),
-        patch.object(sd.TaskRepository, "update_task", _fake_update_task),
-    ):
-        bg = BackgroundTasks()
-        body = sd.ConfirmRequest(
-            bindings={
-                "C001": sd.CharacterBinding(mode="existing", subject_id="S1"),
-                "C002": sd.CharacterBinding(mode="existing", subject_id="S2"),
-            },
-        )
-        await sd.confirm_run(run_id, body, bg, _USER)
-        await _run_bg(bg)
-        pending = list(sd._RUN_TASKS)
-        if pending:
-            await asyncio.gather(*pending)
-
-    assert [d["status"] for d in update_calls] == ["running", "failed"]
-    assert "剧本生成为空壳" in update_calls[-1]["error"]
+    submit.assert_awaited_once()
+    run.assert_awaited_once_with(ep_id)
 
 
 @pytest.mark.asyncio

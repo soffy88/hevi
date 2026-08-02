@@ -232,7 +232,11 @@ async def render_director_episode(
     if tts_fn is None:
         # 同 tongjian_bridge:L3 显式 edge_tts(云端零 GPU 依赖),不用会吃本地掉线 3080
         # 的 vibevoice 默认值。
-        tts_fn = ProviderRegistry.get().generic("audio", "edge_tts")
+        import os
+
+        tts_fn = ProviderRegistry.get().generic(
+            "audio", os.environ.get("HEVI_AUDIO_PROVIDER", "edge_tts")
+        )
 
     script, shotlist, character_bible = build_tongjian_inputs(
         shot_list=shot_list,

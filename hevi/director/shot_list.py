@@ -7,6 +7,7 @@ speaker(哪个角色说)**,而不是把整场叙述文字囫囵吞枣丢给配�
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import logging
 import re
@@ -15,6 +16,7 @@ from typing import Any
 from hevi.director.pipeline_schemas import (
     DesignList,
     Screenplay,
+    ScreenplayScene,
     ShotBlocking,
     ShotList,
     ShotListDialogueLine,
@@ -99,8 +101,13 @@ async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
     def _invoke() -> Any:
         return llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
 
-    obj = await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
-    resp = await obj if hasattr(obj, "__await__") else obj
+    is_async = inspect.iscoroutinefunction(llm) or inspect.iscoroutinefunction(type(llm).__call__)
+    obj = (
+        llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+        if is_async or inspect.isfunction(llm)
+        else await asyncio.wait_for(asyncio.to_thread(_invoke), timeout=45.0)
+    )
+    resp = await asyncio.wait_for(obj, timeout=45.0) if inspect.isawaitable(obj) else obj
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
     m = re.search(r"\{.*\}", content, re.DOTALL)
     if not m:
@@ -112,7 +119,9 @@ async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
         return {}
 
 
-def _fallback_shots_for_scene(scene, scene_idx: int) -> list[ShotListItem]:
+def _fallback_shots_for_scene(
+    scene: ScreenplayScene, scene_idx: int
+) -> list[ShotListItem]:
     """LLM 失败时的兜底:整场只切一镜,叙述当旁白行,每句台词各自一行(character_name
     照抄剧本,至少台词不会丢——比整体失败强)。"""
     dialogue_lines = [

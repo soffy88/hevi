@@ -46,10 +46,15 @@ class ScreenplayScene(BaseModel):
     scene_no: int
     time: str = ""  # 时间(如"黄昏""三日后")
     location: str = ""  # 地点
+    int_ext: str = ""  # INT/EXT:内景/外景
+    day_night: str = ""  # DAY/NIGHT:日/夜
     characters_present: list[str] = Field(default_factory=list)  # 人物名列表
     narration: str = ""  # 该场的叙述文字(非对白部分,白话)
     dialogue: list[ScreenplayDialogueLine] = Field(default_factory=list)
     event_summary: str = ""  # 该场事件概要
+    visual_actions: list[str] = Field(default_factory=list)  # 可被镜头直接拍到的视觉动词
+    production_complexity: str = "low"  # low/medium/high,供场次竞价与预算熔断
+    cg_level: str = "low"  # low/medium/high
 
 
 class Screenplay(BaseModel):
@@ -135,3 +140,28 @@ class ShotListItem(BaseModel):
 
 class ShotList(BaseModel):
     shots: list[ShotListItem] = Field(default_factory=list)
+
+
+# ── 工业化导演流水线：解析审查门 ───────────────────────────────────────────
+
+
+class DirectorGateCheck(BaseModel):
+    """导演自批判门的一项确定性检查。"""
+
+    key: str
+    label: str
+    passed: bool
+    score: float = Field(ge=0.0, le=1.0)
+    detail: str = ""
+
+
+class DirectorGateReport(BaseModel):
+    """资产解析完成后、真实生产派发前的统一门禁报告。"""
+
+    passed: bool
+    score: float = Field(ge=0.0, le=1.0)
+    estimated_cost_usd: float = Field(ge=0.0)
+    identity_readiness: float = Field(ge=0.0, le=1.0)
+    checks: list[DirectorGateCheck] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)

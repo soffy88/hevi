@@ -1,12 +1,11 @@
 /**
- * TopNav — 顶部导航栏(§2 IA)
- * 首页/生成 · 画布工作台 · 主体库 · 我的 · 价格
- *
- * 登录入口(2026-07-13 修复):此前整个导航栏没有任何"登录"链接——需登录的页面
- * (导演/通鉴/系列/短剧/画布工作台等)都没被 RequireAuth 包裹,允许未登录用户
- * 一路填完表单,直到点提交才撞见 authedReq 抛的 NOT_AUTHENTICATED,而这个应用
- * 压根没地方能点进去登录。这里加一个根据登录态切换的入口:未登录显示"登录",
- * 已登录显示"退出"(此前也没有任何登出入口)。
+ * TopNav — 顶部导航栏(Frontend SPEC v6.0 §4 最终精简导航)
+ * 6 个职责绝对清晰的主节点:
+ *   / ⚡极速生成 · /explainer 🎙️解说中心 · /tongjian 🏛️历史现场 ·
+ *   /director-pipeline 🎬导演流水线 · /director 🎛️导演控制台 · /production 📊生产看板
+ * 辅助工具(✂️智能拆条 / 👤数字人预设 / 🔊语音工作室 / 📁数字资产)收纳在「工具箱 ▾」弹层,
+ * 次要工作台(系列/短剧台/画布/发布/我的/价格)收纳在「更多 ▾」折叠。
+ * 登录入口:未登录显示「登录」,已登录显示「退出」。
  */
 'use client';
 
@@ -16,15 +15,26 @@ import { useEffect, useState } from 'react';
 import { isAuthenticated, logout } from '@/lib/auth-store';
 
 const NAV = [
-  { href: '/', label: '生成' },
-  { href: '/director', label: '导演' },
-  { href: '/director-pipeline', label: '导演流水线' },
-  { href: '/tongjian', label: '通鉴' },
-  { href: '/explainer', label: '解说' },
+  { href: '/', label: '⚡ 极速生成' },
+  { href: '/explainer', label: '🎙️ 解说中心' },
+  { href: '/tongjian', label: '🏛️ 历史现场' },
+  { href: '/director-pipeline', label: '🎬 导演流水线' },
+  { href: '/director', label: '🎛️ 导演控制台' },
+  { href: '/production', label: '📊 生产看板' },
+];
+
+const TOOLBOX = [
+  { href: '/studio/clipper', label: '✂️ 智能拆条' },
+  { href: '/presenters', label: '👤 数字人预设' },
+  { href: '/voice-studio', label: '🔊 语音工作室' },
+  { href: '/gallery', label: '📁 数字资产' },
+];
+
+const MORE = [
   { href: '/series', label: '系列' },
-  { href: '/season-board', label: '短剧' },
+  { href: '/season-board', label: '短剧台' },
   { href: '/studio', label: '画布工作台' },
-  { href: '/gallery', label: '展示墙' },
+  { href: '/publish-studio', label: '发布工作室' },
   { href: '/account', label: '我的' },
   { href: '/pricing', label: '价格' },
 ];
@@ -32,24 +42,60 @@ const NAV = [
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
-  // 首屏(SSR/hydration 前)读不到 localStorage,统一先当未登录渲染,挂载后再
-  // 校正——跟 RequireAuth 同样的处理方式,避免 hydration 报警。
   const [authed, setAuthed] = useState(false);
+  const [toolboxOpen, setToolboxOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   useEffect(() => { setAuthed(isAuthenticated()); }, [pathname]);
+
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   return (
     <header className="hevi-topnav">
       <Link href="/" className="hevi-topnav__logo">hevi</Link>
       <nav className="hevi-topnav__links">
-        {NAV.map(n => {
-          const active = n.href === '/' ? pathname === '/' : pathname.startsWith(n.href);
-          return (
-            <Link key={n.href} href={n.href}
-              className="hevi-topnav__link" data-active={active ? 'true' : undefined}>
-              {n.label}
-            </Link>
-          );
-        })}
+        {NAV.map(n => (
+          <Link key={n.href} href={n.href}
+            className="hevi-topnav__link" data-active={isActive(n.href) ? 'true' : undefined}>
+            {n.label}
+          </Link>
+        ))}
+        <div className="hevi-topnav__more">
+          <button type="button" className="hevi-topnav__link hevi-topnav__link--btn"
+            data-active={TOOLBOX.some(m => isActive(m.href)) ? 'true' : undefined}
+            onClick={() => { setToolboxOpen(v => !v); setMoreOpen(false); }}>
+            工具箱 ▾
+          </button>
+          {toolboxOpen && (
+            <div className="hevi-topnav__more-menu">
+              {TOOLBOX.map(m => (
+                <Link key={m.href} href={m.href}
+                  className="hevi-topnav__more-item" data-active={isActive(m.href) ? 'true' : undefined}
+                  onClick={() => setToolboxOpen(false)}>
+                  {m.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="hevi-topnav__more">
+          <button type="button" className="hevi-topnav__link hevi-topnav__link--btn"
+            data-active={MORE.some(m => isActive(m.href)) ? 'true' : undefined}
+            onClick={() => { setMoreOpen(v => !v); setToolboxOpen(false); }}>
+            更多 ▾
+          </button>
+          {moreOpen && (
+            <div className="hevi-topnav__more-menu">
+              {MORE.map(m => (
+                <Link key={m.href} href={m.href}
+                  className="hevi-topnav__more-item" data-active={isActive(m.href) ? 'true' : undefined}
+                  onClick={() => setMoreOpen(false)}>
+                  {m.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
         {authed ? (
           <button type="button" className="hevi-topnav__link hevi-topnav__link--auth hevi-topnav__link--btn"
             onClick={() => { logout(); setAuthed(false); router.push('/login'); }}>

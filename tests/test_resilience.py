@@ -283,19 +283,39 @@ async def test_task_service_run_task_with_fallback_integration():
     with (
         patch("hevi.tasks.task_service.orchestrate_longvideo") as mock_orch,
         patch(
+            "hevi.tasks.task_service.execute_standard_operation", new_callable=AsyncMock
+        ) as mock_exec,
+        patch(
             "hevi.resilience.fallback_chain.provider_health_check",
             new_callable=AsyncMock,
             return_value=True,
         ),
         patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock),
     ):
-
+        # 3O 迁移后 run_task 经 execute_standard_operation(oservi)驱动;这里的 mock
+        # 复现引擎行为:调用注入的 renderer(内部走 orchestrator,带 provider),再把
+        # 标准 report 返回给 run_task,fallback 链语义保持不变。
         def orch_side_effect(**kwargs: Any):
             if kwargs["video_provider"] == "ltx2_cloud":
                 raise httpx.TimeoutException("ltx2 fail")
             return {"url": "video.mp4", "duration": 180.0, "metadata": {"shots": 5}}
 
         mock_orch.side_effect = orch_side_effect
+
+        async def fake_exec(*, operation, config, input_data, output_dir, event_sink=None):
+            await input_data["renderer"]("t", output_dir, config)
+            return {
+                "status": "succeeded",
+                "report": {
+                    "video_path": "video.mp4",
+                    "duration_s": 180.0,
+                    "shots_generated": 5,
+                    "shots": [],
+                    "quality": {"passed": True, "violations": [], "consistency": "ok"},
+                },
+            }
+
+        mock_exec.side_effect = fake_exec
 
         res = await service.run_task(task_id)
 
@@ -339,7 +359,7 @@ async def test_live_state_gates_unroutable_provider():
             new_callable=AsyncMock,
             return_value=True,
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(RuntimeError):
                 # 链 [ltx2_cloud, happyhorse_1_1_maas_lock]
                 await run_with_fallback(
                     initial_provider="ltx2_cloud",

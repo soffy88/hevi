@@ -206,7 +206,7 @@ async def list_graphs(
 # ── Legacy /graphs/* aliases (must come before /{graph_id}) ──────────────────
 
 
-@router.post("/graphs", status_code=201)
+@router.post("/graphs", status_code=201, deprecated=True)
 async def save_graph_legacy(
     body: SaveGraphRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
@@ -215,7 +215,7 @@ async def save_graph_legacy(
     return await _do_save_graph(body, svc, user)
 
 
-@router.get("/graphs")
+@router.get("/graphs", deprecated=True)
 async def list_graphs_legacy(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[GraphService, Depends(get_graph_service)],
@@ -223,7 +223,7 @@ async def list_graphs_legacy(
     return await _do_list_graphs(svc, user)
 
 
-@router.get("/graphs/{graph_id}")
+@router.get("/graphs/{graph_id}", deprecated=True)
 async def get_graph_legacy(
     graph_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
@@ -232,7 +232,7 @@ async def get_graph_legacy(
     return await _do_get_graph(graph_id, svc, user)
 
 
-@router.patch("/graphs/{graph_id}")
+@router.patch("/graphs/{graph_id}", deprecated=True)
 async def update_graph_legacy(
     graph_id: str,
     body: UpdateGraphRequest,
@@ -242,7 +242,7 @@ async def update_graph_legacy(
     return await _do_update_graph(graph_id, body, svc, user)
 
 
-@router.delete("/graphs/{graph_id}", status_code=200)
+@router.delete("/graphs/{graph_id}", status_code=200, deprecated=True)
 async def delete_graph_legacy(
     graph_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
@@ -251,7 +251,7 @@ async def delete_graph_legacy(
     return await _do_delete_graph(graph_id, svc, user)
 
 
-@router.post("/graphs/{graph_id}/execute")
+@router.post("/graphs/{graph_id}/execute", deprecated=True)
 async def execute_graph_legacy(
     graph_id: str,
     body: ExecuteGraphRequest,

@@ -145,8 +145,11 @@ async def synthesize_with_voice_control(
     ShotPlan schema),该行单独用 `emotion_to_rate_pitch` 换算;没有 `.emotion` 属性
     的行(tongjian 的 `_Line`、任何普通调用方)退回整批统一的 `emotion` 参数换算,
     再退回 "+0%"/"+0Hz"(旧行为完全不变)。
+
+    3O §2 Task 2.2:单行合成已收敛到 oprim.edge_tts_word_boundary 原子(单源),
+    此处保留逐行音色/情绪换算、重试与 ffmpeg 合并等批次策略逻辑。
     """
-    import edge_tts
+    from oprim import edge_tts_word_boundary
 
     cfg = config or {}
     language = cfg.get("language")
@@ -182,10 +185,16 @@ async def synthesize_with_voice_control(
             # edge-tts 端点会间歇性抽风,对完全正常的文本/音色也抛 "No audio was received"
             # (微软侧限流/瞬时故障,实测同一音色反复试成功率飘忽)。不重试就会丢整行
             # 台词 → 成片里这句变哑。重试 3 次(短退避),仍失败才放弃这一行。
+            # 单行合成走 oprim.edge_tts_word_boundary 原子(输出路径直写)。
             for _attempt in range(3):
                 try:
-                    comm = edge_tts.Communicate(text, v, rate=_r or "+0%", pitch=_p or "+0Hz")
-                    await comm.save(str(seg))
+                    await edge_tts_word_boundary(
+                        text,
+                        v,
+                        rate=_r or "+0%",
+                        pitch=_p or "+0Hz",
+                        output_path=seg,
+                    )
                 except Exception as e:
                     logger.warning("edge-tts segment %d 第%d次失败: %s", i, _attempt + 1, e)
                     seg.unlink(missing_ok=True)

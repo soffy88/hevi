@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 _HEVI_REMOTION_DIR = Path(__file__).resolve().parent.parent.parent / "hevi-remotion"
 _MANIFEST_PATH = _HEVI_REMOTION_DIR / "src" / "data" / "run_manifest.json"
 _AUDIO_DIR = _HEVI_REMOTION_DIR / "public" / "audio"
+_REMOTION_BIN = _HEVI_REMOTION_DIR / "node_modules" / ".bin" / "remotion"
 
 
 class RenderError(Exception):
@@ -48,10 +49,21 @@ def _write_manifest(manifest: list[ManifestSegment]) -> None:
 
 
 async def _run_remotion_render(composition_id: str, output_path: Path) -> None:
+    if not _HEVI_REMOTION_DIR.is_dir():
+        raise RenderError(
+            f"Remotion 项目目录不存在: {_HEVI_REMOTION_DIR}；请重建 API 镜像"
+        )
+    if not _REMOTION_BIN.is_file():
+        raise RenderError(
+            f"Remotion CLI 不可用: {_REMOTION_BIN}；请重建 API 镜像并安装 hevi-remotion 依赖"
+        )
+    # Remotion runs with hevi-remotion/ as cwd. Resolve the output first, or a
+    # relative ``output/explainer/...`` path would be written inside the
+    # unmounted Remotion project instead of the shared /app/output volume.
+    output_path = output_path.resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     proc = await asyncio.create_subprocess_exec(
-        "npx",
-        "remotion",
+        str(_REMOTION_BIN),
         "render",
         composition_id,
         str(output_path),
@@ -82,6 +94,7 @@ async def render_storyboard(
     manifest = await synthesize_storyboard(storyboard, _AUDIO_DIR, voice=voice, rate=rate)
     _write_manifest(manifest)
 
+    output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     portrait_path = output_dir / "portrait.mp4"
     landscape_path = output_dir / "landscape.mp4"

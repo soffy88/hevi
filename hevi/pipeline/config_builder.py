@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from omodul.agentic_longvideo_pipeline import LongVideoConfig
+from omodul.longvideo_produce import LongVideoConfig
 
 from hevi.audio import AudioProvider
 from hevi.video import DURATION_ARCHETYPES, VideoProvider

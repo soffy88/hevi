@@ -7,7 +7,10 @@ import type {
   LongVideoTaskReq, TaskInfo, TaskShot, CostEstimateRes,
   CreativeCapability, Subject, SubjectKind,
   AuthRes, AuthUser, CreditsBalance,
+  CapabilityDescriptor, Presenter, PresenterInput, PresenterReadiness, ProductionRequest, ProductionTask,
+  AspectRatio, QualityProfile,
 } from '@/types/api';
+export type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
 const USE_MOCK = (process.env.NEXT_PUBLIC_USE_MOCK ?? 'true').toLowerCase() === 'true';
@@ -41,7 +44,18 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     fireUnauthorized();
     throw new Error('401 Unauthorized');
   }
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const payload = await res.json() as { detail?: unknown; message?: unknown };
+      if (typeof payload.detail === 'string') detail = payload.detail;
+      else if (payload.detail && typeof payload.detail === 'object') {
+        const data = payload.detail as { message?: unknown; setup?: unknown };
+        detail = [data.message, data.setup].filter((v): v is string => typeof v === 'string').join('：');
+      } else if (typeof payload.message === 'string') detail = payload.message;
+    } catch { /* non-JSON error */ }
+    throw new Error(detail || `${res.status} ${res.statusText}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -69,7 +83,18 @@ async function authedFormReq<T>(path: string, form: FormData): Promise<T> {
     body: form,
   });
   if (res.status === 401) { fireUnauthorized(); throw new Error('401 Unauthorized'); }
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    let detail = '';
+    try {
+      const payload = await res.json() as { detail?: unknown; message?: unknown };
+      if (typeof payload.detail === 'string') detail = payload.detail;
+      else if (payload.detail && typeof payload.detail === 'object') {
+        const data = payload.detail as { message?: unknown; setup?: unknown };
+        detail = [data.message, data.setup].filter((v): v is string => typeof v === 'string').join('：');
+      } else if (typeof payload.message === 'string') detail = payload.message;
+    } catch { /* non-JSON error */ }
+    throw new Error(detail || `${res.status} ${res.statusText}`);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -200,8 +225,49 @@ export const taskApi = {
   // 翻译配音导出(§3 L2 护城河):ASR+翻译+目标语种 TTS+mux,首次现算较慢,产物缓存
   dubUrl: (id: string, language: string) =>
     `${API_BASE}/api/tasks/${id}/dub?language=${language}${authToken ? `&token=${encodeURIComponent(authToken)}` : ''}`,
+  audioUrl: (id: string) =>
+    `${API_BASE}/api/tasks/${id}/audio${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
   // 成本预估
   estimate: (r: LongVideoTaskReq) => req<CostEstimateRes>('/api/tasks/estimate', { method: 'POST', body: JSON.stringify(r) }),
+};
+
+// ── 统一自动生产 / 数字人预设 ─────────────────────────────────────
+export const productionApi = {
+  capabilities: () => authedReq<{ capabilities: CapabilityDescriptor[] }>('/api/pipeline/capabilities'),
+  create: (payload: ProductionRequest) =>
+    authedReq<ProductionTask>('/api/pipeline/productions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  generate: (payload: {
+    source_channel: 'hub_quick' | 'hub_idea2video' | 'director_console';
+    adapter_type: 'default' | 'explainer' | 'tongjian' | 'shortdrama';
+    config: {
+      prompt: string;
+      duration_archetype: string;
+      aspect_ratio: AspectRatio;
+      execution_preset: 'economy' | 'balanced' | 'fast';
+      character_references?: string[];
+      presenter_id?: string | null;
+      emotion_aware_voiceover?: boolean;
+      locked_shot_list?: Array<Record<string, unknown>> | null;
+      quality_profile?: QualityProfile;
+      options?: Record<string, unknown>;
+    };
+  }) => authedReq<ProductionTask>('/api/pipeline/generate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+};
+
+export const presenterApi = {
+  list: () => authedReq<Presenter[]>('/api/presenters'),
+  get: (id: string) => authedReq<Presenter>(`/api/presenters/${id}`),
+  create: (payload: PresenterInput) =>
+    authedReq<Presenter>('/api/presenters', { method: 'POST', body: JSON.stringify(payload) }),
+  update: (id: string, payload: PresenterInput) =>
+    authedReq<Presenter>(`/api/presenters/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  test: (id: string) => authedReq<PresenterReadiness>(`/api/presenters/${id}/test`, { method: 'POST' }),
 };
 
 export { USE_MOCK, API_BASE };
@@ -342,9 +408,17 @@ export const shortdramaApi = {
 // docs/specs/SPEC-003-mainline-director-pipeline.md。
 import type {
   DpConcept, DpScreenplay, DpDesignList, DpShotList, DpWork, DpProduceRequest,
-  DpPrepState, DpPrepMutation, DpPrepOverview,
+  DpPrepState, DpPrepMutation, DpPrepOverview, DpParseRequest, DpDispatchSeasonRequest,
 } from '@/types/api';
 export const directorPipelineApi = {
+  parseWork: (payload: DpParseRequest) =>
+    authedReq<DpWork>('/api/director-pipeline/works/parse', {
+      method: 'POST', body: JSON.stringify(payload),
+    }),
+  dispatchSeason: (workId: string, payload: DpDispatchSeasonRequest) =>
+    authedReq<DpWork>(`/api/director-pipeline/works/${workId}/dispatch-season`, {
+      method: 'POST', body: JSON.stringify(payload),
+    }),
   createWork: (materialText: string, intentHint = '') =>
     authedReq<DpWork>('/api/director-pipeline/works', {
       method: 'POST',
@@ -407,8 +481,25 @@ export const directorPipelineApi = {
 };
 
 // ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────
-import type { ExplainerRunRequest, ExplainerRunStatus } from '@/types/api';
+import type {
+  ExplainerAssembleRequest,
+  ExplainerAssemblyAccepted,
+  ExplainerResearchRequest,
+  ExplainerResearchResponse,
+  ExplainerRunRequest,
+  ExplainerRunStatus,
+} from '@/types/api';
 export const explainerApi = {
+  research: (payload: ExplainerResearchRequest) =>
+    authedReq<ExplainerResearchResponse>('/api/explainer/research', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  assemble: (payload: ExplainerAssembleRequest) =>
+    authedReq<ExplainerAssemblyAccepted>('/api/explainer/assemble', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   startRun: (payload: ExplainerRunRequest) =>
     authedReq<{ run_id: string; status: string }>('/api/explainer/run', {
       method: 'POST',
@@ -420,3 +511,63 @@ export const explainerApi = {
     authedReq<ExplainerRunStatus[]>('/api/explainer/runs'),
 };
 
+// ── 恢复的工作室能力（与原有工作台保持同一客户端边界） ────────────────
+import type {
+  VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine,
+  ProviderPreset,
+} from '@/types/api';
+
+export const providerApi = {
+  listPresets: (category?: string) => authedReq<{ presets: ProviderPreset[]; total: number; levels: string[] }>(`/api/providers/presets${category ? `?category=${category}` : ''}`),
+  getPreset: (name: string) => authedReq<ProviderPreset & { resolved_config: Record<string, string> }>(`/api/providers/presets/${name}`),
+};
+
+export const voiceStudioApi = {
+  listEffectPresets: () => authedReq<{ presets: VoiceEffectPreset[] }>('/api/voice-studio/effects/presets'),
+  previewEffect: (preset: string, text: string) => authedReq<{ preset: string; effects_count: number; effects: Array<{ type: string; params: Record<string, unknown> }> }>('/api/voice-studio/effects/preview', { method: 'POST', body: JSON.stringify({ preset, text }) }),
+  listPersonalityPresets: () => authedReq<{ presets: VoicePersonalityPreset[] }>('/api/voice-studio/personality/presets'),
+  rewriteWithPersonality: (text: string, persona: string) => authedReq<{ original: string; rewritten: string; persona: string; model_used: string; confidence: number }>('/api/voice-studio/personality/rewrite', { method: 'POST', body: JSON.stringify({ text, persona }) }),
+  listTTSEngines: () => authedReq<{ engines: VoiceTTSEngine[] }>('/api/voice-studio/tts/engines'),
+  synthesizeTTS: (text: string, engine: string, voice?: string, language?: string, effects?: string) => authedReq<{ task_id: string; status: string; audio_url: string }>('/api/voice-studio/tts/synthesize', { method: 'POST', body: JSON.stringify({ text, engine, voice, language, effects }) }),
+  validateConfig: (voiceEffects?: string, voicePersonas?: Record<string, string>, ttsEngine?: string) => authedReq<{ valid: boolean; voice_effects: string | null; voice_personas_count: number; tts_engine: string | null }>('/api/voice-studio/config/validate', { method: 'POST', body: JSON.stringify({ voice_effects: voiceEffects, voice_personas: voicePersonas, tts_engine: ttsEngine }) }),
+};
+
+export const productionV2Api = {
+  seedanceGenerate: (body: { prompt: string; image_url?: string; duration_s?: number; aspect_ratio?: string }) => authedReq<{ task_id: string; status: string }>('/api/production/v2/seedance/generate', { method: 'POST', body: JSON.stringify(body) }),
+  clipVideo: (body: { video_path: string; strategy?: string; max_clips?: number }) => authedReq<{ task_id: string; status: string; clips?: Array<Record<string, unknown>> }>('/api/production/v2/clip-video', { method: 'POST', body: JSON.stringify(body) }),
+  listRecipes: () => authedReq<{ recipes: Array<{ name: string; description: string; steps: number }> }>('/api/production/v2/recipes'),
+  getRecipe: (name: string) => authedReq<{ name: string; description: string; steps: Array<Record<string, unknown>> }>(`/api/production/v2/recipes/${name}`),
+  executeRecipe: (name: string, body: { params: Record<string, unknown> }) => authedReq<{ task_id: string; status: string }>(`/api/production/v2/recipes/${name}/execute`, { method: 'POST', body: JSON.stringify(body) }),
+  digitalHumanPreflight: (body: { script: string; avatar_id?: string }) => authedReq<{ ready: boolean; warnings?: string[] }>('/api/production/v2/digital-human/preflight', { method: 'POST', body: JSON.stringify(body) }),
+  digitalHumanPreview: (body: { script: string; avatar_id?: string }) => authedReq<{ task_id: string; status: string; preview_url?: string }>('/api/production/v2/digital-human/preview', { method: 'POST', body: JSON.stringify(body) }),
+  digitalHumanApprove: (body: { task_id: string }) => authedReq<{ status: string; output_path?: string }>('/api/production/v2/digital-human/approve', { method: 'POST', body: JSON.stringify(body) }),
+};
+
+export const proStudioApi = {
+  indexttsSynthesize: (body: { speaker: string; text: string; emo_vector?: Record<string, number>; emo_text?: string; duration_s?: number }) => authedReq<{ task_id: string; status: string; output_path?: string }>('/api/pro/indextts/synthesize', { method: 'POST', body: JSON.stringify(body) }),
+  indexttsEmotionFromText: (body: { text: string }) => authedReq<{ emo_vector: Record<string, number> }>('/api/pro/indextts/emotion-from-text', { method: 'POST', body: JSON.stringify(body) }),
+  indexttsEmotions: () => authedReq<{ emotions: string[] }>('/api/pro/indextts/emotions'),
+  stockSearch: (body: { query: string; provider?: string; media_type?: string; count?: number }) => authedReq<{ clips: Array<Record<string, unknown>> }>('/api/pro/stock/search', { method: 'POST', body: JSON.stringify(body) }),
+  livestreamCapabilities: () => authedReq<{ can_start: boolean; provider?: string | null; message: string; setup?: string }>('/api/pro/livestream/capabilities'),
+  livestreamStart: (body: { presenter_id?: string; avatar_id?: string; scene?: string; script: string }) => authedReq<{ session_id: string; status: string; presenter_id?: string; stream_url?: string; message?: string }>('/api/pro/livestream/start', { method: 'POST', body: JSON.stringify(body) }),
+  livestreamStop: (body: { session_id: string }) => authedReq<{ status: string }>('/api/pro/livestream/stop', { method: 'POST', body: JSON.stringify(body) }),
+  livestreamStatus: (sessionId: string) => authedReq<{ status: string; viewers?: number; duration_s?: number }>(`/api/pro/livestream/status?session_id=${sessionId}`),
+  orchestrationCreatePlan: (body: { task: string; agents?: string[] }) => authedReq<{ plan_id: string; steps: Array<Record<string, unknown>> }>('/api/pro/orchestration/create-plan', { method: 'POST', body: JSON.stringify(body) }),
+  orchestrationExecute: (body: { plan_id: string }) => authedReq<{ task_id: string; status: string }>('/api/pro/orchestration/execute', { method: 'POST', body: JSON.stringify(body) }),
+  orchestrationRoles: () => authedReq<{ roles: Array<{ id: string; name: string; description: string }> }>('/api/pro/orchestration/roles'),
+  codeExplainerGenerate: (body: { code: string; language?: string; style?: string }) => authedReq<{ task_id: string; status: string }>('/api/pro/code-explainer/generate', { method: 'POST', body: JSON.stringify(body) }),
+};
+
+export const publishStudioApi = {
+  listPlatforms: () => authedReq<{ platforms: Array<{ id: string; name: string; enabled: boolean }> }>('/api/studio/publish/platforms'),
+  publish: (body: { platform: string; video_path: string; title: string; description?: string; tags?: string[] }) => authedReq<{ task_id: string; status: string }>('/api/studio/publish', { method: 'POST', body: JSON.stringify(body) }),
+  confirmPublish: (body: { task_id: string }) => authedReq<{ status: string; url?: string }>('/api/studio/publish/confirm', { method: 'POST', body: JSON.stringify(body) }),
+  motionTemplates: (category?: string, search?: string) => { const q = new URLSearchParams(); if (category) q.set('category', category); if (search) q.set('search', search); return authedReq<{ templates: Array<Record<string, unknown>> }>(`/api/studio/motion/templates${q.toString() ? `?${q}` : ''}`); },
+  motionRender: (body: { template_id: string; params: Record<string, unknown> }) => authedReq<{ task_id: string; status: string }>('/api/studio/motion/render', { method: 'POST', body: JSON.stringify(body) }),
+  htmlVideoTemplates: () => authedReq<{ templates: Array<Record<string, unknown>> }>('/api/studio/html-video/templates'),
+  htmlVideoRender: (body: { template_id: string; content: Record<string, unknown> }) => authedReq<{ task_id: string; status: string }>('/api/studio/html-video/render', { method: 'POST', body: JSON.stringify(body) }),
+  voiceClone: (body: { reference_audio: string; text: string }) => authedReq<{ task_id: string; status: string }>('/api/studio/voice/clone', { method: 'POST', body: JSON.stringify(body) }),
+  voiceDub: (body: { video_path: string; target_language: string }) => authedReq<{ task_id: string; status: string }>('/api/studio/voice/dub', { method: 'POST', body: JSON.stringify(body) }),
+  danceGpuCheck: () => authedReq<{ available: boolean; gpu_name?: string; vram_mb?: number }>('/api/studio/dance/gpu-check'),
+  danceGenerate: (body: { audio_path: string; dance_type: string; duration_s?: number }) => authedReq<{ task_id: string; status: string }>('/api/studio/dance/generate', { method: 'POST', body: JSON.stringify(body) }),
+};

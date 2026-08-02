@@ -13,7 +13,7 @@ FROM python:3.14-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg curl git \
+    ffmpeg curl git nodejs npm \
     && rm -rf /var/lib/apt/lists/* \
     # venv scripts have shebang #!/usr/bin/python3.14 (host system Python path)
     && ln -sf /usr/local/bin/python3.14 /usr/bin/python3.14
@@ -24,6 +24,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
+# Chrome Headless (used by Remotion) needs these runtime libraries. Keep this
+# separate from the large ffmpeg/node layer so normal API rebuilds stay cached.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libnss3 libnspr4 libatk1.0-0t64 libatk-bridge2.0-0t64 \
+    libcups2t64 libxcomposite1 libxdamage1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy pre-installed venv (Linux amd64 Python 3.14)
 # Scripts in .venv/bin/ have shebangs pointing to the host path
 # /data/soffy/projects/hevi/.venv/bin/python3 — create a symlink so they resolve
@@ -32,6 +39,9 @@ RUN mkdir -p /data/soffy/projects/hevi && \
     ln -s /app/.venv /data/soffy/projects/hevi/.venv
 
 # App source
+COPY hevi-remotion/package.json hevi-remotion/package-lock.json ./hevi-remotion/
+RUN cd hevi-remotion && npm ci --omit=dev --no-audit --no-fund
+COPY hevi-remotion/ ./hevi-remotion/
 COPY hevi/ ./hevi/
 COPY alembic.ini ./
 

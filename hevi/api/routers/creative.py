@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from oskill._schemas import Script, SubjectRef
+from oskill.schemas import Script, SubjectRef
 from pydantic import BaseModel
 
 from hevi.api.rate_limit import rate_limit

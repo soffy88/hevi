@@ -37,7 +37,7 @@ def _visible(asset: dict[str, Any], user: dict[str, Any]) -> bool:
 
 
 @router.post("", status_code=201)
-@router.post("/", status_code=201)
+@router.post("/", status_code=201, include_in_schema=False)
 async def create_audio_asset(
     body: AudioAssetCreateRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
@@ -56,7 +56,7 @@ async def create_audio_asset(
 
 
 @router.get("")
-@router.get("/")
+@router.get("/", include_in_schema=False)
 async def search_audio(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[AudioLibraryService, Depends(get_audio_service)],

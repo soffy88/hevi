@@ -1,12 +1,14 @@
-"""hevi.audio.edge_tts_custom 测试 —— edge_tts 语速/音高/音色覆盖(hevi 自有实现,不改 vendored oprim)。
 
-edge_tts 包本身走 mock(不实际联网合成);验证的是参数拼装 + 音色解析 + ffmpeg concat 调用。
+"""hevi.audio.edge_tts_custom 测试 —— edge_tts 语速/音高/音色覆盖
+(hevi 自有实现,不改 vendored oprim)。
+
+3O §2 Task 2.2:单行合成已收敛到 oprim.edge_tts_word_boundary 原子(单源),
+测试在 prim 边界打桩(不实际联网合成),验证的是 edge_tts_custom 的参数拼装 +
+音色解析 + ffmpeg concat 调用。
 """
 
 from __future__ import annotations
 
-import sys
-import types
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -21,26 +23,20 @@ from hevi.audio.edge_tts_custom import (
 )
 
 
-def _install_fake_edge_tts(calls: list[dict]) -> None:
-    """edge_tts 是可选依赖,测试环境未必装了;造一个假的顶级模块供 import 使用。"""
-    fake = types.ModuleType("edge_tts")
+def _patch_edge_tts_prim(calls: list[dict]):
+    """在 oprim.edge_tts_word_boundary 边界打桩:记录 text/voice/rate/pitch 并产出假音频。"""
+    async def _synth(text: str, voice: str, *, rate=None, pitch=None, output_path=None) -> dict:
+        calls.append({"text": text, "voice": voice, "rate": rate, "pitch": pitch})
+        Path(output_path).write_bytes(b"\x00" * 64)
+        return {"audio_path": output_path, "words": []}
 
-    class Communicate:
-        def __init__(self, text: str, voice: str, rate: str = "+0%", pitch: str = "+0Hz"):
-            calls.append({"text": text, "voice": voice, "rate": rate, "pitch": pitch})
-
-        async def save(self, path: str) -> None:
-            Path(path).write_bytes(b"\x00" * 64)
-
-    fake.Communicate = Communicate  # type: ignore[attr-defined]
-    sys.modules["edge_tts"] = fake
+    return patch("oprim.edge_tts_word_boundary", new=AsyncMock(side_effect=_synth))
 
 
 @pytest.mark.asyncio
 async def test_synthesize_single_line_with_rate_pitch(tmp_path: Path) -> None:
     calls: list[dict] = []
-    _install_fake_edge_tts(calls)
-    try:
+    with _patch_edge_tts_prim(calls):
         out = tmp_path / "out.wav"
         with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
             mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
@@ -54,15 +50,12 @@ async def test_synthesize_single_line_with_rate_pitch(tmp_path: Path) -> None:
         assert calls[0]["rate"] == "+15%"
         assert calls[0]["pitch"] == "+2Hz"
         assert calls[0]["voice"] == CURATED_VOICES["zh_female_standard"]  # 自动按语言选音色
-    finally:
-        del sys.modules["edge_tts"]
 
 
 @pytest.mark.asyncio
 async def test_synthesize_explicit_curated_voice_overrides_auto(tmp_path: Path) -> None:
     calls: list[dict] = []
-    _install_fake_edge_tts(calls)
-    try:
+    with _patch_edge_tts_prim(calls):
         out = tmp_path / "out.wav"
         with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
             mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
@@ -73,16 +66,13 @@ async def test_synthesize_explicit_curated_voice_overrides_auto(tmp_path: Path) 
                 voice="zh_male_deep",
             )
         assert calls[0]["voice"] == CURATED_VOICES["zh_male_deep"]
-    finally:
-        del sys.modules["edge_tts"]
 
 
 @pytest.mark.asyncio
 async def test_synthesize_raw_edge_tts_voice_id_passthrough(tmp_path: Path) -> None:
     """voice 不在 CURATED_VOICES 里 → 当作原生 edge-tts 音色 ID 直传。"""
     calls: list[dict] = []
-    _install_fake_edge_tts(calls)
-    try:
+    with _patch_edge_tts_prim(calls):
         out = tmp_path / "out.wav"
         with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
             mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
@@ -92,8 +82,6 @@ async def test_synthesize_raw_edge_tts_voice_id_passthrough(tmp_path: Path) -> N
                 voice="en-US-JennyNeural",
             )
         assert calls[0]["voice"] == "en-US-JennyNeural"
-    finally:
-        del sys.modules["edge_tts"]
 
 
 @pytest.mark.asyncio
@@ -131,8 +119,7 @@ class TestEmotionToRatePitch:
 @pytest.mark.asyncio
 async def test_voice_control_derives_rate_pitch_from_emotion(tmp_path: Path) -> None:
     calls: list[dict] = []
-    _install_fake_edge_tts(calls)
-    try:
+    with _patch_edge_tts_prim(calls):
         out = tmp_path / "out.wav"
         with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
             mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
@@ -144,15 +131,12 @@ async def test_voice_control_derives_rate_pitch_from_emotion(tmp_path: Path) -> 
             )
         assert calls[0]["rate"] == "-15%"
         assert calls[0]["pitch"] == "-15Hz"
-    finally:
-        del sys.modules["edge_tts"]
 
 
 @pytest.mark.asyncio
 async def test_voice_control_explicit_rate_pitch_overrides_emotion(tmp_path: Path) -> None:
     calls: list[dict] = []
-    _install_fake_edge_tts(calls)
-    try:
+    with _patch_edge_tts_prim(calls):
         out = tmp_path / "out.wav"
         with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
             mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
@@ -166,8 +150,6 @@ async def test_voice_control_explicit_rate_pitch_overrides_emotion(tmp_path: Pat
             )
         assert calls[0]["rate"] == "+15%"
         assert calls[0]["pitch"] == "+2Hz"
-    finally:
-        del sys.modules["edge_tts"]
 
 
 # ── 逐行情绪(2026-07-13,SPEC-002 B1:主线情绪配音,line 对象自带 .emotion)──────
@@ -178,8 +160,7 @@ async def test_per_line_emotion_overrides_batch_default(tmp_path: Path) -> None:
     """script 里每行各自带 .emotion(hevi 侧 SimpleNamespace 包装,主线 injected_audio_fn
     的用法)→ 每行按自己的情绪算 rate/pitch,不是整批统一一个值。"""
     calls: list[dict] = []
-    _install_fake_edge_tts(calls)
-    try:
+    with _patch_edge_tts_prim(calls):
         out = tmp_path / "out.wav"
         with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
             mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
@@ -194,8 +175,6 @@ async def test_per_line_emotion_overrides_batch_default(tmp_path: Path) -> None:
         assert calls[0]["rate"] == "+20%"  # 惊惧
         assert calls[1]["rate"] == "-15%"  # 悲怆
         assert calls[1]["pitch"] == "-15Hz"
-    finally:
-        del sys.modules["edge_tts"]
 
 
 @pytest.mark.asyncio
@@ -203,8 +182,7 @@ async def test_line_without_emotion_attribute_falls_back_to_batch_emotion(tmp_pa
     """混合场景:部分行有 .emotion,部分没有(如 tongjian 的 _Line dataclass)——
     没有的行退回整批统一的 emotion 参数,不报错也不错位。"""
     calls: list[dict] = []
-    _install_fake_edge_tts(calls)
-    try:
+    with _patch_edge_tts_prim(calls):
         out = tmp_path / "out.wav"
         with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
             mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
@@ -219,8 +197,6 @@ async def test_line_without_emotion_attribute_falls_back_to_batch_emotion(tmp_pa
             )
         assert calls[0]["rate"] == "+20%"  # 用自己的 .emotion
         assert calls[1]["rate"] == "-15%"  # 退回整批 emotion 参数
-    finally:
-        del sys.modules["edge_tts"]
 
 
 @pytest.mark.asyncio
@@ -228,8 +204,7 @@ async def test_explicit_rate_pitch_overrides_per_line_emotion_too(tmp_path: Path
     """显式 rate/pitch 优先级最高——连每行自带的 .emotion 都不能覆盖它,跟"整批
     emotion 参数被显式 rate/pitch 盖过"是同一条规则,行级也不例外。"""
     calls: list[dict] = []
-    _install_fake_edge_tts(calls)
-    try:
+    with _patch_edge_tts_prim(calls):
         out = tmp_path / "out.wav"
         with patch("hevi.audio.edge_tts_custom.ffmpeg_run", new_callable=AsyncMock) as mrun:
             mrun.side_effect = lambda **kw: out.write_bytes(b"\x00" * 32)
@@ -242,8 +217,6 @@ async def test_explicit_rate_pitch_overrides_per_line_emotion_too(tmp_path: Path
             )
         assert calls[0]["rate"] == "+5%"
         assert calls[0]["pitch"] == "+1Hz"
-    finally:
-        del sys.modules["edge_tts"]
 
 
 # ── edge_tts_synthesize_smart(2026-07-13,"edge_tts" provider 注册的真实入口)─────

@@ -17,6 +17,7 @@ RUN --mount=type=ssh uv sync --no-dev --frozen
 
 COPY scripts/ ./scripts/
 RUN python scripts/patch_vibevoice.py
+RUN python scripts/patch_oprim_prims.py
 
 COPY hevi/ ./hevi/
 

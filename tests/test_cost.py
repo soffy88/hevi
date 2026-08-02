@@ -252,12 +252,27 @@ async def test_task_service_run_task_with_monitoring_and_recording():
     service = TaskService(repo)
 
     with (
-        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+        # 3O 迁移后 run_task 经 hevi.production.execution.execute_standard_operation
+        # (oservi 引擎)驱动 omodul.longvideo_produce;测试在此新边界打桩,保持
+        # “成功运行 → 成本记账”的原始意图。
+        patch(
+            "hevi.tasks.task_service.execute_standard_operation",
+            new_callable=AsyncMock,
+        ) as mock_exec,
         patch("hevi.tasks.task_service.HeviCostTracker") as mock_tracker_class,
     ):
         mock_tracker = mock_tracker_class.return_value
         mock_tracker.total_usd = 0.0
-        mock_orch.return_value = {"url": "v.mp4", "duration": 180.0, "metadata": {"shots": 10}}
+        mock_exec.return_value = {
+            "status": "succeeded",
+            "report": {
+                "video_path": "v.mp4",
+                "duration_s": 180.0,
+                "shots_generated": 10,
+                "shots": [],
+                "quality": {"passed": True, "violations": [], "consistency": "ok"},
+            },
+        }
 
         await service.run_task(task_id)
 

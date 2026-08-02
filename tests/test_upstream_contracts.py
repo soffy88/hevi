@@ -124,31 +124,27 @@ def test_normal_archetype_passthrough():
     assert cfg.duration_archetype == "1-5min"
 
 
-# ── omodul _duration_archetype_to_seconds 猴补丁契约(short→10s 且用后恢复)──────
+# ── short 档显式时长配置契约 ─────────────────────────────────────────────────
 
 
 import pytest  # noqa: E402
 
 
 @pytest.mark.asyncio
-async def test_short_duration_monkeypatch_applies_and_restores():
-    """orchestrate 对 "short" 档临时把 omodul 的时长函数打成返回 10s;**运行后必须
-    恢复原函数**,否则会泄漏影响后续其它档位任务。"""
-    from unittest.mock import patch
+async def test_short_duration_is_explicitly_configured_without_global_patch():
+    """short 档经公开 target_duration_s=10 配置，不修改全局 omodul 状态。"""
+    from unittest.mock import AsyncMock, patch
 
-    import omodul.agentic_longvideo_pipeline as _m
     from omodul.agentic_longvideo_pipeline import LongVideoResult
 
     from hevi.pipeline.longvideo_orchestrator import orchestrate_longvideo
     from hevi.providers.registry import register_all_providers
 
     register_all_providers()  # orchestrate 需从注册表取 LLM "default"
-    orig = _m._duration_archetype_to_seconds
     captured = {}
 
     async def fake_pipeline(*, config, _providers):
-        # 运行中:补丁应已生效 → 任意档位都返回 10.0
-        captured["during"] = _m._duration_archetype_to_seconds("1-5min")
+        captured["target_duration_s"] = config.target_duration_s
         from pathlib import Path
 
         vp = Path(config.output_dir) / "final.mp4"
@@ -162,9 +158,17 @@ async def test_short_duration_monkeypatch_applies_and_restores():
             provider_used={"video": "wan_local", "audio": "ltx2_native"},
         )
 
-    with patch(
-        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
-        side_effect=fake_pipeline,
+    with (
+        patch(
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            side_effect=fake_pipeline,
+        ),
+        patch("hevi.providers.local_qwen_vl_adapter.vl_model_available", return_value=False),
+        patch(
+            "hevi.video.quality_check.quality_report",
+            new_callable=AsyncMock,
+            side_effect=FileNotFoundError("fixture has no rendered video"),
+        ),
     ):
         await orchestrate_longvideo(
             topic="t",
@@ -173,6 +177,4 @@ async def test_short_duration_monkeypatch_applies_and_restores():
             audio_provider="ltx2_native",
         )
 
-    assert captured["during"] == 10.0  # 运行中补丁生效
-    assert _m._duration_archetype_to_seconds is orig  # 运行后已恢复原函数
-    assert _m._duration_archetype_to_seconds("1-5min") == 180.0  # 行为回归正常
+    assert captured["target_duration_s"] == 10.0

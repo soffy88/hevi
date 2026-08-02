@@ -1,6 +1,6 @@
 from typing import Any
 
-from omodul.agentic_longvideo_pipeline import LongVideoResult
+from omodul.longvideo_produce import LongVideoResult
 
 from hevi.verdict.scorecard import Scorecard, coarse_diagnosis
 

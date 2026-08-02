@@ -4,6 +4,8 @@ from hevi.canvas.graph_models import CanvasGraph
 from hevi.credits.models import CreditAccount, CreditTransaction
 from hevi.db.base import Base
 from hevi.payment.models import Order
+from hevi.presenters.models import Presenter
+from hevi.runs.models import AutomationRun
 from hevi.series.models import Series
 from hevi.style.models import StylePack
 from hevi.subjects.models import Subject
@@ -12,11 +14,13 @@ from hevi.templates.template_models import Template
 
 __all__ = [
     "AudioAsset",
+    "AutomationRun",
     "Base",
     "CanvasGraph",
     "CreditAccount",
     "CreditTransaction",
     "Order",
+    "Presenter",
     "Series",
     "ShotState",
     "StylePack",

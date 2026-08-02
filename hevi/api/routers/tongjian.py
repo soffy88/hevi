@@ -15,18 +15,22 @@ import logging
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
-from hevi.tongjian.schemas import Constitution, LayerConfig, Script
-
 from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.runs.repository import AutomationRunRepository
+from hevi.runs.task_projection import create_projection, update_projection
+from hevi.runs.tongjian_state import dump_tongjian_update, load_tongjian_record
+from hevi.tasks.repository import TaskRepository
+from hevi.tasks.task_service import TaskService
+from hevi.tongjian.schemas import Constitution, LayerConfig, Script
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,8 @@ router = APIRouter(prefix="/tongjian", tags=["tongjian"])
 
 # ── P0 降级:DB 表可能未建,用内存 map 兜底 ──────────────────────────────
 _RUNS: dict[str, dict[str, Any]] = {}
+_RUN_STORES: dict[str, AutomationRunRepository] = {}
+_PERSIST_TASKS: set[asyncio.Task[Any]] = set()
 
 _LAYER_ORDER = ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"]
 
@@ -74,7 +80,7 @@ class LayerState(BaseModel):
     retry_count: int = 0
     degraded: bool = False
     artifact_path: str | None = None
-    gate_report: dict | None = None
+    gate_report: dict[str, Any] | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     error: str | None = None
@@ -90,6 +96,7 @@ class RunStatus(BaseModel):
     layers: list[LayerState] = []
     result_video_path: str | None = None
     error: str | None = None
+    task_ids: list[str] = []
 
 
 # ── 辅助:初始化 run 记录 ───────────────────────────────────────────────────
@@ -97,8 +104,8 @@ class RunStatus(BaseModel):
 
 def _init_run(run_id: str, source_name: str) -> dict[str, Any]:
     layers = {
-        l: {
-            "layer": l,
+        layer: {
+            "layer": layer,
             "status": "PENDING",
             "retry_count": 0,
             "degraded": False,
@@ -108,7 +115,7 @@ def _init_run(run_id: str, source_name: str) -> dict[str, Any]:
             "finished_at": None,
             "error": None,
         }
-        for l in _LAYER_ORDER
+        for layer in _LAYER_ORDER
     }
     record = {
         "run_id": run_id,
@@ -120,6 +127,7 @@ def _init_run(run_id: str, source_name: str) -> dict[str, Any]:
         "layers": layers,
         "result_video_path": None,
         "error": None,
+        "task_ids": [],
     }
     _RUNS[run_id] = record
     return record
@@ -129,6 +137,25 @@ def _update_layer(run_id: str, layer: str, **kwargs: Any) -> None:
     if run_id in _RUNS:
         _RUNS[run_id]["layers"][layer].update(kwargs)
         _RUNS[run_id]["current_layer"] = layer
+        repo = _RUN_STORES.get(run_id)
+        task_id = (_RUNS[run_id].get("task_ids") or [None])[0]
+        if repo is not None and task_id is not None:
+            progress = min(95.0, (_LAYER_ORDER.index(layer) + 1) / len(_LAYER_ORDER) * 100)
+            projection_task = asyncio.create_task(
+                update_projection(
+                    TaskRepository(repo.pool),
+                    task_id,
+                    status="failed" if kwargs.get("status") == "FAILED" else "running",
+                    progress_pct=progress,
+                    error=kwargs.get("error"),
+                )
+            )
+            _PERSIST_TASKS.add(projection_task)
+            projection_task.add_done_callback(_PERSIST_TASKS.discard)
+        if repo is not None:
+            task = asyncio.create_task(repo.update(run_id, dump_tongjian_update(_RUNS[run_id])))
+            _PERSIST_TASKS.add(task)
+            task.add_done_callback(_PERSIST_TASKS.discard)
 
 
 def _finish_run(
@@ -140,6 +167,25 @@ def _finish_run(
         _RUNS[run_id]["result_video_path"] = result_path
         if error:
             _RUNS[run_id]["error"] = error
+        repo = _RUN_STORES.get(run_id)
+        task_id = (_RUNS[run_id].get("task_ids") or [None])[0]
+        if repo is not None and task_id is not None:
+            projection_task = asyncio.create_task(
+                update_projection(
+                    TaskRepository(repo.pool),
+                    task_id,
+                    status="completed" if success else "failed",
+                    progress_pct=100.0 if success else None,
+                    result_video_path=result_path,
+                    error=error,
+                )
+            )
+            _PERSIST_TASKS.add(projection_task)
+            projection_task.add_done_callback(_PERSIST_TASKS.discard)
+        if repo is not None:
+            task = asyncio.create_task(repo.update(run_id, dump_tongjian_update(_RUNS[run_id])))
+            _PERSIST_TASKS.add(task)
+            task.add_done_callback(_PERSIST_TASKS.discard)
 
 
 # ── 后台流水线 ────────────────────────────────────────────────────────────────
@@ -169,25 +215,25 @@ def _apply_cloud_avatar_preset(req: RunRequest) -> None:
             req.layer_config[_lyr] = _cur.model_copy(update={"model": _m})
 
 
-def _pipeline_helpers(run_id: str, req: RunRequest):
+def _pipeline_helpers(run_id: str, req: RunRequest) -> tuple[Any, Any, Any, Any]:
     """构造逐层 provider/参数/门禁助手(L0-L2 与 L3-L8 两段共用)。"""
     from obase.provider_registry import ProviderRegistry
 
-    def _llm(layer: str):
+    def _llm(layer: str) -> Any:
         cfg = req.layer_config.get(layer)
         return ProviderRegistry.get().llm(cfg.model if cfg and cfg.model else "default")
 
-    def _tts(layer: str):
+    def _tts(layer: str) -> Any:
         cfg = req.layer_config.get(layer)
         if not (cfg and cfg.model):
             return None  # 用该层默认 TTS
         return ProviderRegistry.get().generic("audio", cfg.model)
 
-    def _params(layer: str) -> dict:
+    def _params(layer: str) -> dict[str, Any]:
         cfg = req.layer_config.get(layer)
         return dict(cfg.params) if cfg and cfg.params else {}
 
-    def _gate_done(layer: str, gate) -> None:
+    def _gate_done(layer: str, gate: Any) -> None:
         """门禁非阻塞:不过标只标 DEGRADED + 记 gate_report,不中断流水线(通鉴"永不卡死")。"""
         _update_layer(
             run_id,
@@ -201,7 +247,7 @@ def _pipeline_helpers(run_id: str, req: RunRequest):
     return _llm, _tts, _params, _gate_done
 
 
-def _persist_review(run_dir, constitution, script) -> None:
+def _persist_review(run_dir: Path, constitution: Constitution, script: Script) -> None:
     """把立意+剧本落盘(L2/review.json),审核/续跑读得到,API 重启也不丢草稿。"""
     import json
     from pathlib import Path
@@ -277,6 +323,8 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
                 constitution=constitution,
                 llm=_llm("L2"),
                 dramatize=bool(_params("L2").get("dramatize", True)),
+                include_commentary=bool(_params("L2").get("include_commentary", True)),
+                screenwriter_persona=_params("L2").get("screenwriter_persona") or None,
             )
             _gate_done("L2", g2)
         except Exception as e:
@@ -311,7 +359,7 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
         _finish_run(run_id, success=False, error=str(e)[:500])
 
 
-async def _run_render(run_id: str) -> None:
+async def _run_render_layers(run_id: str) -> dict[str, Any] | None:
     """续跑 L3-L8(审核通过后调用)。从 _RUNS 读回 L0-L2 产物(含人工编辑过的剧本)。"""
     from pathlib import Path
 
@@ -324,12 +372,12 @@ async def _run_render(run_id: str) -> None:
     rec["status"] = "RUNNING"
 
     try:
-        from hevi.tongjian.voiceover import build_voiceover
-        from hevi.tongjian.character_bible import generate_character_bible
-        from hevi.tongjian.shotlist import build_shotlist
-        from hevi.tongjian.scene_render import gate_frame_manifest, render_shots
-        from hevi.tongjian.music_plan import build_music_plan
         from hevi.tongjian.assemble import build_final_video
+        from hevi.tongjian.character_bible import generate_character_bible
+        from hevi.tongjian.music_plan import build_music_plan
+        from hevi.tongjian.scene_render import gate_frame_manifest, render_shots
+        from hevi.tongjian.shotlist import build_shotlist
+        from hevi.tongjian.voiceover import build_voiceover
 
         _llm, _tts, _params, _gate_done = _pipeline_helpers(run_id, req)
 
@@ -358,7 +406,7 @@ async def _run_render(run_id: str) -> None:
                 run_id, "L5", status="FAILED", error=str(e)[:500], finished_at=datetime.now(UTC)
             )
             _finish_run(run_id, success=False, error=f"L3/L5 failed: {e}")
-            return
+            return None
 
         # L4 分镜。数字人管线每镜重生成音频,长 shot 拆子镜头会导致同句重复,故关闭拆分。
         _l6 = req.layer_config.get("L6")
@@ -378,7 +426,7 @@ async def _run_render(run_id: str) -> None:
                 run_id, "L4", status="FAILED", error=str(e)[:500], finished_at=datetime.now(UTC)
             )
             _finish_run(run_id, success=False, error=f"L4 failed: {e}")
-            return
+            return None
 
         # L6 场景/画面生成
         _update_layer(run_id, "L6", status="RUNNING", started_at=datetime.now(UTC))
@@ -403,7 +451,7 @@ async def _run_render(run_id: str) -> None:
                 run_id, "L6", status="FAILED", error=str(e)[:500], finished_at=datetime.now(UTC)
             )
             _finish_run(run_id, success=False, error=f"L6 failed: {e}")
-            return
+            return None
 
         # L7 音乐规划
         _update_layer(run_id, "L7", status="RUNNING", started_at=datetime.now(UTC))
@@ -432,22 +480,70 @@ async def _run_render(run_id: str) -> None:
                 frame_manifest=frame_manifest,
                 timeline=timeline,
                 script=script,
-                music_plan=music_plan,
+                music_plan=cast(Any, music_plan),
                 constitution=constitution,
                 audio_dir=run_dir / "L3",
                 output_dir=run_dir / "L8",
             )
             _gate_done("L8", g8)
-            _finish_run(run_id, success=True, result_path=final_video.video_path)
+            return {
+                "video_path": str(final_video.video_path),
+                "report": {"completed_layers": ["L3", "L4", "L5", "L6", "L7", "L8"]},
+            }
         except Exception as e:
             _update_layer(
                 run_id, "L8", status="FAILED", error=str(e)[:500], finished_at=datetime.now(UTC)
             )
             _finish_run(run_id, success=False, error=f"L8 failed: {e}")
+            return None
 
     except Exception as e:
         logger.exception("tongjian pipeline %s unhandled: %s", run_id, e)
         _finish_run(run_id, success=False, error=str(e)[:500])
+        return None
+
+
+async def _run_render(run_id: str) -> None:
+    """Run the resumable L3-L8 renderer through the standard 3O boundary."""
+    from hevi.tongjian.production import PresenterProductionError, render_presenter_video
+
+    rec = _RUNS[run_id]
+    run_dir = Path(rec["run_dir"])
+
+    async def render_layers(
+        _presentation: dict[str, Any], _output_dir: Path, _config: dict[str, Any]
+    ) -> dict[str, Any]:
+        result = await _run_render_layers(run_id)
+        if result is None:
+            raise RuntimeError(_RUNS[run_id].get("error") or "Tongjian L3-L8 renderer failed")
+        return result
+
+    try:
+        result = await render_presenter_video(output_dir=run_dir, renderer=render_layers)
+    except PresenterProductionError as exc:
+        if _RUNS[run_id].get("status") != "FAILED":
+            _finish_run(run_id, success=False, error=f"L3-L8 failed: {exc}")
+        return
+    _finish_run(run_id, success=True, result_path=str(result.video_path))
+
+
+async def execute_task(task: dict[str, Any], pool: PgPool) -> dict[str, Any]:
+    """TaskService adapter entrypoint for Tongjian's layered renderer."""
+    config = task.get("config_json") or {}
+    run_id = str(config.get("run_id") or "")
+    if not run_id:
+        raise ValueError("tongjian task missing config_json.run_id")
+    if run_id not in _RUNS:
+        repo = AutomationRunRepository(pool)
+        row = await repo.get(run_id)
+        if row is None:
+            raise ValueError(f"tongjian run {run_id} not found")
+        _RUNS[run_id] = load_tongjian_record(row)
+        _RUN_STORES[run_id] = repo
+    request_data = config.get("request") or {}
+    request = RunRequest.model_validate(request_data)
+    await _run_pipeline(run_id, request)
+    return await TaskRepository(pool).get_task(task["id"]) or task
 
 
 # ── API Endpoints ─────────────────────────────────────────────────────────────
@@ -457,7 +553,8 @@ async def _run_render(run_id: str) -> None:
 async def start_run(
     body: RunRequest,
     background_tasks: BackgroundTasks,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, str]:
     """启动一次通鉴全自动流水线(异步后台跑)。"""
     if not body.raw_text.strip():
@@ -467,31 +564,87 @@ async def start_run(
 
     run_id = str(uuid.uuid4())
     _init_run(run_id, body.source_name)
-    background_tasks.add_task(_run_pipeline, run_id, body)
+    task_ids: list[str] = []
+    if pool is not None:
+        projection = await create_projection(
+            TaskRepository(pool),
+            user_id=str(user["id"]),
+            topic=body.source_name,
+            source="tongjian",
+            duration_archetype=f"{body.target_duration_sec}s",
+            video_provider="tongjian_adapter",
+            audio_provider="tongjian_adapter",
+            config={
+                "run_id": run_id,
+                "request": body.model_dump(mode="json"),
+                "aspect_ratio": body.aspect_ratio,
+            },
+        )
+        task_ids = [str(projection["id"])]
+        _RUNS[run_id]["task_ids"] = task_ids
+        repo = AutomationRunRepository(pool)
+        await repo.create(
+            {
+                "id": uuid.UUID(run_id),
+                "kind": "tongjian",
+                "user_id": str(user["id"]),
+                "status": "PENDING",
+                "input_json": {"source_name": body.source_name, "raw_text": body.raw_text},
+                "state_json": {"layers": _RUNS[run_id]["layers"]},
+                "task_ids": task_ids,
+            }
+        )
+        _RUN_STORES[run_id] = repo
+    if task_ids:
+        assert pool is not None
+        background_tasks.add_task(
+            TaskService(TaskRepository(pool)).run_task, uuid.UUID(task_ids[0])
+        )
+    else:
+        background_tasks.add_task(_run_pipeline, run_id, body)
     logger.info("tongjian run %s started: %s", run_id, body.source_name)
     return {"run_id": run_id, "status": "PENDING"}
 
 
 @router.get("/runs")
 async def list_runs(
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> list[RunStatus]:
     """列出所有 run(内存 P0 版,全局共享)。"""
-    result = []
-    for rec in sorted(_RUNS.values(), key=lambda r: r["created_at"], reverse=True):
-        result.append(_rec_to_status(rec))
+    result: list[RunStatus] = []
+    rows = []
+    if pool is not None:
+        rows = await AutomationRunRepository(pool).list_for_user(
+            kind="tongjian", user_id=str(user["id"])
+        )
+    seen = {str(row["id"]) for row in rows}
+    result.extend(
+        _rec_to_status(load_tongjian_record(row))
+        for row in rows
+        if str(row["id"]) not in _RUNS
+    )
+    result.extend(
+        _rec_to_status(rec)
+        for rec in sorted(_RUNS.values(), key=lambda r: r["created_at"], reverse=True)
+        if rec["run_id"] in seen
+    )
     return result
 
 
 @router.get("/runs/{run_id}")
 async def get_run(
     run_id: str,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> RunStatus:
     """查询单个 run 状态 + 各层进度。"""
     rec = _RUNS.get(run_id)
     if not rec:
-        raise HTTPException(status_code=404, detail="run 不存在")
+        row = await AutomationRunRepository(pool).get(run_id) if pool is not None else None
+        if row is None or row.get("kind") != "tongjian" or row.get("user_id") != str(user["id"]):
+            raise HTTPException(status_code=404, detail="run 不存在")
+        return _rec_to_status(load_tongjian_record(row))
     return _rec_to_status(rec)
 
 
@@ -507,7 +660,7 @@ def _require_review_rec(run_id: str) -> dict[str, Any]:
 @router.get("/runs/{run_id}/script")
 async def get_run_script(
     run_id: str,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
     """取回待审核的立意+剧本(供人工审核台展示/编辑)。"""
     rec = _require_review_rec(run_id)
@@ -522,7 +675,7 @@ async def get_run_script(
 async def update_run_script(
     run_id: str,
     body: ScriptReviewUpdate,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, str]:
     """人工审核提交:用编辑后的剧本(+可选立意)覆盖草稿。不触发续跑,只保存。
 
@@ -548,7 +701,7 @@ async def update_run_script(
 async def resume_run(
     run_id: str,
     background_tasks: BackgroundTasks,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, str]:
     """审核通过 → 用(可能已编辑的)剧本续跑 L3-L8 渲染。"""
     rec = _require_review_rec(run_id)
@@ -564,7 +717,7 @@ async def resume_run(
 async def regenerate_script(
     run_id: str,
     background_tasks: BackgroundTasks,
-    user: Annotated[dict, Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, str]:
     """对剧本不满意 → 用同一 chapter_ir/立意 重出一版剧本(仍停在审核态)。"""
     rec = _require_review_rec(run_id)
@@ -585,11 +738,13 @@ async def regenerate_script(
                 constitution=rec["constitution"],
                 llm=_llm("L2"),
                 dramatize=bool(_params("L2").get("dramatize", True)),
+                include_commentary=bool(_params("L2").get("include_commentary", True)),
+                screenwriter_persona=_params("L2").get("screenwriter_persona") or None,
             )
             rec["script"] = script
             _gate_done("L2", g2)
             _persist_review(Path(rec["run_dir"]), rec["constitution"], script)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("tongjian run %s 重生成剧本失败: %s", run_id, e)
         rec["status"] = "AWAITING_REVIEW"
 
@@ -642,4 +797,5 @@ def _rec_to_status(rec: dict[str, Any]) -> RunStatus:
         layers=layers,
         result_video_path=rec.get("result_video_path"),
         error=rec.get("error"),
+        task_ids=[str(task_id) for task_id in (rec.get("task_ids") or [])],
     )

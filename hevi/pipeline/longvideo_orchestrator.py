@@ -7,7 +7,11 @@ import re
 from pathlib import Path
 from typing import Any
 
-from omodul.agentic_longvideo_pipeline import agentic_longvideo_pipeline
+from omodul.longvideo_produce import (
+    default_longvideo_shot_generator,
+    rework_longvideo_shots,
+    run_longvideo_pipeline,
+)
 
 from hevi.observability import track_video_generation
 from hevi.pipeline.config_builder import build_longvideo_config
@@ -16,13 +20,6 @@ from hevi.pipeline.result_mapper import map_longvideo_result
 logger = logging.getLogger(__name__)
 
 _SHOT_INDEX_RE = re.compile(r"shot[_-]?(\d+)")
-# 舞台提示/动作说明括号(中英文),如"（一把拽过胳膊）"——是给分镜看的动作描述,
-# 不是要念出来或打进字幕的台词,配音/字幕两处都剥掉。
-_STAGE_DIR_RE = re.compile(r"[（(][^）)]*[）)]")
-
-
-def _strip_stage_directions(text: str) -> str:
-    return _STAGE_DIR_RE.sub("", text or "").strip()
 
 
 def _safe_size(p: Path) -> int:
@@ -63,6 +60,14 @@ def _order_and_dedup_shots(paths: list[Path]) -> list[Path]:
 # picks it up even though it imported the function reference earlier.
 # Must be reset to None after the test.
 _PROVIDERS_OVERRIDE: dict[str, Any] | None = None
+
+
+async def agentic_longvideo_pipeline(
+    *, config: Any, _providers: dict[str, Any] | None = None
+) -> Any:
+    """Compatibility seam for HEVI tests while invoking the public omodul hook."""
+
+    return await run_longvideo_pipeline(config=config, providers=_providers)
 
 
 async def orchestrate_longvideo(
@@ -134,7 +139,7 @@ async def orchestrate_longvideo(
     # SPEC-003 主线导演流水线:①-④已在 director_pipeline.py 走完人审核锁定的 ShotList
     # (dict 形式,JSON 可序列化,见 hevi/director/pipeline_schemas.py::ShotList)。存在时,
     # oskill 自己的 script_writer/storyboard_planner/shot_generator 整段跳过,直接用锁定
-    # 内容——见 patched_storyboard_fn 之后的 _locked_script_fn/_locked_storyboard_fn 与
+    # 内容——见 storyboard_locked_override.apply_locked_storyboard_override(纯函数)与
     # _counting_shot_gen_fn 里的 locked_shot_list 分支。None(默认)= 旧路径,零回归。
     locked_shot_list: dict[str, Any] | None = None,
     # 配合 locked_shot_list:{0-based 镜头序号: [该镜头出场角色的参考图文件路径,...]}。
@@ -348,15 +353,11 @@ async def orchestrate_longvideo(
             return (832, 480)
         return (576, 576)
 
-    # For hevi-only "short" archetype, monkey-patch target duration so the LLM writes a
-    # minimal single-shot script instead of a full 180-second production.
-    _short_patch_active = False
+    # ``target_duration_s`` is the public configuration override.  It replaces
+    # the former process-global patch of omodul's private duration helper.
+    config_kwargs = dict(kwargs)
     if duration_archetype == "short":
-        import omodul.agentic_longvideo_pipeline as _omodul_m
-
-        _orig_dur_fn = _omodul_m._duration_archetype_to_seconds
-        _omodul_m._duration_archetype_to_seconds = lambda _: 10.0  # type: ignore[assignment]
-        _short_patch_active = True
+        config_kwargs.setdefault("target_duration_s", 10.0)
 
     lv_config = build_longvideo_config(
         topic=engineered_topic,
@@ -366,84 +367,47 @@ async def orchestrate_longvideo(
         style=style,
         num_characters=num_characters,
         language=language,
-        **kwargs,
+        **config_kwargs,
     )
 
     async with track_video_generation(video_provider, duration_archetype):
-        # SaaS-2/P10.F2 Fix: oskill.storyboard_planner has a bug where it calls .model_dump()
-        # on scenes, but Chapter model defines them as list[dict].
+        # 3O 迁移 §2 Task 2.1:oskill ≥4.5.0 已修复 Pydantic 赋值校验 bug
+        # (storyboard_planner B7:dict scene 不再无条件调 .model_dump()),
+        # ScriptWrapper 代理类与 patched_storyboard_fn 已废除 —— 非锁定路径直接调
+        # oskill 原生 storyboard_planner(保留逐阶段进度上报)。
         from oskill.storyboard_planner import storyboard_planner
 
-        async def patched_storyboard_fn(*, script: Any, llm: Any) -> Any:
-            # Wrap the script to bypass Pydantic assignment validation
-            class ScriptWrapper:
-                def __init__(self, orig: Any):
-                    self._orig = orig
-
-                    class ModelDict(dict[str, Any]):
-                        def model_dump(self) -> dict[str, Any]:
-                            return dict(self)
-
-                    if hasattr(orig, "scenes"):
-                        self.scenes = [
-                            ModelDict(s) if isinstance(s, dict) else s for s in orig.scenes
-                        ]
-                    else:
-                        self.scenes = []
-
-                def __getattr__(self, name: str) -> Any:
-                    return getattr(self._orig, name)
-
+        async def storyboard_fn(*, script: Any, llm: Any) -> Any:
             await _report("规划分镜脚本", 15.0)
-            wrapped_script = ScriptWrapper(script)
-            return await storyboard_planner(script=wrapped_script, llm=llm)  # type: ignore[arg-type]
+            return await storyboard_planner(script=script, llm=llm)
 
         # SPEC-003(主线导演流水线):locked_shot_list 存在时,①-④级已经在
         # hevi/api/routers/director_pipeline.py 走完人审核锁定,不需要 oskill 自己的
         # script_writer/storyboard_planner/shot_generator 再规划一遍(省钱,且锁定内容
-        # 才是唯一真相源)。三个规划期钩子都替换成"直接转换锁定数据"的版本:
-        #   script_fn      → 台词行(带 speaker)转 SpeakerLine,喂进全片配音轨(音频侧
-        #                     真正的对白来源是 chapter.dialogues,不是 ShotPlan.tts_text,
-        #                     见 SPEC-003 plan 里对 omodul 源码的实测)。
-        #                     不改 character_voices 的既有消费逻辑,只是这里 speaker_id
-        #                     现在真的按角色区分,不再全部落到同一个默认说话人。
-        #   storyboard_fn  → 返回一个占位 Storyboard,不做真实 LLM 规划调用(下面
-        #                     shot_gen_fn 分支根本不读它的内容)。
-        #   shot_gen_fn    → 见 _counting_shot_gen_fn 内的 locked_shot_list 分支。
+        # 才是唯一真相源)。3O 迁移:该逻辑已抽离为纯算法
+        # hevi.pipeline.storyboard_locked_override.apply_locked_storyboard_override
+        # (stateless, 目标上游至 oskill.storyboard_locked_override);此处仅从纯函数
+        # 结果构造 omodul 原生 providers 钩子的薄适配器,不再做运行期函数替换。
+        _locked_override: dict[str, Any] | None = None
         if locked_shot_list is not None:
-            from oskill._schemas import Chapter, ChapterScript, SpeakerLine, Storyboard
+            from hevi.pipeline.storyboard_locked_override import (
+                apply_locked_storyboard_override,
+            )
+
+            _locked_override = apply_locked_storyboard_override(
+                script_data={}, locked_shots=locked_shot_list.get("shots", [])
+            )
 
             async def _locked_script_fn(**_kw: Any) -> Any:
-                # 2026-07-14 用户要求:彻底不要旁白。只保留有说话人的对白行
-                # (character_name 非空);旁白行(character_name 为空)完全丢弃,不进配音轨。
-                # 台词里的舞台提示括号也剥掉(不是要念的话)。speaker_id 用角色名,命中
-                # produce 传入的 character_voices 就换成该角色专属音色(见 injected_audio_fn)。
-                dialogues = []
-                for shot in locked_shot_list.get("shots", []):
-                    for line in shot.get("dialogue_lines", []):
-                        speaker = (line.get("character_name") or "").strip()
-                        if not speaker:
-                            continue
-                        text = _strip_stage_directions(line.get("text", ""))
-                        if text:
-                            dialogues.append(SpeakerLine(speaker_id=speaker, text=text))
-                chapter = Chapter(chapter_id="locked", title="", scenes=[], dialogues=dialogues)
-                return ChapterScript(
-                    chapters=[chapter],
-                    total_duration_s=sum(
-                        float(s.get("duration_s") or 0) for s in locked_shot_list.get("shots", [])
-                    ),
-                    characters=[],
-                )
+                # script_fn → 台词行(带 speaker)转 SpeakerLine,喂进全片配音轨(音频侧
+                # 真正的对白来源是 chapter.dialogues,不是 ShotPlan.tts_text)。
+                # character_voices 按角色区分说话人的逻辑不变(见 injected_audio_fn)。
+                return _locked_override["chapter_script"]
 
             async def _locked_storyboard_fn(**_kw: Any) -> Any:
-                return Storyboard(shots=[])
-
-            _providers_script_fn = _locked_script_fn
-            _providers_storyboard_fn = _locked_storyboard_fn
-        else:
-            _providers_script_fn = None
-            _providers_storyboard_fn = patched_storyboard_fn
+                # storyboard_fn → 占位 Storyboard,不做真实 LLM 规划调用(shot_gen_fn
+                # 分支根本不读它的内容)。
+                return _locked_override["storyboard"]
 
         # SaaS-2/P10.F2 Fix: omodul has a hardcoded import for vibevoice_synthesize that fails.
         # We inject the actual audio provider from the registry.
@@ -1014,12 +978,15 @@ async def orchestrate_longvideo(
 
         _providers: dict[str, Any] = {
             "llm": _llm,
-            "storyboard_fn": _providers_storyboard_fn,
+            "storyboard_fn": storyboard_fn,
             "video_fn": injected_video_fn,
             "assembler_fn": bridged_assembler_fn,
         }
-        if _providers_script_fn is not None:
-            _providers["script_fn"] = _providers_script_fn
+        if _locked_override is not None:
+            # SPEC-003:锁定路径 —— omodul 原生 providers 钩子,薄适配纯函数结果,
+            # 不做运行期函数替换。
+            _providers["script_fn"] = _locked_script_fn
+            _providers["storyboard_fn"] = _locked_storyboard_fn
         if audio_provider != "ltx2_native":
             _providers["audio_fn"] = injected_audio_fn
 
@@ -1040,8 +1007,6 @@ async def orchestrate_longvideo(
         # 计数 shot 生成器(所有档位):预统计总镜头数 → total_shots + 逐镜头百分比,
         # 修复"停在 75%"的显示问题。short 档另叠加:真·单镜头 + 免逐镜头
         # select_reference / consistency 视觉-LLM 调用(单镜头无跨镜一致性可言)。
-        from omodul.agentic_longvideo_pipeline import _default_shot_generator
-
         _is_short = duration_archetype == "short"
         _shot_budget = {"left": 1}  # short 跨章节总镜头预算(真·单镜头)
         # SPEC-001 §5:旁路收集每个 shot_plan 的台词/旁白文本(oskill.ShotPlan.tts_text),
@@ -1050,38 +1015,18 @@ async def orchestrate_longvideo(
         # 台词文本只有在这里(shot_gen_fn 阶段)才有。
         _dialogue_texts: list[str] = []
 
-        def _shot_plans_from_locked_shot_list() -> list[Any]:
-            """SPEC-003:locked_shot_list 的每一镜转成 ShotPlan 兼容对象(鸭子类型——
-            下游只按属性访问,见本文件 injected_video_fn/_dialogue_texts 收集逻辑,不需要
-            真的是 oskill.ShotPlan 实例)。short 档的单镜头预算裁剪在这条分支不生效——
-            用户已经在④分镜级人工锁定了具体镜头数,不该被自动裁到 1 镜。"""
-            from types import SimpleNamespace
-
-            out = []
-            for shot in locked_shot_list.get("shots", []):  # type: ignore[union-attr]
-                # 2026-07-14 用户要求:字幕也彻底不要旁白——只收有说话人的对白,且不带
-                # "角色名:" 前缀(像正片字幕那样只显示台词本身),舞台提示括号剥掉。
-                dialogue_bits = [
-                    _strip_stage_directions(ln.get("text", ""))
-                    for ln in shot.get("dialogue_lines", [])
-                    if (ln.get("character_name") or "").strip()
-                ]
-                dialogue_bits = [t for t in dialogue_bits if t]
-                out.append(
-                    SimpleNamespace(
-                        shot_id=shot.get("shot_id", ""),
-                        image_prompt=shot.get("visual_prompt", ""),
-                        tts_text="。".join(dialogue_bits),
-                        duration_s=float(shot.get("duration_s") or 5.0),
-                    )
-                )
-            return out
+        def _shot_plans_from_locked_override() -> list[Any]:
+            """SPEC-003:纯函数 apply_locked_storyboard_override 产出的 ShotPlan 兼容对象
+            (鸭子类型——下游只按属性访问,见 injected_video_fn/_dialogue_texts 收集逻辑)。
+            short 档的单镜头预算裁剪在这条分支不生效——用户已经在④分镜级人工锁定了
+            具体镜头数,不该被自动裁到 1 镜。"""
+            return _locked_override["shot_plans"] if _locked_override is not None else []
 
         async def _counting_shot_gen_fn(*, storyboard: Any, llm: Any) -> Any:
-            if locked_shot_list is not None:
-                plans = _shot_plans_from_locked_shot_list()
+            if _locked_override is not None:
+                plans = _shot_plans_from_locked_override()
             else:
-                plans = await _default_shot_generator(storyboard=storyboard, llm=llm)
+                plans = await default_longvideo_shot_generator(storyboard=storyboard, llm=llm)
                 if _is_short:
                     if _shot_budget["left"] <= 0:
                         return []
@@ -1159,23 +1104,17 @@ async def orchestrate_longvideo(
         if _self._PROVIDERS_OVERRIDE:
             _providers.update(_self._PROVIDERS_OVERRIDE)
 
-        try:
-            if regenerate_shot_ids:
-                # C3 verdict→返工:复用已建好的 _providers,只重生成指定镜头(hints 并入 prompt)。
-                from omodul.agentic_longvideo_pipeline import regenerate_shots as _regen
-
-                result = await _regen(
-                    task_dir=lv_config.output_dir,
-                    shot_ids=regenerate_shot_ids,
-                    hints=shot_hints or {},
-                    config=lv_config,
-                    _providers=_providers,
-                )
-            else:
-                result = await agentic_longvideo_pipeline(config=lv_config, _providers=_providers)
-        finally:
-            if _short_patch_active:
-                _omodul_m._duration_archetype_to_seconds = _orig_dur_fn
+        if regenerate_shot_ids:
+            # C3 verdict→返工:复用已建好的 _providers,只重生成指定镜头(hints 并入 prompt)。
+            result = await rework_longvideo_shots(
+                task_dir=lv_config.output_dir,
+                shot_ids=regenerate_shot_ids,
+                hints=shot_hints or {},
+                config=lv_config,
+                providers=_providers,
+            )
+        else:
+            result = await agentic_longvideo_pipeline(config=lv_config, _providers=_providers)
 
         # SaaS-3/P10.F3 Fix: omodul suppresses shot failures by returning placeholders.
         # We must detect this to trigger Hevi's provider-level fallback.

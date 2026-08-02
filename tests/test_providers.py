@@ -105,6 +105,86 @@ def test_local_qwen_retries_transient_500(monkeypatch):
     assert calls["n"] == 2  # 首次 500 → 重试第二次成功
 
 
+def test_local_qwen_falls_back_to_available_model(monkeypatch):
+    """配置模型被删除后,应从 Ollama 清单选择已安装的兼容模型。"""
+    monkeypatch.setattr(lqa, "_OLLAMA_MODEL", "qwen2.5:7b")
+
+    class _Resp:
+        status_code = 200
+        request = None
+
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+    def fake_get(url, **kwargs):
+        assert url.endswith("/api/tags")
+        return _Resp({"models": [{"name": "qwen2.5vl:7b"}]})
+
+    def fake_post(url, *, json, **kwargs):
+        if "/v1/chat/completions" in url:
+            assert json["model"] == "qwen2.5vl:7b"
+            return _Resp({"choices": [{"message": {"content": "ok"}}], "usage": {}})
+        return _Resp({})
+
+    monkeypatch.setattr(lqa.httpx, "get", fake_get)
+    monkeypatch.setattr(lqa.httpx, "post", fake_post)
+    response = lqa._call_ollama(messages=[{"role": "user", "content": "hi"}])
+    assert response["model"] == "qwen2.5vl:7b"
+    assert response["content"] == "ok"
+
+
+def test_local_qwen_reports_unavailable_models(monkeypatch):
+    monkeypatch.setattr(lqa, "_OLLAMA_MODEL", "qwen2.5:7b")
+
+    class _Resp:
+        status_code = 200
+        request = None
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"models": [{"name": "qwen2.5-embedding:latest"}]}
+
+    monkeypatch.setattr(lqa.httpx, "get", lambda *args, **kwargs: _Resp())
+    with pytest.raises(RuntimeError, match="Ollama 模型不可用"):
+        lqa._call_ollama(messages=[{"role": "user", "content": "hi"}])
+
+
+def test_local_qwen_404_is_reported_as_model_error(monkeypatch):
+    monkeypatch.setattr(lqa, "_OLLAMA_MODEL", "qwen2.5:7b")
+
+    class _Tags:
+        status_code = 200
+        request = None
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"models": [{"name": "qwen2.5:7b"}]}
+
+    class _NotFound:
+        status_code = 404
+        request = None
+
+        def raise_for_status(self):
+            import httpx
+
+            raise httpx.HTTPStatusError("not found", request=None, response=self)
+
+    monkeypatch.setattr(lqa.httpx, "get", lambda *args, **kwargs: _Tags())
+    monkeypatch.setattr(lqa.httpx, "post", lambda *args, **kwargs: _NotFound())
+    with pytest.raises(RuntimeError, match="Ollama 模型不可用: qwen2.5:7b"):
+        lqa._call_ollama(messages=[{"role": "user", "content": "hi"}])
+
+
 def test_register_all_providers_idempotent():
     """重复注册不应抛异常(replace=True)。"""
     register_all_providers()

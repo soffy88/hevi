@@ -1,3 +1,5 @@
+# ruff: noqa: E402, I001
+# dotenv must load before application imports; adapters are composed below.
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
@@ -10,26 +12,48 @@ load_dotenv()  # 标准: 在所有本地 import 之前
 
 from hevi.api.mcp_mount import mount_mcp  # noqa: E402
 from hevi.api.routers.audio_library import router as audio_router  # noqa: E402
+from hevi.audio.task_adapter import execute_voice_studio_task  # noqa: E402
 from hevi.api.routers.auth import router as auth_router  # noqa: E402
 from hevi.api.routers.canvas import router as canvas_router  # noqa: E402
 from hevi.api.routers.creative import router as creative_router  # noqa: E402
 from hevi.api.routers.credits import router as credits_router  # noqa: E402
 from hevi.api.routers.director import router as director_router  # noqa: E402
+from hevi.director.graph_render import execute_task as director_graph_task_adapter  # noqa: E402
+from hevi.season_planner.production import execute_shortdrama_task  # noqa: E402
 from hevi.api.routers.director_pipeline import router as director_pipeline_router  # noqa: E402
+from hevi.api.routers.explainer import (  # noqa: E402
+    execute_task as explainer_task_adapter,
+)
 from hevi.api.routers.explainer import router as explainer_router  # noqa: E402
 from hevi.api.routers.gallery import router as gallery_router  # noqa: E402
 from hevi.api.routers.payment import router as payment_router  # noqa: E402
+from hevi.api.routers.pipeline import router as pipeline_router  # noqa: E402
+from hevi.api.routers.pro_studio import router as pro_studio_router  # noqa: E402
+from hevi.api.routers.provider_presets import router as provider_presets_router  # noqa: E402
+from hevi.api.routers.production_tools_v2 import router as production_tools_v2_router  # noqa: E402
+from hevi.api.routers.presenters import router as presenters_router  # noqa: E402
 from hevi.api.routers.series import router as series_router  # noqa: E402
 from hevi.api.routers.shortdrama import router as shortdrama_router  # noqa: E402
 from hevi.api.routers.style import router as style_router  # noqa: E402
 from hevi.api.routers.subjects import router as subjects_router  # noqa: E402
 from hevi.api.routers.tasks import router as tasks_router  # noqa: E402
 from hevi.api.routers.templates import router as templates_router  # noqa: E402
+from hevi.api.routers.tongjian import execute_task as tongjian_task_adapter  # noqa: E402
 from hevi.api.routers.tongjian import router as tongjian_router  # noqa: E402
+from hevi.api.routers.voice_studio import router as voice_studio_router  # noqa: E402
 from hevi.core.config import settings  # noqa: E402
 from hevi.monitoring.middleware import PrometheusMiddleware  # noqa: E402
 from hevi.monitoring.router import router as metrics_router  # noqa: E402
 from hevi.providers.registry import register_all_providers  # noqa: E402
+from hevi.production.adapters import configure_default_adapters  # noqa: E402
+
+configure_default_adapters(
+    director_graph=director_graph_task_adapter,
+    explainer=explainer_task_adapter,
+    shortdrama=execute_shortdrama_task,
+    tongjian=tongjian_task_adapter,
+    voice_studio_tts=execute_voice_studio_task,
+)
 
 
 def _cors_list(raw: str) -> list[str]:
@@ -101,6 +125,11 @@ app.include_router(metrics_router)
 app.include_router(auth_router, prefix="/api")
 app.include_router(credits_router, prefix="/api")
 app.include_router(payment_router, prefix="/api")
+app.include_router(pipeline_router, prefix="/api")
+app.include_router(pro_studio_router, prefix="/api")
+app.include_router(provider_presets_router, prefix="/api")
+app.include_router(production_tools_v2_router, prefix="/api")
+app.include_router(presenters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(subjects_router, prefix="/api")
 app.include_router(creative_router, prefix="/api")
@@ -115,6 +144,7 @@ app.include_router(tongjian_router, prefix="/api")
 app.include_router(shortdrama_router, prefix="/api")
 app.include_router(explainer_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
+app.include_router(voice_studio_router, prefix="/api")
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)
 mount_mcp(app)

@@ -380,5 +380,3 @@ def check_relationship_consistency(
             )
 
     return {"passed": not drifts, "drifts": drifts}
-
-    return _consistency_fn
