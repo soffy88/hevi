@@ -8,12 +8,14 @@ import hevi.explainer.assembly as explainer_assembly
 from hevi.explainer.asr_verify import AsrVerificationError, character_error_rate, verify_audio
 from hevi.explainer.assembly import cues_to_storyboard
 from hevi.explainer.contracts import (
+    ExplainerAssembleRequest,
     ExplainerCapabilityError,
     ExplainerCue,
     ExplainerResearchRequest,
     HookNode,
 )
 from hevi.explainer.research import research_and_generate
+from hevi.explainer.service import ExplainerMasterService
 
 
 def _payload() -> dict:
@@ -361,6 +363,44 @@ def test_v6_cue_normalizes_legacy_null_estimate() -> None:
     cue = ExplainerCue(visual_type="voiceover", text="兼容旧客户端", time_estimate_s=None)
     assert cue.time_estimate_s == 5.0
     assert cue.time_range == "00:00-05.0s"
+
+
+@pytest.mark.asyncio
+async def test_v9_service_entry_deep_unpacks_double_escaped_payload(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    """服务入口(service.assemble)第一行递归解包:字符串化的 chart_data /
+    visual_config 全部还原成 dict,绝不带着 str 进装配。"""
+    captured = {}
+
+    async def fake_render(storyboard, _output_dir, **_kwargs):
+        captured["storyboard"] = storyboard
+        return "rendered"
+
+    monkeypatch.setattr(explainer_assembly, "render_narrated_storyboard", fake_render)
+    # 构造一个藏了字符串化 chart_data 的 payload:visual_config 里嵌套对象被
+    # 序列化成 JSON 字符串(服务入口 deep_unpack 必须逐层还原)。
+    visual_config = {
+        "chart_data": '{"type": "bar", "values": [1, 2, 3]}',
+        "assetUrl": "/chart.png",
+    }
+    cue = ExplainerCue(
+        time_range="00:00-00:06",
+        visual_type="remotion_chart",
+        text="数据图表",
+        visual_config=visual_config,
+    )
+    request = ExplainerAssembleRequest(
+        topic_or_url="邓煜突破 BBGKY 方程",
+        final_script_cues=[cue],
+        voice_profile="cosyvoice_default",
+    )
+    result = await ExplainerMasterService().assemble(request, tmp_path)
+    assert result == "rendered"
+    config = captured["storyboard"].segments[0].visual_config
+    assert isinstance(config, dict)
+    assert config["chart_data"] == {"type": "bar", "values": [1, 2, 3]}
+    assert config["assetUrl"] == "/chart.png"
 
 
 def test_v6_character_error_rate_is_deterministic() -> None:

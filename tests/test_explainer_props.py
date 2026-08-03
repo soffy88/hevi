@@ -2,15 +2,73 @@
 
 from __future__ import annotations
 
+import json
+
 from hevi.explainer.assembly import cues_to_storyboard
 from hevi.explainer.contracts import ExplainerCue
 from hevi.explainer.props import (
+    deep_unpack_json,
     normalise_visual_config,
     process_cues_for_remotion,
     safe_dict,
     safe_list,
     safe_str,
 )
+
+# ── deep_unpack_json 递归解包防爆 ─────────────────────────────────────────
+
+
+def test_deep_unpack_top_level_json_string() -> None:
+    assert deep_unpack_json('{"a": 1}') == {"a": 1}
+    assert deep_unpack_json("[1, 2]") == [1, 2]
+
+
+def test_deep_unpack_recurses_into_nested_dicts_and_lists() -> None:
+    data = {
+        "cues": [
+            {"visual_config": '{"chart_data": {"values": [1, 2]}}'},
+            {"cards": '[{"title": "卡"}]'},
+        ],
+        "plain": "普通字符串",
+        "num": 42,
+        "flag": True,
+        "nothing": None,
+    }
+    out = deep_unpack_json(data)
+    assert out["cues"][0]["visual_config"] == {"chart_data": {"values": [1, 2]}}
+    assert out["cues"][1]["cards"] == [{"title": "卡"}]
+    assert out["plain"] == "普通字符串"
+    assert out["num"] == 42
+    assert out["flag"] is True
+    assert out["nothing"] is None
+
+
+def test_deep_unpack_double_escaped_json() -> None:
+    # str 里再包 str:{"chart_data": "{...}"} 整体再被字符串化一次
+    doubled = json.dumps({"chart_data": '{"values": [1]}'})
+    out = deep_unpack_json(doubled)
+    assert out == {"chart_data": {"values": [1]}}
+
+
+def test_deep_unpack_leaves_non_json_strings_untouched() -> None:
+    assert deep_unpack_json("hello") == "hello"
+    assert deep_unpack_json("{ not json") == "{ not json"
+    assert deep_unpack_json("[broken") == "[broken"
+
+
+def test_deep_unpack_accepts_pydantic_model() -> None:
+    cue = ExplainerCue(time_range="00:00-00:05", visual_type="voiceover", text="旁白")
+    out = deep_unpack_json(cue)
+    assert isinstance(out, dict)
+    assert out["text"] == "旁白"
+
+
+def test_deep_unpack_scalars_pass_through() -> None:
+    assert deep_unpack_json(0) == 0
+    assert deep_unpack_json(3.14) == 3.14
+    assert deep_unpack_json(False) is False
+    assert deep_unpack_json(None) is None
+
 
 # ── safe_dict / safe_list / safe_str ─────────────────────────────────────
 
@@ -122,6 +180,40 @@ def test_process_cues_drops_dirty_entries() -> None:
     )
     assert len(processed) == 1
     assert processed[0].text == "有效"
+
+
+def test_process_cues_recursively_unpacks_double_escaped_chart_data() -> None:
+    """终极防爆:二重转义的 chart_data 也要还原成 dict,绝不能是 str。"""
+    visual_config = json.dumps(
+        {"chart_data": '{"type": "bar", "values": [1, 2, 3]}'},
+        ensure_ascii=False,
+    )
+    cues = [
+        {
+            "time_range": "00:00-00:06",
+            "visual_type": "remotion_chart",
+            "text": "数据图表",
+            "visual_config": visual_config,
+        }
+    ]
+    processed = process_cues_for_remotion(cues)
+    assert len(processed) == 1
+    assert processed[0].visual_config["chart_data"] == {
+        "type": "bar",
+        "values": [1, 2, 3],
+    }
+
+
+def test_process_cues_recursively_unpacks_double_escaped_whole_cue() -> None:
+    """整条 cue 被二重转义:str 里再包 str,也要逐层解包。"""
+    inner = json.dumps(
+        {"time_range": "00:00-00:05", "visual_type": "voiceover", "text": "解包"},
+        ensure_ascii=False,
+    )
+    doubled = json.dumps(inner, ensure_ascii=False)
+    processed = process_cues_for_remotion([doubled])
+    assert len(processed) == 1
+    assert processed[0].text == "解包"
 
 
 def test_process_cues_non_list_input() -> None:

@@ -16,6 +16,7 @@ from hevi.explainer.contracts import (
     ExplainerResearchRequest,
     ExplainerServiceResult,
 )
+from hevi.explainer.props import deep_unpack_json
 from hevi.explainer.research import research_and_generate
 
 
@@ -41,18 +42,23 @@ class ExplainerMasterService:
         heygen_provider: Any = None,
         browser_broll_recorder: Any = None,
     ) -> Any:
+        # 终极防爆:接收 payload 的第一行做全局递归解包——藏在 str 里的 dict /
+        # list(含二重转义)全部自动 json.loads() 还原,再走 Pydantic 重新校验。
+        # 从此 cue.get() / visual_config["chart_data"] 绝不会再撞上字符串。
+        clean_payload = deep_unpack_json(request)
+        clean_request = ExplainerAssembleRequest.model_validate(clean_payload)
         return await assemble_explainer_cues(
-            request.topic_or_url or request.selected_hook,
-            request.final_script_cues,
+            clean_request.topic_or_url or clean_request.selected_hook,
+            clean_request.final_script_cues,
             output_dir,
-            voice=request.voice_profile,
-            enable_circle_avatar_mask=request.enable_circle_avatar_mask,
-            enable_remotion_code_render=request.enable_remotion_code_render,
-            enable_browser_broll=request.enable_browser_broll,
-            aspect_ratio=request.aspect_ratio,
-            heygen_presenter_id=request.heygen_presenter_id,
-            presenter_provider=request.presenter_provider,
-            presenter_name=request.presenter_name,
+            voice=clean_request.voice_profile,
+            enable_circle_avatar_mask=clean_request.enable_circle_avatar_mask,
+            enable_remotion_code_render=clean_request.enable_remotion_code_render,
+            enable_browser_broll=clean_request.enable_browser_broll,
+            aspect_ratio=clean_request.aspect_ratio,
+            heygen_presenter_id=clean_request.heygen_presenter_id,
+            presenter_provider=clean_request.presenter_provider,
+            presenter_name=clean_request.presenter_name,
             heygen_provider=heygen_provider,
             broll_recorder=browser_broll_recorder,
         )
