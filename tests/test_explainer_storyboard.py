@@ -114,3 +114,37 @@ async def test_generate_storyboard_retries_invalid_first_attempt():
     content = json.dumps(_draft(), ensure_ascii=False)
     storyboard = await generate_storyboard("测试选题", llm=_SequenceLLM(["不是 JSON", content]))
     assert len(storyboard.segments) == 6
+
+
+@pytest.mark.asyncio
+async def test_generate_storyboard_tolerates_stringified_visual_config():
+    """本地小模型把 visualConfig 整体序列化成字符串时,E0 不应校验失败重试。"""
+    draft = _draft()
+    for segment in draft["segments"]:
+        segment["visualConfig"] = json.dumps(
+            {"assetUrl": "/b.mp4", "chart_data": {"values": [1]}},
+            ensure_ascii=False,
+        )
+    content = json.dumps(draft, ensure_ascii=False)
+    storyboard = await generate_storyboard("测试选题", llm=_LLM(content))
+    assert len(storyboard.segments) == 6
+    config = storyboard.segments[0].visual_config
+    assert isinstance(config, dict)
+    assert config["assetUrl"] == "/b.mp4"
+    assert config["chart_data"] == {"values": [1]}
+
+
+@pytest.mark.asyncio
+async def test_generate_storyboard_tolerates_stringified_chart_data():
+    """visualConfig 是 dict、但 chart_data 字段是 JSON 字符串时,也要还原。"""
+    draft = _draft()
+    for segment in draft["segments"]:
+        segment["visualConfig"] = {
+            "chart_data": '{"type": "bar", "values": [1, 2]}',
+        }
+    content = json.dumps(draft, ensure_ascii=False)
+    storyboard = await generate_storyboard("测试选题", llm=_LLM(content))
+    assert storyboard.segments[0].visual_config["chart_data"] == {
+        "type": "bar",
+        "values": [1, 2],
+    }

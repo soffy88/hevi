@@ -18,6 +18,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from hevi.explainer.props import normalise_visual_config
 from hevi.explainer.schemas import ManifestSegment, Storyboard
 from hevi.explainer.voiceover import DEFAULT_RATE, DEFAULT_VOICE, synthesize_storyboard
 
@@ -44,7 +45,14 @@ def _write_manifest(manifest: list[ManifestSegment]) -> None:
     import json
 
     _MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
-    payload = [seg.model_dump(by_alias=True) for seg in manifest]
+    payload = []
+    for seg in manifest:
+        data = seg.model_dump(by_alias=True)
+        # 最后一道防线:无论 visual_config 从哪条路径进来(LLM 直出 / 旧客户端 /
+        # 注入 Provider),写进 manifest 前一律规整为 dict,绝不让字符串/脏类型
+        # 漏到 Remotion 模板的链式访问里。
+        data["visual_config"] = normalise_visual_config(data.get("visual_config"))
+        payload.append(data)
     _MANIFEST_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 

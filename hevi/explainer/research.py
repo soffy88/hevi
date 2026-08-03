@@ -22,8 +22,8 @@ from hevi.explainer.contracts import (
     ExplainerScriptDraft,
     ExplainerServiceResult,
     HookDraft,
-    HookNode,
     HookNarrativeFunction,
+    HookNode,
     ResearchFact,
 )
 
@@ -249,7 +249,7 @@ def _normalise(raw: dict[str, Any], topic_or_url: str, provider: str) -> Explain
     usable_hooks: list[HookNode] = []
     seen_hook_texts: set[str] = set()
     raw_hooks = raw.get("hooks", []) or []
-    for index, item in enumerate(raw_hooks):
+    for item in raw_hooks:
         if len(usable_hooks) == _MAX_HOOKS:
             break
         node = _to_hook_node(item, len(usable_hooks))

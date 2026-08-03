@@ -16,6 +16,7 @@ import logging
 import re
 from typing import Any
 
+from hevi.explainer.props import normalise_visual_config
 from hevi.explainer.schemas import GateResult, Storyboard, StoryboardSegment, validate_props
 
 logger = logging.getLogger(__name__)
@@ -153,7 +154,11 @@ def _storyboard_from_draft(topic: str, draft: dict[str, Any]) -> Storyboard:
                 keywords=keywords,
                 props=props,
                 visual_type=item.get("visualType") or item.get("visual_type"),
-                visual_config=item.get("visualConfig") or item.get("visual_config") or {},
+                # 防御解析:本地小模型可能把 visualConfig 整体序列化成 JSON 字符串,
+                # 不还原的话 StoryboardSegment 构造会直接校验失败 → E0 反复重试。
+                visual_config=normalise_visual_config(
+                    item.get("visualConfig") or item.get("visual_config") or {}
+                ),
             )
         )
     return Storyboard(topic=topic, segments=segments)

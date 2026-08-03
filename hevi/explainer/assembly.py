@@ -14,6 +14,7 @@ from typing import Any, cast
 
 from hevi.explainer.contracts import ExplainerCue
 from hevi.explainer.production import NarratedRenderResult, render_narrated_storyboard
+from hevi.explainer.props import normalise_visual_config, process_cues_for_remotion
 from hevi.explainer.schemas import SceneType, Storyboard, StoryboardSegment, validate_props
 
 
@@ -85,6 +86,22 @@ def cues_to_storyboard(topic: str, cues: list[ExplainerCue]) -> Storyboard:
     segments: list[StoryboardSegment] = []
     for index, cue in enumerate(cues):
         scene_type, props = _props_for(index, cue.text)
+        # 防御解析:visual_config 里的嵌套对象(如 chart_data)若被序列化成 JSON
+        # 字符串,先还原成 dict 再进 manifest——下游 Remotion 模板对这些字段做
+        # 对象链式访问,字符串会直接 TypeError 炸掉渲染。
+        visual_config = normalise_visual_config(cue.visual_config)
+        # 顶层字段只覆盖非 None 值:视觉配置里已有的 chart_data 不应被顶层的
+        # None 冲掉(legacy LLM 直出常把 chart_data 塞在 visual_config 里)。
+        for key, value in (
+            ("time_range", cue.time_range),
+            ("target_url", cue.target_url),
+            ("highlight_selector", cue.highlight_selector),
+            ("chart_data", cue.chart_data),
+            ("code_text", cue.code_text),
+            ("language", cue.language),
+        ):
+            if value is not None:
+                visual_config[key] = value
         segments.append(
             StoryboardSegment(
                 id=f"cue-{index + 1}",
@@ -93,15 +110,7 @@ def cues_to_storyboard(topic: str, cues: list[ExplainerCue]) -> Storyboard:
                 keywords=[word for word in cue.text.split() if word][:2],
                 props=props,
                 visual_type=cue.visual_type,
-                visual_config={
-                    **cue.visual_config,
-                    "time_range": cue.time_range,
-                    "target_url": cue.target_url,
-                    "highlight_selector": cue.highlight_selector,
-                    "chart_data": cue.chart_data,
-                    "code_text": cue.code_text,
-                    "language": cue.language,
-                },
+                visual_config=visual_config,
             )
         )
     return Storyboard(topic=topic, segments=segments)
@@ -126,7 +135,11 @@ async def assemble_explainer_cues(
     """Compile edited cues and run the standard injected Remotion transaction."""
     if aspect_ratio not in {"9:16", "16:9"}:
         raise ValueError("aspect_ratio 仅支持 9:16 或 16:9")
-    prepared_cues = [cue.model_copy(deep=True) for cue in cues]
+    # 装配入参防御解析:确稿台/旧客户端可能把 cue 或嵌套字段(visual_config /
+    # chart_data)序列化成 JSON 字符串;这里统一规整成安全形状,脏条目直接丢弃。
+    prepared_cues = process_cues_for_remotion(cues)
+    if not prepared_cues:
+        raise ValueError("装配入参没有可用的视觉脚手架 cue")
     avatar_indices = [
         index for index, cue in enumerate(prepared_cues) if cue.visual_type == "heygen_avatar"
     ]
@@ -180,7 +193,7 @@ async def assemble_explainer_cues(
             )
             cue.visual_config["assetUrl"] = str(broll_path)
     storyboard = cues_to_storyboard(topic, prepared_cues)
-    for cue in cues:
+    for cue in prepared_cues:
         if cue.visual_type == "remotion_code" and not enable_remotion_code_render:
             raise ValueError("remotion code rendering is disabled for this task")
     # The renderer reads visual_type/config from each manifest segment.  The
