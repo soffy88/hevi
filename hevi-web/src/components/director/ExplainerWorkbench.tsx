@@ -324,19 +324,44 @@ export function ExplainerWorkbench() {
       // 断点续传:响应里带回 session_id,已落 sessionStorage,刷新后从缓存恢复。
     } catch (reason) {
       setResearchInfo(null);
-      setError(reason instanceof Error ? reason.message : '研究服务不可用');
+      const msg = reason instanceof Error ? reason.message : '研究服务不可用';
+      if (/Failed to fetch|NetworkError|load failed|network/i.test(msg)) {
+        // 网络层抖动(代理 reset 等):后台可能已开始,刷新后可从缓存恢复。
+        setError('与服务器连接中断(可能是网络抖动)。后台研究可能仍在进行,刷新页面后可从缓存恢复确稿。');
+      } else {
+        setError(msg);
+      }
     } finally {
       setBusy(false);
     }
   }
 
   // 轮询研究任务信封直到 ready/failed:ready 返回确稿 payload,failed 上报错误返 null。
+  // 对网络层抖动(代理 reset / Failed to fetch)容错:后台任务和信封存活不受
+  // 前端连接影响,連续若干次拿不到状态才认输,不能一抖就报红。
   async function pollResearchJob(sessionId: string): Promise<ExplainerResearchResponse | null> {
     const started = Date.now();
     // 超时兑底:長视频最多等 25 分钟(分章生成 + 本地慢模型)。
     const deadline = started + 25 * 60 * 1000;
+    let consecutiveNetErrors = 0;
     while (Date.now() < deadline) {
-      const job = await explainerApi.researchCache(sessionId);
+      let job;
+      try {
+        job = await explainerApi.researchCache(sessionId);
+        consecutiveNetErrors = 0;
+      } catch (reason) {
+        // 网络层抖动(Failed to fetch / 代理 reset):后台仍在跑,继续等。
+        consecutiveNetErrors += 1;
+        const elapsed = Math.floor((Date.now() - started) / 1000);
+        setResearchInfo(`研究后台仍在进行(已用时 ${elapsed}s),网络短暂中断中,正在重试……`);
+        if (consecutiveNetErrors >= 20) {
+          setResearchInfo(null);
+          setError(reason instanceof Error ? reason.message : '与服务器连接持续中断,请检查网络后重试');
+          return null;
+        }
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        continue;
+      }
       if (job.status === 'ready' && job.payload) {
         setError(null);
         setResearchInfo(null);
