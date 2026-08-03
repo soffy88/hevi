@@ -128,6 +128,31 @@ def safe_str(val: Any, default: str = "") -> str:
     return default
 
 
+def ensure_dict(obj: Any) -> Any:
+    """确保对象彻底解构成标准 dict:model_dump / dict() / json.loads。
+
+    与 safe_dict 的区别:解析失败时返回原对象(不吞数据),用于「需要 dict 但不
+    想丢内容」的场景;safe_dict 用于「必须拿到 dict,拿不到就空」的场景。
+    """
+    if hasattr(obj, "model_dump"):
+        try:
+            return obj.model_dump()
+        except Exception:
+            return obj
+    if hasattr(obj, "dict"):
+        try:
+            return obj.dict()
+        except Exception:
+            return obj
+    if isinstance(obj, str):
+        try:
+            parsed = json.loads(obj)
+            return parsed if isinstance(parsed, dict) else obj
+        except (json.JSONDecodeError, ValueError):
+            return obj
+    return obj
+
+
 def normalise_visual_config(config: Any) -> dict[str, Any]:
     """把任意来源的 visual_config 规整为可安全进入 Remotion 的 dict。
 
@@ -182,6 +207,7 @@ def process_cues_for_remotion(cues: Any) -> list[ExplainerCue]:
 
 __all__ = [
     "deep_unpack_json",
+    "ensure_dict",
     "normalise_visual_config",
     "process_cues_for_remotion",
     "safe_dict",

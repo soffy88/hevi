@@ -99,6 +99,33 @@ export function ExplainerWorkbench() {
     return () => { active = false; };
   }, []);
 
+  // 断点续传:刷新页面后凭 sessionStorage 里的 session_id 从服务端缓存恢复
+  // 调研与确稿状态,后半段装配报错也不影响——绝对不需要重新跑研究。
+  useEffect(() => {
+    let active = true;
+    const sessionId = window.sessionStorage.getItem('hevi_explainer_session');
+    if (!sessionId) return () => { active = false; };
+    const restore = async () => {
+      try {
+        const cached = await explainerApi.researchCache(sessionId);
+        if (!active) return;
+        setResearch(cached);
+        setTopicOrUrl(cached.topic_or_url);
+        setSelectedHookIds(cached.hooks.map(hook => hook.hook_id));
+        if (cached.scripts[0]) selectScript(cached.scripts[0]);
+        setStage('review');
+        setError(null);
+        setPresenterNotice('已从断点缓存恢复确稿台(无需重跑研究)');
+      } catch {
+        if (!active) return;
+        // 缓存失效(404/损坏):清掉本地标记,回到全新研究流程。
+        window.sessionStorage.removeItem('hevi_explainer_session');
+      }
+    };
+    void restore();
+    return () => { active = false; };
+  }, []);
+
   useEffect(() => {
     if (!taskId) return;
     let cancelled = false;
@@ -187,12 +214,17 @@ export function ExplainerWorkbench() {
         topic_or_url: topicOrUrl,
         voice_profile: voiceProfile,
         heygen_presenter_id: null,
+        session_id: window.sessionStorage.getItem('hevi_explainer_session') ?? undefined,
       });
       setResearch(result);
       // v9: 默认全选矩阵节点组成 Hook Chain,确稿台可按需增删。
       setSelectedHookIds(result.hooks.map(hook => hook.hook_id));
       if (result.scripts[0]) selectScript(result.scripts[0]);
       setStage('review');
+      // 断点续传:响应里带回 session_id,落 sessionStorage,刷新后从缓存恢复。
+      if (result.session_id) {
+        window.sessionStorage.setItem('hevi_explainer_session', result.session_id);
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '研究服务不可用');
     } finally {
@@ -234,6 +266,7 @@ export function ExplainerWorkbench() {
         enable_circle_avatar_mask: circleAvatar,
         enable_browser_broll: browserBroll,
         aspect_ratio: aspectRatio,
+        session_id: research.session_id || (window.sessionStorage.getItem('hevi_explainer_session') ?? undefined),
       });
       setTaskId(accepted.task_id);
       setTask(null);

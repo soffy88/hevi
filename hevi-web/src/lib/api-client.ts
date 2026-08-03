@@ -496,6 +496,11 @@ export const explainerApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  /** 断点续传:凭 session_id 从缓存恢复调研与确稿数据(不重跑研究)。 */
+  researchCache: (sessionId: string) =>
+    authedReq<ExplainerResearchResponse>(`/api/explainer/research/${sessionId}`, {
+      method: 'GET',
+    }),
   assemble: (payload: ExplainerAssembleRequest) =>
     authedReq<ExplainerAssemblyAccepted>('/api/explainer/assemble', {
       method: 'POST',

@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
@@ -25,7 +25,13 @@ from hevi.explainer.contracts import (
     ExplainerResearchRequest,
     ExplainerResearchResponse,
 )
+from hevi.explainer.props import deep_unpack_json
 from hevi.explainer.research import research_and_generate, response_payload
+from hevi.explainer.research_cache import (
+    ensure_clean_session_id,
+    load_research_cache,
+    save_research_cache,
+)
 from hevi.presenters.repository import PresenterRepository
 from hevi.production.execution import execution_binding
 from hevi.runs.repository import AutomationRunRepository
@@ -321,7 +327,9 @@ async def _run_assembled_pipeline(repo: AutomationRunRepository, run_id: str) ->
     rec = await _get_owned_run(repo, run_id)
     task_repo = TaskRepository(repo.pool)
     task_id = (rec.get("task_ids") or [None])[0]
-    config = (await repo.get(run_id) or {}).get("input_json") or {}
+    # 隐患点 A 双保险:DB 里存的 config 也先递归解包再校验——旧客户端/中间层
+    # 写入的字符串化嵌套字段在后台任务重放时一样能安全恢复。
+    config = deep_unpack_json((await repo.get(run_id) or {}).get("input_json") or {})
 
     async def set_task(**kwargs: Any) -> None:
         if task_id is not None:
@@ -430,23 +438,65 @@ async def research_explainer(
     body: ExplainerResearchRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> ExplainerResearchResponse:
-    """Research one topic and return a progressive hook matrix plus editable scripts."""
+    """Research one topic and return a progressive hook matrix plus editable scripts.
+
+    响应前把调研与 3 版脚本强制落盘(断点续传):即使后半段装配/渲染报错,
+    确稿数据依然在磁盘缓存,前端刷新后凭 session_id 直接恢复,无需重跑研究。
+    """
     del user  # authentication is the boundary; research is stateless
+    session_id = ensure_clean_session_id(body.session_id)
     try:
         result = await research_and_generate(body)
     except ExplainerCapabilityError as exc:
         raise _capability_http_error(exc) from exc
-    return ExplainerResearchResponse.model_validate(response_payload(result, body.topic_or_url))
+    payload = response_payload(result, body.topic_or_url)
+    payload["session_id"] = session_id
+    # 调研接口响应前落盘:后半段就算炸了,确稿与调研数据也拿得回来。
+    save_research_cache(session_id, payload)
+    return ExplainerResearchResponse.model_validate(payload)
+
+
+@router.get("/research/{session_id}", response_model=ExplainerResearchResponse)
+async def get_research_cache(
+    session_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> ExplainerResearchResponse:
+    """断点续传:凭 session_id 从本地缓存恢复调研与确稿数据(不重跑研究)。"""
+    del user
+    cached = load_research_cache(session_id)
+    if cached is None:
+        raise HTTPException(status_code=404, detail="调研缓存不存在(可能已过期或被清理)")
+    try:
+        return ExplainerResearchResponse.model_validate(cached)
+    except Exception as exc:
+        logger.warning("explainer research cache %s 损坏: %s", session_id, exc)
+        raise HTTPException(status_code=404, detail="调研缓存已损坏,请重新研究") from exc
+
+
+def _parse_assemble_payload(raw: Any) -> ExplainerAssembleRequest:
+    """隐患点 A 防爆解析:整体递归解包(藏在 str 里的 dict/list、双重序列化的
+    嵌套字段全部还原)后再校验——字符串化 cue 绝不可能漏给 .get() 链式访问。
+    """
+    try:
+        return ExplainerAssembleRequest.model_validate(deep_unpack_json(raw))
+    except Exception as exc:
+        logger.warning("explainer assemble 入参无法解析: %s", exc)
+        raise HTTPException(status_code=422, detail=f"装配入参不合法: {exc}") from exc
 
 
 @router.post("/assemble", response_model=ExplainerAssemblyAccepted, status_code=202)
 async def assemble_explainer(
-    body: ExplainerAssembleRequest,
+    request: Request,
     background_tasks: BackgroundTasks,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     repo: Annotated[AutomationRunRepository, Depends(get_run_repository)],
 ) -> ExplainerAssemblyAccepted:
-    """Persist the approved cue sheet and dispatch one real production task."""
+    """Persist the approved cue sheet and dispatch one real production task.
+
+    隐患点 A 防爆:入参先按原始 body 接收,整体递归解包再校验——不把字符串化
+    字段漏给 cue.get(),也从根上杜绝 422 误伤可恢复数据。
+    """
+    body = _parse_assemble_payload(await request.json())
     has_avatar_cue = any(
         cue.visual_type == "heygen_avatar" for cue in body.final_script_cues
     )

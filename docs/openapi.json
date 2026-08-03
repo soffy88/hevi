@@ -7520,7 +7520,7 @@
           "explainer"
         ],
         "summary": "Research Explainer",
-        "description": "Research one topic and return a progressive hook matrix plus editable scripts.",
+        "description": "Research one topic and return a progressive hook matrix plus editable scripts.\n\n响应前把调研与 3 版脚本强制落盘(断点续传):即使后半段装配/渲染报错,\n确稿数据依然在磁盘缓存,前端刷新后凭 session_id 直接恢复,无需重跑研究。",
         "operationId": "research_explainer_api_explainer_research_post",
         "requestBody": {
           "content": {
@@ -7561,31 +7561,37 @@
         ]
       }
     },
-    "/api/explainer/assemble": {
-      "post": {
+    "/api/explainer/research/{session_id}": {
+      "get": {
         "tags": [
           "explainer"
         ],
-        "summary": "Assemble Explainer",
-        "description": "Persist the approved cue sheet and dispatch one real production task.",
-        "operationId": "assemble_explainer_api_explainer_assemble_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExplainerAssembleRequest"
-              }
+        "summary": "Get Research Cache",
+        "description": "断点续传:凭 session_id 从本地缓存恢复调研与确稿数据(不重跑研究)。",
+        "operationId": "get_research_cache_api_explainer_research__session_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
             }
-          },
-          "required": true
-        },
+          }
+        ],
         "responses": {
-          "202": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExplainerAssemblyAccepted"
+                  "$ref": "#/components/schemas/ExplainerResearchResponse"
                 }
               }
             }
@@ -7596,6 +7602,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/explainer/assemble": {
+      "post": {
+        "tags": [
+          "explainer"
+        ],
+        "summary": "Assemble Explainer",
+        "description": "Persist the approved cue sheet and dispatch one real production task.\n\n隐患点 A 防爆:入参先按原始 body 接收,整体递归解包再校验——不把字符串化\n字段漏给 cue.get(),也从根上杜绝 422 误伤可恢复数据。",
+        "operationId": "assemble_explainer_api_explainer_assemble_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainerAssemblyAccepted"
                 }
               }
             }
@@ -9536,117 +9564,6 @@
         "type": "object",
         "title": "ExecuteGraphRequest"
       },
-      "ExplainerAssembleRequest": {
-        "properties": {
-          "topic_or_url": {
-            "type": "string",
-            "maxLength": 20000,
-            "title": "Topic Or Url",
-            "default": ""
-          },
-          "voice_profile": {
-            "type": "string",
-            "title": "Voice Profile",
-            "default": "cosyvoice_default"
-          },
-          "presenter_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Presenter Id"
-          },
-          "heygen_presenter_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Heygen Presenter Id"
-          },
-          "presenter_provider": {
-            "type": "string",
-            "enum": [
-              "remotion",
-              "heygen"
-            ],
-            "title": "Presenter Provider",
-            "default": "remotion"
-          },
-          "presenter_name": {
-            "type": "string",
-            "title": "Presenter Name",
-            "default": "HEVI 默认解说数字人"
-          },
-          "selected_hook": {
-            "type": "string",
-            "maxLength": 500,
-            "title": "Selected Hook",
-            "default": ""
-          },
-          "selected_hooks": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "maxItems": 12,
-            "title": "Selected Hooks"
-          },
-          "hook_combination": {
-            "type": "string",
-            "enum": [
-              "chain",
-              "fusion"
-            ],
-            "title": "Hook Combination",
-            "default": "chain"
-          },
-          "final_script_cues": {
-            "items": {
-              "$ref": "#/components/schemas/ExplainerCue"
-            },
-            "type": "array",
-            "minItems": 1,
-            "title": "Final Script Cues"
-          },
-          "enable_remotion_code_render": {
-            "type": "boolean",
-            "title": "Enable Remotion Code Render",
-            "default": true
-          },
-          "enable_circle_avatar_mask": {
-            "type": "boolean",
-            "title": "Enable Circle Avatar Mask",
-            "default": true
-          },
-          "enable_browser_broll": {
-            "type": "boolean",
-            "title": "Enable Browser Broll",
-            "default": true
-          },
-          "aspect_ratio": {
-            "type": "string",
-            "enum": [
-              "9:16",
-              "16:9"
-            ],
-            "title": "Aspect Ratio",
-            "default": "9:16"
-          }
-        },
-        "type": "object",
-        "required": [
-          "final_script_cues"
-        ],
-        "title": "ExplainerAssembleRequest"
-      },
       "ExplainerAssemblyAccepted": {
         "properties": {
           "task_id": {
@@ -9846,6 +9763,12 @@
               }
             ],
             "title": "Heygen Presenter Id"
+          },
+          "session_id": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Session Id",
+            "default": ""
           }
         },
         "type": "object",
@@ -9914,6 +9837,12 @@
             },
             "type": "array",
             "title": "Decision Trail"
+          },
+          "session_id": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Session Id",
+            "default": ""
           }
         },
         "type": "object",

@@ -594,6 +594,8 @@ export interface ExplainerResearchRequest {
   topic_or_url: string;
   voice_profile?: string;
   heygen_presenter_id?: string | null;
+  /** 断点续传:携带已有 session_id 覆盖旧缓存;空值由服务端生成并返回。 */
+  session_id?: string;
 }
 
 export interface ExplainerFact {
@@ -650,6 +652,8 @@ export interface ExplainerResearchResponse {
   script_versions: ExplainerScriptDraft[];
   provider: string;
   decision_trail: Array<Record<string, unknown>>;
+  /** 断点续传:本次调研的缓存 key,刷新后凭它恢复确稿台。 */
+  session_id: string;
 }
 
 export interface ExplainerAssembleRequest {
@@ -665,6 +669,8 @@ export interface ExplainerAssembleRequest {
   enable_circle_avatar_mask: boolean;
   enable_browser_broll: boolean;
   aspect_ratio: '9:16' | '16:9';
+  /** 断点续传:关联到 research 阶段的缓存会话(仅记录)。 */
+  session_id?: string;
 }
 
 export interface ExplainerAssemblyAccepted {

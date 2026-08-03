@@ -28,6 +28,8 @@ class ExplainerResearchRequest(BaseModel):
     topic_or_url: str = Field(min_length=1, max_length=20_000)
     voice_profile: str = "cosyvoice_default"
     heygen_presenter_id: str | None = None
+    # 断点续传:客户端可携带已有 session_id 覆盖旧缓存;空值由服务端生成。
+    session_id: str = Field(default="", max_length=64)
 
     @field_validator("topic_or_url")
     @classmethod
@@ -167,6 +169,8 @@ class ExplainerResearchResponse(BaseModel):
     script_versions: list[ExplainerScriptDraft] = Field(default_factory=list)
     provider: str
     decision_trail: list[dict[str, Any]] = Field(default_factory=list)
+    # 断点续传:本次调研的缓存 key,刷新页面后凭它从缓存恢复确稿台状态。
+    session_id: str = Field(default="", max_length=64)
 
 
 class ExplainerAssembleRequest(BaseModel):
@@ -189,6 +193,8 @@ class ExplainerAssembleRequest(BaseModel):
     selected_hooks: list[str] = Field(default_factory=list, max_length=12)
     hook_combination: Literal["chain", "fusion"] = "chain"
     final_script_cues: list[ExplainerCue] = Field(min_length=1)
+    # 断点续传:关联到 research 阶段的缓存会话(仅记录,不参与装配)。
+    session_id: str = Field(default="", max_length=64)
     enable_remotion_code_render: bool = True
     enable_circle_avatar_mask: bool = True
     enable_browser_broll: bool = True

@@ -78,6 +78,8 @@ services:
       VOICEBOX_PROFILE_ID: ${VOICEBOX_PROFILE_ID:-}
       VOICEBOX_INSTRUCT: ${VOICEBOX_INSTRUCT:-自然、沉稳、有呼吸感的中文纪录片解说，语气有轻微起伏，不要播音腔，不要机械停顿。}
       VOICEBOX_ALLOW_EDGE_FALLBACK: "0"
+      # 断点续传:调研/确稿缓存落盘在宿主持久挂载(output),容器重建不丢。
+      EXPLAINER_CACHE_DIR: /app/output/explainer_cache
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro

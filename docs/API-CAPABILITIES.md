@@ -101,6 +101,7 @@
 |---|---|---|
 | POST | `/api/explainer/assemble` | Assemble Explainer |
 | POST | `/api/explainer/research` | Research Explainer |
+| GET | `/api/explainer/research/{session_id}` | Get Research Cache |
 | POST | `/api/explainer/run` | Start Run |
 | GET | `/api/explainer/runs` | List Runs |
 | GET | `/api/explainer/runs/{run_id}` | Get Run |

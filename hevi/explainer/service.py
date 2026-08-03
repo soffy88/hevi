@@ -18,6 +18,10 @@ from hevi.explainer.contracts import (
 )
 from hevi.explainer.props import deep_unpack_json
 from hevi.explainer.research import research_and_generate
+from hevi.explainer.research_cache import (  # noqa: F401  (service.py 对外暴露断点续传入口)
+    load_research_cache,
+    save_research_cache,
+)
 
 
 class ExplainerMasterService:
