@@ -118,6 +118,8 @@ async def assemble_explainer_cues(
     enable_browser_broll: bool = True,
     aspect_ratio: str = "9:16",
     heygen_presenter_id: str | None = None,
+    presenter_provider: str = "heygen",
+    presenter_name: str = "HEVI 数字人",
     heygen_provider: Any = None,
     broll_recorder: Any = None,
 ) -> NarratedRenderResult:
@@ -129,24 +131,31 @@ async def assemble_explainer_cues(
         index for index, cue in enumerate(prepared_cues) if cue.visual_type == "heygen_avatar"
     ]
     if avatar_indices:
-        if not heygen_presenter_id:
-            raise ValueError("HeyGen cue 缺少 heygen_presenter_id")
-        if any(index not in {0, len(prepared_cues) - 1} for index in avatar_indices):
-            raise ValueError("HeyGen 只允许用于开场 Hook 与结尾 CTA")
-        if heygen_provider is None:
-            from hevi.explainer.heygen import heygen_avatar_generate
+        if presenter_provider == "remotion":
+            for index in avatar_indices:
+                prepared_cues[index].visual_config.update(
+                    {
+                        "local_presenter": True,
+                        "presenter_name": presenter_name,
+                    }
+                )
+        else:
+            if not heygen_presenter_id:
+                raise ValueError("HeyGen 数字人缺少供应商 presenter ID")
+            if heygen_provider is None:
+                from hevi.explainer.heygen import heygen_avatar_generate
 
-            heygen_provider = heygen_avatar_generate
+                heygen_provider = heygen_avatar_generate
 
-        avatar_dir = output_dir / "heygen"
-        for index in avatar_indices:
-            avatar_path = avatar_dir / f"cue-{index + 1}.mp4"
-            generated = await heygen_provider(
-                text=prepared_cues[index].text,
-                presenter_id=heygen_presenter_id,
-                output_path=avatar_path,
-            )
-            prepared_cues[index].visual_config["assetUrl"] = str(generated)
+            avatar_dir = output_dir / "heygen"
+            for index in avatar_indices:
+                avatar_path = avatar_dir / f"cue-{index + 1}.mp4"
+                generated = await heygen_provider(
+                    text=prepared_cues[index].text,
+                    presenter_id=heygen_presenter_id,
+                    output_path=avatar_path,
+                )
+                prepared_cues[index].visual_config["assetUrl"] = str(generated)
     if any(cue.visual_type == "browser_broll" for cue in prepared_cues):
         if not enable_browser_broll:
             raise ValueError("browser B-roll is disabled for this task")

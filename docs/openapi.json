@@ -1698,6 +1698,35 @@
         ]
       }
     },
+    "/api/presenters/default": {
+      "post": {
+        "tags": [
+          "presenters"
+        ],
+        "summary": "Ensure Default Presenter",
+        "description": "Select an existing presenter or create HEVI's local renderable default.",
+        "operationId": "ensure_default_presenter_api_presenters_default_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Ensure Default Presenter Api Presenters Default Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/presenters/{presenter_id}": {
       "get": {
         "tags": [
@@ -7485,6 +7514,100 @@
         }
       }
     },
+    "/api/explainer/research": {
+      "post": {
+        "tags": [
+          "explainer"
+        ],
+        "summary": "Research Explainer",
+        "description": "Research one topic and return a progressive hook matrix plus editable scripts.",
+        "operationId": "research_explainer_api_explainer_research_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplainerResearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainerResearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/explainer/assemble": {
+      "post": {
+        "tags": [
+          "explainer"
+        ],
+        "summary": "Assemble Explainer",
+        "description": "Persist the approved cue sheet and dispatch one real production task.",
+        "operationId": "assemble_explainer_api_explainer_assemble_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExplainerAssembleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainerAssemblyAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/explainer/run": {
       "post": {
         "tags": [
@@ -9413,6 +9536,443 @@
         "type": "object",
         "title": "ExecuteGraphRequest"
       },
+      "ExplainerAssembleRequest": {
+        "properties": {
+          "topic_or_url": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Topic Or Url",
+            "default": ""
+          },
+          "voice_profile": {
+            "type": "string",
+            "title": "Voice Profile",
+            "default": "cosyvoice_default"
+          },
+          "presenter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presenter Id"
+          },
+          "heygen_presenter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heygen Presenter Id"
+          },
+          "presenter_provider": {
+            "type": "string",
+            "enum": [
+              "remotion",
+              "heygen"
+            ],
+            "title": "Presenter Provider",
+            "default": "remotion"
+          },
+          "presenter_name": {
+            "type": "string",
+            "title": "Presenter Name",
+            "default": "HEVI 默认解说数字人"
+          },
+          "selected_hook": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Selected Hook",
+            "default": ""
+          },
+          "selected_hooks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Selected Hooks"
+          },
+          "hook_combination": {
+            "type": "string",
+            "enum": [
+              "chain",
+              "fusion"
+            ],
+            "title": "Hook Combination",
+            "default": "chain"
+          },
+          "final_script_cues": {
+            "items": {
+              "$ref": "#/components/schemas/ExplainerCue"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Final Script Cues"
+          },
+          "enable_remotion_code_render": {
+            "type": "boolean",
+            "title": "Enable Remotion Code Render",
+            "default": true
+          },
+          "enable_circle_avatar_mask": {
+            "type": "boolean",
+            "title": "Enable Circle Avatar Mask",
+            "default": true
+          },
+          "enable_browser_broll": {
+            "type": "boolean",
+            "title": "Enable Browser Broll",
+            "default": true
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "enum": [
+              "9:16",
+              "16:9"
+            ],
+            "title": "Aspect Ratio",
+            "default": "9:16"
+          }
+        },
+        "type": "object",
+        "required": [
+          "final_script_cues"
+        ],
+        "title": "ExplainerAssembleRequest"
+      },
+      "ExplainerAssemblyAccepted": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "estimated_seconds": {
+            "type": "integer",
+            "title": "Estimated Seconds",
+            "default": 90
+          },
+          "sse_channel": {
+            "type": "string",
+            "title": "Sse Channel",
+            "default": ""
+          },
+          "production_source": {
+            "type": "string",
+            "title": "Production Source",
+            "default": "explainer"
+          },
+          "engine_version": {
+            "type": "string",
+            "title": "Engine Version"
+          },
+          "adapter_version": {
+            "type": "string",
+            "title": "Adapter Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "status",
+          "engine_version",
+          "adapter_version"
+        ],
+        "title": "ExplainerAssemblyAccepted"
+      },
+      "ExplainerCue": {
+        "properties": {
+          "time_range": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Range",
+            "description": "时间范围，如 00:00-00:05"
+          },
+          "visual_type": {
+            "type": "string",
+            "enum": [
+              "heygen_avatar",
+              "broll_news",
+              "browser_broll",
+              "broll_stock",
+              "data_screenshot",
+              "remotion_chart",
+              "remotion_code",
+              "voiceover"
+            ],
+            "title": "Visual Type"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "visual_config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Visual Config"
+          },
+          "step_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step Id"
+          },
+          "time_estimate_s": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 300.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Estimate S",
+            "default": 5.0
+          },
+          "target_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Url"
+          },
+          "highlight_selector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highlight Selector"
+          },
+          "chart_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chart Data"
+          },
+          "code_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Text"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "visual_type",
+          "text"
+        ],
+        "title": "ExplainerCue"
+      },
+      "ExplainerResearchRequest": {
+        "properties": {
+          "topic_or_url": {
+            "type": "string",
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Topic Or Url"
+          },
+          "voice_profile": {
+            "type": "string",
+            "title": "Voice Profile",
+            "default": "cosyvoice_default"
+          },
+          "heygen_presenter_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heygen Presenter Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic_or_url"
+        ],
+        "title": "ExplainerResearchRequest"
+      },
+      "ExplainerResearchResponse": {
+        "properties": {
+          "topic_or_url": {
+            "type": "string",
+            "title": "Topic Or Url"
+          },
+          "research_summary": {
+            "type": "string",
+            "title": "Research Summary",
+            "default": ""
+          },
+          "facts": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchFact"
+            },
+            "type": "array",
+            "title": "Facts"
+          },
+          "hooks": {
+            "items": {
+              "$ref": "#/components/schemas/HookNode"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Hooks"
+          },
+          "hook_details": {
+            "items": {
+              "$ref": "#/components/schemas/HookNode"
+            },
+            "type": "array",
+            "title": "Hook Details"
+          },
+          "scripts": {
+            "items": {
+              "$ref": "#/components/schemas/ExplainerScriptDraft"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Scripts"
+          },
+          "script_versions": {
+            "items": {
+              "$ref": "#/components/schemas/ExplainerScriptDraft"
+            },
+            "type": "array",
+            "title": "Script Versions"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "decision_trail": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decision Trail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic_or_url",
+          "hooks",
+          "scripts",
+          "provider"
+        ],
+        "title": "ExplainerResearchResponse"
+      },
+      "ExplainerScriptDraft": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "default": ""
+          },
+          "version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "viewpoint": {
+            "type": "string",
+            "title": "Viewpoint",
+            "default": ""
+          },
+          "hook": {
+            "type": "string",
+            "title": "Hook",
+            "default": ""
+          },
+          "cues": {
+            "items": {
+              "$ref": "#/components/schemas/ExplainerCue"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Cues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "cues"
+        ],
+        "title": "ExplainerScriptDraft"
+      },
       "GalleryCreateRequest": {
         "properties": {
           "category": {
@@ -9492,6 +10052,59 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HookNode": {
+        "properties": {
+          "hook_id": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Hook Id",
+            "default": ""
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Title",
+            "default": ""
+          },
+          "narrative_function": {
+            "type": "string",
+            "enum": [
+              "opening_suspense",
+              "mid_conflict",
+              "climax_breakthrough"
+            ],
+            "title": "Narrative Function",
+            "default": "opening_suspense"
+          },
+          "suggested_placement_s": {
+            "type": "number",
+            "maximum": 3600.0,
+            "minimum": 0.0,
+            "title": "Suggested Placement S",
+            "default": 0.0
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "associated_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Associated Concepts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "HookNode",
+        "description": "递进式 Hook 矩阵节点 —— v9 取代浅薄的“开场 5 选 1”。\n\nLLM 必须从主题知识图谱的关键节点产出,每个 Hook 绑定一个叙事功能档位\n(opening_suspense → mid_conflict → climax_breakthrough),并给出建议切入\n时间点与关联核心概念。数量按主题动态产出(一般 3-6 个),不再写死为 5。"
       },
       "LayerConfig": {
         "properties": {
@@ -10344,6 +10957,37 @@
         "type": "object",
         "title": "RenderRequest",
         "description": "逐镜编辑回路:提交(编辑过的)canvas 分镜图 → 执行 + 装配成片。"
+      },
+      "ResearchFact": {
+        "properties": {
+          "claim": {
+            "type": "string",
+            "title": "Claim"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "claim"
+        ],
+        "title": "ResearchFact"
       },
       "SaveGraphRequest": {
         "properties": {
@@ -11851,6 +12495,32 @@
             },
             "type": "array",
             "title": "Task Ids",
+            "default": []
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": "legacy"
+          },
+          "artifact_manifest": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Manifest"
+          },
+          "decision_trail": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decision Trail",
             "default": []
           }
         },

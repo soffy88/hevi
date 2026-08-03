@@ -99,6 +99,8 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| POST | `/api/explainer/assemble` | Assemble Explainer |
+| POST | `/api/explainer/research` | Research Explainer |
 | POST | `/api/explainer/run` | Start Run |
 | GET | `/api/explainer/runs` | List Runs |
 | GET | `/api/explainer/runs/{run_id}` | Get Run |
@@ -133,6 +135,7 @@
 |---|---|---|
 | GET | `/api/presenters` | List Presenters |
 | POST | `/api/presenters` | Create Presenter |
+| POST | `/api/presenters/default` | Ensure Default Presenter |
 | GET | `/api/presenters/{presenter_id}` | Get Presenter |
 | PATCH | `/api/presenters/{presenter_id}` | Update Presenter |
 | POST | `/api/presenters/{presenter_id}/test` | Test Presenter |

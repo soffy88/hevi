@@ -63,6 +63,15 @@ async def list_presenters(
     return [_serialize(row) for row in await repo.list(str(user["id"]))]
 
 
+@router.post("/default")
+async def ensure_default_presenter(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[PresenterRepository, Depends(get_repository)],
+) -> dict[str, Any]:
+    """Select an existing presenter or create HEVI's local renderable default."""
+    return _serialize(await repo.ensure_default(str(user["id"])))
+
+
 @router.get("/{presenter_id}")
 async def get_presenter(
     presenter_id: str,
@@ -89,7 +98,12 @@ async def test_presenter(
     issues: list[str] = []
     motion = str(row.get("motion") or "picture_in_picture")
     lipsync = str(row.get("lipsync") or "none")
-    if motion != "voice_over" and not row.get("subject_id"):
+    delivery = row.get("delivery_json") or {}
+    is_generated_local = (
+        delivery.get("provider") == "remotion"
+        and delivery.get("variant") == "generated"
+    )
+    if motion != "voice_over" and not row.get("subject_id") and not is_generated_local:
         issues.append("on-camera Presenter 需要 subject_id")
     if lipsync != "none" and not row.get("voice_profile_id"):
         issues.append("启用口型同步时需要 voice_profile_id")
@@ -102,7 +116,7 @@ async def test_presenter(
             "performance": row.get("performance", "narrator"),
             "motion": motion,
             "lipsync": lipsync,
-            "delivery": row.get("delivery_json") or {},
+            "delivery": delivery,
         },
     }
 

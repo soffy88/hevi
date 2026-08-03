@@ -602,10 +602,19 @@ export interface ExplainerFact {
   confidence: number;
 }
 
-export interface ExplainerHook {
+// v9: 递进式 Hook 矩阵节点。LLM 从主题知识图谱产出,不再携带“推荐/不推荐”标签。
+export type HookNarrativeFunction =
+  | 'opening_suspense'
+  | 'mid_conflict'
+  | 'climax_breakthrough';
+
+export interface ExplainerHookNode {
+  hook_id: string;
+  title: string;
+  narrative_function: HookNarrativeFunction;
+  suggested_placement_s: number;
   text: string;
-  angle: string;
-  recommended: boolean;
+  associated_concepts: string[];
 }
 
 export interface ExplainerCue {
@@ -613,7 +622,7 @@ export interface ExplainerCue {
   visual_type: ExplainerVisualType;
   text: string;
   visual_config?: Record<string, unknown>;
-  step_id?: number;
+  step_id?: number | string;
   time_estimate_s?: number;
   target_url?: string | null;
   highlight_selector?: string | null;
@@ -635,8 +644,8 @@ export interface ExplainerResearchResponse {
   topic_or_url: string;
   research_summary: string;
   facts: ExplainerFact[];
-  hooks: Array<ExplainerHook | string>;
-  hook_details?: ExplainerHook[];
+  hooks: ExplainerHookNode[];
+  hook_details?: ExplainerHookNode[];
   scripts: ExplainerScriptDraft[];
   script_versions: ExplainerScriptDraft[];
   provider: string;
@@ -646,8 +655,11 @@ export interface ExplainerResearchResponse {
 export interface ExplainerAssembleRequest {
   topic_or_url: string;
   voice_profile?: string;
+  presenter_id?: string | null;
   heygen_presenter_id?: string | null;
   selected_hook: string;
+  selected_hooks: string[];
+  hook_combination: 'chain' | 'fusion';
   final_script_cues: ExplainerCue[];
   enable_remotion_code_render: boolean;
   enable_circle_avatar_mask: boolean;

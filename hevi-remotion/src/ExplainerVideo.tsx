@@ -14,43 +14,22 @@ import { DynamicChartSegment } from "./ExplainerVideo/DynamicChartSegment";
 import { HeyGenAvatarSegment } from "./ExplainerVideo/HeyGenAvatarSegment";
 import { WordSubtitle, type SubtitleLine } from "./ExplainerVideo/WordSubtitle";
 import type {
-  CardsProps,
-  DefinitionProps,
-  HookProps,
-  MethodProps,
-  OutroProps,
-  ReasonProps,
   RunManifest,
+  SceneProps,
   SceneType,
 } from "./types";
 
 const typedManifest = manifest as unknown as RunManifest;
 
-const SCENE_COMPONENTS: Record<
-  SceneType,
-  React.FC<{ durationInFrames: number; props: any }>
-> = {
-  hook: HookScene as React.FC<{ durationInFrames: number; props: HookProps }>,
-  definition: DefinitionScene as React.FC<{
-    durationInFrames: number;
-    props: DefinitionProps;
-  }>,
-  cards: CardsScene as React.FC<{
-    durationInFrames: number;
-    props: CardsProps;
-  }>,
-  reason: ReasonScene as React.FC<{
-    durationInFrames: number;
-    props: ReasonProps;
-  }>,
-  method: MethodScene as React.FC<{
-    durationInFrames: number;
-    props: MethodProps;
-  }>,
-  outro: OutroScene as React.FC<{
-    durationInFrames: number;
-    props: OutroProps;
-  }>,
+type SceneComponent = React.FC<{ durationInFrames: number; props: SceneProps }>;
+
+const SCENE_COMPONENTS: Record<SceneType, SceneComponent> = {
+  hook: HookScene as unknown as SceneComponent,
+  definition: DefinitionScene as unknown as SceneComponent,
+  cards: CardsScene as unknown as SceneComponent,
+  reason: ReasonScene as unknown as SceneComponent,
+  method: MethodScene as unknown as SceneComponent,
+  outro: OutroScene as unknown as SceneComponent,
 };
 
 const VisualOverlay: React.FC<{
@@ -66,9 +45,12 @@ const VisualOverlay: React.FC<{
     return <BrowserBrollSegment src={assetSrc ?? undefined} />;
   }
   if (visualType === "heygen_avatar") {
+    const presenterName = typeof visualConfig?.presenter_name === "string"
+      ? visualConfig.presenter_name
+      : "HEVI 数字人";
     return (
       <div style={{ position: "absolute", right: 48, top: 48, width: 260, height: 260, overflow: "hidden", borderRadius: "50%", border: "2px solid rgba(255,255,255,.28)" }}>
-        <HeyGenAvatarSegment src={assetSrc ?? undefined} circle />
+        <HeyGenAvatarSegment src={assetSrc ?? undefined} circle presenterName={presenterName} />
       </div>
     );
   }
@@ -112,7 +94,7 @@ const VisualOverlay: React.FC<{
     );
   }
   const labels: Record<string, string> = {
-    heygen_avatar: "HEYGEN · 开闭幕数字人",
+    heygen_avatar: "数字人 · 自动出镜",
     broll_news: "B-ROLL · 新闻素材",
     broll_stock: "B-ROLL · 素材",
     data_screenshot: "DATA · 来源截图",

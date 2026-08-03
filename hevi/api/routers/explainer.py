@@ -26,6 +26,7 @@ from hevi.explainer.contracts import (
     ExplainerResearchResponse,
 )
 from hevi.explainer.research import research_and_generate, response_payload
+from hevi.presenters.repository import PresenterRepository
 from hevi.production.execution import execution_binding
 from hevi.runs.repository import AutomationRunRepository
 from hevi.runs.task_projection import create_projection, update_projection
@@ -73,6 +74,52 @@ async def get_run_repository(
     pool: Annotated[PgPool, Depends(get_hevi_pg_pool)],
 ) -> AutomationRunRepository:
     return AutomationRunRepository(pool)
+
+
+async def _bind_explainer_presenter(
+    body: ExplainerAssembleRequest,
+    *,
+    pool: PgPool,
+    user_id: str,
+) -> None:
+    """Resolve a HEVI Presenter to a real provider strategy in-place."""
+    presenter_repo = PresenterRepository(pool)
+    requested_id = body.presenter_id or body.heygen_presenter_id
+    row: dict[str, Any] | None = None
+    if requested_id:
+        try:
+            uuid.UUID(requested_id)
+        except ValueError:
+            if body.presenter_id:
+                raise HTTPException(
+                    status_code=422, detail="presenter_id 格式无效"
+                ) from None
+            # Backward compatibility: old callers may still send a raw HeyGen
+            # provider ID through heygen_presenter_id.
+            body.presenter_provider = "heygen"
+            body.presenter_name = "HeyGen 数字人"
+            return
+        row = await presenter_repo.get(requested_id, user_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="选择的数字人不存在")
+    else:
+        row = await presenter_repo.ensure_default(user_id)
+
+    delivery = row.get("delivery_json") or {}
+    configured_provider = str(delivery.get("provider") or "remotion").lower()
+    external_id = delivery.get("heygen_presenter_id") or delivery.get(
+        "provider_presenter_id"
+    )
+    body.presenter_id = str(row["id"])
+    body.presenter_name = str(row.get("name") or "HEVI 数字人")
+    if configured_provider == "heygen" and external_id:
+        body.presenter_provider = "heygen"
+        body.heygen_presenter_id = str(external_id)
+    else:
+        # Incomplete or absent external-provider configuration falls back to
+        # HEVI's actual Remotion presenter, which always yields visible output.
+        body.presenter_provider = "remotion"
+        body.heygen_presenter_id = None
 
 
 def _initial_layers() -> dict[str, dict[str, Any]]:
@@ -298,6 +345,8 @@ async def _run_assembled_pipeline(repo: AutomationRunRepository, run_id: str) ->
             enable_browser_broll=body.enable_browser_broll,
             aspect_ratio=body.aspect_ratio,
             heygen_presenter_id=body.heygen_presenter_id,
+            presenter_provider=body.presenter_provider,
+            presenter_name=body.presenter_name,
         )
         manifest = result.engine_result.get("artifacts")
         decision_trail = result.engine_result.get("decision_trail") or []
@@ -381,7 +430,7 @@ async def research_explainer(
     body: ExplainerResearchRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> ExplainerResearchResponse:
-    """Research one topic and return five hooks plus three editable scripts."""
+    """Research one topic and return a progressive hook matrix plus editable scripts."""
     del user  # authentication is the boundary; research is stateless
     try:
         result = await research_and_generate(body)
@@ -401,14 +450,11 @@ async def assemble_explainer(
     has_avatar_cue = any(
         cue.visual_type == "heygen_avatar" for cue in body.final_script_cues
     )
-    if has_avatar_cue and not body.heygen_presenter_id:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": "CAPABILITY_UNAVAILABLE",
-                "message": "开闭幕使用 HeyGen 时必须配置 heygen_presenter_id",
-                "action": "在阶段一选择已配置的 HeyGen 数字人",
-            },
+    if has_avatar_cue:
+        await _bind_explainer_presenter(
+            body,
+            pool=repo.pool,
+            user_id=str(user["id"]),
         )
 
     run_id = str(uuid.uuid4())
@@ -419,7 +465,9 @@ async def assemble_explainer(
         user_id=str(user["id"]),
         topic=topic,
         source=_KIND,
-        video_provider="heygen" if body.heygen_presenter_id else "remotion",
+        video_provider=(
+            body.presenter_provider if has_avatar_cue else "remotion"
+        ),
         audio_provider=body.voice_profile,
         config={
             "run_id": run_id,

@@ -262,6 +262,7 @@ export const productionApi = {
 
 export const presenterApi = {
   list: () => authedReq<Presenter[]>('/api/presenters'),
+  ensureDefault: () => authedReq<Presenter>('/api/presenters/default', { method: 'POST' }),
   get: (id: string) => authedReq<Presenter>(`/api/presenters/${id}`),
   create: (payload: PresenterInput) =>
     authedReq<Presenter>('/api/presenters', { method: 'POST', body: JSON.stringify(payload) }),

@@ -51,6 +51,8 @@ class ExplainerMasterService:
             enable_browser_broll=request.enable_browser_broll,
             aspect_ratio=request.aspect_ratio,
             heygen_presenter_id=request.heygen_presenter_id,
+            presenter_provider=request.presenter_provider,
+            presenter_name=request.presenter_name,
             heygen_provider=heygen_provider,
             broll_recorder=browser_broll_recorder,
         )

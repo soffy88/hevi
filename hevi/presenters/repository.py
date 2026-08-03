@@ -18,7 +18,34 @@ class PresenterRepository:
         data.setdefault("updated_at", now)
         data.setdefault("delivery_json", {})
         presenter_id = await insert_one(self.pool, table="presenters", data=data, returning="id")
-        return await self.get(str(presenter_id)) or {}
+        return await self.get(str(presenter_id), str(data["user_id"])) or {}
+
+    async def ensure_default(self, user_id: str) -> dict[str, Any]:
+        """Return the user's first presenter or create a real local fallback.
+
+        The generated presenter is rendered by HEVI's Remotion template and
+        therefore does not pretend that an external avatar provider exists.
+        """
+        existing = await self.list(user_id)
+        if existing:
+            return existing[0]
+        return await self.create(
+            {
+                "user_id": user_id,
+                "name": "HEVI 默认解说数字人",
+                "subject_id": None,
+                "voice_profile_id": None,
+                "performance": "presenter",
+                "motion": "picture_in_picture",
+                "lipsync": "none",
+                "delivery_json": {
+                    "provider": "remotion",
+                    "variant": "generated",
+                    "auto_created": True,
+                },
+                "description": "系统自动创建；无外部数字人 Provider 时使用本地动态出镜。",
+            }
+        )
 
     async def get(self, presenter_id: str, user_id: str) -> dict[str, Any] | None:
         rows = await query(
