@@ -596,12 +596,21 @@ export interface ExplainerResearchRequest {
   heygen_presenter_id?: string | null;
   /** 断点续传:携带已有 session_id 覆盖旧缓存;空值由服务端生成并返回。 */
   session_id?: string;
+  /** 精准目标时长:"1-3"/"3-6"/"6-10"/"10-15" 等范围档,或单个分钟数如 "8"。 */
+  target_duration?: string;
 }
 
 export interface ExplainerFact {
   claim: string;
   source: string | null;
   confidence: number;
+}
+
+// 🚨 素材吸收与扩写映射表条目(反压缩机制):原文素材点 + 至少 150 字的深度扩写。
+export interface ConceptExpansion {
+  original_material_point: string;
+  deep_explanation: string;
+  source?: string;
 }
 
 // v9: 递进式 Hook 矩阵节点。LLM 从主题知识图谱产出,不再携带“推荐/不推荐”标签。
@@ -639,6 +648,10 @@ export interface ExplainerScriptDraft {
   title: string;
   viewpoint: string;
   hook: string;
+  /** 思考链:LLM 在写台词前先说明本版如何把核心理论讲透。 */
+  reasoning_depth?: string;
+  /** 🚨 素材吸收与扩写矩阵:100% 覆盖全部素材点的深度扩写(写台词前强制输出)。 */
+  material_coverage_matrix?: ConceptExpansion[];
   cues: ExplainerCue[];
 }
 
@@ -652,8 +665,22 @@ export interface ExplainerResearchResponse {
   script_versions: ExplainerScriptDraft[];
   provider: string;
   decision_trail: Array<Record<string, unknown>>;
+  /** 🚨 素材吸收与扩写映射表(跨脚本版本并集):确稿台可先查看全部素材点如何被扩写。 */
+  material_coverage_matrix?: ConceptExpansion[];
   /** 断点续传:本次调研的缓存 key,刷新后凭它恢复确稿台。 */
   session_id: string;
+}
+
+export type ExplainerResearchStatus = 'pending' | 'processing' | 'ready' | 'failed';
+
+/** 异步研究任务的状态信封:POST /research 立即返 202,前端轮询 GET 拿到它。
+ *  status=processing 继续等、ready 后 payload 即完整确稿数据、failed 显示 error。 */
+export interface ExplainerResearchJob {
+  session_id: string;
+  status: ExplainerResearchStatus;
+  topic_or_url?: string;
+  error?: string | null;
+  payload?: ExplainerResearchResponse | null;
 }
 
 export interface ExplainerAssembleRequest {

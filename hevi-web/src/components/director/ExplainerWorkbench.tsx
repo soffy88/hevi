@@ -56,6 +56,8 @@ interface ExplainerSnapshot {
   selectedScriptId: string;
   cues: ExplainerCue[];
   stage: Stage;
+  durationMode?: string;
+  customMinutes?: string;
 }
 
 const STATE_KEY = 'hevi_explainer_state';
@@ -63,6 +65,9 @@ const STATE_KEY = 'hevi_explainer_state';
 export function ExplainerWorkbench() {
   const [stage, setStage] = useState<Stage>('research');
   const [topicOrUrl, setTopicOrUrl] = useState('');
+  // 精准目标时长:4 档预设 + 自定义("1-3"/"3-6"/"6-10"/"10-15"/"custom")。
+  const [durationMode, setDurationMode] = useState('1-3');
+  const [customMinutes, setCustomMinutes] = useState('');
   const [voiceProfile, setVoiceProfile] = useState('cosyvoice_default');
   const [presenterId, setPresenterId] = useState('');
   const [presenters, setPresenters] = useState<Presenter[]>([]);
@@ -122,6 +127,8 @@ export function ExplainerWorkbench() {
     const applySnapshot = (snapshot: ExplainerSnapshot) => {
       setResearch(snapshot.research);
       setTopicOrUrl(snapshot.research.topic_or_url);
+      setDurationMode(snapshot.durationMode ?? '1-3');
+      setCustomMinutes(snapshot.customMinutes ?? '');
       setSelectedHookIds(snapshot.selectedHookIds?.length
         ? snapshot.selectedHookIds
         : snapshot.research.hooks.map(hook => hook.hook_id));
@@ -154,11 +161,13 @@ export function ExplainerWorkbench() {
         try {
           const cached = await explainerApi.researchCache(sessionId);
           if (!active) return;
+          // 只恢复 ready 的研究;processing/failed 留到用户重试。
+          if (cached.status !== 'ready' || cached.payload == null) return;
           applySnapshot({
-            research: cached,
-            selectedHookIds: cached.hooks.map(hook => hook.hook_id),
+            research: cached.payload,
+            selectedHookIds: cached.payload.hooks.map(hook => hook.hook_id),
             hookMode: 'chain',
-            selectedScriptId: cached.scripts[0]?.id ?? '',
+            selectedScriptId: cached.payload.scripts[0]?.id ?? '',
             cues: [],
             stage: 'review',
           });
@@ -184,9 +193,11 @@ export function ExplainerWorkbench() {
       selectedScriptId,
       cues,
       stage,
+      durationMode,
+      customMinutes,
     };
     window.sessionStorage.setItem(STATE_KEY, JSON.stringify(snapshot));
-  }, [research, selectedHookIds, hookMode, selectedScriptId, cues, stage]);
+  }, [research, selectedHookIds, hookMode, selectedScriptId, cues, stage, durationMode, customMinutes]);
 
   useEffect(() => {
     if (!taskId) return;
@@ -264,35 +275,78 @@ export function ExplainerWorkbench() {
     );
   }
 
+  /** 把 4 档预设 / 自定义时长解析成后端 target_duration 字符串;非法时返回 null。 */
+  function resolveTargetDuration(): string | null {
+    if (durationMode !== 'custom') return durationMode;
+    const value = customMinutes.trim();
+    if (!value || Number.isNaN(Number(value)) || Number(value) <= 0) return null;
+    return value;
+  }
+
   async function startResearch() {
     if (!topicOrUrl.trim()) {
       setError('请输入选题、参考文章或 URL');
       return;
     }
+    const targetDuration = resolveTargetDuration();
+    if (!targetDuration) {
+      setError('请输入有效的自定义时长(分钟)');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const result = await explainerApi.research({
+      // 异步研究:POST 立即返 202 + processing 信封,前端轮询 GET 拿结果。
+      // 长视频分章生成动辄几百秒,不再让同步 HTTP 撞 Cloudflare 524。
+      const job = await explainerApi.research({
         topic_or_url: topicOrUrl,
         voice_profile: voiceProfile,
         heygen_presenter_id: null,
+        target_duration: targetDuration,
         session_id: window.sessionStorage.getItem('hevi_explainer_session') ?? undefined,
       });
+      window.sessionStorage.setItem('hevi_explainer_session', job.session_id);
+      const result = await pollResearchJob(job.session_id);
+      if (!result) {  // failed:错误已在 setError 提示
+        setBusy(false);
+        return;
+      }
       setResearch(result);
       setRestoreNotice(null);
       // v9: 默认全选矩阵节点组成 Hook Chain,确稿台可按需增删。
       setSelectedHookIds(result.hooks.map(hook => hook.hook_id));
       if (result.scripts[0]) selectScript(result.scripts[0]);
       setStage('review');
-      // 断点续传:响应里带回 session_id,落 sessionStorage,刷新后从缓存恢复。
-      if (result.session_id) {
-        window.sessionStorage.setItem('hevi_explainer_session', result.session_id);
-      }
+      // 断点续传:响应里带回 session_id,已落 sessionStorage,刷新后从缓存恢复。
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '研究服务不可用');
     } finally {
       setBusy(false);
     }
+  }
+
+  // 轮询研究任务信封直到 ready/failed:ready 返回确稿 payload,failed 上报错误返 null。
+  async function pollResearchJob(sessionId: string): Promise<ExplainerResearchResponse | null> {
+    const started = Date.now();
+    // 超时兑底:長视频最多等 25 分钟(分章生成 + 本地慢模型)。
+    const deadline = started + 25 * 60 * 1000;
+    while (Date.now() < deadline) {
+      const job = await explainerApi.researchCache(sessionId);
+      if (job.status === 'ready' && job.payload) {
+        setError(null);
+        return job.payload;
+      }
+      if (job.status === 'failed') {
+        setError(job.error ?? '研究失败,请重试');
+        return null;
+      }
+      // 进度文案轮转(让用户知道还在跑,不是卡死)。可被后续睡眠覆写。
+      const elapsed = Math.floor((Date.now() - started) / 1000);
+      setError(`正在深度研究素材并拆解多视角脚本……已用时 ${elapsed}s`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+    setError('研究超时(>25 分钟),请重试');
+    return null;
   }
 
   async function startAssembly() {
@@ -384,6 +438,29 @@ export function ExplainerWorkbench() {
             <label className="ex-v6__field"><span>开闭幕数字人（自动选择）</span><select value={presenterId} onChange={event => { setPresenterId(event.target.value); setPresenterNotice(''); }} disabled={presenterBusy}>
               <option value="">{presenterBusy ? '正在自动配置数字人…' : '自动选择 / 自动创建'}</option>{presenters.map(presenter => <option key={presenter.id} value={presenter.id}>{presenter.name}</option>)}
             </select>{presenterNotice && <small>{presenterNotice}</small>}</label>
+          </div>
+          <div className="ex-v6__duration">
+            <span className="ex-v6__duration-label">目标时长（按约 250 字/分钟动态计算字数与段落数）</span>
+            <div className="ex-v6__duration-options">
+              {([
+                ['1-3', '1-3 分钟 · 深度解析'],
+                ['3-6', '3-6 分钟 · 硬核长文'],
+                ['6-10', '6-10 分钟 · 学术解说'],
+                ['10-15', '10-15 分钟 · 纪录片级'],
+              ] as const).map(([value, label]) => (
+                <label key={value} className={durationMode === value ? 'is-active' : ''}>
+                  <input type="radio" name="explainer-duration" value={value} checked={durationMode === value} onChange={() => setDurationMode(value)} />
+                  <span>{label}</span>
+                </label>
+              ))}
+              <label className={durationMode === 'custom' ? 'is-active' : ''}>
+                <input type="radio" name="explainer-duration" value="custom" checked={durationMode === 'custom'} onChange={() => setDurationMode('custom')} />
+                <span>自填任意时长</span>
+              </label>
+              {durationMode === 'custom' && (
+                <input aria-label="自定义目标时长(分钟)" type="number" min={1} placeholder="分钟数，如 20" value={customMinutes} onChange={event => setCustomMinutes(event.target.value)} />
+              )}
+            </div>
           </div>
           <div className="ex-v6__toggles"><label><input type="checkbox" checked={browserBroll} onChange={event => setBrowserBroll(event.target.checked)} /> 自动录制网页 B-roll</label><label><input type="checkbox" checked={codeRender} onChange={event => setCodeRender(event.target.checked)} /> 自动渲染代码 / 数据图表</label><label><input type="checkbox" checked={circleAvatar} onChange={event => setCircleAvatar(event.target.checked)} /> 动态圆形头像蒙版</label><label>画幅 <select value={aspectRatio} onChange={event => setAspectRatio(event.target.value as '9:16' | '16:9')}><option value="9:16">9:16 竖屏</option><option value="16:9">16:9 横屏</option></select></label></div>
           <button type="button" className="ex-v6__primary" onClick={startResearch} disabled={busy || presenterBusy}>{busy ? '研究与生成中…' : '🔍 启动联网调研与脚本生成'}</button>

@@ -32,6 +32,12 @@ class ExplainerResearchRequest(BaseModel):
     heygen_presenter_id: str | None = None
     # 断点续传:客户端可携带已有 session_id 覆盖旧缓存;空值由服务端生成。
     session_id: str = Field(default="", max_length=64)
+    # 精准目标时长:"1-3"/"3-6"/"6-10"/"10-15" 等范围档,或单个分钟数如 "8"/"20"。
+    # LLM 生成时按约 250 字/分钟动态计算总字数底线与视觉 Cue 数量。
+    target_duration: str = Field(
+        default="1-3",
+        description="目标时长，格式为范围(如'1-3')或具体分钟数(如'8')",
+    )
 
     @field_validator("topic_or_url")
     @classmethod
@@ -39,6 +45,27 @@ class ExplainerResearchRequest(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("topic_or_url 不能为空")
+        return value
+
+    @field_validator("target_duration")
+    @classmethod
+    def target_duration_must_be_range_or_number(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("target_duration 不能为空")
+        parts = value.split("-")
+        try:
+            bounds = [float(part) for part in parts]
+        except ValueError as exc:
+            raise ValueError("target_duration 应为分钟数或 '低-高' 范围") from exc
+        if len(bounds) == 1:
+            low = high = bounds[0]
+        elif len(bounds) == 2:
+            low, high = bounds
+        else:
+            raise ValueError("target_duration 格式无效:最多一个连字符")
+        if low <= 0 or high < low or high > 60:
+            raise ValueError("target_duration 需满足 0 < 低 <= 高 <= 60(分钟)")
         return value
 
 
@@ -84,6 +111,78 @@ class HookNode(BaseModel):
     associated_concepts: list[str] = Field(default_factory=list, max_length=16)
 
 
+class ConceptExpansion(BaseModel):
+    """素材吸收与扩写映射表条目 —— 反压缩机制的核心(Chain-of-Thought in Schema)。
+
+    LLM 必须在写任何台词之前,先遍历用户提供的全部素材,把每个硬核知识点拆成
+    一条映射:原文素材点 + 深度扩写。deep_explanation 由 LLM 自行挖掘前因后果、
+    历史背景、底层原理、数学/物理图景,并用通俗比喻讲透,不得少于 150 字。
+    矩阵做到 100% 覆盖,漏掉任何一段素材即视为废稿。
+    """
+
+    original_material_point: str = Field(
+        min_length=1,
+        max_length=2_000,
+        description="原文素材中的核心知识点或原句",
+    )
+    deep_explanation: str = Field(
+        min_length=50,
+        max_length=6_000,
+        description=(
+            "把该知识点彻底讲透的深度扩写(至少 150 字):前因后果、历史背景、"
+            "底层原理、技术/数学/物理图景 + 通俗比喻,禁止一句话带过。"
+        ),
+    )
+    source: str = Field(
+        default="", max_length=500, description="素材出处(无法核验可为空)"
+    )
+
+
+class ScriptVersionMeta(BaseModel):
+    """分章生成模式下,单个脚本版本的元信息(Step A 产出,不含 cues)。"""
+
+    id: str = ""
+    title: str
+    viewpoint: str = ""
+    hook: str = ""
+    # 思考链:本版如何把核心理论讲透(展开哪些反常点/用什么数据/从哪个原理切入/怎么收束)。
+    reasoning_depth: str = Field(default="", max_length=4_000)
+
+
+class ChapterPlan(BaseModel):
+    """超长视频的分章大纲:每章携带与本章主题相关的素材吸收与扩写条目。
+
+    章节的 expansions 是全局 material_coverage_matrix 的子集(非空),
+    逐章生成台词时整组喂给 LLM,保证该章素材 100% 被吸收。
+    """
+
+    chapter_id: str = Field(default="", max_length=32)
+    title: str = Field(min_length=1, max_length=120)
+    goal: str = Field(
+        min_length=20,
+        max_length=2_000,
+        description="本章要讲透什么:从哪个反常点切入、用什么数据/图表/比喻支撑、收束到什么结论",
+    )
+    expansions: list[ConceptExpansion] = Field(min_length=1, max_length=30)
+
+
+class ExplainerOutline(BaseModel):
+    """分章生成 Step A 的产出:研究 + 素材吸收矩阵 + 分章大纲 + 版本元信息。
+
+    故意不含 cues —— 台词在 Step B 逐章生成,避免单次超长 JSON 的 Attention
+    衰减与损坏,同时强制 LLM 先完成深度扩写再动笔。
+    """
+
+    research_summary: str = ""
+    facts: list[ResearchFact] = Field(default_factory=list)
+    hooks: list[HookNode] = Field(default_factory=list, max_length=12)
+    # 全局素材吸收与扩写矩阵:100% 覆盖选题全部硬核知识节点。
+    material_coverage_matrix: list[ConceptExpansion] = Field(default_factory=list)
+    # 4-5 章是理想产出;本地模型截断/少产出时,≥2 章也值得抢救(台词照常逐章生成)。
+    chapters: list[ChapterPlan] = Field(min_length=2, max_length=6)
+    versions: list[ScriptVersionMeta] = Field(min_length=1, max_length=5)
+
+
 class ExplainerCue(BaseModel):
     # LLM-generated drafts commonly provide only an estimated duration.  Keep
     # accepting the older explicit ``time_range`` wire field, but derive a
@@ -96,12 +195,23 @@ class ExplainerCue(BaseModel):
         description="时间范围，如 00:00-00:05",
     )
     visual_type: VisualType
-    text: str = Field(min_length=1, max_length=2_000)
+    text: str = Field(
+        min_length=1,
+        max_length=2_000,
+        description=(
+            "解说旁白文本。核心段落必须详实深入，字数建议在 100-200 字以上，切忌假大空和过度精简。"
+        ),
+    )
     visual_config: dict[str, Any] = Field(default_factory=dict)
     step_id: int | str | None = None
     # ``None`` was accepted by the previous contract; retain that input
     # compatibility while normalising omitted/null values to the 5s default.
-    time_estimate_s: float | None = Field(default=5.0, gt=0, le=300)
+    time_estimate_s: float | None = Field(
+        default=5.0,
+        gt=0,
+        le=300,
+        description="预估时长(秒)。核心解说段落应当在 30 秒到 60 秒之间。",
+    )
     target_url: str | None = None
     highlight_selector: str | None = None
     chart_data: dict[str, Any] | None = None
@@ -152,6 +262,18 @@ class ExplainerScriptDraft(BaseModel):
     title: str
     viewpoint: str = ""
     hook: str = ""
+    # 思考链:LLM 在写台词前先说明本版脚本如何把核心理论讲透(展开哪些反常点、
+    # 用什么数据支撑、从哪个原理切入、怎么收束),强制先想清楚再写,提升篇幅与深度。
+    reasoning_depth: str = Field(default="", max_length=4_000)
+    # 🚨 素材吸收与扩写映射表:强制 LLM 在写台词前先遍历全部素材并做深度扩写,
+    # 100% 覆盖用户提供的所有素材点,不得遗漏任何一段(反压缩机制核心)。
+    material_coverage_matrix: list[ConceptExpansion] = Field(
+        default_factory=list,
+        description=(
+            "必须 100% 覆盖用户提供的所有素材点,并在 deep_explanation 中进行"
+            "硬核扩写(≥150 字),绝不允许漏掉任何一段素材!"
+        ),
+    )
     cues: list[ExplainerCue] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -178,8 +300,34 @@ class ExplainerResearchResponse(BaseModel):
     script_versions: list[ExplainerScriptDraft] = Field(default_factory=list)
     provider: str
     decision_trail: list[dict[str, Any]] = Field(default_factory=list)
+    # 素材吸收与扩写映射表(跨脚本版本并集):确稿台可在选定版本前直接查看
+    # 全部素材点被如何深度扩写,反压缩质量可视化。
+    material_coverage_matrix: list[ConceptExpansion] = Field(default_factory=list)
     # 断点续传:本次调研的缓存 key,刷新页面后凭它从缓存恢复确稿台状态。
     session_id: str = Field(default="", max_length=64)
+
+
+# 研究任务状态(与 research_cache.ResearchStatus 同步)。
+ResearchStatus = Literal["pending", "processing", "ready", "failed"]
+
+
+class ExplainerResearchJob(BaseModel):
+    """异步研究任务的状态信封 —— 根治长视频研究的 524 超时。
+
+    POST /research 不再同步跑完再回(分章生成长视频动辄几百秒,Cloudflare
+    100s 就 524);改成立刻派研究后台任务并落盘一个 processing 信封,
+    HTTP 连接秒回 202。前端轮询 GET /research/{session_id} 拿到信封:
+    - processing:继续轮询(可显示进度文案)
+    - ready:payload 即完整 ExplainerResearchResponse,进入确稿台
+    - failed:显示 error,提供重试入口
+    原断点续传语义保留:ready 状态的信封 payload 就是完整的阶段一数据。
+    """
+
+    session_id: str = Field(max_length=64)
+    status: ResearchStatus
+    topic_or_url: str = Field(default="", max_length=20_000)
+    error: str | None = None
+    payload: ExplainerResearchResponse | None = None
 
 
 class ExplainerAssembleRequest(BaseModel):
@@ -241,3 +389,5 @@ class ExplainerServiceResult(BaseModel):
     scripts: list[ExplainerScriptDraft]
     provider: str
     decision_trail: list[dict[str, Any]] = Field(default_factory=list)
+    # 素材吸收与扩写映射表(跨脚本版本并集,去重)。
+    material_coverage_matrix: list[ConceptExpansion] = Field(default_factory=list)

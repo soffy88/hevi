@@ -14,47 +14,58 @@ const hoisted = vi.hoisted(() => ({
     delivery: { provider: 'remotion', variant: 'generated' },
   }),
   research: vi.fn().mockResolvedValue({
+    session_id: 'job-1',
+    status: 'processing',
     topic_or_url: '测试主题',
-    research_summary: '摘要',
-    facts: [],
-    hooks: [{
-      hook_id: 'H1',
-      title: '灾难的根源',
-      narrative_function: 'opening_suspense',
-      suggested_placement_s: 0,
-      text: '为什么经典力学在 BBGKY 方程这里彻底失效？',
-      associated_concepts: ['BBGKY 方程'],
-    }, {
-      hook_id: 'H2',
-      title: '拓扑树与重碰撞',
-      narrative_function: 'mid_conflict',
-      suggested_placement_s: 90,
-      text: '这里的核心死结，就是这张拓扑树上的重碰撞',
-      associated_concepts: ['拓扑树'],
-    }, {
-      hook_id: 'H3',
-      title: '调和分析突破',
-      narrative_function: 'climax_breakthrough',
-      suggested_placement_s: 180,
-      text: '而邓煜引入的调和分析，正是解开死结的钥匙',
-      associated_concepts: ['调和分析'],
-    }],
-    hook_details: [],
-    scripts: [{
-      id: 'A',
-      title: '版本 A',
-      viewpoint: '数据',
-      hook: '抓手',
-      cues: [{
-        time_range: '00:00-05.0s',
-        visual_type: 'heygen_avatar',
-        text: '数字人开场',
-        time_estimate_s: 5,
+    payload: null,
+  }),
+  researchCache: vi.fn().mockResolvedValue({
+    session_id: 'job-1',
+    status: 'ready',
+    topic_or_url: '测试主题',
+    payload: {
+      topic_or_url: '测试主题',
+      research_summary: '摘要',
+      facts: [],
+      hooks: [{
+        hook_id: 'H1',
+        title: '灾难的根源',
+        narrative_function: 'opening_suspense',
+        suggested_placement_s: 0,
+        text: '为什么经典力学在 BBGKY 方程这里彻底失效？',
+        associated_concepts: ['BBGKY 方程'],
+      }, {
+        hook_id: 'H2',
+        title: '拓扑树与重碰撞',
+        narrative_function: 'mid_conflict',
+        suggested_placement_s: 90,
+        text: '这里的核心死结，就是这张拓扑树上的重碰撞',
+        associated_concepts: ['拓扑树'],
+      }, {
+        hook_id: 'H3',
+        title: '调和分析突破',
+        narrative_function: 'climax_breakthrough',
+        suggested_placement_s: 180,
+        text: '而邓煜引入的调和分析，正是解开死结的钥匙',
+        associated_concepts: ['调和分析'],
       }],
-    }],
-    script_versions: [],
-    provider: 'test',
-    decision_trail: [],
+      hook_details: [],
+      scripts: [{
+        id: 'A',
+        title: '版本 A',
+        viewpoint: '数据',
+        hook: '抓手',
+        cues: [{
+          time_range: '00:00-05.0s',
+          visual_type: 'heygen_avatar',
+          text: '数字人开场',
+          time_estimate_s: 5,
+        }],
+      }],
+      script_versions: [],
+      provider: 'test',
+      decision_trail: [],
+    },
   }),
   assemble: vi.fn(),
 }));
@@ -67,7 +78,7 @@ vi.mock('@/lib/api-client', () => ({
   explainerApi: {
     research: hoisted.research,
     assemble: hoisted.assemble,
-    researchCache: vi.fn(),
+    researchCache: hoisted.researchCache,
   },
   taskApi: {
     get: vi.fn(),
@@ -161,6 +172,36 @@ describe('ExplainerWorkbench Hook 策略矩阵 (v9)', () => {
     expect(body.selected_hooks[0]).toContain('BBGKY 方程');
     expect(body.hook_combination).toBe('chain');
     expect(body.selected_hook).toContain('BBGKY 方程');
+  });
+});
+
+describe('ExplainerWorkbench 精准目标时长 (target_duration)', () => {
+  it('defaults to 1-3 分钟 and passes target_duration to research', async () => {
+    const user = userEvent.setup();
+    await reachReview(user);
+    expect(hoisted.research).toHaveBeenCalledOnce();
+    expect(hoisted.research.mock.calls[0][0].target_duration).toBe('1-3');
+  });
+
+  it('sends the selected range tier as target_duration', async () => {
+    const user = userEvent.setup();
+    render(<ExplainerWorkbench />);
+    await user.type(screen.getByPlaceholderText(/输入一句话主题/), '邓煜突破 BBGKY 方程');
+    await user.click(screen.getByRole('radio', { name: /10-15 分钟/ }));
+    await user.click(screen.getByRole('button', { name: /启动联网调研与脚本生成/ }));
+    await screen.findByText('Hook 组合策略');
+    expect(hoisted.research.mock.calls[0][0].target_duration).toBe('10-15');
+  });
+
+  it('sends custom minutes as target_duration', async () => {
+    const user = userEvent.setup();
+    render(<ExplainerWorkbench />);
+    await user.type(screen.getByPlaceholderText(/输入一句话主题/), '邓煜突破 BBGKY 方程');
+    await user.click(screen.getByRole('radio', { name: /自填任意时长/ }));
+    await user.type(screen.getByLabelText('自定义目标时长(分钟)'), '20');
+    await user.click(screen.getByRole('button', { name: /启动联网调研与脚本生成/ }));
+    await screen.findByText('Hook 组合策略');
+    expect(hoisted.research.mock.calls[0][0].target_duration).toBe('20');
   });
 });
 

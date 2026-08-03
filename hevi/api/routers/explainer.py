@@ -22,8 +22,8 @@ from hevi.explainer.contracts import (
     ExplainerAssembleRequest,
     ExplainerAssemblyAccepted,
     ExplainerCapabilityError,
+    ExplainerResearchJob,
     ExplainerResearchRequest,
-    ExplainerResearchResponse,
 )
 from hevi.explainer.props import deep_unpack_json
 from hevi.explainer.research import research_and_generate, response_payload
@@ -433,41 +433,82 @@ def _capability_http_error(exc: ExplainerCapabilityError) -> HTTPException:
     )
 
 
-@router.post("/research", response_model=ExplainerResearchResponse)
+@router.post("/research", response_model=ExplainerResearchJob, status_code=202)
 async def research_explainer(
     body: ExplainerResearchRequest,
+    background_tasks: BackgroundTasks,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
-) -> ExplainerResearchResponse:
-    """Research one topic and return a progressive hook matrix plus editable scripts.
+) -> ExplainerResearchJob:
+    """立刻派发异步研究任务并返回 202(根治长视频研究 524 超时)。
 
-    响应前把调研与 3 版脚本强制落盘(断点续传):即使后半段装配/渲染报错,
-    确稿数据依然在磁盘缓存,前端刷新后凭 session_id 直接恢复,无需重跑研究。
+    同步跑完整研究(分章生成几百秒)会超 Cloudflare 100s 上限。这里改成:
+    立刻设备一个 processing 状态信封到本地缓存,后台任务执行 research_and_generate,
+    跑完覆盖成 ready + 完整确稿数据(或 failed + 错误);HTTP 连接秒回 202 + session_id。
+    前端凭 session_id 轮询 GET /research/{session_id},status=ready 后进入确稿台。
+    原断点续传语义不变:ready 的信封 payload 即完整的阶段一数据。
     """
     del user  # authentication is the boundary; research is stateless
     session_id = ensure_clean_session_id(body.session_id)
+    # 先落盘 processing 信封:即使后台任务还没起在,前端轮询也能拿到状态。
+    save_research_cache(
+        session_id,
+        status="processing",
+        topic_or_url=body.topic_or_url[:20_000],
+    )
+    background_tasks.add_task(_run_research_job, body, session_id)
+    return ExplainerResearchJob(
+        session_id=session_id,
+        status="processing",
+        topic_or_url=body.topic_or_url[:20_000],
+    )
+
+
+async def _run_research_job(body: ExplainerResearchRequest, session_id: str) -> None:
+    """后台执行研究:ready 覆盖成完整确稿数据,failed 记录错误供前端轮询。
+
+    在 background_tasks 里跑,脱离请求生命周期 —— Cloudflare 就算掐断前端连接,
+    后台仍会跑完并把 ready 信封写盘,前端重启后能凭 session_id 捞回结果。
+    """
     try:
         result = await research_and_generate(body)
+        payload = response_payload(result, body.topic_or_url)
+        payload["session_id"] = session_id
+        save_research_cache(
+            session_id, status="ready", payload=payload, topic_or_url=body.topic_or_url[:20_000]
+        )
     except ExplainerCapabilityError as exc:
-        raise _capability_http_error(exc) from exc
-    payload = response_payload(result, body.topic_or_url)
-    payload["session_id"] = session_id
-    # 调研接口响应前落盘:后半段就算炸了,确稿与调研数据也拿得回来。
-    save_research_cache(session_id, payload)
-    return ExplainerResearchResponse.model_validate(payload)
+        save_research_cache(
+            session_id,
+            status="failed",
+            error=exc.message,
+            topic_or_url=body.topic_or_url[:20_000],
+        )
+        logger.warning("explainer research job %s failed: %s", session_id, exc.message)
+    except Exception as exc:  # background task, must not propagate
+        save_research_cache(
+            session_id,
+            status="failed",
+            error=f"研究后台任务异常: {exc}",
+            topic_or_url=body.topic_or_url[:20_000],
+        )
+        logger.exception("explainer research job %s crashed", session_id)
 
 
-@router.get("/research/{session_id}", response_model=ExplainerResearchResponse)
+@router.get("/research/{session_id}", response_model=ExplainerResearchJob)
 async def get_research_cache(
     session_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
-) -> ExplainerResearchResponse:
-    """断点续传:凭 session_id 从本地缓存恢复调研与确稿数据(不重跑研究)。"""
+) -> ExplainerResearchJob:
+    """轮询研究任务状态信封:processing 继续等、ready 返回完整确稿 payload、failed 返回错误。
+
+    复用原断点续传缓存(现升级为状态信封)。前端轮询此接口, Cloudflare 不会超时(秒级响应)。
+    """
     del user
     cached = load_research_cache(session_id)
     if cached is None:
-        raise HTTPException(status_code=404, detail="调研缓存不存在(可能已过期或被清理)")
+        raise HTTPException(status_code=404, detail="调研任务不存在(可能已过期或被清理)")
     try:
-        return ExplainerResearchResponse.model_validate(cached)
+        return ExplainerResearchJob.model_validate({**cached, "session_id": session_id})
     except Exception as exc:
         logger.warning("explainer research cache %s 损坏: %s", session_id, exc)
         raise HTTPException(status_code=404, detail="调研缓存已损坏,请重新研究") from exc

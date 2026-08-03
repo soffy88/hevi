@@ -76,19 +76,43 @@ def _result() -> ExplainerServiceResult:
 def test_cache_save_and_load_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
     payload = {"topic_or_url": "邓煜突破 BBGKY 方程", "hooks": [{"hook_id": "H1"}]}
-    save_research_cache("abc-123", payload)
+    save_research_cache("abc-123", status="ready", payload=payload)
     assert (tmp_path / "cache" / "abc-123.json").exists()
-    assert load_research_cache("abc-123") == payload
+    envelope = load_research_cache("abc-123")
+    assert envelope["status"] == "ready"
+    assert envelope["payload"] == payload
 
 
 def test_cache_save_is_atomic_and_overwrites(
     monkeypatch: pytest.MonkeyPatch, tmp_path,
 ) -> None:
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
-    save_research_cache("abc-123", {"version": 1})
-    save_research_cache("abc-123", {"version": 2})
-    assert load_research_cache("abc-123") == {"version": 2}
+    save_research_cache("abc-123", payload={"version": 1})
+    save_research_cache("abc-123", payload={"version": 2})
+    assert load_research_cache("abc-123")["payload"] == {"version": 2}
     assert list((tmp_path / "cache").glob("*.tmp")) == []  # 无残留临时文件
+
+
+def test_cache_processing_envelope_round_trip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    """异步研究先落盘 processing 信封,前端轮询能拿到状态。"""
+    monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
+    save_research_cache("abc-123", status="processing", topic_or_url="选题X")
+    envelope = load_research_cache("abc-123")
+    assert envelope["status"] == "processing"
+    assert envelope["payload"] is None
+    assert envelope["topic_or_url"] == "选题X"
+
+
+def test_cache_failed_envelope_round_trip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
+    save_research_cache("abc-123", status="failed", error="模型不可用")
+    envelope = load_research_cache("abc-123")
+    assert envelope["status"] == "failed"
+    assert envelope["error"] == "模型不可用"
 
 
 def test_cache_load_missing_or_corrupt_returns_none(
@@ -110,7 +134,7 @@ def test_cache_dir_cleans_unsafe_session_ids(
     safe = ensure_clean_session_id("../../etc/passwd")
     assert safe != "../../etc/passwd"
     assert safe == ensure_clean_session_id(safe)
-    save_research_cache("../../etc/passwd", {"x": 1})
+    save_research_cache("../../etc/passwd", payload={"x": 1})
     files = list((tmp_path / "cache").glob("*.json"))
     assert len(files) == 1
     # 落盘文件名是清洗后的合法 uuid(每次调用重新生成),绝不是脏路径。
@@ -118,50 +142,77 @@ def test_cache_dir_cleans_unsafe_session_ids(
     assert files[0].name != "passwd.json"
 
 
-# ── 调研接口响应前落盘 + GET 恢复 ────────────────────────────────────────
+# ── 异步调研接口:立即 202 + processing 信封;后台跑完 ready;轮询恢复 ──
+
+
+def _capturing_research(monkeypatch: pytest.MonkeyPatch, result):
+    """把调研函数 stub 成异步,返回固定结果(测试中同步驱动后台任务而不是等 background_tasks)。"""
+
+    async def fake_research(_body):
+        return result
+
+    monkeypatch.setattr(router, "research_and_generate", fake_research)
 
 
 @pytest.mark.asyncio
-async def test_research_endpoint_persists_cache_and_returns_session_id(
+async def test_research_endpoint_returns_202_processing_envelope(
     monkeypatch: pytest.MonkeyPatch, tmp_path,
 ) -> None:
+    """POST /research 秒回 202 + processing 信封 + session_id(不再同步跑)。"""
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
-
-    async def fake_research(_body):
-        return _result()
-
-    monkeypatch.setattr(router, "research_and_generate", fake_research)
+    _capturing_research(monkeypatch, _result())
     body = ExplainerResearchRequest(topic_or_url="邓煜突破 BBGKY 方程")
-    response = await router.research_explainer(body, _USER)
+    response = await router.research_explainer(body, BackgroundTasks(), _USER)
+    assert response.status == "processing"
     assert response.session_id
-    assert response.hooks[0].hook_id == "H1"
-    # 落盘完成:磁盘上有缓存,且能凭 session_id 原样读回。
-    cached = load_research_cache(response.session_id)
-    assert cached is not None
-    assert cached["topic_or_url"] == "邓煜突破 BBGKY 方程"
-    assert cached["hooks"][0]["hook_id"] == "H1"
+    assert response.topic_or_url == "邓煜突破 BBGKY 方程"
+    assert response.payload is None  # 还没跑完
+    # 已落盘 processing 信封,前端能凭 session_id 轮询到状态。
+    envelope = load_research_cache(response.session_id)
+    assert envelope["status"] == "processing"
 
 
 @pytest.mark.asyncio
-async def test_research_cache_restore_endpoint(
+async def test_research_job_completes_to_ready_and_restores(
     monkeypatch: pytest.MonkeyPatch, tmp_path,
 ) -> None:
+    """后台任务跑完覆盖 ready;GET 轮询拿到完整确稿 payload(断点续传保留)。"""
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
-
-    async def fake_research(_body):
-        return _result()
-
-    monkeypatch.setattr(router, "research_and_generate", fake_research)
-    first = await router.research_explainer(
-        ExplainerResearchRequest(topic_or_url="邓煜突破 BBGKY 方程"), _USER
-    )
-    restored = await router.get_research_cache(first.session_id, _USER)
-    assert restored.session_id == first.session_id
-    assert restored.scripts[0].title == "突破视角"
+    _capturing_research(monkeypatch, _result())
+    body = ExplainerResearchRequest(topic_or_url="邓煜突破 BBGKY 方程")
+    job = await router.research_explainer(body, BackgroundTasks(), _USER)
+    # 同步驱动后台任务(生产环境由 BackgroundTasks 调起,测试里手动跑)。
+    await router._run_research_job(body, job.session_id)
+    restored = await router.get_research_cache(job.session_id, _USER)
+    assert restored.status == "ready"
+    assert restored.session_id == job.session_id
+    assert restored.payload.hooks[0].hook_id == "H1"
+    assert restored.payload.scripts[0].title == "突破视角"
     # 未知 session → 404
     with pytest.raises(HTTPException) as exc:
         await router.get_research_cache("no-such-session", _USER)
     assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_research_job_records_capability_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    """Capability 错误 → failed 信封(供前端显示错误 + 重试)。"""
+    from hevi.explainer.contracts import ExplainerCapabilityError
+
+    monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
+
+    async def bad_research(_body):
+        raise ExplainerCapabilityError("CAPABILITY_UNAVAILABLE", "LLM 不可用")
+
+    monkeypatch.setattr(router, "research_and_generate", bad_research)
+    body = ExplainerResearchRequest(topic_or_url="测试")
+    job = await router.research_explainer(body, BackgroundTasks(), _USER)
+    await router._run_research_job(body, job.session_id)
+    failed = await router.get_research_cache(job.session_id, _USER)
+    assert failed.status == "failed"
+    assert "LLM 不可用" in failed.error
 
 
 # ── 隐患点 A:装配入参双重序列化强制防爆恢复 ──────────────────────────────

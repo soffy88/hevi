@@ -485,20 +485,22 @@ export const directorPipelineApi = {
 import type {
   ExplainerAssembleRequest,
   ExplainerAssemblyAccepted,
+  ExplainerResearchJob,
   ExplainerResearchRequest,
   ExplainerResearchResponse,
   ExplainerRunRequest,
   ExplainerRunStatus,
 } from '@/types/api';
 export const explainerApi = {
+  /** 异步研究:立即返 202 + processing 信封,前端凭 session_id 轮询。 */
   research: (payload: ExplainerResearchRequest) =>
-    authedReq<ExplainerResearchResponse>('/api/explainer/research', {
+    authedReq<ExplainerResearchJob>('/api/explainer/research', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  /** 断点续传:凭 session_id 从缓存恢复调研与确稿数据(不重跑研究)。 */
+  /** 轮询研究任务状态;status=ready 后 payload 即完整确稿数据(断点续传也走它)。 */
   researchCache: (sessionId: string) =>
-    authedReq<ExplainerResearchResponse>(`/api/explainer/research/${sessionId}`, {
+    authedReq<ExplainerResearchJob>(`/api/explainer/research/${sessionId}`, {
       method: 'GET',
     }),
   assemble: (payload: ExplainerAssembleRequest) =>
