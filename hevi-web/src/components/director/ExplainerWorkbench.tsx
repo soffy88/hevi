@@ -86,6 +86,8 @@ export function ExplainerWorkbench() {
   const [task, setTask] = useState<TaskInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 研究进行中的进度文案(绿色中性态,与红色 error 区分):轮询时的“已用时 Ns”。
+  const [researchInfo, setResearchInfo] = useState<string | null>(null);
   // 阶段三装配提交失败标记:驱动错误下方的 [🔄 重新提交装配] 按钮。
   const [assembleFailed, setAssembleFailed] = useState(false);
   // 断点续传恢复提示(独立于数字人 notice,避免被 presenter 加载覆盖)。
@@ -295,6 +297,7 @@ export function ExplainerWorkbench() {
     }
     setBusy(true);
     setError(null);
+    setResearchInfo(null);
     try {
       // 异步研究:POST 立即返 202 + processing 信封,前端轮询 GET 拿结果。
       // 长视频分章生成动辄几百秒,不再让同步 HTTP 撞 Cloudflare 524。
@@ -313,12 +316,14 @@ export function ExplainerWorkbench() {
       }
       setResearch(result);
       setRestoreNotice(null);
+      setResearchInfo(null);
       // v9: 默认全选矩阵节点组成 Hook Chain,确稿台可按需增删。
       setSelectedHookIds(result.hooks.map(hook => hook.hook_id));
       if (result.scripts[0]) selectScript(result.scripts[0]);
       setStage('review');
       // 断点续传:响应里带回 session_id,已落 sessionStorage,刷新后从缓存恢复。
     } catch (reason) {
+      setResearchInfo(null);
       setError(reason instanceof Error ? reason.message : '研究服务不可用');
     } finally {
       setBusy(false);
@@ -334,17 +339,20 @@ export function ExplainerWorkbench() {
       const job = await explainerApi.researchCache(sessionId);
       if (job.status === 'ready' && job.payload) {
         setError(null);
+        setResearchInfo(null);
         return job.payload;
       }
       if (job.status === 'failed') {
+        setResearchInfo(null);
         setError(job.error ?? '研究失败,请重试');
         return null;
       }
-      // 进度文案轮转(让用户知道还在跑,不是卡死)。可被后续睡眠覆写。
+      // 进度文案(绿色中性态,与红色 error 区分):让用户知道在跑、不是卡死。
       const elapsed = Math.floor((Date.now() - started) / 1000);
-      setError(`正在深度研究素材并拆解多视角脚本……已用时 ${elapsed}s`);
+      setResearchInfo(`正在深度研究素材并拆解多视角脚本……已用时 ${elapsed}s`);
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
+    setResearchInfo(null);
     setError('研究超时(>25 分钟),请重试');
     return null;
   }
@@ -554,6 +562,9 @@ export function ExplainerWorkbench() {
             </button>
           )}
         </section>
+      )}
+      {researchInfo && (
+        <div className="ex-v6__restore" role="status" aria-live="polite">{researchInfo}</div>
       )}
       {error && <div className="ex-v6__error" role="alert">{error}</div>}
       {assembleFailed && (
