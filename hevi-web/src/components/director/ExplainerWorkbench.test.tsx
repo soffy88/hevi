@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ExplainerWorkbench } from './ExplainerWorkbench';
@@ -67,6 +67,7 @@ vi.mock('@/lib/api-client', () => ({
   explainerApi: {
     research: hoisted.research,
     assemble: hoisted.assemble,
+    researchCache: vi.fn(),
   },
   taskApi: {
     get: vi.fn(),
@@ -75,6 +76,20 @@ vi.mock('@/lib/api-client', () => ({
 }));
 
 vi.mock('@/lib/auth-store', () => ({ syncAuthToken: vi.fn() }));
+
+beforeEach(() => {
+  // 确稿台快照落 sessionStorage;测试间必须清空,避免串场。
+  window.sessionStorage.clear();
+  vi.clearAllMocks();
+});
+
+/** 走到确稿台(阶段二):输入主题→启动联网调研→等待 Hook 矩阵渲染。 */
+async function reachReview(user: ReturnType<typeof userEvent.setup>) {
+  render(<ExplainerWorkbench />);
+  await user.type(screen.getByPlaceholderText(/输入一句话主题/), '邓煜突破 BBGKY 方程');
+  await user.click(screen.getByRole('button', { name: /启动联网调研与脚本生成/ }));
+  await screen.findByText('Hook 组合策略');
+}
 
 describe('ExplainerWorkbench presenter automation', () => {
   it('creates, selects, and exposes a default presenter in stage two', async () => {
@@ -94,13 +109,6 @@ describe('ExplainerWorkbench presenter automation', () => {
 });
 
 describe('ExplainerWorkbench Hook 策略矩阵 (v9)', () => {
-  async function reachReview(user: ReturnType<typeof userEvent.setup>) {
-    render(<ExplainerWorkbench />);
-    await user.type(screen.getByPlaceholderText(/输入一句话主题/), '邓煜突破 BBGKY 方程');
-    await user.click(screen.getByRole('button', { name: /启动联网调研与脚本生成/ }));
-    await screen.findByText('Hook 组合策略');
-  }
-
   it('renders a multi-select matrix with narrative function tags', async () => {
     const user = userEvent.setup();
     await reachReview(user);
@@ -153,5 +161,48 @@ describe('ExplainerWorkbench Hook 策略矩阵 (v9)', () => {
     expect(body.selected_hooks[0]).toContain('BBGKY 方程');
     expect(body.hook_combination).toBe('chain');
     expect(body.selected_hook).toContain('BBGKY 方程');
+  });
+});
+
+describe('ExplainerWorkbench 断点续传与重试', () => {
+  it('refresh 后从 sessionStorage 瞬时恢复确稿台,绝不重跑研究', async () => {
+    const user = userEvent.setup();
+    const first = render(<ExplainerWorkbench />);
+    await user.type(screen.getByPlaceholderText(/输入一句话主题/), '邓煜突破 BBGKY 方程');
+    await user.click(screen.getByRole('button', { name: /启动联网调研与脚本生成/ }));
+    await screen.findByText('Hook 组合策略');
+    first.unmount();
+
+    // 模拟刷新:重新挂载(jsdom sessionStorage 保留快照),研究不再触发。
+    hoisted.research.mockClear();
+    render(<ExplainerWorkbench />);
+    await screen.findByText('Hook 组合策略');
+    await waitFor(() =>
+      expect(screen.getByText('已从本地缓存恢复确稿台(无需重跑研究)')).toBeInTheDocument(),
+    );
+    expect(hoisted.research).not.toHaveBeenCalled();
+  });
+
+  it('阶段三装配失败时显示 [🔄 重新提交装配] 并用当前状态重发', async () => {
+    const user = userEvent.setup();
+    await reachReview(user);
+
+    hoisted.assemble.mockRejectedValueOnce(new Error('网络抖动'));
+    await user.click(screen.getByRole('button', { name: /确认文案与脚手架/ }));
+    const retry = await screen.findByRole('button', { name: /🔄 重新提交装配/ });
+    expect(screen.getByRole('alert')).toHaveTextContent('网络抖动');
+
+    hoisted.assemble.mockResolvedValueOnce({
+      task_id: 'task-2',
+      status: 'processing',
+      estimated_seconds: 30,
+      sse_channel: '',
+      production_source: 'explainer',
+      engine_version: 'v9',
+      adapter_version: 'v9.0',
+    });
+    await user.click(retry);
+    await waitFor(() => expect(hoisted.assemble).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('button', { name: /🔄 重新提交装配/ })).not.toBeInTheDocument();
   });
 });

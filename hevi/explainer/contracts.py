@@ -8,6 +8,8 @@ and artifact semantics that the rest of HEVI already uses.
 
 from __future__ import annotations
 
+import json
+from contextlib import suppress
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -115,9 +117,16 @@ class ExplainerCue(BaseModel):
         timeline is created by the assembly/ASR stage.  It is only a valid,
         editable cue range for the research response and remains compatible
         with clients that still send an explicit ``MM:SS-MM:SS`` range.
+
+        隐患点 B 防爆:整个 cue 被序列化成 JSON 字符串时先解包,绝不把 .get()
+        打在 str 上(『str』 object has no attribute 'get' 从根上灭绝)。
         """
+        if isinstance(data, str):
+            # json.loads 失败(纯文本等)直接放弃解包,交给下方 isinstance 守卫。
+            with suppress(Exception):
+                data = json.loads(data)
         if not isinstance(data, dict):
-            return data
+            return data  # 放弃 get 操作,让 Pydantic 报原本的 validation error
         if data.get("time_range"):
             return data
         values = dict(data)

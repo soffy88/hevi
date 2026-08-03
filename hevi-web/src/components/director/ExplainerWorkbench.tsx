@@ -48,6 +48,18 @@ function formatPlacement(seconds: number): string {
   return `${mm}:${ss}`;
 }
 
+/** 确稿台快照:刷新/返回页面时从 sessionStorage 瞬时恢复现场,绝不重新跑研究。 */
+interface ExplainerSnapshot {
+  research: ExplainerResearchResponse;
+  selectedHookIds: string[];
+  hookMode: 'chain' | 'fusion';
+  selectedScriptId: string;
+  cues: ExplainerCue[];
+  stage: Stage;
+}
+
+const STATE_KEY = 'hevi_explainer_state';
+
 export function ExplainerWorkbench() {
   const [stage, setStage] = useState<Stage>('research');
   const [topicOrUrl, setTopicOrUrl] = useState('');
@@ -69,6 +81,10 @@ export function ExplainerWorkbench() {
   const [task, setTask] = useState<TaskInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 阶段三装配提交失败标记:驱动错误下方的 [🔄 重新提交装配] 按钮。
+  const [assembleFailed, setAssembleFailed] = useState(false);
+  // 断点续传恢复提示(独立于数字人 notice,避免被 presenter 加载覆盖)。
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
 
   useEffect(() => {
     syncAuthToken();
@@ -99,32 +115,78 @@ export function ExplainerWorkbench() {
     return () => { active = false; };
   }, []);
 
-  // 断点续传:刷新页面后凭 sessionStorage 里的 session_id 从服务端缓存恢复
-  // 调研与确稿状态,后半段装配报错也不影响——绝对不需要重新跑研究。
+  // 断点续传:刷新/返回页面时先瞬时恢复本地 sessionStorage 快照(调研结果+3 版
+  // 脚本+Hook 链选择+当前 step),再异步向服务端缓存核对——绝对不需要重跑研究。
   useEffect(() => {
     let active = true;
-    const sessionId = window.sessionStorage.getItem('hevi_explainer_session');
-    if (!sessionId) return () => { active = false; };
-    const restore = async () => {
-      try {
-        const cached = await explainerApi.researchCache(sessionId);
-        if (!active) return;
-        setResearch(cached);
-        setTopicOrUrl(cached.topic_or_url);
-        setSelectedHookIds(cached.hooks.map(hook => hook.hook_id));
-        if (cached.scripts[0]) selectScript(cached.scripts[0]);
-        setStage('review');
-        setError(null);
-        setPresenterNotice('已从断点缓存恢复确稿台(无需重跑研究)');
-      } catch {
-        if (!active) return;
-        // 缓存失效(404/损坏):清掉本地标记,回到全新研究流程。
-        window.sessionStorage.removeItem('hevi_explainer_session');
-      }
+    const applySnapshot = (snapshot: ExplainerSnapshot) => {
+      setResearch(snapshot.research);
+      setTopicOrUrl(snapshot.research.topic_or_url);
+      setSelectedHookIds(snapshot.selectedHookIds?.length
+        ? snapshot.selectedHookIds
+        : snapshot.research.hooks.map(hook => hook.hook_id));
+      setHookMode(snapshot.hookMode ?? 'chain');
+      const script = snapshot.research.scripts.find(item => item.id === snapshot.selectedScriptId)
+        ?? snapshot.research.scripts[0];
+      if (script) selectScript(script);
+      if (snapshot.cues?.length) setCues(snapshot.cues);
+      setStage(snapshot.stage === 'assemble' ? 'review' : (snapshot.stage ?? 'review'));
+      setError(null);
+      setRestoreNotice('已从本地缓存恢复确稿台(无需重跑研究)');
     };
-    void restore();
+    const raw = window.sessionStorage.getItem(STATE_KEY);
+    if (raw) {
+      try {
+        const snapshot = JSON.parse(raw) as ExplainerSnapshot;
+        if (snapshot.research?.hooks?.length) {
+          applySnapshot(snapshot);
+        } else {
+          window.sessionStorage.removeItem(STATE_KEY);
+        }
+      } catch {
+        window.sessionStorage.removeItem(STATE_KEY);
+      }
+    }
+    // 服务端缓存兜底:本地无快照但留有 session_id(旧会话/跨标签页)时恢复。
+    const sessionId = window.sessionStorage.getItem('hevi_explainer_session');
+    if (sessionId && !raw) {
+      const restore = async () => {
+        try {
+          const cached = await explainerApi.researchCache(sessionId);
+          if (!active) return;
+          applySnapshot({
+            research: cached,
+            selectedHookIds: cached.hooks.map(hook => hook.hook_id),
+            hookMode: 'chain',
+            selectedScriptId: cached.scripts[0]?.id ?? '',
+            cues: [],
+            stage: 'review',
+          });
+        } catch {
+          if (!active) return;
+          // 缓存失效(404/损坏):清掉本地标记,回到全新研究流程。
+          window.sessionStorage.removeItem('hevi_explainer_session');
+        }
+      };
+      void restore();
+    }
     return () => { active = false; };
   }, []);
+
+  // 确稿台快照持久化:调研结果/3 版脚本/Hook 选择/当前 step 落 sessionStorage;
+  // 装配中(step=assemble)不持久化任务瞬时态,刷新后回到确稿台而非空任务页。
+  useEffect(() => {
+    if (!research) return;
+    const snapshot: ExplainerSnapshot = {
+      research,
+      selectedHookIds,
+      hookMode,
+      selectedScriptId,
+      cues,
+      stage,
+    };
+    window.sessionStorage.setItem(STATE_KEY, JSON.stringify(snapshot));
+  }, [research, selectedHookIds, hookMode, selectedScriptId, cues, stage]);
 
   useEffect(() => {
     if (!taskId) return;
@@ -217,6 +279,7 @@ export function ExplainerWorkbench() {
         session_id: window.sessionStorage.getItem('hevi_explainer_session') ?? undefined,
       });
       setResearch(result);
+      setRestoreNotice(null);
       // v9: 默认全选矩阵节点组成 Hook Chain,确稿台可按需增删。
       setSelectedHookIds(result.hooks.map(hook => hook.hook_id));
       if (result.scripts[0]) selectScript(result.scripts[0]);
@@ -252,6 +315,7 @@ export function ExplainerWorkbench() {
     }
     setBusy(true);
     setError(null);
+    setAssembleFailed(false);
     try {
       const accepted = await explainerApi.assemble({
         topic_or_url: topicOrUrl,
@@ -273,6 +337,7 @@ export function ExplainerWorkbench() {
       setStage('assemble');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '装配任务提交失败');
+      setAssembleFailed(true);
     } finally {
       setBusy(false);
     }
@@ -289,6 +354,7 @@ export function ExplainerWorkbench() {
         <h1>解说中心 · 深度解说工厂</h1>
         <p>研究事实，人工确稿，再用电视级装配完成一条可核验的解说视频。</p>
       </header>
+      {restoreNotice && <div className="ex-v6__restore" role="status">{restoreNotice}</div>}
 
       <nav className="ex-v6__steps" aria-label="解说生产阶段">
         {([
@@ -405,9 +471,21 @@ export function ExplainerWorkbench() {
           <div className="ex-v6__progress"><div className="ex-v6__progress-head"><strong>{task?.status === 'completed' ? '✓ 成片已完成' : task?.status === 'failed' ? '✗ 装配失败' : '⟳ Remotion 正在渲染中…'}</strong><span>任务 {taskId?.slice(0, 8)}</span></div><div className="ex-v6__bar"><i style={{ width: `${Math.max(5, task?.percent ?? 5)}%` }} /></div><p>{task?.stage ?? '已提交，等待生产任务调度'}</p></div>
           {task?.status === 'completed' && <div className="ex-v6__delivery"><h3>🎬 可下载产物</h3><a href={taskApi.videoUrl(task.task_id)} download>⬇ 下载竖屏成片</a><p>产物由 ArtifactManifest 校验后提供，路径：{task.result_video_path}</p></div>}
           {task?.status === 'failed' && <div className="ex-v6__error">{task.error ?? '装配失败，请查看任务详情'}</div>}
+          {task?.status === 'failed' && (
+            <button type="button" className="ex-v6__retry" onClick={startAssembly} disabled={busy}>
+              🔄 重新提交装配
+            </button>
+          )}
         </section>
       )}
       {error && <div className="ex-v6__error" role="alert">{error}</div>}
+      {assembleFailed && (
+        <div className="ex-v6__retry-row">
+          <button type="button" className="ex-v6__retry" onClick={startAssembly} disabled={busy}>
+            🔄 重新提交装配
+          </button>
+        </div>
+      )}
     </div>
   );
 }

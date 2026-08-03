@@ -301,3 +301,18 @@ def test_ensure_dict_unpacks_model_and_json_string() -> None:
     assert ensure_dict('{"a": 1}') == {"a": 1}
     assert ensure_dict("plain") == "plain"
     assert ensure_dict(None) is None
+
+
+def test_explainer_cue_before_validator_unwraps_json_string() -> None:
+    """整个 cue 被序列化成 JSON 字符串时,ensure_time_range 先解包再 .get(),
+    『str』 object has no attribute 'get' 从根上灭绝。"""
+    from hevi.explainer.contracts import ExplainerCue
+
+    cue = ExplainerCue.model_validate(
+        json.dumps({"text": "开场旁白", "visual_type": "voiceover"}, ensure_ascii=False)
+    )
+    assert cue.text == "开场旁白"
+    assert cue.time_range == "00:00-05.0s"  # 缺省时自动补占位时间轴
+    # 非 dict 非 JSON 字符串(如纯文本)不崩溃,交给 Pydantic 报原始校验错误。
+    with pytest.raises((TypeError, ValueError)):
+        ExplainerCue.model_validate("just-a-plain-string")
