@@ -69,3 +69,17 @@ def mount_mcp(app: FastAPI) -> None:
     server = build_hevi_mcp_server()
     asgi_app: Any = server._fastmcp.streamable_http_app()
     app.mount("/mcp", authenticated_mcp_app(asgi_app))
+
+    # mcp 2.0: mount 子 app lifespan 不自动运行 → 500 task group;
+    # 包装现有 lifespan 托管 mcp lifespan (main.py 零改动)。
+    from contextlib import asynccontextmanager
+
+    original_lifespan = app.router.lifespan_context
+
+    @asynccontextmanager
+    async def _combined(application: FastAPI):
+        async with original_lifespan(application):
+            async with asgi_app.router.lifespan_context(application):
+                yield
+
+    app.router.lifespan_context = _combined
