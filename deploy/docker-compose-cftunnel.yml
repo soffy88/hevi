@@ -16,31 +16,60 @@
 name: hevi-cftunnel
 
 services:
-  # Voicebox 是解说/通鉴共用的本地 TTS sidecar。模型和 profile 独立持久化，
-  # HEVI 只通过内网 HTTP 调用，不把 PyTorch/Qwen 依赖塞进 API 镜像。
-  hevi-voicebox:
+  # AI 算力引擎(v9.1: 由 voicebox sidecar 演进) —— 解说/通鉴共用的 GPU 引擎。
+  # Voicebox Qwen3-TTS 音色克隆 + CosyVoice 解说 + LongCat Talking Face 全部在此,
+  # HEVI 只通过内网 HTTP 调用, 不把 PyTorch 依赖塞进 API 镜像。
+  hevi-gen-engine:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile.voicebox
+      dockerfile: services/gen_engine/Dockerfile
+      network: host  # audiotools/linacodec 等 GitHub 依赖需宿主网络 + 代理
       args:
-        PYTORCH_VARIANT: cpu
+        PYTORCH_VARIANT: cuda
+        HTTP_PROXY: http://127.0.0.1:7890
+        HTTPS_PROXY: http://127.0.0.1:7890
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     environment:
       LOG_LEVEL: info
       NUMBA_CACHE_DIR: /tmp/numba_cache
-      VOICEBOX_BACKEND_VARIANT: cpu
+      VOICEBOX_BACKEND_VARIANT: cuda
       HF_HOME: /home/voicebox/.cache/huggingface
       HF_HUB_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
+      VIBEVOICE_MODEL_DIR: /models/vibevoice-1.5b
+      COSYVOICE_MODEL_DIR: /opt/cosyvoice/model
+      FISH_SPEECH_MODEL_DIR: /models/fish-speech-1.5
+      LONGCAT_MODEL_PATH: /data/models/LongCat-Voice
+      VIBEVOICE_ASR_MODEL_DIR: /models/vibeasr
     volumes:
       - voicebox-data:/app/data
       # The model is downloaded by the deployment host (through its proxy)
       # and mounted read-only. Runtime containers need no outbound network.
       - ../.voicebox-cache:/home/voicebox/.cache/huggingface/hub
+      # 语音/生成模型权重(宿主持有, 只读; 缺失时端点返回 501, API 自动降级)
+      - ${VIBEVOICE_MODEL_DIR:-/home/soffy/models/vibevoice-1.5b}:/models/vibevoice-1.5b:ro
+      - ${COSYVOICE_MODEL_DIR:-/home/soffy/models/CosyVoice}:/opt/cosyvoice/model:ro
+      - ${FISH_SPEECH_MODEL_DIR:-/home/soffy/models/fish-speech-1.5}:/models/fish-speech-1.5:ro
+      - ${LONGCAT_MODEL_DIR:-/data/models/LongCat-Voice}:/data/models/LongCat-Voice:ro
+      - ${VIBEVOICE_ASR_MODEL_DIR:-/home/soffy/models/vibeasr}:/models/vibeasr:ro
+      # vibevoice 的 Qwen2.5-1.5B tokenizer 语言模型底座(只读; HF_HUB_OFFLINE 下从缓存加载)
+      - /home/soffy/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B:/home/voicebox/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B:ro
+      # VibeVoice-ASR 的 Qwen2.5-7B 语言模型 tokenizer 底座(只读)
+      - /home/soffy/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B:/home/voicebox/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B:ro
     ports:
       - "127.0.0.1:17600:17493"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:17493/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:17493/api/ai/health"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -51,9 +80,15 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.api
     restart: unless-stopped
-    # GPU binding is temporarily disabled because the host NVIDIA runtime
-    # references a stale driver library (580.159.03 vs host 580.173.02).
-    # Cloud providers and CPU-safe paths remain available until runtime repair.
+    # v9.1: 纯控制节点资源限制(防内存泄漏拖垮宿主)。GPU 全部分配给 hevi-gen-engine。
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    # GPU binding 已恢复(2026-08-03):host 驱动已升级到 580.173.02,
+    # nvidia 容器运行时实测可用。voicebox 换 CUDA torch 后 TTS 提速 10-50x
+    # (此前 CPU 版每段 42s 音频要 ~5 分钟)。hevi-api 自身仍走云端视频/CPU。
     env_file:
       - path: ../.env
         required: false
@@ -71,7 +106,9 @@ services:
       OLLAMA_MODEL: qwen2.5vl:7b
       HEVI_EXPLAINER_TTS_PROVIDER: voicebox
       HEVI_AUDIO_PROVIDER: voicebox
-      VOICEBOX_BASE_URL: http://hevi-voicebox:17493
+      # v9.1: AI 引擎统一地址(CosyVoice/LongCat/voicebox TTS 同源)。
+      GEN_ENGINE_BASE_URL: http://hevi-gen-engine:17493
+      VOICEBOX_BASE_URL: http://hevi-gen-engine:17493
       VOICEBOX_ENGINE: ${VOICEBOX_ENGINE:-qwen_custom_voice}
       VOICEBOX_MODEL_SIZE: ${VOICEBOX_MODEL_SIZE:-1.7B}
       VOICEBOX_PRESET_VOICE: ${VOICEBOX_PRESET_VOICE:-Dylan}
@@ -84,6 +121,11 @@ services:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro
       - /home/soffy/projects/hevi/output:/app/output
+      # v9.1: 任务沙盒 + SQLite 任务库(data/hevi_tasks.db)持久化到宿主机,
+      # 容器重建不丢进度,大盘/WebSocket 可读可下载。
+      - /home/soffy/projects/hevi/data:/app/data
+      # MCP lifespan 修复 (b5815c8): 单文件挂载免 rebuild (镜像内代码)
+      - /home/soffy/projects/hevi/hevi/api/mcp_mount.py:/app/hevi/api/mcp_mount.py:ro
       # 主机已有的 HF 缓存(含 openai/clip-vit-base-patch32)只读挂进来,让
       # subjects/subject_embed.py 能算角色身份向量(local_files_only=True)——
       # 治"人物存了但没向量资产化",同时启用角色一致性 CLIP 打分。
