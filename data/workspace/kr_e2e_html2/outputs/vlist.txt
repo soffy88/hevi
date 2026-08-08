@@ -1,0 +1,8 @@
+file '/data/soffy/projects/hevi/data/workspace/kr_e2e_html2/outputs/norm/v00.mp4'
+file '/data/soffy/projects/hevi/data/workspace/kr_e2e_html2/outputs/norm/v01.mp4'
+file '/data/soffy/projects/hevi/data/workspace/kr_e2e_html2/outputs/norm/v02.mp4'
+file '/data/soffy/projects/hevi/data/workspace/kr_e2e_html2/outputs/norm/v03.mp4'
+file '/data/soffy/projects/hevi/data/workspace/kr_e2e_html2/outputs/norm/v04.mp4'
+file '/data/soffy/projects/hevi/data/workspace/kr_e2e_html2/outputs/norm/v05.mp4'
+file '/data/soffy/projects/hevi/data/workspace/kr_e2e_html2/outputs/norm/v06.mp4'
+file '/data/soffy/projects/hevi/data/workspace/kr_e2e_html2/outputs/norm/v07.mp4'

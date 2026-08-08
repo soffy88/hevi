@@ -1,0 +1,8 @@
+file '/data/soffy/projects/hevi/data/workspace/kr_final8/outputs/nar_00.mp3'
+file '/data/soffy/projects/hevi/data/workspace/kr_final8/outputs/nar_01.mp3'
+file '/data/soffy/projects/hevi/data/workspace/kr_final8/outputs/nar_02.mp3'
+file '/data/soffy/projects/hevi/data/workspace/kr_final8/outputs/nar_03.mp3'
+file '/data/soffy/projects/hevi/data/workspace/kr_final8/outputs/nar_04.mp3'
+file '/data/soffy/projects/hevi/data/workspace/kr_final8/outputs/nar_05.mp3'
+file '/data/soffy/projects/hevi/data/workspace/kr_final8/outputs/nar_06.mp3'
+file '/data/soffy/projects/hevi/data/workspace/kr_final8/outputs/nar_07.mp3'

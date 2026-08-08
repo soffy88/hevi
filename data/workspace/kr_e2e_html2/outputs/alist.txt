@@ -1,0 +1,8 @@
+file 'data/workspace/kr_e2e_html2/outputs/nar_00.mp3'
+file 'data/workspace/kr_e2e_html2/outputs/nar_01.mp3'
+file 'data/workspace/kr_e2e_html2/outputs/nar_02.mp3'
+file 'data/workspace/kr_e2e_html2/outputs/nar_03.mp3'
+file 'data/workspace/kr_e2e_html2/outputs/nar_04.mp3'
+file 'data/workspace/kr_e2e_html2/outputs/nar_05.mp3'
+file 'data/workspace/kr_e2e_html2/outputs/nar_06.mp3'
+file 'data/workspace/kr_e2e_html2/outputs/nar_07.mp3'

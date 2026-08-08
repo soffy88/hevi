@@ -1,0 +1,163 @@
+[
+  {
+    "name": "spotlight-hero-card",
+    "category": "opening",
+    "purpose": "开场单主角完整动作弧:聚光→推近→悬浮→归位,撑起第一印象",
+    "energy": "high",
+    "suggested_duration_s": 3.0,
+    "params": {
+      "hold_s": 1.0,
+      "arc": "focus-float-settle"
+    },
+    "implementation_notes": "单卡结构定型后不要再动;弧线必须完整(起-承-落)",
+    "known_pitfalls": [
+      "多元素并舞撑不起开场",
+      "弧线未收尾就切镜"
+    ],
+    "demo_ref": "template/src/aifl/live/HeroCard.tsx"
+  },
+  {
+    "name": "deck-deal-flyin",
+    "category": "ui-entrance",
+    "purpose": "批量元素入场:硬加速发牌式飞入,满板静止 0.5s 再切下一拍",
+    "energy": "high",
+    "suggested_duration_s": 1.8,
+    "params": {
+      "accel": "hard",
+      "rest_s": 0.5
+    },
+    "implementation_notes": "绑物理隐喻(牌堆发牌);不用匀速直线运动",
+    "known_pitfalls": [
+      "匀速 = 廉价 PPT 感",
+      "无收尾停顿"
+    ],
+    "demo_ref": ""
+  },
+  {
+    "name": "row-embed",
+    "category": "data",
+    "purpose": "数据行嵌入:行逐条揭示,列表/堆叠保持正视保证可读性",
+    "energy": "medium",
+    "suggested_duration_s": 1.2,
+    "params": {
+      "reveal": "row-by-row",
+      "camera": "front"
+    },
+    "implementation_notes": "信息密集镜头禁止倾斜机位",
+    "known_pitfalls": [
+      "倾斜破坏文字可读性"
+    ],
+    "demo_ref": ""
+  },
+  {
+    "name": "orbit-closeup",
+    "category": "camera",
+    "purpose": "物件特写四件套:侧面倾斜角+可感知高度+orbit 环绕+反差深色背景",
+    "energy": "medium",
+    "suggested_duration_s": 2.4,
+    "params": {
+      "orbit": 360,
+      "bg": "brushed-metal"
+    },
+    "implementation_notes": "拉远同步过渡回主场景",
+    "known_pitfalls": [
+      "无体积高度的堆叠",
+      "光溢出圆角边界"
+    ],
+    "demo_ref": ""
+  },
+  {
+    "name": "beat-locked-cut",
+    "category": "rhythm",
+    "purpose": "转场卡拍:切点钉在 beatF(n) 拍号上,回测误差 ≤3f",
+    "energy": "high",
+    "suggested_duration_s": 0.5,
+    "params": {
+      "grid": "beatF"
+    },
+    "implementation_notes": "先做节奏分析再排时间线",
+    "known_pitfalls": [
+      "不信 beat_track 的 tempo 标量",
+      "不渲后回测"
+    ],
+    "demo_ref": ""
+  },
+  {
+    "name": "page-flip-transition",
+    "category": "transition",
+    "purpose": "卷页翻书转场:纸背保留淡化原页纹理,右下角起卷",
+    "energy": "low",
+    "suggested_duration_s": 0.7,
+    "params": {
+      "corner": "bottom-right"
+    },
+    "implementation_notes": "保留未触碰的母版页,先静止再卷",
+    "known_pitfalls": [
+      "卷页时两层错位"
+    ],
+    "demo_ref": ""
+  },
+  {
+    "name": "title-card-hold",
+    "category": "typography",
+    "purpose": "字卡落定:品牌字标 hold ≥1s,呼吸感给品牌记忆点",
+    "energy": "low",
+    "suggested_duration_s": 1.6,
+    "params": {
+      "hold_s": 1.0
+    },
+    "implementation_notes": "停顿给品牌/关键信息,不随手给普通元素",
+    "known_pitfalls": [
+      "先停错对象"
+    ],
+    "demo_ref": ""
+  },
+  {
+    "name": "countdown-digit-roll",
+    "category": "effects",
+    "purpose": "数字滚动:高位向低位级联翻转,收尾定格 0.5s",
+    "energy": "medium",
+    "suggested_duration_s": 1.4,
+    "params": {
+      "roll": "cascade",
+      "settle_s": 0.5
+    },
+    "implementation_notes": "数字字体等宽防跳动",
+    "known_pitfalls": [
+      "不等宽字体抖动"
+    ],
+    "demo_ref": ""
+  },
+  {
+    "name": "type-and-filter",
+    "category": "interaction",
+    "purpose": "交互演示按真人操作速度:打字→筛选→结果,观众能跟着做一遍",
+    "energy": "medium",
+    "suggested_duration_s": 3.0,
+    "params": {
+      "pace": "human"
+    },
+    "implementation_notes": "用真实页面截图 + 元素级抠图,不手搓复刻",
+    "known_pitfalls": [
+      "快过真人操作",
+      "手搓复刻既有页面"
+    ],
+    "demo_ref": ""
+  },
+  {
+    "name": "outro-wordmark-settle",
+    "category": "outro",
+    "purpose": "片尾:品牌字标归位 + 呼吸停顿 + 无 BGM 版交付",
+    "energy": "low",
+    "suggested_duration_s": 2.0,
+    "params": {
+      "hold_s": 1.2,
+      "dual_delivery": true
+    },
+    "implementation_notes": "配 BGM 的片终渲固定交付两版(带/不带 BGM)",
+    "known_pitfalls": [
+      "结尾没有静止时刻"
+    ],
+    "demo_ref": ""
+  }
+]
