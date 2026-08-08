@@ -41,18 +41,22 @@ def build_video_skills(task_svc: TaskService | None = None) -> list[SkillDef]:
     async def _handler(args: dict[str, Any]) -> dict[str, Any]:
         svc = await _get_task_service()
         user_id = require_mcp_actor()
+        # 主脑等 Agent 可能传 "auto"/空/未知 provider → 归一化到合法枚举,
+        # 否则 estimate_cost/config_builder 抛 "Invalid video provider" 任务失败。
+        video_provider = (args.get("video_provider") or "wan_local").strip()
+        if video_provider in ("auto", "default", "local", ""):
+            video_provider = "wan_local"
+        audio_provider = (args.get("audio_provider") or "vibevoice").strip()
+        if audio_provider in ("auto", "default", "tts", ""):
+            audio_provider = "edge_tts"
         request = ProductionRequest(
             source="automatic",
             topic=args["topic"],
             duration_archetype=_DURATION_ALIASES.get(
                 args["duration_archetype"], args["duration_archetype"]
             ),
-            video_provider=_VIDEO_PROVIDER_ALIASES.get(
-                args["video_provider"], args["video_provider"]
-            ),
-            audio_provider=_AUDIO_PROVIDER_ALIASES.get(
-                args["audio_provider"], args["audio_provider"]
-            ),
+            video_provider=_VIDEO_PROVIDER_ALIASES.get(video_provider, video_provider),
+            audio_provider=_AUDIO_PROVIDER_ALIASES.get(audio_provider, audio_provider),
             options={
                 "style": args.get("style", "cinematic"),
                 "language": args.get("language", "zh"),

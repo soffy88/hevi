@@ -88,12 +88,11 @@ class TaskService:
             },
         )
         try:
+
             async def operation(
                 _config: dict[str, Any], _input_data: dict[str, Any], _output_dir: Path
             ) -> dict[str, Any]:
-                legacy_result = await self.production_adapters.execute(
-                    task, self.repository.pool
-                )
+                legacy_result = await self.production_adapters.execute(task, self.repository.pool)
                 legacy_status = str(legacy_result.get("status", "failed"))
                 status = {
                     "completed": "succeeded",
@@ -105,7 +104,9 @@ class TaskService:
                     legacy_manifest.model_dump(mode="json")["artifacts"]
                     if legacy_manifest is not None
                     else (
-                        ArtifactManifest.for_video(artifact_path).model_dump(mode="json")["artifacts"]
+                        ArtifactManifest.for_video(artifact_path).model_dump(mode="json")[
+                            "artifacts"
+                        ]
                         if artifact_path
                         else []
                     )
@@ -144,9 +145,13 @@ class TaskService:
             )
             if engine_result.get("status") != "succeeded":
                 error = engine_result.get("error") or {"message": "adapter execution failed"}
+                # legacy_result.error(装配等下游 adapter 直接写回的错误)可能是纯字符串,
+                # 不是 omodul 标准的 {"code","message"} dict——不能无脑 .get(),
+                # 否则真实错误信息会被 'str' object has no attribute 'get' 盖掉。
+                message = error.get("message", error) if isinstance(error, dict) else error
                 update = {
                     "status": "failed",
-                    "error": str(error.get("message", error))[:500],
+                    "error": str(message)[:500],
                     "updated_at": datetime.now(UTC).replace(tzinfo=None),
                 }
                 await self.repository.update_task(task_id, update)
@@ -247,7 +252,7 @@ class TaskService:
             "total_shots": 0,
             "completed_shots": 0,
             "config_json": {
-                **kwargs,
+                **{k: v for k, v in kwargs.items() if v is not None},
                 "estimated_usd": estimate.total_usd,
                 "credits_reserved": credits_needed,
             },

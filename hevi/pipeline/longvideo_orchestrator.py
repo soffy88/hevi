@@ -962,19 +962,24 @@ async def orchestrate_longvideo(
                 except Exception as av_e:  # 数字人非关键路径, 失败仍出 B-roll 成片
                     logger.error(f"avatar compose skipped: {av_e}")
 
-        # omodul._default_llm() calls ProviderRegistry.get(category=...) which is
-        # incompatible with obase's singleton .get(). Inject the registered LLM directly.
-        # LLM is stored in _llms dict (via register_llm), not _generic — use .llm() not .generic().
-        from obase.provider_registry import ProviderRegistry as _PR
-
         # "default" 在本机通常退化成本地 ollama(hevi/providers/local_qwen_adapter.py:225,
         # 公共 DashScope 欠费停用后的既定回退),对结构化分镜脚本(script→scenes)不可靠——
-        # 同 tongjian L0-L5 当年撞过的坑(e2e-local-llm-json-blocker)。这里比照 tongjian
-        # 的解法,优先选非欠费的 qwen_cloud(阿里云百炼 workspace 端点);没注册才退回 default。
-        try:
-            _llm = _PR.get().llm("qwen_cloud")
-        except Exception:
-            _llm = _PR.get().llm("default")
+        # 同 tongjian L0-L5 当年撞过的坑(e2e-local-llm-json-blocker)。
+        # 选择序: qwen_cloud(阿里云百炼 workspace, 新 key 有效, 长剧本 JSON 遵循
+        # 实测最好) → opencode(hy3, 短 JSON 好但长剧本偶叙述化) → NIM
+        # (STRICT JSON 分镜好但长剧本易叙述化) → default。
+        from obase.provider_registry import ProviderRegistry as _PR
+
+        _llm = None
+        for _name in ("qwen_cloud", "opencode", "nim", "default"):
+            try:
+                _llm = _PR.get().llm(_name)
+                if _llm is not None:
+                    break
+            except Exception:
+                continue
+        if _llm is None:
+            raise RuntimeError("no LLM provider registered (qwen_cloud/opencode/nim/default)")
 
         _providers: dict[str, Any] = {
             "llm": _llm,

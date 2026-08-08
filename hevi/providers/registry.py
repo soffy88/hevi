@@ -134,7 +134,7 @@ def register_all_providers() -> None:
             "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json=payload,
-            timeout=120.0,
+            timeout=300.0,  # 长研究/剧本生成单次可达 8k tokens,120s 常被 ReadTimeout 打爆
         )
         data = r.json()
         # Adapt OpenAI-compatible format → native DashScope format expected by AsyncDashScopeAdapter
@@ -205,7 +205,7 @@ def register_all_providers() -> None:
             f"https://{host}/compatible-mode/v1/chat/completions",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
             json=payload,
-            timeout=120.0,
+            timeout=300.0,
         )
         r.raise_for_status()
         data = r.json()
@@ -218,6 +218,20 @@ def register_all_providers() -> None:
 
     AsyncQwenCloudAdapter = _make_sync_llm_adapter(_compat_llm_call_maas)
     ProviderRegistry.register("llm", "qwen_cloud", AsyncQwenCloudAdapter, replace=True)
+
+    # 1.0.2 研究模型:NVIDIA NIM(2 KEY 轮换)——explainer research 单次生成
+    # max_tokens 可达 8000,原 default(DashScope)硬编码 120s 超时,长研究任务
+    # 频繁 "研究模型调用失败: timed out"。NIM 云端快 + 密钥池现成
+    # (stratum aii/.pipeline_keys.json),取 2 个 key 轮换、失败自动换 key 重试。
+    from hevi.providers.nim_caller import register_nim_llm
+
+    register_nim_llm()
+
+    # 1.0.3 v9.1: OpenCode(OpenAI 兼容)替换 NIM 作为研究/创意默认 LLM。
+    # 未配 OPENCODE_API_KEY 时静默跳过, 回落 NIM/default(替换可逆)。
+    from hevi.providers.opencode_caller import register_opencode_llm
+
+    register_opencode_llm()
 
     # 1.1 Local LLM fallback — register LocalQwenAdapter as "local";
     # overrides "default" when HEVI_LLM_PROVIDER=qwen_local
