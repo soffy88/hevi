@@ -30,9 +30,20 @@ def _split_sentences(text: str) -> list[str]:
     return [p for p in _SENTENCE_SPLIT_RE.split(text) if p.strip()]
 
 
-def _build_shot_prompt(art_direction: str, action: str, on_screen: list[str]) -> str:
+def _build_shot_prompt(art_direction: str, action: str, on_screen: list[str],
+                       emotion_expression: str = "", atmosphere: str = "",
+                       lighting: str = "") -> str:
+    """黄金公式拼装: [景别/运镜] + [主体+动作+表情/肢体] + [氛围/光线]。
+
+    emotion 必须降维为视觉动作 (表情/肢体), 不写抽象情绪词。
+    """
     who = "、".join(on_screen)
-    return f"{art_direction}, {action}" if not who else f"{art_direction}, {action}({who})"
+    expr = f", {emotion_expression}" if emotion_expression else ""
+    env = "、".join(x for x in (atmosphere, lighting) if x)
+    env_part = f", {env}" if env else ""
+    base = f"{art_direction}, {action}" if not who \
+        else f"{art_direction}, {action}({who})"
+    return f"{base}{expr}{env_part}"
 
 
 async def plan_shots(
@@ -114,7 +125,12 @@ async def plan_shots(
                 if dialogue is not None and chunk:
                     shot_dialogue = dialogue.model_copy(update={"text": "".join(chunk)})
 
-                prompt = _build_shot_prompt(art_direction, beat.action, shot_on_screen)
+                prompt = _build_shot_prompt(
+                    art_direction, beat.action, shot_on_screen,
+                    emotion_expression=beat.emotion_expression,
+                    atmosphere=beat.atmosphere,
+                    lighting=beat.lighting,
+                )
                 for cid in shot_on_screen:
                     traits = immutable_traits_by_character.get(cid, "")
                     if traits:
@@ -137,6 +153,9 @@ async def plan_shots(
                         dialogue_inline=shot_dialogue,
                         est_duration_s=max_duration,
                         prompt=prompt,
+                        emotion_expression=beat.emotion_expression,
+                        atmosphere=beat.atmosphere,
+                        lighting=beat.lighting,
                     )
                 )
 

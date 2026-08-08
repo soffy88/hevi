@@ -204,7 +204,13 @@ async def synthesize_storyboard(
                 props=props,
                 captions=captions,
                 visual_type=seg.visual_type,
-                visual_config=seg.visual_config,
+                visual_config={
+                    **seg.visual_config,
+                    "layout_mode": getattr(seg, "layout_mode", "fullscreen") or "fullscreen",
+                    "audio_style": getattr(seg, "audio_style", "formal") or "formal",
+                },
+                layout_mode=getattr(seg, "layout_mode", "fullscreen") or "fullscreen",
+                audio_style=getattr(seg, "audio_style", "formal") or "formal",
             )
         )
         logger.info("explainer voiceover: 段 %s 时长 %.2fs (累计 %.2fs)", seg.id, duration, cursor)

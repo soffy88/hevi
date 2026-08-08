@@ -125,6 +125,11 @@ class ShotListItem(BaseModel):
     scene_no: int  # 引用 Screenplay 的 scene_no
     shot_size: str = ""  # 景别:远/全/中/近/特写
     camera: str = ""  # 机位/摄法
+    # 3GS G1 前置(SPEC-3GS-world-set.md 门 1):机位/方位角字段 —— 机位驱动渲染
+    # 的查询参数。3D 视角资产按 (camera_angle, azimuth_deg) 渲对应视角条件帧;
+    # 2D 档把 camera_angle 翻译成镜头语言注入 prompt。同时是越轴检查的确定性依据。
+    camera_angle: str = ""  # 机位角度:正面/侧45°/俯拍/仰拍/环绕/背后
+    azimuth_deg: float | None = None  # 水平方位角(0=正对,90=右侧,+为顺时针)
     visual_prompt: str = ""  # 画面内容描述(生成用的视觉 prompt 主体)
     dialogue_lines: list[ShotListDialogueLine] = Field(default_factory=list)
     blocking: list[ShotBlocking] = Field(default_factory=list)

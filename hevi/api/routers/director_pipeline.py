@@ -804,6 +804,11 @@ async def _run_design_list_lock(
             screenplay=screenplay, design_list=locked, llm=_resolve_llm()
         )
         rec["shot_list"] = shot_list.model_dump()
+        # 3GS G1 前置:镜头空间契约确定性检查(越轴/One-Move/机位字段完备)。
+        # 结果只作为审查数据附在 work 上(不阻断出片),供导演台展示与后续 3D 消费。
+        from hevi.director.scene_contract import check_camera_continuity
+
+        rec["camera_contract"] = check_camera_continuity(shot_list.shots).__dict__
         rec["status"] = "shot_list_draft"
     except Exception as e:
         logger.exception("design-list 后台锁定失败: work_id=%s", work_id)

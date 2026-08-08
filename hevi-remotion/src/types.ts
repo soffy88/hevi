@@ -64,6 +64,10 @@ export type ManifestSegment = {
   captions: CaptionCue[];
   visualType?: string;
   visualConfig?: Record<string, unknown>;
+  /** 🚨 v9.0: Layout mode for continuous avatar PiP transitions */
+  layoutMode?: "fullscreen" | "broll_pip";
+  /** 🚨 v9.0: Audio style hint (formal/conversational) */
+  audioStyle?: string;
 };
 
 export type RunManifest = ManifestSegment[];

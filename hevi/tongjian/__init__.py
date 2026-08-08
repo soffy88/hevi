@@ -15,10 +15,10 @@ from hevi.tongjian.gates import gate_chapter_ir
 from hevi.tongjian.schemas import (
     Act,
     AudioSegment,
+    ChapterIR,
     CharacterBible,
     CharacterBibleEntry,
     CharacterIR,
-    ChapterIR,
     Constitution,
     EventIR,
     GateResult,
@@ -36,10 +36,10 @@ from hevi.tongjian.voiceover import build_voiceover, gate_voiceover, synthesize_
 __all__ = [
     "Act",
     "AudioSegment",
+    "ChapterIR",
     "CharacterBible",
     "CharacterBibleEntry",
     "CharacterIR",
-    "ChapterIR",
     "Constitution",
     "EventIR",
     "GateResult",

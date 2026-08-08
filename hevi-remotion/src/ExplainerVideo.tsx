@@ -10,8 +10,10 @@ import { OutroScene } from "./scenes/OutroScene";
 import { ReasonScene } from "./scenes/ReasonScene";
 import { BrowserBrollSegment } from "./ExplainerVideo/BrowserBrollSegment";
 import { CodeHighlightSegment } from "./ExplainerVideo/CodeHighlightSegment";
+import { ContinuousAvatarPiP } from "./ExplainerVideo/ContinuousAvatarPiP";
 import { DynamicChartSegment } from "./ExplainerVideo/DynamicChartSegment";
 import { HeyGenAvatarSegment } from "./ExplainerVideo/HeyGenAvatarSegment";
+import { TitleCardSequence } from "./ExplainerVideo/TitleCardSequence";
 import { WordSubtitle, type SubtitleLine } from "./ExplainerVideo/WordSubtitle";
 import type {
   RunManifest,
@@ -20,6 +22,43 @@ import type {
 } from "./types";
 
 const typedManifest = manifest as unknown as RunManifest;
+
+function resolvePackaging(): {
+  mainTitle: string;
+  subtitle: string;
+  backgroundImageUrl?: string;
+  presenterImageUrl?: string;
+} {
+  const firstSeg = typedManifest[0];
+  if (firstSeg?.visualConfig?.packaging && typeof firstSeg.visualConfig.packaging === "object") {
+    const pkg = firstSeg.visualConfig.packaging as Record<string, unknown>;
+    return {
+      mainTitle: String(pkg.main_title ?? pkg.mainTitle ?? ""),
+      subtitle: String(pkg.subtitle ?? ""),
+      backgroundImageUrl: pkg.theme_image_query ? String(pkg.theme_image_query) : undefined,
+      presenterImageUrl: pkg.presenter_image_url ? String(pkg.presenter_image_url) : undefined,
+    };
+  }
+  return {
+    mainTitle: typedManifest.some((s) => s.sceneType === "hook") ? "探索 · 深度解说" : "HEVI",
+    subtitle: "",
+  };
+}
+
+function resolveContinuousAvatar(): string | null {
+  const candidates = [
+    "continuous_avatar/continuous_avatar_p.mp4",
+    "continuous_avatar/continuous_avatar_l.mp4",
+    "avatar/continuous.mp4",
+  ];
+  return candidates[0];
+}
+
+/** Whether the current manifest indicates an avatar was produced. */
+function hasAvatarTrack(): boolean {
+  const packaging = resolvePackaging();
+  return !!packaging.presenterImageUrl;
+}
 
 type SceneComponent = React.FC<{ durationInFrames: number; props: SceneProps }>;
 
@@ -48,9 +87,10 @@ const VisualOverlay: React.FC<{
     const presenterName = typeof visualConfig?.presenter_name === "string"
       ? visualConfig.presenter_name
       : "HEVI 数字人";
+    const circle = visualConfig?.circle_avatar_mask !== false;
     return (
-      <div style={{ position: "absolute", right: 48, top: 48, width: 260, height: 260, overflow: "hidden", borderRadius: "50%", border: "2px solid rgba(255,255,255,.28)" }}>
-        <HeyGenAvatarSegment src={assetSrc ?? undefined} circle presenterName={presenterName} />
+      <div style={{ position: "absolute", right: 48, top: 48, width: 260, height: 260, overflow: "hidden", borderRadius: circle ? "50%" : 20, border: "2px solid rgba(255,255,255,.28)" }}>
+        <HeyGenAvatarSegment src={assetSrc ?? undefined} circle={circle} presenterName={presenterName} />
       </div>
     );
   }
@@ -86,7 +126,7 @@ const VisualOverlay: React.FC<{
           top: 48,
           width: visualType === "heygen_avatar" ? 220 : 420,
           height: visualType === "heygen_avatar" ? 220 : 250,
-          objectFit: "cover",
+          objectFit: "cover" as const,
           borderRadius: visualType === "heygen_avatar" && visualConfig?.circle_avatar_mask !== false ? "50%" : 24,
           border: "2px solid rgba(255,255,255,.28)",
         }}
@@ -96,7 +136,7 @@ const VisualOverlay: React.FC<{
   const labels: Record<string, string> = {
     heygen_avatar: "数字人 · 自动出镜",
     broll_news: "B-ROLL · 新闻素材",
-    broll_stock: "B-ROLL · 素材",
+    stock_broll: "B-ROLL · 精选素材",
     data_screenshot: "DATA · 来源截图",
     remotion_chart: "REMOTION · 数据图表",
     remotion_code: "REMOTION · 代码动画",
@@ -126,23 +166,55 @@ export const getTotalDurationInFrames = (fps: number): number => {
 export const ExplainerVideo: React.FC = () => {
   const { fps } = useVideoConfig();
   const frameStarts = computeFrameStarts(fps);
+  const packaging = resolvePackaging();
+  const avatarPath = resolveContinuousAvatar();
+  const titleCardDuration = Math.max(90, fps * 3); // min 3 seconds at 30fps
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
+      
+      {/* ═══════ ① TITLE CARD SEQUENCE (Frame 0) ═══════ */}
+      <Sequence from={0} durationInFrames={titleCardDuration} layout="none">
+        <TitleCardSequence
+          title={packaging.mainTitle}
+          subtitle={packaging.subtitle}
+          backgroundImageUrl={packaging.backgroundImageUrl}
+          totalDurationInFrames={titleCardDuration}
+        />
+      </Sequence>
+
+      {/* ═══════ ② CONTINUOUS AVATAR TRACK (full video, z-index 1) ═══════ */}
+      {hasAvatarTrack() && (
+        <Sequence from={titleCardDuration} layout="none">
+          {avatarPath ? (
+            <ContinuousAvatarPiP src={staticFile(avatarPath)} layoutMode="fullscreen" />
+          ) : (
+            <div style={{ position: "absolute", zIndex: 1 }} />
+          )}
+        </Sequence>
+      )}
+
+      {/* ═══════ ③ PER-SEGMENT CUES (z-index 2+) ═══════ */}
       {typedManifest.map((seg, i) => {
-        const from = frameStarts[i];
-        const durationInFrames = frameStarts[i + 1] - from;
+        const from = titleCardDuration + frameStarts[i];
+        const durationInFrames = frameStarts[i + 1] - frameStarts[i];
+        
         const Scene = SCENE_COMPONENTS[seg.sceneType];
+        const vCfg = seg.visualConfig as Record<string, unknown> | undefined;
+        const showPiP = seg.visualType === "browser_broll" || seg.visualType === "remotion_chart" || seg.visualType === "stock_broll";
+
         return (
-          <Sequence
-            key={seg.id}
-            from={from}
-            durationInFrames={durationInFrames}
-            layout="none"
-          >
-            <Scene durationInFrames={durationInFrames} props={seg.props} />
-            <VisualOverlay visualType={seg.visualType} visualConfig={seg.visualConfig} />
+          <Sequence key={seg.id} from={from} durationInFrames={durationInFrames} layout="none">
+            <div style={{ position: "relative", zIndex: 5 }}>
+              <Scene durationInFrames={durationInFrames} props={seg.props} />
+              <VisualOverlay visualType={seg.visualType} visualConfig={vCfg} />
+            </div>
             <Audio src={staticFile(seg.audioFile)} />
+            {showPiP && hasAvatarTrack() && avatarPath && (
+              <Sequence from={from} durationInFrames={durationInFrames} layout="none">
+                <ContinuousAvatarPiP src={staticFile(avatarPath)} layoutMode="broll_pip" />
+              </Sequence>
+            )}
           </Sequence>
         );
       })}

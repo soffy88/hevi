@@ -12,7 +12,7 @@ import { consumeDirectorPrefill } from '@/lib/director-prefill';
 import type { DirectorPlanResult, DirectorEpisodeResult, DirectorEpisodePayload, DirectorRenderResult, Subject } from '@/types/api';
 
 const PRESETS = [
-  '科普', '严肃', '搞笑', '电影感', '赛博朋克', '国风水墨', '治愈系', '商务专业', '美食', '旅行Vlog',
+  '科普', '严肃', '搞笑', '电影感', '赛博朋克', '儿童卡通', '国风水墨', '治愈系', '商务专业', '美食', '旅行Vlog',
   '产品广告', '新闻播报', '悬疑', '史诗', '复古胶片', '动漫', '极简', '自然纪录片', '时尚', '运动',
 ];
 const MOODS = ['', '温暖', '悲伤', '紧张', '浪漫', '幽默', '励志', '平静', '惊悚', '怀旧', '梦幻'];
@@ -137,9 +137,9 @@ export function DirectorConsole() {
       num_characters: Math.max(1, payload.characters.length),
       preset: payload.presetLevel,
       narrative_hook: payload.prompt,
-      // §3.1 带参带入:来自通鉴适配器时默认国风水墨(该渠道的水墨/古风风格预设),
-      // 用户仍可在 ④ 视觉风格 里覆盖。
-      style_preset: payload.adapterMode === 'tongjian' ? '国风水墨' : prev.style_preset,
+      // §3.1 带参带入:来自通鉴适配器时默认儿童卡通动画(水墨是成年向, 通鉴儿童向
+      // 占比不小; 用户仍可在 ④ 视觉风格 里覆盖为水墨/电影感等)。
+      style_preset: payload.adapterMode === 'tongjian' ? '儿童卡通' : prev.style_preset,
     }));
   }, []);
 

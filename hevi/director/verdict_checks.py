@@ -154,12 +154,33 @@ async def verdict_shot(
     first_frame: Path | None = None,
     vlm: Any = None,
     consistency_floor: float = 0.75,
+    trace_root: Path | None = None,
+    source_run_id: str = "director",
 ) -> ShotVerdict:
     """对一个镜头 clip 跑三项检查 → 出诊断 + retake 五档决策。
+
+    trace_root 给定时,把本次裁决作为 replay trace 落盘(3O 内化 wire ③):
+    prompt/判定/失败码/终态四阶段 best-effort,失败不阻断裁决。
 
     优先级(先致命后一致性):黑帧 > 崩手 > 身份漂移。任一命中即判不过并给对应 retake 档。
     """
     v = ShotVerdict(shot_index=shot_index, shot_id=shot_id, identity_score=identity_score)
+
+    # replay trace 阶段 1(best-effort;trace_root None = 不开启,零行为变化)
+    trace = None
+    if trace_root is not None:
+        try:
+            from hevi.verdict.replay_trace import begin_trace
+
+            trace = begin_trace(
+                trace_root,
+                source_run_id=source_run_id,
+                ref_type="shot",
+                ref_id=shot_id,
+                phase="verdict",
+            )
+        except Exception as e:  # best-effort,不阻断裁决
+            logger.warning("replay_trace begin failed for %s: %s", shot_id, e)
 
     v.black_ratio = detect_black_ratio(clip_path)
     frame = first_frame if (first_frame and first_frame.exists()) else None
@@ -196,4 +217,31 @@ async def verdict_shot(
     else:
         v.passed = True
         v.retake_tier = "keep"
+
+    # replay trace 阶段 2-4(best-effort):prompt/判定/失败码/终态
+    if trace is not None:
+        try:
+            from hevi.verdict.replay_trace import finalize, record_gate, record_prompt_and_response
+
+            record_prompt_and_response(
+                trace,
+                prompt=f"verdict_shot({shot_id}) floor={consistency_floor}",
+                response=str(v.checks),
+            )
+            failure_codes: list[str] = []
+            if v.diagnosis_category == "动作":
+                failure_codes.append("black_frame")
+            elif v.diagnosis_category == "参考图角色错配":
+                failure_codes.append("face_morph")
+            record_gate(
+                trace,
+                gate_result={"passed": v.passed, "retake_tier": v.retake_tier},
+                failure_codes=failure_codes,
+            )
+            finalize(
+                trace,
+                final_status=("accepted" if v.passed else "reworked"),
+            )
+        except Exception as e:  # best-effort,不阻断裁决
+            logger.warning("replay_trace finalize failed for %s: %s", shot_id, e)
     return v

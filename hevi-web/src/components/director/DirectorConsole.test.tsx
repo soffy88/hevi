@@ -52,8 +52,8 @@ describe('导演控制台 · 带参预填充(§6.2 flow 2)', () => {
     // ② 角色:刘备已勾选锁脸
     const liubei = screen.getByLabelText(/刘备/);
     expect(liubei).toBeChecked();
-    // ④ 视觉风格:通鉴渠道默认国风水墨
-    expect(screen.getByLabelText('整体风格预设')).toHaveValue('国风水墨');
+    // ④ 视觉风格:通鉴渠道默认儿童卡通动画
+    expect(screen.getByLabelText('整体风格预设')).toHaveValue('儿童卡通');
     // ⑧ 生产:执行预设 = 极速
     expect(screen.getByLabelText('执行预设')).toHaveValue('fast');
   });

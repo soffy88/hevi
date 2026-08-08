@@ -122,7 +122,7 @@ def main() -> None:
             image.save(item["output_path"])
             print(f"saved {item['output_path']}")
             results.append({"ok": True})
-        except Exception as e:  # noqa: BLE001 — isolate one item's failure from the rest of the batch
+        except Exception as e:
             print(f"failed {item['output_path']}: {e}", file=sys.stderr)
             results.append({"ok": False, "error": str(e)})
         finally:

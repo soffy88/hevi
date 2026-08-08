@@ -12,10 +12,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# faster-whisper 模型目录: 优先 env, 兜底本地 base。
+# faster-whisper 模型目录: 优先 env, 兜底本地 large-v3-turbo。
 _MODEL_DIR = os.environ.get(
     "FASTER_WHISPER_MODEL_DIR",
-    str(Path.home() / "models/faster-whisper-base"),
+    str(Path.home() / "models/faster-whisper-large-v3-turbo"),
 )
 
 

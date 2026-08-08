@@ -37,6 +37,9 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "edge-tts>=7.2.8",
     "av>=12",  # 3O §C4: PyAV 解码抽帧(自带 ffmpeg 库,不依赖系统 ffmpeg 二进制)
+    "sqlmodel>=0.0.39",  # v9.1: 任务大盘 SQLite ORM (TaskRun 状态机)
+    "pillow>=10",  # v9.1: 素材质检(尺寸/像素总量/EXIF 方向)前端拦截的后端兜底
+    "playwright>=1.49",  # v9.1 Lite 管道:无头浏览器录屏(hevi.pipeline_lite.oprim.oprim_playwright)
 ]
 
 [dependency-groups]
@@ -51,7 +54,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-extend-exclude = ["hevi/db/alembic/"]
+extend-exclude = ["hevi/db/alembic/", "services/gen_engine/vibeasr-src/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RET", "PERF", "PIE", "RUF"]

@@ -83,7 +83,7 @@ async def dub_video(
     if transcribe_fn is None:
         from hevi.assembly.subtitle_align import transcribe_to_cues
 
-        def transcribe_fn(p: Path) -> list[Cue]:  # noqa: E731
+        def transcribe_fn(p: Path) -> list[Cue]:
             return transcribe_to_cues(p, model_dir=model_dir)
 
     cues = transcribe_fn(video_path)

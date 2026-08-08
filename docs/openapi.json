@@ -7520,7 +7520,7 @@
           "explainer"
         ],
         "summary": "Research Explainer",
-        "description": "Research one topic and return a progressive hook matrix plus editable scripts.\n\n响应前把调研与 3 版脚本强制落盘(断点续传):即使后半段装配/渲染报错,\n确稿数据依然在磁盘缓存,前端刷新后凭 session_id 直接恢复,无需重跑研究。",
+        "description": "立刻派发异步研究任务并返回 202(根治长视频研究 524 超时)。\n\n同步跑完整研究(分章生成几百秒)会超 Cloudflare 100s 上限。这里改成:\n立刻设备一个 processing 状态信封到本地缓存,后台任务执行 research_and_generate,\n跑完覆盖成 ready + 完整确稿数据(或 failed + 错误);HTTP 连接秒回 202 + session_id。\n前端凭 session_id 轮询 GET /research/{session_id},status=ready 后进入确稿台。\n原断点续传语义不变:ready 的信封 payload 即完整的阶段一数据。",
         "operationId": "research_explainer_api_explainer_research_post",
         "requestBody": {
           "content": {
@@ -7533,12 +7533,12 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExplainerResearchResponse"
+                  "$ref": "#/components/schemas/ExplainerResearchJob"
                 }
               }
             }
@@ -7567,7 +7567,7 @@
           "explainer"
         ],
         "summary": "Get Research Cache",
-        "description": "断点续传:凭 session_id 从本地缓存恢复调研与确稿数据(不重跑研究)。",
+        "description": "轮询研究任务状态信封:processing 继续等、ready 返回完整确稿 payload、failed 返回错误。\n\n复用原断点续传缓存(现升级为状态信封)。前端轮询此接口, Cloudflare 不会超时(秒级响应)。",
         "operationId": "get_research_cache_api_explainer_research__session_id__get",
         "security": [
           {
@@ -7591,7 +7591,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExplainerResearchResponse"
+                  "$ref": "#/components/schemas/ExplainerResearchJob"
                 }
               }
             }
@@ -7607,6 +7607,100 @@
             }
           }
         }
+      }
+    },
+    "/api/explainer/validate-presenter-image": {
+      "post": {
+        "tags": [
+          "explainer"
+        ],
+        "summary": "Validate Presenter Image Endpoint",
+        "description": "v9.1 素材质检:数字人底图合法性校验(可访问/尺寸/人脸占比)。\n\n用户在确稿台上传底图后,前端先把图片交给本地 AI 预检,提交前再调本\n接口做服务端权威校验 —— 双保险,拒绝无脸/超大图进入渲染队列。",
+        "operationId": "validate_presenter_image_endpoint_api_explainer_validate_presenter_image_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresenterImageCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenterImageCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/explainer/upload-presenter-image": {
+      "post": {
+        "tags": [
+          "explainer"
+        ],
+        "summary": "Upload Presenter Image Endpoint",
+        "description": "v9.1 确稿台底图上传:字节落盘 + 服务端权威质检,一步到位。\n\n前端 Dropzone 本地 AI 预检通过后上传;这里用与 URL 校验完全相同的\n``_validate_bytes`` 逻辑复核(防绕过),通过则把图片落盘到\n``output/presenter_images/<uuid>.jpg`` 并返回可读回的路径 —— 装配时\n``presenter_image_url`` 直接传这个路径(本地读盘,不再二次下载)。",
+        "operationId": "upload_presenter_image_endpoint_api_explainer_upload_presenter_image_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_presenter_image_endpoint_api_explainer_upload_presenter_image_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenterImageCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/explainer/assemble": {
@@ -8161,6 +8255,383 @@
         ]
       }
     },
+    "/api/dashboard/tasks": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "List Tasks",
+        "description": "返回 {total, status_counts, items:[...]} —— total 供前端算总页数。",
+        "operationId": "list_tasks_api_dashboard_tasks_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "按状态过滤,如 completed/failed/running",
+              "title": "Status"
+            },
+            "description": "按状态过滤,如 completed/failed/running"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Tasks Api Dashboard Tasks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Task Run",
+        "description": "单工单详情(含颗粒度 state_json,断点续传/排障可读)。",
+        "operationId": "get_task_run_api_dashboard_tasks__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Task Run Api Dashboard Tasks  Task Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/tasks/{task_id}/output": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Task Output",
+        "description": "工单沙盒成片下载/预览(优先全量成片,先导样片次之)。",
+        "operationId": "get_task_output_api_dashboard_tasks__task_id__output_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/assemble": {
+      "post": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Assemble Lite",
+        "description": "提交一个 Lite 任务,立即 202 + 后台执行。",
+        "operationId": "assemble_lite_api_lite_assemble_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiteAssembleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteAssembleAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/generate": {
+      "post": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Generate Lite Sync",
+        "description": "同步出片端点:hevi 外部编排(veya 视频可靠性闭环)直连用。\n\n直接跑完整 Lite 管线并返回 video_path。长任务由 FastAPI 线程池承载;\n失败以 LiteAssembleResult(status=\"failed\", error=...) 返回,不抛 HTTP 5xx。",
+        "operationId": "generate_lite_sync_api_lite_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiteAssembleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteAssembleResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cinematic/animate": {
+      "post": {
+        "tags": [
+          "cinematic"
+        ],
+        "summary": "Animate",
+        "description": "提交一个动画演绎任务, 立即 202 + 后台执行。",
+        "operationId": "animate_api_cinematic_animate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnimateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnimateAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cinematic/tasks/{task_id}/video": {
+      "get": {
+        "tags": [
+          "cinematic"
+        ],
+        "summary": "Get Animation Video",
+        "description": "产物视频 FileResponse (token 留作生产网关鉴权; 开发直接可看)。",
+        "operationId": "get_animation_video_api_cinematic_tasks__task_id__video_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Animation Video Api Cinematic Tasks  Task Id  Video Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cinematic/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "cinematic"
+        ],
+        "summary": "Get Animation Task",
+        "description": "任务详情: status/progress/stage/beats/video_path。",
+        "operationId": "get_animation_task_api_cinematic_tasks__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Animation Task Api Cinematic Tasks  Task Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Health",
@@ -8215,6 +8686,68 @@
           "act"
         ],
         "title": "Act"
+      },
+      "AnimateAccepted": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "pending"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress",
+            "default": 0
+          },
+          "n_beats": {
+            "type": "integer",
+            "title": "N Beats",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "AnimateAccepted"
+      },
+      "AnimateRequest": {
+        "properties": {
+          "story": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 8,
+            "title": "Story"
+          },
+          "beats_json": {
+            "type": "string",
+            "title": "Beats Json",
+            "description": "可选: 预拆解的分镜 JSON 数组(留空走 LLM)",
+            "default": ""
+          },
+          "ratio": {
+            "type": "string",
+            "pattern": "^(16:9|9:16|1:1)$",
+            "title": "Ratio",
+            "default": "16:9"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "description": "留空则服务端生成",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "story"
+        ],
+        "title": "AnimateRequest",
+        "description": "动画演绎出片请求: 故事 + 可选预拆解分镜 + 画幅。"
       },
       "AudioAssetCreateRequest": {
         "properties": {
@@ -8341,6 +8874,21 @@
           "file"
         ],
         "title": "Body_upload_character_reference_api_shortdrama_runs__run_id__characters__char_id__upload_post"
+      },
+      "Body_upload_presenter_image_endpoint_api_explainer_upload_presenter_image_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "数字人底图(JPG/PNG,≤10MB)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_presenter_image_endpoint_api_explainer_upload_presenter_image_post"
       },
       "Body_upload_subject_reference_api_subjects__subject_id__reference_post": {
         "properties": {
@@ -8572,6 +9120,38 @@
         },
         "type": "object",
         "title": "Concept"
+      },
+      "ConceptExpansion": {
+        "properties": {
+          "original_material_point": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Original Material Point",
+            "description": "原文素材中的核心知识点或原句"
+          },
+          "deep_explanation": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 50,
+            "title": "Deep Explanation",
+            "description": "把该知识点彻底讲透的深度扩写(至少 150 字):前因后果、历史背景、底层原理、技术/数学/物理图景 + 通俗比喻,禁止一句话带过。"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Source",
+            "description": "素材出处(无法核验可为空)",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "original_material_point",
+          "deep_explanation"
+        ],
+        "title": "ConceptExpansion",
+        "description": "素材吸收与扩写映射表条目 —— 反压缩机制的核心(Chain-of-Thought in Schema)。\n\nLLM 必须在写任何台词之前,先遍历用户提供的全部素材,把每个硬核知识点拆成\n一条映射:原文素材点 + 深度扩写。deep_explanation 由 LLM 自行挖掘前因后果、\n历史背景、底层原理、数学/物理图景,并用通俗比喻讲透,不得少于 150 字。\n矩阵做到 100% 覆盖,漏掉任何一段素材即视为废稿。"
       },
       "ConfirmCandidateRequest": {
         "properties": {
@@ -9629,19 +10209,30 @@
               "heygen_avatar",
               "broll_news",
               "browser_broll",
-              "broll_stock",
+              "stock_broll",
               "data_screenshot",
               "remotion_chart",
               "remotion_code",
               "voiceover"
             ],
-            "title": "Visual Type"
+            "title": "Visual Type",
+            "default": "voiceover"
+          },
+          "audio_style": {
+            "type": "string",
+            "enum": [
+              "formal",
+              "conversational"
+            ],
+            "title": "Audio Style",
+            "default": "formal"
           },
           "text": {
             "type": "string",
             "maxLength": 2000,
             "minLength": 1,
-            "title": "Text"
+            "title": "Text",
+            "description": "解说旁白文本。核心段落必须详实深入，字数建议在 100-200 字以上，切忌假大空和过度精简。"
           },
           "visual_config": {
             "additionalProperties": true,
@@ -9674,6 +10265,7 @@
               }
             ],
             "title": "Time Estimate S",
+            "description": "预估时长(秒)。核心解说段落应当在 30 秒到 60 秒之间。",
             "default": 5.0
           },
           "target_url": {
@@ -9685,7 +10277,8 @@
                 "type": "null"
               }
             ],
-            "title": "Target Url"
+            "title": "Target Url",
+            "description": "如果 visual_type 是 browser_broll，必须提供真实的维基百科、官方数据页面URL，绝不能捏造！"
           },
           "highlight_selector": {
             "anyOf": [
@@ -9731,14 +10324,81 @@
               }
             ],
             "title": "Language"
+          },
+          "visual_search_query": {
+            "type": "string",
+            "title": "Visual Search Query",
+            "description": "仅当 visual_type==stock_broll 时必填：3-5 个极高精度的英文搜索关键词（逗号分隔），用于 Pexels/Unsplash API 检索匹配画面。",
+            "default": ""
+          },
+          "layout_mode": {
+            "type": "string",
+            "enum": [
+              "fullscreen",
+              "broll_pip"
+            ],
+            "title": "Layout Mode",
+            "default": "fullscreen"
           }
         },
         "type": "object",
         "required": [
-          "visual_type",
           "text"
         ],
         "title": "ExplainerCue"
+      },
+      "ExplainerResearchJob": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Session Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "ready",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "topic_or_url": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Topic Or Url",
+            "default": ""
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExplainerResearchResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "status"
+        ],
+        "title": "ExplainerResearchJob",
+        "description": "异步研究任务的状态信封 —— 根治长视频研究的 524 超时。\n\nPOST /research 不再同步跑完再回(分章生成长视频动辄几百秒,Cloudflare\n100s 就 524);改成立刻派研究后台任务并落盘一个 processing 信封,\nHTTP 连接秒回 202。前端轮询 GET /research/{session_id} 拿到信封:\n- processing:继续轮询(可显示进度文案)\n- ready:payload 即完整 ExplainerResearchResponse,进入确稿台\n- failed:显示 error,提供重试入口\n原断点续传语义保留:ready 状态的信封 payload 就是完整的阶段一数据。"
       },
       "ExplainerResearchRequest": {
         "properties": {
@@ -9769,6 +10429,12 @@
             "maxLength": 64,
             "title": "Session Id",
             "default": ""
+          },
+          "target_duration": {
+            "type": "string",
+            "title": "Target Duration",
+            "description": "目标时长，格式为范围(如'1-3')或具体分钟数(如'8')",
+            "default": "1-3"
           }
         },
         "type": "object",
@@ -9838,6 +10504,13 @@
             "type": "array",
             "title": "Decision Trail"
           },
+          "material_coverage_matrix": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptExpansion"
+            },
+            "type": "array",
+            "title": "Material Coverage Matrix"
+          },
           "session_id": {
             "type": "string",
             "maxLength": 64,
@@ -9885,6 +10558,24 @@
             "type": "string",
             "title": "Hook",
             "default": ""
+          },
+          "reasoning_depth": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Reasoning Depth",
+            "default": ""
+          },
+          "packaging": {
+            "$ref": "#/components/schemas/VideoPackaging",
+            "description": "🚨 强制！视频的开场主题画与数字人母体配置。含 main_title/subtitle/theme_image_query/presenter_image_url。"
+          },
+          "material_coverage_matrix": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptExpansion"
+            },
+            "type": "array",
+            "title": "Material Coverage Matrix",
+            "description": "必须 100% 覆盖用户提供的所有素材点,并在 deep_explanation 中进行硬核扩写(≥150 字),绝不允许漏掉任何一段素材!"
           },
           "cues": {
             "items": {
@@ -10057,6 +10748,270 @@
         "type": "object",
         "title": "LayerConfig",
         "description": "通鉴流水线**单层的模型选择 + 可调参数**——每层(L0..L8)可独立配置,便于全自动生成\n有偏差时逐层调参重跑。`model=None` 走该层默认模型;`params` 覆盖该层默认参数(具体键值\n由各层 build_* 自行解释,见各层 docstring)。前端 RunRequest 表单直接填这个结构。"
+      },
+      "LiteAssembleAccepted": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "default": "pending"
+          },
+          "video_path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Path"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "decision_trail": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decision Trail"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "LiteAssembleAccepted",
+        "description": "202 受理响应:任务尚未执行, status 允许 pending。"
+      },
+      "LiteAssembleRequest": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "default": ""
+          },
+          "topic": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Topic"
+          },
+          "cues": {
+            "items": {
+              "$ref": "#/components/schemas/LiteCue"
+            },
+            "type": "array",
+            "title": "Cues"
+          },
+          "voice": {
+            "type": "string",
+            "title": "Voice",
+            "default": "edge_tts_zh"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 720
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1280
+          },
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 24
+          },
+          "output_name": {
+            "type": "string",
+            "title": "Output Name",
+            "default": "final.mp4"
+          },
+          "workspace_root": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Root"
+          },
+          "html_path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Path"
+          },
+          "screen_capture_path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screen Capture Path"
+          },
+          "audio_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Path"
+          },
+          "final_path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "title": "LiteAssembleRequest",
+        "description": "HTTP 入参:直接复用数据契约,少一层映射就是少一层面条。"
+      },
+      "LiteAssembleResult": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "video_path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Path"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "decision_trail": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decision Trail"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "status"
+        ],
+        "title": "LiteAssembleResult",
+        "description": "装配结果:任务状态 + 产物路径 + 决策轨迹。"
+      },
+      "LiteCue": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Index"
+          },
+          "narration": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Narration"
+          },
+          "template": {
+            "type": "string",
+            "title": "Template",
+            "description": "HTML 模板名(见 templates/)",
+            "default": "card"
+          },
+          "props": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Props"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "narration"
+        ],
+        "title": "LiteCue",
+        "description": "一条 Lite 镜头:HTML 卡片的一段 + 对应的旁白文本。"
       },
       "LiveBody": {
         "properties": {
@@ -10456,6 +11411,86 @@
           "text"
         ],
         "title": "PlanRequest"
+      },
+      "PresenterImageCheckRequest": {
+        "properties": {
+          "image_url": {
+            "type": "string",
+            "title": "Image Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image_url"
+        ],
+        "title": "PresenterImageCheckRequest"
+      },
+      "PresenterImageCheckResponse": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "face_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Face Count"
+          },
+          "face_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Face Ratio"
+          },
+          "face_check": {
+            "type": "string",
+            "title": "Face Check",
+            "default": "skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid",
+          "reason"
+        ],
+        "title": "PresenterImageCheckResponse"
       },
       "PresenterRequest": {
         "properties": {
@@ -12227,6 +13262,42 @@
         ],
         "title": "ValidationError"
       },
+      "VideoPackaging": {
+        "properties": {
+          "main_title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Main Title",
+            "description": "视频主题大标题，将显示在开场 3 秒封面上"
+          },
+          "subtitle": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Subtitle",
+            "description": "副标题或核心信息点",
+            "default": ""
+          },
+          "theme_image_query": {
+            "type": "string",
+            "title": "Theme Image Query",
+            "description": "用于搜索开场背景图的高精度英文关键词 (如 'Cyberpunk server rack dark')",
+            "default": ""
+          },
+          "presenter_image_url": {
+            "type": "string",
+            "title": "Presenter Image Url",
+            "description": "数字人母体照片 URL（可选）。可上传或选择一张带背景的高清照片作为全时段解说员。",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "main_title"
+        ],
+        "title": "VideoPackaging",
+        "description": "🚨 v9.0: 视频包装配置 —— 强制的独立节点,不可与 cues 混在一起。\n\nLLM 必须显式指定开场主题画参数,Remotion 在 Frame 0 渲染 3-5s 标题卡序列。"
+      },
       "VisualStyle": {
         "properties": {
           "art_direction": {
@@ -12562,6 +13633,17 @@
               }
             ],
             "title": "Error"
+          },
+          "degrade_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degrade Reason"
           }
         },
         "type": "object",

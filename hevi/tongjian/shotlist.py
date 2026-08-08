@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from hevi.tongjian.chapter_ir import _call_llm_json, _extract_json_obj
+from hevi.tongjian.chapter_ir import _call_llm_json
 from hevi.tongjian.schemas import (
     AudioSegment,
     CharacterBible,

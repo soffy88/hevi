@@ -217,6 +217,15 @@ async def director_create_episode(
     ) = await _resolve_character_roster(pool, body.character_subject_ids)
     effective_subject_id = body.subject_id or roster_subject_id
 
+    # 3O 内化 wire ①:失败注册表 → 负向子句(动作层;仅角色锁定/i2v 时注入,无角色保持原行为)。
+    # verdict 命中越多的失败类别(崩手/脸漂移…)越早进负向,自我校正闭环的失败侧。
+    if characters_text:
+        from hevi.prompt.negative_clause import with_failure_registry_clause
+
+        characters_negative = with_failure_registry_clause(
+            characters_negative or "", layer="action"
+        )
+
     # IP 安全改写(HEVI 路线图 Phase2 #36):topic/角色描述是用户自由文本,建任务
     # 花钱之前先过一遍——涉及真人/名人/版权角色/品牌就改写成安全等价物。
     # best-effort,不阻断(见 hevi/prompt/ip_safety.py 的设计说明)。

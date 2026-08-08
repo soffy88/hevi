@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from pathlib import Path
 
@@ -46,12 +47,10 @@ def extract_representative_frame(source: Path | str, out_path: Path | str) -> Pa
             # seek 到中点(有时长信息时),让代表帧更贴镜头内容而非首帧黑场。
             if stream.duration and stream.time_base:
                 mid = int((float(stream.duration * stream.time_base) / 2) / stream.time_base)
-                try:
+                with contextlib.suppress(Exception):  # seek 失败退化为首帧
                     container.seek(mid, stream=stream)
-                except Exception:  # seek 失败退化为首帧
-                    pass
             for frame in container.decode(video=0):
-                frame.to_image().save(out)
+                frame.to_image().save(out)  # type: ignore[no-untyped-call]
                 return out
         raise FrameExtractError(f"no decodable frame: {src}")
     except FrameExtractError:

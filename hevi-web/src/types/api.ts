@@ -698,6 +698,10 @@ export interface ExplainerAssembleRequest {
   aspect_ratio: '9:16' | '16:9';
   /** 断点续传:关联到 research 阶段的缓存会话(仅记录)。 */
   session_id?: string;
+  /** v9.1: 数字人母体照片(经素材质检的本地路径/URL),驱动全时段 Talking Face 底轨。 */
+  presenter_image_url?: string;
+  /** v9.1: 15 秒先导样片 —— 只截前 15s 的 cue/音频/画面,极低成本先看质感。 */
+  preview_mode?: boolean;
 }
 
 export interface ExplainerAssemblyAccepted {
@@ -708,6 +712,69 @@ export interface ExplainerAssemblyAccepted {
   production_source: string;
   engine_version: string;
   adapter_version: string;
+}
+
+// ── v9.1 素材质检 / 任务大盘 ───────────────────────────────────────────────
+
+export interface PresenterImageCheckResponse {
+  valid: boolean;
+  reason: string;
+  width?: number | null;
+  height?: number | null;
+  face_count?: number | null;
+  face_ratio?: number | null;
+  face_check?: string;
+}
+
+/** SQLite TaskRun 行(SQLModel,见 hevi/core/models.py)。 */
+export interface DashboardTask {
+  id: number;
+  task_id: string;
+  pipeline_type: string;
+  status: string;
+  progress: number;
+  error_log?: string | null;
+  /** 颗粒度状态机快照:如 {tts_status: "done", html_status: "done"}。 */
+  state_json?: Record<string, unknown> | null;
+  /** 完成任务的成片沙盒路径(非 null 时输出端点可下载)。 */
+  result_video_path?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DashboardTaskList {
+  total: number;
+  limit: number;
+  offset: number;
+  /** 各状态计数(进行中/完成/失败…), 供统计卡片。 */
+  status_counts?: Record<string, number>;
+  items: DashboardTask[];
+}
+
+// ── v9.1 Lite 管道发射台 ─────────────────────────────────────────
+
+/** Lite 镜头: 一句旁白对应一张 HTML 卡片。 */
+export interface LiteCueInput {
+  index: number;
+  narration: string;
+}
+
+export interface LiteAssemblePayload {
+  topic: string;
+  cues: LiteCueInput[];
+  width?: number;
+  height?: number;
+  fps?: number;
+}
+
+/** POST /api/lite/assemble → 202 受理响应。 */
+export interface LiteAssembleAccepted {
+  task_id: string;
+  status: 'pending' | 'completed' | 'failed';
+  progress: number;
+  video_path?: string | null;
+  error?: string | null;
+  decision_trail?: Array<Record<string, unknown>>;
 }
 
 // ── 短剧创建入口(SPEC-001 §7 阶段1,建季能力)──────────────────────────────

@@ -38,10 +38,11 @@ describe('通鉴 · 【我在历史现场】(SPEC v4.0 §2.1)', () => {
     expect(screen.getByRole('button', { name: /重建历史现场/ })).toBeInTheDocument();
   });
 
-  it('演绎模式配置:演绎比例三档 + 视觉风格三档 + 讲解人 + 史实红线默认开启', () => {
+  it('演绎模式配置:演绎比例三档 + 视觉风格四档 + 讲解人 + 史实红线默认开启', () => {
     render(<TongjianConsole />);
     expect(screen.getByText(/均衡 · 讲解70% \+ 现场演绎30%（默认）/)).toBeInTheDocument();
-    expect(screen.getByText('🎨 国风水墨（默认）')).toBeInTheDocument();
+    expect(screen.getByText('🧸 儿童卡通动画（默认）')).toBeInTheDocument();
+    expect(screen.getByText('🎨 国风水墨')).toBeInTheDocument();
     expect(screen.getByText('🎬 拟真电影感')).toBeInTheDocument();
     expect(screen.getByText('🖌️ 连环画/工笔')).toBeInTheDocument();
     expect(screen.getByText('📜 历史旁白·老张')).toBeInTheDocument();

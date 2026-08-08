@@ -19,9 +19,9 @@ from hevi.style.mood_dictionary import expand_mood_to_concrete
 __all__ = [
     "HEVI_TO_OPRIM_PROVIDER",
     "IDENTITY_LOCK_SENTENCE",
-    "ensure_identity_lock_sentence",
     "engineer_prompt",
     "engineer_prompt_from_preset",
+    "ensure_identity_lock_sentence",
     "lint_engineered_prompt",
 ]
 

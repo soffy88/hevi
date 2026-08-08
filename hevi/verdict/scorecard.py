@@ -146,9 +146,9 @@ def shot_scorecard(
 
     def _combined(r: dict[str, Any]) -> float:
         if subject_ref_embedding or subject_ref_embedding_face:
-            return r["identity"]
+            return float(r["identity"])
         if style_ref_embedding:
-            return r["style"]
+            return float(r["style"])
         return 0.5
 
     best_i = max(range(len(recs)), key=lambda i: _combined(recs[i]))
@@ -240,7 +240,8 @@ def make_scorecard_consistency_fn(
     """→ 一个符合 omodul consistency_fn 契约的 async fn(身份锚驱动的双变体选优)。
 
     契约(见 omodul.agentic_longvideo_pipeline):
-      result = await consistency_fn(mllm=..., candidate_frames=[...mp4], reference=..., criteria=...)
+      result = await consistency_fn(
+          mllm=..., candidate_frames=[...mp4], reference=..., criteria=...)
       result.best_frame  # Path(候选 mp4)
       result.passed      # bool
     评分卡(重:CLIP 嵌入 + PyAV 解码)丢线程池,不阻塞事件循环。

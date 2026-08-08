@@ -1,8 +1,10 @@
-# Voicebox 音频服务
+# AI 算力引擎音频服务(Voicebox 通道)
 
 HEVI 的解说 E2、通鉴 L3 和短剧通鉴渲染在生产 Compose 中默认使用
-`hevi-voicebox` sidecar。源码固定拉在 `services/voicebox`，模型和音色档案由
-Compose 会把项目目录下的 `.voicebox-cache` 挂到 Voicebox 的 Hugging Face
+`hevi-gen-engine` 统一 GPU 引擎(演进自 `hevi-voicebox` sidecar)。源码底座在
+`services/voicebox`(上游 git 子模块), HEVI 包装层在 `services/gen_engine`。
+模型和音色档案由
+Compose 会把项目目录下的 `.voicebox-cache` 挂到引擎的 Hugging Face
 `hub` 缓存，并把 profile/生成记录放在 Docker volume 中。生产容器默认离线运行，
 避免模型下载失败时任务一直重试。
 

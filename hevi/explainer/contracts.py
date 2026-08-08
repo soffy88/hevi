@@ -18,12 +18,16 @@ VisualType = Literal[
     "heygen_avatar",
     "broll_news",
     "browser_broll",
-    "broll_stock",
+    "stock_broll",
     "data_screenshot",
     "remotion_chart",
     "remotion_code",
     "voiceover",
 ]
+
+AudioStyle = Literal["formal", "conversational"]
+
+LayoutMode = Literal["fullscreen", "broll_pip"]
 
 
 class ExplainerResearchRequest(BaseModel):
@@ -149,6 +153,43 @@ class ScriptVersionMeta(BaseModel):
     reasoning_depth: str = Field(default="", max_length=4_000)
 
 
+class VideoPackaging(BaseModel):
+    """🚨 v9.0: 视频包装配置 —— 强制的独立节点,不可与 cues 混在一起。
+    
+    LLM 必须显式指定开场主题画参数,Remotion 在 Frame 0 渲染 3-5s 标题卡序列。
+    """
+
+    main_title: str = Field(
+        min_length=2,
+        max_length=120,
+        description="视频主题大标题，将显示在开场 3 秒封面上",
+    )
+    subtitle: str = Field(
+        default="",
+        max_length=200,
+        description="副标题或核心信息点",
+    )
+    theme_image_query: str = Field(
+        default="",
+        description="用于搜索开场背景图的高精度英文关键词 (如 'Cyberpunk server rack dark')",
+    )
+    presenter_image_url: str = Field(
+        default="",
+        description=(
+            "数字人母体照片 URL（可选）。可上传或选择一张带背景的高清照片"
+            "作为全时段解说员。"
+        ),
+    )
+
+    @field_validator("main_title")
+    @classmethod
+    def main_title_must_not_be_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("main_title 不能为空，这是视频的命脉！")
+        return value
+
+
 class ChapterPlan(BaseModel):
     """超长视频的分章大纲:每章携带与本章主题相关的素材吸收与扩写条目。
 
@@ -194,7 +235,8 @@ class ExplainerCue(BaseModel):
         max_length=32,
         description="时间范围，如 00:00-00:05",
     )
-    visual_type: VisualType
+    visual_type: VisualType = "voiceover"
+    audio_style: AudioStyle = "formal"
     text: str = Field(
         min_length=1,
         max_length=2_000,
@@ -212,11 +254,27 @@ class ExplainerCue(BaseModel):
         le=300,
         description="预估时长(秒)。核心解说段落应当在 30 秒到 60 秒之间。",
     )
-    target_url: str | None = None
+    target_url: str | None = Field(
+        default=None,
+        description=(
+            "如果 visual_type 是 browser_broll，必须提供真实的维基百科、"
+            "官方数据页面URL，绝不能捏造！"
+        ),
+    )
     highlight_selector: str | None = None
     chart_data: dict[str, Any] | None = None
     code_text: str | None = None
     language: str | None = None
+    # 🚨 v9.0: 视觉搜索查询 —— stock_broll 专用。LLM 输出 3-5 个精准英文关键词供后端检索真实素材。
+    visual_search_query: str = Field(
+        default="",
+        description=(
+            "仅当 visual_type==stock_broll 时必填：3-5 个极高精度的英文搜索关键词"
+            "（逗号分隔），用于 Pexels/Unsplash API 检索匹配画面。"
+        ),
+    )
+    # 🚨 v9.0: 布局模式控制 —— 驱动 Remotion 全屏/PiP 切换
+    layout_mode: LayoutMode = "fullscreen"
 
     @model_validator(mode="before")
     @classmethod
@@ -265,6 +323,16 @@ class ExplainerScriptDraft(BaseModel):
     # 思考链:LLM 在写台词前先说明本版脚本如何把核心理论讲透(展开哪些反常点、
     # 用什么数据支撑、从哪个原理切入、怎么收束),强制先想清楚再写,提升篇幅与深度。
     reasoning_depth: str = Field(default="", max_length=4_000)
+    # 🚨 v9.0: 强制视频包装节点 —— 开场主题画配置，Remotion 必须在 Frame 0 渲染
+    # v9.1 查漏补缺:research.py 尚未在 LLM 输出中生成该字段,缺省时给安全兜底
+    # (main_title 非空校验仍生效——一旦 LLM 真正产出 packaging 就按校验执行)。
+    packaging: VideoPackaging = Field(
+        default_factory=lambda: VideoPackaging(main_title="HEVI 深度解说"),
+        description=(
+            "🚨 强制！视频的开场主题画与数字人母体配置。含 main_title/"
+            "subtitle/theme_image_query/presenter_image_url。"
+        ),
+    )
     # 🚨 素材吸收与扩写映射表:强制 LLM 在写台词前先遍历全部素材并做深度扩写,
     # 100% 覆盖用户提供的所有素材点,不得遗漏任何一段(反压缩机制核心)。
     material_coverage_matrix: list[ConceptExpansion] = Field(
@@ -356,6 +424,10 @@ class ExplainerAssembleRequest(BaseModel):
     enable_circle_avatar_mask: bool = True
     enable_browser_broll: bool = True
     aspect_ratio: Literal["9:16", "16:9"] = "9:16"
+    # v9.1: 数字人母体照片 URL(全时段 Talking Face 底轨素材),经 asset_validator 质检。
+    presenter_image_url: str = Field(default="", max_length=2048)
+    # v9.1: 15 秒先导样片机制 —— 只截前 15s 的 cue/音频/画面,极低成本预览。
+    preview_mode: bool = False
 
 
 class ExplainerAssemblyAccepted(BaseModel):

@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from hevi.api.routers.tongjian import _gate_decision
 from hevi.tongjian.assemble import (
     _detect_black_frames,
     _detect_clipping,
@@ -390,3 +391,36 @@ async def test_build_final_video_end_to_end(tmp_path):
     assert final_video.duration_ms > 0
     assert Path(final_video.srt_path).exists()
     assert result.passed
+
+
+# ── v9.1: 门禁降级记录 degrade_reason(排障不展开 gate_report JSON) ──────────
+
+def test_gate_done_records_degrade_reason() -> None:
+    """门禁不过 → DEGRADED + error/degrade_reason 投影首条原因。"""
+    class _FakeGate:
+        passed = False
+
+        def model_dump(self) -> dict[str, object]:
+            return {
+                "passed": False,
+                "coverage": 0.8,
+                "errors": ["target_duration 与事件数不匹配"],
+                "warnings": [],
+            }
+
+    status, reason = _gate_decision(_FakeGate())
+    assert status == "DEGRADED"
+    # v9.1: 原因投影到可读字段, 不展开 gate_report 也能看到。
+    assert reason == "target_duration 与事件数不匹配"
+
+
+def test_gate_done_passed_keeps_reason_none() -> None:
+    class _FakeGate:
+        passed = True
+
+        def model_dump(self) -> dict[str, object]:
+            return {"passed": True, "coverage": 1.0, "errors": [], "warnings": []}
+
+    status, reason = _gate_decision(_FakeGate())
+    assert status == "PASSED"
+    assert reason is None

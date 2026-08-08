@@ -17,10 +17,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from hevi.tongjian.chapter_ir import _extract_json_obj
-from hevi.tongjian.schemas import ChapterIR, Script, ScriptLine
-from hevi.tongjian.schemas import GateResult
 from hevi.cinematic.schemas import Beat, BeatDialogue, Scene
+from hevi.tongjian.chapter_ir import _extract_json_obj
+from hevi.tongjian.schemas import ChapterIR, GateResult, Script, ScriptLine
 
 logger = logging.getLogger(__name__)
 
