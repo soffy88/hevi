@@ -39,6 +39,14 @@
 | PATCH | `/api/canvas/{graph_id}` | Update Graph |
 | POST | `/api/canvas/{graph_id}/execute` | Execute Graph |
 
+## cinematic
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/cinematic/animate` | Animate |
+| GET | `/api/cinematic/tasks/{task_id}` | Get Animation Task |
+| GET | `/api/cinematic/tasks/{task_id}/video` | Get Animation Video |
+
 ## creative
 
 | 方法 | 路径 | 说明 |
@@ -62,6 +70,14 @@
 | POST | `/api/credits/estimate` | Estimate Credits |
 | POST | `/api/credits/topup` | Manual Topup |
 | GET | `/api/credits/transactions` | List Transactions |
+
+## dashboard
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/dashboard/tasks` | List Tasks |
+| GET | `/api/dashboard/tasks/{task_id}` | Get Task Run |
+| GET | `/api/dashboard/tasks/{task_id}/output` | Get Task Output |
 
 ## director
 
@@ -105,6 +121,19 @@
 | POST | `/api/explainer/run` | Start Run |
 | GET | `/api/explainer/runs` | List Runs |
 | GET | `/api/explainer/runs/{run_id}` | Get Run |
+| POST | `/api/explainer/upload-presenter-image` | Upload Presenter Image Endpoint |
+| POST | `/api/explainer/validate-presenter-image` | Validate Presenter Image Endpoint |
+
+## freezone
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/freezone/candidates` | List Candidates |
+| POST | `/api/freezone/candidates/{candidate_id}/promote` | Promote Candidate |
+| POST | `/api/freezone/candidates/{candidate_id}/reject` | Reject Candidate |
+| POST | `/api/freezone/graphs` | Create Graph |
+| GET | `/api/freezone/graphs/{graph_id}` | Get Graph |
+| POST | `/api/freezone/graphs/{graph_id}/run` | Run Graph |
 
 ## gallery
 
@@ -113,6 +142,22 @@
 | GET | `/api/gallery` | List Gallery |
 | POST | `/api/gallery` | Create Gallery Item |
 | GET | `/api/gallery/{item_id}` | Get Gallery Item |
+
+## history-series
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/history-series/next` | Get Next |
+| POST | `/api/history-series/produce` | Produce |
+| POST | `/api/history-series/produce-daily` | Produce Daily |
+| GET | `/api/history-series/queue` | Get Queue |
+
+## lite
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/lite/assemble` | Assemble Lite |
+| POST | `/api/lite/generate` | Generate Lite Sync |
 
 ## payment
 

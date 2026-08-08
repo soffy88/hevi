@@ -37,6 +37,17 @@ def _complexity(raw: Any, text: str) -> str:
         return "high"
     return "medium" if len(text) > 180 else "low"
 
+
+# 剧本生成三模式 (对标 DramaClaw 脚本生成 modes):
+#   adaptive = 改编(默认,现状):翻译+口语化,保留原文情感力度
+#   literal  = 贴原文:逐字贴合,尽量保留原句结构/用词,仅最轻口语化
+#   staged   = 舞台化:强化分场/视觉动作,弱化叙述,突出可拍性
+_SCREENPLAY_MODE_TAILS = {
+    "adaptive": "\n\n模式:改编(翻译+口语化,保留原文完整意思与情感力度,不缩写)。",
+    "literal": "\n\n模式:贴原文——逐句贴合原文,保留原句结构与用词,仅做最轻口语化,禁止增删情节。",
+    "staged": "\n\n模式:舞台化——强化分场与视觉动作(visual_actions 必须具体可拍),叙述尽量转为动作/对白,突出节奏与场面调度。",
+}
+
 _SCREENPLAY_PROMPT = """把下面的素材改写成白话分场剧本。
 
 **白话要求(为了配音自然、观众听得懂):** 文言字词转成现代口语,不要"之乎者也""尔/汝/
@@ -109,17 +120,20 @@ def _resolve_llm(llm: Any) -> Any:
 
 
 async def generate_screenplay_draft(
-    *, concept: Concept, material_text: str, llm: Any = None
+    *, concept: Concept, material_text: str, llm: Any = None,
+    mode: str = "adaptive",
 ) -> Screenplay:
-    """锁定 Concept + 素材原文 → Screenplay 草稿。LLM 失败/解析失败 → 返回单场的兜底剧本
+    """锁定 Concept + 素材原文 → Screenplay 草稿。mode: adaptive/literal/staged
+    (对标 DramaClaw 脚本多模式)。LLM 失败/解析失败 → 返回单场的兜底剧本
     (叙述=原文本身,人审核阶段可以手工补,不因草稿生成失败阻断流程)。"""
     resolved_llm = _resolve_llm(llm)
+    tail = _SCREENPLAY_MODE_TAILS.get(mode, _SCREENPLAY_MODE_TAILS["adaptive"])
     prompt = _SCREENPLAY_PROMPT.format(
         theme=concept.theme or "(未定)",
         tone=concept.tone or "(未定)",
         style=concept.style or "(未定)",
         material_text=material_text,
-    )
+    ) + tail
     try:
         data = await _call_llm_json(resolved_llm, prompt)
     except Exception as e:

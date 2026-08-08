@@ -170,12 +170,23 @@ async def _shots_for_scene(
     resolved_llm: Any,
     character_names: set[str],
     scene_names: set[str],
+    scene_world: Any = None,  # Director World: 跨镜头场景一致性
 ) -> list[ShotListItem]:
     scene_text_lines = [f"第{scene.scene_no}场 {scene.time} {scene.location}"]
     if scene.narration:
         scene_text_lines.append(f"叙述:{scene.narration}")
     scene_text_lines.extend(f"{d.character_name}:{d.text}" for d in scene.dialogue)
     scene_text = "\n".join(scene_text_lines)
+
+    # Director World: 注入场景锁定前缀(空间/机位/光照/走位跨镜头一致)
+    lock_prefix = ""
+    if scene_world is not None:
+        from hevi.director.scene_world import SceneWorld
+
+        if isinstance(scene_world, SceneWorld):
+            lock_prefix = scene_world.lock_prompt_for(scene.location or "(未定)")
+    if lock_prefix:
+        scene_text = f"{lock_prefix}\n{scene_text}"
 
     prompt = _SHOT_LIST_PROMPT.format(
         character_names="、".join(scene.characters_present) or "(无)",
@@ -257,7 +268,8 @@ async def _shots_for_scene(
 
 
 async def generate_shot_list_draft(
-    *, screenplay: Screenplay, design_list: DesignList, llm: Any = None
+    *, screenplay: Screenplay, design_list: DesignList, llm: Any = None,
+    scene_world: Any = None,
 ) -> ShotList:
     """锁定 Screenplay + DesignList → ShotList 草稿,逐场切镜头。每场一次 LLM 调用
     (而非整部剧本一次,让单场失败只退化那一场,不拖累全片),场与场之间并发调用——
@@ -275,6 +287,7 @@ async def generate_shot_list_draft(
                 resolved_llm=resolved_llm,
                 character_names=character_names,
                 scene_names=scene_names,
+                scene_world=scene_world,
             )
             for idx, scene in enumerate(screenplay.scenes)
         )
