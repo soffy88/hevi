@@ -44,14 +44,27 @@ async def plan_shots(
     num_shots: int = 4,
     style: str = "cinematic",
     llm: Any = None,
+    image_pool_size: int = 1,
 ) -> list[str]:
-    """topic → num_shots 条分镜画面描述(视觉 prompt)。"""
+    """topic → num_shots 条分镜画面描述(视觉 prompt)。
+
+    image_pool_size > 1 时启用图像池选择:每镜先生成 pool_size 个候选画面,
+    再按确定性启发(与主题相关性 + 描述长度)选最优,去重后返回——
+    对标 DramaClaw 分镜的图像池选择。"""
+    if image_pool_size < 1:
+        raise ValueError("image_pool_size must be >= 1")
     if num_shots < 1:
         raise ValueError("num_shots must be >= 1")
     if llm is None:
         from obase.provider_registry import ProviderRegistry
 
         llm = ProviderRegistry.get().llm("default")
+
+    if image_pool_size > 1:
+        return await _plan_with_pool(
+            topic=topic, num_shots=num_shots, style=style, llm=llm,
+            pool_size=image_pool_size,
+        )
 
     prompt = (
         f"为主题《{topic}》(风格:{style})写 {num_shots} 个分镜的画面描述。"
@@ -67,4 +80,71 @@ async def plan_shots(
 
     if not shots:
         shots = [f"{topic} — 镜头 {i + 1}" for i in range(num_shots)]  # 兜底
+    return shots
+
+
+# ── 图像池选择(对标 DramaClaw):每镜多候选 → 确定性启发选最优 ──────────
+def _pool_score(candidate: str, topic: str) -> float:
+    """候选画面评分:主题相关词命中(权重高) + 描述充实度(长度适中)。"""
+    score = 0.0
+    for word in topic:
+        if word.strip() and word.strip() in candidate:
+            score += 3.0
+    # 描述充实度: 20~60 字最佳,过长(冗余)/过短(空洞)降分
+    length = len(candidate)
+    if 20 <= length <= 60:
+        score += 2.0
+    elif length > 60:
+        score += 1.0
+    return score
+
+
+def select_best_from_pool(candidates: list[str], topic: str) -> str:
+    """候选池选最优: 去重(按首 12 字) + 评分排序。"""
+    seen: set[str] = set()
+    unique: list[str] = []
+    for cand in candidates:
+        key = cand[:12]
+        if key not in seen:
+            seen.add(key)
+            unique.append(cand)
+    if not unique:
+        return ""
+    return max(unique, key=lambda c: _pool_score(c, topic))
+
+
+async def _plan_with_pool(
+    *,
+    topic: str,
+    num_shots: int,
+    style: str,
+    llm: Any,
+    pool_size: int,
+) -> list[str]:
+    """每镜生成 pool_size 个候选画面 → 池选择 → num_shots 条最优。"""
+    if llm is None:
+        from obase.provider_registry import ProviderRegistry
+
+        llm = ProviderRegistry.get().llm("default")
+    total = num_shots * pool_size
+    prompt = (
+        f"为主题《{topic}》(风格:{style})写 {total} 个分镜画面候选(每镜 {pool_size} 个变体)。"
+        f'只输出 JSON 数组,每条一句具体的视觉描述,尽量互不相同。'
+    )
+    try:
+        resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
+        data = _safe_json_list(resp.get("content") if hasattr(resp, "get") else str(resp))
+        candidates = [str(s).strip() for s in data if str(s).strip()]
+    except Exception as e:
+        logger.warning("storyboard pool LLM failed, using placeholders: %s", e)
+        candidates = []
+
+    # 按 pool_size 分组,每组池选择 1 条;不足组数时用兜底
+    shots: list[str] = []
+    for i in range(num_shots):
+        group = candidates[i * pool_size:(i + 1) * pool_size]
+        if group:
+            shots.append(select_best_from_pool(group, topic))
+        else:
+            shots.append(f"{topic} — 镜头 {i + 1}")
     return shots

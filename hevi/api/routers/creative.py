@@ -11,6 +11,7 @@ from hevi.api.rate_limit import rate_limit
 from hevi.auth.dependencies import get_current_user
 from hevi.creative.assist_service import AssistService
 from hevi.creative.workflow_service import WorkflowService
+from hevi.creative.xia import XiaAssistant
 
 # Expensive GPU/LLM endpoints — require login AND throttle per-IP to bound
 # resource-abuse cost. Auth applies to every route in this router.
@@ -270,3 +271,46 @@ async def run_comic_to_animation(
         output_path=Path(body.output_path),
     )
     return {"output_path": str(out)}
+
+
+# ── Xia 对话式制片助理(对标 DramaClaw Xia) ───────────────────────────────
+
+
+class XiaChatRequest(BaseModel):
+    text: str
+    session_id: str | None = None
+
+
+# 单例助理: 装配 AssistService/WorkflowService 轻量操作 + 制片问答
+_xia: XiaAssistant | None = None
+
+
+def _get_xia() -> XiaAssistant:
+    global _xia
+    if _xia is None:
+
+        _xia = XiaAssistant()
+
+        async def _noop(params: dict[str, Any]) -> dict[str, Any]:
+            return {"summary": "该能力需要装配图像/LLM 服务后可用", "message": "未装配"}
+
+        _xia.register("three_view", _noop)
+        _xia.register("storyboard", _noop)
+        _xia.register("story_predict", _noop)
+        _xia.register("multi_angle", _noop)
+        _xia.register("transition", _noop)
+        _xia.register("video_edit", _noop)
+        _xia.register("character_consistency", _noop)
+        _xia.register("comic_to_animation", _noop)
+        _xia.register("multi_shot_storyboard", _noop)
+        _xia.register("dub", _noop)
+    return _xia
+
+
+@router.post("/xia/chat")
+async def xia_chat(body: XiaChatRequest) -> dict[str, Any]:
+    """对话式制片: 自然语言 → 意图路由 → 工具分发(装配层可注入真实操作)。"""
+    if not body.text.strip():
+        raise HTTPException(400, "text 不能为空")
+    xia = _get_xia()
+    return await xia.chat(body.text, session_id=body.session_id)

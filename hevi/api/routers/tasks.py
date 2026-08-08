@@ -532,3 +532,41 @@ async def list_task_shots(
         raise HTTPException(status_code=404, detail="Task not found")
     shots = await repo.get_shots(task_id)
     return [_serialize_shot(s) for s in shots]
+
+
+# ── Task 断点续跑(对标 DramaClaw Task Center) ──────────────────────────────
+
+from hevi.tasks.checkpoint import (  # noqa: E402
+    CheckpointStore,
+    build_checkpoint_from_task,
+    resume_decision,
+)
+
+# 进程内存 checkpoint store(装配层可换 Redis/DB)
+_checkpoint_store = CheckpointStore()
+
+
+@router.get("/{task_id}/checkpoint")
+async def get_task_checkpoint(
+    task_id: UUID,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+) -> dict[str, Any]:
+    """断点查询: 任务的进度锚点(阶段/已完成镜头/百分比) + 续跑决策,
+    前端据此展示"可续跑/跳过 N 镜"。确定性,不调 LLM。"""
+    task = await repo.get_task(task_id)
+    if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
+        raise HTTPException(status_code=404, detail="Task not found")
+    cp = build_checkpoint_from_task(task)
+    if cp is None:
+        return {"task_id": str(task_id), "has_checkpoint": False}
+    decision = resume_decision(task, cp)
+    return {
+        "task_id": str(task_id),
+        "has_checkpoint": True,
+        "resumable": decision["resumable"],
+        "reason": decision["reason"],
+        **cp.to_dict(),
+    }
+
+

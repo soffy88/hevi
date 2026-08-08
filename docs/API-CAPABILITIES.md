@@ -39,14 +39,6 @@
 | PATCH | `/api/canvas/{graph_id}` | Update Graph |
 | POST | `/api/canvas/{graph_id}/execute` | Execute Graph |
 
-## cinematic
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/api/cinematic/animate` | Animate |
-| GET | `/api/cinematic/tasks/{task_id}` | Get Animation Task |
-| GET | `/api/cinematic/tasks/{task_id}/video` | Get Animation Video |
-
 ## creative
 
 | 方法 | 路径 | 说明 |
@@ -61,6 +53,7 @@
 | POST | `/api/creative/workflow/character-consistency` | Run Character Consistency |
 | POST | `/api/creative/workflow/comic-to-animation` | Run Comic To Animation |
 | POST | `/api/creative/workflow/storyboard` | Run Storyboard Workflow |
+| POST | `/api/creative/xia/chat` | Xia Chat |
 
 ## credits
 
@@ -70,14 +63,6 @@
 | POST | `/api/credits/estimate` | Estimate Credits |
 | POST | `/api/credits/topup` | Manual Topup |
 | GET | `/api/credits/transactions` | List Transactions |
-
-## dashboard
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/dashboard/tasks` | List Tasks |
-| GET | `/api/dashboard/tasks/{task_id}` | Get Task Run |
-| GET | `/api/dashboard/tasks/{task_id}/output` | Get Task Output |
 
 ## director
 
@@ -142,22 +127,6 @@
 | GET | `/api/gallery` | List Gallery |
 | POST | `/api/gallery` | Create Gallery Item |
 | GET | `/api/gallery/{item_id}` | Get Gallery Item |
-
-## history-series
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/history-series/next` | Get Next |
-| POST | `/api/history-series/produce` | Produce |
-| POST | `/api/history-series/produce-daily` | Produce Daily |
-| GET | `/api/history-series/queue` | Get Queue |
-
-## lite
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/api/lite/assemble` | Assemble Lite |
-| POST | `/api/lite/generate` | Generate Lite Sync |
 
 ## payment
 
@@ -282,6 +251,7 @@
 | POST | `/api/tasks/longvideo` | ⚠️ 兼容 · Create Longvideo Task |
 | GET | `/api/tasks/{task_id}` | Get Task Details |
 | GET | `/api/tasks/{task_id}/audio` | Get Task Audio |
+| GET | `/api/tasks/{task_id}/checkpoint` | Get Task Checkpoint |
 | GET | `/api/tasks/{task_id}/continuity-report` | Get Continuity Report |
 | GET | `/api/tasks/{task_id}/cover` | Get Task Cover |
 | GET | `/api/tasks/{task_id}/dub` | Dub Task Video |
