@@ -31,7 +31,8 @@ v9.1 基建解耦的核心产物: **把 CPU 控制逻辑与 GPU 算力逻辑做�
 |---|---|---|
 | GET  | `/api/ai/health`       | 引擎健康 + GPU 状态 + 模型能力 |
 | GET  | `/api/ai/capabilities` | `{cosyvoice, longcat, vibevoice}` 可用性 |
-| POST | `/api/ai/cosyvoice`    | `{script, config}` → `audio/wav`(合成优先级: oprim CosyVoice → vibevoice 子进程) |
+| POST | `/api/ai/cosyvoice`    | `{script, config}` → `audio/wav`(合成优先级: oprim CosyVoice → **重供货 CosyVoice2/3 worker**(cosy-venv) → vibevoice 子进程) |
+| POST | `/api/ai/f5_tts`       | multipart `text`+`reference_audio`+`reference_text` → `audio/wav`(F5-TTS 零样本音色克隆) |
 | POST | `/api/ai/fish_speech`  | multipart `text`(+可选 `reference_audio`) → `audio/wav`(fish-speech-1.5 零样本 TTS) |
 | POST | `/api/ai/longcat`      | multipart `image`+`audio` → `video/mp4`(与主音频等长的口型视频) |
 
@@ -51,8 +52,23 @@ v9.1 基建解耦的核心产物: **把 CPU 控制逻辑与 GPU 算力逻辑做�
 | Voicebox Qwen3-TTS | (voicebox 自身 profile) | `.voicebox-cache` 挂载 |
 | VibeVoice 1.5B | `VIBEVOICE_MODEL_DIR` | `/models/vibevoice-1.5b` |
 | CosyVoice2-0.5B | `COSYVOICE_MODEL_DIR` | `/opt/cosyvoice/model` |
+| Fun-CosyVoice3-0.5B | `COSYVOICE3_MODEL_DIR` | `/opt/cosyvoice/fun3` |
+| F5-TTS + Vocos | `F5_TTS_MODEL_DIR` | `/models/f5-tts` |
 | fish-speech-1.5 | `FISH_SPEECH_MODEL_DIR` | `/models/fish-speech-1.5` |
 | LongCat-Video | `LONGCAT_MODEL_PATH` | `/data/models/LongCat-Voice` |
+
+## F5-TTS 与 CosyVoice2/3(2026-08 新增)
+
+- **F5-TTS**(`/api/ai/f5_tts`): 零样本音色克隆(参考音频 ≤12s + 参考转录, 参考转录
+  必填——生产容器离线不自动转写)。模型 `SWivid/F5-TTS`(F5TTS_Base) +
+  `charactr/vocos-mel-24khz`, 装在 ai-venv(`f5-tts==1.1.21` + vocos/pydub 等)。
+- **CosyVoice2/3**(`/api/ai/cosyvoice` 优先路径): 重供货代码在
+  `services/gen_engine/cosyvoice/`(来自 abus-aikorea/voice-pro, 含 transformers
+  5.13 两个行为补丁, 见该目录 README), 跑在独立 **cosy-venv**
+  (transformers==5.13.0, 与 ai-venv 的 4.51.3 版本钉隔离)。
+  模型家族按目录 yaml 自动检测: `cosyvoice2.yaml` → CosyVoice2,
+  `cosyvoice3.yaml` → CosyVoice3。script 行带 `voice_ref`(+可选 `ref_text`,
+  有则 zero-shot、无则 cross-lingual)即走此路径, 失败自动降级 vibevoice。
 
 ## 构建与部署
 

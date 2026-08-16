@@ -75,6 +75,34 @@ async def test_cosyvoice_posts_json_and_writes_wav(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_cosyvoice_serializes_ref_text_and_model(tmp_path: Path) -> None:
+    """voice_ref/ref_text/speed 与 model 选择应透传给引擎(cosy worker 消费)。"""
+    patcher, fake = _patch_client(
+        post_response=httpx.Response(200, content=b"RIFF...fake-wav-bytes")
+    )
+    with patcher:
+        await cosyvoice_synthesize(
+            script=[
+                SimpleNamespace(
+                    text="第二段",
+                    speaker_id="host",
+                    voice_ref="/models/ref.wav",
+                    ref_text="参考转录",
+                    speed=1.1,
+                )
+            ],
+            output_path=tmp_path / "seg.wav",
+            config={"model": "Fun-CosyVoice3-0.5B"},
+        )
+    body = fake.post.await_args.kwargs["json"]
+    line = body["script"][0]
+    assert line["voice_ref"] == "/models/ref.wav"
+    assert line["ref_text"] == "参考转录"
+    assert line["speed"] == 1.1
+    assert body["config"]["model"] == "Fun-CosyVoice3-0.5B"
+
+
+@pytest.mark.asyncio
 async def test_cosyvoice_501_raises_engine_error(tmp_path: Path) -> None:
     """引擎无模型(501) → AiEngineError, 由 voiceover 决定是否降级 edge_tts。"""
     patcher, _ = _patch_client(

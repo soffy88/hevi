@@ -62,7 +62,36 @@ RUN python -m venv /opt/ai-venv && \
     /opt/ai-venv/bin/pip install --no-cache-dir \
       "fish-speech==0.1.0" \
       "git+https://github.com/descriptinc/audiotools.git" \
-      "tiktoken" "soundfile" "pyyaml" "einops" "omegaconf" "fire" "loguru" "vector-quantize-pytorch"
+      "tiktoken" "soundfile" "pyyaml" "einops" "omegaconf" "fire" "loguru" "vector-quantize-pytorch" && \
+    # ── F5-TTS 零样本音色克隆(f5-tts 依赖与 voicebox 主环境兼容, 进 ai-venv) ──
+    /opt/ai-venv/bin/pip install --no-cache-dir --no-deps "f5-tts==1.1.21" && \
+    /opt/ai-venv/bin/pip install --no-cache-dir \
+      "vocos" "pydub" "matplotlib" "cached_path" "hydra-core" "ema-pytorch" \
+      "wandb" "pypinyin" "rjieba" "tomli" "click" "x-transformers"
+
+# ── 独立 cosy-venv:重供货 CosyVoice(transformers==5.13 + 行为补丁) ──
+# 与 ai-venv 的 transformers==4.51.3(vibevoice)版本钉冲突, 单独 venv
+# (同 asr-venv 模式)。cosyvoice/ + third_party/Matcha-TTS 为 vendored 代码,
+# 拷入 site-packages(见 services/gen_engine/cosyvoice/README.md)。
+FROM python:3.11-slim AS cosy-builder
+WORKDIR /build
+RUN apt-get update && apt-get install -y --no-install-recommends git ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m venv /opt/cosy-venv && \
+    /opt/cosy-venv/bin/pip install --no-cache-dir --upgrade pip && \
+    if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
+      /opt/cosy-venv/bin/pip install --no-cache-dir --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio; \
+    else \
+      /opt/cosy-venv/bin/pip install --no-cache-dir torch torchaudio; \
+    fi && \
+    /opt/cosy-venv/bin/pip install --no-cache-dir \
+      "transformers==5.13.0" "accelerate" "einops" "hyperpyyaml" "omegaconf" \
+      "x-transformers" "inflect" "onnxruntime" "pyarrow" "pyworld" "regex" \
+      "gdown" "wetext>=0.1.4" "modelscope" "librosa" "soundfile" "numpy" \
+      "tqdm" "scipy" "huggingface-hub" "pydantic" "jieba" "pypinyin" \
+      "openai-whisper" "tiktoken"
+COPY services/gen_engine/cosyvoice/ /opt/cosy-venv/lib/python3.11/site-packages/cosyvoice/
+COPY services/gen_engine/third_party/Matcha-TTS/matcha/ /opt/cosy-venv/lib/python3.11/site-packages/matcha/
 
 # ── VibeASR.cpp CPU 推理引擎: 容器内编译(宿主 GLIBC 2.43 vs 容器 2.41 不兼容) ──
 FROM python:3.11-slim AS vibeasr-builder
@@ -85,6 +114,7 @@ COPY --from=vibeasr-builder /build/vibeasr/build/3rdparty/llama.cpp/src/libllama
 ENV LD_LIBRARY_PATH=/opt/vibeasr:${LD_LIBRARY_PATH}
 COPY --from=backend-builder /install /usr/local
 COPY --from=backend-builder /opt/ai-venv /opt/ai-venv
+COPY --from=cosy-builder /opt/cosy-venv /opt/cosy-venv
 COPY --chown=voicebox:voicebox services/voicebox/backend/ /app/backend/
 # ── ASR 独立 venv: VibeVoice-ASR-HF 需要 transformers>=5.3.0, 与 ai-venv 的 4.51.3 隔离。 ──
 RUN python -m venv /opt/asr-venv && \

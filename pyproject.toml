@@ -54,7 +54,13 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-extend-exclude = ["hevi/db/alembic/", "services/gen_engine/vibeasr-src/"]
+extend-exclude = [
+    "hevi/db/alembic/",
+    "services/gen_engine/vibeasr-src/",
+    # vendored 上游代码(voice-pro 重供 CosyVoice + Matcha-TTS), 不做本地 lint
+    "services/gen_engine/cosyvoice/",
+    "services/gen_engine/third_party/",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RET", "PERF", "PIE", "RUF"]
@@ -94,10 +100,16 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 [tool.mypy]
 strict = true
 python_version = "3.14"
-exclude = ["hevi/db/alembic/"]
+exclude = ["hevi/db/alembic/", "services/gen_engine/cosyvoice/", "services/gen_engine/third_party/"]
 
 [[tool.mypy.overrides]]
 module = ["vibevoice", "vibevoice.*"]
+
+# gen_engine 子进程 worker: 运行在容器内独立 venv(torch 版本/依赖集与 dev 环境不同),
+# 严格类型检查是噪音; 由容器内 smoke 测试与 hevi-api 客户端测试兜底。
+[[tool.mypy.overrides]]
+module = ["gen_engine.f5_worker", "gen_engine.cosy_worker"]
+ignore_errors = true
 ignore_missing_imports = true
 
 # 未提供 stubs/py.typed 的第三方运行依赖:asyncpg(直连 mneme 库)/dashscope(阿里百炼)/

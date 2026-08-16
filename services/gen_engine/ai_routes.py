@@ -39,6 +39,28 @@ def _cosyvoice_model_dir() -> Path | None:
     return None
 
 
+def _cosyvoice3_model_dir() -> Path | None:
+    """Fun-CosyVoice3-0.5B(多语言, cosyvoice3.yaml 布局)。"""
+    for raw in (
+        os.environ.get("COSYVOICE3_MODEL_DIR", "").strip(),
+        os.environ.get("FUN_COSYVOICE3_MODEL_DIR", "").strip(),
+    ):
+        if raw:
+            p = Path(raw)
+            if p.is_dir() and any(p.iterdir()):
+                return p
+    return None
+
+
+def _f5_tts_model_dir() -> Path | None:
+    """F5-TTS 模型目录: 需 F5TTS_Base/model_1200000.safetensors 才算部署。"""
+    raw = os.environ.get("F5_TTS_MODEL_DIR", "/models/f5-tts").strip()
+    p = Path(raw)
+    if (p / "F5TTS_Base" / "model_1200000.safetensors").is_file():
+        return p
+    return None
+
+
 def _vibevoice_model_dir() -> Path | None:
     raw = os.environ.get("VIBEVOICE_MODEL_DIR", "/models/vibevoice-1.5b").strip()
     p = Path(raw)
@@ -73,6 +95,8 @@ def _longcat_model_dir() -> Path | None:
 def capabilities() -> dict[str, bool]:
     return {
         "cosyvoice": _cosyvoice_model_dir() is not None,
+        "cosyvoice3": _cosyvoice3_model_dir() is not None,
+        "f5_tts": _f5_tts_model_dir() is not None,
         "vibevoice": _vibevoice_model_dir() is not None,
         "longcat": _longcat_model_dir() is not None,
         "fish_speech": _fish_speech_model_dir() is not None,
@@ -81,7 +105,7 @@ def capabilities() -> dict[str, bool]:
 
 @router.get("/capabilities")
 async def get_capabilities() -> dict[str, Any]:
-    caps = capabilities()
+    caps: dict[str, Any] = capabilities()
     caps["engine"] = "hevi-gen-engine"
     caps["version"] = "1.0.0"
     return caps
@@ -89,13 +113,15 @@ async def get_capabilities() -> dict[str, Any]:
 
 @router.get("/health")
 async def health() -> dict[str, Any]:
+    gpu: bool = False
+    gpu_name: str | None = None
     try:
         import torch
 
         gpu = torch.cuda.is_available()
         gpu_name = torch.cuda.get_device_name(0) if gpu else None
     except Exception:
-        gpu, gpu_name = False, None
+        pass
     return {
         "status": "ok",
         "gpu": gpu,
@@ -121,6 +147,28 @@ def _asr_python() -> str:
     return _ai_python()
 
 
+def _cosy_python() -> str:
+    """CosyVoice 专用 venv(transformers==5.13.0 + 重供货 cosyvoice), 缺失回退 ai-venv。"""
+    candidate = "/opt/cosy-venv/bin/python"
+    if Path(candidate).exists():
+        return candidate
+    return _ai_python()
+
+
+async def _run_worker_async(worker: Path, args: dict[str, Any], *, python: str) -> tuple[int, str]:
+    """子进程 worker: (returncode, stdout)。stderr 并入 stdout。"""
+    args_path = Path(tempfile.mkdtemp(prefix="hevi-ai-worker-")) / "args.json"
+    args_path.write_text(json.dumps(args, ensure_ascii=False), encoding="utf-8")
+    proc = await asyncio.create_subprocess_exec(
+        python, str(worker), str(args_path),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    stdout, _ = await proc.communicate()
+    code = proc.returncode if proc.returncode is not None else -1
+    return code, stdout.decode(errors="replace") if stdout else ""
+
+
 @router.post("/cosyvoice")
 async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
     """CosyVoice 风格解说 TTS(引擎侧合成)。
@@ -142,7 +190,7 @@ async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
     # 1) oprim 原生 CosyVoice 原子(若已安装并部署模型)
     if requested_model and Path(requested_model).is_dir():
         try:
-            import oprim  # type: ignore[import-not-found]
+            import oprim
 
             provider = getattr(oprim, "cosyvoice_tts_call", None)
         except ImportError:
@@ -166,7 +214,53 @@ async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
                         headers={"X-Engine": "oprim-cosyvoice"},
                     )
 
-    # 2) vibevoice 子进程(独立 ai-venv, 显存隔离)
+    # 2) 重供货 CosyVoice2/3 worker(cosy-venv, transformers==5.13 + 行为补丁)
+    #    —— 需要 voice_ref 克隆音色; 失败降级 vibevoice, 不阻断。
+    has_voice_ref = any(line.get("voice_ref") for line in script)
+    model_choice = str(config.get("model") or "").strip()
+    if model_choice in ("Fun-CosyVoice3-0.5B", "CosyVoice3"):
+        cosy_model_dir = _cosyvoice3_model_dir() or requested_model or None
+    else:
+        cosy_model_dir = requested_model or _cosyvoice_model_dir() or None
+
+    if has_voice_ref and cosy_model_dir is not None:
+        worker = Path(__file__).resolve().parent / "cosy_worker.py"
+        # voice_ref 必须是引擎容器内可见路径(跨容器宿主路径不可达)。
+        refs_ok = all(
+            not (line.get("voice_ref") and not Path(str(line["voice_ref"])).exists())
+            for line in script
+        )
+        if refs_ok:
+            tmp_out = Path(tempfile.mkdtemp(prefix="hevi-ai-cosy-")) / "cosyvoice.wav"
+            args = {
+                "script": [
+                    {
+                        "speaker_id": line.get("speaker_id", "host"),
+                        "text": line.get("text", str(line)),
+                        "voice_ref": line.get("voice_ref"),
+                        "ref_text": line.get("ref_text"),
+                        "speed": line.get("speed", 1.0),
+                    }
+                    for line in script
+                ],
+                "output_path": str(tmp_out),
+                "model_dir": str(cosy_model_dir),
+            }
+            try:
+                code, worker_out = await _run_worker_async(worker, args, python=_cosy_python())
+                if code == 0 and tmp_out.is_file() and tmp_out.stat().st_size > 0:
+                    model_tag = Path(str(cosy_model_dir)).name
+                    logger.info("cosy worker OK (%s) → %s", model_tag, tmp_out.name)
+                    return Response(
+                        content=tmp_out.read_bytes(),
+                        media_type="audio/wav",
+                        headers={"X-Engine": "cosyvoice-worker"},
+                    )
+                logger.warning("cosy worker exit=%s, 降级 vibevoice: %s", code, worker_out[-400:])
+            except Exception as exc:
+                logger.warning("cosy worker 异常, 降级 vibevoice: %s", exc)
+
+    # 3) vibevoice 子进程(独立 ai-venv, 显存隔离)
     model_dir = _vibevoice_model_dir()
     if model_dir is None and requested_model:
         probe = Path(requested_model)
@@ -249,6 +343,73 @@ async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
             media_type="audio/wav",
             headers={"X-Engine": "vibevoice"},
         )
+
+
+# ─── F5-TTS 零样本音色克隆 ──────────────────────────────────────────
+
+
+@router.post("/f5_tts")
+async def synthesize_f5_tts(
+    text: str = Form(...),
+    reference_text: str = Form(...),
+    reference_audio: UploadFile = File(...),
+    speed: float = Form(1.0),
+    seed: int | None = Form(None),
+) -> Response:
+    """F5-TTS 零样本音色克隆(引擎侧合成)。
+
+    - reference_audio: 参考音频(必填, 克隆音色, ≤12s 自动截断)
+    - reference_text: 参考音频的转录文本(必填; 生产容器离线, 不自动转写)
+    - 模型: SWivid/F5-TTS(F5TTS_Base) + charactr/vocos-mel-24khz,
+      目录见 F5_TTS_MODEL_DIR(缺模型时 501, 客户端降级)。
+    """
+    model_dir = _f5_tts_model_dir()
+    if model_dir is None:
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                "F5-TTS 模型未部署: F5_TTS_MODEL_DIR 下缺 "
+                "F5TTS_Base/model_1200000.safetensors (见 docs/VOICEBOX-INTEGRATION.md)"
+            ),
+        )
+    if not text.strip():
+        raise HTTPException(status_code=422, detail="text 不能为空")
+    if not reference_text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="reference_text 必填(参考音频的转录文本; 生产容器离线不自动转写)",
+        )
+    if not 0.5 <= float(speed) <= 2.0:
+        raise HTTPException(status_code=422, detail="speed 应在 0.5~2.0")
+
+    tmp = Path(tempfile.mkdtemp(prefix="hevi-ai-f5-"))
+    ref_path = tmp / "ref.wav"
+    ref_path.write_bytes(await reference_audio.read())
+    out_path = tmp / "speech.wav"
+    worker = Path(__file__).resolve().parent / "f5_worker.py"
+    code, out = await _run_worker_async(
+        worker,
+        {
+            "text": text,
+            "reference_audio": str(ref_path),
+            "reference_text": reference_text,
+            "output_path": str(out_path),
+            "model_dir": str(model_dir),
+            "seed": seed,
+            "speed": float(speed),
+        },
+        python=_ai_python(),
+    )
+    if code != 0 or not out_path.exists() or out_path.stat().st_size == 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"F5-TTS 合成失败 (exit={code}): {out[-600:]}",
+        )
+    return Response(
+        content=out_path.read_bytes(),
+        media_type="audio/wav",
+        headers={"X-Engine": "f5-tts"},
+    )
 
 
 # ─── LongCat Talking Face ──────────────────────────────────────────

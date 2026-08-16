@@ -144,6 +144,24 @@ async def _synthesize_formal(
         )
         return output_path
 
+    if provider == "f5":
+        # F5-TTS 零样本克隆: 用环境配置的固定参考音色做解说。
+        ref_audio = os.getenv("F5_TTS_REFERENCE_AUDIO", "").strip()
+        ref_text = os.getenv("F5_TTS_REFERENCE_TEXT", "").strip()
+        if not ref_audio or not ref_text:
+            raise AudioRoutingError(
+                "HEVI_TTS_FORMAL_PROVIDER=f5 需设置 F5_TTS_REFERENCE_AUDIO 与 "
+                "F5_TTS_REFERENCE_TEXT(参考音频 + 其转录文本)"
+            )
+        from hevi.audio.f5_tts_service import f5_tts_synthesize
+        await f5_tts_synthesize(
+            text=text,
+            output_path=output_path,
+            reference_audio=ref_audio,
+            reference_text=ref_text,
+        )
+        return output_path
+
     if provider == "voicebox":
         from hevi.explainer.voicebox_client import synthesize as vb_synthesize
         await vb_synthesize(text, output_path, instruct=instruct or "professional, clear narration")

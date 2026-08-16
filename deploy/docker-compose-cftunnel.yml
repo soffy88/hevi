@@ -48,6 +48,8 @@ services:
       TRANSFORMERS_OFFLINE: "1"
       VIBEVOICE_MODEL_DIR: /models/vibevoice-1.5b
       COSYVOICE_MODEL_DIR: /opt/cosyvoice/model
+      COSYVOICE3_MODEL_DIR: /opt/cosyvoice/fun3
+      F5_TTS_MODEL_DIR: /models/f5-tts
       FISH_SPEECH_MODEL_DIR: /models/fish-speech-1.5
       LONGCAT_MODEL_PATH: /data/models/LongCat-Voice
       VIBEVOICE_ASR_MODEL_DIR: /models/vibeasr
@@ -59,6 +61,8 @@ services:
       # 语音/生成模型权重(宿主持有, 只读; 缺失时端点返回 501, API 自动降级)
       - ${VIBEVOICE_MODEL_DIR:-/home/soffy/models/vibevoice-1.5b}:/models/vibevoice-1.5b:ro
       - ${COSYVOICE_MODEL_DIR:-/home/soffy/models/CosyVoice}:/opt/cosyvoice/model:ro
+      - ${COSYVOICE3_MODEL_DIR:-/home/soffy/models/CosyVoice3}:/opt/cosyvoice/fun3:ro
+      - ${F5_TTS_MODEL_DIR:-/home/soffy/models/f5-tts}:/models/f5-tts:ro
       - ${FISH_SPEECH_MODEL_DIR:-/home/soffy/models/fish-speech-1.5}:/models/fish-speech-1.5:ro
       - ${LONGCAT_MODEL_DIR:-/data/models/LongCat-Voice}:/data/models/LongCat-Voice:ro
       - ${VIBEVOICE_ASR_MODEL_DIR:-/home/soffy/models/vibeasr}:/models/vibeasr:ro

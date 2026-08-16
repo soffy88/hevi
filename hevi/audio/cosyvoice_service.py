@@ -48,6 +48,10 @@ def _serialize_script(script: list[Any]) -> list[dict[str, Any]]:
             row["speaker_id"] = line.speaker_id
         if getattr(line, "voice_ref", None):
             row["voice_ref"] = str(line.voice_ref)
+        if getattr(line, "ref_text", None):
+            row["ref_text"] = str(line.ref_text)
+        if getattr(line, "speed", None):
+            row["speed"] = float(line.speed)
         rows.append(row)
     return rows
 
@@ -69,12 +73,14 @@ async def cosyvoice_synthesize(
         raise ValueError("Script cannot be empty")
 
     cfg = config or {}
+    model_choice = str(cfg.get("model") or "").strip()
     payload = {
         "script": _serialize_script(script),
         "config": {
             "model_dir": cfg.get("COSYVOICE_MODEL_DIR")
             or os.environ.get("COSYVOICE_MODEL_DIR")
             or None,
+            "model": model_choice or None,
             "watermark": bool(
                 cfg.get("COSYVOICE_USE_WATERMARK", watermark)
                 if cfg.get("COSYVOICE_USE_WATERMARK") is not None
