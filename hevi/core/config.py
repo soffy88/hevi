@@ -36,6 +36,27 @@ class Settings(BaseSettings):
     # 根分区(/)只剩 20G 空闲,故缓存目录放 /data 而非默认 ~/.cache/huggingface。
     sdxl_model_dir: str = "/data/models/huggingface"
 
+    # LibLib.tv (libtv) agent-im:电影级生视频专业平台。hevi 产出加厚剧本 → 中继给 agent-im
+    # 出片(见 hevi/video/libtv_service.py)。key 走 .env,不硬编码。
+    libtv_access_key: str = ""
+    libtv_im_base: str = "https://im.liblib.tv"
+
+    # 剧本场数上限(测试用):加厚剧本后一段故事常产出 10+ 场 → 下游 50+ 镜、~4min 成片,
+    # 渲染久且接近 tongjian_run_budget_usd 熔断线。设一个正整数只取前 N 场做快速小规模验证
+    # (剧本层截断,下游 design/scene_stage/shot 全派生自它,一处生效)。None/0 = 不限(全量)。
+    director_max_scenes: int | None = None
+
+    # 剧本 LLM 自审-修订(2026-07-16):初稿产出后再跑一道"审核员挑毛病并改好"的二遍
+    # (见 screenplay.py::_REVIEW_PROMPT)。实测质量显著提升(10→13 场、画面从概要变分镜级)。
+    # 总延迟 ~106s > 同步反代 100s,故②剧本阶段已改后台任务(_run_screenplay_generate,
+    # 前端轮询 screenplay_generating),这里可安全开启。关掉则只出初稿、省一次 LLM 调用。
+    screenplay_llm_review: bool = True
+
+    # INC-002 单镜表演密度档:给每个镜头 LLM 生成 performance_track(镜头内部表演时间轴)的深度。
+    # L0=不生成(默认,inert,走 action_beats 老路);L1 eyeline+emotional+body;L2 +facial+camera;
+    # L3 +muscle。每镜一次 LLM 调用(并发),开高档会显著加长分镜生成时间与花费,按需开。
+    performance_track_tier: str = "L0"
+
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7

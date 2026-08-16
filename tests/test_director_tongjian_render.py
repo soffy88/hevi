@@ -9,6 +9,10 @@ from hevi.director.pipeline_schemas import (
     DesignCharacter,
     DesignList,
     DesignScene,
+    EyelineTrack,
+    PerformancePhase,
+    PerformanceTrack,
+    ShotBlocking,
     ShotList,
     ShotListDialogueLine,
     ShotListItem,
@@ -158,6 +162,151 @@ def test_build_tongjian_inputs_passes_action_beats_to_shot():
         voice_by_speaker={},
     )
     assert shotlist.shots[0].action_beats == ["张飞猛地抽剑架颈", "刘备扑上夺剑", "宝剑坠地紧抱"]
+
+
+def test_build_tongjian_inputs_passes_blocking_to_shot():
+    """走位透传:ShotListItem.blocking 格式化成"角色:位置,朝向"喂给 L6 多角色关键帧;
+    未锁定角色的走位丢弃(治"走位乱七八糟"——此前 blocking 在桥接层被整个丢掉)。"""
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="张飞跪地,刘备关羽立于案后",
+                blocking=[
+                    ShotBlocking(character_name="张飞", position="画面左侧", facing="刘备"),
+                    ShotBlocking(character_name="刘备", position="画面中央"),
+                    ShotBlocking(character_name="路人", position="画面右", facing="张飞"),
+                ],
+                character_names=["张飞", "刘备"],
+                scene_name="军帐",
+            )
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="张飞"), DesignCharacter(name="刘备")],
+        scenes=[DesignScene(name="军帐")],
+    )
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list,
+        design_list=design_list,
+        concept=Concept(),
+        voice_by_speaker={},
+    )
+    # 未锁定的"路人"被丢;锁定角色格式化为"名:位置[,面向X]"
+    assert shotlist.shots[0].blocking == ["张飞:画面左侧,面向刘备", "刘备:画面中央"]
+
+
+def test_build_tongjian_inputs_compiles_performance_track_to_temporal_prompt():
+    """INC-002:performance_track 在桥接层编译成 Shot.temporal_prompt;未填 → 空串(inert)。"""
+    track = PerformanceTrack(
+        total_duration_s=6.0,
+        phases=[
+            PerformancePhase(
+                phase_id="ph1",
+                order=1,
+                t_start_s=0.0,
+                t_end_s=3.0,
+                label="锁定",
+                eyeline_track=EyelineTrack(state="locked", direction="center"),
+            ),
+            PerformancePhase(
+                phase_id="ph2",
+                order=2,
+                t_start_s=3.0,
+                t_end_s=6.0,
+                label="游离",
+                eyeline_track=EyelineTrack(
+                    state="breaking", direction="down", transition_speed="quick"
+                ),
+            ),
+        ],
+    )
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="特写",
+                performance_track=track,
+                character_names=["张飞"],
+                scene_name="军帐",
+            ),
+            ShotListItem(
+                shot_id="SH002",
+                scene_no=1,
+                visual_prompt="空镜",
+                character_names=["张飞"],
+                scene_name="军帐",
+            ),  # 无 performance_track
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="张飞")], scenes=[DesignScene(name="军帐")]
+    )
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list, design_list=design_list, concept=Concept(), voice_by_speaker={}
+    )
+    tp = shotlist.shots[0].temporal_prompt
+    assert tp.splitlines()[0].startswith("[0–3s] 锁定 → ") and "视线锁定" in tp
+    assert "[3–6s] 游离 → " in tp and "视线开始游离" in tp
+    assert shotlist.shots[1].temporal_prompt == ""  # 未填 → inert
+    # §1.1 phase→beat 切片也随 Shot 透传(render 消费用):first=锁定段、aftermath=游离段
+    by_role = shotlist.shots[0].temporal_by_role
+    assert "视线锁定" in by_role["first"] and "视线开始游离" in by_role["aftermath"]
+    assert shotlist.shots[1].temporal_by_role == {}  # 未填 → inert
+
+
+def test_build_tongjian_inputs_derives_negatives_and_audio():
+    """INC-002 v0.2:桥接层从 schema 派生 negative_prompt(注入 sdxl)+ audio_prompt;未填 inert。"""
+    from hevi.director.pipeline_schemas import (
+        FacialPerformance,
+        FacialPhysiology,
+        PropPerformance,
+    )
+
+    track = PerformanceTrack(
+        total_duration_s=3.0,
+        phases=[
+            PerformancePhase(
+                phase_id="ph1",
+                order=1,
+                t_start_s=0.0,
+                t_end_s=3.0,
+                prop_performance=[PropPerformance(prop_type="firearm", material="metal")],
+                facial_performance=FacialPerformance(physiology=FacialPhysiology(swallow=True)),
+            )
+        ],
+    )
+    shot_list = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001",
+                scene_no=1,
+                visual_prompt="举枪",
+                performance_track=track,
+                character_names=["刺客"],
+                scene_name="厕所",
+            ),
+            ShotListItem(
+                shot_id="SH002",
+                scene_no=1,
+                visual_prompt="空镜",
+                character_names=["刺客"],
+                scene_name="厕所",
+            ),  # 无 INC-002 → inert
+        ]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="刺客")], scenes=[DesignScene(name="厕所")]
+    )
+    _, shotlist, _ = build_tongjian_inputs(
+        shot_list=shot_list, design_list=design_list, concept=Concept(), voice_by_speaker={}
+    )
+    neg = shotlist.shots[0].negative_prompt
+    assert "不要多余或畸形的手指" in neg and "不要枪械结构变形" in neg  # 有枪+手自动派生
+    assert "吞咽" in shotlist.shots[0].audio_prompt  # 喉结吞咽自动派生进声音层
+    assert shotlist.shots[1].negative_prompt == "" and shotlist.shots[1].audio_prompt == ""  # inert
 
 
 def test_build_tongjian_inputs_threads_valid_target_drops_invalid():

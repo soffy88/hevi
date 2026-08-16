@@ -6609,6 +6609,114 @@
         }
       }
     },
+    "/api/director-pipeline/works/{work_id}/scene-stage": {
+      "post": {
+        "tags": [
+          "director-pipeline"
+        ],
+        "summary": "Regenerate Scene Stage",
+        "operationId": "regenerate_scene_stage_api_director_pipeline_works__work_id__scene_stage_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "work_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Work Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Regenerate Scene Stage Api Director Pipeline Works  Work Id  Scene Stage Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director-pipeline/works/{work_id}/scene-stage/lock": {
+      "post": {
+        "tags": [
+          "director-pipeline"
+        ],
+        "summary": "Lock Scene Stage",
+        "operationId": "lock_scene_stage_api_director_pipeline_works__work_id__scene_stage_lock_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "work_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Work Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneStageSet"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Lock Scene Stage Api Director Pipeline Works  Work Id  Scene Stage Lock Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/director-pipeline/works/{work_id}/shot-list": {
       "post": {
         "tags": [
@@ -10326,6 +10434,29 @@
         "title": "ActionBeatsUpdate",
         "description": "人工修正动作节拍三段(trigger/peak/aftermath)。"
       },
+      "AimOffset": {
+        "properties": {
+          "start": {
+            "$ref": "#/components/schemas/ScreenCoord"
+          },
+          "end": {
+            "$ref": "#/components/schemas/ScreenCoord"
+          },
+          "magnitude_desc": {
+            "type": "string",
+            "title": "Magnitude Desc",
+            "default": ""
+          },
+          "easing": {
+            "type": "string",
+            "title": "Easing",
+            "default": "linear"
+          }
+        },
+        "type": "object",
+        "title": "AimOffset",
+        "description": "指向偏移轨迹(画面坐标系,不是三维仿真)。start=起始指向,end=结束指向。"
+      },
       "AnimateAccepted": {
         "properties": {
           "task_id": {
@@ -10385,6 +10516,64 @@
         ],
         "title": "AnimateRequest"
       },
+      "AttentionBeat": {
+        "properties": {
+          "at_beat": {
+            "type": "string",
+            "title": "At Beat",
+            "default": ""
+          },
+          "focus_target": {
+            "type": "string",
+            "title": "Focus Target",
+            "default": ""
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          },
+          "transition": {
+            "type": "string",
+            "title": "Transition",
+            "default": "cut"
+          },
+          "intensity": {
+            "type": "string",
+            "title": "Intensity",
+            "default": "primary"
+          }
+        },
+        "type": "object",
+        "title": "AttentionBeat",
+        "description": "注意力节拍(核心之二,\"该看谁\"的答案)。"
+      },
+      "AudioAmbient": {
+        "properties": {
+          "bed": {
+            "type": "string",
+            "title": "Bed",
+            "default": ""
+          },
+          "evolution": {
+            "type": "string",
+            "title": "Evolution",
+            "default": "constant"
+          },
+          "evolution_start_s": {
+            "type": "number",
+            "title": "Evolution Start S",
+            "default": 0.0
+          },
+          "evolution_end_s": {
+            "type": "number",
+            "title": "Evolution End S",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "AudioAmbient"
+      },
       "AudioAssetCreateRequest": {
         "properties": {
           "name": {
@@ -10435,6 +10624,125 @@
           "file_path"
         ],
         "title": "AudioAssetCreateRequest"
+      },
+      "AudioSegment": {
+        "properties": {
+          "t_start_s": {
+            "type": "number",
+            "title": "T Start S",
+            "default": 0.0
+          },
+          "t_end_s": {
+            "type": "number",
+            "title": "T End S",
+            "default": 0.0
+          },
+          "derived_sounds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Derived Sounds"
+          },
+          "manual_sounds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Manual Sounds"
+          },
+          "mix_note": {
+            "type": "string",
+            "title": "Mix Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AudioSegment",
+        "description": "声音段。derived_sounds 后端从 physiology/prop 确定性派生;manual_sounds 人/LLM 补。"
+      },
+      "AudioTrack": {
+        "properties": {
+          "music": {
+            "type": "string",
+            "title": "Music",
+            "default": ""
+          },
+          "dialogue": {
+            "type": "string",
+            "title": "Dialogue",
+            "default": ""
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/AudioSegment"
+            },
+            "type": "array",
+            "title": "Segments"
+          },
+          "ambient": {
+            "$ref": "#/components/schemas/AudioAmbient"
+          }
+        },
+        "type": "object",
+        "title": "AudioTrack",
+        "description": "声音时间轴(INC-002 §4.6)——与 performance_track 平级。music/dialogue 空 = 无(标尺明确\n要求无配乐无台词)。segments 的时间边界不必与 performance phase 对齐。未填 → inert。"
+      },
+      "AxisShift": {
+        "properties": {
+          "at_beat": {
+            "type": "string",
+            "title": "At Beat",
+            "default": ""
+          },
+          "new_axis": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "New Axis"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AxisShift"
+      },
+      "BlockingMove": {
+        "properties": {
+          "char_id": {
+            "type": "string",
+            "title": "Char Id"
+          },
+          "at_beat": {
+            "type": "string",
+            "title": "At Beat",
+            "default": ""
+          },
+          "from_zone": {
+            "type": "string",
+            "title": "From Zone",
+            "default": ""
+          },
+          "to_zone": {
+            "type": "string",
+            "title": "To Zone",
+            "default": ""
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "char_id"
+        ],
+        "title": "BlockingMove"
       },
       "Body_create_subject_from_photo_api_subjects_from_photo_post": {
         "properties": {
@@ -10624,6 +10932,133 @@
           "file"
         ],
         "title": "Body_upload_subject_wardrobe_api_subjects__subject_id__wardrobe_post"
+      },
+      "CameraBreathing": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "sync_to": {
+            "type": "string",
+            "title": "Sync To",
+            "default": "none"
+          }
+        },
+        "type": "object",
+        "title": "CameraBreathing",
+        "description": "镜头呼吸感(与 handheld 区分:有机的微起伏)。sync_to=character_breath 是 Hevi 独有高级项。"
+      },
+      "CameraCurve": {
+        "properties": {
+          "base_setup_ref": {
+            "type": "string",
+            "title": "Base Setup Ref",
+            "default": ""
+          },
+          "handheld": {
+            "$ref": "#/components/schemas/HandheldCurve"
+          },
+          "focus": {
+            "$ref": "#/components/schemas/FocusCurve"
+          },
+          "movement": {
+            "$ref": "#/components/schemas/CameraMovement"
+          },
+          "breathing": {
+            "$ref": "#/components/schemas/CameraBreathing"
+          }
+        },
+        "type": "object",
+        "title": "CameraCurve",
+        "description": "运镜曲线(INC-002 §4)——晃动频率曲线/焦点锁死度/镜头呼吸。全部可选、inert。"
+      },
+      "CameraMovement": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "static"
+          },
+          "speed_start": {
+            "type": "number",
+            "title": "Speed Start",
+            "default": 0.0
+          },
+          "speed_end": {
+            "type": "number",
+            "title": "Speed End",
+            "default": 0.0
+          },
+          "easing": {
+            "type": "string",
+            "title": "Easing",
+            "default": "linear"
+          },
+          "distance": {
+            "type": "string",
+            "title": "Distance",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "CameraMovement",
+        "description": "推拉摇移(可选)。"
+      },
+      "CameraSetup": {
+        "properties": {
+          "setup_id": {
+            "type": "string",
+            "title": "Setup Id"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position",
+            "default": ""
+          },
+          "axis_side": {
+            "type": "string",
+            "title": "Axis Side",
+            "default": ""
+          },
+          "shot_size": {
+            "type": "string",
+            "title": "Shot Size",
+            "default": ""
+          },
+          "serves_beats": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Serves Beats"
+          },
+          "subjects": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Subjects"
+          },
+          "azimuth_deg": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Azimuth Deg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "setup_id"
+        ],
+        "title": "CameraSetup",
+        "description": "覆盖机位。对着\"已存在的调度事实\"架,不是对着想象。"
       },
       "CandidateDecision": {
         "properties": {
@@ -11063,6 +11498,30 @@
         "type": "object",
         "title": "Constitution"
       },
+      "CoveragePlan": {
+        "properties": {
+          "master": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CameraSetup"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "setups": {
+            "items": {
+              "$ref": "#/components/schemas/CameraSetup"
+            },
+            "type": "array",
+            "title": "Setups"
+          }
+        },
+        "type": "object",
+        "title": "CoveragePlan",
+        "description": "机位方案(核心之三)。master=能看清全场地理的宽景;setups=覆盖机位。"
+      },
       "CreateWorkRequest": {
         "properties": {
           "material_text": {
@@ -11406,6 +11865,28 @@
           "target_index"
         ],
         "title": "ElementEditRequest"
+      },
+      "EmotionalStateCurve": {
+        "properties": {
+          "primary": {
+            "type": "string",
+            "title": "Primary",
+            "default": ""
+          },
+          "intensity": {
+            "type": "number",
+            "title": "Intensity",
+            "default": 0.0
+          },
+          "conflict_with": {
+            "type": "string",
+            "title": "Conflict With",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "EmotionalStateCurve",
+        "description": "情绪状态(承接 v3.2 挂载树 emotional_state 维度)——本阶段的主情绪与强度。"
       },
       "EpisodeCreateRequest": {
         "properties": {
@@ -12366,6 +12847,128 @@
         ],
         "title": "ExplainerScriptDraft"
       },
+      "EyelineTrack": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "title": "State",
+            "default": "locked"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction",
+            "default": "center"
+          },
+          "target_ref": {
+            "type": "string",
+            "title": "Target Ref",
+            "default": ""
+          },
+          "transition_speed": {
+            "type": "string",
+            "title": "Transition Speed",
+            "default": "slow"
+          }
+        },
+        "type": "object",
+        "title": "EyelineTrack",
+        "description": "镜头内视线时序(INC-002 缺口①)——一个 PerformancePhase 内的视线状态。"
+      },
+      "FacialPerformance": {
+        "properties": {
+          "muscle_actions": {
+            "items": {
+              "$ref": "#/components/schemas/MuscleAction"
+            },
+            "type": "array",
+            "title": "Muscle Actions"
+          },
+          "physiology": {
+            "$ref": "#/components/schemas/FacialPhysiology"
+          },
+          "skin_texture": {
+            "$ref": "#/components/schemas/SkinTexture"
+          }
+        },
+        "type": "object",
+        "title": "FacialPerformance",
+        "description": "面部表演层(INC-002 §3):肌肉/生理/肌理三块。全部可选、inert。"
+      },
+      "FacialPhysiology": {
+        "properties": {
+          "tear_state": {
+            "type": "string",
+            "title": "Tear State",
+            "default": "none"
+          },
+          "tear_detail": {
+            "$ref": "#/components/schemas/TearDetail"
+          },
+          "eye_vasculature": {
+            "type": "string",
+            "title": "Eye Vasculature",
+            "default": ""
+          },
+          "pupil": {
+            "$ref": "#/components/schemas/Pupil"
+          },
+          "blink": {
+            "type": "string",
+            "title": "Blink",
+            "default": ""
+          },
+          "swallow": {
+            "type": "boolean",
+            "title": "Swallow",
+            "default": false
+          },
+          "swallow_difficulty": {
+            "type": "string",
+            "title": "Swallow Difficulty",
+            "default": ""
+          },
+          "lip_state": {
+            "type": "string",
+            "title": "Lip State",
+            "default": ""
+          },
+          "skin_flush": {
+            "type": "string",
+            "title": "Skin Flush",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "FacialPhysiology",
+        "description": "生理反应(时序性的)——泪/血管/瞳孔/眨眼/吞咽/唇/潮红。"
+      },
+      "FocusCurve": {
+        "properties": {
+          "lock_target": {
+            "type": "string",
+            "title": "Lock Target",
+            "default": ""
+          },
+          "lock_strictness": {
+            "type": "string",
+            "title": "Lock Strictness",
+            "default": "soft"
+          },
+          "depth_of_field": {
+            "type": "string",
+            "title": "Depth Of Field",
+            "default": ""
+          },
+          "rack_to": {
+            "type": "string",
+            "title": "Rack To",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "FocusCurve",
+        "description": "焦点(可锁死,可漂移)。"
+      },
       "GalleryCreateRequest": {
         "properties": {
           "category": {
@@ -12462,6 +13065,43 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HandheldCurve": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "frequency_start": {
+            "type": "number",
+            "title": "Frequency Start",
+            "default": 0.0
+          },
+          "frequency_end": {
+            "type": "number",
+            "title": "Frequency End",
+            "default": 0.0
+          },
+          "amplitude_start": {
+            "type": "number",
+            "title": "Amplitude Start",
+            "default": 0.0
+          },
+          "amplitude_end": {
+            "type": "number",
+            "title": "Amplitude End",
+            "default": 0.0
+          },
+          "easing": {
+            "type": "string",
+            "title": "Easing",
+            "default": "linear"
+          }
+        },
+        "type": "object",
+        "title": "HandheldCurve",
+        "description": "手持感(可随时间演化)——频率与幅度解耦(可频率高但幅度小)。"
+      },
       "HookNode": {
         "properties": {
           "hook_id": {
@@ -12515,6 +13155,45 @@
         "title": "HookNode",
         "description": "递进式 Hook 矩阵节点 —— v9 取代浅薄的“开场 5 选 1”。\n\nLLM 必须从主题知识图谱的关键节点产出,每个 Hook 绑定一个叙事功能档位\n(opening_suspense → mid_conflict → climax_breakthrough),并给出建议切入\n时间点与关联核心概念。数量按主题动态产出(一般 3-6 个),不再写死为 5。"
       },
+      "InitialPosition": {
+        "properties": {
+          "char_id": {
+            "type": "string",
+            "title": "Char Id"
+          },
+          "zone_id": {
+            "type": "string",
+            "title": "Zone Id",
+            "default": ""
+          },
+          "facing": {
+            "type": "string",
+            "title": "Facing",
+            "default": ""
+          },
+          "posture": {
+            "type": "string",
+            "title": "Posture",
+            "default": ""
+          },
+          "facing_deg": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facing Deg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "char_id"
+        ],
+        "title": "InitialPosition"
+      },
       "LayerConfig": {
         "properties": {
           "model": {
@@ -12537,6 +13216,78 @@
         "type": "object",
         "title": "LayerConfig",
         "description": "通鉴流水线**单层的模型选择 + 可调参数**——每层(L0..L8)可独立配置,便于全自动生成\n有偏差时逐层调参重跑。`model=None` 走该层默认模型;`params` 覆盖该层默认参数(具体键值\n由各层 build_* 自行解释,见各层 docstring)。前端 RunRequest 表单直接填这个结构。"
+      },
+      "LightingKeyRatio": {
+        "properties": {
+          "lit_side": {
+            "type": "string",
+            "title": "Lit Side",
+            "default": ""
+          },
+          "shadow_side": {
+            "type": "string",
+            "title": "Shadow Side",
+            "default": ""
+          },
+          "contrast_level": {
+            "type": "number",
+            "title": "Contrast Level",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "title": "LightingKeyRatio"
+      },
+      "LightingOcclusion": {
+        "properties": {
+          "cause": {
+            "type": "string",
+            "title": "Cause",
+            "default": ""
+          },
+          "affected_area": {
+            "type": "string",
+            "title": "Affected Area",
+            "default": ""
+          },
+          "shadow_delta": {
+            "type": "string",
+            "title": "Shadow Delta",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "LightingOcclusion"
+      },
+      "LightingResponse": {
+        "properties": {
+          "source_ref": {
+            "type": "string",
+            "title": "Source Ref",
+            "default": ""
+          },
+          "occlusion": {
+            "$ref": "#/components/schemas/LightingOcclusion"
+          },
+          "key_ratio": {
+            "$ref": "#/components/schemas/LightingKeyRatio"
+          },
+          "specular_targets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Specular Targets"
+          },
+          "pattern": {
+            "type": "string",
+            "title": "Pattern",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "LightingResponse",
+        "description": "光的响应(INC-002 §4.7)——光源仍是场级资产(source_ref 只引用),这里只描述\"这一段光怎么落\"。\nocclusion 可由 body.posture 变化自动派生(低头 → 面部 deepen)。未填 → 继承场级常量(inert)。"
       },
       "LiteAssembleAccepted": {
         "properties": {
@@ -13247,6 +13998,28 @@
         ],
         "title": "LongVideoRequest"
       },
+      "MicroDisplacement": {
+        "properties": {
+          "axis": {
+            "type": "string",
+            "title": "Axis",
+            "default": ""
+          },
+          "distance_mm": {
+            "type": "number",
+            "title": "Distance Mm",
+            "default": 0.0
+          },
+          "suspended": {
+            "type": "boolean",
+            "title": "Suspended",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "MicroDisplacement",
+        "description": "亚毫米/毫米级位移(标尺\"抬起不到一毫米\")。"
+      },
       "MultiAngleRequest": {
         "properties": {
           "subject_description": {
@@ -13273,6 +14046,33 @@
           "subject_description"
         ],
         "title": "MultiAngleRequest"
+      },
+      "MuscleAction": {
+        "properties": {
+          "muscle": {
+            "type": "string",
+            "title": "Muscle",
+            "default": ""
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "default": ""
+          },
+          "intensity": {
+            "type": "number",
+            "title": "Intensity",
+            "default": 0.0
+          },
+          "visible_result": {
+            "type": "string",
+            "title": "Visible Result",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "MuscleAction",
+        "description": "解剖级肌肉动作(FACS 思路)。visible_result 必填(编译进 prompt 的就是它,模型认\"眉头\n紧皱\"不认\"降眉肌\");muscle 可选结构化标注(给 verdict 校验和未来 3D/ControlNet 精控用)。"
       },
       "NodeIn": {
         "properties": {
@@ -13373,6 +14173,130 @@
         ],
         "title": "ParseWorkRequest",
         "description": "工业化单流入口：原始文本只进入资产解析，不直接派发生成。"
+      },
+      "PerformanceBody": {
+        "properties": {
+          "posture": {
+            "type": "string",
+            "title": "Posture",
+            "default": ""
+          },
+          "tension": {
+            "type": "string",
+            "title": "Tension",
+            "default": ""
+          },
+          "breath": {
+            "type": "string",
+            "title": "Breath",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "PerformanceBody",
+        "description": "身体(即使\"无夸张肢体\"也要写清楚)。"
+      },
+      "PerformancePhase": {
+        "properties": {
+          "phase_id": {
+            "type": "string",
+            "title": "Phase Id",
+            "default": ""
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order",
+            "default": 0
+          },
+          "t_start_s": {
+            "type": "number",
+            "title": "T Start S",
+            "default": 0.0
+          },
+          "t_end_s": {
+            "type": "number",
+            "title": "T End S",
+            "default": 0.0
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "trigger": {
+            "type": "string",
+            "title": "Trigger",
+            "default": ""
+          },
+          "eyeline_track": {
+            "$ref": "#/components/schemas/EyelineTrack"
+          },
+          "emotional_state": {
+            "$ref": "#/components/schemas/EmotionalStateCurve"
+          },
+          "body": {
+            "$ref": "#/components/schemas/PerformanceBody"
+          },
+          "facial_performance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacialPerformance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "camera_curve": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CameraCurve"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "prop_performance": {
+            "items": {
+              "$ref": "#/components/schemas/PropPerformance"
+            },
+            "type": "array",
+            "title": "Prop Performance"
+          },
+          "lighting_response": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LightingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "PerformancePhase",
+        "description": "表演阶段——镜头内部时间轴的一段(INC-002 §2)。t_start_s/t_end_s 精确到秒的时间窗。"
+      },
+      "PerformanceTrack": {
+        "properties": {
+          "total_duration_s": {
+            "type": "number",
+            "title": "Total Duration S",
+            "default": 0.0
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/PerformancePhase"
+            },
+            "type": "array",
+            "title": "Phases"
+          }
+        },
+        "type": "object",
+        "title": "PerformanceTrack",
+        "description": "镜头内部时间轴(INC-002 §1.1)——N 段 PerformancePhase(不限 3 段)。"
       },
       "PersonalityRequest": {
         "properties": {
@@ -13751,6 +14675,157 @@
         ],
         "title": "PromoteRequest"
       },
+      "PropContactState": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "title": "State",
+            "default": ""
+          },
+          "transition_from": {
+            "type": "string",
+            "title": "Transition From",
+            "default": ""
+          },
+          "hold_reason": {
+            "type": "string",
+            "title": "Hold Reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "PropContactState",
+        "description": "接触状态机(按道具类型分组的枚举,见 §4.5 / performance_track._PROP_STATE_GRAPH)。"
+      },
+      "PropFramePresence": {
+        "properties": {
+          "position_desc": {
+            "type": "string",
+            "title": "Position Desc",
+            "default": ""
+          },
+          "moves_out_of_frame": {
+            "type": "boolean",
+            "title": "Moves Out Of Frame",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "PropFramePresence"
+      },
+      "PropGrip": {
+        "properties": {
+          "hand": {
+            "type": "string",
+            "title": "Hand",
+            "default": ""
+          },
+          "firmness": {
+            "type": "string",
+            "title": "Firmness",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "PropGrip"
+      },
+      "PropPerformance": {
+        "properties": {
+          "prop_ref": {
+            "type": "string",
+            "title": "Prop Ref",
+            "default": ""
+          },
+          "prop_type": {
+            "type": "string",
+            "title": "Prop Type",
+            "default": ""
+          },
+          "material": {
+            "type": "string",
+            "title": "Material",
+            "default": ""
+          },
+          "grip": {
+            "$ref": "#/components/schemas/PropGrip"
+          },
+          "contact_state": {
+            "$ref": "#/components/schemas/PropContactState"
+          },
+          "micro_displacement": {
+            "$ref": "#/components/schemas/MicroDisplacement"
+          },
+          "aim_offset": {
+            "$ref": "#/components/schemas/AimOffset"
+          },
+          "tremor": {
+            "$ref": "#/components/schemas/PropTremor"
+          },
+          "surface_response": {
+            "$ref": "#/components/schemas/PropSurfaceResponse"
+          },
+          "frame_presence": {
+            "$ref": "#/components/schemas/PropFramePresence"
+          }
+        },
+        "type": "object",
+        "title": "PropPerformance",
+        "description": "道具表演(INC-002 §4.5)——状态机 + 亚毫米位移 + 画面偏移轨迹 + 颤动。与 facial_performance\n平级(单人特写里两条并列表演线)。全部可选、inert。prop_type/material 供 P7 状态图与声音/负面\n自动派生用。"
+      },
+      "PropSurfaceResponse": {
+        "properties": {
+          "material_highlight": {
+            "type": "string",
+            "title": "Material Highlight",
+            "default": ""
+          },
+          "deformation_state": {
+            "type": "string",
+            "title": "Deformation State",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "PropSurfaceResponse"
+      },
+      "PropTremor": {
+        "properties": {
+          "amplitude_mm": {
+            "type": "number",
+            "title": "Amplitude Mm",
+            "default": 0.0
+          },
+          "frequency": {
+            "type": "string",
+            "title": "Frequency",
+            "default": ""
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "PropTremor",
+        "description": "道具颤动(与 body.tension 咬合)。"
+      },
+      "Pupil": {
+        "properties": {
+          "dilation": {
+            "type": "number",
+            "title": "Dilation",
+            "default": 0.0
+          },
+          "movement": {
+            "type": "string",
+            "title": "Movement",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "Pupil"
+      },
       "ReadinessPatch": {
         "properties": {
           "skip_extraction": {
@@ -14063,6 +15138,234 @@
         "type": "object",
         "title": "SaveGraphRequest"
       },
+      "SceneAxis": {
+        "properties": {
+          "primary_axis": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Primary Axis"
+          },
+          "axis_shifts": {
+            "items": {
+              "$ref": "#/components/schemas/AxisShift"
+            },
+            "type": "array",
+            "title": "Axis Shifts"
+          },
+          "side_convention": {
+            "type": "string",
+            "title": "Side Convention",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "SceneAxis",
+        "description": "轴线(the line,180°规则基准)。人物大幅移动后可合法重建,但必须显式声明 axis_shift。"
+      },
+      "SceneBeat": {
+        "properties": {
+          "beat_id": {
+            "type": "string",
+            "title": "Beat Id"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order",
+            "default": 0
+          },
+          "trigger": {
+            "type": "string",
+            "title": "Trigger",
+            "default": ""
+          },
+          "dialogue_ref": {
+            "type": "string",
+            "title": "Dialogue Ref",
+            "default": ""
+          },
+          "duration_hint": {
+            "type": "number",
+            "title": "Duration Hint",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "beat_id"
+        ],
+        "title": "SceneBeat",
+        "description": "节拍:整场戏的时间轴单元,一切按节拍组织。action_beats(镜头内动作弧)挂在其下。"
+      },
+      "SceneBlocking": {
+        "properties": {
+          "initial_positions": {
+            "items": {
+              "$ref": "#/components/schemas/InitialPosition"
+            },
+            "type": "array",
+            "title": "Initial Positions"
+          },
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/BlockingMove"
+            },
+            "type": "array",
+            "title": "Moves"
+          },
+          "sightlines": {
+            "items": {
+              "$ref": "#/components/schemas/Sightline"
+            },
+            "type": "array",
+            "title": "Sightlines"
+          }
+        },
+        "type": "object",
+        "title": "SceneBlocking",
+        "description": "人物落位与动线(核心之一)。"
+      },
+      "SceneLandmark": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "zone_id": {
+            "type": "string",
+            "title": "Zone Id",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SceneLandmark",
+        "description": "关键家具/道具落位(引用 DesignProp.name)。"
+      },
+      "SceneSpaceMap": {
+        "properties": {
+          "zones": {
+            "items": {
+              "$ref": "#/components/schemas/SceneZone"
+            },
+            "type": "array",
+            "title": "Zones"
+          },
+          "landmarks": {
+            "items": {
+              "$ref": "#/components/schemas/SceneLandmark"
+            },
+            "type": "array",
+            "title": "Landmarks"
+          }
+        },
+        "type": "object",
+        "title": "SceneSpaceMap",
+        "description": "空间图。layout_sketch 不存字段——需要时从 zones 确定性派生(§7 单一真相源)。"
+      },
+      "SceneStage": {
+        "properties": {
+          "scene_ref": {
+            "type": "integer",
+            "title": "Scene Ref"
+          },
+          "space_map": {
+            "$ref": "#/components/schemas/SceneSpaceMap"
+          },
+          "beats": {
+            "items": {
+              "$ref": "#/components/schemas/SceneBeat"
+            },
+            "type": "array",
+            "title": "Beats"
+          },
+          "blocking": {
+            "$ref": "#/components/schemas/SceneBlocking"
+          },
+          "axis": {
+            "$ref": "#/components/schemas/SceneAxis"
+          },
+          "attention_script": {
+            "items": {
+              "$ref": "#/components/schemas/AttentionBeat"
+            },
+            "type": "array",
+            "title": "Attention Script"
+          },
+          "coverage_plan": {
+            "$ref": "#/components/schemas/CoveragePlan"
+          },
+          "assumed": {
+            "type": "boolean",
+            "title": "Assumed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "scene_ref"
+        ],
+        "title": "SceneStage",
+        "description": "场事实。该场所有 ShotListItem 通过 scene_stage_ref/beat_range/camera_setup_ref/\nattention_ref 引用它,画面内容全部从它确定性推导(SPEC-004 §3)。"
+      },
+      "SceneStageSet": {
+        "properties": {
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/SceneStage"
+            },
+            "type": "array",
+            "title": "Stages"
+          }
+        },
+        "type": "object",
+        "title": "SceneStageSet",
+        "description": "一个 work 的场面调度集合——每场一个 SceneStage(scene_ref = Screenplay.scene_no)。\n作 ③.5 级的 draft/lock 端点 body 与内存存储(director_pipeline._WORKS[\"scene_stage\"])。"
+      },
+      "SceneZone": {
+        "properties": {
+          "zone_id": {
+            "type": "string",
+            "title": "Zone Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "rel_position": {
+            "type": "string",
+            "title": "Rel Position",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "zone_id"
+        ],
+        "title": "SceneZone",
+        "description": "空间关键区域(俯视示意用)。如 门口 / 沙发区 / 窗边 / 桌旁。"
+      },
+      "ScreenCoord": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X",
+            "default": 0.5
+          },
+          "y": {
+            "type": "number",
+            "title": "Y",
+            "default": 0.5
+          }
+        },
+        "type": "object",
+        "title": "ScreenCoord",
+        "description": "画面归一化坐标,0.5/0.5 = 正中。"
+      },
       "Screenplay": {
         "properties": {
           "scenes": {
@@ -14085,6 +15388,11 @@
           "text": {
             "type": "string",
             "title": "Text"
+          },
+          "target_name": {
+            "type": "string",
+            "title": "Target Name",
+            "default": ""
           }
         },
         "type": "object",
@@ -14660,6 +15968,33 @@
             "type": "array",
             "title": "Action Beats"
           },
+          "performance_track": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PerformanceTrack"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "audio_track": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AudioTrack"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manual_negatives": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Manual Negatives"
+          },
           "character_names": {
             "items": {
               "type": "string"
@@ -14683,6 +16018,34 @@
             "type": "number",
             "title": "Duration S",
             "default": 5.0
+          },
+          "scene_stage_ref": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scene Stage Ref"
+          },
+          "beat_range": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Beat Range"
+          },
+          "camera_setup_ref": {
+            "type": "string",
+            "title": "Camera Setup Ref",
+            "default": ""
+          },
+          "attention_ref": {
+            "type": "string",
+            "title": "Attention Ref",
+            "default": ""
           }
         },
         "type": "object",
@@ -14691,6 +16054,72 @@
           "scene_no"
         ],
         "title": "ShotListItem"
+      },
+      "Sightline": {
+        "properties": {
+          "at_beat": {
+            "type": "string",
+            "title": "At Beat",
+            "default": ""
+          },
+          "char_id": {
+            "type": "string",
+            "title": "Char Id",
+            "default": ""
+          },
+          "looking_at": {
+            "type": "string",
+            "title": "Looking At",
+            "default": ""
+          },
+          "assumed": {
+            "type": "boolean",
+            "title": "Assumed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "Sightline",
+        "description": "视线关系。★直接从对白 speaker→target 派生(INC-001 §H 升格);无对白时刻由 AI 补\n(assumed=True),人审核。"
+      },
+      "SkinTexture": {
+        "properties": {
+          "quality": {
+            "type": "string",
+            "title": "Quality",
+            "default": ""
+          },
+          "pores": {
+            "type": "string",
+            "title": "Pores",
+            "default": ""
+          },
+          "blemishes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blemishes"
+          },
+          "lip_texture": {
+            "type": "string",
+            "title": "Lip Texture",
+            "default": ""
+          },
+          "sweat": {
+            "type": "string",
+            "title": "Sweat",
+            "default": ""
+          },
+          "preserve_base_tone": {
+            "type": "boolean",
+            "title": "Preserve Base Tone",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "SkinTexture",
+        "description": "肌理(通常镜头级常量,但可随情绪变化)。"
       },
       "StockBody": {
         "properties": {
@@ -15101,6 +16530,27 @@
           "text"
         ],
         "title": "TTSBody"
+      },
+      "TearDetail": {
+        "properties": {
+          "side": {
+            "type": "string",
+            "title": "Side",
+            "default": ""
+          },
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "default": ""
+          },
+          "gravity_compliant": {
+            "type": "boolean",
+            "title": "Gravity Compliant",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "TearDetail"
       },
       "TemplateCreateRequest": {
         "properties": {

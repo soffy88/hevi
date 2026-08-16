@@ -7,6 +7,7 @@ speaker(哪个角色说)**,而不是把整场叙述文字囫囵吞枣丢给配�
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import inspect
 import json
 import logging
@@ -293,4 +294,16 @@ async def generate_shot_list_draft(
         )
     )
     all_shots = [shot for scene_shots in per_scene for shot in scene_shots]
+
+    # INC-002:按密度档给每镜生成 performance_track(镜头内部表演时间轴)。L0(默认)→ 跳过,
+    # 行为不变(inert)。开 L1+ 时每镜一次并发 LLM 调用,失败只该镜为空,不阻断分镜。
+    from hevi.core.config import settings
+
+    tier = settings.performance_track_tier
+    if tier and tier != "L0" and all_shots:
+        from hevi.director.performance_gen import enrich_shot_list_with_performance
+
+        with contextlib.suppress(Exception):
+            await enrich_shot_list_with_performance(all_shots, tier=tier, llm=resolved_llm)
+
     return ShotList(shots=all_shots)

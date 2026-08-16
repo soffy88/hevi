@@ -103,6 +103,8 @@
 | POST | `/api/director-pipeline/works/{work_id}/dispatch-season` | Dispatch Industrial Season |
 | GET | `/api/director-pipeline/works/{work_id}/preparation-overview` | Preparation Overview |
 | POST | `/api/director-pipeline/works/{work_id}/produce` | Produce Work |
+| POST | `/api/director-pipeline/works/{work_id}/scene-stage` | Regenerate Scene Stage |
+| POST | `/api/director-pipeline/works/{work_id}/scene-stage/lock` | Lock Scene Stage |
 | POST | `/api/director-pipeline/works/{work_id}/screenplay` | Regenerate Screenplay |
 | POST | `/api/director-pipeline/works/{work_id}/screenplay/lock` | Lock Screenplay |
 | POST | `/api/director-pipeline/works/{work_id}/shot-list` | Regenerate Shot List |

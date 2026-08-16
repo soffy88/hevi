@@ -2,16 +2,38 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { directorPipelineApi, taskApi } from '@/lib/api-client';
+
+import ShotPreparationPanel from './ShotPreparationPanel';
+import SceneStagePanel from './SceneStagePanel';
 import type {
-  DpConcept,
-  DpDesignCharacter,
-  DpDesignList,
-  DpDesignScene,
-  DpSeasonEpisode,
-  DpSeasonPlan,
-  DpWork,
-  TaskInfo,
+  DpConcept, DpScreenplay, DpScreenplayScene, DpDesignList, DpDesignCharacter, DpDesignScene,
+  DpDesignProp, DpSceneStageSet, DpShotList, DpShotListItem, DpLintFinding,
+  DpSeasonEpisode, DpSeasonPlan, DpWork, TaskInfo,
 } from '@/types/api';
+
+const TASK_STATUS_LABEL: Record<string, string> = {
+  pending: '排队中…', running: '生成中…', paused: '已暂停', failed: '✗ 生成失败', completed: '✓ 已完成',
+};
+
+const STAGE_LABELS = ['①立意', '②剧本', '③设计清单', '③.5场面调度', '④分镜'] as const;
+
+function errText(e: unknown): string {
+  if (e instanceof Error && e.message === 'NOT_AUTHENTICATED') return '请先登录';
+  if (e instanceof Error && e.message.startsWith('402')) return '积分余额不足,请先到「我的」页充值';
+  return e instanceof Error ? e.message : '出错了';
+}
+
+// ③锁定/④重新生成这两步在后端是 background task 跑(角色/场次一多容易顶到反向代理
+// 超时,已经改成"接口立即返回、真正的重活在后台跑",见 director_pipeline.py),
+// 这里轮询到状态离开"进行中"为止。
+async function pollUntilSettled(workId: string, pendingStatus: string): Promise<DpWork> {
+  for (;;) {
+    await new Promise(r => setTimeout(r, 2500));
+    const w = await directorPipelineApi.getWork(workId);
+    if (w.status !== pendingStatus) return w;
+  }
+}
+
 
 const DURATION_OPTIONS = [
   { value: '1-5min', label: '1–5 分钟' },
@@ -43,53 +65,166 @@ export function DirectorPipelineConsole() {
   const [episodeCount, setEpisodeCount] = useState(3);
   const [episodeDuration, setEpisodeDuration] = useState('1-5min');
   const [intentHint, setIntentHint] = useState('');
-
-  const [seasonBudget, setSeasonBudget] = useState(150);
-  const [videoProvider, setVideoProvider] = useState('happyhorse_1_1_maas_lock');
-  const [audioProvider, setAudioProvider] = useState('vibevoice');
-  const [qualityProfile, setQualityProfile] = useState('standard');
-  const [aspectRatio, setAspectRatio] = useState('16:9');
-
   const [work, setWork] = useState<DpWork | null>(null);
-  const [conceptDraft, setConceptDraft] = useState<DpConcept | null>(null);
-  const [designDraft, setDesignDraft] = useState<DpDesignList | null>(null);
-  const [seasonPlanDraft, setSeasonPlanDraft] = useState<DpSeasonPlan | null>(null);
+  const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null);
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [budgetUsd, setBudgetUsd] = useState<number | ''>('');
+  // INC-001 §L.2:准备台报上来的产集拦截项(提取后仍待确认的镜),非空则禁用产集按钮。
+  const [prepBlockers, setPrepBlockers] = useState<string[]>([]);
+  const [seasonPlanDraft, setSeasonPlanDraft] = useState<DpSeasonPlan | null>(null);
+  const [designDraft, setDesignDraft] = useState<DpDesignList | null>(null);
+  const [seasonBudget, setSeasonBudget] = useState(150);
 
   const evolving = work?.status === 'parsing' || work?.status === 'dispatching';
   const inspectionReady = work?.status === 'inspection_ready' || work?.status === 'dispatch_failed';
   const dispatched = work?.status === 'dispatched';
+  const seasonFlow = !!work && ['parsing', 'inspection_ready', 'dispatching', 'dispatched',
+    'parse_failed', 'dispatch_failed'].includes(work.status);
+  const currentStep = useMemo(() => {
+    if (!work) return 0;
+    if (work.status === 'parsing') return 1;
+    if (inspectionReady) return 2;
+    return 3;
+  }, [work, inspectionReady]);
 
+  // produce() 只是把生成任务建好排进队列,不代表视频已经生成完——之前这里一看到
+  // video_task_id 就显示"✓ 已产集",用户会误以为片子已经出来了。真实状态得轮询
+  // /api/tasks/{id}(同 taskApi.get,主线现有能力),直到 completed/failed 才算数。
   useEffect(() => {
-    if (!work?.work_id || !evolving) return;
-    let stopped = false;
-    const poll = async () => {
+    const taskId = work?.video_task_id;
+    if (!taskId) { setTaskInfo(null); return; }
+    let cancelled = false;
+    async function poll() {
       try {
-        const latest = await directorPipelineApi.getWork(work.work_id);
-        if (!stopped) setWork(latest);
-        if (!stopped && (latest.status === 'parsing' || latest.status === 'dispatching')) {
-          timer = setTimeout(poll, 2500);
-        }
-      } catch (err) {
-        if (!stopped) setError(errorText(err));
+        const t = await taskApi.get(taskId as string);
+        if (!cancelled) setTaskInfo(t);
+        if (!cancelled && (t.status === 'completed' || t.status === 'failed')) return;
+        if (!cancelled) timer = setTimeout(poll, 4000);
+      } catch {
+        if (!cancelled) timer = setTimeout(poll, 4000);
       }
-    };
-    let timer = setTimeout(poll, 1500);
-    return () => { stopped = true; clearTimeout(timer); };
-  }, [work?.work_id, evolving]);
+    }
+    let timer: ReturnType<typeof setTimeout> = setTimeout(poll, 0);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [work?.video_task_id]);
 
-  useEffect(() => {
-    if (!work || !inspectionReady) return;
-    setConceptDraft(work.concept);
-    setDesignDraft(work.design_list);
-    setSeasonPlanDraft(work.season_plan ?? null);
-    const cfg = work.production_config ?? {};
-    if (typeof cfg.season_budget_usd === 'number') setSeasonBudget(cfg.season_budget_usd);
-    if (typeof cfg.video_provider === 'string') setVideoProvider(cfg.video_provider);
-    if (typeof cfg.audio_provider === 'string') setAudioProvider(cfg.audio_provider);
-  }, [work?.work_id, inspectionReady]);
+  // 每级各自一份编辑态草稿,切到该级时从 work 同步(见 syncDrafts)。
+  const [conceptDraft, setConceptDraft] = useState<DpConcept | null>(null);
+  const [screenplayDraft, setScreenplayDraft] = useState<DpScreenplay | null>(null);
+  const [designListDraft, setDesignListDraft] = useState<DpDesignList | null>(null);
+  const [sceneStageDraft, setSceneStageDraft] = useState<DpSceneStageSet | null>(null);
+  const [shotListDraft, setShotListDraft] = useState<DpShotList | null>(null);
+
+  // 产集参数
+  const [videoProvider, setVideoProvider] = useState('auto');
+  const [audioProvider, setAudioProvider] = useState('edge_tts');
+
+  const [qualityProfile, setQualityProfile] = useState('standard');
+  const [aspectRatio, setAspectRatio] = useState('16:9');
+
+
+  function syncDrafts(w: DpWork) {
+    setConceptDraft(w.concept);
+    setScreenplayDraft(w.screenplay);
+    setDesignListDraft(w.design_list);
+    setSceneStageDraft(w.scene_stage);
+    setShotListDraft(w.shot_list);
+  }
+
+
+
+
+  async function start() {
+    if (!materialText.trim()) { setErr('请输入素材'); return; }
+    setBusy(true); setErr(null);
+    try {
+      const w = await directorPipelineApi.createWork(materialText, intentHint);
+      setWork(w);
+      syncDrafts(w);
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
+  async function lockScreenplay() {
+    if (!work || !screenplayDraft) return;
+    setBusy(true); setErr(null);
+    try {
+      const w = await directorPipelineApi.lockScreenplay(work.work_id, screenplayDraft);
+      setWork(w); syncDrafts(w);
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
+  async function lockDesignList() {
+    if (!work || !designListDraft) return;
+    if (!confirm('锁定设计清单会为每个角色/场景/道具真实生成参考图并建立资产(真实花钱),确定吗?')) return;
+    setBusy(true); setErr(null);
+    try {
+      let w = await directorPipelineApi.lockDesignList(work.work_id, designListDraft);
+      setWork(w); syncDrafts(w);
+      if (w.status === 'design_list_locking') {
+        w = await pollUntilSettled(work.work_id, 'design_list_locking');
+        setWork(w); syncDrafts(w);
+      }
+      if (w.status === 'design_list_lock_failed') setErr(w.error || '设计清单锁定失败');
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
+  async function produce() {
+    if (!work) return;
+    if (!confirm('即将真实生成(触发后由后台队列自动跑,不可撤回),确定开始吗?')) return;
+    setBusy(true); setErr(null);
+    try {
+      const w = await directorPipelineApi.produce(work.work_id, {
+        video_provider: videoProvider,
+        audio_provider: audioProvider,
+        quality_profile: qualityProfile,
+        aspect_ratio: aspectRatio,
+        budget_usd: budgetUsd === '' ? null : budgetUsd,
+      });
+      setWork(w);
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
+  async function regenerate(stage: 'concept' | 'screenplay' | 'design_list' | 'scene_stage' | 'shot_list') {
+    if (!work) return;
+    setBusy(true); setErr(null);
+    try {
+      const fn = {
+        concept: directorPipelineApi.regenerateConcept,
+        screenplay: directorPipelineApi.regenerateScreenplay,
+        design_list: directorPipelineApi.regenerateDesignList,
+        scene_stage: directorPipelineApi.regenerateSceneStage,
+        shot_list: directorPipelineApi.regenerateShotList,
+      }[stage];
+      let w = await fn(work.work_id);
+      setWork(w); syncDrafts(w);
+      // screenplay(含自审)/ scene_stage / shot_list 重生成都是后台任务,轮询到落地。
+      for (const pending of ['screenplay_generating', 'scene_stage_generating', 'shot_list_generating'] as const) {
+        if (w.status === pending) { w = await pollUntilSettled(work.work_id, pending); setWork(w); syncDrafts(w); }
+      }
+      if (w.status === 'screenplay_generate_failed') setErr(w.error || '剧本生成失败');
+      if (w.status === 'scene_stage_regenerate_failed') setErr(w.error || '场面调度生成失败');
+      if (w.status === 'shot_list_regenerate_failed') setErr(w.error || '分镜生成失败');
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
+  async function lockConcept() {
+    if (!work || !conceptDraft) return;
+    setBusy(true); setErr(null);
+    try {
+      let w = await directorPipelineApi.lockConcept(work.work_id, conceptDraft);
+      setWork(w); syncDrafts(w);
+      // ②剧本草案含 LLM 自审二遍(~106s),后台跑,轮询到落地。
+      if (w.status === 'screenplay_generating') {
+        w = await pollUntilSettled(work.work_id, 'screenplay_generating');
+        setWork(w); syncDrafts(w);
+      }
+      if (w.status === 'screenplay_generate_failed') setErr(w.error || '剧本生成失败');
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
 
   useEffect(() => {
     const ids = work?.task_ids ?? [];
@@ -111,12 +246,30 @@ export function DirectorPipelineConsole() {
     return () => { stopped = true; clearTimeout(timer); };
   }, [work?.task_ids?.join(',')]);
 
-  const currentStep = useMemo(() => {
-    if (!work) return 0;
-    if (work.status === 'parsing') return 1;
-    if (inspectionReady) return 2;
-    return 3;
-  }, [work, inspectionReady]);
+
+  async function lockSceneStage() {
+    if (!work || !sceneStageDraft) return;
+    setBusy(true); setErr(null);
+    try {
+      let w = await directorPipelineApi.lockSceneStage(work.work_id, sceneStageDraft);
+      setWork(w); syncDrafts(w);
+      if (w.status === 'scene_stage_locking') {
+        w = await pollUntilSettled(work.work_id, 'scene_stage_locking');
+        setWork(w); syncDrafts(w);
+      }
+      if (w.status === 'scene_stage_lock_failed') setErr(w.error || '场面调度锁定失败');
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
+  async function lockShotList() {
+    if (!work || !shotListDraft) return;
+    setBusy(true); setErr(null);
+    try {
+      const w = await directorPipelineApi.lockShotList(work.work_id, shotListDraft);
+      setWork(w); syncDrafts(w);
+    } catch (e) { setErr(errText(e)); } finally { setBusy(false); }
+  }
+
 
   async function startInspection() {
     if (!workName.trim()) { setError('请输入作品名称'); return; }
@@ -134,7 +287,10 @@ export function DirectorPipelineConsole() {
         audio_provider: audioProvider,
       });
       setWork(created);
-      setConceptDraft(null); setDesignDraft(null); setSeasonPlanDraft(null);
+      // 整季派发流:解析完成后把审查台草稿同步进来(分集/角色/场景可改后派发)。
+      setConceptDraft(created.concept ?? null);
+      setDesignDraft(created.design_list ?? null);
+      setSeasonPlanDraft(created.season_plan ?? null);
     } catch (err) {
       setError(errorText(err));
     } finally {
@@ -193,9 +349,16 @@ export function DirectorPipelineConsole() {
   }
 
   function reset() {
-    setWork(null); setConceptDraft(null); setDesignDraft(null); setSeasonPlanDraft(null);
-    setTasks([]); setError(null);
+
+    setWork(null); setMaterialText(''); setIntentHint(''); setErr(null);
+    setConceptDraft(null); setScreenplayDraft(null); setDesignListDraft(null);
+    setSceneStageDraft(null); setShotListDraft(null);
   }
+
+  const lockedThrough = work?.locked_through ?? -1;
+  const currentStageIdx = Math.min(lockedThrough + 1, 4);
+  const producing = work && work.locked_through >= 4; // shot_list 是 index 4(SPEC-004 插 scene_stage 后)
+
 
   return (
     <div className="dpi-shell">
@@ -341,7 +504,126 @@ export function DirectorPipelineConsole() {
         </section>
       )}
 
-      {error && !inspectionReady && <p className="dpi-error">{error}</p>}
+
+      {work && lockedThrough === 0 && screenplayDraft && (
+        <ScreenplayStep
+          draft={screenplayDraft} onChange={setScreenplayDraft}
+          onRegenerate={() => regenerate('screenplay')} onLock={lockScreenplay} busy={busy}
+        />
+      )}
+
+      {work && lockedThrough === 1 && designListDraft && (
+        <DesignListStep
+          draft={designListDraft} onChange={setDesignListDraft}
+          onRegenerate={() => regenerate('design_list')} onLock={lockDesignList} busy={busy}
+        />
+      )}
+
+      {work && lockedThrough === 2 && sceneStageDraft && (
+        <SceneStagePanel
+          draft={sceneStageDraft} onChange={setSceneStageDraft}
+          onRegenerate={() => regenerate('scene_stage')} onLock={lockSceneStage} busy={busy}
+        />
+      )}
+
+      {work && lockedThrough === 3 && shotListDraft && (
+        <ShotListStep
+          draft={shotListDraft} onChange={setShotListDraft} designList={work.design_list}
+          lint={work.scene_stage_lint}
+          onRegenerate={() => regenerate('shot_list')} onLock={lockShotList} busy={busy}
+        />
+      )}
+
+      {work && producing && (
+        <div className="tj-progress">
+          <div className="tj-progress__head">
+            <span
+              className={`tj-run-badge ${taskInfo?.status === 'failed' ? 'tj-run-badge--failed' : taskInfo?.status === 'completed' ? 'tj-run-badge--completed' : 'tj-run-badge--running'}`}
+            >
+              {!work.video_task_id
+                ? '📝 分镜已锁定，可以产集'
+                : taskInfo
+                  ? `${TASK_STATUS_LABEL[taskInfo.status] ?? taskInfo.status}${taskInfo.status === 'running' ? `（${Math.round(taskInfo.percent)}%）` : ''}`
+                  : '查询进度中…'}
+            </span>
+          </div>
+          {!work.video_task_id && (
+            <>
+              {work.shot_list && work.design_list && (
+                <ShotPreparationPanel
+                  workId={work.work_id}
+                  shotList={work.shot_list}
+                  designList={work.design_list}
+                  onBlockersChange={setPrepBlockers}
+                />
+              )}
+              <div className="tj-grid">
+                <label className="tj-field">
+                  <span className="tj-field__label">视频引擎</span>
+                  <select value={videoProvider} onChange={e => setVideoProvider(e.target.value)}>
+                    <option value="auto">自动路由（最省）</option>
+                    <option value="wan_local">Wan 本地（零成本）</option>
+                    <option value="ltx2_cloud">LTX-2 云</option>
+                    <option value="happyhorse_1_1_maas_lock">云端锁脸</option>
+                  </select>
+                </label>
+                <label className="tj-field">
+                  <span className="tj-field__label">配音引擎</span>
+                  <select value={audioProvider} onChange={e => setAudioProvider(e.target.value)}>
+                    <option value="edge_tts">Edge TTS（多语云）</option>
+                    <option value="vibevoice">VibeVoice（本地多说话人）</option>
+                  </select>
+                </label>
+                <label className="tj-field">
+                  <span className="tj-field__label">画质</span>
+                  <select value={qualityProfile} onChange={e => setQualityProfile(e.target.value)}>
+                    <option value="standard">标清 720p</option>
+                    <option value="high">高清 1080p</option>
+                  </select>
+                </label>
+                <label className="tj-field">
+                  <span className="tj-field__label">画幅</span>
+                  <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)}>
+                    <option value="9:16">竖 9:16</option>
+                    <option value="16:9">横 16:9</option>
+                  </select>
+                </label>
+                <label className="tj-field">
+                  <span className="tj-field__label">预算上限（美元，可选）</span>
+                  <input type="number" min={0} step={0.5} value={budgetUsd}
+                    onChange={e => setBudgetUsd(e.target.value ? Number(e.target.value) : '')} />
+                </label>
+              </div>
+              <div className="tj-actions">
+                <button
+                  type="button" className="tj-btn tj-btn--primary" onClick={produce}
+                  disabled={busy || prepBlockers.length > 0}
+                >
+                  {busy ? '提交中…' : '⚠ 确认无误，开始真实生成'}
+                </button>
+                {prepBlockers.length > 0 && (
+                  <span className="tj-err">
+                    还有 {prepBlockers.length} 个镜头提取后未完成确认，先在准备台处理
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+          {work.video_task_id && taskInfo?.status === 'failed' && (
+            <p className="tj-err">生成失败：{taskInfo.error || '未知错误'}</p>
+          )}
+          {work.video_task_id && taskInfo?.status === 'completed' && (
+            <video className="dp-result-video" controls src={taskApi.videoUrl(work.video_task_id)} />
+          )}
+          {work.video_task_id && taskInfo?.status !== 'completed' && (
+            <p className="tj-hint">任务 ID: {work.video_task_id}，也可在「我的」页查看生成进度。</p>
+          )}
+          <div className="tj-actions">
+            <button type="button" className="tj-btn" onClick={reset}>+ 再建一部</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -350,7 +632,228 @@ function GateBadge({ score, passed }: { score: number; passed: boolean }) {
   return <div className={`dpi-gate-badge ${passed ? 'is-pass' : 'is-blocked'}`}><span>{passed ? 'GATE PASS' : 'NEEDS REVIEW'}</span><b>{Math.round(score * 100)}%</b></div>;
 }
 
+
+// ── ②剧本 ─────────────────────────────────────────────────────────────────
+
+function ScreenplayStep({ draft, onChange, onRegenerate, onLock, busy }: {
+  draft: DpScreenplay; onChange: (s: DpScreenplay) => void;
+  onRegenerate: () => void; onLock: () => void; busy: boolean;
+}) {
+  function updateScene(i: number, patch: Partial<DpScreenplayScene>) {
+    const scenes = draft.scenes.map((s, j) => (j === i ? { ...s, ...patch } : s));
+    onChange({ scenes });
+  }
+  function updateDialogueLine(sceneIdx: number, lineIdx: number, field: 'character_name' | 'text', value: string) {
+    const scene = draft.scenes[sceneIdx];
+    const dialogue = scene.dialogue.map((d, j) => (j === lineIdx ? { ...d, [field]: value } : d));
+    updateScene(sceneIdx, { dialogue });
+  }
+  return (
+    <div className="tj-progress">
+      {draft.scenes.map((scene, i) => (
+        <div key={i} className="dp-card">
+          <div className="dp-card__head">第{scene.scene_no}场</div>
+          <div className="tj-grid">
+            <label className="tj-field"><span className="tj-field__label">时间</span>
+              <input value={scene.time} onChange={e => updateScene(i, { time: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">地点</span>
+              <input value={scene.location} onChange={e => updateScene(i, { location: e.target.value })} /></label>
+          </div>
+          <label className="tj-field"><span className="tj-field__label">叙述（白话）</span>
+            <textarea rows={2} value={scene.narration}
+              onChange={e => updateScene(i, { narration: e.target.value })} /></label>
+          <div className="tj-field__label">对白</div>
+          {scene.dialogue.map((d, j) => (
+            <div key={j} className="dp-dialogue-row">
+              <input className="dp-dialogue-row__speaker" placeholder="说话人" value={d.character_name}
+                onChange={e => updateDialogueLine(i, j, 'character_name', e.target.value)} />
+              <input className="dp-dialogue-row__text" placeholder="台词（白话）" value={d.text}
+                onChange={e => updateDialogueLine(i, j, 'text', e.target.value)} />
+            </div>
+          ))}
+        </div>
+      ))}
+      <div className="tj-actions">
+        <button type="button" className="tj-btn" onClick={onRegenerate} disabled={busy}>↻ 重新生成</button>
+        <button type="button" className="tj-btn tj-btn--primary" onClick={onLock} disabled={busy}>
+          {busy ? '处理中…' : '锁定剧本，生成③设计清单草稿'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── ③设计清单 ─────────────────────────────────────────────────────────────
+
+function DesignListStep({ draft, onChange, onRegenerate, onLock, busy }: {
+  draft: DpDesignList; onChange: (d: DpDesignList) => void;
+  onRegenerate: () => void; onLock: () => void; busy: boolean;
+}) {
+  function updateChar(i: number, patch: Partial<DpDesignCharacter>) {
+    onChange({ ...draft, characters: draft.characters.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
+  }
+  function updateScene(i: number, patch: Partial<DpDesignScene>) {
+    onChange({ ...draft, scenes: draft.scenes.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
+  }
+  function updateProp(i: number, patch: Partial<DpDesignProp>) {
+    onChange({ ...draft, props: draft.props.map((p, j) => (j === i ? { ...p, ...patch } : p)) });
+  }
+  return (
+    <div className="tj-progress">
+      <div className="sd-review__label">角色（{draft.characters.length}）</div>
+      {draft.characters.map((c, i) => (
+        <div key={i} className="dp-card">
+          <div className="tj-grid">
+            <label className="tj-field"><span className="tj-field__label">姓名</span>
+              <input value={c.name} onChange={e => updateChar(i, { name: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">外貌</span>
+              <input value={c.appearance} onChange={e => updateChar(i, { appearance: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">衣着</span>
+              <input value={c.wardrobe} onChange={e => updateChar(i, { wardrobe: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">发型</span>
+              <input value={c.hairstyle} onChange={e => updateChar(i, { hairstyle: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">性格</span>
+              <input value={c.personality} onChange={e => updateChar(i, { personality: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">声线倾向</span>
+              <input value={c.voice_hint} onChange={e => updateChar(i, { voice_hint: e.target.value })} /></label>
+            <label className="tj-field tj-field--check">
+              <input type="checkbox" checked={c.is_lead}
+                onChange={e => updateChar(i, { is_lead: e.target.checked })} />
+              <span>主角</span>
+            </label>
+          </div>
+        </div>
+      ))}
+      <div className="sd-review__label">场景（{draft.scenes.length}）</div>
+      {draft.scenes.map((s, i) => (
+        <div key={i} className="dp-card">
+          <div className="tj-grid">
+            <label className="tj-field"><span className="tj-field__label">名称</span>
+              <input value={s.name} onChange={e => updateScene(i, { name: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">环境</span>
+              <input value={s.environment} onChange={e => updateScene(i, { environment: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">光照</span>
+              <input value={s.lighting} onChange={e => updateScene(i, { lighting: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">氛围</span>
+              <input value={s.mood} onChange={e => updateScene(i, { mood: e.target.value })} /></label>
+          </div>
+        </div>
+      ))}
+      {draft.props.length > 0 && (
+        <>
+          <div className="sd-review__label">道具（{draft.props.length}）</div>
+          {draft.props.map((p, i) => (
+            <div key={i} className="dp-card">
+              <div className="tj-grid">
+                <label className="tj-field"><span className="tj-field__label">名称</span>
+                  <input value={p.name} onChange={e => updateProp(i, { name: e.target.value })} /></label>
+                <label className="tj-field"><span className="tj-field__label">外观</span>
+                  <input value={p.appearance} onChange={e => updateProp(i, { appearance: e.target.value })} /></label>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+      <div className="tj-actions">
+        <button type="button" className="tj-btn" onClick={onRegenerate} disabled={busy}>↻ 重新生成</button>
+        <button type="button" className="tj-btn tj-btn--primary" onClick={onLock} disabled={busy}>
+          {busy ? '建立资产中…' : '锁定设计清单（建立角色/场景/道具资产），生成③.5场面调度草稿'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── ④分镜头剧本 ────────────────────────────────────────────────────────────
+
+const LINT_LABEL: Record<string, string> = {
+  L1: '跳轴', L2: '反打差异', L3: 'eyeline', L4: '剪辑冗余',
+};
+
+function ShotListStep({ draft, onChange, designList, lint, onRegenerate, onLock, busy }: {
+  draft: DpShotList; onChange: (s: DpShotList) => void; designList: DpDesignList | null;
+  lint?: DpLintFinding[];
+  onRegenerate: () => void; onLock: () => void; busy: boolean;
+}) {
+  function updateShot(i: number, patch: Partial<DpShotListItem>) {
+    onChange({ shots: draft.shots.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
+  }
+  function updateDialogueLine(shotIdx: number, lineIdx: number, field: 'character_name' | 'text', value: string) {
+    const shot = draft.shots[shotIdx];
+    const dialogue_lines = shot.dialogue_lines.map((d, j) => (j === lineIdx ? { ...d, [field]: value } : d));
+    updateShot(shotIdx, { dialogue_lines });
+  }
+  const characterNames = designList?.characters.map(c => c.name) ?? [];
+  return (
+    <div className="tj-progress">
+      {lint && lint.length > 0 && (
+        <div className="dp-ss-lint">
+          <div className="sd-review__label">⚠ 场面调度守护(SPEC-004 §4,{lint.length} 项确定性告警)</div>
+          {lint.map((f, i) => (
+            <div key={i} className="dp-ss-lint__item">
+              <span className="sd-chip" title={f.rule}>{LINT_LABEL[f.rule] ?? f.rule}</span>
+              <span>{f.message}</span>
+            </div>
+          ))}
+          <p className="tj-hint">跳轴/反打/eyeline/剪辑冗余是零成本规则检查——可回退③.5场面调度或④分镜修正。</p>
+        </div>
+      )}
+      {draft.shots.map((shot, i) => (
+        <div key={i} className="dp-card">
+          <div className="dp-card__head">{shot.shot_id}（第{shot.scene_no}场）</div>
+          <div className="tj-grid">
+            <label className="tj-field"><span className="tj-field__label">景别</span>
+              <input value={shot.shot_size} onChange={e => updateShot(i, { shot_size: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">机位</span>
+              <input value={shot.camera} onChange={e => updateShot(i, { camera: e.target.value })} /></label>
+            <label className="tj-field"><span className="tj-field__label">时长（秒）</span>
+              <input type="number" min={1} step={0.5} value={shot.duration_s}
+                onChange={e => updateShot(i, { duration_s: Number(e.target.value) })} /></label>
+          </div>
+          <label className="tj-field"><span className="tj-field__label">画面内容</span>
+            <textarea rows={2} value={shot.visual_prompt}
+              onChange={e => updateShot(i, { visual_prompt: e.target.value })} /></label>
+          <div className="tj-field__label">台词（说话人留空 = 旁白）</div>
+          {shot.dialogue_lines.map((d, j) => (
+            <div key={j} className="dp-dialogue-row">
+              <input className="dp-dialogue-row__speaker" placeholder="旁白（留空）" value={d.character_name}
+                onChange={e => updateDialogueLine(i, j, 'character_name', e.target.value)} />
+              <input className="dp-dialogue-row__text" placeholder="台词/旁白文字" value={d.text}
+                onChange={e => updateDialogueLine(i, j, 'text', e.target.value)} />
+            </div>
+          ))}
+          <div className="dp-chips">
+            {shot.character_names.map(n => <span key={n} className="sd-chip">{n}</span>)}
+            {shot.scene_name && <span className="sd-chip" title="场景">📍{shot.scene_name}</span>}
+          </div>
+        </div>
+      ))}
+      {characterNames.length > 0 && (
+        <p className="tj-hint">已锁定角色:{characterNames.join('、')} —— 台词说话人请填这里面的名字,才能匹配到对应声线/参考图。</p>
+      )}
+      <div className="tj-actions">
+        <button type="button" className="tj-btn" onClick={onRegenerate} disabled={busy}>↻ 重新生成</button>
+        <button type="button" className="tj-btn tj-btn--primary" onClick={onLock} disabled={busy}>
+          {busy ? '处理中…' : '锁定分镜'}
+        </button>
+      </div>
+    </div>
+  );
+
+}
+
+
 function Trail({ items }: { items: Array<{ at: string; stage: string; status: string; detail: string }> }) {
   if (!items.length) return null;
-  return <details className="dpi-trail"><summary>查看 Agent 状态演进轨迹</summary><ol>{items.map((item, index) => <li key={`${item.at}-${index}`}><b>{item.stage}</b><span>{item.detail}</span><em>{item.status}</em></li>)}</ol></details>;
+  return (
+    <details className="dpi-trail">
+      <summary>查看 Agent 状态演进轨迹</summary>
+      <ol>
+        {items.map((item, index) => (
+          <li key={`${item.at}-${index}`}><b>{item.stage}</b><span>{item.detail}</span><em>{item.status}</em></li>
+        ))}
+      </ol>
+    </details>
+  );
 }
+

@@ -84,6 +84,42 @@ async def test_verdict_pass_keep(tmp_path):
     assert v.retake_tier == "keep"
 
 
+@pytest.mark.asyncio
+async def test_run_verdict_honors_upstream_degraded_shot(tmp_path):
+    """2026-07-17 审计实证的静默交付路径:关键帧降级成 canon 定妆照时,clip 本身**完好**——
+    画面不黑(verdict 第一项过)、身份分满分(第二项过,因为它就是那张 canon 本人)。于是 20 镜
+    里 14 镜这样的成片被判全过、当成功交付。verdict 靠自己查不出这种镜,必须尊重渲染层给出的
+    degraded 结论,并给 rewrite(hard purge 连 kf 一起删,逼重出关键帧;re_roll 保 kf 会把同一
+    张定妆照再拼一遍,纯烧钱)。"""
+    clip = tmp_path / "SH001_01_clip.mp4"
+    _make_clip(clip, "green")  # 画面完好,不黑
+    shots = [
+        {
+            "index": 0,
+            "path": str(clip),
+            "passed": False,
+            "consistency_score": 1.0,  # 身份满分:它就是 canon 本人
+            "diagnosis_category": "构图:关键帧降级为定妆照",
+            "degraded": True,
+        }
+    ]
+    verdicts = await dp._run_verdict(shots, vlm=None)
+    assert verdicts[0].passed is False
+    assert verdicts[0].retake_tier == "rewrite"
+    assert verdicts[0].checks["upstream_degraded"] is True
+
+
+@pytest.mark.asyncio
+async def test_run_verdict_still_checks_non_degraded_shot(tmp_path):
+    """上一条不能变成"凡上游说话就照单全收":没标 degraded 的镜仍要真跑三项检查。"""
+    clip = tmp_path / "SH001_02_clip.mp4"
+    _make_clip(clip, "black")
+    shots = [{"index": 0, "path": str(clip), "consistency_score": 0.9, "degraded": False}]
+    verdicts = await dp._run_verdict(shots, vlm=None)
+    assert verdicts[0].passed is False
+    assert verdicts[0].retake_tier == "re_roll"  # 黑帧,不是 rewrite
+
+
 def test_purge_shot_artifacts(tmp_path):
     for suf in ("_clip.mp4", "_talk.mp4", "_kf.png", "_vis.mp4"):
         (tmp_path / f"SH001_01{suf}").write_bytes(b"x")
