@@ -154,6 +154,8 @@
 
 ## 🚨 Needs Human
 
+- **RTX 3080 驱动楔死(2026-08-16 ~17:00,需 soffy 恢复)——GPU 在 PCI 上(`lspci` 可见、`/proc/driver/nvidia/gpus/0000:01:00.0/information` 正常),但 `nvidia-smi` 报 `Unable to determine the device handle for GPU0: Unknown Error`/`No devices were found`,ComfyUI 起不来(`CUDA unknown error`)。** 触发链:H3 w4a8 冒烟成功后,`--novram` 实验把 clip 9.5G+unet 12.5G 全搬 host RAM → 内核 oom-kill 正在持 CUDA 上下文的进程 → 驱动楔死(与 STATUS 记录的 Xid 79 同源不同相:这是驱动级 wedge 不是掉总线)。**恢复(任选)**:① `sudo rmmod nvidia_uvm nvidia_drm nvidia_modeset nvidia && sudo modprobe nvidia nvidia_uvm`(首选,不重启);② 重启宿主机(需 soffy,STATUS 铁律)。恢复后 ComfyUI 用 `bash /home/soffy/ComfyUI/start-h3.sh` 起(--lowvram --reserve-vram 5 + expandable_segments,见 h3-env.sh 注释)。**教训已入库**:novram 在此 30G 共享宿主不可用,勿再试。
+
 **SPEC-001 freeze decisions — all 4 settled 2026-07-11** (see `docs/specs/SPEC-001-shortdrama-eval.md` §6). Nothing pending here; LLM prerequisite resolved via `qwen_cloud` (the prior `e2e-local-llm-json-blocker` memory is now stale — updated with resolution).
 
 **SPEC-001 G1 real run 2026-07-11 — check 阿里云百炼 billing console.** `scripts/g1_shortdrama_run.py --real` made 11+ real `happyhorse_1_1_maas_lock` video-gen calls (episode 0, 10 shots + 1 regenerate) before being killed for cost-control reasons — hevi's own `config_json.actual_usd` tracking is unpopulated (stays `0.0`), so there's no in-repo record of real dollars spent. If precise spend matters, check the workspace billing directly.
