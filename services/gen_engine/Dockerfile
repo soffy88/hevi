@@ -25,7 +25,7 @@ FROM python:3.11-slim AS backend-builder
 ARG PYTORCH_VARIANT=cpu
 ARG ROCM_VERSION=6.3
 WORKDIR /build
-RUN apt-get update && apt-get install -y --no-install-recommends git build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends git build-essential && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502
 RUN pip install --no-cache-dir --upgrade pip
 COPY services/voicebox/backend/requirements.txt .
 RUN if [ "$PYTORCH_VARIANT" = "rocm" ]; then \
@@ -43,9 +43,9 @@ RUN pip install --no-cache-dir --prefix=/install --no-deps hume-tada
 # fish-speech 同样进 ai-venv —— 其依赖(audiotools/numpy<=1.26.4)与 voicebox 冲突。
 # 注: audiotools 已从 PyPI 移除且 git 源在 CI 构建环境不可达, fish-speech 作为
 # 可选能力暂不强制安装(端点保留, 缺失时 501 降级); 后续在可访问 GitHub 的环境补装。
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends \
     portaudio19-dev ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502
 RUN python -m venv /opt/ai-venv && \
     /opt/ai-venv/bin/pip install --no-cache-dir --upgrade pip && \
     if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
@@ -75,8 +75,8 @@ RUN python -m venv /opt/ai-venv && \
 # 拷入 site-packages(见 services/gen_engine/cosyvoice/README.md)。
 FROM python:3.11-slim AS cosy-builder
 WORKDIR /build
-RUN apt-get update && apt-get install -y --no-install-recommends git ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends git ffmpeg \
+    && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502
 RUN python -m venv /opt/cosy-venv && \
     /opt/cosy-venv/bin/pip install --no-cache-dir --upgrade pip && \
     if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
@@ -95,8 +95,8 @@ COPY services/gen_engine/third_party/Matcha-TTS/matcha/ /opt/cosy-venv/lib/pytho
 
 # ── VibeASR.cpp CPU 推理引擎: 容器内编译(宿主 GLIBC 2.43 vs 容器 2.41 不兼容) ──
 FROM python:3.11-slim AS vibeasr-builder
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential cmake git \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends build-essential cmake git \
+    && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502
 COPY services/gen_engine/vibeasr-src/ /build/vibeasr/
 WORKDIR /build/vibeasr
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF \
@@ -104,9 +104,9 @@ RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF \
 FROM python:3.11-slim
 RUN groupadd -r voicebox && useradd -r -g voicebox -m -s /bin/bash voicebox
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends \
     ffmpeg sox curl gosu gcc g++ make \
-    && rm -rf /var/lib/apt/lists/*  # gcc: qwen-tts 的 triton CUDA kernel JIT 编译必需
+    && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502  # gcc: qwen-tts 的 triton CUDA kernel JIT 编译必需
 # VibeASR.cpp 编译产物(容器内编译, GLIBC 匹配)
 COPY --from=vibeasr-builder /build/vibeasr/build/bin/asr_infer /opt/vibeasr/asr_infer
 COPY --from=vibeasr-builder /build/vibeasr/build/3rdparty/llama.cpp/src/libllama.so \

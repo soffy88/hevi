@@ -39,12 +39,12 @@ def test_build_workflow_fills_placeholders_and_types() -> None:
         seed=42,
         output_prefix="shot_001_v0",
         ref_images=[Path("/tmp/a.png"), Path("/tmp/b.png")],
-        extra_fills={"__UNET_GGUF__": "MiniMax-H3-FL2VA-Pruned-Q3_K_M.gguf"},
+        extra_fills={"__UNET_GGUF__": "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors"},
     )
     assert wf["h3"]["inputs"]["prompt"] == "【场景】雨夜。"
     assert wf["h3"]["inputs"]["length"] == 124
     assert wf["h3"]["inputs"]["seed"] == 42
-    assert wf["load"]["inputs"]["unet_name"] == "MiniMax-H3-FL2VA-Pruned-Q3_K_M.gguf"
+    assert wf["load"]["inputs"]["unet_name"] == "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors"
     # 两张参考图 → 两个 LoadImage 都保留、链接都在
     assert "ref_0" in wf and "ref_1" in wf
     assert wf["h3"]["inputs"]["ref_image_1"] == ["ref_1", 0]

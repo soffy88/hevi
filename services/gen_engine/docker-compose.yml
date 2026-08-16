@@ -34,7 +34,7 @@ services:
       # 语音/数字人模型(宿主持有, 只读挂载; 部署前先下载到宿主机)
       - ../.voicebox-cache:/home/voicebox/.cache/huggingface/hub:ro
       - ${VIBEVOICE_MODEL_DIR:-/home/soffy/models/vibevoice-1.5b}:/models/vibevoice-1.5b:ro
-      - ${COSYVOICE_HOST_MODEL_DIR:-/home/soffy/models/CosyVoice/CosyVoice2-0.5B}:/opt/cosyvoice/model:ro
+      - ${COSYVOICE_HOST_MODEL_DIR:-/home/soffy/models/CosyVoice3}:/opt/cosyvoice/model:ro
       - ${FISH_SPEECH_MODEL_DIR:-/home/soffy/models/fish-speech-1.5}:/models/fish-speech-1.5:ro
       - ${LONGCAT_MODEL_DIR:-/data/models/LongCat-Voice}:/data/models/LongCat-Voice:ro
       - ${VIBEVOICE_ASR_MODEL_DIR:-/home/soffy/models/vibeasr}:/models/vibeasr:ro

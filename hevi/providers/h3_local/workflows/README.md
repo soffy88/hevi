@@ -20,12 +20,12 @@ ComfyUI 前端 "Save (API Format)" 导出的那种),客户端只做占位符替�
 
 ## 当前模板 (h3_w4a8_zh.json)
 
-8GB 显存档,节点链(与官方 video_minimax_h3_r2v 模板一致,仅模型换 GGUF 量化):
+8GB 显存档,节点链(与官方 video_minimax_h3_r2v 模板一致):
 
 ```
-UnetLoaderGGUF(MiniMax-H3-FL2VA-Pruned-*.gguf)
+UNETLoader(minimax_h3_fl2va_pruned_w4a8_mixed.safetensors, weight_dtype=default)
   → MiniMaxH3SigmaShift(shift_video 12.0 / shift_audio 3.0)
-DualCLIPLoaderGGUF(qwen3vl_32b_minimax_h3-*.gguf, type=minimax)
+CLIPLoaderGGUF(qwen3vl-32B-MiniMax-H3-Q2_K.gguf, type=minimax)
 VAELoader(video_vae) + VAELoader(audio_vae)
   → MiniMaxH3ReferenceToVideo(prompt/width/height/length/ref_image_N)
   → BasicGuider + RandomNoise + KSamplerSelect(res_multistep)
@@ -33,6 +33,16 @@ VAELoader(video_vae) + VAELoader(audio_vae)
   → VAEDecode(视频) + VAEDecodeAudio(音频)
   → CreateVideo(24fps) → SaveVideo(mp4)
 ```
+
+模型栈说明(2026-08-16 起):
+
+- **UNET 用 safetensors 而非 GGUF**:`minimax_h3_fl2va_pruned_w4a8_mixed.safetensors`
+  (已量化 w4a8,故 `weight_dtype` 必须 `default`,不能再 cast);放在 ComfyUI
+  `models/diffusion_models/`。
+- **CLIP 仍走 GGUF**:`qwen3vl-32B-MiniMax-H3-Q2_K.gguf`(Q2_K 量化,
+  `models/text_encoders/`),`CLIPLoaderGGUF(type=minimax)` 不变。
+- **VAE 不变**:`minimax_h3_video_vae_fp16.safetensors` + `minimax_h3_audio_vae_fp32.safetensors`。
+- 环境变量 `H3_UNET_GGUF`/`H3_CLIP_GGUF` 名称沿用(历史兼容),实际值为上表文件名。
 
 ## 换模板须知
 

@@ -52,7 +52,7 @@ H3_LOCAL_CAPABILITY: dict[str, Any] = {
     "entrypoint": "comfyui",
     "workflow": "h3_w4a8_zh.json",
     "vram_profile": "8gb_serial",
-    "notes": "MiniMax H3 W4A8 + Qwen3-VL Q2 + INT8 VAE",
+    "notes": "MiniMax H3 W4A8(w4a8_mixed)+ Qwen3-VL Q2_K + FP16 视频 VAE + FP32 音频 VAE",
 }
 
 #: 8GB 档生成分辨率(竖/横/方)。调用方没给时按此默认。
@@ -141,8 +141,8 @@ async def h3_local_generate(
     workflow_name = str(cfg.get("workflow") or os.getenv("H3_WORKFLOW") or "h3_w4a8_zh.json")
     # 模型文件名默认值(与 .env.example 对齐;模板里 __UNET_GGUF__ 等占位符)。
     _MODEL_DEFAULTS = {
-        "unet_gguf": ("H3_UNET_GGUF", "MiniMax-H3-FL2VA-Pruned-Q3_K_M.gguf"),
-        "clip_gguf": ("H3_CLIP_GGUF", "qwen3vl_32b_minimax_h3-Q4_K_M.gguf"),
+        "unet_gguf": ("H3_UNET_GGUF", "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors"),
+        "clip_gguf": ("H3_CLIP_GGUF", "qwen3vl-32B-MiniMax-H3-Q2_K.gguf"),
         "video_vae": ("H3_VIDEO_VAE", "minimax_h3_video_vae_fp16.safetensors"),
         "audio_vae": ("H3_AUDIO_VAE", "minimax_h3_audio_vae_fp32.safetensors"),
     }

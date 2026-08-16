@@ -60,10 +60,11 @@ services:
       - ../.voicebox-cache:/home/voicebox/.cache/huggingface/hub
       # 语音/生成模型权重(宿主持有, 只读; 缺失时端点返回 501, API 自动降级)
       # 注: COSYVOICE_MODEL_DIR 是 API→引擎透传的引擎内路径(见 .env),
-      # 挂载源用独立变量 COSYVOICE_HOST_MODEL_DIR(默认 CosyVoice2-0.5B 子目录,
-      # 重供货 worker 要求 model_dir 根含 cosyvoice2.yaml + 全部权重)。
+      # 挂载源用独立变量 COSYVOICE_HOST_MODEL_DIR(默认 CosyVoice3 目录,
+      # 重供货 worker 要求 model_dir 根含 cosyvoice2.yaml/cosyvoice3.yaml + 全部权重,
+      # worker 按 yaml 自动检测家族)。
       - ${VIBEVOICE_MODEL_DIR:-/home/soffy/models/vibevoice-1.5b}:/models/vibevoice-1.5b:ro
-      - ${COSYVOICE_HOST_MODEL_DIR:-/home/soffy/models/CosyVoice/CosyVoice2-0.5B}:/opt/cosyvoice/model:ro
+      - ${COSYVOICE_HOST_MODEL_DIR:-/home/soffy/models/CosyVoice3}:/opt/cosyvoice/model:ro
       - ${COSYVOICE3_MODEL_DIR:-/home/soffy/models/CosyVoice3}:/opt/cosyvoice/fun3:ro
       - ${F5_TTS_MODEL_DIR:-/home/soffy/models/f5-tts}:/models/f5-tts:ro
       - ${FISH_SPEECH_MODEL_DIR:-/home/soffy/models/fish-speech-1.5}:/models/fish-speech-1.5:ro
