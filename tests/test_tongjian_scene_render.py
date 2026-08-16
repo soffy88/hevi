@@ -11,6 +11,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from hevi.tongjian.scene_render import (
+    build_frame_manifest,
+    gate_frame_manifest,
+    generate_scene_assets,
+    render_shot,
+)
 from hevi.tongjian.schemas import (
     CharacterBible,
     CharacterBibleEntry,
@@ -19,12 +25,6 @@ from hevi.tongjian.schemas import (
     Shot,
     ShotList,
     VisualStyle,
-)
-from hevi.tongjian.scene_render import (
-    build_frame_manifest,
-    gate_frame_manifest,
-    generate_scene_assets,
-    render_shot,
 )
 
 CONSTITUTION = Constitution(

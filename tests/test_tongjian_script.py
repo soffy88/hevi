@@ -363,3 +363,29 @@ async def test_build_script_converts_narration_to_dialogue_for_high_weight_event
     assert e002_lines[0].dramatized is True
     assert e002_lines[0].speaker == "NARRATOR"  # E002 无 actors,退回原 speaker
     assert e002_lines[0].text == "地,给是不给?"
+
+
+def test_coerce_script_accepts_chinese_keys():
+    """deepseek 中文键输出(旁白/对白) → Script 正常解析 (P0 实证修复)。"""
+    from hevi.tongjian.schemas import ChapterIR
+    from hevi.tongjian.script import _coerce_script
+
+    draft = {
+        "旁白": [
+            {"类型": "旁白", "台词": "晋阳被围，城中悬釜而炊。"},
+        ],
+        "对白": [
+            {"类型": "对白", "说话人": "张孟谈", "台词": "唇亡则齿寒。", "戏剧化": True},
+        ],
+    }
+    ir = ChapterIR(
+        source_name="t", raw_text="x", meta={"source": "t"},
+        characters=[], events=[], quotes=[],
+    )
+    script = _coerce_script(draft, ir)
+    assert len(script.lines) == 2
+    assert script.lines[0].type == "narration"
+    assert "悬釜而炊" in script.lines[0].text
+    assert script.lines[1].type == "dialogue"
+    assert script.lines[1].speaker == "张孟谈"
+    assert "唇亡" in script.lines[1].text

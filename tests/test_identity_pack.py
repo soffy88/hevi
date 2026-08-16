@@ -8,7 +8,6 @@ video_gen)——这些是 SDXL/Vidu/CosyVoice 的真实调用,会花钱或需要
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
@@ -134,7 +133,7 @@ class TestStabilityPrecheck:
 
     @pytest.mark.asyncio
     async def test_all_fail_vlm_audit_gives_failing_score(self, tmp_path):
-        stability, canonical = await _stability_precheck(
+        stability, _canonical = await _stability_precheck(
             appearance="魁伟美髯",
             era_lock="战国早期服制",
             art_direction="水墨",
@@ -149,7 +148,7 @@ class TestStabilityPrecheck:
     @pytest.mark.asyncio
     async def test_image_gen_failure_counts_as_not_passed(self, tmp_path):
         image_gen = AsyncMock(side_effect=RuntimeError("GPU OOM"))
-        stability, canonical = await _stability_precheck(
+        stability, _canonical = await _stability_precheck(
             appearance="x",
             era_lock="y",
             art_direction="z",

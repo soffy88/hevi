@@ -86,6 +86,8 @@ services:
         limits:
           cpus: '2.0'
           memory: 4G
+    # wan_local 本地视频推理需要 GPU 直通 (2026-08-09: 修复 Wan2GP exit 1)
+    gpus: all
     # GPU binding 已恢复(2026-08-03):host 驱动已升级到 580.173.02,
     # nvidia 容器运行时实测可用。voicebox 换 CUDA torch 后 TTS 提速 10-50x
     # (此前 CPU 版每段 42s 音频要 ~5 分钟)。hevi-api 自身仍走云端视频/CPU。
@@ -117,6 +119,8 @@ services:
       VOICEBOX_ALLOW_EDGE_FALLBACK: "0"
       # 断点续传:调研/确稿缓存落盘在宿主持久挂载(output),容器重建不丢。
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
+      # P1/P2: 教材 KU 主线查询(mneme 在宿主机 5433)
+      MNEME_DATABASE_URL: ${MNEME_DATABASE_URL}
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro

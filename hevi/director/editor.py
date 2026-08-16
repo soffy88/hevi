@@ -54,14 +54,19 @@ def review(
     quality: dict[str, Any] | None,
     shots: list[dict[str, Any]],
     consistency_floor: float = 0.75,
+    min_rework_count: int = 1,
 ) -> EditDecision:
     """裁决:哪些镜头返工、能否交付。
 
     - 镜头 `passed=False` 或 `consistency_score < floor` → 列入 `regenerate_shot_ids` + hints。
     - 整片体检 `quality.passed=False` 或有镜头待返工 → `deliver=False`。
     - 返工完成后由调用方再 review 一轮(loop 收敛)。
+    - `min_rework_count`:错配镜头数门槛(G1 实测身份匹配系统性偏低,
+      零星 1-2 镜错配直接返工 = 每任务白付 2× 云费;低于门槛只记录诊断,
+      不触发整片返工 —— 全废(黑帧/大面积错配)仍会返工)。
     """
-    regen: dict[int, str] = {}
+    hard: dict[int, str] = {}  # passed=False(黑帧/全废) → 必须返工
+    soft: dict[int, str] = {}  # 一致性分偏低(软错配) → 可按门槛过滤
     diagnosis: dict[int, str] = {}
     reasons: list[str] = []
 
@@ -72,15 +77,25 @@ def review(
         score = s.get("consistency_score")
         if not s.get("passed", True):
             diagnosis[idx] = REFERENCE_MISMATCH
-            regen[idx] = f"[{REFERENCE_MISMATCH}] 镜头未过一致性校验,重生成"
+            hard[idx] = f"[{REFERENCE_MISMATCH}] 镜头未过一致性校验,重生成"
         elif score is not None and score < consistency_floor:
             diagnosis[idx] = REFERENCE_MISMATCH
-            regen[idx] = (
+            soft[idx] = (
                 f"[{REFERENCE_MISMATCH}] 一致性分 {score:.2f} < {consistency_floor} 偏低,重生成"
             )
 
-    quality_ok = quality is None or quality.get("passed", True)
-    if not quality_ok:
+    # 软错配门槛(G1 实测身份匹配系统性偏低,零星错配直接返工 = 白付 2× 云费):
+    # 低于门槛的零星软错配只记录诊断不返工;硬失败(黑帧/全废)与大面积错配仍返工。
+    if soft and len(soft) < min_rework_count:
+        reasons.append(
+            f"{len(soft)} 个镜头一致性偏低(< 门槛 {min_rework_count}),本次不返工,已记录诊断"
+        )
+        soft = {}
+
+    regen: dict[int, str] = {**hard, **soft}
+
+    quality_ok = quality is None or bool(quality.get("passed", True))
+    if not quality_ok and quality is not None:
         reasons.append(f"整片体检不过:{quality.get('violations', [])}")
     if regen:
         reasons.append(f"{len(regen)} 个镜头需返工:{sorted(regen)}")

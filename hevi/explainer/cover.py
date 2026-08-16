@@ -16,7 +16,9 @@ async def cover_extract_and_render(
     """Extract a verified highlight frame; title rendering is provider-injected."""
     if extractor is None:
         try:
-            from oprim import cover_extract_and_render as extractor  # type: ignore[attr-defined]
+            from oprim import cover_extract_and_render as _oprim_extractor
+
+            extractor = _oprim_extractor
         except ImportError:
             from hevi.assembly.cover_extractor import extract_cover
 

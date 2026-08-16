@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json as json_module
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -38,7 +37,7 @@ class _FakeAsyncClient:
         self._responses = list(responses)
         self._calls = calls
 
-    async def __aenter__(self) -> "_FakeAsyncClient":
+    async def __aenter__(self) -> _FakeAsyncClient:
         return self
 
     async def __aexit__(self, *exc: Any) -> None:

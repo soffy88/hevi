@@ -4,6 +4,8 @@ jsonschema 校验(项目既有惯例,同 hevi/tongjian/schemas.py 的决策)。
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 PACK_TYPES: frozenset[str] = frozenset({"identity", "style", "scene", "voice"})
@@ -39,12 +41,12 @@ class Manifest(BaseModel):
     immutable_traits: str = ""
     era_lock: str = ""
     files: dict[str, ManifestFile] = Field(default_factory=dict)  # 相对路径 → 文件信息
-    embeddings: dict[str, dict] = Field(default_factory=dict)  # kind → {model, dim}
-    voice: dict = Field(default_factory=dict)
+    embeddings: dict[str, dict[str, Any]] = Field(default_factory=dict)  # kind → {model, dim}
+    voice: dict[str, Any] = Field(default_factory=dict)
     provenance: Provenance = Field(default_factory=Provenance)
     stability_check: StabilityCheck = Field(default_factory=StabilityCheck)
     lifecycle: str = "draft"
-    reuse_stats: dict = Field(default_factory=dict)
+    reuse_stats: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("pack_type")
     @classmethod

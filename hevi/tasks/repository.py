@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -69,6 +70,18 @@ class TaskRepository:
         """删某 task 的所有 shot_states(C3 regenerate 前清旧,再落新)。"""
         async with self.pool.acquire() as conn:
             await conn.execute("DELETE FROM shot_states WHERE task_id = $1", task_id)
+
+    async def save_shot(self, row: dict[str, Any]) -> None:
+        """回写一行 shot_states(镜头准备确认等就地更新 selection_json)。"""
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE shot_states SET selection_json = $1, status = $2, "
+                "updated_at = $3 WHERE id = $4",
+                json.dumps(row.get("selection_json") or {}, ensure_ascii=False),
+                str(row.get("status") or "pending"),
+                datetime.now(UTC).replace(tzinfo=None),
+                row["id"],
+            )
 
     async def get_next_queued_task(self) -> dict[str, Any] | None:
         """Get the oldest queued task (read-only peek; NOT a claim)."""

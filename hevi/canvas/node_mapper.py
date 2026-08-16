@@ -66,13 +66,22 @@ async def _image_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
 
         svc = AssistService()
         if sub == "three_view":
-            r = await svc.gen_three_view(character_description=desc, style=cfg.get("style", ""))
+            r: Any = await svc.gen_three_view(
+                character_description=desc, style=cfg.get("style", "")
+            )
         else:  # multi_angle / storyboard_grid
             r = await svc.gen_multi_angle(subject_description=desc)
         return {"type": "image", "sub_type": sub, "output": _serialize_result(r)}
     except Exception as e:
-        logger.warning("image node %s real service unavailable, plan-only: %s", node.node_id, e)
-        return {"type": "image", "sub_type": sub, "config": cfg, "note": f"plan-only: {e}"}
+        logger.warning(
+            "image node %s real service unavailable, plan-only: %s", node.node_id, e
+        )
+        return {
+            "type": "image",
+            "sub_type": sub,
+            "config": cfg,
+            "note": f"plan-only: {e}",
+        }
 
 
 async def _video_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
@@ -85,16 +94,14 @@ async def _video_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
     cfg = node.config or {}
     sub = cfg.get("sub_type", "kernel")
     if sub == "transition":  # 转场 → creative make_transition
-        try:
-            from hevi.creative.assist_service import AssistService
-
-            r = await AssistService().make_transition(
-                video_provider=cfg.get("provider", "wan_local")
-            )
-            return {"type": "video", "sub_type": "transition", "output": _serialize_result(r)}
-        except Exception as e:
-            logger.warning("transition node %s unavailable, plan-only: %s", node.node_id, e)
-            return {"type": "video", "sub_type": sub, "config": cfg, "note": f"plan-only: {e}"}
+        # make_transition 需要 first_frame/last_frame/duration_s/output_path,
+        # canvas 节点暂无这些字段,保持 plan-only(接真实转场属未接线 stub)。
+        return {
+            "type": "video",
+            "sub_type": "transition",
+            "config": cfg,
+            "note": "plan-only: make_transition 未接线(需 first_frame/last_frame)",
+        }
     if sub != "kernel":
         return {"type": "video", "sub_type": sub, "config": cfg, "note": "stub — pending wiring"}
 
@@ -158,12 +165,20 @@ async def _script_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
 
         svc = AssistService()
         if sub == "story_predict":
-            r = await svc.predict_story(prediction_points=cfg.get("prediction_points"))
-        else:
-            r = await svc.gen_storyboard(script_text=text, shots=int(cfg.get("shots", 6)))
+            # predict_story 需要 reference_image/direction,canvas 节点暂无,
+            # 保持 plan-only(接真实预测属未接线 stub)。
+            return {
+                "type": "script",
+                "sub_type": "story_predict",
+                "config": cfg,
+                "note": "plan-only: predict_story 未接线(需 reference_image/direction)",
+            }
+        r = await svc.gen_storyboard(script_text=text, shots=int(cfg.get("shots", 6)))
         return {"type": "script", "sub_type": sub, "output": _serialize_result(r)}
     except Exception as e:
-        logger.warning("script node %s real service unavailable, plan-only: %s", node.node_id, e)
+        logger.warning(
+            "script node %s real service unavailable, plan-only: %s", node.node_id, e
+        )
         return {"type": "script", "sub_type": sub, "config": cfg, "note": f"plan-only: {e}"}
 
 

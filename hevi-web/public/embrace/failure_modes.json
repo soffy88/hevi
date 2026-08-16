@@ -1,0 +1,62 @@
+[
+  {
+    "code": "dialogue_text_overlay",
+    "layer": "assembly",
+    "description": "对白文字叠加层错位/遮挡画面主体",
+    "negative_clause": "无画面内文字叠加,字幕仅由后期独立轨道提供",
+    "keywords": [
+      "字幕",
+      "文字叠加"
+    ]
+  },
+  {
+    "code": "bad_hands",
+    "layer": "action",
+    "description": "手部畸形/多余手指(AI 生成高发)",
+    "negative_clause": "手部结构正常,五根手指,无畸形无多指",
+    "keywords": [
+      "手",
+      "手指"
+    ]
+  },
+  {
+    "code": "face_morph",
+    "layer": "identity",
+    "description": "面部特征漂移/变形,偏离身份锚点",
+    "negative_clause": "面部特征与参考图一致,无变形无漂移",
+    "keywords": [
+      "脸",
+      "五官"
+    ]
+  },
+  {
+    "code": "gibberish_text",
+    "layer": "scene",
+    "description": "场景内出现乱码/无意义文字",
+    "negative_clause": "无乱码文字,场景内文字清晰可读且有意义",
+    "keywords": [
+      "文字",
+      "乱码"
+    ]
+  },
+  {
+    "code": "watermark_logo",
+    "layer": "scene",
+    "description": "画面出现水印/logo 残留",
+    "negative_clause": "无水印,无 logo 残留,无平台角标",
+    "keywords": [
+      "水印",
+      "logo"
+    ]
+  },
+  {
+    "code": "over_smooth",
+    "layer": "action",
+    "description": "动作过平滑/塑料感,缺乏物理",
+    "negative_clause": "动作自然有物理感,衣物布料随动合理,非塑料质感",
+    "keywords": [
+      "塑料",
+      "平滑"
+    ]
+  }
+]

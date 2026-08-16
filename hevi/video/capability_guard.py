@@ -56,6 +56,21 @@ PROVIDER_LIMITS: dict[str, ProviderLimits] = {
         max_duration_s=10.0,
         fps_options=frozenset({16, 24, 30}),
     ),
+    # MiniMax H3 本地(ComfyUI,8GB W4A8):能力行见
+    # hevi/providers/h3_local/provider.py::H3_LOCAL_CAPABILITY。声明即规格——
+    # 单镜 ≤8s、24fps 原生(插帧 2× 后由装配器统一 48)、生成分辨率 512/768 档
+    # (FlashVSR 超分后才到目标尺寸,故 max_resolution 按超分产物口径放宽到 1080p;
+    # 生成分辨率由 provider 按 8GB 显存档夹取,见 _DEFAULT_SIZES)。
+    # native_audio=True:H3 视频 VAE + 音频 VAE 同炉出音画,H3 原音是「对白轨优先
+    # H3 原生音」纪律的来源,不是猜的。
+    "h3_local": ProviderLimits(
+        modes=frozenset({"t2v", "i2v"}),
+        max_resolution=(1080, 1920),
+        max_duration_s=8.0,
+        fps_options=frozenset({24, 48}),
+        native_audio=True,
+        last_verified="2026-08-12",
+    ),
     # 高写实云档(fal)。这些 provider 已在 registry 注册但此前无能力声明,
     # 导致能力矩阵只覆盖 4/7 provider。此处补齐 —— 值为近似上限(fal 内部管理实际
     # 编码;非路由消费前不生效),待 L0 成本感知路由落地时按 fal 文档校准。

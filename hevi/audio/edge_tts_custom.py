@@ -116,7 +116,7 @@ async def edge_tts_synthesize_smart(
         )
     from oprim import edge_tts_synthesize
 
-    return await edge_tts_synthesize(
+    out: Any = await edge_tts_synthesize(
         config=config,
         script=script,
         output_path=output_path,
@@ -124,6 +124,7 @@ async def edge_tts_synthesize_smart(
         watermark=watermark,
         **kwargs,
     )
+    return out if isinstance(out, Path) else output_path
 
 
 async def synthesize_with_voice_control(
@@ -173,10 +174,13 @@ async def synthesize_with_voice_control(
             # 每行优先用该行自带的 .voice(角色专属音色,见 injected_audio_fn 的 edge_tts
             # 多角色分支);没有再退回整批的 voice,最后回退语言默认音色。
             _line_voice = getattr(ln, "voice", None)
-            v = (CURATED_VOICES.get(_line_voice, _line_voice) if _line_voice else None) or (
-                resolved_voice or _default_voice(text, language)
+            voice_by_line = CURATED_VOICES.get(_line_voice, _line_voice) if _line_voice else ""
+            v = voice_by_line or (
+                resolved_voice if resolved_voice else _default_voice(text, language)
             )
             _line_emotion = getattr(ln, "emotion", None)
+            _r: str | None = None
+            _p: str | None = None
             if _line_emotion and rate is None and pitch is None:
                 _r, _p = emotion_to_rate_pitch(_line_emotion)
             else:
@@ -188,7 +192,7 @@ async def synthesize_with_voice_control(
             # 单行合成走 oprim.edge_tts_word_boundary 原子(输出路径直写)。
             for _attempt in range(3):
                 try:
-                    await edge_tts_word_boundary(
+                    await edge_tts_word_boundary(  # type: ignore[no-untyped-call]
                         text,
                         v,
                         rate=_r or "+0%",

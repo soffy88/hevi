@@ -115,4 +115,4 @@ async def generate_subject3d(
         raise Subject3DError(f"TripoSR 产出缺渲染帧: {missing}")
 
     logger.info("subject3d_local: %s -> glb=%s views=%s", image_path, glb_path, list(view_paths))
-    return result
+    return dict(result)

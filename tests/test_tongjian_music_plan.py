@@ -175,7 +175,7 @@ class TestGateMusicPlan:
     @pytest.mark.asyncio
     async def test_passes_with_real_bgm(self):
         constitution = _make_constitution()
-        plan, result = await build_music_plan(ShotList(), _make_timeline_two_acts(), constitution)
+        _plan, result = await build_music_plan(ShotList(), _make_timeline_two_acts(), constitution)
         assert result.passed
         assert result.coverage == 1.0
 

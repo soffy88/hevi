@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from hevi.tongjian.chapter_ir import _call_llm_json, _extract_json_obj
+from hevi.tongjian.chapter_ir import _call_llm_json
 from hevi.tongjian.schemas import (
     AudioSegment,
     CharacterBible,
@@ -110,9 +110,13 @@ def _extract_characters(line: ScriptLine, bible: CharacterBible) -> list[str]:
         chars.append(line.speaker)
     # visual_hint 中提及的角色
     for entry in bible.characters:
-        if entry.name and line.visual_hint and entry.name in line.visual_hint:
-            if entry.character_id not in chars:
-                chars.append(entry.character_id)
+        if (
+            entry.name
+            and line.visual_hint
+            and entry.name in line.visual_hint
+            and entry.character_id not in chars
+        ):
+            chars.append(entry.character_id)
     return chars
 
 
@@ -321,10 +325,12 @@ def gate_shotlist(
 
     # 2. 角色引用闭环
     known_chars = {e.character_id for e in character_bible.characters}
-    for shot in shotlist.shots:
-        for cid in shot.characters:
-            if cid not in known_chars:
-                warnings.append(f"镜头 {shot.shot_id} 引用了 character_bible 中不存在的角色 {cid}")
+    warnings.extend(
+        f"镜头 {shot.shot_id} 引用了 character_bible 中不存在的角色 {cid}"
+        for shot in shotlist.shots
+        for cid in shot.characters
+        if cid not in known_chars
+    )
 
     # 3. 视觉节奏:连续 N 个同 scene+景别 → 警告
     _check_visual_monotony(shotlist, warnings)

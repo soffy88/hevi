@@ -48,7 +48,8 @@ def test_server_registers_14_tools() -> None:
         workflow_svc=MagicMock(spec=WorkflowService),
     )
     tools = _tool_map(server)
-    assert len(tools) == 14
+    # 14 基线 + 5 个 3O 内化 embrace skills = 19
+    assert len(tools) == 19
 
 
 def test_server_registers_expected_names() -> None:
@@ -72,6 +73,12 @@ def test_server_registers_expected_names() -> None:
         "hevi.subject_create",
         "hevi.subject_search",
         "hevi.execute_canvas",
+        # 3O 内化(Round 3g):watch / media / repair / promote / chat
+        "hevi.watch_video",
+        "hevi.media_resolve",
+        "hevi.repair_plan",
+        "hevi.promote_candidate",
+        "hevi.chat",
     }
     assert names == expected
 

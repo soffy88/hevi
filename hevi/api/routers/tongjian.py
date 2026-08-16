@@ -67,6 +67,20 @@ class RunRequest(BaseModel):
     layer_config: dict[str, LayerConfig] = Field(default_factory=dict)
 
 
+def _gate_decision(gate: Any) -> tuple[str, str | None]:
+    """门禁判定 → (status, degrade_reason)。
+
+    v9.1: 降级原因投影到可读字段 —— 之前只在 gate_report JSON 里, 排障要
+    展开两层结构; 现在把首条错误同步到 error/degrade_reason。
+    """
+    if bool(getattr(gate, "passed", False)):
+        return "PASSED", None
+    report = gate.model_dump() if hasattr(gate, "model_dump") else dict(gate or {})
+    errors = report.get("errors") or []
+    reason = errors[0] if errors else "门禁未通过(无明细)"
+    return "DEGRADED", str(reason)
+
+
 class ScriptReviewUpdate(BaseModel):
     """人工审核提交:编辑后的剧本(必填)+ 可选改过的立意。"""
 
@@ -84,6 +98,8 @@ class LayerState(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     error: str | None = None
+    # v9.1: 降级原因可读投影(gate_report 的摘要), 排障不展开 JSON。
+    degrade_reason: str | None = None
 
 
 class RunStatus(BaseModel):
@@ -235,12 +251,16 @@ def _pipeline_helpers(run_id: str, req: RunRequest) -> tuple[Any, Any, Any, Any]
 
     def _gate_done(layer: str, gate: Any) -> None:
         """门禁非阻塞:不过标只标 DEGRADED + 记 gate_report,不中断流水线(通鉴"永不卡死")。"""
+        status, reason = _gate_decision(gate)
+        report = gate.model_dump() if hasattr(gate, "model_dump") else dict(gate or {})
         _update_layer(
             run_id,
             layer,
-            status="PASSED" if gate.passed else "DEGRADED",
-            degraded=not gate.passed,
-            gate_report=gate.model_dump(),
+            status=status,
+            degraded=status == "DEGRADED",
+            gate_report=report,
+            error=reason,
+            degrade_reason=reason,
             finished_at=datetime.now(UTC),
         )
 
@@ -287,6 +307,7 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
             chapter_ir = await extract_chapter_ir(
                 source_name=req.source_name, raw_text=req.raw_text, llm=_llm("L0")
             )
+            # v9.1 ASR 热词在 L3-L8 续跑段重建(见 _run_render_layers)。
             _update_layer(
                 run_id,
                 "L0",
@@ -315,6 +336,49 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
             _finish_run(run_id, success=False, error=f"L1 failed: {e}")
             return
 
+        # v9.1 角色权威推演(novel-studio 世界推演移植): 事件角色独立动线 + 知识边界。
+        # 推演结果注入 L2 剧本 prompt; 门禁不过只降级不阻断。
+        from hevi.tongjian.character_sim import (
+            dump_character_states,
+            gate_character_states,
+            load_character_states,
+            simulate_character_states,
+        )
+
+        character_sim_path = Path(run_dir) / "L2" / "character_sim.json"
+        character_states = load_character_states(character_sim_path)
+        if character_states is None:
+            character_states = await simulate_character_states(
+                chapter_ir, llm=_llm("L2")
+            )
+            if character_states:
+                dump_character_states(character_states, character_sim_path)
+        g_sim = gate_character_states(character_states, chapter_ir)
+        if not g_sim.passed:
+            reason = g_sim.errors[0] if g_sim.errors else "角色档案不完整"
+            logger.warning("character_sim 门禁未过(降级继续): %s", reason)
+            _update_layer(
+                run_id, "L1",
+                degraded=True,
+                degrade_reason=f"角色推演门禁未过: {reason}",
+                error=f"角色推演门禁未过: {reason}",
+            )
+
+        # v9.1 防复读记忆检索: 同系列已验收剧本的相似句注入, 避免句式重复。
+        anti_repeat = ""
+        try:
+            from hevi.prompting.anti_repeat import AntiRepeatMemory
+            from hevi.prompting.contracts import anti_repeat_block
+
+            memory = AntiRepeatMemory(req.source_name)
+            similar = memory.similar_to(
+                "\n".join(e.summary for e in chapter_ir.events)
+            )
+            if similar:
+                anti_repeat = anti_repeat_block(similar)
+        except Exception as exc:
+            logger.warning("防复读记忆检索失败: %s", exc)
+
         # L2 剧本
         _update_layer(run_id, "L2", status="RUNNING", started_at=datetime.now(UTC))
         try:
@@ -323,8 +387,10 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
                 constitution=constitution,
                 llm=_llm("L2"),
                 dramatize=bool(_params("L2").get("dramatize", True)),
+                character_states=character_states,
+                anti_repeat=anti_repeat,
                 include_commentary=bool(_params("L2").get("include_commentary", True)),
-                screenwriter_persona=_params("L2").get("screenwriter_persona") or None,
+                screenwriter_persona=str(_params("L2").get("screenwriter_persona") or ""),
             )
             _gate_done("L2", g2)
         except Exception as e:
@@ -374,10 +440,14 @@ async def _run_render_layers(run_id: str) -> dict[str, Any] | None:
     try:
         from hevi.tongjian.assemble import build_final_video
         from hevi.tongjian.character_bible import generate_character_bible
+        from hevi.tongjian.hotwords import build_asr_hotwords
         from hevi.tongjian.music_plan import build_music_plan
         from hevi.tongjian.scene_render import gate_frame_manifest, render_shots
         from hevi.tongjian.shotlist import build_shotlist
         from hevi.tongjian.voiceover import build_voiceover
+
+        # L8 装配的 ASR 热词(续跑段作用域独立, 从 chapter_ir 重建)。
+        hotwords = build_asr_hotwords(chapter_ir)
 
         _llm, _tts, _params, _gate_done = _pipeline_helpers(run_id, req)
 
@@ -484,6 +554,7 @@ async def _run_render_layers(run_id: str) -> dict[str, Any] | None:
                 constitution=constitution,
                 audio_dir=run_dir / "L3",
                 output_dir=run_dir / "L8",
+                hotwords=hotwords,
             )
             _gate_done("L8", g8)
             return {
@@ -693,6 +764,15 @@ async def update_run_script(
     from pathlib import Path
 
     _persist_review(Path(rec["run_dir"]), rec["constitution"], rec["script"])
+    # v9.1 防复读记忆: 人工编辑保存 = 已验收 → 吸收进同系列记忆。
+    try:
+        from hevi.prompting.anti_repeat import AntiRepeatMemory
+
+        text = "\n".join(ln.text for ln in lines if ln.text)
+        added = AntiRepeatMemory(rec.get("source_name") or "default").remember(text)
+        logger.info("tongjian run %s 防复读记忆吸收 %d 句", run_id, added)
+    except Exception as exc:
+        logger.warning("防复读记忆写入失败: %s", exc)
     logger.info("tongjian run %s 剧本被人工编辑保存(%d 行)", run_id, len(lines))
     return {"run_id": run_id, "status": rec["status"], "lines": str(len(lines))}
 
@@ -739,7 +819,7 @@ async def regenerate_script(
                 llm=_llm("L2"),
                 dramatize=bool(_params("L2").get("dramatize", True)),
                 include_commentary=bool(_params("L2").get("include_commentary", True)),
-                screenwriter_persona=_params("L2").get("screenwriter_persona") or None,
+                screenwriter_persona=str(_params("L2").get("screenwriter_persona") or ""),
             )
             rec["script"] = script
             _gate_done("L2", g2)

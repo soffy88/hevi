@@ -14,7 +14,7 @@ hevi-vault 用独立的 Postgres 实例(docker-compose.yml 的 hevi-vault 项目
 
 from __future__ import annotations
 
-import asyncpg  # type: ignore[import-untyped]
+import asyncpg
 
 _DDL_STATEMENTS: list[str] = [
     "CREATE EXTENSION IF NOT EXISTS vector",

@@ -1,7 +1,7 @@
 import hashlib
 import json
 
-import asyncpg  # type: ignore[import-untyped]
+import asyncpg
 from obase.persistence import PgPool
 
 from hevi.core.config import settings

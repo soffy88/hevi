@@ -86,7 +86,7 @@ class AssistService:
             if isinstance(content, str):
                 cleaned = _strip_markdown_json(content)
                 response = {**response, "content": [{"type": "text", "text": cleaned}]}
-            return response
+            return dict(response)
 
         return _wrapped
 

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "xapi": {
+      "source": "xapi-labs/xapi-cli",
+      "sourceType": "github",
+      "skillPath": "skills/xapi/SKILL.md",
+      "computedHash": "0748ef27ba9a264fcbb20c93a2b1dfc1428dec00040a4d24416cc0d25c519aff"
+    }
+  }
+}

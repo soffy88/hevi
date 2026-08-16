@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from hevi.prompt.ip_safety import rewrite_for_ip_safety
 
 

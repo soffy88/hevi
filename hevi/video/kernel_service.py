@@ -104,7 +104,7 @@ async def generate_clip(
                 bitrate_kbps=profile.bitrate_kbps,
             )
         if provider_str == VideoProvider.WAN_CLOUD:
-            return await video_generate(  # type: ignore[no-any-return]
+            out: Any = await video_generate(  # type: ignore[operator]
                 config=config,
                 provider="wan_cloud",
                 mode=mode,
@@ -115,6 +115,7 @@ async def generate_clip(
                 fps=profile.fps,
                 bitrate_kbps=profile.bitrate_kbps,
             )
+            return out if isinstance(out, Path) else Path(str(out))
         if provider_str in (VideoProvider.WAN_LOCAL, VideoProvider.LTX2_LOCAL):
             # ltx2_local 路由到 wan_local: 本机无独立 LTX2 local 推理实现。
             # RFC-002 item 1/3: 贯通分辨率/帧数 + i2v 参考图(wan2.1-1.3B 上限 ~480p,

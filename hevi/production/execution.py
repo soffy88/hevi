@@ -13,7 +13,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
-from oservi import ProductionExecutionEngine  # type: ignore[import-untyped]
+from oservi import ProductionExecutionEngine
 
 from hevi.production.contracts import ExecutionBinding
 

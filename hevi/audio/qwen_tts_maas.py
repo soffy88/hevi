@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -49,7 +50,7 @@ def qwen_tts(
     # workspace 专属 dashScope 端点(非公共欠费域名)。全局设置,同一进程内复用。
     dashscope.base_http_api_url = f"https://{h}/api/v1"
 
-    extra: dict = {}
+    extra: dict[str, Any] = {}
     if rate is not None:
         extra["rate"] = rate
     if language_type is not None:

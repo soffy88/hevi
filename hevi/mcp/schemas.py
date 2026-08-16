@@ -265,3 +265,93 @@ LIST_CAPABILITIES_OUTPUT = _obj(
         "count": {"type": "integer"},
     }
 )
+
+# ── Embrace(3O 内化能力):watch / media_resolve / repair / promote / chat ──────
+
+EMBRACE_WATCH_INPUT = _obj(
+    {
+        "source": {"type": "string", "description": "URL 或本地视频路径"},
+        "detail": {
+            "type": "string",
+            "enum": ["transcript", "efficient", "balanced", "token-burner"],
+            "default": "balanced",
+        },
+        "budget": {"type": "integer", "default": 0},
+        "contact_sheet": {"type": "boolean", "default": False},
+    }
+)
+EMBRACE_WATCH_OUTPUT = _obj(
+    {
+        "frames": {"type": "integer"},
+        "duration_s": {"type": "number"},
+        "transcript_segments": {"type": "integer"},
+        "notes": {"type": "array"},
+        "contact_sheet": {"type": "string"},
+    }
+)
+
+EMBRACE_MEDIA_RESOLVE_INPUT = _obj(
+    {
+        "type": {
+            "type": "string",
+            "enum": ["bgm", "sfx", "image", "icon", "logo", "voice", "grade", "lut", "video"],
+        },
+        "intent": {"type": "string", "description": "一句话媒体需求"},
+    }
+)
+EMBRACE_MEDIA_RESOLVE_OUTPUT = _obj(
+    {
+        "resolved": {"type": "boolean"},
+        "path": {"type": "string"},
+        "source": {"type": "string"},
+        "error": {"type": "string"},
+    }
+)
+
+EMBRACE_REPAIR_PLAN_INPUT = _obj(
+    {
+        "failures": {
+            "type": "array",
+            "description": '[{"shot_id":"s1","diagnosis":"光照"}]',
+        },
+        "budget_limit": {"type": "integer", "default": 3},
+    }
+)
+EMBRACE_REPAIR_PLAN_OUTPUT = _obj(
+    {
+        "actions": {"type": "array"},
+        "budget_used": {"type": "integer"},
+        "decision_status": {"type": "string"},
+    }
+)
+
+EMBRACE_PROMOTE_INPUT = _obj(
+    {
+        "project_id": {"type": "string"},
+        "candidate_id": {"type": "string"},
+        "kind": {"type": "string"},
+        "name": {"type": "string"},
+        "score": {"type": "number", "default": 0},
+    }
+)
+EMBRACE_PROMOTE_OUTPUT = _obj(
+    {
+        "promoted": {"type": "boolean"},
+        "asset_id": {"type": "string"},
+        "issues": {"type": "array"},
+    }
+)
+
+EMBRACE_CHAT_INPUT = _obj(
+    {
+        "project_id": {"type": "string"},
+        "message": {"type": "string"},
+    }
+)
+EMBRACE_CHAT_OUTPUT = _obj(
+    {
+        "reply": {"type": "string"},
+        "intent": {"type": "string"},
+        "turn": {"type": "integer"},
+    }
+)

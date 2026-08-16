@@ -88,4 +88,5 @@ async def run_longvideo_composer(
         name=manifest.name,
     )
     cleaned = sanitize_input_data(dict(input_data), user_id=user_id)
-    return await engine.run(input_data=cleaned, output_dir=output_dir, on_step=on_step)
+    out: Any = await engine.run(input_data=cleaned, output_dir=output_dir, on_step=on_step)
+    return out if isinstance(out, dict) else {"results": out}

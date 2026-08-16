@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import pytest
-
 from hevi.director.creative_orchestration import (
     CREATIVE_TOOL_IDS,
     apply_three_view_if_recommended,

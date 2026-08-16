@@ -37,6 +37,9 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "edge-tts>=7.2.8",
     "av>=12",  # 3O §C4: PyAV 解码抽帧(自带 ffmpeg 库,不依赖系统 ffmpeg 二进制)
+    "sqlmodel>=0.0.39",  # v9.1: 任务大盘 SQLite ORM (TaskRun 状态机)
+    "pillow>=10",  # v9.1: 素材质检(尺寸/像素总量/EXIF 方向)前端拦截的后端兜底
+    "playwright>=1.49",  # v9.1 Lite 管道:无头浏览器录屏(hevi.pipeline_lite.oprim.oprim_playwright)
 ]
 
 [dependency-groups]
@@ -51,7 +54,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-extend-exclude = ["hevi/db/alembic/"]
+extend-exclude = ["hevi/db/alembic/", "services/gen_engine/vibeasr-src/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RET", "PERF", "PIE", "RUF"]
@@ -61,6 +64,32 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 [tool.ruff.lint.per-file-ignores]
 # 测试惯用法:嵌套 with patch(...)、async-for-append、pytest.raises 正则 —— 放宽。
 "tests/**" = ["SIM117", "SIM102", "PERF401", "RUF043"]
+# freevideo 模板内嵌 CSS f-string,长行是常态。
+"hevi/assembly/freevideo/*.py" = ["E501"]
+# LLM prompt 模板 / HTML-CSS 动画模板 / SQL / 长文案 f-string:内容行(非代码行)天然超长,
+# 换行会破坏模板可读性与语义;与 freevideo 先例一致只豁免 E501,其余规则照常。
+"hevi/pipeline_lite/oprim/oprim_visual_scenes.py" = ["E501"]
+"hevi/pipeline_lite/oprim/oprim_html_gen.py" = ["E501"]
+"hevi/storygraph/extract.py" = ["E501"]
+"hevi/tongjian/chapter_ir.py" = ["E501"]
+"hevi/tongjian/shotlist.py" = ["E501"]
+"hevi/tongjian/character_bible.py" = ["E501"]
+"hevi/vault/identity_pack.py" = ["E501"]
+"hevi/vault/service.py" = ["E501"]
+"hevi/cinematic/animation_html.py" = ["E501"]
+"hevi/cinematic/golden_formula.py" = ["E501"]
+"hevi/cinematic/scene_adapt.py" = ["E501"]
+"hevi/director/screenplay.py" = ["E501"]
+"hevi/video/wavespeed_service.py" = ["E501"]
+"hevi/video/alibaba_maas_service.py" = ["E501"]
+"hevi/resilience/fallback_chain.py" = ["E501"]
+"hevi/image/sdxl_local_service.py" = ["E501"]
+"hevi/dub/_synth.py" = ["E501"]
+"hevi/director/agent.py" = ["E501"]
+"hevi/creative/__init__.py" = ["E501"]
+"hevi/canvas/node_mapper.py" = ["E501"]
+"hevi/audio/funasr_verify.py" = ["E501"]
+"hevi/audio/audio_router.py" = ["E501"]
 
 [tool.mypy]
 strict = true
@@ -70,6 +99,18 @@ exclude = ["hevi/db/alembic/"]
 [[tool.mypy.overrides]]
 module = ["vibevoice", "vibevoice.*"]
 ignore_missing_imports = true
+
+# 未提供 stubs/py.typed 的第三方运行依赖:asyncpg(直连 mneme 库)/dashscope(阿里百炼)/
+# cv2(素材质检)/oservi(3O 无状态执行骨架) —— 统一按未类型化模块处理。
+[[tool.mypy.overrides]]
+module = ["asyncpg", "dashscope", "cv2", "oservi", "oservi.*"]
+ignore_missing_imports = true
+
+# oprim 已 py.typed,但其原子函数(probe_duration/edge_tts_word_boundary 等)未标注参数类型,
+# 在严格上下文中调用会被 no-untyped-call 拦住;原子边界属第三方,放行调用(返回值仍参与检查)。
+[[tool.mypy.overrides]]
+module = ["oprim"]
+disable_error_code = ["no-untyped-call"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -199,9 +199,9 @@ async def _stability_precheck(
             cost_limit=cost_limit,
             cost_tracker=cost_tracker,
         )
-        for i, r in enumerate(batch_results):
-            if isinstance(r, Exception):
-                batch_errors[i] = r
+        batch_errors = {
+            i: r for i, r in enumerate(batch_results) if isinstance(r, Exception)
+        }
 
     candidate_paths: list[Path] = []
     pass_flags: list[bool] = []
@@ -485,7 +485,7 @@ async def build_identity_pack(
             turnaround_path = None
 
     # 5. CosyVoice 8 秒声线样本
-    voice_path = output_dir / "voice_8s.wav"
+    voice_path: Path | None = output_dir / "voice_8s.wav"
     voice_meta: dict[str, Any] = {}
     try:
         from dataclasses import dataclass
@@ -512,7 +512,7 @@ async def build_identity_pack(
         voice_path = None
 
     # 6. embedding 提取
-    embeddings_meta: dict[str, dict] = {}
+    embeddings_meta: dict[str, dict[str, Any]] = {}
     face_embedding: list[float] | None = None
     try:
         face_embedding = subject_embed(image_path=canonical_portrait, kind="face")

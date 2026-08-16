@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from hevi.cinematic.schemas import Beat, BeatDialogue
 from hevi.cinematic.scene_adapt import adapt_scene, gate_scene_adapt
+from hevi.cinematic.schemas import Beat, BeatDialogue
 from hevi.tongjian.schemas import (
     ChapterIR,
     ChapterMeta,

@@ -7,6 +7,7 @@ refresh_fal_balance 本身早就存在(hevi/resilience/live_state.py),但从未�
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -25,10 +26,8 @@ async def test_prober_calls_refresh_fal_balance_periodically():
         await asyncio.sleep(0.05)
         prober.stop()
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
     assert mock_refresh.call_count >= 2  # 至少跑了几轮,不是只跑一次就退出
 
 
@@ -45,10 +44,8 @@ async def test_prober_survives_probe_failure():
         await asyncio.sleep(0.05)
         prober.stop()
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
     assert mock_refresh.call_count >= 2
 
 
@@ -65,9 +62,7 @@ async def test_prober_stop_halts_the_loop():
         count_after_stop = mock_refresh.call_count
         await asyncio.sleep(0.05)
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
     # stop() 之后不应该再新增调用(允许一次正在飞行中的调用完成)
     assert mock_refresh.call_count <= count_after_stop + 1

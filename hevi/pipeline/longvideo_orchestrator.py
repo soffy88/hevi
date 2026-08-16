@@ -13,6 +13,7 @@ from omodul.longvideo_produce import (
     run_longvideo_pipeline,
 )
 
+from hevi.gpu.guard import degrade_audio_provider
 from hevi.observability import track_video_generation
 from hevi.pipeline.config_builder import build_longvideo_config
 from hevi.pipeline.result_mapper import map_longvideo_result
@@ -120,6 +121,9 @@ async def orchestrate_longvideo(
     # (主角特写→云高质量 / 空镜 B-roll→免费本地 wan),而非全片一个 provider。默认关,
     # 不改既有行为。
     per_shot_routing: bool = False,
+    # 云/本地 provider 生成失败时,用 freevideo 确定性动画帧兜底该镜头(不整片失败)。
+    # 默认关 —— 开启后失败镜头不再 raise(omodul 重试会跳过),产物是有效 mp4。
+    local_fallback_video: bool = False,
     avatar_portrait: str | None = None,  # RFC-002 item 11: 数字人讲解肖像图路径
     # SaaS-4:逐阶段进度回调 async (stage:str, pct:float, completed_shots=None,
     # total_shots=None)。必须为显式参数,否则会落入 **kwargs → LongVideoConfig 报错。
@@ -313,11 +317,20 @@ async def orchestrate_longvideo(
 
     _bgm_lib = BGMLibrary()
     _bgm_path = None
+    _procedural_bgm_mood: str | None = None
     if bgm:
         try:
-            _bgm_path = _bgm_lib.select_bgm(bgm)
+            direct = Path(bgm)
+            _bgm_path = direct if direct.is_file() else _bgm_lib.select_bgm(bgm)
             if _bgm_path is None:
-                logger.info("bgm mood %r 无素材,跳过配乐", bgm)
+                # 素材库空缺 → 免费程序化 BGM 兜底(hevi.audio.procedural_bgm)。
+                from hevi.audio.procedural_bgm import MOOD_PRESETS
+
+                if bgm in MOOD_PRESETS:
+                    _procedural_bgm_mood = bgm
+                    logger.info("bgm %r 无素材,改用免费程序化合成", bgm)
+                else:
+                    logger.info("bgm %r 无素材且非内置情绪,跳过配乐", bgm)
         except Exception as _be:
             logger.warning("bgm 解析失败,跳过: %s", _be)
     _sfx_path = None
@@ -330,9 +343,34 @@ async def orchestrate_longvideo(
         except Exception as _se:
             logger.warning("sfx 解析失败,跳过: %s", _se)
 
-    # 片头/片尾:文件路径存在则用于装配前后拼接(不存在则静默跳过)。
-    _intro_path = Path(intro_clip) if intro_clip and Path(intro_clip).is_file() else None
-    _outro_path = Path(outro_clip) if outro_clip and Path(outro_clip).is_file() else None
+    # 片头/片尾:文件路径存在则用于装配前后拼接(不存在则静默跳过);
+    # "text:..." 前缀 → freevideo 免费程序化动画片头/片尾(local_fallback)。
+    _intro_path = None
+    if intro_clip:
+        if isinstance(intro_clip, str) and intro_clip.startswith("text:"):
+            from hevi.video.local_fallback import render_intro_outro_async
+
+            _intro_path = await render_intro_outro_async(
+                text=intro_clip[5:],
+                output_path=Path("output/free_intro.mp4"),
+                width=_target_w, height=_target_h, fps=_target_fps,
+                is_intro=True, title=topic[:20],
+            )
+        elif Path(intro_clip).is_file():
+            _intro_path = Path(intro_clip)
+    _outro_path = None
+    if outro_clip:
+        if isinstance(outro_clip, str) and outro_clip.startswith("text:"):
+            from hevi.video.local_fallback import render_intro_outro_async
+
+            _outro_path = await render_intro_outro_async(
+                text=outro_clip[5:],
+                output_path=Path("output/free_outro.mp4"),
+                width=_target_w, height=_target_h, fps=_target_fps,
+                is_intro=False, title=topic[:20],
+            )
+        elif Path(outro_clip).is_file():
+            _outro_path = Path(outro_clip)
 
     _is_local_video = "_local" in video_provider or video_provider in ("wan_local", "ltx2_local")
 
@@ -358,6 +396,10 @@ async def orchestrate_longvideo(
     config_kwargs = dict(kwargs)
     if duration_archetype == "short":
         config_kwargs.setdefault("target_duration_s", 10.0)
+
+    # GPU 韧性:共享主机显存不足时,vibewoice(本地 GPU 合成)自动降级 edge_tts
+    # (免费云端,零 GPU)。降级只改 provider 名,不改任何调用方契约。
+    audio_provider = degrade_audio_provider(audio_provider)
 
     lv_config = build_longvideo_config(
         topic=engineered_topic,
@@ -821,6 +863,28 @@ async def orchestrate_longvideo(
                 return final
             except Exception as e:
                 logger.error(f"injected_video_fn FAILED for {video_provider}: {e}")
+                if local_fallback_video:
+                    # 失败镜头 → freevideo 确定性动画帧兜底(零成本,产物有效 mp4)。
+                    try:
+                        from hevi.video.local_fallback import render_animation_fallback_async
+
+                        _fb = await render_animation_fallback_async(
+                            prompt=prompt,
+                            output_path=output_path,
+                            width=_target_w,
+                            height=_target_h,
+                            fps=_target_fps,
+                            duration=4.0,
+                            reference_image=reference_image,
+                            title=topic[:20],
+                        )
+                        if _fb is not None and _fb.stat().st_size > 1024:
+                            logger.warning(
+                                "shot %s → freevideo 动画兜底 %s", outp.name, _fb
+                            )
+                            return _fb
+                    except Exception as _fbe:
+                        logger.error(f"freevideo fallback also failed: {_fbe}")
                 raise
 
         # RFC-002 item 2/4/5/14: hevi 原生装配器为主路径 —— 音频驱动镜头时长 +
@@ -904,6 +968,27 @@ async def orchestrate_longvideo(
             # 片头/片尾:装配前后拼接(保原时长,不参与音频驱动时长分配)。
             intro_seg = [ShotSegment(_intro_path)] if _intro_path is not None else []
             outro_seg = [ShotSegment(_outro_path)] if _outro_path is not None else []
+
+            # 免费程序化 BGM 兜底:素材库空缺时在此生成(时长取预估成片长,
+            # 装配器 -shortest 裁到实际视频长度;拍点 JSON 供 beat-sync 消费)。
+            if _procedural_bgm_mood:
+                try:
+                    from hevi.audio.procedural_bgm import BgmConfig, generate_bgm_file
+
+                    _est = max(
+                        await probe_duration(output_path) if output_path.exists() else 0.0, 60.0
+                    )
+                    bgm_wav, grid = generate_bgm_file(
+                        BgmConfig(mood=_procedural_bgm_mood, duration_s=_est),
+                        Path(lv_config.output_dir) / "procedural_bgm.wav",
+                    )
+                    _bgm_path = bgm_wav
+                    logger.info(
+                        "procedural bgm %s @%.0fbpm %d拍 → %s",
+                        _procedural_bgm_mood, grid.bpm, grid.beat_count, bgm_wav,
+                    )
+                except Exception as _bge:
+                    logger.warning("程序化 BGM 生成失败,跳过配乐: %s", _bge)
 
             try:
                 await assemble_longvideo(

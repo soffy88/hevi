@@ -108,7 +108,7 @@ async def _submit_video(
     prompt: str,
     output_path: Path,
     model: str,
-    input_builder,
+    input_builder: Any,
     parameters: dict[str, Any],
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 6.0,

@@ -17,6 +17,7 @@ ASR 全片反打(旁白轨,不含 BGM/SFX,避免背景音乐干扰识别)、VLM 
 from __future__ import annotations
 
 import logging
+import os
 import re
 import shutil
 from pathlib import Path
@@ -387,6 +388,7 @@ async def build_final_video(
     height: int | None = None,
     fps: int = 24,
     vlm: Any = None,
+    hotwords: list[str] | None = None,
 ) -> tuple[FinalVideo, GateResult]:
     """L8 主入口:逐 shot 视频化 → 旁白/BGM/SFX 主轨 → 字幕 → assemble_longvideo → G8 门。
 
@@ -467,8 +469,10 @@ async def build_final_video(
         duration_ms=duration_ms,
     )
 
-    result = await gate_final_video(final_video, timeline, script, narration_path, vlm=vlm)
-    return final_video, result
+    gate_result = await gate_final_video(
+        final_video, timeline, script, narration_path, vlm=vlm, hotwords=hotwords
+    )
+    return final_video, gate_result
 
 
 # ── G8 终审门 ────────────────────────────────────────────────────────────
@@ -536,12 +540,31 @@ async def _extract_sample_frames(video_path: Path, n: int, *, output_dir: Path) 
     return paths
 
 
-async def _asr_reverify(narration_path: Path | None, script: Script) -> tuple[float | None, str]:
+async def _asr_reverify(
+    narration_path: Path | None,
+    script: Script,
+    hotwords: list[str] | None = None,
+) -> tuple[float | None, str]:
+    """成片配音 ASR 反打: 优先 VibeVoice-ASR(热词 + 说话人), 失败回退 whisper CLI。
+
+    v9.1: hotwords(通鉴角色/地名专名) 提升专名识别; VibeVoice-ASR 输出
+    speaker 时额外核对对白说话人是否错配(返回 note 供人工参考, 不阻断)。
+    """
     if narration_path is None or not narration_path.exists():
         return None, "narration 轨不存在,ASR 全片反打跳过"
     import asyncio
 
     reference = "".join(ln.text for ln in script.lines if ln.text)
+
+    # ① 优先 VibeVoice-ASR(gen-engine, 热词 + 说话人)。
+    utterances = await _vibevoice_asr_utterances(narration_path, hotwords or [])
+    if utterances:
+        hypothesis = "".join(u.get("text", "") for u in utterances)
+        note = _asr_speaker_check(utterances, script)
+        cer = _char_error_rate(reference, hypothesis)
+        return cer, note
+
+    # ② 回退 openai-whisper CLI(无热词/说话人)。
     try:
         proc = await asyncio.create_subprocess_exec(
             "whisper",
@@ -566,6 +589,53 @@ async def _asr_reverify(narration_path: Path | None, script: Script) -> tuple[fl
     return None, "ASR 全片反打未产出转写文本"
 
 
+async def _vibevoice_asr_utterances(
+    audio: Path, hotwords: list[str]
+) -> list[dict[str, str]]:
+    """调 gen-engine /api/ai/asr; 不可用/未部署 → 空列表(回退 whisper)。"""
+    import httpx
+
+    base = (
+        os.environ.get("GEN_ENGINE_BASE_URL")
+        or os.environ.get("AI_ENGINE_BASE_URL")
+        or "http://hevi-gen-engine:17493"
+    ).rstrip("/")
+    try:
+        with audio.open("rb") as fh:
+            async with httpx.AsyncClient(
+                base_url=base, timeout=httpx.Timeout(300, connect=15)
+            ) as client:
+                response = await client.post(
+                    "/api/ai/asr",
+                    files={"audio": (audio.name, fh, "audio/wav")},
+                    data={"language": "zh", "hotwords": ",".join(hotwords)},
+                )
+        if response.status_code != 200:
+            return []
+        return (response.json().get("utterances") or []) or []
+    except Exception:
+        return []
+
+
+def _asr_speaker_check(
+    utterances: list[dict[str, str]], script: Script
+) -> str:
+    """VibeVoice-ASR 说话人 vs 剧本对白角色核对(只报 warning 不阻断)。"""
+    dialogue_speakers = {
+        ln.speaker for ln in script.lines if ln.type == "dialogue" and ln.speaker
+    }
+    asr_speakers = {u.get("speaker", "") for u in utterances if u.get("speaker")}
+    if not dialogue_speakers or not asr_speakers:
+        return ""
+    overlap = dialogue_speakers & asr_speakers
+    if not overlap:
+        return (
+            f"ASR 说话人({sorted(asr_speakers)[:3]})与剧本角色"
+            f"({sorted(dialogue_speakers)[:3]})无交集, 对白角色可能错配(人工参考)"
+        )
+    return ""
+
+
 async def gate_final_video(
     final_video: FinalVideo,
     timeline: Timeline,
@@ -573,6 +643,7 @@ async def gate_final_video(
     narration_path: Path | None,
     *,
     vlm: Any = None,
+    hotwords: list[str] | None = None,
 ) -> GateResult:
     """G8 终审门:时长偏差/黑帧/削波/ASR 反打只报 warning(装配层面的软问题,
     人工可接受);成片文件缺失或长时间黑场才算 error。
@@ -610,7 +681,7 @@ async def gate_final_video(
     except Exception as e:
         warnings.append(f"音频削波检测失败,跳过: {e}")
 
-    cer, note = await _asr_reverify(narration_path, script)
+    cer, note = await _asr_reverify(narration_path, script, hotwords=hotwords)
     if cer is not None and cer > 0.05:
         warnings.append(f"ASR 全片反打 CER={cer:.1%},超过 5% 门槛(可能装配环节引入了音画错位)")
     elif note:

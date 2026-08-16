@@ -26,6 +26,7 @@ L8 装配识别 clip_path 直接 concat(见 assemble.py)。
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import re
 import shutil
@@ -143,7 +144,7 @@ def _infer_action_phases(beats: list[str]) -> tuple[str, str, str]:
 _AXIS_CONSTRAINT = "保持人物左右站位与面部朝向稳定、空间轴线一致,避免跳轴和朝向突变"
 
 
-def _same_scene_shared(shots: list, idx: int, shot) -> bool:
+def _same_scene_shared(shots: list[Any], idx: int, shot: Any) -> bool:
     """§J:当前镜与上一镜同场景且有共同在场角色 → True(轴线连续风险,该守稳)。"""
     if idx <= 0:
         return False
@@ -155,15 +156,15 @@ def _same_scene_shared(shots: list, idx: int, shot) -> bool:
     )
 
 
-def _shot_edge(shot, *, end: bool) -> str:
+def _shot_edge(shot: Any, *, end: bool) -> str:
     """一个镜的"结尾/起始"文本:优先取 action_beats 收束拍/触发拍,无 beats 退回 visual_prompt。"""
     beats = shot.action_beats or []
     if beats:
-        return (beats[-1] if end else beats[0]).strip()
-    return (shot.visual_prompt or "").strip()
+        return str(beats[-1] if end else beats[0]).strip()
+    return str(shot.visual_prompt or "").strip()
 
 
-def _adjacent_context(shots: list, idx: int) -> tuple[str, str]:
+def _adjacent_context(shots: list[Any], idx: int) -> tuple[str, str]:
     """INC-001 §J 完整版:相邻镜头上下文。返回(承接上镜, 过渡下镜)两句连续性建议——
     当前镜与相邻镜同场景时,用相邻镜的收束/触发态(见 _shot_edge)提示承接与过渡。换场不给。
     (与观察态 4.0.1b 叠加:此处是计划态双向照应;实际末帧覆盖起始态由观察态另行处理。)"""
@@ -547,7 +548,7 @@ async def build_frame_manifest_avatar(
         )
         is_dialogue = dlg_line is not None
         lead = (
-            dlg_line.speaker if is_dialogue else (shot.characters[0] if shot.characters else None)
+            dlg_line.speaker if dlg_line else (shot.characters[0] if shot.characters else None)
         )
         emotion = (
             dlg_line.emotion if dlg_line else (lines[0].emotion if lines else "")
@@ -568,7 +569,7 @@ async def build_frame_manifest_avatar(
         )
         # INC-001 §H:说话者目光看向受话者(eyeline)——target 是桥接层已校验的已锁定角色。
         _eyeline = ""
-        if dlg_line and getattr(dlg_line, "target", ""):
+        if dlg_line and dlg_line.target:
             _eyeline = f",目光看向{name_by_id.get(dlg_line.target, dlg_line.target)}"
         # INC-001 §J:同场景连续轴线(必守)+ 相邻镜承接/过渡上下文(优先)。
         _axis = _same_scene_shared(shotlist.shots, idx, shot)
@@ -991,10 +992,8 @@ def _audio_video_dur(clip: Path) -> tuple[float, float, float]:
     mean = -91.0
     for ln in vol.splitlines():
         if "mean_volume:" in ln:
-            try:
+            with contextlib.suppress(Exception):
                 mean = float(ln.split("mean_volume:")[1].strip().split()[0])
-            except Exception:
-                pass
     return _dur("v:0"), _dur("a:0"), mean
 
 

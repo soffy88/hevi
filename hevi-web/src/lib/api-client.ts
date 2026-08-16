@@ -8,7 +8,8 @@ import type {
   CreativeCapability, Subject, SubjectKind,
   AuthRes, AuthUser, CreditsBalance,
   CapabilityDescriptor, Presenter, PresenterInput, PresenterReadiness, ProductionRequest, ProductionTask,
-  AspectRatio, QualityProfile,
+  AspectRatio, QualityProfile, LiteAssemblePayload, LiteAssembleAccepted,
+  LiteRunCreatePayload, LiteRunRecord, LiteCueInput,
 } from '@/types/api';
 export type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
 
@@ -483,6 +484,8 @@ export const directorPipelineApi = {
 
 // ── 自媒体解说短视频通道(hevi.explainer,需登录)──────────────────────────────
 import type {
+  DashboardTask,
+  DashboardTaskList,
   ExplainerAssembleRequest,
   ExplainerAssemblyAccepted,
   ExplainerResearchJob,
@@ -490,6 +493,7 @@ import type {
   ExplainerResearchResponse,
   ExplainerRunRequest,
   ExplainerRunStatus,
+  PresenterImageCheckResponse,
 } from '@/types/api';
 export const explainerApi = {
   /** 异步研究:立即返 202 + processing 信封,前端凭 session_id 轮询。 */
@@ -517,6 +521,95 @@ export const explainerApi = {
     authedReq<ExplainerRunStatus>(`/api/explainer/runs/${runId}`),
   listRuns: () =>
     authedReq<ExplainerRunStatus[]>('/api/explainer/runs'),
+  /** v9.1 底图上传:字节落盘 + 服务端权威质检,通过后返回可读回的本地路径。 */
+  uploadPresenterImage: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<PresenterImageCheckResponse>(
+      '/api/explainer/upload-presenter-image',
+      form,
+    );
+  },
+  /** v9.1 素材质检:远端 URL 的合法性复核(提交装配前的服务端双保险)。 */
+  validatePresenterImage: (imageUrl: string) =>
+    authedReq<PresenterImageCheckResponse>('/api/explainer/validate-presenter-image', {
+      method: 'POST',
+      body: JSON.stringify({ image_url: imageUrl }),
+    }),
+};
+
+// ── v9.1 任务大盘(SQLite TaskRun + WebSocket 实时进度) ───────────────────
+
+export const dashboardApi = {
+  /** 分页 + 状态过滤的任务历史大盘,按 created_at 倒序。 */
+  listTasks: (params?: { limit?: number; offset?: number; status?: string }) =>
+    authedReq<DashboardTaskList>(
+      `/api/dashboard/tasks?${new URLSearchParams(
+        Object.entries({
+          limit: String(params?.limit ?? 20),
+          offset: String(params?.offset ?? 0),
+          ...(params?.status ? { status: params.status } : {}),
+        }),
+      ).toString()}`,
+    ),
+  /** 单工单详情(含颗粒度 state_json,断点续传/排障可读)。 */
+  getTask: (taskId: string) =>
+    authedReq<DashboardTask>(`/api/dashboard/tasks/${encodeURIComponent(taskId)}`),
+  /** 成片预览/下载:<video>/<a download> 不能带 header,token 走查询参数(同 taskApi.videoUrl)。 */
+  outputUrl: (taskId: string) =>
+    `${API_BASE}/api/dashboard/tasks/${encodeURIComponent(taskId)}/output${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
+};
+
+// ── v9.1 Lite 管道发射台(轻量解说: HTML→录屏→成片) ──────────────────────
+
+export const liteApi = {
+  /** 提交 Lite 装配任务;202 受理后后台执行,大盘实时看进度。 */
+  assemble: (payload: LiteAssemblePayload) =>
+    authedReq<LiteAssembleAccepted>('/api/lite/assemble', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  /** 选题 → LLM 文案 + veya-loop → awaiting_confirm。 */
+  createRun: (payload: LiteRunCreatePayload) =>
+    authedReq<LiteRunRecord>('/api/lite/runs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getRun: (runId: string) => authedReq<LiteRunRecord>(`/api/lite/runs/${runId}`),
+
+  /** 审稿 HTML 预览 URL(iframe src;不落 MP4)。带 cache-bust。 */
+  previewUrl: (runId: string, bust?: number | string) =>
+    `${API_BASE}/api/lite/runs/${encodeURIComponent(runId)}/preview.html?t=${bust ?? Date.now()}`,
+
+  patchScript: (
+    runId: string,
+    body: {
+      title?: string;
+      hook?: string;
+      script?: string;
+      cues?: LiteCueInput[];
+      reloop?: boolean;
+      max_rounds?: number;
+    },
+  ) =>
+    authedReq<LiteRunRecord>(`/api/lite/runs/${runId}/script`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  reloop: (runId: string, maxRounds = 2) =>
+    authedReq<LiteRunRecord>(`/api/lite/runs/${runId}/reloop?max_rounds=${maxRounds}`, {
+      method: 'POST',
+    }),
+
+  /** 确认文案 → 本地零费用出片。 */
+  confirm: (runId: string, body?: { script?: string; cues?: LiteCueInput[] }) =>
+    authedReq<LiteRunRecord>(`/api/lite/runs/${runId}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify(body ?? {}),
+    }),
 };
 
 // ── 恢复的工作室能力（与原有工作台保持同一客户端边界） ────────────────
@@ -578,4 +671,17 @@ export const publishStudioApi = {
   voiceDub: (body: { video_path: string; target_language: string }) => authedReq<{ task_id: string; status: string }>('/api/studio/voice/dub', { method: 'POST', body: JSON.stringify(body) }),
   danceGpuCheck: () => authedReq<{ available: boolean; gpu_name?: string; vram_mb?: number }>('/api/studio/dance/gpu-check'),
   danceGenerate: (body: { audio_path: string; dance_type: string; duration_s?: number }) => authedReq<{ task_id: string; status: string }>('/api/studio/dance/generate', { method: 'POST', body: JSON.stringify(body) }),
+};
+
+// ── 黄金公式动画演绎 (故事 → 分镜矩阵 → 动画出片) ────────────────
+export const cinematicApi = {
+  animate: (body: { story: string; beats_json?: string; ratio?: string; task_id?: string }) =>
+    authedReq<{ task_id: string; status: string; progress: number; n_beats: number }>('/api/cinematic/animate', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  get: (taskId: string) =>
+    authedReq<{ task_id: string; status: string; progress: number; error?: string; stage?: string; shot_index?: number; beats?: Array<Record<string, unknown>>; video_path?: string }>(`/api/cinematic/tasks/${taskId}`),
+  videoUrl: (taskId: string) =>
+    `${API_BASE}/api/cinematic/tasks/${taskId}/video${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
 };

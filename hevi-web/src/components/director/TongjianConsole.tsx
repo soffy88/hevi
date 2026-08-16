@@ -58,10 +58,15 @@ const DRILL_RATIOS: { value: string; label: string; desc: string; commentary: bo
   },
 ];
 
-// 视觉风格三档(SPEC v4.0 §2.1)→ L6 params.style。默认国风水墨。
+// 视觉风格四档(SPEC v4.0 §2.1)→ L6 params.style。默认儿童卡通动画
+// (水墨是成年观众取向, 通鉴里儿童向内容占比不小 —— 默认改卡通, 水墨保留可选)。
 const VISUAL_STYLES: { value: string; label: string; prompt: string }[] = [
   {
-    value: 'ink', label: '🎨 国风水墨（默认）',
+    value: 'cartoon', label: '🧸 儿童卡通动画（默认）',
+    prompt: '色彩鲜艳的儿童卡通动画风格,圆润可爱的角色造型,明亮欢快的配色,简洁清晰的大色块,温和明快的画风,适合儿童观看',
+  },
+  {
+    value: 'ink', label: '🎨 国风水墨',
     prompt: '国画水墨写意人物画,单色水墨,写意笔触,宣纸质感,古风留白,沉稳大气',
   },
   {
@@ -106,7 +111,7 @@ export function TongjianConsole() {
 
   // ── SPEC v4.0 §2.1 演绎与生成模式配置 ──
   const [drillRatio, setDrillRatio] = useState('balanced');       // 演绎比例
-  const [visualStyle, setVisualStyle] = useState('ink');          // 视觉风格三档
+  const [visualStyle, setVisualStyle] = useState('cartoon');      // 视觉风格四档(默认儿童卡通动画)
   const [narrator, setNarrator] = useState('laozhang');           // 讲解人预设
   const [onCamera, setOnCamera] = useState(false);                // 数字人出镜讲解
   const [redline, setRedline] = useState(true);                   // CG2.5 史实红线

@@ -7,9 +7,9 @@ import pytest
 from hevi.prompt.prompt_pipeline import (
     HEVI_TO_OPRIM_PROVIDER,
     IDENTITY_LOCK_SENTENCE,
-    ensure_identity_lock_sentence,
     engineer_prompt,
     engineer_prompt_from_preset,
+    ensure_identity_lock_sentence,
     lint_engineered_prompt,
 )
 from hevi.prompt.style_presets import STYLE_PRESETS, get_style_preset

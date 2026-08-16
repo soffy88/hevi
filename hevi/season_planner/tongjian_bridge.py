@@ -324,7 +324,7 @@ async def render_episode(
             shotlist=shotlist, timeline=timeline, constitution=constitution
         )
         gate_reports["music_plan"] = g7
-    except Exception as e:  # noqa: BLE001 — L7 非致命,降级到无音乐(同通鉴 router 惯例)
+    except Exception as e:
         logger.warning("shortdrama render: L7 音乐规划失败,降级无音乐: %s", e)
         from hevi.tongjian.schemas import MusicPlan
 

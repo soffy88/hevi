@@ -87,7 +87,7 @@ async def test_align_subtitles_bilingual_missing_file(tmp_path: Path) -> None:
 
 async def test_align_subtitles_bilingual_writes_merged_srt(tmp_path: Path) -> None:
     """转写+翻译 mock,验证落盘的 SRT 每块含原文+译文两行。"""
-    from unittest.mock import AsyncMock, patch
+    from unittest.mock import patch
 
     audio = tmp_path / "narration.wav"
     audio.write_bytes(b"\x00" * 64)  # 只需存在,transcribe_to_cues 被 mock 掉

@@ -45,7 +45,7 @@ class _FakeAsyncClient:
         self._responses = list(responses)
         self._calls = calls
 
-    async def __aenter__(self) -> "_FakeAsyncClient":
+    async def __aenter__(self) -> _FakeAsyncClient:
         return self
 
     async def __aexit__(self, *exc: Any) -> None:

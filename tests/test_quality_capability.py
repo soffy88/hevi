@@ -14,7 +14,6 @@ from hevi.video.quality_profile import (
     resolve_resolution,
 )
 
-
 # ── 画幅解锁:档位定清晰度,画幅定朝向 ──────────────────────────────────────
 
 

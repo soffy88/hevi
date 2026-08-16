@@ -8,6 +8,8 @@ C2.5/C4/C6 消费 tongjian 的 ChapterIR/Constitution/Script 作为输入,但产
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -29,6 +31,11 @@ class Beat(BaseModel):
     beat_id: str
     action: str = ""  # 动作/表演描述,允许合理虚构,但 CG2.5 审"不得改变史实因果"
     dialogue: BeatDialogue | None = None
+    # 黄金公式变量 (演绎段动画化, 见 golden_formula.py):
+    # [景别/运镜] + [主体+动作+表情/肢体] + [氛围/光线]
+    emotion_expression: str = ""   # 表情/肢体 (例: 嘴角上扬欢笑 / 双眼张大恐慌)
+    atmosphere: str = ""           # 氛围 (例: 轻松嬉戏 / 紧张危机)
+    lighting: str = ""             # 光线 (例: 明亮日光 / 暖阳洒下)
     # C4 默认按"有没有 dialogue"推断 on_screen/shot_size(有台词→说话人单独中近景,
     # 没台词→全场角色入镜的建立/氛围 wide 镜头),这两个 hint 字段用来覆盖默认推断——
     # 比如一句没有台词的反应镜头(某角色听完话皱眉),既不是"说话人独白"也不该是
@@ -61,6 +68,12 @@ class CineShot(BaseModel):
     dialogue_inline: BeatDialogue | None = None
     est_duration_s: float = 6.0
     prompt: str = ""  # 已经过 lint_shot_prompt 校验的最终 shot prompt
+    # 演绎风格: live=真人参考图→视频(需身份包), animation=动画文生视频(无参考图)
+    style: Literal["live", "animation"] = "live"
+    # 黄金公式变量 (由 Beat 继承/LLM 拆解器填充, 拼进 prompt 或直接喂视频 API)
+    emotion_expression: str = ""
+    atmosphere: str = ""
+    lighting: str = ""
 
 
 class CineShotList(BaseModel):

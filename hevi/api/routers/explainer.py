@@ -9,10 +9,17 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+)
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
@@ -36,6 +43,7 @@ from hevi.presenters.repository import PresenterRepository
 from hevi.production.execution import execution_binding
 from hevi.runs.repository import AutomationRunRepository
 from hevi.runs.task_projection import create_projection, update_projection
+from hevi.subjects.reference_store import ReferenceStore
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 
@@ -48,6 +56,20 @@ _LAYER_ORDER = ["E0", "E1", "E2"]
 
 class RunRequest(BaseModel):
     topic: str
+
+
+class PresenterImageCheckRequest(BaseModel):
+    image_url: str
+
+
+class PresenterImageCheckResponse(BaseModel):
+    valid: bool
+    reason: str
+    width: int | None = None
+    height: int | None = None
+    face_count: int | None = None
+    face_ratio: float | None = None
+    face_check: str = "skipped"
 
 
 class LayerState(BaseModel):
@@ -292,7 +314,15 @@ async def _run_pipeline(repo: AutomationRunRepository, run_id: str) -> None:
 
     await _update_layer(repo, rec, "E2", status="RUNNING", started_at=datetime.now(UTC).isoformat())
     try:
-        result = await render_narrated_storyboard(storyboard, Path("output/explainer") / run_id)
+        # 🚨 v9.1: 主管道同样走工单沙盒 data/workspace/{task_id}/。
+        from hevi.core.workspace import WorkspaceManager
+
+        ws = WorkspaceManager(task_id or run_id, pipeline_type="main_remotion")
+        ws.update_progress("running", 60)
+        result = await render_narrated_storyboard(storyboard, ws.root)
+        ws.mark_step_done("render", progress=100)
+        # v9.1 产物身份: 成片 SHA-256 绑定(竖屏主片), 返工/审核对同一稿。
+        ws.record_result_sha(result.portrait_path)
         await _update_layer(
             repo, rec, "E2", status="PASSED", finished_at=datetime.now(UTC).isoformat()
         )
@@ -343,10 +373,17 @@ async def _run_assembled_pipeline(repo: AutomationRunRepository, run_id: str) ->
     await _update_layer(repo, rec, "E2", status="RUNNING", started_at=datetime.now(UTC).isoformat())
     try:
         body = ExplainerAssembleRequest.model_validate(config)
+        # 🚨 v9.1: 工单沙盒 —— 每个 run 独立 data/workspace/{task_id}/ 目录,
+        # 状态机(TaskRun)支持崩溃重试跳过已完成步骤;15s 先导样片也走同一沙盒。
+        from hevi.core.workspace import WorkspaceManager
+
+        task_id_ws = task_id or run_id
+        ws = WorkspaceManager(task_id_ws, pipeline_type="main_remotion")
+        ws.update_progress("running", 8)
         result = await assemble_explainer_cues(
             body.topic_or_url or body.selected_hook,
             body.final_script_cues,
-            Path("output/explainer") / run_id,
+            ws.root,
             voice=body.voice_profile,
             enable_circle_avatar_mask=body.enable_circle_avatar_mask,
             enable_remotion_code_render=body.enable_remotion_code_render,
@@ -355,7 +392,10 @@ async def _run_assembled_pipeline(repo: AutomationRunRepository, run_id: str) ->
             heygen_presenter_id=body.heygen_presenter_id,
             presenter_provider=body.presenter_provider,
             presenter_name=body.presenter_name,
+            presenter_image_url=body.presenter_image_url,
+            preview_mode=bool(body.preview_mode),
         )
+        ws.mark_step_done("render", progress=100)
         manifest = result.engine_result.get("artifacts")
         decision_trail = result.engine_result.get("decision_trail") or []
         await _update_layer(
@@ -525,6 +565,74 @@ def _parse_assemble_payload(raw: Any) -> ExplainerAssembleRequest:
         raise HTTPException(status_code=422, detail=f"装配入参不合法: {exc}") from exc
 
 
+@router.post("/validate-presenter-image", response_model=PresenterImageCheckResponse)
+async def validate_presenter_image_endpoint(
+    body: PresenterImageCheckRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> PresenterImageCheckResponse:
+    """v9.1 素材质检:数字人底图合法性校验(可访问/尺寸/人脸占比)。
+
+    用户在确稿台上传底图后,前端先把图片交给本地 AI 预检,提交前再调本
+    接口做服务端权威校验 —— 双保险,拒绝无脸/超大图进入渲染队列。
+    """
+    del user
+    from hevi.sourcing.asset_validator import validate_presenter_image as _validate
+
+    verdict = await _validate(body.image_url)
+    return PresenterImageCheckResponse(
+        valid=verdict.valid,
+        reason=verdict.reason,
+        width=verdict.width,
+        height=verdict.height,
+        face_count=verdict.face_count,
+        face_ratio=verdict.face_ratio,
+        face_check=verdict.face_check,
+    )
+
+
+@router.post("/upload-presenter-image", response_model=PresenterImageCheckResponse)
+async def upload_presenter_image_endpoint(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    file: Annotated[UploadFile, File(description="数字人底图(JPG/PNG,≤10MB)")],
+) -> PresenterImageCheckResponse:
+    """v9.1 确稿台底图上传:字节落盘 + 服务端权威质检,一步到位。
+
+    前端 Dropzone 本地 AI 预检通过后上传;这里用与 URL 校验完全相同的
+    ``_validate_bytes`` 逻辑复核(防绕过),通过则把图片落盘到
+    ``output/presenter_images/<uuid>.jpg`` 并返回可读回的路径 —— 装配时
+    ``presenter_image_url`` 直接传这个路径(本地读盘,不再二次下载)。
+    """
+    del user
+    from hevi.sourcing.asset_validator import (
+        MAX_DOWNLOAD_BYTES,
+        validate_presenter_bytes,
+    )
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=422, detail="空文件")
+    if len(data) > MAX_DOWNLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="图片超过 20MB 上限,请压缩后重试")
+
+    verdict = validate_presenter_bytes(data)
+    if not verdict.valid:
+        raise HTTPException(status_code=422, detail=f"数字人底图不合规: {verdict.reason}")
+
+    namespace = f"presenter-{uuid.uuid4()}"
+    path = ReferenceStore().save_upload(
+        namespace, file.filename or "presenter.png", data
+    )
+    return PresenterImageCheckResponse(
+        valid=True,
+        reason=path,
+        width=verdict.width,
+        height=verdict.height,
+        face_count=verdict.face_count,
+        face_ratio=verdict.face_ratio,
+        face_check=verdict.face_check,
+    )
+
+
 @router.post("/assemble", response_model=ExplainerAssemblyAccepted, status_code=202)
 async def assemble_explainer(
     request: Request,
@@ -538,6 +646,17 @@ async def assemble_explainer(
     字段漏给 cue.get(),也从根上杜绝 422 误伤可恢复数据。
     """
     body = _parse_assemble_payload(await request.json())
+    # 🚨 v9.1: 素材质检前置拦截 —— presenter_image_url 不合法(不可访问/超大
+    # 尺寸/无脸或多脸)直接 422 拒绝入队,不浪费渲染算力。
+    if body.presenter_image_url:
+        from hevi.sourcing.asset_validator import validate_presenter_image as _validate_image
+
+        verdict = await _validate_image(body.presenter_image_url)
+        if not verdict.valid:
+            raise HTTPException(
+                status_code=422,
+                detail=f"数字人底图不合规: {verdict.reason}",
+            )
     has_avatar_cue = any(
         cue.visual_type == "heygen_avatar" for cue in body.final_script_cues
     )

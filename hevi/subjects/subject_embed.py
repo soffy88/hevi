@@ -53,7 +53,7 @@ def _ensure_model() -> tuple[Any, Any]:
         if _model is None or _processor is None:
             try:
                 import torch  # noqa: F401
-                from transformers import CLIPModel, CLIPProcessor
+                from transformers.models.clip import CLIPModel, CLIPProcessor
             except ImportError as e:  # pragma: no cover - env guard
                 raise SubjectEmbedError(f"subject_embed 需要 torch+transformers: {e}") from e
             logger.info("subject_embed: loading CLIP %s (CPU, local_files_only)", _CLIP_MODEL_ID)
@@ -96,7 +96,7 @@ def _embed_image(img: Any, model: Any, processor: Any) -> list[float]:
     norm = v.norm()
     if float(norm) == 0.0:
         raise SubjectEmbedError("zero-norm embedding")
-    return (v / norm).tolist()
+    return list((v / norm).tolist())
 
 
 def subject_embed(
@@ -149,7 +149,7 @@ def text_embed(text: str) -> list[float]:
         norm = v.norm()
         if float(norm) == 0.0:
             raise SubjectEmbedError("zero-norm embedding")
-        return (v / norm).tolist()
+        return list((v / norm).tolist())
     except SubjectEmbedError:
         raise
     except Exception as e:

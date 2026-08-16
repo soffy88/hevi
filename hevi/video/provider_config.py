@@ -12,8 +12,7 @@ class VideoProvider(StrEnum):
     HAILUO = "hailuo"  # MiniMax 海螺 02
     # 参考图锁脸(reference-to-video)通道:hevi/providers/registry.py 已注册,
     # 这里补全枚举——否则 build_longvideo_config 会拒绝这些合法 provider 名。
-    VIDU = "vidu"  # Vidu Reference-to-Video
-    HAPPYHORSE_1_1 = "happyhorse_1_1"  # WaveSpeed 转售
+    VIDU = "vidu"  # Vidu Reference-to-Video    HAPPYHORSE_1_1 = "happyhorse_1_1"  # WaveSpeed 转售
     HAPPYHORSE_1_1_REF = "happyhorse_1_1_ref"  # WaveSpeed 转售,reference_images 版
     WAN_2_7 = "wan_2_7"  # WaveSpeed 转售
     HAPPYHORSE_1_1_MAAS = "happyhorse_1_1_maas"  # 阿里云百炼官方直连
@@ -22,6 +21,9 @@ class VideoProvider(StrEnum):
     # hevi/video/alibaba_maas_service.py::happyhorse_1_1_maas_lock_generate 顶部注释。
     HAPPYHORSE_1_1_MAAS_LOCK = "happyhorse_1_1_maas_lock"
     WAN_2_7_MAAS = "wan_2_7_maas"  # 阿里云百炼官方直连
+    # 本地 MiniMax H3(ComfyUI,8GB):零成本、原生中文音频、zh prompt 直出。
+    # 消费约定见 hevi/providers/h3_local/provider.py::h3_local_generate。
+    H3_LOCAL = "h3_local"
 
 
 # 支持 negative_prompt / aspect_ratio 的高写实云 provider(hevi 侧路由概念:

@@ -2736,6 +2736,308 @@
         }
       }
     },
+    "/api/tasks/{task_id}/shots/preparation": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Shots Preparation",
+        "description": "镜头准备聚合状态:每镜的候选(资产/对白)+ 动作节拍 + pending 计数。\n\n未构建过准备状态的镜头用确定性提取现场生成(不落库,只读视图);\n已确认的镜头读回落库状态。",
+        "operationId": "get_shots_preparation_api_tasks__task_id__shots_preparation_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Shots Preparation Api Tasks  Task Id  Shots Preparation Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/shots/{shot_index}/candidates/{candidate_id}": {
+      "patch": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Confirm Shot Candidate",
+        "description": "确认一个镜头候选(accept/ignore)。全部处理完 → 镜头 ready。",
+        "operationId": "confirm_shot_candidate_api_tasks__task_id__shots__shot_index__candidates__candidate_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "shot_index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Shot Index"
+            }
+          },
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateDecision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Confirm Shot Candidate Api Tasks  Task Id  Shots  Shot Index  Candidates  Candidate Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/shots/{shot_index}/action_beats": {
+      "patch": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Update Shot Action Beats",
+        "description": "人工修正一镜的动作节拍(确定性推断不理想时)。",
+        "operationId": "update_shot_action_beats_api_tasks__task_id__shots__shot_index__action_beats_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "shot_index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Shot Index"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionBeatsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Update Shot Action Beats Api Tasks  Task Id  Shots  Shot Index  Action Beats Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/cancel": {
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Cancel Task",
+        "description": "取消任务(标记 cancelled;已完成/已取消的任务拒绝)。\n\nhevi 后台任务不支持强杀,取消语义 = 标记状态供 worker 检查后停止,\n与 Jellyfish GenerationTask 取消语义对齐(状态驱动)。",
+        "operationId": "cancel_task_api_tasks__task_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Task Api Tasks  Task Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/checkpoint": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Task Checkpoint",
+        "description": "断点查询: 任务的进度锚点(阶段/已完成镜头/百分比) + 续跑决策,\n前端据此展示\"可续跑/跳过 N 镜\"。确定性,不调 LLM。",
+        "operationId": "get_task_checkpoint_api_tasks__task_id__checkpoint_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Task Checkpoint Api Tasks  Task Id  Checkpoint Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/subjects": {
       "post": {
         "tags": [
@@ -3943,6 +4245,55 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Run Comic To Animation Api Creative Workflow Comic To Animation Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/creative/xia/chat": {
+      "post": {
+        "tags": [
+          "creative"
+        ],
+        "summary": "Xia Chat",
+        "description": "对话式制片: 自然语言 → 意图路由 → 工具分发(装配层可注入真实操作)。",
+        "operationId": "xia_chat_api_creative_xia_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/XiaChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Xia Chat Api Creative Xia Chat Post"
                 }
               }
             }
@@ -6768,7 +7119,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ProduceRequest"
+                "$ref": "#/components/schemas/hevi__api__routers__director_pipeline__ProduceRequest"
               }
             }
           }
@@ -7202,6 +7553,368 @@
         }
       }
     },
+    "/api/cinematic/animate": {
+      "post": {
+        "tags": [
+          "cinematic"
+        ],
+        "summary": "Animate",
+        "operationId": "animate_api_cinematic_animate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnimateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnimateAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cinematic/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "cinematic"
+        ],
+        "summary": "Get Animation Task",
+        "operationId": "get_animation_task_api_cinematic_tasks__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Animation Task Api Cinematic Tasks  Task Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cinematic/tasks/{task_id}/video": {
+      "get": {
+        "tags": [
+          "cinematic"
+        ],
+        "summary": "Get Animation Video",
+        "operationId": "get_animation_video_api_cinematic_tasks__task_id__video_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Get Animation Video Api Cinematic Tasks  Task Id  Video Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/history-series/queue": {
+      "get": {
+        "tags": [
+          "history-series"
+        ],
+        "summary": "Get Queue",
+        "operationId": "get_queue_api_history_series_queue_get",
+        "parameters": [
+          {
+            "name": "tb_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "TONGBIAN-G7-HISTORY-S",
+              "title": "Tb Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Get Queue Api History Series Queue Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/history-series/next": {
+      "get": {
+        "tags": [
+          "history-series"
+        ],
+        "summary": "Get Next",
+        "operationId": "get_next_api_history_series_next_get",
+        "parameters": [
+          {
+            "name": "tb_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "TONGBIAN-G7-HISTORY-S",
+              "title": "Tb Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Next Api History Series Next Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/history-series/produce": {
+      "post": {
+        "tags": [
+          "history-series"
+        ],
+        "summary": "Produce",
+        "operationId": "produce_api_history_series_produce_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/hevi__api__routers__history_series__ProduceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Produce Api History Series Produce Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/history-series/produce-daily": {
+      "post": {
+        "tags": [
+          "history-series"
+        ],
+        "summary": "Produce Daily",
+        "operationId": "produce_daily_api_history_series_produce_daily_post",
+        "parameters": [
+          {
+            "name": "tb_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "TONGBIAN-G7-HISTORY-S",
+              "title": "Tb Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Produce Daily Api History Series Produce Daily Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/history-series/animate": {
+      "post": {
+        "tags": [
+          "history-series"
+        ],
+        "summary": "Animate Episode",
+        "description": "动画管道出片（零 API 额度, HTML/CSS 动画 + TTS, 替代 tongjian SDXL 渲染）。",
+        "operationId": "animate_episode_api_history_series_animate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/hevi__api__routers__history_series__ProduceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Animate Episode Api History Series Animate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/shortdrama/runs": {
       "get": {
         "tags": [
@@ -7520,7 +8233,7 @@
           "explainer"
         ],
         "summary": "Research Explainer",
-        "description": "Research one topic and return a progressive hook matrix plus editable scripts.\n\n响应前把调研与 3 版脚本强制落盘(断点续传):即使后半段装配/渲染报错,\n确稿数据依然在磁盘缓存,前端刷新后凭 session_id 直接恢复,无需重跑研究。",
+        "description": "立刻派发异步研究任务并返回 202(根治长视频研究 524 超时)。\n\n同步跑完整研究(分章生成几百秒)会超 Cloudflare 100s 上限。这里改成:\n立刻设备一个 processing 状态信封到本地缓存,后台任务执行 research_and_generate,\n跑完覆盖成 ready + 完整确稿数据(或 failed + 错误);HTTP 连接秒回 202 + session_id。\n前端凭 session_id 轮询 GET /research/{session_id},status=ready 后进入确稿台。\n原断点续传语义不变:ready 的信封 payload 即完整的阶段一数据。",
         "operationId": "research_explainer_api_explainer_research_post",
         "requestBody": {
           "content": {
@@ -7533,12 +8246,12 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExplainerResearchResponse"
+                  "$ref": "#/components/schemas/ExplainerResearchJob"
                 }
               }
             }
@@ -7567,7 +8280,7 @@
           "explainer"
         ],
         "summary": "Get Research Cache",
-        "description": "断点续传:凭 session_id 从本地缓存恢复调研与确稿数据(不重跑研究)。",
+        "description": "轮询研究任务状态信封:processing 继续等、ready 返回完整确稿 payload、failed 返回错误。\n\n复用原断点续传缓存(现升级为状态信封)。前端轮询此接口, Cloudflare 不会超时(秒级响应)。",
         "operationId": "get_research_cache_api_explainer_research__session_id__get",
         "security": [
           {
@@ -7591,7 +8304,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ExplainerResearchResponse"
+                  "$ref": "#/components/schemas/ExplainerResearchJob"
                 }
               }
             }
@@ -7607,6 +8320,100 @@
             }
           }
         }
+      }
+    },
+    "/api/explainer/validate-presenter-image": {
+      "post": {
+        "tags": [
+          "explainer"
+        ],
+        "summary": "Validate Presenter Image Endpoint",
+        "description": "v9.1 素材质检:数字人底图合法性校验(可访问/尺寸/人脸占比)。\n\n用户在确稿台上传底图后,前端先把图片交给本地 AI 预检,提交前再调本\n接口做服务端权威校验 —— 双保险,拒绝无脸/超大图进入渲染队列。",
+        "operationId": "validate_presenter_image_endpoint_api_explainer_validate_presenter_image_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresenterImageCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenterImageCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/explainer/upload-presenter-image": {
+      "post": {
+        "tags": [
+          "explainer"
+        ],
+        "summary": "Upload Presenter Image Endpoint",
+        "description": "v9.1 确稿台底图上传:字节落盘 + 服务端权威质检,一步到位。\n\n前端 Dropzone 本地 AI 预检通过后上传;这里用与 URL 校验完全相同的\n``_validate_bytes`` 逻辑复核(防绕过),通过则把图片落盘到\n``output/presenter_images/<uuid>.jpg`` 并返回可读回的路径 —— 装配时\n``presenter_image_url`` 直接传这个路径(本地读盘,不再二次下载)。",
+        "operationId": "upload_presenter_image_endpoint_api_explainer_upload_presenter_image_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_presenter_image_endpoint_api_explainer_upload_presenter_image_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenterImageCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/explainer/assemble": {
@@ -8161,6 +8968,1287 @@
         ]
       }
     },
+    "/api/dashboard/tasks": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "List Tasks",
+        "description": "任务列表:created_at 倒序 + 可选 status 过滤 + 分页;附带全量状态计数。",
+        "operationId": "list_tasks_api_dashboard_tasks_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Tasks Api Dashboard Tasks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Task",
+        "operationId": "get_task_api_dashboard_tasks__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Task Api Dashboard Tasks  Task Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/tasks/{task_id}/output": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Serve Task Output",
+        "operationId": "serve_task_output_api_dashboard_tasks__task_id__output_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/runs": {
+      "post": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Create Run",
+        "description": "选题 → 后台 LLM 出文案 + veya-loop → awaiting_confirm。",
+        "operationId": "create_run_api_lite_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiteRunCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteRunRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Get Run",
+        "operationId": "get_run_api_lite_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteRunRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/runs/{run_id}/preview.html": {
+      "get": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Get Preview Html",
+        "description": "审稿 HTML 预览(不落 MP4)。无缓存 draft 时 404。",
+        "operationId": "get_preview_html_api_lite_runs__run_id__preview_html_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/runs/{run_id}/script": {
+      "patch": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Patch Script",
+        "description": "人改文案;可选 reloop=true 再跑 veya-loop。",
+        "operationId": "patch_script_api_lite_runs__run_id__script_patch",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiteScriptPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteRunRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/runs/{run_id}/reloop": {
+      "post": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Reloop",
+        "operationId": "reloop_api_lite_runs__run_id__reloop_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "max_rounds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 2,
+              "title": "Max Rounds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteRunRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/runs/{run_id}/confirm": {
+      "post": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Confirm Run",
+        "description": "人确认文案 → 后台本地零费用渲染。",
+        "operationId": "confirm_run_api_lite_runs__run_id__confirm_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/LiteConfirmRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteRunRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/assemble": {
+      "post": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Assemble Lite",
+        "description": "兼容旧入口:直接 cues/script → 后台出片。",
+        "operationId": "assemble_lite_api_lite_assemble_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiteAssembleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteAssembleAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lite/generate": {
+      "post": {
+        "tags": [
+          "lite"
+        ],
+        "summary": "Generate Lite Sync",
+        "description": "同步出片:veya/外部编排直连。",
+        "operationId": "generate_lite_sync_api_lite_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiteAssembleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiteAssembleResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/freezone/graphs": {
+      "post": {
+        "tags": [
+          "freezone"
+        ],
+        "summary": "Create Graph",
+        "operationId": "create_graph_api_freezone_graphs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Graph Api Freezone Graphs Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/freezone/graphs/{graph_id}/run": {
+      "post": {
+        "tags": [
+          "freezone"
+        ],
+        "summary": "Run Graph",
+        "operationId": "run_graph_api_freezone_graphs__graph_id__run_post",
+        "parameters": [
+          {
+            "name": "graph_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Graph Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Run Graph Api Freezone Graphs  Graph Id  Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/freezone/graphs/{graph_id}": {
+      "get": {
+        "tags": [
+          "freezone"
+        ],
+        "summary": "Get Graph",
+        "operationId": "get_graph_api_freezone_graphs__graph_id__get",
+        "parameters": [
+          {
+            "name": "graph_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Graph Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Graph Api Freezone Graphs  Graph Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/freezone/candidates": {
+      "get": {
+        "tags": [
+          "freezone"
+        ],
+        "summary": "List Candidates",
+        "operationId": "list_candidates_api_freezone_candidates_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Candidates Api Freezone Candidates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/freezone/candidates/{candidate_id}/promote": {
+      "post": {
+        "tags": [
+          "freezone"
+        ],
+        "summary": "Promote Candidate",
+        "operationId": "promote_candidate_api_freezone_candidates__candidate_id__promote_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoteIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Promote Candidate Api Freezone Candidates  Candidate Id  Promote Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/freezone/candidates/{candidate_id}/reject": {
+      "post": {
+        "tags": [
+          "freezone"
+        ],
+        "summary": "Reject Candidate",
+        "operationId": "reject_candidate_api_freezone_candidates__candidate_id__reject_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reject Candidate Api Freezone Candidates  Candidate Id  Reject Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/embrace/chat": {
+      "post": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Chat",
+        "description": "Xia 会话:识别意图(状态/推进/审计/修复/提升/帮助)→ 执行 → 回复骨架。",
+        "operationId": "chat_api_embrace_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Chat Api Embrace Chat Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/embrace/chat/{project_id}": {
+      "get": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Chat State",
+        "description": "会话状态(轮次/意图/项目进度快照)。",
+        "operationId": "chat_state_api_embrace_chat__project_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Chat State Api Embrace Chat  Project Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/embrace/promote/{project_id}/candidates": {
+      "post": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Add Candidate",
+        "description": "登记一个探索候选(进候选池,不自动提升)。",
+        "operationId": "add_candidate_api_embrace_promote__project_id__candidates_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Add Candidate Api Embrace Promote  Project Id  Candidates Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/embrace/promote/{project_id}/decide": {
+      "post": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Decide Candidate",
+        "description": "提升(过线+无冲突)或驳回(记原因)。",
+        "operationId": "decide_candidate_api_embrace_promote__project_id__decide_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Decide Candidate Api Embrace Promote  Project Id  Decide Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/embrace/promote/{project_id}": {
+      "get": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Promotion State",
+        "description": "候选池 + 主线资产状态。",
+        "operationId": "promotion_state_api_embrace_promote__project_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Promotion State Api Embrace Promote  Project Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/embrace/repair-plan": {
+      "post": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Repair Plan Endpoint",
+        "description": "失败清单 → 修复计划(agent 表映射)+ 收敛决策。",
+        "operationId": "repair_plan_endpoint_api_embrace_repair_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepairPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Repair Plan Endpoint Api Embrace Repair Plan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/embrace/style-analyze": {
+      "post": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Style Analyze Endpoint",
+        "description": "参考图 → 确定性风格画像(主色板/亮度/饱和/对比度/暖冷)+ VLM 语言草稿合并。",
+        "operationId": "style_analyze_endpoint_api_embrace_style_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_style_analyze_endpoint_api_embrace_style_analyze_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Style Analyze Endpoint Api Embrace Style Analyze Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/embrace/sketch-edit": {
+      "post": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Sketch Edit Endpoint",
+        "description": "草图编辑:应用确定性编辑操作(裁切/重构图/灰度/去网格/pose 骨架),返回产物路径。",
+        "operationId": "sketch_edit_endpoint_api_embrace_sketch_edit_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_sketch_edit_endpoint_api_embrace_sketch_edit_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Sketch Edit Endpoint Api Embrace Sketch Edit Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/embrace/workflows/run": {
+      "post": {
+        "tags": [
+          "embrace"
+        ],
+        "summary": "Run Workflow",
+        "description": "运行一个内化 workflow(delivery-gate / export-pack / music-to-video /\nstory-to-animation / promo-plan / final-review),产 report JSON。\n\n全部为确定性骨架 + 可选外部工具(ffmpeg/gh/音频),缺工具时优雅降级。",
+        "operationId": "run_workflow_api_embrace_workflows_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Run Workflow Api Embrace Workflows Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Health",
@@ -8215,6 +10303,87 @@
           "act"
         ],
         "title": "Act"
+      },
+      "ActionBeatsUpdate": {
+        "properties": {
+          "trigger": {
+            "type": "string",
+            "title": "Trigger",
+            "default": ""
+          },
+          "peak": {
+            "type": "string",
+            "title": "Peak",
+            "default": ""
+          },
+          "aftermath": {
+            "type": "string",
+            "title": "Aftermath",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ActionBeatsUpdate",
+        "description": "人工修正动作节拍三段(trigger/peak/aftermath)。"
+      },
+      "AnimateAccepted": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "pending"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress",
+            "default": 0
+          },
+          "n_beats": {
+            "type": "integer",
+            "title": "N Beats",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "AnimateAccepted"
+      },
+      "AnimateRequest": {
+        "properties": {
+          "story": {
+            "type": "string",
+            "maxLength": 3000,
+            "minLength": 8,
+            "title": "Story"
+          },
+          "beats_json": {
+            "type": "string",
+            "title": "Beats Json",
+            "default": ""
+          },
+          "ratio": {
+            "type": "string",
+            "pattern": "^(16:9|9:16|1:1)$",
+            "title": "Ratio",
+            "default": "16:9"
+          },
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "story"
+        ],
+        "title": "AnimateRequest"
       },
       "AudioAssetCreateRequest": {
         "properties": {
@@ -8312,6 +10481,42 @@
         ],
         "title": "Body_draft_style_pack_from_reference_api_style_packs_draft_from_reference_post"
       },
+      "Body_sketch_edit_endpoint_api_embrace_sketch_edit_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "草图图片"
+          },
+          "ops": {
+            "type": "string",
+            "title": "Ops",
+            "description": "JSON: [{\"op\":\"crop\",\"params\":{\"box\":[0,0,40,30]}}, ...]"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "ops"
+        ],
+        "title": "Body_sketch_edit_endpoint_api_embrace_sketch_edit_post"
+      },
+      "Body_style_analyze_endpoint_api_embrace_style_analyze_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "参考图,确定性风格画像"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_style_analyze_endpoint_api_embrace_style_analyze_post"
+      },
       "Body_upload_canvas_reference_image_api_canvas_reference_image_post": {
         "properties": {
           "file": {
@@ -8341,6 +10546,21 @@
           "file"
         ],
         "title": "Body_upload_character_reference_api_shortdrama_runs__run_id__characters__char_id__upload_post"
+      },
+      "Body_upload_presenter_image_endpoint_api_explainer_upload_presenter_image_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "数字人底图(JPG/PNG,≤10MB)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_presenter_image_endpoint_api_explainer_upload_presenter_image_post"
       },
       "Body_upload_subject_reference_api_subjects__subject_id__reference_post": {
         "properties": {
@@ -8405,6 +10625,74 @@
         ],
         "title": "Body_upload_subject_wardrobe_api_subjects__subject_id__wardrobe_post"
       },
+      "CandidateDecision": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "accept",
+              "ignore"
+            ],
+            "title": "Decision",
+            "default": "accept"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "assets",
+              "dialogue"
+            ],
+            "title": "Scope",
+            "default": "assets"
+          }
+        },
+        "type": "object",
+        "title": "CandidateDecision",
+        "description": "候选确认:accept(收编)/ ignore(跳过)。scope: assets | dialogue。"
+      },
+      "CandidateIn": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "generated"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "default": 0.0
+          },
+          "score_note": {
+            "type": "string",
+            "title": "Score Note",
+            "default": ""
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "kind",
+          "name"
+        ],
+        "title": "CandidateIn"
+      },
       "CharacterBinding": {
         "properties": {
           "mode": {
@@ -8459,6 +10747,39 @@
           "output_dir"
         ],
         "title": "CharacterConsistencyRequest"
+      },
+      "ChatRequest": {
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "title": "Project Id"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "failures": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failures"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "message"
+        ],
+        "title": "ChatRequest"
       },
       "ClipRequest": {
         "properties": {
@@ -8572,6 +10893,38 @@
         },
         "type": "object",
         "title": "Concept"
+      },
+      "ConceptExpansion": {
+        "properties": {
+          "original_material_point": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Original Material Point",
+            "description": "原文素材中的核心知识点或原句"
+          },
+          "deep_explanation": {
+            "type": "string",
+            "maxLength": 6000,
+            "minLength": 50,
+            "title": "Deep Explanation",
+            "description": "把该知识点彻底讲透的深度扩写(至少 150 字):前因后果、历史背景、底层原理、技术/数学/物理图景 + 通俗比喻,禁止一句话带过。"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Source",
+            "description": "素材出处(无法核验可为空)",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "original_material_point",
+          "deep_explanation"
+        ],
+        "title": "ConceptExpansion",
+        "description": "素材吸收与扩写映射表条目 —— 反压缩机制的核心(Chain-of-Thought in Schema)。\n\nLLM 必须在写任何台词之前,先遍历用户提供的全部素材,把每个硬核知识点拆成\n一条映射:原文素材点 + 深度扩写。deep_explanation 由 LLM 自行挖掘前因后果、\n历史背景、底层原理、数学/物理图景,并用通俗比喻讲透,不得少于 150 字。\n矩阵做到 100% 覆盖,漏掉任何一段素材即视为废稿。"
       },
       "ConfirmCandidateRequest": {
         "properties": {
@@ -9629,19 +11982,30 @@
               "heygen_avatar",
               "broll_news",
               "browser_broll",
-              "broll_stock",
+              "stock_broll",
               "data_screenshot",
               "remotion_chart",
               "remotion_code",
               "voiceover"
             ],
-            "title": "Visual Type"
+            "title": "Visual Type",
+            "default": "voiceover"
+          },
+          "audio_style": {
+            "type": "string",
+            "enum": [
+              "formal",
+              "conversational"
+            ],
+            "title": "Audio Style",
+            "default": "formal"
           },
           "text": {
             "type": "string",
             "maxLength": 2000,
             "minLength": 1,
-            "title": "Text"
+            "title": "Text",
+            "description": "解说旁白文本。核心段落必须详实深入，字数建议在 100-200 字以上，切忌假大空和过度精简。"
           },
           "visual_config": {
             "additionalProperties": true,
@@ -9674,6 +12038,7 @@
               }
             ],
             "title": "Time Estimate S",
+            "description": "预估时长(秒)。核心解说段落应当在 30 秒到 60 秒之间。",
             "default": 5.0
           },
           "target_url": {
@@ -9685,7 +12050,8 @@
                 "type": "null"
               }
             ],
-            "title": "Target Url"
+            "title": "Target Url",
+            "description": "如果 visual_type 是 browser_broll，必须提供真实的维基百科、官方数据页面URL，绝不能捏造！"
           },
           "highlight_selector": {
             "anyOf": [
@@ -9731,14 +12097,81 @@
               }
             ],
             "title": "Language"
+          },
+          "visual_search_query": {
+            "type": "string",
+            "title": "Visual Search Query",
+            "description": "仅当 visual_type==stock_broll 时必填：3-5 个极高精度的英文搜索关键词（逗号分隔），用于 Pexels/Unsplash API 检索匹配画面。",
+            "default": ""
+          },
+          "layout_mode": {
+            "type": "string",
+            "enum": [
+              "fullscreen",
+              "broll_pip"
+            ],
+            "title": "Layout Mode",
+            "default": "fullscreen"
           }
         },
         "type": "object",
         "required": [
-          "visual_type",
           "text"
         ],
         "title": "ExplainerCue"
+      },
+      "ExplainerResearchJob": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Session Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "ready",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "topic_or_url": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Topic Or Url",
+            "default": ""
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExplainerResearchResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "status"
+        ],
+        "title": "ExplainerResearchJob",
+        "description": "异步研究任务的状态信封 —— 根治长视频研究的 524 超时。\n\nPOST /research 不再同步跑完再回(分章生成长视频动辄几百秒,Cloudflare\n100s 就 524);改成立刻派研究后台任务并落盘一个 processing 信封,\nHTTP 连接秒回 202。前端轮询 GET /research/{session_id} 拿到信封:\n- processing:继续轮询(可显示进度文案)\n- ready:payload 即完整 ExplainerResearchResponse,进入确稿台\n- failed:显示 error,提供重试入口\n原断点续传语义保留:ready 状态的信封 payload 就是完整的阶段一数据。"
       },
       "ExplainerResearchRequest": {
         "properties": {
@@ -9769,6 +12202,12 @@
             "maxLength": 64,
             "title": "Session Id",
             "default": ""
+          },
+          "target_duration": {
+            "type": "string",
+            "title": "Target Duration",
+            "description": "目标时长，格式为范围(如'1-3')或具体分钟数(如'8')",
+            "default": "1-3"
           }
         },
         "type": "object",
@@ -9838,6 +12277,13 @@
             "type": "array",
             "title": "Decision Trail"
           },
+          "material_coverage_matrix": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptExpansion"
+            },
+            "type": "array",
+            "title": "Material Coverage Matrix"
+          },
           "session_id": {
             "type": "string",
             "maxLength": 64,
@@ -9885,6 +12331,24 @@
             "type": "string",
             "title": "Hook",
             "default": ""
+          },
+          "reasoning_depth": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Reasoning Depth",
+            "default": ""
+          },
+          "packaging": {
+            "$ref": "#/components/schemas/VideoPackaging",
+            "description": "🚨 强制！视频的开场主题画与数字人母体配置。含 main_title/subtitle/theme_image_query/presenter_image_url。"
+          },
+          "material_coverage_matrix": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptExpansion"
+            },
+            "type": "array",
+            "title": "Material Coverage Matrix",
+            "description": "必须 100% 覆盖用户提供的所有素材点,并在 deep_explanation 中进行硬核扩写(≥150 字),绝不允许漏掉任何一段素材!"
           },
           "cues": {
             "items": {
@@ -9968,6 +12432,22 @@
           "title"
         ],
         "title": "GalleryCreateRequest"
+      },
+      "GraphIn": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/NodeIn"
+            },
+            "type": "array",
+            "title": "Nodes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nodes"
+        ],
+        "title": "GraphIn"
       },
       "HTTPValidationError": {
         "properties": {
@@ -10057,6 +12537,503 @@
         "type": "object",
         "title": "LayerConfig",
         "description": "通鉴流水线**单层的模型选择 + 可调参数**——每层(L0..L8)可独立配置,便于全自动生成\n有偏差时逐层调参重跑。`model=None` 走该层默认模型;`params` 覆盖该层默认参数(具体键值\n由各层 build_* 自行解释,见各层 docstring)。前端 RunRequest 表单直接填这个结构。"
+      },
+      "LiteAssembleAccepted": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "default": "pending"
+          },
+          "video_path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Path"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "decision_trail": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decision Trail"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "LiteAssembleAccepted"
+      },
+      "LiteAssembleRequest": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "default": ""
+          },
+          "topic": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Topic"
+          },
+          "cues": {
+            "items": {
+              "$ref": "#/components/schemas/LiteCue"
+            },
+            "type": "array",
+            "title": "Cues"
+          },
+          "voice": {
+            "type": "string",
+            "title": "Voice",
+            "default": "edge_tts_zh"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 720
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1280
+          },
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 24
+          },
+          "output_name": {
+            "type": "string",
+            "title": "Output Name",
+            "default": "final.mp4"
+          },
+          "audio_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Path"
+          },
+          "script": {
+            "type": "string",
+            "title": "Script",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "title": "LiteAssembleRequest",
+        "description": "旧入口:直接提交 cues 出片。"
+      },
+      "LiteAssembleResult": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "default": "completed"
+          },
+          "video_path": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "path"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Path"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "decision_trail": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decision Trail"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress",
+            "default": 100
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "LiteAssembleResult",
+        "description": "装配结果:任务状态 + 产物路径 + 决策轨迹。"
+      },
+      "LiteConfirmRequest": {
+        "properties": {
+          "cues": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LiteCue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cues"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script"
+          }
+        },
+        "type": "object",
+        "title": "LiteConfirmRequest"
+      },
+      "LiteCue": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Index"
+          },
+          "narration": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Narration"
+          },
+          "template": {
+            "type": "string",
+            "title": "Template",
+            "description": "HTML 模板名(见 templates/)",
+            "default": "card"
+          },
+          "props": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Props"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "narration"
+        ],
+        "title": "LiteCue",
+        "description": "一条 Lite 镜头:HTML 卡片的一段 + 对应的旁白文本。"
+      },
+      "LiteRunCreateRequest": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Topic"
+          },
+          "target_cues": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 3.0,
+            "title": "Target Cues",
+            "default": 5
+          },
+          "max_rounds": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Max Rounds",
+            "default": 3
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 720
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1280
+          },
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 24
+          },
+          "script": {
+            "type": "string",
+            "title": "Script",
+            "default": ""
+          },
+          "cues": {
+            "items": {
+              "$ref": "#/components/schemas/LiteCue"
+            },
+            "type": "array",
+            "title": "Cues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "title": "LiteRunCreateRequest"
+      },
+      "LiteRunRecord": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "drafting",
+              "reviewing",
+              "awaiting_confirm",
+              "rendering",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "default": "drafting"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScriptDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "loop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VeyaLoopResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "video_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Path"
+          },
+          "preview_html_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Html Path"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress",
+            "default": 0
+          },
+          "decision_trail": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decision Trail"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 720
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1280
+          },
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 24
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "topic"
+        ],
+        "title": "LiteRunRecord",
+        "description": "选题→审稿→确认→出片 的完整 run 状态(内存 + 磁盘落盘)。"
+      },
+      "LiteScriptPatch": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "hook": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hook"
+          },
+          "cues": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LiteCue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cues"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script"
+          },
+          "reloop": {
+            "type": "boolean",
+            "title": "Reloop",
+            "default": false
+          },
+          "max_rounds": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Max Rounds",
+            "default": 2
+          }
+        },
+        "type": "object",
+        "title": "LiteScriptPatch"
       },
       "LiveBody": {
         "properties": {
@@ -10297,6 +13274,36 @@
         ],
         "title": "MultiAngleRequest"
       },
+      "NodeIn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          },
+          "inputs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Inputs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind"
+        ],
+        "title": "NodeIn"
+      },
       "OAuthRequest": {
         "properties": {
           "code": {
@@ -10457,6 +13464,86 @@
         ],
         "title": "PlanRequest"
       },
+      "PresenterImageCheckRequest": {
+        "properties": {
+          "image_url": {
+            "type": "string",
+            "title": "Image Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image_url"
+        ],
+        "title": "PresenterImageCheckRequest"
+      },
+      "PresenterImageCheckResponse": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "face_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Face Count"
+          },
+          "face_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Face Ratio"
+          },
+          "face_check": {
+            "type": "string",
+            "title": "Face Check",
+            "default": "skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid",
+          "reason"
+        ],
+        "title": "PresenterImageCheckResponse"
+      },
       "PresenterRequest": {
         "properties": {
           "name": {
@@ -10518,56 +13605,6 @@
           "name"
         ],
         "title": "PresenterRequest"
-      },
-      "ProduceRequest": {
-        "properties": {
-          "video_provider": {
-            "type": "string",
-            "title": "Video Provider",
-            "default": "auto"
-          },
-          "audio_provider": {
-            "type": "string",
-            "title": "Audio Provider",
-            "default": "edge_tts"
-          },
-          "quality_profile": {
-            "type": "string",
-            "title": "Quality Profile",
-            "default": "standard"
-          },
-          "aspect_ratio": {
-            "type": "string",
-            "title": "Aspect Ratio",
-            "default": "9:16"
-          },
-          "budget_usd": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Budget Usd"
-          },
-          "character_references": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Character References",
-            "default": []
-          },
-          "autocameo": {
-            "type": "boolean",
-            "title": "Autocameo",
-            "default": false
-          }
-        },
-        "type": "object",
-        "title": "ProduceRequest"
       },
       "ProductionRequest": {
         "properties": {
@@ -10677,6 +13714,42 @@
         ],
         "title": "ProductionRequest",
         "description": "One canonical handoff from a frontend/adapter to the execution layer."
+      },
+      "PromoteIn": {
+        "properties": {
+          "target": {
+            "type": "string",
+            "title": "Target"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target"
+        ],
+        "title": "PromoteIn"
+      },
+      "PromoteRequest": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "default": "promote"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidate_id"
+        ],
+        "title": "PromoteRequest"
       },
       "ReadinessPatch": {
         "properties": {
@@ -10887,6 +13960,33 @@
         "title": "RenderRequest",
         "description": "逐镜编辑回路:提交(编辑过的)canvas 分镜图 → 执行 + 装配成片。"
       },
+      "RepairPlanRequest": {
+        "properties": {
+          "failures": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Failures"
+          },
+          "budget_limit": {
+            "type": "integer",
+            "title": "Budget Limit",
+            "default": 3
+          },
+          "episode_num": {
+            "type": "integer",
+            "title": "Episode Num",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "failures"
+        ],
+        "title": "RepairPlanRequest"
+      },
       "ResearchFact": {
         "properties": {
           "claim": {
@@ -11082,6 +14182,93 @@
         "type": "object",
         "title": "Script"
       },
+      "ScriptDraft": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "hook": {
+            "type": "string",
+            "title": "Hook",
+            "default": ""
+          },
+          "cues": {
+            "items": {
+              "$ref": "#/components/schemas/LiteCue"
+            },
+            "type": "array",
+            "title": "Cues"
+          },
+          "target_cues": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 3.0,
+            "title": "Target Cues",
+            "default": 5
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": "zh"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "title": "ScriptDraft",
+        "description": "选题 → 文案草稿(含 hook / 标题 / cues)。"
+      },
+      "ScriptIssue": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "hard",
+              "soft"
+            ],
+            "title": "Severity",
+            "default": "soft"
+          },
+          "cue_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cue Index"
+          },
+          "fix_hint": {
+            "type": "string",
+            "title": "Fix Hint",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ScriptIssue",
+        "description": "veya-loop 单条质检问题。"
+      },
       "ScriptLine": {
         "properties": {
           "line_id": {
@@ -11179,6 +14366,54 @@
         ],
         "title": "ScriptReviewUpdate",
         "description": "人工审核提交:编辑后的剧本(必填)+ 可选改过的立意。"
+      },
+      "ScriptVerdict": {
+        "properties": {
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          },
+          "score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "default": 0.0
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptIssue"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "round": {
+            "type": "integer",
+            "title": "Round",
+            "default": 0
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "llm",
+              "hybrid"
+            ],
+            "title": "Source",
+            "default": "deterministic"
+          }
+        },
+        "type": "object",
+        "required": [
+          "passed"
+        ],
+        "title": "ScriptVerdict",
+        "description": "一轮文案质量裁决。"
       },
       "SeedanceRequest": {
         "properties": {
@@ -11382,6 +14617,22 @@
             "type": "string",
             "title": "Camera",
             "default": ""
+          },
+          "camera_angle": {
+            "type": "string",
+            "title": "Camera Angle",
+            "default": ""
+          },
+          "azimuth_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Azimuth Deg"
           },
           "visual_prompt": {
             "type": "string",
@@ -12227,6 +15478,80 @@
         ],
         "title": "ValidationError"
       },
+      "VeyaLoopResult": {
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/ScriptDraft"
+          },
+          "passed": {
+            "type": "boolean",
+            "title": "Passed"
+          },
+          "rounds": {
+            "type": "integer",
+            "title": "Rounds",
+            "default": 0
+          },
+          "verdicts": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptVerdict"
+            },
+            "type": "array",
+            "title": "Verdicts"
+          },
+          "decision_trail": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decision Trail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft",
+          "passed"
+        ],
+        "title": "VeyaLoopResult",
+        "description": "veya-loop 终态:审过的文案 + 每一轮裁决轨迹。"
+      },
+      "VideoPackaging": {
+        "properties": {
+          "main_title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Main Title",
+            "description": "视频主题大标题，将显示在开场 3 秒封面上"
+          },
+          "subtitle": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Subtitle",
+            "description": "副标题或核心信息点",
+            "default": ""
+          },
+          "theme_image_query": {
+            "type": "string",
+            "title": "Theme Image Query",
+            "description": "用于搜索开场背景图的高精度英文关键词 (如 'Cyberpunk server rack dark')",
+            "default": ""
+          },
+          "presenter_image_url": {
+            "type": "string",
+            "title": "Presenter Image Url",
+            "description": "数字人母体照片 URL（可选）。可上传或选择一张带背景的高清照片作为全时段解说员。",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "main_title"
+        ],
+        "title": "VideoPackaging",
+        "description": "🚨 v9.0: 视频包装配置 —— 强制的独立节点,不可与 cues 混在一起。\n\nLLM 必须显式指定开场主题画参数,Remotion 在 Frame 0 渲染 3-5s 标题卡序列。"
+      },
       "VisualStyle": {
         "properties": {
           "art_direction": {
@@ -12256,6 +15581,104 @@
         },
         "type": "object",
         "title": "VisualStyle"
+      },
+      "WorkflowRunRequest": {
+        "properties": {
+          "workflow": {
+            "type": "string",
+            "title": "Workflow"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "input_data": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Input Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow"
+        ],
+        "title": "WorkflowRunRequest",
+        "description": "通用 workflow 请求:config/input 以 JSON 透传,由各 workflow 构建 dataclass。"
+      },
+      "XiaChatRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "XiaChatRequest"
+      },
+      "hevi__api__routers__director_pipeline__ProduceRequest": {
+        "properties": {
+          "video_provider": {
+            "type": "string",
+            "title": "Video Provider",
+            "default": "auto"
+          },
+          "audio_provider": {
+            "type": "string",
+            "title": "Audio Provider",
+            "default": "edge_tts"
+          },
+          "quality_profile": {
+            "type": "string",
+            "title": "Quality Profile",
+            "default": "standard"
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "title": "Aspect Ratio",
+            "default": "9:16"
+          },
+          "budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Usd"
+          },
+          "character_references": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Character References",
+            "default": []
+          },
+          "autocameo": {
+            "type": "boolean",
+            "title": "Autocameo",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ProduceRequest"
       },
       "hevi__api__routers__explainer__LayerState": {
         "properties": {
@@ -12462,6 +15885,40 @@
         ],
         "title": "RunStatus"
       },
+      "hevi__api__routers__history_series__ProduceRequest": {
+        "properties": {
+          "lesson_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesson Order"
+          },
+          "tb_id": {
+            "type": "string",
+            "title": "Tb Id",
+            "default": "TONGBIAN-G7-HISTORY-S"
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "title": "Aspect Ratio",
+            "default": "16:9"
+          },
+          "target_duration_s": {
+            "type": "integer",
+            "maximum": 600.0,
+            "minimum": 60.0,
+            "title": "Target Duration S",
+            "default": 120
+          }
+        },
+        "type": "object",
+        "title": "ProduceRequest"
+      },
       "hevi__api__routers__shortdrama__RunRequest": {
         "properties": {
           "source_name": {
@@ -12562,6 +16019,17 @@
               }
             ],
             "title": "Error"
+          },
+          "degrade_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degrade Reason"
           }
         },
         "type": "object",

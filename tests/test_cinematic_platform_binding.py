@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from hevi.cinematic.platform_binding import ensure_platform_binding

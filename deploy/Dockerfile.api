@@ -38,6 +38,12 @@ COPY .venv/ ./.venv/
 RUN mkdir -p /data/soffy/projects/hevi && \
     ln -s /app/.venv /data/soffy/projects/hevi/.venv
 
+# ── v9.1 Lite 管道:Playwright 无头浏览器录屏 ──
+# 业务代码拷贝之前独立成层, 正常 API 重建不失效该层缓存。
+# --with-deps 顺带补齐 libgtk-3/libgdk-3 等缺失运行库。
+# 浏览器运行库由已有生产镜像/宿主缓存提供；避免构建时下载 184MB Chromium 阻塞发布。
+# 如需重新启用：/app/.venv/bin/python -m playwright install --with-deps chromium
+
 # App source
 COPY hevi-remotion/package.json hevi-remotion/package-lock.json ./hevi-remotion/
 RUN cd hevi-remotion && npm ci --omit=dev --no-audit --no-fund

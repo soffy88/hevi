@@ -90,6 +90,12 @@ _JSON_PROMPT = """你是 HEVI 深度解说研究与脚本编剧。对下面选�
 
 选题或材料：{topic}
 
+【因果锚点契约(违反即废稿)】
+- 每一项生成内容必须能追溯到输入中的至少两个因果锚点(选题材料/知识点);
+- 禁止引入选题中不存在的人名、地名、机构、数据、秘密或背景机制;
+- 禁止使用事后信息或未来结果冒充当前事实(如未发生的突破不能写成已有结论);
+- facts 必须可溯源, 无法核验的 confidence 调低、source 留空。
+
 只返回 JSON，不要 markdown：
 {{
   "research_summary": "用一段话概括调研结论",
@@ -589,7 +595,16 @@ def _default_llm() -> Any:
     try:
         from obase.provider_registry import ProviderRegistry
 
-        return ProviderRegistry.get().llm("default")
+        registry = ProviderRegistry.get()
+        # v9.1: OpenCode 替换 NIM 优先; 依次回落 NIM(2 key 轮换) → default。
+        for name in ("opencode", "nim", "default"):
+            try:
+                return registry.llm(name)
+            except Exception:
+                continue
+        raise ProviderRegistry.ProviderNotFoundError(  # type: ignore[attr-defined]
+            "no llm provider registered"
+        )
     except Exception as exc:  # pragma: no cover - depends on deployment
         raise ExplainerCapabilityError(
             "CAPABILITY_UNAVAILABLE",
@@ -621,6 +636,12 @@ _OUTLINE_PROMPT = """你是 HEVI 深度解说研究总编（分章大纲模式�
 7. 禁止输出 recommended / 不推荐标签。
 
 选题或材料：{topic}
+
+【因果锚点契约(违反即废稿)】
+- 每一项生成内容必须能追溯到输入中的至少两个因果锚点(选题材料/知识点);
+- 禁止引入选题中不存在的人名、地名、机构、数据、秘密或背景机制;
+- 禁止使用事后信息或未来结果冒充当前事实(如未发生的突破不能写成已有结论);
+- facts 必须可溯源, 无法核验的 confidence 调低、source 留空。
 
 只返回 JSON，不要 markdown：
 {{
@@ -1017,6 +1038,14 @@ def _to_hook_node(item: Any, index: int) -> HookNode:
     """
     if isinstance(item, dict):
         if any(key in item for key in ("hook_id", "narrative_function", "associated_concepts")):
+            if item.get("narrative_function"):
+                # LLM 输出枚举值不可靠(如拼错 opening_suspuspense) → 相似度归一。
+                item = {
+                    **item,
+                    "narrative_function": _normalise_narrative_function(
+                        item["narrative_function"]
+                    ),
+                }
             node = HookNode.model_validate(item)
             if not node.hook_id:
                 node = node.model_copy(update={"hook_id": f"H{index + 1}"})
@@ -1035,6 +1064,28 @@ def _to_hook_node(item: Any, index: int) -> HookNode:
     return HookNode(
         hook_id=f"H{index + 1}", title=str(item)[:24], text=str(item)
     )
+
+
+def _normalise_narrative_function(value: Any) -> HookNarrativeFunction:
+    """把模型自造/拼错的叙事档位归一为合法枚举(模糊相似度, 失败兜底首个)。"""
+    from difflib import get_close_matches
+
+    if value in _NARRATIVE_ORDER:
+        return value  # type: ignore[no-any-return]
+    text = str(value or "").strip().lower()
+    if not text:
+        return _NARRATIVE_ORDER[0]
+    best = get_close_matches(text, list(_NARRATIVE_ORDER), n=1, cutoff=0.5)
+    if best:
+        return best[0]  # type: ignore[return-value]
+    # 语义关键词兜底: 开篇悬念 / 中段冲突 / 高潮突破。
+    if any(k in text for k in ("suspense", "opening", "悬念", "开场")):
+        return "opening_suspense"
+    if any(k in text for k in ("conflict", "mid", "中段", "冲突")):
+        return "mid_conflict"
+    if any(k in text for k in ("climax", "breakthrough", "高潮", "突破")):
+        return "climax_breakthrough"
+    return _NARRATIVE_ORDER[0]
 
 
 def _sanitise_raw_scripts(raw: dict[str, Any]) -> list[dict[str, Any]]:

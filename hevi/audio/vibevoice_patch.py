@@ -14,6 +14,7 @@ process's already-patched module object — every real TTS call was hitting
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +60,11 @@ def patch_vibevoice_reference_audio_kwarg() -> None:
 
     original_call = VibeVoiceProcessor.__call__
 
-    def _patched_call(self, *args, **kwargs):
+    def _patched_call(self: Any, *args: Any, **kwargs: Any) -> Any:
         reference_audio = kwargs.pop("reference_audio", None)
         if reference_audio is not None and kwargs.get("voice_samples") is None:
             kwargs["voice_samples"] = [reference_audio]
         return original_call(self, *args, **kwargs)
 
-    _patched_call._hevi_patched = True
     VibeVoiceProcessor.__call__ = _patched_call
     logger.info("Main library bug patched: vibevoice reference_audio -> voice_samples kwarg")

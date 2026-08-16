@@ -52,7 +52,6 @@ async def test_synth_injects_emotion_params():
     async def fake_edge_tts(**kwargs):
         calls.update(kwargs)
 
-    orig = None
     import obase.provider_registry as pr
 
     # monkeypatch ProviderRegistry.get().generic
@@ -79,7 +78,7 @@ async def test_synth_injects_emotion_params():
 
 
 # ── storyboard 图像池 ───────────────────────────────────────────
-from hevi.director.storyboard import _pool_score, select_best_from_pool
+from hevi.director.storyboard import _pool_score, select_best_from_pool  # noqa: E402
 
 
 def test_pool_select_best():
@@ -105,16 +104,21 @@ async def test_plan_shots_with_pool():
     from hevi.director.storyboard import plan_shots
 
     async def fake_llm(**kwargs):
-        return {"content": '["雨夜主角在巷口", "晴天", "雨夜主角在巷口特写", "雪景", "雨夜奔跑", "白天"]'}
+        return {
+            "content": (
+                '["雨夜主角在巷口", "晴天", "雨夜主角在巷口特写", "雪景", "雨夜奔跑", "白天"]'
+            )
+        }
 
     shots = await plan_shots(
-        topic="雨夜追逐", num_shots=3, llm=fake_llm, image_pool_size=2)
+        topic="雨夜追逐", num_shots=3, llm=fake_llm, image_pool_size=2
+    )
     assert len(shots) == 3
     assert any("雨夜" in s for s in shots)  # 池选择倾向主题相关
 
 
 # ── Task 断点续跑 ───────────────────────────────────────────────
-from hevi.tasks.checkpoint import (
+from hevi.tasks.checkpoint import (  # noqa: E402
     Checkpoint,
     CheckpointStore,
     build_checkpoint_from_task,
@@ -163,7 +167,12 @@ def test_resume_decision_matrix():
     assert d3["resumable"] is False and "无 checkpoint" in d3["reason"]
 
     # 不可续跑: 已到终局
-    d4 = resume_decision(failed, Checkpoint(task_id=tid, stage="装配成片", completed_shots=8, total_shots=8))
+    d4 = resume_decision(
+        failed,
+        Checkpoint(
+            task_id=tid, stage="装配成片", completed_shots=8, total_shots=8
+        ),
+    )
     assert d4["resumable"] is False
 
 

@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -37,7 +39,7 @@ class StoryRelationship(BaseModel):
     to_char: str  # char_id
     relation_type: str = ""  # 亲属/敌对/爱慕/主从...
     valence: float = 0.0  # 情感极性,随剧情可变
-    evolution: list[dict] = Field(
+    evolution: list[dict[str, Any]] = Field(
         default_factory=list
     )  # 关系演变轨迹 [{event_id, relation_type, valence}]
 

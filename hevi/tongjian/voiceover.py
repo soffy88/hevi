@@ -107,7 +107,7 @@ async def _get_audio_duration_ms(path: Path) -> int:
 
     try:
         duration_s = await asyncio.to_thread(probe_duration, path)
-        return round(duration_s * 1000)
+        return int(round(duration_s * 1000))
     except Exception as e:
         logger.warning("ffprobe 读取时长失败 (%s),按文件大小估算: %s", path, e)
         # 粗略估算:16kHz 16bit mono WAV ≈ 32KB/s

@@ -73,7 +73,7 @@ def _resolve_aspect_ratio(aspect_ratio: str | None, kw: dict[str, Any]) -> str:
     端点的文档默认值)。跟 oprim._fal_queue_generate._fal_aspect_ratio 同一套推导逻辑,
     本地实现一份而非依赖外部包的私有函数。"""
     if aspect_ratio in ("16:9", "9:16", "1:1", "4:3", "3:4"):
-        return aspect_ratio  # type: ignore[return-value]
+        return aspect_ratio
     size = kw.get("size")
     if isinstance(size, (tuple, list)) and len(size) == 2:
         w, h = size
@@ -119,14 +119,16 @@ async def _upload_if_needed(client: httpx.AsyncClient, headers: dict[str, str], 
     url = data.get("download_url")
     if not url:
         raise WaveSpeedError(f"WaveSpeed 上传响应缺少 download_url: {resp.text[:300]}")
-    return url
+    return str(url)
 
 
 def _extract_request_id(submitted: dict[str, Any]) -> str | None:
     # 响应信封在不同 WaveSpeed 端点间可能是顶层字段或套一层 "data" —— 两种都探测,
     # 不假设一定是哪一种(文档页没有给出逐字段的权威 schema)。
-    sub_data = submitted.get("data") if isinstance(submitted.get("data"), dict) else submitted
-    return sub_data.get("id") or submitted.get("request_id")
+    raw = submitted.get("data")
+    sub_data = raw if isinstance(raw, dict) else submitted
+    rid = sub_data.get("id") or submitted.get("request_id")
+    return str(rid) if rid else None
 
 
 async def _submit_and_download(

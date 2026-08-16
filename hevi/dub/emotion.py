@@ -53,7 +53,7 @@ def detect_emotion(text: str) -> str:
         score[emotion] = sum(1 for kw in kws if kw in text)
     if not any(score.values()):
         return "neutral"
-    return max(score, key=score.get)
+    return max(score, key=lambda k: score[k])
 
 
 def emotion_tts_params(emotion: str) -> dict[str, str]:

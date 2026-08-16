@@ -12,7 +12,6 @@ load_dotenv()  # 标准: 在所有本地 import 之前
 
 from hevi.api.mcp_mount import mount_mcp
 from hevi.api.routers.audio_library import router as audio_router
-from hevi.api.routers.cinematic import router as cinematic_router
 from hevi.audio.task_adapter import execute_voice_studio_task
 from hevi.api.routers.auth import router as auth_router
 from hevi.api.routers.canvas import router as canvas_router
@@ -28,6 +27,7 @@ from hevi.api.routers.explainer import (
 )
 from hevi.api.routers.explainer import router as explainer_router
 from hevi.api.routers.gallery import router as gallery_router
+from hevi.api.routers.cinematic import router as cinematic_router
 from hevi.api.routers.history_series import router as history_series_router
 from hevi.api.routers.payment import router as payment_router
 from hevi.api.routers.pipeline import router as pipeline_router
@@ -44,12 +44,13 @@ from hevi.api.routers.templates import router as templates_router
 from hevi.api.routers.tongjian import execute_task as tongjian_task_adapter
 from hevi.api.routers.tongjian import router as tongjian_router
 from hevi.api.routers.freezone import router as freezone_router
+from hevi.api.routers.embrace_runtime import router as embrace_router
+from hevi.api.routers.lite import router as lite_router
 from hevi.api.routers.voice_studio import router as voice_studio_router
 from hevi.api.routers.ws import router as ws_router
 from hevi.core.config import settings
 from hevi.monitoring.middleware import PrometheusMiddleware
 from hevi.monitoring.router import router as metrics_router
-from hevi.pipeline_lite.oapp.lite_router import router as lite_router
 from hevi.providers.registry import register_all_providers
 from hevi.production.adapters import configure_default_adapters
 
@@ -152,16 +153,17 @@ app.include_router(style_router, prefix="/api")
 app.include_router(director_router, prefix="/api")
 app.include_router(director_pipeline_router, prefix="/api")
 app.include_router(tongjian_router, prefix="/api")
+app.include_router(cinematic_router, prefix="/api")  # 黄金公式动画演绎
+app.include_router(history_series_router, prefix="/api")  # P2 历史现场每日连载
 app.include_router(shortdrama_router, prefix="/api")
 app.include_router(explainer_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
 app.include_router(voice_studio_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
+app.include_router(lite_router, prefix="/api")  # 本地零费用:选题→veya-loop→确认→HTML 出片
 app.include_router(ws_router)  # WebSocket 路由自带 /api/ws 前缀
-app.include_router(lite_router, prefix="/api")  # v9.1 Lite 管道
-app.include_router(history_series_router, prefix="/api")  # P2 历史现场每日连载:轻量 HTML→录屏→成片
-app.include_router(cinematic_router, prefix="/api")  # 黄金公式动画演绎:故事→分镜→动画出片
 app.include_router(freezone_router, prefix="/api")
+app.include_router(embrace_router, prefix="/api")  # 3O 内化运行时(Xia/提升/修复/画像/草图)
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)
 mount_mcp(app)

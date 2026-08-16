@@ -8,17 +8,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from hevi.freezone.candidates import CandidatePool
-from hevi.freezone.graph import FreezoneGraph, Generator, NodeResult
+from hevi.freezone.graph import FreezoneGraph, Generator, NodeResult, NodeSpec
 
 # 默认 stub 生成器(未装配真实服务时,产出确定性占位,便于端到端跑通)
 _async = __import__("asyncio", fromlist=["sleep"])
 
 
-async def _stub_generator(node, upstream: dict[str, Any]) -> str:
+async def _stub_generator(node: NodeSpec, upstream: dict[str, Any]) -> str:
     prompt = node.params.get("prompt", "")
     await _async.sleep(0)
     return f"[{node.kind}] {prompt} (upstream={len(upstream)})"
@@ -65,37 +65,42 @@ def _plain(output: Any) -> Any:
 class FreezoneService:
     """无限画布服务:建图 → 执行 → 候选 → 提升。"""
 
-    def __init__(self, generators: dict[str, Callable] | None = None) -> None:
+    def __init__(
+        self, generators: dict[str, Callable[..., Any]] | None = None
+    ) -> None:
         # kind -> async (params, upstream) -> output
-        self.generators: dict[str, Callable] = {}
+        self.generators: dict[str, Callable[..., Any]] = {}
         if generators:
             for kind, fn in generators.items():
                 self.register(kind, fn)
         self.pool = CandidatePool()
         self._runs: dict[str, FreezoneRun] = {}
 
-    def register(self, kind: str, fn: Callable) -> None:
+    def register(self, kind: str, fn: Callable[..., Any]) -> None:
         self.generators[kind] = fn
 
-    def _generator_for(self, node) -> Generator:
+    def _generator_for(self, node: NodeSpec) -> Generator:
         # 节点级 generator 覆盖(测试/装配注入)优先,否则按 kind 注册表
         node_gen = node.params.pop("_generator", None)
         if node_gen is not None:
-            return node_gen
+            return cast(Generator, node_gen)
         fn = self.generators.get(node.kind)
         if fn is not None:
-            return fn
-        return _stub_generator
+            return cast(Generator, fn)
+        return cast(Generator, _stub_generator)
 
     def _runner(self) -> Generator:
         # 图执行 runner: 把 node 分发到注册生成器
-        async def runner(node, upstream):
+        async def runner(
+            node: NodeSpec, upstream: dict[str, Any]
+        ) -> Any:
             return await self._generator_for(node)(node, upstream)
+
         return runner
 
     # ── 执行:拓扑序跑图,成功节点产出全部进候选池 ─────────────────
     async def run_graph(
-        self, graph: FreezoneGraph, *, score_fn: Callable | None = None
+        self, graph: FreezoneGraph, *, score_fn: Callable[..., Any] | None = None
     ) -> FreezoneRun:
         run = FreezoneRun(run_id=f"fz_{uuid4().hex[:12]}", graph=graph)
         results = await graph.execute(self._runner())

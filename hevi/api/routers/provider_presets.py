@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -23,8 +23,8 @@ router = APIRouter(prefix="/providers", tags=["providers"])
 @router.get("/presets")
 async def list_provider_presets(
     category: str | None = None,
-    _user: Annotated[dict, Depends(get_current_user)] = None,  # type: ignore[assignment]
-) -> dict:
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     """列出 obase.ProviderRegistry 预置策略表(可按 category 过滤)。"""
     presets = list_presets(category)
     return {
@@ -37,8 +37,8 @@ async def list_provider_presets(
 @router.get("/presets/{name}")
 async def get_provider_preset(
     name: str,
-    _user: Annotated[dict, Depends(get_current_user)] = None,  # type: ignore[assignment]
-) -> dict:
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     """按名称取预置策略详情(含归一化 resolved_config)。"""
     item = get_preset(name)
     if item is None:

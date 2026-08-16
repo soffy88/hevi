@@ -154,9 +154,11 @@ def gate_character_bible(bible: CharacterBible) -> GateResult:
             errors.append(f"角色 {entry.character_id} 缺少外形描述(LLM 遗漏)")
         else:
             filled += 1
-        for term in _ANACHRONISM_BLACKLIST:
-            if term in entry.appearance or term in entry.era_check:
-                errors.append(f"角色 {entry.character_id} 外形描述命中疑似年代错误词 {term!r}")
+        errors.extend(
+            f"角色 {entry.character_id} 外形描述命中疑似年代错误词 {term!r}"
+            for term in _ANACHRONISM_BLACKLIST
+            if term in entry.appearance or term in entry.era_check
+        )
         if entry.ref_image is None:
             warnings.append(
                 f"角色 {entry.character_id} 尚无权威参考图"

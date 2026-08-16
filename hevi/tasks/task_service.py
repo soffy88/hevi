@@ -554,6 +554,7 @@ class TaskService:
                                 quality=quality,
                                 shots=_views,
                                 consistency_floor=settings.rework_consistency_floor,
+                                min_rework_count=settings.rework_min_shots,
                             )
                             if _decision.deliver or not _decision.regenerate_shot_ids:
                                 break

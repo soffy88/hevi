@@ -10,7 +10,8 @@ class GalleryRepository:
         self._pool = pool
 
     async def create_gallery_item(self, data: dict[str, Any]) -> str:
-        return await insert_one(self._pool, table="showcase_items", data=data, returning="id")
+        row = await insert_one(self._pool, table="showcase_items", data=data, returning="id")
+        return str(row)
 
     async def list_gallery(
         self,

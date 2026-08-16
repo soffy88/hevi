@@ -66,3 +66,13 @@ hevi-web/tsconfig.tsbuildinfo
 
 # explainer 断点续传缓存(本地开发默认路径;容器内由 EXPLAINER_CACHE_DIR 指向 output 挂载)
 data/explainer_cache/
+
+# 本地 agent 配置 / 运行时数据(不入库)
+.agents/
+.claude/
+data/workspace/
+data/hevi_tasks.db
+data/lite_runs/
+*.deb
+data/cinematic_output/
+data/corpus/

@@ -1,5 +1,6 @@
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -94,7 +95,7 @@ def _serialize_task(t: dict[str, Any]) -> dict[str, Any]:
 def _serialize_shot(s: dict[str, Any]) -> dict[str, Any]:
     """剧集看板镜头卡片投影:从已落库的 shot_states 行取逐镜状态 + 一致性/诊断摘要。"""
     sel = s.get("selection_json") or {}
-    return {
+    out: dict[str, Any] = {
         "shot_index": s.get("shot_index"),
         "status": s.get("status"),
         "has_output": bool(s.get("output_path")),
@@ -103,6 +104,10 @@ def _serialize_shot(s: dict[str, Any]) -> dict[str, Any]:
         "diagnosis_category": sel.get("diagnosis_category"),
         "retry_count": sel.get("retry_count"),
     }
+    prep = sel.get("preparation")
+    if prep:
+        out["preparation"] = prep
+    return out
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -318,8 +323,16 @@ async def regenerate_task_shots(
             status_code=409,
             detail=f"all requested shots already at retry cap ({settings.shot_retry_max})",
         )
+
+    # 3O 内化运行时接线:未显式给 hints 时,按 verdict 诊断分类自动推导(repair_agents)。
+    # {shot_index: 修复指令} → omodul regenerate_shots 并入该镜头 prompt(一次一变量)。
+    hints = body.hints
+    if hints is None:
+        from hevi.director.repair_agents import hints_from_failures
+
+        hints = hints_from_failures(existing_shots, body.shot_ids)
     background_tasks.add_task(
-        svc.regenerate_task_shots, task_id, shot_ids=body.shot_ids, hints=body.hints
+        svc.regenerate_task_shots, task_id, shot_ids=body.shot_ids, hints=hints
     )
     return _serialize_task(task)
 
@@ -532,6 +545,222 @@ async def list_task_shots(
         raise HTTPException(status_code=404, detail="Task not found")
     shots = await repo.get_shots(task_id)
     return [_serialize_shot(s) for s in shots]
+
+
+# ── 镜头准备台(补 INC-001 §A/§G/§I/§L 缺失的候选确认工作流) ───────────────
+# 参考 Jellyfish shot_preparation: shot.status pending→ready + 资产/对白候选
+# accept/ignore + action_beats 三段 + 实体链接。状态挂在 selection_json.preparation。
+
+
+@router.get("/{task_id}/shots/preparation")
+async def get_shots_preparation(
+    task_id: UUID,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+) -> dict[str, Any]:
+    """镜头准备聚合状态:每镜的候选(资产/对白)+ 动作节拍 + pending 计数。
+
+    未构建过准备状态的镜头用确定性提取现场生成(不落库,只读视图);
+    已确认的镜头读回落库状态。
+    """
+    task = await repo.get_task(task_id)
+    if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
+        raise HTTPException(status_code=404, detail="Task not found")
+    shots = await repo.get_shots(task_id)
+    cfg = task.get("config_json") or {}
+    episode_plan = cfg.get("episode_plan") or {}
+    known_characters = [
+        str(c.get("name") or "") for c in (episode_plan.get("characters_present") or [])
+        if isinstance(c, dict) and c.get("name")
+    ] or [str(c) for c in (episode_plan.get("characters") or []) if isinstance(c, str)]
+
+    from hevi.season_planner.preparation import (
+        build_shot_preparation,
+        read_preparation,
+    )
+
+    views: list[dict[str, Any]] = []
+    total_pending = 0
+    for s in shots:
+        prep = read_preparation(s)
+        if prep is None:
+            excerpt = str(
+                (s.get("selection_json") or {}).get("script_excerpt")
+                or (s.get("selection_json") or {}).get("shot_plan")
+                or ""
+            )
+            prep = build_shot_preparation(
+                script_excerpt=excerpt,
+                known_characters=known_characters,
+            )
+        total_pending += prep.pending_count
+        views.append(
+            {
+                "shot_index": s.get("shot_index"),
+                "status": prep.status,
+                "pending_count": prep.pending_count,
+                "candidates": prep.candidates,
+                "dialogue_candidates": prep.dialogue_candidates,
+                "action_beats": prep.action_beats,
+                "entity_links": prep.entity_links,
+            }
+        )
+    # 生成前(shot_states 为空):集级候选视图 —— 从 episode_plan 的已知实体构建。
+    if not views and episode_plan:
+        from hevi.season_planner.preparation import extract_asset_candidates
+
+        brief = str(episode_plan.get("title") or "")
+        locations = [
+            str(x) for x in (episode_plan.get("locations") or []) if x
+        ]
+        candidates = extract_asset_candidates(
+            text=brief,
+            known_characters=known_characters,
+            known_scenes=locations,
+        )
+        views = [
+            {
+                "shot_index": -1,  # 集级(未拆镜)
+                "status": "pending" if candidates else "ready",
+                "pending_count": len(candidates),
+                "candidates": candidates,
+                "dialogue_candidates": [],
+                "action_beats": {},
+                "entity_links": [],
+            }
+        ]
+        total_pending = len(candidates)
+    return {
+        "task_id": str(task_id),
+        "shots": views,
+        "total_pending": total_pending,
+        "all_ready": all(v["status"] == "ready" for v in views) if views else True,
+    }
+
+
+class CandidateDecision(BaseModel):
+    """候选确认:accept(收编)/ ignore(跳过)。scope: assets | dialogue。"""
+
+    decision: Literal["accept", "ignore"] = "accept"
+    scope: Literal["assets", "dialogue"] = "assets"
+
+
+@router.patch("/{task_id}/shots/{shot_index}/candidates/{candidate_id}")
+async def confirm_shot_candidate(
+    task_id: UUID,
+    shot_index: int,
+    candidate_id: str,
+    body: CandidateDecision,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+) -> dict[str, Any]:
+    """确认一个镜头候选(accept/ignore)。全部处理完 → 镜头 ready。"""
+    task = await repo.get_task(task_id)
+    if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
+        raise HTTPException(status_code=404, detail="Task not found")
+    shots = await repo.get_shots(task_id)
+    shot = next((s for s in shots if s["shot_index"] == shot_index), None)
+    if shot is None:
+        raise HTTPException(status_code=404, detail=f"shot {shot_index} not found")
+
+    from hevi.season_planner.preparation import (
+        build_shot_preparation,
+        confirm_candidate,
+        read_preparation,
+        upsert_preparation,
+    )
+
+    prep = read_preparation(shot)
+    if prep is None:
+        prep = build_shot_preparation(
+            script_excerpt=str(
+                (shot.get("selection_json") or {}).get("script_excerpt") or ""
+            )
+        )
+    confirm_candidate(
+        prep, candidate_id=candidate_id, decision=body.decision, scope=body.scope
+    )
+    await repo.save_shot(upsert_preparation(shot, prep))
+    return {
+        "shot_index": shot_index,
+        "status": prep.status,
+        "pending_count": prep.pending_count,
+        "entity_links": prep.entity_links,
+    }
+
+
+class ActionBeatsUpdate(BaseModel):
+    """人工修正动作节拍三段(trigger/peak/aftermath)。"""
+
+    trigger: str = ""
+    peak: str = ""
+    aftermath: str = ""
+
+
+@router.patch("/{task_id}/shots/{shot_index}/action_beats")
+async def update_shot_action_beats(
+    task_id: UUID,
+    shot_index: int,
+    body: ActionBeatsUpdate,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+) -> dict[str, Any]:
+    """人工修正一镜的动作节拍(确定性推断不理想时)。"""
+    task = await repo.get_task(task_id)
+    if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
+        raise HTTPException(status_code=404, detail="Task not found")
+    shots = await repo.get_shots(task_id)
+    shot = next((s for s in shots if s["shot_index"] == shot_index), None)
+    if shot is None:
+        raise HTTPException(status_code=404, detail=f"shot {shot_index} not found")
+
+    from hevi.season_planner.preparation import (
+        read_preparation,
+        upsert_preparation,
+    )
+
+    prep = read_preparation(shot)
+    if prep is None:
+        from hevi.season_planner.preparation import ShotPreparation
+
+        prep = ShotPreparation()
+    prep.action_beats = {
+        "trigger": body.trigger,
+        "peak": body.peak,
+        "aftermath": body.aftermath,
+    }
+    await repo.save_shot(upsert_preparation(shot, prep))
+    return {"shot_index": shot_index, "action_beats": prep.action_beats}
+
+
+@router.post("/{task_id}/cancel")
+async def cancel_task(
+    task_id: UUID,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+) -> dict[str, Any]:
+    """取消任务(标记 cancelled;已完成/已取消的任务拒绝)。
+
+    hevi 后台任务不支持强杀,取消语义 = 标记状态供 worker 检查后停止,
+    与 Jellyfish GenerationTask 取消语义对齐(状态驱动)。
+    """
+    task = await repo.get_task(task_id)
+    if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.get("status") in ("completed", "failed", "cancelled"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"task already in terminal state: {task.get('status')}",
+        )
+    await repo.update_task(
+        task_id,
+        {
+            "status": "cancelled",
+            "error": "cancelled by user",
+            "updated_at": datetime.now(UTC).replace(tzinfo=None),
+        },
+    )
+    return {"task_id": str(task_id), "status": "cancelled"}
 
 
 # ── Task 断点续跑(对标 DramaClaw Task Center) ──────────────────────────────

@@ -9,10 +9,12 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { directorApi, subjectApi } from '@/lib/api-client';
 import { consumeDirectorPrefill } from '@/lib/director-prefill';
+import { consumePickedCard, recipeCardToDirectorHints } from '@/lib/recipe-card-bridge';
+import type { CardToDirectorHints } from '@/lib/recipe-card-bridge';
 import type { DirectorPlanResult, DirectorEpisodeResult, DirectorEpisodePayload, DirectorRenderResult, Subject } from '@/types/api';
 
 const PRESETS = [
-  '科普', '严肃', '搞笑', '电影感', '赛博朋克', '国风水墨', '治愈系', '商务专业', '美食', '旅行Vlog',
+  '科普', '严肃', '搞笑', '电影感', '赛博朋克', '儿童卡通', '国风水墨', '治愈系', '商务专业', '美食', '旅行Vlog',
   '产品广告', '新闻播报', '悬疑', '史诗', '复古胶片', '动漫', '极简', '自然纪录片', '时尚', '运动',
 ];
 const MOODS = ['', '温暖', '悲伤', '紧张', '浪漫', '幽默', '励志', '平静', '惊悚', '怀旧', '梦幻'];
@@ -119,9 +121,25 @@ export function DirectorConsole() {
   }
   const [rendered, setRendered] = useState<DirectorRenderResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // 3O 内化 wire:配方卡画廊 → 导演台。挂载时消费,映射到表单字段 + 横幅。
+  const [recipeHints, setRecipeHints] = useState<CardToDirectorHints | null>(null);
 
   useEffect(() => {
     subjectApi.list('character').then(setChars).catch(() => setChars([]));
+  }, []);
+
+  useEffect(() => {
+    const card = consumePickedCard();
+    if (!card) return;
+    const hints = recipeCardToDirectorHints(card);
+    setRecipeHints(hints);
+    // 只映射机位/风格到表单;单镜时长不进 duration_archetype(short 档短路评分)。
+    setF(prev => ({
+      ...prev,
+      prompt_camera: hints.prompt_camera || prev.prompt_camera,
+      prompt_style: hints.prompt_style || prev.prompt_style,
+      narrative_hook: prev.narrative_hook || prev.text,
+    }));
   }, []);
 
   useEffect(() => {
@@ -137,9 +155,9 @@ export function DirectorConsole() {
       num_characters: Math.max(1, payload.characters.length),
       preset: payload.presetLevel,
       narrative_hook: payload.prompt,
-      // §3.1 带参带入:来自通鉴适配器时默认国风水墨(该渠道的水墨/古风风格预设),
-      // 用户仍可在 ④ 视觉风格 里覆盖。
-      style_preset: payload.adapterMode === 'tongjian' ? '国风水墨' : prev.style_preset,
+      // §3.1 带参带入:来自通鉴适配器时默认儿童卡通动画(水墨是成年向, 通鉴儿童向
+      // 占比不小; 用户仍可在 ④ 视觉风格 里覆盖为水墨/电影感等)。
+      style_preset: payload.adapterMode === 'tongjian' ? '儿童卡通' : prev.style_preset,
     }));
   }, []);
 
@@ -218,6 +236,16 @@ export function DirectorConsole() {
     <form className="dc" onSubmit={produce}>
       <h1 className="dc__title">导演控制台</h1>
       <p className="dc__sub">按一部片该控的 8 层要素填 —— 立意 · 角色 · 场景 · 风格 · 分镜 · 音频 · 成片 · 生产。</p>
+
+      {/* 3O 内化:配方卡画廊导入横幅(可清除,字段已映射到风格/机位/时长) */}
+      {recipeHints && (
+        <div className="dc-recipe">
+          <span>🎴 已应用配方卡 <strong>{recipeHints.note}</strong></span>
+          {recipeHints.prompt_camera && <code>机位: {recipeHints.prompt_camera}</code>}
+          {recipeHints.prompt_style && <code>风格: {recipeHints.prompt_style}</code>}
+          <button type="button" onClick={() => setRecipeHints(null)}>✕ 清除</button>
+        </div>
+      )}
 
       {/* ① 立意 */}
       <section className="dc-sec">

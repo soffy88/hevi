@@ -65,6 +65,9 @@ class ExplainerMasterService:
             presenter_name=clean_request.presenter_name,
             heygen_provider=heygen_provider,
             broll_recorder=browser_broll_recorder,
+            # v9.1: 数字人母体照片 + 15 秒先导样片,透传给装配事务。
+            presenter_image_url=clean_request.presenter_image_url or None,
+            preview_mode=clean_request.preview_mode,
         )
 
 

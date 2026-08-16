@@ -29,6 +29,7 @@ from hevi.subjects.subject_embed import cosine_similarity, subject_embed, text_e
 from hevi.tongjian.chapter_ir import _extract_json_obj
 from hevi.tongjian.schemas import (
     CharacterBible,
+    CharacterBibleEntry,
     Constitution,
     FrameManifest,
     GateResult,
@@ -119,7 +120,7 @@ async def generate_scene_assets(
 # ── shot 帧生成 + 打分(§7.1 步骤2、§7.3)────────────────────────────────────
 
 
-def _lead_character(shot: Shot, character_bible: CharacterBible):
+def _lead_character(shot: Shot, character_bible: CharacterBible) -> CharacterBibleEntry | None:
     if not shot.characters:
         return None
     by_id = {e.character_id: e for e in character_bible.characters}

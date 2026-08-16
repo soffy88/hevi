@@ -17,10 +17,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from hevi.tongjian.chapter_ir import _extract_json_obj
-from hevi.tongjian.schemas import ChapterIR, Script, ScriptLine
-from hevi.tongjian.schemas import GateResult
 from hevi.cinematic.schemas import Beat, BeatDialogue, Scene
+from hevi.tongjian.chapter_ir import _extract_json_obj
+from hevi.tongjian.schemas import ChapterIR, GateResult, Script, ScriptLine
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +81,7 @@ async def adapt_scene(
 
 
 async def _check_quote_dialogue_consistency(
-    beats: list[Beat], quotes_by_id: dict, llm: Any
+    beats: list[Beat], quotes_by_id: dict[str, Any], llm: Any
 ) -> list[str]:
     """照抄 hevi.tongjian.script._check_dialogue_consistency 的模式:LLM 比对台词
     白话跟原引语是否语义一致。"""
@@ -172,12 +171,12 @@ async def gate_scene_adapt(scene: Scene, chapter_ir: ChapterIR, *, llm: Any = No
             errors.append(f"beat {beat.beat_id} 引用了不存在的 quote_id {d.quote_id!r}")
 
     for beat in scene.beats:
-        for banned in _BANNED_ACTION_WORDS:
-            if banned in beat.action:
-                errors.append(
-                    f"beat {beat.beat_id} 的 action 命中禁用动作词 {banned!r}"
-                    "(此刻史实里不成立,可能改变因果)"
-                )
+        errors.extend(
+            f"beat {beat.beat_id} 的 action 命中禁用动作词 {banned!r}"
+            "(此刻史实里不成立,可能改变因果)"
+            for banned in _BANNED_ACTION_WORDS
+            if banned in beat.action
+        )
 
     if errors:
         # 结构性红线没过,不再花 LLM 调用去查语义——先把硬伤修完。

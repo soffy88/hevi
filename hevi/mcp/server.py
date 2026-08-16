@@ -13,6 +13,7 @@ from hevi.creative.workflow_service import WorkflowService
 from hevi.mcp.schemas import LIST_CAPABILITIES_INPUT, LIST_CAPABILITIES_OUTPUT
 from hevi.mcp.tools.canvas_tools import build_canvas_skills
 from hevi.mcp.tools.creative_tools import build_creative_skills
+from hevi.mcp.tools.embrace_tools import build_embrace_skills
 from hevi.mcp.tools.subject_tools import build_subject_skills
 from hevi.mcp.tools.video_tools import build_video_skills
 from hevi.subjects.subject_service import SubjectService
@@ -49,6 +50,9 @@ def build_hevi_mcp_server(
     )
 
     for skill in build_video_skills(task_svc=task_svc):
+        server.register_skill(skill)
+
+    for skill in build_embrace_skills():  # 3O 内化能力(watch/media/repair/promote/chat)
         server.register_skill(skill)
 
     for skill in build_creative_skills(

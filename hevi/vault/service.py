@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from typing import Any
 
 from obase.persistence import PgPool, query
 
@@ -45,7 +46,7 @@ def _manifest_hash(manifest: Manifest) -> str:
 
 async def asset_create(
     pool: PgPool,
-    minio_client,
+    minio_client: Any,
     *,
     pack_id: str,
     pack_type: str,
@@ -53,7 +54,7 @@ async def asset_create(
     version: str,
     files: dict[str, bytes],
     file_roles: dict[str, str] | None = None,
-    **manifest_extra,
+    **manifest_extra: Any,
 ) -> Manifest:
     """files: 相对路径 → 原始字节。写入 MinIO(内容寻址)+ 落库为 draft 版本。"""
     from hevi.vault.blob_store import put_blob
@@ -112,7 +113,9 @@ async def asset_create(
     return manifest
 
 
-async def asset_resolve(pool: PgPool, *, pack_id: str, platform: str | None = None) -> dict:
+async def asset_resolve(
+    pool: PgPool, *, pack_id: str, platform: str | None = None
+) -> dict[str, Any]:
     """取用某资产包当前 canonical 版本的 manifest(+ 有 platform 且已绑定则带 remote_ref_id)。"""
     pack_rows = await query(
         pool, sql="SELECT canonical_version FROM vault_packs WHERE pack_id = $1", params=[pack_id]
@@ -160,7 +163,7 @@ def _cosine_distance(a: list[float], b: list[float]) -> float:
     norm_b = sum(y * y for y in b) ** 0.5
     if norm_a == 0 or norm_b == 0:
         return 1.0
-    return 1.0 - dot / (norm_a * norm_b)
+    return float(1.0 - dot / (norm_a * norm_b))
 
 
 async def asset_verify(
@@ -170,7 +173,7 @@ async def asset_verify(
     version: str,
     frame_embedding: list[float],
     threshold: float = 0.35,
-) -> dict:
+) -> dict[str, Any]:
     """门调用:身份 embedding 距离比对。distance 越小越像,<= threshold 判定通过。"""
     rows = await query(
         pool,
@@ -204,7 +207,7 @@ async def store_embedding(
 
 async def get_platform_binding(
     pool: PgPool, *, pack_id: str, version: str, platform: str
-) -> dict | None:
+) -> dict[str, Any] | None:
     """查一条平台绑定记录(有没有就直接返回 None,不抛异常——"没绑定过"是正常状态,
     不是错误)。"""
     rows = await query(
@@ -226,7 +229,7 @@ async def upsert_platform_binding(
     platform: str,
     remote_ref_id: str,
     remote_kind: str | None = None,
-    synced_files: dict | None = None,
+    synced_files: dict[str, Any] | None = None,
     status: str = "active",
 ) -> None:
     """写/更新一条平台绑定记录。业务判断("要不要同步""同步成什么")在调用方

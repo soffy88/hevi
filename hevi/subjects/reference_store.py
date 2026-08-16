@@ -14,9 +14,8 @@ class ReferenceStore:
     """
 
     def __init__(self, base_dir: str | Path | None = None) -> None:
-        self._base_dir = Path(
-            base_dir or os.getenv("HEVI_REFERENCE_DIR", "output/reference_images")
-        )
+        resolved = base_dir or os.getenv("HEVI_REFERENCE_DIR") or "output/reference_images"
+        self._base_dir = Path(resolved)
 
     def path_for(self, subject_id: str, filename: str) -> str:
         return str(self._base_dir / subject_id / filename)

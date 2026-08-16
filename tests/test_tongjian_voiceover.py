@@ -17,7 +17,6 @@ from hevi.tongjian.schemas import (
     ScriptLine,
     Timeline,
     TimelineGap,
-    VisualStyle,
 )
 from hevi.tongjian.voiceover import (
     _char_error_rate,
@@ -26,7 +25,6 @@ from hevi.tongjian.voiceover import (
     gate_voiceover,
     synthesize_voiceover,
 )
-
 
 # ── fixtures ──────────────────────────────────────────────────────────────
 
@@ -251,7 +249,7 @@ class TestSynthesizeVoiceover:
         assert timeline.gaps[0].duration_ms == 1500
 
         # LN003 的 t_start 应该是 1000+1000+1500=3500
-        ln3 = [s for s in timeline.audio_segments if s.line_id == "LN003"][0]
+        ln3 = next(s for s in timeline.audio_segments if s.line_id == "LN003")
         assert ln3.t_start_ms == 3500
 
     @pytest.mark.asyncio

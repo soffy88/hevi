@@ -136,30 +136,30 @@ async def extract_story_graph(*, source_name: str, raw_text: str, llm: Any = Non
     raw_events = draft.get("events", []) or []
     event_ids = [f"E{i:03d}" for i in range(1, len(raw_events) + 1)]
     events: list[StoryEvent] = []
-    for i, e in enumerate(raw_events):
-        actors = [name_to_id[n] for n in (e.get("actors") or []) if n in name_to_id]
+    for i, ev in enumerate(raw_events):
+        actors = [name_to_id[n] for n in (ev.get("actors") or []) if n in name_to_id]
         causes = [
             event_ids[j]
-            for j in (e.get("causes") or [])
+            for j in (ev.get("causes") or [])
             if isinstance(j, int) and 0 <= j < len(event_ids)
         ]
         effects = [
             event_ids[j]
-            for j in (e.get("effects") or [])
+            for j in (ev.get("effects") or [])
             if isinstance(j, int) and 0 <= j < len(event_ids)
         ]
-        span = _find_span(raw_text, str(e.get("quote_span") or "")) or (0, 0)
+        span = _find_span(raw_text, str(ev.get("quote_span") or "")) or (0, 0)
         events.append(
             StoryEvent(
                 event_id=event_ids[i],
-                summary=str(e.get("summary") or ""),
+                summary=str(ev.get("summary") or ""),
                 actors=actors,
-                location=(e.get("location") or None),
-                time_hint=str(e.get("time_hint") or ""),
+                location=(ev.get("location") or None),
+                time_hint=str(ev.get("time_hint") or ""),
                 causes=causes,
                 effects=effects,
-                beat_type=str(e.get("beat_type") or ""),
-                dramatic_weight=int(e.get("dramatic_weight") or 3),
+                beat_type=str(ev.get("beat_type") or ""),
+                dramatic_weight=int(ev.get("dramatic_weight") or 3),
                 source_span=span,
             )
         )

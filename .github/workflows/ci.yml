@@ -35,6 +35,12 @@ jobs:
           uv run python scripts/ci/check_omodul_signature.py
           uv run python scripts/ci/check_enabled_pillars.py
 
+      # 3O 内化 CI(Phase B/C):配方卡 schema / 判例库编号只增不重排
+      - name: Embrace checks (recipe schema + canon numbering)
+        run: |
+          uv run python scripts/ci/check_recipe_schema.py
+          uv run python scripts/ci/check_canon_numbering.py
+
       - name: Mypy
         run: uv run mypy --strict hevi
 

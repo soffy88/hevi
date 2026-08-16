@@ -18,6 +18,7 @@ import os
 import re
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 from oprim import edge_tts_word_boundary, probe_duration
 
@@ -46,16 +47,16 @@ def _clauses_of(text: str) -> list[str]:
     return [c for c in _CLAUSE_SPLIT_RE.split(text) if c.strip()]
 
 
-async def _synthesize(text: str, out_path: Path, *, voice: str, rate: str) -> list[dict]:
+async def _synthesize(text: str, out_path: Path, *, voice: str, rate: str) -> list[dict[str, Any]]:
     """3O §2 Task 2.2:委托 oprim.edge_tts_word_boundary 原子(单源),
     返回词级 WordBoundary 时间戳(秒)。"""
-    result = await edge_tts_word_boundary(
+    result = await edge_tts_word_boundary(  # type: ignore[no-untyped-call]
         text, voice=voice, rate=rate, output_path=out_path
     )
-    return result["words"]
+    return list(result["words"])
 
 
-def _captions_from_words(text: str, words: list[dict]) -> list[CaptionCue]:
+def _captions_from_words(text: str, words: list[dict[str, Any]]) -> list[CaptionCue]:
     clauses = _clauses_of(text)
     captions: list[CaptionCue] = []
     wi = 0
@@ -123,7 +124,7 @@ async def synthesize_storyboard(
         active_provider = provider
         suffix = "wav" if provider in {"cosyvoice", "voicebox"} else "mp3"
         out_path = audio_dir / f"{seg.id}.{suffix}"
-        words: list[dict] = []
+        words: list[dict[str, Any]] = []
         try:
             if provider == "cosyvoice":
                 await cosyvoice_synthesize(
@@ -184,7 +185,7 @@ async def synthesize_storyboard(
             except AsrVerificationError as exc:
                 raise VoiceoverError(f"段 {seg.id} ASR 校验失败: {exc}") from exc
 
-        duration = probe_duration(out_path)
+        duration = probe_duration(out_path)  # type: ignore[no-untyped-call]
         captions = (
             _captions_from_words(seg.narration, words)
             if words
@@ -204,7 +205,13 @@ async def synthesize_storyboard(
                 props=props,
                 captions=captions,
                 visual_type=seg.visual_type,
-                visual_config=seg.visual_config,
+                visual_config={
+                    **seg.visual_config,
+                    "layout_mode": getattr(seg, "layout_mode", "fullscreen") or "fullscreen",
+                    "audio_style": getattr(seg, "audio_style", "formal") or "formal",
+                },
+                layout_mode=getattr(seg, "layout_mode", "fullscreen") or "fullscreen",
+                audio_style=getattr(seg, "audio_style", "formal") or "formal",
             )
         )
         logger.info("explainer voiceover: 段 %s 时长 %.2fs (累计 %.2fs)", seg.id, duration, cursor)

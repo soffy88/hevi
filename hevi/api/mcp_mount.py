@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import FastAPI
@@ -77,9 +78,11 @@ def mount_mcp(app: FastAPI) -> None:
     original_lifespan = app.router.lifespan_context
 
     @asynccontextmanager
-    async def _combined(application: FastAPI):
-        async with original_lifespan(application):
-            async with asgi_app.router.lifespan_context(application):
-                yield
+    async def _combined(application: FastAPI) -> AsyncIterator[None]:
+        async with (
+            original_lifespan(application),
+            asgi_app.router.lifespan_context(application),
+        ):
+            yield
 
     app.router.lifespan_context = _combined

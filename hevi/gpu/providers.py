@@ -31,6 +31,10 @@ VRAM_DUIX = 5242.0
 # Measured: 5407 MiB peak (Wan2GP+CausVid 8-step, profile 5, RTX 3080, 2026-06-18)
 # Down from 9917 MiB (native 30-step); subprocess-managed via wgp.py mmgp offloading
 VRAM_WAN_LOCAL = 5407.0
+# H3 本地(ComfyUI W4A8/Q3 GGUF + 动态卸载):8GB 卡跑,预留 1.5GB 给桌面
+# (与现网 --reserve-vram 1.5 一致)。实测按 RTX 3080 10GB 口径的保守上限;8GB 卡
+# 上由 ComfyUI 的 lowvram/offload 自管理,这里只是串行锁的显存刻度。
+VRAM_H3_LOCAL = 8500.0
 # Measured: 8631 MiB peak (SDXL base 1.0 fp16, 1024x1024, 20 steps, attention
 # slicing + VAE tiling, sdxl-vae-fp16-fix VAE, RTX 3080, 2026-07-06, subprocess)
 VRAM_SDXL_LOCAL = 8631.0
@@ -247,6 +251,35 @@ class SdxlLocalProvider:
 sdxl_local_provider = SdxlLocalProvider()
 
 
+# ─── H3 local provider (ComfyUI) ─────────────────────────────────────────────
+
+
+class H3LocalProvider:
+    """Sentinel for h3_local in GpuScheduler registry.
+
+    生成由 h3_local 的 ComfyClient 走本地 ComfyUI 完成;ComfyUI 进程自管理模型
+    卸载(lowvram/offload)。load()/unload() 是 no-op;GpuScheduler.acquire() 提供
+    串行锁——与其他本地 GPU 模型(sdxl/wan/vibevoice)互斥,避免 8GB 卡上抢显存。
+    """
+
+    def __init__(self) -> None:
+        self._loaded = False
+
+    async def load(self) -> None:
+        self._loaded = True
+        logger.info("GPU: h3_local marked active (ComfyUI manages VRAM)")
+
+    async def unload(self) -> None:
+        self._loaded = False
+        logger.info("GPU: h3_local released")
+
+    def is_loaded(self) -> bool:
+        return self._loaded
+
+
+h3_local_provider = H3LocalProvider()
+
+
 # ─── Registry setup ─────────────────────────────────────────────────────────
 
 
@@ -259,4 +292,5 @@ def setup_model_registry() -> ModelRegistry:
     registry.register("duix", DuixProvider())
     registry.register("wan_local", wan_local_provider)
     registry.register("sdxl_local", sdxl_local_provider)
+    registry.register("h3_local", h3_local_provider)
     return registry

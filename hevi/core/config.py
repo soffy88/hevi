@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     # 只在不合格时触发,合格片零额外开销;可用 task config_json["auto_rework_rounds"] 覆盖。
     auto_rework_max_rounds: int = 1
     rework_consistency_floor: float = 0.75
+    # G1 实测身份匹配系统性偏低,零星 1-2 镜错配直接返工 = 每任务白付 2× 云费。
+    # 错配镜头数低于该门槛时只记录诊断不返工(全废/大面积错配仍返工)。
+    rework_min_shots: int = 2
     # 设计文档 §4.3:单个镜头的重试次数硬上限——跟 auto_rework_max_rounds(整任务返工
     # 轮数)是两个维度:一轮返工可能同时点名好几个镜头,这个上限管的是"这一个镜头"
     # 累计被重烧了几次,超限即视为该镜头降级交付,不再消耗算力空转。
@@ -74,6 +77,22 @@ class Settings(BaseSettings):
     paddle_api_key: str | None = None
     paddle_webhook_secret: str | None = None
     paddle_environment: str = "sandbox"
+
+    # ── h3_local 本地视频 provider(ComfyUI,8GB)+ 镜头级后处理 ────────────────
+    # 对应模块:hevi/providers/h3_local(provider/comfy_client/workflows)、
+    # hevi/post(flashvsr/rife_vs/pipeline)、hevi/prompt/h3_compiler。
+    h3_comfy_url: str = "http://127.0.0.1:8188"
+    h3_workflow: str = "h3_w4a8_zh.json"
+    h3_serial: bool = True  # 串行队列,一次一个生成任务(8GB 纪律)
+    h3_shot_timeout_s: float = 1800.0  # W4A8 单镜 5~8s 在 8GB 卡上可达十几分钟
+    # H3 路由开关:auto(默认,economy/中文对白镜优先) | on | off
+    h3_routing: str = "auto"
+    # 后处理工序(镜头级,进 ffmpeg 之前):
+    post_upscale: str = "flashvsr"  # off | flashvsr
+    post_interp: str = "rife2x"  # off | rife2x | flowframes
+    rife_model: str = "4.25"
+    rife_sc: bool = True
+    rife_format: str = "RGBH"
 
 
 settings = Settings()

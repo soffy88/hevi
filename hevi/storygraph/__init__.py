@@ -15,7 +15,6 @@ from hevi.storygraph.schemas import (
 )
 
 __all__ = [
-    "extract_story_graph",
     "StoryArc",
     "StoryCharacter",
     "StoryEvent",
@@ -24,4 +23,5 @@ __all__ = [
     "StoryMeta",
     "StoryQuote",
     "StoryRelationship",
+    "extract_story_graph",
 ]

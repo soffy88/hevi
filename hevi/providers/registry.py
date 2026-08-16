@@ -190,7 +190,7 @@ def register_all_providers() -> None:
 
     # 1.0.1 云 qwen(阿里云百炼 workspace 专属端点,非欠费)——通鉴 cloud_avatar 管道的 LLM。
     # 公共 dashscope.aliyuncs.com 那把 DASHSCOPE_API_KEY 账户欠费,只有 workspace(ALIBABA_MAAS_*)
-    # 的 compatible-mode 端点可用(2026-07-10 端到端验证过)。qwen-plus 出剧本质量远好于本地 llama3.2。
+    # 的 compatible-mode 端点可用(2026-07-10 验证过)。
     def _compat_llm_call_maas(**kwargs: Any) -> dict[str, Any]:
         """Call ALIBABA_MAAS workspace 专属端点(同步,同 `_compat_llm_call` 约定)。"""
         host = _os.getenv("ALIBABA_MAAS_HOST", "")
@@ -258,6 +258,12 @@ def register_all_providers() -> None:
         replace=True,
     )
     ProviderRegistry.register("video", "wan_local", wan_local_generate, replace=True)
+
+    # h3_local:MiniMax H3 本地(ComfyUI,8GB W4A8)——零成本、原生中文音频、zh prompt
+    # 直出。能力行见 hevi/providers/h3_local/provider.py::H3_LOCAL_CAPABILITY。
+    from hevi.providers.h3_local.provider import register_h3_local
+
+    register_h3_local()
 
     # 高写实云 provider(fal):Veo3 / Kling v2 / 海螺 —— A2 已回迁 oprim v3.11.0,直接导入。
     from oprim import hailuo_generate, kling_v2_generate, veo3_generate
@@ -399,3 +405,32 @@ def register_all_providers() -> None:
         logger.info("VLM provider: local_qwen_vl_adapter (qwen2.5vl via ollama)")
     else:
         logger.warning("VLM provider: 本地 qwen2.5vl 不可用,vlm/default 未注册")
+
+    # 6. 3GS G2: 图生3D 视角资产 provider(prop3d_render —— img2threejs 方法论,Apache 2.0,
+    #    无 GPU 推理)。注册为可选能力条目;运行时由 scene_block_workflow 消费。
+    #    LLM/浏览器依赖按环境可用性降级(Prop3DError 明确指引),不伪装成功。
+    def _prop3d_capability(**kwargs: Any) -> dict[str, Any]:
+        from hevi.director.prop3d import (
+            Prop3DError,
+            blueprint_to_threejs,
+            build_prop_blueprint,
+            render_azimuth_frames,
+        )
+
+        reference = kwargs.get("reference_image")
+        azimuths = kwargs.get("azimuths", [0.0])
+        out_dir = kwargs.get("out_dir")
+        llm = kwargs.get("llm")
+        if reference is None or out_dir is None:
+            raise Prop3DError("prop3d_render 需要 reference_image 与 out_dir")
+        blueprint = build_prop_blueprint(reference, llm=llm)
+        model_code = blueprint_to_threejs(blueprint, llm=llm)
+        frames = render_azimuth_frames(
+            model_code, azimuths=azimuths, out_dir=out_dir
+        )
+        return {"frames": [str(f) for f in frames], "provider": "img2threejs"}
+
+    ProviderRegistry.register(
+        "prop3d", "img2threejs", _prop3d_capability, replace=True
+    )
+    logger.info("prop3d provider: img2threejs(图生3D 视角资产,3GS G2)")

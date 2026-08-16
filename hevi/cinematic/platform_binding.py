@@ -21,6 +21,8 @@ import json
 import logging
 from pathlib import Path
 
+from obase.persistence import PgPool
+
 from hevi.vault.service import get_platform_binding, upsert_platform_binding
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,7 @@ def _data_uri(path: Path) -> tuple[str, str]:
 
 
 async def ensure_platform_binding(
-    pool,
+    pool: PgPool,
     *,
     pack_id: str,
     version: str,

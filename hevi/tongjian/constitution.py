@@ -52,6 +52,9 @@ _CONSTITUTION_PROMPT_TEMPLATE = """你是历史短片的创作宪法(creative br
 1. act_structure 里的 events 只能引用上面事件列表里出现过的 event_id,一字不差,不得杜撰。
 2. 戏剧性权重 >= 4 的事件必须被收录进某一幕,不能遗漏。
 3. target_duration_sec 应与所收录事件总数匹配,平均每个事件 {min_sec}-{max_sec} 秒。
+4. 若无特别说明,visual_style.art_direction 必须为: 色彩鲜艳的儿童卡通动画风格,
+   圆润可爱的角色造型,明亮欢快的配色,简洁清晰的大色块 —— 禁止默认国风水墨/古风
+   (水墨是成年观众取向; 若用户显式要求水墨才可用)。palette 用明快高饱和色。
 """
 
 

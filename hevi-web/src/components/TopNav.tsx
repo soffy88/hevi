@@ -17,13 +17,17 @@ import { isAuthenticated, logout } from '@/lib/auth-store';
 const NAV = [
   { href: '/', label: '⚡ 极速生成' },
   { href: '/explainer', label: '🎙️ 解说中心' },
+  { href: '/lite', label: '⚡ 轻量发射台' },
+  { href: '/dashboard', label: '📊 任务大盘' },
   { href: '/tongjian', label: '🏛️ 历史现场' },
+  { href: '/animate', label: '🎬 动画演绎' },
   { href: '/director-pipeline', label: '🎬 导演流水线' },
   { href: '/director', label: '🎛️ 导演控制台' },
   { href: '/production', label: '📊 生产看板' },
 ];
 
 const TOOLBOX = [
+  { href: '/embrace', label: '🎴 配方卡画廊' },
   { href: '/studio/clipper', label: '✂️ 智能拆条' },
   { href: '/presenters', label: '👤 数字人预设' },
   { href: '/voice-studio', label: '🔊 语音工作室' },

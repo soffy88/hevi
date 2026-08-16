@@ -129,7 +129,8 @@ def resolve_preset(name: str | None) -> dict[str, Any]:
     供生成层消费:取不到时回落到 `wan_local`(零成本默认),保证前端传
     任意名称都不会把生成打挂。
     """
-    item = get_preset(name) or get_preset("wan_local")
+    resolved = name or "wan_local"
+    item = get_preset(resolved) or get_preset("wan_local")
     assert item is not None
     return {
         "name": item["name"],

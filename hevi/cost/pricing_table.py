@@ -70,6 +70,12 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
             "unit": "per_second",
             "price_usd": 0.0,
         },
+        # h3_local:本地 ComfyUI H3(W4A8,8GB),零 API 成本;后处理(FlashVSR/RIFE)
+        # 同样零成本,只耗本地算力。
+        "h3_local": {
+            "unit": "per_second",
+            "price_usd": 0.0,
+        },
         "ltx2_native": {
             "unit": "per_minute",
             "price_usd": 0.0,

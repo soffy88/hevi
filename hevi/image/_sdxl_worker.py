@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Any
 
 
 def main() -> None:
@@ -33,12 +34,12 @@ def main() -> None:
     # this GPU has free and OOMs. madebyollin/sdxl-vae-fp16-fix is a re-trained VAE
     # that decodes correctly in fp16 with no upcast, avoiding the OOM entirely.
     # (CPU 路径本来就是 float32,不存在这个 NaN 问题,但复用同一个 VAE 不影响正确性。)
-    vae = AutoencoderKL.from_pretrained(
+    vae = AutoencoderKL.from_pretrained(  # type: ignore[no-untyped-call]
         "madebyollin/sdxl-vae-fp16-fix",
         cache_dir=task.get("cache_dir") or None,
         torch_dtype=dtype,
     )
-    pipe = StableDiffusionXLPipeline.from_pretrained(
+    pipe = StableDiffusionXLPipeline.from_pretrained(  # type: ignore[no-untyped-call]
         task["model_id"],
         vae=vae,
         cache_dir=task.get("cache_dir") or None,
@@ -67,7 +68,7 @@ def main() -> None:
         pipe.fuse_lora(lora_scale=float(os.getenv("SDXL_LORA_SCALE", "0.8")))
         pipe.unload_lora_weights()
 
-    extra_kwargs: dict = {}
+    extra_kwargs: dict[str, Any] = {}
     ip_adapter_image_path = task.get("ip_adapter_image")
     if ip_adapter_image_path:
         if device != "cuda":

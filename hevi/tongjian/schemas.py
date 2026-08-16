@@ -212,7 +212,7 @@ class CharacterBibleEntry(BaseModel):
     # (build_frame_manifest_avatar)还没有"这一镜是什么机位"的信息(ShotCamera 只有
     # shot_size/movement,没有方位角),按机位选用对应视图是后续工作,不在这次范围。
     ref_image_views: dict[str, str] | None = None
-    gen_lock: dict | None = None  # {"seed":..., "ip_adapter_weight":...}
+    gen_lock: dict[str, Any] | None = None  # {"seed":..., "ip_adapter_weight":...}
     voice_id: str | None = None  # 待 L3 TTS 接入后填入
 
 

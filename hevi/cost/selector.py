@@ -14,6 +14,10 @@ PROVIDER_QUALITY = {
     "hailuo": 8,
     "wan_local": 7,  # 零成本本地,质量档较低
     "ltx2_local": 7,
+    # H3 本地(ComfyUI W4A8,8GB):零成本、原生中文音频 + 中文提示词直出。
+    # 质量档与 wan_local 同档(量化实验性,画质略低于 INT8 云档),胜在 native_audio
+    # 与 zh_prompt —— 路由时中文对白镜优先(见 shot_router.py)。
+    "h3_local": 7,
     # WaveSpeed AI:刚接入(2026-07),没有实际出片口碑数据——初始估值,不是基准测过的
     # 分数,待有真实产出后按同样的手工口碑方式重新校准。wan_2_7 参照同宗 wan_cloud
     # 的既有档位;happyhorse_1_1 官方自称旗舰但 native_audio/lip_sync 未经 API 契约

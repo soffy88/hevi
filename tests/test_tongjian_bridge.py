@@ -5,7 +5,6 @@ L2-L8(cloud_avatar)渲染桥接。2026-07-12:短剧此前接的通用长视频�
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -21,8 +20,6 @@ from hevi.storygraph.schemas import (
 )
 from hevi.tongjian.schemas import (
     AudioSegment,
-    CharacterBible,
-    CharacterBibleEntry,
     FinalVideo,
     FrameManifest,
     GateResult,

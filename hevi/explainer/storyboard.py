@@ -14,10 +14,16 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, cast
 
 from hevi.explainer.props import normalise_visual_config
-from hevi.explainer.schemas import GateResult, Storyboard, StoryboardSegment, validate_props
+from hevi.explainer.schemas import (
+    GateResult,
+    SceneType,
+    Storyboard,
+    StoryboardSegment,
+    validate_props,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +139,7 @@ def _storyboard_from_draft(topic: str, draft: dict[str, Any]) -> Storyboard:
             logger.warning("explainer storyboard: 段 %s narration 为空,跳过", item.get("id"))
             continue
         try:
-            props = validate_props(scene_type, item.get("props") or {})
+            props = validate_props(cast(SceneType, scene_type), item.get("props") or {})
         except Exception as e:
             logger.warning("explainer storyboard: 段 %s props 校验失败,跳过: %s", item.get("id"), e)
             continue

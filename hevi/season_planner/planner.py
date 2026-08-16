@@ -15,6 +15,7 @@ LLM 显式选 qwen_cloud(非欠费云端);judge/生成失败均降级不抛异�
 
 from __future__ import annotations
 
+import itertools
 import logging
 from typing import Any
 
@@ -213,7 +214,7 @@ def gate_season_plan(plan: SeasonPlan, story: StoryGraph) -> GateResult:
     # ⑤ 角色不断裂:同一角色两次出场之间缺席不得超过 _MAX_ABSENCE_GAP 集
     for cc in plan.continuity_constraints:
         eps = cc.present_in_episodes
-        for a, b in zip(eps, eps[1:]):
+        for a, b in itertools.pairwise(eps):
             gap = b - a - 1
             if gap > _MAX_ABSENCE_GAP:
                 errors.append(

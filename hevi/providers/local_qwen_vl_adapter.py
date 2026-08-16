@@ -58,7 +58,7 @@ def _video_frame_to_temp_png(path: Path) -> Path | None:
             timeout=30,
         )
         return out
-    except Exception as e:  # noqa: BLE001 — 抽帧失败不阻断,退化为跳过这张图
+    except Exception as e:
         logger.warning("VL adapter: 视频抽帧失败 %s: %s", path, e)
         return None
 

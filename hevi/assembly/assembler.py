@@ -238,7 +238,8 @@ def assemble_talking_clips(
             capture_output=True,
         )
         return
-    vf, af = [], []
+    vf: list[str] = []
+    af: list[str] = []
     vf.extend(f"[{i}:v]{scale},setsar=1[cv{i}]" for i in range(n))
     prev_v, prev_a = "[cv0]", "[0:a]"
     cum = durs[0]
@@ -280,7 +281,8 @@ def _probe_sync(path: Path) -> float:
     """同步 ffprobe 时长探测(供 assemble_talking_clips 使用)。"""
     from oprim import probe_duration as _probe
 
-    return _probe(path)
+    out = _probe(path)  # type: ignore[no-untyped-call]
+    return float(out)
 
 
 def build_xfade_chain(
@@ -521,7 +523,7 @@ async def assemble_longvideo(
 
         # ② 视频拼接
         silent = tmp_dir / "video_silent.mp4"
-        xfade_d: float | list[float] = (
+        xfade_d: float = (
             min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
         )
         use_xfade = transition != "cut" and len(durations) > 1 and xfade_d > 0.05
@@ -533,7 +535,10 @@ async def assemble_longvideo(
 
             beats = await asyncio.to_thread(detect_beat_times, bgm_path)
             if beats:
-                xfade_d = beat_snapped_xfade_durations(durations, base_xfade_d=xfade_d, beats=beats)
+                snapped = beat_snapped_xfade_durations(
+                    durations, base_xfade_d=xfade_d, beats=beats
+                )
+                xfade_d = snapped[0] if isinstance(snapped, list) else snapped
 
         if use_xfade:
             fc, vlabel, _ = build_xfade_chain(durations, transition, xfade_d)

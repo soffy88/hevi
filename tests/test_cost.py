@@ -511,7 +511,12 @@ def test_shot_router_classify_quality_floor():
 
 @pytest.mark.asyncio
 async def test_shot_router_propagates_floor_to_route():
-    """route_shot_provider 把分类得到的 floor 透传给 route_video_provider。"""
+    """route_shot_provider 把分类得到的 floor 透传给 route_video_provider。
+
+    2026-08 路由规则更新:economy 档(floor ≤ 7)/中文对白镜优先本地 h3_local
+    (零成本 + 原生中文音频)——空镜不再落到 wan_local,而是 h3_local;只有
+    H3_ROUTING=off 或高需求镜(floor > 7)才回落 route_video_provider。
+    """
     from unittest.mock import patch as _patch
 
     from hevi.cost import shot_router as SR
@@ -523,15 +528,15 @@ async def test_shot_router_propagates_floor_to_route():
         return "wan_local"
 
     with _patch("hevi.cost.shot_router.route_video_provider", fake_route):
-        # 空镜 → floor 7
-        await SR.route_shot_provider(
+        # 空镜 → floor 7,economy 档 → 直接偏好 h3_local,不再走 route_video_provider
+        provider = await SR.route_shot_provider(
             prompt="空镜 远景 landscape",
             duration_archetype="short",
             audio_provider="vibevoice",
             mode="t2v",
         )
-        assert seen["quality_floor"] == 7
-        # 主角特写 → floor 10
+        assert provider == "h3_local"
+        # 主角特写 → floor 10 > 7 → 不偏好 h3,floor 照常透传
         await SR.route_shot_provider(
             prompt="主角特写 portrait",
             duration_archetype="short",
@@ -540,6 +545,31 @@ async def test_shot_router_propagates_floor_to_route():
         )
         assert seen["quality_floor"] == 10
         assert seen["mode"] == "i2v"
+
+    # H3_ROUTING=off(矩阵里可关):空镜也回落 route_video_provider,floor 透传
+    with _patch("hevi.cost.shot_router.route_video_provider", fake_route), _patch(
+        "hevi.cost.shot_router.os.getenv", return_value="off"
+    ):
+        seen.clear()
+        await SR.route_shot_provider(
+            prompt="空镜 远景 landscape",
+            duration_archetype="short",
+            audio_provider="vibevoice",
+            mode="t2v",
+        )
+        assert seen["quality_floor"] == 7
+
+    # prefer_h3_local=False 显式钉死:空镜也不走 h3
+    with _patch("hevi.cost.shot_router.route_video_provider", fake_route):
+        seen.clear()
+        await SR.route_shot_provider(
+            prompt="空镜 远景 landscape",
+            duration_archetype="short",
+            audio_provider="vibevoice",
+            mode="t2v",
+            prefer_h3_local=False,
+        )
+        assert seen["quality_floor"] == 7
 
 
 @pytest.mark.asyncio

@@ -29,7 +29,6 @@ from hevi.tongjian.shotlist import (
     generate_shotlist,
 )
 
-
 # ── fixtures ──────────────────────────────────────────────────────────────
 
 

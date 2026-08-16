@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { explainerApi, presenterApi, taskApi } from '@/lib/api-client';
+import { useFaceValidator } from '@/hooks/useFaceValidator';
 import { syncAuthToken } from '@/lib/auth-store';
 import type {
   ExplainerCue,
@@ -92,6 +93,14 @@ export function ExplainerWorkbench() {
   const [assembleFailed, setAssembleFailed] = useState(false);
   // 断点续传恢复提示(独立于数字人 notice,避免被 presenter 加载覆盖)。
   const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
+  // v9.1: 数字人母体照片(Dropzone 上传 → 浏览器 AI 预检 → 服务端复核)。
+  const [presenterImageFile, setPresenterImageFile] = useState<File | null>(null);
+  const [presenterImageUrl, setPresenterImageUrl] = useState('');
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  // v9.1: 15 秒先导样片 —— 提交前先出一段 15s 样片看质感,不浪费全量渲染。
+  const [previewMode, setPreviewMode] = useState(false);
+  const faceValidator = useFaceValidator();
 
   useEffect(() => {
     syncAuthToken();
@@ -418,6 +427,8 @@ export function ExplainerWorkbench() {
         enable_browser_broll: browserBroll,
         aspect_ratio: aspectRatio,
         session_id: research.session_id || (window.sessionStorage.getItem('hevi_explainer_session') ?? undefined),
+        presenter_image_url: presenterImageUrl || undefined,
+        preview_mode: previewMode,
       });
       setTaskId(accepted.task_id);
       setTask(null);
@@ -432,6 +443,43 @@ export function ExplainerWorkbench() {
 
   function updateCue(index: number, patch: Partial<ExplainerCue>) {
     setCues(previous => previous.map((cue, cueIndex) => cueIndex === index ? { ...cue, ...patch } : cue));
+  }
+
+  // v9.1: Dropzone 选中/拖入文件 → 浏览器 AI 预检(TinyFaceDetector)。
+  async function handlePresenterFile(file: File | null) {
+    setUploadNotice(null);
+    setPresenterImageFile(file);
+    if (!file) return;
+    const verdict = await faceValidator.validate(file);
+    if (!verdict.isValid && verdict.errorMsg) {
+      setUploadNotice(verdict.errorMsg);
+    }
+  }
+
+  // 预览 blob URL 只创建一次(避免每次渲染都新建对象 URL 泄漏内存)。
+  const presenterPreviewUrl = useMemo(
+    () => (presenterImageFile ? URL.createObjectURL(presenterImageFile) : ''),
+    [presenterImageFile],
+  );
+
+  // v9.1: 上传并确认 —— 服务端权威复核(与本地预检同规则),通过后锁定底图。
+  async function confirmPresenterUpload() {
+    if (!presenterImageFile || !faceValidator.result.isValid) return;
+    setUploadBusy(true);
+    setUploadNotice(null);
+    try {
+      const uploaded = await explainerApi.uploadPresenterImage(presenterImageFile);
+      if (!uploaded.valid) {
+        setUploadNotice(uploaded.reason || '底图未通过服务端质检,请换一张');
+        return;
+      }
+      setPresenterImageUrl(uploaded.reason);
+      setUploadNotice('✓ 底图已上传并通过质检,将作为全时段解说员母体');
+    } catch (reason) {
+      setUploadNotice(reason instanceof Error ? reason.message : '底图上传失败,请重试');
+    } finally {
+      setUploadBusy(false);
+    }
   }
 
   return (
@@ -569,9 +617,73 @@ export function ExplainerWorkbench() {
             )}
           </div>
           <div className="ex-v6__scripts"><h3>选择脚本视角</h3>{research.scripts.map(script => <button type="button" key={script.id} className={selectedScriptId === script.id ? 'is-selected' : ''} onClick={() => selectScript(script)}><strong>{script.title}</strong><span>{script.viewpoint}</span></button>)}</div>
-          {hasAvatarCue && <div className="ex-v6__presenter"><div><h3>出镜数字人</h3><p>已自动选择；没有预设时系统会创建本地可渲染数字人。你也可以在这里切换。</p></div><select aria-label="第二步出镜数字人" value={presenterId} onChange={event => { setPresenterId(event.target.value); setPresenterNotice(''); }} disabled={presenterBusy}><option value="">自动选择 / 自动创建</option>{presenters.map(presenter => <option key={presenter.id} value={presenter.id}>{presenter.name}</option>)}</select>{presenterNotice && <small>{presenterNotice}</small>}</div>}
+          {hasAvatarCue && (
+            <div className="ex-v6__presenter">
+              <div><h3>出镜数字人</h3><p>已自动选择；没有预设时系统会创建本地可渲染数字人。你也可以在这里切换。</p></div>
+              <select aria-label="第二步出镜数字人" value={presenterId} onChange={event => { setPresenterId(event.target.value); setPresenterNotice(''); }} disabled={presenterBusy}><option value="">自动选择 / 自动创建</option>{presenters.map(presenter => <option key={presenter.id} value={presenter.id}>{presenter.name}</option>)}</select>
+              {presenterNotice && <small>{presenterNotice}</small>}
+
+              {/* v9.1: 母体照片 Dropzone —— 浏览器 AI 预检 + 服务端复核双保险。 */}
+              <div className="ex-v6__avatar">
+                <div className="ex-v6__avatar-head">
+                  <div><h3>数字人母体照片（全时段 Talking Face 底轨）</h3><p>拖入或点击选择一张 JPG/PNG（≤10MB），系统自动做 AI 素材质检。</p></div>
+                  {presenterImageUrl && <em className="ex-v6__avatar-locked">✓ 已锁定底图</em>}
+                </div>
+                <label
+                  className={`ex-v6__dropzone${faceValidator.result.isValid ? ' is-valid' : ''}${faceValidator.result.errorMsg ? ' is-invalid' : ''}`}
+                  onDragOver={event => event.preventDefault()}
+                  onDrop={event => {
+                    event.preventDefault();
+                    const file = event.dataTransfer.files?.[0] ?? null;
+                    void handlePresenterFile(file);
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    onChange={event => { const file = event.target.files?.[0] ?? null; void handlePresenterFile(file); }}
+                  />
+                  {presenterImageFile ? (
+                    <>
+                      <img src={presenterPreviewUrl} alt="预览" className="ex-v6__dropzone-preview" />
+                      <span>
+                        {faceValidator.result.isLoading
+                          ? '正在进行 AI 素材质检…'
+                          : faceValidator.result.isValid
+                            ? `✅ AI 校验通过（${Math.round((faceValidator.result.faceRatio ?? 0) * 100)}% 人脸占比）`
+                            : '⚠ 未通过校验，查看下方提示并换一张照片'}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="ex-v6__dropzone-hint">＋ 拖入照片 / 点击选择（JPG·PNG ≤10MB）</span>
+                  )}
+                </label>
+                <div className="ex-v6__avatar-spec">
+                  <div className="is-do"><h4>✅ 请这样做</h4><ul><li>正脸直视镜头，面部清晰</li><li>光线明亮均匀，无强阴影</li><li>半身照（人物占画面 50%-70%）</li></ul></div>
+                  <div className="is-dont"><h4>❌ 不要这样</h4><ul><li>侧脸 / 低头 / 低头玩手机</li><li>口罩、墨镜等面部遮挡</li><li>全身远景（人脸占比过小）</li><li>昏暗或逆光环境</li></ul></div>
+                </div>
+                {(faceValidator.result.errorMsg || uploadNotice) && (
+                  <div className="ex-v6__avatar-error" role="alert">{uploadNotice ?? faceValidator.result.errorMsg}</div>
+                )}
+                <div className="ex-v6__avatar-actions">
+                  <button
+                    type="button"
+                    className="ex-v6__primary"
+                    onClick={confirmPresenterUpload}
+                    disabled={!presenterImageFile || !faceValidator.result.isValid || uploadBusy || Boolean(presenterImageUrl)}
+                  >
+                    {uploadBusy ? '上传与质检中…' : presenterImageUrl ? '✓ 已上传' : '上传并确认'}
+                  </button>
+                  {presenterImageFile && !presenterImageUrl && (
+                    <button type="button" className="ex-v6__secondary" onClick={() => { faceValidator.reset(); setPresenterImageFile(null); setUploadNotice(null); }}>重新选择</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {selectedScript && <div className="ex-v6__cues"><h3>确稿编辑器 · 视觉脚手架</h3>{cues.map((cue, index) => <div className="ex-v6__cue" key={`${cue.time_range}-${index}`}><input aria-label={`时间 ${index + 1}`} value={cue.time_range} onChange={event => updateCue(index, { time_range: event.target.value })} /><select aria-label={`画面类型 ${index + 1}`} value={cue.visual_type} onChange={event => updateCue(index, { visual_type: event.target.value as ExplainerCue['visual_type'] })}>{Object.entries(VISUAL_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><textarea aria-label={`旁白 ${index + 1}`} value={cue.text} rows={2} onChange={event => updateCue(index, { text: event.target.value })} />{cue.visual_type === 'browser_broll' && <input aria-label={`网页地址 ${index + 1}`} placeholder="https://官方来源…" value={cue.target_url ?? ''} onChange={event => updateCue(index, { target_url: event.target.value })} />}</div>)}<button type="button" className="ex-v6__add" onClick={() => setCues(previous => [...previous, { ...EMPTY_CUE }])}>＋ 添加 cue</button></div>}
-          <div className="ex-v6__actions"><button type="button" className="ex-v6__secondary" onClick={() => setStage('research')}>返回修改偏好</button><button type="button" className="ex-v6__primary" onClick={startAssembly} disabled={busy || presenterBusy}>{busy ? '提交装配中…' : '🚀 确认文案与脚手架，启动全自动装配出片'}</button></div>
+          <label className="ex-v6__preview-gate"><input type="checkbox" checked={previewMode} onChange={event => setPreviewMode(event.target.checked)} /> <span><strong>先出 15 秒先导样片</strong><small>只渲染前 15s 的 cue/音频/画面（约 1/10 算力），确稿前先看质感，不合格不浪费全量渲染。</small></span></label>
+          <div className="ex-v6__actions"><button type="button" className="ex-v6__secondary" onClick={() => setStage('research')}>返回修改偏好</button><button type="button" className="ex-v6__primary" onClick={startAssembly} disabled={busy || presenterBusy}>{busy ? '提交装配中…' : previewMode ? '⏱ 生成 15 秒先导样片' : '🚀 确认文案与脚手架，启动全自动装配出片'}</button></div>
         </section>
       )}
 

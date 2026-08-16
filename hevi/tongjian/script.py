@@ -23,6 +23,7 @@ G2 是全管线最重要的门(史实门),四项检查:
 该行(相邻旁白已经承担叙事桥接,不必在"防止编造"的门里自己再编一句新旁白)。
 """
 
+# ruff: noqa: E501  # prompt 模板中文长行(文案非代码)
 from __future__ import annotations
 
 import logging
@@ -30,7 +31,15 @@ import re
 from typing import Any
 
 from hevi.tongjian.chapter_ir import _call_llm_json, _extract_json_obj
-from hevi.tongjian.schemas import ChapterIR, Constitution, EventIR, GateResult, Script, ScriptLine
+from hevi.tongjian.schemas import (
+    ChapterIR,
+    Constitution,
+    EventIR,
+    GateResult,
+    QuoteIR,
+    Script,
+    ScriptLine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +47,7 @@ _CHARS_PER_SEC = 4.5
 _PAUSE_FACTOR = 0.85
 _MAX_DURATION_DEVIATION = 0.15
 _MAX_REWRITE_ATTEMPTS = 3
+_TYPE_ZH_EN = {"对白": "dialogue", "旁白": "narration", "独白": "monologue"}
 _VALID_LINE_TYPES = {"narration", "dialogue", "commentary"}
 _LINE_ID_RE = re.compile(r"(LN\d+)")
 
@@ -73,7 +83,7 @@ _SCRIPT_PROMPT_TEMPLATE = """你是{screenwriter_persona}。基于下面的创�
 人物名册(dialogue 的 speaker 必须用左边的 character_id,不要写人名):
 {roster}
 
-分幕事件与引语:
+{character_block}{anti_repeat}分幕事件与引语:
 {act_blocks}
 
 目标字数: 约 {target_chars} 字(对应 {target_duration_sec} 秒口播)
@@ -121,9 +131,11 @@ def _build_script_prompt(
     dramatize: bool = True,
     screenwriter_persona: str = _DEFAULT_SCREENWRITER_PERSONA,
     include_commentary: bool = True,
+    character_states: list[dict[str, Any]] | None = None,
+    anti_repeat: str = "",
 ) -> str:
     events_by_id = {e.event_id: e for e in chapter_ir.events}
-    quotes_by_event: dict[str, list] = {}
+    quotes_by_event: dict[str, list[QuoteIR]] = {}
     for q in chapter_ir.quotes:
         if q.event_id:
             quotes_by_event.setdefault(q.event_id, []).append(q)
@@ -137,6 +149,10 @@ def _build_script_prompt(
         for c in chapter_ir.characters
     )
 
+    # v9.1 角色权威档案(novel-studio 世界推演移植): 每角色独立动线 + 知识边界。
+    # 对白只从该角色 knowledge_boundary 可见事实出发, 防"角色提前知道秘密"。
+    character_block = _character_states_block(character_states)
+
     act_blocks = []
     for act in constitution.act_structure:
         block_lines = [f"幕 {act.act}:{act.title}(情绪:{act.emotion_curve})"]
@@ -148,10 +164,10 @@ def _build_script_prompt(
             # 无引语的事件标「可戏剧化」,提示编剧可为其创作对白(戏剧化模式下)。
             tag = "" if evq or not dramatize else "  [可戏剧化]"
             block_lines.append(f"  {e.event_id}(戏剧权重{e.dramatic_weight}): {e.summary}{tag}")
-            for q in evq:
-                block_lines.append(
-                    f"    引语[{q.quote_id}] {q.speaker} 说(原文):{q.original} | 白话:{q.modern}"
-                )
+            block_lines.extend(
+                f"    引语[{q.quote_id}] {q.speaker} 说(原文):{q.original} | 白话:{q.modern}"
+                for q in evq
+            )
         act_blocks.append("\n".join(block_lines))
 
     prompt = _SCRIPT_PROMPT_TEMPLATE.format(
@@ -160,6 +176,8 @@ def _build_script_prompt(
         narrative_stance=constitution.narrative_stance,
         forbidden=", ".join(constitution.forbidden),
         roster=roster,
+        character_block=character_block,
+        anti_repeat=anti_repeat,
         act_blocks="\n".join(act_blocks),
         target_chars=round(constitution.target_duration_sec * _CHARS_PER_SEC * _PAUSE_FACTOR),
         target_duration_sec=constitution.target_duration_sec,
@@ -170,18 +188,49 @@ def _build_script_prompt(
     return prompt
 
 
+def _character_states_block(character_states: list[dict[str, Any]] | None) -> str:
+    """角色权威档案 → prompt 块(空列表时返回空串, 保持向后兼容)。"""
+    if not character_states:
+        return ""
+    lines = ["角色权威档案(推演自本章事件, 对白只能消费对应角色知识边界内的信息):"]
+    for s in character_states:
+        cid = s.get("character_id", "?")
+        lines.append(f"  [{cid}] 目标: {s.get('goal') or '-'}")
+        lines.append(f"       压力: {s.get('pressure') or '-'}")
+        if s.get("resources"):
+            lines.append(f"       资源: {', '.join(s['resources'])}")
+        if s.get("knowledge_boundary"):
+            lines.append(f"       知识边界: {'; '.join(s['knowledge_boundary'])}")
+        if s.get("offscreen_action"):
+            lines.append(f"       离屏行动: {s['offscreen_action']}")
+        if s.get("decision_model"):
+            lines.append(f"       决策模式: {s['decision_model']}")
+    return "\n".join(lines) + "\n\n"
+
+
 def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
     known_quote_ids = {q.quote_id for q in chapter_ir.quotes}
     known_event_ids = {e.event_id for e in chapter_ir.events}
     lines: list[ScriptLine] = []
-    for ln in draft.get("lines") or []:
-        line_type = str(ln.get("type") or "narration")
+    # 中文键兼容: deepseek 等模型常输出 {"旁白": [...], "对白": [...]} 而非
+    # {"lines": [...]} —— 归一化成 lines 再逐行解析 (2026-08-07 P0 实证)。
+    raw_lines = draft.get("lines")
+    if raw_lines is None and isinstance(draft, dict):
+        raw_lines = []
+        for key in ("旁白", "对白", "独白", "lines"):
+            raw_lines += draft.get(key) or []
+    for ln in raw_lines or []:
+        if not isinstance(ln, dict):
+            continue
+        line_type = str(ln.get("type") or ln.get("类型") or "narration")
+        # 中文类型归一: 对白→dialogue / 旁白→narration (deepseek 中文键实证)。
+        line_type = _TYPE_ZH_EN.get(line_type, line_type)
         if line_type not in _VALID_LINE_TYPES:
             line_type = "narration"
 
-        quote_id = ln.get("quote_id")
+        quote_id = ln.get("quote_id") or ln.get("引语id") or ln.get("引语")
         quote_id = str(quote_id) if quote_id else None
-        dramatized = bool(ln.get("dramatized"))
+        dramatized = bool(ln.get("dramatized") or ln.get("戏剧化"))
         if line_type == "dialogue" and quote_id not in known_quote_ids:
             # 戏剧化对白允许无 quote_id(为无引语的真实事件创作台词);
             # 非戏剧化对白 quote_id 对不上真实引语 → 整行丢弃(逐字引语红线)。
@@ -194,7 +243,7 @@ def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
                 )
                 continue
 
-        event_id = ln.get("event_id")
+        event_id = ln.get("event_id") or ln.get("事件")
         event_id = str(event_id) if event_id and str(event_id) in known_event_ids else None
 
         lines.append(
@@ -202,8 +251,8 @@ def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
                 line_id=f"LN{len(lines) + 1:03d}",
                 act=int(ln.get("act") or 1),
                 type=line_type,
-                speaker=str(ln.get("speaker") or "NARRATOR"),
-                text=str(ln.get("text") or ""),
+                speaker=str(ln.get("speaker") or ln.get("说话人") or "NARRATOR"),
+                text=str(ln.get("text") or ln.get("台词") or ln.get("内容") or ""),
                 event_id=event_id,
                 quote_id=quote_id,
                 dramatized=dramatized and line_type == "dialogue",
@@ -222,6 +271,8 @@ async def generate_script(
     dramatize: bool = True,
     screenwriter_persona: str = _DEFAULT_SCREENWRITER_PERSONA,
     include_commentary: bool = True,
+    character_states: list[dict[str, Any]] | None = None,
+    anti_repeat: str = "",
 ) -> Script:
     """constitution + chapter_ir → 剧本草稿。LLM 调用失败 → 返回空壳(降级,不阻塞)。"""
     if llm is None:
@@ -235,6 +286,8 @@ async def generate_script(
         dramatize=dramatize,
         screenwriter_persona=screenwriter_persona,
         include_commentary=include_commentary,
+        character_states=character_states,
+        anti_repeat=anti_repeat,
     )
     try:
         draft = await _call_llm_json(llm, prompt)
@@ -279,11 +332,13 @@ def _check_dialogue_coverage(script: Script, chapter_ir: ChapterIR) -> list[str]
 
 def _check_forbidden_terms(script: Script, constitution: Constitution) -> list[str]:
     banned = [t for t in (*constitution.forbidden, *_MODERN_VOCAB_BLACKLIST) if t]
-    errors = []
+    errors: list[str] = []
     for ln in script.lines:
-        for term in banned:
-            if term in ln.text:
-                errors.append(f"剧本行 {ln.line_id} 命中违禁词 {term!r}: {ln.text!r}")
+        errors.extend(
+            f"剧本行 {ln.line_id} 命中违禁词 {term!r}: {ln.text!r}"
+            for term in banned
+            if term in ln.text
+        )
     return errors
 
 
@@ -309,8 +364,8 @@ async def _check_dialogue_consistency(script: Script, chapter_ir: ChapterIR, llm
     if not dialogue_lines:
         return []
     pairs = "\n".join(
-        f'{ln.line_id}: 台词="{ln.text}" 对应原引语="{quotes_by_id[ln.quote_id].original}"'
-        f"(白话:{quotes_by_id[ln.quote_id].modern})"
+        f'{ln.line_id}: 台词="{ln.text}" 对应原引语="{quotes_by_id[ln.quote_id].original}"'  # type: ignore[index]
+        f"(白话:{quotes_by_id[ln.quote_id].modern})"  # type: ignore[index]
         for ln in dialogue_lines
     )
     prompt = (
@@ -496,6 +551,8 @@ async def build_script(
     dramatize: bool = True,
     screenwriter_persona: str = _DEFAULT_SCREENWRITER_PERSONA,
     include_commentary: bool = True,
+    character_states: list[dict[str, Any]] | None = None,
+    anti_repeat: str = "",
 ) -> tuple[Script, GateResult]:
     """L2 主入口:生成 → G2 门 → 违规行定点重写(最多 3 次)→ 仍不过则删除该行。"""
     if llm is None:
@@ -510,6 +567,8 @@ async def build_script(
         dramatize=dramatize,
         screenwriter_persona=screenwriter_persona,
         include_commentary=include_commentary,
+        character_states=character_states,
+        anti_repeat=anti_repeat,
     )
     result = await gate_script(script, chapter_ir, constitution, llm=llm)
 

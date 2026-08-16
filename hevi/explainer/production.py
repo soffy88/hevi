@@ -100,16 +100,15 @@ async def render_narrated_storyboard(
         config=config,
         name="explainer-v8-assembly",
     )
-    composed = await composer.run(input_data=input_data, output_dir=output_dir)
-    results = composed.get("results") if isinstance(composed, dict) else None
-    result = results[0] if isinstance(results, list) and results else {
-        "status": "failed",
-        "error": {"code": "COMPOSER_EMPTY", "message": "oservi composer returned no result"},
-    }
-    if not isinstance(result, dict):
+    composed: Any = await composer.run(input_data=input_data, output_dir=output_dir)
+    raw_results = composed.get("results") if isinstance(composed, dict) else None
+    result: dict[str, Any]
+    if isinstance(raw_results, list) and raw_results:
+        result = dict(raw_results[0])
+    else:
         result = {
             "status": "failed",
-            "error": {"code": "COMPOSER_INVALID", "message": "oservi composer result invalid"},
+            "error": {"code": "COMPOSER_EMPTY", "message": "oservi composer returned no result"},
         }
     if result.get("status") != "succeeded":
         error = result.get("error") or {}

@@ -6,6 +6,7 @@
     stock_search.py   # Pexels 及云端素材检索 (oprim 边界)
     match_score.py    # 素材与剧本对位校验算法 (oskill 边界,纯算法)
     loader_bridge.py  # 资产库加载桥接 (obase 适配,oskill asset_reference_inject 契约)
+    media_use.py      # Round 3(HyperFrames media-use 内化):一个 resolve 动词 + 台账
 
 对外符号与原 hevi.stock / hevi.assets 完全兼容(零回归迁移)。
 """
@@ -17,6 +18,14 @@ from hevi.sourcing.loader_bridge import (
     make_asset_loader,
 )
 from hevi.sourcing.match_score import calculate_stock_match_score
+from hevi.sourcing.media_use import (
+    MEDIA_TYPES,
+    MediaLedger,
+    MediaProviders,
+    MediaResolution,
+    ResolveError,
+    resolve_media,
+)
 from hevi.sourcing.stock_search import (
     StockAssetRepository,
     StockProviderError,
@@ -26,7 +35,12 @@ from hevi.sourcing.stock_search import (
 
 __all__ = [
     "ASSET_TYPES",
+    "MEDIA_TYPES",
     "AssetRepository",
+    "MediaLedger",
+    "MediaProviders",
+    "MediaResolution",
+    "ResolveError",
     "StockAssetRepository",
     "StockProviderError",
     "StockProviderUnavailable",
@@ -34,4 +48,5 @@ __all__ = [
     "calculate_stock_match_score",
     "load_asset_map",
     "make_asset_loader",
+    "resolve_media",
 ]

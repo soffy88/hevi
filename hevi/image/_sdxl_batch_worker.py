@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Any
 
 
 def main() -> None:
@@ -37,12 +38,12 @@ def main() -> None:
     variant = "fp16" if device == "cuda" else None
 
     # Same NaN-at-decode workaround as _sdxl_worker.py — see that file's comment.
-    vae = AutoencoderKL.from_pretrained(
+    vae = AutoencoderKL.from_pretrained(  # type: ignore[no-untyped-call]
         "madebyollin/sdxl-vae-fp16-fix",
         cache_dir=task.get("cache_dir") or None,
         torch_dtype=dtype,
     )
-    pipe = StableDiffusionXLPipeline.from_pretrained(
+    pipe = StableDiffusionXLPipeline.from_pretrained(  # type: ignore[no-untyped-call]
         task["model_id"],
         vae=vae,
         cache_dir=task.get("cache_dir") or None,
@@ -99,7 +100,7 @@ def main() -> None:
 
     for item in items:
         try:
-            extra_kwargs: dict = {}
+            extra_kwargs: dict[str, Any] = {}
             if item.get("ip_adapter_image"):
                 from PIL import Image
 
@@ -122,7 +123,7 @@ def main() -> None:
             image.save(item["output_path"])
             print(f"saved {item['output_path']}")
             results.append({"ok": True})
-        except Exception as e:  # noqa: BLE001 — isolate one item's failure from the rest of the batch
+        except Exception as e:
             print(f"failed {item['output_path']}: {e}", file=sys.stderr)
             results.append({"ok": False, "error": str(e)})
         finally:

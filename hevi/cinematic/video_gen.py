@@ -1,6 +1,14 @@
 """C6 视频生成 + CG6 质量门 + 降级链 —— 见 HEVI-SPEC-02 §5.1/5.3,HEVI-EXEC-01 M3。
 
-单通道打通:Vidu Q3 Reference-to-Video(animated 分支首选,SPEC-02 §11.3)。流程:
+双风格:
+  * live 分支(默认):Vidu Q3 Reference-to-Video 真人参考图→视频(需身份包,
+     CG6 查身份距离), SPEC-02 §11.3;
+  * animation 分支(CineShot.style="animation"):黄金公式动画演绎——
+    纯文生视频(happyhorse-1.1-t2v / wan2.7-t2v), 无真人参考图, 不查身份距离
+    (动画角色无真人身份约束), 保留台词 ASR + VLM 穿帮检查。
+    分镜 prompt 由 golden_formula.py 的 [景别/运镜]+[主体+动作+表情]+[氛围/光线]
+    矩阵生成, 情绪一律降维为视觉动作, 杜绝真人实景的难度与生硬感。
+流程:
 `asset_resolve` 取镜头里唯一在场角色(one clean face rule 保证每个 shot 最多 1 人
 in-frame,见 shot_planning.py)的身份包 → 选 2-4 张参考图 → `ensure_platform_binding`
 → `vidu_reference_to_video` 生成 → CG6 门(身份距离 + 台词 ASR diff + VLM 穿帮)→
@@ -19,7 +27,9 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from obase.ffmpeg import FFmpegError, run as ffmpeg_run
+from obase.ffmpeg import FFmpegError
+from obase.ffmpeg import run as ffmpeg_run
+from obase.persistence import PgPool
 
 from hevi.cinematic.platform_binding import ensure_platform_binding
 from hevi.cinematic.schemas import CG6Result, CineShot, ShotResult
@@ -51,7 +61,9 @@ def _seed_for(shot_id: str, attempt: int) -> int:
     return int(digest[:8], 16) & 0x7FFFFFFF
 
 
-async def _pick_reference_images(pool, minio_client, pack_id: str, version: str) -> list[Path]:
+async def _pick_reference_images(
+    pool: PgPool, minio_client: Any, pack_id: str, version: str
+) -> list[Path]:
     """从 manifest.files 里按 role 选 2-4 张参考图:canonical_portrait 必选(正面权威
     像),再加 action_pose(动态姿势——SPEC-02 §11.1 规则3,身份包参考集必含动态参考,
     不能全是静态肖像)。写到临时文件供 ensure_platform_binding 读取(manifest.files
@@ -95,13 +107,28 @@ async def _generate_attempt(
     prompt = shot.prompt
     if not open_mouth and shot.dialogue_inline is not None:
         prompt = f"{prompt}(角色不开口,画外音式表演)"
-    await video_gen(
-        prompt=prompt,
-        reference_images=reference_uris,
-        output_path=output_path,
-        duration=int(shot.est_duration_s),
-        seed=seed,
-    )
+    if shot.style == "animation":
+        # 动画演绎: 纯文生视频 (黄金公式 prompt 直接喂), 无真人参考图。
+        # 缺省 provider: 阿里云 Model Studio happyhorse-1.1-t2v / wan2.7-t2v。
+        if video_gen is None:
+            from hevi.video.alibaba_maas_service import alibaba_maas_generate
+
+            video_gen = alibaba_maas_generate
+        await video_gen(
+            prompt=prompt,
+            output_path=output_path,
+            model="happyhorse_1_1",
+            duration=int(shot.est_duration_s),
+            seed=seed,
+        )
+    else:
+        await video_gen(
+            prompt=prompt,
+            reference_images=reference_uris,
+            output_path=output_path,
+            duration=int(shot.est_duration_s),
+            seed=seed,
+        )
     return output_path
 
 
@@ -131,28 +158,34 @@ async def _extract_audio(video_path: Path, audio_path: Path) -> None:
 async def _run_cg6(
     video_path: Path,
     shot: CineShot,
-    pool,
+    pool: PgPool,
     pack_id: str,
     version: str,
     *,
+    minio_client: Any = None,
+    subject_id: str | None = None,
     vlm: Any,
+    skip_identity: bool = False,
 ) -> CG6Result:
     result = CG6Result()
     tmp_dir = video_path.parent
 
-    # 1. 身份距离(抽帧 embedding vs 身份包)
-    try:
-        frame_path = tmp_dir / f"{shot.shot_id}_frame.png"
-        await _extract_frame(video_path, frame_path)
-        embedding = subject_embed(image_path=frame_path, kind="face")
-        verify = await asset_verify(
-            pool, pack_id=pack_id, version=version, frame_embedding=embedding
-        )
-        result.identity_distance = verify.get("distance")
-        result.identity_passed = bool(verify.get("passed"))
-    except Exception as e:
-        logger.warning("镜头 %s 身份距离检查失败,视为不通过: %s", shot.shot_id, e)
-        result.identity_passed = False
+    # 1. 身份距离(抽帧 embedding vs 身份包)——动画分支跳过:动画角色无真人身份约束。
+    if skip_identity:
+        result.identity_passed = True
+    else:
+        try:
+            frame_path = tmp_dir / f"{shot.shot_id}_frame.png"
+            await _extract_frame(video_path, frame_path)
+            embedding = subject_embed(image_path=frame_path, kind="face")
+            verify = await asset_verify(
+                pool, pack_id=pack_id, version=version, frame_embedding=embedding
+            )
+            result.identity_distance = verify.get("distance")
+            result.identity_passed = bool(verify.get("passed"))
+        except Exception as e:
+            logger.warning("镜头 %s 身份距离检查失败,视为不通过: %s", shot.shot_id, e)
+            result.identity_passed = False
 
     # 2. 台词 ASR diff(只有有台词的镜头才检查)
     if shot.dialogue_inline is not None:
@@ -195,8 +228,8 @@ async def _run_cg6(
 
 async def generate_shot(
     shot: CineShot,
-    pool,
-    minio_client,
+    pool: PgPool,
+    minio_client: Any,
     *,
     run_id: str | None = None,
     video_gen: Any = None,
@@ -215,9 +248,14 @@ async def generate_shot(
     传对应更真实的估值,否则熔断线会按 Vidu 的价格误判剩余预算。
     """
     if video_gen is None:
-        from hevi.video.vidu_service import vidu_reference_to_video
+        if shot.style == "animation":
+            from hevi.video.alibaba_maas_service import alibaba_maas_generate
 
-        video_gen = vidu_reference_to_video
+            video_gen = alibaba_maas_generate
+        else:
+            from hevi.video.vidu_service import vidu_reference_to_video
+
+            video_gen = vidu_reference_to_video
     if vlm is None:
         from obase.provider_registry import ProviderRegistry
 
@@ -230,7 +268,11 @@ async def generate_shot(
 
     reference_paths: list[Path] = []
     reference_uris: list[str] = []
-    if pack_id:
+    if shot.style == "animation":
+        # 动画演绎: 无真人身份包/参考图, 纯文生视频。
+        pack_id = ""
+        version = ""
+    elif pack_id:
         resolved = await asset_resolve(pool, pack_id=pack_id)
         version = resolved["version"]
         reference_paths = await _pick_reference_images(pool, minio_client, pack_id, version)
@@ -259,7 +301,10 @@ async def generate_shot(
             continue
 
         cg6 = (
-            await _run_cg6(output_path, shot, pool, pack_id, version, vlm=vlm)
+            await _run_cg6(
+                output_path, shot, pool, pack_id, version,
+                vlm=vlm, skip_identity=(shot.style == "animation"),
+            )
             if pack_id
             else CG6Result(passed=True)
         )

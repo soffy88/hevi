@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -127,7 +128,7 @@ async def synthesize(
             raise VoiceboxError(f"Voicebox 服务不可用: {exc}") from exc
 
 
-async def _wait_for_generation(client: httpx.AsyncClient, generation_id: str) -> dict:
+async def _wait_for_generation(client: httpx.AsyncClient, generation_id: str) -> dict[str, Any]:
     """Consume Voicebox's SSE status stream and return its terminal payload."""
 
     try:
@@ -143,7 +144,7 @@ async def _wait_for_generation(client: httpx.AsyncClient, generation_id: str) ->
                 except json.JSONDecodeError:
                     continue
                 if payload.get("status") in {"completed", "failed", "not_found"}:
-                    return payload
+                    return dict(payload)
     except VoiceboxError:
         raise
     except httpx.HTTPError as exc:

@@ -6,6 +6,7 @@ LLM 失败/输出不可解析 → 兜底(topic=原文,默认档位),绝不因解
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import re
@@ -58,8 +59,6 @@ async def parse_intent(text: str, *, llm: Any = None) -> dict[str, Any]:
         "style": (parsed.get("style") or "cinematic"),
     }
     if parsed.get("budget_usd") is not None:
-        try:
+        with contextlib.suppress(TypeError, ValueError):
             intent["budget_usd"] = float(parsed["budget_usd"])
-        except TypeError, ValueError:
-            pass
     return intent

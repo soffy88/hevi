@@ -678,3 +678,63 @@ async def test_api_comic_to_animation(client: Any) -> None:
     app.dependency_overrides.clear()
     assert resp.status_code == 200
     assert resp.json()["output_path"] == "/tmp/anim.mp4"
+
+
+# ── v9.1: caller 全局回退 + markdown 剥除 ──────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_assist_service_falls_back_to_registry_nim(monkeypatch: pytest.MonkeyPatch) -> None:
+    """caller 未注入 → 回退全局 ProviderRegistry 的 NIM; 无注册 → 清晰错误。"""
+    import hevi.creative.assist_service as A
+
+    class _FakeReg:
+        def llm(self, name: str):
+            if name == "nim":
+                return object()
+            raise RuntimeError("no provider")
+
+    class _FakeRegistry:
+        def get(self):
+            return _FakeReg()
+
+    monkeypatch.setitem(
+        __import__("sys").modules, "obase.provider_registry", _FakeRegistry()
+    ) if False else None
+    # 直接 mock obase 模块的 ProviderRegistry.get
+    import obase.provider_registry as opreg  # type: ignore[import-not-found]
+
+    monkeypatch.setattr(opreg.ProviderRegistry, "get", staticmethod(lambda: _FakeReg()))
+    svc = A.AssistService()  # caller=None
+    assert svc._resolve_caller() is not None  # 回退成功
+
+    # 无任何 provider → 清晰错误(而非 NoneType)
+    class _EmptyReg:
+        def llm(self, name: str):
+            raise opreg.ProviderNotFoundError("none")
+
+    monkeypatch.setattr(opreg.ProviderRegistry, "get", staticmethod(lambda: _EmptyReg()))
+    with pytest.raises(RuntimeError, match="未注入"):
+        A.AssistService()._resolve_caller()
+
+
+@pytest.mark.asyncio
+async def test_strip_markdown_json() -> None:
+    from hevi.creative.assist_service import _strip_markdown_json
+
+    assert _strip_markdown_json('```json\n{"ok": true}\n```') == '{"ok": true}'
+    assert _strip_markdown_json('{"a": 1}') == '{"a": 1}'
+    assert _strip_markdown_json("```\n[1,2]\n```") == "[1,2]"
+
+
+@pytest.mark.asyncio
+async def test_wrapped_caller_strips_markdown() -> None:
+    import hevi.creative.assist_service as A
+
+    base = AsyncMock(return_value={"content": '```json\n{"shots": []}\n```'})
+    svc = A.AssistService(caller=base)
+    wrapped = svc._wrapped_caller()
+    result = await wrapped(messages=[])
+    assert result["content"] == [{"type": "text", "text": '{"shots": []}'}]
+    # 注入的 caller 原样透传 kwargs。
+    base.assert_awaited_once_with(messages=[])

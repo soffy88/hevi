@@ -67,17 +67,29 @@ async def test_pack(vault_pool, tmp_path):
     # 用一张有真实内容结构的图(不是纯色块)当参考像——纯色合成图的 CLIP embedding
     # 缺乏区分度,会让"跟纯黑测试视频对比"这个反例场景意外通过,不是真实场景会遇到
     # 的情况(见 M2 identity pack 的真实肖像 vs 纯黑视频,实测距离 0.489,稳定不通过)。
+    # 无真实肖像资产的冷启动环境(CI/新检出)用固定 seed 噪声图兜底:实测 vs 纯黑
+    # 距离 ≈ 0.42,同样稳定不通过,维持测试意图。
     real_portrait = Path("output/vault/identity/zhibo/portrait_v0.png")
     portrait_path = tmp_path / "front.png"
     if real_portrait.exists():
         portrait_path.write_bytes(real_portrait.read_bytes())
     else:
-        Image.new("RGB", (256, 256), (120, 60, 40)).save(portrait_path)
+        import random
+
+        rng = random.Random(20260712)
+        noise = Image.new("RGB", (256, 256))
+        noise.putdata(
+            [
+                (rng.randrange(256), rng.randrange(256), rng.randrange(256))
+                for _ in range(256 * 256)
+            ]
+        )
+        noise.save(portrait_path)
     action_path = tmp_path / "action_pose.png"
     Image.new("RGB", (64, 64), (80, 100, 60)).save(action_path)
 
     embedding = subject_embed(image_path=portrait_path, kind="face")
-    manifest = await asset_create(
+    await asset_create(
         vault_pool,
         minio,
         pack_id=pack_id,

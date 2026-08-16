@@ -40,8 +40,8 @@ def _stub_sdxl_local():
         yield
 
 
-from hevi.image.qwen_image_service import QwenImageError
-from hevi.tongjian.scene_render_avatar import (
+from hevi.image.qwen_image_service import QwenImageError  # noqa: E402
+from hevi.tongjian.scene_render_avatar import (  # noqa: E402
     _MAX_CLIP_DURATION_S,
     _NARRATOR_DESC,
     _resolve_dimensions,
@@ -49,7 +49,7 @@ from hevi.tongjian.scene_render_avatar import (
     _split_text_for_dialogue,
     build_frame_manifest_avatar,
 )
-from hevi.tongjian.schemas import (
+from hevi.tongjian.schemas import (  # noqa: E402
     CharacterBible,
     CharacterBibleEntry,
     Constitution,

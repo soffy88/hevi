@@ -1,0 +1,76 @@
+# hevi-gen-engine — 统一 GPU 算力引擎(独立部署)
+#
+# CPU 构建(默认):
+#   docker compose -f services/gen_engine/docker-compose.yml up --build
+# CUDA 构建:
+#   docker compose -f services/gen_engine/docker-compose.yml up --build \
+#     --build-arg PYTORCH_VARIANT=cuda
+# ROCm(AMD GPU)覆盖层:
+#   docker compose -f services/gen_engine/docker-compose.yml \
+#     -f services/voicebox/docker-compose.rocm.yml up --build
+#
+# 端点:
+#   /api/ai/health        引擎健康 + GPU 状态 + 模型能力
+#   /api/ai/capabilities  cosyvoice / longcat / vibevoice 可用性
+#   /api/ai/cosyvoice     CosyVoice 风格解说 TTS(wav)
+#   /api/ai/longcat       LongCat Talking Face(mp4)
+#   /generate 等          voicebox Qwen3-TTS 音色克隆端点(原样保留)
+
+services:
+  gen-engine:
+    build:
+      context: ../..
+      dockerfile: services/gen_engine/Dockerfile
+      args:
+        PYTORCH_VARIANT: ${PYTORCH_VARIANT:-cpu}
+    container_name: hevi-gen-engine
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:17600:17493"
+
+    volumes:
+      - gen-engine-data:/app/data
+      # 语音/数字人模型(宿主持有, 只读挂载; 部署前先下载到宿主机)
+      - ../.voicebox-cache:/home/voicebox/.cache/huggingface/hub:ro
+      - ${VIBEVOICE_MODEL_DIR:-/home/soffy/models/vibevoice-1.5b}:/models/vibevoice-1.5b:ro
+      - ${COSYVOICE_MODEL_DIR:-/home/soffy/models/CosyVoice}:/opt/cosyvoice/model:ro
+      - ${FISH_SPEECH_MODEL_DIR:-/home/soffy/models/fish-speech-1.5}:/models/fish-speech-1.5:ro
+      - ${LONGCAT_MODEL_DIR:-/data/models/LongCat-Voice}:/data/models/LongCat-Voice:ro
+      - ${VIBEVOICE_ASR_MODEL_DIR:-/home/soffy/models/vibeasr}:/models/vibeasr:ro
+      # vibevoice 的 Qwen2.5-1.5B tokenizer 语言模型底座(只读)
+      - /home/soffy/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B:/home/voicebox/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B:ro
+
+    environment:
+      - LOG_LEVEL=info
+      - NUMBA_CACHE_DIR=/tmp/numba_cache
+      - VOICEBOX_BACKEND_VARIANT=${VOICEBOX_BACKEND_VARIANT:-cpu}
+      - HF_HOME=/home/voicebox/.cache/huggingface
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+      - VIBEVOICE_MODEL_DIR=${VIBEVOICE_MODEL_DIR:-/models/vibevoice-1.5b}
+      - VIBEVOICE_ASR_MODEL_DIR=${VIBEVOICE_ASR_MODEL_DIR:-/models/vibeasr}
+      - COSYVOICE_MODEL_DIR=/opt/cosyvoice/model
+      - FISH_SPEECH_MODEL_DIR=${FISH_SPEECH_MODEL_DIR:-/models/fish-speech-1.5}
+      - LONGCAT_MODEL_PATH=/data/models/LongCat-Voice
+
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:17493/api/ai/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  gen-engine-data:
