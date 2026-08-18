@@ -1,0 +1,33 @@
+id: kinetic_promo
+product: 动效标题
+summary: 选题 → 口味盘 + 五面分镜词 + HyperFrames 构图，缺 CLI 则逐卡回退
+handoff: explainer
+render_runtime: hyperframes
+slots:
+  - name: topic
+    required: true
+    description: 标题/片头文案
+tools:
+  - craft.taste
+  - craft.shot_spec
+  - runtime.select
+  - runtime.hyperframes.compile
+  - runtime.hyperframes.render
+  - nle.edit_plan
+  - timeline.create
+  - delivery.preview
+pipeline:
+  name: kinetic_promo
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: runtime
+      fn: hevi.studio.stages:stage_runtime
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

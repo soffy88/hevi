@@ -355,3 +355,63 @@ EMBRACE_CHAT_OUTPUT = _obj(
         "turn": {"type": "integer"},
     }
 )
+
+# ── Studio / Veya 成品 ────────────────────────────────────────────────────────
+
+PRODUCE_FINISHED_INPUT = _obj(
+    {
+        "line_id": {
+            "type": "string",
+            "description": "产线 id:explainer / history_scene / kinetic_promo …",
+        },
+        "slots": {"type": "object", "description": "配方槽位(topic / source_text …)"},
+        "render_runtime": {
+            "type": "string",
+            "enum": ["remotion", "hyperframes", "manim", "ffmpeg"],
+        },
+        "execute": {
+            "type": "boolean",
+            "default": False,
+            "description": "true 才回退出片;默认只签发工单",
+        },
+        "publish": {"type": "boolean", "default": False},
+        "platforms": {"type": "array", "items": {"type": "string"}},
+    },
+    required=["line_id"],
+)
+PRODUCE_FINISHED_OUTPUT = _obj(
+    {
+        "job_id": {"type": "string"},
+        "status": {"type": "string"},
+        "product": {"type": "string"},
+        "render_runtime": {"type": "string"},
+        "artifact": {"type": "string"},
+        "status_url": {"type": "string"},
+    }
+)
+
+GET_PRODUCE_JOB_INPUT = _obj({"job_id": {"type": "string"}}, required=["job_id"])
+GET_PRODUCE_JOB_OUTPUT = PRODUCE_FINISHED_OUTPUT
+
+LIST_STUDIO_LINES_INPUT = _obj({})
+LIST_STUDIO_LINES_OUTPUT = _obj(
+    {
+        "lines": {"type": "array"},
+        "runtimes": {"type": "array", "items": {"type": "string"}},
+        "daily_lines": {"type": "array", "items": {"type": "string"}},
+    }
+)
+
+TICK_DAILY_INPUT = _obj(
+    {
+        "calendar_id": {"type": "string"},
+        "now": {"type": "string", "description": "YYYY-MM-DD,默认今天"},
+        "publish": {"type": "boolean", "default": True},
+    }
+)
+TICK_DAILY_OUTPUT = _obj(
+    {
+        "jobs": {"type": "array"},
+        "count": {"type": "integer"},
+    }
+)

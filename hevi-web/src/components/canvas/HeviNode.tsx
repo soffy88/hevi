@@ -44,6 +44,9 @@ export function HeviNode({ data, selected }: NodeProps<HeviNodeData>) {
       <div className="hevi-node__head">
         <span className="hevi-node__icon" aria-hidden>{meta.icon}</span>
         <span className="hevi-node__title">{data.label ?? meta.label}</span>
+        {typeof data.config?.tool_id === 'string' && (
+          <span className="hevi-node__tool">{String(data.config.tool_id)}</span>
+        )}
         {data.status === 'running' && <span className="hevi-node__spinner" aria-hidden />}
         {data.status === 'completed' && <span className="hevi-node__check">✓</span>}
         {data.status === 'failed' && <span className="hevi-node__fail">✕</span>}

@@ -191,6 +191,14 @@
 | POST | `/api/lite/runs/{run_id}/reloop` | Reloop |
 | PATCH | `/api/lite/runs/{run_id}/script` | Patch Script |
 
+## material
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/material/archive` | Get Archive Videos |
+| GET | `/api/material/coverr` | Get Coverr Videos |
+| GET | `/api/material/pixabay` | Get Pixabay Videos |
+
 ## payment
 
 | 方法 | 路径 | 说明 |
@@ -284,6 +292,30 @@
 | POST | `/api/shortdrama/runs/{run_id}/characters/{char_id}/upload` | Upload Character Reference |
 | POST | `/api/shortdrama/runs/{run_id}/confirm` | Confirm Run |
 | POST | `/api/shortdrama/runs/{run_id}/replan` | Replan Run |
+
+## studio
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/studio/assets` | Get Studio Assets |
+| GET | `/api/studio/daily/calendars` | Get Daily Calendars |
+| POST | `/api/studio/daily/calendars` | Post Daily Calendar |
+| POST | `/api/studio/daily/calendars/{calendar_id}/topics` | Post Daily Topics |
+| GET | `/api/studio/daily/jobs` | Get Daily Jobs |
+| POST | `/api/studio/daily/tick` | Post Daily Tick |
+| GET | `/api/studio/lines` | Get Studio Lines |
+| GET | `/api/studio/lines/{line_id}` | Get Studio Line |
+| POST | `/api/studio/slates` | Create Slate |
+| GET | `/api/studio/timelines` | Get Timelines |
+| POST | `/api/studio/timelines` | Create Timeline |
+| GET | `/api/studio/timelines/{timeline_id}` | Get One Timeline |
+| PATCH | `/api/studio/timelines/{timeline_id}` | Patch Timeline |
+| POST | `/api/studio/timelines/{timeline_id}/export` | Export One Timeline |
+| GET | `/api/studio/tools` | Get Studio Tools |
+| POST | `/api/studio/tools/{tool_id}` | Invoke Studio Tool |
+| GET | `/api/studio/veya/capabilities` | Get Veya Capabilities |
+| GET | `/api/studio/veya/jobs/{job_id}` | Get Veya Job |
+| POST | `/api/studio/veya/produce` | Post Veya Produce |
 
 ## style-packs
 

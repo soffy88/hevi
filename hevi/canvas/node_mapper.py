@@ -195,6 +195,23 @@ def create_node_executor() -> Callable[..., Any]:
     """Return the hevi node dispatch executor for canvas_workflow_executor."""
 
     async def executor(node: CanvasNode, upstream_outputs: dict[str, Any]) -> Any:
+        tool_id = (node.config or {}).get("tool_id")
+        if tool_id:
+            from hevi.studio.tools import invoke_tool
+
+            payload = dict(node.config or {})
+            upstream_text = _upstream_text(upstream_outputs)
+            if upstream_text and not payload.get("text") and not payload.get("topic"):
+                payload["topic"] = upstream_text
+                payload["text"] = upstream_text
+            result = await invoke_tool(str(tool_id), payload)
+            return {
+                "type": node.node_type,
+                "tool_id": tool_id,
+                "status": result.status,
+                "output": result.payload,
+                "reason": result.reason,
+            }
         fn = _EXECUTOR_MAP.get(node.node_type)
         if fn is None:
             raise ValueError(

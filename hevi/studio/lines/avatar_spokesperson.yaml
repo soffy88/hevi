@@ -1,0 +1,35 @@
+id: avatar_spokesperson
+product: 数字人出镜
+summary: 口播稿 + 照片 + 试播闸，基础片过检后再叠口型
+handoff: explainer
+render_runtime: remotion
+slots:
+  - name: topic
+    required: true
+    description: 口播主题
+  - name: image_path
+    required: false
+    description: 出镜照片
+tools:
+  - script.quick
+  - audio.prosody
+  - tts.synth
+  - avatar.compose
+  - qc.gate.lip
+  - delivery.preview
+  - nle.edit_plan
+  - timeline.create
+  - profile.out.shorts
+pipeline:
+  name: avatar_spokesperson
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

@@ -432,6 +432,11 @@ class ExplainerAssembleRequest(BaseModel):
     # 60–90 秒试播闸:先 preview_mode,确认后再 preview_confirmed 渲全片。
     preview_mode: bool = False
     preview_confirmed: bool = False
+    # 借通鉴史料闸:原文进来拆讲解 cue。
+    source_text: str = ""
+    # 借 watch:先看参考片再装配。
+    reference_url: str = ""
+    tts_provider: str = ""
 
 
 class ExplainerAssemblyAccepted(BaseModel):

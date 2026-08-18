@@ -1439,6 +1439,87 @@
         }
       }
     },
+    "/api/material/pixabay": {
+      "get": {
+        "tags": [
+          "material"
+        ],
+        "summary": "Get Pixabay Videos",
+        "description": "Pixabay 视频搜索 API - 直接复用 material_corpus.search_pixabay_videos 逻辑",
+        "operationId": "get_pixabay_videos_api_material_pixabay_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Get Pixabay Videos Api Material Pixabay Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/material/coverr": {
+      "get": {
+        "tags": [
+          "material"
+        ],
+        "summary": "Get Coverr Videos",
+        "description": "Coverr 视频搜索 API - 直接复用 material_corpus.search_coverr_videos 逻辑",
+        "operationId": "get_coverr_videos_api_material_coverr_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Get Coverr Videos Api Material Coverr Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/material/archive": {
+      "get": {
+        "tags": [
+          "material"
+        ],
+        "summary": "Get Archive Videos",
+        "description": "Archive.org 搜索 API - 直接复用 material_corpus.search_archive_videos 逻辑",
+        "operationId": "get_archive_videos_api_material_archive_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Get Archive Videos Api Material Archive Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/backlot/runs/{run_id}/events": {
       "get": {
         "tags": [
@@ -1590,6 +1671,891 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Get Run Status Api Backlot Runs  Run Id  Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/tools": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Studio Tools",
+        "operationId": "get_studio_tools_api_studio_tools_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Studio Tools Api Studio Tools Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/tools/{tool_id}": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Invoke Studio Tool",
+        "operationId": "invoke_studio_tool_api_studio_tools__tool_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tool_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Tool Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToolInvokeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Invoke Studio Tool Api Studio Tools  Tool Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/lines": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Studio Lines",
+        "operationId": "get_studio_lines_api_studio_lines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Studio Lines Api Studio Lines Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/lines/{line_id}": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Studio Line",
+        "operationId": "get_studio_line_api_studio_lines__line_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Line Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Studio Line Api Studio Lines  Line Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/slates": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Create Slate",
+        "operationId": "create_slate_api_studio_slates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Slate Api Studio Slates Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/timelines": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Timelines",
+        "operationId": "get_timelines_api_studio_timelines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Timelines Api Studio Timelines Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Create Timeline",
+        "operationId": "create_timeline_api_studio_timelines_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimelineCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Timeline Api Studio Timelines Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/timelines/{timeline_id}": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get One Timeline",
+        "operationId": "get_one_timeline_api_studio_timelines__timeline_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "timeline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Timeline Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get One Timeline Api Studio Timelines  Timeline Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Patch Timeline",
+        "operationId": "patch_timeline_api_studio_timelines__timeline_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "timeline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Timeline Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimelinePatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Patch Timeline Api Studio Timelines  Timeline Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/timelines/{timeline_id}/export": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Export One Timeline",
+        "operationId": "export_one_timeline_api_studio_timelines__timeline_id__export_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "timeline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Timeline Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimelineExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Export One Timeline Api Studio Timelines  Timeline Id  Export Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/daily/calendars": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Daily Calendars",
+        "operationId": "get_daily_calendars_api_studio_daily_calendars_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Daily Calendars Api Studio Daily Calendars Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Post Daily Calendar",
+        "operationId": "post_daily_calendar_api_studio_daily_calendars_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailyCalendarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Post Daily Calendar Api Studio Daily Calendars Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/daily/calendars/{calendar_id}/topics": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Post Daily Topics",
+        "operationId": "post_daily_topics_api_studio_daily_calendars__calendar_id__topics_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailyTopicsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Daily Topics Api Studio Daily Calendars  Calendar Id  Topics Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/daily/tick": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Post Daily Tick",
+        "operationId": "post_daily_tick_api_studio_daily_tick_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailyTickRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Post Daily Tick Api Studio Daily Tick Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/daily/jobs": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Daily Jobs",
+        "operationId": "get_daily_jobs_api_studio_daily_jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "calendar_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Daily Jobs Api Studio Daily Jobs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/veya/capabilities": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Veya Capabilities",
+        "operationId": "get_veya_capabilities_api_studio_veya_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Veya Capabilities Api Studio Veya Capabilities Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/veya/produce": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Post Veya Produce",
+        "operationId": "post_veya_produce_api_studio_veya_produce_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VeyaProduceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Post Veya Produce Api Studio Veya Produce Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/veya/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Veya Job",
+        "operationId": "get_veya_job_api_studio_veya_jobs__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Veya Job Api Studio Veya Jobs  Job Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/assets": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Studio Assets",
+        "operationId": "get_studio_assets_api_studio_assets_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Line Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Studio Assets Api Studio Assets Get"
                 }
               }
             }
@@ -11904,6 +12870,83 @@
         ],
         "title": "CreateWorkRequest"
       },
+      "DailyCalendarRequest": {
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "line_id": {
+            "type": "string",
+            "title": "Line Id"
+          },
+          "platforms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Platforms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calendar_id",
+          "name",
+          "line_id"
+        ],
+        "title": "DailyCalendarRequest"
+      },
+      "DailyTickRequest": {
+        "properties": {
+          "calendar_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Id"
+          },
+          "now": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Now"
+          },
+          "publish": {
+            "type": "boolean",
+            "title": "Publish",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "DailyTickRequest"
+      },
+      "DailyTopicsRequest": {
+        "properties": {
+          "topics": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Topics"
+          }
+        },
+        "type": "object",
+        "title": "DailyTopicsRequest"
+      },
       "DesignCharacter": {
         "properties": {
           "name": {
@@ -14550,6 +15593,11 @@
             "type": "string",
             "title": "Audio Provider",
             "default": "vibevoice"
+          },
+          "reference_url": {
+            "type": "string",
+            "title": "Reference Url",
+            "default": ""
           }
         },
         "type": "object",
@@ -14930,7 +15978,8 @@
               "seedance",
               "clip_video",
               "voice_studio_tts",
-              "director_graph"
+              "director_graph",
+              "lot"
             ],
             "title": "Source"
           },
@@ -16543,6 +17592,35 @@
         "title": "SkinTexture",
         "description": "肌理(通常镜头级常量,但可随情绪变化)。"
       },
+      "SlateRequest": {
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "title": "Line Id"
+          },
+          "slots": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Slots"
+          },
+          "slate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slate Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id"
+        ],
+        "title": "SlateRequest"
+      },
       "StockBody": {
         "properties": {
           "query": {
@@ -17047,6 +18125,132 @@
         ],
         "title": "ThreeViewRequest"
       },
+      "TimelineCreateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": "untitled"
+          },
+          "edit_plan": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Edit Plan"
+          },
+          "slate_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slate Id"
+          }
+        },
+        "type": "object",
+        "title": "TimelineCreateRequest"
+      },
+      "TimelineExportRequest": {
+        "properties": {
+          "output_path": {
+            "type": "string",
+            "title": "Output Path",
+            "default": "output/nle/timeline.mp4"
+          }
+        },
+        "type": "object",
+        "title": "TimelineExportRequest"
+      },
+      "TimelinePatchRequest": {
+        "properties": {
+          "clip_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clip Id"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "bgm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bgm"
+          },
+          "split_at_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Split At S"
+          },
+          "ripple": {
+            "type": "boolean",
+            "title": "Ripple",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "TimelinePatchRequest"
+      },
       "TokenResponse": {
         "properties": {
           "access_token": {
@@ -17075,6 +18279,17 @@
           "user"
         ],
         "title": "TokenResponse"
+      },
+      "ToolInvokeRequest": {
+        "properties": {
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "title": "ToolInvokeRequest"
       },
       "TopupRequest": {
         "properties": {
@@ -17387,6 +18602,52 @@
         ],
         "title": "VeyaLoopResult",
         "description": "veya-loop 终态:审过的文案 + 每一轮裁决轨迹。"
+      },
+      "VeyaProduceRequest": {
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "title": "Line Id"
+          },
+          "slots": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Slots"
+          },
+          "render_runtime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Render Runtime"
+          },
+          "execute": {
+            "type": "boolean",
+            "title": "Execute",
+            "default": false
+          },
+          "publish": {
+            "type": "boolean",
+            "title": "Publish",
+            "default": false
+          },
+          "platforms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Platforms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line_id"
+        ],
+        "title": "VeyaProduceRequest"
       },
       "VideoPackaging": {
         "properties": {
@@ -17957,6 +19218,11 @@
               }
             ],
             "title": "Pause After"
+          },
+          "reference_url": {
+            "type": "string",
+            "title": "Reference Url",
+            "default": ""
           },
           "layer_config": {
             "additionalProperties": {

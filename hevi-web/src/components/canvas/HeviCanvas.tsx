@@ -23,6 +23,7 @@ import { validateEdge, NODE_META } from '@/lib/canvas-rules';
 import { canvasApi, USE_MOCK } from '@/lib/api-client';
 import type { NodeType } from '@/types/api';
 import { NodeInspector } from './NodeInspector';
+import type { StudioLine, StudioTool } from './NodePalette';
 
 const nodeTypes = { hevi: HeviNode };
 let idCounter = 0;
@@ -72,6 +73,44 @@ function CanvasInner() {
     }]);
   }, [setNodes]);
 
+  const addToolNode = useCallback((tool: StudioTool) => {
+    const nodeType: NodeType = tool.kind === 'tts' || tool.kind === 'publish' ? 'audio'
+      : tool.kind === 'watch' || tool.kind === 'nle' ? 'video'
+        : tool.kind === 'explainer' || tool.kind === 'script' ? 'script'
+          : 'text';
+    setNodes((ns) => [...ns, {
+      id: newId(), type: 'hevi',
+      position: { x: 80 + ns.length * 40, y: 80 + (ns.length % 4) * 80 },
+      data: {
+        nodeType,
+        label: tool.id,
+        config: { tool_id: tool.id, content: tool.summary },
+      },
+    }]);
+  }, [setNodes]);
+
+  const applyLine = useCallback((line: StudioLine) => {
+    const tools = line.tools.slice(0, 10);
+    const ids = tools.map(() => newId());
+    setNodes(tools.map((toolId, i) => ({
+      id: ids[i]!,
+      type: 'hevi' as const,
+      position: { x: 80 + i * 200, y: 160 },
+      data: {
+        nodeType: 'script' as NodeType,
+        label: toolId,
+        config: { tool_id: toolId, content: line.product, topic: line.product },
+      },
+    })));
+    setEdges(ids.slice(1).map((id, i) => ({
+      id: `e-${ids[i]}-${id}`,
+      source: ids[i]!,
+      target: id,
+      animated: true,
+    })));
+    flash(`已展开产线 ${line.product}`);
+  }, [setNodes, setEdges]);
+
   const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
     e.preventDefault();
     setCtxMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
@@ -89,9 +128,39 @@ function CanvasInner() {
           position: { x: src.position.x + 40, y: src.position.y + 40 } }];
       });
     } else if (action === 'execute') {
-      flash('已触发节点执行(mock)');
+      const node = nodes.find((n) => n.id === nodeId);
+      const toolId = typeof node?.data.config?.tool_id === 'string' ? node.data.config.tool_id : '';
+      if (!toolId) {
+        flash('已触发节点执行(mock)');
+        return;
+      }
+      setNodes((ns) => ns.map((n) => n.id === nodeId
+        ? { ...n, data: { ...n.data, status: 'running' } }
+        : n));
+      import('@/lib/api-client').then(({ studioApi }) =>
+        studioApi.invoke(toolId, (node?.data.config ?? {}) as Record<string, unknown>)
+          .then((out) => {
+            setNodes((ns) => ns.map((n) => n.id === nodeId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    status: out.status === 'ok' ? 'completed' : 'failed',
+                    config: { ...n.data.config, last_result: out.payload },
+                  },
+                }
+              : n));
+            flash(`${toolId} ${out.status}`);
+          })
+          .catch(() => {
+            setNodes((ns) => ns.map((n) => n.id === nodeId
+              ? { ...n, data: { ...n.data, status: 'failed' } }
+              : n));
+            flash('工具执行失败');
+          }),
+      );
     }
-  }, [setNodes, setEdges]);
+  }, [nodes, setNodes, setEdges]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -140,11 +209,12 @@ function CanvasInner() {
 
   return (
     <div className="hevi-canvas">
-      <NodePalette onAdd={addNode} />
+      <NodePalette onAdd={addNode} onAddTool={addToolNode} onApplyLine={applyLine} />
 
       <div className="hevi-canvas__flow">
         <div className="hevi-canvas__topbar">
           <a href="/" className="hevi-canvas__home-link">← 首页</a>
+          <a href="/studio/timeline" className="hevi-canvas__home-link">时间线</a>
           <button type="button" className="hevi-topbar-btn" onClick={onSave}>保存</button>
           <button type="button" className="hevi-topbar-btn hevi-topbar-btn--primary"
             onClick={onExecute} disabled={executing}>

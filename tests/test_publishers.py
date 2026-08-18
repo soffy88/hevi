@@ -39,7 +39,10 @@ class TestDefaults:
         items = list_publishers()
         platforms = {p for it in items for p in it["platforms"]}
         assert PLATFORM_TIKTOK in platforms
-        assert all(it["available"] is False for it in items)
+        stub_names = {PLATFORM_TIKTOK, PLATFORM_INSTAGRAM, PLATFORM_YOUTUBE}
+        stubs = [it for it in items if it["name"] in stub_names]
+        assert stubs and all(it["available"] is False for it in stubs)
+        assert "douyin" in platforms
 
 
 class TestPublishEntry:
@@ -92,6 +95,15 @@ class TestPublishEntry:
         r = await publish_to_platform("fake_pub", media)
         assert r.status == "failed"
         assert "boom" in r.reason
+
+    async def test_douyin_writes_handoff_ticket(self, tmp_path: Path) -> None:
+        media = tmp_path / "out.mp4"
+        media.write_bytes(b"fake")
+        r = await publish_to_platform("douyin", media, title="盐税", tags=["史"])
+        assert r.status == "handoff"
+        ticket = Path(str(r.external_id))
+        assert ticket.exists()
+        assert "douyin" in ticket.name
 
 
 class FakePublisher(Publisher):

@@ -409,6 +409,8 @@ async def _run_assembled_pipeline(repo: AutomationRunRepository, run_id: str) ->
             preview_mode=bool(body.preview_mode),
             stock_service=stock_service,
             stock_user_id=str(rec.get("user_id") or "explainer_session"),
+            source_text=body.source_text,
+            reference_url=body.reference_url,
         )
         ws.mark_step_done("render", progress=100)
         manifest = result.engine_result.get("artifacts")

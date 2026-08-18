@@ -1,0 +1,32 @@
+id: talking_head
+product: 口播人头
+summary: 讲解稿 + 韵律规划 + TTS + 口型，走解说装配
+handoff: explainer
+render_runtime: remotion
+slots:
+  - name: topic
+    required: true
+    description: 口播主题
+tools:
+  - script.quick
+  - explainer.card.hook
+  - audio.prosody
+  - tts.synth
+  - avatar.compose
+  - nle.edit_plan
+  - timeline.create
+  - delivery.preview
+  - profile.out.youtube
+pipeline:
+  name: talking_head
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

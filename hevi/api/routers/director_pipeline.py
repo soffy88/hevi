@@ -148,6 +148,7 @@ class ParseWorkRequest(BaseModel):
     season_budget_usd: float = Field(default=150.0, gt=0)
     video_provider: str = "happyhorse_1_1_maas_lock"
     audio_provider: str = "vibevoice"
+    reference_url: str = ""
 
 
 class DispatchSeasonRequest(BaseModel):
@@ -473,6 +474,18 @@ async def _run_industrial_inspection(work_id: str) -> None:
         return
     try:
         llm = _resolve_llm()
+        ref = str((rec.get("production_config") or {}).get("reference_url") or "").strip()
+        if ref:
+            from hevi.studio.kit import watch_video_tool
+
+            rec["reference"] = await watch_video_tool(
+                {
+                    "source": ref,
+                    "work_dir": f"output/director/{work_id}/watch",
+                    "detail": "transcript",
+                }
+            )
+            _append_trail(rec, "watch_video", "succeeded", "已借用 watch 拆参考片节奏")
         _append_trail(rec, "intent_concept_parser", "running", "解析创作意图与戏剧方向")
         concept = await generate_concept_draft(
             material_text=rec["material_text"], intent_hint=rec["intent_hint"], llm=llm
@@ -493,6 +506,19 @@ async def _run_industrial_inspection(work_id: str) -> None:
             "succeeded",
             f"抽取 {len(story.characters)} 个角色、{len(story.events)} 个事件",
         )
+        material = str(rec.get("material_text") or "")
+        if any(marker in material for marker in ("资治通鉴", "史记", "史料", "周纪", "汉纪")):
+            from hevi.studio.kit import tongjian_l0, tongjian_provenance
+
+            rec["history_ir"] = await tongjian_l0(
+                {
+                    "source_name": rec["work_name"],
+                    "raw_text": material,
+                    "llm": llm,
+                }
+            )
+            rec["provenance"] = tongjian_provenance({"lines": []})
+            _append_trail(rec, "tongjian_l0", "succeeded", "手稿含史料,已借用通鉴 L0 闸")
 
         _append_trail(rec, "beat_sheet", "running", "生成分集节拍并执行内环自批判")
         season_plan, plan_gate = await build_season_plan(
@@ -614,6 +640,7 @@ async def parse_work(
         "season_budget_usd": body.season_budget_usd,
         "video_provider": body.video_provider,
         "audio_provider": body.audio_provider,
+        "reference_url": body.reference_url,
     }
     rec["concept"] = None
     _append_trail(rec, "cold_start", "accepted", "导演流水线已接收解析任务")

@@ -1,0 +1,30 @@
+id: character_animation
+product: 角色动画
+summary: 代码即画面 / 角色节拍，Manim 出片后进时间线
+handoff: explainer
+render_runtime: remotion
+slots:
+  - name: topic
+    required: true
+    description: 角色或公式主题
+tools:
+  - explainer.manim
+  - explainer.card.equation
+  - character.beats
+  - script.quick
+  - nle.edit_plan
+  - timeline.create
+  - delivery.preview
+pipeline:
+  name: character_animation
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

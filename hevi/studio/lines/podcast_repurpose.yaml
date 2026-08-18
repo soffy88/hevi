@@ -1,0 +1,41 @@
+id: podcast_repurpose
+product: 播客切片
+summary: 长音频/视频 → 看片拆钩子 → 短视频时间线
+handoff: explainer
+render_runtime: remotion
+slots:
+  - name: topic
+    required: true
+    description: 切片主题
+  - name: transcript
+    required: false
+    description: 已有转写
+  - name: source
+    required: false
+    description: 播客源
+tools:
+  - ingest.preflight
+  - watch.video
+  - watch.pacing
+  - clip.factory
+  - script.from_watch
+  - explainer.card.hook
+  - nle.edit_plan
+  - timeline.create
+  - timeline.ripple
+  - publish.matrix
+pipeline:
+  name: podcast_repurpose
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: watch
+      fn: hevi.studio.stages:stage_watch
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

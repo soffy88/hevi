@@ -1,0 +1,40 @@
+id: localization_dub
+product: 译制配音
+summary: 已有成片 → 看片转写 → 译句 → 新配音 → 时间线重导出
+handoff: none
+render_runtime: ffmpeg
+slots:
+  - name: media_path
+    required: true
+    description: 成片
+  - name: topic
+    required: false
+    description: 标题
+  - name: lang
+    required: false
+    description: 目标语
+tools:
+  - watch.video
+  - ingest.transcript
+  - dub.translate
+  - audio.prosody
+  - tts.synth
+  - nle.edit_plan
+  - timeline.create
+  - nle.recut
+  - timeline.export
+pipeline:
+  name: localization_dub
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: watch
+      fn: hevi.studio.stages:stage_watch
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

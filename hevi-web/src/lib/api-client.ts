@@ -134,6 +134,61 @@ export const canvasApi = {
   },
 };
 
+export const studioApi = {
+  tools: () => authedReq<{ tools: { id: string; kind: string; summary: string }[]; total: number }>('/api/studio/tools'),
+  lines: () => authedReq<{ lines: { id: string; product: string; summary: string; tools: string[]; render_runtime?: string }[]; total: number }>('/api/studio/lines'),
+  invoke: (toolId: string, payload: Record<string, unknown>) =>
+    authedReq<{ status: string; payload: Record<string, unknown>; reason: string }>(`/api/studio/tools/${toolId}`, {
+      method: 'POST', body: JSON.stringify({ payload }),
+    }),
+  slate: (line_id: string, slots: Record<string, unknown>) =>
+    authedReq<Record<string, unknown>>('/api/studio/slates', { method: 'POST', body: JSON.stringify({ line_id, slots }) }),
+  createTimeline: (title: string, edit_plan: Record<string, unknown>) =>
+    authedReq<StudioTimeline>('/api/studio/timelines', { method: 'POST', body: JSON.stringify({ title, edit_plan }) }),
+  getTimeline: (id: string) => authedReq<StudioTimeline>(`/api/studio/timelines/${id}`),
+  listTimelines: () => authedReq<{ timelines: StudioTimeline[]; total: number }>('/api/studio/timelines'),
+  patchTimeline: (id: string, body: Record<string, unknown>) =>
+    authedReq<StudioTimeline>(`/api/studio/timelines/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  exportTimeline: (id: string, output_path?: string) =>
+    authedReq<Record<string, unknown>>(`/api/studio/timelines/${id}/export`, {
+      method: 'POST', body: JSON.stringify({ output_path: output_path ?? 'output/nle/timeline.mp4' }),
+    }),
+  veyaCapabilities: () => authedReq<Record<string, unknown>>('/api/studio/veya/capabilities'),
+  veyaProduce: (body: {
+    line_id: string;
+    slots?: Record<string, unknown>;
+    render_runtime?: string;
+    execute?: boolean;
+    publish?: boolean;
+    platforms?: string[];
+  }) => authedReq<Record<string, unknown>>('/api/studio/veya/produce', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
+  veyaJob: (id: string) => authedReq<Record<string, unknown>>(`/api/studio/veya/jobs/${id}`),
+  dailyCalendars: () => authedReq<{ calendars: Record<string, unknown>[]; total: number }>('/api/studio/daily/calendars'),
+  addDailyTopics: (calendarId: string, topics: Record<string, unknown>[]) =>
+    authedReq<Record<string, unknown>>(`/api/studio/daily/calendars/${calendarId}/topics`, {
+      method: 'POST',
+      body: JSON.stringify({ topics }),
+    }),
+  tickDaily: (body?: { calendar_id?: string; now?: string; publish?: boolean }) =>
+    authedReq<{ jobs: Record<string, unknown>[]; count: number }>('/api/studio/daily/tick', {
+      method: 'POST',
+      body: JSON.stringify(body ?? {}),
+    }),
+};
+
+export type StudioTimelineClip = {
+  clip_id: string; track: string; start_s: number; duration_s: number;
+  label: string; action: string; source: string; text: string;
+};
+export type StudioTimeline = {
+  timeline_id: string; title: string; duration_s: number; bgm: string; fps: number;
+  clips: StudioTimelineClip[];
+  tracks: { video: StudioTimelineClip[]; audio: StudioTimelineClip[]; captions: StudioTimelineClip[] };
+};
+
 // ── 创意辅助 (需登录) ─────────────────────────────
 export const creativeApi = {
   capabilities: () => authedReq<CreativeCapability[]>('/api/creative/capabilities'),

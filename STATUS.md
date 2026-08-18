@@ -125,6 +125,10 @@
 
 ## ✅ Done
 
+- **日更 + Veya 成品 + HyperFrames 第二运行时(2026-08-18)。** 两条主用法落地:① 解说/历史现场选题日历 `POST /api/studio/daily/tick`(每线每天一条,写矩阵交接单;教科书连载仍走 `/history-series/produce-daily`);② Veya 调成品 `POST /api/studio/veya/produce` + MCP `hevi.produce_finished` / `hevi.list_studio_lines` / `hevi.tick_daily`。OpenMontage 700 skill 精选进 catalog:`craft.shot_spec` 五面词、`craft.seedance`、`craft.broll`、`craft.taste`、幻灯风险/源片审查/变体/调色/网站转视频。HyperFrames 注册 `video/hyperframes`(HTML `data-start` 构图,缺 CLI 逐卡回退),配方 `kinetic_promo` 锁该运行时;`runtime.select` 禁止静默换栈。
+
+- **制片厂组合层(2026-08-18) — 100+ 工具 / 12 条完整配方 / Toonflow 画布 / ChatCut 时间线。** OpenMontage 目录 `hevi/studio/catalog.py` 把 ingest/研究/通鉴/导演/解说/TTS/素材/QC/发布/机位/转场/时间线收成 ≥100 个可调用工具。12 条 YAML 配方各自锁 `render_runtime`、槽位、工具链和 intake→dispatch 阶段(历史现场含 mix+timeline;短剧/解说/参考片/拆条/纪录片/数字人/电影感/口播/译制/播客/角色动画)。画布按分类搜工具、一键展开产线并连边,节点 `tool_id` 右键/属性面板执行走 kit。`/studio/timeline` 三轨+配乐:游标切开、丢掉后收缝、改时长/BGM 后 `nle.recut`,不再重跑产线。
+
 - **烁皓 1–6 收进导演/H3(2026-08-17) — 代码+单测已绿,未部署公网。** 不抄烁皓 agent-skill/五工作台/67 卡库。① `compile_h3_segment` 由时长推导 Picture k / [Shot k] 时刻,`validate_h3_alignment` 逐字对账;一镜仍一次 generate,packer 待消费。② H1 切 2–5s、H2 同场打包≤15s,error 级写入 `scene_stage_lint`,不 409。③④ 剧本/复审/分镜只写常见动作+冷开场带运动,不设关键词门。⑤ 20 官方运镜词+中文别名 lint(空/纯角度跳过);`ShotListItem.recipe` 可选,无卡库则跳过。⑥ `data/workspace/.gates.jsonl`(HEVI_GATE_LOG=0 关),写失败不挡主流程。相关 pytest 89 绿。未改 H3 Comfy/generate 循环。
 
 - **解说数字人收口 1+2+3(2026-08-17) — 代码+单测已绿,未部署公网。** ① 300×300 圆窗左下(ffmpeg 叠片 + Remotion 字幕垫 364px,不压字幕);试播不叠数字人,全片基础片 QC 后再叠。② 试播 60–90s 写 `qc-report.json`;API `preview_mode=false` 须 `preview_confirmed` 否则 409;工作台先试播再「确认试播，生成全片」。③ `TALKING_FACE_ENGINE=duix` 走离线静音口型(参考视频抽帧 + 母带),用完停容器,与 Echo 互斥、失败不占位。相关 pytest 79 + workbench 9 绿。

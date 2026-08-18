@@ -22,6 +22,7 @@ from hevi.api.routers.dashboard import router as dashboard_router
 from hevi.api.routers.director import router as director_router
 from hevi.director.graph_render import execute_task as director_graph_task_adapter
 from hevi.season_planner.production import execute_shortdrama_task
+from hevi.studio.slate import execute_lot_task
 from hevi.api.routers.director_pipeline import router as director_pipeline_router
 from hevi.api.routers.explainer import (
     execute_task as explainer_task_adapter,
@@ -41,6 +42,7 @@ from hevi.api.routers.presenters import router as presenters_router
 from hevi.api.routers.series import router as series_router
 from hevi.api.routers.shortdrama import router as shortdrama_router
 from hevi.api.routers.style import router as style_router
+from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.subjects import router as subjects_router
 from hevi.api.routers.tasks import router as tasks_router
 from hevi.api.routers.templates import router as templates_router
@@ -63,6 +65,7 @@ configure_default_adapters(
     shortdrama=execute_shortdrama_task,
     tongjian=tongjian_task_adapter,
     voice_studio_tts=execute_voice_studio_task,
+    lot=execute_lot_task,
 )
 
 
@@ -146,6 +149,7 @@ app.include_router(provider_presets_router, prefix="/api")
 app.include_router(publishers_router, prefix="/api")
 app.include_router(material_corpus_router, prefix="/api")
 app.include_router(backlot_router, prefix="/api")
+app.include_router(studio_router, prefix="/api")
 app.include_router(production_tools_v2_router, prefix="/api")
 app.include_router(presenters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")

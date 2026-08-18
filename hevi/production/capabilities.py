@@ -70,6 +70,13 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         True,
         "通过统一 Task 生命周期执行。",
     ),
+    "lot": CapabilityDescriptor(
+        "lot",
+        "制片厂排产",
+        ("/api/studio/slates", "/api/studio/lines", "/api/studio/timelines", "/api/studio/tools"),
+        True,
+        "100+ 工具 + 13 条配方签发交接单,日更/Veya 调成品,HyperFrames 第二运行时,时间线改镜后 nle.recut。",
+    ),
     "voice_studio_tts": CapabilityDescriptor(
         "voice_studio_tts",
         "Voice Studio 合成",

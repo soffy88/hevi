@@ -21,7 +21,10 @@ export interface NodeInspectorProps {
 
 export function NodeInspector({ node, onChange, onError }: NodeInspectorProps) {
   const [uploading, setUploading] = useState(false);
-  if (node.data.nodeType !== 'video') return null;
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState('');
+  const toolId = typeof node.data.config?.tool_id === 'string' ? node.data.config.tool_id : '';
+  if (node.data.nodeType !== 'video' && !toolId) return null;
 
   const config = node.data.config ?? {};
   const referenceImage = typeof config.reference_image === 'string' ? config.reference_image : '';
@@ -44,43 +47,79 @@ export function NodeInspector({ node, onChange, onError }: NodeInspectorProps) {
 
   const onClearReference = () => onChange({ reference_image: undefined, mode: 't2v' });
 
+  const onRunTool = async () => {
+    if (!toolId) return;
+    setRunning(true);
+    try {
+      const { studioApi } = await import('@/lib/api-client');
+      const out = await studioApi.invoke(toolId, (node.data.config ?? {}) as Record<string, unknown>);
+      setResult(`${out.status}: ${JSON.stringify(out.payload).slice(0, 240)}`);
+      onChange({ last_result: out.payload });
+    } catch {
+      onError('工具执行失败');
+    } finally {
+      setRunning(false);
+    }
+  };
+
   return (
     <div className="hevi-inspector" role="region" aria-label="节点属性">
-      <div className="hevi-inspector__title">视频节点</div>
-
-      <label className="hevi-inspector__label" htmlFor="hevi-inspector-prompt">
-        Prompt
-      </label>
-      <textarea
-        id="hevi-inspector-prompt"
-        className="hevi-inspector__textarea"
-        rows={3}
-        value={typeof config.prompt === 'string' ? config.prompt : ''}
-        onChange={(e) => onChange({ prompt: e.target.value })}
-        placeholder="留空则用上游文本/脚本节点的输出"
-      />
-
-      <div className="hevi-inspector__label">参考图(i2v,不经过角色库)</div>
-      {referenceImage ? (
-        <div className="hevi-inspector__ref-set">
-          <span className="hevi-inspector__ref-path" title={referenceImage}>
-            {referenceImage.split('/').pop()}
-          </span>
-          <button type="button" className="hevi-inspector__ref-clear" onClick={onClearReference}>
-            移除
-          </button>
-        </div>
-      ) : (
-        <label className="oui-btn hevi-inspector__upload-btn" data-disabled={uploading || undefined}>
-          {uploading ? '上传中…' : '上传照片直接动画化'}
-          <input
-            type="file"
-            accept="image/*"
-            hidden
-            disabled={uploading}
-            onChange={onUploadReference}
+      <div className="hevi-inspector__title">{toolId || '视频节点'}</div>
+      {toolId && (
+        <>
+          <label className="hevi-inspector__label" htmlFor="hevi-inspector-topic">文本 / 主题</label>
+          <textarea
+            id="hevi-inspector-topic"
+            className="hevi-inspector__textarea"
+            rows={3}
+            value={typeof (node.data.config ?? {}).text === 'string'
+              ? String((node.data.config ?? {}).text)
+              : String((node.data.config ?? {}).topic ?? '')}
+            onChange={(e) => onChange({ text: e.target.value, topic: e.target.value })}
           />
-        </label>
+          <button type="button" className="hevi-topbar-btn hevi-topbar-btn--primary" onClick={onRunTool} disabled={running}>
+            {running ? '执行中…' : '运行工具'}
+          </button>
+          {result && <p className="hevi-inspector__ref-path">{result}</p>}
+        </>
+      )}
+      {node.data.nodeType === 'video' && (
+        <>
+          <label className="hevi-inspector__label" htmlFor="hevi-inspector-prompt">
+            Prompt
+          </label>
+          <textarea
+            id="hevi-inspector-prompt"
+            className="hevi-inspector__textarea"
+            rows={3}
+            value={typeof config.prompt === 'string' ? config.prompt : ''}
+            onChange={(e) => onChange({ prompt: e.target.value })}
+            placeholder="留空则用上游文本/脚本节点的输出"
+          />
+
+          <div className="hevi-inspector__label">参考图(i2v,不经过角色库)</div>
+          {referenceImage ? (
+            <div className="hevi-inspector__ref-set">
+              <span className="hevi-inspector__ref-path" title={referenceImage}>
+                {referenceImage.split('/').pop()}
+              </span>
+              <button type="button" className="hevi-inspector__ref-clear" onClick={onClearReference}>
+                移除
+              </button>
+            </div>
+          ) : (
+            <label className="oui-btn hevi-inspector__upload-btn" data-disabled={uploading || undefined}>
+              {uploading ? '上传中…' : '上传照片直接动画化'}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                disabled={uploading}
+                onChange={onUploadReference}
+              />
+            </label>
+          )}
+        </>
       )}
     </div>
   );

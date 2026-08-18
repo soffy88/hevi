@@ -31,6 +31,7 @@ def test_all_expected_providers_registered():
         "kling_v2",
         "hailuo",  # 高写实云档
         "manim",  # 代码即画面
+        "hyperframes",  # HTML 构图第二运行时
     ):
         assert reg.generic("video", name) is not None, f"video/{name} missing"
     for name in ("edge_tts", "vibevoice", "duix"):

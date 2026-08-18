@@ -285,6 +285,8 @@ async def assemble_explainer_cues(
     presenter_image_url: str | None = None,
     presenter_reference_video: str | None = None,
     preview_mode: bool = False,
+    source_text: str = "",
+    reference_url: str = "",
 ) -> NarratedRenderResult:
     """Compile edited cues and run the standard injected Remotion transaction.
 
@@ -293,6 +295,34 @@ async def assemble_explainer_cues(
     """
     if aspect_ratio not in {"9:16", "16:9"}:
         raise ValueError("aspect_ratio 仅支持 9:16 或 16:9")
+    if source_text.strip():
+        from hevi.studio.kit import tongjian_l0, tongjian_provenance
+        from hevi.studio.mix import plan_history_mix
+
+        borrowed = await tongjian_l0({"source_name": topic, "raw_text": source_text, "llm": None})
+        logger.info("explainer borrowed tongjian.l0: %s", borrowed.get("status"))
+        mix = await plan_history_mix(
+            {"lines": [{"type": "narration", "text": source_text[:2000], "speaker": "NARRATOR"}]}
+        )
+        extra = [
+            ExplainerCue.model_validate(item)
+            for item in mix.commentary_cues
+            if isinstance(item, dict)
+        ]
+        if extra:
+            cues = [*extra, *cues]
+        tongjian_provenance({"lines": mix.drama_lines})
+    if reference_url.strip():
+        from hevi.studio.kit import watch_video_tool
+
+        watched = await watch_video_tool(
+            {
+                "source": reference_url.strip(),
+                "work_dir": str(output_dir / "watch"),
+                "detail": "transcript",
+            }
+        )
+        logger.info("explainer borrowed watch.video: %s", watched.get("status"))
     if preview_mode:
         prepared_for_preview = _truncate_to_preview(cues)
         if len(prepared_for_preview) < len(cues):

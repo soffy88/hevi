@@ -1,0 +1,44 @@
+id: explainer
+product: 解说中心
+summary: 选题 → 研究/脚本/素材/试播闸/时间线，交接 Remotion 装配
+handoff: explainer
+render_runtime: remotion
+slots:
+  - name: topic
+    required: true
+    description: 解说选题
+  - name: aspect_ratio
+    required: false
+    description: 9:16 或 16:9
+tools:
+  - research.plan
+  - script.quick
+  - explainer.cues
+  - explainer.card.hook
+  - explainer.preview_budget
+  - material.rank
+  - score.provider
+  - audio.bgm_plan
+  - nle.edit_plan
+  - timeline.create
+  - delivery.preview
+  - asset.bind
+pipeline:
+  name: explainer
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: research
+      fn: hevi.studio.stages:stage_research
+    - name: score
+      fn: hevi.studio.stages:stage_score
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: assets
+      fn: hevi.studio.stages:stage_assets
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

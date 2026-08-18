@@ -17,7 +17,16 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_SRC = REPO_ROOT / "hevi" / "skills"
-SKILL_DIRS = ("hevi-watch", "hevi-media", "hevi-promo", "hevi-story", "hevi-interactive")
+SKILL_DIRS = (
+    "hevi-watch",
+    "hevi-media",
+    "hevi-promo",
+    "hevi-story",
+    "hevi-interactive",
+    "hevi-studio",
+    "hevi-hyperframes",
+    "hevi-daily",
+)
 
 _HOST_DIRS = {
     "claude": ("CLAUDE_SKILLS_DIR", Path("~/.claude/skills")),

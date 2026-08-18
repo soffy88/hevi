@@ -271,6 +271,11 @@ def register_all_providers() -> None:
 
     register_manim()
 
+    # hyperframes:HTML/GSAP 构图第二运行时(CLI 或 ffmpeg 逐卡回退)
+    from hevi.providers.hyperframes.provider import register_hyperframes
+
+    register_hyperframes()
+
     # 高写实云 provider(fal):Veo3 / Kling v2 / 海螺 —— A2 已回迁 oprim v3.11.0,直接导入。
     from oprim import hailuo_generate, kling_v2_generate, veo3_generate
 

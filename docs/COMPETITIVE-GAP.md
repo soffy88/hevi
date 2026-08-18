@@ -94,7 +94,7 @@
 | B3 | Prosody 前置 + 音频边界稳定化 | AVP analyze_prosody + stabilize_aligned_continuous | 有 subtitle_align, 无 prosody 规划层 | 新增: hevi/audio/prosody.py |
 | B4 | 质量检查面广度 | AVP 12 个 validate | verdict 强于图像身份/返工; 语速节奏/边界稳定性/集独立性缺 | 新增: hevi/verdict/production_checks.py |
 | B5 | 可编程供应商插件 | Toonflow 设置中心写 TS 即时生效 | 加 provider 要改代码+重建容器 | 新增: hevi/providers/plugin_config.py (能力声明文件加载) |
-| B6 | 双渲染运行时 | OpenMontage Remotion + HyperFrames | 只有 Remotion(Manim 补代码即画面) | 文档 TODO(前端工程量大) |
+| B6 | 双渲染运行时 | OpenMontage Remotion + HyperFrames | ✅ `video/hyperframes` + `kinetic_promo` + `runtime.select`(2026-08-18)。缺 CLI 逐卡回退,不拆 Remotion | 已接线 |
 | B7 | 活态制片状态板 + 场景级审批门 + 回放 | OpenMontage Backlot | 有导演台 DP2, 无花费上墙/REPLAY RUN/contact sheet 审批 | 文档 TODO |
 | B8 | 轻量本地克隆 TTS 档 | LuxTTS 4 步/48kHz/<1GB/CPU | 有 F5/CosyVoice/Echo(重、GPU), 缺 LuxTTS 级低资源档 | 新增: hevi/audio/lux_tts_service.py (可选集成) |
 | B9 | ✅ | `hevi/video/material_corpus.py` + `GET /api/material/{source}` | 2026-08-18 |
@@ -131,17 +131,18 @@
 | A3 | ✅ | `hevi/memory/` | 2026-08-18 |
 | A4/B9 | ✅ | `hevi/video/material_corpus.py` | 2026-08-18 |
 | A5 | ✅ | `hevi/quick/` | 2026-08-18 |
-| B2 | ✅ | `hevi/publishers/`(骨架 + TikTok/IG/YT 空实现 + `GET/POST /api/publishers`) | 2026-08-18 |
+| B2 | ✅ | `hevi/publishers/`(TikTok/IG/YT 空实现 + 国内矩阵交接单 dy/ks/xhs/sph/bilibili) | 2026-08-18 |
 | B3 | ✅ | `hevi/audio/prosody.py` | 2026-08-18 |
 | B4 | ✅ | `hevi/verdict/production_checks.py` | 2026-08-18 |
 | B5 | ✅ | `hevi/providers/plugin_config.py` + `GET /api/providers/plugins`(目录级加载/评分/注册) | 2026-08-18 |
 | B8 | ✅ | `hevi/audio/lux_tts_service.py` | 2026-08-18 |
 | B10 | ✅ | `hevi/research/` (oskill.web_research) | 2026-08-18 |
 | B6/B7/B11 | ⏳ TODO | 见 §4.1(B7 后端事件流已落地, 前端板待排期) | — |
+| 组合层 | ✅ | 100+ catalog 工具 + 13 条配方(含 kinetic_promo) + 日更/Veya + HyperFrames 第二运行时 + 画布/时间线 | 2026-08-18 |
 
 ### 4.1 后续 TODO(未实施项)
 - **B7 Backlot 前端板**: 后端事件流已落地(`hevi/backlot/` + `GET/POST /api/backlot/runs/{run_id}/events` + `/status`), 前端亮灯板/花费上墙后续排期。
-- **B2 真实 OAuth 上传播放**: hevi/publishers 骨架已就位(检测到凭据即启用), TikTok/IG/YT 真实 OAuth 上传需平台开发者账号, 留接入方。
+- **B2 真实平台上传**: 国内矩阵已写交接单(`handoff` + `HEVI_MATRIX_WEBHOOK`/`MATRIXMEDIA_BIN`);TikTok/IG/YT 仍需平台开发者账号。
 - **B6 HyperFrames 集成**: HTML/GSAP 渲染运行时, 需评估与 Remotion 场景栈的并存策略(OpenMontage 在 proposal 期锁定 render_runtime)。
 - **B11 TTS 试听 UI**: voice_studio 已有基础, 补对比试听。
 - **B1 参考视频→差异化概念**: ✅ 已落地 —— `hevi/ingest/reference_concepts.py`(watch 结果 → 节奏分析(语速/句密度) → LLM 差异化概念 + 成本估算; 无 LLM/解析失败确定性兜底; 10 测试)。

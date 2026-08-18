@@ -343,6 +343,20 @@ async def test_node_executor_text_includes_upstream_count() -> None:
     assert result["upstream_count"] == 1
 
 
+@pytest.mark.asyncio
+async def test_node_executor_runs_studio_tool_id() -> None:
+    executor = create_node_executor()
+    node = CanvasNode(
+        node_id="t1",
+        node_type="script",
+        config={"tool_id": "explainer.card.hook", "text": "盐税"},
+    )
+    result = await executor(node, {})
+    assert result["tool_id"] == "explainer.card.hook"
+    assert result["status"] == "ok"
+    assert result["output"]["cue"]["card"] == "hook"
+
+
 # ── 7. ExecutorService — execute_graph ───────────────────────────────────────
 
 

@@ -33,6 +33,7 @@ const TOOLBOX = [
   { href: '/voice-studio', label: '🔊 语音工作室' },
   { href: '/gallery', label: '📁 数字资产' },
   { href: '/store', label: '📼 3D 店面' },
+  { href: '/studio/timeline', label: '🎞️ 时间线' },
 ];
 
 const MORE = [

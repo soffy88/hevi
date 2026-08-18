@@ -63,6 +63,8 @@ class RunRequest(BaseModel):
     # 人工审核卡点:="L2" 时跑完 L0-L2 出剧本就暂停(status=AWAITING_REVIEW),等人工
     # 审核/编辑剧本后再 /resume 续跑 L3-L8。None=一口气跑完不暂停。
     pause_after: str | None = None
+    # 参考片:先看再定讲解/演绎比(共享 watch 能力)。
+    reference_url: str = ""
     # 每层的模型选择 + 可调参数(键 "L0".."L8"),前端逐层调参。缺省=各层默认。
     layer_config: dict[str, LayerConfig] = Field(default_factory=dict)
 
@@ -301,6 +303,19 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
         _apply_cloud_avatar_preset(req)
         _llm, _tts, _params, _gate_done = _pipeline_helpers(run_id, req)
 
+        if req.reference_url.strip():
+            from hevi.studio.kit import watch_video_tool
+
+            watched = await watch_video_tool(
+                {
+                    "source": req.reference_url.strip(),
+                    "work_dir": str(run_dir / "watch"),
+                    "detail": "transcript",
+                }
+            )
+            _RUNS[run_id]["reference"] = watched
+            logger.info("tongjian %s borrowed watch.video: %s", run_id, watched.get("status"))
+
         # L0 史料预处理
         _update_layer(run_id, "L0", status="RUNNING", started_at=datetime.now(UTC))
         try:
@@ -399,6 +414,29 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
             )
             _finish_run(run_id, success=False, error=f"L2 failed: {e}")
             return
+
+        from hevi.studio.mix import plan_history_mix
+
+        mix = await plan_history_mix(script)
+        _RUNS[run_id]["mix"] = mix.to_dict()
+        from hevi.studio.kit import shot_export
+
+        for line in mix.drama_lines:
+            if line.get("line_id"):
+                shot_export(
+                    {
+                        "shot_id": str(line["line_id"]),
+                        "line_id": "history_scene",
+                        "prompt": line.get("text"),
+                    }
+                )
+        logger.info(
+            "tongjian %s mix commentary=%s drama=%s provenance=%s",
+            run_id,
+            mix.to_dict()["commentary_count"],
+            mix.to_dict()["drama_count"],
+            mix.provenance.get("passed"),
+        )
 
         # 存 L0-L2 产物 → 供人工审核/续跑;pause_after=="L2" 则停在审核态,否则直接续渲染。
         _RUNS[run_id].update(

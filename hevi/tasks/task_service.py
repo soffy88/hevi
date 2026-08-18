@@ -294,6 +294,7 @@ class TaskService:
                 "shortdrama",
                 "tongjian",
                 "voice_studio_tts",
+                "lot",
             }:
                 return await self._run_adapter_task(task)
 

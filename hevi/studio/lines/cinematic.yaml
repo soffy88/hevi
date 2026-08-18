@@ -1,0 +1,42 @@
+id: cinematic
+product: 电影感预告
+summary: 情绪弧 + 场面调度 + H3 切点 + 导演演绎
+handoff: shortdrama
+render_runtime: remotion
+slots:
+  - name: topic
+    required: true
+    description: 预告概念
+  - name: manuscript
+    required: false
+    description: 加厚剧本
+tools:
+  - research.plan
+  - director.scene_stage
+  - director.camera.wide
+  - director.camera.close
+  - director.h3_cuts
+  - director.h3_align
+  - score.provider
+  - audio.mood.tense
+  - nle.edit_plan
+  - nle.transition.dissolve
+  - shot.export
+  - timeline.create
+pipeline:
+  name: cinematic
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: research
+      fn: hevi.studio.stages:stage_research
+    - name: score
+      fn: hevi.studio.stages:stage_score
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

@@ -1,0 +1,48 @@
+id: history_scene
+product: 历史现场
+summary: 史料 → 研究闸 + 讲解/演绎混排 + 时间线，交接通鉴 L0–L8
+handoff: tongjian
+render_runtime: remotion
+slots:
+  - name: source_text
+    required: true
+    description: 史料原文或纪实材料
+  - name: source_name
+    required: false
+    description: 章节/事件标题
+  - name: subject_ids
+    required: false
+    description: 可复用的角色 Subject
+tools:
+  - research.brief
+  - tongjian.l0
+  - tongjian.mix
+  - tongjian.provenance
+  - explainer.cues
+  - score.provider
+  - memory.remember
+  - nle.edit_plan
+  - timeline.create
+  - asset.bind
+  - delivery.preview
+pipeline:
+  name: history_scene
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: research
+      fn: hevi.studio.stages:stage_research
+    - name: score
+      fn: hevi.studio.stages:stage_score
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: mix
+      fn: hevi.studio.stages:stage_mix
+    - name: assets
+      fn: hevi.studio.stages:stage_assets
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

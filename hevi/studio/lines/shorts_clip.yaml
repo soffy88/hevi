@@ -1,0 +1,41 @@
+id: shorts_clip
+product: 拆条矩阵
+summary: 已有成片 → 时间线拆条 + 国内矩阵交接单（不重渲）
+handoff: none
+render_runtime: ffmpeg
+slots:
+  - name: media_path
+    required: true
+    description: 成片路径
+  - name: topic
+    required: false
+    description: 标题/选题
+  - name: platforms
+    required: false
+    description: 发布平台列表
+tools:
+  - clip.factory
+  - nle.edit_plan
+  - timeline.create
+  - timeline.ripple
+  - publish.matrix
+  - publish.douyin
+  - delivery.preview
+  - asset.bind
+pipeline:
+  name: shorts_clip
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: assets
+      fn: hevi.studio.stages:stage_assets
+    - name: publish
+      fn: hevi.studio.stages:stage_publish
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

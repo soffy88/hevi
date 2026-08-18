@@ -27,7 +27,9 @@ def test_list_publishers() -> None:
     assert body["total"] >= 3
     platforms = {p["name"] for p in body["publishers"]}
     assert {"tiktok", "instagram", "youtube"} <= platforms
-    assert all(p["available"] is False for p in body["publishers"])
+    stubs = [p for p in body["publishers"] if p["name"] in {"tiktok", "instagram", "youtube"}]
+    assert stubs and all(p["available"] is False for p in stubs)
+    assert "douyin" in platforms
 
 
 def test_publish_stub_returns_skipped(tmp_path: Path) -> None:

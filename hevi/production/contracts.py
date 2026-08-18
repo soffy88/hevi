@@ -15,6 +15,7 @@ ProductionSource = Literal[
     "clip_video",
     "voice_studio_tts",
     "director_graph",
+    "lot",
 ]
 
 
