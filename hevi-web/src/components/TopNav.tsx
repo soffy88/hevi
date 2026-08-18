@@ -32,6 +32,7 @@ const TOOLBOX = [
   { href: '/presenters', label: '👤 数字人预设' },
   { href: '/voice-studio', label: '🔊 语音工作室' },
   { href: '/gallery', label: '📁 数字资产' },
+  { href: '/store', label: '📼 3D 店面' },
 ];
 
 const MORE = [

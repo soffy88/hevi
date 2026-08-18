@@ -1734,3 +1734,49 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .dc-recipe button:hover { border-color: var(--primary); color: var(--primary); }
 .embr__use { border: 1px solid var(--primary); border-radius: 9px; padding: 6px 11px; color: var(--primary-foreground, #fff); background: var(--primary); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
 .embr__use:hover { filter: brightness(1.08); }
+
+/* ── 3D 成片店面(/store)──────────────────────────── */
+.hevi-store { max-width: 1280px; margin: 0 auto; padding: 20px 24px 48px; display: flex; flex-direction: column; gap: 14px; }
+.hevi-store__bar { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.hevi-store__title { font-size: 20px; font-weight: 800; }
+.hevi-store__hint { font-size: 12.5px; color: var(--muted-foreground); }
+.hevi-store__empty { text-align: center; color: var(--muted-foreground); font-size: 14px; padding: 64px 16px; }
+.hevi-store__stage { position: relative; height: 62vh; min-height: 420px; border-radius: 14px; overflow: hidden;
+  border: 1px solid var(--border); background: #14100c; }
+.hevi-store__stage canvas { display: block; }
+
+/* 详情浮层 */
+.hevi-store-detail { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 6, 4, 0.72); backdrop-filter: blur(3px); padding: 24px; }
+.hevi-store-detail__card { display: flex; gap: 18px; max-width: 620px; width: 100%; padding: 18px;
+  border: 1px solid var(--border); border-radius: 16px; background: var(--card); box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
+.hevi-store-detail__thumb { flex: 0 0 148px; aspect-ratio: 2/3; border-radius: 10px; overflow: hidden;
+  background: var(--muted); display: flex; align-items: center; justify-content: center; }
+.hevi-store-detail__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.hevi-store-detail__icon { font-size: 34px; color: #fff; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.hevi-store-detail__body { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.hevi-store-detail__badge { align-self: flex-start; font-size: 11px; font-weight: 700; color: #fff;
+  padding: 3px 10px; border-radius: 999px; }
+.hevi-store-detail__title { font-size: 18px; font-weight: 800; margin: 0; }
+.hevi-store-detail__desc { margin: 0; font-size: 13.5px; color: var(--foreground); line-height: 1.55; }
+.hevi-store-detail__prompt { margin: 0; font-size: 12px; color: var(--muted-foreground); line-height: 1.5; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.hevi-store-detail__actions { display: flex; gap: 10px; margin-top: auto; padding-top: 10px; }
+.hevi-store-detail__play { border: 1px solid var(--primary); background: var(--primary); color: var(--primary-foreground, #fff);
+  font-weight: 800; padding: 9px 18px; border-radius: 9px; font-size: 13.5px; cursor: pointer; }
+.hevi-store-detail__close { border: 1px solid var(--border); background: var(--card); color: var(--muted-foreground);
+  padding: 9px 14px; border-radius: 9px; font-size: 13.5px; cursor: pointer; }
+.hevi-store-detail__play:hover { filter: brightness(1.08); }
+.hevi-store-detail__close:hover { color: var(--foreground); }
+
+/* 播放浮层 */
+.hevi-store-play { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.86); padding: 32px; }
+.hevi-store-play__frame { position: relative; max-width: 960px; width: 100%; }
+.hevi-store-play__media { width: 100%; max-height: 78vh; object-fit: contain; border-radius: 12px; background: #000; }
+.hevi-store-play__caption { position: absolute; left: 0; right: 0; bottom: -34px; text-align: center;
+  color: rgba(255,255,255,0.85); font-size: 14px; font-weight: 600; }
+.hevi-store-play__close { position: absolute; top: -46px; right: 0; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.5); color: #fff; font-size: 15px; cursor: pointer; }
+.hevi-store-play__close:hover { background: rgba(255,255,255,0.15); }
+@media (max-width: 640px) { .hevi-store-detail__card { flex-direction: column; } .hevi-store-detail__thumb { flex: 0 0 auto; width: 120px; } }
