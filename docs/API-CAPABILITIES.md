@@ -21,6 +21,14 @@
 | POST | `/api/auth/oauth/google` | Google Oauth |
 | POST | `/api/auth/register` | Register |
 
+## backlot
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/backlot/runs/{run_id}/events` | Get Run Events |
+| POST | `/api/backlot/runs/{run_id}/events` | Emit Run Event |
+| GET | `/api/backlot/runs/{run_id}/status` | Get Run Status |
+
 ## canvas
 
 | 方法 | 路径 | 说明 |
@@ -244,8 +252,17 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET | `/api/providers/plugins` | List Provider Plugins |
+| GET | `/api/providers/plugins/{provider_id}` | Get Provider Plugin |
 | GET | `/api/providers/presets` | List Provider Presets |
 | GET | `/api/providers/presets/{name}` | Get Provider Preset |
+
+## publishers
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/publishers` | Get Publishers |
+| POST | `/api/publishers/{platform}/publish` | Trigger Publish |
 
 ## series
 

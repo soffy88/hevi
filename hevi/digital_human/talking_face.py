@@ -1,11 +1,14 @@
 """v9.1 基建解耦: 全时段数字人 Talking Face —— 轻量 HTTP 客户端。
 
 废弃原来的本地 LongCat 推理(hevi-api 容器内无 GPU、无模型), 改由 GPU 算力
-引擎容器(services/ai_engine)承载 LongCat/EchoMimic 推理:
+引擎容器(services/ai_engine)承载 LongCat 推理; EchoMimicV2 走本机 ComfyUI:
 
-    1. 优先请求 http://hevi-gen-engine:17493/api/ai/longcat (multipart 上传
+    1. TALKING_FACE_ENGINE=echomimic → ComfyUI AIFSH EchoMimicV2
+       (512² / FP16 / 音频分片, `start-echomimic.sh`, 10G 卡)。
+    2. TALKING_FACE_ENGINE=duix → 本机 Duix 容器离线口型(用完停容器,与 Echo 互斥)。
+    3. 否则请求 http://hevi-gen-engine:17493/api/ai/longcat (multipart 上传
        播音员照片 + 整条主音频, 引擎返回与音频等长的 MP4)。
-    2. 引擎无模型/不可达时, 降级为本地 ffmpeg 通用口型合成或占位动画 ——
+    3. 引擎无模型/不可达时, 降级为本地 ffmpeg 通用口型合成或占位动画 ——
        这两条路径只依赖 ffmpeg 二进制, 留在 API 容器里, 保证任何环境都有输出。
 
 对外 API 不变: generate_talking_face / generate_continuous_avatar_track /
@@ -53,6 +56,47 @@ async def _engine_capabilities() -> dict[str, Any]:
     except httpx.HTTPError:
         logger.warning("AI 引擎不可达, Talking Face 走本地降级: %s", _engine_base_url())
     return {}
+
+
+async def _run_duix_offline(
+    *,
+    image_path: Path,
+    audio_path: Path,
+    output_path: Path,
+    reference_video: Path | None = None,
+) -> Path:
+    from hevi.digital_human.duix_offline import generate_silent_duix
+    from hevi.digital_human.duix_service import DuixUnavailable
+
+    reference = reference_video if reference_video and reference_video.exists() else image_path
+    try:
+        return await generate_silent_duix(
+            reference=reference,
+            audio_path=audio_path,
+            output_path=output_path,
+        )
+    except DuixUnavailable as exc:
+        raise TalkingFaceUnavailable(f"Duix 离线口型失败: {exc}") from exc
+
+
+async def _run_echo_mimic(
+    *,
+    image_path: Path,
+    audio_path: Path,
+    output_path: Path,
+) -> Path:
+    """本机 ComfyUI EchoMimicV2(512² / 分片 / FP16)。"""
+    from hevi.providers.echo_mimic.provider import echo_mimic_generate
+    from hevi.providers.h3_local.comfy_client import H3ComfyError
+
+    try:
+        return await echo_mimic_generate(
+            image_path=image_path,
+            audio_path=audio_path,
+            output_path=output_path,
+        )
+    except H3ComfyError as exc:
+        raise TalkingFaceUnavailable(f"EchoMimicV2 合成失败: {exc}") from exc
 
 
 async def _run_engine_longcat(
@@ -109,6 +153,7 @@ async def generate_talking_face(
     output_path: str | Path,
     preset_name: str = "default",
     gpu_id: int = 0,
+    reference_video: str | Path | None = None,
 ) -> Path:
     """Generate a full-length talking face video driven by master audio.
 
@@ -117,14 +162,17 @@ async def generate_talking_face(
     as the continuous avatar PiP (or fullscreen) track in Remotion.
 
     Engine selection:
-    1. TALKING_FACE_ENGINE=longcat → 强制走引擎 LongCat 端点(失败即报错)。
-    2. 引擎能力表声明 longcat 可用 → 走引擎端点。
-    3. 默认/降级 → 本地 ffmpeg 通用口型合成或占位动画(见 _run_generic_lipsync /
-       _generate_placeholder_avoiding_null), 保证输出非空。
+    1. TALKING_FACE_ENGINE=echomimic(默认) → 本机 ComfyUI EchoMimicV2。
+       失败直接抛 TalkingFaceUnavailable,不静默占位圈。
+    2. TALKING_FACE_ENGINE=duix → 本机 Duix 容器离线口型,用完停容器。
+    3. TALKING_FACE_ENGINE=longcat → 强制走引擎 LongCat 端点。
+    4. 引擎能力表声明 longcat 可用且未指定 echomimic/duix → 走引擎端点。
+    5. placeholder / generic → 本地 ffmpeg 占位或频谱口型。
     """
     image_path = Path(image_path)
     audio_path = Path(audio_path)
     output_path = Path(output_path)
+    ref_video = Path(reference_video) if reference_video else None
 
     if not image_path.exists():
         raise TalkingFaceUnavailable(f"Presenter image not found: {image_path}")
@@ -136,12 +184,25 @@ async def generate_talking_face(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     preset_name = preset_name or "default"
 
-    engine = os.getenv("TALKING_FACE_ENGINE", "").strip().lower()
+    engine = (os.getenv("TALKING_FACE_ENGINE", "echomimic") or "echomimic").strip().lower()
     capabilities = await _engine_capabilities()
     engine_has_longcat = bool(capabilities.get("longcat"))
 
     try:
-        if engine == "longcat" or engine_has_longcat:
+        if engine == "duix":
+            result_path = await _run_duix_offline(
+                image_path=image_path,
+                audio_path=audio_path,
+                output_path=output_path,
+                reference_video=ref_video,
+            )
+        elif engine == "echomimic":
+            result_path = await _run_echo_mimic(
+                image_path=image_path,
+                audio_path=audio_path,
+                output_path=output_path,
+            )
+        elif engine == "longcat" or engine_has_longcat:
             result_path = await _run_engine_longcat(
                 image_path=image_path,
                 audio_path=audio_path,
@@ -170,6 +231,8 @@ async def generate_talking_face(
                 result_path, result_path.stat().st_size / 1_000_000,
             )
     except TalkingFaceUnavailable as exc:
+        if engine in {"echomimic", "duix"}:
+            raise
         logger.error("Talking Face 引擎失败, 走本地降级: %s", exc)
         result_path = await _generate_placeholder_avoiding_null(
             audio_path=audio_path,

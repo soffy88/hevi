@@ -162,6 +162,23 @@ async def _synthesize_formal(
         )
         return output_path
 
+    if provider == "lux":
+        # LuxTTS 轻量克隆档(差距 B8): 低资源(<1GB VRAM/CPU), 需 luxvoice 可用。
+        from hevi.audio.lux_tts_service import lux_tts_available, synth_with_luxvoice
+
+        if not lux_tts_available():
+            raise AudioRoutingError(
+                "HEVI_TTS_FORMAL_PROVIDER=lux 但 luxvoice 不可用"
+                "(pip install luxvoice 或克隆 LuxTTS 后重试)"
+            )
+        ref_audio = os.getenv("F5_TTS_REFERENCE_AUDIO", "").strip()
+        await synth_with_luxvoice(
+            text=text,
+            output_path=output_path,
+            reference_audio=ref_audio or None,
+        )
+        return output_path
+
     if provider == "voicebox":
         from hevi.explainer.voicebox_client import synthesize as vb_synthesize
         await vb_synthesize(text, output_path, instruct=instruct or "professional, clear narration")

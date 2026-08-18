@@ -374,12 +374,23 @@ async def _run_assembled_pipeline(repo: AutomationRunRepository, run_id: str) ->
     try:
         body = ExplainerAssembleRequest.model_validate(config)
         # 🚨 v9.1: 工单沙盒 —— 每个 run 独立 data/workspace/{task_id}/ 目录,
-        # 状态机(TaskRun)支持崩溃重试跳过已完成步骤;15s 先导样片也走同一沙盒。
+        # 状态机(TaskRun)支持崩溃重试跳过已完成步骤;60–90s 试播也走同一沙盒。
         from hevi.core.workspace import WorkspaceManager
 
         task_id_ws = task_id or run_id
         ws = WorkspaceManager(task_id_ws, pipeline_type="main_remotion")
         ws.update_progress("running", 8)
+        stock_service = None
+        try:
+            from hevi.sourcing.stock_search import StockAssetRepository, StockSearchService
+
+            candidate = StockSearchService(StockAssetRepository(repo.pool))
+            if candidate.available:
+                stock_service = candidate
+            else:
+                logger.info("explainer assemble: PEXELS_API_KEY 未配置, stock_broll 跳过")
+        except Exception as exc:
+            logger.warning("explainer assemble: stock 服务不可用: %s", exc)
         result = await assemble_explainer_cues(
             body.topic_or_url or body.selected_hook,
             body.final_script_cues,
@@ -387,13 +398,17 @@ async def _run_assembled_pipeline(repo: AutomationRunRepository, run_id: str) ->
             voice=body.voice_profile,
             enable_circle_avatar_mask=body.enable_circle_avatar_mask,
             enable_remotion_code_render=body.enable_remotion_code_render,
+            enable_manim_render=body.enable_manim_render,
             enable_browser_broll=body.enable_browser_broll,
             aspect_ratio=body.aspect_ratio,
             heygen_presenter_id=body.heygen_presenter_id,
             presenter_provider=body.presenter_provider,
             presenter_name=body.presenter_name,
             presenter_image_url=body.presenter_image_url,
+            presenter_reference_video=body.presenter_reference_video or None,
             preview_mode=bool(body.preview_mode),
+            stock_service=stock_service,
+            stock_user_id=str(rec.get("user_id") or "explainer_session"),
         )
         ws.mark_step_done("render", progress=100)
         manifest = result.engine_result.get("artifacts")
@@ -554,6 +569,15 @@ async def get_research_cache(
         raise HTTPException(status_code=404, detail="调研缓存已损坏,请重新研究") from exc
 
 
+def require_preview_gate(body: ExplainerAssembleRequest) -> None:
+    """HTTP 闸:全片必须先试播并确认。库函数 assemble_explainer_cues 不拦。"""
+    if not body.preview_mode and not body.preview_confirmed:
+        raise HTTPException(
+            status_code=409,
+            detail="先出 60–90 秒试播并确认后再渲全片",
+        )
+
+
 def _parse_assemble_payload(raw: Any) -> ExplainerAssembleRequest:
     """隐患点 A 防爆解析:整体递归解包(藏在 str 里的 dict/list、双重序列化的
     嵌套字段全部还原)后再校验——字符串化 cue 绝不可能漏给 .get() 链式访问。
@@ -646,6 +670,7 @@ async def assemble_explainer(
     字段漏给 cue.get(),也从根上杜绝 422 误伤可恢复数据。
     """
     body = _parse_assemble_payload(await request.json())
+    require_preview_gate(body)
     # 🚨 v9.1: 素材质检前置拦截 —— presenter_image_url 不合法(不可访问/超大
     # 尺寸/无脸或多脸)直接 422 拒绝入队,不浪费渲染算力。
     if body.presenter_image_url:

@@ -45,6 +45,8 @@ class ExplainerMasterService:
         *,
         heygen_provider: Any = None,
         browser_broll_recorder: Any = None,
+        stock_service: Any = None,
+        stock_user_id: str = "explainer_session",
     ) -> Any:
         # 终极防爆:接收 payload 的第一行做全局递归解包——藏在 str 里的 dict /
         # list(含二重转义)全部自动 json.loads() 还原,再走 Pydantic 重新校验。
@@ -58,6 +60,7 @@ class ExplainerMasterService:
             voice=clean_request.voice_profile,
             enable_circle_avatar_mask=clean_request.enable_circle_avatar_mask,
             enable_remotion_code_render=clean_request.enable_remotion_code_render,
+            enable_manim_render=clean_request.enable_manim_render,
             enable_browser_broll=clean_request.enable_browser_broll,
             aspect_ratio=clean_request.aspect_ratio,
             heygen_presenter_id=clean_request.heygen_presenter_id,
@@ -65,9 +68,11 @@ class ExplainerMasterService:
             presenter_name=clean_request.presenter_name,
             heygen_provider=heygen_provider,
             broll_recorder=browser_broll_recorder,
-            # v9.1: 数字人母体照片 + 15 秒先导样片,透传给装配事务。
             presenter_image_url=clean_request.presenter_image_url or None,
+            presenter_reference_video=clean_request.presenter_reference_video or None,
             preview_mode=clean_request.preview_mode,
+            stock_service=stock_service,
+            stock_user_id=stock_user_id,
         )
 
 

@@ -39,9 +39,12 @@ _SHOT_LIST_PROMPT = """你是电影分镜师。把下面这一场剧本切成**�
    里并标出说话人(character_name)。**
 
 **硬性要求:**
-- 开场至少一个建场/动作镜头(别一上来就是大头怼脸说话)。
+- 开场至少一个建场/动作镜头,而且必须有**运动主体**(跑、走、推门、纵马),禁止静物特写开场。
 - 关键情节(如刺杀、擒拿、搜身)要用**动作镜头**演出来,别只靠台词交代。
 - 非对白镜头的 visual_prompt 必须是**具体的画面动作描述**,绝不是"旁白:xxx"这种念白文字。
+- 每切 duration_s 必须在 2–5 秒;同场连续镜打包进一次 H3 不得超过 15 秒。
+- camera 写 H3 官方运镜词(Static / Follow / Pan Left / Dolly In / Handheld)
+  或其中文对应(固定/跟拍/左摇/推进/手持)。
 - 每场镜头数别贪多也别只有对白,按剧情节奏来。
 
 **实体名硬规则(治"人物/场景乱跳"):已锁定的人物/场景名字必须原样引用,禁止改写、
@@ -73,7 +76,8 @@ target_name 就是 B 的名字(必须是已锁定人物名)。对众/独白/自�
         "target_name": "受话人名(对谁说,无明确对象留空)"}}],
     "blocking": [{{"character_name": "人物名", "position": "如 画面左侧", "facing": "如 面向"}}],
     "character_names": ["本镜出场人物名"],
-    "duration_s": 5}}
+    "duration_s": 4,
+    "recipe": ""}}
 ]}}
 
 这一场剧本:
@@ -263,6 +267,7 @@ async def _shots_for_scene(
                 character_names=shot_character_names,
                 scene_name=shot_scene_name,
                 duration_s=float(raw.get("duration_s") or 5.0),
+                recipe=str(raw.get("recipe") or "").strip(),
             )
         )
     return shots

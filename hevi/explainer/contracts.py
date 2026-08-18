@@ -22,6 +22,7 @@ VisualType = Literal[
     "data_screenshot",
     "remotion_chart",
     "remotion_code",
+    "manim_scene",
     "voiceover",
 ]
 
@@ -421,13 +422,16 @@ class ExplainerAssembleRequest(BaseModel):
     # 断点续传:关联到 research 阶段的缓存会话(仅记录,不参与装配)。
     session_id: str = Field(default="", max_length=64)
     enable_remotion_code_render: bool = True
+    enable_manim_render: bool = True
     enable_circle_avatar_mask: bool = True
     enable_browser_broll: bool = True
     aspect_ratio: Literal["9:16", "16:9"] = "9:16"
     # v9.1: 数字人母体照片 URL(全时段 Talking Face 底轨素材),经 asset_validator 质检。
     presenter_image_url: str = Field(default="", max_length=2048)
-    # v9.1: 15 秒先导样片机制 —— 只截前 15s 的 cue/音频/画面,极低成本预览。
+    presenter_reference_video: str = Field(default="", max_length=2048)
+    # 60–90 秒试播闸:先 preview_mode,确认后再 preview_confirmed 渲全片。
     preview_mode: bool = False
+    preview_confirmed: bool = False
 
 
 class ExplainerAssemblyAccepted(BaseModel):

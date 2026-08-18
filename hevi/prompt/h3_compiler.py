@@ -40,6 +40,10 @@ _DEFAULT_SOUNDSCAPE = "环境声:自然的环境氛围音,无对白,无音乐"
 #: 配乐缺省文案(压人声)。
 _DEFAULT_MUSIC = "情绪配乐:轻柔的氛围音乐,音量压低,不盖过对白"
 
+MIN_CUT_SECONDS = 2.0
+MAX_CUT_SECONDS = 5.0
+MAX_SEGMENT_SECONDS = 15.0
+
 
 @dataclass
 class H3Render:
@@ -202,3 +206,119 @@ def compile_h3_prompt(
         overall_soundscape=soundscape or _DEFAULT_SOUNDSCAPE,
         non_diegetic_music=music or _DEFAULT_MUSIC,
     )
+
+
+def shot_duration_s(shot: Any) -> float:
+    raw = getattr(shot, "duration_s", None)
+    if raw is None and isinstance(shot, dict):
+        raw = shot.get("duration_s")
+    try:
+        return float(raw if raw is not None else 5.0)
+    except (TypeError, ValueError):
+        return 5.0
+
+
+def cut_starts(durations: list[float]) -> list[float]:
+    """Cut start times derived from durations. First cut is always 0.00."""
+    starts: list[float] = []
+    acc = 0.0
+    for dur in durations:
+        starts.append(round(acc, 2))
+        acc += max(float(dur), 0.0)
+    return starts
+
+
+def format_cut_time(seconds: float) -> str:
+    return f"{float(seconds):.2f}"
+
+
+def alignment_instruction(starts: list[float]) -> str:
+    """Official H3 picture marks. Times come only from cut_starts()."""
+    parts = [
+        f"Picture {i} aligns with the {format_cut_time(t)}-second mark"
+        for i, t in enumerate(starts, start=1)
+    ]
+    return ". ".join(parts) + "."
+
+
+def shot_mark_line(index_1based: int, start: float) -> str:
+    return f"[Shot {index_1based}] {format_cut_time(start)}s"
+
+
+def pack_h3_segments(
+    shots: list[Any],
+    *,
+    max_segment_s: float = MAX_SEGMENT_SECONDS,
+) -> list[list[Any]]:
+    """Greedy pack: same scene_no, add next cut only if the segment stays ≤15s."""
+    groups: list[list[Any]] = []
+    current: list[Any] = []
+    acc = 0.0
+    last_scene: Any = object()
+    for shot in shots:
+        dur = shot_duration_s(shot)
+        scene = getattr(shot, "scene_no", None)
+        if isinstance(shot, dict):
+            scene = shot.get("scene_no", scene)
+        if current and (scene != last_scene or acc + dur > max_segment_s):
+            groups.append(current)
+            current, acc = [], 0.0
+        current.append(shot)
+        acc += dur
+        last_scene = scene
+    if current:
+        groups.append(current)
+    return groups
+
+
+def compile_h3_segment(
+    shots: list[Any],
+    *,
+    cast: dict[str, int],
+    scene_block_text: str = "",
+    quote_ids: list[str] | None = None,
+    soundscape: str = "",
+    music: str = "",
+) -> H3Render:
+    """One H3 call for a packed segment. Cut times are derived, never invented."""
+    if not shots:
+        raise ValueError("compile_h3_segment 需要至少一镜")
+    durations = [shot_duration_s(s) for s in shots]
+    starts = cut_starts(durations)
+    ids = list(quote_ids or [])
+    bodies: list[str] = [alignment_instruction(starts)]
+    last: H3Render | None = None
+    for index, shot in enumerate(shots):
+        last = compile_h3_prompt(
+            shot=shot,
+            cast=cast,
+            scene_block_text=scene_block_text if index == 0 else "",
+            quote_id=ids[index] if index < len(ids) else "",
+            soundscape=soundscape,
+            music=music,
+        )
+        bodies.append(shot_mark_line(index + 1, starts[index]))
+        bodies.append(last.integrated_multimodal_description)
+    if last is None:  # shots 已在入口校验非空
+        raise ValueError("compile_h3_segment 需要至少一镜")
+    return H3Render(
+        integrated_multimodal_description="\n".join(bodies),
+        overall_soundscape=soundscape or last.overall_soundscape,
+        non_diegetic_music=music or last.non_diegetic_music,
+    )
+
+
+def validate_h3_alignment(integrated: str, durations: list[float]) -> list[str]:
+    """Verbatim check: Picture k / [Shot k] times must match derived starts."""
+    errors: list[str] = []
+    starts = cut_starts(durations)
+    text = integrated or ""
+    for index, start in enumerate(starts, start=1):
+        stamp = format_cut_time(start)
+        picture = f"Picture {index} aligns with the {stamp}-second mark"
+        if picture not in text:
+            errors.append(f"对齐指令缺失或时刻漂移: 期望 {picture}")
+        mark = f"[Shot {index}] {stamp}s"
+        if mark not in text:
+            errors.append(f"切点标记缺失或时刻漂移: 期望 {mark}")
+    return errors

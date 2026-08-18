@@ -119,6 +119,14 @@ describe('ExplainerWorkbench presenter automation', () => {
   });
 });
 
+describe('ExplainerWorkbench Manim 视觉类型', () => {
+  it('lists Manim as a visual scaffold option on the review stage', async () => {
+    const user = userEvent.setup();
+    await reachReview(user);
+    expect(screen.getByRole('option', { name: 'Manim 代码即画面' })).toBeInTheDocument();
+  });
+});
+
 describe('ExplainerWorkbench Hook 策略矩阵 (v9)', () => {
   it('renders a multi-select matrix with narrative function tags', async () => {
     const user = userEvent.setup();
@@ -164,7 +172,7 @@ describe('ExplainerWorkbench Hook 策略矩阵 (v9)', () => {
       engine_version: 'v9',
       adapter_version: 'v9.0',
     });
-    await user.click(screen.getByRole('button', { name: /确认文案与脚手架/ }));
+    await user.click(screen.getByRole('button', { name: /生成 60–90 秒试播/ }));
 
     await waitFor(() => expect(hoisted.assemble).toHaveBeenCalledOnce());
     const body = hoisted.assemble.mock.calls[0][0];
@@ -172,6 +180,8 @@ describe('ExplainerWorkbench Hook 策略矩阵 (v9)', () => {
     expect(body.selected_hooks[0]).toContain('BBGKY 方程');
     expect(body.hook_combination).toBe('chain');
     expect(body.selected_hook).toContain('BBGKY 方程');
+    expect(body.preview_mode).toBe(true);
+    expect(body.preview_confirmed).toBe(false);
   });
 });
 
@@ -229,7 +239,7 @@ describe('ExplainerWorkbench 断点续传与重试', () => {
     await reachReview(user);
 
     hoisted.assemble.mockRejectedValueOnce(new Error('网络抖动'));
-    await user.click(screen.getByRole('button', { name: /确认文案与脚手架/ }));
+    await user.click(screen.getByRole('button', { name: /生成 60–90 秒试播/ }));
     const retry = await screen.findByRole('button', { name: /🔄 重新提交装配/ });
     expect(screen.getByRole('alert')).toHaveTextContent('网络抖动');
 

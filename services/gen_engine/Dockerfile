@@ -26,18 +26,18 @@ ARG PYTORCH_VARIANT=cpu
 ARG ROCM_VERSION=6.3
 WORKDIR /build
 RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends git build-essential && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502
-RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir --timeout 120 --retries 8 --upgrade pip
 COPY services/voicebox/backend/requirements.txt .
 RUN if [ "$PYTORCH_VARIANT" = "rocm" ]; then \
-      pip install --no-cache-dir --prefix=/install --index-url "https://download.pytorch.org/whl/rocm${ROCM_VERSION}" torch torchaudio && \
+      pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install --index-url "https://download.pytorch.org/whl/rocm${ROCM_VERSION}" torch torchaudio && \
       printf '[global]\nindex-url = https://download.pytorch.org/whl/rocm%s\nextra-index-url = https://pypi.org/simple\n' "$ROCM_VERSION" > /etc/pip.conf; \
     elif [ "$PYTORCH_VARIANT" = "cpu" ]; then \
-      pip install --no-cache-dir --prefix=/install --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio && \
+      pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio && \
       printf '[global]\nindex-url = https://download.pytorch.org/whl/cpu\nextra-index-url = https://pypi.org/simple\n' > /etc/pip.conf; \
     fi
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-RUN pip install --no-cache-dir --prefix=/install --no-deps chatterbox-tts
-RUN pip install --no-cache-dir --prefix=/install --no-deps hume-tada
+RUN pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install -r requirements.txt
+RUN pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install --no-deps chatterbox-tts
+RUN pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install --no-deps hume-tada
 
 # ── 独立 ai-venv:vibevoice 及其严格版本钉(不污染 voicebox 运行环境) ──
 # fish-speech 同样进 ai-venv —— 其依赖(audiotools/numpy<=1.26.4)与 voicebox 冲突。
@@ -47,25 +47,25 @@ RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get
     portaudio19-dev ffmpeg \
     && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502
 RUN python -m venv /opt/ai-venv && \
-    /opt/ai-venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --upgrade pip && \
     if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
-      /opt/ai-venv/bin/pip install --no-cache-dir --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio; \
+      /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio; \
     else \
-      /opt/ai-venv/bin/pip install --no-cache-dir torch torchaudio; \
+      /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 torch torchaudio; \
     fi && \
-    /opt/ai-venv/bin/pip install --no-cache-dir \
+    /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 \
       "vibevoice==0.0.1" \
       "transformers==4.51.3" \
       "accelerate==1.6.0" \
       "diffusers>=0.30" \
       "numpy" "scipy" "librosa" "numba>=0.57" "llvmlite>=0.40" "tqdm" && \
-    /opt/ai-venv/bin/pip install --no-cache-dir \
+    /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 \
       "fish-speech==0.1.0" \
       "git+https://github.com/descriptinc/audiotools.git" \
       "tiktoken" "soundfile" "pyyaml" "einops" "omegaconf" "fire" "loguru" "vector-quantize-pytorch" && \
     # ── F5-TTS 零样本音色克隆(f5-tts 依赖与 voicebox 主环境兼容, 进 ai-venv) ──
-    /opt/ai-venv/bin/pip install --no-cache-dir --no-deps "f5-tts==1.1.21" && \
-    /opt/ai-venv/bin/pip install --no-cache-dir \
+    /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --no-deps "f5-tts==1.1.21" && \
+    /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 \
       "vocos" "pydub" "matplotlib" "cached_path" "hydra-core" "ema-pytorch" \
       "wandb" "pypinyin" "rjieba" "tomli" "click" "x-transformers"
 
@@ -75,21 +75,27 @@ RUN python -m venv /opt/ai-venv && \
 # 拷入 site-packages(见 services/gen_engine/cosyvoice/README.md)。
 FROM python:3.11-slim AS cosy-builder
 WORKDIR /build
-RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends git ffmpeg \
+RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends build-essential git ffmpeg \
     && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502
 RUN python -m venv /opt/cosy-venv && \
-    /opt/cosy-venv/bin/pip install --no-cache-dir --upgrade pip && \
+    /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --upgrade pip && \
     if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
-      /opt/cosy-venv/bin/pip install --no-cache-dir --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio; \
+      /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio; \
     else \
-      /opt/cosy-venv/bin/pip install --no-cache-dir torch torchaudio; \
+      /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 torch torchaudio; \
     fi && \
-    /opt/cosy-venv/bin/pip install --no-cache-dir \
+    /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 \
       "transformers==5.13.0" "accelerate" "einops" "hyperpyyaml" "omegaconf" \
       "x-transformers" "inflect" "onnxruntime" "pyarrow" "pyworld" "regex" \
       "gdown" "wetext>=0.1.4" "modelscope" "librosa" "soundfile" "numpy" \
       "tqdm" "scipy" "huggingface-hub" "pydantic" "jieba" "pypinyin" \
-      "openai-whisper" "tiktoken"
+      "openai-whisper" "tiktoken" \
+      "conformer==0.3.2" "diffusers==0.29.0" "lightning==2.2.4" \
+      "wget" "rich" "json5" "matplotlib" "rootutils" "pillow" && \
+    # hydra-core 钉 antlr==4.9.* 但 PyPI 已无 4.9 wheel(2026-08-16 实跑踩坑),
+    # 运行时仅需 >=4.9 的 runtime API, 故 --no-deps 单装 4.13。
+    /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --no-deps \
+      "hydra-core==1.3.2" "antlr4-python3-runtime>=4.11,<5"
 COPY services/gen_engine/cosyvoice/ /opt/cosy-venv/lib/python3.11/site-packages/cosyvoice/
 COPY services/gen_engine/third_party/Matcha-TTS/matcha/ /opt/cosy-venv/lib/python3.11/site-packages/matcha/
 
@@ -118,8 +124,8 @@ COPY --from=cosy-builder /opt/cosy-venv /opt/cosy-venv
 COPY --chown=voicebox:voicebox services/voicebox/backend/ /app/backend/
 # ── ASR 独立 venv: VibeVoice-ASR-HF 需要 transformers>=5.3.0, 与 ai-venv 的 4.51.3 隔离。 ──
 RUN python -m venv /opt/asr-venv && \
-    /opt/asr-venv/bin/pip install --no-cache-dir --upgrade pip && \
-    /opt/asr-venv/bin/pip install --no-cache-dir \
+    /opt/asr-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --upgrade pip && \
+    /opt/asr-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 \
       "transformers>=5.3.0" "torch" "accelerate" "bitsandbytes" "soundfile" "librosa" "numpy" "huggingface-hub"
 
 COPY --chown=voicebox:voicebox services/gen_engine/ /app/gen_engine/

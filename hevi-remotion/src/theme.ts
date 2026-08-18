@@ -32,3 +32,10 @@ export const colors = {
 /** 按当前 composition 宽度缩放的尺寸(以 1080 宽竖屏为基准)。 */
 export const scaled = (width: number, atWidth1080: number) =>
   (width / 1080) * atWidth1080;
+
+/** Post-compose ffmpeg PiP is a fixed 300px circle. Captions stay above it. */
+export const AVATAR_PIP_SIZE = 300;
+export const AVATAR_PIP_MARGIN = 24;
+export const AVATAR_PIP_SUBTITLE_GAP = 40;
+export const AVATAR_PIP_CAPTION_PAD =
+  AVATAR_PIP_SIZE + AVATAR_PIP_MARGIN + AVATAR_PIP_SUBTITLE_GAP;

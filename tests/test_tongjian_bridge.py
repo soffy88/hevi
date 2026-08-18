@@ -249,6 +249,8 @@ async def test_render_episode_wires_l2_to_l8_and_maps_shots(tmp_path):
             "consistency_score": 0.8,
             "diagnosis_category": None,
             "degraded": False,
+            "degrade_reason": "",
+            "quality_checks": {},
             "retry_count": 0,
         }
     ]
@@ -260,6 +262,51 @@ async def test_render_episode_wires_l2_to_l8_and_maps_shots(tmp_path):
         "music_plan",
         "final",
     }
+
+
+@pytest.mark.asyncio
+async def test_render_episode_uses_locked_director_without_l2_l4(tmp_path):
+    """已锁 ③.5/④ 时不得再跑通鉴 build_script/build_shotlist。"""
+    locked = {
+        "shot_list": {
+            "shots": [
+                {
+                    "shot_id": "SH001_01",
+                    "scene_no": 1,
+                    "duration_s": 4,
+                    "camera": "近景",
+                    "visual_prompt": "对峙",
+                    "dialogue_lines": [{"character_name": "林夏", "text": "你被开除了。"}],
+                    "character_names": ["林夏"],
+                }
+            ]
+        },
+        "design_list": {"characters": [{"name": "林夏"}], "scenes": [], "props": []},
+        "concept": {"theme": "谷底", "duration_archetype": "1-5min"},
+    }
+    expected = {"final_video": FinalVideo(video_path=str(tmp_path / "locked.mp4")), "shots": []}
+
+    with (
+        patch(
+            "hevi.director.tongjian_render.render_director_episode",
+            AsyncMock(return_value=expected),
+        ) as director,
+        patch("hevi.tongjian.script.build_script", AsyncMock()) as l2,
+        patch("hevi.tongjian.shotlist.build_shotlist", AsyncMock()) as l4,
+    ):
+        result = await bridge.render_episode(
+            _episode(),
+            _story(),
+            run_dir=tmp_path,
+            llm=AsyncMock(),
+            tts_fn=AsyncMock(),
+            locked_director=locked,
+        )
+
+    assert result is expected
+    director.assert_awaited_once()
+    l2.assert_not_awaited()
+    l4.assert_not_awaited()
 
 
 @pytest.mark.asyncio

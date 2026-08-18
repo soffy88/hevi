@@ -159,8 +159,11 @@ def _placeholder_writer(out: Path):
 
 
 @pytest.mark.asyncio
-async def test_talking_face_falls_back_when_no_longcat_model(tmp_path: Path) -> None:
-    """引擎可达但无 LongCat 模型 → 本地占位动画, 不抛错。"""
+async def test_talking_face_falls_back_when_no_longcat_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """显式 placeholder:引擎无 LongCat → 本地占位动画, 不抛错。"""
+    monkeypatch.setenv("TALKING_FACE_ENGINE", "placeholder")
     image = _fake_image(tmp_path)
     audio = _fake_audio(tmp_path)
     out = tmp_path / "track.mp4"
@@ -181,8 +184,11 @@ async def test_talking_face_falls_back_when_no_longcat_model(tmp_path: Path) -> 
 
 
 @pytest.mark.asyncio
-async def test_talking_face_engine_501_degrades(tmp_path: Path) -> None:
+async def test_talking_face_engine_501_degrades(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """引擎声明 longcat 可用但推理 501 → 捕获后走占位降级。"""
+    monkeypatch.setenv("TALKING_FACE_ENGINE", "longcat")
     image = _fake_image(tmp_path)
     audio = _fake_audio(tmp_path)
     out = tmp_path / "track.mp4"

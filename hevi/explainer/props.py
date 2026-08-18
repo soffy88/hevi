@@ -27,6 +27,7 @@ _DICT_KEYS = frozenset(
         "left_label",
         "right_label",
         "metadata",
+        "scene",
     }
 )
 # 已知的"对象/标量数组"字段:字符串化时要还原成 list。
@@ -41,6 +42,7 @@ _LIST_KEYS = frozenset(
         "keywords",
         "subtitle_lines",
         "audio_segments",
+        "bullets",
     }
 )
 

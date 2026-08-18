@@ -1,7 +1,7 @@
 /** Explainer Master v8: progressive research, human review, and delivery. */
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { explainerApi, presenterApi, taskApi } from '@/lib/api-client';
 import { useFaceValidator } from '@/hooks/useFaceValidator';
 import { syncAuthToken } from '@/lib/auth-store';
@@ -25,8 +25,19 @@ const VISUAL_LABELS: Record<ExplainerCue['visual_type'], string> = {
   data_screenshot: '数据截图',
   remotion_chart: 'Remotion 图表',
   remotion_code: 'Remotion 代码',
+  manim_scene: 'Manim 代码即画面',
   voiceover: '旁白',
 };
+
+const MANIM_RECIPES: Array<{ value: string; label: string }> = [
+  { value: 'equation', label: '公式写出' },
+  { value: 'transform', label: '公式变换' },
+  { value: 'list_reveal', label: '条目揭示' },
+  { value: 'title_card', label: '标题卡' },
+  { value: 'number_line', label: '数轴' },
+  { value: 'axes_plot', label: '坐标图' },
+  { value: 'comparison', label: '左右对照' },
+];
 
 const EMPTY_CUE: ExplainerCue = {
   time_range: '00:00-00:05',
@@ -98,8 +109,9 @@ export function ExplainerWorkbench() {
   const [presenterImageUrl, setPresenterImageUrl] = useState('');
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
-  // v9.1: 15 秒先导样片 —— 提交前先出一段 15s 样片看质感,不浪费全量渲染。
-  const [previewMode, setPreviewMode] = useState(false);
+  const [awaitingPreviewConfirm, setAwaitingPreviewConfirm] = useState(false);
+  const lastConfirmedRef = useRef(false);
+  const submittedPreviewRef = useRef(false);
   const faceValidator = useFaceValidator();
 
   useEffect(() => {
@@ -219,6 +231,9 @@ export function ExplainerWorkbench() {
         const current = await taskApi.get(taskId);
         if (cancelled) return;
         setTask(current);
+        if (current.status === 'completed' && submittedPreviewRef.current) {
+          setAwaitingPreviewConfirm(true);
+        }
         if (current.status !== 'completed' && current.status !== 'failed') {
           timer = setTimeout(poll, 3000);
         }
@@ -391,7 +406,7 @@ export function ExplainerWorkbench() {
     return null;
   }
 
-  async function startAssembly() {
+  async function startAssembly(confirmed = false) {
     if (!research || selectedHooks.length === 0) {
       setError('请至少选择一个 Hook 节点构建叙事链，并补全所有视觉脚手架旁白');
       return;
@@ -428,8 +443,12 @@ export function ExplainerWorkbench() {
         aspect_ratio: aspectRatio,
         session_id: research.session_id || (window.sessionStorage.getItem('hevi_explainer_session') ?? undefined),
         presenter_image_url: presenterImageUrl || undefined,
-        preview_mode: previewMode,
+        preview_mode: !confirmed,
+        preview_confirmed: confirmed,
       });
+      lastConfirmedRef.current = confirmed;
+      submittedPreviewRef.current = !confirmed;
+      setAwaitingPreviewConfirm(false);
       setTaskId(accepted.task_id);
       setTask(null);
       setStage('assemble');
@@ -681,20 +700,30 @@ export function ExplainerWorkbench() {
               </div>
             </div>
           )}
-          {selectedScript && <div className="ex-v6__cues"><h3>确稿编辑器 · 视觉脚手架</h3>{cues.map((cue, index) => <div className="ex-v6__cue" key={`${cue.time_range}-${index}`}><input aria-label={`时间 ${index + 1}`} value={cue.time_range} onChange={event => updateCue(index, { time_range: event.target.value })} /><select aria-label={`画面类型 ${index + 1}`} value={cue.visual_type} onChange={event => updateCue(index, { visual_type: event.target.value as ExplainerCue['visual_type'] })}>{Object.entries(VISUAL_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><textarea aria-label={`旁白 ${index + 1}`} value={cue.text} rows={2} onChange={event => updateCue(index, { text: event.target.value })} />{cue.visual_type === 'browser_broll' && <input aria-label={`网页地址 ${index + 1}`} placeholder="https://官方来源…" value={cue.target_url ?? ''} onChange={event => updateCue(index, { target_url: event.target.value })} />}</div>)}<button type="button" className="ex-v6__add" onClick={() => setCues(previous => [...previous, { ...EMPTY_CUE }])}>＋ 添加 cue</button></div>}
-          <label className="ex-v6__preview-gate"><input type="checkbox" checked={previewMode} onChange={event => setPreviewMode(event.target.checked)} /> <span><strong>先出 15 秒先导样片</strong><small>只渲染前 15s 的 cue/音频/画面（约 1/10 算力），确稿前先看质感，不合格不浪费全量渲染。</small></span></label>
-          <div className="ex-v6__actions"><button type="button" className="ex-v6__secondary" onClick={() => setStage('research')}>返回修改偏好</button><button type="button" className="ex-v6__primary" onClick={startAssembly} disabled={busy || presenterBusy}>{busy ? '提交装配中…' : previewMode ? '⏱ 生成 15 秒先导样片' : '🚀 确认文案与脚手架，启动全自动装配出片'}</button></div>
+          {selectedScript && <div className="ex-v6__cues"><h3>确稿编辑器 · 视觉脚手架</h3>{cues.map((cue, index) => <div className="ex-v6__cue" key={`${cue.time_range}-${index}`}><input aria-label={`时间 ${index + 1}`} value={cue.time_range} onChange={event => updateCue(index, { time_range: event.target.value })} /><select aria-label={`画面类型 ${index + 1}`} value={cue.visual_type} onChange={event => updateCue(index, { visual_type: event.target.value as ExplainerCue['visual_type'] })}>{Object.entries(VISUAL_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><textarea aria-label={`旁白 ${index + 1}`} value={cue.text} rows={2} onChange={event => updateCue(index, { text: event.target.value })} />{cue.visual_type === 'browser_broll' && <input aria-label={`网页地址 ${index + 1}`} placeholder="https://官方来源…" value={cue.target_url ?? ''} onChange={event => updateCue(index, { target_url: event.target.value })} />}{cue.visual_type === 'manim_scene' && <><select aria-label={`Manim 配方 ${index + 1}`} value={String((cue.visual_config?.recipe as string | undefined) || 'equation')} onChange={event => updateCue(index, { visual_config: { ...cue.visual_config, recipe: event.target.value } })}>{MANIM_RECIPES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select><input aria-label={`Manim 公式 ${index + 1}`} placeholder="E = mc^2 或 $F=ma$" value={String((cue.visual_config?.tex as string | undefined) || '')} onChange={event => updateCue(index, { visual_config: { ...cue.visual_config, tex: event.target.value } })} /></>}</div>)}<button type="button" className="ex-v6__add" onClick={() => setCues(previous => [...previous, { ...EMPTY_CUE }])}>＋ 添加 cue</button></div>}
+          <p className="ex-v6__preview-gate"><strong>先出 60–90 秒试播</strong><small>试播不含数字人。看过 QC 报告后再确认渲全片。</small></p>
+          <div className="ex-v6__actions"><button type="button" className="ex-v6__secondary" onClick={() => setStage('research')}>返回修改偏好</button><button type="button" className="ex-v6__primary" onClick={() => void startAssembly(false)} disabled={busy || presenterBusy}>{busy ? '提交装配中…' : '⏱ 生成 60–90 秒试播'}</button></div>
         </section>
       )}
 
       {stage === 'assemble' && (
         <section className="ex-v6__panel" aria-labelledby="assemble-title">
           <div className="ex-v6__panel-title"><span>03</span><div><h2 id="assemble-title">全自动渲染与交付</h2><p>Task → oservi → omodul 装配事务；每一步都有可追踪状态和真实产物。</p></div></div>
-          <div className="ex-v6__progress"><div className="ex-v6__progress-head"><strong>{task?.status === 'completed' ? '✓ 成片已完成' : task?.status === 'failed' ? '✗ 装配失败' : '⟳ Remotion 正在渲染中…'}</strong><span>任务 {taskId?.slice(0, 8)}</span></div><div className="ex-v6__bar"><i style={{ width: `${Math.max(5, task?.percent ?? 5)}%` }} /></div><p>{task?.stage ?? '已提交，等待生产任务调度'}</p></div>
-          {task?.status === 'completed' && <div className="ex-v6__delivery"><h3>🎬 可下载产物</h3><a href={taskApi.videoUrl(task.task_id)} download>⬇ 下载竖屏成片</a><p>产物由 ArtifactManifest 校验后提供，路径：{task.result_video_path}</p></div>}
+          <div className="ex-v6__progress"><div className="ex-v6__progress-head"><strong>{task?.status === 'completed' ? (awaitingPreviewConfirm ? '✓ 试播已完成' : '✓ 成片已完成') : task?.status === 'failed' ? '✗ 装配失败' : '⟳ Remotion 正在渲染中…'}</strong><span>任务 {taskId?.slice(0, 8)}</span></div><div className="ex-v6__bar"><i style={{ width: `${Math.max(5, task?.percent ?? 5)}%` }} /></div><p>{task?.stage ?? '已提交，等待生产任务调度'}</p></div>
+          {task?.status === 'completed' && awaitingPreviewConfirm && (
+            <div className="ex-v6__delivery">
+              <h3>⏱ 试播可看</h3>
+              <a href={taskApi.videoUrl(task.task_id)} download>⬇ 下载试播</a>
+              <p>试播不含数字人。确认节奏/字幕/画面后再渲全片。</p>
+              <button type="button" className="ex-v6__primary" onClick={() => void startAssembly(true)} disabled={busy}>
+                确认试播，生成全片
+              </button>
+            </div>
+          )}
+          {task?.status === 'completed' && !awaitingPreviewConfirm && <div className="ex-v6__delivery"><h3>🎬 可下载产物</h3><a href={taskApi.videoUrl(task.task_id)} download>⬇ 下载竖屏成片</a><p>产物由 ArtifactManifest 校验后提供，路径：{task.result_video_path}</p></div>}
           {task?.status === 'failed' && <div className="ex-v6__error">{task.error ?? '装配失败，请查看任务详情'}</div>}
           {task?.status === 'failed' && (
-            <button type="button" className="ex-v6__retry" onClick={startAssembly} disabled={busy}>
+            <button type="button" className="ex-v6__retry" onClick={() => void startAssembly(lastConfirmedRef.current)} disabled={busy}>
               🔄 重新提交装配
             </button>
           )}
@@ -706,7 +735,7 @@ export function ExplainerWorkbench() {
       {error && <div className="ex-v6__error" role="alert">{error}</div>}
       {assembleFailed && (
         <div className="ex-v6__retry-row">
-          <button type="button" className="ex-v6__retry" onClick={startAssembly} disabled={busy}>
+          <button type="button" className="ex-v6__retry" onClick={() => void startAssembly(lastConfirmedRef.current)} disabled={busy}>
             🔄 重新提交装配
           </button>
         </div>

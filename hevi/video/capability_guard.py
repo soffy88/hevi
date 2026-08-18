@@ -71,6 +71,15 @@ PROVIDER_LIMITS: dict[str, ProviderLimits] = {
         native_audio=True,
         last_verified="2026-08-12",
     ),
+    # manim:本地代码即画面。时长由 SceneIR 决定,上限 60s;无原生音/口型。
+    # 证据:本仓库 hevi/providers/manim 只出画面轨,配音仍走 explainer voiceover。
+    "manim": ProviderLimits(
+        modes=frozenset({"code_scene"}),
+        max_resolution=(1920, 1080),
+        max_duration_s=60.0,
+        fps_options=frozenset({24, 30, 60}),
+        last_verified="2026-08-18",
+    ),
     # 高写实云档(fal)。这些 provider 已在 registry 注册但此前无能力声明,
     # 导致能力矩阵只覆盖 4/7 provider。此处补齐 —— 值为近似上限(fal 内部管理实际
     # 编码;非路由消费前不生效),待 L0 成本感知路由落地时按 fal 文档校准。

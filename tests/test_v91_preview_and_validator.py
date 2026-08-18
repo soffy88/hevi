@@ -1,4 +1,4 @@
-"""v9.1:素材质检 (asset_validator) 与 15s 先导样片 (preview gate) 测试。"""
+"""v9.1:素材质检 (asset_validator) 与 60–90s 试播闸测试。"""
 
 from __future__ import annotations
 
@@ -112,13 +112,16 @@ def test_upload_presenter_image_endpoint_accepts_valid_jpeg(
         assert exc.status_code == 422
 
 
-# ── 15 秒先导样片 ──────────────────────────────────────────────────────
+# ── 60–90 秒试播 ──────────────────────────────────────────────────────
 
 
-def test_preview_truncates_to_15_seconds_budget() -> None:
-    cues = [ExplainerCue(text=f"cue{i}", time_estimate_s=8) for i in range(4)]
+def test_preview_truncates_to_60_90_seconds_budget() -> None:
+    cues = [ExplainerCue(text=f"cue{i}", time_estimate_s=10) for i in range(12)]
     kept = _truncate_to_preview(cues)
-    assert 2 <= len(kept) <= 3  # 8+8=16 跨过 15s 边界保留跨线那条
+    budget = sum(float(c.time_estimate_s or 0) for c in kept)
+    assert budget >= 60
+    assert budget <= 90
+    assert 6 <= len(kept) <= 9
 
 
 def test_preview_keeps_single_short_cue() -> None:
@@ -128,3 +131,26 @@ def test_preview_keeps_single_short_cue() -> None:
 
 def test_preview_empty_input_returns_empty() -> None:
     assert _truncate_to_preview([]) == []
+
+
+def test_full_assemble_requires_preview_confirmed() -> None:
+    from fastapi import HTTPException
+
+    from hevi.api.routers.explainer import require_preview_gate
+    from hevi.explainer.contracts import ExplainerAssembleRequest
+
+    cue = ExplainerCue(text="开场", time_estimate_s=8)
+    blocked = ExplainerAssembleRequest(final_script_cues=[cue], preview_mode=False)
+    with pytest.raises(HTTPException) as exc:
+        require_preview_gate(blocked)
+    assert exc.value.status_code == 409
+    assert "试播" in str(exc.value.detail)
+
+    require_preview_gate(
+        ExplainerAssembleRequest(final_script_cues=[cue], preview_mode=True)
+    )
+    require_preview_gate(
+        ExplainerAssembleRequest(
+            final_script_cues=[cue], preview_mode=False, preview_confirmed=True
+        )
+    )

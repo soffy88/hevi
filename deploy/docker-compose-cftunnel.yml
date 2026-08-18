@@ -130,6 +130,10 @@ services:
       PERFORMANCE_TRACK_TIER: "L2"
       HEVI_EXPLAINER_TTS_PROVIDER: voicebox
       HEVI_AUDIO_PROVIDER: voicebox
+      # 数字人:EchoMimicV2(宿主机 Comfy 8188)。容器走 host.docker.internal,
+      # 宿主脚本仍用 127.0.0.1。失败不要静默占位圈。
+      TALKING_FACE_ENGINE: echomimic
+      ECHO_MIMIC_COMFY_URL: http://host.docker.internal:8188
       # v9.1: AI 引擎统一地址(CosyVoice/LongCat/voicebox TTS 同源)。
       GEN_ENGINE_BASE_URL: http://hevi-gen-engine:17493
       VOICEBOX_BASE_URL: http://hevi-gen-engine:17493
@@ -152,6 +156,14 @@ services:
       - /home/soffy/projects/hevi/data:/app/data
       # MCP lifespan 修复 (b5815c8): 单文件挂载免 rebuild (镜像内代码)
       - /home/soffy/projects/hevi/hevi/api/mcp_mount.py:/app/hevi/api/mcp_mount.py:ro
+      - /home/soffy/projects/hevi/hevi/digital_human/talking_face.py:/app/hevi/digital_human/talking_face.py:ro
+      - /home/soffy/projects/hevi/hevi/digital_human/line_tts.py:/app/hevi/digital_human/line_tts.py:ro
+      - /home/soffy/projects/hevi/hevi/providers/echo_mimic:/app/hevi/providers/echo_mimic:ro
+      - /home/soffy/projects/hevi/hevi/providers/h3_local/comfy_client.py:/app/hevi/providers/h3_local/comfy_client.py:ro
+      - /home/soffy/projects/hevi/hevi/explainer/assembly.py:/app/hevi/explainer/assembly.py:ro
+      - /home/soffy/projects/hevi/hevi/explainer/render.py:/app/hevi/explainer/render.py:ro
+      - /home/soffy/projects/hevi/hevi/explainer/echo_avatar.py:/app/hevi/explainer/echo_avatar.py:ro
+      - /home/soffy/projects/hevi/hevi/tongjian/scene_render_avatar.py:/app/hevi/tongjian/scene_render_avatar.py:ro
       # 主机已有的 HF 缓存(含 openai/clip-vit-base-patch32)只读挂进来,让
       # subjects/subject_embed.py 能算角色身份向量(local_files_only=True)——
       # 治"人物存了但没向量资产化",同时启用角色一致性 CLIP 打分。

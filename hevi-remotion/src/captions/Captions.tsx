@@ -6,7 +6,7 @@ import {
   useVideoConfig,
 } from "remotion";
 import manifest from "../data/run_manifest.json";
-import { bodyFont, colors, scaled } from "../theme";
+import { AVATAR_PIP_CAPTION_PAD, bodyFont, colors, scaled } from "../theme";
 
 type Cue = {
   absStart: number;
@@ -85,7 +85,7 @@ export const Captions: React.FC = () => {
       style={{
         alignItems: "center",
         justifyContent: "flex-end",
-        paddingBottom: scaled(width, 190),
+        paddingBottom: AVATAR_PIP_CAPTION_PAD,
       }}
     >
       <div

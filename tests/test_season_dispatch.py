@@ -205,6 +205,21 @@ async def test_dispatch_season_creates_series_and_all_episodes():
 
 
 @pytest.mark.asyncio
+async def test_dispatch_season_stashes_locked_director():
+    svc = _FakeSeriesService()
+    locked = {"shot_list": {"shots": []}, "design_list": {}, "concept": {}}
+    await dispatch_season(
+        _plan(),
+        _story(),
+        series_service=svc,
+        spec={"locked_director": locked, "delivery_promise": "motion"},
+    )
+    ov = svc.episode_calls[0]["overrides"]
+    assert ov["locked_director"] == locked
+    assert ov["delivery_promise"] == "motion"
+
+
+@pytest.mark.asyncio
 async def test_dispatch_season_without_subjects_leaves_group_empty():
     """无 subject 绑定(骨架/dry-run):Series 角色组为空,Director 走 t2v。"""
     svc = _FakeSeriesService()

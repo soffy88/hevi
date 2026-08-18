@@ -30,6 +30,7 @@ def test_all_expected_providers_registered():
         "veo3",
         "kling_v2",
         "hailuo",  # 高写实云档
+        "manim",  # 代码即画面
     ):
         assert reg.generic("video", name) is not None, f"video/{name} missing"
     for name in ("edge_tts", "vibevoice", "duix"):

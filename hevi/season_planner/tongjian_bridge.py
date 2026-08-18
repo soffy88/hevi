@@ -211,6 +211,7 @@ async def render_episode(
     dramatize: bool = True,
     subject_ref_paths: dict[str, str] | None = None,
     subject3d_views: dict[str, dict[str, str]] | None = None,
+    locked_director: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """本集真实渲染主入口:StoryGraph/EpisodePlan → 通鉴 L2-L8(cloud_avatar)→ 真实成片。
 
@@ -240,6 +241,32 @@ async def render_episode(
         )
 
     run_dir.mkdir(parents=True, exist_ok=True)
+
+    if locked_director and locked_director.get("shot_list"):
+        from hevi.director.pipeline_schemas import Concept, DesignList, SceneStageSet, ShotList
+        from hevi.director.tongjian_render import render_director_episode
+
+        if not locked_director.get("design_list") or not locked_director.get("concept"):
+            raise ValueError("locked_director 缺 design_list/concept,不能跳过 L2/L4 重写")
+        scene_stage = None
+        if locked_director.get("scene_stage"):
+            scene_stage = SceneStageSet.model_validate(locked_director["scene_stage"])
+        voices = locked_director.get("voice_by_speaker")
+        return await render_director_episode(
+            shot_list=ShotList.model_validate(locked_director["shot_list"]),
+            design_list=DesignList.model_validate(locked_director["design_list"]),
+            concept=Concept.model_validate(locked_director["concept"]),
+            run_dir=run_dir,
+            subject_ref_paths=subject_ref_paths or {},
+            voice_by_speaker=voices if isinstance(voices, dict) else {},
+            aspect_ratio=aspect_ratio,
+            target_duration_sec=target_duration_sec,
+            style=style,
+            llm=llm,
+            tts_fn=tts_fn,
+            scene_stage=scene_stage,
+            subject3d_views=subject3d_views,
+        )
 
     from hevi.tongjian.assemble import build_final_video
     from hevi.tongjian.music_plan import build_music_plan
@@ -379,6 +406,8 @@ def _frame_manifest_to_shot_states(
                 # director 的 verdict 用:这类降级 clip 本身可能完好(黑帧/身份两项都过),
                 # verdict 自己查不出,必须尊重渲染层的结论,否则会静默判它通过。
                 "degraded": frame.degraded,
+                "degrade_reason": frame.degrade_reason,
+                "quality_checks": dict(frame.quality_checks or {}),
                 "retry_count": 0,
             }
         )

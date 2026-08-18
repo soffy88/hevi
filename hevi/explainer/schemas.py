@@ -21,6 +21,7 @@ VisualType = Literal[
     "data_screenshot",
     "remotion_chart",
     "remotion_code",
+    "manim_scene",
     "voiceover",
 ]
 AudioStyle = Literal["formal", "conversational"]

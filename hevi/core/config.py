@@ -41,6 +41,21 @@ class Settings(BaseSettings):
     libtv_access_key: str = ""
     libtv_im_base: str = "https://im.liblib.tv"
 
+    # 素材语料库(hevi/video/material_corpus.py):免费/开放素材源。Pexels/Pixabay 免费 key
+    # 可选;Archive.org 无需 key。缺 key 时对应 provider 自动降级跳过。
+    pexels_api_key: str = ""
+    pixabay_api_key: str = ""
+    coverr_api_key: str = ""
+    material_cache_dir: str = "data/material_cache"
+    material_corpus_enabled: bool = True
+
+    # 语义素材检索:CLIP 文本-图像索引开关(复用 vault embedding 设施,素材量级上来后开)。
+    material_clip_index: bool = False
+    # B5 可编程供应商: 能力声明文件目录(JSON/YAML)。空 = 不启用插件加载。
+    provider_plugin_dir: str = ""
+    # B7 活态制片事件流: JSONL 落盘根目录。
+    backlot_dir: str = "data/backlot"
+
     # 剧本场数上限(测试用):加厚剧本后一段故事常产出 10+ 场 → 下游 50+ 镜、~4min 成片,
     # 渲染久且接近 tongjian_run_budget_usd 熔断线。设一个正整数只取前 N 场做快速小规模验证
     # (剧本层截断,下游 design/scene_stage/shot 全派生自它,一处生效)。None/0 = 不限(全量)。
@@ -114,6 +129,14 @@ class Settings(BaseSettings):
     rife_model: str = "4.25"
     rife_sc: bool = True
     rife_format: str = "RGBH"
+
+    # ── manim:代码即画面 ────────────────────────────────────────────────────
+    # CE(manim)默认;GL(manimgl)需本机 OpenGL。空 BIN 则查 PATH。
+    manim_bin: str = ""
+    manim_engine: str = "ce"  # ce | gl | auto
+    manim_timeout_s: float = 180.0
+    manim_quality: str = "high"
+    manim_use_mathtex: bool = False
 
 
 settings = Settings()

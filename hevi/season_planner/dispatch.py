@@ -131,6 +131,16 @@ async def dispatch_season(
                 "shortdrama_story": story.model_dump(mode="json"),
                 "shortdrama_subject_id_map": dict(subject_id_map or {}),
                 "shortdrama_subject_ref_paths": dict(subject_ref_paths or {}),
+                **(
+                    {"locked_director": spec.get("locked_director")}
+                    if isinstance(spec, dict) and spec.get("locked_director")
+                    else {}
+                ),
+                **(
+                    {"delivery_promise": spec.get("delivery_promise")}
+                    if isinstance(spec, dict) and spec.get("delivery_promise")
+                    else {}
+                ),
             },
         )
         episodes.append(task)

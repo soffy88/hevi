@@ -76,6 +76,11 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
             "unit": "per_second",
             "price_usd": 0.0,
         },
+        # manim:本地 CLI / ffmpeg 逐帧,零 API 成本。
+        "manim": {
+            "unit": "per_second",
+            "price_usd": 0.0,
+        },
         "ltx2_native": {
             "unit": "per_minute",
             "price_usd": 0.0,

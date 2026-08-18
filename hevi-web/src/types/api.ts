@@ -588,6 +588,7 @@ export type ExplainerVisualType =
   | 'data_screenshot'
   | 'remotion_chart'
   | 'remotion_code'
+  | 'manim_scene'
   | 'voiceover';
 
 export interface ExplainerResearchRequest {
@@ -693,15 +694,18 @@ export interface ExplainerAssembleRequest {
   hook_combination: 'chain' | 'fusion';
   final_script_cues: ExplainerCue[];
   enable_remotion_code_render: boolean;
+  enable_manim_render?: boolean;
   enable_circle_avatar_mask: boolean;
   enable_browser_broll: boolean;
   aspect_ratio: '9:16' | '16:9';
   /** 断点续传:关联到 research 阶段的缓存会话(仅记录)。 */
   session_id?: string;
-  /** v9.1: 数字人母体照片(经素材质检的本地路径/URL),驱动全时段 Talking Face 底轨。 */
+  /** 数字人母体照片(经素材质检的本地路径/URL)。 */
   presenter_image_url?: string;
-  /** v9.1: 15 秒先导样片 —— 只截前 15s 的 cue/音频/画面,极低成本先看质感。 */
+  presenter_reference_video?: string;
+  /** 60–90 秒试播。全片须 preview_confirmed。 */
   preview_mode?: boolean;
+  preview_confirmed?: boolean;
 }
 
 export interface ExplainerAssemblyAccepted {

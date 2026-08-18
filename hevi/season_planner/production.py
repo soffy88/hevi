@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from hevi.production.delivery_gate import evaluate_director_delivery
 from hevi.season_planner.schemas import EpisodePlan
 from hevi.season_planner.tongjian_bridge import render_episode
 from hevi.tongjian.production import render_presenter_video
@@ -73,6 +74,9 @@ async def execute_shortdrama_task(task: dict[str, Any], pool: Any) -> dict[str, 
             target_duration_sec=int(duration["target_s"]),
             subject_ref_paths=subject_ref_paths,
             subject3d_views=await _subject3d_views(pool, subject_id_map),
+            locked_director=config.get("locked_director")
+            if isinstance(config.get("locked_director"), dict)
+            else None,
         )
         final_video = rendered_episode.get("final_video")
         video_path = getattr(final_video, "video_path", None)
@@ -86,15 +90,26 @@ async def execute_shortdrama_task(task: dict[str, Any], pool: Any) -> dict[str, 
         renderer=render_layers,
         presentation_kind="shortdrama-episode",
     )
-    config_json = {**config, "actual_usd": config.get("estimated_usd", 0.0)}
-    shots = rendered_episode.get("shots")
+    shots = rendered_episode.get("shots") if isinstance(rendered_episode.get("shots"), list) else []
+    promise = str(config.get("delivery_promise") or "motion")
+    verdict = evaluate_director_delivery(shots, delivery_promise=promise)
+    config_json = {
+        **config,
+        "actual_usd": config.get("estimated_usd", 0.0),
+        "failed_shots": verdict.failed_shots,
+        "canon_copy_ratio": verdict.canon_copy_ratio,
+        "motion_fallback": verdict.motion_fallback,
+        "delivery_promise": promise,
+    }
+    passed = sum(1 for s in shots if s.get("passed", True))
     return {
         **task,
-        "status": "completed",
-        "progress_pct": 100.0,
+        "status": verdict.status,
+        "progress_pct": 100.0 if verdict.ok else 0.0,
         "result_video_path": str(produced.video_path),
-        "total_shots": len(shots) if isinstance(shots, list) else 0,
-        "completed_shots": len(shots) if isinstance(shots, list) else 0,
+        "total_shots": verdict.total_shots,
+        "completed_shots": passed,
+        "error": None if verdict.ok else verdict.reason,
         "config_json": config_json,
-        "shots": shots if isinstance(shots, list) else [],
+        "shots": shots,
     }

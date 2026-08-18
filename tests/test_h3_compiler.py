@@ -9,10 +9,15 @@ import pytest
 from hevi.prompt.h3_compiler import (
     H3Render,
     action_block,
+    alignment_instruction,
     character_block,
     compile_h3_prompt,
+    compile_h3_segment,
+    cut_starts,
     dialogue_block,
+    pack_h3_segments,
     scene_block,
+    validate_h3_alignment,
 )
 
 
@@ -34,6 +39,8 @@ class FakeShot:
     action_beats: list[str] = field(default_factory=list)
     dialogue_lines: list[FakeLine] = field(default_factory=list)
     shot_id: str = "S01"
+    scene_no: int = 1
+    duration_s: float = 3.0
     character_anchor: str = "黑长直,红围巾"
 
 
@@ -144,3 +151,50 @@ def test_h3_length_grid(duration_s: float, expected: int) -> None:
     assert length == expected, f"{duration_s}s → {length}, 期望 {expected}"
     # 网格纪律:任何合法输出必须 ≡ 5 (mod 17)
     assert length % 17 == 5
+
+
+def test_cut_starts_and_alignment_are_derived() -> None:
+    starts = cut_starts([3.0, 4.0, 2.5])
+    assert starts == [0.0, 3.0, 7.0]
+    line = alignment_instruction(starts)
+    assert "Picture 1 aligns with the 0.00-second mark" in line
+    assert "Picture 2 aligns with the 3.00-second mark" in line
+    assert "Picture 3 aligns with the 7.00-second mark" in line
+
+
+def test_compile_h3_segment_alignment_matches_durations() -> None:
+    shots = [
+        FakeShot(shot_id="A", duration_s=3.0),
+        FakeShot(shot_id="B", duration_s=4.0, visual_prompt="林晚停步回头"),
+    ]
+    render = compile_h3_segment(shots, cast={"林晚": 1})
+    text = render.integrated_multimodal_description
+    assert validate_h3_alignment(text, [3.0, 4.0]) == []
+    assert "[Shot 1] 0.00s" in text
+    assert "[Shot 2] 3.00s" in text
+    assert "林晚停步回头" in text
+
+
+def test_validate_h3_alignment_catches_stale_times() -> None:
+    render = compile_h3_segment(
+        [FakeShot(duration_s=3.0), FakeShot(duration_s=3.0)],
+        cast={"林晚": 1},
+    )
+    drifted = render.integrated_multimodal_description.replace("3.00", "4.00")
+    errors = validate_h3_alignment(drifted, [3.0, 3.0])
+    assert any("3.00" in e for e in errors)
+
+
+def test_pack_h3_segments_same_scene_caps_at_15() -> None:
+    shots = [FakeShot(shot_id=f"S{i}", scene_no=1, duration_s=4.0) for i in range(5)]
+    groups = pack_h3_segments(shots)
+    assert [sum(s.duration_s for s in g) for g in groups] == [12.0, 8.0]
+
+
+def test_pack_h3_segments_breaks_on_scene_change() -> None:
+    shots = [
+        FakeShot(shot_id="A", scene_no=1, duration_s=3.0),
+        FakeShot(shot_id="B", scene_no=2, duration_s=3.0),
+    ]
+    groups = pack_h3_segments(shots)
+    assert len(groups) == 2

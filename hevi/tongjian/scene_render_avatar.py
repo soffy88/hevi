@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -248,6 +249,67 @@ _CLAUSE_SPLIT_RE = re.compile(r"(?<=[,.;!?:，。;!?:、])")
 
 def _say_dur(text: str, per_char: float) -> int:
     return max(3, min(_MAX_CLIP_DURATION_S, round(len(text) * per_char) + 1))
+
+
+def _echo_talking_face_on() -> bool:
+    return (os.getenv("TALKING_FACE_ENGINE", "echomimic") or "echomimic").strip().lower() == "echomimic"
+
+
+async def _render_dialogue_talk(
+    *,
+    image_path: Path,
+    text: str,
+    output_path: Path,
+    duration: int,
+    resolution: str,
+    style: str,
+    emotion: str,
+    per_char: float,
+    concat_fn: Any,
+) -> None:
+    """Dialogue talking clip: Echo (photo+TTS) first, happyhorse if that fails."""
+    if _echo_talking_face_on():
+        try:
+            from hevi.digital_human.line_tts import synthesize_line
+            from hevi.digital_human.talking_face import generate_talking_face
+
+            wav = output_path.with_name(output_path.stem + "_tts.wav")
+            await synthesize_line(text, wav)
+            await generate_talking_face(
+                image_path=image_path,
+                audio_path=wav,
+                output_path=output_path,
+            )
+            logger.info("Echo 对白: %s", output_path.name)
+            return
+        except Exception as exc:
+            logger.warning("Echo 对白失败,回落 happyhorse: %s", exc)
+
+    text_chunks = _split_text_for_dialogue(text, per_char)
+    if len(text_chunks) == 1:
+        await happyhorse_animate(
+            image_path=image_path,
+            prompt=f"{style},保持画风不变,画中人物{emotion},"
+            f'郑重说道:"{text}",嘴巴随说话自然清晰地张合',
+            output_path=output_path,
+            duration=duration,
+            resolution=resolution,
+        )
+        return
+    chunk_clips = []
+    for i, chunk in enumerate(text_chunks):
+        chunk_out = output_path.with_name(f"{output_path.stem}_{i + 1:02d}{output_path.suffix}")
+        if not chunk_out.exists():
+            await happyhorse_animate(
+                image_path=image_path,
+                prompt=f"{style},保持画风不变,画中人物{emotion},"
+                f'郑重说道:"{chunk}",嘴巴随说话自然清晰地张合',
+                output_path=chunk_out,
+                duration=_say_dur(chunk, per_char),
+                resolution=resolution,
+            )
+        chunk_clips.append(chunk_out)
+    concat_fn(chunk_clips, output_path)
 
 
 def _split_text_for_dialogue(text: str, per_char: float) -> list[str]:
@@ -1061,33 +1123,17 @@ async def build_frame_manifest_avatar(
                     )
                 talk = work / f"{sid}_talk.mp4"
                 if not talk.exists():
-                    text_chunks = _split_text_for_dialogue(text, per_char)
-                    if len(text_chunks) == 1:
-                        await happyhorse_animate(
-                            image_path=kf,
-                            prompt=f"{style},保持画风不变,画中人物{emotion},"
-                            f'郑重说道:"{text}",嘴巴随说话自然清晰地张合',
-                            output_path=talk,
-                            duration=dur,
-                            resolution=reso,
-                        )
-                    else:
-                        # 台词太长,单个 clip 撑不下(会被迫用不自然的语速念完)——按标点切
-                        # 成几段分别渲染再首尾拼接,每段都在 happyhorse 的时长硬顶以内。
-                        chunk_clips = []
-                        for i, chunk in enumerate(text_chunks):
-                            chunk_out = work / f"{sid}_talk_{i + 1:02d}.mp4"
-                            if not chunk_out.exists():
-                                await happyhorse_animate(
-                                    image_path=kf,
-                                    prompt=f"{style},保持画风不变,画中人物{emotion},"
-                                    f'郑重说道:"{chunk}",嘴巴随说话自然清晰地张合',
-                                    output_path=chunk_out,
-                                    duration=_say_dur(chunk, per_char),
-                                    resolution=reso,
-                                )
-                            chunk_clips.append(chunk_out)
-                        _concat_clips(chunk_clips, talk)
+                    await _render_dialogue_talk(
+                        image_path=kf,
+                        text=text,
+                        output_path=talk,
+                        duration=dur,
+                        resolution=reso,
+                        style=style,
+                        emotion=emotion,
+                        per_char=per_char,
+                        concat_fn=_concat_clips,
+                    )
                 _fit_dialogue(talk, clip, w, h)
             else:
                 # 非对白镜头:先出"静默动作/空镜"画面(vis)——角色闭嘴做动作 or 纯场景

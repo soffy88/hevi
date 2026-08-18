@@ -265,6 +265,12 @@ def register_all_providers() -> None:
 
     register_h3_local()
 
+    # manim:代码即画面(ManimCE/GL + ffmpeg 逐帧回退)。能力行见
+    # hevi/providers/manim/provider.py::MANIM_CAPABILITY。
+    from hevi.providers.manim.provider import register_manim
+
+    register_manim()
+
     # 高写实云 provider(fal):Veo3 / Kling v2 / 海螺 —— A2 已回迁 oprim v3.11.0,直接导入。
     from oprim import hailuo_generate, kling_v2_generate, veo3_generate
 

@@ -14,9 +14,19 @@ from pathlib import Path
 from typing import Any, cast
 
 from hevi.explainer.contracts import ExplainerCue
+from hevi.explainer.echo_avatar import PRESENTER_IMAGE_KEY, PRESENTER_VIDEO_KEY
+from hevi.explainer.manim_scene import attach_manim_scenes
 from hevi.explainer.production import NarratedRenderResult, render_narrated_storyboard
 from hevi.explainer.props import normalise_visual_config, process_cues_for_remotion
 from hevi.explainer.schemas import SceneType, Storyboard, StoryboardSegment, validate_props
+from hevi.production.delivery_gate import (
+    PREVIEW_MAX_SECONDS,
+    PREVIEW_MIN_SECONDS,
+    PREVIEW_TARGET_SECONDS,
+    evaluate_preview_delivery,
+    probe_video,
+    write_preview_report,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +131,11 @@ def cues_to_storyboard(topic: str, cues: list[ExplainerCue]) -> Storyboard:
 
 
 async def _fulfill_stock_visuals(
-    cues: list[ExplainerCue], stock_svc: Any, output_dir: Path
+    cues: list[ExplainerCue],
+    stock_svc: Any,
+    output_dir: Path,
+    *,
+    user_id: str = "explainer_session",
 ) -> None:
     """🚨 v9.0: 视觉素材装填 —— 为 stock_broll cues 检索真实画面。
     
@@ -148,7 +162,7 @@ async def _fulfill_stock_visuals(
         
         try:
             results = await stock_svc.search(
-                user_id="explainer_session",
+                user_id=user_id,
                 query=query,
                 media_type="video",
                 count=3,
@@ -166,7 +180,7 @@ async def _fulfill_stock_visuals(
         # Fallback: use image instead of video
         try:
             img_results = await stock_svc.search(
-                user_id="explainer_session",
+                user_id=user_id,
                 query=query,
                 media_type="image",
                 count=1,
@@ -186,25 +200,61 @@ async def _fulfill_stock_visuals(
             cue.visual_type = "voiceover"  # last resort: no visual
 
 
-PREVIEW_SECONDS = 15.0
+PREVIEW_SECONDS = PREVIEW_TARGET_SECONDS
 
 
-def _truncate_to_preview(cues: list[ExplainerCue]) -> list[ExplainerCue]:
-    """截取前 15 秒的 cue(15s Preview Gate)。
-
-    按 time_estimate_s 累加,刚好跨过 15s 边界的那条保留(保证能听到半句话),
-    至少保留 1 条;空列表原样返回。
-    """
+def _truncate_to_preview(
+    cues: list[ExplainerCue],
+    *,
+    min_s: float = PREVIEW_MIN_SECONDS,
+    max_s: float = PREVIEW_MAX_SECONDS,
+    target_s: float = PREVIEW_TARGET_SECONDS,
+) -> list[ExplainerCue]:
+    """截取 60–90 秒试播。先凑满 60s,到 75s 停,加下一条会超过 90s 则不加。"""
     if not cues:
         return cues
     kept: list[ExplainerCue] = []
     acc = 0.0
     for cue in cues:
+        dur = float(cue.time_estimate_s or 5.0)
+        if kept and acc >= min_s and acc + dur > max_s:
+            break
         kept.append(cue)
-        acc += float(cue.time_estimate_s or 5.0)
-        if acc >= PREVIEW_SECONDS:
+        acc += dur
+        if acc >= target_s and acc >= min_s:
             break
     return kept
+
+
+def _stamp_presenter_image(
+    cues: list[ExplainerCue],
+    packager: dict[str, Any] | None,
+    presenter_image_url: str | None,
+    presenter_reference_video: str | None = None,
+) -> None:
+    """Park presenter still/video on cue 0. Remotion avatar flag is set only after lipsync."""
+    if not cues:
+        return
+    image = None
+    video = presenter_reference_video
+    if packager:
+        image = packager.get("presenter_image_url")
+        video = video or packager.get("presenter_reference_video")
+    image = image or presenter_image_url
+    if not image and not video:
+        return
+    cfg = cues[0].visual_config
+    if not isinstance(cfg, dict):
+        cues[0].visual_config = {}
+        cfg = cues[0].visual_config
+    if image:
+        cfg[PRESENTER_IMAGE_KEY] = str(image)
+    if video:
+        cfg[PRESENTER_VIDEO_KEY] = str(video)
+    packaging = dict(cfg.get("packaging") or (packager or {}))
+    packaging.pop("presenter_image_url", None)
+    if packaging:
+        cfg["packaging"] = packaging
 
 
 def _preview_output_dir(output_dir: Path) -> Path:
@@ -220,6 +270,7 @@ async def assemble_explainer_cues(
     voice: str,
     enable_circle_avatar_mask: bool = True,
     enable_remotion_code_render: bool = True,
+    enable_manim_render: bool = True,
     enable_browser_broll: bool = True,
     enable_stock_broll: bool = True,
     aspect_ratio: str = "9:16",
@@ -230,22 +281,23 @@ async def assemble_explainer_cues(
     broll_recorder: Any = None,
     packager: dict[str, Any] | None = None,
     stock_service: Any = None,
+    stock_user_id: str = "explainer_session",
     presenter_image_url: str | None = None,
+    presenter_reference_video: str | None = None,
     preview_mode: bool = False,
 ) -> NarratedRenderResult:
     """Compile edited cues and run the standard injected Remotion transaction.
 
-    ``preview_mode=True`` 时只取前 15 秒的 cue/音频/画面 —— 15s 先导样片
-    (Preview Gate),用约 1/10 的算力在确稿前先看质感,不合格不浪费全量渲染。
+    ``preview_mode=True`` 时只取 60–90 秒的 cue/音频/画面(试播闸),
+    写 qc-report 后停,未经确认不渲全片。试播不叠数字人。
     """
     if aspect_ratio not in {"9:16", "16:9"}:
         raise ValueError("aspect_ratio 仅支持 9:16 或 16:9")
-    # 🚨 v9.1: 15 秒先导样片 —— 在一切算力消耗之前截断 cue 列表。
     if preview_mode:
         prepared_for_preview = _truncate_to_preview(cues)
         if len(prepared_for_preview) < len(cues):
             logger.info(
-                "preview_mode: %d 条 cue 截断为前 15 秒的 %d 条",
+                "preview_mode: %d 条 cue 截断为 60–90 秒试播的 %d 条",
                 len(cues),
                 len(prepared_for_preview),
             )
@@ -266,28 +318,19 @@ async def assemble_explainer_cues(
             cue.highlight_selector = None
     # 🚨 v9.0: 视觉素材装填 —— stock_broll 检索真实画面（在 HeyGen 之前）
     if enable_stock_broll and stock_service is not None:
-        await _fulfill_stock_visuals(prepared_cues, stock_service, output_dir)
+        await _fulfill_stock_visuals(
+            prepared_cues, stock_service, output_dir, user_id=stock_user_id
+        )
 
-    # 🚨 v9.0: 全时段 Talking Face 底轨生成
-    continuous_avatar_path: Path | None = None
-    if presenter_provider == "remotion" and packager:
-        presenter_img = packager.get("presenter_image_url") or presenter_image_url
-        if presenter_img:
-            try:
-                from hevi.digital_human.talking_face import (
-                    generate_continuous_avatar_track as _talking_face,
-                )
-                avatar_output = output_dir / "continuous_avatar"
-                continuous_avatar_path = await _talking_face(
-                    image_path=presenter_img,
-                    master_audio_path=output_dir / "master_placeholder.wav",  # 由 voiceover 后填
-                    output_dir=avatar_output,
-                    aspect_ratio=aspect_ratio,
-                    preset_name=presenter_name,
-                )
-                logger.info("Continuous avatar track: %s", continuous_avatar_path)
-            except Exception as tf_exc:
-                logger.warning("Talking Face generation skipped: %s", tf_exc)
+    # 解说员照片先记在 cue 上;基础片过检后再叠数字人(见 render._overlay_talking_face)。
+    # 不在这里写 packaging.presenter_image_url——Remotion 见到它就会找
+    # public/continuous_avatar/*.mp4,那时片子还不存在。
+    _stamp_presenter_image(
+        prepared_cues,
+        packager,
+        presenter_image_url,
+        presenter_reference_video,
+    )
 
     avatar_indices = [
         index for index, cue in enumerate(prepared_cues) if cue.visual_type == "heygen_avatar"
@@ -343,6 +386,16 @@ async def assemble_explainer_cues(
                 output_path=broll_path,
             )
             cue.visual_config["assetUrl"] = str(broll_path)
+    manim_w, manim_h = (1080, 1920) if aspect_ratio == "9:16" else (1920, 1080)
+    remotion_public = Path(__file__).resolve().parent.parent.parent / "hevi-remotion" / "public"
+    await attach_manim_scenes(
+        prepared_cues,
+        output_dir,
+        enabled=enable_manim_render,
+        remotion_public=remotion_public if remotion_public.is_dir() else None,
+        width=manim_w,
+        height=manim_h,
+    )
     storyboard = cues_to_storyboard(topic, prepared_cues)
     for cue in prepared_cues:
         if cue.visual_type == "remotion_code" and not enable_remotion_code_render:
@@ -355,4 +408,21 @@ async def assemble_explainer_cues(
             if segment.visual_type == "heygen_avatar":
                 segment.visual_config["circle_avatar_mask"] = False
     render_target = _preview_output_dir(output_dir) if preview_mode else output_dir
-    return await render_narrated_storyboard(storyboard, render_target, voice=voice)
+    result = await render_narrated_storyboard(storyboard, render_target, voice=voice)
+    if preview_mode:
+        budget = sum(float(cue.time_estimate_s or 5.0) for cue in prepared_cues)
+        cover = render_target / "cover.jpg"
+        report = evaluate_preview_delivery(
+            probe_video(result.portrait_path),
+            cue_budget_s=budget,
+            cover_path=cover if cover.exists() else None,
+        )
+        report["landscape_path"] = str(result.landscape_path)
+        report["cue_count"] = len(prepared_cues)
+        dest = write_preview_report(render_target, report)
+        logger.info("preview qc-report: %s ok=%s", dest, report.get("ok"))
+        if not report["ok"]:
+            from hevi.production.delivery_gate import ComposeGateError
+
+            raise ComposeGateError("试播未通过: " + "; ".join(report.get("blockers") or []))
+    return result

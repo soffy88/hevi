@@ -14,6 +14,7 @@ from hevi.api.mcp_mount import mount_mcp
 from hevi.api.routers.audio_library import router as audio_router
 from hevi.audio.task_adapter import execute_voice_studio_task
 from hevi.api.routers.auth import router as auth_router
+from hevi.api.routers.backlot import router as backlot_router
 from hevi.api.routers.canvas import router as canvas_router
 from hevi.api.routers.creative import router as creative_router
 from hevi.api.routers.credits import router as credits_router
@@ -33,6 +34,8 @@ from hevi.api.routers.payment import router as payment_router
 from hevi.api.routers.pipeline import router as pipeline_router
 from hevi.api.routers.pro_studio import router as pro_studio_router
 from hevi.api.routers.provider_presets import router as provider_presets_router
+from hevi.api.routers.publishers import router as publishers_router
+from hevi.api.routers.material_corpus import router as material_corpus_router
 from hevi.api.routers.production_tools_v2 import router as production_tools_v2_router
 from hevi.api.routers.presenters import router as presenters_router
 from hevi.api.routers.series import router as series_router
@@ -140,6 +143,9 @@ app.include_router(payment_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
 app.include_router(pro_studio_router, prefix="/api")
 app.include_router(provider_presets_router, prefix="/api")
+app.include_router(publishers_router, prefix="/api")
+app.include_router(material_corpus_router, prefix="/api")
+app.include_router(backlot_router, prefix="/api")
 app.include_router(production_tools_v2_router, prefix="/api")
 app.include_router(presenters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")

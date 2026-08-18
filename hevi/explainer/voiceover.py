@@ -108,12 +108,12 @@ async def synthesize_storyboard(
     *,
     voice: str = DEFAULT_VOICE,
     rate: str = DEFAULT_RATE,
+    audio_public_prefix: str = "audio",
 ) -> list[ManifestSegment]:
     """storyboard(E0 产出)→ 逐段配音,写音频到 audio_dir,返回 ManifestSegment 列表。
 
-    audio_dir 通常直接传 hevi-remotion/public/audio(P0:单 run 顺序渲染,不做并发隔离,
-    同 tongjian P0"尽力而为"的既有惯例)。ManifestSegment.audio_file 是相对 public/ 的路径
-    (Remotion staticFile() 约定),不是绝对路径。
+    audio_dir 写到 hevi-remotion/public/<prefix>(按 job 隔离)。ManifestSegment.audio_file
+    是相对 public/ 的路径(Remotion staticFile() 约定),不是绝对路径。
     """
     provider = _provider()
     if provider not in {"cosyvoice", "voicebox", "edge_tts"}:
@@ -198,7 +198,10 @@ async def synthesize_storyboard(
                 id=seg.id,
                 scene_type=seg.scene_type,
                 text=seg.narration,
-                audio_file=f"audio/{seg.id}.{'mp3' if active_provider == 'edge_tts' else 'wav'}",
+                audio_file=(
+                    f"{audio_public_prefix.rstrip('/')}/"
+                    f"{seg.id}.{'mp3' if active_provider == 'edge_tts' else 'wav'}"
+                ),
                 duration_sec=duration,
                 start_sec=cursor,
                 keywords=seg.keywords,

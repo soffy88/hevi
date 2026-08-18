@@ -1,5 +1,5 @@
 import { Audio } from "@remotion/media";
-import { AbsoluteFill, Img, Sequence, staticFile, useVideoConfig } from "remotion";
+import { AbsoluteFill, Img, OffthreadVideo, Sequence, staticFile, useVideoConfig } from "remotion";
 import { Captions } from "./captions/Captions";
 import manifest from "./data/run_manifest.json";
 import { CardsScene } from "./scenes/CardsScene";
@@ -28,6 +28,7 @@ function resolvePackaging(): {
   subtitle: string;
   backgroundImageUrl?: string;
   presenterImageUrl?: string;
+  avatarSrc?: string;
 } {
   const firstSeg = typedManifest[0];
   if (firstSeg?.visualConfig?.packaging && typeof firstSeg.visualConfig.packaging === "object") {
@@ -37,6 +38,7 @@ function resolvePackaging(): {
       subtitle: String(pkg.subtitle ?? ""),
       backgroundImageUrl: pkg.theme_image_query ? String(pkg.theme_image_query) : undefined,
       presenterImageUrl: pkg.presenter_image_url ? String(pkg.presenter_image_url) : undefined,
+      avatarSrc: pkg.avatar_src ? String(pkg.avatar_src) : undefined,
     };
   }
   return {
@@ -46,6 +48,8 @@ function resolvePackaging(): {
 }
 
 function resolveContinuousAvatar(): string | null {
+  const packaging = resolvePackaging();
+  if (packaging.avatarSrc) return packaging.avatarSrc;
   const candidates = [
     "continuous_avatar/continuous_avatar_p.mp4",
     "continuous_avatar/continuous_avatar_l.mp4",
@@ -112,6 +116,20 @@ const VisualOverlay: React.FC<{
   if (visualType === "remotion_code") {
     return <CodeHighlightSegment codeText={typeof visualConfig?.code_text === "string" ? visualConfig.code_text : ""} language={typeof visualConfig?.language === "string" ? visualConfig.language : "text"} />;
   }
+  if (visualType === "manim_scene") {
+    if (!assetSrc) {
+      return (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#1a1a2e", color: "#ffff00", fontSize: 28, letterSpacing: ".08em" }}>
+          MANIM · 代码即画面
+        </div>
+      );
+    }
+    return (
+      <AbsoluteFill style={{ backgroundColor: "#1a1a2e" }}>
+        <OffthreadVideo src={assetSrc} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+      </AbsoluteFill>
+    );
+  }
   const subtitleLines = visualConfig?.subtitle_lines;
   if (Array.isArray(subtitleLines)) {
     return <WordSubtitle lines={subtitleLines as SubtitleLine[]} />;
@@ -140,6 +158,7 @@ const VisualOverlay: React.FC<{
     data_screenshot: "DATA · 来源截图",
     remotion_chart: "REMOTION · 数据图表",
     remotion_code: "REMOTION · 代码动画",
+    manim_scene: "MANIM · 代码即画面",
   };
   return (
     <div style={{ position: "absolute", right: 48, top: 48, width: 360, minHeight: 120, padding: 24, borderRadius: 20, background: "rgba(14,14,18,.82)", border: "1px solid rgba(255,255,255,.16)", color: "#fff", fontSize: 20, letterSpacing: ".04em" }}>
@@ -183,14 +202,10 @@ export const ExplainerVideo: React.FC = () => {
         />
       </Sequence>
 
-      {/* ═══════ ② CONTINUOUS AVATAR TRACK (full video, z-index 1) ═══════ */}
-      {hasAvatarTrack() && (
+      {/* ═══════ ② CONTINUOUS AVATAR (300 circle, bottom-left) ═══════ */}
+      {hasAvatarTrack() && avatarPath && (
         <Sequence from={titleCardDuration} layout="none">
-          {avatarPath ? (
-            <ContinuousAvatarPiP src={staticFile(avatarPath)} layoutMode="fullscreen" />
-          ) : (
-            <div style={{ position: "absolute", zIndex: 1 }} />
-          )}
+          <ContinuousAvatarPiP src={staticFile(avatarPath)} />
         </Sequence>
       )}
 
@@ -201,20 +216,15 @@ export const ExplainerVideo: React.FC = () => {
         
         const Scene = SCENE_COMPONENTS[seg.sceneType];
         const vCfg = seg.visualConfig as Record<string, unknown> | undefined;
-        const showPiP = seg.visualType === "browser_broll" || seg.visualType === "remotion_chart" || seg.visualType === "stock_broll";
+        const manimOwnsFrame = seg.visualType === "manim_scene";
 
         return (
           <Sequence key={seg.id} from={from} durationInFrames={durationInFrames} layout="none">
             <div style={{ position: "relative", zIndex: 5 }}>
-              <Scene durationInFrames={durationInFrames} props={seg.props} />
+              {!manimOwnsFrame && <Scene durationInFrames={durationInFrames} props={seg.props} />}
               <VisualOverlay visualType={seg.visualType} visualConfig={vCfg} />
             </div>
             <Audio src={staticFile(seg.audioFile)} />
-            {showPiP && hasAvatarTrack() && avatarPath && (
-              <Sequence from={from} durationInFrames={durationInFrames} layout="none">
-                <ContinuousAvatarPiP src={staticFile(avatarPath)} layoutMode="broll_pip" />
-              </Sequence>
-            )}
           </Sequence>
         );
       })}

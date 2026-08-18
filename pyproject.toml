@@ -42,6 +42,11 @@ dependencies = [
     "playwright>=1.49",  # v9.1 Lite 管道:无头浏览器录屏(hevi.pipeline_lite.oprim.oprim_playwright)
 ]
 
+[project.optional-dependencies]
+# 社区版 ManimCE(Cairo 无头)。系统还需 ffmpeg + libcairo2 + libpango1.0。
+# 3b1b 原版是另一个包: pip install manimgl
+manim = ["manim>=0.18"]
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",

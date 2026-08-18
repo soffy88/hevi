@@ -75,7 +75,7 @@ _JSON_PROMPT = """你是 HEVI 深度解说研究与脚本编剧。对下面选�
    - 单段时长：除开场 Hook（5-10 秒）外，中间每个核心解说 cue 至少需要
      30-60 秒的文本量（约 100-200 字），严格按“引入 → 展开 → 收束”组织，
      禁止一句话带过。
-   - 逻辑链：visual_type 为 browser_broll 或 remotion_chart 的 cue，
+   - 逻辑链：visual_type 为 browser_broll、remotion_chart 或 manim_scene 的 cue，
      text 必须写出完整逻辑链「引入数据 → 分析反常点 → 解释底层原理 →
      得出结论」，只给结论不给过程的视为废稿。
 8. 【思考链】每个脚本在 cues 之前必须给出 reasoning_depth 字段，用一段话先说明：
@@ -763,8 +763,10 @@ def _build_chapter_cues_prompt(
 “抛出问题 -> 讲解底层机制 -> 使用通俗可视化比喻 -> 给出结论”
 的 4 步逻辑展开,禁止一句话带过。
 visual_type 从 heygen_avatar / broll_news / browser_broll / broll_stock /
-data_screenshot / remotion_chart / remotion_code / voiceover 中选择,
-与解说内容匹配;step_id 从 1 开始连续编号。
+data_screenshot / remotion_chart / remotion_code / manim_scene / voiceover
+中选择,与解说内容匹配;公式、推导、坐标轴、逐步揭示用 manim_scene
+(visual_config 可带 recipe/tex,例如 recipe=equation, tex="E=mc^2");
+step_id 从 1 开始连续编号。
 
 选题或材料:{topic_or_url}
 

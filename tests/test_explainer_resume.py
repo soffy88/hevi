@@ -236,6 +236,7 @@ def _assemble_payload() -> dict:
         "enable_circle_avatar_mask": True,
         "enable_browser_broll": True,
         "aspect_ratio": "9:16",
+        "preview_mode": True,
     }
 
 

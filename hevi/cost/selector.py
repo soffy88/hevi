@@ -18,6 +18,8 @@ PROVIDER_QUALITY = {
     # 质量档与 wan_local 同档(量化实验性,画质略低于 INT8 云档),胜在 native_audio
     # 与 zh_prompt —— 路由时中文对白镜优先(见 shot_router.py)。
     "h3_local": 7,
+    # manim:确定性矢量动画,不跟生成式画质比;给 8 是因为公式/推导精度高。
+    "manim": 8,
     # WaveSpeed AI:刚接入(2026-07),没有实际出片口碑数据——初始估值,不是基准测过的
     # 分数,待有真实产出后按同样的手工口碑方式重新校准。wan_2_7 参照同宗 wan_cloud
     # 的既有档位;happyhorse_1_1 官方自称旗舰但 native_audio/lip_sync 未经 API 契约

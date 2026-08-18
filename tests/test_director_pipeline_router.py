@@ -771,6 +771,7 @@ async def test_produce_schedules_tongjian_render_with_voices_and_refs():
     assert cv["智伯"] == "zh_male_deep"
     assert cv["韩康子"] and cv["韩康子"] != cv["智伯"]  # 同性别不同角色 → 不同音色
     assert bt.kwargs["subject_ref_paths"] == {"智伯": "output/subj-zhibo/ref.png"}
+    assert bt.kwargs["delivery_promise"] == "motion"
 
 
 @pytest.mark.asyncio

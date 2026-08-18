@@ -1,0 +1,40 @@
+{
+  "load_image": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "__REF_0__"
+    }
+  },
+  "load_audio": {
+    "class_type": "LoadAudio",
+    "inputs": {
+      "audio": "__AUDIO__"
+    }
+  },
+  "pose": {
+    "class_type": "EchoMimicV2PoseNode",
+    "inputs": {
+      "pose": "default",
+      "tgt_fps": 24,
+      "if_draw_ori_frame": false
+    }
+  },
+  "sampler": {
+    "class_type": "EchoMimicV2Node",
+    "inputs": {
+      "refimg": ["load_image", 0],
+      "driving_audio": ["load_audio", 0],
+      "pose": ["pose", 0],
+      "duration": "__DURATION__",
+      "width": "__WIDTH__",
+      "height": "__HEIGHT__",
+      "steps": "__STEPS__",
+      "cfg": 2.5,
+      "context_frames": 12,
+      "context_overlap": 3,
+      "if_low_varm": true,
+      "store_in_varm": false,
+      "seed": "__SEED__"
+    }
+  }
+}

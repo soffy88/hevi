@@ -53,7 +53,15 @@ def h3_length_for_duration(duration_s: float, *, fps: int = 24) -> int:
 
 def _coerce(value: Any, placeholder: str) -> Any:
     """占位符替换后的类型转换:整值占位转 int,其余保留原类型(JSON 数字/字符串直传)。"""
-    if placeholder in ("__LENGTH__", "__SEED__", "__WIDTH__", "__HEIGHT__", "__MULTIPLIER__"):
+    if placeholder in (
+        "__LENGTH__",
+        "__SEED__",
+        "__WIDTH__",
+        "__HEIGHT__",
+        "__MULTIPLIER__",
+        "__DURATION__",
+        "__STEPS__",
+    ):
         return int(value)
     return value
 
@@ -213,25 +221,31 @@ class ComfyClient:
 
     # ── 上传 ────────────────────────────────────────────────────────────────
 
-    async def upload_image(self, image_path: Path | str) -> str:
-        """上传参考图,返回 ComfyUI 侧文件名(可带 subfolder 前缀,直接填 LoadImage.image)。"""
-        path = Path(image_path)
+    async def upload_input(
+        self, file_path: Path | str, *, mime: str = "application/octet-stream"
+    ) -> str:
+        """上传任意文件到 ComfyUI input 目录(图/音频共用 /upload/image)。"""
+        path = Path(file_path)
         if not path.exists():
-            raise H3ComfyError(f"参考图不存在: {path}")
+            raise H3ComfyError(f"上传文件不存在: {path}")
         async with httpx.AsyncClient(timeout=120.0) as client:
             with path.open("rb") as f:
                 r = await client.post(
                     f"{self.base_url}/upload/image",
                     data={"overwrite": "true"},
-                    files={"image": (path.name, f, "image/png")},
+                    files={"image": (path.name, f, mime)},
                 )
             r.raise_for_status()
             data = r.json()
         name = data.get("name")
         subfolder = data.get("subfolder") or ""
         if not name:
-            raise H3ComfyError(f"上传参考图失败(无 name): {path} → {data}")
+            raise H3ComfyError(f"上传失败(无 name): {path} → {data}")
         return f"{subfolder}/{name}" if subfolder else name
+
+    async def upload_image(self, image_path: Path | str) -> str:
+        """上传参考图,返回 ComfyUI 侧文件名(可带 subfolder 前缀,直接填 LoadImage.image)。"""
+        return await self.upload_input(image_path, mime="image/png")
 
     # ── 队列与轮询 ─────────────────────────────────────────────────────────
 
@@ -260,9 +274,16 @@ class ComfyClient:
     ) -> dict[str, Any]:
         """轮询 /history/{prompt_id} 直到完成/失败,返回 history 条目。"""
         deadline = asyncio.get_event_loop().time() + (timeout_s or self.timeout_s)
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        # 单请求 60s:Comfy 推理时 event loop 会堵,/history 经常 >15s 才回
+        async with httpx.AsyncClient(timeout=60.0) as client:
             while True:
-                r = await client.get(f"{self.base_url}/history/{prompt_id}")
+                try:
+                    r = await client.get(f"{self.base_url}/history/{prompt_id}")
+                except httpx.ReadTimeout:
+                    if asyncio.get_event_loop().time() >= deadline:
+                        raise
+                    await asyncio.sleep(_POLL_INTERVAL_S)
+                    continue
                 r.raise_for_status()
                 hist = r.json()
                 if prompt_id in hist:
@@ -294,8 +315,14 @@ class ComfyClient:
                         return cast(dict[str, Any], item)
         for node_out in outputs.values():
             vid = node_out.get("video")
-            if isinstance(vid, list) and vid and str(vid[0].get("filename", "")).endswith(".mp4"):
-                return cast(dict[str, Any], vid[0])
+            if isinstance(vid, str) and vid.lower().endswith(".mp4"):
+                return {"filename": Path(vid).name, "subfolder": "", "type": "output"}
+            if isinstance(vid, list) and vid:
+                first = vid[0]
+                if isinstance(first, str) and first.lower().endswith(".mp4"):
+                    return {"filename": Path(first).name, "subfolder": "", "type": "output"}
+                if isinstance(first, dict) and str(first.get("filename", "")).endswith(".mp4"):
+                    return cast(dict[str, Any], first)
         return None
 
     async def download_output(self, item: dict[str, Any], dest: Path) -> Path:

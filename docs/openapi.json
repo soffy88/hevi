@@ -1243,6 +1243,370 @@
         }
       }
     },
+    "/api/providers/plugins": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "List Provider Plugins",
+        "description": "列出 B5 可编程供应商插件(能力声明文件目录)。\n\n可选 tool 过滤(如 video/shot / tts/narration), 返回声明 + 复用 A1 评分层\n的加权分(降序), 供路由/UI 直接消费。",
+        "operationId": "list_provider_plugins_api_providers_plugins_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tool",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tool"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Provider Plugins Api Providers Plugins Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/plugins/{provider_id}": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Get Provider Plugin",
+        "description": "单插件详情(含声明与评分上下文)。",
+        "operationId": "get_provider_plugin_api_providers_plugins__provider_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Provider Plugin Api Providers Plugins  Provider Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/publishers": {
+      "get": {
+        "tags": [
+          "publishers"
+        ],
+        "summary": "Get Publishers",
+        "description": "列出已注册发布器(含 available 探测)。",
+        "operationId": "get_publishers_api_publishers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Publishers Api Publishers Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/publishers/{platform}/publish": {
+      "post": {
+        "tags": [
+          "publishers"
+        ],
+        "summary": "Trigger Publish",
+        "description": "触发发布。失败不 raise: 返回 status 为 skipped/failed + reason。",
+        "operationId": "trigger_publish_api_publishers__platform__publish_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "platform",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Platform"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Trigger Publish Api Publishers  Platform  Publish Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlot/runs/{run_id}/events": {
+      "get": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Get Run Events",
+        "description": "最近事件(内存尾部缓存, 时间序)。limit ∈ [1, 500]。",
+        "operationId": "get_run_events_api_backlot_runs__run_id__events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Run Events Api Backlot Runs  Run Id  Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Emit Run Event",
+        "description": "上报一条生产事件(best-effort: 失败仅日志, 不阻断调用方)。",
+        "operationId": "emit_run_event_api_backlot_runs__run_id__events_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmitEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Emit Run Event Api Backlot Runs  Run Id  Events Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlot/runs/{run_id}/status": {
+      "get": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Get Run Status",
+        "description": "run 级状态汇总(阶段亮灯/事件计数/花费估算/最后心跳/失败标志)。",
+        "operationId": "get_run_status_api_backlot_runs__run_id__status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Run Status Api Backlot Runs  Run Id  Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/production/v2/seedance/generate": {
       "post": {
         "tags": [
@@ -11866,6 +12230,27 @@
         ],
         "title": "ElementEditRequest"
       },
+      "EmitEventRequest": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "title": "Stage",
+            "default": ""
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type",
+            "default": "note"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "title": "EmitEventRequest"
+      },
       "EmotionalStateCurve": {
         "properties": {
           "primary": {
@@ -12467,6 +12852,7 @@
               "data_screenshot",
               "remotion_chart",
               "remotion_code",
+              "manim_scene",
               "voiceover"
             ],
             "title": "Visual Type",
@@ -14810,6 +15196,37 @@
         "title": "PropTremor",
         "description": "道具颤动(与 body.tension 咬合)。"
       },
+      "PublishRequest": {
+        "properties": {
+          "media_path": {
+            "type": "string",
+            "title": "Media Path",
+            "description": "服务端成片路径"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "media_path"
+        ],
+        "title": "PublishRequest"
+      },
       "Pupil": {
         "properties": {
           "dilation": {
@@ -16019,6 +16436,11 @@
             "title": "Duration S",
             "default": 5.0
           },
+          "recipe": {
+            "type": "string",
+            "title": "Recipe",
+            "default": ""
+          },
           "scene_stage_ref": {
             "anyOf": [
               {
@@ -17125,6 +17547,11 @@
             "type": "boolean",
             "title": "Autocameo",
             "default": false
+          },
+          "delivery_promise": {
+            "type": "string",
+            "title": "Delivery Promise",
+            "default": "motion"
           }
         },
         "type": "object",

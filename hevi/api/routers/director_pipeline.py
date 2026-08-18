@@ -45,6 +45,8 @@ from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.director import shot_preparation as _prep
 from hevi.director.concept import generate_concept_draft
 from hevi.director.design_list import generate_design_list_draft
+from hevi.director.gate_log import append_gate_log, gate_log_entries
+from hevi.director.h3_shot_gates import lint_h3_cut_budget, lint_h3_vocab
 from hevi.director.pipeline_schemas import (
     Concept,
     DesignCharacter,
@@ -71,6 +73,20 @@ from hevi.video.duration_mapper import get_duration_config
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/director-pipeline", tags=["director-pipeline"])
+
+
+def _record_shot_lints(
+    rec: dict[str, Any],
+    shot_list: ShotList,
+    scene_stage: SceneStageSet | None,
+) -> None:
+    findings = []
+    if scene_stage is not None:
+        findings.extend(lint_scene_stage(shot_list, scene_stage))
+    findings.extend(lint_h3_cut_budget(shot_list))
+    findings.extend(lint_h3_vocab(shot_list))
+    rec["scene_stage_lint"] = [asdict(f) for f in findings]
+    append_gate_log(None, gate_log_entries(source="director", findings=findings))
 
 _WORKS: dict[str, dict[str, Any]] = {}
 _OUTPUT_DIR = Path("output/director_pipeline")
@@ -954,8 +970,8 @@ async def _run_scene_stage_lock(work_id: str) -> None:
         scene_stage = SceneStageSet.model_validate(rec["scene_stage"])
         shot_list = link_shots_to_scene_stage(shot_list, scene_stage)
         rec["shot_list"] = shot_list.model_dump()
-        # SPEC-004 §4:链接后跑四条确定性 lint(跳轴/反打/eyeline/剪辑冗余),findings 暴露给前端。
-        rec["scene_stage_lint"] = [asdict(f) for f in lint_scene_stage(shot_list, scene_stage)]
+        # SPEC-004 §4 + H3 切长/运镜门。findings 暴露给前端;门日志写失败不挡。
+        _record_shot_lints(rec, shot_list, scene_stage)
         # 3GS G1 前置:镜头空间契约确定性检查(越轴/One-Move/机位字段完备)。
         # 结果只作为审查数据附在 work 上(不阻断出片),供导演台展示与后续 3D 消费。
         from hevi.director.scene_contract import check_camera_continuity
@@ -998,10 +1014,11 @@ async def _run_shot_list_regenerate(work_id: str) -> None:
         shot_list = await generate_shot_list_draft(
             screenplay=screenplay, design_list=design_list, llm=_resolve_llm()
         )
+        scene_stage = None
         if rec.get("scene_stage"):  # SPEC-004 阶段 3:重新链接场事实引用 + §4 lint
             scene_stage = SceneStageSet.model_validate(rec["scene_stage"])
             shot_list = link_shots_to_scene_stage(shot_list, scene_stage)
-            rec["scene_stage_lint"] = [asdict(f) for f in lint_scene_stage(shot_list, scene_stage)]
+        _record_shot_lints(rec, shot_list, scene_stage)
         rec["shot_list"] = shot_list.model_dump()
         rec["status"] = "shot_list_draft"
     except Exception as e:
@@ -1227,6 +1244,25 @@ async def _run_industrial_dispatch(
 
         series_service = SeriesService(SeriesRepository(pool), task_service=svc)
         _append_trail(rec, "season_dispatch", "running", "创建系列并逐集编译标准生产任务")
+        spec: dict[str, Any] = {
+            "video_provider": body.video_provider,
+            "audio_provider": body.audio_provider,
+            "duration_archetype": body.duration_archetype,
+            "budget_usd": body.season_budget_usd,
+            "quality_profile": body.quality_profile,
+            "aspect_ratio": body.aspect_ratio,
+            "prompt_style": (rec.get("concept") or {}).get("style", "cinematic"),
+            "director_pipeline_work_id": work_id,
+            "delivery_promise": "motion",
+        }
+        if rec.get("locked_through", -1) >= _stage_index("shot_list") and rec.get("shot_list"):
+            spec["locked_director"] = {
+                "shot_list": rec["shot_list"],
+                "design_list": rec.get("design_list"),
+                "concept": rec.get("concept"),
+                "scene_stage": rec.get("scene_stage"),
+            }
+            _append_trail(rec, "season_dispatch", "note", "已锁分镜,派发时不再重写 L2/L4")
         dispatched = await dispatch_season(
             plan,
             story,
@@ -1234,16 +1270,7 @@ async def _run_industrial_dispatch(
             task_service=svc,
             subject_id_map=subject_id_map,
             subject_ref_paths=subject_ref_paths,
-            spec={
-                "video_provider": body.video_provider,
-                "audio_provider": body.audio_provider,
-                "duration_archetype": body.duration_archetype,
-                "budget_usd": body.season_budget_usd,
-                "quality_profile": body.quality_profile,
-                "aspect_ratio": body.aspect_ratio,
-                "prompt_style": (rec.get("concept") or {}).get("style", "cinematic"),
-                "director_pipeline_work_id": work_id,
-            },
+            spec=spec,
             user_id=user_id,
         )
 
@@ -1366,6 +1393,8 @@ class ProduceRequest(BaseModel):
     # SPEC v6.0 §2.2/§2.3 AutoCameo:角色锁脸/入戏参考(主体库 subject_id 列表)。
     character_references: list[str] = []
     autocameo: bool = False
+    # motion=动作镜必须真运动,残镜/抄定妆照不得 completed;any=只要求出了文件。
+    delivery_promise: str = "motion"
 
 
 _FEMALE_HINT_KEYS = ("女", "母", "姑", "妃", "娘", "婆", "少女", "女声", "女性", "姐", "妹")
@@ -1671,6 +1700,7 @@ async def _run_director_via_tongjian(
     target_duration_sec: int,
     scene_stage: SceneStageSet | None = None,
     subject_svc: SubjectService | None = None,
+    delivery_promise: str = "motion",
 ) -> None:
     """后台真实生成:导演锁定内容 → 通鉴对白+口型管线(render_director_episode)。
     直接更新 video_tasks/shot_states,复用前端既有 taskApi.videoUrl/shots(零改动)。
@@ -1751,8 +1781,52 @@ async def _run_director_via_tongjian(
         # 返工预算(_VERDICT_MAX_RETAKE)用尽后仍不过的镜:成片存在、可看,但它是残的。
         # 此前 completed_shots 恒填 len(shots),等于宣称"每一镜都成了"——2026-07-17 审计那次
         # 产集 20 镜里 14 镜关键帧是定妆照,任务照样报 completed/100%/20 镜全完成。数字必须说真话。
-        n_failed = sum(1 for s in shots if not s.get("passed", True))
+        from hevi.production.delivery_gate import evaluate_director_delivery
+
+        verdict = evaluate_director_delivery(shots, delivery_promise=delivery_promise)
+        n_failed = verdict.failed_shots
         config_json["failed_shots"] = n_failed
+        config_json["canon_copy_ratio"] = verdict.canon_copy_ratio
+        config_json["motion_fallback"] = verdict.motion_fallback
+        config_json["delivery_promise"] = delivery_promise
+        if not verdict.ok:
+            logger.error(
+                "director-pipeline task %s 残片不得标完成: %s",
+                task_id,
+                verdict.reason,
+            )
+            await task_repo.update_task(
+                task_id,
+                {
+                    "status": "failed",
+                    "progress_pct": 100.0,
+                    "result_video_path": final_video.video_path,
+                    "total_shots": len(shots),
+                    "completed_shots": len(shots) - n_failed,
+                    "error": verdict.reason[:500],
+                    "config_json": config_json,
+                    "updated_at": datetime.now(UTC).replace(tzinfo=None),
+                },
+            )
+            await task_repo.delete_shots(task_id)
+            for shot in shots:
+                await task_repo.create_shot_state(
+                    {
+                        "task_id": task_id,
+                        "shot_index": shot["index"],
+                        "status": "completed" if shot.get("passed") else "failed",
+                        "output_path": shot.get("path"),
+                        "selection_json": {
+                            "provider": shot.get("provider"),
+                            "consistency_score": shot.get("consistency_score"),
+                            "passed": shot.get("passed"),
+                            "diagnosis_category": shot.get("diagnosis_category"),
+                            "retry_count": shot.get("retry_count"),
+                            "quality_checks": shot.get("quality_checks") or {},
+                        },
+                    }
+                )
+            return
         if n_failed:
             logger.error(
                 "director-pipeline task %s 成片交付但 %d/%d 镜未过裁决(返工已用尽):%s",
@@ -1905,6 +1979,7 @@ async def produce_work(
         target_duration_sec=int(duration_cfg["target_s"]),
         scene_stage=scene_stage,
         subject_svc=subject_svc,  # SPEC-004 v2:后台建/取 Subject3D 视图用
+        delivery_promise=body.delivery_promise or "motion",
     )
 
     rec["video_task_id"] = str(task_id)

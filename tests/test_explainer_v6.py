@@ -314,6 +314,45 @@ def test_v6_cues_keep_visual_scaffold_metadata_for_remotion() -> None:
 
 
 @pytest.mark.asyncio
+async def test_stock_broll_is_fulfilled_when_service_injected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    captured = {}
+
+    async def fake_render(storyboard, _output_dir, **_kwargs):
+        captured["storyboard"] = storyboard
+        return "rendered"
+
+    class FakeStock:
+        async def search(self, *, user_id, query, media_type, count):
+            assert user_id == "u1"
+            assert query == "rain city"
+            assert media_type == "video"
+            return [{"preview_url": "https://cdn.example/rain.mp4"}]
+
+    monkeypatch.setattr(explainer_assembly, "render_narrated_storyboard", fake_render)
+    result = await explainer_assembly.assemble_explainer_cues(
+        "测试主题",
+        [
+            ExplainerCue(
+                visual_type="stock_broll",
+                text="雨夜",
+                visual_search_query="rain city",
+            )
+        ],
+        tmp_path,
+        voice="cosyvoice_default",
+        stock_service=FakeStock(),
+        stock_user_id="u1",
+    )
+    assert result == "rendered"
+    assert (
+        captured["storyboard"].segments[0].visual_config["assetUrl"]
+        == "https://cdn.example/rain.mp4"
+    )
+
+
+@pytest.mark.asyncio
 async def test_v8_local_presenter_is_renderable_without_heygen_provider(
     monkeypatch: pytest.MonkeyPatch, tmp_path,
 ) -> None:

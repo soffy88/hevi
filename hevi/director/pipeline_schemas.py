@@ -473,6 +473,8 @@ class ShotListItem(BaseModel):
     scene_name: str = ""  # 本镜所在场景(对应 DesignScene.name)
     prop_names: list[str] = Field(default_factory=list)
     duration_s: float = 5.0
+    # Optional shot-recipes card id. Empty = no recipe lint.
+    recipe: str = ""
     # SPEC-004 ③.5 场事实引用(阶段 3)——画面空间/落位/焦点从 SceneStage 确定性投影(桥接层),
     # 不再由本镜自由想象。v1 由 link_shots_to_scene_stage 按对白锚定的 beats 确定性填充
     # (非 LLM);None/空 = 未接场事实(向后兼容旧 work)。见 SPEC-004 §3.1。
