@@ -21,6 +21,13 @@ def _fake_auth() -> None:
     reset_assets()
 
 
+def test_list_voices_catalog() -> None:
+    voices = client.get("/api/studio/voices", params={"language": "zh"})
+    assert voices.status_code == 200
+    names = {item["display"] for item in voices.json()["voices"]}
+    assert "杨幂" in names
+
+
 def test_list_tools_and_lines() -> None:
     tools = client.get("/api/studio/tools")
     assert tools.status_code == 200

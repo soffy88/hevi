@@ -135,6 +135,7 @@ services:
       TALKING_FACE_ENGINE: echomimic
       ECHO_MIMIC_COMFY_URL: http://host.docker.internal:8188
       # v9.1: AI 引擎统一地址(CosyVoice/LongCat/voicebox TTS 同源)。
+      HEVI_ASSET_ROOT: /app/data/workspace/assets
       GEN_ENGINE_BASE_URL: http://hevi-gen-engine:17493
       VOICEBOX_BASE_URL: http://hevi-gen-engine:17493
       VOICEBOX_ENGINE: ${VOICEBOX_ENGINE:-qwen_custom_voice}
@@ -154,6 +155,7 @@ services:
       # v9.1: 任务沙盒 + SQLite 任务库(data/hevi_tasks.db)持久化到宿主机,
       # 容器重建不丢进度,大盘/WebSocket 可读可下载。
       - /home/soffy/projects/hevi/data:/app/data
+      - /home/soffy/projects/hevi/assets:/app/assets
       # MCP lifespan 修复 (b5815c8): 单文件挂载免 rebuild (镜像内代码)
       - /home/soffy/projects/hevi/hevi/api/mcp_mount.py:/app/hevi/api/mcp_mount.py:ro
       - /home/soffy/projects/hevi/hevi/digital_human/talking_face.py:/app/hevi/digital_human/talking_face.py:ro

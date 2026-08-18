@@ -28,6 +28,7 @@ class ProduceJob:
     product: str = ""
     artifact: str = ""
     production_order: dict[str, Any] = field(default_factory=dict)
+    fulfill: dict[str, Any] = field(default_factory=dict)
     slate: dict[str, Any] = field(default_factory=dict)
     publish: list[dict[str, Any]] = field(default_factory=list)
     reason: str = ""
@@ -41,6 +42,7 @@ class ProduceJob:
             "render_runtime": self.render_runtime,
             "artifact": self.artifact,
             "production_order": self.production_order,
+            "fulfill": self.fulfill,
             "slate": self.slate,
             "publish": self.publish,
             "reason": self.reason,
@@ -107,12 +109,14 @@ async def produce(
     )
     runtime = str(picked["runtime"])
     filled.setdefault("render_runtime", runtime)
-    slate = await run_slate(Slate(line_id=rec.id, slots=filled))
+    dest_root = Path(output_dir or "output/veya")
+    filled.setdefault("output_dir", str(dest_root))
+    slate = await run_slate(Slate(line_id=rec.id, slots=filled, execute=execute))
     artifact = ""
-    if execute and slate.status in {"scheduled", "planned"} and runtime == "hyperframes":
+    runnable = slate.status in {"dispatched", "scheduled", "planned"}
+    if execute and runnable and runtime == "hyperframes":
         from hevi.providers.hyperframes.provider import hyperframes_generate
 
-        dest_root = Path(output_dir or "output/veya")
         dest = dest_root / f"{slate.slate_id}.mp4"
         produced = await hyperframes_generate(
             prompt={
@@ -131,20 +135,32 @@ async def produce(
         product=rec.product,
         artifact=artifact,
         production_order=slate.production_order,
+        fulfill=slate.data.get("fulfill") or {},
         slate=slate.to_dict(),
         reason=slate.reason,
     )
     if publish and (platforms or []):
+        from hevi.studio.packaging import pack_queue, write_pack_tickets
         from hevi.studio.tools import invoke_tool
 
         media = artifact or ""
-        for platform in platforms or []:
+        queue = pack_queue(
+            str(filled.get("topic") or rec.product),
+            list(platforms),
+            media_path=media,
+        )
+        write_pack_tickets(queue, dest_root / "pack")
+        for variant in queue.variants:
             res = await invoke_tool(
                 "publish.matrix",
                 {
-                    "platform": platform,
+                    "platform": variant.platform,
                     "media_path": media or "pending",
-                    "title": str(filled.get("topic") or rec.product),
+                    "title": variant.title,
+                    "description": variant.description,
+                    "tags": variant.tags,
+                    "account": variant.account,
+                    "cover_hint": variant.cover_hint,
                 },
             )
             job.publish.append(res.to_dict())

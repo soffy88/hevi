@@ -20,6 +20,7 @@ from hevi.studio.timeline import (
     set_bgm,
     split_at,
     timeline_from_edit_plan,
+    timeline_from_film,
 )
 from hevi.studio.tools import invoke_tool, list_tools
 
@@ -30,6 +31,7 @@ class SlateRequest(BaseModel):
     line_id: str
     slots: dict[str, Any] = Field(default_factory=dict)
     slate_id: str | None = None
+    execute: bool = False
 
 
 class ToolInvokeRequest(BaseModel):
@@ -80,7 +82,12 @@ async def create_slate(
     req: SlateRequest,
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
-    slate = Slate(line_id=req.line_id, slots=req.slots, slate_id=req.slate_id or "")
+    slate = Slate(
+        line_id=req.line_id,
+        slots=req.slots,
+        slate_id=req.slate_id or "",
+        execute=req.execute,
+    )
     result = await run_slate(slate)
     if result.status == "failed" and result.reason.startswith("unknown line"):
         raise HTTPException(status_code=404, detail=result.reason)
@@ -91,6 +98,8 @@ class TimelineCreateRequest(BaseModel):
     title: str = "untitled"
     edit_plan: dict[str, Any] = Field(default_factory=dict)
     slate_id: str | None = None
+    film: str | None = None
+    duration_s: float | None = None
 
 
 class TimelinePatchRequest(BaseModel):
@@ -121,6 +130,9 @@ async def create_timeline(
     req: TimelineCreateRequest,
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
+    if req.film:
+        tl = timeline_from_film(req.film, duration_s=req.duration_s, title=req.title)
+        return tl.to_dict()
     tl = timeline_from_edit_plan(req.edit_plan, title=req.title)
     return tl.to_dict()
 
@@ -312,6 +324,56 @@ async def get_veya_job(
     if job is None:
         raise HTTPException(status_code=404, detail="unknown job")
     return job.to_dict()
+
+
+class AssetPullRequest(BaseModel):
+    pack: str = "celebrities30s"
+    force: bool = False
+    root: str | None = None
+
+
+@router.get("/packs")
+async def get_studio_packs(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.studio.packs import list_packs
+
+    packs = list_packs()
+    return {
+        "packs": [
+            {"id": key, "kind": val.get("kind"), "summary": val.get("summary")}
+            for key, val in packs.items()
+        ],
+        "total": len(packs),
+    }
+
+
+@router.get("/voices")
+async def get_studio_voices(
+    language: str | None = None,
+    local_only: bool = False,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.studio.voices import list_voices
+
+    voices = list_voices(language=language, local_only=local_only)
+    return {"voices": [item.to_dict() for item in voices], "total": len(voices)}
+
+
+@router.post("/assets/pull")
+async def pull_studio_assets(
+    req: AssetPullRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.studio.packs import pull_pack
+
+    try:
+        result = pull_pack(req.pack, root=req.root, force=req.force)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"pull failed: {exc}") from exc
+    return result.to_dict()
 
 
 @router.get("/assets")

@@ -22,6 +22,7 @@ class TimelineClip:
     action: str = "keep"  # keep | drop | mute
     source: str = ""
     text: str = ""
+    source_in_s: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -34,6 +35,7 @@ class Timeline:
     clips: list[TimelineClip] = field(default_factory=list)
     bgm: str = ""
     fps: int = 24
+    source_film: str = ""
 
     @property
     def duration_s(self) -> float:
@@ -55,6 +57,7 @@ class Timeline:
             "duration_s": round(self.duration_s, 2),
             "bgm": self.bgm,
             "fps": self.fps,
+            "source_film": self.source_film,
             "clips": [c.to_dict() for c in self.clips],
             "tracks": {name: [c.to_dict() for c in items] for name, items in self.tracks.items()},
         }
@@ -97,6 +100,7 @@ def timeline_from_edit_plan(plan: dict[str, Any], *, title: str = "untitled") ->
                 action=action,
                 source=src,
                 text=text,
+                source_in_s=float(cut.get("source_in_s") or 0.0),
             )
         )
         tl.clips.append(
@@ -179,6 +183,7 @@ def split_at(timeline_id: str, at_s: float) -> Timeline | None:
             action=clip.action,
             source=clip.source,
             text=clip.text,
+            source_in_s=round(clip.source_in_s + (mark - clip.start_s), 3),
         )
         clip.duration_s = round(mark - clip.start_s, 3)
         spawned.append(right)
@@ -205,16 +210,57 @@ def ripple(timeline_id: str) -> Timeline | None:
     return tl
 
 
+def timeline_from_film(
+    film: str | Path,
+    *,
+    duration_s: float | None = None,
+    title: str = "imported",
+) -> Timeline:
+    path = Path(film)
+    dur = duration_s
+    if dur is None:
+        try:
+            from oprim import probe_duration
+
+            dur = float(probe_duration(path)) if path.exists() else 10.0
+        except Exception:
+            dur = 10.0
+    tl = Timeline(
+        timeline_id=str(uuid.uuid4()),
+        title=title,
+        source_film=str(path),
+    )
+    tl.clips = [
+        TimelineClip("v0", "video", 0.0, float(dur), path.stem, source=str(path)),
+        TimelineClip("a0", "audio", 0.0, float(dur), "VO", source=str(path)),
+        TimelineClip("c0", "captions", 0.0, float(dur), path.stem),
+    ]
+    return save_timeline(tl)
+
+
 def export_timeline(timeline_id: str, dest: Path) -> dict[str, Any]:
     tl = _STORE.get(timeline_id)
     if tl is None:
         return {"status": "failed", "reason": "unknown timeline"}
     clips = [
-        c.source
+        {
+            "track": c.track,
+            "action": c.action,
+            "source": c.source or tl.source_film,
+            "source_in_s": c.source_in_s,
+            "duration_s": c.duration_s,
+        }
         for c in tl.clips
-        if c.track == "video" and c.action != "drop" and c.source
+        if c.track == "video"
     ]
-    result = nle_recut({"clips": clips, "output_path": str(dest)})
+    result = nle_recut(
+        {
+            "clips": clips,
+            "output_path": str(dest),
+            "bgm": tl.bgm,
+            "film": tl.source_film,
+        }
+    )
     result["timeline_id"] = timeline_id
     result["kept"] = len([c for c in tl.clips if c.track == "video" and c.action != "drop"])
     return result

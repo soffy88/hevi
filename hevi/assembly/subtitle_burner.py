@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 # 字幕烧录必须指定一个含中日韩字形的字体,否则 libass 回退到无 CJK 字形的默认字体,
@@ -28,6 +29,16 @@ def get_subtitle_filter(subtitle_path: Path, style: str = "default") -> str:
     path_str = str(subtitle_path).replace("\\", "/").replace(":", "\\:")
 
     # 任何 style(含 default)都强制带上 CJK 字体,否则中文烧成豆腐块。
+    # HEVI_SUBTITLE_FONT 可改 family;HEVI_SUBTITLE_FONT_FILE 指向已拉取的 ttf。
+    font_file = os.environ.get("HEVI_SUBTITLE_FONT_FILE", "").strip()
+    font_name = os.environ.get("HEVI_SUBTITLE_FONT", "").strip() or _CJK_FONT
+    if font_file and Path(font_file).exists():
+        fonts_dir = str(Path(font_file).parent).replace("\\", "/").replace(":", "\\:")
+        preset = _STYLE_PRESETS.get(style)
+        force_style = f"FontName={Path(font_file).stem}" + (f",{preset}" if preset else "")
+        return (
+            f"subtitles='{path_str}':fontsdir='{fonts_dir}':force_style='{force_style}'"
+        )
     preset = _STYLE_PRESETS.get(style)
-    force_style = f"FontName={_CJK_FONT}" + (f",{preset}" if preset else "")
+    force_style = f"FontName={font_name}" + (f",{preset}" if preset else "")
     return f"subtitles='{path_str}':force_style='{force_style}'"

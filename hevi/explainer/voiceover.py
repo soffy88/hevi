@@ -127,8 +127,14 @@ async def synthesize_storyboard(
         words: list[dict[str, Any]] = []
         try:
             if provider == "cosyvoice":
+                mode = os.environ.get("HEVI_COSY_INFERENCE_MODE", "").strip() or None
                 await cosyvoice_synthesize(
-                    script=[SimpleNamespace(text=seg.narration)],
+                    script=[
+                        SimpleNamespace(
+                            text=seg.narration,
+                            inference_mode=mode,
+                        )
+                    ],
                     output_path=out_path,
                 )
             elif provider == "voicebox":
@@ -168,7 +174,15 @@ async def synthesize_storyboard(
                         retry_path: Path = out_path,
                     ) -> Path:
                         await cosyvoice_synthesize(
-                            script=[SimpleNamespace(text=retry_text)],
+                            script=[
+                                SimpleNamespace(
+                                    text=retry_text,
+                                    inference_mode=os.environ.get(
+                                        "HEVI_COSY_INFERENCE_MODE", ""
+                                    ).strip()
+                                    or None,
+                                )
+                            ],
                             output_path=retry_path,
                         )
                         return retry_path

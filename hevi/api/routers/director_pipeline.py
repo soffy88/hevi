@@ -75,6 +75,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/director-pipeline", tags=["director-pipeline"])
 
 
+def _attach_kernel_plan(shot_list: ShotList) -> dict[str, Any]:
+    """分镜草案生成后叠五核(机位键/动作弧)。失败返回空 dict,不挡下游。"""
+    try:
+        from hevi.script2video.omodul.fuse import fuse_production
+
+        fused = fuse_production("", existing_shot_list=shot_list)
+        shot_list.shots.clear()
+        shot_list.shots.extend(fused.shot_list.shots)
+        return fused.to_dict()
+    except Exception:
+        logger.exception("kernel fuse on shot_list failed")
+        return {}
+
+
 def _record_shot_lints(
     rec: dict[str, Any],
     shot_list: ShotList,
@@ -1004,6 +1018,8 @@ async def _run_scene_stage_lock(work_id: str) -> None:
         from hevi.director.scene_contract import check_camera_continuity
 
         rec["camera_contract"] = check_camera_continuity(shot_list.shots).__dict__
+        rec["kernel_plan"] = _attach_kernel_plan(shot_list)
+        rec["shot_list"] = shot_list.model_dump()
         rec["status"] = "shot_list_draft"
     except Exception as e:
         logger.exception("scene-stage 锁定后生成分镜失败: work_id=%s", work_id)
@@ -1046,6 +1062,8 @@ async def _run_shot_list_regenerate(work_id: str) -> None:
             scene_stage = SceneStageSet.model_validate(rec["scene_stage"])
             shot_list = link_shots_to_scene_stage(shot_list, scene_stage)
         _record_shot_lints(rec, shot_list, scene_stage)
+        rec["shot_list"] = shot_list.model_dump()
+        rec["kernel_plan"] = _attach_kernel_plan(shot_list)
         rec["shot_list"] = shot_list.model_dump()
         rec["status"] = "shot_list_draft"
     except Exception as e:
@@ -1971,8 +1989,16 @@ async def produce_work(
     # SPEC v6.0 §2.2 AutoCameo 透传:参考角色(锁脸)与开关落进 config_json,供生成层消费。
     if body.character_references:
         create_kwargs["character_references"] = body.character_references
+        create_kwargs["character_subject_ids"] = body.character_references
+        create_kwargs["subject_id"] = body.character_references[0]
     if body.autocameo:
         create_kwargs["autocameo"] = body.autocameo
+    kernel_payload = rec.get("kernel_plan") or _attach_kernel_plan(shot_list)
+    if kernel_payload:
+        create_kwargs["kernel_plan"] = kernel_payload
+        rec["kernel_plan"] = kernel_payload
+        rec["shot_list"] = shot_list.model_dump()
+        create_kwargs["locked_shot_list"] = rec["shot_list"]
     try:
         task = await svc.create_task(**create_kwargs)
     except CostLimitExceeded as e:

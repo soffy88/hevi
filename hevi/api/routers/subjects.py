@@ -49,6 +49,33 @@ def _check_owner(resource: dict[str, Any], user: dict[str, Any]) -> None:
         raise HTTPException(status_code=404, detail="Subject not found")
 
 
+async def _stamp_cameo_from_photo(
+    svc: SubjectService,
+    subject: dict[str, Any],
+    description: str,
+) -> dict[str, Any]:
+    """AutoCameo:用参考图补描述/metadata,失败不挡建角色。"""
+    refs = subject.get("reference_images") or []
+    if not refs:
+        return subject
+    photo = Path(str(refs[0]))
+    if not photo.exists():
+        return subject
+    try:
+        from hevi.script2video.oskill.autocameo import person_from_photo
+
+        info = person_from_photo(photo)
+        sid = str(subject["id"])
+        await svc.update_subject_metadata(sid, metadata={"cameo": info.to_dict()})
+        if not (description or "").strip():
+            updated = await svc.update_subject_fields(sid, description=info.description)
+            return updated or subject
+    except Exception:
+        return subject
+    refreshed = await svc.get_subject(str(subject["id"]))
+    return refreshed or subject
+
+
 def _serialize_subject(s: dict[str, Any]) -> dict[str, Any]:
     return {**s, "subject_id": s.get("id"), "kind": s.get("subject_type")}
 
@@ -139,6 +166,7 @@ async def create_subject_from_photo(
         updated = await svc.add_reference_upload(
             str(subject["id"]), filename=file.filename or "photo.jpg", data=data
         )
+        updated = await _stamp_cameo_from_photo(svc, updated or subject, description)
         return _serialize_subject(updated or subject)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

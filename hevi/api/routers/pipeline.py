@@ -39,7 +39,7 @@ class UnifiedGenerateConfig(BaseModel):
 
 
 class UnifiedGenerateRequest(BaseModel):
-    source_channel: Literal["hub_quick", "director_console"]
+    source_channel: Literal["hub_quick", "hub_idea2video", "director_console"]
     adapter_type: Literal["default", "explainer", "tongjian", "shortdrama"]
     config: UnifiedGenerateConfig
 
@@ -50,6 +50,54 @@ _ADAPTER_SOURCES = {
     "tongjian": "tongjian",
     "shortdrama": "shortdrama",
 }
+
+
+def _fuse_generate_options(source_channel: str, cfg: UnifiedGenerateConfig) -> dict[str, Any]:
+    """Idea/Novel/Cameo 融合进统一生成 options。失败则原样下发,零回归。"""
+    options: dict[str, Any] = {
+        **cfg.options,
+        "source_channel": source_channel,
+        "execution_preset": cfg.execution_preset,
+        "emotion_aware_voiceover": cfg.emotion_aware_voiceover,
+        "locked_shot_list": cfg.locked_shot_list,
+        "character_references": list(cfg.character_references),
+    }
+    narrative = str(cfg.options.get("narrative_mode") or "")
+    novel_text = str(cfg.options.get("novel_text") or "")
+    raw_photos = cfg.options.get("cameo_photos") or []
+    should_fuse = (
+        source_channel == "hub_idea2video"
+        or narrative in {"idea", "novel", "script", "cameo"}
+        or bool(novel_text)
+        or bool(raw_photos)
+    )
+    if not should_fuse:
+        return options
+    try:
+        from pathlib import Path
+
+        from hevi.script2video.omodul.fuse import fuse_production
+
+        photos = [Path(p) for p in raw_photos if p]
+        photos = [p for p in photos if p.exists()]
+        explicit = narrative if narrative in {"idea", "novel", "script", "cameo"} else None
+        if source_channel == "hub_idea2video" and explicit is None:
+            explicit = "idea"
+        text = novel_text or cfg.prompt
+        fused = fuse_production(
+            text,
+            requirement=str(cfg.options.get("user_requirement") or ""),
+            style=str(cfg.options.get("style_preset") or ""),
+            photos=photos or None,
+            explicit=explicit,  # type: ignore[arg-type]
+        )
+        if fused.shot_list.shots:
+            options["locked_shot_list"] = fused.locked_shot_payload()
+        options["kernel_plan"] = fused.to_dict()
+        options["vimax_source"] = fused.source
+    except Exception:
+        options["kernel_fuse_error"] = True
+    return options
 
 
 @router.get("/capabilities")
@@ -89,6 +137,8 @@ async def generate_unified(
     """Unified hub/director request boundary for frontend consolidation."""
     source = _ADAPTER_SOURCES[body.adapter_type]
     cfg = body.config
+    options = _fuse_generate_options(body.source_channel, cfg)
+    options["adapter_type"] = body.adapter_type
     try:
         task = await svc.create_production(
             ProductionRequest(
@@ -102,14 +152,7 @@ async def generate_unified(
                 num_characters=max(1, len(cfg.character_references)),
                 subject_ids=cfg.character_references,
                 presenter_id=cfg.presenter_id,
-                options={
-                    **cfg.options,
-                    "source_channel": body.source_channel,
-                    "adapter_type": body.adapter_type,
-                    "execution_preset": cfg.execution_preset,
-                    "emotion_aware_voiceover": cfg.emotion_aware_voiceover,
-                    "locked_shot_list": cfg.locked_shot_list,
-                },
+                options=options,
             ),
             user_id=str(user["id"]),
         )

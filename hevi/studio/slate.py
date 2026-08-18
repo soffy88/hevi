@@ -58,6 +58,7 @@ class SlateResult:
                     "timeline",
                     "render_runtime",
                     "hyperframes",
+                    "fulfill",
                 )
                 if k in self.data
             },
@@ -71,6 +72,7 @@ def _seed_data(slate: Slate, recipe: Recipe) -> dict[str, Any]:
     data["handoff"] = recipe.handoff
     data["slate_id"] = slate.slate_id
     data.setdefault("render_runtime", recipe.render_runtime)
+    data["execute"] = slate.execute
     if "topic" not in data:
         for key in ("source_text", "manuscript", "source_name"):
             if data.get(key):
@@ -103,9 +105,14 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
     data = dict(state.data or {})
     order = data.get("production_order") or {}
     pipe_state = getattr(state, "state", "completed")
+    fulfill = data.get("fulfill") or {}
     status = "scheduled" if order.get("target") and order["target"] != "none" else "planned"
+    if slate.execute and fulfill.get("status") == "dispatched":
+        status = "dispatched"
     if pipe_state in {"failed", "paused"}:
         status = str(pipe_state)
+    if fulfill.get("status") == "failed":
+        status = "failed"
     return SlateResult(
         status=status,
         slate_id=slate.slate_id,
@@ -130,7 +137,7 @@ async def execute_lot_task(task: dict[str, Any], pool: Any = None) -> dict[str, 
     video = ""
     if isinstance(result.data.get("edit_plan"), dict):
         video = str(result.data["edit_plan"].get("preview_path") or "")
-    ok = result.status in {"scheduled", "planned"}
+    ok = result.status in {"scheduled", "planned", "dispatched"}
     return {
         "status": "completed" if ok else "failed",
         "error": result.reason or None,

@@ -8,7 +8,19 @@ from datetime import UTC, datetime
 from typing import Any
 
 # 资产种类:角色锚 / 分镜 / 成片 / 剧本 / 参考片 / 素材
-ASSET_KINDS = ("subject", "shot", "render", "script", "watch", "material")
+ASSET_KINDS = (
+    "subject",
+    "shot",
+    "render",
+    "script",
+    "watch",
+    "material",
+    "voice",
+    "font",
+    "bgm",
+    "motion",
+    "corpus",
+)
 
 
 @dataclass(frozen=True)

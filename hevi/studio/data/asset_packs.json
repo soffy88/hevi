@@ -1,0 +1,89 @@
+{
+  "celebrities30s": {
+    "kind": "voice",
+    "source": "hf_zip",
+    "repo": "ABUS-AI/CosyVoice",
+    "filename": "celebrities30s.zip",
+    "summary": "Voice-Pro 名人 30s 参考音（音频+转录+头像）",
+    "index_file": "celebrities30s.json5"
+  },
+  "edge-tts-samples": {
+    "kind": "voice",
+    "source": "hf_zip",
+    "repo": "ABUS-AI/CosyVoice",
+    "filename": "edge-tts-samples.zip",
+    "summary": "Voice-Pro edge-tts 试听样音"
+  },
+  "kokoro-tts-samples": {
+    "kind": "voice",
+    "source": "hf_zip",
+    "repo": "ABUS-AI/CosyVoice",
+    "filename": "kokoro-tts-samples.zip",
+    "summary": "Voice-Pro Kokoro 试听样音"
+  },
+  "subtitle-fonts": {
+    "kind": "font",
+    "source": "copy",
+    "summary": "MPT 开源字幕字体 BeVietnam / Charm",
+    "roots": [
+      "/tmp/repo-analysis/MoneyPrinterTurbo/resource/fonts",
+      "/tmp/MoneyPrinterTurbo/resource/fonts"
+    ],
+    "include": ["BeVietnamPro-*.ttf", "Charm-*.ttf"]
+  },
+  "stock-bgm": {
+    "kind": "bgm",
+    "source": "copy",
+    "summary": "MPT resource/songs 默认底乐",
+    "roots": [
+      "/tmp/repo-analysis/MoneyPrinterTurbo/resource/songs",
+      "/tmp/MoneyPrinterTurbo/resource/songs"
+    ],
+    "include": [
+      "output000.mp3",
+      "output001.mp3",
+      "output002.mp3",
+      "output003.mp3",
+      "output004.mp3",
+      "output005.mp3",
+      "output006.mp3",
+      "output007.mp3",
+      "output008.mp3",
+      "output009.mp3"
+    ],
+    "mirror": "assets/audio/bgm/stock"
+  },
+  "handwrite-font": {
+    "kind": "font",
+    "source": "copy",
+    "summary": "OpenMontage Patrick Hand 手写体 (OFL)",
+    "roots": [
+      "/tmp/repo-analysis/OpenMontage/ink-theater/assets",
+      "/tmp/OpenMontage/ink-theater/assets"
+    ],
+    "include": ["patrickhand.ttf", "OFL.txt"]
+  },
+  "mocap-clips": {
+    "kind": "motion",
+    "source": "copy",
+    "summary": "OpenMontage ink-theater mocap 动作卡",
+    "roots": [
+      "/tmp/repo-analysis/OpenMontage/ink-theater/mocap",
+      "/tmp/OpenMontage/ink-theater/mocap"
+    ],
+    "include": ["catalog.json", "clips/*.json"]
+  },
+  "open-corpus-seed": {
+    "kind": "corpus",
+    "source": "archive_seed",
+    "summary": "NASA / Wikimedia / Archive.org 公开域种子片",
+    "queries": [
+      {"q": "apollo launch", "source": "nasa"},
+      {"q": "earth from space", "source": "nasa"},
+      {"q": "steam locomotive", "source": "wikimedia"},
+      {"q": "city street 1920", "source": "archive", "collection": "prelinger"}
+    ],
+    "max_each": 2,
+    "max_mb": 25
+  }
+}

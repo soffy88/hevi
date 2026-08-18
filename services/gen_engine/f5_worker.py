@@ -33,6 +33,45 @@ import os
 import sys
 from pathlib import Path
 
+_DEFAULT_CFG = {
+    "dim": 1024,
+    "depth": 22,
+    "heads": 16,
+    "ff_mult": 2,
+    "text_dim": 512,
+    "conv_layers": 4,
+}
+
+# Voice-Pro 目录名 → 宿主机 model_dir 相对路径(文件不在则回退 F5TTS_Base)。
+_LAYOUTS: dict[str, tuple[str, str, dict[str, object]]] = {
+    "SWivid/F5-TTS": (
+        "F5TTS_Base/model_1200000.safetensors",
+        "F5TTS_Base/vocab.txt",
+        {**_DEFAULT_CFG, "text_mask_padding": False, "pe_attn_head": 1},
+    ),
+    "SWivid/F5-TTS_v1": (
+        "F5TTS_v1_Base/model_1250000.safetensors",
+        "F5TTS_v1_Base/vocab.txt",
+        dict(_DEFAULT_CFG),
+    ),
+}
+
+
+def _resolve_checkpoint(model_dir: Path, model_name: str) -> tuple[Path, Path, dict[str, object]]:
+    fallback = (
+        model_dir / "F5TTS_Base" / "model_1200000.safetensors",
+        model_dir / "F5TTS_Base" / "vocab.txt",
+        dict(_DEFAULT_CFG),
+    )
+    if not model_name or model_name not in _LAYOUTS:
+        return fallback
+    ckpt_rel, vocab_rel, cfg = _LAYOUTS[model_name]
+    ckpt = model_dir / ckpt_rel
+    vocab = model_dir / vocab_rel
+    if ckpt.exists() and vocab.exists():
+        return ckpt, vocab, dict(cfg)
+    return fallback
+
 
 def _main(args_path: str) -> None:
     data = json.loads(Path(args_path).read_text(encoding="utf-8"))
@@ -45,6 +84,7 @@ def _main(args_path: str) -> None:
     )
     seed = data.get("seed")
     speed = float(data.get("speed", 1.0))
+    model_name = str(data.get("model_name") or "").strip()
     if not text:
         raise ValueError("text 为空")
     if not ref_path.exists():
@@ -67,11 +107,10 @@ def _main(args_path: str) -> None:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    ckpt_path = model_dir / "F5TTS_Base" / "model_1200000.safetensors"
-    vocab_file = model_dir / "F5TTS_Base" / "vocab.txt"
+    ckpt_path, vocab_file, model_cfg = _resolve_checkpoint(model_dir, model_name)
     vocos_dir = model_dir / "vocos"
     for p, label in (
-        (ckpt_path, "F5-TTS 权重 (F5TTS_Base/model_1200000.safetensors)"),
+        (ckpt_path, f"F5-TTS 权重 ({ckpt_path.name})"),
         (vocab_file, "F5-TTS vocab.txt"),
         (vocos_dir / "config.yaml", "Vocos config.yaml"),
         (vocos_dir / "pytorch_model.bin", "Vocos pytorch_model.bin"),
@@ -84,12 +123,6 @@ def _main(args_path: str) -> None:
 
     if seed is not None:
         torch.manual_seed(int(seed))
-
-    # F5TTS_Base 配置(与 voice-pro abus_tts_f5_models.json 的 SWivid/F5-TTS 一致)。
-    model_cfg = {
-        "dim": 1024, "depth": 22, "heads": 16, "ff_mult": 2, "text_dim": 512,
-        "conv_layers": 4,
-    }
     model = load_model(
         DiT, model_cfg, str(ckpt_path), vocab_file=str(vocab_file), device=device
     )

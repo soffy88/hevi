@@ -138,8 +138,27 @@ async def _synthesize_formal(
         from types import SimpleNamespace
 
         from hevi.audio.cosyvoice_service import cosyvoice_synthesize
+        mode = os.getenv("HEVI_COSY_INFERENCE_MODE", "").strip() or None
+        celeb = (_kw.get("celeb") or os.getenv("COSY_CELEB") or "").strip()
+        voice_ref = None
+        ref_text = None
+        if celeb:
+            from hevi.studio.voices import find_voice
+
+            spec = find_voice(celeb)
+            if spec and spec.local:
+                voice_ref = spec.audio_path
+                ref_text = spec.transcript
         await cosyvoice_synthesize(
-            script=[SimpleNamespace(text=text)],
+            script=[
+                SimpleNamespace(
+                    text=text,
+                    inference_mode=mode,
+                    instruct_text=instruct,
+                    voice_ref=voice_ref,
+                    ref_text=ref_text,
+                )
+            ],
             output_path=output_path,
         )
         return output_path
@@ -148,6 +167,14 @@ async def _synthesize_formal(
         # F5-TTS 零样本克隆: 用环境配置的固定参考音色做解说。
         ref_audio = os.getenv("F5_TTS_REFERENCE_AUDIO", "").strip()
         ref_text = os.getenv("F5_TTS_REFERENCE_TEXT", "").strip()
+        celeb = (_kw.get("celeb") or os.getenv("F5_TTS_CELEB") or "").strip()
+        if celeb:
+            from hevi.studio.voices import find_voice
+
+            spec = find_voice(celeb)
+            if spec and spec.local:
+                ref_audio = spec.audio_path
+                ref_text = spec.transcript or ref_text
         if not ref_audio or not ref_text:
             raise AudioRoutingError(
                 "HEVI_TTS_FORMAL_PROVIDER=f5 需设置 F5_TTS_REFERENCE_AUDIO 与 "
@@ -159,6 +186,7 @@ async def _synthesize_formal(
             output_path=output_path,
             reference_audio=ref_audio,
             reference_text=ref_text,
+            model_name=os.getenv("F5_TTS_MODEL_NAME", "").strip() or None,
         )
         return output_path
 

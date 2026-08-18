@@ -178,6 +178,15 @@ async def tts_synth(payload: dict[str, Any]) -> dict[str, Any]:
         return _fail("text required")
     dest.parent.mkdir(parents=True, exist_ok=True)
     provider = str(payload.get("provider") or "auto").lower()
+    celeb = str(payload.get("celeb") or payload.get("voice_id") or "").strip()
+    if celeb and not payload.get("reference_audio"):
+        from hevi.studio.voices import find_voice
+
+        spec = find_voice(celeb)
+        if spec and spec.local:
+            payload = dict(payload)
+            payload["reference_audio"] = spec.audio_path
+            payload["reference_text"] = spec.transcript
     if provider in {"auto", "lux"}:
         try:
             from hevi.audio.lux_tts_service import lux_tts_available, synth_with_luxvoice
@@ -224,26 +233,143 @@ async def director_scene_stage(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def shot_export(payload: dict[str, Any]) -> dict[str, Any]:
-    """Jellyfish:把一镜登记为跨线资产,解说/通鉴可引用。"""
+    """一镜出站:砖 + 资产引用。import_line 指定接到哪条产线。"""
     from hevi.studio.assets import bind_asset
+    from hevi.studio.brick import brick_from_payload, import_brick
 
     shot_id = str(payload.get("shot_id") or payload.get("label") or "").strip()
     if not shot_id:
         return _fail("shot_id required")
+    brick = brick_from_payload(
+        payload,
+        source_line=str(payload.get("line_id") or payload.get("source_line") or "director"),
+    )
+    dest = payload.get("dest")
+    brick_path = ""
+    if dest:
+        brick_path = str(brick.write(Path(str(dest))))
     ref = bind_asset(
         "shot",
-        line_id=str(payload.get("line_id") or "director_pipeline"),
+        line_id=brick.source_line,
         label=shot_id,
-        payload={
-            "shot_id": shot_id,
-            "video_path": payload.get("video_path"),
-            "prompt": payload.get("prompt"),
-            "duration_s": payload.get("duration_s"),
-            "scene_no": payload.get("scene_no"),
-        },
-        asset_id=payload.get("asset_id"),
+        payload=brick.to_dict(),
+        asset_id=payload.get("asset_id") or brick.brick_id,
     )
-    return _ok(asset=ref.to_dict())
+    imported = import_brick(brick, str(payload.get("import_line") or "explainer"))
+    return _ok(
+        asset=ref.to_dict(),
+        brick=brick.to_dict(),
+        imported=imported,
+        brick_path=brick_path,
+    )
+
+
+def shot_import(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.brick import ShotBrick, brick_from_payload, import_brick
+
+    raw = payload.get("brick") or payload
+    brick = raw if isinstance(raw, ShotBrick) else brick_from_payload(dict(raw))
+    target = str(payload.get("import_line") or payload.get("target") or "explainer")
+    imported = import_brick(brick, target)
+    return _ok(imported=imported, brick=brick.to_dict())
+
+
+async def compose_after_qc_tool(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.compose_gate import apply_compose_after_qc
+
+    return await apply_compose_after_qc(
+        base_video=payload.get("base_video") or payload.get("video_path") or "",
+        image_path=payload.get("image_path"),
+        audio_path=payload.get("audio_path"),
+        output_path=payload.get("output_path") or "output/nle/composed.mp4",
+        qc_report=payload.get("qc_report") or payload.get("qc"),
+    )
+
+
+def pull_asset_pack(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.packs import pull_pack
+
+    pack = str(payload.get("pack") or "celebrities30s")
+    result = pull_pack(
+        pack,
+        root=payload.get("root"),
+        fetch_fn=payload.get("fetch_fn"),
+        force=bool(payload.get("force")),
+    )
+    return _ok(**result.to_dict())
+
+
+def list_pack_fonts(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.fonts import list_fonts, resolve_font
+
+    root = Path(payload["root"]) if payload.get("root") else None
+    fonts = list_fonts(root=root)
+    picked = resolve_font(str(payload.get("name") or ""), root=root)
+    return _ok(
+        fonts=[str(path) for path in fonts],
+        count=len(fonts),
+        selected=str(picked) if picked else "",
+    )
+
+
+def list_pack_mocap(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.mocap import get_mocap, list_mocap
+
+    root = Path(payload["root"]) if payload.get("root") else None
+    name = str(payload.get("name") or "")
+    if name:
+        clip = get_mocap(name, root=root)
+        return _ok(clip=clip) if clip else _fail(f"unknown mocap: {name}")
+    clips = list_mocap(root=root)
+    return _ok(clips=clips, count=len(clips))
+
+
+def list_celeb_voices(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.voices import list_voices
+
+    voices = list_voices(
+        language=payload.get("language"),
+        local_only=bool(payload.get("local_only")),
+        root=Path(payload["root"]) if payload.get("root") else None,
+    )
+    return _ok(voices=[item.to_dict() for item in voices], count=len(voices))
+
+
+def resolve_celeb_voice(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.voices import find_voice, resolve_voice
+
+    name = str(payload.get("name") or payload.get("voice") or "").strip()
+    if not name:
+        return _fail("name required")
+    root = Path(payload["root"]) if payload.get("root") else None
+    if payload.get("require_local"):
+        try:
+            spec = resolve_voice(name, root=root)
+        except (KeyError, FileNotFoundError) as exc:
+            return _fail(str(exc))
+    else:
+        spec = find_voice(name, root=root)
+        if spec is None:
+            return _fail(f"unknown voice: {name}")
+    return _ok(voice=spec.to_dict())
+
+
+def pack_matrix(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.packaging import pack_queue, write_pack_tickets
+
+    platforms = payload.get("platforms") or [payload.get("platform") or "douyin"]
+    queue = pack_queue(
+        str(payload.get("topic") or payload.get("title") or ""),
+        [str(item) for item in platforms],
+        description=str(payload.get("description") or ""),
+        accounts=payload.get("accounts"),
+        media_path=str(payload.get("media_path") or ""),
+    )
+    dest = payload.get("dest_dir")
+    tickets: list[str] = []
+    if dest:
+        tickets = [str(path) for path in write_pack_tickets(queue, Path(str(dest)))]
+    return _ok(queue=queue.to_dict(), tickets=tickets)
 
 
 def freeze_profile(payload: dict[str, Any]) -> dict[str, Any]:
@@ -278,41 +404,47 @@ def verify_profile(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def nle_recut(payload: dict[str, Any]) -> dict[str, Any]:
-    """ChatCut:按时间线重导出,不是再跑一条管线。"""
-    clips = [Path(str(p)) for p in (payload.get("clips") or []) if str(p)]
+    """ChatCut:按时间线 trim/concat/BGM 重导出,不是再跑一条管线。"""
+    from hevi.studio.nle import ffmpeg_recut_args, plan_recut
+
     dest = Path(str(payload.get("output_path") or "output/nle/recut.mp4"))
-    existing = [p for p in clips if p.exists() and p.stat().st_size > 0]
-    if not existing:
-        return _fail("no clip files")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if len(existing) == 1:
-        if existing[0].resolve() != dest.resolve():
-            shutil.copyfile(existing[0], dest)
-        return _ok(video_path=str(dest), clips=1)
-    if not shutil.which("ffmpeg"):
-        return _fail("ffmpeg not on PATH")
-    listing = dest.with_suffix(".txt")
-    listing.write_text(
-        "".join(f"file '{p.resolve()}'\n" for p in existing),
-        encoding="utf-8",
+    raw_clips = payload.get("clips") or []
+    if raw_clips and isinstance(raw_clips[0], str):
+        planned = [
+            {
+                "track": "video",
+                "action": "keep",
+                "source": path,
+                "source_in_s": 0.0,
+                "duration_s": payload.get("duration_s") or 1.0,
+            }
+            for path in raw_clips
+            if str(path)
+        ]
+    else:
+        planned = [item for item in raw_clips if isinstance(item, dict)]
+    plan = plan_recut(
+        planned,
+        bgm=str(payload.get("bgm") or ""),
+        output=str(dest),
+        film=str(payload.get("film") or ""),
     )
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-i",
-        str(listing),
-        "-c",
-        "copy",
-        str(dest),
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    if not plan.segments:
+        return _fail("no clip files", plan=plan.to_dict())
+    existing = [Path(seg.source) for seg in plan.segments if Path(seg.source).exists()]
+    if len(existing) == 1 and len(plan.segments) == 1 and not plan.bgm:
+        src = existing[0]
+        if src.resolve() != dest.resolve():
+            shutil.copyfile(src, dest)
+        return _ok(video_path=str(dest), clips=1, plan=plan.to_dict())
+    if not shutil.which("ffmpeg"):
+        return _fail("ffmpeg not on PATH", plan=plan.to_dict())
+    args = ffmpeg_recut_args(plan)
+    proc = subprocess.run(["ffmpeg", *args], capture_output=True, text=True, check=False)
     if proc.returncode != 0 or not dest.exists():
-        return _fail((proc.stderr or "ffmpeg concat failed")[-400:])
-    return _ok(video_path=str(dest), clips=len(existing))
+        return _fail((proc.stderr or "ffmpeg recut failed")[-400:], plan=plan.to_dict())
+    return _ok(video_path=str(dest), clips=len(plan.segments), plan=plan.to_dict())
 
 
 KIT_HANDLERS: dict[str, Any] = {
@@ -329,6 +461,14 @@ KIT_HANDLERS: dict[str, Any] = {
     "profile.freeze": freeze_profile,
     "profile.verify": verify_profile,
     "nle.recut": nle_recut,
+    "shot.import": shot_import,
+    "avatar.compose_after_qc": compose_after_qc_tool,
+    "pack.matrix": pack_matrix,
+    "asset.pull": pull_asset_pack,
+    "voice.list": list_celeb_voices,
+    "voice.resolve": resolve_celeb_voice,
+    "font.list": list_pack_fonts,
+    "mocap.list": list_pack_mocap,
 }
 
 KIT_SPECS: list[tuple[str, str, str, tuple[str, ...], tuple[str, ...]]] = [
@@ -351,4 +491,18 @@ KIT_SPECS: list[tuple[str, str, str, tuple[str, ...], tuple[str, ...]]] = [
     ("profile.freeze", "profile", "配置冻结+SHA", ("workspace", "project"), ("sha256",)),
     ("profile.verify", "profile", "校验冻结配置", ("resolved_path",), ("passed",)),
     ("nle.recut", "nle", "按时间线 ffmpeg 重导出", ("clips",), ("video_path",)),
+    ("shot.import", "shot", "镜头砖导入解说/通鉴/导演", ("brick",), ("import",)),
+    (
+        "avatar.compose_after_qc",
+        "avatar",
+        "基础片过检后再叠口型",
+        ("base_video", "qc_report"),
+        ("avatar_path",),
+    ),
+    ("pack.matrix", "publish", "分平台标题封面标签+账号队列", ("topic", "platforms"), ("queue",)),
+    ("asset.pull", "asset", "拉取常用资产包(名人音色等)", ("pack",), ("pulled",)),
+    ("voice.list", "voice", "列出名人/常用音色", ("language",), ("voices",)),
+    ("voice.resolve", "voice", "按名解析参考音+转录", ("name",), ("voice",)),
+    ("font.list", "font", "已拉取字幕/手写字体", ("name",), ("fonts",)),
+    ("mocap.list", "motion", "mocap 动作卡", ("name",), ("clips",)),
 ]

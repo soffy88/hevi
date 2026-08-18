@@ -74,9 +74,16 @@ def _job_id_for(output_dir: Path) -> str:
 
 def should_compose_avatar(output_dir: Path, storyboard: Storyboard) -> bool:
     """Preview skips digital-human overlay; full film composes after base QC."""
+    from hevi.studio.compose_gate import should_defer_avatar
+
     if output_dir.name == "preview":
         return False
-    return bool(_presenter_src(storyboard) or _presenter_video_src(storyboard))
+    has_presenter = bool(_presenter_src(storyboard) or _presenter_video_src(storyboard))
+    return should_defer_avatar(
+        preview=False,
+        compose_after_qc=True,
+        has_presenter=has_presenter,
+    )
 
 
 async def _overlay_talking_face(

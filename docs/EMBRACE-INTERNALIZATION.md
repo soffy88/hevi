@@ -302,3 +302,184 @@ wire ② 单项失败记 None 不整门崩溃(ffmpeg 缺失可降级);wire ③ b
   编码与组件是运行时下一步。
 - oil-motion 的"关键画面先行"(确认起/中/终状态再生成连续动作)与 hevi 已有
   INC-001 §B action_beats(首/关/尾帧)同构,无需重复内化。
+
+# Round Script2Video 内核(ViMax 五核 · 3O 内化)
+
+> 来源: HKUDS/ViMax Script2Video 内核。不搬 Idea/Novel/Cameo 入口,
+> 只内化出片内核五样:三联画 / 首末帧拆解 / 机位树 / 过渡视频 / 参考图选择。
+> 分层与 pipeline_lite 同构:`obase ← oprim ← oskill ← omodul ← hevi`。
+
+## 落地
+
+| 五核 | 3O 层 | 落点 |
+|---|---|---|
+| 角色正/侧/背 | oprim `portrait_prompt` + oskill `portrait_triptych` | `hevi/script2video/oprim/portrait_prompt.py` / `oskill/portrait_triptych.py` |
+| 首末帧拆解 | oprim `shot_variation` + oskill `shot_decompose` | `variation.py` / `shot_decompose.py` |
+| 机位树 | oprim `camera_graph` + oskill `camera_tree` | `camera_graph.py` / `oskill/camera_tree.py` |
+| 过渡视频 | oprim `transition_prompt` + oskill `transition_video` | `transition_prompt.py` / `transition_video.py`(video_gen→xfade) |
+| 参考图选择 | oprim `reference_pick`+`image_score` + oskill `reference_select` | 视角几何 / 下标护栏 / 条件 prompt / best-of-k |
+
+| hevi 护城河 | 落点 |
+|---|---|
+| 三件套事务 | `hevi/production/script2video_kernel_workflow.py` |
+| ShotList 投影 | `hevi/director/kernel_bridge.py` |
+| 旧 import 兼容 | `hevi/director/{portrait_triptych,camera_tree,transition_video,image_selector,shot_decompose}.py` |
+
+## 3O 归属(待上游)
+
+| 现驻 hevi | 目标 3O |
+|---|---|
+| `hevi/script2video/schemas.py` | `obase.script2video_schemas` |
+| `hevi/script2video/oprim/*` | `oprim.portrait_prompt` / `shot_variation` / `camera_graph` / `image_score` / `reference_pick` / `transition_prompt` |
+| `hevi/script2video/oskill/*` | `oskill.portrait_triptych` / `shot_decompose` / `camera_tree` / `transition_video` / `reference_select` |
+| `hevi/production/script2video_kernel_workflow.py` | `omodul.script2video_kernel_workflow` |
+| `hevi/director/kernel_bridge.py` | 留 hevi(ShotList / SceneStage 字段是护城河) |
+
+## 诚实边界
+
+- 工作流默认只做**文本规划**(拆镜+机位树+要不要末帧)。肖像/过渡要注入 image_gen / video_gen。
+- `BestImageSelector` 式 VLM 打分未接线;best-of-k 用容器/尺寸启发式,LLM 分可注入。
+- 过渡视频 SceneDetect 抽第二镜首帧未做;xfade 是 ffmpeg 兜底。
+- 未改 `produce()` 主路径行为,导演侧通过 `plan_kernel_from_shot_list` 选用。
+
+# Round ViMax 三适配器(Idea / Novel / AutoCameo · 3O)
+
+> 叠在 Script2Video 内核之上。规划默认可离线(无 LLM);像素仍走已内化的三联画/机位树。
+
+## 落地
+
+| 适配器 | oprim | oskill | omodul / production |
+|---|---|---|---|
+| Idea2Video | `idea_parse`(预算/分场/人名) + `source_route` | `idea_screenwrite` | `plan_idea2video` + `idea2video_workflow` |
+| Novel2Video | `novel_split`(切块/抽取压缩/重叠缝/检索) + `character_fuse` | `novel_adapt`(事件链/场/账本) | `plan_novel2video` + `novel2video_workflow` |
+| AutoCameo | `cameo_bind`(照片→id/角色定位) | `autocameo`(锁身份并入角色表) | `plan_autocameo` + `autocameo_workflow` |
+
+默认预算对齐 ViMax Agent:**1 场 3–5 镜**,用户写明场数才放大。  
+Novel 事件帽 50、每事件最多 5 场;检索分阈值 0.7(无 embedding 时用 token overlap)。  
+Cameo 第一张照片 +「主角/我/宠物」→ protagonist,正面肖像用原图。
+
+## 3O 归属(待上游)
+
+| 现驻 hevi | 目标 3O |
+|---|---|
+| `adapter_schemas.py` | `obase.vimax_adapter_schemas` |
+| `oprim/idea_parse.py` 等 | `oprim.idea_parse` / `novel_split` / `character_fuse` / `cameo_bind` / `source_route` |
+| `oskill/idea_screenwrite.py` 等 | `oskill.idea_screenwrite` / `novel_adapt` / `autocameo` |
+| `production/*2video_workflow.py` / `autocameo_workflow.py` | `omodul.idea2video_workflow` / `novel2video_workflow` / `autocameo_workflow` |
+
+## 诚实边界
+
+- 无 LLM 的故事/事件是脚手架与抽取压缩,不是 ViMax 编剧原文质量。
+- 未接 FAISS/BGE;检索是词重叠。
+- 未改 `produce()`;导演层 `hevi/director/{idea2video,novel2video,autocameo}.py` 是薄转发。
+- 旧 pyc 依赖的 `hevi.agent_runtime.checkpoint` / `render_backend` 未复活。
+
+# Round 接线融合(Idea/Novel/Cameo × 五核 × 主路径)
+
+> 把规划接到真实出片口,而不是停在可调用 API。
+
+## 接线
+
+| 入口 | 做了什么 |
+|---|---|
+| `POST /api/pipeline/generate` `hub_idea2video` | 接受前端已发的 channel;融合后写入 `locked_shot_list` + `kernel_plan` |
+| `plan_from_text` | 附带 `vimax` 融合结果(不改原 shot_prompts,零回归) |
+| 导演分镜草案/重生 | `_attach_kernel_plan` 补 `camera_setup_ref` / `action_beats`,落 `work.kernel_plan` |
+| `POST .../produce` | `character_references` → `character_subject_ids`(锁脸解析吃得到);带上 kernel |
+| `TaskService._resolve_character_reference` | 认 `character_references` 别名 |
+| `POST /subjects/from-photo` | Cameo 补 description + metadata.cameo |
+
+融合入口:`hevi.script2video.omodul.fuse.fuse_production`。
+
+# Round Voice-Pro 配音内核(3O)
+
+> 来源: abus-aikorea/voice-pro(本地 Gradio 配音棚,不是 agent)。
+> 五核:字幕合句+SRT 时钟拼接 / Demucs 人声床混回 / Cosy 三模式+CV3 前缀 /
+> F5 多语目录+多说话人 / 翻译退避保原文。
+
+## 落地
+
+| 五核 | 3O 层 | 落点 |
+|---|---|---|
+| 字幕合句 + 时钟拼接 | oprim `cue_clock`+`timeline_pad` + oskill `subtitle_timeline` | `hevi/voicepro/oprim/cue_clock.py` / `timeline_pad.py` / `oskill/subtitle_timeline.py` |
+| 人声分离 + 盖回伴奏床 | oprim `mix_levels` + oskill `vocal_remix` | `mix_levels.py` / `oskill/vocal_remix.py` |
+| Cosy 零样本/跨语/指令 + CV3 | oprim `cosy_mode` + oskill `cosy_payload` | `cosy_mode.py` / `oskill/cosy_payload.py` |
+| F5 目录 + 多说话人 | oprim `f5_catalog` + oskill `f5_speakers` | `f5_catalog.py` / `data/f5_models.json` / `oskill/f5_speakers.py` |
+| 翻译退避保原文 | oprim `translate_backoff` + oskill `translate_retry` | `translate_backoff.py` / `oskill/translate_retry.py` |
+
+| hevi 护城河 | 落点 |
+|---|---|
+| 三件套事务 | `hevi/production/voicepro_kernel_workflow.py` |
+| 成片导出 | `hevi/dub/translate.py` `dub_video`(合句 / 时钟 / 保床) |
+| Cosy HTTP | `hevi/audio/cosyvoice_service.py` 透传 `inference_mode`/`instruct_text` |
+| Cosy worker | `services/gen_engine/cosy_worker.py` 三模式 + CV3 前缀 |
+| F5 HTTP / worker | `f5_tts_service.py` 按语种点目录;worker 认 `model_name` |
+| explainer / router | `HEVI_COSY_INFERENCE_MODE` / `F5_TTS_MODEL_NAME` |
+
+## 3O 归属(待上游)
+
+| 现驻 hevi | 目标 3O |
+|---|---|
+| `hevi/voicepro/schemas.py` | `obase.voicepro_schemas` |
+| `hevi/voicepro/oprim/*` | `oprim.cue_clock` / `timeline_pad` / `mix_levels` / `cosy_mode` / `f5_catalog` / `translate_backoff` |
+| `hevi/voicepro/oskill/*` | `oskill.subtitle_timeline` / `vocal_remix` / `cosy_payload` / `f5_speakers` / `translate_retry` |
+| `hevi/production/voicepro_kernel_workflow.py` | `omodul.voicepro_kernel_workflow` |
+| `hevi/dub/*` 接线 | 留 hevi(成片导出 / Series 字段是护城河) |
+
+## 诚实边界
+
+- 合句用标点/完整句启发式,不捆绑 spaCy/lingua。
+- Demucs 只构造命令;没装 demucs 时 `keep_bed` 用原片音轨当床。
+- F5 多语权重要宿主机有对应目录,否则 worker 回退 `F5TTS_Base`。
+- 翻译退避默认不睡眠(测试注入 `sleep_fn`);线上漏译才按行重试。
+- 未搬 RVC / MDX / Azure / Gradio UI。
+
+# Round 五样组合核(配方履约 / 镜头砖 / 过检叠人 / NLE / 矩阵包装)
+
+> 外壳(catalog/配方/kit)已在 2026-08-18。本轮让组合发生在主路径上。
+
+## 落地
+
+| 核 | 落点 | 主路径 |
+|---|---|---|
+| 配方真编排 | `hevi/studio/fulfill.py` | `run_slate(execute=True)` / `veya.produce(execute=True)` 跑 L0/cues/故事图,写 dispatch JSON |
+| 镜头出站 | `hevi/studio/brick.py` | `shot.export` 写砖;导入解说 cue / 通鉴镜 / 导演 ShotList |
+| 过检再叠人 | `hevi/studio/compose_gate.py` | 导演 `defer_avatar` 不烤 L6;L8/解说在 QC 后再 `avatar.compose` |
+| 成片可切开 | `hevi/studio/nle.py` + `timeline_from_film` | 导入成片、切点带 `source_in_s`、trim/concat 重导出 |
+| 矩阵包装 | `hevi/studio/packaging.py` | 分平台标题/封面/标签 × 账号队列;交接单带 account/cover_hint |
+
+三件套:`hevi/production/studio_combine_workflow.py`。
+
+## 诚实边界
+
+- `execute=True` 履约到产品规划(cues/L0/故事图),不在 API 进程里烧 GPU 出片。
+- 导演默认仍走 L6 口型;`compose_after_qc=True` 或 `HEVI_COMPOSE_AFTER_QC=1` 才推迟。
+- NLE 重编码要 ffmpeg;BGM 必须是存在的音频文件,标签名不算。
+- 矩阵仍写交接单,不假装 OAuth 上传。
+
+# Round 常用资产包(名人音色)
+
+> Voice-Pro `celebrities30s.zip`(HF `ABUS-AI/CosyVoice`)。目录可离线检索,音频按需拉取。
+
+| 入口 | 作用 |
+|---|---|
+| `GET /api/studio/voices` | 列出目录(语种过滤) |
+| `POST /api/studio/assets/pull` | 拉 zip、解压、登记 `kind=voice` |
+| `voice.list` / `voice.resolve` / `asset.pull` | 工具箱同能力 |
+| `F5_TTS_CELEB` / `COSY_CELEB` / `celeb=` | 解析为 F5/Cosy `voice_ref`+转录 |
+
+默认落盘 `HEVI_ASSET_ROOT` 或 `data/workspace/assets/celebrities30s`。
+
+# Round 常用资产 1–4(样音 / 字体+BGM / 手写体+mocap / 公开域种子片)
+
+| 包 | 来源 | 落点 |
+|---|---|---|
+| `edge-tts-samples` | HF `ABUS-AI/CosyVoice` | 试听 mp3（多语 Neural） |
+| `kokoro-tts-samples` | 同上 | Kokoro 试听 |
+| `subtitle-fonts` | MPT BeVietnam / Charm（开源） | `assets/subtitle-fonts`；`HEVI_SUBTITLE_FONT_FILE` |
+| `stock-bgm` | MPT `resource/songs` 前 10 条 | 同时镜像 `assets/audio/bgm/stock` |
+| `handwrite-font` | OpenMontage Patrick Hand (OFL) | `font.list` / `resolve_font("handwrite")` |
+| `mocap-clips` | ink-theater 12 张动作卡 | `mocap.list` |
+| `open-corpus-seed` | NASA images API + Wikimedia + Archive.org | `data/workspace/assets/open-corpus-seed` |
+
+`GET /api/studio/packs` 列包；`POST /api/studio/assets/pull` `{pack}` 拉取。

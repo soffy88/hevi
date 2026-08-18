@@ -176,13 +176,17 @@ async def stage_runtime(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
 
 
 async def stage_dispatch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
-    """排产交接:不重跑产品线,只签发工单给既有 tongjian/shortdrama/explainer。"""
+    """排产交接:execute 时消费工单,跑产品适配器(L0/cues/故事图)。"""
     handoff = str(data.get("handoff") or "none")
     order = {
         "target": handoff,
         "line_id": data.get("line_id"),
         "slate_id": data.get("slate_id"),
         "topic": data.get("topic"),
+        "source_text": data.get("source_text"),
+        "source_name": data.get("source_name"),
+        "manuscript": data.get("manuscript"),
+        "script_lines": data.get("script_lines") or [],
         "video_provider": data.get("video_provider") or "auto",
         "render_runtime": data.get("render_runtime") or "remotion",
         "bound_assets": data.get("bound_assets") or [],
@@ -195,7 +199,13 @@ async def stage_dispatch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
         else None,
         "hyperframes": data.get("hyperframes"),
     }
-    return {"production_order": order}
+    fulfill: dict[str, Any] = {"status": "issued", "target": handoff}
+    if data.get("execute"):
+        from hevi.studio.fulfill import fulfill_order
+
+        dest = data.get("output_dir") or f"output/studio/{data.get('slate_id') or 'order'}"
+        fulfill = await fulfill_order(order, execute=True, output_dir=dest)
+    return {"production_order": order, "fulfill": fulfill}
 
 
 async def stage_publish(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:

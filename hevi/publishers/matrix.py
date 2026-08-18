@@ -69,6 +69,8 @@ class MatrixPublisher(Publisher):
             "title": title,
             "description": description,
             "tags": list(tags or []),
+            "account": str(meta.get("account") or ""),
+            "cover_hint": str(meta.get("cover_hint") or ""),
             "meta": {k: v for k, v in meta.items() if isinstance(v, (str, int, float, bool))},
         }
         ticket = media_path.with_suffix(media_path.suffix + f".{self.name}.publish.json")

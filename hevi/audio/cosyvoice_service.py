@@ -52,6 +52,12 @@ def _serialize_script(script: list[Any]) -> list[dict[str, Any]]:
             row["ref_text"] = str(line.ref_text)
         if getattr(line, "speed", None):
             row["speed"] = float(line.speed)
+        if getattr(line, "inference_mode", None):
+            row["inference_mode"] = str(line.inference_mode)
+        if getattr(line, "instruct_text", None):
+            row["instruct_text"] = str(line.instruct_text)
+        if getattr(line, "prompt_text", None):
+            row["prompt_text"] = str(line.prompt_text)
         rows.append(row)
     return rows
 
@@ -74,8 +80,14 @@ async def cosyvoice_synthesize(
 
     cfg = config or {}
     model_choice = str(cfg.get("model") or "").strip()
+    env_mode = os.environ.get("HEVI_COSY_INFERENCE_MODE") or ""
+    default_mode = str(cfg.get("inference_mode") or env_mode).strip()
+    rows = _serialize_script(script)
+    if default_mode:
+        for row in rows:
+            row.setdefault("inference_mode", default_mode)
     payload = {
-        "script": _serialize_script(script),
+        "script": rows,
         "config": {
             "model_dir": cfg.get("COSYVOICE_MODEL_DIR")
             or os.environ.get("COSYVOICE_MODEL_DIR")
@@ -86,6 +98,7 @@ async def cosyvoice_synthesize(
                 if cfg.get("COSYVOICE_USE_WATERMARK") is not None
                 else watermark
             ),
+            "inference_mode": default_mode or None,
         },
     }
 

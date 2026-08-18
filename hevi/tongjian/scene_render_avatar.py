@@ -939,6 +939,7 @@ async def build_frame_manifest_avatar(
     # 治"全是大头对白、没有场景/动作镜头"(用户要求电影语言:开场空镜、人物动作、
     # 刺杀/擒拿等动作镜头,不要旁白念白)。silent_action 下动作镜头时长按视觉节拍给,
     # 不跟旁白文字长度走。
+    defer_avatar = bool(_p(config, "defer_avatar", False))
     non_dialogue_mode = str(_p(config, "non_dialogue_mode", "narrator"))
     # 关键帧引擎开关(用户 2026-07-15 要求可切换、不写死):"local"=本地 sdxl_local+IP-Adapter
     # (免费,默认);"cloud"=云端 qwen-image-edit(精确姿势/多脸更强,随时可切回)。见 _edit_keyframe。
@@ -1122,19 +1123,20 @@ async def build_frame_manifest_avatar(
                         negative_prompt=shot.negative_prompt,
                     )
                 talk = work / f"{sid}_talk.mp4"
-                if not talk.exists():
-                    await _render_dialogue_talk(
-                        image_path=kf,
-                        text=text,
-                        output_path=talk,
-                        duration=dur,
-                        resolution=reso,
-                        style=style,
-                        emotion=emotion,
-                        per_char=per_char,
-                        concat_fn=_concat_clips,
-                    )
-                _fit_dialogue(talk, clip, w, h)
+                if not defer_avatar:
+                    if not talk.exists():
+                        await _render_dialogue_talk(
+                            image_path=kf,
+                            text=text,
+                            output_path=talk,
+                            duration=dur,
+                            resolution=reso,
+                            style=style,
+                            emotion=emotion,
+                            per_char=per_char,
+                            concat_fn=_concat_clips,
+                        )
+                    _fit_dialogue(talk, clip, w, h)
             else:
                 # 非对白镜头:先出"静默动作/空镜"画面(vis)——角色闭嘴做动作 or 纯场景
                 # 空镜。再按 non_dialogue_mode 决定挂史官旁白配音,还是纯静默(见 vis 之后)。
@@ -1466,7 +1468,7 @@ async def build_frame_manifest_avatar(
                 ShotFrame(
                     shot_id=sid,
                     scene_id=shot.scene_id,
-                    clip_path=str(clip),
+                    clip_path="" if defer_avatar else str(clip),
                     frame_path=str(first),
                     characters=shot.characters,
                     character_consistency=consistency,

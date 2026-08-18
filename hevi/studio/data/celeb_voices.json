@@ -1,0 +1,30 @@
+{
+  "voices": [
+    {"id": "yang-mi", "display": "杨幂", "aliases": ["Yang Mi", "yang mi"], "language": "zh", "folder": "Chinese", "stem": "Yang Mi"},
+    {"id": "zhao-liying", "display": "赵丽颖", "aliases": ["Zhao Liying"], "language": "zh", "folder": "Chinese", "stem": "Zhao Liying"},
+    {"id": "jolin-tsai", "display": "蔡依林", "aliases": ["Jolin Tsai"], "language": "zh", "folder": "Chinese", "stem": "Jolin Tsai"},
+    {"id": "dilraba", "display": "迪丽热巴", "aliases": ["Dilraba Dilmurat", "Dilraba"], "language": "zh", "folder": "Chinese", "stem": "Dilraba Dilmurat"},
+    {"id": "li-yifeng", "display": "李易峰", "aliases": ["Li Yifeng"], "language": "zh", "folder": "Chinese", "stem": "Li Yifeng"},
+    {"id": "iu", "display": "IU", "aliases": ["아이유"], "language": "ko", "folder": "Korean", "stem": "IU"},
+    {"id": "bts-rm", "display": "BTS RM", "aliases": ["RM"], "language": "ko", "folder": "Korean", "stem": "BTS RM"},
+    {"id": "bts-jin", "display": "BTS Jin", "aliases": ["진", "Jin"], "language": "ko", "folder": "Korean", "stem": "BTS Jin"},
+    {"id": "lee-byung-hun", "display": "李炳宪", "aliases": ["LeeByungHun", "이병헌"], "language": "ko", "folder": "Korean", "stem": "LeeByungHun"},
+    {"id": "lee-jung-jae", "display": "李政宰", "aliases": ["LeeJungJae", "이정재"], "language": "ko", "folder": "Korean", "stem": "LeeJungJae"},
+    {"id": "yoo-jae-suk", "display": "刘在锡", "aliases": ["YouJaeSuk", "유재석"], "language": "ko", "folder": "Korean", "stem": "YouJaeSuk"},
+    {"id": "ayase-haruka", "display": "绫濑遥", "aliases": ["Ayase Haruka", "綾瀬はるか"], "language": "ja", "folder": "Japanese", "stem": "Ayase Haruka"},
+    {"id": "elon-musk", "display": "Elon Musk", "aliases": [], "language": "en", "folder": "English", "stem": "Elon Musk"},
+    {"id": "joe-rogan", "display": "Joe Rogan", "aliases": [], "language": "en", "folder": "English", "stem": "Joe Rogan"},
+    {"id": "sam-altman", "display": "Sam Altman", "aliases": [], "language": "en", "folder": "English", "stem": "Sam Altman"},
+    {"id": "jordan-peterson", "display": "Jordan Peterson", "aliases": [], "language": "en", "folder": "English", "stem": "Jordan Peterson"},
+    {"id": "andrew-huberman", "display": "Andrew Huberman", "aliases": [], "language": "en", "folder": "English", "stem": "Andrew Huberman"},
+    {"id": "mrbeast", "display": "MrBeast", "aliases": [], "language": "en", "folder": "English", "stem": "MrBeast"},
+    {"id": "vitalik", "display": "Vitalik Buterin", "aliases": ["Vitalik"], "language": "en", "folder": "English", "stem": "Vitalik Buterin"},
+    {"id": "yuval-harari", "display": "Yuval Harari", "aliases": [], "language": "en", "folder": "English", "stem": "Yuval Harari"},
+    {"id": "dan-carlin", "display": "Dan Carlin", "aliases": [], "language": "en", "folder": "English", "stem": "Dan Carlin"},
+    {"id": "sam-harris", "display": "Sam Harris", "aliases": [], "language": "en", "folder": "English", "stem": "Sam Harris"},
+    {"id": "stephen-wolfram", "display": "Stephen Wolfram", "aliases": [], "language": "en", "folder": "English", "stem": "Stephen Wolfram"},
+    {"id": "tucker-carlson", "display": "Tucker Carlson", "aliases": [], "language": "en", "folder": "English", "stem": "Tucker Carlson"},
+    {"id": "jeff-bezos", "display": "Jeff Bezos", "aliases": [], "language": "en", "folder": "English", "stem": "Jeff Bezos"},
+    {"id": "mark-zuckerberg", "display": "Mark Zuckerberg", "aliases": [], "language": "en", "folder": "English", "stem": "Mark Zuckerberg"}
+  ]
+}

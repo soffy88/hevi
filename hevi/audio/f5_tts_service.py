@@ -43,6 +43,8 @@ async def f5_tts_synthesize(
     speed: float = 1.0,
     seed: int | None = None,
     timeout_s: float | None = None,
+    model_name: str | None = None,
+    language: str | None = None,
 ) -> Path:
     """委托 GPU 引擎用 F5-TTS 零样本克隆合成一段音频并写入 *output_path*。
 
@@ -72,6 +74,11 @@ async def f5_tts_synthesize(
     files: dict[str, Any] = {
         "reference_audio": (ref.name, ref.read_bytes(), "audio/wav"),
     }
+    chosen = (model_name or os.environ.get("F5_TTS_MODEL_NAME") or "").strip()
+    if not chosen and language:
+        from hevi.voicepro.oskill.f5_speakers import pick_catalog_model
+
+        chosen = pick_catalog_model(language)
     data: dict[str, Any] = {
         "text": text,
         "reference_text": reference_text,
@@ -79,6 +86,8 @@ async def f5_tts_synthesize(
     }
     if seed is not None:
         data["seed"] = str(int(seed))
+    if chosen:
+        data["model_name"] = chosen
 
     try:
         async with httpx.AsyncClient(base_url=_base_url(), timeout=timeout) as client:

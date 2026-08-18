@@ -643,6 +643,8 @@ class TaskService:
         cfg = task["config_json"]
         subject_ids = list(cfg.get("character_subject_ids") or [])
         if not subject_ids:
+            subject_ids = list(cfg.get("character_references") or [])
+        if not subject_ids:
             legacy = cfg.get("subject_id")
             subject_ids = [legacy] if legacy else []
         if not subject_ids:

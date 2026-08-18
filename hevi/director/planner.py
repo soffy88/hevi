@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from hevi.director.creative_orchestration import (
@@ -23,6 +24,7 @@ from hevi.director.director import build_canvas_graph
 from hevi.director.intent import parse_intent
 from hevi.director.producer import produce
 from hevi.director.storyboard import plan_shots
+from hevi.script2video.omodul.fuse import fuse_production
 
 
 async def plan_from_text(
@@ -34,11 +36,22 @@ async def plan_from_text(
     assist_service: Any = None,
 ) -> dict[str, Any]:
     """剧情文本 → {intent, plan, shot_prompts, graph, creative_tool_recommendations,
-    three_view}。graph 可编辑/可执行。"""
+    three_view, vimax}。graph 可编辑/可执行。"""
     intent = await parse_intent(text, llm=llm)
     plan = await produce(**intent)
     shot_prompts = await plan_shots(
         topic=intent["topic"], num_shots=num_shots, style=intent["style"], llm=llm
+    )
+    photos = []
+    if character_reference:
+        ref = Path(character_reference)
+        if ref.exists():
+            photos.append(ref)
+    fused = fuse_production(
+        text,
+        requirement="",
+        style=str(intent.get("style") or ""),
+        photos=photos or None,
     )
     graph = build_canvas_graph(
         plan=plan, shot_prompts=shot_prompts, character_reference=character_reference
@@ -57,4 +70,5 @@ async def plan_from_text(
         "graph": graph,
         "creative_tool_recommendations": recommendations,
         "three_view": three_view,
+        "vimax": fused.to_dict(),
     }

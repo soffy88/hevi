@@ -232,6 +232,7 @@ async def render_director_episode(
     tts_fn: Any = None,
     scene_stage: SceneStageSet | None = None,
     subject3d_views: dict[str, dict[str, str]] | None = None,
+    compose_after_qc: bool | None = None,
 ) -> dict[str, Any]:
     """导演流水线锁定内容 → 通鉴 L3-L8 → 真实成片(对白+口型+按角色配音+情绪)。
 
@@ -347,6 +348,9 @@ async def render_director_episode(
     # subject3d_views 为空(未建 3D 视图)→ 渲染层一律退回正面 2D 真照,行为不变。
     shot_view_by_id = compute_shot_views(shot_list, scene_stage) if scene_stage is not None else {}
 
+    from hevi.studio.compose_gate import apply_compose_after_qc, compose_after_qc_enabled
+
+    defer_avatar = compose_after_qc_enabled(compose_after_qc)
     frame_manifest = await build_frame_manifest_avatar(
         shotlist=shotlist,
         script=script,
@@ -370,6 +374,7 @@ async def render_director_episode(
                 # 走 img2img 从该视图当底图(朝向落地);空/正面/未建 → 退回 IP-Adapter 2D 真照。
                 "shot_view_by_id": shot_view_by_id,
                 "subject3d_views_by_id": subject3d_views or {},
+                "defer_avatar": defer_avatar,
             },
         ),
     )
@@ -395,6 +400,20 @@ async def render_director_episode(
         output_dir=run_dir,
     )
     gate_reports["final"] = g8
+
+    if defer_avatar and getattr(final_video, "video_path", ""):
+        presenter = next(iter(subject_ref_paths.values()), None)
+        wavs = sorted(run_dir.glob("*.wav"))
+        composed = await apply_compose_after_qc(
+            base_video=final_video.video_path,
+            image_path=presenter,
+            audio_path=str(wavs[0]) if wavs else None,
+            output_path=run_dir / "composed_avatar.mp4",
+            qc_report={"passed": bool(getattr(g8, "passed", False))},
+        )
+        gate_reports["compose_after_qc"] = composed
+        if composed.get("status") == "ok" and composed.get("avatar_path"):
+            final_video.video_path = str(composed["avatar_path"])
 
     return {
         "final_video": final_video,

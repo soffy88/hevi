@@ -240,6 +240,9 @@ async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
                         "voice_ref": line.get("voice_ref"),
                         "ref_text": line.get("ref_text"),
                         "speed": line.get("speed", 1.0),
+                        "inference_mode": line.get("inference_mode")
+                        or config.get("inference_mode"),
+                        "instruct_text": line.get("instruct_text"),
                     }
                     for line in script
                 ],
@@ -355,6 +358,7 @@ async def synthesize_f5_tts(
     reference_audio: UploadFile = File(...),
     speed: float = Form(1.0),
     seed: int | None = Form(None),
+    model_name: str | None = Form(None),
 ) -> Response:
     """F5-TTS 零样本音色克隆(引擎侧合成)。
 
@@ -397,6 +401,7 @@ async def synthesize_f5_tts(
             "model_dir": str(model_dir),
             "seed": seed,
             "speed": float(speed),
+            "model_name": (model_name or "").strip() or None,
         },
         python=_ai_python(),
     )

@@ -33,8 +33,18 @@ def _safe_json_obj(content: str | None) -> dict[str, Any]:
         return {}
 
 
-async def translate_cues(cues: list[Cue], *, target_language: str, llm: Any = None) -> list[Cue]:
-    """把字幕 cue 文本批量翻译到 target_language,保持时间码。LLM 失败/漏译 → 原文兜底。"""
+async def translate_cues(
+    cues: list[Cue],
+    *,
+    target_language: str,
+    llm: Any = None,
+    retry_missing: bool = True,
+    sleep_fn: Any = None,
+) -> list[Cue]:
+    """把字幕 cue 文本批量翻译到 target_language,保持时间码。
+
+    批量漏译再按行退避重试(Voice-Pro);整批失败或单行仍空 → 原文兜底。
+    """
     if not cues:
         return []
     if llm is None:
@@ -48,18 +58,57 @@ async def translate_cues(cues: list[Cue], *, target_language: str, llm: Any = No
         '{"0":"译文",...},键为原编号,值为译文,不要额外文字。\n'
         + "\n".join(f"{i}: {t}" for i, t in enumerate(texts))
     )
-    translated = list(texts)  # 兜底:原文
+    batch: dict[int, str] = {}
     try:
         resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=2048)
         data = _safe_json_obj(resp.get("content") if hasattr(resp, "get") else str(resp))
         for i in range(len(texts)):
             v = data.get(str(i))
             if isinstance(v, str) and v.strip():
-                translated[i] = v.strip()
+                batch[i] = v.strip()
     except Exception as e:
         logger.warning("translate LLM failed, keeping source text: %s", e)
 
-    return [Cue(start=c.start, end=c.end, text=t) for c, t in zip(cues, translated, strict=False)]
+    if retry_missing and any(i not in batch for i in range(len(texts))):
+        from hevi.voicepro.oskill.translate_retry import fill_missing_lines
+
+        async def _one(text: str) -> str:
+            one_prompt = (
+                f"把下面字幕翻译成{target_language}。只输出译文,不要额外文字。\n{text}"
+            )
+            resp = await llm(messages=[{"role": "user", "content": one_prompt}], max_tokens=512)
+            content = resp.get("content") if hasattr(resp, "get") else str(resp)
+            return str(content or "").strip()
+
+        rows = await fill_missing_lines(
+            texts,
+            batch,
+            _one,
+            sleep_fn=sleep_fn,
+        )
+        translated = [row.translated for row in rows]
+    else:
+        translated = [batch.get(i, texts[i]) for i in range(len(texts))]
+
+    return [
+        Cue(start=c.start, end=c.end, text=t, emotion=c.emotion)
+        for c, t in zip(cues, translated, strict=False)
+    ]
+
+
+def _to_timed(cues: list[Cue]) -> list[Any]:
+    from hevi.voicepro.schemas import TimedCue
+
+    return [
+        TimedCue(start=c.start, end=c.end, text=c.text, emotion=c.emotion)
+        for c in cues
+    ]
+
+
+def _from_timed(cues: list[Any]) -> list[Cue]:
+    return [
+        Cue(start=c.start, end=c.end, text=c.text, emotion=c.emotion) for c in cues
+    ]
 
 
 async def dub_video(
@@ -72,10 +121,16 @@ async def dub_video(
     synth_fn: Any = None,
     mux_fn: Any = None,
     model_dir: str | None = None,
+    sentence_merge: bool = True,
+    keep_clock: bool = False,
+    keep_bed: bool = False,
+    bed_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """成片 → 目标语种配音版。transcribe/synth/mux 可注入;默认用存量实现。
 
     返回 {output, language, cues}。任一步失败向上抛(导出是显式动作,失败该告知)。
+    sentence_merge:Voice-Pro 合句后再 TTS。keep_clock:按 SRT 时钟垫静音。
+    keep_bed:新配音盖回原声/伴奏床,而不是整轨替换。
     """
     video_path = Path(video_path)
     output_path = Path(output_path)
@@ -88,14 +143,34 @@ async def dub_video(
 
     cues = transcribe_fn(video_path)
     tcues = await translate_cues(cues, target_language=target_language, llm=llm)
+    if sentence_merge and tcues:
+        from hevi.voicepro.oskill.subtitle_timeline import merge_and_split_cues
+
+        tcues = _from_timed(merge_and_split_cues(_to_timed(tcues), lang=None))
 
     dub_audio = output_path.with_suffix(".dub.wav")
     if synth_fn is None:
-        from hevi.dub._synth import synth_cues_edge_tts as synth_fn
+        if keep_clock:
+            from hevi.dub._synth import synth_cues_on_timeline as synth_fn
+        else:
+            from hevi.dub._synth import synth_cues_edge_tts as synth_fn
     await synth_fn(cues=tcues, language=target_language, output_path=dub_audio)
 
     if mux_fn is None:
-        from hevi.dub._mux import mux_audio_into_video as mux_fn
-    await mux_fn(video=video_path, audio=dub_audio, output=output_path)
+        if keep_bed:
+            from hevi.dub._mux import mux_remix_into_video as mux_fn
+
+            await mux_fn(
+                video=video_path,
+                audio=dub_audio,
+                output=output_path,
+                bed=Path(bed_path) if bed_path else None,
+            )
+        else:
+            from hevi.dub._mux import mux_audio_into_video as mux_fn
+
+            await mux_fn(video=video_path, audio=dub_audio, output=output_path)
+    else:
+        await mux_fn(video=video_path, audio=dub_audio, output=output_path)
 
     return {"output": str(output_path), "language": target_language, "cues": len(tcues)}

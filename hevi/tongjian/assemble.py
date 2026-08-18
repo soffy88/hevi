@@ -402,7 +402,7 @@ async def build_final_video(
     # avatar 渲染模式(L6 cloud_avatar):每镜是自带配音+口型的 talking clip → 直接 xfade 拼接,
     # 跳过"静帧化 + 另配旁白/字幕混音"这条(音已在 clip 里)。
     if any(f.clip_path for f in frame_manifest.frames):
-        return await _assemble_avatar_clips(
+        assembled = await _assemble_avatar_clips(
             shotlist,
             frame_manifest,
             timeline,
@@ -414,6 +414,7 @@ async def build_final_video(
             fps=fps,
             vlm=vlm,
         )
+        return await _maybe_compose_final(assembled[0], assembled[1], output_dir)
 
     shot_segments: list[ShotSegment] = []
     for shot in shotlist.shots:
@@ -472,7 +473,31 @@ async def build_final_video(
     gate_result = await gate_final_video(
         final_video, timeline, script, narration_path, vlm=vlm, hotwords=hotwords
     )
-    return final_video, gate_result
+    return await _maybe_compose_final(final_video, gate_result, output_dir)
+
+
+async def _maybe_compose_final(
+    final_video: FinalVideo,
+    gate: GateResult,
+    output_dir: Path,
+) -> tuple[FinalVideo, GateResult]:
+    """HEVI_COMPOSE_AFTER_QC=1 时基础片过检后再叠口型,不改默认 L6。"""
+    from hevi.studio.compose_gate import apply_compose_after_qc, compose_after_qc_enabled
+
+    if not compose_after_qc_enabled(None) or not final_video.video_path:
+        return final_video, gate
+    image = next(iter(sorted(output_dir.glob("*.png"))), None)
+    audio = next(iter(sorted(output_dir.glob("*.wav"))), None)
+    composed = await apply_compose_after_qc(
+        base_video=final_video.video_path,
+        image_path=image,
+        audio_path=audio,
+        output_path=output_dir / "composed_avatar.mp4",
+        qc_report={"passed": gate.passed},
+    )
+    if composed.get("status") == "ok" and composed.get("avatar_path"):
+        final_video.video_path = str(composed["avatar_path"])
+    return final_video, gate
 
 
 # ── G8 终审门 ────────────────────────────────────────────────────────────

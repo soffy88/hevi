@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from services.gen_engine.cosy_worker import _detect_family
+from services.gen_engine.cosy_worker import _detect_family, _normalize_mode
+from services.gen_engine.f5_worker import _resolve_checkpoint
 
 
 def test_detect_family_cosyvoice3(tmp_path: Path) -> None:
@@ -34,3 +35,29 @@ def test_detect_family_old_layout_raises_actionable(tmp_path: Path) -> None:
 def test_detect_family_empty_dir_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="cosyvoice2.yaml"):
         _detect_family(tmp_path)
+
+
+def test_normalize_mode_aliases() -> None:
+    assert _normalize_mode("Instruct") == "instruct"
+    assert _normalize_mode("Cross-Lingual") == "cross_lingual"
+    assert _normalize_mode("zero-shot") == "zero_shot"
+    assert _normalize_mode("") == ""
+
+
+def test_f5_resolve_checkpoint_falls_back(tmp_path: Path) -> None:
+    ckpt, vocab, cfg = _resolve_checkpoint(tmp_path, "SWivid/F5-TTS_v1")
+    assert ckpt.name == "model_1200000.safetensors"
+    assert vocab.name == "vocab.txt"
+    assert cfg["dim"] == 1024
+
+
+def test_f5_resolve_checkpoint_uses_v1_when_present(tmp_path: Path) -> None:
+    ckpt_dir = tmp_path / "F5TTS_v1_Base"
+    ckpt_dir.mkdir()
+    ckpt = ckpt_dir / "model_1250000.safetensors"
+    vocab = ckpt_dir / "vocab.txt"
+    ckpt.write_bytes(b"x")
+    vocab.write_text("a", encoding="utf-8")
+    got_ckpt, got_vocab, _cfg = _resolve_checkpoint(tmp_path, "SWivid/F5-TTS_v1")
+    assert got_ckpt == ckpt
+    assert got_vocab == vocab

@@ -80,6 +80,17 @@ def _prepare_prompt_wav(ref_audio: Path, tmp_dir: Path) -> Path:
     return prompt_wav
 
 
+def _normalize_mode(raw: str | None) -> str:
+    key = (raw or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if key in {"instruct", "instruct2"}:
+        return "instruct"
+    if key in {"cross_lingual", "crosslingual"}:
+        return "cross_lingual"
+    if key in {"zero_shot", "zeroshot"}:
+        return "zero_shot"
+    return ""
+
+
 def _synthesize_line(
     cosyvoice: Any,
     family: str,
@@ -88,23 +99,34 @@ def _synthesize_line(
     ref_text: str | None,
     speed: float,
     tmp_dir: Path,
+    inference_mode: str | None = None,
+    instruct_text: str | None = None,
 ) -> Any:
     """单行合成, 返回 tts_speech tensor(24k / 22.05k, 取决于模型)。"""
     import torch  # type: ignore[import-not-found]
 
     prompt_wav = _prepare_prompt_wav(voice_ref, tmp_dir)
     prefix = _CV3_SYSTEM_PROMPT if family == "cosyvoice3" else ""
+    mode = _normalize_mode(inference_mode)
+    if not mode:
+        mode = "instruct" if instruct_text else ("zero_shot" if ref_text else "cross_lingual")
     chunks: list[Any] = []
-    if ref_text:
-        # zero-shot: 参考文本条件(发音/语气更贴参考); CV3 前缀系统提示词。
-        gen = cosyvoice.inference_zero_shot(
-            text, prefix + ref_text, str(prompt_wav),
+    if mode == "instruct":
+        instruct = instruct_text or ""
+        instruct = prefix + instruct if family == "cosyvoice3" else instruct
+        gen = cosyvoice.inference_instruct2(
+            text, instruct, str(prompt_wav),
+            stream=False, speed=speed,
+        )
+    elif mode == "cross_lingual":
+        gen = cosyvoice.inference_cross_lingual(
+            prefix + text, str(prompt_wav),
             stream=False, speed=speed, text_frontend=False,
         )
     else:
-        # cross-lingual: 无参考文本(音色克隆不需要知道参考说了什么)。
-        gen = cosyvoice.inference_cross_lingual(
-            prefix + text, str(prompt_wav),
+        # zero-shot: 参考文本条件(发音/语气更贴参考); CV3 前缀系统提示词。
+        gen = cosyvoice.inference_zero_shot(
+            text, prefix + (ref_text or ""), str(prompt_wav),
             stream=False, speed=speed, text_frontend=False,
         )
     for chunk in gen:
@@ -165,6 +187,8 @@ def _main(args_path: str) -> None:
                     line.get("ref_text") or None,
                     float(line.get("speed", 1.0)),
                     tmp_dir,
+                    inference_mode=line.get("inference_mode"),
+                    instruct_text=line.get("instruct_text"),
                 )
             )
 
