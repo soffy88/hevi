@@ -197,3 +197,91 @@ export function makeSignCanvas(spec: SignSpec): HTMLCanvasElement | null {
   ctx.shadowBlur = 0;
   return canvas;
 }
+
+/** 多行文本换行(按码点宽度估算,纯逻辑可测)。 */
+export function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const ch of [...text]) {
+    if (ch === '\n') {
+      lines.push(line);
+      line = '';
+      continue;
+    }
+    if (ctx.measureText(line + ch).width > maxWidth && line) {
+      lines.push(line);
+      line = ch;
+    } else {
+      line += ch;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/**
+ * 生成录像带背封(翻面可见):深色底 + 图标区 + 标题 + 描述/prompt 多行 + 出品条。
+ * 失败返回 null。
+ */
+export function makeBackCoverCanvas(args: {
+  title: string;
+  description?: string;
+  prompt?: string;
+  color: string;
+  icon: string;
+}): HTMLCanvasElement | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 768;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  // 底:分区色暗化渐变
+  const bg = shadeHex(args.color, -55);
+  const g = ctx.createLinearGradient(0, 0, 0, 768);
+  g.addColorStop(0, bg);
+  g.addColorStop(1, shadeHex(args.color, -70));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 512, 768);
+
+  // 四边细框
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(10, 10, 492, 748);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // 顶部图标区
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = '600 84px sans-serif';
+  ctx.fillText(args.icon, 256, 130);
+
+  // 标题(超长截断)
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '700 40px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText(truncateTitle(args.title, 12), 256, 250);
+
+  // 分隔线
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(80, 300);
+  ctx.lineTo(432, 300);
+  ctx.stroke();
+
+  // 描述 + prompt 多行正文(自动换行)
+  const body = [args.description, args.prompt].filter(Boolean).join('\n\n');
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.font = '28px "PingFang SC","Microsoft YaHei",sans-serif';
+  const lines = wrapText(ctx, body || '暂无简介', 400).slice(0, 12);
+  lines.forEach((ln, i) => ctx.fillText(ln, 256, 380 + i * 40));
+
+  // 底部出品条
+  ctx.fillStyle = shadeHex(args.color, -45);
+  ctx.fillRect(0, 700, 512, 68);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.font = '700 24px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('HEVI ORIGINAL · 成片', 256, 734);
+  return canvas;
+}

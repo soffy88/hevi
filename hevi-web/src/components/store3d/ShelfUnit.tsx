@@ -13,18 +13,17 @@ import { SHELF, layoutTapes, sectionCenterX, type StoreSection } from './shelfPl
 import { VHSTape } from './VHSTape';
 import { canvasToTexture } from './tapeTextures';
 import { makeSignCanvas } from './tapeCover';
+import type { StoreTheme } from './storeThemes';
 
 export interface ShelfUnitProps {
   section: StoreSection;
   sectionIndex: number;
   selectedId: string | null;
+  theme: StoreTheme;
   onSelect: (item: GalleryItem) => void;
 }
 
-const WOOD = '#5b4632';
-const WOOD_DARK = '#40321f';
-
-export function ShelfUnit({ section, sectionIndex, selectedId, onSelect }: ShelfUnitProps) {
+export function ShelfUnit({ section, sectionIndex, selectedId, theme, onSelect }: ShelfUnitProps) {
   const tapes = layoutTapes(section);
   const signTex = useMemo(
     () =>
@@ -39,26 +38,26 @@ export function ShelfUnit({ section, sectionIndex, selectedId, onSelect }: Shelf
       {/* 背板 */}
       <mesh position={[0, SHELF.SECTION_H / 2, -SHELF.SECTION_D / 2]}>
         <boxGeometry args={[SHELF.SECTION_W, SHELF.SECTION_H, 0.06]} />
-        <meshStandardMaterial color={WOOD_DARK} roughness={0.92} />
+        <meshStandardMaterial color={theme.woodDark} roughness={0.92} />
       </mesh>
       {/* 双侧柱 */}
       {[-1, 1].map((side) => (
         <mesh key={side} position={[side * (SHELF.SECTION_W / 2 - 0.03), SHELF.SECTION_H / 2, 0]}>
           <boxGeometry args={[0.06, SHELF.SECTION_H, SHELF.SECTION_D]} />
-          <meshStandardMaterial color={WOOD} roughness={0.85} />
+          <meshStandardMaterial color={theme.wood} roughness={0.85} />
         </mesh>
       ))}
       {/* 搁板 */}
       {SHELF.SHELF_YS.map((y) => (
         <mesh key={y} position={[0, y, 0]}>
           <boxGeometry args={[SHELF.SECTION_W, 0.05, SHELF.SECTION_D]} />
-          <meshStandardMaterial color={WOOD} roughness={0.85} />
+          <meshStandardMaterial color={theme.wood} roughness={0.85} />
         </mesh>
       ))}
       {/* 顶板 */}
       <mesh position={[0, SHELF.SECTION_H + 0.025, 0]}>
         <boxGeometry args={[SHELF.SECTION_W, 0.05, SHELF.SECTION_D]} />
-        <meshStandardMaterial color={WOOD} roughness={0.85} />
+        <meshStandardMaterial color={theme.wood} roughness={0.85} />
       </mesh>
       {/* 分区标牌 */}
       {signTex && (
@@ -74,6 +73,7 @@ export function ShelfUnit({ section, sectionIndex, selectedId, onSelect }: Shelf
           item={item}
           position={position}
           selected={selectedId === item.item_id}
+          dimmed={selectedId === item.item_id}
           onSelect={onSelect}
         />
       ))}

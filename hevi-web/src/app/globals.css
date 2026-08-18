@@ -1780,3 +1780,23 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
   border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.5); color: #fff; font-size: 15px; cursor: pointer; }
 .hevi-store-play__close:hover { background: rgba(255,255,255,0.15); }
 @media (max-width: 640px) { .hevi-store-detail__card { flex-direction: column; } .hevi-store-detail__thumb { flex: 0 0 auto; width: 120px; } }
+
+/* ── 店面控件:模式 / 主题 / 统计 / 行走提示 ──────────── */
+.hevi-store__controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hevi-store__modes { display: flex; gap: 6px; }
+.hevi-store__modes button, .hevi-store__theme {
+  padding: 6px 12px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--card); color: var(--muted-foreground); font-size: 12.5px; cursor: pointer;
+}
+.hevi-store__modes button[data-on="true"] {
+  border-color: var(--primary); color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 12%, transparent); font-weight: 700;
+}
+.hevi-store__theme:hover { border-color: var(--primary); color: var(--primary); }
+.hevi-store__stat { margin-left: auto; font-size: 12px; color: var(--muted-foreground); }
+.hevi-store__walktip {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  padding: 6px 14px; border-radius: 999px; background: rgba(0,0,0,0.55); color: rgba(255,255,255,0.9);
+  font-size: 12px; pointer-events: none; white-space: nowrap;
+}
+@media (max-width: 720px) { .hevi-store__stat { margin-left: 0; flex-basis: 100%; } }

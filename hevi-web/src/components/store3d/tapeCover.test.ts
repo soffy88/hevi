@@ -5,9 +5,11 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   truncateTitle,
   shadeHex,
+  wrapText,
   makeTapeCoverCanvas,
   makeSpineCanvas,
   makeSignCanvas,
+  makeBackCoverCanvas,
 } from './tapeCover';
 
 function mockCanvas2d() {
@@ -15,6 +17,11 @@ function mockCanvas2d() {
     createLinearGradient: () => ({ addColorStop: vi.fn() }),
     fillRect: vi.fn(),
     fillText: vi.fn(),
+    strokeRect: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    stroke: vi.fn(),
     measureText: (s: string) => ({ width: [...s].length * 10 }),
   };
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
@@ -72,5 +79,41 @@ describe('canvas 生成(jsdom mock)', () => {
     expect(makeSpineCanvas('黑洞的秘密', '#1e40af')).not.toBeNull();
     expect(makeSignCanvas({ label: '长视频', icon: '▶', color: '#1e40af' })).not.toBeNull();
     expect(makeSpineCanvas('黑洞的秘密', '#1e40af')).not.toBeNull();
+  });
+});
+
+describe('wrapText 多行换行', () => {
+  const fakeCtx = { measureText: (s: string) => ({ width: [...s].length * 10 }) } as unknown as CanvasRenderingContext2D;
+
+  it('按最大宽度折行', () => {
+    const lines = wrapText(fakeCtx, '从地球出发逐级放大到可观测宇宙边缘', 60);
+    expect(lines.length).toBeGreaterThan(1);
+    for (const ln of lines) expect([...ln].length * 10).toBeLessThanOrEqual(60);
+  });
+
+  it('短文本单行返回', () => {
+    expect(wrapText(fakeCtx, '短句', 100)).toEqual(['短句']);
+  });
+
+  it('显式换行符分段', () => {
+    expect(wrapText(fakeCtx, '第一段\n第二段', 200)).toEqual(['第一段', '第二段']);
+  });
+
+  it('空串返回空数组', () => {
+    expect(wrapText(fakeCtx, '', 200)).toEqual([]);
+  });
+});
+
+describe('makeBackCoverCanvas 背封', () => {
+  it('mock context 下可生成', () => {
+    mockCanvas2d();
+    const canvas = makeBackCoverCanvas({ title: '宇宙的尺度', description: '从地球到宇宙', color: '#1e40af', icon: '▶' });
+    expect(canvas).not.toBeNull();
+    expect(canvas!.width).toBe(512);
+    expect(canvas!.height).toBe(768);
+  });
+
+  it('无 2D context 时降级 null', () => {
+    expect(makeBackCoverCanvas({ title: 'x', color: '#000', icon: '▶' })).toBeNull();
   });
 });

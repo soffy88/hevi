@@ -1,9 +1,8 @@
 /**
  * VHSTape — 货架上的单盘录像带盒子(3D)
  *
- * 六面材质:[+x 右书脊, -x 左书脊, +y 顶, -y 底, +z 封面, -z 背封]。
  * 封面 = thumbnail(异步加载,失败/缺失用程序化封面兜底),书脊 = 程序化竖排标题。
- * hover 抬升 + 指针样式,click 上报选中。
+ * hover 抬升 + 指针样式,click 上报选中。被"拿起"时(dimmed)半透明留位。
  */
 'use client';
 
@@ -14,15 +13,17 @@ import type { GalleryItem } from '@/types/api';
 import { CATEGORY_META, SHELF } from './shelfPlan';
 import { makeSpineCanvas, makeTapeCoverCanvas } from './tapeCover';
 import { canvasToTexture, loadRemoteTexture } from './tapeTextures';
+import { buildTapeMaterials } from './tapeMaterials';
 
 export interface VHSTapeProps {
   item: GalleryItem;
   position: [number, number, number];
   selected: boolean;
+  dimmed?: boolean;
   onSelect: (item: GalleryItem) => void;
 }
 
-export function VHSTape({ item, position, selected, onSelect }: VHSTapeProps) {
+export function VHSTape({ item, position, selected, dimmed = false, onSelect }: VHSTapeProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const meta = CATEGORY_META[item.category in CATEGORY_META ? item.category : 'image'];
@@ -58,24 +59,22 @@ export function VHSTape({ item, position, selected, onSelect }: VHSTapeProps) {
     [item.title, meta.color],
   );
 
-  const materials = useMemo(() => {
-    const body = new THREE.MeshStandardMaterial({ color: '#3b332b', roughness: 0.85 });
-    const front = coverTex
-      ? new THREE.MeshStandardMaterial({ map: coverTex, roughness: 0.72 })
-      : body;
-    const spine = spineTex
-      ? new THREE.MeshStandardMaterial({ map: spineTex, roughness: 0.8 })
-      : body;
-    // [px 右书脊, nx 左书脊, py 顶, ny 底, pz 封面, nz 背封]
-    return [spine, spine, body, body, front, body];
-  }, [coverTex, spineTex]);
+  const materials = useMemo(
+    () => buildTapeMaterials(coverTex, spineTex, null),
+    [coverTex, spineTex],
+  );
 
-  // hover/选中抬升动画
+  // hover/选中抬升动画;dimmed(被拿起)时半透明
   useFrame((_, delta) => {
     const mesh = meshRef.current;
     if (!mesh) return;
     const targetY = position[1] + (hovered || selected ? 0.09 : 0);
     mesh.position.y = THREE.MathUtils.damp(mesh.position.y, targetY, 8, delta);
+    const targetOpacity = dimmed ? 0.3 : 1;
+    for (const m of mesh.material as THREE.Material[]) {
+      m.transparent = targetOpacity < 1;
+      if (m.opacity !== targetOpacity) m.opacity = THREE.MathUtils.damp(m.opacity, targetOpacity, 8, delta);
+    }
   });
 
   return (
@@ -95,7 +94,7 @@ export function VHSTape({ item, position, selected, onSelect }: VHSTapeProps) {
       }}
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(item);
+        if (!dimmed) onSelect(item);
       }}
     >
       <boxGeometry args={[SHELF.BOX_W, SHELF.BOX_H, SHELF.BOX_D]} />
