@@ -1,4 +1,4 @@
-"""活态制片状态板后端路由 —— 事件流上报/查询 + run 级状态(差距 B7 后端)。
+"""活态制片状态板后端路由 —— 事件流上报/查询 + run 级状态(已落实 B7)。
 
 - GET  /api/backlot/runs/{run_id}/events   最近事件(limit)
 - POST /api/backlot/runs/{run_id}/events   事件上报(best-effort, 不阻断)

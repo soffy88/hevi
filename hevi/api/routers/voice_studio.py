@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -166,6 +167,67 @@ async def synthesize(
         "task_id": task_id,
         "status": task["status"],
         "audio_url": f"/api/tasks/{task_id}/audio",
+    }
+
+
+class TTSCompareRequest(BaseModel):
+    engine_a: str
+    engine_b: str
+    text: str = Field(min_length=1)
+    language: str | None = None
+    voice_a: str | None = None
+    voice_b: str | None = None
+
+
+@router.post("/tts/compare")
+async def compare_tts(
+    body: TTSCompareRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[TaskService, Depends(get_task_service)],
+) -> dict[str, Any]:
+    """TTS 试听对比：同一段文本在两个引擎/音色下生成，返回两条音频任务。"""
+    try:
+        require_capability("voice_studio_tts")
+    except CapabilityUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=exc.detail()) from exc
+
+    if body.engine_a not in ("voicebox", "vibevoice", "f5_tts", "cosyvoice", "edge_tts") or \
+       body.engine_b not in ("voicebox", "vibevoice", "f5_tts", "cosyvoice", "edge_tts"):
+        raise HTTPException(status_code=422, detail="当前只支持已接入的引擎")
+
+    async def create_audio_task(engine: str, voice: str | None) -> dict[str, Any]:
+        task = await svc.create_production(
+            ProductionRequest(
+                source="voice_studio_tts_compare",
+                topic=body.text,
+                duration_archetype="1-5min",
+                video_provider="local",
+                audio_provider=engine,
+                options={
+                    "text": body.text,
+                    "voice": voice or "default",
+                    "language": body.language or "zh",
+                },
+            ),
+            user_id=str(user["id"]),
+        )
+        task = await svc.submit_task(task["id"])
+        return {
+            "task_id": str(task["id"]),
+            "status": task["status"],
+            "audio_url": f"/api/tasks/{task['id']}/audio",
+            "engine": engine,
+        }
+
+    task_a, task_b = await asyncio.gather(
+        create_audio_task(body.engine_a, body.voice_a),
+        create_audio_task(body.engine_b, body.voice_b),
+    )
+
+    return {
+        "engine_a": task_a,
+        "engine_b": task_b,
+        "text": body.text,
     }
 
 

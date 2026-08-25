@@ -693,6 +693,7 @@ export const voiceStudioApi = {
   rewriteWithPersonality: (text: string, persona: string) => authedReq<{ original: string; rewritten: string; persona: string; model_used: string; confidence: number }>('/api/voice-studio/personality/rewrite', { method: 'POST', body: JSON.stringify({ text, persona }) }),
   listTTSEngines: () => authedReq<{ engines: VoiceTTSEngine[] }>('/api/voice-studio/tts/engines'),
   synthesizeTTS: (text: string, engine: string, voice?: string, language?: string, effects?: string) => authedReq<{ task_id: string; status: string; audio_url: string }>('/api/voice-studio/tts/synthesize', { method: 'POST', body: JSON.stringify({ text, engine, voice, language, effects }) }),
+  compareTTS: (body: { engine_a: string; engine_b: string; text: string; language?: string; voice_a?: string; voice_b?: string }) => authedReq<{ engine_a: { task_id: string; status: string; audio_url: string; engine: string }; engine_b: { task_id: string; status: string; audio_url: string; engine: string }; text: string }>('/api/voice-studio/tts/compare', { method: 'POST', body: JSON.stringify(body) }),
   validateConfig: (voiceEffects?: string, voicePersonas?: Record<string, string>, ttsEngine?: string) => authedReq<{ valid: boolean; voice_effects: string | null; voice_personas_count: number; tts_engine: string | null }>('/api/voice-studio/config/validate', { method: 'POST', body: JSON.stringify({ voice_effects: voiceEffects, voice_personas: voicePersonas, tts_engine: ttsEngine }) }),
 };
 
