@@ -7,6 +7,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -16,7 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out-dir", type=Path, default=Path("output/explainer_cli"))
     args = parser.parse_args(argv)
 
-    async def _run() -> dict:
+    async def _run() -> dict[str, Any]:
         from hevi.studio.kit import explainer_cues_from_text, nle_recut
         from hevi.studio.tools import invoke_tool
 

@@ -10,8 +10,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from hevi.quick.service import QuickPlan, QuickVideoConfig
 
@@ -23,7 +24,7 @@ TTSSynth = Callable[[str, Path, QuickVideoConfig], Awaitable[Path]]
 
 async def _default_tts(text: str, output_path: Path, cfg: QuickVideoConfig) -> Path:
     """默认 TTS: 走 hevi.audio.audio_router 的正式档(cosyvoice/f5/voicebox)。"""
-    from hevi.audio.audio_router import AudioRoutingError, _synthesize_formal
+    from hevi.audio.audio_router import _synthesize_formal
 
     await _synthesize_formal(
         text=text,

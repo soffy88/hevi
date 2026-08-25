@@ -1,4 +1,4 @@
-# ruff: noqa: E501  # 测试数据长行
+# 测试数据长行
 """v9.1 角色权威推演(novel-studio 世界推演移植)单测。"""
 
 from __future__ import annotations

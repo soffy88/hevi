@@ -14,6 +14,9 @@ const hoisted = vi.hoisted(() => ({
   livestreamCapabilities: vi.fn().mockResolvedValue({ can_start: true, provider: 'rtmp', message: '就绪', setup: null }),
   livestreamStart: vi.fn().mockResolvedValue({ session_id: 's1', status: 'started', stream_url: 'rtmp://x' }),
   livestreamStop: vi.fn().mockResolvedValue({ status: 'stopped' }),
+  livetalkingWebrtcCapabilities: vi.fn().mockResolvedValue({ can_start: false, message: '未配置' }),
+  livetalkingWebrtcOffer: vi.fn(),
+  livetalkingRtmpStatus: vi.fn().mockRejectedValue(new Error('未配置')),
 }));
 
 vi.mock('@/lib/auth-store', () => ({ isAuthenticated: () => hoisted.isAuthed() }));
@@ -26,6 +29,9 @@ vi.mock('@/lib/api-client', () => ({
     livestreamCapabilities: hoisted.livestreamCapabilities,
     livestreamStart: hoisted.livestreamStart,
     livestreamStop: hoisted.livestreamStop,
+    livetalkingWebrtcCapabilities: hoisted.livetalkingWebrtcCapabilities,
+    livetalkingWebrtcOffer: hoisted.livetalkingWebrtcOffer,
+    livetalkingRtmpStatus: hoisted.livetalkingRtmpStatus,
   },
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));

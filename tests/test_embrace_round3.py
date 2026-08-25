@@ -288,10 +288,10 @@ def test_cube_lut_parse(tmp_path):
 
 def test_installer_dry_run(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_SKILLS_DIR", str(tmp_path / "claude"))
-    from scripts.install_hevi_skills import install
+    from scripts.install_hevi_skills import SKILL_DIRS, install
 
     result = install("claude", dry_run=True)
-    assert len(result) == 5  # watch / media / promo / story / interactive
+    assert len(result) == len(SKILL_DIRS)
     assert all(created for _, _, created in result)
     # 真实安装 → symlink 存在
     install("claude", dry_run=False)

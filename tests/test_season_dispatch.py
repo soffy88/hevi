@@ -188,6 +188,10 @@ async def test_dispatch_season_creates_series_and_all_episodes():
     assert len(result["episodes"]) == 3
     assert plan.season_id == "series-uuid-123"
 
+    # 排产前门: 未传 spec → 默认 HYBRID, 无 gate_notes
+    assert result["delivery_promise"]["promise_type"] == "hybrid"
+    assert result["gate_notes"] == []
+
     # 幕级结构塞进 config_json["episode_plan"](经 overrides round-trip),供看板幕级视图
     ov0 = svc.episode_calls[0]["overrides"]
     assert ov0["episode_plan"]["beats"] == ["铺垫", "冲突"]
@@ -217,6 +221,40 @@ async def test_dispatch_season_stashes_locked_director():
     ov = svc.episode_calls[0]["overrides"]
     assert ov["locked_director"] == locked
     assert ov["delivery_promise"] == "motion"
+
+    # 结构化承诺写入 delivery_promise_spec, 供下游 validate_cuts
+    pspec = ov["delivery_promise_spec"]
+    assert pspec["promise_type"] == "motion_led"
+    assert pspec["motion_required"] is True
+    assert pspec["source_required"] is False
+    assert pspec["quality_floor"] == "presentable"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_season_promise_gate_notes():
+    """motion_led 但无 video_provider → 前门记 note 不阻塞。"""
+    svc = _FakeSeriesService()
+    result = await dispatch_season(
+        _plan(),
+        _story(),
+        series_service=svc,
+        spec={"delivery_promise": "motion_led"},
+    )
+    assert any("video_provider" in n for n in result["gate_notes"])
+    assert result["delivery_promise"]["promise_type"] == "motion_led"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_season_promise_from_pipeline_type():
+    """spec 无 delivery_promise, 从 pipeline_type 分类。"""
+    svc = _FakeSeriesService()
+    result = await dispatch_season(
+        _plan(), _story(), series_service=svc,
+        spec={"pipeline_type": "talking-head", "video_provider": "fal"},
+    )
+    assert result["delivery_promise"]["promise_type"] == "avatar_presenter"
+    assert result["delivery_promise"]["motion_required"] is True
+    assert result["gate_notes"] == []  # 有 video_provider → 无 note
 
 
 @pytest.mark.asyncio

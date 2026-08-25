@@ -41,7 +41,7 @@ def _spec_from_entry(name: str, raw: dict[str, object]) -> F5ModelSpec:
         name=name,
         model_path=str(raw.get("model_path") or ""),
         vocab_path=str(raw.get("vocab_path") or ""),
-        config=dict(raw.get("config") or {}),  # type: ignore[arg-type]
+        config=(raw_config if isinstance(raw_config := raw.get("config"), dict) else {}),
         language=str(raw.get("language") or infer_language(name)),
     )
 
@@ -52,7 +52,10 @@ def load_catalog(path: str | None = None) -> dict[str, F5ModelSpec]:
     data = json.loads(catalog_path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError(f"F5 catalog must be an object: {catalog_path}")
-    return {name: _spec_from_entry(name, raw or {}) for name, raw in data.items()}  # type: ignore[arg-type]
+    return {
+        name: _spec_from_entry(name, raw if isinstance(raw, dict) else {})
+        for name, raw in data.items()
+    }
 
 
 def list_models(path: str | None = None) -> list[str]:

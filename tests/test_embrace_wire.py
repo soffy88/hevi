@@ -79,6 +79,19 @@ def test_delivery_gate_real_video(tmp_path):
     assert "P1" in result.canon_report  # 判例库流程族自检
 
 
+def test_delivery_gate_profile_controls_checker_failure(tmp_path, monkeypatch):
+    vid = tmp_path / "tiny.mp4"
+    vid.write_bytes(b"video")
+    monkeypatch.setattr("hevi.verdict.delivery_gate.detect_flicker_ratio", lambda _path: None)
+    monkeypatch.setattr("hevi.verdict.delivery_gate.detect_silence_gaps", lambda _path: None)
+    monkeypatch.setattr("hevi.verdict.delivery_gate.extract_watch_frames", lambda *args, **kwargs: [])
+
+    economy = run_delivery_gate(vid, out_dir=tmp_path / "economy", profile="economy")
+    standard = run_delivery_gate(vid, out_dir=tmp_path / "standard", profile="standard")
+    assert economy.passed is True
+    assert standard.passed is False
+
+
 # ---- wire ③: replay trace 接 verdict ----
 
 def test_verdict_shot_with_trace(tmp_path):

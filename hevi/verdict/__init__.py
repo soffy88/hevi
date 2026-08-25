@@ -4,6 +4,8 @@
 3O 内化 Phase B: 判例式审美准则(video-shotcraft)。
 3O 内化 Phase D: 收敛循环(dramaclaw)。
 3O 内化 Round 3: 成片独立终检协议(video-shotcraft final-review)。
+3O 内化 Round 4: 场景步骤节奏校验(OpenMontage verify_scene_pacing) +
+源片审查(OpenMontage source_media_review)。
 """
 
 from hevi.verdict.aesthetic_canon import (
@@ -41,12 +43,23 @@ from hevi.verdict.replay_trace import (
     record_prompt_and_response,
     summary,
 )
+from hevi.verdict.scene_pacing import (
+    Landmark,
+    assert_alignment,
+    step_duration,
+    trace,
+)
 from hevi.verdict.scorecard import (
     Scorecard,
     check_relationship_consistency,
     coarse_diagnosis,
     make_scorecard_consistency_fn,
     shot_scorecard,
+)
+from hevi.verdict.source_media_review import (
+    detect_media_type,
+    has_user_media,
+    review_source_media,
 )
 
 __all__ = [
@@ -63,26 +76,33 @@ __all__ = [
     "FailureRegistry",
     "FinalReviewResult",
     "FrameExtractError",
+    "Landmark",
     "ReplayTraceError",
     "Scorecard",
     "TraceHandle",
+    "assert_alignment",
     "begin_trace",
     "build_self_check_report",
     "check_relationship_consistency",
     "coarse_diagnosis",
     "default_canon",
     "default_registry",
+    "detect_media_type",
     "extract_representative_frame",
     "finalize",
+    "has_user_media",
     "load_traces",
     "make_scorecard_consistency_fn",
     "record_gate",
     "record_prompt_and_response",
     "render_review_report",
+    "review_source_media",
     "run_final_review",
     "save_review_result",
     "shot_scorecard",
+    "step_duration",
     "summary",
+    "trace",
     "trend",
     "validate_canon",
 ]

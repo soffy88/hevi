@@ -127,27 +127,27 @@ SEED_CANON: tuple[CanonRule, ...] = (
     ),
     CanonRule(
         code="R2",
-        rule="速度感来自加速度:飞入/滚动一律非线性缓动+非均匀错峰;批量入场用硬加速节拍,满板静止 0.5s",  # noqa: E501
-        precedent="用户:'卡片不断往下堆叠时,应该越来越快……并在最后停顿0.5秒'。抽象 flood 五轮不收敛,换发牌隐喻一轮通过。",  # noqa: E501
+        rule="速度感来自加速度:飞入/滚动一律非线性缓动+非均匀错峰;批量入场用硬加速节拍,满板静止 0.5s",
+        precedent="用户:'卡片不断往下堆叠时,应该越来越快……并在最后停顿0.5秒'。抽象 flood 五轮不收敛,换发牌隐喻一轮通过。",
         self_check="有没有任何元素在做匀速直线运动?批量入场是否越来越快、末尾有无静止呼吸?",
     ),
     CanonRule(
         code="Q1",
         rule="复刻既有页面必须真实截图;手搓 UI 限非复刻场景且质量/表达达标;数据按风险口径处理",
-        precedent="用户:'我希望的是用真实的页面,然后加入动画'。手搓纹理复刻版整体作废,改用真实 dashboard 重建。",  # noqa: E501
-        self_check="每块 UI 素材:它在复刻既有页面吗?是则必须来自截图;源数据符合已确认的数据口径且不含未授权内容吗?",  # noqa: E501
+        precedent="用户:'我希望的是用真实的页面,然后加入动画'。手搓纹理复刻版整体作废,改用真实 dashboard 重建。",
+        self_check="每块 UI 素材:它在复刻既有页面吗?是则必须来自截图;源数据符合已确认的数据口径且不含未授权内容吗?",
     ),
     CanonRule(
         code="Q2",
         rule="3D 透视下 UI 纹理按原生尺寸 rasterize 后缩小使用;文字发糊先查纹理分辨率链路",
-        precedent="用户三轮追打:'明显卡片变得模糊了'。先调 DoF 治标无效,改原生尺寸 rasterize 拿真正 4x 锐度根治。",  # noqa: E501
+        precedent="用户三轮追打:'明显卡片变得模糊了'。先调 DoF 治标无效,改原生尺寸 rasterize 拿真正 4x 锐度根治。",
         self_check="放大/透视镜头逐帧截图看文字边缘:有没有像素方块?纹理源分辨率 ≥ 显示尺寸 2 倍吗?",
     ),
     CanonRule(
         code="Q4",
         rule="高光/扫光特效宁缺毋滥:不群发,一个镜头最多给主角一次,且必须裁进圆角边界",
         precedent="用户两次否决:'不需要每个卡片都闪烁一下'。据此去掉逐卡 glint、撤掉泛光划过。",
-        self_check="数一数全片 glint/sweep 出现次数:有没有超过'主角元素一次'?每处光效被圆角裁剪了吗?",  # noqa: E501
+        self_check="数一数全片 glint/sweep 出现次数:有没有超过'主角元素一次'?每处光效被圆角裁剪了吗?",
     ),
     CanonRule(
         code="Q5",
@@ -157,8 +157,8 @@ SEED_CANON: tuple[CanonRule, ...] = (
     ),
     CanonRule(
         code="S1",
-        rule="SFX 词汇表按'片种'选不按'事件'选:产品宣传片 = whoosh/impact/riser/sparkle/transition,禁用游戏音包音色",  # noqa: E501
-        precedent="模板片第一版按 UI 事件语义选音(click/drop/confirmation),用户一耳朵判死刑'太像游戏了'。",  # noqa: E501
+        rule="SFX 词汇表按'片种'选不按'事件'选:产品宣传片 = whoosh/impact/riser/sparkle/transition,禁用游戏音包音色",
+        precedent="模板片第一版按 UI 事件语义选音(click/drop/confirmation),用户一耳朵判死刑'太像游戏了'。",
         self_check="这条 SFX 的音色属于什么片种?游戏音包音色(pluck/bloop/卡通弹跳)混进来了吗?",
     ),
     CanonRule(
@@ -170,7 +170,7 @@ SEED_CANON: tuple[CanonRule, ...] = (
     CanonRule(
         code="P1",
         rule="验收贯穿全程:逐镜头静帧自检收尾,每轮修改后整片重渲;交付前独立终检",
-        precedent="阶段 5 起每个镜头 remotion still 静帧验收;交付前派干净上下文 subagent 独立终检。",  # noqa: E501
+        precedent="阶段 5 起每个镜头 remotion still 静帧验收;交付前派干净上下文 subagent 独立终检。",
         self_check="最后一个镜头有没有被静帧看过?终检是否由与制作不同上下文的审查者执行?",
     ),
     CanonRule(

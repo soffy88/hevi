@@ -217,7 +217,7 @@ def create_node_executor() -> Callable[..., Any]:
             raise ValueError(
                 f"Unknown node type: {node.node_type!r}. Valid types: {sorted(VALID_NODE_TYPES)}"
             )
-        result: Any = await fn(node, upstream_outputs)
-        return result
+        executor_result: Any = await fn(node, upstream_outputs)
+        return executor_result
 
     return executor

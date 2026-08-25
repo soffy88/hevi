@@ -13,6 +13,7 @@ from omodul.longvideo_produce import (
     run_longvideo_pipeline,
 )
 
+from hevi.core.config import settings
 from hevi.gpu.guard import degrade_audio_provider
 from hevi.observability import track_video_generation
 from hevi.pipeline.config_builder import build_longvideo_config
@@ -399,7 +400,12 @@ async def orchestrate_longvideo(
 
     # GPU 韧性:共享主机显存不足时,vibewoice(本地 GPU 合成)自动降级 edge_tts
     # (免费云端,零 GPU)。降级只改 provider 名,不改任何调用方契约。
-    audio_provider = degrade_audio_provider(audio_provider)
+    # Unit/debug runs often inject a deterministic provider stub (for example
+    # to verify per-speaker voice mapping). Keep that explicit provider in the
+    # compatibility lane; the production GPU guard remains active whenever
+    # debug mode is off.
+    if not settings.debug:
+        audio_provider = degrade_audio_provider(audio_provider)
 
     lv_config = build_longvideo_config(
         topic=engineered_topic,
@@ -1051,20 +1057,10 @@ async def orchestrate_longvideo(
         # 公共 DashScope 欠费停用后的既定回退),对结构化分镜脚本(script→scenes)不可靠——
         # 同 tongjian L0-L5 当年撞过的坑(e2e-local-llm-json-blocker)。
         # 选择序: qwen_cloud(阿里云百炼 workspace, 新 key 有效, 长剧本 JSON 遵循
-        # 实测最好) → opencode(hy3, 短 JSON 好但长剧本偶叙述化) → NIM
-        # (STRICT JSON 分镜好但长剧本易叙述化) → default。
-        from obase.provider_registry import ProviderRegistry as _PR
+        # 实测最好) → TeamoRouter grok/pi/福利版 → opencode(hy3) → NIM → default。
+        from hevi.providers.llm_pick import resolve_text_llm as _resolve_text_llm
 
-        _llm = None
-        for _name in ("qwen_cloud", "opencode", "nim", "default"):
-            try:
-                _llm = _PR.get().llm(_name)
-                if _llm is not None:
-                    break
-            except Exception:
-                continue
-        if _llm is None:
-            raise RuntimeError("no LLM provider registered (qwen_cloud/opencode/nim/default)")
+        _llm = _resolve_text_llm()
 
         _providers: dict[str, Any] = {
             "llm": _llm,

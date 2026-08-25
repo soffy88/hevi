@@ -239,6 +239,12 @@ def register_all_providers() -> None:
 
     register_if_local()
 
+    # 1.2 TeamoRouter(Grok / Pi / DeepSeek 福利版)。放在 local 之后,
+    # HEVI_LLM_PROVIDER=grok|pi|teamo|teamo_free 时可覆盖 default。
+    from hevi.providers.teamo_caller import register_teamo_llm
+
+    register_teamo_llm()
+
     # 2. Video Providers
     ProviderRegistry.register(
         "video",

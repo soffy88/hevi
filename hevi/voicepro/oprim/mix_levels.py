@@ -15,7 +15,7 @@ DEFAULT_VOCAL_DB = 0.0
 
 
 def db_to_linear(gain_db: float) -> float:
-    return 10.0 ** (float(gain_db) / 20.0)
+    return float(10.0 ** (float(gain_db) / 20.0))
 
 
 def choose_strategy(*, has_bed: bool) -> MixStrategyName:

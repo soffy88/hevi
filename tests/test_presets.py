@@ -14,6 +14,7 @@ def test_three_presets_exist():
 def test_economy_is_local_zero_cost():
     p = get_execution_preset("economy")
     assert p.video_provider == "wan_local"  # local → $0 cloud cost
+    assert p.provider_quality_floor == 7
 
 
 def test_fast_is_cloud_high_quality():
@@ -31,6 +32,7 @@ def test_resolve_preset_explicit_overrides():
     out = resolve_preset("economy", video_provider="ltx2_cloud")
     assert out["video_provider"] == "ltx2_cloud"  # explicit wins
     assert out["audio_provider"] == "edge_tts"  # from preset (SaaS-4: 默认 edge_tts)
+    assert out["provider_quality_floor"] == "7"
 
 
 def test_resolve_preset_none_returns_only_explicit():

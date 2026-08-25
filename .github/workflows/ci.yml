@@ -34,6 +34,8 @@ jobs:
           uv run python scripts/ci/check_no_sibling_call.py
           uv run python scripts/ci/check_omodul_signature.py
           uv run python scripts/ci/check_enabled_pillars.py
+          uv run python scripts/ci/check_runtime_boundaries.py
+          uv run python scripts/ci/check_architecture_invariants.py
 
       # 3O 内化 CI(Phase B/C):配方卡 schema / 判例库编号只增不重排
       - name: Embrace checks (recipe schema + canon numbering)
@@ -47,10 +49,14 @@ jobs:
       - name: Pytest
         run: uv run pytest tests/ --cov=hevi --cov-report=term --cov-fail-under=80
 
-      # 依赖漏洞扫描(先非阻塞:报告已知 CVE,后续可转阻塞)
+      # 供应链门禁：High/Critical 依赖漏洞不得无条件进入主干。
       - name: Dependency audit (pip-audit)
-        continue-on-error: true
-        run: uvx pip-audit || true
+        run: uvx pip-audit --strict
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # 前端构建门禁 —— 拦住"tsc 过但 next build 崩"(如 @helios/oui 升版删了导出)。
   web:
@@ -65,9 +71,37 @@ jobs:
           node-version: "20"
       - name: Install web deps
         run: npm ci --prefer-offline --no-audit
+      - name: NPM audit (high/critical)
+        run: npm audit --audit-level=high
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Unit tests (vitest)
         run: npm run test
       - name: Build
         run: npm run build
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Filesystem vulnerability and misconfiguration scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0.17.8
+        with:
+          path: .
+          format: cyclonedx-json
+          artifact-name: hevi-sbom.cdx.json
+          output-file: hevi-sbom.cdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: hevi-sbom
+          path: hevi-sbom.cdx.json

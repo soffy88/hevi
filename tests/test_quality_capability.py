@@ -314,6 +314,7 @@ async def test_fallback_skips_unhealthy_provider():
                 initial_provider="ltx2_cloud",
                 runner=runner,
                 on_fallback=on_fallback,
+                candidates=["ltx2_cloud", "happyhorse_1_1_maas_lock"],
             )
         mock_hc.assert_called_once_with("happyhorse_1_1_maas_lock")
         on_fallback.assert_not_called()
@@ -335,6 +336,7 @@ async def test_fallback_uses_healthy_provider():
             initial_provider="ltx2_cloud",
             runner=runner,
             on_fallback=on_fallback,
+            candidates=["ltx2_cloud", "happyhorse_1_1_maas_lock"],
         )
         assert result == "ok"
         mock_hc.assert_called_once_with("happyhorse_1_1_maas_lock")

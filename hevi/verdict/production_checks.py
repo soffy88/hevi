@@ -19,9 +19,11 @@ scene_pacing/semantic_motion/layout_boxes/episode_independence/audio_boundaries)
 
 from __future__ import annotations
 
+import itertools
 import statistics
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Sequence
+from typing import Any
 
 # 场景时长经验阈值(秒)。
 SCENE_MIN_S = 1.5
@@ -110,7 +112,7 @@ def check_audio_boundaries(
         res.passed = False
         res.details.append("无音频段数据")
         return res
-    for prev, cur in zip(segs, segs[1:]):
+    for prev, cur in itertools.pairwise(segs):
         p_end, c_start = float(prev["end"]), float(cur["start"])
         if c_start < p_end:
             overlap = p_end - c_start

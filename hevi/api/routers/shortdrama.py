@@ -40,6 +40,7 @@ from hevi.storygraph.extract import extract_story_graph
 from hevi.storygraph.schemas import StoryGraph
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
+from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 from hevi.video.duration_mapper import get_duration_config
@@ -48,7 +49,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/shortdrama", tags=["shortdrama"])
 
-_RUNS: dict[str, dict[str, Any]] = {}
+_LOCAL_RUN_PROJECTIONS: dict[str, dict[str, Any]] = {}
+
+
+def __getattr__(name: str) -> Any:
+    """Expose the old test hook without making it a production state symbol."""
+
+    if name == "_RUNS":
+        return _LOCAL_RUN_PROJECTIONS
+    raise AttributeError(name)
+
+
 # fire-and-forget 真实生成任务的强引用(asyncio 文档明确警告:create_task() 返回值
 # 不留引用会被当垃圾提前回收/取消)。任务完成后从集合里移除,不无限增长。
 _RUN_TASKS: set[asyncio.Task[Any]] = set()
@@ -74,7 +85,23 @@ def _real_store(value: Any) -> ShortdramaRunStore | None:
 
 async def _persist_record(store: ShortdramaRunStore | None, rec: dict[str, Any]) -> None:
     if store is not None:
-        await store.save(rec)
+        saved = await store.save(rec)
+        if saved is not None:
+            rec.clear()
+            rec.update(saved)
+
+
+async def _get_run(
+    run_id: str,
+    user: dict[str, Any],
+    store: ShortdramaRunStore | None,
+) -> dict[str, Any]:
+    if store is not None:
+        rec = await store.get_owned(run_id, user_id=str(user["id"]))
+        if rec is None:
+            raise HTTPException(status_code=404, detail="run 不存在")
+        return rec
+    return _require_run(run_id, user)
 
 
 class RunRequest(BaseModel):
@@ -96,11 +123,17 @@ class ConfirmRequest(BaseModel):
     style_pack_id: str | None = None
 
 
-# ── 内存 run 记录 ────────────────────────────────────────────────────────────
+# ── Local-mode compatibility records ─────────────────────────────────────────
 
 
 def _init_run(
-    run_id: str, *, source_name: str, raw_text: str, target_episodes: int, user_id: str
+    run_id: str,
+    *,
+    source_name: str,
+    raw_text: str,
+    target_episodes: int,
+    user_id: str,
+    cache: bool = True,
 ) -> dict[str, Any]:
     rec: dict[str, Any] = {
         "run_id": run_id,
@@ -119,12 +152,13 @@ def _init_run(
         "error": None,
         "progress": None,  # 人类可读的当前步骤(如"建角色 2/3: 道士"),供前端展示进度
     }
-    _RUNS[run_id] = rec
+    if cache:
+        _LOCAL_RUN_PROJECTIONS[run_id] = rec
     return rec
 
 
 def _require_run(run_id: str, user: dict[str, Any]) -> dict[str, Any]:
-    rec = _RUNS.get(run_id)
+    rec = _LOCAL_RUN_PROJECTIONS.get(run_id)
     if not rec:
         raise HTTPException(status_code=404, detail="run 不存在")
     if rec.get("user_id") and rec["user_id"] != str(user["id"]):
@@ -141,8 +175,12 @@ async def _plan_pipeline(run_id: str, store: ShortdramaRunStore | None = None) -
     即便 5 次重试后 G_SEASON 门仍未通过,也不中断——把 gate 结果原样返回给前端,
     前端展示警告并提供"重新规划"按钮,人工判断是否接受这版分集。
     """
-    rec = _RUNS[run_id]
+    rec = await store.get(run_id) if store is not None else _LOCAL_RUN_PROJECTIONS.get(run_id)
+    if rec is None:
+        logger.warning("shortdrama run %s disappeared before planning", run_id)
+        return
     rec["status"] = "RUNNING"
+    await _persist_record(store, rec)
     try:
         story = await extract_story_graph(source_name=rec["source_name"], raw_text=rec["raw_text"])
         if not story.characters or not story.events:
@@ -281,28 +319,22 @@ async def start_run(
         raise HTTPException(status_code=422, detail="目标集数需在 1-50 之间")
 
     run_id = str(uuid.uuid4())
+    real_store = _real_store(store)
     _init_run(
         run_id,
         source_name=body.source_name,
         raw_text=body.raw_text,
         target_episodes=body.target_episodes,
         user_id=str(user["id"]),
+        cache=real_store is None,
     )
-    real_store = _real_store(store)
     if real_store is not None:
-        await real_store._repository.create(
-            {
-                "id": uuid.UUID(run_id),
-                "kind": "shortdrama",
-                "user_id": str(user["id"]),
-                "status": "PENDING",
-                "input_json": {
-                    "source_name": body.source_name,
-                    "raw_text": body.raw_text,
-                    "target_episodes": body.target_episodes,
-                },
-                "state_json": {"bindings": {}},
-            },
+        await real_store.create(
+            user_id=str(user["id"]),
+            source_name=body.source_name,
+            raw_text=body.raw_text,
+            target_episodes=body.target_episodes,
+            run_id=run_id,
         )
     background_tasks.add_task(_plan_pipeline, run_id, real_store)
     logger.info("shortdrama run %s started: %s", run_id, body.source_name)
@@ -320,7 +352,7 @@ async def list_runs(
             kind="shortdrama", user_id=str(user["id"])
         )
         return [_rec_to_status(load_shortdrama_record(row)) for row in rows]
-    mine = [r for r in _RUNS.values() if r.get("user_id") == str(user["id"])]
+    mine = [r for r in _LOCAL_RUN_PROJECTIONS.values() if r.get("user_id") == str(user["id"])]
     return [_rec_to_status(r) for r in sorted(mine, key=lambda r: r["created_at"], reverse=True)]
 
 
@@ -335,7 +367,12 @@ async def get_run(
         rec = await real_store.get_owned(run_id, user_id=str(user["id"]))
         if rec is not None:
             return _rec_to_status(rec)
-    rec = _require_run(run_id, user)
+    if real_store is not None:
+        rec = await real_store.get_owned(run_id, user_id=str(user["id"]))
+        if rec is None:
+            raise HTTPException(status_code=404, detail="run 不存在")
+    else:
+        rec = _require_run(run_id, user)
     return _rec_to_status(rec)
 
 
@@ -344,9 +381,11 @@ async def replan_run(
     run_id: str,
     background_tasks: BackgroundTasks,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    store: Annotated[Any, Depends(get_run_store)] = None,
 ) -> dict[str, str]:
     """对抽取/分集结果不满意 → 用同一份手稿重新跑一遍抽取+规划(丢弃旧结果)。"""
-    rec = _require_run(run_id, user)
+    real_store = _real_store(store)
+    rec = await _get_run(run_id, user, real_store)
     if rec["status"] not in ("AWAITING_CHARACTERS", "FAILED"):
         raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可重新规划")
     rec["status"] = "RUNNING"
@@ -355,7 +394,8 @@ async def replan_run(
     rec["gate"] = None
     rec["bindings"] = {}
     rec["error"] = None
-    background_tasks.add_task(_plan_pipeline, run_id)
+    await _persist_record(real_store, rec)
+    background_tasks.add_task(_plan_pipeline, run_id, real_store)
     return {"run_id": run_id, "status": "RUNNING"}
 
 
@@ -366,9 +406,10 @@ async def upload_character_reference(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
     file: Annotated[UploadFile, File(description="角色参考图")],
+    store: Annotated[Any, Depends(get_run_store)] = None,
 ) -> dict[str, Any]:
     """上传一张照片给某个角色建 Subject 并绑定(confirm 时该角色不再自动生成参考图)。"""
-    rec = _require_run(run_id, user)
+    rec = await _get_run(run_id, user, _real_store(store))
     if rec.get("story") is None:
         raise HTTPException(status_code=409, detail="StoryGraph 尚未就绪")
     story: StoryGraph = rec["story"]
@@ -397,6 +438,7 @@ async def upload_character_reference(
         "subject_id": subject_id,
         "ref_image": refs[0] if refs else None,
     }
+    await _persist_record(_real_store(store), rec)
     return {"char_id": char_id, "subject_id": subject_id}
 
 
@@ -528,9 +570,13 @@ async def _confirm_pipeline(
     body: ConfirmRequest,
     user_id: str,
     store: ShortdramaRunStore | None = None,
+    background_tasks: BackgroundTasks | None = None,
 ) -> None:
     """角色绑定确认后:补齐未绑定角色的 Subject(auto 生成参考图)→ dispatch_season。"""
-    rec = _RUNS[run_id]
+    rec = await store.get(run_id) if store is not None else _LOCAL_RUN_PROJECTIONS.get(run_id)
+    if rec is None:
+        logger.warning("shortdrama run %s disappeared before confirmation", run_id)
+        return
     try:
         story: StoryGraph = rec["story"]
         plan = rec["plan"]
@@ -629,6 +675,7 @@ async def _confirm_pipeline(
                 "subject_id": subject_id_map[c.char_id],
                 "ref_image": str(portrait_path),
             }
+            await _persist_record(store, rec)
 
         rec["progress"] = "派发剧集(建 Series + 逐集任务)..."
         task_repo = TaskRepository(pool)
@@ -657,10 +704,11 @@ async def _confirm_pipeline(
         for ep_dict in dispatched["episodes"]:
             ep_id = uuid.UUID(str(ep_dict["id"]))
             submitted = await task_service.submit_task(ep_id)
-            if submitted.get("status") != "queued":
-                render_task = asyncio.create_task(task_service.run_task_background(ep_id))
-                _RUN_TASKS.add(render_task)
-                render_task.add_done_callback(_RUN_TASKS.discard)
+            if submitted.get("status") != "queued" and background_tasks is not None:
+                # Non-PostgreSQL adapters retain the compatibility runner via
+                # the shared boundary helper. PostgreSQL tasks must never be
+                # executed by an API-owned asyncio task.
+                schedule_local_compat(background_tasks, task_service, ep_id)
 
         # Subject3D 后台补建(HEVI-ARCHITECTURE.md v3.0 §5.7,2026-07-13 探路落地)——
         # 本地 TripoSR 推理约3分钟/角色(CPU,GPU 被同机其他租户占满,见
@@ -701,7 +749,8 @@ async def confirm_run(
     没问题的 StoryGraph/SeasonPlan。已成功建号的角色见 rec["bindings"] 增量落地,
     重试不会重新生成已经建好的角色。
     """
-    rec = _require_run(run_id, user)
+    real_store = _real_store(store)
+    rec = await _get_run(run_id, user, real_store)
     if rec["status"] not in ("AWAITING_CHARACTERS", "FAILED"):
         raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可确认派发")
     if rec.get("story") is None or rec.get("plan") is None:
@@ -716,7 +765,8 @@ async def confirm_run(
 
     rec["status"] = "DISPATCHING"
     rec["error"] = None
+    await _persist_record(real_store, rec)
     background_tasks.add_task(
-        _confirm_pipeline, run_id, body, str(user["id"]), _real_store(store)
+        _confirm_pipeline, run_id, body, str(user["id"]), real_store, background_tasks
     )
     return {"run_id": run_id, "status": "DISPATCHING"}

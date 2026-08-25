@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from hevi.script2video.adapter_schemas import CameoPlan
 from hevi.script2video.oskill.autocameo import process_cameo_photos
@@ -15,7 +16,7 @@ async def plan_autocameo(
     story_context: str = "",
     existing: list[KernelCharacter] | None = None,
     max_characters: int = 4,
-    image_gen=None,
+    image_gen: Any = None,
     output_dir: Path | None = None,
     style: str = "cinematic",
 ) -> CameoPlan:

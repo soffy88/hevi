@@ -290,7 +290,10 @@ async def test_fallback_cost_reestimate():
         "duration_archetype": "1-5min",
         "video_provider": "ltx2_cloud",
         "audio_provider": "vibevoice",
-        "config_json": {"estimated_usd": 7.2},
+        "config_json": {
+            "estimated_usd": 7.2,
+            "provider_fallback_candidates": ["ltx2_cloud", "happyhorse_1_1_maas_lock"],
+        },
     }
     service = TaskService(repo)
 
@@ -318,8 +321,7 @@ async def test_fallback_cost_reestimate():
 
         await service.run_task(task_id)
 
-        # ltx2_cloud(fal,已欠费)的降级目标现在是 happyhorse_1_1_maas_lock(见
-        # fallback_chain.py 的 _TERMINAL),on_fallback 对新 provider 重新估价并写回。
+        # Fallback walks the persisted policy snapshot, then re-estimates cost.
         fallback_updates = [
             c
             for c in repo.update_task.call_args_list

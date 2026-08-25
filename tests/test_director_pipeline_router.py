@@ -10,7 +10,7 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 
 from hevi.api.routers import director_pipeline as dp
 from hevi.director.pipeline_schemas import (
@@ -325,6 +325,7 @@ async def test_industrial_dispatch_compiles_season_into_real_task_ids():
             svc=svc,
             subject_svc=subject_svc,
             pool=_FakePool(),
+            background_tasks=BackgroundTasks(),
         )
 
     assert rec["status"] == "dispatched"
@@ -759,9 +760,11 @@ async def test_produce_schedules_tongjian_render_with_voices_and_refs():
     assert resp["video_task_id"] == str(task_id)
     svc.submit_task.assert_not_awaited()  # 明确不走 orchestrate_longvideo 执行路径
 
-    # create_task 建行/计费用真实的数字人 provider 估价
+    # create_task 建行/计费用 Policy Engine 选出的 provider,不再硬编码账户。
     call_kwargs = svc.create_task.await_args.kwargs
-    assert call_kwargs["video_provider"] == "happyhorse_1_1_maas_lock"
+    assert call_kwargs["video_provider"] not in {"auto", ""}
+    assert call_kwargs["provider_decision"]["selected_provider"] == call_kwargs["video_provider"]
+    assert call_kwargs["provider_fallback_candidates"] == call_kwargs["provider_decision"]["eligible"]
 
     # 后台调度了通鉴渲染,且拿到了正确的音色映射 + 角色参考图
     assert len(bg.tasks) == 1

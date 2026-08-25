@@ -336,12 +336,13 @@ def list_celeb_voices(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def resolve_celeb_voice(payload: dict[str, Any]) -> dict[str, Any]:
-    from hevi.studio.voices import find_voice, resolve_voice
+    from hevi.studio.voices import VoiceSpec, find_voice, resolve_voice
 
     name = str(payload.get("name") or payload.get("voice") or "").strip()
     if not name:
         return _fail("name required")
     root = Path(payload["root"]) if payload.get("root") else None
+    spec: VoiceSpec | None
     if payload.get("require_local"):
         try:
             spec = resolve_voice(name, root=root)
@@ -351,6 +352,8 @@ def resolve_celeb_voice(payload: dict[str, Any]) -> dict[str, Any]:
         spec = find_voice(name, root=root)
         if spec is None:
             return _fail(f"unknown voice: {name}")
+    if spec is None:
+        return _fail(f"unknown voice: {name}")
     return _ok(voice=spec.to_dict())
 
 

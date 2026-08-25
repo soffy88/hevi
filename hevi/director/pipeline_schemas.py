@@ -482,6 +482,10 @@ class ShotListItem(BaseModel):
     beat_range: list[str] = Field(default_factory=list)  # 覆盖 SceneStage 的哪些 beat_id
     camera_setup_ref: str = ""  # coverage_plan 里的 setup_id(自带 axis_side/shot_size)
     attention_ref: str = ""  # 服务哪个 attention_beat(= at_beat,带出 focus_target/intensity)
+    style_ref: str = ""  # 锁定的风格/StylePack 引用
+    continuity_requirements: list[str] = Field(default_factory=list)
+    safety_requirements: list[str] = Field(default_factory=list)
+    delivery_requirements: list[str] = Field(default_factory=list)
 
 
 class ShotList(BaseModel):

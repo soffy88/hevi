@@ -6,10 +6,13 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
 from hevi.auth.dependencies import get_current_user
+from hevi.core.config import settings
 from hevi.core.ws_manager import connection_manager as ws
+from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.history_series.series_producer import (
     TB_ID,
     LessonInfo,
@@ -17,9 +20,18 @@ from hevi.history_series.series_producer import (
     produce_lesson,
     series_queue,
 )
+from hevi.production.artifacts import ArtifactManifest
+from hevi.tasks.repository import TaskRepository
+from hevi.tasks.task_service import TaskService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/history-series", tags=["history-series"])
+
+
+async def _history_pool() -> PgPool | None:
+    if settings.local_mode or settings.debug:
+        return None
+    return await get_hevi_pg_pool()
 
 
 class ProduceRequest(BaseModel):
@@ -29,14 +41,46 @@ class ProduceRequest(BaseModel):
     target_duration_s: int = Field(default=120, ge=60, le=600)
 
 
+async def execute_animation_task(task: dict[str, Any], pool: PgPool) -> dict[str, Any]:
+    """Canonical worker adapter for the zero-cloud history animation path."""
+
+    from hevi.history_series.series_animator import animate_lesson
+
+    config = task.get("config_json") or {}
+    lesson = LessonInfo(
+        order=int(config.get("lesson_order") or 0),
+        title=str(config.get("lesson_title") or task.get("topic") or ""),
+    )
+    textbook = str(config.get("raw_text") or "").replace("（教材主述）", "")
+    final, beats = await animate_lesson(
+        textbook,
+        lesson_title=lesson.title,
+        output_dir=Path("output/tasks") / str(task["id"]),
+    )
+    manifest = ArtifactManifest.for_video(final).model_dump(mode="json")
+    return {
+        "status": "completed",
+        "config_json": {**config, "beats": beats, "artifact_manifest": manifest},
+        "result_video_path": str(final),
+        "total_shots": len(beats),
+        "completed_shots": len(beats),
+    }
+
+
 @router.get("/queue")
-async def get_queue(tb_id: str = TB_ID) -> list[dict[str, Any]]:
-    return await series_queue(tb_id)
+async def get_queue(
+    tb_id: str = TB_ID,
+    pool: Annotated[PgPool | None, Depends(_history_pool)] = None,
+) -> list[dict[str, Any]]:
+    return await series_queue(tb_id, pool=pool)
 
 
 @router.get("/next")
-async def get_next(tb_id: str = TB_ID) -> dict[str, Any]:
-    lesson = await next_lesson(tb_id)
+async def get_next(
+    tb_id: str = TB_ID,
+    pool: Annotated[PgPool | None, Depends(_history_pool)] = None,
+) -> dict[str, Any]:
+    lesson = await next_lesson(tb_id, pool=pool)
     if lesson is None:
         return {"done": True, "message": "全册已产完"}
     return {
@@ -54,12 +98,13 @@ async def produce(
     background_tasks: BackgroundTasks,
     request: Request,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(_history_pool)] = None,
 ) -> dict[str, Any]:
     lesson: LessonInfo
     if body.lesson_order is not None:
         lesson = LessonInfo(order=body.lesson_order, title=f"第{body.lesson_order}课")
     else:
-        candidate = await next_lesson(body.tb_id)
+        candidate = await next_lesson(body.tb_id, pool=pool)
         if candidate is None:
             raise HTTPException(status_code=409, detail="全册已产完")
         lesson = candidate
@@ -68,12 +113,26 @@ async def produce(
         tb_id=body.tb_id,
         target_duration_s=body.target_duration_s,
         aspect_ratio=body.aspect_ratio,
+        pool=pool,
     )
     if not req:
         return {
             "task_id": task_id,
             "status": "already_completed",
             "lesson_order": lesson.order,
+        }
+    if pool is not None:
+        from hevi.api.routers.tongjian import RunRequest as TongjianRunRequest
+        from hevi.api.routers.tongjian import start_run
+
+        started = await start_run(
+            TongjianRunRequest.model_validate(req), background_tasks, user, pool
+        )
+        return {
+            "task_id": started["run_id"],
+            "status": started["status"],
+            "lesson_order": lesson.order,
+            "lesson_title": lesson.title,
         }
     token = (request.headers.get("Authorization") or "").removeprefix("Bearer ").strip()
     background_tasks.add_task(_submit, task_id, req, token)
@@ -90,19 +149,36 @@ async def produce_daily(
     background_tasks: BackgroundTasks,
     request: Request,
     tb_id: str = TB_ID,
+    pool: Annotated[PgPool | None, Depends(_history_pool)] = None,
 ) -> dict[str, Any]:
     client = request.client
     if client and client.host not in ("127.0.0.1", "::1", "localhost"):
         raise HTTPException(status_code=403, detail="仅限 localhost")
-    lesson = await next_lesson(tb_id)
+    lesson = await next_lesson(tb_id, pool=pool)
     if lesson is None:
         return {"done": True, "message": "全册已产完"}
-    task_id, req = await produce_lesson(lesson, tb_id=tb_id)
+    task_id, req = await produce_lesson(lesson, tb_id=tb_id, pool=pool)
     if not req:
         return {
             "task_id": task_id,
             "status": "already_completed",
             "lesson_order": lesson.order,
+        }
+    if pool is not None:
+        from hevi.api.routers.tongjian import RunRequest as TongjianRunRequest
+        from hevi.api.routers.tongjian import start_run
+
+        started = await start_run(
+            TongjianRunRequest.model_validate(req),
+            background_tasks,
+            {"id": "history-cron"},
+            pool,
+        )
+        return {
+            "task_id": started["run_id"],
+            "status": started["status"],
+            "lesson_order": lesson.order,
+            "lesson_title": lesson.title,
         }
     background_tasks.add_task(_submit_cron, task_id, req)
     return {
@@ -175,13 +251,14 @@ async def animate_episode(
     body: ProduceRequest,
     background_tasks: BackgroundTasks,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(_history_pool)] = None,
 ) -> dict[str, Any]:
     """动画管道出片（零 API 额度, HTML/CSS 动画 + TTS, 替代 tongjian SDXL 渲染）。"""
     lesson: LessonInfo
     if body.lesson_order is not None:
         lesson = LessonInfo(order=body.lesson_order, title=f"第{body.lesson_order}课")
     else:
-        candidate = await next_lesson(body.tb_id)
+        candidate = await next_lesson(body.tb_id, pool=pool)
         if candidate is None:
             raise HTTPException(status_code=409, detail="全册已产完")
         lesson = candidate
@@ -190,12 +267,35 @@ async def animate_episode(
         tb_id=body.tb_id,
         target_duration_s=body.target_duration_s,
         aspect_ratio=body.aspect_ratio,
+        pool=pool,
     )
     if not req:
         return {
             "task_id": task_id,
             "status": "already_completed",
             "lesson_order": lesson.order,
+        }
+    if pool is not None:
+        service = TaskService(TaskRepository(pool))
+        task = await service.create_task(
+            topic=lesson.title,
+            duration_archetype=f"{body.target_duration_s}s",
+            video_provider="history_animation",
+            audio_provider="edge_tts",
+            user_id=str(user["id"]),
+            production_source="history_animation",
+            lesson_order=lesson.order,
+            lesson_title=lesson.title,
+            tb_id=body.tb_id,
+            raw_text=req.get("raw_text", ""),
+            aspect_ratio=body.aspect_ratio,
+        )
+        submitted = await service.submit_task(task["id"])
+        return {
+            "task_id": str(task["id"]),
+            "status": submitted.get("status", "queued"),
+            "lesson_order": lesson.order,
+            "lesson_title": lesson.title,
         }
     background_tasks.add_task(_run_animation_episode, task_id, req, lesson)
     return {

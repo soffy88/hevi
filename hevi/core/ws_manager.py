@@ -14,28 +14,63 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from dataclasses import dataclass, field
+from typing import Any
 
 from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class _Connection:
+    websocket: WebSocket
+    resource_ids: set[str] = field(default_factory=set)
+
+
 class ConnectionManager:
-    """单例连接管理器:connect / disconnect / broadcast_task_update。"""
+    """连接层；权威事件来自 outbox/event consumer,不来自此进程内存。"""
 
     def __init__(self) -> None:
-        self._connections: list[WebSocket] = []
+        self._connections: list[_Connection] = []
         self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket) -> None:
+    async def connect(self, websocket: WebSocket, resource_ids: set[str] | None = None) -> None:
         await websocket.accept()
         async with self._lock:
-            self._connections.append(websocket)
+            self._connections.append(_Connection(websocket, set(resource_ids or set())))
 
     async def disconnect(self, websocket: WebSocket) -> None:
         async with self._lock:
-            if websocket in self._connections:
-                self._connections.remove(websocket)
+            self._connections = [
+                item for item in self._connections if item.websocket is not websocket
+            ]
+
+    async def set_subscription(self, websocket: WebSocket, resource_ids: set[str]) -> None:
+        async with self._lock:
+            for item in self._connections:
+                if item.websocket is websocket:
+                    item.resource_ids = set(resource_ids)
+                    break
+
+    async def broadcast_event(
+        self, event: dict[str, Any], *, resource_id: str | None = None
+    ) -> None:
+        """Broadcast a canonical event to interested connections only."""
+
+        payload = json.dumps(event, ensure_ascii=False, default=str)
+        async with self._lock:
+            alive: list[_Connection] = []
+            for item in self._connections:
+                if item.resource_ids and resource_id and resource_id not in item.resource_ids:
+                    alive.append(item)
+                    continue
+                try:
+                    await item.websocket.send_text(payload)
+                    alive.append(item)
+                except Exception:  # client disconnected: remove without affecting producers
+                    logger.debug("ws client dropped during event broadcast: %s", item.websocket)
+            self._connections = alive
 
     async def broadcast_task_update(
         self, task_id: str, status: str, progress: int, **extra: object
@@ -51,15 +86,10 @@ class ConnectionManager:
             },
             ensure_ascii=False,
         )
-        async with self._lock:
-            alive: list[WebSocket] = []
-            for ws in self._connections:
-                try:
-                    await ws.send_text(payload)
-                    alive.append(ws)
-                except Exception:  # 客户端断开/网络异常:摘除,不阻塞广播
-                    logger.debug("ws client dropped during broadcast: %s", ws)
-            self._connections = alive
+        await self.broadcast_event(
+            json.loads(payload),
+            resource_id=task_id,
+        )
 
     @property
     def connection_count(self) -> int:

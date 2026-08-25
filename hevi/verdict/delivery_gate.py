@@ -20,6 +20,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from hevi.ingest.contact_sheet import build_contact_sheet
 from hevi.ingest.video_frames import WatchDetail, extract_watch_frames
@@ -44,6 +45,7 @@ class GateItem:
     name: str
     ok: bool | None
     detail: str = ""
+    required: bool = True
 
 
 @dataclass
@@ -55,11 +57,12 @@ class DeliveryGateResult:
     contact_sheet_path: Path | None = None
     canon_report: str = ""
     notes: list[str] = field(default_factory=list)
+    profile: str = "standard"
 
     @property
     def passed(self) -> bool:
-        checked = [i for i in self.items if i.ok is not None]
-        return bool(checked) and all(i.ok for i in checked)
+        required = [item for item in self.items if item.required]
+        return all(item.ok is True for item in required)
 
 
 def _probe_duration(path: Path) -> float | None:
@@ -141,10 +144,10 @@ def parse_silence_events(
 
 def detect_silence_gaps(
     video_path: Path, *, floor_s: float = SILENCE_FLOOR_S
-) -> list[tuple[float, float]]:
-    """死空档检测:silencedetect 找 ≥floor_s 的静音区间;ffmpeg 缺失 → []。"""
+) -> list[tuple[float, float]] | None:
+    """死空档检测:silencedetect 找 ≥floor_s 的静音区间;检测失败 → None。"""
     if shutil.which("ffmpeg") is None:
-        return []
+        return None
     try:
         proc = subprocess.run(
             [
@@ -158,7 +161,7 @@ def detect_silence_gaps(
         )
         return parse_silence_events(proc.stderr, floor_s=floor_s)
     except Exception:
-        return []
+        return None
 
 
 def bgm_longer_than_video(video_path: Path, bgm_path: Path | None) -> bool | None:
@@ -180,6 +183,7 @@ def run_delivery_gate(
     canon: AestheticCanon | None = None,
     frame_budget: int | None = None,
     contact_sheet: bool = True,
+    profile: Literal["economy", "standard", "cinema"] = "standard",
 ) -> DeliveryGateResult:
     """成片交付门:频闪 / 死空档 / 联络表 / BGM 接缝 + 判例库流程族自检。
 
@@ -192,12 +196,13 @@ def run_delivery_gate(
         contact_sheet: 是否生成联络表。
 
     Returns:
-        DeliveryGateResult(单项失败记 None,不整门崩溃)。
+        DeliveryGateResult(检查器失败按 profile 决定是否阻断)。
     """
     video = Path(video_path)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    result = DeliveryGateResult(video_path=video)
+    fail_closed = profile in {"standard", "cinema"}
+    result = DeliveryGateResult(video_path=video, profile=profile)
 
     if not video.exists():
         raise DeliveryGateError(f"video not found: {video}")
@@ -205,14 +210,20 @@ def run_delivery_gate(
     # 1) 频闪
     flicker = detect_flicker_ratio(video)
     if flicker is None:
-        result.items.append(GateItem("flicker", None, "ffmpeg 不可用或检测失败"))
+        result.items.append(
+            GateItem("flicker", None, "ffmpeg 不可用或检测失败", required=fail_closed)
+        )
     else:
         ok = flicker < FLICKER_BLACK_RATIO
         result.items.append(GateItem("flicker", ok, f"black ratio {flicker:.3f}"))
 
     # 2) 死空档
     gaps = detect_silence_gaps(video)
-    if gaps:
+    if gaps is None:
+        result.items.append(
+            GateItem("dead_air", None, "ffmpeg 不可用或检测失败", required=fail_closed)
+        )
+    elif gaps:
         result.items.append(
             GateItem("dead_air", False, f"{len(gaps)} 处 ≥{SILENCE_FLOOR_S}s 静音: {gaps[:3]}")
         )
@@ -240,15 +251,24 @@ def run_delivery_gate(
                     GateItem("contact_sheet", True, f"{len(frames)} 帧联络表")
                 )
             else:
-                result.items.append(GateItem("contact_sheet", None, "抽帧失败"))
+                result.items.append(
+                    GateItem("contact_sheet", None, "抽帧失败", required=fail_closed)
+                )
         except Exception as e:
             result.notes.append(f"contact sheet failed: {e}")
-            result.items.append(GateItem("contact_sheet", None, str(e)))
+            result.items.append(GateItem("contact_sheet", None, str(e), required=fail_closed))
 
     # 4) BGM 循环接缝
     bgm_ok = bgm_longer_than_video(video, Path(bgm_path) if bgm_path else None)
     if bgm_ok is None:
-        result.items.append(GateItem("bgm_loop", None, "未提供 BGM 或探测失败"))
+        result.items.append(
+            GateItem(
+                "bgm_loop",
+                None,
+                "未提供 BGM 或探测失败",
+                required=bool(bgm_path) and fail_closed,
+            )
+        )
     else:
         result.items.append(
             GateItem(

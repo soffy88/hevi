@@ -19,6 +19,7 @@ from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.production.capabilities import capability_catalog
 from hevi.production.contracts import ProductionRequest
+from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 
@@ -165,7 +166,7 @@ async def generate_unified(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if task.get("status") != "queued":
-        background_tasks.add_task(svc.run_task_background, task["id"])
+        schedule_local_compat(background_tasks, svc, task["id"])
     return _serialize(task, source)
 
 
@@ -193,5 +194,5 @@ async def create_production(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if task.get("status") != "queued":
-        background_tasks.add_task(svc.run_task_background, task["id"])
+        schedule_local_compat(background_tasks, svc, task["id"])
     return _serialize(task, body.source)

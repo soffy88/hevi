@@ -23,10 +23,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -75,16 +76,18 @@ class ProviderScore:
 
     @property
     def weighted_score(self) -> float:
-        return round(
+        return float(round(
             sum(getattr(self, dim) * self.weights.get(dim, 0.0) for dim in _DIMENSION_ORDER),
             4,
-        )
+        ))
 
     def explain(self) -> str:
         """人类可读的评分解释, 供决策日志/审计。"""
         parts = [f"{self.tool_name}@{self.provider}: weighted={self.weighted_score:.3f}"]
-        for dim in _DIMENSION_ORDER:
-            parts.append(f"{dim}={getattr(self, dim):.2f}(w{self.weights.get(dim, 0.0):.2f})")
+        parts.extend(
+            f"{dim}={getattr(self, dim):.2f}(w{self.weights.get(dim, 0.0):.2f})"
+            for dim in _DIMENSION_ORDER
+        )
         return " ".join(parts)
 
     def to_dict(self) -> dict[str, Any]:
@@ -172,7 +175,7 @@ def _append_decision(
 ) -> None:
     """追加一条决策记录(JSON Lines)。写失败仅记日志, 不阻断业务。"""
     record = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "tool_name": tool_name,
         "reason": reason,
         "winner": winner,

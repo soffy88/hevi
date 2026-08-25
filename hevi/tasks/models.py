@@ -17,6 +17,7 @@ class VideoTask(Base):
     # 节拍/角色/事件摘要/原文对白降维成一段 topic 文本喂给现有 Director,常年超 255 字。
     topic: Mapped[str] = mapped_column(Text)
     user_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     duration_archetype: Mapped[str] = mapped_column(String(50))
     video_provider: Mapped[str] = mapped_column(String(50))
     audio_provider: Mapped[str] = mapped_column(String(50))

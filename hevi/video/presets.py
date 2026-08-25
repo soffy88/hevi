@@ -33,6 +33,7 @@ class ExecutionPreset:
     quality_profile: str
     render_runtime: RenderRuntime
     ltx2_tier: str
+    provider_quality_floor: int
     description: str
 
 
@@ -44,6 +45,7 @@ EXECUTION_PRESETS: dict[str, ExecutionPreset] = {
         quality_profile="standard",
         render_runtime="mixed",  # prefer code_render (zero-cost) where applicable
         ltx2_tier="fast",
+        provider_quality_floor=7,
         description="本地 GPU 零云成本,预算优先(排队较慢)",
     ),
     "balanced": ExecutionPreset(
@@ -53,6 +55,7 @@ EXECUTION_PRESETS: dict[str, ExecutionPreset] = {
         quality_profile="standard",
         render_runtime="generative",
         ltx2_tier="fast",
+        provider_quality_floor=9,
         description="云端标准画质,成本与速度均衡(默认)",
     ),
     "fast": ExecutionPreset(
@@ -62,6 +65,7 @@ EXECUTION_PRESETS: dict[str, ExecutionPreset] = {
         quality_profile="high",
         render_runtime="generative",
         ltx2_tier="fast",
+        provider_quality_floor=10,
         description="云端高画质快速出片,成本最高",
     ),
 }
@@ -107,4 +111,5 @@ def resolve_preset(
         "quality_profile": quality_profile or p.quality_profile,
         "render_runtime": p.render_runtime,
         "ltx2_tier": p.ltx2_tier,
+        "provider_quality_floor": str(p.provider_quality_floor),
     }

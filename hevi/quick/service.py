@@ -23,9 +23,10 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +68,10 @@ def _default_script_planner(topic: str, cfg: QuickVideoConfig) -> list[dict[str,
     """确定性脚本模板: 钩子 + 展开 + 收尾(无 LLM, 零依赖可测)。"""
     hook = f"你知道吗?{topic}背后藏着这些细节。"
     lines = [hook]
-    for i in range(1, min(cfg.max_lines, 5) - 1):
-        lines.append(f"{topic}的第{i}个关键点:值得你记住。")
+    lines.extend(
+        f"{topic}的第{i}个关键点:值得你记住。"
+        for i in range(1, min(cfg.max_lines, 5) - 1)
+    )
     lines.append(f"关于{topic},你还想了解什么?评论区告诉我。")
     return [{"text": t, "scene": i} for i, t in enumerate(lines)]
 

@@ -1,0 +1,23 @@
+[Unit]
+Description=hevi v6 Production Worker
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=hevi
+Group=hevi
+WorkingDirectory=/opt/hevi
+EnvironmentFile=/opt/hevi/.env
+ExecStart=/usr/local/bin/uv run python -m hevi.queue.worker_entrypoint
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hevi-worker
+
+[Install]
+WantedBy=multi-user.target

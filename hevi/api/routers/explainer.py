@@ -44,6 +44,7 @@ from hevi.production.execution import execution_binding
 from hevi.runs.repository import AutomationRunRepository
 from hevi.runs.task_projection import create_projection, update_projection
 from hevi.subjects.reference_store import ReferenceStore
+from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 
@@ -740,7 +741,18 @@ async def assemble_explainer(
             "task_ids": [task_id],
         }
     )
-    background_tasks.add_task(TaskService(TaskRepository(repo.pool)).run_task, uuid.UUID(task_id))
+    task_service = TaskService(TaskRepository(repo.pool))
+    if isinstance(repo.pool, PgPool):
+        # PostgreSQL production tasks remain durable queue entries.  Local/fake
+        # repositories used by compatibility adapters do not have a durable
+        # video_tasks table, so they retain the BackgroundTasks path below.
+        submitted = await task_service.submit_task(uuid.UUID(task_id))
+        if submitted.get("status") != "queued":
+            schedule_local_compat(background_tasks, task_service, uuid.UUID(task_id))
+    else:
+        # Compatibility execution is explicitly local-only. PostgreSQL work
+        # remains in the durable queue and is owned by hevi-worker.
+        schedule_local_compat(background_tasks, task_service, uuid.UUID(task_id))
     return ExplainerAssemblyAccepted(
         task_id=task_id,
         status="processing",
@@ -790,9 +802,7 @@ async def start_run(
     )
     run_id = str(row["id"])
     if task_ids:
-        background_tasks.add_task(
-            TaskService(TaskRepository(repo.pool)).run_task, uuid.UUID(task_ids[0])
-        )
+        await TaskService(TaskRepository(repo.pool)).submit_task(uuid.UUID(task_ids[0]))
     else:
         background_tasks.add_task(_run_pipeline, repo, run_id)
     logger.info("explainer run %s started: %s", run_id, body.topic)

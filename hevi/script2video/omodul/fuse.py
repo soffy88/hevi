@@ -188,19 +188,19 @@ def fuse_production(
         if cameo is not None:
             characters = integrate_cameos(cameo.characters, characters)
         shot_list = shot_list_from_kernels(novel.scene_kernels)
-        kernel = novel.scene_kernels[0] if novel.scene_kernels else None
+        novel_kernel = novel.scene_kernels[0] if novel.scene_kernels else None
         return FusedProduction(
             source="novel",
             shot_list=shot_list,
             characters=characters,
-            kernel=kernel,
+            kernel=novel_kernel,
             novel=novel,
             cameo=cameo,
             notes=notes,
         )
 
     if source == "script":
-        kernel = plan_kernel_artifacts(
+        script_kernel = plan_kernel_artifacts(
             [
                 {
                     "visual_desc": text,
@@ -223,9 +223,9 @@ def fuse_production(
             characters = integrate_cameos(cameo.characters, characters)
         return FusedProduction(
             source="script",
-            shot_list=kernel_plan_to_shot_list(kernel),
+            shot_list=kernel_plan_to_shot_list(script_kernel),
             characters=characters,
-            kernel=kernel,
+            kernel=script_kernel,
             cameo=cameo,
             notes=notes,
         )
@@ -236,12 +236,12 @@ def fuse_production(
         characters = integrate_cameos(cameo.characters, characters)
         idea.characters = characters
     shot_list = shot_list_from_kernels(idea.scene_kernels)
-    kernel = idea.scene_kernels[0] if idea.scene_kernels else None
+    idea_kernel = idea.scene_kernels[0] if idea.scene_kernels else None
     return FusedProduction(
         source="idea",
         shot_list=shot_list,
         characters=characters,
-        kernel=kernel,
+        kernel=idea_kernel,
         idea=idea,
         cameo=cameo,
         notes=notes,

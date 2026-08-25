@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 # 句末标点 → 句后停顿(ms)。数值为经验基准, 与 AVP 量级一致(0.2-0.6s)。
 _PAUSE_AFTER = {
@@ -46,7 +47,7 @@ class ProsodyUnit:
     emphasis: tuple[str, ...] = ()  # 重音词
     tone: str = "neutral"  # 情绪倾向提示(neutral/happy/urgent/serious)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "text": self.text,
             "pause_ms": self.pause_ms,
@@ -63,7 +64,7 @@ class ProsodyPlan:
     base_speed: float = 1.0
     notes: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "lang": self.lang,
             "base_speed": self.base_speed,
@@ -82,7 +83,6 @@ def _tone_hint(text: str) -> str:
 
 def _split_sentences(text: str) -> list[str]:
     """按句末标点切句, 保留标点(逗号不切)。空段剔除。"""
-    parts = _SENTENCE_BREAK.split(text)
     # 切分会丢标点; 这里用 finditer 保留边界。改为扫描式切分:
     out: list[str] = []
     start = 0
@@ -107,16 +107,13 @@ def _pause_for(sentence: str) -> int:
 def _emphases(sentence: str, lang: str) -> list[str]:
     found: list[str] = []
     if lang == "zh":
-        words = _EMPHASIS_WORDS_ZH
+        words: tuple[str, ...] = _EMPHASIS_WORDS_ZH
         low = sentence
     else:
         words = _EMPHASIS_WORDS_EN
         low = sentence.lower()
-    for w in words:
-        if w in low:
-            found.append(w)
-    for m in _QUOTE_RE.finditer(sentence):
-        found.append(m.group(1))
+    found.extend(w for w in words if w in low)
+    found.extend(m.group(1) for m in _QUOTE_RE.finditer(sentence))
     return found
 
 
@@ -155,19 +152,21 @@ def analyze_prosody(text: str, *, lang: str = "zh", base_speed: float = 1.0) -> 
     return plan
 
 
-def plan_to_cues(plan: ProsodyPlan) -> list[dict]:
+def plan_to_cues(plan: ProsodyPlan) -> list[dict[str, Any]]:
     """韵律计划 → 下游 TTS 配音 cue 列表(供 audio 服务消费)。"""
     return [u.to_dict() for u in plan.units]
 
 
-def merge_with_srt(plan: ProsodyPlan, segments: list[dict]) -> list[dict]:
+def merge_with_srt(
+    plan: ProsodyPlan, segments: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """韵律单元与已有字幕段(含 start/end)合并, 供对齐校验。
 
     segments: [{"text", "start", "end"}]。按文本顺序贪心配对: 字幕段文本包含
     单元文本的首/尾字即配对; 未配对段保持原样(notes 说明)。
     返回合并列表(每项 = 字幕段 + 韵律字段)。
     """
-    merged: list[dict] = []
+    merged: list[dict[str, Any]] = []
     segs = list(segments)
     units = list(plan.units)
     si = ui = 0

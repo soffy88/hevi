@@ -68,7 +68,7 @@ def check_env(
     whisper_ok = False
     if check_whisper:
         try:
-            import faster_whisper  # type: ignore[import-untyped] # noqa: F401
+            import faster_whisper  # noqa: F401
 
             whisper_ok = True
         except ImportError:

@@ -22,9 +22,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import httpx
 
@@ -244,11 +245,10 @@ def search_pexels_videos(
             files = v.get("video_files") or []
             best = None
             for f in files:
-                if f.get("width") and f.get("height"):
-                    if best is None or (f["width"] * f["height"]) > (
-                        best["width"] * best["height"]
-                    ):
-                        best = f
+                if f.get("width") and f.get("height") and (
+                    best is None or (f["width"] * f["height"]) > (best["width"] * best["height"])
+                ):
+                    best = f
             if not best or not best.get("link"):
                 continue
             items.append(

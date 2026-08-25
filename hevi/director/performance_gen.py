@@ -76,14 +76,9 @@ _BASE_PROMPT = """你是电影表演设计师。把下面这**一个镜头**拆�
 
 
 def _resolve_llm(llm: Any) -> Any:
-    if llm is not None:
-        return llm
-    from obase.provider_registry import ProviderRegistry
+    from hevi.providers.llm_pick import resolve_text_llm
 
-    try:
-        return ProviderRegistry.get().llm("qwen_cloud")
-    except Exception:
-        return ProviderRegistry.get().llm("default")
+    return resolve_text_llm(llm)
 
 
 async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:

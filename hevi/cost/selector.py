@@ -30,6 +30,7 @@ PROVIDER_QUALITY = {
     # 照抄 WaveSpeed 那两条——是不是同一档要等两边都有真实产出数据再各自校准,不能
     # 假设"官方直连=质量更高"。
     "happyhorse_1_1_maas": 9,
+    "happyhorse_1_1_maas_lock": 9,
     "wan_2_7_maas": 9,
     # audio
     "vibevoice": 8,

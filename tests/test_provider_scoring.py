@@ -11,8 +11,8 @@ from pathlib import Path
 import pytest
 
 from hevi.providers.scoring import (
-    CapabilityRow,
     DEFAULT_WEIGHTS,
+    CapabilityRow,
     ProviderScore,
     choose_provider,
     read_decision_log,
@@ -67,7 +67,7 @@ def test_weighted_score_matches_hand_computation():
 
 
 def test_weighted_score_full_marks_is_one():
-    kw = {dim: 1.0 for dim in DEFAULT_WEIGHTS}
+    kw = dict.fromkeys(DEFAULT_WEIGHTS, 1.0)
     s = ProviderScore(tool_name="t", provider="p", **kw)
     assert s.weighted_score == pytest.approx(1.0)
 
@@ -175,7 +175,7 @@ def test_capability_rows_dict_input():
 
 
 def test_custom_weights():
-    weights = {k: 0.0 for k in DEFAULT_WEIGHTS}
+    weights = dict.fromkeys(DEFAULT_WEIGHTS, 0.0)
     weights["cost_efficiency"] = 1.0
     scored = score_providers(
         "t",

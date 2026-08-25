@@ -25,7 +25,9 @@ def patch_vibevoice_exports() -> None:
         from vibevoice.modular.modeling_vibevoice_inference import (
             VibeVoiceForConditionalGenerationInference,
         )
-        from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
+        from vibevoice.processor.vibevoice_processor import (
+            VibeVoiceProcessor,
+        )
 
         vibevoice.VibeVoiceForConditionalGenerationInference = (
             VibeVoiceForConditionalGenerationInference

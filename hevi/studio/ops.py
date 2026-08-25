@@ -32,8 +32,8 @@ async def run_op(op: str, payload: dict[str, Any]) -> dict[str, Any]:
     try:
         result = fn(payload)
         if hasattr(result, "__await__"):
-            return await result
-        return result
+            return dict(await result)
+        return dict(result)
     except Exception as exc:
         logger.warning("studio op %s failed: %s", op, exc)
         return _fail(str(exc))
@@ -171,9 +171,9 @@ def stock_query(p: dict[str, Any]) -> dict[str, Any]:
 
 def audio_prosody(p: dict[str, Any]) -> dict[str, Any]:
     try:
-        from hevi.audio.prosody import plan_prosody
+        from hevi.audio.prosody import analyze_prosody
 
-        return _ok(prosody=plan_prosody(str(p.get("text") or "")))
+        return _ok(prosody=analyze_prosody(str(p.get("text") or "")).to_dict())
     except Exception:
         text = str(p.get("text") or "")
         return _ok(prosody={"pauses": text.count("，") + text.count("。"), "chars": len(text)})
@@ -539,6 +539,78 @@ def craft_site(p: dict[str, Any]) -> dict[str, Any]:
     return site_to_video_plan(p)
 
 
+def craft_shot_prompt(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.shot_prompt import build_batch_prompts, build_shot_prompt
+
+    scene = p.get("scene") or {}
+    style = p.get("style_context") or {}
+    scenes = p.get("scenes")
+    if isinstance(scenes, list) and scenes:
+        return _ok(prompts=build_batch_prompts(scenes, style), count=len(scenes))
+    prompt = build_shot_prompt(scene, style)
+    return _ok(prompt=prompt)
+
+
+def delivery_promise(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.production.delivery_promise import classify_from_brief
+
+    promise = classify_from_brief(
+        str(p.get("pipeline_type") or ""),
+        p.get("user_intent") or {},
+    )
+    return _ok(promise=promise.to_dict())
+
+
+def delivery_validate(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.production.delivery_promise import DeliveryPromise
+
+    raw = p.get("promise") or {}
+    promise = DeliveryPromise.from_dict(raw) if raw.get("promise_type") else None
+    cuts = p.get("cuts") or []
+    if promise is None:
+        return _fail("promise 缺失, 无法校验切点合规")
+    verdict = promise.validate_cuts(cuts)
+    return _ok(valid=verdict["valid"], violations=verdict["violations"],
+               motion_ratio=verdict["motion_ratio"])
+
+
+def verdict_scene_pacing(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.verdict.scene_pacing import assert_alignment, trace
+
+    steps = p.get("steps") or []
+    start = float(p.get("scene_start") or 0)
+    end = p.get("scene_end")
+    landmarks = trace(steps, scene_start=start, quiet=True)
+    result: dict[str, Any] = {"status": "ok", "landmarks": [
+        {"video_time": lm.video_time, "kind": lm.kind, "text": lm.text[:80]}
+        for lm in landmarks
+    ]}
+    if end is not None:
+        try:
+            assert_alignment(
+                steps,
+                scene_start=start,
+                scene_end=float(end),
+                narration_cues=[(float(t), str(d)) for t, d in (p.get("narration_cues") or [])],
+                tolerance=float(p.get("tolerance") or 1.0),
+            )
+            result["aligned"] = True
+        except AssertionError as exc:
+            result["aligned"] = False
+            result["reason"] = str(exc)
+    return result
+
+
+def verdict_source_review(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.verdict.source_media_review import review_source_media
+
+    files = p.get("files") or []
+    if not files:
+        return _fail("files 为空")
+    review = review_source_media(files, context=p.get("context") or {})
+    return _ok(review=review)
+
+
 async def daily_tick(p: dict[str, Any]) -> dict[str, Any]:
     from hevi.studio.daily import tick
 
@@ -633,6 +705,11 @@ OPS: dict[str, Any] = {
     "craft_variation": craft_variation,
     "craft_grade": craft_grade,
     "craft_site": craft_site,
+    "craft_shot_prompt": craft_shot_prompt,
+    "delivery_promise": delivery_promise,
+    "delivery_validate": delivery_validate,
+    "verdict_scene_pacing": verdict_scene_pacing,
+    "verdict_source_review": verdict_source_review,
     "daily_tick": daily_tick,
     "veya_produce": veya_produce,
 }

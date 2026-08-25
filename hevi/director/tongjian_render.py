@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from hevi.director.performance_derive import (
     compile_audio_prompt,
@@ -401,7 +401,8 @@ async def render_director_episode(
     )
     gate_reports["final"] = g8
 
-    if defer_avatar and getattr(final_video, "video_path", ""):
+    final_video_path = getattr(cast(Any, final_video), "video_path", "")
+    if defer_avatar and final_video_path:
         presenter = next(iter(subject_ref_paths.values()), None)
         wavs = sorted(run_dir.glob("*.wav"))
         composed = await apply_compose_after_qc(

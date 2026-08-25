@@ -13,8 +13,8 @@ from hevi.script2video.omodul.kernel_plan import (
 from hevi.script2video.omodul.novel_plan import plan_novel2video
 
 __all__ = [
-    "characters_from_payload",
     "FusedProduction",
+    "characters_from_payload",
     "fuse_production",
     "plan_autocameo",
     "plan_idea2video",

@@ -133,6 +133,14 @@ PROVIDER_LIMITS: dict[str, ProviderLimits] = {
         max_duration_s=15.0,
         fps_options=frozenset({24}),
     ),
+    # Locked-face MAAS adapter (same model, reference_image required). Listed so
+    # Policy Engine can select it; it is not a hardcoded terminal provider.
+    "happyhorse_1_1_maas_lock": ProviderLimits(
+        modes=frozenset({"t2v", "i2v"}),
+        max_resolution=(1080, 1920),
+        max_duration_s=15.0,
+        fps_options=frozenset({24}),
+    ),
     "wan_2_7_maas": ProviderLimits(
         modes=frozenset({"t2v"}),
         max_resolution=(1080, 1920),

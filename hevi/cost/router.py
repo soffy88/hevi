@@ -21,10 +21,14 @@ lip-sync 作为可路由能力(HEVI 路线图 Phase3 #42):`PROVIDER_LIMITS` 已�
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from hevi.cost.selector import select_cheapest_provider
 from hevi.resilience.live_state import provider_routable
 from hevi.video.capability_guard import PROVIDER_LIMITS
+
+if TYPE_CHECKING:
+    from hevi.provider_policy import ProviderPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +41,7 @@ async def route_video_provider(
     quality_floor: int = 9,
     candidates: list[str] | None = None,
     require_lip_sync: bool = False,
+    policy: ProviderPolicy | None = None,
 ) -> str:
     """选 video provider:支持 `mode`(+ 可选 lip_sync)∧ 活状态可路由 ∧
     质量≥`quality_floor` 中最便宜。
@@ -44,6 +49,12 @@ async def route_video_provider(
     quality_floor:质量下限(北极星"质量有下限")。默认 9 = 只在高质量云档里选便宜的;
     降低它可纳入零成本本地 Wan(economy/空镜)。无合格者 → ValueError(调用方回退用户所选)。
     """
+    if policy is not None:
+        from hevi.provider_policy import evaluate_provider_policy, require_provider
+
+        decision = await evaluate_provider_policy(policy)
+        return require_provider(decision)
+
     pool = candidates or [p for p, lim in PROVIDER_LIMITS.items() if mode in lim.modes]
     if require_lip_sync:
         pool = [p for p in pool if PROVIDER_LIMITS.get(p) and PROVIDER_LIMITS[p].lip_sync]

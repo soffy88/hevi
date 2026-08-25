@@ -1,21 +1,40 @@
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from obase.observability import track_provider_call as obase_track_provider_call
 
 from hevi.monitoring.metrics import (
+    provider_latency_seconds,
+    provider_outcomes_total,
     video_generation_duration_seconds,
     video_generation_in_progress,
     video_generation_total,
 )
+from hevi.observability.trace import bind_trace_context
 
 
 @asynccontextmanager
 async def track_provider_call(provider: str) -> AsyncGenerator[None]:
-    """Metrics instrumentation for a provider API call (delegates to obase)."""
+    """Track a provider call in obase, Prometheus, and the trace context."""
+    call_id = uuid4().hex
+    started = time.monotonic()
+    status = "success"
     async with obase_track_provider_call(provider=provider, operation="generate"):
-        yield
+        try:
+            with bind_trace_context(provider_call_id=call_id):
+                yield
+        except Exception:
+            status = "error"
+            raise
+        finally:
+            provider_outcomes_total.labels(
+                provider=provider, task_class="generate", status=status
+            ).inc()
+            provider_latency_seconds.labels(provider=provider, task_class="generate").observe(
+                time.monotonic() - started
+            )
 
 
 @asynccontextmanager

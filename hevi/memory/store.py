@@ -22,16 +22,18 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import logging
 import math
 import re
 import sqlite3
 import zlib
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +86,7 @@ class TfIdfEmbedder:
             toks.append(t)
         # 中文按字 bigram, 捕捉词序
         han = re.findall(r"[\u4e00-\u9fff]", text.lower())
-        toks.extend(a + b for a, b in zip(han, han[1:]))
+        toks.extend(a + b for a, b in itertools.pairwise(han))
         return toks
 
     @staticmethod
@@ -106,7 +108,7 @@ class TfIdfEmbedder:
 def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=False))
     na = math.sqrt(sum(x * x for x in a)) or 1.0
     nb = math.sqrt(sum(y * y for y in b)) or 1.0
     return dot / (na * nb)
@@ -155,13 +157,15 @@ class MemoryStore:
             embedding = self._embedder(
                 key + " " + json.dumps(payload, ensure_ascii=False)[:2000]
             )
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         payload_json = json.dumps(payload, ensure_ascii=False)
         with self._connect() as conn:
             cur = conn.execute(
                 _INSERT,
                 (kind, key, payload_json, json.dumps(embedding), now),
             )
+            if cur.lastrowid is None:
+                raise RuntimeError("sqlite did not return an inserted row id")
             new_id = int(cur.lastrowid)
             if kind == "short_term":
                 conn.execute(
@@ -174,8 +178,7 @@ class MemoryStore:
     # -- 查询 ----------------------------------------------------------------
 
     def recent(self, kind: str, *, limit: int = 20) -> list[MemoryHit]:
-        rows = self._query("kind=? ORDER BY created_at DESC, id DESC LIMIT ?", (kind, limit))
-        return rows
+        return self._query("kind=? ORDER BY created_at DESC, id DESC LIMIT ?", (kind, limit))
 
     def by_key(self, key: str, *, limit: int = 20) -> list[MemoryHit]:
         return self._query("key=? ORDER BY created_at DESC, id DESC LIMIT ?", (key, limit))

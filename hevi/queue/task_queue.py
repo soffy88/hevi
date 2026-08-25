@@ -3,6 +3,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from hevi.core.config import settings
 from hevi.tasks.repository import TaskRepository
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,11 @@ async def enqueue(repository: TaskRepository, task_id: uuid.UUID) -> int:
     await repository.update_task(task_id, {
         "status": "queued",
         "queued_at": now,
+        "available_at": now,
+        "scheduled_at": None,
+        "scheduler_score": None,
+        "scheduler_policy_version": None,
+        "scheduler_decision_json": None,
         "updated_at": now
     })
     
@@ -24,9 +30,29 @@ async def enqueue(repository: TaskRepository, task_id: uuid.UUID) -> int:
     logger.info(f"Task {task_id} enqueued. Ahead: {ahead}")
     return ahead
 
-async def dequeue(repository: TaskRepository) -> dict[str, Any] | None:
-    """Atomically claim the next task (safe for concurrent workers)."""
-    return await repository.claim_next_queued_task()
+async def dequeue(
+    repository: TaskRepository,
+    worker_id: str | None = None,
+    *,
+    resource_class: str = "any",
+    available_vram_mb: int | None = None,
+    capacity_slots: int = 1,
+    provider_tokens: dict[str, int] | None = None,
+    warm_providers: set[str] | None = None,
+    scheduled_only: bool | None = None,
+) -> dict[str, Any] | None:
+    """Atomically claim the best eligible task for a worker pool."""
+    return await repository.claim_next_queued_task(
+        worker_id=worker_id,
+        resource_class=resource_class,
+        available_vram_mb=available_vram_mb,
+        capacity_slots=capacity_slots,
+        provider_tokens=provider_tokens,
+        warm_providers=warm_providers,
+        scheduled_only=(
+            settings.scheduler_required if scheduled_only is None else scheduled_only
+        ),
+    )
 
 async def queue_position(repository: TaskRepository, task_id: uuid.UUID) -> int:
     """Return how many tasks are ahead of this task in the queue."""

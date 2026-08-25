@@ -13,6 +13,7 @@ from hevi.monitoring.metrics import (
     http_requests_in_progress,
     http_requests_total,
 )
+from hevi.observability import bind_trace_context, start_trace
 
 _RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
 
@@ -25,17 +26,36 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         method = request.method
         http_requests_in_progress.inc()
         start = time.perf_counter()
-        try:
-            response = await call_next(request)
-            duration = time.perf_counter() - start
-            # Use route template after routing completes — avoids label cardinality explosion
-            # (e.g. /api/video/{id} not /api/video/abc123)
-            path_template = str(getattr(request.scope.get("route"), "path", request.url.path))
-            status = str(response.status_code)
-            http_requests_total.labels(method=method, path=path_template, status=status).inc()
-            http_request_duration_seconds.labels(method=method, path=path_template).observe(
-                duration
+        trace_id = request.headers.get("x-trace-id")
+        identifiers = {
+            field: request.headers.get(f"x-{field.replace('_', '-')}")
+            for field in (
+                "production_id",
+                "revision_id",
+                "plan_id",
+                "task_id",
+                "attempt_id",
+                "node_id",
+                "artifact_id",
+                "evaluation_id",
             )
-            return response
+        }
+        try:
+            with start_trace(trace_id), bind_trace_context(**identifiers):
+                response = await call_next(request)
+                duration = time.perf_counter() - start
+                # Use route template after routing completes — avoids label cardinality
+                # explosion (e.g. /api/video/{id})
+                path_template = str(
+                    getattr(request.scope.get("route"), "path", request.url.path)
+                )
+                status = str(response.status_code)
+                http_requests_total.labels(
+                    method=method, path=path_template, status=status
+                ).inc()
+                http_request_duration_seconds.labels(
+                    method=method, path=path_template
+                ).observe(duration)
+                return response
         finally:
             http_requests_in_progress.dec()

@@ -16,10 +16,102 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from hevi.production.delivery_promise import (
+    PromiseType,
+    classify_from_brief,
+)
 from hevi.season_planner.schemas import EpisodePlan, SeasonPlan
 from hevi.storygraph.schemas import StoryGraph
 
 logger = logging.getLogger(__name__)
+
+
+# spec 里 delivery_promise 字符串 → PromiseType 的兼容映射(与成片侧 delivery_gate
+# 的 "motion"/"any" 取值对齐)。不在映射内的按字面值回退 classify_from_brief。
+_PROMISE_STR_TO_TYPE: dict[str, PromiseType] = {
+    "motion": PromiseType.MOTION_LED,
+    "any": PromiseType.HYBRID,
+    "motion_led": PromiseType.MOTION_LED,
+    "source_led": PromiseType.SOURCE_LED,
+    "data_explainer": PromiseType.DATA_EXPLAINER,
+    "teacher_explainer": PromiseType.TEACHER_EXPLAINER,
+    "screen_demo": PromiseType.SCREEN_DEMO,
+    "avatar_presenter": PromiseType.AVATAR_PRESENTER,
+    "hybrid": PromiseType.HYBRID,
+    "localization": PromiseType.LOCALIZATION,
+}
+
+
+def resolve_delivery_promise(
+    spec: dict[str, Any] | None,
+    *,
+    has_source_media: bool = False,
+) -> tuple[Any, list[str]]:
+    """排产前门: 把 spec 里的交付承诺升格为结构化 DeliveryPromise。
+
+    优先级:
+      1. spec["delivery_promise"] 已是 dict → DeliveryPromise.from_dict 透传。
+      2. spec["delivery_promise"] 是字符串 → 映射 PromiseType 后 classify。
+      3. spec["pipeline_type"] → classify_from_brief 推断。
+      4. 都缺 → 默认 HYBRID。
+
+    返回 (promise, gate_notes)。gate_notes 只记不拦 —— 排产骨架/dry-run 也可跑。
+    承诺若要求真实视频(motion_led / avatar_presenter)但没给 video_provider,
+    或要求素材(source_led)却没检测到素材, 都记 note 供调用方看板展示。
+    """
+    spec = spec or {}
+    notes: list[str] = []
+
+    raw = spec.get("delivery_promise")
+    if isinstance(raw, dict):
+        promise = classify_from_brief(
+            str(spec.get("pipeline_type") or ""), {}
+        )
+        promise = type(promise).from_dict(raw)
+    elif isinstance(raw, str) and raw in _PROMISE_STR_TO_TYPE:
+        promise = classify_from_brief(
+            str(spec.get("pipeline_type") or ""),
+            {"promise_type": _PROMISE_STR_TO_TYPE[raw].value},
+        )
+        # classify_from_brief 只看管线名与意图键, 手动覆盖 promise_type:
+        from hevi.production.delivery_promise import DeliveryPromise
+
+        promise = DeliveryPromise(
+            promise_type=_PROMISE_STR_TO_TYPE[raw],
+            motion_required=_PROMISE_STR_TO_TYPE[raw]
+            in (PromiseType.MOTION_LED, PromiseType.AVATAR_PRESENTER),
+            source_required=bool(
+                spec.get("has_footage")
+                or spec.get("pipeline_type") in ("source_led", "podcast-repurpose", "clip-factory")
+            ),
+            tone_mode=str(spec.get("tone") or "corporate"),
+            quality_floor=str(spec.get("quality_profile") or spec.get("quality") or "presentable"),
+        )
+    else:
+        promise = classify_from_brief(
+            str(spec.get("pipeline_type") or ""),
+            {
+                "motion_required": spec.get("motion_required"),
+                "has_footage": spec.get("has_footage"),
+                "tone": spec.get("tone"),
+                "quality": spec.get("quality_profile") or spec.get("quality"),
+            },
+        )
+
+    # 前置约束检查(只记不拦)
+    if (
+        promise.promise_type in (PromiseType.MOTION_LED, PromiseType.AVATAR_PRESENTER)
+        and not spec.get("video_provider")
+    ):
+        notes.append(
+            f"承诺 {promise.promise_type.value} 需要真实视频生成, 但 spec 未给 video_provider"
+        )
+    if promise.source_required and not has_source_media:
+        notes.append(
+            f"承诺 {promise.promise_type.value} 依赖用户素材, 但未检测到素材文件"
+        )
+
+    return promise, notes
 
 
 def episode_brief(ep: EpisodePlan, story: StoryGraph) -> str:
@@ -95,6 +187,13 @@ async def dispatch_season(
         if sid and sid not in subject_ids:
             subject_ids.append(sid)
 
+    # 排产前门: 升格交付承诺(字符串 → 结构化 DeliveryPromise), 只记 note 不拦。
+    promise, gate_notes = resolve_delivery_promise(
+        spec,
+        has_source_media=bool(subject_ref_paths or subject_ids),
+    )
+    promise_dict = promise.to_dict()
+
     series = await series_service.create_series(
         name=plan.story_source or "未命名短剧",
         subject_ids=subject_ids,
@@ -141,9 +240,20 @@ async def dispatch_season(
                     if isinstance(spec, dict) and spec.get("delivery_promise")
                     else {}
                 ),
+                # 结构化承诺(提案侧合同) —— 下游合成阶段可用 promise.validate_cuts
+                # 校验切点合规; 字符串 delivery_promise 保留给成片侧 delivery_gate。
+                "delivery_promise_spec": promise_dict,
             },
         )
         episodes.append(task)
 
-    logger.info("dispatch_season: series=%s episodes=%d", series_id, len(episodes))
-    return {"series_id": series_id, "episodes": episodes}
+    logger.info(
+        "dispatch_season: series=%s episodes=%d promise=%s notes=%d",
+        series_id, len(episodes), promise.promise_type.value, len(gate_notes),
+    )
+    return {
+        "series_id": series_id,
+        "episodes": episodes,
+        "delivery_promise": promise_dict,
+        "gate_notes": gate_notes,
+    }

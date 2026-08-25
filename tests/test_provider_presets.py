@@ -22,6 +22,7 @@ client = TestClient(app)
 def test_presets_table_contains_video_presets() -> None:
     names = {p["name"] for p in PRESETS}
     assert {"wan_local", "fal_fast", "autocameo_cloud", "veo3_cinematic"} <= names
+    assert {"grok", "pi", "teamo_free"} <= names
 
 
 def test_list_presets_filters_by_category() -> None:

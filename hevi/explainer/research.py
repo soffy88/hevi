@@ -596,8 +596,9 @@ def _default_llm() -> Any:
         from obase.provider_registry import ProviderRegistry
 
         registry = ProviderRegistry.get()
-        # v9.1: OpenCode 替换 NIM 优先; 依次回落 NIM(2 key 轮换) → default。
-        for name in ("opencode", "nim", "default"):
+        # v9.1: OpenCode 替换 NIM 优先; TeamoRouter grok/pi 为免费云槽;
+        # 再回落 NIM(2 key 轮换) → default。
+        for name in ("opencode", "grok", "pi", "teamo_free", "nim", "default"):
             try:
                 return registry.llm(name)
             except Exception:

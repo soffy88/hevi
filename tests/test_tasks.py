@@ -9,6 +9,7 @@ from hevi.production.execution import execute_standard_operation
 from hevi.tasks.models import ShotState, VideoTask
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository
+from hevi.tasks.state_machine import InvalidTaskTransition, validate_task_transition
 from hevi.tasks.task_service import TaskService
 
 
@@ -37,6 +38,14 @@ def test_shot_state_model_instantiation():
     assert shot.task_id == task_id
     assert shot.shot_index == 0
     assert shot.status == "completed"
+
+
+def test_task_state_machine_allows_recovery_and_rejects_terminal_regression():
+    validate_task_transition("queued", "claimed")
+    validate_task_transition("interrupted", "queued")
+    validate_task_transition("failed", "running")
+    with pytest.raises(InvalidTaskTransition):
+        validate_task_transition("completed", "running")
 
 
 @pytest.mark.asyncio

@@ -178,7 +178,7 @@ def plan_semantic_motion(
                 primitive=hero if offset == 0 else "fade_in",
                 priority="hero" if offset == 0 else "support",
             )
-            for offset, beat in enumerate(related or [None])  # type: ignore[misc]
+            for offset, beat in enumerate(related or [None])
             if beat is not None
         ]
         if not motion_beats:

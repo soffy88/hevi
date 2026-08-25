@@ -22,12 +22,19 @@ from fastapi.responses import FileResponse
 from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
+from hevi.artifact_store import ArtifactRepository, get_object_store
+from hevi.artifact_store.http import materialize_artifact
 from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.production.artifacts import ArtifactManifest
 from hevi.runs.repository import AutomationRunRepository
 from hevi.runs.task_projection import create_projection, update_projection
-from hevi.runs.tongjian_state import dump_tongjian_update, load_tongjian_record
+from hevi.runs.tongjian_state import (
+    TongjianRunStore,
+    dump_tongjian_update,
+    load_tongjian_record,
+)
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 from hevi.tongjian.schemas import Constitution, LayerConfig, Script
@@ -36,9 +43,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tongjian", tags=["tongjian"])
 
-# ── P0 降级:DB 表可能未建,用内存 map 兜底 ──────────────────────────────
-_RUNS: dict[str, dict[str, Any]] = {}
-_RUN_STORES: dict[str, AutomationRunRepository] = {}
+# ── 执行态快照 ────────────────────────────────────────────────────────────
+# This is deliberately not a source of truth.  PostgreSQL automation_runs is
+# read before a worker takeover and by every production API read.  The map
+# only avoids repeatedly deserialising pydantic objects during one execution.
+_EXECUTION_CONTEXTS: dict[str, dict[str, Any]] = {}
+_RUN_REPOSITORIES: dict[str, AutomationRunRepository] = {}
 _PERSIST_TASKS: set[asyncio.Task[Any]] = set()
 
 _LAYER_ORDER = ["L0", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8"]
@@ -67,6 +77,10 @@ class RunRequest(BaseModel):
     reference_url: str = ""
     # 每层的模型选择 + 可调参数(键 "L0".."L8"),前端逐层调参。缺省=各层默认。
     layer_config: dict[str, LayerConfig] = Field(default_factory=dict)
+    # History-series binding; kept in the immutable task config so the series
+    # queue can query PostgreSQL rather than the SQLite TaskRun projection.
+    lesson_order: int | None = None
+    tb_id: str | None = None
 
 
 def _gate_decision(gate: Any) -> tuple[str, str | None]:
@@ -120,7 +134,7 @@ class RunStatus(BaseModel):
 # ── 辅助:初始化 run 记录 ───────────────────────────────────────────────────
 
 
-def _init_run(run_id: str, source_name: str) -> dict[str, Any]:
+def _init_run(run_id: str, source_name: str, *, cache: bool = True) -> dict[str, Any]:
     layers = {
         layer: {
             "layer": layer,
@@ -147,16 +161,18 @@ def _init_run(run_id: str, source_name: str) -> dict[str, Any]:
         "error": None,
         "task_ids": [],
     }
-    _RUNS[run_id] = record
+    if cache:
+        _EXECUTION_CONTEXTS[run_id] = record
     return record
 
 
 def _update_layer(run_id: str, layer: str, **kwargs: Any) -> None:
-    if run_id in _RUNS:
-        _RUNS[run_id]["layers"][layer].update(kwargs)
-        _RUNS[run_id]["current_layer"] = layer
-        repo = _RUN_STORES.get(run_id)
-        task_id = (_RUNS[run_id].get("task_ids") or [None])[0]
+    record = _EXECUTION_CONTEXTS.get(run_id)
+    if record is not None:
+        record["layers"][layer].update(kwargs)
+        record["current_layer"] = layer
+        repo = _RUN_REPOSITORIES.get(run_id)
+        task_id = (record.get("task_ids") or [None])[0]
         if repo is not None and task_id is not None:
             progress = min(95.0, (_LAYER_ORDER.index(layer) + 1) / len(_LAYER_ORDER) * 100)
             projection_task = asyncio.create_task(
@@ -171,7 +187,7 @@ def _update_layer(run_id: str, layer: str, **kwargs: Any) -> None:
             _PERSIST_TASKS.add(projection_task)
             projection_task.add_done_callback(_PERSIST_TASKS.discard)
         if repo is not None:
-            task = asyncio.create_task(repo.update(run_id, dump_tongjian_update(_RUNS[run_id])))
+            task = asyncio.create_task(repo.update(run_id, dump_tongjian_update(record)))
             _PERSIST_TASKS.add(task)
             task.add_done_callback(_PERSIST_TASKS.discard)
 
@@ -179,14 +195,15 @@ def _update_layer(run_id: str, layer: str, **kwargs: Any) -> None:
 def _finish_run(
     run_id: str, *, success: bool, result_path: str | None = None, error: str | None = None
 ) -> None:
-    if run_id in _RUNS:
-        _RUNS[run_id]["status"] = "COMPLETED" if success else "FAILED"
-        _RUNS[run_id]["completed_at"] = datetime.now(UTC)
-        _RUNS[run_id]["result_video_path"] = result_path
+    record = _EXECUTION_CONTEXTS.get(run_id)
+    if record is not None:
+        record["status"] = "COMPLETED" if success else "FAILED"
+        record["completed_at"] = datetime.now(UTC)
+        record["result_video_path"] = result_path
         if error:
-            _RUNS[run_id]["error"] = error
-        repo = _RUN_STORES.get(run_id)
-        task_id = (_RUNS[run_id].get("task_ids") or [None])[0]
+            record["error"] = error
+        repo = _RUN_REPOSITORIES.get(run_id)
+        task_id = (record.get("task_ids") or [None])[0]
         if repo is not None and task_id is not None:
             projection_task = asyncio.create_task(
                 update_projection(
@@ -201,9 +218,73 @@ def _finish_run(
             _PERSIST_TASKS.add(projection_task)
             projection_task.add_done_callback(_PERSIST_TASKS.discard)
         if repo is not None:
-            task = asyncio.create_task(repo.update(run_id, dump_tongjian_update(_RUNS[run_id])))
+            task = asyncio.create_task(repo.update(run_id, dump_tongjian_update(record)))
             _PERSIST_TASKS.add(task)
             task.add_done_callback(_PERSIST_TASKS.discard)
+
+
+def _context(run_id: str) -> dict[str, Any]:
+    record = _EXECUTION_CONTEXTS.get(run_id)
+    if record is None:
+        raise RuntimeError(f"tongjian execution context {run_id} is not loaded")
+    return record
+
+
+def _request_from_record(record: dict[str, Any]) -> RunRequest:
+    request = record.get("req") or record.get("request")
+    if isinstance(request, RunRequest):
+        return request
+    if isinstance(request, dict):
+        parsed = RunRequest.model_validate(request)
+        record["req"] = parsed
+        record["request"] = parsed
+        return parsed
+    raise RuntimeError("tongjian durable state has no RunRequest")
+
+
+def _persist_context(run_id: str) -> None:
+    """Persist a rich context mutation without making the render loop await DB."""
+
+    record = _EXECUTION_CONTEXTS.get(run_id)
+    repo = _RUN_REPOSITORIES.get(run_id)
+    if record is None or repo is None:
+        return
+    task = asyncio.create_task(repo.update(run_id, dump_tongjian_update(record)))
+    _PERSIST_TASKS.add(task)
+    task.add_done_callback(_PERSIST_TASKS.discard)
+
+
+async def _flush_run_persistence(run_id: str) -> None:
+    """Synchronize the final in-process projection before an adapter returns.
+
+    Layer updates are intentionally fire-and-forget while rendering so a slow
+    status write cannot hold a GPU stage hostage.  The task adapter, however,
+    must not return ``completed`` before the durable run and task projections
+    contain that terminal state.
+    """
+    pending = tuple(_PERSIST_TASKS)
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+    record = _EXECUTION_CONTEXTS.get(run_id)
+    repo = _RUN_REPOSITORIES.get(run_id)
+    if record is None or repo is None:
+        return
+    await repo.update(run_id, dump_tongjian_update(record))
+    task_id = (record.get("task_ids") or [None])[0]
+    if task_id is not None:
+        status = str(record.get("status") or "RUNNING").lower()
+        await update_projection(
+            TaskRepository(repo.pool),
+            task_id,
+            status=(
+                "completed"
+                if status == "completed"
+                else ("failed" if status == "failed" else "running")
+            ),
+            progress_pct=100.0 if status == "completed" else None,
+            result_video_path=record.get("result_video_path"),
+            error=record.get("error"),
+        )
 
 
 # ── 后台流水线 ────────────────────────────────────────────────────────────────
@@ -290,7 +371,7 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
     """后台异步跑 L0-L2(出剧本)。pause_after=="L2" 则停在审核态等人工;否则直接续渲染。"""
     from pathlib import Path
 
-    _RUNS[run_id]["status"] = "RUNNING"
+    _context(run_id)["status"] = "RUNNING"
 
     try:
         from hevi.tongjian.chapter_ir import extract_chapter_ir
@@ -313,7 +394,8 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
                     "detail": "transcript",
                 }
             )
-            _RUNS[run_id]["reference"] = watched
+            _context(run_id)["reference"] = watched
+            _persist_context(run_id)
             logger.info("tongjian %s borrowed watch.video: %s", run_id, watched.get("status"))
 
         # L0 史料预处理
@@ -418,7 +500,7 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
         from hevi.studio.mix import plan_history_mix
 
         mix = await plan_history_mix(script)
-        _RUNS[run_id]["mix"] = mix.to_dict()
+        _context(run_id)["mix"] = mix.to_dict()
         from hevi.studio.kit import shot_export
 
         for line in mix.drama_lines:
@@ -439,20 +521,23 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
         )
 
         # 存 L0-L2 产物 → 供人工审核/续跑;pause_after=="L2" 则停在审核态,否则直接续渲染。
-        _RUNS[run_id].update(
+        _context(run_id).update(
             {
                 "req": req,
                 "chapter_ir": chapter_ir,
                 "constitution": constitution,
                 "script": script,
+                "character_states": character_states,
                 "run_dir": str(run_dir),
             }
         )
+        _persist_context(run_id)
         _persist_review(run_dir, constitution, script)
 
         if req.pause_after == "L2":
-            _RUNS[run_id]["status"] = "AWAITING_REVIEW"
-            _RUNS[run_id]["current_layer"] = "L2"
+            _context(run_id)["status"] = "AWAITING_REVIEW"
+            _context(run_id)["current_layer"] = "L2"
+            _persist_context(run_id)
             logger.info("tongjian run %s 出剧本完毕,暂停待人工审核(L2)", run_id)
             return
 
@@ -464,11 +549,11 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
 
 
 async def _run_render_layers(run_id: str) -> dict[str, Any] | None:
-    """续跑 L3-L8(审核通过后调用)。从 _RUNS 读回 L0-L2 产物(含人工编辑过的剧本)。"""
+    """续跑 L3-L8,从持久化恢复的执行快照读取 L0-L2 产物。"""
     from pathlib import Path
 
-    rec = _RUNS[run_id]
-    req: RunRequest = rec["req"]
+    rec = _context(run_id)
+    req = _request_from_record(rec)
     chapter_ir = rec["chapter_ir"]
     constitution = rec["constitution"]
     script = rec["script"]
@@ -616,7 +701,7 @@ async def _run_render(run_id: str) -> None:
     """Run the resumable L3-L8 renderer through the standard 3O boundary."""
     from hevi.tongjian.production import PresenterProductionError, render_presenter_video
 
-    rec = _RUNS[run_id]
+    rec = _context(run_id)
     run_dir = Path(rec["run_dir"])
 
     async def render_layers(
@@ -624,16 +709,50 @@ async def _run_render(run_id: str) -> None:
     ) -> dict[str, Any]:
         result = await _run_render_layers(run_id)
         if result is None:
-            raise RuntimeError(_RUNS[run_id].get("error") or "Tongjian L3-L8 renderer failed")
+            raise RuntimeError(_context(run_id).get("error") or "Tongjian L3-L8 renderer failed")
         return result
 
     try:
         result = await render_presenter_video(output_dir=run_dir, renderer=render_layers)
     except PresenterProductionError as exc:
-        if _RUNS[run_id].get("status") != "FAILED":
+        if _context(run_id).get("status") != "FAILED":
             _finish_run(run_id, success=False, error=f"L3-L8 failed: {exc}")
         return
     _finish_run(run_id, success=True, result_path=str(result.video_path))
+
+
+async def _regenerate_script(run_id: str) -> None:
+    """Regenerate only L2 from the durable L0/L1 review state."""
+    from hevi.tongjian.script import build_script
+
+    rec = _context(run_id)
+    req = _request_from_record(rec)
+    _llm, _tts, _params, _gate_done = _pipeline_helpers(run_id, req)
+    _update_layer(run_id, "L2", status="RUNNING", started_at=datetime.now(UTC))
+    try:
+        script, g2 = await build_script(
+            chapter_ir=rec["chapter_ir"],
+            constitution=rec["constitution"],
+            llm=_llm("L2"),
+            dramatize=bool(_params("L2").get("dramatize", True)),
+            include_commentary=bool(_params("L2").get("include_commentary", True)),
+            screenwriter_persona=str(_params("L2").get("screenwriter_persona") or ""),
+        )
+        rec["script"] = script
+        _gate_done("L2", g2)
+        _persist_review(Path(rec["run_dir"]), rec["constitution"], script)
+    except Exception as exc:
+        _update_layer(
+            run_id,
+            "L2",
+            status="FAILED",
+            error=str(exc)[:500],
+            finished_at=datetime.now(UTC),
+        )
+        raise
+    rec["status"] = "AWAITING_REVIEW"
+    rec["current_layer"] = "L2"
+    _persist_context(run_id)
 
 
 async def execute_task(task: dict[str, Any], pool: PgPool) -> dict[str, Any]:
@@ -642,17 +761,66 @@ async def execute_task(task: dict[str, Any], pool: PgPool) -> dict[str, Any]:
     run_id = str(config.get("run_id") or "")
     if not run_id:
         raise ValueError("tongjian task missing config_json.run_id")
-    if run_id not in _RUNS:
+    if run_id not in _EXECUTION_CONTEXTS:
         repo = AutomationRunRepository(pool)
         row = await repo.get(run_id)
         if row is None:
             raise ValueError(f"tongjian run {run_id} not found")
-        _RUNS[run_id] = load_tongjian_record(row)
-        _RUN_STORES[run_id] = repo
-    request_data = config.get("request") or {}
+        _EXECUTION_CONTEXTS[run_id] = load_tongjian_record(row)
+        _RUN_REPOSITORIES[run_id] = repo
+    request_data = config.get("request") or _context(run_id).get("request") or {}
     request = RunRequest.model_validate(request_data)
-    await _run_pipeline(run_id, request)
-    return await TaskRepository(pool).get_task(task["id"]) or task
+    _context(run_id)["req"] = request
+    _context(run_id)["request"] = request
+    if config.get("tongjian_regenerate"):
+        await _regenerate_script(run_id)
+    elif config.get("tongjian_resume") and _context(run_id).get("script"):
+        # L0-L2 are durable review artifacts.  A new worker must not invoke
+        # the expensive planning stages again when this is a review resume or
+        # a render retry after the original worker died.
+        await _run_render(run_id)
+    else:
+        await _run_pipeline(run_id, request)
+    await _flush_run_persistence(run_id)
+    refreshed = await TaskRepository(pool).get_task(task["id"]) or task
+    run_status = _context(run_id).get("status")
+    if run_status == "AWAITING_REVIEW":
+        return {**refreshed, "status": "awaiting_review", "review_pending": True}
+    if refreshed.get("status") == "completed":
+        refreshed = await _commit_tongjian_artifact(refreshed, run_id, pool)
+    return refreshed
+
+
+async def _commit_tongjian_artifact(
+    task: dict[str, Any], run_id: str, pool: PgPool
+) -> dict[str, Any]:
+    """Commit Tongjian's final video before the adapter reports completion."""
+
+    record = _context(run_id)
+    final_path = record.get("result_video_path") or task.get("result_video_path")
+    if not final_path:
+        raise RuntimeError("Tongjian completed without a final video path")
+    config = dict(task.get("config_json") or {})
+    manifest = ArtifactManifest.for_video(final_path).model_copy(
+        update={
+            "production_id": config.get("production_id"),
+            "revision_id": config.get("revision_id"),
+            "attempt_id": str(task.get("current_attempt_id") or "") or None,
+            "tenant_id": str(task.get("user_id") or "anonymous"),
+        }
+    )
+    committed = await ArtifactRepository(pool, get_object_store()).commit(manifest)
+    config["artifact_manifest"] = committed.model_dump(mode="json")
+    await TaskRepository(pool).update_task(
+        task["id"],
+        {
+            "config_json": config,
+            "updated_at": datetime.now(UTC).replace(tzinfo=None),
+        },
+    )
+    record["artifact_manifest"] = committed
+    await AutomationRunRepository(pool).update(run_id, dump_tongjian_update(record))
+    return {**task, "config_json": config}
 
 
 # ── API Endpoints ─────────────────────────────────────────────────────────────
@@ -672,7 +840,7 @@ async def start_run(
         raise HTTPException(status_code=422, detail="原文过长(上限 5 万字)")
 
     run_id = str(uuid.uuid4())
-    _init_run(run_id, body.source_name)
+    record = _init_run(run_id, body.source_name, cache=pool is None)
     task_ids: list[str] = []
     if pool is not None:
         projection = await create_projection(
@@ -690,7 +858,7 @@ async def start_run(
             },
         )
         task_ids = [str(projection["id"])]
-        _RUNS[run_id]["task_ids"] = task_ids
+        record["task_ids"] = task_ids
         repo = AutomationRunRepository(pool)
         await repo.create(
             {
@@ -699,16 +867,13 @@ async def start_run(
                 "user_id": str(user["id"]),
                 "status": "PENDING",
                 "input_json": {"source_name": body.source_name, "raw_text": body.raw_text},
-                "state_json": {"layers": _RUNS[run_id]["layers"]},
+                "state_json": dump_tongjian_update({**record, "request": body})["state_json"],
                 "task_ids": task_ids,
             }
         )
-        _RUN_STORES[run_id] = repo
     if task_ids:
         assert pool is not None
-        background_tasks.add_task(
-            TaskService(TaskRepository(pool)).run_task, uuid.UUID(task_ids[0])
-        )
+        await TaskService(TaskRepository(pool)).submit_task(uuid.UUID(task_ids[0]))
     else:
         background_tasks.add_task(_run_pipeline, run_id, body)
     logger.info("tongjian run %s started: %s", run_id, body.source_name)
@@ -720,25 +885,16 @@ async def list_runs(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> list[RunStatus]:
-    """列出所有 run(内存 P0 版,全局共享)。"""
-    result: list[RunStatus] = []
-    rows = []
+    """列出当前用户的持久化 run；本地调试才使用执行态投影。"""
     if pool is not None:
         rows = await AutomationRunRepository(pool).list_for_user(
             kind="tongjian", user_id=str(user["id"])
         )
-    seen = {str(row["id"]) for row in rows}
-    result.extend(
-        _rec_to_status(load_tongjian_record(row))
-        for row in rows
-        if str(row["id"]) not in _RUNS
-    )
-    result.extend(
+        return [_rec_to_status(load_tongjian_record(row)) for row in rows]
+    return [
         _rec_to_status(rec)
-        for rec in sorted(_RUNS.values(), key=lambda r: r["created_at"], reverse=True)
-        if rec["run_id"] in seen
-    )
-    return result
+        for rec in sorted(_EXECUTION_CONTEXTS.values(), key=lambda r: r["created_at"], reverse=True)
+    ]
 
 
 @router.get("/runs/{run_id}")
@@ -747,21 +903,40 @@ async def get_run(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> RunStatus:
-    """查询单个 run 状态 + 各层进度。"""
-    rec = _RUNS.get(run_id)
-    if not rec:
-        row = await AutomationRunRepository(pool).get(run_id) if pool is not None else None
-        if row is None or row.get("kind") != "tongjian" or row.get("user_id") != str(user["id"]):
+    """查询单个 run 状态 + 各层进度。生产环境始终从 PostgreSQL 读取。"""
+    if pool is not None:
+        rec = await TongjianRunStore(AutomationRunRepository(pool)).get_owned(
+            run_id, user_id=str(user["id"])
+        )
+        if rec is None:
             raise HTTPException(status_code=404, detail="run 不存在")
-        return _rec_to_status(load_tongjian_record(row))
+        return _rec_to_status(rec)
+    rec = _EXECUTION_CONTEXTS.get(run_id)
+    if rec is None or rec.get("user_id") not in (None, str(user["id"])):
+        raise HTTPException(status_code=404, detail="run 不存在")
     return _rec_to_status(rec)
 
 
-def _require_review_rec(run_id: str) -> dict[str, Any]:
-    rec = _RUNS.get(run_id)
-    if not rec:
+async def _require_review_rec(
+    run_id: str,
+    user: dict[str, Any],
+    pool: PgPool | None,
+) -> dict[str, Any]:
+    if pool is not None:
+        repository = AutomationRunRepository(pool)
+        rec = await TongjianRunStore(repository).get_owned(run_id, user_id=str(user["id"]))
+        if rec is not None:
+            # Execution context is a pydantic cache only; production reads
+            # below always go back to automation_runs.
+            _EXECUTION_CONTEXTS[run_id] = rec
+            _RUN_REPOSITORIES[run_id] = repository
+    else:
+        rec = _EXECUTION_CONTEXTS.get(run_id)
+    if rec is None:
         raise HTTPException(status_code=404, detail="run 不存在")
-    if "script" not in rec or "constitution" not in rec:
+    if rec.get("user_id") not in (None, str(user["id"])):
+        raise HTTPException(status_code=404, detail="run 不存在")
+    if rec.get("script") is None or rec.get("constitution") is None:
         raise HTTPException(status_code=409, detail="剧本尚未生成,无法审核")
     return rec
 
@@ -770,9 +945,10 @@ def _require_review_rec(run_id: str) -> dict[str, Any]:
 async def get_run_script(
     run_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
     """取回待审核的立意+剧本(供人工审核台展示/编辑)。"""
-    rec = _require_review_rec(run_id)
+    rec = await _require_review_rec(run_id, user, pool)
     return {
         "constitution": rec["constitution"].model_dump(),
         "script": rec["script"].model_dump(),
@@ -785,12 +961,13 @@ async def update_run_script(
     run_id: str,
     body: ScriptReviewUpdate,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, str]:
     """人工审核提交:用编辑后的剧本(+可选立意)覆盖草稿。不触发续跑,只保存。
 
     line_id 一律由后端按顺序重排(LN001..),前端删行/加行/改顺序后不必自己管 id。
     """
-    rec = _require_review_rec(run_id)
+    rec = await _require_review_rec(run_id, user, pool)
     if rec["status"] not in ("AWAITING_REVIEW", "COMPLETED", "FAILED"):
         raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可编辑剧本")
     lines = []
@@ -811,6 +988,11 @@ async def update_run_script(
         logger.info("tongjian run %s 防复读记忆吸收 %d 句", run_id, added)
     except Exception as exc:
         logger.warning("防复读记忆写入失败: %s", exc)
+    if pool is not None:
+        saved = await TongjianRunStore(AutomationRunRepository(pool)).save(rec)
+        if saved is None:
+            raise HTTPException(status_code=404, detail="run 不存在")
+        _EXECUTION_CONTEXTS[run_id] = saved
     logger.info("tongjian run %s 剧本被人工编辑保存(%d 行)", run_id, len(lines))
     return {"run_id": run_id, "status": rec["status"], "lines": str(len(lines))}
 
@@ -820,13 +1002,33 @@ async def resume_run(
     run_id: str,
     background_tasks: BackgroundTasks,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, str]:
     """审核通过 → 用(可能已编辑的)剧本续跑 L3-L8 渲染。"""
-    rec = _require_review_rec(run_id)
+    rec = await _require_review_rec(run_id, user, pool)
     if rec["status"] != "AWAITING_REVIEW":
         raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可续跑")
     rec["status"] = "RUNNING"
-    background_tasks.add_task(_run_render, run_id)
+    if pool is not None:
+        repository = AutomationRunRepository(pool)
+        await TongjianRunStore(repository).save(rec)
+        task_id = (rec.get("task_ids") or [None])[0]
+        if not task_id:
+            raise HTTPException(status_code=409, detail="run 没有关联可续跑的持久化任务")
+        task_repository = TaskRepository(pool)
+        task = await task_repository.get_task(uuid.UUID(str(task_id)))
+        if task is None:
+            raise HTTPException(status_code=409, detail="关联任务不存在，无法续跑")
+        config = dict(task.get("config_json") or {})
+        config["tongjian_resume"] = True
+        config.pop("tongjian_regenerate", None)
+        await task_repository.update_task(
+            uuid.UUID(str(task_id)),
+            {"config_json": config, "updated_at": datetime.now(UTC).replace(tzinfo=None)},
+        )
+        await TaskService(task_repository).submit_task(uuid.UUID(str(task_id)))
+    else:
+        background_tasks.add_task(_run_render, run_id)
     logger.info("tongjian run %s 审核通过,续跑渲染", run_id)
     return {"run_id": run_id, "status": "RUNNING"}
 
@@ -836,38 +1038,34 @@ async def regenerate_script(
     run_id: str,
     background_tasks: BackgroundTasks,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, str]:
     """对剧本不满意 → 用同一 chapter_ir/立意 重出一版剧本(仍停在审核态)。"""
-    rec = _require_review_rec(run_id)
+    rec = await _require_review_rec(run_id, user, pool)
     if rec["status"] != "AWAITING_REVIEW":
         raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可重生成")
 
-    async def _regen() -> None:
-        from pathlib import Path
-
-        from hevi.tongjian.script import build_script
-
-        req: RunRequest = rec["req"]
-        _llm, _tts, _params, _gate_done = _pipeline_helpers(run_id, req)
-        _update_layer(run_id, "L2", status="RUNNING", started_at=datetime.now(UTC))
-        try:
-            script, g2 = await build_script(
-                chapter_ir=rec["chapter_ir"],
-                constitution=rec["constitution"],
-                llm=_llm("L2"),
-                dramatize=bool(_params("L2").get("dramatize", True)),
-                include_commentary=bool(_params("L2").get("include_commentary", True)),
-                screenwriter_persona=str(_params("L2").get("screenwriter_persona") or ""),
-            )
-            rec["script"] = script
-            _gate_done("L2", g2)
-            _persist_review(Path(rec["run_dir"]), rec["constitution"], script)
-        except Exception as e:
-            logger.warning("tongjian run %s 重生成剧本失败: %s", run_id, e)
-        rec["status"] = "AWAITING_REVIEW"
-
     rec["status"] = "RUNNING"
-    background_tasks.add_task(_regen)
+    if pool is not None:
+        repository = AutomationRunRepository(pool)
+        await TongjianRunStore(repository).save(rec)
+        task_id = (rec.get("task_ids") or [None])[0]
+        if not task_id:
+            raise HTTPException(status_code=409, detail="run 没有关联可重生成的持久化任务")
+        task_repository = TaskRepository(pool)
+        task = await task_repository.get_task(uuid.UUID(str(task_id)))
+        if task is None:
+            raise HTTPException(status_code=409, detail="关联任务不存在，无法重生成")
+        config = dict(task.get("config_json") or {})
+        config["tongjian_regenerate"] = True
+        config.pop("tongjian_resume", None)
+        await task_repository.update_task(
+            uuid.UUID(str(task_id)),
+            {"config_json": config, "updated_at": datetime.now(UTC).replace(tzinfo=None)},
+        )
+        await TaskService(task_repository).submit_task(uuid.UUID(str(task_id)))
+    else:
+        background_tasks.add_task(_regenerate_script, run_id)
     return {"run_id": run_id, "status": "RUNNING"}
 
 
@@ -875,11 +1073,12 @@ async def regenerate_script(
 async def download_run_video(
     run_id: str,
     token: Annotated[str | None, Query(description="JWT (<video>/<a> 不能带 header)")] = None,
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> FileResponse:
     """取回某次 run 的成片(final.mp4)。
 
     <video src>/<a download> 无法带 Authorization 头,故 JWT 走 ?token= 校验。
-    直接按确定性路径 output/tongjian/<run_id>/L8/final.mp4 取片,不依赖内存 _RUNS,
+    直接按确定性路径 output/tongjian/<run_id>/L8/final.mp4 取片,不依赖执行态快照,
     这样即使 API 重启(内存 run 记录丢失)历史成片仍可下载。
     """
     if not token:
@@ -897,7 +1096,20 @@ async def download_run_video(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="非法 run_id") from exc
 
-    path = Path("output/tongjian") / run_id / "L8" / "final.mp4"
+    if pool is not None:
+        rec = await TongjianRunStore(AutomationRunRepository(pool)).get_owned(
+            run_id, user_id=str(user_id)
+        )
+        if rec is None or rec.get("status") != "COMPLETED":
+            raise HTTPException(status_code=404, detail="成片不存在或已被清理")
+        raw_manifest = rec.get("artifact_manifest")
+        if not raw_manifest:
+            raise HTTPException(status_code=409, detail="成片尚未提交 Artifact Store")
+        path = await materialize_artifact(
+            ArtifactManifest.model_validate(raw_manifest), kind="video"
+        )
+    else:
+        path = Path("output/tongjian") / run_id / "L8" / "final.mp4"
     if not path.is_file():
         raise HTTPException(status_code=404, detail="成片不存在或已被清理")
     return FileResponse(path, media_type="video/mp4", filename=f"tongjian_{run_id[:8]}.mp4")

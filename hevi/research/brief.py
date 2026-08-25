@@ -102,6 +102,8 @@ async def run_research(
     report.questions = questions
     for q in questions:
         try:
+            if not callable(web_research):
+                raise RuntimeError("installed oskill does not expose web_research callable")
             res: ResearchResult = await web_research(
                 q, caller=caller, max_sources=max_sources
             )
@@ -109,7 +111,7 @@ async def run_research(
                 "question": q,
                 "summary": res.summary,
                 "confidence": res.confidence,
-                "sources": [s for s in res.sources],
+                "sources": list(res.sources),
             }
             report.findings.append(finding)
             report.sources.extend(res.sources)

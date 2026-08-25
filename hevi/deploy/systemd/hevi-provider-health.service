@@ -1,0 +1,14 @@
+[Unit]
+Description=Hevi provider health sampler
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/hevi
+ExecStart=/usr/bin/env uv run python -m hevi.provider_policy.health_entrypoint
+Restart=always
+RestartSec=5
+EnvironmentFile=-/opt/hevi/.env
+
+[Install]
+WantedBy=multi-user.target

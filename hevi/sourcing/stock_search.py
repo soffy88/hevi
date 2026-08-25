@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 from __future__ import annotations
 
 import os
@@ -67,7 +66,6 @@ class StockAssetRepository:
 
 
 """Pexels-backed stock search with explicit source and licence provenance."""
-# ruff: noqa: E501
 
 
 _PEXELS_API = "https://api.pexels.com"

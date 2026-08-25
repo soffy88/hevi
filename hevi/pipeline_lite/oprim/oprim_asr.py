@@ -114,7 +114,7 @@ def _whisper_transcribe(
     audio: Path, model_dir: str, language: str | None
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """同步 whisper 转写(在 to_thread 中执行)。返回 (segments, words)。"""
-    from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+    from faster_whisper import WhisperModel
 
     model = WhisperModel(model_dir, device="cpu", compute_type="int8")
     segments, _info = model.transcribe(

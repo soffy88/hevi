@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from hevi.studio.kit import nle_recut
 
@@ -222,7 +222,8 @@ def timeline_from_film(
         try:
             from oprim import probe_duration
 
-            dur = float(probe_duration(path)) if path.exists() else 10.0
+            probe = cast(Any, probe_duration)
+            dur = float(probe(path)) if path.exists() else 10.0
         except Exception:
             dur = 10.0
     tl = Timeline(

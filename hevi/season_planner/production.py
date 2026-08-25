@@ -90,7 +90,10 @@ async def execute_shortdrama_task(task: dict[str, Any], pool: Any) -> dict[str, 
         renderer=render_layers,
         presentation_kind="shortdrama-episode",
     )
-    shots = rendered_episode.get("shots") if isinstance(rendered_episode.get("shots"), list) else []
+    raw_shots = rendered_episode.get("shots")
+    shots: list[dict[str, Any]] = [
+        shot for shot in raw_shots if isinstance(shot, dict)
+    ] if isinstance(raw_shots, list) else []
     promise = str(config.get("delivery_promise") or "motion")
     verdict = evaluate_director_delivery(shots, delivery_promise=promise)
     config_json = {
@@ -101,7 +104,7 @@ async def execute_shortdrama_task(task: dict[str, Any], pool: Any) -> dict[str, 
         "motion_fallback": verdict.motion_fallback,
         "delivery_promise": promise,
     }
-    passed = sum(1 for s in shots if s.get("passed", True))
+    passed = sum(1 for s in shots if bool(s.get("passed", True)))
     return {
         **task,
         "status": verdict.status,

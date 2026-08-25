@@ -45,6 +45,15 @@ class ProductionAdapterRegistry:
 _DEFAULT = ProductionAdapterRegistry()
 
 
+def _register_builtin_adapters() -> None:
+    from hevi.execution.resumable_render import execute_checkpoint_render
+
+    _DEFAULT.register("checkpoint_render", execute_checkpoint_render, replace=True)
+
+
+_register_builtin_adapters()
+
+
 def default_production_adapters() -> ProductionAdapterRegistry:
     """Return the application-configured registry without importing routers."""
     return _DEFAULT

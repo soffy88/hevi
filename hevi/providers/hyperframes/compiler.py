@@ -73,8 +73,10 @@ def clips_from_payload(payload: dict[str, Any]) -> list[HyperClip]:
         text = str(cut.get("text") or cut.get("label") or cut.get("title") or "").strip()
         if not text:
             continue
-        start = float(cut.get("start_s") if cut.get("start_s") is not None else cursor)
-        dur = float(cut.get("duration_s") or 3.0)
+        raw_start = cut.get("start_s")
+        raw_duration = cut.get("duration_s")
+        start = float(raw_start) if isinstance(raw_start, (int, float, str)) else cursor
+        dur = float(raw_duration) if isinstance(raw_duration, (int, float, str)) else 3.0
         kind = "title" if i == 0 else "card"
         clips.append(HyperClip(start, max(dur, 0.8), text, kind=kind))
         cursor = start + max(dur, 0.8)
@@ -89,6 +91,32 @@ def compile_composition(payload: dict[str, Any]) -> HyperComposition:
     width = int(payload.get("width") or 1920)
     height = int(payload.get("height") or 1080)
     fps = int(payload.get("fps") or 30)
+    constraint_note = ""
+    raw_graph = payload.get("constraint_graph")
+    if raw_graph:
+        # Every provider-facing path that receives a canonical graph goes
+        # through the same compiler.  The rendered composition keeps the
+        # coverage summary in DESIGN.md so a dashboard can audit consumption.
+        from hevi.constraints import ConstraintGraph, ProviderCapabilities, compile_graph
+
+        graph = (
+            raw_graph
+            if isinstance(raw_graph, ConstraintGraph)
+            else ConstraintGraph.model_validate(raw_graph)
+        )
+        compiled = compile_graph(
+            graph,
+            ProviderCapabilities(provider_id="hyperframes"),
+        )
+        constraint_note = (
+            "\n\n## CONSTRAINT_COVERAGE\n"
+            f"compiled={graph.coverage.compiled_constraints} "
+            f"consumed={graph.coverage.consumed_constraints} "
+            f"unsupported={graph.coverage.unsupported_constraints} "
+            f"silent_drops={graph.coverage.silent_drops}\n"
+            f"unsupported_ids={','.join(item.id for item in compiled.unsupported)}"
+        )
+        design_md = f"{design_md}{constraint_note}"
     return HyperComposition(
         title=title,
         width=width,
@@ -101,15 +129,22 @@ def compile_composition(payload: dict[str, Any]) -> HyperComposition:
 
 
 def render_html(comp: HyperComposition) -> str:
+    """渲成 hyperframes CLI 可直接渲染的项目 index.html。
+
+    根元素带 data-composition-id + data-duration + data-width/height。
+    data-no-timeline 跳过 CLI 对 GSAP 时间线的 45s 轮询等待(纯 CSS/clip 构图
+    不需要 window.__timelines)。
+    """
     vars_css = "\n".join(f"    {k}: {v};" for k, v in comp.css_vars.items())
     clips_html = []
-    for clip in comp.clips:
+    for i, clip in enumerate(comp.clips, start=1):
         tag = "h1" if clip.kind == "title" else "p"
         clips_html.append(
             "    "
             f'<section class="clip clip-{escape(clip.kind)}" '
             f'data-start="{clip.start_s:.2f}" '
-            f'data-duration="{clip.duration_s:.2f}">'
+            f'data-duration="{clip.duration_s:.2f}" '
+            f'data-track-index="{i}">'
             f"<{tag}>{escape(clip.text)}</{tag}></section>"
         )
     empty = (
@@ -117,6 +152,7 @@ def render_html(comp: HyperComposition) -> str:
         "<h1>HEVI</h1></section>"
     )
     body = "\n".join(clips_html) or empty
+    total_s = comp.duration_s or 3.0
     return (
         "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n"
         f'  <meta charset="utf-8"/>\n  <title>{escape(comp.title)}</title>\n'
@@ -131,6 +167,12 @@ def render_html(comp: HyperComposition) -> str:
         "    h1{font-size:clamp(32px,6vw,84px);letter-spacing:.04em;margin:0}\n"
         "    p{font-size:clamp(22px,3.4vw,48px);line-height:1.35;margin:0;max-width:20em}\n"
         "  </style>\n</head>\n<body>\n"
+        "  <div id=\"root\" "
+        f'data-composition-id="main" data-start="0" '
+        f'data-duration="{total_s:.2f}" '
+        f'data-width="{comp.width}" data-height="{comp.height}" '
+        'data-no-timeline>\n'
         f"{body}\n"
+        "  </div>\n"
         "</body>\n</html>\n"
     )

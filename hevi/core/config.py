@@ -10,9 +10,54 @@ class Settings(BaseSettings):
     app_name: str = "hevi"
     app_version: str = "6.0.0"
     debug: bool = False
+    # SQLite is a deliberate local projection only.  SaaS/API mode must use
+    # PostgreSQL and migrations; it must never call SQLModel create_all().
+    local_mode: bool = False
+    # Worker scheduler resource advertisement.  ``any`` keeps legacy workers
+    # compatible; GPU pools should declare their class and available VRAM.
+    worker_resource_class: str = "any"
+    worker_available_vram_mb: int | None = None
+    worker_capacity_slots: int = 1
+    # A worker lease is long enough to cover normal provider calls, while the
+    # heartbeat interval is deliberately much shorter so a stalled worker is
+    # fenced before another worker can reclaim the attempt.
+    task_lease_seconds: int = 120
+    task_heartbeat_interval_s: float = 30.0
+    # A production worker consumes scheduler decisions written by the
+    # standalone scheduler service.  Keep the switch explicit so local/fake
+    # repositories and old development stacks can still exercise dequeue().
+    scheduler_required: bool = True
+    scheduler_poll_interval_s: float = 2.0
+    scheduler_leader_name: str = "hevi-scheduler"
+    scheduler_lease_seconds: int = 15
+    scheduler_candidate_limit: int = 128
+    scheduler_worker_id: str = "scheduler"
+    provider_exploration_rate: float = 0.03
+    event_consumer_enabled: bool = True
+    event_consumer_poll_interval_s: float = 0.5
+    event_consumer_name: str = ""
+    event_consumer_max_attempts: int = 8
+    event_publisher_enabled: bool = True
+    event_publisher_poll_interval_s: float = 0.5
+    event_publisher_batch_size: int = 100
+    event_stream_name: str = "hevi:domain-events"
+    provider_health_poll_interval_s: float = 60.0
 
     database_url: str = "postgresql+asyncpg://hevi:hevi@localhost:5432/hevi"
     redis_url: str = "redis://localhost:6379/0"
+
+    # Artifact Store is authoritative for every PostgreSQL task. Local mode
+    # uses the content-addressed filesystem adapter; SaaS mode requires the
+    # MinIO/S3-compatible object store and never treats worker paths as truth.
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = ""
+    minio_secret_key: str = ""
+    minio_bucket: str = "hevi-assets"
+    minio_secure: bool = False
+    artifact_local_root: str = "data/artifacts"
+    # Raw attempt objects (unselected takes) expire; selected/final do not.
+    # The architecture window is 30-90 days; 60 is the default midpoint.
+    artifact_raw_retention_days: int = 60
 
     # HEVI-SPEC-03 资产库(hevi-vault docker-compose 项目,独立于上面的主库/主 MinIO)
     vault_database_url: str = "postgresql://hevi:hevi@localhost:5441/hevi_vault"
@@ -137,6 +182,14 @@ class Settings(BaseSettings):
     manim_timeout_s: float = 180.0
     manim_quality: str = "high"
     manim_use_mathtex: bool = False
+
+    # ── TeamoRouter(OpenAI 兼容, Grok / Pi / DeepSeek 福利版) ──────────────
+    teamorouter_base_url: str = "https://api.teamorouter.com/v1"
+    teamorouter_api_key: str = ""
+    teamorouter_grok_model: str = "grok-4.6"
+    teamorouter_pi_model: str = "pi"
+    teamorouter_free_model: str = "deepseek-v4-flash-free"
+    teamorouter_timeout_s: float = 300.0
 
 
 settings = Settings()

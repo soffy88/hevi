@@ -1,0 +1,64 @@
+# Disposable live-closure stack. Host ports are offset so this can run next to
+# hevi-prod / hevi-vault / mneme without stealing 5432/9000/6379.
+#
+# Usage:
+#   docker compose -f hevi/deploy/docker-compose-live.yml up -d
+#   DATABASE_URL=postgresql://hevi:hevi@127.0.0.1:55432/hevi uv run alembic upgrade head
+name: hevi-live
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hevi
+      POSTGRES_PASSWORD: hevi
+      POSTGRES_DB: hevi
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hevi -d hevi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: livehevi
+      MINIO_ROOT_PASSWORD: livehevi12345
+    ports:
+      - "19100:9000"
+      - "19101:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: on-failure
+    environment:
+      MINIO_ACCESS_KEY: livehevi
+      MINIO_SECRET_KEY: livehevi12345
+      MINIO_BUCKET: hevi-assets
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set live http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY &&
+      mc mb live/$$MINIO_BUCKET --ignore-existing &&
+      echo 'MinIO bucket ready.'
+      "
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "16379:6379"

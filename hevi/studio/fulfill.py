@@ -35,7 +35,7 @@ def _write_job(dest: Path, body: dict[str, Any]) -> Path:
 
 async def fulfill_explainer(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     cues = await explainer_cues_from_text({"texts": _texts_from_order(order)})
-    job = {
+    job: dict[str, Any] = {
         "target": "explainer",
         "topic": order.get("topic"),
         "cues": cues.get("cues") or [],
@@ -50,7 +50,7 @@ async def fulfill_explainer(order: dict[str, Any], output_dir: Path) -> dict[str
         "status": "dispatched",
         "target": "explainer",
         "dispatch_path": str(path),
-        "cue_count": len(job["cues"]),
+        "cue_count": len(job.get("cues") or []),
         "next": job["next"],
     }
 

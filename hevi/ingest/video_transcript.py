@@ -105,7 +105,7 @@ def _whisper_transcribe(
 ) -> list[TranscriptSegment]:
     """faster-whisper 兜底:直接对本地音/视频转写。"""
     try:
-        from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+        from faster_whisper import WhisperModel
     except ImportError as e:  # pragma: no cover - env guard
         raise TranscriptError(f"faster-whisper 未安装,无法兜底转写: {e}") from e
 

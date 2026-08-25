@@ -5,11 +5,12 @@ from __future__ import annotations
 import contextlib
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from hevi.providers.hyperframes.compiler import HyperComposition
 
 
-def _font(size: int):
+def _font(size: int) -> Any:
     from PIL import ImageFont
 
     candidates = (

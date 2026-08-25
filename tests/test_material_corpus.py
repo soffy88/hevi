@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import httpx
-import pytest
 
 from hevi.video.material_corpus import (
     MaterialInfo,
@@ -29,7 +28,7 @@ from hevi.video.material_corpus import (
 
 
 def _m(**kw) -> MaterialInfo:
-    base = dict(source="pexels", id="1", url="https://x/1.mp4", width=720, height=1280, duration_s=5.0, title="sunset", keywords=("sunset", "sky"))
+    base = {"source": "pexels", "id": "1", "url": "https://x/1.mp4", "width": 720, "height": 1280, "duration_s": 5.0, "title": "sunset", "keywords": ("sunset", "sky")}
     base.update(kw)
     return MaterialInfo(**base)
 

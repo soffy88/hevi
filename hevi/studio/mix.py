@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from hevi.studio.kit import explainer_cues_from_text, tongjian_provenance
 
@@ -30,7 +30,7 @@ class HistoryMix:
 
 def _line_dump(line: Any) -> dict[str, Any]:
     if hasattr(line, "model_dump"):
-        return line.model_dump()
+        return cast(dict[str, Any], line.model_dump())
     if isinstance(line, dict):
         return dict(line)
     return {"text": str(line), "type": "narration"}

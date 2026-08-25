@@ -37,13 +37,13 @@ from __future__ import annotations
 
 import importlib
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, cast
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
-
 from obase import Pipeline, RunState, Stage, run_pipeline
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ def resolve_stage_fn(ref: str) -> Callable[..., Any]:
         raise ValueError(f"{ref!r} is not callable")
     if not hasattr(fn, "__await__") and not _is_async(fn):
         raise ValueError(f"{ref!r} is not an async callable (obase Stage requires coroutine)")
-    return fn
+    return cast(Callable[..., Any], fn)
 
 
 def _is_async(fn: Callable[..., Any]) -> bool:

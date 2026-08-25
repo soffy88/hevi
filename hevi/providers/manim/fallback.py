@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from hevi.prompt.manim_compiler import ManimSceneIR
 
@@ -22,7 +23,7 @@ _ACCENT = {
 }
 
 
-def _font(size: int):
+def _font(size: int) -> Any:
     from PIL import ImageFont
 
     candidates = (
@@ -129,7 +130,7 @@ def render_fallback_scene(
 
 
 def _draw_recipe(
-    draw,
+    draw: Any,
     *,
     recipe: str,
     progress: float,
@@ -144,9 +145,9 @@ def _draw_recipe(
     height: int,
     fg: tuple[int, int, int],
     accent: tuple[int, int, int],
-    title_font,
-    body_font,
-    small_font,
+    title_font: Any,
+    body_font: Any,
+    small_font: Any,
 ) -> None:
     cx, cy = width // 2, height // 2
     if title and recipe != "title_card":
@@ -181,13 +182,13 @@ def _draw_recipe(
         left_x, top, right_x, bottom = 220, 220, width - 180, height - 180
         draw.line((left_x, bottom, right_x, bottom), fill=fg, width=3)
         draw.line((left_x, top, left_x, bottom), fill=fg, width=3)
-        peak = max(values) or 1.0
+        peak = float(max(values) or 1.0)
         shown = max(2, int(progress * len(values) + 1))
         pts: list[tuple[int, int]] = []
         for i, value in enumerate(values[:shown]):
-            x = left_x + i * (right_x - left_x) / max(len(values) - 1, 1)
-            y = bottom - (value / peak) * (bottom - top) * 0.85
-            pts.append((int(x), int(y)))
+            x_pos = left_x + i * (right_x - left_x) / max(len(values) - 1, 1)
+            y_pos = bottom - (value / peak) * (bottom - top) * 0.85
+            pts.append((int(x_pos), int(y_pos)))
         if len(pts) >= 2:
             draw.line(pts, fill=accent, width=5)
         for x, y in pts:

@@ -2,11 +2,13 @@
 
 入口与其它 video provider 一致: caller(prompt=…, output_path=…) → Path。
 渲染优先级:本机 hyperframes CLI → ffmpeg 逐卡回退。
-缺 CLI 不 npm install、不挡装配。
+缺 CLI 不 npm install、不挡装配;CLI 渲染失败自动回退。
 """
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import os
 import shutil
@@ -70,11 +72,81 @@ def detect_hyperframes_bin() -> str | None:
     return None
 
 
+_HYPERFRAMES_JSON: dict[str, Any] = {
+    "$schema": "https://hyperframes.heygen.com/schema/hyperframes.json",
+    "registry": "https://raw.githubusercontent.com/heygen-com/hyperframes/main/registry",
+    "paths": {
+        "blocks": "compositions",
+        "components": "compositions/components",
+        "assets": "assets",
+    },
+    "media": {"autoProxy": True},
+}
+
+
 def write_workspace(comp: HyperComposition, dest: Path) -> Path:
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "index.html").write_text(render_html(comp), encoding="utf-8")
     (dest / "DESIGN.md").write_text(comp.design_md or "# DESIGN\n", encoding="utf-8")
+    (dest / "hyperframes.json").write_text(
+        json.dumps(_HYPERFRAMES_JSON, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     return dest / "index.html"
+
+
+async def _run_cli(
+    cmd: list[str],
+    *,
+    cwd: Path,
+    timeout_s: float,
+) -> tuple[int, str]:
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
+        cwd=str(cwd),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    try:
+        stdout, _ = await asyncio.wait_for(process.communicate(), timeout=timeout_s)
+    except TimeoutError:
+        process.kill()
+        await process.wait()
+        raise HyperframesRenderError(
+            f"hyperframes render 超时 {timeout_s:.0f}s"
+        ) from None
+    log = (stdout or b"").decode("utf-8", errors="replace")
+    return int(process.returncode or 0), log
+
+
+async def _render_with_cli(
+    binary: str,
+    work: Path,
+    outp: Path,
+    *,
+    fps: int,
+    timeout_s: float,
+) -> None:
+    quality = _settings_value("HYPERFRAMES_QUALITY", "draft").strip()
+    if quality not in {"draft", "standard", "high"}:
+        quality = "draft"
+    cmd = [
+        binary,
+        "render",
+        str(work),
+        "-o",
+        str(outp),
+        "-f",
+        str(fps),
+        "-q",
+        quality,
+        "--quiet",
+    ]
+    logger.info("hyperframes cli: %s", " ".join(cmd))
+    rc, log = await _run_cli(cmd, cwd=work, timeout_s=timeout_s)
+    if rc != 0:
+        raise HyperframesRenderError(f"hyperframes render 退出码 {rc}: {log[-600:]}")
+    if not outp.exists() or outp.stat().st_size == 0:
+        raise HyperframesRenderError(f"hyperframes render 未写出: {outp}\n{log[-600:]}")
 
 
 async def hyperframes_generate(
@@ -88,7 +160,7 @@ async def hyperframes_generate(
     config: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> Path:
-    """编译构图并渲到 output_path。"""
+    """编译构图并渲到 output_path。优先 CLI,失败回退 ffmpeg 逐卡。"""
     del duration_s
     cfg = dict(config or {})
     outp = Path(output_path)
@@ -116,7 +188,20 @@ async def hyperframes_generate(
     html = write_workspace(comp, work)
     binary = detect_hyperframes_bin()
     if binary:
-        logger.info("hyperframes cli present (%s); still using fallback", binary)
+        try:
+            raw_timeout = cfg.get("timeout_s") or _settings_value(
+                "HYPERFRAMES_TIMEOUT_S", "600"
+            )
+            await _render_with_cli(
+                binary,
+                work,
+                outp,
+                fps=int(payload["fps"]),
+                timeout_s=float(raw_timeout),
+            )
+            return outp
+        except Exception as exc:
+            logger.warning("hyperframes cli 渲染失败,改走 ffmpeg 回退: %s", exc)
 
     logger.info("hyperframes: 使用 ffmpeg 逐卡回退 (workspace %s)", html)
     render_fallback_composition(

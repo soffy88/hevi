@@ -1,14 +1,17 @@
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
+from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
 from hevi.api.rate_limit import rate_limit
+from hevi.artifact_store import ArtifactRepository
+from hevi.artifact_store.http import artifact_delivery_url, materialize_artifact
 from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.core.config import settings
@@ -16,8 +19,9 @@ from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
-from hevi.production.artifacts import manifest_from_task
+from hevi.production.artifacts import ArtifactManifest, manifest_from_task
 from hevi.production.contracts import ProductionRequest
+from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
@@ -110,6 +114,19 @@ def _serialize_shot(s: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+async def _load_task_manifest(
+    task: dict[str, Any], repo: TaskRepository
+) -> ArtifactManifest | None:
+    """Read the DB artifact record first, then use the task projection."""
+    config = task.get("config_json") or {}
+    production_id = config.get("production_id")
+    if production_id and isinstance(repo.pool, PgPool):
+        manifest = await ArtifactRepository(repo.pool).get_manifest(str(production_id))
+        if manifest is not None:
+            return manifest
+    return manifest_from_task(task)
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 
@@ -118,6 +135,7 @@ async def _create_task(
     user: dict[str, Any],
     svc: TaskService,
     background_tasks: BackgroundTasks,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     try:
         # E3: expand preset → provider defaults; explicit fields still override.
@@ -131,6 +149,7 @@ async def _create_task(
         # 此前 quality_profile/style_preset 未传, 对生成无效 —— 一并修复。
         ctrl: dict[str, Any] = {
             "quality_profile": body.quality_profile or resolved.get("quality_profile", "standard"),
+            "provider_quality_floor": int(resolved.get("provider_quality_floor", "9")),
             "transition": body.transition,
         }
         for k in (
@@ -163,6 +182,7 @@ async def _create_task(
                     options=ctrl,
                 ),
                 user_id=str(user["id"]),
+                idempotency_key=idempotency_key,
             )
         else:
             task = await svc.create_task(
@@ -171,14 +191,18 @@ async def _create_task(
                 video_provider=video_provider,
                 audio_provider=audio_provider,
                 user_id=str(user["id"]),
+                idempotency_key=idempotency_key,
                 num_characters=body.num_characters,
                 **ctrl,
             )
-        # Decision: Enqueue local tasks, run cloud tasks immediately in background
+        # Every PostgreSQL task is durable work. The API may submit it to the
+        # queue, but the worker is the only production execution owner. The
+        # compatibility helper below is restricted to non-PostgreSQL local
+        # adapters and never runs billable work in FastAPI BackgroundTasks.
         task = await svc.submit_task(task["id"])
 
         if task["status"] != "queued":
-            background_tasks.add_task(svc.run_task_background, task["id"])
+            schedule_local_compat(background_tasks, svc, task["id"])
 
         return _serialize_task(task)
     except InsufficientCredits as exc:
@@ -219,8 +243,9 @@ async def create_task_alias(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[TaskService, Depends(get_task_service)],
     background_tasks: BackgroundTasks,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> dict[str, Any]:
-    return await _create_task(body, user, svc, background_tasks)
+    return await _create_task(body, user, svc, background_tasks, idempotency_key)
 
 
 @router.post(
@@ -234,9 +259,10 @@ async def create_longvideo_task(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[TaskService, Depends(get_task_service)],
     background_tasks: BackgroundTasks,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> dict[str, Any]:
     """Compatibility alias for POST /api/tasks."""
-    return await _create_task(body, user, svc, background_tasks)
+    return await _create_task(body, user, svc, background_tasks, idempotency_key)
 
 
 @router.get("")
@@ -278,6 +304,9 @@ async def resume_task(
         raise HTTPException(status_code=403, detail="Not your task")
     if task["status"] in ("completed", "running", "queued"):
         return _serialize_task(task)
+    if isinstance(svc.repository.pool, PgPool):
+        queued = await svc.enqueue_resume(task_id)
+        return _serialize_task(queued)
     background_tasks.add_task(svc.resume_task, task_id)
     return _serialize_task(task)
 
@@ -331,6 +360,11 @@ async def regenerate_task_shots(
         from hevi.director.repair_agents import hints_from_failures
 
         hints = hints_from_failures(existing_shots, body.shot_ids)
+    if isinstance(svc.repository.pool, PgPool):
+        queued = await svc.enqueue_rework(
+            task_id, shot_ids=body.shot_ids, hints=hints
+        )
+        return _serialize_task(queued)
     background_tasks.add_task(
         svc.regenerate_task_shots, task_id, shot_ids=body.shot_ids, hints=hints
     )
@@ -383,17 +417,18 @@ async def _authorize_task_video(task_id: UUID, repo: TaskRepository, token: str 
     if not task or (task.get("user_id") and task["user_id"] != str(user_id)):
         raise HTTPException(status_code=404, detail="Task not found")
 
-    manifest = manifest_from_task(task)
-    manifest_path = manifest.primary_path() if manifest is not None else None
-    path_str = str(manifest_path) if manifest_path is not None else task.get("result_video_path")
+    manifest = await _load_task_manifest(task, repo)
+    if manifest is not None:
+        return await materialize_artifact(manifest, kind="video")
+    if not settings.local_mode and not settings.debug:
+        raise HTTPException(status_code=409, detail="Video artifact is not committed")
+    path_str = task.get("result_video_path")
     if not path_str:
         raise HTTPException(status_code=409, detail="Video not ready")
-    # result_video_path 由本服务写入(相对 app cwd 的 output/tasks/<id>/final.mp4),
-    # 非用户输入;相对路径按 cwd 解析为绝对路径。
     video_path = Path(path_str)
     if not video_path.is_absolute():
         video_path = (Path.cwd() / video_path).resolve()
-    if not video_path.exists():
+    if not video_path.is_file():
         raise HTTPException(status_code=404, detail="Video file missing")
     return video_path
 
@@ -409,13 +444,10 @@ async def _authorize_task_audio(task_id: UUID, repo: TaskRepository, token: str 
     task = await repo.get_task(task_id)
     if not user_id or not task or (task.get("user_id") and task["user_id"] != str(user_id)):
         raise HTTPException(status_code=404, detail="Task not found")
-    manifest = manifest_from_task(task)
-    audio_path = manifest.path_for("audio") if manifest is not None else None
-    if audio_path is None:
+    manifest = await _load_task_manifest(task, repo)
+    if manifest is None:
         raise HTTPException(status_code=409, detail="Audio not ready")
-    if not audio_path.is_file():
-        raise HTTPException(status_code=404, detail="Audio file missing")
-    return audio_path
+    return await materialize_artifact(manifest, kind="audio")
 
 
 @router.get("/{task_id}/video")
@@ -433,6 +465,42 @@ async def get_task_video(
     """
     video_path = await _authorize_task_video(task_id, repo, token)
     return FileResponse(str(video_path), media_type="video/mp4", filename=f"{task_id}.mp4")
+
+
+@router.get("/{task_id}/video-url")
+async def get_task_video_url(
+    task_id: UUID,
+    repo: Annotated[TaskRepository, Depends(get_repository)],
+    token: Annotated[str | None, Query(description="JWT")]=None,
+) -> dict[str, Any]:
+    """Return a short-lived signed URL for a committed video artifact.
+
+    The authenticated API stream remains the local-mode fallback.  The
+    production path points browsers directly at MinIO and avoids routing the
+    full media payload through FastAPI.
+    """
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing token")
+    try:
+        user_id = decode_access_token(token).get("sub")
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+    task = await repo.get_task(task_id)
+    if not user_id or not task or (task.get("user_id") and task["user_id"] != str(user_id)):
+        raise HTTPException(status_code=404, detail="Task not found")
+    manifest = await _load_task_manifest(task, repo)
+    if manifest is None:
+        raise HTTPException(status_code=409, detail="Video artifact is not committed")
+    expires_s = 300
+    url = await artifact_delivery_url(manifest, kind="video", expires_s=expires_s)
+    if url:
+        return {"url": url, "expires_in": expires_s, "delivery": "signed_object_url"}
+    return {
+        "url": f"/api/tasks/{task_id}/video?token={quote(token, safe='')}",
+        "expires_in": None,
+        "delivery": "authenticated_api_stream",
+    }
 
 
 @router.get("/{task_id}/audio")
@@ -765,14 +833,7 @@ async def cancel_task(
 
 # ── Task 断点续跑(对标 DramaClaw Task Center) ──────────────────────────────
 
-from hevi.tasks.checkpoint import (  # noqa: E402
-    CheckpointStore,
-    build_checkpoint_from_task,
-    resume_decision,
-)
-
-# 进程内存 checkpoint store(装配层可换 Redis/DB)
-_checkpoint_store = CheckpointStore()
+from hevi.tasks.checkpoint import build_checkpoint_from_task, resume_decision  # noqa: E402
 
 
 @router.get("/{task_id}/checkpoint")
@@ -786,6 +847,33 @@ async def get_task_checkpoint(
     task = await repo.get_task(task_id)
     if not task or (task.get("user_id") and task["user_id"] != str(user["id"])):
         raise HTTPException(status_code=404, detail="Task not found")
+    durable = await repo.latest_checkpoint(task_id)
+    if durable is not None:
+        progress = float(durable.get("progress_pct") or 0.0)
+        attempt_status = str(durable.get("attempt_status") or "")
+        resumable = attempt_status not in {"succeeded", "cancelled"} and progress < 100.0
+        return {
+            "task_id": str(task_id),
+            "has_checkpoint": True,
+            "resumable": resumable,
+            "reason": (
+                "latest durable checkpoint from the current/last attempt"
+                if resumable
+                else "attempt is terminal or already complete"
+            ),
+            "checkpoint_id": str(durable.get("id")),
+            "attempt_id": str(durable.get("attempt_id")),
+            "attempt_no": durable.get("attempt_no"),
+            "attempt_status": attempt_status,
+            "sequence": durable.get("sequence"),
+            "stage": durable.get("stage"),
+            "progress_pct": progress,
+            "completed_shots": int(durable.get("completed_shots") or 0),
+            "total_shots": int(durable.get("total_shots") or 0),
+            "state": durable.get("state_json") or {},
+            "artifact_manifest": durable.get("artifact_manifest_json"),
+            "created_at": durable.get("created_at"),
+        }
     cp = build_checkpoint_from_task(task)
     if cp is None:
         return {"task_id": str(task_id), "has_checkpoint": False}
@@ -797,5 +885,3 @@ async def get_task_checkpoint(
         "reason": decision["reason"],
         **cp.to_dict(),
     }
-
-

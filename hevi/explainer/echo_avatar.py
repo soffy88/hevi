@@ -6,6 +6,7 @@ import logging
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -66,7 +67,7 @@ async def materialize_image(src: str | Path, dest: Path) -> Path:
     return path
 
 
-def _first_visual_config(storyboard: Storyboard) -> dict:
+def _first_visual_config(storyboard: Storyboard) -> dict[str, Any]:
     if not storyboard.segments:
         return {}
     cfg = storyboard.segments[0].visual_config or {}

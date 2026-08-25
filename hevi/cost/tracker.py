@@ -17,7 +17,7 @@ def create_hevi_tracker(budget_usd: float | None = None) -> CostTracker:
 
     _VIDEO = {"ltx2_cloud", "wan_cloud", "wan_local", "ltx2_native", "veo3", "kling_v2", "hailuo"}
     _AUDIO = {"voicebox", "edge_tts", "vibevoice", "duix"}
-    _LLM = {"qwen_local", "qwen_dashscope"}
+    _LLM = {"qwen_local", "qwen_dashscope", "grok", "pi", "teamo", "teamo_free"}
 
     for provider, p_info in pricing.items():
         if provider in _VIDEO:

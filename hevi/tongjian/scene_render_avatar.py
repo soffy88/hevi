@@ -772,16 +772,13 @@ async def _edit_keyframe(
 
 
 def _resolve_llm() -> Any:
-    """取 qwen_cloud LLM(拆动作起止状态用,funded、结构化可靠;见 e2e-local-llm-json-blocker)。"""
-    from obase.provider_registry import ProviderRegistry
-
+    """取文本 LLM(拆动作起止状态用;qwen_cloud 优先,再 TeamoRouter grok/pi)。"""
     try:
-        return ProviderRegistry.get().llm("qwen_cloud")
+        from hevi.providers.llm_pick import resolve_text_llm
+
+        return resolve_text_llm()
     except Exception:
-        try:
-            return ProviderRegistry.get().llm("default")
-        except Exception:
-            return None
+        return None
 
 
 # Gap 2 观察态注入(2026-07-17 审计):镜间连贯此前只有 _adjacent_context 的**计划态**文本

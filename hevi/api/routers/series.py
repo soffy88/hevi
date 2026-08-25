@@ -16,6 +16,7 @@ from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.series.repository import SeriesRepository
 from hevi.series.series_service import SeriesService
 from hevi.style.style_service import StylePackRepository, StylePackService
+from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 
@@ -134,5 +135,5 @@ async def create_episode(
     # 提交 + 后台跑(与普通任务一致)。
     task = await svc._task_service.submit_task(ep["id"])
     if task.get("status") != "queued":
-        background_tasks.add_task(svc._task_service.run_task_background, ep["id"])
+        schedule_local_compat(background_tasks, svc._task_service, ep["id"])
     return {**ep, "task_id": str(ep["id"])}

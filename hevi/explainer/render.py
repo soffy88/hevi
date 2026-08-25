@@ -13,6 +13,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from hevi.explainer.avatar_pip import compose_avatar_overlay, strip_audio
 from hevi.explainer.echo_avatar import (
@@ -46,8 +47,8 @@ class RenderResult:
     landscape_path: Path
 
 
-def _manifest_payload(manifest: list[ManifestSegment]) -> list[dict]:
-    payload = []
+def _manifest_payload(manifest: list[ManifestSegment]) -> list[dict[str, Any]]:
+    payload: list[dict[str, Any]] = []
     for seg in manifest:
         data = seg.model_dump(by_alias=True)
         data["visual_config"] = normalise_visual_config(data.get("visual_config"))

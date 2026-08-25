@@ -106,6 +106,8 @@
 | GET | `/api/director-pipeline/works/{work_id}` | Get Work |
 | POST | `/api/director-pipeline/works/{work_id}/concept` | Regenerate Concept |
 | POST | `/api/director-pipeline/works/{work_id}/concept/lock` | Lock Concept |
+| GET | `/api/director-pipeline/works/{work_id}/constraints` | Get Work Constraints |
+| POST | `/api/director-pipeline/works/{work_id}/constraints/compile` | Compile Work Constraints |
 | POST | `/api/director-pipeline/works/{work_id}/design-list` | Regenerate Design List |
 | POST | `/api/director-pipeline/works/{work_id}/design-list/lock` | Lock Design List |
 | POST | `/api/director-pipeline/works/{work_id}/dispatch-season` | Dispatch Industrial Season |
@@ -238,6 +240,9 @@
 | POST | `/api/pro/livestream/start` | Livestream Start |
 | GET | `/api/pro/livestream/status` | Livestream Status |
 | POST | `/api/pro/livestream/stop` | Livestream Stop |
+| GET | `/api/pro/livetalking/rtmp/status` | Livetalking Rtmp Status |
+| GET | `/api/pro/livetalking/webrtc/capabilities` | Livetalking Webrtc Capabilities |
+| POST | `/api/pro/livetalking/webrtc/offer` | Livetalking Webrtc Offer |
 | POST | `/api/pro/orchestration/create-plan` | Create Plan |
 | POST | `/api/pro/orchestration/execute` | Execute Plan |
 | GET | `/api/pro/orchestration/roles` | Orchestration Roles |
@@ -298,6 +303,7 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/studio/assets` | Get Studio Assets |
+| POST | `/api/studio/assets/pull` | Pull Studio Assets |
 | GET | `/api/studio/daily/calendars` | Get Daily Calendars |
 | POST | `/api/studio/daily/calendars` | Post Daily Calendar |
 | POST | `/api/studio/daily/calendars/{calendar_id}/topics` | Post Daily Topics |
@@ -305,6 +311,7 @@
 | POST | `/api/studio/daily/tick` | Post Daily Tick |
 | GET | `/api/studio/lines` | Get Studio Lines |
 | GET | `/api/studio/lines/{line_id}` | Get Studio Line |
+| GET | `/api/studio/packs` | Get Studio Packs |
 | POST | `/api/studio/slates` | Create Slate |
 | GET | `/api/studio/timelines` | Get Timelines |
 | POST | `/api/studio/timelines` | Create Timeline |
@@ -316,6 +323,7 @@
 | GET | `/api/studio/veya/capabilities` | Get Veya Capabilities |
 | GET | `/api/studio/veya/jobs/{job_id}` | Get Veya Job |
 | POST | `/api/studio/veya/produce` | Post Veya Produce |
+| GET | `/api/studio/voices` | Get Studio Voices |
 
 ## style-packs
 
@@ -369,6 +377,7 @@
 | PATCH | `/api/tasks/{task_id}/shots/{shot_index}/action_beats` | Update Shot Action Beats |
 | PATCH | `/api/tasks/{task_id}/shots/{shot_index}/candidates/{candidate_id}` | Confirm Shot Candidate |
 | GET | `/api/tasks/{task_id}/video` | Get Task Video |
+| GET | `/api/tasks/{task_id}/video-url` | Get Task Video Url |
 
 ## templates
 
@@ -398,6 +407,8 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/api/health` | Health |
+| GET | `/api/health/live` | Health Live |
+| GET | `/api/health/ready` | Health Ready |
 | GET | `/metrics` | Metrics |
 
 ## voice-studio

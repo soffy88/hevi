@@ -1,3 +1,4 @@
+from hevi.cost.calibration import p90_relative_error, relative_error, summarize_calibration
 from hevi.cost.circuit_breaker import (
     CostLimit,
     CostLimitExceeded,
@@ -23,6 +24,9 @@ __all__ = [
     "check_daily_budget",
     "check_series_budget",
     "estimate_cost",
+    "p90_relative_error",
+    "relative_error",
+    "summarize_calibration",
     "get_pricing_table",
     "get_series_spend_usd",
     "get_todays_spend_usd",

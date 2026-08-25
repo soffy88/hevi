@@ -4,7 +4,6 @@ The catalog is deliberately conservative: a capability is advertised as
 available only when HEVI has a real execution adapter.  UI/API callers receive
 one stable ``CAPABILITY_UNAVAILABLE`` shape instead of fabricated task IDs.
 """
-# ruff: noqa: E501
 
 from __future__ import annotations
 

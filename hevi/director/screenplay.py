@@ -169,14 +169,9 @@ async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
 
 
 def _resolve_llm(llm: Any) -> Any:
-    if llm is not None:
-        return llm
-    from obase.provider_registry import ProviderRegistry
+    from hevi.providers.llm_pick import resolve_text_llm
 
-    try:
-        return ProviderRegistry.get().llm("qwen_cloud")
-    except Exception:
-        return ProviderRegistry.get().llm("default")
+    return resolve_text_llm(llm)
 
 
 async def generate_screenplay_draft(

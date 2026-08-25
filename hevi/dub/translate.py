@@ -160,6 +160,7 @@ async def dub_video(
         if keep_bed:
             from hevi.dub._mux import mux_remix_into_video as mux_fn
 
+            assert mux_fn is not None
             await mux_fn(
                 video=video_path,
                 audio=dub_audio,
@@ -169,8 +170,10 @@ async def dub_video(
         else:
             from hevi.dub._mux import mux_audio_into_video as mux_fn
 
+            assert mux_fn is not None
             await mux_fn(video=video_path, audio=dub_audio, output=output_path)
     else:
+        assert mux_fn is not None
         await mux_fn(video=video_path, audio=dub_audio, output=output_path)
 
     return {"output": str(output_path), "language": target_language, "cues": len(tcues)}

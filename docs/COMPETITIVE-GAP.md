@@ -139,6 +139,8 @@
 | B10 | ✅ | `hevi/research/` (oskill.web_research) | 2026-08-18 |
 | B6/B7/B11 | ⏳ TODO | 见 §4.1(B7 后端事件流已落地, 前端板待排期) | — |
 | 组合层 | ✅ | 100+ catalog 工具 + 13 条配方(含 kinetic_promo) + 日更/Veya + HyperFrames 第二运行时 + 画布/时间线 | 2026-08-18 |
+| OpenMontage 差距模块 Round 4(4/4) | ✅ | `hevi/verdict/scene_pacing.py`(帧精确步骤时间轴 + narration cue 对齐断言) / `hevi/studio/shot_prompt.py`(五层镜头提示词, 与中文五面词 craft.compile_shot_spec 互补) / `hevi/verdict/source_media_review.py`(完整源片审查四段式工件: ffprobe 技术探测 + 帧采样 + 可选转写 + 可用性/规划影响) / `hevi/production/delivery_promise.py`(8 类承诺 + validate_cuts 运动比/静帧降级前门) | 2026-08-22 |
+| delivery_promise 接入排产前门 | ✅ | `hevi/season_planner/dispatch.py::resolve_delivery_promise`(spec 字符串/管线名 → 结构化 DeliveryPromise, 写入每集 overrides.delivery_promise_spec 供下游 validate_cuts; 承诺 vs provider/素材前置检查只记 note 不阻塞) | 2026-08-22 |
 
 ### 4.1 后续 TODO(未实施项)
 - **B7 Backlot 前端板**: 后端事件流已落地(`hevi/backlot/` + `GET/POST /api/backlot/runs/{run_id}/events` + `/status`), 前端亮灯板/花费上墙后续排期。

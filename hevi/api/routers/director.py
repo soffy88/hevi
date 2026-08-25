@@ -33,6 +33,7 @@ from hevi.production.contracts import ProductionRequest
 from hevi.prompt.ip_safety import rewrite_for_ip_safety
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
+from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 from hevi.video.presets import EXECUTION_PRESETS
@@ -344,7 +345,7 @@ async def director_create_episode(
 
     sub = await svc.submit_task(task["id"])
     if sub.get("status") != "queued":
-        background_tasks.add_task(svc.run_task_background, task["id"])
+        schedule_local_compat(background_tasks, svc, task["id"])
     return {
         "task_id": str(task["id"]),
         "status": sub.get("status", task.get("status")),
@@ -456,7 +457,7 @@ async def director_render(
     if isinstance(svc, TaskService):
         submitted = await svc.submit_task(task["id"])
         if submitted.get("status") != "queued":
-            background_tasks.add_task(svc.run_task_background, task["id"])
+            schedule_local_compat(background_tasks, svc, task["id"])
         status = submitted.get("status", task.get("status", "pending"))
     else:
         # Compatibility seam for non-TaskService callers and older tests.

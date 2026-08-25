@@ -19,10 +19,13 @@ POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 POSTGRES_USER="${POSTGRES_USER:-hevi}"
 POSTGRES_DB="${POSTGRES_DB:-hevi}"
+POSTGRES_DOCKER="${POSTGRES_DOCKER:-}"
 MINIO_ENDPOINT="${MINIO_ENDPOINT:-localhost:9000}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-}"
 MINIO_BUCKET="${MINIO_BUCKET:-hevi-assets}"
+MINIO_NETWORK="${MINIO_NETWORK:-}"
+MINIO_INTERNAL_ENDPOINT="${MINIO_INTERNAL_ENDPOINT:-minio:9000}"
 
 mkdir -p "${BACKUP_DIR}/postgres" "${BACKUP_DIR}/minio"
 
@@ -30,30 +33,47 @@ echo "[backup] ${TIMESTAMP} 开始备份"
 
 # ── PostgreSQL ────────────────────────────────────────────────────────────────
 PG_FILE="${BACKUP_DIR}/postgres/hevi_${TIMESTAMP}.sql.gz"
-PGPASSWORD="${POSTGRES_PASSWORD:-hevi}" \
-    pg_dump \
-    -h "${POSTGRES_HOST}" \
-    -p "${POSTGRES_PORT}" \
-    -U "${POSTGRES_USER}" \
-    -d "${POSTGRES_DB}" \
-    --no-password \
-    | gzip > "${PG_FILE}"
+if [[ -n "${POSTGRES_DOCKER}" ]]; then
+    docker exec -e PGPASSWORD="${POSTGRES_PASSWORD:-hevi}" "${POSTGRES_DOCKER}" \
+        pg_dump -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" --no-password \
+        | gzip > "${PG_FILE}"
+else
+    PGPASSWORD="${POSTGRES_PASSWORD:-hevi}" \
+        pg_dump \
+        -h "${POSTGRES_HOST}" \
+        -p "${POSTGRES_PORT}" \
+        -U "${POSTGRES_USER}" \
+        -d "${POSTGRES_DB}" \
+        --no-password \
+        | gzip > "${PG_FILE}"
+fi
 
 echo "[backup] PostgreSQL → ${PG_FILE} ($(du -sh "${PG_FILE}" | cut -f1))"
 
 # ── MinIO ─────────────────────────────────────────────────────────────────────
-if command -v mc &>/dev/null && [[ -n "${MINIO_ACCESS_KEY}" ]]; then
-    mc alias set backup_src \
-        "http://${MINIO_ENDPOINT}" \
-        "${MINIO_ACCESS_KEY}" \
-        "${MINIO_SECRET_KEY}" \
-        --quiet
-
+if [[ -n "${MINIO_ACCESS_KEY}" ]] && { command -v mc &>/dev/null || [[ -n "${MINIO_NETWORK}" ]]; }; then
     MINIO_DEST="${BACKUP_DIR}/minio/${TIMESTAMP}"
-    mc mirror \
-        "backup_src/${MINIO_BUCKET}" \
-        "${MINIO_DEST}" \
-        --quiet
+    mkdir -p "${MINIO_DEST}"
+    if [[ -n "${MINIO_NETWORK}" ]]; then
+        docker run --rm --network "${MINIO_NETWORK}" --entrypoint /bin/sh \
+            -v "${MINIO_DEST}:/backup" \
+            -e MINIO_ACCESS_KEY -e MINIO_SECRET_KEY -e MINIO_BUCKET \
+            minio/mc:latest \
+            -c "
+            mc alias set backup_src http://${MINIO_INTERNAL_ENDPOINT} \"\$MINIO_ACCESS_KEY\" \"\$MINIO_SECRET_KEY\" --quiet &&
+            mc mirror backup_src/\$MINIO_BUCKET /backup --quiet
+            "
+    else
+        mc alias set backup_src \
+            "http://${MINIO_ENDPOINT}" \
+            "${MINIO_ACCESS_KEY}" \
+            "${MINIO_SECRET_KEY}" \
+            --quiet
+        mc mirror \
+            "backup_src/${MINIO_BUCKET}" \
+            "${MINIO_DEST}" \
+            --quiet
+    fi
 
     # Compress minio backup
     tar -czf "${MINIO_DEST}.tar.gz" -C "${BACKUP_DIR}/minio" "${TIMESTAMP}"

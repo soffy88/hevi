@@ -58,16 +58,9 @@ async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
 
 
 def _resolve_llm(llm: Any) -> Any:
-    if llm is not None:
-        return llm
-    from obase.provider_registry import ProviderRegistry
+    from hevi.providers.llm_pick import resolve_text_llm
 
-    # 结构化 JSON 输出优先用 qwen_cloud(本地 ollama 对这类任务不可靠,
-    # 同 e2e-local-llm-json-blocker 记录的既有教训)。
-    try:
-        return ProviderRegistry.get().llm("qwen_cloud")
-    except Exception:
-        return ProviderRegistry.get().llm("default")
+    return resolve_text_llm(llm)
 
 
 async def generate_concept_draft(

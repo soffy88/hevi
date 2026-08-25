@@ -312,8 +312,8 @@ async def manim_generate(
                 logger.warning("manim cli 无产物(exit=%s): %s", code_rc, log[-800:])
 
     logger.info("manim: CLI 不可用或未出片,使用 ffmpeg 逐帧回退")
-    scene = ir or draft_scene_ir(str(prompt or ""), duration_s=float(duration_s))
-    _fallback_frames(scene, outp, width=w, height=h, fps=int(fps))
+    fallback_scene = ir or draft_scene_ir(str(prompt or ""), duration_s=float(duration_s))
+    _fallback_frames(fallback_scene, outp, width=w, height=h, fps=int(fps))
     if not outp.exists() or outp.stat().st_size == 0:
         raise ManimRenderError(f"Manim 回退也未写出: {outp}")
     return outp

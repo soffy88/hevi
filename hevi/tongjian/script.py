@@ -23,7 +23,7 @@ G2 是全管线最重要的门(史实门),四项检查:
 该行(相邻旁白已经承担叙事桥接,不必在"防止编造"的门里自己再编一句新旁白)。
 """
 
-# ruff: noqa: E501  # prompt 模板中文长行(文案非代码)
+# prompt 模板中文长行(文案非代码)
 from __future__ import annotations
 
 import logging

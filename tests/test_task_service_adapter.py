@@ -73,3 +73,32 @@ async def test_task_service_persists_audio_manifest_after_engine_projection() ->
         if "config_json" in call.args[1]
     ]
     assert config_updates[-1]["artifact_manifest"]
+
+
+@pytest.mark.asyncio
+async def test_task_service_keeps_human_review_adapter_paused() -> None:
+    """A review checkpoint is not a failed render and must not claim delivery."""
+    task_id = uuid4()
+    repo = MagicMock()
+    repo.pool = MagicMock()
+    repo.update_task = AsyncMock()
+    adapters = ProductionAdapterRegistry()
+
+    async def review_adapter(task, pool):
+        return {**task, "status": "awaiting_review", "review_pending": True}
+
+    adapters.register("tongjian", review_adapter)
+    service = TaskService(repo, production_adapters=adapters)
+    result = await service._run_adapter_task(
+        {
+            "id": task_id,
+            "status": "claimed",
+            "progress_pct": 32.0,
+            "config_json": {"production_source": "tongjian"},
+        }
+    )
+
+    assert result["status"] == "paused"
+    assert result["review_pending"] is True
+    statuses = [call.args[1].get("status") for call in repo.update_task.await_args_list]
+    assert "paused" in statuses

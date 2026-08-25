@@ -362,8 +362,8 @@ def _register_kit_tools() -> None:
     async def _wrap(fn: Any, payload: dict[str, Any]) -> dict[str, Any]:
         result = fn(payload)
         if hasattr(result, "__await__"):
-            return await result
-        return result
+            return dict(await result)
+        return dict(result)
 
     for tool_id, kind, summary, inputs, outputs in KIT_SPECS:
         handler = KIT_HANDLERS[tool_id]

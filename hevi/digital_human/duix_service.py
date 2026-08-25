@@ -3,7 +3,6 @@
 HEVI never invents a live session.  A successful call must come from a
 configured Duix WebRTC/RTMP adapter and include a playable stream URL.
 """
-# ruff: noqa: E501
 
 from __future__ import annotations
 

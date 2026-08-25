@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth-store';
 import { presenterApi, proStudioApi } from '@/lib/api-client';
 import type { Presenter, PresenterInput, PresenterLipsync, PresenterMotion, PresenterPerformance } from '@/types/api';
+import { LiveTalkingPanel } from './LiveTalkingPanel';
 
 const EMPTY: PresenterInput = {
   name: '', performance: 'narrator', motion: 'voice_over', lipsync: 'none',
@@ -118,6 +119,7 @@ export function PresenterLibrary() {
 
       {/* ── 应用模式(SPEC v5.0 §2.3,原专业工作室数字人直播归位) ── */}
       <LiveAppPanel presenters={items} />
+      <LiveTalkingPanel />
     </div>
   );
 }

@@ -3,7 +3,6 @@
 These endpoints keep the workbench usable while provider-specific rendering is
 routed through the canonical production/task pipeline.
 """
-# ruff: noqa: E501
 
 from __future__ import annotations
 
@@ -19,6 +18,7 @@ from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.production.contracts import ProductionRequest
+from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 
@@ -62,7 +62,7 @@ async def _create_task(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if task.get("status") != "queued":
-        background_tasks.add_task(service.run_task_background, task["id"])
+        schedule_local_compat(background_tasks, service, task["id"])
     return {
         "task_id": str(task["id"]),
         "status": task["status"],

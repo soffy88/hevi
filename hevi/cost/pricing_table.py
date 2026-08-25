@@ -152,4 +152,20 @@ def get_pricing_table() -> dict[str, dict[str, Any]]:
             "unit": "per_1k_tokens",
             "price_usd": QWEN_DASHSCOPE_PRICE_PER_1K_TOKENS,
         },
+        "grok": {
+            "unit": "per_1k_tokens",
+            "price_usd": 0.0,
+        },
+        "pi": {
+            "unit": "per_1k_tokens",
+            "price_usd": 0.0,
+        },
+        "teamo": {
+            "unit": "per_1k_tokens",
+            "price_usd": 0.0,
+        },
+        "teamo_free": {
+            "unit": "per_1k_tokens",
+            "price_usd": 0.0,
+        },
     }

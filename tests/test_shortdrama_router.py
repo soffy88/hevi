@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
@@ -260,12 +259,11 @@ async def test_confirm_submits_each_episode_to_the_unified_task_executor():
         }
 
     submit_mock = AsyncMock(return_value={"status": "pending"})
-    run_mock = AsyncMock(return_value={"status": "completed"})
     with (
         patch.object(sd, "get_hevi_pg_pool", AsyncMock(return_value=object())),
         patch.object(sd, "dispatch_season", AsyncMock(side_effect=_fake_dispatch)),
         patch.object(sd.TaskService, "submit_task", submit_mock) as submit,
-        patch.object(sd.TaskService, "run_task_background", run_mock) as run,
+        patch.object(sd, "schedule_local_compat") as schedule_compat,
         patch.object(sd, "_generate_subject3d_background", AsyncMock()),
     ):
         bg = BackgroundTasks()
@@ -278,12 +276,11 @@ async def test_confirm_submits_each_episode_to_the_unified_task_executor():
         )
         await sd.confirm_run(run_id, body, bg, _USER)
         await _run_bg(bg)
-        pending = list(sd._RUN_TASKS)
-        if pending:
-            await asyncio.gather(*pending)
 
     submit.assert_awaited_once()
-    run.assert_awaited_once_with(ep_id)
+    schedule_compat.assert_called_once()
+    assert schedule_compat.call_args.args[0] is bg
+    assert schedule_compat.call_args.args[2] == ep_id
 
 
 @pytest.mark.asyncio

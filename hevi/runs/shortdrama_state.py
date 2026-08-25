@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from hevi.runs.repository import AutomationRunRepository
@@ -70,10 +71,17 @@ class ShortdramaRunStore:
         self._repository = repository
 
     async def create(
-        self, *, user_id: str, source_name: str, raw_text: str, target_episodes: int
+        self,
+        *,
+        user_id: str,
+        source_name: str,
+        raw_text: str,
+        target_episodes: int,
+        run_id: str | None = None,
     ) -> dict[str, Any]:
         row = await self._repository.create(
             {
+                **({"id": uuid.UUID(run_id)} if run_id is not None else {}),
                 "kind": self.kind,
                 "user_id": user_id,
                 "status": "PENDING",
@@ -90,6 +98,12 @@ class ShortdramaRunStore:
     async def get_owned(self, run_id: str, *, user_id: str) -> dict[str, Any] | None:
         row = await self._repository.get(run_id)
         if row is None or row.get("kind") != self.kind or row.get("user_id") != user_id:
+            return None
+        return load_shortdrama_record(row)
+
+    async def get(self, run_id: str) -> dict[str, Any] | None:
+        row = await self._repository.get(run_id)
+        if row is None or row.get("kind") != self.kind:
             return None
         return load_shortdrama_record(row)
 

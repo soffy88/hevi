@@ -1,12 +1,15 @@
 # ruff: noqa: E402, I001
 # dotenv must load before application imports; adapters are composed below.
-import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
+import asyncio
+import os
+import socket
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 load_dotenv()  # 标准: 在所有本地 import 之前
 
@@ -23,13 +26,20 @@ from hevi.api.routers.director import router as director_router
 from hevi.director.graph_render import execute_task as director_graph_task_adapter
 from hevi.season_planner.production import execute_shortdrama_task
 from hevi.studio.slate import execute_lot_task
-from hevi.api.routers.director_pipeline import router as director_pipeline_router
+from hevi.api.routers.director_pipeline import (
+    execute_task as director_tongjian_task_adapter,
+    router as director_pipeline_router,
+)
 from hevi.api.routers.explainer import (
     execute_task as explainer_task_adapter,
 )
 from hevi.api.routers.explainer import router as explainer_router
 from hevi.api.routers.gallery import router as gallery_router
+from hevi.api.routers.cinematic import execute_task as cinematic_task_adapter
 from hevi.api.routers.cinematic import router as cinematic_router
+from hevi.api.routers.history_series import (
+    execute_animation_task as history_animation_task_adapter,
+)
 from hevi.api.routers.history_series import router as history_series_router
 from hevi.api.routers.payment import router as payment_router
 from hevi.api.routers.pipeline import router as pipeline_router
@@ -54,6 +64,8 @@ from hevi.api.routers.lite import router as lite_router
 from hevi.api.routers.voice_studio import router as voice_studio_router
 from hevi.api.routers.ws import router as ws_router
 from hevi.core.config import settings
+from hevi.core.ws_manager import connection_manager
+from hevi.events import EventConsumer, EventGateway
 from hevi.monitoring.middleware import PrometheusMiddleware
 from hevi.monitoring.router import router as metrics_router
 from hevi.providers.registry import register_all_providers
@@ -61,11 +73,14 @@ from hevi.production.adapters import configure_default_adapters
 
 configure_default_adapters(
     director_graph=director_graph_task_adapter,
+    director_tongjian=director_tongjian_task_adapter,
     explainer=explainer_task_adapter,
     shortdrama=execute_shortdrama_task,
     tongjian=tongjian_task_adapter,
     voice_studio_tts=execute_voice_studio_task,
     lot=execute_lot_task,
+    cinematic_animation=cinematic_task_adapter,
+    history_animation=history_animation_task_adapter,
 )
 
 
@@ -81,43 +96,53 @@ def _cors_list(raw: str) -> list[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     register_all_providers()  # L-021
+    event_consumer: EventConsumer | None = None
+    event_consumer_task: asyncio.Task[None] | None = None
 
-    # v9.1: 任务大盘 SQLite 建表(幂等)。
-    from hevi.core.db import init_db
+    # SQLite is a projection for explicitly requested local mode only.  The
+    # production API never owns billable workers or creates its own schema.
+    if settings.local_mode:
+        from hevi.core.db import init_db
 
-    init_db()
+        init_db()
 
-    from hevi.credits.account_service import AccountService
-    from hevi.credits.billing_service import BillingService
-    from hevi.credits.repository import CreditRepository
-    from hevi.db.pg_pool import get_hevi_pg_pool
-    from hevi.queue.worker import QueueWorker
-    from hevi.resilience.balance_prober import BalanceProber
-    from hevi.tasks.repository import TaskRepository
-    from hevi.tasks.task_service import TaskService
+    # Every API replica owns a separate cursor over the immutable event log.
+    # This is the cross-instance fan-out path for WebSockets; it is deliberately
+    # not tied to a worker or FastAPI BackgroundTask request lifetime.
+    if settings.event_consumer_enabled and not settings.local_mode and not settings.debug:
+        try:
+            from hevi.db.pg_pool import get_hevi_pg_pool
 
-    pool = await get_hevi_pg_pool()
-    repo = TaskRepository(pool)
-    billing = BillingService(AccountService(CreditRepository(pool)))
-    svc = TaskService(repo, billing_svc=billing)
-    worker = QueueWorker(svc, poll_interval=5.0)
-    worker_task = asyncio.create_task(worker.run())
+            pool = await asyncio.wait_for(get_hevi_pg_pool(), timeout=2.0)
+            gateway = EventGateway(connection_manager)
+            event_consumer = EventConsumer(
+                pool,
+                gateway.publish,
+                # One cursor per API process. Hostname alone collides for
+                # uvicorn workers and makes them compete instead of fanning
+                # out the same event stream to every WebSocket instance.
+                consumer_name=(
+                    settings.event_consumer_name
+                    or f"api-{socket.gethostname()}-{os.getpid()}"
+                ),
+                poll_interval=settings.event_consumer_poll_interval_s,
+                max_attempts=settings.event_consumer_max_attempts,
+            )
+            event_consumer_task = asyncio.create_task(event_consumer.run())
+        except Exception:
+            # Readiness still reports database unavailability.  The web app
+            # remains able to serve liveness and local compatibility routes.
+            event_consumer = None
 
-    # 余额探针(HEVI 路线图 Phase1 #30):此前 refresh_fal_balance 写了但从没被调度过。
-    prober = BalanceProber(poll_interval=3600.0)
-    prober_task = asyncio.create_task(prober.run())
-
-    yield
-
-    worker.stop()
-    worker_task.cancel()
-    with suppress(asyncio.CancelledError):
-        await worker_task
-
-    prober.stop()
-    prober_task.cancel()
-    with suppress(asyncio.CancelledError):
-        await prober_task
+    try:
+        yield
+    finally:
+        if event_consumer is not None:
+            event_consumer.stop()
+        if event_consumer_task is not None:
+            event_consumer_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await event_consumer_task
 
 
 app = FastAPI(
@@ -182,3 +207,28 @@ mount_mcp(app)
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "version": "6.0.0"}
+
+
+@app.get("/api/health/live")
+async def health_live() -> dict[str, str]:
+    """Kubernetes-style liveness probe: process and event loop are alive."""
+    return {"status": "ok", "version": "6.0.0"}
+
+
+@app.get("/api/health/ready", response_model=None)
+async def health_ready() -> dict[str, str] | JSONResponse:
+    """Readiness probe that verifies the production database when required."""
+    if settings.local_mode:
+        return {"status": "ready", "database": "local"}
+    try:
+        from hevi.db.pg_pool import get_hevi_pg_pool
+
+        pool = await asyncio.wait_for(get_hevi_pg_pool(), timeout=2.0)
+        async with pool.acquire() as conn:
+            await asyncio.wait_for(conn.fetchval("SELECT 1"), timeout=1.0)
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "database": "unavailable"},
+        )
+    return {"status": "ready", "database": "ok"}

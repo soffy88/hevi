@@ -102,15 +102,12 @@ _REWRITE_PROMPT = """你是短视频解说编剧。按质检意见改写分镜,�
 def _resolve_llm(llm: Any) -> Any:
     if llm is not None:
         return llm
-    from obase.provider_registry import ProviderRegistry
-
     try:
-        return ProviderRegistry.get().llm("qwen_cloud")
+        from hevi.providers.llm_pick import resolve_text_llm
+
+        return resolve_text_llm()
     except Exception:
-        try:
-            return ProviderRegistry.get().llm("default")
-        except Exception:
-            return None
+        return None
 
 
 async def _call_llm_json(llm: Any, prompt: str, *, max_tokens: int = 2048) -> dict[str, Any]:

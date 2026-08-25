@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Any
 
-from hevi.observability.trace import get_trace_id
+from hevi.observability.trace import current_trace_context
 
 logger = logging.getLogger("hevi.structured")
 
@@ -16,7 +16,7 @@ def log_event(
 ) -> None:
     """Log a structured event in JSON format, including current trace_id."""
     record = {
-        "trace_id": get_trace_id(),
+        **current_trace_context().log_fields(),
         "stage": stage,
         "event": event,
         "level": level,

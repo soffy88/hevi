@@ -55,7 +55,7 @@ def transcribe_to_cues(
     model_dir: str | None = None,
 ) -> list[Cue]:
     """用 faster-whisper 转写音频为带时间码的字幕段(强制对齐)。"""
-    from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+    from faster_whisper import WhisperModel
 
     model = WhisperModel(model_dir or _MODEL_DIR, device="cpu", compute_type="int8")
     segments, _info = model.transcribe(str(audio_path), language=language, vad_filter=True)

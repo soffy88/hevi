@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from hevi.core.ws_manager import connection_manager
@@ -25,6 +27,21 @@ async def task_socket(websocket: WebSocket) -> None:
                 await websocket.send_text("pong")
             elif message == "close":
                 break
+            else:
+                try:
+                    command = json.loads(message)
+                except json.JSONDecodeError:
+                    continue
+                if command.get("type") == "subscribe":
+                    resource_ids = {
+                        str(item)
+                        for item in command.get("resource_ids", command.get("task_ids", []))
+                        if item
+                    }
+                    await connection_manager.set_subscription(websocket, resource_ids)
+                    await websocket.send_json(
+                        {"type": "subscribed", "resource_ids": sorted(resource_ids)}
+                    )
     except WebSocketDisconnect:
         pass
     finally:

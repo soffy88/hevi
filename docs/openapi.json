@@ -964,6 +964,113 @@
         }
       }
     },
+    "/api/pro/livetalking/webrtc/capabilities": {
+      "get": {
+        "tags": [
+          "pro-studio"
+        ],
+        "summary": "Livetalking Webrtc Capabilities",
+        "description": "按需交互会话(客服/教育等)是否就绪——不伪造。",
+        "operationId": "livetalking_webrtc_capabilities_api_pro_livetalking_webrtc_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Livetalking Webrtc Capabilities Api Pro Livetalking Webrtc Capabilities Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/pro/livetalking/webrtc/offer": {
+      "post": {
+        "tags": [
+          "pro-studio"
+        ],
+        "summary": "Livetalking Webrtc Offer",
+        "description": "代理一次 SDP offer/answer 握手。前端要自己跑 RTCPeerConnection, 这里只转发。",
+        "operationId": "livetalking_webrtc_offer_api_pro_livetalking_webrtc_offer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebRTCOfferBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Livetalking Webrtc Offer Api Pro Livetalking Webrtc Offer Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/pro/livetalking/rtmp/status": {
+      "get": {
+        "tags": [
+          "pro-studio"
+        ],
+        "summary": "Livetalking Rtmp Status",
+        "description": "固定 24 小时频道是否配置/可达——运维管的常驻进程, 这里不假装能远程开关。",
+        "operationId": "livetalking_rtmp_status_api_pro_livetalking_rtmp_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Livetalking Rtmp Status Api Pro Livetalking Rtmp Status Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/pro/orchestration/roles": {
       "get": {
         "tags": [
@@ -2501,6 +2608,148 @@
         }
       }
     },
+    "/api/studio/packs": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Studio Packs",
+        "operationId": "get_studio_packs_api_studio_packs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Studio Packs Api Studio Packs Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/voices": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Studio Voices",
+        "operationId": "get_studio_voices_api_studio_voices_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Language"
+            }
+          },
+          {
+            "name": "local_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Local Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Studio Voices Api Studio Voices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/assets/pull": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Pull Studio Assets",
+        "operationId": "pull_studio_assets_api_studio_assets_pull_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetPullRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Pull Studio Assets Api Studio Assets Pull Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/studio/assets": {
       "get": {
         "tags": [
@@ -3268,6 +3517,24 @@
             "HTTPBearer": []
           }
         ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -3374,15 +3641,39 @@
         "summary": "Create Longvideo Task",
         "description": "Compatibility alias for POST /api/tasks.",
         "operationId": "create_longvideo_task_api_tasks_longvideo_post",
+        "deprecated": true,
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/LongVideoRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -3390,8 +3681,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
                   "type": "object",
+                  "additionalProperties": true,
                   "title": "Response Create Longvideo Task Api Tasks Longvideo Post"
                 }
               }
@@ -3407,13 +3698,7 @@
               }
             }
           }
-        },
-        "deprecated": true,
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/tasks/{task_id}": {
@@ -3681,6 +3966,70 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/video-url": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Task Video Url",
+        "description": "Return a short-lived signed URL for a committed video artifact.\n\nThe authenticated API stream remains the local-mode fallback.  The\nproduction path points browsers directly at MinIO and avoids routing the\nfull media payload through FastAPI.",
+        "operationId": "get_task_video_url_api_tasks__task_id__video_url_get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT",
+              "title": "Token"
+            },
+            "description": "JWT"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Task Video Url Api Tasks  Task Id  Video Url Get"
+                }
               }
             }
           },
@@ -7615,6 +7964,116 @@
         }
       }
     },
+    "/api/director-pipeline/works/{work_id}/constraints": {
+      "get": {
+        "tags": [
+          "director-pipeline"
+        ],
+        "summary": "Get Work Constraints",
+        "description": "Read the relational constraint graph and its coverage counters.",
+        "operationId": "get_work_constraints_api_director_pipeline_works__work_id__constraints_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "work_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Work Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Work Constraints Api Director Pipeline Works  Work Id  Constraints Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director-pipeline/works/{work_id}/constraints/compile": {
+      "post": {
+        "tags": [
+          "director-pipeline"
+        ],
+        "summary": "Compile Work Constraints",
+        "description": "Compile constraints with explicit unsupported/silent-drop reporting.",
+        "operationId": "compile_work_constraints_api_director_pipeline_works__work_id__constraints_compile_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "work_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Work Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompileConstraintsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Compile Work Constraints Api Director Pipeline Works  Work Id  Constraints Compile Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/director-pipeline/works/{work_id}/concept": {
       "post": {
         "tags": [
@@ -8645,7 +9104,7 @@
           "tongjian"
         ],
         "summary": "List Runs",
-        "description": "列出所有 run(内存 P0 版,全局共享)。",
+        "description": "列出当前用户的持久化 run；本地调试才使用执行态投影。",
         "operationId": "list_runs_api_tongjian_runs_get",
         "responses": {
           "200": {
@@ -8676,7 +9135,7 @@
           "tongjian"
         ],
         "summary": "Get Run",
-        "description": "查询单个 run 状态 + 各层进度。",
+        "description": "查询单个 run 状态 + 各层进度。生产环境始终从 PostgreSQL 读取。",
         "operationId": "get_run_api_tongjian_runs__run_id__get",
         "security": [
           {
@@ -8938,7 +9397,7 @@
           "tongjian"
         ],
         "summary": "Download Run Video",
-        "description": "取回某次 run 的成片(final.mp4)。\n\n<video src>/<a download> 无法带 Authorization 头,故 JWT 走 ?token= 校验。\n直接按确定性路径 output/tongjian/<run_id>/L8/final.mp4 取片,不依赖内存 _RUNS,\n这样即使 API 重启(内存 run 记录丢失)历史成片仍可下载。",
+        "description": "取回某次 run 的成片(final.mp4)。\n\n<video src>/<a download> 无法带 Authorization 头,故 JWT 走 ?token= 校验。\n直接按确定性路径 output/tongjian/<run_id>/L8/final.mp4 取片,不依赖执行态快照,\n这样即使 API 重启(内存 run 记录丢失)历史成片仍可下载。",
         "operationId": "download_run_video_api_tongjian_runs__run_id__video_get",
         "parameters": [
           {
@@ -11708,6 +12167,46 @@
           }
         }
       }
+    },
+    "/api/health/live": {
+      "get": {
+        "summary": "Health Live",
+        "description": "Kubernetes-style liveness probe: process and event loop are alive.",
+        "operationId": "health_live_api_health_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Live Api Health Live Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "summary": "Health Ready",
+        "description": "Readiness probe that verifies the production database when required.",
+        "operationId": "health_ready_api_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11845,6 +12344,33 @@
           "story"
         ],
         "title": "AnimateRequest"
+      },
+      "AssetPullRequest": {
+        "properties": {
+          "pack": {
+            "type": "string",
+            "title": "Pack",
+            "default": "celebrities30s"
+          },
+          "force": {
+            "type": "boolean",
+            "title": "Force",
+            "default": false
+          },
+          "root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root"
+          }
+        },
+        "type": "object",
+        "title": "AssetPullRequest"
       },
       "AttentionBeat": {
         "properties": {
@@ -12622,6 +13148,41 @@
           "output_path"
         ],
         "title": "ComicToAnimationRequest"
+      },
+      "CompileConstraintsRequest": {
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Provider Id"
+          },
+          "supported_constraints": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "uniqueItems": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supported Constraints"
+          },
+          "supports_multi_reference": {
+            "type": "boolean",
+            "title": "Supports Multi Reference",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id"
+        ],
+        "title": "CompileConstraintsRequest"
       },
       "Concept": {
         "properties": {
@@ -17613,6 +18174,11 @@
               }
             ],
             "title": "Slate Id"
+          },
+          "execute": {
+            "type": "boolean",
+            "title": "Execute",
+            "default": false
           }
         },
         "type": "object",
@@ -18147,6 +18713,28 @@
               }
             ],
             "title": "Slate Id"
+          },
+          "film": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Film"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
           }
         },
         "type": "object",
@@ -18441,6 +19029,7 @@
             "type": "string",
             "enum": [
               "hub_quick",
+              "hub_idea2video",
               "director_console"
             ],
             "title": "Source Channel"
@@ -18714,6 +19303,36 @@
         },
         "type": "object",
         "title": "VisualStyle"
+      },
+      "WebRTCOfferBody": {
+        "properties": {
+          "sdp": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Sdp"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "offer"
+          },
+          "avatar_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sdp"
+        ],
+        "title": "WebRTCOfferBody"
       },
       "WorkflowRunRequest": {
         "properties": {
@@ -19230,6 +19849,28 @@
             },
             "type": "object",
             "title": "Layer Config"
+          },
+          "lesson_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lesson Order"
+          },
+          "tb_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tb Id"
           }
         },
         "type": "object",

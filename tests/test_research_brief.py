@@ -42,7 +42,7 @@ def test_plan_research_questions_custom_angles():
 @pytest.mark.asyncio
 async def test_run_research_end_to_end(monkeypatch):
     """用 FakeCaller 跑 oskill.web_research —— monkeypatch 其网络部分为假。"""
-    from oskill import ResearchResult, web_research as _wr
+    from oskill import ResearchResult
 
     async def fake_web_research(query, *, caller, max_sources=5):
         assert caller is not None

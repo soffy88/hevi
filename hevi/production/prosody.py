@@ -35,7 +35,7 @@ class ProsodyTrack:
     sha256: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        payload = {
+        payload: dict[str, Any] = {
             "schema_version": 1,
             "status": "draft",
             "duration_s": self.duration_s,

@@ -44,14 +44,9 @@ async def infer_line_emotions(lines: list[str], *, llm: Any = None) -> list[str]
         return []
     if llm is None:
         try:
-            from obase.provider_registry import ProviderRegistry
+            from hevi.providers.llm_pick import resolve_text_llm
 
-            # 结构化 JSON 输出优先用 qwen_cloud(本地 ollama 对这类任务不可靠,
-            # 同 e2e-local-llm-json-blocker 记录的既有教训);没注册才退回 default。
-            try:
-                llm = ProviderRegistry.get().llm("qwen_cloud")
-            except Exception:
-                llm = ProviderRegistry.get().llm("default")
+            llm = resolve_text_llm()
         except Exception as e:
             logger.warning("emotion_inference: no LLM available, skip: %s", e)
             return [""] * len(lines)

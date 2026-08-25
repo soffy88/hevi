@@ -1,6 +1,6 @@
 ---
 # hevi v6 — production compose (app + postgres + minio + nginx)
-# Usage: docker compose -f hevi/deploy/docker-compose-prod.yml up -d
+# Usage: docker compose --env-file .env -f hevi/deploy/docker-compose-prod.yml up -d
 # Requires: .env at repo root (copy from .env.example and fill all values)
 
 name: hevi-prod
@@ -15,6 +15,10 @@ services:
       POSTGRES_DB: hevi
     volumes:
       - pg_data:/var/lib/postgresql/data
+    # Host bindings are used only by the disposable live-closure harness;
+    # application services still use the internal network hostname.
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hevi -d hevi"]
       interval: 10s
@@ -29,10 +33,14 @@ services:
     restart: always
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+      # Explicit defaults keep a fresh compose smoke-test bootable; production
+      # deployments must override both values through the environment.
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio12345}
     volumes:
       - minio_data:/data
+    ports:
+      - "9100:9000"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -49,8 +57,8 @@ services:
         condition: service_healthy
     restart: on-failure
     environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio12345}
       MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
     entrypoint: >
       /bin/sh -c "
@@ -58,6 +66,25 @@ services:
       mc mb prod/$$MINIO_BUCKET --ignore-existing &&
       echo 'MinIO bucket ready.'
       "
+    networks:
+      - internal
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      ssh:
+        - default
+    restart: "no"
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - internal
 
@@ -79,12 +106,114 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
       interval: 15s
       timeout: 10s
       retries: 3
       start_period: 30s
+    networks:
+      - internal
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      ssh:
+        - default
+    restart: always
+    command: ["uv", "run", "python", "-m", "hevi.queue.worker_entrypoint"]
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      MINIO_ENDPOINT: minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - internal
+
+  scheduler:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      ssh:
+        - default
+    restart: always
+    command: ["uv", "run", "python", "-m", "hevi.scheduler.entrypoint"]
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      SCHEDULER_REQUIRED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - internal
+
+  provider-health:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      ssh:
+        - default
+    restart: always
+    command: ["uv", "run", "python", "-m", "hevi.provider_policy.health_entrypoint"]
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - internal
+
+  event-publisher:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      ssh:
+        - default
+    restart: always
+    command: ["uv", "run", "python", "-m", "hevi.events.publisher_entrypoint"]
+    env_file:
+      - path: ../../.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      REDIS_URL: redis://redis:6379/0
+      EVENT_PUBLISHER_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
     networks:
       - internal
 

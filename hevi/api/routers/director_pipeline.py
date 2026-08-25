@@ -15,8 +15,8 @@
 SPEC-003 §7 说旧路径该废弃,但那是较大 UX 变更,本次先新增不删旧,详见
 docs/specs/SPEC-003-mainline-director-pipeline.md 的实施取舍记录。
 
-work 状态存内存 map(同 tongjian/shortdrama 的既有 P0 兜底,不建表——`video_tasks` 只在
-`/produce` 真正建生成任务时才创建那一行)。
+work 状态由 Canonical Production Graph 持久化到 PostgreSQL；模块级 map 仅作为
+兼容性读缓存，直接调用路由的单元测试可以在没有数据库依赖时使用该投影。
 """
 
 from __future__ import annotations
@@ -30,13 +30,23 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from itertools import pairwise
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, TypeGuard
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
+from hevi.artifact_store import ArtifactRepository, get_object_store
 from hevi.auth.dependencies import get_current_user
+from hevi.budget import BudgetRepository
+from hevi.constraints import (
+    KNOWN_CONSTRAINT_TYPES,
+    ConstraintRepository,
+    ProviderCapabilities,
+    compile_graph,
+    derive_constraints,
+)
+from hevi.core.config import settings
 from hevi.cost.circuit_breaker import CostLimitExceeded
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
@@ -64,8 +74,24 @@ from hevi.director.screenplay import generate_screenplay_draft
 from hevi.director.shot_list import generate_shot_list_draft
 from hevi.director.tongjian_render import render_director_episode
 from hevi.director.verdict_checks import ShotVerdict, verdict_shot
+from hevi.production.artifacts import ArtifactManifest
+from hevi.production_graph import (
+    ExecutionNode,
+    ExecutionPlan,
+    ProductionGraphRepository,
+)
+from hevi.quality import (
+    GatePolicy,
+    QualityEvaluation,
+    RepairBudget,
+    RepairController,
+    RepairRepository,
+    apply_repair_decision,
+    evaluation_from_shot_verdicts,
+)
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
+from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 from hevi.video.duration_mapper import get_duration_config
@@ -102,8 +128,18 @@ def _record_shot_lints(
     rec["scene_stage_lint"] = [asdict(f) for f in findings]
     append_gate_log(None, gate_log_entries(source="director", findings=findings))
 
-_WORKS: dict[str, dict[str, Any]] = {}
+# Explicit local-mode projection/cache. Production requests must always read
+# PostgreSQL; this map is intentionally unavailable to SaaS reads/writes.
+_LOCAL_WORK_PROJECTIONS: dict[str, dict[str, Any]] = {}
 _OUTPUT_DIR = Path("output/director_pipeline")
+
+
+def __getattr__(name: str) -> Any:
+    """Expose the old test hook without making it a production state symbol."""
+
+    if name == "_WORKS":
+        return _LOCAL_WORK_PROJECTIONS
+    raise AttributeError(name)
 # 身份锚图 art direction(2026-07-16 实证重写):旧值 "cinematic character portrait" + 战败场
 # 的戏剧化 appearance(浴血/怒目)→ qwen-image 脑补成发光红眼、金龙肩甲的恶鬼(实测)。锚图
 # 是下游 canonical/关键帧的派生源,必须是**干净中性定妆照**:平静表情、纯背景、写实真人。
@@ -119,7 +155,6 @@ _PORTRAIT_NEGATIVE = (
     "瞪大眼睛,凶神恶煞,五官变形,战场火光背景,烟雾"
 )
 _PORTRAIT_MAX_ATTEMPTS = 3
-_SEASON_TASKS: set[asyncio.Task[Any]] = set()
 
 # ①→②→③→③.5→④,每级有 _draft/_locked 两态。scene_stage(SPEC-004 场面调度)插在
 # design_list 与 shot_list 之间:未锁 scene_stage 则 shot_list 无法锁(_require_stage_ready
@@ -136,6 +171,110 @@ _STAGE_KEY = {  # 内存记录里存内容用的 key(跟 URL path 段独立,path
 
 async def get_pg_pool() -> PgPool:
     return await get_hevi_pg_pool()
+
+
+def _has_pool(pool: object) -> TypeGuard[PgPool]:
+    """Recognize an injected PgPool while keeping direct unit-call compatibility."""
+
+    return isinstance(pool, PgPool)
+
+
+async def _ensure_production_budget(rec: dict[str, Any], pool: PgPool | None) -> None:
+    """Materialize the season envelope before the first episode reservation."""
+
+    if not _has_pool(pool):
+        return
+    config = rec.get("production_config") or {}
+    hard_limit = config.get("season_budget_usd")
+    if hard_limit is None:
+        return
+    await BudgetRepository(pool).ensure_envelope(
+        production_id=str(rec["work_id"]),
+        hard_limit_usd=float(hard_limit),
+        soft_limit_usd=float(hard_limit) * 0.90,
+    )
+
+
+async def _load_work(
+    work_id: str, user: dict[str, Any], pool: PgPool | None = None
+) -> dict[str, Any]:
+    """Read the canonical graph, or the explicitly requested local projection."""
+
+    if _has_pool(pool):
+        rec = await ProductionGraphRepository(pool).get(work_id)
+        if rec is None:
+            raise HTTPException(status_code=404, detail="work 不存在")
+        if rec.get("user_id") and rec["user_id"] != str(user["id"]):
+            raise HTTPException(status_code=404, detail="work 不存在")
+        return rec
+    if not settings.local_mode and not settings.debug:
+        raise HTTPException(status_code=503, detail="canonical production database unavailable")
+    return _require_work(work_id, user)
+
+
+async def _persist_work(
+    rec: dict[str, Any],
+    pool: PgPool | None = None,
+    *,
+    reason: str = "state_changed",
+    locked_stage: str | None = None,
+    locked_by: str | None = None,
+) -> None:
+    """Append a durable revision and refresh the compatibility projection."""
+
+    # The graph is a deterministic projection of the current locked/draft
+    # documents.  Persisting it with the revision makes provider compilation
+    # and later verdicts reproducible instead of recomputing from mutable UI
+    # state.
+    if rec.get("shot_list") is not None:
+        graph = derive_constraints(
+            design_list=rec.get("design_list"),
+            shot_list=rec.get("shot_list"),
+            scene_stage=rec.get("scene_stage"),
+            revision_id=rec.get("revision_id"),
+        )
+        rec["constraint_graph"] = graph.model_dump(mode="json")
+    else:
+        rec.pop("constraint_graph", None)
+    if _has_pool(pool):
+        repository = ProductionGraphRepository(pool)
+        await repository.save(
+            rec,
+            reason=reason,
+            locked_stage=locked_stage,
+            locked_by=locked_by,
+        )
+        if rec.get("constraint_graph") and rec.get("revision_id"):
+            graph = rec["constraint_graph"]
+            nodes = [
+                ExecutionNode(
+                    node_key=f"constraint:{item['id']}",
+                    op_type="compile_constraint",
+                    capability=f"constraint/{item['type']}",
+                    requirements=dict(item.get("payload") or {}),
+                    dependencies=[f"constraint:{dep}" for dep in item.get("depends_on_ids") or []],
+                )
+                for item in graph.get("constraints") or []
+            ]
+            plan = ExecutionPlan(
+                production_id=uuid.UUID(str(rec["work_id"])),
+                revision_id=uuid.UUID(str(rec["revision_id"])),
+                nodes=nodes,
+            )
+            await repository.save_execution_plan(plan)
+        await _ensure_production_budget(rec, pool)
+    if not _has_pool(pool):
+        _LOCAL_WORK_PROJECTIONS[rec["work_id"]] = rec
+
+
+async def _load_projection(work_id: str, pool: PgPool | None = None) -> dict[str, Any] | None:
+    """Load a background task's record from the durable graph when available."""
+
+    if _has_pool(pool):
+        return await ProductionGraphRepository(pool).get(work_id)
+    if not settings.local_mode and not settings.debug:
+        return None
+    return _LOCAL_WORK_PROJECTIONS.get(work_id)
 
 
 async def get_task_service(pool: Annotated[PgPool, Depends(get_pg_pool)]) -> TaskService:
@@ -180,6 +319,12 @@ class DispatchSeasonRequest(BaseModel):
     season_plan: dict[str, Any] | None = None
 
 
+class CompileConstraintsRequest(BaseModel):
+    provider_id: str = Field(min_length=1, max_length=128)
+    supported_constraints: set[str] | None = None
+    supports_multi_reference: bool = False
+
+
 def _init_work(
     work_id: str,
     *,
@@ -189,6 +334,7 @@ def _init_work(
     work_name: str = "",
     target_episodes: int = 1,
     episode_duration: str = "1-5min",
+    cache: bool = True,
 ) -> dict[str, Any]:
     rec: dict[str, Any] = {
         "work_id": work_id,
@@ -222,12 +368,13 @@ def _init_work(
         "production_config": {},
         "error": None,
     }
-    _WORKS[work_id] = rec
+    if cache:
+        _LOCAL_WORK_PROJECTIONS[work_id] = rec
     return rec
 
 
 def _require_work(work_id: str, user: dict[str, Any]) -> dict[str, Any]:
-    rec = _WORKS.get(work_id)
+    rec = _LOCAL_WORK_PROJECTIONS.get(work_id)
     if not rec:
         raise HTTPException(status_code=404, detail="work 不存在")
     if rec.get("user_id") and rec["user_id"] != str(user["id"]):
@@ -254,15 +401,14 @@ def _rollback_downstream(rec: dict[str, Any], from_stage: str) -> None:
         rec[_STAGE_KEY[stage]] = None
     rec["locked_through"] = min(rec["locked_through"], idx - 1)
     rec["video_task_id"] = None
+    if idx <= _stage_index("shot_list"):
+        rec.pop("constraint_graph", None)
 
 
 def _resolve_llm() -> Any:
-    from obase.provider_registry import ProviderRegistry
+    from hevi.providers.llm_pick import resolve_text_llm
 
-    try:
-        return ProviderRegistry.get().llm("qwen_cloud")
-    except Exception:
-        return ProviderRegistry.get().llm("default")
+    return resolve_text_llm()
 
 
 def _work_status(rec: dict[str, Any]) -> dict[str, Any]:
@@ -280,6 +426,7 @@ def _work_status(rec: dict[str, Any]) -> dict[str, Any]:
         "design_list": rec["design_list"],
         "scene_stage": rec["scene_stage"],
         "shot_list": rec["shot_list"],
+        "constraint_graph": rec.get("constraint_graph"),
         "scene_stage_lint": rec.get("scene_stage_lint", []),
         "video_task_id": rec["video_task_id"],
         "task_ids": rec.get("task_ids", []),
@@ -478,12 +625,12 @@ async def _estimate_season_cost(
     return round(estimate.total_usd * episode_count, 4)
 
 
-async def _run_industrial_inspection(work_id: str) -> None:
+async def _run_industrial_inspection(work_id: str, pool: PgPool | None = None) -> None:
     """L0→L1→L2→资产卡→双门禁；只产审查数据，不建立付费资产、不派发视频。"""
     from hevi.season_planner.planner import build_season_plan
     from hevi.storygraph.extract import extract_story_graph
 
-    rec = _WORKS.get(work_id)
+    rec = await _load_projection(work_id, pool)
     if rec is None:
         return
     try:
@@ -595,11 +742,13 @@ async def _run_industrial_inspection(work_id: str) -> None:
             "succeeded" if gate.passed else "blocked",
             f"导演门禁得分 {gate.score:.0%}",
         )
+        await _persist_work(rec, pool, reason="inspection_completed")
     except Exception as exc:
         logger.exception("director industrial inspection failed: work_id=%s", work_id)
         rec["status"] = "parse_failed"
         rec["error"] = str(exc)[:500]
         _append_trail(rec, "inspection", "failed", type(exc).__name__)
+        await _persist_work(rec, pool, reason="inspection_failed")
 
 
 # ── work 创建 + 查询 ─────────────────────────────────────────────────────────
@@ -607,7 +756,9 @@ async def _run_industrial_inspection(work_id: str) -> None:
 
 @router.post("/works")
 async def create_work(
-    body: CreateWorkRequest, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    body: CreateWorkRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
     if not body.material_text.strip():
         raise HTTPException(status_code=422, detail="material_text 不能为空")
@@ -617,11 +768,13 @@ async def create_work(
         material_text=body.material_text,
         intent_hint=body.intent_hint,
         user_id=str(user["id"]),
+        cache=not _has_pool(pool),
     )
     concept = await generate_concept_draft(
         material_text=body.material_text, intent_hint=body.intent_hint, llm=_resolve_llm()
     )
     rec["concept"] = concept.model_dump()
+    await _persist_work(rec, pool, reason="concept_draft_created")
     return _work_status(rec)
 
 
@@ -630,6 +783,7 @@ async def parse_work(
     body: ParseWorkRequest,
     background_tasks: BackgroundTasks,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
     """启动工业化解析状态机；立即返回，前端通过 work 查询观察演进。"""
     if not body.material_text.strip():
@@ -648,6 +802,7 @@ async def parse_work(
         work_name=body.work_name,
         target_episodes=body.target_episodes,
         episode_duration=body.episode_duration,
+        cache=not _has_pool(pool),
     )
     rec["status"] = "parsing"
     rec["production_config"] = {
@@ -658,23 +813,101 @@ async def parse_work(
     }
     rec["concept"] = None
     _append_trail(rec, "cold_start", "accepted", "导演流水线已接收解析任务")
-    background_tasks.add_task(_run_industrial_inspection, work_id)
+    await _persist_work(rec, pool, reason="production_parse_accepted")
+    background_tasks.add_task(_run_industrial_inspection, work_id, pool)
     return _work_status(rec)
 
 
 @router.get("/works")
 async def list_works(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> list[dict[str, Any]]:
-    mine = [r for r in _WORKS.values() if r.get("user_id") == str(user["id"])]
+    if _has_pool(pool):
+        records = await ProductionGraphRepository(pool).list_for_user(str(user["id"]))
+        return [_work_status(record) for record in records]
+    mine = [
+        r for r in _LOCAL_WORK_PROJECTIONS.values() if r.get("user_id") == str(user["id"])
+    ]
     return [_work_status(r) for r in sorted(mine, key=lambda r: r["created_at"], reverse=True)]
 
 
 @router.get("/works/{work_id}")
 async def get_work(
-    work_id: str, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    return _work_status(_require_work(work_id, user))
+    return _work_status(await _load_work(work_id, user, pool))
+
+
+@router.get("/works/{work_id}/constraints")
+async def get_work_constraints(
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
+) -> dict[str, Any]:
+    """Read the relational constraint graph and its coverage counters."""
+
+    rec = await _load_work(work_id, user, pool)
+    if not _has_pool(pool):
+        return {
+            "revision_id": rec.get("revision_id"),
+            "graph": rec.get("constraint_graph"),
+            "source": "compatibility_projection",
+        }
+    graph = await ConstraintRepository(pool).get_for_production(work_id)
+    if graph is None:
+        raise HTTPException(status_code=404, detail="constraint graph 不存在")
+    return {
+        "revision_id": graph.revision_id,
+        "graph": graph.model_dump(mode="json"),
+        "source": "relational",
+    }
+
+
+@router.post("/works/{work_id}/constraints/compile")
+async def compile_work_constraints(
+    work_id: str,
+    body: CompileConstraintsRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
+) -> dict[str, Any]:
+    """Compile constraints with explicit unsupported/silent-drop reporting."""
+
+    rec = await _load_work(work_id, user, pool)
+    raw_graph = rec.get("constraint_graph")
+    if _has_pool(pool):
+        graph = await ConstraintRepository(pool).get_for_production(work_id)
+    else:
+        graph = None
+    if graph is None and raw_graph:
+        from hevi.constraints.models import ConstraintGraph
+
+        graph = ConstraintGraph.model_validate(raw_graph)
+    if graph is None:
+        raise HTTPException(status_code=409, detail="尚未生成 constraint graph")
+    result = compile_graph(
+        graph,
+        ProviderCapabilities(
+            provider_id=body.provider_id,
+            supported_constraints=(
+                body.supported_constraints
+                if body.supported_constraints is not None
+                else set(KNOWN_CONSTRAINT_TYPES)
+            ),
+            supports_multi_reference=body.supports_multi_reference,
+        ),
+    )
+    if _has_pool(pool) and graph.revision_id:
+        await ConstraintRepository(pool).record_compilation(
+            graph.revision_id,
+            compiled=graph.coverage.compiled_constraints,
+            consumed=graph.coverage.consumed_constraints,
+            unsupported=graph.coverage.unsupported_constraints,
+            silent_drops=graph.coverage.silent_drops,
+        )
+    return result.model_dump(mode="json") | {"coverage": graph.coverage.model_dump(mode="json")}
 
 
 # ── ①立意 ─────────────────────────────────────────────────────────────────
@@ -682,15 +915,18 @@ async def get_work(
 
 @router.post("/works/{work_id}/concept")
 async def regenerate_concept(
-    work_id: str, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     _rollback_downstream(rec, "concept")
     concept = await generate_concept_draft(
         material_text=rec["material_text"], intent_hint=rec["intent_hint"], llm=_resolve_llm()
     )
     rec["concept"] = concept.model_dump()
     rec["status"] = "concept_draft"
+    await _persist_work(rec, pool, reason="concept_regenerated")
     return _work_status(rec)
 
 
@@ -700,25 +936,33 @@ async def lock_concept(
     body: Concept,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     background_tasks: BackgroundTasks,
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     rec["concept"] = body.model_dump()
     rec["locked_through"] = _stage_index("concept")
     # ②剧本草案含 LLM 自审-修订二遍(~106s),超同步反代 100s → 放后台跑,前端轮询
     # screenplay_generating 落地(同 scene_stage/shot_list 模式)。
     rec["status"] = "screenplay_generating"
     rec["error"] = None
-    background_tasks.add_task(_run_screenplay_generate, work_id)
+    await _persist_work(
+        rec,
+        pool,
+        reason="concept_locked",
+        locked_stage="concept",
+        locked_by=str(user["id"]),
+    )
+    background_tasks.add_task(_run_screenplay_generate, work_id, pool)
     return _work_status(rec)
 
 
 # ── ②剧本 ─────────────────────────────────────────────────────────────────
 
 
-async def _run_screenplay_generate(work_id: str) -> None:
+async def _run_screenplay_generate(work_id: str, pool: PgPool | None = None) -> None:
     """②剧本草案后台生成:含 LLM 自审-修订二遍(初稿→审核员挑毛病并改好,总延迟 ~106s),
     超同步反代 100s → 放后台,前端轮询 screenplay_generating 落地。concept 已由调用端锁进 rec。"""
-    rec = _WORKS.get(work_id)
+    rec = await _load_projection(work_id, pool)
     if rec is None:
         return
     try:
@@ -728,10 +972,12 @@ async def _run_screenplay_generate(work_id: str) -> None:
         )
         rec["screenplay"] = screenplay.model_dump()
         rec["status"] = "screenplay_draft"
+        await _persist_work(rec, pool, reason="screenplay_draft_generated")
     except Exception as e:
         logger.exception("screenplay 后台生成失败: work_id=%s", work_id)
         rec["status"] = "screenplay_generate_failed"
         rec["error"] = str(e)
+        await _persist_work(rec, pool, reason="screenplay_generation_failed")
 
 
 @router.post("/works/{work_id}/screenplay")
@@ -739,26 +985,38 @@ async def regenerate_screenplay(
     work_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     background_tasks: BackgroundTasks,
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     _require_stage_ready(rec, "screenplay")
     _rollback_downstream(rec, "screenplay")
     rec["status"] = "screenplay_generating"
     rec["error"] = None
-    background_tasks.add_task(_run_screenplay_generate, work_id)
+    await _persist_work(rec, pool, reason="screenplay_regeneration_started")
+    background_tasks.add_task(_run_screenplay_generate, work_id, pool)
     return _work_status(rec)
 
 
 @router.post("/works/{work_id}/screenplay/lock")
 async def lock_screenplay(
-    work_id: str, body: Screenplay, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    body: Screenplay,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     rec["screenplay"] = body.model_dump()
     rec["locked_through"] = _stage_index("screenplay")
     design_list = await generate_design_list_draft(screenplay=body, llm=_resolve_llm())
     rec["design_list"] = design_list.model_dump()
     rec["status"] = "design_list_draft"
+    await _persist_work(
+        rec,
+        pool,
+        reason="screenplay_locked",
+        locked_stage="screenplay",
+        locked_by=str(user["id"]),
+    )
     return _work_status(rec)
 
 
@@ -767,15 +1025,18 @@ async def lock_screenplay(
 
 @router.post("/works/{work_id}/design-list")
 async def regenerate_design_list(
-    work_id: str, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     _require_stage_ready(rec, "design_list")
     _rollback_downstream(rec, "design_list")
     screenplay = Screenplay.model_validate(rec["screenplay"])
     design_list = await generate_design_list_draft(screenplay=screenplay, llm=_resolve_llm())
     rec["design_list"] = design_list.model_dump()
     rec["status"] = "design_list_draft"
+    await _persist_work(rec, pool, reason="design_list_regenerated")
     return _work_status(rec)
 
 
@@ -910,13 +1171,18 @@ async def _build_scene_stage_set(screenplay: Screenplay, design_list: DesignList
 
 
 async def _run_design_list_lock(
-    work_id: str, body: DesignList, *, user_id: str, subject_svc: SubjectService
+    work_id: str,
+    body: DesignList,
+    *,
+    user_id: str,
+    subject_svc: SubjectService,
+    pool: PgPool | None = None,
 ) -> None:
     """③锁定的真正重活(N 个资产建号 + ③.5 场面调度逐场 LLM 生成)——角色/场次一多,就算
     每个调用本身都做了并发/超时收敛,总和还是可能顶到反向代理超时(线上已实测 524/挂起
     好几轮)。放到 background task 里跑,HTTP 响应不再等它,前端轮询 GET /works/{id}
     直到状态变化即可。SPEC-004:③锁定后自动生成的下一级不再是④分镜,而是③.5 场面调度草案。"""
-    rec = _WORKS.get(work_id)
+    rec = await _load_projection(work_id, pool)
     if rec is None:
         return
     try:
@@ -929,11 +1195,19 @@ async def _run_design_list_lock(
         scene_stage = await _build_scene_stage_set(screenplay, locked)
         rec["scene_stage"] = scene_stage.model_dump()
         rec["status"] = "scene_stage_draft"
+        await _persist_work(
+            rec,
+            pool,
+            reason="design_list_locked",
+            locked_stage="design_list",
+            locked_by=user_id,
+        )
     except Exception as e:
         logger.exception("design-list 后台锁定失败: work_id=%s", work_id)
         rec["design_list"] = body.model_dump()
         rec["status"] = "design_list_lock_failed"
         rec["error"] = str(e)
+        await _persist_work(rec, pool, reason="design_list_lock_failed")
 
 
 @router.post("/works/{work_id}/design-list/lock")
@@ -943,14 +1217,21 @@ async def lock_design_list(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     subject_svc: Annotated[SubjectService, Depends(get_subject_service)],
     background_tasks: BackgroundTasks,
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     _seed_design_list_subject_ids(body, rec.get("design_list"))
     rec["design_list"] = body.model_dump()
     rec["status"] = "design_list_locking"
     rec["error"] = None
+    await _persist_work(rec, pool, reason="design_list_lock_started")
     background_tasks.add_task(
-        _run_design_list_lock, work_id, body, user_id=str(user["id"]), subject_svc=subject_svc
+        _run_design_list_lock,
+        work_id,
+        body,
+        user_id=str(user["id"]),
+        subject_svc=subject_svc,
+        pool=pool,
     )
     return _work_status(rec)
 
@@ -962,9 +1243,9 @@ async def lock_design_list(
 # 自动成立)。逐场 LLM 生成同 design-list 是重活,放 background task。
 
 
-async def _run_scene_stage_regenerate(work_id: str) -> None:
+async def _run_scene_stage_regenerate(work_id: str, pool: PgPool | None = None) -> None:
     """③.5 逐场场面调度草案后台重生成(场次一多不顶反向代理超时,同 design-list 模式)。"""
-    rec = _WORKS.get(work_id)
+    rec = await _load_projection(work_id, pool)
     if rec is None:
         return
     try:
@@ -973,10 +1254,12 @@ async def _run_scene_stage_regenerate(work_id: str) -> None:
         scene_stage = await _build_scene_stage_set(screenplay, design_list)
         rec["scene_stage"] = scene_stage.model_dump()
         rec["status"] = "scene_stage_draft"
+        await _persist_work(rec, pool, reason="scene_stage_regenerated")
     except Exception as e:
         logger.exception("scene-stage 后台重新生成失败: work_id=%s", work_id)
         rec["status"] = "scene_stage_regenerate_failed"
         rec["error"] = str(e)
+        await _persist_work(rec, pool, reason="scene_stage_regeneration_failed")
 
 
 @router.post("/works/{work_id}/scene-stage")
@@ -984,20 +1267,22 @@ async def regenerate_scene_stage(
     work_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     background_tasks: BackgroundTasks,
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     _require_stage_ready(rec, "scene_stage")
     _rollback_downstream(rec, "scene_stage")
     rec["status"] = "scene_stage_generating"
     rec["error"] = None
-    background_tasks.add_task(_run_scene_stage_regenerate, work_id)
+    await _persist_work(rec, pool, reason="scene_stage_regeneration_started")
+    background_tasks.add_task(_run_scene_stage_regenerate, work_id, pool)
     return _work_status(rec)
 
 
-async def _run_scene_stage_lock(work_id: str) -> None:
+async def _run_scene_stage_lock(work_id: str, pool: PgPool | None = None) -> None:
     """③.5 锁定后自动生成④分镜草案(逐场 LLM,放后台)。SPEC-004:shot_list 生成本身此级
     暂不接 SceneStage 引用(那是阶段 3 的桥接层投影),仅由本级门控放行——保持阶段 2 聚焦状态机。"""
-    rec = _WORKS.get(work_id)
+    rec = await _load_projection(work_id, pool)
     if rec is None:
         return
     try:
@@ -1021,10 +1306,12 @@ async def _run_scene_stage_lock(work_id: str) -> None:
         rec["kernel_plan"] = _attach_kernel_plan(shot_list)
         rec["shot_list"] = shot_list.model_dump()
         rec["status"] = "shot_list_draft"
+        await _persist_work(rec, pool, reason="scene_stage_locked", locked_stage="scene_stage")
     except Exception as e:
         logger.exception("scene-stage 锁定后生成分镜失败: work_id=%s", work_id)
         rec["status"] = "scene_stage_lock_failed"
         rec["error"] = str(e)
+        await _persist_work(rec, pool, reason="scene_stage_lock_failed")
 
 
 @router.post("/works/{work_id}/scene-stage/lock")
@@ -1033,22 +1320,24 @@ async def lock_scene_stage(
     body: SceneStageSet,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     background_tasks: BackgroundTasks,
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     rec["scene_stage"] = body.model_dump()
     rec["locked_through"] = _stage_index("scene_stage")
     rec["status"] = "scene_stage_locking"
     rec["error"] = None
-    background_tasks.add_task(_run_scene_stage_lock, work_id)
+    await _persist_work(rec, pool, reason="scene_stage_lock_started")
+    background_tasks.add_task(_run_scene_stage_lock, work_id, pool)
     return _work_status(rec)
 
 
 # ── ④分镜头剧本 ────────────────────────────────────────────────────────────
 
 
-async def _run_shot_list_regenerate(work_id: str) -> None:
+async def _run_shot_list_regenerate(work_id: str, pool: PgPool | None = None) -> None:
     """同 _run_design_list_lock:逐场 LLM 生成放后台跑,场次一多不顶到反向代理超时。"""
-    rec = _WORKS.get(work_id)
+    rec = await _load_projection(work_id, pool)
     if rec is None:
         return
     try:
@@ -1066,10 +1355,12 @@ async def _run_shot_list_regenerate(work_id: str) -> None:
         rec["kernel_plan"] = _attach_kernel_plan(shot_list)
         rec["shot_list"] = shot_list.model_dump()
         rec["status"] = "shot_list_draft"
+        await _persist_work(rec, pool, reason="shot_list_regenerated")
     except Exception as e:
         logger.exception("shot-list 后台重新生成失败: work_id=%s", work_id)
         rec["status"] = "shot_list_regenerate_failed"
         rec["error"] = str(e)
+        await _persist_work(rec, pool, reason="shot_list_regeneration_failed")
 
 
 @router.post("/works/{work_id}/shot-list")
@@ -1077,24 +1368,36 @@ async def regenerate_shot_list(
     work_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     background_tasks: BackgroundTasks,
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     _require_stage_ready(rec, "shot_list")
     _rollback_downstream(rec, "shot_list")
     rec["status"] = "shot_list_generating"
     rec["error"] = None
-    background_tasks.add_task(_run_shot_list_regenerate, work_id)
+    await _persist_work(rec, pool, reason="shot_list_regeneration_started")
+    background_tasks.add_task(_run_shot_list_regenerate, work_id, pool)
     return _work_status(rec)
 
 
 @router.post("/works/{work_id}/shot-list/lock")
 async def lock_shot_list(
-    work_id: str, body: ShotList, user: Annotated[dict[str, Any], Depends(get_current_user)]
+    work_id: str,
+    body: ShotList,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool | None, Depends(get_pg_pool)] = None,
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     rec["shot_list"] = body.model_dump()
     rec["locked_through"] = _stage_index("shot_list")
     rec["status"] = "shot_list_locked"
+    await _persist_work(
+        rec,
+        pool,
+        reason="shot_list_locked",
+        locked_stage="shot_list",
+        locked_by=str(user["id"]),
+    )
     return _work_status(rec)
 
 
@@ -1138,7 +1441,7 @@ async def preparation_overview(
 ) -> dict[str, Any]:
     """§L.1 全片就绪概览:每镜 status/extracted/skip_extraction + 产集拦截项。生成台用它
     判断"能不能生成、还差哪些镜"。未准备过的镜合并出默认 pending。"""
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     overview = {r["shot_id"]: r for r in await _prep.readiness_overview(pool, work_id)}
     shots = [
         {
@@ -1159,7 +1462,7 @@ async def get_shot_preparation_state(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     return await _prep.get_preparation_state(pool, work_id, shot_id, _find_shot(rec, shot_id))
 
 
@@ -1171,7 +1474,7 @@ async def extract_shot_candidates(
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     """§G 提取:从已锁 ShotListItem 确定性物化候选(不另调 LLM)。"""
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     shot = _find_shot(rec, shot_id)
     if shot is None:
         raise HTTPException(status_code=404, detail="shot 不存在(分镜未锁定或 shot_id 错误)")
@@ -1190,7 +1493,7 @@ async def confirm_shot_candidate(
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     """§G/§A.2 确认(或回退)一条候选,后端按 §A.1 重算就绪。"""
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     cand = _parse_candidate_id(candidate_id)
     if body.kind == "asset":
         if body.status not in ("linked", "ignored", "pending"):
@@ -1226,7 +1529,7 @@ async def patch_shot_readiness(
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     """§I skip_extraction 逃生阀:置 true → 该镜直达 ready。"""
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     await _prep.set_skip_extraction(pool, work_id, shot_id, body.skip_extraction)
     state = await _prep.get_preparation_state(pool, work_id, shot_id, _find_shot(rec, shot_id))
     return {"action": "skip_extraction", "state": state}
@@ -1243,6 +1546,7 @@ async def _run_industrial_dispatch(
     svc: TaskService,
     subject_svc: SubjectService,
     pool: PgPool,
+    background_tasks: BackgroundTasks,
 ) -> None:
     """确认后才建立视觉锚点并派发；每集最终仍进入统一 Task 执行器。"""
     from hevi.season_planner.dispatch import dispatch_season
@@ -1251,7 +1555,7 @@ async def _run_industrial_dispatch(
     from hevi.series.series_service import SeriesService
     from hevi.storygraph.schemas import StoryGraph
 
-    rec = _WORKS.get(work_id)
+    rec = await _load_projection(work_id, pool)
     if rec is None:
         return
     try:
@@ -1325,9 +1629,7 @@ async def _run_industrial_dispatch(
             submitted = await svc.submit_task(task_id)
             task_ids.append(str(task_id))
             if submitted.get("status") != "queued":
-                render_task = asyncio.create_task(svc.run_task_background(task_id))
-                _SEASON_TASKS.add(render_task)
-                render_task.add_done_callback(_SEASON_TASKS.discard)
+                schedule_local_compat(background_tasks, svc, task_id)
 
         rec["series_id"] = dispatched["series_id"]
         rec["task_ids"] = task_ids
@@ -1337,15 +1639,18 @@ async def _run_industrial_dispatch(
         _append_trail(
             rec, "season_dispatch", "succeeded", f"已派发 {len(task_ids)} 个真实生产任务"
         )
+        await _persist_work(rec, pool, reason="season_dispatched")
     except asyncio.CancelledError:
         rec["status"] = "dispatch_cancelled"
         _append_trail(rec, "season_dispatch", "cancelled", "整季派发已取消")
+        await _persist_work(rec, pool, reason="season_dispatch_cancelled")
         raise
     except Exception as exc:
         logger.exception("director industrial dispatch failed: work_id=%s", work_id)
         rec["status"] = "dispatch_failed"
         rec["error"] = str(exc)[:500]
         _append_trail(rec, "season_dispatch", "failed", type(exc).__name__)
+        await _persist_work(rec, pool, reason="season_dispatch_failed")
 
 
 @router.post("/works/{work_id}/dispatch-season", status_code=202)
@@ -1363,7 +1668,7 @@ async def dispatch_industrial_season(
     from hevi.season_planner.schemas import SeasonPlan
     from hevi.storygraph.schemas import StoryGraph
 
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     if rec["status"] not in {"inspection_ready", "dispatch_failed"}:
         raise HTTPException(status_code=409, detail=f"当前状态 {rec['status']} 不可派发")
     if not rec.get("story_graph") or not rec.get("season_plan"):
@@ -1414,6 +1719,7 @@ async def dispatch_industrial_season(
     )
     rec["status"] = "dispatching"
     rec["error"] = None
+    await _persist_work(rec, pool, reason="season_dispatch_started")
     background_tasks.add_task(
         _run_industrial_dispatch,
         work_id,
@@ -1422,11 +1728,51 @@ async def dispatch_industrial_season(
         svc=svc,
         subject_svc=subject_svc,
         pool=pool,
+        background_tasks=background_tasks,
     )
     return _work_status(rec)
 
 
 # ── ⑤产集(旧单集路径保留兼容)──────────────────────────────────────────────
+
+
+async def _resolve_produce_provider(
+    body: ProduceRequest,
+    *,
+    duration_archetype: str,
+    pool: PgPool | None,
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    """Resolve the director produce provider through Policy Engine, never a hardcoded id."""
+
+    from hevi.provider_policy import (
+        ProviderPolicy,
+        ProviderPolicyError,
+        ProviderStateRepository,
+        evaluate_provider_policy,
+        require_provider,
+    )
+
+    requested = (body.video_provider or "auto").strip() or "auto"
+    quality_floor = 7 if body.quality_profile == "economy" else 9
+    if requested != "auto":
+        # An explicit provider still goes through health/capability, but the
+        # user's choice is not silently vetoed by the default quality floor.
+        quality_floor = 0
+    policy = ProviderPolicy(
+        mode="t2v",
+        duration_archetype=duration_archetype,
+        audio_provider=body.audio_provider or "edge_tts",
+        quality_floor=quality_floor,
+        candidates=None if requested == "auto" else [requested],
+        max_estimated_cost_usd=body.budget_usd,
+    )
+    state_repository = ProviderStateRepository(pool) if _has_pool(pool) else None
+    decision = await evaluate_provider_policy(policy, state_repository=state_repository)
+    try:
+        selected = require_provider(decision)
+    except ProviderPolicyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return selected, policy.model_dump(mode="json"), decision.model_dump(mode="json")
 
 
 class ProduceRequest(BaseModel):
@@ -1704,22 +2050,134 @@ async def _verdict_and_retake(
     verdicts = await _run_verdict(result["shots"], vlm)
     await _persist_verdicts(task_repo.pool, task_id, verdicts, attempt=0)
 
+    task = await task_repo.get_task(task_id)
+    task_config = dict((task or {}).get("config_json") or {})
+    policy = GatePolicy.for_profile(str(task_config.get("quality_profile") or "standard"))
+    controller = RepairController(
+        RepairBudget(
+            max_attempts=_VERDICT_MAX_RETAKE,
+            max_cost_usd=float(task_config.get("repair_budget_usd") or 0.0),
+        )
+    )
+    evaluation: QualityEvaluation = evaluation_from_shot_verdicts(verdicts, policy)
+    controller.observe(evaluation)
+
+    async def _persist_repair_state(decision: Any) -> None:
+        """Persist convergence evidence without making a quality write fatal."""
+
+        try:
+            current = await task_repo.get_task(task_id)
+            config = dict((current or {}).get("config_json") or {})
+            config["repair_controller"] = controller.snapshot()
+            config["repair_last_decision"] = decision.model_dump(mode="json")
+            await task_repo.update_task(task_id, {"config_json": config})
+            if isinstance(task_repo.pool, PgPool):
+                production_id = config.get("production_id")
+                await RepairRepository(task_repo.pool).save_run(
+                    task_id=uuid.UUID(str(task_id)),
+                    production_id=(uuid.UUID(str(production_id)) if production_id else None),
+                    policy=policy,
+                    controller=controller,
+                    decision=decision,
+                    evaluation=evaluation,
+                    revision_id=(
+                        uuid.UUID(str(config["revision_id"]))
+                        if config.get("revision_id")
+                        else None
+                    ),
+                    attempt_id=str(
+                        (current or {}).get("current_attempt_id") or task_id
+                    ),
+                )
+        except Exception as exc:
+            logger.warning("repair convergence state write failed for %s: %s", task_id, exc)
+
     attempt = 0
-    while attempt < _VERDICT_MAX_RETAKE and any(not v.passed for v in verdicts):
+    while True:
+        decision = controller.decide(evaluation)
+        await _persist_repair_state(decision)
+        if not decision.should_repair:
+            if decision.stop_reason and not evaluation.passed:
+                logger.warning(
+                    "director task %s repair stopped: %s (residual=%.2f)",
+                    task_id,
+                    decision.stop_reason,
+                    evaluation.residual_severity,
+                )
+            break
+        patch = apply_repair_decision(
+            decision,
+            current_provider=str(task_config.get("video_provider") or ""),
+            fallback_candidates=list(task_config.get("provider_fallback_candidates") or []),
+            current_seed=int(task_config.get("seed") or 0),
+        )
+        task_config.update(patch.config_updates())
+        if patch.provider_id:
+            task_config["video_provider"] = patch.provider_id
+        await task_repo.update_task(
+            task_id,
+            {
+                "config_json": task_config,
+                **({"video_provider": patch.provider_id} if patch.provider_id else {}),
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+        if patch.replace_references:
+            # Identity mismatch cannot reuse the still that just failed the gate.
+            render_kwargs["subject_ref_paths"] = {}
         failed = [v for v in verdicts if not v.passed]
         logger.info(
-            "director task %s verdict 第%d轮:%d 镜不过 → 返工 %s",
+            "director task %s verdict 第%d轮:%d 镜不过 → 返工 %s patch=%s",
             task_id,
             attempt,
             len(failed),
             [(v.shot_id, v.retake_tier) for v in failed],
+            patch.model_dump(mode="json"),
         )
         for v in failed:
             _purge_shot_artifacts(run_dir, v.shot_id, hard=(v.retake_tier == "rewrite"))
         attempt += 1
-        result = await render_director_episode(**render_kwargs)  # 只重生成被清掉的镜头
+        retake_budget_repo = BudgetRepository(task_repo.pool) if _has_pool(task_repo.pool) else None
+        retake_attempt_id = None
+        if retake_budget_repo is not None and task_config.get("production_id"):
+            from hevi.budget import BudgetError
+
+            retake_estimate = max(
+                float(task_config.get("retake_estimated_usd") or 0.0),
+                float(task_config.get("estimated_usd") or 0.0) * 0.10,
+                0.01,
+            )
+            try:
+                reservation = await retake_budget_repo.reserve_attempt(
+                    production_id=str(task_config["production_id"]),
+                    attempt_key=f"retake:{task_id}:{attempt}",
+                    estimated_cost_usd=retake_estimate,
+                    stage_category="retake",
+                    is_retake=True,
+                    task_id=uuid.UUID(str(task_id)),
+                )
+                retake_attempt_id = reservation.attempt_id
+            except BudgetError as exc:
+                logger.warning("director task %s retake budget exhausted: %s", task_id, exc)
+                break
+        try:
+            result = await render_director_episode(**render_kwargs)  # 只重生成被清掉的镜头
+        except Exception:
+            if retake_budget_repo is not None and retake_attempt_id is not None:
+                await retake_budget_repo.release_attempt(
+                    retake_attempt_id, external_ref=f"{task_id}:retake:{attempt}:release"
+                )
+            raise
+        if retake_budget_repo is not None and retake_attempt_id is not None:
+            await retake_budget_repo.settle_attempt(
+                retake_attempt_id,
+                actual_cost_usd=retake_estimate,
+                external_ref=f"{task_id}:retake:{attempt}:settle",
+            )
         verdicts = await _run_verdict(result["shots"], vlm)
         await _persist_verdicts(task_repo.pool, task_id, verdicts, attempt=attempt)
+        evaluation = evaluation_from_shot_verdicts(verdicts, policy)
+        controller.observe(evaluation)
 
     n_fail = sum(1 for v in verdicts if not v.passed)
     logger.info(
@@ -1746,14 +2204,70 @@ async def _run_director_via_tongjian(
     scene_stage: SceneStageSet | None = None,
     subject_svc: SubjectService | None = None,
     delivery_promise: str = "motion",
+    manage_budget: bool = True,
 ) -> None:
     """后台真实生成:导演锁定内容 → 通鉴对白+口型管线(render_director_episode)。
     直接更新 video_tasks/shot_states,复用前端既有 taskApi.videoUrl/shots(零改动)。
     镜像 shortdrama._run_episode_via_tongjian 的落库方式。"""
+
+    async def settle_budget(*, actual_usd: float = 0.0, release: bool = False) -> None:
+        if not manage_budget or not _has_pool(task_repo.pool):
+            return
+        task: dict[str, Any] | None = await task_repo.get_task(task_id)
+        attempt_id = ((task or {}).get("config_json") or {}).get("budget_attempt_id")
+        if not attempt_id:
+            return
+        try:
+            if release:
+                await BudgetRepository(task_repo.pool).release_attempt(
+                    attempt_id, external_ref=f"{task_id}:release"
+                )
+            else:
+                await BudgetRepository(task_repo.pool).settle_attempt(
+                    attempt_id,
+                    actual_cost_usd=max(0.0, actual_usd),
+                    external_ref=f"{task_id}:settle",
+                )
+        except Exception as exc:
+            logger.error("director budget settlement failed for %s: %s", task_id, exc)
+
     run_dir = Path("output/tasks") / str(task_id)
     await task_repo.update_task(
         task_id, {"status": "running", "updated_at": datetime.now(UTC).replace(tzinfo=None)}
     )
+    task = await task_repo.get_task(task_id) or {}
+    task_config = dict(task.get("config_json") or {})
+    constraint_graph = derive_constraints(
+        design_list=design_list,
+        shot_list=shot_list,
+        scene_stage=scene_stage,
+        revision_id=task_config.get("revision_id"),
+    )
+    compiled_constraints = compile_graph(
+        constraint_graph,
+        ProviderCapabilities(
+            provider_id=str(task_config.get("video_provider") or "director_tongjian")
+        ),
+    )
+    if compiled_constraints.silent_drops:
+        raise RuntimeError(
+            "director constraint compiler silently dropped constraints: "
+            + ",".join(compiled_constraints.silent_drops[:8])
+        )
+    task_config["constraint_graph"] = constraint_graph.model_dump(mode="json")
+    task_config["constraint_compilation"] = compiled_constraints.model_dump(mode="json")
+    await task_repo.update_task(
+        task_id,
+        {"config_json": task_config, "updated_at": datetime.now(UTC).replace(tzinfo=None)},
+    )
+    if _has_pool(task_repo.pool) and constraint_graph.revision_id:
+        await ConstraintRepository(task_repo.pool).record_compilation(
+            constraint_graph.revision_id,
+            compiled=constraint_graph.coverage.compiled_constraints,
+            consumed=constraint_graph.coverage.consumed_constraints,
+            unsupported=constraint_graph.coverage.unsupported_constraints,
+            silent_drops=constraint_graph.coverage.silent_drops,
+        )
     # 数字人逐镜渲染慢(每镜数分钟),通鉴各层不吐进度回调 → 前端会一直停在 0% 让人以为
     # 卡死(用户实测抱怨)。起一个轮询器数 run_dir 里已产出的 *_talk.mp4 talking clip,
     # 按"有对白的镜头数"折算进度(配音占 ~10%,逐镜数字人 10-90%,装配收尾到 100%)。
@@ -1820,9 +2334,43 @@ async def _run_director_via_tongjian(
         )
         final_video = result["final_video"]
         shots = result["shots"]
-        task = await task_repo.get_task(task_id)
-        config_json = dict((task or {}).get("config_json") or {})
+        final_task: dict[str, Any] | None = await task_repo.get_task(task_id)
+        config_json = dict((final_task or {}).get("config_json") or {})
         config_json["actual_usd"] = config_json.get("estimated_usd", 0.0)
+        artifact_manifest = ArtifactManifest.for_video(final_video.video_path).model_copy(
+            update={
+                "production_id": config_json.get("production_id"),
+                "revision_id": config_json.get("revision_id"),
+                "attempt_id": str(task_id),
+                "tenant_id": str((final_task or {}).get("user_id") or "anonymous"),
+            }
+        )
+        config_json["artifact_manifest"] = artifact_manifest.model_dump(mode="json")
+        if artifact_manifest.production_id:
+            committed = await ArtifactRepository(
+                task_repo.pool, get_object_store()
+            ).commit(artifact_manifest)
+            config_json["artifact_manifest"] = committed.model_dump(mode="json")
+        else:
+            committed = artifact_manifest
+        from hevi.constraints.verdict import verify_delivery
+
+        constraint_verdict = verify_delivery(
+            constraint_graph,
+            compiled_constraints,
+            artifacts=committed,
+        )
+        config_json["constraint_verdict"] = constraint_verdict.model_dump(mode="json")
+        if not constraint_verdict.passed:
+            raise RuntimeError(
+                "director constraint verification failed: "
+                + "; ".join(item.reason for item in constraint_verdict.violations[:5])
+            )
+        if _has_pool(task_repo.pool) and constraint_graph.revision_id:
+            await ConstraintRepository(task_repo.pool).record_verification(
+                constraint_graph.revision_id,
+                verified=constraint_graph.coverage.consumed_constraints,
+            )
         # 返工预算(_VERDICT_MAX_RETAKE)用尽后仍不过的镜:成片存在、可看,但它是残的。
         # 此前 completed_shots 恒填 len(shots),等于宣称"每一镜都成了"——2026-07-17 审计那次
         # 产集 20 镜里 14 镜关键帧是定妆照,任务照样报 completed/100%/20 镜全完成。数字必须说真话。
@@ -1851,7 +2399,10 @@ async def _run_director_via_tongjian(
                     "error": verdict.reason[:500],
                     "config_json": config_json,
                     "updated_at": datetime.now(UTC).replace(tzinfo=None),
-                },
+                    },
+                )
+            await settle_budget(
+                actual_usd=float(config_json.get("actual_usd") or 0.0), release=False
             )
             await task_repo.delete_shots(task_id)
             for shot in shots:
@@ -1891,8 +2442,9 @@ async def _run_director_via_tongjian(
                 "error": None,
                 "config_json": config_json,
                 "updated_at": datetime.now(UTC).replace(tzinfo=None),
-            },
-        )
+                },
+            )
+        await settle_budget(actual_usd=float(config_json.get("actual_usd") or 0.0), release=False)
         await task_repo.delete_shots(task_id)
         for shot in shots:
             await task_repo.create_shot_state(
@@ -1923,10 +2475,45 @@ async def _run_director_via_tongjian(
                 "updated_at": datetime.now(UTC).replace(tzinfo=None),
             },
         )
+        await settle_budget(release=True)
     finally:
         poller.cancel()
         with contextlib.suppress(asyncio.CancelledError, Exception):
             await poller
+
+
+async def execute_task(task: dict[str, Any], pool: PgPool) -> dict[str, Any]:
+    """Scheduler-owned adapter for the locked director Tongjian renderer."""
+
+    config = task.get("config_json") or {}
+    payload = config.get("director_payload") or {}
+    if not payload:
+        raise ValueError("director_tongjian task missing config_json.director_payload")
+    shot_list = ShotList.model_validate(payload["shot_list"])
+    design_list = DesignList.model_validate(payload["design_list"])
+    concept = Concept.model_validate(payload["concept"])
+    scene_stage = (
+        SceneStageSet.model_validate(payload["scene_stage"])
+        if payload.get("scene_stage")
+        else None
+    )
+    subject_svc = SubjectService(SubjectRepository(pool))
+    await _run_director_via_tongjian(
+        task_repo=TaskRepository(pool),
+        task_id=task["id"],
+        shot_list=shot_list,
+        design_list=design_list,
+        concept=concept,
+        subject_ref_paths=dict(payload.get("subject_ref_paths") or {}),
+        voice_by_speaker=dict(payload.get("voice_by_speaker") or {}),
+        aspect_ratio=str(payload.get("aspect_ratio") or "16:9"),
+        target_duration_sec=int(payload.get("target_duration_sec") or 180),
+        scene_stage=scene_stage,
+        subject_svc=subject_svc,
+        delivery_promise=str(payload.get("delivery_promise") or "motion"),
+        manage_budget=False,
+    )
+    return await TaskRepository(pool).get_task(task["id"]) or task
 
 
 @router.post("/works/{work_id}/produce")
@@ -1939,7 +2526,7 @@ async def produce_work(
     subject_svc: Annotated[SubjectService, Depends(get_subject_service)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
-    rec = _require_work(work_id, user)
+    rec = await _load_work(work_id, user, pool)
     if rec["locked_through"] < _stage_index("shot_list"):
         raise HTTPException(status_code=409, detail=f"分镜还没锁定(当前 {rec['status']}),不能产集")
 
@@ -1967,22 +2554,54 @@ async def produce_work(
     )
     duration_cfg = get_duration_config(concept.duration_archetype)
 
+    # The canonical production carries the season hard limit.  Materialize
+    # its envelope before TaskService performs the atomic episode reservation.
+    await _ensure_production_budget(rec, pool)
+
+    selected_provider, provider_policy, provider_decision = await _resolve_produce_provider(
+        body,
+        duration_archetype=concept.duration_archetype,
+        pool=pool if _has_pool(pool) else None,
+    )
+
     # create_task 只用来:建 video_tasks 行 + 预算熔断 + 积分预留(计费一致性)。真正的
     # 生成不走 submit_task/run_task(那条是通用长视频管线 orchestrate_longvideo——把全片
     # 对白拼一条轨、镜头拉伸去填,对白跟画面对不上、看不到说话人,2026-07-14 用户实测
     # 弃用),改成后台跑 render_director_episode(通鉴对白+口型管线)。budget_usd 留空
     # 不透传(见历史注释:None 会撞下游 Pydantic float 校验)。
     create_kwargs: dict[str, Any] = {
+        "production_source": "director_tongjian",
         "topic": concept.theme or rec["material_text"][:200],
         "duration_archetype": concept.duration_archetype,
-        "video_provider": "happyhorse_1_1_maas_lock",  # 数字人管线的真实 provider,计费按它估
-        "audio_provider": "edge_tts",
+        "video_provider": selected_provider,
+        "audio_provider": body.audio_provider or "edge_tts",
+        "provider_policy": provider_policy,
+        "provider_decision": provider_decision,
+        "provider_fallback_candidates": list(provider_decision.get("eligible") or []),
         "user_id": str(user["id"]),
+        "production_id": work_id,
+        "revision_id": rec.get("revision_id"),
         "quality_profile": body.quality_profile,
         "aspect_ratio": body.aspect_ratio,
         "style": concept.style or "cinematic",
         "locked_shot_list": rec["shot_list"],
         "character_voices": character_voices or None,
+        "stage_category": "rendering",
+        "budget_attempt_key": (
+            f"episode:{work_id}:{rec.get('revision_id') or 'latest'}:"
+            f"{len(rec.get('task_ids') or [])}"
+        ),
+        "director_payload": {
+            "shot_list": shot_list.model_dump(mode="json"),
+            "design_list": design_list.model_dump(mode="json"),
+            "concept": concept.model_dump(mode="json"),
+            "scene_stage": scene_stage.model_dump(mode="json") if scene_stage else None,
+            "subject_ref_paths": subject_ref_paths,
+            "voice_by_speaker": character_voices,
+            "aspect_ratio": body.aspect_ratio,
+            "target_duration_sec": int(duration_cfg["target_s"]),
+            "delivery_promise": body.delivery_promise or "motion",
+        },
     }
     if body.budget_usd is not None:
         create_kwargs["budget_usd"] = body.budget_usd
@@ -1999,6 +2618,7 @@ async def produce_work(
         rec["kernel_plan"] = kernel_payload
         rec["shot_list"] = shot_list.model_dump()
         create_kwargs["locked_shot_list"] = rec["shot_list"]
+        create_kwargs["director_payload"]["shot_list"] = shot_list.model_dump(mode="json")
     try:
         task = await svc.create_task(**create_kwargs)
     except CostLimitExceeded as e:
@@ -2019,23 +2639,27 @@ async def produce_work(
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     task_id = task["id"]
-    background_tasks.add_task(
-        _run_director_via_tongjian,
-        task_repo=svc.repository,
-        task_id=task_id,
-        shot_list=shot_list,
-        design_list=design_list,
-        concept=concept,
-        subject_ref_paths=subject_ref_paths,
-        voice_by_speaker=character_voices,
-        aspect_ratio=body.aspect_ratio,
-        target_duration_sec=int(duration_cfg["target_s"]),
-        scene_stage=scene_stage,
-        subject_svc=subject_svc,  # SPEC-004 v2:后台建/取 Subject3D 视图用
-        delivery_promise=body.delivery_promise or "motion",
-    )
+    if _has_pool(svc.repository.pool):
+        await svc.submit_task(task_id)
+    else:
+        background_tasks.add_task(
+            _run_director_via_tongjian,
+            task_repo=svc.repository,
+            task_id=task_id,
+            shot_list=shot_list,
+            design_list=design_list,
+            concept=concept,
+            subject_ref_paths=subject_ref_paths,
+            voice_by_speaker=character_voices,
+            aspect_ratio=body.aspect_ratio,
+            target_duration_sec=int(duration_cfg["target_s"]),
+            scene_stage=scene_stage,
+            subject_svc=subject_svc,
+            delivery_promise=body.delivery_promise or "motion",
+        )
 
     rec["video_task_id"] = str(task_id)
     rec["status"] = "producing"
+    await _persist_work(rec, pool, reason="production_started")
     logger.info("director-pipeline work %s → task %s 产集(通鉴口型管线)", work_id, task_id)
     return _work_status(rec)
