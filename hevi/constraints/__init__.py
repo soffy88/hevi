@@ -7,7 +7,14 @@ from .compiler import (
     compile_graph,
 )
 from .derive import derive_constraints
-from .models import Constraint, ConstraintGraph, CoverageReport
+from .models import (
+    Constraint,
+    ConstraintGraph,
+    CoverageReport,
+    ConsumptionStage,
+    ConstraintMapping,
+    ConstraintConsumptionReceipt,
+)
 from .repository import ConstraintRepository
 from .verdict import ConstraintVerdict, ConstraintViolation, RepairAction, verify_delivery
 
@@ -16,6 +23,9 @@ __all__ = [
     "CompilationResult",
     "Constraint",
     "ConstraintGraph",
+    "ConsumptionStage",
+    "ConstraintMapping",
+    "ConstraintConsumptionReceipt",
     "ConstraintRepository",
     "ConstraintVerdict",
     "ConstraintViolation",
@@ -26,3 +36,4 @@ __all__ = [
     "derive_constraints",
     "verify_delivery",
 ]
+

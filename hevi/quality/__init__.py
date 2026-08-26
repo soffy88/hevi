@@ -1,6 +1,7 @@
 """Quality gates, failure taxonomy and bounded autonomous repair."""
 
-from .evaluation import QualityEvaluation, QualityEvidence, evaluation_from_shot_verdicts
+from .evidence import EvaluationEvidence, ConstraintEvaluation
+from .evaluation import QualityEvaluation, evaluation_from_shot_verdicts
 from .gate_policy import GatePolicy
 from .repair_controller import (
     RepairAction,
@@ -16,7 +17,8 @@ __all__ = [
     "FailureCode",
     "GatePolicy",
     "QualityEvaluation",
-    "QualityEvidence",
+    "EvaluationEvidence",
+    "ConstraintEvaluation",
     "RepairAction",
     "RepairBudget",
     "RepairController",

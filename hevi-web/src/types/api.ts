@@ -1315,3 +1315,97 @@ export interface ProviderPreset {
   api_key_env: string | null;
   strategy: Record<string, unknown>;
 }
+
+// ── MPT 集成 (MoneyPrinterTurbo) ─────────────────────────────────
+export interface MPTGenerateRequest {
+  topic: string;
+  video_count: number;
+  aspect: '16:9' | '9:16' | '1:1' | '4:3' | '3:4';
+  voice: string;
+  bgm: boolean;
+  subtitle: boolean;
+  material_mode: 'pexels' | 'pixabay' | 'local';
+}
+
+export interface MPTGenerateResponse {
+  task_id: string;
+  status: string;
+  message: string;
+}
+
+export interface MPTTaskStatus {
+  task_id: string;
+  state: string;
+  progress: number;
+  videos: string[];
+  error: string | null;
+}
+
+export interface MPTMaterialItem {
+  url: string;
+  duration: number;
+  width: number;
+  height: number;
+  source: string;
+  thumbnail: string | null;
+  search_term: string | null;
+  asset_id: string | null;
+  source_page: string | null;
+  creator: { name: string; id?: string } | null;
+  score: number | null;
+}
+
+export interface MPTMaterialSearchResult {
+  query: string;
+  source: string;
+  total: number;
+  items: MPTMaterialItem[];
+  error: string | null;
+}
+
+export interface MPTReferenceAnalysis {
+  source_url: string;
+  transcript: Array<{
+    start_s: number;
+    end_s: number;
+    text: string;
+    confidence: number | null;
+  }>;
+  rhythm: {
+    total_duration_s: number;
+    shot_changes: number[];
+    beats_per_minute: number | null;
+    energy_curve: number[] | null;
+  };
+  scenes: Array<{
+    scene_no: number;
+    start_s: number;
+    end_s: number;
+    duration_s: number;
+    description: string;
+    key_elements: string[];
+    visual_style: string | null;
+  }>;
+  concepts: Array<{
+    concept_id: string;
+    title: string;
+    pitch: string;
+    angle: string;
+    estimated_cost: number;
+    reference_similarity: number;
+  }>;
+}
+
+export interface MPTCrossPostRequest {
+  video_path: string;
+  title: string;
+  platforms: string[];
+}
+
+export interface MPTCrossPostResult {
+  success: boolean;
+  request_id?: string;
+  message?: string;
+  error?: string;
+}
+

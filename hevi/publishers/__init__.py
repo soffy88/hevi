@@ -304,9 +304,12 @@ async def publish_to_platform(
 def _register_defaults() -> None:
     for pub in (TikTokPublisher(), InstagramPublisher(), YouTubePublisher()):
         register_publisher(pub)
-    from hevi.publishers.matrix import register_matrix_publishers
+    from hevi.publishers.matrix import MatrixPublisher, register_matrix_publishers
 
     register_matrix_publishers()
+
+    # Re-export MatrixPublisher
+    globals()["MatrixPublisher"] = MatrixPublisher
 
 
 _register_defaults()
@@ -320,6 +323,7 @@ __all__ = [
     "Publisher",
     "TikTokPublisher",
     "YouTubePublisher",
+    "MatrixPublisher",
     "get_publisher",
     "list_publishers",
     "publish_to_platform",

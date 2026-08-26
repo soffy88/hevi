@@ -1,0 +1,62 @@
+# MoneyPrinterTurbo 配置 - hevi 集成版
+# 共享 hevi 基础设施 (PostgreSQL, MinIO, Redis)
+
+[app]
+    # hevi API 端点 (用于 WebUI 调用 + 视频生成)
+    hevi_api_url = "http://localhost:8000"
+
+    # 文件存储路径
+    storage_path = "/MoneyPrinterTurbo/storage"
+
+    # 字体目录
+    font_dir = "/MoneyPrinterTurbo/resource/fonts"
+
+    # 默认 LLM 提供商 (可扩展对接 hevi LLM 网关)
+    llm_provider = "openai"
+
+    # 模型配置
+    openai_api_base = "https://api.openai.com/v1"
+    openai_api_key = ""  # 部署时通过环境变量 OPENAI_API_KEY 设置
+    openai_model = "gpt-4o-mini"
+
+    # TTS 提供商 (集成 hevi Piper + EdgeTTS)
+    tts_provider = "piper"
+    elephant_provider_endpoint = ""  # hevi ElephantTTS 服务
+
+    # 素材搜索 (可选: Pexels/Pixabay API key)
+    pexels_api_key = ""
+    pixabay_api_key = ""
+
+    # 发布配置 (对接 hevi publishers)
+    upload_post_api_key = ""
+    upload_post_username = ""
+    upload_post_enabled = false
+    upload_post_platforms = ["tiktok", "instagram"]
+
+[ffmpeg]
+    bin_path = "ffmpeg"
+
+[debug]
+    enabled = false
+    log_level = "INFO"
+
+# 数据库配置 (共享 hevi PostgreSQL)
+[database]
+    postgres_host = "postgres"
+    postgres_port = 5432
+    postgres_user = "hevi"
+    postgres_password = "hevi"
+    postgres_db = "hevi_vault"
+
+# MinIO 对象存储 (共享 hevi Vault)
+[storage]
+    endpoint = "minio:9000"
+    access_key = "hevi"
+    secret_key = "hevi1234"
+    bucket = "vault"
+
+# Redis 缓存 (共享)
+[redis]
+    host = "redis"
+    port = 6379
+    db = 0

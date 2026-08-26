@@ -738,6 +738,15 @@ export const publishStudioApi = {
   voiceDub: (body: { video_path: string; target_language: string }) => authedReq<{ task_id: string; status: string }>('/api/studio/voice/dub', { method: 'POST', body: JSON.stringify(body) }),
   danceGpuCheck: () => authedReq<{ available: boolean; gpu_name?: string; vram_mb?: number }>('/api/studio/dance/gpu-check'),
   danceGenerate: (body: { audio_path: string; dance_type: string; duration_s?: number }) => authedReq<{ task_id: string; status: string }>('/api/studio/dance/generate', { method: 'POST', body: JSON.stringify(body) }),
+
+  // ── MPT 集成 (MoneyPrinterTurbo) ─────────────────────────────────
+  mptGenerate: (body: { topic: string; video_count: number; aspect: string; voice: string; bgm: boolean; subtitle: boolean; material_mode: string }) => authedReq<{ task_id: string; status: string; message: string }>('/api/mpt/generate', { method: 'POST', body: JSON.stringify(body) }),
+  mptStatus: (taskId: string) => authedReq<{ state: string; progress: number; videos: string[]; error: string | null }>('/api/mpt/status/' + taskId, { method: 'GET' }),
+  mptMaterials: (body: { query: string; source: string; count: number; min_duration: number }) => authedReq<{ pexels: any; pixabay: any; archive_org: any }>('/api/mpt/materials/search', { method: 'POST', body: JSON.stringify(body) }),
+  mptCrossPost: (body: { video_path: string; title: string; platforms: string[] }) => authedReq<{ success: boolean; request_id?: string; message?: string }>('/api/mpt/cross-post', { method: 'POST', body: JSON.stringify(body) }),
+  mptReference: (body: { url: string }) => authedReq<{ transcript: any; rhythm: any; scenes: any; concepts: any; metadata: any }>('/api/mpt/reference/analyze', { method: 'POST', body: JSON.stringify(body) }),
+  mptSubmitJob: (production_id: string, revision_id: string, topic: string, video_count: number, aspect: string, voice: string) => authedReq<{ task_id: string; status: string; message: string }>('/api/mpt/hevi/submit-job?production_id=' + production_id + '&revision_id=' + revision_id + '&topic=' + encodeURIComponent(topic) + '&video_count=' + video_count + '&aspect=' + aspect + '&voice=' + voice, { method: 'GET' }),
+};
 };
 
 // ── 黄金公式动画演绎 (故事 → 分镜矩阵 → 动画出片) ────────────────

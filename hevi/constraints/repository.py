@@ -1,4 +1,7 @@
-"""Relational reads and coverage updates for the constraint graph."""
+"""Relational reads and coverage updates for the constraint graph.
+
+P0-A: Added constraint_consumption_receipts table operations
+"""
 
 from __future__ import annotations
 
@@ -7,7 +10,7 @@ from typing import Literal, cast
 
 from obase.persistence import PgPool
 
-from .models import Constraint, ConstraintGraph, CoverageReport
+from .models import Constraint, ConstraintGraph, CoverageReport, ConsumptionStage, ConstraintConsumptionReceipt, ConstraintMapping
 
 
 class ConstraintRepository:
@@ -108,10 +111,61 @@ class ConstraintRepository:
                 unsupported,
                 silent_drops,
             )
-        from hevi.monitoring.metrics import constraint_coverage_ratio
 
-        constraint_coverage_ratio.labels(stage="compile").set(
-            0.0 if compiled == 0 else consumed / compiled
+    async def record_consumption_receipt(
+        self,
+        *,
+        production_id: uuid.UUID,
+        revision_id: uuid.UUID,
+        attempt_id: uuid.UUID,
+        constraint_id: str,
+        provider_id: str,
+        adapter_id: str,
+        stage: ConsumptionStage,
+        mapping_type: str,
+        mapping_path: str,
+        payload_hash: str,
+        provider_request_id: str | None = None,
+    ) -> ConstraintConsumptionReceipt:
+        """Insert a new immutable consumption receipt.  UNIQUE(attempt_id, constraint_id, stage, mapping_path)
+        guarantees no duplicate consumption records for the same attempt/constraint/stage."""
+        receipt_id = str(uuid.uuid4())
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """INSERT INTO constraint_consumption_receipts
+                   (id, production_id, revision_id, attempt_id, constraint_id,
+                    provider_id, adapter_id, stage, mapping_type, mapping_path,
+                    payload_hash, provider_request_id, created_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+                ON CONFLICT (attempt_id, constraint_id, stage, mapping_path)
+                DO NOTHING
+                RETURNING *""",
+                receipt_id,
+                uuid.UUID(production_id),
+                uuid.UUID(revision_id),
+                uuid.UUID(attempt_id),
+                constraint_id,
+                provider_id,
+                adapter_id,
+                stage.value,
+                mapping_type,
+                mapping_path,
+                payload_hash,
+                provider_request_id,
+            )
+        return ConstraintConsumptionReceipt(
+            id=receipt_id,
+            production_id=str(production_id),
+            revision_id=str(revision_id),
+            attempt_id=str(attempt_id),
+            constraint_id=constraint_id,
+            provider_id=provider_id,
+            adapter_id=adapter_id,
+            stage=stage,
+            mapping_type=mapping_type,
+            mapping_path=mapping_path,
+            payload_hash=payload_hash,
+            provider_request_id=provider_request_id,
         )
 
     async def record_verification(self, revision_id: str, *, verified: int) -> None:
@@ -125,16 +179,68 @@ class ConstraintRepository:
                 uuid.UUID(revision_id),
                 verified,
             )
-            derived = await conn.fetchval(
-                "SELECT derived_constraints FROM constraint_coverage WHERE revision_id = $1",
-                uuid.UUID(revision_id),
-            )
         from hevi.monitoring.metrics import constraint_coverage_ratio
 
+        derived = await conn.fetchval(
+            "SELECT derived_constraints FROM constraint_coverage WHERE revision_id = $1",
+            uuid.UUID(revision_id),
+        )
         required = int(derived or 0)
         constraint_coverage_ratio.labels(stage="verify").set(
             1.0 if required == 0 else verified / required
         )
+
+    async def get_consumption_coverage(
+        self,
+        production_id: str,
+        revision_id: str | None = None,
+        attempt_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Query granular consumption coverage across attempts.
+
+        Returns dict with:
+        - compiled_constraints / derived_constraints
+        - adapter_consumed_constraints / compiled_constraints
+        - provider_submitted_constraints / adapter_consumed_constraints
+        - verified_constraints / provider_submitted_constraints
+        - silent_drop_rate
+        - breakdown by stage
+        """
+        async with self.pool.acquire() as conn:
+            sql = """
+                SELECT COUNT(*) FILTER (WHERE stage = 'compiled') as compiled,
+                       COUNT(*) FILTER (WHERE stage = 'adapter_consumed') as adapter_consumed,
+                       COUNT(*) FILTER (WHERE stage = 'provider_submitted') as provider_submitted,
+                       COUNT(*) FILTER (WHERE stage = 'provider_acked') as provider_acked,
+                       COUNT(DISTINCT constraint_id) as total_constraints
+                FROM constraint_consumption_receipts
+                WHERE production_id = $1
+            """
+            params = [uuid.UUID(production_id)]
+            param_idx = 2
+            if revision_id:
+                sql += f" AND revision_id = ${param_idx}"
+                params.append(uuid.UUID(revision_id))
+                param_idx += 1
+            if attempt_id:
+                sql += f" AND attempt_id = ${param_idx}"
+                params.append(uuid.UUID(attempt_id))
+            row = await conn.fetchrow(sql, *params)
+            if not row:
+                return {"compiled": 0, "adapter_consumed": 0, "provider_submitted": 0, "provider_acked": 0, "total_constraints": 0}
+            return dict(row)
+
+    async def record_derived_constraints(self, revision_id: str, expected: int, derived: int) -> None:
+        """Set expected_fields and derived_constraints on coverage."""
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """UPDATE constraint_coverage
+                   SET expected_fields = $2, derived_constraints = $3, updated_at = NOW()
+                   WHERE revision_id = $1""",
+                uuid.UUID(revision_id),
+                expected,
+                derived,
+            )
 
 
 __all__ = ["ConstraintRepository"]

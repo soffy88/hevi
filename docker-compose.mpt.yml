@@ -1,0 +1,146 @@
+# MoneyPrinterTurbo 服务 - hevi 集成部署
+# 共享 hevi 核心基础设施: PostgreSQL (hevi-vault), MinIO (hevi-vault), Redis
+# MPT 独立运行, 仅通过配置文件对接 hevi API
+
+services:
+  mpt-webui:
+    build:
+      context: ./services/mpt
+      dockerfile: Dockerfile
+    container_name: hevi-mpt-webui
+    ports:
+      - "8501:8501"
+    environment:
+      # hevi 共享基础设施
+      - HEVI_POSTGRES_HOST=postgres
+      - HEVI_POSTGRES_PORT=5432
+      - HEVI_POSTGRES_USER=hevi
+      - HEVI_POSTGRES_PASSWORD=hevi
+      - HEVI_POSTGRES_DB=hevi_vault
+      - HEVI_MINIO_ENDPOINT=minio:9000
+      - HEVI_MINIO_ACCESS_KEY=hevi
+      - HEVI_MINIO_SECRET_KEY=hevi1234
+      - HEVI_REDIS_HOST=redis
+      - HEVI_REDIS_PORT=6379
+      # MPT 特有配置
+      - MPT_CONFIG_PATH=/MoneyPrinterTurbo/config.toml
+      - MPT_STORAGE_PATH=/MoneyPrinterTurbo/storage
+      - PYTHONPATH=/MoneyPrinterTurbo
+    volumes:
+      - ./services/mpt:/MoneyPrinterTurbo
+      - ./services/mpt/config.toml:/MoneyPrinterTurbo/config.toml:ro
+      - ./services/mpt/storage:/MoneyPrinterTurbo/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hevi-network
+
+  mpt-api:
+    build:
+      context: ./services/mpt
+      dockerfile: Dockerfile
+    container_name: hevi-mpt-api
+    ports:
+      - "8080:8080"
+    environment:
+      - HEVI_POSTGRES_HOST=postgres
+      - HEVI_POSTGRES_PORT=5432
+      - HEVI_POSTGRES_USER=hevi
+      - HEVI_POSTGRES_PASSWORD=hevi
+      - HEVI_POSTGRES_DB=hevi_vault
+      - HEVI_MINIO_ENDPOINT=minio:9000
+      - HEVI_MINIO_ACCESS_KEY=hevi
+      - HEVI_MINIO_SECRET_KEY=hevi1234
+      - HEVI_REDIS_HOST=redis
+      - HEVI_REDIS_PORT=6379
+      - MPT_CONFIG_PATH=/MoneyPrinterTurbo/config.toml
+      - MPT_STORAGE_PATH=/MoneyPrinterTurbo/storage
+      - PYTHONPATH=/MoneyPrinterTurbo
+    volumes:
+      - ./services/mpt:/MoneyPrinterTurbo
+      - ./services/mpt/config.toml:/MoneyPrinterTurbo/config.toml:ro
+      - ./services/mpt/storage:/MoneyPrinterTurbo/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hevi-network
+    command: [ "python3", "main.py" ]
+
+  # 共享基础设施 - 从 hevi-vault 栈引用
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: hevi-postgres
+    environment:
+      POSTGRES_USER: hevi
+      POSTGRES_PASSWORD: hevi
+      POSTGRES_DB: hevi_vault
+    ports:
+      - "5432:5432"
+    volumes:
+      - hevi_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hevi -d hevi_vault"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hevi-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: hevi-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: hevi
+      MINIO_ROOT_PASSWORD: hevi1234
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - hevi_minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hevi-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hevi-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - hevi_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hevi-network
+
+volumes:
+  hevi_postgres_data:
+  hevi_minio_data:
+  hevi_redis_data:
+
+networks:
+  hevi-network:
+    driver: bridge
+
