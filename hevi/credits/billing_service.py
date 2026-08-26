@@ -144,8 +144,8 @@ class BillingService:
             # Ledger entry for RESERVE
             await conn.execute(
                 """INSERT INTO credit_transactions
-                   (user_id, amount, tx_type, reference, balance_after, created_at)
-                   VALUES ($1, $2, 'reserve', $3, $4, NOW())""",
+                   (id, user_id, amount, tx_type, reference, balance_after, created_at)
+                   VALUES ($1, $2, $3, 'reserve', $4, $5, NOW())""",
                 user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(user_id),
                 0,  # reserve doesn't change balance
                 external_ref,
@@ -230,8 +230,8 @@ class BillingService:
             # Ledger entry for CONSUME
             await conn.execute(
                 """INSERT INTO credit_transactions
-                   (user_id, amount, tx_type, reference, balance_after, created_at)
-                   VALUES ($1, -$2, 'consume', $3, $4, NOW())""",
+                   (id, user_id, amount, tx_type, reference, balance_after, created_at)
+                   VALUES (uuid_generate_v4(), $1, -$2, 'consume', $3, $4, NOW())""",
                 user_id,
                 actual_amount_cents,
                 external_ref,
@@ -293,8 +293,8 @@ class BillingService:
             )
             await conn.execute(
                 """INSERT INTO credit_transactions
-                   (user_id, amount, tx_type, reference, balance_after, created_at)
-                   VALUES ($1, 0, 'release', $2, $3, NOW())""",
+                   (id, user_id, amount, tx_type, reference, balance_after, created_at)
+                   VALUES (uuid_generate_v4(), $1, 0, 'release', $2, $3, NOW())""",
                 user_id,
                 external_ref,
                 account["balance"] if account else 0,
@@ -355,8 +355,8 @@ class BillingService:
             # Ledger entry for REFUND
             await conn.execute(
                 """INSERT INTO credit_transactions
-                   (user_id, amount, tx_type, reference, balance_after, created_at)
-                   VALUES ($1, $2, 'refund', $3, $4, NOW())""",
+                   (id, user_id, amount, tx_type, reference, balance_after, created_at)
+                   VALUES (uuid_generate_v4(), $1, $2, 'refund', $3, $4, NOW())""",
                 user_id,
                 refund_amount,
                 external_ref,
