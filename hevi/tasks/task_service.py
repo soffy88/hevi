@@ -968,27 +968,10 @@ class TaskService:
                 task_id, {"status": "running", "updated_at": datetime.now(UTC).replace(tzinfo=None)}
             )
 
-            # 4. Consume credits at the start of execution (SaaS-2)
-            if self.billing_svc and user_id and credits_reserved > 0:
-                reservation_id = (task.get("config_json") or {}).get("reservation_id", "")
-                try:
-                    await self.billing_svc.consume(
-                        reservation_id,
-                        int(credits_reserved),
-                        external_ref=f"{task_id}:consume_start"
-                    )
-                except Exception as exc:
-                    logger.error(f"Credit consumption failed for task {task_id}: {exc}")
-                    # If consumption fails (e.g. balance changed since creation), fail task
-                    credit_update: dict[str, Any] = {
-                        "status": "failed",
-                        "error": f"Credit settlement failed: {exc}",
-                        "updated_at": datetime.now(UTC).replace(tzinfo=None),
-                    }
-                    await self.repository.update_task(task_id, credit_update)
-                    await self._finish_attempt(task, status="failed", error=str(exc)[:500])
-                    await self._settle_budget_for_task(task, actual_usd=0.0, release=True)
-                    return {**task, **credit_update}
+            # 4. Consume credits at end of task (after actual cost known)
+            # Reservation remains ACTIVE during execution; consume happens at completion in _finish_attempt.
+            # Removed: consume at start to avoid premature commitment.
+            pass  # Consume will happen later via _finish_attempt() or settle_path()
 
             cost_tracker = HeviCostTracker()
 
@@ -1164,26 +1147,34 @@ class TaskService:
                     ),
                 )
 
-                # Settle reserved (estimate) vs actual cost. We charged
-                # credits_reserved up front; reconcile the difference now so a
-                # fallback to a pricier/cheaper provider doesn't leak revenue or
-                # over-charge the user. Idempotent via the ":settle" reference.
+                # Final consume: charge actual cost once.
+                # Reservation was held ACTIVE throughout execution.
+                # If actual > reserved, need supplemental reservation for the delta.
+                # If actual < reserved, consume the actual amount, release excess via reservation closure.
                 if self.billing_svc and user_id and credits_reserved > 0:
                     actual_credits = int(cost_tracker.total_usd * settings.credits_per_usd)
-                    delta = actual_credits - credits_reserved
-                    settle_ref = f"{task_id}:settle"
+                    reservation_id = (task.get("config_json") or {}).get("reservation_id", "")
                     try:
-                        if delta > 0:
-                            reservation_id = (task.get("config_json") or {}).get("reservation_id", "")
+                        if actual_credits > credits_reserved:
+                            # Charge original reservation fully, then supplemental for delta
                             await self.billing_svc.consume(
                                 reservation_id,
-                                delta,
-                                external_ref=f"{task_id}:settle:{delta}"
+                                credits_reserved,
+                                external_ref=f"{task_id}:consume"
                             )
-                        elif delta < 0:
-                            await self.billing_svc.refund_consumed(
-                                str(task_id),
-                                abs(delta)
+                            delta = actual_credits - credits_reserved
+                            # Create supplemental reservation for the extra amount
+                            await self.billing_svc.reserve(
+                                user_id, delta,
+                                task_id=str(task_id),
+                                external_ref=f"{task_id}:supplemental:{credits_reserved}"
+                            )
+                        else:
+                            # Charge actual, reservation auto-closes (full reserved amount released)
+                            await self.billing_svc.consume(
+                                reservation_id,
+                                actual_credits,
+                                external_ref=f"{task_id}:consume"
                             )
                     except Exception as exc:
                         # Settle-up can fail if the user spent their balance meanwhile;

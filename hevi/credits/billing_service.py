@@ -92,11 +92,11 @@ class BillingService:
 
         expires_at = datetime.now(UTC) + timedelta(seconds=ttl_seconds)
 
-        async with self._account_svc._pool.acquire() as conn, conn.transaction():
+        async with self._pool.acquire() as conn, conn.transaction():
             # Lock the account row
             account = await conn.fetchrow(
                 "SELECT balance, reserved_balance FROM credit_accounts WHERE user_id = $1 FOR UPDATE",
-                uuid.UUID(user_id),
+                user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(user_id),
             )
             if not account:
                 raise InsufficientCredits(amount_cents, 0)
@@ -125,7 +125,7 @@ class BillingService:
                     amount_cents, status, expires_at, consumed_amount_cents, created_at, updated_at)
                    VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', $8, 0, NOW(), NOW())""",
                 reservation_id,
-                uuid.UUID(user_id),
+                user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(user_id),
                 uuid.UUID(production_id) if production_id else None,
                 uuid.UUID(task_id) if task_id else None,
                 uuid.UUID(attempt_id) if attempt_id else None,
@@ -138,7 +138,7 @@ class BillingService:
             await conn.execute(
                 """UPDATE credit_accounts SET reserved_balance = reserved_balance + $1 WHERE user_id = $2""",
                 amount_cents,
-                uuid.UUID(user_id),
+                user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(user_id),
             )
 
             # Ledger entry for RESERVE
@@ -146,7 +146,7 @@ class BillingService:
                 """INSERT INTO credit_transactions
                    (user_id, amount, tx_type, reference, balance_after, created_at)
                    VALUES ($1, $2, 'reserve', $3, $4, NOW())""",
-                uuid.UUID(user_id),
+                user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(user_id),
                 0,  # reserve doesn't change balance
                 external_ref,
                 balance,  # balance unchanged
@@ -175,7 +175,7 @@ class BillingService:
         if external_ref is None:
             external_ref = f"consume:{reservation_id}:{actual_amount_cents}"
 
-        async with self._account_svc._pool.acquire() as conn, conn.transaction():
+        async with self._pool.acquire() as conn, conn.transaction():
             # Get reservation with lock
             res = await conn.fetchrow(
                 """SELECT * FROM billing_reservations WHERE id = $1 FOR UPDATE""",
@@ -212,18 +212,18 @@ class BillingService:
                 uuid.UUID(reservation_id),
             )
 
-            # Update account: deduct actual from balance, release actual from reserved_balance
+            # Update account: deduct actual from balance, release FULL reservation from reserved_balance
             # Note: reserved_balance was increased by amount_cents at reserve time.
-            # Subtracting the actual consumed amount from reserved_balance releases both
-            # the consumed portion and the unused excess in one operation.
-            # Do NOT subtract amount_cents again - that would double-subtract.
+            # We must subtract the FULL reservation amount from reserved_balance to close it.
+            # The difference (amount_cents - actual_amount_cents) is the unused excess.
             await conn.execute(
                 """UPDATE credit_accounts
                    SET balance = balance - $1,
-                       reserved_balance = reserved_balance - $1,
+                       reserved_balance = reserved_balance - $2,
                        updated_at = NOW()
-                   WHERE user_id = $2""",
+                   WHERE user_id = $3""",
                 actual_amount_cents,
+                res["amount_cents"],
                 user_id,
             )
 
@@ -256,7 +256,7 @@ class BillingService:
         if external_ref is None:
             external_ref = f"release:{reservation_id}"
 
-        async with self._account_svc._pool.acquire() as conn, conn.transaction():
+        async with self._pool.acquire() as conn, conn.transaction():
             res = await conn.fetchrow(
                 """SELECT * FROM billing_reservations WHERE id = $1 FOR UPDATE""",
                 uuid.UUID(reservation_id),
@@ -320,7 +320,7 @@ class BillingService:
         if external_ref is None:
             external_ref = f"refund:{attempt_id}"
 
-        async with self._account_svc._pool.acquire() as conn, conn.transaction():
+        async with self._pool.acquire() as conn, conn.transaction():
             # Find consumed reservation for this attempt
             res = await conn.fetchrow(
                 """SELECT * FROM billing_reservations
