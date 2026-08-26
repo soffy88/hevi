@@ -115,7 +115,15 @@ class BillingService:
             )
             if existing:
                 # Already exists - return existing (idempotent)
-                return dict(existing)
+                return {
+                    "id": str(existing["id"]),
+                    "user_id": str(existing["user_id"]),
+                    "amount_cents": existing["amount_cents"],
+                    "status": existing["status"],
+                    "external_ref": existing["external_ref"],
+                    "expires_at": existing["expires_at"].isoformat() if hasattr(existing["expires_at"], "isoformat") else str(existing["expires_at"]),
+                    "consumed_amount_cents": existing.get("consumed_amount_cents", 0),
+                }
 
             # Insert reservation
             reservation_id = uuid.uuid4()
@@ -142,10 +150,12 @@ class BillingService:
             )
 
             # Ledger entry for RESERVE
+            tx_id = uuid.uuid4()
             await conn.execute(
                 """INSERT INTO credit_transactions
                    (id, user_id, amount, tx_type, reference, balance_after, created_at)
                    VALUES ($1, $2, $3, 'reserve', $4, $5, NOW())""",
+                tx_id,
                 user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(user_id),
                 0,  # reserve doesn't change balance
                 external_ref,
@@ -228,12 +238,14 @@ class BillingService:
             )
 
             # Ledger entry for CONSUME
+            tx_id = uuid.uuid4()
             await conn.execute(
                 """INSERT INTO credit_transactions
                    (id, user_id, amount, tx_type, reference, balance_after, created_at)
-                   VALUES (uuid_generate_v4(), $1, -$2, 'consume', $3, $4, NOW())""",
+                   VALUES ($1, $2, $3, 'consume', $4, $5, NOW())""",
+                tx_id,
                 user_id,
-                actual_amount_cents,
+                -actual_amount_cents,
                 external_ref,
                 account["balance"] - actual_amount_cents,
             )
@@ -287,6 +299,7 @@ class BillingService:
             )
 
             # Ledger entry for RELEASE
+            tx_id = uuid.uuid4()
             account = await conn.fetchrow(
                 "SELECT balance, reserved_balance FROM credit_accounts WHERE user_id = $1",
                 user_id,
@@ -294,8 +307,10 @@ class BillingService:
             await conn.execute(
                 """INSERT INTO credit_transactions
                    (id, user_id, amount, tx_type, reference, balance_after, created_at)
-                   VALUES (uuid_generate_v4(), $1, 0, 'release', $2, $3, NOW())""",
+                   VALUES ($1, $2, $3, 'release', $4, $5, NOW())""",
+                tx_id,
                 user_id,
+                0,
                 external_ref,
                 account["balance"] if account else 0,
             )
@@ -316,20 +331,45 @@ class BillingService:
 
         This creates a REFUND ledger entry and increases account balance.
         Unlike release(), this is for post-consumption refunds.
+        Idempotent: if external_ref already exists in credit_transactions, returns existing.
         """
         if external_ref is None:
             external_ref = f"refund:{attempt_id}"
 
         async with self._pool.acquire() as conn, conn.transaction():
+            # Idempotency check: has this refund already been processed?
+            existing_tx = await conn.fetchrow(
+                """SELECT * FROM credit_transactions
+                   WHERE reference = $1 AND tx_type = 'refund'""",
+                external_ref,
+            )
+            if existing_tx:
+                # Already refunded - return idempotent result
+                return {
+                    "status": "refunded",
+                    "amount_cents": existing_tx["amount"],
+                    "user_id": str(existing_tx["user_id"]),
+                    "idempotent": True,
+                }
+
             # Find consumed reservation for this attempt
+            # First try attempt_id (proper field)
             res = await conn.fetchrow(
                 """SELECT * FROM billing_reservations
                    WHERE attempt_id = $1 AND status = 'consumed'
                    ORDER BY created_at DESC LIMIT 1""",
                 uuid.UUID(attempt_id),
             )
+            # Fallback: if no task_attempts table, task_id may be used as attempt_id proxy
             if not res:
-                raise ReservationNotFound(f"No consumed reservation for attempt {attempt_id}")
+                res = await conn.fetchrow(
+                    """SELECT * FROM billing_reservations
+                       WHERE task_id = $1 AND status = 'consumed'
+                       ORDER BY created_at DESC LIMIT 1""",
+                    uuid.UUID(attempt_id),
+                )
+            if not res:
+                raise ReservationNotFound(f"No consumed reservation for attempt/task {attempt_id}")
 
             refund_amount = amount_cents or res["consumed_amount_cents"]
             if refund_amount > res["consumed_amount_cents"]:
@@ -353,10 +393,12 @@ class BillingService:
             )
 
             # Ledger entry for REFUND
+            tx_id = uuid.uuid4()
             await conn.execute(
                 """INSERT INTO credit_transactions
                    (id, user_id, amount, tx_type, reference, balance_after, created_at)
-                   VALUES (uuid_generate_v4(), $1, $2, 'refund', $3, $4, NOW())""",
+                   VALUES ($1, $2, $3, 'refund', $4, $5, NOW())""",
+                tx_id,
                 user_id,
                 refund_amount,
                 external_ref,

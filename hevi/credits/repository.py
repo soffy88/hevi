@@ -93,7 +93,7 @@ class CreditRepository:
 
             new_balance = current_balance + amount
             if new_balance < 0:
-                raise ValueError("Insufficient credits")
+                raise ValueError(f"Insufficient credits: needed {abs(amount)} credits, have {current_balance}")
 
             # 2. Update balance
             await conn.execute(

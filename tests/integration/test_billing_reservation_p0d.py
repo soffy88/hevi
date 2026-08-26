@@ -20,6 +20,13 @@ from hevi.credits.billing_service import (
 from hevi.credits.repository import CreditRepository
 from obase.persistence import PgPool
 
+# Unique per test run so external_ref is never reused (idempotency isolation)
+TEST_RUN_ID = uuid.uuid4().hex[:8]
+
+
+def ref(name: str) -> str:
+    return f"{name}:{TEST_RUN_ID}"
+
 
 @pytest.fixture
 async def pool():
@@ -86,7 +93,7 @@ async def test_reserve_consume_basic(pool, account_svc, billing_svc, fresh_user)
     user_id = fresh_user
     await _set_balance(pool, user_id, 1000)
 
-    res = await billing_svc.reserve(user_id, 100, external_ref="t1:reserve")
+    res = await billing_svc.reserve(user_id, 100, external_ref=ref("t1:reserve"))
     assert res["status"] == "active"
     assert res["amount_cents"] == 100
 
@@ -95,7 +102,7 @@ async def test_reserve_consume_basic(pool, account_svc, billing_svc, fresh_user)
     assert acct["reserved_balance"] == 100, f"reserved={acct['reserved_balance']} expected 100"
 
     # Consume 80
-    consumed = await billing_svc.consume(res["id"], 80, external_ref="t1:consume")
+    consumed = await billing_svc.consume(res["id"], 80, external_ref=ref("t1:consume"))
     assert consumed["status"] == "consumed"
 
     acct = await _get_account(pool, user_id)
@@ -110,8 +117,8 @@ async def test_reserve_full_consume(pool, account_svc, billing_svc, fresh_user):
     user_id = fresh_user
     await _set_balance(pool, user_id, 1000)
 
-    res = await billing_svc.reserve(user_id, 100, external_ref="t2:reserve")
-    await billing_svc.consume(res["id"], 100, external_ref="t2:consume")
+    res = await billing_svc.reserve(user_id, 100, external_ref=ref("t2:reserve"))
+    await billing_svc.consume(res["id"], 100, external_ref=ref("t2:consume"))
 
     acct = await _get_account(pool, user_id)
     assert acct["balance"] == 900, f"balance={acct['balance']} expected 900"
@@ -124,8 +131,8 @@ async def test_reserve_release(pool, account_svc, billing_svc, fresh_user):
     user_id = fresh_user
     await _set_balance(pool, user_id, 1000)
 
-    res = await billing_svc.reserve(user_id, 100, external_ref="t3:reserve")
-    await billing_svc.release(res["id"], external_ref="t3:release")
+    res = await billing_svc.reserve(user_id, 100, external_ref=ref("t3:reserve"))
+    await billing_svc.release(res["id"], external_ref=ref("t3:release"))
 
     acct = await _get_account(pool, user_id)
     assert acct["balance"] == 1000, f"balance={acct['balance']} expected 1000"
@@ -138,10 +145,10 @@ async def test_double_consume_idempotent(pool, account_svc, billing_svc, fresh_u
     user_id = fresh_user
     await _set_balance(pool, user_id, 1000)
 
-    res = await billing_svc.reserve(user_id, 100, external_ref="t4:reserve")
-    await billing_svc.consume(res["id"], 80, external_ref="t4:consume")
+    res = await billing_svc.reserve(user_id, 100, external_ref=ref("t4:reserve"))
+    await billing_svc.consume(res["id"], 80, external_ref=ref("t4:consume"))
     # Second consume with same amount is idempotent (no additional charge)
-    result2 = await billing_svc.consume(res["id"], 80, external_ref="t4:consume")
+    result2 = await billing_svc.consume(res["id"], 80, external_ref=ref("t4:consume"))
     assert result2["status"] == "consumed"
     assert result2["consumed_amount_cents"] == 80
 
@@ -156,9 +163,9 @@ async def test_double_release_idempotent(pool, account_svc, billing_svc, fresh_u
     user_id = fresh_user
     await _set_balance(pool, user_id, 1000)
 
-    res = await billing_svc.reserve(user_id, 100, external_ref="t5:reserve")
-    await billing_svc.release(res["id"], external_ref="t5:release")
-    await billing_svc.release(res["id"], external_ref="t5:release2")  # idempotent
+    res = await billing_svc.reserve(user_id, 100, external_ref=ref("t5:reserve"))
+    await billing_svc.release(res["id"], external_ref=ref("t5:release"))
+    await billing_svc.release(res["id"], external_ref=ref("t5:release2"))  # idempotent
 
     acct = await _get_account(pool, user_id)
     assert acct["balance"] == 1000, f"balance={acct['balance']} expected 1000"
@@ -172,9 +179,9 @@ async def test_concurrent_reserve_race(pool, account_svc, billing_svc, fresh_use
     user_id = fresh_user
     await _set_balance(pool, user_id, 100)
 
-    async def _try_reserve(ref):
+    async def _try_reserve(ref_name):
         try:
-            return await billing_svc.reserve(user_id, 80, external_ref=ref)
+            return await billing_svc.reserve(user_id, 80, external_ref=ref(ref_name))
         except InsufficientCredits:
             return None
 
@@ -201,21 +208,21 @@ async def test_reservation_persistence(pool, account_svc, billing_svc, fresh_use
     user_id = fresh_user
     await _set_balance(pool, user_id, 1000)
 
-    res = await billing_svc.reserve(user_id, 100, task_id=str(uuid.uuid4()), external_ref="t7:reserve")
+    res = await billing_svc.reserve(user_id, 100, task_id=str(uuid.uuid4()), external_ref=ref("t7:reserve"))
     reservation_id = res["id"]
 
     # Simulate worker restart: read from DB by task_id
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT id, status FROM billing_reservations WHERE external_ref=$1",
-            "t7:reserve",
+            ref("t7:reserve"),
         )
         assert row is not None
         assert str(row["id"]) == reservation_id
         assert row["status"] == "active"
 
     # Recover and consume
-    await billing_svc.consume(reservation_id, 50, external_ref="t7:consume")
+    await billing_svc.consume(reservation_id, 50, external_ref=ref("t7:consume"))
     acct = await _get_account(pool, user_id)
     assert acct["balance"] == 950
     assert acct["reserved_balance"] == 0
@@ -227,9 +234,9 @@ async def test_release_on_provider_failure(pool, account_svc, billing_svc, fresh
     user_id = fresh_user
     await _set_balance(pool, user_id, 1000)
 
-    res = await billing_svc.reserve(user_id, 100, external_ref="t8:reserve")
+    res = await billing_svc.reserve(user_id, 100, external_ref=ref("t8:reserve"))
     # Provider submit failed before consume
-    await billing_svc.release(res["id"], external_ref="t8:release")
+    await billing_svc.release(res["id"], external_ref=ref("t8:release"))
 
     acct = await _get_account(pool, user_id)
     assert acct["balance"] == 1000
@@ -243,14 +250,14 @@ async def test_refund_after_consume(pool, account_svc, billing_svc, fresh_user):
     await _set_balance(pool, user_id, 1000)
 
     task_id = uuid.uuid4()
-    res = await billing_svc.reserve(user_id, 100, task_id=str(task_id), external_ref="t9:reserve")
-    await billing_svc.consume(res["id"], 100, external_ref="t9:consume")
+    res = await billing_svc.reserve(user_id, 100, task_id=str(task_id), external_ref=ref("t9:reserve"))
+    await billing_svc.consume(res["id"], 100, external_ref=ref("t9:consume"))
 
     acct_before = await _get_account(pool, user_id)
     assert acct_before["balance"] == 900
 
     # Refund 50 (partial)
-    await billing_svc.refund_consumed(str(task_id), 50, external_ref="t9:refund")
+    await billing_svc.refund_consumed(str(task_id), 50, external_ref=ref("t9:refund"))
     acct_after = await _get_account(pool, user_id)
     assert acct_after["balance"] == 950, f"balance={acct_after['balance']} expected 950"
     assert acct_after["reserved_balance"] == 0, f"reserved={acct_after['reserved_balance']} expected 0"
@@ -263,15 +270,15 @@ async def test_double_refund_idempotent(pool, account_svc, billing_svc, fresh_us
     await _set_balance(pool, user_id, 1000)
 
     task_id = uuid.uuid4()
-    res = await billing_svc.reserve(user_id, 100, task_id=str(task_id), external_ref="t10:reserve")
-    await billing_svc.consume(res["id"], 100, external_ref="t10:consume")
-    await billing_svc.refund_consumed(str(task_id), 50, external_ref="t10:refund1")
+    res = await billing_svc.reserve(user_id, 100, task_id=str(task_id), external_ref=ref("t10:reserve"))
+    await billing_svc.consume(res["id"], 100, external_ref=ref("t10:consume"))
+    await billing_svc.refund_consumed(str(task_id), 50, external_ref=ref("t10:refund1"))
 
     acct_before = await _get_account(pool, user_id)
     assert acct_before["balance"] == 950
 
     # Second refund with same amount: must not double-add
-    await billing_svc.refund_consumed(str(task_id), 50, external_ref="t10:refund1")
+    await billing_svc.refund_consumed(str(task_id), 50, external_ref=ref("t10:refund1"))
     acct_after = await _get_account(pool, user_id)
     assert acct_after["balance"] == 950, f"balance={acct_after['balance']} expected 950 (not 1000)"
     assert acct_after["reserved_balance"] == 0
@@ -283,8 +290,8 @@ async def test_reserved_balance_never_negative(pool, account_svc, billing_svc, f
     user_id = fresh_user
     await _set_balance(pool, user_id, 1000)
 
-    res = await billing_svc.reserve(user_id, 100, external_ref="t11:reserve")
-    await billing_svc.consume(res["id"], 50, external_ref="t11:consume")
+    res = await billing_svc.reserve(user_id, 100, external_ref=ref("t11:reserve"))
+    await billing_svc.consume(res["id"], 50, external_ref=ref("t11:consume"))
     # reserved should be exactly 0 after consume (full reservation released)
     acct = await _get_account(pool, user_id)
     assert acct["reserved_balance"] == 0, f"reserved={acct['reserved_balance']} must be 0 not negative"

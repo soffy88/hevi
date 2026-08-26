@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from hevi.credits.account_service import AccountService
-from hevi.credits.billing_service import BillingService
+from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 
 SIGNUP_BONUS = 1000  # B: 新用户注册送 1000 credits
@@ -90,16 +90,16 @@ async def test_consume_and_refund(client):
     account_svc = AccountService(repo)
     billing_svc = BillingService(account_svc)
 
-    # 1. Consume 200 → 1300
-    await billing_svc.consume(user_id, 200, "TASK-1")
+    # 1. Consume 200 → 1300 (use account_svc for direct consume)
+    await account_svc.consume(user_id, 200, task_ref="TASK-1")
     assert await account_svc.get_balance(user_id) == SIGNUP_BONUS + 500 - 200
 
-    # 2. Consume 超额(超过 1300)→ Insufficient
+    # 2. Consume 超额(超过 1300) → Insufficient
     with pytest.raises(ValueError, match="Insufficient credits"):
-        await billing_svc.consume(user_id, 1400, "TASK-2")
+        await account_svc.consume(user_id, 1400, task_ref="TASK-2")
 
     # 3. Refund 200 → 1300
-    await billing_svc.refund(user_id, 200, "TASK-1")
+    await account_svc.refund(user_id, 200, task_ref="TASK-1")
     assert await account_svc.get_balance(user_id) == SIGNUP_BONUS + 500
 
 
@@ -117,18 +117,20 @@ async def test_consume_refund_idempotent(client):
 
     from hevi.db.pg_pool import get_hevi_pg_pool
     pool = await get_hevi_pg_pool()
-    billing_svc = BillingService(AccountService(CreditRepository(pool)))
+    repo = CreditRepository(pool)
+    account_svc = AccountService(repo)
+    billing_svc = BillingService(account_svc)
 
     # 重复 consume 同一 TASK-X：只扣一次
-    await billing_svc.consume(user_id, 300, "TASK-X")
-    await billing_svc.consume(user_id, 300, "TASK-X")
-    await billing_svc.consume(user_id, 300, "TASK-X")
+    await account_svc.consume(user_id, 300, task_ref="TASK-X")
+    await account_svc.consume(user_id, 300, task_ref="TASK-X")
+    await account_svc.consume(user_id, 300, task_ref="TASK-X")
     acct = AccountService(CreditRepository(pool))
     assert await acct.get_balance(user_id) == SIGNUP_BONUS - 300
 
     # 重复 refund 同一 TASK-X：只退一次
-    await billing_svc.refund(user_id, 300, "TASK-X")
-    await billing_svc.refund(user_id, 300, "TASK-X")
+    await account_svc.refund(user_id, 300, task_ref="TASK-X")
+    await account_svc.refund(user_id, 300, task_ref="TASK-X")
     assert await acct.get_balance(user_id) == SIGNUP_BONUS
 
 
