@@ -39,7 +39,7 @@ class ReservationNotFound(Exception):
 class BillingService:
     def __init__(self, account_svc: AccountService, pool: PgPool | None = None) -> None:
         self._account_svc = account_svc
-        self._pool = pool or getattr(account_svc, '_repo', None) and account_svc._repo._pool
+        self._pool = pool or getattr(account_svc._repo, '_pool', None) if hasattr(account_svc, '_repo') else None
 
     async def estimate_credits(
         self,
@@ -212,28 +212,20 @@ class BillingService:
                 uuid.UUID(reservation_id),
             )
 
-            # Update account: balance - actual, reserved_balance - amount_cents
-            # Note: reserved_balance was increased by amount_cents at reserve time
-            # Now we remove the full reservation amount from reserved, and deduct actual from balance
+            # Update account: deduct actual from balance, release actual from reserved_balance
+            # Note: reserved_balance was increased by amount_cents at reserve time.
+            # Subtracting the actual consumed amount from reserved_balance releases both
+            # the consumed portion and the unused excess in one operation.
+            # Do NOT subtract amount_cents again - that would double-subtract.
             await conn.execute(
                 """UPDATE credit_accounts
                    SET balance = balance - $1,
-                       reserved_balance = reserved_balance - $2,
+                       reserved_balance = reserved_balance - $1,
                        updated_at = NOW()
-                   WHERE user_id = $3""",
+                   WHERE user_id = $2""",
                 actual_amount_cents,
-                res["amount_cents"],
                 user_id,
             )
-
-            # Release any excess reservation amount
-            excess = res["amount_cents"] - actual_amount_cents
-            if excess > 0:
-                await conn.execute(
-                    """UPDATE credit_accounts SET reserved_balance = reserved_balance - $1 WHERE user_id = $2""",
-                    excess,
-                    user_id,
-                )
 
             # Ledger entry for CONSUME
             await conn.execute(
@@ -394,7 +386,7 @@ class BillingService:
         balance = await self._account_svc.get_balance(user_id)
         if balance < credits_needed:
             raise InsufficientCredits(
-                credits_needed=credits_needed, credits_available=balance
+                amount_cents=credits_needed, available_cents=balance
             )
         return True
 

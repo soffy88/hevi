@@ -752,6 +752,7 @@ class TaskService:
         # 2c. ProductionBudget reservation.  Generate the task id up front so
         # the reservation and the task projection share one stable reference.
         task_id = uuid.uuid4()
+        reservation_id = None
         if self.billing_svc and user_id and credits_needed > 0:
             try:
                 reservation = await self.billing_svc.reserve(
@@ -760,6 +761,7 @@ class TaskService:
                     task_id=str(task_id),
                     attempt_id=None,
                 )
+                reservation_id = reservation.get("id")
             except Exception as exc:
                 from hevi.cost.circuit_breaker import CostLimitExceeded
                 raise CostLimitExceeded(f"Credit reservation failed: {exc}") from exc
@@ -813,6 +815,7 @@ class TaskService:
                 **{k: v for k, v in kwargs.items() if v is not None},
                 "estimated_usd": estimate.total_usd,
                 "credits_reserved": credits_needed,
+                "reservation_id": reservation_id or "",
                 **(
                     {
                         "budget_attempt_id": str(budget_attempt_id),
@@ -967,8 +970,13 @@ class TaskService:
 
             # 4. Consume credits at the start of execution (SaaS-2)
             if self.billing_svc and user_id and credits_reserved > 0:
+                reservation_id = (task.get("config_json") or {}).get("reservation_id", "")
                 try:
-                    await self.billing_svc.consume_legacy(user_id, credits_reserved, str(task_id))
+                    await self.billing_svc.consume(
+                        reservation_id,
+                        int(credits_reserved),
+                        external_ref=f"{task_id}:consume_start"
+                    )
                 except Exception as exc:
                     logger.error(f"Credit consumption failed for task {task_id}: {exc}")
                     # If consumption fails (e.g. balance changed since creation), fail task
@@ -1166,9 +1174,17 @@ class TaskService:
                     settle_ref = f"{task_id}:settle"
                     try:
                         if delta > 0:
-                            await self.billing_svc.consume_legacy(user_id, delta, settle_ref)
+                            reservation_id = (task.get("config_json") or {}).get("reservation_id", "")
+                            await self.billing_svc.consume(
+                                reservation_id,
+                                delta,
+                                external_ref=f"{task_id}:settle:{delta}"
+                            )
                         elif delta < 0:
-                            await self.billing_svc.refund_legacy(user_id, -delta, settle_ref)
+                            await self.billing_svc.refund_consumed(
+                                str(task_id),
+                                abs(delta)
+                            )
                     except Exception as exc:
                         # Settle-up can fail if the user spent their balance meanwhile;
                         # the video is already produced, so log rather than fail.
