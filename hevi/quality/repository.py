@@ -7,10 +7,11 @@ from datetime import UTC, datetime
 
 from obase.persistence import PgPool
 
-from .evaluation import QualityEvaluation
+from .evaluation import QualityEvaluation, QualityEvidence
+from .evidence import EvaluationEvidence
 from .gate_policy import GatePolicy
 from .repair_controller import RepairController, RepairDecision
-from .taxonomy import severity_for
+from .taxonomy import FailureCode, severity_for
 
 
 class RepairRepository:
@@ -48,7 +49,7 @@ class RepairRepository:
                 violation_hash = hashlib.sha256(
                     json.dumps(
                         [
-                            {"code": str(item.code), "scope": item.scope}
+                            {"code": item.evaluator_id, "constraint_id": item.constraint_id}
                             for item in violations
                         ],
                         sort_keys=True,
@@ -78,7 +79,7 @@ class RepairRepository:
                     now,
                 )
                 for item in violations:
-                    evidence = dict(item.evidence)
+                    evidence = dict(item.details)
                     await conn.execute(
                         """
                         INSERT INTO violations
@@ -88,11 +89,11 @@ class RepairRepository:
                         """,
                         uuid.uuid4(),
                         evaluation_id,
-                        str(item.code),
-                        float(item.severity or severity_for(item.code)),
-                        str(evidence.get("message") or evidence.get("detail") or item.code),
-                        any(action.reason == item.code for action in decision.actions),
-                        item.scope,
+                        item.evaluator_id,
+                        severity_for(item.metric) if item.score is not None else 3.0,
+                        str(evidence.get("message") or evidence.get("detail") or item.evaluator_id),
+                        any(action.reason.value == item.evaluator_id for action in decision.actions),
+                        item.constraint_id or item.evaluator_id,
                         evidence,
                         now,
                     )

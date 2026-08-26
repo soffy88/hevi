@@ -39,7 +39,7 @@ class ReservationNotFound(Exception):
 class BillingService:
     def __init__(self, account_svc: AccountService, pool: PgPool | None = None) -> None:
         self._account_svc = account_svc
-        self._pool = pool
+        self._pool = pool or getattr(account_svc, '_repo', None) and account_svc._repo._pool
 
     async def estimate_credits(
         self,

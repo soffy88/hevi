@@ -6,7 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from .evaluation import QualityEvaluation
+from .evaluation import QualityEvaluation, QualityEvidence
+from .evidence import EvaluationEvidence
 from .taxonomy import FailureCode, normalize_failure
 
 
@@ -84,7 +85,12 @@ class RepairController:
         self, evaluation: QualityEvaluation, *, actual_cost_usd: float = 0.0
     ) -> RepairRound:
         previous = self.rounds[-1] if self.rounds else None
-        current_codes = {item.code for item in evaluation.evidence if not item.passed}
+        # Use evaluator_id as code for new EvaluationEvidence
+        current_codes: set[FailureCode] = set()
+        for item in evaluation.evidence:
+            if not item.passed and item.evaluator_id:
+                code = FailureCode(item.evaluator_id) if item.evaluator_id in FailureCode.__members__ else FailureCode.DELIVERY_INTEGRITY
+                current_codes.add(code)
         if previous is None:
             marginal_gain = 0.0
         else:
@@ -139,17 +145,17 @@ class RepairController:
             if item.passed:
                 continue
             kind, expected_gain = _ACTION_FOR_CODE.get(
-                normalize_failure(item.code), ("human_review", 0.0)
+                normalize_failure(item.evaluator_id), ("human_review", 0.0)
             )
-            key = (kind, item.scope)
+            key = (kind, item.constraint_id or item.evaluator_id)
             if key in seen:
                 continue
             seen.add(key)
             actions.append(
                 RepairAction(
                     kind=kind,  # type: ignore[arg-type]
-                    scope=item.scope,
-                    reason=normalize_failure(item.code),
+                    scope=item.constraint_id or item.evaluator_id,
+                    reason=normalize_failure(item.evaluator_id),
                     expected_gain=expected_gain,
                 )
             )

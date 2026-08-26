@@ -111,7 +111,7 @@ def compile_graph(
     graph.coverage.silent_drops = len(result.silent_drops)
     graph.coverage.unsupported_constraints = len(result.unsupported)
     # Note: consumed_constraints is deprecated, keep for compat
-    graph.coverage.consumed_constraints = result.compiled_constraints
+    graph.coverage.compiled_constraints = len(result.compiled_constraint_ids)
     return result
 
 

@@ -265,7 +265,7 @@ class TaskService:
         from hevi.quality import (
             GatePolicy,
             QualityEvaluation,
-            QualityEvidence,
+            EvaluationEvidence,
             RepairBudget,
             RepairController,
             RepairRepository,
@@ -274,11 +274,16 @@ class TaskService:
 
         policy = GatePolicy.for_profile(str(config.get("quality_profile") or "standard"))
         evidence = [
-            QualityEvidence(
-                code=normalize_failure(item.get("code") if isinstance(item, dict) else item),
-                scope=str(item.get("scope") if isinstance(item, dict) else ""),
+            EvaluationEvidence(
+                id=str(uuid.uuid4()),
+                attempt_id=str(task["id"]),
+                artifact_id="",
+                constraint_id=str(item.get("code") if isinstance(item, dict) else item),
+                evaluator_id=str(normalize_failure(item.get("code") if isinstance(item, dict) else item)),
+                evaluator_version="1.0",
+                metric=str(item.get("code") if isinstance(item, dict) else item),
                 passed=False,
-                evidence=dict(item) if isinstance(item, dict) else {"message": str(item)},
+                details=dict(item) if isinstance(item, dict) else {"message": str(item)},
             )
             for item in quality.get("violations") or []
         ]
@@ -743,14 +748,23 @@ class TaskService:
             credits_needed = await self.billing_svc.estimate_credits(
                 duration_archetype=duration_archetype, video_provider=video_provider, **kwargs
             )
-            if credits_needed > 0:
-                await self.billing_svc.check_and_reserve(user_id, credits_needed)
 
         # 2c. ProductionBudget reservation.  Generate the task id up front so
         # the reservation and the task projection share one stable reference.
+        task_id = uuid.uuid4()
+        if self.billing_svc and user_id and credits_needed > 0:
+            try:
+                reservation = await self.billing_svc.reserve(
+                    user_id, credits_needed,
+                    production_id=kwargs.get("production_id") or "",
+                    task_id=str(task_id),
+                    attempt_id=None,
+                )
+            except Exception as exc:
+                from hevi.cost.circuit_breaker import CostLimitExceeded
+                raise CostLimitExceeded(f"Credit reservation failed: {exc}") from exc
         budget_repo = self._budget_repository()
         budget_attempt_id: uuid.UUID | None = None
-        task_id = uuid.uuid4()
         if budget_repo is not None and kwargs.get("production_id"):
             from hevi.budget import BudgetError
 
@@ -954,7 +968,7 @@ class TaskService:
             # 4. Consume credits at the start of execution (SaaS-2)
             if self.billing_svc and user_id and credits_reserved > 0:
                 try:
-                    await self.billing_svc.consume(user_id, credits_reserved, str(task_id))
+                    await self.billing_svc.consume_legacy(user_id, credits_reserved, str(task_id))
                 except Exception as exc:
                     logger.error(f"Credit consumption failed for task {task_id}: {exc}")
                     # If consumption fails (e.g. balance changed since creation), fail task
@@ -1152,9 +1166,9 @@ class TaskService:
                     settle_ref = f"{task_id}:settle"
                     try:
                         if delta > 0:
-                            await self.billing_svc.consume(user_id, delta, settle_ref)
+                            await self.billing_svc.consume_legacy(user_id, delta, settle_ref)
                         elif delta < 0:
-                            await self.billing_svc.refund(user_id, -delta, settle_ref)
+                            await self.billing_svc.refund_legacy(user_id, -delta, settle_ref)
                     except Exception as exc:
                         # Settle-up can fail if the user spent their balance meanwhile;
                         # the video is already produced, so log rather than fail.

@@ -6,7 +6,8 @@ P0-A: Added constraint_consumption_receipts table operations
 from __future__ import annotations
 
 import uuid
-from typing import Literal, cast
+from datetime import UTC, datetime
+from typing import Any, Literal, cast
 
 from obase.persistence import PgPool
 
@@ -141,9 +142,9 @@ class ConstraintRepository:
                 DO NOTHING
                 RETURNING *""",
                 receipt_id,
-                uuid.UUID(production_id),
-                uuid.UUID(revision_id),
-                uuid.UUID(attempt_id),
+                production_id,
+                revision_id,
+                attempt_id,
                 constraint_id,
                 provider_id,
                 adapter_id,
@@ -166,6 +167,7 @@ class ConstraintRepository:
             mapping_path=mapping_path,
             payload_hash=payload_hash,
             provider_request_id=provider_request_id,
+            created_at=datetime.now(UTC).isoformat(),
         )
 
     async def record_verification(self, revision_id: str, *, verified: int) -> None:

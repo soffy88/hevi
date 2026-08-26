@@ -9,7 +9,7 @@ P0-B: Artifact-level Constraint Evaluation
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -112,7 +112,7 @@ class QualityEvaluation(BaseModel):
             if item.passed is True:
                 continue
             if item.passed is None:
-                status = "unknown"
+                status: Literal["pass", "fail", "unknown", "not_applicable"] = "unknown"
             else:
                 status = "fail"
             violations.append(
