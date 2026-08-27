@@ -48,8 +48,7 @@ export default function StatusPanel({ run_id }: StatusProps) {
       <div className="flex items-center p-4 bg-red-50 rounded-lg border border-red-200">
         <div className="flex flex-col">
           <svg className="w-6 h-6 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M8.257 3.754a.25.25 0 0 1 .68-.19.25.25 0 0 0-.01-.82.25.25 0 0 0-.41-.66A.5.5 0 0 0 6.88 2h-2a.5.5 0 0 0-.5-.44H4a.5.5 0 0 0-.5.44v.75a.25.25 0 0 0 .25.25h.5a.25.25 0 0 0 .25-.25V2h7a.5.5 0 0 0 .5-.44v-.75a.25.25 0 0 0-asdf")
-            />
+            <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm0-9a1 1 0 0 1 1 1v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1Zm0-3a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" clipRule="evenodd" />
           </svg>
         </div>
         <div className="text-red-600 ml-2">{error}</div>
@@ -124,7 +123,7 @@ export default function StatusPanel({ run_id }: StatusProps) {
                   </td>
                   <td className="px-6 py-2">
                     <div className="flex">
-                      <span className="w-16 text-xs text-left">{status}</span>
+                      <span className="w-16 text-xs text-left">{String(status)}</span>
                       <div className="flex-1">
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div 

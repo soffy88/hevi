@@ -1,14 +1,18 @@
+"use client";
+
 /* Backlot 看板页面(已落实 B7) */
 
 import DashboardPanel from "@/components/backlot/DashboardPanel";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function BacklotPage() {
+function BacklotContent() {
   const params = useParams();
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
 
   // 支持 ?run_id=xxx 或 /backlot/<id>
-  const run_id = params.run_id || searchParams.get("run_id");
+  const routeRunId = params.run_id;
+  const run_id = (Array.isArray(routeRunId) ? routeRunId[0] : routeRunId) || searchParams.get("run_id");
 
   if (!run_id) {
     return (
@@ -29,5 +33,13 @@ export default function BacklotPage() {
       </header>
       <DashboardPanel run_id={run_id} />
     </div>
+  );
+}
+
+export default function BacklotPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">加载状态看板...</div>}>
+      <BacklotContent />
+    </Suspense>
   );
 }

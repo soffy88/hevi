@@ -747,7 +747,6 @@ export const publishStudioApi = {
   mptReference: (body: { url: string }) => authedReq<{ transcript: any; rhythm: any; scenes: any; concepts: any; metadata: any }>('/api/mpt/reference/analyze', { method: 'POST', body: JSON.stringify(body) }),
   mptSubmitJob: (production_id: string, revision_id: string, topic: string, video_count: number, aspect: string, voice: string) => authedReq<{ task_id: string; status: string; message: string }>('/api/mpt/hevi/submit-job?production_id=' + production_id + '&revision_id=' + revision_id + '&topic=' + encodeURIComponent(topic) + '&video_count=' + video_count + '&aspect=' + aspect + '&voice=' + voice, { method: 'GET' }),
 };
-};
 
 // ── 黄金公式动画演绎 (故事 → 分镜矩阵 → 动画出片) ────────────────
 export const cinematicApi = {

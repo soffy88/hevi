@@ -1,3 +1,5 @@
+"use client";
+
 /* DashboardPanel.tsx - Backlot 实时状态看板(已落实 B7) */
 
 import { useEffect, useState } from "react";
