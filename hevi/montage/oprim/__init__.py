@@ -174,9 +174,9 @@ def reconcile_cost(budget: CostBudget, tool_name: str, actual_cost_usd: float) -
     for line in budget.line_items:
         if line.tool_name == tool_name and line.phase == CostPhase.RESERVE:
             line.phase = CostPhase.RECONCILE
+            reserved_cost = line.actual_cost_usd
             line.actual_cost_usd = actual_cost_usd
-            budget.spent_usd = budget.spent_usd - (line.actual_cost_usd - actual_cost_usd)
-            line.actual_cost_usd = actual_cost_usd
+            budget.spent_usd = budget.spent_usd - (reserved_cost - actual_cost_usd)
             break
     return budget
 

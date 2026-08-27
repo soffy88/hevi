@@ -96,15 +96,21 @@ async def scene_block_workflow(
 
         # 机位 → 条件帧(浏览器渲染;同步 playwright 必须在线程里跑)
         frames_dir = output_dir / "frames"
-        frames = await __import__("asyncio").to_thread(
-            render_azimuth_frames,
-            model_code,
-            azimuths=list(config.azimuths),
-            out_dir=frames_dir,
-            width=config.width,
-            height=config.height,
-            camera=config.camera,
-        )
+        try:
+            frames = await __import__("asyncio").to_thread(
+                render_azimuth_frames,
+                model_code,
+                azimuths=list(config.azimuths),
+                out_dir=frames_dir,
+                width=config.width,
+                height=config.height,
+                camera=config.camera,
+            )
+        except Exception as e:
+            # Keep the failure contract explicit: browser/render failures are
+            # recoverable workflow failures, and callers need to distinguish
+            # them from blueprint/LLM validation errors.
+            return {"status": "failed", "error": f"playwright render failed: {e}"}
         _step("render", 80.0)
 
         # 空间契约:机位方向推导 + 相邻机位无越轴(确定性,复用 ShotListItem)

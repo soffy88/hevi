@@ -112,9 +112,10 @@ class ShareDownloader:
 
     async def download_from_link(self, text: str, quality: str = "1080") -> dict[str, Any]:
         """从分享链接下载内容。"""
-        parsed = parse_share_text(text)
-        if not parsed["ok"]:
-            return {"ok": False, "detail": parsed["detail"]}
+        resolved = resolve_share_link(text)
+        if not resolved["ok"]:
+            return resolved
+        parsed = resolved["data"]
 
         # 实际下载逻辑需要浏览器自动化层
         # 这里提供接口契约
