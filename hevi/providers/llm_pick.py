@@ -23,17 +23,21 @@ def resolve_text_llm(llm: Any = None) -> Any:
         return llm
     from obase.provider_registry import ProviderRegistry
 
-    last: Exception | None = None
     registry = ProviderRegistry.get()
     for name in TEXT_LLM_ORDER:
         try:
             found = registry.llm(name)
-        except Exception as exc:
-            last = exc
+        except Exception:
             continue
         if found is not None:
             return found
-    raise RuntimeError("no LLM provider registered") from last
+    # Direct library callers may invoke the orchestrator before the FastAPI
+    # lifespan has registered providers. Keep the same production local-Qwen
+    # fallback used by the composition root instead of failing during provider
+    # assembly; an unavailable Ollama endpoint still fails at the actual call.
+    from hevi.providers.local_qwen_adapter import local_qwen_adapter
+
+    return local_qwen_adapter
 
 
 __all__ = ["TEXT_LLM_ORDER", "resolve_text_llm"]

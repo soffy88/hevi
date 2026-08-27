@@ -234,6 +234,7 @@ async def test_wan_local_generate_calls_provider(tmp_path):
     out = tmp_path / "clip.mp4"
     with (
         patch("hevi.video.wan_local_service.scheduler") as mock_sched,
+        patch("hevi.video.wan_local_service.prewarm_wan_cache", new_callable=AsyncMock),
         patch("hevi.video.wan_local_service._run_wgp", new_callable=AsyncMock) as mock_wgp,
     ):
         mock_sched.acquire.return_value.__aenter__ = AsyncMock(return_value=None)

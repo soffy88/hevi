@@ -111,7 +111,7 @@ def compile_composition(payload: dict[str, Any]) -> HyperComposition:
         constraint_note = (
             "\n\n## CONSTRAINT_COVERAGE\n"
             f"compiled={graph.coverage.compiled_constraints} "
-            f"consumed={graph.coverage.consumed_constraints} "
+            f"consumed={graph.coverage.adapter_consumed_constraints} "
             f"unsupported={graph.coverage.unsupported_constraints} "
             f"silent_drops={graph.coverage.silent_drops}\n"
             f"unsupported_ids={','.join(item.id for item in compiled.unsupported)}"

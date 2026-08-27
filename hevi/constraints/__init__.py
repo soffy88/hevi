@@ -9,11 +9,11 @@ from .compiler import (
 from .derive import derive_constraints
 from .models import (
     Constraint,
-    ConstraintGraph,
-    CoverageReport,
-    ConsumptionStage,
-    ConstraintMapping,
     ConstraintConsumptionReceipt,
+    ConstraintGraph,
+    ConstraintMapping,
+    ConsumptionStage,
+    CoverageReport,
 )
 from .repository import ConstraintRepository
 from .verdict import ConstraintVerdict, ConstraintViolation, RepairAction, verify_delivery

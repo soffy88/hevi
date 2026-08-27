@@ -93,9 +93,8 @@ def verify_compilation_integrity(
         issues.append(f"Silent drops detected: {silent_drops}")
     if unsupported:
         # Check if unsupported are all advisory
-        for constraint_id in unsupported:
-            # In a real impl, check severity; for now, any unsupported required = issue
-            issues.append(f"Unsupported constraint: {constraint_id}")
+        # In a real impl, check severity; for now, any unsupported required = issue.
+        issues.extend(f"Unsupported constraint: {constraint_id}" for constraint_id in unsupported)
 
     return {
         "passed": len(issues) == 0,
@@ -168,7 +167,6 @@ def gate_verdict(
     if coverage:
         provider_submission = coverage.get("provider_submission_rate", 1.0)
         silent_drop = coverage.get("silent_drop_rate", 0.0)
-        verification = coverage.get("verification_rate", 1.0)
 
         if policy.profile == "cinema":
             if provider_submission < 1.0:
@@ -199,7 +197,7 @@ def gate_verdict(
 
 __all__ = [
     "GatePolicy",
-    "verify_compilation_integrity",
     "evaluate_delivery_artifacts",
     "gate_verdict",
+    "verify_compilation_integrity",
 ]

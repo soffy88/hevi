@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import uuid
+from contextlib import suppress
 from datetime import UTC, datetime
 
 from obase.persistence import PgPool
 
-from .evaluation import QualityEvaluation, QualityEvidence
-from .evidence import EvaluationEvidence
+from hevi.execution.plan import RepairPlan
+
+from .evaluation import QualityEvaluation
 from .gate_policy import GatePolicy
 from .repair_controller import RepairController, RepairDecision
-from .taxonomy import FailureCode, severity_for
+from .taxonomy import severity_for
 
 
 class RepairRepository:
@@ -30,6 +32,7 @@ class RepairRepository:
         revision_id: uuid.UUID | None = None,
         attempt_id: str | None = None,
         evidence_artifact_id: str | None = None,
+        repair_plan: RepairPlan | None = None,
     ) -> uuid.UUID:
         run_id = uuid.uuid5(uuid.NAMESPACE_URL, f"hevi:repair-run:{task_id}")
         current = controller.rounds[-1] if controller.rounds else None
@@ -78,6 +81,39 @@ class RepairRepository:
                     evaluation.model_dump(mode="json"),
                     now,
                 )
+                for item in evaluation.evidence:
+                    # Legacy shot-level evidence has no durable artifact or
+                    # attempt identity.  Only the canonical artifact evidence
+                    # contract is written to evaluation_evidence.
+                    with suppress(ValueError):
+                        evidence_id = uuid.UUID(item.id)
+                        artifact_id = uuid.UUID(item.artifact_id)
+                        evidence_attempt_id = uuid.UUID(item.attempt_id)
+                        await conn.execute(
+                            """
+                            INSERT INTO evaluation_evidence
+                                (id, attempt_id, artifact_id, constraint_id,
+                                 evaluator_id, evaluator_version, metric, score,
+                                 threshold, passed, evidence_artifact_ids,
+                                 details, created_at)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                                    $11, $12, $13)
+                            ON CONFLICT (id) DO NOTHING
+                            """,
+                            evidence_id,
+                            evidence_attempt_id,
+                            artifact_id,
+                            item.constraint_id,
+                            item.evaluator_id,
+                            item.evaluator_version,
+                            item.metric,
+                            item.score,
+                            item.threshold,
+                            item.passed,
+                            item.evidence_artifact_ids,
+                            item.details,
+                            now,
+                        )
                 for item in violations:
                     evidence = dict(item.details)
                     await conn.execute(
@@ -142,25 +178,53 @@ class RepairRepository:
             )
             if evaluation_id is not None:
                 for action in decision.actions:
+                    source_attempt_uuid = None
+                    with suppress(ValueError):
+                        source_attempt_uuid = uuid.UUID(
+                            repair_plan.source_attempt_id
+                            if repair_plan is not None and repair_plan.source_attempt_id
+                            else (attempt_id or "")
+                        )
+                    source_verdict_uuid = evaluation_id
+                    if repair_plan is not None and repair_plan.source_verdict_id:
+                        with suppress(ValueError):
+                            source_verdict_uuid = uuid.UUID(repair_plan.source_verdict_id)
+                    plan_id = (
+                        uuid.UUID(repair_plan.id)
+                        if repair_plan is not None and repair_plan.id
+                        else uuid.uuid4()
+                    )
                     await conn.execute(
                         """
                         INSERT INTO repair_plans
                             (id, production_id, task_id, evaluation_id,
                              violation_set_hash, action, scope, expected_gain,
-                             max_cost_usd, status, decision_json, created_at, updated_at)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12)
+                             max_cost_usd, status, decision_json,
+                             source_attempt_id, source_verdict_id,
+                             rerun_nodes, preserve_artifact_ids,
+                             created_at, updated_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                                $11, $12, $13, $14, $15, $16, $16)
                         """,
-                        uuid.uuid4(),
+                        plan_id,
                         production_id,
                         task_id,
                         evaluation_id,
                         violation_hash,
                         action.kind,
-                        action.scope,
-                        action.expected_gain,
+                        ",".join(repair_plan.root_nodes)
+                        if repair_plan is not None and repair_plan.root_nodes
+                        else action.scope,
+                        repair_plan.expected_gain
+                        if repair_plan is not None
+                        else action.expected_gain,
                         controller.budget.max_cost_usd,
                         "planned" if decision.should_repair else "stopped",
                         decision.model_dump(mode="json"),
+                        source_attempt_uuid,
+                        source_verdict_uuid,
+                        repair_plan.rerun_nodes if repair_plan is not None else [action.scope],
+                        repair_plan.preserve_artifact_ids if repair_plan is not None else [],
                         now,
                     )
             for action in decision.actions:

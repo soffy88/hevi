@@ -8,17 +8,26 @@
 """
 
 from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, cast
 
-from pydantic import BaseModel, Field
-
+from hevi.quality.evaluation import QualityEvaluation
+from hevi.research.brief import (
+    ResearchBrief,
+    run_research,
+)
 from hevi.studio.slate import Slate, run_slate
 from hevi.studio.tools import invoke_tool
+from hevi.tongjian.schemas import ChapterIR, ChapterMeta, Constitution, Script
 from hevi.tongjian.script import generate_script
-from hevi.research.brief import ResearchBrief, plan_research_questions, run_research, report_to_context
+
+
+class _DemoCaller:
+    async def call(self, system: str, prompt: str, temperature: float = 0.2) -> str:
+        return "demo"
 
 
 @dataclass
@@ -32,7 +41,7 @@ class DramaIntegration:
     # ============ 1. short-drama ============
     # 项目初始化：创建 slates + 五文档占位
     
-    async def init_project(self, title: str, genre: str, ratio: str = "9:16") -> Dict[str, Any]:
+    async def init_project(self, title: str, genre: str, ratio: str = "9:16") -> dict[str, Any]:
         """创建 creator-first 五文档格式项目"""
         slate = Slate(
             line_id=f"init_{genre}_{ratio}",
@@ -43,7 +52,7 @@ class DramaIntegration:
                 "action": "init",
             }
         )
-        slate_result = await run_slate(slate)
+        await run_slate(slate)
         
         # 创建五文档占位
         docs = ["剧本.md", "视觉设定.md", "分镜.md", "图片提示词.md", "视频提示词.md"]
@@ -67,7 +76,14 @@ class DramaIntegration:
         self, project_path: str, episode_id: str, idea: str
     ) -> str:
         """从创意生成剧本 → 剧本.md"""
-        script_content = await generate_script(idea)
+        script = cast(
+            Script,
+            await self.script_generator(
+                Constitution(logline=idea),
+                ChapterIR(meta=ChapterMeta(source="drama-skills")),
+            ),
+        )
+        script_content = script.model_dump_json()
         
         script_path = Path(project_path) / "剧集" / episode_id / "剧本.md"
         script_path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +104,7 @@ class DramaIntegration:
     # ============ 3. short-drama-assets ============
     # 资产拆解
     
-    async def split_assets(self, script_path: str) -> Dict[str, List[Dict]]:
+    async def split_assets(self, script_path: str) -> dict[str, list[dict[str, str]]]:
         """从剧本拆人物/场景/道具"""
         script = Path(script_path).read_text()
         
@@ -103,19 +119,19 @@ class DramaIntegration:
             "props": props,
         }
     
-    def _extract_characters(self, text: str) -> List[Dict]:
+    def _extract_characters(self, text: str) -> list[dict[str, str]]:
         import re
         names = re.findall(r'([\u4e00-\u9fff]{2,4})[：:]', text)
         unique = list(dict.fromkeys(names))
         return [{"name": n, "kind": "character"} for n in unique[:10]]
     
-    def _extract_locations(self, text: str) -> List[Dict]:
+    def _extract_locations(self, text: str) -> list[dict[str, str]]:
         import re
         locs = re.findall(r'(?:场景|地点|在)([^，。：\n]{2,10})', text)
         unique = list(dict.fromkeys(locs))
-        return [{"name": l, "kind": "location"} for l in unique[:10]]
+        return [{"name": location, "kind": "location"} for location in unique[:10]]
     
-    def _extract_props(self, text: str) -> List[Dict]:
+    def _extract_props(self, text: str) -> list[dict[str, str]]:
         import re
         props = re.findall(r'(?:道具|手持|拿着)([^，。：\n]{2,10})', text)
         unique = list(dict.fromkeys(props))
@@ -124,7 +140,9 @@ class DramaIntegration:
     # ============ 4. short-drama-image-prompts ============
     # 图片提示词生成
     
-    async def image_prompts(self, assets: Dict[str, List[Dict]]) -> List[str]:
+    async def image_prompts(
+        self, assets: dict[str, list[dict[str, str]]]
+    ) -> list[str]:
         """为每个资产生成参考图提示词"""
         prompts = []
         for category, items in assets.items():
@@ -136,7 +154,7 @@ class DramaIntegration:
     # ============ 5. short-drama-storyboard ============
     # 分镜制作 - 简化版: 基于脚本关键点生成分镜要点
     
-    async def make_storyboard(self, script_path: str) -> List[Dict]:
+    async def make_storyboard(self, script_path: str) -> list[dict[str, Any]]:
         """剧本 → 分镜"""
         script = Path(script_path).read_text()
         # 简化: 基于剧本关键情节生成分镜
@@ -158,7 +176,7 @@ class DramaIntegration:
     # ============ 6. short-drama-video-prompts ============
     # 视频提示词生成
     
-    async def video_prompts(self, storyboard: List[Dict]) -> List[str]:
+    async def video_prompts(self, storyboard: list[dict[str, Any]]) -> list[str]:
         """分镜 → 视频提示词"""
         prompts = []
         for shot in storyboard:
@@ -171,8 +189,8 @@ class DramaIntegration:
     # 预览-确认-执行
     
     async def produce(
-        self, project_path: str, confirmed_tasks: List[str]
-    ) -> Dict[str, Any]:
+        self, project_path: str, confirmed_tasks: list[str]
+    ) -> dict[str, Any]:
         """preview → explicit confirm → run"""
         # 生成 ExecutionPlan
         from hevi.execution.plan import ExecutionPlan
@@ -207,22 +225,30 @@ class DramaIntegration:
     
     async def review(self, plan_id: str) -> QualityEvaluation:
         """审查 → P0-B quality gate"""
-        from hevi.quality import QualityEvaluation, GatePolicy
+        from hevi.quality import GatePolicy
         
         evidence = []
         # 基于计划生成 minimal evidence
-        evidence.append({
-            "constraint_id": "structure",
-            "passed": True,
-            "score": 0.8,
-            "details": "Episode structure sound"
-        })
-        evidence.append({
-            "constraint_id": "content",
-            "passed": True,
-            "score": 0.7,
-            "details": "Content coherent"
-        })
+        from hevi.quality.evidence import EvaluationEvidence
+
+        for constraint_id, score, details in (
+            ("structure", 0.8, "Episode structure sound"),
+            ("content", 0.7, "Content coherent"),
+        ):
+            evidence.append(
+                EvaluationEvidence(
+                    id=f"{plan_id}:{constraint_id}",
+                    attempt_id="",
+                    artifact_id="",
+                    constraint_id=constraint_id,
+                    evaluator_id="DELIVERY_INTEGRITY",
+                    evaluator_version="drama-skills",
+                    metric="DELIVERY_INTEGRITY",
+                    passed=True,
+                    score=score,
+                    details={"message": details},
+                )
+            )
         
         policy = GatePolicy.for_profile("standard")
         return QualityEvaluation.from_evidence(evidence, policy) if evidence else QualityEvaluation(passed=True, score=1.0)
@@ -230,10 +256,10 @@ class DramaIntegration:
     # ============ 9. short-drama-develop ============
     # 系列开发
     
-    async def develop_series(self, original_text: str) -> Dict[str, Any]:
+    async def develop_series(self, original_text: str) -> dict[str, Any]:
         """长篇原著 → 多集整稿 + 分集地图"""
         brief = ResearchBrief(topic="系列开发", angles=["worldview", "character"])
-        report = await run_research(brief, caller=lambda s, p, **kw: "demo")
+        report = await run_research(brief, caller=_DemoCaller())
         parsed = report.findings[0]["summary"] if report.findings else original_text[:200]
         
         # 生成分集地图
@@ -251,14 +277,14 @@ class DramaIntegration:
     # ============ 10. short-drama-novel-analyze ============
     # 原著抽样快评
     
-    async def analyze_novel(self, text: str) -> Dict[str, Any]:
+    async def analyze_novel(self, text: str) -> dict[str, Any]:
         """抽样快评 + 改编价值评估"""
         brief = ResearchBrief(
             topic="原著快评",
             angles=["fact", "worldview"],
             max_questions=3,
         )
-        report = await run_research(brief, caller=lambda s, p, **kw: "demo")
+        report = await run_research(brief, caller=_DemoCaller())
         
         score = sum(f.get("confidence", 0) for f in report.findings) / max(len(report.findings), 1)
         
@@ -273,7 +299,7 @@ class DramaIntegration:
 drama = DramaIntegration()
 
 
-async def main_demo():
+async def main_demo() -> None:
     """演示：完整创作流程"""
     print("=== drama-skills → hevi 全流程演示 ===\n")
     
@@ -309,7 +335,9 @@ async def main_demo():
     print("\n7. 生成执行 (预览-确认-执行)")
     result = await drama.produce(
         f"/tmp/{project['title']}", 
-        storyboard_data[:2] if storyboard_data else ["shot1"]
+        [str(item.get("description") or "shot") for item in storyboard_data[:2]]
+        if storyboard_data
+        else ["shot1"]
     )
     print(f"   ✅ 状态: {result['status']}")
     

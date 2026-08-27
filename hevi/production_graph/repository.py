@@ -17,7 +17,9 @@ from typing import Any, cast
 from obase.persistence import PgPool
 
 from hevi.constraints.models import ConstraintGraph
-from hevi.production_graph.contracts import ExecutionPlan
+from hevi.execution.plan import ExecutionPlan as ImmutableExecutionPlan
+from hevi.execution.repository import ExecutionPlanRepository
+from hevi.production_graph.contracts import ExecutionPlan as LegacyExecutionPlan
 
 
 def _uuid(value: str | uuid.UUID) -> uuid.UUID:
@@ -89,49 +91,27 @@ class ProductionGraphRepository:
             records.append(_restore_datetime(snapshot))
         return records
 
-    async def save_execution_plan(self, plan: ExecutionPlan) -> ExecutionPlan:
-        """Persist a validated immutable plan and its queryable DAG nodes."""
-        plan.validate_dag()
-        plan_id = uuid.uuid5(
-            uuid.NAMESPACE_URL,
-            f"hevi:execution-plan:{plan.production_id}:{plan.revision_id}:{plan.plan_version}",
-        )
-        async with self.pool.acquire() as conn, conn.transaction():
-            await conn.execute(
-                """
-                INSERT INTO execution_plans
-                    (id, production_id, revision_id, plan_version, status, plan_json)
-                VALUES ($1, $2, $3, $4, 'compiled', $5)
-                ON CONFLICT (production_id, revision_id, plan_version) DO UPDATE SET
-                    plan_json = EXCLUDED.plan_json,
-                    status = EXCLUDED.status,
-                    compiled_at = NOW()
-                """,
-                plan_id,
-                plan.production_id,
-                plan.revision_id,
-                plan.plan_version,
+    async def save_execution_plan(
+        self, plan: ImmutableExecutionPlan | LegacyExecutionPlan
+    ) -> ImmutableExecutionPlan:
+        """Persist the canonical immutable plan through the production path.
+
+        The legacy DAG contract is accepted at this boundary for old API
+        callers, but it is converted once and never written with the removed
+        mutable ``status``/``execution_nodes`` schema.
+        """
+
+        if isinstance(plan, ImmutableExecutionPlan):
+            canonical = plan
+        else:
+            plan.validate_dag()
+            canonical = ImmutableExecutionPlan.create(
+                str(plan.production_id),
+                str(plan.revision_id),
                 plan.model_dump(mode="json"),
+                plan_version=plan.plan_version,
             )
-            await conn.execute("DELETE FROM execution_nodes WHERE plan_id = $1", plan_id)
-            for node in plan.nodes:
-                await conn.execute(
-                    """
-                    INSERT INTO execution_nodes
-                        (id, plan_id, node_key, op_type, capability,
-                         requirements, dependencies, state)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                    """,
-                    uuid.uuid5(uuid.NAMESPACE_URL, f"hevi:execution-node:{plan_id}:{node.node_key}"),
-                    plan_id,
-                    node.node_key,
-                    node.op_type,
-                    node.capability,
-                    node.requirements,
-                    node.dependencies,
-                    node.state,
-                )
-        return plan
+        return await ExecutionPlanRepository(self.pool).save(canonical)
 
     async def save(
         self,
@@ -393,7 +373,7 @@ class ProductionGraphRepository:
             coverage.expected_fields,
             coverage.derived_constraints,
             coverage.compiled_constraints,
-            coverage.consumed_constraints,
+            coverage.adapter_consumed_constraints,
             coverage.verified_constraints,
             coverage.unsupported_constraints,
             coverage.silent_drops,

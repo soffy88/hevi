@@ -7,18 +7,18 @@ RUN:
 """
 
 import asyncio
+import os
 import uuid
 
 import pytest
+from obase.persistence import PgPool
 
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import (
     BillingService,
     InsufficientCredits,
-    ReservationNotFound,
 )
 from hevi.credits.repository import CreditRepository
-from obase.persistence import PgPool
 
 # Unique per test run so external_ref is never reused (idempotency isolation)
 TEST_RUN_ID = uuid.uuid4().hex[:8]
@@ -30,7 +30,7 @@ def ref(name: str) -> str:
 
 @pytest.fixture
 async def pool():
-    pg_url = "postgresql://hevi:hevi@localhost:5432/hevi"
+    pg_url = os.getenv("HEVI_TEST_DSN", "postgresql://hevi:hevi@localhost:5432/hevi")
     pool = await PgPool.create(name='billing_test', dsn=pg_url)
     yield pool
     await pool.close()

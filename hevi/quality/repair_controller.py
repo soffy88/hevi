@@ -6,8 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from .evaluation import QualityEvaluation, QualityEvidence
-from .evidence import EvaluationEvidence
+from .evaluation import QualityEvaluation
 from .taxonomy import FailureCode, normalize_failure
 
 

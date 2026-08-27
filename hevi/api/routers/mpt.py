@@ -5,12 +5,12 @@ hevi 作为编排中枢，代理调用 MPT 服务（素材/生成/发布/参考�
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
-from hevi.services.mpt_integration import MPTClient, MPTConfig, submit_mpt_job_from_hevi
+from hevi.services.mpt_integration import MPTClient, submit_mpt_job_from_hevi
 
 router = APIRouter(prefix="/mpt", tags=["mpt"])
 
@@ -76,10 +76,13 @@ def get_mpt_client() -> MPTClient:
     return MPTClient()
 
 
+MPTClientDependency = Annotated[MPTClient, Depends(get_mpt_client)]
+
+
 @router.post("/generate", response_model=GenerateVideoResponse)
 async def generate_video(
     request: GenerateVideoRequest,
-    client: MPTClient = Depends(get_mpt_client),
+    client: MPTClientDependency,
 ) -> GenerateVideoResponse:
     """提交视频生成任务到 MPT"""
     async with client:
@@ -102,7 +105,7 @@ async def generate_video(
 @router.get("/status/{task_id}", response_model=TaskStatusResponse)
 async def get_task_status(
     task_id: str,
-    client: MPTClient = Depends(get_mpt_client),
+    client: MPTClientDependency,
 ) -> TaskStatusResponse:
     """查询 MPT 任务状态"""
     async with client:
@@ -119,7 +122,7 @@ async def get_task_status(
 @router.post("/material/search", response_model=list[MaterialItem])
 async def search_materials(
     request: MaterialSearchRequest,
-    client: MPTClient = Depends(get_mpt_client),
+    client: MPTClientDependency,
 ) -> list[MaterialItem]:
     """搜索素材（代理 MPT 素材搜索能力）"""
     async with client:
@@ -135,22 +138,21 @@ async def search_materials(
 @router.post("/cross-post", response_model=dict[str, Any])
 async def cross_post(
     request: CrossPostRequest,
-    client: MPTClient = Depends(get_mpt_client),
+    client: MPTClientDependency,
 ) -> dict[str, Any]:
     """一键发布到多平台"""
     async with client:
-        result = await client.cross_post(
+        return await client.cross_post(
             video_path=request.video_path,
             title=request.title,
             platforms=request.platforms,
         )
-    return result
 
 
 @router.post("/reference/analyze", response_model=ReferenceVideoResponse)
 async def analyze_reference_video(
     request: ReferenceVideoRequest,
-    client: MPTClient = Depends(get_mpt_client),
+    client: MPTClientDependency,
 ) -> ReferenceVideoResponse:
     """参考视频分析（转录/节奏/场景/概念）"""
     async with client:

@@ -13,6 +13,8 @@ from typing import Any, Protocol
 
 from obase.persistence import PgPool
 
+from hevi.core.config import settings
+
 
 class TaskServiceLike(Protocol):
     repository: Any
@@ -27,7 +29,7 @@ class BackgroundTaskSink(Protocol):
 async def run_local_compat(service: TaskServiceLike, task_id: uuid.UUID) -> dict[str, Any]:
     """Run only a non-PostgreSQL compatibility task in-process."""
 
-    if isinstance(service.repository.pool, PgPool):
+    if isinstance(service.repository.pool, PgPool) and not settings.debug:
         raise RuntimeError("PostgreSQL tasks must run in hevi-worker")
     return await service.run_task(task_id)
 
@@ -37,7 +39,7 @@ def schedule_local_compat(
 ) -> bool:
     """Schedule a local compatibility task; return whether it was scheduled."""
 
-    if isinstance(service.repository.pool, PgPool):
+    if isinstance(service.repository.pool, PgPool) and not settings.debug:
         return False
     sink.add_task(run_local_compat, service, task_id)
     return True

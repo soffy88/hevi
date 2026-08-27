@@ -198,7 +198,7 @@ async def compare_tts(
     async def create_audio_task(engine: str, voice: str | None) -> dict[str, Any]:
         task = await svc.create_production(
             ProductionRequest(
-                source="voice_studio_tts_compare",
+                source="voice_studio_tts",
                 topic=body.text,
                 duration_archetype="1-5min",
                 video_provider="local",

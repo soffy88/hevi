@@ -9,11 +9,12 @@ P0-B: Artifact-level Constraint Evaluation
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from .evidence import EvaluationEvidence, ConstraintEvaluation
+from .evidence import ConstraintEvaluation, EvaluationEvidence
 from .gate_policy import GatePolicy
 from .taxonomy import FailureCode
 
@@ -47,18 +48,39 @@ class QualityEvaluation(BaseModel):
 
     @classmethod
     def from_evidence(
-        cls, evidence: list[EvaluationEvidence], policy: GatePolicy
+        cls,
+        evidence: Sequence[EvaluationEvidence | QualityEvidence],
+        policy: GatePolicy,
     ) -> QualityEvaluation:
         """Build QualityEvaluation from raw evidence using three-state principle.
 
         UNKNOWN is treated as blocking for Cinema/Standard, advisory for Economy.
         Never default UNKNOWN -> PASS.
         """
-        residual = [item for item in evidence if not item.passed]
+        normalized: list[EvaluationEvidence] = []
+        for item in evidence:
+            if isinstance(item, EvaluationEvidence):
+                normalized.append(item)
+                continue
+            normalized.append(
+                EvaluationEvidence(
+                    id=f"legacy:{item.code.value}:{item.scope}",
+                    attempt_id="",
+                    artifact_id="",
+                    constraint_id=item.scope or item.code.value,
+                    evaluator_id=item.code.value,
+                    evaluator_version="legacy",
+                    metric=item.code.value,
+                    score=item.severity,
+                    passed=item.passed,
+                    details=item.evidence,
+                )
+            )
+        residual = [item for item in normalized if not item.passed]
         # UNKNOWN items: block only if required profile
         unknowns = [item for item in residual if item.evaluator_id and item.passed is None]
-        known_pass = [item for item in evidence if item.passed is True]
-        known_fail = [item for item in evidence if item.passed is False]
+        known_pass = [item for item in normalized if item.passed is True]
+        known_fail = [item for item in normalized if item.passed is False]
 
         blocking: list[EvaluationEvidence] = []
         advisory: list[EvaluationEvidence] = []
@@ -69,9 +91,8 @@ class QualityEvaluation(BaseModel):
             else:
                 advisory.append(item)
 
-        for item in known_pass:
-            # PASS never blocks, but advisory floor may apply
-            advisory.append(item)
+        # PASS never blocks, but advisory floor may apply.
+        advisory.extend(known_pass)
 
         for item in unknowns:
             # Three-state: if this is a required constraint and we have UNKNOWN,
@@ -99,7 +120,7 @@ class QualityEvaluation(BaseModel):
                 advisory.append(item)
 
         # Compute score based on known results only; UNKNOWN contributes 0.5 penalty
-        total_severity = sum((item.score or 0.5) for item in evidence)
+        total_severity = sum((item.score or 0.5) for item in normalized)
         resolved_severity = sum(
             item.score or 0.5 for item in known_fail
         )
@@ -108,7 +129,7 @@ class QualityEvaluation(BaseModel):
             score *= 0.5  # penalty for unknowns
 
         violations: list[ConstraintEvaluation] = []
-        for item in evidence:
+        for item in normalized:
             if item.passed is True:
                 continue
             if item.passed is None:
@@ -130,7 +151,7 @@ class QualityEvaluation(BaseModel):
             score=round(score, 4),
             residual_severity=sum(item.weighted_residual() for item in residual),
             residual_count=len(residual),
-            evidence=evidence,
+            evidence=normalized,
             violations=violations,
         )
 
@@ -183,9 +204,9 @@ def evaluation_from_shot_verdicts(
 
 
 __all__ = [
-    "EvaluationEvidence",
     "ConstraintEvaluation",
-    "QualityEvidence",
+    "EvaluationEvidence",
     "QualityEvaluation",
+    "QualityEvidence",
     "evaluation_from_shot_verdicts",
 ]

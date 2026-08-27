@@ -13,6 +13,7 @@ from .plan import (
     compute_dag_closure,
     decide_repair,
 )
+from .repository import ExecutionPlanRepository
 from .scheduler import (
     ResourceSnapshot,
     Scheduler,
@@ -23,6 +24,7 @@ from .scheduler import (
 
 __all__ = [
     "ExecutionPlan",
+    "ExecutionPlanRepository",
     "ImmutablePlanViolation",
     "RepairPlan",
     "compute_dag_closure",

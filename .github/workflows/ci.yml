@@ -8,6 +8,23 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://hevi:hevi@localhost:5432/hevi
+      HEVI_TEST_DSN: postgresql://hevi:hevi@localhost:5432/hevi
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hevi
+          POSTGRES_PASSWORD: hevi
+          POSTGRES_DB: hevi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U hevi -d hevi"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +41,20 @@ jobs:
 
       - name: Install deps
         run: uv lock --check && uv sync --locked
+
+      - name: Alembic clean PostgreSQL schema
+        run: uv run alembic upgrade heads
+
+      - name: V1.0 production closure integration gate
+        run: |
+          uv run pytest \
+            tests/integration/test_constraint_consumption_p0a.py \
+            tests/integration/test_artifact_evaluation_p0b.py \
+            tests/integration/test_autonomous_repair_p0c.py \
+            tests/integration/test_billing_reservation_p0d.py \
+            tests/integration/test_execution_plan_p0e.py \
+            tests/integration/test_production_closure_e2e.py \
+            -vv
 
       - name: Ruff
         run: uv run ruff check hevi tests

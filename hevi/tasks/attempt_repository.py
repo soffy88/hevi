@@ -30,6 +30,7 @@ class AttemptRepository:
         lease_token: str,
         lease_until: datetime | None = None,
         metadata: dict[str, Any] | None = None,
+        source_attempt_id: uuid.UUID | None = None,
     ) -> dict[str, Any]:
         """Create the next attempt unless the task already has one in flight."""
 
@@ -67,6 +68,7 @@ class AttemptRepository:
                 lease_token=lease_token,
                 lease_until=lease_until,
                 metadata=metadata,
+                source_attempt_id=source_attempt_id,
             )
 
     async def heartbeat(
@@ -304,6 +306,7 @@ class AttemptRepository:
         lease_token: str,
         lease_until: datetime | None,
         metadata: dict[str, Any] | None,
+        source_attempt_id: uuid.UUID | None,
     ) -> dict[str, Any]:
         attempt_id = uuid.uuid4()
         attempt_no = int(
@@ -316,8 +319,9 @@ class AttemptRepository:
             """
             INSERT INTO task_attempts
                 (id, task_id, attempt_no, status, worker_id, lease_token,
-                 lease_until, heartbeat_at, started_at, metadata, created_at)
-            VALUES ($1, $2, $3, 'claimed', $4, $5, $6, NOW(), NOW(), $7, NOW())
+                 lease_until, heartbeat_at, started_at, source_attempt_id,
+                 metadata, created_at)
+            VALUES ($1, $2, $3, 'claimed', $4, $5, $6, NOW(), NOW(), $7, $8, NOW())
             RETURNING *
             """,
             attempt_id,
@@ -326,6 +330,7 @@ class AttemptRepository:
             worker_id,
             lease_token,
             lease_until,
+            source_attempt_id,
             metadata or {},
         )
         await conn.execute(

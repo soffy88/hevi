@@ -10,14 +10,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from pydantic import BaseModel, Field
 
 
 class ImmutablePlanViolation(Exception):
     """Raised when attempting to modify an existing ExecutionPlan version."""
-    pass
 
 
 class ExecutionPlan(BaseModel):
@@ -47,7 +46,7 @@ class ExecutionPlan(BaseModel):
         parent_plan_id: str | None = None,
         created_by_attempt_id: str | None = None,
         change_reason: str = "initial",
-    ) -> "ExecutionPlan":
+    ) -> ExecutionPlan:
         """Create a new immutable ExecutionPlan."""
         import hashlib
         import json
@@ -62,19 +61,21 @@ class ExecutionPlan(BaseModel):
             plan_hash=plan_hash,
             parent_plan_id=parent_plan_id,
             created_by_attempt_id=created_by_attempt_id,
-            change_reason=change_reason,  # type: ignore[arg-type]
+            change_reason=cast(
+                Literal["initial", "repair", "replan", "manual_edit"], change_reason
+            ),
             created_at=datetime.now().isoformat(),
         )
 
     @classmethod
     def from_existing(
         cls,
-        existing: "ExecutionPlan",
+        existing: ExecutionPlan,
         new_plan_json: dict[str, Any],
         *,
         created_by_attempt_id: str | None = None,
         change_reason: str = "repair",
-    ) -> "ExecutionPlan":
+    ) -> ExecutionPlan:
         """Create a new version from an existing plan (for repair/replan).
 
         This is the ONLY way to modify a plan: never update existing in-place.
@@ -130,7 +131,7 @@ class RepairPlan(BaseModel):
         decision: str,
         reason: str,
         iteration: int,
-    ) -> "RepairPlan":
+    ) -> RepairPlan:
         return cls(
             id=str(uuid.uuid4()),
             production_id=production_id,
@@ -175,17 +176,15 @@ def compute_dag_closure(
         if node in closure:
             continue
         closure.add(node)
-        for downstream in all_nodes.get(node, []):
-            if downstream not in closure:
-                queue.append(downstream)
+        queue.extend(
+            downstream for downstream in all_nodes.get(node, []) if downstream not in closure
+        )
 
     # Filter: only nodes whose outputs are invalidated
     rerun: list[str] = []
     for node in closure:
         artifact_id = artifact_outputs.get(node)
-        if artifact_id is None:
-            rerun.append(node)
-        elif artifact_id in changed_inputs:
+        if artifact_id is None or artifact_id in changed_inputs:
             rerun.append(node)
         else:
             # Artifact is still valid (not invalidated by changed inputs)

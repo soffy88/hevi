@@ -10837,6 +10837,55 @@
         ]
       }
     },
+    "/api/voice-studio/tts/compare": {
+      "post": {
+        "tags": [
+          "voice-studio"
+        ],
+        "summary": "Compare Tts",
+        "description": "TTS 试听对比：同一段文本在两个引擎/音色下生成，返回两条音频任务。",
+        "operationId": "compare_tts_api_voice_studio_tts_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TTSCompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Compare Tts Api Voice Studio Tts Compare Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/voice-studio/config/validate": {
       "post": {
         "tags": [
@@ -18078,6 +18127,32 @@
             "type": "string",
             "title": "Attention Ref",
             "default": ""
+          },
+          "style_ref": {
+            "type": "string",
+            "title": "Style Ref",
+            "default": ""
+          },
+          "continuity_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Continuity Requirements"
+          },
+          "safety_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Safety Requirements"
+          },
+          "delivery_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Delivery Requirements"
           }
         },
         "type": "object",
@@ -18596,6 +18671,63 @@
           "text"
         ],
         "title": "TTSBody"
+      },
+      "TTSCompareRequest": {
+        "properties": {
+          "engine_a": {
+            "type": "string",
+            "title": "Engine A"
+          },
+          "engine_b": {
+            "type": "string",
+            "title": "Engine B"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "voice_a": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice A"
+          },
+          "voice_b": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice B"
+          }
+        },
+        "type": "object",
+        "required": [
+          "engine_a",
+          "engine_b",
+          "text"
+        ],
+        "title": "TTSCompareRequest"
       },
       "TearDetail": {
         "properties": {

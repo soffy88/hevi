@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # snapshot. Production tasks pass ``candidates`` from that snapshot; this map
 # must not encode live account balance or a machine-local "only working" provider.
 _LEGACY_STATIC_CHAIN: dict[str, list[str]] = {
-    "ltx2_cloud": ["ltx2_cloud"],
+    "ltx2_cloud": ["ltx2_cloud", "wan_cloud"],
     "wan_cloud": ["wan_cloud"],
     "kling_v2": ["kling_v2"],
     "veo3": ["veo3"],

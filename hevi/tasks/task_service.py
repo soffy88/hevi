@@ -3,7 +3,8 @@ import contextlib
 import logging
 import time
 import uuid
-from datetime import UTC, datetime
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -18,7 +19,8 @@ from hevi.cost import (
     estimate_cost,
     monitor_during_run,
 )
-from hevi.credits.billing_service import BillingService
+from hevi.credits.billing_service import BillingService, InsufficientCredits
+from hevi.execution.plan import RepairPlan
 from hevi.monitoring.metrics import productions_started_total
 from hevi.observability import log_event, start_trace
 from hevi.pipeline import orchestrate_longvideo
@@ -80,6 +82,11 @@ class TaskService:
                 "video_provider": task.get("video_provider"),
                 "audio_provider": task.get("audio_provider"),
             },
+            source_attempt_id=(
+                uuid.UUID(str(task["_source_attempt_id"]))
+                if task.get("_source_attempt_id")
+                else None
+            ),
         )
         attempt_id = attempt.get("id")
         if attempt_id is None:
@@ -263,9 +270,9 @@ class TaskService:
                 ],
             }
         from hevi.quality import (
+            EvaluationEvidence,
             GatePolicy,
             QualityEvaluation,
-            EvaluationEvidence,
             RepairBudget,
             RepairController,
             RepairRepository,
@@ -321,6 +328,157 @@ class TaskService:
         # before it decides whether a Standard/Cinema artifact can be marked
         # deliverable. Raising here used to bypass the repair loop entirely.
         return config
+
+    async def run_repair_attempt(
+        self,
+        task_id: uuid.UUID,
+        repair_plan: RepairPlan,
+        *,
+        runner: Callable[[uuid.UUID, list[str]], Awaitable[ArtifactManifest]],
+        evaluator: Callable[[ArtifactManifest], Awaitable[list[Any]]],
+        artifact_repository: ArtifactRepository,
+        policy: Any | None = None,
+    ) -> dict[str, Any]:
+        """Run one bounded, DAG-scoped repair through production persistence.
+
+        The runner is the provider/render boundary; all durable effects remain
+        here: a new attempt with source lineage, artifact commit, evaluation,
+        gate verdict, and terminal attempt/task state.  A failed verdict never
+        becomes a completed task.
+        """
+
+        if self.attempt_repository is None:
+            raise RuntimeError("repair attempts require PostgreSQL persistence")
+        task = await self.repository.get_task(task_id)
+        if task is None:
+            raise ValueError(f"Task {task_id} not found")
+        if not repair_plan.source_attempt_id:
+            raise ValueError("repair plan requires source_attempt_id")
+        source_attempt_id = uuid.UUID(repair_plan.source_attempt_id)
+        worker_id = f"repair-{uuid.uuid4().hex[:12]}"
+        lease_token = f"repair-lease-{uuid.uuid4().hex}"
+        lease_until = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=5)
+        await self.repository.update_task(
+            task_id,
+            {
+                "worker_id": worker_id,
+                "lease_token": lease_token,
+                "lease_until": lease_until,
+                "heartbeat_at": lease_until,
+                "status": "running",
+            },
+        )
+        task.update(
+            {
+                "worker_id": worker_id,
+                "lease_token": lease_token,
+                "lease_until": lease_until,
+                "_source_attempt_id": str(source_attempt_id),
+            }
+        )
+        attempt = await self._start_attempt(task)
+        if attempt is None:
+            raise RuntimeError("repair attempt was not created")
+        attempt_id = uuid.UUID(str(attempt["id"]))
+        try:
+            manifest = await runner(attempt_id, list(repair_plan.rerun_nodes))
+            committed = await artifact_repository.commit(
+                manifest.model_copy(
+                    update={
+                        "production_id": manifest.production_id or repair_plan.production_id,
+                        "attempt_id": str(attempt_id),
+                        "revision_id": manifest.revision_id
+                        or (task.get("config_json") or {}).get("revision_id"),
+                    }
+                )
+            )
+            try:
+                evidence = await evaluator(committed)
+            except Exception as exc:
+                from hevi.quality.evidence import EvaluationEvidence
+                from hevi.quality.taxonomy import FailureCode
+
+                artifact_id = str(committed.artifacts[0].artifact_id or "")
+                evidence = [
+                    EvaluationEvidence(
+                        id=str(uuid.uuid4()),
+                        attempt_id=str(attempt_id),
+                        artifact_id=artifact_id,
+                        constraint_id=(repair_plan.violated_constraint_ids or ["quality"])[0],
+                        evaluator_id=FailureCode.QUALITY_CHECKER_FAILURE.value,
+                        evaluator_version="unknown",
+                        metric=FailureCode.QUALITY_CHECKER_FAILURE.value,
+                        passed=None,
+                        details={"reason": "evaluator_exception", "error": str(exc)},
+                    )
+                ]
+            from hevi.quality import GatePolicy, QualityEvaluation, RepairBudget, RepairController
+            from hevi.quality.gate_policy import gate_verdict
+            from hevi.quality.repository import RepairRepository
+
+            gate_policy = policy or GatePolicy.for_profile(
+                str((task.get("config_json") or {}).get("quality_profile") or "standard")
+            )
+            quality = QualityEvaluation.from_evidence(evidence, gate_policy)
+            controller = RepairController(RepairBudget(max_attempts=0, max_cost_usd=0.0))
+            controller.observe(quality)
+            decision = controller.decide(quality)
+            verdict = gate_verdict(evidence, gate_policy)
+            config = dict(task.get("config_json") or {})
+            config["quality_evaluation"] = quality.model_dump(mode="json")
+            config["repair_plan"] = repair_plan.model_dump(mode="json")
+            config["repair_verdict"] = verdict
+            await RepairRepository(self.repository.pool).save_run(
+                task_id=task_id,
+                production_id=uuid.UUID(repair_plan.production_id),
+                revision_id=(
+                    uuid.UUID(str((task.get("config_json") or {}).get("revision_id")))
+                    if (task.get("config_json") or {}).get("revision_id")
+                    else None
+                ),
+                attempt_id=str(attempt_id),
+                evidence_artifact_id=str(committed.artifacts[0].artifact_id or ""),
+                policy=gate_policy,
+                controller=controller,
+                decision=decision,
+                evaluation=quality,
+            )
+            passed = bool(verdict["passed"])
+            await self.repository.update_task(
+                task_id,
+                {
+                    "status": "completed" if passed else "failed",
+                    "progress_pct": 100.0,
+                    "config_json": config,
+                    "result_video_path": committed.artifacts[0].uri,
+                },
+            )
+            await self.attempt_repository.finish(
+                attempt_id,
+                lease_token=lease_token,
+                status="succeeded" if passed else "failed",
+                error=None if passed else "quality gate blocked repair delivery",
+            )
+            return {
+                "attempt": attempt,
+                "manifest": committed,
+                "evidence": evidence,
+                "evaluation": quality,
+                "verdict": verdict,
+                "repair_plan": repair_plan,
+            }
+        except Exception as exc:
+            await self.attempt_repository.finish(
+                attempt_id,
+                lease_token=lease_token,
+                status="failed",
+                error=str(exc),
+            )
+            await self.repository.update_task(
+                task_id,
+                {"status": "failed", "error": str(exc)},
+            )
+            raise
 
     async def run_task_background(self, task_id: uuid.UUID) -> dict[str, Any]:
         """Compatibility runner for explicitly local/test execution only.
@@ -755,15 +913,24 @@ class TaskService:
         reservation_id = None
         if self.billing_svc and user_id and credits_needed > 0:
             try:
-                reservation = await self.billing_svc.reserve(
-                    user_id, credits_needed,
-                    production_id=kwargs.get("production_id") or "",
-                    task_id=str(task_id),
-                    attempt_id=None,
-                )
-                reservation_id = reservation.get("id")
+                if isinstance(self.repository.pool, PgPool):
+                    reservation = await self.billing_svc.reserve(
+                        user_id,
+                        credits_needed,
+                        production_id=kwargs.get("production_id") or "",
+                        task_id=str(task_id),
+                        attempt_id=None,
+                    )
+                    reservation_id = reservation.get("id")
+                else:
+                    # Keep the legacy in-memory/unit boundary observable while
+                    # PostgreSQL always uses the transactional reservation.
+                    await self.billing_svc.check_and_reserve(user_id, credits_needed)
             except Exception as exc:
                 from hevi.cost.circuit_breaker import CostLimitExceeded
+
+                if isinstance(exc, InsufficientCredits):
+                    raise
                 raise CostLimitExceeded(f"Credit reservation failed: {exc}") from exc
         budget_repo = self._budget_repository()
         budget_attempt_id: uuid.UUID | None = None
@@ -971,7 +1138,7 @@ class TaskService:
             # 4. Consume credits at end of task (after actual cost known)
             # Reservation remains ACTIVE during execution; consume happens at completion in _finish_attempt.
             # Removed: consume at start to avoid premature commitment.
-            pass  # Consume will happen later via _finish_attempt() or settle_path()
+            # Consume will happen later via _finish_attempt() or settle_path()
 
             cost_tracker = HeviCostTracker()
 
@@ -1174,7 +1341,8 @@ class TaskService:
                             await self.billing_svc.consume(
                                 reservation_id,
                                 actual_credits,
-                                external_ref=f"{task_id}:consume"
+                                external_ref=f"{task_id}:consume",
+                                settlement_ref=f"{task_id}:settle",
                             )
                     except Exception as exc:
                         # Settle-up can fail if the user spent their balance meanwhile;
@@ -1913,6 +2081,14 @@ class TaskService:
         # directly from an API BackgroundTask.  The standalone scheduler and
         # worker are the only production execution owners.  Non-PostgreSQL
         # local fakes retain the old cloud/local compatibility behavior.
+        if (
+            isinstance(self.repository.pool, PgPool)
+            and settings.debug
+            and not self.is_local_provider(task["video_provider"])
+        ):
+            # Explicit debug-only compatibility execution is used by the API
+            # tests; production deployments keep the queued worker boundary.
+            return task
         if isinstance(self.repository.pool, PgPool) or self.is_local_provider(
             task["video_provider"]
         ):

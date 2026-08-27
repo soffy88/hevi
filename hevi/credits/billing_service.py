@@ -12,24 +12,43 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
-from typing import Any
+from typing import Any, Literal, cast
+
+from obase.persistence import PgPool
 
 from hevi.core.config import settings
 from hevi.cost.estimator import estimate_cost
 from hevi.credits.account_service import AccountService
-from obase.persistence import PgPool
 
 
 class InsufficientCredits(Exception):
     """Raised when user available balance is below requested amount."""
 
-    def __init__(self, amount_cents: int, available_cents: int) -> None:
-        self.amount_cents = amount_cents
-        self.available_cents = available_cents
+    def __init__(
+        self,
+        amount_cents: int | None = None,
+        available_cents: int | None = None,
+        *,
+        credits_needed: int | None = None,
+        credits_available: int | None = None,
+    ) -> None:
+        self.amount_cents = (
+            amount_cents if amount_cents is not None else credits_needed
+        ) or 0
+        self.available_cents = (
+            available_cents if available_cents is not None else credits_available
+        ) or 0
         super().__init__(
             f"Insufficient credits: needed {amount_cents} cents, have {available_cents} cents"
         )
+
+    @property
+    def credits_needed(self) -> int:
+        return self.amount_cents
+
+    @property
+    def credits_available(self) -> int:
+        return self.available_cents
 
 
 class ReservationNotFound(Exception):
@@ -39,7 +58,12 @@ class ReservationNotFound(Exception):
 class BillingService:
     def __init__(self, account_svc: AccountService, pool: PgPool | None = None) -> None:
         self._account_svc = account_svc
-        self._pool = pool or getattr(account_svc._repo, '_pool', None) if hasattr(account_svc, '_repo') else None
+        candidate = pool or (
+            getattr(account_svc._repo, "_pool", None) if hasattr(account_svc, "_repo") else None
+        )
+        if not isinstance(candidate, PgPool):
+            raise ValueError("BillingService requires a PostgreSQL pool")
+        self._pool = candidate
 
     async def estimate_credits(
         self,
@@ -55,7 +79,7 @@ class BillingService:
             duration_archetype=duration_archetype,
             video_provider=video_provider,
             audio_provider=kwargs.get("audio_provider", "vibevoice"),
-            ltx2_tier=ltx2_tier,
+            ltx2_tier=cast(Literal["fast", "pro"], ltx2_tier),
             quality=quality_profile,
             num_characters=num_characters,
         )
@@ -177,6 +201,7 @@ class BillingService:
         actual_amount_cents: int,
         *,
         external_ref: str | None = None,
+        settlement_ref: str | None = None,
     ) -> dict[str, Any]:
         """Mark reservation as consumed and deduct from posted balance.
 
@@ -222,17 +247,17 @@ class BillingService:
                 uuid.UUID(reservation_id),
             )
 
-            # Update account: deduct actual from balance, release FULL reservation from reserved_balance
-            # Note: reserved_balance was increased by amount_cents at reserve time.
-            # We must subtract the FULL reservation amount from reserved_balance to close it.
-            # The difference (amount_cents - actual_amount_cents) is the unused excess.
+            # Settle the hold as a debit for the reserved amount plus a refund
+            # for unused capacity. The net balance change is still exactly the
+            # actual provider cost, while the ledger exposes the settlement
+            # event required by the credit API.
             await conn.execute(
                 """UPDATE credit_accounts
                    SET balance = balance - $1,
                        reserved_balance = reserved_balance - $2,
                        updated_at = NOW()
                    WHERE user_id = $3""",
-                actual_amount_cents,
+                res["amount_cents"],
                 res["amount_cents"],
                 user_id,
             )
@@ -245,15 +270,44 @@ class BillingService:
                    VALUES ($1, $2, $3, 'consume', $4, $5, NOW())""",
                 tx_id,
                 user_id,
-                -actual_amount_cents,
+                -res["amount_cents"],
                 external_ref,
-                account["balance"] - actual_amount_cents,
+                account["balance"] - res["amount_cents"],
             )
 
-            return await conn.fetchrow(
+            unused_amount = res["amount_cents"] - actual_amount_cents
+            if unused_amount > 0:
+                refund_ref = settlement_ref or (
+                    external_ref.removesuffix(":consume") + ":settle"
+                    if external_ref.endswith(":consume")
+                    else f"{external_ref}:settle"
+                )
+                await conn.execute(
+                    """UPDATE credit_accounts
+                       SET balance = balance + $1, updated_at = NOW()
+                       WHERE user_id = $2""",
+                    unused_amount,
+                    user_id,
+                )
+                refund_tx_id = uuid.uuid4()
+                await conn.execute(
+                    """INSERT INTO credit_transactions
+                       (id, user_id, amount, tx_type, reference, balance_after, created_at)
+                       VALUES ($1, $2, $3, 'refund', $4, $5, NOW())""",
+                    refund_tx_id,
+                    user_id,
+                    unused_amount,
+                    refund_ref,
+                    account["balance"] - actual_amount_cents,
+                )
+
+            row = await conn.fetchrow(
                 "SELECT * FROM billing_reservations WHERE id = $1",
                 uuid.UUID(reservation_id),
             )
+            if row is None:
+                raise ReservationNotFound(f"Reservation {reservation_id} not found")
+            return dict(row)
 
     async def release(
         self,
@@ -315,10 +369,13 @@ class BillingService:
                 account["balance"] if account else 0,
             )
 
-            return await conn.fetchrow(
+            row = await conn.fetchrow(
                 "SELECT * FROM billing_reservations WHERE id = $1",
                 uuid.UUID(reservation_id),
             )
+            if row is None:
+                raise ReservationNotFound(f"Reservation {reservation_id} not found")
+            return dict(row)
 
     async def refund_consumed(
         self,
@@ -449,4 +506,4 @@ class BillingService:
         return await self._account_svc.refund_for_task(user_id, task_id)
 
 
-__all__ = ["InsufficientCredits", "ReservationNotFound", "BillingService"]
+__all__ = ["BillingService", "InsufficientCredits", "ReservationNotFound"]

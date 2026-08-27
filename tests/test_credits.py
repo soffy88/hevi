@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from hevi.credits.account_service import AccountService
-from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 
 SIGNUP_BONUS = 1000  # B: 新用户注册送 1000 credits
@@ -88,7 +87,6 @@ async def test_consume_and_refund(client):
     pool = await get_hevi_pg_pool()
     repo = CreditRepository(pool)
     account_svc = AccountService(repo)
-    billing_svc = BillingService(account_svc)
 
     # 1. Consume 200 → 1300 (use account_svc for direct consume)
     await account_svc.consume(user_id, 200, task_ref="TASK-1")
@@ -119,7 +117,6 @@ async def test_consume_refund_idempotent(client):
     pool = await get_hevi_pg_pool()
     repo = CreditRepository(pool)
     account_svc = AccountService(repo)
-    billing_svc = BillingService(account_svc)
 
     # 重复 consume 同一 TASK-X：只扣一次
     await account_svc.consume(user_id, 300, task_ref="TASK-X")

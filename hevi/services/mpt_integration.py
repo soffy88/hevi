@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, cast
 
 import httpx
 
@@ -22,18 +22,23 @@ class MPTConfig:
 class MPTClient:
     """hevi 侧调用 MPT 服务的客户端"""
 
-    def __init__(self, config: Optional[MPTConfig] = None):
+    def __init__(self, config: MPTConfig | None = None):
         self.config = config or MPTConfig(
             api_base=os.getenv("MPT_API_BASE", "http://localhost:8080"),
             webui_base=os.getenv("MPT_WEBUI_BASE", "http://localhost:8501"),
         )
         self._client: httpx.AsyncClient | None = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> MPTClient:
         self._client = httpx.AsyncClient(timeout=self.config.timeout)
         return self
 
-    async def __aexit__(self, *args):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: Any,
+    ) -> None:
         if self._client:
             await self._client.aclose()
 
@@ -64,7 +69,7 @@ class MPTClient:
 
         response = await self._client.post(f"{self.config.api_base}/api/v1/video/generate", json=payload)
         response.raise_for_status()
-        return response.json()
+        return cast(dict[str, Any], response.json())
 
     async def check_task_status(self, task_id: str) -> dict[str, Any]:
         """查询任务状态"""
@@ -73,7 +78,7 @@ class MPTClient:
 
         response = await self._client.get(f"{self.config.api_base}/api/v1/task/status/{task_id}")
         response.raise_for_status()
-        return response.json()
+        return cast(dict[str, Any], response.json())
 
     async def get_materials(
         self,
@@ -87,7 +92,7 @@ class MPTClient:
         if not self._client:
             raise RuntimeError("Client not initialized.")
 
-        params = {
+        params: dict[str, str | int] = {
             "query": query,
             "source": source,
             "count": count,
@@ -95,7 +100,7 @@ class MPTClient:
         }
         response = await self._client.get(f"{self.config.api_base}/api/v1/material/search", params=params)
         response.raise_for_status()
-        return response.json()
+        return cast(list[dict[str, Any]], response.json())
 
     async def cross_post(
         self,
@@ -114,7 +119,7 @@ class MPTClient:
         }
         response = await self._client.post(f"{self.config.api_base}/api/v1/cross-post", json=payload)
         response.raise_for_status()
-        return response.json()
+        return cast(dict[str, Any], response.json())
 
     async def analyze_reference_video(self, url: str) -> dict[str, Any]:
         """参考视频分析（若 MPT 支持）"""
@@ -126,14 +131,14 @@ class MPTClient:
             json={"url": url}
         )
         response.raise_for_status()
-        return response.json()
+        return cast(dict[str, Any], response.json())
 
 
 async def submit_mpt_job_from_hevi(
     production_id: str,
     revision_id: str,
     topic: str,
-    **kwargs,
+    **kwargs: Any,
 ) -> str:
     """
     从 hevi 工作流提交 MPT 生成任务
@@ -141,11 +146,11 @@ async def submit_mpt_job_from_hevi(
     """
     async with MPTClient() as client:
         result = await client.generate_video(topic, **kwargs)
-        return result.get("task_id", "")
+        return str(result.get("task_id", ""))
 
 
 __all__ = [
-    "MPTConfig",
     "MPTClient",
+    "MPTConfig",
     "submit_mpt_job_from_hevi",
 ]

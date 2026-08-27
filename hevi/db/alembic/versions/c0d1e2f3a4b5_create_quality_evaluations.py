@@ -6,7 +6,11 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "c0d1e2f3a4b5"
+# ``c0d1e2f3a4b5`` is already the published receipt migration.  Keeping two
+# files with that revision makes Alembic unable to load the graph at all.  The
+# quality migration keeps its original parent and receives a new identity so
+# existing databases stamped on the receipt branch remain upgradeable.
+revision: str = "c0d1e2f3a4b9"
 down_revision: str | None = "b8c9d0e1f234"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

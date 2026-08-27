@@ -903,7 +903,7 @@ async def compile_work_constraints(
         await ConstraintRepository(pool).record_compilation(
             graph.revision_id,
             compiled=graph.coverage.compiled_constraints,
-            consumed=graph.coverage.consumed_constraints,
+            consumed=graph.coverage.adapter_consumed_constraints,
             unsupported=graph.coverage.unsupported_constraints,
             silent_drops=graph.coverage.silent_drops,
         )
@@ -2264,7 +2264,7 @@ async def _run_director_via_tongjian(
         await ConstraintRepository(task_repo.pool).record_compilation(
             constraint_graph.revision_id,
             compiled=constraint_graph.coverage.compiled_constraints,
-            consumed=constraint_graph.coverage.consumed_constraints,
+            consumed=constraint_graph.coverage.adapter_consumed_constraints,
             unsupported=constraint_graph.coverage.unsupported_constraints,
             silent_drops=constraint_graph.coverage.silent_drops,
         )
@@ -2369,7 +2369,7 @@ async def _run_director_via_tongjian(
         if _has_pool(task_repo.pool) and constraint_graph.revision_id:
             await ConstraintRepository(task_repo.pool).record_verification(
                 constraint_graph.revision_id,
-                verified=constraint_graph.coverage.consumed_constraints,
+                verified=constraint_graph.coverage.verified_constraints,
             )
         # 返工预算(_VERDICT_MAX_RETAKE)用尽后仍不过的镜:成片存在、可看,但它是残的。
         # 此前 completed_shots 恒填 len(shots),等于宣称"每一镜都成了"——2026-07-17 审计那次

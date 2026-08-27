@@ -11,7 +11,13 @@ from typing import Any, Literal, cast
 
 from obase.persistence import PgPool
 
-from .models import Constraint, ConstraintGraph, CoverageReport, ConsumptionStage, ConstraintConsumptionReceipt, ConstraintMapping
+from .models import (
+    Constraint,
+    ConstraintConsumptionReceipt,
+    ConstraintGraph,
+    ConsumptionStage,
+    CoverageReport,
+)
 
 
 class ConstraintRepository:
@@ -210,10 +216,10 @@ class ConstraintRepository:
         """
         async with self.pool.acquire() as conn:
             sql = """
-                SELECT COUNT(*) FILTER (WHERE stage = 'compiled') as compiled,
-                       COUNT(*) FILTER (WHERE stage = 'adapter_consumed') as adapter_consumed,
-                       COUNT(*) FILTER (WHERE stage = 'provider_submitted') as provider_submitted,
-                       COUNT(*) FILTER (WHERE stage = 'provider_acked') as provider_acked,
+                SELECT COUNT(DISTINCT constraint_id) FILTER (WHERE stage = 'compiled') as compiled,
+                       COUNT(DISTINCT constraint_id) FILTER (WHERE stage = 'adapter_consumed') as adapter_consumed,
+                       COUNT(DISTINCT constraint_id) FILTER (WHERE stage = 'provider_submitted') as provider_submitted,
+                       COUNT(DISTINCT constraint_id) FILTER (WHERE stage = 'provider_acked') as provider_acked,
                        COUNT(DISTINCT constraint_id) as total_constraints
                 FROM constraint_consumption_receipts
                 WHERE production_id = $1
@@ -229,8 +235,25 @@ class ConstraintRepository:
                 params.append(uuid.UUID(attempt_id))
             row = await conn.fetchrow(sql, *params)
             if not row:
-                return {"compiled": 0, "adapter_consumed": 0, "provider_submitted": 0, "provider_acked": 0, "total_constraints": 0}
-            return dict(row)
+                return {
+                    "compiled": 0,
+                    "adapter_consumed": 0,
+                    "provider_submitted": 0,
+                    "provider_acked": 0,
+                    "total_constraints": 0,
+                    "provider_submission_rate": 0.0,
+                    "silent_drop_rate": 0.0,
+                }
+            result = dict(row)
+            compiled = int(result.get("compiled") or 0)
+            submitted = int(result.get("provider_submitted") or 0)
+            result["provider_submission_rate"] = submitted / compiled if compiled else 1.0
+            result["silent_drop_rate"] = (
+                max(0, compiled - int(result.get("adapter_consumed") or 0)) / compiled
+                if compiled
+                else 0.0
+            )
+            return result
 
     async def record_derived_constraints(self, revision_id: str, expected: int, derived: int) -> None:
         """Set expected_fields and derived_constraints on coverage."""

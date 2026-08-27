@@ -420,5 +420,6 @@
 | POST | `/api/voice-studio/effects/preview` | Preview Effect |
 | GET | `/api/voice-studio/personality/presets` | List Personality |
 | POST | `/api/voice-studio/personality/rewrite` | Rewrite Personality |
+| POST | `/api/voice-studio/tts/compare` | Compare Tts |
 | GET | `/api/voice-studio/tts/engines` | List Engines |
 | POST | `/api/voice-studio/tts/synthesize` | Synthesize |

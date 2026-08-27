@@ -13,7 +13,7 @@ P0-A: Constraint Consumption Receipts
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -33,7 +33,7 @@ class Constraint(BaseModel):
     fallback_policy: Literal["fail", "degrade", "warn"] = "fail"
 
 
-class ConsumptionStage(str, Enum):
+class ConsumptionStage(StrEnum):
     """Lifecycle stage of a constraint as it flows from derivation to provider."""
     COMPILED = "compiled"
     ADAPTER_CONSUMED = "adapter_consumed"
@@ -147,9 +147,9 @@ class ConstraintGraph(BaseModel):
 
 __all__ = [
     "Constraint",
-    "ConsumptionStage",
-    "ConstraintMapping",
     "ConstraintConsumptionReceipt",
-    "CoverageReport",
     "ConstraintGraph",
+    "ConstraintMapping",
+    "ConsumptionStage",
+    "CoverageReport",
 ]

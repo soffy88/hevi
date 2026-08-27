@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 @dataclass
@@ -68,7 +68,7 @@ async def search_pexels(query: str, count: int = 10, min_duration: int = 5) -> M
         return MaterialSearchResult(query=query, source="pexels", total=0, items=[], error="PEXELS_API_KEY not set")
 
     headers = {"Authorization": config.pexels_api_key}
-    params = {"query": query, "per_page": count, "orientation": "portrait"}
+    params: dict[str, str | int] = {"query": query, "per_page": count, "orientation": "portrait"}
 
     async with httpx.AsyncClient(timeout=30) as client:
         try:
@@ -98,7 +98,7 @@ async def search_pexels(query: str, count: int = 10, min_duration: int = 5) -> M
                             source_page=v.get("url"),
                             creator={"name": v.get("user", {}).get("name", "")} if v.get("user") else None,
                             rendition={"width": w, "height": h},
-                            score=v.get("promoted", False) and 1.0 or 0.5,
+                            score=(v.get("promoted", False) and 1.0) or 0.5,
                         ))
 
             return MaterialSearchResult(query=query, source="pexels", total=data.get("total", len(items)), items=items[:count])
@@ -117,7 +117,7 @@ async def search_pixabay(query: str, count: int = 10, min_duration: int = 5) -> 
     items: list[MaterialItem] = []
     async with httpx.AsyncClient(timeout=30) as client:
         while len(items) < count:
-            params = {
+            params: dict[str, str | int] = {
                 "key": config.pixabay_api_key,
                 "q": query,
                 "image_type": "video",
@@ -170,7 +170,7 @@ async def search_archive_org(query: str, count: int = 10, min_duration: int = 5)
     if not config.archive_org_enabled:
         return MaterialSearchResult(query=query, source="archive_org", total=0, items=[], error="Archive.org disabled")
 
-    params = {
+    params: dict[str, str | int] = {
         "q": f"collection:movies AND mediatype:movies AND {query}",
         "fl[]": "identifier,title,duration",
         "page": 1,
@@ -231,11 +231,11 @@ async def search_materials(query: str, source: str = "all", count: int = 10, min
 
 
 __all__ = [
-    "MaterialSearchConfig",
     "MaterialItem",
+    "MaterialSearchConfig",
     "MaterialSearchResult",
-    "search_pexels",
-    "search_pixabay",
     "search_archive_org",
     "search_materials",
+    "search_pexels",
+    "search_pixabay",
 ]

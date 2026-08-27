@@ -191,7 +191,8 @@ async def test_run_with_fallback_all_failed():
             on_fallback=on_fallback,
             retry_policy=RetryPolicy(max_attempts=1),
         )
-    assert runner.call_count == 1  # static chain is identity-only without a policy snapshot
+    assert runner.call_count == 2  # legacy ltx2 chain includes its durable fallback
+    on_fallback.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -85,7 +85,7 @@ async def fetch_transcript(video_url: str) -> list[TranscriptSegment]:
             resp.raise_for_status()
             data = resp.json()
 
-            segments = [
+            return [
                 TranscriptSegment(
                     start_s=seg["start"],
                     end_s=seg["end"],
@@ -94,7 +94,6 @@ async def fetch_transcript(video_url: str) -> list[TranscriptSegment]:
                 )
                 for seg in data.get("segments", [])
             ]
-            return segments
         except Exception as e:
             logger.error(f"Transcription failed: {e}")
             # Fallback: empty transcript
@@ -210,15 +209,15 @@ async def analyze_reference_video(url: str) -> ReferenceVideoAnalysis:
 
 
 __all__ = [
+    "ConceptVariant",
     "ReferenceAnalysisConfig",
-    "TranscriptSegment",
+    "ReferenceVideoAnalysis",
     "RhythmAnalysis",
     "SceneBreakdown",
-    "ConceptVariant",
-    "ReferenceVideoAnalysis",
-    "fetch_transcript",
+    "TranscriptSegment",
+    "analyze_reference_video",
     "analyze_rhythm",
     "extract_scenes",
+    "fetch_transcript",
     "generate_concepts",
-    "analyze_reference_video",
 ]
