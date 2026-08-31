@@ -152,5 +152,6 @@ EXPOSE 17493
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s CMD curl -f http://localhost:17493/api/ai/health || exit 1
 COPY --chmod=755 services/voicebox/scripts/rocm-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh
+USER voicebox
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["uvicorn", "gen_engine.server:app", "--host", "0.0.0.0", "--port", "17493"]

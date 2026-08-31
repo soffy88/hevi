@@ -99,7 +99,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # jsdom 30 / undici 8 require Node >=22.19; keep CI aligned with
+          # the production node:22 image and the committed lockfile.
+          node-version: "22"
       - name: Install web deps
         run: npm ci --prefer-offline --no-audit
       - name: NPM audit (high/critical)
@@ -124,6 +126,9 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+          # Exclude the checked-in upstream VibeASR build corpus; its Docker
+          # recipes are not HEVI runtime images and are maintained upstream.
+          skip-dirs: services/gen_engine/vibeasr-src/3rdparty/llama.cpp
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.17.8
         with:

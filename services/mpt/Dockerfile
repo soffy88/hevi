@@ -94,6 +94,10 @@ RUN if [ "$PIP_USE_OFFICIAL" = "1" ]; then \
 # Now copy the rest of the codebase into the image
 COPY . .
 
+RUN groupadd --system hevi && useradd --system --gid hevi --home-dir /MoneyPrinterTurbo hevi && \
+    chown -R hevi:hevi /MoneyPrinterTurbo
+USER hevi
+
 # Expose the port the app runs on
 EXPOSE 8501
 

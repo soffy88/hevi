@@ -55,6 +55,11 @@ COPY hevi-remotion/ ./hevi-remotion/
 COPY hevi/ ./hevi/
 COPY alembic.ini ./
 
+# Runtime must not execute the API as root.
+RUN groupadd --system hevi && useradd --system --gid hevi --home-dir /app hevi && \
+    chown -R hevi:hevi /app
+USER hevi
+
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 
