@@ -129,6 +129,10 @@ jobs:
           # Exclude the checked-in upstream VibeASR build corpus; its Docker
           # recipes are not HEVI runtime images and are maintained upstream.
           skip-dirs: services/gen_engine/vibeasr-src/3rdparty/llama.cpp
+          # Matcha-TTS is vendored source; its upstream developer requirements
+          # are not installed by the HEVI Gen Engine image (the image installs
+          # services/voicebox/backend/requirements.txt instead).
+          skip-files: services/gen_engine/third_party/Matcha-TTS/requirements.txt
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.17.8
         with:
