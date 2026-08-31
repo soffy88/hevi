@@ -49,6 +49,7 @@ export function ClipperConsole() {
       const res = await productionV2Api.clipVideo({
         video_path: videoPath,
         max_clips: numClips,
+        aspect_ratio: aspectRatio,
       });
       setResult(res as unknown as ClipResult);
     } catch (e: unknown) {
