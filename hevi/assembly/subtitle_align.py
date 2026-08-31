@@ -55,9 +55,15 @@ def transcribe_to_cues(
     model_dir: str | None = None,
 ) -> list[Cue]:
     """用 faster-whisper 转写音频为带时间码的字幕段(强制对齐)。"""
+    resolved_model_dir = Path(model_dir or _MODEL_DIR).expanduser()
+    if not resolved_model_dir.is_dir():
+        raise FileNotFoundError(
+            f"faster-whisper model directory is unavailable: {resolved_model_dir}; "
+            "configure FASTER_WHISPER_MODEL_DIR with a downloaded model"
+        )
     from faster_whisper import WhisperModel
 
-    model = WhisperModel(model_dir or _MODEL_DIR, device="cpu", compute_type="int8")
+    model = WhisperModel(str(resolved_model_dir), device="cpu", compute_type="int8")
     segments, _info = model.transcribe(str(audio_path), language=language, vad_filter=True)
     cues: list[Cue] = []
     for seg in segments:

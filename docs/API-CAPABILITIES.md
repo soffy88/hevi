@@ -201,6 +201,13 @@
 | GET | `/api/material/coverr` | Get Coverr Videos |
 | GET | `/api/material/pixabay` | Get Pixabay Videos |
 
+## montage
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/montage/video-agent/plan` | Plan Video Agent |
+| POST | `/api/montage/video-agent/run` | Run Video Agent |
+
 ## payment
 
 | 方法 | 路径 | 说明 |
@@ -269,6 +276,7 @@
 | GET | `/api/providers/plugins/{provider_id}` | Get Provider Plugin |
 | GET | `/api/providers/presets` | List Provider Presets |
 | GET | `/api/providers/presets/{name}` | Get Provider Preset |
+| GET | `/api/providers/status` | Provider Status |
 
 ## publishers
 

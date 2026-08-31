@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -24,6 +25,13 @@ try:
 except ImportError:
     _HAS_FW = False
 _HAS_FFMPEG = shutil.which("ffmpeg") is not None
+_FW_MODEL_DIR = Path(
+    os.environ.get(
+        "FASTER_WHISPER_MODEL_DIR",
+        str(Path.home() / "models/faster-whisper-large-v3-turbo"),
+    )
+).expanduser()
+_HAS_FW_MODEL = _FW_MODEL_DIR.is_dir()
 
 
 def test_fmt_ts() -> None:
@@ -43,7 +51,10 @@ def test_cues_to_srt_empty() -> None:
     assert cues_to_srt([]) == ""
 
 
-@pytest.mark.skipif(not (_HAS_FW and _HAS_FFMPEG), reason="needs faster-whisper + ffmpeg")
+@pytest.mark.skipif(
+    not (_HAS_FW and _HAS_FFMPEG and _HAS_FW_MODEL),
+    reason="needs faster-whisper + ffmpeg + a local model directory",
+)
 async def test_align_subtitles_on_silence(tmp_path: Path) -> None:
     """静音音频转写 → 无字幕段 → 返回 None(装配器跳过烧字幕)。"""
     audio = tmp_path / "silence.wav"

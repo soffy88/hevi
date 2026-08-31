@@ -20,8 +20,10 @@ html-video 工程化并入(2026-08):
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import logging
+import os
 import shutil
 import subprocess
 import time
@@ -154,8 +156,17 @@ async def record_html_to_video(
             "playwright 未安装: pip install playwright && playwright install chromium"
         ) from exc
 
-    try:
-        raw, effective_dur = await _record_via_screencast(
+    # The screenshot path is the deterministic production default: it avoids
+    # Chromium's platform-specific screencast pipe while retaining real
+    # browser rendering and FFmpeg encoding.  Native record_video remains
+    # available for environments that have explicitly validated that pipe.
+    use_native_screencast = os.getenv("HEVI_SCREENCAST_NATIVE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    if not use_native_screencast and convert_to_mp4:
+        return await _record_via_frames(
             html_path,
             output,
             async_playwright,
@@ -167,6 +178,23 @@ async def record_html_to_video(
             freeze_until_fonts=freeze_until_fonts,
             probe_animation=probe_animation,
         )
+
+    try:
+        raw, effective_dur = await asyncio.wait_for(
+            _record_via_screencast(
+                html_path,
+                output,
+                async_playwright,
+                width,
+                height,
+                fps,
+                duration_s,
+                scroll,
+                freeze_until_fonts=freeze_until_fonts,
+                probe_animation=probe_animation,
+            ),
+            timeout=max(90.0, min(300.0, _safety_seconds(duration_s) * 2)),
+        )
         if convert_to_mp4:
             converted = convert_webm_to_mp4(raw, fps=fps)
             converted.replace(output)
@@ -177,7 +205,7 @@ async def record_html_to_video(
             raise EmptyVideoError(
                 f"screencast 时长过短({_probe_duration(output):.1f}s < {effective_dur * 0.6:.1f}s)"
             )
-    except EmptyVideoError as exc:
+    except (EmptyVideoError, TimeoutError) as exc:
         logger.warning("record_video 不可信(%s), 降级截图+ffmpeg 通道", exc)
         return await _record_via_frames(
             html_path,
@@ -261,7 +289,6 @@ async def _record_via_frames(
     try:
         frame = 0
         ended = False
-        shot_start = time.monotonic()
         effective_dur = duration_s
         async with async_playwright() as p:  # type: ignore[operator]
             browser = await p.chromium.launch(headless=True, args=_LAUNCH_ARGS)
@@ -274,11 +301,15 @@ async def _record_via_frames(
                     freeze_until_fonts=freeze_until_fonts,
                     probe_animation=probe_animation,
                 )
+                # Start the capture clock after browser/page preparation.  A
+                # slow Chromium startup or font wait must not consume the
+                # entire capture window and leave us with a single frame.
+                shot_start = time.monotonic()
                 deadline = time.monotonic() + _safety_seconds(effective_dur)
                 while time.monotonic() < deadline and not ended:
                     await page.screenshot(path=str(frames_dir / f"{frame:04d}.png"))
                     frame += 1
-                    if audio_driven:
+                    if audio_driven and frame >= 2:
                         ended = await page.evaluate(
                             "window.__heviAudioEnded === true"
                         )

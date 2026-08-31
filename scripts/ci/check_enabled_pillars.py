@@ -3,7 +3,7 @@
 要求每个 ``*_workflow`` / ``video_assemble_workflow`` 函数体内出现
 ``_enabled_pillars = {...}``(至少声明 report;cost/decision_trail 按能力)。
 
-3O 支柱枚举:report / cost / decision_trail / trace。
+3O 支柱枚举:report / cost / decision_trail / trace / fingerprint。
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 HEVI = ROOT / "hevi"
 
-KNOWN_PILLARS = {"report", "cost", "decision_trail", "trace"}
+KNOWN_PILLARS = {"report", "cost", "decision_trail", "trace", "fingerprint"}
 
 BOUNDARY_DIRS = {"assembly", "digital_human", "production"}
 
