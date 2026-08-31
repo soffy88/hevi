@@ -8,6 +8,7 @@ download time so a completed state never masquerades as a deliverable.
 from __future__ import annotations
 
 import hashlib
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -121,6 +122,57 @@ class ArtifactManifest(BaseModel):
         path = Path(artifact.path)
         return path if path.is_absolute() else (Path.cwd() / path).resolve()
 
+
+class ArtifactVerificationError(RuntimeError):
+    """Adapter claimed completion without a verified local artifact."""
+
+
+def verify_local_manifest(
+    manifest: ArtifactManifest,
+    *,
+    require_primary: bool = True,
+    require_video_stream: bool = True,
+) -> ArtifactManifest:
+    """Normalize and verify a manifest before a task becomes completed.
+
+    Adapters may return artifact metadata without integrity fields.  This
+    boundary computes the hash, then requires every declared local file to
+    exist and be non-empty.  Video artifacts additionally need a real ffprobe
+    video stream; a JSON path or arbitrary non-empty file is not delivery.
+    """
+
+    if not manifest.artifacts:
+        raise ArtifactVerificationError("artifact manifest is empty")
+    if require_primary and not any(item.primary for item in manifest.artifacts):
+        raise ArtifactVerificationError("artifact manifest has no primary artifact")
+    has_video = any(item.kind == "video" for item in manifest.artifacts)
+    if require_video_stream and has_video and not shutil.which("ffprobe"):
+        raise ArtifactVerificationError("ffprobe is required to verify video delivery")
+
+    normalized = manifest.model_copy(
+        update={"artifacts": [item.with_integrity() for item in manifest.artifacts]}
+    )
+    failures: list[str] = []
+    for item in normalized.artifacts:
+        path = Path(item.path)
+        if not path.is_absolute():
+            path = (Path.cwd() / path).resolve()
+        if not path.is_file() or path.stat().st_size <= 0:
+            failures.append(f"{item.kind}:{item.path}")
+            continue
+        if not item.sha256 or not item.byte_size or not item.integrity_ok():
+            failures.append(f"integrity:{item.path}")
+
+        if require_video_stream and item.kind == "video":
+            from hevi.production.delivery_gate import probe_video
+
+            probe = probe_video(path)
+            if not probe.has_video:
+                failures.append(f"video-stream:{item.path}")
+
+    if failures:
+        raise ArtifactVerificationError("; ".join(failures))
+    return normalized
 
 def manifest_from_task(task: dict[str, Any]) -> ArtifactManifest | None:
     raw = (task.get("config_json") or {}).get("artifact_manifest")
