@@ -71,6 +71,31 @@ def test_render_workflow_fails_gracefully_missing_project(tmp_path):
     assert res["status"] == "failed"
 
 
+def test_render_workflow_does_not_accept_zero_exit_without_artifact(tmp_path, monkeypatch):
+    project = tmp_path / "remotion"
+    project.mkdir()
+    (project / "package.json").write_text("{}", encoding="utf-8")
+
+    class _Process:
+        returncode = 0
+        stderr = ""
+
+    monkeypatch.setattr(
+        "hevi.assembly.remotion_render_workflow.subprocess.run",
+        lambda *a, **k: _Process(),
+    )
+    cfg = RemotionConfig(
+        project_dir=project,
+        composition_id="X",
+        output_path=tmp_path / "missing.mp4",
+    )
+    res = __import__("asyncio").run(
+        remotion_render_workflow(cfg, RemotionInput(), tmp_path / "run")
+    )
+    assert res["status"] == "failed"
+    assert "no media artifact" in res["error"]
+
+
 # ---- promo workflow ----
 
 def test_promo_workflow_plan(tmp_path):

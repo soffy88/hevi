@@ -25,7 +25,11 @@ from hevi.monitoring.metrics import productions_started_total
 from hevi.observability import log_event, start_trace
 from hevi.pipeline import orchestrate_longvideo
 from hevi.production.adapters import ProductionAdapterRegistry, default_production_adapters
-from hevi.production.artifacts import ArtifactManifest, manifest_from_task
+from hevi.production.artifacts import (
+    ArtifactManifest,
+    manifest_from_task,
+    verify_local_manifest,
+)
 from hevi.production.contracts import ProductionRequest
 from hevi.production.execution import execute_standard_operation, execution_binding
 from hevi.queue.task_queue import enqueue
@@ -763,15 +767,12 @@ class TaskService:
             elif result.get("result_video_path"):
                 manifest = ArtifactManifest.for_video(result["result_video_path"])
             else:
-                if not isinstance(self.repository.pool, PgPool):
-                    completion = {
-                        "status": "completed",
-                        "progress_pct": 100.0,
-                        "updated_at": datetime.now(UTC).replace(tzinfo=None),
-                    }
-                    await self.repository.update_task(task_id, completion)
-                    return result
                 raise RuntimeError("completed adapter task returned no artifact")
+            # A task is not deliverable merely because an adapter returned a
+            # manifest.  Resolve paths, compute integrity, and probe videos
+            # before writing the terminal completed state.  This applies to
+            # local compatibility repositories as well as PostgreSQL workers.
+            manifest = verify_local_manifest(manifest)
             if not await self._renew_lease(task):
                 logger.warning("task %s lease lost before adapter completion", task_id)
                 return task
@@ -1065,6 +1066,9 @@ class TaskService:
                 "history_animation",
                 "director_tongjian",
                 "checkpoint_render",
+                "clip_video",
+                "localize_video",
+                "mpt",
             }:
                 await self._apply_provider_policy(task)
             await self._start_attempt(task)
@@ -1100,6 +1104,9 @@ class TaskService:
                 "history_animation",
                 "director_tongjian",
                 "checkpoint_render",
+                "clip_video",
+                "localize_video",
+                "mpt",
             }:
                 return await self._run_adapter_task(task)
 
@@ -1363,7 +1370,7 @@ class TaskService:
                     task["config_json"].get("auto_rework_rounds", settings.auto_rework_max_rounds)
                 )
                 done = 0
-                if quality is not None and not quality.get("passed", True):
+                if quality is not None and quality.get("passed") is not True:
                     try:
                         from hevi.director.agent import _shot_view
                         from hevi.director.editor import review
@@ -1849,7 +1856,7 @@ class TaskService:
                     {
                         "task_id": task_id,
                         "shot_index": shot.get("index", 0),
-                        "status": "completed" if shot.get("passed", True) else "failed",
+                        "status": "completed" if shot.get("passed") is True else "failed",
                         "output_path": shot.get("path"),
                         "selection_json": {
                             "provider": shot.get("provider"),

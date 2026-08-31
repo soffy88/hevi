@@ -65,6 +65,18 @@ def test_low_identity_emits_hint_and_fails(tmp_path, fake_embed):
     assert any("身份匹配偏低" in h for h in sc.hints)
 
 
+def test_all_anchored_candidates_unverifiable_fail_closed(tmp_path, monkeypatch):
+    a = _png(tmp_path, "a.png")
+
+    def _unavailable(**_kwargs):
+        raise sc_mod.SubjectEmbedError("embedding runtime unavailable")
+
+    monkeypatch.setattr(sc_mod, "subject_embed", _unavailable)
+    sc = shot_scorecard(candidate_frames=[a], subject_ref_embedding=[1.0, 0.0])
+    assert sc.passed is False
+    assert any("无法验证" in hint for hint in sc.hints)
+
+
 def test_no_anchor_picks_first_and_passes(tmp_path, fake_embed):
     a, b = _png(tmp_path, "a.png"), _png(tmp_path, "b.png")
     sc = shot_scorecard(candidate_frames=[a, b], subject_ref_embedding=None)
@@ -248,6 +260,12 @@ async def test_vlm_score_frame_parses_pass_and_fail():
 
 async def test_vlm_score_frame_swallows_malformed_response():
     score, violations = await sc_mod._vlm_score_frame(Path("f.png"), _FakeMLLM("not json"))
+    assert score is None
+    assert violations == []
+
+
+async def test_vlm_score_frame_missing_pass_field_is_unknown():
+    score, violations = await sc_mod._vlm_score_frame(Path("f.png"), _FakeMLLM("{}"))
     assert score is None
     assert violations == []
 

@@ -32,7 +32,9 @@ describe('智能拆条独立页(SPEC v5.0)', () => {
     await user.type(screen.getByLabelText('视频路径'), '/path/to/long.mp4');
     await user.click(screen.getByRole('button', { name: '开始拆条' }));
     expect((await screen.findAllByText(/高光片段/)).length).toBeGreaterThanOrEqual(1);
-    expect(hoisted.clipVideo).toHaveBeenCalledWith({ video_path: '/path/to/long.mp4', max_clips: 5 });
+    expect(hoisted.clipVideo).toHaveBeenCalledWith({
+      video_path: '/path/to/long.mp4', max_clips: 5, aspect_ratio: '9:16',
+    });
   });
 
   it('不再包含 Seedance 2 独立生成表单', () => {

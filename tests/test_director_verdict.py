@@ -85,6 +85,18 @@ async def test_verdict_pass_keep(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_verdict_without_quality_evidence_is_blocked(tmp_path, monkeypatch):
+    clip = tmp_path / "SH001_04_clip.mp4"
+    _make_clip(clip, "green")
+    monkeypatch.setattr("hevi.director.verdict_checks.detect_black_ratio", lambda _path: None)
+    v = await verdict_shot(
+        shot_index=3, shot_id="SH001_04", clip_path=clip, identity_score=None, vlm=None
+    )
+    assert v.passed is False
+    assert v.diagnosis_category == "quality_unverified"
+
+
+@pytest.mark.asyncio
 async def test_run_verdict_honors_upstream_degraded_shot(tmp_path):
     """2026-07-17 审计实证的静默交付路径:关键帧降级成 canon 定妆照时,clip 本身**完好**——
     画面不黑(verdict 第一项过)、身份分满分(第二项过,因为它就是那张 canon 本人)。于是 20 镜

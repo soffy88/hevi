@@ -248,6 +248,8 @@ async def quality_report(
     violations: list[str] = []
     if stats.duration <= 0:
         violations.append("成片时长为 0 / 无法探测")
+    if stats.width <= 0 or stats.height <= 0 or stats.fps <= 0:
+        violations.append("缺少可解码的视频轨或视频规格无效")
     if expected_duration is not None and abs(stats.duration - expected_duration) > duration_tol:
         violations.append(
             f"时长 {stats.duration:.2f}s 偏离预期 {expected_duration:.2f}s (容差 {duration_tol}s)"

@@ -166,7 +166,7 @@ def evaluation_from_shot_verdicts(
     """
     evidence: list[EvaluationEvidence] = []
     for verdict in verdicts:
-        if getattr(verdict, "passed", True):
+        if getattr(verdict, "passed", False):
             continue
         code = getattr(verdict, "diagnosis_category", None)
         # NEW: unknown when we cannot determine

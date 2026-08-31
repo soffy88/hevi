@@ -228,7 +228,8 @@ async def _stability_precheck(
 
         try:
             audit = await _call_vlm_json(vlm, audit_prompt, candidate_path)
-            audit_passed = bool(audit.get("passes", True))
+            passes = audit.get("passes")
+            audit_passed = passes if isinstance(passes, bool) else False
         except Exception as e:
             logger.warning("身份包 %s 候选像 v%d VLM 审调用失败,视为不通过: %s", character_id, i, e)
             audit_passed = False

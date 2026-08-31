@@ -161,6 +161,43 @@ async def remotion_render_workflow(
                 "error": f"remotion render failed: {proc.stderr[-800:]}",
                 "report_path": str(output_dir / "render_report.json"),
             }
+
+        # A zero exit code only proves that the CLI process exited normally. It
+        # does not prove that a usable media artifact was written. Verify the
+        # actual file with the same media quality primitive used by delivery
+        # paths before exposing a completed result.
+        rendered_path = Path(config.output_path)
+        if not rendered_path.is_file() or rendered_path.stat().st_size <= 0:
+            return {
+                "status": "failed",
+                "error": f"remotion render produced no media artifact: {rendered_path}",
+                "report_path": str(output_dir / "render_report.json"),
+            }
+        from hevi.video.quality_check import quality_report
+
+        measured = await quality_report(
+            rendered_path,
+            expected_resolution=(config.width, config.height),
+            require_audio=bool(input_data.narration_audio or input_data.bgm_path),
+            n_samples=4,
+        )
+        quality = {
+            "passed": measured.passed,
+            "violations": list(measured.violations),
+            "duration_s": measured.stats.duration,
+            "width": measured.stats.width,
+            "height": measured.stats.height,
+            "fps": measured.stats.fps,
+            "has_audio": measured.stats.has_audio,
+            "bytes": rendered_path.stat().st_size,
+        }
+        if not measured.passed:
+            return {
+                "status": "failed",
+                "error": "rendered media failed quality gate: " + "; ".join(measured.violations),
+                "quality": quality,
+                "report_path": str(output_dir / "render_report.json"),
+            }
         _step("render_done", 90.0)
 
         report = {
@@ -172,6 +209,7 @@ async def remotion_render_workflow(
             "fps": config.fps,
             "contract": list(CONTRACT_ITEMS.values()),
             "decision_trail": decision_trail,
+            "quality": quality,
         }
         report_path = output_dir / "render_report.json"
         report_path.write_text(

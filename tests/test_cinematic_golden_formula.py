@@ -145,4 +145,5 @@ async def test_run_cg6_animation_skips_identity(tmp_path):
                             version="", vlm=None, skip_identity=True)
     assert result.identity_passed is True
     assert result.identity_distance is None
-    assert result.passed is True                    # 动画无身份约束 → 直接过
+    # Missing ASR/VLM evidence is fail-closed; animation only skips identity.
+    assert result.passed is False

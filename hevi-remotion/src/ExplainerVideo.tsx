@@ -116,16 +116,24 @@ const VisualOverlay: React.FC<{
   if (visualType === "remotion_code") {
     return <CodeHighlightSegment codeText={typeof visualConfig?.code_text === "string" ? visualConfig.code_text : ""} language={typeof visualConfig?.language === "string" ? visualConfig.language : "text"} />;
   }
-  if (visualType === "manim_scene") {
+  if (visualType === "manim_scene" || visualType === "whiteboard" || visualType === "infographic") {
+    const fallback =
+      visualType === "whiteboard"
+        ? "白板 · 手绘笔迹"
+        : visualType === "infographic"
+          ? "信息图 · 旁白对齐"
+          : "MANIM · 代码即画面";
+    const bg = visualType === "manim_scene" ? "#1a1a2e" : "#F5EBD7";
+    const fg = visualType === "manim_scene" ? "#ffff00" : "#2a2420";
     if (!assetSrc) {
       return (
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#1a1a2e", color: "#ffff00", fontSize: 28, letterSpacing: ".08em" }}>
-          MANIM · 代码即画面
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: bg, color: fg, fontSize: 28, letterSpacing: ".08em" }}>
+          {fallback}
         </div>
       );
     }
     return (
-      <AbsoluteFill style={{ backgroundColor: "#1a1a2e" }}>
+      <AbsoluteFill style={{ backgroundColor: bg }}>
         <OffthreadVideo src={assetSrc} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
       </AbsoluteFill>
     );
@@ -159,6 +167,8 @@ const VisualOverlay: React.FC<{
     remotion_chart: "REMOTION · 数据图表",
     remotion_code: "REMOTION · 代码动画",
     manim_scene: "MANIM · 代码即画面",
+    whiteboard: "白板 · 手绘笔迹",
+    infographic: "信息图 · 旁白对齐",
   };
   return (
     <div style={{ position: "absolute", right: 48, top: 48, width: 360, minHeight: 120, padding: 24, borderRadius: 20, background: "rgba(14,14,18,.82)", border: "1px solid rgba(255,255,255,.16)", color: "#fff", fontSize: 20, letterSpacing: ".04em" }}>
@@ -193,7 +203,7 @@ export const ExplainerVideo: React.FC = () => {
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
       
       {/* ═══════ ① TITLE CARD SEQUENCE (Frame 0) ═══════ */}
-      <Sequence from={0} durationInFrames={titleCardDuration} layout="none">
+      <Sequence durationInFrames={titleCardDuration} layout="none">
         <TitleCardSequence
           title={packaging.mainTitle}
           subtitle={packaging.subtitle}
@@ -216,7 +226,10 @@ export const ExplainerVideo: React.FC = () => {
         
         const Scene = SCENE_COMPONENTS[seg.sceneType];
         const vCfg = seg.visualConfig as Record<string, unknown> | undefined;
-        const manimOwnsFrame = seg.visualType === "manim_scene";
+        const manimOwnsFrame =
+          seg.visualType === "manim_scene" ||
+          seg.visualType === "whiteboard" ||
+          seg.visualType === "infographic";
 
         return (
           <Sequence key={seg.id} from={from} durationInFrames={durationInFrames} layout="none">

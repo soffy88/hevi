@@ -198,8 +198,8 @@ async def _run_cg6(
             result.dialogue_cer = cer
             result.dialogue_passed = cer <= _DIALOGUE_CER_THRESHOLD
         except Exception as e:
-            logger.warning("镜头 %s 台词 ASR 检查失败,视为通过(P0 简化): %s", shot.shot_id, e)
-            result.dialogue_passed = True
+            logger.warning("镜头 %s 台词 ASR 检查失败,视为不通过: %s", shot.shot_id, e)
+            result.dialogue_passed = False
     else:
         result.dialogue_passed = True
 
@@ -216,11 +216,12 @@ async def _run_cg6(
             '{"passes": true/false, "violations": ["..."]}'
         )
         audit = await _call_vlm_json(vlm, audit_prompt, frame_path)
-        result.vlm_passed = bool(audit.get("passes", True))
+        passes = audit.get("passes")
+        result.vlm_passed = passes if isinstance(passes, bool) else False
         result.vlm_violations = list(audit.get("violations") or [])
     except Exception as e:
-        logger.warning("镜头 %s VLM 穿帮检查调用失败,视为通过: %s", shot.shot_id, e)
-        result.vlm_passed = True
+        logger.warning("镜头 %s VLM 穿帮检查调用失败,视为不通过: %s", shot.shot_id, e)
+        result.vlm_passed = False
 
     result.passed = bool(result.identity_passed and result.dialogue_passed and result.vlm_passed)
     return result

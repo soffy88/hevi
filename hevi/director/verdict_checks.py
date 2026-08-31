@@ -206,7 +206,12 @@ async def verdict_shot(
     # hand_safety 只记录不触发返工——本地 VLM 对手部判定太飘(实测同一好镜第0轮判崩、
     # 第1轮判好),据它 re_roll 会把好镜白白重掷、烧钱又撞限流。黑帧/身份是可靠信号,留作
     # 自动返工触发;hand_safety 进 checks_json 供人工复核。
-    if v.black_ratio is not None and v.black_ratio >= _BLACK_FAIL_RATIO:
+    if v.black_ratio is None and v.identity_score is None and v.hand_safety_ok is None:
+        # No deterministic or model evidence means UNKNOWN, never keep/PASS.
+        v.passed = False
+        v.diagnosis_category = "quality_unverified"
+        v.retake_tier = "fix_in_post"
+    elif v.black_ratio is not None and v.black_ratio >= _BLACK_FAIL_RATIO:
         v.passed = False
         v.diagnosis_category = "动作"  # 真实成片却全黑(生成返回空画面)→ 重掷
         v.retake_tier = "re_roll"

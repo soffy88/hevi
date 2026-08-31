@@ -114,7 +114,7 @@ def shot_scorecard(
     combined = identity(有锚,取全图/脸部区域两者较高值) else style else 0.5。
     best = argmax(combined)。
     passed = best identity >= identity_floor(极低阈,仅拦全废;主价值在**选对变体**,非拦门)。
-    无候选 → ValueError;有锚但全部抽帧/嵌入失败 → 退化选第一个、passed=True(不阻断)。
+    无候选 → ValueError;有锚但全部抽帧/嵌入失败 → 退化选第一个、passed=False。
     """
     if not candidate_frames:
         raise ValueError("candidate_frames must not be empty")
@@ -161,9 +161,10 @@ def shot_scorecard(
             "疑非锁定角色,建议重生成或换参考图"
         )
     if not any(r["ok"] for r in recs):
-        hints.append("全部候选抽帧/嵌入失败 → 退化选第一个")
+        hints.append("全部候选抽帧/嵌入失败 → 无法验证，阻断交付")
 
-    passed = (not has_identity_anchor) or best["identity"] >= identity_floor
+    evaluated = any(r["ok"] for r in recs)
+    passed = evaluated and ((not has_identity_anchor) or best["identity"] >= identity_floor)
     return Scorecard(
         best_frame=Path(candidate_frames[best_i]),
         best_index=best_i,
@@ -209,7 +210,10 @@ async def _vlm_score_frame(frame_path: Path, mllm: Any) -> tuple[float | None, l
         content = resp.get("content") if hasattr(resp, "get") else str(resp)
         data = json.loads(content)
         violations = [str(v) for v in (data.get("violations") or [])]
-        passes = bool(data.get("passes", True))
+        passes = data.get("passes")
+        if not isinstance(passes, bool):
+            logger.warning("scorecard: vlm response missing boolean passes field")
+            return None, []
         return (1.0 if passes else 0.3), violations
     except Exception as e:
         logger.warning("scorecard: vlm 打分失败,跳过(%s)", e)

@@ -174,7 +174,7 @@ async def _score_frame(
     """返回 (clip_score, character_consistency_or_None, passed_vlm_audit)。"""
     clip_score = 0.0
     consistency: float | None = None
-    passed_audit = True
+    passed_audit = False
 
     try:
         frame_vec = subject_embed(image_path=frame_path, kind="style")
@@ -190,9 +190,10 @@ async def _score_frame(
     try:
         audit_prompt = _ERA_AUDIT_PROMPT_TEMPLATE.format(visual_prompt=shot.visual_prompt)
         audit = await _call_vlm_json(vlm, audit_prompt, frame_path)
-        passed_audit = bool(audit.get("passes", True))
+        passes = audit.get("passes")
+        passed_audit = passes if isinstance(passes, bool) else False
     except Exception as e:
-        logger.warning("镜头 %s VLM 年代审调用失败,视为通过: %s", shot.shot_id, e)
+        logger.warning("镜头 %s VLM 年代审调用失败,视为不通过: %s", shot.shot_id, e)
 
     return clip_score, consistency, passed_audit
 

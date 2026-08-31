@@ -7,6 +7,7 @@ instead of merely importing or instantiating models.
 
 from __future__ import annotations
 
+import wave
 from pathlib import Path
 
 import pytest
@@ -619,6 +620,10 @@ async def test_h3_verdict_wardrobe_and_priority_decisions(
     identity = await h3_checks.verdict_h3_shot(shot_id="s2", clip_path=clip, identity_score=0.1)
     assert identity.retake_tier == "rewrite"
 
+    unknown = await h3_checks.verdict_h3_shot(shot_id="s3", clip_path=clip, identity_score=None)
+    assert unknown.passed is False
+    assert unknown.diagnosis_category == "quality_unverified"
+
 
 def _audio_streams() -> list[dict[str, str]]:
     return [{"codec_type": "video", "duration": "2"}, {"codec_type": "audio", "duration": "2"}]
@@ -861,9 +866,9 @@ def test_openshorts_atoms_and_skills_build_complete_deliverables(
         lambda *_args, **_kwargs: [SceneDetection(start_s=0, end_s=20, headline="hook", viral_score=9)],
     )
     clips = oskill.generate_clips("video", reframing=oprim.ReframingMode.TRACK, target_clips=1, with_hook_text=True)
-    assert clips.status == "completed" and clips.clips[0].effects["hook_text"]
+    assert clips.status == "planned" and clips.clips[0].effects["hook_text"]
     short = oskill.generate_ai_short("product", url="https://example.test", publish_platforms=["tiktok"])
-    assert short.status == "completed" and short.publish_status == "ready"
+    assert short.status == "blocked" and short.publish_status == ""
     tickets = oskill.create_publish_tickets(short, ["tiktok", "youtube"])
     assert len(tickets) == 2 and tickets[0].media_path == short.composite_path
     yt: YouTubeStudioJob = oskill.generate_youtube_package("video", source_title="Topic")
@@ -910,7 +915,7 @@ async def test_montage_atoms_and_stage_directors_persist_checkpoints(tmp_path: P
     assert oskill.checkpoint_approve(checkpoint, "rejected").human_approval == "rejected"
 
     assert oskill.stage_intake({"topic": "T", "slate_id": "s"}, {})["topic"] == "T"
-    assert oskill.stage_research({"topic": "T"}, {})["research_status"] == "completed"
+    assert oskill.stage_research({"topic": "T"}, {})["research_status"] == "planned"
     assert oskill.stage_watch({"topic": "T"}, {})["watch_skipped"] is False
     assert oskill.stage_score({"provider_candidates": ["p"]}, {})["video_provider"] == "p"
     assert oskill.stage_script({"topic": "T"}, {})["script_status"] == "generated"
@@ -919,7 +924,7 @@ async def test_montage_atoms_and_stage_directors_persist_checkpoints(tmp_path: P
     assert assets["bound_assets"][0]["status"] == "bound"
     edit = oskill.stage_edit_plan({"script_lines": [{"duration_s": 2}]}, {})
     assert edit["edit_plan"]["total_s"] == 2
-    assert oskill.stage_mix({}, {})["mix_status"] == "pending"
+    assert oskill.stage_mix({}, {})["mix_status"] == "skipped"
     timeline = oskill.stage_timeline({"topic": "T", "edit_plan": edit}, {})
     assert timeline["timeline_status"] == "created"
     assert oskill.stage_runtime({"topic": "T", "render_runtime": "hyperframes"}, {})["runtime_pick"]["compiled"]
@@ -988,6 +993,7 @@ def test_krillin_atoms_keep_artifact_paths_and_manifest_round_trip(
 @pytest.mark.asyncio
 async def test_voicepro_asr_translation_tts_and_clone_paths(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     from hevi.voicepro_asr import oprim as asr
     from hevi.voicepro_asr.schemas import ASRResult, make_asr_config
@@ -998,45 +1004,56 @@ async def test_voicepro_asr_translation_tts_and_clone_paths(
 
     monkeypatch.setattr(asr.subprocess, "run", lambda *_args, **_kwargs: None)
     assert asr.normalize_audio("a.wav", "b.wav") == "b.wav"
-    cpp = await asr.transcribe_whisper_cpp("a.wav", make_asr_config())
-    aliyun = await asr.transcribe_aliyun_asr("a.wav", make_asr_config())
-    openai = await asr.transcribe_openai_whisper("a.wav", make_asr_config())
-    assert cpp.cer == 1.0 and aliyun.model_used.startswith("aliyun") and openai.model_used.startswith("openai")
+    with pytest.raises(RuntimeError, match="whisper.cpp is not configured"):
+        await asr.transcribe_whisper_cpp("a.wav", make_asr_config())
+    with pytest.raises(RuntimeError, match="Aliyun ASR adapter"):
+        await asr.transcribe_aliyun_asr("a.wav", make_asr_config())
+    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
+        await asr.transcribe_openai_whisper("a.wav", make_asr_config())
     assert asr.verify_asr_result(ASRResult(text="hello"), "hello")["passed"]
     assert not asr.verify_asr_result(ASRResult(text="wrong"), "hello")["passed"]
     assert asr.verify_asr_result(ASRResult(cer=0.01))["passed"]
 
-    assert (await translate.translate_azure_translator("hello", target_lang="zh")).translated_text == "hello"
+    with pytest.raises(RuntimeError, match="AZURE_TRANSLATOR_KEY"):
+        await translate.translate_azure_translator("hello", target_lang="zh")
     assert translate.apply_terminology("a b", {"a": "A", "b": "B"}) == "A B"
     assert translate.apply_terminology("x", {}) == "x"
 
-    result = await translate.translate_text("hello", translate.make_translate_config("azure_translator"))
-    assert result.provider.value == "azure_translator"
-    assert (await translate.translate_text("hello", translate.make_translate_config("azure_translator"))).source_text == "hello"
+    with pytest.raises(RuntimeError, match="AZURE_TRANSLATOR_KEY"):
+        await translate.translate_text("hello", translate.make_translate_config("azure_translator"))
 
-    for provider, expected in (
-        (TTSProvider.MINIMAX_TTS, "minimax"),
-        (TTSProvider.COSYVOICE_TTS, "cosyvoice"),
-        (TTSProvider.F5_TTS, "f5"),
-        (TTSProvider.KOKORO_TTS, "kokoro"),
-        (TTSProvider.AZURE_TTS, "azure"),
+    for provider in (
+        TTSProvider.MINIMAX_TTS,
+        TTSProvider.COSYVOICE_TTS,
+        TTSProvider.F5_TTS,
+        TTSProvider.KOKORO_TTS,
+        TTSProvider.AZURE_TTS,
     ):
-        synthesized = await tts.synthesize_tts("hello", make_tts_config(provider))
-        assert expected in synthesized.provider.value
+        with pytest.raises(RuntimeError):
+            await tts.synthesize_tts("hello", make_tts_config(provider))
     with pytest.raises(RuntimeError, match="edge-tts"):
         monkeypatch.setattr(tts, "synthesize_edge_tts", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("edge-tts unavailable")))
         await tts.synthesize_tts("hello", make_tts_config(TTSProvider.EDGE_TTS))
 
-    assert clone.extract_voiceprint("ref.wav")["voiceprint"]
+    reference = tmp_path / "ref.wav"
+    with wave.open(str(reference), "wb") as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(16_000)
+        stream.writeframes(b"\x00\x01" * 16_000 * 3)
+    assert clone.extract_voiceprint(str(reference))["voiceprint"]
     assert clone.preprocess_text_for_cosyvoice("hello") == "hello"
-    zero = clone.cosyvoice_zero_shot("hello", "ref.wav")
-    cross = clone.cosyvoice_cross_lingual("hello", "ref.wav", "hello", "en")
-    instruct = clone.cosyvoice_instruct("hello", "ref.wav", "calm")
-    f5 = clone.f5_tts_zero_shot("hello", "ref.wav")
-    assert zero.similarity_score == 0.85 and cross.mode.value == "cross_lingual"
-    assert instruct.mode.value == "instruct" and f5.similarity_score == 0.90
-    assert clone.merge_voice_clones(["a.wav", "b.wav"]).endswith(".wav")
-    assert clone.verify_clone_quality("a", "b")["quality"] == "good"
+    for operation in (
+        lambda: clone.cosyvoice_zero_shot("hello", str(reference)),
+        lambda: clone.cosyvoice_cross_lingual("hello", str(reference), "hello", "en"),
+        lambda: clone.cosyvoice_instruct("hello", str(reference), "calm"),
+        lambda: clone.f5_tts_zero_shot("hello", str(reference), "hello"),
+    ):
+        with pytest.raises(RuntimeError):
+            operation()
+    with pytest.raises(FileNotFoundError, match="voice clone input"):
+        clone.merge_voice_clones(["a.wav", "b.wav"])
+    assert clone.verify_clone_quality(str(reference), str(reference))["quality"] == "measured"
 
 
 def test_erduo_atoms_and_skills_enforce_canary_and_render_lineage(tmp_path: Path) -> None:
@@ -1248,7 +1265,10 @@ async def _done() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mpt_routes_map_provider_responses_without_leaking_client_details() -> None:
+async def test_mpt_routes_map_provider_responses_without_leaking_client_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import hevi.api.routers.mpt as mpt_router
     from hevi.api.routers.mpt import (
         CrossPostRequest,
         GenerateVideoRequest,
@@ -1262,6 +1282,11 @@ async def test_mpt_routes_map_provider_responses_without_leaking_client_details(
         search_materials,
         submit_job_from_hevi,
     )
+
+    async def ready(_provider_id: str, *, timeout_s: float) -> dict[str, object]:
+        return {"id": "mpt", "configured": True, "reachable": True, "ready": True}
+
+    monkeypatch.setattr(mpt_router, "probe_provider", ready)
 
     class Client:
         async def __aenter__(self) -> Client:
@@ -1296,9 +1321,9 @@ async def test_mpt_routes_map_provider_responses_without_leaking_client_details(
     assert posted["ok"]
     analyzed = await analyze_reference_video(ReferenceVideoRequest(url="u"), client)
     assert analyzed.transcript == "t"
-    assert await health_check() == {"status": "ok", "service": "mpt-integration"}
-
-    import hevi.api.routers.mpt as mpt_router
+    health = await health_check()
+    assert health["status"] == "ok"
+    assert health["provider"]["ready"] is True
 
     async def submit(**_kwargs: object) -> str:
         return "mpt-internal"

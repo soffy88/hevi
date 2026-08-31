@@ -104,7 +104,7 @@ async def execute_shortdrama_task(task: dict[str, Any], pool: Any) -> dict[str, 
         "motion_fallback": verdict.motion_fallback,
         "delivery_promise": promise,
     }
-    passed = sum(1 for s in shots if bool(s.get("passed", True)))
+    passed = sum(1 for s in shots if s.get("passed") is True)
     return {
         **task,
         "status": verdict.status,

@@ -103,7 +103,7 @@ export const HandDrawnDiary: React.FC<HandDrawnDiaryProps> = ({
   const beatFrames = Math.round(BEAT_SECONDS * fps);
   return (
     <AbsoluteFill style={{ background: paperColor, fontFamily: 'system-ui' }}>
-      <Sequence from={0} durationInFrames={Math.round(fps)}>
+      <Sequence durationInFrames={Math.round(fps)}>
         <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
           <p style={{ color: accentColor, fontSize: 40, fontWeight: 800, letterSpacing: '0.2em' }}>
             {title || '手绘日记'}

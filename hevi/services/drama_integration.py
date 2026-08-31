@@ -226,32 +226,31 @@ class DramaIntegration:
     async def review(self, plan_id: str) -> QualityEvaluation:
         """审查 → P0-B quality gate"""
         from hevi.quality import GatePolicy
-        
-        evidence = []
-        # 基于计划生成 minimal evidence
+
+        # 计划元数据不能冒充成片级评估证据。真正的交付审查必须由带有
+        # artifact_id 的 evaluator 在 artifact 上产生 evidence；在此之前保持
+        # UNKNOWN，标准门会 fail-closed。
         from hevi.quality.evidence import EvaluationEvidence
 
-        for constraint_id, score, details in (
-            ("structure", 0.8, "Episode structure sound"),
-            ("content", 0.7, "Content coherent"),
-        ):
-            evidence.append(
-                EvaluationEvidence(
-                    id=f"{plan_id}:{constraint_id}",
-                    attempt_id="",
-                    artifact_id="",
-                    constraint_id=constraint_id,
-                    evaluator_id="DELIVERY_INTEGRITY",
-                    evaluator_version="drama-skills",
-                    metric="DELIVERY_INTEGRITY",
-                    passed=True,
-                    score=score,
-                    details={"message": details},
-                )
+        evidence = [
+            EvaluationEvidence(
+                id=f"{plan_id}:artifact-required",
+                attempt_id="",
+                artifact_id="",
+                constraint_id="delivery-artifact",
+                evaluator_id="DELIVERY_INTEGRITY",
+                evaluator_version="drama-skills",
+                metric="DELIVERY_INTEGRITY",
+                passed=None,
+                score=None,
+                details={
+                    "reason": "artifact_required_for_delivery_review",
+                    "plan_id": plan_id,
+                },
             )
-        
+        ]
         policy = GatePolicy.for_profile("standard")
-        return QualityEvaluation.from_evidence(evidence, policy) if evidence else QualityEvaluation(passed=True, score=1.0)
+        return QualityEvaluation.from_evidence(evidence, policy)
     
     # ============ 9. short-drama-develop ============
     # 系列开发

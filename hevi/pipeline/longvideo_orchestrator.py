@@ -1138,7 +1138,16 @@ async def orchestrate_longvideo(
             async def _passthrough_consistency_fn(*, candidate_frames: Any, **_kw: Any) -> Any:
                 # 单镜头直接采纳首个候选,跳过 mllm 帧一致性(视觉-LLM)调用。
                 first = candidate_frames[0] if candidate_frames else None
-                return SimpleNamespace(passed=True, best_frame=first)
+                # 这是“无跨镜一致性检查”的非适用路径，不是“没有候选也算
+                # 成功”。至少要有一个真实落盘候选才能继续正式装配。
+                usable = False
+                if first is not None:
+                    try:
+                        candidate = Path(first)
+                        usable = candidate.is_file() and candidate.stat().st_size > 0
+                    except (OSError, TypeError, ValueError):
+                        usable = False
+                return SimpleNamespace(passed=usable, best_frame=first)
 
             _providers["select_ref_fn"] = _noop_select_ref_fn
             _providers["consistency_fn"] = _passthrough_consistency_fn

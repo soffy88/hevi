@@ -75,7 +75,7 @@ def review(
         if idx is None:
             continue
         score = s.get("consistency_score")
-        if not s.get("passed", True):
+        if not s.get("passed", False):
             diagnosis[idx] = REFERENCE_MISMATCH
             hard[idx] = f"[{REFERENCE_MISMATCH}] 镜头未过一致性校验,重生成"
         elif score is not None and score < consistency_floor:
@@ -94,7 +94,7 @@ def review(
 
     regen: dict[int, str] = {**hard, **soft}
 
-    quality_ok = quality is None or bool(quality.get("passed", True))
+    quality_ok = quality is not None and quality.get("passed") is True
     if not quality_ok and quality is not None:
         reasons.append(f"整片体检不过:{quality.get('violations', [])}")
     if regen:

@@ -187,7 +187,7 @@ async def test_talking_face_falls_back_when_no_longcat_model(
 async def test_talking_face_engine_501_degrades(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """引擎声明 longcat 可用但推理 501 → 捕获后走占位降级。"""
+    """真实 LongCat 失败时必须阻断，不能静默交付占位视频。"""
     monkeypatch.setenv("TALKING_FACE_ENGINE", "longcat")
     image = _fake_image(tmp_path)
     audio = _fake_audio(tmp_path)
@@ -206,10 +206,8 @@ async def test_talking_face_engine_501_degrades(
             _placeholder_writer(out),
         ),
     ):
-        result = await generate_talking_face(
-            image_path=image, audio_path=audio, output_path=out
-        )
-    assert result == out
+        with pytest.raises(TalkingFaceUnavailable, match="引擎无 LongCat"):
+            await generate_talking_face(image_path=image, audio_path=audio, output_path=out)
 
 
 @pytest.mark.asyncio

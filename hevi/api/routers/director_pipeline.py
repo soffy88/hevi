@@ -72,6 +72,7 @@ from hevi.director.scene_stage import generate_scene_stage_draft, link_shots_to_
 from hevi.director.scene_stage_lint import lint_scene_stage
 from hevi.director.screenplay import generate_screenplay_draft
 from hevi.director.shot_list import generate_shot_list_draft
+from hevi.director.shuohao_gates import lint_shuohao_storyboard
 from hevi.director.tongjian_render import render_director_episode
 from hevi.director.verdict_checks import ShotVerdict, verdict_shot
 from hevi.production.artifacts import ArtifactManifest
@@ -125,6 +126,7 @@ def _record_shot_lints(
         findings.extend(lint_scene_stage(shot_list, scene_stage))
     findings.extend(lint_h3_cut_budget(shot_list))
     findings.extend(lint_h3_vocab(shot_list))
+    findings.extend(lint_shuohao_storyboard(shot_list, scene_stage))
     rec["scene_stage_lint"] = [asdict(f) for f in findings]
     append_gate_log(None, gate_log_entries(source="director", findings=findings))
 
@@ -2429,7 +2431,7 @@ async def _run_director_via_tongjian(
                 task_id,
                 n_failed,
                 len(shots),
-                [s.get("diagnosis_category") for s in shots if not s.get("passed", True)][:5],
+                [s.get("diagnosis_category") for s in shots if s.get("passed") is not True][:5],
             )
         await task_repo.update_task(
             task_id,

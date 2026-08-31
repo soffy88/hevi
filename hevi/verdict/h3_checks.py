@@ -338,7 +338,12 @@ async def verdict_h3_shot(
 
     # ── 决策 ──
     black = v.checks["black"]
-    if black is not None and black >= _BLACK_FAIL_RATIO:
+    if black is None and static_ratio is None and identity_score is None:
+        # No deterministic or model evidence means UNKNOWN, never keep/PASS.
+        v.passed = False
+        v.diagnosis_category = "quality_unverified"
+        v.retake_tier = "fix_in_post"
+    elif black is not None and black >= _BLACK_FAIL_RATIO:
         v.passed = False
         v.diagnosis_category = "动作"  # 全黑(生成返回空画面)→ 重掷
         v.retake_tier = "re_roll"
