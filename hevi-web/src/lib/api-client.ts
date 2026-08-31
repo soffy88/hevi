@@ -699,7 +699,7 @@ export const voiceStudioApi = {
 
 export const productionV2Api = {
   seedanceGenerate: (body: { prompt: string; image_url?: string; duration_s?: number; aspect_ratio?: string }) => authedReq<{ task_id: string; status: string }>('/api/production/v2/seedance/generate', { method: 'POST', body: JSON.stringify(body) }),
-  clipVideo: (body: { video_path: string; strategy?: string; max_clips?: number }) => authedReq<{ task_id: string; status: string; clips?: Array<Record<string, unknown>> }>('/api/production/v2/clip-video', { method: 'POST', body: JSON.stringify(body) }),
+  clipVideo: (body: { video_path: string; strategy?: string; max_clips?: number; aspect_ratio?: string }) => authedReq<{ task_id: string; status: string; clips?: Array<Record<string, unknown>> }>('/api/production/v2/clip-video', { method: 'POST', body: JSON.stringify(body) }),
   listRecipes: () => authedReq<{ recipes: Array<{ name: string; description: string; steps: number }> }>('/api/production/v2/recipes'),
   getRecipe: (name: string) => authedReq<{ name: string; description: string; steps: Array<Record<string, unknown>> }>(`/api/production/v2/recipes/${name}`),
   executeRecipe: (name: string, body: { params: Record<string, unknown> }) => authedReq<{ task_id: string; status: string }>(`/api/production/v2/recipes/${name}/execute`, { method: 'POST', body: JSON.stringify(body) }),

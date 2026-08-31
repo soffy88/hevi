@@ -4,6 +4,7 @@ version = "6.0.0"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.115",
+    "mcp>=1.28.1,<2.0",
     "uvicorn[standard]>=0.32",
     "pydantic[email]>=2.10",
     "pydantic-settings>=2.6",
