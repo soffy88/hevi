@@ -11,10 +11,7 @@ logger = logging.getLogger(__name__)
 
 LESSON_TO_EVENT_CONTRACT: dict[str, str | None] = {
     "战国时期的社会变化": str(
-        Path(__file__).resolve().parents[3]
-        / "stratum"
-        / "docs"
-        / "history"
+        Path(__file__).resolve().parent
         / "contracts"
         / "sample.sanjiafenjin.json"
     ),

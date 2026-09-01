@@ -1,0 +1,50 @@
+{
+  "contract_version": "v0.1",
+  "event": {
+    "event_id": "ev:jinyang-zhizhan",
+    "title": "晋阳之战（智伯之亡）",
+    "mainline_account_ref": "ac:jinyang-shiji"
+  },
+  "accounts": [
+    {
+      "account_id": "ac:jinyang-shiji",
+      "source_id": "src:shiji",
+      "locator": {"book": "史记", "chapter": "赵世家"},
+      "extraction": {
+        "actor_claims": [
+          "智伯率韩魏攻赵，围晋阳、引水灌城",
+          "韩魏与赵合谋，杀智伯，尽灭智氏，三分其地"
+        ]
+      }
+    },
+    {
+      "account_id": "ac:jinyang-zztj",
+      "source_id": "src:zztj",
+      "locator": {"book": "资治通鉴", "chapter": "周纪一"},
+      "extraction": {
+        "actor_claims": [
+          "智伯攻赵、围晋阳，韩魏阴与赵通，共灭智伯"
+        ]
+      }
+    },
+    {
+      "account_id": "ac:jinyang-zhanguoce",
+      "source_id": "src:zhanguoce",
+      "locator": {"book": "战国策", "chapter": "赵策一"},
+      "extraction": {
+        "actor_claims": [
+          "知伯索地，赵襄子拒，张孟谈说韩魏反知氏"
+        ]
+      }
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "cf:jinyang-independence",
+      "presentation_hint": "主线+角标",
+      "independence_analysis": {
+        "reasoning": "史记为主线，资治通鉴为派生述本，战国策作旁证。"
+      }
+    }
+  ]
+}
