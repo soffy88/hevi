@@ -857,3 +857,120 @@ async def test_openai_audio_facade_and_asr_adapters_return_real_shapes(
         )["format"]
         == "text"
     )
+
+
+@pytest.mark.asyncio
+async def test_stream_edit_routes_expose_provider_unavailable_truthfully(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi import HTTPException
+
+    from hevi.api.routers import stream_edit as routes
+    from hevi.joyai.omodul.stream_edit import reset_sessions
+
+    async def unavailable(*_args: object, **_kwargs: object) -> dict[str, object]:
+        return {"ready": False, "error": "not configured"}
+
+    monkeypatch.setattr(routes, "probe_provider", unavailable)
+    capabilities = await routes.stream_capabilities()
+    assert capabilities["available"] is False
+    assert capabilities["provider_runtime"]["ready"] is False
+    budget = await routes.stream_budget()
+    assert budget["frames"] == 24
+    with pytest.raises(HTTPException):
+        await routes.stream_budget(width=100)
+    reset_sessions()
+    created = await routes.create_stream_session(routes.StreamEditCreateRequest(prompt="edit"), {})
+    assert created["status"] == "blocked"
+    assert "unavailable" in created["last_error"].lower()
+    listed = await routes.sessions({})
+    assert listed["total"] == 1
+    current = await routes.stream_session(created["session_id"], {})
+    assert current["session_id"] == created["session_id"]
+    finished = await routes.finish_stream_session(created["session_id"], {})
+    assert finished["status"] == "completed"
+    with pytest.raises(HTTPException):
+        await routes.stream_session("missing", {})
+
+
+def test_digital_human_plan_contracts_are_serializable(tmp_path: Path) -> None:
+    from hevi.digital_human.omodul import (
+        build_full_job_plan,
+        init_job,
+        plan_composition,
+        plan_delivery,
+        plan_generation,
+        plan_presenter_generation,
+        plan_visual,
+    )
+
+    image = tmp_path / "presenter.png"
+    image.write_bytes(b"image")
+    job_dir = tmp_path / "job"
+    job = init_job(
+        str(job_dir),
+        str(image),
+        topic="历史讲解",
+        rights_confirmed=True,
+        adult_presenter_confirmed=True,
+        remote_upload_approved=True,
+        voice_clone_approved=True,
+    )
+    assert (job_dir / "job.json").is_file()
+    generation = plan_generation(job)
+    visual = plan_visual(job, 12.0)
+    presenter = plan_presenter_generation(job)
+    composition = plan_composition(job)
+    delivery = plan_delivery(job, "render.mp4", str(job_dir / "outputs"))
+    full = build_full_job_plan(job, 12.0, "render.mp4", str(job_dir / "outputs"))
+    assert generation["target_status"] == "audio_locked"
+    assert visual["target_status"] == "visual_plan_locked"
+    assert presenter["target_status"] == "presenter_generated"
+    assert composition["target_status"] == "composition_checked"
+    assert delivery["target_status"] == "verified"
+    assert len(full["phases"]) == 5 and full["state_machine"][-1] == "verified"
+
+
+@pytest.mark.asyncio
+async def test_montage_stage_contracts_pause_and_resume_without_fake_media(
+    tmp_path: Path,
+) -> None:
+    from hevi.montage.omodul.agentic import (
+        AgenticMontageConfig,
+        _idea,
+        _proposal,
+        _rig_plan,
+        _scene_plan,
+        agentic_montage_workflow,
+    )
+
+    assert _proposal({"topic": "城市场景"}, {})["proposal_status"] == "planned"
+    assert _idea({}, {})["status"] == "failed"
+    scene = _scene_plan({"script_lines": ["开场", {"text": "转折", "duration_s": 2}]}, {})
+    assert len(scene["scene_plan"]) == 2
+    assert _rig_plan({"character_design": {"subjects": ["hero"]}}, {})["rig_plan"]["subjects"] == [
+        "hero"
+    ]
+    report = await agentic_montage_workflow(
+        AgenticMontageConfig(
+            pipeline="framework-smoke",
+            execute=False,
+            auto_approve=True,
+        ),
+        {
+            "topic": "demo",
+            "stage_handlers": {
+                "research": lambda _data, _context: {"research": {"context": "evidence"}},
+                "script": lambda _data, _context: {"script_lines": ["demo"]},
+            },
+        },
+        tmp_path / "montage",
+    )
+    assert report["status"] == "planned"
+    assert (tmp_path / "montage" / "montage_report.json").is_file()
+    blocked = await agentic_montage_workflow(
+        {"pipeline": "framework-smoke", "estimated_cost_usd": 10, "budget_usd": 1},
+        {"topic": "demo"},
+        tmp_path / "budget",
+    )
+    assert blocked["status"] == "blocked" and blocked["stage"] == "preflight"
