@@ -33,20 +33,22 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: hevi
-          MINIO_ROOT_PASSWORD: hevi1234
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd="curl -sf http://localhost:9000/minio/health/live || exit 1"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=20
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start object store
+        run: |
+          docker run -d --name hevi-ci-minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=hevi \
+            -e MINIO_ROOT_PASSWORD=hevi1234 \
+            minio/minio:latest server /data
+          for attempt in {1..30}; do
+            curl -fsS http://127.0.0.1:9000/minio/health/live && exit 0
+            sleep 2
+          done
+          docker logs hevi-ci-minio
+          exit 1
 
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
