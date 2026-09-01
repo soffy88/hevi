@@ -1,3 +1,31 @@
 [submodule "services/voicebox"]
 	path = services/voicebox
 	url = https://github.com/jamiepine/voicebox.git
+
+[submodule "docs/ref-repos/AI-Youtube-Shorts-Generator"]
+	path = docs/ref-repos/AI-Youtube-Shorts-Generator
+	url = https://github.com/Anil-matcha/AI-Youtube-Shorts-Generator.git
+
+[submodule "docs/ref-repos/FireRed-OpenStoryline"]
+	path = docs/ref-repos/FireRed-OpenStoryline
+	url = https://github.com/FireRedTeam/FireRed-OpenStoryline.git
+
+[submodule "docs/ref-repos/MoneyPrinterTurbo"]
+	path = docs/ref-repos/MoneyPrinterTurbo
+	url = https://github.com/harry0703/MoneyPrinterTurbo.git
+
+[submodule "docs/ref-repos/claude-code-video-toolkit"]
+	path = docs/ref-repos/claude-code-video-toolkit
+	url = https://github.com/digitalsamba/claude-code-video-toolkit.git
+
+[submodule "docs/ref-repos/drama-skills"]
+	path = docs/ref-repos/drama-skills
+	url = https://github.com/zenstory-ai/drama-skills.git
+
+[submodule "docs/ref-repos/remotion-skills"]
+	path = docs/ref-repos/remotion-skills
+	url = https://github.com/remotion-dev/skills.git
+
+[submodule "docs/ref-repos/rnskill"]
+	path = docs/ref-repos/rnskill
+	url = https://github.com/Pluviobyte/rnskill.git
