@@ -1,0 +1,573 @@
+"""Behavioral coverage for the provider-neutral HEVI capability contracts.
+
+These tests exercise deterministic planning, validation, provider-unavailable
+states, and real local artifact checks.  They never turn an unavailable remote
+provider into a successful artifact.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import subprocess
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+
+import pytest
+
+
+def test_visual_asset_planning_and_truthful_execution(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.creative_assets.omodul.runtime import execute_visual_asset, plan_visual_asset
+    from hevi.creative_assets.oprim.contracts import VisualAssetRequest
+    from hevi.creative_assets.oskill.compiler import compile_visual_prompt, default_aspect_ratio
+
+    missing = VisualAssetRequest(
+        kind="unknown", subject="", platform="unknown", reference_path="missing.png"
+    )
+    blocked = plan_visual_asset(missing)
+    assert blocked.status == "blocked" and blocked.errors
+    assert default_aspect_ratio("xiaohongshu") == "3:4"
+    request = VisualAssetRequest(
+        kind="cover",
+        subject="a red lantern",
+        platform="youtube",
+        style="ink",
+        negative_prompt="text",
+    )
+    assert "ink wash" in compile_visual_prompt(request)
+    planned = asyncio.run(
+        execute_visual_asset(request, output_path=tmp_path / "cover.png", provider="")
+    )
+    assert planned["status"] == "blocked" and not (tmp_path / "cover.png").exists()
+    prompt_only = asyncio.run(
+        execute_visual_asset(
+            VisualAssetRequest(kind="thumbnail", subject="lantern", prompt_only=True),
+            output_path=tmp_path / "prompt.png",
+            provider="local",
+        )
+    )
+    assert prompt_only["status"] == "planned" and prompt_only["output_path"] is None
+
+    class Registry:
+        @staticmethod
+        def image_gen(_name: str):
+            async def generate(**kwargs: object) -> dict[str, str]:
+                output = kwargs["output_path"]
+                assert isinstance(output, Path)
+                output.write_bytes(b"real-test-artifact")
+                return {"artifact": str(output)}
+
+            return generate
+
+    import obase.provider_registry as registry_module
+
+    monkeypatch.setattr(registry_module.ProviderRegistry, "get", lambda: Registry())
+    completed = asyncio.run(
+        execute_visual_asset(request, output_path=tmp_path / "completed.png", provider="local")
+    )
+    assert completed["status"] == "completed"
+    assert Path(completed["output_path"]).read_bytes() == b"real-test-artifact"
+
+
+def test_talkcraft_and_voice_agent_plans_are_explicit() -> None:
+    from hevi.talkcraft.omodul.runtime import compile_talkcraft_plan
+    from hevi.talkcraft.oprim.contracts import TalkcraftRequest, TalkCue
+    from hevi.talkcraft.oskill.compiler import choose_motion_cards
+    from hevi.voice_agent.omodul.runtime import compile_voice_pipeline, voice_agent_capabilities
+    from hevi.voice_agent.oprim.contracts import VoiceAgentRequest, VoiceStage
+    from hevi.voice_agent.oskill.compiler import (
+        default_voice_request,
+        natural_language_voice_request,
+    )
+
+    cue = TalkCue("c1", "hello", 0, 2, speaker="narrator")
+    plan = compile_talkcraft_plan(TalkcraftRequest(cues=(cue,)))
+    assert plan["status"] == "planned" and plan["cards"]
+    assert compile_talkcraft_plan(TalkcraftRequest())["status"] == "blocked"
+    assert choose_motion_cards([], card_limit=2) == []
+    assert len(choose_motion_cards([{"cue_id": "1", "start_s": 0, "end_s": 1}], card_limit=1)) == 1
+
+    default = default_voice_request()
+    assert len(default.stages) == 5
+    nl = natural_language_voice_request("用 Voicebox 多智能体并按住说话后粘贴听写")
+    assert nl.stages[-1].engine == "multi_agent_router"
+    assert nl.stages[3].engine == "voicebox" and nl.hold_to_speak and nl.paste_transcript
+    invalid = VoiceAgentRequest(
+        transport="websocket",
+        paste_transcript=True,
+        stages=(VoiceStage("x", "bad", ""), VoiceStage("x", "tts", "tts")),
+    )
+    blocked = compile_voice_pipeline(invalid)
+    assert blocked.status == "blocked" and blocked.errors
+    planned = compile_voice_pipeline(default)
+    assert planned.status == "planned" and planned.edges[0] == ("mic", "transcribe")
+    assert voice_agent_capabilities()["available"] is False
+
+
+def test_video_catcher_local_and_remote_boundaries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import hevi.video_catcher.omodul.runtime as runtime
+    from hevi.video_catcher.oprim.contracts import VideoCatchRequest
+    from hevi.video_catcher.oskill.compiler import format_selector, select_source_mode
+
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"nonempty")
+    monkeypatch.setattr(
+        runtime,
+        "_probe",
+        lambda _path: {
+            "verified": True,
+            "probe": {
+                "format": {"duration": "2.5"},
+                "streams": [{"codec_type": "video", "width": 320, "height": 240}],
+            },
+        },
+    )
+    request = VideoCatchRequest(source=str(source), quality="720p")
+    discovery = runtime.discover_video(request)
+    assert discovery.status == "discovered" and discovery.duration_s == 2.5
+    local = runtime.download_video(request)
+    assert local["status"] == "completed"
+    assert format_selector(request).startswith("bestvideo[height<=720]")
+    assert select_source_mode(VideoCatchRequest("https://example.test/a.m3u8")) == "manifest"
+    assert (
+        format_selector(VideoCatchRequest("https://example.test", merge_audio=False))
+        == "bestvideo+bestaudio/best"
+        or format_selector(VideoCatchRequest("https://example.test", merge_audio=False)) == "best"
+    )
+
+    invalid = runtime.discover_video(VideoCatchRequest(source=""))
+    assert invalid.status == "blocked"
+    monkeypatch.setattr(runtime.shutil, "which", lambda _name: None)
+    remote = VideoCatchRequest("https://example.test/video", output_dir=str(tmp_path / "remote"))
+    assert runtime.discover_video(remote).status == "blocked"
+    assert runtime.download_video(remote)["status"] == "blocked"
+
+    monkeypatch.setattr(runtime.shutil, "which", lambda _name: "/usr/bin/yt-dlp")
+
+    def run_download(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        if "--dump-single-json" in command:
+            return SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps(
+                    {
+                        "title": "demo",
+                        "duration": 3,
+                        "width": 640,
+                        "height": 360,
+                        "formats": [{"format_id": "1", "ext": "mp4", "height": 360}],
+                        "subtitles": {"en": []},
+                        "extractor": "test",
+                        "webpage_url": "https://example.test/video",
+                    }
+                ),
+                stderr="",
+            )
+        output_dir = Path(command[command.index("-o") + 1]).parent
+        output_dir.joinpath("demo.mp4").write_bytes(b"downloaded")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(runtime.subprocess, "run", run_download)
+    discovered = runtime.discover_video(remote)
+    assert discovered.status == "discovered" and discovered.formats[0]["format_id"] == "1"
+    downloaded = runtime.download_video(remote)
+    assert downloaded["status"] == "completed"
+    monkeypatch.setattr(
+        runtime.subprocess,
+        "run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(subprocess.TimeoutExpired("yt-dlp", 1)),
+    )
+    assert (
+        runtime.download_video(
+            VideoCatchRequest("https://example.test/timeout", output_dir=str(tmp_path / "timeout"))
+        )["status"]
+        == "failed"
+    )
+
+
+def test_previs_longvideo_and_pipeline_contracts(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hevi.longvideo.omodul.runtime import compile_longvideo_plan, longvideo_capabilities
+    from hevi.longvideo.oprim.contracts import LongVideoRequest
+    from hevi.previs.omodul.runtime import compile_previs_scene
+    from hevi.previs.oprim.contracts import CameraCue, CastItem, PrevisScene, TimelineCue
+    from hevi.previs.oskill.compiler import camera_from_instruction
+    from hevi.production.multimodal_refs import reference_grid
+    from hevi.production.pipelines.omodul.runtime import (
+        compile_pipeline_request,
+        get_pipeline,
+        list_pipelines,
+    )
+    from hevi.production.pipelines.oprim.contracts import PipelineRequest
+    from hevi.production.pipelines.oskill.compiler import pipeline_for_brief
+
+    scene = PrevisScene(
+        "scene-1",
+        "Opening",
+        cast=(CastItem("hero", "Hero", pose="walk"),),
+        cameras=(CameraCue("cam-1", 0, "wide", "dolly_in", 20),),
+        timeline=(TimelineCue("beat-1", 0, 2, "enter"),),
+        environment_prompt="studio",
+    )
+    compiled_scene = compile_previs_scene(scene)
+    assert compiled_scene["status"] == "planned" and compiled_scene["scene_stage"][
+        "characters"
+    ] == ["Hero"]
+    assert compile_previs_scene(PrevisScene("", ""))["status"] == "blocked"
+    assert camera_from_instruction("远景向右移 45 度").movement == "tracking_right"
+    assert camera_from_instruction("特写静止 -10deg").azimuth_deg == -10
+
+    planned = compile_longvideo_plan(LongVideoRequest(prompt="a film", duration_s=12, mode="t2v"))
+    assert planned["status"] == "planned"
+    monkeypatch.setenv("LONGLIVE_BASE_URL", "http://longlive.local")
+    available = compile_longvideo_plan(
+        LongVideoRequest(prompt="", mode="multi_shot", shot_prompts=("one", "two"))
+    )
+    assert available["status"] == "available" and longvideo_capabilities()["available"]
+    assert compile_longvideo_plan(LongVideoRequest(prompt="", mode="i2v"))["status"] == "blocked"
+
+    specs = list_pipelines()
+    assert (
+        len(specs) >= 10
+        and get_pipeline("cinematic") is not None
+        and get_pipeline("missing") is None
+    )
+    assert (
+        pipeline_for_brief("做一个短剧", [get_pipeline("short_drama")]).pipeline_id == "short_drama"
+    )
+    valid = compile_pipeline_request(PipelineRequest("cinematic", "a cinematic brief"))
+    assert valid["status"] == "planned" and valid["artifact_policy"].startswith("only verified")
+    invalid = compile_pipeline_request(
+        PipelineRequest("missing", "", images=tuple("x" for _ in range(10)))
+    )
+    assert invalid["status"] == "blocked" and invalid["errors"]
+    assert reference_grid(images=["a", "b"], columns=2)["rows"] == 1
+    with pytest.raises(ValueError):
+        reference_grid(images=["a"], columns=0)
+
+
+@pytest.mark.asyncio
+async def test_longcat_context_protocol_and_agent_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from hevi.longcat.omodul.runtime import (
+        LongCatConfig,
+        longcat_agent_workflow,
+        longcat_capabilities,
+    )
+    from hevi.longcat.oprim.context import estimate_tokens, pack_context, rank_context_blocks
+    from hevi.longcat.oprim.contracts import LongCatContextBlock, LongCatRequest, LongCatTool
+    from hevi.longcat.oprim.protocol import ModelTurn, normalize_model_turn
+    from hevi.longcat.oservi.provider import build_longcat_caller, longcat_provider_status
+    from hevi.longcat.oskill.agent import execute_agent_loop
+    from hevi.longcat.oskill.compiler import compile_longcat_request
+
+    blocks = (
+        LongCatContextBlock("high", "history war decision", priority=1, recency=1),
+        LongCatContextBlock("long", "x" * 300, priority=0),
+        LongCatContextBlock("empty", ""),
+    )
+    assert estimate_tokens("") == 0 and estimate_tokens("历史") >= 1
+    assert rank_context_blocks("history", blocks)[0][0].block_id == "high"
+    packed = pack_context("history", blocks, max_tokens=20)
+    assert packed.blocks and packed.as_message() and packed.to_dict()["fingerprint"]
+    with pytest.raises(ValueError):
+        pack_context("x", blocks, max_tokens=0)
+
+    tool = LongCatTool("lookup", "look up", {"type": "object"})
+    request = LongCatRequest(
+        goal="history", context_blocks=blocks[:2], tools=(tool,), max_context_tokens=1024
+    )
+    compiled = compile_longcat_request(request)
+    assert compiled["status"] == "ready" and compiled["payload"]["tools"]
+    assert LongCatRequest(goal="", max_context_tokens=1).validate()
+    assert tool.to_openai()["function"]["name"] == "lookup"
+    raw_turn = normalize_model_turn(
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": [{"text": "ok"}],
+                        "tool_calls": [
+                            {"id": "1", "function": {"name": "lookup", "arguments": '{"q":"x"}'}}
+                        ],
+                    }
+                }
+            ]
+        }
+    )
+    assert (
+        raw_turn.content == "ok"
+        and not raw_turn.is_final
+        and raw_turn.tool_calls[0].arguments["q"] == "x"
+    )
+    assert normalize_model_turn(None).content == ""
+    assert ModelTurn(content="done").is_final
+
+    calls = 0
+
+    async def caller(**_payload: object) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "tool_calls": [
+                                {"id": "c1", "function": {"name": "lookup", "arguments": "{}"}}
+                            ]
+                        }
+                    }
+                ]
+            }
+        return {"choices": [{"message": {"content": "completed"}}], "usage": {"prompt_tokens": 10}}
+
+    loop = await execute_agent_loop(
+        request, caller, tool_handlers={"lookup": lambda _args: {"status": "ok"}}
+    )
+    assert loop["status"] == "completed" and len(loop["tool_calls"]) == 1
+    blocked = await longcat_agent_workflow({"max_context_tokens": 1}, {"goal": "x"}, tmp_path)
+    assert blocked["status"] == "blocked" and (tmp_path / "longcat_report.json").exists()
+    configured = await longcat_agent_workflow(
+        LongCatConfig(caller=caller), {"goal": "x"}, tmp_path / "configured"
+    )
+    assert configured["status"] == "completed"
+    assert longcat_capabilities()["status"] == "unavailable"
+    monkeypatch.delenv("LONGCAT_BASE_URL", raising=False)
+    assert build_longcat_caller() is None and longcat_provider_status()["available"] is False
+
+
+def test_capability_catalog_and_joyai_session_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hevi.joyai.omodul.stream_edit import (
+        capabilities,
+        create_session,
+        finish_session,
+        record_frame,
+        record_output,
+        reset_sessions,
+        start_session,
+        stream_provider_url,
+    )
+    from hevi.joyai.oprim.stream_contract import frame_budget, validate_control
+    from hevi.production.capabilities import (
+        CapabilityUnavailableError,
+        capability_catalog,
+        require_capability,
+        require_production_capability,
+    )
+
+    for name in (
+        "VOICEBOX_BASE_URL",
+        "GEN_ENGINE_BASE_URL",
+        "VOICE_ASR_STREAM_WS_URL",
+        "JOYAI_STREAM_WS_URL",
+        "JOYAI_BASE_URL",
+        "PEXELS_API_KEY",
+        "DUIX_SERVICE_URL",
+        "DUIX_LIVESTREAM_PATH",
+        "LONGCAT_BASE_URL",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    catalog = {item["id"]: item for item in capability_catalog()}
+    assert catalog["longvideo"]["readiness"] == "ready"
+    assert catalog["voice_studio_tts"]["readiness"] == "unavailable"
+    assert catalog["voice_platform"]["readiness"] == "execution_only"
+    assert require_capability("longvideo").id == "longvideo"
+    assert require_production_capability("longvideo").id == "longvideo"
+    with pytest.raises(CapabilityUnavailableError) as unavailable:
+        require_capability("longcat_agent")
+    assert unavailable.value.detail()["code"] == "CAPABILITY_UNAVAILABLE"
+    with pytest.raises(CapabilityUnavailableError):
+        require_production_capability("voice_platform")
+    monkeypatch.setenv("JOYAI_BASE_URL", "https://joyai.example")
+    monkeypatch.setenv("JOYAI_STREAM_WS_PATH", "/v1/stream")
+    assert stream_provider_url() == "wss://joyai.example/v1/stream"
+    assert capabilities()["available"] is True
+    reset_sessions()
+    blocked = create_session(prompt="edit", reference_images=["missing.png"])
+    assert blocked.status == "blocked"
+    assert start_session(blocked.session_id) is blocked
+    running = create_session(prompt="edit")
+    assert start_session(running.session_id).status == "running"
+    assert record_frame(running.session_id) is running
+    assert record_output(running.session_id) is running
+    assert running.input_frames == 1 and running.output_frames == 1
+    assert finish_session(running.session_id).status == "completed"
+    assert finish_session("missing") is None
+    assert validate_control({"type": "start", "prompt": "", "width": 1})
+    assert validate_control({"type": "frame"})
+    assert validate_control({"type": "heartbeat"}) == []
+    budget = frame_budget(width=160, height=160, fps=2, seconds=1.5)
+    assert budget["frames"] == 3 and budget["raw_bytes"] == 160 * 160 * 4 * 3
+
+
+@pytest.mark.asyncio
+async def test_media_transactions_write_verified_manifests(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.production import media_workflows as workflows
+    from hevi.production.artifacts import Artifact
+
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"source")
+    steps: list[dict[str, object]] = []
+
+    async def burn(video: Path, subtitles: list[Path], output: Path, **_kwargs: object) -> Path:
+        assert video == source
+        assert all(item.is_file() for item in subtitles)
+        output.write_bytes(b"localized-video")
+        return output
+
+    monkeypatch.setattr(workflows, "_burn_subtitles", burn)
+    localized = await workflows.video_localization_workflow(
+        {"target_language": "en", "bilingual": True},
+        {
+            "source_video_path": str(source),
+            "source_segments": [{"start": 0, "end": 1.2, "text": "你好", "speaker": "host"}],
+            "translator": lambda _segments, **_kwargs: [{"text": "hello"}],
+        },
+        tmp_path / "localized",
+        on_step=lambda event: steps.append(event),
+    )
+    assert localized["status"] == "succeeded"
+    assert Path(localized["findings"]["output_video_path"]).is_file()
+    assert localized["artifacts"] and localized["decision_trail"]
+    assert steps[-1]["stage"] == "completed"
+    assert workflows.compute_fingerprint_for(
+        {"api_key": "secret", "target_language": "en"},
+        {"source_segments": [{"text": "private"}]},
+    ) == workflows.compute_fingerprint_for(
+        {"api_key": "other", "target_language": "en"},
+        {"source_segments": [{"text": "different"}]},
+    )
+    failed = await workflows.video_localization_workflow(
+        {}, {"source_video_path": str(tmp_path / "missing.mp4")}, tmp_path / "failed"
+    )
+    assert failed["status"] == "failed" and failed["artifacts"] == []
+
+    clip = tmp_path / "clip.mp4"
+
+    def renderer(_source: str, *, output_dir: Path, **_kwargs: object) -> dict[str, object]:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        clip_path = output_dir / clip.name
+        clip_path.write_bytes(b"clip-video")
+        manifest = {
+            "artifacts": [Artifact.from_path(clip_path, kind="video", primary=True).model_dump()]
+        }
+        return {
+            "status": "completed",
+            "clips": [{"path": str(clip_path), "start": 0, "end": 1}],
+            "result_video_path": str(clip_path),
+            "quality": {"passed": True},
+            "config_json": {"artifact_manifest": manifest},
+        }
+
+    monkeypatch.setattr(workflows, "render_clip_batch", renderer)
+    shorts = await workflows.shorts_generation_workflow(
+        {"target_clips": 1}, {"source_video_path": str(source)}, tmp_path / "shorts"
+    )
+    assert shorts["status"] == "succeeded" and shorts["artifacts"]
+    task = await workflows.execute_clip_video_task(
+        {
+            "id": "task-1",
+            "config_json": {
+                "clip_request": {"video_path": str(source), "target_clips": 1},
+                "output_dir": str(tmp_path / "task"),
+            },
+        },
+        None,
+    )
+    assert task["status"] == "completed"
+
+
+def test_speech_catalog_and_asr_quality_contracts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.audio import speech_platform
+    from hevi.voicepro_asr.oprim import normalize_audio, verify_asr_result
+    from hevi.voicepro_asr.schemas import ASRResult, SentenceSegment, WordTimestamp
+
+    monkeypatch.delenv("VOICEBOX_BASE_URL", raising=False)
+    monkeypatch.delenv("GEN_ENGINE_BASE_URL", raising=False)
+    engines = speech_platform.list_engines()
+    assert {item.id for item in engines} >= {"pocket_tts", "voxcpm", "faster_whisper"}
+    assert speech_platform.get_engine("missing") is None
+    assert speech_platform.list_voice_profiles()
+    unavailable = speech_platform.build_batch_plan(
+        [
+            {"text": ""},
+            {"text": "hello", "engine": "missing"},
+            {"text": "hello", "engine": "voxcpm"},
+        ]
+    )
+    assert unavailable["valid"] is False and len(unavailable["errors"]) == 2
+    assert unavailable["jobs"][-1]["engine"] == "voxcpm"
+    diagnostics = speech_platform.diagnostics()
+    assert diagnostics["local_first"] is True and diagnostics["ffmpeg"]
+
+    result = ASRResult(
+        text="hello",
+        words=[WordTimestamp(word="hello", start_s=0, end_s=1)],
+        segments=[SentenceSegment(start_s=0, end_s=1, text="hello", is_complete=True)],
+        cer=0,
+    )
+    assert verify_asr_result(result, expected_text="hello")["passed"] is True
+    assert verify_asr_result(result, expected_text="hullo", max_cer=0.01)["passed"] is False
+    assert verify_asr_result(ASRResult(text=""), expected_text=None)["passed"] is False
+    with pytest.raises(RuntimeError, match="Aliyun"):
+        import asyncio
+
+        from hevi.voicepro_asr.oprim import transcribe_aliyun_asr
+
+        asyncio.run(transcribe_aliyun_asr("missing.wav", None))
+
+    calls: list[list[str]] = []
+
+    def ffmpeg(args: list[str], **_kwargs: object) -> SimpleNamespace:
+        calls.append(args)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("hevi.voicepro_asr.oprim.subprocess.run", ffmpeg)
+    assert normalize_audio("in.wav", str(tmp_path / "out.wav")) == str(tmp_path / "out.wav")
+    assert calls and "pcm_s16le" in calls[0]
+
+
+def test_tts_contracts_fail_closed_and_dispatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.voicepro_tts import oprim as tts
+    from hevi.voicepro_tts.schemas import TTSProvider, make_tts_config
+
+    output = tmp_path / "audio.wav"
+    tts._write_nonempty_audio(output, b"wav", "test")
+    assert output.read_bytes() == b"wav"
+    with pytest.raises(RuntimeError, match="empty audio"):
+        tts._write_nonempty_audio(tmp_path / "empty.wav", b"", "test")
+    with pytest.raises(RuntimeError, match="non-empty"):
+        tts._require_nonempty_audio(tmp_path / "missing.wav", "test")
+    with pytest.raises(RuntimeError, match="MiniMax"):
+        import asyncio
+
+        asyncio.run(tts.synthesize_minimax_tts("hi", output_path=str(tmp_path / "m.mp3")))
+    with pytest.raises(RuntimeError, match="Azure"):
+        import asyncio
+
+        asyncio.run(tts.synthesize_azure_tts("hi", output_path=str(tmp_path / "a.wav")))
+    assert make_tts_config("edge_tts").provider is TTSProvider.EDGE_TTS
+
+    async def fake_edge(*_args: object, **_kwargs: object) -> object:
+        return "edge"
+
+    monkeypatch.setattr(tts, "synthesize_edge_tts", fake_edge)
+    import asyncio
+
+    assert await_in_test(tts.synthesize_tts("hi", make_tts_config(TTSProvider.EDGE_TTS))) == "edge"
+
+
+def await_in_test(awaitable: Any) -> Any:
+    """Run a small async adapter from a synchronous contract test."""
+    return asyncio.run(awaitable)
