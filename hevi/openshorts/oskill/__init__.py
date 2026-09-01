@@ -63,16 +63,90 @@ def generate_clips(
     4. Snap clip boundaries to word boundaries
     5. Generate ClipSpec list with reframe params + subtitles
     """
-    # 1. Transcript
+    # A local file takes the real execution path: transcription, viral scoring,
+    # reframing and FFmpeg artifacts are all produced before the job is marked
+    # completed.  URL planning remains available for callers that only want a
+    # remote analysis plan and do not yet have a local media artifact.
+    if Path(video_path).is_file():
+        from hevi.openshorts.clip_engine import render_clip_batch
+
+        output_dir = Path("output/openshorts") / Path(video_path).stem
+        local_config = {
+            "aspect_ratio": "9:16",
+            "subtitle_path": "",
+            "language": "",
+        }
+        rendered = render_clip_batch(
+            video_path,
+            output_dir=output_dir,
+            target_clips=target_clips,
+            config=local_config,
+        )
+        transcript_data = list(rendered.get("transcript") or [])
+        clip_job = make_clip_generator_job(video_path, user_id)
+        clip_job.reframing = reframing
+        clip_job.target_clips = target_clips
+        clip_job.with_voiceover = with_voiceover
+        clip_job.with_hook_text = with_hook_text
+        clip_job.transcript = {
+            "segments": transcript_data,
+            "text": " ".join(str(s.get("text") or "") for s in transcript_data),
+        }
+        clip_job.video_duration_s = max(
+            (float(s.get("end") or 0.0) for s in transcript_data), default=0.0
+        )
+        clip_job.clips = [
+            make_clip_spec(
+                clip_index=int(item["index"]) - 1,
+                start_s=float(item["start_s"]),
+                end_s=float(item["end_s"]),
+                headline=str(item["title"]),
+                reframe_mode=reframing,
+            )
+            for item in rendered["clips"]
+        ]
+        for clip, item in zip(clip_job.clips, rendered["clips"], strict=True):
+            clip.subtitle_text = str(item["title"])
+            clip.effects = {"rendered_path": item["path"], "subtitle_path": item["subtitle_path"]}
+        clip_job.status = "completed"
+        return clip_job
+
+    # 1. Transcript (remote/planning compatibility path)
     transcript = extract_transcript_with_words(video_path)
     video_duration = transcript.get("duration", 600.0)
 
-    # 2. Scenes + viral moments
+    # 2. Scenes + viral moments(Gemini 可注入;默认走确定性 virality 打分)
     scenes = detect_scenes_gemini(
         transcript.get("text", ""),
         video_duration,
         viral_keywords=["important", "key", "trend", "viral"] if gemini_client else None
     )
+    if not scenes:
+        from hevi.ingest.video_transcript import TranscriptSegment
+        from hevi.openshorts.virality import score_highlights
+
+        segs = [
+            TranscriptSegment(
+                float(s.get("start") or 0.0),
+                float(s.get("end") or 0.0),
+                str(s.get("text") or ""),
+            )
+            for s in (transcript.get("segments") or [])
+            if isinstance(s, dict) and s.get("text")
+        ]
+        highlights = score_highlights(segs, target_clips=target_clips)
+        from hevi.openshorts.schemas import SceneDetection
+
+        scenes = [
+            SceneDetection(
+                scene_id=f"h{i}",
+                start_s=h.start_s,
+                end_s=h.end_s,
+                headline=h.title,
+                viral_score=float(h.score),
+            )
+            for i, h in enumerate(highlights)
+        ]
 
     # 3. Transcript windows
     build_transcript_windows(transcript, video_duration)
@@ -119,7 +193,8 @@ def generate_clips(
 
         clip_job.clips.append(clip)
 
-    clip_job.status = "completed"
+    clip_job.status = "planned"
+    clip_job.error = "远程输入仅完成候选规划；请先取得本地视频后执行 FFmpeg 出片"
     return clip_job
 
 
@@ -132,7 +207,7 @@ def generate_ai_short(
     with_voiceover: bool = True,
     publish_platforms: list[str] | None = None,
 ) -> AIShortJob:
-    """AI Shorts 技能：从零生成 UGC 视频。
+    """AI Shorts 同步兼容入口：只做可审查的计划，不伪造成品。
 
     1. Analyze (URL scrape or description)
     2. Script (Gemini viral script)
@@ -146,40 +221,14 @@ def generate_ai_short(
     job = make_ai_short_job(description=description, url=url, user_id=user_id)
     job.cost_plan.mode = cost_mode
     job.publish_platforms = publish_platforms or []
-
-    # 1. Analyze
-    if url:
-        # TODO: Web scrape + Gemini research
-        pass
-
-    # 2. Script
-    job.script = generate_script_from_description(description, cost_mode)
-
-    # 3. Actor
-    job.actor = plan_ai_short_actor(description, cost_mode)
-
-    # 4. Voice
-    if with_voiceover:
-        # TODO: ElevenLabs TTS
-        job.voiceover_path = f"/tmp/{job.job_id}/voiceover.mp3"
-
-    # 5. Video
-    # TODO: Hailuo 2.3 Fast + VEED Lipsync
-    job.talking_head_path = f"/tmp/{job.job_id}/talking_head.mp4"
-
-    # 6. B-roll
-    # TODO: Flux 2 Pro + Ken Burns
-    job.b_roll_paths = [f"/tmp/{job.job_id}/broll_{i}.jpg" for i in range(3)]
-
-    # 7. Composite
-    # TODO: FFmpeg final assembly
-    job.composite_path = f"/tmp/{job.job_id}/composite.mp4"
-
-    # 8. Publish
-    if job.publish_platforms:
-        job.publish_status = "ready"
-
-    job.status = "completed"
+    if description.strip():
+        job.script = generate_script_from_description(description, cost_mode)
+        job.actor = plan_ai_short_actor(description, cost_mode)
+    job.status = "blocked"
+    job.error = (
+        "同步入口只生成计划；要执行真实 AI Shorts，请调用异步 execute_ai_short，"
+        "并提供 talking_head/video provider 或已存在的 talking_head_path。"
+    )
     return job
 
 
@@ -235,7 +284,7 @@ def generate_youtube_package(
     if job.titles:
         job.selected_title = max(job.titles, key=lambda t: t.viral_score).title
 
-    # 2. Thumbnail
+    # 2. Thumbnail: only a verified local frame is a generated thumbnail.
     job.thumbnail = generate_youtube_thumbnail(video_path)
 
     # 3. Description
@@ -243,7 +292,7 @@ def generate_youtube_package(
         job.selected_title, source_description
     )
 
-    job.status = "completed"
+    job.status = "completed" if job.thumbnail.path else "partial"
     return job
 
 
