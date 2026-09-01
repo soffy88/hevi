@@ -2893,7 +2893,8 @@ async def test_voicepro_translate_providers_and_pipeline_dispatch_contracts(
     monkeypatch.setitem(sys.modules, "deep_translator", deep_translator)
     translated = await translate_deep_translator("hello", backend="unknown")
     assert translated.translated_text == "译文"
-    assert (await translate_azure_translator("hello")).translated_text == "hello"
+    with pytest.raises(RuntimeError, match="AZURE_TRANSLATOR_KEY"):
+        await translate_azure_translator("hello")
 
     class Completions:
         async def create(self, **_kwargs: object) -> object:
