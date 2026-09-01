@@ -6,6 +6,7 @@ OpenMontage stage director skills：pipeline orchestration + stage director logi
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,12 @@ from hevi.montage.oprim import (
     validate_pipeline_manifest,
     write_checkpoint,
 )
+from hevi.montage.oskill.video_agent import (
+    build_video_agent_plan,
+    infer_video_intent,
+    rank_evidence_candidates,
+    reflect_video_agent_plan,
+)
 from hevi.montage.schemas import (
     Artifact,
     ArtifactType,
@@ -36,6 +43,7 @@ from hevi.montage.schemas import (
     CostBudget,
     PipelineManifest,
     StageDef,
+    ToolCapability,
     ToolContract,
     ToolEnvelope,
     VideoAnalysisBrief,
@@ -59,8 +67,35 @@ def pipeline_preflight(
     manifest = load_pipeline_manifest(manifest_path)
     validation_errors = validate_pipeline_manifest(manifest)
 
-    # Discover tools (actual tool registry from tools/tool_registry.py)
-    tools_registry = discover_tools("/tmp/OpenMontage/tools/") if available_tools is None else available_tools
+    if available_tools is None:
+        # Use HEVI's live tool registry.  The upstream OpenMontage directory is
+        # intentionally not a runtime dependency.
+        from hevi.studio.tools import list_tools
+
+        capability_map = {
+            "watch": ToolCapability.VIDEO_ANALYZE,
+            "research": ToolCapability.RESEARCH,
+            "script": ToolCapability.SCRIPT,
+            "tts": ToolCapability.TTS,
+            "material": ToolCapability.STOCK_VIDEO,
+            "score": ToolCapability.ENHANCEMENT,
+            "nle": ToolCapability.EDIT_PLAN,
+            "delivery": ToolCapability.DELIVERY,
+            "publish": ToolCapability.PUBLISH,
+            "runtime": ToolCapability.VIDEO_COMPOSE,
+            "director": ToolCapability.EDIT_PLAN,
+        }
+        tools_registry = {
+            spec.tool_id: ToolContract(
+                name=spec.tool_id,
+                capability=capability_map.get(spec.kind, ToolCapability.ENHANCEMENT),
+                provider="hevi",
+                summary=spec.summary,
+            )
+            for spec in list_tools()
+        }
+    else:
+        tools_registry = available_tools
     envelope = build_tool_envelope(tools_registry)
 
     # Generate provider menu
@@ -96,17 +131,17 @@ def stage_intake(
     对应 pipeline stage: stage_intake (stage_intake.md 风格)
     """
     topic = str(data.get("topic") or data.get("source_text") or data.get("manuscript") or "")
-    # 记忆入库占位
-    remember_data = {
-        "key": f"slate:{data.get('slate_id', 'anon')}",
-        "kind": "short_term",
-        "payload": {"line_id": data.get("line_id"), "topic": topic[:200]},
-        "store": data.get("memory_store"),
-        "db_path": data.get("memory_db"),
-    }
+    key = f"slate:{data.get('slate_id', 'anon')}"
+    payload = {"line_id": data.get("line_id"), "topic": topic[:200]}
+    store = data.get("memory_store")
+    if store is None:
+        from hevi.memory.store import MemoryStore
+
+        store = MemoryStore(Path(str(data.get("memory_db") or "data/memory/montage.db")))
+    memory_id = store.remember("short_term", key, payload)
     return {
         "topic": topic,
-        "intake": remember_data,
+        "intake": {"key": key, "memory_id": memory_id, "payload": payload},
     }
 
 
@@ -120,18 +155,33 @@ def stage_research(
     """
     topic = data.get("topic", "")
     angles = data.get("angles")
+    research_fn = data.get("research_fn")
+    if callable(research_fn):
+        result = research_fn(topic, angles or ["fact", "worldview"])
+        if hasattr(result, "__await__"):
+            return {
+                "research": {"topic": topic, "angles": angles, "research_fn": "async"},
+                "research_status": "blocked",
+                "research_reason": "sync stage_research received an async provider; use studio.stages.stage_research",
+            }
+        return {"research": result if isinstance(result, dict) else {"result": result}, "research_status": "completed"}
+    from hevi.research.brief import plan_research_questions
+
+    questions = plan_research_questions(str(topic), list(angles or ["fact", "worldview"])) if topic else []
     result = {
         "topic": topic,
         "angles": angles,
         "research_brief": {
             "data_points": [],
-            "angles_discovered": [],
+            "angles_discovered": questions,
             "sources_cited": [],
+            "status": "questions_only",
         },
     }
     return {
         "research": result,
-        "research_status": "completed",
+        "research_status": "planned",
+        "research_reason": "未注入 web/LLM researcher；已生成可执行问题，不冒充事实来源",
     }
 
 
@@ -164,20 +214,27 @@ def stage_score(
 
     对应 pipeline stage: stage_score
     """
-    data.get("score_tool") or "video/shot"
+    tool_name = str(data.get("score_tool") or "video/shot")
     candidates = data.get("provider_candidates") or []
     decision_log = data.get("decision_log") or ""
-    f"line:{data.get('line_id', '')}"
+    winner: Any = None
+    explain = ""
+    if candidates and all(isinstance(item, dict) for item in candidates):
+        from hevi.providers.scoring import choose_provider
 
-    # 实际由 invoke_tool("score.provider", ...) 完成
-    # 这里返回占位
-    winner = candidates[0] if candidates else None
+        selected = choose_provider(tool_name, candidates, reason=f"line:{data.get('line_id', '')}")
+        if selected is not None:
+            winner = selected.provider
+            explain = selected.explain()
+    elif candidates:
+        winner = candidates[0]
 
     return {
         "provider_decision": {
             "winner": winner,
             "candidates": candidates,
             "log": decision_log,
+            "explain": explain,
         },
         "video_provider": winner or data.get("video_provider") or "auto",
     }
@@ -223,15 +280,41 @@ def stage_assets(
     subject_ids = data.get("subject_ids") or []
 
     for subject in subject_ids:
-        # 实际由 invoke_tool("asset.bind", ...) 完成
-        bound_assets.append({
-            "subject_id": subject,
-            "asset": {"subject_id": subject},
-            "status": "bound",
-        })
+        from hevi.studio.assets import bind_asset
 
-    # 实际由 invoke_tool("material.rank", ...) 完成
-    ranked_materials = data.get("materials") or []
+        ref = bind_asset(
+            "subject",
+            line_id=str(data.get("line_id") or "studio"),
+            label=str(subject),
+            payload={"subject_id": subject},
+        )
+        bound_assets.append({**ref.to_dict(), "status": "bound"})
+
+    from hevi.video.material_corpus import MaterialInfo, rank_by_keywords
+
+    items = [
+        MaterialInfo(
+            source=str(item.get("source") or "local"),
+            id=str(item.get("id") or ""),
+            url=str(item.get("url") or ""),
+            title=str(item.get("title") or ""),
+            keywords=tuple(item.get("keywords") or ()),
+            width=int(item.get("width") or 0),
+            height=int(item.get("height") or 0),
+            duration_s=float(item.get("duration_s") or 0.0),
+            cached_path=str(item.get("cached_path") or ""),
+        )
+        for item in data.get("materials") or []
+        if isinstance(item, dict) and item.get("id")
+    ]
+    ranked_materials = [
+        item.to_dict()
+        for item in rank_by_keywords(
+            items,
+            str(data.get("topic") or ""),
+            target_aspect=str(data.get("aspect_ratio") or ""),
+        )
+    ]
 
     return {
         "bound_assets": bound_assets,
@@ -248,21 +331,31 @@ def stage_edit_plan(
     对应 pipeline stage: stage_edit_plan
     """
     script_lines = data.get("script_lines") or []
-    data.get("ranked_materials") or data.get("materials") or []
-
-    # 实际由 invoke_tool("nle.edit_plan", ...) 完成
+    materials = data.get("ranked_materials") or data.get("materials") or []
+    cuts: list[dict[str, Any]] = []
+    cursor = 0.0
+    for index, item in enumerate(script_lines):
+        has_duration = isinstance(item, dict) and item.get("duration_s") is not None
+        if isinstance(item, dict):
+            text = str(item.get("text") or item.get("line") or "").strip()
+            duration = float(item.get("duration_s") or 8.0)
+        else:
+            text = str(item).strip()
+            duration = 8.0
+        if not text and not has_duration:
+            continue
+        visual = materials[index].get("url") if index < len(materials) and isinstance(materials[index], dict) else None
+        cuts.append({"index": index, "start_s": cursor, "duration_s": max(0.4, duration), "text": text, "visual": visual, "action": "keep"})
+        cursor += max(0.4, duration)
     edit_plan = {
         "edit_plan": {
-            "scenes": [],
-            "total_s": sum(
-                (s.get("duration_s", 8) for s in script_lines), 0
-            ),
+            "kind": "nle_edit_plan",
+            "cuts": cuts,
+            "total_s": round(cursor, 3),
             "script_lines": script_lines,
         },
         "preview_gate": {
-            "total_s": sum(
-                (s.get("duration_s", 8) for s in script_lines), 0
-            )
+            "total_s": round(cursor, 3)
         },
     }
     return edit_plan
@@ -276,17 +369,16 @@ def stage_mix(
 
     对应 pipeline stage: stage_mix
     """
-    data.get("script") or data.get("script_lines") or []
-
-    # 实际由 invoke_tool("tongjian.mix", ...) 完成
-    # 这里返回占位
+    script = data.get("script") or data.get("script_lines") or []
+    if not script:
+        return {"mix": None, "mix_status": "skipped"}
     return {
         "mix": {
-            "cue_points": [],
+            "cue_points": script,
             "deductions": [],
             "final_mix": None,
         },
-        "mix_status": "pending",
+        "mix_status": "planned",
     }
 
 
@@ -300,16 +392,13 @@ def stage_timeline(
     """
     plan = data.get("edit_plan") or {}
     title = data.get("topic") or data.get("line_id") or "untitled"
+    if isinstance(plan.get("edit_plan"), dict):
+        plan = plan["edit_plan"]
+    from hevi.studio.timeline import timeline_from_edit_plan
 
-    # 实际由 invoke_tool("timeline.create", ...) 完成
-    # 这里返回占位
+    timeline = timeline_from_edit_plan(plan, title=str(title))
     return {
-        "timeline": {
-            "timeline_id": f"tl-{hash(title) % 10000:04d}",
-            "title": title,
-            "scenes": [],
-            "total_duration_s": plan.get("preview_gate", {}).get("total_s", 0),
-        },
+        "timeline": timeline.to_dict(),
         "timeline_status": "created",
     }
 
@@ -379,11 +468,26 @@ def stage_dispatch(
         "hyperframes": data.get("hyperframes"),
     }
 
-    # 实际由 fulfill_order 完成
-    # 这里返回占位
+    # 同步兼容入口也不再把“已发工单”冒充为完成。没有 execute 时只是
+    # 可审查计划；显式 execute 且当前不在事件循环时才真正消费工单。
+    fulfillment: dict[str, Any] = {"status": "planned", "target": handoff}
+    if data.get("execute"):
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            from hevi.studio.fulfill import fulfill_order
+
+            destination = data.get("output_dir") or f"output/studio/{slate_id or 'order'}"
+            fulfillment = asyncio.run(fulfill_order(order, execute=True, output_dir=destination))
+        else:
+            fulfillment = {
+                "status": "blocked",
+                "target": handoff,
+                "reason": "同步 stage_dispatch 不能在运行中的事件循环执行；请使用 hevi.studio.stages.stage_dispatch",
+            }
     return {
         "production_order": order,
-        "fulfill": {"status": "issued", "target": handoff},
+        "fulfill": fulfillment,
     }
 
 
@@ -403,15 +507,30 @@ def stage_publish(
 
     results = []
     for platform in platforms:
-        # 实际由 invoke_tool("publish.matrix", ...) 完成
-        results.append(
-            {
-                "platform": platform,
-                "status": "completed",
-                "media_path": media,
-                "title": data.get("title") or data.get("topic") or "",
-            }
-        )
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            from hevi.publishers import publish_to_platform
+
+            result = asyncio.run(
+                publish_to_platform(
+                    str(platform),
+                    Path(str(media)),
+                    title=str(data.get("title") or data.get("topic") or ""),
+                    description=str(data.get("description") or ""),
+                    tags=list(data.get("tags") or []),
+                )
+            )
+            results.append(result.to_dict())
+        else:
+            results.append(
+                {
+                    "platform": platform,
+                    "status": "blocked",
+                    "media_path": str(media),
+                    "reason": "同步 stage_publish 不能在运行中的事件循环执行；请使用 hevi.studio.stages.stage_publish",
+                }
+            )
 
     return {"publish_results": results}
 
@@ -483,4 +602,8 @@ __all__ = [
     "write_checkpoint",
     "read_checkpoint",
     "update_checkpoint_approval",
+    "build_video_agent_plan",
+    "infer_video_intent",
+    "rank_evidence_candidates",
+    "reflect_video_agent_plan",
 ]
