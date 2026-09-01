@@ -23,12 +23,23 @@ class TranscriptError(Exception):
 
 
 @dataclass(frozen=True)
+class WordSpan:
+    """词级时间戳(xiaohu / talkcraft / 拆条 snap 共用)。"""
+
+    word: str
+    start: float
+    end: float
+
+
+@dataclass(frozen=True)
 class TranscriptSegment:
     """一段带时间戳的转写文本。"""
 
     start: float
     end: float
     text: str
+    speaker: str = ""
+    words: tuple[WordSpan, ...] = ()
 
 
 _TIMESTAMP_RE = re.compile(

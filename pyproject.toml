@@ -127,7 +127,7 @@ disable_error_code = ["import-untyped"]
 # runtime availability is tested by provider capability probes; they do not
 # ship usable typing metadata for the strict application check.
 [[tool.mypy.overrides]]
-module = ["yaml", "deepl", "deep_translator", "openai", "faster_whisper"]
+module = ["yaml", "deepl", "deep_translator", "openai", "faster_whisper", "loguru"]
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
 

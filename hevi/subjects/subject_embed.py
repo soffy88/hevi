@@ -69,8 +69,10 @@ def _ensure_model() -> tuple[Any, Any]:
             # 真正 root cause,不是 20s 超时不够长)。身份向量本来就是"增强,非必需"
             # (见模块顶部注释),本地没缓存就该直接放弃,不该临时现下载一个 600MB 模型。
             try:
-                _model = CLIPModel.from_pretrained(_CLIP_MODEL_ID, local_files_only=True).eval()
-                _processor = CLIPProcessor.from_pretrained(_CLIP_MODEL_ID, local_files_only=True)
+                model_cls: Any = CLIPModel
+                processor_cls: Any = CLIPProcessor
+                _model = model_cls.from_pretrained(_CLIP_MODEL_ID, local_files_only=True).eval()
+                _processor = processor_cls.from_pretrained(_CLIP_MODEL_ID, local_files_only=True)
             except Exception as e:
                 raise SubjectEmbedError(
                     f"CLIP 模型本地缓存未命中且不联网下载(见本函数注释): {e}"
