@@ -10,6 +10,15 @@ from hevi.voicepro.oskill.f5_speakers import (
     pick_catalog_model,
     resolve_turns,
 )
+from hevi.voicepro.oskill.native_voice import (
+    NativeAudioChunk,
+    NativeVoiceResult,
+    native_voice_available,
+    stream_native_voice,
+    synthesize_native_batch,
+    synthesize_native_voice,
+    synthesize_native_voice_sync,
+)
 from hevi.voicepro.oskill.subtitle_timeline import merge_and_split_cues, plan_timeline
 from hevi.voicepro.oskill.translate_retry import fill_missing_lines, retry_one
 from hevi.voicepro.oskill.vocal_remix import mux_args_for_plan, plan_vocal_remix, stem_split_command
@@ -29,4 +38,11 @@ __all__ = [
     "resolve_turns",
     "retry_one",
     "stem_split_command",
+    "NativeAudioChunk",
+    "NativeVoiceResult",
+    "native_voice_available",
+    "stream_native_voice",
+    "synthesize_native_batch",
+    "synthesize_native_voice",
+    "synthesize_native_voice_sync",
 ]

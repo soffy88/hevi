@@ -13,6 +13,8 @@ ProductionSource = Literal[
     "presenter",
     "seedance",
     "clip_video",
+    "localize_video",
+    "mpt",
     "voice_studio_tts",
     "director_graph",
     "lot",

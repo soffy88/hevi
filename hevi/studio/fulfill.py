@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from hevi.production.artifacts import (
     Artifact,
@@ -223,7 +223,9 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
             line_id=line_id,
         )
 
-    visual_type = "heygen_avatar" if line_id in avatar_lines else "voiceover"
+    visual_type: Literal["heygen_avatar", "voiceover"] = (
+        "heygen_avatar" if line_id in avatar_lines else "voiceover"
+    )
     cues = [
         ExplainerCue(
             text=text,
