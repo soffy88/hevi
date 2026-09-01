@@ -92,7 +92,11 @@ def _embed_image(img: Any, model: Any, processor: Any) -> list[float]:
 
     with torch.no_grad():
         feats = model.get_image_features(**processor(images=img, return_tensors="pt"))
-    v = feats[0]
+    # Transformers 5.x returns a BaseModelOutputWithPooling from the CLIP
+    # feature helpers; the projected embedding is its pooler_output.  4.x
+    # returned the projected tensor directly.  Normalize both shapes to the
+    # same 512-dimensional embedding.
+    v = getattr(feats, "pooler_output", feats[0]).reshape(-1)
     norm = v.norm()
     if float(norm) == 0.0:
         raise SubjectEmbedError("zero-norm embedding")
@@ -145,7 +149,7 @@ def text_embed(text: str) -> list[float]:
         with torch.no_grad():
             inputs = processor(text=[text], return_tensors="pt", padding=True, truncation=True)
             feats = model.get_text_features(**inputs)
-        v = feats[0]
+        v = getattr(feats, "pooler_output", feats[0]).reshape(-1)
         norm = v.norm()
         if float(norm) == 0.0:
             raise SubjectEmbedError("zero-norm embedding")

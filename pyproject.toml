@@ -32,7 +32,7 @@ dependencies = [
     "psycopg2-binary>=2.9.12",
     "minio>=7.2.20",
     "torch>=2.12.0",
-    "transformers==4.51.3",
+    "transformers==5.5.0",
     "diffusers>=0.30",
     "accelerate>=1.6.0",
     "faster-whisper>=1.2.1",
@@ -155,6 +155,12 @@ asyncio_mode = "auto"
 # 只收集单元测试目录;scripts/integration/*.py 是需 GPU/服务的手动集成脚本,
 # 不应被 `pytest`(根目录)误收集导致 collection 报错(见 CI 与本地一致性)。
 testpaths = ["tests"]
+# Provider-specific packages currently publish incompatible upper/lower
+# bounds. Keep secure versions in the root runtime while Voicebox/Gen Engine
+# inference environments remain independently pinned.
+[tool.uv]
+override-dependencies = ["transformers==5.5.0", "pillow>=12.3.0"]
+
 
 [tool.hatch.metadata]
 allow-direct-references = true

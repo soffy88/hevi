@@ -77,3 +77,7 @@ packages = ["app"]
 [tool.uv]
 # 当前项目以应用运行形态为主，不作为可发布的 Python 包安装。
 package = false
+# MoviePy 2.2.1 declares Pillow <12 even though its runtime image operations
+# remain compatible with the patched Pillow 12 line. Keep the service lock on
+# the patched Pillow line; the container installs from this locked project.
+override-dependencies = ["pillow>=12.3.0"]
