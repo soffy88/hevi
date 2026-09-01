@@ -7,10 +7,20 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from hevi.auth.dependencies import get_current_user
+from hevi.credits.account_service import AccountService
+from hevi.credits.billing_service import BillingService, InsufficientCredits
+from hevi.credits.repository import CreditRepository
+from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.production.contracts import ProductionRequest
+from hevi.provider_policy.runtime import probe_provider
 from hevi.services.mpt_integration import MPTClient, submit_mpt_job_from_hevi
+from hevi.tasks.dispatch import schedule_local_compat
+from hevi.tasks.repository import TaskRepository
+from hevi.tasks.task_service import TaskService
 
 router = APIRouter(prefix="/mpt", tags=["mpt"])
 
@@ -79,12 +89,76 @@ def get_mpt_client() -> MPTClient:
 MPTClientDependency = Annotated[MPTClient, Depends(get_mpt_client)]
 
 
+async def _require_mpt_ready() -> dict[str, Any]:
+    status = await probe_provider("mpt", timeout_s=3.0)
+    if not status["ready"]:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "PROVIDER_UNAVAILABLE",
+                "provider": "mpt",
+                "message": "MPT API 当前不可达，未创建任务。",
+                "provider_status": status,
+            },
+        )
+    return status
+
+
+async def get_mpt_task_service() -> TaskService:
+    pool = await get_hevi_pg_pool()
+    return TaskService(TaskRepository(pool), BillingService(AccountService(CreditRepository(pool))))
+
+
+@router.post("/production", response_model=GenerateVideoResponse)
+async def create_canonical_mpt_production(
+    request: GenerateVideoRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    service: Annotated[TaskService, Depends(get_mpt_task_service)],
+    background_tasks: BackgroundTasks,
+) -> GenerateVideoResponse:
+    """Create MPT work as a canonical Hevi Task."""
+
+    await _require_mpt_ready()
+    try:
+        task = await service.create_production(
+            ProductionRequest(
+                source="mpt",
+                topic=request.topic,
+                duration_archetype="1-5min",
+                video_provider="mpt_cloud",
+                audio_provider="none",
+                aspect_ratio=request.aspect,
+                options={
+                    "workbench_operation": "mpt_generate",
+                    "mpt_request": request.model_dump(mode="json"),
+                },
+            ),
+            user_id=str(user["id"]),
+        )
+        task = await service.submit_task(task["id"])
+    except InsufficientCredits as exc:
+        raise HTTPException(
+            status_code=402,
+            detail={"error": "insufficient_credits", "credits_needed": exc.credits_needed},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if task.get("status") != "queued":
+        schedule_local_compat(background_tasks, service, task["id"])
+    return GenerateVideoResponse(
+        task_id=str(task["id"]),
+        status=str(task.get("status") or "pending"),
+        message="Hevi canonical task created; MPT output will be committed as artifacts",
+    )
+
+
 @router.post("/generate", response_model=GenerateVideoResponse)
 async def generate_video(
     request: GenerateVideoRequest,
     client: MPTClientDependency,
 ) -> GenerateVideoResponse:
     """提交视频生成任务到 MPT"""
+    await _require_mpt_ready()
     async with client:
         result = await client.generate_video(
             topic=request.topic,
@@ -108,6 +182,7 @@ async def get_task_status(
     client: MPTClientDependency,
 ) -> TaskStatusResponse:
     """查询 MPT 任务状态"""
+    await _require_mpt_ready()
     async with client:
         result = await client.check_task_status(task_id)
     return TaskStatusResponse(
@@ -125,6 +200,7 @@ async def search_materials(
     client: MPTClientDependency,
 ) -> list[MaterialItem]:
     """搜索素材（代理 MPT 素材搜索能力）"""
+    await _require_mpt_ready()
     async with client:
         materials = await client.get_materials(
             query=request.query,
@@ -141,6 +217,7 @@ async def cross_post(
     client: MPTClientDependency,
 ) -> dict[str, Any]:
     """一键发布到多平台"""
+    await _require_mpt_ready()
     async with client:
         return await client.cross_post(
             video_path=request.video_path,
@@ -155,6 +232,7 @@ async def analyze_reference_video(
     client: MPTClientDependency,
 ) -> ReferenceVideoResponse:
     """参考视频分析（转录/节奏/场景/概念）"""
+    await _require_mpt_ready()
     async with client:
         result = await client.analyze_reference_video(request.url)
     return ReferenceVideoResponse(**result)
@@ -170,6 +248,7 @@ async def submit_job_from_hevi(
     voice: str = Query("zh-CN-XiaoxiaoNeural"),
 ) -> GenerateVideoResponse:
     """从 hevi 工作流提交 MPT 任务（内部调用）"""
+    await _require_mpt_ready()
     task_id = await submit_mpt_job_from_hevi(
         production_id=production_id,
         revision_id=revision_id,
@@ -186,6 +265,11 @@ async def submit_job_from_hevi(
 
 
 @router.get("/health")
-async def health_check() -> dict[str, str]:
-    """MPT 服务健康检查"""
-    return {"status": "ok", "service": "mpt-integration"}
+async def health_check() -> dict[str, Any]:
+    """MPT 集成健康检查，同时验证实际 MPT API。"""
+    provider_status = await probe_provider("mpt", timeout_s=3.0)
+    return {
+        "status": "ok" if provider_status["ready"] else "degraded",
+        "service": "mpt-integration",
+        "provider": provider_status,
+    }
