@@ -8,8 +8,8 @@
     2. TALKING_FACE_ENGINE=duix → 本机 Duix 容器离线口型(用完停容器,与 Echo 互斥)。
     3. 否则请求 http://hevi-gen-engine:17493/api/ai/longcat (multipart 上传
        播音员照片 + 整条主音频, 引擎返回与音频等长的 MP4)。
-    3. 引擎无模型/不可达时, 降级为本地 ffmpeg 通用口型合成或占位动画 ——
-       这两条路径只依赖 ffmpeg 二进制, 留在 API 容器里, 保证任何环境都有输出。
+    3. 引擎无模型/不可达时直接失败；generic 和 placeholder 只有调用者显式
+       选择时才可用于预览，不能作为真实数字人产物的静默降级。
 
 对外 API 不变: generate_talking_face / generate_continuous_avatar_track /
 TalkingFaceUnavailable(hevi.digital_human 与 explainer.assembly 依赖)。
@@ -167,7 +167,10 @@ async def generate_talking_face(
     2. TALKING_FACE_ENGINE=duix → 本机 Duix 容器离线口型,用完停容器。
     3. TALKING_FACE_ENGINE=longcat → 强制走引擎 LongCat 端点。
     4. 引擎能力表声明 longcat 可用且未指定 echomimic/duix → 走引擎端点。
-    5. placeholder / generic → 本地 ffmpeg 占位或频谱口型。
+    5. generic → 只有显式选择时才使用频谱可视化；placeholder 也必须显式选择。
+
+    生产原则：引擎不可达、模型缺失或未知配置都会失败，不再把占位视频
+    当作真实数字人产物交付。
     """
     image_path = Path(image_path)
     audio_path = Path(audio_path)
@@ -211,33 +214,26 @@ async def generate_talking_face(
                 gpu_id=gpu_id,
             )
         elif engine == "generic":
-            # 显式选择本地 ffmpeg 通用口型(照片 + 音量频谱, 无需 GPU)。
+            # 显式选择本地频谱可视化(不是模型口型同步,仅用于预览)。
             result_path = await _run_generic_lipsync(
                 image_path=image_path,
                 audio_path=audio_path,
                 output_path=output_path,
             )
-        else:
-            logger.warning(
-                "AI 引擎未部署 LongCat 模型; 降级为本地 ffmpeg 占位动画。"
-                "部署 services/ai_engine 并挂载 LongCat-Video 权重后自动启用。"
-            )
+        elif engine == "placeholder":
+            # 仅允许显式选择，避免 Provider 故障时静默交付占位视频。
             result_path = await _generate_placeholder_avoiding_null(
                 audio_path=audio_path,
                 output_path=output_path,
             )
-            logger.info(
-                "Placeholder avatar generated: %s (%.1f MB)",
-                result_path, result_path.stat().st_size / 1_000_000,
+        else:
+            raise TalkingFaceUnavailable(
+                f"未知 Talking Face 引擎: {engine}; "
+                "请选择 echomimic、duix、longcat、generic 或显式 placeholder。"
             )
-    except TalkingFaceUnavailable as exc:
-        if engine in {"echomimic", "duix"}:
-            raise
-        logger.error("Talking Face 引擎失败, 走本地降级: %s", exc)
-        result_path = await _generate_placeholder_avoiding_null(
-            audio_path=audio_path,
-            output_path=output_path,
-        )
+    except TalkingFaceUnavailable:
+        # 真实 Provider 失败必须进入任务失败/重试/人工处理状态。
+        raise
     except Exception as exc:
         logger.error("Talking Face generation failed: %s", exc, exc_info=True)
         raise TalkingFaceUnavailable(f"Talking Face 生成失败: {exc}") from exc
