@@ -1236,3 +1236,614 @@ async def test_tongjian_review_api_and_download_paths_are_fail_closed(
     response = await tongjian.download_run_video(run_id, token="valid")
     assert response.media_type == "video/mp4"
     assert str(response.path).endswith("final.mp4")
+
+
+@pytest.mark.asyncio
+async def test_director_release_contracts_cover_local_state_and_stage_failures(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Exercise the director state machine's non-provider release branches."""
+    from dataclasses import dataclass
+    from types import SimpleNamespace
+
+    from fastapi import BackgroundTasks, HTTPException
+
+    import hevi.api.routers.director_pipeline as director
+    from hevi.director.pipeline_schemas import (
+        Concept,
+        DesignCharacter,
+        DesignList,
+        DesignScene,
+        SceneStageSet,
+        Screenplay,
+        ScreenplayScene,
+        ShotList,
+        ShotListItem,
+    )
+
+    def concept() -> Concept:
+        return Concept(theme="冲突", tone="克制", duration_archetype="short")
+
+    def screenplay() -> Screenplay:
+        return Screenplay(
+            scenes=[
+                ScreenplayScene(
+                    scene_no=1,
+                    location="庭院",
+                    characters_present=["甲"],
+                    narration="甲走入庭院。",
+                    visual_actions=["走入"],
+                )
+            ]
+        )
+
+    def design_list() -> DesignList:
+        return DesignList(
+            characters=[DesignCharacter(name="甲", appearance="黑衣")],
+            scenes=[DesignScene(name="庭院", environment="夜")],
+        )
+
+    def shot_list() -> ShotList:
+        return ShotList(
+            shots=[
+                ShotListItem(
+                    shot_id="S001",
+                    scene_no=1,
+                    scene_name="庭院",
+                    visual_prompt="甲走入庭院",
+                    character_names=["甲"],
+                )
+            ]
+        )
+
+    user = {"id": "coverage-director-user"}
+    director._LOCAL_WORK_PROJECTIONS.clear()
+    work_id = "coverage-director-work"
+    record = director._init_work(
+        work_id,
+        material_text="史料中的一场冲突",
+        intent_hint="",
+        user_id=user["id"],
+        cache=False,
+    )
+    director._LOCAL_WORK_PROJECTIONS[work_id] = record
+    assert director._require_work(work_id, user) is record
+    with pytest.raises(HTTPException):
+        director._require_work(work_id, {"id": "other"})
+    with pytest.raises(HTTPException):
+        director._require_work("missing", user)
+    with pytest.raises(HTTPException):
+        director._require_stage_ready(record, "screenplay")
+    record["locked_through"] = 4
+    record.update(
+        {
+            "concept": {"theme": "x"},
+            "screenplay": {"scenes": []},
+            "design_list": {},
+            "scene_stage": {},
+            "shot_list": {},
+            "constraint_graph": {"stale": True},
+            "video_task_id": "old-task",
+        }
+    )
+    director._rollback_downstream(record, "scene_stage")
+    assert record["locked_through"] == 2 and record["scene_stage"] is None
+    assert record["shot_list"] is None and "constraint_graph" not in record
+    director._append_trail(record, "coverage", "succeeded", "state checked")
+    assert director._work_status(record)["decision_trail"][-1]["stage"] == "coverage"
+
+    @dataclass
+    class Finding:
+        code: str
+
+    monkeypatch.setattr(director, "lint_scene_stage", lambda *_args: [Finding("scene")])
+    monkeypatch.setattr(director, "lint_h3_cut_budget", lambda *_args: [Finding("cut")])
+    monkeypatch.setattr(director, "lint_h3_vocab", lambda *_args: [Finding("vocab")])
+    monkeypatch.setattr(director, "lint_shuohao_storyboard", lambda *_args: [Finding("story")])
+    monkeypatch.setattr(director, "append_gate_log", lambda *_args: None)
+    monkeypatch.setattr(director, "gate_log_entries", lambda **_kwargs: [])
+    director._record_shot_lints(record, ShotList(), SceneStageSet())
+    assert {item["code"] for item in record["scene_stage_lint"]} == {
+        "scene",
+        "cut",
+        "vocab",
+        "story",
+    }
+
+    failed_gate = director._build_director_gate(
+        story=SimpleNamespace(characters=[], events=[]),
+        season_plan=SimpleNamespace(episodes=[], target_episodes=1),
+        plan_gate=SimpleNamespace(
+            passed=False, coverage=0.0, errors=["no plan"], warnings=["warn"]
+        ),
+        screenplay=Screenplay(),
+        design_list=DesignList(),
+        estimated_cost_usd=20.0,
+        season_budget_usd=1.0,
+    )
+    assert failed_gate.passed is False and failed_gate.errors and failed_gate.warnings == ["warn"]
+
+    async def fake_estimate(**_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(total_usd=2.5)
+
+    monkeypatch.setattr("hevi.cost.estimator.estimate_cost", fake_estimate)
+    assert (
+        await director._estimate_season_cost(
+            duration_archetype="short",
+            video_provider="local",
+            audio_provider="edge_tts",
+            character_count=0,
+            episode_count=2,
+        )
+        == 5.0
+    )
+
+    body = director.ParseWorkRequest(
+        work_name="解析测试", material_text="一段素材", target_episodes=1
+    )
+    accepted = await director.parse_work(body, BackgroundTasks(), user)
+    parsed_id = accepted["work_id"]
+    assert accepted["status"] == "parsing"
+    assert (await director.list_works(user))[0]["work_id"] == parsed_id
+    assert (await director.get_work(parsed_id, user))["status"] == "parsing"
+    with pytest.raises(HTTPException):
+        await director.parse_work(
+            director.ParseWorkRequest(work_name="x", material_text="x", episode_duration="bad"),
+            BackgroundTasks(),
+            user,
+        )
+    with pytest.raises(HTTPException):
+        await director.parse_work(
+            director.ParseWorkRequest(work_name="x", material_text="   "),
+            BackgroundTasks(),
+            user,
+        )
+
+    record["design_list"] = design_list().model_dump()
+    record["shot_list"] = shot_list().model_dump()
+    await director._persist_work(record)
+    constraints = await director.get_work_constraints(work_id, user)
+    assert constraints["source"] == "compatibility_projection" and constraints["graph"]
+    compiled = await director.compile_work_constraints(
+        work_id,
+        director.CompileConstraintsRequest(provider_id="local", supported_constraints=set()),
+        user,
+    )
+    assert compiled["coverage"]["unsupported_constraints"]
+    with pytest.raises(HTTPException):
+        await director.compile_work_constraints(
+            parsed_id,
+            director.CompileConstraintsRequest(provider_id="local"),
+            user,
+        )
+
+    monkeypatch.setattr(director, "_resolve_llm", lambda: object())
+    monkeypatch.setattr(
+        director,
+        "generate_screenplay_draft",
+        lambda **_kwargs: asyncio.sleep(0, result=screenplay()),
+    )
+    record["concept"] = concept().model_dump()
+    await director._run_screenplay_generate(work_id)
+    assert record["status"] == "screenplay_draft"
+    monkeypatch.setattr(
+        director,
+        "generate_screenplay_draft",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("screenplay broken")),
+    )
+    await director._run_screenplay_generate(work_id)
+    assert record["status"] == "screenplay_generate_failed"
+
+    record["screenplay"] = screenplay().model_dump()
+    record["design_list"] = design_list().model_dump()
+    monkeypatch.setattr(
+        director,
+        "_build_scene_stage_set",
+        lambda *_args: asyncio.sleep(0, result=SceneStageSet()),
+    )
+    await director._run_scene_stage_regenerate(work_id)
+    assert record["status"] == "scene_stage_draft"
+    monkeypatch.setattr(
+        director,
+        "_build_scene_stage_set",
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("scene stage broken")),
+    )
+    await director._run_scene_stage_regenerate(work_id)
+    assert record["status"] == "scene_stage_regenerate_failed"
+
+    async def fake_shots(**_kwargs: object) -> ShotList:
+        return shot_list()
+
+    monkeypatch.setattr(director, "generate_shot_list_draft", fake_shots)
+    monkeypatch.setattr(director, "_attach_kernel_plan", lambda _shots: {})
+    monkeypatch.setattr(director, "_record_shot_lints", lambda *_args: None)
+    record["scene_stage"] = None
+    await director._run_shot_list_regenerate(work_id)
+    assert record["status"] == "shot_list_draft"
+    monkeypatch.setattr(
+        director,
+        "generate_shot_list_draft",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("shot list broken")),
+    )
+    await director._run_shot_list_regenerate(work_id)
+    assert record["status"] == "shot_list_regenerate_failed"
+
+    locked = design_list()
+    monkeypatch.setattr(
+        director,
+        "_lock_design_list_assets",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("asset lock broken")),
+    )
+    record["screenplay"] = screenplay().model_dump()
+    await director._run_design_list_lock(
+        work_id,
+        locked,
+        user_id=user["id"],
+        subject_svc=SimpleNamespace(),
+    )
+    assert record["status"] == "design_list_lock_failed"
+
+    assert director._derive_shot_id(None) == ""
+    assert director._derive_shot_id("shot.mp4") == "shot"
+    assert director._derive_shot_id("SH001_01_talk.mp4") == "SH001_01"
+    for name in ("clip", "talk", "vis", "narr", "kf", "first"):
+        (tmp_path / f"SH001_01_{name}.mp4").write_bytes(b"x")
+    director._purge_shot_artifacts(tmp_path, "SH001_01", hard=False)
+    assert (tmp_path / "SH001_01_kf.mp4").exists()
+    director._purge_shot_artifacts(tmp_path, "SH001_01", hard=True)
+    assert not (tmp_path / "SH001_01_kf.mp4").exists()
+    director._purge_shot_artifacts(tmp_path, "", hard=True)
+
+
+@pytest.mark.asyncio
+async def test_tongjian_runtime_layers_and_resume_boundaries_are_exercised(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Cover resumable Tongjian control flow with deterministic local adapters."""
+    from types import SimpleNamespace
+
+    from fastapi import BackgroundTasks, HTTPException
+
+    import hevi.api.routers.tongjian as tongjian
+    import hevi.studio.kit as studio_kit
+    import hevi.studio.mix as studio_mix
+    import hevi.tongjian.assemble as assemble
+    import hevi.tongjian.chapter_ir as chapter_ir_module
+    import hevi.tongjian.character_bible as character_bible
+    import hevi.tongjian.character_sim as character_sim
+    import hevi.tongjian.hotwords as hotwords
+    import hevi.tongjian.music_plan as music_plan
+    import hevi.tongjian.scene_render as scene_render
+    import hevi.tongjian.scene_render_avatar as scene_render_avatar
+    import hevi.tongjian.script as script_module
+    import hevi.tongjian.shotlist as shotlist_module
+    import hevi.tongjian.voiceover as voiceover
+    from hevi.tongjian.schemas import (
+        ChapterIR,
+        ChapterMeta,
+        Constitution,
+        EventIR,
+        GateResult,
+        LayerConfig,
+        Script,
+        ScriptLine,
+    )
+
+    chapter = ChapterIR(
+        meta=ChapterMeta(source="史料", char_count=4),
+        events=[EventIR(event_id="E001", summary="两军相遇")],
+    )
+    constitution = Constitution(thesis="守住城门")
+    script = Script(lines=[ScriptLine(line_id="L1", text="守住城门", event_id="E001")])
+    gate = GateResult(passed=True, coverage=1.0)
+    user = {"id": "tongjian-coverage-user"}
+
+    def helpers(run_id: str, _req: tongjian.RunRequest):
+        def gate_done(layer: str, value: GateResult) -> None:
+            tongjian._update_layer(
+                run_id,
+                layer,
+                status="PASSED" if value.passed else "DEGRADED",
+                degraded=not value.passed,
+                gate_report=value.model_dump(),
+                finished_at=tongjian.datetime.now(tongjian.UTC),
+            )
+
+        return (lambda _layer: object(), lambda _layer: None, lambda _layer: {}, gate_done)
+
+    real_helpers = tongjian._pipeline_helpers
+    monkeypatch.setattr(tongjian, "_pipeline_helpers", helpers)
+    monkeypatch.setattr(character_sim, "load_character_states", lambda _path: None)
+    monkeypatch.setattr(
+        character_sim,
+        "simulate_character_states",
+        lambda *_args, **_kwargs: asyncio.sleep(0, result={"甲": {"knowledge": []}}),
+    )
+    monkeypatch.setattr(character_sim, "dump_character_states", lambda *_args: None)
+    monkeypatch.setattr(
+        character_sim,
+        "gate_character_states",
+        lambda *_args: SimpleNamespace(passed=True, errors=[]),
+    )
+    monkeypatch.setattr(
+        studio_mix,
+        "plan_history_mix",
+        lambda _script: asyncio.sleep(
+            0,
+            result=SimpleNamespace(
+                drama_lines=[{"line_id": "L1", "text": "守住城门"}],
+                provenance={"passed": True},
+                to_dict=lambda: {"commentary_count": 0, "drama_count": 1},
+            ),
+        ),
+    )
+    monkeypatch.setattr(studio_kit, "shot_export", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        chapter_ir_module,
+        "extract_chapter_ir",
+        lambda **_kwargs: asyncio.sleep(0, result=chapter),
+    )
+    monkeypatch.setattr(
+        "hevi.tongjian.constitution.build_constitution",
+        lambda *_args, **_kwargs: asyncio.sleep(0, result=(constitution, gate)),
+    )
+    monkeypatch.setattr(
+        script_module,
+        "build_script",
+        lambda **_kwargs: asyncio.sleep(0, result=(script, gate)),
+    )
+    real_run_render = tongjian._run_render
+    monkeypatch.setattr(tongjian, "_run_render", lambda _run_id: asyncio.sleep(0))
+
+    run_id = "tongjian-pipeline-success"
+    tongjian._init_run(run_id, "史料")
+    req = tongjian.RunRequest(
+        source_name="史料",
+        raw_text="甲守城门",
+        pause_after="L2",
+        reference_url="https://example.test/reference.mp4",
+        layer_config={"L6": LayerConfig(model="cloud_avatar")},
+    )
+    monkeypatch.setattr(
+        studio_kit,
+        "watch_video_tool",
+        lambda *_args, **_kwargs: asyncio.sleep(0, result={"status": "succeeded"}),
+    )
+    await tongjian._run_pipeline(run_id, req)
+    assert tongjian._context(run_id)["status"] == "AWAITING_REVIEW"
+    assert (Path("output/tongjian") / run_id / "L2" / "review.json").is_file()
+
+    run_id_no_pause = "tongjian-pipeline-render"
+    tongjian._init_run(run_id_no_pause, "史料")
+    render_called: list[str] = []
+
+    async def fake_render(run: str) -> None:
+        render_called.append(run)
+
+    monkeypatch.setattr(tongjian, "_run_render", fake_render)
+    await tongjian._run_pipeline(
+        run_id_no_pause,
+        req.model_copy(update={"pause_after": None, "reference_url": ""}),
+    )
+    assert render_called == [run_id_no_pause]
+    monkeypatch.setattr(tongjian, "_run_render", real_run_render)
+
+    run_id_l0 = "tongjian-pipeline-l0-fail"
+    tongjian._init_run(run_id_l0, "史料")
+    monkeypatch.setattr(
+        chapter_ir_module,
+        "extract_chapter_ir",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("l0 down")),
+    )
+    await tongjian._run_pipeline(run_id_l0, req)
+    assert tongjian._context(run_id_l0)["status"] == "FAILED"
+
+    run_id_l1 = "tongjian-pipeline-l1-fail"
+    tongjian._init_run(run_id_l1, "史料")
+    monkeypatch.setattr(
+        chapter_ir_module,
+        "extract_chapter_ir",
+        lambda **_kwargs: asyncio.sleep(0, result=chapter),
+    )
+    monkeypatch.setattr(
+        "hevi.tongjian.constitution.build_constitution",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("l1 down")),
+    )
+    await tongjian._run_pipeline(run_id_l1, req)
+    assert tongjian._context(run_id_l1)["status"] == "FAILED"
+
+    run_id_l2 = "tongjian-pipeline-l2-fail"
+    tongjian._init_run(run_id_l2, "史料")
+    monkeypatch.setattr(
+        "hevi.tongjian.constitution.build_constitution",
+        lambda **_kwargs: asyncio.sleep(0, result=(constitution, gate)),
+    )
+    monkeypatch.setattr(
+        script_module,
+        "build_script",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("l2 down")),
+    )
+    await tongjian._run_pipeline(run_id_l2, req)
+    assert tongjian._context(run_id_l2)["status"] == "FAILED"
+
+    provider_calls: list[tuple[str, str]] = []
+
+    class ProviderRegistry:
+        @classmethod
+        def get(cls) -> ProviderRegistry:
+            return cls()
+
+        def llm(self, name: str) -> object:
+            provider_calls.append(("llm", name))
+            return object()
+
+        def generic(self, kind: str, name: str) -> object:
+            provider_calls.append((kind, name))
+            return object()
+
+    monkeypatch.setattr("obase.provider_registry.ProviderRegistry.get", lambda: ProviderRegistry())
+    req_with_layers = tongjian.RunRequest(
+        source_name="史料",
+        raw_text="原文",
+        layer_config={"L0": LayerConfig(model="qwen"), "L3": LayerConfig(model="edge")},
+    )
+    run_id_helpers = "tongjian-helpers"
+    tongjian._init_run(run_id_helpers, "史料")
+    monkeypatch.setattr(tongjian, "_pipeline_helpers", real_helpers)
+    llm, tts, params, gate_done = tongjian._pipeline_helpers(run_id_helpers, req_with_layers)
+    assert llm("L0") and tts("L3") and params("L0") == {}
+    gate_done("L1", gate)
+    assert tongjian._context(run_id_helpers)["layers"]["L1"]["status"] == "PASSED"
+    assert provider_calls == [("llm", "qwen"), ("audio", "edge")]
+    cloud_req = req_with_layers.model_copy(
+        update={
+            "layer_config": {
+                "L6": LayerConfig(model="cloud_avatar"),
+                "L1": LayerConfig(params={"n": 2}),
+            }
+        }
+    )
+    tongjian._apply_cloud_avatar_preset(cloud_req)
+    assert cloud_req.layer_config["L0"].model == "qwen_cloud"
+    assert req_with_layers.layer_config["L0"].model == "qwen"
+
+    record = tongjian._context(run_id_helpers)
+    record["req"] = req_with_layers.model_dump()
+    assert tongjian._request_from_record(record).source_name == "史料"
+    with pytest.raises(RuntimeError):
+        tongjian._request_from_record({})
+    with pytest.raises(RuntimeError):
+        tongjian._context("missing")
+    await tongjian._flush_run_persistence(run_id_helpers)
+
+    monkeypatch.setattr(
+        hotwords,
+        "build_asr_hotwords",
+        lambda _chapter: ["守城"],
+    )
+    monkeypatch.setattr(tongjian, "_pipeline_helpers", helpers)
+    monkeypatch.setattr(
+        voiceover,
+        "build_voiceover",
+        lambda **_kwargs: asyncio.sleep(0, result=(SimpleNamespace(), gate)),
+    )
+    monkeypatch.setattr(
+        character_bible,
+        "generate_character_bible",
+        lambda **_kwargs: asyncio.sleep(0, result={"甲": "守将"}),
+    )
+    monkeypatch.setattr(
+        shotlist_module,
+        "build_shotlist",
+        lambda **_kwargs: asyncio.sleep(0, result=([], gate)),
+    )
+    monkeypatch.setattr(scene_render, "render_shots", lambda **_kwargs: asyncio.sleep(0, result={}))
+    monkeypatch.setattr(scene_render, "gate_frame_manifest", lambda *_args: gate)
+    monkeypatch.setattr(scene_render_avatar, "gate_avatar_manifest", lambda *_args: gate)
+    monkeypatch.setattr(
+        music_plan,
+        "build_music_plan",
+        lambda **_kwargs: asyncio.sleep(0, result=(None, gate)),
+    )
+    final_path = tmp_path / "final.mp4"
+    final_path.write_bytes(b"video")
+    monkeypatch.setattr(
+        assemble,
+        "build_final_video",
+        lambda **_kwargs: asyncio.sleep(0, result=(SimpleNamespace(video_path=final_path), gate)),
+    )
+    render_id = "tongjian-render-layers"
+    render_record = tongjian._init_run(render_id, "史料")
+    render_record.update(
+        {
+            "req": req,
+            "request": req,
+            "chapter_ir": chapter,
+            "constitution": constitution,
+            "script": script,
+            "run_dir": str(tmp_path / "render"),
+        }
+    )
+    result = await tongjian._run_render_layers(render_id)
+    assert result, (
+        tongjian._context(render_id)["status"],
+        tongjian._context(render_id).get("error"),
+    )
+    assert result["video_path"] == str(final_path)
+    req.layer_config = {}
+    monkeypatch.setattr(
+        music_plan,
+        "build_music_plan",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("no music")),
+    )
+    assert await tongjian._run_render_layers(render_id)
+
+    production = __import__("hevi.tongjian.production", fromlist=["render_presenter_video"])
+    presenter_calls: list[Path] = []
+
+    async def fake_presenter(**kwargs: object) -> SimpleNamespace:
+        presenter_calls.append(Path(str(kwargs["output_dir"])))
+        return SimpleNamespace(video_path=final_path)
+
+    monkeypatch.setattr(production, "render_presenter_video", fake_presenter)
+    await tongjian._run_render(render_id)
+    assert presenter_calls, (
+        tongjian._context(render_id)["status"],
+        tongjian._context(render_id).get("error"),
+    )
+    assert tongjian._context(render_id)["status"] == "COMPLETED"
+    monkeypatch.setattr(
+        production,
+        "render_presenter_video",
+        lambda **_kwargs: (_ for _ in ()).throw(production.PresenterProductionError("broken")),
+    )
+    failed_render_id = "tongjian-render-fail"
+    failed_render = tongjian._init_run(failed_render_id, "史料")
+    failed_render["run_dir"] = str(tmp_path / "failed-render")
+    await tongjian._run_render(failed_render_id)
+    assert tongjian._context(failed_render_id)["status"] == "FAILED"
+
+    monkeypatch.setattr(
+        script_module,
+        "build_script",
+        lambda **_kwargs: asyncio.sleep(0, result=(script, gate)),
+    )
+    regen_id = "tongjian-regenerate"
+    regen = tongjian._init_run(regen_id, "史料")
+    regen.update(
+        {
+            "status": "AWAITING_REVIEW",
+            "req": req,
+            "request": req,
+            "chapter_ir": chapter,
+            "constitution": constitution,
+            "script": script,
+            "run_dir": str(tmp_path / "regen"),
+        }
+    )
+    await tongjian._regenerate_script(regen_id)
+    assert regen["status"] == "AWAITING_REVIEW"
+    monkeypatch.setattr(
+        script_module,
+        "build_script",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("regen broken")),
+    )
+    with pytest.raises(RuntimeError):
+        await tongjian._regenerate_script(regen_id)
+
+    assert tongjian._gate_decision(gate) == ("PASSED", None)
+    assert tongjian._gate_decision({"passed": False, "errors": ["bad"]}) == ("DEGRADED", "bad")
+    assert tongjian._gate_decision({"passed": False})[1]
+    await tongjian._flush_run_persistence("missing")
+
+    with pytest.raises(HTTPException):
+        await tongjian.start_run(
+            tongjian.RunRequest(source_name="x", raw_text=""), BackgroundTasks(), user
+        )
+    valid = await tongjian.start_run(
+        tongjian.RunRequest(source_name="x", raw_text="原文"), BackgroundTasks(), user
+    )
+    assert valid["status"] == "PENDING"
+    assert len(await tongjian.list_runs(user)) >= 1
+    with pytest.raises(HTTPException):
+        await tongjian.get_run("missing-run", user)
