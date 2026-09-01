@@ -687,3 +687,173 @@ def test_digital_human_atoms_keep_artifact_and_qa_boundaries(
         str(replaced), str(replaced), str(replaced), 1.0, measurement, {}, {}, {}
     )
     assert report["status"] == "verified" and report["full_decode_passed"] is True
+
+
+def test_media_provider_chain_freezes_local_stock_assets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.sourcing import media_providers as providers
+
+    local_asset = tmp_path / "local.wav"
+    local_asset.write_bytes(b"local")
+
+    class Library:
+        def select_bgm(self, _intent: str) -> Path:
+            return local_asset
+
+        def get_sfx(self, _token: str) -> Path:
+            return local_asset
+
+    monkeypatch.setattr("hevi.audio.bgm_library.BGMLibrary", Library)
+    assert providers._bgm_local("calm") == local_asset
+    assert providers._sfx_local("hit/swish") == local_asset
+    grade = providers._grade_local("warm_film")
+    assert grade and grade.is_file() and json.loads(grade.read_text())["name"] == "warm_film"
+    monkeypatch.setenv("MATERIAL_CACHE_DIR", str(tmp_path / "cache"))
+
+    class StreamResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def iter_bytes(self, _size: int):
+            yield b"frozen-asset"
+
+    class StreamContext:
+        def __enter__(self) -> StreamResponse:
+            return StreamResponse()
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    class Client:
+        def get(self, _url: str, **_kwargs: object) -> SimpleNamespace:
+            return SimpleNamespace(
+                raise_for_status=lambda: None,
+                json=lambda: {
+                    "photos": [
+                        {
+                            "id": 7,
+                            "url": "https://pexels.test/photo",
+                            "photographer": "tester",
+                            "src": {"large": "https://cdn.test/image.jpg"},
+                        }
+                    ]
+                },
+            )
+
+        def stream(self, _method: str, _url: str) -> StreamContext:
+            return StreamContext()
+
+        def __enter__(self) -> Client:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setenv("PEXELS_API_KEY", "present-but-test-injected")
+    monkeypatch.setattr(providers.httpx, "Client", lambda **_kwargs: Client())
+    image = providers._image_stock("lantern")
+    assert image and image.is_file() and image.with_suffix(".jpg.source.json").is_file()
+    provenance = json.loads(image.with_suffix(".jpg.source.json").read_text())
+    assert provenance["provider"] == "pexels" and provenance["sha256"]
+    assert (
+        providers._download_cached(
+            "https://cdn.test/image.jpg", tmp_path / "cache", ".jpg", Client()
+        )
+        == image
+    )
+    assert providers._lut_local("missing") is None
+
+    video = tmp_path / "stock.mp4"
+    video.write_bytes(b"video")
+    item = SimpleNamespace(
+        source="pexels",
+        id="video-1",
+        page_url="https://pexels.test/video",
+        title="demo",
+        width=720,
+        height=1280,
+        duration_s=2.0,
+    )
+    monkeypatch.setattr("hevi.video.material_corpus.search_all", lambda *_args, **_kwargs: [item])
+    monkeypatch.setattr("hevi.video.material_corpus.dedupe", lambda items: items)
+    monkeypatch.setattr(
+        "hevi.video.material_corpus.rank_by_keywords", lambda items, *_args, **_kwargs: items
+    )
+    monkeypatch.setattr(
+        "hevi.video.material_corpus.ensure_cached",
+        lambda *_args, **_kwargs: SimpleNamespace(cached_path=str(video)),
+    )
+    assert providers._video_stock("portrait 9:16") == video
+    chain = providers.default_providers()
+    assert set(chain) == {"bgm", "sfx", "voice", "grade", "lut", "image", "video"}
+
+
+@pytest.mark.asyncio
+async def test_openai_audio_facade_and_asr_adapters_return_real_shapes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.ingest.video_transcript import TranscriptSegment, WordSpan
+    from hevi.voicepro.omodul import openai_audio
+
+    class Engine:
+        kind = "tts"
+        available = True
+        setup = None
+        id = "test_tts"
+
+    monkeypatch.setattr(openai_audio, "get_engine", lambda _engine: Engine())
+
+    async def synthesize(_engine: str, *, output_path: Path, **_kwargs: object) -> None:
+        output_path.write_bytes(b"audio")
+
+    monkeypatch.setattr("hevi.audio.task_adapter._synthesize_with_engine", synthesize)
+    wav = await openai_audio.synthesize_audio_file(
+        text="hello", engine="test_tts", output_dir=tmp_path / "audio"
+    )
+    assert wav["format"] == "wav" and Path(wav["path"]).is_file()
+
+    async def convert(_source: Path, output: Path, _fmt: str) -> None:
+        output.write_bytes(b"converted")
+
+    monkeypatch.setattr(openai_audio, "_convert_audio", convert)
+    mp3 = await openai_audio.synthesize_audio_file(
+        text="hello", engine="test_tts", response_format="mp3", output_dir=tmp_path / "audio"
+    )
+    assert mp3["media_type"] == "audio/mpeg" and Path(mp3["path"]).is_file()
+    with pytest.raises(ValueError):
+        await openai_audio.synthesize_audio_file(text="", engine="test_tts")
+    with pytest.raises(ValueError):
+        await openai_audio.synthesize_audio_file(text="x", engine="test_tts", response_format="bad")
+
+    class ASREngine:
+        kind = "asr"
+        available = True
+        setup = None
+
+    monkeypatch.setattr(
+        openai_audio,
+        "get_engine",
+        lambda engine: ASREngine() if engine == "asr" else Engine(),
+    )
+    segments = [
+        TranscriptSegment(
+            start=0,
+            end=1,
+            text="hello",
+            words=(WordSpan(word="hello", start=0, end=1),),
+        )
+    ]
+    monkeypatch.setattr(openai_audio, "fetch_transcript", lambda *_args, **_kwargs: segments)
+    assert (
+        "WEBVTT"
+        in openai_audio.transcribe_audio_file(
+            source=tmp_path / "source.wav", asr_engine="asr", response_format="vtt"
+        )["text"]
+    )
+    assert (
+        openai_audio.transcribe_audio_file(
+            source=tmp_path / "source.wav", asr_engine="asr", response_format="text"
+        )["format"]
+        == "text"
+    )
