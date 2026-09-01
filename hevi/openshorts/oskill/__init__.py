@@ -194,7 +194,6 @@ def generate_clips(
         clip_job.clips.append(clip)
 
     clip_job.status = "planned"
-    clip_job.error = "远程输入仅完成候选规划；请先取得本地视频后执行 FFmpeg 出片"
     return clip_job
 
 
