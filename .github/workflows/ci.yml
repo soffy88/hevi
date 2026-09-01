@@ -11,6 +11,10 @@ jobs:
     env:
       DATABASE_URL: postgresql://hevi:hevi@localhost:5432/hevi
       HEVI_TEST_DSN: postgresql://hevi:hevi@localhost:5432/hevi
+      # The quality gates need a deterministic application secret for imports,
+      # migrations, and tests.  This is not a deployment credential and must
+      # never be reused outside CI.
+      JWT_SECRET: ci-only-release-closure-secret
     services:
       postgres:
         image: postgres:16
