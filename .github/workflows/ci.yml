@@ -11,13 +11,17 @@ jobs:
     env:
       DATABASE_URL: postgresql://hevi:hevi@localhost:5432/hevi
       HEVI_TEST_DSN: postgresql://hevi:hevi@localhost:5432/hevi
+      VAULT_DATABASE_URL: postgresql://hevi:hevi@localhost:5432/hevi
+      VAULT_MINIO_ENDPOINT: localhost:9000
+      VAULT_MINIO_ACCESS_KEY: hevi
+      VAULT_MINIO_SECRET_KEY: hevi1234
       # The quality gates need a deterministic application secret for imports,
       # migrations, and tests.  This is not a deployment credential and must
       # never be reused outside CI.
       JWT_SECRET: ci-only-release-closure-secret
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: hevi
           POSTGRES_PASSWORD: hevi
@@ -29,11 +33,26 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: hevi
+          MINIO_ROOT_PASSWORD: hevi1234
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd="curl -sf http://localhost:9000/minio/health/live || exit 1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     steps:
       - uses: actions/checkout@v4
 
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install media runtime
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
       - name: Setup Python 3.14
         run: uv python install 3.14
@@ -43,6 +62,9 @@ jobs:
 
       - name: Install 3O compatibility prims
         run: uv run python scripts/patch_oprim_prims.py
+
+      - name: Patch VibeVoice runtime compatibility
+        run: uv run python scripts/patch_vibevoice.py
 
       - name: Alembic clean PostgreSQL schema
         run: uv run alembic upgrade heads
