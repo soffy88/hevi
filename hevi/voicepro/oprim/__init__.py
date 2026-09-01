@@ -41,6 +41,13 @@ from hevi.voicepro.oprim.mix_levels import (
     plan_mix,
     remix_filter,
 )
+from hevi.voicepro.oprim.native_voice import (
+    VoiceConditioning,
+    normalize_voice_text,
+    probe_reference_audio,
+    resolve_voice_conditioning,
+    split_voice_text,
+)
 from hevi.voicepro.oprim.timeline_pad import (
     leading_silence_ms,
     place_clips_on_clock,
@@ -94,4 +101,9 @@ __all__ = [
     "should_keep_original",
     "split_into_sentences",
     "total_timeline_ms",
+    "VoiceConditioning",
+    "normalize_voice_text",
+    "probe_reference_audio",
+    "resolve_voice_conditioning",
+    "split_voice_text",
 ]

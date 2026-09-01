@@ -104,10 +104,43 @@ async def translate_azure_translator(
     region: str = "eastus",
 ) -> TranslateResult:
     """使用 Azure Translator 翻译。"""
-    # 占位：实际实现需调用 Azure SDK
+    import os
+
+    import httpx
+
+    key = api_key.strip() or os.getenv("AZURE_TRANSLATOR_KEY", "").strip()
+    if not key:
+        raise RuntimeError("AZURE_TRANSLATOR_KEY 未配置，无法使用 Azure Translator")
+    endpoint = os.getenv(
+        "AZURE_TRANSLATOR_ENDPOINT",
+        "https://api.cognitive.microsofttranslator.com",
+    ).rstrip("/")
+    params = {"api-version": "3.0", "to": target_lang}
+    if source_lang and source_lang != "auto":
+        params["from"] = source_lang
+    headers = {
+        "Ocp-Apim-Subscription-Key": key,
+        "Ocp-Apim-Subscription-Region": region or os.getenv("AZURE_TRANSLATOR_REGION", ""),
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            f"{endpoint}/translate",
+            params=params,
+            headers=headers,
+            json=[{"Text": text}],
+        )
+    response.raise_for_status()
+    payload = response.json()
+    try:
+        translated = str(payload[0]["translations"][0]["text"]).strip()
+    except (IndexError, KeyError, TypeError) as exc:
+        raise RuntimeError("Azure Translator 返回了无法解析的译文") from exc
+    if not translated:
+        raise RuntimeError("Azure Translator 返回空译文")
     return make_translate_result(
         source_text=text,
-        translated_text=text,  # 占位
+        translated_text=translated,
         source_lang=source_lang,
         target_lang=target_lang,
         provider=TranslateProvider.AZURE_TRANSLATOR,

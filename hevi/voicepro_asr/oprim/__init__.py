@@ -8,7 +8,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import shutil
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -62,9 +66,9 @@ async def transcribe_faster_whisper(
     except ImportError:
         raise RuntimeError("faster-whisper 未安装")
 
-    model = faster_whisper.Model(
+    model = faster_whisper.WhisperModel(
         config.model,
-        device=config.language if config.language in ("cpu", "cuda", "mps") else "auto",
+        device=os.getenv("FASTER_WHISPER_DEVICE", "auto"),
         compute_type="float16" if config.fp16 else "int8",
     )
 
@@ -79,7 +83,10 @@ async def transcribe_faster_whisper(
     words: list[WordTimestamp] = []
     segments_list: list[SentenceSegment] = []
 
+    started = time.monotonic()
+    text_parts: list[str] = []
     for segment in segments:
+        text_parts.append(segment.text.strip())
         seg = SentenceSegment(
             start_s=segment.start,
             end_s=segment.end,
@@ -88,7 +95,7 @@ async def transcribe_faster_whisper(
         )
         segments_list.append(seg)
 
-        for word in segment.words:
+        for word in segment.words or []:
             word_info = WordTimestamp(
                 word=word.word,
                 start_s=word.start,
@@ -99,14 +106,14 @@ async def transcribe_faster_whisper(
             words.append(word_info)
 
     return ASRResult(
-        text=info.text if hasattr(info, "text") else "",
+        text=" ".join(part for part in text_parts if part),
         words=words,
         segments=segments_list,
         language=info.language if hasattr(info, "language") else config.language,
         duration_s=info.duration if hasattr(info, "duration") else 0.0,
         cer=0.0,  # 可选：后续可通过 CER 计算获得
         model_used=f"faster-whisper:{config.model}",
-        latency_s=0.0,  # 实际应计时
+        latency_s=time.monotonic() - started,
     )
 
 
@@ -120,19 +127,64 @@ async def transcribe_whisper_cpp(
 
     适用于没有 GPU 的环境，或需要本地推理的场景。
     """
-    # 占位：实际实现需调用 whisper.cpp CLI 或库
-    # raise NotImplementedError("Whisper.cpp bridge not implemented yet")
-    
-    # 占位返回结构
+    executable = os.getenv("WHISPER_CPP_BIN", "").strip()
+    if not executable:
+        executable = shutil.which("whisper-cli") or shutil.which("main") or ""
+    model = os.getenv("WHISPER_CPP_MODEL", "").strip()
+    if not executable or not model:
+        raise RuntimeError(
+            "whisper.cpp is not configured; set WHISPER_CPP_BIN and WHISPER_CPP_MODEL"
+        )
+    source = Path(audio_path)
+    if not source.is_file() or source.stat().st_size == 0:
+        raise FileNotFoundError(f"audio file not found or empty: {source}")
+    with tempfile.TemporaryDirectory(prefix="hevi-whisper-cpp-") as temp_dir:
+        output_base = Path(temp_dir) / "transcript"
+        command = [
+            executable,
+            "-m",
+            model,
+            "-f",
+            str(source),
+            "-oj",
+            "-of",
+            str(output_base),
+        ]
+        if config.language and config.language != "auto":
+            command.extend(["-l", config.language])
+        completed = await asyncio.to_thread(
+            subprocess.run,
+            command,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=float(os.getenv("WHISPER_CPP_TIMEOUT_S", "900")),
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"whisper.cpp failed: {(completed.stderr or completed.stdout)[-1000:]}"
+            )
+        json_path = output_base.with_suffix(".json")
+        if not json_path.is_file():
+            raise RuntimeError("whisper.cpp completed without JSON transcript")
+        payload = json.loads(json_path.read_text(encoding="utf-8"))
+    segments_list: list[SentenceSegment] = []
+    words: list[WordTimestamp] = []
+    text_parts: list[str] = []
+    for row in payload.get("transcription", []):
+        text = str(row.get("text") or "").strip()
+        start_s = _whisper_timestamp(row.get("offsets", {}).get("from"), 1000.0)
+        end_s = _whisper_timestamp(row.get("offsets", {}).get("to"), 1000.0)
+        if text:
+            text_parts.append(text)
+            segments_list.append(SentenceSegment(start_s=start_s, end_s=end_s, text=text, is_complete=True))
     return ASRResult(
-        text="",
-        words=[],
-        segments=[],
+        text=" ".join(text_parts),
+        words=words,
+        segments=segments_list,
         language=config.language,
-        duration_s=0.0,
-        cer=1.0,
-        model_used="whisper_cpp:placeholder",
-        latency_s=0.0,
+        duration_s=segments_list[-1].end_s if segments_list else 0.0,
+        model_used=f"whisper_cpp:{Path(model).name}",
     )
 
 
@@ -146,16 +198,9 @@ async def transcribe_aliyun_asr(
 
     适用于需要国内部署或特定合规要求的场景。
     """
-    # 占位：实际实现需调用阿里云 SDK
-    return ASRResult(
-        text="",
-        words=[],
-        segments=[],
-        language="zh",
-        duration_s=0.0,
-        cer=1.0,
-        model_used="aliyun_asr:placeholder",
-        latency_s=0.0,
+    raise RuntimeError(
+        "Aliyun ASR adapter is not configured in HEVI; use the configured FunASR/"
+        "faster-whisper path or provide a dedicated Aliyun adapter"
     )
 
 
@@ -169,17 +214,69 @@ async def transcribe_openai_whisper(
 
     需要有效的 OpenAI API Key。
     """
-    # 占位：实际实现需调用 OpenAI API
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OpenAI Whisper requires OPENAI_API_KEY")
+    source = Path(audio_path)
+    if not source.is_file() or source.stat().st_size == 0:
+        raise FileNotFoundError(f"audio file not found or empty: {source}")
+    import httpx
+
+    base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
+    data: dict[str, str] = {
+        "model": config.model if config.model != "large-v2" else "whisper-1",
+        "response_format": "verbose_json",
+        "timestamp_granularities[]": "word",
+    }
+    if config.language and config.language != "auto":
+        data["language"] = config.language
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            with source.open("rb") as audio:
+                response = await client.post(
+                    f"{base_url}/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    data=data,
+                    files={"file": (source.name, audio, "audio/wav")},
+                )
+            response.raise_for_status()
+            payload = response.json()
+    except (httpx.HTTPError, OSError, ValueError) as exc:
+        raise RuntimeError(f"OpenAI Whisper request failed: {exc}") from exc
+    segments_list: list[SentenceSegment] = []
+    words: list[WordTimestamp] = []
+    for row in payload.get("segments", []):
+        text = str(row.get("text") or "").strip()
+        start_s = float(row.get("start") or 0.0)
+        end_s = float(row.get("end") or start_s)
+        segments_list.append(SentenceSegment(start_s=start_s, end_s=end_s, text=text, is_complete=True))
+    for row in payload.get("words", []):
+        start_s = float(row.get("start") or 0.0)
+        end_s = float(row.get("end") or start_s)
+        words.append(
+            WordTimestamp(
+                word=str(row.get("word") or ""),
+                start_s=start_s,
+                end_s=end_s,
+                start_ms=int(start_s * 1000),
+                end_ms=int(end_s * 1000),
+            )
+        )
     return ASRResult(
-        text="",
-        words=[],
-        segments=[],
-        language=config.language,
-        duration_s=0.0,
-        cer=1.0,
-        model_used="openai_whisper:placeholder",
-        latency_s=0.0,
+        text=str(payload.get("text") or ""),
+        words=words,
+        segments=segments_list,
+        language=str(payload.get("language") or config.language),
+        duration_s=float(payload.get("duration") or (segments_list[-1].end_s if segments_list else 0.0)),
+        model_used=f"openai_whisper:{data['model']}",
     )
+
+
+def _whisper_timestamp(value: Any, divisor: float) -> float:
+    try:
+        return float(value) / divisor
+    except (TypeError, ValueError):
+        return 0.0
 
 
 # ── Stage 6: 结果验证 ───────────────────────────────
