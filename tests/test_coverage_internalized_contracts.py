@@ -571,3 +571,119 @@ def test_tts_contracts_fail_closed_and_dispatch(
 def await_in_test(awaitable: Any) -> Any:
     """Run a small async adapter from a synchronous contract test."""
     return asyncio.run(awaitable)
+
+
+def test_digital_human_atoms_keep_artifact_and_qa_boundaries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.digital_human.oprim import (
+        add_clip_to_timeline,
+        build_caption_plan,
+        build_timeline,
+        generate_narration,
+        lock_content,
+        run_preflight_check,
+        run_qa_gate,
+    )
+    from hevi.digital_human.oprim.render import (
+        _parse_tile,
+        _replace_nonempty,
+        _run_ffmpeg,
+        build_loudnorm_filter,
+        calculate_contact_timestamps,
+        delivery_report,
+        encode_video,
+        generate_contact_sheet,
+        loudnorm_two_pass,
+    )
+    from hevi.digital_human.schemas import AudioMeasurement, PresenterJob
+
+    job = PresenterJob(topic="如何识别新闻", duration_target_s=30)
+    monkeypatch.setenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", str(tmp_path / "dh"))
+
+    def render_voice(_text: str, output: Path, **_kwargs: object) -> None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(b"real-test-wav")
+
+    monkeypatch.setattr("hevi.voicepro.oskill.synthesize_native_voice_sync", render_voice)
+    lock_content(job)
+    locked = generate_narration(job)
+    assert locked.final_audio and Path(locked.final_audio).is_file()
+    timeline = build_timeline(locked, narration_duration_s=30)
+    assert timeline.total_video_duration_s == 30
+    assert add_clip_to_timeline(timeline, 0, 1, 0, 1, "shot.mp4").clips
+    with pytest.raises(ValueError):
+        add_clip_to_timeline(timeline, -1, 0, 0, 0, "bad.mp4")
+    captions = build_caption_plan(3, "第一句。第二句。", keyword_anchors=[(0.1, "第一")])
+    assert captions.phrases and captions.phrases[0].style
+    assert run_preflight_check(job).ok is False
+    job.rights_confirmed = True
+    job.adult_presenter_confirmed = True
+    job.remote_upload_approved = True
+    job.voice_clone_approved = True
+    image = tmp_path / "presenter.png"
+    image.write_bytes(b"image")
+    job.presenter_image = str(image)
+    monkeypatch.setattr(
+        "hevi.digital_human.oprim.qa._ffprobe",
+        lambda _path: {"width": 1024, "height": 1024, "streams": [{"codec_type": "video"}]},
+    )
+    preflight = run_preflight_check(job)
+    assert preflight.remote_ready is True
+    qa = run_qa_gate(job, mouth_sync=False)
+    assert qa.ok is False and "mouth_sync" in qa.errors[0]
+    job.rendered = locked.final_audio
+    assert run_qa_gate(job).ok is True
+
+    measurement = AudioMeasurement(
+        input_i=-16,
+        input_tp=-1,
+        input_lra=4,
+        input_thresh=-26,
+        target_offset=0,
+        measured_lufs=-16,
+        program_lufs=-16,
+    )
+    assert "measured_I=-16" in build_loudnorm_filter(measurement)
+    assert calculate_contact_timestamps(0, 3) == [0.2, 0.2, 0.2]
+    assert len(calculate_contact_timestamps(10, 4)) == 4
+    assert _parse_tile("3x2") == (3, 2)
+    with pytest.raises(ValueError):
+        _parse_tile("bad")
+    with pytest.raises(FileNotFoundError):
+        encode_video(str(tmp_path / "missing.mp4"), str(tmp_path / "out.mp4"))
+
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"source")
+    temporary = tmp_path / "temporary.bin"
+    temporary.write_bytes(b"x")
+    replaced = tmp_path / "replaced.bin"
+    _replace_nonempty(temporary, replaced, "test")
+    assert replaced.read_bytes() == b"x"
+    with pytest.raises(RuntimeError):
+        _run_ffmpeg(["ffmpeg"], "test")
+
+    def run_media(command: list[str], _operation: str) -> None:
+        Path(command[-1]).write_bytes(b"encoded")
+
+    monkeypatch.setattr("hevi.digital_human.oprim.render._run_ffmpeg", run_media)
+    monkeypatch.setattr("hevi.digital_human.oprim.render._probe_duration", lambda _path: 2.0)
+    assert encode_video(str(source), str(tmp_path / "encoded.mp4")) is True
+    assert generate_contact_sheet(str(source), str(tmp_path / "sheet.png")) is True
+    monkeypatch.setattr(
+        "hevi.digital_human.oprim.render._measure_loudnorm",
+        lambda *_args: {
+            "input_i": -16.0,
+            "input_tp": -1.0,
+            "input_lra": 4.0,
+            "input_thresh": -26.0,
+            "target_offset": 0.0,
+            "measured_lufs": -16.0,
+        },
+    )
+    normalized = loudnorm_two_pass(str(source), str(tmp_path / "normalized.mp4"))
+    assert normalized.program_lufs == -16
+    report = delivery_report(
+        str(replaced), str(replaced), str(replaced), 1.0, measurement, {}, {}, {}
+    )
+    assert report["status"] == "verified" and report["full_decode_passed"] is True
