@@ -27,7 +27,7 @@ def build_continuity_report(shots: list[dict[str, Any]]) -> dict[str, Any]:
 
     for row in shots:
         sel = row.get("selection_json") or {}
-        passed = bool(sel.get("passed", True))
+        passed = bool(sel.get("passed", False))
         if passed:
             passed_count += 1
         score = sel.get("consistency_score")

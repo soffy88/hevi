@@ -9,8 +9,10 @@ from hevi.tasks.task_service import TaskService
 
 
 @pytest.mark.asyncio
-async def test_task_service_dispatches_explainer_to_adapter_executor() -> None:
+async def test_task_service_dispatches_explainer_to_adapter_executor(tmp_path) -> None:
     task_id = uuid4()
+    audio = tmp_path / "voice.wav"
+    audio.write_bytes(b"RIFF" + b"\x00" * 40)
     repo = MagicMock()
     repo.pool = MagicMock()
     repo.update_task = AsyncMock()
@@ -21,7 +23,17 @@ async def test_task_service_dispatches_explainer_to_adapter_executor() -> None:
         "status": "pending",
         "config_json": {"production_source": "explainer", "run_id": "run-1"},
     }
-    expected = {**task, "status": "completed"}
+    expected = {
+        **task,
+        "status": "completed",
+        "result_video_path": None,
+        "config_json": {
+            **task["config_json"],
+            "artifact_manifest": {
+                "artifacts": [{"kind": "audio", "path": str(audio), "primary": True}]
+            },
+        },
+    }
 
     with patch(
         "hevi.api.routers.explainer.execute_task", new_callable=AsyncMock, return_value=expected
@@ -29,19 +41,21 @@ async def test_task_service_dispatches_explainer_to_adapter_executor() -> None:
         adapters.register("explainer", execute)
         result = await service._run_adapter_task(task)
 
-    assert result == expected
+    assert result["status"] == "completed"
+    assert result["config_json"]["artifact_manifest"]["artifacts"][0]["sha256"]
     execute.assert_awaited_once_with(task, repo.pool)
     # TaskService projects the oservi start/success events in addition to the
     # initial running-state write, preserving existing task/SSE semantics.
-    assert repo.update_task.await_count == 4
+    assert repo.update_task.await_count >= 4
     assert repo.update_task.await_args_list[1].args[1]["config_json"]["stage"] == "started"
     assert repo.update_task.await_args_list[2].args[1]["config_json"]["stage"] == "succeeded"
 
 
 @pytest.mark.asyncio
-async def test_task_service_persists_audio_manifest_after_engine_projection() -> None:
+async def test_task_service_persists_audio_manifest_after_engine_projection(tmp_path) -> None:
     task_id = uuid4()
-    audio = "output/tasks/voice.wav"
+    audio = tmp_path / "voice.wav"
+    audio.write_bytes(b"RIFF" + b"\x00" * 40)
     repo = MagicMock()
     repo.pool = MagicMock()
     repo.update_task = AsyncMock()
@@ -54,7 +68,7 @@ async def test_task_service_persists_audio_manifest_after_engine_projection() ->
             "config_json": {
                 **task["config_json"],
                 "artifact_manifest": ArtifactManifest(
-                    artifacts=[{"kind": "audio", "path": audio, "primary": True}]
+                    artifacts=[{"kind": "audio", "path": str(audio), "primary": True}]
                 ).model_dump(mode="json"),
             },
         }

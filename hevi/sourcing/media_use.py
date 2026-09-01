@@ -126,6 +126,19 @@ def _new_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
+def _source_metadata(path: Path) -> dict[str, Any]:
+    """Load the optional non-secret provenance written by stock providers."""
+
+    sidecar = path.with_suffix(path.suffix + ".source.json")
+    if not sidecar.is_file():
+        return {}
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {}
+    return {"source_record": data} if isinstance(data, dict) else {}
+
+
 class ResolveError(Exception):
     """媒体需求无法满足(供应链全部落空)。"""
 
@@ -138,6 +151,7 @@ def resolve_media(
     ledger: MediaLedger | None = None,
     out_dir: str | Path | None = None,
     force_reuse: bool = True,
+    verify_paths: bool = False,
 ) -> MediaResolution:
     """媒体 resolve:台账复用 → 本地库 → 素材检索 → 生成。
 
@@ -149,6 +163,8 @@ def resolve_media(
         ledger: 可选,先查复用候选。
         out_dir: 产物落盘目录(默认 Path.cwd()/".media_assets")。
         force_reuse: 允许直接复用台账命中(不重新 resolve)。
+        verify_paths: 只交付存在且非空的本地文件。CLI/生产入口应开启；默认关闭
+            以保留可测试的 provider 契约。
 
     Returns:
         MediaResolution(冻结文件路径 + 台账记录)。
@@ -169,16 +185,21 @@ def resolve_media(
         candidates = ledger.reuse_candidates(media_type, intent)
         if candidates:
             best = candidates[0]
-            logger.info("media_use: reuse %s -> %s", best.id, best.path)
-            return MediaResolution(
-                id=best.id,
-                media_type=media_type,
-                intent=intent,
-                path=best.path,
-                source="reuse",
-                provider=best.provider,
-                metadata={"reused_from": best.id},
-            )
+            if verify_paths and (
+                not best.path.is_file() or best.path.stat().st_size <= 0
+            ):
+                logger.warning("media_use: skip stale ledger path %s", best.path)
+            else:
+                logger.info("media_use: reuse %s -> %s", best.id, best.path)
+                return MediaResolution(
+                    id=best.id,
+                    media_type=media_type,
+                    intent=intent,
+                    path=best.path,
+                    source="reuse",
+                    provider=best.provider,
+                    metadata={"reused_from": best.id, **_source_metadata(best.path)},
+                )
 
     # 1-3) 供应链:local → stock → generate
     chain = providers.get(media_type, {})
@@ -193,13 +214,23 @@ def resolve_media(
             continue
         if path is None:
             continue
+        path = Path(path)
+        if verify_paths and (not path.is_file() or path.stat().st_size <= 0):
+            logger.warning(
+                "media_use %s.%s returned non-local path: %s",
+                media_type,
+                kind,
+                path,
+            )
+            continue
         resolution = MediaResolution(
             id=_new_id(),
             media_type=media_type,
             intent=intent,
-            path=Path(path),
+            path=path,
             source=kind,
             provider=f"{media_type}:{kind}",
+            metadata=_source_metadata(path),
         )
         if ledger is not None:
             ledger.add(resolution)

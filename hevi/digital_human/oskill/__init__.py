@@ -5,6 +5,10 @@
 
 from __future__ import annotations
 
+import asyncio
+import os
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from hevi.digital_human.oprim import (
@@ -98,11 +102,17 @@ def caption_plan(
 
     对应 lanshu editing.md 第 2 节
     """
-    return _build_caption_plan(
+    plan = _build_caption_plan(
         audio_duration_s=audio_duration_s,
         script_text=job.script,
         keyword_anchors=keyword_anchors,
     )
+    # The plan is a production input to the composition stage.  Keep it on
+    # the job instead of returning an untracked in-memory object that the
+    # next stage cannot consume after a queue/process boundary.
+    job.caption_json = plan.model_dump_json()
+    job.updated_at = datetime.utcnow()
+    return plan
 
 
 # ─── 生成技能 ────────────────────────────────────────
@@ -117,15 +127,48 @@ def generate_presenter(
 
     对应 lanshu generation.md 第 2 节
     """
+    if not job.presenter_image:
+        raise ValueError("presenter_image is required before presenter generation")
+    if not Path(job.presenter_image).is_file():
+        raise FileNotFoundError(f"presenter image not found: {job.presenter_image}")
+    if not job.final_audio or not Path(job.final_audio).is_file():
+        raise FileNotFoundError("final_audio must be a real file before presenter generation")
+
+    output_root = Path(
+        os.getenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", "data/digital_human")
+    ).expanduser()
     if mode == "pilot":
-        # 试片：生成低成本小样
-        job.rendered = f"assets/video/candidates/pilot_{job.job_id}.mp4"
+        output_path = output_root / job.job_id / "video" / "pilot.mp4"
     else:
-        # 全片：生成完整主素材
-        job.rendered = f"assets/video/selected/main_{job.job_id}.mp4"
+        output_path = output_root / job.job_id / "video" / "presenter.mp4"
+
+    from hevi.digital_human.talking_face import generate_talking_face
+
+    _run_coroutine(
+        generate_talking_face(
+            image_path=job.presenter_image,
+            audio_path=job.final_audio,
+            output_path=output_path,
+        )
+    )
+    if not output_path.is_file() or output_path.stat().st_size == 0:
+        raise RuntimeError("Talking Face completed without a presenter video artifact")
+    job.rendered = str(output_path)
 
     job.status = JobStatus.PRESENTER_GENERATED
     return job
+
+
+def _run_coroutine(coroutine: Any) -> Any:
+    """Bridge legacy sync atoms to async provider clients without fake output."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coroutine)
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(asyncio.run, coroutine).result()
 
 
 # ─── 交付技能 ────────────────────────────────────────
@@ -141,6 +184,7 @@ def delivery(
 
     对应 lanshu finalize_delivery.sh
     """
+    import json
     import os
 
     out_path = os.path.join(output_dir, stem)
@@ -148,13 +192,14 @@ def delivery(
     share_path = f"{out_path}-share.mp4"
     contact_path = f"{out_path}-contact-sheet.png"
     report_path = f"{out_path}-delivery-report.json"
+    normalized_path = f"{out_path}-normalized.mp4"
 
-    # 1. 响度测量
-    measurement = loudnorm_two_pass(render_path, master_path)
+    # 1. 响度测量 + 归一化中间母版
+    measurement = loudnorm_two_pass(render_path, normalized_path)
 
-    # 2. 母版编码
+    # 2. 母版编码（从已归一化的中间产物开始）
     encode_video(
-        render_path,
+        normalized_path,
         master_path,
         crf=16,
         preset="slow",
@@ -163,7 +208,7 @@ def delivery(
 
     # 3. 分享版编码
     encode_video(
-        render_path,
+        normalized_path,
         share_path,
         crf=24,
         preset="medium",
@@ -173,22 +218,32 @@ def delivery(
     # 4. 接触表
     generate_contact_sheet(master_path, contact_path)
 
-    # 5. 报告
+    # 5. 对实际产物做解码探测并写报告
+    from hevi.digital_human.oprim.qa import _ffprobe
+
+    source_probe = _ffprobe(Path(render_path))
+    master_probe = _ffprobe(Path(master_path))
+    share_probe = _ffprobe(Path(share_path))
     report = delivery_report(
         master_path=master_path,
         share_path=share_path,
         contact_sheet_path=contact_path,
-        duration_s=measurement.measured_lufs,  # 占位
+        duration_s=float(master_probe.get("duration", 0.0)),
         measurement=measurement,
-        source_probe={},
-        master_probe={},
-        share_probe={},
+        source_probe=source_probe,
+        master_probe=master_probe,
+        share_probe=share_probe,
         black_events=0,
+    )
+    Path(report_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(report_path).write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
     # 6. 更新作业状态
     job.rendered = master_path
     job.share = share_path
+    job.qa_delivery = report_path
     job.status = JobStatus.RENDERED
 
     return {
@@ -208,6 +263,7 @@ def qa_gate(
     identity_coherent: bool = True,
     mouth_sync: bool = True,
     no_black_frames: bool = True,
+    no_overlay: bool = True,
     captions_readable: bool = True,
     safe_zones_ok: bool = True,
 ) -> QAReport:
@@ -220,6 +276,7 @@ def qa_gate(
         identity_coherent=identity_coherent,
         mouth_sync=mouth_sync,
         no_black_frames=no_black_frames,
+        no_overlay=no_overlay,
         captions_readable=captions_readable,
         safe_zones_ok=safe_zones_ok,
     )

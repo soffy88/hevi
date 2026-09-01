@@ -6,7 +6,7 @@ routed through the canonical production/task pipeline.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from obase.persistence import PgPool
@@ -17,12 +17,13 @@ from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
-from hevi.production.contracts import ProductionRequest
+from hevi.production.contracts import ProductionRequest, ProductionSource
 from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 
 router = APIRouter(prefix="/production/v2", tags=["production-v2"])
+_DEFAULT_BACKGROUND_TASKS = BackgroundTasks()
 
 
 async def get_task_service() -> TaskService:
@@ -36,9 +37,12 @@ async def _create_task(
     service: TaskService,
     background_tasks: BackgroundTasks,
     topic: str,
-    source: Literal["automatic", "explainer"],
+    source: ProductionSource,
     presenter_id: str | None = None,
     options: dict[str, Any] | None = None,
+    video_provider: str = "auto",
+    audio_provider: str = "edge_tts",
+    aspect_ratio: str = "9:16",
 ) -> dict[str, Any]:
     try:
         task = await service.create_production(
@@ -46,9 +50,10 @@ async def _create_task(
                 source=source,
                 topic=topic,
                 duration_archetype="1-5min",
-                video_provider="auto",
-                audio_provider="edge_tts",
+                video_provider=video_provider,
+                audio_provider=audio_provider,
                 presenter_id=presenter_id,
+                aspect_ratio=aspect_ratio,
                 options=options or {},
             ),
             user_id=str(user["id"]),
@@ -85,6 +90,30 @@ class ClipRequest(BaseModel):
     video_path: str
     strategy: str = "viral"
     max_clips: int = Field(default=5, ge=1, le=20)
+    aspect_ratio: str = Field(default="9:16", pattern=r"^(16:9|9:16|1:1|4:5|4:3|3:4)$")
+    subtitle_path: str | None = None
+    transcript_segments: list[dict[str, Any]] = Field(default_factory=list)
+    language: str | None = None
+    output_width: int | None = Field(default=None, ge=64, le=4096)
+    output_height: int | None = Field(default=None, ge=64, le=4096)
+
+
+class LocalizeRequest(BaseModel):
+    video_path: str
+    target_language: str = Field(default="zh-CN", min_length=2, max_length=16)
+    source_language: str = "auto"
+    translation_provider: str = "llm_translate"
+    bilingual: bool = True
+    dub: bool = False
+    keep_bed: bool = False
+    tts_engine: str = "edge_tts"
+    voice: str = ""
+    reference_audio: str = ""
+    subtitle_path: str | None = None
+    transcript_segments: list[dict[str, Any]] = Field(default_factory=list)
+    translated_segments: list[dict[str, Any]] = Field(default_factory=list)
+    glossary: dict[str, str] = Field(default_factory=dict)
+    watermark: str = ""
 
 
 class DigitalHumanRequest(BaseModel):
@@ -144,15 +173,70 @@ async def seedance(
 
 @router.post("/clip-video")
 async def clip_video(
-    body: ClipRequest, _: Annotated[dict[str, Any], Depends(get_current_user)]
+    body: ClipRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    service: Annotated[TaskService | None, Depends(get_task_service)] = None,
+    background_tasks: BackgroundTasks = _DEFAULT_BACKGROUND_TASKS,
 ) -> dict[str, Any]:
-    raise HTTPException(
-        status_code=503,
-        detail={
-            "code": "CAPABILITY_UNAVAILABLE",
-            "capability_id": "clip_video",
-            "message": "智能切片事务尚未接入，不能把原视频伪装成已剪辑成片。",
-            "setup": "接入可验证的剪辑 operation 和 ArtifactManifest 后开放。",
+    # Keep the old direct-call diagnostic useful for compatibility callers;
+    # actual HTTP requests always receive the injected canonical service.
+    if service is None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "CAPABILITY_UNAVAILABLE",
+                "capability_id": "clip_video",
+                "message": "请通过生产 API 提交拆条任务。",
+            },
+        )
+    from pathlib import Path
+
+    source = Path(body.video_path)
+    if not source.is_file():
+        raise HTTPException(status_code=400, detail=f"输入视频不存在: {source}")
+    if background_tasks is _DEFAULT_BACKGROUND_TASKS:
+        background_tasks = BackgroundTasks()
+    return await _create_task(
+        user=user,
+        service=service,
+        background_tasks=background_tasks or BackgroundTasks(),
+        topic=str(source),
+        source="clip_video",
+        video_provider="local",
+        audio_provider="none",
+        aspect_ratio=body.aspect_ratio,
+        options={
+            "workbench_operation": "ai_shorts_clip",
+            "clip_request": body.model_dump(mode="json"),
+        },
+    )
+
+
+@router.post("/localize-video")
+async def localize_video(
+    body: LocalizeRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    service: Annotated[TaskService, Depends(get_task_service)],
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    """Submit a real 3O video localization/dubbing transaction."""
+
+    from pathlib import Path
+
+    source = Path(body.video_path).expanduser()
+    if not source.is_file():
+        raise HTTPException(status_code=400, detail=f"输入视频不存在: {source}")
+    return await _create_task(
+        user=user,
+        service=service,
+        background_tasks=background_tasks,
+        topic=str(source),
+        source="localize_video",
+        video_provider="local",
+        audio_provider=body.tts_engine if body.dub else "none",
+        options={
+            "workbench_operation": "video_localization",
+            "localize_request": body.model_dump(mode="json"),
         },
     )
 

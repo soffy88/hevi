@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from hevi.studio.tools import invoke_tool
@@ -178,6 +179,15 @@ async def stage_runtime(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
 async def stage_dispatch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
     """排产交接:execute 时消费工单,跑产品适配器(L0/cues/故事图)。"""
     handoff = str(data.get("handoff") or "none")
+    raw_slots = data.get("input_slots") or {}
+    safe_slots: dict[str, Any] = {}
+    if isinstance(raw_slots, dict):
+        for key, value in raw_slots.items():
+            try:
+                json.dumps(value, ensure_ascii=False)
+            except (TypeError, ValueError):
+                continue
+            safe_slots[str(key)] = value
     order = {
         "target": handoff,
         "line_id": data.get("line_id"),
@@ -194,6 +204,8 @@ async def stage_dispatch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
         "research": data.get("research"),
         "concepts": data.get("concepts") or [],
         "mix": data.get("mix"),
+        "slots": safe_slots,
+        "output_dir": data.get("output_dir"),
         "timeline_id": (data.get("timeline") or {}).get("timeline_id")
         if isinstance(data.get("timeline"), dict)
         else None,
@@ -204,12 +216,20 @@ async def stage_dispatch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
         from hevi.studio.fulfill import fulfill_order
 
         dest = data.get("output_dir") or f"output/studio/{data.get('slate_id') or 'order'}"
-        fulfill = await fulfill_order(order, execute=True, output_dir=dest)
+        fulfill = await fulfill_order(
+            order,
+            execute=True,
+            output_dir=dest,
+            render=True,
+        )
     return {"production_order": order, "fulfill": fulfill}
 
 
 async def stage_publish(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
-    media = data.get("media_path")
+    raw_fulfill = data.get("fulfill")
+    fulfill: dict[str, Any] = raw_fulfill if isinstance(raw_fulfill, dict) else {}
+    raw_media = data.get("media_path") or data.get("result_video_path") or fulfill.get("result_video_path")
+    media = raw_media if isinstance(raw_media, str) else None
     platforms = data.get("platforms") or []
     if not media or not platforms:
         return {"publish_results": [], "publish_skipped": True}

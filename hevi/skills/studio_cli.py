@@ -26,9 +26,11 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("lines", help="列出产线")
     sub.add_parser("tools", help="列出工具")
-    run_p = sub.add_parser("run", help="签发工单")
+    run_p = sub.add_parser("run", help="排产或执行产线")
     run_p.add_argument("line_id")
     run_p.add_argument("--slot", action="append", default=[], type=_parse_slot)
+    run_p.add_argument("--execute", action="store_true", help="执行真实渲染并验收本地产物")
+    run_p.add_argument("--output-dir", default="", help="产物输出目录")
     args = parser.parse_args(argv)
 
     if args.cmd == "lines":
@@ -47,9 +49,13 @@ def main(argv: list[str] | None = None) -> int:
     from hevi.studio.slate import Slate, run_slate
 
     slots = dict(args.slot)
-    result = asyncio.run(run_slate(Slate(line_id=args.line_id, slots=slots)))
+    if args.output_dir:
+        slots["output_dir"] = args.output_dir
+    result = asyncio.run(
+        run_slate(Slate(line_id=args.line_id, slots=slots, execute=bool(args.execute)))
+    )
     print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
-    return 0 if result.status in {"scheduled", "planned", "blocked"} else 1
+    return 0 if result.status in {"scheduled", "planned", "completed"} else 1
 
 
 if __name__ == "__main__":

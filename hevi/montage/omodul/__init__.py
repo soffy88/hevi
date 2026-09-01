@@ -10,6 +10,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from hevi.montage.omodul.agentic import AgenticMontageConfig, agentic_montage_workflow
+from hevi.montage.omodul.video_agent import (
+    VideoEvidenceConfig,
+    compute_video_agent_fingerprint,
+    video_agent_transaction,
+    video_evidence_index,
+    video_evidence_search,
+    video_script_from_transcript,
+)
 from hevi.montage.oprim import (
     analyze_reference_video,
     apply_playbook_to_compose,
@@ -314,75 +323,44 @@ async def execute_pipeline(
     available_tools: dict[str, Any] | None = None,
     budget_usd: float = 2.0,
     output_dir: str | None = None,
+    *,
+    auto_approve: bool = False,
+    resume: bool = True,
 ) -> dict[str, Any]:
-    """执行完整 pipeline（阶段驱动）。
+    """Compatibility entry point backed by the executable HEVI transaction.
 
-    这是供 hevi studio pipeline 调用的统一入口。
-    适配 hevi.studio.stages 的数据流契约。
+    Older callers can keep the original positional signature; new callers may
+    opt into explicit approval/resume controls.  There is no placeholder
+    compose result and no implicit approval anymore.
     """
-    manifest = load_pipeline_manifest(f"tools/pipeline_defs/{pipeline}.yaml")
-    budget = make_default_cost_budget(budget_usd)
-    artifacts: dict[str, Any] = {}
-    tool_results: dict[str, Any] = {}
+    from hevi.montage.omodul.agentic import agentic_montage_workflow
 
-    # 合并输入数据
-    data = {**input_data, "pipeline": pipeline}
-
-    for stage_def in manifest.stages:
-        stage_name = stage_def.name
-
-        # 规划阶段
-        plan_stage(pipeline, stage_name, artifacts, available_tools or {}, budget)
-
-        # 执行阶段（通过调用对应的 stage director skill）
-        # 这里使用 oskill 中的 stage_* 函数
-        stage_func_map = {
-            "intake": stage_intake,
-            "research": stage_research,
-            "watch": stage_watch,
-            "score": stage_score,
-            "script": stage_script,
-            "scene_plan": stage_assets,  # OpenMontage 叫 scene_plan，hevi 叫 assets
-            "assets": stage_assets,
-            "edit_plan": stage_edit_plan,
-            "edit": stage_edit_plan,
-            "mix": stage_mix,
-            "timeline": stage_timeline,
-            "runtime": stage_runtime,
-            "dispatch": stage_dispatch,
-            "compose": lambda d, c: {"compose": "placeholder"},  # compose 由 runtime 处理
-            "publish": stage_publish,
-        }
-
-        stage_func = stage_func_map.get(stage_name)
-        if stage_func:
-            result = stage_func(data, {})
-            artifacts.update(result)
-            tool_results[stage_name] = result
-
-            # 更新 data 传给下一阶段
-            data.update(result)
-
-            # Checkpoint
-            if stage_def.checkpoint_required:
-                cp = checkpoint_write(pipeline, stage_name, artifacts, tool_results)
-                # 这里应该写入文件并等待人工审批
-                cp = checkpoint_approve(cp, "approved")  # 自动通过（实际应等待人工）
-
-    return {
-        "pipeline": pipeline,
-        "artifacts": artifacts,
-        "tool_results": tool_results,
-        "budget": budget.model_dump() if hasattr(budget, "model_dump") else budget.__dict__,
-        "status": "completed",
-    }
+    return await agentic_montage_workflow(
+        {
+            "pipeline": pipeline,
+            "budget_usd": budget_usd,
+            "execute": True,
+            "auto_approve": auto_approve,
+            "resume": resume,
+        },
+        {**input_data, "available_tools": available_tools},
+        output_dir or f"output/montage/{pipeline}",
+    )
 
 
 # ─── 导出 ───────────────────────────────────────────
 
 __all__ = [
     "AVAILABLE_PIPELINES",
+    "AgenticMontageConfig",
+    "agentic_montage_workflow",
     "execute_pipeline",
+    "VideoEvidenceConfig",
+    "compute_video_agent_fingerprint",
+    "video_agent_transaction",
+    "video_evidence_index",
+    "video_evidence_search",
+    "video_script_from_transcript",
     "identify_pipeline",
     "plan_delivery",
     "plan_full_pipeline",

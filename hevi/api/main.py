@@ -45,12 +45,16 @@ from hevi.api.routers.payment import router as payment_router
 from hevi.api.routers.pipeline import router as pipeline_router
 from hevi.api.routers.pro_studio import router as pro_studio_router
 from hevi.api.routers.provider_presets import router as provider_presets_router
+from hevi.api.routers.providers import router as providers_router
 from hevi.api.routers.publishers import router as publishers_router
 from hevi.api.routers.material_corpus import router as material_corpus_router
+from hevi.api.routers.mpt import router as mpt_router
+from hevi.api.routers.narrator import router as narrator_router
 from hevi.api.routers.production_tools_v2 import router as production_tools_v2_router
 from hevi.api.routers.presenters import router as presenters_router
 from hevi.api.routers.series import router as series_router
 from hevi.api.routers.shortdrama import router as shortdrama_router
+from hevi.api.routers.shortdrama_writer import router as shortdrama_writer_router
 from hevi.api.routers.style import router as style_router
 from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.subjects import router as subjects_router
@@ -61,7 +65,14 @@ from hevi.api.routers.tongjian import router as tongjian_router
 from hevi.api.routers.freezone import router as freezone_router
 from hevi.api.routers.embrace_runtime import router as embrace_router
 from hevi.api.routers.lite import router as lite_router
+from hevi.api.routers.longcat import router as longcat_router
+from hevi.api.routers.montage import router as montage_router
+from hevi.api.routers.openshorts import router as openshorts_router
 from hevi.api.routers.voice_studio import router as voice_studio_router
+from hevi.api.routers.voice_platform import openai_router as voice_openai_router
+from hevi.api.routers.voice_platform import router as voice_platform_router
+from hevi.api.routers.stream_edit import router as stream_edit_router
+from hevi.api.routers.screenshot_studio import router as screenshot_studio_router
 from hevi.api.routers.ws import router as ws_router
 from hevi.core.config import settings
 from hevi.core.ws_manager import connection_manager
@@ -171,6 +182,7 @@ app.include_router(payment_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
 app.include_router(pro_studio_router, prefix="/api")
 app.include_router(provider_presets_router, prefix="/api")
+app.include_router(providers_router, prefix="/api")
 app.include_router(publishers_router, prefix="/api")
 app.include_router(material_corpus_router, prefix="/api")
 app.include_router(backlot_router, prefix="/api")
@@ -191,11 +203,21 @@ app.include_router(tongjian_router, prefix="/api")
 app.include_router(cinematic_router, prefix="/api")  # 黄金公式动画演绎
 app.include_router(history_series_router, prefix="/api")  # P2 历史现场每日连载
 app.include_router(shortdrama_router, prefix="/api")
+app.include_router(shortdrama_writer_router, prefix="/api")
 app.include_router(explainer_router, prefix="/api")
+app.include_router(mpt_router, prefix="/api")
+app.include_router(narrator_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
 app.include_router(voice_studio_router, prefix="/api")
+app.include_router(voice_platform_router, prefix="/api")
+app.include_router(voice_openai_router)
+app.include_router(stream_edit_router, prefix="/api")
+app.include_router(screenshot_studio_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(lite_router, prefix="/api")  # 本地零费用:选题→veya-loop→确认→HTML 出片
+app.include_router(longcat_router, prefix="/api")
+app.include_router(montage_router, prefix="/api")
+app.include_router(openshorts_router, prefix="/api")
 app.include_router(ws_router)  # WebSocket 路由自带 /api/ws 前缀
 app.include_router(freezone_router, prefix="/api")
 app.include_router(embrace_router, prefix="/api")  # 3O 内化运行时(Xia/提升/修复/画像/草图)

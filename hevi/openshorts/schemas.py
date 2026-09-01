@@ -58,6 +58,7 @@ class ClipGeneratorJob(BaseModel):
     transcript: dict[str, Any] = Field(default_factory=dict)
     video_duration_s: float = 0.0
     status: str = "pending"
+    error: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

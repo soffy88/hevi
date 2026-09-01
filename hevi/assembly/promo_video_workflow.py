@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from hevi.motion.motion_stylepack import MotionPreset, resolve_motion_preset
-from hevi.motion.recipe_card import ShotRecipeCard, build_seed_library
+from hevi.motion.recipe_card import ShotRecipeCard, build_shotcraft_library
 from hevi.motion.sound_design import (
     SfxPin,
     SoundDesign,
@@ -146,7 +146,7 @@ async def promo_video_workflow(
         # (Round 3:替换 naive 卡循环;分配纪律来自 shotcraft sequences/promo-energy-arc)。
         from hevi.motion.sequence import PROMO_ENERGY_ARC, plan_sequence
 
-        library = build_seed_library()
+        library = build_shotcraft_library()
         role_card: dict[str, str] = {
             "brand_open": "title-card-hold",
             "hero": "spotlight-hero-card",

@@ -181,7 +181,14 @@ async def generate_screenplay_draft(
     """锁定 Concept + 素材原文 → Screenplay 草稿。mode: adaptive/literal/staged
     (对标 DramaClaw 脚本多模式)。LLM 失败/解析失败 → 返回单场的兜底剧本
     (叙述=原文本身,人审核阶段可以手工补,不因草稿生成失败阻断流程)。"""
-    resolved_llm = _resolve_llm(llm)
+    try:
+        resolved_llm = _resolve_llm(llm)
+    except Exception as e:
+        # The standalone writer must remain usable for script review and
+        # handoff even when no LLM provider is configured.  The deterministic
+        # one-scene fallback below is explicit in the returned screenplay.
+        logger.warning("screenplay LLM unavailable, using fallback: %s", e)
+        resolved_llm = None
     tail = _SCREENPLAY_MODE_TAILS.get(mode, _SCREENPLAY_MODE_TAILS["adaptive"])
     prompt = _SCREENPLAY_PROMPT.format(
         theme=concept.theme or "(未定)",
@@ -190,7 +197,7 @@ async def generate_screenplay_draft(
         material_text=material_text,
     ) + tail
     try:
-        data = await _call_llm_json(resolved_llm, prompt)
+        data = await _call_llm_json(resolved_llm, prompt) if resolved_llm else {}
     except Exception as e:
         logger.warning("screenplay draft LLM failed, using fallback: %s", e)
         data = {}
@@ -211,7 +218,7 @@ async def generate_screenplay_draft(
     # 二遍:LLM 自审-修订。审核失败/输出不合法 → 保留初稿,不阻断。
     from hevi.core.config import settings
 
-    if settings.screenplay_llm_review:
+    if settings.screenplay_llm_review and resolved_llm:
         try:
             review_prompt = _REVIEW_PROMPT.format(
                 theme=concept.theme or "(未定)",

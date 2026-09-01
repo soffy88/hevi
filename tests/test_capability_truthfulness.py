@@ -57,7 +57,13 @@ async def test_voice_rewrite_does_not_claim_unchanged_text_is_model_output() -> 
     _assert_unavailable(error, "voice_studio_rewrite")
 
 
-def test_capability_catalog_covers_truthful_unavailable_actions() -> None:
+def test_capability_catalog_covers_truthful_unavailable_actions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The developer checkout may contain a real .env. Keep this assertion
+    # about the unconfigured boundary deterministic and independent of it.
+    monkeypatch.delenv("VOICEBOX_BASE_URL", raising=False)
+    monkeypatch.delenv("GEN_ENGINE_BASE_URL", raising=False)
     by_id = {item["id"]: item for item in capability_catalog()}
     assert by_id["explainer"]["available"] is True
     assert by_id["voice_studio_tts"]["status"] == "unavailable"

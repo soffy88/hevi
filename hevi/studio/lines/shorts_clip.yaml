@@ -15,6 +15,10 @@ slots:
     description: 发布平台列表
 tools:
   - clip.factory
+  - clip.virality
+  - ingest.rough_cut
+  - nle.jianying_export
+  - nle.style_archive
   - nle.edit_plan
   - timeline.create
   - timeline.ripple
@@ -35,7 +39,7 @@ pipeline:
       fn: hevi.studio.stages:stage_timeline
     - name: assets
       fn: hevi.studio.stages:stage_assets
-    - name: publish
-      fn: hevi.studio.stages:stage_publish
     - name: dispatch
       fn: hevi.studio.stages:stage_dispatch
+    - name: publish
+      fn: hevi.studio.stages:stage_publish

@@ -16,6 +16,9 @@ slots:
 tools:
   - watch.video
   - ingest.transcript
+  - ingest.localize
+  - ingest.speakers
+  - ingest.rough_cut
   - dub.translate
   - audio.prosody
   - tts.synth

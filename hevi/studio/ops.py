@@ -212,6 +212,196 @@ def audio_bgm(p: dict[str, Any]) -> dict[str, Any]:
     return _ok(bgm={"mood": mood, "duration_s": float(p.get("duration_s") or 40), "duck_db": -18})
 
 
+def speech_catalog(_p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.audio.speech_platform import list_engines, list_voice_profiles
+
+    engines = [item.to_dict() for item in list_engines()]
+    return _ok(
+        catalog={
+            "tts": [item for item in engines if item["kind"] == "tts"],
+            "asr": [item for item in engines if item["kind"] == "asr"],
+            "voices": [item.to_dict() for item in list_voice_profiles()],
+        }
+    )
+
+
+def speech_models(_p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.voicepro.omodul.platform import list_model_catalog
+
+    models = list_model_catalog()
+    return _ok(models=models, total=len(models))
+
+
+def speech_route(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.voicepro.omodul.platform import route_model
+
+    return _ok(
+        route=route_model(
+            kind=str(p.get("kind") or "tts"),
+            preferred=str(p.get("preferred") or "") or None,
+            device=str(p.get("device") or "auto"),
+        )
+    )
+
+
+def speech_register(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.voicepro.omodul.platform import register_model
+
+    return _ok(
+        model=register_model(
+            model_id=str(p.get("model_id") or ""),
+            name=str(p.get("name") or p.get("model_id") or "local model"),
+            kind=str(p.get("kind") or "tts"),
+            engine=str(p.get("engine") or ""),
+            path=str(p.get("path") or ""),
+            device=str(p.get("device") or "auto"),
+            languages=list(p.get("languages") or []),
+            capabilities=list(p.get("capabilities") or []),
+        )
+    )
+
+
+def speech_gallery(_p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.voicepro.omodul.platform import list_gallery_profiles
+
+    profiles = list_gallery_profiles()
+    return _ok(voices=profiles, total=len(profiles))
+
+
+def speech_batch_plan(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.audio.speech_platform import build_batch_plan
+
+    return _ok(**build_batch_plan(list(p.get("items") or [])))
+
+
+def speech_diagnostics(_p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.audio.speech_platform import diagnostics
+
+    return _ok(diagnostics=diagnostics())
+
+
+def speech_dubbing_plan(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.voicepro.omodul.platform import plan_dubbing
+
+    return _ok(
+        plan=plan_dubbing(
+            source_video=str(p.get("source_video") or ""),
+            target_language=str(p.get("target_language") or ""),
+            preserve_speakers=bool(p.get("preserve_speakers", True)),
+            keep_bed=bool(p.get("keep_bed", True)),
+            asr_engine=str(p.get("asr_engine") or "faster_whisper"),
+            tts_engine=str(p.get("tts_engine") or "edge_tts"),
+        )
+    )
+
+
+def speech_audiobook_plan(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.voicepro.omodul.platform import plan_audiobook
+
+    return _ok(
+        plan=plan_audiobook(
+            source_document=str(p.get("source_document") or ""),
+            output_path=str(p.get("output_path") or "output/audiobooks/book.m4b"),
+            voice_map=dict(p.get("voice_map") or {}),
+        )
+    )
+
+
+def speech_dictation_plan(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.voicepro.omodul.platform import plan_dictation
+
+    return _ok(
+        plan=plan_dictation(
+            language=str(p.get("language") or ""),
+            engine=str(p.get("engine") or "faster_whisper"),
+        )
+    )
+
+
+def speech_watermark_plan(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.voicepro.omodul.platform import plan_watermark
+
+    return _ok(
+        plan=plan_watermark(
+            audio_path=str(p.get("audio_path") or ""),
+            operation=str(p.get("operation") or "embed"),
+        )
+    )
+
+
+def stream_capabilities(_p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.joyai.omodul.stream_edit import capabilities
+
+    return _ok(capabilities=capabilities())
+
+
+def stream_budget(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.joyai.oprim.stream_contract import frame_budget
+
+    return _ok(
+        budget=frame_budget(
+            width=int(p.get("width") or 840),
+            height=int(p.get("height") or 480),
+            fps=int(p.get("fps") or 24),
+            seconds=float(p.get("seconds") or 1.0),
+        )
+    )
+
+
+def stream_session(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.joyai.omodul.stream_edit import create_session
+
+    session = create_session(
+        prompt=str(p.get("prompt") or ""),
+        source_mode=str(p.get("source_mode") or "live"),
+        width=int(p.get("width") or 840),
+        height=int(p.get("height") or 480),
+        fps=int(p.get("fps") or 24),
+        model=str(p.get("model") or "joyai-video-edit"),
+        reference_images=list(p.get("reference_images") or []),
+        low_vram=bool(p.get("low_vram", False)),
+    )
+    return _ok(session=session.to_dict())
+
+
+def screenshot_create(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.screenshot_studio import new_project
+
+    project = new_project(
+        title=str(p.get("title") or "untitled screenshot"),
+        screenshot_path=str(p.get("screenshot_path") or ""),
+        frame=str(p.get("frame") or "browser"),
+        width=int(p.get("width") or 1600),
+        height=int(p.get("height") or 1000),
+        background=str(p.get("background") or "#eef2ff"),
+    )
+    return _ok(project=project.to_dict())
+
+
+def screenshot_render(p: dict[str, Any]) -> dict[str, Any]:
+    from pathlib import Path
+
+    from hevi.studio.screenshot_studio import get_project, render_project
+
+    project = get_project(str(p.get("project_id") or ""))
+    if project is None:
+        return _fail("unknown screenshot project")
+    return _ok(**render_project(project, Path(str(p.get("output_path") or "output/screenshots/project.png"))))
+
+
+def shortdrama_review(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.director.pipeline_schemas import Screenplay
+    from hevi.shortdrama.screenwriter import review_screenplay
+
+    return _ok(review=review_screenplay(Screenplay.model_validate(p.get("screenplay") or {})))
+
+
+def nle_project(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.studio.nle_workspace import create_project
+
+    return _ok(project=create_project(str(p.get("name") or "untitled")).to_dict())
+
+
 def aspect_fit(p: dict[str, Any]) -> dict[str, Any]:
     from hevi.video.material_corpus import aspect_fit as fit
 
@@ -316,17 +506,186 @@ def qc_gate(p: dict[str, Any]) -> dict[str, Any]:
 def clip_factory(p: dict[str, Any]) -> dict[str, Any]:
     plan = p.get("edit_plan") or {}
     cuts = [c for c in (plan.get("cuts") or []) if c.get("action") != "drop"]
-    return _ok(clips=cuts, count=len(cuts))
+    if cuts:
+        return _ok(clips=cuts, count=len(cuts))
+    transcript = p.get("transcript") or plan.get("transcript")
+    if transcript:
+        scored = clip_virality({"transcript": transcript, "target_clips": p.get("target_clips") or 5})
+        return _ok(clips=scored.get("clips") or [], count=int(scored.get("count") or 0), via="virality")
+    return _ok(clips=[], count=0)
+
+
+def clip_virality(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.openshorts.virality import score_highlights
+
+    segs = _transcript_segments(p.get("transcript"))
+    if not segs:
+        return _ok(clips=[], count=0)
+    hits = score_highlights(segs, target_clips=int(p.get("target_clips") or 5))
+    clips = [
+        {
+            "action": "keep",
+            "source_in_s": h.start_s,
+            "duration_s": round(h.end_s - h.start_s, 3),
+            "title": h.title,
+            "score": h.score,
+            "hook": h.hook_sentence,
+            "reason": h.virality_reason,
+        }
+        for h in hits
+    ]
+    return _ok(clips=clips, count=len(clips))
+
+
+def _transcript_segments(raw: Any) -> list[Any]:
+    from hevi.ingest.video_transcript import TranscriptSegment
+
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        return [TranscriptSegment(0.0, max(8.0, len(raw) / 8.0), raw)]
+    segs: list[TranscriptSegment] = []
+    items = raw if isinstance(raw, list) else raw.get("segments") or []
+    for item in items:
+        if isinstance(item, TranscriptSegment):
+            segs.append(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("text") or "").strip()
+        if not text:
+            continue
+        segs.append(
+            TranscriptSegment(
+                float(item.get("start") or item.get("start_s") or 0.0),
+                float(item.get("end") or item.get("end_s") or 0.0),
+                text,
+                speaker=str(item.get("speaker") or ""),
+            )
+        )
+    return segs
 
 
 def dub_translate(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.ingest.subtitle_polish import apply_glossary
+
     lang = str(p.get("lang") or "en")
-    lines = [
-        {**line, "lang": lang, "translated": False}
-        for line in p.get("lines") or []
-        if isinstance(line, dict)
-    ]
-    return _ok(lines=lines, lang=lang, note="mark for TTS; no silent fake translation")
+    glossary = p.get("glossary") if isinstance(p.get("glossary"), dict) else {}
+    lines = []
+    for line in p.get("lines") or []:
+        if not isinstance(line, dict):
+            continue
+        done = line.get("translation") or line.get("translated_text")
+        if isinstance(done, str) and done.strip():
+            lines.append(
+                {
+                    **line,
+                    "lang": lang,
+                    "translated": True,
+                    "text": apply_glossary(done, glossary),
+                }
+            )
+        else:
+            lines.append({**line, "lang": lang, "translated": False})
+    return _ok(lines=lines, lang=lang, note="no silent fake translation; pass translation= to apply glossary")
+
+
+def ingest_localize(p: dict[str, Any]) -> dict[str, Any]:
+    from pathlib import Path
+
+    from hevi.ingest.video_localize import plan_localize
+
+    segs = _transcript_segments(p.get("transcript") or p.get("segments"))
+    trans = _transcript_segments(p.get("translated"))
+    work = Path(str(p.get("work_dir") or "data/workspace/localize"))
+    plan = plan_localize(
+        segs,
+        translated=trans or None,
+        bilingual=bool(p.get("bilingual", True)),
+        glossary=p.get("glossary") if isinstance(p.get("glossary"), dict) else None,
+        speakers=bool(p.get("speakers")),
+        work_dir=work,
+        video_path=str(p.get("video_path") or ""),
+        watermark=str(p.get("watermark") or ""),
+    )
+    return _ok(**plan.to_dict())
+
+
+def ingest_speakers(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.ingest.speakers import label_speakers
+
+    labeled = label_speakers(_transcript_segments(p.get("transcript")))
+    return _ok(
+        transcript=[{"start": s.start, "end": s.end, "text": s.text, "speaker": s.speaker} for s in labeled],
+        speakers=sorted({s.speaker for s in labeled if s.speaker}),
+    )
+
+
+def ingest_rough_cut(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.ingest.speech_rough_cut import rough_cut
+
+    kept, dropped = rough_cut(_transcript_segments(p.get("transcript")))
+    return _ok(
+        transcript=[{"start": s.start, "end": s.end, "text": s.text} for s in kept],
+        dropped=len(dropped),
+        kept=len(kept),
+    )
+
+
+def nle_jianying(p: dict[str, Any]) -> dict[str, Any]:
+    from pathlib import Path
+
+    from hevi.studio.jianying import JianyingDraft, clips_from_recut, write_jianying_draft
+
+    dest = Path(str(p.get("output_dir") or "output/nle/jianying-draft"))
+    clips = clips_from_recut(
+        p.get("clips") or [],
+        film=str(p.get("film") or p.get("media_path") or ""),
+        captions=p.get("captions") if isinstance(p.get("captions"), list) else None,
+        bgm=str(p.get("bgm") or ""),
+    )
+    draft = JianyingDraft(name=str(p.get("name") or "hevi-draft"), clips=clips)
+    path = write_jianying_draft(draft, dest, copy_media=bool(p.get("copy_media")))
+    return _ok(draft_dir=str(path), clips=len(clips), duration_s=draft.duration_s())
+
+
+def nle_style_archive(p: dict[str, Any]) -> dict[str, Any]:
+    from pathlib import Path
+
+    from hevi.studio.style_skill import archive_style, save_style
+
+    skill = archive_style(
+        name=str(p.get("name") or "untitled"),
+        timeline=p.get("timeline") if isinstance(p.get("timeline"), dict) else None,
+        caption_mode=str(p.get("caption_mode") or "primary"),
+        bgm_gain=float(p.get("bgm_gain") or 0.28),
+        remove_fillers=bool(p.get("remove_fillers")),
+        recipe_cards=list(p.get("recipe_cards") or []),
+        energy=str(p.get("energy") or "medium"),
+    )
+    dest = p.get("path")
+    if dest:
+        save_style(skill, Path(str(dest)))
+    return _ok(style=skill.to_dict())
+
+
+def nle_style_apply(p: dict[str, Any]) -> dict[str, Any]:
+    from pathlib import Path
+
+    from hevi.studio.style_skill import StyleSkill, apply_style, load_style
+
+    raw = p.get("style")
+    if isinstance(raw, str) and raw:
+        skill = load_style(Path(raw))
+    elif isinstance(raw, dict):
+        skill = StyleSkill.from_dict(raw)
+    else:
+        return _fail("style required")
+    media = str(p.get("media_path") or p.get("source") or "")
+    if not media:
+        return _fail("media_path required")
+    plan = apply_style(skill, media_path=media, clips=p.get("clips"), bgm=str(p.get("bgm") or ""))
+    return _ok(edit_plan=plan)
 
 
 def montage_queries(p: dict[str, Any]) -> dict[str, Any]:
@@ -660,6 +1019,24 @@ OPS: dict[str, Any] = {
     "audio_concat": audio_concat,
     "audio_probe": audio_probe,
     "audio_bgm": audio_bgm,
+    "speech_catalog": speech_catalog,
+    "speech_models": speech_models,
+    "speech_route": speech_route,
+    "speech_register": speech_register,
+    "speech_gallery": speech_gallery,
+    "speech_batch_plan": speech_batch_plan,
+    "speech_dubbing_plan": speech_dubbing_plan,
+    "speech_audiobook_plan": speech_audiobook_plan,
+    "speech_dictation_plan": speech_dictation_plan,
+    "speech_watermark_plan": speech_watermark_plan,
+    "speech_diagnostics": speech_diagnostics,
+    "stream_capabilities": stream_capabilities,
+    "stream_budget": stream_budget,
+    "stream_session": stream_session,
+    "screenshot_create": screenshot_create,
+    "screenshot_render": screenshot_render,
+    "shortdrama_review": shortdrama_review,
+    "nle_project": nle_project,
     "aspect_fit": aspect_fit,
     "pick_best": pick_best,
     "score_video": score_video,
@@ -684,6 +1061,13 @@ OPS: dict[str, Any] = {
     "qc_motion": qc_motion,
     "qc_gate": qc_gate,
     "clip_factory": clip_factory,
+    "clip_virality": clip_virality,
+    "ingest_localize": ingest_localize,
+    "ingest_speakers": ingest_speakers,
+    "ingest_rough_cut": ingest_rough_cut,
+    "nle_jianying": nle_jianying,
+    "nle_style_archive": nle_style_archive,
+    "nle_style_apply": nle_style_apply,
     "dub_translate": dub_translate,
     "montage_queries": montage_queries,
     "character_beats": character_beats,

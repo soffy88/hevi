@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import importlib
 import itertools
 import json
 import logging
@@ -103,6 +104,66 @@ class TfIdfEmbedder:
             vec[self._bucket(t)] += 1.0 + math.log(c)
         norm = math.sqrt(sum(v * v for v in vec)) or 1.0
         return [v / norm for v in vec]
+
+
+class OnnxEmbedder:
+    """Optional ONNX sentence embedder boundary.
+
+    HEVI does not download a model or assume a tokenizer package.  Integrators
+    provide a local ONNX file and a tokenizer callable returning the model's
+    input mapping.  This keeps the Toonflow-style local vector capability
+    executable when configured while preserving the deterministic TF-IDF
+    fallback for a zero-setup installation.
+    """
+
+    def __init__(
+        self,
+        model_path: str | Path,
+        tokenizer: Callable[[str], dict[str, Any]],
+        *,
+        output_name: str | None = None,
+    ) -> None:
+        self.model_path = Path(model_path).expanduser()
+        self.tokenizer = tokenizer
+        self.output_name = output_name
+        self._session: Any | None = None
+
+    def _load(self) -> Any:
+        if self._session is not None:
+            return self._session
+        if not self.model_path.is_file():
+            raise FileNotFoundError(f"ONNX memory model not found: {self.model_path}")
+        try:
+            ort = importlib.import_module("onnxruntime")
+        except ImportError as exc:  # pragma: no cover - optional environment
+            raise RuntimeError("onnxruntime is not installed for ONNX memory embeddings") from exc
+        self._session = ort.InferenceSession(str(self.model_path), providers=["CPUExecutionProvider"])
+        return self._session
+
+    def embed(self, text: str) -> list[float]:
+        session = self._load()
+        inputs = dict(self.tokenizer(str(text)))
+        if not inputs:
+            raise ValueError("ONNX memory tokenizer returned no inputs")
+        names = {item.name for item in session.get_inputs()}
+        missing = sorted(names - set(inputs))
+        if missing:
+            raise ValueError(f"ONNX tokenizer missing model inputs: {', '.join(missing)}")
+        output_names = [self.output_name] if self.output_name else None
+        raw = session.run(output_names, {key: inputs[key] for key in names})[0]
+        # Generic sentence encoders commonly return [1, dim] or [1, tokens, dim].
+        values = raw.tolist() if hasattr(raw, "tolist") else raw
+        while isinstance(values, list) and len(values) == 1:
+            values = values[0]
+        if values and isinstance(values[0], list):
+            rows = values
+            values = [sum(float(row[index]) for row in rows) / len(rows) for index in range(len(rows[0]))]
+        if not isinstance(values, list):
+            values = [values]
+        vector = [float(item) for item in values]
+        if not vector:
+            raise ValueError("ONNX memory model returned an empty embedding")
+        return vector
 
 
 def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
@@ -251,6 +312,41 @@ class MemoryStore:
         with self._connect() as conn:
             conn.execute("DELETE FROM memories")
 
+    def consolidate_summary(
+        self,
+        key: str,
+        *,
+        source_kinds: Sequence[str] = ("short_term", "semantic"),
+        max_items: int = 20,
+        max_chars: int = 1800,
+    ) -> int:
+        """Create a deterministic long-memory summary from recent records.
+
+        This is intentionally a compression primitive, not an LLM claim.  A
+        caller may replace it with a model-generated summary and still store
+        the result through ``remember('summary', ...)``.
+        """
+
+        placeholders = ",".join("?" * len(source_kinds))
+        sql = (
+            "SELECT key, payload FROM memories WHERE kind IN ("
+            + placeholders
+            + ") ORDER BY created_at DESC, id DESC LIMIT ?"
+        )
+        with self._connect() as conn:
+            rows = conn.execute(sql, (*source_kinds, max(1, int(max_items)))).fetchall()
+        facts: list[str] = []
+        for row in rows:
+            if row["key"] != key and key not in str(row["payload"]):
+                continue
+            facts.append(f"{row['key']}: {row['payload']}")
+        summary = "\n".join(facts)[:max(1, int(max_chars))]
+        return self.remember(
+            "summary",
+            key,
+            {"summary": summary, "source_count": len(facts), "generated_by": "hevi-deterministic-consolidator"},
+        )
+
 
 def memory_trail(store: MemoryStore, topic: str, *, k: int = 3) -> str:
     """组装供 LLM prompt 注入的记忆上下文块(3O: 无 PII, 稳定引用)。
@@ -273,6 +369,7 @@ def memory_trail(store: MemoryStore, topic: str, *, k: int = 3) -> str:
 __all__ = [
     "MemoryHit",
     "MemoryStore",
+    "OnnxEmbedder",
     "TfIdfEmbedder",
     "cosine_similarity",
     "memory_trail",

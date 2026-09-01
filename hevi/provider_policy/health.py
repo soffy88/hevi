@@ -13,9 +13,19 @@ from hevi.core.config import settings
 from hevi.video.capability_guard import PROVIDER_LIMITS
 
 from .repository import ProviderStateRepository
+from .runtime import probe_provider, runtime_provider_ids
 
 logger = logging.getLogger(__name__)
 HealthProbe = Callable[[str], Awaitable[bool]]
+
+
+async def _default_health_probe(provider_id: str) -> bool:
+    """Use real HTTP/provider probes where HEVI owns the configuration."""
+
+    if provider_id in runtime_provider_ids():
+        result = await probe_provider(provider_id)
+        return bool(result["ready"])
+    return bool(await provider_health_check(provider_id))
 
 
 class ProviderHealthService:
@@ -31,12 +41,12 @@ class ProviderHealthService:
         repository: ProviderStateRepository,
         *,
         provider_ids: Sequence[str] | None = None,
-        probe: HealthProbe = provider_health_check,
+        probe: HealthProbe | None = None,
         poll_interval: float = 60.0,
     ) -> None:
         self.repository = repository
-        self.provider_ids = tuple(provider_ids or PROVIDER_LIMITS)
-        self.probe = probe
+        self.provider_ids = tuple(provider_ids or (*PROVIDER_LIMITS, *runtime_provider_ids()))
+        self.probe = probe or _default_health_probe
         self.poll_interval = poll_interval
         self._running = False
 

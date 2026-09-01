@@ -89,6 +89,21 @@ def test_assemble_request_defaults_manim_on() -> None:
         final_script_cues=[ExplainerCue(visual_type="manim_scene", text="公式")],
     )
     assert req.enable_manim_render is True
+    assert req.enable_whiteboard_render is True
+
+
+def test_research_keeps_whiteboard_visual_type() -> None:
+    raw = {
+        "scripts": [
+            {
+                "id": "A",
+                "title": "t",
+                "cues": [{"text": "盐税是什么", "visual_type": "whiteboard"}],
+            }
+        ]
+    }
+    scripts = _sanitise_raw_scripts(raw)
+    assert scripts[0]["cues"][0]["visual_type"] == "whiteboard"
 
 
 def test_research_keeps_manim_scene_visual_type() -> None:

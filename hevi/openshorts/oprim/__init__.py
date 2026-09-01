@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +72,8 @@ def clip_reframing_params(
 
 def detect_scenes_gemini(
     transcript_text: str, video_duration: float,
-    viral_keywords: list[str] | None = None
+    viral_keywords: list[str] | None = None,
+    analyzer: Any | None = None,
 ) -> list[SceneDetection]:
     """使用 Gemini 识别场景 + 病毒时刻。
 
@@ -77,9 +81,43 @@ def detect_scenes_gemini(
     返回 3-15 个带 viral_score 的片段。
     (实际实现由 Gemini API 调用)
     """
-    # 占位：基础场景检测
+    if callable(analyzer):
+        raw = analyzer(transcript_text, video_duration, viral_keywords=viral_keywords or [])
+        return [
+            item if isinstance(item, SceneDetection) else SceneDetection.model_validate(item)
+            for item in (raw or [])
+        ]
+
+    text = str(transcript_text or "").strip()
+    duration = max(0.0, float(video_duration or 0.0))
+    if not text or duration <= 0:
+        return []
+
+    # This is the deterministic local fallback: it only proposes boundaries
+    # where the supplied transcript has sentence/paragraph evidence.  It never
+    # pretends that a Gemini call happened.
+    chunks = [part.strip() for part in re.split(r"(?<=[。！？!?；;])\s+|\n+", text) if part.strip()]
+    if len(chunks) < 2:
+        return []
+    total_chars = max(1, sum(len(chunk) for chunk in chunks))
+    keywords = [str(item).lower() for item in (viral_keywords or []) if str(item).strip()]
     scenes: list[SceneDetection] = []
-    # TODO: 集成 Gemini 返回
+    cursor = 0.0
+    for index, chunk in enumerate(chunks):
+        span = duration * len(chunk) / total_chars
+        start = cursor
+        end = duration if index == len(chunks) - 1 else min(duration, cursor + max(1.0, span))
+        score = 5.0 + min(4.0, sum(1 for word in keywords if word in chunk.lower()))
+        scenes.append(
+            SceneDetection(
+                scene_id=f"local-{index + 1:03d}",
+                start_s=round(start, 3),
+                end_s=round(end, 3),
+                headline=chunk[:80],
+                viral_score=round(score, 2),
+            )
+        )
+        cursor = end
     return scenes
 
 
@@ -89,8 +127,41 @@ def extract_transcript_with_words(video_path: str) -> dict[str, Any]:
     OpenShorts 使用 faster-whisper，返回带 word-level timestamps 的 segments。
     (实际实现由 subprocess 调用 faster-whisper)
     """
-    # 占位：返回空结构
-    return {"segments": [], "text": ""}
+    path = Path(video_path).expanduser()
+    subtitle_path = path if path.suffix.lower() in {".srt", ".vtt"} else None
+    if subtitle_path is None and path.parent.exists():
+        for suffix in (".vtt", ".srt"):
+            candidate = path.with_suffix(suffix)
+            if candidate.is_file():
+                subtitle_path = candidate
+                break
+    try:
+        from hevi.ingest.video_transcript import (
+            TranscriptError,
+            fetch_transcript,
+            read_subtitle_file,
+        )
+
+        segments = read_subtitle_file(subtitle_path) if subtitle_path else fetch_transcript(path, whisper_fallback=True)
+    except (FileNotFoundError, OSError, ValueError, TranscriptError, RuntimeError, ImportError) as exc:
+        return {"segments": [], "text": "", "duration": 0.0, "error": str(exc)}
+    rows: list[dict[str, Any]] = [
+        {
+            "start": round(item.start, 3),
+            "end": round(item.end, 3),
+            "text": item.text,
+            "words": [
+                {"word": word.word, "start": round(word.start, 3), "end": round(word.end, 3)}
+                for word in item.words
+            ],
+        }
+        for item in segments
+    ]
+    return {
+        "segments": rows,
+        "text": " ".join(str(item["text"]) for item in rows),
+        "duration": max((float(item["end"]) for item in rows), default=0.0),
+    }
 
 
 def snap_clip_to_words_auto(
@@ -215,8 +286,9 @@ def generate_script_from_description(
     OpenShorts AI Shorts pipeline：分析 → 脚本 → 演员 → 视频 → 分发。
     (实际实现由 Gemini + fal.ai/ ElevenLabs 调用)
     """
-    # 解析描述，生成 hook/problem/solution/CTA 结构
-    lines = [line.strip() for line in description.split('.') if line.strip()]
+    # 解析描述，生成 hook/problem/solution/CTA 结构。中英文标点都保留，
+    # 这是本地可复现脚本原子；接入 LLM 时由上层注入 script provider。
+    lines = [line.strip() for line in re.split(r"[.!?。！？；;\n]+", description) if line.strip()]
     
     hook = lines[0] if len(lines) > 0 else "为什么" + description[:20]
     problem = lines[1] if len(lines) > 1 else description[:50] + "的问题"
@@ -235,6 +307,7 @@ def generate_script_from_description(
             "start_s": round(start, 3),
             "end_s": round(end, 3),
             "focus": ["hook", "problem", "solution", "cta"][i],
+            "text": [hook, problem, solution, cta][i],
         })
     
     return AIScript(
@@ -278,25 +351,55 @@ def generate_youtube_titles(
 
     OpenShorts YouTube Studio 功能。
     """
-    # 占位：返回模拟标题
+    content = " ".join(str(video_content or "").split()).strip() or "这个主题"
+    seed = content[:36]
+    patterns = (
+        f"{seed}：3 个你现在就能验证的关键点",
+        f"别急着相信 {seed}，先看这份拆解",
+        f"{seed} 的真相、误区与下一步",
+        f"用 5 分钟看懂 {seed}",
+        f"如果你正在研究 {seed}，这条视频值得收藏",
+    )
     titles = []
     for i in range(target_count):
-        viral_score = round(7.0 + (i * 0.3), 1)  # 7.0 - 9.9
+        title = patterns[i % len(patterns)]
+        if i >= len(patterns):
+            title = f"{title}（第 {i + 1} 版）"
+        viral_score = round(max(0.0, min(10.0, 6.0 + (len(title) % 17) / 10.0)), 1)
         titles.append(YouTubeTitle(
-            title=f"为什么 {video_content[:20]} 对每个人都很重要",
+            title=title,
             viral_score=viral_score,
-            reasoning=f"基于关键词 {video_content[:10]} 的病毒式分析",
+            reasoning="本地启发式标题：主题长度、疑问/对照结构；不是模型预测分数",
         ))
     return titles
 
 
 def generate_youtube_thumbnail(
     video_path: str, face_overlay: bool = True,
-    style: str = "bold_text"
+    style: str = "bold_text",
+    output_path: str | Path | None = None,
 ) -> YouTubeThumbnail:
-    """生成 YouTube 缩略图（占位实现）。"""
+    """从本地视频抽取真实首帧作为缩略图；缺输入时返回未生成计划。"""
+    path = Path(video_path).expanduser()
+    destination = Path(output_path).expanduser() if output_path else path.with_suffix(".thumbnail.jpg")
+    if path.is_file() and shutil.which("ffmpeg"):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        process = subprocess.run(
+            [
+                "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                "-ss", "0", "-i", str(path), "-frames:v", "1", "-q:v", "2", str(destination),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        if process.returncode != 0 or not destination.is_file() or destination.stat().st_size <= 0:
+            destination = Path("")
+    else:
+        destination = Path("")
     return YouTubeThumbnail(
-        path="",  # 实际由 FFmpeg + Gemini 生成
+        path=str(destination) if str(destination) != "." else "",
         face_overlay=face_overlay,
         style=style,
     )

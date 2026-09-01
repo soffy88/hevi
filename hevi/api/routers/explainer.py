@@ -400,6 +400,7 @@ async def _run_assembled_pipeline(repo: AutomationRunRepository, run_id: str) ->
             enable_circle_avatar_mask=body.enable_circle_avatar_mask,
             enable_remotion_code_render=body.enable_remotion_code_render,
             enable_manim_render=body.enable_manim_render,
+            enable_whiteboard_render=body.enable_whiteboard_render,
             enable_browser_broll=body.enable_browser_broll,
             aspect_ratio=body.aspect_ratio,
             heygen_presenter_id=body.heygen_presenter_id,

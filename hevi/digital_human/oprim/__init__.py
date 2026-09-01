@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -35,18 +36,9 @@ def lock_content(job: PresenterJob) -> PresenterJob:
     将主题或原始脚本转换为完整旁白，保存脚本与 Beat Sheet。
     对应 lanshu generation.md: "Lock content and audio"
     """
-    from hevi.digital_human.oprim.narration import build_narration_spine
+    from hevi.digital_human.oprim.narration import lock_content as _lock_content
 
-    # 更新作业状态
-    job.status = JobStatus.CONTENT_LOCKED
-    job.updated_at = datetime.utcnow()
-
-    # 生成脚本与 Beat Sheet（占位：实际实现由 TTS/LLM 提供）
-    # 这里仅记录占位符
-    job.script = f"脚本占位符: {job.topic}"
-    job.beat_sheet = "hook → promise → 2–4 useful beats → synthesis → close"
-
-    return job
+    return _lock_content(job)
 
 
 # ─── 声音/Narration 原子 ────────────────────────────
@@ -67,11 +59,36 @@ def generate_narration(
     if rate is not None:
         job.rate = rate
 
-    # 占位：实际 TTS 调用由 oskill.content 生成
-    # 这里设置作业状态为音频锁定
+    if job.final_audio and Path(job.final_audio).is_file():
+        job.status = JobStatus.AUDIO_LOCKED
+        job.updated_at = datetime.utcnow()
+        return job
+    if not job.script.strip():
+        raise ValueError("cannot generate narration before content is locked")
+
+    # HEVI native voice is a real, model-independent local renderer.  Neural
+    # providers (Pocket TTS/VoxCPM/Voicebox) are selected by the task adapter;
+    # this synchronous 3O atom uses the guaranteed local path and validates the
+    # resulting WAV instead of manufacturing a path to a missing artifact.
+    from hevi.voicepro.oskill import synthesize_native_voice_sync
+
+    output_root = Path(
+        os.getenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", "data/digital_human")
+    ).expanduser()
+    output_path = output_root / job.job_id / "audio" / "narration.wav"
+    synthesize_native_voice_sync(
+        job.script,
+        output_path,
+        voice=job.voice_id,
+        language=job.language,
+        reference_audio=job.voice_sample or None,
+        speed=job.rate,
+    )
+    if not output_path.is_file() or output_path.stat().st_size == 0:
+        raise RuntimeError("native narration renderer produced no audio artifact")
     job.status = JobStatus.AUDIO_LOCKED
     job.updated_at = datetime.utcnow()
-    job.final_audio = ""  # 实际路径由执行者填入
+    job.final_audio = str(output_path)
 
     return job
 
@@ -84,15 +101,18 @@ def calibrate_audio_loudness(
 
     对应 lanshu generation.md + editing.md 的响度归一化
     """
-    # 占位：实际测量由 ffmpeg loudnorm 完成
-    # 返回测量结果结构
+    from hevi.digital_human.oprim.qa import check_audio_loudness
+
+    result = check_audio_loudness(audio_path, target_lufs=target_lufs)
+    if not result.get("ok"):
+        raise RuntimeError(str(result.get("error") or "audio loudness measurement failed"))
     return AudioMeasurement(
-        input_i=-23.0,
-        input_tp=-3.0,
-        input_lra=20.0,
-        input_thresh=-18.0,
-        target_offset=0.0,
-        measured_lufs=-16.0,
+        input_i=float(result["measured_lufs"]),
+        input_tp=float(result.get("input_tp") or 0.0),
+        input_lra=float(result.get("input_lra") or 0.0),
+        input_thresh=float(result.get("input_thresh") or 0.0),
+        target_offset=float(result.get("target_offset") or 0.0),
+        measured_lufs=float(result["measured_lufs"]),
         program_lufs=target_lufs,
     )
 
@@ -212,9 +232,8 @@ def run_preflight_check(job: PresenterJob) -> QAReport:
     report.warnings = media_ok.get("warnings", [])
     report.media = media_ok.get("media", {})
 
-    # 综合结果
-    report.ok = not (report.errors or not report.remote_ready)
     report.remote_ready = auth_ok.get("remote_ready", False) and not report.errors
+    report.ok = not report.errors and report.remote_ready
 
     return report
 
@@ -224,6 +243,7 @@ def run_qa_gate(
     identity_coherent: bool = True,
     mouth_sync: bool = True,
     no_black_frames: bool = True,
+    no_overlay: bool = True,
     captions_readable: bool = True,
     safe_zones_ok: bool = True,
 ) -> QAReport:
@@ -242,6 +262,7 @@ def run_qa_gate(
         "identity_coherent": identity_coherent,
         "mouth_sync": mouth_sync,
         "no_black_frames": no_black_frames,
+        "no_overlay": no_overlay,
         "captions_readable": captions_readable,
         "safe_zones_ok": safe_zones_ok,
     }
@@ -249,6 +270,12 @@ def run_qa_gate(
     for check_name, passed in checks.items():
         if not passed:
             all_errors.append(f"FAILED: {check_name}")
+
+    for label, media_path in (("final_audio", job.final_audio), ("rendered", job.rendered)):
+        if media_path and (
+            not Path(media_path).is_file() or Path(media_path).stat().st_size == 0
+        ):
+            all_errors.append(f"FAILED: {label}_artifact_missing")
 
     # 累积报告中的错误
     all_errors.extend(report.errors)
@@ -260,6 +287,7 @@ def run_qa_gate(
     report.identity_coherent = identity_coherent
     report.mouth_sync = mouth_sync
     report.no_black_frames = no_black_frames
+    report.no_overlay = no_overlay
     report.captions_readable = captions_readable
     report.safe_zones_ok = safe_zones_ok
 

@@ -19,6 +19,7 @@ from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.production.capabilities import capability_catalog
 from hevi.production.contracts import ProductionRequest
+from hevi.provider_policy.runtime import inspect_providers
 from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
@@ -106,7 +107,39 @@ async def list_capabilities(
     _: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
     """Return the single truthful availability source for production UIs."""
-    return {"capabilities": capability_catalog()}
+    capabilities = capability_catalog()
+    provider_for_capability = {
+        "voice_studio_tts": "voicebox",
+        "stock_search": "pexels",
+        "longcat_agent": "longcat",
+        "streaming_v2v": "joyai",
+        "livestream": "duix",
+        "mpt": "mpt",
+    }
+    statuses = await inspect_providers(
+        provider_ids=sorted(set(provider_for_capability.values())),
+        timeout_s=3.0,
+    )
+    by_provider = {item["id"]: item for item in statuses}
+    for item in capabilities:
+        provider_id = provider_for_capability.get(item["id"])
+        if provider_id is None:
+            continue
+        status = by_provider[provider_id]
+        item["provider"] = provider_id
+        item["provider_configured"] = status["configured"]
+        item["provider_reachable"] = status["reachable"]
+        item["provider_ready"] = status["ready"]
+        item["provider_error"] = status.get("error")
+        if not status["ready"] and item["available"]:
+            item["readiness"] = "provider_unavailable"
+            item["status"] = "provider_unavailable"
+            item["production_ready"] = False
+            item["message"] = (
+                f"{item['name']} 接口已存在，但 Provider 当前不可用；"
+                "任务不会提交。"
+            )
+    return {"capabilities": capabilities}
 
 
 async def get_pg_pool() -> PgPool:

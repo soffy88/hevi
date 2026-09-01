@@ -25,6 +25,10 @@ KNOWN_RULES: tuple[str, ...] = (
     "C1",
     "R1",
     "R2",
+    "B1",
+    "D1",
+    "P1",
+    "P2",
 )
 
 _DEFAULT_PATH = Path("data/workspace/.gates.jsonl")

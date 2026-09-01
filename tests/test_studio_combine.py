@@ -38,10 +38,10 @@ async def test_fulfill_drives_explainer_not_just_ticket(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_slate_execute_dispatches_explainer() -> None:
+async def test_slate_execute_requires_real_explainer_artifact() -> None:
     result = await run_slate(Slate(line_id="explainer", slots={"topic": "盐税"}, execute=True))
-    assert result.status == "dispatched"
-    assert result.data["fulfill"]["status"] == "dispatched"
+    assert result.status in {"blocked", "failed"}
+    assert result.data["fulfill"]["status"] in {"blocked", "failed"}
     planned = await run_slate(Slate(line_id="explainer", slots={"topic": "盐税"}))
     assert planned.status == "scheduled"
 
@@ -54,8 +54,8 @@ async def test_veya_execute_fulfills(tmp_path: Path) -> None:
         execute=True,
         output_dir=tmp_path,
     )
-    assert job.status == "dispatched"
-    assert job.fulfill.get("status") == "dispatched"
+    assert job.status in {"blocked", "failed"}
+    assert job.fulfill.get("status") in {"blocked", "failed"}
 
 
 def test_shot_brick_exports_and_imports() -> None:

@@ -10,6 +10,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from hevi.montage.oprim.video_agent import (
+    EvidenceQuery,
+    EvidenceRef,
+    PlanEdge,
+    PlanNode,
+    PlanPort,
+    VideoAgentPlan,
+    VideoIntent,
+    build_storyboard_queries,
+    compute_video_plan_fingerprint,
+    validate_video_agent_plan,
+)
 from hevi.montage.schemas import (
     Artifact,
     ArtifactType,
@@ -45,6 +57,31 @@ def load_pipeline_manifest(path: str | Path) -> PipelineManifest:
         data = json.loads(path.read_text(encoding="utf-8"))
     else:
         raise ValueError(f"Unsupported manifest format: {path.suffix}")
+
+    if not isinstance(data, dict):
+        raise ValueError("pipeline manifest must be an object")
+    # OpenMontage manifests use a slightly broader vocabulary than HEVI's
+    # public enum and allow stage skills to be implicit.  Normalize that
+    # syntax once at the boundary instead of weakening the runtime schema.
+    category_aliases = {
+        "custom": "test",
+        "documentary": "footage_based",
+        "footage": "footage_based",
+        "generated_video": "generated",
+        "talking_head": "footage_based",
+    }
+    category = str(data.get("category") or "generated")
+    data["category"] = category_aliases.get(category, category)
+    stages = data.get("stages") or []
+    if isinstance(stages, list):
+        data["stages"] = [
+            {
+                **stage,
+                "skill": stage.get("skill") or f"pipelines/{data.get('name', 'pipeline')}/{stage.get('name', 'stage')}",
+            }
+            for stage in stages
+            if isinstance(stage, dict)
+        ]
 
     return PipelineManifest(**data)
 
@@ -188,33 +225,127 @@ def analyze_reference_video(
     video_path: str | Path,
     analysis_tools: list[str] | None = None,
 ) -> VideoAnalysisBrief:
-    """参考视频分析 (占位：实际调用 video_analyzer 工具)。"""
-    # 实际实现由 oskill.reference 分析工具完成
-    # 这里返回结构化占位
+    """分析本地参考视频；缺少本地输入时返回未执行状态。
+
+    This primitive deliberately does not invent a transcript or scene
+    description.  Local media gets real ffprobe/frame/sidecar-subtitle data;
+    URL acquisition and neural transcription belong to the service boundary.
+    """
+    del analysis_tools
+    source = Path(video_path)
+    if not source.is_file():
+        return VideoAnalysisBrief(source_url=str(video_path), content="分析待完成")
+    transcript = extract_transcript(source)
+    scenes = detect_scenes(source)
+    duration = 0.0
+    try:
+        from hevi.production.delivery_gate import probe_video
+
+        duration = probe_video(source).duration_s
+    except Exception:
+        pass
+    sentence_count = len([line for line in transcript.splitlines() if line.strip()])
+    pacing = f"{sentence_count} 个字幕段 / {len(scenes)} 个场景候选"
     return VideoAnalysisBrief(
-        source_url=str(video_path),
-        content="分析待完成",
-        pacing="中等",
-        structure="标准三幕",
-        style="待识别",
-        what_makes_it_work=["待提取"],
-        duration_s=0.0,
+        source_url=str(source),
+        content=transcript[:1000] or "未检测到本地字幕；仅完成媒体结构分析",
+        pacing=pacing,
+        structure="; ".join(
+            f"scene-{index + 1} {item['start_s']:.2f}-{item['end_s']:.2f}s"
+            for index, item in enumerate(scenes[:12])
+        )
+        or "未检测到场景边界",
+        style="frame-sample-based" if scenes else "未执行视觉样本分析",
+        what_makes_it_work=[
+            "字幕存在，可进入节奏/脚本分析" if transcript else "没有本地字幕，需注入 ASR 才能做文本分析",
+            f"识别到 {len(scenes)} 个场景候选" if scenes else "没有可用的场景候选",
+        ],
+        duration_s=duration,
+        scene_count=len(scenes),
     )
 
 
 def extract_transcript(video_path: str | Path) -> str:
-    """提取视频字幕/转录 (占位)。"""
+    """读取本地同名 SRT/VTT/ASS 字幕，不在 oprim 内启动 ASR。"""
+    source = Path(video_path)
+    if not source.is_file():
+        return ""
+    from hevi.ingest.video_transcript import parse_subtitle
+
+    candidates = [
+        source.with_suffix(".srt"),
+        source.with_suffix(".vtt"),
+        source.with_suffix(".ass"),
+    ]
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        try:
+            if candidate.suffix.lower() == ".ass":
+                lines = [
+                    line.split(",", 9)[-1].replace("\\N", " ").strip()
+                    for line in candidate.read_text(encoding="utf-8", errors="replace").splitlines()
+                    if line.startswith("Dialogue:") and "," in line
+                ]
+                if lines:
+                    return "\n".join(lines)
+            else:
+                parsed = parse_subtitle(candidate.read_text(encoding="utf-8", errors="replace"))
+                if parsed:
+                    return "\n".join(item.text for item in parsed)
+        except OSError:
+            continue
     return ""
 
 
 def detect_scenes(video_path: str | Path) -> list[dict[str, Any]]:
-    """场景检测 (占位)。"""
-    return []
+    """Use HEVI's local frame detector and return timestamp-only scene rows."""
+    source = Path(video_path)
+    if not source.is_file():
+        return []
+    import tempfile
+
+    from hevi.ingest.video_frames import extract_watch_frames
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="hevi-montage-scenes-") as work:
+            frames = extract_watch_frames(source, Path(work), detail="balanced", budget=32)
+    except Exception:
+        return []
+    if not frames:
+        return []
+    try:
+        from hevi.production.delivery_gate import probe_video
+
+        duration = probe_video(source).duration_s
+    except Exception:
+        duration = frames[-1].timestamp_s
+    rows: list[dict[str, Any]] = []
+    for index, frame in enumerate(frames):
+        end = frames[index + 1].timestamp_s if index + 1 < len(frames) else duration
+        rows.append(
+            {
+                "scene_index": index,
+                "start_s": round(frame.timestamp_s, 3),
+                "end_s": round(max(end, frame.timestamp_s), 3),
+            }
+        )
+    return rows
 
 
 def sample_frames(video_path: str | Path, count: int = 9) -> list[str]:
-    """抽帧 (占位)。"""
-    return []
+    """Persist a bounded set of local reference frames for human/agent review."""
+    source = Path(video_path)
+    if not source.is_file():
+        return []
+    from hevi.ingest.video_frames import extract_watch_frames
+
+    out_dir = Path("output/montage/reference") / source.stem
+    try:
+        frames = extract_watch_frames(source, out_dir, detail="balanced", budget=max(1, min(count, 64)))
+    except Exception:
+        return []
+    return [str(frame.path) for frame in frames]
 
 
 # ─── Playbook ───────────────────────────────────────
@@ -278,3 +409,36 @@ def update_checkpoint_approval(
     checkpoint.review_notes = notes
     checkpoint.updated_at = datetime.utcnow()
     return checkpoint
+
+
+__all__ = [
+    "EvidenceQuery",
+    "EvidenceRef",
+    "PlanEdge",
+    "PlanNode",
+    "PlanPort",
+    "VideoAgentPlan",
+    "VideoIntent",
+    "build_storyboard_queries",
+    "compute_video_plan_fingerprint",
+    "validate_video_agent_plan",
+    "load_pipeline_manifest",
+    "validate_pipeline_manifest",
+    "register_tool",
+    "discover_tools",
+    "build_tool_envelope",
+    "provider_menu",
+    "support_envelope",
+    "estimate_cost",
+    "reserve_cost",
+    "reconcile_cost",
+    "analyze_reference_video",
+    "extract_transcript",
+    "detect_scenes",
+    "sample_frames",
+    "load_playbook",
+    "apply_playbook_to_compose",
+    "write_checkpoint",
+    "read_checkpoint",
+    "update_checkpoint_approval",
+]

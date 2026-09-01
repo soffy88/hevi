@@ -12,6 +12,7 @@ from hevi.auth.dependencies import get_current_user
 from hevi.creative.assist_service import AssistService
 from hevi.creative.workflow_service import WorkflowService
 from hevi.creative.xia import XiaAssistant
+from hevi.studio.conversational_edit import execute_edit
 
 # Expensive GPU/LLM endpoints — require login AND throttle per-IP to bound
 # resource-abuse cost. Auth applies to every route in this router.
@@ -279,6 +280,10 @@ async def run_comic_to_animation(
 class XiaChatRequest(BaseModel):
     text: str
     session_id: str | None = None
+    timeline_id: str | None = None
+    preview: bool = False
+    render: bool = False
+    output_path: str | None = None
 
 
 # 单例助理: 装配 AssistService/WorkflowService 轻量操作 + 制片问答
@@ -294,12 +299,18 @@ def _get_xia() -> XiaAssistant:
         async def _noop(params: dict[str, Any]) -> dict[str, Any]:
             return {"summary": "该能力需要装配图像/LLM 服务后可用", "message": "未装配"}
 
+        async def _video_edit(params: dict[str, Any]) -> dict[str, Any]:
+            timeline_id = str(params.get("timeline_id") or "").strip()
+            if not timeline_id:
+                return {"summary": "请在对话请求中提供 timeline_id，才能修改真实时间线"}
+            return execute_edit(timeline_id, str(params.get("text") or ""))
+
         _xia.register("three_view", _noop)
         _xia.register("storyboard", _noop)
         _xia.register("story_predict", _noop)
         _xia.register("multi_angle", _noop)
         _xia.register("transition", _noop)
-        _xia.register("video_edit", _noop)
+        _xia.register("video_edit", _video_edit)
         _xia.register("character_consistency", _noop)
         _xia.register("comic_to_animation", _noop)
         _xia.register("multi_shot_storyboard", _noop)
@@ -312,5 +323,26 @@ async def xia_chat(body: XiaChatRequest) -> dict[str, Any]:
     """对话式制片: 自然语言 → 意图路由 → 工具分发(装配层可注入真实操作)。"""
     if not body.text.strip():
         raise HTTPException(400, "text 不能为空")
+    if body.timeline_id:
+        try:
+            result = execute_edit(
+                body.timeline_id,
+                body.text,
+                preview=body.preview,
+                render=body.render,
+                output_path=body.output_path,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        result.update(
+            {
+                "session_id": body.session_id or "timeline-edit",
+                "reply": result["command"]["description"],
+                "tool": "video_edit",
+            }
+        )
+        return result
     xia = _get_xia()
     return await xia.chat(body.text, session_id=body.session_id)

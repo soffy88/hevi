@@ -182,6 +182,120 @@ async def _watch_concepts(payload: dict[str, Any]) -> dict[str, Any]:
     return {"status": "ok", "concepts": concepts}
 
 
+async def _video_evidence_index(payload: dict[str, Any]) -> dict[str, Any]:
+    """VideoAgent 证据索引工具；事务本身负责 report/fingerprint/trail。"""
+
+    from hevi.montage.omodul.video_agent import video_evidence_index
+
+    return await video_evidence_index(
+        payload,
+        payload,
+        payload.get("output_dir") or "data/workspace/video-agent",
+    )
+
+
+async def _video_evidence_search(payload: dict[str, Any]) -> dict[str, Any]:
+    """VideoAgent 证据检索工具；只返回时间戳 EvidenceRef。"""
+
+    from hevi.montage.omodul.video_agent import video_evidence_search
+
+    return await video_evidence_search(
+        payload,
+        payload,
+        payload.get("output_dir") or "data/workspace/video-agent",
+    )
+
+
+async def _video_script_from_transcript(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.montage.omodul.video_agent import video_script_from_transcript
+
+    return await video_script_from_transcript(payload, payload, payload.get("output_dir") or "output")
+
+
+async def _video_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    """无 LLM 时提供可追溯的抽取式概览；高级摘要由 caller 注入。"""
+
+    from hevi.montage.omodul.video_agent import _read_refs
+
+    index_path = Path(str(payload.get("index_path") or ""))
+    if not index_path.is_file():
+        return {"status": "blocked", "reason": "summary requires a local evidence index"}
+    refs = _read_refs(index_path)
+    text = " ".join((ref.transcript or ref.caption).strip() for ref in refs if (ref.transcript or ref.caption).strip())
+    if not text:
+        return {"status": "blocked", "reason": "evidence index has no transcript or caption"}
+    summary = text[:1200]
+    return {
+        "status": "ok",
+        "result": summary,
+        "evidence_refs": [ref.model_dump(mode="json") for ref in refs[:8]],
+        "summary_mode": "extractive",
+    }
+
+
+async def _video_qa(payload: dict[str, Any]) -> dict[str, Any]:
+    """证据约束 QA：没有注入问答模型时返回证据，不编造答案。"""
+
+    question = str(payload.get("question") or payload.get("query") or "").strip()
+    if not question:
+        return {"status": "failed", "reason": "question required"}
+    index_path = str(payload.get("index_path") or "")
+    if not index_path:
+        return {"status": "blocked", "reason": "qa requires a local evidence index"}
+    from hevi.montage.omodul.video_agent import video_evidence_search
+
+    result = await video_evidence_search(
+        payload,
+        {**payload, "index_path": index_path, "queries": [question]},
+        payload.get("output_dir") or "data/workspace/video-agent",
+    )
+    if result.get("status") != "completed":
+        return result
+    refs = result.get("evidence_refs") or []
+    caller = payload.get("caller")
+    if caller is None:
+        return {
+            "status": "blocked",
+            "reason": "evidence retrieved; inject a QA caller to produce a grounded answer",
+            "evidence_refs": refs,
+        }
+    answer = caller(question=question, evidence=refs)
+    if hasattr(answer, "__await__"):
+        answer = await answer
+    return {"status": "ok", "result": str(answer), "evidence_refs": refs}
+
+
+async def _video_agent_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    """VideoAgent 控制平面：只规划与反思，不执行生产副作用。"""
+
+    from hevi.montage.omodul.video_agent import _mapping
+    from hevi.montage.oskill.video_agent import build_video_agent_plan, reflect_video_agent_plan
+
+    data = _mapping(payload)
+    available = {item.tool_id for item in list_tools()}
+    plan = await build_video_agent_plan(
+        str(data.get("requirement") or data.get("prompt") or data.get("topic") or ""),
+        input_data=data,
+        source_path=str(data.get("source_path") or data.get("media_path") or ""),
+        available_tools=available,
+        caller=data.get("caller"),
+    )
+    return {
+        "status": "ok",
+        "plan": plan.model_dump(mode="json"),
+        "reflection": reflect_video_agent_plan(plan, available_tools=available),
+    }
+
+
+async def _video_agent_run(payload: dict[str, Any]) -> dict[str, Any]:
+    """VideoAgent 事务入口；execute=false 时仅返回可审查计划。"""
+
+    from hevi.montage.omodul.video_agent import video_agent_transaction
+
+    output_dir = payload.get("output_dir") or "output/montage/video-agent"
+    return await video_agent_transaction(payload, payload, output_dir)
+
+
 async def _script_quick(payload: dict[str, Any]) -> dict[str, Any]:
     from hevi.quick.service import QuickVideoConfig, plan_quick
 
@@ -280,17 +394,28 @@ async def _nle_edit_plan(payload: dict[str, Any]) -> dict[str, Any]:
         text = str(line.get("text") or line) if isinstance(line, dict) else str(line)
         dur = max(2.5, min(8.0, len(text) / 8.0))
         mat = materials[i] if i < len(materials) else None
+        source = ""
+        source_in_s = 0.0
+        material_duration = 0.0
+        if isinstance(mat, dict):
+            # EvidenceRef is the only material shape accepted by this path:
+            # preserve its local source and source time window.
+            source = str(mat.get("source_path") or mat.get("path") or mat.get("url") or "")
+            source_in_s = float(mat.get("start_s") or mat.get("source_in_s") or 0.0)
+            material_duration = max(0.0, float(mat.get("end_s") or 0.0) - source_in_s)
+        duration = min(dur, material_duration) if material_duration > 0 else dur
         cuts.append(
             {
                 "index": i,
                 "start_s": round(cursor, 2),
-                "duration_s": round(dur, 2),
+                "duration_s": round(max(0.4, duration), 2),
                 "text": text,
-                "visual": (mat or {}).get("url") if isinstance(mat, dict) else None,
+                "visual": source or None,
+                "source_in_s": round(source_in_s, 3),
                 "action": "keep",
             }
         )
-        cursor += dur
+        cursor += max(0.4, duration)
     return {
         "status": "ok",
         "edit_plan": {
@@ -404,6 +529,34 @@ def _register_defaults() -> None:
             ("concepts",),
         ),
         _watch_concepts,
+    )
+    register_tool(
+        ToolSpec("video.evidence.index", "watch", "本地视频→带 hash/时间戳的证据索引", ("source_path",), ("index_path", "manifest_path")),
+        _video_evidence_index,
+    )
+    register_tool(
+        ToolSpec("video.evidence.search", "material", "细粒度视觉查询→EvidenceRef", ("index_path", "queries"), ("evidence_refs", "per_query")),
+        _video_evidence_search,
+    )
+    register_tool(
+        ToolSpec("video.script.from_transcript", "script", "带时间戳转写→脚本分段", ("transcript",), ("script_lines",)),
+        _video_script_from_transcript,
+    )
+    register_tool(
+        ToolSpec("video.summary", "watch", "证据约束的视频抽取式概览", ("index_path",), ("result", "evidence_refs")),
+        _video_summary,
+    )
+    register_tool(
+        ToolSpec("video.qa", "watch", "证据约束 Video QA", ("index_path", "question"), ("result", "evidence_refs")),
+        _video_qa,
+    )
+    register_tool(
+        ToolSpec("video.agent.plan", "director", "自然语言→类型化 VideoAgent DAG", ("requirement",), ("plan", "reflection")),
+        _video_agent_plan,
+    )
+    register_tool(
+        ToolSpec("video.agent.run", "director", "VideoAgent 规划/检索/执行事务", ("requirement",), ("findings", "artifact_manifest")),
+        _video_agent_run,
     )
     register_tool(
         ToolSpec("script.quick", "script", "主题 → 可装配脚本行", ("topic",), ("script_lines",)),

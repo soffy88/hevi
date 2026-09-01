@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -10,6 +12,29 @@ from typing import Any, cast
 from hevi.studio.kit import nle_recut
 
 _STORE: dict[str, Timeline] = {}
+
+
+def _timeline_root() -> Path:
+    return Path(os.getenv("HEVI_TIMELINE_DIR", "data/timelines")).expanduser()
+
+
+def _timeline_path(timeline_id: str) -> Path:
+    return _timeline_root() / f"{timeline_id}.json"
+
+
+def _load_from_disk(timeline_id: str) -> Timeline | None:
+    path = _timeline_path(timeline_id)
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            return None
+        timeline = Timeline.from_dict(payload)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+    _STORE[timeline.timeline_id] = timeline
+    return timeline
 
 
 @dataclass
@@ -23,6 +48,10 @@ class TimelineClip:
     source: str = ""
     text: str = ""
     source_in_s: float = 0.0
+    speed: float = 1.0
+    reverse: bool = False
+    transition: str = "cut"
+    effect: str = "none"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -62,21 +91,64 @@ class Timeline:
             "tracks": {name: [c.to_dict() for c in items] for name, items in self.tracks.items()},
         }
 
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> Timeline:
+        clips: list[TimelineClip] = []
+        for raw in payload.get("clips") or []:
+            if not isinstance(raw, dict):
+                continue
+            clips.append(
+                TimelineClip(
+                    clip_id=str(raw.get("clip_id") or uuid.uuid4()),
+                    track=str(raw.get("track") or "video"),
+                    start_s=float(raw.get("start_s") or 0.0),
+                    duration_s=max(0.0, float(raw.get("duration_s") or 0.0)),
+                    label=str(raw.get("label") or ""),
+                    action=str(raw.get("action") or "keep"),
+                    source=str(raw.get("source") or ""),
+                    text=str(raw.get("text") or ""),
+                    source_in_s=float(raw.get("source_in_s") or 0.0),
+                    speed=float(raw.get("speed") or 1.0),
+                    reverse=bool(raw.get("reverse")),
+                    transition=str(raw.get("transition") or "cut"),
+                    effect=str(raw.get("effect") or "none"),
+                )
+            )
+        return cls(
+            timeline_id=str(payload.get("timeline_id") or uuid.uuid4()),
+            title=str(payload.get("title") or "untitled"),
+            clips=clips,
+            bgm=str(payload.get("bgm") or ""),
+            fps=int(payload.get("fps") or 24),
+            source_film=str(payload.get("source_film") or ""),
+        )
+
 
 def reset_timelines() -> None:
     _STORE.clear()
 
 
 def get_timeline(timeline_id: str) -> Timeline | None:
-    return _STORE.get(timeline_id)
+    return _STORE.get(timeline_id) or _load_from_disk(timeline_id)
 
 
 def list_timelines() -> list[Timeline]:
+    root = _timeline_root()
+    if root.is_dir():
+        for path in root.glob("*.json"):
+            if path.stem not in _STORE:
+                _load_from_disk(path.stem)
     return list(_STORE.values())
 
 
 def save_timeline(tl: Timeline) -> Timeline:
     _STORE[tl.timeline_id] = tl
+    root = _timeline_root()
+    root.mkdir(parents=True, exist_ok=True)
+    path = _timeline_path(tl.timeline_id)
+    temporary = path.with_suffix(f".{uuid.uuid4().hex}.tmp")
+    temporary.write_text(json.dumps(tl.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(path)
     return tl
 
 
@@ -101,6 +173,10 @@ def timeline_from_edit_plan(plan: dict[str, Any], *, title: str = "untitled") ->
                 source=src,
                 text=text,
                 source_in_s=float(cut.get("source_in_s") or 0.0),
+                speed=max(0.25, min(4.0, float(cut.get("speed") or 1.0))),
+                reverse=bool(cut.get("reverse")),
+                transition=str(cut.get("transition") or "cut"),
+                effect=str(cut.get("effect") or "none"),
             )
         )
         tl.clips.append(
@@ -136,8 +212,12 @@ def patch_clip(
     label: str | None = None,
     duration_s: float | None = None,
     text: str | None = None,
+    speed: float | None = None,
+    reverse: bool | None = None,
+    transition: str | None = None,
+    effect: str | None = None,
 ) -> Timeline | None:
-    tl = _STORE.get(timeline_id)
+    tl = get_timeline(timeline_id)
     if tl is None:
         return None
     for clip in tl.clips:
@@ -151,21 +231,29 @@ def patch_clip(
             clip.duration_s = max(0.4, float(duration_s))
         if text is not None:
             clip.text = text
-        return tl
+        if speed is not None:
+            clip.speed = max(0.25, min(4.0, float(speed)))
+        if reverse is not None:
+            clip.reverse = bool(reverse)
+        if transition in {"cut", "dissolve", "wipe", "smash"}:
+            clip.transition = transition
+        if effect in {"none", "warm", "cool", "mono", "vignette", "sharpen"}:
+            clip.effect = effect
+        return save_timeline(tl)
     return None
 
 
 def set_bgm(timeline_id: str, bgm: str) -> Timeline | None:
-    tl = _STORE.get(timeline_id)
+    tl = get_timeline(timeline_id)
     if tl is None:
         return None
     tl.bgm = bgm
-    return tl
+    return save_timeline(tl)
 
 
 def split_at(timeline_id: str, at_s: float) -> Timeline | None:
     """ChatCut 式:在游标切开所有轨上压到的 clip。"""
-    tl = _STORE.get(timeline_id)
+    tl = get_timeline(timeline_id)
     if tl is None:
         return None
     mark = max(0.2, float(at_s))
@@ -183,17 +271,21 @@ def split_at(timeline_id: str, at_s: float) -> Timeline | None:
             action=clip.action,
             source=clip.source,
             text=clip.text,
-            source_in_s=round(clip.source_in_s + (mark - clip.start_s), 3),
+            source_in_s=round(clip.source_in_s + (mark - clip.start_s) * clip.speed, 3),
+            speed=clip.speed,
+            reverse=clip.reverse,
+            transition=clip.transition,
+            effect=clip.effect,
         )
         clip.duration_s = round(mark - clip.start_s, 3)
         spawned.append(right)
     tl.clips.extend(spawned)
-    return tl
+    return save_timeline(tl)
 
 
 def ripple(timeline_id: str) -> Timeline | None:
     """丢掉的镜不再占时间,后面的 clip 左移收缝。"""
-    tl = _STORE.get(timeline_id)
+    tl = get_timeline(timeline_id)
     if tl is None:
         return None
     for track in ("video", "audio", "captions"):
@@ -207,7 +299,7 @@ def ripple(timeline_id: str) -> Timeline | None:
                 continue
             clip.start_s = round(cursor, 3)
             cursor += clip.duration_s
-    return tl
+    return save_timeline(tl)
 
 
 def timeline_from_film(
@@ -240,7 +332,7 @@ def timeline_from_film(
 
 
 def export_timeline(timeline_id: str, dest: Path) -> dict[str, Any]:
-    tl = _STORE.get(timeline_id)
+    tl = get_timeline(timeline_id)
     if tl is None:
         return {"status": "failed", "reason": "unknown timeline"}
     clips = [
@@ -250,6 +342,10 @@ def export_timeline(timeline_id: str, dest: Path) -> dict[str, Any]:
             "source": c.source or tl.source_film,
             "source_in_s": c.source_in_s,
             "duration_s": c.duration_s,
+            "speed": c.speed,
+            "reverse": c.reverse,
+            "transition": c.transition,
+            "effect": c.effect,
         }
         for c in tl.clips
         if c.track == "video"

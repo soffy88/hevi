@@ -6,7 +6,9 @@ P0: 解决 hevi 缺失的参考视频驱动能力
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -58,6 +60,7 @@ class ConceptVariant(BaseModel):
     angle: str  # how it differs from the reference
     estimated_cost: float = 0.0
     reference_similarity: float = 0.0  # 0-1, how close to original
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ReferenceVideoAnalysis(BaseModel):
@@ -158,44 +161,99 @@ async def generate_concepts(
     transcript: list[TranscriptSegment],
     rhythm: RhythmAnalysis,
     scenes: list[SceneBreakdown],
+    llm: Any | None = None,
 ) -> list[ConceptVariant]:
-    """基于分析结果生成 2-3 个差异化概念"""
-    # TODO: 调用 hevi LLM 网关生成概念
-    # 暂时返回占位结构
+    """基于分析结果生成差异化概念；无证据时返回空而非硬编码概念。
+
+    ``llm`` 是可注入的 HEVI 网关/测试 double。未注入时使用转录和场景
+    元数据生成可解释的本地候选；候选会明确标注 ``deterministic``，不把
+    本地规则冒充成模型创作。
+    """
+    source_text = " ".join(item.text.strip() for item in transcript if item.text.strip())
+    scene_text = " ".join(
+        f"{item.description} {' '.join(item.key_elements)}".strip()
+        for item in scenes
+        if item.description.strip() or item.key_elements
+    )
+    evidence = re.sub(r"\s+", " ", f"{source_text} {scene_text}").strip()
+    if not evidence and rhythm.total_duration_s <= 0 and not rhythm.shot_changes:
+        return []
+
+    if callable(llm):
+        prompt = (
+            "基于下列参考视频证据生成 2-3 个明显差异化概念，只返回 JSON 数组；"
+            "每项包含 title,pitch,angle,estimated_cost,reference_similarity。\n"
+            f"duration={rhythm.total_duration_s:.2f}; shots={len(rhythm.shot_changes)}; evidence={evidence[:2000]}"
+        )
+        try:
+            response = llm(messages=[{"role": "user", "content": prompt}], max_tokens=1200)
+            if hasattr(response, "__await__"):
+                response = await response
+            content = response.get("content") if isinstance(response, dict) else str(response)
+            if isinstance(content, list):
+                content = "".join(str(item.get("text") or "") for item in content if isinstance(item, dict))
+            match = re.search(r"\[.*\]", str(content), re.DOTALL)
+            if match:
+                raw = json.loads(match.group(0))
+                concepts = [
+                    ConceptVariant(
+                        concept_id=f"llm-{index + 1}",
+                        title=str(item.get("title") or "").strip(),
+                        pitch=str(item.get("pitch") or "").strip(),
+                        angle=str(item.get("angle") or "").strip(),
+                        estimated_cost=float(item.get("estimated_cost") or 0.0),
+                        reference_similarity=max(0.0, min(1.0, float(item.get("reference_similarity") or 0.0))),
+                        metadata={"generated_by": "injected_llm"},
+                    )
+                    for index, item in enumerate(raw[:3])
+                    if isinstance(item, dict) and str(item.get("title") or "").strip()
+                ]
+                if concepts:
+                    return concepts
+        except Exception as exc:
+            logger.warning("reference concept LLM failed; using local evidence fallback: %s", exc)
+
+    topic = re.sub(r"[\W_]+", " ", source_text or scene_text, flags=re.UNICODE).strip()
+    topic = " ".join(topic.split()[:8]) or "参考视频证据"
+    duration = rhythm.total_duration_s or max((item.end_s for item in scenes), default=0.0)
+    shot_hint = f"{len(rhythm.shot_changes)} 个切点" if rhythm.shot_changes else "现有场景边界"
     return [
         ConceptVariant(
-            concept_id="c1",
-            title="参考视频同主题差异化视角",
-            pitch="保持原视频核心信息，换一个叙事角度",
-            angle="从对立观点切入，制造冲突张力",
-            estimated_cost=50.0,
-            reference_similarity=0.7,
+            concept_id="local-1",
+            title=f"{topic}：证据拆解",
+            pitch=f"围绕 {topic} 的关键证据制作一条可独立验证的解释视频。",
+            angle=f"从事实核验切入，沿用 {shot_hint} 的节奏但重写叙事。",
+            estimated_cost=round(max(0.0, duration) / 60.0 * 0.65, 2),
+            reference_similarity=0.45,
+            metadata={"generated_by": "deterministic_evidence", "evidence_chars": len(evidence)},
         ),
         ConceptVariant(
-            concept_id="c2",
-            title="参照视频视觉风格重塑",
-            pitch="保留节奏模式，更换视觉风格",
-            angle="用动画/手绘风格重新呈现",
-            estimated_cost=80.0,
-            reference_similarity=0.4,
+            concept_id="local-2",
+            title=f"{topic}：反例对照",
+            pitch=f"用与 {topic} 相邻的反例或失败路径建立对照。",
+            angle="保持信息密度，改用反方问题作为开场，避免复述原片。",
+            estimated_cost=round(max(0.0, duration) / 60.0 * 0.9, 2),
+            reference_similarity=0.25,
+            metadata={"generated_by": "deterministic_evidence", "evidence_chars": len(evidence)},
         ),
         ConceptVariant(
-            concept_id="c3",
-            title="参考视频扩写加长版",
-            pitch="将短内容扩展为系列",
-            angle="拆分为 3 集系列，每集独立钩子",
-            estimated_cost=120.0,
-            reference_similarity=0.6,
+            concept_id="local-3",
+            title=f"{topic}：行动清单",
+            pitch=f"把 {topic} 的信息转成观众可执行的三步清单。",
+            angle="从观点改成操作步骤，视觉上使用清单/流程而非原片复刻。",
+            estimated_cost=round(max(0.0, duration) / 60.0 * 0.75, 2),
+            reference_similarity=0.30,
+            metadata={"generated_by": "deterministic_evidence", "evidence_chars": len(evidence)},
         ),
     ]
 
 
-async def analyze_reference_video(url: str) -> ReferenceVideoAnalysis:
+async def analyze_reference_video(url: str, *, llm: Any | None = None) -> ReferenceVideoAnalysis:
     """完整参考视频分析流程"""
     transcript = await fetch_transcript(url)
     rhythm = await analyze_rhythm(url)
     scenes = await extract_scenes(url)
-    concepts = await generate_concepts(transcript, rhythm, scenes)
+    concepts = await generate_concepts(transcript, rhythm, scenes, llm=llm)
 
     return ReferenceVideoAnalysis(
         source_url=url,
@@ -204,7 +262,7 @@ async def analyze_reference_video(url: str) -> ReferenceVideoAnalysis:
         scenes=scenes,
         key_visual_moments=[],
         concepts=concepts,
-        metadata={},
+        metadata={"concept_generation": "injected_llm_or_deterministic_evidence"},
     )
 
 

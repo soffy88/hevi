@@ -112,25 +112,11 @@ async def produce(
     dest_root = Path(output_dir or "output/veya")
     filled.setdefault("output_dir", str(dest_root))
     slate = await run_slate(Slate(line_id=rec.id, slots=filled, execute=execute))
-    artifact = ""
-    runnable = slate.status in {"dispatched", "scheduled", "planned"}
-    if execute and runnable and runtime == "hyperframes":
-        from hevi.providers.hyperframes.provider import hyperframes_generate
-
-        dest = dest_root / f"{slate.slate_id}.mp4"
-        produced = await hyperframes_generate(
-            prompt={
-                "topic": filled.get("topic") or filled.get("source_name") or rec.product,
-                "script_lines": slate.data.get("script_lines") or [],
-                "edit_plan": slate.data.get("edit_plan") or {},
-            },
-            output_path=dest,
-        )
-        artifact = str(produced)
+    artifact = str(slate.data.get("result_video_path") or "")
     job = ProduceJob(
         job_id=slate.slate_id,
         line_id=rec.id,
-        status="ready" if artifact else slate.status,
+        status="ready" if artifact and slate.status == "completed" else slate.status,
         render_runtime=runtime,
         product=rec.product,
         artifact=artifact,

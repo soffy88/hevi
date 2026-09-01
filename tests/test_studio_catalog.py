@@ -21,6 +21,10 @@ def test_catalog_has_over_one_hundred_tools() -> None:
     assert "craft.shot_spec" in ids
     assert "daily.tick" in ids
     assert "veya.produce" in ids
+    assert "clip.virality" in ids
+    assert "ingest.localize" in ids
+    assert "nle.jianying_export" in ids
+    assert "nle.style_archive" in ids
 
 
 @pytest.mark.asyncio
@@ -40,3 +44,23 @@ async def test_catalog_ops_run() -> None:
         {"edit_plan": {"cuts": [{"action": "keep"}, {"action": "drop"}]}},
     )
     assert factory.payload["count"] == 1
+
+    viral = await invoke_tool(
+        "clip.virality",
+        {
+            "transcript": [
+                {"start": 0, "end": 8, "text": "闲聊天气"},
+                {"start": 8, "end": 70, "text": "其实没人告诉你这个秘密。数据显示原来可以三步记住。"},
+            ],
+            "target_clips": 1,
+        },
+    )
+    assert viral.status == "ok"
+    assert viral.payload["count"] >= 1
+
+    loc = await invoke_tool(
+        "ingest.localize",
+        {"transcript": [{"start": 0, "end": 2, "text": "hello"}], "work_dir": "/tmp/hevi-loc-test"},
+    )
+    assert loc.status == "ok"
+    assert loc.payload["ass_path"]

@@ -207,6 +207,47 @@ async def _synthesize_formal(
         )
         return output_path
 
+    if provider == "voxcpm":
+        from hevi.audio.voxcpm_service import synth_with_voxcpm, voxcpm_available
+
+        if not voxcpm_available():
+            raise AudioRoutingError(
+                "HEVI_TTS_FORMAL_PROVIDER=voxcpm 但 HEVI native voice runtime 不可用"
+                "(需要 espeak-ng/espeak)"
+            )
+        ref_audio = os.getenv("VOXCPM_REFERENCE_AUDIO", "").strip() or os.getenv(
+            "F5_TTS_REFERENCE_AUDIO", ""
+        ).strip()
+        design = os.getenv("VOXCPM_VOICE_DESIGN", "").strip()
+        await synth_with_voxcpm(
+            text=text,
+            output_path=output_path,
+            language=str(_kw.get("language") or ""),
+            reference_audio=ref_audio or None,
+            voice_design=design,
+            speed=float(_kw.get("speed") or 1.0),
+        )
+        return output_path
+
+    if provider in {"pocket_tts", "pocket-tts", "pocket"}:
+        from hevi.audio.pocket_tts_service import pocket_tts_available, synth_with_pocket_tts
+
+        if not pocket_tts_available():
+            raise AudioRoutingError(
+                "HEVI_TTS_FORMAL_PROVIDER=pocket_tts 但 HEVI native voice runtime 不可用"
+                "(需要 espeak-ng/espeak)"
+            )
+        await synth_with_pocket_tts(
+            text,
+            output_path=output_path,
+            voice=str(_kw.get("voice") or os.getenv("POCKET_TTS_VOICE", "alba")),
+            language=str(_kw.get("language") or ""),
+            reference_audio=str(_kw.get("reference_audio") or "") or None,
+            voice_design=str(_kw.get("voice_design") or os.getenv("POCKET_TTS_VOICE_DESIGN", "")),
+            speed=float(_kw.get("speed") or 1.0),
+        )
+        return output_path
+
     if provider == "voicebox":
         from hevi.explainer.voicebox_client import synthesize as vb_synthesize
         await vb_synthesize(text, output_path, instruct=instruct or "professional, clear narration")

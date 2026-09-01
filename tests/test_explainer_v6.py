@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import pytest
 
@@ -330,6 +331,12 @@ async def test_stock_broll_is_fulfilled_when_service_injected(
             assert media_type == "video"
             return [{"preview_url": "https://cdn.example/rain.mp4"}]
 
+    def fake_freeze(_url, *, output_dir, **_kwargs):
+        frozen = output_dir / "frozen.mp4"
+        frozen.write_bytes(b"frozen")
+        return frozen
+
+    monkeypatch.setattr(explainer_assembly, "_freeze_stock_url", fake_freeze)
     monkeypatch.setattr(explainer_assembly, "render_narrated_storyboard", fake_render)
     result = await explainer_assembly.assemble_explainer_cues(
         "测试主题",
@@ -346,10 +353,9 @@ async def test_stock_broll_is_fulfilled_when_service_injected(
         stock_user_id="u1",
     )
     assert result == "rendered"
-    assert (
-        captured["storyboard"].segments[0].visual_config["assetUrl"]
-        == "https://cdn.example/rain.mp4"
-    )
+    frozen = Path(captured["storyboard"].segments[0].visual_config["assetUrl"])
+    assert frozen.is_file()
+    assert frozen.suffix == ".mp4"
 
 
 @pytest.mark.asyncio

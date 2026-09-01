@@ -23,6 +23,8 @@ VisualType = Literal[
     "remotion_chart",
     "remotion_code",
     "manim_scene",
+    "whiteboard",
+    "infographic",
     "voiceover",
 ]
 
@@ -423,6 +425,7 @@ class ExplainerAssembleRequest(BaseModel):
     session_id: str = Field(default="", max_length=64)
     enable_remotion_code_render: bool = True
     enable_manim_render: bool = True
+    enable_whiteboard_render: bool = True
     enable_circle_avatar_mask: bool = True
     enable_browser_broll: bool = True
     aspect_ratio: Literal["9:16", "16:9"] = "9:16"

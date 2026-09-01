@@ -192,16 +192,54 @@ async def execute_ai_short(
     user_id: str = "",
     cost_mode: str = "low_cost",
     publish_to: list[str] | None = None,
+    config: dict[str, Any] | None = None,
+    input_data: dict[str, Any] | None = None,
+    output_dir: str | Path | None = None,
+    on_step: Any = None,
 ) -> AIShortJob:
-    """执行 AI Shorts pipeline。"""
-    cm = AICostMode(cost_mode) if cost_mode in AICostMode.__members__.values() else AICostMode.LOW_COST
-    return generate_ai_short(
-        description=description,
-        url=url,
-        user_id=user_id,
-        cost_mode=cm,
-        publish_platforms=publish_to,
+    """执行 AI Shorts pipeline 并返回带真实产物路径的作业。"""
+    from hevi.openshorts.ai_short_runtime import ai_shorts_generation_workflow
+
+    try:
+        cm = AICostMode(cost_mode)
+    except ValueError:
+        cm = AICostMode.LOW_COST
+    data = {
+        **(input_data or {}),
+        "description": description or (input_data or {}).get("description", ""),
+        "url": url or (input_data or {}).get("url", ""),
+        "user_id": user_id,
+        "cost_mode": cm.value,
+        "publish_to": publish_to or (input_data or {}).get("publish_to") or [],
+    }
+    result = await ai_shorts_generation_workflow(
+        {**(config or {}), "cost_mode": cm.value},
+        data,
+        output_dir or Path("output/openshorts") / f"{user_id or 'anonymous'}-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}",
+        on_step=on_step,
     )
+    job = make_ai_short_job(description=data["description"], url=data["url"], user_id=user_id)
+    job.cost_plan.mode = cm
+    job.publish_platforms = list(data["publish_to"])
+    findings = result.get("findings") or {}
+    if findings.get("script"):
+        from hevi.openshorts.schemas import AIActor, AIScript
+
+        job.script = AIScript.model_validate(findings["script"])
+        if findings.get("actor"):
+            job.actor = AIActor.model_validate(findings["actor"])
+    job.voiceover_path = str(findings.get("voiceover_path") or "")
+    job.talking_head_path = str(findings.get("talking_head_path") or "")
+    job.b_roll_paths = [str(item) for item in findings.get("b_roll_paths") or []]
+    job.composite_path = str(findings.get("composite_path") or "")
+    job.status = str(result.get("status") or "failed")
+    error = result.get("error")
+    job.error = str(error.get("message") if isinstance(error, dict) else error or "")
+    publish_results = findings.get("publish_results") or []
+    if publish_results:
+        statuses = {str(item.get("status") or "") for item in publish_results if isinstance(item, dict)}
+        job.publish_status = "published" if "published" in statuses else "handoff"
+    return job
 
 
 async def execute_youtube_studio(

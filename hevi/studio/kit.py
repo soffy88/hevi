@@ -36,7 +36,13 @@ async def watch_video_tool(payload: dict[str, Any]) -> dict[str, Any]:
         try:
             from hevi.ingest.video_watch import watch_video
 
-            result = watch_video(source, work_dir, detail=payload.get("detail") or "transcript")
+            result = watch_video(
+                source,
+                work_dir,
+                detail=payload.get("detail") or "transcript",
+                whisper_fallback=bool(payload.get("whisper_fallback")),
+                language=payload.get("language"),
+            )
         except Exception as exc:
             logger.warning("watch_video failed: %s", exc)
             result = WatchResult(source=source, duration_s=float(payload.get("duration_s") or 0))
@@ -488,7 +494,7 @@ KIT_SPECS: list[tuple[str, str, str, tuple[str, ...], tuple[str, ...]]] = [
         ("image_path", "audio_path"),
         ("avatar_path",),
     ),
-    ("tts.synth", "tts", "lux/edge/auto 统一配音", ("text",), ("audio_path", "provider")),
+    ("tts.synth", "tts", "lux/voxcpm/edge/auto 统一配音", ("text",), ("audio_path", "provider")),
     ("director.scene_stage", "director", "场面调度草案", ("scene",), ("scene_stage",)),
     ("shot.export", "shot", "一镜登记为跨线资产", ("shot_id",), ("asset",)),
     ("profile.freeze", "profile", "配置冻结+SHA", ("workspace", "project"), ("sha256",)),

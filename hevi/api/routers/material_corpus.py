@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from hevi.core.config import settings
 from hevi.video.material_corpus import (
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/material", tags=["material"])
 
 @router.get("/pixabay", response_model=list[dict[str, Any]])
 async def get_pixabay_videos(
-    query: str = Depends(lambda: "")
+    query: str = Query(default="")
 ) -> list[dict[str, Any]]: # 修复类型别名 Any
     """Pixabay 视频搜索 API - 直接复用 material_corpus.search_pixabay_videos 逻辑"""
     try:
@@ -27,7 +27,7 @@ async def get_pixabay_videos(
 
 @router.get("/coverr", response_model=list[dict[str, Any]])
 async def get_coverr_videos(
-    query: str = Depends(lambda: "")
+    query: str = Query(default="")
 ) -> list[dict[str, Any]]: # 修复类型别名 Any
     """Coverr 视频搜索 API - 直接复用 material_corpus.search_coverr_videos 逻辑"""
     try:
@@ -37,7 +37,7 @@ async def get_coverr_videos(
 
 @router.get("/archive", response_model=list[dict[str, Any]])
 async def get_archive_videos(
-    query: str = Depends(lambda: "")
+    query: str = Query(default="")
 ) -> list[dict[str, Any]]: # 修复类型别名 Any
     """Archive.org 搜索 API - 直接复用 material_corpus.search_archive_videos 逻辑"""
     try:

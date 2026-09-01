@@ -10,6 +10,13 @@ from .policy import (
     require_provider,
 )
 from .repository import ProviderStateRepository
+from .runtime import (
+    PROVIDER_SPECS,
+    inspect_providers,
+    probe_provider,
+    provider_configuration,
+    runtime_provider_ids,
+)
 
 __all__ = [
     "ProviderDecision",
@@ -18,7 +25,12 @@ __all__ = [
     "ProviderPolicyError",
     "ProviderRejection",
     "ProviderStateRepository",
+    "PROVIDER_SPECS",
     "evaluate_provider_policy",
+    "inspect_providers",
+    "probe_provider",
+    "provider_configuration",
     "require_provider",
+    "runtime_provider_ids",
     "run_provider_health_service",
 ]

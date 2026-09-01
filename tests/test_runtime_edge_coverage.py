@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import subprocess
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -679,17 +680,27 @@ def test_digital_human_oprims_lock_content_timeline_captions_and_qa(
     media = check_media_technical(job)
     assert media["errors"]
     audio = tmp_path / "audio.wav"
-    audio.write_bytes(b"audio")
-    assert check_audio_loudness(str(audio))["in_spec"] is True
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+            "-ar", "48000", "-ac", "1", str(audio),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    loudness = check_audio_loudness(str(audio))
+    assert loudness["ok"] is True and "in_spec" in loudness
     assert check_audio_loudness(str(tmp_path / "none.wav"))["ok"] is False
-    measurement = loudnorm_two_pass("in.wav", "out.wav")
+    normalized = tmp_path / "normalized.wav"
+    measurement = loudnorm_two_pass(str(audio), str(normalized))
+    assert normalized.is_file()
     assert "measured_I" in build_loudnorm_filter(measurement)
     assert calculate_contact_timestamps(0, 3) == [0.2, 0.2, 0.2]
     assert calculate_contact_timestamps(10, 3)[-1] == 9.8
     report = delivery_report(
         "master.mp4", "share.mp4", "contact.jpg", 10, measurement, {}, {}, {}, black_events=1
     )
-    assert report["status"] == "verified" and report["black_frame_events"] == 1
+    assert report["status"] == "blocked" and report["black_frame_events"] == 1
 
 
 @pytest.mark.asyncio
@@ -1175,8 +1186,8 @@ async def test_task_service_adapter_failures_review_and_local_completion_paths(
 
     completed_service, completed_repo = service_with({"status": "completed"})
     completed = await completed_service._run_adapter_task({"id": uuid4(), "config_json": {"production_source": "director_graph"}})
-    assert completed["status"] == "completed"
-    assert any(call.args[1].get("progress_pct") == 100.0 for call in completed_repo.update_task.await_args_list)
+    assert completed["status"] == "failed"
+    assert any(call.args[1].get("status") == "failed" for call in completed_repo.update_task.await_args_list)
 
     exploding_service, exploding_repo = service_with(error=RuntimeError("adapter crashed"))
     exploded = await exploding_service._run_adapter_task(
@@ -1272,6 +1283,7 @@ async def test_task_service_create_task_idempotency_and_quality_repair_projectio
 @pytest.mark.asyncio
 async def test_digital_human_omodul_builds_and_executes_the_full_job_plan(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from hevi.digital_human.omodul import (
         build_full_job_plan,
@@ -1294,6 +1306,7 @@ async def test_digital_human_omodul_builds_and_executes_the_full_job_plan(
         remote_upload_approved=True,
         voice_clone_approved=True,
     )
+    monkeypatch.setenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", str(tmp_path / "artifacts"))
     assert (tmp_path / "job" / "job.json").exists()
     assert plan_generation(job)["target_status"] == JobStatus.AUDIO_LOCKED.value
     assert plan_visual(job, 20)["target_status"] == JobStatus.VISUAL_PLAN_LOCKED.value
@@ -1302,8 +1315,9 @@ async def test_digital_human_omodul_builds_and_executes_the_full_job_plan(
     assert plan_delivery(job, "render.mp4", "out")["target_status"] == JobStatus.VERIFIED.value
     plan = build_full_job_plan(job, 20, "render.mp4", "out", "stem")
     assert len(plan["phases"]) == 5 and plan["state_machine"][-1] == "verified"
-    result = await execute_plan(job, plan)
-    assert len(result["phases"]) == 5 and job.status is JobStatus.VERIFIED
+    with pytest.raises((FileNotFoundError, NotImplementedError), match="presenter image|no registered production adapter"):
+        await execute_plan(job, plan)
+    assert job.status is JobStatus.VISUAL_PLAN_LOCKED
 
 
 @pytest.mark.asyncio
@@ -3054,10 +3068,10 @@ async def test_talking_face_engine_selection_and_fallback_contracts(
 
     monkeypatch.setenv("TALKING_FACE_ENGINE", "unknown")
     monkeypatch.setattr(talking_face, "_generate_placeholder_avoiding_null", make_placeholder)
-    unknown = await talking_face.generate_talking_face(
-        image_path=image, audio_path=audio, output_path=placeholder
-    )
-    assert unknown == placeholder
+    with pytest.raises(talking_face.TalkingFaceUnavailable, match="未知 Talking Face"):
+        await talking_face.generate_talking_face(
+            image_path=image, audio_path=audio, output_path=placeholder
+        )
 
     with pytest.raises(talking_face.TalkingFaceUnavailable, match="Presenter image"):
         await talking_face.generate_talking_face(

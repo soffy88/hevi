@@ -37,7 +37,7 @@ def _shot_view(row: dict[str, Any]) -> dict[str, Any]:
     sel = row.get("selection_json") or {}
     return {
         "index": row.get("shot_index"),
-        "passed": sel.get("passed", True),
+        "passed": sel.get("passed", False),
         "consistency_score": sel.get("consistency_score"),
     }
 

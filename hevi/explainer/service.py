@@ -61,6 +61,7 @@ class ExplainerMasterService:
             enable_circle_avatar_mask=clean_request.enable_circle_avatar_mask,
             enable_remotion_code_render=clean_request.enable_remotion_code_render,
             enable_manim_render=clean_request.enable_manim_render,
+            enable_whiteboard_render=clean_request.enable_whiteboard_render,
             enable_browser_broll=clean_request.enable_browser_broll,
             aspect_ratio=clean_request.aspect_ratio,
             heygen_presenter_id=clean_request.heygen_presenter_id,

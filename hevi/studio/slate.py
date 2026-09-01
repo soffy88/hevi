@@ -59,6 +59,9 @@ class SlateResult:
                     "render_runtime",
                     "hyperframes",
                     "fulfill",
+                    "artifact_manifest",
+                    "result_video_path",
+                    "quality",
                 )
                 if k in self.data
             },
@@ -68,6 +71,9 @@ class SlateResult:
 
 def _seed_data(slate: Slate, recipe: Recipe) -> dict[str, Any]:
     data = dict(slate.slots)
+    # Keep the original user inputs available to the final renderer.  The
+    # intermediate stages intentionally project only their derived fields.
+    data["input_slots"] = dict(slate.slots)
     data["line_id"] = recipe.id
     data["handoff"] = recipe.handoff
     data["slate_id"] = slate.slate_id
@@ -106,13 +112,24 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
     order = data.get("production_order") or {}
     pipe_state = getattr(state, "state", "completed")
     fulfill = data.get("fulfill") or {}
-    status = "scheduled" if order.get("target") and order["target"] != "none" else "planned"
-    if slate.execute and fulfill.get("status") == "dispatched":
-        status = "dispatched"
+    if not slate.execute:
+        status = "scheduled" if order.get("target") and order["target"] != "none" else "planned"
+    else:
+        status = str(fulfill.get("status") or "failed")
+        if status in {"issued", "dispatched", "planned"}:
+            status = "blocked"
     if pipe_state in {"failed", "paused"}:
         status = str(pipe_state)
     if fulfill.get("status") == "failed":
         status = "failed"
+    if fulfill.get("status") == "blocked":
+        status = "blocked"
+    if fulfill.get("result_video_path"):
+        data["result_video_path"] = fulfill["result_video_path"]
+    if fulfill.get("artifact_manifest"):
+        data["artifact_manifest"] = fulfill["artifact_manifest"]
+    if fulfill.get("quality"):
+        data["quality"] = fulfill["quality"]
     return SlateResult(
         status=status,
         slate_id=slate.slate_id,
@@ -120,6 +137,7 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
         product=rec.product,
         production_order=order,
         data=data,
+        reason=str(fulfill.get("reason") or "") if status in {"blocked", "failed"} else "",
     )
 
 
@@ -132,16 +150,25 @@ async def execute_lot_task(task: dict[str, Any], pool: Any = None) -> dict[str, 
     slots = dict(options.get("slots") or {})
     if "topic" not in slots and task.get("topic"):
         slots["topic"] = task["topic"]
-    slate = Slate(line_id=line_id, slots=slots, slate_id=str(task.get("id") or ""))
+    slate = Slate(
+        line_id=line_id,
+        slots={**slots, "output_dir": cfg.get("output_dir") or options.get("output_dir")},
+        slate_id=str(task.get("id") or ""),
+        execute=True,
+    )
     result = await run_slate(slate)
-    video = ""
-    if isinstance(result.data.get("edit_plan"), dict):
-        video = str(result.data["edit_plan"].get("preview_path") or "")
-    ok = result.status in {"scheduled", "planned", "dispatched"}
+    video = str(result.data.get("result_video_path") or "")
+    manifest = result.data.get("artifact_manifest")
+    ok = result.status == "completed" and bool(video) and bool(manifest)
     return {
         "status": "completed" if ok else "failed",
-        "error": result.reason or None,
+        "error": result.reason or (result.data.get("fulfill") or {}).get("reason") or None,
         "result_video_path": video or None,
+        "config_json": {
+            **cfg,
+            "artifact_manifest": manifest,
+            "quality": result.data.get("quality"),
+        },
         "production_order": result.production_order,
         "slate": result.to_dict(),
     }

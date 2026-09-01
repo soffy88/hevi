@@ -46,9 +46,36 @@ _DEFAULT = ProductionAdapterRegistry()
 
 
 def _register_builtin_adapters() -> None:
-    from hevi.execution.resumable_render import execute_checkpoint_render
+    async def execute_checkpoint(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.execution.resumable_render import execute_checkpoint_render
 
-    _DEFAULT.register("checkpoint_render", execute_checkpoint_render, replace=True)
+        return await execute_checkpoint_render(task, pool)
+
+    async def execute_clip_video(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.production.media_workflows import execute_clip_video_task
+
+        return await execute_clip_video_task(task, pool)
+
+    async def execute_localize_video(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.production.media_workflows import execute_video_localize_task
+
+        return await execute_video_localize_task(task, pool)
+
+    async def execute_mpt(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.services.mpt_adapter import execute_mpt_task
+
+        return await execute_mpt_task(task, pool)
+
+    async def execute_lot(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.studio.slate import execute_lot_task
+
+        return await execute_lot_task(task, pool)
+
+    _DEFAULT.register("checkpoint_render", execute_checkpoint, replace=True)
+    _DEFAULT.register("clip_video", execute_clip_video, replace=True)
+    _DEFAULT.register("localize_video", execute_localize_video, replace=True)
+    _DEFAULT.register("mpt", execute_mpt, replace=True)
+    _DEFAULT.register("lot", execute_lot, replace=True)
 
 
 _register_builtin_adapters()

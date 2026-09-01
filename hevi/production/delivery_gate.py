@@ -53,8 +53,8 @@ def probe_video(path: str | Path) -> VideoProbe:
     if size <= 0:
         return VideoProbe(dest, 0.0, False, False, size)
     if not shutil.which("ffprobe"):
-        logger.warning("ffprobe 不可用, compose 门只能看文件存在: %s", dest)
-        return VideoProbe(dest, 0.0, True, True, size)
+        logger.error("ffprobe 不可用, 无法验证媒体产物: %s", dest)
+        return VideoProbe(dest, 0.0, False, False, size)
 
     def _has(stream: str) -> bool:
         result = subprocess.run(
@@ -161,7 +161,7 @@ def evaluate_director_delivery(
             reason="成片无镜头",
             details={"delivery_promise": delivery_promise},
         )
-    n_failed = sum(1 for s in rows if not s.get("passed", True))
+    n_failed = sum(1 for s in rows if not s.get("passed", False))
     n_canon = sum(1 for s in rows if _is_canon_copy(s))
     n_motion = sum(1 for s in rows if _is_motion_fallback(s))
     ratio = n_canon / len(rows)

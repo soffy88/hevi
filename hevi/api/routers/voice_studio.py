@@ -12,6 +12,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
+from hevi.audio.speech_platform import (
+    build_batch_plan,
+    get_engine,
+    list_voice_profiles,
+)
+from hevi.audio.speech_platform import (
+    diagnostics as speech_diagnostics,
+)
+from hevi.audio.speech_platform import (
+    list_engines as list_speech_engines,
+)
 from hevi.auth.dependencies import get_current_user
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService
@@ -19,6 +30,7 @@ from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.production.capabilities import CapabilityUnavailableError, require_capability
 from hevi.production.contracts import ProductionRequest
+from hevi.provider_policy.runtime import probe_provider
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
 
@@ -41,6 +53,10 @@ class SynthesisRequest(BaseModel):
     voice: str | None = None
     language: str | None = None
     effects: str | None = None
+    reference_audio: str | None = None
+    reference_text: str | None = None
+    voice_design: str | None = None
+    model_config_path: str | None = Field(default=None, alias="model_config")
 
 
 _EFFECTS = [
@@ -70,15 +86,11 @@ _PERSONAS = [
         "emotional_tendency": "积极",
     },
 ]
-_ENGINES = [
-    {
-        "id": "voicebox",
-        "name": "Voicebox",
-        "type": "local",
-        "description": "可持久化的高质量语音任务（Qwen CustomVoice）",
-        "requires_gpu": False,
-        "languages": ["zh", "en"],
-    }
+_WORKFLOWS = [
+    {"id": "clone", "name": "声线克隆", "steps": ["reference", "transcribe", "synthesize", "review"]},
+    {"id": "dubbing", "name": "视频译制", "steps": ["asr", "translate", "speaker_map", "synthesize", "mix"]},
+    {"id": "long_form", "name": "长篇/有声书", "steps": ["chapterize", "voice_map", "batch", "package"]},
+    {"id": "batch", "name": "批量合成", "steps": ["validate", "queue", "synthesize", "manifest"]},
 ]
 
 
@@ -130,7 +142,52 @@ async def rewrite_personality(
 
 @router.get("/tts/engines")
 async def list_engines(_: Annotated[dict[str, Any], Depends(get_current_user)]) -> dict[str, Any]:
-    return {"engines": _ENGINES}
+    engines = []
+    for item in list_speech_engines():
+        if item.kind != "tts":
+            continue
+        body = item.to_dict()
+        body["type"] = "cloud" if item.mode == "network" else "local"
+        engines.append(body)
+    return {"engines": engines}
+
+
+@router.get("/catalog")
+async def speech_catalog(_: Annotated[dict[str, Any], Depends(get_current_user)]) -> dict[str, Any]:
+    """统一返回 TTS、ASR、声线和工作流目录；不加载任何模型。"""
+    engines = [item.to_dict() for item in list_speech_engines()]
+    return {
+        "engines": engines,
+        "tts": [item for item in engines if item["kind"] == "tts"],
+        "asr": [item for item in engines if item["kind"] == "asr"],
+        "voices": [item.to_dict() for item in list_voice_profiles()],
+        "workflows": _WORKFLOWS,
+        "routing": {"policy": "local-first", "fallback": "explicit-only"},
+    }
+
+
+@router.get("/profiles")
+async def speech_profiles(_: Annotated[dict[str, Any], Depends(get_current_user)]) -> dict[str, Any]:
+    return {"profiles": [item.to_dict() for item in list_voice_profiles()]}
+
+
+class BatchPlanRequest(BaseModel):
+    items: list[dict[str, Any]] = Field(default_factory=list, max_length=500)
+
+
+@router.post("/batch/plan")
+async def speech_batch_plan(
+    body: BatchPlanRequest,
+    _: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    return build_batch_plan(body.items)
+
+
+@router.get("/diagnostics")
+async def speech_diagnostics_endpoint(
+    _: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    return speech_diagnostics()
 
 
 @router.post("/tts/synthesize")
@@ -139,24 +196,24 @@ async def synthesize(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     svc: Annotated[TaskService, Depends(get_task_service)],
 ) -> dict[str, Any]:
-    try:
-        require_capability("voice_studio_tts")
-    except CapabilityUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=exc.detail()) from exc
-    if body.engine != "voicebox":
-        raise HTTPException(status_code=422, detail="当前只支持已接入的 voicebox 引擎")
+    await _validate_synthesis_engine(body.engine)
     task = await svc.create_production(
         ProductionRequest(
             source="voice_studio_tts",
             topic=body.text,
             duration_archetype="1-5min",
             video_provider="local",
-            audio_provider="voicebox",
+            audio_provider=body.engine,
             options={
                 "text": body.text,
+                "engine": body.engine,
                 "voice": body.voice,
                 "language": body.language or "zh",
                 "effects": body.effects,
+                "reference_audio": body.reference_audio,
+                "reference_text": body.reference_text,
+                "voice_design": body.voice_design,
+                "model_config": body.model_config_path,
             },
         ),
         user_id=str(user["id"]),
@@ -179,6 +236,39 @@ class TTSCompareRequest(BaseModel):
     voice_b: str | None = None
 
 
+async def _validate_synthesis_engine(engine_id: str) -> None:
+    if engine_id == "voicebox":
+        try:
+            require_capability("voice_studio_tts")
+        except CapabilityUnavailableError as exc:
+            raise HTTPException(status_code=503, detail=exc.detail()) from exc
+        status = await probe_provider("voicebox", timeout_s=3.0)
+        if not status["ready"]:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "PROVIDER_UNAVAILABLE",
+                    "provider": "voicebox",
+                    "message": "Voicebox/Gen Engine 当前不可达，未创建音频任务。",
+                    "provider_status": status,
+                },
+            )
+        return
+    engine = get_engine(engine_id)
+    if engine is None:
+        raise HTTPException(status_code=422, detail=f"未知语音引擎: {engine_id}")
+    if not engine.available:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "SPEECH_ENGINE_UNAVAILABLE",
+                "id": engine.id,
+                "message": engine.description,
+                "setup": engine.setup,
+            },
+        )
+
+
 @router.post("/tts/compare")
 async def compare_tts(
     body: TTSCompareRequest,
@@ -186,14 +276,8 @@ async def compare_tts(
     svc: Annotated[TaskService, Depends(get_task_service)],
 ) -> dict[str, Any]:
     """TTS 试听对比：同一段文本在两个引擎/音色下生成，返回两条音频任务。"""
-    try:
-        require_capability("voice_studio_tts")
-    except CapabilityUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=exc.detail()) from exc
-
-    if body.engine_a not in ("voicebox", "vibevoice", "f5_tts", "cosyvoice", "edge_tts") or \
-       body.engine_b not in ("voicebox", "vibevoice", "f5_tts", "cosyvoice", "edge_tts"):
-        raise HTTPException(status_code=422, detail="当前只支持已接入的引擎")
+    await _validate_synthesis_engine(body.engine_a)
+    await _validate_synthesis_engine(body.engine_b)
 
     async def create_audio_task(engine: str, voice: str | None) -> dict[str, Any]:
         task = await svc.create_production(
@@ -231,13 +315,23 @@ async def compare_tts(
     }
 
 
+class ConfigValidateRequest(BaseModel):
+    voice_effects: str | None = None
+    voice_personas: dict[str, str] | None = None
+    tts_engine: str | None = None
+
+
 @router.post("/config/validate")
 async def validate_config(
+    body: ConfigValidateRequest,
     _: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
+    engine_id = body.tts_engine or "voicebox"
+    engine = get_engine(engine_id)
     return {
-        "valid": True,
-        "voice_effects": None,
-        "voice_personas_count": len(_PERSONAS),
-        "tts_engine": "vibevoice",
+        "valid": bool(engine and engine.available),
+        "voice_effects": body.voice_effects,
+        "voice_personas_count": len(body.voice_personas or _PERSONAS),
+        "tts_engine": engine_id if engine else None,
+        "tts_engine_available": bool(engine and engine.available),
     }

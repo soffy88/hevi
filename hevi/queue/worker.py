@@ -186,7 +186,7 @@ class QueueWorker:
                         result_status = result.get("status") if isinstance(result, dict) else None
                         attempt_status = (
                             "success"
-                            if result_status in {None, "completed", "succeeded"}
+                            if result_status in {"completed", "succeeded"}
                             else "error"
                         )
                     except Exception as e:

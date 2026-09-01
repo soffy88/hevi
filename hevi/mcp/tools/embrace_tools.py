@@ -86,6 +86,7 @@ def build_embrace_skills() -> list[SkillDef]:
                 args["intent"],
                 providers=providers,
                 ledger=ledger,
+                verify_paths=True,
             )
             return {
                 "resolved": True,

@@ -12,6 +12,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import urlsplit
+
+import httpx
 
 from hevi.explainer.contracts import ExplainerCue
 from hevi.explainer.echo_avatar import PRESENTER_IMAGE_KEY, PRESENTER_VIDEO_KEY
@@ -19,6 +22,7 @@ from hevi.explainer.manim_scene import attach_manim_scenes
 from hevi.explainer.production import NarratedRenderResult, render_narrated_storyboard
 from hevi.explainer.props import normalise_visual_config, process_cues_for_remotion
 from hevi.explainer.schemas import SceneType, Storyboard, StoryboardSegment, validate_props
+from hevi.explainer.whiteboard import attach_whiteboard_scenes
 from hevi.production.delivery_gate import (
     PREVIEW_MAX_SECONDS,
     PREVIEW_MIN_SECONDS,
@@ -29,6 +33,49 @@ from hevi.production.delivery_gate import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _freeze_stock_url(
+    url: str,
+    *,
+    media_type: str,
+    intent: str,
+    output_dir: Path,
+    source_metadata: dict[str, Any],
+) -> Path:
+    """Download a stock URL through the HEVI media-use ledger contract."""
+
+    from hevi.sourcing.media_providers import _download_cached, _write_source_manifest
+    from hevi.sourcing.media_use import MediaLedger, resolve_media
+
+    parsed = urlsplit(url)
+    suffix = Path(parsed.path).suffix.lower()
+    if suffix not in {".mp4", ".webm", ".mov", ".m4v", ".jpg", ".jpeg", ".png", ".webp"}:
+        suffix = ".mp4" if media_type == "video" else ".jpg"
+    cache_dir = output_dir / "stock_media"
+    ledger_path = output_dir / "media_ledger.json"
+    ledger = MediaLedger.load(ledger_path)
+
+    def stock_provider(_intent: str) -> Path | None:
+        if not url.startswith(("http://", "https://")):
+            local = Path(url)
+            return local if local.is_file() else None
+        with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+            path = _download_cached(url, cache_dir, suffix, client)
+        if path is not None:
+            _write_source_manifest(path, source_metadata)
+        return path
+
+    resolution = resolve_media(
+        media_type,
+        intent,
+        providers={media_type: {"stock": stock_provider}},
+        ledger=ledger,
+        out_dir=cache_dir,
+        verify_paths=True,
+    )
+    ledger.save(ledger_path)
+    return resolution.path
 
 
 def _props_for(index: int, text: str) -> tuple[str, dict[str, Any]]:
@@ -142,7 +189,7 @@ async def _fulfill_stock_visuals(
     遍历所有 cues，对 visual_type==stock_broll 且没有 mediaUrl 的条目：
     1. 从 cue.visual_search_query 提取关键词
     2. 调用 StockSearchService.search() 检索 Pexels
-    3. 将最佳匹配的 preview_url 写入 cue.visual_config[assetUrl]
+    3. 下载并通过 media-use 台账冻结到本地，再写入 cue.visual_config[assetUrl]
     4. 如果检索失败，降级为 browser_broll fallback（用 search query 搜图）
     """
     
@@ -169,11 +216,37 @@ async def _fulfill_stock_visuals(
             )
             if results:
                 best = results[0] if isinstance(results, list) else results.get("results", [{}])[0]
+                if not isinstance(best, dict):
+                    continue
                 preview = best.get("preview_url") or best.get("video_url")
                 if preview:
-                    cue.visual_config["assetUrl"] = preview
-                    logger.info(f"stock_broll cue {idx}: fetched {preview[:80]}...")
-                    continue
+                    try:
+                        frozen = _freeze_stock_url(
+                            str(preview),
+                            media_type="video",
+                            intent=query,
+                            output_dir=output_dir,
+                            source_metadata={
+                                "provider": best.get("provider") or "stock_search",
+                                "source_page": (
+                                    best.get("source_page")
+                                    or best.get("source_url")
+                                    or best.get("page_url")
+                                ),
+                                "asset_id": (
+                                    best.get("asset_id")
+                                    or best.get("external_id")
+                                    or best.get("id")
+                                ),
+                                "intent": query,
+                            },
+                        )
+                    except Exception as exc:
+                        logger.warning("stock_broll cue %s freeze failed: %s", idx, exc)
+                    else:
+                        cue.visual_config["assetUrl"] = str(frozen)
+                        logger.info("stock_broll cue %s: froze %s", idx, frozen)
+                        continue
         except Exception as exc:
             logger.warning(f"Pexels search failed for cue {idx}: {exc}")
         
@@ -191,10 +264,36 @@ async def _fulfill_stock_visuals(
                     if isinstance(img_results, list)
                     else img_results.get("results", [{}])[0]
                 )
+                if not isinstance(best, dict):
+                    continue
                 img_url = best.get("thumbnail_url") or best.get("preview_url")
                 if img_url:
-                    cue.visual_config["assetUrl"] = img_url
-                    logger.info(f"stock_broll cue {idx}: fallback image {img_url[:80]}...")
+                    try:
+                        frozen = _freeze_stock_url(
+                            str(img_url),
+                            media_type="image",
+                            intent=query,
+                            output_dir=output_dir,
+                            source_metadata={
+                                "provider": best.get("provider") or "stock_search",
+                                "source_page": (
+                                    best.get("source_page")
+                                    or best.get("source_url")
+                                    or best.get("page_url")
+                                ),
+                                "asset_id": (
+                                    best.get("asset_id")
+                                    or best.get("external_id")
+                                    or best.get("id")
+                                ),
+                                "intent": query,
+                            },
+                        )
+                    except Exception as exc:
+                        logger.warning("stock_broll cue %s image freeze failed: %s", idx, exc)
+                    else:
+                        cue.visual_config["assetUrl"] = str(frozen)
+                        logger.info("stock_broll cue %s: froze fallback image %s", idx, frozen)
         except Exception as img_exc:
             logger.error(f"All stock fallbacks failed for cue {idx}: {img_exc}")
             cue.visual_type = "voiceover"  # last resort: no visual
@@ -271,6 +370,7 @@ async def assemble_explainer_cues(
     enable_circle_avatar_mask: bool = True,
     enable_remotion_code_render: bool = True,
     enable_manim_render: bool = True,
+    enable_whiteboard_render: bool = True,
     enable_browser_broll: bool = True,
     enable_stock_broll: bool = True,
     aspect_ratio: str = "9:16",
@@ -422,6 +522,14 @@ async def assemble_explainer_cues(
         prepared_cues,
         output_dir,
         enabled=enable_manim_render,
+        remotion_public=remotion_public if remotion_public.is_dir() else None,
+        width=manim_w,
+        height=manim_h,
+    )
+    await attach_whiteboard_scenes(
+        prepared_cues,
+        output_dir,
+        enabled=enable_whiteboard_render,
         remotion_public=remotion_public if remotion_public.is_dir() else None,
         width=manim_w,
         height=manim_h,

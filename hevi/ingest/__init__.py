@@ -22,7 +22,13 @@ from hevi.ingest.video_frames import (
     WatchDetail,
     extract_watch_frames,
 )
-from hevi.ingest.video_transcript import TranscriptError, fetch_transcript
+from hevi.ingest.video_localize import LocalizePlan, plan_localize
+from hevi.ingest.video_transcript import (
+    TranscriptError,
+    TranscriptSegment,
+    WordSpan,
+    fetch_transcript,
+)
 from hevi.ingest.video_watch import WatchResult, watch_video
 
 __all__ = [
@@ -32,6 +38,9 @@ __all__ = [
     "FramesError",
     "PreflightReport",
     "TranscriptError",
+    "TranscriptSegment",
+    "WordSpan",
+    "LocalizePlan",
     "WatchDetail",
     "WatchResult",
     "build_contact_sheet",
@@ -40,6 +49,7 @@ __all__ = [
     "extract_watch_frames",
     "fetch_transcript",
     "fetch_video",
+    "plan_localize",
     "frame_budget_for_duration",
     "frame_delta",
     "watch_video",

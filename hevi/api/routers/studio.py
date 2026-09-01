@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from hevi.auth.dependencies import get_current_user
 from hevi.studio.assets import list_assets
+from hevi.studio.conversational_edit import execute_edit
 from hevi.studio.recipes import get_recipe, list_recipes
 from hevi.studio.slate import Slate, run_slate
 from hevi.studio.timeline import (
@@ -77,6 +78,35 @@ async def get_studio_line(
     return rec.to_dict()
 
 
+@router.get("/motion/shot-cards")
+async def get_shot_cards(
+    category: str | None = None,
+    search: str | None = None,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """Discover the complete normalized Shotcraft runtime catalogue."""
+
+    from hevi.motion.recipe_card import build_shotcraft_library, card_index, card_runtime_spec
+
+    library = build_shotcraft_library()
+    needle = (search or "").strip().lower()
+    cards = [
+        card
+        for card in library.values()
+        if (not category or card.category == category)
+        and (
+            not needle
+            or needle in card.name.lower()
+            or needle in card.purpose.lower()
+        )
+    ]
+    return {
+        "cards": [card_runtime_spec(card) for card in cards],
+        "total": len(cards),
+        "index": card_index(library),
+    }
+
+
 @router.post("/slates")
 async def create_slate(
     req: SlateRequest,
@@ -100,14 +130,20 @@ class TimelineCreateRequest(BaseModel):
     slate_id: str | None = None
     film: str | None = None
     duration_s: float | None = None
+    project_id: str | None = None
 
 
 class TimelinePatchRequest(BaseModel):
+    project_id: str | None = None
     clip_id: str | None = None
     action: str | None = None
     label: str | None = None
     duration_s: float | None = None
     text: str | None = None
+    speed: float | None = Field(default=None, ge=0.25, le=4.0)
+    reverse: bool | None = None
+    transition: str | None = None
+    effect: str | None = None
     bgm: str | None = None
     split_at_s: float | None = None
     ripple: bool = False
@@ -115,6 +151,13 @@ class TimelinePatchRequest(BaseModel):
 
 class TimelineExportRequest(BaseModel):
     output_path: str = "output/nle/timeline.mp4"
+
+
+class TimelineChatRequest(BaseModel):
+    message: str = Field(min_length=1)
+    preview: bool = False
+    render: bool = False
+    output_path: str | None = None
 
 
 @router.get("/timelines")
@@ -132,8 +175,14 @@ async def create_timeline(
 ) -> dict[str, Any]:
     if req.film:
         tl = timeline_from_film(req.film, duration_s=req.duration_s, title=req.title)
-        return tl.to_dict()
-    tl = timeline_from_edit_plan(req.edit_plan, title=req.title)
+    else:
+        tl = timeline_from_edit_plan(req.edit_plan, title=req.title)
+    if req.project_id:
+        from hevi.studio.nle_workspace import attach_timeline, get_project
+
+        if get_project(req.project_id) is None:
+            raise HTTPException(status_code=404, detail="unknown NLE project")
+        attach_timeline(req.project_id, tl.timeline_id)
     return tl.to_dict()
 
 
@@ -157,6 +206,10 @@ async def patch_timeline(
     tl = get_timeline(timeline_id)
     if tl is None:
         raise HTTPException(status_code=404, detail="unknown timeline")
+    if req.project_id:
+        from hevi.studio.nle_workspace import record_revision
+
+        record_revision(req.project_id, tl)
     if req.bgm is not None:
         set_bgm(timeline_id, req.bgm)
     if req.split_at_s is not None:
@@ -169,6 +222,10 @@ async def patch_timeline(
             label=req.label,
             duration_s=req.duration_s,
             text=req.text,
+            speed=req.speed,
+            reverse=req.reverse,
+            transition=req.transition,
+            effect=req.effect,
         )
         if patched is None:
             raise HTTPException(status_code=404, detail="unknown clip")
@@ -178,6 +235,77 @@ async def patch_timeline(
     if tl is None:
         raise HTTPException(status_code=404, detail="unknown timeline")
     return tl.to_dict()
+
+
+class NLEProjectRequest(BaseModel):
+    name: str = "untitled"
+    timeline_id: str | None = None
+
+
+@router.get("/nle/presets")
+async def get_nle_presets(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.studio.nle_workspace import EFFECTS, TRANSITIONS
+
+    return {
+        "local_first": True,
+        "transitions": list(TRANSITIONS),
+        "effects": list(EFFECTS),
+        "shortcuts": {"delete": "drop", "m": "mute", "k": "keep", "s": "split", "r": "ripple"},
+    }
+
+
+@router.get("/nle/projects")
+async def get_nle_projects(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.studio.nle_workspace import list_projects
+
+    items = [item.to_dict() for item in list_projects()]
+    return {"projects": items, "total": len(items)}
+
+
+@router.post("/nle/projects", status_code=201)
+async def create_nle_project(
+    body: NLEProjectRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    timeline = get_timeline(body.timeline_id) if body.timeline_id else None
+    if body.timeline_id and timeline is None:
+        raise HTTPException(status_code=404, detail="unknown timeline")
+    from hevi.studio.nle_workspace import create_project
+
+    return create_project(body.name, timeline).to_dict()
+
+
+@router.post("/nle/projects/{project_id}/timelines/{timeline_id}")
+async def attach_nle_timeline(
+    project_id: str,
+    timeline_id: str,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    if get_timeline(timeline_id) is None:
+        raise HTTPException(status_code=404, detail="unknown timeline")
+    from hevi.studio.nle_workspace import attach_timeline
+
+    project = attach_timeline(project_id, timeline_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="unknown NLE project")
+    return project.to_dict()
+
+
+@router.get("/nle/projects/{project_id}/revisions")
+async def get_nle_revisions(
+    project_id: str,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.studio.nle_workspace import get_project, revisions
+
+    if get_project(project_id) is None:
+        raise HTTPException(status_code=404, detail="unknown NLE project")
+    items = revisions(project_id)
+    return {"project_id": project_id, "revisions": items, "total": len(items)}
 
 
 @router.post("/timelines/{timeline_id}/export")
@@ -192,6 +320,28 @@ async def export_one_timeline(
     if result.get("reason") == "unknown timeline":
         raise HTTPException(status_code=404, detail="unknown timeline")
     return result
+
+
+@router.post("/timelines/{timeline_id}/chat")
+async def chat_edit_timeline(
+    timeline_id: str,
+    req: TimelineChatRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """FireRed-style natural-language timeline edit with preview/re-render."""
+
+    try:
+        return execute_edit(
+            timeline_id,
+            req.message,
+            preview=req.preview,
+            render=req.render,
+            output_path=req.output_path,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 class DailyCalendarRequest(BaseModel):

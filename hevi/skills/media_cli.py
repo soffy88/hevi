@@ -12,6 +12,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from hevi.sourcing.media_use import (
     MEDIA_TYPES,
     MediaLedger,
@@ -22,6 +24,7 @@ from hevi.sourcing.media_use import (
 
 
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv()
     parser = argparse.ArgumentParser(description="hevi-media: 媒体 resolve + 台账")
     sub = parser.add_subparsers(dest="verb", required=True)
 
@@ -44,12 +47,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{cand.id} {cand.source} -> {cand.path} ({cand.provider})")
         return 0
 
-    # resolve:CLI 无真实 provider 链(接 hevi.audio_library / sourcing.stock_search 由
-    # agent 按环境组装),缺省给空链 → ResolveError 明确提示;ledger 复用优先。
+    # resolve 使用 HEVI 的真实 provider 链：本地库优先，stock 负责检索并冻结
+    # 到本地缓存，生成 provider 只在明确可用时参与。没有密钥或服务时仍然
+    # fail-closed，不伪造远程 URL/产物。
     resolve_ledger: MediaLedger | None = (
         MediaLedger.load(args.ledger) if args.ledger else None
     )
-    providers: MediaProviders = {}  # agent 注入真实 provider 链后调用
+    from hevi.sourcing.media_providers import default_providers
+
+    providers: MediaProviders = default_providers()
     try:
         resolution = resolve_media(
             args.type,
@@ -57,22 +63,19 @@ def main(argv: list[str] | None = None) -> int:
             providers=providers,
             ledger=resolve_ledger,
             out_dir=args.out_dir,
+            verify_paths=True,
         )
     except ResolveError as e:
         print(f"resolve failed: {e}", file=sys.stderr)
-        print("提示: 本 CLI 需要注入真实 provider 链", file=sys.stderr)
-        print("(local 库 / stock 检索 / 生成);agent 环境请直接用", file=sys.stderr)
-        print("hevi.sourcing.media_use.resolve_media 组装 providers。", file=sys.stderr)
+        print("提示: 请检查 providers_cli status、素材 API Key、缓存目录和本地库。", file=sys.stderr)
         return 1
     print(
         f"resolved {resolution.id} -> {resolution.path} "
         f"({resolution.media_type}, {resolution.source})"
     )
-    if resolve_ledger is not None:
-        resolve_ledger.add(resolution)
-        if args.ledger:
-            resolve_ledger.save(args.ledger)
-            print(f"ledger updated: {args.ledger}")
+    if resolve_ledger is not None and args.ledger:
+        resolve_ledger.save(args.ledger)
+        print(f"ledger updated: {args.ledger}")
     return 0
 
 

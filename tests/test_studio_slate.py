@@ -42,7 +42,7 @@ def test_twelve_production_lines_loaded() -> None:
         assert rec.tools, rec.id
         assert rec.render_runtime in {"remotion", "hyperframes", "ffmpeg"}
         assert rec.pipeline.stages
-        assert rec.pipeline.stages[-1].name == "dispatch"
+        assert rec.pipeline.stages[-1].name in {"dispatch", "publish"}
 
 
 def test_parse_recipe_rejects_unknown_handoff() -> None:
@@ -142,17 +142,28 @@ async def test_unknown_line_failed() -> None:
 
 @pytest.mark.asyncio
 async def test_lot_adapter(tmp_path: Path) -> None:
+    from unittest.mock import AsyncMock, patch
+
     store = MemoryStore(tmp_path / "m.db")
-    out = await execute_lot_task(
-        {
-            "id": "task-1",
-            "topic": "盐",
-            "config_json": {
-                "line_id": "explainer",
-                "slots": {"topic": "盐", "memory_store": store},
-            },
-        },
-        pool=None,
+    fake = AsyncMock(
+        return_value={
+            "status": "completed",
+            "result_video_path": str(tmp_path / "final.mp4"),
+            "artifact_manifest": {"artifacts": [{"kind": "video", "path": str(tmp_path / "final.mp4"), "primary": True}]},
+            "quality": {"passed": True, "verdict": "pass", "violations": []},
+        }
     )
+    with patch.dict("hevi.studio.fulfill._RENDERERS", {"explainer": fake}, clear=False):
+        out = await execute_lot_task(
+            {
+                "id": "task-1",
+                "topic": "盐",
+                "config_json": {
+                    "line_id": "explainer",
+                    "slots": {"topic": "盐", "memory_store": store},
+                },
+            },
+            pool=None,
+        )
     assert out["status"] == "completed"
     assert out["production_order"]["target"] == "explainer"

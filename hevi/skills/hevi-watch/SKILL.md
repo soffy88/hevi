@@ -1,7 +1,7 @@
 ---
 name: hevi-watch
-version: "0.1.1"
-description: Watch a video (URL or local path) — download, extract scene-aware frames with budget + dedup, pull a timestamped transcript, build a contact sheet, and hand the result to the agent for grounded analysis / QA / reference extraction.
+version: "0.2.0"
+description: Watch a video (URL or local path) — download, extract scene-aware frames with budget + dedup, pull a timestamped transcript, optional speaker labels / filler rough-cut / ASS localize plan, build a contact sheet, and hand the result to the agent.
 argument-hint: "<video-url-or-path> [--detail balanced]"
 allowed-tools: Bash, Read
 homepage: https://github.com/helios-plat/hevi
@@ -46,7 +46,8 @@ fi
 ```bash
 cd "$HEVI_ROOT" && uv run python -m hevi.skills.watch_cli \
   <video-url-or-path> --out-dir <dir> \
-  [--detail balanced] [--budget N] [--contact-sheet] [--whisper-fallback]
+  [--detail balanced] [--budget N] [--contact-sheet] [--whisper-fallback] \
+  [--localize] [--speakers] [--rough-cut]
 ```
 
 - `--detail`：`transcript`（仅转写，零帧成本）、
@@ -57,6 +58,9 @@ cd "$HEVI_ROOT" && uv run python -m hevi.skills.watch_cli \
 - `--contact-sheet`：额外生成 16 帧拼图联络表，适合先做整体审片。
 - URL 需要 `yt-dlp`；本地文件直通。无字幕时，只有显式提供
   `--whisper-fallback` 才使用 faster-whisper（可能耗时且需要相应依赖）。
+- `--localize`：词级切句 + 润色 + ASS 烧录计划（对照 xiaohu）。无译文时单语出片，不假装已翻译。
+- `--speakers`：停顿启发式说话人标签（对照 VidBee；不是声纹聚类）。
+- `--rough-cut`：去掉语气词后再出转写（对照 OpenStoryline ASR 粗剪）。
 - 输入、输出路径均应保持绝对路径或正确引用；不要覆盖用户已有结果。
 
 ## 输出与消费
@@ -70,3 +74,11 @@ cd "$HEVI_ROOT" && uv run python -m hevi.skills.watch_cli \
 消费建议：用联络表和时间戳帧做成片 QA、StylePack 参考视频拆解
 （HEVI-ARCH §5.3.7）、竞品分析或素材研究。注意：抽帧是采样而非连续观看；
 快速动作、画外音和短暂画面应结合转写、相邻帧或更高预算复核。
+
+## VideoAgent 证据模式
+
+需要“从视频里找片段/回答问题/按分镜检索”时，继续使用本 skill 看片，随后把带时间戳的
+`transcript`、视觉描述或 `segments` 交给 `video.evidence.index`。检索只消费本地
+`EvidenceRef`（源文件 SHA-256 + `start_s/end_s`），不把未验证的自然语言搜索结果当素材。
+没有字幕或视觉描述时，证据检索应保持 `blocked`，可显式开启 `--whisper-fallback` 或
+注入 VLM/ASR provider 后重试。

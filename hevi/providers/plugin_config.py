@@ -27,10 +27,13 @@ ProviderRegistry / hevi 评分层(hevi/providers/scoring.py 的 CapabilityRow)�
 
 from __future__ import annotations
 
+import json
 import logging
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib import error, request
 
 import yaml
 from pydantic import BaseModel, Field
@@ -218,10 +221,74 @@ def register_into_registry(decls: list[ProviderDecl], registry: Any) -> int:
     return count
 
 
+def invoke_declared_provider(
+    decl: ProviderDecl,
+    payload: dict[str, Any],
+    *,
+    timeout_s: float = 60.0,
+) -> dict[str, Any]:
+    """Invoke a declared provider through a bounded HTTP or argv boundary.
+
+    A plugin declaration remains data-only, but it can now point at an
+    independently managed TypeScript/Python process via ``meta.command`` or
+    an HTTP worker via ``meta.endpoint``.  Commands never use a shell and
+    must return one JSON object on stdout; HTTP responses follow the same
+    contract.  No plugin code is imported into the API process.
+    """
+
+    meta = dict(decl.meta or {})
+    endpoint = str(meta.get("endpoint") or "").strip()
+    if endpoint:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        req = request.Request(
+            endpoint,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with request.urlopen(req, timeout=timeout_s) as response:
+                raw = json.loads(response.read().decode("utf-8"))
+        except (OSError, ValueError, error.URLError) as exc:
+            raise RuntimeError(f"plugin endpoint failed: {endpoint}") from exc
+        if not isinstance(raw, dict):
+            raise ValueError("plugin endpoint must return a JSON object")
+        return raw
+
+    command = meta.get("command")
+    if isinstance(command, str):
+        command = [command]
+    if not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command):
+        raise ValueError(f"provider {decl.id} has no valid meta.endpoint or meta.command")
+    try:
+        completed = subprocess.run(
+            command,
+            input=json.dumps(payload, ensure_ascii=False),
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+            shell=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError(f"plugin command failed to start: {decl.id}") from exc
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "plugin command failed").strip()[-500:]
+        raise RuntimeError(f"plugin command returned {completed.returncode}: {detail}")
+    try:
+        raw = json.loads(completed.stdout)
+    except ValueError as exc:
+        raise ValueError(f"plugin {decl.id} stdout is not JSON") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("plugin command must return a JSON object")
+    return raw
+
+
 __all__ = [
     "PluginCatalog",
     "ProviderDecl",
     "ProviderPluginFile",
+    "invoke_declared_provider",
     "load_catalog",
     "load_plugin_file",
     "parse_plugin_decl",

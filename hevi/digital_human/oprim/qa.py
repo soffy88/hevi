@@ -5,6 +5,9 @@
 
 from __future__ import annotations
 
+import json
+import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -106,29 +109,92 @@ def check_audio_loudness(audio_path: str, target_lufs: float = -16) -> dict[str,
         return {"ok": False, "error": f"audio file not found: {audio_path}"}
 
     try:
-        # 假设音频文件存在，进行响度测量 (占位)
-        result = {
+        command = [
+            "ffmpeg",
+            "-hide_banner",
+            "-nostats",
+            "-i",
+            str(path),
+            "-af",
+            f"loudnorm=I={target_lufs}:TP=-1.5:LRA=9:print_format=json",
+            "-f",
+            "null",
+            "-",
+        ]
+        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        if completed.returncode != 0:
+            return {
+                "ok": False,
+                "error": completed.stderr[-1200:] or "ffmpeg loudness probe failed",
+            }
+        matches = re.findall(r"\{\s*\"input_i\".*?\}", completed.stderr, re.S)
+        if not matches:
+            return {"ok": False, "error": "ffmpeg loudnorm returned no measurement"}
+        payload = json.loads(matches[-1])
+        measured = _finite_float(payload.get("input_i"))
+        if measured is None:
+            return {"ok": False, "error": f"invalid loudness value: {payload.get('input_i')}"}
+        deviation = measured - target_lufs
+        return {
             "ok": True,
-            "measured_lufs": target_lufs,
+            "measured_lufs": measured,
             "target_lufs": target_lufs,
-            "deviation": 0.0,
+            "deviation": deviation,
+            "in_spec": abs(deviation) <= 0.5,
+            "input_tp": _finite_float(payload.get("input_tp")),
+            "input_lra": _finite_float(payload.get("input_lra")),
+            "input_thresh": _finite_float(payload.get("input_thresh")),
+            "target_offset": _finite_float(payload.get("target_offset")),
         }
-        if abs(result["deviation"]) <= 0.5:
-            result["in_spec"] = True
-        else:
-            result["in_spec"] = False
-        return result
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
 
 def _ffprobe(path: Path) -> dict[str, Any]:
-    """ffprobe 探测媒体文件 (占位实现)。"""
-    # 实际实现需调用 ffprobe，这里返回模拟结构
-    return {
-        "path": str(path.name),
-        "width": 1080,
-        "height": 1920,
-        "duration": 60.0,
-        "streams": [{"codec_type": "video", "codec_name": "h264"}],
+    """用 ffprobe 读取真实媒体流信息；不可解码时抛错。"""
+    completed = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration,format_name:stream=index,codec_type,codec_name,width,height,duration",
+            "-of",
+            "json",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr[-1000:] or "ffprobe failed")
+    payload = json.loads(completed.stdout or "{}")
+    streams = payload.get("streams") or []
+    if not streams:
+        raise RuntimeError("media has no decodable streams")
+    result: dict[str, Any] = {
+        "path": str(path),
+        "format": payload.get("format", {}).get("format_name", ""),
+        "streams": streams,
     }
+    duration = _finite_float(payload.get("format", {}).get("duration"))
+    if duration is not None:
+        result["duration"] = duration
+    video = next((stream for stream in streams if stream.get("codec_type") == "video"), None)
+    if video:
+        result["width"] = int(video.get("width") or 0)
+        result["height"] = int(video.get("height") or 0)
+        result["video_codec"] = video.get("codec_name", "")
+    audio = next((stream for stream in streams if stream.get("codec_type") == "audio"), None)
+    if audio:
+        result["audio_codec"] = audio.get("codec_name", "")
+    return result
+
+
+def _finite_float(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number == number and abs(number) != float("inf") else None
