@@ -23,6 +23,7 @@ def test_synth_uses_hevi_native_runtime_when_upstream_missing(tmp_path: Path, mo
         Path(output_path).write_bytes(b"RIFF-native")
 
     monkeypatch.setattr("hevi.audio.voxcpm_service._import_voxcpm", lambda: None)
+    monkeypatch.setattr("hevi.audio.voxcpm_service._isolated_worker_python", lambda: None)
     monkeypatch.setattr(
         "hevi.voicepro.oskill.synthesize_native_voice_sync", fake_native
     )

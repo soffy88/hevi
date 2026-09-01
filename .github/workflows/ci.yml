@@ -54,13 +54,16 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Install media runtime
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
 
       - name: Setup Python 3.14
         run: uv python install 3.14
 
       - name: Install deps
         run: uv lock --check && uv sync --locked
+
+      - name: Install Playwright browser
+        run: uv run playwright install --with-deps chromium
 
       - name: Install 3O compatibility prims
         run: uv run python scripts/patch_oprim_prims.py

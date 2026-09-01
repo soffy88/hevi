@@ -17,6 +17,21 @@ from hevi.subjects.subject_embed import (
 )
 
 
+def _require_local_clip() -> None:
+    """Skip model-weight tests when the optional CLIP cache is absent.
+
+    Production deliberately uses ``local_files_only=True`` and fails closed;
+    a clean CI checkout must not turn that expected unavailable state into a
+    fake embedding or an unbounded network download.
+    """
+    try:
+        from hevi.subjects.subject_embed import _ensure_model
+
+        _ensure_model()
+    except SubjectEmbedError as exc:
+        pytest.skip(f"optional local CLIP weights unavailable: {exc}")
+
+
 def test_cosine_and_distance_math():
     a = [1.0, 0.0, 0.0]
     b = [1.0, 0.0, 0.0]
@@ -66,6 +81,7 @@ def test_crop_face_region_is_centered_horizontally():
     reason="transformers not installed",
 )
 def test_real_embed_is_normalized_512(tmp_path):
+    _require_local_clip()
     from PIL import Image
 
     p = tmp_path / "img.png"
@@ -84,6 +100,7 @@ def test_kind_face_actually_crops_end_to_end(tmp_path):
     下半部分内容排除在外——上下两半用差异悬殊的纯色拼图,face 向量应该更贴近
     只用上半部分算出来的向量,而不是跟全图向量完全一致(证明真的裁剪了,不是
     labels 摆设)。"""
+    _require_local_clip()
     from PIL import Image
 
     img = Image.new("RGB", (100, 100))
@@ -118,6 +135,7 @@ def test_real_text_embed_is_normalized_512_and_matches_image(tmp_path):
     """tongjian L6 G6 门要的是文本-图像跨模态相似度:同一 CLIP 空间下,
     红色方块图应该跟"红色"文本比"蓝色"文本更相似——不只是维度/归一化对,
     真的要能分辨。"""
+    _require_local_clip()
     from PIL import Image
 
     v = text_embed("a solid red square")

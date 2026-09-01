@@ -60,6 +60,13 @@ async def vault_pool():
 async def test_pack(vault_pool, tmp_path):
     """一个最小可用的测试身份包:真实 PNG + 真实 CLIP embedding 落进 vault,
     模拟 M2 identity pack 的产出。"""
+    from hevi.subjects.subject_embed import SubjectEmbedError, _ensure_model
+
+    try:
+        _ensure_model()
+    except SubjectEmbedError as exc:
+        pytest.skip(f"optional local CLIP weights unavailable: {exc}")
+
     pack_id = "identity/test-cine-char"
     await _cleanup(vault_pool, pack_id)
     minio = get_minio_client()

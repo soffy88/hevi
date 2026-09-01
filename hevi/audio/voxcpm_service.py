@@ -30,7 +30,10 @@ def voxcpm_available() -> bool:
         return True
     if _isolated_worker_python() is not None:
         return True
-    from hevi.voicepro.oskill import native_voice_available
+    # Import the concrete runtime symbol so tests and diagnostics can patch the
+    # exact provider capability being probed.  The package-level export is a
+    # convenience API and may otherwise retain a stale function reference.
+    from hevi.voicepro.oskill.native_voice import native_voice_available
 
     return native_voice_available()
 

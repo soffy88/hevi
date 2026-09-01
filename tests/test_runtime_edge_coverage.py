@@ -2914,7 +2914,8 @@ async def test_voicepro_translate_providers_and_pipeline_dispatch_contracts(
     assert apply_terminology("hello world", {"hello": "你好"}) == "你好 world"
 
     config = make_translate_config(TranslateProvider.AZURE_TRANSLATOR)
-    assert (await translate_text("text", config)).provider is TranslateProvider.AZURE_TRANSLATOR
+    with pytest.raises(RuntimeError, match="AZURE_TRANSLATOR_KEY"):
+        await translate_text("text", config)
     assert (await translate_text("text", make_translate_config(TranslateProvider.DEEPL))).provider is TranslateProvider.DEEPL
     assert (await translate_text("text", make_translate_config(TranslateProvider.DEEP_TRANSLATOR))).provider is TranslateProvider.DEEP_TRANSLATOR
     with pytest.raises(ValueError, match="不支持"):

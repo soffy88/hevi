@@ -25,6 +25,17 @@ from hevi.vault import (
 from hevi.vault.identity_pack import _compose_grid, _stability_precheck
 
 
+@pytest.fixture
+def local_clip_weights():
+    """Gate identity-pack tests on the optional local CLIP model cache."""
+    from hevi.subjects.subject_embed import SubjectEmbedError, _ensure_model
+
+    try:
+        _ensure_model()
+    except SubjectEmbedError as exc:
+        pytest.skip(f"optional local CLIP weights unavailable: {exc}")
+
+
 async def _cleanup(pool, pack_id: str) -> None:
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM vault_lineage WHERE pack_id = $1", pack_id)
@@ -165,7 +176,7 @@ class TestStabilityPrecheck:
 
 
 @pytest.mark.asyncio
-async def test_build_identity_pack_skips_video_and_promotes(vault_pool, tmp_path):
+async def test_build_identity_pack_skips_video_and_promotes(vault_pool, tmp_path, local_clip_weights):
     minio = get_minio_client()
     pack_id = "identity/TEST-C001"
     await _cleanup(vault_pool, pack_id)
@@ -202,7 +213,7 @@ async def test_build_identity_pack_skips_video_and_promotes(vault_pool, tmp_path
 
 
 @pytest.mark.asyncio
-async def test_build_identity_pack_with_turnaround_video(vault_pool, tmp_path):
+async def test_build_identity_pack_with_turnaround_video(vault_pool, tmp_path, local_clip_weights):
     minio = get_minio_client()
     pack_id = "identity/TEST-C002"
     await _cleanup(vault_pool, pack_id)
@@ -229,7 +240,7 @@ async def test_build_identity_pack_with_turnaround_video(vault_pool, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_build_identity_pack_stays_draft_when_stability_fails(vault_pool, tmp_path):
+async def test_build_identity_pack_stays_draft_when_stability_fails(vault_pool, tmp_path, local_clip_weights):
     minio = get_minio_client()
     pack_id = "identity/TEST-C003"
     await _cleanup(vault_pool, pack_id)
@@ -256,7 +267,7 @@ async def test_build_identity_pack_stays_draft_when_stability_fails(vault_pool, 
 
 
 @pytest.mark.asyncio
-async def test_build_identity_pack_respects_cost_limit(vault_pool, tmp_path):
+async def test_build_identity_pack_respects_cost_limit(vault_pool, tmp_path, local_clip_weights):
     minio = get_minio_client()
     pack_id = "identity/TEST-C004"
     await _cleanup(vault_pool, pack_id)
