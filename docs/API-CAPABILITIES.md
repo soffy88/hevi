@@ -193,6 +193,13 @@
 | POST | `/api/lite/runs/{run_id}/reloop` | Reloop |
 | PATCH | `/api/lite/runs/{run_id}/script` | Patch Script |
 
+## longcat
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/agent/longcat/capabilities` | Capabilities |
+| POST | `/api/agent/longcat/run` | Run Longcat |
+
 ## material
 
 | 方法 | 路径 | 说明 |
@@ -200,6 +207,41 @@
 | GET | `/api/material/archive` | Get Archive Videos |
 | GET | `/api/material/coverr` | Get Coverr Videos |
 | GET | `/api/material/pixabay` | Get Pixabay Videos |
+
+## montage
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/montage/pipelines` | Pipelines |
+| POST | `/api/montage/run` | Run Montage |
+| POST | `/api/montage/video-agent/plan` | Plan Video Agent |
+| POST | `/api/montage/video-agent/run` | Run Video Agent |
+
+## mpt
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/mpt/cross-post` | Cross Post |
+| POST | `/api/mpt/generate` | Generate Video |
+| GET | `/api/mpt/health` | Health Check |
+| POST | `/api/mpt/hevi/submit-job` | Submit Job From Hevi |
+| POST | `/api/mpt/material/search` | Search Materials |
+| POST | `/api/mpt/production` | Create Canonical Mpt Production |
+| POST | `/api/mpt/reference/analyze` | Analyze Reference Video |
+| GET | `/api/mpt/status/{task_id}` | Get Task Status |
+
+## narrator
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/narrator/run` | Run |
+| GET | `/api/narrator/status` | Status |
+
+## openshorts
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/openshorts/ai-short/run` | Run Ai Short |
 
 ## payment
 
@@ -256,6 +298,7 @@
 | POST | `/api/production/v2/digital-human/approve` | Digital Human Approve |
 | POST | `/api/production/v2/digital-human/preflight` | Digital Human Preflight |
 | POST | `/api/production/v2/digital-human/preview` | Digital Human Preview |
+| POST | `/api/production/v2/localize-video` | Localize Video |
 | GET | `/api/production/v2/recipes` | List Recipes |
 | GET | `/api/production/v2/recipes/{name}` | Get Recipe |
 | POST | `/api/production/v2/recipes/{name}/execute` | Execute Recipe |
@@ -269,6 +312,7 @@
 | GET | `/api/providers/plugins/{provider_id}` | Get Provider Plugin |
 | GET | `/api/providers/presets` | List Provider Presets |
 | GET | `/api/providers/presets/{name}` | Get Provider Preset |
+| GET | `/api/providers/status` | Provider Status |
 
 ## publishers
 
@@ -276,6 +320,18 @@
 |---|---|---|
 | GET | `/api/publishers` | Get Publishers |
 | POST | `/api/publishers/{platform}/publish` | Trigger Publish |
+
+## screenshot-studio
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/studio/screenshot/presets` | Presets |
+| GET | `/api/studio/screenshot/projects` | Projects |
+| POST | `/api/studio/screenshot/projects` | Create Project |
+| GET | `/api/studio/screenshot/projects/{project_id}` | Get One Project |
+| PATCH | `/api/studio/screenshot/projects/{project_id}` | Patch Project |
+| POST | `/api/studio/screenshot/projects/{project_id}/animation-plan` | Get Animation Plan |
+| POST | `/api/studio/screenshot/projects/{project_id}/export` | Export Project |
 
 ## series
 
@@ -298,6 +354,25 @@
 | POST | `/api/shortdrama/runs/{run_id}/confirm` | Confirm Run |
 | POST | `/api/shortdrama/runs/{run_id}/replan` | Replan Run |
 
+## shortdrama-writer
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/shortdrama/writer/capabilities` | Capabilities |
+| POST | `/api/shortdrama/writer/draft` | Draft |
+| POST | `/api/shortdrama/writer/review` | Review |
+
+## stream-edit
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/stream-edit/budget` | Stream Budget |
+| GET | `/api/stream-edit/capabilities` | Stream Capabilities |
+| GET | `/api/stream-edit/sessions` | Sessions |
+| POST | `/api/stream-edit/sessions` | Create Stream Session |
+| GET | `/api/stream-edit/sessions/{session_id}` | Stream Session |
+| POST | `/api/stream-edit/sessions/{session_id}/finish` | Finish Stream Session |
+
 ## studio
 
 | 方法 | 路径 | 说明 |
@@ -311,12 +386,19 @@
 | POST | `/api/studio/daily/tick` | Post Daily Tick |
 | GET | `/api/studio/lines` | Get Studio Lines |
 | GET | `/api/studio/lines/{line_id}` | Get Studio Line |
+| GET | `/api/studio/motion/shot-cards` | Get Shot Cards |
+| GET | `/api/studio/nle/presets` | Get Nle Presets |
+| GET | `/api/studio/nle/projects` | Get Nle Projects |
+| POST | `/api/studio/nle/projects` | Create Nle Project |
+| GET | `/api/studio/nle/projects/{project_id}/revisions` | Get Nle Revisions |
+| POST | `/api/studio/nle/projects/{project_id}/timelines/{timeline_id}` | Attach Nle Timeline |
 | GET | `/api/studio/packs` | Get Studio Packs |
 | POST | `/api/studio/slates` | Create Slate |
 | GET | `/api/studio/timelines` | Get Timelines |
 | POST | `/api/studio/timelines` | Create Timeline |
 | GET | `/api/studio/timelines/{timeline_id}` | Get One Timeline |
 | PATCH | `/api/studio/timelines/{timeline_id}` | Patch Timeline |
+| POST | `/api/studio/timelines/{timeline_id}/chat` | Chat Edit Timeline |
 | POST | `/api/studio/timelines/{timeline_id}/export` | Export One Timeline |
 | GET | `/api/studio/tools` | Get Studio Tools |
 | POST | `/api/studio/tools/{tool_id}` | Invoke Studio Tool |
@@ -411,15 +493,48 @@
 | GET | `/api/health/ready` | Health Ready |
 | GET | `/metrics` | Metrics |
 
+## voice-platform
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/voice-studio/platform/audiobook/plan` | Audiobook Plan |
+| POST | `/api/voice-studio/platform/batch` | Batch |
+| GET | `/api/voice-studio/platform/diagnostics` | Diagnostics |
+| POST | `/api/voice-studio/platform/dictation/plan` | Dictation Plan |
+| POST | `/api/voice-studio/platform/dubbing/plan` | Dubbing Plan |
+| GET | `/api/voice-studio/platform/models` | Models |
+| POST | `/api/voice-studio/platform/models/register` | Register |
+| DELETE | `/api/voice-studio/platform/models/{model_id}` | Unregister |
+| POST | `/api/voice-studio/platform/route` | Route |
+| GET | `/api/voice-studio/platform/voices` | Voices |
+| GET | `/api/voice-studio/platform/voices/gallery` | Gallery |
+| POST | `/api/voice-studio/platform/voices/gallery` | Create Gallery |
+| DELETE | `/api/voice-studio/platform/voices/gallery/{profile_id}` | Remove Gallery |
+| POST | `/api/voice-studio/platform/watermark/plan` | Watermark Plan |
+
+## voice-platform-openai
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/v1/.well-known/voicestudio-speech` | Discovery |
+| POST | `/v1/audio/speech` | Speech |
+| POST | `/v1/audio/speech/stream` | Speech Stream |
+| POST | `/v1/audio/transcriptions` | Transcriptions |
+| GET | `/v1/audio/voices` | Openai Voices |
+
 ## voice-studio
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| POST | `/api/voice-studio/batch/plan` | Speech Batch Plan |
+| GET | `/api/voice-studio/catalog` | Speech Catalog |
 | POST | `/api/voice-studio/config/validate` | Validate Config |
+| GET | `/api/voice-studio/diagnostics` | Speech Diagnostics Endpoint |
 | GET | `/api/voice-studio/effects/presets` | List Effects |
 | POST | `/api/voice-studio/effects/preview` | Preview Effect |
 | GET | `/api/voice-studio/personality/presets` | List Personality |
 | POST | `/api/voice-studio/personality/rewrite` | Rewrite Personality |
+| GET | `/api/voice-studio/profiles` | Speech Profiles |
 | POST | `/api/voice-studio/tts/compare` | Compare Tts |
 | GET | `/api/voice-studio/tts/engines` | List Engines |
 | POST | `/api/voice-studio/tts/synthesize` | Synthesize |
