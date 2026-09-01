@@ -28,11 +28,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup SSH for private deps
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.HELIOS_DEPLOY_KEY }}
-
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
