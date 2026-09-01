@@ -974,3 +974,265 @@ async def test_montage_stage_contracts_pause_and_resume_without_fake_media(
         tmp_path / "budget",
     )
     assert blocked["status"] == "blocked" and blocked["stage"] == "preflight"
+
+
+@pytest.mark.asyncio
+async def test_identity_pack_runs_injected_image_voice_and_manifest_boundaries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Exercise the identity-pack state machine without calling a cloud provider."""
+    import hashlib
+
+    from PIL import Image
+
+    import hevi.vault.identity_pack as identity
+    from hevi.vault.schemas import Manifest, ManifestFile
+
+    prompts: list[str] = []
+    created_manifest: Manifest | None = None
+
+    async def image_gen(*, prompt: str, output_path: Path, **_kwargs: object) -> Path:
+        prompts.append(prompt)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (8, 8), (40, 80, 120)).save(output_path)
+        return output_path
+
+    async def video_gen(*, output_path: Path, **_kwargs: object) -> Path:
+        output_path.write_bytes(b"real-turnaround-video")
+        return output_path
+
+    async def tts_fn(*, output_path: Path, **_kwargs: object) -> Path:
+        output_path.write_bytes(b"real-voice-sample")
+        return output_path
+
+    async def create_manifest(_pool: object, _minio: object, **kwargs: object) -> Manifest:
+        nonlocal created_manifest
+        raw_files = kwargs["files"]
+        roles = kwargs["file_roles"]
+        assert isinstance(raw_files, dict) and isinstance(roles, dict)
+        files = {
+            str(name): ManifestFile(
+                sha256=hashlib.sha256(bytes(data)).hexdigest(), role=str(roles.get(name, ""))
+            )
+            for name, data in raw_files.items()
+        }
+        created_manifest = Manifest(
+            pack_id=str(kwargs["pack_id"]),
+            pack_type=str(kwargs["pack_type"]),
+            version=str(kwargs["version"]),
+            name=str(kwargs["name"]),
+            files=files,
+            immutable_traits=str(kwargs["immutable_traits"]),
+            era_lock=str(kwargs["era_lock"]),
+            embeddings=dict(kwargs["embeddings"]),
+            voice=dict(kwargs["voice"]),
+            stability_check=kwargs["stability_check"],
+            provenance=kwargs["provenance"],
+        )
+        return created_manifest
+
+    async def promote(_pool: object, *, stability_check: Any, **_kwargs: object) -> Manifest:
+        assert stability_check.passed is True
+        assert created_manifest is not None
+        return created_manifest.model_copy(update={"lifecycle": "validated"})
+
+    monkeypatch.setattr(identity, "asset_create", create_manifest)
+    monkeypatch.setattr(identity, "asset_promote", promote)
+    monkeypatch.setattr(identity, "store_embedding", lambda *_args, **_kwargs: asyncio.sleep(0))
+    monkeypatch.setattr(identity, "subject_embed", lambda **_kwargs: [1.0, 0.0, 0.0])
+
+    async def vlm(_vlm: object, _prompt: str, _path: Path) -> dict[str, object]:
+        return {"passes": True, "violations": []}
+
+    monkeypatch.setattr("hevi.tongjian.character_bible._call_vlm_json", vlm)
+    result = await identity.build_identity_pack(
+        pool=object(),
+        minio_client=object(),
+        character_id="hero",
+        name="Hero",
+        appearance="black robe",
+        era_lock="ancient",
+        art_direction="realistic",
+        output_dir=tmp_path / "identity",
+        expressions={"neutral": "calm", "angry": "angry"},
+        image_gen=image_gen,
+        vlm=object(),
+        video_gen=video_gen,
+        tts_fn=tts_fn,
+        build_turnaround_video=True,
+        run_id="run-1",
+        image_appearance="a historical actor",
+        image_era_lock="period costume",
+    )
+    assert result.lifecycle == "validated"
+    assert result.stability_check.score == "3/3"
+    assert result.files["refs/front.png"].role == "canonical_portrait"
+    assert result.files["refs/grid9.png"].role == "multiview_grid"
+    assert result.files["refs/action_pose.png"].role == "action_pose"
+    assert result.voice["tts_voice_id"] == "cosyvoice:hero_cloned"
+    assert len(prompts) == 3 + 9 + 1 + 2
+    assert (tmp_path / "identity" / "grid9.png").is_file()
+
+
+@pytest.mark.asyncio
+async def test_asr_success_adapters_and_tts_dispatch_cover_real_shapes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import sys
+    from types import ModuleType, SimpleNamespace
+
+    from hevi.voicepro_asr.oprim import (
+        transcribe_faster_whisper,
+        transcribe_openai_whisper,
+        transcribe_whisper_cpp,
+    )
+    from hevi.voicepro_asr.schemas import make_asr_config
+    from hevi.voicepro_tts import oprim as tts
+    from hevi.voicepro_tts.schemas import TTSProvider, make_tts_config
+
+    fw = ModuleType("faster_whisper")
+
+    class FakeWhisperModel:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def transcribe(self, *_args: object, **_kwargs: object):
+            word = SimpleNamespace(word="hello", start=0.0, end=0.5)
+            segment = SimpleNamespace(text=" hello ", start=0.0, end=1.0, words=[word])
+            return [segment], SimpleNamespace(language="en", duration=1.0)
+
+    fw.WhisperModel = FakeWhisperModel  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "faster_whisper", fw)
+    faster = await transcribe_faster_whisper(
+        "input.wav", make_asr_config("faster_whisper", model="tiny", language="en")
+    )
+    assert faster.text == "hello" and faster.words[0].start_ms == 0
+
+    source = tmp_path / "input.wav"
+    source.write_bytes(b"wav")
+
+    def run_cpp(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        output_base = Path(command[command.index("-of") + 1])
+        output_base.with_suffix(".json").write_text(
+            '{"transcription":[{"text":"hello","offsets":{"from":0,"to":1000}}]}'
+        )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setenv("WHISPER_CPP_BIN", "/bin/whisper-cli")
+    monkeypatch.setenv("WHISPER_CPP_MODEL", "/models/tiny.bin")
+    monkeypatch.setattr("hevi.voicepro_asr.oprim.subprocess.run", run_cpp)
+    cpp = await transcribe_whisper_cpp(str(source), make_asr_config("whisper_cpp"))
+    assert cpp.text == "hello" and cpp.duration_s == 1.0
+
+    class OpenAIResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {
+                "text": "hello",
+                "language": "en",
+                "duration": 1.2,
+                "segments": [{"text": "hello", "start": 0, "end": 1.2}],
+                "words": [{"word": "hello", "start": 0, "end": 1.0}],
+            }
+
+    class OpenAIClient:
+        async def __aenter__(self) -> OpenAIClient:
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        async def post(self, *_args: object, **_kwargs: object) -> OpenAIResponse:
+            return OpenAIResponse()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    monkeypatch.setattr("httpx.AsyncClient", lambda **_kwargs: OpenAIClient())
+    openai_result = await transcribe_openai_whisper(
+        str(source), make_asr_config("openai_whisper", model="whisper-1", language="en")
+    )
+    assert openai_result.words[0].end_ms == 1000 and openai_result.duration_s == 1.2
+
+    async def fake_tts(*_args: object, **_kwargs: object) -> str:
+        return "ok"
+
+    for provider, name in (
+        (TTSProvider.EDGE_TTS, "synthesize_edge_tts"),
+        (TTSProvider.OPEN_AI_TTS, "synthesize_openai_tts"),
+        (TTSProvider.MINIMAX_TTS, "synthesize_minimax_tts"),
+        (TTSProvider.COSYVOICE_TTS, "synthesize_cosyvoice"),
+        (TTSProvider.F5_TTS, "synthesize_f5_tts"),
+        (TTSProvider.KOKORO_TTS, "synthesize_kokoro_tts"),
+        (TTSProvider.AZURE_TTS, "synthesize_azure_tts"),
+    ):
+        monkeypatch.setattr(tts, name, fake_tts)
+        assert await tts.synthesize_tts("hello", make_tts_config(provider)) == "ok"
+    with pytest.raises(ValueError, match="不支持"):
+        await tts.synthesize_tts("hello", SimpleNamespace(provider="unknown"))
+
+
+@pytest.mark.asyncio
+async def test_tongjian_review_api_and_download_paths_are_fail_closed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from fastapi import BackgroundTasks, HTTPException
+
+    from hevi.api.routers import tongjian
+    from hevi.tongjian.schemas import Constitution, Script, ScriptLine
+
+    user = {"id": "review-user"}
+    tongjian._EXECUTION_CONTEXTS.clear()
+    body = tongjian.RunRequest(source_name="史料", raw_text="原文", pause_after="L2")
+    started = await tongjian.start_run(body, BackgroundTasks(), user, None)
+    assert started["status"] == "PENDING"
+    run_id = started["run_id"]
+    record = tongjian._context(run_id)
+    record.update(
+        {
+            "user_id": user["id"],
+            "run_dir": str(tmp_path / "run"),
+            "status": "AWAITING_REVIEW",
+            "constitution": Constitution(thesis="thesis"),
+            "script": Script(lines=[ScriptLine(line_id="old", text="旧")]),
+        }
+    )
+    assert (await tongjian.list_runs(user, None))[0].run_id == run_id
+    assert (await tongjian.get_run(run_id, user, None)).status == "AWAITING_REVIEW"
+    review = await tongjian.get_run_script(run_id, user, None)
+    assert review["script"]["lines"][0]["text"] == "旧"
+    updated = await tongjian.update_run_script(
+        run_id,
+        tongjian.ScriptReviewUpdate(
+            script=Script(lines=[ScriptLine(line_id="x", text="新")]),
+            constitution=Constitution(thesis="edited"),
+        ),
+        user,
+        None,
+    )
+    assert updated["lines"] == "1"
+    assert tongjian._context(run_id)["script"].lines[0].line_id == "LN001"
+    resume = await tongjian.resume_run(run_id, BackgroundTasks(), user, None)
+    assert resume["status"] == "RUNNING"
+    tongjian._context(run_id)["status"] = "AWAITING_REVIEW"
+    regenerate = await tongjian.regenerate_script(run_id, BackgroundTasks(), user, None)
+    assert regenerate["status"] == "RUNNING"
+
+    with pytest.raises(HTTPException) as missing:
+        await tongjian.get_run("missing", user, None)
+    assert missing.value.status_code == 404
+    with pytest.raises(HTTPException) as no_token:
+        await tongjian.download_run_video(run_id)
+    assert no_token.value.status_code == 401
+    with pytest.raises(HTTPException) as bad_id:
+        await tongjian.download_run_video("not-a-uuid", token="token")
+    assert bad_id.value.status_code == 401
+
+    output = tmp_path / "output" / "tongjian" / run_id / "L8"
+    output.mkdir(parents=True)
+    (output / "final.mp4").write_bytes(b"real-video")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(tongjian, "decode_access_token", lambda _token: {"sub": user["id"]})
+    response = await tongjian.download_run_video(run_id, token="valid")
+    assert response.media_type == "video/mp4"
+    assert str(response.path).endswith("final.mp4")
