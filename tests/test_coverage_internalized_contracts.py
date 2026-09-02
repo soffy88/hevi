@@ -12,7 +12,7 @@ import json
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -1847,3 +1847,821 @@ async def test_tongjian_runtime_layers_and_resume_boundaries_are_exercised(
     assert len(await tongjian.list_runs(user)) >= 1
     with pytest.raises(HTTPException):
         await tongjian.get_run("missing-run", user)
+
+
+def test_voxcpm_worker_boundary_serializes_success_and_failures(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Exercise the isolated VoxCPM worker's real JSON boundary."""
+    import io
+    import sys
+    from types import ModuleType
+
+    import numpy as np
+
+    from hevi.audio import voxcpm_worker as worker
+
+    output = tmp_path / "nested" / "voice.wav"
+    calls: list[dict[str, object]] = []
+
+    class FakeModel:
+        class _TTS:
+            sample_rate = 16_000
+
+        tts_model = _TTS()
+
+        @classmethod
+        def from_pretrained(cls, model_id: str, load_denoiser: bool = True) -> FakeModel:
+            calls.append({"model_id": model_id, "load_denoiser": load_denoiser})
+            return cls()
+
+        def generate(self, **kwargs: object) -> np.ndarray:
+            calls.append({"generate": kwargs})
+            return np.zeros(32, dtype=np.float32)
+
+        def generate_streaming(self, **kwargs: object):
+            calls.append({"stream": kwargs})
+            yield np.array([0.25, -0.25], dtype=np.float32)
+            yield np.array([1, -1], dtype=np.int16)
+
+    fake_voxcpm = ModuleType("voxcpm")
+    fake_voxcpm.VoxCPM = FakeModel  # type: ignore[attr-defined]
+    fake_soundfile = SimpleNamespace(
+        write=lambda path, _audio, _rate: Path(path).write_bytes(b"wav")
+    )
+
+    def import_module(name: str) -> object:
+        if name == "voxcpm":
+            return fake_voxcpm
+        if name == "soundfile":
+            return fake_soundfile
+        raise ImportError(name)
+
+    monkeypatch.setattr(worker.importlib, "import_module", import_module)
+    monkeypatch.setenv("HEVI_VOXCPM_MODEL", "test/model")
+
+    def invoke(payload: dict[str, object]) -> int:
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        return worker.main()
+
+    assert (
+        invoke(
+            {
+                "text": "你好",
+                "output_path": str(output),
+                "voice_design": "沉稳",
+                "reference_audio": str(tmp_path / "missing.wav"),
+            }
+        )
+        == 1
+    )
+    reference = tmp_path / "reference.wav"
+    reference.write_bytes(b"ref")
+    assert (
+        invoke(
+            {
+                "text": "你好",
+                "output_path": str(output),
+                "voice_design": "沉稳",
+                "reference_audio": str(reference),
+                "kwargs": {"temperature": 0.1},
+            }
+        )
+        == 0
+    )
+    assert output.read_bytes() == b"wav"
+    assert calls[-1]["generate"] == {
+        "text": "(沉稳)你好",
+        "cfg_value": 2.0,
+        "reference_wav_path": str(reference),
+        "temperature": 0.1,
+    }
+    assert invoke({"operation": "stream", "text": "stream"}) == 0
+    stream_output = capsys.readouterr().out
+    assert '"status": "chunk"' in stream_output and '"status": "succeeded"' in stream_output
+    assert invoke({"text": ""}) == 1
+    assert invoke({"text": "value"}) == 1
+    assert invoke({"text": "value", "output_path": str(output), "kwargs": "bad"}) == 1
+
+    empty_module = ModuleType("voxcpm")
+    monkeypatch.setattr(worker.importlib, "import_module", lambda _name: empty_module)
+    assert invoke({"text": "value", "output_path": str(output)}) == 1
+    monkeypatch.setattr(
+        worker.importlib,
+        "import_module",
+        lambda _name: (_ for _ in ()).throw(RuntimeError("backend down")),
+    )
+    assert invoke({"text": "value", "output_path": str(output)}) == 1
+
+
+@pytest.mark.asyncio
+async def test_pocket_tts_native_and_optional_model_boundaries_are_fail_closed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Cover Pocket's optional model, native fallback, stream, and WAV gates."""
+    import importlib as std_importlib
+    from types import ModuleType
+
+    import numpy as np
+
+    from hevi.audio import pocket_tts_service as pocket
+
+    real_import_module = std_importlib.import_module
+    pocket._load_model.cache_clear()
+    native_calls: list[dict[str, object]] = []
+
+    def native_sync(text: str, output: Path, **kwargs: object) -> None:
+        native_calls.append({"text": text, **kwargs})
+        output.write_bytes(b"native-wav")
+
+    async def native_stream(_text: str, **_kwargs: object):
+        yield "native-chunk"
+
+    monkeypatch.setattr(pocket, "_import_pocket_tts", lambda: None)
+    monkeypatch.setattr("hevi.voicepro.oskill.native_voice_available", lambda: True)
+    monkeypatch.setattr("hevi.voicepro.oskill.synthesize_native_voice_sync", native_sync)
+    monkeypatch.setattr("hevi.voicepro.oskill.stream_native_voice", native_stream)
+    assert pocket.pocket_tts_available() is True
+    native_path = await pocket.synth_with_pocket_tts(
+        "native", output_path=tmp_path / "native.wav", language="zh", speed=0.9
+    )
+    assert native_path.read_bytes() == b"native-wav" and native_calls[0]["speed"] == 0.9
+    assert [chunk async for chunk in pocket.stream_pocket_tts("native stream")] == ["native-chunk"]
+    monkeypatch.setattr("hevi.voicepro.oskill.native_voice_available", lambda: False)
+    assert pocket.pocket_tts_available() is False
+    with pytest.raises(ValueError, match="cannot be empty"):
+        await pocket.synth_with_pocket_tts(" ", output_path=tmp_path / "empty.wav")
+    with pytest.raises(RuntimeError, match="native voice runtime"):
+        await pocket.synth_with_pocket_tts("blocked", output_path=tmp_path / "blocked.wav")
+
+    model_calls: list[tuple[str, object]] = []
+
+    class FakeModel:
+        sample_rate = 22_050
+
+        @classmethod
+        def load_model(cls, *, config: str = "", language: str = "") -> FakeModel:
+            model_calls.append(("load", {"config": config, "language": language}))
+            return cls()
+
+        def get_state_for_audio_prompt(self, voice: str) -> str:
+            model_calls.append(("state", voice))
+            return "state"
+
+        def generate_audio(self, state: str, text: str) -> np.ndarray:
+            model_calls.append(("generate", (state, text)))
+            return np.zeros(12, dtype=np.float32)
+
+        def generate_audio_stream(self, state: str, text: str, max_tokens: int):
+            model_calls.append(("stream", (state, text, max_tokens)))
+            yield np.array([0.1], dtype=np.float32)
+            yield np.array([0.2], dtype=np.float32)
+
+    fake_module = ModuleType("pocket_tts")
+    fake_module.TTSModel = FakeModel  # type: ignore[attr-defined]
+    monkeypatch.setattr(pocket, "_import_pocket_tts", lambda: fake_module)
+    pocket._load_model.cache_clear()
+    assert pocket.pocket_tts_available() is True
+    assert pocket._load_model("model.json", "zh") is not None
+    assert model_calls[0] == ("load", {"config": "model.json", "language": "zh"})
+
+    class ConfigPathModel:
+        @staticmethod
+        def load_model(*, config_path: str) -> object:
+            model_calls.append(("config_path", config_path))
+            return object()
+
+    config_module = ModuleType("pocket_tts")
+    config_module.TTSModel = ConfigPathModel  # type: ignore[attr-defined]
+    monkeypatch.setattr(pocket, "_import_pocket_tts", lambda: config_module)
+    pocket._load_model.cache_clear()
+    assert pocket._load_model("config.yaml", "") is not None
+
+    class NoConfigModel:
+        @staticmethod
+        def load_model() -> object:
+            return object()
+
+    no_config_module = ModuleType("pocket_tts")
+    no_config_module.TTSModel = NoConfigModel  # type: ignore[attr-defined]
+    monkeypatch.setattr(pocket, "_import_pocket_tts", lambda: no_config_module)
+    pocket._load_model.cache_clear()
+    with pytest.raises(RuntimeError, match="does not accept"):
+        pocket._load_model("config.yaml", "")
+
+    monkeypatch.setattr(pocket, "_load_model", lambda config: ("old", config))
+    assert pocket._load_for_request("old-config", "zh") == ("old", "old-config")
+    tensor_like = SimpleNamespace(
+        detach=lambda: SimpleNamespace(cpu=lambda: SimpleNamespace(numpy=lambda: "array"))
+    )
+    assert pocket._audio_numpy(tensor_like) == "array"
+    assert pocket._audio_numpy("plain") == "plain"
+    scipy_output = tmp_path / "scipy.wav"
+    pocket._write_wav(scipy_output, 24_000, np.zeros(4, dtype=np.float32))
+    assert scipy_output.is_file()
+
+    def fallback_import(name: str) -> object:
+        if name == "scipy.io.wavfile":
+            raise ImportError(name)
+        if name == "soundfile":
+            return SimpleNamespace(
+                write=lambda path, _samples, _rate: Path(path).write_bytes(b"sf")
+            )
+        return real_import_module(name)
+
+    monkeypatch.setattr(pocket.importlib, "import_module", fallback_import)
+    fallback_output = tmp_path / "soundfile.wav"
+    pocket._write_wav(fallback_output, 16_000, np.zeros(2, dtype=np.float32))
+    assert fallback_output.read_bytes() == b"sf"
+    monkeypatch.setattr(
+        pocket.importlib,
+        "import_module",
+        lambda _name: (_ for _ in ()).throw(ImportError("writers missing")),
+    )
+    with pytest.raises(RuntimeError, match="no WAV writer"):
+        pocket._write_wav(tmp_path / "none.wav", 16_000, np.zeros(1))
+    monkeypatch.setattr(pocket.importlib, "import_module", real_import_module)
+    monkeypatch.setattr(pocket, "_import_pocket_tts", lambda: fake_module)
+    monkeypatch.setattr(pocket, "_load_model", lambda *_args: FakeModel())
+    model_output = tmp_path / "model.wav"
+    pocket._synth_sync(
+        "model",
+        model_output,
+        voice="alba",
+        language="en",
+        reference_audio=None,
+        voice_design="",
+        speed=1.0,
+        config="",
+    )
+    assert model_output.is_file()
+    with pytest.raises(FileNotFoundError):
+        pocket._synth_sync(
+            "model",
+            tmp_path / "missing-ref.wav",
+            voice="alba",
+            language="en",
+            reference_audio=tmp_path / "missing-reference.wav",
+            voice_design="",
+            speed=1.0,
+            config="",
+        )
+    streamed = [chunk async for chunk in pocket.stream_pocket_tts("stream", chunk_chars=2)]
+    assert len(streamed) == 2 and model_calls[-1][0] == "stream"
+
+
+@pytest.mark.asyncio
+async def test_tts_oprim_dispatches_all_supported_adapters(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Keep every public TTS provider branch executable and artifact-aware."""
+    import base64
+    import importlib as std_importlib
+    import sys
+    from types import ModuleType
+
+    import numpy as np
+
+    from hevi.voicepro_tts import oprim as tts
+    from hevi.voicepro_tts.schemas import TTSProvider, make_tts_config
+
+    real_tts_functions = {
+        name: getattr(tts, name)
+        for name in (
+            "synthesize_edge_tts",
+            "synthesize_openai_tts",
+            "synthesize_minimax_tts",
+            "synthesize_cosyvoice",
+            "synthesize_f5_tts",
+            "synthesize_kokoro_tts",
+            "synthesize_azure_tts",
+        )
+    }
+
+    async def marker(*args: object, **kwargs: object) -> str:
+        return f"called:{len(args)}:{len(kwargs)}"
+
+    for provider, function_name in (
+        (TTSProvider.EDGE_TTS, "synthesize_edge_tts"),
+        (TTSProvider.OPEN_AI_TTS, "synthesize_openai_tts"),
+        (TTSProvider.MINIMAX_TTS, "synthesize_minimax_tts"),
+        (TTSProvider.COSYVOICE_TTS, "synthesize_cosyvoice"),
+        (TTSProvider.F5_TTS, "synthesize_f5_tts"),
+        (TTSProvider.KOKORO_TTS, "synthesize_kokoro_tts"),
+        (TTSProvider.AZURE_TTS, "synthesize_azure_tts"),
+    ):
+        monkeypatch.setattr(tts, function_name, marker)
+        assert (await tts.synthesize_tts("line", make_tts_config(provider))).startswith("called:")
+    with pytest.raises(ValueError, match="不支持"):
+        await tts.synthesize_tts("line", SimpleNamespace(provider="unsupported"))
+    for name, function in real_tts_functions.items():
+        monkeypatch.setattr(tts, name, function)
+
+    class EdgeCommunicate:
+        def __init__(self, text: str, voice: str, **kwargs: str) -> None:
+            self.text, self.voice, self.kwargs = text, voice, kwargs
+
+        async def save(self, path: str) -> None:
+            Path(path).write_bytes(f"{self.text}:{self.voice}".encode())
+
+    edge_module = ModuleType("edge_tts")
+    edge_module.Communicate = EdgeCommunicate  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "edge_tts", edge_module)
+    edge = await tts.synthesize_edge_tts("hi", output_path=str(tmp_path / "edge.mp3"))
+    assert edge.audio_path.endswith("edge.mp3")
+
+    class OpenAIResponse:
+        def write_to_file(self, path: str) -> None:
+            Path(path).write_bytes(b"openai")
+
+    class OpenAISpeech:
+        async def create(self, **_kwargs: object) -> OpenAIResponse:
+            return OpenAIResponse()
+
+    class OpenAIAudio:
+        speech = OpenAISpeech()
+
+    class AsyncOpenAI:
+        audio = OpenAIAudio()
+
+    openai_module = ModuleType("openai")
+    openai_module.AsyncOpenAI = AsyncOpenAI  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "openai", openai_module)
+    opened = await tts.synthesize_openai_tts("hi", output_path=str(tmp_path / "openai.mp3"))
+    assert Path(opened.audio_path).read_bytes() == b"openai"
+
+    class HttpResponse:
+        def __init__(self, body: dict[str, object]) -> None:
+            self.body = body
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return self.body
+
+    class HttpClient:
+        body: ClassVar[dict[str, object]] = {"data": {"audio": "6869"}}
+
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        async def __aenter__(self) -> HttpClient:
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        async def post(self, *_args: object, **_kwargs: object) -> HttpResponse:
+            return HttpResponse(self.body)
+
+    monkeypatch.setenv("MINIMAX_API_KEY", "test-only")
+    monkeypatch.setattr("httpx.AsyncClient", HttpClient)
+    minimax = await tts.synthesize_minimax_tts("hi", output_path=str(tmp_path / "mini.mp3"))
+    assert Path(minimax.audio_path).read_bytes() == b"hi"
+    HttpClient.body = {"data": {"audio": base64.b64encode(b"b64").decode()}}
+    minimax_b64 = await tts.synthesize_minimax_tts("hi", output_path=str(tmp_path / "mini2.mp3"))
+    assert Path(minimax_b64.audio_path).read_bytes() == b"b64"
+    HttpClient.body = {"data": {}}
+    with pytest.raises(RuntimeError, match="did not contain"):
+        await tts.synthesize_minimax_tts("hi", output_path=str(tmp_path / "bad.mp3"))
+
+    async def cosyvoice(**kwargs: object) -> None:
+        Path(str(kwargs["output_path"])).write_bytes(b"cosy")
+
+    async def f5(**kwargs: object) -> None:
+        Path(str(kwargs["output_path"])).write_bytes(b"f5")
+
+    monkeypatch.setattr("hevi.audio.cosyvoice_service.cosyvoice_synthesize", cosyvoice)
+    cosy = await tts.synthesize_cosyvoice("hi", output_path=str(tmp_path / "cosy.wav"))
+    assert Path(cosy.audio_path).read_bytes() == b"cosy"
+    ref = tmp_path / "ref.wav"
+    ref.write_bytes(b"reference")
+    monkeypatch.setenv("F5_TTS_REFERENCE_TEXT", "reference text")
+    monkeypatch.setattr("hevi.audio.f5_tts_service.f5_tts_synthesize", f5)
+    f5_result = await tts.synthesize_f5_tts(
+        "hi", voice_ref=str(ref), output_path=str(tmp_path / "f5.wav")
+    )
+    assert Path(f5_result.audio_path).read_bytes() == b"f5"
+    monkeypatch.delenv("F5_TTS_REFERENCE_TEXT")
+    with pytest.raises(RuntimeError, match="reference audio"):
+        await tts.synthesize_f5_tts("hi", output_path=str(tmp_path / "missing.wav"))
+
+    class SoundFile:
+        @staticmethod
+        def write(path: str, samples: object, rate: int) -> None:
+            assert rate == 24_000 and len(samples) > 0
+            Path(path).write_bytes(b"kokoro")
+
+    class KPipeline:
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def __call__(self, *_args: object, **_kwargs: object):
+            yield (None, None, np.array([0.1, 0.2], dtype=np.float32))
+
+    kokoro_module = ModuleType("kokoro")
+    kokoro_module.KPipeline = KPipeline  # type: ignore[attr-defined]
+    real_import_module = std_importlib.import_module
+
+    def tts_import(name: str) -> object:
+        if name == "soundfile":
+            return SoundFile
+        if name == "kokoro":
+            return kokoro_module
+        return real_import_module(name)
+
+    monkeypatch.setattr(tts.importlib, "import_module", tts_import)
+    kokoro = await tts.synthesize_kokoro_tts("hi", output_path=str(tmp_path / "kokoro.wav"))
+    assert Path(kokoro.audio_path).read_bytes() == b"kokoro"
+
+
+@pytest.mark.asyncio
+async def test_digital_human_omodul_executes_registered_steps_and_media_guards(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Cover the presenter transaction planner and deterministic media gates."""
+    from types import SimpleNamespace
+
+    import hevi.digital_human.omodul as digital
+    from hevi.digital_human.schemas import CaptionPhrase, CaptionPlan, PresenterJob
+
+    job = PresenterJob(job_id="digital-coverage", width=640, height=360, fps=24)
+    plan = digital.build_full_job_plan(job, 4.0, "render.mp4", "outputs", "demo")
+    real_media_functions = {
+        name: getattr(digital, name)
+        for name in (
+            "_calibrate_loudness",
+            "_compose_timeline",
+            "_burn_captions",
+            "_add_keyword_effects",
+        )
+    }
+
+    def adapter(*_args: object, **_kwargs: object) -> object:
+        return SimpleNamespace(model_dump=lambda mode="json": {"adapter": "ok", "mode": mode})
+
+    def sync_adapter(*_args: object, **_kwargs: object) -> object:
+        return Path("artifact.mp4")
+
+    for name in (
+        "_lock_content",
+        "_generate_narration",
+        "_calibrate_loudness",
+        "generate_presenter",
+        "visual_plan",
+        "caption_plan",
+        "_compose_timeline",
+        "_burn_captions",
+        "_add_keyword_effects",
+        "qa_gate",
+        "delivery",
+    ):
+        monkeypatch.setattr(digital, name, sync_adapter if name == "delivery" else adapter)
+    executed = await digital.execute_plan(job, plan)
+    assert len(executed["phases"]) == 5 and job.status.value == "verified"
+    assert executed["phases"][0]["steps"][0]["ok"] is True
+    with pytest.raises(NotImplementedError, match="no registered"):
+        await digital._execute_phase(job, {"phase": "bad", "steps": [{"step": "missing"}]})
+    assert digital._json_safe(Path("a/b")) == "a/b"
+    assert digital._json_safe({"x": (Path("p"), 1)}) == {"x": ["p", 1]}
+    for name, function in real_media_functions.items():
+        monkeypatch.setattr(digital, name, function)
+
+    source = tmp_path / "presenter.mp4"
+    source.write_bytes(b"source")
+    monkeypatch.setenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", str(tmp_path / "composition"))
+    monkeypatch.setattr(
+        "hevi.digital_human.oprim.qa._ffprobe",
+        lambda _path: {
+            "streams": [{"codec_type": "video"}, {"codec_type": "audio"}],
+            "format": {"duration": "1"},
+        },
+    )
+    assert digital._probe_composition_video(source, "presenter")["streams"]
+    with pytest.raises(RuntimeError, match="missing or empty"):
+        digital._probe_composition_video(tmp_path / "missing.mp4", "missing")
+
+    def fake_ffmpeg(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        Path(command[-1]).write_bytes(b"encoded")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(digital.subprocess, "run", fake_ffmpeg)
+    encoded = tmp_path / "encoded.mp4"
+    digital._run_composition_ffmpeg(source, encoded, "encode", fps=25)
+    assert encoded.read_bytes() == b"encoded"
+    monkeypatch.setattr(
+        digital.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=1, stdout="", stderr="bad ffmpeg"),
+    )
+    with pytest.raises(RuntimeError, match="ffmpeg failed"):
+        digital._run_composition_ffmpeg(source, tmp_path / "failed.mp4", "failed")
+
+    monkeypatch.setattr(digital.subprocess, "run", fake_ffmpeg)
+    job.rendered = str(source)
+    job.timeline = ""
+    timeline_result = digital._compose_timeline(job)
+    assert Path(timeline_result["path"]).is_file() and job.rendered == timeline_result["path"]
+    caption = CaptionPlan(
+        phrases=[
+            CaptionPhrase(text="重点", start_s=0.0, duration_s=0.5, style="radial_burst"),
+            CaptionPhrase(text="普通", start_s=0.5, duration_s=0.5, style="default"),
+        ]
+    )
+    job.caption_json = caption.model_dump_json()
+    assert digital._load_caption_plan(job).is_available()
+    ass_path = digital._write_caption_ass(job, caption)
+    assert ass_path.is_file() and digital._ass_time(3661.25).startswith("1:")
+    assert "\\{" in digital._ass_text("{safe}") and digital._filter_path(ass_path)
+    burned = digital._burn_captions(job)
+    assert Path(burned["path"]).is_file()
+    effects = digital._add_keyword_effects(job)
+    assert Path(effects["path"]).is_file() and Path(effects["report"]).is_file()
+    job.final_audio = "audio.wav"
+    monkeypatch.setattr(
+        digital,
+        "_calibrate_audio_loudness",
+        lambda path, target_lufs: SimpleNamespace(path=path, target=target_lufs),
+    )
+    assert digital._calibrate_loudness(job).target == -16
+    job.final_audio = ""
+    with pytest.raises(RuntimeError, match="before narration"):
+        digital._calibrate_loudness(job)
+
+
+def test_watch_cli_runs_preflight_contact_sheet_and_localization_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Cover the user-facing watch command without downloading remote media."""
+    from hevi.ingest.video_frames import ExtractedFrame, WatchDetail
+    from hevi.ingest.video_transcript import TranscriptSegment, WordSpan
+    from hevi.ingest.video_watch import WatchResult
+    from hevi.skills import watch_cli
+
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"video")
+    frame = tmp_path / "frame.jpg"
+    frame.write_bytes(b"frame")
+    result = WatchResult(
+        source=str(source),
+        frames=[ExtractedFrame(timestamp_s=0.0, path=frame)],
+        transcript=[
+            TranscriptSegment(
+                start=0.0,
+                end=0.5,
+                text="嗯",
+                words=(WordSpan("嗯", 0.0, 0.5),),
+            ),
+            TranscriptSegment(
+                start=1.0,
+                end=2.0,
+                text="你好",
+                words=(WordSpan("你", 1.0, 1.4), WordSpan("好", 1.4, 2.0)),
+            ),
+        ],
+        duration_s=2.0,
+        detail=WatchDetail.BALANCED,
+        notes=["local test"],
+    )
+    monkeypatch.setattr(
+        watch_cli,
+        "check_env",
+        lambda **_kwargs: SimpleNamespace(
+            can_proceed=True,
+            missing_binaries=["yt-dlp"],
+            notes=["URL tools optional"],
+        ),
+    )
+    monkeypatch.setattr(watch_cli, "watch_video", lambda *_args, **_kwargs: result)
+    monkeypatch.setattr(
+        watch_cli,
+        "build_contact_sheet",
+        lambda *_args, **_kwargs: tmp_path / "contact.jpg",
+    )
+    assert (
+        watch_cli.main(
+            [
+                str(source),
+                "--out-dir",
+                str(tmp_path / "watch"),
+                "--preflight",
+                "--contact-sheet",
+                "--rough-cut",
+                "--speakers",
+                "--localize",
+                "--bilingual",
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "preflight: can_proceed=True" in output
+    assert "contact_sheet" in output and "rough_cut" in output and "speakers" in output
+    assert "localize: ass=" in output
+
+    monkeypatch.setattr(
+        watch_cli,
+        "check_env",
+        lambda **_kwargs: SimpleNamespace(
+            can_proceed=False, missing_binaries=["ffmpeg"], notes=["missing ffmpeg"]
+        ),
+    )
+    assert watch_cli.main(["https://example.test/video", "--preflight"]) == 2
+    assert "missing: ffmpeg" in capsys.readouterr().out
+
+    localize_calls: list[dict[str, object]] = []
+
+    async def localize(
+        _config: dict[str, object], _input: dict[str, object], output_dir: Path
+    ) -> dict[str, object]:
+        localize_calls.append({"output_dir": output_dir})
+        return {
+            "status": "succeeded",
+            "report_path": str(tmp_path / "localize.json"),
+            "findings": {"output_video_path": str(tmp_path / "localized.mp4")},
+        }
+
+    monkeypatch.setattr(
+        watch_cli,
+        "check_env",
+        lambda **_kwargs: SimpleNamespace(can_proceed=True, missing_binaries=[], notes=[]),
+    )
+    monkeypatch.setattr("hevi.production.media_workflows.video_localization_workflow", localize)
+    assert watch_cli.main(["https://example.test/video", "--localize", "--execute-localize"]) == 3
+    assert "localize-error" in capsys.readouterr().err
+    assert (
+        watch_cli.main(
+            [
+                str(source),
+                "--localize",
+                "--execute-localize",
+                "--dub",
+                "--target-language",
+                "en-US",
+            ]
+        )
+        == 0
+    )
+    assert localize_calls and localize_calls[-1]["output_dir"] == Path(".hevi_watch")
+    assert "localized_video" in capsys.readouterr().out
+
+    async def failed_localize(
+        _config: dict[str, object], _input: dict[str, object], _output_dir: Path
+    ) -> dict[str, object]:
+        return {"status": "failed", "error": "provider unavailable", "report_path": "report"}
+
+    monkeypatch.setattr(
+        "hevi.production.media_workflows.video_localization_workflow", failed_localize
+    )
+    assert watch_cli.main([str(source), "--localize", "--execute-localize"]) == 3
+    assert "provider unavailable" in capsys.readouterr().err
+
+
+@pytest.mark.asyncio
+async def test_agentic_montage_runtime_covers_resume_gates_and_local_artifact_checks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Exercise the OpenMontage-style transaction around explicit HEVI gates."""
+    from hevi.montage.omodul import agentic
+    from hevi.montage.schemas import ArtifactType
+
+    assert agentic._mapping(SimpleNamespace(value=1))["value"] == 1
+    assert agentic._mapping(object()) == {}
+    config = {"pipeline": "animated-explainer", "manifest_path": str(tmp_path / "pipeline.yaml")}
+    assert agentic._manifest_path(config).name == "pipeline.yaml"
+    fingerprint = agentic._safe_fingerprint(
+        "demo", {"caller": object(), "budget_usd": 1}, {"topic": "x", "renderer": object()}
+    )
+    assert len(fingerprint) == 24
+    events: list[dict[str, object]] = []
+
+    async def async_notify(event: dict[str, object]) -> None:
+        events.append(event)
+
+    await agentic._notify(async_notify, {"stage": "x"})
+    await agentic._notify(None, {"stage": "ignored"})
+    assert events == [{"stage": "x"}]
+
+    async def handler(_data: dict[str, object], _context: dict[str, object]) -> dict[str, object]:
+        return {"status": "ok", "value": 1}
+
+    assert await agentic._custom_or("x", lambda *_args: {"value": 2}, {}, {}, {}) == {"value": 2}
+    assert await agentic._custom_or("x", handler, {}, {}, {"x": handler}) == {
+        "status": "ok",
+        "value": 1,
+    }
+    assert (await agentic._custom_or("x", lambda *_args: "bad", {}, {}, {}))["status"] == "failed"
+
+    beats = SimpleNamespace(status="ok", reason="", payload={"beats": ["look"]})
+
+    async def beats_tool(*_args: object, **_kwargs: object) -> SimpleNamespace:
+        return beats
+
+    monkeypatch.setattr("hevi.studio.tools.invoke_tool", beats_tool)
+    designed = await agentic._character_design(
+        {"topic": "history", "character_ids": ["hero"], "character_style": "ink"}, {}
+    )
+    assert designed["character_design"]["subjects"] == ["hero"]
+
+    async def blocked_beats(*_args: object, **_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(status="blocked", reason="no beats", payload={})
+
+    monkeypatch.setattr("hevi.studio.tools.invoke_tool", blocked_beats)
+    assert (await agentic._character_design({"topic": "history"}, {}))["status"] == "blocked"
+
+    material = tmp_path / "material.mp4"
+    material.write_bytes(b"media")
+    monkeypatch.setattr(
+        agentic,
+        "stage_assets",
+        lambda *_args, **_kwargs: asyncio.sleep(
+            0,
+            result={
+                "ranked_materials": [
+                    {"cached_path": str(material)},
+                    {"url": "https://example.invalid/remote.mp4"},
+                    "ignored",
+                ],
+                "bound_assets": ["bound"],
+            },
+        ),
+    )
+    assets = await agentic._assets({"media_path": str(material)}, {})
+    assert assets["asset_manifest"]["verified_files"] == [str(material)]
+    assert assets["asset_manifest"]["unresolved"] == ["https://example.invalid/remote.mp4"]
+
+    monkeypatch.setattr(
+        agentic,
+        "stage_script",
+        lambda *_args, **_kwargs: asyncio.sleep(0, result={"script_lines": ["line"]}),
+    )
+    assert (await agentic._script({}, {}))["script"]["line_count"] == 1
+    monkeypatch.setattr(
+        agentic,
+        "stage_edit_plan",
+        lambda *_args, **_kwargs: asyncio.sleep(0, result={"edit_plan": {"cuts": 1}}),
+    )
+    assert (await agentic._edit({}, {}))["edit_decisions"] == {"cuts": 1}
+
+    final = tmp_path / "final.mp4"
+    final.write_bytes(b"final")
+
+    async def invoke_tool(name: str, payload: dict[str, object]) -> SimpleNamespace:
+        if name == "timeline.create":
+            return SimpleNamespace(
+                status="ok", reason="", payload={"timeline": {"timeline_id": "t1"}}
+            )
+        if name == "timeline.export":
+            return SimpleNamespace(status="ok", reason="", payload={"video_path": str(final)})
+        raise AssertionError(name)
+
+    monkeypatch.setattr("hevi.studio.tools.invoke_tool", invoke_tool)
+    monkeypatch.setattr(
+        "hevi.production.delivery_gate.probe_video",
+        lambda _path: SimpleNamespace(
+            has_video=True, has_audio=True, duration_s=2.0, size_bytes=final.stat().st_size
+        ),
+    )
+    composed = await agentic._compose(
+        {"topic": "history", "edit_plan": {"cuts": 1}, "require_audio": True}, {}
+    )
+    assert composed["status"] == "completed" and composed["render_report"]["quality"]["passed"]
+    no_plan = await agentic._compose({"topic": "history"}, {})
+    assert no_plan["status"] == "blocked"
+
+    async def blocked_tool(*_args: object, **_kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(status="ok", reason="", payload={})
+
+    monkeypatch.setattr("hevi.studio.tools.invoke_tool", blocked_tool)
+    no_timeline = await agentic._compose({"edit_plan": {"cuts": 1}}, {})
+    assert no_timeline["status"] == "blocked"
+
+    checkpoint_dir = tmp_path / "checkpoints"
+    checkpoint_dir.mkdir()
+    checkpoint_path = checkpoint_dir / "research.json"
+    agentic._checkpoint(
+        checkpoint_path, "demo", "research", {"research": {"context": "facts"}}, approval="pending"
+    )
+    trail: list[dict[str, Any]] = []
+    assert agentic._load_resume_data(checkpoint_dir, ["research"], {}, trail) == set()
+    agentic._approve_checkpoints(checkpoint_dir, {"research"}, trail)
+    data: dict[str, Any] = {}
+    assert agentic._load_resume_data(checkpoint_dir, ["research"], data, trail) == {"research"}
+    assert data["research"]["context"] == "facts"
+    assert any(item["event"] == "checkpoint_approved" for item in trail)
+    assert ArtifactType.CHECKPOINT.value == "checkpoint"
+
+    reference = tmp_path / "reference.mp4"
+    reference.write_bytes(b"reference")
+    monkeypatch.setattr(
+        "hevi.montage.oprim.analyze_reference_video",
+        lambda _path: SimpleNamespace(model_dump=lambda mode="json": {"content": "review"}),
+    )
+    monkeypatch.setattr("hevi.montage.oprim.sample_frames", lambda _path: ["frame"])
+    monkeypatch.setattr("hevi.montage.oprim.extract_transcript", lambda _path: ["line"])
+    prepared: dict[str, Any] = {"media_path": str(reference)}
+    agentic._prepare_reference_media(prepared)
+    assert prepared["source_media_review"]["content"] == "review" and prepared[
+        "reference_frames"
+    ] == ["frame"]
