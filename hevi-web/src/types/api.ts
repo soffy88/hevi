@@ -589,6 +589,8 @@ export type ExplainerVisualType =
   | 'remotion_chart'
   | 'remotion_code'
   | 'manim_scene'
+  | 'whiteboard'
+  | 'infographic'
   | 'voiceover';
 
 export interface ExplainerResearchRequest {
@@ -695,6 +697,7 @@ export interface ExplainerAssembleRequest {
   final_script_cues: ExplainerCue[];
   enable_remotion_code_render: boolean;
   enable_manim_render?: boolean;
+  enable_whiteboard_render?: boolean;
   enable_circle_avatar_mask: boolean;
   enable_browser_broll: boolean;
   aspect_ratio: '9:16' | '16:9';
@@ -1296,11 +1299,15 @@ export interface VoiceTTSEngine {
   id: string;
   name: string;
   type: 'cloud' | 'local';
+  available: boolean;
+  mode?: string;
+  kind?: 'tts' | 'asr';
   description: string;
   requires_gpu: boolean;
   languages?: string[];
   paralinguistic_tags?: string[];
   voice_categories?: Record<string, number>;
+  setup?: string | null;
 }
 
 // Provider Presets 预置策略(SPEC v6.0 §2.4,后端 obase.ProviderRegistry 下沉)
@@ -1408,4 +1415,3 @@ export interface MPTCrossPostResult {
   message?: string;
   error?: string;
 }
-

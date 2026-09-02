@@ -1,11 +1,11 @@
 /**
- * TopNav — 顶部导航栏(Frontend SPEC v6.0 §4 最终精简导航)
- * 6 个职责绝对清晰的主节点:
- *   / ⚡极速生成 · /explainer 🎙️解说中心 · /tongjian 🏛️历史现场 ·
- *   /director-pipeline 🎬导演流水线 · /director 🎛️导演控制台 · /production 📊生产看板
- * 辅助工具(✂️智能拆条 / 👤数字人预设 / 🔊语音工作室 / 📁数字资产)收纳在「工具箱 ▾」弹层,
- * 次要工作台(系列/短剧台/画布/发布/我的/价格)收纳在「更多 ▾」折叠。
- * 登录入口:未登录显示「登录」,已登录显示「退出」。
+ * TopNav — 顶部导航栏 (HEVI Frontend UX + Connectivity Closure SPEC v1.0)
+ *
+ * 一级导航 (P1 简化后):
+ *   创建 (/) | 项目 (/projects) | 资产 (/assets) | 工作室 (/studio) | 我的 (/account)
+ *
+ * 移动端: 折叠为抽屉式导航(drawer/bottom nav),防止横向溢出。
+ * 状态指示: ● Online / ● Offline,点击展开 SystemStatus 详情。
  */
 'use client';
 
@@ -13,95 +13,67 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { isAuthenticated, logout } from '@/lib/auth-store';
+import { checkBackendHealth } from '@/lib/backend-health';
+import { SystemStatus } from '@/components/SystemStatus';
+import { useBackendStatus } from '@/hooks/useBackendStatus';
 
 const NAV = [
-  { href: '/', label: '⚡ 极速生成' },
-  { href: '/explainer', label: '🎙️ 解说中心' },
-  { href: '/lite', label: '⚡ 轻量发射台' },
-  { href: '/dashboard', label: '📊 任务大盘' },
-  { href: '/tongjian', label: '🏛️ 历史现场' },
-  { href: '/animate', label: '🎬 动画演绎' },
-  { href: '/director-pipeline', label: '🎬 导演流水线' },
-  { href: '/director', label: '🎛️ 导演控制台' },
-  { href: '/production', label: '📊 生产看板' },
-];
-
-const TOOLBOX = [
-  { href: '/embrace', label: '🎴 配方卡画廊' },
-  { href: '/studio/clipper', label: '✂️ 智能拆条' },
-  { href: '/presenters', label: '👤 数字人预设' },
-  { href: '/voice-studio', label: '🔊 语音工作室' },
-  { href: '/gallery', label: '📁 数字资产' },
-  { href: '/store', label: '📼 3D 店面' },
-  { href: '/studio/timeline', label: '🎞️ 时间线' },
-];
-
-const MORE = [
-  { href: '/series', label: '系列' },
-  { href: '/season-board', label: '短剧台' },
-  { href: '/studio', label: '画布工作台' },
-  { href: '/publish-studio', label: '发布工作室' },
+  { href: '/', label: '创建' },
+  { href: '/projects', label: '项目' },
+  { href: '/assets', label: '资产' },
+  { href: '/studio', label: '工作室' },
   { href: '/account', label: '我的' },
-  { href: '/pricing', label: '价格' },
 ];
 
 export function TopNav() {
   const pathname = usePathname();
   const router = useRouter();
   const [authed, setAuthed] = useState(false);
-  const [toolboxOpen, setToolboxOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // 实时后端连接状态(只显示 "Online / Offline" 文本指示,具体细节在 SystemStatus)
+  const { online, checking, recheck } = useBackendStatus();
+
   useEffect(() => { setAuthed(isAuthenticated()); }, [pathname]);
+  // 路由变化时关闭 drawer
+  useEffect(() => { setDrawerOpen(false); }, [pathname]);
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   return (
-    <header className="hevi-topnav">
-      <Link href="/" className="hevi-topnav__logo">hevi</Link>
-      <nav className="hevi-topnav__links">
+    <header className="hevi-topnav" data-state={online ? 'online' : 'offline'}>
+      <Link href="/" className="hevi-topnav__logo">HEVI</Link>
+
+      {/* 桌面端导航 */}
+      <nav className="hevi-topnav__links hevi-topnav__links--desktop">
         {NAV.map(n => (
           <Link key={n.href} href={n.href}
-            className="hevi-topnav__link" data-active={isActive(n.href) ? 'true' : undefined}>
+            className="hevi-topnav__link"
+            data-active={isActive(n.href) ? 'true' : undefined}>
             {n.label}
           </Link>
         ))}
-        <div className="hevi-topnav__more">
-          <button type="button" className="hevi-topnav__link hevi-topnav__link--btn"
-            data-active={TOOLBOX.some(m => isActive(m.href)) ? 'true' : undefined}
-            onClick={() => { setToolboxOpen(v => !v); setMoreOpen(false); }}>
-            工具箱 ▾
-          </button>
-          {toolboxOpen && (
-            <div className="hevi-topnav__more-menu">
-              {TOOLBOX.map(m => (
-                <Link key={m.href} href={m.href}
-                  className="hevi-topnav__more-item" data-active={isActive(m.href) ? 'true' : undefined}
-                  onClick={() => setToolboxOpen(false)}>
-                  {m.label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="hevi-topnav__more">
-          <button type="button" className="hevi-topnav__link hevi-topnav__link--btn"
-            data-active={MORE.some(m => isActive(m.href)) ? 'true' : undefined}
-            onClick={() => { setMoreOpen(v => !v); setToolboxOpen(false); }}>
-            更多 ▾
-          </button>
-          {moreOpen && (
-            <div className="hevi-topnav__more-menu">
-              {MORE.map(m => (
-                <Link key={m.href} href={m.href}
-                  className="hevi-topnav__more-item" data-active={isActive(m.href) ? 'true' : undefined}
-                  onClick={() => setMoreOpen(false)}>
-                  {m.label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+      </nav>
+
+      <div className="hevi-topnav__right">
+        {/* 连接状态指示(可点击展开) */}
+        <button type="button"
+          className="hevi-topnav__status-pill"
+          data-state={online ? 'online' : 'offline'}
+          onClick={recheck}
+          disabled={checking}
+          title={online ? '后端已连接' : '后端未连接,点击重试'}>
+          <span className={`hevi-topnav__dot ${online ? 'hevi-topnav__dot--online' : 'hevi-topnav__dot--offline'}`}
+            aria-hidden="true" />
+          <span className="hevi-topnav__status-text">
+            {checking ? '检测中' : online ? 'Online' : 'Offline'}
+          </span>
+        </button>
+
+        {/* System Status (展开连接详情) */}
+        <SystemStatus />
+
         {authed ? (
           <button type="button" className="hevi-topnav__link hevi-topnav__link--auth hevi-topnav__link--btn"
             onClick={() => { logout(); setAuthed(false); router.push('/login'); }}>
@@ -113,7 +85,29 @@ export function TopNav() {
             登录
           </Link>
         )}
-      </nav>
+
+        {/* 移动端汉堡菜单按钮 */}
+        <button type="button"
+          className="hevi-topnav__hamburger"
+          aria-label="打开菜单"
+          onClick={() => setDrawerOpen(v => !v)}>
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+
+      {/* 移动端 drawer */}
+      {drawerOpen && (
+        <div className="hevi-topnav__drawer" role="navigation" aria-label="移动端导航">
+          {NAV.map(n => (
+            <Link key={n.href} href={n.href}
+              className="hevi-topnav__drawer-link"
+              data-active={isActive(n.href) ? 'true' : undefined}
+              onClick={() => setDrawerOpen(false)}>
+              {n.label}
+            </Link>
+          ))}
+        </div>
+      )}
     </header>
   );
 }

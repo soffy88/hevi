@@ -1,6 +1,8 @@
 /**
  * hevi API client — REST 封装
  * 所有请求预留 Authorization header(SaaS 认证就绪后注入 JWT)。
+ * 所有 API/SSE/media URL 必须从同一 runtime config 获得 base URL。
+ * See: hevi-web/src/lib/runtime-config.ts
  */
 import type {
   CanvasGraph, CanvasNode, CanvasEdge,
@@ -11,10 +13,10 @@ import type {
   AspectRatio, QualityProfile, LiteAssemblePayload, LiteAssembleAccepted,
   LiteRunCreatePayload, LiteRunRecord, LiteCueInput,
 } from '@/types/api';
-export type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
+import { API_BASE, USE_MOCK } from '@/lib/runtime-config';
+import type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:8000';
-const USE_MOCK = (process.env.NEXT_PUBLIC_USE_MOCK ?? 'true').toLowerCase() === 'true';
+export type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
 
 // token 注入点(由 auth-store 在登录 / 启动恢复时调用)
 let authToken: string | null = null;
@@ -137,6 +139,10 @@ export const canvasApi = {
 export const studioApi = {
   tools: () => authedReq<{ tools: { id: string; kind: string; summary: string }[]; total: number }>('/api/studio/tools'),
   lines: () => authedReq<{ lines: { id: string; product: string; summary: string; tools: string[]; render_runtime?: string }[]; total: number }>('/api/studio/lines'),
+  shotCards: (category?: string, search?: string) => {
+    const q = new URLSearchParams(); if (category) q.set('category', category); if (search) q.set('search', search);
+    return authedReq<{ cards: Array<Record<string, unknown>>; total: number; index: Record<string, string[]> }>(`/api/studio/motion/shot-cards${q.toString() ? `?${q}` : ''}`);
+  },
   invoke: (toolId: string, payload: Record<string, unknown>) =>
     authedReq<{ status: string; payload: Record<string, unknown>; reason: string }>(`/api/studio/tools/${toolId}`, {
       method: 'POST', body: JSON.stringify({ payload }),
@@ -149,6 +155,10 @@ export const studioApi = {
   listTimelines: () => authedReq<{ timelines: StudioTimeline[]; total: number }>('/api/studio/timelines'),
   patchTimeline: (id: string, body: Record<string, unknown>) =>
     authedReq<StudioTimeline>(`/api/studio/timelines/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  chatEditTimeline: (id: string, message: string, options?: { preview?: boolean; render?: boolean; output_path?: string }) =>
+    authedReq<Record<string, unknown>>(`/api/studio/timelines/${id}/chat`, {
+      method: 'POST', body: JSON.stringify({ message, ...(options ?? {}) }),
+    }),
   exportTimeline: (id: string, output_path?: string) =>
     authedReq<Record<string, unknown>>(`/api/studio/timelines/${id}/export`, {
       method: 'POST', body: JSON.stringify({ output_path: output_path ?? 'output/nle/timeline.mp4' }),
@@ -177,11 +187,22 @@ export const studioApi = {
       method: 'POST',
       body: JSON.stringify(body ?? {}),
     }),
+  nlePresets: () => authedReq<Record<string, unknown>>('/api/studio/nle/presets'),
+  nleProjects: () => authedReq<{ projects: Array<Record<string, unknown>>; total: number }>('/api/studio/nle/projects'),
+  createNleProject: (name: string, timeline_id?: string) =>
+    authedReq<Record<string, unknown>>('/api/studio/nle/projects', {
+      method: 'POST', body: JSON.stringify({ name, timeline_id }),
+    }),
+  attachNleTimeline: (projectId: string, timelineId: string) =>
+    authedReq<Record<string, unknown>>(`/api/studio/nle/projects/${projectId}/timelines/${timelineId}`, { method: 'POST' }),
+  nleRevisions: (projectId: string) =>
+    authedReq<Record<string, unknown>>(`/api/studio/nle/projects/${projectId}/revisions`),
 };
 
 export type StudioTimelineClip = {
   clip_id: string; track: string; start_s: number; duration_s: number;
-  label: string; action: string; source: string; text: string;
+  label: string; action: string; source: string; text: string; source_in_s?: number;
+  speed?: number; reverse?: boolean; transition?: string; effect?: string;
 };
 export type StudioTimeline = {
   timeline_id: string; title: string; duration_s: number; bgm: string; fps: number;
@@ -676,10 +697,7 @@ export const liteApi = {
 };
 
 // ── 恢复的工作室能力（与原有工作台保持同一客户端边界） ────────────────
-import type {
-  VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine,
-  ProviderPreset,
-} from '@/types/api';
+import type { ProviderPreset } from '@/types/api';
 
 export const providerApi = {
   listPresets: (category?: string) => authedReq<{ presets: ProviderPreset[]; total: number; levels: string[] }>(`/api/providers/presets${category ? `?category=${category}` : ''}`),
@@ -695,11 +713,48 @@ export const voiceStudioApi = {
   synthesizeTTS: (text: string, engine: string, voice?: string, language?: string, effects?: string) => authedReq<{ task_id: string; status: string; audio_url: string }>('/api/voice-studio/tts/synthesize', { method: 'POST', body: JSON.stringify({ text, engine, voice, language, effects }) }),
   compareTTS: (body: { engine_a: string; engine_b: string; text: string; language?: string; voice_a?: string; voice_b?: string }) => authedReq<{ engine_a: { task_id: string; status: string; audio_url: string; engine: string }; engine_b: { task_id: string; status: string; audio_url: string; engine: string }; text: string }>('/api/voice-studio/tts/compare', { method: 'POST', body: JSON.stringify(body) }),
   validateConfig: (voiceEffects?: string, voicePersonas?: Record<string, string>, ttsEngine?: string) => authedReq<{ valid: boolean; voice_effects: string | null; voice_personas_count: number; tts_engine: string | null }>('/api/voice-studio/config/validate', { method: 'POST', body: JSON.stringify({ voice_effects: voiceEffects, voice_personas: voicePersonas, tts_engine: ttsEngine }) }),
+  catalog: () => authedReq<Record<string, unknown>>('/api/voice-studio/catalog'),
+  profiles: () => authedReq<{ profiles: Array<Record<string, unknown>> }>('/api/voice-studio/profiles'),
+  batchPlan: (items: Array<Record<string, unknown>>) => authedReq<Record<string, unknown>>('/api/voice-studio/batch/plan', { method: 'POST', body: JSON.stringify({ items }) }),
+  diagnostics: () => authedReq<Record<string, unknown>>('/api/voice-studio/diagnostics'),
+};
+
+export const voicePlatformApi = {
+  models: () => authedReq<{ models: Array<Record<string, unknown>>; total: number }>('/api/voice-studio/platform/models'),
+  voices: () => authedReq<{ voices: Array<Record<string, unknown>>; total: number }>('/api/voice-studio/platform/voices'),
+  diagnostics: () => authedReq<Record<string, unknown>>('/api/voice-studio/platform/diagnostics'),
+  batch: (items: Array<Record<string, unknown>>, execute = false) => authedReq<Record<string, unknown>>('/api/voice-studio/platform/batch', { method: 'POST', body: JSON.stringify({ items, execute }) }),
+};
+
+export const streamEditApi = {
+  capabilities: () => authedReq<Record<string, unknown>>('/api/stream-edit/capabilities'),
+  budget: (width = 840, height = 480, fps = 24, seconds = 1) => authedReq<Record<string, unknown>>(`/api/stream-edit/budget?width=${width}&height=${height}&fps=${fps}&seconds=${seconds}`),
+  sessions: () => authedReq<{ sessions: Array<Record<string, unknown>>; total: number }>('/api/stream-edit/sessions'),
+  create: (body: { prompt: string; source_mode?: 'live' | 'upload'; width?: number; height?: number; fps?: number; model?: string; reference_images?: string[]; low_vram?: boolean }) => authedReq<Record<string, unknown>>('/api/stream-edit/sessions', { method: 'POST', body: JSON.stringify(body) }),
+  get: (id: string) => authedReq<Record<string, unknown>>(`/api/stream-edit/sessions/${id}`),
+};
+
+export const screenshotStudioApi = {
+  presets: () => authedReq<Record<string, unknown>>('/api/studio/screenshot/presets'),
+  projects: () => authedReq<{ projects: Array<Record<string, unknown>>; total: number }>('/api/studio/screenshot/projects'),
+  create: (body: { title: string; screenshot_path?: string; frame?: string; width?: number; height?: number; background?: string }) =>
+    authedReq<Record<string, unknown>>('/api/studio/screenshot/projects', { method: 'POST', body: JSON.stringify(body) }),
+  patch: (id: string, body: Record<string, unknown>) =>
+    authedReq<Record<string, unknown>>(`/api/studio/screenshot/projects/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  animationPlan: (id: string) => authedReq<Record<string, unknown>>(`/api/studio/screenshot/projects/${id}/animation-plan`, { method: 'POST' }),
+  export: (id: string, output_path?: string) => authedReq<Record<string, unknown>>(`/api/studio/screenshot/projects/${id}/export`, { method: 'POST', body: JSON.stringify({ output_path: output_path ?? 'output/screenshots/project.png' }) }),
+};
+
+export const shortdramaWriterApi = {
+  capabilities: () => authedReq<Record<string, unknown>>('/api/shortdrama/writer/capabilities'),
+  draft: (body: { title: string; premise: string; raw_text?: string; genre?: string; tone?: string; style?: string; target_audience?: string; duration_archetype?: string; mode?: string }) =>
+    authedReq<Record<string, unknown>>('/api/shortdrama/writer/draft', { method: 'POST', body: JSON.stringify(body) }),
+  review: (screenplay: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/shortdrama/writer/review', { method: 'POST', body: JSON.stringify({ screenplay }) }),
 };
 
 export const productionV2Api = {
   seedanceGenerate: (body: { prompt: string; image_url?: string; duration_s?: number; aspect_ratio?: string }) => authedReq<{ task_id: string; status: string }>('/api/production/v2/seedance/generate', { method: 'POST', body: JSON.stringify(body) }),
-  clipVideo: (body: { video_path: string; strategy?: string; max_clips?: number; aspect_ratio?: string }) => authedReq<{ task_id: string; status: string; clips?: Array<Record<string, unknown>> }>('/api/production/v2/clip-video', { method: 'POST', body: JSON.stringify(body) }),
+  clipVideo: (body: { video_path: string; strategy?: string; max_clips?: number; aspect_ratio?: string; subtitle_path?: string; transcript_segments?: Array<Record<string, unknown>> }) => authedReq<{ task_id: string; status: string; clips?: Array<Record<string, unknown>> }>('/api/production/v2/clip-video', { method: 'POST', body: JSON.stringify(body) }),
   listRecipes: () => authedReq<{ recipes: Array<{ name: string; description: string; steps: number }> }>('/api/production/v2/recipes'),
   getRecipe: (name: string) => authedReq<{ name: string; description: string; steps: Array<Record<string, unknown>> }>(`/api/production/v2/recipes/${name}`),
   executeRecipe: (name: string, body: { params: Record<string, unknown> }) => authedReq<{ task_id: string; status: string }>(`/api/production/v2/recipes/${name}/execute`, { method: 'POST', body: JSON.stringify(body) }),
@@ -741,6 +796,7 @@ export const publishStudioApi = {
 
   // ── MPT 集成 (MoneyPrinterTurbo) ─────────────────────────────────
   mptGenerate: (body: { topic: string; video_count: number; aspect: string; voice: string; bgm: boolean; subtitle: boolean; material_mode: string }) => authedReq<{ task_id: string; status: string; message: string }>('/api/mpt/generate', { method: 'POST', body: JSON.stringify(body) }),
+  mptCanonicalGenerate: (body: { topic: string; video_count: number; aspect: string; voice: string; bgm: boolean; subtitle: boolean; material_mode: string }) => authedReq<{ task_id: string; status: string; message: string }>('/api/mpt/production', { method: 'POST', body: JSON.stringify(body) }),
   mptStatus: (taskId: string) => authedReq<{ state: string; progress: number; videos: string[]; error: string | null }>('/api/mpt/status/' + taskId, { method: 'GET' }),
   mptMaterials: (body: { query: string; source: string; count: number; min_duration: number }) => authedReq<{ pexels: any; pixabay: any; archive_org: any }>('/api/mpt/materials/search', { method: 'POST', body: JSON.stringify(body) }),
   mptCrossPost: (body: { video_path: string; title: string; platforms: string[] }) => authedReq<{ success: boolean; request_id?: string; message?: string }>('/api/mpt/cross-post', { method: 'POST', body: JSON.stringify(body) }),

@@ -109,7 +109,8 @@ export function VoiceStudioConsole() {
   };
 
   const synthesizeVoice = async () => {
-    if (!selectedEngine || !synthesisText || !capabilities.voice_studio_tts?.available) return;
+    const selectedEngineInfo = ttsEngines.find((engine) => engine.id === selectedEngine);
+    if (!selectedEngineInfo?.available || !synthesisText) return;
     setLoading(true);
     setError(null);
     try {
@@ -136,6 +137,8 @@ export function VoiceStudioConsole() {
       </div>
     );
   }
+
+  const selectedEngineInfo = ttsEngines.find((engine) => engine.id === selectedEngine);
 
   return (
     <div>
@@ -401,7 +404,7 @@ export function VoiceStudioConsole() {
                 />
                 <button
                   onClick={synthesizeVoice}
-                  disabled={loading || !synthesisText || !capabilities.voice_studio_tts?.available}
+                  disabled={loading || !synthesisText || !selectedEngineInfo?.available}
                   style={{ marginTop: '8px', padding: '8px 16px', color: '#fff', background: '#2563eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                 >
                   {loading ? '正在创建任务…' : '创建语音任务'}

@@ -7,7 +7,9 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "doctor": "node scripts/doctor.cjs"
   },
   "dependencies": {
     "@helios/blocks": "file:./vendor/helios-blocks-3.0.0.tgz",

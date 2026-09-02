@@ -124,6 +124,8 @@ describe('ExplainerWorkbench Manim 视觉类型', () => {
     const user = userEvent.setup();
     await reachReview(user);
     expect(screen.getByRole('option', { name: 'Manim 代码即画面' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '白板手绘' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '动态信息图' })).toBeInTheDocument();
   });
 });
 

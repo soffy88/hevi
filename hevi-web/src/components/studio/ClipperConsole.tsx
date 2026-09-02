@@ -10,6 +10,10 @@ import { productionApi, productionV2Api } from '@/lib/api-client';
 import type { CapabilityDescriptor } from '@/types/api';
 
 interface ClipResult {
+  task_id?: string;
+  status?: string;
+  status_url?: string;
+  download_url?: string;
   num_clips?: number;
   total_duration_s?: number;
   error?: string;
@@ -131,6 +135,11 @@ export function ClipperConsole() {
 
             {result && (
               <div className="bg-white p-6 rounded-lg shadow">
+                {result.task_id && (
+                  <p className="mb-3 text-sm text-gray-600">
+                    任务已进入统一生产队列：{result.task_id}（状态：{result.status}）。完成后可在任务详情下载全部 MP4/SRT 产物。
+                  </p>
+                )}
                 <h3 className="font-semibold mb-3">
                   结果: {result.num_clips} 个片段
                   <span className="text-sm text-gray-500 ml-2">

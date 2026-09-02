@@ -26,6 +26,8 @@ const VISUAL_LABELS: Record<ExplainerCue['visual_type'], string> = {
   remotion_chart: 'Remotion 图表',
   remotion_code: 'Remotion 代码',
   manim_scene: 'Manim 代码即画面',
+  whiteboard: '白板手绘',
+  infographic: '动态信息图',
   voiceover: '旁白',
 };
 

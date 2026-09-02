@@ -18,6 +18,7 @@ export function TimelineEditor() {
   const [px, setPx] = useState(28);
   const [playhead, setPlayhead] = useState(0);
   const [bgmDraft, setBgmDraft] = useState('');
+  const [nleProjectId, setNleProjectId] = useState<string | null>(null);
 
   const width = useMemo(
     () => Math.max(720, Math.ceil((tl?.duration_s ?? 20) * px) + 96),
@@ -77,6 +78,17 @@ export function TimelineEditor() {
     }
   };
 
+  const saveAsNleProject = async () => {
+    if (!tl) return;
+    try {
+      const project = await studioApi.createNleProject(tl.title, tl.timeline_id);
+      setNleProjectId(String(project.project_id ?? ''));
+      flash('已保存到本地 NLE 工程，可继续创建多个时间线版本');
+    } catch (e) {
+      flash(e instanceof Error ? e.message : '工程保存失败');
+    }
+  };
+
   const seekFromEvent = (e: MouseEvent<HTMLDivElement>) => {
     const lane = e.currentTarget.getBoundingClientRect();
     const next = Math.max(0, (e.clientX - lane.left) / px);
@@ -121,6 +133,7 @@ export function TimelineEditor() {
           收缝
         </button>
         <button type="button" onClick={exportTl} disabled={!tl || busy}>重导出</button>
+        <button type="button" onClick={() => void saveAsNleProject()} disabled={!tl}>保存为本地工程</button>
         <label className="hevi-tl__zoom">缩放
           <input
             type="range"
@@ -205,6 +218,27 @@ export function TimelineEditor() {
               onChange={(e) => void patch({ clip_id: clip.clip_id, duration_s: Number(e.target.value) })}
             />
           </label>
+          <label>速度（0.25–4x）
+            <input
+              type="number"
+              min={0.25}
+              max={4}
+              step={0.05}
+              value={clip.speed ?? 1}
+              onChange={(e) => void patch({ clip_id: clip.clip_id, speed: Number(e.target.value), project_id: nleProjectId })}
+            />
+          </label>
+          <label><input type="checkbox" checked={clip.reverse ?? false} onChange={(e) => void patch({ clip_id: clip.clip_id, reverse: e.target.checked, project_id: nleProjectId })} /> 倒放</label>
+          <label>转场
+            <select value={clip.transition ?? 'cut'} onChange={(e) => void patch({ clip_id: clip.clip_id, transition: e.target.value, project_id: nleProjectId })}>
+              <option value="cut">硬切</option><option value="dissolve">叠化</option><option value="wipe">划像</option><option value="smash">闪切</option>
+            </select>
+          </label>
+          <label>效果
+            <select value={clip.effect ?? 'none'} onChange={(e) => void patch({ clip_id: clip.clip_id, effect: e.target.value, project_id: nleProjectId })}>
+              <option value="none">无</option><option value="warm">暖色</option><option value="cool">冷色</option><option value="mono">黑白</option><option value="vignette">暗角</option><option value="sharpen">锐化</option>
+            </select>
+          </label>
           <label>BGM
             <input
               value={bgmDraft}
@@ -215,6 +249,7 @@ export function TimelineEditor() {
               placeholder="warm / tense / 路径"
             />
           </label>
+          {nleProjectId && <small>本地工程：{nleProjectId}（每次改动会记录版本快照）</small>}
         </aside>
       )}
     </div>
