@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -351,3 +352,265 @@ async def test_lite_router_state_machine_error_and_sync_paths(
     await router._run_background_assemble(
         "主题", [LiteCue(index=0, narration="内容")], "t", 720, 1280, 24, None
     )
+
+
+@pytest.mark.asyncio
+async def test_lite_store_tts_and_capture_success_failure_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from types import ModuleType
+
+    from hevi.pipeline_lite.omodul import omodul_run_store as store
+
+    monkeypatch.setenv("HEVI_LITE_RUNS_DIR", str(tmp_path / "store"))
+    assert store.list_run_ids() == []
+    record = LiteRunRecord(run_id="persisted", topic="主题", draft=_draft())
+    assert store.save_run(record).is_file()
+    assert store.load_run("persisted") and store.list_run_ids(limit=1) == ["persisted"]
+    bad_path = store.run_json_path("bad")
+    bad_path.write_text("not-json", encoding="utf-8")
+    assert store.load_run("bad") is None
+    store.delete_run_dir("bad")
+    assert not bad_path.parent.exists()
+    store.delete_run_dir("persisted")
+    store.delete_run_dir("already-gone")
+
+    cue = LiteCue(index=0, narration="一段旁白")
+
+    async def cosyvoice(*, output_path: Path, **_kwargs: object) -> None:
+        output_path.write_bytes(b"wav")
+
+    monkeypatch.setattr(tts.shutil, "which", lambda _name: None)
+    single_without_ffmpeg = await tts.synthesize_master_audio(
+        [cue], tmp_path / "single-no-ffmpeg.wav", _cosyvoice=cosyvoice
+    )
+    assert single_without_ffmpeg.is_file()
+
+    monkeypatch.setattr(tts.shutil, "which", lambda _name: "ffmpeg")
+
+    def successful_concat(cmd: list[str], **_kwargs: object) -> SimpleNamespace:
+        Path(cmd[-1]).write_bytes(b"joined")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(tts.subprocess, "run", successful_concat)
+    joined = await tts.synthesize_master_audio(
+        [cue, cue.model_copy(update={"index": 1})],
+        tmp_path / "joined.wav",
+        _cosyvoice=cosyvoice,
+    )
+    assert joined.read_bytes() == b"joined"
+
+    monkeypatch.setattr(
+        tts.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=1, stdout="", stderr="bad"),
+    )
+    with pytest.raises(RuntimeError, match="音频拼接失败"):
+        await tts.synthesize_master_audio(
+            [cue, cue.model_copy(update={"index": 1})],
+            tmp_path / "concat-failed.wav",
+            _cosyvoice=cosyvoice,
+        )
+
+    monkeypatch.setattr(
+        tts.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=0, stdout="", stderr=""),
+    )
+    with pytest.raises(RuntimeError, match="未产出文件"):
+        await tts.synthesize_master_audio(
+            [cue, cue.model_copy(update={"index": 1})],
+            tmp_path / "concat-empty.wav",
+            _cosyvoice=cosyvoice,
+        )
+
+    async def unavailable(**_kwargs: object) -> None:
+        raise tts.AiEngineError("offline")
+
+    async def module_edge(**kwargs: object) -> None:
+        Path(str(kwargs["output_path"])).write_bytes(b"module-edge")
+
+    oprim_module = ModuleType("oprim")
+    oprim_module.edge_tts_synthesize = module_edge  # type: ignore[attr-defined]
+    monkeypatch.setitem(__import__("sys").modules, "oprim", oprim_module)
+    monkeypatch.setattr(tts.shutil, "which", lambda _name: None)
+    default_edge = await tts.synthesize_master_audio(
+        [cue], tmp_path / "default-edge.wav", _cosyvoice=unavailable
+    )
+    assert default_edge.read_bytes() == b"module-edge"
+
+    class CapturePage:
+        def __init__(self, *, audio: bool = False) -> None:
+            self.audio = audio
+            self.video: object = None
+            self.mouse = SimpleNamespace(wheel=self._wheel)
+            self.screenshots = 0
+
+        async def add_init_script(self, _script: str) -> None:
+            return None
+
+        async def goto(self, *_args: object, **_kwargs: object) -> None:
+            return None
+
+        async def evaluate(self, expression: str) -> object:
+            if "hevi-master" in expression:
+                return self.audio
+            if "scrollHeight" in expression:
+                return 800
+            if "animationDuration" in expression:
+                return 0
+            if "__heviAudioEnded === true" in expression:
+                return self.audio
+            return None
+
+        async def wait_for_timeout(self, _ms: int) -> None:
+            await asyncio.sleep(0.001)
+
+        async def _wheel(self, _x: int, _y: int) -> None:
+            return None
+
+        async def screenshot(self, *, path: str) -> None:
+            self.screenshots += 1
+            Path(path).write_bytes(b"png")
+
+    class CaptureContext:
+        def __init__(self, page: CapturePage) -> None:
+            self.page = page
+            self.closed = False
+
+        async def new_page(self, **_kwargs: object) -> CapturePage:
+            return self.page
+
+        async def close(self) -> None:
+            self.closed = True
+
+    class CaptureBrowser:
+        def __init__(self, page: CapturePage) -> None:
+            self.page = page
+            self.closed = False
+            self.context = CaptureContext(page)
+
+        async def new_context(self, **_kwargs: object) -> CaptureContext:
+            return self.context
+
+        async def new_page(self, **_kwargs: object) -> CapturePage:
+            return self.page
+
+        async def close(self) -> None:
+            self.closed = True
+
+    class CaptureAPI:
+        def __init__(self, page: CapturePage) -> None:
+            self.browser = CaptureBrowser(page)
+            self.chromium = SimpleNamespace(launch=self._launch)
+
+        def __call__(self) -> CaptureAPI:
+            return self
+
+        async def _launch(self, **_kwargs: object) -> CaptureBrowser:
+            return self.browser
+
+        async def __aenter__(self) -> CaptureAPI:
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+    raw = tmp_path / "raw.webm"
+    raw.write_bytes(b"webm")
+    page = CapturePage()
+    page.video = SimpleNamespace(path=AsyncMock(return_value=str(raw)))
+    captured, effective = await playwright._record_via_screencast(
+        tmp_path / "page.html",
+        tmp_path / "native.mp4",
+        CaptureAPI(page),
+        720,
+        1280,
+        24,
+        0.1,
+        False,
+        freeze_until_fonts=False,
+        probe_animation=False,
+    )
+    assert captured == raw and effective == 0.1
+    with pytest.raises(playwright.EmptyVideoError, match="未产出"):
+        await playwright._record_via_screencast(
+            tmp_path / "page.html",
+            tmp_path / "native-empty.mp4",
+            CaptureAPI(CapturePage()),
+            720,
+            1280,
+            24,
+            0.1,
+            False,
+            freeze_until_fonts=False,
+            probe_animation=False,
+        )
+
+    monkeypatch.setattr(playwright.shutil, "which", lambda _name: "ffmpeg")
+    monkeypatch.setattr(playwright, "_safety_seconds", lambda _duration: 0.01)
+
+    def fake_frame_encode(_frames: Path, output: Path, *, fps: int) -> Path:
+        encoded = output.with_suffix(".mp4")
+        encoded.write_bytes(f"fps={fps}".encode())
+        return encoded
+
+    monkeypatch.setattr(playwright, "_frames_to_mp4", fake_frame_encode)
+    frame_output = await playwright._record_via_frames(
+        tmp_path / "page.html",
+        tmp_path / "frames.mp4",
+        CaptureAPI(CapturePage()),
+        720,
+        1280,
+        24,
+        0.01,
+        False,
+        freeze_until_fonts=False,
+        probe_animation=False,
+    )
+    assert frame_output.is_file() and frame_output.stat().st_size > 0
+    await playwright._wait_audio_ended(CapturePage(), 0.0, 1.0)
+
+    monkeypatch.delenv("HEVI_SCREENCAST_NATIVE", raising=False)
+
+    async def fake_frames(_html: object, output: Path, *_args: object, **_kwargs: object) -> Path:
+        output.write_bytes(b"frame-output")
+        return output
+
+    monkeypatch.setattr(playwright, "_record_via_frames", fake_frames)
+    screenshot_output = await playwright.record_html_to_video(
+        tmp_path / "page.html", tmp_path / "screenshot.mp4", duration_s=0.1
+    )
+    assert screenshot_output.read_bytes() == b"frame-output"
+
+    monkeypatch.setenv("HEVI_SCREENCAST_NATIVE", "1")
+
+    async def fake_screen(*_args: object, **_kwargs: object) -> tuple[Path, float]:
+        return raw, 0.1
+
+    def fake_convert(_webm: Path, *, fps: int) -> Path:
+        converted = tmp_path / "converted.mp4"
+        converted.write_bytes(f"fps={fps}".encode())
+        return converted
+
+    real_probe_duration = playwright._probe_duration
+    monkeypatch.setattr(playwright, "_record_via_screencast", fake_screen)
+    monkeypatch.setattr(playwright, "convert_webm_to_mp4", fake_convert)
+    monkeypatch.setattr(playwright, "_probe_duration", lambda _path: 1.0)
+    native_output = await playwright.record_html_to_video(
+        tmp_path / "page.html", tmp_path / "native-output.mp4", duration_s=0.1
+    )
+    assert native_output.is_file()
+
+    async def failed_screen(*_args: object, **_kwargs: object) -> tuple[Path, float]:
+        raise playwright.EmptyVideoError("short")
+
+    monkeypatch.setattr(playwright, "_record_via_screencast", failed_screen)
+    fallback_output = await playwright.record_html_to_video(
+        tmp_path / "page.html", tmp_path / "native-fallback.mp4", duration_s=0.1
+    )
+    assert fallback_output.read_bytes() == b"frame-output"
+
+    monkeypatch.setattr(playwright, "_probe_duration", real_probe_duration)
+    monkeypatch.setattr(playwright.shutil, "which", lambda _name: None)
+    assert playwright._probe_duration(tmp_path / "missing.mp4") == 0.0
