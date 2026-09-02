@@ -15,6 +15,14 @@ import pytest
 from hevi.resilience.balance_prober import BalanceProber
 
 
+async def _wait_for_calls(mock_refresh: AsyncMock, minimum: int) -> None:
+    for _ in range(100):
+        if mock_refresh.call_count >= minimum:
+            return
+        await asyncio.sleep(0.01)
+    assert mock_refresh.call_count >= minimum
+
+
 @pytest.mark.asyncio
 async def test_prober_calls_refresh_fal_balance_periodically():
     prober = BalanceProber(poll_interval=0.01)
@@ -23,7 +31,7 @@ async def test_prober_calls_refresh_fal_balance_periodically():
     ) as mock_refresh:
         mock_refresh.return_value = {"balance_usd": 10.0, "ok": True, "source": "api"}
         task = asyncio.create_task(prober.run())
-        await asyncio.sleep(0.05)
+        await _wait_for_calls(mock_refresh, 2)
         prober.stop()
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
@@ -41,7 +49,7 @@ async def test_prober_survives_probe_failure():
         side_effect=RuntimeError("probe exploded"),
     ) as mock_refresh:
         task = asyncio.create_task(prober.run())
-        await asyncio.sleep(0.05)
+        await _wait_for_calls(mock_refresh, 2)
         prober.stop()
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
