@@ -1,0 +1,15 @@
+# These are reviewed source identifiers, not credentials.
+# Keep the allowlist exact so the CI secret scan still inspects all other code.
+[allowlist]
+description = "Reviewed non-secret identifiers reported by generic-api-key"
+regexTarget = "line"
+regexes = [
+  '''const KEY = 'hevi\.director\.prefill\.v1';''',
+  '''from obase\.auth import argon2_hash, argon2_verify''',
+]
+
+# Vendored xxHash implementation uses the ordinary identifier data_key_* in
+# SIMD arithmetic; it contains no credential material and is not HEVI code.
+paths = [
+  '''services/gen_engine/vibeasr-src/3rdparty/llama\.cpp/.*/xxhash\.h''',
+]
