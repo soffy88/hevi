@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 from hevi.pipeline_lite.oprim import oprim_asr as asr
+from hevi.pipeline_lite.oprim import oprim_broll as broll
 from hevi.pipeline_lite.oprim import oprim_ffmpeg as ffmpeg
 from hevi.pipeline_lite.oprim import oprim_visual_scenes as scenes
 from hevi.pipeline_lite.schemas import LiteCue
@@ -263,3 +264,82 @@ def test_ffmpeg_mux_and_audio_track_boundaries(
     )
     with pytest.raises(ffmpeg.MuxError, match="缺少音频轨"):
         ffmpeg.assert_audio_track(video)
+
+
+@pytest.mark.asyncio
+async def test_broll_fail_closed_response_and_client_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Client:
+        def __init__(self, response: httpx.Response | BaseException) -> None:
+            self.response = response
+
+        async def get(self, *_args: object, **_kwargs: object) -> httpx.Response:
+            if isinstance(self.response, BaseException):
+                raise self.response
+            return self.response
+
+    monkeypatch.setenv("PEXELS_API_KEY", "env-key")
+    assert await broll.fetch_broll_video_url("science", client=Client(httpx.Response(401))) is None
+    assert await broll.fetch_broll_video_url("science", client=Client(httpx.Response(500))) is None
+    assert (
+        await broll.fetch_broll_video_url("science", client=Client(httpx.ConnectError("offline")))
+        is None
+    )
+    assert (
+        await broll.fetch_broll_video_url(
+            "science", client=Client(httpx.Response(200, content=b"not-json"))
+        )
+        is None
+    )
+
+    payload = {
+        "videos": [
+            None,
+            {"id": None, "url": "https://source/skip"},
+            {"id": 1, "url": "https://source/skip", "video_files": []},
+            {
+                "id": 2,
+                "url": "https://source/hls",
+                "video_files": [{"file_type": "application/x-mpegURL", "link": "hls"}],
+            },
+            {
+                "id": 3,
+                "url": "https://source/ok",
+                "video_files": [{"file_type": "video/mp4; codecs=avc1", "link": "mp4"}],
+            },
+        ]
+    }
+    items = await broll.fetch_broll_video_url(
+        "science", count=0, orientation=None, client=Client(httpx.Response(200, json=payload))
+    )
+    assert items and items[0]["external_id"] == "3"
+    assert items[0]["title"] == "science · Pexels"
+
+    class ManagedClient(Client):
+        async def __aenter__(self) -> ManagedClient:
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+    monkeypatch.setattr(
+        broll.httpx,
+        "AsyncClient",
+        lambda **_kwargs: ManagedClient(
+            httpx.Response(
+                200,
+                json={
+                    "videos": [
+                        {
+                            "id": 4,
+                            "url": "https://source/managed",
+                            "video_files": [{"file_type": "video/mp4", "link": "managed.mp4"}],
+                        }
+                    ]
+                },
+            )
+        ),
+    )
+    managed = await broll.fetch_broll_video_url("managed", api_key="explicit", client=None)
+    assert managed and managed[0]["preview_url"] == "managed.mp4"
