@@ -2665,3 +2665,288 @@ async def test_agentic_montage_runtime_covers_resume_gates_and_local_artifact_ch
     assert prepared["source_media_review"]["content"] == "review" and prepared[
         "reference_frames"
     ] == ["frame"]
+
+
+@pytest.mark.asyncio
+async def test_task_service_local_boundaries_cover_subjects_resume_and_shot_state(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Cover task-service helper paths without claiming a remote provider run."""
+    from unittest.mock import AsyncMock, MagicMock
+    from uuid import uuid4
+
+    from hevi.production.contracts import ProductionRequest
+    from hevi.tasks.task_service import TaskService
+
+    repo = MagicMock()
+    repo.pool = MagicMock()
+    repo.create_shot_state = AsyncMock()
+    repo.delete_shots = AsyncMock()
+    repo.update_task = AsyncMock()
+    repo.get_tasks_ahead = AsyncMock(return_value=[])
+    service = TaskService(repo)
+    task_id = uuid4()
+    task = {
+        "id": str(task_id),
+        "topic": "history",
+        "duration_archetype": "short",
+        "video_provider": "wan_local",
+        "audio_provider": "edge_tts",
+        "config_json": {"subject_id": "hero", "estimated_usd": 1.0},
+    }
+    assert service._budget_repository() is None
+    await service._settle_budget_for_task(task, actual_usd=1.0)
+    await service._settle_budget_for_task(task, actual_usd=0.0, release=True)
+
+    class SubjectService:
+        async def get_subject(self, subject_id: str) -> dict[str, object]:
+            return {"reference_images": [f"{subject_id}.png"], "version": 4}
+
+    monkeypatch.setattr("hevi.subjects.repository.SubjectRepository", lambda _pool: object())
+    monkeypatch.setattr(
+        "hevi.subjects.subject_service.SubjectService", lambda _repo: SubjectService()
+    )
+    assert await service._resolve_character_reference(task) == "hero.png"
+    assert await service._resolve_subject_version(task) == 4
+    no_subject = {"config_json": {}}
+    assert await service._resolve_character_reference(no_subject) is None
+    assert await service._resolve_subject_version(no_subject) is None
+
+    async def qwen_edit(**kwargs: object) -> None:
+        output = Path(str(kwargs["output_path"]))
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(b"roster")
+
+    monkeypatch.setattr("hevi.image.qwen_image_service.qwen_image_edit", qwen_edit)
+    task["config_json"] = {"character_subject_ids": ["hero", "villain"]}
+    assert await service._resolve_character_reference(task, task_id=task_id)
+    assert await service._compose_character_roster(["a", "b"], task_id=task_id)
+
+    shots = [
+        {"index": 0, "path": str(tmp_path / "shot.mp4"), "passed": True, "provider": "local"},
+        {"index": 1, "path": None, "passed": False},
+    ]
+    await service._persist_shots(task_id, shots)
+    assert repo.create_shot_state.await_count == 2
+    repo.create_shot_state.side_effect = RuntimeError("shot db unavailable")
+    await service._persist_shots(task_id, shots)
+
+    repo.get_task = AsyncMock(return_value=None)
+    with pytest.raises(ValueError, match="not found"):
+        await service.resume_task(task_id)
+    repo.get_task.return_value = {**task, "status": "completed"}
+    completed_task = await service.resume_task(task_id)
+    assert completed_task["status"] == "completed"
+    repo.get_task.return_value = {**task, "status": "paused"}
+    resumed = {"status": "resumed"}
+    monkeypatch.setattr(service, "run_task", AsyncMock(return_value=resumed))
+    assert await service.resume_task(task_id) == resumed
+    monkeypatch.setattr(service, "resume_task", AsyncMock(return_value={"status": "local"}))
+    assert await service.enqueue_resume(task_id) == {"status": "local"}
+    with pytest.raises(ValueError, match="shot_ids"):
+        await service.enqueue_rework(task_id, shot_ids=[])
+    monkeypatch.setattr(
+        service, "regenerate_task_shots", AsyncMock(return_value={"status": "retake"})
+    )
+    assert await service.enqueue_rework(task_id, shot_ids=[2], hints={2: "fix"}) == {
+        "status": "retake"
+    }
+
+    repo.get_task.return_value = {**task, "status": "pending"}
+    monkeypatch.setattr("hevi.tasks.task_service.enqueue", AsyncMock())
+    assert (await service.submit_task(task_id))["video_provider"] == "wan_local"
+    repo.get_task.return_value = {**task, "video_provider": "cloud_provider", "status": "pending"}
+    assert (await service.submit_task(task_id))["video_provider"] == "cloud_provider"
+    with pytest.raises(ValueError, match="not found"):
+        repo.get_task.return_value = None
+        await service.submit_task(task_id)
+
+    captured: dict[str, object] = {}
+
+    async def create_task(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {"status": "pending"}
+
+    monkeypatch.setattr(service, "create_task", create_task)
+    created = await service.create_production(
+        ProductionRequest(source="explainer", topic="topic", subject_ids=["a", "b"]),
+        user_id="user",
+        idempotency_key="key",
+    )
+    assert created["status"] == "pending" and captured["num_characters"] == 2
+
+
+@pytest.mark.asyncio
+async def test_media_workflow_helpers_and_adapters_preserve_real_artifact_gates(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Exercise localization/shorts transaction branches with local artifacts."""
+    import sys
+    from dataclasses import dataclass
+    from types import ModuleType
+    from uuid import uuid4
+
+    from hevi.ingest.video_transcript import TranscriptSegment
+    from hevi.production import media_workflows as media
+    from hevi.production.artifacts import ArtifactManifest
+
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"source-video")
+    segments = [TranscriptSegment(start=0.0, end=1.0, text="第一句")]
+    translated = [TranscriptSegment(start=0.0, end=1.0, text="First line")]
+
+    @dataclass
+    class Row:
+        value: int
+
+    class Model:
+        def model_dump(self) -> dict[str, int]:
+            return {"value": 1}
+
+    assert media._mapping(Row(1))["value"] == 1
+    assert media._mapping(Model())["value"] == 1
+    assert media._mapping(SimpleNamespace(value=1)) == {}
+    assert media._mapping(object()) == {}
+    assert len(media._segments([segments[0], {"start_s": 1, "end_s": 2, "text": "two"}, None])) == 2
+    assert media._segments([{"start": "bad", "end": 2, "text": "skip"}]) == []
+    fingerprint = media.compute_fingerprint_for(
+        {"token": "secret", "target_language": "zh"},
+        {"source_video_path": str(source), "source_segments": segments},
+    )
+    assert len(fingerprint) == 24 and media._clock(1.234) == "00:00:01,234"
+    srt = media._write_srt(tmp_path / "subtitles.srt", segments)
+    assert "第一句" in srt.read_text()
+    with pytest.raises(ValueError, match="empty subtitle"):
+        media._write_srt(tmp_path / "empty.srt", [])
+    assert media._coerce_translation(["译文"], segments)[0].text == "译文"
+    assert (
+        media._coerce_translation([{"translated_text": "translated"}], segments)[0].text
+        == "translated"
+    )
+    with pytest.raises(ValueError, match="one translation"):
+        media._coerce_translation("bad", segments)
+    with pytest.raises(ValueError, match="empty line"):
+        media._coerce_translation([""], segments)
+    with pytest.raises(ValueError, match="expected"):
+        media._coerce_translation([], segments)
+
+    callback_events: list[dict[str, object]] = []
+
+    async def callback(event: dict[str, object]) -> None:
+        callback_events.append(event)
+
+    await media._notify(callback, "stage", 12.0, value=1)
+    await media._notify(None, "ignored", 0)
+    assert callback_events == [{"stage": "stage", "progress_pct": 12.0, "value": 1}]
+
+    async def injected(*_args: object, **_kwargs: object) -> list[str]:
+        return ["async translation"]
+
+    result, provider = await media._translate(
+        segments, config={"target_language": "en"}, input_data={"translator": injected}
+    )
+    assert provider == "injected" and result[0].text == "async translation"
+
+    def fallback_translator(_texts: list[str], target: str) -> list[str]:
+        assert target == "en"
+        return ["fallback"]
+
+    result, provider = await media._translate(
+        segments, config={"target_language": "en"}, input_data={"translator": fallback_translator}
+    )
+    assert provider == "injected" and result[0].text == "fallback"
+
+    class FakeLLM:
+        def __call__(self, **_kwargs: object) -> dict[str, str]:
+            return {"content": '{"0": "llm translation"}'}
+
+    class Registry:
+        def llm(self, _name: str) -> FakeLLM:
+            return FakeLLM()
+
+    monkeypatch.setattr("obase.provider_registry.ProviderRegistry.get", lambda: Registry())
+    llm_result, llm_provider = await media._translate(
+        segments,
+        config={"target_language": "en", "translation_provider": "llm_translate"},
+        input_data={},
+    )
+    assert llm_provider == "hevi_llm" and llm_result[0].text == "llm translation"
+    with pytest.raises(ValueError, match="unsupported"):
+        await media._translate(segments, config={"translation_provider": "unknown"}, input_data={})
+
+    async def burn(_video: Path, _subs: list[Path], output: Path, **_kwargs: object) -> Path:
+        output.write_bytes(b"burned-video")
+        return output
+
+    real_burn = media._burn_subtitles
+    monkeypatch.setattr(media, "_burn_subtitles", burn)
+    localized = await media.video_localization_workflow(
+        {"target_language": "en", "bilingual": True},
+        {
+            "source_video_path": source,
+            "source_segments": segments,
+            "translated_segments": translated,
+        },
+        tmp_path / "localized",
+        on_step=callback,
+    )
+    assert localized["status"] == "succeeded"
+    assert Path(localized["findings"]["output_video_path"]).is_file()
+    assert Path(localized["report_path"]).is_file()
+    missing = await media.video_localization_workflow(
+        {}, {"source_video_path": tmp_path / "missing.mp4"}, tmp_path / "missing"
+    )
+    assert missing["status"] == "failed" and missing["artifacts"] == []
+
+    monkeypatch.setattr(media, "_burn_subtitles", real_burn)
+    media_module = ModuleType("oprim")
+
+    async def subtitle_burn(**kwargs: object) -> None:
+        Path(str(kwargs["output_path"])).write_bytes(b"oprim-burn")
+
+    media_module.subtitle_burn = subtitle_burn  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "oprim", media_module)
+    burned = await media._burn_subtitles(source, [srt], tmp_path / "oprim.mp4")
+    assert burned.read_bytes() == b"oprim-burn"
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(b"clip")
+    manifest = ArtifactManifest.for_video(clip).model_dump(mode="json")
+    monkeypatch.setattr(
+        media,
+        "render_clip_batch",
+        lambda *_args, **_kwargs: {
+            "status": "completed",
+            "clips": [{"path": str(clip)}],
+            "result_video_path": str(clip),
+            "config_json": {"artifact_manifest": manifest},
+        },
+    )
+    shorts = await media.shorts_generation_workflow(
+        {"target_clips": 1}, {"source_video_path": source}, tmp_path / "shorts"
+    )
+    assert shorts["status"] == "succeeded" and shorts["findings"]["total_shots"] == 1
+    monkeypatch.setattr(
+        media,
+        "render_clip_batch",
+        lambda *_args, **_kwargs: {"status": "failed", "error": "renderer"},
+    )
+    failed_shorts = await media.shorts_generation_workflow(
+        {}, {"source_video_path": source}, tmp_path / "shorts-failed"
+    )
+    assert failed_shorts["status"] == "failed"
+
+    monkeypatch.setattr(
+        media,
+        "shorts_generation_workflow",
+        lambda *_args, **_kwargs: asyncio.sleep(0, result=shorts),
+    )
+    clip_task = await media.execute_clip_video_task(
+        {
+            "id": uuid4(),
+            "topic": str(source),
+            "config_json": {"clip_request": {"video_path": str(source)}},
+        },
+        None,
+    )
+    assert clip_task["status"] == "completed"
