@@ -1,0 +1,18 @@
+{
+  "providers": [
+    {
+      "id": "pexels",
+      "name": "Pexels stock media",
+      "kind": "media",
+      "configured": true,
+      "configuration_source": "public_api",
+      "endpoint": "https://api.pexels.com",
+      "missing": [],
+      "setup": "设置 PEXELS_API_KEY；HEVI 会检索后下载到本地缓存并保留许可证来源。",
+      "reachable": true,
+      "ready": true,
+      "http_status": 200,
+      "error": null
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "providers": [
+    {
+      "provider_name": "Pexels stock media",
+      "configured": true,
+      "reachable": true,
+      "authenticated": true,
+      "model_ready": true,
+      "submit_ready": true,
+      "artifact_ready": true,
+      "provider_job_id": "pexels:1819660",
+      "status": "READY",
+      "reason": "real probe, model, submit/ACK, and artifact evidence present"
+    }
+  ]
+}

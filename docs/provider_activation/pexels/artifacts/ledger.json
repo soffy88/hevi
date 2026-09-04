@@ -1,0 +1,46 @@
+[
+  {
+    "id": "1d627b92f88e",
+    "media_type": "image",
+    "intent": "northern lights aurora over snow mountain",
+    "path": "data/material_cache/034e6d536b23b70b600c.jpg",
+    "source": "stock",
+    "provider": "image:stock",
+    "metadata": {
+      "source_record": {
+        "provider": "pexels",
+        "asset_id": 1819660,
+        "source_page": "https://www.pexels.com/photo/photo-of-snow-covered-mountain-under-night-sky-1819660/",
+        "photographer": "Tobias Bjørkli",
+        "downloaded_at": "2026-09-04T01:47:14+00:00",
+        "sha256": "a891f3cea226565bb7bb0b9f1ac2211f5ccda56729eeaf1b18d4f08bd098414b",
+        "mime": "image/jpeg",
+        "size": 165414,
+        "local_artifact_id": "a891f3cea226565bb7bb0b9f1ac2211f5ccda56729eeaf1b18d4f08bd098414b",
+        "local_path": "/data/soffy/projects/hevi/data/material_cache/034e6d536b23b70b600c.jpg"
+      }
+    }
+  },
+  {
+    "id": "85c638d4027a",
+    "media_type": "image",
+    "intent": "northern lights aurora over snow mountain",
+    "path": "data/material_cache/034e6d536b23b70b600c.jpg",
+    "source": "stock",
+    "provider": "image:stock",
+    "metadata": {
+      "source_record": {
+        "provider": "pexels",
+        "asset_id": 1819660,
+        "source_page": "https://www.pexels.com/photo/photo-of-snow-covered-mountain-under-night-sky-1819660/",
+        "photographer": "Tobias Bjørkli",
+        "downloaded_at": "2026-09-04T01:50:01+00:00",
+        "sha256": "a891f3cea226565bb7bb0b9f1ac2211f5ccda56729eeaf1b18d4f08bd098414b",
+        "mime": "image/jpeg",
+        "size": 165414,
+        "local_artifact_id": "a891f3cea226565bb7bb0b9f1ac2211f5ccda56729eeaf1b18d4f08bd098414b",
+        "local_path": "/data/soffy/projects/hevi/data/material_cache/034e6d536b23b70b600c.jpg"
+      }
+    }
+  }
+]
