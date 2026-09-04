@@ -31,12 +31,11 @@
 |---|---|---|---|---|
 | 1 | Wan / local | ✅ VERIFIED（先前基线） | — | — |
 | 2 | Pexels | ✅ **VERIFIED** | — | 9/9 PASS；详见 `pexels/REPORT.md` |
-| 3 | LongCat | 🔴 Stage 1 BLOCKED | Stage 1 credential | `LONGCAT_BASE_URL`、`LONGCAT_API_KEY` 均空 |
-| 4 | JoyAI | 🔴 Stage 1 BLOCKED | Stage 1 credential | `JOYAI_BASE_URL` / `JOYAI_STREAM_WS_URL` / `JOYAI_API_KEY` 均空 |
-| 5 | Voicebox | 🟡 Stage 1 PARTIAL | Stage 2 probe | `VOICEBOX_BASE_URL` 已设但 gen-engine 未启；缺真实 ACK |
-| 6 | Duix | 🔴 Stage 1 BLOCKED | Stage 1 credential | `DUIX_SERVICE_URL` / `DUIX_LIVESTREAM_PATH` 均空 |
-| 7 | MPT live | 🟡 Stage 1 PARTIAL | Stage 2 probe | `MPT_API_BASE` 已设但 `MPT_API_KEY` 空；未拿到 /ping ACK |
-| 8 | HELIOS deploy | 🔴 Stage 1 BLOCKED | Stage 1 credential | `.env` 与 `.env.example` 都没有任何 HELIOS_* 变量名 |
+| 3 | JoyAI | 🔴 Stage 1 BLOCKED | Stage 1 credential | `JOYAI_BASE_URL` / `JOYAI_STREAM_WS_URL` / `JOYAI_API_KEY` 均空 |
+| 4 | Voicebox | 🟡 Stage 1 PARTIAL | Stage 2 probe | `VOICEBOX_BASE_URL` 已设但 gen-engine 未启；缺真实 ACK |
+| 5 | Duix | 🔴 Stage 1 BLOCKED | Stage 1 credential | `DUIX_SERVICE_URL` / `DUIX_LIVESTREAM_PATH` 均空 (仅 livestream 路径)；杜比离线口型合成为内部化路径 |
+| 6 | MPT live | 🟡 Stage 1 PARTIAL | Stage 2 probe | `MPT_API_BASE` 已设但 `MPT_API_KEY` 空；未拿到 /ping ACK |
+| 7 | HELIOS deploy | 🔴 Stage 1 BLOCKED | Stage 1 credential | `.env` 与 `.env.example` 都没有任何 HELIOS_* 变量名 |
 
 > 阶段编号约定：1=credential/config 2=readiness probe 3=real submit 4=ACK/job_id
 > 5=real artifact 6=local freeze 7=provenance 8=evaluation 9=billing/usage
@@ -48,6 +47,6 @@ HEVI V1.0 CORE            = VERIFIED
 HEVI FRONTEND             = READY
 HEVI REAL USER UX         = READY
 HEVI CODE BLOCKERS        = 0
-EXTERNAL PROVIDER TRACK   = PENDING  (2/8 verified: Wan/local, Pexels)
+EXTERNAL PROVIDER TRACK   = PENDING  (1/6 verified: Pexels；Wan/local 列为内化基线不计)
 FULL ALL-PROVIDER SYSTEM  = NOT YET VERIFIED
 ```
