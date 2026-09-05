@@ -1,0 +1,22 @@
+# Services Duix container - fixes the broken upstream guiji2025/duix.avatar:latest image
+# The upstream image has two broken .so modules:
+# 1. y_utils/logger.cpython-38-x86_64-linux-gnu.so (exports create_logger but not logger)
+# 2. service/trans_dh_service.cpython-38-x86_64-linux-gnu.so (has TransDhTask but instance() broken)
+# This fix replaces both broken .so files with working Python shim modules.
+
+FROM guiji2025/duix.avatar:latest
+
+# Remove the broken .so files
+RUN rm -f /code/y_utils/logger.cpython-38-x86_64-linux-gnu.so && \
+    rm -f /code/service/trans_dh_service.cpython-38-x86_64-linux-gnu.so && \
+    rm -rf /code/y_utils/__pycache__/* /code/service/__pycache__/* 2>/dev/null || true
+
+# Copy the shim modules
+COPY y_utils_shim.py /code/y_utils/logger.py
+COPY service_shim.py /code/service/trans_dh_service.py
+
+# Set the working directory
+WORKDIR /code
+
+# Run the Flask app
+CMD ["/bin/bash", "-c", "exec /usr/bin/python3 app.py"]
