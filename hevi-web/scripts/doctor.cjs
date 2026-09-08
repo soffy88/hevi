@@ -19,6 +19,35 @@ function isTruthy(v) {
   return v.toLowerCase() === 'true';
 }
 
+const PRODUCTION_API_BASE = 'https://api-prod.sxueji.com';
+
+function resolveEnvironment(configured, nodeEnvironment) {
+  const value = (configured || '').trim().toLowerCase();
+  if (['development', 'demo', 'staging', 'production'].includes(value)) return value;
+  if (value) throw new Error(`Unsupported NEXT_PUBLIC_DEPLOY_ENV: ${value}`);
+  return nodeEnvironment === 'production' ? 'production' : 'development';
+}
+
+function resolveApiBase(environment, configured) {
+  const explicit = (configured || '').trim().replace(/\/$/, '');
+  const base = explicit || (environment === 'production' ? PRODUCTION_API_BASE :
+    environment === 'development' ? 'http://127.0.0.1:8000' : '');
+  if (!base) throw new Error(`NEXT_PUBLIC_API_BASE is required for ${environment}`);
+  let parsed;
+  try { parsed = new URL(base); } catch { throw new Error('Invalid NEXT_PUBLIC_API_BASE'); }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new Error('Unsafe NEXT_PUBLIC_API_BASE');
+  }
+  const hostParts = parsed.hostname.split('.');
+  if (environment !== 'development' && hostParts[0] === 'api' && hostParts.length >= 3) {
+    throw new Error('Shared API origin is forbidden; use an environment-specific route');
+  }
+  if (environment === 'production' && base !== PRODUCTION_API_BASE) {
+    throw new Error(`Production API must be ${PRODUCTION_API_BASE}`);
+  }
+  return base;
+}
+
 function makeRequest(urlString, method = 'GET', extraHeaders = {}) {
   return new Promise((resolve) => {
     let url;
@@ -71,8 +100,13 @@ const NEXT_PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const useMock = isTruthy(NEXT_PUBLIC_USE_MOCK);
-const apiBase = NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000';
-const environment = NODE_ENV === 'production' ? 'production' : 'development';
+const environment = resolveEnvironment(process.env.NEXT_PUBLIC_DEPLOY_ENV, NODE_ENV);
+let apiBase = '';
+try {
+  apiBase = resolveApiBase(environment, NEXT_PUBLIC_API_BASE);
+} catch (err) {
+  addResult('API base', false, err.message);
+}
 
 if (environment === 'production' && useMock) {
   addResult('Frontend env', false, 'NEXT_PUBLIC_USE_MOCK=true in production - this is unusual and may indicate misconfiguration');
@@ -81,15 +115,21 @@ if (environment === 'production' && useMock) {
 }
 
 // ── 3. API base validation ───────────────────────────
-try {
-  new URL(apiBase);
-  addResult('API base', true, `Valid URL: ${apiBase}`);
-} catch {
-  addResult('API base', false, `Invalid URL: ${apiBase}`);
-}
+if (apiBase) addResult('API base', true, `Valid URL: ${apiBase}`);
 
 // ── 4. Backend health ────────────────────────────────
 (async () => {
+  if (!apiBase) {
+    console.log('HEVI Frontend Doctor');
+    console.log('====================');
+    console.log('');
+    results.forEach(r => console.log(`${r.passed ? 'PASS' : 'FAIL'} — ${r.name}\n      ${r.detail}`));
+    console.log('');
+    console.log('MODE=' + (useMock ? 'MOCK' : 'REAL'));
+    console.log('READY=NO');
+    console.log('BLOCKER=' + results.find(r => !r.passed).detail);
+    process.exit(1);
+  }
   const start = Date.now();
   const healthResp = await makeRequest(`${apiBase}/api/health`, 'GET', { 'Accept': 'application/json' });
   const latency = Date.now() - start;

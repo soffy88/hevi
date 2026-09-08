@@ -26,6 +26,14 @@ from typing import Any
 
 import httpx
 
+from hevi.providers.reliability import (
+    ProviderExecutionWrapper,
+    RateLimitPolicy,
+    ReliabilityConfig,
+    RetryPolicy,
+    TimeoutPolicy,
+)
+
 logger = logging.getLogger(__name__)
 
 NIM_BASE = "https://integrate.api.nvidia.com/v1/chat/completions"
@@ -92,7 +100,7 @@ def _make_nim_caller(
     *,
     model: str = DEFAULT_NIM_MODEL,
     rpm: float = 36.0,
-    timeout: float = 600.0,
+    timeout: float = 60.0,
     fallback_model: str | None = None,
 ) -> Any:
     """返回 omodul 约定的 async LLM caller(messages/max_tokens 等 kwargs → dict)。
@@ -106,7 +114,24 @@ def _make_nim_caller(
         raise ValueError("NIM caller 需要至少 1 个 key")
     if fallback_model is None:
         fallback_model = os.getenv("HEVI_NIM_FALLBACK_MODEL", "meta/llama-3.1-8b-instruct") or None
-    _client = httpx.Client(trust_env=True, timeout=timeout)
+    timeout_s = min(max(float(timeout), 1.0), 60.0)
+    reliability = ReliabilityConfig(
+        timeout=TimeoutPolicy(
+            connect_s=min(5.0, timeout_s),
+            read_s=timeout_s,
+            write_s=min(10.0, timeout_s),
+            pool_s=min(5.0, timeout_s),
+            total_s=timeout_s,
+        ),
+        # NIM key rotation is the bounded retry; each key gets one attempt.
+        retry=RetryPolicy(max_attempts=1),
+        max_concurrency=4,
+        # The caller's per-key throttle is the rate-limit contract here; do
+        # not apply a second limiter across the rotating key pool.
+        rate_limit=RateLimitPolicy(None),
+    )
+    _client = httpx.Client(trust_env=True, timeout=reliability.timeout.httpx_timeout)
+    _wrappers = [ProviderExecutionWrapper("nim", model, config=reliability) for _ in keys]
     _min_int = (60.0 / rpm) if rpm > 0 else 0.0
     _rl_lock = threading.Lock()
     _rl_next = [0.0] * len(keys)  # 每 key 独立时间槽(免费层 40 req/min/key)
@@ -130,23 +155,30 @@ def _make_nim_caller(
         last_err: Exception | None = None
         for i in range(attempts):
             idx = (start + i) % len(keys)
+            key = keys[idx]
             _throttle(idx)
             try:
-                resp = _client.post(
-                    NIM_BASE,
-                    headers={
-                        "Authorization": f"Bearer {keys[idx]}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
-                if resp.status_code == 429 and i < attempts - 1:
-                    # 限流是瞬时的(跨进程共用 key 常撞),等窗口后换下一个 key
-                    wait = float(resp.headers.get("retry-after", 0)) or 3.0
-                    time.sleep(min(wait, 20.0))
-                    continue
-                resp.raise_for_status()
-                data = resp.json()
+                def _request(request_key: str = key) -> dict[str, Any]:
+                    resp = _client.post(
+                        NIM_BASE,
+                        headers={
+                            "Authorization": f"Bearer {request_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json=payload,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    if not isinstance(data, dict):
+                        raise ValueError("NIM response is not an object")
+                    return data
+
+                data = _wrappers[idx].execute_sync(
+                    _request,
+                    idempotent=True,
+                    input_tokens=sum(len(str(m.get("content", ""))) for m in payload["messages"]),
+                    output_token_budget=int(payload["max_tokens"]),
+                ).require_value()
                 content = (data.get("choices") or [{}])[0].get("message", {}).get("content")
                 if content is None or not str(content).strip():
                     # nemotron-super 等 reasoning 模型偶发 content=null
@@ -163,17 +195,34 @@ def _make_nim_caller(
             logger.warning("NIM 主模型空 content,兜底 %s 重试", fallback_model)
             try:
                 idx = start % len(keys)
+                key = keys[idx]
                 _throttle(idx)
-                resp = _client.post(
-                    NIM_BASE,
-                    headers={
-                        "Authorization": f"Bearer {keys[idx]}",
-                        "Content-Type": "application/json",
-                    },
-                    json=dict(payload, model=fallback_model),
-                )
-                resp.raise_for_status()
-                content = (resp.json().get("choices") or [{}])[0].get("message", {}).get("content")
+                fallback_payload = dict(payload, model=fallback_model)
+
+                def _fallback_request(request_key: str = key) -> dict[str, Any]:
+                    resp = _client.post(
+                        NIM_BASE,
+                        headers={
+                            "Authorization": f"Bearer {request_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json=fallback_payload,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    if not isinstance(data, dict):
+                        raise ValueError("NIM fallback response is not an object")
+                    return data
+
+                data = _wrappers[idx].execute_sync(
+                    _fallback_request,
+                    idempotent=True,
+                    input_tokens=sum(
+                        len(str(m.get("content", ""))) for m in fallback_payload["messages"]
+                    ),
+                    output_token_budget=int(fallback_payload["max_tokens"]),
+                ).require_value()
+                content = (data.get("choices") or [{}])[0].get("message", {}).get("content")
                 if content and str(content).strip():
                     return str(content)
             except Exception as exc:
@@ -222,7 +271,7 @@ def register_nim_llm() -> None:
         )
         return
     model = os.getenv("HEVI_NIM_MODEL", os.getenv("NIM_MODEL", DEFAULT_NIM_MODEL))
-    timeout = float(os.getenv("HEVI_NIM_TIMEOUT", "600"))
+    timeout = float(os.getenv("HEVI_NIM_TIMEOUT", "60"))
     rpm = float(os.getenv("HEVI_NIM_RPM", "36"))
     caller = _make_nim_caller(keys, model=model, rpm=rpm, timeout=timeout)
     ProviderRegistry.register("llm", "nim", caller, replace=True)

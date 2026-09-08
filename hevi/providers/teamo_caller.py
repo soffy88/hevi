@@ -7,7 +7,7 @@
     TEAMOROUTER_GROK_MODEL 默认 grok-4.6(目录实测 id)
     TEAMOROUTER_PI_MODEL    默认 pi(目录暂无此 id,可改)
     TEAMOROUTER_FREE_MODEL  默认 deepseek-v4-flash-free
-    TEAMOROUTER_TIMEOUT_S   默认 300
+    TEAMOROUTER_TIMEOUT_S   默认 60
 
 注册:
     llm/grok        Grok
@@ -28,13 +28,20 @@ from typing import Any
 
 import httpx
 
+from hevi.providers.reliability import (
+    ProviderExecutionWrapper,
+    RateLimitPolicy,
+    ReliabilityConfig,
+    TimeoutPolicy,
+)
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.teamorouter.com/v1"
 DEFAULT_GROK_MODEL = "grok-4.6"
 DEFAULT_PI_MODEL = "pi"
 DEFAULT_FREE_MODEL = "deepseek-v4-flash-free"
-DEFAULT_TIMEOUT = 300.0
+DEFAULT_TIMEOUT = 60.0
 
 _SLOT_ENV = {
     "grok": "TEAMOROUTER_GROK_MODEL",
@@ -130,29 +137,59 @@ def teamo_chat_completions(
     }
     if temperature is not None:
         payload["temperature"] = temperature
-    with httpx.Client(trust_env=True, timeout=timeout or _timeout()) as client:
-        response = client.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-        )
-    if response.status_code >= 400:
-        raise RuntimeError(
-            f"TeamoRouter HTTP {response.status_code} model={model}: {response.text[:300]}"
-        )
-    try:
+    timeout_s = min(max(float(timeout or _timeout()), 1.0), 60.0)
+    wrapper = ProviderExecutionWrapper(
+        "teamo",
+        model,
+        config=ReliabilityConfig(
+            timeout=TimeoutPolicy(
+                connect_s=min(5.0, timeout_s),
+                read_s=timeout_s,
+                write_s=min(10.0, timeout_s),
+                pool_s=min(5.0, timeout_s),
+                total_s=timeout_s,
+            ),
+            max_concurrency=4,
+            rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
+        ),
+    )
+
+    def _request() -> dict[str, Any]:
+        with httpx.Client(
+            trust_env=True, timeout=wrapper.config.timeout.httpx_timeout
+        ) as client:
+            response = client.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+        if response.status_code >= 400:
+            raise httpx.HTTPStatusError(
+                "TeamoRouter HTTP response", request=None, response=response
+            )
         data = response.json()
-    except ValueError as exc:
-        raise RuntimeError(
-            f"TeamoRouter 返回非 JSON({response.text[:80]!r}); "
-            f"检查 TEAMOROUTER_BASE_URL={base_url or _base_url()}"
-        ) from exc
+        if not isinstance(data, dict):
+            raise ValueError("TeamoRouter response is not an object")
+        choices = data.get("choices") or []
+        if not choices or not isinstance(choices[0], dict):
+            raise ValueError("TeamoRouter response has no choices")
+        message = choices[0].get("message") or {}
+        if not (message.get("content") or message.get("reasoning")):
+            raise ValueError("TeamoRouter response has no content")
+        return data
+
+    data = wrapper.execute_sync(
+        _request,
+        idempotent=True,
+        input_tokens=sum(len(str(message.get("content", ""))) for message in messages),
+        output_token_budget=max_tokens,
+    ).require_value()
     choices = data.get("choices") or []
     if not choices:
-        raise RuntimeError(f"TeamoRouter 响应缺 choices: {str(data)[:200]}")
+        raise RuntimeError("TeamoRouter response missing choices")
     message = choices[0].get("message") or {}
     text = message.get("content") or message.get("reasoning") or ""
     if not text:

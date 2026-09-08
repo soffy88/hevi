@@ -14,20 +14,89 @@
 
 import type { RuntimeConfig } from './runtime-config-type';
 
+export type FrontendEnvironment = 'development' | 'demo' | 'staging' | 'production';
+
+/** The only production API origin accepted by a production artifact. */
+export const PRODUCTION_API_BASE = 'https://api-prod.sxueji.com';
+
+function normaliseBase(value: string): string {
+  return value.trim().replace(/\/$/, '');
+}
+
+function assertSafeApiBase(value: string, environment: FrontendEnvironment): string {
+  const base = normaliseBase(value);
+  let parsed: URL;
+  try {
+    parsed = new URL(base);
+  } catch {
+    throw new Error(`[HEVI] Invalid NEXT_PUBLIC_API_BASE for ${environment}`);
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new Error(`[HEVI] Unsafe NEXT_PUBLIC_API_BASE for ${environment}`);
+  }
+  const hostParts = parsed.hostname.split('.');
+  if (environment !== 'development' && hostParts[0] === 'api' && hostParts.length >= 3) {
+    throw new Error('[HEVI] Shared API origin is forbidden; use an environment-specific route');
+  }
+  if (environment === 'production' && base !== PRODUCTION_API_BASE) {
+    throw new Error(`[HEVI] Production API must be ${PRODUCTION_API_BASE}`);
+  }
+  return base;
+}
+
+/**
+ * Resolve the browser API origin.  NEXT_PUBLIC_* values are build-time in
+ * Next.js; the explicit environment is kept in the same contract so demo and
+ * staging builds cannot silently inherit production routing.
+ */
+export function resolveApiBase(
+  environment: FrontendEnvironment,
+  configured: string | undefined,
+): string {
+  const explicit = configured?.trim();
+  if (explicit) {
+    return assertSafeApiBase(explicit, environment);
+  }
+  if (environment === 'production') {
+    return PRODUCTION_API_BASE;
+  }
+  if (environment === 'development') {
+    return 'http://127.0.0.1:8000';
+  }
+  throw new Error(`[HEVI] NEXT_PUBLIC_API_BASE is required for ${environment} builds`);
+}
+
+export function resolveFrontendEnvironment(
+  configured: string | undefined,
+  nodeEnvironment: string | undefined,
+): FrontendEnvironment {
+  const value = configured?.trim().toLowerCase();
+  if (
+    value === 'development' ||
+    value === 'demo' ||
+    value === 'staging' ||
+    value === 'production'
+  ) {
+    return value;
+  }
+  if (value) {
+    throw new Error(`[HEVI] Unsupported NEXT_PUBLIC_DEPLOY_ENV: ${value}`);
+  }
+  return nodeEnvironment === 'production' ? 'production' : 'development';
+}
+
 /** Canonical runtime config — read once at module load, never changes. */
 export const runtimeConfig: RuntimeConfig = (() => {
-  // API base from env or default to localhost
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE
-    ? process.env.NEXT_PUBLIC_API_BASE.trim()
-    : 'http://127.0.0.1:8000';
+  const environment = resolveFrontendEnvironment(
+    process.env.NEXT_PUBLIC_DEPLOY_ENV,
+    process.env.NODE_ENV,
+  );
+  const apiBase = resolveApiBase(environment, process.env.NEXT_PUBLIC_API_BASE);
 
   // Detect mock mode — defaults to 'false' when unset, only true when explicitly set
   const useMock = (process.env.NEXT_PUBLIC_USE_MOCK ?? 'false')
     .trim()
     .toLowerCase() === 'true';
-
-  // Determine environment
-  const environment = process.env.NODE_ENV === 'production' ? 'production' : 'development';
 
   // Warn in production builds if mock is enabled
   if (environment === 'production' && useMock) {

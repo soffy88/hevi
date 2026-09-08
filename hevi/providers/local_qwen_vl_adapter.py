@@ -21,14 +21,20 @@ import functools
 import logging
 import os
 import re
-import time
 from pathlib import Path
 from typing import Any
 
 import httpx
 
 # Reuse endpoint + timeout from the text adapter so both honor the same env config.
-from hevi.providers.local_qwen_adapter import _OLLAMA_BASE, _TIMEOUT
+from hevi.providers.local_qwen_adapter import _OLLAMA_BASE
+from hevi.providers.reliability import (
+    ProviderExecutionWrapper,
+    RateLimitPolicy,
+    ReliabilityConfig,
+    RetryPolicy,
+    TimeoutPolicy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +42,30 @@ logger = logging.getLogger(__name__)
 # 共享,仅 ~5.6GB 空余;7b(6GB)会 CPU 卸载并使视觉编码器 OOM。VRAM 宽裕时可 env 切 7b。
 # keep_alive:0 调用后即卸载,给 Wan2GP/vibevoice 让显存。
 _OLLAMA_VL_MODEL = os.getenv("OLLAMA_VL_MODEL", "qwen2.5vl:3b")
+_OLLAMA_VL_WRAPPER = ProviderExecutionWrapper(
+    "ollama",
+    _OLLAMA_VL_MODEL,
+    config=ReliabilityConfig(
+        timeout=TimeoutPolicy(connect_s=3.0, read_s=30.0, write_s=10.0, pool_s=3.0, total_s=60.0),
+        retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+        max_concurrency=1,
+        rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
+    ),
+)
+
+
+def _vl_inventory_wrapper() -> ProviderExecutionWrapper:
+    """Create a bounded, isolated probe for the mutable Ollama model list."""
+    return ProviderExecutionWrapper(
+        "ollama",
+        _OLLAMA_VL_MODEL,
+        config=ReliabilityConfig(
+            timeout=TimeoutPolicy(connect_s=3.0, read_s=3.0, write_s=3.0, pool_s=3.0, total_s=10.0),
+            retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+            max_concurrency=1,
+            rate_limit=RateLimitPolicy(requests_per_minute=120.0, burst=4),
+        ),
+    )
 
 
 _VIDEO_EXTS = {"mp4", "mov", "webm", "mkv", "avi"}
@@ -59,7 +89,7 @@ def _video_frame_to_temp_png(path: Path) -> Path | None:
         )
         return out
     except Exception as e:
-        logger.warning("VL adapter: 视频抽帧失败 %s: %s", path, e)
+        logger.warning("VL adapter: video frame extraction failed: %s", type(e).__name__)
         return None
 
 
@@ -76,7 +106,7 @@ def _b64_data_uri(path: Path) -> str | None:
     try:
         raw = src.read_bytes()
     except OSError as e:
-        logger.warning("VL adapter: cannot read image %s: %s", src, e)
+        logger.warning("VL adapter: image read failed: %s", type(e).__name__)
         return None
     finally:
         if tmp_frame is not None:
@@ -147,29 +177,25 @@ def _call_vl(**kwargs: Any) -> dict[str, Any]:
         "stream": False,
     }
 
-    # 与 local_qwen_adapter 同款:对 500/502/503 与连接错误指数退避;4xx 立即抛。
-    last_exc: Exception | None = None
-    data: dict[str, Any] = {}
-    for _attempt in range(4):
-        try:
-            r = httpx.post(f"{_OLLAMA_BASE}/v1/chat/completions", json=payload, timeout=_TIMEOUT)
-            if r.status_code in (500, 502, 503):
-                raise httpx.HTTPStatusError(
-                    f"ollama-vl transient {r.status_code}", request=r.request, response=r
-                )
-            r.raise_for_status()
-            data = r.json()
-            break
-        except (httpx.HTTPStatusError, httpx.TransportError) as exc:
-            resp = getattr(exc, "response", None)
-            if resp is not None and resp.status_code not in (500, 502, 503):
-                raise
-            last_exc = exc
-            if _attempt < 3:
-                time.sleep(1.5 * (_attempt + 1))
-                logger.warning("ollama-vl transient error, retry %d/3: %s", _attempt + 1, exc)
-    else:
-        raise last_exc if last_exc else RuntimeError("ollama-vl call failed")
+    def _vl_request() -> dict[str, Any]:
+        response = httpx.post(
+            f"{_OLLAMA_BASE}/v1/chat/completions",
+            json=payload,
+            timeout=_OLLAMA_VL_WRAPPER.config.timeout.httpx_timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):
+            raise ValueError("Ollama-VL completion is not an object")
+        return data
+
+    result = _OLLAMA_VL_WRAPPER.execute_sync(
+        _vl_request,
+        idempotent=True,
+        input_tokens=sum(len(str(message.get("content", ""))) for message in messages),
+        output_token_budget=int(payload["max_tokens"]),
+    )
+    data = result.require_value()
 
     # 每次调用后立即卸载,给 Wan2GP/vibevoice 让出显存(与文本 qwen 同策略)。
     with contextlib.suppress(Exception):
@@ -224,12 +250,22 @@ def local_qwen_vl_adapter(**kwargs: Any) -> LocalQwenVLAdapter:
 def vl_model_available() -> bool:
     """True if the configured VL model is present in ollama (gate injection on this)."""
     try:
-        r = httpx.get(f"{_OLLAMA_BASE}/api/tags", timeout=5.0)
-        r.raise_for_status()
-        names = {m.get("name", "") for m in r.json().get("models", [])}
+        result = _vl_inventory_wrapper().execute_sync(
+            _vl_tags_request, idempotent=True, output_token_budget=0
+        )
+        names = {m.get("name", "") for m in result.require_value().get("models", [])}
     except Exception as e:
         logger.warning("VL adapter: ollama tags probe failed: %s", e)
         return False
     # 允许 tag 省略(qwen2.5vl 匹配 qwen2.5vl:7b)。
     base = _OLLAMA_VL_MODEL.split(":")[0]
     return any(n == _OLLAMA_VL_MODEL or n.split(":")[0] == base for n in names)
+
+
+def _vl_tags_request() -> dict[str, Any]:
+    response = httpx.get(f"{_OLLAMA_BASE}/api/tags", timeout=3.0)
+    response.raise_for_status()
+    data = response.json()
+    if not isinstance(data, dict):
+        raise ValueError("Ollama model inventory is not an object")
+    return data

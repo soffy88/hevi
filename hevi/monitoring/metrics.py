@@ -97,10 +97,50 @@ provider_outcomes_total = Counter(
     ["provider", "task_class", "status"],
 )
 provider_latency_seconds = Histogram(
-    "provider_latency_seconds", "Provider call latency", ["provider", "task_class"]
+    "provider_latency_seconds", "Provider call latency", ["provider", "model"]
 )
 provider_cost_usd_total = Counter(
     "provider_cost_usd_total", "Estimated provider spend in USD", ["provider", "task_class"]
+)
+
+# ── RC5 provider reliability contract ───────────────────────────────────────
+# These labels are intentionally limited to operator-controlled taxonomy
+# values.  Never add user ids, contact details, prompts, response bodies, or
+# request ids here: those belong in neither metrics nor provider logs.
+provider_requests_total = Counter(
+    "provider_requests_total",
+    "Provider execution attempts by terminal outcome",
+    ["provider", "model", "outcome"],
+)
+provider_errors_total = Counter(
+    "provider_errors_total",
+    "Provider execution errors by bounded error class",
+    ["provider", "error_class"],
+)
+provider_timeouts_total = Counter(
+    "provider_timeouts_total",
+    "Provider connect/read/request timeouts",
+    ["provider"],
+)
+provider_input_tokens_total = Counter(
+    "provider_input_tokens_total",
+    "Provider input tokens reported by the provider",
+    ["provider", "model"],
+)
+provider_output_tokens_total = Counter(
+    "provider_output_tokens_total",
+    "Provider output tokens reported by the provider",
+    ["provider", "model"],
+)
+provider_cost_total = Counter(
+    "provider_cost_total",
+    "Provider cost in USD",
+    ["provider", "model"],
+)
+circuit_breaker_state = Gauge(
+    "circuit_breaker_state",
+    "Provider circuit state: 0=closed, 1=half-open, 2=open",
+    ["provider"],
 )
 budget_estimate_error_usd = Histogram(
     "budget_estimate_error_usd", "Absolute estimate versus actual cost error", ["stage"]

@@ -19,6 +19,15 @@ from typing import Any
 
 import httpx
 
+from hevi.providers.reliability import (
+    ProviderCallError,
+    ProviderExecutionWrapper,
+    RateLimitPolicy,
+    ReliabilityConfig,
+    RetryPolicy,
+    TimeoutPolicy,
+)
+
 logger = logging.getLogger(__name__)
 
 _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -26,15 +35,46 @@ _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 # 导致 content 为空。qwen2.5vl 是当前部署已验证的非 thinking 兼容模型。
 _OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:7b")
 _OLLAMA_FALLBACK_MODELS = ("qwen2.5vl:7b", "llama3.2:latest")
-_TIMEOUT = 300.0  # 120s for own generation + 180s queue wait behind AII
+_TIMEOUT = 30.0
+_OLLAMA_WRAPPER = ProviderExecutionWrapper(
+    "ollama",
+    os.getenv("OLLAMA_MODEL", "qwen2.5vl:7b"),
+    config=ReliabilityConfig(
+        timeout=TimeoutPolicy(connect_s=3.0, read_s=_TIMEOUT, write_s=10.0, pool_s=3.0, total_s=60.0),
+        retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+        max_concurrency=1,
+        rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
+    ),
+)
+
+
+def _inventory_wrapper() -> ProviderExecutionWrapper:
+    """Build an isolated bounded probe for the mutable local model inventory.
+
+    Inventory is advisory and is re-read for every model resolution.  Keeping
+    its breaker separate from generation prevents a daemon-startup probe from
+    suppressing a later chat request, while every probe still has the common
+    timeout/retry/metrics contract.
+    """
+    return ProviderExecutionWrapper(
+        "ollama",
+        os.getenv("OLLAMA_MODEL", "qwen2.5vl:7b"),
+        config=ReliabilityConfig(
+            timeout=TimeoutPolicy(connect_s=3.0, read_s=3.0, write_s=3.0, pool_s=3.0, total_s=10.0),
+            retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+            max_concurrency=1,
+            rate_limit=RateLimitPolicy(requests_per_minute=120.0, burst=4),
+        ),
+    )
 
 
 def _available_models() -> set[str]:
     """Read Ollama's model inventory without making generation calls."""
     try:
-        response = httpx.get(f"{_OLLAMA_BASE}/api/tags", timeout=5.0)
-        response.raise_for_status()
-        payload = response.json()
+        result = _inventory_wrapper().execute_sync(
+            lambda: _tags_request(), idempotent=True, output_token_budget=0
+        )
+        payload = result.require_value()
         return {
             str(item.get("name") or item.get("model"))
             for item in payload.get("models", [])
@@ -45,6 +85,15 @@ def _available_models() -> set[str]:
         # will produce a precise error if Ollama itself is unavailable.
         logger.warning("无法读取 Ollama 模型清单(%s): %s", _OLLAMA_BASE, exc)
         return set()
+
+
+def _tags_request() -> dict[str, Any]:
+    response = httpx.get(f"{_OLLAMA_BASE}/api/tags", timeout=3.0)
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise ValueError("Ollama model inventory is not an object")
+    return payload
 
 
 def _resolve_model() -> str:
@@ -152,37 +201,30 @@ def _call_ollama(**kwargs: Any) -> dict[str, Any]:
     }
     if result_format in ("json", "json_object"):
         payload["response_format"] = {"type": "json_object"}
-    # SaaS-4 Fix: ollama 在模型冷加载 / keep_alive:0 卸载切换的窗口内会对紧接的
-    # 下一次请求返回瞬时 500(顺序流水线里每次调用后都卸载,下一镜头的 select_
-    # reference 极易撞上)。这类错误可重试即恢复;不重试则整任务失败。对 500/502/
-    # 503 与连接错误做指数退避重试,其它错误(如 4xx)立即抛出。
-    import time as _time
+    def _chat_request() -> dict[str, Any]:
+        response = httpx.post(
+            f"{_OLLAMA_BASE}/v1/chat/completions",
+            json=payload,
+            timeout=_OLLAMA_WRAPPER.config.timeout.httpx_timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, dict):
+            raise ValueError("Ollama completion is not an object")
+        return data
 
-    last_exc: Exception | None = None
-    data: dict[str, Any] = {}
-    for _attempt in range(4):
-        try:
-            r = httpx.post(f"{_OLLAMA_BASE}/v1/chat/completions", json=payload, timeout=_TIMEOUT)
-            if r.status_code in (500, 502, 503):
-                raise httpx.HTTPStatusError(
-                    f"ollama transient {r.status_code}", request=r.request, response=r
-                )
-            r.raise_for_status()
-            data = r.json()
-            break
-        except (httpx.HTTPStatusError, httpx.TransportError) as exc:
-            # 4xx(非上面几个)不重试
-            resp = getattr(exc, "response", None)
-            if resp is not None and resp.status_code == 404:
-                raise RuntimeError(f"Ollama 模型不可用: {model}") from exc
-            if resp is not None and resp.status_code not in (500, 502, 503):
-                raise
-            last_exc = exc
-            if _attempt < 3:
-                _time.sleep(1.5 * (_attempt + 1))  # 1.5s, 3s, 4.5s
-                logger.warning("ollama transient error, retry %d/3: %s", _attempt + 1, exc)
-    else:
-        raise last_exc if last_exc else RuntimeError("ollama call failed")
+    result = _OLLAMA_WRAPPER.execute_sync(
+        _chat_request,
+        idempotent=True,
+        input_tokens=sum(len(str(message.get("content", ""))) for message in payload["messages"]),
+        output_token_budget=int(payload["max_tokens"]),
+    )
+    try:
+        data = result.require_value()
+    except ProviderCallError as exc:
+        if exc.error_class.value == "client_error":
+            raise RuntimeError(f"Ollama 模型不可用: {model}") from exc
+        raise
     # Unload model immediately after each call so Wan2GP (5407 MB) can use the GPU.
     # qwen2.5:7b + Wan2GP = 10155 MB vs 10240 MB total — can't coexist with KV cache.
     with contextlib.suppress(Exception):  # best-effort unload

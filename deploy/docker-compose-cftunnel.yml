@@ -1,7 +1,8 @@
 ---
 # hevi v6 — Cloudflare Tunnel 本地全栈部署
 #
-# 依赖: 平台 pg/minio 容器已在运行(hevi-dev-postgres-1 @ :5432, hevi-dev-minio-1 @ :9100)
+# 依赖: 平台 PostgreSQL/MinIO 已在运行。宿主端点由 CFTUNNEL_DATABASE_URL /
+# CFTUNNEL_MINIO_ENDPOINT 覆盖；当前 Vault 默认分别是 :5441 / :9000。
 # 不起 pg/minio/nginx/Redis 容器(obase.cache=文件系统 pickle)
 #
 # 起服务:
@@ -23,26 +24,21 @@ services:
     build:
       context: ..
       dockerfile: services/gen_engine/Dockerfile
-      network: host  # audiotools/linacodec 等 GitHub 依赖需宿主网络 + 代理
+      network: ${GEN_ENGINE_BUILD_NETWORK:-host}
       args:
-        PYTORCH_VARIANT: cuda
-        HTTP_PROXY: http://127.0.0.1:7890
-        HTTPS_PROXY: http://127.0.0.1:7890
+        PYTORCH_VARIANT: ${PYTORCH_VARIANT:-cpu}
+        HTTP_PROXY: ${GEN_ENGINE_HTTP_PROXY:-}
+        HTTPS_PROXY: ${GEN_ENGINE_HTTPS_PROXY:-}
     restart: unless-stopped
     deploy:
       resources:
         limits:
           cpus: '8'
           memory: 16G
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     environment:
       LOG_LEVEL: info
       NUMBA_CACHE_DIR: /tmp/numba_cache
-      VOICEBOX_BACKEND_VARIANT: cuda
+      VOICEBOX_BACKEND_VARIANT: ${VOICEBOX_BACKEND_VARIANT:-cpu}
       HF_HOME: /home/voicebox/.cache/huggingface
       HF_HUB_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
@@ -94,17 +90,18 @@ services:
         limits:
           cpus: '2.0'
           memory: 4G
-    # wan_local 本地视频推理需要 GPU 直通 (2026-08-09: 修复 Wan2GP exit 1)
-    gpus: all
-    # GPU binding 已恢复(2026-08-03):host 驱动已升级到 580.173.02,
-    # nvidia 容器运行时实测可用。voicebox 换 CUDA torch 后 TTS 提速 10-50x
-    # (此前 CPU 版每段 42s 音频要 ~5 分钟)。hevi-api 自身仍走云端视频/CPU。
+    # GPU 直通不在基础栈中强制申请；需要 Wan2GP 本地推理时使用
+    # deploy/docker-compose-cftunnel.gpu.yml 覆盖层。
     env_file:
       - path: ../.env
         required: false
     environment:
-      DATABASE_URL: postgresql://hevi:hevi@host.docker.internal:5432/hevi
-      MINIO_ENDPOINT: host.docker.internal:9100
+      DATABASE_URL: ${CFTUNNEL_DATABASE_URL:-postgresql://hevi:hevi@host.docker.internal:5441/hevi}
+      MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
+      # MPT is a separate host-published stack; 127.0.0.1 inside this
+      # container would point back to hevi-api rather than the MPT container.
+      MPT_API_BASE: http://host.docker.internal:8080
+      MPT_WEBUI_BASE: http://host.docker.internal:8501
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-hevi}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-hevi1234}
       MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
@@ -147,7 +144,7 @@ services:
       # 断点续传:调研/确稿缓存落盘在宿主持久挂载(output),容器重建不丢。
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
       # P1/P2: 教材 KU 主线查询(mneme 在宿主机 5433)
-      MNEME_DATABASE_URL: ${MNEME_DATABASE_URL}
+      MNEME_DATABASE_URL: ${MNEME_DATABASE_URL:-}
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/Wan2GP:/Wan2GP:ro
@@ -193,7 +190,8 @@ services:
       context: ../hevi-web
       dockerfile: ../deploy/Dockerfile.web
       args:
-        NEXT_PUBLIC_API_BASE: https://hevi.kanpan.co
+        NEXT_PUBLIC_DEPLOY_ENV: production
+        NEXT_PUBLIC_API_BASE: https://api-prod.sxueji.com
         NEXT_PUBLIC_USE_MOCK: "false"
     restart: unless-stopped
     ports:

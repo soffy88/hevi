@@ -32,7 +32,7 @@ async def track_provider_call(provider: str) -> AsyncGenerator[None]:
             provider_outcomes_total.labels(
                 provider=provider, task_class="generate", status=status
             ).inc()
-            provider_latency_seconds.labels(provider=provider, task_class="generate").observe(
+            provider_latency_seconds.labels(provider=provider, model="generate").observe(
                 time.monotonic() - started
             )
 
