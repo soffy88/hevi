@@ -23,6 +23,8 @@ from hevi.providers.reliability import (
     ReliabilityConfig,
     RetryPolicy,
     TimeoutPolicy,
+    estimate_input_tokens,
+    usage_from_payload,
 )
 
 
@@ -363,6 +365,56 @@ async def test_duplicate_retry_does_not_duplicate_evidence_or_fsrs():
     )
     assert not rejected.accepted
     assert calls == {"evidence": 1, "mastery": 1, "fsrs": 1}
+
+
+def test_reliability_policy_validation_and_usage_helpers_are_fail_closed():
+    """Invalid reliability budgets are rejected before a provider call exists."""
+    with pytest.raises(ValueError, match="phase timeout"):
+        TimeoutPolicy(connect_s=16)
+    with pytest.raises(ValueError, match="total timeout"):
+        TimeoutPolicy(total_s=121)
+    timeout = TimeoutPolicy(connect_s=1, read_s=2, write_s=1, pool_s=1, total_s=5)
+    assert timeout.httpx_timeout.read == 2
+
+    with pytest.raises(ValueError, match="max_requests"):
+        BudgetLimits(max_requests=0)
+    with pytest.raises(ValueError, match="token budgets"):
+        BudgetLimits(max_input_tokens=-1)
+    with pytest.raises(ValueError, match="cost budget"):
+        BudgetLimits(max_cost_usd=-1)
+    with pytest.raises(ValueError, match="max_attempts"):
+        RetryPolicy(max_attempts=4)
+    with pytest.raises(ValueError, match="backoff"):
+        RetryPolicy(base_backoff_s=2, max_backoff_s=1)
+    with pytest.raises(ValueError, match="jitter_ratio"):
+        RetryPolicy(jitter_ratio=2)
+    with pytest.raises(ValueError, match="requests_per_minute"):
+        RateLimitPolicy(requests_per_minute=0)
+    with pytest.raises(ValueError, match="burst"):
+        RateLimitPolicy(burst=0)
+    with pytest.raises(ValueError, match="max_concurrency"):
+        ReliabilityConfig(max_concurrency=0)
+    with pytest.raises(ValueError, match="circuit failure"):
+        ReliabilityConfig(circuit_failure_threshold=0)
+    with pytest.raises(ValueError, match="circuit recovery"):
+        ReliabilityConfig(circuit_recovery_s=0)
+
+    assert estimate_input_tokens("abcd") == 1
+    assert estimate_input_tokens({"key": ["abcd", 3]}) == 2
+    assert estimate_input_tokens(3) == 0
+    usage = usage_from_payload(
+        {"usage": {"input_tokens": 4, "output_tokens": 6}},
+        cost_per_1k_input=1,
+        cost_per_1k_output=2,
+    )
+    assert usage.input_tokens == 4 and usage.output_tokens == 6
+    assert usage.cost_usd == pytest.approx(0.016)
+    with pytest.raises(ValueError, match="usage cannot be negative"):
+        usage_from_payload(
+            {"usage": {"prompt_tokens": -1}},
+            cost_per_1k_input=1,
+            cost_per_1k_output=1,
+        )
 
 
 def test_metrics_contract_has_only_low_cardinality_labels():
