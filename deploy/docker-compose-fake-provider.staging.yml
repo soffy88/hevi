@@ -1,0 +1,25 @@
+# RC5 qualification-only fake provider. Never merge this service into a
+# production compose project. The application itself also fails closed unless
+# HEVI_DEPLOY_ENV=staging and HEVI_FAKE_PROVIDER_ENABLED=true.
+services:
+  fake-provider:
+    image: ${HEVI_API_IMAGE:?set HEVI_API_IMAGE to the exact RC5 API image}
+    command:
+      - uvicorn
+      - hevi.staging.fake_provider:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --workers
+      - "1"
+    environment:
+      HEVI_DEPLOY_ENV: staging
+      HEVI_FAKE_PROVIDER_ENABLED: "true"
+    ports:
+      - "${FAKE_PROVIDER_BIND:-127.0.0.1:8384}:8080"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
