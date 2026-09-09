@@ -13,18 +13,80 @@ process's already-patched module object — every real TTS call was hitting
 
 from __future__ import annotations
 
+import importlib
 import logging
+import sys
+import types
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
+def _ensure_vibevoice_transformers_compat() -> None:
+    """Provide the legacy Qwen2 fast-tokenizer import expected by vibevoice.
+
+    Transformers 5.x exposes the Qwen2 tokenizer through its lazy package but
+    no longer ships the old ``tokenization_qwen2_fast`` module.  vibevoice
+    0.0.1 imports that module directly.  The current tokenizer backend is the
+    compatible implementation for this package, so install a process-local
+    import shim only when the legacy module is absent.
+    """
+    module_name = "transformers.models.qwen2.tokenization_qwen2_fast"
+    if module_name in sys.modules:
+        return
+    try:
+        importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name != module_name:
+            raise
+        from transformers.models.qwen2.tokenization_qwen2 import Qwen2Tokenizer
+
+        compat_module = types.ModuleType(module_name)
+        compat_module.Qwen2TokenizerFast = Qwen2Tokenizer
+        sys.modules[module_name] = compat_module
+
+
 def patch_vibevoice_exports() -> None:
+    """Expose the two classes even with Transformers' VibeVoice mappings.
+
+    vibevoice 0.0.1 registers its tokenizer models at import time.  Recent
+    Transformers releases already ship mappings with the same model types, so
+    the upstream registration raises before the package's model module finishes
+    importing.  Allow only these two known third-party registrations to use
+    ``exist_ok`` while importing, then restore the mapping method immediately.
+    This keeps the compatibility scope narrow and makes repeated process
+    initialization idempotent.
+    """
     try:
         import vibevoice
-        from vibevoice.modular.modeling_vibevoice_inference import (
-            VibeVoiceForConditionalGenerationInference,
+        from transformers.models.auto import AutoModel
+
+        _ensure_vibevoice_transformers_compat()
+        from vibevoice.modular.configuration_vibevoice import (
+            VibeVoiceAcousticTokenizerConfig,
+            VibeVoiceSemanticTokenizerConfig,
         )
+
+        mapping = AutoModel._model_mapping
+        original_register = mapping.register
+        allowed_configs = {
+            VibeVoiceAcousticTokenizerConfig,
+            VibeVoiceSemanticTokenizerConfig,
+        }
+
+        def _register_compat(key: Any, value: Any, exist_ok: bool = False) -> None:
+            if key in allowed_configs:
+                return original_register(key, value, exist_ok=True)
+            return original_register(key, value, exist_ok=exist_ok)
+
+        mapping.register = _register_compat
+        try:
+            from vibevoice.modular.modeling_vibevoice_inference import (
+                VibeVoiceForConditionalGenerationInference,
+            )
+        finally:
+            mapping.register = original_register
+
         from vibevoice.processor.vibevoice_processor import (
             VibeVoiceProcessor,
         )
