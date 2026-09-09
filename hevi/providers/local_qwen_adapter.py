@@ -34,7 +34,11 @@ _OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 # qwen3 等 thinking 模型在当前 OpenAI 兼容适配器下可能把预算耗在 reasoning,
 # 导致 content 为空。qwen2.5vl 是当前部署已验证的非 thinking 兼容模型。
 _OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:7b")
-_OLLAMA_FALLBACK_MODELS = ("qwen2.5vl:7b", "llama3.2:latest")
+# The host currently deploys the 3b VLM when the configured 7b model is not
+# present. Keep both Qwen sizes ahead of the generic fallback so model
+# inventory resolution does not prevent the generation retry policy from
+# handling a transient chat 500.
+_OLLAMA_FALLBACK_MODELS = ("qwen2.5vl:7b", "qwen2.5vl:3b", "llama3.2:latest")
 _TIMEOUT = 30.0
 _OLLAMA_WRAPPER = ProviderExecutionWrapper(
     "ollama",
@@ -153,6 +157,81 @@ def _coerce(obj: Any) -> Any:
     return obj
 
 
+def _coerce_numeric_fields(obj: Any) -> Any:
+    """把常见数字字段从字符串/空串规整成 float,防止下游 pydantic 报
+    `Input should be a valid number, unable to parse string as number`。
+
+    oskill 的 Shot.duration_s 是必填 float;本地 qwen2.5vl 在长上下文里常把
+    duration_s / duration / start_s / end_s / total_duration_s 输出成空串或
+    "5" 这类字符串,直接 json.loads 后 pydantic 校验崩。这里统一做一次深度
+    清洗:数字型 key 一律转 float(空串/None → 0.0),不影响已是数字的值。
+    """
+    _NUMERIC_KEYS = {
+        "duration_s",
+        "duration",
+        "start_s",
+        "end_s",
+        "source_in_s",
+        "total_duration_s",
+        "estimated_duration_s",
+        "target_duration_s",
+        "suggested_duration_s",
+        "t_start_s",
+        "t_end_s",
+        "source_start_s",
+        "source_end_s",
+    }
+    if isinstance(obj, dict):
+        res: dict[str, Any] = {}
+        for k, v in obj.items():
+            if k in _NUMERIC_KEYS:
+                if v is None or v == "":
+                    res[k] = 0.0
+                elif isinstance(v, (bool, int, float)):
+                    res[k] = float(v)
+                else:
+                    try:
+                        res[k] = float(str(v).strip())
+                    except (ValueError, TypeError):
+                        res[k] = 0.0
+            else:
+                res[k] = _coerce_numeric_fields(v)
+        return res
+    if isinstance(obj, list):
+        return [_coerce_numeric_fields(i) for i in obj]
+    return obj
+
+
+def _repair_misplaced_top_level_keys(candidate: str, data: Any = None) -> Any:
+    """宽容修复本地模型常见的 JSON 形状漂移:顶层键被误塞进最后一个元素。
+
+    例(真实复现):模型把 total_duration_s/characters 作为 chapters 数组的最后一个
+    元素输出(合法 JSON 但层级错误,或直接导致解析失败)。这里把**含顶层键**的
+    dict 元素从 chapters 弹出来合并回顶层。candidate 仅在 data 未提供时解析。
+    """
+    if data is None:
+        try:
+            data = json.loads(candidate, strict=False)  # 允许字符串内换行/控制字符
+        except json.JSONDecodeError:
+            raise
+    if not isinstance(data, dict):
+        raise ValueError("not an object")
+    chapters = data.get("chapters")
+    if not isinstance(chapters, list) or not chapters:
+        return data
+    # 只认"决定性"顶层键:total_duration_s/characters/estimated_duration_s 几乎
+    # 不可能出现在 chapter 对象里;title/description 是 chapter 常见字段,不能拿来判。
+    top_keys = {"total_duration_s", "characters", "estimated_duration_s", "chapters"}
+    repaired = [c for c in chapters if not (isinstance(c, dict) and any(k in c for k in top_keys))]
+    for c in chapters:
+        if isinstance(c, dict) and any(k in c for k in top_keys):
+            for k, v in c.items():
+                if k not in data:
+                    data[k] = v
+    data["chapters"] = repaired
+    return data
+
+
 def _extract_content(raw: str) -> str:
     """Strip think blocks, extract JSON, coerce types."""
     text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
@@ -178,8 +257,15 @@ def _extract_content(raw: str) -> str:
             candidate = re.sub(r"/\*.*?\*/", "", candidate, flags=re.DOTALL)
             candidate = re.sub(r"(?<!:)//[^\n]*", "", candidate)
             candidate = re.sub(r",(\s*[}\]])", r"\1", candidate)
-            data = json.loads(candidate)
-            text = json.dumps(_coerce(data), ensure_ascii=False)
+            try:
+                data = json.loads(candidate, strict=False)  # 允许字符串内换行/控制字符
+                # 形状漂移修复(即使 JSON 合法也要做):本地模型常把顶层键
+                # (total_duration_s/characters)误塞进最后一个 chapter 对象 —— 合法
+                # JSON 但层级错误,下游 oskill 拿不到顶层字段。
+                data = _repair_misplaced_top_level_keys(candidate, data=data)
+            except json.JSONDecodeError:
+                data = _repair_misplaced_top_level_keys(candidate)
+            text = json.dumps(_coerce_numeric_fields(_coerce(data)), ensure_ascii=False)
     except Exception as e:
         logger.debug("LocalQwenAdapter coercion skipped: %s", e)
 
@@ -188,19 +274,24 @@ def _extract_content(raw: str) -> str:
 
 def _call_ollama(**kwargs: Any) -> dict[str, Any]:
     """Sync HTTP call to Ollama. Safe to run in a thread (not on event loop)."""
-    result_format = kwargs.pop("result_format", None)
+    kwargs.pop("result_format", None)
     kwargs.pop("image_paths", None)  # VLM images not supported by text qwen
     model = _resolve_model()
     payload = {
         "model": model,
         "messages": kwargs.get("messages", []),
-        # 2048 cap: storyboard needs ~1000 tokens; select_reference/consistency only ~50.
-        "max_tokens": kwargs.get("max_tokens", 2048),
+        # chapter script(script_writer chapter_mode)需要 ~3000-4000 tokens 才能
+        # 输出 2 章完整对白+场景;2048 会截断 → json.loads 崩("invalid JSON for
+        # chapter script")。默认提到 4096,storyboard/审片等短任务仍可经 kwargs
+        # 传小值覆盖。
+        "max_tokens": kwargs.get("max_tokens", 4096),
         "temperature": kwargs.get("temperature", 0.7),
         "stream": False,
     }
-    if result_format in ("json", "json_object"):
-        payload["response_format"] = {"type": "json_object"}
+    # 强制 JSON 模式:本地 qwen2.5vl 自由文本输出常带换行/缺逗号等畸形,oskill
+    # 的 script_writer/storyboard_planner 并不传 result_format。Ollama 的
+    # OpenAI 兼容端点支持 response_format=json_object,能显著降低畸形率。
+    payload["response_format"] = {"type": "json_object"}
     def _chat_request() -> dict[str, Any]:
         response = httpx.post(
             f"{_OLLAMA_BASE}/v1/chat/completions",

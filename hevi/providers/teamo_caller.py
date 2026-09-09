@@ -168,7 +168,7 @@ def teamo_chat_completions(
             )
         if response.status_code >= 400:
             raise httpx.HTTPStatusError(
-                "TeamoRouter HTTP response", request=None, response=response
+                "TeamoRouter HTTP response", request=httpx.Request("POST", url), response=response
             )
         data = response.json()
         if not isinstance(data, dict):

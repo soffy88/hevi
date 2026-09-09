@@ -28,7 +28,7 @@ import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import httpx
 
@@ -690,7 +690,7 @@ class ProviderExecutionWrapper:
                 )
                 if not self.budget.settle(*reserved, usage):
                     self.breaker.success()
-                    result = ProviderCallResult(
+                    result: ProviderCallResult[T] = ProviderCallResult(
                         ok=False,
                         error_class=ProviderErrorClass.BUDGET_EXCEEDED,
                         attempts=attempt,
@@ -699,7 +699,7 @@ class ProviderExecutionWrapper:
                         evidence_eligible=False,
                     )
                     self._record(
-                        outcome=result.error_class.value,
+                        outcome=ProviderErrorClass.BUDGET_EXCEEDED.value,
                         error_class=result.error_class,
                         latency_s=result.latency_s,
                         usage=usage,
@@ -748,7 +748,10 @@ class ProviderExecutionWrapper:
             self.config.retry.max_backoff_s,
             self.config.retry.base_backoff_s * (2 ** (attempt - 1)),
         )
-        return base * (1 + random.uniform(-self.config.retry.jitter_ratio, self.config.retry.jitter_ratio))
+        return float(
+            base
+            * (1 + random.uniform(-self.config.retry.jitter_ratio, self.config.retry.jitter_ratio))
+        )
 
     def execute_sync(
         self,
@@ -775,7 +778,7 @@ class ProviderExecutionWrapper:
                 latency_s=time.monotonic() - started,
             )
             self._record(
-                outcome=result.error_class.value,
+                outcome=ProviderErrorClass.BUDGET_EXCEEDED.value,
                 error_class=result.error_class,
                 latency_s=result.latency_s,
                 usage=ProviderUsage(),
@@ -788,7 +791,7 @@ class ProviderExecutionWrapper:
                 latency_s=time.monotonic() - started,
             )
             self._record(
-                outcome=result.error_class.value,
+                outcome=ProviderErrorClass.CIRCUIT_OPEN.value,
                 error_class=result.error_class,
                 latency_s=result.latency_s,
                 usage=ProviderUsage(),
@@ -816,7 +819,7 @@ class ProviderExecutionWrapper:
                 latency_s=time.monotonic() - started,
             )
             self._record(
-                outcome=result.error_class.value,
+                outcome=ProviderErrorClass.BULKHEAD_SATURATED.value,
                 error_class=result.error_class,
                 latency_s=result.latency_s,
                 usage=ProviderUsage(),
@@ -847,7 +850,7 @@ class ProviderExecutionWrapper:
                             evidence_eligible=False,
                         )
                         self._record(
-                            outcome=result.error_class.value,
+                            outcome=ProviderErrorClass.BUDGET_EXCEEDED.value,
                             error_class=result.error_class,
                             latency_s=result.latency_s,
                             usage=usage,
@@ -987,7 +990,7 @@ class ProviderExecutionWrapper:
                 latency_s=time.monotonic() - started,
             )
             self._record(
-                outcome=result.error_class.value,
+                outcome=ProviderErrorClass.BUDGET_EXCEEDED.value,
                 error_class=result.error_class,
                 latency_s=result.latency_s,
                 usage=ProviderUsage(),
@@ -999,7 +1002,7 @@ class ProviderExecutionWrapper:
                 ok=False, error_class=ProviderErrorClass.CIRCUIT_OPEN, latency_s=time.monotonic() - started
             )
             self._record(
-                outcome=result.error_class.value,
+                outcome=ProviderErrorClass.CIRCUIT_OPEN.value,
                 error_class=result.error_class,
                 latency_s=result.latency_s,
                 usage=ProviderUsage(),
@@ -1028,7 +1031,7 @@ class ProviderExecutionWrapper:
                 latency_s=time.monotonic() - started,
             )
             self._record(
-                outcome=result.error_class.value,
+                outcome=ProviderErrorClass.BULKHEAD_SATURATED.value,
                 error_class=result.error_class,
                 latency_s=result.latency_s,
                 usage=ProviderUsage(),
@@ -1076,7 +1079,7 @@ class ProviderExecutionWrapper:
                         except Exception as exc:
                             raise _MalformedResponse from exc
                     else:
-                        value = data
+                        value = cast(T | Any, data)
                     usage = usage_from_payload(
                         data,
                         cost_per_1k_input=self.cost_per_1k_input,
@@ -1093,7 +1096,7 @@ class ProviderExecutionWrapper:
                             evidence_eligible=False,
                         )
                         self._record(
-                            outcome=result.error_class.value,
+                            outcome=ProviderErrorClass.BUDGET_EXCEEDED.value,
                             error_class=result.error_class,
                             latency_s=result.latency_s,
                             usage=usage,
@@ -1137,7 +1140,7 @@ class ProviderExecutionWrapper:
             )
             return result
         finally:
-            if owned:
+            if owned and client is not None:
                 client.close()
             self._sync_bulkhead.release()
 

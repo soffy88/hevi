@@ -79,7 +79,10 @@ class LongCatProvider:
             idempotent=True,
             output_token_budget=int(body.get("max_tokens") or 0),
         )
-        return result.require_value()
+        value = result.require_value()
+        if not isinstance(value, dict):
+            raise RuntimeError("LongCat response is not an object")
+        return value
 
     async def stream(self, **payload: Any) -> AsyncIterator[dict[str, Any]]:
         """Yield SSE chunks after a bounded, non-retried wrapper execution.

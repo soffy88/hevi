@@ -42,7 +42,7 @@ def _ensure_vibevoice_transformers_compat() -> None:
         from transformers.models.qwen2.tokenization_qwen2 import Qwen2Tokenizer
 
         compat_module = types.ModuleType(module_name)
-        compat_module.Qwen2TokenizerFast = Qwen2Tokenizer
+        compat_module.Qwen2TokenizerFast = Qwen2Tokenizer  # type: ignore[attr-defined]
         sys.modules[module_name] = compat_module
 
 
@@ -79,13 +79,13 @@ def patch_vibevoice_exports() -> None:
                 return original_register(key, value, exist_ok=True)
             return original_register(key, value, exist_ok=exist_ok)
 
-        mapping.register = _register_compat
+        mapping.register = _register_compat  # type: ignore[method-assign]
         try:
             from vibevoice.modular.modeling_vibevoice_inference import (
                 VibeVoiceForConditionalGenerationInference,
             )
         finally:
-            mapping.register = original_register
+            mapping.register = original_register  # type: ignore[method-assign]
 
         from vibevoice.processor.vibevoice_processor import (
             VibeVoiceProcessor,
