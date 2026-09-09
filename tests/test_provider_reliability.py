@@ -16,13 +16,19 @@ import pytest
 from hevi.providers.learning_gate import ProviderLearningGate
 from hevi.providers.reliability import (
     BudgetLimits,
+    CircuitBreaker,
     CircuitState,
     ProviderErrorClass,
     ProviderExecutionWrapper,
+    ProviderUsage,
     RateLimitPolicy,
     ReliabilityConfig,
     RetryPolicy,
     TimeoutPolicy,
+    _BudgetError,
+    _BudgetLedger,
+    _classify_exception,
+    _metric_state,
     estimate_input_tokens,
     usage_from_payload,
 )
@@ -415,6 +421,28 @@ def test_reliability_policy_validation_and_usage_helpers_are_fail_closed():
             cost_per_1k_input=1,
             cost_per_1k_output=1,
         )
+    assert usage_from_payload(
+        {"usage": "provider omitted usage details"},
+        cost_per_1k_input=1,
+        cost_per_1k_output=1,
+    ) == ProviderUsage()
+
+    with pytest.raises(ValueError, match="cannot be negative"):
+        _BudgetLedger(BudgetLimits()).reserve(-1, 0, 0)
+    assert _metric_state(CircuitState.CLOSED) == 0
+    assert _metric_state(CircuitState.HALF_OPEN) == 1
+    assert _metric_state(CircuitState.OPEN) == 2
+    assert _classify_exception(httpx.TimeoutException("timeout"))[0] is ProviderErrorClass.TIMEOUT
+    assert _classify_exception(ValueError("bad"))[0] is ProviderErrorClass.MALFORMED_RESPONSE
+    assert _classify_exception(_BudgetError())[0] is ProviderErrorClass.BUDGET_EXCEEDED
+
+    breaker = CircuitBreaker("half-open-probe", failure_threshold=2, recovery_s=1)
+    breaker._state = CircuitState.HALF_OPEN
+    breaker._probe_in_flight = True
+    assert not breaker.allow()
+    breaker._probe_in_flight = False
+    breaker.failure(ProviderErrorClass.SERVER_ERROR)
+    assert breaker.state is CircuitState.OPEN
 
 
 def test_metrics_contract_has_only_low_cardinality_labels():
