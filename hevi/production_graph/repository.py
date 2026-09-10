@@ -20,6 +20,11 @@ from hevi.constraints.models import ConstraintGraph
 from hevi.execution.plan import ExecutionPlan as ImmutableExecutionPlan
 from hevi.execution.repository import ExecutionPlanRepository
 from hevi.production_graph.contracts import ExecutionPlan as LegacyExecutionPlan
+from hevi.production_graph.domain import (
+    ProductionGraphSnapshot,
+    ProductionProject,
+    ProductionRevision,
+)
 
 
 def _uuid(value: str | uuid.UUID) -> uuid.UUID:
@@ -46,8 +51,174 @@ def _restore_datetime(record: dict[str, Any]) -> dict[str, Any]:
 class ProductionGraphRepository:
     """Durable CRUD for Production, immutable Revision and Stage Lock."""
 
-    def __init__(self, pool: PgPool) -> None:
+    def __init__(self, pool: PgPool | None = None) -> None:
         self.pool = pool
+        self._memory_records: dict[str, ProductionGraphSnapshot] = {}
+        self._memory_revisions: dict[tuple[str, str], ProductionGraphSnapshot] = {}
+
+    async def create_project(self, project: ProductionProject) -> ProductionGraphSnapshot:
+        """Create a project and its first immutable revision.
+
+        ``pool=None`` is an intentional deterministic repository for unit and
+        local architecture tests.  Production callers pass the existing
+        PostgreSQL pool and use the same ``productions``/
+        ``production_revisions`` tables as the RC6 graph repository.
+        """
+
+        revision = ProductionRevision(project_id=project.id, revision_no=1, reason="created")
+        project_with_revision = project.model_copy(update={"current_revision_id": revision.id})
+        snapshot = ProductionGraphSnapshot(project=project_with_revision, revision=revision)
+        snapshot.validate_referential_integrity()
+        await self.save_snapshot(snapshot)
+        return snapshot
+
+    async def save_snapshot(self, snapshot: ProductionGraphSnapshot) -> ProductionGraphSnapshot:
+        """Persist an immutable canonical snapshot without changing its IDs."""
+
+        snapshot.validate_referential_integrity()
+        project_id = snapshot.project.id
+        previous = self._memory_records.get(project_id)
+        if previous is not None and previous.revision.id == snapshot.revision.id:
+            return previous
+        if previous is not None:
+            if previous.project.current_revision_id != snapshot.revision.parent_revision_id:
+                raise ValueError("canonical revision parent is not the active revision")
+            if snapshot.revision.revision_no <= previous.revision.revision_no:
+                raise ValueError("canonical revision number must increase")
+        stored = snapshot.model_copy(deep=True)
+        self._memory_records[project_id] = stored
+        self._memory_revisions[(project_id, snapshot.revision.id)] = stored
+        if self.pool is None:
+            return snapshot
+
+        record = snapshot.model_dump(mode="json")
+        now = datetime.now(UTC).replace(tzinfo=None)
+        production_id = _uuid(project_id)
+        revision_id = _uuid(snapshot.revision.id)
+        parent_id = (
+            _uuid(snapshot.revision.parent_revision_id)
+            if snapshot.revision.parent_revision_id
+            else None
+        )
+        async with self.pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO productions
+                    (id, user_id, type, status, quality_profile, budget,
+                     active_revision_id, created_at, updated_at)
+                VALUES ($1, $2, 'canonical_production', $3, 'standard', $4, $5, $6, $6)
+                ON CONFLICT (id) DO UPDATE SET
+                    user_id = EXCLUDED.user_id,
+                    status = EXCLUDED.status,
+                    budget = EXCLUDED.budget,
+                    active_revision_id = EXCLUDED.active_revision_id,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                production_id,
+                snapshot.project.user_id,
+                snapshot.project.status.value,
+                snapshot.project.budget_policy,
+                revision_id,
+                now,
+            )
+            await conn.execute(
+                """
+                INSERT INTO production_revisions
+                    (id, production_id, parent_id, revision_no, status,
+                     reason, created_by, snapshot_json, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (id) DO NOTHING
+                """,
+                revision_id,
+                production_id,
+                parent_id,
+                snapshot.revision.revision_no,
+                snapshot.project.status.value,
+                snapshot.revision.reason,
+                snapshot.revision.actor,
+                {"canonical_graph": record},
+                now,
+            )
+            await conn.execute(
+                """
+                INSERT INTO domain_events
+                    (id, aggregate_type, aggregate_id, event_type,
+                     schema_version, payload, created_at)
+                VALUES ($1, 'production', $2, 'production.canonical_revision.created', 1, $3, $4)
+                ON CONFLICT DO NOTHING
+                """,
+                uuid.uuid4(),
+                production_id,
+                {"revision_id": str(revision_id), "revision_no": snapshot.revision.revision_no},
+                now,
+            )
+        return snapshot
+
+    async def get_snapshot(
+        self, project_id: str, *, revision_id: str | None = None
+    ) -> ProductionGraphSnapshot | None:
+        """Load a canonical revision, preserving exact immutable JSON."""
+
+        current = self._memory_records.get(project_id)
+        if self.pool is None:
+            selected = (
+                self._memory_revisions.get((project_id, revision_id))
+                if revision_id is not None
+                else current
+            )
+            return selected.model_copy(deep=True) if selected else None
+        async with self.pool.acquire() as conn:
+            if revision_id is None:
+                row = await conn.fetchrow(
+                    """
+                    SELECT r.snapshot_json
+                    FROM productions p
+                    JOIN production_revisions r ON r.id = p.active_revision_id
+                    WHERE p.id = $1
+                    """,
+                    _uuid(project_id),
+                )
+            else:
+                row = await conn.fetchrow(
+                    """
+                    SELECT snapshot_json FROM production_revisions
+                    WHERE production_id = $1 AND id = $2
+                    """,
+                    _uuid(project_id),
+                    _uuid(revision_id),
+                )
+        if row is None:
+            return None
+        raw = row["snapshot_json"]
+        payload = json.loads(raw) if isinstance(raw, str) else dict(raw)
+        graph = payload.get("canonical_graph")
+        return ProductionGraphSnapshot.model_validate(graph) if graph else None
+
+    async def append_revision(
+        self,
+        snapshot: ProductionGraphSnapshot,
+        *,
+        actor: str,
+        reason: str,
+    ) -> ProductionGraphSnapshot:
+        """Create a child revision while leaving the parent snapshot intact."""
+
+        current = await self.get_snapshot(snapshot.project.id)
+        if current is None:
+            raise ValueError("cannot append a revision for an unknown project")
+        revision = ProductionRevision(
+            project_id=current.project.id,
+            parent_revision_id=current.revision.id,
+            revision_no=current.revision.revision_no + 1,
+            actor=actor,
+            reason=reason,
+        )
+        project = snapshot.project.model_copy(
+            update={"current_revision_id": revision.id, "updated_at": datetime.now(UTC)}
+        )
+        child = snapshot.model_copy(update={"project": project, "revision": revision}, deep=True)
+        child.validate_referential_integrity()
+        return await self.save_snapshot(child)
 
     async def create(self, record: dict[str, Any]) -> dict[str, Any]:
         """Create the first revision, or append one if the id already exists."""

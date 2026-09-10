@@ -1,4 +1,9 @@
-"""Typed production commands and deterministic execution-plan contracts."""
+"""Compatibility exports for production commands and execution plans.
+
+The execution classes used to live in this module.  They now live in the
+canonical production domain and are re-exported here so RC6 callers keep
+working without maintaining a second execution-plan model.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +13,8 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+from .domain import ExecutionNode, ExecutionPlan
 
 
 def inputs_hash(value: Any) -> str:
@@ -52,44 +59,6 @@ class RepairDecision(ProductionCommand):
     scope: str
     action: str
     reason: str
-
-
-class ExecutionNode(BaseModel):
-    node_key: str
-    op_type: str
-    capability: str
-    requirements: dict[str, Any] = Field(default_factory=dict)
-    dependencies: list[str] = Field(default_factory=list)
-    state: Literal["pending", "queued", "running", "completed", "failed"] = "pending"
-
-
-class ExecutionPlan(BaseModel):
-    production_id: UUID
-    revision_id: UUID
-    plan_version: int = 1
-    nodes: list[ExecutionNode] = Field(default_factory=list)
-
-    def validate_dag(self) -> None:
-        known = {node.node_key for node in self.nodes}
-        if any(dep not in known for node in self.nodes for dep in node.dependencies):
-            raise ValueError("execution plan references an unknown dependency")
-        visiting: set[str] = set()
-        visited: set[str] = set()
-
-        def visit(key: str) -> None:
-            if key in visiting:
-                raise ValueError("execution plan contains a dependency cycle")
-            if key in visited:
-                return
-            visiting.add(key)
-            node = next(item for item in self.nodes if item.node_key == key)
-            for dep in node.dependencies:
-                visit(dep)
-            visiting.remove(key)
-            visited.add(key)
-
-        for node in self.nodes:
-            visit(node.node_key)
 
 
 __all__ = [
