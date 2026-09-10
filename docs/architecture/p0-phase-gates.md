@@ -55,3 +55,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=Vault `Manifest`/`ManifestFile` and existing identity-pack lifecycle unchanged; no binary storage duplicated  
 KNOWN_GAPS=scene/beat/shot adapter, readiness and compiler follow  
 COMMIT=feat(production-ontology): converge Vault identity and continuity state
+
+## P0.4
+
+PHASE=P0.4  
+FILES_CHANGED=`hevi/production_graph/adapters/cinematic.py`, canonical scene/beat metadata, `tests/test_canonical_shot.py`  
+NEW_SCHEMA=canonical `Scene`, `Beat`, `CanonicalShot`, `CameraSpec` projection boundary  
+MIGRATIONS=none; existing Cinematic/Director documents remain compatibility DTOs  
+TESTS_ADDED=Cinematic/Director projection, provider-field rejection, scene→beat→shot referential integrity  
+TESTS_PASSED=11 focused tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=Cinematic shot planning and Director shot DTOs remain unchanged; legacy prompt is not made provider transport state  
+KNOWN_GAPS=first-class keyframes, typed reference bundles, continuity/readiness/compiler remain  
+COMMIT=feat(shot-domain): converge scene beat and canonical shot

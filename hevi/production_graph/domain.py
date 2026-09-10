@@ -282,17 +282,18 @@ class PropState(Entity):
 
 class Season(Entity):
     project_id: CanonicalId
-    number: int = Field(ge=1)
+    number: int = Field(default=1, ge=1)
     title: str = ""
 
 
 class Episode(Entity):
     project_id: CanonicalId
     season_id: CanonicalId | None = None
-    number: int = Field(ge=1)
+    number: int = Field(default=1, ge=1)
     title: str = ""
     narrative_event_ids: list[CanonicalId] = Field(default_factory=list)
     target_duration: float | None = Field(default=None, ge=0)
+    legacy_ids: dict[str, str] = Field(default_factory=dict)
 
 
 class Scene(Entity):
@@ -307,6 +308,7 @@ class Scene(Entity):
     emotional_target: str = ""
     continuity_entry_state: dict[str, Any] = Field(default_factory=dict)
     continuity_exit_state: dict[str, Any] = Field(default_factory=dict)
+    legacy_ids: dict[str, str] = Field(default_factory=dict)
 
 
 class Beat(Entity):
@@ -320,6 +322,7 @@ class Beat(Entity):
     emotion: str = ""
     performance: dict[str, Any] = Field(default_factory=dict)
     source_refs: list[SourceReference] = Field(default_factory=list)
+    legacy_ids: dict[str, str] = Field(default_factory=dict)
 
 
 class ShotSize(StrEnum):
