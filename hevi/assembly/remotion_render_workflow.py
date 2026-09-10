@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hevi.production_graph.resources import ExecutionProfile, assert_concurrency
+
 logger = logging.getLogger(__name__)
 
 #: 渲染契约项(确定性校验用)。
@@ -47,6 +49,7 @@ class RemotionConfig:
     fps: int = 30
     props: dict[str, Any] = field(default_factory=dict)
     concurrency: int = 2  # 低核机器需 --concurrency=1(来源: shotcraft headless 三堵墙)
+    execution_profile: ExecutionProfile | None = None
     enforce_contract: bool = True
 
 
@@ -105,6 +108,12 @@ async def remotion_render_workflow(
             on_step({"stage": stage, "pct": pct})
 
     try:
+        profile = config.execution_profile
+        if profile is None:
+            # Discovery is runtime evidence, not a capability assertion.  It
+            # only caps the CLI worker's concurrency to the actual envelope.
+            profile = ExecutionProfile.from_system(render_concurrency=config.concurrency)
+        safe_concurrency = assert_concurrency(profile, config.concurrency, "render")
         issues = check_render_contract(config)
         if issues:
             return {
@@ -145,7 +154,7 @@ async def remotion_render_workflow(
             str(config.output_path),
             "--props",
             str(props_json),
-            f"--concurrency={config.concurrency}",
+            f"--concurrency={safe_concurrency}",
         ]
         proc = subprocess.run(
             cmd,

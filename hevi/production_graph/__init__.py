@@ -91,6 +91,11 @@ from hevi.production_graph.reference_views import (
 )
 from hevi.production_graph.references import ReferenceLockError, add_reference, lock_reference
 from hevi.production_graph.repository import ProductionGraphRepository
+from hevi.production_graph.resources import (
+    ExecutionProfile,
+    ResourceUnavailableError,
+    assert_concurrency,
+)
 
 __all__ = [
     "ConstraintChange",
@@ -106,6 +111,7 @@ __all__ = [
     "DirectorSession",
     "DirectorSessionStatus",
     "ExecutionAttempt",
+    "ExecutionProfile",
     "ExecutionNode",
     "ExecutionPlan",
     "Episode",
@@ -154,10 +160,12 @@ __all__ = [
     "World",
     "WorldRule",
     "ReferenceLockError",
+    "ResourceUnavailableError",
     "ReferenceViewSelection",
     "KeyframeLockError",
     "action_keyframes",
     "add_reference",
+    "assert_concurrency",
     "canonical_id",
     "derive_continuity_constraints",
     "inputs_hash",
