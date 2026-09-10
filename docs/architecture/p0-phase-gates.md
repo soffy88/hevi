@@ -42,3 +42,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=existing `tests/test_production_graph_contracts.py` passes; old `ProductionGraphRepository` CRUD and execution-plan persistence API retained  
 KNOWN_GAPS=canonical narrative/ontology adapters, readiness, compiler, runtime envelope and API are subsequent P0 phases  
 COMMIT=feat(production-domain): add canonical IDs and revision graph core
+
+## P0.3
+
+PHASE=P0.3  
+FILES_CHANGED=`hevi/production_graph/domain.py`, `hevi/production_graph/adapters/vault.py`, `hevi/production_graph/adapters/__init__.py`, `tests/test_production_ontology.py`  
+NEW_SCHEMA=Character/CharacterState/LookVariant, World/Location/Prop state and Vault reference bindings  
+MIGRATIONS=none; existing Vault manifests and ArtifactStore remain the binary authorities  
+TESTS_ADDED=published IdentityPack binding, typed identity/motion refs, cross-episode look/state change, prop ownership, repository reopen  
+TESTS_PASSED=11 focused tests including P0.1/P0.2 and legacy graph contract tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=Vault `Manifest`/`ManifestFile` and existing identity-pack lifecycle unchanged; no binary storage duplicated  
+KNOWN_GAPS=scene/beat/shot adapter, readiness and compiler follow  
+COMMIT=feat(production-ontology): converge Vault identity and continuity state

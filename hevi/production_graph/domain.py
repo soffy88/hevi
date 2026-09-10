@@ -202,6 +202,7 @@ class Character(Entity):
     role: str = "supporting"
     identity_pack_id: str | None = None
     voice_profile_id: str | None = None
+    legacy_ids: dict[str, str] = Field(default_factory=dict)
 
 
 class LookVariant(Entity):
