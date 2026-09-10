@@ -62,8 +62,8 @@ def _detect_family(model_dir: Path) -> str:
 def _prepare_prompt_wav(ref_audio: Path, tmp_dir: Path) -> Path:
     """参考音频 → 16k 单声道、静音裁剪、归一化(≤0.8)+ 0.2s 尾静音 → 临时 wav。"""
     import librosa  # type: ignore[import-not-found]
+    import soundfile as sf  # type: ignore[import-not-found]
     import torch  # type: ignore[import-not-found]
-    import torchaudio  # type: ignore[import-not-found]
     from cosyvoice.utils.file_utils import load_wav  # type: ignore[import-not-found]
 
     speech = load_wav(str(ref_audio), _PROMPT_SR)
@@ -76,7 +76,7 @@ def _prepare_prompt_wav(ref_audio: Path, tmp_dir: Path) -> Path:
         [speech, torch.zeros(1, int(_PROMPT_SR * 0.2))], dim=1
     )
     prompt_wav = tmp_dir / "prompt.wav"
-    torchaudio.save(str(prompt_wav), speech, _PROMPT_SR)
+    sf.write(str(prompt_wav), speech.squeeze(0).cpu().numpy(), _PROMPT_SR)
     return prompt_wav
 
 
@@ -193,11 +193,11 @@ def _main(args_path: str) -> None:
             )
 
     import torch  # type: ignore[import-not-found]
-    import torchaudio  # type: ignore[import-not-found]
+    import soundfile as sf  # type: ignore[import-not-found]
 
     wav = torch.cat(chunks, dim=1)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    torchaudio.save(str(out_path), wav, cosyvoice.sample_rate)
+    sf.write(str(out_path), wav.squeeze(0).numpy(), cosyvoice.sample_rate)
     if not out_path.exists() or out_path.stat().st_size == 0:
         raise RuntimeError(f"产物缺失或为空: {out_path}")
 

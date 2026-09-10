@@ -1,7 +1,8 @@
 # Hevi · STATUS
 
 > Canonical project status. Read at the start of any non-trivial task.
-> Last updated: 2026-08-18
+> Last updated: 2026-09-06
+> Notable 2026-09-06: Duix model audit — weights NOT missing, shim is actual blocker (see In Progress)
 > Sources: git log, `.claude` project memory (tongjian-pipeline-handoff, deploy-topology, e2e-local-llm-json-blocker, gpu-pcie-fallen-off-bus).
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
 
