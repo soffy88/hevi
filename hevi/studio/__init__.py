@@ -12,6 +12,7 @@ from hevi.studio.mix import HistoryMix, plan_history_mix, split_history_script
 from hevi.studio.recipes import Recipe, SlotSpec, get_recipe, list_recipes, load_recipes
 from hevi.studio.runtime import select_runtime
 from hevi.studio.slate import Slate, SlateResult, run_slate
+from hevi.studio.slate_bridge import production_plan_to_slate, run_production_plan
 from hevi.studio.tools import ToolResult, ToolSpec, invoke_tool, list_tools
 from hevi.studio.veya import produce as produce_for_veya
 
@@ -38,8 +39,10 @@ __all__ = [
     "load_recipes",
     "plan_history_mix",
     "produce_for_veya",
+    "production_plan_to_slate",
     "reset_assets",
     "run_slate",
+    "run_production_plan",
     "select_runtime",
     "split_history_script",
     "tick_daily",

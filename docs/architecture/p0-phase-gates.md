@@ -133,3 +133,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=existing `run_director_loop()` is retained; no agent receives direct provider or repository mutation access  
 KNOWN_GAPS=Director records need DB/API projection and ProductionPlan/Slate bridge follows in P0.10  
 COMMIT=feat(director): persist decisions through validated revision patches
+
+## P0.10
+
+PHASE=P0.10  
+FILES_CHANGED=`hevi/studio/slate_bridge.py`, Studio exports, `tests/test_slate_bridge.py`  
+NEW_SCHEMA=canonical `ProductionPlan` to legacy `Slate` work-order bridge  
+MIGRATIONS=none; the existing `run_slate()`/recipe/checkpoint path is retained as the execution boundary  
+TESTS_ADDED=canonical IDs/mode/shot IDs survive bridge; empty line rejected  
+TESTS_PASSED=2 focused bridge tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=RC6 Slate callers and deterministic recipes are unchanged; Director/compiler remain upstream of Slate  
+KNOWN_GAPS=durable canonical TaskEnvelope and API v2 still follow  
+COMMIT=feat(studio): bridge ProductionPlan into Slate
