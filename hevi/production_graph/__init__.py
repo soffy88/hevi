@@ -5,6 +5,7 @@ an in-process projection for hot reads, but a projection is never the source
 of truth.
 """
 
+from hevi.production_graph.continuity import derive_continuity_constraints
 from hevi.production_graph.contracts import (
     ConstraintChange,
     ExecutionNode,
@@ -68,6 +69,19 @@ from hevi.production_graph.domain import (
     WorldRule,
 )
 from hevi.production_graph.ids import canonical_id, is_canonical_id, new_id, stable_id
+from hevi.production_graph.keyframes import (
+    KeyframeLockError,
+    action_keyframes,
+    lock_keyframe,
+    replace_keyframe,
+    validate_keyframes,
+)
+from hevi.production_graph.reference_views import (
+    ReferenceViewSelection,
+    select_reference_view,
+    select_views_for_characters,
+)
+from hevi.production_graph.references import ReferenceLockError, add_reference, lock_reference
 from hevi.production_graph.repository import ProductionGraphRepository
 
 __all__ = [
@@ -129,9 +143,21 @@ __all__ = [
     "ToolCall",
     "World",
     "WorldRule",
+    "ReferenceLockError",
+    "ReferenceViewSelection",
+    "KeyframeLockError",
+    "action_keyframes",
+    "add_reference",
     "canonical_id",
+    "derive_continuity_constraints",
     "inputs_hash",
     "is_canonical_id",
+    "lock_keyframe",
+    "lock_reference",
     "new_id",
+    "replace_keyframe",
+    "select_reference_view",
+    "select_views_for_characters",
     "stable_id",
+    "validate_keyframes",
 ]

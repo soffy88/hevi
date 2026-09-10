@@ -68,3 +68,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=Cinematic shot planning and Director shot DTOs remain unchanged; legacy prompt is not made provider transport state  
 KNOWN_GAPS=first-class keyframes, typed reference bundles, continuity/readiness/compiler remain  
 COMMIT=feat(shot-domain): converge scene beat and canonical shot
+
+## P0.5
+
+PHASE=P0.5  
+FILES_CHANGED=`hevi/production_graph/keyframes.py`, `references.py`, `reference_views.py`, `continuity.py`, exports, `tests/test_keyframe_reference_continuity.py`  
+NEW_SCHEMA=first-class Keyframe roles, typed ReferenceBundle operations, camera-view selection and canonical continuity derivation  
+MIGRATIONS=none; existing Vault files and ArtifactStore IDs are referenced, never copied  
+TESTS_ADDED=START/PEAK/END promotion, lock protection, azimuth/facing view selection and front fallback, typed reference locking, continuity constraints  
+TESTS_PASSED=16 focused tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=existing SceneStage camera/view helper and IdentityPack lifecycle remain available; canonical selector uses the same orientation convention  
+KNOWN_GAPS=readiness gate, production compiler and runtime/resource contracts remain  
+COMMIT=feat(shot-domain): add keyframe reference and continuity contracts
