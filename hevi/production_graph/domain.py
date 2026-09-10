@@ -363,6 +363,22 @@ class GenerationIntent(StrEnum):
     AVATAR = "AVATAR"
 
 
+class ReadinessState(StrEnum):
+    DRAFT = "DRAFT"
+    ANALYZED = "ANALYZED"
+    ASSETS_PENDING = "ASSETS_PENDING"
+    REFERENCES_PENDING = "REFERENCES_PENDING"
+    PREFLIGHT_FAILED = "PREFLIGHT_FAILED"
+    READY = "READY"
+    QUEUED = "QUEUED"
+    GENERATING = "GENERATING"
+    GENERATED = "GENERATED"
+    QA_FAILED = "QA_FAILED"
+    QA_PASSED = "QA_PASSED"
+    APPROVED = "APPROVED"
+    LOCKED = "LOCKED"
+
+
 class CanonicalShot(Entity):
     project_id: CanonicalId
     scene_id: CanonicalId
@@ -380,7 +396,7 @@ class CanonicalShot(Entity):
     action_description: str = ""
     cinematography_notes: str = ""
     generation_intent: GenerationIntent = GenerationIntent.IMAGE_TO_VIDEO
-    readiness_state: str = "DRAFT"
+    readiness_state: ReadinessState = ReadinessState.DRAFT
     keyframe_ids: list[CanonicalId] = Field(default_factory=list)
     reference_bundle_id: CanonicalId | None = None
     continuity_constraint_ids: list[CanonicalId] = Field(default_factory=list)
@@ -474,22 +490,6 @@ class ContinuityConstraint(Entity):
     expected: Any = None
     source: str = ""
     depends_on_ids: list[CanonicalId] = Field(default_factory=list)
-
-
-class ReadinessState(StrEnum):
-    DRAFT = "DRAFT"
-    ANALYZED = "ANALYZED"
-    ASSETS_PENDING = "ASSETS_PENDING"
-    REFERENCES_PENDING = "REFERENCES_PENDING"
-    PREFLIGHT_FAILED = "PREFLIGHT_FAILED"
-    READY = "READY"
-    QUEUED = "QUEUED"
-    GENERATING = "GENERATING"
-    GENERATED = "GENERATED"
-    QA_FAILED = "QA_FAILED"
-    QA_PASSED = "QA_PASSED"
-    APPROVED = "APPROVED"
-    LOCKED = "LOCKED"
 
 
 class ShotReadinessResult(DomainModel):

@@ -81,3 +81,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=existing SceneStage camera/view helper and IdentityPack lifecycle remain available; canonical selector uses the same orientation convention  
 KNOWN_GAPS=readiness gate, production compiler and runtime/resource contracts remain  
 COMMIT=feat(shot-domain): add keyframe reference and continuity contracts
+
+## P0.6
+
+PHASE=P0.6  
+FILES_CHANGED=`hevi/production_graph/readiness.py`, canonical shot readiness enum, `tests/test_shot_readiness.py`  
+NEW_SCHEMA=explicit 14-state ShotReadiness machine and `ReadinessContext`/`ShotReadinessResult` gate  
+MIGRATIONS=none; readiness is evaluated before existing runtime dispatch  
+TESTS_ADDED=machine-readable blockers, all-gate readiness, READY-only dispatch, illegal and LOCKED transitions  
+TESTS_PASSED=14 focused tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=existing task and Slate state machines are unchanged; this is the canonical pre-dispatch gate  
+KNOWN_GAPS=compiler capability contract and resource profile are next  
+COMMIT=feat(shot-domain): enforce readiness state machine
