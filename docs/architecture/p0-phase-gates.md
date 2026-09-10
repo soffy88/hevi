@@ -15,7 +15,20 @@ TESTS_PASSED=inventory reviewed against RC6 source
 TESTS_FAILED=none  
 LEGACY_COMPATIBILITY=baseline unchanged; unrelated dirty worktree excluded in a separate clean worktree  
 KNOWN_GAPS=canonical domain not yet implemented  
-COMMIT=pending
+COMMIT=docs(production-domain): inventory RC6 semantics and freeze ADR
+
+## P0.2
+
+PHASE=P0.2  
+FILES_CHANGED=`hevi/production_graph/adapters/` and `tests/test_production_graph_adapters.py`  
+NEW_SCHEMA=Tongjian and Script2Video narrative adapter contracts  
+MIGRATIONS=none; adapters target the existing immutable revision snapshot  
+TESTS_ADDED=source-span preservation, causal edge mapping, cross-event ordering, stable legacy identity mapping  
+TESTS_PASSED=8 focused tests including P0.1 and legacy graph contracts  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=Tongjian `ChapterIR` and Script2Video `NovelPlan` remain unchanged and can still be consumed by their old workflows  
+KNOWN_GAPS=Cinematic/Studio/Vault/Canvas adapters and dual-read API follow in P0.3/P0.4/P0.13  
+COMMIT=feat(narrative-graph): adapt legacy narrative schemas
 
 ## P0.1
 
@@ -28,4 +41,4 @@ TESTS_PASSED=6 focused tests
 TESTS_FAILED=0  
 LEGACY_COMPATIBILITY=existing `tests/test_production_graph_contracts.py` passes; old `ProductionGraphRepository` CRUD and execution-plan persistence API retained  
 KNOWN_GAPS=canonical narrative/ontology adapters, readiness, compiler, runtime envelope and API are subsequent P0 phases  
-COMMIT=pending
+COMMIT=feat(production-domain): add canonical IDs and revision graph core
