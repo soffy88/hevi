@@ -94,3 +94,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=existing task and Slate state machines are unchanged; this is the canonical pre-dispatch gate  
 KNOWN_GAPS=compiler capability contract and resource profile are next  
 COMMIT=feat(shot-domain): enforce readiness state machine
+
+## P0.7
+
+PHASE=P0.7  
+FILES_CHANGED=`hevi/compiler/`, `tests/test_production_compiler.py`  
+NEW_SCHEMA=ProviderCapabilities, ResourceBudget, transport-only ProviderAdapter and immutable canonical compiler ExecutionPlan  
+MIGRATIONS=none; compiler output is accepted by existing immutable `ExecutionPlanRepository` through the existing bridge  
+TESTS_ADDED=supported/unsupported intents, reference/duration/resolution/prompt/audio/budget limits, deterministic idempotency and provider fallback  
+TESTS_PASSED=16 focused tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=existing ProviderRegistry and provider adapters are not replaced or expanded; compiler does not perform HTTP calls  
+KNOWN_GAPS=resource discovery/profile and durable TaskEnvelope integration remain  
+COMMIT=feat(production-compiler): compile canonical shots into immutable plans
