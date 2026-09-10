@@ -96,6 +96,13 @@ from hevi.production_graph.resources import (
     ResourceUnavailableError,
     assert_concurrency,
 )
+from hevi.production_graph.revisions import (
+    RevisionPatchError,
+    apply_revision_patch,
+    create_director_session,
+    record_director_decision,
+    validate_revision_patch,
+)
 
 __all__ = [
     "ConstraintChange",
@@ -160,13 +167,16 @@ __all__ = [
     "World",
     "WorldRule",
     "ReferenceLockError",
+    "RevisionPatchError",
     "ResourceUnavailableError",
     "ReferenceViewSelection",
     "KeyframeLockError",
     "action_keyframes",
     "add_reference",
+    "apply_revision_patch",
     "assert_concurrency",
     "canonical_id",
+    "create_director_session",
     "derive_continuity_constraints",
     "inputs_hash",
     "is_canonical_id",
@@ -180,6 +190,8 @@ __all__ = [
     "assert_dispatchable",
     "evaluate_readiness",
     "prepare_shot",
+    "record_director_decision",
     "transition_shot",
+    "validate_revision_patch",
     "validate_keyframes",
 ]

@@ -105,5 +105,31 @@ TESTS_ADDED=supported/unsupported intents, reference/duration/resolution/prompt/
 TESTS_PASSED=16 focused tests  
 TESTS_FAILED=0  
 LEGACY_COMPATIBILITY=existing ProviderRegistry and provider adapters are not replaced or expanded; compiler does not perform HTTP calls  
-KNOWN_GAPS=resource discovery/profile and durable TaskEnvelope integration remain  
+KNOWN_GAPS=resource discovery/profile and durable TaskEnvelope integration remain
 COMMIT=feat(production-compiler): compile canonical shots into immutable plans
+
+## P0.8
+
+PHASE=P0.8  
+FILES_CHANGED=`hevi/production_graph/resources.py`, Remotion runtime integration, `tests/test_execution_profile.py`  
+NEW_SCHEMA=runtime `ExecutionProfile` with CPU quota, memory, GPU evidence, render/provider/IO caps and admission invariant  
+MIGRATIONS=none; existing scheduler and MPT remain in place; Remotion receives an effective concurrency cap  
+TESTS_ADDED=cgroup quota parsing, fractional/zero CPU handling, GPU absence, explicit profile wiring and concurrency cap  
+TESTS_PASSED=5 focused resource tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=existing Remotion config and scheduler contracts remain valid; default behavior is conservatively capped from runtime evidence  
+KNOWN_GAPS=canonical profile still needs propagation into ProductionPlan/TaskEnvelope and Studio API  
+COMMIT=feat(runtime): add resource-aware execution profiles
+
+## P0.9
+
+PHASE=P0.9  
+FILES_CHANGED=`hevi/production_graph/revisions.py`, `hevi/director/session.py`, `tests/test_director_session_revisions.py`  
+NEW_SCHEMA=persistent DirectorSession/Decision boundary and validated RevisionPatch application to immutable child snapshots  
+MIGRATIONS=none; current snapshot repository remains the persistence boundary  
+TESTS_ADDED=inspectable decision, child revision isolation, stale patch rejection, locked shot protection, closed session rejection  
+TESTS_PASSED=3 focused Director/revision tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=existing `run_director_loop()` is retained; no agent receives direct provider or repository mutation access  
+KNOWN_GAPS=Director records need DB/API projection and ProductionPlan/Slate bridge follows in P0.10  
+COMMIT=feat(director): persist decisions through validated revision patches
