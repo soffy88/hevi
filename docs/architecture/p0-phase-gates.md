@@ -146,3 +146,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=RC6 Slate callers and deterministic recipes are unchanged; Director/compiler remain upstream of Slate  
 KNOWN_GAPS=durable canonical TaskEnvelope and API v2 still follow  
 COMMIT=feat(studio): bridge ProductionPlan into Slate
+
+## P0.11
+
+PHASE=P0.11  
+FILES_CHANGED=`hevi/production_graph/durable_execution.py`, canonical TaskEnvelope fields, exports, `tests/test_durable_execution.py`  
+NEW_SCHEMA=durable TaskEnvelope coordinator with intent-before-send, provider-job persistence, resume, retry, cancel and artifact registration semantics  
+MIGRATIONS=none; the existing MPT/AttemptRepository remains the runtime persistence authority and can implement the store protocol  
+TESTS_ADDED=intent ordering, provider-job persistence, restart resume without duplicate send, idempotency conflict and plan-to-envelope pinning  
+TESTS_PASSED=4 focused durable execution tests  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=existing MPT, task service, queue and provider registry are not replaced; the coordinator is an integration boundary  
+KNOWN_GAPS=PostgreSQL TaskEnvelope projection and Studio API are next; the in-memory store is test/local evidence, not production durability  
+COMMIT=feat(runtime): add durable TaskEnvelope side-effect semantics

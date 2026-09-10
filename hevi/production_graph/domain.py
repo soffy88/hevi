@@ -645,6 +645,8 @@ class TaskEnvelope(Entity):
     provider_job_id: str | None = None
     status: str = "pending"
     checkpoint: dict[str, Any] = Field(default_factory=dict)
+    artifact_ids: list[str] = Field(default_factory=list)
+    error: str | None = None
     retryable: bool = True
     cancelable: bool = True
     resumable: bool = True

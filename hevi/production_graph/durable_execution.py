@@ -1,0 +1,212 @@
+"""Durable, idempotent side-effect orchestration over the existing runtime.
+
+This module supplies the semantic envelope and a small reference store used by
+tests/local workers. Production deployments can implement the same store
+protocol with the existing MPT/attempt tables. The ordering is the contract:
+intent is persisted before ``send`` and the provider job is persisted before
+polling or downloading an artifact.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
+from copy import deepcopy
+from typing import Any, Protocol
+
+from pydantic import BaseModel, Field
+
+from hevi.compiler.adapters import ProviderAdapter
+from hevi.production_graph.domain import ExecutionPlan, TaskEnvelope
+from hevi.production_graph.ids import new_id
+
+
+class IdempotencyConflictError(RuntimeError):
+    """The same idempotency key was presented for a different execution."""
+
+
+class DurableExecutionStore(Protocol):
+    async def persist_intent(self, envelope: TaskEnvelope) -> TaskEnvelope: ...
+
+    async def save(self, envelope: TaskEnvelope) -> TaskEnvelope: ...
+
+    async def get_by_idempotency(self, key: str) -> TaskEnvelope | None: ...
+
+
+class DurableExecutionResult(BaseModel):
+    status: str
+    envelope: TaskEnvelope
+    provider_job_id: str | None = None
+    artifact_ids: list[str] = Field(default_factory=list)
+    provider_result: dict[str, Any] = Field(default_factory=dict)
+
+
+class InMemoryDurableExecutionStore:
+    """A deterministic store for contract tests; production uses DB-backed MPT."""
+
+    def __init__(self) -> None:
+        self.records: dict[str, TaskEnvelope] = {}
+        self.events: list[tuple[str, str]] = []
+
+    async def persist_intent(self, envelope: TaskEnvelope) -> TaskEnvelope:
+        current = self.records.get(envelope.idempotency_key)
+        if current is not None:
+            if current.execution_plan_id != envelope.execution_plan_id:
+                raise IdempotencyConflictError(
+                    f"idempotency key already belongs to plan {current.execution_plan_id}"
+                )
+            self.events.append(("intent_reused", envelope.idempotency_key))
+            return deepcopy(current)
+        saved = deepcopy(envelope)
+        self.records[envelope.idempotency_key] = saved
+        self.events.append(("intent_persisted", envelope.idempotency_key))
+        return deepcopy(saved)
+
+    async def save(self, envelope: TaskEnvelope) -> TaskEnvelope:
+        current = self.records.get(envelope.idempotency_key)
+        if current is not None and current.execution_plan_id != envelope.execution_plan_id:
+            raise IdempotencyConflictError(
+                f"idempotency key already belongs to plan {current.execution_plan_id}"
+            )
+        self.records[envelope.idempotency_key] = deepcopy(envelope)
+        self.events.append((f"envelope:{envelope.status}", envelope.idempotency_key))
+        return deepcopy(envelope)
+
+    async def get_by_idempotency(self, key: str) -> TaskEnvelope | None:
+        record = self.records.get(key)
+        return deepcopy(record) if record is not None else None
+
+
+def envelope_from_execution_plan(plan: ExecutionPlan, *, stage: str = "video_generation") -> TaskEnvelope:
+    """Map a compiled plan to the canonical durable task identity."""
+
+    project_id = plan.project_id or str(plan.production_id or "")
+    if not project_id or not plan.idempotency_key:
+        raise ValueError("execution plan requires project and idempotency identity")
+    return TaskEnvelope(
+        id=new_id(),
+        project_id=project_id,
+        revision_id=str(plan.revision_id),
+        shot_id=plan.shot_id,
+        stage=stage,
+        execution_plan_id=plan.id,
+        idempotency_key=plan.idempotency_key,
+    )
+
+
+class DurableExecutionCoordinator:
+    """Run one external side effect with restart-safe ordering."""
+
+    def __init__(self, store: DurableExecutionStore) -> None:
+        self.store = store
+
+    async def execute(
+        self,
+        envelope: TaskEnvelope,
+        adapter: ProviderAdapter,
+        request: dict[str, Any],
+        *,
+        destination: str = "",
+        register_artifact: Callable[[str, dict[str, Any]], Awaitable[str] | str] | None = None,
+    ) -> DurableExecutionResult:
+        current = await self.store.persist_intent(envelope)
+        if current.status == "completed":
+            return DurableExecutionResult(
+                status=current.status,
+                envelope=current,
+                provider_job_id=current.provider_job_id,
+                artifact_ids=current.artifact_ids,
+            )
+        if current.status == "cancelled":
+            return DurableExecutionResult(status=current.status, envelope=current)
+
+        if not current.provider_job_id:
+            current = current.model_copy(update={"status": "submitted"})
+            # Persisting submitted is useful for recovery diagnostics. The
+            # stable provider idempotency key is passed to every send.
+            await self.store.save(current)
+            provider_job_id = await adapter.send(request, idempotency_key=current.idempotency_key)
+            current = current.model_copy(
+                update={"status": "running", "provider_job_id": str(provider_job_id)}
+            )
+            await self.store.save(current)
+
+        result = await adapter.poll(current.provider_job_id)
+        provider_status = str(result.get("status") or "running").lower()
+        if provider_status in {"pending", "queued", "running", "processing"}:
+            current = current.model_copy(update={"status": "running", "checkpoint": dict(result)})
+            current = await self.store.save(current)
+            return DurableExecutionResult(
+                status="running",
+                envelope=current,
+                provider_job_id=current.provider_job_id,
+                provider_result=dict(result),
+            )
+        if provider_status in {"failed", "error"}:
+            current = await self.store.save(
+                current.model_copy(update={"status": "failed", "error": str(result.get("error") or "provider failed")})
+            )
+            return DurableExecutionResult(
+                status="failed",
+                envelope=current,
+                provider_job_id=current.provider_job_id,
+                provider_result=dict(result),
+            )
+        if provider_status in {"cancelled", "canceled"}:
+            current = await self.store.save(current.model_copy(update={"status": "cancelled"}))
+            return DurableExecutionResult(
+                status="cancelled",
+                envelope=current,
+                provider_job_id=current.provider_job_id,
+                provider_result=dict(result),
+            )
+
+        artifact_ids = list(current.artifact_ids)
+        artifact_path = str(result.get("artifact_path") or "")
+        if artifact_path and destination:
+            artifact_path = await adapter.download(current.provider_job_id, destination)
+        if artifact_path:
+            if register_artifact is None:
+                artifact_ids.append(artifact_path)
+            else:
+                registered = register_artifact(artifact_path, dict(result))
+                if hasattr(registered, "__await__"):
+                    registered = await registered
+                artifact_ids.append(str(registered))
+        current = await self.store.save(
+            current.model_copy(update={"status": "completed", "artifact_ids": artifact_ids})
+        )
+        return DurableExecutionResult(
+            status="completed",
+            envelope=current,
+            provider_job_id=current.provider_job_id,
+            artifact_ids=artifact_ids,
+            provider_result=dict(result),
+        )
+
+    async def cancel(self, envelope: TaskEnvelope, adapter: ProviderAdapter) -> TaskEnvelope:
+        current = await self.store.persist_intent(envelope)
+        if current.status in {"completed", "cancelled"}:
+            return current
+        if current.provider_job_id and current.cancelable:
+            await adapter.cancel(current.provider_job_id)
+        return await self.store.save(current.model_copy(update={"status": "cancelled"}))
+
+    async def retry(self, envelope: TaskEnvelope) -> TaskEnvelope:
+        current = await self.store.persist_intent(envelope)
+        if not current.retryable:
+            raise RuntimeError("task envelope is not retryable")
+        if current.status not in {"failed", "interrupted", "paused"}:
+            raise RuntimeError(f"task envelope cannot retry from {current.status}")
+        return await self.store.save(
+            current.model_copy(update={"status": "pending", "attempt": current.attempt + 1, "error": None})
+        )
+
+
+__all__ = [
+    "DurableExecutionCoordinator",
+    "DurableExecutionResult",
+    "DurableExecutionStore",
+    "IdempotencyConflictError",
+    "InMemoryDurableExecutionStore",
+    "envelope_from_execution_plan",
+]

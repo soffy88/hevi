@@ -43,7 +43,6 @@ from hevi.production_graph.domain import (
     World,
     WorldRule,
 )
-from hevi.production_graph.ids import new_id
 
 
 class RevisionPatchError(ValueError):

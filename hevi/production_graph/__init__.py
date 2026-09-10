@@ -68,6 +68,13 @@ from hevi.production_graph.domain import (
     World,
     WorldRule,
 )
+from hevi.production_graph.durable_execution import (
+    DurableExecutionCoordinator,
+    DurableExecutionResult,
+    IdempotencyConflictError,
+    InMemoryDurableExecutionStore,
+    envelope_from_execution_plan,
+)
 from hevi.production_graph.ids import canonical_id, is_canonical_id, new_id, stable_id
 from hevi.production_graph.keyframes import (
     KeyframeLockError,
@@ -117,6 +124,8 @@ __all__ = [
     "DirectorDecision",
     "DirectorSession",
     "DirectorSessionStatus",
+    "DurableExecutionCoordinator",
+    "DurableExecutionResult",
     "ExecutionAttempt",
     "ExecutionProfile",
     "ExecutionNode",
@@ -171,6 +180,8 @@ __all__ = [
     "ResourceUnavailableError",
     "ReferenceViewSelection",
     "KeyframeLockError",
+    "IdempotencyConflictError",
+    "InMemoryDurableExecutionStore",
     "action_keyframes",
     "add_reference",
     "apply_revision_patch",
@@ -178,6 +189,7 @@ __all__ = [
     "canonical_id",
     "create_director_session",
     "derive_continuity_constraints",
+    "envelope_from_execution_plan",
     "inputs_hash",
     "is_canonical_id",
     "lock_keyframe",
