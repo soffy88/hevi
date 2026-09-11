@@ -40,6 +40,7 @@ from hevi.production_graph.adapters.tongjian import (
     source_document_from_text,
 )
 from hevi.production_graph.durable_execution import PostgresDurableExecutionStore
+from hevi.production_graph.orchestration import one_prompt_product_entrypoint
 from hevi.studio.slate_bridge import production_plan_to_slate
 from hevi.tongjian.schemas import ChapterIR
 
@@ -121,6 +122,10 @@ class DirectorMessageRequest(BaseModel):
     operations: list[RevisionPatchOperation] = Field(default_factory=list)
 
 
+class OnePromptRequest(BaseModel):
+    request: str = Field(min_length=1)
+
+
 async def get_graph_repository(
     pool: Annotated[PgPool, Depends(get_hevi_pg_pool)],
 ) -> ProductionGraphRepository:
@@ -128,6 +133,29 @@ async def get_graph_repository(
 
 
 UserDep = Annotated[dict[str, Any], Depends(get_current_user)]
+
+
+@router.post("/one-prompt", status_code=status.HTTP_201_CREATED)
+async def one_prompt(
+    body: OnePromptRequest,
+    user: UserDep,
+    repository: Annotated[ProductionGraphRepository, Depends(get_graph_repository)],
+) -> dict[str, Any]:
+    """Canonical user-facing one-prompt product entrypoint."""
+
+    run = await one_prompt_product_entrypoint(
+        repository, raw_request=body.request, user_id=str(user["id"])
+    )
+    return {
+        "project_id": run.snapshot.project.id,
+        "revision_id": run.snapshot.revision.id,
+        "director_session_id": run.snapshot.director_sessions[0].id,
+        "director_decision_id": run.snapshot.director_decisions[0].id,
+        "production_plan_id": run.production_plan.id,
+        "execution_plan_id": run.execution_plan.id,
+    }
+
+
 RepoDep = Annotated[ProductionGraphRepository, Depends(get_graph_repository)]
 
 

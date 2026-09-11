@@ -49,13 +49,18 @@ def render_golden_mp4(
         ),
         encoding="utf-8",
     )
+    # P0-Golden is a 30fps Remotion composition; compiler fps remains part of
+    # the immutable plan and the adapter converts duration to composition frames.
+    fps = 30
+    duration = execution_plan.duration or 1
+    end_frame = max(1, round(duration * fps) - 1)
     command = [
         "npx",
         "remotion",
         "render",
         "P0-Golden",
         str(output_path),
-        "--frames=0-29",
+        f"--frames=0-{end_frame}",
         f"--concurrency={execution_plan.parameters['concurrency']}",
         f"--props={props_path}",
     ]

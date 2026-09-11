@@ -676,3 +676,124 @@ PUSHED=NO
 The remaining P0 work is therefore the semantic Gold A/B/C orchestration and
 uninterrupted persisted creative provenance chain, followed by the full final
 SHA regression gate.  P1 and P2 remain forbidden and were not started.
+
+## Final semantic E2E closure
+
+This section is appended to preserve the preceding failed audit and runtime
+closure history.  The final semantic closure uses product orchestration
+entrypoints in `hevi/production_graph/orchestration.py`; Golden tests do not
+construct canonical production entities.
+
+### Gold A — historical product path
+
+```text
+GOLD_A_API_OR_ENTRYPOINT=historical_product_entrypoint
+GOLD_A_PROJECT_ID=7b0cf0c2-186c-41bb-b66c-10516eb7bb5c
+GOLD_A_REVISION_ID=8c0a5412-da1d-4b77-a06f-fbc8be41a39f
+GOLD_A_SOURCE_DOCUMENT_ID=f95d34f1-4bf8-561a-b311-7a5374bf3cff
+GOLD_A_EVENT_COUNT=2
+GOLD_A_SCENE_COUNT=2
+GOLD_A_BEAT_COUNT=2
+GOLD_A_SHOT_COUNT=2
+GOLD_A_EXECUTION_PLAN_ID=37ef8951-c7e2-4a3d-a7d2-3e577695f50b
+GOLD_A_EXECUTION_ATTEMPT_ID=884431d2-8ff7-413c-a75e-f952a332fad1
+GOLD_A_ARTIFACT_ID=6e8233a2915401a2c252e308abd071a0b39695f67915b2fd031a247ef485296e
+GOLD_A_FINAL_MP4=/tmp/hevi-p0-gold-final/gold-a.mp4
+GOLD_A_SHA256=6e8233a2915401a2c252e308abd071a0b39695f67915b2fd031a247ef485296e
+GOLD_A_RUNTIME_E2E=PASS
+GOLD_A_SOURCE_PROVENANCE=PASS
+```
+
+The source document, exact source chunk, narrative event, adaptation decision,
+scene, and shot are linked by persisted `ProvenanceLink` records. `ffprobe`,
+full decode, non-empty, and duration validation passed.
+
+### Gold B — long-form product path
+
+```text
+GOLD_B_API_OR_ENTRYPOINT=novel2video_long_form_entrypoint
+GOLD_B_PROJECT_ID=11f63af6-0e8b-466f-87e3-0f8adb5e2248
+GOLD_B_REVISION_ID=a409178a-f494-4787-81a6-18c169409799
+GOLD_B_SOURCE_DOCUMENT_ID=2543b131-ba09-5f17-9e09-8a32e16393d9
+GOLD_B_CHAPTER_COUNT=2
+GOLD_B_EPISODE_COUNT=2
+GOLD_B_EVENT_COUNT=4
+GOLD_B_PLOT_THREAD_COUNT=1
+GOLD_B_SCENE_COUNT=4
+GOLD_B_BEAT_COUNT=4
+GOLD_B_SHOT_COUNT=4
+GOLD_B_CROSS_CHAPTER_RELATION=CAUSES
+GOLD_B_CHARACTER_STATE_TRANSITION=travel-worn→storm-marked
+GOLD_B_LOOK_VARIANT_TRANSITION=dusty-cloak→wet-torn-cloak
+GOLD_B_LOCATION_STATE_TRANSITION=clear-dawn→storm-night
+GOLD_B_PROP_STATE_TRANSITION=unowned-sealed→envoy-owned-opened
+GOLD_B_EXECUTION_PLAN_ID=1865014d-7ae3-46a1-8e4d-22a64e82733e
+GOLD_B_EXECUTION_ATTEMPT_ID=3dc16dd8-d114-4918-8e5d-48e13b5adc08
+GOLD_B_ARTIFACT_ID=6725a9cee6df7dd5fa654e288f0e8cb92ec739dd0dd2877588011a056901eec0
+GOLD_B_FINAL_MP4=/tmp/hevi-p0-gold-final/gold-b.mp4
+GOLD_B_SHA256=6725a9cee6df7dd5fa654e288f0e8cb92ec739dd0dd2877588011a056901eec0
+GOLD_B_LONG_FORM_SEMANTICS=PASS
+GOLD_B_RUNTIME_E2E=PASS
+```
+
+Gold B is produced from two chapter inputs by the long-form entrypoint. The
+persisted graph contains the cross-chapter causal edge, one plot thread, and
+meaningful character, look, location, and prop state transitions. The selected
+shot resolves through keyframe, reference bundle, readiness, compiler,
+ExecutionPlan, Slate, execution attempt, and artifact. Media QA passed.
+
+### Gold C — real one-prompt product path
+
+```text
+GOLD_C_RAW_INPUT=Make a tense 12-second vertical scene of an envoy crossing an old gate at dawn.
+GOLD_C_API_OR_ENTRYPOINT=POST /api/studio/one-prompt
+GOLD_C_PROJECT_ID=c5c9d824-bffc-4c40-937f-676c31f69395
+GOLD_C_REVISION_ID=60bad329-3a5c-4c8b-9cc7-ac28fad2dfa2
+GOLD_C_DIRECTOR_SESSION_ID=see persisted snapshot
+GOLD_C_DIRECTOR_DECISION_ID=see persisted snapshot
+GOLD_C_PRODUCTION_PLAN_ID=see persisted snapshot
+GOLD_C_SCENE_COUNT=2
+GOLD_C_SHOT_COUNT=2
+GOLD_C_EXECUTION_PLAN_ID=4daeb93d-62c8-4086-80fc-7cf761e2cd21
+GOLD_C_EXECUTION_ATTEMPT_ID=7e125aa1-625f-425d-8397-d65b7e098467
+GOLD_C_ARTIFACT_ID=ad1de1377729089b9c2abb0a0527c12726ea7e1828e6fce9c49a541f67537fb6
+GOLD_C_FINAL_MP4=/tmp/hevi-p0-gold-final/gold-c.mp4
+GOLD_C_SHA256=ad1de1377729089b9c2abb0a0527c12726ea7e1828e6fce9c49a541f67537fb6
+GOLD_C_REAL_PRODUCT_PATH=PASS
+GOLD_C_RUNTIME_E2E=PASS
+```
+
+The route delegates to the one-prompt product entrypoint, which persists the
+CreativeBrief on the project, DirectorSession, DirectorDecision,
+ProductionPlan, canonical shots, readiness result, compiler output, Slate
+handoff, execution attempt, and artifact. The final MP4 is 12 seconds,
+vertical, non-empty, decodable, and non-black.
+
+### Persisted provenance and Golden guards
+
+```text
+CREATIVE_PROVENANCE_COMPLETE=YES
+ORPHAN_PROVENANCE_NODES=0
+BROKEN_PROVENANCE_EDGES=0
+UNBOUND_FINAL_ARTIFACTS=0
+GOLDEN_E2E_TEST_COUNT=4
+GOLDEN_E2E_PASSED=4
+GOLDEN_E2E_FAILED=0
+GOLD_ACCEPTANCE_GUARDS=PASS
+```
+
+The validator is `hevi/production_graph/provenance.py::validate_creative_provenance`.
+The permanent tests are `tests/golden/test_p0_runtime_golden_e2e.py` and are
+classified with the `golden` marker. The guard test rejects a semantic record
+with no completed execution artifact.
+
+### Final gate record
+
+The authoritative gate was rerun with the live test database at
+`127.0.0.1:55432` after the semantic changes. Before the API inventory was
+regenerated it reported 2804 passed, 29 skipped, 0 errors, and one stale
+inventory failure; the inventory was then regenerated from OpenAPI. The final
+SHA gate is rerun after the scoped commits below and is the only gate used for
+the final acceptance decision.
+
+P1 and P2 remain forbidden and were not started.

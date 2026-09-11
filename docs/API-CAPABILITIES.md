@@ -415,6 +415,7 @@
 | GET | `/api/studio/director/sessions/{session_id}/decisions` | Get Director Decisions |
 | POST | `/api/studio/director/sessions/{session_id}/messages` | Post Director Message |
 | GET | `/api/studio/episodes/{episode_id}/scenes` | List Episode Scenes |
+| POST | `/api/studio/one-prompt` | One Prompt |
 | GET | `/api/studio/projects` | List Production Projects |
 | POST | `/api/studio/projects` | Create Production Project |
 | GET | `/api/studio/projects/{project_id}` | Get Production Project |

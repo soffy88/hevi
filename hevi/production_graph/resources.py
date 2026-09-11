@@ -147,7 +147,7 @@ def _read_cpu_quota(root: Path) -> float | None:
             return quota / period if period > 0 else 0.0
         if raw and raw[0] == "max":
             return None
-    except OSError, ValueError, IndexError:
+    except (OSError, ValueError, IndexError):
         pass
     # cgroup v1 exposes the same constraint as two files.
     try:
@@ -156,7 +156,7 @@ def _read_cpu_quota(root: Path) -> float | None:
         if quota < 0:
             return None
         return quota / period if period > 0 else 0.0
-    except OSError, ValueError, IndexError:
+    except (OSError, ValueError, IndexError):
         return None
 
 

@@ -1,159 +1,201 @@
-"""Permanent P0 Golden runtime acceptance tests.
-
-Unlike the graph contract tests, these tests invoke the compiler, Slate handoff,
-the real local Remotion CLI, ffprobe, and artifact integrity registration.
-"""
+"""Real product-orchestration Golden A/B/C acceptance paths."""
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
-from hevi.compiler import ProviderCapabilities, RemotionCompiler, ResourceBudget
-from hevi.production.artifacts import ArtifactManifest
-from hevi.production_graph import (
-    CameraSpec,
-    CanonicalShot,
-    ExecutionProfile,
-    GenerationIntent,
-    ProductionPlan,
-    ReadinessContext,
-    ReferenceBundle,
-    ReferenceItem,
-    ReferenceRole,
-    prepare_shot,
+from hevi.production_graph.orchestration import (
+    historical_product_entrypoint,
+    long_form_product_entrypoint,
+    one_prompt_product_entrypoint,
 )
-from hevi.production_graph.golden_runtime import render_golden_mp4
+from hevi.production_graph.repository import ProductionGraphRepository
+from hevi.tongjian.schemas import ChapterIR, ChapterMeta, CharacterIR, EventIR
 
 ROOT = Path(__file__).parents[2]
-REMOTION = ROOT / "hevi-remotion"
 
 
-def _provider() -> ProviderCapabilities:
-    return ProviderCapabilities(
-        provider_id="golden-remotion-local",
-        model="cpu-remotion",
-        supported_intents={GenerationIntent.REMOTION},
-        supported_reference_roles={
-            ReferenceRole.CHARACTER_IDENTITY,
-            ReferenceRole.LOCATION,
-            ReferenceRole.STYLE,
-        },
-        supported_resolutions={"1080p"},
-        default_resolution="1080p",
-        max_duration_s=20,
-    )
-
-
-def _runtime_shot(
-    project_id: str, shot_id: str, duration: float = 5.0
-) -> tuple[CanonicalShot, ReferenceBundle]:
-    shot = CanonicalShot(
-        id=shot_id,
-        project_id=project_id,
-        revision_id=f"{project_id}-revision",
-        scene_id=f"{shot_id}-scene",
-        beat_ids=[f"{shot_id}-beat"],
-        action_description="An envoy crosses an old gate at dawn.",
-        cinematography_notes="Tense slow push-in, readable silhouette, vertical composition.",
-        camera=CameraSpec(azimuth_deg=0, movement="slow_push_in"),
-        generation_intent=GenerationIntent.REMOTION,
-        duration_target=duration,
-    )
-    bundle = ReferenceBundle(
-        id=f"{shot_id}-references",
-        project_id=project_id,
-        revision_id=f"{project_id}-revision",
-        shot_id=shot_id,
-        items=[
-            ReferenceItem(role=ReferenceRole.CHARACTER_IDENTITY, artifact_id="identity:envoy"),
-            ReferenceItem(role=ReferenceRole.LOCATION, artifact_id="location:gate"),
-            ReferenceItem(role=ReferenceRole.STYLE, artifact_id="style:dawn"),
+def _chapter(source: str, event_rows: list[dict[str, object]]) -> ChapterIR:
+    events = []
+    for row in event_rows:
+        span = row.get("span", (0, len(str(row["summary"]))))
+        events.append(
+            EventIR(
+                event_id=str(row["id"]),
+                summary=str(row["summary"]),
+                actors=["hero"],
+                causes=list(row.get("causes", [])),
+                effects=list(row.get("effects", [])),
+                source_span=tuple(span),
+            )
+        )
+    return ChapterIR(
+        meta=ChapterMeta(source=source),
+        characters=[
+            CharacterIR(character_id="hero", canonical_name="Envoy", role_in_chapter="protagonist")
         ],
+        events=events,
     )
-    prepared, readiness = prepare_shot(
-        shot.model_copy(update={"reference_bundle_id": bundle.id}),
-        ReadinessContext(
-            required_reference_roles=set(bundle.roles()),
-            available_reference_roles=set(bundle.roles()),
-        ),
-    )
-    assert readiness.passed
-    return prepared, bundle
 
 
-def _render(
-    tmp_path: Path,
-    project_id: str,
-    shot_id: str,
-    duration: float = 5.0,
-    action: str | None = None,
-) -> ArtifactManifest:
-    shot, bundle = _runtime_shot(project_id, shot_id, duration)
-    if action:
-        shot = shot.model_copy(update={"action_description": action})
-    execution_plan = RemotionCompiler().compile(
-        shot,
-        bundle,
-        _provider(),
-        ResourceBudget(
-            resolution="1080p",
-            requested_concurrency=4,
-            execution_profile=ExecutionProfile(cpu_quota=1, render_concurrency=4),
-            resource_profile={"gpu": False},
-        ),
-        render_mode="video",
-        output_contract={"format": "mp4", "non_gpu": True},
+def _media_qa(path: Path, duration: float) -> str:
+    probe = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=codec_type",
+            "-of",
+            "default=nw=1",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
-    assert execution_plan.parameters["concurrency"] == 1
-    production_plan = ProductionPlan(
-        id=f"{project_id}-production-plan",
-        project_id=project_id,
-        revision_id=shot.revision_id or "",
-        shot_ids=[shot.id],
+    assert "codec_type=video" in probe.stdout
+    subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-f", "null", "-"], check=True)
+    duration_probe = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=nw=1:nk=1",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
-    return render_golden_mp4(
-        production_plan,
-        execution_plan,
-        tmp_path / f"{project_id}.mp4",
-        remotion_dir=REMOTION,
-    )
+    assert float(duration_probe.stdout.strip()) >= duration - 0.5
+    assert path.stat().st_size > 1024
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 @pytest.mark.golden
-def test_gold_a_historical_runtime_e2e(tmp_path: Path) -> None:
+def test_gold_a_historical_product_runtime_e2e(tmp_path: Path) -> None:
     source = json.loads((ROOT / "tests/golden/gold_a_historical.json").read_text())
-    assert source["source_text"].startswith("At dawn")
-    manifest = _render(
-        tmp_path,
-        "gold-a-runtime",
-        "gold-a-shot",
-        action="Historical source: the envoy carries the sealed letter through the old gate at dawn.",
+    run = asyncio.run(
+        historical_product_entrypoint(
+            ProductionGraphRepository(),
+            source_text=source["source_text"],
+            title=source["title"],
+            user_id="gold-a",
+            render_path=tmp_path / "gold-a.mp4",
+        )
     )
-    assert manifest.primary_path() is not None
-    assert manifest.artifacts[0].integrity_ok()
+    snapshot = run.snapshot
+    assert len(snapshot.narrative.events) >= 2
+    assert len(snapshot.scenes) >= 1 and len(snapshot.shots) >= 1
+    assert snapshot.sources[0].id and snapshot.source_chunks[0].id
+    assert any(
+        link.source_type == "SourceChunk" and link.target_type == "NarrativeEvent"
+        for link in snapshot.provenance_links
+    )
+    assert run.manifest and run.manifest.artifacts[0].integrity_ok()
+    assert _media_qa(tmp_path / "gold-a.mp4", 3.0)
 
 
 @pytest.mark.golden
-def test_gold_b_multi_chapter_runtime_e2e(tmp_path: Path) -> None:
-    source = json.loads((ROOT / "tests/golden/gold_b_novel.json").read_text())
-    assert len(source["chapters"]) >= 2
-    # The actual render is fed by a compiled shot; the source count and the
-    # canonical production handoff are both part of the acceptance assertion.
-    manifest = _render(
-        tmp_path,
-        "gold-b-runtime",
-        "gold-b-shot",
-        action="Long-form continuity: the changed hero returns across the chapter boundary.",
+def test_gold_b_long_form_product_runtime_e2e(tmp_path: Path) -> None:
+    chapters = [
+        _chapter(
+            "public-domain chapter one",
+            [
+                {
+                    "id": "arrival",
+                    "summary": "The envoy arrives with a sealed dispatch.",
+                    "span": (0, 42),
+                },
+                {
+                    "id": "warning",
+                    "summary": "The warden warns that the road is watched.",
+                    "causes": ["arrival"],
+                    "span": (43, 86),
+                },
+            ],
+        ),
+        _chapter(
+            "public-domain chapter two",
+            [
+                {
+                    "id": "pursuit",
+                    "summary": "The pursuit begins after the gate closes.",
+                    "span": (0, 43),
+                },
+                {
+                    "id": "delivery",
+                    "summary": "The envoy delivers the dispatch beyond the gate.",
+                    "causes": ["pursuit"],
+                    "span": (44, 92),
+                },
+            ],
+        ),
+    ]
+    run = asyncio.run(
+        long_form_product_entrypoint(
+            ProductionGraphRepository(),
+            chapters=chapters,
+            title="Gold B — The sealed route",
+            user_id="gold-b",
+            render_path=tmp_path / "gold-b.mp4",
+        )
     )
-    assert manifest.artifacts[0].sha256
+    snapshot = run.snapshot
+    assert len(snapshot.episodes) >= 2
+    assert len(snapshot.narrative.events) >= 4
+    assert len(snapshot.scenes) >= 4 and len(snapshot.shots) >= 4
+    assert snapshot.narrative.plot_threads
+    assert any(edge.type.value == "CAUSES" for edge in snapshot.narrative.edges)
+    assert len({state.look_variant_id for state in snapshot.character_states}) >= 2
+    assert len({state.weather for state in snapshot.location_states}) >= 2
+    assert len({state.condition for state in snapshot.prop_states}) >= 2
+    assert run.manifest and run.manifest.artifacts[0].integrity_ok()
+    assert _media_qa(tmp_path / "gold-b.mp4", 3.0)
 
 
 @pytest.mark.golden
-def test_gold_c_one_prompt_runtime_e2e(tmp_path: Path) -> None:
-    prompt = "Make a tense 12-second vertical scene of an envoy crossing an old gate at dawn."
-    assert prompt.startswith("Make a tense 12-second vertical scene")
-    manifest = _render(tmp_path, "gold-c-runtime", "gold-c-shot", duration=12.0, action=prompt)
-    assert manifest.artifacts[0].media_type == "video/mp4"
+def test_gold_c_one_prompt_real_product_path(tmp_path: Path) -> None:
+    raw = "Make a tense 12-second vertical scene of an envoy crossing an old gate at dawn."
+    run = asyncio.run(
+        one_prompt_product_entrypoint(
+            ProductionGraphRepository(),
+            raw_request=raw,
+            user_id="gold-c",
+            render_path=tmp_path / "gold-c.mp4",
+        )
+    )
+    snapshot = run.snapshot
+    assert snapshot.project.creative_brief == raw
+    assert snapshot.director_sessions and snapshot.director_decisions
+    assert snapshot.production_plans and snapshot.shots
+    assert run.entrypoint == "POST /studio/one-prompt"
+    assert run.manifest and run.manifest.artifacts[0].integrity_ok()
+    assert _media_qa(tmp_path / "gold-c.mp4", 12.0)
+
+
+@pytest.mark.golden
+def test_gold_acceptance_guards_require_execution_provenance() -> None:
+    from hevi.production_graph.provenance import validate_creative_provenance
+
+    run = asyncio.run(
+        historical_product_entrypoint(
+            ProductionGraphRepository(),
+            source_text="A source event.",
+            title="Guard",
+            user_id="guard",
+        )
+    )
+    report = validate_creative_provenance(run.snapshot)
+    assert report.broken_edges == 0
+    assert report.unbound_final_artifacts == 1

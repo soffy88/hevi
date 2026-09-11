@@ -3295,6 +3295,55 @@
         }
       }
     },
+    "/api/studio/one-prompt": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "One Prompt",
+        "description": "Canonical user-facing one-prompt product entrypoint.",
+        "operationId": "one_prompt_api_studio_one_prompt_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnePromptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response One Prompt Api Studio One Prompt Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/studio/projects": {
       "get": {
         "tags": [
@@ -19341,6 +19390,42 @@
             ],
             "title": "Cpu Quota"
           },
+          "cpu_capacity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Capacity"
+          },
+          "affinity_cpus": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Affinity Cpus"
+          },
+          "cpuset_cpus": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpuset Cpus"
+          },
           "memory_limit_mb": {
             "anyOf": [
               {
@@ -21728,6 +21813,20 @@
           "code"
         ],
         "title": "OAuthRequest"
+      },
+      "OnePromptRequest": {
+        "properties": {
+          "request": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Request"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "title": "OnePromptRequest"
       },
       "OpenAISpeechRequest": {
         "properties": {

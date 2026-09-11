@@ -70,7 +70,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="P0-Golden"
         component={P0GoldenScene}
-        durationInFrames={30}
+      durationInFrames={360}
         fps={30}
         width={1080}
         height={1440}
