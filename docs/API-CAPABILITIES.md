@@ -407,6 +407,41 @@
 | POST | `/api/studio/veya/produce` | Post Veya Produce |
 | GET | `/api/studio/voices` | Get Studio Voices |
 
+## studio-v2
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/studio/director/sessions` | Create Session |
+| GET | `/api/studio/director/sessions/{session_id}/decisions` | Get Director Decisions |
+| POST | `/api/studio/director/sessions/{session_id}/messages` | Post Director Message |
+| GET | `/api/studio/episodes/{episode_id}/scenes` | List Episode Scenes |
+| GET | `/api/studio/projects` | List Production Projects |
+| POST | `/api/studio/projects` | Create Production Project |
+| GET | `/api/studio/projects/{project_id}` | Get Production Project |
+| PATCH | `/api/studio/projects/{project_id}` | Patch Production Project |
+| POST | `/api/studio/projects/{project_id}/adapt` | Adapt Project |
+| GET | `/api/studio/projects/{project_id}/episodes` | List Project Episodes |
+| GET | `/api/studio/projects/{project_id}/narrative` | Get Project Narrative |
+| POST | `/api/studio/projects/{project_id}/narrative/build` | Build Project Narrative |
+| POST | `/api/studio/projects/{project_id}/sources` | Add Project Source |
+| POST | `/api/studio/runs` | Create Production Run |
+| GET | `/api/studio/runs/{run_id}` | Get Production Run |
+| GET | `/api/studio/scenes/{scene_id}/shots` | List Scene Shots |
+| GET | `/api/studio/shots/{shot_id}` | Get Shot |
+| PATCH | `/api/studio/shots/{shot_id}` | Patch Shot |
+| POST | `/api/studio/shots/{shot_id}/approve` | Approve Shot |
+| POST | `/api/studio/shots/{shot_id}/compile` | Compile Production Shot |
+| POST | `/api/studio/shots/{shot_id}/generate` | Queue Shot Generation |
+| POST | `/api/studio/shots/{shot_id}/lock` | Lock Shot |
+| POST | `/api/studio/shots/{shot_id}/prepare` | Prepare Production Shot |
+| GET | `/api/studio/shots/{shot_id}/qa` | Get Shot Qa |
+| GET | `/api/studio/shots/{shot_id}/references` | Get Shot References |
+| POST | `/api/studio/shots/{shot_id}/regenerate` | Regenerate Shot |
+| GET | `/api/studio/shots/{shot_id}/revisions` | Get Shot Revisions |
+| GET | `/api/studio/tasks` | List Domain Tasks |
+| POST | `/api/studio/tasks/{task_id}/cancel` | Cancel Domain Task |
+| POST | `/api/studio/tasks/{task_id}/retry` | Retry Domain Task |
+
 ## style-packs
 
 | 方法 | 路径 | 说明 |

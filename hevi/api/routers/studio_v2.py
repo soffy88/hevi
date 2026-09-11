@@ -39,11 +39,11 @@ from hevi.production_graph.adapters.tongjian import (
     chapter_to_narrative,
     source_document_from_text,
 )
+from hevi.production_graph.durable_execution import PostgresDurableExecutionStore
 from hevi.studio.slate_bridge import production_plan_to_slate
 from hevi.tongjian.schemas import ChapterIR
 
 router = APIRouter(prefix="/studio", tags=["studio-v2"])
-_RUNS: dict[str, dict[str, Any]] = {}
 
 
 class ProjectCreateRequest(BaseModel):
@@ -135,9 +135,7 @@ def _user_id(user: dict[str, Any]) -> str:
     return str(user.get("id") or user.get("sub") or "")
 
 
-async def _owned_snapshot(
-    repo: ProductionGraphRepository, project_id: str, user: dict[str, Any]
-):
+async def _owned_snapshot(repo: ProductionGraphRepository, project_id: str, user: dict[str, Any]):
     snapshot = await repo.get_snapshot(project_id)
     if snapshot is None:
         raise HTTPException(status_code=404, detail="unknown production project")
@@ -185,9 +183,7 @@ async def patch_production_project(
 
 
 @router.post("/projects/{project_id}/sources", status_code=status.HTTP_201_CREATED)
-async def add_project_source(
-    project_id: str, body: SourceRequest, user: UserDep, repo: RepoDep
-):
+async def add_project_source(project_id: str, body: SourceRequest, user: UserDep, repo: RepoDep):
     snapshot = await _owned_snapshot(repo, project_id, user)
     document, chunk = source_document_from_text(
         project_id=project_id,
@@ -202,7 +198,9 @@ async def add_project_source(
         actor=_user_id(user),
         reason="source imported",
         operations=[
-            RevisionPatchOperation(op="add", path="/sources/-", value=document.model_dump(mode="json")),
+            RevisionPatchOperation(
+                op="add", path="/sources/-", value=document.model_dump(mode="json")
+            ),
             RevisionPatchOperation(
                 op="add", path="/source_chunks/-", value=chunk.model_dump(mode="json")
             ),
@@ -216,7 +214,11 @@ async def add_project_source(
 @router.get("/projects/{project_id}/narrative")
 async def get_project_narrative(project_id: str, user: UserDep, repo: RepoDep):
     snapshot = await _owned_snapshot(repo, project_id, user)
-    return _dump(snapshot.narrative) if snapshot.narrative else {"project_id": project_id, "events": [], "edges": []}
+    return (
+        _dump(snapshot.narrative)
+        if snapshot.narrative
+        else {"project_id": project_id, "events": [], "edges": []}
+    )
 
 
 @router.post("/projects/{project_id}/narrative/build")
@@ -241,9 +243,13 @@ async def build_project_narrative(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     existing = {item.id for item in snapshot.characters}
     operations = [
-        RevisionPatchOperation(op="replace", path="/narrative", value=narrative.model_dump(mode="json")),
+        RevisionPatchOperation(
+            op="replace", path="/narrative", value=narrative.model_dump(mode="json")
+        ),
         *[
-            RevisionPatchOperation(op="add", path="/characters/-", value=item.model_dump(mode="json"))
+            RevisionPatchOperation(
+                op="add", path="/characters/-", value=item.model_dump(mode="json")
+            )
             for item in characters
             if item.id not in existing
         ],
@@ -264,9 +270,7 @@ async def build_project_narrative(
 
 
 @router.post("/projects/{project_id}/adapt")
-async def adapt_project(
-    project_id: str, body: AdaptRequest, user: UserDep, repo: RepoDep
-):
+async def adapt_project(project_id: str, body: AdaptRequest, user: UserDep, repo: RepoDep):
     snapshot = await _owned_snapshot(repo, project_id, user)
     event_ids = {item.id for item in snapshot.narrative.events} if snapshot.narrative else set()
     if set(body.source_event_ids) - event_ids:
@@ -285,7 +289,9 @@ async def adapt_project(
         actor=_user_id(user),
         reason="adaptation plan created",
         operations=[
-            RevisionPatchOperation(op="add", path="/adaptation_plans/-", value=plan.model_dump(mode="json"))
+            RevisionPatchOperation(
+                op="add", path="/adaptation_plans/-", value=plan.model_dump(mode="json")
+            )
         ],
     )
     try:
@@ -307,7 +313,9 @@ async def list_episode_scenes(episode_id: str, user: UserDep, repo: RepoDep):
     for project_id in await _project_ids(repo, user):
         snapshot = await repo.get_snapshot(project_id)
         if snapshot and any(item.id == episode_id for item in snapshot.episodes):
-            return {"scenes": [_dump(item) for item in snapshot.scenes if item.episode_id == episode_id]}
+            return {
+                "scenes": [_dump(item) for item in snapshot.scenes if item.episode_id == episode_id]
+            }
     raise HTTPException(status_code=404, detail="unknown episode")
 
 
@@ -347,9 +355,7 @@ async def patch_shot(shot_id: str, body: PatchRequest, user: UserDep, repo: Repo
 
 
 @router.post("/shots/{shot_id}/prepare")
-async def prepare_production_shot(
-    shot_id: str, body: PrepareRequest, user: UserDep, repo: RepoDep
-):
+async def prepare_production_shot(shot_id: str, body: PrepareRequest, user: UserDep, repo: RepoDep):
     snapshot, shot = await _find_shot(repo, shot_id, user)
     prepared, result = prepare_shot(shot, body.context)
     patch = RevisionPatch(
@@ -359,7 +365,9 @@ async def prepare_production_shot(
         reason="shot readiness preflight",
         operations=[
             RevisionPatchOperation(
-                op="replace", path=f"/shots/{shot_id}/readiness_state", value=prepared.readiness_state
+                op="replace",
+                path=f"/shots/{shot_id}/readiness_state",
+                value=prepared.readiness_state,
             ),
         ],
     )
@@ -372,13 +380,13 @@ async def prepare_production_shot(
 
 
 @router.post("/shots/{shot_id}/compile")
-async def compile_production_shot(
-    shot_id: str, body: CompileRequest, user: UserDep, repo: RepoDep
-):
+async def compile_production_shot(shot_id: str, body: CompileRequest, user: UserDep, repo: RepoDep):
     snapshot, shot = await _find_shot(repo, shot_id, user)
     if not shot.reference_bundle_id:
         raise HTTPException(status_code=422, detail="shot has no reference bundle")
-    bundle = next((item for item in snapshot.reference_bundles if item.id == shot.reference_bundle_id), None)
+    bundle = next(
+        (item for item in snapshot.reference_bundles if item.id == shot.reference_bundle_id), None
+    )
     if bundle is None:
         raise HTTPException(status_code=422, detail="shot reference bundle is missing")
     try:
@@ -389,15 +397,15 @@ async def compile_production_shot(
 
 
 @router.post("/shots/{shot_id}/generate")
-async def queue_shot_generation(
-    shot_id: str, body: CompileRequest, user: UserDep, repo: RepoDep
-):
+async def queue_shot_generation(shot_id: str, body: CompileRequest, user: UserDep, repo: RepoDep):
     snapshot, shot = await _find_shot(repo, shot_id, user)
     if shot.readiness_state is not ReadinessState.READY:
         raise HTTPException(status_code=422, detail="generation dispatch requires READY shot")
     compiled = await compile_production_shot(shot_id, body, user, repo)
     plan = ExecutionPlan.model_validate(compiled["execution_plan"])
     envelope = envelope_from_execution_plan(plan)
+    if repo.pool is not None:
+        await PostgresDurableExecutionStore(repo.pool).persist_intent(envelope)
     patch = RevisionPatch(
         project_id=snapshot.project.id,
         base_revision_id=snapshot.revision.id,
@@ -429,21 +437,30 @@ async def lock_shot(shot_id: str, user: UserDep, repo: RepoDep):
     return await _transition_shot(shot_id, ReadinessState.LOCKED, user, repo)
 
 
-async def _transition_shot(shot_id: str, target: ReadinessState, user: dict[str, Any], repo: ProductionGraphRepository):
+async def _transition_shot(
+    shot_id: str, target: ReadinessState, user: dict[str, Any], repo: ProductionGraphRepository
+):
     snapshot, shot = await _find_shot(repo, shot_id, user)
     patch = RevisionPatch(
         project_id=snapshot.project.id,
         base_revision_id=snapshot.revision.id,
         actor=_user_id(user),
         reason=f"shot {target.value.lower()}",
-        operations=[RevisionPatchOperation(op="replace", path=f"/shots/{shot_id}/readiness_state", value=target)],
+        operations=[
+            RevisionPatchOperation(
+                op="replace", path=f"/shots/{shot_id}/readiness_state", value=target
+            )
+        ],
     )
     try:
         child = apply_revision_patch(snapshot, patch)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     await repo.save_snapshot(child)
-    return {"shot": _dump(next(item for item in child.shots if item.id == shot.id)), "revision": _dump(child.revision)}
+    return {
+        "shot": _dump(next(item for item in child.shots if item.id == shot.id)),
+        "revision": _dump(child.revision),
+    }
 
 
 @router.get("/shots/{shot_id}/revisions")
@@ -456,14 +473,18 @@ async def get_shot_revisions(shot_id: str, user: UserDep, repo: RepoDep):
 @router.get("/shots/{shot_id}/references")
 async def get_shot_references(shot_id: str, user: UserDep, repo: RepoDep):
     snapshot, shot = await _find_shot(repo, shot_id, user)
-    bundle = next((item for item in snapshot.reference_bundles if item.id == shot.reference_bundle_id), None)
+    bundle = next(
+        (item for item in snapshot.reference_bundles if item.id == shot.reference_bundle_id), None
+    )
     return {"reference_bundle": _dump(bundle) if bundle else None}
 
 
 @router.get("/shots/{shot_id}/qa")
 async def get_shot_qa(shot_id: str, user: UserDep, repo: RepoDep):
     snapshot, shot = await _find_shot(repo, shot_id, user)
-    result = next((item for item in reversed(snapshot.readiness_results) if item.shot_id == shot.id), None)
+    result = next(
+        (item for item in reversed(snapshot.readiness_results) if item.shot_id == shot.id), None
+    )
     return {"readiness": _dump(result) if result else None, "qa": {}}
 
 
@@ -506,7 +527,9 @@ async def get_director_decisions(session_id: str, user: UserDep, repo: RepoDep):
             return {
                 "session_id": session_id,
                 "decisions": [
-                    _dump(item) for item in snapshot.director_decisions if item.session_id == session_id
+                    _dump(item)
+                    for item in snapshot.director_decisions
+                    if item.session_id == session_id
                 ],
             }
     raise HTTPException(status_code=404, detail="unknown Director session")
@@ -521,7 +544,9 @@ async def post_director_message(
     for project_id in await _project_ids(repo, user):
         candidate = await repo.get_snapshot(project_id)
         if candidate is not None:
-            session = next((item for item in candidate.director_sessions if item.id == session_id), None)
+            session = next(
+                (item for item in candidate.director_sessions if item.id == session_id), None
+            )
             if session is not None:
                 snapshot = candidate
                 break
@@ -533,9 +558,12 @@ async def post_director_message(
         base_revision_id=snapshot.revision.id,
         actor=_user_id(user),
         reason=body.rationale or "Director session decision",
-        operations=operations or [
+        operations=operations
+        or [
             RevisionPatchOperation(
-                op="replace", path=f"/director_sessions/{session.id}/objective", value=session.objective
+                op="replace",
+                path=f"/director_sessions/{session.id}/objective",
+                value=session.objective,
             )
         ],
     )
@@ -554,62 +582,65 @@ async def post_director_message(
     child = apply_revision_patch(snapshot, patch)
     await repo.save_snapshot(child)
     return {
-        "decision": _dump(next(item for item in child.director_decisions if item.id == decision.id)),
+        "decision": _dump(
+            next(item for item in child.director_decisions if item.id == decision.id)
+        ),
         "revision": _dump(child.revision),
     }
 
 
 @router.post("/runs")
-async def create_production_run(
-    project_id: str, body: RunRequest, user: UserDep, repo: RepoDep
-):
+async def create_production_run(project_id: str, body: RunRequest, user: UserDep, repo: RepoDep):
     snapshot = await _owned_snapshot(repo, project_id, user)
     plan = snapshot.production_plans[-1] if snapshot.production_plans else None
     if plan is None:
         raise HTTPException(status_code=422, detail="project has no ProductionPlan")
-    slate = production_plan_to_slate(plan, line_id=body.line_id, slots=body.slots, execute=body.execute)
-    _RUNS[slate.slate_id] = {
+    slate = production_plan_to_slate(
+        plan, line_id=body.line_id, slots=body.slots, execute=body.execute
+    )
+    run = {
         "run_id": slate.slate_id,
         "project_id": project_id,
+        "revision_id": snapshot.revision.id,
         "user_id": _user_id(user),
         "status": "scheduled",
         "slate": {"slate_id": slate.slate_id, "line_id": slate.line_id, "slots": slate.slots},
     }
-    return _RUNS[slate.slate_id]
+    return await repo.save_run(run)
 
 
 @router.get("/runs/{run_id}")
-async def get_production_run(run_id: str, user: UserDep):
-    run = _RUNS.get(run_id)
-    if run is None or run["user_id"] != _user_id(user):
+async def get_production_run(run_id: str, user: UserDep, repo: RepoDep):
+    run = await repo.get_run(run_id, user_id=_user_id(user))
+    if run is None:
         raise HTTPException(status_code=404, detail="unknown production run")
     return run
 
 
 @router.get("/tasks")
-async def list_domain_tasks(user: UserDep):
-    tasks = [item for item in _RUNS.values() if item["user_id"] == _user_id(user)]
+async def list_domain_tasks(user: UserDep, repo: RepoDep):
+    tasks = await repo.list_runs(user_id=_user_id(user))
     return {"tasks": tasks, "total": len(tasks)}
 
 
 @router.post("/tasks/{task_id}/cancel")
-async def cancel_domain_task(task_id: str, user: UserDep):
-    task = _RUNS.get(task_id)
-    if task is None or task["user_id"] != _user_id(user):
+async def cancel_domain_task(task_id: str, user: UserDep, repo: RepoDep):
+    task = await repo.get_run(task_id, user_id=_user_id(user))
+    if task is None:
         raise HTTPException(status_code=404, detail="unknown production task")
     task["status"] = "cancelled"
-    return task
+    return await repo.save_run(task)
 
 
 @router.post("/tasks/{task_id}/retry")
-async def retry_domain_task(task_id: str, user: UserDep):
-    task = _RUNS.get(task_id)
-    if task is None or task["user_id"] != _user_id(user):
+async def retry_domain_task(task_id: str, user: UserDep, repo: RepoDep):
+    task = await repo.get_run(task_id, user_id=_user_id(user))
+    if task is None:
         raise HTTPException(status_code=404, detail="unknown production task")
     if task["status"] not in {"failed", "cancelled"}:
         raise HTTPException(status_code=409, detail="task is not retryable from current state")
     task["status"] = "queued"
-    return task
+    return await repo.save_run(task)
 
 
 async def _find_shot(repo: ProductionGraphRepository, shot_id: str, user: dict[str, Any]):

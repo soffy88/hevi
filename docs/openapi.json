@@ -1457,6 +1457,71 @@
         }
       }
     },
+    "/api/providers/status": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Provider Status",
+        "description": "Return redacted provider configuration and real reachability state.",
+        "operationId": "provider_status_api_providers_status_get",
+        "parameters": [
+          {
+            "name": "probe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Probe"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Provider Status Api Providers Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/publishers": {
       "get": {
         "tags": [
@@ -1554,18 +1619,40 @@
         "summary": "Get Pixabay Videos",
         "description": "Pixabay 视频搜索 API - 直接复用 material_corpus.search_pixabay_videos 逻辑",
         "operationId": "get_pixabay_videos_api_material_pixabay_get",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Query"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
                   "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
                   "title": "Response Get Pixabay Videos Api Material Pixabay Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1581,18 +1668,40 @@
         "summary": "Get Coverr Videos",
         "description": "Coverr 视频搜索 API - 直接复用 material_corpus.search_coverr_videos 逻辑",
         "operationId": "get_coverr_videos_api_material_coverr_get",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Query"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
                   "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
                   "title": "Response Get Coverr Videos Api Material Coverr Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1608,18 +1717,40 @@
         "summary": "Get Archive Videos",
         "description": "Archive.org 搜索 API - 直接复用 material_corpus.search_archive_videos 逻辑",
         "operationId": "get_archive_videos_api_material_archive_get",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Query"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
                   "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
                   "title": "Response Get Archive Videos Api Material Archive Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1959,6 +2090,79 @@
         }
       }
     },
+    "/api/studio/motion/shot-cards": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Shot Cards",
+        "description": "Discover the complete normalized Shotcraft runtime catalogue.",
+        "operationId": "get_shot_cards_api_studio_motion_shot_cards_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Shot Cards Api Studio Motion Shot Cards Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/studio/slates": {
       "post": {
         "tags": [
@@ -2187,6 +2391,215 @@
         }
       }
     },
+    "/api/studio/nle/presets": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Nle Presets",
+        "operationId": "get_nle_presets_api_studio_nle_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Nle Presets Api Studio Nle Presets Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/nle/projects": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Nle Projects",
+        "operationId": "get_nle_projects_api_studio_nle_projects_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Nle Projects Api Studio Nle Projects Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Create Nle Project",
+        "operationId": "create_nle_project_api_studio_nle_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NLEProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Nle Project Api Studio Nle Projects Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/nle/projects/{project_id}/timelines/{timeline_id}": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Attach Nle Timeline",
+        "operationId": "attach_nle_timeline_api_studio_nle_projects__project_id__timelines__timeline_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "timeline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Timeline Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Attach Nle Timeline Api Studio Nle Projects  Project Id  Timelines  Timeline Id  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/nle/projects/{project_id}/revisions": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Nle Revisions",
+        "operationId": "get_nle_revisions_api_studio_nle_projects__project_id__revisions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Nle Revisions Api Studio Nle Projects  Project Id  Revisions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/studio/timelines/{timeline_id}/export": {
       "post": {
         "tags": [
@@ -2229,6 +2642,66 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Export One Timeline Api Studio Timelines  Timeline Id  Export Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/timelines/{timeline_id}/chat": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Chat Edit Timeline",
+        "description": "FireRed-style natural-language timeline edit with preview/re-render.",
+        "operationId": "chat_edit_timeline_api_studio_timelines__timeline_id__chat_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "timeline_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Timeline Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimelineChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Chat Edit Timeline Api Studio Timelines  Timeline Id  Chat Post"
                 }
               }
             }
@@ -2822,6 +3295,1427 @@
         }
       }
     },
+    "/api/studio/projects": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Production Projects",
+        "operationId": "list_production_projects_api_studio_projects_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Create Production Project",
+        "operationId": "create_production_project_api_studio_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Production Project",
+        "operationId": "get_production_project_api_studio_projects__project_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Patch Production Project",
+        "operationId": "patch_production_project_api_studio_projects__project_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/sources": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Add Project Source",
+        "operationId": "add_project_source_api_studio_projects__project_id__sources_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/narrative": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Project Narrative",
+        "operationId": "get_project_narrative_api_studio_projects__project_id__narrative_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/narrative/build": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Build Project Narrative",
+        "operationId": "build_project_narrative_api_studio_projects__project_id__narrative_build_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NarrativeBuildRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/adapt": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Adapt Project",
+        "operationId": "adapt_project_api_studio_projects__project_id__adapt_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/episodes": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Project Episodes",
+        "operationId": "list_project_episodes_api_studio_projects__project_id__episodes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/episodes/{episode_id}/scenes": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Episode Scenes",
+        "operationId": "list_episode_scenes_api_studio_episodes__episode_id__scenes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "episode_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Episode Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/scenes/{scene_id}/shots": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Scene Shots",
+        "operationId": "list_scene_shots_api_studio_scenes__scene_id__shots_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scene_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scene Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Shot",
+        "operationId": "get_shot_api_studio_shots__shot_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Patch Shot",
+        "operationId": "patch_shot_api_studio_shots__shot_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/prepare": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Prepare Production Shot",
+        "operationId": "prepare_production_shot_api_studio_shots__shot_id__prepare_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepareRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/compile": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Compile Production Shot",
+        "operationId": "compile_production_shot_api_studio_shots__shot_id__compile_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/generate": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Queue Shot Generation",
+        "operationId": "queue_shot_generation_api_studio_shots__shot_id__generate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/regenerate": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Regenerate Shot",
+        "operationId": "regenerate_shot_api_studio_shots__shot_id__regenerate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/approve": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Approve Shot",
+        "operationId": "approve_shot_api_studio_shots__shot_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/lock": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Lock Shot",
+        "operationId": "lock_shot_api_studio_shots__shot_id__lock_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/revisions": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Shot Revisions",
+        "operationId": "get_shot_revisions_api_studio_shots__shot_id__revisions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/references": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Shot References",
+        "operationId": "get_shot_references_api_studio_shots__shot_id__references_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/qa": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Shot Qa",
+        "operationId": "get_shot_qa_api_studio_shots__shot_id__qa_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/director/sessions": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Create Session",
+        "operationId": "create_session_api_studio_director_sessions_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectorSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/director/sessions/{session_id}/decisions": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Director Decisions",
+        "operationId": "get_director_decisions_api_studio_director_sessions__session_id__decisions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/director/sessions/{session_id}/messages": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Post Director Message",
+        "operationId": "post_director_message_api_studio_director_sessions__session_id__messages_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectorMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/runs": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Create Production Run",
+        "operationId": "create_production_run_api_studio_runs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/hevi__api__routers__studio_v2__RunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Production Run",
+        "operationId": "get_production_run_api_studio_runs__run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/tasks": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Domain Tasks",
+        "operationId": "list_domain_tasks_api_studio_tasks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/tasks/{task_id}/cancel": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Cancel Domain Task",
+        "operationId": "cancel_domain_task_api_studio_tasks__task_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/tasks/{task_id}/retry": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Retry Domain Task",
+        "operationId": "retry_domain_task_api_studio_tasks__task_id__retry_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/production/v2/seedance/generate": {
       "post": {
         "tags": [
@@ -2896,6 +4790,55 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Clip Video Api Production V2 Clip Video Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/production/v2/localize-video": {
+      "post": {
+        "tags": [
+          "production-v2"
+        ],
+        "summary": "Localize Video",
+        "description": "Submit a real 3O video localization/dubbing transaction.",
+        "operationId": "localize_video_api_production_v2_localize_video_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Localize Video Api Production V2 Localize Video Post"
                 }
               }
             }
@@ -10124,6 +12067,130 @@
         }
       }
     },
+    "/api/shortdrama/writer/capabilities": {
+      "get": {
+        "tags": [
+          "shortdrama-writer"
+        ],
+        "summary": "Capabilities",
+        "operationId": "capabilities_api_shortdrama_writer_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Capabilities Api Shortdrama Writer Capabilities Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/shortdrama/writer/draft": {
+      "post": {
+        "tags": [
+          "shortdrama-writer"
+        ],
+        "summary": "Draft",
+        "operationId": "draft_api_shortdrama_writer_draft_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriterDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Draft Api Shortdrama Writer Draft Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/shortdrama/writer/review": {
+      "post": {
+        "tags": [
+          "shortdrama-writer"
+        ],
+        "summary": "Review",
+        "operationId": "review_api_shortdrama_writer_review_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriterReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Review Api Shortdrama Writer Review Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/explainer/research": {
       "post": {
         "tags": [
@@ -10467,6 +12534,453 @@
         }
       }
     },
+    "/api/mpt/production": {
+      "post": {
+        "tags": [
+          "mpt"
+        ],
+        "summary": "Create Canonical Mpt Production",
+        "description": "Create MPT work as a canonical Hevi Task.",
+        "operationId": "create_canonical_mpt_production_api_mpt_production_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateVideoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateVideoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/mpt/generate": {
+      "post": {
+        "tags": [
+          "mpt"
+        ],
+        "summary": "Generate Video",
+        "description": "提交视频生成任务到 MPT",
+        "operationId": "generate_video_api_mpt_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateVideoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateVideoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mpt/status/{task_id}": {
+      "get": {
+        "tags": [
+          "mpt"
+        ],
+        "summary": "Get Task Status",
+        "description": "查询 MPT 任务状态",
+        "operationId": "get_task_status_api_mpt_status__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mpt/material/search": {
+      "post": {
+        "tags": [
+          "mpt"
+        ],
+        "summary": "Search Materials",
+        "description": "搜索素材（代理 MPT 素材搜索能力）",
+        "operationId": "search_materials_api_mpt_material_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MaterialItem"
+                  },
+                  "type": "array",
+                  "title": "Response Search Materials Api Mpt Material Search Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mpt/cross-post": {
+      "post": {
+        "tags": [
+          "mpt"
+        ],
+        "summary": "Cross Post",
+        "description": "一键发布到多平台",
+        "operationId": "cross_post_api_mpt_cross_post_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrossPostRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Cross Post Api Mpt Cross Post Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mpt/reference/analyze": {
+      "post": {
+        "tags": [
+          "mpt"
+        ],
+        "summary": "Analyze Reference Video",
+        "description": "参考视频分析（转录/节奏/场景/概念）",
+        "operationId": "analyze_reference_video_api_mpt_reference_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenceVideoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceVideoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mpt/hevi/submit-job": {
+      "post": {
+        "tags": [
+          "mpt"
+        ],
+        "summary": "Submit Job From Hevi",
+        "description": "从 hevi 工作流提交 MPT 任务（内部调用）",
+        "operationId": "submit_job_from_hevi_api_mpt_hevi_submit_job_post",
+        "parameters": [
+          {
+            "name": "production_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Production Id"
+            }
+          },
+          {
+            "name": "revision_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Revision Id"
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Topic"
+            }
+          },
+          {
+            "name": "video_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10,
+              "minimum": 1,
+              "default": 1,
+              "title": "Video Count"
+            }
+          },
+          {
+            "name": "aspect",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "9:16",
+              "title": "Aspect"
+            }
+          },
+          {
+            "name": "voice",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "zh-CN-XiaoxiaoNeural",
+              "title": "Voice"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateVideoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mpt/health": {
+      "get": {
+        "tags": [
+          "mpt"
+        ],
+        "summary": "Health Check",
+        "description": "MPT 集成健康检查，同时验证实际 MPT API。",
+        "operationId": "health_check_api_mpt_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Check Api Mpt Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/narrator/status": {
+      "get": {
+        "tags": [
+          "narrator"
+        ],
+        "summary": "Status",
+        "operationId": "status_api_narrator_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Status Api Narrator Status Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/narrator/run": {
+      "post": {
+        "tags": [
+          "narrator"
+        ],
+        "summary": "Run",
+        "operationId": "run_api_narrator_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/hevi__api__routers__narrator__RunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Run Api Narrator Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/gallery": {
       "get": {
         "tags": [
@@ -10789,6 +13303,139 @@
         ]
       }
     },
+    "/api/voice-studio/catalog": {
+      "get": {
+        "tags": [
+          "voice-studio"
+        ],
+        "summary": "Speech Catalog",
+        "description": "统一返回 TTS、ASR、声线和工作流目录；不加载任何模型。",
+        "operationId": "speech_catalog_api_voice_studio_catalog_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Speech Catalog Api Voice Studio Catalog Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/profiles": {
+      "get": {
+        "tags": [
+          "voice-studio"
+        ],
+        "summary": "Speech Profiles",
+        "operationId": "speech_profiles_api_voice_studio_profiles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Speech Profiles Api Voice Studio Profiles Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/batch/plan": {
+      "post": {
+        "tags": [
+          "voice-studio"
+        ],
+        "summary": "Speech Batch Plan",
+        "operationId": "speech_batch_plan_api_voice_studio_batch_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Speech Batch Plan Api Voice Studio Batch Plan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/diagnostics": {
+      "get": {
+        "tags": [
+          "voice-studio"
+        ],
+        "summary": "Speech Diagnostics Endpoint",
+        "operationId": "speech_diagnostics_endpoint_api_voice_studio_diagnostics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Speech Diagnostics Endpoint Api Voice Studio Diagnostics Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/voice-studio/tts/synthesize": {
       "post": {
         "tags": [
@@ -10893,6 +13540,16 @@
         ],
         "summary": "Validate Config",
         "operationId": "validate_config_api_voice_studio_config_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -10905,6 +13562,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10912,6 +13579,1380 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/voice-studio/platform/models": {
+      "get": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Models",
+        "operationId": "models_api_voice_studio_platform_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Models Api Voice Studio Platform Models Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/models/register": {
+      "post": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Register",
+        "operationId": "register_api_voice_studio_platform_models_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Register Api Voice Studio Platform Models Register Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/models/{model_id}": {
+      "delete": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Unregister",
+        "operationId": "unregister_api_voice_studio_platform_models__model_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Unregister Api Voice Studio Platform Models  Model Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voice-studio/platform/route": {
+      "post": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Route",
+        "operationId": "route_api_voice_studio_platform_route_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Route Api Voice Studio Platform Route Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/voices": {
+      "get": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Voices",
+        "description": "VoiceStudio-compatible voice list, including built-ins and local gallery.",
+        "operationId": "voices_api_voice_studio_platform_voices_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Voices Api Voice Studio Platform Voices Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/voices/gallery": {
+      "get": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Gallery",
+        "operationId": "gallery_api_voice_studio_platform_voices_gallery_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Gallery Api Voice Studio Platform Voices Gallery Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Create Gallery",
+        "operationId": "create_gallery_api_voice_studio_platform_voices_gallery_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Gallery Api Voice Studio Platform Voices Gallery Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/voices/gallery/{profile_id}": {
+      "delete": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Remove Gallery",
+        "operationId": "remove_gallery_api_voice_studio_platform_voices_gallery__profile_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Remove Gallery Api Voice Studio Platform Voices Gallery  Profile Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voice-studio/platform/dubbing/plan": {
+      "post": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Dubbing Plan",
+        "operationId": "dubbing_plan_api_voice_studio_platform_dubbing_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DubbingPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Dubbing Plan Api Voice Studio Platform Dubbing Plan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/audiobook/plan": {
+      "post": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Audiobook Plan",
+        "operationId": "audiobook_plan_api_voice_studio_platform_audiobook_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudiobookPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Audiobook Plan Api Voice Studio Platform Audiobook Plan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/dictation/plan": {
+      "post": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Dictation Plan",
+        "operationId": "dictation_plan_api_voice_studio_platform_dictation_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DictationPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Dictation Plan Api Voice Studio Platform Dictation Plan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/watermark/plan": {
+      "post": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Watermark Plan",
+        "operationId": "watermark_plan_api_voice_studio_platform_watermark_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatermarkPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Watermark Plan Api Voice Studio Platform Watermark Plan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/batch": {
+      "post": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Batch",
+        "description": "Validate or execute a local batch, returning one manifest per real file.",
+        "operationId": "batch_api_voice_studio_platform_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Batch Api Voice Studio Platform Batch Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/voice-studio/platform/diagnostics": {
+      "get": {
+        "tags": [
+          "voice-platform"
+        ],
+        "summary": "Diagnostics",
+        "operationId": "diagnostics_api_voice_studio_platform_diagnostics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Diagnostics Api Voice Studio Platform Diagnostics Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/.well-known/voicestudio-speech": {
+      "get": {
+        "tags": [
+          "voice-platform-openai"
+        ],
+        "summary": "Discovery",
+        "operationId": "discovery_v1__well_known_voicestudio_speech_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Discovery V1  Well Known Voicestudio Speech Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/audio/voices": {
+      "get": {
+        "tags": [
+          "voice-platform-openai"
+        ],
+        "summary": "Openai Voices",
+        "description": "Return the OpenAI-compatible voice catalogue without loading models.",
+        "operationId": "openai_voices_v1_audio_voices_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Openai Voices V1 Audio Voices Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/audio/speech": {
+      "post": {
+        "tags": [
+          "voice-platform-openai"
+        ],
+        "summary": "Speech",
+        "operationId": "speech_v1_audio_speech_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenAISpeechRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/audio/speech/stream": {
+      "post": {
+        "tags": [
+          "voice-platform-openai"
+        ],
+        "summary": "Speech Stream",
+        "description": "Stream native Pocket/VoxCPM PCM chunks without creating a task first.",
+        "operationId": "speech_stream_v1_audio_speech_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenAISpeechRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/audio/transcriptions": {
+      "post": {
+        "tags": [
+          "voice-platform-openai"
+        ],
+        "summary": "Transcriptions",
+        "operationId": "transcriptions_v1_audio_transcriptions_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transcriptions_v1_audio_transcriptions_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Transcriptions V1 Audio Transcriptions Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/stream-edit/capabilities": {
+      "get": {
+        "tags": [
+          "stream-edit"
+        ],
+        "summary": "Stream Capabilities",
+        "operationId": "stream_capabilities_api_stream_edit_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Stream Capabilities Api Stream Edit Capabilities Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stream-edit/budget": {
+      "get": {
+        "tags": [
+          "stream-edit"
+        ],
+        "summary": "Stream Budget",
+        "operationId": "stream_budget_api_stream_edit_budget_get",
+        "parameters": [
+          {
+            "name": "width",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 840,
+              "title": "Width"
+            }
+          },
+          {
+            "name": "height",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 480,
+              "title": "Height"
+            }
+          },
+          {
+            "name": "fps",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 24,
+              "title": "Fps"
+            }
+          },
+          {
+            "name": "seconds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 1.0,
+              "title": "Seconds"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Stream Budget Api Stream Edit Budget Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stream-edit/sessions": {
+      "get": {
+        "tags": [
+          "stream-edit"
+        ],
+        "summary": "Sessions",
+        "operationId": "sessions_api_stream_edit_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Sessions Api Stream Edit Sessions Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "stream-edit"
+        ],
+        "summary": "Create Stream Session",
+        "operationId": "create_stream_session_api_stream_edit_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamEditCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Stream Session Api Stream Edit Sessions Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/stream-edit/sessions/{session_id}": {
+      "get": {
+        "tags": [
+          "stream-edit"
+        ],
+        "summary": "Stream Session",
+        "operationId": "stream_session_api_stream_edit_sessions__session_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Stream Session Api Stream Edit Sessions  Session Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stream-edit/sessions/{session_id}/finish": {
+      "post": {
+        "tags": [
+          "stream-edit"
+        ],
+        "summary": "Finish Stream Session",
+        "operationId": "finish_stream_session_api_stream_edit_sessions__session_id__finish_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Finish Stream Session Api Stream Edit Sessions  Session Id  Finish Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/screenshot/presets": {
+      "get": {
+        "tags": [
+          "screenshot-studio"
+        ],
+        "summary": "Presets",
+        "operationId": "presets_api_studio_screenshot_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Presets Api Studio Screenshot Presets Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/screenshot/projects": {
+      "get": {
+        "tags": [
+          "screenshot-studio"
+        ],
+        "summary": "Projects",
+        "operationId": "projects_api_studio_screenshot_projects_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Projects Api Studio Screenshot Projects Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "screenshot-studio"
+        ],
+        "summary": "Create Project",
+        "operationId": "create_project_api_studio_screenshot_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenshotCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Project Api Studio Screenshot Projects Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/screenshot/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "screenshot-studio"
+        ],
+        "summary": "Get One Project",
+        "operationId": "get_one_project_api_studio_screenshot_projects__project_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get One Project Api Studio Screenshot Projects  Project Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "screenshot-studio"
+        ],
+        "summary": "Patch Project",
+        "operationId": "patch_project_api_studio_screenshot_projects__project_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenshotPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Patch Project Api Studio Screenshot Projects  Project Id  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/screenshot/projects/{project_id}/animation-plan": {
+      "post": {
+        "tags": [
+          "screenshot-studio"
+        ],
+        "summary": "Get Animation Plan",
+        "operationId": "get_animation_plan_api_studio_screenshot_projects__project_id__animation_plan_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Animation Plan Api Studio Screenshot Projects  Project Id  Animation Plan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/screenshot/projects/{project_id}/export": {
+      "post": {
+        "tags": [
+          "screenshot-studio"
+        ],
+        "summary": "Export Project",
+        "operationId": "export_project_api_studio_screenshot_projects__project_id__export_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScreenshotExportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Export Project Api Studio Screenshot Projects  Project Id  Export Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/dashboard/tasks": {
@@ -11445,6 +15486,304 @@
             }
           }
         }
+      }
+    },
+    "/api/agent/longcat/capabilities": {
+      "get": {
+        "tags": [
+          "longcat"
+        ],
+        "summary": "Capabilities",
+        "operationId": "capabilities_api_agent_longcat_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Capabilities Api Agent Longcat Capabilities Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/agent/longcat/run": {
+      "post": {
+        "tags": [
+          "longcat"
+        ],
+        "summary": "Run Longcat",
+        "operationId": "run_longcat_api_agent_longcat_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LongCatRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Run Longcat Api Agent Longcat Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/montage/pipelines": {
+      "get": {
+        "tags": [
+          "montage"
+        ],
+        "summary": "Pipelines",
+        "operationId": "pipelines_api_montage_pipelines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Pipelines Api Montage Pipelines Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/montage/run": {
+      "post": {
+        "tags": [
+          "montage"
+        ],
+        "summary": "Run Montage",
+        "operationId": "run_montage_api_montage_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MontageRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Run Montage Api Montage Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/montage/video-agent/plan": {
+      "post": {
+        "tags": [
+          "montage"
+        ],
+        "summary": "Plan Video Agent",
+        "description": "VideoAgent 控制平面：规划和反思，不执行媒体副作用。",
+        "operationId": "plan_video_agent_api_montage_video_agent_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoAgentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Plan Video Agent Api Montage Video Agent Plan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/montage/video-agent/run": {
+      "post": {
+        "tags": [
+          "montage"
+        ],
+        "summary": "Run Video Agent",
+        "description": "VideoAgent 事务：默认只规划；execute=true 才进入 HEVI 工具链。",
+        "operationId": "run_video_agent_api_montage_video_agent_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoAgentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Run Video Agent Api Montage Video Agent Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/openshorts/ai-short/run": {
+      "post": {
+        "tags": [
+          "openshorts"
+        ],
+        "summary": "Run Ai Short",
+        "operationId": "run_ai_short_api_openshorts_ai_short_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIShortRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Run Ai Short Api Openshorts Ai Short Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/freezone/graphs": {
@@ -12260,6 +16599,117 @@
   },
   "components": {
     "schemas": {
+      "AIShortRunRequest": {
+        "properties": {
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,80}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "default": ""
+          },
+          "cost_mode": {
+            "type": "string",
+            "title": "Cost Mode",
+            "default": "low_cost"
+          },
+          "with_voiceover": {
+            "type": "boolean",
+            "title": "With Voiceover",
+            "default": true
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "voice": {
+            "type": "string",
+            "title": "Voice",
+            "default": ""
+          },
+          "voice_engine": {
+            "type": "string",
+            "title": "Voice Engine",
+            "default": "native"
+          },
+          "voice_design": {
+            "type": "string",
+            "title": "Voice Design",
+            "default": ""
+          },
+          "voiceover_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voiceover Path"
+          },
+          "talking_head_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talking Head Path"
+          },
+          "actor_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Image"
+          },
+          "b_roll_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "B Roll Paths"
+          },
+          "publish_to": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Publish To"
+          },
+          "estimated_cost_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Estimated Cost Usd",
+            "default": 0.65
+          }
+        },
+        "type": "object",
+        "title": "AIShortRunRequest"
+      },
       "Act": {
         "properties": {
           "act": {
@@ -12311,6 +16761,43 @@
         "type": "object",
         "title": "ActionBeatsUpdate",
         "description": "人工修正动作节拍三段(trigger/peak/aftermath)。"
+      },
+      "AdaptRequest": {
+        "properties": {
+          "source_event_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Event Ids"
+          },
+          "target_episode_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Target Episode Ids"
+          },
+          "target_duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Duration"
+          },
+          "objective": {
+            "type": "string",
+            "title": "Objective",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "AdaptRequest"
       },
       "AimOffset": {
         "properties": {
@@ -12593,6 +17080,32 @@
         "title": "AudioTrack",
         "description": "声音时间轴(INC-002 §4.6)——与 performance_track 平级。music/dialogue 空 = 无(标尺明确\n要求无配乐无台词)。segments 的时间边界不必与 performance phase 对齐。未填 → inert。"
       },
+      "AudiobookPlanRequest": {
+        "properties": {
+          "source_document": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Document"
+          },
+          "output_path": {
+            "type": "string",
+            "title": "Output Path",
+            "default": "output/audiobooks/book.m4b"
+          },
+          "voice_map": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Voice Map"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_document"
+        ],
+        "title": "AudiobookPlanRequest"
+      },
       "AxisShift": {
         "properties": {
           "at_beat": {
@@ -12615,6 +17128,46 @@
         },
         "type": "object",
         "title": "AxisShift"
+      },
+      "BatchPlanRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "title": "BatchPlanRequest"
+      },
+      "BatchRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Items"
+          },
+          "execute": {
+            "type": "boolean",
+            "title": "Execute",
+            "default": false
+          },
+          "output_dir": {
+            "type": "string",
+            "title": "Output Dir",
+            "default": "output/voice-platform/batch"
+          }
+        },
+        "type": "object",
+        "title": "BatchRequest"
       },
       "BlockingMove": {
         "properties": {
@@ -12729,6 +17282,42 @@
           "file"
         ],
         "title": "Body_style_analyze_endpoint_api_embrace_style_analyze_post"
+      },
+      "Body_transcriptions_v1_audio_transcriptions_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "本地音频/视频文件"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "faster_whisper"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "response_format": {
+            "type": "string",
+            "title": "Response Format",
+            "default": "verbose_json"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_transcriptions_v1_audio_transcriptions_post"
       },
       "Body_upload_canvas_reference_image_api_canvas_reference_image_post": {
         "properties": {
@@ -13138,6 +17727,68 @@
             "minimum": 1.0,
             "title": "Max Clips",
             "default": 5
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "pattern": "^(16:9|9:16|1:1|4:5|4:3|3:4)$",
+            "title": "Aspect Ratio",
+            "default": "9:16"
+          },
+          "subtitle_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle Path"
+          },
+          "transcript_segments": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Transcript Segments"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "output_width": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4096.0,
+                "minimum": 64.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Width"
+          },
+          "output_height": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4096.0,
+                "minimum": 64.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Height"
           }
         },
         "type": "object",
@@ -13233,6 +17884,21 @@
         ],
         "title": "CompileConstraintsRequest"
       },
+      "CompileRequest": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/ProviderCapabilities"
+          },
+          "resource_budget": {
+            "$ref": "#/components/schemas/ResourceBudget"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider"
+        ],
+        "title": "CompileRequest"
+      },
       "Concept": {
         "properties": {
           "theme": {
@@ -13300,6 +17966,48 @@
         ],
         "title": "ConceptExpansion",
         "description": "素材吸收与扩写映射表条目 —— 反压缩机制的核心(Chain-of-Thought in Schema)。\n\nLLM 必须在写任何台词之前,先遍历用户提供的全部素材,把每个硬核知识点拆成\n一条映射:原文素材点 + 深度扩写。deep_explanation 由 LLM 自行挖掘前因后果、\n历史背景、底层原理、数学/物理图景,并用通俗比喻讲透,不得少于 150 字。\n矩阵做到 100% 覆盖,漏掉任何一段素材即视为废稿。"
+      },
+      "ConfigValidateRequest": {
+        "properties": {
+          "voice_effects": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Effects"
+          },
+          "voice_personas": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Personas"
+          },
+          "tts_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tts Engine"
+          }
+        },
+        "type": "object",
+        "title": "ConfigValidateRequest"
       },
       "ConfirmCandidateRequest": {
         "properties": {
@@ -13438,6 +18146,49 @@
         "type": "object",
         "title": "Constitution"
       },
+      "ContextBlockRequest": {
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "title": "Block Id"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "document"
+          },
+          "priority": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Priority",
+            "default": 0.0
+          },
+          "recency": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Recency",
+            "default": 0.0
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "block_id",
+          "text"
+        ],
+        "title": "ContextBlockRequest"
+      },
       "CoveragePlan": {
         "properties": {
           "master": {
@@ -13479,6 +18230,32 @@
           "material_text"
         ],
         "title": "CreateWorkRequest"
+      },
+      "CrossPostRequest": {
+        "properties": {
+          "video_path": {
+            "type": "string",
+            "title": "Video Path"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "platforms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Platforms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "video_path",
+          "title",
+          "platforms"
+        ],
+        "title": "CrossPostRequest"
       },
       "DailyCalendarRequest": {
         "properties": {
@@ -13722,6 +18499,22 @@
         ],
         "title": "DesignScene"
       },
+      "DictationPlanRequest": {
+        "properties": {
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "default": "faster_whisper"
+          }
+        },
+        "type": "object",
+        "title": "DictationPlanRequest"
+      },
       "DigitalHumanRequest": {
         "properties": {
           "script": {
@@ -13743,6 +18536,60 @@
         },
         "type": "object",
         "title": "DigitalHumanRequest"
+      },
+      "DirectorMessageRequest": {
+        "properties": {
+          "decision_type": {
+            "type": "string",
+            "title": "Decision Type",
+            "default": "creative_revision"
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          },
+          "inputs": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Inputs"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/RevisionPatchOperation"
+            },
+            "type": "array",
+            "title": "Operations"
+          }
+        },
+        "type": "object",
+        "title": "DirectorMessageRequest"
+      },
+      "DirectorSessionRequest": {
+        "properties": {
+          "objective": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Objective"
+          },
+          "constraints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Constraints"
+          },
+          "memory_scope": {
+            "type": "string",
+            "title": "Memory Scope",
+            "default": "PROJECT"
+          }
+        },
+        "type": "object",
+        "required": [
+          "objective"
+        ],
+        "title": "DirectorSessionRequest"
       },
       "DispatchSeasonRequest": {
         "properties": {
@@ -13825,6 +18672,46 @@
         ],
         "title": "DispatchSeasonRequest",
         "description": "导演确认资产/分集规划后的一次性整季派发配置。"
+      },
+      "DubbingPlanRequest": {
+        "properties": {
+          "source_video": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Source Video"
+          },
+          "target_language": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Target Language"
+          },
+          "preserve_speakers": {
+            "type": "boolean",
+            "title": "Preserve Speakers",
+            "default": true
+          },
+          "keep_bed": {
+            "type": "boolean",
+            "title": "Keep Bed",
+            "default": true
+          },
+          "asr_engine": {
+            "type": "string",
+            "title": "Asr Engine",
+            "default": "faster_whisper"
+          },
+          "tts_engine": {
+            "type": "string",
+            "title": "Tts Engine",
+            "default": "edge_tts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_video",
+          "target_language"
+        ],
+        "title": "DubbingPlanRequest"
       },
       "EffectsPreviewRequest": {
         "properties": {
@@ -14436,6 +19323,88 @@
         "type": "object",
         "title": "ExecuteGraphRequest"
       },
+      "ExecutionProfile": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "cpu_quota": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Quota"
+          },
+          "memory_limit_mb": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Limit Mb"
+          },
+          "gpu_available": {
+            "type": "boolean",
+            "title": "Gpu Available",
+            "default": false
+          },
+          "gpu_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Gpu Count",
+            "default": 0
+          },
+          "gpu_vram_mb": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gpu Vram Mb"
+          },
+          "render_concurrency": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Render Concurrency",
+            "default": 1
+          },
+          "provider_concurrency": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Provider Concurrency",
+            "default": 1
+          },
+          "io_concurrency": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Io Concurrency",
+            "default": 1
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "explicit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExecutionProfile",
+        "description": "The resource envelope visible to one HEVI worker.\n\n``cpu_quota`` is expressed in CPUs, not host CPUs.  A value of ``None``\nmeans the cgroup has no CPU quota.  Concurrency fields are policy caps;\n:meth:`concurrency_limit` additionally applies the measured CPU envelope."
+      },
       "ExplainerAssemblyAccepted": {
         "properties": {
           "task_id": {
@@ -14506,6 +19475,8 @@
               "remotion_chart",
               "remotion_code",
               "manim_scene",
+              "whiteboard",
+              "infographic",
               "voiceover"
             ],
             "title": "Visual Type",
@@ -15074,6 +20045,90 @@
           "title"
         ],
         "title": "GalleryCreateRequest"
+      },
+      "GenerateVideoRequest": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "video_count": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Video Count",
+            "default": 1
+          },
+          "aspect": {
+            "type": "string",
+            "pattern": "^(16:9|9:16|1:1|4:3|3:4)$",
+            "title": "Aspect",
+            "default": "9:16"
+          },
+          "voice": {
+            "type": "string",
+            "title": "Voice",
+            "default": "zh-CN-XiaoxiaoNeural"
+          },
+          "bgm": {
+            "type": "boolean",
+            "title": "Bgm",
+            "default": true
+          },
+          "subtitle": {
+            "type": "boolean",
+            "title": "Subtitle",
+            "default": true
+          },
+          "material_mode": {
+            "type": "string",
+            "pattern": "^(pexels|pixabay|local)$",
+            "title": "Material Mode",
+            "default": "pexels"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "title": "GenerateVideoRequest"
+      },
+      "GenerateVideoResponse": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "status",
+          "message"
+        ],
+        "title": "GenerateVideoResponse"
+      },
+      "GenerationIntent": {
+        "type": "string",
+        "enum": [
+          "TEXT_TO_VIDEO",
+          "IMAGE_TO_VIDEO",
+          "FIRST_LAST_FRAME",
+          "REFERENCE_TO_VIDEO",
+          "MULTIMODAL",
+          "ANIMATION",
+          "REMOTION",
+          "AVATAR"
+        ],
+        "title": "GenerationIntent"
       },
       "GraphIn": {
         "properties": {
@@ -15869,6 +20924,105 @@
         "type": "object",
         "title": "LiveBody"
       },
+      "LocalizeRequest": {
+        "properties": {
+          "video_path": {
+            "type": "string",
+            "title": "Video Path"
+          },
+          "target_language": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 2,
+            "title": "Target Language",
+            "default": "zh-CN"
+          },
+          "source_language": {
+            "type": "string",
+            "title": "Source Language",
+            "default": "auto"
+          },
+          "translation_provider": {
+            "type": "string",
+            "title": "Translation Provider",
+            "default": "llm_translate"
+          },
+          "bilingual": {
+            "type": "boolean",
+            "title": "Bilingual",
+            "default": true
+          },
+          "dub": {
+            "type": "boolean",
+            "title": "Dub",
+            "default": false
+          },
+          "keep_bed": {
+            "type": "boolean",
+            "title": "Keep Bed",
+            "default": false
+          },
+          "tts_engine": {
+            "type": "string",
+            "title": "Tts Engine",
+            "default": "edge_tts"
+          },
+          "voice": {
+            "type": "string",
+            "title": "Voice",
+            "default": ""
+          },
+          "reference_audio": {
+            "type": "string",
+            "title": "Reference Audio",
+            "default": ""
+          },
+          "subtitle_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle Path"
+          },
+          "transcript_segments": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Transcript Segments"
+          },
+          "translated_segments": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Translated Segments"
+          },
+          "glossary": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Glossary"
+          },
+          "watermark": {
+            "type": "string",
+            "title": "Watermark",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "video_path"
+        ],
+        "title": "LocalizeRequest"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -15887,6 +21041,94 @@
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "LongCatRunRequest": {
+        "properties": {
+          "goal": {
+            "type": "string",
+            "title": "Goal",
+            "default": ""
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "context_blocks": {
+            "items": {
+              "$ref": "#/components/schemas/ContextBlockRequest"
+            },
+            "type": "array",
+            "title": "Context Blocks"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "LongCat-2.0"
+          },
+          "max_context_tokens": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 1024.0,
+            "title": "Max Context Tokens",
+            "default": 1000000
+          },
+          "max_output_tokens": {
+            "type": "integer",
+            "maximum": 131072.0,
+            "minimum": 1.0,
+            "title": "Max Output Tokens",
+            "default": 4096
+          },
+          "max_tool_rounds": {
+            "type": "integer",
+            "maximum": 32.0,
+            "minimum": 0.0,
+            "title": "Max Tool Rounds",
+            "default": 8
+          },
+          "enable_thinking": {
+            "type": "boolean",
+            "title": "Enable Thinking",
+            "default": true
+          },
+          "temperature": {
+            "type": "number",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "default": 0.2
+          },
+          "input_cost_per_1k_tokens": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Input Cost Per 1K Tokens",
+            "default": 0.0
+          },
+          "output_cost_per_1k_tokens": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Output Cost Per 1K Tokens",
+            "default": 0.0
+          },
+          "tool_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tool Names"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "LongCatRunRequest"
       },
       "LongVideoRequest": {
         "properties": {
@@ -16037,6 +21279,82 @@
         ],
         "title": "LongVideoRequest"
       },
+      "MaterialItem": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "duration": {
+            "type": "number",
+            "title": "Duration"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "thumbnail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumbnail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "duration",
+          "width",
+          "height",
+          "source"
+        ],
+        "title": "MaterialItem"
+      },
+      "MaterialSearchRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^(pexels|pixabay)$",
+            "title": "Source",
+            "default": "pexels"
+          },
+          "count": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "default": 10
+          },
+          "min_duration": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Min Duration",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "MaterialSearchRequest"
+      },
       "MicroDisplacement": {
         "properties": {
           "axis": {
@@ -16058,6 +21376,220 @@
         "type": "object",
         "title": "MicroDisplacement",
         "description": "亚毫米/毫米级位移(标尺\"抬起不到一毫米\")。"
+      },
+      "ModelRegisterRequest": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Model Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "pattern": "^(tts|asr|llm)$",
+            "title": "Kind"
+          },
+          "engine": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Engine"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Path"
+          },
+          "device": {
+            "type": "string",
+            "title": "Device",
+            "default": "auto"
+          },
+          "languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Languages"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capabilities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_id",
+          "name",
+          "kind",
+          "engine",
+          "path"
+        ],
+        "title": "ModelRegisterRequest"
+      },
+      "ModelRouteRequest": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "pattern": "^(tts|asr|llm)$",
+            "title": "Kind"
+          },
+          "preferred": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred"
+          },
+          "device": {
+            "type": "string",
+            "title": "Device",
+            "default": "auto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "ModelRouteRequest"
+      },
+      "MontageRunRequest": {
+        "properties": {
+          "pipeline": {
+            "type": "string",
+            "title": "Pipeline",
+            "default": "animated-explainer"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,80}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic",
+            "default": ""
+          },
+          "source_text": {
+            "type": "string",
+            "title": "Source Text",
+            "default": ""
+          },
+          "transcript": {
+            "type": "string",
+            "title": "Transcript",
+            "default": ""
+          },
+          "script_lines": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Script Lines"
+          },
+          "materials": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Materials"
+          },
+          "media_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Path"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "title": "Aspect Ratio",
+            "default": "9:16"
+          },
+          "platforms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Platforms"
+          },
+          "render_runtime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Render Runtime"
+          },
+          "execute": {
+            "type": "boolean",
+            "title": "Execute",
+            "default": false
+          },
+          "auto_approve": {
+            "type": "boolean",
+            "title": "Auto Approve",
+            "default": false
+          },
+          "approved_stages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Approved Stages"
+          },
+          "resume": {
+            "type": "boolean",
+            "title": "Resume",
+            "default": true
+          },
+          "budget_usd": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Budget Usd",
+            "default": 2.0
+          }
+        },
+        "type": "object",
+        "title": "MontageRunRequest"
       },
       "MultiAngleRequest": {
         "properties": {
@@ -16113,6 +21645,47 @@
         "title": "MuscleAction",
         "description": "解剖级肌肉动作(FACS 思路)。visible_result 必填(编译进 prompt 的就是它,模型认\"眉头\n紧皱\"不认\"降眉肌\");muscle 可选结构化标注(给 verdict 校验和未来 3D/ControlNet 精控用)。"
       },
+      "NLEProjectRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "untitled"
+          },
+          "timeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline Id"
+          }
+        },
+        "type": "object",
+        "title": "NLEProjectRequest"
+      },
+      "NarrativeBuildRequest": {
+        "properties": {
+          "source_document_id": {
+            "type": "string",
+            "title": "Source Document Id"
+          },
+          "chapter": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Chapter"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_document_id",
+          "chapter"
+        ],
+        "title": "NarrativeBuildRequest"
+      },
       "NodeIn": {
         "properties": {
           "id": {
@@ -16155,6 +21728,68 @@
           "code"
         ],
         "title": "OAuthRequest"
+      },
+      "OpenAISpeechRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "edge_tts"
+          },
+          "input": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Input"
+          },
+          "voice": {
+            "type": "string",
+            "title": "Voice",
+            "default": ""
+          },
+          "response_format": {
+            "type": "string",
+            "title": "Response Format",
+            "default": "wav"
+          },
+          "speed": {
+            "type": "number",
+            "maximum": 4.0,
+            "minimum": 0.25,
+            "title": "Speed",
+            "default": 1.0
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "instructions": {
+            "type": "string",
+            "title": "Instructions",
+            "default": ""
+          },
+          "reference_audio": {
+            "type": "string",
+            "title": "Reference Audio",
+            "default": ""
+          },
+          "reference_text": {
+            "type": "string",
+            "title": "Reference Text",
+            "default": ""
+          },
+          "voice_design": {
+            "type": "string",
+            "title": "Voice Design",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "input"
+        ],
+        "title": "OpenAISpeechRequest"
       },
       "ParseWorkRequest": {
         "properties": {
@@ -16217,6 +21852,29 @@
         ],
         "title": "ParseWorkRequest",
         "description": "工业化单流入口：原始文本只进入资产解析，不直接派发生成。"
+      },
+      "PatchRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/RevisionPatchOperation"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Operations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason",
+          "operations"
+        ],
+        "title": "PatchRequest"
       },
       "PerformanceBody": {
         "properties": {
@@ -16432,6 +22090,15 @@
         ],
         "title": "PlanRequest"
       },
+      "PrepareRequest": {
+        "properties": {
+          "context": {
+            "$ref": "#/components/schemas/ReadinessContext"
+          }
+        },
+        "type": "object",
+        "title": "PrepareRequest"
+      },
       "PresenterImageCheckRequest": {
         "properties": {
           "image_url": {
@@ -16574,6 +22241,16 @@
         ],
         "title": "PresenterRequest"
       },
+      "ProductionMode": {
+        "type": "string",
+        "enum": [
+          "AUTO",
+          "KEYFRAME_REVIEW",
+          "SHOT_REVIEW",
+          "MANUAL_DIRECTOR"
+        ],
+        "title": "ProductionMode"
+      },
       "ProductionRequest": {
         "properties": {
           "source": {
@@ -16587,6 +22264,8 @@
               "presenter",
               "seedance",
               "clip_video",
+              "localize_video",
+              "mpt",
               "voice_studio_tts",
               "director_graph",
               "lot"
@@ -16683,6 +22362,163 @@
         ],
         "title": "ProductionRequest",
         "description": "One canonical handoff from a frontend/adapter to the execution layer."
+      },
+      "ProjectCreateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": "Untitled production"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind",
+            "default": "idea"
+          },
+          "creative_brief": {
+            "type": "string",
+            "title": "Creative Brief",
+            "default": ""
+          },
+          "target_platform": {
+            "type": "string",
+            "title": "Target Platform",
+            "default": ""
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "title": "Aspect Ratio",
+            "default": "9:16"
+          },
+          "target_duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Duration"
+          },
+          "visual_style": {
+            "type": "string",
+            "title": "Visual Style",
+            "default": ""
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": "zh-CN"
+          },
+          "budget_policy": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Budget Policy"
+          },
+          "production_mode": {
+            "$ref": "#/components/schemas/ProductionMode",
+            "default": "AUTO"
+          }
+        },
+        "type": "object",
+        "title": "ProjectCreateRequest"
+      },
+      "ProjectPatchRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "creative_brief": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creative Brief"
+          },
+          "target_platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Platform"
+          },
+          "aspect_ratio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aspect Ratio"
+          },
+          "target_duration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Duration"
+          },
+          "visual_style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visual Style"
+          },
+          "budget_policy": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Policy"
+          },
+          "production_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductionMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "ProjectPatchRequest"
       },
       "PromoteIn": {
         "properties": {
@@ -16855,6 +22691,110 @@
         "title": "PropTremor",
         "description": "道具颤动(与 body.tension 咬合)。"
       },
+      "ProviderCapabilities": {
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "title": "Provider Id"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "supported_intents": {
+            "items": {
+              "$ref": "#/components/schemas/GenerationIntent"
+            },
+            "type": "array",
+            "uniqueItems": true,
+            "title": "Supported Intents"
+          },
+          "supported_reference_roles": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceRole"
+            },
+            "type": "array",
+            "uniqueItems": true,
+            "title": "Supported Reference Roles"
+          },
+          "max_reference_items": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Max Reference Items",
+            "default": 8
+          },
+          "max_duration_s": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Duration S",
+            "default": 10.0
+          },
+          "min_duration_s": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Min Duration S",
+            "default": 0.1
+          },
+          "max_prompt_length": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Prompt Length",
+            "default": 4000
+          },
+          "supported_resolutions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true,
+            "title": "Supported Resolutions"
+          },
+          "default_resolution": {
+            "type": "string",
+            "title": "Default Resolution",
+            "default": "720p"
+          },
+          "supports_negative_prompt": {
+            "type": "boolean",
+            "title": "Supports Negative Prompt",
+            "default": true
+          },
+          "supports_audio": {
+            "type": "boolean",
+            "title": "Supports Audio",
+            "default": false
+          },
+          "cost_per_second_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cost Per Second Usd",
+            "default": 0.0
+          },
+          "estimated_latency_s": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Latency S"
+          },
+          "resource_profile": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Resource Profile"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_id",
+          "model"
+        ],
+        "title": "ProviderCapabilities"
+      },
       "PublishRequest": {
         "properties": {
           "media_path": {
@@ -16902,6 +22842,78 @@
         "type": "object",
         "title": "Pupil"
       },
+      "ReadinessContext": {
+        "properties": {
+          "narrative_valid": {
+            "type": "boolean",
+            "title": "Narrative Valid",
+            "default": true
+          },
+          "assets_ready": {
+            "type": "boolean",
+            "title": "Assets Ready",
+            "default": true
+          },
+          "references_ready": {
+            "type": "boolean",
+            "title": "References Ready",
+            "default": true
+          },
+          "continuity_valid": {
+            "type": "boolean",
+            "title": "Continuity Valid",
+            "default": true
+          },
+          "provider_supported": {
+            "type": "boolean",
+            "title": "Provider Supported",
+            "default": true
+          },
+          "budget_available": {
+            "type": "boolean",
+            "title": "Budget Available",
+            "default": true
+          },
+          "resources_available": {
+            "type": "boolean",
+            "title": "Resources Available",
+            "default": true
+          },
+          "required_reference_roles": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceRole"
+            },
+            "type": "array",
+            "uniqueItems": true,
+            "title": "Required Reference Roles"
+          },
+          "available_reference_roles": {
+            "items": {
+              "$ref": "#/components/schemas/ReferenceRole"
+            },
+            "type": "array",
+            "uniqueItems": true,
+            "title": "Available Reference Roles"
+          },
+          "warnings": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "title": "ReadinessContext"
+      },
       "ReadinessPatch": {
         "properties": {
           "skip_extraction": {
@@ -16943,6 +22955,23 @@
         "title": "ReferenceOrderRequest",
         "description": "整体替换参考图列表 —— 覆盖设封面(选中的挪到第 0 位)/ 删除(去掉某项)/\n排序(给新顺序)三种操作,前端把算好的目标顺序整体传回来。"
       },
+      "ReferenceRole": {
+        "type": "string",
+        "enum": [
+          "CHARACTER_IDENTITY",
+          "CHARACTER_LOOK",
+          "LOCATION",
+          "PROP",
+          "STYLE",
+          "START_FRAME",
+          "PEAK_FRAME",
+          "END_FRAME",
+          "VIDEO_MOTION",
+          "AUDIO",
+          "CAMERA"
+        ],
+        "title": "ReferenceRole"
+      },
       "ReferenceRoleRequest": {
         "properties": {
           "path": {
@@ -16961,6 +22990,56 @@
         ],
         "title": "ReferenceRoleRequest",
         "description": "给某张参考图打正交角色标签(设计文档 §5.2),如 identity_anchor / composition_ref。"
+      },
+      "ReferenceVideoRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "ReferenceVideoRequest"
+      },
+      "ReferenceVideoResponse": {
+        "properties": {
+          "transcript": {
+            "type": "string",
+            "title": "Transcript"
+          },
+          "rhythm_analysis": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Rhythm Analysis"
+          },
+          "scene_breakdown": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Scene Breakdown"
+          },
+          "concepts": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Concepts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "transcript",
+          "rhythm_analysis",
+          "scene_breakdown",
+          "concepts"
+        ],
+        "title": "ReferenceVideoResponse"
       },
       "RegenerateRequest": {
         "properties": {
@@ -17168,6 +23247,107 @@
           "claim"
         ],
         "title": "ResearchFact"
+      },
+      "ResourceBudget": {
+        "properties": {
+          "max_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Cost Usd"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "resources_available": {
+            "type": "boolean",
+            "title": "Resources Available",
+            "default": true
+          },
+          "resource_profile": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Resource Profile"
+          },
+          "execution_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExecutionProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "required_gpu_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Required Gpu Count",
+            "default": 0
+          },
+          "required_gpu_vram_mb": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Required Gpu Vram Mb",
+            "default": 0
+          },
+          "required_memory_mb": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Required Memory Mb",
+            "default": 0
+          },
+          "requested_concurrency": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Requested Concurrency",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "title": "ResourceBudget",
+        "description": "Compile-time budget and resource admission inputs."
+      },
+      "RevisionPatchOperation": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "add",
+              "replace",
+              "remove"
+            ],
+            "title": "Op"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "path"
+        ],
+        "title": "RevisionPatchOperation"
       },
       "SaveGraphRequest": {
         "properties": {
@@ -17552,6 +23732,152 @@
           "scene_no"
         ],
         "title": "ScreenplayScene"
+      },
+      "ScreenshotCreateRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": "untitled screenshot"
+          },
+          "screenshot_path": {
+            "type": "string",
+            "title": "Screenshot Path",
+            "default": ""
+          },
+          "frame": {
+            "type": "string",
+            "title": "Frame",
+            "default": "browser"
+          },
+          "width": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "minimum": 320.0,
+            "title": "Width",
+            "default": 1600
+          },
+          "height": {
+            "type": "integer",
+            "maximum": 4096.0,
+            "minimum": 240.0,
+            "title": "Height",
+            "default": 1000
+          },
+          "background": {
+            "type": "string",
+            "title": "Background",
+            "default": "#eef2ff"
+          }
+        },
+        "type": "object",
+        "title": "ScreenshotCreateRequest"
+      },
+      "ScreenshotExportRequest": {
+        "properties": {
+          "output_path": {
+            "type": "string",
+            "title": "Output Path",
+            "default": "output/screenshots/project.png"
+          }
+        },
+        "type": "object",
+        "title": "ScreenshotExportRequest"
+      },
+      "ScreenshotPatchRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "frame": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4096.0,
+                "minimum": 320.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4096.0,
+                "minimum": 240.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "background": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background"
+          },
+          "layers": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layers"
+          },
+          "keyframes": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keyframes"
+          }
+        },
+        "type": "object",
+        "title": "ScreenshotPatchRequest"
       },
       "Script": {
         "properties": {
@@ -18262,6 +24588,30 @@
         ],
         "title": "SlateRequest"
       },
+      "SourceRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": "source"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "default": "idea"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "SourceRequest"
+      },
       "StockBody": {
         "properties": {
           "query": {
@@ -18416,6 +24766,67 @@
           "output_dir"
         ],
         "title": "StoryboardWorkflowRequest"
+      },
+      "StreamEditCreateRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Prompt"
+          },
+          "source_mode": {
+            "type": "string",
+            "pattern": "^(live|upload)$",
+            "title": "Source Mode",
+            "default": "live"
+          },
+          "width": {
+            "type": "integer",
+            "maximum": 2048.0,
+            "minimum": 160.0,
+            "title": "Width",
+            "default": 840
+          },
+          "height": {
+            "type": "integer",
+            "maximum": 2048.0,
+            "minimum": 160.0,
+            "title": "Height",
+            "default": 480
+          },
+          "fps": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Fps",
+            "default": 24
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Model",
+            "default": "joyai-video-edit"
+          },
+          "reference_images": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Reference Images"
+          },
+          "low_vram": {
+            "type": "boolean",
+            "title": "Low Vram",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "StreamEditCreateRequest"
       },
       "StylePackCreateRequest": {
         "properties": {
@@ -18608,6 +25019,50 @@
               }
             ],
             "title": "Effects"
+          },
+          "reference_audio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Audio"
+          },
+          "reference_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Text"
+          },
+          "voice_design": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Design"
+          },
+          "model_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Config"
           }
         },
         "type": "object",
@@ -18729,6 +25184,47 @@
         ],
         "title": "TTSCompareRequest"
       },
+      "TaskStatusResponse": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress",
+            "default": 0
+          },
+          "videos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Videos"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "state"
+        ],
+        "title": "TaskStatusResponse"
+      },
       "TearDetail": {
         "properties": {
           "side": {
@@ -18823,6 +25319,41 @@
         ],
         "title": "ThreeViewRequest"
       },
+      "TimelineChatRequest": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Message"
+          },
+          "preview": {
+            "type": "boolean",
+            "title": "Preview",
+            "default": false
+          },
+          "render": {
+            "type": "boolean",
+            "title": "Render",
+            "default": false
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "TimelineChatRequest"
+      },
       "TimelineCreateRequest": {
         "properties": {
           "title": {
@@ -18867,6 +25398,17 @@
               }
             ],
             "title": "Duration S"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
           }
         },
         "type": "object",
@@ -18885,6 +25427,17 @@
       },
       "TimelinePatchRequest": {
         "properties": {
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
           "clip_id": {
             "anyOf": [
               {
@@ -18939,6 +25492,52 @@
               }
             ],
             "title": "Text"
+          },
+          "speed": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 4.0,
+                "minimum": 0.25
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed"
+          },
+          "reverse": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reverse"
+          },
+          "transition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition"
+          },
+          "effect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect"
           },
           "bgm": {
             "anyOf": [
@@ -19370,6 +25969,150 @@
         ],
         "title": "VeyaProduceRequest"
       },
+      "VideoAgentRequest": {
+        "properties": {
+          "requirement": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Requirement"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,80}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "source_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Path"
+          },
+          "media_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Path"
+          },
+          "evidence_index_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Index Path"
+          },
+          "transcript": {
+            "type": "string",
+            "title": "Transcript",
+            "default": ""
+          },
+          "script_lines": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Script Lines"
+          },
+          "scenes": {
+            "items": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Scenes"
+          },
+          "segments": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Segments"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question",
+            "default": ""
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "title": "Aspect Ratio",
+            "default": "9:16"
+          },
+          "target_duration_s": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Duration S"
+          },
+          "segment_length_s": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Segment Length S",
+            "default": 10.0
+          },
+          "whisper_fallback": {
+            "type": "boolean",
+            "title": "Whisper Fallback",
+            "default": false
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "execute": {
+            "type": "boolean",
+            "title": "Execute",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "requirement"
+        ],
+        "title": "VideoAgentRequest"
+      },
       "VideoPackaging": {
         "properties": {
           "main_title": {
@@ -19436,6 +26179,67 @@
         "type": "object",
         "title": "VisualStyle"
       },
+      "VoiceProfileRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "default": "cosyvoice"
+          },
+          "reference_audio": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reference Audio"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "reference_text": {
+            "type": "string",
+            "title": "Reference Text",
+            "default": ""
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "reference_audio"
+        ],
+        "title": "VoiceProfileRequest"
+      },
+      "WatermarkPlanRequest": {
+        "properties": {
+          "audio_path": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Audio Path"
+          },
+          "operation": {
+            "type": "string",
+            "title": "Operation",
+            "default": "embed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio_path"
+        ],
+        "title": "WatermarkPlanRequest"
+      },
       "WebRTCOfferBody": {
         "properties": {
           "sdp": {
@@ -19490,6 +26294,75 @@
         "title": "WorkflowRunRequest",
         "description": "通用 workflow 请求:config/input 以 JSON 透传,由各 workflow 构建 dataclass。"
       },
+      "WriterDraftRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": "短剧单集"
+          },
+          "premise": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Premise"
+          },
+          "raw_text": {
+            "type": "string",
+            "title": "Raw Text",
+            "default": ""
+          },
+          "genre": {
+            "type": "string",
+            "title": "Genre",
+            "default": ""
+          },
+          "tone": {
+            "type": "string",
+            "title": "Tone",
+            "default": ""
+          },
+          "style": {
+            "type": "string",
+            "title": "Style",
+            "default": "电影感"
+          },
+          "target_audience": {
+            "type": "string",
+            "title": "Target Audience",
+            "default": ""
+          },
+          "duration_archetype": {
+            "type": "string",
+            "title": "Duration Archetype",
+            "default": "1-5min"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": "adaptive"
+          }
+        },
+        "type": "object",
+        "required": [
+          "premise"
+        ],
+        "title": "WriterDraftRequest"
+      },
+      "WriterReviewRequest": {
+        "properties": {
+          "screenplay": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Screenplay"
+          }
+        },
+        "type": "object",
+        "required": [
+          "screenplay"
+        ],
+        "title": "WriterReviewRequest"
+      },
       "XiaChatRequest": {
         "properties": {
           "text": {
@@ -19506,6 +26379,38 @@
               }
             ],
             "title": "Session Id"
+          },
+          "timeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline Id"
+          },
+          "preview": {
+            "type": "boolean",
+            "title": "Preview",
+            "default": false
+          },
+          "render": {
+            "type": "boolean",
+            "title": "Render",
+            "default": false
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
           }
         },
         "type": "object",
@@ -19808,6 +26713,27 @@
         "type": "object",
         "title": "ProduceRequest"
       },
+      "hevi__api__routers__narrator__RunRequest": {
+        "properties": {
+          "verb": {
+            "type": "string",
+            "title": "Verb"
+          },
+          "extra": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Extra"
+          }
+        },
+        "type": "object",
+        "required": [
+          "verb"
+        ],
+        "title": "RunRequest"
+      },
       "hevi__api__routers__shortdrama__RunRequest": {
         "properties": {
           "source_name": {
@@ -19829,6 +26755,27 @@
           "source_name",
           "raw_text"
         ],
+        "title": "RunRequest"
+      },
+      "hevi__api__routers__studio_v2__RunRequest": {
+        "properties": {
+          "line_id": {
+            "type": "string",
+            "title": "Line Id",
+            "default": "shortdrama"
+          },
+          "execute": {
+            "type": "boolean",
+            "title": "Execute",
+            "default": false
+          },
+          "slots": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Slots"
+          }
+        },
+        "type": "object",
         "title": "RunRequest"
       },
       "hevi__api__routers__tongjian__LayerState": {

@@ -13,6 +13,7 @@ from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from typing import Any, Protocol
 
+from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
 from hevi.compiler.adapters import ProviderAdapter
@@ -76,7 +77,85 @@ class InMemoryDurableExecutionStore:
         return deepcopy(record) if record is not None else None
 
 
-def envelope_from_execution_plan(plan: ExecutionPlan, *, stage: str = "video_generation") -> TaskEnvelope:
+class PostgresDurableExecutionStore:
+    """Persist envelopes in the canonical entity index beside MPT attempts.
+
+    MPT/AttemptRepository remains the worker-attempt authority. This store is
+    the semantic envelope layer and uses the same PostgreSQL transaction
+    boundary, so a restart can recover the provider job ID before polling.
+    """
+
+    def __init__(self, pool: PgPool) -> None:
+        self.pool = pool
+
+    async def persist_intent(self, envelope: TaskEnvelope) -> TaskEnvelope:
+        async with self.pool.acquire() as conn, conn.transaction():
+            row = await conn.fetchrow(
+                """
+                SELECT payload FROM production_graph_entities
+                WHERE project_id = $1 AND entity_type = 'task_envelope'
+                  AND payload->>'idempotency_key' = $2
+                FOR UPDATE
+                """,
+                _as_uuid(envelope.project_id),
+                envelope.idempotency_key,
+            )
+            if row is not None:
+                current = TaskEnvelope.model_validate(row["payload"])
+                if current.execution_plan_id != envelope.execution_plan_id:
+                    raise IdempotencyConflictError(
+                        "idempotency key belongs to another execution plan"
+                    )
+                return current
+            await self._insert(conn, envelope)
+            return envelope
+
+    async def save(self, envelope: TaskEnvelope) -> TaskEnvelope:
+        async with self.pool.acquire() as conn, conn.transaction():
+            await self._insert(conn, envelope, upsert=True)
+        return envelope
+
+    async def get_by_idempotency(self, key: str) -> TaskEnvelope | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT payload FROM production_graph_entities
+                WHERE entity_type = 'task_envelope' AND payload->>'idempotency_key' = $1
+                LIMIT 1
+                """,
+                key,
+            )
+        return TaskEnvelope.model_validate(row["payload"]) if row else None
+
+    async def _insert(self, conn: Any, envelope: TaskEnvelope, *, upsert: bool = False) -> None:
+        conflict = (
+            "ON CONFLICT (revision_id, entity_type, entity_id) DO UPDATE SET payload = EXCLUDED.payload"
+            if upsert
+            else "ON CONFLICT DO NOTHING"
+        )
+        await conn.execute(
+            f"""
+            INSERT INTO production_graph_entities
+                (project_id, revision_id, entity_type, entity_id, payload)
+            VALUES ($1, $2, 'task_envelope', $3, $4)
+            {conflict}
+            """,
+            _as_uuid(envelope.project_id),
+            _as_uuid(envelope.revision_id),
+            envelope.id,
+            envelope.model_dump(mode="json"),
+        )
+
+
+def _as_uuid(value: str) -> Any:
+    import uuid
+
+    return uuid.UUID(value)
+
+
+def envelope_from_execution_plan(
+    plan: ExecutionPlan, *, stage: str = "video_generation"
+) -> TaskEnvelope:
     """Map a compiled plan to the canonical durable task identity."""
 
     project_id = plan.project_id or str(plan.production_id or "")
@@ -143,7 +222,12 @@ class DurableExecutionCoordinator:
             )
         if provider_status in {"failed", "error"}:
             current = await self.store.save(
-                current.model_copy(update={"status": "failed", "error": str(result.get("error") or "provider failed")})
+                current.model_copy(
+                    update={
+                        "status": "failed",
+                        "error": str(result.get("error") or "provider failed"),
+                    }
+                )
             )
             return DurableExecutionResult(
                 status="failed",
@@ -198,7 +282,9 @@ class DurableExecutionCoordinator:
         if current.status not in {"failed", "interrupted", "paused"}:
             raise RuntimeError(f"task envelope cannot retry from {current.status}")
         return await self.store.save(
-            current.model_copy(update={"status": "pending", "attempt": current.attempt + 1, "error": None})
+            current.model_copy(
+                update={"status": "pending", "attempt": current.attempt + 1, "error": None}
+            )
         )
 
 
@@ -208,5 +294,6 @@ __all__ = [
     "DurableExecutionStore",
     "IdempotencyConflictError",
     "InMemoryDurableExecutionStore",
+    "PostgresDurableExecutionStore",
     "envelope_from_execution_plan",
 ]

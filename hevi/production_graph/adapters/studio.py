@@ -8,9 +8,7 @@ from hevi.production_graph.domain import ProductionMode, ProductionPlan
 from hevi.studio.slate import Slate
 
 
-def slate_to_production_plan(
-    slate: Slate, *, project_id: str, revision_id: str
-) -> ProductionPlan:
+def slate_to_production_plan(slate: Slate, *, project_id: str, revision_id: str) -> ProductionPlan:
     """Import an existing Slate without making its slots canonical state."""
 
     raw_mode = str(slate.slots.get("production_mode") or ProductionMode.AUTO.value)
@@ -56,9 +54,7 @@ def studio_snapshot_projection(snapshot: Any) -> dict[str, Any]:
         "episodes": [item.model_dump(mode="json") for item in snapshot.episodes],
         "scenes": [item.model_dump(mode="json") for item in snapshot.scenes],
         "shots": [item.model_dump(mode="json") for item in snapshot.shots],
-        "production_plans": [
-            item.model_dump(mode="json") for item in snapshot.production_plans
-        ],
+        "production_plans": [item.model_dump(mode="json") for item in snapshot.production_plans],
     }
 
 

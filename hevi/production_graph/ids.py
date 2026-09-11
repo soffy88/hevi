@@ -40,7 +40,7 @@ def is_canonical_id(value: str) -> bool:
 
     try:
         UUID(value)
-    except (AttributeError, ValueError, TypeError):
+    except AttributeError, ValueError, TypeError:
         return False
     return True
 

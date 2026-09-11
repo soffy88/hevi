@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from hevi.production_graph.domain import GenerationIntent, ReferenceRole
+from hevi.production_graph.resources import ExecutionProfile
 
 
 class ProviderCapabilities(BaseModel):
@@ -35,6 +36,11 @@ class ResourceBudget(BaseModel):
     resolution: str | None = None
     resources_available: bool = True
     resource_profile: dict[str, object] = Field(default_factory=dict)
+    execution_profile: ExecutionProfile | None = None
+    required_gpu_count: int = Field(default=0, ge=0)
+    required_gpu_vram_mb: int = Field(default=0, ge=0)
+    required_memory_mb: int = Field(default=0, ge=0)
+    requested_concurrency: int = Field(default=1, ge=1)
 
 
 __all__ = ["ProviderCapabilities", "ResourceBudget"]

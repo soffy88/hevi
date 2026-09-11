@@ -40,7 +40,11 @@ def test_action_beats_become_independent_start_peak_end_keyframes() -> None:
     shot = _shot()
     frames = action_keyframes(shot)
     validate_keyframes(shot, frames)
-    assert [frame.role for frame in frames] == [KeyframeRole.START, KeyframeRole.PEAK, KeyframeRole.END]
+    assert [frame.role for frame in frames] == [
+        KeyframeRole.START,
+        KeyframeRole.PEAK,
+        KeyframeRole.END,
+    ]
     assert [frame.desired_state["action"] for frame in frames] == ["reach", "open", "look back"]
 
 
@@ -78,9 +82,7 @@ def test_missing_orientation_falls_back_to_front_without_fabricating_view() -> N
             metadata={"view": "front"},
         )
     ]
-    selection = select_reference_view(
-        CameraSpec(), character_facing_deg=None, references=refs
-    )
+    selection = select_reference_view(CameraSpec(), character_facing_deg=None, references=refs)
     assert selection.fallback is True
     assert selection.view == "front"
 

@@ -2,15 +2,15 @@ import pytest
 
 from hevi.production_graph import (
     CanonicalShot,
+    Episode,
     ProductionGraphSnapshot,
     ProductionProject,
     RevisionPatch,
     RevisionPatchError,
     RevisionPatchOperation,
-    Episode,
     Scene,
-    create_director_session,
     apply_revision_patch,
+    create_director_session,
     record_director_decision,
 )
 
@@ -24,7 +24,9 @@ def _snapshot() -> ProductionGraphSnapshot:
     revision = ProductionRevision(id=revision_id, project_id=project.id)
     episode = Episode(id="episode-director", project_id=project.id)
     scene = Scene(id="scene-director", project_id=project.id, episode_id=episode.id)
-    return ProductionGraphSnapshot(project=project, revision=revision, episodes=[episode], scenes=[scene])
+    return ProductionGraphSnapshot(
+        project=project, revision=revision, episodes=[episode], scenes=[scene]
+    )
 
 
 def test_director_decision_is_inspectable_and_patch_creates_child_revision() -> None:

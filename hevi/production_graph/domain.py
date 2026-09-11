@@ -207,7 +207,11 @@ class NarrativeGraph(DomainModel):
             if edge.source_event_id not in event_ids or edge.target_event_id not in event_ids:
                 raise ValueError(f"edge {edge.id} references an unknown narrative event")
         for thread in self.plot_threads:
-            refs = [thread.introduced_event_id, thread.resolution_event_id, *thread.unresolved_event_ids]
+            refs = [
+                thread.introduced_event_id,
+                thread.resolution_event_id,
+                *thread.unresolved_event_ids,
+            ]
             if any(ref is not None and ref not in event_ids for ref in refs):
                 raise ValueError(f"plot thread {thread.id} references an unknown event")
 
@@ -672,6 +676,18 @@ class TaskEnvelope(Entity):
     resumable: bool = True
 
 
+class ProvenanceLink(Entity):
+    """A typed creative provenance edge; binary data remains in ArtifactStore."""
+
+    project_id: CanonicalId
+    source_type: str
+    source_id: str
+    target_type: str
+    target_id: str
+    relation: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ProductionGraphSnapshot(DomainModel):
     project: ProductionProject
     revision: ProductionRevision
@@ -704,6 +720,7 @@ class ProductionGraphSnapshot(DomainModel):
     production_plans: list[ProductionPlan] = Field(default_factory=list)
     execution_plans: list[ExecutionPlan] = Field(default_factory=list)
     execution_attempts: list[ExecutionAttempt] = Field(default_factory=list)
+    provenance_links: list[ProvenanceLink] = Field(default_factory=list)
 
     def validate_referential_integrity(self) -> None:
         if self.revision.project_id != self.project.id:
@@ -767,10 +784,14 @@ class ProductionGraphSnapshot(DomainModel):
                 raise ValueError(f"scene {scene.id} references an unknown location")
             missing = set(scene.character_ids) - ids["character"]
             if missing:
-                raise ValueError(f"scene {scene.id} references unknown characters: {sorted(missing)}")
+                raise ValueError(
+                    f"scene {scene.id} references unknown characters: {sorted(missing)}"
+                )
             missing_props = set(scene.prop_ids) - ids["prop"]
             if missing_props:
-                raise ValueError(f"scene {scene.id} references unknown props: {sorted(missing_props)}")
+                raise ValueError(
+                    f"scene {scene.id} references unknown props: {sorted(missing_props)}"
+                )
         for beat in self.beats:
             if beat.scene_id not in ids["scene"]:
                 raise ValueError(f"beat {beat.id} references an unknown scene")
@@ -837,6 +858,7 @@ __all__ = [
     "ProjectStatus",
     "Prop",
     "PropState",
+    "ProvenanceLink",
     "ReadinessState",
     "ReferenceBundle",
     "ReferenceItem",

@@ -84,9 +84,7 @@ class ExecutionProfile(DomainModel):
         if gpu_count > 0 and (not self.gpu_available or self.gpu_count < gpu_count):
             raise ResourceUnavailableError("requested GPU is unavailable")
         if gpu_vram_mb > 0 and (
-            not self.gpu_available
-            or self.gpu_vram_mb is None
-            or self.gpu_vram_mb < gpu_vram_mb
+            not self.gpu_available or self.gpu_vram_mb is None or self.gpu_vram_mb < gpu_vram_mb
         ):
             raise ResourceUnavailableError("requested GPU VRAM is unavailable")
         if memory_mb > 0 and self.memory_limit_mb is not None and self.memory_limit_mb < memory_mb:
@@ -127,7 +125,7 @@ def _read_cpu_quota(root: Path) -> float | None:
             return None
         quota, period = float(raw[0]), float(raw[1])
         return quota / period if period > 0 else 0.0
-    except (OSError, ValueError, IndexError):
+    except OSError, ValueError, IndexError:
         return None
 
 
@@ -138,7 +136,7 @@ def _read_memory_limit(root: Path) -> int | None:
         if not raw or raw == "max":
             return None
         return max(0, int(int(raw) / (1024 * 1024)))
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return None
 
 
@@ -156,12 +154,12 @@ def _probe_nvidia() -> tuple[int, int | None]:
             timeout=3,
             check=False,
         )
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return 0, None
     if result.returncode != 0:
         return 0, None
     values: list[int] = []
-    for line in result.stdout.splitlines():
+    for line in getattr(result, "stdout", "").splitlines():
         try:
             values.append(int(line.strip()))
         except ValueError:

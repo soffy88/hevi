@@ -21,7 +21,10 @@ def add_reference(bundle: ReferenceBundle, item: ReferenceItem) -> ReferenceBund
 
 def lock_reference(bundle: ReferenceBundle) -> ReferenceBundle:
     return bundle.model_copy(
-        update={"locked": True, "items": [item.model_copy(update={"locked": True}) for item in bundle.items]},
+        update={
+            "locked": True,
+            "items": [item.model_copy(update={"locked": True}) for item in bundle.items],
+        },
         deep=True,
     )
 

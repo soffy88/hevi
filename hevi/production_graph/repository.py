@@ -55,6 +55,7 @@ class ProductionGraphRepository:
         self.pool = pool
         self._memory_records: dict[str, ProductionGraphSnapshot] = {}
         self._memory_revisions: dict[tuple[str, str], ProductionGraphSnapshot] = {}
+        self._memory_runs: dict[str, dict[str, Any]] = {}
 
     async def create_project(self, project: ProductionProject) -> ProductionGraphSnapshot:
         """Create a project and its first immutable revision.
@@ -159,7 +160,6 @@ class ProductionGraphRepository:
             )
         return snapshot
 
-
     async def get_snapshot(
         self, project_id: str, *, revision_id: str | None = None
     ) -> ProductionGraphSnapshot | None:
@@ -254,6 +254,65 @@ class ProductionGraphRepository:
             for row in rows
         ]
 
+    async def save_run(self, run: dict[str, Any]) -> dict[str, Any]:
+        """Persist a Slate run projection without process-local API state."""
+
+        run_id = str(run["run_id"])
+        stored = _json_snapshot(run)
+        self._memory_runs[run_id] = stored
+        if self.pool is None:
+            return _json_snapshot(stored)
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO production_graph_entities
+                    (project_id, revision_id, entity_type, entity_id, payload)
+                VALUES ($1, $2, 'production_run', $3, $4)
+                ON CONFLICT (revision_id, entity_type, entity_id)
+                DO UPDATE SET payload = EXCLUDED.payload
+                """,
+                _uuid(str(run["project_id"])),
+                _uuid(str(run["revision_id"])),
+                run_id,
+                stored,
+            )
+        return stored
+
+    async def get_run(self, run_id: str, *, user_id: str) -> dict[str, Any] | None:
+        if self.pool is None:
+            run = self._memory_runs.get(run_id)
+            return _json_snapshot(run) if run and run.get("user_id") == user_id else None
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT payload FROM production_graph_entities
+                WHERE entity_type = 'production_run' AND entity_id = $1
+                  AND payload->>'user_id' = $2
+                LIMIT 1
+                """,
+                run_id,
+                user_id,
+            )
+        return _json_snapshot(dict(row["payload"])) if row else None
+
+    async def list_runs(self, *, user_id: str) -> list[dict[str, Any]]:
+        if self.pool is None:
+            return [
+                _json_snapshot(run)
+                for run in self._memory_runs.values()
+                if run.get("user_id") == user_id
+            ]
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT payload FROM production_graph_entities
+                WHERE entity_type = 'production_run' AND payload->>'user_id' = $1
+                ORDER BY entity_id
+                """,
+                user_id,
+            )
+        return [_json_snapshot(dict(row["payload"])) for row in rows]
+
     async def append_revision(
         self,
         snapshot: ProductionGraphSnapshot,
@@ -277,6 +336,9 @@ class ProductionGraphRepository:
             update={"current_revision_id": revision.id, "updated_at": datetime.now(UTC)}
         )
         child = snapshot.model_copy(update={"project": project, "revision": revision}, deep=True)
+        from hevi.production_graph.revisions import _rebind_revision_ids
+
+        _rebind_revision_ids(child, revision.id)
         child.validate_referential_integrity()
         return await self.save_snapshot(child)
 
@@ -646,6 +708,7 @@ async def _persist_canonical_indexes(
         "production_plans",
         "execution_plans",
         "execution_attempts",
+        "provenance_links",
         "adaptation_plans",
         "adaptation_decisions",
     )

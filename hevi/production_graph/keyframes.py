@@ -57,4 +57,10 @@ def lock_keyframe(keyframe: Keyframe) -> Keyframe:
     return keyframe.model_copy(update={"locked": True})
 
 
-__all__ = ["KeyframeLockError", "action_keyframes", "lock_keyframe", "replace_keyframe", "validate_keyframes"]
+__all__ = [
+    "KeyframeLockError",
+    "action_keyframes",
+    "lock_keyframe",
+    "replace_keyframe",
+    "validate_keyframes",
+]

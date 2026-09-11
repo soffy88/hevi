@@ -27,7 +27,9 @@ def _shot_size(value: str) -> ShotSize:
         "近景": ShotSize.MEDIUM_CLOSE,
         "特写": ShotSize.CLOSE_UP,
     }
-    return aliases.get(normalized, ShotSize(normalized) if normalized in ShotSize else ShotSize.MEDIUM)
+    return aliases.get(
+        normalized, ShotSize(normalized) if normalized in ShotSize else ShotSize.MEDIUM
+    )
 
 
 def cinematic_scene_to_scene(
@@ -39,8 +41,11 @@ def cinematic_scene_to_scene(
         revision_id=revision_id,
         episode_id=episode_id,
         character_ids=[stable_id("character", f"{project_id}:{cid}") for cid in scene.characters],
-        location_id=(stable_id("location", f"{project_id}:{scene.space_anchor}")
-                     if scene.space_anchor else None),
+        location_id=(
+            stable_id("location", f"{project_id}:{scene.space_anchor}")
+            if scene.space_anchor
+            else None
+        ),
         purpose=scene.slug,
         legacy_ids={"cinematic.scene_id": scene.scene_id},
     )
@@ -62,9 +67,7 @@ def cinematic_beats_to_beats(
                 action=beat.action,
                 dialogue=dialogue.text if dialogue else "",
                 speaker_id=(
-                    stable_id("character", f"{project_id}:{dialogue.speaker}")
-                    if dialogue
-                    else None
+                    stable_id("character", f"{project_id}:{dialogue.speaker}") if dialogue else None
                 ),
                 emotion=beat.emotion_expression,
                 performance={"atmosphere": beat.atmosphere, "lighting": beat.lighting},
@@ -91,7 +94,9 @@ def cinematic_shots_to_shots(
                 project_id=project_id,
                 revision_id=revision_id,
                 scene_id=scene_id,
-                beat_ids=[stable_id("beat", f"{project_id}:cinematic:{bid}") for bid in shot.beat_ids],
+                beat_ids=[
+                    stable_id("beat", f"{project_id}:cinematic:{bid}") for bid in shot.beat_ids
+                ],
                 character_ids=character_ids,
                 camera=CameraSpec(
                     shot_size=_shot_size(shot.camera.shot_size or shot.shot_size),

@@ -51,6 +51,7 @@ from hevi.production_graph.domain import (
     ProjectStatus,
     Prop,
     PropState,
+    ProvenanceLink,
     ReadinessState,
     ReferenceBundle,
     ReferenceItem,
@@ -75,6 +76,7 @@ from hevi.production_graph.durable_execution import (
     DurableExecutionResult,
     IdempotencyConflictError,
     InMemoryDurableExecutionStore,
+    PostgresDurableExecutionStore,
     envelope_from_execution_plan,
 )
 from hevi.production_graph.ids import canonical_id, is_canonical_id, new_id, stable_id
@@ -85,6 +87,7 @@ from hevi.production_graph.keyframes import (
     replace_keyframe,
     validate_keyframes,
 )
+from hevi.production_graph.provenance import provenance_chain, provenance_link
 from hevi.production_graph.readiness import (
     ReadinessContext,
     ReadinessTransitionError,
@@ -151,6 +154,7 @@ __all__ = [
     "ProductionPlan",
     "ProductionProject",
     "ProductionRevision",
+    "ProvenanceLink",
     "ReadinessContext",
     "ReadinessTransitionError",
     "PlanDecision",
@@ -186,6 +190,7 @@ __all__ = [
     "KeyframeLockError",
     "IdempotencyConflictError",
     "InMemoryDurableExecutionStore",
+    "PostgresDurableExecutionStore",
     "action_keyframes",
     "add_reference",
     "apply_revision_patch",
@@ -206,6 +211,8 @@ __all__ = [
     "assert_dispatchable",
     "evaluate_readiness",
     "prepare_shot",
+    "provenance_chain",
+    "provenance_link",
     "record_director_decision",
     "transition_shot",
     "validate_revision_patch",

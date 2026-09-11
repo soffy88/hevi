@@ -70,6 +70,8 @@ _COLLECTIONS: dict[str, tuple[str, type[BaseModel]]] = {
     "shots": ("shots", CanonicalShot),
     "keyframes": ("keyframes", Keyframe),
     "reference_bundles": ("reference_bundles", ReferenceBundle),
+    "director_sessions": ("director_sessions", DirectorSession),
+    "director_decisions": ("director_decisions", DirectorDecision),
     "production_plans": ("production_plans", ProductionPlan),
     "adaptation_plans": ("adaptation_plans", AdaptationPlan),
     "adaptation_decisions": ("adaptation_decisions", AdaptationDecision),
@@ -137,7 +139,9 @@ def validate_revision_patch(snapshot: ProductionGraphSnapshot, patch: RevisionPa
         _validate_operation(snapshot, operation)
 
 
-def _validate_operation(snapshot: ProductionGraphSnapshot, operation: RevisionPatchOperation) -> None:
+def _validate_operation(
+    snapshot: ProductionGraphSnapshot, operation: RevisionPatchOperation
+) -> None:
     parts = _path_parts(operation.path)
     if parts[0] == "narrative":
         if operation.op != "replace" or len(parts) != 1:
@@ -177,7 +181,7 @@ def _assert_field_exists(record: BaseModel, parts: list[str]) -> None:
     current: Any = record
     for index, part in enumerate(parts):
         if isinstance(current, BaseModel):
-            if part not in current.model_fields:
+            if part not in type(current).model_fields:
                 raise RevisionPatchError(f"unknown canonical field: {'/'.join(parts)}")
             current = getattr(current, part)
         elif isinstance(current, dict):
@@ -245,7 +249,9 @@ def _apply_operation(snapshot: ProductionGraphSnapshot, operation: RevisionPatch
 
 def _update_nested(record: BaseModel, parts: list[str], value: Any) -> BaseModel:
     if len(parts) == 1:
-        return record.model_copy(update={parts[0]: value})
+        payload = record.model_dump(mode="python")
+        payload[parts[0]] = value
+        return type(record).model_validate(payload)
     field = parts[0]
     current = getattr(record, field)
     if isinstance(current, BaseModel):
@@ -258,7 +264,9 @@ def _update_nested(record: BaseModel, parts: list[str], value: Any) -> BaseModel
         current = updated
     else:
         raise RevisionPatchError(f"field is not traversable: {'/'.join(parts)}")
-    return record.model_copy(update={field: current})
+    payload = record.model_dump(mode="python")
+    payload[field] = current
+    return type(record).model_validate(payload)
 
 
 def _rebind_revision_ids(snapshot: ProductionGraphSnapshot, revision_id: str) -> None:
@@ -279,6 +287,8 @@ def _rebind_revision_ids(snapshot: ProductionGraphSnapshot, revision_id: str) ->
             )
     if snapshot.narrative is not None:
         snapshot.narrative = snapshot.narrative.model_copy(update={"revision_id": revision_id})
+    for session in snapshot.director_sessions:
+        session.current_revision_id = revision_id
 
 
 __all__ = [

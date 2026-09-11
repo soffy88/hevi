@@ -45,9 +45,7 @@ _TRANSITIONS: Mapping[ReadinessState, frozenset[ReadinessState]] = {
     ),
     ReadinessState.READY: frozenset({ReadinessState.QUEUED}),
     ReadinessState.QUEUED: frozenset({ReadinessState.GENERATING}),
-    ReadinessState.GENERATING: frozenset(
-        {ReadinessState.GENERATED, ReadinessState.QA_FAILED}
-    ),
+    ReadinessState.GENERATING: frozenset({ReadinessState.GENERATED, ReadinessState.QA_FAILED}),
     ReadinessState.GENERATED: frozenset({ReadinessState.QA_FAILED, ReadinessState.QA_PASSED}),
     ReadinessState.QA_FAILED: frozenset({ReadinessState.QUEUED, ReadinessState.ANALYZED}),
     ReadinessState.QA_PASSED: frozenset({ReadinessState.APPROVED}),
@@ -95,21 +93,46 @@ class _Check:
 
 
 def _checks(context: ReadinessContext) -> list[_Check]:
-    refs_ok = context.references_ready and context.required_reference_roles <= context.available_reference_roles
+    refs_ok = (
+        context.references_ready
+        and context.required_reference_roles <= context.available_reference_roles
+    )
     return [
-        _Check("narrative", context.narrative_valid, "NARRATIVE_INVALID", "narrative links are incomplete"),
+        _Check(
+            "narrative",
+            context.narrative_valid,
+            "NARRATIVE_INVALID",
+            "narrative links are incomplete",
+        ),
         _Check("assets", context.assets_ready, "ASSETS_PENDING", "required assets are not ready"),
-        _Check("references", refs_ok, "REFERENCES_PENDING", "required typed references are missing"),
-        _Check("continuity", context.continuity_valid, "CONTINUITY_INVALID", "continuity constraints fail"),
-        _Check("provider_capability", context.provider_supported, "CAPABILITY_UNSUPPORTED", "provider cannot satisfy the shot"),
-        _Check("budget", context.budget_available, "BUDGET_EXCEEDED", "budget gate rejected the shot"),
-        _Check("resource", context.resources_available, "RESOURCE_UNAVAILABLE", "runtime resources are unavailable"),
+        _Check(
+            "references", refs_ok, "REFERENCES_PENDING", "required typed references are missing"
+        ),
+        _Check(
+            "continuity",
+            context.continuity_valid,
+            "CONTINUITY_INVALID",
+            "continuity constraints fail",
+        ),
+        _Check(
+            "provider_capability",
+            context.provider_supported,
+            "CAPABILITY_UNSUPPORTED",
+            "provider cannot satisfy the shot",
+        ),
+        _Check(
+            "budget", context.budget_available, "BUDGET_EXCEEDED", "budget gate rejected the shot"
+        ),
+        _Check(
+            "resource",
+            context.resources_available,
+            "RESOURCE_UNAVAILABLE",
+            "runtime resources are unavailable",
+        ),
     ]
 
 
-def evaluate_readiness(
-    shot: CanonicalShot, context: ReadinessContext
-) -> ShotReadinessResult:
+def evaluate_readiness(shot: CanonicalShot, context: ReadinessContext) -> ShotReadinessResult:
     checks = _checks(context)
     blockers = [
         {"code": check.code, "gate": check.name, "detail": check.detail}

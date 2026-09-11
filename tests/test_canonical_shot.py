@@ -82,7 +82,14 @@ def test_scene_beat_shot_are_referentially_integrated() -> None:
     snapshot = ProductionGraphSnapshot(
         project=project,
         revision=revision,
-        characters=[Character(project_id=project.id, revision_id=revision.id, id=scene.character_ids[0], canonical_name="C1")],
+        characters=[
+            Character(
+                project_id=project.id,
+                revision_id=revision.id,
+                id=scene.character_ids[0],
+                canonical_name="C1",
+            )
+        ],
         episodes=[episode],
         scenes=[scene],
         beats=beats,

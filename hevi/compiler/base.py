@@ -105,7 +105,9 @@ class ProductionCompiler:
         if shot.readiness_state.value != "READY":
             raise CompilationError("SHOT_NOT_READY", "generation dispatch requires a READY shot")
         if references.shot_id != shot.id:
-            raise CompilationError("REFERENCE_SHOT_MISMATCH", "reference bundle belongs to another shot")
+            raise CompilationError(
+                "REFERENCE_SHOT_MISMATCH", "reference bundle belongs to another shot"
+            )
         if not provider.supports_intent(shot.generation_intent):
             raise CompilationError(
                 "CAPABILITY_UNSUPPORTED",
@@ -113,23 +115,50 @@ class ProductionCompiler:
             )
         if not resource_budget.resources_available:
             raise CompilationError("RESOURCE_UNAVAILABLE", "resource budget is not available")
+        safe_concurrency = resource_budget.requested_concurrency
+        if resource_budget.execution_profile is not None:
+            try:
+                resource_budget.execution_profile.require(
+                    gpu_count=resource_budget.required_gpu_count,
+                    gpu_vram_mb=resource_budget.required_gpu_vram_mb,
+                    memory_mb=resource_budget.required_memory_mb,
+                )
+                safe_concurrency = resource_budget.execution_profile.effective_concurrency(
+                    safe_concurrency, "provider"
+                )
+            except (ValueError, RuntimeError) as exc:
+                raise CompilationError("RESOURCE_UNAVAILABLE", str(exc)) from exc
         selected = _select_references(references, provider)
-        if shot.duration_target < provider.min_duration_s or shot.duration_target > provider.max_duration_s:
+        if (
+            shot.duration_target < provider.min_duration_s
+            or shot.duration_target > provider.max_duration_s
+        ):
             raise CompilationError(
                 "DURATION_LIMIT",
                 f"duration {shot.duration_target} is outside [{provider.min_duration_s}, {provider.max_duration_s}]",
             )
         resolution = resource_budget.resolution or provider.default_resolution
         if resolution not in provider.supported_resolutions:
-            raise CompilationError("RESOLUTION_UNSUPPORTED", f"resolution {resolution} is unsupported")
+            raise CompilationError(
+                "RESOLUTION_UNSUPPORTED", f"resolution {resolution} is unsupported"
+            )
         prompt = _prompt(shot)
         if len(prompt) > provider.max_prompt_length:
             raise CompilationError("PROMPT_LIMIT", "compiled prompt exceeds provider limit")
         if shot.audio_intent and not provider.supports_audio:
-            raise CompilationError("AUDIO_UNSUPPORTED", "shot requests audio but provider has no audio capability")
+            raise CompilationError(
+                "AUDIO_UNSUPPORTED", "shot requests audio but provider has no audio capability"
+            )
         cost = shot.duration_target * provider.cost_per_second_usd
         if resource_budget.max_cost_usd is not None and cost > resource_budget.max_cost_usd:
-            raise CompilationError("BUDGET_EXCEEDED", f"estimated cost {cost:.4f} exceeds compile budget")
+            raise CompilationError(
+                "BUDGET_EXCEEDED", f"estimated cost {cost:.4f} exceeds compile budget"
+            )
+        execution_profile = (
+            resource_budget.execution_profile.model_dump(mode="json")
+            if resource_budget.execution_profile is not None
+            else {}
+        )
         plan = ExecutionPlan(
             project_id=shot.project_id,
             production_id=shot.project_id,
@@ -143,14 +172,24 @@ class ProductionCompiler:
             prompt=prompt,
             negative_prompt="",
             selected_references=selected,
-            parameters={"shot_size": shot.camera.shot_size.value, "movement": shot.camera.movement},
+            parameters={
+                "shot_size": shot.camera.shot_size.value,
+                "movement": shot.camera.movement,
+                "concurrency": safe_concurrency,
+            },
             resolution=resolution,
             fps=24,
             duration=shot.duration_target,
             estimated_cost=cost,
             estimated_latency_s=provider.estimated_latency_s,
-            resource_profile={**provider.resource_profile, **resource_budget.resource_profile},
-            idempotency_key=_idempotency_key(shot, references, provider, shot.duration_target, resolution),
+            resource_profile={
+                **provider.resource_profile,
+                **resource_budget.resource_profile,
+                "execution_profile": execution_profile,
+            },
+            idempotency_key=_idempotency_key(
+                shot, references, provider, shot.duration_target, resolution
+            ),
         )
         plan.validate_dag()
         return plan
@@ -168,7 +207,9 @@ class ProductionCompiler:
                 return self.compile(shot, references, provider, resource_budget)
             except CompilationError as error:
                 failures.append(str(error))
-        raise CompilationError("NO_PROVIDER_FALLBACK", "; ".join(failures) or "no providers supplied")
+        raise CompilationError(
+            "NO_PROVIDER_FALLBACK", "; ".join(failures) or "no providers supplied"
+        )
 
 
 __all__ = ["CompilationError", "ProductionCompiler"]

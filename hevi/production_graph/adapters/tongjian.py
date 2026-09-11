@@ -48,9 +48,7 @@ def source_document_from_text(
     return document, chunk
 
 
-def chapter_characters(
-    chapter: ChapterIR, *, project_id: str, revision_id: str
-) -> list[Character]:
+def chapter_characters(chapter: ChapterIR, *, project_id: str, revision_id: str) -> list[Character]:
     """Project chapter character IR into stable project-level identities."""
 
     return [

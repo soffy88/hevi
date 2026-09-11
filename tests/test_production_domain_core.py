@@ -36,7 +36,9 @@ async def test_revisions_are_isolated_and_parented() -> None:
         text="gold",
     )
     first_with_source = first.model_copy(update={"sources": [document], "source_chunks": [chunk]})
-    second = await repository.append_revision(first_with_source, actor="director", reason="add source")
+    second = await repository.append_revision(
+        first_with_source, actor="director", reason="add source"
+    )
 
     assert second.revision.id != first.revision.id
     assert second.revision.parent_revision_id == first.revision.id

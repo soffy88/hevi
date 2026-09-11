@@ -50,7 +50,10 @@ def novel_plan_to_narrative(
 
     edges = [
         NarrativeEdge(
-            id=stable_id("narrative-edge", f"{event_ids[str(left.index)]}:precedes:{event_ids[str(right.index)]}"),
+            id=stable_id(
+                "narrative-edge",
+                f"{event_ids[str(left.index)]}:precedes:{event_ids[str(right.index)]}",
+            ),
             project_id=project_id,
             revision_id=revision_id,
             source_event_id=event_ids[str(left.index)],
@@ -60,7 +63,9 @@ def novel_plan_to_narrative(
         )
         for left, right in zip(plan.events, plan.events[1:], strict=False)
     ]
-    graph = NarrativeGraph(project_id=project_id, revision_id=revision_id, events=events, edges=edges)
+    graph = NarrativeGraph(
+        project_id=project_id, revision_id=revision_id, events=events, edges=edges
+    )
     graph.validate_integrity()
     return graph
 

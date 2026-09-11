@@ -44,7 +44,12 @@ def manifest_to_character(
 
 
 def manifest_to_look_variant(
-    manifest: Manifest, *, character_id: str, project_id: str, revision_id: str, name: str = "default"
+    manifest: Manifest,
+    *,
+    character_id: str,
+    project_id: str,
+    revision_id: str,
+    name: str = "default",
 ) -> LookVariant:
     """Create a semantic look binding without copying Vault binary assets."""
 

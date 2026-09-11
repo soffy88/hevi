@@ -38,6 +38,13 @@ def upgrade() -> None:
     )
     op.execute(
         """
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_production_graph_task_idempotency
+        ON production_graph_entities (project_id, (payload->>'idempotency_key'))
+        WHERE entity_type = 'task_envelope'
+        """
+    )
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS production_graph_edges (
             project_id UUID NOT NULL REFERENCES productions(id) ON DELETE CASCADE,
             revision_id UUID NOT NULL REFERENCES production_revisions(id) ON DELETE CASCADE,
@@ -75,6 +82,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("DROP INDEX IF EXISTS uq_production_graph_task_idempotency")
     op.execute("DROP TABLE IF EXISTS production_graph_readiness")
     op.execute("DROP TABLE IF EXISTS production_graph_edges")
     op.execute("DROP TABLE IF EXISTS production_graph_entities")

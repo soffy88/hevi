@@ -14,9 +14,7 @@ class MigrationProjectionError(RuntimeError):
     """The canonical write succeeded but a compatibility projection failed."""
 
 
-def canonical_first_read[T](
-    canonical: T | None, legacy_loader: Callable[[], T]
-) -> tuple[T, str]:
+def canonical_first_read[T](canonical: T | None, legacy_loader: Callable[[], T]) -> tuple[T, str]:
     """Dual-read helper: canonical data always wins when it exists."""
 
     if canonical is not None:
@@ -38,7 +36,9 @@ async def canonical_first_write[T](
         if hasattr(projected, "__await__"):
             await projected
     except Exception as exc:
-        raise MigrationProjectionError("canonical write committed; legacy projection failed") from exc
+        raise MigrationProjectionError(
+            "canonical write committed; legacy projection failed"
+        ) from exc
     return canonical, "projected"
 
 

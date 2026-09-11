@@ -61,8 +61,12 @@ def _refs(shot_id: str = "shot") -> ReferenceBundle:
 def test_compiler_emits_immutable_plan_with_pins_and_deterministic_idempotency() -> None:
     shot = _shot()
     compiler = ProductionCompiler()
-    plan = compiler.compile(shot, _refs(shot.id), _provider(cost_per_second_usd=0.2), ResourceBudget())
-    again = compiler.compile(shot, _refs(shot.id), _provider(cost_per_second_usd=0.2), ResourceBudget())
+    plan = compiler.compile(
+        shot, _refs(shot.id), _provider(cost_per_second_usd=0.2), ResourceBudget()
+    )
+    again = compiler.compile(
+        shot, _refs(shot.id), _provider(cost_per_second_usd=0.2), ResourceBudget()
+    )
     assert plan.shot_revision_id == "r"
     assert plan.reference_revision_id == "refs-r"
     assert plan.provider == "fake-video"
@@ -74,12 +78,27 @@ def test_compiler_emits_immutable_plan_with_pins_and_deterministic_idempotency()
 @pytest.mark.parametrize(
     ("provider_updates", "shot_updates", "budget", "code"),
     [
-        ({"supported_intents": {GenerationIntent.TEXT_TO_VIDEO}}, {}, ResourceBudget(), "CAPABILITY_UNSUPPORTED"),
+        (
+            {"supported_intents": {GenerationIntent.TEXT_TO_VIDEO}},
+            {},
+            ResourceBudget(),
+            "CAPABILITY_UNSUPPORTED",
+        ),
         ({"max_reference_items": 0}, {}, ResourceBudget(), "REFERENCE_LIMIT"),
         ({"max_duration_s": 1.0}, {}, ResourceBudget(), "DURATION_LIMIT"),
         ({"max_prompt_length": 3}, {}, ResourceBudget(), "PROMPT_LIMIT"),
-        ({"supported_resolutions": {"1080p"}, "default_resolution": "1080p"}, {}, ResourceBudget(resolution="720p"), "RESOLUTION_UNSUPPORTED"),
-        ({"supports_audio": False}, {"audio_intent": "music"}, ResourceBudget(), "AUDIO_UNSUPPORTED"),
+        (
+            {"supported_resolutions": {"1080p"}, "default_resolution": "1080p"},
+            {},
+            ResourceBudget(resolution="720p"),
+            "RESOLUTION_UNSUPPORTED",
+        ),
+        (
+            {"supports_audio": False},
+            {"audio_intent": "music"},
+            ResourceBudget(),
+            "AUDIO_UNSUPPORTED",
+        ),
         ({"cost_per_second_usd": 10.0}, {}, ResourceBudget(max_cost_usd=1), "BUDGET_EXCEEDED"),
     ],
 )
