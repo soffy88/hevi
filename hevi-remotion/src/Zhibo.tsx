@@ -5,17 +5,11 @@ import {
   interpolate,
   useCurrentFrame,
 } from "remotion";
-import { loadFont as loadMaShanZheng } from "@remotion/google-fonts/MaShanZheng";
-import { loadFont as loadNotoSerifSC } from "@remotion/google-fonts/NotoSerifSC";
-
-const { fontFamily: brushFont } = loadMaShanZheng("normal", {
-  weights: ["400"],
-  subsets: ["chinese-simplified"],
-});
-const { fontFamily: serifFont } = loadNotoSerifSC("normal", {
-  weights: ["400", "600"],
-  subsets: ["chinese-simplified"],
-});
+// Keep the composition bundle offline-safe.  Remote Google-font loading at
+// module import made unrelated CPU compositions fail during startup when the
+// network was unavailable; platform fonts remain deterministic fallbacks.
+const brushFont = '"STKaiti", "KaiTi", serif';
+const serifFont = '"Songti SC", "SimSun", serif';
 
 const NAME = "智伯";
 const ERA = "战国 · 晋";
