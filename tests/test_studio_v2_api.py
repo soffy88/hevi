@@ -282,6 +282,42 @@ async def test_studio_v2_domain_routes_preserve_canonical_runtime_boundaries() -
             assert message.status_code == 200
             decisions = await client.get(f"/api/studio/director/sessions/{session_id}/decisions")
             assert len(decisions.json()["decisions"]) == 1
+            current_revision = (await client.get(f"/api/studio/projects/{project_id}")).json()[
+                "revision"
+            ]["id"]
+            applied = await client.post(
+                f"/api/studio/director/sessions/{session_id}/messages",
+                json={
+                    "base_revision_id": current_revision,
+                    "decision_type": "creative_revision_applied",
+                    "rationale": "tighten the shot framing",
+                    "operations": [
+                        {
+                            "op": "replace",
+                            "path": f"/shots/{shot.id}/cinematography_notes",
+                            "value": "low angle, slow push",
+                        }
+                    ],
+                },
+            )
+            assert applied.status_code == 200
+            stale_director = await client.post(
+                f"/api/studio/director/sessions/{session_id}/messages",
+                json={
+                    "base_revision_id": current_revision,
+                    "decision_type": "creative_revision_applied",
+                    "rationale": "must not overwrite",
+                    "operations": [
+                        {
+                            "op": "replace",
+                            "path": f"/shots/{shot.id}/cinematography_notes",
+                            "value": "stale edit",
+                        }
+                    ],
+                },
+            )
+            assert stale_director.status_code == 409
+            assert stale_director.json()["detail"] == "STALE_REVISION"
 
             run = await client.post(
                 f"/api/studio/runs?project_id={project_id}",
