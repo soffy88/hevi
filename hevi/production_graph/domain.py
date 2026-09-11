@@ -571,6 +571,7 @@ class ProductionPlan(Entity):
     target_duration: float | None = Field(default=None, ge=0)
     budget_policy: dict[str, Any] = Field(default_factory=dict)
     execution_profile_id: CanonicalId | None = None
+    legacy_ids: dict[str, str] = Field(default_factory=dict)
 
 
 class ExecutionNode(DomainModel):

@@ -137,6 +137,7 @@ class ProductionGraphRepository:
                 {"canonical_graph": record},
                 now,
             )
+            await _persist_canonical_indexes(conn, snapshot, production_id, revision_id)
             await conn.execute(
                 """
                 INSERT INTO domain_events
@@ -157,6 +158,7 @@ class ProductionGraphRepository:
                 now,
             )
         return snapshot
+
 
     async def get_snapshot(
         self, project_id: str, *, revision_id: str | None = None
@@ -606,6 +608,115 @@ class ProductionGraphRepository:
             coverage.verified_constraints,
             coverage.unsupported_constraints,
             coverage.silent_drops,
+        )
+
+
+async def _persist_canonical_indexes(
+    conn: Any,
+    snapshot: ProductionGraphSnapshot,
+    production_id: uuid.UUID,
+    revision_id: uuid.UUID,
+) -> None:
+    """Index canonical entities without creating a second snapshot authority."""
+
+    fields = (
+        "sources",
+        "source_chunks",
+        "characters",
+        "character_states",
+        "look_variants",
+        "worlds",
+        "world_rules",
+        "locations",
+        "location_states",
+        "props",
+        "prop_states",
+        "seasons",
+        "episodes",
+        "scenes",
+        "beats",
+        "shots",
+        "keyframes",
+        "reference_bundles",
+        "continuity_constraints",
+        "readiness_results",
+        "director_sessions",
+        "director_decisions",
+        "revision_patches",
+        "production_plans",
+        "execution_plans",
+        "execution_attempts",
+        "adaptation_plans",
+        "adaptation_decisions",
+    )
+    for field_name in fields:
+        for item in getattr(snapshot, field_name):
+            await conn.execute(
+                """
+                INSERT INTO production_graph_entities
+                    (project_id, revision_id, entity_type, entity_id, payload)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (revision_id, entity_type, entity_id)
+                DO UPDATE SET payload = EXCLUDED.payload
+                """,
+                production_id,
+                revision_id,
+                field_name,
+                str(item.id),
+                item.model_dump(mode="json"),
+            )
+    if snapshot.narrative is not None:
+        for event in snapshot.narrative.events:
+            await conn.execute(
+                """
+                INSERT INTO production_graph_entities
+                    (project_id, revision_id, entity_type, entity_id, payload)
+                VALUES ($1, $2, 'narrative_event', $3, $4)
+                ON CONFLICT (revision_id, entity_type, entity_id)
+                DO UPDATE SET payload = EXCLUDED.payload
+                """,
+                production_id,
+                revision_id,
+                event.id,
+                event.model_dump(mode="json"),
+            )
+        for edge in snapshot.narrative.edges:
+            await conn.execute(
+                """
+                INSERT INTO production_graph_edges
+                    (project_id, revision_id, edge_id, edge_type, source_id, target_id, payload)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (revision_id, edge_id)
+                DO UPDATE SET payload = EXCLUDED.payload
+                """,
+                production_id,
+                revision_id,
+                edge.id,
+                edge.type.value,
+                edge.source_event_id,
+                edge.target_event_id,
+                edge.model_dump(mode="json"),
+            )
+    for result in snapshot.readiness_results:
+        await conn.execute(
+            """
+            INSERT INTO production_graph_readiness
+                (project_id, revision_id, shot_id, state, passed, blockers, warnings, checks, evaluated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (revision_id, shot_id)
+            DO UPDATE SET state = EXCLUDED.state, passed = EXCLUDED.passed,
+                          blockers = EXCLUDED.blockers, warnings = EXCLUDED.warnings,
+                          checks = EXCLUDED.checks, evaluated_at = EXCLUDED.evaluated_at
+            """,
+            production_id,
+            revision_id,
+            result.shot_id,
+            result.state.value,
+            result.passed,
+            result.blockers,
+            result.warnings,
+            result.checks,
+            result.evaluated_at,
         )
 
 

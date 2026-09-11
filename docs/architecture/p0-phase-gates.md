@@ -172,3 +172,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=RC6 Studio tools, timelines and Slate endpoints remain registered; v2 never calls provider transport directly  
 KNOWN_GAPS=task persistence and legacy dual-read/write index are completed in P0.13  
 COMMIT=feat(studio): add canonical domain API v2
+
+## P0.13
+
+PHASE=P0.13  
+FILES_CHANGED=`hevi/production_graph/adapters/canvas.py`, `studio.py`, `migration.py`, adapter exports, repository canonical indexes, `f7a8b9c0d1e2` migration, `tests/test_legacy_migration_adapters.py`  
+NEW_SCHEMA=Canvas projection nodes with explicit production IDs; Studio/Slate compatibility projections; queryable canonical entity/edge/readiness indexes  
+MIGRATIONS=dual-read canonical-first and canonical-first/legacy-projection write helpers; reversible Alembic indexes; no legacy table deletion  
+TESTS_ADDED=Canvas layout-only vs semantic patch, missing identity rejection, Slate round-trip, canonical-first ordering and projection-failure semantics  
+TESTS_PASSED=12 focused canonical/ontology/migration tests; Alembic head resolves to `f7a8b9c0d1e2`  
+TESTS_FAILED=0 focused tests; live PostgreSQL upgrade not run because the local PostgreSQL service is unavailable  
+LEGACY_COMPATIBILITY=Tongjian, Script2Video, Cinematic, Vault, Studio/Slate and Canvas remain available as adapters/projections; old schemas are not deleted  
+KNOWN_GAPS=production TaskEnvelope DB store and permanent Golden E2E evidence remain in P0.14; live DB migration requires PostgreSQL  
+COMMIT=feat(migration): add reversible legacy adapters and canonical indexes
