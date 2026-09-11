@@ -17,12 +17,17 @@ from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
 from hevi.compiler.adapters import ProviderAdapter
-from hevi.production_graph.domain import ExecutionPlan, TaskEnvelope
+from hevi.production_graph.domain import CanonicalShot, ExecutionPlan, TaskEnvelope
 from hevi.production_graph.ids import new_id
+from hevi.production_graph.readiness import assert_dispatchable
 
 
 class IdempotencyConflictError(RuntimeError):
     """The same idempotency key was presented for a different execution."""
+
+
+class _RejectDispatch(ValueError):
+    """Canonical dispatch rejected because the shot is not READY."""
 
 
 class DurableExecutionStore(Protocol):
@@ -87,9 +92,18 @@ class PostgresDurableExecutionStore:
 
     def __init__(self, pool: PgPool) -> None:
         self.pool = pool
+        self._notices: list[str] = []
+
+    @property
+    def notices(self) -> list[str]:
+        return list(self._notices)
+
+    def _emit_notice(self, message: str) -> None:
+        self._notices.append(message)
 
     async def persist_intent(self, envelope: TaskEnvelope) -> TaskEnvelope:
         async with self.pool.acquire() as conn, conn.transaction():
+            self._emit_notice(f"persist_intent:{envelope.idempotency_key}")
             row = await conn.fetchrow(
                 """
                 SELECT payload FROM production_graph_entities
@@ -106,17 +120,22 @@ class PostgresDurableExecutionStore:
                     raise IdempotencyConflictError(
                         "idempotency key belongs to another execution plan"
                     )
+                self._emit_notice(f"intent_reused:{envelope.idempotency_key}")
                 return current
             await self._insert(conn, envelope)
+            self._emit_notice(f"intent_persisted:{envelope.idempotency_key}")
             return envelope
 
     async def save(self, envelope: TaskEnvelope) -> TaskEnvelope:
         async with self.pool.acquire() as conn, conn.transaction():
+            self._emit_notice(f"save:{envelope.idempotency_key}")
             await self._insert(conn, envelope, upsert=True)
+        self._emit_notice(f"save_complete:{envelope.idempotency_key}")
         return envelope
 
     async def get_by_idempotency(self, key: str) -> TaskEnvelope | None:
         async with self.pool.acquire() as conn:
+            self._emit_notice(f"get_by_idempotency:{key}")
             row = await conn.fetchrow(
                 """
                 SELECT payload FROM production_graph_entities
@@ -125,7 +144,9 @@ class PostgresDurableExecutionStore:
                 """,
                 key,
             )
-        return TaskEnvelope.model_validate(row["payload"]) if row else None
+        result = TaskEnvelope.model_validate(row["payload"]) if row else None
+        self._emit_notice(f"get_by_idempotency_result:{key}:{result is not None}")
+        return result
 
     async def _insert(self, conn: Any, envelope: TaskEnvelope, *, upsert: bool = False) -> None:
         conflict = (
@@ -175,8 +196,36 @@ def envelope_from_execution_plan(
 class DurableExecutionCoordinator:
     """Run one external side effect with restart-safe ordering."""
 
-    def __init__(self, store: DurableExecutionStore) -> None:
+    def __init__(
+        self,
+        store: DurableExecutionStore,
+        *,
+        readiness_gate: Callable[[TaskEnvelope], None] | None = None,
+    ) -> None:
         self.store = store
+        self.readiness_gate = readiness_gate
+
+    async def _gate_ready(self, envelope: TaskEnvelope, shot: CanonicalShot | None = None) -> None:
+        """Reject dispatch when the canonical shot is not READY.
+
+        The readiness gate is mandatory at the canonical dispatch boundary. In a
+        production caller it is wired from the shot's readiness_state so that only
+        a READY shot may invoke a provider side-effect. The default built-in gate
+        enforces that the envelope carries a READY readiness signal when present,
+        and never allows a LOCKED shot to regenerate outside the documented QA path.
+        """
+        if shot is not None:
+            assert_dispatchable(shot)
+        if self.readiness_gate is not None:
+            self.readiness_gate(envelope)
+        else:
+            state = envelope.checkpoint.get("readiness_state")
+            if state and state != "READY":
+                from hevi.production_graph.durable_execution import _RejectDispatch  # type: ignore
+
+                raise _RejectDispatch(state)
+            if envelope.checkpoint.get("locked"):
+                raise _RejectDispatch("LOCKED")
 
     async def execute(
         self,
@@ -184,9 +233,13 @@ class DurableExecutionCoordinator:
         adapter: ProviderAdapter,
         request: dict[str, Any],
         *,
+        shot: CanonicalShot | None = None,
         destination: str = "",
         register_artifact: Callable[[str, dict[str, Any]], Awaitable[str] | str] | None = None,
     ) -> DurableExecutionResult:
+        # Gate: reject any non-READY shot at the canonical dispatch boundary
+        await self._gate_ready(envelope, shot)
+
         current = await self.store.persist_intent(envelope)
         if current.status == "completed":
             return DurableExecutionResult(
@@ -209,7 +262,21 @@ class DurableExecutionCoordinator:
             )
             await self.store.save(current)
 
-        result = await adapter.poll(current.provider_job_id)
+        try:
+            result = await adapter.poll(current.provider_job_id)
+        except Exception as exc:
+            # Keep the provider job identity durable across a transient poll
+            # outage.  A later worker can call execute again and resume polling
+            # without entering the create/send branch.
+            current = await self.store.save(
+                current.model_copy(update={"status": "interrupted", "error": str(exc)})
+            )
+            return DurableExecutionResult(
+                status="interrupted",
+                envelope=current,
+                provider_job_id=current.provider_job_id,
+                provider_result={"error": str(exc), "retryable": True},
+            )
         provider_status = str(result.get("status") or "running").lower()
         if provider_status in {"pending", "queued", "running", "processing"}:
             current = current.model_copy(update={"status": "running", "checkpoint": dict(result)})

@@ -10,6 +10,7 @@ unavailable rather than inferred from configuration.
 from __future__ import annotations
 
 import math
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -37,6 +38,9 @@ class ExecutionProfile(DomainModel):
 
     id: CanonicalId = Field(default_factory=new_id)
     cpu_quota: float | None = Field(default=None, ge=0)
+    cpu_capacity: float | None = Field(default=None, ge=0)
+    affinity_cpus: int | None = Field(default=None, ge=0)
+    cpuset_cpus: int | None = Field(default=None, ge=0)
     memory_limit_mb: int | None = Field(default=None, ge=0)
     gpu_available: bool = False
     gpu_count: int = Field(default=0, ge=0)
@@ -56,13 +60,21 @@ class ExecutionProfile(DomainModel):
     def cpu_concurrency_limit(self) -> int:
         """Return executable CPU slots without exceeding a measured quota."""
 
-        if self.cpu_quota is None:
+        capacities = [
+            capacity for capacity in (self.cpu_quota, self.cpu_capacity) if capacity is not None
+        ]
+        if self.affinity_cpus is not None:
+            capacities.append(float(self.affinity_cpus))
+        if self.cpuset_cpus is not None:
+            capacities.append(float(self.cpuset_cpus))
+        if not capacities:
             return max(self.render_concurrency, self.provider_concurrency, self.io_concurrency)
-        if self.cpu_quota <= 0:
+        capacity = min(capacities)
+        if capacity <= 0:
             return 0
         # A fractional CPU still permits one serialized task.  The limit is a
         # scheduler slot count, not a claim that the task owns one full CPU.
-        return max(1, math.floor(self.cpu_quota))
+        return max(1, math.floor(capacity))
 
     def concurrency_limit(self, lane: ExecutionLane = "render") -> int:
         configured = {
@@ -102,10 +114,20 @@ class ExecutionProfile(DomainModel):
         """Discover cgroup limits and GPU evidence for the current worker."""
 
         cpu_quota = _read_cpu_quota(cgroup_root)
+        cpuset_cpus = _read_cpuset_count(cgroup_root)
+        affinity_cpus = _read_affinity_count()
+        cpu_capacity = _effective_cpu_capacity(
+            cpu_quota=cpu_quota,
+            cpuset_cpus=cpuset_cpus,
+            affinity_cpus=affinity_cpus,
+        )
         memory_limit_mb = _read_memory_limit(cgroup_root)
         gpu_count, gpu_vram_mb = _probe_nvidia()
         return cls(
             cpu_quota=cpu_quota,
+            cpu_capacity=cpu_capacity,
+            affinity_cpus=affinity_cpus,
+            cpuset_cpus=cpuset_cpus,
             memory_limit_mb=memory_limit_mb,
             gpu_available=gpu_count > 0,
             gpu_count=gpu_count,
@@ -118,15 +140,98 @@ class ExecutionProfile(DomainModel):
 
 
 def _read_cpu_quota(root: Path) -> float | None:
-    value = root / "cpu.max"
     try:
-        raw = value.read_text(encoding="utf-8").split()
-        if len(raw) < 2 or raw[0] == "max":
+        raw = (root / "cpu.max").read_text(encoding="utf-8").split()
+        if len(raw) >= 2 and raw[0] != "max":
+            quota, period = float(raw[0]), float(raw[1])
+            return quota / period if period > 0 else 0.0
+        if raw and raw[0] == "max":
             return None
-        quota, period = float(raw[0]), float(raw[1])
+    except OSError, ValueError, IndexError:
+        pass
+    # cgroup v1 exposes the same constraint as two files.
+    try:
+        quota = float((root / "cpu.cfs_quota_us").read_text(encoding="utf-8").strip())
+        period = float((root / "cpu.cfs_period_us").read_text(encoding="utf-8").strip())
+        if quota < 0:
+            return None
         return quota / period if period > 0 else 0.0
     except OSError, ValueError, IndexError:
         return None
+
+
+def _parse_cpuset(value: str) -> int:
+    """Count CPUs in a Linux cpuset expression such as ``0-3,7``."""
+
+    count = 0
+    for part in value.strip().split(","):
+        item = part.strip()
+        if not item:
+            continue
+        if "-" in item:
+            start, end = item.split("-", 1)
+            start_i, end_i = int(start), int(end)
+            if start_i < 0 or end_i < start_i:
+                raise ValueError("invalid cpuset range")
+            count += end_i - start_i + 1
+        else:
+            if int(item) < 0:
+                raise ValueError("invalid cpuset cpu")
+            count += 1
+    return count
+
+
+def _read_cpuset_count(root: Path) -> int | None:
+    """Read cgroup v2/v1 cpuset metadata without treating malformed data as capacity."""
+
+    for filename in ("cpuset.cpus.effective", "cpuset.cpus"):
+        try:
+            raw = (root / filename).read_text(encoding="utf-8")
+            if not raw.strip():
+                continue
+            count = _parse_cpuset(raw)
+            if count > 0:
+                return count
+        except OSError, ValueError:
+            continue
+    return None
+
+
+def _read_affinity_count() -> int | None:
+    """Return the scheduler-visible CPU set, when the platform exposes it."""
+
+    try:
+        return len(os.sched_getaffinity(0))
+    except AttributeError, OSError:
+        return None
+
+
+def _effective_cpu_capacity(
+    *,
+    cpu_quota: float | None,
+    cpuset_cpus: int | None,
+    affinity_cpus: int | None,
+) -> float | None:
+    """Choose the tightest observed runtime CPU envelope.
+
+    A missing or malformed cgroup file is not interpreted as unlimited CPU.
+    Scheduler affinity is preferred as a safe fallback; only when neither
+    cgroup nor affinity metadata exists do we use the process CPU count.
+    """
+
+    observed = [
+        value
+        for value in (
+            cpu_quota,
+            float(cpuset_cpus) if cpuset_cpus is not None else None,
+            float(affinity_cpus) if affinity_cpus is not None else None,
+        )
+        if value is not None and value >= 0
+    ]
+    if observed:
+        return min(observed)
+    fallback = os.cpu_count()
+    return float(fallback) if fallback is not None and fallback > 0 else 1.0
 
 
 def _read_memory_limit(root: Path) -> int | None:

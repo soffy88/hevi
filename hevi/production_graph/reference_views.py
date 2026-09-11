@@ -20,6 +20,24 @@ _VIEW_ANGLES = {
     "front_left_34": 315.0,
 }
 
+_VIEW_ALIASES = {
+    "front-left 3/4": "front_left_34",
+    "front right 3/4": "front_right_34",
+    "back-left 3/4": "back_left_34",
+    "back right 3/4": "back_right_34",
+    "left profile": "left",
+    "right profile": "right",
+    "front-left": "front_left_34",
+    "front-right": "front_right_34",
+    "back-left": "back_left_34",
+    "back-right": "back_right_34",
+}
+
+
+def _normalise_view(value: object) -> str:
+    raw = str(value or "front").strip().lower().replace("–", "-")
+    return _VIEW_ALIASES.get(raw, raw.replace("-", "_").replace(" ", "_"))
+
 
 @dataclass(frozen=True)
 class ReferenceViewSelection:
@@ -53,7 +71,7 @@ def select_reference_view(
     ]
     if camera.azimuth_deg is None or character_facing_deg is None:
         item = next(
-            (item for item in candidates if str(item.metadata.get("view", "front")) == "front"),
+            (item for item in candidates if _normalise_view(item.metadata.get("view")) == "front"),
             candidates[0] if candidates else None,
         )
         return ReferenceViewSelection(item=item, view="front", angular_error_deg=0.0, fallback=True)
@@ -61,13 +79,15 @@ def select_reference_view(
     target = (camera.azimuth_deg - character_facing_deg) % 360.0
     scored: list[tuple[float, str, str, ReferenceItem]] = []
     for item in candidates:
-        view = str(item.metadata.get("view") or "front")
+        view = _normalise_view(item.metadata.get("view"))
         angle = float(item.metadata.get("azimuth_deg", _VIEW_ANGLES.get(view, 0.0))) % 360.0
         scored.append((_distance(angle, target), view, item.id, item))
     if not scored:
         return ReferenceViewSelection(item=None, view="front", angular_error_deg=0.0, fallback=True)
     error, view, _item_id, item = min(scored)
-    return ReferenceViewSelection(item=item, view=view, angular_error_deg=error)
+    return ReferenceViewSelection(
+        item=item, view=view, angular_error_deg=error, fallback=error > 0.0
+    )
 
 
 def select_views_for_characters(

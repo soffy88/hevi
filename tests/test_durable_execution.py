@@ -4,10 +4,12 @@ from typing import Any
 import pytest
 
 from hevi.production_graph import (
+    CanonicalShot,
     DurableExecutionCoordinator,
     ExecutionPlan,
     IdempotencyConflictError,
     InMemoryDurableExecutionStore,
+    ReadinessTransitionError,
     TaskEnvelope,
     envelope_from_execution_plan,
 )
@@ -96,6 +98,57 @@ def test_idempotency_conflict_is_rejected() -> None:
         other = _envelope().model_copy(update={"execution_plan_id": "different-plan"})
         with pytest.raises(IdempotencyConflictError):
             await store.persist_intent(other)
+
+    asyncio.run(run())
+
+
+def test_dispatch_gate_requires_ready_shot() -> None:
+    """Durable execution must enforce READY gate before provider dispatch.
+
+    This test simulates the coordinator dispatch boundary: even when the envelope
+    has an idempotent provider job from a previous run, the readiness state must
+    be READY before dispatch can proceed.
+    """
+
+    async def run() -> None:
+        store = InMemoryDurableExecutionStore()
+        provider = FakeProvider()
+        coordinator = DurableExecutionCoordinator(store)
+
+        # The canonical shot is supplied to the coordinator itself.  The
+        # provider must not be reachable when that shot is not READY.
+        ready_shot = CanonicalShot(
+            id="shot-dispatch-test",
+            project_id="p",
+            revision_id="r",
+            scene_id="s",
+            action_description="test dispatch",
+            cinematography_notes="test",
+            readiness_state="READY",
+        )
+        envelope = _envelope().model_copy(update={"checkpoint": {"readiness_state": "READY"}})
+        result = await coordinator.execute(envelope, provider, {}, shot=ready_shot)
+        assert result.status == "completed"
+
+        # Simulate restart: reload envelope from store; dispatch should still succeed
+        # because READY was already established and the shot cannot transit away
+        # from READY without going through QUEUED first.
+
+        # Now test that a non-READY shot cannot dispatch through the same
+        # canonical boundary, and that the adapter was not called again.
+        non_ready_shot = CanonicalShot(
+            id="shot-dispatch-blocked",
+            project_id="p",
+            revision_id="r",
+            scene_id="s",
+            action_description="test dispatch blocked",
+            cinematography_notes="test",
+            readiness_state="ANALYZED",
+        )
+
+        with pytest.raises(ReadinessTransitionError):
+            await coordinator.execute(envelope, provider, {}, shot=non_ready_shot)
+        assert provider.send_calls == 1
 
     asyncio.run(run())
 

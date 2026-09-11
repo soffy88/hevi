@@ -12,8 +12,6 @@ import hashlib
 import json
 from collections.abc import Sequence
 
-from pydantic import BaseModel
-
 from hevi.compiler import CompilationError, ProviderCapabilities, ResourceBudget
 from hevi.production_graph.domain import (
     CanonicalShot,
@@ -57,9 +55,7 @@ class RemotionCompiler:
         """
 
         if shot.readiness_state.value != "READY":
-            raise CompilationError(
-                "SHOT_NOT_READY", "generation dispatch requires a READY shot"
-            )
+            raise CompilationError("SHOT_NOT_READY", "generation dispatch requires a READY shot")
         if references.shot_id != shot.id:
             raise CompilationError(
                 "REFERENCE_SHOT_MISMATCH",
@@ -112,7 +108,7 @@ class RemotionCompiler:
                 failures.append(str(error))
         raise CompilationError(
             "NO_RENDERING_PROVIDER",
-            f"; ".join(failures) or "no rendering providers supplied",
+            "; ".join(failures) or "no rendering providers supplied",
         )
 
     def _validate_provider_capabilities(
@@ -124,9 +120,8 @@ class RemotionCompiler:
                 f"{provider.provider_id} does not support {shot.generation_intent.value}",
             )
 
-        for ref in shot.reference_bundle_id or []:
-            # Reference validation is done by the caller via ReferenceBundle
-            pass
+        # Reference roles are validated against the concrete ReferenceBundle
+        # in ``_select_references``; CanonicalShot only carries its identity.
 
     def _validate_resource_budget(
         self,
@@ -146,7 +141,10 @@ class RemotionCompiler:
                 f"duration {shot.duration_target} is outside [{provider.min_duration_s}, {provider.max_duration_s}]",
             )
 
-        if resource_budget.resolution and resource_budget.resolution not in provider.supported_resolutions:
+        if (
+            resource_budget.resolution
+            and resource_budget.resolution not in provider.supported_resolutions
+        ):
             raise CompilationError(
                 "RESOLUTION_NOT_SUPPORTED",
                 f"resolution {resource_budget.resolution} is unsupported",
@@ -229,6 +227,7 @@ class RemotionCompiler:
                 "output_format": output_format,
                 "fps": fps or 24,
                 "timeline_inputs": timeline_inputs or {},
+                "output_contract": output_contract or {},
             },
             resolution=resource_budget.resolution or provider.default_resolution,
             fps=fps or 24,
@@ -274,15 +273,14 @@ class RemotionCompiler:
                     memory_mb=resource_budget.required_memory_mb,
                 )
                 from hevi.production_graph.resources import assert_concurrency
+
                 return assert_concurrency(
                     resource_budget.execution_profile,
                     resource_budget.requested_concurrency,
-                    "render"
+                    "render",
                 )
             except (ValueError, RuntimeError) as exc:
-                raise CompilationError(
-                    "RESOURCE_CONSTRAINT_VIOLATION", str(exc)
-                ) from exc
+                raise CompilationError("RESOURCE_CONSTRAINT_VIOLATION", str(exc)) from exc
 
         return resource_budget.requested_concurrency
 
@@ -340,16 +338,6 @@ class RemotionCompiler:
         output_contract: dict[str, object] | None,
         render_profile: dict[str, object] | None,
     ) -> None:
-        artifacts = []
-        if audio_references:
-            for ref in audio_references:
-                if ref.artifact_id:
-                    artifacts.append(ref.artifact_id)
-        if subtitle_references:
-            for ref in subtitle_references:
-                if ref.artifact_id:
-                    artifacts.append(ref.artifact_id)
-
         plan.resource_profile.update(
             {
                 "audio_artifacts": [ref.artifact_id for ref in (audio_references or [])],

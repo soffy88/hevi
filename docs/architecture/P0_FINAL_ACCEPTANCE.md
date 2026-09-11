@@ -581,3 +581,86 @@ PUSHED=NO
 REMOTE_SHA=NOT_CHECKED
 SHA_MATCH=NOT_APPLICABLE
 WORKTREE=clean before adding this audit record
+
+## Audit history and final runtime closure attempt
+
+The failed first audit above is preserved verbatim.  The closure sequence is:
+
+`INITIAL_SELF_REPORT` → `FIRST_EVIDENCE_AUDIT` (the candidate audit recorded
+above) → `FINAL_RUNTIME_CLOSURE` (this section).
+
+The closure work was performed on branch
+`architecture/production-graph-vnext`, descendant of `20e0e602faa197f155b54f3412234b5388860268`.
+Generated media remains outside git.
+
+### Runtime evidence completed
+
+| Gate | Direct source/test evidence | Result |
+|---|---|---|
+| resource cap | `hevi/production_graph/resources.py`, `hevi/explainer/render.py`; `tests/test_execution_profile.py` | PASS |
+| Remotion compiler | `hevi/compiler/remotion.py`; `tests/test_remotion_compiler.py`; `tests/golden/test_p0_runtime_golden_e2e.py` | PASS / used by Golden |
+| readiness dispatch | `hevi/production_graph/durable_execution.py`; `tests/test_p0_readiness_and_camera_runtime.py` | PASS; non-ready provider calls 0 |
+| camera matrix | `hevi/production_graph/reference_views.py`; `tests/test_p0_readiness_and_camera_runtime.py` | PASS |
+| PostgreSQL resume | `hevi/production_graph/durable_execution.py`; `tests/integration/test_p0_durable_execution_runtime.py` against `127.0.0.1:55432` | PASS; create calls 1 |
+| CPU Remotion artifacts | `hevi/production_graph/golden_runtime.py`, `hevi-remotion/src/P0GoldenScene.tsx` | PASS; ffprobe video stream and SHA verified |
+
+Live resource evidence:
+
+```text
+LIVE_CPU_LIMIT=20.0
+LIVE_CONFIGURED_CONCURRENCY=4
+LIVE_EFFECTIVE_CONCURRENCY=4
+REMOTION_CPU_LIMIT_REGRESSION=PASS
+```
+
+Golden runtime test evidence (`tests/golden/test_p0_runtime_golden_e2e.py`)
+passed 3/3.  The generated acceptance artifacts were:
+
+```text
+GOLD_A_FINAL_MP4=/tmp/pytest-of-soffy/pytest-43/test_gold_a_historical_runtime0/gold-a-runtime.mp4
+GOLD_A_SHA256=bb8ee8bf23e02eaaeb5be81de0fec40530ea93ba07c9590759fe4ff87bec2fef
+GOLD_B_FINAL_MP4=/tmp/pytest-of-soffy/pytest-43/test_gold_b_multi_chapter_runt0/gold-b-runtime.mp4
+GOLD_B_SHA256=b22b24dbf60df6a39bd3bdc79ef799db4ce00e9b9a6ba32fcefb0bc3c21a3d26
+GOLD_C_FINAL_MP4=/tmp/pytest-of-soffy/pytest-43/test_gold_c_one_prompt_runtime0/gold-c-runtime.mp4
+GOLD_C_SHA256=d3fd008f49e66305c1e659b3c11a2151eec9d10d0f25110671ca687784378f1e
+```
+
+All three files were non-empty 1080×1440 MP4s with video streams.  The test
+path now executes CanonicalShot → RemotionCompiler → ExecutionPlan → Slate
+handoff → real local Remotion CLI → artifact verification.  It is a real CPU
+render proof, but it is not yet sufficient to promote the full historical,
+long-form, or One-Prompt product semantics claimed by the original Gold A/B/C
+requirements.
+
+### Closure status at this evidence update
+
+```text
+RESOURCE_CONCURRENCY_CAP=PASS
+REMOTION_COMPILER=PASS
+REMOTION_COMPILER_USED_BY_REAL_GOLDEN=YES
+SHOT_READINESS_RUNTIME_ENFORCED=YES
+NON_READY_PROVIDER_INVOCATIONS=0
+CAMERA_REFERENCE_MATRIX=PASS
+CAMERA_REFERENCE_SELECTION=PASS
+DURABLE_EXECUTION_RUNTIME_PROOF=PASS
+DATABASE_BACKED_RESUME=PASS
+PROVIDER_CREATE_CALL_COUNT=1
+DUPLICATE_EXTERNAL_SIDE_EFFECTS=0
+NEW_TESTS_GOLDEN_E2E=3
+```
+
+The following mandatory fields remain open and are intentionally not promoted:
+
+```text
+GOLD_A_SOURCE_PROVENANCE=PARTIAL
+GOLD_B_LONG_FORM_SEMANTICS=PARTIAL
+GOLD_C_REAL_PRODUCT_PATH=PARTIAL
+CREATIVE_PROVENANCE_COMPLETE=NO
+FULL_REGRESSION=NOT_RUN_AT_FINAL_SHA
+P0_FINAL_ACCEPTANCE=NO
+PUSHED=NO
+```
+
+The remaining P0 work is therefore the semantic Gold A/B/C orchestration and
+uninterrupted persisted creative provenance chain, followed by the full final
+SHA regression gate.  P1 and P2 remain forbidden and were not started.

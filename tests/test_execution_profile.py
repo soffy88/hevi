@@ -6,6 +6,19 @@ from hevi.assembly.remotion_render_workflow import RemotionConfig
 from hevi.production_graph import ExecutionProfile, ResourceUnavailableError, assert_concurrency
 
 
+@pytest.mark.parametrize(
+    ("cpu_limit", "configured", "expected"),
+    [(1, 4, 1), (2, 4, 2), (8, 4, 4), (8, 1, 1)],
+)
+def test_remotion_effective_concurrency_never_exceeds_cpu_limit(
+    cpu_limit: int, configured: int, expected: int
+) -> None:
+    from hevi.explainer.render import effective_remotion_concurrency
+
+    profile = ExecutionProfile(cpu_quota=cpu_limit, render_concurrency=configured)
+    assert effective_remotion_concurrency(configured, execution_profile=profile) == expected
+
+
 def test_profile_caps_runtime_concurrency_to_cpu_quota() -> None:
     profile = ExecutionProfile(
         cpu_quota=2.5,
@@ -37,6 +50,58 @@ def test_system_profile_reads_cgroup_limits_without_gpu_claim(tmp_path: Path) ->
     assert profile.cpu_quota == 1.5
     assert profile.memory_limit_mb == 512
     assert not profile.gpu_available
+
+
+def test_malformed_cgroup_metadata_uses_scheduler_safe_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from hevi.production_graph import resources
+
+    (tmp_path / "cpu.max").write_text("not-a-quota", encoding="utf-8")
+    (tmp_path / "cpuset.cpus.effective").write_text("broken-range", encoding="utf-8")
+    monkeypatch.setattr(resources.os, "sched_getaffinity", lambda _pid: {0, 1})
+    profile = ExecutionProfile.from_system(cgroup_root=tmp_path, render_concurrency=4)
+    assert profile.cpu_capacity == 2
+    assert profile.effective_concurrency(4, "render") == 2
+
+
+def test_explainer_remotion_path_passes_capped_concurrency_to_cli(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import asyncio
+
+    import hevi.explainer.render as render
+
+    remotion_dir = tmp_path / "remotion"
+    remotion_dir.mkdir()
+    remotion_bin = remotion_dir / "node_modules" / ".bin" / "remotion"
+    remotion_bin.parent.mkdir(parents=True)
+    remotion_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    monkeypatch.setattr(render, "_HEVI_REMOTION_DIR", remotion_dir)
+    monkeypatch.setattr(render, "_REMOTION_BIN", remotion_bin)
+    captured: dict[str, object] = {}
+
+    class Process:
+        returncode = 0
+
+        async def communicate(self):
+            return b"", None
+
+    async def fake_exec(*args: object, **kwargs: object) -> Process:
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+        return Process()
+
+    monkeypatch.setattr(render.asyncio, "create_subprocess_exec", fake_exec)
+    asyncio.run(
+        render._run_remotion_render(
+            "Explainer-Portrait",
+            tmp_path / "out.mp4",
+            configured_concurrency=4,
+            execution_profile=ExecutionProfile(cpu_quota=1, render_concurrency=4),
+        )
+    )
+    assert "--concurrency=1" in captured["args"]
 
 
 def test_remotion_config_accepts_explicit_profile() -> None:
