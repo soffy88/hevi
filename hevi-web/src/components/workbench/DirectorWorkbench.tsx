@@ -42,6 +42,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
   const [directorText, setDirectorText] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<ProductionDirectorDecision[]>([]);
+  const [tasks, setTasks] = useState<Array<Record<string, unknown>>>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -59,6 +60,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { productionApi.tasks().then(result => setTasks(result.tasks)).catch(() => setTasks([])); }, [snapshot?.revision.id]);
 
   const shot = useMemo(() => snapshot?.shots.find(item => item.id === selectedShotId) ?? null, [snapshot, selectedShotId]);
   const scene = useMemo(() => snapshot?.scenes.find(item => item.id === (selectedSceneId ?? shot?.scene_id)) ?? null, [snapshot, selectedSceneId, shot]);
@@ -100,6 +102,14 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
     await mutate(
       () => regenerate ? productionApi.regenerateShot(shot.id, provider) : productionApi.generateShot(shot.id, provider),
       regenerate ? '已提交 targeted regeneration' : '已提交 canonical generation',
+    );
+  }
+
+  async function toggleKeyframe(keyframeId: string, locked: boolean) {
+    if (!shot || !snapshot) return;
+    await mutate(
+      () => productionApi.patchShot(shot.id, locked ? 'keyframe unlocked for replacement' : 'keyframe locked by director', [{ op: 'replace', path: `/keyframes/${keyframeId}/locked`, value: !locked }], snapshot.revision.id),
+      locked ? 'Keyframe 已解锁，等待 replacement' : 'Keyframe 已锁定',
     );
   }
 
@@ -161,7 +171,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
           {tab === 'storyboard' && <StoryboardView snapshot={snapshot} selectedShotId={selectedShotId} onSelect={setSelectedShotId} onPrepare={prepare} onApprove={() => void transition('approve')} onLock={() => void transition('lock')} onGenerate={() => void generate()} onRegenerate={() => void generate(true)} busy={busy} />}
           {tab === 'canvas' && <CanvasProjection snapshot={snapshot} onSelectShot={id => { setSelectedShotId(id); setTab('storyboard'); }} />}
           {tab === 'timeline' && <TimelineView snapshot={snapshot} onSelectShot={id => { setSelectedShotId(id); setTab('storyboard'); }} />}
-          {tab === 'assets' && <AssetsView snapshot={snapshot} />}
+          {tab === 'assets' && <AssetsView snapshot={snapshot} onToggleKeyframe={toggleKeyframe} />}
           {tab === 'qa' && <QaView snapshot={snapshot} />}
         </section>
 
@@ -170,7 +180,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
           <DirectorPanel text={directorText} setText={setDirectorText} decisions={[...decisions, ...snapshot.director_decisions].slice(-5)} onSend={() => void sendDirector()} busy={busy} />
         </aside>
       </div>
-      <footer className="wb-task-rail"><span className="wb-task-live"><i /> Activity</span><span>{snapshot.execution_attempts.length} execution attempts</span><span>{snapshot.execution_plans.length} plans</span><span>{failedCount ? `${failedCount} QA/readiness findings` : 'No active blockers'}</span><span className="wb-task-context">Project {shortId(snapshot.project.id)} · Revision {snapshot.revision.revision_no}</span></footer>
+      <footer className="wb-task-rail"><span className="wb-task-live"><i /> Task Center</span><span>{tasks.length} persisted tasks</span><span>{snapshot.execution_attempts.length} execution attempts</span><span>{snapshot.execution_plans.length} plans</span><span>{failedCount ? `${failedCount} QA/readiness findings` : 'No active blockers'}</span><span className="wb-task-context">Project {shortId(snapshot.project.id)} · Revision {snapshot.revision.revision_no}</span></footer>
     </main>
   );
 }
@@ -207,9 +217,9 @@ function TimelineView({ snapshot, onSelectShot }: { snapshot: ProductionGraphSna
   return <div className="wb-view"><div className="wb-view-head"><div><span className="wb-eyebrow">TIMELINE / SEMANTIC ORDER</span><h1>时间线</h1><p>当前视图按 Episode → Scene → Shot 投影，不在前端创建影子 timeline。</p></div></div><div className="wb-timeline">{snapshot.episodes.map(ep => <section key={ep.id}><header><strong>EP {ep.number}</strong><span>{ep.title}</span></header>{snapshot.scenes.filter(scene => scene.episode_id === ep.id).map(scene => <div className="wb-timeline-scene" key={scene.id}><span>Scene {shortId(scene.id)}</span><div>{snapshot.shots.filter(shot => shot.scene_id === scene.id).map(shot => <button type="button" key={shot.id} className={`wb-timeline-shot wb-status-border--${shot.readiness_state.toLowerCase()}`} onClick={() => onSelectShot(shot.id)}><b>{Math.round(shot.duration_target * 10) / 10}s</b><small>{shortId(shot.id)}</small></button>)}</div></div>)}</section>)}{!snapshot.episodes.length && <p className="wb-empty">暂无 Episode timeline。</p>}</div></div>;
 }
 
-function AssetsView({ snapshot }: { snapshot: ProductionGraphSnapshot }) {
+function AssetsView({ snapshot, onToggleKeyframe }: { snapshot: ProductionGraphSnapshot; onToggleKeyframe: (keyframeId: string, locked: boolean) => Promise<void> }) {
   const groups = [['Characters', snapshot.characters], ['Locations', snapshot.locations], ['Props', snapshot.props], ['Keyframes', snapshot.keyframes], ['Reference bundles', snapshot.reference_bundles]] as const;
-  return <div className="wb-view"><div className="wb-view-head"><div><span className="wb-eyebrow">ASSETS / CANONICAL REFERENCES</span><h1>资产与参考</h1><p>ReferenceBundle 与 Keyframe 是生产图的一部分，不是 provider-specific 表单。</p></div></div><div className="wb-asset-grid">{groups.map(([label, items]) => <section className="wb-data-card" key={label}><div className="wb-card-heading"><h2>{label}</h2><span>{items.length}</span></div>{items.slice(0, 8).map(item => <div className="wb-asset-row" key={String(item.id)}><span className="wb-asset-icon">◇</span><div><strong>{String(item.name ?? item.role ?? item.title ?? item.id).slice(0, 42)}</strong><small>{shortId(String(item.id))}</small></div></div>)}{!items.length && <p className="wb-empty">暂无。</p>}</section>)}</div></div>;
+  return <div className="wb-view"><div className="wb-view-head"><div><span className="wb-eyebrow">ASSETS / CANONICAL REFERENCES</span><h1>资产与参考</h1><p>ReferenceBundle 与 Keyframe 是生产图的一部分，不是 provider-specific 表单。</p></div></div><div className="wb-asset-grid">{groups.map(([label, items]) => <section className="wb-data-card" key={label}><div className="wb-card-heading"><h2>{label}</h2><span>{items.length}</span></div>{items.slice(0, 8).map(item => { const keyframe = label === 'Keyframes' ? item as Record<string, unknown> : null; const locked = Boolean(keyframe?.locked); return <div className="wb-asset-row" key={String(item.id)}><span className="wb-asset-icon">◇</span><div><strong>{String(item.name ?? item.role ?? item.title ?? item.id).slice(0, 42)}</strong><small>{keyframe ? `${String(keyframe.role ?? 'frame')} · ${shortId(String(item.id))}` : shortId(String(item.id))}</small></div>{keyframe && <button type="button" className="wb-asset-action" onClick={() => void onToggleKeyframe(String(item.id), locked)}>{locked ? 'Unlock' : 'Lock'}</button>}</div>; })}{!items.length && <p className="wb-empty">暂无。</p>}</section>)}</div></div>;
 }
 
 function QaView({ snapshot }: { snapshot: ProductionGraphSnapshot }) {

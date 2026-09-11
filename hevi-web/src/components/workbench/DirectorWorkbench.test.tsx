@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   createDirectorSession: vi.fn(),
   directorMessage: vi.fn(),
   prepareShot: vi.fn(),
+  tasks: vi.fn(),
 }));
 
 vi.mock('@/lib/api-client', () => ({
@@ -32,6 +33,7 @@ describe('DirectorWorkbench', () => {
     mocks.createDirectorSession.mockResolvedValue({ session: { id: 'session-1' }, revision: snapshot.revision });
     mocks.directorMessage.mockResolvedValue({ decision: { id: 'decision-1', session_id: 'session-1', project_id: 'project-1', decision_type: 'creative_revision', inputs: {}, rationale: 'Make it tense' }, revision: snapshot.revision });
     mocks.prepareShot.mockResolvedValue({ shot: snapshot.shots[0], readiness: { shot_id: 'shot-1', state: 'READY', passed: true, blockers: [], warnings: [], checks: {} }, revision: snapshot.revision });
+    mocks.tasks.mockResolvedValue({ tasks: [], total: 0 });
   });
 
   it('reopens from the canonical snapshot and exposes shared project context', async () => {
