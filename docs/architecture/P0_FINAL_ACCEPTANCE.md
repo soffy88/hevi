@@ -411,6 +411,8 @@ end-to-end production lines.
 Fixture: `tests/golden/gold_a_historical.json`
 Fixture SHA256: `6e89b4da13ac060a7f12c7996d634d3fd10ba924df5ee1ceead5d4b5cda2eb20`
 Project ID: `gold-a`
+Revision ID: `NOT_RECORDED_BY_TEST` (the repository generated a UUID, but the
+test does not persist/report it as Golden evidence)
 Events: 2 (`gather`, `letter`)
 Scenes: 1 (`gold-a-scene`)
 Shots: 1 (`gold-a-shot`)
@@ -433,6 +435,7 @@ Fixture: `tests/golden/gold_b_novel.json`
 Fixture SHA256: `863755858f49bdbb7c0b7109be1dd66470aa6a21bc75ae6ebac0357fc4d6c3d8`
 Chapters: 2
 Project ID: `gold-b`
+Revision ID: `NOT_RECORDED_BY_TEST`
 Episodes: 2
 Events: 2 (`arrive`, `return`)
 Scenes: 2
@@ -456,6 +459,7 @@ Fixture SHA256: `701af9367c93d5dd89f053f8f9263e9e92d186181f3423b108b5dd3d0b5ec14
 Input: `Make a tense 12-second vertical scene of an envoy crossing an old gate at dawn.`
 Input SHA256 (without trailing newline): `7176e2a229ef27630189eea30400ef4de4afc41f5e9640e7595d08072a218149`
 Project ID: `gold-c`
+Revision ID: `NOT_RECORDED_BY_TEST`
 
 The test manually constructs Episode, Scene, Beat, CanonicalShot, and
 ReferenceBundle and compiles them. It does not invoke a Director, create a
