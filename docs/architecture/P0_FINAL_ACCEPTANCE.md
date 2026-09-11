@@ -919,7 +919,7 @@ After the semantic closure commit and the minimal pre-existing compiler-test
 lint cleanup, the authoritative `scripts/check.sh` gate passed at:
 
 ```text
-FINAL_SHA=58ec73d75b422cd980aa049f7f96599054bd3f8d
+GATE_BEFORE_EVIDENCE_DOC_UPDATE=58ec73d75b422cd980aa049f7f96599054bd3f8d
 FULL_PYTEST_PASSED=2806
 FULL_PYTEST_SKIPPED=29
 FULL_PYTEST_FAILED=0
