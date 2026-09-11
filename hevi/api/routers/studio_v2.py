@@ -8,6 +8,7 @@ Slate/runtime boundaries.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -42,7 +43,22 @@ from hevi.production_graph.adapters.tongjian import (
     source_document_from_text,
 )
 from hevi.production_graph.durable_execution import PostgresDurableExecutionStore
-from hevi.production_graph.orchestration import one_prompt_product_entrypoint
+from hevi.production_graph.ids import new_id
+from hevi.production_graph.orchestration import (
+    historical_product_entrypoint,
+    long_form_product_entrypoint,
+    one_prompt_product_entrypoint,
+)
+from hevi.production_graph.workbench import (
+    CandidateRecord,
+    CandidateState,
+    CreativeMemoryKind,
+    CreativeMemoryRecord,
+    DependencyRecord,
+    DependencyStatus,
+    TemplatePolicy,
+    VersionRecord,
+)
 from hevi.studio.slate_bridge import production_plan_to_slate
 from hevi.tongjian.schemas import ChapterIR
 
@@ -135,11 +151,56 @@ class OnePromptRequest(BaseModel):
     render_path: str | None = None
 
 
+class HistoricalProductRequest(BaseModel):
+    title: str = "Historical Workbench acceptance"
+    source_text: str = Field(min_length=20)
+    render_path: str | None = None
+
+
+class LongFormProductRequest(BaseModel):
+    title: str = "Long-form Workbench acceptance"
+    source_text: str = Field(min_length=40)
+    render_path: str | None = None
+
+
 class CanvasSemanticPatchRequest(BaseModel):
     base_revision_id: str
     reason: str = Field(min_length=1)
     node: dict[str, Any]
     field: str = Field(min_length=1)
+    value: Any
+
+
+class CandidateActionRequest(BaseModel):
+    base_revision_id: str | None = None
+
+
+class MemoryCreateRequest(BaseModel):
+    scope: str
+    scope_id: str | None = None
+    kind: CreativeMemoryKind
+    content: str = Field(min_length=1)
+    source_session_id: str | None = None
+
+
+class VersionCreateRequest(BaseModel):
+    registry_type: str = Field(pattern="^(prompt|skill)$")
+    name: str = Field(min_length=1)
+    version: str = Field(min_length=1)
+    content: str = Field(min_length=1)
+
+
+class VersionActivateRequest(BaseModel):
+    version_id: str
+
+
+class TemplateApplyRequest(BaseModel):
+    base_revision_id: str | None = None
+
+
+class ReworkRequest(BaseModel):
+    base_revision_id: str
+    field: str = "costume"
     value: Any
 
 
@@ -177,6 +238,58 @@ async def one_prompt(
         "artifact_id": (
             run.execution_attempt.artifact_ids[0] if run.execution_attempt.artifact_ids else None
         ),
+    }
+
+
+@router.post("/product/historical", status_code=status.HTTP_201_CREATED)
+async def historical_product(
+    body: HistoricalProductRequest,
+    user: UserDep,
+    repository: Annotated[ProductionGraphRepository, Depends(get_graph_repository)],
+) -> dict[str, Any]:
+    run = await historical_product_entrypoint(
+        repository,
+        source_text=body.source_text,
+        title=body.title,
+        user_id=str(user["id"]),
+        render_path=Path(body.render_path) if body.render_path else None,
+    )
+    return {
+        "project_id": run.snapshot.project.id,
+        "revision_id": run.snapshot.revision.id,
+        "director_session_id": run.snapshot.director_sessions[0].id,
+        "production_plan_id": run.production_plan.id,
+        "execution_plan_id": run.execution_plan.id,
+        "execution_attempt_id": run.execution_attempt.id,
+        "artifact_id": run.execution_attempt.artifact_ids[0]
+        if run.execution_attempt.artifact_ids
+        else None,
+    }
+
+
+@router.post("/product/long-form", status_code=status.HTTP_201_CREATED)
+async def long_form_product(
+    body: LongFormProductRequest,
+    user: UserDep,
+    repository: Annotated[ProductionGraphRepository, Depends(get_graph_repository)],
+) -> dict[str, Any]:
+    run = await long_form_product_entrypoint(
+        repository,
+        source_text=body.source_text,
+        title=body.title,
+        user_id=str(user["id"]),
+        render_path=Path(body.render_path) if body.render_path else None,
+    )
+    return {
+        "project_id": run.snapshot.project.id,
+        "revision_id": run.snapshot.revision.id,
+        "director_session_id": run.snapshot.director_sessions[0].id,
+        "production_plan_id": run.production_plan.id,
+        "execution_plan_id": run.execution_plan.id,
+        "execution_attempt_id": run.execution_attempt.id,
+        "artifact_id": run.execution_attempt.artifact_ids[0]
+        if run.execution_attempt.artifact_ids
+        else None,
     }
 
 
@@ -613,6 +726,385 @@ async def get_shot_references(shot_id: str, user: UserDep, repo: RepoDep):
         (item for item in snapshot.reference_bundles if item.id == shot.reference_bundle_id), None
     )
     return {"reference_bundle": _dump(bundle) if bundle else None}
+
+
+async def _shot_candidates(repo: ProductionGraphRepository, snapshot: Any, shot_id: str):
+    records = await repo.list_workbench_records(snapshot.project.id, "p1_candidate")
+    candidates = [
+        CandidateRecord.model_validate(item) for item in records if item.get("shot_id") == shot_id
+    ]
+    for attempt in snapshot.execution_attempts:
+        if attempt.shot_id != shot_id:
+            continue
+        if any(item.execution_attempt_id == attempt.id for item in candidates):
+            continue
+        candidate = CandidateRecord(
+            id=attempt.id,
+            project_id=snapshot.project.id,
+            shot_id=shot_id,
+            execution_attempt_id=attempt.id,
+            execution_plan_id=attempt.execution_plan_id,
+            artifact_id=attempt.artifact_ids[0] if attempt.artifact_ids else None,
+            revision_id=snapshot.revision.id,
+        )
+        await repo.save_workbench_record(
+            snapshot.project.id, "p1_candidate", candidate.model_dump(mode="json")
+        )
+        candidates.append(candidate)
+    return candidates
+
+
+@router.get("/shots/{shot_id}/candidates")
+async def list_shot_candidates(shot_id: str, user: UserDep, repo: RepoDep):
+    snapshot, _ = await _find_shot(repo, shot_id, user)
+    candidates = await _shot_candidates(repo, snapshot, shot_id)
+    return {"candidates": [_dump(item) for item in candidates]}
+
+
+@router.post("/shots/{shot_id}/candidates/{candidate_id}/{action}")
+async def candidate_action(
+    shot_id: str,
+    candidate_id: str,
+    action: str,
+    body: CandidateActionRequest,
+    user: UserDep,
+    repo: RepoDep,
+):
+    snapshot, _ = await _find_shot(repo, shot_id, user)
+    if body.base_revision_id and body.base_revision_id != snapshot.revision.id:
+        raise HTTPException(status_code=409, detail="STALE_REVISION")
+    candidates = await _shot_candidates(repo, snapshot, shot_id)
+    candidate = next((item for item in candidates if item.id == candidate_id), None)
+    if candidate is None:
+        raise HTTPException(status_code=404, detail="unknown candidate")
+    allowed: dict[str, set[CandidateState]] = {
+        "select": {CandidateState.CANDIDATE},
+        "reject": {CandidateState.CANDIDATE, CandidateState.SELECTED},
+        "lock": {CandidateState.SELECTED},
+        "unlock": {CandidateState.LOCKED},
+        "archive": {CandidateState.REJECTED, CandidateState.CANDIDATE},
+    }
+    if action not in allowed or candidate.state not in allowed[action]:
+        raise HTTPException(status_code=422, detail="invalid candidate lifecycle transition")
+    if action == "select" and not candidate.artifact_id:
+        raise HTTPException(status_code=422, detail="candidate has no real artifact")
+    if action == "select":
+        for other in candidates:
+            if other.id != candidate.id and other.state == CandidateState.SELECTED:
+                other.state = CandidateState.ARCHIVED
+    target = {
+        "select": CandidateState.SELECTED,
+        "reject": CandidateState.REJECTED,
+        "lock": CandidateState.LOCKED,
+        "unlock": CandidateState.SELECTED,
+        "archive": CandidateState.ARCHIVED,
+    }[action]
+    candidate.state = target
+    candidate.updated_at = datetime.now(UTC)
+    child = await repo.append_revision(snapshot, actor=_user_id(user), reason=f"candidate {action}")
+    for item in candidates:
+        item.revision_id = child.revision.id
+        await repo.save_workbench_record(
+            child.project.id, "p1_candidate", item.model_dump(mode="json")
+        )
+    return {"candidate": _dump(candidate), "revision": _dump(child.revision)}
+
+
+@router.get("/projects/{project_id}/memory")
+async def list_project_memory(project_id: str, user: UserDep, repo: RepoDep):
+    await _owned_snapshot(repo, project_id, user)
+    records = await repo.list_workbench_records(project_id, "p1_memory")
+    return {"memory": records}
+
+
+@router.post("/projects/{project_id}/memory", status_code=status.HTTP_201_CREATED)
+async def create_project_memory(
+    project_id: str, body: MemoryCreateRequest, user: UserDep, repo: RepoDep
+):
+    snapshot = await _owned_snapshot(repo, project_id, user)
+    record = CreativeMemoryRecord(
+        id=new_id(),
+        project_id=project_id,
+        revision_id=snapshot.revision.id,
+        **body.model_dump(),
+    )
+    await repo.save_workbench_record(project_id, "p1_memory", record.model_dump(mode="json"))
+    return {"memory": _dump(record)}
+
+
+@router.get("/projects/{project_id}/versions")
+async def list_project_versions(project_id: str, user: UserDep, repo: RepoDep):
+    await _owned_snapshot(repo, project_id, user)
+    records = await repo.list_workbench_records(project_id, "p1_version")
+    return {"versions": records}
+
+
+@router.post("/projects/{project_id}/versions", status_code=status.HTTP_201_CREATED)
+async def create_project_version(
+    project_id: str, body: VersionCreateRequest, user: UserDep, repo: RepoDep
+):
+    await _owned_snapshot(repo, project_id, user)
+    record = VersionRecord(id=new_id(), project_id=project_id, **body.model_dump())
+    await repo.save_workbench_record(project_id, "p1_version", record.model_dump(mode="json"))
+    return {"version": _dump(record)}
+
+
+@router.post("/projects/{project_id}/versions/activate")
+async def activate_project_version(
+    project_id: str, body: VersionActivateRequest, user: UserDep, repo: RepoDep
+):
+    snapshot = await _owned_snapshot(repo, project_id, user)
+    records = [
+        VersionRecord.model_validate(item)
+        for item in await repo.list_workbench_records(project_id, "p1_version")
+    ]
+    target = next((item for item in records if item.id == body.version_id), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail="unknown prompt/skill version")
+    for item in records:
+        # Activation is scoped to one registry/name pair.  A prompt rollback
+        # must never silently deactivate an unrelated skill (or another
+        # prompt registry entry) in the same project.
+        if item.registry_type == target.registry_type and item.name == target.name:
+            item.active = item.id == target.id
+        await repo.save_workbench_record(project_id, "p1_version", item.model_dump(mode="json"))
+    return {"active_version": _dump(target), "revision_id": snapshot.revision.id}
+
+
+@router.get("/projects/{project_id}/versions/diff")
+async def diff_project_versions(
+    project_id: str, from_id: str, to_id: str, user: UserDep, repo: RepoDep
+):
+    await _owned_snapshot(repo, project_id, user)
+    records = [
+        VersionRecord.model_validate(item)
+        for item in await repo.list_workbench_records(project_id, "p1_version")
+    ]
+    left = next((item for item in records if item.id == from_id), None)
+    right = next((item for item in records if item.id == to_id), None)
+    if left is None or right is None:
+        raise HTTPException(status_code=404, detail="unknown version")
+    return {
+        "from": _dump(left),
+        "to": _dump(right),
+        "changed": left.content != right.content or left.version != right.version,
+    }
+
+
+@router.get("/templates/policies")
+async def list_workbench_template_policies(user: UserDep):
+    policies = [
+        (
+            "historical-documentary",
+            "Historical Documentary",
+            "SHOT_REVIEW",
+            "16:9",
+            "historical documentary",
+            "source-grounded",
+            "narration-first",
+        ),
+        (
+            "ai-drama",
+            "AI Drama",
+            "KEYFRAME_REVIEW",
+            "16:9",
+            "cinematic drama",
+            "coverage",
+            "dialogue",
+        ),
+        (
+            "motion-comic",
+            "Motion Comic",
+            "SHOT_REVIEW",
+            "16:9",
+            "illustrated panels",
+            "panel rhythm",
+            "narration",
+        ),
+        (
+            "talking-head",
+            "Talking Head",
+            "FULL_AUTO",
+            "9:16",
+            "studio presenter",
+            "portrait close-up",
+            "voice-first",
+        ),
+        (
+            "explainer",
+            "Explainer",
+            "FULL_AUTO",
+            "16:9",
+            "clean explainer",
+            "diagram coverage",
+            "narration",
+        ),
+        (
+            "kinetic-promo",
+            "Kinetic Promo",
+            "FULL_AUTO",
+            "9:16",
+            "kinetic typography",
+            "short beats",
+            "music-first",
+        ),
+        (
+            "product-ad",
+            "Product Ad",
+            "KEYFRAME_REVIEW",
+            "9:16",
+            "product photography",
+            "hero/detail",
+            "music-first",
+        ),
+        (
+            "trailer",
+            "Trailer",
+            "SHOT_REVIEW",
+            "16:9",
+            "trailer contrast",
+            "escalating montage",
+            "sound-design",
+        ),
+        (
+            "social-short",
+            "Social Short",
+            "FULL_AUTO",
+            "9:16",
+            "social native",
+            "hook-first",
+            "caption-first",
+        ),
+    ]
+    return {
+        "templates": [
+            TemplatePolicy(
+                template_id=template_id,
+                name=name,
+                production_mode=mode,
+                aspect_ratio=aspect,
+                visual_style=style,
+                shot_strategy=shots,
+                audio_strategy=audio,
+            ).model_dump(mode="json")
+            for template_id, name, mode, aspect, style, shots, audio in policies
+        ]
+    }
+
+
+@router.post("/projects/{project_id}/templates/{template_id}/apply")
+async def apply_workbench_template(
+    project_id: str,
+    template_id: str,
+    body: TemplateApplyRequest,
+    user: UserDep,
+    repo: RepoDep,
+):
+    snapshot = await _owned_snapshot(repo, project_id, user)
+    templates = (await list_workbench_template_policies(user))["templates"]
+    template = next((item for item in templates if item["template_id"] == template_id), None)
+    if template is None:
+        raise HTTPException(status_code=404, detail="unknown production template")
+    if body.base_revision_id and body.base_revision_id != snapshot.revision.id:
+        raise HTTPException(status_code=409, detail="STALE_REVISION")
+    budget = dict(snapshot.project.budget_policy)
+    budget["workbench_template"] = template
+    return await patch_production_project(
+        project_id,
+        ProjectPatchRequest(
+            base_revision_id=snapshot.revision.id,
+            aspect_ratio=template["aspect_ratio"],
+            visual_style=template["visual_style"],
+            production_mode=(
+                ProductionMode.AUTO
+                if template["production_mode"] == "FULL_AUTO"
+                else template["production_mode"]
+            ),
+            budget_policy=budget,
+        ),
+        user,
+        repo,
+    )
+
+
+def _look_rework_scope(snapshot: Any, look_variant_id: str) -> dict[str, list[str]]:
+    look = next((item for item in snapshot.look_variants if item.id == look_variant_id), None)
+    if look is None:
+        return {"shots": [], "keyframes": [], "reference_bundles": [], "execution_attempts": []}
+    shot_ids = [item.id for item in snapshot.shots if look.character_id in item.character_ids]
+    return {
+        "shots": shot_ids,
+        "keyframes": [item.id for item in snapshot.keyframes if item.shot_id in shot_ids],
+        "reference_bundles": [
+            item.id for item in snapshot.reference_bundles if item.shot_id in shot_ids
+        ],
+        "execution_attempts": [
+            item.id for item in snapshot.execution_attempts if item.shot_id in shot_ids
+        ],
+    }
+
+
+@router.get("/projects/{project_id}/rework/look-variants/{look_variant_id}")
+async def preview_look_variant_rework(
+    project_id: str, look_variant_id: str, user: UserDep, repo: RepoDep
+):
+    snapshot = await _owned_snapshot(repo, project_id, user)
+    scope = _look_rework_scope(snapshot, look_variant_id)
+    return {
+        "look_variant_id": look_variant_id,
+        "scope": scope,
+        "unrelated_shots": [item.id for item in snapshot.shots if item.id not in scope["shots"]],
+    }
+
+
+@router.post("/projects/{project_id}/rework/look-variants/{look_variant_id}")
+async def apply_look_variant_rework(
+    project_id: str,
+    look_variant_id: str,
+    body: ReworkRequest,
+    user: UserDep,
+    repo: RepoDep,
+):
+    snapshot = await _owned_snapshot(repo, project_id, user)
+    if body.base_revision_id != snapshot.revision.id:
+        raise HTTPException(status_code=409, detail="STALE_REVISION")
+    scope = _look_rework_scope(snapshot, look_variant_id)
+    operation = RevisionPatchOperation(
+        op="replace", path=f"/look_variants/{look_variant_id}/{body.field}", value=body.value
+    )
+    patch = RevisionPatch(
+        project_id=project_id,
+        base_revision_id=snapshot.revision.id,
+        actor=_user_id(user),
+        reason="look variant targeted rework",
+        operations=[operation],
+    )
+    try:
+        child = apply_revision_patch(snapshot, patch)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await repo.save_snapshot(child)
+    for target_type, ids in (
+        ("reference_bundle", scope["reference_bundles"]),
+        ("keyframe", scope["keyframes"]),
+        ("shot_artifact", scope["shots"]),
+    ):
+        for target_id in ids:
+            record = DependencyRecord(
+                id=new_id(),
+                project_id=project_id,
+                source_type="look_variant",
+                source_id=look_variant_id,
+                target_type=target_type,
+                target_id=target_id,
+                status=DependencyStatus.STALE,
+                reason="look variant changed",
+                revision_id=child.revision.id,
+            )
+            await repo.save_workbench_record(
+                project_id, "p1_dependency", record.model_dump(mode="json")
+            )
+    return {"revision": _dump(child.revision), "scope": scope, "status": "STALE"}
 
 
 @router.get("/shots/{shot_id}/qa")

@@ -56,6 +56,59 @@ class ProductionGraphRepository:
         self._memory_records: dict[str, ProductionGraphSnapshot] = {}
         self._memory_revisions: dict[tuple[str, str], ProductionGraphSnapshot] = {}
         self._memory_runs: dict[str, dict[str, Any]] = {}
+        self._memory_workbench: dict[tuple[str, str, str], dict[str, Any]] = {}
+
+    async def save_workbench_record(
+        self, project_id: str, entity_type: str, record: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Persist a P1 control record in the existing graph entity store."""
+
+        entity_id = str(record["id"])
+        stored = _json_snapshot(record)
+        self._memory_workbench[(project_id, entity_type, entity_id)] = stored
+        if self.pool is None:
+            return _json_snapshot(stored)
+        snapshot = await self.get_snapshot(project_id)
+        if snapshot is None:
+            raise ValueError("unknown production project")
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO production_graph_entities
+                    (project_id, revision_id, entity_type, entity_id, payload)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (revision_id, entity_type, entity_id)
+                DO UPDATE SET payload = EXCLUDED.payload
+                """,
+                _uuid(project_id),
+                _uuid(snapshot.revision.id),
+                entity_type,
+                entity_id,
+                stored,
+            )
+        return _json_snapshot(stored)
+
+    async def list_workbench_records(
+        self, project_id: str, entity_type: str
+    ) -> list[dict[str, Any]]:
+        if self.pool is None:
+            return [
+                _json_snapshot(record)
+                for (stored_project, stored_type, _), record in self._memory_workbench.items()
+                if stored_project == project_id and stored_type == entity_type
+            ]
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT ON (entity_id) payload
+                FROM production_graph_entities
+                WHERE project_id = $1 AND entity_type = $2
+                ORDER BY entity_id, revision_id DESC
+                """,
+                _uuid(project_id),
+                entity_type,
+            )
+        return [_json_snapshot(dict(row["payload"])) for row in rows]
 
     async def create_project(self, project: ProductionProject) -> ProductionGraphSnapshot:
         """Create a project and its first immutable revision.
@@ -714,6 +767,10 @@ async def _persist_canonical_indexes(
     )
     for field_name in fields:
         for item in getattr(snapshot, field_name):
+            # Readiness is an evaluation record keyed by its shot/revision,
+            # not an Entity with its own ``id``.  Keep its persisted identity
+            # stable so product orchestration can save a complete snapshot.
+            entity_id = item.shot_id if field_name == "readiness_results" else item.id
             await conn.execute(
                 """
                 INSERT INTO production_graph_entities
@@ -725,7 +782,7 @@ async def _persist_canonical_indexes(
                 production_id,
                 revision_id,
                 field_name,
-                str(item.id),
+                str(entity_id),
                 item.model_dump(mode="json"),
             )
     if snapshot.narrative is not None:

@@ -416,6 +416,8 @@
 | POST | `/api/studio/director/sessions/{session_id}/messages` | Post Director Message |
 | GET | `/api/studio/episodes/{episode_id}/scenes` | List Episode Scenes |
 | POST | `/api/studio/one-prompt` | One Prompt |
+| POST | `/api/studio/product/historical` | Historical Product |
+| POST | `/api/studio/product/long-form` | Long Form Product |
 | GET | `/api/studio/projects` | List Production Projects |
 | POST | `/api/studio/projects` | Create Production Project |
 | GET | `/api/studio/projects/{project_id}` | Get Production Project |
@@ -424,16 +426,27 @@
 | GET | `/api/studio/projects/{project_id}/canvas` | Get Project Canvas |
 | POST | `/api/studio/projects/{project_id}/canvas/semantic-patch` | Patch Project Canvas |
 | GET | `/api/studio/projects/{project_id}/episodes` | List Project Episodes |
+| GET | `/api/studio/projects/{project_id}/memory` | List Project Memory |
+| POST | `/api/studio/projects/{project_id}/memory` | Create Project Memory |
 | GET | `/api/studio/projects/{project_id}/narrative` | Get Project Narrative |
 | POST | `/api/studio/projects/{project_id}/narrative/build` | Build Project Narrative |
 | GET | `/api/studio/projects/{project_id}/revisions` | List Project Revisions |
+| GET | `/api/studio/projects/{project_id}/rework/look-variants/{look_variant_id}` | Preview Look Variant Rework |
+| POST | `/api/studio/projects/{project_id}/rework/look-variants/{look_variant_id}` | Apply Look Variant Rework |
 | POST | `/api/studio/projects/{project_id}/sources` | Add Project Source |
+| POST | `/api/studio/projects/{project_id}/templates/{template_id}/apply` | Apply Workbench Template |
+| GET | `/api/studio/projects/{project_id}/versions` | List Project Versions |
+| POST | `/api/studio/projects/{project_id}/versions` | Create Project Version |
+| POST | `/api/studio/projects/{project_id}/versions/activate` | Activate Project Version |
+| GET | `/api/studio/projects/{project_id}/versions/diff` | Diff Project Versions |
 | POST | `/api/studio/runs` | Create Production Run |
 | GET | `/api/studio/runs/{run_id}` | Get Production Run |
 | GET | `/api/studio/scenes/{scene_id}/shots` | List Scene Shots |
 | GET | `/api/studio/shots/{shot_id}` | Get Shot |
 | PATCH | `/api/studio/shots/{shot_id}` | Patch Shot |
 | POST | `/api/studio/shots/{shot_id}/approve` | Approve Shot |
+| GET | `/api/studio/shots/{shot_id}/candidates` | List Shot Candidates |
+| POST | `/api/studio/shots/{shot_id}/candidates/{candidate_id}/{action}` | Candidate Action |
 | POST | `/api/studio/shots/{shot_id}/compile` | Compile Production Shot |
 | POST | `/api/studio/shots/{shot_id}/generate` | Queue Shot Generation |
 | POST | `/api/studio/shots/{shot_id}/lock` | Lock Shot |
@@ -445,6 +458,7 @@
 | GET | `/api/studio/tasks` | List Domain Tasks |
 | POST | `/api/studio/tasks/{task_id}/cancel` | Cancel Domain Task |
 | POST | `/api/studio/tasks/{task_id}/retry` | Retry Domain Task |
+| GET | `/api/studio/templates/policies` | List Workbench Template Policies |
 
 ## style-packs
 

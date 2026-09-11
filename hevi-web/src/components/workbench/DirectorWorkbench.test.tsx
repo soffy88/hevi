@@ -10,10 +10,14 @@ const mocks = vi.hoisted(() => ({
   prepareShot: vi.fn(),
   tasks: vi.fn(),
   revisions: vi.fn(),
+  candidates: vi.fn(),
+  templatePolicies: vi.fn(),
+  versions: vi.fn(),
+  memory: vi.fn(),
 }));
 
 vi.mock('@/lib/api-client', () => ({
-  canonicalProductionApi: { ...mocks, approveShot: vi.fn(), lockShot: vi.fn(), generateShot: vi.fn(), regenerateShot: vi.fn() },
+  canonicalProductionApi: { ...mocks, approveShot: vi.fn(), lockShot: vi.fn(), generateShot: vi.fn(), regenerateShot: vi.fn(), candidateAction: vi.fn(), applyTemplate: vi.fn(), activateVersion: vi.fn(), addMemory: vi.fn() },
   assetApi: { templates: vi.fn(() => Promise.resolve([])) },
   studioApi: { tools: vi.fn(() => Promise.resolve({ tools: [], total: 0 })) },
 }));
@@ -38,6 +42,10 @@ describe('DirectorWorkbench', () => {
     mocks.prepareShot.mockResolvedValue({ shot: snapshot.shots[0], readiness: { shot_id: 'shot-1', state: 'READY', passed: true, blockers: [], warnings: [], checks: {} }, revision: snapshot.revision });
     mocks.tasks.mockResolvedValue({ tasks: [], total: 0 });
     mocks.revisions.mockResolvedValue({ revisions: [snapshot.revision] });
+    mocks.candidates.mockResolvedValue({ candidates: [] });
+    mocks.templatePolicies.mockResolvedValue({ templates: [] });
+    mocks.versions.mockResolvedValue({ versions: [] });
+    mocks.memory.mockResolvedValue({ memory: [] });
   });
 
   it('reopens from the canonical snapshot and exposes shared project context', async () => {

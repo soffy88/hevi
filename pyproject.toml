@@ -157,6 +157,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "golden: production-line CPU runtime acceptance tests",
+    "p1_browser: real browser acceptance against the frontend/backend stack",
 ]
 # Provider-specific packages currently publish incompatible upper/lower
 # bounds. Keep secure versions in the root runtime while Voicebox/Gen Engine

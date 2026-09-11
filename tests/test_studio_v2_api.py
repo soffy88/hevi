@@ -131,6 +131,124 @@ async def test_canvas_is_a_canonical_projection_and_semantic_patch_boundary() ->
 
 
 @pytest.mark.asyncio
+async def test_workbench_memory_versions_and_templates_are_persisted_controls() -> None:
+    repo = ProductionGraphRepository()
+    user = {"id": "workbench-controls-user", "is_active": True}
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[studio_v2.get_graph_repository] = lambda: repo
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post(
+                "/api/studio/projects", json={"title": "Workbench controls"}
+            )
+            project_id = created.json()["project"]["id"]
+            memory = await client.post(
+                f"/api/studio/projects/{project_id}/memory",
+                json={
+                    "scope": "PROJECT",
+                    "kind": "accepted_preference",
+                    "content": "Keep the envoy silhouette readable.",
+                },
+            )
+            assert memory.status_code == 201
+            assert (
+                (await client.get(f"/api/studio/projects/{project_id}/memory"))
+                .json()["memory"][0]["content"]
+                .startswith("Keep")
+            )
+            first = await client.post(
+                f"/api/studio/projects/{project_id}/versions",
+                json={
+                    "registry_type": "prompt",
+                    "name": "shot-prompt",
+                    "version": "1",
+                    "content": "wide shot",
+                },
+            )
+            second = await client.post(
+                f"/api/studio/projects/{project_id}/versions",
+                json={
+                    "registry_type": "prompt",
+                    "name": "shot-prompt",
+                    "version": "2",
+                    "content": "tense wide shot",
+                },
+            )
+            first_id = first.json()["version"]["id"]
+            second_id = second.json()["version"]["id"]
+            diff = await client.get(
+                f"/api/studio/projects/{project_id}/versions/diff?from_id={first_id}&to_id={second_id}"
+            )
+            assert diff.json()["changed"] is True
+            activated = await client.post(
+                f"/api/studio/projects/{project_id}/versions/activate",
+                json={"version_id": second_id},
+            )
+            assert activated.status_code == 200
+            templates = await client.get("/api/studio/templates/policies")
+            assert len(templates.json()["templates"]) == 9
+            current_revision = (await client.get(f"/api/studio/projects/{project_id}")).json()[
+                "revision"
+            ]["id"]
+            applied = await client.post(
+                f"/api/studio/projects/{project_id}/templates/social-short/apply",
+                json={"base_revision_id": current_revision},
+            )
+            assert applied.status_code == 200
+            assert applied.json()["project"]["aspect_ratio"] == "9:16"
+            assert (
+                applied.json()["project"]["budget_policy"]["workbench_template"]["template_id"]
+                == "social-short"
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_candidate_lifecycle_is_persisted_and_requires_real_artifact() -> None:
+    repo = ProductionGraphRepository()
+    user = {"id": "candidate-workbench-user", "is_active": True}
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[studio_v2.get_graph_repository] = lambda: repo
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post(
+                "/api/studio/one-prompt",
+                json={"request": "A tense envoy crosses an old gate at dawn."},
+            )
+            assert created.status_code == 201
+            project_id = created.json()["project_id"]
+            snapshot = await repo.get_snapshot(project_id)
+            assert snapshot is not None
+            shot_id = snapshot.shots[0].id
+            candidates = await client.get(f"/api/studio/shots/{shot_id}/candidates")
+            assert candidates.status_code == 200
+            candidate = candidates.json()["candidates"][0]
+            assert candidate["state"] == "CANDIDATE"
+            rejected = await client.post(
+                f"/api/studio/shots/{shot_id}/candidates/{candidate['id']}/reject",
+                json={"base_revision_id": snapshot.revision.id},
+            )
+            assert rejected.status_code == 200
+            assert rejected.json()["candidate"]["state"] == "REJECTED"
+            archived = await client.post(
+                f"/api/studio/shots/{shot_id}/candidates/{candidate['id']}/archive",
+                json={"base_revision_id": rejected.json()["revision"]["id"]},
+            )
+            assert archived.status_code == 200
+            assert archived.json()["candidate"]["state"] == "ARCHIVED"
+            no_artifact = await client.post(
+                f"/api/studio/shots/{shot_id}/candidates/{candidate['id']}/select",
+                json={"base_revision_id": archived.json()["revision"]["id"]},
+            )
+            assert no_artifact.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
 async def test_studio_v2_domain_routes_preserve_canonical_runtime_boundaries() -> None:
     repo = ProductionGraphRepository()
     user = {"id": "api-domain-user", "is_active": True}

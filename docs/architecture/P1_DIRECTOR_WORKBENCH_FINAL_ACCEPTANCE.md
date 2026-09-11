@@ -1,7 +1,8 @@
 # P1 Director Workbench Acceptance
 
-Status: implementation checkpoint; final P1 acceptance remains open until
-browser-level product E2E and the remaining authoring controls are verified.
+Status: partial product closure; final P1 acceptance remains open until the
+full candidate/rework/timeline/memory/version/template gate and authoritative
+release check are complete.
 
 ## Baseline
 
@@ -30,6 +31,10 @@ The following phase commits are on this branch:
 - `509dbd3` — Canvas projection/semantic patch boundary and references view
 - `0b25c0d` — Director patch concurrency regression test
 
+Uncommitted closure work adds persisted Workbench control records, canonical
+candidate/memory/version/template/rework endpoints, and the real Playwright
+harness in `tests/p1_browser/test_director_workbench_browser.py`.
+
 Evidence currently available:
 
 - Backend Studio API integration: `tests/test_studio_v2_api.py` — 4 passed.
@@ -41,6 +46,12 @@ Evidence currently available:
   changes do not create production revisions.
 - Director patch application is revision-based and stale updates return
   `409 STALE_REVISION`.
+- Real browser run against the FastAPI backend and Next.js frontend passed the
+  core/reopen/stale-revision flow and 1440x900/1280x720 screenshots.
+- Real product orchestration browser coverage passed for historical and
+  long-form persisted projects; the one-prompt semantic route is exercised,
+  but its CPU-render browser assertion remains open because the synchronous
+  preview request exceeds the current browser request path.
 
 ## Acceptance status
 
@@ -51,11 +62,19 @@ proposal/apply flow, revision history, task/execution context, reopen from the
 canonical snapshot, and lost-update protection.
 
 P1 is not promoted to complete by this document. Remaining mandatory evidence
-includes a real browser run against a running backend, visual QA at 1440x900
-and 1280x720, real historical/long-form/one-prompt Workbench product seeds,
-candidate lifecycle commands, dependency-aware targeted rework, persisted
-creative memory/registry version operations, timeline editing commands, and a
-final full release gate at the final source SHA.
+includes a browser-verified candidate lifecycle with a selected artifact,
+look-variant targeted rework, complete timeline command coverage, memory
+authority/reopen proof, prompt/skill version diff and rollback pinning,
+template policy browser proof, one-prompt final artifact preview, acceptance
+guards, and the final full release gate at the final source SHA.
+
+## Audit history
+
+`INITIAL P1 IMPLEMENTATION` → `PARTIAL ACCEPTANCE` → `FINAL PRODUCT CLOSURE`
+
+The final product closure entry is intentionally not marked complete in this
+checkpoint: the evidence above records actual browser results without
+promoting the remaining unverified gates.
 
 Generated media, runtime databases, screenshots, browser traces, and logs are
 not committed.

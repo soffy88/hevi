@@ -3344,6 +3344,102 @@
         ]
       }
     },
+    "/api/studio/product/historical": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Historical Product",
+        "operationId": "historical_product_api_studio_product_historical_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoricalProductRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Historical Product Api Studio Product Historical Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/product/long-form": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Long Form Product",
+        "operationId": "long_form_product_api_studio_product_long_form_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LongFormProductRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Long Form Product Api Studio Product Long Form Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/studio/projects": {
       "get": {
         "tags": [
@@ -4477,6 +4573,642 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/candidates": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Shot Candidates",
+        "operationId": "list_shot_candidates_api_studio_shots__shot_id__candidates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/shots/{shot_id}/candidates/{candidate_id}/{action}": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Candidate Action",
+        "operationId": "candidate_action_api_studio_shots__shot_id__candidates__candidate_id___action__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          },
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Action"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/memory": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Project Memory",
+        "operationId": "list_project_memory_api_studio_projects__project_id__memory_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Create Project Memory",
+        "operationId": "create_project_memory_api_studio_projects__project_id__memory_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/versions": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Project Versions",
+        "operationId": "list_project_versions_api_studio_projects__project_id__versions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Create Project Version",
+        "operationId": "create_project_version_api_studio_projects__project_id__versions_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/versions/activate": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Activate Project Version",
+        "operationId": "activate_project_version_api_studio_projects__project_id__versions_activate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VersionActivateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/versions/diff": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Diff Project Versions",
+        "operationId": "diff_project_versions_api_studio_projects__project_id__versions_diff_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "from_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "From Id"
+            }
+          },
+          {
+            "name": "to_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "To Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/templates/policies": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Workbench Template Policies",
+        "operationId": "list_workbench_template_policies_api_studio_templates_policies_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/studio/projects/{project_id}/templates/{template_id}/apply": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Apply Workbench Template",
+        "operationId": "apply_workbench_template_api_studio_projects__project_id__templates__template_id__apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/rework/look-variants/{look_variant_id}": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Preview Look Variant Rework",
+        "operationId": "preview_look_variant_rework_api_studio_projects__project_id__rework_look_variants__look_variant_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "look_variant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Look Variant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Apply Look Variant Rework",
+        "operationId": "apply_look_variant_rework_api_studio_projects__project_id__rework_look_variants__look_variant_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "look_variant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Look Variant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReworkRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -17751,6 +18483,23 @@
         "title": "CameraSetup",
         "description": "覆盖机位。对着\"已存在的调度事实\"架,不是对着想象。"
       },
+      "CandidateActionRequest": {
+        "properties": {
+          "base_revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision Id"
+          }
+        },
+        "type": "object",
+        "title": "CandidateActionRequest"
+      },
       "CandidateDecision": {
         "properties": {
           "decision": {
@@ -18462,6 +19211,17 @@
           "material_text"
         ],
         "title": "CreateWorkRequest"
+      },
+      "CreativeMemoryKind": {
+        "type": "string",
+        "enum": [
+          "accepted_preference",
+          "rejected_direction",
+          "locked_decision",
+          "project_summary",
+          "unresolved_concern"
+        ],
+        "title": "CreativeMemoryKind"
       },
       "CrossPostRequest": {
         "properties": {
@@ -20475,6 +21235,36 @@
         "title": "HandheldCurve",
         "description": "手持感(可随时间演化)——频率与幅度解耦(可频率高但幅度小)。"
       },
+      "HistoricalProductRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": "Historical Workbench acceptance"
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 20,
+            "title": "Source Text"
+          },
+          "render_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Render Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_text"
+        ],
+        "title": "HistoricalProductRequest"
+      },
       "HookNode": {
         "properties": {
           "hook_id": {
@@ -21409,6 +22199,36 @@
         "type": "object",
         "title": "LongCatRunRequest"
       },
+      "LongFormProductRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": "Long-form Workbench acceptance"
+          },
+          "source_text": {
+            "type": "string",
+            "minLength": 40,
+            "title": "Source Text"
+          },
+          "render_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Render Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_text"
+        ],
+        "title": "LongFormProductRequest"
+      },
       "LongVideoRequest": {
         "properties": {
           "topic": {
@@ -21633,6 +22453,51 @@
           "query"
         ],
         "title": "MaterialSearchRequest"
+      },
+      "MemoryCreateRequest": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "title": "Scope"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CreativeMemoryKind"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content"
+          },
+          "source_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Session Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope",
+          "kind",
+          "content"
+        ],
+        "title": "MemoryCreateRequest"
       },
       "MicroDisplacement": {
         "properties": {
@@ -23675,6 +24540,28 @@
         ],
         "title": "RevisionPatchOperation"
       },
+      "ReworkRequest": {
+        "properties": {
+          "base_revision_id": {
+            "type": "string",
+            "title": "Base Revision Id"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field",
+            "default": "costume"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "base_revision_id",
+          "value"
+        ],
+        "title": "ReworkRequest"
+      },
       "SaveGraphRequest": {
         "properties": {
           "name": {
@@ -25572,6 +26459,23 @@
         "type": "object",
         "title": "TearDetail"
       },
+      "TemplateApplyRequest": {
+        "properties": {
+          "base_revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision Id"
+          }
+        },
+        "type": "object",
+        "title": "TemplateApplyRequest"
+      },
       "TemplateCreateRequest": {
         "properties": {
           "name": {
@@ -26210,6 +27114,51 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VersionActivateRequest": {
+        "properties": {
+          "version_id": {
+            "type": "string",
+            "title": "Version Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version_id"
+        ],
+        "title": "VersionActivateRequest"
+      },
+      "VersionCreateRequest": {
+        "properties": {
+          "registry_type": {
+            "type": "string",
+            "pattern": "^(prompt|skill)$",
+            "title": "Registry Type"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Version"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "registry_type",
+          "name",
+          "version",
+          "content"
+        ],
+        "title": "VersionCreateRequest"
       },
       "VeyaLoopResult": {
         "properties": {
