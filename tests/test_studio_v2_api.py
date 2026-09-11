@@ -53,6 +53,38 @@ async def test_studio_v2_project_and_source_are_canonical_revision_writes() -> N
 
 
 @pytest.mark.asyncio
+async def test_workbench_revision_history_and_stale_update_protection() -> None:
+    repo = ProductionGraphRepository()
+    user = {"id": "workbench-concurrency-user", "is_active": True}
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[studio_v2.get_graph_repository] = lambda: repo
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post(
+                "/api/studio/projects", json={"title": "Workbench concurrency"}
+            )
+            project_id = created.json()["project"]["id"]
+            base_revision = created.json()["revision"]["id"]
+            advanced = await client.patch(
+                f"/api/studio/projects/{project_id}",
+                json={"title": "Director edit", "base_revision_id": base_revision},
+            )
+            assert advanced.status_code == 200
+            stale = await client.patch(
+                f"/api/studio/projects/{project_id}",
+                json={"title": "lost update", "base_revision_id": base_revision},
+            )
+            assert stale.status_code == 409
+            assert stale.json()["detail"] == "STALE_REVISION"
+            revisions = await client.get(f"/api/studio/projects/{project_id}/revisions")
+            assert revisions.status_code == 200
+            assert [item["revision_no"] for item in revisions.json()["revisions"]] == [1, 2]
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
 async def test_studio_v2_domain_routes_preserve_canonical_runtime_boundaries() -> None:
     repo = ProductionGraphRepository()
     user = {"id": "api-domain-user", "is_active": True}

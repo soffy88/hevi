@@ -62,6 +62,7 @@ class ProjectCreateRequest(BaseModel):
 
 
 class ProjectPatchRequest(BaseModel):
+    base_revision_id: str | None = None
     title: str | None = None
     creative_brief: str | None = None
     target_platform: str | None = None
@@ -91,6 +92,7 @@ class AdaptRequest(BaseModel):
 
 
 class PatchRequest(BaseModel):
+    base_revision_id: str | None = None
     reason: str = Field(min_length=1)
     operations: list[RevisionPatchOperation] = Field(min_length=1)
 
@@ -215,7 +217,9 @@ async def patch_production_project(
     project_id: str, body: ProjectPatchRequest, user: UserDep, repo: RepoDep
 ):
     snapshot = await _owned_snapshot(repo, project_id, user)
-    updates = body.model_dump(exclude_unset=True)
+    if body.base_revision_id and body.base_revision_id != snapshot.revision.id:
+        raise HTTPException(status_code=409, detail="STALE_REVISION")
+    updates = body.model_dump(exclude_unset=True, exclude={"base_revision_id"})
     project = snapshot.project.model_copy(update=updates)
     child = snapshot.model_copy(update={"project": project})
     child = await repo.append_revision(child, actor=_user_id(user), reason="project metadata edit")
@@ -378,6 +382,8 @@ async def get_shot(shot_id: str, user: UserDep, repo: RepoDep):
 async def patch_shot(shot_id: str, body: PatchRequest, user: UserDep, repo: RepoDep):
     snapshot, shot = await _find_shot(repo, shot_id, user)
     del shot
+    if body.base_revision_id and body.base_revision_id != snapshot.revision.id:
+        raise HTTPException(status_code=409, detail="STALE_REVISION")
     patch = RevisionPatch(
         project_id=snapshot.project.id,
         base_revision_id=snapshot.revision.id,
@@ -392,6 +398,14 @@ async def patch_shot(shot_id: str, body: PatchRequest, user: UserDep, repo: Repo
     await repo.save_snapshot(child)
     updated = next(item for item in child.shots if item.id == shot_id)
     return {"shot": _dump(updated), "revision": _dump(child.revision)}
+
+
+@router.get("/projects/{project_id}/revisions")
+async def list_project_revisions(project_id: str, user: UserDep, repo: RepoDep):
+    """Read immutable revision metadata for compare/reopen workflows."""
+
+    await _owned_snapshot(repo, project_id, user)
+    return {"revisions": [_dump(item) for item in await repo.list_revisions(project_id)]}
 
 
 @router.post("/shots/{shot_id}/prepare")

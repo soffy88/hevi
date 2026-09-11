@@ -1210,6 +1210,95 @@ export interface DpPrepOverview {
   blockers: string[];
 }
 
+// ── Canonical P0 Production Graph projection (Studio API v2) ───────────────
+// These are read/write DTOs, not a second frontend domain model.  The backend
+// snapshot remains authoritative; the Workbench only keeps selection/view
+// state around these IDs.
+export type ProductionMode = 'AUTO' | 'KEYFRAME_REVIEW' | 'SHOT_REVIEW' | 'MANUAL_DIRECTOR';
+export type ReadinessState =
+  | 'DRAFT' | 'ANALYZED' | 'ASSETS_PENDING' | 'REFERENCES_PENDING'
+  | 'PREFLIGHT_FAILED' | 'READY' | 'QUEUED' | 'GENERATING' | 'GENERATED'
+  | 'QA_FAILED' | 'QA_PASSED' | 'APPROVED' | 'LOCKED';
+
+export interface RevisionPatchOperation {
+  op: 'add' | 'replace' | 'remove';
+  path: string;
+  value?: unknown;
+}
+
+export interface ProductionProject {
+  id: string;
+  user_id: string;
+  title: string;
+  source_kind: string;
+  creative_brief: string;
+  target_platform: string;
+  aspect_ratio: string;
+  target_duration?: number | null;
+  visual_style: string;
+  production_mode: ProductionMode;
+  current_revision_id?: string | null;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProductionRevision {
+  id: string;
+  project_id: string;
+  parent_revision_id?: string | null;
+  revision_no: number;
+  actor: string;
+  reason: string;
+  snapshot_hash?: string;
+  created_at?: string;
+  locked?: boolean;
+}
+
+export interface ProductionEpisode { id: string; number: number; title: string; narrative_event_ids: string[]; target_duration?: number | null; }
+export interface ProductionScene { id: string; episode_id: string; purpose: string; dramatic_function: string; emotional_target: string; narrative_event_ids: string[]; character_ids: string[]; prop_ids: string[]; location_id?: string | null; }
+export interface ProductionBeat { id: string; scene_id: string; order: number; action: string; dialogue: string; emotion: string; source_refs?: Array<Record<string, unknown>>; }
+export interface ProductionShot { id: string; scene_id: string; beat_ids: string[]; narrative_event_ids: string[]; character_ids: string[]; action_description: string; cinematography_notes: string; duration_target: number; readiness_state: ReadinessState; camera: Record<string, unknown>; keyframe_ids: string[]; reference_bundle_id?: string | null; continuity_constraint_ids: string[]; dialogue: string[]; }
+export interface ProductionNarrativeEvent { id: string; summary: string; temporal_order: number; source_refs: Array<Record<string, unknown>>; plot_thread_ids: string[]; character_ids: string[]; location_id?: string | null; }
+export interface ProductionPlotThread { id: string; title: string; introduced_event_id?: string | null; unresolved_event_ids?: string[]; resolution_event_id?: string | null; [key: string]: unknown; }
+export interface ProductionNarrative { events: ProductionNarrativeEvent[]; edges: Array<Record<string, unknown>>; plot_threads: ProductionPlotThread[]; }
+export interface ProductionReadinessResult { shot_id: string; revision_id?: string; state: ReadinessState; passed: boolean; blockers: Array<Record<string, unknown>>; warnings: Array<Record<string, unknown>>; checks: Record<string, boolean>; }
+export interface ProductionDirectorSession { id: string; project_id: string; current_revision_id: string; objective: string; constraints: string[]; status: string; memory_scope: string; }
+export interface ProductionDirectorDecision { id: string; session_id: string; project_id: string; decision_type: string; inputs: Record<string, unknown>; rationale: string; output_patch_id?: string | null; }
+export interface ProductionExecutionPlan { id: string; project_id?: string | null; shot_id?: string | null; provider: string; model: string; resolution: string; fps?: number | null; duration?: number | null; immutable: boolean; }
+export interface ProductionExecutionAttempt { id: string; shot_id?: string | null; execution_plan_id: string; status: string; artifact_ids: string[]; provider_job_id?: string | null; }
+export interface ProductionGraphSnapshot {
+  project: ProductionProject;
+  revision: ProductionRevision;
+  sources: Array<Record<string, unknown>>;
+  source_chunks: Array<Record<string, unknown>>;
+  narrative?: ProductionNarrative | null;
+  adaptation_plans: Array<Record<string, unknown>>;
+  adaptation_decisions: Array<Record<string, unknown>>;
+  characters: Array<Record<string, unknown>>;
+  character_states: Array<Record<string, unknown>>;
+  look_variants: Array<Record<string, unknown>>;
+  locations: Array<Record<string, unknown>>;
+  location_states: Array<Record<string, unknown>>;
+  props: Array<Record<string, unknown>>;
+  prop_states: Array<Record<string, unknown>>;
+  episodes: ProductionEpisode[];
+  scenes: ProductionScene[];
+  beats: ProductionBeat[];
+  shots: ProductionShot[];
+  keyframes: Array<Record<string, unknown>>;
+  reference_bundles: Array<Record<string, unknown>>;
+  continuity_constraints: Array<Record<string, unknown>>;
+  readiness_results: ProductionReadinessResult[];
+  director_sessions: ProductionDirectorSession[];
+  director_decisions: ProductionDirectorDecision[];
+  revision_patches: Array<Record<string, unknown>>;
+  production_plans: Array<Record<string, unknown>>;
+  execution_plans: ProductionExecutionPlan[];
+  execution_attempts: ProductionExecutionAttempt[];
+  provenance_links: Array<Record<string, unknown>>;
+}
+
 export type DpWorkStatus =
   | 'parsing' | 'inspection_ready' | 'parse_failed'
   | 'dispatching' | 'dispatched' | 'dispatch_failed' | 'dispatch_cancelled'
