@@ -119,6 +119,7 @@ class DirectorSessionRequest(BaseModel):
 
 
 class DirectorMessageRequest(BaseModel):
+    base_revision_id: str | None = None
     decision_type: str = "creative_revision"
     rationale: str = ""
     inputs: dict[str, Any] = Field(default_factory=dict)
@@ -606,6 +607,8 @@ async def post_director_message(
                 break
     if snapshot is None or session is None:
         raise HTTPException(status_code=404, detail="unknown Director session")
+    if body.base_revision_id and body.base_revision_id != snapshot.revision.id:
+        raise HTTPException(status_code=409, detail="STALE_REVISION")
     operations = list(body.operations)
     patch = RevisionPatch(
         project_id=snapshot.project.id,

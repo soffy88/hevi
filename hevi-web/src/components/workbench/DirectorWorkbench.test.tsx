@@ -55,7 +55,7 @@ describe('DirectorWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Run readiness' }));
     await waitFor(() => expect(mocks.prepareShot).toHaveBeenCalledWith('shot-1'));
     fireEvent.change(screen.getByPlaceholderText('例如：这一场更紧张一点。'), { target: { value: 'Make it tense' } });
-    fireEvent.click(screen.getByRole('button', { name: '提出 Revision' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存 proposal' }));
     await waitFor(() => expect(mocks.directorMessage).toHaveBeenCalled());
     expect(mocks.createDirectorSession).toHaveBeenCalledWith('project-1', 'Assist the director with canonical production revisions.');
   });

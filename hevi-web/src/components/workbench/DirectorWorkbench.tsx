@@ -126,14 +126,15 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
     return result.session.id;
   }
 
-  async function sendDirector() {
+  async function sendDirector(apply = false) {
     const message = directorText.trim();
     if (!message) return;
     setBusy(true); setError(null); setNotice(null);
     try {
       const id = await openDirector();
       if (!id) throw new Error('DirectorSession 未创建');
-      const result = await productionApi.directorMessage(id, { decision_type: 'creative_revision', rationale: message, inputs: { user_message: message } });
+      const operations = apply && selectedShotId ? [{ op: 'replace' as const, path: `/shots/${selectedShotId}/cinematography_notes`, value: message }] : [];
+      const result = await productionApi.directorMessage(id, { base_revision_id: snapshot?.revision.id, decision_type: apply ? 'creative_revision_applied' : 'creative_revision_proposed', rationale: message, inputs: { user_message: message, selected_shot_id: selectedShotId }, operations });
       setDecisions(current => [...current, result.decision]);
       setDirectorText('');
       await refresh();
@@ -183,7 +184,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
 
         <aside className="wb-inspector" aria-label="Director and inspector">
           <Inspector shot={shot} scene={scene} episode={episode} readiness={readiness?.state ?? null} onPrepare={prepare} onApprove={() => void transition('approve')} onLock={() => void transition('lock')} onGenerate={() => void generate()} busy={busy} />
-          <DirectorPanel text={directorText} setText={setDirectorText} decisions={[...decisions, ...snapshot.director_decisions].slice(-5)} onSend={() => void sendDirector()} busy={busy} />
+          <DirectorPanel text={directorText} setText={setDirectorText} decisions={[...decisions, ...snapshot.director_decisions].slice(-5)} selectedShotId={selectedShotId} onSend={() => void sendDirector(false)} onApply={() => void sendDirector(true)} busy={busy} />
         </aside>
       </div>
       <footer className="wb-task-rail"><span className="wb-task-live"><i /> Task Center</span><span>{tasks.length} persisted tasks</span><span>{snapshot.execution_attempts.length} execution attempts</span><span>{snapshot.execution_plans.length} plans</span><span>{failedCount ? `${failedCount} QA/readiness findings` : 'No active blockers'}</span><span className="wb-task-context">Project {shortId(snapshot.project.id)} · Revision {snapshot.revision.revision_no}</span></footer>
@@ -210,8 +211,8 @@ function Inspector({ shot, scene, episode, readiness, onPrepare, onApprove, onLo
   return <section className="wb-inspector-section"><div className="wb-inspector-title"><span className="wb-eyebrow">SHOT INSPECTOR</span><span className={`wb-status wb-status--${String(shot.readiness_state).toLowerCase()}`}>{statusLabels[shot.readiness_state] ?? shot.readiness_state}</span></div><h2>{shortId(shot.id)}</h2><dl className="wb-detail-list"><dt>Episode</dt><dd>{episode?.title || shortId(episode?.id)}</dd><dt>Scene</dt><dd>{shortId(scene?.id)}</dd><dt>Camera</dt><dd>{String(shot.camera?.shot_size ?? '—')} · {String(shot.camera?.movement ?? '—')}</dd><dt>Duration</dt><dd>{shot.duration_target}s</dd><dt>Readiness</dt><dd>{readiness ?? shot.readiness_state}</dd><dt>References</dt><dd>{shot.reference_bundle_id ? shortId(shot.reference_bundle_id) : 'missing'}</dd></dl><div className="wb-inspector-actions"><button type="button" onClick={onPrepare} disabled={busy}>Run readiness</button><button type="button" onClick={onGenerate} disabled={busy || shot.readiness_state !== 'READY'}>Generate</button><button type="button" onClick={onApprove} disabled={busy}>Approve</button><button type="button" onClick={onLock} disabled={busy}>Lock</button></div></section>;
 }
 
-function DirectorPanel({ text, setText, decisions, onSend, busy }: { text: string; setText: (value: string) => void; decisions: ProductionDirectorDecision[]; onSend: () => void; busy: boolean }) {
-  return <section className="wb-director-panel"><div className="wb-panel-head"><div><span className="wb-eyebrow">DIRECTOR</span><h2>Creative control</h2></div><span className="wb-online-dot">● live</span></div><div className="wb-director-history">{decisions.length ? decisions.map(item => <article key={item.id}><span>decision</span><p>{item.rationale || item.decision_type}</p><small>{shortId(item.id)}</small></article>) : <p className="wb-empty">提出一个创作意图，DirectorDecision 会写入 canonical graph。</p>}</div><label className="wb-director-input"><span>给 Director 的指令</span><textarea value={text} onChange={event => setText(event.target.value)} placeholder="例如：这一场更紧张一点。" rows={3} /><button type="button" className="wb-primary-btn" onClick={onSend} disabled={busy || !text.trim()}>提出 Revision</button></label><p className="wb-director-note">PROPOSE → REVIEW → APPLY。不会直接调用 provider。</p></section>;
+function DirectorPanel({ text, setText, decisions, selectedShotId, onSend, onApply, busy }: { text: string; setText: (value: string) => void; decisions: ProductionDirectorDecision[]; selectedShotId: string | null; onSend: () => void; onApply: () => void; busy: boolean }) {
+  return <section className="wb-director-panel"><div className="wb-panel-head"><div><span className="wb-eyebrow">DIRECTOR</span><h2>Creative control</h2></div><span className="wb-online-dot">● live</span></div><div className="wb-director-history">{decisions.length ? decisions.map(item => <article key={item.id}><span>{item.decision_type}</span><p>{item.rationale || item.decision_type}</p><small>{shortId(item.id)}</small></article>) : <p className="wb-empty">提出一个创作意图，DirectorDecision 会写入 canonical graph。</p>}</div><label className="wb-director-input"><span>给 Director 的指令</span><textarea value={text} onChange={event => setText(event.target.value)} placeholder="例如：这一场更紧张一点。" rows={3} /><div className="wb-director-actions"><button type="button" className="wb-quiet-btn" onClick={onSend} disabled={busy || !text.trim()}>保存 proposal</button><button type="button" className="wb-primary-btn" onClick={onApply} disabled={busy || !text.trim() || !selectedShotId}>Apply to selected shot</button></div></label><p className="wb-director-note">PROPOSE → REVIEW → APPLY。Apply 会创建 RevisionPatch；不会直接调用 provider。</p></section>;
 }
 
 function CanvasProjection({ snapshot, onSelectShot }: { snapshot: ProductionGraphSnapshot; onSelectShot: (id: string) => void }) {
