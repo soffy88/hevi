@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { canonicalProductionApi as productionApi } from '@/lib/api-client';
+import { assetApi, canonicalProductionApi as productionApi, studioApi } from '@/lib/api-client';
 import type {
   ProductionDirectorDecision,
   ProductionGraphSnapshot,
@@ -225,7 +225,17 @@ function TimelineView({ snapshot, onSelectShot }: { snapshot: ProductionGraphSna
 
 function AssetsView({ snapshot, onToggleKeyframe }: { snapshot: ProductionGraphSnapshot; onToggleKeyframe: (keyframeId: string, locked: boolean) => Promise<void> }) {
   const groups = [['Characters', snapshot.characters], ['Character states', snapshot.character_states], ['Look variants', snapshot.look_variants], ['Locations', snapshot.locations], ['Location states', snapshot.location_states], ['Props', snapshot.props], ['Prop states', snapshot.prop_states], ['Keyframes', snapshot.keyframes], ['Reference bundles', snapshot.reference_bundles]] as const;
-  return <div className="wb-view"><div className="wb-view-head"><div><span className="wb-eyebrow">ASSETS / CANONICAL REFERENCES</span><h1>资产与参考</h1><p>ReferenceBundle 与 Keyframe 是生产图的一部分，不是 provider-specific 表单。</p></div></div><div className="wb-asset-grid">{groups.map(([label, items]) => <section className="wb-data-card" key={label}><div className="wb-card-heading"><h2>{label}</h2><span>{items.length}</span></div>{items.slice(0, 8).map(item => { const keyframe = label === 'Keyframes' ? item as Record<string, unknown> : null; const locked = Boolean(keyframe?.locked); return <div className="wb-asset-row" key={String(item.id)}><span className="wb-asset-icon">◇</span><div><strong>{String(item.name ?? item.role ?? item.title ?? item.id).slice(0, 42)}</strong><small>{keyframe ? `${String(keyframe.role ?? 'frame')} · ${shortId(String(item.id))}` : shortId(String(item.id))}</small></div>{keyframe && <button type="button" className="wb-asset-action" onClick={() => void onToggleKeyframe(String(item.id), locked)}>{locked ? 'Unlock' : 'Lock'}</button>}</div>; })}{!items.length && <p className="wb-empty">暂无。</p>}</section>)}</div></div>;
+  return <div className="wb-view"><div className="wb-view-head"><div><span className="wb-eyebrow">ASSETS / CANONICAL REFERENCES</span><h1>资产与参考</h1><p>ReferenceBundle 与 Keyframe 是生产图的一部分，不是 provider-specific 表单。</p></div></div><div className="wb-asset-grid">{groups.map(([label, items]) => <section className="wb-data-card" key={label}><div className="wb-card-heading"><h2>{label}</h2><span>{items.length}</span></div>{items.slice(0, 8).map(item => { const keyframe = label === 'Keyframes' ? item as Record<string, unknown> : null; const locked = Boolean(keyframe?.locked); return <div className="wb-asset-row" key={String(item.id)}><span className="wb-asset-icon">◇</span><div><strong>{String(item.name ?? item.role ?? item.title ?? item.id).slice(0, 42)}</strong><small>{keyframe ? `${String(keyframe.role ?? 'frame')} · ${shortId(String(item.id))}` : shortId(String(item.id))}</small></div>{keyframe && <button type="button" className="wb-asset-action" onClick={() => void onToggleKeyframe(String(item.id), locked)}>{locked ? 'Unlock' : 'Lock'}</button>}</div>; })}{!items.length && <p className="wb-empty">暂无。</p>}</section>)}</div><CreativeRegistry /></div>;
+}
+
+function CreativeRegistry() {
+  const [templates, setTemplates] = useState<Array<{ id: string; name: string; desc?: string }>>([]);
+  const [tools, setTools] = useState<Array<{ id: string; kind: string; summary: string }>>([]);
+  useEffect(() => {
+    assetApi.templates().then(setTemplates).catch(() => setTemplates([]));
+    studioApi.tools().then(result => setTools(result.tools)).catch(() => setTools([]));
+  }, []);
+  return <section className="wb-data-card wb-creative-registry"><div className="wb-card-heading"><div><span className="wb-eyebrow">CREATIVE SYSTEMS</span><h2>Templates & skills</h2></div><span>{templates.length + tools.length}</span></div><div className="wb-registry-grid"><div><strong>Production templates</strong>{templates.slice(0, 6).map(template => <span key={template.id}>{template.name}<small>{template.id}</small></span>)}{!templates.length && <small className="wb-muted">No templates available in current backend.</small>}</div><div><strong>Studio skills</strong>{tools.slice(0, 6).map(tool => <span key={tool.id}>{tool.id}<small>{tool.kind} · {tool.summary}</small></span>)}{!tools.length && <small className="wb-muted">No skills available in current backend.</small>}</div></div></section>;
 }
 
 function QaView({ snapshot }: { snapshot: ProductionGraphSnapshot }) {

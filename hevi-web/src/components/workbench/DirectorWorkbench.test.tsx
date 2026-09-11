@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/api-client', () => ({
   canonicalProductionApi: { ...mocks, approveShot: vi.fn(), lockShot: vi.fn(), generateShot: vi.fn(), regenerateShot: vi.fn() },
+  assetApi: { templates: vi.fn(() => Promise.resolve([])) },
+  studioApi: { tools: vi.fn(() => Promise.resolve({ tools: [], total: 0 })) },
 }));
 
 const snapshot = {
