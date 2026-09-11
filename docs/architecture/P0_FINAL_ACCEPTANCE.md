@@ -593,6 +593,8 @@ The closure work was performed on branch
 `architecture/production-graph-vnext`, descendant of `20e0e602faa197f155b54f3412234b5388860268`.
 Generated media remains outside git.
 
+Final code SHA for this closure evidence: `91ddeb6f0fc53f41332b2c3c0e45df1296ce759e`.
+
 ### Runtime evidence completed
 
 | Gate | Direct source/test evidence | Result |
@@ -656,7 +658,17 @@ GOLD_A_SOURCE_PROVENANCE=PARTIAL
 GOLD_B_LONG_FORM_SEMANTICS=PARTIAL
 GOLD_C_REAL_PRODUCT_PATH=PARTIAL
 CREATIVE_PROVENANCE_COMPLETE=NO
-FULL_REGRESSION=NOT_RUN_AT_FINAL_SHA
+FULL_PYTEST_PASSED=2804
+FULL_PYTEST_SKIPPED=29
+FULL_PYTEST_FAILED=0
+FULL_PYTEST_ERRORS=0
+COVERAGE=NOT_MEASURED
+CHECK_PASSED=PASS (focused Ruff checks)
+RUFF_FORMAT=PASS
+RUFF_LINT=PASS
+FRONTEND_BUILD=PASS
+PACKAGE_BUILD=NOT_RUN
+FULL_REGRESSION=PASS (pytest; coverage/package gate fields still open)
 P0_FINAL_ACCEPTANCE=NO
 PUSHED=NO
 ```
