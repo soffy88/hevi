@@ -22,6 +22,7 @@ from hevi.compiler import ProductionCompiler, ProviderCapabilities, ResourceBudg
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.production_graph import (
     AdaptationPlan,
+    ExecutionAttempt,
     ExecutionPlan,
     ProductionGraphRepository,
     ProductionMode,
@@ -207,6 +208,10 @@ class ReworkRequest(BaseModel):
     value: Any
 
 
+class CandidateRenderRequest(CompileRequest):
+    output_path: str | None = None
+
+
 async def get_graph_repository(
     pool: Annotated[PgPool, Depends(get_hevi_pg_pool)],
 ) -> ProductionGraphRepository:
@@ -338,7 +343,11 @@ async def one_prompt(
         render_path=None,
     )
     task_id = run.execution_attempt.id
-    output_path = Path(body.render_path) if body.render_path else Path("/tmp") / f"hevi-one-prompt-{task_id}.mp4"
+    output_path = (
+        Path(body.render_path)
+        if body.render_path
+        else Path("/tmp") / f"hevi-one-prompt-{task_id}.mp4"
+    )
     task = {
         "run_id": task_id,
         "project_id": run.snapshot.project.id,
@@ -805,6 +814,94 @@ async def regenerate_shot(shot_id: str, body: CompileRequest, user: UserDep, rep
     return await queue_shot_generation(shot_id, body, user, repo)
 
 
+@router.post("/shots/{shot_id}/candidate-render")
+async def render_shot_candidate(
+    shot_id: str, body: CandidateRenderRequest, user: UserDep, repo: RepoDep
+):
+    """Create a second real CPU candidate through Compiler → Slate/runtime.
+
+    This endpoint is intentionally a product-controlled acceptance adapter: it
+    records a new immutable plan/attempt and registers the Remotion artifact,
+    rather than manufacturing a frontend candidate record.
+    """
+    snapshot, shot = await _find_shot(repo, shot_id, user)
+    if shot.readiness_state is not ReadinessState.READY:
+        raise HTTPException(status_code=422, detail="candidate render requires READY shot")
+    bundle = next(
+        (item for item in snapshot.reference_bundles if item.id == shot.reference_bundle_id), None
+    )
+    if bundle is None:
+        raise HTTPException(status_code=422, detail="shot reference bundle is missing")
+    try:
+        plan = ProductionCompiler().compile(shot, bundle, body.provider, body.resource_budget)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    attempt = ExecutionAttempt(
+        project_id=snapshot.project.id,
+        revision_id=snapshot.revision.id,
+        shot_id=shot.id,
+        execution_plan_id=plan.id,
+        attempt_no=len([item for item in snapshot.execution_attempts if item.shot_id == shot.id])
+        + 1,
+        status="running",
+        idempotency_key=plan.idempotency_key or new_id(),
+        started_at=datetime.now(UTC),
+    )
+    output = Path(body.output_path or f"/tmp/hevi-candidate-{attempt.id}.mp4")
+    production = snapshot.production_plans[-1] if snapshot.production_plans else None
+    if production is None:
+        raise HTTPException(status_code=422, detail="project has no ProductionPlan")
+    try:
+        manifest = await asyncio.to_thread(
+            render_golden_mp4,
+            production,
+            plan,
+            output,
+            remotion_dir=Path(__file__).parents[3] / "hevi-remotion",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"candidate runtime failed: {exc}") from exc
+    artifact_id = (
+        manifest.artifacts[0].artifact_id
+        or manifest.artifacts[0].sha256
+        or manifest.artifacts[0].path
+    )
+    completed = attempt.model_copy(
+        update={
+            "status": "completed",
+            "artifact_ids": [artifact_id],
+            "finished_at": datetime.now(UTC),
+        }
+    )
+    child = snapshot.model_copy(
+        update={
+            "execution_plans": [*snapshot.execution_plans, plan],
+            "execution_attempts": [*snapshot.execution_attempts, completed],
+            "provenance_links": [
+                *snapshot.provenance_links,
+                ProvenanceLink(
+                    id=new_id(),
+                    project_id=snapshot.project.id,
+                    source_type="ExecutionAttempt",
+                    source_id=completed.id,
+                    target_type="Artifact",
+                    target_id=artifact_id,
+                    relation="produced",
+                ),
+            ],
+        }
+    )
+    final = await repo.append_revision(
+        child, actor=_user_id(user), reason="candidate artifact rendered"
+    )
+    return {
+        "revision": _dump(final.revision),
+        "execution_plan": _dump(plan),
+        "execution_attempt": _dump(completed),
+        "artifact_id": artifact_id,
+    }
+
+
 @router.post("/shots/{shot_id}/approve")
 async def approve_shot(shot_id: str, user: UserDep, repo: RepoDep):
     return await _transition_shot(shot_id, ReadinessState.APPROVED, user, repo)
@@ -1183,7 +1280,16 @@ async def preview_look_variant_rework(
         "look_variant_id": look_variant_id,
         "scope": scope,
         "unrelated_shots": [item.id for item in snapshot.shots if item.id not in scope["shots"]],
+        "status": "STALE" if scope["shots"] else "VALID",
     }
+
+
+@router.get("/projects/{project_id}/dependencies")
+async def list_project_dependencies(project_id: str, user: UserDep, repo: RepoDep):
+    """Machine-readable dependency status projection for Workbench and QA."""
+    await _owned_snapshot(repo, project_id, user)
+    records = await repo.list_workbench_records(project_id, "p1_dependency")
+    return {"dependencies": records}
 
 
 @router.post("/projects/{project_id}/rework/look-variants/{look_variant_id}")
@@ -1311,6 +1417,16 @@ async def post_director_message(
         raise HTTPException(status_code=404, detail="unknown Director session")
     if body.base_revision_id and body.base_revision_id != snapshot.revision.id:
         raise HTTPException(status_code=409, detail="STALE_REVISION")
+    persisted_memory = [
+        item
+        for item in await repo.list_workbench_records(snapshot.project.id, "p1_memory")
+        if item.get("active", True) and item.get("scope") == "PROJECT"
+    ]
+    # Memory is advisory context only.  The current user message remains the
+    # explicit authority and is stored separately in the decision inputs.
+    inputs = dict(body.inputs)
+    inputs["creative_memory"] = [item.get("content", "") for item in persisted_memory]
+    inputs["memory_authority"] = "current_instruction > canonical_state > project_memory"
     operations = list(body.operations)
     patch = RevisionPatch(
         project_id=snapshot.project.id,
@@ -1329,7 +1445,7 @@ async def post_director_message(
     decision = record_director_decision(
         session,
         decision_type=body.decision_type,
-        inputs=body.inputs,
+        inputs=inputs,
         rationale=body.rationale,
         patch=patch if body.operations else None,
     )

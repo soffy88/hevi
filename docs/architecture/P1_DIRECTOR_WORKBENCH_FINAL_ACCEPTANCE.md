@@ -31,9 +31,10 @@ The following phase commits are on this branch:
 - `509dbd3` — Canvas projection/semantic patch boundary and references view
 - `0b25c0d` — Director patch concurrency regression test
 
-Uncommitted closure work adds persisted Workbench control records, canonical
-candidate/memory/version/template/rework endpoints, and the real Playwright
-harness in `tests/p1_browser/test_director_workbench_browser.py`.
+Closure commits add persisted Workbench control records, canonical
+candidate/memory/version/template/rework endpoints, the async One-Prompt
+handoff, and the real Playwright harness in
+`tests/p1_browser/test_director_workbench_browser.py`.
 
 Evidence currently available:
 
@@ -70,6 +71,17 @@ look-variant targeted rework, complete timeline command coverage, memory
 authority/reopen proof, prompt/skill version diff and rollback pinning,
 template policy browser proof, one-prompt final artifact preview, acceptance
 guards, and the final full release gate at the final source SHA.
+
+## Final browser closure checkpoint
+
+At `0150ba56de83db81117eeff2052609ebd049ad66`, the frozen One-Prompt product
+flow is accepted: the browser receives project/task identity before CPU render,
+the persisted task is visible, and the final artifact survives reload. The
+current closure work also keeps candidate rendering on the real
+Compiler → Remotion runtime boundary and exposes the machine-readable
+dependency projection plus Director project-memory context. These changes are
+not themselves promotion evidence: the remaining browser groups above must be
+run against persisted projects and recorded before `P1_FINAL_ACCEPTANCE=YES`.
 
 ## Audit history
 
