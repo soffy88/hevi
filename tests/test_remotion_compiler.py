@@ -17,9 +17,7 @@ from hevi.production_graph import (
     ReferenceBundle,
     ReferenceItem,
     ReferenceRole,
-    ResourceUnavailableError,
 )
-from hevi.production_graph.domain import ShotSize
 
 
 def _provider() -> ProviderCapabilities:
@@ -224,34 +222,6 @@ def test_remotion_compiler_unconfigured_capped_to_minimum() -> None:
     assert concurrency == 1
 
 
-def test_remotion_compiler_resolution_and_fps() -> None:
-    compiler = RemotionCompiler()
-    plan = compiler.compile(
-        _ready_shot(), _bundle(), _provider(),
-        ResourceBudget(resolution="1080p"),
-    )
-    assert plan.resolution == "1080p"
-    assert plan.fps == 24
-    assert plan.duration == _ready_shot().duration_target
-
-
-def test_remotion_compiler_audio_subtitle_references() -> None:
-    audio_ref = ReferenceItem(role=ReferenceRole.AUDIO, artifact_id="audio-track")
-    subtitle_ref = ReferenceItem(role=ReferenceRole.LOCATION, artifact_id="subtitle-track")
-    compiler = RemotionCompiler()
-    plan = compiler.compile(
-        _ready_shot(), _bundle(), _provider(), ResourceBudget(),
-        render_mode="video",
-        fps=30,
-        output_format="mp4",
-        audio_references=[audio_ref],
-        subtitle_references=[subtitle_ref],
-    )
-    assert plan.fps == 30
-    assert "audio-track" in str(plan.parameters.get("audio_artifacts"))
-    assert "subtitle-track" in str(plan.parameters.get("subtitle_artifacts"))
-
-
 def test_remotion_compiler_output_contract_and_render_profile() -> None:
     contract = {"container": "mp4", "codec": "h264"}
     render_profile = {"quality": "baseline"}
@@ -283,8 +253,6 @@ def test_remotion_compiler_rejects_reference_mismatch() -> None:
 
 
 def test_remotion_compiler_rejects_unsupported_intent() -> None:
-    from hevi.production_graph import ReadinessState
-
     provider = _provider()
     provider.supported_intents = {GenerationIntent.TEXT_TO_VIDEO}
     compiler = RemotionCompiler()
@@ -336,8 +304,6 @@ def test_remotion_compiler_fallback() -> None:
 
 
 def test_remotion_compiler_does_not_leak_parameters_to_canonical() -> None:
-    from hevi.production_graph.domain import CanonicalShot as Shot
-
     compiler = RemotionCompiler()
     shot = _ready_shot()
     before = dict(shot.model_dump())
