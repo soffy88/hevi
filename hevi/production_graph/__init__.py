@@ -17,6 +17,8 @@ from hevi.production_graph.contracts import (
     inputs_hash,
 )
 from hevi.production_graph.domain import (
+    AdaptationDecision,
+    AdaptationPlan,
     Beat,
     CameraSpec,
     CanonicalShot,
@@ -113,6 +115,8 @@ from hevi.production_graph.revisions import (
 
 __all__ = [
     "ConstraintChange",
+    "AdaptationDecision",
+    "AdaptationPlan",
     "ConstraintSeverity",
     "ConstraintType",
     "ContinuityConstraint",

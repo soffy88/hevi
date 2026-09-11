@@ -159,3 +159,16 @@ TESTS_FAILED=0
 LEGACY_COMPATIBILITY=existing MPT, task service, queue and provider registry are not replaced; the coordinator is an integration boundary  
 KNOWN_GAPS=PostgreSQL TaskEnvelope projection and Studio API are next; the in-memory store is test/local evidence, not production durability  
 COMMIT=feat(runtime): add durable TaskEnvelope side-effect semantics
+
+## P0.12
+
+PHASE=P0.12  
+FILES_CHANGED=`hevi/api/routers/studio_v2.py`, API registration, `tests/test_studio_v2_api.py`  
+NEW_SCHEMA=versioned canonical Studio project/source/narrative/episode/scene/shot/readiness/compiler/director/run API surface  
+MIGRATIONS=none in this phase; endpoints use `ProductionGraphRepository` and RevisionPatch, preserving existing `/api/studio` routes  
+TESTS_ADDED=route registration and API project/source revision write/read with dependency-isolated repository  
+TESTS_PASSED=route smoke plus focused Studio v2 API test  
+TESTS_FAILED=0  
+LEGACY_COMPATIBILITY=RC6 Studio tools, timelines and Slate endpoints remain registered; v2 never calls provider transport directly  
+KNOWN_GAPS=task persistence and legacy dual-read/write index are completed in P0.13  
+COMMIT=feat(studio): add canonical domain API v2

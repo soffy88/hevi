@@ -106,19 +106,17 @@ class ProductionGraphRepository:
                 INSERT INTO productions
                     (id, user_id, type, status, quality_profile, budget,
                      active_revision_id, created_at, updated_at)
-                VALUES ($1, $2, 'canonical_production', $3, 'standard', $4, $5, $6, $6)
+                VALUES ($1, $2, 'canonical_production', $3, 'standard', $4, NULL, $5, $5)
                 ON CONFLICT (id) DO UPDATE SET
                     user_id = EXCLUDED.user_id,
                     status = EXCLUDED.status,
                     budget = EXCLUDED.budget,
-                    active_revision_id = EXCLUDED.active_revision_id,
                     updated_at = EXCLUDED.updated_at
                 """,
                 production_id,
                 snapshot.project.user_id,
                 snapshot.project.status.value,
                 snapshot.project.budget_policy,
-                revision_id,
                 now,
             )
             await conn.execute(
@@ -150,6 +148,12 @@ class ProductionGraphRepository:
                 uuid.uuid4(),
                 production_id,
                 {"revision_id": str(revision_id), "revision_no": snapshot.revision.revision_no},
+                now,
+            )
+            await conn.execute(
+                "UPDATE productions SET active_revision_id = $2, updated_at = $3 WHERE id = $1",
+                production_id,
+                revision_id,
                 now,
             )
         return snapshot
@@ -193,6 +197,60 @@ class ProductionGraphRepository:
         payload = json.loads(raw) if isinstance(raw, str) else dict(raw)
         graph = payload.get("canonical_graph")
         return ProductionGraphSnapshot.model_validate(graph) if graph else None
+
+    async def project_ids_for_user(self, user_id: str) -> list[str]:
+        """List only projects owned by one user for scoped domain reads."""
+
+        if self.pool is None:
+            return sorted(
+                project_id
+                for project_id, snapshot in self._memory_records.items()
+                if snapshot.project.user_id == user_id
+            )
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id FROM productions WHERE user_id = $1 ORDER BY created_at, id",
+                user_id,
+            )
+        return [str(row["id"]) for row in rows]
+
+    async def list_revisions(self, project_id: str) -> list[ProductionRevision]:
+        """Return immutable revision metadata in ascending revision order."""
+
+        if self.pool is None:
+            items = [
+                snapshot.revision
+                for (stored_project_id, _), snapshot in self._memory_revisions.items()
+                if stored_project_id == project_id
+            ]
+            return sorted(items, key=lambda item: item.revision_no)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, production_id, parent_id, revision_no, reason,
+                       created_by, created_at
+                FROM production_revisions
+                WHERE production_id = $1
+                ORDER BY revision_no, created_at, id
+                """,
+                _uuid(project_id),
+            )
+        return [
+            ProductionRevision(
+                id=str(row["id"]),
+                project_id=str(row["production_id"]),
+                parent_revision_id=str(row["parent_id"]) if row["parent_id"] else None,
+                revision_no=int(row["revision_no"]),
+                reason=str(row["reason"] or ""),
+                actor=str(row["created_by"] or "system"),
+                created_at=(
+                    row["created_at"].replace(tzinfo=UTC)
+                    if row["created_at"].tzinfo is None
+                    else row["created_at"]
+                ),
+            )
+            for row in rows
+        ]
 
     async def append_revision(
         self,

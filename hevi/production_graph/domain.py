@@ -163,6 +163,25 @@ class PlotThread(Entity):
     importance: int = Field(default=3, ge=1, le=5)
 
 
+class AdaptationDecision(Entity):
+    """Traceable decision mapping source events into production episodes."""
+
+    project_id: CanonicalId
+    source_event_ids: list[CanonicalId] = Field(default_factory=list)
+    action: Literal["RETAIN", "MERGE", "OMIT", "REORDER"] = "RETAIN"
+    target_episode_id: CanonicalId | None = None
+    rationale: str = ""
+
+
+class AdaptationPlan(Entity):
+    project_id: CanonicalId
+    source_event_ids: list[CanonicalId] = Field(default_factory=list)
+    decision_ids: list[CanonicalId] = Field(default_factory=list)
+    target_episode_ids: list[CanonicalId] = Field(default_factory=list)
+    target_duration: float | None = Field(default=None, ge=0)
+    objective: str = ""
+
+
 class NarrativeGraph(DomainModel):
     project_id: CanonicalId
     revision_id: CanonicalId
@@ -658,6 +677,8 @@ class ProductionGraphSnapshot(DomainModel):
     sources: list[SourceDocument] = Field(default_factory=list)
     source_chunks: list[SourceChunk] = Field(default_factory=list)
     narrative: NarrativeGraph | None = None
+    adaptation_plans: list[AdaptationPlan] = Field(default_factory=list)
+    adaptation_decisions: list[AdaptationDecision] = Field(default_factory=list)
     characters: list[Character] = Field(default_factory=list)
     character_states: list[CharacterState] = Field(default_factory=list)
     look_variants: list[LookVariant] = Field(default_factory=list)
@@ -704,7 +725,26 @@ class ProductionGraphSnapshot(DomainModel):
             "keyframe": {item.id for item in self.keyframes},
             "bundle": {item.id for item in self.reference_bundles},
             "constraint": {item.id for item in self.continuity_constraints},
+            "adaptation_plan": {item.id for item in self.adaptation_plans},
+            "adaptation_decision": {item.id for item in self.adaptation_decisions},
         }
+        if self.narrative is not None:
+            self.narrative.validate_integrity()
+            narrative_event_ids = {item.id for item in self.narrative.events}
+        else:
+            narrative_event_ids = set()
+        for decision in self.adaptation_decisions:
+            if set(decision.source_event_ids) - narrative_event_ids:
+                raise ValueError(f"adaptation decision {decision.id} references unknown events")
+            if decision.target_episode_id and decision.target_episode_id not in ids["episode"]:
+                raise ValueError(f"adaptation decision {decision.id} references unknown episode")
+        for plan in self.adaptation_plans:
+            if set(plan.source_event_ids) - narrative_event_ids:
+                raise ValueError(f"adaptation plan {plan.id} references unknown events")
+            if set(plan.decision_ids) - ids["adaptation_decision"]:
+                raise ValueError(f"adaptation plan {plan.id} references unknown decisions")
+            if set(plan.target_episode_ids) - ids["episode"]:
+                raise ValueError(f"adaptation plan {plan.id} references unknown episodes")
         for chunk in self.source_chunks:
             if chunk.document_id not in ids["source"]:
                 raise ValueError(f"source chunk {chunk.id} references an unknown document")
@@ -727,6 +767,9 @@ class ProductionGraphSnapshot(DomainModel):
             missing = set(scene.character_ids) - ids["character"]
             if missing:
                 raise ValueError(f"scene {scene.id} references unknown characters: {sorted(missing)}")
+            missing_props = set(scene.prop_ids) - ids["prop"]
+            if missing_props:
+                raise ValueError(f"scene {scene.id} references unknown props: {sorted(missing_props)}")
         for beat in self.beats:
             if beat.scene_id not in ids["scene"]:
                 raise ValueError(f"beat {beat.id} references an unknown scene")
@@ -735,21 +778,29 @@ class ProductionGraphSnapshot(DomainModel):
                 raise ValueError(f"shot {shot.id} references an unknown scene")
             if set(shot.beat_ids) - ids["beat"]:
                 raise ValueError(f"shot {shot.id} references an unknown beat")
-            if set(shot.keyframe_ids) - ids["keyframe"]:
-                raise ValueError(f"shot {shot.id} references an unknown keyframe")
+            if set(shot.character_ids) - ids["character"]:
+                raise ValueError(f"shot {shot.id} references unknown characters")
+            if shot.location_id and shot.location_id not in ids["location"]:
+                raise ValueError(f"shot {shot.id} references an unknown location")
+            if set(shot.prop_ids) - ids["prop"]:
+                raise ValueError(f"shot {shot.id} references unknown props")
             if shot.reference_bundle_id and shot.reference_bundle_id not in ids["bundle"]:
                 raise ValueError(f"shot {shot.id} references an unknown reference bundle")
+            if set(shot.keyframe_ids) - ids["keyframe"]:
+                raise ValueError(f"shot {shot.id} references unknown keyframes")
+            if set(shot.continuity_constraint_ids) - ids["constraint"]:
+                raise ValueError(f"shot {shot.id} references unknown constraints")
         for keyframe in self.keyframes:
             if keyframe.shot_id not in ids["shot"]:
                 raise ValueError(f"keyframe {keyframe.id} references an unknown shot")
         for bundle in self.reference_bundles:
             if bundle.shot_id not in ids["shot"]:
                 raise ValueError(f"reference bundle {bundle.id} references an unknown shot")
-        if self.narrative is not None:
-            self.narrative.validate_integrity()
 
 
 __all__ = [
+    "AdaptationDecision",
+    "AdaptationPlan",
     "Beat",
     "CameraSpec",
     "CanonicalShot",

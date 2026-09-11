@@ -15,6 +15,8 @@ from typing import Any
 from pydantic import BaseModel
 
 from hevi.production_graph.domain import (
+    AdaptationDecision,
+    AdaptationPlan,
     Beat,
     CanonicalShot,
     Character,
@@ -69,6 +71,8 @@ _COLLECTIONS: dict[str, tuple[str, type[BaseModel]]] = {
     "keyframes": ("keyframes", Keyframe),
     "reference_bundles": ("reference_bundles", ReferenceBundle),
     "production_plans": ("production_plans", ProductionPlan),
+    "adaptation_plans": ("adaptation_plans", AdaptationPlan),
+    "adaptation_decisions": ("adaptation_decisions", AdaptationDecision),
 }
 
 
@@ -135,6 +139,10 @@ def validate_revision_patch(snapshot: ProductionGraphSnapshot, patch: RevisionPa
 
 def _validate_operation(snapshot: ProductionGraphSnapshot, operation: RevisionPatchOperation) -> None:
     parts = _path_parts(operation.path)
+    if parts[0] == "narrative":
+        if operation.op != "replace" or len(parts) != 1:
+            raise RevisionPatchError("narrative can only be replaced as a validated graph")
+        return
     collection_name = parts[0]
     if collection_name not in _COLLECTIONS:
         raise RevisionPatchError(f"unsupported canonical patch collection: {collection_name}")
@@ -217,6 +225,11 @@ def apply_revision_patch(
 
 def _apply_operation(snapshot: ProductionGraphSnapshot, operation: RevisionPatchOperation) -> None:
     parts = _path_parts(operation.path)
+    if parts[0] == "narrative":
+        from hevi.production_graph.domain import NarrativeGraph
+
+        snapshot.narrative = NarrativeGraph.model_validate(operation.value)
+        return
     collection_name, collection_type = _COLLECTIONS[parts[0]]
     records = getattr(snapshot, collection_name)
     if operation.op == "add":
