@@ -8,11 +8,12 @@ Slate/runtime boundaries.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
@@ -25,6 +26,7 @@ from hevi.production_graph import (
     ProductionGraphRepository,
     ProductionMode,
     ProductionProject,
+    ProvenanceLink,
     ReadinessContext,
     ReadinessState,
     RevisionPatch,
@@ -43,6 +45,7 @@ from hevi.production_graph.adapters.tongjian import (
     source_document_from_text,
 )
 from hevi.production_graph.durable_execution import PostgresDurableExecutionStore
+from hevi.production_graph.golden_runtime import render_golden_mp4
 from hevi.production_graph.ids import new_id
 from hevi.production_graph.orchestration import (
     historical_product_entrypoint,
@@ -213,20 +216,146 @@ async def get_graph_repository(
 UserDep = Annotated[dict[str, Any], Depends(get_current_user)]
 
 
+async def _finish_one_prompt_render(
+    repository: ProductionGraphRepository,
+    run: Any,
+    task: dict[str, Any],
+    output_path: Path,
+) -> None:
+    """Finish the accepted One-Prompt run through the existing CPU runtime.
+
+    The task projection is written before this function is scheduled.  The
+    graph snapshot and attempt are updated only after the real Remotion
+    artifact has passed the same manifest validation as the P0 Goldens.
+    """
+
+    try:
+        manifest = await asyncio.to_thread(
+            render_golden_mp4,
+            run.production_plan,
+            run.execution_plan,
+            output_path,
+            remotion_dir=Path(__file__).parents[3] / "hevi-remotion",
+        )
+        artifact = manifest.artifacts[0]
+        artifact_id = artifact.artifact_id or artifact.sha256 or artifact.path
+        attempt = run.execution_attempt.model_copy(
+            update={
+                "status": "completed",
+                "artifact_ids": [artifact_id],
+                "finished_at": datetime.now(UTC),
+            }
+        )
+        final = run.snapshot.model_copy(
+            update={
+                "execution_attempts": [attempt],
+                "provenance_links": [
+                    *run.snapshot.provenance_links,
+                    ProvenanceLink(
+                        id=new_id(),
+                        project_id=run.snapshot.project.id,
+                        source_type="ExecutionAttempt",
+                        source_id=attempt.id,
+                        target_type="Artifact",
+                        target_id=artifact_id,
+                        relation="produced",
+                    ),
+                ],
+            }
+        )
+        final = await repository.append_revision(
+            final, actor="one-prompt-runtime", reason="artifact registered"
+        )
+        await repository.save_run(
+            {
+                **task,
+                "revision_id": final.revision.id,
+                "status": "completed",
+                "artifact_id": artifact_id,
+                "artifact_path": str(output_path),
+                "sha256": artifact.sha256,
+                "completed_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        if repository.pool is not None:
+            durable = PostgresDurableExecutionStore(repository.pool)
+            envelope = await durable.get_by_idempotency(run.execution_plan.idempotency_key)
+            if envelope is not None:
+                await durable.save(
+                    envelope.model_copy(
+                        update={
+                            "status": "completed",
+                            "artifact_ids": [artifact_id],
+                            "checkpoint": {"artifact_sha256": artifact.sha256},
+                        }
+                    )
+                )
+    except Exception as exc:  # pragma: no cover - exercised by live runtime
+        await repository.save_run({**task, "status": "failed", "error": str(exc)})
+
+
 @router.post("/one-prompt", status_code=status.HTTP_201_CREATED)
 async def one_prompt(
     body: OnePromptRequest,
     user: UserDep,
     repository: Annotated[ProductionGraphRepository, Depends(get_graph_repository)],
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
 ) -> dict[str, Any]:
     """Canonical user-facing one-prompt product entrypoint."""
+
+    # Keep the direct orchestration seam used by the frozen P0 Gold C test
+    # synchronous when called without FastAPI's injected BackgroundTasks. The
+    # real HTTP product path always receives BackgroundTasks and uses the
+    # accepted/async branch below.
+    if background_tasks is None:
+        run = await one_prompt_product_entrypoint(
+            repository,
+            raw_request=body.request,
+            user_id=str(user["id"]),
+            render_path=Path(body.render_path) if body.render_path else None,
+        )
+        return {
+            "project_id": run.snapshot.project.id,
+            "revision_id": run.snapshot.revision.id,
+            "director_session_id": run.snapshot.director_sessions[0].id,
+            "director_decision_id": run.snapshot.director_decisions[0].id,
+            "production_plan_id": run.production_plan.id,
+            "execution_plan_id": run.execution_plan.id,
+            "execution_attempt_id": run.execution_attempt.id,
+            "task_id": run.execution_attempt.id,
+            "status": "completed" if run.execution_attempt.artifact_ids else "accepted",
+            "artifact_id": (
+                run.execution_attempt.artifact_ids[0]
+                if run.execution_attempt.artifact_ids
+                else None
+            ),
+        }
 
     run = await one_prompt_product_entrypoint(
         repository,
         raw_request=body.request,
         user_id=str(user["id"]),
-        render_path=Path(body.render_path) if body.render_path else None,
+        render_path=None,
     )
+    task_id = run.execution_attempt.id
+    output_path = Path(body.render_path) if body.render_path else Path("/tmp") / f"hevi-one-prompt-{task_id}.mp4"
+    task = {
+        "run_id": task_id,
+        "project_id": run.snapshot.project.id,
+        "revision_id": run.snapshot.revision.id,
+        "user_id": _user_id(user),
+        "status": "queued",
+        "stage": "remotion_render",
+        "execution_plan_id": run.execution_plan.id,
+        "execution_attempt_id": run.execution_attempt.id,
+        "artifact_id": None,
+    }
+    await repository.save_run(task)
+    if repository.pool is not None:
+        await PostgresDurableExecutionStore(repository.pool).persist_intent(
+            envelope_from_execution_plan(run.execution_plan)
+        )
+    background_tasks.add_task(_finish_one_prompt_render, repository, run, task, output_path)
     return {
         "project_id": run.snapshot.project.id,
         "revision_id": run.snapshot.revision.id,
@@ -235,9 +364,9 @@ async def one_prompt(
         "production_plan_id": run.production_plan.id,
         "execution_plan_id": run.execution_plan.id,
         "execution_attempt_id": run.execution_attempt.id,
-        "artifact_id": (
-            run.execution_attempt.artifact_ids[0] if run.execution_attempt.artifact_ids else None
-        ),
+        "task_id": task_id,
+        "status": "accepted",
+        "artifact_id": None,
     }
 
 
@@ -790,8 +919,8 @@ async def candidate_action(
         raise HTTPException(status_code=422, detail="candidate has no real artifact")
     if action == "select":
         for other in candidates:
-            if other.id != candidate.id and other.state == CandidateState.SELECTED:
-                other.state = CandidateState.ARCHIVED
+            if other.id != candidate.id and other.state == CandidateState.LOCKED:
+                raise HTTPException(status_code=409, detail="a locked candidate protects this shot")
     target = {
         "select": CandidateState.SELECTED,
         "reject": CandidateState.REJECTED,

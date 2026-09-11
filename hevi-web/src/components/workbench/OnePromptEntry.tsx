@@ -7,7 +7,7 @@ import { canonicalProductionApi } from '@/lib/api-client';
 export function OnePromptEntry() {
   const router = useRouter();
   const [request, setRequest] = useState('Make a tense 12-second vertical scene of an envoy crossing an old gate at dawn.');
-  const [renderPreview, setRenderPreview] = useState(false);
+  const [renderPreview, setRenderPreview] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function submit() {

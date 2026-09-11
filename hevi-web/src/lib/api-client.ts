@@ -219,7 +219,7 @@ export type StudioTimeline = {
 // revision. The browser never writes production state directly.
 export const canonicalProductionApi = {
   list: () => authedReq<{ projects: ProductionProject[]; total: number }>('/api/studio/projects'),
-  onePrompt: (request: string, renderPath?: string) => authedReq<{ project_id: string; revision_id: string; director_session_id: string; director_decision_id: string; production_plan_id: string; execution_plan_id: string; execution_attempt_id: string; artifact_id?: string | null }>('/api/studio/one-prompt', { method: 'POST', body: JSON.stringify({ request, ...(renderPath ? { render_path: renderPath } : {}) }) }),
+  onePrompt: (request: string, renderPath?: string) => authedReq<{ project_id: string; revision_id: string; director_session_id: string; director_decision_id: string; production_plan_id: string; execution_plan_id: string; execution_attempt_id: string; task_id: string; status: string; artifact_id?: string | null }>('/api/studio/one-prompt', { method: 'POST', body: JSON.stringify({ request, ...(renderPath ? { render_path: renderPath } : {}) }) }),
   historicalProduct: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/product/historical', { method: 'POST', body: JSON.stringify(body) }),
   longFormProduct: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/product/long-form', { method: 'POST', body: JSON.stringify(body) }),
   get: (projectId: string) => authedReq<ProductionGraphSnapshot>(`/api/studio/projects/${projectId}`),

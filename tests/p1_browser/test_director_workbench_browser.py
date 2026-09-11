@@ -205,11 +205,19 @@ def test_real_one_prompt_ui_product_path() -> None:
             page.get_by_role("button", name="创建 Production").click()
             expect(page.get_by_test_id("director-workbench")).to_be_visible(timeout=60000)
             project_id = page.url.rstrip("/").split("/")[-1]
+            deadline = time.monotonic() + 90
             persisted = _api_request(request, f"/api/studio/projects/{project_id}", token=token)
+            tasks = _api_request(request, "/api/studio/tasks", token=token)["tasks"]
+            assert any(item["project_id"] == project_id for item in tasks)
+            while time.monotonic() < deadline and not persisted["execution_attempts"][0]["artifact_ids"]:
+                time.sleep(2)
+                persisted = _api_request(request, f"/api/studio/projects/{project_id}", token=token)
             assert persisted["project"]["creative_brief"] == raw
             assert persisted["director_sessions"]
             assert persisted["execution_attempts"]
             assert persisted["execution_attempts"][0]["artifact_ids"]
+            page.reload(wait_until="networkidle")
+            expect(page.get_by_test_id("director-workbench")).to_be_visible()
         finally:
             context.close()
             browser.close()

@@ -50,8 +50,11 @@ Evidence currently available:
   core/reopen/stale-revision flow and 1440x900/1280x720 screenshots.
 - Real product orchestration browser coverage passed for historical and
   long-form persisted projects; the one-prompt semantic route is exercised,
-  but its CPU-render browser assertion remains open because the synchronous
-  preview request exceeds the current browser request path.
+  and the async CPU-render handoff now reaches the Workbench before render
+  completion. The latest live run persisted task
+  `4d0a4d26-c05b-49f3-9e64-cdcc5a761bd9`, artifact
+  `ad1de1377729089b9c2abb0a0527c12726ea7e1828e6fce9c49a541f67537fb6`, and
+  output `/tmp/hevi-one-prompt-4d0a4d26-c05b-49f3-9e64-cdcc5a761bd9.mp4`.
 
 ## Acceptance status
 
@@ -62,7 +65,7 @@ proposal/apply flow, revision history, task/execution context, reopen from the
 canonical snapshot, and lost-update protection.
 
 P1 is not promoted to complete by this document. Remaining mandatory evidence
-includes a browser-verified candidate lifecycle with a selected artifact,
+includes a browser-verified candidate lifecycle with two selected artifacts,
 look-variant targeted rework, complete timeline command coverage, memory
 authority/reopen proof, prompt/skill version diff and rollback pinning,
 template policy browser proof, one-prompt final artifact preview, acceptance
