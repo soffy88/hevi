@@ -912,3 +912,25 @@ tests use the `golden` marker. The validator is
 `hevi/production_graph/provenance.py::validate_creative_provenance`. No
 PromptVersion or SkillVersion is used by this CPU Remotion execution path;
 those fields are `NOT_APPLICABLE_BY_EXECUTION_PATH` rather than fabricated.
+
+### FINAL_SHA_FULL_GATE
+
+After the semantic closure commit and the minimal pre-existing compiler-test
+lint cleanup, the authoritative `scripts/check.sh` gate passed at:
+
+```text
+FINAL_SHA=58ec73d75b422cd980aa049f7f96599054bd3f8d
+FULL_PYTEST_PASSED=2806
+FULL_PYTEST_SKIPPED=29
+FULL_PYTEST_FAILED=0
+FULL_PYTEST_ERRORS=0
+COVERAGE_LINES=80.36%
+COVERAGE_GATE=PASS
+RUFF_LINT=PASS
+FRONTEND_BUILD=PASS
+PACKAGE_BUILD=NOT_RUN_BY_CHECK_SH
+CHECK_PASSED=PASS
+```
+
+The full gate used the real PostgreSQL test service at
+`127.0.0.1:55432`; no fake database or benchmark-only fallback was used.
