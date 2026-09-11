@@ -43,6 +43,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<ProductionDirectorDecision[]>([]);
   const [tasks, setTasks] = useState<Array<Record<string, unknown>>>([]);
+  const [revisionHistory, setRevisionHistory] = useState<ProductionGraphSnapshot['revision'][]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -61,6 +62,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
 
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => { productionApi.tasks().then(result => setTasks(result.tasks)).catch(() => setTasks([])); }, [snapshot?.revision.id]);
+  useEffect(() => { productionApi.revisions(projectId).then(result => setRevisionHistory(result.revisions)).catch(() => setRevisionHistory([])); }, [projectId, snapshot?.revision.id]);
 
   const shot = useMemo(() => snapshot?.shots.find(item => item.id === selectedShotId) ?? null, [snapshot, selectedShotId]);
   const scene = useMemo(() => snapshot?.scenes.find(item => item.id === (selectedSceneId ?? shot?.scene_id)) ?? null, [snapshot, selectedSceneId, shot]);
@@ -79,6 +81,10 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
   async function saveStory(brief: string) {
     const baseRevisionId = snapshot?.revision.id;
     await mutate(() => productionApi.patchProject(projectId, { creative_brief: brief }, baseRevisionId), '故事修改已创建新 revision');
+  }
+
+  async function changeMode(mode: string) {
+    await mutate(() => productionApi.patchProject(projectId, { production_mode: mode }, snapshot?.revision.id), `Production mode 已切换为 ${mode}`);
   }
 
   async function prepare() {
@@ -148,7 +154,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
       <header className="wb-topbar">
         <div className="wb-brand"><span className="wb-brand-mark">H</span><span>Director Workbench</span></div>
         <div className="wb-project-heading"><strong>{snapshot.project.title || 'Untitled production'}</strong><span>Revision {snapshot.revision.revision_no} · {shortId(snapshot.revision.id)}</span></div>
-        <div className="wb-top-actions"><span className="wb-mode">{snapshot.project.production_mode}</span><span className="wb-health">{readyCount}/{snapshot.shots.length || 0} 就绪</span><button type="button" className="wb-quiet-btn" onClick={() => void refresh()} disabled={busy}>刷新</button></div>
+        <div className="wb-top-actions"><label className="wb-mode-select"><span className="sr-only">Production mode</span><select value={snapshot.project.production_mode} onChange={event => void changeMode(event.target.value)} disabled={busy}><option value="AUTO">FULL_AUTO</option><option value="KEYFRAME_REVIEW">KEYFRAME_REVIEW</option><option value="SHOT_REVIEW">SHOT_REVIEW</option><option value="MANUAL_DIRECTOR">MANUAL_DIRECTOR</option></select></label><span className="wb-health">{readyCount}/{snapshot.shots.length || 0} 就绪</span><button type="button" className="wb-quiet-btn" onClick={() => void refresh()} disabled={busy}>刷新</button></div>
       </header>
 
       <div className="wb-body">
@@ -167,7 +173,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
           <nav className="wb-tabs" aria-label="Workbench views">{tabs.map(item => <button type="button" key={item.id} className={tab === item.id ? 'is-active' : ''} onClick={() => setTab(item.id)}><span>{item.icon}</span>{item.label}</button>)}</nav>
           {notice && <div className="wb-notice" role="status">✓ {notice}</div>}
           {error && <div className="wb-inline-error" role="alert">{error}</div>}
-          {tab === 'story' && <StoryView snapshot={snapshot} onSave={saveStory} busy={busy} />}
+          {tab === 'story' && <StoryView snapshot={snapshot} revisions={revisionHistory} onSave={saveStory} busy={busy} />}
           {tab === 'storyboard' && <StoryboardView snapshot={snapshot} selectedShotId={selectedShotId} onSelect={setSelectedShotId} onPrepare={prepare} onApprove={() => void transition('approve')} onLock={() => void transition('lock')} onGenerate={() => void generate()} onRegenerate={() => void generate(true)} busy={busy} />}
           {tab === 'canvas' && <CanvasProjection snapshot={snapshot} onSelectShot={id => { setSelectedShotId(id); setTab('storyboard'); }} />}
           {tab === 'timeline' && <TimelineView snapshot={snapshot} onSelectShot={id => { setSelectedShotId(id); setTab('storyboard'); }} />}
@@ -185,10 +191,10 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
   );
 }
 
-function StoryView({ snapshot, onSave, busy }: { snapshot: ProductionGraphSnapshot; onSave: (value: string) => Promise<void>; busy: boolean }) {
+function StoryView({ snapshot, revisions, onSave, busy }: { snapshot: ProductionGraphSnapshot; revisions: ProductionGraphSnapshot['revision'][]; onSave: (value: string) => Promise<void>; busy: boolean }) {
   const [brief, setBrief] = useState(snapshot.project.creative_brief);
   useEffect(() => setBrief(snapshot.project.creative_brief), [snapshot.project.creative_brief]);
-  return <div className="wb-view wb-story-view"><div className="wb-view-head"><div><span className="wb-eyebrow">STORY / CANONICAL NARRATIVE</span><h1>故事结构</h1><p>编辑会通过 RevisionPatch 创建新 revision，历史版本保持可读。</p></div><span className="wb-revision-chip">source {snapshot.sources.length} · events {snapshot.narrative?.events.length ?? 0}</span></div><section className="wb-editor-card"><label htmlFor="creative-brief">Creative brief</label><textarea id="creative-brief" value={brief} onChange={event => setBrief(event.target.value)} rows={5} /><div className="wb-card-actions"><span>{snapshot.revision.snapshot_hash ? `hash ${shortId(snapshot.revision.snapshot_hash)}` : '未计算 snapshot hash'}</span><button type="button" className="wb-primary-btn" disabled={busy || brief === snapshot.project.creative_brief} onClick={() => void onSave(brief)}>保存为新 revision</button></div></section><div className="wb-story-grid"><section className="wb-data-card"><h2>Narrative events</h2>{(snapshot.narrative?.events ?? []).map(event => <article className="wb-event" key={event.id}><span>{String(event.temporal_order).padStart(2, '0')}</span><div><strong>{event.summary}</strong><small>{event.source_refs.length} source refs · {event.plot_thread_ids.length} plot threads</small></div></article>)}{!snapshot.narrative?.events.length && <p className="wb-empty">尚未建立 NarrativeGraph。</p>}</section><section className="wb-data-card"><h2>Plot threads</h2>{(snapshot.narrative?.plot_threads ?? []).map(thread => <article className="wb-thread" key={String(thread.id)}><span className="wb-thread-dot" /><div><strong>{String(thread.title ?? 'Plot thread')}</strong><small>{thread.resolution_event_id ? 'resolved' : 'unresolved'} · {thread.unresolved_event_ids?.length ?? 0} open events</small></div></article>)}{!snapshot.narrative?.plot_threads.length && <p className="wb-empty">暂无 unresolved PlotThread。</p>}</section></div></div>;
+  return <div className="wb-view wb-story-view"><div className="wb-view-head"><div><span className="wb-eyebrow">STORY / CANONICAL NARRATIVE</span><h1>故事结构</h1><p>编辑会通过 RevisionPatch 创建新 revision，历史版本保持可读。</p></div><span className="wb-revision-chip">source {snapshot.sources.length} · events {snapshot.narrative?.events.length ?? 0}</span></div><section className="wb-editor-card"><label htmlFor="creative-brief">Creative brief</label><textarea id="creative-brief" value={brief} onChange={event => setBrief(event.target.value)} rows={5} /><div className="wb-card-actions"><span>{snapshot.revision.snapshot_hash ? `hash ${shortId(snapshot.revision.snapshot_hash)}` : '未计算 snapshot hash'}</span><button type="button" className="wb-primary-btn" disabled={busy || brief === snapshot.project.creative_brief} onClick={() => void onSave(brief)}>保存为新 revision</button></div></section><div className="wb-story-grid"><section className="wb-data-card"><h2>Narrative events</h2>{(snapshot.narrative?.events ?? []).map(event => <article className="wb-event" key={event.id}><span>{String(event.temporal_order).padStart(2, '0')}</span><div><strong>{event.summary}</strong><small>{event.source_refs.length} source refs · {event.plot_thread_ids.length} plot threads</small></div></article>)}{!snapshot.narrative?.events.length && <p className="wb-empty">尚未建立 NarrativeGraph。</p>}</section><section className="wb-data-card"><h2>Plot threads</h2>{(snapshot.narrative?.plot_threads ?? []).map(thread => <article className="wb-thread" key={String(thread.id)}><span className="wb-thread-dot" /><div><strong>{String(thread.title ?? 'Plot thread')}</strong><small>{thread.resolution_event_id ? 'resolved' : 'unresolved'} · {thread.unresolved_event_ids?.length ?? 0} open events</small></div></article>)}{!snapshot.narrative?.plot_threads.length && <p className="wb-empty">暂无 unresolved PlotThread。</p>}</section><section className="wb-data-card"><h2>Revision history</h2>{revisions.slice(-6).reverse().map(item => <article className="wb-thread" key={item.id}><span className="wb-thread-dot" /><div><strong>Revision {item.revision_no}</strong><small>{item.reason} · {shortId(item.id)}</small></div></article>)}</section></div></div>;
 }
 
 function StoryboardView({ snapshot, selectedShotId, onSelect, onPrepare, onApprove, onLock, onGenerate, onRegenerate, busy }: { snapshot: ProductionGraphSnapshot; selectedShotId: string | null; onSelect: (id: string) => void; onPrepare: () => void; onApprove: () => void; onLock: () => void; onGenerate: () => void; onRegenerate: () => void; busy: boolean }) {
