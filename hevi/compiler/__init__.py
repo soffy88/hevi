@@ -3,6 +3,7 @@
 from .adapters import ProviderAdapter
 from .base import CompilationError, ProductionCompiler
 from .capabilities import ProviderCapabilities, ResourceBudget
+from .remotion import RemotionCompiler
 
 __all__ = [
     "CompilationError",
@@ -10,4 +11,5 @@ __all__ = [
     "ProviderAdapter",
     "ProviderCapabilities",
     "ResourceBudget",
+    "RemotionCompiler",
 ]
