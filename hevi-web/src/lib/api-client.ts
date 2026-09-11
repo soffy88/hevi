@@ -219,6 +219,7 @@ export type StudioTimeline = {
 // revision. The browser never writes production state directly.
 export const canonicalProductionApi = {
   list: () => authedReq<{ projects: ProductionProject[]; total: number }>('/api/studio/projects'),
+  onePrompt: (request: string, renderPath?: string) => authedReq<{ project_id: string; revision_id: string; director_session_id: string; director_decision_id: string; production_plan_id: string; execution_plan_id: string; execution_attempt_id: string; artifact_id?: string | null }>('/api/studio/one-prompt', { method: 'POST', body: JSON.stringify({ request, ...(renderPath ? { render_path: renderPath } : {}) }) }),
   get: (projectId: string) => authedReq<ProductionGraphSnapshot>(`/api/studio/projects/${projectId}`),
   create: (body: Record<string, unknown>) => authedReq<ProductionGraphSnapshot>('/api/studio/projects', { method: 'POST', body: JSON.stringify(body) }),
   patchProject: (projectId: string, body: Record<string, unknown>, baseRevisionId?: string) => authedReq<ProductionGraphSnapshot>(`/api/studio/projects/${projectId}`, { method: 'PATCH', body: JSON.stringify({ ...body, ...(baseRevisionId ? { base_revision_id: baseRevisionId } : {}) }) }),
