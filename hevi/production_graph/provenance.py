@@ -35,6 +35,8 @@ def validate_creative_provenance(snapshot: Any) -> ProvenanceReport:
         ("director_decisions", "DirectorDecision"),
         ("execution_plans", "ExecutionPlan"),
         ("execution_attempts", "ExecutionAttempt"),
+        ("production_plans", "ProductionPlan"),
+        ("continuity_constraints", "ContinuityConstraint"),
     ):
         known.update((kind, item.id) for item in getattr(snapshot, field, []))
     known.update(
@@ -71,6 +73,7 @@ def validate_creative_provenance(snapshot: Any) -> ProvenanceReport:
         "ShotReadinessResult",
         "ExecutionPlan",
         "ExecutionAttempt",
+        "ProductionPlan",
     }
     orphan = sum(
         1 for kind in required if not any(item_kind == kind for item_kind, _ in referenced)

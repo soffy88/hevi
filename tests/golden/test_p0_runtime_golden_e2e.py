@@ -10,38 +10,17 @@ from pathlib import Path
 
 import pytest
 
+from hevi.api.main import app
+from hevi.api.routers import studio_v2
+from hevi.auth.dependencies import get_current_user
 from hevi.production_graph.orchestration import (
     historical_product_entrypoint,
     long_form_product_entrypoint,
-    one_prompt_product_entrypoint,
 )
+from hevi.production_graph.provenance import validate_creative_provenance
 from hevi.production_graph.repository import ProductionGraphRepository
-from hevi.tongjian.schemas import ChapterIR, ChapterMeta, CharacterIR, EventIR
 
 ROOT = Path(__file__).parents[2]
-
-
-def _chapter(source: str, event_rows: list[dict[str, object]]) -> ChapterIR:
-    events = []
-    for row in event_rows:
-        span = row.get("span", (0, len(str(row["summary"]))))
-        events.append(
-            EventIR(
-                event_id=str(row["id"]),
-                summary=str(row["summary"]),
-                actors=["hero"],
-                causes=list(row.get("causes", [])),
-                effects=list(row.get("effects", [])),
-                source_span=tuple(span),
-            )
-        )
-    return ChapterIR(
-        meta=ChapterMeta(source=source),
-        characters=[
-            CharacterIR(character_id="hero", canonical_name="Envoy", role_in_chapter="protagonist")
-        ],
-        events=events,
-    )
 
 
 def _media_qa(path: Path, duration: float) -> str:
@@ -103,49 +82,20 @@ def test_gold_a_historical_product_runtime_e2e(tmp_path: Path) -> None:
         for link in snapshot.provenance_links
     )
     assert run.manifest and run.manifest.artifacts[0].integrity_ok()
+    report = validate_creative_provenance(snapshot)
+    assert report.broken_edges == 0
+    assert report.orphan_nodes == 0
+    assert report.unbound_final_artifacts == 0
     assert _media_qa(tmp_path / "gold-a.mp4", 3.0)
 
 
 @pytest.mark.golden
 def test_gold_b_long_form_product_runtime_e2e(tmp_path: Path) -> None:
-    chapters = [
-        _chapter(
-            "public-domain chapter one",
-            [
-                {
-                    "id": "arrival",
-                    "summary": "The envoy arrives with a sealed dispatch.",
-                    "span": (0, 42),
-                },
-                {
-                    "id": "warning",
-                    "summary": "The warden warns that the road is watched.",
-                    "causes": ["arrival"],
-                    "span": (43, 86),
-                },
-            ],
-        ),
-        _chapter(
-            "public-domain chapter two",
-            [
-                {
-                    "id": "pursuit",
-                    "summary": "The pursuit begins after the gate closes.",
-                    "span": (0, 43),
-                },
-                {
-                    "id": "delivery",
-                    "summary": "The envoy delivers the dispatch beyond the gate.",
-                    "causes": ["pursuit"],
-                    "span": (44, 92),
-                },
-            ],
-        ),
-    ]
+    source = (ROOT / "tests/golden/gold_b_long_form.txt").read_text()
     run = asyncio.run(
         long_form_product_entrypoint(
             ProductionGraphRepository(),
-            chapters=chapters,
+            source_text=source,
             title="Gold B — The sealed route",
             user_id="gold-b",
             render_path=tmp_path / "gold-b.mp4",
@@ -161,26 +111,37 @@ def test_gold_b_long_form_product_runtime_e2e(tmp_path: Path) -> None:
     assert len({state.weather for state in snapshot.location_states}) >= 2
     assert len({state.condition for state in snapshot.prop_states}) >= 2
     assert run.manifest and run.manifest.artifacts[0].integrity_ok()
+    report = validate_creative_provenance(snapshot)
+    assert report.broken_edges == 0
+    assert report.orphan_nodes == 0
+    assert report.unbound_final_artifacts == 0
     assert _media_qa(tmp_path / "gold-b.mp4", 3.0)
 
 
 @pytest.mark.golden
 def test_gold_c_one_prompt_real_product_path(tmp_path: Path) -> None:
     raw = "Make a tense 12-second vertical scene of an envoy crossing an old gate at dawn."
-    run = asyncio.run(
-        one_prompt_product_entrypoint(
-            ProductionGraphRepository(),
-            raw_request=raw,
-            user_id="gold-c",
-            render_path=tmp_path / "gold-c.mp4",
+    repo = ProductionGraphRepository()
+    user = {"id": "gold-c", "is_active": True}
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[studio_v2.get_graph_repository] = lambda: repo
+    try:
+        response = asyncio.run(
+            studio_v2.one_prompt(
+                studio_v2.OnePromptRequest(request=raw, render_path=str(tmp_path / "gold-c.mp4")),
+                user,
+                repo,
+            )
         )
-    )
-    snapshot = run.snapshot
+    finally:
+        app.dependency_overrides.clear()
+    snapshot = asyncio.run(repo.get_snapshot(response["project_id"]))
+    assert snapshot is not None
     assert snapshot.project.creative_brief == raw
     assert snapshot.director_sessions and snapshot.director_decisions
     assert snapshot.production_plans and snapshot.shots
-    assert run.entrypoint == "POST /studio/one-prompt"
-    assert run.manifest and run.manifest.artifacts[0].integrity_ok()
+    assert response["execution_attempt_id"]
+    assert response["artifact_id"]
     assert _media_qa(tmp_path / "gold-c.mp4", 12.0)
 
 
@@ -191,7 +152,7 @@ def test_gold_acceptance_guards_require_execution_provenance() -> None:
     run = asyncio.run(
         historical_product_entrypoint(
             ProductionGraphRepository(),
-            source_text="A source event.",
+            source_text="A source event. A second source event.",
             title="Guard",
             user_id="guard",
         )
@@ -199,3 +160,18 @@ def test_gold_acceptance_guards_require_execution_provenance() -> None:
     report = validate_creative_provenance(run.snapshot)
     assert report.broken_edges == 0
     assert report.unbound_final_artifacts == 1
+
+
+@pytest.mark.golden
+def test_gold_acceptance_guards_reject_missing_execution_plan() -> None:
+    run = asyncio.run(
+        historical_product_entrypoint(
+            ProductionGraphRepository(),
+            source_text="Arrival. Delivery.",
+            title="Guard",
+            user_id="guard",
+        )
+    )
+    broken = run.snapshot.model_copy(update={"execution_plans": []})
+    report = validate_creative_provenance(broken)
+    assert report.broken_edges >= 1

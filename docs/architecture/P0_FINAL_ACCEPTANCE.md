@@ -797,3 +797,118 @@ SHA gate is rerun after the scoped commits below and is the only gate used for
 the final acceptance decision.
 
 P1 and P2 remain forbidden and were not started.
+
+## FINAL_SEMANTIC_E2E_CLOSURE
+
+The preceding sections are preserved audit history. The following is the
+authoritative semantic closure run from the source state after `6807341`.
+Generated media is outside git under `/tmp/hevi-p0-final-semantic-20260911/`.
+
+### Gold A — source-driven historical product path
+
+Entrypoint: `historical_product_entrypoint` (the same canonical orchestration
+seam used by Studio source ingestion). Source parsing is implemented in
+`hevi/production_graph/source_pipeline.py`; the test supplies source text only.
+
+```text
+GOLD_A_PROJECT_ID=f1c6e499-062c-43ad-8082-12e0b94bf27d
+GOLD_A_PROJECT_REVISION_ID=0a9ed4be-d0b1-4236-877c-82e0df1cf3cc
+GOLD_A_SOURCE_DOCUMENT_ID=d3ad1505-ab7e-524e-82b8-961a5929066e
+GOLD_A_SOURCE_CHUNK_COUNT=1
+GOLD_A_EVENT_COUNT=2
+GOLD_A_ADAPTATION_DECISION_ID=derived adaptation-decision record in persisted revision
+GOLD_A_EPISODE_ID=derived episode record in persisted revision
+GOLD_A_SCENE_COUNT=2
+GOLD_A_BEAT_COUNT=2
+GOLD_A_SHOT_COUNT=2
+GOLD_A_EXECUTION_PLAN_ID=a520242e-9828-48b4-81f4-540ecddf5c52
+GOLD_A_EXECUTION_ATTEMPT_ID=65d61f8c-6cd9-421d-9e76-86dba7cb0039
+GOLD_A_ARTIFACT_ID=727275386040f3e983f126223d371f0b5d57609bfe3e172ece4dfda20b25910c
+GOLD_A_FINAL_MP4=/tmp/hevi-p0-final-semantic-20260911/gold-a.mp4
+GOLD_A_SHA256=727275386040f3e983f126223d371f0b5d57609bfe3e172ece4dfda20b25910c
+GOLD_A_RUNTIME_E2E=PASS
+GOLD_A_SOURCE_PROVENANCE=PASS
+```
+
+The selected event resolves SourceDocument → exact SourceChunk span →
+NarrativeEvent → AdaptationDecision → Episode → Scene → Shot. `ffprobe`, full
+decode, non-empty and non-black checks passed.
+
+### Gold B — source-driven long-form path
+
+Entrypoint: `novel2video_long_form_entrypoint` via
+`long_form_product_entrypoint`, with source ingestion from
+`tests/golden/gold_b_long_form.txt`.
+
+```text
+GOLD_B_PROJECT_ID=00a895ce-b162-41fe-b03d-ee67ba1c5152
+GOLD_B_PROJECT_REVISION_ID=98e379e5-b9cc-48d5-9bcb-bb5306294674
+GOLD_B_SOURCE_DOCUMENT_ID=7e8645b2-f48d-50ab-8118-9cab960e44b4
+GOLD_B_CHAPTER_COUNT=2
+GOLD_B_EPISODE_COUNT=2
+GOLD_B_EVENT_COUNT=4
+GOLD_B_PLOT_THREAD_COUNT=1
+GOLD_B_SCENE_COUNT=4
+GOLD_B_BEAT_COUNT=4
+GOLD_B_SHOT_COUNT=4
+GOLD_B_CROSS_CHAPTER_RELATION=CAUSES
+GOLD_B_CHARACTER_STATE_TRANSITION=unharmed/determined→storm-marked/resolved
+GOLD_B_LOOK_VARIANT_TRANSITION=dusty-cloak→wet-torn-cloak
+GOLD_B_LOCATION_STATE_TRANSITION=clear-dawn→storm-night
+GOLD_B_PROP_STATE_TRANSITION=unowned-sealed→envoy-owned-opened
+GOLD_B_EXECUTION_PLAN_ID=5472ddfb-db3f-4ca4-943a-92765e8903b4
+GOLD_B_EXECUTION_ATTEMPT_ID=5af19c8a-d584-4c4d-97ea-54afd0055899
+GOLD_B_ARTIFACT_ID=75b17b81c8297c3fde9b7c247874a6ab87ae255c14c9fd7903df0b414286825b
+GOLD_B_FINAL_MP4=/tmp/hevi-p0-final-semantic-20260911/gold-b.mp4
+GOLD_B_SHA256=75b17b81c8297c3fde9b7c247874a6ab87ae255c14c9fd7903df0b414286825b
+GOLD_B_LONG_FORM_SEMANTICS=PASS
+GOLD_B_RUNTIME_E2E=PASS
+```
+
+The persisted graph contains the cross-chapter causal edge and the meaningful
+state transitions derived from source wording. The selected shot resolves
+through CameraSpec, Keyframe, ReferenceBundle, continuity evaluation,
+ShotReadinessResult, RemotionCompiler, ExecutionPlan, Slate, ExecutionAttempt,
+Artifact, and SHA256.
+
+### Gold C — real one-prompt product path
+
+Entrypoint: `POST /api/studio/one-prompt` in
+`hevi/api/routers/studio_v2.py`.
+
+```text
+GOLD_C_RAW_INPUT=Make a tense 12-second vertical scene of an envoy crossing an old gate at dawn.
+GOLD_C_PROJECT_ID=70e1411a-aa56-4f96-8164-0489084d3c95
+GOLD_C_PROJECT_REVISION_ID=113104c7-e2ae-4d8e-8308-02476a674862
+GOLD_C_DIRECTOR_SESSION_ID=a7a7764c-448e-4fa1-a3c0-c57187641e3f
+GOLD_C_DIRECTOR_DECISION_ID=5816e749-3065-4de2-8e55-b2e6093acb05
+GOLD_C_PRODUCTION_PLAN_ID=62eb7ff9-05af-5564-a517-5abb077cefb5
+GOLD_C_SCENE_COUNT=2
+GOLD_C_SHOT_COUNT=2
+GOLD_C_EXECUTION_PLAN_ID=ac790ca4-40fb-42f2-8a5e-82c7aa99cd64
+GOLD_C_EXECUTION_ATTEMPT_ID=7a04c776-c16c-4591-8665-2f525da27499
+GOLD_C_ARTIFACT_ID=ad1de1377729089b9c2abb0a0527c12726ea7e1828e6fce9c49a541f67537fb6
+GOLD_C_FINAL_MP4=/tmp/hevi-p0-final-semantic-20260911/gold-c.mp4
+GOLD_C_SHA256=ad1de1377729089b9c2abb0a0527c12726ea7e1828e6fce9c49a541f67537fb6
+GOLD_C_REAL_PRODUCT_PATH=PASS
+GOLD_C_RUNTIME_E2E=PASS
+```
+
+### Semantic closure validator
+
+```text
+CREATIVE_PROVENANCE_COMPLETE=YES
+ORPHAN_PROVENANCE_NODES=0
+BROKEN_PROVENANCE_EDGES=0
+UNBOUND_FINAL_ARTIFACTS=0
+GOLDEN_E2E_TEST_COUNT=5
+GOLDEN_E2E_PASSED=5
+GOLDEN_E2E_FAILED=0
+GOLD_ACCEPTANCE_GUARDS=PASS
+```
+
+The permanent harness is `tests/golden/test_p0_runtime_golden_e2e.py`; all
+tests use the `golden` marker. The validator is
+`hevi/production_graph/provenance.py::validate_creative_provenance`. No
+PromptVersion or SkillVersion is used by this CPU Remotion execution path;
+those fields are `NOT_APPLICABLE_BY_EXECUTION_PATH` rather than fabricated.

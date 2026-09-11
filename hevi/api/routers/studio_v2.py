@@ -8,6 +8,7 @@ Slate/runtime boundaries.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -124,6 +125,10 @@ class DirectorMessageRequest(BaseModel):
 
 class OnePromptRequest(BaseModel):
     request: str = Field(min_length=1)
+    # Local CPU acceptance runs may ask the same product entrypoint to finish
+    # the render.  Normal clients omit this field; production storage remains
+    # behind the canonical repository/artifact boundary.
+    render_path: str | None = None
 
 
 async def get_graph_repository(
@@ -144,7 +149,10 @@ async def one_prompt(
     """Canonical user-facing one-prompt product entrypoint."""
 
     run = await one_prompt_product_entrypoint(
-        repository, raw_request=body.request, user_id=str(user["id"])
+        repository,
+        raw_request=body.request,
+        user_id=str(user["id"]),
+        render_path=Path(body.render_path) if body.render_path else None,
     )
     return {
         "project_id": run.snapshot.project.id,
@@ -153,6 +161,10 @@ async def one_prompt(
         "director_decision_id": run.snapshot.director_decisions[0].id,
         "production_plan_id": run.production_plan.id,
         "execution_plan_id": run.execution_plan.id,
+        "execution_attempt_id": run.execution_attempt.id,
+        "artifact_id": (
+            run.execution_attempt.artifact_ids[0] if run.execution_attempt.artifact_ids else None
+        ),
     }
 
 

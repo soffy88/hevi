@@ -66,6 +66,7 @@ from hevi.production_graph.ids import new_id, stable_id
 from hevi.production_graph.readiness import ReadinessContext, prepare_shot
 from hevi.production_graph.repository import ProductionGraphRepository
 from hevi.production_graph.resources import ExecutionProfile
+from hevi.production_graph.source_pipeline import chapters_from_source
 from hevi.tongjian.schemas import ChapterIR
 
 
@@ -130,7 +131,6 @@ def _graph_from_chapters(
     events: list[Any] = []
     edges: list[NarrativeEdge] = []
     characters: dict[str, Any] = {}
-    cursor = 0
     chapter_event_ids: list[list[str]] = []
     for chapter in chapters:
         graph = chapter_to_narrative(
@@ -142,12 +142,13 @@ def _graph_from_chapters(
         chapter_ids: list[str] = []
         for event in graph.events:
             span = event.source_refs[0]
-            # ChapterIR spans are relative; locate the chapter text deterministically.
+            # Source ingestion has already resolved spans against the original
+            # document; preserve those exact offsets in the canonical record.
             span = span.model_copy(
                 update={
                     "chunk_id": chunks[0].id,
-                    "start_offset": cursor + (span.start_offset or 0),
-                    "end_offset": cursor + (span.end_offset or 0),
+                    "start_offset": span.start_offset or 0,
+                    "end_offset": span.end_offset or 0,
                 }
             )
             event = event.model_copy(update={"source_refs": [span], "temporal_order": len(events)})
@@ -168,7 +169,6 @@ def _graph_from_chapters(
             chapter, project_id=project.id, revision_id=revision_id
         ):
             characters[character.id] = character
-        cursor += sum(max(1, e.source_span[1]) for e in chapter.events)
     thread_id = stable_id("plot-thread", f"{project.id}:sealed-route")
     if len(chapter_event_ids) >= 2 and chapter_event_ids[0] and chapter_event_ids[1]:
         first, second = chapter_event_ids[0][-1], chapter_event_ids[1][0]
@@ -304,6 +304,7 @@ def _build_semantic_snapshot(
     constraints: list[ContinuityConstraint] = []
     readiness: list[ShotReadinessResult] = []
     for index, event in enumerate(graph.events):
+        event_text = event.summary.lower()
         episode = episodes[min(index // 2, len(episodes) - 1)]
         scene = Scene(
             id=stable_id("scene", f"{pid}:{index}"),
@@ -391,7 +392,9 @@ def _build_semantic_snapshot(
                 role=KeyframeRole.START,
                 desired_state={
                     "event_id": event.id,
-                    "look_variant_id": look_a.id if index < 2 else look_b.id,
+                    "look_variant_id": look_b.id
+                    if any(word in event_text for word in ("storm", "wet", "torn", "night"))
+                    else look_a.id,
                 },
                 generation_spec={"prompt": event.summary},
             )
@@ -440,10 +443,24 @@ def _build_semantic_snapshot(
             narrative_event_id=e.id,
             scene_id=scenes[i].id,
             location_id=location.id,
-            look_variant_id=(look_a.id if i < 2 else look_b.id),
-            physical_state={"condition": "unharmed" if i < 2 else "storm-marked"},
-            emotional_state={"mood": "determined" if i < 2 else "resolved"},
-            possessions=[prop.id] if i >= 1 else [],
+            look_variant_id=(
+                look_b.id
+                if any(word in e.summary.lower() for word in ("storm", "wet", "torn", "night"))
+                else look_a.id
+            ),
+            physical_state={
+                "condition": "storm-marked"
+                if any(word in e.summary.lower() for word in ("storm", "wounded", "torn"))
+                else "unharmed"
+            },
+            emotional_state={
+                "mood": "resolved"
+                if any(word in e.summary.lower() for word in ("delivers", "opens", "safe"))
+                else "determined"
+            },
+            possessions=[prop.id]
+            if any(word in e.summary.lower() for word in ("carries", "delivers", "holds", "opens"))
+            else [],
         )
         for i, e in enumerate(graph.events)
     ]
@@ -454,9 +471,15 @@ def _build_semantic_snapshot(
             revision_id=revision_id,
             location_id=location.id,
             scene_id=scenes[i].id,
-            time_of_day="dawn" if i < 2 else "night",
-            weather="clear" if i < 2 else "storm",
-            lighting="golden" if i < 2 else "blue",
+            time_of_day="night"
+            if any(word in graph.events[i].summary.lower() for word in ("night", "after dark"))
+            else "dawn",
+            weather="storm"
+            if any(word in graph.events[i].summary.lower() for word in ("storm", "rain", "wet"))
+            else "clear",
+            lighting="blue"
+            if any(word in graph.events[i].summary.lower() for word in ("night", "storm"))
+            else "golden",
         )
         for i in range(len(scenes))
     ]
@@ -467,10 +490,19 @@ def _build_semantic_snapshot(
             revision_id=revision_id,
             prop_id=prop.id,
             scene_id=scenes[i].id,
-            owner_character_id=hero.id if i >= 1 else None,
+            owner_character_id=hero.id
+            if any(
+                word in graph.events[i].summary.lower()
+                for word in ("carries", "delivers", "holds", "opens")
+            )
+            else None,
             location_id=location.id,
-            condition="sealed" if i < 2 else "opened",
-            visible=True,
+            condition="opened"
+            if any(
+                word in graph.events[i].summary.lower() for word in ("opens", "opened", "delivers")
+            )
+            else "sealed",
+            visible=not any(word in graph.events[i].summary.lower() for word in ("hidden", "lost")),
         )
         for i in range(len(scenes))
     ]
@@ -617,6 +649,8 @@ def _provenance(
         chain.append(("ShotRevision", shot.id, "DirectorDecision", director.id))
     chain.extend(
         [
+            ("ShotRevision", shot.id, "ProductionPlan", snapshot.production_plans[0].id),
+            ("ShotRevision", shot.id, "ContinuityConstraint", shot.continuity_constraint_ids[0]),
             ("ShotRevision", shot.id, "Keyframe", keyframe.id),
             ("Keyframe", keyframe.id, "ReferenceBundle", bundle.id),
             ("ReferenceBundle", bundle.id, "ShotReadinessResult", readiness.shot_id),
@@ -648,10 +682,11 @@ async def _run(
     entrypoint: str,
     render_path: Path | None = None,
     director: bool = False,
+    source_text: str | None = None,
 ) -> ProductRun:
     base = await repository.create_project(project)
-    source_text = "\n\n".join(
-        " ".join(event.summary for event in chapter.events) for chapter in chapters
+    source_text = source_text or "\n\n".join(
+        "\n".join(event.summary for event in chapter.events) for chapter in chapters
     )
     document, chunks, graph, characters = _graph_from_chapters(
         chapters, project, base.revision.id, source_text
@@ -673,10 +708,11 @@ async def _run(
             remotion_dir=Path(__file__).parents[2] / "hevi-remotion",
         )
         artifact = manifest.artifacts[0]
+        artifact_id = artifact.artifact_id or artifact.sha256 or artifact.path
         attempt = attempt.model_copy(
             update={
                 "status": "completed",
-                "artifact_ids": [artifact.artifact_id or artifact.sha256 or artifact.path],
+                "artifact_ids": [artifact_id],
                 "finished_at": __import__("datetime").datetime.now(__import__("datetime").UTC),
             }
         )
@@ -691,7 +727,7 @@ async def _run(
                         source_type="ExecutionAttempt",
                         source_id=attempt.id,
                         target_type="Artifact",
-                        target_id=artifact.artifact_id or artifact.sha256 or artifact.path,
+                        target_id=artifact_id,
                         relation="produced",
                     ),
                 ],
@@ -714,29 +750,9 @@ async def historical_product_entrypoint(
     user_id: str,
     render_path: Path | None = None,
 ) -> ProductRun:
-    from hevi.tongjian.schemas import ChapterMeta, EventIR
-
-    chapter = ChapterIR(
-        meta=ChapterMeta(source=title),
-        characters=[
-            {"character_id": "envoy", "canonical_name": "Envoy", "role_in_chapter": "protagonist"}
-        ],
-        events=[
-            EventIR(
-                event_id="arrival",
-                summary=source_text,
-                actors=["envoy"],
-                source_span=(0, len(source_text)),
-            ),
-            EventIR(
-                event_id="delivery",
-                summary="The envoy delivers the sealed dispatch beyond the gate.",
-                actors=["envoy"],
-                causes=["arrival"],
-                source_span=(0, len(source_text)),
-            ),
-        ],
-    )
+    chapters = chapters_from_source(source_text, source_name=title)
+    if len(chapters[0].events) < 2:
+        raise ValueError("historical source must contain at least two extractable events")
     project = ProductionProject(
         id=new_id(),
         user_id=user_id,
@@ -747,22 +763,30 @@ async def historical_product_entrypoint(
     )
     return await _run(
         project,
-        [chapter],
+        chapters,
         repository,
         entrypoint="historical_product_entrypoint",
         render_path=render_path,
         director=True,
+        source_text=source_text,
     )
 
 
 async def long_form_product_entrypoint(
     repository: ProductionGraphRepository,
     *,
-    chapters: list[ChapterIR],
+    source_text: str | None = None,
+    chapters: list[ChapterIR] | None = None,
     title: str,
     user_id: str,
     render_path: Path | None = None,
 ) -> ProductRun:
+    if chapters is None:
+        if not source_text:
+            raise ValueError("long-form product requires source text")
+        chapters = chapters_from_source(source_text, source_name=title)
+    if len(chapters) < 2:
+        raise ValueError("long-form product requires at least two chapters")
     project = ProductionProject(
         id=new_id(),
         user_id=user_id,
@@ -778,6 +802,7 @@ async def long_form_product_entrypoint(
         entrypoint="novel2video_long_form_entrypoint",
         render_path=render_path,
         director=True,
+        source_text=source_text,
     )
 
 
@@ -827,6 +852,7 @@ async def one_prompt_product_entrypoint(
         entrypoint="POST /studio/one-prompt",
         render_path=render_path,
         director=True,
+        source_text=raw_request,
     )
 
 
