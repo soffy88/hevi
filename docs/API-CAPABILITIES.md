@@ -425,6 +425,7 @@
 | POST | `/api/studio/projects/{project_id}/adapt` | Adapt Project |
 | GET | `/api/studio/projects/{project_id}/canvas` | Get Project Canvas |
 | POST | `/api/studio/projects/{project_id}/canvas/semantic-patch` | Patch Project Canvas |
+| GET | `/api/studio/projects/{project_id}/dependencies` | List Project Dependencies |
 | GET | `/api/studio/projects/{project_id}/episodes` | List Project Episodes |
 | GET | `/api/studio/projects/{project_id}/memory` | List Project Memory |
 | POST | `/api/studio/projects/{project_id}/memory` | Create Project Memory |
@@ -445,6 +446,7 @@
 | GET | `/api/studio/shots/{shot_id}` | Get Shot |
 | PATCH | `/api/studio/shots/{shot_id}` | Patch Shot |
 | POST | `/api/studio/shots/{shot_id}/approve` | Approve Shot |
+| POST | `/api/studio/shots/{shot_id}/candidate-render` | Render Shot Candidate |
 | GET | `/api/studio/shots/{shot_id}/candidates` | List Shot Candidates |
 | POST | `/api/studio/shots/{shot_id}/candidates/{candidate_id}/{action}` | Candidate Action |
 | POST | `/api/studio/shots/{shot_id}/compile` | Compile Production Shot |
