@@ -4415,6 +4415,62 @@
         }
       }
     },
+    "/api/studio/shots/{shot_id}/candidate-render": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Render Shot Candidate",
+        "description": "Create a second real CPU candidate through Compiler → Slate/runtime.\n\nThis endpoint is intentionally a product-controlled acceptance adapter: it\nrecords a new immutable plan/attempt and registers the Remotion artifact,\nrather than manufacturing a frontend candidate record.",
+        "operationId": "render_shot_candidate_api_studio_shots__shot_id__candidate_render_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "shot_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Shot Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateRenderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/studio/shots/{shot_id}/approve": {
       "post": {
         "tags": [
@@ -5209,6 +5265,52 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/dependencies": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Project Dependencies",
+        "description": "Machine-readable dependency status projection for Workbench and QA.",
+        "operationId": "list_project_dependencies_api_studio_projects__project_id__dependencies_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -18567,6 +18669,32 @@
           "name"
         ],
         "title": "CandidateIn"
+      },
+      "CandidateRenderRequest": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/ProviderCapabilities"
+          },
+          "resource_budget": {
+            "$ref": "#/components/schemas/ResourceBudget"
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider"
+        ],
+        "title": "CandidateRenderRequest"
       },
       "CanvasSemanticPatchRequest": {
         "properties": {
