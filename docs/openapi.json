@@ -3951,6 +3951,52 @@
         }
       }
     },
+    "/api/studio/projects/{project_id}/revisions": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "List Project Revisions",
+        "description": "Read immutable revision metadata for compare/reopen workflows.",
+        "operationId": "list_project_revisions_api_studio_projects__project_id__revisions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/studio/shots/{shot_id}/prepare": {
       "post": {
         "tags": [
@@ -18588,6 +18634,17 @@
       },
       "DirectorMessageRequest": {
         "properties": {
+          "base_revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision Id"
+          },
           "decision_type": {
             "type": "string",
             "title": "Decision Type",
@@ -21820,6 +21877,17 @@
             "type": "string",
             "minLength": 1,
             "title": "Request"
+          },
+          "render_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Render Path"
           }
         },
         "type": "object",
@@ -21954,6 +22022,17 @@
       },
       "PatchRequest": {
         "properties": {
+          "base_revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision Id"
+          },
           "reason": {
             "type": "string",
             "minLength": 1,
@@ -22526,6 +22605,17 @@
       },
       "ProjectPatchRequest": {
         "properties": {
+          "base_revision_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Revision Id"
+          },
           "title": {
             "anyOf": [
               {

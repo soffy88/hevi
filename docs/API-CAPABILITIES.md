@@ -424,6 +424,7 @@
 | GET | `/api/studio/projects/{project_id}/episodes` | List Project Episodes |
 | GET | `/api/studio/projects/{project_id}/narrative` | Get Project Narrative |
 | POST | `/api/studio/projects/{project_id}/narrative/build` | Build Project Narrative |
+| GET | `/api/studio/projects/{project_id}/revisions` | List Project Revisions |
 | POST | `/api/studio/projects/{project_id}/sources` | Add Project Source |
 | POST | `/api/studio/runs` | Create Production Run |
 | GET | `/api/studio/runs/{run_id}` | Get Production Run |
