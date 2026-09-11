@@ -421,6 +421,8 @@
 | GET | `/api/studio/projects/{project_id}` | Get Production Project |
 | PATCH | `/api/studio/projects/{project_id}` | Patch Production Project |
 | POST | `/api/studio/projects/{project_id}/adapt` | Adapt Project |
+| GET | `/api/studio/projects/{project_id}/canvas` | Get Project Canvas |
+| POST | `/api/studio/projects/{project_id}/canvas/semantic-patch` | Patch Project Canvas |
 | GET | `/api/studio/projects/{project_id}/episodes` | List Project Episodes |
 | GET | `/api/studio/projects/{project_id}/narrative` | Get Project Narrative |
 | POST | `/api/studio/projects/{project_id}/narrative/build` | Build Project Narrative |

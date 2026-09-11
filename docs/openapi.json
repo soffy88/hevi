@@ -3997,6 +3997,108 @@
         }
       }
     },
+    "/api/studio/projects/{project_id}/canvas": {
+      "get": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Get Project Canvas",
+        "description": "Return a canonical-ID canvas projection; layout is never production state.",
+        "operationId": "get_project_canvas_api_studio_projects__project_id__canvas_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/canvas/semantic-patch": {
+      "post": {
+        "tags": [
+          "studio-v2"
+        ],
+        "summary": "Patch Project Canvas",
+        "description": "Convert a Canvas semantic action into the same canonical patch path.",
+        "operationId": "patch_project_canvas_api_studio_projects__project_id__canvas_semantic_patch_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CanvasSemanticPatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/studio/shots/{shot_id}/prepare": {
       "post": {
         "tags": [
@@ -17716,6 +17818,41 @@
           "name"
         ],
         "title": "CandidateIn"
+      },
+      "CanvasSemanticPatchRequest": {
+        "properties": {
+          "base_revision_id": {
+            "type": "string",
+            "title": "Base Revision Id"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "node": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Node"
+          },
+          "field": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Field"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "base_revision_id",
+          "reason",
+          "node",
+          "field",
+          "value"
+        ],
+        "title": "CanvasSemanticPatchRequest"
       },
       "CharacterBinding": {
         "properties": {

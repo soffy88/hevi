@@ -85,6 +85,52 @@ async def test_workbench_revision_history_and_stale_update_protection() -> None:
 
 
 @pytest.mark.asyncio
+async def test_canvas_is_a_canonical_projection_and_semantic_patch_boundary() -> None:
+    repo = ProductionGraphRepository()
+    user = {"id": "canvas-workbench-user", "is_active": True}
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[studio_v2.get_graph_repository] = lambda: repo
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            created = await client.post("/api/studio/projects", json={"title": "Canvas projection"})
+            project_id = created.json()["project"]["id"]
+            revision_id = created.json()["revision"]["id"]
+            projection = await client.get(f"/api/studio/projects/{project_id}/canvas")
+            assert projection.status_code == 200
+            assert projection.json()["project_id"] == project_id
+            assert projection.json()["revision_id"] == revision_id
+            semantic = await client.post(
+                f"/api/studio/projects/{project_id}/canvas/semantic-patch",
+                json={
+                    "base_revision_id": revision_id,
+                    "reason": "canvas director note",
+                    "node": {
+                        "production_object_id": project_id,
+                        "production_type": "projects",
+                    },
+                    "field": "title",
+                    "value": "Canvas renamed",
+                },
+            )
+            assert semantic.status_code == 422
+            layout_only = await client.post(
+                f"/api/studio/projects/{project_id}/canvas/semantic-patch",
+                json={
+                    "base_revision_id": revision_id,
+                    "reason": "move node",
+                    "node": {},
+                    "field": "position",
+                    "value": {"x": 10, "y": 20},
+                },
+            )
+            assert layout_only.status_code == 200
+            assert layout_only.json()["semantic"] is False
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
 async def test_studio_v2_domain_routes_preserve_canonical_runtime_boundaries() -> None:
     repo = ProductionGraphRepository()
     user = {"id": "api-domain-user", "is_active": True}

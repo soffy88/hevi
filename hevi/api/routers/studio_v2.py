@@ -35,6 +35,7 @@ from hevi.production_graph import (
     prepare_shot,
     record_director_decision,
 )
+from hevi.production_graph.adapters.canvas import CanvasProjection, canvas_semantic_patch
 from hevi.production_graph.adapters.tongjian import (
     chapter_characters,
     chapter_to_narrative,
@@ -132,6 +133,14 @@ class OnePromptRequest(BaseModel):
     # the render.  Normal clients omit this field; production storage remains
     # behind the canonical repository/artifact boundary.
     render_path: str | None = None
+
+
+class CanvasSemanticPatchRequest(BaseModel):
+    base_revision_id: str
+    reason: str = Field(min_length=1)
+    node: dict[str, Any]
+    field: str = Field(min_length=1)
+    value: Any
 
 
 async def get_graph_repository(
@@ -407,6 +416,78 @@ async def list_project_revisions(project_id: str, user: UserDep, repo: RepoDep):
 
     await _owned_snapshot(repo, project_id, user)
     return {"revisions": [_dump(item) for item in await repo.list_revisions(project_id)]}
+
+
+@router.get("/projects/{project_id}/canvas")
+async def get_project_canvas(project_id: str, user: UserDep, repo: RepoDep):
+    """Return a canonical-ID canvas projection; layout is never production state."""
+
+    snapshot = await _owned_snapshot(repo, project_id, user)
+    nodes: list[dict[str, Any]] = []
+    for collection, production_type in (
+        (snapshot.narrative.events if snapshot.narrative else [], "narrative_events"),
+        (snapshot.characters, "characters"),
+        (snapshot.locations, "locations"),
+        (snapshot.props, "props"),
+        (snapshot.episodes, "episodes"),
+        (snapshot.scenes, "scenes"),
+        (snapshot.shots, "shots"),
+        (snapshot.keyframes, "keyframes"),
+    ):
+        for item in collection:
+            label = (
+                getattr(item, "summary", None)
+                or getattr(item, "title", None)
+                or getattr(item, "action_description", None)
+                or getattr(item, "name", None)
+                or item.id
+            )
+            nodes.append(
+                {
+                    "node_id": f"{production_type}:{item.id}",
+                    "node_type": production_type,
+                    "label": str(label),
+                    "production_object_id": item.id,
+                    "production_type": production_type,
+                }
+            )
+    return CanvasProjection(
+        graph_id=f"workbench:{project_id}",
+        project_id=project_id,
+        revision_id=snapshot.revision.id,
+        nodes=nodes,
+    ).model_dump(mode="json")
+
+
+@router.post("/projects/{project_id}/canvas/semantic-patch")
+async def patch_project_canvas(
+    project_id: str,
+    body: CanvasSemanticPatchRequest,
+    user: UserDep,
+    repo: RepoDep,
+):
+    """Convert a Canvas semantic action into the same canonical patch path."""
+
+    snapshot = await _owned_snapshot(repo, project_id, user)
+    if body.base_revision_id != snapshot.revision.id:
+        raise HTTPException(status_code=409, detail="STALE_REVISION")
+    try:
+        patch = canvas_semantic_patch(
+            project_id=project_id,
+            revision_id=snapshot.revision.id,
+            actor=_user_id(user),
+            reason=body.reason,
+            node=body.node,
+            field=body.field,
+            value=body.value,
+        )
+        if patch is None:
+            return {"revision": _dump(snapshot.revision), "semantic": False}
+        child = apply_revision_patch(snapshot, patch)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await repo.save_snapshot(child)
+    return {"revision": _dump(child.revision), "semantic": True}
 
 
 @router.post("/shots/{shot_id}/prepare")
