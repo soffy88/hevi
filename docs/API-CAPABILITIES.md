@@ -290,6 +290,15 @@
 | GET | `/api/pro/orchestration/roles` | Orchestration Roles |
 | POST | `/api/pro/stock/search` | Stock Search |
 
+## production-intelligence
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/studio/projects/{project_id}/intelligence` | Create Intelligence |
+| POST | `/api/studio/projects/{project_id}/intelligence/learn` | Learn Outcome |
+| POST | `/api/studio/projects/{project_id}/intelligence/recover` | Recover Dispatch |
+| GET | `/api/studio/projects/{project_id}/intelligence/{kind}` | List Intelligence |
+
 ## production-v2
 
 | 方法 | 路径 | 说明 |

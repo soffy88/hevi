@@ -5747,6 +5747,227 @@
         }
       }
     },
+    "/api/studio/projects/{project_id}/intelligence/{kind}": {
+      "get": {
+        "tags": [
+          "production-intelligence"
+        ],
+        "summary": "List Intelligence",
+        "operationId": "list_intelligence_api_studio_projects__project_id__intelligence__kind__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/intelligence": {
+      "post": {
+        "tags": [
+          "production-intelligence"
+        ],
+        "summary": "Create Intelligence",
+        "operationId": "create_intelligence_api_studio_projects__project_id__intelligence_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntelligenceRecordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/intelligence/learn": {
+      "post": {
+        "tags": [
+          "production-intelligence"
+        ],
+        "summary": "Learn Outcome",
+        "operationId": "learn_outcome_api_studio_projects__project_id__intelligence_learn_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearnRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/studio/projects/{project_id}/intelligence/recover": {
+      "post": {
+        "tags": [
+          "production-intelligence"
+        ],
+        "summary": "Recover Dispatch",
+        "operationId": "recover_dispatch_api_studio_projects__project_id__intelligence_recover_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/production/v2/seedance/generate": {
       "post": {
         "tags": [
@@ -21485,6 +21706,25 @@
         ],
         "title": "InitialPosition"
       },
+      "IntelligenceRecordRequest": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "record": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Record"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "record"
+        ],
+        "title": "IntelligenceRecordRequest"
+      },
       "LayerConfig": {
         "properties": {
           "model": {
@@ -21507,6 +21747,29 @@
         "type": "object",
         "title": "LayerConfig",
         "description": "通鉴流水线**单层的模型选择 + 可调参数**——每层(L0..L8)可独立配置,便于全自动生成\n有偏差时逐层调参重跑。`model=None` 走该层默认模型;`params` 覆盖该层默认参数(具体键值\n由各层 build_* 自行解释,见各层 docstring)。前端 RunRequest 表单直接填这个结构。"
+      },
+      "LearnRequest": {
+        "properties": {
+          "outcome": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Outcome"
+          },
+          "preference_key": {
+            "type": "string",
+            "title": "Preference Key"
+          },
+          "preference_value": {
+            "title": "Preference Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outcome",
+          "preference_key",
+          "preference_value"
+        ],
+        "title": "LearnRequest"
       },
       "LightingKeyRatio": {
         "properties": {
