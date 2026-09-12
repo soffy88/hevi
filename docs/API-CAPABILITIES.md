@@ -499,6 +499,12 @@
 | POST | `/api/subjects/{subject_id}/voice` | Upload Subject Voice |
 | POST | `/api/subjects/{subject_id}/wardrobe` | Upload Subject Wardrobe |
 
+## system
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/health` | Root Health |
+
 ## tasks
 
 | 方法 | 路径 | 说明 |
