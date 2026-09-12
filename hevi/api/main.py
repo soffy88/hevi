@@ -58,6 +58,7 @@ from hevi.api.routers.shortdrama_writer import router as shortdrama_writer_route
 from hevi.api.routers.style import router as style_router
 from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.studio_v2 import router as studio_v2_router
+from hevi.api.routers.production_intelligence import router as production_intelligence_router
 from hevi.api.routers.subjects import router as subjects_router
 from hevi.api.routers.tasks import router as tasks_router
 from hevi.api.routers.templates import router as templates_router
@@ -134,8 +135,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
                 # uvicorn workers and makes them compete instead of fanning
                 # out the same event stream to every WebSocket instance.
                 consumer_name=(
-                    settings.event_consumer_name
-                    or f"api-{socket.gethostname()}-{os.getpid()}"
+                    settings.event_consumer_name or f"api-{socket.gethostname()}-{os.getpid()}"
                 ),
                 poll_interval=settings.event_consumer_poll_interval_s,
                 max_attempts=settings.event_consumer_max_attempts,
@@ -189,6 +189,7 @@ app.include_router(material_corpus_router, prefix="/api")
 app.include_router(backlot_router, prefix="/api")
 app.include_router(studio_router, prefix="/api")
 app.include_router(studio_v2_router, prefix="/api")
+app.include_router(production_intelligence_router, prefix="/api")
 app.include_router(production_tools_v2_router, prefix="/api")
 app.include_router(presenters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
