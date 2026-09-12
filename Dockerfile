@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN --mount=type=ssh pip install uv
 
 COPY pyproject.toml uv.lock* ./
+COPY hevi/ ./hevi/
 RUN --mount=type=ssh uv sync --no-dev --frozen
 
 COPY scripts/ ./scripts/
@@ -52,7 +53,6 @@ COPY hevi-remotion/package.json hevi-remotion/package-lock.json ./hevi-remotion/
 RUN cd hevi-remotion && npm ci --omit=dev --no-audit --no-fund
 COPY hevi-remotion/ ./hevi-remotion/
 
-COPY hevi/ ./hevi/
 COPY alembic.ini ./
 
 # Runtime must not execute the API as root.
