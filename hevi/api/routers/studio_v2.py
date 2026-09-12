@@ -836,13 +836,32 @@ async def render_shot_candidate(
         plan = ProductionCompiler().compile(shot, bundle, body.provider, body.resource_budget)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    candidate_no = (
+        len([item for item in snapshot.execution_attempts if item.shot_id == shot.id]) + 1
+    )
+    # Preserve independent candidate identity in the immutable execution
+    # plan, even when deterministic CPU rendering starts from the same Shot.
+    plan = plan.model_copy(
+        update={
+            "prompt": f"{plan.prompt} Candidate {candidate_no}",
+            "idempotency_key": f"{plan.idempotency_key}:candidate:{candidate_no}",
+            "parameters": {
+                **plan.parameters,
+                "candidate_variant": candidate_no,
+                "version_bindings": [
+                    item
+                    for item in await repo.list_workbench_records(snapshot.project.id, "p1_version")
+                    if item.get("active", False)
+                ],
+            },
+        }
+    )
     attempt = ExecutionAttempt(
         project_id=snapshot.project.id,
         revision_id=snapshot.revision.id,
         shot_id=shot.id,
         execution_plan_id=plan.id,
-        attempt_no=len([item for item in snapshot.execution_attempts if item.shot_id == shot.id])
-        + 1,
+        attempt_no=candidate_no,
         status="running",
         idempotency_key=plan.idempotency_key or new_id(),
         started_at=datetime.now(UTC),
@@ -1422,11 +1441,25 @@ async def post_director_message(
         for item in await repo.list_workbench_records(snapshot.project.id, "p1_memory")
         if item.get("active", True) and item.get("scope") == "PROJECT"
     ]
+    persisted_versions = [
+        item
+        for item in await repo.list_workbench_records(snapshot.project.id, "p1_version")
+        if item.get("active", False)
+    ]
     # Memory is advisory context only.  The current user message remains the
     # explicit authority and is stored separately in the decision inputs.
     inputs = dict(body.inputs)
     inputs["creative_memory"] = [item.get("content", "") for item in persisted_memory]
     inputs["memory_authority"] = "current_instruction > canonical_state > project_memory"
+    inputs["version_bindings"] = [
+        {
+            "id": item.get("id"),
+            "registry_type": item.get("registry_type"),
+            "name": item.get("name"),
+            "version": item.get("version"),
+        }
+        for item in persisted_versions
+    ]
     operations = list(body.operations)
     patch = RevisionPatch(
         project_id=snapshot.project.id,

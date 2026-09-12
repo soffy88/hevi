@@ -93,3 +93,38 @@ promoting the remaining unverified gates.
 
 Generated media, runtime databases, screenshots, browser traces, and logs are
 not committed.
+
+## FINAL_VERIFICATION_CLOSURE
+
+The final verification pass used the real FastAPI backend, PostgreSQL, and
+Next.js Workbench. Acceptance actions were performed through visible browser
+controls; API calls were used only to prepare deterministic projects and to
+read persisted postconditions.
+
+- Candidate lifecycle: real CPU candidate artifacts were created for Shot
+  `f2126ba2-bcbf-5532-84da-560597d1bf2f`; Select, reload, Lock, lock
+  protection, and persisted state were verified. Candidate artifact examples
+  were `01e8ba05e40e48e69088636edebd25c3e737e8c96292f87872a530c7102c7fea`
+  and `3e7f04c5e5c7d05445e3b351d4fcfab0709ac5d4407800c6f6a8d2d2f6b48066`.
+- Dependency rework: project `02282f96-d702-4fe1-a6ae-04eba182ba7a`, LookVariant
+  `048e573a-86f9-59a3-8403-a14952b5ce82`; the browser preview reported four
+  affected Shots and two unrelated Shots. The applied revision marked only
+  the affected reference/keyframe/shot subtree stale, and browser regeneration
+  created one pending attempt for an affected Shot.
+- Timeline: browser trim, candidate replacement, subtitle, audio-level, and
+  BGM commands all created canonical revisions and survived reload. The
+  replacement used the canonical candidate endpoint and a real artifact.
+- Creative memory: PROJECT-scoped memory persisted across a newly created
+  DirectorSession. The Director decision inputs contained the persisted memory
+  and explicitly recorded `current_instruction > canonical_state >
+  project_memory`.
+- Registry/templates: prompt and skill version diff/activation/rollback were
+  exercised in the Workbench. Historical Documentary, AI Drama, and Social
+  Short browser applications persisted distinct canonical policies; no shadow
+  runtime was introduced.
+
+The final executable changes also protect revision-producing candidate and
+Director commands by reading the authoritative revision at dispatch time.
+The long-form adapter now binds Scene/Shot character IDs from each canonical
+NarrativeEvent instead of assigning every shot to the hero, which is required
+for a real minimum dependency subtree.

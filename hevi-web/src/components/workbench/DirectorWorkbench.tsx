@@ -132,7 +132,13 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
   }
 
   async function candidateAction(candidateId: string, action: string) {
-    await mutate(() => productionApi.candidateAction(selectedShotId ?? '', candidateId, action, snapshot?.revision.id), `Candidate ${action} 已持久化`);
+    const shotId = selectedShotId;
+    if (!shotId) return;
+    // Candidate transitions are revision-producing commands.  Read the
+    // authoritative revision at dispatch time so a preceding select/lock
+    // cannot leave the next browser command with a stale closure.
+    const latest = await productionApi.get(projectId);
+    await mutate(() => productionApi.candidateAction(shotId, candidateId, action, latest.revision.id), `Candidate ${action} 已持久化`);
   }
 
   async function timelineEdit(shotId: string, path: string, value: unknown, reason: string) {
@@ -140,6 +146,21 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
     const target = snapshot.shots.find(item => item.id === shotId);
     if (!target) return;
     await mutate(() => productionApi.patchShot(shotId, reason, [{ op: 'replace', path: `/shots/${shotId}/${path}`, value }], snapshot.revision.id), `${reason} 已创建新 revision`);
+  }
+
+  async function replaceTimelineShot(shotId: string) {
+    if (!snapshot) return;
+    const result = await productionApi.candidates(shotId);
+    const replacement = result.candidates.find(item => item.state === 'CANDIDATE' && item.artifact_id);
+    if (!replacement) {
+      setError('没有可替换的真实 candidate artifact');
+      return;
+    }
+    const latest = await productionApi.get(projectId);
+    await mutate(
+      () => productionApi.candidateAction(shotId, String(replacement.id), 'select', latest.revision.id),
+      'Timeline shot artifact 已通过 canonical candidate 替换',
+    );
   }
 
   async function previewLookRework(lookVariantId: string) {
@@ -161,7 +182,9 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
 
   async function addMemory() {
     const content = directorText.trim() || 'Keep the main subject readable and preserve continuity.';
-    await mutate(() => productionApi.addMemory(projectId, { scope: 'PROJECT', kind: 'accepted_preference', content, source_session_id: sessionId }), 'Creative memory 已持久化');
+    const id = await openDirector();
+    const latest = await productionApi.get(projectId);
+    await mutate(() => productionApi.addMemory(projectId, { scope: 'PROJECT', kind: 'accepted_preference', content, source_session_id: id }), 'Creative memory 已持久化');
     setDirectorText('');
   }
 
@@ -179,8 +202,12 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
     try {
       const id = await openDirector();
       if (!id) throw new Error('DirectorSession 未创建');
+      // Opening a session is itself a canonical revision-producing operation.
+      // Reload the authoritative revision before posting the first decision;
+      // the previous snapshot must never be reused after session creation.
+      const latest = await productionApi.get(projectId);
       const operations = apply && selectedShotId ? [{ op: 'replace' as const, path: `/shots/${selectedShotId}/cinematography_notes`, value: message }] : [];
-      const result = await productionApi.directorMessage(id, { base_revision_id: snapshot?.revision.id, decision_type: apply ? 'creative_revision_applied' : 'creative_revision_proposed', rationale: message, inputs: { user_message: message, selected_shot_id: selectedShotId }, operations });
+      const result = await productionApi.directorMessage(id, { base_revision_id: latest.revision.id, decision_type: apply ? 'creative_revision_applied' : 'creative_revision_proposed', rationale: message, inputs: { user_message: message, selected_shot_id: selectedShotId }, operations });
       setDecisions(current => [...current, result.decision]);
       setDirectorText('');
       await refresh();
@@ -223,7 +250,7 @@ export function DirectorWorkbench({ projectId }: { projectId: string }) {
           {tab === 'story' && <StoryView snapshot={snapshot} revisions={revisionHistory} onSave={saveStory} busy={busy} />}
           {tab === 'storyboard' && <StoryboardView snapshot={snapshot} selectedShotId={selectedShotId} onSelect={setSelectedShotId} onPrepare={prepare} onApprove={() => void transition('approve')} onLock={() => void transition('lock')} onGenerate={() => void generate()} onRegenerate={() => void generate(true)} busy={busy} />}
           {tab === 'canvas' && <CanvasProjection snapshot={snapshot} onSelectShot={id => { setSelectedShotId(id); setTab('storyboard'); }} />}
-          {tab === 'timeline' && <TimelineView snapshot={snapshot} onSelectShot={id => setSelectedShotId(id)} onEdit={timelineEdit} busy={busy} />}
+          {tab === 'timeline' && <TimelineView snapshot={snapshot} onSelectShot={id => setSelectedShotId(id)} onEdit={timelineEdit} onReplace={replaceTimelineShot} busy={busy} />}
           {tab === 'assets' && <AssetsView snapshot={snapshot} onToggleKeyframe={toggleKeyframe} onPreviewLookRework={previewLookRework} onApplyLookRework={applyLookRework} reworkPreview={reworkPreview} onApplyTemplate={applyTemplate} onActivateVersion={activateVersion} onAddMemory={addMemory} />}
           {tab === 'qa' && <QaView snapshot={snapshot} />}
         </section>
@@ -254,7 +281,7 @@ function ShotCard({ shot, selected, onSelect }: { shot: ProductionShot; selected
 
 function Inspector({ shot, scene, episode, readiness, candidates, onCandidateAction, onPrepare, onApprove, onLock, onGenerate, onRenderCandidate, busy }: { shot: ProductionShot | null; scene: ProductionGraphSnapshot['scenes'][number] | null; episode: ProductionGraphSnapshot['episodes'][number] | null; readiness: ReadinessState | null; candidates: Array<Record<string, unknown>>; onCandidateAction: (candidateId: string, action: string) => void; onPrepare: () => void; onApprove: () => void; onLock: () => void; onGenerate: () => void; onRenderCandidate: () => void; busy: boolean }) {
   if (!shot) return <section className="wb-inspector-section"><span className="wb-eyebrow">INSPECTOR</span><h2>选择一个 Shot</h2><p className="wb-muted">从左侧结构或 Storyboard 选择 canonical object。</p></section>;
-  return <section className="wb-inspector-section"><div className="wb-inspector-title"><span className="wb-eyebrow">SHOT INSPECTOR</span><span className={`wb-status wb-status--${String(shot.readiness_state).toLowerCase()}`}>{statusLabels[shot.readiness_state] ?? shot.readiness_state}</span></div><h2>{shortId(shot.id)}</h2><dl className="wb-detail-list"><dt>Episode</dt><dd>{episode?.title || shortId(episode?.id)}</dd><dt>Scene</dt><dd>{shortId(scene?.id)}</dd><dt>Camera</dt><dd>{String(shot.camera?.shot_size ?? '—')} · {String(shot.camera?.movement ?? '—')}</dd><dt>Duration</dt><dd>{shot.duration_target}s</dd><dt>Readiness</dt><dd>{readiness ?? shot.readiness_state}</dd><dt>References</dt><dd>{shot.reference_bundle_id ? shortId(shot.reference_bundle_id) : 'missing'}</dd></dl><div className="wb-inspector-actions"><button type="button" onClick={onPrepare} disabled={busy}>Run readiness</button><button type="button" onClick={onGenerate} disabled={busy || shot.readiness_state !== 'READY'}>Generate</button><button type="button" onClick={onRenderCandidate} disabled={busy || shot.readiness_state !== 'READY'}>Render candidate</button><button type="button" onClick={onApprove} disabled={busy}>Approve</button><button type="button" onClick={onLock} disabled={busy}>Lock</button></div><section className="wb-candidate-panel"><div className="wb-card-heading"><h3>Candidates</h3><span>{candidates.length}</span><button type="button" onClick={() => window.dispatchEvent(new CustomEvent('hevi:candidate-compare'))} disabled={candidates.length < 2}>Compare</button></div>{candidates.map(candidate => { const id = String(candidate.id); const state = String(candidate.state ?? 'CANDIDATE'); return <article className="wb-candidate-row" key={id}><div><strong>{state}</strong><small>{shortId(String(candidate.artifact_id ?? 'no artifact'))} · {shortId(String(candidate.execution_attempt_id ?? ''))}</small></div><div className="wb-candidate-actions">{state === 'CANDIDATE' && <><button type="button" onClick={() => onCandidateAction(id, 'select')} disabled={busy || !candidate.artifact_id}>Select</button><button type="button" onClick={() => onCandidateAction(id, 'reject')} disabled={busy}>Reject</button></>}{state === 'SELECTED' && <><button type="button" onClick={() => onCandidateAction(id, 'lock')} disabled={busy}>Lock</button><button type="button" onClick={() => onCandidateAction(id, 'reject')} disabled={busy}>Reject</button></>}{state === 'LOCKED' && <button type="button" onClick={() => onCandidateAction(id, 'unlock')} disabled={busy}>Unlock</button>}{state === 'REJECTED' && <button type="button" onClick={() => onCandidateAction(id, 'archive')} disabled={busy}>Archive</button>}</div></article>; })}{!candidates.length && <p className="wb-empty">尚无真实 ExecutionAttempt candidate。</p>}</section></section>;
+  return <section className="wb-inspector-section"><div className="wb-inspector-title"><span className="wb-eyebrow">SHOT INSPECTOR</span><span className={`wb-status wb-status--${String(shot.readiness_state).toLowerCase()}`}>{statusLabels[shot.readiness_state] ?? shot.readiness_state}</span></div><h2>{shortId(shot.id)}</h2><dl className="wb-detail-list"><dt>Episode</dt><dd>{episode?.title || shortId(episode?.id)}</dd><dt>Scene</dt><dd>{shortId(scene?.id)}</dd><dt>Camera</dt><dd>{String(shot.camera?.shot_size ?? '—')} · {String(shot.camera?.movement ?? '—')}</dd><dt>Duration</dt><dd>{shot.duration_target}s</dd><dt>Readiness</dt><dd>{readiness ?? shot.readiness_state}</dd><dt>References</dt><dd>{shot.reference_bundle_id ? shortId(shot.reference_bundle_id) : 'missing'}</dd></dl><div className="wb-inspector-actions"><button type="button" onClick={onPrepare} disabled={busy}>Run readiness</button><button type="button" onClick={onGenerate} disabled={busy || shot.readiness_state !== 'READY'}>Generate</button><button type="button" onClick={onRenderCandidate} disabled={busy || shot.readiness_state !== 'READY'}>Render candidate</button><button type="button" onClick={onApprove} disabled={busy}>Approve</button><button type="button" onClick={onLock} disabled={busy}>Lock</button></div><section className="wb-candidate-panel"><div className="wb-card-heading"><h3>Candidates</h3><span>{candidates.length}</span><button type="button" onClick={() => window.dispatchEvent(new CustomEvent('hevi:candidate-compare'))} disabled={candidates.length < 2}>Compare</button></div>{candidates.map(candidate => { const id = String(candidate.id); const state = String(candidate.state ?? 'CANDIDATE'); const testButton = (action: string) => `candidate-${id}-${action}`; return <article className="wb-candidate-row" key={id} data-testid={`candidate-${id}`}><div><strong>{state}</strong><small>{shortId(String(candidate.artifact_id ?? 'no artifact'))} · {shortId(String(candidate.execution_attempt_id ?? ''))}</small></div><div className="wb-candidate-actions">{state === 'CANDIDATE' && <><button type="button" data-testid={testButton('select')} onClick={() => onCandidateAction(id, 'select')} disabled={busy || !candidate.artifact_id}>Select</button><button type="button" data-testid={testButton('reject')} onClick={() => onCandidateAction(id, 'reject')} disabled={busy}>Reject</button></>}{state === 'SELECTED' && <><button type="button" data-testid={testButton('lock')} onClick={() => onCandidateAction(id, 'lock')} disabled={busy}>Lock</button><button type="button" data-testid={testButton('reject')} onClick={() => onCandidateAction(id, 'reject')} disabled={busy}>Reject</button></>}{state === 'LOCKED' && <button type="button" data-testid={testButton('unlock')} onClick={() => onCandidateAction(id, 'unlock')} disabled={busy}>Unlock</button>}{state === 'REJECTED' && <button type="button" data-testid={testButton('archive')} onClick={() => onCandidateAction(id, 'archive')} disabled={busy}>Archive</button>}</div></article>; })}{!candidates.length && <p className="wb-empty">尚无真实 ExecutionAttempt candidate。</p>}</section></section>;
 }
 
 function DirectorPanel({ text, setText, decisions, selectedShotId, onSend, onApply, onRemember, busy }: { text: string; setText: (value: string) => void; decisions: ProductionDirectorDecision[]; selectedShotId: string | null; onSend: () => void; onApply: () => void; onRemember: () => void; busy: boolean }) {
@@ -266,8 +293,8 @@ function CanvasProjection({ snapshot, onSelectShot }: { snapshot: ProductionGrap
   return <div className="wb-view"><div className="wb-view-head"><div><span className="wb-eyebrow">CANVAS / PROJECTION ONLY</span><h1>Production canvas</h1><p>节点引用 canonical IDs；语义修改必须通过 Studio API v2。</p></div></div><div className="wb-canvas-grid">{nodes.map(node => <article className={`wb-canvas-node wb-canvas-node--${node.type.toLowerCase()}`} key={`${node.type}-${node.id}`}><span>{node.type}</span><strong>{node.label}</strong><code>{shortId(node.id)}</code>{node.type === 'Shot' && <button type="button" onClick={() => onSelectShot(node.id)}>inspect</button>}</article>)}{!nodes.length && <p className="wb-empty">暂无 canonical nodes。</p>}</div></div>;
 }
 
-function TimelineView({ snapshot, onSelectShot, onEdit, busy }: { snapshot: ProductionGraphSnapshot; onSelectShot: (id: string) => void; onEdit: (shotId: string, path: string, value: unknown, reason: string) => void; busy: boolean }) {
-  return <div className="wb-view"><div className="wb-view-head"><div><span className="wb-eyebrow">TIMELINE / SEMANTIC ORDER</span><h1>时间线</h1><p>语义编辑通过 RevisionPatch；subtitle/audio 不会伪装成 video provider 操作。</p></div></div><div className="wb-timeline">{snapshot.episodes.map(ep => <section key={ep.id}><header><strong>EP {ep.number}</strong><span>{ep.title}</span></header>{snapshot.scenes.filter(scene => scene.episode_id === ep.id).map(scene => <div className="wb-timeline-scene" key={scene.id}><span>Scene {shortId(scene.id)}</span><div>{snapshot.shots.filter(shot => shot.scene_id === scene.id).map(shot => <article key={shot.id} className="wb-timeline-editable"><button type="button" className={`wb-timeline-shot wb-status-border--${shot.readiness_state.toLowerCase()}`} onClick={() => onSelectShot(shot.id)}><b>{Math.round(shot.duration_target * 10) / 10}s</b><small>{shortId(shot.id)}</small></button><div className="wb-timeline-actions"><button type="button" onClick={() => onEdit(shot.id, 'duration_target', Math.max(0.1, shot.duration_target - 0.5), 'timeline trim')} disabled={busy}>Trim -0.5s</button><button type="button" onClick={() => onEdit(shot.id, 'dialogue', [...shot.dialogue, 'Subtitle edit'], 'subtitle edit')} disabled={busy}>Edit subtitle</button><button type="button" onClick={() => onEdit(shot.id, 'audio_intent', 'Audio level adjusted', 'audio level edit')} disabled={busy}>Audio level</button><button type="button" onClick={() => onEdit(shot.id, 'audio_intent', 'BGM placed', 'BGM placement')} disabled={busy}>BGM</button></div></article>)}</div></div>)}</section>)}{!snapshot.episodes.length && <p className="wb-empty">暂无 Episode timeline。</p>}</div></div>;
+function TimelineView({ snapshot, onSelectShot, onEdit, onReplace, busy }: { snapshot: ProductionGraphSnapshot; onSelectShot: (id: string) => void; onEdit: (shotId: string, path: string, value: unknown, reason: string) => void; onReplace: (shotId: string) => void; busy: boolean }) {
+  return <div className="wb-view"><div className="wb-view-head"><div><span className="wb-eyebrow">TIMELINE / SEMANTIC ORDER</span><h1>时间线</h1><p>语义编辑通过 RevisionPatch；subtitle/audio 不会伪装成 video provider 操作。</p></div></div><div className="wb-timeline">{snapshot.episodes.map(ep => <section key={ep.id}><header><strong>EP {ep.number}</strong><span>{ep.title}</span></header>{snapshot.scenes.filter(scene => scene.episode_id === ep.id).map(scene => <div className="wb-timeline-scene" key={scene.id}><span>Scene {shortId(scene.id)}</span><div>{snapshot.shots.filter(shot => shot.scene_id === scene.id).map(shot => <article key={shot.id} className="wb-timeline-editable"><button type="button" className={`wb-timeline-shot wb-status-border--${shot.readiness_state.toLowerCase()}`} onClick={() => onSelectShot(shot.id)}><b>{Math.round(shot.duration_target * 10) / 10}s</b><small>{shortId(shot.id)}</small></button><div className="wb-timeline-actions"><button type="button" onClick={() => onReplace(shot.id)} disabled={busy}>Replace selected</button><button type="button" onClick={() => onEdit(shot.id, 'duration_target', Math.max(0.1, shot.duration_target - 0.5), 'timeline trim')} disabled={busy}>Trim -0.5s</button><button type="button" onClick={() => onEdit(shot.id, 'dialogue', [...shot.dialogue, 'Subtitle edit'], 'subtitle edit')} disabled={busy}>Edit subtitle</button><button type="button" onClick={() => onEdit(shot.id, 'audio_intent', 'Audio level adjusted', 'audio level edit')} disabled={busy}>Audio level</button><button type="button" onClick={() => onEdit(shot.id, 'audio_intent', 'BGM placed', 'BGM placement')} disabled={busy}>BGM</button></div></article>)}</div></div>)}</section>)}{!snapshot.episodes.length && <p className="wb-empty">暂无 Episode timeline。</p>}</div></div>;
 }
 
 function AssetsView({ snapshot, onToggleKeyframe, onPreviewLookRework, onApplyLookRework, reworkPreview, onApplyTemplate, onActivateVersion, onAddMemory }: { snapshot: ProductionGraphSnapshot; onToggleKeyframe: (keyframeId: string, locked: boolean) => Promise<void>; onPreviewLookRework: (lookVariantId: string) => Promise<void>; onApplyLookRework: (lookVariantId: string) => Promise<void>; reworkPreview: Record<string, unknown> | null; onApplyTemplate: (templateId: string) => Promise<void>; onActivateVersion: (versionId: string) => Promise<void>; onAddMemory: () => Promise<void> }) {

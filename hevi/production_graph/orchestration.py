@@ -295,6 +295,21 @@ def _build_semantic_snapshot(
         damage_state="wounded",
         lifecycle="SELECTED",
     )
+    supporting_looks = {
+        character.id: LookVariant(
+            id=stable_id("look", f"{pid}:supporting:{character.id}"),
+            project_id=pid,
+            revision_id=revision_id,
+            character_id=character.id,
+            name=f"{character.canonical_name} standard",
+            costume="field clothing",
+            damage_state="clean",
+            lifecycle="SELECTED",
+        )
+        for character in characters
+        if character.id != hero.id
+    }
+    look_by_character = {hero.id: look_a, **supporting_looks}
     locations = [location]
     scenes: list[Scene] = []
     beats: list[Beat] = []
@@ -306,6 +321,12 @@ def _build_semantic_snapshot(
     for index, event in enumerate(graph.events):
         event_text = event.summary.lower()
         episode = episodes[min(index // 2, len(episodes) - 1)]
+        event_character_ids = event.character_ids or [hero.id]
+        event_characters = [
+            character for character in characters if character.id in event_character_ids
+        ] or [hero]
+        primary_character = event_characters[0]
+        primary_look = look_by_character[primary_character.id]
         scene = Scene(
             id=stable_id("scene", f"{pid}:{index}"),
             project_id=pid,
@@ -313,7 +334,7 @@ def _build_semantic_snapshot(
             episode_id=episode.id,
             narrative_event_ids=[event.id],
             location_id=location.id,
-            character_ids=[hero.id],
+            character_ids=[character.id for character in event_characters],
             prop_ids=[prop.id],
             purpose=event.summary,
             dramatic_function="escalation" if index else "inciting_incident",
@@ -334,7 +355,7 @@ def _build_semantic_snapshot(
             scene_id=scene.id,
             beat_ids=[beat.id],
             narrative_event_ids=[event.id],
-            character_ids=[hero.id],
+            character_ids=[character.id for character in event_characters],
             location_id=location.id,
             prop_ids=[prop.id],
             action_description=event.summary,
@@ -352,8 +373,8 @@ def _build_semantic_snapshot(
             items=[
                 ReferenceItem(
                     role=ReferenceRole.CHARACTER_IDENTITY,
-                    production_entity_id=hero.id,
-                    artifact_id="identity:envoy",
+                    production_entity_id=primary_character.id,
+                    artifact_id=f"identity:{primary_character.canonical_name.lower()}",
                 ),
                 ReferenceItem(
                     role=ReferenceRole.LOCATION,
@@ -373,7 +394,7 @@ def _build_semantic_snapshot(
             type=ConstraintType.IDENTITY,
             scope=shot.id,
             severity=ConstraintSeverity.HARD,
-            expected=hero.id,
+            expected=primary_character.id,
             source="canonical story identity",
         )
         shot = shot.model_copy(
@@ -392,9 +413,12 @@ def _build_semantic_snapshot(
                 role=KeyframeRole.START,
                 desired_state={
                     "event_id": event.id,
-                    "look_variant_id": look_b.id
-                    if any(word in event_text for word in ("storm", "wet", "torn", "night"))
-                    else look_a.id,
+                    "look_variant_id": (
+                        look_b.id
+                        if primary_character.id == hero.id
+                        and any(word in event_text for word in ("storm", "wet", "torn", "night"))
+                        else primary_look.id
+                    ),
                 },
                 generation_spec={"prompt": event.summary},
             )
@@ -404,7 +428,11 @@ def _build_semantic_snapshot(
             ReadinessContext(
                 required_reference_roles=set(bundle.roles()),
                 available_reference_roles=set(bundle.roles()),
-                available_assets={hero.id, location.id, prop.id},
+                available_assets={
+                    *(character.id for character in event_characters),
+                    location.id,
+                    prop.id,
+                },
                 continuity_hard_violations=[],
             ),
         )
@@ -570,7 +598,7 @@ def _build_semantic_snapshot(
         adaptation_decisions=decisions,
         characters=characters,
         character_states=states,
-        look_variants=[look_a, look_b],
+        look_variants=[look_a, look_b, *supporting_looks.values()],
         worlds=[world],
         locations=locations,
         location_states=location_states,
