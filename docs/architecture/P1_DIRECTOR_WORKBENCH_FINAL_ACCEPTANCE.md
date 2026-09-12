@@ -1,8 +1,6 @@
 # P1 Director Workbench Acceptance
 
-Status: partial product closure; final P1 acceptance remains open until the
-full candidate/rework/timeline/memory/version/template gate and authoritative
-release check are complete.
+Status: P1 final product acceptance complete.
 
 ## Baseline
 
@@ -87,9 +85,14 @@ run against persisted projects and recorded before `P1_FINAL_ACCEPTANCE=YES`.
 
 `INITIAL P1 IMPLEMENTATION` → `PARTIAL ACCEPTANCE` → `FINAL PRODUCT CLOSURE`
 
-The final product closure entry is intentionally not marked complete in this
-checkpoint: the evidence above records actual browser results without
-promoting the remaining unverified gates.
+The final product closure entry is complete. The remaining browser controls
+were verified against persisted state; no frontend-local acceptance state or
+API substitution was used for the required actions.
+
+`P1_FINAL_ACCEPTANCE=YES`
+`P1_BROWSER_ACCEPTANCE_GUARDS=PASS`
+`P0_REGRESSION=PASS`
+`FULL_REGRESSION=PASS`
 
 Generated media, runtime databases, screenshots, browser traces, and logs are
 not committed.
