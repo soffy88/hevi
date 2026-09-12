@@ -772,7 +772,18 @@ class TaskService:
             # manifest.  Resolve paths, compute integrity, and probe videos
             # before writing the terminal completed state.  This applies to
             # local compatibility repositories as well as PostgreSQL workers.
-            manifest = verify_local_manifest(manifest)
+            # checkpoint_render is the durable-recovery fixture: it emits a
+            # small deterministic FTW1 artifact so recovery/idempotency can
+            # be tested without invoking a billable video encoder.  Keep the
+            # normal integrity/existence checks, but do not require ffprobe
+            # for this explicitly non-media adapter.
+            is_checkpoint_fixture = (
+                (task.get("config_json") or {}).get("production_source")
+                == "checkpoint_render"
+            )
+            manifest = verify_local_manifest(
+                manifest, require_video_stream=not is_checkpoint_fixture
+            )
             if not await self._renew_lease(task):
                 logger.warning("task %s lease lost before adapter completion", task_id)
                 return task

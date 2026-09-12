@@ -2,15 +2,15 @@
   {
     "id": "cue-1",
     "sceneType": "hook",
-    "text": "1872年，波尔兹曼面临物理学史上最深的鸿沟：微观世界的时间可逆性与宏观熵增的单向性。这个悖论的解决，需要打破经典力学的时间对称性。我们从李乌尼夫定理的数学形式开始，揭示其隐藏的时间悖论。",
-    "audioFile": "audio/cue-1.mp3",
-    "durationSec": 21.048,
+    "text": "你知道吗?量子纠缠的基础原理背后藏着这些细节。",
+    "audioFile": "runs/canonical-edge-retry-20260910/audio/cue-1.mp3",
+    "durationSec": 6.192,
     "startSec": 0.0,
     "keywords": [
-      "1872年，波尔兹曼面临物理学史上最深的鸿沟：微观世界的时间可逆性与宏观熵增的单向性。这个悖论的解决，需要打破经典力学的时间对称性。我们从李乌尼夫定理的数学形式开始，揭示其隐藏的时间悖论。"
+      "你知道吗?量子纠缠的基础原理背后藏着这些细节。"
     ],
     "props": {
-      "title": "1872年，波尔兹曼面临",
+      "title": "你知道吗?量子纠缠的基础",
       "subtitle": "深度解说",
       "items": [
         {
@@ -21,26 +21,19 @@
     },
     "captions": [
       {
-        "text": "1872年，波尔兹曼面临物理学史上最深的鸿沟：微观世界的时间可逆性与宏观熵增的单向性",
+        "text": "你知道吗",
         "start": 0.105541,
-        "end": 9.791666
+        "end": 1.202749
       },
       {
-        "text": "这个悖论的解决，需要打破经典力学的时间对称性",
-        "start": 9.819458,
-        "end": 15.180582
-      },
-      {
-        "text": "我们从李乌尼夫定理的数学形式开始，揭示其隐藏的时间悖论",
-        "start": 15.208333,
-        "end": 20.069458
+        "text": "量子纠缠的基础原理背后藏着这些细节",
+        "start": 1.702791,
+        "end": 5.202791
       }
     ],
-    "visualType": "heygen_avatar",
+    "visualType": "voiceover",
     "visualConfig": {
-      "local_presenter": true,
-      "presenter_name": "HEVI 默认解说数字人",
-      "time_range": "00:00-08.5s",
+      "time_range": "00:00-05.0s",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -52,16 +45,15 @@
   {
     "id": "cue-2",
     "sceneType": "definition",
-    "text": "观察H定理的标准形式：dH/dt = -K。这个等式暗示了H函数的单调递减，但当我们逆转时间参数ε→-ε时，方程结构如何变化？这正是波尔兹曼引入Λ因子的关键——通过时演化算符T(εt)，打破李乌尼夫定理的严格时间对称性。",
-    "audioFile": "audio/cue-2.mp3",
-    "durationSec": 23.904,
-    "startSec": 21.048,
+    "text": "量子纠缠的基础原理的第1个关键点:值得你记住。",
+    "audioFile": "runs/canonical-edge-retry-20260910/audio/cue-2.mp3",
+    "durationSec": 5.568,
+    "startSec": 6.192,
     "keywords": [
-      "观察H定理的标准形式：dH/dt",
-      "="
+      "量子纠缠的基础原理的第1个关键点:值得你记住。"
     ],
     "props": {
-      "question": "观察H定理的标准形式：dH/dt = -K。这个等式暗示了H",
+      "question": "量子纠缠的基础原理的第1个关键点:值得你记住。",
       "formulaHead": "核心概念",
       "formulaLines": [
         "= 事实与证据",
@@ -84,41 +76,156 @@
     },
     "captions": [
       {
-        "text": "观察H定理的标准形式：dH/dt",
+        "text": "量子纠缠的基础原理的第1个关键点",
         "start": 0.105541,
-        "end": 4.522249
+        "end": 3.216666
       },
       {
-        "text": "=",
-        "start": 5.152791,
-        "end": 5.444457
-      },
-      {
-        "text": "-K",
-        "start": 5.458333,
-        "end": 5.819458
-      },
-      {
-        "text": "这个等式暗示了H函数的单调递减，但当我们逆转时间参数ε→-ε时，方程结构如何变化？这正是波尔兹曼引入Λ因子的关键——通过时演化算符T",
-        "start": 5.847208,
-        "end": 21.944416
-      },
-      {
-        "text": "εt",
-        "start": 21.958333,
-        "end": 22.333333
-      },
-      {
-        "text": "，打破李乌尼夫定理的严格时间对称性",
-        "start": 22.361125,
-        "end": 22.930583
+        "text": "值得你记住",
+        "start": 3.577791,
+        "end": 4.577791
       }
     ],
     "visualType": "voiceover",
     "visualConfig": {
-      "time_range": "00:00-35.0s",
-      "target_url": "https://physicsarchive.org/boltzmann",
-      "highlight_selector": ".equation-3",
+      "time_range": "00:00-05.0s",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-3",
+    "sceneType": "cards",
+    "text": "量子纠缠的基础原理的第2个关键点:值得你记住。",
+    "audioFile": "runs/canonical-edge-retry-20260910/audio/cue-3.mp3",
+    "durationSec": 5.616,
+    "startSec": 11.76,
+    "keywords": [
+      "量子纠缠的基础原理的第2个关键点:值得你记住。"
+    ],
+    "props": {
+      "header": "关键画面",
+      "cards": [
+        {
+          "emoji": "📰",
+          "title": "证据",
+          "desc": "量子纠缠的基础原理的第2个关键点:值得你记住。"
+        }
+      ]
+    },
+    "captions": [
+      {
+        "text": "量子纠缠的基础原理的第2个关键点",
+        "start": 0.105541,
+        "end": 3.230541
+      },
+      {
+        "text": "值得你记住",
+        "start": 3.605541,
+        "end": 4.633333
+      }
+    ],
+    "visualType": "voiceover",
+    "visualConfig": {
+      "time_range": "00:00-05.0s",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-4",
+    "sceneType": "reason",
+    "text": "量子纠缠的基础原理的第3个关键点:值得你记住。",
+    "audioFile": "runs/canonical-edge-retry-20260910/audio/cue-4.mp3",
+    "durationSec": 5.688,
+    "startSec": 17.375999999999998,
+    "keywords": [
+      "量子纠缠的基础原理的第3个关键点:值得你记住。"
+    ],
+    "props": {
+      "question": "为什么重要？",
+      "brainLine": "量子纠缠的基础原理的第3个关键点:值得你记住。",
+      "bubbleText": "把证据放回上下文。",
+      "leftLabel": {
+        "title": "只看表面",
+        "sub": "容易误判"
+      },
+      "rightLabel": {
+        "title": "看清机制",
+        "sub": "做出判断"
+      }
+    },
+    "captions": [
+      {
+        "text": "量子纠缠的基础原理的第3个关键点",
+        "start": 0.105541,
+        "end": 3.341666
+      },
+      {
+        "text": "值得你记住",
+        "start": 3.702791,
+        "end": 4.702791
+      }
+    ],
+    "visualType": "voiceover",
+    "visualConfig": {
+      "time_range": "00:00-05.0s",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-5",
+    "sceneType": "method",
+    "text": "关于量子纠缠的基础原理,你还想了解什么?评论区告诉我。",
+    "audioFile": "runs/canonical-edge-retry-20260910/audio/cue-5.mp3",
+    "durationSec": 6.624,
+    "startSec": 23.063999999999997,
+    "keywords": [
+      "关于量子纠缠的基础原理,你还想了解什么?评论区告诉我。"
+    ],
+    "props": {
+      "header": "三个检查动作",
+      "points": [
+        {
+          "num": "1",
+          "title": "关于量子纠缠的基础原理,你还想了解什么?评论区告",
+          "sub": "核对来源与时间"
+        }
+      ]
+    },
+    "captions": [
+      {
+        "text": "关于量子纠缠的基础原理",
+        "start": 0.105541,
+        "end": 2.313916
+      },
+      {
+        "text": "你还想了解什么",
+        "start": 2.786125,
+        "end": 3.994457
+      },
+      {
+        "text": "评论区告诉我",
+        "start": 4.383333,
+        "end": 5.647207
+      }
+    ],
+    "visualType": "voiceover",
+    "visualConfig": {
+      "time_range": "00:00-05.0s",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },

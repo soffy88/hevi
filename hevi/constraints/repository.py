@@ -187,12 +187,12 @@ class ConstraintRepository:
                 uuid.UUID(revision_id),
                 verified,
             )
+            derived = await conn.fetchval(
+                "SELECT derived_constraints FROM constraint_coverage WHERE revision_id = $1",
+                uuid.UUID(revision_id),
+            )
         from hevi.monitoring.metrics import constraint_coverage_ratio
 
-        derived = await conn.fetchval(
-            "SELECT derived_constraints FROM constraint_coverage WHERE revision_id = $1",
-            uuid.UUID(revision_id),
-        )
         required = int(derived or 0)
         constraint_coverage_ratio.labels(stage="verify").set(
             1.0 if required == 0 else verified / required

@@ -53,8 +53,21 @@ COPY alembic.ini ./
 
 RUN groupadd --system hevi && useradd --system --gid hevi --home-dir /app hevi && \
     chown -R hevi:hevi /app
+# cftunnel 覆盖层 user: 1000:1000 覆盖镜像的 USER hevi。
+# 宿主卷为 1000:1000,镜像内源码/venv 为 999:999 + 700 目录 → 无法遍历。
+# 统一给所有文件/目录加上 o+rX,让任何 UID 均可读取导入。
+# explainer 配音运行时写入 hevi-remotion/public/runs/<job_id>/,需写权限。
+# Remotion 装配也从 src/data/run_manifest.json 读写清单,需写权限。
+RUN mkdir -p /app/.obase/work /app/hevi-remotion/public/runs /app/hevi-remotion/src/data && \
+    chown -R 1000:1000 /app/.obase /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio /app/hevi && \
+    chmod -R a+rX /app && \
+    find /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio /app/hevi -exec chmod o+w {} +
 USER hevi
 
+# cftunnel: obase 默认 ~/.obase/work,无 HOME 时解析到 /,UID 1000 无权创建
+ENV HOME=/app
+# Use edge_tts for explainer TTS to avoid voicebox DNS issues
+ENV HEVI_EXPLAINER_TTS_PROVIDER=edge_tts
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 
