@@ -65,6 +65,7 @@ class MPTClient:
         bgm: bool = True,
         subtitle: bool = True,
         material_mode: str = "pexels",
+        **options: Any,
     ) -> dict[str, Any]:
         """调用 MPT API 生成视频"""
         if not self._client:
@@ -85,6 +86,16 @@ class MPTClient:
             "subtitle": subtitle,
             "material_mode": material_mode,
         }
+        # Preserve the formal MPT request surface for the Hevi task adapter.
+        # These are request options, not a second orchestration contract; the
+        # sidecar remains responsible for validation and execution.
+        payload.update(
+            {
+                key: value
+                for key, value in options.items()
+                if key not in {"topic", "video_subject"} and value is not None
+            }
+        )
         # MPT 1.3 exposes the controller under ``/api/v1/videos``.  Keep the
         # legacy paths as a compatibility probe for older sidecar images, but
         # always try the current contract first.
