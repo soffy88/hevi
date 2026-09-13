@@ -32,12 +32,19 @@
   "status": "PRODUCTION_COMPLETE",
   "blockers": [],
   "evidence": {
-    "run_id": "20260913T004716Z",
+    "recipe_sha256": "1b49eaa6c9e140f043e25290d0712505823119f5d2cbbb658edabf49373bafbe",
+    "git_sha": "d7831db218fae739b0790e5f6876efa0ae69cb5d",
+    "provider_model": "local-html-gsap-ffmpeg",
+    "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
+    "evidence_root": "artifacts/qualification",
+    "generated_at": "2026-09-13T01:05:29Z",
+    "hardware_probe": true,
+    "real_mode": true,
+    "run_id": "20260913T010532Z",
     "final_artifact_hash": "8a188289ee0c4ddfb75ad39f0d27b50bc04bba05c9cc91e3d56808ef3efbf2b5",
-    "provider": "hyperframes",
-    "provider_model": "local-html-gsap-ffmpeg"
+    "provider": "hyperframes"
   },
-  "artifact_path": "artifacts/qualification/kinetic_promo/20260913T004716Z/final.mp4",
+  "artifact_path": "artifacts/qualification/kinetic_promo/20260913T010532Z/final.mp4",
   "artifact_sha256": "8a188289ee0c4ddfb75ad39f0d27b50bc04bba05c9cc91e3d56808ef3efbf2b5",
-  "evidence_root": "artifacts/qualification/kinetic_promo/20260913T004716Z"
+  "evidence_root": "artifacts/qualification/kinetic_promo/20260913T010532Z"
 }

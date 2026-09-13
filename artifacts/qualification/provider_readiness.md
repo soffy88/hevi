@@ -7,5 +7,5 @@
 | llm | BLOCKED_SECRET | False | False | required configuration/secret absent |
 | remotion | READY | True | True | — |
 | tts | READY | True | True | — |
-| media_source | BLOCKED_NETWORK | True | False | HTTPError |
+| media_source | BLOCKED_NETWORK | True | False | HTTP_403 |
 | hyperframes | READY | True | True | — |

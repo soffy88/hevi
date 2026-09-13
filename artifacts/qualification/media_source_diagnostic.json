@@ -1,0 +1,43 @@
+{
+  "provider": "wikimedia_commons",
+  "url_host": "commons.wikimedia.org",
+  "url_path": "/w/api.php",
+  "proxy": {
+    "no_proxy": "localhost,127.0.0.1,::1,192.168.0.0/24,192.168.1.0/24,100.64.0.0/10,.local",
+    "https_proxy": "http://127.0.0.1:7890",
+    "http_proxy": "http://127.0.0.1:7890"
+  },
+  "dns": {
+    "passed": true,
+    "addresses": [
+      "103.102.166.224",
+      "2001:df2:e500:ed1a::1"
+    ],
+    "latency_ms": 5
+  },
+  "tcp_tls": {
+    "passed": true,
+    "tls_version": "TLSv1.3",
+    "cipher": "TLS_AES_128_GCM_SHA256",
+    "latency_ms": 2536
+  },
+  "http": {
+    "passed": true,
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 26854,
+    "latency_ms": 874
+  },
+  "auth": {
+    "required": false,
+    "status": "NOT_REQUIRED"
+  },
+  "classification": "HTTP_403",
+  "search": {
+    "passed": true
+  },
+  "download": {
+    "passed": false,
+    "classification": "HTTP_403"
+  }
+}
