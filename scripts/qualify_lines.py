@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from hevi.qualification.framework import discover_reports, write_reports
+from hevi.qualification.framework import PRODUCTION_FIELDS, discover_reports, write_reports
 from scripts.real_line_qualification import qualify_line
 
 
@@ -68,7 +68,10 @@ def main() -> int:
             if report.get("provider_available") and not report.get("real_e2e"):
                 evidence = qualify_line(report["line"], args.output)
                 if evidence is not None:
-                    reports[index] = {**report, **evidence}
+                    merged = {**report, **evidence}
+                    merged["production_completeness"] = round(100 * sum(bool(merged[field]) for field in PRODUCTION_FIELDS) / len(PRODUCTION_FIELDS))
+                    merged["completeness_percent"] = merged["production_completeness"]
+                    reports[index] = merged
     summary = write_reports(reports, args.output)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0
