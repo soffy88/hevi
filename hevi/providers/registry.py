@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 import oprim.providers.dashscope as dashscope
@@ -269,6 +270,13 @@ def register_all_providers() -> None:
 
     register_teamo_llm()
 
+    # Local/private OpenAI-compatible proxy.  No bearer token is sent for a
+    # trusted loopback endpoint; public endpoints still require their token.
+    if os.getenv("HEVI_LLM_PROVIDER", "").strip().lower() in {"openai_compatible", "local_openai_compatible"}:
+        from hevi.providers.openai_compatible_caller import register_openai_compatible_llm
+
+        register_openai_compatible_llm()
+
     # 2. Video Providers
     ProviderRegistry.register(
         "video",
@@ -378,8 +386,6 @@ def register_all_providers() -> None:
     )
 
     # 0.1 Chaos Monkey Overrides (SaaS-3 / P10.F3 fallback verification)
-    import os
-
     if os.getenv("HEVI_CHAOS_FAIL_LTX2") == "true":
 
         async def failing_ltx2(**kwargs: Any) -> Any:

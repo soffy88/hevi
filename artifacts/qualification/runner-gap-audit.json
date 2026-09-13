@@ -1,0 +1,60 @@
+{
+  "git_sha": "48aff8d7d8bce61f2d2bd090c44e5cc7ff5aae86",
+  "generated_at": "2026-09-13T08:30:00Z",
+  "lines": [
+    {
+      "line": "history_scene",
+      "root_cause": "DEPENDENCY_MISSING",
+      "existing_runtime_path": "scripts/real_line_qualification.py -> hevi.studio.fulfill.fulfill_order -> hevi.studio.fulfill._render_longvideo_line -> hevi.pipeline.longvideo_orchestrator",
+      "missing_component": "wan_local video provider call returned network_error after 3 attempts",
+      "fix_required": "restore the existing wan_local service or provide an eligible non-GPU production video provider",
+      "external_dependency": "wan_local runtime/service",
+      "qualification_possible": false
+    },
+    {
+      "line": "character_animation",
+      "root_cause": "QUALIFICATION_ADAPTER_MISSING",
+      "existing_runtime_path": "scripts/real_line_qualification.py -> hevi.studio.fulfill.fulfill_order -> _render_manim_line -> hevi.studio.kit.explainer_manim",
+      "missing_component": "qualification dispatch registration; adapter now delegates to existing renderer",
+      "fix_required": "none for dispatch; expose retry/idempotency evidence from production runtime",
+      "external_dependency": "none",
+      "qualification_possible": true
+    },
+    {
+      "line": "explainer",
+      "root_cause": "DEPENDENCY_MISSING",
+      "existing_runtime_path": "scripts/real_line_qualification.py -> hevi.studio.fulfill.fulfill_order -> _render_explainer_line -> hevi.explainer.assembly",
+      "missing_component": "usable production TTS output; edge_tts returned no audio and the default CosyVoice endpoint is unavailable",
+      "fix_required": "restore an existing configured TTS provider; do not add a qualification renderer",
+      "external_dependency": "edge_tts/CosyVoice service",
+      "qualification_possible": false
+    },
+    {
+      "line": "documentary_montage",
+      "root_cause": "DEPENDENCY_MISSING",
+      "existing_runtime_path": "scripts/real_line_qualification.py -> hevi.studio.fulfill.fulfill_order -> _render_explainer_line -> hevi.explainer.assembly",
+      "missing_component": "usable production TTS output; edge_tts returned no audio",
+      "fix_required": "restore an existing configured TTS provider",
+      "external_dependency": "edge_tts/CosyVoice service",
+      "qualification_possible": false
+    },
+    {
+      "line": "podcast_repurpose",
+      "root_cause": "QUALIFICATION_ADAPTER_MISSING",
+      "existing_runtime_path": "scripts/real_line_qualification.py -> hevi.studio.fulfill.fulfill_order -> _render_clip_line -> hevi.production.media_workflows.shorts_generation_workflow",
+      "missing_component": "qualification dispatch registration; adapter now uses the real frozen media/subtitle input",
+      "fix_required": "none for dispatch; expose retry/idempotency evidence from production runtime",
+      "external_dependency": "none",
+      "qualification_possible": true
+    },
+    {
+      "line": "reference_adapt",
+      "root_cause": "DEPENDENCY_MISSING",
+      "existing_runtime_path": "scripts/real_line_qualification.py -> hevi.studio.fulfill.fulfill_order -> _render_explainer_line -> hevi.explainer.assembly -> Remotion",
+      "missing_component": "Remotion render requires a remote Google font that was not locally available; browser reported ERR_NETWORK_CHANGED",
+      "fix_required": "restore the existing browser/font asset path or freeze the already-supported font asset through the normal production asset pipeline",
+      "external_dependency": "font asset/network",
+      "qualification_possible": false
+    }
+  ]
+}

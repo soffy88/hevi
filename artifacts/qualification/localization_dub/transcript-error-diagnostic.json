@@ -1,0 +1,12 @@
+{
+  "git_sha": "48aff8d7d8bce61f2d2bd090c44e5cc7ff5aae86",
+  "line": "localization_dub",
+  "transcript_error_class": "E",
+  "transcript_error_callsite": "hevi.production.media_workflows.video_localization_workflow -> fetch_transcript -> hevi.ingest.video_transcript",
+  "transcript_input": "public Wikimedia WebM without subtitle_path",
+  "transcript_provider": "faster-whisper",
+  "transcript_source_type": "video/audio without valid subtitle",
+  "transcript_root_cause": "qualification fixture/input contract missing transcript; ASR empty-result path raises tuple index instead of structured no-transcript error",
+  "resolution": "used project-owned frozen Pexels media with its real subtitle ingestion path; no mock transcript",
+  "resolved_evidence": "artifacts/qualification/localization_dub/20260913T081930Z/result.json"
+}

@@ -17,6 +17,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 def _url_probe(url: str) -> tuple[bool, str]:
@@ -118,20 +119,35 @@ def _probe_media_source() -> dict[str, Any]:
         return {"passed": False, "error": type(exc).__name__}
 
 
+def _local_llm_config() -> tuple[str, str, str, bool]:
+    provider = os.getenv("HEVI_LLM_PROVIDER", "").strip().lower()
+    base = (os.getenv("OPENAI_BASE_URL", "").strip() or os.getenv("LONGCAT_BASE_URL", "").strip()).rstrip("/")
+    model = (os.getenv("OPENAI_MODEL", "").strip() or os.getenv("LONGCAT_MODEL", "").strip())
+    key = os.getenv("OPENAI_API_KEY") or os.getenv("LONGCAT_API_KEY") or ""
+    host = (urlsplit(base).hostname or "").lower()
+    trusted_local = provider in {"openai_compatible", "local_openai_compatible"} and host in {"localhost", "127.0.0.1", "::1"}
+    return base, model, key, trusted_local
+
+
 def _probe_llm() -> dict[str, Any]:
-    key = os.getenv("OPENAI_API_KEY") or os.getenv("DASHSCOPE_API_KEY") or os.getenv("QWEN_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-    if not key:
+    base, model, key, trusted_local = _local_llm_config()
+    if not base:
+        return {"passed": False, "error": "endpoint_missing"}
+    if not model:
+        return {"passed": False, "error": "model_missing"}
+    headers = {"Content-Type": "application/json"}
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    elif not trusted_local:
         return {"passed": False, "error": "secret_missing"}
-    base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     body = json.dumps({"model": model, "messages": [{"role": "user", "content": "Reply with READY only."}], "max_tokens": 4}).encode("utf-8")
-    request = urllib.request.Request(f"{base}/chat/completions", data=body, method="POST", headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    request = urllib.request.Request(f"{base}/chat/completions", data=body, method="POST", headers=headers)
     started = time.perf_counter()
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             payload = json.loads(response.read().decode("utf-8"))
             text = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return {"passed": bool(str(text).strip()), "latency_ms": round((time.perf_counter() - started) * 1000), "request_id_present": bool(response.headers.get("x-request-id") or payload.get("id")), "usage": payload.get("usage"), "model": payload.get("model", model), "error": None if text else "empty_response"}
+            return {"passed": bool(str(text).strip()), "latency_ms": round((time.perf_counter() - started) * 1000), "request_id_present": bool(response.headers.get("x-request-id") or payload.get("id")), "usage": payload.get("usage"), "model": payload.get("model", model), "auth_mode": "token" if key else "none", "error": None if text else "empty_response"}
     except urllib.error.HTTPError as exc:
         return {"passed": False, "error": f"HTTP_{exc.code}", "latency_ms": round((time.perf_counter() - started) * 1000), "http_status": exc.code}
     except (OSError, urllib.error.URLError, ValueError, KeyError, json.JSONDecodeError) as exc:
@@ -144,7 +160,7 @@ def _entry(name: str, *, configured: bool, secret_present: bool, endpoint: str |
     blocker = None
     if gpu_dependency and not _gpu_available():
         status, blocker = "BLOCKED_HARDWARE", "nvidia-smi/CUDA unavailable"
-    elif not configured or not secret_present:
+    elif not configured or (not secret_present and not (probe and probe.get("auth_mode") == "none")):
         status, blocker = "BLOCKED_SECRET", "required configuration/secret absent"
     elif not capability:
         status, blocker = "BLOCKED_CAPABILITY", "provider capability unavailable"
@@ -165,16 +181,18 @@ def _entry(name: str, *, configured: bool, secret_present: bool, endpoint: str |
 
 def collect(provider_filter: str | None = None) -> dict[str, Any]:
     comfy = os.getenv("H3_COMFY_URL", "http://127.0.0.1:8188").rstrip("/")
-    llm_secret = any(os.getenv(key) for key in ("OPENAI_API_KEY", "DASHSCOPE_API_KEY", "QWEN_API_KEY", "ANTHROPIC_API_KEY"))
+    llm_base, llm_model, llm_key, llm_local = _local_llm_config()
+    llm_secret = bool(llm_key)
+    llm_configured = bool(llm_base and llm_model) and (llm_local or llm_secret)
     remotion_capable = Path("hevi-remotion/package.json").exists() and shutil.which("npx") is not None
     hyperframes_capable = Path("hevi/providers/hyperframes").exists() and shutil.which("ffmpeg") is not None
     ffmpeg_capable = shutil.which("ffmpeg") is not None
     tts_capable = importlib.util.find_spec("edge_tts") is not None
-    llm_endpoint = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    llm_endpoint = llm_base or "https://api.openai.com/v1"
     entries = [
         _entry("h3_local", configured=bool(os.getenv("H3_ROUTING")), secret_present=True, endpoint=comfy, gpu_dependency=True, capability=Path("hevi/providers/h3_local").exists()),
         _entry("ComfyUI/local_gpu_backend", configured=bool(os.getenv("H3_COMFY_URL")), secret_present=True, endpoint=comfy, gpu_dependency=True, capability=Path("hevi/providers/h3_local/comfy_client.py").exists()),
-        _entry("llm", configured=llm_secret, secret_present=llm_secret, endpoint=llm_endpoint, gpu_dependency=False, capability=True, probe=_probe_llm()),
+        _entry("llm", configured=llm_configured, secret_present=llm_secret, endpoint=llm_endpoint, gpu_dependency=False, capability=True, probe=_probe_llm()),
         _entry("remotion", configured=remotion_capable, secret_present=True, endpoint=None, gpu_dependency=False, capability=remotion_capable, probe=_probe_remotion()),
         _entry("tts", configured=tts_capable, secret_present=True, endpoint=None, gpu_dependency=False, capability=tts_capable, probe=_probe_tts()),
         _entry("media_source", configured=ffmpeg_capable, secret_present=True, endpoint=None, gpu_dependency=False, capability=ffmpeg_capable, probe=_probe_media_source()),

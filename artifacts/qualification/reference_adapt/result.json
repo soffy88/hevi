@@ -2,7 +2,7 @@
   "line": "reference_adapt",
   "recipe_complete": true,
   "runtime_complete": true,
-  "provider_available": false,
+  "provider_available": true,
   "real_e2e": false,
   "final_artifact": false,
   "ffprobe_valid": false,
@@ -17,11 +17,11 @@
   "media_validation": true,
   "provenance_model": true,
   "quality_gate_passed": false,
-  "completeness_percent": 17,
+  "completeness_percent": 25,
   "implementation_completeness": 70,
   "code_completeness": 86,
   "runtime_completeness": 67,
-  "production_completeness": 17,
+  "production_completeness": 25,
   "provider_required": [
     "llm",
     "media_source",
@@ -35,21 +35,19 @@
   "quality_gate": "BLOCKED",
   "status": "BLOCKED_PROVIDER",
   "blockers": [
-    "llm=BLOCKED_SECRET:required configuration/secret absent"
+    "reference_adapt:VOICEOVERERROR: 段 cue-1 CosyVoice 配音失败: AI 引擎 CosyVoice 合成失败 (HTTP 502): HTTP 502"
   ],
   "evidence": {
     "recipe_sha256": "74b54053a0c4456409c953ebe08a2241bca9d4ec87f51ad2d89e20b055949b04",
-    "git_sha": "d7c9cb230531ce7974e6e4d29e6742c9c84b281c",
-    "provider_model": null,
+    "git_sha": "48aff8d7d8bce61f2d2bd090c44e5cc7ff5aae86",
+    "provider_model": "veya1.2-free",
     "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",
-    "generated_at": "2026-09-13T01:33:51Z",
+    "generated_at": "2026-09-13T08:01:54Z",
     "hardware_probe": true,
-    "real_mode": false
-  },
-  "stale": true,
-  "stale_evidence": {
-    "previous_git_sha": "dc186dd898b43dc23e40bad50d9d459ba091a1a8",
-    "current_git_sha": "d7c9cb230531ce7974e6e4d29e6742c9c84b281c"
+    "real_mode": true,
+    "run_id": "20260913T083245Z",
+    "production_entrypoint": "hevi.studio.fulfill:fulfill_order",
+    "runtime_result": "artifacts/qualification/reference_adapt/20260913T083245Z/runtime_result.json"
   }
 }

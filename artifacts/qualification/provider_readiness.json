@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T01:24:04Z",
+  "generated_at": "2026-09-13T08:07:23Z",
   "providers": [
     {
       "provider": "h3_local",
@@ -35,19 +35,34 @@
     },
     {
       "provider": "llm",
-      "configured": false,
+      "configured": true,
       "secret_present": false,
-      "endpoint": "https://api.openai.com/v1",
+      "endpoint": "http://127.0.0.1:8791/v1",
       "endpoint_reachable": true,
       "auth_valid": null,
       "capability_available": true,
       "readiness_probe": {
-        "passed": false,
-        "error": "secret_missing"
+        "passed": true,
+        "latency_ms": 16855,
+        "request_id_present": true,
+        "usage": {
+          "prompt_tokens": 11,
+          "completion_tokens": 5,
+          "total_tokens": 16,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "model": "gpt-5.6-luna",
+        "auth_mode": "none",
+        "error": null
       },
       "gpu_dependency": false,
-      "status": "BLOCKED_SECRET",
-      "blocker": "required configuration/secret absent"
+      "status": "READY",
+      "blocker": null
     },
     {
       "provider": "remotion",
@@ -60,7 +75,7 @@
       "readiness_probe": {
         "passed": true,
         "returncode": 0,
-        "latency_ms": 6844,
+        "latency_ms": 6371,
         "artifact_sha256": "ac64881f7cda7f1c8cb8709ce55bdf7212c5d66017eed8c91c7c686b27bccb60",
         "error": null
       },
@@ -124,7 +139,7 @@
       "capability_available": true,
       "readiness_probe": {
         "passed": true,
-        "latency_ms": 7512,
+        "latency_ms": 7642,
         "artifact_sha256": "11eaaa3e8c7dd5fe2c61e4120947a47597b824209e6941f3b7b076ca93f067a7"
       },
       "gpu_dependency": false,
