@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,12 +24,16 @@ def _finding_count(report: dict[str, Any]) -> int:
 
 
 def classify(returncode: int | None, stdout: str, stderr: str, report: dict[str, Any] | None) -> str:
-    findings = _finding_count(report or {})
+    report = report or {}
+    vulnerability_count = sum(len(result.get("Vulnerabilities") or []) for result in report.get("Results", []))
+    misconfiguration_count = sum(len(result.get("Misconfigurations") or []) for result in report.get("Results", []))
+    if vulnerability_count:
+        return "VULNERABILITY_FOUND"
+    if misconfiguration_count:
+        return "MISCONFIGURATION_FOUND"
     combined = f"{stdout}\n{stderr}".lower()
-    if findings:
-        return "FAILED_VULNERABILITIES"
     if any(token in combined for token in ("need to update db", "vulnerability db", "checks bundle")):
-        return "BLOCKED_DATABASE"
+        return "BLOCKED_DB"
     if any(token in combined for token in ("lookup", "timed out", "timeout", "connection reset", "download")):
         return "BLOCKED_NETWORK"
     if returncode == 0:
@@ -39,14 +45,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache-dir", type=Path, default=Path(".trivy-cache"))
     parser.add_argument("--output", type=Path, default=Path("artifacts/security/trivy.json"))
+    parser.add_argument("--image", help="Optional already-built release image to scan")
     args = parser.parse_args()
     args.cache_dir.mkdir(parents=True, exist_ok=True)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if shutil.which("trivy") is None:
-        payload = {"status": "TOOL_ERROR", "error": "trivy executable not found"}
+        payload = {"status": "BLOCKED_TOOL_INSTALL", "error": "trivy executable not found", "scan_timestamp": datetime.now(UTC).isoformat()}
         args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         args.output.with_name("trivy-summary.md").write_text("# Trivy\n\nStatus: `TOOL_ERROR`\n", encoding="utf-8")
-        return 3
+        return 2
     command = [
         "trivy", "fs", "--cache-dir", str(args.cache_dir), "--format", "json",
         "--output", str(args.output), "--scanners", "vuln,secret,misconfig",
@@ -67,8 +74,10 @@ def main() -> int:
     except (OSError, json.JSONDecodeError):
         report = None
     status = classify(returncode, stdout, stderr, report)
+    version = subprocess.run(["trivy", "--version"], capture_output=True, text=True, check=False).stdout.strip()
+    cache_entries = [{"path": str(path), "mtime": path.stat().st_mtime, "size": path.stat().st_size} for path in args.cache_dir.rglob("*") if path.is_file()][:100]
     payload = report if report is not None else {}
-    payload.update({"status": status, "returncode": returncode, "stdout_tail": stdout[-2000:], "stderr_tail": stderr[-2000:]})
+    payload.update({"status": status, "returncode": returncode, "scan_timestamp": datetime.now(UTC).isoformat(), "trivy_version": version, "db_metadata": {"cache_dir": str(args.cache_dir), "entries": cache_entries, "db_repository": os.getenv("TRIVY_DB_REPOSITORY", "ghcr.io/aquasecurity/trivy-db:2"), "checks_bundle_repository": os.getenv("TRIVY_CHECKS_BUNDLE_REPOSITORY", "ghcr.io/aquasecurity/trivy-checks:1")}, "container_scan": {"image": args.image, "status": "NOT_REQUESTED" if not args.image else "NOT_RUN"}, "stdout_tail": stdout[-2000:], "stderr_tail": stderr[-2000:]})
     args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     findings = _finding_count(report or {})
     summary = ["# Trivy scan", "", f"Status: `{status}`", f"Findings: `{findings}`", f"Return code: `{returncode}`", ""]
@@ -76,7 +85,7 @@ def main() -> int:
         summary.append("The scan did not pass; this result is fail-closed and requires remediation or environment recovery.")
     args.output.with_name("trivy-summary.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
     print(json.dumps({"status": status, "findings": findings, "returncode": returncode}))
-    return 0 if status == "PASS" else (1 if status == "FAILED_VULNERABILITIES" else 2)
+    return 0 if status == "PASS" else (1 if status in {"VULNERABILITY_FOUND", "MISCONFIGURATION_FOUND"} else 2)
 
 
 if __name__ == "__main__":

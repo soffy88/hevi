@@ -14,11 +14,11 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=Path("artifacts/qualification/summary.md"))
     args = parser.parse_args()
     summary = json.loads(args.input.read_text(encoding="utf-8"))
-    lines = ["# HEVI line qualification summary", "", f"Total: {summary['total']}", "", "| Line | Status | Implementation | Production | Real E2E | Quality gate | Provider | Artifact | Blockers |", "|---|---|---:|---:|---|---|---|---|---|"]
+    lines = ["# HEVI line qualification summary", "", f"Total: {summary['total']}", "", "| Line | Status | Code | Runtime | Production | Real E2E | Quality gate | Provider | Artifact | Blockers |", "|---|---|---:|---:|---:|---|---|---|---|---|"]
     for item in summary["lines"]:
         blockers = "; ".join(item["blockers"]) or "—"
         provider = ", ".join(item.get("provider", [])) or "—"
-        lines.append(f"| {item['line']} | {item['status']} | {item['implementation_completeness']}% | {item['production_completeness']}% | {item['real_e2e']} | {item['quality_gate']} | {provider} | {item['final_artifact']} | {blockers} |")
+        lines.append(f"| {item['line']} | {item['status']} | {item['code_completeness']}% | {item['runtime_completeness']}% | {item['production_completeness']}% | {item['real_e2e']} | {item['quality_gate']} | {provider} | {item['final_artifact']} | {blockers} |")
     lines.extend(["", "## Counts", ""])
     for status, count in summary["counts"].items():
         lines.append(f"- {status}: {count}")

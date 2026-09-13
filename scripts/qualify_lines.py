@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from hevi.qualification.framework import discover_reports, write_reports
+from scripts.real_line_qualification import qualify_line
 
 
 def main() -> int:
@@ -36,6 +37,7 @@ def main() -> int:
         subprocess.run([sys.executable, "scripts/provider_readiness.py"], check=False)
     if args.preflight:
         subprocess.run([sys.executable, "scripts/gpu_readiness.py"], check=False)
+        subprocess.run([sys.executable, "scripts/gpu_diagnostic.py"], check=False)
         if args.provider_ready_only:
             return 0
     reports = discover_reports(args.lines_dir, args.output)
@@ -46,14 +48,27 @@ def main() -> int:
     if args.gpu_only:
         reports = [item for item in reports if "h3_local" in item["provider_required"]]
     if args.resume:
+        current_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         existing = []
         for report in reports:
             path = args.output / report["line"] / "result.json"
             if path.exists():
-                existing.append(json.loads(path.read_text(encoding="utf-8")))
+                prior = json.loads(path.read_text(encoding="utf-8"))
+                if prior.get("evidence", {}).get("git_sha") != current_sha:
+                    report["stale"] = True
+                    report["blockers"].append(f"STALE_EVIDENCE:git_sha={prior.get('evidence', {}).get('git_sha')}")
+                    existing.append(report)
+                else:
+                    existing.append(prior)
             else:
                 existing.append(report)
         reports = existing
+    if args.real:
+        for index, report in enumerate(reports):
+            if report.get("provider_available") and not report.get("real_e2e"):
+                evidence = qualify_line(report["line"], args.output)
+                if evidence is not None:
+                    reports[index] = {**report, **evidence}
     summary = write_reports(reports, args.output)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0

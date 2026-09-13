@@ -158,13 +158,20 @@ jobs:
       - name: Restore Trivy database and scanner cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/trivy
+          path: |
+            ~/.cache/trivy
+            ~/.cache/trivy-checks
           key: ${{ runner.os }}-trivy-${{ hashFiles('**/uv.lock', '**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-trivy-
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@v0.2.3
+        with:
+          version: v0.66.0
       - name: Filesystem vulnerability and misconfiguration scan
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_CHECKS_BUNDLE_REPOSITORY: ghcr.io/aquasecurity/trivy-checks:1
         run: python scripts/trivy_scan.py --cache-dir ~/.cache/trivy
       - name: Upload Trivy evidence
         if: always()

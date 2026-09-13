@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import platform
 import subprocess
 import time
 from pathlib import Path
@@ -67,17 +68,27 @@ def _provider_needs(recipe: dict[str, Any]) -> list[str]:
 def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict[str, Any]:
     provider_required = _provider_needs(recipe)
     hardware_line = "h3_local" in provider_required
-    provider_available = bool(os.getenv("HEVI_QUALIFICATION_REAL"))
+    readiness_path = Path("artifacts/qualification/provider_readiness.json")
+    readiness = json.loads(readiness_path.read_text(encoding="utf-8")) if readiness_path.exists() else {"providers": []}
+    readiness_by_name = {str(item.get("provider")): item for item in readiness.get("providers", [])}
+    dependency_blockers = []
+    for provider_name in provider_required:
+        item = readiness_by_name.get(provider_name)
+        if item is None:
+            dependency_blockers.append(f"{provider_name}=BLOCKED_SERVICE:readiness_not_recorded")
+        elif item.get("status") != "READY":
+            dependency_blockers.append(f"{provider_name}={item.get('status')}:{item.get('blocker') or 'probe_failed'}")
+    provider_available = bool(provider_required) and not dependency_blockers
     hardware_available = _hardware_available() if hardware_line else True
     blockers: list[str] = []
     status = "BLOCKED_PROVIDER"
     if hardware_line and not hardware_available:
         status = "BLOCKED_HARDWARE"
-        blockers.append("nvidia-smi/CUDA unavailable for required local provider")
-    elif not provider_available:
-        blockers.append("real provider qualification not enabled; no mock accepted")
+        blockers.extend(dependency_blockers or ["h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable"])
+    elif dependency_blockers:
+        blockers.extend(dependency_blockers)
     else:
-        blockers.append("real artifact evidence not supplied")
+        blockers.append("real_e2e_not_executed; no mock accepted")
     checks = {
         "recipe_complete": bool(recipe.get("pipeline", {}).get("stages")) and bool(recipe.get("slots") is not None),
         "runtime_complete": bool(recipe.get("render_runtime")),
@@ -97,13 +108,19 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
         "provenance_model": Path("hevi/tongjian").exists(),
         "quality_gate_passed": False,
     }
+    code_fields = ("recipe_complete", "provider_contract", "tests", "artifact_model", "media_validation", "provenance_model", "security_gate")
+    runtime_fields = ("runtime_complete", "provider_contract", "artifact_model", "media_validation", "retry_verified", "observability_complete")
     implementation_completeness = round(100 * sum(checks[field] for field in IMPLEMENTATION_FIELDS) / len(IMPLEMENTATION_FIELDS))
+    code_completeness = round(100 * sum(checks[field] for field in code_fields) / len(code_fields))
+    runtime_completeness = round(100 * sum(checks[field] for field in runtime_fields) / len(runtime_fields))
     production_completeness = round(100 * sum(checks[field] for field in PRODUCTION_FIELDS) / len(PRODUCTION_FIELDS))
     return {
         "line": line,
         **checks,
         "completeness_percent": production_completeness,
         "implementation_completeness": implementation_completeness,
+        "code_completeness": code_completeness,
+        "runtime_completeness": runtime_completeness,
         "production_completeness": production_completeness,
         "provider_required": provider_required,
         "provider": provider_required,
@@ -112,12 +129,23 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
         "blockers": blockers,
         "evidence": {
             "recipe_sha256": _sha256(Path(recipe["_source"])) if recipe.get("_source") else None,
+            "git_sha": _git_sha(),
+            "provider_model": os.getenv("OPENAI_MODEL") or os.getenv("H3_MODEL") or None,
+            "host_fingerprint": hashlib.sha256(f"{platform.node()}|{platform.platform()}".encode()).hexdigest(),
             "evidence_root": str(evidence_root),
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "hardware_probe": hardware_available,
             "real_mode": provider_available,
         },
     }
+
+
+def _git_sha() -> str | None:
+    try:
+        result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
 
 
 def discover_reports(lines_dir: Path, evidence_root: Path) -> list[dict[str, Any]]:
