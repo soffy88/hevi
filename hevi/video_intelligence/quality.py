@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 
 from .boundaries import validate_boundaries
-from .models import GateStatus, ShotObservation, VideoQualityFinding, VideoQualityReport
+from .models import GateStatus, ShotObservation, VideoProbe, VideoQualityFinding, VideoQualityReport
 
 
 def evaluate_reel_quality(
-    shots: list[ShotObservation], duration_ms: int, *, provenance_complete: bool = True
+    shots: list[ShotObservation],
+    duration_ms: int,
+    *,
+    provenance_complete: bool = True,
+    expected_duration_ms: int | None = None,
+    frozen_frame_detected: bool = False,
 ) -> VideoQualityReport:
     findings: list[VideoQualityFinding] = []
     checked = [
@@ -54,6 +60,44 @@ def evaluate_reel_quality(
             finding_id="quality:motion", code="MOTION_EVIDENCE", status=GateStatus.FAIL,
             severity="ERROR", message="shot lacks motion evidence", evidence_refs=["machine:motion"],
         ))
+    if any(
+        frame_ref and not Path(frame_ref).is_file()
+        for shot in shots
+        for frame_ref in shot.frame_refs
+    ):
+        findings.append(VideoQualityFinding(
+            finding_id="quality:frame-presence", code="FRAME_PRESENCE", status=GateStatus.FAIL,
+            severity="ERROR", message="referenced frame asset is missing", evidence_refs=["frame_refs"],
+        ))
+    if any(shot.rhythm is None for shot in shots):
+        findings.append(VideoQualityFinding(
+            finding_id="quality:rhythm", code="RHYTHM_COMPLETENESS", status=GateStatus.FAIL,
+            severity="ERROR", message="rhythm analysis does not cover the complete reel",
+            evidence_refs=["rhythm"],
+        ))
+    if any(
+        shot.semantic.camera_motion.value != "UNKNOWN"
+        and shot.motion_evidence is not None
+        and shot.motion_evidence.motion_class.value == "STATIC"
+        for shot in shots
+    ):
+        findings.append(VideoQualityFinding(
+            finding_id="quality:camera-motion", code="CAMERA_MOTION_EVIDENCE_CONFLICT",
+            status=GateStatus.WARN, severity="WARN", message="semantic camera motion conflicts with static machine motion",
+            evidence_refs=["machine:motion", "semantic:camera_motion"],
+        ))
+    if frozen_frame_detected:
+        findings.append(VideoQualityFinding(
+            finding_id="quality:frozen", code="FROZEN_FRAMES", status=GateStatus.WARN,
+            severity="WARN", message="all sampled frame deltas are static", evidence_refs=["machine:motion"],
+        ))
+    if expected_duration_ms is not None and duration_ms != expected_duration_ms:
+        findings.append(VideoQualityFinding(
+            finding_id="quality:video-duration", code="VIDEO_DURATION_COVERAGE",
+            status=GateStatus.FAIL, severity="ERROR",
+            message=f"observed={duration_ms};expected={expected_duration_ms}",
+            evidence_refs=["machine:duration"],
+        ))
     if not provenance_complete:
         findings.append(VideoQualityFinding(
             finding_id="quality:provenance", code="PROVENANCE_COMPLETE", status=GateStatus.FAIL,
@@ -67,3 +111,23 @@ def evaluate_reel_quality(
 
 def _distribution(values: list[str]) -> dict[str, int]:
     return dict(Counter(values))
+
+
+def evaluate_post_render_quality(probe: VideoProbe, *, require_audio: bool = True) -> VideoQualityReport:
+    """L0/L1 post-render gate using only probe evidence."""
+    findings: list[VideoQualityFinding] = []
+    if not probe.has_video or probe.duration_ms <= 0:
+        findings.append(VideoQualityFinding(
+            finding_id="postrender:media", code="MEDIA_VALIDITY", status=GateStatus.FAIL,
+            severity="ERROR", message="video stream or duration is invalid", evidence_refs=["ffprobe"],
+        ))
+    if require_audio and not probe.has_audio:
+        findings.append(VideoQualityFinding(
+            finding_id="postrender:audio", code="AUDIO_STREAM_MISSING", status=GateStatus.FAIL,
+            severity="ERROR", message="required audio stream is missing", evidence_refs=["ffprobe"],
+        ))
+    return VideoQualityReport(
+        status=GateStatus.FAIL if findings else GateStatus.PASS,
+        findings=findings,
+        checked=["L0_FILE_VALIDITY", "L1_MEDIA_VALIDITY"],
+    )

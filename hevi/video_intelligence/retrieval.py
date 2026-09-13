@@ -25,6 +25,49 @@ class RetrievalResult(StrictModel):
     evidence_refs: list[str] = Field(default_factory=list)
 
 
+def temporal_iou(
+    observed_start_ms: int, observed_end_ms: int, expected_start_ms: int, expected_end_ms: int
+) -> float:
+    intersection = max(0, min(observed_end_ms, expected_end_ms) - max(observed_start_ms, expected_start_ms))
+    union = max(observed_end_ms, expected_end_ms) - min(observed_start_ms, expected_start_ms)
+    return intersection / union if union else 0.0
+
+
+def evaluate_retrieval(
+    ranked: list[list[RetrievalResult]],
+    ground_truth: list[dict[str, Any]],
+    *,
+    iou_threshold: float = 0.5,
+) -> dict[str, float | int]:
+    if len(ranked) != len(ground_truth):
+        raise ValueError("retrieval result and ground truth counts differ")
+    hits_at_1 = hits_at_5 = 0
+    reciprocal_sum = 0.0
+    iou_sum = 0.0
+    for results, expected in zip(ranked, ground_truth, strict=True):
+        matches = [
+            temporal_iou(row.start_ms, row.end_ms, expected["start_ms"], expected["end_ms"])
+            for row in results
+            if row.asset_id == expected["asset_id"]
+        ]
+        hit_ranks = [index + 1 for index, value in enumerate(matches) if value >= iou_threshold]
+        if hit_ranks:
+            rank = hit_ranks[0]
+            hits_at_1 += rank == 1
+            hits_at_5 += rank <= 5
+            reciprocal_sum += 1 / rank
+            iou_sum += max(matches)
+    count = len(ground_truth)
+    return {
+        "recall_at_1": hits_at_1 / count if count else 0.0,
+        "recall_at_5": hits_at_5 / count if count else 0.0,
+        "mrr": reciprocal_sum / count if count else 0.0,
+        "temporal_iou": iou_sum / count if count else 0.0,
+        "query_count": count,
+        "iou_threshold": iou_threshold,
+    }
+
+
 class VideoTemporalIndex(StrictModel):
     schema_version: int = 1
     entries: list[dict[str, Any]] = Field(default_factory=list)

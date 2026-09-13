@@ -11,6 +11,9 @@ from hevi.video_intelligence.models import ReelAnalysis
 
 def main() -> int:
     root = Path("artifacts/video_intelligence")
+    reel_gold = json.loads((root / "gold" / "reel-gold.json").read_text(encoding="utf-8"))
+    quality_gold = json.loads((root / "gold" / "quality-gold.json").read_text(encoding="utf-8"))
+    retrieval_gold = json.loads((root / "gold" / "retrieval-gold.json").read_text(encoding="utf-8"))
     names = ("kinetic_promo", "shorts_clip", "character_animation")
     rows = []
     for name in names:
@@ -34,11 +37,22 @@ def main() -> int:
         "reference_analysis": "PASS",
         "intent_artifact_comparison": "PASS",
         "revision_feedback_trace": "PASS",
-        "reel_gold_total": 20,
-        "reel_gold_pass": "ALL",
-        "quality_gold_total": 20,
-        "quality_gold_pass": "ALL",
-        "retrieval_gold_total": 20,
+        "reel_gold_total": reel_gold["executed"],
+        "reel_gold_executed": reel_gold["executed"],
+        "reel_gold_pass": reel_gold["pass"],
+        "quality_gold_total": quality_gold["executed"],
+        "quality_gold_executed": quality_gold["executed"],
+        "quality_gold_pass": quality_gold["pass"],
+        "quality_false_positive_count": quality_gold["false_positive_count"],
+        "retrieval_gold_total": retrieval_gold["executed"],
+        "retrieval_gold_executed": retrieval_gold["executed"],
+        "retrieval_metrics": retrieval_gold["metrics"],
+        "boundary_metrics": {
+            "precision": reel_gold["boundary_precision"],
+            "recall": reel_gold["boundary_recall"],
+            "f1": reel_gold["boundary_f1"],
+            "tolerance_ms": reel_gold["boundary_tolerance_ms"],
+        },
         "fail_closed": "PASS",
         "existing_production_complete_total": 6,
         "gpu_ready": "BLOCKED_HARDWARE",
