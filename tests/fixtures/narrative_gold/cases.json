@@ -1,0 +1,22 @@
+[
+  {"id":"multi_scene_continuity","kind":"continuity"},
+  {"id":"character_knowledge","kind":"knowledge"},
+  {"id":"timeline_order","kind":"timeline"},
+  {"id":"relationship_change","kind":"relationship"},
+  {"id":"object_continuity","kind":"continuity"},
+  {"id":"setup_payoff","kind":"thread"},
+  {"id":"scene_turn","kind":"dramaturgy"},
+  {"id":"historical_fact","kind":"provenance"},
+  {"id":"dramatization_boundary","kind":"provenance"},
+  {"id":"series_continuity","kind":"series"},
+  {"id":"stale_revision","kind":"revision"},
+  {"id":"truncated_generation","kind":"generation"},
+  {"id":"conflicting_revision","kind":"revision"},
+  {"id":"dangling_character","kind":"quality"},
+  {"id":"missing_evidence","kind":"quality"},
+  {"id":"forbidden_claim","kind":"quality"},
+  {"id":"context_budget","kind":"context"},
+  {"id":"shot_projection","kind":"adapter"},
+  {"id":"dialogue_intent","kind":"dialogue"},
+  {"id":"thread_duplicate","kind":"thread"}
+]
