@@ -1,11 +1,5 @@
-import { TopNav } from '@/components/TopNav';
-import { SimpleGenerate } from '@/components/home/SimpleGenerate';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return (
-    <>
-      <TopNav />
-      <SimpleGenerate />
-    </>
-  );
+  redirect('/studio');
 }

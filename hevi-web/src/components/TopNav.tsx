@@ -13,16 +13,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { isAuthenticated, logout } from '@/lib/auth-store';
-import { checkBackendHealth } from '@/lib/backend-health';
-import { SystemStatus } from '@/components/SystemStatus';
-import { useBackendStatus } from '@/hooks/useBackendStatus';
 
 const NAV = [
-  { href: '/', label: '创建' },
+  { href: '/studio', label: '创作' },
   { href: '/projects', label: '项目' },
-  { href: '/assets', label: '资产' },
-  { href: '/studio', label: '工作室' },
-  { href: '/account', label: '我的' },
+  { href: '/assets', label: '素材' },
+  { href: '/analysis', label: '视频分析' },
+  { href: '/settings', label: '设置' },
 ];
 
 export function TopNav() {
@@ -30,9 +27,7 @@ export function TopNav() {
   const router = useRouter();
   const [authed, setAuthed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // 实时后端连接状态(只显示 "Online / Offline" 文本指示,具体细节在 SystemStatus)
-  const { online, checking, recheck } = useBackendStatus();
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => { setAuthed(isAuthenticated()); }, [pathname]);
   // 路由变化时关闭 drawer
@@ -42,8 +37,8 @@ export function TopNav() {
     href === '/' ? pathname === '/' : pathname.startsWith(href);
 
   return (
-    <header className="hevi-topnav" data-state={online ? 'online' : 'offline'}>
-      <Link href="/" className="hevi-topnav__logo">HEVI</Link>
+    <header className="hevi-topnav">
+      <Link href="/studio" className="hevi-topnav__logo">HEVI</Link>
 
       {/* 桌面端导航 */}
       <nav className="hevi-topnav__links hevi-topnav__links--desktop">
@@ -57,28 +52,21 @@ export function TopNav() {
       </nav>
 
       <div className="hevi-topnav__right">
-        {/* 连接状态指示(可点击展开) */}
-        <button type="button"
-          className="hevi-topnav__status-pill"
-          data-state={online ? 'online' : 'offline'}
-          onClick={recheck}
-          disabled={checking}
-          title={online ? '后端已连接' : '后端未连接,点击重试'}>
-          <span className={`hevi-topnav__dot ${online ? 'hevi-topnav__dot--online' : 'hevi-topnav__dot--offline'}`}
-            aria-hidden="true" />
-          <span className="hevi-topnav__status-text">
-            {checking ? '检测中' : online ? 'Online' : 'Offline'}
-          </span>
-        </button>
-
-        {/* System Status (展开连接详情) */}
-        <SystemStatus />
-
         {authed ? (
-          <button type="button" className="hevi-topnav__link hevi-topnav__link--auth hevi-topnav__link--btn"
-            onClick={() => { logout(); setAuthed(false); router.push('/login'); }}>
-            退出
-          </button>
+          <div className="hevi-topnav__profile">
+            <button type="button" className="hevi-topnav__avatar" aria-label="打开用户菜单"
+              aria-expanded={profileOpen} onClick={() => setProfileOpen(v => !v)}>我</button>
+            {profileOpen && (
+              <div className="hevi-topnav__profile-menu" role="menu">
+                <Link href="/account" className="hevi-topnav__profile-item" role="menuitem">账户</Link>
+                <Link href="/settings" className="hevi-topnav__profile-item" role="menuitem">设置</Link>
+                <button type="button" className="hevi-topnav__profile-item" role="menuitem"
+                  onClick={() => { logout(); setAuthed(false); setProfileOpen(false); router.push('/login'); }}>
+                  退出登录
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <Link href="/login" className="hevi-topnav__link hevi-topnav__link--auth"
             data-active={pathname.startsWith('/login') ? 'true' : undefined}>
@@ -99,7 +87,7 @@ export function TopNav() {
       {drawerOpen && (
         <div className="hevi-topnav__drawer" role="navigation" aria-label="移动端导航">
           {NAV.map(n => (
-            <Link key={n.href} href={n.href}
+              <Link key={n.href} href={n.href}
               className="hevi-topnav__drawer-link"
               data-active={isActive(n.href) ? 'true' : undefined}
               onClick={() => setDrawerOpen(false)}>

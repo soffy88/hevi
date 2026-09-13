@@ -528,6 +528,11 @@ html, body {
 .hevi-topnav__link[data-active="true"] { background: color-mix(in oklch, var(--primary) 16%, transparent); color: var(--primary); font-weight: 600; }
 .hevi-topnav__link--btn { border: none; background: none; font: inherit; cursor: pointer; }
 .hevi-topnav__link--auth { margin-left: auto; }
+.hevi-topnav__profile { position: relative; margin-left: auto; }
+.hevi-topnav__avatar { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 50%; color: var(--foreground); background: var(--muted); font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.hevi-topnav__profile-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 60; min-width: 140px; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 12px 30px rgb(0 0 0 / .14); }
+.hevi-topnav__profile-item { display: block; width: 100%; padding: 9px 11px; border: 0; border-radius: 8px; color: var(--foreground); background: transparent; font: inherit; font-size: 13px; text-align: left; text-decoration: none; cursor: pointer; }
+.hevi-topnav__profile-item:hover { background: var(--muted); }
 .hevi-topnav__more { position: relative; flex-shrink: 0; }
 .hevi-topnav__more-menu {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 50;
@@ -541,6 +546,45 @@ html, body {
 }
 .hevi-topnav__more-item:hover { background: var(--muted); color: var(--foreground); }
 .hevi-topnav__more-item[data-active="true"] { color: var(--primary); font-weight: 600; }
+
+/* ── 产品化工作区 ── */
+.product-page { min-height: calc(100dvh - 56px); padding: 42px clamp(18px, 4vw, 64px) 72px; background: var(--background); }
+.product-page__intro { max-width: 820px; margin: 0 auto 26px; }
+.product-page__eyebrow { margin: 0 0 8px; color: var(--primary); font-size: 12px; font-weight: 850; letter-spacing: .08em; }
+.product-page__intro h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); letter-spacing: -.035em; }
+.product-page__intro p:last-child { margin: 10px 0 0; color: var(--muted-foreground); line-height: 1.65; }
+.product-page--creation .hevi-home { min-height: 0; padding: 0; background: transparent; }
+.settings-page, .analysis-page { max-width: 1180px; margin: 0 auto; }
+.status-card, .analysis-result, .reference-card { max-width: 820px; margin: 0 auto; padding: 22px; border: 1px solid var(--border); border-radius: 18px; background: var(--card); box-shadow: var(--shadow-sm); }
+.status-card__capabilities { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border); }
+.status-card__capabilities h2, .analysis-result h2, .reference-card h2 { margin: 0; font-size: 19px; }
+.status-card__grid { display: grid; grid-template-columns: 1fr auto; gap: 11px 20px; margin-top: 14px; font-size: 13px; }
+.status-card__grid strong { color: #15803d; font-weight: 750; }
+.status-card__grid .is-muted { color: var(--muted-foreground); }
+.analysis-toolbar { display: flex; align-items: end; gap: 12px; max-width: 820px; margin: 0 auto 18px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+.analysis-toolbar label { display: grid; gap: 6px; min-width: 110px; color: var(--muted-foreground); font-size: 12px; font-weight: 750; }
+.analysis-toolbar select { flex: 1; min-width: 0; height: 40px; padding: 0 11px; border: 1px solid var(--border); border-radius: 9px; color: var(--foreground); background: var(--background); font: inherit; }
+.product-alert { max-width: 820px; margin: 0 auto 18px; padding: 12px 14px; border-radius: 10px; font-size: 13px; }
+.product-alert--error { color: #991b1b; background: #fee2e2; }
+.analysis-result { display: grid; gap: 18px; }
+.analysis-result__header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.analysis-result__kicker { color: var(--primary); font-size: 11px; font-weight: 850; letter-spacing: .08em; }
+.analysis-result__reason, .reference-card p { margin: 0; color: var(--muted-foreground); font-size: 13px; line-height: 1.6; }
+.analysis-status { flex-shrink: 0; padding: 5px 9px; border-radius: 999px; color: #166534; background: #dcfce7; font-size: 12px; font-weight: 800; }
+.analysis-status--blocked, .analysis-status--failed { color: #92400e; background: #fef3c7; }
+.analysis-result__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.analysis-result__grid div { display: grid; gap: 5px; padding: 14px; border-radius: 12px; background: var(--muted); }
+.analysis-result__grid span { color: var(--muted-foreground); font-size: 12px; }
+.technical-details { border-top: 1px solid var(--border); padding-top: 13px; color: var(--muted-foreground); font-size: 12px; }
+.technical-details summary { cursor: pointer; font-weight: 750; }
+.technical-details pre { max-height: 300px; overflow: auto; margin: 12px 0 0; padding: 12px; border-radius: 10px; background: #111827; color: #d1fae5; font-size: 11px; line-height: 1.5; }
+.reference-card { display: grid; grid-template-columns: 1fr auto; gap: 14px 24px; margin-top: 18px; }
+.reference-card__result { grid-column: 1 / -1; }
+.analysis-empty { max-width: 820px; margin: 0 auto; padding: 62px 24px; border: 1px dashed var(--border); border-radius: 18px; text-align: center; }
+.analysis-empty__icon { color: var(--primary); font-size: 40px; }
+.analysis-empty h2 { margin: 12px 0 6px; font-size: 19px; }
+.analysis-empty p { max-width: 460px; margin: 0 auto; color: var(--muted-foreground); font-size: 13px; line-height: 1.6; }
+@media (max-width: 700px) { .analysis-toolbar, .reference-card { grid-template-columns: 1fr; align-items: stretch; flex-direction: column; }.analysis-toolbar { display: grid; }.analysis-result__grid { grid-template-columns: 1fr; }.reference-card__result { grid-column: auto; } }
 
 /* ── 首页简单生成 ── */
 .hevi-home {
