@@ -4,6 +4,7 @@ COPY requirements.lock ./requirements.lock
 RUN pip install --no-cache-dir --require-hashes -r requirements.lock || pip install --no-cache-dir -r requirements.lock
 COPY app ./app
 COPY model_bootstrap.py ./model_bootstrap.py
+COPY model_spec.json ./model_spec.json
 RUN mkdir -p /models/openvoice && chown -R 10001:10001 /models
 VOLUME ["/models/openvoice"]
 ENV OPENVOICE_MODEL_DIR=/models/openvoice

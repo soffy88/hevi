@@ -1,0 +1,18 @@
+{
+  "model_name": "myshell-ai/OpenVoice",
+  "model_version": "c70fc8b939bd1d8213994ff7c88e32be39708271",
+  "source": "https://huggingface.co/myshell-ai/OpenVoice",
+  "license": "MIT (verify deployment terms for the exact model revision)",
+  "runtime_dependency": "MyShell-OpenVoice runtime with torch/torchaudio",
+  "files": [
+    {"path": "checkpoints/base_speakers/EN/checkpoint.pth", "sha256": "1db1ae1a5c8ded049bd1536051489aefbfad4a5077c01c2257e9e88fa1bb8422", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/base_speakers/EN/checkpoint.pth"},
+    {"path": "checkpoints/base_speakers/EN/config.json", "sha256": "f01c2ecbf115128d00e13acc57eadb89ac0579635c1a27c7957158bceb77e561", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/base_speakers/EN/config.json"},
+    {"path": "checkpoints/base_speakers/EN/en_default_se.pth", "sha256": "9cab24002eec738d0fe72cb73a34e57fbc3999c1bd4a1670a7b56ee4e3590ac9", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/base_speakers/EN/en_default_se.pth"},
+    {"path": "checkpoints/base_speakers/EN/en_style_se.pth", "sha256": "6f698153be5004b90a8642d1157c89cae7dd296752a3276450ced6a17b8b98a9", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/base_speakers/EN/en_style_se.pth"},
+    {"path": "checkpoints/base_speakers/ZH/checkpoint.pth", "sha256": "de9fb0eb749f3254130fe0172fcbb20e75f88a9b16b54dd0b73cac0dc40da7d9", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/base_speakers/ZH/checkpoint.pth"},
+    {"path": "checkpoints/base_speakers/ZH/config.json", "sha256": "dca3b59c0039b79be87af78cacf87c15796329458bd099fe0cf3a749e5a7b5cc", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/base_speakers/ZH/config.json"},
+    {"path": "checkpoints/base_speakers/ZH/zh_default_se.pth", "sha256": "3b62e8264962059b8a84dd00b29e2fcccc92f5d3be90eec67dfa082c0cf58ccf", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/base_speakers/ZH/zh_default_se.pth"},
+    {"path": "checkpoints/converter/checkpoint.pth", "sha256": "89ae83aa4e3668fef64b388b789ff7b0ce0def9f801069edfc18a00ea420748d", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/converter/checkpoint.pth"},
+    {"path": "checkpoints/converter/config.json", "sha256": "86c61ff1ac3efb9fbf0246c727345793b34053fb1dd5b98e7f561201d4f90739", "url": "https://huggingface.co/myshell-ai/OpenVoice/resolve/c70fc8b939bd1d8213994ff7c88e32be39708271/checkpoints/converter/config.json"}
+  ]
+}
