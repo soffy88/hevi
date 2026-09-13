@@ -7,8 +7,30 @@
 
 FROM guiji2025/duix.avatar:latest
 
-COPY native_app.py /code/hevi_native_app.py
+# The upstream image contains the native runtime and model files.  Keep those
+# read-only and only grant the adapter its declared runtime state directory.
+RUN groupadd --system hevi \
+    && useradd --system --gid hevi --create-home --home-dir /home/hevi --shell /usr/sbin/nologin hevi \
+    && mkdir -p /code/data/temp /code/data/output /tmp/hevi \
+    && chown -R hevi:hevi /code/data /tmp/hevi /home/hevi \
+    && chown -R hevi:hevi /code/landmark2face_wy/checkpoints/test \
+    && chown hevi:hevi /code/submit_lock /code/task_info /code/result_lock /code/result_info \
+       /code/pre_lock /code/pre_task_info /code/pre_result_lock /code/pre_result_info /code/result.jpg \
+    && chown root:hevi /code \
+    && chmod 775 /code \
+    && chmod 1777 /tmp
+
+COPY --chown=hevi:hevi native_app.py /code/hevi_native_app.py
 
 WORKDIR /code
+ENV HOME=/home/hevi \
+    TMPDIR=/code/data/temp \
+    PYTHONUNBUFFERED=1
+
+EXPOSE 8383
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD /usr/bin/curl -fsS http://127.0.0.1:8383/health || exit 1
+
+USER hevi
 
 CMD ["/usr/local/python3/bin/python3", "/code/hevi_native_app.py"]
