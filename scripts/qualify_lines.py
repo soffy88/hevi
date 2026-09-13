@@ -58,7 +58,7 @@ def main() -> int:
                 prior = json.loads(path.read_text(encoding="utf-8"))
                 if prior.get("evidence", {}).get("git_sha") != current_sha:
                     report["stale"] = True
-                    report["blockers"].append(f"STALE_EVIDENCE:git_sha={prior.get('evidence', {}).get('git_sha')}")
+                    report["stale_evidence"] = {"previous_git_sha": prior.get("evidence", {}).get("git_sha"), "current_git_sha": current_sha}
                     existing.append(report)
                 else:
                     existing.append(prior)
