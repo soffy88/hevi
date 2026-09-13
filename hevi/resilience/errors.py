@@ -68,6 +68,12 @@ _RETRYABLE_KEYS = (
 
 def classify_error(exc: Exception) -> HeviError:
     """Classify an exception into Hevi errors (retryable vs not)."""
+    if isinstance(exc, RetryableError):
+        return exc
+    if isinstance(exc, UnretryableError):
+        return exc
+    if isinstance(exc, DegradableError):
+        return exc
     if isinstance(exc, httpx.HTTPStatusError):
         status = exc.response.status_code
         if status == 429:

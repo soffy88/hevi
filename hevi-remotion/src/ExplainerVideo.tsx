@@ -189,7 +189,8 @@ export const computeFrameStarts = (fps: number): number[] => {
 
 export const getTotalDurationInFrames = (fps: number): number => {
   const starts = computeFrameStarts(fps);
-  return starts[starts.length - 1];
+  const titleCardDuration = Math.max(90, fps * 3);
+  return titleCardDuration + starts[starts.length - 1];
 };
 
 export const ExplainerVideo: React.FC = () => {

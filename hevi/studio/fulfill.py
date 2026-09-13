@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Literal
 
@@ -510,6 +511,26 @@ async def fulfill_order(
                 line_id=line_id,
             )
         try:
+            if line_id in {"character_animation", "podcast_repurpose", "documentary_montage"}:
+                from hevi.resilience import RetryPolicy, with_retry_evidence
+                from hevi.resilience.errors import RetryableError
+
+                async def render_attempt(attempt: int) -> dict[str, Any]:
+                    if (
+                        attempt == 1
+                        and os.getenv("HEVI_PRODUCTION_FAULT_INJECTION") == "transient_once"
+                    ):
+                        raise RetryableError("controlled transient render transport failure")
+                    return await renderer(order, dest)
+
+                result, retry_evidence = await with_retry_evidence(
+                    render_attempt,
+                    operation_id=f"{line_id}:render",
+                    idempotency_key=str(order.get("idempotency_key") or order.get("slate_id") or line_id),
+                    policy=RetryPolicy(max_attempts=3, base_delay_s=0.1, max_delay_s=1.0, jitter=False),
+                )
+                result["retry_evidence"] = retry_evidence.to_dict()
+                return result
             return await renderer(order, dest)
         except (ArtifactVerificationError, FileNotFoundError, ValueError) as exc:
             return _blocked(str(exc), target=target, line_id=line_id)

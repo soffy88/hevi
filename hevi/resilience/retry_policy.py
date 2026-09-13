@@ -2,7 +2,7 @@ import asyncio
 import logging
 import random
 from collections.abc import Callable, Coroutine
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from hevi.resilience.errors import RetryableError, classify_error
@@ -16,6 +16,70 @@ class RetryPolicy:
     base_delay_s: float = 2.0
     max_delay_s: float = 30.0
     jitter: bool = True
+
+
+@dataclass
+class RetryEvidence:
+    """Redacted, serializable evidence for one idempotent runtime operation."""
+
+    retry_supported: bool = True
+    retry_exercised: bool = False
+    operation_id: str = ""
+    idempotency_key: str = ""
+    attempt_count: int = 0
+    failure_class: str | None = None
+    retryable: bool = False
+    backoff_policy: dict[str, Any] | None = None
+    first_attempt_result: str = ""
+    final_attempt_result: str = ""
+    side_effect_duplicate_count: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+async def with_retry_evidence[T](
+    coro_factory: Callable[[int], Coroutine[Any, Any, T]],
+    *,
+    operation_id: str,
+    idempotency_key: str,
+    policy: RetryPolicy | None = None,
+) -> tuple[T, RetryEvidence]:
+    """Run an idempotent operation and return production retry evidence."""
+
+    p = policy or RetryPolicy()
+    evidence = RetryEvidence(
+        operation_id=operation_id,
+        idempotency_key=idempotency_key,
+        backoff_policy={
+            "max_attempts": p.max_attempts,
+            "initial_backoff_s": p.base_delay_s,
+            "max_backoff_s": p.max_delay_s,
+            "jitter": p.jitter,
+        },
+    )
+    for attempt in range(1, p.max_attempts + 1):
+        evidence.attempt_count = attempt
+        try:
+            value = await coro_factory(attempt)
+        except Exception as exc:
+            classified = classify_error(exc)
+            evidence.failure_class = type(classified).__name__
+            evidence.retryable = isinstance(classified, RetryableError)
+            evidence.first_attempt_result = evidence.first_attempt_result or "failed"
+            if not evidence.retryable or attempt >= p.max_attempts:
+                evidence.final_attempt_result = "failed"
+                raise
+            evidence.retry_exercised = True
+            delay = min(p.base_delay_s * (2 ** (attempt - 1)), p.max_delay_s)
+            if p.jitter:
+                delay *= 0.5 + random.random()
+            await asyncio.sleep(delay)
+        else:
+            evidence.first_attempt_result = evidence.first_attempt_result or "completed"
+            evidence.final_attempt_result = "completed"
+            return value, evidence
+    raise RuntimeError("retry loop exited without result")
 
 
 async def with_retry[T](

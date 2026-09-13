@@ -15,7 +15,7 @@ from hevi.resilience.errors import (
     classify_error,
 )
 from hevi.resilience.fallback_chain import run_with_fallback
-from hevi.resilience.retry_policy import RetryPolicy, with_retry
+from hevi.resilience.retry_policy import RetryPolicy, with_retry, with_retry_evidence
 
 
 def test_classify_error():
@@ -99,6 +99,33 @@ async def test_with_retry_unretryable():
         with pytest.raises(ValueError, match="bad param"):
             await with_retry(lambda: mock_coro())
     assert mock_coro.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_with_retry_evidence_records_transient_attempt_and_idempotency() -> None:
+    attempts: list[int] = []
+
+    async def operation(attempt: int) -> str:
+        attempts.append(attempt)
+        if attempt == 1:
+            raise RetryableError("temporary transport failure")
+        return "artifact-ready"
+
+    with patch("hevi.resilience.retry_policy.asyncio.sleep", new_callable=AsyncMock):
+        value, evidence = await with_retry_evidence(
+            operation,
+            operation_id="line:render",
+            idempotency_key="job-1",
+            policy=RetryPolicy(max_attempts=3, base_delay_s=0.1, jitter=False),
+        )
+
+    assert value == "artifact-ready"
+    assert attempts == [1, 2]
+    assert evidence.retry_exercised is True
+    assert evidence.attempt_count == 2
+    assert evidence.failure_class == "RetryableError"
+    assert evidence.side_effect_duplicate_count == 0
+    assert evidence.idempotency_key == "job-1"
 
 
 @pytest.mark.asyncio
