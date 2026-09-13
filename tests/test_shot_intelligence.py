@@ -1,5 +1,12 @@
+import pytest
+
 from hevi.cinematic.shot_intelligence.beat_sync import beat_projection, cues_from_times
 from hevi.cinematic.shot_intelligence.models import ShotIntent
+from hevi.cinematic.shot_intelligence.persistence import (
+    ShotPlanSchemaError,
+    deserialize_plan,
+    replay_plan,
+)
 from hevi.cinematic.shot_intelligence.projections import (
     to_ffmpeg,
     to_generated_video_prompt,
@@ -42,3 +49,13 @@ def test_beat_and_renderer_projections_do_not_mutate_canonical_plan() -> None:
     assert to_generated_video_prompt(plan)
     assert plan == before
 
+
+def test_shot_plan_persistence_replay_is_canonical() -> None:
+    plan = ShotSelector().plan(_intents())
+    assert replay_plan(plan) == plan
+    assert replay_plan(plan).shot_plan_schema_version == "1.0"
+
+
+def test_shot_plan_rejects_unknown_schema() -> None:
+    with pytest.raises(ShotPlanSchemaError):
+        deserialize_plan({"shot_plan_schema_version": "999", "line": "x", "shots": []})

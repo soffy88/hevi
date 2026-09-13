@@ -20,12 +20,19 @@ def validate_shot_plan(plan: ShotPlan) -> VisualQAResult:
     for shot in plan.shots:
         if not shot.id or not shot.framing or not shot.shot_type:
             failures.append("underspecified_shot")
+        if shot.subject_count < 1:
+            failures.append(f"missing_required_subject:{shot.id}")
+        if shot.duration_range_s[0] <= 0 or shot.duration_range_s[0] > shot.duration_range_s[1]:
+            failures.append(f"invalid_duration:{shot.id}")
         if shot.duration_range_s[1] > 12:
             warnings.append("excessive_duration")
         if not shot.provenance:
             failures.append(f"missing_provenance:{shot.id}")
+        if shot.composition.safe_area not in {"standard", "title_safe", "action_safe"}:
+            failures.append(f"hard_safe_area_violation:{shot.id}")
+        if shot.transition.name not in shot.transition.compatible_with:
+            failures.append(f"transition_incompatibility:{shot.id}")
     if plan.shots and not any("wide" in shot.tags or shot.shot_type == "establishing" for shot in plan.shots):
         warnings.append("missing_establishing_context")
     status = "FAIL" if failures else ("WARN" if warnings else "PASS")
     return VisualQAResult(status, tuple(dict.fromkeys(warnings)), tuple(dict.fromkeys(failures)))
-

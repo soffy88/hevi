@@ -30,6 +30,12 @@ class ShotSelector:
         if intent.narrative_purpose in {"hook", "cta"}:
             preferred = [r for r in candidates if intent.narrative_purpose in r.tags]
             candidates = preferred or candidates
+        elif intent.narrative_purpose == "establishing":
+            preferred = [r for r in candidates if r.shot_type == "establishing" or "wide" in r.tags]
+            candidates = preferred or candidates
+        elif intent.narrative_purpose in {"action", "evidence"}:
+            preferred = [r for r in candidates if r.shot_type in {"b_roll", "detail", "coverage"}]
+            candidates = preferred or candidates
         if intent.target_duration_s > 0:
             fitting = [r for r in candidates if r.duration_range_s[0] <= intent.target_duration_s <= r.duration_range_s[1]]
             candidates = fitting or candidates
@@ -58,4 +64,3 @@ class ShotSelector:
 def project_shot(recipe: ShotRecipe) -> dict[str, object]:
     """Provider-neutral projection data; canonical recipe remains unchanged."""
     return {"shot_type": recipe.shot_type, "framing": recipe.framing, "camera_motion": recipe.camera_motion.name, "duration_range_s": recipe.duration_range_s}
-

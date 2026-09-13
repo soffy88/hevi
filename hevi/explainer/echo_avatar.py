@@ -142,9 +142,9 @@ async def attach_echo_avatar(
     if video_src:
         local_video = await materialize_image(video_src, output_dir / "presenter_ref.mp4")
         if local_image is None:
-            from hevi.digital_human.duix_offline import extract_reference_still
+            from hevi.digital_human.provider_contract import extract_duix_reference
 
-            local_image = extract_reference_still(local_video, output_dir / "presenter.jpg")
+            local_image = extract_duix_reference(local_video, output_dir / "presenter.jpg")
     if local_image is None:
         raise FileNotFoundError("数字人缺少照片或参考视频")
     avatar_dir = remotion_public.joinpath(*Path(avatar_rel).parts)

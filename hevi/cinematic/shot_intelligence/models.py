@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+SHOT_PLAN_SCHEMA_VERSION = "1.0"
+
 
 @dataclass(frozen=True)
 class CameraMotion:
@@ -85,6 +87,7 @@ class ShotPlan:
     beat_cues: tuple[BeatCue, ...] = ()
     diagnostics: tuple[str, ...] = ()
     canonical: bool = True
+    shot_plan_schema_version: str = SHOT_PLAN_SCHEMA_VERSION
 
 
 @dataclass(frozen=True)
@@ -95,4 +98,3 @@ class ShotSelectionResult:
     alternatives: tuple[ShotRecipe, ...] = ()
     renderer_projection: dict[str, Any] = field(default_factory=dict)
     validation_constraints: tuple[str, ...] = ()
-

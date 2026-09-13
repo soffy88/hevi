@@ -65,12 +65,12 @@ async def _run_duix_offline(
     output_path: Path,
     reference_video: Path | None = None,
 ) -> Path:
-    from hevi.digital_human.duix_offline import generate_silent_duix
     from hevi.digital_human.duix_service import DuixUnavailable
+    from hevi.digital_human.provider_contract import generate_duix_avatar
 
     reference = reference_video if reference_video and reference_video.exists() else image_path
     try:
-        return await generate_silent_duix(
+        return await generate_duix_avatar(
             reference=reference,
             audio_path=audio_path,
             output_path=output_path,

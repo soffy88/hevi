@@ -13,6 +13,8 @@ from typing import Any
 from obase.persistence import PgPool
 
 from hevi.audio.edge_tts_custom import synthesize_with_voice_control
+from hevi.audio.provider_selection import select_tts_provider
+from hevi.audio.providers.openvoice import OpenVoiceProvider
 from hevi.audio.voicebox_service import voicebox_synthesize
 from hevi.explainer.voicebox_client import VoiceboxError
 from hevi.production.artifacts import Artifact, ArtifactManifest
@@ -34,6 +36,13 @@ async def execute_voice_studio_task(task: dict[str, Any], pool: PgPool) -> dict[
     )
     requested = str(config.get("engine") or task.get("audio_provider") or "voicebox").strip().lower()
     provider_used = requested
+    provider_selection: dict[str, Any] = {}
+    if requested in {"auto", "openvoice", "existing"}:
+        provider_used, provider_selection = await select_tts_provider(
+            provider_used,
+            line=str(config.get("line") or task.get("line") or ""),
+            existing=str(config.get("existing_provider") or "voicebox"),
+        )
     fallback: dict[str, str] | None = None
     try:
         await _synthesize_with_engine(
@@ -66,6 +75,7 @@ async def execute_voice_studio_task(task: dict[str, Any], pool: PgPool) -> dict[
     config_json = {
         **config,
         "audio_provider_used": provider_used,
+        "audio_provider_selection": provider_selection,
         "audio_fallback": fallback,
         "audio_probe": audio_probe,
         "artifact_manifest": manifest.model_dump(mode="json"),
@@ -135,6 +145,18 @@ async def _synthesize_with_engine(
     """Dispatch one catalog engine without silently changing the requested one."""
     if engine == "voicebox":
         await voicebox_synthesize(script=[line], output_path=output_path, emotion=emotion)
+        return
+    if engine == "openvoice":
+        reference = Path(str(config.get("reference_audio") or os.getenv("OPENVOICE_REFERENCE_AUDIO", "")))
+        if not reference.is_file():
+            raise RuntimeError("OpenVoice requires config.reference_audio")
+        await OpenVoiceProvider().synthesize(
+            text=line.text,
+            language=str(config.get("language") or "en"),
+            output_path=output_path,
+            reference_audio=reference,
+            options={"speaker": config.get("speaker"), "prosody": config.get("prosody")},
+        )
         return
     if engine == "edge_tts":
         await synthesize_with_voice_control(

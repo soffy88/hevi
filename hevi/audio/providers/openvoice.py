@@ -7,7 +7,10 @@ HEVI environment and is never treated as a default or fallback provider.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar
@@ -68,7 +71,8 @@ class OpenVoiceProvider:
             if response.status_code >= 400:
                 return {"status": "BLOCKED_SERVICE", "blocker": f"HTTP_{response.status_code}"}
             payload = response.json()
-            return {"status": "READY" if payload.get("status") in {"ok", "ready", "healthy"} else "BLOCKED_SERVICE", "model": payload.get("model")}
+            status = str(payload.get("status", "BLOCKED_SERVICE"))
+            return {"status": status if status.startswith("BLOCKED_") else ("READY" if status in {"ok", "ready", "healthy", "READY"} else "BLOCKED_SERVICE"), "model": payload.get("model"), **({"reason": payload["reason"]} if payload.get("reason") else {})}
         except (httpx.HTTPError, ValueError) as exc:
             return {"status": "BLOCKED_NETWORK", "blocker": type(exc).__name__}
 
@@ -93,7 +97,8 @@ class OpenVoiceProvider:
         output_path.write_bytes(artifact_response.content)
         if output_path.stat().st_size == 0:
             raise OpenVoiceUnavailable("INVALID_OUTPUT:empty audio")
-        return OpenVoiceResult(output_path, float(data.get("duration_s", 0)), int(data.get("sample_rate", 0)), self.name, str(data.get("model", "unknown")), str(payload["reference_sha256"]), options or {})
+        media = _probe_audio(output_path)
+        return OpenVoiceResult(output_path, float(media["duration_s"]), int(media["sample_rate"]), self.name, str(data.get("model", "unknown")), str(payload["reference_sha256"]), options or {})
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         url = path if path.startswith("http") else f"{self.base_url}{path if path.startswith('/') else '/' + path}"
@@ -103,5 +108,35 @@ class OpenVoiceProvider:
             return await client.request(method, url, timeout=30.0, **kwargs)
 
 
+async def openvoice_synthesize(**kwargs: Any) -> OpenVoiceResult:
+    """ProviderRegistry-compatible adapter; unavailable means a real error."""
+    return await OpenVoiceProvider().synthesize(**kwargs)
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _probe_audio(path: Path) -> dict[str, int | float | str]:
+    if shutil.which("ffprobe") is None:
+        raise OpenVoiceUnavailable("INVALID_OUTPUT:ffprobe unavailable")
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate,channels", "-show_entries", "format=duration", "-of", "json", str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    if result.returncode != 0:
+        raise OpenVoiceUnavailable("INVALID_OUTPUT:ffprobe failed")
+    try:
+        payload = json.loads(result.stdout)
+        stream = payload["streams"][0]
+        duration = float(payload["format"]["duration"])
+        sample_rate = int(stream["sample_rate"])
+        channels = int(stream["channels"])
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise OpenVoiceUnavailable("INVALID_OUTPUT:invalid audio metadata") from exc
+    if duration <= 0 or sample_rate <= 0 or channels <= 0:
+        raise OpenVoiceUnavailable("INVALID_OUTPUT:invalid audio dimensions")
+    return {"duration_s": duration, "sample_rate": sample_rate, "channels": channels}

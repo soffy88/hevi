@@ -10,3 +10,9 @@ The `/health` and `/v1/synthesize` contracts are consumed by
 
 License/provenance must be recorded for the exact OpenVoice code and model
 versions used by a deployment before commercial use.
+
+Model weights are never baked into the image. Run `python model_bootstrap.py`
+with `OPENVOICE_MODEL_ID`, `OPENVOICE_MODEL_URL`, and
+`OPENVOICE_MODEL_SHA256`, using `/models/openvoice` as a persistent cache
+volume. The service reports `BLOCKED_MODEL_MISSING`, `BLOCKED_NETWORK`, or
+`BLOCKED_MODEL_RUNTIME` until the manifest and checksum are valid.
