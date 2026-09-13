@@ -1,0 +1,32 @@
+{
+  "line": "character_animation",
+  "input": {"seed": 0, "aspect_ratio": "16:9", "narrative_scene": "s1"},
+  "arms": {
+    "A": {
+      "shot_count": 3,
+      "shot_type_distribution": {"b_roll": 1, "coverage": 1, "establishing": 1},
+      "visual_variation_score": 1.0,
+      "repetition_score": 0.0,
+      "pacing_score": 1.0,
+      "render_success": true,
+      "artifact_validity": true,
+      "quality": "PASS",
+      "shot_plan_replay": true,
+      "sha256": "019328a277f002d708e687f4b56514aab0529d0d9ee9530def3d49f885c28c02"
+    },
+    "B": {
+      "shot_count": 1,
+      "shot_type_distribution": {"coverage": 1},
+      "visual_variation_score": 1.0,
+      "repetition_score": 0.0,
+      "pacing_score": 1.0,
+      "render_success": true,
+      "artifact_validity": true,
+      "quality": "PASS",
+      "shot_plan_replay": true,
+      "sha256": "ae6bcda56ee2e74672ebbb7408b205c36031d2fd4733cd12f6dcf40ac49f79ea"
+    }
+  },
+  "decision": "PASS_WITHOUT_PRODUCTION_STATUS_CHANGE",
+  "regression": "NONE"
+}

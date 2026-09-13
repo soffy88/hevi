@@ -1,0 +1,25 @@
+{
+  "git_sha": "0bf8c5bb6e5e909cc0a691e52604c596b3bb277d",
+  "schema_version": "1.0",
+  "llm": {
+    "provider": "OPENAI_COMPATIBLE",
+    "model": "veya1.2-free",
+    "endpoint_class": "LOCAL_PROXY",
+    "model_resolution": "PASS",
+    "real_completion": "PASS",
+    "structured_output": "PASS",
+    "latency_ms": 2485,
+    "request_id_recorded": true,
+    "usage_recorded": true,
+    "response_model": "cohere/north-mini-code:free"
+  },
+  "planning_flows": [
+    {"name":"character_animation_scene","continuity":"PASS","quality":"PASS","shot_plan_replay":"PASS"},
+    {"name":"history_scene_planning","continuity":"PASS","quality":"PASS","shot_plan_replay":"PASS"}
+  ],
+  "gold": {"total": 20,"passed": 20},
+  "feature_flag_default": "OFF",
+  "production_status_unchanged": ["kinetic_promo","shorts_clip","localization_dub","character_animation","podcast_repurpose","documentary_montage"],
+  "gpu_status_unchanged": "BLOCKED_HARDWARE",
+  "tests": {"narrative_and_qualification": "69 passed"}
+}
