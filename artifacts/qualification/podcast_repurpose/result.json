@@ -1,0 +1,37 @@
+{
+  "line": "podcast_repurpose",
+  "recipe_complete": true,
+  "runtime_complete": true,
+  "provider_available": false,
+  "real_e2e": false,
+  "final_artifact": false,
+  "ffprobe_valid": false,
+  "media_quality": false,
+  "provenance_complete": false,
+  "retry_verified": false,
+  "observability_complete": false,
+  "security_gate": false,
+  "completeness_percent": 18,
+  "provider_required": [
+    "llm",
+    "media_source",
+    "remotion"
+  ],
+  "provider": [
+    "llm",
+    "media_source",
+    "remotion"
+  ],
+  "quality_gate": "BLOCKED",
+  "status": "BLOCKED_PROVIDER",
+  "blockers": [
+    "real provider qualification not enabled; no mock accepted"
+  ],
+  "evidence": {
+    "recipe_sha256": "ae7081e6bea8f0f38ebcd3bcf568d0be64768480bca0be5e78593376d790cfcb",
+    "evidence_root": "artifacts/qualification",
+    "generated_at": "2026-09-13T00:04:58Z",
+    "hardware_probe": true,
+    "real_mode": false
+  }
+}

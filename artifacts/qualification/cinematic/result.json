@@ -1,0 +1,39 @@
+{
+  "line": "cinematic",
+  "recipe_complete": true,
+  "runtime_complete": true,
+  "provider_available": false,
+  "real_e2e": false,
+  "final_artifact": false,
+  "ffprobe_valid": false,
+  "media_quality": false,
+  "provenance_complete": false,
+  "retry_verified": false,
+  "observability_complete": false,
+  "security_gate": false,
+  "completeness_percent": 18,
+  "provider_required": [
+    "h3_local",
+    "llm",
+    "remotion",
+    "tts"
+  ],
+  "provider": [
+    "h3_local",
+    "llm",
+    "remotion",
+    "tts"
+  ],
+  "quality_gate": "BLOCKED",
+  "status": "BLOCKED_HARDWARE",
+  "blockers": [
+    "nvidia-smi/CUDA unavailable for required local provider"
+  ],
+  "evidence": {
+    "recipe_sha256": "b68d219a5fbdeb5fc6b5b48d168a6747872846f8311b2e476673a8dcbaffb8b7",
+    "evidence_root": "artifacts/qualification",
+    "generated_at": "2026-09-13T00:04:58Z",
+    "hardware_probe": false,
+    "real_mode": false
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "line": "explainer",
+  "recipe_complete": true,
+  "runtime_complete": true,
+  "provider_available": false,
+  "real_e2e": false,
+  "final_artifact": false,
+  "ffprobe_valid": false,
+  "media_quality": false,
+  "provenance_complete": false,
+  "retry_verified": false,
+  "observability_complete": false,
+  "security_gate": false,
+  "completeness_percent": 18,
+  "provider_required": [
+    "llm",
+    "media_source",
+    "remotion",
+    "tts"
+  ],
+  "provider": [
+    "llm",
+    "media_source",
+    "remotion",
+    "tts"
+  ],
+  "quality_gate": "BLOCKED",
+  "status": "BLOCKED_PROVIDER",
+  "blockers": [
+    "real provider qualification not enabled; no mock accepted"
+  ],
+  "evidence": {
+    "recipe_sha256": "983c5abdbc53c3b7c54871b22a1b787f446684a996de64142f697056fa5f17d8",
+    "evidence_root": "artifacts/qualification",
+    "generated_at": "2026-09-13T00:04:58Z",
+    "hardware_probe": true,
+    "real_mode": false
+  }
+}

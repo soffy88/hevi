@@ -1,0 +1,30 @@
+name: Production release gate
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["hevi-v*", "v*"]
+
+jobs:
+  production-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: latest
+      - name: Install locked dependencies
+        run: uv sync --locked
+      - name: Generate line qualification evidence
+        run: uv run python scripts/qualify_lines.py
+      - name: Render qualification summary
+        run: uv run python scripts/qualification_summary.py
+      - name: Enforce qualification policy
+        run: uv run python scripts/ci/check_qualification_policy.py
+      - name: Check generated line catalog drift
+        run: uv run python scripts/ci/check_line_catalog.py
+      - name: Upload qualification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: hevi-qualification
+          path: artifacts/qualification

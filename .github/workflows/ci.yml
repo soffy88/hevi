@@ -103,6 +103,15 @@ jobs:
           uv run python scripts/ci/check_recipe_schema.py
           uv run python scripts/ci/check_canon_numbering.py
 
+      - name: Studio line qualification framework
+        run: |
+          uv run python scripts/qualify_lines.py
+          uv run python scripts/qualification_summary.py
+          uv run python scripts/ci/check_qualification_policy.py
+          uv run python scripts/ci/check_line_catalog.py
+        # Provider/hardware-blocked lines are recorded as BLOCKED; the policy
+        # rejects FAILED/PARTIAL and never turns missing real evidence green.
+
       - name: Mypy
         run: uv run mypy --strict hevi
 

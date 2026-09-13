@@ -1,0 +1,33 @@
+{
+  "line": "shorts_clip",
+  "recipe_complete": true,
+  "runtime_complete": true,
+  "provider_available": false,
+  "real_e2e": false,
+  "final_artifact": false,
+  "ffprobe_valid": false,
+  "media_quality": false,
+  "provenance_complete": false,
+  "retry_verified": false,
+  "observability_complete": false,
+  "security_gate": false,
+  "completeness_percent": 18,
+  "provider_required": [
+    "media_source"
+  ],
+  "provider": [
+    "media_source"
+  ],
+  "quality_gate": "BLOCKED",
+  "status": "BLOCKED_PROVIDER",
+  "blockers": [
+    "real provider qualification not enabled; no mock accepted"
+  ],
+  "evidence": {
+    "recipe_sha256": "f984a8226a7dca59637d89216a1c283db5c0cc9edefaa93fac03f91453d76caf",
+    "evidence_root": "artifacts/qualification",
+    "generated_at": "2026-09-13T00:04:58Z",
+    "hardware_probe": true,
+    "real_mode": false
+  }
+}
