@@ -81,7 +81,9 @@ def main() -> int:
                     merged["completeness_percent"] = merged["production_completeness"]
                     reports[index] = merged
                 elif not args.eligible_only:
-                    report["blockers"].append("real_e2e_runner_unavailable_for_line")
+                    report["blockers"].append(f"{report['line']}:REAL_E2E_RUNNER_UNAVAILABLE")
+                elif report.get("provider_available"):
+                    report["blockers"] = [f"{report['line']}:REAL_E2E_RUNNER_UNAVAILABLE"]
     summary = write_reports(reports, args.output)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0

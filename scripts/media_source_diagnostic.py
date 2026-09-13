@@ -53,19 +53,22 @@ def _http() -> dict[str, Any]:
 def _search_download() -> dict[str, Any]:
     target = Path("/tmp/hevi-provider-probes/media-source-diagnostic.bin")
     try:
-        with urllib.request.urlopen(URL, timeout=15) as response:
+        with urllib.request.urlopen(urllib.request.Request(URL, headers={"User-Agent": "HEVI-provider-readiness/1.0"}), timeout=15) as response:
             payload = json.loads(response.read().decode("utf-8"))
-        page = next(iter(payload.get("query", {}).get("pages", {}).values()), {})
+        pages = list(payload.get("query", {}).get("pages", {}).values())
+        pages.sort(key=lambda item: any(str((item.get("imageinfo") or [{}])[0].get(key, "")).lower().split("?")[0].endswith((".webm", ".mp4", ".mov")) for key in ("url", "thumburl")), reverse=True)
+        page = pages[0] if pages else {}
         info = (page.get("imageinfo") or [{}])[0]
-        source_url = str(info.get("thumburl") or info.get("url") or "")
+        source_url = str(info.get("url") or info.get("thumburl") or "")
         metadata = info.get("extmetadata") or {}
         if not source_url:
             return {"passed": False, "classification": "CONTENT_UNAVAILABLE"}
         target.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(source_url, timeout=30) as response, target.open("wb") as stream:
-            stream.write(response.read(2 * 1024 * 1024))
+        request = urllib.request.Request(source_url, headers={"User-Agent": "HEVI-provider-readiness/1.0", "Referer": "https://commons.wikimedia.org/"})
+        with urllib.request.urlopen(request, timeout=30) as response, target.open("wb") as stream:
+            stream.write(response.read(50 * 1024 * 1024))
         digest = hashlib.sha256(target.read_bytes()).hexdigest()
-        return {"passed": target.stat().st_size > 0, "source_url": source_url, "license": bool(metadata.get("LicenseShortName") or metadata.get("UsageTerms")), "retrieved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "local_frozen_path": str(target), "sha256": digest}
+        return {"passed": target.stat().st_size > 0, "source_url": source_url, "final_url": response.geturl(), "redirected": response.geturl() != source_url, "response_headers": {"content-type": response.headers.get("content-type"), "content-length": response.headers.get("content-length"), "server": response.headers.get("server")}, "referer_sent": True, "user_agent_sent": True, "authorization_sent": False, "license": bool(metadata.get("LicenseShortName") or metadata.get("UsageTerms")), "retrieved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "local_frozen_path": str(target), "sha256": digest}
     except urllib.error.HTTPError as exc:
         return {"passed": False, "classification": f"HTTP_{exc.code}"}
     except (OSError, urllib.error.URLError, ValueError, KeyError, json.JSONDecodeError) as exc:

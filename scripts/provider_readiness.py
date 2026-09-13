@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -84,21 +85,33 @@ def _probe_media_source() -> dict[str, Any]:
     query = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=public%20domain%20film&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=320&format=json"
     target = Path("/tmp/hevi-provider-probes/media-source-probe.bin")
     try:
-        with urllib.request.urlopen(query, timeout=10) as response:
+        with urllib.request.urlopen(urllib.request.Request(query, headers={"User-Agent": "HEVI-provider-readiness/1.0"}), timeout=10) as response:
             payload = json.loads(response.read().decode("utf-8"))
         pages = payload.get("query", {}).get("pages", {})
-        page = next(iter(pages.values()), {})
-        info = (page.get("imageinfo") or [{}])[0]
-        url = str(info.get("thumburl") or info.get("url") or "")
-        metadata = info.get("extmetadata") or {}
-        if not url:
-            return {"passed": False, "error": "no_public_asset"}
         target.parent.mkdir(parents=True, exist_ok=True)
-        request = urllib.request.Request(url, headers={"User-Agent": "HEVI-provider-readiness/1.0"})
-        with urllib.request.urlopen(request, timeout=30) as response, target.open("wb") as stream:
-            stream.write(response.read(2 * 1024 * 1024))
-        digest = hashlib.sha256(target.read_bytes()).hexdigest()
-        return {"passed": target.stat().st_size > 0, "provider": "wikimedia_commons", "source_url": url, "license_metadata_present": bool(metadata.get("LicenseShortName") or metadata.get("UsageTerms")), "local_frozen_path": str(target), "sha256": digest}
+        failures: list[dict[str, Any]] = []
+        ordered_pages = sorted(pages.values(), key=lambda item: any(str((item.get("imageinfo") or [{}])[0].get(key, "")).lower().split("?")[0].endswith((".webm", ".mp4", ".mov")) for key in ("url", "thumburl")), reverse=True)
+        for page in ordered_pages:
+            info = (page.get("imageinfo") or [{}])[0]
+            metadata = info.get("extmetadata") or {}
+            candidates = (info.get("url"), info.get("thumburl")) if str(info.get("url", "")).lower().split("?")[0].endswith((".webm", ".mp4", ".mov")) else (info.get("thumburl"), info.get("url"))
+            for url in candidates:
+                if not url:
+                    continue
+                request = urllib.request.Request(str(url), headers={"User-Agent": "HEVI-provider-readiness/1.0", "Referer": "https://commons.wikimedia.org/"})
+                try:
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        content_type = response.headers.get("content-type", "")
+                        if not content_type.startswith(("image/", "video/")):
+                            failures.append({"url_host": urllib.parse.urlparse(str(url)).hostname, "status": response.status, "content_type": content_type, "reason": "invalid_mime"})
+                            continue
+                        body = response.read(50 * 1024 * 1024 if content_type.startswith("video/") else 2 * 1024 * 1024)
+                        target.write_bytes(body)
+                        digest = hashlib.sha256(target.read_bytes()).hexdigest()
+                        return {"passed": target.stat().st_size > 0, "provider": "wikimedia_commons", "source_url": str(url), "final_url": response.geturl(), "redirected": response.geturl() != str(url), "response_headers": {"content-type": content_type, "content-length": response.headers.get("content-length"), "server": response.headers.get("server")}, "referer_sent": True, "authorization_sent": False, "license_metadata_present": bool(metadata.get("LicenseShortName") or metadata.get("UsageTerms")), "local_frozen_path": str(target), "sha256": digest}
+                except urllib.error.HTTPError as exc:
+                    failures.append({"url_host": urllib.parse.urlparse(str(url)).hostname, "status": exc.code, "content_type": exc.headers.get("content-type"), "reason": "http_error"})
+        return {"passed": False, "error": "HTTP_403" if any(item.get("status") == 403 for item in failures) else "CONTENT_UNAVAILABLE", "phase": "download", "url_host": "commons.wikimedia.org", "attempts": failures}
     except urllib.error.HTTPError as exc:
         return {"passed": False, "error": f"HTTP_{exc.code}", "phase": "download", "url_host": "commons.wikimedia.org", "http_status": exc.code}
     except (OSError, urllib.error.URLError, ValueError, KeyError, json.JSONDecodeError) as exc:
