@@ -43,7 +43,19 @@ def classify(returncode: int | None, stdout: str, stderr: str, report: dict[str,
         )
     ):
         return "BLOCKED_DB"
-    if any(token in combined for token in ("lookup", "timed out", "timeout", "connection reset", "download")):
+    if any(
+        token in combined
+        for token in (
+            "failed to download",
+            "unable to download",
+            "download failed",
+            "timed out",
+            "timeout",
+            "connection reset",
+            "connection refused",
+            "temporary failure in name resolution",
+        )
+    ):
         return "BLOCKED_NETWORK"
     if returncode == 0:
         return "PASS"
