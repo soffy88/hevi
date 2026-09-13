@@ -94,10 +94,13 @@ def _probe_media_source() -> dict[str, Any]:
         if not url:
             return {"passed": False, "error": "no_public_asset"}
         target.parent.mkdir(parents=True, exist_ok=True)
-        with urllib.request.urlopen(url, timeout=30) as response, target.open("wb") as stream:
+        request = urllib.request.Request(url, headers={"User-Agent": "HEVI-provider-readiness/1.0"})
+        with urllib.request.urlopen(request, timeout=30) as response, target.open("wb") as stream:
             stream.write(response.read(2 * 1024 * 1024))
         digest = hashlib.sha256(target.read_bytes()).hexdigest()
         return {"passed": target.stat().st_size > 0, "provider": "wikimedia_commons", "source_url": url, "license_metadata_present": bool(metadata.get("LicenseShortName") or metadata.get("UsageTerms")), "local_frozen_path": str(target), "sha256": digest}
+    except urllib.error.HTTPError as exc:
+        return {"passed": False, "error": f"HTTP_{exc.code}", "phase": "download", "url_host": "commons.wikimedia.org", "http_status": exc.code}
     except (OSError, urllib.error.URLError, ValueError, KeyError, json.JSONDecodeError) as exc:
         return {"passed": False, "error": type(exc).__name__}
 
@@ -117,7 +120,7 @@ def _probe_llm() -> dict[str, Any]:
             text = payload.get("choices", [{}])[0].get("message", {}).get("content", "")
             return {"passed": bool(str(text).strip()), "latency_ms": round((time.perf_counter() - started) * 1000), "request_id_present": bool(response.headers.get("x-request-id") or payload.get("id")), "usage": payload.get("usage"), "model": payload.get("model", model), "error": None if text else "empty_response"}
     except urllib.error.HTTPError as exc:
-        return {"passed": False, "error": f"HTTP_{exc.code}", "latency_ms": round((time.perf_counter() - started) * 1000)}
+        return {"passed": False, "error": f"HTTP_{exc.code}", "latency_ms": round((time.perf_counter() - started) * 1000), "http_status": exc.code}
     except (OSError, urllib.error.URLError, ValueError, KeyError, json.JSONDecodeError) as exc:
         return {"passed": False, "error": type(exc).__name__}
 
@@ -136,34 +139,46 @@ def _entry(name: str, *, configured: bool, secret_present: bool, endpoint: str |
         status, blocker = "BLOCKED_NETWORK", f"endpoint probe failed: {detail}"
     elif probe is not None and not probe.get("passed"):
         error = str(probe.get("error") or "real readiness probe failed")
-        status, blocker = ("BLOCKED_NETWORK", error) if error.startswith(("HTTP", "URLError", "Timeout")) else ("BLOCKED_SERVICE", error)
+        if name == "llm" and error in {"HTTP_401", "HTTP_403"}:
+            status, blocker = "BLOCKED_AUTH", error
+        elif name == "llm" and error in {"HTTP_404", "HTTP_400"}:
+            status, blocker = "BLOCKED_MODEL", error
+        elif error.startswith(("HTTP_", "URLError", "Timeout")):
+            status, blocker = "UPSTREAM_FAILURE" if error.startswith(("HTTP_429", "HTTP_5")) else "BLOCKED_NETWORK", error
+        else:
+            status, blocker = "BLOCKED_SERVICE", error
     return {"provider": name, "configured": configured, "secret_present": secret_present, "endpoint": endpoint, "endpoint_reachable": reachable, "auth_valid": None, "capability_available": capability, "readiness_probe": probe or {"passed": False, "error": "not_run"}, "gpu_dependency": gpu_dependency, "status": status, "blocker": blocker}
 
 
-def collect() -> dict[str, Any]:
+def collect(provider_filter: str | None = None) -> dict[str, Any]:
     comfy = os.getenv("H3_COMFY_URL", "http://127.0.0.1:8188").rstrip("/")
     llm_secret = any(os.getenv(key) for key in ("OPENAI_API_KEY", "DASHSCOPE_API_KEY", "QWEN_API_KEY", "ANTHROPIC_API_KEY"))
     remotion_capable = Path("hevi-remotion/package.json").exists() and shutil.which("npx") is not None
     hyperframes_capable = Path("hevi/providers/hyperframes").exists() and shutil.which("ffmpeg") is not None
     ffmpeg_capable = shutil.which("ffmpeg") is not None
     tts_capable = importlib.util.find_spec("edge_tts") is not None
+    llm_endpoint = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     entries = [
         _entry("h3_local", configured=bool(os.getenv("H3_ROUTING")), secret_present=True, endpoint=comfy, gpu_dependency=True, capability=Path("hevi/providers/h3_local").exists()),
         _entry("ComfyUI/local_gpu_backend", configured=bool(os.getenv("H3_COMFY_URL")), secret_present=True, endpoint=comfy, gpu_dependency=True, capability=Path("hevi/providers/h3_local/comfy_client.py").exists()),
-        _entry("llm", configured=llm_secret, secret_present=llm_secret, endpoint=None, gpu_dependency=False, capability=True, probe=_probe_llm()),
+        _entry("llm", configured=llm_secret, secret_present=llm_secret, endpoint=llm_endpoint, gpu_dependency=False, capability=True, probe=_probe_llm()),
         _entry("remotion", configured=remotion_capable, secret_present=True, endpoint=None, gpu_dependency=False, capability=remotion_capable, probe=_probe_remotion()),
         _entry("tts", configured=tts_capable, secret_present=True, endpoint=None, gpu_dependency=False, capability=tts_capable, probe=_probe_tts()),
         _entry("media_source", configured=ffmpeg_capable, secret_present=True, endpoint=None, gpu_dependency=False, capability=ffmpeg_capable, probe=_probe_media_source()),
         _entry("hyperframes", configured=hyperframes_capable, secret_present=True, endpoint=None, gpu_dependency=False, capability=hyperframes_capable, probe=_probe_hyperframes()),
     ]
+    if provider_filter:
+        entries = [item for item in entries if item["provider"] == provider_filter]
     return {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "providers": entries}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=Path("artifacts/qualification/provider_readiness.json"))
+    parser.add_argument("--provider")
+    parser.add_argument("--real", action="store_true", help="Run real probes; retained for explicit CI intent")
     args = parser.parse_args()
-    payload = collect()
+    payload = collect(args.provider)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     md = ["# Provider readiness", "", "| Provider | Status | Secret present | Probe | Blocker |", "|---|---|---|---|---|"]

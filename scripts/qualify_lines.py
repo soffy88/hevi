@@ -30,6 +30,7 @@ def main() -> int:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--real", action="store_true")
     parser.add_argument("--report", action="store_true")
+    parser.add_argument("--eligible-only", action="store_true")
     args = parser.parse_args()
     if args.real:
         os.environ["HEVI_QUALIFICATION_REAL"] = "1"
@@ -38,6 +39,7 @@ def main() -> int:
     if args.preflight:
         subprocess.run([sys.executable, "scripts/gpu_readiness.py"], check=False)
         subprocess.run([sys.executable, "scripts/gpu_diagnostic.py"], check=False)
+        subprocess.run([sys.executable, "scripts/media_source_diagnostic.py"], check=False)
         if args.provider_ready_only:
             return 0
     reports = discover_reports(args.lines_dir, args.output)
@@ -64,14 +66,20 @@ def main() -> int:
                 existing.append(report)
         reports = existing
     if args.real:
+        priority = {name: index for index, name in enumerate(("kinetic_promo", "shorts_clip", "history_scene", "localization_dub", "explainer", "documentary_montage", "podcast_repurpose", "reference_adapt", "character_animation", "director_pipeline", "cinematic", "talking_head", "avatar_spokesperson"))}
+        reports.sort(key=lambda item: priority.get(item["line"], 999))
+        current_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         for index, report in enumerate(reports):
             if report.get("provider_available") and not report.get("real_e2e"):
                 evidence = qualify_line(report["line"], args.output)
                 if evidence is not None:
                     merged = {**report, **evidence}
+                    merged["evidence"] = {**report.get("evidence", {}), **evidence.get("evidence", {}), "git_sha": current_sha}
                     merged["production_completeness"] = round(100 * sum(bool(merged[field]) for field in PRODUCTION_FIELDS) / len(PRODUCTION_FIELDS))
                     merged["completeness_percent"] = merged["production_completeness"]
                     reports[index] = merged
+                elif not args.eligible_only:
+                    report["blockers"].append("real_e2e_runner_unavailable_for_line")
     summary = write_reports(reports, args.output)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0

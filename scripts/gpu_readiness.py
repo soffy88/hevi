@@ -97,12 +97,13 @@ def collect() -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=Path("artifacts/qualification/gpu_readiness.json"))
+    parser.add_argument("--strict", action="store_true")
     args = parser.parse_args()
     payload = collect()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(payload, ensure_ascii=False, indent=2))
-    return 0
+    return 0 if payload["status"] == "READY" or not args.strict else 2
 
 
 if __name__ == "__main__":
