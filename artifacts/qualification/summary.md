@@ -11,7 +11,7 @@ Total: 13
 | documentary_montage | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, media_source, remotion, tts | False | llm=BLOCKED_SECRET:required configuration/secret absent; media_source=BLOCKED_NETWORK:HTTPError |
 | explainer | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, media_source, remotion, tts | False | llm=BLOCKED_SECRET:required configuration/secret absent; media_source=BLOCKED_NETWORK:HTTPError |
 | history_scene | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, remotion | False | llm=BLOCKED_SECRET:required configuration/secret absent |
-| kinetic_promo | PRODUCTION_COMPLETE | 86% | 67% | 25% | True | PASS | hyperframes | True | — |
+| kinetic_promo | PRODUCTION_COMPLETE | 86% | 67% | 100% | True | PASS | hyperframes | True | — |
 | localization_dub | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | media_source, tts | False | media_source=BLOCKED_NETWORK:HTTPError |
 | podcast_repurpose | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, media_source, remotion | False | llm=BLOCKED_SECRET:required configuration/secret absent; media_source=BLOCKED_NETWORK:HTTPError |
 | reference_adapt | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, media_source, remotion | False | llm=BLOCKED_SECRET:required configuration/secret absent; media_source=BLOCKED_NETWORK:HTTPError |

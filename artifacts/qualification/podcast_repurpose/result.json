@@ -40,11 +40,11 @@
   ],
   "evidence": {
     "recipe_sha256": "ae7081e6bea8f0f38ebcd3bcf568d0be64768480bca0be5e78593376d790cfcb",
-    "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+    "git_sha": "bd0ae5c2313c5cf9a2221e4434d694301f5fc197",
     "provider_model": null,
     "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",
-    "generated_at": "2026-09-13T00:46:03Z",
+    "generated_at": "2026-09-13T00:47:13Z",
     "hardware_probe": true,
     "real_mode": false
   }
