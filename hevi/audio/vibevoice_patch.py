@@ -64,6 +64,7 @@ def patch_vibevoice_exports() -> None:
         _ensure_vibevoice_transformers_compat()
         from vibevoice.modular.configuration_vibevoice import (
             VibeVoiceAcousticTokenizerConfig,
+            VibeVoiceConfig,
             VibeVoiceSemanticTokenizerConfig,
         )
 
@@ -72,6 +73,7 @@ def patch_vibevoice_exports() -> None:
         allowed_configs = {
             VibeVoiceAcousticTokenizerConfig,
             VibeVoiceSemanticTokenizerConfig,
+            VibeVoiceConfig,
         }
 
         def _register_compat(key: Any, value: Any, exist_ok: bool = False) -> None:
