@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any, Literal
 
@@ -38,6 +39,60 @@ def _write_job(dest: Path, body: dict[str, Any]) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(body, ensure_ascii=False, indent=2), encoding="utf-8")
     return dest
+
+
+def _write_json_atomic(dest: Path, body: dict[str, Any]) -> Path:
+    """Persist runtime evidence without exposing a partial JSON document."""
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, raw_tmp = tempfile.mkstemp(prefix=f".{dest.name}.", dir=dest.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(body, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(raw_tmp, dest)
+    finally:
+        if os.path.exists(raw_tmp):
+            os.unlink(raw_tmp)
+    return dest
+
+
+def _persist_hyperframes_evidence(
+    output_dir: Path, order: dict[str, Any], result: dict[str, Any]
+) -> None:
+    manifest = result.get("artifact_manifest") or {}
+    artifacts = manifest.get("artifacts") or []
+    primary = next((item for item in artifacts if item.get("primary")), artifacts[0] if artifacts else {})
+    retry = result.get("retry_evidence") or {}
+    operation_id = str(
+        retry.get("operation_id")
+        or order.get("idempotency_key")
+        or order.get("slate_id")
+        or "kinetic_promo:render"
+    )
+    _write_json_atomic(
+        output_dir / "provenance.json",
+        {
+            "schema_version": 1,
+            "line_id": "kinetic_promo",
+            "logical_job_id": operation_id,
+            "input_source": {
+                "topic": _slot(order, "topic") or "HEVI",
+                "script_lines": order.get("script_lines") or [],
+                "source_refs": order.get("source_refs") or [],
+            },
+            "provider_request": result.get("provider_request") or {},
+            "render_job": {
+                "operation_id": operation_id,
+                "runtime": "hyperframes",
+                "workspace": result.get("workspace"),
+            },
+            "final_hevi_asset": primary,
+        },
+    )
+    _write_json_atomic(output_dir / "retry.json", retry)
 
 
 async def fulfill_explainer(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
@@ -410,12 +465,14 @@ async def _render_hyperframes_line(order: dict[str, Any], output_dir: Path) -> d
     from hevi.providers.hyperframes.provider import hyperframes_generate
 
     path = output_dir / "kinetic_promo.mp4"
+    provider_request = {
+        "topic": _slot(order, "topic") or "HEVI",
+        "script_lines": order.get("script_lines") or [],
+        "edit_plan": order.get("edit_plan") or {},
+        "output_path": str(path),
+    }
     produced = await hyperframes_generate(
-        prompt={
-            "topic": _slot(order, "topic") or "HEVI",
-            "script_lines": order.get("script_lines") or [],
-            "edit_plan": order.get("edit_plan") or {},
-        },
+        prompt=provider_request,
         output_path=path,
     )
     manifest, quality = await _verified_video_manifest([(Path(produced), True, "kinetic_promo")])
@@ -427,6 +484,8 @@ async def _render_hyperframes_line(order: dict[str, Any], output_dir: Path) -> d
         "artifact_manifest": manifest.model_dump(mode="json"),
         "quality": quality,
         "render_runtime": "hyperframes",
+        "provider_request": provider_request,
+        "workspace": str(path.parent / ".hyperframes"),
     }
 
 
@@ -511,7 +570,7 @@ async def fulfill_order(
                 line_id=line_id,
             )
         try:
-            if line_id in {"character_animation", "podcast_repurpose", "documentary_montage"}:
+            if line_id in {"character_animation", "podcast_repurpose", "documentary_montage", "kinetic_promo"}:
                 from hevi.resilience import RetryPolicy, with_retry_evidence
                 from hevi.resilience.errors import RetryableError
 
@@ -530,6 +589,8 @@ async def fulfill_order(
                     policy=RetryPolicy(max_attempts=3, base_delay_s=0.1, max_delay_s=1.0, jitter=False),
                 )
                 result["retry_evidence"] = retry_evidence.to_dict()
+                if line_id == "kinetic_promo" and result.get("status") == "completed":
+                    _persist_hyperframes_evidence(dest, order, result)
                 return result
             return await renderer(order, dest)
         except (ArtifactVerificationError, FileNotFoundError, ValueError) as exc:

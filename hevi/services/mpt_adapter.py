@@ -9,13 +9,17 @@ manifest contract as native Hevi renderers.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 from hevi.production.artifacts import Artifact, ArtifactManifest
+from hevi.resilience import RetryPolicy, with_retry_evidence
+from hevi.resilience.errors import RetryableError
 from hevi.services.mpt_integration import MPTClient
 from hevi.video.quality_check import quality_report
 
@@ -33,8 +37,10 @@ def _terminal_state(value: Any) -> str:
 
 
 def _video_values(payload: dict[str, Any]) -> list[str]:
-    values: list[str] = []
-    for key in ("videos", "combined_videos", "video_paths", "outputs"):
+    # MPT's combined preview may intentionally omit narration. Prefer the
+    # canonical ``videos`` result so HEVI validates one final deliverable.
+    for key in ("videos", "video_paths", "outputs", "combined_videos"):
+        values: list[str] = []
         raw = payload.get(key)
         if isinstance(raw, str):
             raw = [raw]
@@ -47,7 +53,24 @@ def _video_values(payload: dict[str, Any]) -> list[str]:
                 value = item.get("path") or item.get("file") or item.get("url")
                 if value:
                     values.append(str(value))
-    return list(dict.fromkeys(values))
+        if values:
+            return list(dict.fromkeys(values))
+    return []
+
+
+def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, raw_tmp = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(payload, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(raw_tmp, path)
+    finally:
+        if os.path.exists(raw_tmp):
+            os.unlink(raw_tmp)
 
 
 def _resolve_shared_path(value: str, config: dict[str, Any]) -> Path | None:
@@ -90,45 +113,66 @@ async def execute_mpt_task(task: dict[str, Any], _pool: Any) -> dict[str, Any]:
         raise ValueError("MPT topic 不能为空")
     poll_interval = max(0.05, float(request.pop("poll_interval_s", 1.0)))
     timeout_s = max(1.0, float(request.pop("timeout_s", os.getenv("MPT_POLL_TIMEOUT_S", 3600))))
+    request.pop("require_audio", None)
+    if not request.get("voice_name") and not request.get("custom_audio_file"):
+        request["voice_name"] = "zh-CN-XiaoxiaoNeural-Female"
     output_dir = Path(config.get("output_dir") or Path("output/tasks") / str(task["id"]))
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    async with MPTClient() as client:
-        submitted = await client.generate_video(topic, **request)
-        external_id = str(submitted.get("task_id") or submitted.get("id") or "")
-        if not external_id:
-            raise RuntimeError("MPT 未返回 task_id")
-        status = dict(submitted)
-        deadline = time.monotonic() + timeout_s
-        while _terminal_state(status.get("state")) == "running":
-            if time.monotonic() >= deadline:
-                raise TimeoutError(f"MPT 任务 {external_id} 等待超时")
-            await asyncio.sleep(poll_interval)
-            status = await client.check_task_status(external_id)
+    receipt_path = output_dir / "mpt-submission.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8")) if receipt_path.is_file() else {}
 
-        state = _terminal_state(status.get("state"))
-        if state != "completed":
-            raise RuntimeError(str(status.get("error") or f"MPT 任务失败: {external_id}"))
-        paths: list[Path] = []
-        for index, value in enumerate(_video_values(status), start=1):
-            resolved = _resolve_shared_path(value, config)
-            if resolved is None:
-                # MPT's current API returns /tasks/... URIs. Download those
-                # into the canonical Hevi task directory when the services do
-                # not share a volume.
-                destination = output_dir / f"mpt_{index:02d}_{_remote_filename(value, index)}"
-                try:
-                    resolved = await client.download_artifact(value, destination)
-                except Exception as exc:
-                    raise RuntimeError(f"MPT artifact unavailable: {value}: {exc}") from exc
-            paths.append(resolved)
+    async def run_once(attempt: int) -> tuple[str, dict[str, Any], list[Path]]:
+        async with MPTClient() as client:
+            external_id = str(receipt.get("mpt_task_id") or "")
+            if external_id:
+                submitted = {"task_id": external_id}
+            else:
+                submitted = await client.generate_video(topic, **request)
+                external_id = str(submitted.get("task_id") or submitted.get("id") or "")
+                if not external_id:
+                    raise RuntimeError("MPT 未返回 task_id")
+                receipt.update({"logical_task_id": str(task["id"]), "mpt_task_id": external_id})
+                _write_json_atomic(receipt_path, receipt)
+                if attempt == 1 and os.getenv("HEVI_MPT_FAULT_INJECTION") == "transient_once":
+                    receipt["fault_injected"] = "after_submit_before_poll"
+                    _write_json_atomic(receipt_path, receipt)
+                    raise RetryableError("controlled transient MPT transport failure")
+            status = dict(submitted)
+            deadline = time.monotonic() + timeout_s
+            while _terminal_state(status.get("state")) == "running":
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"MPT 任务 {external_id} 等待超时")
+                await asyncio.sleep(poll_interval)
+                status = await client.check_task_status(external_id)
+
+            if _terminal_state(status.get("state")) != "completed":
+                raise RuntimeError(str(status.get("error") or f"MPT 任务失败: {external_id}"))
+            paths: list[Path] = []
+            for index, value in enumerate(_video_values(status), start=1):
+                resolved = _resolve_shared_path(value, config)
+                if resolved is None:
+                    destination = output_dir / f"mpt_{index:02d}_{_remote_filename(value, index)}"
+                    try:
+                        resolved = await client.download_artifact(value, destination)
+                    except Exception as exc:
+                        raise RuntimeError(f"MPT artifact unavailable: {value}: {exc}") from exc
+                paths.append(resolved)
+            return external_id, status, paths
+
+    (external_id, status, paths), retry_evidence = await with_retry_evidence(
+        run_once,
+        operation_id=f"mpt:{task['id']}",
+        idempotency_key=str(config.get("idempotency_key") or task.get("idempotency_key") or task["id"]),
+        policy=RetryPolicy(max_attempts=3, base_delay_s=0.1, max_delay_s=1.0, jitter=False),
+    )
     if not paths:
         raise RuntimeError(
             "MPT 已完成但 Hevi 找不到视频文件；请挂载 MPT_STORAGE_PATH/MPT_HOST_STORAGE 共享目录"
         )
 
     quality_reports = [
-        await quality_report(path, require_audio=False, n_samples=4) for path in paths
+        await quality_report(path, require_audio=True, n_samples=4) for path in paths
     ]
     quality_violations = [
         f"artifact[{index}]: {violation}"
@@ -171,6 +215,7 @@ async def execute_mpt_task(task: dict[str, Any], _pool: Any) -> dict[str, Any]:
                         "height": report.stats.height,
                         "fps": report.stats.fps,
                         "has_audio": report.stats.has_audio,
+                        "loudness_lufs": report.loudness_lufs,
                         "passed": report.passed,
                     }
                     for report in quality_reports
@@ -182,6 +227,7 @@ async def execute_mpt_task(task: dict[str, Any], _pool: Any) -> dict[str, Any]:
             "mpt_task_id": external_id,
             "mpt_status": status,
             "artifact_manifest": manifest.model_dump(mode="json"),
+            "retry_evidence": retry_evidence.to_dict(),
         },
     }
 
