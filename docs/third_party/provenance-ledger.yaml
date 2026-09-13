@@ -1,0 +1,34 @@
+entries:
+  - source: HEVI Shot Intelligence recipe catalog
+    repository: hevi
+    license: MIT
+    version: "1"
+    integration_type: native_planning_layer
+    bundled: true
+    runtime_dependency: false
+    attribution_required: false
+    commercial_restrictions: none
+    derived_data: true
+    last_verified: 2026-09-13
+  - source: OpenVoice
+    repository: https://github.com/myshell-ai/OpenVoice
+    license: MIT-code-model-review-required
+    version: deployment_owned
+    integration_type: isolated_http_provider
+    bundled: false
+    runtime_dependency: false
+    attribution_required: verify_deployment
+    commercial_restrictions: model_and_voice_rights_review
+    derived_data: false
+    last_verified: 2026-09-13
+  - source: Duix
+    repository: external_optional_service
+    license: DUIX.COM Community License
+    version: deployment_owned
+    integration_type: optional_http_provider
+    bundled: false
+    runtime_dependency: false
+    attribution_required: verify_deployment
+    commercial_restrictions: commercial_review_required
+    derived_data: false
+    last_verified: 2026-09-13
