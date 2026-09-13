@@ -58,6 +58,11 @@ def _provider_needs(recipe: dict[str, Any]) -> list[str]:
         providers.append("h3_local")
     if any(tool.startswith(("score.", "research.", "script.")) for tool in tools):
         providers.append("llm")
+    # Translation is a real provider call in the production localization
+    # workflow.  Do not allow a line to appear eligible when its translation
+    # dependency is only discovered after the renderer starts.
+    if "dub.translate" in tools:
+        providers.append("llm")
     if any(tool.startswith(("tts.", "audio.", "dub.")) for tool in tools):
         providers.append("tts")
     if any(tool.startswith(("material.", "watch.", "ingest.")) for tool in tools):
