@@ -12,6 +12,8 @@ FROM python:3.14-slim
 
 WORKDIR /app
 
+RUN groupadd --system hevi && useradd --system --gid hevi --home-dir /app hevi
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg curl git nodejs npm \
     && rm -rf /var/lib/apt/lists/* \
@@ -34,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy pre-installed venv (Linux amd64 Python 3.14)
 # Scripts in .venv/bin/ have shebangs pointing to the host path
 # /data/soffy/projects/hevi/.venv/bin/python3 — create a symlink so they resolve
-COPY .venv/ ./.venv/
+COPY --chown=hevi:hevi .venv/ ./.venv/
 RUN mkdir -p /data/soffy/projects/hevi && \
     ln -s /app/.venv /data/soffy/projects/hevi/.venv
 
@@ -47,12 +49,12 @@ RUN mkdir -p /data/soffy/projects/hevi && \
 # App source
 COPY hevi-remotion/package.json hevi-remotion/package-lock.json ./hevi-remotion/
 RUN cd hevi-remotion && npm ci --omit=dev --no-audit --no-fund
-COPY hevi-remotion/ ./hevi-remotion/
-COPY hevi/ ./hevi/
+COPY --chown=hevi:hevi hevi-remotion/ ./hevi-remotion/
+COPY --chown=hevi:hevi hevi/ ./hevi/
 COPY alembic.ini ./
 
-RUN groupadd --system hevi && useradd --system --gid hevi --home-dir /app hevi && \
-    chown -R hevi:hevi /app
+RUN mkdir -p /app/output /app/data /app/assets && \
+    chown hevi:hevi /app /app/output /app/data /app/assets
 USER hevi
 
 ENV PATH="/app/.venv/bin:$PATH"
