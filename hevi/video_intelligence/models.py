@@ -100,6 +100,7 @@ class GateStatus(StrEnum):
     WARN = "WARN"
     FAIL = "FAIL"
     SKIPPED = "SKIPPED"
+    NOT_EVALUABLE = "NOT_EVALUABLE"
 
 
 class VideoAsset(StrictModel):

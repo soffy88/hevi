@@ -19,12 +19,34 @@ def compare_intent_to_artifact(intent: IntentProfile, analysis: ReelAnalysis) ->
     dimensions: dict[str, dict[str, Any]] = {
         "SHOT_COUNT": {"expected": intent.expected_shot_count_range, "observed": observed_count,
                        "score": count_score, "status": count_status, "evidence_refs": ["statistics:shot_count"]},
-        "PACING": {"expected": intent.expected_pacing, "observed": analysis.statistics.average_shot_duration_ms,
-                   "score": None, "status": "NOT_EVALUABLE", "evidence_refs": ["statistics:duration"]},
-        "VISUAL_INTENT": {"expected": intent.visual_intents, "observed": None, "score": None,
-                          "status": "NOT_EVALUABLE", "evidence_refs": []},
     }
-    overall = GateStatus.PASS if all(item["status"] != "WARN" for item in dimensions.values()) else GateStatus.WARN
+    if intent.expected_pacing:
+        average = analysis.statistics.average_shot_duration_ms
+        pacing_ranges = {"fast": (0, 3000), "medium": (3000, 7000), "slow": (7000, float("inf"))}
+        pace_low, pace_high = pacing_ranges.get(intent.expected_pacing.lower(), (0, -1))
+        pacing_status = "PASS" if pace_low <= average <= pace_high else "WARN"
+        dimensions["PACING"] = {
+            "expected": intent.expected_pacing,
+            "observed": average,
+            "score": 1.0 if pacing_status == "PASS" else 0.0,
+            "status": pacing_status,
+            "evidence_refs": ["statistics:average_shot_duration_ms"],
+        }
+    if intent.visual_intents:
+        dimensions["VISUAL_INTENT"] = {
+            "expected": intent.visual_intents,
+            "observed": None,
+            "score": None,
+            "status": "NOT_EVALUABLE",
+            "evidence_refs": [],
+        }
+    statuses = {item["status"] for item in dimensions.values()}
+    overall = (
+        GateStatus.FAIL if "FAIL" in statuses else
+        GateStatus.WARN if "WARN" in statuses else
+        GateStatus.NOT_EVALUABLE if "NOT_EVALUABLE" in statuses else
+        GateStatus.PASS
+    )
     return ArtifactComparison(
         comparison_id=f"comparison:{uuid.uuid4().hex}",
         intent_id=intent.intent_id,
