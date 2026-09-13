@@ -187,6 +187,8 @@ def qualify_production_line(line: str, output_root: Path) -> dict[str, Any]:
         {"text": "这是一次真实 HEVI 生产路径验证。", "scene": 0},
         {"text": "最终产物必须通过媒体与质量门禁。", "scene": 1},
     ]
+    if line == "documentary_montage":
+        script.append({"text": "每个镜头、素材和最终文件都必须留下可追溯证据。", "scene": 2})
     order: dict[str, Any] = {
         "target": "explainer",
         "line_id": line,
@@ -227,6 +229,25 @@ def qualify_production_line(line: str, output_root: Path) -> dict[str, Any]:
     (root / "ffprobe.json").write_text(ffprobe.stdout + "\n", encoding="utf-8")
     (root / "artifacts.json").write_text(json.dumps({"final": str(final), "sha256": final_hash}, indent=2) + "\n", encoding="utf-8")
     (root / "provenance.json").write_text(json.dumps({"line": line, "production_entrypoint": "hevi.studio.fulfill:fulfill_order", "generated_assets": [{"path": str(final), "sha256": final_hash, "provider": "existing_production_runtime"}]}, indent=2) + "\n", encoding="utf-8")
+    (root / "retry.json").write_text(
+        json.dumps(
+            {
+                "retry_supported": False,
+                "retry_exercised": False,
+                "attempt_count": 1,
+                "failure_class": None,
+                "retryable": False,
+                "backoff_policy": None,
+                "first_attempt_result": "completed",
+                "final_attempt_result": "completed",
+                "side_effect_duplicate_count": 0,
+                "root_cause": "production renderer did not expose the shared retry wrapper",
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     return {"provider_available": True, "real_e2e": True, "final_artifact": True, "ffprobe_valid": ffprobe.returncode == 0, "media_quality": bool((result.get("quality") or {}).get("passed")), "provenance_complete": True, "retry_verified": False, "observability_complete": True, "security_gate": True, "quality_gate_passed": False, "artifact_path": str(final), "artifact_sha256": final_hash, "evidence_root": str(root), "status": "QUALIFIED", "blockers": [f"{line}:RETRY_EVIDENCE_NOT_EXPOSED_BY_PRODUCTION_RUNTIME"], "quality_gate": "BLOCKED", "evidence": {"run_id": run_id, "production_entrypoint": "hevi.studio.fulfill:fulfill_order", "provider_model": os.getenv("OPENAI_MODEL", "veya1.2-free")}}
 
 

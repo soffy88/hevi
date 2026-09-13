@@ -5,17 +5,10 @@ import {
   interpolate,
   useCurrentFrame,
 } from "remotion";
-import { loadFont as loadMaShanZheng } from "@remotion/google-fonts/MaShanZheng";
-import { loadFont as loadNotoSerifSC } from "@remotion/google-fonts/NotoSerifSC";
 
-const { fontFamily: brushFont } = loadMaShanZheng("normal", {
-  weights: ["400"],
-  subsets: ["chinese-simplified"],
-});
-const { fontFamily: serifFont } = loadNotoSerifSC("normal", {
-  weights: ["400", "600"],
-  subsets: ["chinese-simplified"],
-});
+// Local system fonts keep this composition deterministic and offline-safe.
+const brushFont = '"Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif';
+const serifFont = '"Noto Serif CJK SC", "Noto Serif CJK JP", serif';
 
 const NAME = "智伯";
 const ERA = "战国 · 晋";

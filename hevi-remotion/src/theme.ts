@@ -1,23 +1,9 @@
-import { loadFont as loadHeadingFont } from "@remotion/google-fonts/ZCOOLKuaiLe";
-import { loadFont as loadBodyFont } from "@remotion/google-fonts/NotoSansSC";
-import { loadFont as loadEmojiFont } from "@remotion/google-fonts/NotoColorEmoji";
-
-export const { fontFamily: headingFont } = loadHeadingFont("normal", {
-  weights: ["400"],
-  subsets: ["chinese-simplified"],
-});
-
-export const { fontFamily: bodyFont } = loadBodyFont("normal", {
-  weights: ["400", "700", "900"],
-  subsets: ["chinese-simplified"],
-});
-
-// 这台机器没装系统 emoji 字体(fc-list 确认过),渲染 emoji 图标必须显式走这个 web font,
-// 否则 Chromium 无字形可用,画出空心方块(tofu)。
-export const { fontFamily: emojiFont } = loadEmojiFont("normal", {
-  weights: ["400"],
-  subsets: ["emoji"],
-});
+// Keep production renders independent of the public Google Fonts CDN.  These
+// Noto families are installed in the HEVI runtime image and are resolved by
+// Chromium locally, so render output does not depend on network availability.
+export const headingFont = '"Noto Serif CJK SC", "Noto Serif CJK JP", serif';
+export const bodyFont = '"Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif';
+export const emojiFont = '"Noto Color Emoji", "Noto Sans CJK SC", sans-serif';
 
 export const colors = {
   bg: "#111114",
