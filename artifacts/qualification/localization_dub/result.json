@@ -2,7 +2,7 @@
   "line": "localization_dub",
   "recipe_complete": true,
   "runtime_complete": true,
-  "provider_available": false,
+  "provider_available": true,
   "real_e2e": false,
   "final_artifact": false,
   "ffprobe_valid": false,
@@ -17,11 +17,11 @@
   "media_validation": true,
   "provenance_model": true,
   "quality_gate_passed": false,
-  "completeness_percent": 17,
+  "completeness_percent": 25,
   "implementation_completeness": 70,
   "code_completeness": 86,
   "runtime_completeness": 67,
-  "production_completeness": 17,
+  "production_completeness": 25,
   "provider_required": [
     "media_source",
     "tts"
@@ -33,21 +33,21 @@
   "quality_gate": "BLOCKED",
   "status": "BLOCKED_PROVIDER",
   "blockers": [
-    "media_source=BLOCKED_NETWORK:HTTP_403"
+    "localization_dub:REAL_E2E_RUNNER_UNAVAILABLE"
   ],
   "evidence": {
     "recipe_sha256": "924d9278a7c44a6b63d2c71588847ef214637300f5218e9d5b8454062f0c4682",
-    "git_sha": "d7831db218fae739b0790e5f6876efa0ae69cb5d",
+    "git_sha": "8ea19ada21fa88815d6526a3ee9ede5401afdf7f",
     "provider_model": null,
     "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",
-    "generated_at": "2026-09-13T01:05:29Z",
+    "generated_at": "2026-09-13T01:24:16Z",
     "hardware_probe": true,
-    "real_mode": false
+    "real_mode": true
   },
   "stale": true,
   "stale_evidence": {
-    "previous_git_sha": "33d21a9a45a9bdaec4cfb15fcf00bfdfcee6cfdb",
-    "current_git_sha": "d7831db218fae739b0790e5f6876efa0ae69cb5d"
+    "previous_git_sha": "4c33b0a4bc3dede12ee794dca004fe3df2be2816",
+    "current_git_sha": "8ea19ada21fa88815d6526a3ee9ede5401afdf7f"
   }
 }
