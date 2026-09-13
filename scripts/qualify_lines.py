@@ -74,6 +74,8 @@ def main() -> int:
                 evidence = qualify_line(report["line"], args.output)
                 if evidence is not None:
                     merged = {**report, **evidence}
+                    merged.pop("stale", None)
+                    merged.pop("stale_evidence", None)
                     merged["evidence"] = {**report.get("evidence", {}), **evidence.get("evidence", {}), "git_sha": current_sha}
                     merged["production_completeness"] = round(100 * sum(bool(merged[field]) for field in PRODUCTION_FIELDS) / len(PRODUCTION_FIELDS))
                     merged["completeness_percent"] = merged["production_completeness"]
