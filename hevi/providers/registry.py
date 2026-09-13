@@ -119,7 +119,26 @@ def register_all_providers() -> None:
     # does NOT have this restriction. We route all LLM calls through it.
     import os as _os
 
-    import httpx as _httpx
+    from hevi.providers.reliability import (
+        ProviderExecutionWrapper,
+        RateLimitPolicy,
+        ReliabilityConfig,
+        RetryPolicy,
+        TimeoutPolicy,
+    )
+
+    _provider_reliability = ReliabilityConfig(
+        timeout=TimeoutPolicy(connect_s=5.0, read_s=30.0, write_s=10.0, pool_s=5.0, total_s=60.0),
+        retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+        max_concurrency=8,
+        rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
+    )
+    _qwen_compat_wrapper = ProviderExecutionWrapper(
+        "qwen", "qwen-plus", config=_provider_reliability
+    )
+    _qwen_maas_wrapper = ProviderExecutionWrapper(
+        "qwen", "qwen-plus", config=_provider_reliability
+    )
 
     def _compat_llm_call(**kwargs: Any) -> dict[str, Any]:
         """Call DashScope via OpenAI-compatible REST endpoint."""
@@ -130,13 +149,17 @@ def register_all_providers() -> None:
             "max_tokens": kwargs.get("max_tokens", 4096),
             "temperature": kwargs.get("temperature", 0.7),
         }
-        r = _httpx.post(
+        result = _qwen_compat_wrapper.request_json_sync(
+            "POST",
             "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json=payload,
-            timeout=300.0,  # 长研究/剧本生成单次可达 8k tokens,120s 常被 ReadTimeout 打爆
+            json_body=payload,
+            # Chat completion is logically idempotent: retries reuse the same
+            # request and never create learning evidence at this boundary.
+            idempotent=True,
+            output_token_budget=int(payload["max_tokens"]),
         )
-        data = r.json()
+        data = result.require_value()
         # Adapt OpenAI-compatible format → native DashScope format expected by AsyncDashScopeAdapter
         oa_choices = data.get("choices", [])
         native_choices = [
@@ -201,14 +224,15 @@ def register_all_providers() -> None:
             "max_tokens": kwargs.get("max_tokens", 4096),
             "temperature": kwargs.get("temperature", 0.7),
         }
-        r = _httpx.post(
+        result = _qwen_maas_wrapper.request_json_sync(
+            "POST",
             f"https://{host}/compatible-mode/v1/chat/completions",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json=payload,
-            timeout=300.0,
+            json_body=payload,
+            idempotent=True,
+            output_token_budget=int(payload["max_tokens"]),
         )
-        r.raise_for_status()
-        data = r.json()
+        data = result.require_value()
         oa_choices = data.get("choices", [])
         native_choices = [
             {"message": c.get("message", {}), "finish_reason": c.get("finish_reason", "")}

@@ -1500,6 +1500,10 @@ async def test_tongjian_runtime_layers_and_resume_boundaries_are_exercised(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Cover resumable Tongjian control flow with deterministic local adapters."""
+    # The router intentionally writes run state below the relative
+    # ``output/tongjian`` root.  Keep this coverage test hermetic and writable;
+    # it must not depend on permissions of a checkout-owned output directory.
+    monkeypatch.chdir(tmp_path)
     from types import SimpleNamespace
 
     from fastapi import BackgroundTasks, HTTPException

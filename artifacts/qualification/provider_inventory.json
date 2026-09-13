@@ -1,0 +1,232 @@
+{
+  "providers": [
+    {
+      "provider": "ComfyUI/local_gpu_backend",
+      "capability": false,
+      "env_vars": [
+        "H3_COMFY_URL"
+      ],
+      "endpoint": null,
+      "local": true,
+      "required_by_lines": [],
+      "auth_probe_supported": false,
+      "real_generation_probe_supported": true
+    },
+    {
+      "provider": "ffmpeg",
+      "capability": true,
+      "env_vars": [],
+      "endpoint": null,
+      "local": true,
+      "required_by_lines": [
+        "localization_dub",
+        "shorts_clip"
+      ],
+      "auth_probe_supported": false,
+      "real_generation_probe_supported": false
+    },
+    {
+      "provider": "h3_local",
+      "capability": true,
+      "env_vars": [
+        "H3_ROUTING",
+        "H3_COMFY_URL",
+        "H3_WORKFLOWS_DIR"
+      ],
+      "endpoint": null,
+      "local": true,
+      "required_by_lines": [
+        "avatar_spokesperson",
+        "cinematic",
+        "director_pipeline",
+        "talking_head"
+      ],
+      "auth_probe_supported": false,
+      "real_generation_probe_supported": true
+    },
+    {
+      "provider": "hyperframes",
+      "capability": true,
+      "env_vars": [
+        "HYPERFRAMES_BIN",
+        "HYPERFRAMES_QUALITY"
+      ],
+      "endpoint": null,
+      "local": true,
+      "required_by_lines": [
+        "kinetic_promo"
+      ],
+      "auth_probe_supported": false,
+      "real_generation_probe_supported": true
+    },
+    {
+      "provider": "llm",
+      "capability": true,
+      "env_vars": [
+        "OPENAI_API_KEY",
+        "DASHSCOPE_API_KEY",
+        "QWEN_API_KEY",
+        "ANTHROPIC_API_KEY"
+      ],
+      "endpoint": null,
+      "local": false,
+      "required_by_lines": [
+        "avatar_spokesperson",
+        "character_animation",
+        "cinematic",
+        "director_pipeline",
+        "documentary_montage",
+        "explainer",
+        "history_scene",
+        "podcast_repurpose",
+        "reference_adapt",
+        "talking_head"
+      ],
+      "auth_probe_supported": true,
+      "real_generation_probe_supported": true
+    },
+    {
+      "provider": "manim",
+      "capability": true,
+      "env_vars": [],
+      "endpoint": null,
+      "local": true,
+      "required_by_lines": [],
+      "auth_probe_supported": false,
+      "real_generation_probe_supported": false
+    },
+    {
+      "provider": "media_source",
+      "capability": true,
+      "env_vars": [
+        "PEXELS_API_KEY",
+        "PIXABAY_API_KEY",
+        "MATERIAL_CACHE_DIR"
+      ],
+      "endpoint": null,
+      "local": false,
+      "required_by_lines": [
+        "documentary_montage",
+        "explainer",
+        "localization_dub",
+        "podcast_repurpose",
+        "reference_adapt",
+        "shorts_clip"
+      ],
+      "auth_probe_supported": true,
+      "real_generation_probe_supported": true
+    },
+    {
+      "provider": "remotion",
+      "capability": true,
+      "env_vars": [
+        "REMOTION_ENTRY",
+        "REMOTION_COMPOSITION"
+      ],
+      "endpoint": null,
+      "local": true,
+      "required_by_lines": [
+        "avatar_spokesperson",
+        "character_animation",
+        "cinematic",
+        "director_pipeline",
+        "documentary_montage",
+        "explainer",
+        "history_scene",
+        "podcast_repurpose",
+        "reference_adapt",
+        "talking_head"
+      ],
+      "auth_probe_supported": false,
+      "real_generation_probe_supported": true
+    },
+    {
+      "provider": "tts",
+      "capability": true,
+      "env_vars": [
+        "EDGE_TTS_VOICE",
+        "TTS_API_KEY",
+        "ELEVENLABS_API_KEY"
+      ],
+      "endpoint": null,
+      "local": true,
+      "required_by_lines": [
+        "avatar_spokesperson",
+        "cinematic",
+        "documentary_montage",
+        "explainer",
+        "localization_dub",
+        "talking_head"
+      ],
+      "auth_probe_supported": false,
+      "real_generation_probe_supported": true
+    }
+  ],
+  "line_dependencies": {
+    "avatar_spokesperson": [
+      "h3_local",
+      "llm",
+      "remotion",
+      "tts"
+    ],
+    "character_animation": [
+      "llm",
+      "remotion"
+    ],
+    "cinematic": [
+      "h3_local",
+      "llm",
+      "remotion",
+      "tts"
+    ],
+    "director_pipeline": [
+      "h3_local",
+      "llm",
+      "remotion"
+    ],
+    "documentary_montage": [
+      "llm",
+      "media_source",
+      "remotion",
+      "tts"
+    ],
+    "explainer": [
+      "llm",
+      "media_source",
+      "remotion",
+      "tts"
+    ],
+    "history_scene": [
+      "llm",
+      "remotion"
+    ],
+    "kinetic_promo": [
+      "hyperframes"
+    ],
+    "localization_dub": [
+      "ffmpeg",
+      "media_source",
+      "tts"
+    ],
+    "podcast_repurpose": [
+      "llm",
+      "media_source",
+      "remotion"
+    ],
+    "reference_adapt": [
+      "llm",
+      "media_source",
+      "remotion"
+    ],
+    "shorts_clip": [
+      "ffmpeg",
+      "media_source"
+    ],
+    "talking_head": [
+      "h3_local",
+      "llm",
+      "remotion",
+      "tts"
+    ]
+  }
+}

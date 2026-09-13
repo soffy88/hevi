@@ -1,0 +1,6 @@
+{
+  "provider": "hyperframes",
+  "provider_model": "local-html-gsap-ffmpeg",
+  "latency_ms": 6650,
+  "output_duration_s": 4.4
+}

@@ -1,0 +1,6 @@
+{
+  "job_id": "kinetic_promo-20260913T003922Z",
+  "provider_call_count": 1,
+  "checkpoint_persisted": true,
+  "fault_injected": "artifact_finalize_interruption"
+}

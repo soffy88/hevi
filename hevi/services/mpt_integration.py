@@ -142,10 +142,25 @@ class MPTClient:
             urls: tuple[str, ...] = (uri,)
         else:
             relative = uri.lstrip("/")
-            urls = (
-                f"{self.config.api_base.rstrip('/')}/api/v1/download/{relative}",
-                f"{self.config.api_base.rstrip('/')}/{relative}",
+            # MPT status responses expose paths relative to its storage root
+            # (``tasks/<task-id>/final-1.mp4``), while the download controller
+            # resolves paths relative to the ``tasks`` directory itself.  The
+            # former therefore needs the leading ``tasks/`` removed before it
+            # is sent to ``/api/v1/download``.
+            download_relative = (
+                relative.removeprefix("tasks/")
+                if relative.startswith("tasks/")
+                else relative
             )
+            candidate_urls = [
+                f"{self.config.api_base.rstrip('/')}/api/v1/download/{download_relative}"
+            ]
+            if download_relative != relative:
+                candidate_urls.append(
+                    f"{self.config.api_base.rstrip('/')}/api/v1/download/{relative}"
+                )
+            candidate_urls.append(f"{self.config.api_base.rstrip('/')}/{relative}")
+            urls = tuple(candidate_urls)
         last_error: Exception | None = None
         for url in urls:
             try:

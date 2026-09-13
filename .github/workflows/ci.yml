@@ -103,6 +103,15 @@ jobs:
           uv run python scripts/ci/check_recipe_schema.py
           uv run python scripts/ci/check_canon_numbering.py
 
+      - name: Studio line qualification framework
+        run: |
+          uv run python scripts/qualify_lines.py
+          uv run python scripts/qualification_summary.py
+          uv run python scripts/ci/check_qualification_policy.py
+          uv run python scripts/ci/check_line_catalog.py
+        # Provider/hardware-blocked lines are recorded as BLOCKED; the policy
+        # rejects FAILED/PARTIAL and never turns missing real evidence green.
+
       - name: Mypy
         run: uv run mypy --strict hevi
 
@@ -146,22 +155,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Filesystem vulnerability and misconfiguration scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,secret,misconfig
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-          # Exclude the checked-in upstream VibeASR build corpus; its Docker
-          # recipes are not HEVI runtime images and are maintained upstream.
-          skip-dirs: services/gen_engine/vibeasr-src/3rdparty/llama.cpp
-          # Matcha-TTS is vendored source; its upstream developer requirements
-          # are not installed by the HEVI Gen Engine image (the image installs
-          # services/voicebox/backend/requirements.txt instead).
-          skip-files: services/gen_engine/third_party/Matcha-TTS/requirements.txt
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - name: Restore Trivy database and scanner cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/trivy
+            ~/.cache/trivy-checks
+          key: ${{ runner.os }}-trivy-${{ hashFiles('**/uv.lock', '**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-trivy-
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241 # v0.2.5
+        with:
+          version: v0.71.2
+          cache: true
+      - name: Filesystem vulnerability and misconfiguration scan
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_CHECKS_BUNDLE_REPOSITORY: ghcr.io/aquasecurity/trivy-checks:1
+        run: python scripts/trivy_scan.py --cache-dir ~/.cache/trivy
+      - name: Upload Trivy evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hevi-trivy-evidence
+          path: artifacts/security/trivy*
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.17.8
         with:

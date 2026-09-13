@@ -7,7 +7,7 @@ chat/completions 协议, 端点与模型全部环境变量驱动:
     OPENCODE_BASE_URL   OpenAI 兼容端点(默认 https://api.opencode.ai/v1)
     OPENCODE_API_KEY     sk- API key(必填才注册)
     OPENCODE_MODEL      模型名(默认见下)
-    OPENCODE_TIMEOUT_S  超时秒(默认 600, 与 NIM 一致保长研究)
+    OPENCODE_TIMEOUT_S  超时秒(默认 60, RC5 bounded provider deadline)
 
 注册为 llm("opencode"); research._default_llm() 优先取它。未配置 key 时
 静默跳过, 回落 NIM/default —— 替换可逆, 不破坏既有研究链路。
@@ -20,7 +20,12 @@ import logging
 import os
 from typing import Any
 
-import httpx
+from hevi.providers.reliability import (
+    ProviderExecutionWrapper,
+    RateLimitPolicy,
+    ReliabilityConfig,
+    TimeoutPolicy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +42,7 @@ def _make_opencode_caller(
     *,
     base_url: str = DEFAULT_BASE_URL,
     model: str = DEFAULT_MODEL,
-    timeout: float = 600.0,
+    timeout: float = 60.0,
 ) -> Any:
     """构造 OpenAI 兼容 chat/completions 异步 caller(LLMCaller 协议)。
 
@@ -74,28 +79,34 @@ def _make_opencode_caller(
         loop = asyncio.get_event_loop()
 
         def _blocking() -> str:
-            with httpx.Client(trust_env=True, timeout=timeout) as client:
-                response = client.post(
-                    f"{base_url.rstrip('/')}/chat/completions",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    json=payload,
-                )
-                if response.status_code >= 400:
-                    raise RuntimeError(
-                        f"OpenCode HTTP {response.status_code}: {response.text[:300]}"
-                    )
-                try:
-                    data = response.json()
-                except ValueError as exc:
-                    # 200 但非 JSON(如 Cloudflare "Not Found" 占位页) → 明确报错。
-                    raise RuntimeError(
-                        f"OpenCode 返回非 JSON 响应({response.text[:80]!r}); "
-                        f"请检查 OPENCODE_BASE_URL={base_url} 是否为可用的 "
-                        "OpenAI 兼容 chat/completions 端点。"
-                    ) from exc
+            timeout_s = min(max(float(timeout), 1.0), 60.0)
+            wrapper = ProviderExecutionWrapper(
+                "opencode",
+                model,
+                config=ReliabilityConfig(
+                    timeout=TimeoutPolicy(
+                        connect_s=min(5.0, timeout_s),
+                        read_s=timeout_s,
+                        write_s=min(10.0, timeout_s),
+                        pool_s=min(5.0, timeout_s),
+                        total_s=timeout_s,
+                    ),
+                    max_concurrency=4,
+                    rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
+                ),
+            )
+            result = wrapper.request_json_sync(
+                "POST",
+                f"{base_url.rstrip('/')}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json_body=payload,
+                idempotent=True,
+                output_token_budget=int(payload["max_tokens"]),
+            )
+            data = result.require_value()
             choices = data.get("choices") or []
             if not choices:
-                raise RuntimeError(f"OpenCode 响应缺 choices: {str(data)[:200]}")
+                raise RuntimeError("OpenCode response missing choices")
             message = (choices[0].get("message") or {})
             content = message.get("content")
             if not content:
@@ -129,7 +140,7 @@ def register_opencode_llm() -> None:
         key,
         base_url=os.getenv("OPENCODE_BASE_URL", DEFAULT_BASE_URL),
         model=os.getenv("OPENCODE_MODEL", DEFAULT_MODEL),
-        timeout=float(os.getenv("OPENCODE_TIMEOUT_S", "600")),
+        timeout=float(os.getenv("OPENCODE_TIMEOUT_S", "60")),
     )
     # opencode 失败(端点不可用/HTTP/非 JSON)→ 自动回退 NIM(若已注册)。
     try:

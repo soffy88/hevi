@@ -1,22 +1,36 @@
-# Services Duix container - fixes the broken upstream guiji2025/duix.avatar:latest image
-# The upstream image has two broken .so modules:
-# 1. y_utils/logger.cpython-38-x86_64-linux-gnu.so (exports create_logger but not logger)
-# 2. service/trans_dh_service.cpython-38-x86_64-linux-gnu.so (has TransDhTask but instance() broken)
-# This fix replaces both broken .so files with working Python shim modules.
+# Canonical Duix runtime for HEVI.
+#
+# The upstream image contains the actual Cython/CUDA inference runtime and all
+# Duix model assets. Do not replace service/trans_dh_service.so with a Python
+# success shim: the HEVI adapter below only adds the API compatibility that
+# app.py needs and delegates every task to the native implementation.
 
 FROM guiji2025/duix.avatar:latest
 
-# Remove the broken .so files
-RUN rm -f /code/y_utils/logger.cpython-38-x86_64-linux-gnu.so && \
-    rm -f /code/service/trans_dh_service.cpython-38-x86_64-linux-gnu.so && \
-    rm -rf /code/y_utils/__pycache__/* /code/service/__pycache__/* 2>/dev/null || true
+# The upstream image contains the native runtime and model files.  Keep those
+# read-only and only grant the adapter its declared runtime state directory.
+RUN groupadd --system hevi \
+    && useradd --system --gid hevi --create-home --home-dir /home/hevi --shell /usr/sbin/nologin hevi \
+    && mkdir -p /code/data/temp /code/data/output /tmp/hevi \
+    && chown -R hevi:hevi /code/data /tmp/hevi /home/hevi \
+    && chown -R hevi:hevi /code/landmark2face_wy/checkpoints/test \
+    && chown hevi:hevi /code/submit_lock /code/task_info /code/result_lock /code/result_info \
+       /code/pre_lock /code/pre_task_info /code/pre_result_lock /code/pre_result_info /code/result.jpg \
+    && chown root:hevi /code \
+    && chmod 775 /code \
+    && chmod 1777 /tmp
 
-# Copy the shim modules
-COPY y_utils_shim.py /code/y_utils/logger.py
-COPY service_shim.py /code/service/trans_dh_service.py
+COPY --chown=hevi:hevi native_app.py /code/hevi_native_app.py
 
-# Set the working directory
 WORKDIR /code
+ENV HOME=/home/hevi \
+    TMPDIR=/code/data/temp \
+    PYTHONUNBUFFERED=1
 
-# Run the Flask app
-CMD ["/bin/bash", "-c", "exec /usr/bin/python3 app.py"]
+EXPOSE 8383
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD /usr/bin/curl -fsS http://127.0.0.1:8383/health || exit 1
+
+USER hevi
+
+CMD ["/usr/local/python3/bin/python3", "/code/hevi_native_app.py"]

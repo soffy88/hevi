@@ -87,6 +87,54 @@ def test_extract_preserves_url_double_slash():
     assert json.loads(_extract_content(raw)) == {"url": "https://example.com/x"}
 
 
+def test_extract_coerces_duration_s_to_float():
+    """duration_s 若被本地模型输出为空串/字符串 → 归一成 float,防 pydantic
+    `Input should be a valid number, unable to parse string as number`。"""
+    raw = (
+        '{"shots": [{"shot_id": "1", "duration_s": "", '
+        '"importance": 3, "narration": "n", "visual_description": "v"}]}'
+    )
+    data = json.loads(_extract_content(raw))
+    assert data["shots"][0]["duration_s"] == 0.0
+    raw2 = '{"shots": [{"shot_id": "2", "duration_s": "5"}]}'
+    data2 = json.loads(_extract_content(raw2))
+    assert data2["shots"][0]["duration_s"] == 5.0
+
+
+def test_extract_coerces_duration_s_nested():
+    """chapter 场景里嵌套的 duration_s 也要清洗(长剧本多层级)。"""
+    raw = (
+        '{"chapters": [{"chapter_id": "ch1", "scenes": '
+        '[{"duration_s": "4", "narration": "a"}, {"duration_s": "", '
+        '"narration": "b"}]}], "total_duration_s": ""}'
+    )
+    data = json.loads(_extract_content(raw))
+    assert data["chapters"][0]["scenes"][0]["duration_s"] == 4.0
+    assert data["chapters"][0]["scenes"][1]["duration_s"] == 0.0
+    assert data["total_duration_s"] == 0.0
+
+
+def test_extract_keeps_existing_numeric_duration():
+    """已是数字的 duration_s 保持原值(清洗幂等)。"""
+    raw = '{"shots": [{"shot_id": "1", "duration_s": 5.5}]}'
+    data = json.loads(_extract_content(raw))
+    assert data["shots"][0]["duration_s"] == 5.5
+
+
+def test_extract_repairs_misplaced_top_level_keys():
+    """顶层键被误塞进最后一个 chapter 对象时,弹回顶层(合法 JSON 但层级错)。"""
+    raw = (
+        '{"chapters": [{"chapter_id": 1, "title": "夜色", '
+        '"scenes": ["a"], "dialogues": [{"speaker_id": 1, "text": "t"}]}, '
+        '{"total_duration_s": 180.0, "characters": ["p"]}]}'
+    )
+    data = json.loads(_extract_content(raw))
+    assert len(data["chapters"]) == 1
+    assert data["chapters"][0]["title"] == "夜色"
+    assert data["total_duration_s"] == 180.0
+    assert data["characters"] == ["p"]
+
+
 # ── omodul 档位映射契约 ──────────────────────────────────────────────────────
 
 

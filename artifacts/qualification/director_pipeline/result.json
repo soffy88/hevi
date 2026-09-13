@@ -1,0 +1,56 @@
+{
+  "line": "director_pipeline",
+  "recipe_complete": true,
+  "runtime_complete": true,
+  "provider_available": false,
+  "real_e2e": false,
+  "final_artifact": false,
+  "ffprobe_valid": false,
+  "media_quality": false,
+  "provenance_complete": false,
+  "retry_verified": false,
+  "observability_complete": false,
+  "security_gate": false,
+  "provider_contract": true,
+  "tests": true,
+  "artifact_model": true,
+  "media_validation": true,
+  "provenance_model": true,
+  "quality_gate_passed": false,
+  "completeness_percent": 17,
+  "implementation_completeness": 70,
+  "code_completeness": 86,
+  "runtime_completeness": 67,
+  "production_completeness": 17,
+  "provider_required": [
+    "h3_local",
+    "llm",
+    "remotion"
+  ],
+  "provider": [
+    "h3_local",
+    "llm",
+    "remotion"
+  ],
+  "quality_gate": "BLOCKED",
+  "status": "BLOCKED_HARDWARE",
+  "blockers": [
+    "h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable",
+    "llm=BLOCKED_SECRET:required configuration/secret absent"
+  ],
+  "evidence": {
+    "recipe_sha256": "c317200cc56c29f298628a2617990a4016a6681432f0a27001031e2645bbd1df",
+    "git_sha": "d7c9cb230531ce7974e6e4d29e6742c9c84b281c",
+    "provider_model": null,
+    "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
+    "evidence_root": "artifacts/qualification",
+    "generated_at": "2026-09-13T01:33:51Z",
+    "hardware_probe": false,
+    "real_mode": false
+  },
+  "stale": true,
+  "stale_evidence": {
+    "previous_git_sha": "8ea19ada21fa88815d6526a3ee9ede5401afdf7f",
+    "current_git_sha": "d7c9cb230531ce7974e6e4d29e6742c9c84b281c"
+  }
+}

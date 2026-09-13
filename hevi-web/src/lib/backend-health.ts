@@ -1,4 +1,6 @@
 /** Runtime config used by health check - local definition to avoid circular import */
+import { resolveApiBase, resolveFrontendEnvironment } from './runtime-config';
+
 type HealthRuntimeConfig = {
   apiBase: string;
   useMock: boolean;
@@ -25,13 +27,15 @@ export type BackendHealth = {
 export async function checkBackendHealth(
   config: HealthRuntimeConfig = (() => {
     // Read from env without creating circular import
-    const base = process.env.NEXT_PUBLIC_API_BASE
-      ? process.env.NEXT_PUBLIC_API_BASE.trim()
-      : 'http://127.0.0.1:8000';
+    const environment = resolveFrontendEnvironment(
+      process.env.NEXT_PUBLIC_DEPLOY_ENV,
+      process.env.NODE_ENV,
+    );
+    const base = resolveApiBase(environment, process.env.NEXT_PUBLIC_API_BASE);
     const mock = (process.env.NEXT_PUBLIC_USE_MOCK ?? 'false')
       .trim()
       .toLowerCase() === 'true';
-    return { apiBase: base, useMock: mock };
+    return { apiBase: base, useMock: mock, environment };
   })()
 ): Promise<BackendHealth> {
   const start = Date.now();
@@ -135,12 +139,13 @@ export async function checkBackendHealth(
  * Convenience: check health using the module-level runtime config.
  */
 export async function checkHealthWithConfig(): Promise<BackendHealth> {
-  const base = process.env.NEXT_PUBLIC_API_BASE
-    ? process.env.NEXT_PUBLIC_API_BASE.trim()
-    : 'http://127.0.0.1:8000';
+  const environment = resolveFrontendEnvironment(
+    process.env.NEXT_PUBLIC_DEPLOY_ENV,
+    process.env.NODE_ENV,
+  );
+  const base = resolveApiBase(environment, process.env.NEXT_PUBLIC_API_BASE);
   const mock = (process.env.NEXT_PUBLIC_USE_MOCK ?? 'false')
     .trim()
     .toLowerCase() === 'true';
-  const env = process.env.NODE_ENV === 'production' ? 'production' : 'development';
-  return checkBackendHealth({ apiBase: base, useMock: mock, environment: env });
+  return checkBackendHealth({ apiBase: base, useMock: mock, environment });
 }

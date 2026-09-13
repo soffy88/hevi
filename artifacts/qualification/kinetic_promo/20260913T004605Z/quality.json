@@ -1,0 +1,7 @@
+{
+  "decision": "PASS",
+  "metrics": {
+    "visual_corruption": false,
+    "duration_positive": true
+  }
+}

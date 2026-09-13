@@ -52,6 +52,9 @@ async def stage_watch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
 
 
 async def stage_score(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
+    from hevi.providers.registry import register_all_providers
+    # 3O SaaS-4 保证在 stage_score 前先注册所有 L2 提供者
+    register_all_providers()
     result = await invoke_tool(
         "score.provider",
         {
@@ -62,9 +65,11 @@ async def stage_score(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
         },
     )
     winner = (result.payload.get("winner") or {}).get("provider")
+    # 显式提供者优先(若用户通过 --slot video_provider 指定则尊重);否则取评分胜出者
+    video_provider = data.get("video_provider") or (winner if winner != "h3_local" else "wan_local")
     return {
         "provider_decision": result.payload,
-        "video_provider": winner or data.get("video_provider") or "auto",
+        "video_provider": video_provider,
     }
 
 

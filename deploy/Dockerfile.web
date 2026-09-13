@@ -14,8 +14,10 @@ FROM node:22-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ARG NEXT_PUBLIC_API_BASE=https://hevi.kanpan.co
+ARG NEXT_PUBLIC_DEPLOY_ENV=production
+ARG NEXT_PUBLIC_API_BASE=https://api-prod.sxueji.com
 ARG NEXT_PUBLIC_USE_MOCK=false
+ENV NEXT_PUBLIC_DEPLOY_ENV=$NEXT_PUBLIC_DEPLOY_ENV
 ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
 ENV NEXT_PUBLIC_USE_MOCK=$NEXT_PUBLIC_USE_MOCK
 RUN npm run build

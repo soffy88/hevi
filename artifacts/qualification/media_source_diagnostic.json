@@ -1,0 +1,57 @@
+{
+  "provider": "wikimedia_commons",
+  "url_host": "commons.wikimedia.org",
+  "url_path": "/w/api.php",
+  "proxy": {
+    "no_proxy": "localhost,127.0.0.1,::1,192.168.0.0/24,192.168.1.0/24,100.64.0.0/10,.local",
+    "https_proxy": "http://127.0.0.1:7890",
+    "http_proxy": "http://127.0.0.1:7890"
+  },
+  "dns": {
+    "passed": true,
+    "addresses": [
+      "103.102.166.224",
+      "2001:df2:e500:ed1a::1"
+    ],
+    "latency_ms": 5
+  },
+  "tcp_tls": {
+    "passed": true,
+    "tls_version": "TLSv1.3",
+    "cipher": "TLS_AES_128_GCM_SHA256",
+    "latency_ms": 483
+  },
+  "http": {
+    "passed": true,
+    "status": 200,
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 26854,
+    "latency_ms": 823
+  },
+  "auth": {
+    "required": false,
+    "status": "NOT_REQUIRED"
+  },
+  "classification": "READY",
+  "search": {
+    "passed": true
+  },
+  "download": {
+    "passed": true,
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/3/30/Public_Domain_Day.webm?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "final_url": "https://upload.wikimedia.org/wikipedia/commons/3/30/Public_Domain_Day.webm?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "redirected": false,
+    "response_headers": {
+      "content-type": "video/webm",
+      "content-length": "21891549",
+      "server": "envoy"
+    },
+    "referer_sent": true,
+    "user_agent_sent": true,
+    "authorization_sent": false,
+    "license": true,
+    "retrieved_at": "2026-09-13T01:27:08Z",
+    "local_frozen_path": "/tmp/hevi-provider-probes/media-source-diagnostic.bin",
+    "sha256": "64155f3cdbc5308276444f1c4e8574c637030c303d8b60572db180688b99dba3"
+  }
+}

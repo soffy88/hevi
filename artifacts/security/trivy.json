@@ -1,0 +1,5 @@
+{
+  "status": "BLOCKED_TOOL_INSTALL",
+  "error": "trivy executable not found",
+  "scan_timestamp": "2026-09-13T00:46:23.061986+00:00"
+}

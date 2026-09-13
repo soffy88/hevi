@@ -1006,10 +1006,14 @@ async def test_voicepro_asr_translation_tts_and_clone_paths(
     assert asr.normalize_audio("a.wav", "b.wav") == "b.wav"
     with pytest.raises(RuntimeError, match="whisper.cpp is not configured"):
         await asr.transcribe_whisper_cpp("a.wav", make_asr_config())
-    with pytest.raises(RuntimeError, match="Aliyun ASR adapter"):
-        await asr.transcribe_aliyun_asr("a.wav", make_asr_config())
-    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
-        await asr.transcribe_openai_whisper("a.wav", make_asr_config())
+        with pytest.raises(RuntimeError, match="Aliyun ASR adapter"):
+            await asr.transcribe_aliyun_asr("a.wav", make_asr_config())
+        # The contract exercises the missing-credential branch.  Do not let a
+        # developer shell's real key turn this deterministic unit test into an
+        # attempted external call (or a local-file error).
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
+            await asr.transcribe_openai_whisper("a.wav", make_asr_config())
     assert asr.verify_asr_result(ASRResult(text="hello"), "hello")["passed"]
     assert not asr.verify_asr_result(ASRResult(text="wrong"), "hello")["passed"]
     assert asr.verify_asr_result(ASRResult(cer=0.01))["passed"]

@@ -97,9 +97,20 @@ def test_voice_fish_uses_local_backend(tmp_path):
             w.setsampwidth(2)
             w.setframerate(16000)
             w.writeframes(b"\x00\x00" * 1600)  # 0.1s 静音
-        return p
+            return p
 
-    with patch("hevi.assembly.freevideo.workflow._synthesize_narration",
+    async def _fake_render_frames(_plans, output_path, **_kwargs):
+        Path(output_path).write_bytes(b"rendered video")
+
+    def _fake_mux(args, **_kwargs):
+        Path(args[-1]).write_bytes(b"muxed video")
+
+    with patch("hevi.assembly.freevideo.workflow.render_frames",
+               new=_fake_render_frames), \
+         patch("hevi.assembly.freevideo.render._ffmpeg", new=_fake_mux), \
+         patch("hevi.pipeline_lite.oprim.oprim_ffmpeg.assert_audio_track",
+               return_value=True), \
+         patch("hevi.assembly.freevideo.workflow._synthesize_narration",
                new=AsyncMock(side_effect=_fake_edge)) as mock_edge, \
          patch("hevi.audio.fish_speech_local.fish_speech_local_synthesize",
                new=AsyncMock(side_effect=RuntimeError("no gpu"))) as mock_fish:
