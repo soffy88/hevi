@@ -2,7 +2,7 @@
   "line": "history_scene",
   "recipe_complete": true,
   "runtime_complete": true,
-  "provider_available": true,
+  "provider_available": false,
   "real_e2e": false,
   "final_artifact": false,
   "ffprobe_valid": false,
@@ -31,13 +31,18 @@
     "remotion"
   ],
   "quality_gate": "BLOCKED",
-  "status": "BLOCKED_PROVIDER",
+  "status": "BLOCKED_HARDWARE",
   "blockers": [
-    "history_scene:provider call failed: network_error after 3 attempt(s)"
+    "wan_local=BLOCKED_HARDWARE:GPU_HARDWARE"
   ],
+  "blocker_details": {
+    "dependency": "wan_local",
+    "dependency_status": "SERVICE_NOT_STARTED",
+    "underlying_blocker": "GPU_HARDWARE"
+  },
   "evidence": {
     "recipe_sha256": "ef0da05f6f78a8a7b25672335fe13cb0ffeaaef87683991e7676135e32f4ab15",
-    "git_sha": "48aff8d7d8bce61f2d2bd090c44e5cc7ff5aae86",
+    "git_sha": "7e78265202235ede39178fcee8a27c4e2ef42f8a",
     "provider_model": "veya1.2-free",
     "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",

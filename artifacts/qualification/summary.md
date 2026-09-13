@@ -4,25 +4,25 @@ Total: 13
 
 | Line | Status | Code | Runtime | Production | Real E2E | Quality gate | Provider | Artifact | Blockers |
 |---|---|---:|---:|---:|---|---|---|---|---|
-| kinetic_promo | PRODUCTION_COMPLETE | 86% | 67% | 100% | True | PASS | hyperframes | True | — |
-| shorts_clip | PRODUCTION_COMPLETE | 86% | 67% | 100% | True | PASS | media_source | True | — |
-| history_scene | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, remotion | False | llm=BLOCKED_SECRET:required configuration/secret absent |
-| localization_dub | BLOCKED_PROVIDER | 86% | 67% | 25% | False | BLOCKED | media_source, tts | False | localization_dub:REAL_E2E_RUNNER_UNAVAILABLE |
-| explainer | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, media_source, remotion, tts | False | llm=BLOCKED_SECRET:required configuration/secret absent |
-| documentary_montage | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, media_source, remotion, tts | False | llm=BLOCKED_SECRET:required configuration/secret absent |
-| podcast_repurpose | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, media_source, remotion | False | llm=BLOCKED_SECRET:required configuration/secret absent |
-| reference_adapt | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, media_source, remotion | False | llm=BLOCKED_SECRET:required configuration/secret absent |
-| character_animation | BLOCKED_PROVIDER | 86% | 67% | 17% | False | BLOCKED | llm, remotion | False | llm=BLOCKED_SECRET:required configuration/secret absent |
-| director_pipeline | BLOCKED_HARDWARE | 86% | 67% | 17% | False | BLOCKED | h3_local, llm, remotion | False | h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable; llm=BLOCKED_SECRET:required configuration/secret absent |
-| cinematic | BLOCKED_HARDWARE | 86% | 67% | 17% | False | BLOCKED | h3_local, llm, remotion, tts | False | h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable; llm=BLOCKED_SECRET:required configuration/secret absent |
-| talking_head | BLOCKED_HARDWARE | 86% | 67% | 17% | False | BLOCKED | h3_local, llm, remotion, tts | False | h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable; llm=BLOCKED_SECRET:required configuration/secret absent |
-| avatar_spokesperson | BLOCKED_HARDWARE | 86% | 67% | 17% | False | BLOCKED | h3_local, llm, remotion, tts | False | h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable; llm=BLOCKED_SECRET:required configuration/secret absent |
+| avatar_spokesperson | BLOCKED_HARDWARE | 86% | 67% | 17% | false | BLOCKED | h3_local, llm, remotion, tts | false | h3_local=BLOCKED_HARDWARE:GPU_HARDWARE |
+| character_animation | PRODUCTION_COMPLETE | 86% | 67% | 100% | true | PASS | llm, remotion | true | — |
+| cinematic | BLOCKED_HARDWARE | 86% | 67% | 17% | false | BLOCKED | h3_local, llm, remotion, tts | false | h3_local=BLOCKED_HARDWARE:GPU_HARDWARE |
+| director_pipeline | BLOCKED_HARDWARE | 86% | 67% | 17% | false | BLOCKED | h3_local, llm, remotion | false | h3_local=BLOCKED_HARDWARE:GPU_HARDWARE |
+| documentary_montage | PRODUCTION_COMPLETE | 86% | 67% | 100% | true | PASS | llm, media_source, remotion, tts | true | — |
+| explainer | BLOCKED_HARDWARE | 86% | 67% | 17% | false | BLOCKED | llm, media_source, remotion, tts | false | CosyVoice=BLOCKED_HARDWARE:GPU_HARDWARE |
+| history_scene | BLOCKED_HARDWARE | 86% | 67% | 17% | false | BLOCKED | llm, remotion | false | wan_local=BLOCKED_HARDWARE:GPU_HARDWARE |
+| kinetic_promo | PRODUCTION_COMPLETE | 86% | 67% | 100% | true | PASS | hyperframes | true | — |
+| localization_dub | PRODUCTION_COMPLETE | 86% | 67% | 100% | true | PASS | llm, media_source, tts | true | — |
+| podcast_repurpose | PRODUCTION_COMPLETE | 86% | 67% | 100% | true | PASS | llm, media_source, remotion | true | — |
+| reference_adapt | BLOCKED_HARDWARE | 86% | 67% | 17% | false | BLOCKED | llm, media_source, remotion | false | CosyVoice=BLOCKED_HARDWARE:GPU_HARDWARE |
+| shorts_clip | PRODUCTION_COMPLETE | 86% | 67% | 100% | true | PASS | media_source | true | — |
+| talking_head | BLOCKED_HARDWARE | 86% | 67% | 17% | false | BLOCKED | h3_local, llm, remotion, tts | false | h3_local=BLOCKED_HARDWARE:GPU_HARDWARE |
 
 ## Counts
 
-- BLOCKED_HARDWARE: 4
-- BLOCKED_PROVIDER: 7
+- BLOCKED_HARDWARE: 7
+- BLOCKED_PROVIDER: 0
 - FAILED: 0
 - PARTIAL: 0
-- PRODUCTION_COMPLETE: 2
+- PRODUCTION_COMPLETE: 6
 - QUALIFIED: 0

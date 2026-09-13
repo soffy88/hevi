@@ -2,7 +2,7 @@
   "line": "explainer",
   "recipe_complete": true,
   "runtime_complete": true,
-  "provider_available": true,
+  "provider_available": false,
   "real_e2e": false,
   "final_artifact": false,
   "ffprobe_valid": false,
@@ -35,13 +35,18 @@
     "tts"
   ],
   "quality_gate": "BLOCKED",
-  "status": "BLOCKED_PROVIDER",
+  "status": "BLOCKED_HARDWARE",
   "blockers": [
-    "explainer:VOICEOVERERROR: 段 cue-1 CosyVoice 配音失败: AI 引擎 CosyVoice 合成失败 (HTTP 502): HTTP 502"
+    "CosyVoice=BLOCKED_HARDWARE:GPU_HARDWARE"
   ],
+  "blocker_details": {
+    "dependency": "CosyVoice",
+    "dependency_status": "SERVICE_NOT_STARTED",
+    "underlying_blocker": "GPU_HARDWARE"
+  },
   "evidence": {
     "recipe_sha256": "983c5abdbc53c3b7c54871b22a1b787f446684a996de64142f697056fa5f17d8",
-    "git_sha": "48aff8d7d8bce61f2d2bd090c44e5cc7ff5aae86",
+    "git_sha": "7e78265202235ede39178fcee8a27c4e2ef42f8a",
     "provider_model": "veya1.2-free",
     "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",

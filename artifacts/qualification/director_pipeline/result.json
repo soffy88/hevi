@@ -35,13 +35,17 @@
   "quality_gate": "BLOCKED",
   "status": "BLOCKED_HARDWARE",
   "blockers": [
-    "h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable",
-    "llm=BLOCKED_SECRET:required configuration/secret absent"
+    "h3_local=BLOCKED_HARDWARE:GPU_HARDWARE"
   ],
+  "blocker_details": {
+    "dependency": "h3_local",
+    "dependency_status": "BLOCKED_HARDWARE",
+    "underlying_blocker": "GPU_HARDWARE"
+  },
   "evidence": {
     "recipe_sha256": "c317200cc56c29f298628a2617990a4016a6681432f0a27001031e2645bbd1df",
-    "git_sha": "d7c9cb230531ce7974e6e4d29e6742c9c84b281c",
-    "provider_model": null,
+    "git_sha": "7e78265202235ede39178fcee8a27c4e2ef42f8a",
+    "provider_model": "veya1.2-free",
     "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",
     "generated_at": "2026-09-13T01:33:51Z",

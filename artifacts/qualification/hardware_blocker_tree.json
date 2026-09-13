@@ -1,0 +1,10 @@
+{
+  "root": "GPU_HARDWARE",
+  "derived_dependencies": {
+    "wan_local": ["history_scene"],
+    "CosyVoice": ["explainer", "reference_adapt"],
+    "h3_local": ["director_pipeline", "cinematic", "talking_head", "avatar_spokesperson"]
+  },
+  "blocked_lines": ["history_scene", "explainer", "reference_adapt", "director_pipeline", "cinematic", "talking_head", "avatar_spokesperson"],
+  "top_level_release_blockers": ["GPU_HARDWARE"]
+}
