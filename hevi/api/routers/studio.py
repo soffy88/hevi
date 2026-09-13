@@ -39,6 +39,25 @@ class ToolInvokeRequest(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
+class VideoAnalyzeRequest(BaseModel):
+    source_path: str = Field(min_length=1)
+    semantic: bool = False
+
+
+class VideoCompareRequest(BaseModel):
+    source_path: str = Field(min_length=1)
+    intent: dict[str, Any] = Field(default_factory=dict)
+
+
+class VideoFeedbackRequest(BaseModel):
+    finding_id: str = Field(min_length=1)
+    severity: str = Field(min_length=1)
+    layer: str = Field(min_length=1)
+    target: str = Field(min_length=1)
+    suggested_action: str = Field(min_length=1)
+    evidence_refs: list[str] = Field(default_factory=list)
+
+
 @router.get("/tools")
 async def get_studio_tools(
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
@@ -57,6 +76,52 @@ async def invoke_studio_tool(
     if result.status == "failed" and result.reason.startswith("unknown tool"):
         raise HTTPException(status_code=404, detail=result.reason)
     return result.to_dict()
+
+
+@router.post("/video/analyze")
+async def analyze_video(
+    req: VideoAnalyzeRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """Thin HTTP adapter for the existing deterministic Video Intelligence service."""
+
+    from hevi.video_intelligence.analysis import analyze_reel
+
+    try:
+        return analyze_reel(req.source_path, semantic=req.semantic).model_dump(mode="json")
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/video/compare")
+async def compare_video(
+    req: VideoCompareRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """Run the existing intent/artifact comparison without mutating upstream state."""
+
+    from hevi.video_intelligence.analysis import analyze_reel
+    from hevi.video_intelligence.comparison import compare_intent_to_artifact
+    from hevi.video_intelligence.models import IntentProfile
+
+    try:
+        intent = IntentProfile.model_validate(req.intent)
+        analysis = analyze_reel(req.source_path)
+        return compare_intent_to_artifact(intent, analysis).model_dump(mode="json")
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/video/feedback")
+async def create_video_feedback(
+    req: VideoFeedbackRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """Create a proposal object only; this endpoint never mutates a project."""
+
+    from hevi.video_intelligence.models import RevisionFeedback
+
+    return RevisionFeedback(**req.model_dump()).model_dump(mode="json")
 
 
 @router.get("/lines")

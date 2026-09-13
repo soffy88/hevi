@@ -147,6 +147,18 @@ export const studioApi = {
     authedReq<{ status: string; payload: Record<string, unknown>; reason: string }>(`/api/studio/tools/${toolId}`, {
       method: 'POST', body: JSON.stringify({ payload }),
     }),
+  analyzeVideo: (source_path: string) =>
+    authedReq<Record<string, unknown>>('/api/studio/video/analyze', {
+      method: 'POST', body: JSON.stringify({ source_path }),
+    }),
+  compareVideo: (source_path: string, intent: Record<string, unknown>) =>
+    authedReq<Record<string, unknown>>('/api/studio/video/compare', {
+      method: 'POST', body: JSON.stringify({ source_path, intent }),
+    }),
+  createVideoFeedback: (feedback: Record<string, unknown>) =>
+    authedReq<Record<string, unknown>>('/api/studio/video/feedback', {
+      method: 'POST', body: JSON.stringify(feedback),
+    }),
   slate: (line_id: string, slots: Record<string, unknown>) =>
     authedReq<Record<string, unknown>>('/api/studio/slates', { method: 'POST', body: JSON.stringify({ line_id, slots }) }),
   createTimeline: (title: string, edit_plan: Record<string, unknown>) =>
