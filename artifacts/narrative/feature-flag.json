@@ -1,0 +1,15 @@
+{
+  "flag_off": {
+    "narrative_intelligence_enabled": false,
+    "path": "existing character_animation production path",
+    "real_artifact": true,
+    "production_status_preserved": true
+  },
+  "flag_on": {
+    "narrative_intelligence_enabled": true,
+    "path": "Narrative -> SceneBlueprint -> Shot Intelligence -> local render projection",
+    "real_artifact": true,
+    "artifact_validity": true
+  },
+  "fallback_policy": "explicit fallback to existing planner with provenance; no silent partial mutation"
+}

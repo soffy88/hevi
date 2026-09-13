@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "operations": ["create", "persist", "reload", "restore", "compare", "resume", "scene_planning", "shot_adapter"],
+  "story_bible_identity_preserved": true,
+  "character_ids_preserved": true,
+  "relationship_refs_preserved": true,
+  "timeline_preserved": true,
+  "threads_preserved": true,
+  "revision_hash_before": "52662889d1085575cd4478ce539d33fa593bdd0e57dfbed93a8e05177276fcc1",
+  "revision_hash_after": "52662889d1085575cd4478ce539d33fa593bdd0e57dfbed93a8e05177276fcc1",
+  "scene_refs_preserved": true,
+  "shot_plan_replay": true
+}

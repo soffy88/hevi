@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "line": "character_animation",
+  "final_artifact": "artifacts/narrative/ab/character_animation/B.mp4",
+  "trace": [
+    {"kind":"final_artifact","id":"artifact:character-animation-b"},
+    {"kind":"shot_plan","id":"shot-plan:character-animation-b","ref":"artifact:character-animation-b"},
+    {"kind":"scene_blueprint","id":"scene:s1","ref":"shot-plan:character-animation-b"},
+    {"kind":"story_beat","id":"beat:b1","ref":"scene:s1"},
+    {"kind":"narrative_objective","id":"objective:understand-proof","ref":"beat:b1"},
+    {"kind":"story_bible","id":"bible:character-animation-ab","ref":"objective:understand-proof"},
+    {"kind":"source_evidence","id":"source:character-ab","ref":"bible:character-animation-ab"}
+  ],
+  "dangling_references": []
+}

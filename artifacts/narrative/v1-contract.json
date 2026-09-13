@@ -1,0 +1,22 @@
+{
+  "contract_version": 1,
+  "schema_versions": {
+    "StoryBible": "1.0",
+    "Character": "1.0",
+    "CharacterRelationship": "1.0",
+    "TimelineEvent": "1.0",
+    "SceneBlueprint": "1.0",
+    "NarrativeRevision": "1.0",
+    "RevisionReceipt": "1.0",
+    "NarrativeProvenance": "1.0",
+    "NarrativeQualityReport": "1.0"
+  },
+  "shot_adapter": {
+    "input": "SceneBlueprint",
+    "output": "list[ShotIntent]",
+    "direction": "narrative -> scene -> shot",
+    "reverse_canonical_mutation": false,
+    "renderer_dependency": false
+  },
+  "breaking_change_policy": "increment NARRATIVE_CONTRACT_VERSION"
+}

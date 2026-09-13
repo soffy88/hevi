@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "provider": "OPENAI_COMPATIBLE",
+  "model": "veya1.2-free",
+  "first_attempt": "controlled RetryableError",
+  "final_attempt": "real structured completion",
+  "retry_supported": true,
+  "retry_exercised": true,
+  "attempt_count": 2,
+  "duplicate_revisions": 0,
+  "duplicate_side_effects": 0,
+  "canonical_commit_count": 1,
+  "failure_class": "RetryableError",
+  "backoff_policy": {"max_attempts": 3, "initial_backoff_s": 0.1, "max_backoff_s": 1, "jitter": false}
+}

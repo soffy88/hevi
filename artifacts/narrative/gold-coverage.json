@@ -1,0 +1,21 @@
+{
+  "total": 20,
+  "passed": 20,
+  "coverage": {
+    "temporal_conflict": ["timeline_order", "multi_scene_continuity"],
+    "character_knowledge_conflict": ["character_knowledge"],
+    "character_state_conflict": ["character_knowledge", "relationship_change"],
+    "relationship_conflict": ["relationship_change"],
+    "location_conflict": ["multi_scene_continuity"],
+    "object_continuity": ["object_continuity"],
+    "established_fact_conflict": ["missing_evidence", "forbidden_claim"],
+    "setup_payoff": ["setup_payoff", "scene_turn"],
+    "thread_resolution": ["setup_payoff", "thread_duplicate"],
+    "historical_fact_dramatization": ["historical_fact", "dramatization_boundary"],
+    "stale_revision": ["stale_revision", "conflicting_revision"],
+    "truncated_generation": ["truncated_generation"],
+    "context_budget": ["context_budget"],
+    "series_continuity": ["series_continuity"]
+  },
+  "uncovered": []
+}
