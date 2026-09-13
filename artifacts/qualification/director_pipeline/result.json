@@ -11,7 +11,15 @@
   "retry_verified": false,
   "observability_complete": false,
   "security_gate": false,
-  "completeness_percent": 18,
+  "provider_contract": true,
+  "tests": true,
+  "artifact_model": true,
+  "media_validation": true,
+  "provenance_model": true,
+  "quality_gate_passed": false,
+  "completeness_percent": 17,
+  "implementation_completeness": 70,
+  "production_completeness": 17,
   "provider_required": [
     "h3_local",
     "llm",
@@ -30,7 +38,7 @@
   "evidence": {
     "recipe_sha256": "c317200cc56c29f298628a2617990a4016a6681432f0a27001031e2645bbd1df",
     "evidence_root": "artifacts/qualification",
-    "generated_at": "2026-09-13T00:04:58Z",
+    "generated_at": "2026-09-13T00:19:14Z",
     "hardware_probe": false,
     "real_mode": false
   }

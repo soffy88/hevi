@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-09-13T00:19:12Z",
+  "providers": [
+    {
+      "provider": "h3_local",
+      "configured": false,
+      "secret_present": true,
+      "endpoint": "http://127.0.0.1:8188",
+      "endpoint_reachable": false,
+      "auth_valid": null,
+      "capability_available": true,
+      "readiness_probe": "non_billable_only",
+      "gpu_dependency": true,
+      "status": "BLOCKED_HARDWARE",
+      "blocker": "nvidia-smi/CUDA unavailable",
+      "probe_detail": "URLError"
+    },
+    {
+      "provider": "ComfyUI/local_gpu_backend",
+      "configured": false,
+      "secret_present": true,
+      "endpoint": "http://127.0.0.1:8188",
+      "endpoint_reachable": false,
+      "auth_valid": null,
+      "capability_available": true,
+      "readiness_probe": "non_billable_only",
+      "gpu_dependency": true,
+      "status": "BLOCKED_HARDWARE",
+      "blocker": "nvidia-smi/CUDA unavailable",
+      "probe_detail": "URLError"
+    },
+    {
+      "provider": "llm",
+      "configured": false,
+      "secret_present": false,
+      "endpoint": null,
+      "endpoint_reachable": true,
+      "auth_valid": null,
+      "capability_available": true,
+      "readiness_probe": "non_billable_only",
+      "gpu_dependency": false,
+      "status": "BLOCKED_SECRET",
+      "blocker": "required configuration/secret absent",
+      "probe_detail": "local"
+    },
+    {
+      "provider": "remotion",
+      "configured": true,
+      "secret_present": true,
+      "endpoint": null,
+      "endpoint_reachable": true,
+      "auth_valid": null,
+      "capability_available": true,
+      "readiness_probe": "non_billable_only",
+      "gpu_dependency": false,
+      "status": "READY",
+      "blocker": null,
+      "probe_detail": "local"
+    },
+    {
+      "provider": "tts",
+      "configured": true,
+      "secret_present": true,
+      "endpoint": null,
+      "endpoint_reachable": true,
+      "auth_valid": null,
+      "capability_available": true,
+      "readiness_probe": "non_billable_only",
+      "gpu_dependency": false,
+      "status": "READY",
+      "blocker": null,
+      "probe_detail": "local"
+    },
+    {
+      "provider": "media_source",
+      "configured": true,
+      "secret_present": true,
+      "endpoint": null,
+      "endpoint_reachable": true,
+      "auth_valid": null,
+      "capability_available": true,
+      "readiness_probe": "non_billable_only",
+      "gpu_dependency": false,
+      "status": "READY",
+      "blocker": null,
+      "probe_detail": "local"
+    },
+    {
+      "provider": "hyperframes",
+      "configured": true,
+      "secret_present": true,
+      "endpoint": null,
+      "endpoint_reachable": true,
+      "auth_valid": null,
+      "capability_available": true,
+      "readiness_probe": "non_billable_only",
+      "gpu_dependency": false,
+      "status": "READY",
+      "blocker": null,
+      "probe_detail": "local"
+    }
+  ]
+}

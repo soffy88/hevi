@@ -1,0 +1,4 @@
+{
+  "status": "TOOL_ERROR",
+  "error": "trivy executable not found"
+}

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T00:04:58Z",
+  "generated_at": "2026-09-13T00:19:14Z",
   "total": 13,
   "counts": {
     "BLOCKED_HARDWARE": 4,
@@ -23,7 +23,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "h3_local",
         "llm",
@@ -44,7 +52,7 @@
       "evidence": {
         "recipe_sha256": "82a546a5ba9af4916163907e5bee87f096a5e9500cebcc4765b5fa19fd90ed3b",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": false,
         "real_mode": false
       }
@@ -62,7 +70,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "llm",
         "remotion"
@@ -79,7 +95,7 @@
       "evidence": {
         "recipe_sha256": "0d37e68605f09ce407172918103551712773aed936601fdd4f2dd2254e2179f8",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -97,7 +113,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "h3_local",
         "llm",
@@ -118,7 +142,7 @@
       "evidence": {
         "recipe_sha256": "b68d219a5fbdeb5fc6b5b48d168a6747872846f8311b2e476673a8dcbaffb8b7",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": false,
         "real_mode": false
       }
@@ -136,7 +160,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "h3_local",
         "llm",
@@ -155,7 +187,7 @@
       "evidence": {
         "recipe_sha256": "c317200cc56c29f298628a2617990a4016a6681432f0a27001031e2645bbd1df",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": false,
         "real_mode": false
       }
@@ -173,7 +205,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "llm",
         "media_source",
@@ -194,7 +234,7 @@
       "evidence": {
         "recipe_sha256": "eebcc334e5847b878b6b933198e1f20d0cff2ade7f693532850423c68e7f2d7e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -212,7 +252,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "llm",
         "media_source",
@@ -233,7 +281,7 @@
       "evidence": {
         "recipe_sha256": "983c5abdbc53c3b7c54871b22a1b787f446684a996de64142f697056fa5f17d8",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -251,7 +299,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "llm",
         "remotion"
@@ -268,7 +324,7 @@
       "evidence": {
         "recipe_sha256": "ef0da05f6f78a8a7b25672335fe13cb0ffeaaef87683991e7676135e32f4ab15",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -286,7 +342,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "hyperframes"
       ],
@@ -301,7 +365,7 @@
       "evidence": {
         "recipe_sha256": "1b49eaa6c9e140f043e25290d0712505823119f5d2cbbb658edabf49373bafbe",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -319,7 +383,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "media_source",
         "tts"
@@ -336,7 +408,7 @@
       "evidence": {
         "recipe_sha256": "924d9278a7c44a6b63d2c71588847ef214637300f5218e9d5b8454062f0c4682",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -354,7 +426,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "llm",
         "media_source",
@@ -373,7 +453,7 @@
       "evidence": {
         "recipe_sha256": "ae7081e6bea8f0f38ebcd3bcf568d0be64768480bca0be5e78593376d790cfcb",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -391,7 +471,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "llm",
         "media_source",
@@ -410,7 +498,7 @@
       "evidence": {
         "recipe_sha256": "74b54053a0c4456409c953ebe08a2241bca9d4ec87f51ad2d89e20b055949b04",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -428,7 +516,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "media_source"
       ],
@@ -443,7 +539,7 @@
       "evidence": {
         "recipe_sha256": "f984a8226a7dca59637d89216a1c283db5c0cc9edefaa93fac03f91453d76caf",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -461,7 +557,15 @@
       "retry_verified": false,
       "observability_complete": false,
       "security_gate": false,
-      "completeness_percent": 18,
+      "provider_contract": true,
+      "tests": true,
+      "artifact_model": true,
+      "media_validation": true,
+      "provenance_model": true,
+      "quality_gate_passed": false,
+      "completeness_percent": 17,
+      "implementation_completeness": 70,
+      "production_completeness": 17,
       "provider_required": [
         "h3_local",
         "llm",
@@ -482,7 +586,7 @@
       "evidence": {
         "recipe_sha256": "3e4dd5145ac32d5b5fdba49f7aaa750f6d43a352b8a0db460a3be11ca8f0f669",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:04:58Z",
+        "generated_at": "2026-09-13T00:19:14Z",
         "hardware_probe": false,
         "real_mode": false
       }

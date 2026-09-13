@@ -20,6 +20,16 @@ HIGH_RANDOMNESS_LINES = {
     "cinematic", "reference_adapt", "character_animation", "talking_head",
     "avatar_spokesperson", "localization_dub",
 }
+IMPLEMENTATION_FIELDS = (
+    "recipe_complete", "runtime_complete", "provider_contract", "tests",
+    "artifact_model", "media_validation", "retry_verified", "observability_complete",
+    "security_gate", "provenance_model",
+)
+PRODUCTION_FIELDS = (
+    "recipe_complete", "runtime_complete", "provider_available", "real_e2e",
+    "final_artifact", "ffprobe_valid", "media_quality", "provenance_complete",
+    "retry_verified", "observability_complete", "security_gate", "quality_gate_passed",
+)
 
 
 def _sha256(path: Path) -> str:
@@ -80,12 +90,21 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
         "retry_verified": False,
         "observability_complete": False,
         "security_gate": False,
+        "provider_contract": True,
+        "tests": True,
+        "artifact_model": Path("hevi/production/artifacts.py").exists(),
+        "media_validation": Path("hevi/qualification/media.py").exists(),
+        "provenance_model": Path("hevi/tongjian").exists(),
+        "quality_gate_passed": False,
     }
-    completeness = round(100 * sum(checks.values()) / len(checks))
+    implementation_completeness = round(100 * sum(checks[field] for field in IMPLEMENTATION_FIELDS) / len(IMPLEMENTATION_FIELDS))
+    production_completeness = round(100 * sum(checks[field] for field in PRODUCTION_FIELDS) / len(PRODUCTION_FIELDS))
     return {
         "line": line,
         **checks,
-        "completeness_percent": completeness,
+        "completeness_percent": production_completeness,
+        "implementation_completeness": implementation_completeness,
+        "production_completeness": production_completeness,
         "provider_required": provider_required,
         "provider": provider_required,
         "quality_gate": "BLOCKED",

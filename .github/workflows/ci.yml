@@ -155,22 +155,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Filesystem vulnerability and misconfiguration scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      - name: Restore Trivy database and scanner cache
+        uses: actions/cache@v4
         with:
-          scan-type: fs
-          scan-ref: .
-          scanners: vuln,secret,misconfig
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-          # Exclude the checked-in upstream VibeASR build corpus; its Docker
-          # recipes are not HEVI runtime images and are maintained upstream.
-          skip-dirs: services/gen_engine/vibeasr-src/3rdparty/llama.cpp
-          # Matcha-TTS is vendored source; its upstream developer requirements
-          # are not installed by the HEVI Gen Engine image (the image installs
-          # services/voicebox/backend/requirements.txt instead).
-          skip-files: services/gen_engine/third_party/Matcha-TTS/requirements.txt
+          path: ~/.cache/trivy
+          key: ${{ runner.os }}-trivy-${{ hashFiles('**/uv.lock', '**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-trivy-
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@v0.2.3
+      - name: Filesystem vulnerability and misconfiguration scan
+        run: python scripts/trivy_scan.py --cache-dir ~/.cache/trivy
+      - name: Upload Trivy evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hevi-trivy-evidence
+          path: artifacts/security/trivy*
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.17.8
         with:
