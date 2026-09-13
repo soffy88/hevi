@@ -41,17 +41,17 @@
   ],
   "evidence": {
     "recipe_sha256": "983c5abdbc53c3b7c54871b22a1b787f446684a996de64142f697056fa5f17d8",
-    "git_sha": "8ea19ada21fa88815d6526a3ee9ede5401afdf7f",
+    "git_sha": "d7c9cb230531ce7974e6e4d29e6742c9c84b281c",
     "provider_model": null,
     "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",
-    "generated_at": "2026-09-13T01:24:16Z",
+    "generated_at": "2026-09-13T01:33:51Z",
     "hardware_probe": true,
     "real_mode": false
   },
   "stale": true,
   "stale_evidence": {
-    "previous_git_sha": "4c33b0a4bc3dede12ee794dca004fe3df2be2816",
-    "current_git_sha": "8ea19ada21fa88815d6526a3ee9ede5401afdf7f"
+    "previous_git_sha": "dc186dd898b43dc23e40bad50d9d459ba091a1a8",
+    "current_git_sha": "d7c9cb230531ce7974e6e4d29e6742c9c84b281c"
   }
 }
