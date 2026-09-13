@@ -14,6 +14,11 @@ from hevi.narrative.characters import character_authority, scene_character_state
 from hevi.narrative.context import ContextBudget, NarrativeContextBuilder
 from hevi.narrative.continuity import ContinuityEngine
 from hevi.narrative.flags import enabled
+from hevi.narrative.generation import (
+    NarrativeGenerationError,
+    bounded_continuation,
+    parse_structured_output,
+)
 from hevi.narrative.models import (
     Character,
     CharacterState,
@@ -142,3 +147,19 @@ def test_feature_flag_off_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_schema_rejects_wrong_version() -> None:
     with pytest.raises(NarrativeSchemaError, match="schema_version"):
         restore_bible({"project_id": "p", "schema_version": "0"})
+
+
+def test_truncated_output_not_committed() -> None:
+    from hevi.narrative.models import GenerationCompletionStatus
+
+    with pytest.raises(NarrativeGenerationError, match="TRUNCATED"):
+        parse_structured_output('{"scene":', GenerationCompletionStatus("TRUNCATED"))
+
+
+def test_bounded_continuation_deduplicates_overlap() -> None:
+    assert bounded_continuation(['{"scene":"a', '"}'], 1) == '{"scene":"a"}'
+
+
+def test_bounded_continuation_rejects_unbounded_output() -> None:
+    with pytest.raises(NarrativeGenerationError, match="REVISION_LIMIT"):
+        bounded_continuation(["a", "b", "c"], 1)
