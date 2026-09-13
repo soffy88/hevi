@@ -1,0 +1,12 @@
+[
+  {"id":"reel-01","case":"hard_cut"},{"id":"reel-02","case":"long_take"},
+  {"id":"reel-03","case":"rapid_montage"},{"id":"reel-04","case":"static_camera_moving_subject"},
+  {"id":"reel-05","case":"camera_pan"},{"id":"reel-06","case":"camera_push"},
+  {"id":"reel-07","case":"dark_scene"},{"id":"reel-08","case":"fade_dissolve"},
+  {"id":"reel-09","case":"title_card"},{"id":"reel-10","case":"dialogue"},
+  {"id":"reel-11","case":"broll"},{"id":"reel-12","case":"reaction"},
+  {"id":"reel-13","case":"short_shots"},{"id":"reel-14","case":"manual_split"},
+  {"id":"reel-15","case":"manual_merge"},{"id":"reel-16","case":"missing_audio"},
+  {"id":"reel-17","case":"subtitle_presence"},{"id":"reel-18","case":"vertical_short"},
+  {"id":"reel-19","case":"horizontal_video"},{"id":"reel-20","case":"variable_duration"}
+]

@@ -1,0 +1,22 @@
+[
+  {"id":"retrieval-01","kind":"VISUAL","query":"wide landscape","start_ms":0,"end_ms":1000},
+  {"id":"retrieval-02","kind":"DIALOGUE","query":"speaker line","start_ms":1000,"end_ms":2000},
+  {"id":"retrieval-03","kind":"ACTION","query":"subject moves","start_ms":2000,"end_ms":3000},
+  {"id":"retrieval-04","kind":"CHARACTER","query":"main subject","start_ms":3000,"end_ms":4000},
+  {"id":"retrieval-05","kind":"LOCATION","query":"interior room","start_ms":4000,"end_ms":5000},
+  {"id":"retrieval-06","kind":"RHYTHM","query":"hook opening","start_ms":5000,"end_ms":6000},
+  {"id":"retrieval-07","kind":"SHOT_STYLE","query":"close detail","start_ms":6000,"end_ms":7000},
+  {"id":"retrieval-08","kind":"TEMPORAL","query":"before action","start_ms":7000,"end_ms":8000},
+  {"id":"retrieval-09","kind":"VISUAL","query":"product detail","start_ms":8000,"end_ms":9000},
+  {"id":"retrieval-10","kind":"DIALOGUE","query":"response line","start_ms":9000,"end_ms":10000},
+  {"id":"retrieval-11","kind":"ACTION","query":"transition movement","start_ms":10000,"end_ms":11000},
+  {"id":"retrieval-12","kind":"CHARACTER","query":"reaction face","start_ms":11000,"end_ms":12000},
+  {"id":"retrieval-13","kind":"LOCATION","query":"outdoor street","start_ms":12000,"end_ms":13000},
+  {"id":"retrieval-14","kind":"RHYTHM","query":"payoff ending","start_ms":13000,"end_ms":14000},
+  {"id":"retrieval-15","kind":"SHOT_STYLE","query":"static frame","start_ms":14000,"end_ms":15000},
+  {"id":"retrieval-16","kind":"TEMPORAL","query":"after action","start_ms":15000,"end_ms":16000},
+  {"id":"retrieval-17","kind":"VISUAL","query":"text card","start_ms":16000,"end_ms":17000},
+  {"id":"retrieval-18","kind":"DIALOGUE","query":"narration segment","start_ms":17000,"end_ms":18000},
+  {"id":"retrieval-19","kind":"ACTION","query":"cutaway event","start_ms":18000,"end_ms":19000},
+  {"id":"retrieval-20","kind":"CHARACTER","query":"subject exits","start_ms":19000,"end_ms":20000}
+]

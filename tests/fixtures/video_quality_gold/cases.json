@@ -1,0 +1,12 @@
+[
+  {"id":"quality-01","finding":"timeline_gap"},{"id":"quality-02","finding":"overlap"},
+  {"id":"quality-03","finding":"wrong_duration"},{"id":"quality-04","finding":"missing_frame"},
+  {"id":"quality-05","finding":"invalid_category"},{"id":"quality-06","finding":"motion_contradiction"},
+  {"id":"quality-07","finding":"duplicate_description"},{"id":"quality-08","finding":"partial_rhythm"},
+  {"id":"quality-09","finding":"missing_provenance"},{"id":"quality-10","finding":"wrong_video_duration"},
+  {"id":"quality-11","finding":"missing_audio"},{"id":"quality-12","finding":"frozen_frames"},
+  {"id":"quality-13","finding":"intent_mismatch"},{"id":"quality-14","finding":"required_scene_missing"},
+  {"id":"quality-15","finding":"boundary_invalid"},{"id":"quality-16","finding":"shot_id_gap"},
+  {"id":"quality-17","finding":"empty_description"},{"id":"quality-18","finding":"missing_motion"},
+  {"id":"quality-19","finding":"unresolved_transcript"},{"id":"quality-20","finding":"semantic_mutation"}
+]
