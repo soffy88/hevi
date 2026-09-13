@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T00:19:51Z",
+  "generated_at": "2026-09-13T00:45:59Z",
   "status": "BLOCKED_HARDWARE",
   "blockers": [
     "GPU_FALLEN_OFF_BUS_OR_DEVICE_HANDLE_UNKNOWN",
@@ -27,6 +27,23 @@
     "available": false,
     "device_count": 0,
     "devices": []
+  },
+  "cuda_execution": {
+    "allocation": false,
+    "tensor_kernel": false,
+    "vram_alloc_free": false,
+    "error": "not_run"
+  },
+  "strict_checks": {
+    "nvidia_smi": false,
+    "nvml": true,
+    "torch_cuda": false,
+    "cuda_allocation": false,
+    "tensor_kernel": false,
+    "vram_alloc_free": false,
+    "comfyui_health": false,
+    "comfyui_minimal_workflow": false,
+    "h3_model_readiness": false
   },
   "comfyui": {
     "url": "http://127.0.0.1:8188",

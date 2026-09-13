@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T00:19:12Z",
+  "generated_at": "2026-09-13T00:45:56Z",
   "providers": [
     {
       "provider": "h3_local",
@@ -9,11 +9,13 @@
       "endpoint_reachable": false,
       "auth_valid": null,
       "capability_available": true,
-      "readiness_probe": "non_billable_only",
+      "readiness_probe": {
+        "passed": false,
+        "error": "not_run"
+      },
       "gpu_dependency": true,
       "status": "BLOCKED_HARDWARE",
-      "blocker": "nvidia-smi/CUDA unavailable",
-      "probe_detail": "URLError"
+      "blocker": "nvidia-smi/CUDA unavailable"
     },
     {
       "provider": "ComfyUI/local_gpu_backend",
@@ -23,11 +25,13 @@
       "endpoint_reachable": false,
       "auth_valid": null,
       "capability_available": true,
-      "readiness_probe": "non_billable_only",
+      "readiness_probe": {
+        "passed": false,
+        "error": "not_run"
+      },
       "gpu_dependency": true,
       "status": "BLOCKED_HARDWARE",
-      "blocker": "nvidia-smi/CUDA unavailable",
-      "probe_detail": "URLError"
+      "blocker": "nvidia-smi/CUDA unavailable"
     },
     {
       "provider": "llm",
@@ -37,11 +41,13 @@
       "endpoint_reachable": true,
       "auth_valid": null,
       "capability_available": true,
-      "readiness_probe": "non_billable_only",
+      "readiness_probe": {
+        "passed": false,
+        "error": "secret_missing"
+      },
       "gpu_dependency": false,
       "status": "BLOCKED_SECRET",
-      "blocker": "required configuration/secret absent",
-      "probe_detail": "local"
+      "blocker": "required configuration/secret absent"
     },
     {
       "provider": "remotion",
@@ -51,11 +57,16 @@
       "endpoint_reachable": true,
       "auth_valid": null,
       "capability_available": true,
-      "readiness_probe": "non_billable_only",
+      "readiness_probe": {
+        "passed": true,
+        "returncode": 0,
+        "latency_ms": 6580,
+        "artifact_sha256": "ac64881f7cda7f1c8cb8709ce55bdf7212c5d66017eed8c91c7c686b27bccb60",
+        "error": null
+      },
       "gpu_dependency": false,
       "status": "READY",
-      "blocker": null,
-      "probe_detail": "local"
+      "blocker": null
     },
     {
       "provider": "tts",
@@ -65,11 +76,14 @@
       "endpoint_reachable": true,
       "auth_valid": null,
       "capability_available": true,
-      "readiness_probe": "non_billable_only",
+      "readiness_probe": {
+        "passed": true,
+        "duration_s": 2.304,
+        "artifact_sha256": "7a34ec082c43a34d3e10f820455bac5b55157b23ab8f0260938726020793600b"
+      },
       "gpu_dependency": false,
       "status": "READY",
-      "blocker": null,
-      "probe_detail": "local"
+      "blocker": null
     },
     {
       "provider": "media_source",
@@ -79,11 +93,13 @@
       "endpoint_reachable": true,
       "auth_valid": null,
       "capability_available": true,
-      "readiness_probe": "non_billable_only",
+      "readiness_probe": {
+        "passed": false,
+        "error": "HTTPError"
+      },
       "gpu_dependency": false,
-      "status": "READY",
-      "blocker": null,
-      "probe_detail": "local"
+      "status": "BLOCKED_NETWORK",
+      "blocker": "HTTPError"
     },
     {
       "provider": "hyperframes",
@@ -93,11 +109,14 @@
       "endpoint_reachable": true,
       "auth_valid": null,
       "capability_available": true,
-      "readiness_probe": "non_billable_only",
+      "readiness_probe": {
+        "passed": true,
+        "latency_ms": 7516,
+        "artifact_sha256": "11eaaa3e8c7dd5fe2c61e4120947a47597b824209e6941f3b7b076ca93f067a7"
+      },
       "gpu_dependency": false,
       "status": "READY",
-      "blocker": null,
-      "probe_detail": "local"
+      "blocker": null
     }
   ]
 }

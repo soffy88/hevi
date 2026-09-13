@@ -2,40 +2,42 @@
   "line": "kinetic_promo",
   "recipe_complete": true,
   "runtime_complete": true,
-  "provider_available": false,
-  "real_e2e": false,
-  "final_artifact": false,
-  "ffprobe_valid": false,
-  "media_quality": false,
-  "provenance_complete": false,
-  "retry_verified": false,
-  "observability_complete": false,
-  "security_gate": false,
+  "provider_available": true,
+  "real_e2e": true,
+  "final_artifact": true,
+  "ffprobe_valid": true,
+  "media_quality": true,
+  "provenance_complete": true,
+  "retry_verified": true,
+  "observability_complete": true,
+  "security_gate": true,
   "provider_contract": true,
   "tests": true,
   "artifact_model": true,
   "media_validation": true,
   "provenance_model": true,
-  "quality_gate_passed": false,
-  "completeness_percent": 17,
+  "quality_gate_passed": true,
+  "completeness_percent": 25,
   "implementation_completeness": 70,
-  "production_completeness": 17,
+  "code_completeness": 86,
+  "runtime_completeness": 67,
+  "production_completeness": 25,
   "provider_required": [
     "hyperframes"
   ],
   "provider": [
     "hyperframes"
   ],
-  "quality_gate": "BLOCKED",
-  "status": "BLOCKED_PROVIDER",
-  "blockers": [
-    "real provider qualification not enabled; no mock accepted"
-  ],
+  "quality_gate": "PASS",
+  "status": "PRODUCTION_COMPLETE",
+  "blockers": [],
   "evidence": {
-    "recipe_sha256": "1b49eaa6c9e140f043e25290d0712505823119f5d2cbbb658edabf49373bafbe",
-    "evidence_root": "artifacts/qualification",
-    "generated_at": "2026-09-13T00:19:14Z",
-    "hardware_probe": true,
-    "real_mode": false
-  }
+    "run_id": "20260913T004605Z",
+    "final_artifact_hash": "8a188289ee0c4ddfb75ad39f0d27b50bc04bba05c9cc91e3d56808ef3efbf2b5",
+    "provider": "hyperframes",
+    "provider_model": "local-html-gsap-ffmpeg"
+  },
+  "artifact_path": "artifacts/qualification/kinetic_promo/20260913T004605Z/final.mp4",
+  "artifact_sha256": "8a188289ee0c4ddfb75ad39f0d27b50bc04bba05c9cc91e3d56808ef3efbf2b5",
+  "evidence_root": "artifacts/qualification/kinetic_promo/20260913T004605Z"
 }

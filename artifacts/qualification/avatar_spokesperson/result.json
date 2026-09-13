@@ -19,6 +19,8 @@
   "quality_gate_passed": false,
   "completeness_percent": 17,
   "implementation_completeness": 70,
+  "code_completeness": 86,
+  "runtime_completeness": 67,
   "production_completeness": 17,
   "provider_required": [
     "h3_local",
@@ -35,12 +37,16 @@
   "quality_gate": "BLOCKED",
   "status": "BLOCKED_HARDWARE",
   "blockers": [
-    "nvidia-smi/CUDA unavailable for required local provider"
+    "h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable",
+    "llm=BLOCKED_SECRET:required configuration/secret absent"
   ],
   "evidence": {
     "recipe_sha256": "82a546a5ba9af4916163907e5bee87f096a5e9500cebcc4765b5fa19fd90ed3b",
+    "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+    "provider_model": null,
+    "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",
-    "generated_at": "2026-09-13T00:19:14Z",
+    "generated_at": "2026-09-13T00:46:03Z",
     "hardware_probe": false,
     "real_mode": false
   }

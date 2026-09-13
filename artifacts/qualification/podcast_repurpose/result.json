@@ -19,6 +19,8 @@
   "quality_gate_passed": false,
   "completeness_percent": 17,
   "implementation_completeness": 70,
+  "code_completeness": 86,
+  "runtime_completeness": 67,
   "production_completeness": 17,
   "provider_required": [
     "llm",
@@ -33,12 +35,16 @@
   "quality_gate": "BLOCKED",
   "status": "BLOCKED_PROVIDER",
   "blockers": [
-    "real provider qualification not enabled; no mock accepted"
+    "llm=BLOCKED_SECRET:required configuration/secret absent",
+    "media_source=BLOCKED_NETWORK:HTTPError"
   ],
   "evidence": {
     "recipe_sha256": "ae7081e6bea8f0f38ebcd3bcf568d0be64768480bca0be5e78593376d790cfcb",
+    "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+    "provider_model": null,
+    "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
     "evidence_root": "artifacts/qualification",
-    "generated_at": "2026-09-13T00:19:14Z",
+    "generated_at": "2026-09-13T00:46:03Z",
     "hardware_probe": true,
     "real_mode": false
   }

@@ -1,0 +1,10 @@
+{
+  "external_assets": [],
+  "generated_assets": [
+    {
+      "path": "artifacts/qualification/kinetic_promo/20260913T004605Z/final.mp4",
+      "sha256": "8a188289ee0c4ddfb75ad39f0d27b50bc04bba05c9cc91e3d56808ef3efbf2b5",
+      "provider": "hyperframes"
+    }
+  ]
+}

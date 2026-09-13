@@ -1,0 +1,7 @@
+{
+  "verified": true,
+  "fault": "artifact_finalize_interruption",
+  "resume": true,
+  "duplicate_side_effects": 0,
+  "provider_calls": 1
+}

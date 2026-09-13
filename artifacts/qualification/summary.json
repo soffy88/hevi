@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-13T00:19:14Z",
+  "generated_at": "2026-09-13T00:46:14Z",
   "total": 13,
   "counts": {
     "BLOCKED_HARDWARE": 4,
-    "BLOCKED_PROVIDER": 9,
+    "BLOCKED_PROVIDER": 8,
     "FAILED": 0,
     "PARTIAL": 0,
-    "PRODUCTION_COMPLETE": 0,
+    "PRODUCTION_COMPLETE": 1,
     "QUALIFIED": 0
   },
   "lines": [
@@ -31,6 +31,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "h3_local",
@@ -47,12 +49,16 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_HARDWARE",
       "blockers": [
-        "nvidia-smi/CUDA unavailable for required local provider"
+        "h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable",
+        "llm=BLOCKED_SECRET:required configuration/secret absent"
       ],
       "evidence": {
         "recipe_sha256": "82a546a5ba9af4916163907e5bee87f096a5e9500cebcc4765b5fa19fd90ed3b",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": false,
         "real_mode": false
       }
@@ -78,6 +84,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "llm",
@@ -90,12 +98,15 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_PROVIDER",
       "blockers": [
-        "real provider qualification not enabled; no mock accepted"
+        "llm=BLOCKED_SECRET:required configuration/secret absent"
       ],
       "evidence": {
         "recipe_sha256": "0d37e68605f09ce407172918103551712773aed936601fdd4f2dd2254e2179f8",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -121,6 +132,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "h3_local",
@@ -137,12 +150,16 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_HARDWARE",
       "blockers": [
-        "nvidia-smi/CUDA unavailable for required local provider"
+        "h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable",
+        "llm=BLOCKED_SECRET:required configuration/secret absent"
       ],
       "evidence": {
         "recipe_sha256": "b68d219a5fbdeb5fc6b5b48d168a6747872846f8311b2e476673a8dcbaffb8b7",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": false,
         "real_mode": false
       }
@@ -168,6 +185,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "h3_local",
@@ -182,12 +201,16 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_HARDWARE",
       "blockers": [
-        "nvidia-smi/CUDA unavailable for required local provider"
+        "h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable",
+        "llm=BLOCKED_SECRET:required configuration/secret absent"
       ],
       "evidence": {
         "recipe_sha256": "c317200cc56c29f298628a2617990a4016a6681432f0a27001031e2645bbd1df",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": false,
         "real_mode": false
       }
@@ -213,6 +236,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "llm",
@@ -229,12 +254,16 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_PROVIDER",
       "blockers": [
-        "real provider qualification not enabled; no mock accepted"
+        "llm=BLOCKED_SECRET:required configuration/secret absent",
+        "media_source=BLOCKED_NETWORK:HTTPError"
       ],
       "evidence": {
         "recipe_sha256": "eebcc334e5847b878b6b933198e1f20d0cff2ade7f693532850423c68e7f2d7e",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -260,6 +289,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "llm",
@@ -276,12 +307,16 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_PROVIDER",
       "blockers": [
-        "real provider qualification not enabled; no mock accepted"
+        "llm=BLOCKED_SECRET:required configuration/secret absent",
+        "media_source=BLOCKED_NETWORK:HTTPError"
       ],
       "evidence": {
         "recipe_sha256": "983c5abdbc53c3b7c54871b22a1b787f446684a996de64142f697056fa5f17d8",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -307,6 +342,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "llm",
@@ -319,12 +356,15 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_PROVIDER",
       "blockers": [
-        "real provider qualification not enabled; no mock accepted"
+        "llm=BLOCKED_SECRET:required configuration/secret absent"
       ],
       "evidence": {
         "recipe_sha256": "ef0da05f6f78a8a7b25672335fe13cb0ffeaaef87683991e7676135e32f4ab15",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -333,42 +373,44 @@
       "line": "kinetic_promo",
       "recipe_complete": true,
       "runtime_complete": true,
-      "provider_available": false,
-      "real_e2e": false,
-      "final_artifact": false,
-      "ffprobe_valid": false,
-      "media_quality": false,
-      "provenance_complete": false,
-      "retry_verified": false,
-      "observability_complete": false,
-      "security_gate": false,
+      "provider_available": true,
+      "real_e2e": true,
+      "final_artifact": true,
+      "ffprobe_valid": true,
+      "media_quality": true,
+      "provenance_complete": true,
+      "retry_verified": true,
+      "observability_complete": true,
+      "security_gate": true,
       "provider_contract": true,
       "tests": true,
       "artifact_model": true,
       "media_validation": true,
       "provenance_model": true,
-      "quality_gate_passed": false,
-      "completeness_percent": 17,
+      "quality_gate_passed": true,
+      "completeness_percent": 25,
       "implementation_completeness": 70,
-      "production_completeness": 17,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
+      "production_completeness": 25,
       "provider_required": [
         "hyperframes"
       ],
       "provider": [
         "hyperframes"
       ],
-      "quality_gate": "BLOCKED",
-      "status": "BLOCKED_PROVIDER",
-      "blockers": [
-        "real provider qualification not enabled; no mock accepted"
-      ],
+      "quality_gate": "PASS",
+      "status": "PRODUCTION_COMPLETE",
+      "blockers": [],
       "evidence": {
-        "recipe_sha256": "1b49eaa6c9e140f043e25290d0712505823119f5d2cbbb658edabf49373bafbe",
-        "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
-        "hardware_probe": true,
-        "real_mode": false
-      }
+        "run_id": "20260913T004605Z",
+        "final_artifact_hash": "8a188289ee0c4ddfb75ad39f0d27b50bc04bba05c9cc91e3d56808ef3efbf2b5",
+        "provider": "hyperframes",
+        "provider_model": "local-html-gsap-ffmpeg"
+      },
+      "artifact_path": "artifacts/qualification/kinetic_promo/20260913T004605Z/final.mp4",
+      "artifact_sha256": "8a188289ee0c4ddfb75ad39f0d27b50bc04bba05c9cc91e3d56808ef3efbf2b5",
+      "evidence_root": "artifacts/qualification/kinetic_promo/20260913T004605Z"
     },
     {
       "line": "localization_dub",
@@ -391,6 +433,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "media_source",
@@ -403,12 +447,15 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_PROVIDER",
       "blockers": [
-        "real provider qualification not enabled; no mock accepted"
+        "media_source=BLOCKED_NETWORK:HTTPError"
       ],
       "evidence": {
         "recipe_sha256": "924d9278a7c44a6b63d2c71588847ef214637300f5218e9d5b8454062f0c4682",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -434,6 +481,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "llm",
@@ -448,12 +497,16 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_PROVIDER",
       "blockers": [
-        "real provider qualification not enabled; no mock accepted"
+        "llm=BLOCKED_SECRET:required configuration/secret absent",
+        "media_source=BLOCKED_NETWORK:HTTPError"
       ],
       "evidence": {
         "recipe_sha256": "ae7081e6bea8f0f38ebcd3bcf568d0be64768480bca0be5e78593376d790cfcb",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -479,6 +532,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "llm",
@@ -493,12 +548,16 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_PROVIDER",
       "blockers": [
-        "real provider qualification not enabled; no mock accepted"
+        "llm=BLOCKED_SECRET:required configuration/secret absent",
+        "media_source=BLOCKED_NETWORK:HTTPError"
       ],
       "evidence": {
         "recipe_sha256": "74b54053a0c4456409c953ebe08a2241bca9d4ec87f51ad2d89e20b055949b04",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -524,6 +583,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "media_source"
@@ -534,12 +595,15 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_PROVIDER",
       "blockers": [
-        "real provider qualification not enabled; no mock accepted"
+        "media_source=BLOCKED_NETWORK:HTTPError"
       ],
       "evidence": {
         "recipe_sha256": "f984a8226a7dca59637d89216a1c283db5c0cc9edefaa93fac03f91453d76caf",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": true,
         "real_mode": false
       }
@@ -565,6 +629,8 @@
       "quality_gate_passed": false,
       "completeness_percent": 17,
       "implementation_completeness": 70,
+      "code_completeness": 86,
+      "runtime_completeness": 67,
       "production_completeness": 17,
       "provider_required": [
         "h3_local",
@@ -581,12 +647,16 @@
       "quality_gate": "BLOCKED",
       "status": "BLOCKED_HARDWARE",
       "blockers": [
-        "nvidia-smi/CUDA unavailable for required local provider"
+        "h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable",
+        "llm=BLOCKED_SECRET:required configuration/secret absent"
       ],
       "evidence": {
         "recipe_sha256": "3e4dd5145ac32d5b5fdba49f7aaa750f6d43a352b8a0db460a3be11ca8f0f669",
+        "git_sha": "a004630f50e174d5694a1adeaecfe1ab739465d0",
+        "provider_model": null,
+        "host_fingerprint": "4b641089b7c39da01fb236f6841ab1903203ce3016cd72f5032771e2d9f3222e",
         "evidence_root": "artifacts/qualification",
-        "generated_at": "2026-09-13T00:19:14Z",
+        "generated_at": "2026-09-13T00:46:03Z",
         "hardware_probe": false,
         "real_mode": false
       }
