@@ -32,7 +32,16 @@ def classify(returncode: int | None, stdout: str, stderr: str, report: dict[str,
     if misconfiguration_count:
         return "MISCONFIGURATION_FOUND"
     combined = f"{stdout}\n{stderr}".lower()
-    if any(token in combined for token in ("need to update db", "vulnerability db", "checks bundle")):
+    if any(
+        token in combined
+        for token in (
+            "failed to download vulnerability database",
+            "unable to download vulnerability database",
+            "vulnerability database is outdated",
+            "failed to download checks bundle",
+            "checks bundle is not available",
+        )
+    ):
         return "BLOCKED_DB"
     if any(token in combined for token in ("lookup", "timed out", "timeout", "connection reset", "download")):
         return "BLOCKED_NETWORK"
