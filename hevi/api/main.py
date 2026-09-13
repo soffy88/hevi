@@ -22,6 +22,7 @@ from hevi.api.routers.canvas import router as canvas_router
 from hevi.api.routers.creative import router as creative_router
 from hevi.api.routers.credits import router as credits_router
 from hevi.api.routers.dashboard import router as dashboard_router
+from hevi.api.routers.distribution import router as distribution_router
 from hevi.api.routers.director import router as director_router
 from hevi.director.graph_render import execute_task as director_graph_task_adapter
 from hevi.season_planner.production import execute_shortdrama_task
@@ -214,6 +215,7 @@ app.include_router(voice_openai_router)
 app.include_router(stream_edit_router, prefix="/api")
 app.include_router(screenshot_studio_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
+app.include_router(distribution_router, prefix="/api")
 app.include_router(lite_router, prefix="/api")  # 本地零费用:选题→veya-loop→确认→HTML 出片
 app.include_router(longcat_router, prefix="/api")
 app.include_router(montage_router, prefix="/api")

@@ -38,6 +38,9 @@ export function PublishStudioConsole() {
   const [pubTaskId, setPubTaskId] = useState<string | null>(null);
   const [pubStatus, setPubStatus] = useState('');
   const [pubError, setPubError] = useState('');
+  const [distributionAccounts, setDistributionAccounts] = useState<Array<Record<string, unknown>>>([]);
+  const [distributionHistory, setDistributionHistory] = useState<Array<Record<string, unknown>>>([]);
+  const [distributionStatus, setDistributionStatus] = useState('');
 
   // ── 动效合成 ────────────────────────────────────────────────────────────────
   const [motionCat, setMotionCat] = useState(MOTION_CATEGORIES[0]);
@@ -74,6 +77,16 @@ export function PublishStudioConsole() {
         setPlatforms(list.filter((p) => p.enabled));
       })
       .catch(() => setPlatforms([]));
+  }, []);
+
+  useEffect(() => {
+    Promise.all([publishStudioApi.distributionAccounts(), publishStudioApi.distributionHistory()])
+      .then(([accounts, history]) => {
+        setDistributionAccounts(accounts.accounts);
+        setDistributionHistory(history.history);
+        setDistributionStatus('分发服务已连接');
+      })
+      .catch(() => setDistributionStatus('分发服务暂不可用'));
   }, []);
 
   // 动效模板列表
@@ -238,6 +251,27 @@ export function PublishStudioConsole() {
       {/* ── 多平台发布 Tab ─────────────────────────────────────────────────── */}
       {activeTab === 'publish' && (
         <div className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">分发账户</h2>
+              <span className="text-xs text-gray-500">{distributionStatus}</span>
+            </div>
+            {distributionAccounts.length === 0 ? (
+              <p className="mt-2 text-sm text-gray-500">暂无已验证的登录账户</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {distributionAccounts.map((account, index) => (
+                  <span key={`${String(account.account_ref)}-${index}`} className="rounded bg-white px-2 py-1 text-xs">
+                    {String(account.platform)} · {String(account.display_name ?? account.account_ref)}
+                  </span>
+                ))}
+              </div>
+            )}
+            <details className="mt-3 text-sm">
+              <summary className="cursor-pointer text-gray-600">分发历史</summary>
+              <p className="mt-2 text-gray-500">{distributionHistory.length ? `已有 ${distributionHistory.length} 条记录` : '暂无发布记录'}</p>
+            </details>
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">选择平台</label>
             <div className="flex gap-2 flex-wrap">
