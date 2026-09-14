@@ -13,7 +13,7 @@ from pathlib import Path
 
 from hevi.voicepro.schemas import F5ModelSpec, SpeakerTurn
 
-_DEFAULT_CATALOG = Path(__file__).resolve().parents[1] / "data" / "f5_models.json"
+_DEFAULT_CATALOG = Path(__file__).resolve().parents[3] / "voicepro" / "data" / "f5_models.json"
 _CONV = re.compile(r"^\{(\w+)\}\s*(.*)$")
 _LANG_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("fi", ("finnish", "suomi")),

@@ -1,3 +1,6 @@
-"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+"""Deprecated compatibility module alias; implementation remains Layer4-owned."""
 
-from hevi.layer4_legacy.voicepro_tts.oprim_impl import *  # noqa: F403
+import importlib
+import sys
+
+sys.modules[__name__] = importlib.import_module("hevi.layer4_legacy.voicepro_tts.oprim_impl")

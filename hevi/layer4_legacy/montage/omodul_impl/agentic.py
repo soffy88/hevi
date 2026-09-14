@@ -67,7 +67,7 @@ def _manifest_path(config: dict[str, Any]) -> Path:
     if explicit:
         return Path(str(explicit))
     return (
-        Path(__file__).resolve().parents[3]
+        Path(__file__).resolve().parents[4]
         / "tools"
         / "pipeline_defs"
         / f"{config.get('pipeline', 'animated-explainer')}.yaml"
