@@ -1,8 +1,8 @@
 {
   "branch": "feature/vnext-3o-creative-runtime",
   "base_distribution_sha": "1c0be2d89b1ae6a14cf904ab4804380b772e9f44",
-  "code_snapshot": "qualification-runner-wave-2",
-  "report_commit": "b7651d76604241c183051eafc6d03042b664d627",
+  "code_snapshot": "3786083e2303f8501aeb9d27e254432228d9f282",
+  "report_commit": "3786083e2303f8501aeb9d27e254432228d9f282",
   "clean_room": {
     "upstream_sha": "091048383f411eb99948a8764f42b6fd13006f9b",
     "license": "AGPL-3.0-only",
@@ -34,7 +34,9 @@
   },
   "static_quality": {
     "ruff_changed_scope": "PASS",
-    "mypy_changed_scope": "PASS"
+    "mypy_changed_scope": "PASS",
+    "full_suite": "2847 passed, 29 skipped, 0 failed, 0 errors",
+    "full_suite_log": "artifacts/qualification/creative-runtime/full-suite.log"
   },
   "full_suite": {
     "status": "PASS",
@@ -87,5 +89,6 @@
     "partial_closure_ledger": "artifacts/qualification/creative-partial-closure.json",
     "strict_rule": "contract-only, module-only, and mock evidence remain PARTIAL"
   },
+  "architecture": "artifacts/qualification/creative-3o-architecture.json",
   "parity": "PENDING_REMAINING_CAPABILITY_QUALIFICATION"
 }

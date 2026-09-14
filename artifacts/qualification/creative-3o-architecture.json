@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "generated_from": [
+    "hevi/obase/creative.py",
+    "hevi/creative/oprim",
+    "hevi/creative/oskill",
+    "hevi/creative/omodul",
+    "hevi/creative/oservi"
+  ],
+  "authority": {
+    "obase": "canonical objects, contracts, state identity and provenance",
+    "oprim": "deterministic persistence, locking, memory, workspace, routing and delivery primitives",
+    "oskill": "knowledge/policy only; no state ownership or side effects",
+    "omodul": "composed capability workflows over canonical objects and primitives",
+    "oservi": "typed external service surface; no independent state authority"
+  },
+  "dependency_direction": [
+    "obase -> oprim",
+    "obase -> oskill",
+    "obase -> omodul",
+    "obase -> oservi",
+    "oprim -> omodul",
+    "oskill -> omodul",
+    "omodul -> oservi"
+  ],
+  "forbidden_dependencies": 0,
+  "second_authorities": 0,
+  "inkos_runtime_dependency": false,
+  "checks": {
+    "OSKILL_DOES_NOT_OWN_STATE": true,
+    "OPRIM_DOES_NOT_CALL_STUDIO": true,
+    "OMODUL_USES_CANONICAL_OBJECTS": true,
+    "OSERVI_IS_TYPED_DISPATCH_ONLY": true,
+    "NO_INKOS_MIRROR_PACKAGE": true,
+    "NO_SECOND_CANONICAL_STORE": true
+  },
+  "evidence": [
+    "docs/architecture/creative-runtime-3o.md",
+    "artifacts/qualification/inkos-clean-room.json",
+    "tests/creative_runtime/test_contracts.py",
+    "tests/creative_runtime/test_runtime.py",
+    "tests/creative_runtime/test_capabilities.py"
+  ],
+  "status": "PASS"
+}
