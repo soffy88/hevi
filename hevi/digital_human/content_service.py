@@ -5,14 +5,14 @@ return data and never hold business state.
 """
 from __future__ import annotations
 
-from hevi.digital_human.oprim import (
+from hevi.digital_human.layer4.atoms import (
     build_timeline,
     generate_narration,
     run_preflight_check,
     run_qa_gate,
 )
-from hevi.digital_human.oprim.caption import build_caption_plan as build_caption_plan_atom
-from hevi.digital_human.oprim.narration import topic_to_script
+from hevi.digital_human.layer4.atoms_caption import build_caption_plan as build_caption_plan_atom
+from hevi.digital_human.layer4.atoms_narration import topic_to_script
 from hevi.digital_human.schemas import CaptionPlan, JobStatus, PresenterJob, TimelinePlan
 
 

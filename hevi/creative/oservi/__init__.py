@@ -5,7 +5,7 @@ from hevi.creative.oservi.registry import (
     ServiceRequest,
     ServiceResult,
 )
-from hevi.creative.oservi.services import (
+from hevi.creative.layer4.service_surface import (
     CREATIVE_SERVICE_NAMES,
     CreativeServiceSurface,
     StudioAction,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hevi.creative.oskill.registry import (
+from hevi.creative.layer4.skill_registry import (
     DEFAULT_SKILL_NAMES,
     SkillRegistry,
     SkillSafetyError,

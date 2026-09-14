@@ -34,7 +34,7 @@ from hevi.digital_human.lipsync_driver import (
     lip_sync_capability,
 )
 from hevi.digital_human.models import Presenter
-from hevi.digital_human.omodul import (
+from hevi.digital_human.layer4.production import (
     build_full_job_plan,
     execute_plan,
     init_job,
@@ -44,7 +44,7 @@ from hevi.digital_human.omodul import (
     plan_presenter_generation,
     plan_visual,
 )
-from hevi.digital_human.oprim import (
+from hevi.digital_human.layer4.atoms import (
     add_clip_to_timeline,
     build_timeline,
     calibrate_audio_loudness,
@@ -53,7 +53,7 @@ from hevi.digital_human.oprim import (
     run_preflight_check,
     run_qa_gate,
 )
-from hevi.digital_human.oskill import (
+from hevi.digital_human.layer4.skill_logic import (
     caption_plan,
     content_lock,
     delivery,

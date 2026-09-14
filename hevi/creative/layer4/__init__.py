@@ -1,0 +1,206 @@
+"""Composed HEVI creative production modules."""
+
+from hevi.creative.layer4.analytics import CreativeAnalytics, UsageRecord, calculate_analytics
+from hevi.creative.layer4.audit import ALL_AUDIT_DIMENSIONS, AuditDimension, NarrativeAuditEngine
+from hevi.creative.layer4.audit_dimensions import (
+    DIMENSION_VERIFIERS,
+    HARD_CONTINUITY_DIMENSIONS,
+    MODEL_ASSISTED_DIMENSIONS,
+    AuditClaim,
+    AuditContext,
+    AuditState,
+    DimensionFinding,
+    GenreSpec,
+    ModelAssistedVerifier,
+    SceneSpec,
+    StyleSpec,
+    run_dimensions,
+)
+from hevi.creative.layer4.comparison import ComparisonModule, IntentArtifactComparison
+from hevi.creative.layer4.context import (
+    ContextBudget,
+    ContextBuildError,
+    ContextCandidate,
+    CreativeContextCompiler,
+)
+from hevi.creative.layer4.cover import CoverGeneration, CoverModule
+from hevi.creative.layer4.export import ExportModule
+from hevi.creative.layer4.fanfic import DerivedCanon, FanficModule
+from hevi.creative.layer4.forecast import ForecastEngine, ForecastResult, StaleForecastError
+from hevi.creative.layer4.genre import (
+    BLUEPRINTS,
+    GenreBlueprint,
+    GenreFinding,
+    GenreModule,
+    GenrePlan,
+    GenreValidationError,
+)
+from hevi.creative.layer4.importer import ImportModule, ImportResult, ReconstructedState
+from hevi.creative.layer4.interactive import (
+    GraphFinding,
+    GraphValidation,
+    InteractiveFilmGraph,
+    InteractiveFilmModule,
+)
+from hevi.creative.layer4.length import LengthModule, LengthPolicy, LengthReport
+from hevi.creative.layer4.long_horizon import HorizonReport, LongHorizonQualifier
+from hevi.creative.layer4.market import MarketRadar, MarketTrend, TrendEvidence, TrendSnapshot
+from hevi.creative.layer4.materials import MaterialCitation, MaterialModule
+from hevi.creative.layer4.narrative import (
+    LONGFORM_STAGES,
+    LongFormWorkflow,
+    NarrativeObservationEngine,
+    NarrativeStage,
+    ObservationValidationError,
+    WorkflowSnapshot,
+)
+from hevi.creative.layer4.play import (
+    Action,
+    FreeAction,
+    PlayEngine,
+    PlayStart,
+    PlayState,
+    TurnResult,
+)
+from hevi.creative.layer4.policy import PolicyDiff, PolicyModule
+from hevi.creative.layer4.research import ResearchModule
+from hevi.creative.layer4.review import ReviewMode, ReviewWorkflow
+from hevi.creative.layer4.revision import (
+    RevisionCommit,
+    RevisionEngine,
+    RevisionExecution,
+    RevisionLimitError,
+    RevisionOperation,
+    RevisionPlan,
+    RevisionPolicy,
+)
+from hevi.creative.layer4.runtime import (
+    ActionKind,
+    ActionProposal,
+    ActionResult,
+    HeavyActionConfirmation,
+    ProductionHarness,
+    ProductionOutcome,
+)
+from hevi.creative.layer4.script import (
+    ScriptBundle,
+    ScriptModule,
+    StoryboardBundle,
+    StoryboardModule,
+)
+from hevi.creative.layer4.short import SalesPackage, ShortFictionModule, ShortProduction
+from hevi.creative.layer4.style import (
+    FORBIDDEN_EVASION_GOALS,
+    NaturalnessFinding,
+    NaturalnessRevision,
+    StyleApplication,
+    StyleModule,
+    WritingNaturalnessAudit,
+)
+from hevi.creative.layer4.translation import TranslationModule
+from hevi.creative.runtime_control import BackgroundRunController, ProgressEvent
+
+__all__ = [
+    "ContextBudget",
+    "ContextBuildError",
+    "ContextCandidate",
+    "CreativeContextCompiler",
+    "ALL_AUDIT_DIMENSIONS",
+    "AuditDimension",
+    "NarrativeAuditEngine",
+    "DIMENSION_VERIFIERS",
+    "HARD_CONTINUITY_DIMENSIONS",
+    "MODEL_ASSISTED_DIMENSIONS",
+    "AuditClaim",
+    "AuditContext",
+    "AuditState",
+    "DimensionFinding",
+    "GenreSpec",
+    "ModelAssistedVerifier",
+    "SceneSpec",
+    "StyleSpec",
+    "run_dimensions",
+    "CreativeAnalytics",
+    "calculate_analytics",
+    "UsageRecord",
+    "BackgroundRunController",
+    "ProgressEvent",
+    "ComparisonModule",
+    "IntentArtifactComparison",
+    "CoverGeneration",
+    "CoverModule",
+    "ExportModule",
+    "DerivedCanon",
+    "FanficModule",
+    "ForecastEngine",
+    "ForecastResult",
+    "StaleForecastError",
+    "HorizonReport",
+    "LongHorizonQualifier",
+    "LengthModule",
+    "LengthPolicy",
+    "LengthReport",
+    "MaterialCitation",
+    "MaterialModule",
+    "MarketRadar",
+    "MarketTrend",
+    "TrendEvidence",
+    "TrendSnapshot",
+    "GenreFinding",
+    "GenreModule",
+    "GenreBlueprint",
+    "GenrePlan",
+    "GenreValidationError",
+    "BLUEPRINTS",
+    "ImportModule",
+    "ImportResult",
+    "ReconstructedState",
+    "GraphFinding",
+    "GraphValidation",
+    "InteractiveFilmGraph",
+    "InteractiveFilmModule",
+    "LONGFORM_STAGES",
+    "LongFormWorkflow",
+    "NarrativeObservationEngine",
+    "NarrativeStage",
+    "ObservationValidationError",
+    "RevisionEngine",
+    "RevisionLimitError",
+    "RevisionPolicy",
+    "RevisionCommit",
+    "RevisionExecution",
+    "RevisionOperation",
+    "RevisionPlan",
+    "WorkflowSnapshot",
+    "PlayEngine",
+    "PlayStart",
+    "PlayState",
+    "TurnResult",
+    "Action",
+    "FreeAction",
+    "PolicyDiff",
+    "PolicyModule",
+    "ResearchModule",
+    "ReviewMode",
+    "ReviewWorkflow",
+    "ScriptBundle",
+    "ScriptModule",
+    "StoryboardBundle",
+    "StoryboardModule",
+    "NaturalnessFinding",
+    "NaturalnessRevision",
+    "FORBIDDEN_EVASION_GOALS",
+    "StyleApplication",
+    "StyleModule",
+    "WritingNaturalnessAudit",
+    "TranslationModule",
+    "ActionKind",
+    "ActionProposal",
+    "ActionResult",
+    "HeavyActionConfirmation",
+    "ProductionHarness",
+    "ProductionOutcome",
+    "SalesPackage",
+    "ShortFictionModule",
+    "ShortProduction",
+]

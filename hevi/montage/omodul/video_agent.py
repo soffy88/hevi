@@ -712,10 +712,15 @@ def _topological_nodes(plan: VideoAgentPlan) -> list[Any]:
 def compute_video_agent_fingerprint(config: Mapping[str, Any], input_data: Mapping[str, Any]) -> str:
     """暴露给服务层的去重指纹，不带真实身份字段。"""
 
-    excluded = {"user_id", "phone", "email", "name", "caller", "executor", "llm"}
+    # Identity and business identifiers are excluded generically so this
+    # fingerprint contract never needs to enumerate a project-owned ID.
+    excluded = {"phone", "email", "name", "caller", "executor", "llm"}
+    def is_excluded(key: str) -> bool:
+        return key in excluded or key.endswith("_id")
+
     payload = {
-        "config": {key: value for key, value in dict(config).items() if key not in excluded and not callable(value)},
-        "input": {key: value for key, value in dict(input_data).items() if key not in excluded and not callable(value)},
+        "config": {key: value for key, value in dict(config).items() if not is_excluded(key) and not callable(value)},
+        "input": {key: value for key, value in dict(input_data).items() if not is_excluded(key) and not callable(value)},
     }
     return hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()[:24]
 

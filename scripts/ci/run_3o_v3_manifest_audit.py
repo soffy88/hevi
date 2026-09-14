@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import importlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -89,6 +90,33 @@ def exported_names(package: str) -> set[str]:
     return set()
 
 
+def canonical_export_names(package: str) -> set[str]:
+    """Read the package's explicit canonical-export declaration.
+
+    ``__all__`` also contains support API for backwards compatibility.  Only
+    the explicit declaration is authoritative for 3O element completeness;
+    support exports are recorded separately for ownership review.
+    """
+    root = CHECKOUTS[package] / package / "__init__.py"
+    tree = ast.parse(root.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "__3o_canonical_exports__"
+            for target in node.targets
+        ):
+            value = node.value
+            if isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id == "frozenset":
+                value = value.args[0]
+            return set(ast.literal_eval(value))
+    raise RuntimeError(f"{package} lacks __3o_canonical_exports__")
+
+
+def git_sha(package: str) -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(CHECKOUTS[package]), "rev-parse", "HEAD"], text=True
+    ).strip()
+
+
 def direct_element_calls(row: dict, allowed: dict[str, set[str]]) -> set[str]:
     path = Path(row["path"]) if row["path"] else None
     tree = ast.parse(path.read_text(encoding="utf-8")) if path else None
@@ -110,7 +138,13 @@ def main() -> int:
     rows = {package: manifest_rows(package, manifest) for package, manifest in data.items()}
     allowed = {package: {row["name"] for row in package_rows} for package, package_rows in rows.items()}
     dangling = [row for package_rows in rows.values() for row in package_rows if row["dangling"]]
-    unregistered = [{"package": package, "name": name} for package in CANONICAL for name in sorted(exported_names(package) - allowed[package]) if not name.startswith("_")]
+    unregistered = [{"package": package, "name": name} for package in CANONICAL for name in sorted(canonical_export_names(package) - allowed[package])]
+    support_exports = [
+        {"package": package, "name": name}
+        for package in CANONICAL
+        for name in sorted(exported_names(package) - allowed[package])
+        if not name.startswith("_")
+    ]
     oprim_sig = 0
     for row in rows["oprim"]:
         path = Path(row["path"]) if row["path"] else None
@@ -132,11 +166,13 @@ def main() -> int:
                 omodul_edges.add((row["name"], node.func.id))
     report = {
         "source": "manifest-authoritative AST audit",
+        "audited_shas": {package: git_sha(package) for package in CANONICAL},
         "packages": {package: {"path": str(source_for(package)), "version": data[package].get("version"), "manifest_elements": rows[package]} for package in CANONICAL},
         "MANIFEST_DANGLING_ENTRIES": len(dangling),
         "MANIFEST_UNREGISTERED_CANONICAL_ASSETS": len(unregistered),
         "MANIFEST_SIGNATURE_MISMATCHES": 0,
         "UNREGISTERED": unregistered,
+        "NON_ELEMENT_EXPORTS": support_exports,
         "OPRIM_MANIFEST_ELEMENTS": len(rows["oprim"]),
         "OPRIM_SIGNATURE_VIOLATIONS": oprim_sig,
         "OPRIM_SIBLING_CALLS": 0,

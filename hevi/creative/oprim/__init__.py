@@ -11,7 +11,7 @@ from hevi.creative.oprim.editing import (
     preview_semantic_edit,
 )
 from hevi.creative.oprim.locking import ProjectLock, ResourceBusy
-from hevi.creative.oprim.memory import CreativeMemoryIndex, MemoryHit, MemoryRecord
+from hevi.creative.layer4.memory import CreativeMemoryIndex, MemoryHit, MemoryRecord
 from hevi.creative.oprim.persistence import (
     PersistenceValidationError,
     RevisionReceipt,
@@ -20,7 +20,7 @@ from hevi.creative.oprim.persistence import (
     restore_model,
 )
 from hevi.creative.oprim.routing import ModelRouter, Route, RouteExecution
-from hevi.creative.oprim.state import (
+from hevi.creative.layer4.state import (
     CreativeStateDelta,
     StateOperation,
     apply_state_delta,

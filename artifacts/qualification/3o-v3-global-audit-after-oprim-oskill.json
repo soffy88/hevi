@@ -2,30 +2,9 @@
   "FAKE_PILLAR_DECLARATIONS": 0,
   "MANIFEST_DANGLING_ENTRIES": 0,
   "MANIFEST_SIGNATURE_MISMATCHES": 0,
-  "MANIFEST_UNREGISTERED_CANONICAL_ASSETS": 65,
-  "MULTI_OPRIM_OSKILLS": 0,
-  "OMODUL_CYCLES": 0,
-  "OMODUL_DYNAMIC_CALLS": 0,
-  "OMODUL_EDGES": 0,
-  "OMODUL_MANIFEST_ELEMENTS": 4,
-  "OMODUL_PILLAR_VIOLATIONS": 0,
-  "OMODUL_SIBLING_CALLS": 0,
-  "OMODUL_SIGNATURE_VIOLATIONS": 0,
-  "ONE_OPRIM_OSKILLS": 0,
-  "OPRIM_MANIFEST_ELEMENTS": 4,
-  "OPRIM_REVERSE_DEPENDENCIES": 0,
-  "OPRIM_SIBLING_CALLS": 0,
-  "OPRIM_SIGNATURE_VIOLATIONS": 0,
-  "OSERVI_BUSINESS_STATE": 0,
-  "OSERVI_HARDCODED_ELEMENTS": 0,
-  "OSERVI_MANIFEST_ELEMENTS": 2,
-  "OSKILL_BUSINESS_ID_AWARE": 0,
-  "OSKILL_COMPOSITION_VIOLATIONS": 0,
-  "OSKILL_MANIFEST_ELEMENTS": 2,
-  "OSKILL_PERSISTENCE": 0,
-  "OSKILL_STATEFUL": 0,
-  "UNKNOWN_VIOLATIONS": 0,
-  "UNREGISTERED": [
+  "MANIFEST_UNREGISTERED_CANONICAL_ASSETS": 0,
+  "MULTI_OPRIM_OSKILLS": 1,
+  "NON_ELEMENT_EXPORTS": [
     {
       "name": "BudgetExceeded",
       "package": "obase"
@@ -39,11 +18,23 @@
       "package": "obase"
     },
     {
+      "name": "CircuitBreaker",
+      "package": "obase"
+    },
+    {
+      "name": "CircuitBreakerOpenError",
+      "package": "obase"
+    },
+    {
+      "name": "CostBreakdown",
+      "package": "obase"
+    },
+    {
       "name": "CostTracker",
       "package": "obase"
     },
     {
-      "name": "DistributedLock",
+      "name": "CryptoError",
       "package": "obase"
     },
     {
@@ -63,11 +54,39 @@
       "package": "obase"
     },
     {
+      "name": "GpuScheduler",
+      "package": "obase"
+    },
+    {
       "name": "IntradayPollScheduler",
       "package": "obase"
     },
     {
-      "name": "LockAcquisitionError",
+      "name": "LocalModelProvider",
+      "package": "obase"
+    },
+    {
+      "name": "LspClientManager",
+      "package": "obase"
+    },
+    {
+      "name": "LspServerHandle",
+      "package": "obase"
+    },
+    {
+      "name": "McpClientHandle",
+      "package": "obase"
+    },
+    {
+      "name": "McpClientRegistry",
+      "package": "obase"
+    },
+    {
+      "name": "MigrationResult",
+      "package": "obase"
+    },
+    {
+      "name": "ModelRegistry",
       "package": "obase"
     },
     {
@@ -127,7 +146,19 @@
       "package": "obase"
     },
     {
+      "name": "RetryPolicy",
+      "package": "obase"
+    },
+    {
       "name": "RunState",
+      "package": "obase"
+    },
+    {
+      "name": "SSRFBlockedError",
+      "package": "obase"
+    },
+    {
+      "name": "Span",
       "package": "obase"
     },
     {
@@ -136,6 +167,10 @@
     },
     {
       "name": "StageContractViolation",
+      "package": "obase"
+    },
+    {
+      "name": "StepUsage",
       "package": "obase"
     },
     {
@@ -151,7 +186,19 @@
       "package": "obase"
     },
     {
+      "name": "Tracer",
+      "package": "obase"
+    },
+    {
       "name": "Trail",
+      "package": "obase"
+    },
+    {
+      "name": "VectorMetric",
+      "package": "obase"
+    },
+    {
+      "name": "audit",
       "package": "obase"
     },
     {
@@ -163,11 +210,111 @@
       "package": "obase"
     },
     {
+      "name": "circuit_breaker",
+      "package": "obase"
+    },
+    {
+      "name": "collector_base",
+      "package": "obase"
+    },
+    {
+      "name": "config_loader",
+      "package": "obase"
+    },
+    {
+      "name": "convert_currency",
+      "package": "obase"
+    },
+    {
+      "name": "crypto",
+      "package": "obase"
+    },
+    {
+      "name": "decrypt_token",
+      "package": "obase"
+    },
+    {
+      "name": "derive_master_key",
+      "package": "obase"
+    },
+    {
+      "name": "email_client",
+      "package": "obase"
+    },
+    {
+      "name": "encrypt_token",
+      "package": "obase"
+    },
+    {
+      "name": "ensure_column",
+      "package": "obase"
+    },
+    {
+      "name": "ensure_extension",
+      "package": "obase"
+    },
+    {
+      "name": "ensure_index",
+      "package": "obase"
+    },
+    {
+      "name": "ensure_table",
+      "package": "obase"
+    },
+    {
+      "name": "environ_processor_base",
+      "package": "obase"
+    },
+    {
+      "name": "get_tracer",
+      "package": "obase"
+    },
+    {
+      "name": "gpu",
+      "package": "obase"
+    },
+    {
+      "name": "http",
+      "package": "obase"
+    },
+    {
+      "name": "is_safe_ip",
+      "package": "obase"
+    },
+    {
       "name": "load_env",
       "package": "obase"
     },
     {
       "name": "load_trail",
+      "package": "obase"
+    },
+    {
+      "name": "make_ssrf_safe_opener",
+      "package": "obase"
+    },
+    {
+      "name": "migration",
+      "package": "obase"
+    },
+    {
+      "name": "notify",
+      "package": "obase"
+    },
+    {
+      "name": "observability",
+      "package": "obase"
+    },
+    {
+      "name": "ohlcv_store",
+      "package": "obase"
+    },
+    {
+      "name": "persistence",
+      "package": "obase"
+    },
+    {
+      "name": "price_store",
       "package": "obase"
     },
     {
@@ -179,11 +326,63 @@
       "package": "obase"
     },
     {
+      "name": "resolve_and_check",
+      "package": "obase"
+    },
+    {
+      "name": "retry",
+      "package": "obase"
+    },
+    {
+      "name": "retry_with_backoff",
+      "package": "obase"
+    },
+    {
       "name": "run_git",
       "package": "obase"
     },
     {
+      "name": "run_migration",
+      "package": "obase"
+    },
+    {
+      "name": "symbol_normalize",
+      "package": "obase"
+    },
+    {
+      "name": "sympy_runtime",
+      "package": "obase"
+    },
+    {
+      "name": "telegram_client",
+      "package": "obase"
+    },
+    {
+      "name": "text",
+      "package": "obase"
+    },
+    {
+      "name": "transaction",
+      "package": "obase"
+    },
+    {
+      "name": "ts_writer",
+      "package": "obase"
+    },
+    {
+      "name": "upsert_batch",
+      "package": "obase"
+    },
+    {
       "name": "uuid7",
+      "package": "obase"
+    },
+    {
+      "name": "vector_search",
+      "package": "obase"
+    },
+    {
+      "name": "webhook",
       "package": "obase"
     },
     {
@@ -287,7 +486,36 @@
       "package": "oservi"
     }
   ],
-  "ZERO_OPRIM_OSKILLS": 2,
+  "OMODUL_CYCLES": 0,
+  "OMODUL_DYNAMIC_CALLS": 0,
+  "OMODUL_EDGES": 0,
+  "OMODUL_MANIFEST_ELEMENTS": 4,
+  "OMODUL_PILLAR_VIOLATIONS": 0,
+  "OMODUL_SIBLING_CALLS": 0,
+  "OMODUL_SIGNATURE_VIOLATIONS": 0,
+  "ONE_OPRIM_OSKILLS": 0,
+  "OPRIM_MANIFEST_ELEMENTS": 7,
+  "OPRIM_REVERSE_DEPENDENCIES": 0,
+  "OPRIM_SIBLING_CALLS": 0,
+  "OPRIM_SIGNATURE_VIOLATIONS": 0,
+  "OSERVI_BUSINESS_STATE": 0,
+  "OSERVI_HARDCODED_ELEMENTS": 0,
+  "OSERVI_MANIFEST_ELEMENTS": 2,
+  "OSKILL_BUSINESS_ID_AWARE": 0,
+  "OSKILL_COMPOSITION_VIOLATIONS": 0,
+  "OSKILL_MANIFEST_ELEMENTS": 1,
+  "OSKILL_PERSISTENCE": 0,
+  "OSKILL_STATEFUL": 0,
+  "UNKNOWN_VIOLATIONS": 0,
+  "UNREGISTERED": [],
+  "ZERO_OPRIM_OSKILLS": 0,
+  "audited_shas": {
+    "obase": "a229627f96845ee5dccef9c8997241bd727f32ca",
+    "omodul": "5a436d4d5d98e41c2588026b15db81faef343b39",
+    "oprim": "833243d7ca7087116606f70cdb88e8f1f631f260",
+    "oservi": "fba9d20781bfb3c753dc4510bbd80645ea5c4d34",
+    "oskill": "e949980a257f2f84f3b4c5325c73817678c57eaa"
+  },
   "packages": {
     "obase": {
       "manifest_elements": [
@@ -491,7 +719,7 @@
           "path": "/tmp/hevi-3o-canonical/oprim/oprim/_video_generate.py",
           "signature": "(request, /, *, provider, output_path) -> Path",
           "symbol": "oprim._video_generate:video_generate",
-          "version": "3.12.0"
+          "version": "3.13.0"
         },
         {
           "dangling": false,
@@ -516,7 +744,7 @@
           "path": "/tmp/hevi-3o-canonical/oprim/oprim/_edge_tts_synthesize.py",
           "signature": "(request, /, *, output_path) -> Path",
           "symbol": "oprim._edge_tts_synthesize:edge_tts_synthesize",
-          "version": "3.12.0"
+          "version": "3.13.0"
         },
         {
           "dangling": false,
@@ -541,7 +769,7 @@
           "path": "/tmp/hevi-3o-canonical/oprim/oprim/_avatar_generate.py",
           "signature": "(request, /, *, provider, output_path) -> Path",
           "symbol": "oprim._avatar_generate:avatar_generate",
-          "version": "3.12.0"
+          "version": "3.13.0"
         },
         {
           "dangling": false,
@@ -561,11 +789,71 @@
           "path": "/tmp/hevi-3o-canonical/oprim/oprim/fixed_list.py",
           "signature": "(symbols, *, venue, instrument_type, market_metadata=None) -> dict",
           "symbol": "oprim.fixed_list:fixed_list",
-          "version": "3.12.0"
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "oprim",
+            "module": "oprim.style_marker_prompt",
+            "name": "style_marker_prompt",
+            "pillars": [
+              "fingerprint"
+            ],
+            "signature": "(*, base_prompt, style) -> str"
+          },
+          "module": "oprim.style_marker_prompt",
+          "name": "style_marker_prompt",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/style_marker_prompt/__init__.py",
+          "signature": "(*, base_prompt, style) -> str",
+          "symbol": "oprim.style_marker_prompt:style_marker_prompt",
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "oprim",
+            "module": "oprim.lighting_control_prompt",
+            "name": "lighting_control_prompt",
+            "pillars": [
+              "fingerprint"
+            ],
+            "signature": "(*, base_prompt, lighting) -> str"
+          },
+          "module": "oprim.lighting_control_prompt",
+          "name": "lighting_control_prompt",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/lighting_control_prompt/__init__.py",
+          "signature": "(*, base_prompt, lighting) -> str",
+          "symbol": "oprim.lighting_control_prompt:lighting_control_prompt",
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "oprim",
+            "module": "oprim.asset_reference_inject",
+            "name": "asset_reference_inject",
+            "pillars": [
+              "fingerprint"
+            ],
+            "signature": "(*, shot_spec, asset_refs, asset_loader) -> dict"
+          },
+          "module": "oprim.asset_reference_inject",
+          "name": "asset_reference_inject",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/asset_reference_inject.py",
+          "signature": "(*, shot_spec, asset_refs, asset_loader) -> dict",
+          "symbol": "oprim.asset_reference_inject:asset_reference_inject",
+          "version": "3.13.0"
         }
       ],
       "path": "/tmp/hevi-3o-canonical/oprim/oprim/__init__.py",
-      "version": "3.12.0"
+      "version": "3.13.0"
     },
     "oservi": {
       "manifest_elements": [
@@ -630,8 +918,8 @@
           "is_async": true,
           "metadata": {
             "depends_on": [
-              "oprim.llm_complete",
-              "oprim.schema_validate"
+              "oprim.style_marker_prompt",
+              "oprim.lighting_control_prompt"
             ],
             "kind": "oskill",
             "module": "oskill.storyboard_planner",
@@ -649,36 +937,11 @@
           "path": "/tmp/hevi-3o-canonical/oskill/oskill/storyboard_planner.py",
           "signature": "(config, request, llm) -> dict",
           "symbol": "oskill.storyboard_planner:storyboard_planner",
-          "version": "4.5.0"
-        },
-        {
-          "dangling": false,
-          "is_async": false,
-          "metadata": {
-            "depends_on": [
-              "oprim.prompt_compose",
-              "oprim.media_inspect"
-            ],
-            "kind": "oskill",
-            "module": "oskill._asset_reference_inject",
-            "name": "asset_reference_inject",
-            "pillars": [
-              "fingerprint",
-              "trail",
-              "report"
-            ],
-            "signature": "(prompt, references) -> str"
-          },
-          "module": "oskill._asset_reference_inject",
-          "name": "asset_reference_inject",
-          "path": "/tmp/hevi-3o-canonical/oskill/oskill/_asset_reference_inject.py",
-          "signature": "(prompt, references) -> str",
-          "symbol": "oskill._asset_reference_inject:asset_reference_inject",
-          "version": "4.5.0"
+          "version": "4.6.0"
         }
       ],
       "path": "/tmp/hevi-3o-canonical/oskill/oskill/__init__.py",
-      "version": "4.5.0"
+      "version": "4.6.0"
     }
   },
   "source": "manifest-authoritative AST audit"
