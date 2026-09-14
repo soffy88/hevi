@@ -1,0 +1,94 @@
+{
+  "capabilities": [
+    {
+      "capability_id": "continuity-and-multidimensional-audit",
+      "check_count": 14,
+      "checks_passed": true,
+      "details": {
+        "defect_findings": 3,
+        "dimensions": 33,
+        "gold_canon_ref_accuracy": 1.0,
+        "gold_expected_findings": 40,
+        "gold_false_positive_rate": 0.0,
+        "gold_fixtures": 103,
+        "gold_hard_continuity_rate": 1.0,
+        "gold_location_accuracy": 1.0,
+        "gold_matched_findings": 40,
+        "gold_true_positive_rate": 1.0
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "governed-revision",
+      "check_count": 18,
+      "checks_passed": true,
+      "details": {
+        "gold": {
+          "scenario_count": 7,
+          "scenario_names": [
+            "single_style",
+            "multiple_independent",
+            "conflicting",
+            "canon_sensitive",
+            "genre_issue",
+            "style_issue",
+            "continuity_issue"
+          ],
+          "style_scenario_resolved": [
+            "SA_SENTENCE_LENGTH_DRIFT"
+          ]
+        },
+        "proposal_count": 4,
+        "re_audit": "PASS"
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/governed-revision.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "extensible-genre-system",
+      "check_count": 12,
+      "checks_passed": true,
+      "details": {
+        "audit_vectors": 8,
+        "builtin_count": 8,
+        "distinct_plans": 8,
+        "pacing_profiles": [
+          "accelerating",
+          "dread",
+          "kinetic",
+          "measured",
+          "procedural",
+          "quest",
+          "reflective",
+          "slow-burn"
+        ]
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/extensible-genre-system.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "synthetic-writing-quality",
+      "check_count": 11,
+      "checks_passed": true,
+      "details": {
+        "detection_rate": 1.0,
+        "false_positive_rate": 0.0,
+        "gold_fixtures": 44,
+        "location_accuracy": 1.0,
+        "revision_improvement_rate": 1.0
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/synthetic-writing-quality.json",
+      "status": "QUALIFIED"
+    }
+  ],
+  "ledger": {
+    "MISSING": 0,
+    "PARTIAL": 14,
+    "QUALIFIED": 25,
+    "TOTAL": 39,
+    "UNQUALIFIED": 0
+  },
+  "wave": "A",
+  "wave_status": "QUALIFIED"
+}

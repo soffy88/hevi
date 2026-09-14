@@ -1,0 +1,22 @@
+{
+  "detected": 22,
+  "detection_rate": 1.0,
+  "false_positive_rate": 0.0,
+  "false_positives": 0,
+  "location_accuracy": 1.0,
+  "location_hits": 22,
+  "location_total": 22,
+  "negative_fixtures": 22,
+  "passed": true,
+  "positive_fixtures": 22,
+  "revision_improved": 22,
+  "revision_improvement_rate": 1.0,
+  "revision_total": 22,
+  "thresholds": {
+    "detection_rate": 0.95,
+    "false_positive_rate": 0.05,
+    "location_accuracy": 0.9,
+    "revision_improvement_rate": 0.95
+  },
+  "total_fixtures": 44
+}

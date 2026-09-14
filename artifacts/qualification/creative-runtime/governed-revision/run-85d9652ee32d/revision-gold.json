@@ -1,0 +1,164 @@
+{
+  "checks": {
+    "APPROVE_ATOMIC_COMMIT": true,
+    "CONFLICTING_ISSUES_HELD": true,
+    "ISSUE_RESOLUTION_TRACE": true,
+    "MAX_REVISION_ITERATIONS_ENFORCED": true,
+    "ORIGINAL_HASH_PRESERVED_BEFORE_COMMIT": true,
+    "REAUDIT": true,
+    "REJECT_NO_CANON_MUTATION": true,
+    "REVISION_DIFF": true,
+    "SEVEN_SCENARIOS": true,
+    "UNRESOLVED_ISSUES_PRESERVED": true
+  },
+  "details": {
+    "scenario_count": 7,
+    "scenario_names": [
+      "single_style",
+      "multiple_independent",
+      "conflicting",
+      "canon_sensitive",
+      "genre_issue",
+      "style_issue",
+      "continuity_issue"
+    ],
+    "style_scenario_resolved": [
+      "SA_SENTENCE_LENGTH_DRIFT"
+    ]
+  },
+  "scenarios": [
+    {
+      "change_type": "POLISH",
+      "conflict": [],
+      "diff_present": true,
+      "findings": [
+        "SA_SENTENCE_LENGTH_DRIFT"
+      ],
+      "name": "single_style",
+      "original_hash_preserved": true,
+      "passes": 2,
+      "re_audit_codes": [],
+      "resolved": [
+        "SA_SENTENCE_LENGTH_DRIFT"
+      ],
+      "trace_complete": true,
+      "unresolved": []
+    },
+    {
+      "change_type": "SPOT_FIX",
+      "conflict": [],
+      "diff_present": true,
+      "findings": [
+        "RP_REPEATED_PHRASE",
+        "SAF_UNSAFE_CONTENT"
+      ],
+      "name": "multiple_independent",
+      "original_hash_preserved": true,
+      "passes": 2,
+      "re_audit_codes": [
+        "PC_AMBIGUOUS_PRONOUN",
+        "SAF_UNSAFE_CONTENT"
+      ],
+      "resolved": [
+        "RP_REPEATED_PHRASE"
+      ],
+      "trace_complete": true,
+      "unresolved": [
+        "SAF_UNSAFE_CONTENT"
+      ]
+    },
+    {
+      "change_type": "STRUCTURAL_REWORK",
+      "conflict": [
+        "LG_BELOW_TARGET",
+        "SA_SENTENCE_LENGTH_DRIFT"
+      ],
+      "diff_present": false,
+      "findings": [
+        "LG_BELOW_TARGET",
+        "SA_SENTENCE_LENGTH_DRIFT"
+      ],
+      "name": "conflicting",
+      "original_hash_preserved": true,
+      "passes": 1,
+      "re_audit_codes": [
+        "LG_BELOW_TARGET",
+        "SA_SENTENCE_LENGTH_DRIFT"
+      ],
+      "resolved": [],
+      "trace_complete": true,
+      "unresolved": [
+        "LG_BELOW_TARGET",
+        "SA_SENTENCE_LENGTH_DRIFT"
+      ]
+    },
+    {
+      "change_type": "SPOT_FIX",
+      "conflict": [],
+      "diff_present": true,
+      "findings": [
+        "CC_CONFLICT"
+      ],
+      "name": "canon_sensitive",
+      "original_hash_preserved": true,
+      "passes": 2,
+      "re_audit_codes": [],
+      "resolved": [
+        "CC_CONFLICT"
+      ],
+      "trace_complete": true,
+      "unresolved": []
+    },
+    {
+      "change_type": "REWRITE",
+      "conflict": [],
+      "diff_present": true,
+      "findings": [
+        "GA_FORBIDDEN_PATTERN"
+      ],
+      "name": "genre_issue",
+      "original_hash_preserved": true,
+      "passes": 2,
+      "re_audit_codes": [],
+      "resolved": [
+        "GA_FORBIDDEN_PATTERN"
+      ],
+      "trace_complete": true,
+      "unresolved": []
+    },
+    {
+      "change_type": "POLISH",
+      "conflict": [],
+      "diff_present": true,
+      "findings": [
+        "SA_SENTENCE_LENGTH_DRIFT"
+      ],
+      "name": "style_issue",
+      "original_hash_preserved": true,
+      "passes": 2,
+      "re_audit_codes": [],
+      "resolved": [
+        "SA_SENTENCE_LENGTH_DRIFT"
+      ],
+      "trace_complete": true,
+      "unresolved": []
+    },
+    {
+      "change_type": "SPOT_FIX",
+      "conflict": [],
+      "diff_present": true,
+      "findings": [
+        "FC_CONFLICT"
+      ],
+      "name": "continuity_issue",
+      "original_hash_preserved": true,
+      "passes": 2,
+      "re_audit_codes": [],
+      "resolved": [
+        "FC_CONFLICT"
+      ],
+      "trace_complete": true,
+      "unresolved": []
+    }
+  ]
+}

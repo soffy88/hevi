@@ -1,0 +1,359 @@
+{
+  "canon_ref_accuracy": 1.0,
+  "canon_ref_hits": 26,
+  "canon_ref_total": 26,
+  "expected_findings": 40,
+  "false_positive_findings": 0,
+  "false_positive_rate": 0.0,
+  "hard_continuity_true_positive_rate": 1.0,
+  "location_accuracy": 1.0,
+  "location_hits": 37,
+  "location_total": 37,
+  "matched_findings": 40,
+  "must_not_find_violations": 0,
+  "negative_fixtures": 66,
+  "passed": true,
+  "per_dimension": [
+    {
+      "dimension": "ARC_ALIGNMENT",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "AUTHOR_INTENT_ALIGNMENT",
+      "expected_findings": 2,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 2,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "CHARACTER_CONTINUITY",
+      "expected_findings": 2,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 2,
+      "negative_fixtures": 2,
+      "positive_fixtures": 2,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "CHARACTER_VOICE",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "DIALOGUE_QUALITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "EMOTIONAL_CONTINUITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "FACT_CONSISTENCY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "FATIGUE_WORDS",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "FORESHADOWING",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "GENRE_ALIGNMENT",
+      "expected_findings": 2,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 2,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "HOOK_CONTINUITY",
+      "expected_findings": 2,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 2,
+      "negative_fixtures": 2,
+      "positive_fixtures": 2,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "INFORMATION_CONTINUITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "LENGTH_GOVERNANCE",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "LOCATION_CONTINUITY",
+      "expected_findings": 2,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 2,
+      "negative_fixtures": 2,
+      "positive_fixtures": 2,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "MOTIVATION_CONTINUITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "OBJECT_CONTINUITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "PACING",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "PAYOFF",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "PHYSICAL_STATE_CONTINUITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "POINT_OF_VIEW",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "PROSE_CLARITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "RELATIONSHIP_CONTINUITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "REPETITION",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "RESOURCE_CONTINUITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "SAFETY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "SCENE_PURPOSE",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "SHOT_FEASIBILITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "STRUCTURE",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "STYLE_ALIGNMENT",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "TIMELINE_CONTINUITY",
+      "expected_findings": 3,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 3,
+      "negative_fixtures": 2,
+      "positive_fixtures": 2,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "TONE",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "VISUAL_FILMABILITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": false,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    },
+    {
+      "dimension": "WORLD_CONTINUITY",
+      "expected_findings": 1,
+      "false_positive_findings": 0,
+      "hard_continuity": true,
+      "matched_findings": 1,
+      "negative_fixtures": 2,
+      "positive_fixtures": 1,
+      "true_positive_rate": 1.0
+    }
+  ],
+  "positive_fixtures": 37,
+  "thresholds": {
+    "canon_ref_accuracy": 0.95,
+    "false_positive_rate": 0.05,
+    "hard_continuity_true_positive_rate": 1.0,
+    "location_accuracy": 0.95,
+    "must_not_find_violations": 0.0,
+    "true_positive_rate": 0.95
+  },
+  "total_fixtures": 103,
+  "true_positive_rate": 1.0
+}

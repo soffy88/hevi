@@ -1,6 +1,6 @@
 {
   "capability_id": "continuity-and-multidimensional-audit",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3e3c8dca1381/audit-report.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3edc62b8f54e/audit-report.json",
   "checks": {
     "ALL_DIMENSIONS_DECLARED": true,
     "CLEAN_PASS": true,
@@ -18,9 +18,9 @@
     "NO_MUST_NOT_FIND_VIOLATION": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3e3c8dca1381/audit-report.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3e3c8dca1381/audit-input.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3e3c8dca1381/audit-gold-metrics.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3edc62b8f54e/audit-report.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3edc62b8f54e/audit-input.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3edc62b8f54e/audit-gold-metrics.json"
   ],
   "recovery": [
     "reload audit report",
