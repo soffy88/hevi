@@ -1,0 +1,54 @@
+{
+  "branch": "feature/vnext-3o-creative-runtime",
+  "base_distribution_sha": "1c0be2d89b1ae6a14cf904ab4804380b772e9f44",
+  "head": "d03fca104ea23b8aa9987db7aaef88c51d28a018",
+  "clean_room": {
+    "upstream_sha": "091048383f411eb99948a8764f42b6fd13006f9b",
+    "license": "AGPL-3.0-only",
+    "source_imported": false,
+    "code_copied": false,
+    "prompt_copied": false,
+    "skill_text_copied": false,
+    "test_copied": false,
+    "template_copied": false,
+    "runtime_dependency": false,
+    "evidence": "artifacts/qualification/inkos-clean-room.json"
+  },
+  "creative_qualification": {
+    "gold_catalog_total": 20,
+    "gold_and_runtime_tests": 32,
+    "gold_and_runtime_tests_status": "PASS",
+    "long_horizon_chapters": 50,
+    "interactive_nodes": 31,
+    "interactive_endings": 3,
+    "play_turns": 50,
+    "translation_inputs": ["TXT", "MARKDOWN", "EPUB", "PDF"],
+    "evidence_paths": [
+      "tests/gold/creative_runtime/cases.json",
+      "tests/gold/creative_runtime/test_qualification.py",
+      "tests/creative_runtime/test_contracts.py",
+      "tests/creative_runtime/test_runtime.py",
+      "tests/creative_runtime/test_capabilities.py"
+    ]
+  },
+  "static_quality": {
+    "ruff_changed_scope": "PASS",
+    "mypy_changed_scope": "PASS"
+  },
+  "full_suite": {
+    "status": "BLOCKED_ENVIRONMENT",
+    "root_cause": "existing external oprim package does not expose probe_duration during hevi.api.main import",
+    "tests_started": false,
+    "regressions": "NOT_VERIFIED",
+    "frozen_baseline_modified": false
+  },
+  "ledger_snapshot": {
+    "total": 39,
+    "missing": 4,
+    "partial": 35,
+    "implemented_unqualified": 0,
+    "qualified": 0,
+    "source": "docs/research/inkos_capability_ledger.yaml"
+  },
+  "parity": "PENDING_FULL_SUITE_AND_REMAINING_CAPABILITY_QUALIFICATION"
+}
