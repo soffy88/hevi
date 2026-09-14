@@ -1277,10 +1277,10 @@ requires-dist = [
     { name = "mcp", specifier = ">=1.28.1,<2.0" },
     { name = "minio", specifier = ">=7.2.20" },
     { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=a229627f96845ee5dccef9c8997241bd727f32ca" },
-    { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=5a436d4d5d98e41c2588026b15db81faef343b39" },
-    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=833243d7ca7087116606f70cdb88e8f1f631f260" },
-    { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=fba9d20781bfb3c753dc4510bbd80645ea5c4d34" },
-    { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=e949980a257f2f84f3b4c5325c73817678c57eaa" },
+    { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=3063213f8c9792a7c70ca5defacc308fb3f8cdb1" },
+    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=e7f9c65196437d3bff09401aa02bc817d071eec3" },
+    { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=08896eb3e4cf4e511ed2eb539ed7ff4de46e57ef" },
+    { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=7edb9044a742302a6a525bc35edbb6f6775c021b" },
     { name = "pillow", specifier = ">=10" },
     { name = "playwright", specifier = ">=1.49" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
@@ -2325,7 +2325,7 @@ docker = [
 [[package]]
 name = "omodul"
 version = "1.36.0"
-source = { git = "https://github.com/helios-plat/omodul.git?rev=5a436d4d5d98e41c2588026b15db81faef343b39#5a436d4d5d98e41c2588026b15db81faef343b39" }
+source = { git = "https://github.com/helios-plat/omodul.git?rev=3063213f8c9792a7c70ca5defacc308fb3f8cdb1#3063213f8c9792a7c70ca5defacc308fb3f8cdb1" }
 dependencies = [
     { name = "apscheduler" },
     { name = "numpy" },
@@ -2364,7 +2364,7 @@ wheels = [
 [[package]]
 name = "oprim"
 version = "3.12.0"
-source = { git = "https://github.com/helios-plat/oprim.git?rev=833243d7ca7087116606f70cdb88e8f1f631f260#833243d7ca7087116606f70cdb88e8f1f631f260" }
+source = { git = "https://github.com/helios-plat/oprim.git?rev=e7f9c65196437d3bff09401aa02bc817d071eec3#e7f9c65196437d3bff09401aa02bc817d071eec3" }
 dependencies = [
     { name = "chardet" },
     { name = "dnspython" },
@@ -2415,7 +2415,7 @@ wheels = [
 [[package]]
 name = "oservi"
 version = "1.4.0"
-source = { git = "https://github.com/helios-plat/oservi.git?rev=fba9d20781bfb3c753dc4510bbd80645ea5c4d34#fba9d20781bfb3c753dc4510bbd80645ea5c4d34" }
+source = { git = "https://github.com/helios-plat/oservi.git?rev=08896eb3e4cf4e511ed2eb539ed7ff4de46e57ef#08896eb3e4cf4e511ed2eb539ed7ff4de46e57ef" }
 dependencies = [
     { name = "croniter" },
     { name = "obase" },
@@ -2427,7 +2427,7 @@ dependencies = [
 [[package]]
 name = "oskill"
 version = "4.5.0"
-source = { git = "https://github.com/helios-plat/oskill.git?rev=e949980a257f2f84f3b4c5325c73817678c57eaa#e949980a257f2f84f3b4c5325c73817678c57eaa" }
+source = { git = "https://github.com/helios-plat/oskill.git?rev=7edb9044a742302a6a525bc35edbb6f6775c021b#7edb9044a742302a6a525bc35edbb6f6775c021b" }
 dependencies = [
     { name = "aiohttp" },
     { name = "numpy" },
