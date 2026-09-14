@@ -1,0 +1,66 @@
+{
+  "capabilities": [
+    {
+      "capability_id": "existing-work-import-continuation",
+      "check_count": 14,
+      "checks_passed": true,
+      "details": {
+        "characters": [
+          "Mara"
+        ],
+        "continued_chapters": 3,
+        "imported_chapters": 20,
+        "world_rules": [
+          "winter harbour"
+        ]
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/existing-work-import-continuation.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "longform-narrative-production",
+      "check_count": 9,
+      "checks_passed": true,
+      "details": {
+        "chapter_count": 50,
+        "crash_stage": "DRAFT",
+        "recovered_revision": 15,
+        "stage_count": 13
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/longform-narrative-production.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "short-fiction-production",
+      "check_count": 14,
+      "checks_passed": true,
+      "details": {
+        "export_formats": [
+          "txt",
+          "markdown",
+          "epub"
+        ],
+        "genre_finding_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "pacing_profile": "measured",
+        "target_words_per_chapter": 2800
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/short-fiction-production.json",
+      "status": "QUALIFIED"
+    }
+  ],
+  "ledger": {
+    "MISSING": 0,
+    "PARTIAL": 11,
+    "QUALIFIED": 28,
+    "TOTAL": 39,
+    "UNQUALIFIED": 0
+  },
+  "wave": "B",
+  "wave_status": "QUALIFIED"
+}

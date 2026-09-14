@@ -24,6 +24,11 @@ WAVE_CAPABILITIES: dict[str, tuple[str, ...]] = {
         "extensible-genre-system",
         "synthetic-writing-quality",
     ),
+    "B": (
+        "existing-work-import-continuation",
+        "longform-narrative-production",
+        "short-fiction-production",
+    ),
 }
 
 
