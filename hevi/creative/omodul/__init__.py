@@ -3,13 +3,16 @@
 from hevi.creative.omodul.analytics import CreativeAnalytics, calculate_analytics
 from hevi.creative.omodul.audit import ALL_AUDIT_DIMENSIONS, AuditDimension, NarrativeAuditEngine
 from hevi.creative.omodul.background import BackgroundRunController
+from hevi.creative.omodul.comparison import ComparisonModule, IntentArtifactComparison
 from hevi.creative.omodul.context import (
     ContextBudget,
     ContextBuildError,
     ContextCandidate,
     CreativeContextCompiler,
 )
+from hevi.creative.omodul.cover import CoverGeneration, CoverModule
 from hevi.creative.omodul.export import ExportModule
+from hevi.creative.omodul.fanfic import DerivedCanon, FanficModule
 from hevi.creative.omodul.forecast import ForecastEngine, ForecastResult, StaleForecastError
 from hevi.creative.omodul.genre import GenreFinding, GenreModule
 from hevi.creative.omodul.importer import ImportModule, ImportResult
@@ -19,6 +22,7 @@ from hevi.creative.omodul.interactive import (
     InteractiveFilmGraph,
     InteractiveFilmModule,
 )
+from hevi.creative.omodul.long_horizon import HorizonReport, LongHorizonQualifier
 from hevi.creative.omodul.narrative import (
     LONGFORM_STAGES,
     LongFormWorkflow,
@@ -38,12 +42,21 @@ from hevi.creative.omodul.play import (
 from hevi.creative.omodul.research import ResearchModule
 from hevi.creative.omodul.review import ReviewMode, ReviewWorkflow
 from hevi.creative.omodul.revision import RevisionEngine, RevisionLimitError, RevisionPolicy
+from hevi.creative.omodul.runtime import (
+    ActionKind,
+    ActionProposal,
+    ActionResult,
+    HeavyActionConfirmation,
+    ProductionHarness,
+    ProductionOutcome,
+)
 from hevi.creative.omodul.script import (
     ScriptBundle,
     ScriptModule,
     StoryboardBundle,
     StoryboardModule,
 )
+from hevi.creative.omodul.short import SalesPackage, ShortFictionModule, ShortProduction
 from hevi.creative.omodul.style import (
     NaturalnessFinding,
     StyleApplication,
@@ -63,10 +76,18 @@ __all__ = [
     "CreativeAnalytics",
     "calculate_analytics",
     "BackgroundRunController",
+    "ComparisonModule",
+    "IntentArtifactComparison",
+    "CoverGeneration",
+    "CoverModule",
     "ExportModule",
+    "DerivedCanon",
+    "FanficModule",
     "ForecastEngine",
     "ForecastResult",
     "StaleForecastError",
+    "HorizonReport",
+    "LongHorizonQualifier",
     "GenreFinding",
     "GenreModule",
     "ImportModule",
@@ -102,4 +123,13 @@ __all__ = [
     "StyleModule",
     "WritingNaturalnessAudit",
     "TranslationModule",
+    "ActionKind",
+    "ActionProposal",
+    "ActionResult",
+    "HeavyActionConfirmation",
+    "ProductionHarness",
+    "ProductionOutcome",
+    "SalesPackage",
+    "ShortFictionModule",
+    "ShortProduction",
 ]

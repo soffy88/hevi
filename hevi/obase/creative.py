@@ -537,6 +537,86 @@ class ReviewReport(CreativeObject):
     audit_id: UUID | None = None
 
 
+class ParentCanonRef(CreativeObject):
+    parent_project_id: UUID
+    parent_canon_revision: int = Field(ge=0)
+
+
+class ImportedCanonSnapshot(CreativeObject):
+    parent_ref_id: UUID
+    snapshot_hash: str = Field(pattern=r"^[0-9a-fA-F]{64}$")
+    fact_ids: tuple[UUID, ...] = ()
+
+
+class CanonInheritancePolicy(CreativeObject):
+    parent_ref_id: UUID
+    inherited_fact_types: tuple[str, ...] = ()
+    allow_deviation: bool = False
+
+
+class CanonDeviation(CreativeObject):
+    parent_snapshot_id: UUID
+    subject: str
+    original: str
+    replacement: str
+    reason: str
+
+
+class CoverBrief(CreativeObject):
+    title: str
+    visual_concept: str
+    palette: tuple[str, ...] = ()
+    typography_direction: str | None = None
+    negative_constraints: tuple[str, ...] = ()
+
+
+class NarrativeIntentProfile(CreativeObject):
+    goal: str
+    required_beats: tuple[UUID, ...] = ()
+    required_entities: tuple[UUID, ...] = ()
+    expected_pacing: str | None = None
+
+
+class ArtifactProfile(CreativeObject):
+    artifact_id: UUID
+    observed_text: tuple[str, ...] = ()
+    observed_duration_ms: int | None = Field(default=None, ge=0)
+    observed_entities: tuple[UUID, ...] = ()
+
+
+class CreativeComparison(CreativeObject):
+    dimension: str
+    expected: str
+    observed: str
+    status: Literal["PASS", "WARN", "FAIL", "NOT_EVALUABLE"]
+    evidence: tuple[ProvenanceRef, ...] = ()
+
+
+class RevisionFeedback(CreativeObject):
+    finding_id: UUID
+    severity: Literal["INFO", "WARN", "ERROR", "FATAL"]
+    layer: str
+    target: Literal[
+        "NARRATIVE",
+        "SCENE_BLUEPRINT",
+        "SHOT_PLAN",
+        "ASSET_SELECTION",
+        "TIMING",
+        "AUDIO",
+        "SUBTITLE",
+        "RENDER",
+    ]
+    suggested_action: str
+    evidence: tuple[ProvenanceRef, ...] = ()
+    proposal_only: bool = True
+
+    @model_validator(mode="after")
+    def feedback_cannot_mutate(self) -> RevisionFeedback:
+        if not self.proposal_only:
+            raise ValueError("revision feedback must remain a proposal")
+        return self
+
+
 class ScriptScene(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -806,12 +886,15 @@ __all__ = [
     "CREATIVE_CONTRACT_VERSION",
     "Approval",
     "ArtifactManifest",
+    "ArtifactProfile",
     "AuditFinding",
     "AuthorIntent",
     "BranchBeat",
     "BranchRisk",
     "BranchSnapshot",
     "CandidateRevision",
+    "CanonDeviation",
+    "CanonInheritancePolicy",
     "ChapterIntent",
     "ChapterSummary",
     "Character",
@@ -822,8 +905,10 @@ __all__ = [
     "ContextItem",
     "ContextManifest",
     "ContinuityFact",
+    "CoverBrief",
     "CreativeArtifact",
     "CreativeAuthority",
+    "CreativeComparison",
     "CreativeEvidence",
     "CreativeObject",
     "CreativePolicy",
@@ -837,6 +922,7 @@ __all__ = [
     "GenreProfile",
     "GenreRule",
     "GlossaryEntry",
+    "ImportedCanonSnapshot",
     "InformationState",
     "InteractiveFilm",
     "InteractiveWorld",
@@ -848,8 +934,10 @@ __all__ = [
     "NarrativeCanon",
     "NarrativeDelta",
     "NarrativeForecast",
+    "NarrativeIntentProfile",
     "NarrativeObservation",
     "NarrativeProject",
+    "ParentCanonRef",
     "Payoff",
     "PendingHook",
     "PhysicalState",
@@ -862,6 +950,7 @@ __all__ = [
     "ResourceState",
     "ReviewReport",
     "Revision",
+    "RevisionFeedback",
     "RunSnapshot",
     "SceneIntent",
     "Script",
