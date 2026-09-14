@@ -46,51 +46,14 @@ def lock_content(job: PresenterJob) -> PresenterJob:
 
 def generate_narration(
     job: PresenterJob,
+    *,
     voice_id: str | None = None,
     rate: float | None = None,
 ) -> PresenterJob:
-    """生成完整旁白。
+    """Compatibility delegate; the business transaction lives in Layer 4."""
+    from hevi.digital_human.narration_service import generate_narration as _generate
 
-    对应 lanshu generation.md: "Generate the complete approved narration"
-    """
-    # 更新音频配置
-    if voice_id:
-        job.voice_id = voice_id
-    if rate is not None:
-        job.rate = rate
-
-    if job.final_audio and Path(job.final_audio).is_file():
-        job.status = JobStatus.AUDIO_LOCKED
-        job.updated_at = datetime.utcnow()
-        return job
-    if not job.script.strip():
-        raise ValueError("cannot generate narration before content is locked")
-
-    # HEVI native voice is a real, model-independent local renderer.  Neural
-    # providers (Pocket TTS/VoxCPM/Voicebox) are selected by the task adapter;
-    # this synchronous 3O atom uses the guaranteed local path and validates the
-    # resulting WAV instead of manufacturing a path to a missing artifact.
-    from hevi.voicepro.oskill import synthesize_native_voice_sync
-
-    output_root = Path(
-        os.getenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", "data/digital_human")
-    ).expanduser()
-    output_path = output_root / job.job_id / "audio" / "narration.wav"
-    synthesize_native_voice_sync(
-        job.script,
-        output_path,
-        voice=job.voice_id,
-        language=job.language,
-        reference_audio=job.voice_sample or None,
-        speed=job.rate,
-    )
-    if not output_path.is_file() or output_path.stat().st_size == 0:
-        raise RuntimeError("native narration renderer produced no audio artifact")
-    job.status = JobStatus.AUDIO_LOCKED
-    job.updated_at = datetime.utcnow()
-    job.final_audio = str(output_path)
-
-    return job
+    return _generate(job, voice_id=voice_id, rate=rate)
 
 
 def calibrate_audio_loudness(

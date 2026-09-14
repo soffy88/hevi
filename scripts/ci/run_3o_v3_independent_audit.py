@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import sys
 
 from _3o_common import (
@@ -82,6 +83,10 @@ def main() -> int:
     out = ROOT / "artifacts/qualification/3o-v3-final-independent-audit.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    wave = os.getenv("HEVI_3O_AUDIT_WAVE")
+    if wave:
+        wave_out = ROOT / "artifacts/qualification" / f"3o-v3-audit-{wave}.json"
+        wave_out.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(report, sort_keys=True))
     return 0 if not any(v for k, v in report.items() if k != "source") else 1
 
