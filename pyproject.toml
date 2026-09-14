@@ -18,8 +18,8 @@ dependencies = [
     # 3O 基线：所有直接引用固定到通过消费者契约测试的精确提交；版本/锁文件/manifests
     # 必须同时更新。HEVI 保留业务语义，通用执行与媒体能力在对应 3O 库演进。
     "obase[cache,docker] @ git+https://github.com/helios-plat/obase.git@a229627f96845ee5dccef9c8997241bd727f32ca",
-    "oprim @ git+https://github.com/helios-plat/oprim.git@51f4263a807a60601929bb950eee3ca3b0fd1a0a",
-    "oskill @ git+https://github.com/helios-plat/oskill.git@bde3275f1dda1243f67d4ad5b62142912cd70dab",
+    "oprim @ git+https://github.com/helios-plat/oprim.git@833243d7ca7087116606f70cdb88e8f1f631f260",
+    "oskill @ git+https://github.com/helios-plat/oskill.git@e949980a257f2f84f3b4c5325c73817678c57eaa",
     # 标准长视频及镜头返工事务：兼容 v1.36.0 的已测提交，待上游 tag 后替换 ref。
     "omodul @ git+https://github.com/helios-plat/omodul.git@5a436d4d5d98e41c2588026b15db81faef343b39",
     # 统一的无状态服务执行骨架。固定到已测试的 3O 功能提交；合入上游 tag 后只替换 ref。
