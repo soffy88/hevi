@@ -33,7 +33,7 @@ def main() -> int:
     reverse = 0
     oprim_sig = 0
     oskill_stateful = oskill_persistence = oskill_business = oskill_comp = 0
-    omodul_sibling = omodul_sig = omodul_pillar = 0
+    omodul_sig = omodul_pillar = 0
     oservi_hardcoded = oservi_business = 0
     for s in all_sources():
         tree = parse(s.path)
@@ -41,8 +41,6 @@ def main() -> int:
         for target, _, _ in edges:
             if (s.layer, target) in {("oprim", "oskill"), ("oprim", "omodul"), ("oskill", "omodul"), ("obase", "oprim"), ("obase", "oskill"), ("obase", "omodul")}:
                 sibling += 1
-            if s.layer == "omodul" and target == "omodul":
-                omodul_sibling += 1
             if s.layer == "oservi" and target in {"oprim", "oskill", "omodul"}:
                 oservi_hardcoded += 1
             if s.layer == "obase" and target in {"oprim", "oskill", "omodul"}:
@@ -84,8 +82,17 @@ def main() -> int:
         "OSKILL_BUSINESS_ID_AWARE": oskill_business,
         "OSKILL_COMPOSITION_VIOLATIONS": oskill_comp,
         "SINGLE_OPRIM_OSKILLS": single["count"],
-        "OMODUL_SIBLING_CALLS": omodul_sibling,
+        "ZERO_OPRIM_OSKILLS": single["zero"],
+        "ONE_OPRIM_OSKILLS": single["one"],
+        "MULTI_OPRIM_OSKILLS": single["multi"],
+        "OMODUL_NODES": graph["OMODUL_NODES"],
+        "OMODUL_EDGES": graph["OMODUL_EDGES"],
+        "OMODUL_DIRECT_CALL_SITES": graph["OMODUL_DIRECT_CALL_SITES"],
+        "OMODUL_SIBLING_CALLS": graph["OMODUL_DIRECT_CALL_SITES"],
         "OMODUL_CYCLES": graph["OMODUL_CYCLES"],
+        "OMODUL_SELF_CALLS": graph["OMODUL_SELF_CALLS"],
+        "OMODUL_DYNAMIC_CALLS": graph["OMODUL_DYNAMIC_CALLS"],
+        "OMODUL_UNRESOLVED_CALL_TARGETS": graph["OMODUL_UNRESOLVED_CALL_TARGETS"],
         "OMODUL_SIGNATURE_VIOLATIONS": omodul_sig,
         "OMODUL_PILLAR_VIOLATIONS": omodul_pillar,
         "FAKE_PILLAR_DECLARATIONS": fake["count"],

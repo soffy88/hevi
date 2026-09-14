@@ -1,5 +1,7 @@
 {
   "count": 429,
+  "multi": 144,
+  "one": 81,
   "oskills": [
     {
       "distinct_oprims": 0,
@@ -2738,5 +2740,6 @@
       "symbol": ".venv/lib/python3.14/site-packages/oskill/worktree_prepare.py::worktree_prepare"
     }
   ],
-  "source": "AST function call sites"
+  "source": "AST function call sites",
+  "zero": 348
 }

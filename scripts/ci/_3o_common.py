@@ -120,13 +120,26 @@ def defined_functions(tree: ast.AST) -> Iterable[ast.FunctionDef | ast.AsyncFunc
 
 def has_real_implementation(tree: ast.Module) -> bool:
     """Whether a local namespace file contains code rather than a compatibility shim."""
+    def is_delegate(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+        body = list(node.body)
+        if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+            body.pop(0)
+        if body and isinstance(body[0], (ast.Import, ast.ImportFrom)):
+            body.pop(0)
+        if len(body) != 1 or not isinstance(body[0], ast.Return) or not isinstance(body[0].value, ast.Call):
+            return False
+        call = body[0].value
+        return isinstance(call.func, (ast.Name, ast.Attribute))
+
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and is_delegate(node):
+                continue
             return True
         if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
             # __all__ and direct imported aliases are shim metadata.
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            if not all(isinstance(t, ast.Name) and t.id in {"__all__", "__version__"} for t in targets):
+            if not all(isinstance(t, ast.Name) and t.id in {"__all__", "__version__", "__3o_compatibility__"} for t in targets):
                 return True
         if isinstance(node, ast.Expr) and not (isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)):
             return True

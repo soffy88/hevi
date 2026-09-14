@@ -45,6 +45,7 @@ def _imported_functions(tree: ast.Module) -> tuple[dict[str, tuple[str, str]], d
 
 def single_oprim_measurement() -> dict[str, object]:
     rows = []
+    counts = {"zero": 0, "one": 0, "multi": 0}
     for source, tree, fn in _element_nodes("oskill"):
         funcs, modules = _imported_functions(tree)
         called: set[str] = set()
@@ -55,14 +56,20 @@ def single_oprim_measurement() -> dict[str, object]:
                 called.add(f"oprim.{funcs[call.func.id][1]}")
             elif isinstance(call.func, ast.Attribute) and isinstance(call.func.value, ast.Name) and call.func.value.id in modules and modules[call.func.value.id].startswith("oprim"):
                 called.add(f"oprim.{call.func.attr}")
-        if len(called) < 2:
+        bucket = "zero" if not called else "one" if len(called) == 1 else "multi"
+        counts[bucket] += 1
+        if bucket != "multi":
             rows.append({"symbol": f"{source.rel}::{fn.name}", "oprim_calls": sorted(called), "distinct_oprims": len(called), "reason": "fewer than two distinct direct oprim call sites"})
-    return {"count": len(rows), "oskills": rows, "source": "AST function call sites"}
+    return {"count": len(rows), "zero": counts["zero"], "one": counts["one"], "multi": counts["multi"], "oskills": rows, "source": "AST function call sites"}
 
 
 def _omodul_graph() -> dict[str, object]:
     nodes: set[str] = set()
     edges: set[tuple[str, str]] = set()
+    self_calls = 0
+    dynamic_calls = 0
+    unresolved = 0
+    direct_calls = 0
     elements = _element_nodes("omodul")
     by_name: defaultdict[str, list[str]] = defaultdict(list)
     for source, _, fn in elements:
@@ -80,10 +87,17 @@ def _omodul_graph() -> dict[str, object]:
             elif isinstance(call.func, ast.Attribute) and isinstance(call.func.value, ast.Name) and call.func.value.id in modules and modules[call.func.value.id].startswith("omodul"):
                 target = call.func.attr
             if target:
+                direct_calls += 1
                 candidates = by_name[target]
                 for candidate in candidates[:1]:
                     nodes.add(candidate)
                     edges.add((current, candidate))
+                    if candidate == current:
+                        self_calls += 1
+            elif (isinstance(call.func, ast.Name) and call.func.id in {"eval", "exec", "getattr", "__import__"}) or (isinstance(call.func, ast.Attribute) and call.func.attr in {"getattr", "import_module"}):
+                dynamic_calls += 1
+            elif isinstance(call.func, ast.Name) and call.func.id in funcs and funcs[call.func.id][0] == "omodul":
+                unresolved += 1
     adjacency = defaultdict(list)
     for left, right in edges:
         adjacency[left].append(right)
@@ -120,7 +134,7 @@ def _omodul_graph() -> dict[str, object]:
     for node in sorted(nodes):
         if node not in indices:
             visit(node)
-    return {"nodes": sorted(nodes), "edges": [{"source": a, "target": b} for a, b in sorted(edges)], "cycles": sccs, "strongly_connected_components": sccs, "OMODUL_NODES": len(nodes), "OMODUL_EDGES": len(edges), "OMODUL_CYCLES": len(sccs), "OMODUL_SCCS": len(sccs), "source": "AST direct call graph"}
+    return {"nodes": sorted(nodes), "edges": [{"source": a, "target": b} for a, b in sorted(edges)], "cycles": sccs, "strongly_connected_components": sccs, "OMODUL_NODES": len(nodes), "OMODUL_EDGES": len(edges), "OMODUL_DIRECT_CALL_SITES": direct_calls, "OMODUL_CYCLES": len(sccs), "OMODUL_SCCS": len(sccs), "OMODUL_SELF_CALLS": self_calls, "OMODUL_DYNAMIC_CALLS": dynamic_calls, "OMODUL_UNRESOLVED_CALL_TARGETS": unresolved, "source": "AST direct call graph"}
 
 
 def _pillar_measurement() -> dict[str, object]:
@@ -160,10 +174,17 @@ def main() -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"SINGLE_OPRIM_OSKILLS={single['count']}")
+    print(f"ZERO_OPRIM_OSKILLS={single['zero']}")
+    print(f"ONE_OPRIM_OSKILLS={single['one']}")
+    print(f"MULTI_OPRIM_OSKILLS={single['multi']}")
     print(f"OMODUL_NODES={graph['OMODUL_NODES']}")
     print(f"OMODUL_EDGES={graph['OMODUL_EDGES']}")
+    print(f"OMODUL_DIRECT_CALL_SITES={graph['OMODUL_DIRECT_CALL_SITES']}")
     print(f"OMODUL_CYCLES={graph['OMODUL_CYCLES']}")
     print(f"OMODUL_SCCS={graph['OMODUL_SCCS']}")
+    print(f"OMODUL_SELF_CALLS={graph['OMODUL_SELF_CALLS']}")
+    print(f"OMODUL_DYNAMIC_CALLS={graph['OMODUL_DYNAMIC_CALLS']}")
+    print(f"OMODUL_UNRESOLVED_CALL_TARGETS={graph['OMODUL_UNRESOLVED_CALL_TARGETS']}")
     print(f"FAKE_PILLAR_DECLARATIONS={fake['count']}")
     return 0
 

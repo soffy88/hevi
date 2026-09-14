@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from hevi.digital_human.content_service import lock_content as _lock_content
 from hevi.digital_human.oprim import (
     add_clip_to_timeline,
     build_caption_plan,
@@ -23,7 +24,6 @@ from hevi.digital_human.oprim import (
 )
 from hevi.digital_human.oprim.caption import build_caption_plan as _build_caption_plan
 from hevi.digital_human.oprim.narration import build_narration_spine, topic_to_script
-from hevi.digital_human.oprim.narration import lock_content as _lock_content
 from hevi.digital_human.oprim.qa import check_authorization, check_media_technical
 from hevi.digital_human.oprim.render import (
     build_loudnorm_filter,

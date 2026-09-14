@@ -36,7 +36,7 @@ def lock_content(job: PresenterJob) -> PresenterJob:
     将主题或原始脚本转换为完整旁白，保存脚本与 Beat Sheet。
     对应 lanshu generation.md: "Lock content and audio"
     """
-    from hevi.digital_human.oprim.narration import lock_content as _lock_content
+    from hevi.digital_human.content_service import lock_content as _lock_content
 
     return _lock_content(job)
 

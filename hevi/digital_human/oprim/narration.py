@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from hevi.digital_human.schemas import JobStatus, PresenterJob
-
 
 def build_narration_spine(
     topic: str,
@@ -36,10 +34,3 @@ def topic_to_script(topic: str, duration_s: int = 60) -> str:
     parts = [spine["hook"], spine["promise"]] + spine["beats"] + [spine["synthesis"], spine["close"]]
     return "。".join(parts) + "。"
 
-
-def lock_content(job: PresenterJob) -> PresenterJob:
-    """锁定内容阶段：主题→脚本+Beat Sheet。"""
-    job.status = JobStatus.CONTENT_LOCKED
-    job.script = topic_to_script(job.topic, job.duration_target_s)
-    job.beat_sheet = "hook → promise → 2–4 useful beats → synthesis → close"
-    return job
