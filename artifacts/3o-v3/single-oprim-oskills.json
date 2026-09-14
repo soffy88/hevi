@@ -1,7 +1,7 @@
 {
   "count": 430,
   "multi": 143,
-  "one": 81,
+  "one": 79,
   "oskills": [
     {
       "distinct_oprims": 0,
@@ -28,18 +28,14 @@
       "symbol": "hevi/digital_human/oskill/__init__.py::content_lock"
     },
     {
-      "distinct_oprims": 1,
-      "oprim_calls": [
-        "oprim.build_timeline"
-      ],
+      "distinct_oprims": 0,
+      "oprim_calls": [],
       "reason": "fewer than two distinct direct oprim call sites",
       "symbol": "hevi/digital_human/oskill/__init__.py::visual_plan"
     },
     {
-      "distinct_oprims": 1,
-      "oprim_calls": [
-        "oprim.build_caption_plan"
-      ],
+      "distinct_oprims": 0,
+      "oprim_calls": [],
       "reason": "fewer than two distinct direct oprim call sites",
       "symbol": "hevi/digital_human/oskill/__init__.py::caption_plan"
     },
@@ -2747,5 +2743,5 @@
     }
   ],
   "source": "AST function call sites",
-  "zero": 349
+  "zero": 351
 }

@@ -70,6 +70,7 @@ def content_lock(
 def visual_plan(
     job: PresenterJob,
     narration_duration_s: float,
+    *,
     opening_target_s: float = 4.0,
     closing_target_s: float = 5.0,
 ) -> TimelinePlan:
@@ -77,14 +78,9 @@ def visual_plan(
 
     对应 lanshu editing.md 第 1 节
     """
-    timeline = build_timeline(
-        job,
-        narration_duration_s,
-        opening_target_s,
-        closing_target_s,
-    )
-    job.status = JobStatus.VISUAL_PLAN_LOCKED
-    return timeline
+    from hevi.digital_human.content_service import visual_plan as _visual_plan
+
+    return _visual_plan(job, narration_duration_s, opening_target_s=opening_target_s, closing_target_s=closing_target_s)
 
 
 # ─── 字幕规划技能 ────────────────────────────────────
@@ -93,23 +89,16 @@ def visual_plan(
 def caption_plan(
     job: PresenterJob,
     audio_duration_s: float,
+    *,
     keyword_anchors: list[tuple[float, str]] | None = None,
 ) -> CaptionPlan:
     """字幕规划技能：词级时间戳 + 关键词动效预设。
 
     对应 lanshu editing.md 第 2 节
     """
-    plan = _build_caption_plan(
-        audio_duration_s=audio_duration_s,
-        script_text=job.script,
-        keyword_anchors=keyword_anchors,
-    )
-    # The plan is a production input to the composition stage.  Keep it on
-    # the job instead of returning an untracked in-memory object that the
-    # next stage cannot consume after a queue/process boundary.
-    job.caption_json = plan.model_dump_json()
-    job.updated_at = datetime.utcnow()
-    return plan
+    from hevi.digital_human.content_service import caption_plan as _caption_plan
+
+    return _caption_plan(job, audio_duration_s, keyword_anchors=keyword_anchors)
 
 
 # ─── 生成技能 ────────────────────────────────────────
