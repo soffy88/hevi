@@ -70,7 +70,10 @@ def test_quality_gate_covers_compilation_coverage_and_three_state_policy() -> No
 
     unknown = ev(FailureCode.IDENTITY_MISMATCH.value, None, "identity")
     advisory_fail = ev(FailureCode.WARDROBE_MISMATCH.value, False, "wardrobe")
-    assert evaluate_delivery_artifacts([unknown], GatePolicy.for_profile("standard"))["passed"] is False
+    assert (
+        evaluate_delivery_artifacts([unknown], GatePolicy.for_profile("standard"))["passed"]
+        is False
+    )
     economy = evaluate_delivery_artifacts([unknown], GatePolicy.for_profile("economy"))
     assert economy["passed"] is True and economy["degraded"] is True
     standard_advisory = evaluate_delivery_artifacts(
@@ -154,21 +157,42 @@ def test_shot_preparation_state_rules_and_candidate_materialization() -> None:
         compute_readiness_status,
     )
 
-    assert compute_readiness_status(
-        skip_extraction=True, extracted=False, asset_statuses=["pending"], dialogue_statuses=[]
-    ) == "ready"
-    assert compute_readiness_status(
-        skip_extraction=False, extracted=False, asset_statuses=[], dialogue_statuses=[]
-    ) == "pending"
-    assert compute_readiness_status(
-        skip_extraction=False, extracted=True, asset_statuses=[], dialogue_statuses=[]
-    ) == "ready"
-    assert compute_readiness_status(
-        skip_extraction=False, extracted=True, asset_statuses=["linked"], dialogue_statuses=["accepted"]
-    ) == "ready"
-    assert compute_readiness_status(
-        skip_extraction=False, extracted=True, asset_statuses=["pending"], dialogue_statuses=["ignored"]
-    ) == "pending"
+    assert (
+        compute_readiness_status(
+            skip_extraction=True, extracted=False, asset_statuses=["pending"], dialogue_statuses=[]
+        )
+        == "ready"
+    )
+    assert (
+        compute_readiness_status(
+            skip_extraction=False, extracted=False, asset_statuses=[], dialogue_statuses=[]
+        )
+        == "pending"
+    )
+    assert (
+        compute_readiness_status(
+            skip_extraction=False, extracted=True, asset_statuses=[], dialogue_statuses=[]
+        )
+        == "ready"
+    )
+    assert (
+        compute_readiness_status(
+            skip_extraction=False,
+            extracted=True,
+            asset_statuses=["linked"],
+            dialogue_statuses=["accepted"],
+        )
+        == "ready"
+    )
+    assert (
+        compute_readiness_status(
+            skip_extraction=False,
+            extracted=True,
+            asset_statuses=["pending"],
+            dialogue_statuses=["ignored"],
+        )
+        == "pending"
+    )
 
     shot = ShotListItem(
         shot_id="s1",
@@ -183,7 +207,9 @@ def test_shot_preparation_state_rules_and_candidate_materialization() -> None:
     )
     assets, dialogue = candidates_from_shot(shot)
     assert assets == [("character", "王生"), ("scene", "山洞"), ("prop", "短刀")]
-    assert dialogue == [{"line_index": 0, "text": "走！", "speaker_name": "王生", "target_name": "师父"}]
+    assert dialogue == [
+        {"line_index": 0, "text": "走！", "speaker_name": "王生", "target_name": "师父"}
+    ]
     state = build_preparation_state(
         shot=None,
         readiness={"shot_id": "s1", "status": "pending", "extracted": True},
@@ -223,16 +249,38 @@ class _Stream:
         return self.chunks
 
 
-def test_corpus_seed_search_download_and_size_limits(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_corpus_seed_search_download_and_size_limits(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     from hevi.sourcing.corpus import Corpus
     from hevi.studio import corpus_seed
 
     def get(url: str, **_kwargs: object) -> _Response:
         if url == corpus_seed._NASA_SEARCH:
-            return _Response({"collection": {"items": [{"data": [{"nasa_id": "n1", "title": "NASA"}], "href": "assets"}]}})
+            return _Response(
+                {
+                    "collection": {
+                        "items": [{"data": [{"nasa_id": "n1", "title": "NASA"}], "href": "assets"}]
+                    }
+                }
+            )
         if url == "assets":
             return _Response(["orig.mp4", "preview.mp4"])
-        return _Response({"query": {"pages": {"1": {"pageid": 1, "title": "File:x.webm", "imageinfo": [{"url": "https://wiki/x.webm", "mime": "video/webm", "size": 100}]}}}})
+        return _Response(
+            {
+                "query": {
+                    "pages": {
+                        "1": {
+                            "pageid": 1,
+                            "title": "File:x.webm",
+                            "imageinfo": [
+                                {"url": "https://wiki/x.webm", "mime": "video/webm", "size": 100}
+                            ],
+                        }
+                    }
+                }
+            }
+        )
 
     monkeypatch.setattr(corpus_seed.httpx, "get", get)
     assert corpus_seed.search_nasa_videos("history") == [
@@ -257,7 +305,10 @@ def test_corpus_seed_search_download_and_size_limits(monkeypatch: pytest.MonkeyP
     assert duplicate is not None and duplicate["clip_id"] == added["clip_id"]
     assert corpus.size == 1
     monkeypatch.setattr(corpus_seed.httpx, "stream", lambda *_args, **_kwargs: _Stream([b"x" * 20]))
-    assert corpus_seed._add_http_clip(corpus, tmp_path, {**hit, "id": "large"}, query="q", max_mb=0) is None
+    assert (
+        corpus_seed._add_http_clip(corpus, tmp_path, {**hit, "id": "large"}, query="q", max_mb=0)
+        is None
+    )
     assert corpus_seed._add_http_clip(corpus, tmp_path, {"id": "none"}, query="q", max_mb=1) is None
 
     async def archive(*_args: object, **_kwargs: object) -> list[object]:
@@ -397,7 +448,11 @@ async def test_explainer_owned_run_and_presenter_binding_reject_wrong_owner(
             pass
 
         async def get(self, _presenter_id: str, _user_id: str) -> dict[str, object] | None:
-            return {"id": "presenter", "name": "P", "delivery_json": {"provider": "heygen", "provider_presenter_id": "external"}}
+            return {
+                "id": "presenter",
+                "name": "P",
+                "delivery_json": {"provider": "heygen", "provider_presenter_id": "external"},
+            }
 
         async def ensure_default(self, _user_id: str) -> dict[str, object]:
             return {"id": "default", "name": "D", "delivery_json": {}}
@@ -447,20 +502,32 @@ async def test_audio_router_routes_backends_and_stitches_successful_segments(
 
     monkeypatch.setattr(audio_router, "_synthesize_conversational", conversational)
     monkeypatch.setattr(audio_router, "_synthesize_formal", formal)
-    assert await audio_router.route_single_cue(
-        cue_text="哈哈", cue_style=None, output_path=tmp_path / "c.mp3", voice="v"
-    ) == tmp_path / "c.mp3"
-    assert await audio_router.route_single_cue(
-        cue_text="formal", cue_style="formal", output_path=tmp_path / "f.mp3", voice="v"
-    ) == tmp_path / "f.mp3"
+    assert (
+        await audio_router.route_single_cue(
+            cue_text="哈哈", cue_style=None, output_path=tmp_path / "c.mp3", voice="v"
+        )
+        == tmp_path / "c.mp3"
+    )
+    assert (
+        await audio_router.route_single_cue(
+            cue_text="formal", cue_style="formal", output_path=tmp_path / "f.mp3", voice="v"
+        )
+        == tmp_path / "f.mp3"
+    )
 
     async def broken(**_kwargs: object) -> Path:
         raise RuntimeError("provider down")
 
     monkeypatch.setattr(audio_router, "_synthesize_conversational", broken)
-    assert await audio_router.route_single_cue(
-        cue_text="x", cue_style="conversational", output_path=tmp_path / "fallback.mp3", voice="v"
-    ) == tmp_path / "fallback.mp3"
+    assert (
+        await audio_router.route_single_cue(
+            cue_text="x",
+            cue_style="conversational",
+            output_path=tmp_path / "fallback.mp3",
+            voice="v",
+        )
+        == tmp_path / "fallback.mp3"
+    )
     assert calls == ["conversation", "formal", "formal"]
 
     class Cue:
@@ -509,16 +576,27 @@ async def test_audio_router_provider_specific_paths_and_empty_fallback(
 
     monkeypatch.setattr("hevi.explainer.voicebox_client.synthesize", vb)
     monkeypatch.setenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "voicebox")
-    assert await audio_router._synthesize_conversational(text="x", output_path=out, instruct=None) == out
+    assert (
+        await audio_router._synthesize_conversational(text="x", output_path=out, instruct=None)
+        == out
+    )
     monkeypatch.setenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "chattts")
-    monkeypatch.setattr(audio_router, "_synthesize_conversational", audio_router._synthesize_conversational)
+    monkeypatch.setattr(
+        audio_router, "_synthesize_conversational", audio_router._synthesize_conversational
+    )
     import oprim
 
     monkeypatch.setattr(oprim, "chattts_call", lambda **_kwargs: str(out), raising=False)
-    assert await audio_router._synthesize_conversational(text="x", output_path=out, instruct=None) == out
+    assert (
+        await audio_router._synthesize_conversational(text="x", output_path=out, instruct=None)
+        == out
+    )
 
     monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "voicebox")
-    assert await audio_router._synthesize_formal(text="x", output_path=out, voice="v", instruct=None) == out
+    assert (
+        await audio_router._synthesize_formal(text="x", output_path=out, voice="v", instruct=None)
+        == out
+    )
     monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "f5")
     monkeypatch.delenv("F5_TTS_REFERENCE_AUDIO", raising=False)
     monkeypatch.delenv("F5_TTS_REFERENCE_TEXT", raising=False)
@@ -548,8 +626,15 @@ async def test_cinematic_animation_provider_fallbacks_and_pipeline_callbacks(
     from hevi.video.alibaba_maas_service import AlibabaMaasError
 
     beat = GoldenBeat(
-        index=1, shot_size="wide", movement="push_in", subject="subject", action="action",
-        emotion_expression="calm", atmosphere="night", lighting="soft", duration_s=4,
+        index=1,
+        shot_size="wide",
+        movement="push_in",
+        subject="subject",
+        action="action",
+        emotion_expression="calm",
+        atmosphere="night",
+        lighting="soft",
+        duration_s=4,
         narration="narration",
     )
     shot = tmp_path / "shot.mp4"
@@ -580,7 +665,12 @@ async def test_cinematic_animation_provider_fallbacks_and_pipeline_callbacks(
 
     monkeypatch.setattr("hevi.video.wavespeed_service.wavespeed_generate", wavespeed_fail)
     monkeypatch.setattr("hevi.cinematic.animation_html.render_html_shot", html)
-    assert await animation_pipeline._gen_shot(beat, 4, shot, "9:16", tmp_path / "html", tmp_path / "nar") == "html"
+    assert (
+        await animation_pipeline._gen_shot(
+            beat, 4, shot, "9:16", tmp_path / "html", tmp_path / "nar"
+        )
+        == "html"
+    )
     assert html_calls == [(720, 1280)]
     with pytest.raises(RuntimeError, match="无 HTML"):
         await animation_pipeline._gen_shot(beat, 4, shot, "16:9")
@@ -590,6 +680,7 @@ async def test_cinematic_animation_provider_fallbacks_and_pipeline_callbacks(
     monkeypatch.setattr(animation_pipeline, "_wav_duration", lambda _path: 2.0)
     assert await animation_pipeline._tts(beat, wav) == 2.0
     wav.unlink()
+
     async def voicebox_fail(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("voicebox")
 
@@ -617,13 +708,20 @@ async def test_cinematic_animation_provider_fallbacks_and_pipeline_callbacks(
 
     events: list[tuple[int, str, int]] = []
     monkeypatch.setattr(animation_pipeline, "_tts", lambda *_args, **_kwargs: _async_value(3.0))
-    monkeypatch.setattr(animation_pipeline, "_gen_shot", lambda *_args, **_kwargs: _async_value("html"))
+    monkeypatch.setattr(
+        animation_pipeline, "_gen_shot", lambda *_args, **_kwargs: _async_value("html")
+    )
     monkeypatch.setattr(animation_pipeline, "_concat", lambda *_args: tmp_path / "final.mp4")
+
     def progress(percent: int, stage: str, shot_index: int) -> None:
         events.append((percent, stage, shot_index))
 
     final, rows, report = await animation_pipeline.run_animation_pipeline(
-        "story", task_id="task", output_dir=tmp_path / "pipeline", beats=[beat], progress_cb=progress
+        "story",
+        task_id="task",
+        output_dir=tmp_path / "pipeline",
+        beats=[beat],
+        progress_cb=progress,
     )
     assert final.name == "final.mp4" and rows[0]["narration"] == "narration"
     assert report["renderers"] == ["html"] and events[-1][0] == 100
@@ -670,7 +768,7 @@ def test_digital_human_oprims_lock_content_timeline_captions_and_qa(
     assert build_caption_plan(4, "第一句。第二句！").is_available()
     assert build_caption_plan_impl(4, "long text", presets=["one"]).phrases[0].style == "one"
     assert not build_caption_plan_impl(4, "").is_available()
-    assert build_narration_spine("topic", "zh")['beats']
+    assert build_narration_spine("topic", "zh")["beats"]
     assert topic_to_script("topic", duration_s=30).endswith("。")
 
     preflight = run_preflight_check(job)
@@ -682,8 +780,17 @@ def test_digital_human_oprims_lock_content_timeline_captions_and_qa(
     audio = tmp_path / "audio.wav"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
-            "-ar", "48000", "-ac", "1", str(audio),
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440:duration=1",
+            "-ar",
+            "48000",
+            "-ac",
+            "1",
+            str(audio),
         ],
         check=True,
         capture_output=True,
@@ -799,7 +906,10 @@ async def test_artifact_store_local_s3_and_delivery_integrity_paths(
     s3 = ArtifactManifest(
         artifacts=[
             Artifact(
-                kind="video", path="ignored", uri="s3://bucket/object", primary=True,
+                kind="video",
+                path="ignored",
+                uri="s3://bucket/object",
+                primary=True,
                 sha256=__import__("hashlib").sha256(b"s3 bytes").hexdigest(),
             )
         ]
@@ -807,7 +917,10 @@ async def test_artifact_store_local_s3_and_delivery_integrity_paths(
     monkeypatch.setattr(artifact_http, "get_object_store", lambda: Store())
     materialized = await artifact_http.materialize_artifact(s3, kind="video")
     assert materialized.read_bytes() == b"s3 bytes"
-    assert await artifact_http.artifact_delivery_url(s3, kind="video", expires_s=12) == "https://signed/12"
+    assert (
+        await artifact_http.artifact_delivery_url(s3, kind="video", expires_s=12)
+        == "https://signed/12"
+    )
     assert await artifact_http.artifact_delivery_url(manifest, kind="video") is None
 
     class MinioClient:
@@ -862,15 +975,24 @@ async def test_h3_comfy_client_builds_valid_workflows_and_handles_runtime_states
     workflows = tmp_path / "workflows"
     workflows.mkdir()
     (workflows / "valid.json").write_text(
-        json.dumps({
-            "1": {"class_type": "LoadImage", "inputs": {"image": "__REF_0__"}},
-            "2": {"class_type": "LoadImage", "inputs": {"image": "__REF_1__"}},
-            "3": {"class_type": "MiniMaxH3ReferenceToVideo", "inputs": {
-                "prompt": "__PROMPT__", "length": "__LENGTH__", "width": "__WIDTH__",
-                "height": "__HEIGHT__", "seed": "__SEED__", "ref_image_1": ["2", 0],
-                "ref_image_0": ["1", 0],
-            }},
-        })
+        json.dumps(
+            {
+                "1": {"class_type": "LoadImage", "inputs": {"image": "__REF_0__"}},
+                "2": {"class_type": "LoadImage", "inputs": {"image": "__REF_1__"}},
+                "3": {
+                    "class_type": "MiniMaxH3ReferenceToVideo",
+                    "inputs": {
+                        "prompt": "__PROMPT__",
+                        "length": "__LENGTH__",
+                        "width": "__WIDTH__",
+                        "height": "__HEIGHT__",
+                        "seed": "__SEED__",
+                        "ref_image_1": ["2", 0],
+                        "ref_image_0": ["1", 0],
+                    },
+                },
+            }
+        )
     )
     (workflows / "bad.json").write_text("[]")
     client = ComfyClient(workflows_dir=workflows, serial=False)
@@ -880,20 +1002,32 @@ async def test_h3_comfy_client_builds_valid_workflows_and_handles_runtime_states
     with pytest.raises(H3ComfyError, match="API 格式"):
         client.load_workflow("bad")
     built = client.build_workflow(
-        "valid.json", prompt="prompt", length=124, seed=7, ref_images=["ref.png"],
-        workflows_dir=workflows, extra_fills={"__CUSTOM__": "value"}
+        "valid.json",
+        prompt="prompt",
+        length=124,
+        seed=7,
+        ref_images=["ref.png"],
+        workflows_dir=workflows,
+        extra_fills={"__CUSTOM__": "value"},
     )
     assert built["1"]["inputs"]["image"] == "ref.png"
     assert "2" not in built
     assert built["3"]["inputs"]["length"] == 124
     assert built["3"]["inputs"]["ref_image_0"] == ["1", 0]
     assert ComfyClient._ref_nodes(built) == []
-    assert client.build_workflow({"x": {"class_type": "Node", "inputs": {"v": "x__PROMPT__"}}}, prompt="p")["x"]["inputs"]["v"] == "xp"
+    assert (
+        client.build_workflow(
+            {"x": {"class_type": "Node", "inputs": {"v": "x__PROMPT__"}}}, prompt="p"
+        )["x"]["inputs"]["v"]
+        == "xp"
+    )
     assert h3_length_for_duration(0) == 5
     assert h3_length_for_duration(200) == 3600
 
     class Response:
-        def __init__(self, status_code: int = 200, payload: object | None = None, content: bytes = b"") -> None:
+        def __init__(
+            self, status_code: int = 200, payload: object | None = None, content: bytes = b""
+        ) -> None:
             self.status_code = status_code
             self.payload = payload
             self.content = content
@@ -925,9 +1059,18 @@ async def test_h3_comfy_client_builds_valid_workflows_and_handles_runtime_states
                 return Response()
             if url.endswith("/history/p1"):
                 self.history_calls += 1
-                return Response(payload={"p1": {"status": {"status_str": "success"}, "outputs": {"1": {"videos": [{"filename": "x.mp4"}]}}}})
+                return Response(
+                    payload={
+                        "p1": {
+                            "status": {"status_str": "success"},
+                            "outputs": {"1": {"videos": [{"filename": "x.mp4"}]}},
+                        }
+                    }
+                )
             if url.endswith("/history/p2"):
-                return Response(payload={"p2": {"status": {"status_str": "failed"}, "error": "boom"}})
+                return Response(
+                    payload={"p2": {"status": {"status_str": "failed"}, "error": "boom"}}
+                )
             return Response(content=b"video-bytes")
 
         async def post(self, url: str, **_kwargs: object) -> Response:
@@ -950,7 +1093,10 @@ async def test_h3_comfy_client_builds_valid_workflows_and_handles_runtime_states
         await client.upload_input(tmp_path / "missing")
     output = client.find_video_output({"outputs": {"1": {"videos": [{"filename": "x.mp4"}]}}})
     assert output and output["filename"] == "x.mp4"
-    assert client.find_video_output({"outputs": {"1": {"video": ["folder/y.mp4"]}}})["filename"] == "y.mp4"  # type: ignore[index]
+    assert (
+        client.find_video_output({"outputs": {"1": {"video": ["folder/y.mp4"]}}})["filename"]
+        == "y.mp4"
+    )  # type: ignore[index]
     assert client.find_video_output({"outputs": {"1": {"video": "z.mp4"}}})["filename"] == "z.mp4"  # type: ignore[index]
     assert client.find_video_output({"outputs": {}}) is None
     assert await client.run_workflow({}, output_path=tmp_path / "out.mp4", timeout_s=1)
@@ -1004,9 +1150,15 @@ async def test_sdxl_adapter_covers_gpu_failures_prompt_fallback_and_batch_worker
     with pytest.raises(sdxl.GPUUnavailableError, match="超时"):
         await sdxl.check_gpu_available()
 
-    monkeypatch.setattr("obase.provider_registry.ProviderRegistry.get", lambda: (_ for _ in ()).throw(RuntimeError("no llm")))
+    monkeypatch.setattr(
+        "obase.provider_registry.ProviderRegistry.get",
+        lambda: (_ for _ in ()).throw(RuntimeError("no llm")),
+    )
     assert await sdxl._ensure_english_prompt("中文") == "中文"
-    monkeypatch.setattr("obase.provider_registry.ProviderRegistry.get", lambda: SimpleNamespace(llm=lambda _name: lambda **_kw: {"content": "中文"}))
+    monkeypatch.setattr(
+        "obase.provider_registry.ProviderRegistry.get",
+        lambda: SimpleNamespace(llm=lambda _name: lambda **_kw: {"content": "中文"}),
+    )
     assert await sdxl._ensure_english_prompt("另一个中文") == "另一个中文"
     sdxl._EN_PROMPT_CACHE["缓存中文"] = "cached"
     assert await sdxl._ensure_english_prompt("缓存中文") == "cached"
@@ -1046,7 +1198,9 @@ async def test_sdxl_adapter_covers_gpu_failures_prompt_fallback_and_batch_worker
         task_file = Path(str(args[-1]))
         payload = json.loads(task_file.read_text())
         if "results_path" in payload:
-            Path(payload["results_path"]).write_text(json.dumps([{"ok": True}, {"ok": False, "error": "bad item"}]))
+            Path(payload["results_path"]).write_text(
+                json.dumps([{"ok": True}, {"ok": False, "error": "bad item"}])
+            )
         else:
             Path(payload["output_path"]).write_bytes(b"image")
         return Worker()
@@ -1054,7 +1208,10 @@ async def test_sdxl_adapter_covers_gpu_failures_prompt_fallback_and_batch_worker
     monkeypatch.setattr(sdxl, "_run_batch_worker", original_batch_worker)
     monkeypatch.setattr(sdxl.asyncio, "create_subprocess_exec", create_worker)
     worker_results = await sdxl._run_batch_worker(
-        [{"prompt": "p", "output_path": tmp_path / "a.png"}, {"prompt": "q", "output_path": tmp_path / "b.png"}]
+        [
+            {"prompt": "p", "output_path": tmp_path / "a.png"},
+            {"prompt": "q", "output_path": tmp_path / "b.png"},
+        ]
     )
     assert worker_results[0]["seed"]  # type: ignore[index]
     assert isinstance(worker_results[1], RuntimeError)
@@ -1082,7 +1239,12 @@ async def test_history_series_producer_selects_unproduced_lessons_and_is_idempot
             return None
 
     async def connect(_dsn: str) -> Connection:
-        return Connection([{"display_order": 1, "name": "Lesson", "ku_cnt": 3}, {"display_order": 2, "name": "Done", "ku_cnt": 0}])
+        return Connection(
+            [
+                {"display_order": 1, "name": "Lesson", "ku_cnt": 3},
+                {"display_order": 2, "name": "Done", "ku_cnt": 0},
+            ]
+        )
 
     monkeypatch.setattr(asyncpg, "connect", connect)
     monkeypatch.setattr(producer, "_produced_orders", lambda _pool=None: _async_set({2}))
@@ -1094,7 +1256,9 @@ async def test_history_series_producer_selects_unproduced_lessons_and_is_idempot
     async def assembled(*_args: object, **_kwargs: object) -> dict[str, object]:
         return {"source_name": "assembled", "layer_config": {}}
 
-    monkeypatch.setattr("hevi.history_series.textbook_bridge.assemble_textbook_run_request", assembled)
+    monkeypatch.setattr(
+        "hevi.history_series.textbook_bridge.assemble_textbook_run_request", assembled
+    )
     monkeypatch.setattr(producer, "_produced_orders", lambda _pool=None: _async_set(set()))
     monkeypatch.setattr("hevi.core.workspace.new_task_id", lambda: "task-new")
     task_id, request = await producer.produce_lesson(
@@ -1104,7 +1268,9 @@ async def test_history_series_producer_selects_unproduced_lessons_and_is_idempot
     assert request["layer_config"]["L0"]["model"] == "local"  # type: ignore[index]
 
     monkeypatch.setattr(producer, "_produced_orders", lambda _pool=None: _async_set({3}))
-    monkeypatch.setattr(producer, "_existing_produced_task_id", lambda *_args, **_kwargs: _async_str("old-task"))
+    monkeypatch.setattr(
+        producer, "_existing_produced_task_id", lambda *_args, **_kwargs: _async_str("old-task")
+    )
     existing_id, existing_request = await producer.produce_lesson(
         producer.LessonInfo(order=3, title="Three"), pool=object()
     )
@@ -1112,8 +1278,14 @@ async def test_history_series_producer_selects_unproduced_lessons_and_is_idempot
     monkeypatch.setattr(producer, "next_lesson", lambda *_args, **_kwargs: _async_none())
     assert await producer.produce_next(pool=object()) is None
 
-    monkeypatch.setattr(producer, "next_lesson", lambda *_args, **_kwargs: _async_lesson(producer.LessonInfo(4, "Four")))
-    monkeypatch.setattr(producer, "produce_lesson", lambda *_args, **_kwargs: _async_pair("task-4", {"ok": True}))
+    monkeypatch.setattr(
+        producer,
+        "next_lesson",
+        lambda *_args, **_kwargs: _async_lesson(producer.LessonInfo(4, "Four")),
+    )
+    monkeypatch.setattr(
+        producer, "produce_lesson", lambda *_args, **_kwargs: _async_pair("task-4", {"ok": True})
+    )
     produced = await producer.produce_next(pool=object())
     assert produced and produced["task_id"] == "task-4" and produced["next"] is True
 
@@ -1124,15 +1296,39 @@ async def test_history_series_producer_selects_unproduced_lessons_and_is_idempot
         async def list_tasks(self, *, limit: int) -> list[dict[str, object]]:
             assert limit == 1000
             return [
-                {"id": "task-1", "status": "completed", "progress_pct": 100, "config_json": {"lesson_order": 1}},
-                {"id": "task-2", "status": "failed", "error": "bad", "config_json": {"request": {"lesson_order": 2}}},
+                {
+                    "id": "task-1",
+                    "status": "completed",
+                    "progress_pct": 100,
+                    "config_json": {"lesson_order": 1},
+                },
+                {
+                    "id": "task-2",
+                    "status": "failed",
+                    "error": "bad",
+                    "config_json": {"request": {"lesson_order": 2}},
+                },
             ]
 
     monkeypatch.setattr("hevi.tasks.repository.TaskRepository", TaskRepo)
     queue = await producer.series_queue(pool=object())
     assert queue == [
-        {"lesson_order": 1, "title": "Lesson", "status": "completed", "task_id": "task-1", "progress": 100, "error": ""},
-        {"lesson_order": 2, "title": "Done", "status": "failed", "task_id": "task-2", "progress": 0, "error": "bad"},
+        {
+            "lesson_order": 1,
+            "title": "Lesson",
+            "status": "completed",
+            "task_id": "task-1",
+            "progress": 100,
+            "error": "",
+        },
+        {
+            "lesson_order": 2,
+            "title": "Done",
+            "status": "failed",
+            "task_id": "task-2",
+            "progress": 0,
+            "error": "bad",
+        },
     ]
 
 
@@ -1164,7 +1360,9 @@ async def test_task_service_adapter_failures_review_and_local_completion_paths(
 
     from hevi.tasks.task_service import TaskService
 
-    def service_with(adapter_result: dict[str, object] | None = None, error: Exception | None = None) -> tuple[TaskService, MagicMock]:
+    def service_with(
+        adapter_result: dict[str, object] | None = None, error: Exception | None = None
+    ) -> tuple[TaskService, MagicMock]:
         repo = MagicMock()
         repo.pool = MagicMock()
         repo.update_task = AsyncMock()
@@ -1181,20 +1379,30 @@ async def test_task_service_adapter_failures_review_and_local_completion_paths(
         return service, repo
 
     failed_service, _failed_repo = service_with({"status": "failed", "error": "provider rejected"})
-    failed = await failed_service._run_adapter_task({"id": uuid4(), "config_json": {"production_source": "director_graph"}})
+    failed = await failed_service._run_adapter_task(
+        {"id": uuid4(), "config_json": {"production_source": "director_graph"}}
+    )
     assert failed["status"] == "failed" and "provider rejected" in failed["error"]
 
     completed_service, completed_repo = service_with({"status": "completed"})
-    completed = await completed_service._run_adapter_task({"id": uuid4(), "config_json": {"production_source": "director_graph"}})
+    completed = await completed_service._run_adapter_task(
+        {"id": uuid4(), "config_json": {"production_source": "director_graph"}}
+    )
     assert completed["status"] == "failed"
-    assert any(call.args[1].get("status") == "failed" for call in completed_repo.update_task.await_args_list)
+    assert any(
+        call.args[1].get("status") == "failed"
+        for call in completed_repo.update_task.await_args_list
+    )
 
     exploding_service, exploding_repo = service_with(error=RuntimeError("adapter crashed"))
     exploded = await exploding_service._run_adapter_task(
         {"id": uuid4(), "config_json": {"production_source": "director_graph"}}
     )
     assert exploded["status"] == "failed"
-    assert any(call.args[1].get("status") == "failed" for call in exploding_repo.update_task.await_args_list)
+    assert any(
+        call.args[1].get("status") == "failed"
+        for call in exploding_repo.update_task.await_args_list
+    )
 
     service, _repo = service_with()
     assert service.is_local_provider("wan_local")
@@ -1248,7 +1456,9 @@ async def test_task_service_create_task_idempotency_and_quality_repair_projectio
     repo.pool = MagicMock()
     repo.get_task_by_idempotency_key = AsyncMock(return_value={"id": "old"})
     service = TaskService(repo)
-    existing = await service.create_task("topic", "1-5min", "wan_local", "edge_tts", idempotency_key=" idem ")
+    existing = await service.create_task(
+        "topic", "1-5min", "wan_local", "edge_tts", idempotency_key=" idem "
+    )
     assert existing == {"id": "old"}
     repo.get_task_by_idempotency_key.return_value = None
     repo.create_task = AsyncMock(side_effect=lambda data: data)
@@ -1266,7 +1476,12 @@ async def test_task_service_create_task_idempotency_and_quality_repair_projectio
     monkeypatch.setattr("hevi.tasks.task_service.check_before_run", no_check)
     monkeypatch.setattr("hevi.tasks.task_service.check_daily_budget", no_check)
     created = await service.create_task(
-        "topic", "1-5min", "wan_local", "edge_tts", idempotency_key="new", deadline_at="2026-01-01T00:00:00Z"
+        "topic",
+        "1-5min",
+        "wan_local",
+        "edge_tts",
+        idempotency_key="new",
+        deadline_at="2026-01-01T00:00:00Z",
     )
     assert created["status"] == "pending" and created["config_json"]["estimated_usd"] == 1.25
     assert created["deadline_at"].tzinfo is None
@@ -1315,7 +1530,10 @@ async def test_digital_human_omodul_builds_and_executes_the_full_job_plan(
     assert plan_delivery(job, "render.mp4", "out")["target_status"] == JobStatus.VERIFIED.value
     plan = build_full_job_plan(job, 20, "render.mp4", "out", "stem")
     assert len(plan["phases"]) == 5 and plan["state_machine"][-1] == "verified"
-    with pytest.raises((FileNotFoundError, NotImplementedError), match="presenter image|no registered production adapter"):
+    with pytest.raises(
+        (FileNotFoundError, NotImplementedError),
+        match="presenter image|no registered production adapter",
+    ):
         await execute_plan(job, plan)
     assert job.status is JobStatus.VISUAL_PLAN_LOCKED
 
@@ -1356,9 +1574,10 @@ async def test_studio_kit_delegates_and_preserves_cross_line_contracts(
     l0 = await kit.tongjian_l0({"raw_text": "史料", "source_name": "册"})
     assert l0["status"] == "ok" and l0["quote_count"] == 1
     assert kit.tongjian_provenance({"lines": [{"type": "dialogue"}]})["passed"] is False
-    assert kit.tongjian_provenance({"lines": [{"type": "dialogue", "dramatized": True}]})[
-        "passed"
-    ] is True
+    assert (
+        kit.tongjian_provenance({"lines": [{"type": "dialogue", "dramatized": True}]})["passed"]
+        is True
+    )
 
     assert await kit.storygraph_extract({}) == {"status": "failed", "reason": "raw_text required"}
     fake_graph = SimpleNamespace(
@@ -1463,14 +1682,21 @@ def test_studio_kit_exports_assets_profiles_nle_and_catalogs(
     assert kit.shot_import({"shot_id": "s2", "prompt": "x"})["imported"]["target"] == "explainer"
 
     frozen = kit.freeze_profile(
-        {"workspace": {"theme": "ink"}, "project": {"ratio": "9:16"}, "dest": tmp_path / "profile.json"}
+        {
+            "workspace": {"theme": "ink"},
+            "project": {"ratio": "9:16"},
+            "dest": tmp_path / "profile.json",
+        }
     )
     assert frozen["status"] == "ok"
     assert kit.verify_profile({"resolved_path": frozen["resolved_path"]})["passed"] is True
-    assert kit.verify_profile({"resolved_path": frozen["resolved_path"], "sha256": "wrong"})[
-        "passed"
-    ] is False
-    assert kit.verify_profile({"resolved_path": str(tmp_path / "missing.json")})["status"] == "failed"
+    assert (
+        kit.verify_profile({"resolved_path": frozen["resolved_path"], "sha256": "wrong"})["passed"]
+        is False
+    )
+    assert (
+        kit.verify_profile({"resolved_path": str(tmp_path / "missing.json")})["status"] == "failed"
+    )
     assert kit.freeze_profile({"workspace": ["not-a-mapping"], "project": {}})["status"] == "failed"
 
     source = tmp_path / "clip.mp4"
@@ -1479,9 +1705,15 @@ def test_studio_kit_exports_assets_profiles_nle_and_catalogs(
     assert copied["status"] == "ok" and Path(copied["video_path"]).read_bytes() == b"clip"
     assert kit.nle_recut({"clips": []})["status"] == "failed"
     monkeypatch.setattr("hevi.studio.kit.shutil.which", lambda _name: None)
-    assert kit.nle_recut(
-        {"clips": [{"source": str(source)}, {"source": str(source)}], "output_path": tmp_path / "x.mp4"}
-    )["status"] == "failed"
+    assert (
+        kit.nle_recut(
+            {
+                "clips": [{"source": str(source)}, {"source": str(source)}],
+                "output_path": tmp_path / "x.mp4",
+            }
+        )["status"]
+        == "failed"
+    )
 
     pack = kit.pack_matrix(
         {
@@ -1546,7 +1778,9 @@ async def test_dashscope_i2v_submit_poll_download_and_failure_contracts(
         async def get(self, url: str, **_kwargs: object) -> Response:
             self.requests.append((url, None))
             if url.endswith("job-1"):
-                return Response({"output": {"task_status": "SUCCEEDED", "video_url": "https://video"}})
+                return Response(
+                    {"output": {"task_status": "SUCCEEDED", "video_url": "https://video"}}
+                )
             return Response({}, b"v" * 1024)
 
     monkeypatch.setattr(httpx, "AsyncClient", SuccessfulClient)
@@ -1583,7 +1817,9 @@ async def test_dashscope_i2v_submit_poll_download_and_failure_contracts(
 
     monkeypatch.setattr("hevi.video.dashscope_i2v_service.os.getenv", lambda _name: "")
     with pytest.raises(DashScopeI2VError, match="API_KEY"):
-        await i2v_animate(image_path=image, prompt="x", output_path=tmp_path / "missing.mp4", config={})
+        await i2v_animate(
+            image_path=image, prompt="x", output_path=tmp_path / "missing.mp4", config={}
+        )
 
     class NoTaskClient(SuccessfulClient):
         async def post(self, _url: str, **_kwargs: object) -> Response:
@@ -1636,7 +1872,9 @@ async def test_cinematic_router_canonical_adapter_and_local_lifecycle(
 
     monkeypatch.setattr(cinematic, "TaskRepository", Repo)
 
-    async def pipeline(*_args: object, **kwargs: object) -> tuple[Path, list[dict[str, object]], None]:
+    async def pipeline(
+        *_args: object, **kwargs: object
+    ) -> tuple[Path, list[dict[str, object]], None]:
         callback = kwargs["progress_cb"]
         callback(50, "render", 0)
         progress.append((50, "render", 0))
@@ -1722,6 +1960,7 @@ async def test_cinematic_router_canonical_adapter_and_local_lifecycle(
     monkeypatch.setattr(cinematic.ws, "broadcast_task_update", AsyncMock())
     await cinematic._run_animation("run-1", "故事内容", "16:9", [])
     assert cinematic.ws.broadcast_task_update.await_count >= 1
+
     async def broken_pipeline(*_args: object, **_kwargs: object) -> object:
         raise RuntimeError("render broke")
 
@@ -1802,9 +2041,7 @@ async def test_history_series_router_covers_queue_submission_and_animation_paths
     daily_tasks = BackgroundTasks()
     daily = await history.produce_daily(daily_tasks, request(), pool=None)
     assert daily["status"] == "pending" and daily_tasks.tasks[0].func is history._submit_cron
-    daily_production = await history.produce_daily(
-        BackgroundTasks(), request(), pool=object()
-    )
+    daily_production = await history.produce_daily(BackgroundTasks(), request(), pool=object())
     assert daily_production["task_id"] == "tongjian-run"
 
     monkeypatch.setattr(history, "produce_lesson", AsyncMock(return_value=("anim-old", {})))
@@ -1817,7 +2054,10 @@ async def test_history_series_router_covers_queue_submission_and_animation_paths
     animation = await history.animate_episode(
         history.ProduceRequest(lesson_order=2), animation_tasks, {"id": "u"}, None
     )
-    assert animation["status"] == "pending" and animation_tasks.tasks[0].func is history._run_animation_episode
+    assert (
+        animation["status"] == "pending"
+        and animation_tasks.tasks[0].func is history._run_animation_episode
+    )
 
     class HttpResponse:
         def json(self) -> dict[str, str]:
@@ -1847,6 +2087,7 @@ async def test_history_series_router_covers_queue_submission_and_animation_paths
 
         async def post(self, path: str, **kwargs: object) -> HttpResponse:
             if path == "/api/auth/login":
+
                 class NoTokenResponse:
                     def json(self) -> dict[str, str]:
                         return {}
@@ -1861,13 +2102,23 @@ async def test_history_series_router_covers_queue_submission_and_animation_paths
     final = tmp_path / "history.mp4"
     final.write_bytes(b"history")
 
-    async def animate_lesson(*_args: object, **_kwargs: object) -> tuple[Path, list[dict[str, int]]]:
+    async def animate_lesson(
+        *_args: object, **_kwargs: object
+    ) -> tuple[Path, list[dict[str, int]]]:
         return final, [{"shot": 1}]
 
     monkeypatch.setattr("hevi.history_series.series_animator.animate_lesson", animate_lesson)
     monkeypatch.setattr(history.ws, "broadcast_task_update", AsyncMock())
     await history.execute_animation_task(
-        {"id": str(uuid4()), "topic": "秦汉", "config_json": {"lesson_order": 2, "lesson_title": "秦汉", "raw_text": "教材（教材主述）"}},
+        {
+            "id": str(uuid4()),
+            "topic": "秦汉",
+            "config_json": {
+                "lesson_order": 2,
+                "lesson_title": "秦汉",
+                "raw_text": "教材（教材主述）",
+            },
+        },
         object(),
     )
 
@@ -2076,7 +2327,9 @@ async def test_tongjian_durable_context_and_provider_helper_contracts(
     assert llm("L2") == "llm:qwen_cloud"
     assert tts("L3") == ("audio", "tts-model")
     assert params("L1") == {"n": 2}
-    gate_done("L1", SimpleNamespace(passed=False, errors=["weak"], model_dump=lambda: {"passed": False}))
+    gate_done(
+        "L1", SimpleNamespace(passed=False, errors=["weak"], model_dump=lambda: {"passed": False})
+    )
     assert tongjian._context(run_id)["layers"]["L1"]["degraded"] is True
     gate_done("L2", SimpleNamespace(passed=True, errors=[], model_dump=lambda: {"passed": True}))
     assert tongjian._context(run_id)["layers"]["L2"]["status"] == "PASSED"
@@ -2205,6 +2458,7 @@ async def test_tasks_router_creation_repair_preparation_and_checkpoint_paths(
     assert created["task_id"] == str(task_id)
     assert service.created[0]["subject_id"] == "subject-1"
     with pytest.raises(HTTPException) as credits:
+
         async def no_credits(**_kwargs: object) -> object:
             raise tasks_router.InsufficientCredits(credits_needed=3, credits_available=1)
 
@@ -2220,10 +2474,13 @@ async def test_tasks_router_creation_repair_preparation_and_checkpoint_paths(
 
     billing = type("Billing", (), {"estimate_credits": AsyncMock(return_value=4)})()
     estimate = await tasks_router.estimate_task_credits(
-        tasks_router.EstimateRequest(duration_archetype="1-5min"), billing  # type: ignore[arg-type]
+        tasks_router.EstimateRequest(duration_archetype="1-5min"),
+        billing,  # type: ignore[arg-type]
     )
     assert estimate == {"credits": 4, "credits_needed": 4}
-    assert await tasks_router.list_tasks(repo, user, ["failed"]) == [tasks_router._serialize_task(task)]
+    assert await tasks_router.list_tasks(repo, user, ["failed"]) == [
+        tasks_router._serialize_task(task)
+    ]
     assert (await tasks_router.get_task_details(task_id, user, repo))["task_id"] == str(task_id)
     with pytest.raises(HTTPException, match="Task not found"):
         bad = {"id": "other", "user_id": "other", "status": "failed"}
@@ -2236,7 +2493,9 @@ async def test_tasks_router_creation_repair_preparation_and_checkpoint_paths(
     assert resumed["status"] == "failed" and resume_tasks.tasks
     completed = {**task, "status": "completed"}
     repo.get_task = AsyncMock(return_value=completed)  # type: ignore[method-assign]
-    assert (await tasks_router.resume_task(task_id, user, service, BackgroundTasks()))["status"] == "completed"
+    assert (await tasks_router.resume_task(task_id, user, service, BackgroundTasks()))[
+        "status"
+    ] == "completed"
 
     repo.get_task = AsyncMock(return_value={**task, "status": "completed"})  # type: ignore[method-assign]
     regen = await tasks_router.regenerate_task_shots(
@@ -2297,7 +2556,23 @@ async def test_tasks_router_creation_repair_preparation_and_checkpoint_paths(
     fallback = await tasks_router.get_task_checkpoint(
         task_id,
         user,
-        type("CheckpointRepo", (), {"get_task": AsyncMock(return_value={"task_id": str(task_id), "status": "failed", "config_json": {"stage": "render"}, "completed_shots": 1, "total_shots": 2, "progress_pct": 20}), "latest_checkpoint": AsyncMock(return_value=None)})(),  # type: ignore[arg-type]
+        type(
+            "CheckpointRepo",
+            (),
+            {
+                "get_task": AsyncMock(
+                    return_value={
+                        "task_id": str(task_id),
+                        "status": "failed",
+                        "config_json": {"stage": "render"},
+                        "completed_shots": 1,
+                        "total_shots": 2,
+                        "progress_pct": 20,
+                    }
+                ),
+                "latest_checkpoint": AsyncMock(return_value=None),
+            },
+        )(),  # type: ignore[arg-type]
     )
     assert fallback["has_checkpoint"] is True and fallback["resumable"] is True
 
@@ -2318,7 +2593,13 @@ async def test_tasks_router_media_delivery_and_stream_authorization_paths(
     video.write_bytes(b"video")
     cover = video.with_suffix(".cover.jpg")
     cover.write_bytes(b"cover")
-    task = {"id": task_id, "user_id": "u", "status": "completed", "result_video_path": str(video), "config_json": {}}
+    task = {
+        "id": task_id,
+        "user_id": "u",
+        "status": "completed",
+        "result_video_path": str(video),
+        "config_json": {},
+    }
 
     class Repo:
         pool = object()
@@ -2399,7 +2680,9 @@ async def test_tasks_router_media_delivery_and_stream_authorization_paths(
     fallback = await tasks_router.get_task_video_url(task_id, repo, "token")
     assert fallback["delivery"] == "authenticated_api_stream"
 
-    monkeypatch.setattr(tasks_router, "get_task_progress_stream", lambda *_args: iter([b"data: ok\n\n"]))
+    monkeypatch.setattr(
+        tasks_router, "get_task_progress_stream", lambda *_args: iter([b"data: ok\n\n"])
+    )
     stream = await tasks_router.stream_task_progress(task_id, repo, "token")
     assert stream.media_type == "text/event-stream"
     with pytest.raises(HTTPException, match="Missing token"):
@@ -2428,7 +2711,14 @@ def test_director_pipeline_state_machine_and_gate_report_contracts() -> None:
     with pytest.raises(HTTPException, match="还没锁定"):
         director._require_stage_ready(work, "screenplay")
     work["locked_through"] = 4
-    work.update({"concept": {"x": 1}, "screenplay": {"x": 1}, "design_list": {"x": 1}, "shot_list": {"x": 1}})
+    work.update(
+        {
+            "concept": {"x": 1},
+            "screenplay": {"x": 1},
+            "design_list": {"x": 1},
+            "shot_list": {"x": 1},
+        }
+    )
     work["constraint_graph"] = {"constraints": []}
     director._rollback_downstream(work, "design_list")
     assert work["design_list"] is None and work["shot_list"] is None
@@ -2476,7 +2766,9 @@ def test_director_pipeline_state_machine_and_gate_report_contracts() -> None:
     blocked = director._build_director_gate(
         story=SimpleNamespace(characters=[], events=[]),
         season_plan=SimpleNamespace(episodes=[], target_episodes=2),
-        plan_gate=SimpleNamespace(passed=False, coverage=0.2, errors=["coverage"], warnings=["warning"]),
+        plan_gate=SimpleNamespace(
+            passed=False, coverage=0.2, errors=["coverage"], warnings=["warning"]
+        ),
         screenplay=SimpleNamespace(scenes=[bad_scene, bad_scene]),
         design_list=SimpleNamespace(characters=[], scenes=[]),
         estimated_cost_usd=20,
@@ -2700,7 +2992,17 @@ async def test_libtv_agent_boundary_extracts_and_downloads_results(
     assert libtv._base() == "https://agent.example"
     assert libtv._headers()["Authorization"] == "Bearer secret"
     messages = [
-        {"role": "tool", "content": json.dumps({"task_result": {"images": [{"previewPath": "https://libtv-res.liblib.art/a.png"}], "videos": [{"url": "https://libtv-res.liblib.art/a.mp4"}]}})},
+        {
+            "role": "tool",
+            "content": json.dumps(
+                {
+                    "task_result": {
+                        "images": [{"previewPath": "https://libtv-res.liblib.art/a.png"}],
+                        "videos": [{"url": "https://libtv-res.liblib.art/a.mp4"}],
+                    }
+                }
+            ),
+        },
         {"role": "assistant", "content": "see https://libtv-res.liblib.art/a.mp4"},
         {"role": "user", "content": "ignored"},
     ]
@@ -2779,6 +3081,7 @@ async def test_wan_local_generation_builds_t2v_and_vace_subprocess_contracts(
 
     def acquire(_vram: int) -> Lock:
         return Lock()
+
     monkeypatch.setattr(wan.scheduler, "acquire", acquire)
     runner = AsyncMock(side_effect=lambda **kwargs: Path(kwargs["output_path"]))
     real_run_wgp = wan._run_wgp
@@ -2831,7 +3134,12 @@ async def test_wan_local_generation_builds_t2v_and_vace_subprocess_contracts(
     )
     assert result.exists()
     result_vace = await wan._run_wgp(
-        prompt="story", output_path=tmp_path / "direct-vace.mp4", size=(8, 8), frame_num=3, seed=2, reference_image=reference
+        prompt="story",
+        output_path=tmp_path / "direct-vace.mp4",
+        size=(8, 8),
+        frame_num=3,
+        seed=2,
+        reference_image=reference,
     )
     assert result_vace.exists()
 
@@ -2877,7 +3185,9 @@ async def test_voicepro_translate_providers_and_pipeline_dispatch_contracts(
     deepl.Translator = Translator  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "deepl", deepl)
     deepl_result = await translate_deepl("hello", api_key="key")
-    assert deepl_result.translated_text == "你好" and deepl_result.provider is TranslateProvider.DEEPL
+    assert (
+        deepl_result.translated_text == "你好" and deepl_result.provider is TranslateProvider.DEEPL
+    )
 
     class GoogleTranslator:
         def __init__(self, **_kwargs: object) -> None:
@@ -2916,8 +3226,12 @@ async def test_voicepro_translate_providers_and_pipeline_dispatch_contracts(
     config = make_translate_config(TranslateProvider.AZURE_TRANSLATOR)
     with pytest.raises(RuntimeError, match="AZURE_TRANSLATOR_KEY"):
         await translate_text("text", config)
-    assert (await translate_text("text", make_translate_config(TranslateProvider.DEEPL))).provider is TranslateProvider.DEEPL
-    assert (await translate_text("text", make_translate_config(TranslateProvider.DEEP_TRANSLATOR))).provider is TranslateProvider.DEEP_TRANSLATOR
+    assert (
+        await translate_text("text", make_translate_config(TranslateProvider.DEEPL))
+    ).provider is TranslateProvider.DEEPL
+    assert (
+        await translate_text("text", make_translate_config(TranslateProvider.DEEP_TRANSLATOR))
+    ).provider is TranslateProvider.DEEP_TRANSLATOR
     with pytest.raises(ValueError, match="不支持"):
         await translate_text("text", types.SimpleNamespace(provider="bad"))  # type: ignore[arg-type]
 
@@ -3168,11 +3482,17 @@ async def test_runway_and_json2video_provider_boundaries_cover_submit_poll_downl
     assert video_result.exists()
     with pytest.raises(runway.RunwayError, match="at least"):
         await runway.runway_image_to_video(
-            prompt="move", reference_images=[], output_path=tmp_path / "no.mp4", config={"RUNWAY_API_KEY": "key"}
+            prompt="move",
+            reference_images=[],
+            output_path=tmp_path / "no.mp4",
+            config={"RUNWAY_API_KEY": "key"},
         )
     with pytest.raises(runway.RunwayError, match="1-3"):
         await runway.runway_text_to_image(
-            prompt="x", output_path=tmp_path / "no.png", config={"RUNWAY_API_KEY": "key"}, reference_images=["a", "b", "c", "d"]
+            prompt="x",
+            output_path=tmp_path / "no.png",
+            config={"RUNWAY_API_KEY": "key"},
+            reference_images=["a", "b", "c", "d"],
         )
     monkeypatch.setenv("RUNWAY_API_KEY", "")
     with pytest.raises(runway.RunwayError, match="not configured"):
@@ -3271,7 +3591,9 @@ async def test_talking_face_fallback_subprocess_and_error_contracts(
 
     class ServerErrorClient(ErrorClient):
         async def post(self, _path: str, **_kwargs: object) -> object:
-            return types.SimpleNamespace(status_code=500, content=b"", text="server error", json=dict)
+            return types.SimpleNamespace(
+                status_code=500, content=b"", text="server error", json=dict
+            )
 
     monkeypatch.setattr(httpx, "AsyncClient", ServerErrorClient)
     with pytest.raises(talking_face.TalkingFaceUnavailable, match="HTTP 500"):
@@ -3323,8 +3645,15 @@ async def test_talking_face_fallback_subprocess_and_error_contracts(
         audio_path=audio, output_path=tmp_path / "placeholder.mp4"
     )
     assert placeholder.exists() and len(calls) == 2
-    assert talking_face._detail(types.SimpleNamespace(json=lambda: {"detail": "bad"}, text="x", status_code=500)) == "bad"
-    assert talking_face._detail(types.SimpleNamespace(json=dict, text="raw", status_code=500)) == "raw"
+    assert (
+        talking_face._detail(
+            types.SimpleNamespace(json=lambda: {"detail": "bad"}, text="x", status_code=500)
+        )
+        == "bad"
+    )
+    assert (
+        talking_face._detail(types.SimpleNamespace(json=dict, text="raw", status_code=500)) == "raw"
+    )
 
     monkeypatch.setattr(talking_face, "generate_talking_face", AsyncMock(return_value=image))
     portrait = await talking_face.generate_continuous_avatar_track(
@@ -3344,7 +3673,9 @@ async def test_studio_ops_dispatches_wrappers_and_preserves_failure_semantics(
     import hevi.studio.ops as ops
 
     assert (await ops.run_op("missing-op", {}))["status"] == "failed"
-    monkeypatch.setitem(ops.OPS, "boom", lambda _payload: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setitem(
+        ops.OPS, "boom", lambda _payload: (_ for _ in ()).throw(RuntimeError("boom"))
+    )
     assert (await ops.run_op("boom", {}))["reason"] == "boom"
     monkeypatch.setattr(
         "hevi.ingest.preflight.check_env",
@@ -3359,7 +3690,10 @@ async def test_studio_ops_dispatches_wrappers_and_preserves_failure_semantics(
     remote = await ops.ingest_fetch({"source": "https://example/video", "work_dir": str(tmp_path)})
     assert remote["video_path"] == str(local)
     assert ops.research_context({"topic": "history"})["questions"]
-    assert ops.split_history({"lines": ["旁白", {"type": "dialogue", "text": "你好"}]})["status"] == "ok"
+    assert (
+        ops.split_history({"lines": ["旁白", {"type": "dialogue", "text": "你好"}]})["status"]
+        == "ok"
+    )
 
     async def mix(_value: object) -> SimpleNamespace:
         return SimpleNamespace(to_dict=lambda: {"commentary_count": 1})
@@ -3368,18 +3702,32 @@ async def test_studio_ops_dispatches_wrappers_and_preserves_failure_semantics(
     assert (await ops.tongjian_mix({"script": []}))["mix"]["commentary_count"] == 1
     preview = ops.preview_budget({"cues": [{"text": "a"}, {"text": "b"}]})
     assert preview["count"] == 2
-    monkeypatch.setattr("hevi.audio.prosody.analyze_prosody", lambda _text: (_ for _ in ()).throw(RuntimeError("no prosody")))
+    monkeypatch.setattr(
+        "hevi.audio.prosody.analyze_prosody",
+        lambda _text: (_ for _ in ()).throw(RuntimeError("no prosody")),
+    )
     assert ops.audio_prosody({"text": "a，b。"})["prosody"]["pauses"] == 2
     audio = tmp_path / "audio.wav"
     audio.write_bytes(b"audio")
     concat = tmp_path / "concat.wav"
-    monkeypatch.setattr("hevi.explainer.echo_avatar.concat_audio_files", lambda _paths, dest: dest.write_bytes(b"joined"))
-    assert ops.audio_concat({"paths": [str(audio)], "output_path": str(concat)})["master"] == str(concat)
+    monkeypatch.setattr(
+        "hevi.explainer.echo_avatar.concat_audio_files",
+        lambda _paths, dest: dest.write_bytes(b"joined"),
+    )
+    assert ops.audio_concat({"paths": [str(audio)], "output_path": str(concat)})["master"] == str(
+        concat
+    )
     assert ops.audio_concat({"paths": []})["status"] == "failed"
-    monkeypatch.setattr("hevi.production.delivery_gate.probe_video", lambda _path: SimpleNamespace(duration_s=2, has_audio=True, has_video=True))
+    monkeypatch.setattr(
+        "hevi.production.delivery_gate.probe_video",
+        lambda _path: SimpleNamespace(duration_s=2, has_audio=True, has_video=True),
+    )
     assert ops.audio_probe({"path": str(local)})["probe"]["has_video"] is True
     assert ops.aspect_fit({"target": "16:9", "candidate": "9:16"})["status"] == "ok"
-    assert ops.pick_best({"query": "harbor", "items": [{"id": "m1", "title": "harbor"}]})["best"]["id"] == "m1"
+    assert (
+        ops.pick_best({"query": "harbor", "items": [{"id": "m1", "title": "harbor"}]})["best"]["id"]
+        == "m1"
+    )
 
     async def invoke(_name: str, _payload: dict[str, object]) -> SimpleNamespace:
         return SimpleNamespace(status="queued", reason="", payload={"accepted": True})
@@ -3390,14 +3738,24 @@ async def test_studio_ops_dispatches_wrappers_and_preserves_failure_semantics(
         assert (await publisher({"topic": "history"}))["accepted"] is True
     assert ops.qc_production({"shots": []})["status"] == "ok"
     assert ops.qc_layout({"boxes": [1]})["boxes"] == 1
-    assert ops.clip_factory({"edit_plan": {"cuts": [{"action": "keep"}, {"action": "drop"}]}})["count"] == 1
-    assert ops.dub_translate({"lines": [{"text": "x"}], "lang": "en"})["lines"][0]["translated"] is False
+    assert (
+        ops.clip_factory({"edit_plan": {"cuts": [{"action": "keep"}, {"action": "drop"}]}})["count"]
+        == 1
+    )
+    assert (
+        ops.dub_translate({"lines": [{"text": "x"}], "lang": "en"})["lines"][0]["translated"]
+        is False
+    )
     assert ops.recipe_nodes({"line_id": "explainer"})["line_id"] == "explainer"
 
     fake_timeline = SimpleNamespace(to_dict=lambda: {"timeline_id": "tl"})
-    monkeypatch.setattr("hevi.studio.timeline.timeline_from_edit_plan", lambda *_args, **_kwargs: fake_timeline)
+    monkeypatch.setattr(
+        "hevi.studio.timeline.timeline_from_edit_plan", lambda *_args, **_kwargs: fake_timeline
+    )
     monkeypatch.setattr("hevi.studio.timeline.patch_clip", lambda *_args, **_kwargs: fake_timeline)
-    monkeypatch.setattr("hevi.studio.timeline.export_timeline", lambda *_args, **_kwargs: {"status": "ok"})
+    monkeypatch.setattr(
+        "hevi.studio.timeline.export_timeline", lambda *_args, **_kwargs: {"status": "ok"}
+    )
     monkeypatch.setattr("hevi.studio.timeline.split_at", lambda *_args, **_kwargs: fake_timeline)
     monkeypatch.setattr("hevi.studio.timeline.ripple", lambda *_args, **_kwargs: fake_timeline)
     monkeypatch.setattr("hevi.studio.timeline.set_bgm", lambda *_args, **_kwargs: fake_timeline)
@@ -3494,9 +3852,14 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     Client.response = Response({})
     with pytest.raises(json2video.Json2VideoError, match="project id"):
         await json2video.json2video_scene_generate(
-            prompt="x", output_path=tmp_path / "bad.png", config={"JSON2VIDEO_API_KEY": "key"}, poll_interval_s=0, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "bad.png",
+            config={"JSON2VIDEO_API_KEY": "key"},
+            poll_interval_s=0,
+            timeout_s=1,
         )
     with pytest.raises(json2video.Json2VideoError, match="失败"):
+
         class ErrorJsonClient(Client):
             async def post(self, _url: str, **_kwargs: object) -> Response:
                 return Response({"project": "p"})
@@ -3506,8 +3869,13 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
 
         monkeypatch.setattr(httpx, "AsyncClient", ErrorJsonClient)
         await json2video.json2video_scene_generate(
-            prompt="x", output_path=tmp_path / "bad.png", config={"JSON2VIDEO_API_KEY": "key"}, poll_interval_s=0, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "bad.png",
+            config={"JSON2VIDEO_API_KEY": "key"},
+            poll_interval_s=0,
+            timeout_s=1,
         )
+
     class DoneWithoutUrl(Client):
         async def post(self, _url: str, **_kwargs: object) -> Response:
             return Response({"project": "p"})
@@ -3518,10 +3886,15 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     monkeypatch.setattr(httpx, "AsyncClient", DoneWithoutUrl)
     with pytest.raises(json2video.Json2VideoError, match="无产物 URL"):
         await json2video.json2video_scene_generate(
-            prompt="x", output_path=tmp_path / "bad.png", config={"JSON2VIDEO_API_KEY": "key"}, poll_interval_s=0, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "bad.png",
+            config={"JSON2VIDEO_API_KEY": "key"},
+            poll_interval_s=0,
+            timeout_s=1,
         )
 
     monkeypatch.setattr("hevi.video.runway_service.asyncio.sleep", no_sleep)
+
     class FailedRunway(Client):
         async def post(self, _url: str, **_kwargs: object) -> Response:
             return Response({"id": "job"})
@@ -3532,7 +3905,11 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     monkeypatch.setattr(httpx, "AsyncClient", FailedRunway)
     with pytest.raises(runway.RunwayError, match="失败"):
         await runway.runway_text_to_image(
-            prompt="x", output_path=tmp_path / "bad.png", config={"RUNWAY_API_KEY": "key"}, poll_interval_s=0, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "bad.png",
+            config={"RUNWAY_API_KEY": "key"},
+            poll_interval_s=0,
+            timeout_s=1,
         )
 
     class NoRunwayId(Client):
@@ -3542,7 +3919,11 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     monkeypatch.setattr(httpx, "AsyncClient", NoRunwayId)
     with pytest.raises(runway.RunwayError, match="缺少 id"):
         await runway.runway_text_to_image(
-            prompt="x", output_path=tmp_path / "bad.png", config={"RUNWAY_API_KEY": "key"}, poll_interval_s=0, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "bad.png",
+            config={"RUNWAY_API_KEY": "key"},
+            poll_interval_s=0,
+            timeout_s=1,
         )
 
     class PendingRunway(Client):
@@ -3555,7 +3936,11 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     monkeypatch.setattr(httpx, "AsyncClient", PendingRunway)
     with pytest.raises(runway.RunwayError, match="未完成"):
         await runway.runway_text_to_image(
-            prompt="x", output_path=tmp_path / "pending.png", config={"RUNWAY_API_KEY": "key"}, poll_interval_s=1, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "pending.png",
+            config={"RUNWAY_API_KEY": "key"},
+            poll_interval_s=1,
+            timeout_s=1,
         )
 
     class NoOutputRunway(Client):
@@ -3568,7 +3953,11 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     monkeypatch.setattr(httpx, "AsyncClient", NoOutputRunway)
     with pytest.raises(runway.RunwayError, match="无产物"):
         await runway.runway_text_to_image(
-            prompt="x", output_path=tmp_path / "empty.png", config={"RUNWAY_API_KEY": "key"}, poll_interval_s=0, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "empty.png",
+            config={"RUNWAY_API_KEY": "key"},
+            poll_interval_s=0,
+            timeout_s=1,
         )
 
     frame = tmp_path / "frame.png"
@@ -3599,7 +3988,11 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     monkeypatch.setattr(httpx, "AsyncClient", HttpErrorJsonClient)
     with pytest.raises(json2video.Json2VideoError, match="任务提交失败"):
         await json2video.json2video_scene_generate(
-            prompt="x", output_path=tmp_path / "bad.png", config={"JSON2VIDEO_API_KEY": "key"}, poll_interval_s=0, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "bad.png",
+            config={"JSON2VIDEO_API_KEY": "key"},
+            poll_interval_s=0,
+            timeout_s=1,
         )
 
     class PollErrorJsonClient(Client):
@@ -3616,7 +4009,11 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     monkeypatch.setattr(httpx, "AsyncClient", PollErrorJsonClient)
     with pytest.raises(json2video.Json2VideoError, match="任务查询失败"):
         await json2video.json2video_scene_generate(
-            prompt="x", output_path=tmp_path / "bad.png", config={"JSON2VIDEO_API_KEY": "key"}, poll_interval_s=0, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "bad.png",
+            config={"JSON2VIDEO_API_KEY": "key"},
+            poll_interval_s=0,
+            timeout_s=1,
         )
 
     class PendingJsonClient(Client):
@@ -3629,5 +4026,9 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
     monkeypatch.setattr(httpx, "AsyncClient", PendingJsonClient)
     with pytest.raises(json2video.Json2VideoError, match="未完成"):
         await json2video.json2video_scene_generate(
-            prompt="x", output_path=tmp_path / "pending.png", config={"JSON2VIDEO_API_KEY": "key"}, poll_interval_s=1, timeout_s=1
+            prompt="x",
+            output_path=tmp_path / "pending.png",
+            config={"JSON2VIDEO_API_KEY": "key"},
+            poll_interval_s=1,
+            timeout_s=1,
         )

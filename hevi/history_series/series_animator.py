@@ -24,9 +24,12 @@ def _get_pipe() -> Any:
     if _SD_PIPE is None:
         import torch
         from diffusers import StableDiffusionPipeline
+
         _SD_PIPE = StableDiffusionPipeline.from_pretrained(  # type: ignore[no-untyped-call]
-            "runwayml/stable-diffusion-v1-5", torch_dtype=torch.float16,
-            use_safetensors=True, cache_dir="/data/models/huggingface",
+            "runwayml/stable-diffusion-v1-5",
+            torch_dtype=torch.float16,
+            use_safetensors=True,
+            cache_dir="/data/models/huggingface",
         ).to("cuda")
     return _SD_PIPE
 
@@ -36,7 +39,10 @@ def _gen_keyframe(prompt: str, out: Path, *, steps: int = 18) -> Path:
     if out.exists() and out.stat().st_size > 1000:
         return out
     img = _get_pipe()(
-        prompt, height=512, width=768, num_inference_steps=steps,
+        prompt,
+        height=512,
+        width=768,
+        num_inference_steps=steps,
         negative_prompt="blurry, low quality, text, watermark",
     ).images[0]
     img.save(str(out))
@@ -63,16 +69,35 @@ def _ken_burns(image: Path, out: Path, duration: float, mov: str = "push_in") ->
     else:
         vf = "scale=8000:-1,zoompan=z=1.05:x='x+1':y='y+1':d=1:s=1280x720:fps=24"
     subprocess.run(
-        ["ffmpeg", "-y", "-loop", "1", "-i", str(image), "-vf", vf,
-         "-t", f"{dur_s:.2f}", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-         "-an", str(out)],
-        capture_output=True, check=True,
+        [
+            "ffmpeg",
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            str(image),
+            "-vf",
+            vf,
+            "-t",
+            f"{dur_s:.2f}",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-an",
+            str(out),
+        ],
+        capture_output=True,
+        check=True,
     )
 
 
 def _get_duration(wav: Path) -> float:
-    p = subprocess.run(["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
-                        "-of", "csv=p=0", str(wav)], capture_output=True, text=True)
+    p = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(wav)],
+        capture_output=True,
+        text=True,
+    )
     return float(p.stdout.strip() or 4.0)
 
 
@@ -85,6 +110,7 @@ async def _tts(text: str, out: Path) -> float:
     # 1. gen-engine Voicebox（生产首选，支持高质量中文音色/指令）
     try:
         from hevi.explainer.voicebox_client import synthesize as voicebox_synthesize
+
         await voicebox_synthesize(text, out)
         if out.exists() and out.stat().st_size > 100:
             return _get_duration(out)
@@ -96,6 +122,7 @@ async def _tts(text: str, out: Path) -> float:
         from types import SimpleNamespace
 
         from hevi.audio.cosyvoice_service import cosyvoice_synthesize
+
         await cosyvoice_synthesize(
             script=[SimpleNamespace(text=text, speaker_id="narrator")],
             output_path=out,
@@ -109,6 +136,7 @@ async def _tts(text: str, out: Path) -> float:
     # 3. 最后兜底 edge-tts（不再作为默认路径）
     try:
         import edge_tts
+
         await edge_tts.Communicate(text, VOICE).save(str(out))
         if out.exists() and out.stat().st_size > 100:
             return _get_duration(out)
@@ -118,7 +146,10 @@ async def _tts(text: str, out: Path) -> float:
 
 
 async def animate_lesson(
-    textbook_text: str, *, lesson_title: str = "", llm: Any = None,
+    textbook_text: str,
+    *,
+    lesson_title: str = "",
+    llm: Any = None,
     output_dir: Path | None = None,
 ) -> tuple[Path, list[GoldenBeat]]:
     """一课动画出片: LLM拆解 → SD关键帧 → Ken Burns → TTS → 拼接。"""
@@ -128,6 +159,7 @@ async def animate_lesson(
     # 1. 黄金公式拆解
     if llm is None:
         from hevi.explainer.research import _default_llm
+
         llm = _default_llm()
     from hevi.cinematic.golden_formula import decompose_story_to_golden_beats
 
@@ -138,19 +170,31 @@ async def animate_lesson(
             if len(s) > 10:
                 beats.append(
                     GoldenBeat(
-                        index=i, shot_size="medium", movement="static",
-                        subject="", action=s[:60], emotion_expression="",
-                        atmosphere="", lighting="", duration_s=4.0,
+                        index=i,
+                        shot_size="medium",
+                        movement="static",
+                        subject="",
+                        action=s[:60],
+                        emotion_expression="",
+                        atmosphere="",
+                        lighting="",
+                        duration_s=4.0,
                         narration=s[:120],
                     )
                 )
     if not beats:
         beats = [
             GoldenBeat(
-                index=0, shot_size="wide", movement="static",
-                subject=lesson_title, action=textbook_text[:80],
-                emotion_expression="", atmosphere="", lighting="",
-                duration_s=5.0, narration=textbook_text[:120],
+                index=0,
+                shot_size="wide",
+                movement="static",
+                subject=lesson_title,
+                action=textbook_text[:80],
+                emotion_expression="",
+                atmosphere="",
+                lighting="",
+                duration_s=5.0,
+                narration=textbook_text[:120],
             )
         ]
 
@@ -163,9 +207,9 @@ async def animate_lesson(
         dur = await _tts(narration, nar_wav)
 
         # SD 关键帧 prompt: 黄金公式字段拼接
-        sd_prompt = f"{beat.get('subject','')} {beat.get('action','')}, "
-        sd_prompt += f"{beat.get('emotion_expression','')} {beat.get('atmosphere','')}, "
-        sd_prompt += f"{beat.get('lighting','')}, ancient Chinese history, documentary, 4k"
+        sd_prompt = f"{beat.get('subject', '')} {beat.get('action', '')}, "
+        sd_prompt += f"{beat.get('emotion_expression', '')} {beat.get('atmosphere', '')}, "
+        sd_prompt += f"{beat.get('lighting', '')}, ancient Chinese history, documentary, 4k"
         keyframe = output_dir / f"kf_{i:02d}.png"
         _gen_keyframe(sd_prompt, keyframe)
 
@@ -192,14 +236,44 @@ def _concat_videos(videos: list[Path], output: Path) -> None:
     for i, v in enumerate(videos):
         nv = output.parent / f"norm_{i:02d}.mp4"
         if not nv.exists():
-            subprocess.run(["ffmpeg", "-y", "-i", str(v), "-vf", "scale=1280:720,fps=24",
-                           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(nv)],
-                           capture_output=True, check=True)
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(v),
+                    "-vf",
+                    "scale=1280:720,fps=24",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-an",
+                    str(nv),
+                ],
+                capture_output=True,
+                check=True,
+            )
         normed.append(nv)
     vlist = output.parent / "vlist.txt"
     vlist.write_text("".join(f"file '{p.resolve()}'\n" for p in normed))
-    subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(vlist),
-                    "-c:v", "libx264", str(output)], capture_output=True, check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(vlist),
+            "-c:v",
+            "libx264",
+            str(output),
+        ],
+        capture_output=True,
+        check=True,
+    )
 
 
 def _concat_audio(output_dir: Path, n: int, output: Path) -> None:
@@ -209,16 +283,62 @@ def _concat_audio(output_dir: Path, n: int, output: Path) -> None:
         if nar.exists() and nar.stat().st_size > 100:
             lines.append(f"file '{nar.resolve()}'\n")
     if not lines:
-        subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
-                        "-t", "5", str(output)], capture_output=True)
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "anullsrc=r=44100:cl=mono",
+                "-t",
+                "5",
+                str(output),
+            ],
+            capture_output=True,
+        )
         return
     alist = output_dir / "alist.txt"
     alist.write_text("".join(lines))
-    subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(alist),
-                    "-c:a", "aac", str(output)], capture_output=True, check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(alist),
+            "-c:a",
+            "aac",
+            str(output),
+        ],
+        capture_output=True,
+        check=True,
+    )
 
 
 def _mux(video: Path, audio: Path, output: Path) -> None:
-    subprocess.run(["ffmpeg", "-y", "-i", str(video), "-i", str(audio),
-                    "-c:v", "copy", "-c:a", "aac", "-map", "0:v:0", "-map", "1:a:0",
-                    "-shortest", str(output)], capture_output=True, check=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-i",
+            str(audio),
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+            "-shortest",
+            str(output),
+        ],
+        capture_output=True,
+        check=True,
+    )

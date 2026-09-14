@@ -633,6 +633,7 @@ class SceneStageSet(BaseModel):
 
     stages: list[SceneStage] = Field(default_factory=list)
 
+
 # ── 工业化导演流水线：解析审查门 ───────────────────────────────────────────
 
 

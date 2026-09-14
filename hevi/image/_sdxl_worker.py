@@ -74,9 +74,7 @@ def main() -> None:
         cache_dir=task.get("cache_dir") or None,
         torch_dtype=dtype,
     )
-    pipe_cls = (
-        StableDiffusionXLImg2ImgPipeline if init_image_path else StableDiffusionXLPipeline
-    )
+    pipe_cls = StableDiffusionXLImg2ImgPipeline if init_image_path else StableDiffusionXLPipeline
     pipe = pipe_cls.from_pretrained(  # type: ignore[no-untyped-call]
         task["model_id"],
         vae=vae,

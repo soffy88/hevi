@@ -165,9 +165,7 @@ def reconcile(*, write: bool) -> int:
             output.append(insert_before_index[index])
         status_match = STATUS_LINE.match(line)
         if status_match and index in status_by_index:
-            output.append(
-                f"{status_match.group('indent')}status: {status_by_index[index]}"
-            )
+            output.append(f"{status_match.group('indent')}status: {status_by_index[index]}")
         else:
             output.append(line)
     LEDGER.write_text("\n".join(output) + "\n", encoding="utf-8")

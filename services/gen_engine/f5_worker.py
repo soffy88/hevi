@@ -123,9 +123,7 @@ def _main(args_path: str) -> None:
 
     if seed is not None:
         torch.manual_seed(int(seed))
-    model = load_model(
-        DiT, model_cfg, str(ckpt_path), vocab_file=str(vocab_file), device=device
-    )
+    model = load_model(DiT, model_cfg, str(ckpt_path), vocab_file=str(vocab_file), device=device)
     vocoder = load_vocoder(
         vocoder_name="vocos", is_local=True, local_path=str(vocos_dir), device=device
     )

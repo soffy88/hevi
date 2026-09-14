@@ -224,9 +224,7 @@ def _continuity_findings(
             if fact.value.strip().casefold() == claim.value.strip().casefold():
                 continue
             seen.add(key)
-            refs = tuple(
-                ref for ref in (claim.entity_ref, fact.entity_ref) if ref is not None
-            )
+            refs = tuple(ref for ref in (claim.entity_ref, fact.entity_ref) if ref is not None)
             findings.append(
                 DimensionFinding(
                     dimension=dimension,
@@ -314,7 +312,8 @@ def _verify_timeline_continuity(context: AuditContext) -> list[DimensionFinding]
         except ValueError:
             continue
         if draft_order < canon_order and not any(
-            item.code == "TC_ORDER_VIOLATION" and item.location == claim.location for item in findings
+            item.code == "TC_ORDER_VIOLATION" and item.location == claim.location
+            for item in findings
         ):
             findings.append(
                 DimensionFinding(
@@ -328,9 +327,7 @@ def _verify_timeline_continuity(context: AuditContext) -> list[DimensionFinding]
                     recommendation="move the event after its canon prerequisite",
                     location=claim.location,
                     canon_refs=tuple(
-                        ref
-                        for ref in (claim.entity_ref, matches[0].entity_ref)
-                        if ref is not None
+                        ref for ref in (claim.entity_ref, matches[0].entity_ref) if ref is not None
                     ),
                 )
             )
@@ -397,9 +394,7 @@ def _verify_emotional_continuity(context: AuditContext) -> list[DimensionFinding
                 recommendation="add a transition beat or align the emotional state",
                 location=claim.location,
                 canon_refs=tuple(
-                    ref
-                    for ref in (claim.entity_ref, matches[0].entity_ref)
-                    if ref is not None
+                    ref for ref in (claim.entity_ref, matches[0].entity_ref) if ref is not None
                 ),
             )
         )
@@ -487,10 +482,7 @@ def _verify_payoff(context: AuditContext) -> list[DimensionFinding]:
 
 
 def _has_payoff(context: AuditContext, subject: str) -> bool:
-    return any(
-        claim.dimension == "PAYOFF" and claim.subject == subject
-        for claim in context.claims
-    )
+    return any(claim.dimension == "PAYOFF" and claim.subject == subject for claim in context.claims)
 
 
 def _verify_arc_alignment(context: AuditContext) -> list[DimensionFinding]:
@@ -505,10 +497,7 @@ def _verify_arc_alignment(context: AuditContext) -> list[DimensionFinding]:
     for scene in context.scenes:
         if not scene.objective.strip():
             continue
-        if not any(
-            token.casefold() in scene.objective.casefold()
-            for token in arc_goals.values()
-        ):
+        if not any(token.casefold() in scene.objective.casefold() for token in arc_goals.values()):
             findings.append(
                 DimensionFinding(
                     dimension="ARC_ALIGNMENT",
@@ -712,9 +701,10 @@ def _verify_prose_clarity(context: AuditContext) -> list[DimensionFinding]:
                     location=f"sentence:{index}",
                 )
             )
-        if re.search(r"\b(it|this|that|they)\b\s+(was|were|is|are)\b", sentence, re.IGNORECASE) and len(
-            _words(sentence)
-        ) <= 4:
+        if (
+            re.search(r"\b(it|this|that|they)\b\s+(was|were|is|are)\b", sentence, re.IGNORECASE)
+            and len(_words(sentence)) <= 4
+        ):
             findings.append(
                 DimensionFinding(
                     dimension="PROSE_CLARITY",

@@ -5,16 +5,7 @@ TTS 规划：Clip Generator / AI Shorts / YouTube Studio pipeline 规划
 
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
 from typing import Any
-
-from hevi.voicepro_tts.schemas import (
-    TTSConfig,
-    TTSProvider,
-    VoiceCloneMode,
-    make_tts_config,
-)
 
 
 def plan_clip_generator(
@@ -35,8 +26,16 @@ def plan_clip_generator(
         "with_voiceover": with_voiceover,
         "with_hook_text": with_hook_text,
         "stages": [
-            {"stage": "transcribe", "tool": "faster-whisper", "output": "transcript + word timestamps"},
-            {"stage": "detect_scenes", "tool": "PySceneDetect/TransNet v2", "output": "scene boundaries"},
+            {
+                "stage": "transcribe",
+                "tool": "faster-whisper",
+                "output": "transcript + word timestamps",
+            },
+            {
+                "stage": "detect_scenes",
+                "tool": "PySceneDetect/TransNet v2",
+                "output": "scene boundaries",
+            },
             {"stage": "viral_detect", "tool": "gemini", "output": "3-15 viral moments with scores"},
             {"stage": "build_windows", "tool": "clip_selection.py", "output": "transcript windows"},
             {"stage": "reframe", "tool": reframing, "output": f"9:16 clips in {reframing} mode"},
@@ -66,12 +65,20 @@ def plan_ai_short(
         "publish_to": publish_to or ["tiktok", "instagram", "youtube"],
         "stages": [
             {"stage": "analyze", "tool": "gemini", "description": "网页抓取 + Gemini 研究"},
-            {"stage": "script", "tool": "gemini", "description": "病毒式脚本 (hook→problem→solution→CTA)"},
+            {
+                "stage": "script",
+                "tool": "gemini",
+                "description": "病毒式脚本 (hook→problem→solution→CTA)",
+            },
             {"stage": "actor", "tool": "flux_2_pro", "description": "AI 演员生成"},
             {"stage": "voice", "tool": "elevenlabs", "description": "TTS 旁白"},
             {"stage": "video", "tool": "hailuo_2.3_fast", "description": "Talking head + lipsync"},
             {"stage": "broll", "tool": "flux_2_pro", "description": "Ken Burns B-roll images"},
-            {"stage": "composite", "tool": "ffmpeg", "description": "ASS subtitles + hook overlays"},
+            {
+                "stage": "composite",
+                "tool": "ffmpeg",
+                "description": "ASS subtitles + hook overlays",
+            },
             {"stage": "gallery", "tool": "s3", "description": "上传到 public S3"},
             {"stage": "publish", "tool": "upload_post", "description": "TikTok/Ins/YouTube"},
         ],
@@ -93,8 +100,16 @@ def plan_youtube_studio(
         "user_id": user_id,
         "stages": [
             {"stage": "titles", "tool": "gemini", "description": "10 个带 viral_score 的标题"},
-            {"stage": "thumbnail", "tool": "flux_2_pro + ffmpeg", "description": "AI 缩略图 + face overlay"},
-            {"stage": "description", "tool": "gemini", "description": "SEO 描述 + 章节时间戳 + hashtags"},
+            {
+                "stage": "thumbnail",
+                "tool": "flux_2_pro + ffmpeg",
+                "description": "AI 缩略图 + face overlay",
+            },
+            {
+                "stage": "description",
+                "tool": "gemini",
+                "description": "SEO 描述 + 章节时间戳 + hashtags",
+            },
             {"stage": "publish", "tool": "upload_post", "description": "一键发布到 YouTube"},
         ],
         "estimated_cost_usd": 0.0,

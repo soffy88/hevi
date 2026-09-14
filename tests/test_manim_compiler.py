@@ -36,9 +36,7 @@ def test_draft_picks_list_from_bullets() -> None:
 
 
 def test_compile_is_sandbox_clean() -> None:
-    source = compile_manim_source(
-        ManimSceneIR(recipe="equation", title="能量", tex="E = mc^2")
-    )
+    source = compile_manim_source(ManimSceneIR(recipe="equation", title="能量", tex="E = mc^2"))
     tree = validate_manim_source(source)
     assert tree is not None
     assert "from manim import *" in source

@@ -68,9 +68,7 @@ async def verify_audio(
         last = {"attempt": attempt, "transcript": transcript, "cer": cer}
         if cer <= max_cer:
             return {**last, "passed": True}
-    raise AsrVerificationError(
-        f"ASR 校验未通过: CER={last.get('cer', 1.0):.3f} > {max_cer:.3f}"
-    )
+    raise AsrVerificationError(f"ASR 校验未通过: CER={last.get('cer', 1.0):.3f} > {max_cer:.3f}")
 
 
 def asr_verification_enabled() -> bool:

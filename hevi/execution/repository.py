@@ -107,9 +107,7 @@ class ExecutionPlanRepository:
                 parent_plan_id,
                 created_by_attempt_id,
                 plan.change_reason,
-                datetime.fromisoformat(plan.created_at)
-                if plan.created_at
-                else datetime.utcnow(),
+                datetime.fromisoformat(plan.created_at) if plan.created_at else datetime.utcnow(),
             )
             if inserted is not None:
                 return _plan_from_row(inserted)

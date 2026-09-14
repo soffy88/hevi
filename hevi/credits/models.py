@@ -33,9 +33,7 @@ class CreditAccount(Base):
 class CreditTransaction(Base):
     __tablename__ = "credit_transactions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )
@@ -58,11 +56,10 @@ class BillingReservation(Base):
     4. REFUND: for already-consumed credits (after provider acceptance failure), REFUND tx
     5. EXPIRED: TTL expiry, auto-released by cron
     """
+
     __tablename__ = "billing_reservations"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )

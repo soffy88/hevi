@@ -53,7 +53,7 @@ def search_nasa_videos(query: str, *, limit: int = 2) -> list[dict[str, Any]]:
             continue
         try:
             assets = httpx.get(href, timeout=20.0, headers=_UA).json()
-        except (httpx.HTTPError, ValueError):
+        except httpx.HTTPError, ValueError:
             continue
         urls = [str(u) for u in assets] if isinstance(assets, list) else []
         url = _pick_smallest_mp4(urls, max_mb=25)
@@ -187,9 +187,7 @@ def _add_http_clip(
     local.parent.mkdir(parents=True, exist_ok=True)
     if not local.exists():
         try:
-            with httpx.stream(
-                "GET", url, timeout=60.0, follow_redirects=True, headers=_UA
-            ) as resp:
+            with httpx.stream("GET", url, timeout=60.0, follow_redirects=True, headers=_UA) as resp:
                 resp.raise_for_status()
                 size = 0
                 tmp = local.with_suffix(local.suffix + ".part")

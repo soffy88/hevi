@@ -48,6 +48,7 @@ _MAX_REFERENCE_BYTES = 50 * 1024 * 1024
 
 # ── Xia 会话制片助理 ─────────────────────────────────────────────
 
+
 class ChatRequest(BaseModel):
     project_id: str
     message: str
@@ -75,6 +76,7 @@ async def chat_state(
 
 
 # ── 候选提升双轨 ─────────────────────────────────────────────────
+
 
 class CandidateIn(BaseModel):
     candidate_id: str
@@ -144,10 +146,7 @@ async def promotion_state(
     pool = _promotion_pool(project_id)
     return {
         "candidates": [c.to_dict() for c in pool.candidates],
-        "locked": [
-            {"kind": a.kind, "name": a.name, "asset_id": a.asset_id}
-            for a in pool.locked
-        ],
+        "locked": [{"kind": a.kind, "name": a.name, "asset_id": a.asset_id} for a in pool.locked],
     }
 
 
@@ -161,6 +160,7 @@ def _promotion_pool(project_id: str) -> PromotionPool:
 
 
 # ── 修复计划 ─────────────────────────────────────────────────────
+
 
 class RepairPlanRequest(BaseModel):
     failures: list[dict[str, Any]]
@@ -182,6 +182,7 @@ async def repair_plan_endpoint(
 
 
 # ── 风格画像(确定性)─────────────────────────────────────────────
+
 
 @router.post("/style-analyze")
 async def style_analyze_endpoint(
@@ -228,6 +229,7 @@ def _vlm_adapter() -> Any:
 
 # ── 草图编辑 ─────────────────────────────────────────────────────
 
+
 class SketchOpIn(BaseModel):
     op: str
     params: dict[str, Any] = Field(default_factory=dict)
@@ -267,10 +269,7 @@ async def sketch_edit_endpoint(
             result = apply_sketch_edits(
                 src,
                 out,
-                [
-                    SketchEditOp(op=o.op, params=dict(o.params), note=o.note)
-                    for o in ops_parsed
-                ],
+                [SketchEditOp(op=o.op, params=dict(o.params), note=o.note) for o in ops_parsed],
             )
         except SketchEditorError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
@@ -278,6 +277,7 @@ async def sketch_edit_endpoint(
 
 
 # ── workflow 端点组(3O 内化 Round 3g: 让 workflow 运行时可用)──────────────
+
 
 class WorkflowRunRequest(BaseModel):
     """通用 workflow 请求:config/input 以 JSON 透传,由各 workflow 构建 dataclass。"""
@@ -303,9 +303,7 @@ async def run_workflow(
         out_dir = Path(td)
         result = await _dispatch_workflow(body.workflow, body.config, body.input_data, out_dir)
         if result.get("report_path") and Path(result["report_path"]).exists():
-            result["report"] = json.loads(
-                Path(result["report_path"]).read_text(encoding="utf-8")
-            )
+            result["report"] = json.loads(Path(result["report_path"]).read_text(encoding="utf-8"))
         return result
 
 

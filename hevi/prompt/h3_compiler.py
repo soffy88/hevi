@@ -103,7 +103,7 @@ def action_block(*, action_beats: list[str] | None = None, visual_prompt: str = 
     """【动作】优先动作弧(action_beats);为空回落 visual_prompt。"""
     if action_beats:
         return "【动作】" + "；".join(b for b in action_beats if b) + "。"
-    return f"【动作】{visual_prompt or '自然动态' }。"
+    return f"【动作】{visual_prompt or '自然动态'}。"
 
 
 def dialogue_block(*, name: str, s_no: int, text: str, quote_id: str = "") -> str:
@@ -169,9 +169,7 @@ def compile_h3_prompt(
         if s_no <= 0:
             logger.warning("h3_compiler: 角色 %r 不在 cast 里(缺 S 号),按 S0 处理", n)
         anchor = getattr(shot, "character_anchor", "") or ""
-        char_blocks.append(
-            character_block(name=n, s_no=s_no, anchor=anchor, shot_size=shot_size)
-        )
+        char_blocks.append(character_block(name=n, s_no=s_no, anchor=anchor, shot_size=shot_size))
     if not char_blocks:
         char_blocks.append(character_block(name="人物", s_no=1, shot_size=shot_size))
 
@@ -188,8 +186,7 @@ def compile_h3_prompt(
         first = lines[0]
         if len(lines) > _MAX_DIALOGUE_LINES:
             logger.warning(
-                "h3_compiler: 镜头 %r 有 %d 句对白,H3 一镜一句,只取第一句;"
-                "多句应在分镜阶段拆开",
+                "h3_compiler: 镜头 %r 有 %d 句对白,H3 一镜一句,只取第一句;多句应在分镜阶段拆开",
                 getattr(shot, "shot_id", getattr(shot, "index", "?")),
                 len(lines),
             )
@@ -214,7 +211,7 @@ def shot_duration_s(shot: Any) -> float:
         raw = shot.get("duration_s")
     try:
         return float(raw if raw is not None else 5.0)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 5.0
 
 

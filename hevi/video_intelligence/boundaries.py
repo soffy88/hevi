@@ -17,11 +17,21 @@ class ShotBoundaryDetector:
 
     def detect(self, path: str, probe: VideoProbe) -> list[ShotBoundaryEvidence]:
         command = [
-            "ffmpeg", "-hide_banner", "-i", path, "-vf",
-            f"select='gt(scene,{self.threshold})',showinfo", "-an", "-f", "null", "-",
+            "ffmpeg",
+            "-hide_banner",
+            "-i",
+            path,
+            "-vf",
+            f"select='gt(scene,{self.threshold})',showinfo",
+            "-an",
+            "-f",
+            "null",
+            "-",
         ]
         try:
-            completed = subprocess.run(command, capture_output=True, text=True, timeout=300, check=False)
+            completed = subprocess.run(
+                command, capture_output=True, text=True, timeout=300, check=False
+            )
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise RuntimeError(f"SHOT_DETECTION_FAILED:{exc}") from exc
         if completed.returncode != 0:
@@ -31,11 +41,13 @@ class ShotBoundaryDetector:
         for raw in re.findall(r"pts_time:([0-9.]+)", completed.stderr):
             timestamp = round(float(raw) * 1000)
             if timestamp - last >= self.minimum_shot_duration_ms and timestamp < probe.duration_ms:
-                points.append(ShotBoundaryEvidence(
-                    timestamp_ms=timestamp,
-                    method=self.version,
-                    source="AUTO_SCENE_DETECT",
-                ))
+                points.append(
+                    ShotBoundaryEvidence(
+                        timestamp_ms=timestamp,
+                        method=self.version,
+                        source="AUTO_SCENE_DETECT",
+                    )
+                )
                 last = timestamp
         return points
 

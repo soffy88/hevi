@@ -1,4 +1,5 @@
 """textbook_bridge —— 教材↔古籍交叉弧 + 双述组装 (P1)。"""
+
 from __future__ import annotations
 
 import json
@@ -11,9 +12,7 @@ logger = logging.getLogger(__name__)
 
 LESSON_TO_EVENT_CONTRACT: dict[str, str | None] = {
     "战国时期的社会变化": str(
-        Path(__file__).resolve().parent
-        / "contracts"
-        / "sample.sanjiafenjin.json"
+        Path(__file__).resolve().parent / "contracts" / "sample.sanjiafenjin.json"
     ),
 }
 

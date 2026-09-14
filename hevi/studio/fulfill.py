@@ -64,7 +64,9 @@ def _persist_hyperframes_evidence(
 ) -> None:
     manifest = result.get("artifact_manifest") or {}
     artifacts = manifest.get("artifacts") or []
-    primary = next((item for item in artifacts if item.get("primary")), artifacts[0] if artifacts else {})
+    primary = next(
+        (item for item in artifacts if item.get("primary")), artifacts[0] if artifacts else {}
+    )
     retry = result.get("retry_evidence") or {}
     operation_id = str(
         retry.get("operation_id")
@@ -233,9 +235,7 @@ async def _verified_video_manifest(
     for index, artifact in enumerate(verified.artifacts):
         if artifact.kind != "video":
             continue
-        report = await quality_report(
-            Path(artifact.path), require_audio=require_audio, n_samples=4
-        )
+        report = await quality_report(Path(artifact.path), require_audio=require_audio, n_samples=4)
         quality_reports.append(
             {
                 "index": index,
@@ -264,10 +264,14 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
     from hevi.explainer.contracts import ExplainerCue
 
     line_id = str(order.get("line_id") or "")
-    topic = str(_slot(order, "topic") or order.get("source_text") or order.get("manuscript") or "").strip()
+    topic = str(
+        _slot(order, "topic") or order.get("source_text") or order.get("manuscript") or ""
+    ).strip()
     texts = _texts_from_order(order)
     if not texts:
-        return _blocked("需要脚本或主题文本", target=str(order.get("target") or "explainer"), line_id=line_id)
+        return _blocked(
+            "需要脚本或主题文本", target=str(order.get("target") or "explainer"), line_id=line_id
+        )
 
     avatar_lines = {"avatar_spokesperson", "talking_head"}
     presenter_image = _slot(order, "image_path") or _slot(order, "presenter_image_path")
@@ -286,16 +290,17 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
         ExplainerCue(
             text=text,
             visual_type=visual_type,
-            time_estimate_s=float(
-                item.get("time_estimate_s") or item.get("duration_s") or 5.0
-            )
+            time_estimate_s=float(item.get("time_estimate_s") or item.get("duration_s") or 5.0)
             if isinstance(item, dict)
             else 5.0,
             visual_config={},
         )
-        for item, text in ((item, str(item.get("text") or item.get("line") or "").strip())
-                           if isinstance(item, dict) else (item, str(item).strip())
-                           for item in (order.get("script_lines") or texts))
+        for item, text in (
+            (item, str(item.get("text") or item.get("line") or "").strip())
+            if isinstance(item, dict)
+            else (item, str(item).strip())
+            for item in (order.get("script_lines") or texts)
+        )
         if text
     ]
     if not cues:
@@ -336,7 +341,11 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
 
     source = _slot(order, "media_path") or _slot(order, "video_path")
     if not source:
-        return _blocked("译制需要 media_path/video_path", target="localize_video", line_id=str(order.get("line_id") or ""))
+        return _blocked(
+            "译制需要 media_path/video_path",
+            target="localize_video",
+            line_id=str(order.get("line_id") or ""),
+        )
     data = {
         "source_video_path": str(source),
         "source_segments": _slot(order, "segments") or _slot(order, "transcript_segments"),
@@ -391,7 +400,11 @@ async def _render_clip_line(order: dict[str, Any], output_dir: Path) -> dict[str
 
     source = _slot(order, "media_path") or _slot(order, "video_path") or _slot(order, "source")
     if not source:
-        return _blocked("拆条需要 media_path/video_path/source", target="clip_video", line_id=str(order.get("line_id") or ""))
+        return _blocked(
+            "拆条需要 media_path/video_path/source",
+            target="clip_video",
+            line_id=str(order.get("line_id") or ""),
+        )
     result = await shorts_generation_workflow(
         {
             "target_clips": int(_slot(order, "max_clips", 5)),
@@ -448,8 +461,14 @@ async def _render_manim_line(order: dict[str, Any], output_dir: Path) -> dict[st
         }
     )
     if result.get("status") != "ok":
-        return _blocked(str(result.get("reason") or "Manim renderer unavailable"), target="character_animation", line_id="character_animation")
-    manifest, quality = await _verified_video_manifest([(Path(str(result["asset_path"])), True, "character_animation")])
+        return _blocked(
+            str(result.get("reason") or "Manim renderer unavailable"),
+            target="character_animation",
+            line_id="character_animation",
+        )
+    manifest, quality = await _verified_video_manifest(
+        [(Path(str(result["asset_path"])), True, "character_animation")]
+    )
     return {
         "status": "completed",
         "target": "character_animation",
@@ -492,9 +511,15 @@ async def _render_hyperframes_line(order: dict[str, Any], output_dir: Path) -> d
 async def _render_longvideo_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     from hevi.pipeline.longvideo_orchestrator import orchestrate_longvideo
 
-    topic = str(_slot(order, "topic") or order.get("manuscript") or order.get("source_text") or "").strip()
+    topic = str(
+        _slot(order, "topic") or order.get("manuscript") or order.get("source_text") or ""
+    ).strip()
     if not topic:
-        return _blocked("长视频生产需要 topic/manuscript/source_text", target="longvideo", line_id=str(order.get("line_id") or ""))
+        return _blocked(
+            "长视频生产需要 topic/manuscript/source_text",
+            target="longvideo",
+            line_id=str(order.get("line_id") or ""),
+        )
     result = await orchestrate_longvideo(
         topic=topic,
         duration_archetype=str(_slot(order, "duration_archetype") or "1-5min"),
@@ -570,7 +595,12 @@ async def fulfill_order(
                 line_id=line_id,
             )
         try:
-            if line_id in {"character_animation", "podcast_repurpose", "documentary_montage", "kinetic_promo"}:
+            if line_id in {
+                "character_animation",
+                "podcast_repurpose",
+                "documentary_montage",
+                "kinetic_promo",
+            }:
                 from hevi.resilience import RetryPolicy, with_retry_evidence
                 from hevi.resilience.errors import RetryableError
 
@@ -585,8 +615,12 @@ async def fulfill_order(
                 result, retry_evidence = await with_retry_evidence(
                     render_attempt,
                     operation_id=f"{line_id}:render",
-                    idempotency_key=str(order.get("idempotency_key") or order.get("slate_id") or line_id),
-                    policy=RetryPolicy(max_attempts=3, base_delay_s=0.1, max_delay_s=1.0, jitter=False),
+                    idempotency_key=str(
+                        order.get("idempotency_key") or order.get("slate_id") or line_id
+                    ),
+                    policy=RetryPolicy(
+                        max_attempts=3, base_delay_s=0.1, max_delay_s=1.0, jitter=False
+                    ),
                 )
                 result["retry_evidence"] = retry_evidence.to_dict()
                 if line_id == "kinetic_promo" and result.get("status") == "completed":

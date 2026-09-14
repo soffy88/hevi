@@ -35,9 +35,7 @@ from hevi.creative.layer4.audit_dimensions import (
     canonical_ref,
 )
 
-DEFAULT_CORPUS_ROOT = (
-    Path(__file__).resolve().parents[3] / "tests/fixtures/creative_audit_gold"
-)
+DEFAULT_CORPUS_ROOT = Path(__file__).resolve().parents[3] / "tests/fixtures/creative_audit_gold"
 
 #: Acceptance thresholds for the audit gold gate.  Hard continuity dimensions
 #: must be found at 100%; the softer craft dimensions are allowed a small margin.
@@ -83,9 +81,7 @@ class AuditGoldFixture(BaseModel):
                 else None
             ),
             length_target=(
-                LengthTarget(**artifact["length_target"])
-                if artifact.get("length_target")
-                else None
+                LengthTarget(**artifact["length_target"]) if artifact.get("length_target") else None
             ),
             shot_constraints=tuple(artifact.get("shot_constraints", ())),
             state=AuditState(
@@ -95,8 +91,7 @@ class AuditGoldFixture(BaseModel):
                     (str(item[0]), int(item[1])) for item in canon.get("hook_deadlines", ())
                 ),
                 payoff_setup_refs=tuple(
-                    (str(item[0]), str(item[1]))
-                    for item in canon.get("payoff_setup_refs", ())
+                    (str(item[0]), str(item[1])) for item in canon.get("payoff_setup_refs", ())
                 ),
             ),
             current_chapter=int(canon.get("current_chapter", 1)),
@@ -222,11 +217,7 @@ def evaluate(
             for index, item in enumerate(fixture.expected_findings):
                 key = (item["dimension"], item["code"])
                 match = next(
-                    (
-                        record
-                        for record in observed
-                        if (record[0], record[1]) == key
-                    ),
+                    (record for record in observed if (record[0], record[1]) == key),
                     None,
                 )
                 if match is None:

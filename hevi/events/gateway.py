@@ -30,8 +30,10 @@ class EventGateway:
         }
         await self.manager.broadcast_event(payload, resource_id=str(event.aggregate_id))
         occurred_at = event.occurred_at
-        now = datetime.now(UTC) if occurred_at.tzinfo is not None else datetime.now(UTC).replace(
-            tzinfo=None
+        now = (
+            datetime.now(UTC)
+            if occurred_at.tzinfo is not None
+            else datetime.now(UTC).replace(tzinfo=None)
         )
         ws_event_lag_seconds.labels(event_type=event.event_type).observe(
             max(0.0, (now - occurred_at).total_seconds())

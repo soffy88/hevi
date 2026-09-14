@@ -8,6 +8,7 @@ AGENTS_SKILLS_DIR;缺省 ~/.claude/skills、~/.codex/skills、~/.agents/skills�
 用法:
     python scripts/install_hevi_skills.py [--host claude|codex|agents|all] [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,9 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     for host in hosts:
         for skill, target, created in install(host, dry_run=args.dry_run):
             mark = (
-                "would install"
-                if args.dry_run
-                else ("installed" if created else "already linked")
+                "would install" if args.dry_run else ("installed" if created else "already linked")
             )
             print(f"[{host}] {skill} -> {target} ({mark})")
     return 0

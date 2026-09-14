@@ -91,9 +91,11 @@ async def execute_shortdrama_task(task: dict[str, Any], pool: Any) -> dict[str, 
         presentation_kind="shortdrama-episode",
     )
     raw_shots = rendered_episode.get("shots")
-    shots: list[dict[str, Any]] = [
-        shot for shot in raw_shots if isinstance(shot, dict)
-    ] if isinstance(raw_shots, list) else []
+    shots: list[dict[str, Any]] = (
+        [shot for shot in raw_shots if isinstance(shot, dict)]
+        if isinstance(raw_shots, list)
+        else []
+    )
     promise = str(config.get("delivery_promise") or "motion")
     verdict = evaluate_director_delivery(shots, delivery_promise=promise)
     config_json = {

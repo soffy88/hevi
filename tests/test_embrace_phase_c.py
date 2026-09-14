@@ -38,6 +38,7 @@ from hevi.director.sketch_storyboard import (
 
 # ---- render contract ----
 
+
 def test_contract_items_complete():
     assert len(CONTRACT_ITEMS) == 5
     assert "safe_area" in CONTRACT_ITEMS
@@ -56,9 +57,17 @@ def test_check_render_contract():
         props={"shake": True},
     )
     assert check_render_contract(bad_shake) != []
-    assert check_render_contract(RemotionConfig(
-        project_dir=Path("/tmp"), composition_id="X", output_path=Path("/tmp/o.mp4"), width=0
-    )) != []
+    assert (
+        check_render_contract(
+            RemotionConfig(
+                project_dir=Path("/tmp"),
+                composition_id="X",
+                output_path=Path("/tmp/o.mp4"),
+                width=0,
+            )
+        )
+        != []
+    )
 
 
 def test_render_workflow_fails_gracefully_missing_project(tmp_path):
@@ -98,10 +107,9 @@ def test_render_workflow_does_not_accept_zero_exit_without_artifact(tmp_path, mo
 
 # ---- promo workflow ----
 
+
 def test_promo_workflow_plan(tmp_path):
-    cfg = PromoConfig(
-        product_name="Acme", energy_axis=1.0, tone_axis=0.5, features=["a", "b", "c"]
-    )
+    cfg = PromoConfig(product_name="Acme", energy_axis=1.0, tone_axis=0.5, features=["a", "b", "c"])
     res = __import__("asyncio").run(promo_video_workflow(cfg, PromoInput(), tmp_path))
     assert res["status"] == "completed"
     plan = res["plan"]
@@ -121,6 +129,7 @@ def test_promo_workflow_requires_product_name(tmp_path):
 
 
 # ---- guided co-creation ----
+
 
 def test_co_creation_checkpoint_flow():
     state = CoCreationState()
@@ -145,6 +154,7 @@ def test_co_creation_delegate():
 
 
 # ---- sketch storyboard ----
+
 
 def test_sketch_gate_selects_best():
     cands = [
@@ -188,6 +198,7 @@ def test_color_consistency_check(tmp_path):
 
 
 # ---- director assistant ----
+
 
 def test_audit_progress_and_suggestions():
     episodes = [

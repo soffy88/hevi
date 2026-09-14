@@ -347,5 +347,8 @@ async def digital_human_approve(
         topic=script,
         source="automatic",
         presenter_id=body.get("avatar_id") or body.get("presenter_id"),
-        options={"workbench_operation": "digital_human_approve", "preview_task_id": body.get("task_id")},
+        options={
+            "workbench_operation": "digital_human_approve",
+            "preview_task_id": body.get("task_id"),
+        },
     )

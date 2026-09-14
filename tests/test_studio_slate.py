@@ -149,7 +149,11 @@ async def test_lot_adapter(tmp_path: Path) -> None:
         return_value={
             "status": "completed",
             "result_video_path": str(tmp_path / "final.mp4"),
-            "artifact_manifest": {"artifacts": [{"kind": "video", "path": str(tmp_path / "final.mp4"), "primary": True}]},
+            "artifact_manifest": {
+                "artifacts": [
+                    {"kind": "video", "path": str(tmp_path / "final.mp4"), "primary": True}
+                ]
+            },
             "quality": {"passed": True, "verdict": "pass", "violations": []},
         }
     )

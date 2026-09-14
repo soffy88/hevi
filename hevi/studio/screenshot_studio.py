@@ -67,12 +67,15 @@ def _hex_color(value: str, fallback: str) -> tuple[int, int, int, int]:
     try:
         rgb = tuple(int(raw[i : i + 2], 16) for i in (0, 2, 4))
         return (rgb[0], rgb[1], rgb[2], 255)
-    except (ValueError, IndexError):
+    except ValueError, IndexError:
         return _hex_color(fallback, "#ffffff") if value != fallback else (255, 255, 255, 255)
 
 
 def _font(size: int) -> Any:
-    for name in ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"):
+    for name in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    ):
         path = Path(name)
         if path.exists():
             return ImageFont.truetype(str(path), max(8, size))
@@ -142,7 +145,9 @@ def update_project(project_id: str, patch: dict[str, Any]) -> ScreenshotProject 
         if key in patch and patch[key] is not None:
             setattr(project, key, max(320 if key == "width" else 240, min(int(patch[key]), 4096)))
     if "layers" in patch:
-        project.layers = [_layer_from_dict(item) for item in patch["layers"] if isinstance(item, dict)]
+        project.layers = [
+            _layer_from_dict(item) for item in patch["layers"] if isinstance(item, dict)
+        ]
     return save_project(project)
 
 
@@ -155,7 +160,9 @@ def _layer_from_dict(raw: dict[str, Any]) -> ScreenshotLayer:
 
 
 def animation_duration(project: ScreenshotProject) -> float:
-    ends = [float(item.get("time_s") or 0.0) for item in project.keyframes if isinstance(item, dict)]
+    ends = [
+        float(item.get("time_s") or 0.0) for item in project.keyframes if isinstance(item, dict)
+    ]
     return round(max(ends, default=0.0), 3)
 
 
@@ -188,7 +195,11 @@ def _paste_transformed(canvas: Image.Image, source: Image.Image, layer: Screensh
     if layer.rotation:
         image = image.rotate(layer.rotation, expand=True, resample=Image.Resampling.BICUBIC)
     if layer.opacity < 1:
-        image.putalpha(image.getchannel("A").point(lambda value: int(value * max(0.0, min(1.0, layer.opacity)))))
+        image.putalpha(
+            image.getchannel("A").point(
+                lambda value: int(value * max(0.0, min(1.0, layer.opacity)))
+            )
+        )
     canvas.alpha_composite(image, (layer.x, layer.y))
 
 
@@ -197,22 +208,42 @@ def _draw_frame(draw: ImageDraw.ImageDraw, layer: ScreenshotLayer, frame: str) -
     w, h = layer.width or 640, layer.height or 480
     radius = 26 if frame in {"phone", "laptop"} else 14
     if frame == "phone":
-        draw.rounded_rectangle((x - 18, y - 42, x + w + 18, y + h + 18), radius=radius, fill="#111827")
-        draw.rounded_rectangle((x + w // 2 - 54, y - 34, x + w // 2 + 54, y - 22), radius=6, fill="#374151")
+        draw.rounded_rectangle(
+            (x - 18, y - 42, x + w + 18, y + h + 18), radius=radius, fill="#111827"
+        )
+        draw.rounded_rectangle(
+            (x + w // 2 - 54, y - 34, x + w // 2 + 54, y - 22), radius=6, fill="#374151"
+        )
     elif frame in {"browser", "safari"}:
-        draw.rounded_rectangle((x - 12, y - 52, x + w + 12, y + h + 12), radius=radius, fill="#ffffff", outline="#cbd5e1", width=2)
+        draw.rounded_rectangle(
+            (x - 12, y - 52, x + w + 12, y + h + 12),
+            radius=radius,
+            fill="#ffffff",
+            outline="#cbd5e1",
+            width=2,
+        )
         draw.rectangle((x - 10, y - 50, x + w + 10, y - 12), fill="#f8fafc")
         for dot, color in enumerate(("#fb7185", "#fbbf24", "#34d399")):
             draw.ellipse((x + 8 + dot * 18, y - 39, x + 20 + dot * 18, y - 27), fill=color)
     elif frame == "laptop":
         draw.rounded_rectangle((x - 14, y - 14, x + w + 14, y + h + 14), radius=12, fill="#1f2937")
-        draw.polygon([(x - 55, y + h + 24), (x + w + 55, y + h + 24), (x + w + 20, y + h + 42), (x - 20, y + h + 42)], fill="#94a3b8")
+        draw.polygon(
+            [
+                (x - 55, y + h + 24),
+                (x + w + 55, y + h + 24),
+                (x + w + 20, y + h + 42),
+                (x - 20, y + h + 42),
+            ],
+            fill="#94a3b8",
+        )
 
 
 def render_project(project: ScreenshotProject, output_path: Path) -> dict[str, Any]:
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    canvas = Image.new("RGBA", (project.width, project.height), _hex_color(project.background, "#eef2ff"))
+    canvas = Image.new(
+        "RGBA", (project.width, project.height), _hex_color(project.background, "#eef2ff")
+    )
     draw = ImageDraw.Draw(canvas)
     missing: list[str] = []
     for layer in project.layers:
@@ -225,18 +256,39 @@ def render_project(project: ScreenshotProject, output_path: Path) -> dict[str, A
                 _draw_frame(draw, layer, project.frame)
                 _paste_transformed(canvas, image, layer)
         elif layer.kind == "text":
-            draw.text((layer.x, layer.y), layer.content, fill=_hex_color(layer.color, "#2563eb"), font=_font(layer.font_size))
+            draw.text(
+                (layer.x, layer.y),
+                layer.content,
+                fill=_hex_color(layer.color, "#2563eb"),
+                font=_font(layer.font_size),
+            )
         elif layer.kind in {"rectangle", "circle"}:
             box = (layer.x, layer.y, layer.x + layer.width, layer.y + layer.height)
             if layer.kind == "circle":
-                draw.ellipse(box, outline=_hex_color(layer.color, "#2563eb"), width=max(1, layer.font_size // 8))
+                draw.ellipse(
+                    box,
+                    outline=_hex_color(layer.color, "#2563eb"),
+                    width=max(1, layer.font_size // 8),
+                )
             else:
-                draw.rounded_rectangle(box, radius=8, outline=_hex_color(layer.color, "#2563eb"), width=max(1, layer.font_size // 8))
+                draw.rounded_rectangle(
+                    box,
+                    radius=8,
+                    outline=_hex_color(layer.color, "#2563eb"),
+                    width=max(1, layer.font_size // 8),
+                )
         elif layer.kind == "arrow":
             end_x = layer.x + layer.width
             end_y = layer.y + layer.height
-            draw.line((layer.x, layer.y, end_x, end_y), fill=_hex_color(layer.color, "#2563eb"), width=max(2, layer.font_size // 8))
-            draw.polygon([(end_x, end_y), (end_x - 18, end_y - 4), (end_x - 4, end_y - 18)], fill=_hex_color(layer.color, "#2563eb"))
+            draw.line(
+                (layer.x, layer.y, end_x, end_y),
+                fill=_hex_color(layer.color, "#2563eb"),
+                width=max(2, layer.font_size // 8),
+            )
+            draw.polygon(
+                [(end_x, end_y), (end_x - 18, end_y - 4), (end_x - 4, end_y - 18)],
+                fill=_hex_color(layer.color, "#2563eb"),
+            )
         elif layer.kind == "blur":
             crop_box = (layer.x, layer.y, layer.x + layer.width, layer.y + layer.height)
             crop = canvas.crop(crop_box).filter(ImageFilter.GaussianBlur(max(1, layer.blur_radius)))

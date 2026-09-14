@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 # 节点生成器契约: async (node: NodeSpec, upstream_outputs: dict[str, Any]) -> output
-Generator = Callable[['NodeSpec', dict[str, Any]], Awaitable[Any]]
+Generator = Callable[["NodeSpec", dict[str, Any]], Awaitable[Any]]
 
 
 @dataclass
@@ -48,8 +48,7 @@ class FreezoneGraph:
         for n in nodes:
             unknown = [u for u in n.inputs if u not in self.nodes]
             if unknown:
-                raise GraphCycleError(
-                    f"node {n.id!r} 依赖未知节点: {unknown}")
+                raise GraphCycleError(f"node {n.id!r} 依赖未知节点: {unknown}")
 
     # ── 拓扑排序(DAG 校验 + 环检测) ─────────────────────────────
     def topo_order(self) -> list[NodeSpec]:
@@ -73,31 +72,25 @@ class FreezoneGraph:
         return order
 
     # ── 执行:按拓扑序,每节点失败不影响其他节点 ──────────────────
-    async def execute(
-        self, generator: Generator
-    ) -> dict[str, NodeResult]:
+    async def execute(self, generator: Generator) -> dict[str, NodeResult]:
         results: dict[str, NodeResult] = {}
         for node in self.topo_order():
-            upstream = {
-                u: results[u].output
-                for u in node.inputs
-                if u in results and results[u].ok
-            }
+            upstream = {u: results[u].output for u in node.inputs if u in results and results[u].ok}
             try:
                 out = await generator(node, upstream)
-                results[node.id] = NodeResult(
-                    node_id=node.id, ok=True, output=out)
+                results[node.id] = NodeResult(node_id=node.id, ok=True, output=out)
             except Exception as exc:
-                results[node.id] = NodeResult(
-                    node_id=node.id, ok=False, error=str(exc))
+                results[node.id] = NodeResult(node_id=node.id, ok=False, error=str(exc))
         return results
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "nodes": [
                 {
-                    "id": n.id, "kind": n.kind,
-                    "params": n.params, "inputs": n.inputs,
+                    "id": n.id,
+                    "kind": n.kind,
+                    "params": n.params,
+                    "inputs": n.inputs,
                 }
                 for n in self.nodes.values()
             ]

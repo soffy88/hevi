@@ -7,6 +7,7 @@
 用法:
     python scripts/export_embrace_assets.py [--out hevi-web/public/embrace]
 """
+
 from __future__ import annotations
 
 import argparse

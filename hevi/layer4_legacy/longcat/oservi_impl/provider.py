@@ -102,14 +102,15 @@ class LongCatProvider:
         async def _collect() -> dict[str, Any]:
             chunks: list[dict[str, Any]] = []
             usage: dict[str, Any] = {}
-            async with httpx.AsyncClient(
-                timeout=self._wrapper.config.timeout.httpx_timeout
-            ) as client, client.stream(
-                "POST",
-                f"{self.base_url.rstrip('/')}/chat/completions",
-                headers=headers,
-                json=body,
-            ) as response:
+            async with (
+                httpx.AsyncClient(timeout=self._wrapper.config.timeout.httpx_timeout) as client,
+                client.stream(
+                    "POST",
+                    f"{self.base_url.rstrip('/')}/chat/completions",
+                    headers=headers,
+                    json=body,
+                ) as response,
+            ):
                 response.raise_for_status()
                 async for line in response.aiter_lines():
                     if not line.startswith("data:"):

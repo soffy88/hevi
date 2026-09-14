@@ -39,9 +39,7 @@ class TestVersionChecker(unittest.TestCase):
         for tag_name in ("v1.3.2", "v1.3.1"):
             with self.subTest(tag_name=tag_name):
                 request_get.return_value = self._response(tag_name)
-                self.assertIsNone(
-                    version_checker.get_available_update("v1.3.2")
-                )
+                self.assertIsNone(version_checker.get_available_update("v1.3.2"))
 
     @patch("app.services.version_checker.requests.get")
     def test_prerelease_comparison_uses_semantic_versions(self, request_get):

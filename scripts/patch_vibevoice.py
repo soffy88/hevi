@@ -14,9 +14,9 @@ Patches applied:
            dpm_solver meta-device, tie_weights, generation_config API, DynamicCache, etc.)
   P10 covers Bug B: speech_tensors None guard (no voice_ref case)
 """
+
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -68,7 +68,9 @@ def main(venv_dir: str | None = None) -> None:
             ")\n"
             "from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor  # noqa: F401\n"
         )
-        print("  [OK]   Bug A: vibevoice/__init__.py — re-exported VibeVoiceForConditionalGenerationInference + VibeVoiceProcessor")
+        print(
+            "  [OK]   Bug A: vibevoice/__init__.py — re-exported VibeVoiceForConditionalGenerationInference + VibeVoiceProcessor"
+        )
 
     # ── P1: exist_ok in modular_vibevoice_tokenizer.py ───────────────────────
     patch(
@@ -96,7 +98,7 @@ def main(venv_dir: str | None = None) -> None:
     dpm_text = dpm.read_text()
     new_dpm = dpm_text.replace(
         'self.sigmas = self.sigmas.to("cpu")  # to avoid too much CPU/GPU communication',
-        'if not self.sigmas.is_meta:  # skip on meta device (transformers 5.x from_pretrained context)\n'
+        "if not self.sigmas.is_meta:  # skip on meta device (transformers 5.x from_pretrained context)\n"
         '            self.sigmas = self.sigmas.to("cpu")  # to avoid too much CPU/GPU communication',
     )
     if new_dpm != dpm_text:
@@ -109,16 +111,16 @@ def main(venv_dir: str | None = None) -> None:
     patch(
         dpm,
         "        if num_inference_steps is None and timesteps is None:\n"
-        "            raise ValueError(\"Must pass exactly one of `num_inference_steps` or `timesteps`.\")\n"
+        '            raise ValueError("Must pass exactly one of `num_inference_steps` or `timesteps`.")\n'
         "        if num_inference_steps is not None and timesteps is not None:\n"
-        "            raise ValueError(\"Can only pass one of `num_inference_steps` or `custom_timesteps`.\")",
+        '            raise ValueError("Can only pass one of `num_inference_steps` or `custom_timesteps`.")',
         "        # transformers 5.x from_pretrained leaves scheduler tensors on meta device; reinit with saved config\n"
         "        if self.lambda_t.is_meta:\n"
         "            self.__class__.__init__(self, **{k: v for k, v in self.config.items()})\n\n"
         "        if num_inference_steps is None and timesteps is None:\n"
-        "            raise ValueError(\"Must pass exactly one of `num_inference_steps` or `timesteps`.\")\n"
+        '            raise ValueError("Must pass exactly one of `num_inference_steps` or `timesteps`.")\n'
         "        if num_inference_steps is not None and timesteps is not None:\n"
-        "            raise ValueError(\"Can only pass one of `num_inference_steps` or `custom_timesteps`.\")",
+        '            raise ValueError("Can only pass one of `num_inference_steps` or `custom_timesteps`.")',
         "P4: dpm_solver set_timesteps reinit if lambda_t still on meta device",
     )
 
@@ -195,18 +197,18 @@ def main(venv_dir: str | None = None) -> None:
         "            if is_prefill:\n"
         "                # we process the speech inputs only during the first generation step\n"
         "                prefill_inputs = {\n"
-        "                    \"speech_tensors\": speech_tensors.to(device=device),\n"
-        "                    \"speech_masks\": speech_masks.to(device),\n"
-        "                    \"speech_input_mask\": speech_input_mask.to(device),\n"
+        '                    "speech_tensors": speech_tensors.to(device=device),\n'
+        '                    "speech_masks": speech_masks.to(device),\n'
+        '                    "speech_input_mask": speech_input_mask.to(device),\n'
         "                }\n"
         "                is_prefill = False",
         "            if is_prefill:\n"
         "                # we process the speech inputs only during the first generation step\n"
         "                if speech_tensors is not None:\n"
         "                    prefill_inputs = {\n"
-        "                        \"speech_tensors\": speech_tensors.to(device=device),\n"
-        "                        \"speech_masks\": speech_masks.to(device),\n"
-        "                        \"speech_input_mask\": speech_input_mask.to(device),\n"
+        '                        "speech_tensors": speech_tensors.to(device=device),\n'
+        '                        "speech_masks": speech_masks.to(device),\n'
+        '                        "speech_input_mask": speech_input_mask.to(device),\n'
         "                    }\n"
         "                else:\n"
         "                    prefill_inputs = {}\n"

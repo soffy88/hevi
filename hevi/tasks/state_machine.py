@@ -18,8 +18,12 @@ class InvalidTaskTransition(ValueError):
 TASK_TRANSITIONS: dict[str, frozenset[str]] = {
     "pending": frozenset({"pending", "queued", "running", "failed", "cancelled", "paused"}),
     "queued": frozenset({"queued", "claimed", "running", "failed", "cancelled", "paused"}),
-    "claimed": frozenset({"claimed", "running", "queued", "failed", "cancelled", "paused", "interrupted"}),
-    "running": frozenset({"running", "completed", "failed", "cancelled", "paused", "interrupted", "queued"}),
+    "claimed": frozenset(
+        {"claimed", "running", "queued", "failed", "cancelled", "paused", "interrupted"}
+    ),
+    "running": frozenset(
+        {"running", "completed", "failed", "cancelled", "paused", "interrupted", "queued"}
+    ),
     "paused": frozenset({"paused", "queued", "running", "failed", "cancelled"}),
     "failed": frozenset({"failed", "queued", "running", "cancelled"}),
     "interrupted": frozenset({"interrupted", "queued", "running", "failed", "cancelled"}),

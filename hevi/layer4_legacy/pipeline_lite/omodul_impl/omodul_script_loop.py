@@ -437,11 +437,13 @@ async def llm_verdict(
         )
     try:
         score = float(data.get("score") or 0.0)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         score = 0.0
     score = max(0.0, min(1.0, score))
-    passed = bool(data.get("passed")) and score >= _MIN_SCORE and not any(
-        i.severity == "hard" for i in issues
+    passed = (
+        bool(data.get("passed"))
+        and score >= _MIN_SCORE
+        and not any(i.severity == "hard" for i in issues)
     )
     return ScriptVerdict(
         passed=passed,
@@ -481,17 +483,13 @@ def _deterministic_repair(draft: ScriptDraft, verdict: ScriptVerdict) -> ScriptD
     codes = {i.code for i in verdict.issues}
     if "weak_hook" in codes and cues:
         cues[0] = cues[0].model_copy(
-            update={
-                "narration": f"先别急着背定义——关于「{draft.topic}」，真正关键的是机制。"
-            }
+            update={"narration": f"先别急着背定义——关于「{draft.topic}」，真正关键的是机制。"}
         )
     if "weak_close" in codes and cues:
         last = cues[-1]
         if "所以" not in last.narration and "记住" not in last.narration:
             cues[-1] = last.model_copy(
-                update={
-                    "narration": f"所以记住：{draft.topic}不是名词堆砌，而是一套可解释的机制。"
-                }
+                update={"narration": f"所以记住：{draft.topic}不是名词堆砌，而是一套可解释的机制。"}
             )
     # 去重
     seen: set[str] = set()

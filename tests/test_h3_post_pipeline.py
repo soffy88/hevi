@@ -125,9 +125,7 @@ async def test_resolve_engine_falls_back_when_comfy_down(monkeypatch: pytest.Mon
         return False
 
     monkeypatch.setattr("hevi.post.rife_vs.shutil.which", lambda _: "/usr/bin/vspipe")
-    monkeypatch.setattr(
-        "hevi.providers.h3_local.comfy_client.ComfyClient.health", _no_health
-    )
+    monkeypatch.setattr("hevi.providers.h3_local.comfy_client.ComfyClient.health", _no_health)
     engine = await _resolve_engine({})
     assert engine == "vspipe"
 

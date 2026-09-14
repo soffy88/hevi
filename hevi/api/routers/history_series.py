@@ -1,4 +1,5 @@
 """history_series_router —— 历史现场系列连载 API (P2 自动产线)。"""
+
 from __future__ import annotations
 
 import logging
@@ -193,9 +194,7 @@ async def _submit(task_id: str, req: dict[str, Any], token: str) -> None:
     import httpx
 
     try:
-        async with httpx.AsyncClient(
-            base_url="http://127.0.0.1:8017", timeout=60
-        ) as c:
+        async with httpx.AsyncClient(base_url="http://127.0.0.1:8017", timeout=60) as c:
             resp = await c.post(
                 "/api/tongjian/run",
                 json=req,
@@ -215,9 +214,7 @@ async def _submit_cron(task_id: str, req: dict[str, Any]) -> None:
     import httpx
 
     try:
-        async with httpx.AsyncClient(
-            base_url="http://127.0.0.1:8017", timeout=30
-        ) as c:
+        async with httpx.AsyncClient(base_url="http://127.0.0.1:8017", timeout=30) as c:
             lr = await c.post(
                 "/api/auth/login",
                 json={"email": "p0g0a@hist.works", "password": "p0g0a!2026"},
@@ -306,9 +303,7 @@ async def animate_episode(
     }
 
 
-async def _run_animation_episode(
-    task_id: str, req: dict[str, Any], lesson: LessonInfo
-) -> None:
+async def _run_animation_episode(task_id: str, req: dict[str, Any], lesson: LessonInfo) -> None:
     """后台动画出片, 进度写 TaskRun + WS 推送。"""
     from hevi.history_series.series_animator import animate_lesson
 

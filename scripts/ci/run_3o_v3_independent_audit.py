@@ -1,4 +1,5 @@
 """Independent 3O v3 audit report; never reads the migration inventory or old manifests."""
+
 from __future__ import annotations
 
 import ast
@@ -33,7 +34,13 @@ def main() -> int:
     fake = _pillar_measurement()
     real_local = [s for s in local if has_real_implementation(parse(s.path))]
     flat = len(real_local)
-    prefix = sum(1 for s in canonical_sources() for n in ast.walk(parse(s.path)) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name.startswith(("hevi_", "inkos_", "digital_human_", "pipeline_lite_", "voicepro_")))
+    prefix = sum(
+        1
+        for s in canonical_sources()
+        for n in ast.walk(parse(s.path))
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and n.name.startswith(("hevi_", "inkos_", "digital_human_", "pipeline_lite_", "voicepro_"))
+    )
     sibling = 0
     reverse = 0
     oprim_sig = 0
@@ -44,7 +51,14 @@ def main() -> int:
         tree = parse(s.path)
         edges = import_edges(tree)
         for target, _, _ in edges:
-            if (s.layer, target) in {("oprim", "oskill"), ("oprim", "omodul"), ("oskill", "omodul"), ("obase", "oprim"), ("obase", "oskill"), ("obase", "omodul")}:
+            if (s.layer, target) in {
+                ("oprim", "oskill"),
+                ("oprim", "omodul"),
+                ("oskill", "omodul"),
+                ("obase", "oprim"),
+                ("obase", "oskill"),
+                ("obase", "omodul"),
+            }:
                 sibling += 1
             if s.layer == "oservi" and target in {"oprim", "oskill", "omodul"}:
                 oservi_hardcoded += 1
@@ -52,23 +66,103 @@ def main() -> int:
                 reverse += 1
         text = s.path.read_text(encoding="utf-8").lower()
         if s.layer == "oprim":
-            oprim_sig += sum(len(n.args.posonlyargs + n.args.args) > 1 for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_"))
+            oprim_sig += sum(
+                len(n.args.posonlyargs + n.args.args) > 1
+                for n in tree.body
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and not n.name.startswith("_")
+            )
         if s.layer == "oskill":
-            public = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")]
+            public = [
+                n
+                for n in tree.body
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and not n.name.startswith("_")
+            ]
             for fn in public:
                 fn_text = ast.unparse(fn).lower()
-                oskill_stateful += int(any(x in fn_text for x in ("self.", "status =", "timeline =", "rendered =", "caption_json =", "current_status")))
-                oskill_persistence += int(any(x in fn_text for x in ("write_text", "write_bytes", "mkdir(", "commit(", "insert(", "update(")))
-                oskill_business += int(any(x in fn_text for x in ("user_id", "tenant_id", "project_id", "job_id", "production_run_id", "creative_project_id")))
+                oskill_stateful += int(
+                    any(
+                        x in fn_text
+                        for x in (
+                            "self.",
+                            "status =",
+                            "timeline =",
+                            "rendered =",
+                            "caption_json =",
+                            "current_status",
+                        )
+                    )
+                )
+                oskill_persistence += int(
+                    any(
+                        x in fn_text
+                        for x in (
+                            "write_text",
+                            "write_bytes",
+                            "mkdir(",
+                            "commit(",
+                            "insert(",
+                            "update(",
+                        )
+                    )
+                )
+                oskill_business += int(
+                    any(
+                        x in fn_text
+                        for x in (
+                            "user_id",
+                            "tenant_id",
+                            "project_id",
+                            "job_id",
+                            "production_run_id",
+                            "creative_project_id",
+                        )
+                    )
+                )
         if s.layer == "omodul":
-            public = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")]
-            omodul_sig += sum([n.args.args[:3][i].arg for i in range(min(3, len(n.args.args)))] != ["config", "input_data", "output_dir"] for n in public)
-            declared = {x.value for n in ast.walk(tree) if isinstance(n, ast.Assign) and isinstance(n.value, (ast.Set, ast.Tuple, ast.List)) for t in n.targets if isinstance(t, ast.Name) and t.id == "_enabled_pillars" for x in n.value.elts if isinstance(x, ast.Constant)}
-            omodul_pillar += int(not declared or not (declared & {"fingerprint", "decision_trail", "report", "cost"}) or bool(declared - {"fingerprint", "decision_trail", "report", "cost"}))
+            public = [
+                n
+                for n in tree.body
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and not n.name.startswith("_")
+            ]
+            omodul_sig += sum(
+                [n.args.args[:3][i].arg for i in range(min(3, len(n.args.args)))]
+                != ["config", "input_data", "output_dir"]
+                for n in public
+            )
+            declared = {
+                x.value
+                for n in ast.walk(tree)
+                if isinstance(n, ast.Assign) and isinstance(n.value, (ast.Set, ast.Tuple, ast.List))
+                for t in n.targets
+                if isinstance(t, ast.Name) and t.id == "_enabled_pillars"
+                for x in n.value.elts
+                if isinstance(x, ast.Constant)
+            }
+            omodul_pillar += int(
+                not declared
+                or not (declared & {"fingerprint", "decision_trail", "report", "cost"})
+                or bool(declared - {"fingerprint", "decision_trail", "report", "cost"})
+            )
         if s.layer == "oservi":
-            oservi_business += int(any(x in text for x in ("creativeproject", "narrativecanon", "productionrun", "user_id", "tenant_id")))
+            oservi_business += int(
+                any(
+                    x in text
+                    for x in (
+                        "creativeproject",
+                        "narrativecanon",
+                        "productionrun",
+                        "user_id",
+                        "tenant_id",
+                    )
+                )
+            )
     duplicate = matrix_counts.get("REAL_DUPLICATE_IMPLEMENTATION", 0)
-    public_sig = json.loads((ROOT / "artifacts/3o-v3/oprim-signature-migration.json").read_text(encoding="utf-8")).get("recalculated_count", oprim_sig)
+    public_sig = json.loads(
+        (ROOT / "artifacts/3o-v3/oprim-signature-migration.json").read_text(encoding="utf-8")
+    ).get("recalculated_count", oprim_sig)
     report = {
         "AUDIT_PROJECT_SCOPE": [
             "projects/platform/obase",
@@ -83,7 +177,13 @@ def main() -> int:
         "MNEME_THIN_REEXPORT_SYMBOLS": matrix_counts.get("THIN_REEXPORT", 0),
         "MNEME_LAYER4_SYMBOLS": matrix_counts.get("LAYER4_IMPLEMENTATION", 0),
         "source": "independent AST/import/filesystem audit",
-        "FLAT_NAMESPACE": "PASS" if api.get("elements") and all(x.get("public_export_path", "").startswith("from oprim import ") for x in api["elements"]) else "FAIL",
+        "FLAT_NAMESPACE": "PASS"
+        if api.get("elements")
+        and all(
+            x.get("public_export_path", "").startswith("from oprim import ")
+            for x in api["elements"]
+        )
+        else "FAIL",
         "PROJECT_PREFIX_VIOLATIONS": prefix,
         "LOCAL_3O_REAL_IMPLEMENTATIONS": matrix_counts.get("REAL_DUPLICATE_IMPLEMENTATION", 0),
         "DUPLICATE_IMPLEMENTATIONS": duplicate,
@@ -92,7 +192,13 @@ def main() -> int:
         "OPRIM_REVERSE_DEPENDENCIES": reverse,
         "OPRIM_SIGNATURE_VIOLATIONS": public_sig,
         "OPRIM_PUBLIC_ELEMENTS": len(api.get("elements", [])),
-        "OPRIM_FLAT_PUBLIC_NAMESPACE": "PASS" if api.get("elements") and all(x.get("public_export_path", "").startswith("from oprim import ") for x in api["elements"]) else "FAIL",
+        "OPRIM_FLAT_PUBLIC_NAMESPACE": "PASS"
+        if api.get("elements")
+        and all(
+            x.get("public_export_path", "").startswith("from oprim import ")
+            for x in api["elements"]
+        )
+        else "FAIL",
         "OSKILL_STATEFUL": oskill_stateful,
         "OSKILL_PERSISTENCE": oskill_persistence,
         "OSKILL_BUSINESS_ID_AWARE": oskill_business,
@@ -120,11 +226,16 @@ def main() -> int:
     }
     out = ROOT / "artifacts/qualification/3o-v3-final-independent-audit.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     wave = os.getenv("HEVI_3O_AUDIT_WAVE")
     if wave:
         wave_out = ROOT / "artifacts/qualification" / f"3o-v3-audit-{wave}.json"
-        wave_out.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        wave_out.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     print(json.dumps(report, sort_keys=True))
     return 0 if not any(v for k, v in report.items() if k != "source") else 1
 

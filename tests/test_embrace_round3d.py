@@ -31,6 +31,7 @@ from hevi.director.image_pool import (
 
 # ---- 能力契约 ----
 
+
 def test_capabilities_defaults_minimal():
     caps = SkillCapabilities()
     assert all(getattr(caps, cap) is False for cap in CAPABILITIES)
@@ -53,13 +54,9 @@ def test_validate_apply_requires_patch_output():
     skill = SkillDefinition(
         skill_id="apply-no-patch",
         provider="tool",
-        capabilities=SkillCapabilities(
-            can_propose_canvas_patch=True, can_apply_canvas_patch=True
-        ),
+        capabilities=SkillCapabilities(can_propose_canvas_patch=True, can_apply_canvas_patch=True),
         inputs=[SkillInputSpec(role="in", label="x")],
-        outputs=[
-            SkillOutputSpec(role="out", label="x", media_type="image", node_type="image")
-        ],
+        outputs=[SkillOutputSpec(role="out", label="x", media_type="image", node_type="image")],
     )
     issues = validate_skill_definition(skill)
     assert any("无 node_patch/graph_patch 输出" in i for i in issues)
@@ -107,6 +104,7 @@ def test_output_media_types_enum():
 
 
 # ---- 资产包导出 ----
+
 
 def _touch(p: Path) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -171,6 +169,7 @@ def test_export_pack_workflow_no_entries(tmp_path):
 
 # ---- 图片池 ----
 
+
 def test_pool_dedupe_by_content_hash(tmp_path):
     pool = ImagePool()
     a = _touch(tmp_path / "a.png")
@@ -197,8 +196,13 @@ def test_pool_roundtrip_json(tmp_path):
     a = _touch(tmp_path / "a.png")
     pool.add(
         PoolImage(
-            path=a, pool_id="p1", content_hash=content_hash(a),
-            beat_id="b1", grid="3x3", row=1, col=2,
+            path=a,
+            pool_id="p1",
+            content_hash=content_hash(a),
+            beat_id="b1",
+            grid="3x3",
+            row=1,
+            col=2,
         )
     )
     p = tmp_path / "pool.json"

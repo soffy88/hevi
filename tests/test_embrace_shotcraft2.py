@@ -18,6 +18,7 @@ from hevi.verdict.final_review import (
 
 # ---- 序列模式(能量弧)----
 
+
 def test_sequence_pattern_segments():
     assert len(PROMO_ENERGY_ARC.segments) == 4
     roles = [s.role for s in PROMO_ENERGY_ARC.segments]
@@ -26,9 +27,7 @@ def test_sequence_pattern_segments():
 
 
 def test_plan_sequence_allocation_order():
-    shots = plan_sequence(
-        PROMO_ENERGY_ARC, total_duration_s=30.0, fps=30, feature_count=3
-    )
+    shots = plan_sequence(PROMO_ENERGY_ARC, total_duration_s=30.0, fps=30, feature_count=3)
     # 顺序:brand_open → hero → feature/breath 交错 → launch_peak
     assert shots[0].role == "brand_open"
     assert shots[1].role == "hero"
@@ -47,9 +46,11 @@ def test_plan_sequence_allocation_order():
 
 
 def test_plan_sequence_feature_energy_alternates():
-    shots = [s for s in plan_sequence(
-        PROMO_ENERGY_ARC, total_duration_s=30.0, fps=30, feature_count=4
-    ) if s.role == "feature_climb"]
+    shots = [
+        s
+        for s in plan_sequence(PROMO_ENERGY_ARC, total_duration_s=30.0, fps=30, feature_count=4)
+        if s.role == "feature_climb"
+    ]
     assert len(shots) == 4
     energies = [s.energy for s in shots]
     assert energies[0] == "high" and energies[1] == "medium"
@@ -57,9 +58,7 @@ def test_plan_sequence_feature_energy_alternates():
 
 
 def test_plan_sequence_total_budget_respected():
-    shots = plan_sequence(
-        PROMO_ENERGY_ARC, total_duration_s=60.0, fps=30, feature_count=5
-    )
+    shots = plan_sequence(PROMO_ENERGY_ARC, total_duration_s=60.0, fps=30, feature_count=5)
     assert shots[-1].start_frame + shots[-1].duration_frames <= 60 * 30 + 1
 
 
@@ -69,8 +68,13 @@ def test_plan_sequence_zero_duration():
 
 def test_planned_shot_to_dict():
     shot = PlannedShot(
-        role="hero", index=1, start_frame=100, duration_frames=60,
-        energy="medium", purpose="立传", candidate_cards=("spotlight-hero-card",),
+        role="hero",
+        index=1,
+        start_frame=100,
+        duration_frames=60,
+        energy="medium",
+        purpose="立传",
+        candidate_cards=("spotlight-hero-card",),
     )
     d = shot.to_dict()
     assert d["role"] == "hero" and d["start_frame"] == 100
@@ -78,10 +82,14 @@ def test_planned_shot_to_dict():
 
 # ---- promo workflow 用序列模式 ----
 
+
 def test_promo_workflow_uses_sequence_plan(tmp_path):
     cfg = PromoConfig(
-        product_name="Acme", energy_axis=1.0, tone_axis=0.5,
-        features=["a", "b", "c"], target_duration_s=30.0,
+        product_name="Acme",
+        energy_axis=1.0,
+        tone_axis=0.5,
+        features=["a", "b", "c"],
+        target_duration_s=30.0,
     )
     res = __import__("asyncio").run(promo_video_workflow(cfg, PromoInput(), tmp_path))
     assert res["status"] == "completed"
@@ -97,6 +105,7 @@ def test_promo_workflow_uses_sequence_plan(tmp_path):
 
 
 # ---- 成片独立终检协议 ----
+
 
 def test_review_checks_structure():
     groups = {c[0] for c in FINAL_REVIEW_CHECKS}
@@ -115,10 +124,18 @@ def test_final_review_missing_inputs_unverifiable():
 
 def test_final_review_with_inputs_and_verdicts():
     inputs = {
-        "final_mp4": True, "keyframes": True, "brief": True, "decision_table": True,
-        "visual_direction": True, "shot_mapping": True, "card_library": True,
-        "demo_tsx": True, "reference_preview": True, "final_storyboard": True,
-        "aesthetic_rules": True, "data_policy": True,
+        "final_mp4": True,
+        "keyframes": True,
+        "brief": True,
+        "decision_table": True,
+        "visual_direction": True,
+        "shot_mapping": True,
+        "card_library": True,
+        "demo_tsx": True,
+        "reference_preview": True,
+        "final_storyboard": True,
+        "aesthetic_rules": True,
+        "data_policy": True,
     }
     verdicts = {code: True for _, code, _, _ in FINAL_REVIEW_CHECKS}
     result = run_final_review(inputs, verdicts=verdicts)

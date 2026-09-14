@@ -20,9 +20,7 @@ def _surface() -> CreativeServiceSurface:
     for index, name in enumerate(("narrative.plan", "narrative.write")):
         digest = hashlib.sha256(f"{name}:{index}".encode()).hexdigest()
 
-        def handler(
-            request: ServiceRequest, ref: str = f"artifact:{digest}"
-        ) -> ServiceResult:
+        def handler(request: ServiceRequest, ref: str = f"artifact:{digest}") -> ServiceResult:
             return ServiceResult(
                 request_id=request.request_id,
                 service=request.service,
@@ -36,9 +34,7 @@ def _surface() -> CreativeServiceSurface:
 
 def test_action_requires_confirmation_before_dispatch() -> None:
     gateway = StudioActionGateway(_surface())
-    action = gateway.submit(
-        service="narrative.plan", project_id=uuid4(), idempotency_key="k1"
-    )
+    action = gateway.submit(service="narrative.plan", project_id=uuid4(), idempotency_key="k1")
     assert action.status == "AWAITING_CONFIRMATION"
     assert gateway.progress()["completed"] == 0
     confirmed = gateway.confirm(action.action_id)
@@ -52,9 +48,7 @@ def test_canonical_chain_links_outputs_to_inputs_and_survives_reload() -> None:
     gateway = StudioActionGateway(_surface())
     project_id = uuid4()
     for index, name in enumerate(("narrative.plan", "narrative.write")):
-        action = gateway.submit(
-            service=name, project_id=project_id, idempotency_key=f"k{index}"
-        )
+        action = gateway.submit(service=name, project_id=project_id, idempotency_key=f"k{index}")
         gateway.confirm(action.action_id)
     assert gateway.chain[1]["service"] == "narrative.write"
     assert gateway.actions[gateway.order[1]].input_refs == (gateway.chain[0]["output_ref"],)

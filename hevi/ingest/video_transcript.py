@@ -82,9 +82,7 @@ def parse_subtitle(content: str) -> list[TranscriptSegment]:
         if not lines:
             continue
         # 找时间戳行(可能跳过 SRT 序号行)
-        ts_line_idx = next(
-            (i for i, ln in enumerate(lines) if "-->" in ln), None
-        )
+        ts_line_idx = next((i for i, ln in enumerate(lines) if "-->" in ln), None)
         if ts_line_idx is None:
             continue
         m = _TIMESTAMP_RE.search(lines[ts_line_idx])
@@ -215,9 +213,7 @@ def _subs_via_ytdlp(url: str, work_dir: Path | None) -> list[TranscriptSegment]:
     )
     if proc.returncode != 0:
         raise TranscriptError(f"yt-dlp subs failed ({proc.returncode})")
-    subs = sorted(
-        p for p in work.glob("sub.*") if p.suffix.lower() in {".vtt", ".srt"}
-    )
+    subs = sorted(p for p in work.glob("sub.*") if p.suffix.lower() in {".vtt", ".srt"})
     if not subs:
         return []
     # 优先手写字幕(manual),其次 auto;文件名含字幕语言,取第一个可用即可

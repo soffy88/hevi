@@ -44,8 +44,12 @@ _OLLAMA_WRAPPER = ProviderExecutionWrapper(
     "ollama",
     os.getenv("OLLAMA_MODEL", "qwen2.5vl:7b"),
     config=ReliabilityConfig(
-        timeout=TimeoutPolicy(connect_s=3.0, read_s=_TIMEOUT, write_s=10.0, pool_s=3.0, total_s=60.0),
-        retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+        timeout=TimeoutPolicy(
+            connect_s=3.0, read_s=_TIMEOUT, write_s=10.0, pool_s=3.0, total_s=60.0
+        ),
+        retry=RetryPolicy(
+            max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25
+        ),
         max_concurrency=1,
         rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
     ),
@@ -65,7 +69,9 @@ def _inventory_wrapper() -> ProviderExecutionWrapper:
         os.getenv("OLLAMA_MODEL", "qwen2.5vl:7b"),
         config=ReliabilityConfig(
             timeout=TimeoutPolicy(connect_s=3.0, read_s=3.0, write_s=3.0, pool_s=3.0, total_s=10.0),
-            retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+            retry=RetryPolicy(
+                max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25
+            ),
             max_concurrency=1,
             rate_limit=RateLimitPolicy(requests_per_minute=120.0, burst=4),
         ),
@@ -109,13 +115,9 @@ def _resolve_model() -> str:
         return _OLLAMA_MODEL
     for candidate in _OLLAMA_FALLBACK_MODELS:
         if candidate in available:
-            logger.warning(
-                "配置的 Ollama 模型 %s 不存在,自动回退到 %s", _OLLAMA_MODEL, candidate
-            )
+            logger.warning("配置的 Ollama 模型 %s 不存在,自动回退到 %s", _OLLAMA_MODEL, candidate)
             return candidate
-    raise RuntimeError(
-        f"Ollama 模型不可用: {_OLLAMA_MODEL}; 当前可用模型: {sorted(available)}"
-    )
+    raise RuntimeError(f"Ollama 模型不可用: {_OLLAMA_MODEL}; 当前可用模型: {sorted(available)}")
 
 
 def _coerce(obj: Any) -> Any:
@@ -192,7 +194,7 @@ def _coerce_numeric_fields(obj: Any) -> Any:
                 else:
                     try:
                         res[k] = float(str(v).strip())
-                    except (ValueError, TypeError):
+                    except ValueError, TypeError:
                         res[k] = 0.0
             else:
                 res[k] = _coerce_numeric_fields(v)
@@ -292,6 +294,7 @@ def _call_ollama(**kwargs: Any) -> dict[str, Any]:
     # 的 script_writer/storyboard_planner 并不传 result_format。Ollama 的
     # OpenAI 兼容端点支持 response_format=json_object,能显著降低畸形率。
     payload["response_format"] = {"type": "json_object"}
+
     def _chat_request() -> dict[str, Any]:
         response = httpx.post(
             f"{_OLLAMA_BASE}/v1/chat/completions",

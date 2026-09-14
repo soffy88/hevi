@@ -21,6 +21,7 @@ from .taxonomy import FailureCode
 
 class QualityEvidence(BaseModel):
     """Deprecated alias - kept for backward compatibility."""
+
     code: FailureCode
     scope: str = ""
     passed: bool
@@ -39,6 +40,7 @@ class QualityEvaluation(BaseModel):
     evidence: all EvaluationEvidence
     violations: ConstraintEvaluation[] for failed/unknown constraints
     """
+
     passed: bool
     score: float = 1.0
     residual_severity: float = 0.0
@@ -101,18 +103,17 @@ class QualityEvaluation(BaseModel):
                 blocking.append(item)
             elif policy.profile == "standard":
                 # UNKNOWN blocks required constraints
-                if (item.evaluator_id in policy.required_failures or
-                    item.evaluator_id in {
-                        FailureCode.DELIVERY_INTEGRITY.value,
-                        FailureCode.IDENTITY_MISMATCH.value,
-                        FailureCode.SCENE_CONTINUITY.value,
-                        FailureCode.EYELINE_VIOLATION.value,
-                        FailureCode.DIALOGUE_MISSING.value,
-                        FailureCode.ANATOMY_ARTIFACT.value,
-                        FailureCode.CAMERA_CONTRACT.value,
-                        FailureCode.ACTION_MISSING.value,
-                        FailureCode.SAFETY_POLICY.value,
-                    }):
+                if item.evaluator_id in policy.required_failures or item.evaluator_id in {
+                    FailureCode.DELIVERY_INTEGRITY.value,
+                    FailureCode.IDENTITY_MISMATCH.value,
+                    FailureCode.SCENE_CONTINUITY.value,
+                    FailureCode.EYELINE_VIOLATION.value,
+                    FailureCode.DIALOGUE_MISSING.value,
+                    FailureCode.ANATOMY_ARTIFACT.value,
+                    FailureCode.CAMERA_CONTRACT.value,
+                    FailureCode.ACTION_MISSING.value,
+                    FailureCode.SAFETY_POLICY.value,
+                }:
                     blocking.append(item)
                 else:
                     advisory.append(item)
@@ -121,9 +122,7 @@ class QualityEvaluation(BaseModel):
 
         # Compute score based on known results only; UNKNOWN contributes 0.5 penalty
         total_severity = sum((item.score or 0.5) for item in normalized)
-        resolved_severity = sum(
-            item.score or 0.5 for item in known_fail
-        )
+        resolved_severity = sum(item.score or 0.5 for item in known_fail)
         score = 1.0 if total_severity == 0 else max(0.0, 1.0 - resolved_severity / total_severity)
         if unknowns:
             score *= 0.5  # penalty for unknowns
@@ -156,9 +155,7 @@ class QualityEvaluation(BaseModel):
         )
 
 
-def evaluation_from_shot_verdicts(
-    verdicts: list[Any], policy: GatePolicy
-) -> QualityEvaluation:
+def evaluation_from_shot_verdicts(verdicts: list[Any], policy: GatePolicy) -> QualityEvaluation:
     """Build QualityEvaluation from shot verdicts.
 
     Deprecated: prefer the new EvaluationEvidence → QualityEvaluation.from_evidence()

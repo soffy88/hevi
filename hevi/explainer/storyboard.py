@@ -34,6 +34,7 @@ _E0_MAX_ATTEMPTS = 3
 class StoryboardGenerationError(RuntimeError):
     """E0 could not produce a usable storyboard draft."""
 
+
 _STORYBOARD_PROMPT_TEMPLATE = """你是中文自媒体短视频解说文案编剧。给定一个选题,写一期
 85-95 秒左右的解说短视频文案,严格分成 6 段固定结构,每段配一段口语化旁白(自然、可朗读,
 不要书面语堆砌)和对应的画面参数。

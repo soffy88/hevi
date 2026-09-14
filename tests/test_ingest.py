@@ -22,6 +22,7 @@ from hevi.ingest.video_transcript import TranscriptError, parse_subtitle, read_s
 
 # ---- frame budget ----
 
+
 def test_budget_table_matches_source_contract():
     assert FRAME_BUDGET_TABLE[0] == (30.0, 30)
     assert FRAME_BUDGET_TABLE[-1][1] == 100
@@ -43,6 +44,7 @@ def test_focused_budget():
 
 
 # ---- frame dedup ----
+
 
 def test_frame_delta_basic():
     a = bytes([10]) * 256
@@ -126,6 +128,7 @@ def test_read_subtitle_file(tmp_path):
 
 # ---- contact sheet ----
 
+
 def test_contact_sheet(tmp_path):
     frames_dir = tmp_path / "frames"
     frames_dir.mkdir()
@@ -148,6 +151,7 @@ def test_contact_sheet_empty_raises(tmp_path):
 
 # ---- frame extraction (real tiny video via PyAV) ----
 
+
 def _make_tiny_video(tmp_path: Path, n_frames: int = 12) -> Path:
     import av
 
@@ -167,9 +171,7 @@ def _make_tiny_video(tmp_path: Path, n_frames: int = 12) -> Path:
 
 def test_extract_frames_efficient_budget(tmp_path):
     vid = _make_tiny_video(tmp_path)
-    frames = extract_watch_frames(
-        vid, tmp_path / "out", detail=WatchDetail.EFFICIENT, budget=5
-    )
+    frames = extract_watch_frames(vid, tmp_path / "out", detail=WatchDetail.EFFICIENT, budget=5)
     assert 0 < len(frames) <= 5
     assert all(f.path.exists() for f in frames)
     # 时间升序

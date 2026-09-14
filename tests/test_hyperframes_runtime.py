@@ -100,12 +100,15 @@ async def test_generate_cli_path(tmp_path: Path, monkeypatch) -> None:
         dest.write_bytes(b"FAKE-MP4")
         return 0, "ok"
 
-    with patch(
-        "hevi.providers.hyperframes.provider.detect_hyperframes_bin",
-        return_value=str(fake_cli),
-    ), patch(
-        "hevi.providers.hyperframes.provider._run_cli",
-        new=fake_run_cli,
+    with (
+        patch(
+            "hevi.providers.hyperframes.provider.detect_hyperframes_bin",
+            return_value=str(fake_cli),
+        ),
+        patch(
+            "hevi.providers.hyperframes.provider._run_cli",
+            new=fake_run_cli,
+        ),
     ):
         produced = await hyperframes_generate(
             prompt={"topic": "盐税", "script_lines": [{"text": "帝国靠它。"}]},
@@ -132,12 +135,15 @@ async def test_generate_cli_failure_falls_back(tmp_path: Path, monkeypatch) -> N
     async def fail_run_cli(cmd, *, cwd, timeout_s):
         raise RuntimeError("hyperframes render boom")
 
-    with patch(
-        "hevi.providers.hyperframes.provider.detect_hyperframes_bin",
-        return_value="/nonexistent/hyperframes",
-    ), patch(
-        "hevi.providers.hyperframes.provider._run_cli",
-        new=fail_run_cli,
+    with (
+        patch(
+            "hevi.providers.hyperframes.provider.detect_hyperframes_bin",
+            return_value="/nonexistent/hyperframes",
+        ),
+        patch(
+            "hevi.providers.hyperframes.provider._run_cli",
+            new=fail_run_cli,
+        ),
     ):
         produced = await hyperframes_generate(
             prompt={"topic": "盐税", "script_lines": [{"text": "帝国靠它。"}]},

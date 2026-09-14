@@ -12,6 +12,7 @@ from hevi.verdict.persist import RuntimeStore
 
 # ---- ④ SQLite 持久化 ----
 
+
 def test_runtime_store_replay(tmp_path):
     store = RuntimeStore(tmp_path / "rt.db")
     store.save_replay({"trace_id": "t1", "final_status": "accepted", "phase": "verdict"})
@@ -25,12 +26,19 @@ def test_runtime_store_replay(tmp_path):
 def test_runtime_store_convergence_rounds(tmp_path):
     store = RuntimeStore(tmp_path / "rt.db")
     store.save_convergence_round(
-        episode_num=1, phase="rework", round_num=1,
-        residual_count=5, fixed_count=2, new_failures=["bad_hands"],
+        episode_num=1,
+        phase="rework",
+        round_num=1,
+        residual_count=5,
+        fixed_count=2,
+        new_failures=["bad_hands"],
     )
     store.save_convergence_round(
-        episode_num=1, phase="rework", round_num=2,
-        residual_count=1, fixed_count=4,
+        episode_num=1,
+        phase="rework",
+        round_num=2,
+        residual_count=1,
+        fixed_count=4,
     )
     rounds = store.list_rounds(episode_num=1)
     assert len(rounds) == 2
@@ -53,6 +61,7 @@ def test_runtime_store_promotion_and_hits(tmp_path):
 
 
 # ---- ⑤ media_use 真实 provider ----
+
 
 def test_media_providers_bgm_and_sfx():
     from hevi.sourcing.media_providers import default_providers
@@ -96,19 +105,25 @@ def test_media_providers_resolve_end_to_end():
 
 # ---- ③ workflow API ----
 
+
 def test_workflow_run_promo_and_review():
     from hevi.api.routers import embrace_runtime as er
 
     # promo-plan(确定性骨架)
     res = __import__("asyncio").run(
         er.run_workflow(
-            type("R", (), {
-                "workflow": "promo-plan",
-                "config": {
-                    "product_name": "Acme", "features": ["a", "b"],
+            type(
+                "R",
+                (),
+                {
+                    "workflow": "promo-plan",
+                    "config": {
+                        "product_name": "Acme",
+                        "features": ["a", "b"],
+                    },
+                    "input_data": {},
                 },
-                "input_data": {},
-            })(),
+            )(),
             {"id": str(uuid.uuid4())},
         )
     )
@@ -118,13 +133,17 @@ def test_workflow_run_promo_and_review():
     # final-review
     res2 = __import__("asyncio").run(
         er.run_workflow(
-            type("R", (), {
-                "workflow": "final-review",
-                "config": {},
-                "input_data": {
-                    "inputs": {"brief": True, "final_mp4": True},
+            type(
+                "R",
+                (),
+                {
+                    "workflow": "final-review",
+                    "config": {},
+                    "input_data": {
+                        "inputs": {"brief": True, "final_mp4": True},
+                    },
                 },
-            })(),
+            )(),
             {"id": str(uuid.uuid4())},
         )
     )
@@ -149,11 +168,15 @@ def test_workflow_run_story_plan():
 
     res = __import__("asyncio").run(
         er.run_workflow(
-            type("R", (), {
-                "workflow": "story-to-animation",
-                "config": {"text": "第一句。第二句。", "mode": "plan"},
-                "input_data": {},
-            })(),
+            type(
+                "R",
+                (),
+                {
+                    "workflow": "story-to-animation",
+                    "config": {"text": "第一句。第二句。", "mode": "plan"},
+                    "input_data": {},
+                },
+            )(),
             {"id": str(uuid.uuid4())},
         )
     )
@@ -162,6 +185,7 @@ def test_workflow_run_story_plan():
 
 
 # ---- ① MCP skills ----
+
 
 def test_mcp_embrace_skills_registered():
     from hevi.mcp.tools.embrace_tools import build_embrace_skills

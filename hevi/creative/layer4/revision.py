@@ -145,7 +145,6 @@ def _trim_sentence(text: str) -> str:
     return " ".join(sentences[:-1])
 
 
-
 def _align_to_canon(finding: AuditFinding, text: str) -> str:
     quoted = re.findall(r"'([^']*)'", finding.message or "")
     if len(quoted) < 2:
@@ -516,9 +515,7 @@ def _diff_lines(before: str, after: str) -> tuple[str, ...]:
 
     return tuple(
         line
-        for line in difflib.unified_diff(
-            before.splitlines(), after.splitlines(), lineterm="", n=0
-        )
+        for line in difflib.unified_diff(before.splitlines(), after.splitlines(), lineterm="", n=0)
         if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))
     )
 

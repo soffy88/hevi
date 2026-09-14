@@ -310,9 +310,7 @@ async def _record_via_frames(
                     await page.screenshot(path=str(frames_dir / f"{frame:04d}.png"))
                     frame += 1
                     if audio_driven and frame >= 2:
-                        ended = await page.evaluate(
-                            "window.__heviAudioEnded === true"
-                        )
+                        ended = await page.evaluate("window.__heviAudioEnded === true")
                     target_ms = (shot_start + frame / fps - time.monotonic()) * 1000
                     await page.wait_for_timeout(max(0, int(target_ms)))
             finally:
@@ -374,9 +372,7 @@ async def _prepare_page(
             # +0.4s settle; 上限 30s 防 runaway
             needed = min(30.0, (anim_ms + 400.0) / 1000.0)
             if needed > effective:
-                logger.info(
-                    "动画时长探测: %.1fs > 请求 %.1fs, 延长录制窗口", needed, effective
-                )
+                logger.info("动画时长探测: %.1fs > 请求 %.1fs, 延长录制窗口", needed, effective)
                 effective = needed
         except Exception as exc:
             logger.debug("animation probe failed: %s", exc)
@@ -421,9 +417,7 @@ async def _drive_page(
         probe_animation=probe_animation,
     )
     if audio_driven:
-        await _wait_audio_ended(
-            page, time.monotonic() + _safety_seconds(effective), effective
-        )
+        await _wait_audio_ended(page, time.monotonic() + _safety_seconds(effective), effective)
         return effective
 
     if scroll:
@@ -461,7 +455,7 @@ def _probe_duration(video: Path) -> float:
         )
         if result.returncode == 0 and result.stdout.strip():
             return float(result.stdout.strip())
-    except (ValueError, OSError):
+    except ValueError, OSError:
         pass
     return 0.0
 

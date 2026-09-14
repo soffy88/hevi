@@ -9,6 +9,7 @@
 
 Exit 0 = 通过;非 0 = 列出问题。
 """
+
 from __future__ import annotations
 
 import sys

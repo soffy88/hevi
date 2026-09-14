@@ -54,9 +54,7 @@ async def test_longcat_tool_loop_preserves_reasoning_and_executes_allowlisted_to
             }
         assert len(payload["messages"]) >= 3
         return {
-            "choices": [
-                {"message": {"content": "已完成", "reasoning_content": "工具结果已核对"}}
-            ],
+            "choices": [{"message": {"content": "已完成", "reasoning_content": "工具结果已核对"}}],
             "usage": {"total_tokens": 12},
         }
 
@@ -66,7 +64,9 @@ async def test_longcat_tool_loop_preserves_reasoning_and_executes_allowlisted_to
         max_tool_rounds=2,
         tools=(LongCatTool("lookup", "查找数据", {"type": "object"}),),
     )
-    result = await execute_agent_loop(request, caller, tool_handlers={"lookup": lambda args: {"status": "ok", **args}})
+    result = await execute_agent_loop(
+        request, caller, tool_handlers={"lookup": lambda args: {"status": "ok", **args}}
+    )
     assert result["status"] == "completed"
     assert result["content"] == "已完成"
     assert "工具结果已核对" in result["reasoning_content"]
@@ -74,7 +74,9 @@ async def test_longcat_tool_loop_preserves_reasoning_and_executes_allowlisted_to
 
 
 @pytest.mark.asyncio
-async def test_longcat_omodul_reports_blocked_without_model_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_longcat_omodul_reports_blocked_without_model_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("LONGCAT_BASE_URL", raising=False)
     from hevi.longcat import LongCatConfig, longcat_agent_workflow
 
@@ -90,7 +92,9 @@ async def test_longcat_omodul_reports_blocked_without_model_provider(tmp_path: P
 
 
 @pytest.mark.asyncio
-async def test_agentic_montage_pauses_at_human_gate_and_can_execute_with_approval(tmp_path: Path) -> None:
+async def test_agentic_montage_pauses_at_human_gate_and_can_execute_with_approval(
+    tmp_path: Path,
+) -> None:
     paused = await agentic_montage_workflow(
         AgenticMontageConfig(pipeline="framework-smoke", execute=True),
         {"topic": "数据库迁移"},

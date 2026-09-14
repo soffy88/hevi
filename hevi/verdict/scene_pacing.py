@@ -138,9 +138,7 @@ def assert_alignment(
         )
 
     if errors:
-        raise AssertionError(
-            "场景节奏校验失败:\n  - " + "\n  - ".join(errors)
-        )
+        raise AssertionError("场景节奏校验失败:\n  - " + "\n  - ".join(errors))
 
 
 __all__ = ["Landmark", "assert_alignment", "step_duration", "trace"]

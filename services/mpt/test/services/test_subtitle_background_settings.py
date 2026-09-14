@@ -110,9 +110,7 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
             stroke_width=1.5,
         )
 
-        self.assertTrue(
-            video.subtitle_colors_are_indistinguishable(invisible_params)
-        )
+        self.assertTrue(video.subtitle_colors_are_indistinguishable(invisible_params))
         self.assertTrue(
             video.subtitle_colors_are_indistinguishable(different_outline_params)
         )
@@ -121,9 +119,7 @@ class TestSubtitleBackgroundSettings(unittest.TestCase):
         )
 
     def test_detects_font_without_chinese_glyphs(self):
-        fonts_dir = (
-            Path(__file__).parent.parent.parent / "resource" / "fonts"
-        )
+        fonts_dir = Path(__file__).parent.parent.parent / "resource" / "fonts"
 
         self.assertFalse(
             video.subtitle_font_supports_text(

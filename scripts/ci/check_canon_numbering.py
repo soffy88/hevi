@@ -8,6 +8,7 @@
 
 Exit 0 = 通过;非 0 = 列出问题。
 """
+
 from __future__ import annotations
 
 import sys
@@ -28,8 +29,7 @@ def main() -> int:
         number = int(rule.code[1:])
         if family in seen and number <= seen[family]:
             issues.append(
-                f"{rule.code}: numbering must only append "
-                f"(family max {family}{seen[family]})"
+                f"{rule.code}: numbering must only append (family max {family}{seen[family]})"
             )
         seen[family] = max(seen.get(family, 0), number)
         if not rule.self_check.strip():

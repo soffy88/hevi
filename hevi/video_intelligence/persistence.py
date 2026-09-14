@@ -13,7 +13,9 @@ def atomic_write_model(path: str | Path, model: BaseModel) -> None:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(f".{destination.name}.tmp")
-    temporary.write_text(json.dumps(model.model_dump(mode="json"), ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.write_text(
+        json.dumps(model.model_dump(mode="json"), ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     with temporary.open("rb") as stream:
         os.fsync(stream.fileno())
     os.replace(temporary, destination)

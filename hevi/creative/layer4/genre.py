@@ -302,9 +302,7 @@ class GenreModule:
 
     def registered(self, project_id: UUID) -> tuple[GenreProfile, ...]:
         return tuple(
-            profile
-            for (owner, _), profile in self._registered.items()
-            if owner == project_id
+            profile for (owner, _), profile in self._registered.items() if owner == project_id
         )
 
     # -- planning ----------------------------------------------------------

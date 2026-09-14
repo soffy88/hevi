@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 class ASRProvider(str, Enum):
     """语音识别提供商。"""
+
     OPENAI_WHISPER = "openai_whisper"
     FASTER_WHISPER = "faster_whisper"
     WHISPER_KIT = "whisper_kit"
@@ -28,6 +29,7 @@ class ASRProvider(str, Enum):
 
 class LLMProvider(str, Enum):
     """LLM 翻译提供商。"""
+
     OPENAI = "openai"
     GEMINI = "gemini"
     DEEPSEEK = "deepseek"
@@ -37,6 +39,7 @@ class LLMProvider(str, Enum):
 
 class TTSProvider(str, Enum):
     """TTS 提供商。"""
+
     ALIYUN_TTS = "aliyun_tts"
     OPENAI_TTS = "openai_tts"
     MINIMAX_TTS = "minimax_tts"
@@ -44,6 +47,7 @@ class TTSProvider(str, Enum):
 
 class RenderMode(str, Enum):
     """渲染模式。"""
+
     HORIZONTAL_BILINGUAL = "horizontal_bilingual"
     HORIZONTAL_DUBBED = "horizontal_dubbed"
     VERTICAL_BILINGUAL = "vertical_bilingual"
@@ -53,6 +57,7 @@ class RenderMode(str, Enum):
 
 class JobStatus(str, Enum):
     """作业状态。"""
+
     PENDING = "pending"
     DOWNLOADING = "downloading"
     TRANSCRIBING = "transcribing"
@@ -70,6 +75,7 @@ class JobStatus(str, Enum):
 
 class ASRConfig(BaseModel):
     """语音识别配置。"""
+
     provider: ASRProvider = ASRProvider.FASTER_WHISPER
     model: str = "large-v2"  # tiny/medium/large-v2
     language: str = "auto"
@@ -79,6 +85,7 @@ class ASRConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     """LLM 翻译配置。"""
+
     provider: LLMProvider = LLMProvider.OPENAI
     model: str = "gpt-4o-mini"
     base_url: str = ""
@@ -89,6 +96,7 @@ class LLMConfig(BaseModel):
 
 class TTSConfig(BaseModel):
     """TTS 配置。"""
+
     provider: TTSProvider = TTSProvider.ALIYUN_TTS
     voice: str = "zh-CN-Xiaoyun"
     speed: float = 1.0
@@ -98,6 +106,7 @@ class TTSConfig(BaseModel):
 
 class RenderConfig(BaseModel):
     """视频渲染配置。"""
+
     mode: RenderMode = RenderMode.HORIZONTAL_BILINGUAL
     resolution: str = "1920x1080"
     fps: int = 30
@@ -113,6 +122,7 @@ class RenderConfig(BaseModel):
 
 class SubtitleFile(BaseModel):
     """字幕文件。"""
+
     path: str = ""
     language: str = ""
     format: str = "srt"
@@ -120,6 +130,7 @@ class SubtitleFile(BaseModel):
 
 class VideoFile(BaseModel):
     """视频文件。"""
+
     path: str = ""
     duration_s: float = 0.0
     width: int = 0
@@ -128,12 +139,14 @@ class VideoFile(BaseModel):
 
 class AudioFile(BaseModel):
     """音频文件。"""
+
     path: str = ""
     duration_s: float = 0.0
 
 
 class CoverFile(BaseModel):
     """封面文件。"""
+
     path: str = ""
     platform: str = ""  # bilibili/xiaohongshu/douyin/shipinhao/kuaishou/youtube/tiktok
 
@@ -199,6 +212,7 @@ class ClipGeneratorJob(BaseModel):
 
 class SubtitleSegment(BaseModel):
     """单条字幕片段。"""
+
     index: int = 0
     start_s: float = 0.0
     end_s: float = 0.0
@@ -208,6 +222,7 @@ class SubtitleSegment(BaseModel):
 
 class TranslationPair(BaseModel):
     """翻译对。"""
+
     original: str = ""
     translated: str = ""
     terminology_applied: bool = False
@@ -222,6 +237,7 @@ def make_clip_generator_job(
     workdir: str = "",
 ) -> ClipGeneratorJob:
     import uuid
+
     return ClipGeneratorJob(
         job_id=f"krillinai-{uuid.uuid4().hex[:12]}",
         user_id=user_id,

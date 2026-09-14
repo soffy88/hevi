@@ -17,17 +17,19 @@ from pydantic import BaseModel, Field
 
 class CloneMode(str, Enum):
     """声纹克隆模式。"""
-    ZERO_SHOT = "zero_shot"          # 短音频零样本克隆
+
+    ZERO_SHOT = "zero_shot"  # 短音频零样本克隆
     CROSS_LINGUAL = "cross_lingual"  # 跨语言克隆
-    INSTRUCT = "instruct"            # 指令式克隆
+    INSTRUCT = "instruct"  # 指令式克隆
 
 
 class CloneProvider(str, Enum):
     """声纹克隆提供商。"""
-    COSYVOICE = "cosyvoice"      # CosyVoice (Fun-CosyVoice3 支持韩语等 9 语言)
-    F5_TTS = "f5_tts"            # F5-TTS (E2-TTS 变体)
-    E2_TTS = "e2_tts"            # E2-TTS
-    OPEN_AI = "openai"           # OpenAI 语音克隆 (TTS HD)
+
+    COSYVOICE = "cosyvoice"  # CosyVoice (Fun-CosyVoice3 支持韩语等 9 语言)
+    F5_TTS = "f5_tts"  # F5-TTS (E2-TTS 变体)
+    E2_TTS = "e2_tts"  # E2-TTS
+    OPEN_AI = "openai"  # OpenAI 语音克隆 (TTS HD)
 
 
 # ─── 声纹模型 ─────────────────────────────────────
@@ -38,6 +40,7 @@ class VoiceProfile(BaseModel):
 
     存储克隆声音的特征和元数据。
     """
+
     profile_id: str = ""
     name: str = ""
     provider: CloneProvider = CloneProvider.COSYVOICE
@@ -53,6 +56,7 @@ class VoiceProfile(BaseModel):
 
 class CloneConfig(BaseModel):
     """克隆配置。"""
+
     provider: CloneProvider = CloneProvider.COSYVOICE
     mode: CloneMode = CloneMode.ZERO_SHOT
     reference_audio: str = ""  # 参考音频路径或 URL
@@ -71,6 +75,7 @@ class CloneConfig(BaseModel):
 
 class CloneResult(BaseModel):
     """声纹克隆结果。"""
+
     audio_path: str = ""
     text: str = ""
     duration_s: float = 0.0

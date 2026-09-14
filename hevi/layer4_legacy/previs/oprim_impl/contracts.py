@@ -55,9 +55,7 @@ class PrevisScene:
             if cue.end_s <= cue.start_s
         )
         errors.extend(
-            f"camera cue time must be >= 0: {cue.cue_id}"
-            for cue in self.cameras
-            if cue.time_s < 0
+            f"camera cue time must be >= 0: {cue.cue_id}" for cue in self.cameras if cue.time_s < 0
         )
         return errors
 

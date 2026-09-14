@@ -218,9 +218,7 @@ def _run_deferred_config_flush():
 
     while True:
         with _config_save_lock:
-            flush_succeeded = _flush_pending_config_locked(
-                suppress_save_errors=True
-            )
+            flush_succeeded = _flush_pending_config_locked(suppress_save_errors=True)
 
         with _pending_config_lock:
             has_pending_work = bool(

@@ -3,6 +3,7 @@
 Content locking owns PresenterJob mutation; the lower 3O layers receive and
 return data and never hold business state.
 """
+
 from __future__ import annotations
 
 from hevi.digital_human.layer4.atoms import (
@@ -35,16 +36,29 @@ def content_lock(
     return generate_narration(locked, voice_id=voice_id, rate=rate)
 
 
-def visual_plan(job: PresenterJob, narration_duration_s: float, *, opening_target_s: float = 4.0, closing_target_s: float = 5.0) -> TimelinePlan:
+def visual_plan(
+    job: PresenterJob,
+    narration_duration_s: float,
+    *,
+    opening_target_s: float = 4.0,
+    closing_target_s: float = 5.0,
+) -> TimelinePlan:
     """Create a timeline and apply its business status in Layer 4."""
     timeline = build_timeline(job, narration_duration_s, opening_target_s, closing_target_s)
     job.status = JobStatus.VISUAL_PLAN_LOCKED
     return timeline
 
 
-def caption_plan(job: PresenterJob, audio_duration_s: float, *, keyword_anchors: list[tuple[float, str]] | None = None) -> CaptionPlan:
+def caption_plan(
+    job: PresenterJob,
+    audio_duration_s: float,
+    *,
+    keyword_anchors: list[tuple[float, str]] | None = None,
+) -> CaptionPlan:
     """Create captions and apply the canonical job projection in Layer 4."""
-    plan = build_caption_plan_atom(audio_duration_s=audio_duration_s, script_text=job.script, keyword_anchors=keyword_anchors)
+    plan = build_caption_plan_atom(
+        audio_duration_s=audio_duration_s, script_text=job.script, keyword_anchors=keyword_anchors
+    )
     job.caption_json = plan.model_dump_json()
     return plan
 
@@ -54,7 +68,16 @@ def preflight_check(job: PresenterJob):
     return run_preflight_check(job)
 
 
-def qa_gate(job: PresenterJob, *, identity_coherent: bool = True, mouth_sync: bool = True, no_black_frames: bool = True, no_overlay: bool = True, captions_readable: bool = True, safe_zones_ok: bool = True):
+def qa_gate(
+    job: PresenterJob,
+    *,
+    identity_coherent: bool = True,
+    mouth_sync: bool = True,
+    no_black_frames: bool = True,
+    no_overlay: bool = True,
+    captions_readable: bool = True,
+    safe_zones_ok: bool = True,
+):
     """Run the HEVI acceptance transaction at the Layer 4 boundary."""
     return run_qa_gate(
         job,

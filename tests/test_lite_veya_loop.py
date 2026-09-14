@@ -52,9 +52,7 @@ async def test_veya_loop_repairs_weak_hook() -> None:
     assert not v0.passed
     assert any(i.code == "weak_hook" for i in v0.issues)
 
-    result = await run_veya_loop(
-        "量子隧穿", max_rounds=2, llm=None, initial_draft=bad
-    )
+    result = await run_veya_loop("量子隧穿", max_rounds=2, llm=None, initial_draft=bad)
     assert result.rounds >= 1
     assert result.draft.cues
     # 确定性修补后应去掉寒暄开场

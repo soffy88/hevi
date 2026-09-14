@@ -16,24 +16,33 @@ def _draft() -> dict:
         "topic": "测试选题",
         "segments": [
             {
-                "id": "hook", "sceneType": "hook", "narration": "钩子内容足够长",
+                "id": "hook",
+                "sceneType": "hook",
+                "narration": "钩子内容足够长",
                 "keywords": ["钩子"],
                 "props": {
-                    "title": "测试", "subtitle": "提醒",
+                    "title": "测试",
+                    "subtitle": "提醒",
                     "items": [{"emoji": "💡", "label": "例子"}],
                 },
             },
             {
-                "id": "definition", "sceneType": "definition", "narration": "定义内容足够长",
+                "id": "definition",
+                "sceneType": "definition",
+                "narration": "定义内容足够长",
                 "keywords": ["定义"],
                 "props": {
-                    "question": "什么是测试？", "formulaHead": "测试", "formulaLines": ["= 定义"],
+                    "question": "什么是测试？",
+                    "formulaHead": "测试",
+                    "formulaLines": ["= 定义"],
                     "splitLeft": {"emoji": "A", "title": "左侧", "sub": "说明"},
                     "splitRight": {"emoji": "B", "title": "右侧", "sub": "说明"},
                 },
             },
             {
-                "id": "examples", "sceneType": "cards", "narration": "案例内容足够长",
+                "id": "examples",
+                "sceneType": "cards",
+                "narration": "案例内容足够长",
                 "keywords": ["案例"],
                 "props": {
                     "header": "案例",
@@ -41,16 +50,22 @@ def _draft() -> dict:
                 },
             },
             {
-                "id": "reason", "sceneType": "reason", "narration": "原因内容足够长",
+                "id": "reason",
+                "sceneType": "reason",
+                "narration": "原因内容足够长",
                 "keywords": ["原因"],
                 "props": {
-                    "question": "为什么？", "brainLine": "大脑原因", "bubbleText": "原来如此",
+                    "question": "为什么？",
+                    "brainLine": "大脑原因",
+                    "bubbleText": "原来如此",
                     "leftLabel": {"title": "错误", "sub": "后果"},
                     "rightLabel": {"title": "正确", "sub": "收益"},
                 },
             },
             {
-                "id": "method", "sceneType": "method", "narration": "方法内容足够长",
+                "id": "method",
+                "sceneType": "method",
+                "narration": "方法内容足够长",
                 "keywords": ["方法"],
                 "props": {
                     "header": "方法",
@@ -58,12 +73,17 @@ def _draft() -> dict:
                 },
             },
             {
-                "id": "outro", "sceneType": "outro", "narration": "结尾内容足够长",
+                "id": "outro",
+                "sceneType": "outro",
+                "narration": "结尾内容足够长",
                 "keywords": ["结尾"],
                 "props": {
-                    "setupLine1": "过渡", "setupLine2": "过渡",
-                    "quoteLine1": "金句", "quoteLine2": "金句",
-                    "ctaText": "点赞关注", "byline": "下期见",
+                    "setupLine1": "过渡",
+                    "setupLine2": "过渡",
+                    "quoteLine1": "金句",
+                    "quoteLine2": "金句",
+                    "ctaText": "点赞关注",
+                    "byline": "下期见",
                 },
             },
         ],
@@ -92,7 +112,12 @@ async def test_generate_storyboard_valid_qwen_draft_passes_gate():
     storyboard = await generate_storyboard("测试选题", llm=_LLM(content))
     result = gate_storyboard(storyboard)
     assert [segment.scene_type for segment in storyboard.segments] == [
-        "hook", "definition", "cards", "reason", "method", "outro",
+        "hook",
+        "definition",
+        "cards",
+        "reason",
+        "method",
+        "outro",
     ]
     assert result.passed is True
 

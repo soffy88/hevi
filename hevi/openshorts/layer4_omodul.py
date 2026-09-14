@@ -10,17 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from hevi.layer4_legacy.openshorts.oprim_impl import (
-    clip_reframing_params,
-    generate_script_from_description,
-    generate_youtube_description,
-    generate_youtube_thumbnail,
-    generate_youtube_titles,
-    plan_ai_short_actor,
-)
 from hevi.openshorts.oskill import (
-    create_publish_tickets,
-    generate_ai_short,
     generate_clips,
     generate_youtube_package,
 )
@@ -28,12 +18,9 @@ from hevi.openshorts.schemas import (
     AICostMode,
     AIShortJob,
     ClipGeneratorJob,
-    PublishTicket,
     ReframingMode,
     YouTubeStudioJob,
     make_ai_short_job,
-    make_clip_generator_job,
-    make_youtube_studio_job,
 )
 
 # ── Clip Generator Pipeline 规划 ──────────────────────

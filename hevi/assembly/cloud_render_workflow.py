@@ -79,15 +79,17 @@ async def cloud_render_workflow(
 
         cwd = str(config.project_dir)
         props_json = output_dir / "props.json"
-        props_json.write_text(
-            json.dumps(config.props, ensure_ascii=False), encoding="utf-8"
-        )
+        props_json.write_text(json.dumps(config.props, ensure_ascii=False), encoding="utf-8")
 
         serve_url = config.serve_url
         if not serve_url:
             deploy = subprocess.run(
                 ["npx", "remotion", "lambda", "deploy", "--region", config.region],
-                capture_output=True, text=True, timeout=900, check=False, cwd=cwd,
+                capture_output=True,
+                text=True,
+                timeout=900,
+                check=False,
+                cwd=cwd,
             )
             if deploy.returncode != 0:
                 return {
@@ -102,11 +104,25 @@ async def cloud_render_workflow(
 
         render = subprocess.run(
             [
-                "npx", "remotion", "lambda", "render", config.composition_id,
-                "--serve-url", serve_url, "--region", config.region,
-                "--props", str(props_json), "--out", str(config.out_path),
+                "npx",
+                "remotion",
+                "lambda",
+                "render",
+                config.composition_id,
+                "--serve-url",
+                serve_url,
+                "--region",
+                config.region,
+                "--props",
+                str(props_json),
+                "--out",
+                str(config.out_path),
             ],
-            capture_output=True, text=True, timeout=1800, check=False, cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=1800,
+            check=False,
+            cwd=cwd,
         )
         if render.returncode != 0:
             return {
@@ -122,9 +138,7 @@ async def cloud_render_workflow(
             "region": config.region,
         }
         report_path = output_dir / "cloud_render_report.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", **report, "report_path": str(report_path)}
     except Exception as e:
         logger.exception("cloud_render_workflow failed")

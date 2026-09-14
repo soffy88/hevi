@@ -24,6 +24,7 @@ class ExecutionPlan(BaseModel):
 
     Each plan_version is immutable.  To change a plan, create a new version.
     """
+
     id: str = ""
     production_id: str = ""
     revision_id: str = ""
@@ -50,6 +51,7 @@ class ExecutionPlan(BaseModel):
         """Create a new immutable ExecutionPlan."""
         import hashlib
         import json
+
         canonical = json.dumps(plan_json, sort_keys=True, separators=(",", ":"))
         plan_hash = hashlib.sha256(canonical.encode()).hexdigest()
         return cls(
@@ -101,6 +103,7 @@ class RepairPlan(BaseModel):
     - estimated_cost: budget needed for repair
     - expected_gain: quality improvement expected
     """
+
     id: str = ""
     production_id: str = ""
     source_attempt_id: str = ""
@@ -191,11 +194,7 @@ def compute_dag_closure(
             pass
 
     # Preserve: all artifacts not in rerun
-    preserve = [
-        artifact_id
-        for node, artifact_id in artifact_outputs.items()
-        if node not in rerun
-    ]
+    preserve = [artifact_id for node, artifact_id in artifact_outputs.items() if node not in rerun]
 
     return rerun, preserve
 

@@ -32,9 +32,7 @@ class InsufficientCredits(Exception):
         credits_needed: int | None = None,
         credits_available: int | None = None,
     ) -> None:
-        self.amount_cents = (
-            amount_cents if amount_cents is not None else credits_needed
-        ) or 0
+        self.amount_cents = (amount_cents if amount_cents is not None else credits_needed) or 0
         self.available_cents = (
             available_cents if available_cents is not None else credits_available
         ) or 0
@@ -145,7 +143,9 @@ class BillingService:
                     "amount_cents": existing["amount_cents"],
                     "status": existing["status"],
                     "external_ref": existing["external_ref"],
-                    "expires_at": existing["expires_at"].isoformat() if hasattr(existing["expires_at"], "isoformat") else str(existing["expires_at"]),
+                    "expires_at": existing["expires_at"].isoformat()
+                    if hasattr(existing["expires_at"], "isoformat")
+                    else str(existing["expires_at"]),
                     "consumed_amount_cents": existing.get("consumed_amount_cents", 0),
                 }
 
@@ -220,13 +220,18 @@ class BillingService:
                 raise ReservationNotFound(f"Reservation {reservation_id} not found")
 
             if res["status"] != "active":
-                if res["status"] == "consumed" and res["consumed_amount_cents"] == actual_amount_cents:
+                if (
+                    res["status"] == "consumed"
+                    and res["consumed_amount_cents"] == actual_amount_cents
+                ):
                     # Idempotent re-consume
                     return dict(res)
                 raise ValueError(f"Reservation {reservation_id} not active: {res['status']}")
 
             if actual_amount_cents > res["amount_cents"]:
-                raise ValueError(f"Consume amount {actual_amount_cents} exceeds reservation {res['amount_cents']}")
+                raise ValueError(
+                    f"Consume amount {actual_amount_cents} exceeds reservation {res['amount_cents']}"
+                )
 
             user_id = res["user_id"]
 
@@ -430,7 +435,9 @@ class BillingService:
 
             refund_amount = amount_cents or res["consumed_amount_cents"]
             if refund_amount > res["consumed_amount_cents"]:
-                raise ValueError(f"Refund {refund_amount} exceeds consumed {res['consumed_amount_cents']}")
+                raise ValueError(
+                    f"Refund {refund_amount} exceeds consumed {res['consumed_amount_cents']}"
+                )
 
             user_id = res["user_id"]
 
@@ -477,6 +484,7 @@ class BillingService:
         For now, kept for backward compatibility but emits warning.
         """
         import warnings
+
         warnings.warn(
             "check_and_reserve is deprecated. Use reserve() for transactional reservations.",
             DeprecationWarning,
@@ -484,20 +492,14 @@ class BillingService:
         )
         balance = await self._account_svc.get_balance(user_id)
         if balance < credits_needed:
-            raise InsufficientCredits(
-                amount_cents=credits_needed, available_cents=balance
-            )
+            raise InsufficientCredits(amount_cents=credits_needed, available_cents=balance)
         return True
 
-    async def consume_legacy(
-        self, user_id: str, credits: int, task_id: str
-    ) -> dict[str, Any]:
+    async def consume_legacy(self, user_id: str, credits: int, task_id: str) -> dict[str, Any]:
         """DEPRECATED: Use consume(reservation_id, amount_cents) instead."""
         return await self._account_svc.consume(user_id, credits, task_ref=task_id)
 
-    async def refund_legacy(
-        self, user_id: str, credits: int, task_id: str
-    ) -> dict[str, Any]:
+    async def refund_legacy(self, user_id: str, credits: int, task_id: str) -> dict[str, Any]:
         """DEPRECATED: Use refund_consumed(attempt_id, amount_cents) instead."""
         return await self._account_svc.refund(user_id, credits, task_ref=task_id)
 

@@ -29,6 +29,11 @@ class SequencePlanner:
             diagnostics.append("pacing_monotony")
         if sum(shot.framing == "close" for shot in result.shots) > max(2, len(result.shots) * 0.6):
             diagnostics.append("excessive_closeups")
-        if sum(shot.camera_motion.name == "static" for shot in result.shots) > max(3, len(result.shots) * 0.8):
+        if sum(shot.camera_motion.name == "static" for shot in result.shots) > max(
+            3, len(result.shots) * 0.8
+        ):
             diagnostics.append("excessive_static_shots")
-        return SequenceResult(ShotPlan(result.line, result.shots, result.beat_cues, tuple(diagnostics)), tuple(diagnostics))
+        return SequenceResult(
+            ShotPlan(result.line, result.shots, result.beat_cues, tuple(diagnostics)),
+            tuple(diagnostics),
+        )

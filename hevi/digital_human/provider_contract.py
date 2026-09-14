@@ -17,7 +17,9 @@ async def generate_duix_avatar(
     from hevi.digital_human.duix_offline import generate_silent_duix
 
     try:
-        return await generate_silent_duix(reference=reference, audio_path=audio_path, output_path=output_path)
+        return await generate_silent_duix(
+            reference=reference, audio_path=audio_path, output_path=output_path
+        )
     except DuixUnavailable:
         raise
 

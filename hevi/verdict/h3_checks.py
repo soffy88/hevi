@@ -120,7 +120,7 @@ async def check_lip_rough(clip: Path, *, has_dialogue: bool) -> tuple[bool | Non
     try:
         adur = float(astreams[0].get("duration") or 0) or 0
         vdur = float(vstreams[0].get("duration") or 0) if vstreams else 0
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None, "时长探测失败"
     if adur <= 0 or vdur <= 0:
         return None, "音画时长不可测"
@@ -207,10 +207,7 @@ def check_sc_morph(clip: Path) -> tuple[bool | None, float]:
             text=True,
             timeout=90,
         )
-        cuts = {
-            float(x)
-            for x in re.findall(r"pts_time:([0-9.]+)", cut_proc.stderr)
-        }
+        cuts = {float(x) for x in re.findall(r"pts_time:([0-9.]+)", cut_proc.stderr)}
     except Exception as e:
         logger.warning("verdict scene 检测失败 %s: %s", clip.name, e)
         return None, 0.0

@@ -58,10 +58,15 @@ def mux_audio_video(
     else:
         cmd += ["-map", "0:v", "-map", "1:a"]
     cmd += [
-        "-c:v", "copy",
-        "-c:a", "aac", "-b:a", "192k",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
         "-shortest",
-        "-movflags", "+faststart",
+        "-movflags",
+        "+faststart",
         str(output),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -84,13 +89,20 @@ def assert_audio_track(video_path: str | Path) -> bool:
         return True
     result = subprocess.run(
         [
-            "ffprobe", "-v", "error",
-            "-select_streams", "a",
-            "-show_entries", "stream=index",
-            "-of", "csv=p=0",
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "a",
+            "-show_entries",
+            "stream=index",
+            "-of",
+            "csv=p=0",
             str(path),
         ],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     if result.returncode != 0 or not result.stdout.strip():
         raise MuxError(f"成片缺少音频轨(音画不同步产物): {path}")

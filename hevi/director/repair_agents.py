@@ -136,8 +136,11 @@ def plan_repair(
             agent, lever, instruction = entry
             plan.actions.append(
                 RepairAction(
-                    agent=agent, diagnosis=diagnosis, lever=lever,
-                    instruction=instruction, shot_id=shot_id,
+                    agent=agent,
+                    diagnosis=diagnosis,
+                    lever=lever,
+                    instruction=instruction,
+                    shot_id=shot_id,
                 )
             )
         plan.budget_used += 1

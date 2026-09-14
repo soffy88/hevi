@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 class TTSProvider(str, Enum):
     """TTS 声音生成提供商。"""
+
     EDGE_TTS = "edge_tts"
     OPEN_AI_TTS = "openai_tts"
     MINIMAX_TTS = "minimax_tts"
@@ -26,13 +27,15 @@ class TTSProvider(str, Enum):
 
 class VoiceCloneMode(str, Enum):
     """声纹克隆模式。"""
-    ZERO_SHOT = "zero_shot"      # 从短音频克隆
+
+    ZERO_SHOT = "zero_shot"  # 从短音频克隆
     CROSS_LINGUAL = "cross_lingual"  # 跨语言克隆
-    INSTRUCT = "instruct"        # 指令式克隆
+    INSTRUCT = "instruct"  # 指令式克隆
 
 
 class VoiceConfig(BaseModel):
     """TTS 声音配置。"""
+
     provider: TTSProvider = TTSProvider.EDGE_TTS
     voice: str = "zh-CN-Xiaoyan"  # 声音名称
     speed: float = 1.0
@@ -54,6 +57,7 @@ class VoiceConfig(BaseModel):
 
 class AudioOutput(BaseModel):
     """TTS 音频输出模型。"""
+
     path: str = ""
     duration_s: float = 0.0
     format: str = "wav"  # wav / mp3
@@ -65,6 +69,7 @@ class AudioOutput(BaseModel):
 
 class TTSSResult(BaseModel):
     """TTS 合成结果。"""
+
     audio_path: str = ""
     text: str = ""
     duration_s: float = 0.0
@@ -79,6 +84,7 @@ class TTSSResult(BaseModel):
 
 class TTSConfig(BaseModel):
     """TTS 合成配置。"""
+
     provider: TTSProvider = TTSProvider.EDGE_TTS
     voice: str = "zh-CN-Xiaoyan"
     speed: float = 1.0
@@ -110,6 +116,7 @@ def make_tts_config(
 
 
 # ─── 工厂函数：创建 TTS 结果 ─────────────────────
+
 
 def make_tts_result(
     audio_path: str,

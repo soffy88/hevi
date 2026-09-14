@@ -50,6 +50,7 @@ from hevi.sourcing.media_use import (
 
 # ---- media_use 台账 ----
 
+
 def test_media_ledger_reuse_chain():
     ledger = MediaLedger()
     local = {"bgm": {"local": lambda intent: Path(f"/lib/{intent}.mp3")}}
@@ -85,7 +86,8 @@ def test_media_chain_exhausted_raises():
 def test_media_ledger_roundtrip(tmp_path):
     ledger = MediaLedger()
     resolve_media(
-        "sfx", "pop 音效",
+        "sfx",
+        "pop 音效",
         providers={"sfx": {"local": lambda i: Path("/lib/pop.wav")}},
         ledger=ledger,
     )
@@ -97,6 +99,7 @@ def test_media_ledger_roundtrip(tmp_path):
 
 
 # ---- 嵌入字幕 ----
+
 
 def test_caption_plan_from_words():
     cfg = CaptionConfig(video_path=Path("/v.mp4"), out_path=Path("/o.mp4"))
@@ -143,6 +146,7 @@ def test_captions_workflow_missing_video(tmp_path):
 
 # ---- 说话人重剪 ----
 
+
 def test_overlay_plan_lower_thirds_and_quotes():
     cfg = RecutConfig(video_path=Path("/v.mp4"), out_path=Path("/o.mp4"), pip_rect="bottom-right")
     plan = build_overlay_plan(
@@ -161,6 +165,7 @@ def test_overlay_plan_lower_thirds_and_quotes():
 
 
 # ---- 音乐→视频 ----
+
 
 def test_beat_timeline_lyrics_on_beats():
     grid = fit_beat_grid([0.0 + i * 0.5 for i in range(8)])  # 120 BPM
@@ -183,6 +188,7 @@ def test_music_workflow_missing_audio(tmp_path):
 
 
 # ---- PR→视频 ----
+
 
 def test_pr_segments_group_by_top_dir():
     inp = PrVideoInput(
@@ -220,6 +226,7 @@ def test_pr_workflow_manual_mode(tmp_path):
 
 # ---- 云渲染 ----
 
+
 def test_cloud_render_missing_lambda_fails_gracefully(tmp_path):
     res = __import__("asyncio").run(
         cloud_render_workflow(
@@ -235,6 +242,7 @@ def test_cloud_render_missing_lambda_fails_gracefully(tmp_path):
 
 
 # ---- parity ----
+
 
 def test_render_config_fingerprint_deterministic():
     a = ParityConfig(composition_id="X", props={"a": 1, "b": 2})
@@ -252,6 +260,7 @@ def test_compare_videos_missing_files(tmp_path):
 
 
 # ---- 色彩分级 / LUT ----
+
 
 def test_grade_presets():
     assert grade_preset_by_name("neutral").contrast == 1.0
@@ -285,6 +294,7 @@ def test_cube_lut_parse(tmp_path):
 
 
 # ---- skills 安装器 ----
+
 
 def test_installer_dry_run(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_SKILLS_DIR", str(tmp_path / "claude"))

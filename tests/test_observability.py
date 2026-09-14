@@ -78,7 +78,7 @@ def test_structured_log_format(caplog):
     tid = str(uuid.uuid4())
     with start_trace(tid):
         log_event(stage="test", event="hello", key="val")
-        
+
         assert len(caplog.records) == 1
         data = json.loads(caplog.records[0].message)
         assert data["trace_id"] == tid
@@ -144,9 +144,10 @@ async def test_task_service_trace_id_injection():
     }
     service = TaskService(repo)
 
-    with patch("hevi.tasks.task_service.start_trace") as mock_set, patch(
-        "hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock
-    ) as mock_orch:
+    with (
+        patch("hevi.tasks.task_service.start_trace") as mock_set,
+        patch("hevi.tasks.task_service.orchestrate_longvideo", new_callable=AsyncMock) as mock_orch,
+    ):
         mock_orch.return_value = {"url": "v", "duration": 10, "metadata": {"shots": 1}}
         await service.run_task(tid)
         mock_set.assert_called_with(str(tid))
@@ -193,10 +194,13 @@ async def test_trace_id_propagation_orchestrator():
     from hevi.pipeline import orchestrate_longvideo
 
     tid = uuid.uuid4()
-    with start_trace(str(tid)), patch(
-        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
-        new_callable=AsyncMock,
-    ) as mock_pipe:
+    with (
+        start_trace(str(tid)),
+        patch(
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            new_callable=AsyncMock,
+        ) as mock_pipe,
+    ):
         mock_result = MagicMock(
             video_path=MagicMock(stem="test"),
             duration_s=10,

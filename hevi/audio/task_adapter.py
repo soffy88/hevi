@@ -34,7 +34,9 @@ async def execute_voice_studio_task(task: dict[str, Any], pool: PgPool) -> dict[
         voice=str(config.get("voice") or "") or None,
         emotion=emotion,
     )
-    requested = str(config.get("engine") or task.get("audio_provider") or "voicebox").strip().lower()
+    requested = (
+        str(config.get("engine") or task.get("audio_provider") or "voicebox").strip().lower()
+    )
     provider_used = requested
     provider_selection: dict[str, Any] = {}
     if requested in {"auto", "openvoice", "existing"}:
@@ -147,7 +149,9 @@ async def _synthesize_with_engine(
         await voicebox_synthesize(script=[line], output_path=output_path, emotion=emotion)
         return
     if engine == "openvoice":
-        reference = Path(str(config.get("reference_audio") or os.getenv("OPENVOICE_REFERENCE_AUDIO", "")))
+        reference = Path(
+            str(config.get("reference_audio") or os.getenv("OPENVOICE_REFERENCE_AUDIO", ""))
+        )
         if not reference.is_file():
             raise RuntimeError("OpenVoice requires config.reference_audio")
         await OpenVoiceProvider().synthesize(
@@ -182,8 +186,12 @@ async def _synthesize_with_engine(
         await f5_tts_synthesize(
             text=line.text,
             output_path=output_path,
-            reference_audio=str(config.get("reference_audio") or os.getenv("F5_TTS_REFERENCE_AUDIO", "")),
-            reference_text=str(config.get("reference_text") or os.getenv("F5_TTS_REFERENCE_TEXT", "")),
+            reference_audio=str(
+                config.get("reference_audio") or os.getenv("F5_TTS_REFERENCE_AUDIO", "")
+            ),
+            reference_text=str(
+                config.get("reference_text") or os.getenv("F5_TTS_REFERENCE_TEXT", "")
+            ),
             speed=float(config.get("speed") or 1.0),
             language=str(config.get("language") or "") or None,
         )

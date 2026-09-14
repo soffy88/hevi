@@ -37,17 +37,20 @@ def gpu_headroom_mb() -> int:
     try:
         out = subprocess.run(
             [
-                "nvidia-smi", "--query-gpu=memory.used,memory.total",
+                "nvidia-smi",
+                "--query-gpu=memory.used,memory.total",
                 "--format=csv,noheader,nounits",
             ],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if out.returncode != 0:
             # 卡掉出总线时 nvidia-smi 报 "Unable to determine the device handle"。
             return GPU_UNKNOWN
         used, total = (int(x) for x in out.stdout.strip().split(","))
         return total - used
-    except (ValueError, OSError, subprocess.TimeoutExpired):
+    except ValueError, OSError, subprocess.TimeoutExpired:
         return GPU_UNKNOWN
 
 
@@ -75,7 +78,8 @@ def degrade_audio_provider(audio_provider: str, *, min_mb: int = VIBEVOICE_VRAM_
         return audio_provider
     logger.warning(
         "GPU 显存不足(%s MiB < %s MiB),audio provider 降级 vibewoice → edge_tts",
-        gpu_headroom_mb(), min_mb,
+        gpu_headroom_mb(),
+        min_mb,
     )
     return "edge_tts"
 

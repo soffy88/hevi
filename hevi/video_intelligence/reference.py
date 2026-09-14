@@ -20,10 +20,19 @@ def build_reference_profile(analysis: ReelAnalysis) -> ReferenceProfile:
             "p90_ms": sorted(durations)[min(len(durations) - 1, round(len(durations) * 0.9) - 1)],
         },
         cut_frequency=analysis.statistics.cuts_per_minute,
-        shot_size_profile={key: value / total for key, value in analysis.statistics.shot_size_distribution.items()},
-        camera_profile={key: value / total for key, value in analysis.statistics.camera_motion_distribution.items()},
-        rhythm_profile={key: value / total for key, value in analysis.statistics.rhythm_distribution.items()},
-        motion_profile={key: value / total for key, value in analysis.statistics.motion_distribution.items()},
+        shot_size_profile={
+            key: value / total for key, value in analysis.statistics.shot_size_distribution.items()
+        },
+        camera_profile={
+            key: value / total
+            for key, value in analysis.statistics.camera_motion_distribution.items()
+        },
+        rhythm_profile={
+            key: value / total for key, value in analysis.statistics.rhythm_distribution.items()
+        },
+        motion_profile={
+            key: value / total for key, value in analysis.statistics.motion_distribution.items()
+        },
         semantic_sequence=[shot.semantic.category.value for shot in analysis.shots],
         visual_pattern_summary="Abstract structural profile only; no source dialogue or source frames copied.",
         provenance_ref=analysis.provenance.source_sha256,

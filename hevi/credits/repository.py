@@ -20,10 +20,10 @@ class CreditRepository:
             try:
                 # Note: insert_one returns the 'returning' column value
                 account_id = await insert_one(
-                    self._pool, 
-                    table="credit_accounts", 
+                    self._pool,
+                    table="credit_accounts",
                     data={"user_id": user_uuid, "balance": 0},
-                    returning="user_id"
+                    returning="user_id",
                 )
                 account = await read_one(
                     self._pool, table="credit_accounts", id=account_id, id_column="user_id"
@@ -36,37 +36,32 @@ class CreditRepository:
         return account or {}
 
     async def create_transaction(
-        self, 
-        user_id: str, 
-        amount: int, 
-        tx_type: str, 
-        balance_after: int, 
-        reference: str | None = None
+        self,
+        user_id: str,
+        amount: int,
+        tx_type: str,
+        balance_after: int,
+        reference: str | None = None,
     ) -> dict[str, Any]:
         data = {
             "user_id": uuid.UUID(user_id),
             "amount": amount,
             "tx_type": tx_type,
             "balance_after": balance_after,
-            "reference": reference
+            "reference": reference,
         }
         tx_id = await insert_one(self._pool, table="credit_transactions", data=data, returning="id")
         return await read_one(self._pool, table="credit_transactions", id=tx_id) or {}
 
     async def update_balance_with_ledger(
-        self, 
-        user_id: str, 
-        amount: int, 
-        tx_type: str, 
-        reference: str | None = None
+        self, user_id: str, amount: int, tx_type: str, reference: str | None = None
     ) -> dict[str, Any]:
         """Atomically update balance and write transaction log."""
         user_uuid = uuid.UUID(user_id)
         async with transaction(self._pool) as conn:
             # 1. Lock account row for update
             row = await conn.fetchrow(
-                "SELECT balance FROM credit_accounts WHERE user_id = $1 FOR UPDATE",
-                user_uuid
+                "SELECT balance FROM credit_accounts WHERE user_id = $1 FOR UPDATE", user_uuid
             )
             # Idempotency: under the per-user row lock, if a ledger entry for this
             # (user, reference, tx_type) already exists, this op was already applied
@@ -75,7 +70,9 @@ class CreditRepository:
                 existing = await conn.fetchrow(
                     "SELECT * FROM credit_transactions "
                     "WHERE user_id = $1 AND reference = $2 AND tx_type = $3",
-                    user_uuid, reference, tx_type,
+                    user_uuid,
+                    reference,
+                    tx_type,
                 )
                 if existing:
                     return dict(existing)
@@ -85,7 +82,7 @@ class CreditRepository:
                 await conn.execute(
                     "INSERT INTO credit_accounts (user_id, balance, updated_at) "
                     "VALUES ($1, 0, NOW())",
-                    user_uuid
+                    user_uuid,
                 )
                 current_balance = 0
             else:
@@ -93,23 +90,25 @@ class CreditRepository:
 
             new_balance = current_balance + amount
             if new_balance < 0:
-                raise ValueError(f"Insufficient credits: needed {abs(amount)} credits, have {current_balance}")
+                raise ValueError(
+                    f"Insufficient credits: needed {abs(amount)} credits, have {current_balance}"
+                )
 
             # 2. Update balance
             await conn.execute(
                 "UPDATE credit_accounts SET balance = $1, updated_at = NOW() WHERE user_id = $2",
-                new_balance, user_uuid
+                new_balance,
+                user_uuid,
             )
 
             # 3. Insert transaction
             sql = (
                 'INSERT INTO "credit_transactions" '
-                '(id, user_id, amount, tx_type, balance_after, reference, created_at) '
-                'VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING *'
+                "(id, user_id, amount, tx_type, balance_after, reference, created_at) "
+                "VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING *"
             )
             tx_row = await conn.fetchrow(
-                sql,
-                uuid.uuid4(), user_uuid, amount, tx_type, new_balance, reference
+                sql, uuid.uuid4(), user_uuid, amount, tx_type, new_balance, reference
             )
             return dict(tx_row)
 
@@ -128,10 +127,7 @@ class CreditRepository:
         return rows[0] if rows else None
 
     async def list_transactions(
-        self,
-        user_id: str,
-        limit: int = 20,
-        offset: int = 0
+        self, user_id: str, limit: int = 20, offset: int = 0
     ) -> list[dict[str, Any]]:
         sql = (
             "SELECT * FROM credit_transactions "
@@ -139,8 +135,4 @@ class CreditRepository:
             "ORDER BY created_at DESC "
             "LIMIT $2 OFFSET $3"
         )
-        return await query(
-            self._pool, 
-            sql=sql, 
-            params=[uuid.UUID(user_id), limit, offset]
-        )
+        return await query(self._pool, sql=sql, params=[uuid.UUID(user_id), limit, offset])

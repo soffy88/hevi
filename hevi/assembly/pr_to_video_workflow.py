@@ -111,13 +111,21 @@ def _fetch_pr_via_gh(config: PrVideoConfig) -> PrVideoInput:
     cwd = str(config.repo_dir) if config.repo_dir else None
     title = subprocess.run(
         [
-            "gh", "pr", "view", ref, "--json",
+            "gh",
+            "pr",
+            "view",
+            ref,
+            "--json",
             "title,body,additions,deletions,files",
             "--jq",
             "{title:.title, body:.body, additions:.additions, "
             "deletions:.deletions, files:[.files[].path]}",
         ],
-        capture_output=True, text=True, timeout=60, check=False, cwd=cwd,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        cwd=cwd,
     )
     if title.returncode != 0:
         raise RuntimeError(f"gh pr view failed: {title.stderr[-300:]}")
@@ -170,9 +178,7 @@ async def pr_to_video_workflow(
 
         report = {"status": "completed", "plan": plan.to_dict()}
         report_path = output_dir / "pr_video_report.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", "plan": plan.to_dict(), "report_path": str(report_path)}
     except Exception as e:
         logger.exception("pr_to_video_workflow failed")

@@ -34,6 +34,7 @@ class _FakeFile:
 
 # ---- chat 端点 ----
 
+
 def test_chat_endpoint_status():
     res = __import__("asyncio").run(
         er.chat(
@@ -66,16 +67,26 @@ def test_chat_state_endpoint():
 
 # ---- 候选提升端点 ----
 
+
 def test_candidate_flow():
     asyncio = __import__("asyncio")
     # 登记
     asyncio.run(
         er.add_candidate(
             "p3",
-            type("C", (), {
-                "candidate_id": "c1", "kind": "character", "name": "主角",
-                "source": "freezone", "score": 0.9, "score_note": "", "payload": {},
-            })(),
+            type(
+                "C",
+                (),
+                {
+                    "candidate_id": "c1",
+                    "kind": "character",
+                    "name": "主角",
+                    "source": "freezone",
+                    "score": 0.9,
+                    "score_note": "",
+                    "payload": {},
+                },
+            )(),
             _USER,
         )
     )
@@ -95,7 +106,7 @@ def test_candidate_flow():
             er.decide_candidate(
                 "p3",
                 type("P", (), {"candidate_id": "c1", "action": "promote", "reason": ""})(),
-                _USER
+                _USER,
             )
         )
     assert exc.value.status_code == 409
@@ -118,10 +129,19 @@ def test_add_candidate_bad_kind():
         __import__("asyncio").run(
             er.add_candidate(
                 "p5",
-                type("C", (), {
-                    "candidate_id": "c1", "kind": "nope", "name": "x",
-                    "source": "gen", "score": 0, "score_note": "", "payload": {},
-                })(),
+                type(
+                    "C",
+                    (),
+                    {
+                        "candidate_id": "c1",
+                        "kind": "nope",
+                        "name": "x",
+                        "source": "gen",
+                        "score": 0,
+                        "score_note": "",
+                        "payload": {},
+                    },
+                )(),
                 _USER,
             )
         )
@@ -130,14 +150,19 @@ def test_add_candidate_bad_kind():
 
 # ---- 修复计划端点 ----
 
+
 def test_repair_plan_endpoint():
     res = __import__("asyncio").run(
         er.repair_plan_endpoint(
-            type("R", (), {
-                "failures": [{"shot_id": "s1", "diagnosis": "参考图角色错配"}],
-                "budget_limit": 3,
-                "episode_num": 1,
-            })(),
+            type(
+                "R",
+                (),
+                {
+                    "failures": [{"shot_id": "s1", "diagnosis": "参考图角色错配"}],
+                    "budget_limit": 3,
+                    "episode_num": 1,
+                },
+            )(),
             _USER,
         )
     )
@@ -157,10 +182,9 @@ def test_repair_plan_empty_rejected():
 
 # ---- 风格画像端点 ----
 
+
 def test_style_analyze_endpoint():
-    res = __import__("asyncio").run(
-        er.style_analyze_endpoint(_USER, _FakeFile(_png_bytes()))
-    )
+    res = __import__("asyncio").run(er.style_analyze_endpoint(_USER, _FakeFile(_png_bytes())))
     assert res["palette"]
     assert res["dominant_color"].startswith("#")
     assert res["warmth"] > 0
@@ -168,22 +192,21 @@ def test_style_analyze_endpoint():
 
 def test_style_analyze_empty_rejected():
     with pytest.raises(HTTPException):
-        __import__("asyncio").run(
-            er.style_analyze_endpoint(_USER, _FakeFile(b""))
-        )
+        __import__("asyncio").run(er.style_analyze_endpoint(_USER, _FakeFile(b"")))
 
 
 # ---- 草图编辑端点 ----
 
+
 def test_sketch_edit_endpoint():
-    ops_json = json.dumps([
-        {"op": "crop", "params": {"box": [0, 0, 12, 8]}},
-        {"op": "reframe", "params": {"width": 32, "height": 32}},
-    ])
+    ops_json = json.dumps(
+        [
+            {"op": "crop", "params": {"box": [0, 0, 12, 8]}},
+            {"op": "reframe", "params": {"width": 32, "height": 32}},
+        ]
+    )
     res = __import__("asyncio").run(
-        er.sketch_edit_endpoint(
-            _USER, _FakeFile(_png_bytes((10, 10, 200)), "sketch.png"), ops_json
-        )
+        er.sketch_edit_endpoint(_USER, _FakeFile(_png_bytes((10, 10, 200)), "sketch.png"), ops_json)
     )
     assert "crop" in res["applied"] and "reframe" in res["applied"]
 
@@ -191,14 +214,13 @@ def test_sketch_edit_endpoint():
 def test_sketch_edit_bad_ops_json():
     with pytest.raises(HTTPException) as exc:
         __import__("asyncio").run(
-            er.sketch_edit_endpoint(
-                _USER, _FakeFile(_png_bytes()), "{not json"
-            )
+            er.sketch_edit_endpoint(_USER, _FakeFile(_png_bytes()), "{not json")
         )
     assert exc.value.status_code == 422
 
 
 # ---- 返工 hints 自动推导(regenerate 接线)----
+
 
 def test_hints_from_failures():
     from hevi.director.repair_agents import hints_from_failures

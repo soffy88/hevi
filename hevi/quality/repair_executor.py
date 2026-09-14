@@ -83,9 +83,7 @@ def apply_repair_decision(
             patch.scopes.append(action.scope)
         if action.kind == "switch_provider":
             candidates = [
-                item
-                for item in (fallback_candidates or [])
-                if item and item != current_provider
+                item for item in (fallback_candidates or []) if item and item != current_provider
             ]
             patch.provider_id = candidates[0] if candidates else None
         elif action.kind == "retry_new_seed":

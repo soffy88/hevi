@@ -124,13 +124,10 @@ async def _run_engine_longcat(
                     data={"preset_name": preset_name, "gpu_id": str(gpu_id)},
                 )
             if response.status_code == 501:
-                raise TalkingFaceUnavailable(
-                    f"AI 引擎无 LongCat 模型可用: {_detail(response)}"
-                )
+                raise TalkingFaceUnavailable(f"AI 引擎无 LongCat 模型可用: {_detail(response)}")
             if response.status_code >= 400:
                 raise TalkingFaceUnavailable(
-                    f"AI 引擎 LongCat 合成失败 (HTTP {response.status_code}): "
-                    f"{_detail(response)}"
+                    f"AI 引擎 LongCat 合成失败 (HTTP {response.status_code}): {_detail(response)}"
                 )
             if not response.content:
                 raise TalkingFaceUnavailable("AI 引擎返回空视频")
@@ -253,25 +250,37 @@ async def _run_generic_lipsync(*, image_path: Path, audio_path: Path, output_pat
     """
     # Input: image (still) + audio input, output: talking-face-like video
     cmd = [
-        "ffmpeg", "-y",
-        "-loop", "1",
-        "-i", str(image_path),
-        "-i", str(audio_path),
-        "-filter_complex", (
+        "ffmpeg",
+        "-y",
+        "-loop",
+        "1",
+        "-i",
+        str(image_path),
+        "-i",
+        str(audio_path),
+        "-filter_complex",
+        (
             "[0:v]"
             ",scale=1080:1920,format=yuv420p"
             "[bg];"
             "[1:a]showvolume=f=100:t=0:h=30:w=1080:colors=0x6C63FF[spectrum];"
             "[bg][spectrum]overlay=x=(W-w)/2:y=H-h-40"
         ),
-        "-c:v", "libx264",
-        "-tune", "animation",
-        "-preset", "fast",
-        "-crf", "23",
-        "-c:a", "aac",
-        "-b:a", "128k",
+        "-c:v",
+        "libx264",
+        "-tune",
+        "animation",
+        "-preset",
+        "fast",
+        "-crf",
+        "23",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
         "-shortest",
-        "-pix_fmt", "yuv420p",
+        "-pix_fmt",
+        "yuv420p",
         str(output_path),
     ]
     proc = await asyncio.create_subprocess_exec(
@@ -287,9 +296,7 @@ async def _run_generic_lipsync(*, image_path: Path, audio_path: Path, output_pat
     return output_path
 
 
-async def _generate_placeholder_avoiding_null(
-    *, audio_path: Path, output_path: Path
-) -> Path:
+async def _generate_placeholder_avoiding_null(*, audio_path: Path, output_path: Path) -> Path:
     """Fallback: Generate an animated placeholder so Remotion never has a null track.
 
     Creates a simple pulsing-circle-with-avatar-silhouette video synced to audio duration.
@@ -312,19 +319,32 @@ async def _generate_placeholder_avoiding_null(
     )
 
     cmd = [
-        "ffmpeg", "-y",
-        "-f", "lavfi",
-        "-i", f"color=c={color_bg}:s=1080x1920:d={duration_s}",
-        "-f", "lavfi",
-        "-i", "aevalsrc=sin(440*2*3.14159*t)|sin(550*2*3.14159*t):s=48000:channels=2",
-        "-filter_complex", drawdesc,
-        "-c:v", "libx264",
-        "-tune", "animation",
-        "-preset", "ultrafast",
-        "-crf", "28",
-        "-c:a", "aac",
-        "-b:a", "128k",
-        "-pix_fmt", "yuv420p",
+        "ffmpeg",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        f"color=c={color_bg}:s=1080x1920:d={duration_s}",
+        "-f",
+        "lavfi",
+        "-i",
+        "aevalsrc=sin(440*2*3.14159*t)|sin(550*2*3.14159*t):s=48000:channels=2",
+        "-filter_complex",
+        drawdesc,
+        "-c:v",
+        "libx264",
+        "-tune",
+        "animation",
+        "-preset",
+        "ultrafast",
+        "-crf",
+        "28",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-pix_fmt",
+        "yuv420p",
         str(output_path),
     ]
 
@@ -338,17 +358,28 @@ async def _generate_placeholder_avoiding_null(
     # If the drawtext/avfilter chain failed (older ffmpeg), produce the simplest valid MP4
     if not output_path.exists() or output_path.stat().st_size < 100:
         cmd_simple = [
-            "ffmpeg", "-y",
-            "-f", "lavfi",
-            "-i", f"color=c={color_bg}:s=1080x1920:d={duration_s}",
-            "-f", "lavfi",
-            "-i", "aevalsrc=0:s=48000:channels=1",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "32",
-            "-c:a", "aac",
-            "-t", str(duration_s),
-            "-pix_fmt", "yuv420p",
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=c={color_bg}:s=1080x1920:d={duration_s}",
+            "-f",
+            "lavfi",
+            "-i",
+            "aevalsrc=0:s=48000:channels=1",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "32",
+            "-c:a",
+            "aac",
+            "-t",
+            str(duration_s),
+            "-pix_fmt",
+            "yuv420p",
             str(output_path),
         ]
         await asyncio.create_subprocess_exec(
@@ -392,7 +423,8 @@ async def generate_continuous_avatar_track(
     )
     logger.info(
         "Continuous avatar track produced: %s (%.1f MB)",
-        result, result.stat().st_size / 1_000_000,
+        result,
+        result.stat().st_size / 1_000_000,
     )
     return result
 
@@ -404,6 +436,6 @@ def _detail(response: httpx.Response) -> str:
         payload = response.json()
         if isinstance(payload, dict) and payload.get("detail"):
             return str(payload["detail"])
-    except (ValueError, json.JSONDecodeError):
+    except ValueError, json.JSONDecodeError:
         pass
     return response.text[:300] or f"HTTP {response.status_code}"

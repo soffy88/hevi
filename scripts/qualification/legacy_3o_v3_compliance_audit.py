@@ -44,9 +44,7 @@ from reconcile_ledger import parse_ledger, resolve_status  # noqa: E402
 
 
 def _run(script: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, str(script)], cwd=ROOT, capture_output=True, text=True
-    )
+    return subprocess.run([sys.executable, str(script)], cwd=ROOT, capture_output=True, text=True)
 
 
 def _lint_gate() -> dict[str, object]:
@@ -73,17 +71,17 @@ def _debt_gate() -> dict[str, object]:
 
 
 def _capability_gate() -> dict[str, object]:
-    lines = (ROOT / "docs/research/inkos_capability_ledger.yaml").read_text(
-        encoding="utf-8"
-    ).splitlines()
+    lines = (
+        (ROOT / "docs/research/inkos_capability_ledger.yaml")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    )
     capabilities = parse_ledger(lines)
     statuses = [resolve_status(cap) for cap in capabilities]
     counts = {key: statuses.count(key) for key in ("QUALIFIED", "PARTIAL", "MISSING")}
     unqualified = len(statuses) - sum(counts.values())
     return {
-        "passed": (
-            counts["PARTIAL"] == 0 and counts["MISSING"] == 0 and unqualified == 0
-        ),
+        "passed": (counts["PARTIAL"] == 0 and counts["MISSING"] == 0 and unqualified == 0),
         "total": len(capabilities),
         "qualified": counts["QUALIFIED"],
         "partial": counts["PARTIAL"],
@@ -108,7 +106,11 @@ def _element_gate() -> dict[str, object]:
 
     current = build_inventory()["layers"]
     blob = subprocess.check_output(
-        ["git", "show", f"{BASELINE_COMMIT}:artifacts/qualification/creative-runtime/3o-asset-inventory.json"],
+        [
+            "git",
+            "show",
+            f"{BASELINE_COMMIT}:artifacts/qualification/creative-runtime/3o-asset-inventory.json",
+        ],
         cwd=ROOT,
         text=True,
     )
@@ -125,8 +127,12 @@ def _element_gate() -> dict[str, object]:
                 added_elements.extend(names)
                 continue
             base_names = set(base_modules[module])
-            added_elements.extend(f"{layer}/{module}::{name}" for name in names if name not in base_names)
-            removed_elements.extend(f"{layer}/{module}::{name}" for name in base_names if name not in names)
+            added_elements.extend(
+                f"{layer}/{module}::{name}" for name in names if name not in base_names
+            )
+            removed_elements.extend(
+                f"{layer}/{module}::{name}" for name in base_names if name not in names
+            )
 
     locations: dict[str, list[str]] = {}
     for layer, entry in current.items():
@@ -136,16 +142,14 @@ def _element_gate() -> dict[str, object]:
                     continue
                 locations.setdefault(name, []).append(f"{layer}/{module}")
     multi_source = {
-        name: sorted(set(paths))
-        for name, paths in locations.items()
-        if len(set(paths)) > 1
+        name: sorted(set(paths)) for name, paths in locations.items() if len(set(paths)) > 1
     }
     added_public_names = {
-        item.split("::")[-1]
-        for item in added_elements
-        if not item.split("::")[-1].startswith("_")
+        item.split("::")[-1] for item in added_elements if not item.split("::")[-1].startswith("_")
     }
-    conflicting_new = {name: multi_source[name] for name in added_public_names if name in multi_source}
+    conflicting_new = {
+        name: multi_source[name] for name in added_public_names if name in multi_source
+    }
     return {
         "passed": not added_modules and not conflicting_new,
         "added_modules": sorted(added_modules),

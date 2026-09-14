@@ -11,6 +11,7 @@ deployment this should move to a shared store (Redis); see audit backlog.
 Disabled when settings.debug is true so the test/dev suites (which hammer auth
 from one IP) aren't throttled.
 """
+
 from __future__ import annotations
 
 import time

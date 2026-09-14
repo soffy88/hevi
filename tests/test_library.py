@@ -7,12 +7,11 @@ import pytest
 async def _auth(client: Any) -> dict[str, str]:
     """Register + login a fresh user, return Authorization headers."""
     email = f"lib_{uuid.uuid4().hex[:8]}@example.com"
-    await client.post("/api/auth/register", json={
-        "email": email, "password": "password123", "display_name": "Lib"
-    })
-    login = await client.post("/api/auth/login", json={
-        "email": email, "password": "password123"
-    })
+    await client.post(
+        "/api/auth/register",
+        json={"email": email, "password": "password123", "display_name": "Lib"},
+    )
+    login = await client.post("/api/auth/login", json={"email": email, "password": "password123"})
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
 
@@ -102,14 +101,19 @@ async def test_audio_library_crud(client):
     assert asset["is_official"] is False
 
     assert (await client.get(f"/api/audio/{asset_id}", headers=h)).json()["name"] == "Happy Summer"
-    assert any(a["id"] == asset_id
-               for a in (await client.get("/api/audio/?asset_type=bgm", headers=h)).json())
-    assert any(a["id"] == asset_id
-               for a in (await client.get("/api/audio/?mood=happy", headers=h)).json())
-    assert any(a["id"] == asset_id
-               for a in (await client.get("/api/audio/?tags=summer", headers=h)).json())
-    assert any(a["id"] == asset_id
-               for a in (await client.get("/api/audio/?query=Happy", headers=h)).json())
+    assert any(
+        a["id"] == asset_id
+        for a in (await client.get("/api/audio/?asset_type=bgm", headers=h)).json()
+    )
+    assert any(
+        a["id"] == asset_id for a in (await client.get("/api/audio/?mood=happy", headers=h)).json()
+    )
+    assert any(
+        a["id"] == asset_id for a in (await client.get("/api/audio/?tags=summer", headers=h)).json()
+    )
+    assert any(
+        a["id"] == asset_id for a in (await client.get("/api/audio/?query=Happy", headers=h)).json()
+    )
     assert (await client.delete(f"/api/audio/{asset_id}", headers=h)).status_code == 200
 
 
@@ -137,12 +141,16 @@ async def test_template_apply_errors(client):
 @pytest.mark.asyncio
 async def test_template_list_filters(client):
     h = await _auth(client)
-    await client.post("/api/templates/", json={
-        "name": "Ecom", "category": "e-commerce", "canvas_json": {}
-    }, headers=h)
-    await client.post("/api/templates/", json={
-        "name": "Pers", "category": "personal", "canvas_json": {}
-    }, headers=h)
+    await client.post(
+        "/api/templates/",
+        json={"name": "Ecom", "category": "e-commerce", "canvas_json": {}},
+        headers=h,
+    )
+    await client.post(
+        "/api/templates/",
+        json={"name": "Pers", "category": "personal", "canvas_json": {}},
+        headers=h,
+    )
 
     # category filter
     resp = await client.get("/api/templates/?category=e-commerce", headers=h)
@@ -159,9 +167,11 @@ async def test_audio_search_multi_tenancy(client):
     """A 的音频资产 B 搜不到。"""
     a = await _auth(client)
     b = await _auth(client)
-    await client.post("/api/audio/", json={
-        "name": "User-Audio", "asset_type": "sfx", "file_path": "f2"
-    }, headers=a)
+    await client.post(
+        "/api/audio/",
+        json={"name": "User-Audio", "asset_type": "sfx", "file_path": "f2"},
+        headers=a,
+    )
 
     a_names = [x["name"] for x in (await client.get("/api/audio/", headers=a)).json()]
     assert "User-Audio" in a_names

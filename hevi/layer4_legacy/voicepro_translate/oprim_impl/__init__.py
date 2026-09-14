@@ -23,6 +23,7 @@ from hevi.voicepro_translate.schemas import (
 
 # ── DeepL 翻译 ─────────────────────────────────────
 
+
 async def translate_deepl(
     text: str,
     source_lang: str = "auto",
@@ -52,6 +53,7 @@ async def translate_deepl(
 
 
 # ── Deep-Translator 翻译 ──────────────────────────
+
 
 async def translate_deep_translator(
     text: str,
@@ -95,6 +97,7 @@ async def translate_deep_translator(
 
 
 # ── Azure Translator 翻译 ─────────────────────────
+
 
 async def translate_azure_translator(
     text: str,
@@ -149,6 +152,7 @@ async def translate_azure_translator(
 
 # ── LLM 翻译 ─────────────────────────────────────
 
+
 async def translate_llm(
     text: str,
     source_lang: str = "auto",
@@ -202,6 +206,7 @@ async def translate_llm(
 
 # ── 通用翻译（根据 provider 自动选择） ───────────
 
+
 async def translate_text(
     text: str,
     config: TranslateConfig,
@@ -209,27 +214,41 @@ async def translate_text(
     """通用翻译：根据 provider 自动选择后端。"""
     if config.provider == TranslateProvider.DEEPL:
         return await translate_deepl(
-            text, config.source_lang, config.target_lang, config.deepl_api_key,
+            text,
+            config.source_lang,
+            config.target_lang,
+            config.deepl_api_key,
         )
     if config.provider == TranslateProvider.DEEP_TRANSLATOR:
         return await translate_deep_translator(
-            text, config.source_lang, config.target_lang, config.backend,
+            text,
+            config.source_lang,
+            config.target_lang,
+            config.backend,
         )
     if config.provider == TranslateProvider.AZURE_TRANSLATOR:
         return await translate_azure_translator(
-            text, config.source_lang, config.target_lang,
-            config.azure_key, config.azure_region,
+            text,
+            config.source_lang,
+            config.target_lang,
+            config.azure_key,
+            config.azure_region,
         )
     if config.provider == TranslateProvider.LLM_TRANSLATE:
         return await translate_llm(
-            text, config.source_lang, config.target_lang,
-            config.llm_model, config.llm_base_url, config.llm_api_key,
+            text,
+            config.source_lang,
+            config.target_lang,
+            config.llm_model,
+            config.llm_base_url,
+            config.llm_api_key,
             config.terminology_map,
         )
     raise ValueError(f"不支持的翻译提供商: {config.provider}")
 
 
 # ── 术语替换 ─────────────────────────────────────
+
 
 def apply_terminology(
     text: str,

@@ -34,9 +34,7 @@ class LongCatTool:
 
     name: str
     description: str = ""
-    parameters: dict[str, Any] = field(
-        default_factory=lambda: {"type": "object", "properties": {}}
-    )
+    parameters: dict[str, Any] = field(default_factory=lambda: {"type": "object", "properties": {}})
 
     def validate(self) -> list[str]:
         errors: list[str] = []
@@ -89,9 +87,7 @@ class LongCatRequest:
         if not self.model.strip():
             errors.append("model is required")
         if not 1_024 <= self.max_context_tokens <= LONGCAT_CONTEXT_LIMIT:
-            errors.append(
-                f"max_context_tokens must be between 1024 and {LONGCAT_CONTEXT_LIMIT}"
-            )
+            errors.append(f"max_context_tokens must be between 1024 and {LONGCAT_CONTEXT_LIMIT}")
         if not 1 <= self.max_output_tokens <= 131_072:
             errors.append("max_output_tokens must be between 1 and 131072")
         if not 0 <= self.max_tool_rounds <= 32:

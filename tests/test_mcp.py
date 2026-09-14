@@ -370,9 +370,7 @@ async def test_subject_search_returns_count() -> None:
     from hevi.subjects.subject_service import SubjectService
 
     mock_svc = MagicMock(spec=SubjectService)
-    mock_svc.search_subjects = AsyncMock(
-        return_value=[{"id": "1"}, {"id": "2"}]
-    )
+    mock_svc.search_subjects = AsyncMock(return_value=[{"id": "1"}, {"id": "2"}])
     skills = build_subject_skills(subject_svc=mock_svc)
     search_skill = next(s for s in skills if s.name == "hevi.subject_search")
     result = await search_skill.handler({"kind": "character"})

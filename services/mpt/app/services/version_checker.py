@@ -65,8 +65,7 @@ def get_available_update(current_version: str) -> str | None:
         # 更新检查失败属于可恢复的非核心异常。保留异常类型和信息便于定位代理、
         # DNS、GitHub 限流或响应损坏问题，同时避免在 WebUI 中打扰普通用户。
         logger.debug(
-            "GitHub release check failed: "
-            f"error_type={type(exc).__name__}, error={exc}"
+            f"GitHub release check failed: error_type={type(exc).__name__}, error={exc}"
         )
         return None
 
@@ -150,10 +149,7 @@ class AsyncUpdateChecker:
                     available_version=self._available_version,
                 )
 
-            if (
-                self._checking
-                and self._current_version == normalized_current_version
-            ):
+            if self._checking and self._current_version == normalized_current_version:
                 return UpdateCheckSnapshot(complete=False)
 
             # 版本发生变化或缓存过期时，旧结果不应继续展示。先清空状态再启动

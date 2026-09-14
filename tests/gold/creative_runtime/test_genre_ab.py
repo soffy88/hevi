@@ -54,9 +54,7 @@ def test_genre_audit_effect_on_the_same_text(module: GenreModule) -> None:
         name: tuple(
             sorted(
                 f"{finding.code}:{finding.message}"
-                for finding in module.audit(
-                    module.profile(project_id=project_id, name=name), text
-                )
+                for finding in module.audit(module.profile(project_id=project_id, name=name), text)
             )
         )
         for name in module.list_builtin()
@@ -68,7 +66,9 @@ def test_forbidden_pattern_gate(module: GenreModule) -> None:
     project_id = uuid4()
     profile = module.profile(project_id=project_id, name="mystery")
     findings = module.audit(profile, "A spell opens the gate.")
-    assert any(finding.code == "FORBIDDEN_PATTERN" and finding.message == "spell" for finding in findings)
+    assert any(
+        finding.code == "FORBIDDEN_PATTERN" and finding.message == "spell" for finding in findings
+    )
     clean = module.audit(profile, "A clause opens the gate.")
     assert not any(finding.code == "FORBIDDEN_PATTERN" for finding in clean)
 

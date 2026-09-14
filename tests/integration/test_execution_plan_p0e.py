@@ -120,20 +120,14 @@ async def test_p0e_e3_same_key_different_plan_raises_immutable_violation(
         )
     assert len(rows) == 1
     assert rows[0]["plan_json"] == {"version": 1, "plan": "A"}
-    assert rows[0]["plan_hash"] == _plan(
-        plan_context, {"version": 1, "plan": "A"}
-    ).plan_hash
+    assert rows[0]["plan_hash"] == _plan(plan_context, {"version": 1, "plan": "A"}).plan_hash
 
 
 def test_p0e_e4_canonical_hash_is_key_order_independent() -> None:
     production_id = str(uuid.uuid4())
     revision_id = str(uuid.uuid4())
-    left = ExecutionPlan.create(
-        production_id, revision_id, {"a": 1, "b": {"x": 2, "y": 3}}
-    )
-    right = ExecutionPlan.create(
-        production_id, revision_id, {"b": {"y": 3, "x": 2}, "a": 1}
-    )
+    left = ExecutionPlan.create(production_id, revision_id, {"a": 1, "b": {"x": 2, "y": 3}})
+    right = ExecutionPlan.create(production_id, revision_id, {"b": {"y": 3, "x": 2}, "a": 1})
     assert left.plan_hash == right.plan_hash
 
 

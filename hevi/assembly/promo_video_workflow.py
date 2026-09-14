@@ -210,9 +210,7 @@ async def promo_video_workflow(
 
         report_path = output_dir / "promo_plan.json"
         report = {"status": "completed", "plan": plan.to_dict()}
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", "plan": plan.to_dict(), "report_path": str(report_path)}
     except Exception as e:
         logger.exception("promo_video_workflow failed")

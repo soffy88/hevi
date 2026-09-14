@@ -53,8 +53,11 @@ class AccountProfile(BaseModel):
         """是否具备发布所需的登录态(读取态 + 创作者态)。"""
         if not self.is_available():
             return False
-        if self.platform in (PlatformName.DOUYIN.value, PlatformName.KUAISHOU.value,
-                              PlatformName.SHIPINHAO.value):
+        if self.platform in (
+            PlatformName.DOUYIN.value,
+            PlatformName.KUAISHOU.value,
+            PlatformName.SHIPINHAO.value,
+        ):
             return self.has_creator_state or self.has_read_state
         return self.has_creator_state or self.has_read_state
 

@@ -83,9 +83,7 @@ async def scene_block_workflow(
 
         # G2:图生 3D(blueprint → threejs 代码);LLM 缺失 → 明确指引
         try:
-            blueprint = build_prop_blueprint(
-                input_data.reference_image, llm=input_data.llm
-            )
+            blueprint = build_prop_blueprint(input_data.reference_image, llm=input_data.llm)
             model_code = blueprint_to_threejs(blueprint, llm=input_data.llm)
         except (Prop3DError, PE) as e:
             return {
@@ -139,9 +137,7 @@ async def scene_block_workflow(
             ),
         }
         report_path = output_dir / "scene_block_report.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", **report, "report_path": str(report_path)}
     except Exception as e:
         logger.exception("scene_block_workflow failed")

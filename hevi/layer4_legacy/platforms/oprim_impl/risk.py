@@ -11,10 +11,10 @@ from hevi.platforms.schemas import RiskCategory, RiskLevel
 
 
 _COOLDOWNS: dict[RiskCategory, int] = {
-    RiskCategory.RISK: 30,      # 30 分钟
-    RiskCategory.AUTH: 120,     # 2 小时
+    RiskCategory.RISK: 30,  # 30 分钟
+    RiskCategory.AUTH: 120,  # 2 小时
     RiskCategory.NETWORK: 360,  # 6 小时
-    RiskCategory.UNKNOWN: 60,   # 1 小时
+    RiskCategory.UNKNOWN: 60,  # 1 小时
 }
 
 
@@ -70,8 +70,12 @@ def progressive_recovery_steps(current_level: str) -> list[str]:
     normal -> cool -> warn -> blocked 依次降级，
     恢复时 block->warn->normal 逐步解除。
     """
-    order = [RiskLevel.NORMAL.value, RiskLevel.COOL.value,
-             RiskLevel.WARN.value, RiskLevel.BLOCKED.value]
+    order = [
+        RiskLevel.NORMAL.value,
+        RiskLevel.COOL.value,
+        RiskLevel.WARN.value,
+        RiskLevel.BLOCKED.value,
+    ]
     try:
         idx = order.index(current_level)
     except ValueError:

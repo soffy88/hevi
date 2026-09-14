@@ -76,9 +76,7 @@ class TestParse:
 
     def test_score_out_of_range_rejected(self) -> None:
         with pytest.raises(ValueError, match="out of \\[0,1\\]"):
-            parse_plugin_decl(
-                "providers:\n  - id: p1\n    tool: x\n    scores: {task_fit: 1.5}\n"
-            )
+            parse_plugin_decl("providers:\n  - id: p1\n    tool: x\n    scores: {task_fit: 1.5}\n")
 
     def test_capability_row_projection(self) -> None:
         decl = ProviderDecl(id="p1", tool="video/shot", kind="video", scores={"task_fit": 0.6})

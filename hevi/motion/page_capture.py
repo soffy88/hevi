@@ -47,9 +47,7 @@ class PageAsset:
         """落盘 layout.json,返回路径。"""
         p = Path(out_path)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(
-            json.dumps(self.to_layout(), ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        p.write_text(json.dumps(self.to_layout(), ensure_ascii=False, indent=2), encoding="utf-8")
         self.layout_path = p
         return p
 

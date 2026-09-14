@@ -296,9 +296,7 @@ async def publish_to_platform(
         )
     except Exception as exc:
         logger.exception("publish to %s failed", platform)
-        return PublishResult(
-            status="failed", platform=platform, reason=f"exception: {exc}"
-        )
+        return PublishResult(status="failed", platform=platform, reason=f"exception: {exc}")
 
 
 def _register_defaults() -> None:

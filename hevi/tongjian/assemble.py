@@ -614,9 +614,7 @@ async def _asr_reverify(
     return None, "ASR 全片反打未产出转写文本"
 
 
-async def _vibevoice_asr_utterances(
-    audio: Path, hotwords: list[str]
-) -> list[dict[str, str]]:
+async def _vibevoice_asr_utterances(audio: Path, hotwords: list[str]) -> list[dict[str, str]]:
     """调 gen-engine /api/ai/asr; 不可用/未部署 → 空列表(回退 whisper)。"""
     import httpx
 
@@ -642,13 +640,9 @@ async def _vibevoice_asr_utterances(
         return []
 
 
-def _asr_speaker_check(
-    utterances: list[dict[str, str]], script: Script
-) -> str:
+def _asr_speaker_check(utterances: list[dict[str, str]], script: Script) -> str:
     """VibeVoice-ASR 说话人 vs 剧本对白角色核对(只报 warning 不阻断)。"""
-    dialogue_speakers = {
-        ln.speaker for ln in script.lines if ln.type == "dialogue" and ln.speaker
-    }
+    dialogue_speakers = {ln.speaker for ln in script.lines if ln.type == "dialogue" and ln.speaker}
     asr_speakers = {u.get("speaker", "") for u in utterances if u.get("speaker")}
     if not dialogue_speakers or not asr_speakers:
         return ""

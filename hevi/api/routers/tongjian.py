@@ -445,9 +445,7 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
         character_sim_path = Path(run_dir) / "L2" / "character_sim.json"
         character_states = load_character_states(character_sim_path)
         if character_states is None:
-            character_states = await simulate_character_states(
-                chapter_ir, llm=_llm("L2")
-            )
+            character_states = await simulate_character_states(chapter_ir, llm=_llm("L2"))
             if character_states:
                 dump_character_states(character_states, character_sim_path)
         g_sim = gate_character_states(character_states, chapter_ir)
@@ -455,7 +453,8 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
             reason = g_sim.errors[0] if g_sim.errors else "角色档案不完整"
             logger.warning("character_sim 门禁未过(降级继续): %s", reason)
             _update_layer(
-                run_id, "L1",
+                run_id,
+                "L1",
                 degraded=True,
                 degrade_reason=f"角色推演门禁未过: {reason}",
                 error=f"角色推演门禁未过: {reason}",
@@ -468,9 +467,7 @@ async def _run_pipeline(run_id: str, req: RunRequest) -> None:
             from hevi.prompting.contracts import anti_repeat_block
 
             memory = AntiRepeatMemory(req.source_name)
-            similar = memory.similar_to(
-                "\n".join(e.summary for e in chapter_ir.events)
-            )
+            similar = memory.similar_to("\n".join(e.summary for e in chapter_ir.events))
             if similar:
                 anti_repeat = anti_repeat_block(similar)
         except Exception as exc:

@@ -116,9 +116,7 @@ def audit_production(episodes: list[EpisodeState]) -> AuditResult:
 
     stuck_post = [s for s in all_shots if s.status in ("post_upscale", "post_rife")]
     if stuck_post:
-        completeness.append(
-            f"{len(stuck_post)} 个镜头停在 post 后处理(post_upscale/post_rife)"
-        )
+        completeness.append(f"{len(stuck_post)} 个镜头停在 post 后处理(post_upscale/post_rife)")
         suggestions.append(
             "跑后处理工序(FlashVSR/RIFE,见 hevi/post);失败镜可降级交付 raw + 标记 no_interp"
         )

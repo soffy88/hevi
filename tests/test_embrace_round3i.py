@@ -19,6 +19,7 @@ from hevi.motion.interactive import (
 
 # ---- 帧预算(独立姿态数)----
 
+
 def test_frame_budget_by_control():
     assert interactive_frame_budget("scroll", scroll_pages=1.0) == 24
     assert interactive_frame_budget("scroll", scroll_pages=4.0) == 96  # 4 屏基线
@@ -30,6 +31,7 @@ def test_frame_budget_by_control():
 
 
 # ---- 输入→帧映射 ----
+
 
 def test_map_scroll_linear():
     assert map_input_to_frame(0.0, 100) == 0
@@ -59,6 +61,7 @@ def test_ring_shortest_delta():
 
 # ---- 资源形式决策 ----
 
+
 def _decide(**kw: object) -> str:
     return decide_resource_form(**kw)  # type: ignore[arg-type]
 
@@ -85,10 +88,16 @@ def test_decide_resource_form():
         == "short_clips"
     )
     # WebCodecs 目标明确
-    assert _decide(
-        transparency=True, frames=200, display_size=(240, 240), control_kind="scroll",
-        target_browser="webcodecs",
-    ) == "webcodecs"
+    assert (
+        _decide(
+            transparency=True,
+            frames=200,
+            display_size=(240, 240),
+            control_kind="scroll",
+            target_browser="webcodecs",
+        )
+        == "webcodecs"
+    )
     # 图集超纹理上限 → sliced_atlas
     assert (
         _decide(transparency=True, frames=200, display_size=(1000, 1000), control_kind="ring")
@@ -97,6 +106,7 @@ def test_decide_resource_form():
 
 
 # ---- 图集预算 ----
+
 
 def test_atlas_budget_basic():
     res = atlas_budget(display_size=(240, 240), dpr=2.0, frames=180)
@@ -121,10 +131,17 @@ def test_atlas_budget_cell_respects_dpr():
 
 # ---- 清单 ----
 
+
 def test_atlas_manifest_and_css():
     manifest = build_atlas_manifest(
-        frames=180, cols=15, rows=12, cell_width=480, cell_height=480,
-        anchor=(0.5, 0.5), mapping="scroll", static_frames=[0],
+        frames=180,
+        cols=15,
+        rows=12,
+        cell_width=480,
+        cell_height=480,
+        anchor=(0.5, 0.5),
+        mapping="scroll",
+        static_frames=[0],
     )
     assert manifest.frames == 180
     assert atlas_css_background(manifest) == "1500% 1200%"
@@ -142,19 +159,16 @@ def test_save_atlas_manifest(tmp_path):
 
 # ---- CLI ----
 
+
 def test_interactive_cli_budget(capsys):
     from hevi.skills.interactive_cli import main
 
     # 96 帧 / 300px 单元(10x10 → 3000x3000)在纹理上限内 → rc 0
-    rc = main(
-        ["budget", "--display", "240x240", "--dpr", "1.25", "--frames", "96"]
-    )
+    rc = main(["budget", "--display", "240x240", "--dpr", "1.25", "--frames", "96"])
     assert rc == 0
     assert "cell_width" in capsys.readouterr().out
     # 180 帧 / 480px 单元超 4096 → rc 1(正确提示分片/视频解码)
-    rc2 = main(
-        ["budget", "--display", "240x240", "--dpr", "2", "--frames", "180"]
-    )
+    rc2 = main(["budget", "--display", "240x240", "--dpr", "2", "--frames", "180"])
     assert rc2 == 1
 
 
@@ -163,8 +177,14 @@ def test_interactive_cli_decide(capsys):
 
     main(
         [
-            "decide", "--transparency", "--frames", "200",
-            "--display", "240x240", "--control", "scroll",
+            "decide",
+            "--transparency",
+            "--frames",
+            "200",
+            "--display",
+            "240x240",
+            "--control",
+            "scroll",
         ]
     )
     assert capsys.readouterr().out.strip() == "webp_atlas"

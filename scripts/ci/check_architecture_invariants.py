@@ -90,9 +90,7 @@ def main() -> int:
             violations.append(f"{rel}: router imports provider SDK {module}")
         for callee in _add_task_callees(tree):
             if callee in BILLABLE_ADD_TASK:
-                violations.append(
-                    f"{rel}: BackgroundTasks schedules billable {callee}"
-                )
+                violations.append(f"{rel}: BackgroundTasks schedules billable {callee}")
 
     for path in HEVI.rglob("*.py"):
         if "__pycache__" in path.parts:

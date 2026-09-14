@@ -30,11 +30,7 @@ async def provider_status(
     if probe:
         status = "ready" if all(item["ready"] for item in items) else "degraded"
     else:
-        status = (
-            "configured"
-            if all(item["configured"] for item in items)
-            else "degraded"
-        )
+        status = "configured" if all(item["configured"] for item in items) else "degraded"
     return {
         "status": status,
         "probe": probe,

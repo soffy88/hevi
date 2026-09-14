@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 class TranslateProvider(str, Enum):
     """翻译服务提供商。"""
+
     DEEPL = "deepl"
     DEEP_TRANSLATOR = "deep_translator"  # Google / Bing / LibreTranslate
     AZURE_TRANSLATOR = "azure_translator"
@@ -26,6 +27,7 @@ class TranslateProvider(str, Enum):
 
 class TranslateConfig(BaseModel):
     """翻译配置。"""
+
     provider: TranslateProvider = TranslateProvider.DEEP_TRANSLATOR
     source_lang: str = "auto"
     target_lang: str = "zh-CN"
@@ -51,6 +53,7 @@ class TranslateConfig(BaseModel):
 
 class TranslateResult(BaseModel):
     """单条翻译结果。"""
+
     source_text: str = ""
     translated_text: str = ""
     source_lang: str = ""
@@ -63,6 +66,7 @@ class TranslateResult(BaseModel):
 
 class TranslateBatchResult(BaseModel):
     """批量翻译结果。"""
+
     results: list[TranslateResult] = Field(default_factory=list)
     total_count: int = 0
     passed_count: int = 0
@@ -75,6 +79,7 @@ class TranslateBatchResult(BaseModel):
 
 class TerminologyEntry(BaseModel):
     """术语库条目。"""
+
     source: str = ""
     target: str = ""
     context: str = ""  # 上下文说明

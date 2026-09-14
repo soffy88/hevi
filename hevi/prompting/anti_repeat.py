@@ -37,7 +37,7 @@ class AntiRepeatMemory:
         try:
             data = json.loads(self._path.read_text(encoding="utf-8"))
             self._sentences = list(data.get("sentences") or [])
-        except (OSError, ValueError):
+        except OSError, ValueError:
             self._sentences = []
 
     def remember(self, text: str) -> int:
@@ -74,9 +74,7 @@ class AntiRepeatMemory:
         query_sentences = _split_sentences(text)
         if not query_sentences:
             return []
-        query_grams = set().union(
-            *(_bigrams(_normalize(q)) for q in query_sentences[:40])
-        )
+        query_grams = set().union(*(_bigrams(_normalize(q)) for q in query_sentences[:40]))
         scored: list[tuple[float, str]] = []
         for stored in self._sentences:
             grams = _bigrams(stored)
@@ -109,7 +107,7 @@ def _split_sentences(text: str) -> list[str]:
 
 def _normalize(sentence: str) -> str:
     """去空白/标点, 保留汉字/字母/数字(便于 bigram 指纹比较)。"""
-    return re.sub(r"[\s，。！？、；：""''（）【】《》,.!?;:\"'()\[\]{}]", "", sentence)
+    return re.sub(r"[\s，。！？、；：" "''（）【】《》,.!?;:\"'()\[\]{}]", "", sentence)
 
 
 def _bigrams(s: str) -> set[str]:

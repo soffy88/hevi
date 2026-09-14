@@ -14,6 +14,7 @@ def _sample(name: str, labels: dict[str, str] | None = None) -> float:
 
 # ── 1. Metric definitions ─────────────────────────────────────────────────────
 
+
 def test_metrics_defined() -> None:
     """All hevi Prometheus metrics exist on the metrics module.
 
@@ -35,6 +36,7 @@ def test_metrics_defined() -> None:
 
 
 # ── 2. /metrics endpoint ──────────────────────────────────────────────────────
+
 
 async def test_metrics_endpoint_returns_200(client: AsyncClient) -> None:
     response = await client.get("/metrics")
@@ -66,6 +68,7 @@ async def test_metrics_body_contains_business_metrics(client: AsyncClient) -> No
 
 # ── 3. Middleware counter / histogram / gauge ─────────────────────────────────
 
+
 async def test_request_counter_increments(client: AsyncClient) -> None:
     labels = {"method": "GET", "path": "/api/health", "status": "200"}
     before = _sample("http_requests_total", labels)
@@ -89,6 +92,7 @@ async def test_in_progress_gauge_is_zero_after_request(client: AsyncClient) -> N
 
 # ── 4. Path template — no label cardinality explosion ─────────────────────────
 
+
 async def test_path_label_uses_route_template(client: AsyncClient) -> None:
     """Static route /api/health: template == actual path; label must NOT be a raw URL."""
     await client.get("/api/health")
@@ -100,6 +104,7 @@ async def test_path_label_uses_route_template(client: AsyncClient) -> None:
 
 
 # ── 5. Business / provider metric interfaces ──────────────────────────────────
+
 
 def test_video_metrics_labels_accessible() -> None:
     """Business metrics are callable with expected label sets."""

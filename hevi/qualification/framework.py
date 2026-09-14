@@ -14,22 +14,46 @@ from typing import Any
 import yaml
 
 STATUSES = {
-    "PRODUCTION_COMPLETE", "QUALIFIED", "PARTIAL", "BLOCKED_PROVIDER",
-    "BLOCKED_HARDWARE", "FAILED",
+    "PRODUCTION_COMPLETE",
+    "QUALIFIED",
+    "PARTIAL",
+    "BLOCKED_PROVIDER",
+    "BLOCKED_HARDWARE",
+    "FAILED",
 }
 HIGH_RANDOMNESS_LINES = {
-    "cinematic", "reference_adapt", "character_animation", "talking_head",
-    "avatar_spokesperson", "localization_dub",
+    "cinematic",
+    "reference_adapt",
+    "character_animation",
+    "talking_head",
+    "avatar_spokesperson",
+    "localization_dub",
 }
 IMPLEMENTATION_FIELDS = (
-    "recipe_complete", "runtime_complete", "provider_contract", "tests",
-    "artifact_model", "media_validation", "retry_verified", "observability_complete",
-    "security_gate", "provenance_model",
+    "recipe_complete",
+    "runtime_complete",
+    "provider_contract",
+    "tests",
+    "artifact_model",
+    "media_validation",
+    "retry_verified",
+    "observability_complete",
+    "security_gate",
+    "provenance_model",
 )
 PRODUCTION_FIELDS = (
-    "recipe_complete", "runtime_complete", "provider_available", "real_e2e",
-    "final_artifact", "ffprobe_valid", "media_quality", "provenance_complete",
-    "retry_verified", "observability_complete", "security_gate", "quality_gate_passed",
+    "recipe_complete",
+    "runtime_complete",
+    "provider_available",
+    "real_e2e",
+    "final_artifact",
+    "ffprobe_valid",
+    "media_quality",
+    "provenance_complete",
+    "retry_verified",
+    "observability_complete",
+    "security_gate",
+    "quality_gate_passed",
 )
 
 
@@ -44,7 +68,7 @@ def _sha256(path: Path) -> str:
 def _hardware_available() -> bool:
     try:
         result = subprocess.run(["nvidia-smi", "-L"], capture_output=True, timeout=10)
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return False
     return result.returncode == 0 and bool(result.stdout.strip())
 
@@ -74,7 +98,11 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
     provider_required = _provider_needs(recipe)
     hardware_line = "h3_local" in provider_required
     readiness_path = Path("artifacts/qualification/provider_readiness.json")
-    readiness = json.loads(readiness_path.read_text(encoding="utf-8")) if readiness_path.exists() else {"providers": []}
+    readiness = (
+        json.loads(readiness_path.read_text(encoding="utf-8"))
+        if readiness_path.exists()
+        else {"providers": []}
+    )
     readiness_by_name = {str(item.get("provider")): item for item in readiness.get("providers", [])}
     dependency_blockers = []
     for provider_name in provider_required:
@@ -82,20 +110,25 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
         if item is None:
             dependency_blockers.append(f"{provider_name}=BLOCKED_SERVICE:readiness_not_recorded")
         elif item.get("status") != "READY":
-            dependency_blockers.append(f"{provider_name}={item.get('status')}:{item.get('blocker') or 'probe_failed'}")
+            dependency_blockers.append(
+                f"{provider_name}={item.get('status')}:{item.get('blocker') or 'probe_failed'}"
+            )
     provider_available = bool(provider_required) and not dependency_blockers
     hardware_available = _hardware_available() if hardware_line else True
     blockers: list[str] = []
     status = "BLOCKED_PROVIDER"
     if hardware_line and not hardware_available:
         status = "BLOCKED_HARDWARE"
-        blockers.extend(dependency_blockers or ["h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable"])
+        blockers.extend(
+            dependency_blockers or ["h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable"]
+        )
     elif dependency_blockers:
         blockers.extend(dependency_blockers)
     else:
         blockers.append("real_e2e_not_executed; no mock accepted")
     checks = {
-        "recipe_complete": bool(recipe.get("pipeline", {}).get("stages")) and bool(recipe.get("slots") is not None),
+        "recipe_complete": bool(recipe.get("pipeline", {}).get("stages"))
+        and bool(recipe.get("slots") is not None),
         "runtime_complete": bool(recipe.get("render_runtime")),
         "provider_available": provider_available and hardware_available,
         "real_e2e": False,
@@ -113,12 +146,33 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
         "provenance_model": Path("hevi/tongjian").exists(),
         "quality_gate_passed": False,
     }
-    code_fields = ("recipe_complete", "provider_contract", "tests", "artifact_model", "media_validation", "provenance_model", "security_gate")
-    runtime_fields = ("runtime_complete", "provider_contract", "artifact_model", "media_validation", "retry_verified", "observability_complete")
-    implementation_completeness = round(100 * sum(checks[field] for field in IMPLEMENTATION_FIELDS) / len(IMPLEMENTATION_FIELDS))
+    code_fields = (
+        "recipe_complete",
+        "provider_contract",
+        "tests",
+        "artifact_model",
+        "media_validation",
+        "provenance_model",
+        "security_gate",
+    )
+    runtime_fields = (
+        "runtime_complete",
+        "provider_contract",
+        "artifact_model",
+        "media_validation",
+        "retry_verified",
+        "observability_complete",
+    )
+    implementation_completeness = round(
+        100 * sum(checks[field] for field in IMPLEMENTATION_FIELDS) / len(IMPLEMENTATION_FIELDS)
+    )
     code_completeness = round(100 * sum(checks[field] for field in code_fields) / len(code_fields))
-    runtime_completeness = round(100 * sum(checks[field] for field in runtime_fields) / len(runtime_fields))
-    production_completeness = round(100 * sum(checks[field] for field in PRODUCTION_FIELDS) / len(PRODUCTION_FIELDS))
+    runtime_completeness = round(
+        100 * sum(checks[field] for field in runtime_fields) / len(runtime_fields)
+    )
+    production_completeness = round(
+        100 * sum(checks[field] for field in PRODUCTION_FIELDS) / len(PRODUCTION_FIELDS)
+    )
     return {
         "line": line,
         **checks,
@@ -136,7 +190,9 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
             "recipe_sha256": _sha256(Path(recipe["_source"])) if recipe.get("_source") else None,
             "git_sha": _git_sha(),
             "provider_model": os.getenv("OPENAI_MODEL") or os.getenv("H3_MODEL") or None,
-            "host_fingerprint": hashlib.sha256(f"{platform.node()}|{platform.platform()}".encode()).hexdigest(),
+            "host_fingerprint": hashlib.sha256(
+                f"{platform.node()}|{platform.platform()}".encode()
+            ).hexdigest(),
             "evidence_root": str(evidence_root),
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "hardware_probe": hardware_available,
@@ -147,9 +203,11 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
 
 def _git_sha() -> str | None:
     try:
-        result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+        )
         return result.stdout.strip()
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return None
 
 
@@ -169,8 +227,19 @@ def write_reports(reports: list[dict[str, Any]], output: Path) -> dict[str, Any]
     for report in reports:
         line_dir = output / report["line"]
         line_dir.mkdir(parents=True, exist_ok=True)
-        (line_dir / "result.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    counts = {status: sum(item["status"] == status for item in reports) for status in sorted(STATUSES)}
-    summary = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "total": len(reports), "counts": counts, "lines": reports}
-    (output / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (line_dir / "result.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+    counts = {
+        status: sum(item["status"] == status for item in reports) for status in sorted(STATUSES)
+    }
+    summary = {
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "total": len(reports),
+        "counts": counts,
+        "lines": reports,
+    }
+    (output / "summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return summary

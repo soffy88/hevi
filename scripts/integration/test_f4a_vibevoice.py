@@ -7,6 +7,7 @@
   4. 显存峰值采集 (nvidia-smi)
   5. 耗时计量
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +15,6 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-
 
 OUTPUT_DIR = Path("output/f4a_tts")
 MODEL_DIR = Path.home() / "models/vibevoice-1.5b"
@@ -30,7 +30,8 @@ class Line:
 def _nvidia_mem_mib() -> int:
     result = subprocess.run(
         ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     try:
         return int(result.stdout.strip())
@@ -40,10 +41,18 @@ def _nvidia_mem_mib() -> int:
 
 def _ffprobe(path: Path) -> str:
     result = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-show_entries",
-         "format=duration,size : stream=sample_rate,channels",
-         "-of", "default=noprint_wrappers=1", str(path)],
-        capture_output=True, text=True,
+        [
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-show_entries",
+            "format=duration,size : stream=sample_rate,channels",
+            "-of",
+            "default=noprint_wrappers=1",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
     )
     return result.stdout.strip() or result.stderr.strip()
 
@@ -55,7 +64,9 @@ async def run() -> None:
 
     # ── SINGLE SPEAKER ────────────────────────────────────────────────────────
     single_script = [
-        Line(speaker_id="host", text="欢迎来到 VibeVoice 真跑验证。今天我们测试本地 1.5B 模型推理。"),
+        Line(
+            speaker_id="host", text="欢迎来到 VibeVoice 真跑验证。今天我们测试本地 1.5B 模型推理。"
+        ),
     ]
     single_out = OUTPUT_DIR / "single_speaker.wav"
     vv_config = {"VIBEVOICE_MODEL_DIR": str(MODEL_DIR)}
@@ -81,10 +92,10 @@ async def run() -> None:
 
     # ── MULTI SPEAKER ─────────────────────────────────────────────────────────
     multi_script = [
-        Line(speaker_id="host",   text="大家好，我是主持人小明。"),
+        Line(speaker_id="host", text="大家好，我是主持人小明。"),
         Line(speaker_id="guest1", text="您好，我是嘉宾小红，很高兴来到这里。"),
         Line(speaker_id="guest2", text="我是嘉宾小刚，我们今天聊聊人工智能。"),
-        Line(speaker_id="host",   text="太好了，让我们开始今天的节目吧！"),
+        Line(speaker_id="host", text="太好了，让我们开始今天的节目吧！"),
     ]
     multi_out = OUTPUT_DIR / "multi_speaker.wav"
 

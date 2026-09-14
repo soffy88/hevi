@@ -83,9 +83,7 @@ constraint_coverage_ratio = Gauge(
 quality_gate_outcomes_total = Counter(
     "quality_gate_outcomes_total", "Quality gate outcomes", ["gate", "status"]
 )
-repair_rounds_total = Counter(
-    "repair_rounds_total", "Quality repair rounds", ["stage", "reason"]
-)
+repair_rounds_total = Counter("repair_rounds_total", "Quality repair rounds", ["stage", "reason"])
 quality_score_delta = Histogram(
     "quality_score_delta", "Quality score delta after repair", ["stage"]
 )

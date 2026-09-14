@@ -181,10 +181,7 @@ def test_pocket_and_voxcpm_capabilities_run_without_upstream_packages(
             with wave.open(str(path), "rb") as stream:
                 assert stream.getnframes() > 0
 
-        chunks = [
-            chunk
-            async for chunk in pocket.stream_pocket_tts("One. Two.", language="en")
-        ]
+        chunks = [chunk async for chunk in pocket.stream_pocket_tts("One. Two.", language="en")]
         assert len(chunks) == 2
         assert chunks[-1].final is True
 

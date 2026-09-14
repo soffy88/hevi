@@ -29,8 +29,7 @@ SUPPORTED_SOURCES = {"pexels", "pixabay", "coverr", "local"}
 PEXELS_API_KEY_URL = "https://www.pexels.com/api/"
 PEXELS_VALIDATION_URL = "https://api.pexels.com/v1/collections?per_page=1"
 PEXELS_API_KEY_HELP_URL = (
-    "https://help.pexels.com/hc/en-us/articles/"
-    "900004904026-How-do-I-get-an-API-key"
+    "https://help.pexels.com/hc/en-us/articles/900004904026-How-do-I-get-an-API-key"
 )
 
 # Keep the recommended list focused on commonly used providers. When an LLM
@@ -102,7 +101,9 @@ def _safe_extract(archive: zipfile.ZipFile, destination: Path) -> None:
     for member in archive.infolist():
         target = (destination / member.filename).resolve()
         if target != destination and destination not in target.parents:
-            raise SkillError(f"project archive contains an unsafe path: {member.filename}")
+            raise SkillError(
+                f"project archive contains an unsafe path: {member.filename}"
+            )
     archive.extractall(destination)
 
 
@@ -113,7 +114,9 @@ def ensure_project(root: Path) -> None:
         log(f"using existing project: {root}")
         return
     if root.exists() and any(root.iterdir()):
-        raise SkillError(f"installation directory exists but is not a valid project: {root}")
+        raise SkillError(
+            f"installation directory exists but is not a valid project: {root}"
+        )
 
     root.parent.mkdir(parents=True, exist_ok=True)
     log(f"first-time installation: downloading the official project to {root}")
@@ -137,7 +140,9 @@ def ensure_project(root: Path) -> None:
             if path.is_dir() and (path / "cli.py").is_file()
         ]
         if len(candidates) != 1:
-            raise SkillError("download completed but no valid MoneyPrinterTurbo project was found")
+            raise SkillError(
+                "download completed but no valid MoneyPrinterTurbo project was found"
+            )
         if root.exists():
             root.rmdir()
         shutil.move(str(candidates[0]), str(root))
@@ -194,7 +199,9 @@ def _parse_string_list(value: str) -> list[str]:
         return []
     if not isinstance(parsed, list):
         return []
-    return list(dict.fromkeys(str(item).strip() for item in parsed if str(item).strip()))
+    return list(
+        dict.fromkeys(str(item).strip() for item in parsed if str(item).strip())
+    )
 
 
 def apply_environment_config(config_path: Path) -> None:
@@ -236,9 +243,7 @@ def _provider_is_ready(text: str, provider: str) -> bool:
     """Return whether a provider has enough configuration to generate."""
     if provider in KEYLESS_LLM_PROVIDERS:
         return True
-    if not _has_configured_value(
-        _plain_config_value(text, f"{provider}_api_key")
-    ):
+    if not _has_configured_value(_plain_config_value(text, f"{provider}_api_key")):
         return False
     if provider == CUSTOM_OPENAI_PROVIDER:
         return all(
@@ -330,14 +335,13 @@ def report_missing_config(provider: str, missing: list[str]) -> int:
         )
         print("LLM_PROVIDER_OPTIONS_END")
     if any(field.startswith(f"{CUSTOM_OPENAI_PROVIDER}_") for field in missing):
-        print(
-            "OPENAI_COMPATIBLE_REQUIRED="
-            "API key, API base URL, model name"
-        )
+        print("OPENAI_COMPATIBLE_REQUIRED=API key, API base URL, model name")
     if "pexels_api_keys" in missing:
         print(f"PEXELS_API_KEY_URL={PEXELS_API_KEY_URL}")
         print(f"PEXELS_API_KEY_HELP_URL={PEXELS_API_KEY_HELP_URL}")
-    print("Request only the listed values, set the environment variables, and rerun the same command.")
+    print(
+        "Request only the listed values, set the environment variables, and rerun the same command."
+    )
     return NEEDS_INPUT_EXIT_CODE
 
 
@@ -347,7 +351,9 @@ def report_invalid_pexels_config() -> int:
     print("INVALID=pexels_api_keys")
     print(f"PEXELS_API_KEY_URL={PEXELS_API_KEY_URL}")
     print(f"PEXELS_API_KEY_HELP_URL={PEXELS_API_KEY_HELP_URL}")
-    print("All configured Pexels API keys were rejected or are unavailable. Provide a new key.")
+    print(
+        "All configured Pexels API keys were rejected or are unavailable. Provide a new key."
+    )
     return NEEDS_INPUT_EXIT_CODE
 
 
@@ -419,10 +425,14 @@ def validate_pexels_config(config_path: Path, cli_args: list[str]) -> bool:
         )
         return True
     if unknown_count:
-        log("Pexels keys could not be verified due to a network or service error; keeping the existing configuration")
+        log(
+            "Pexels keys could not be verified due to a network or service error; keeping the existing configuration"
+        )
         return True
 
-    log(f"Pexels key validation failed: all {rejected_count} configured keys are unusable")
+    log(
+        f"Pexels key validation failed: all {rejected_count} configured keys are unusable"
+    )
     return False
 
 
@@ -470,7 +480,9 @@ def run_checked(command: list[str], *, cwd: Path) -> None:
         output_tail = (result.stdout or "").splitlines()[-30:]
         if output_tail:
             print("\n".join(output_tail), file=sys.stderr)
-        raise SkillError(f"dependency installation failed with exit code {result.returncode}")
+        raise SkillError(
+            f"dependency installation failed with exit code {result.returncode}"
+        )
 
 
 def generate_video(

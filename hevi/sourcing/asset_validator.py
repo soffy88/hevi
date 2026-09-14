@@ -160,43 +160,66 @@ def _validate_bytes(
         rgb = image.convert("RGB")
         arr = np.asarray(rgb)
         gray = cv2_gray(arr)
-        faces = detector.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(64, 64)
-        )
+        faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(64, 64))
     except Exception as exc:
         logger.warning("face detection failed: %s", exc)
         return AssetVerdict(
-            valid=True, width=width, height=height, face_check="unavailable",
+            valid=True,
+            width=width,
+            height=height,
+            face_check="unavailable",
             errors=[f"人脸检测不可用(已跳过): {exc}"],
         )
 
     count = len(faces)
     if count == 0:
         return AssetVerdict(
-            valid=False, width=width, height=height, face_count=0, face_ratio=0.0,
-            face_check="ok", errors=["未检测到清晰人脸,请上传正脸半身照"],
+            valid=False,
+            width=width,
+            height=height,
+            face_count=0,
+            face_ratio=0.0,
+            face_check="ok",
+            errors=["未检测到清晰人脸,请上传正脸半身照"],
         )
     if count > 1:
         return AssetVerdict(
-            valid=False, width=width, height=height, face_count=count,
-            face_check="ok", errors=[f"检测到 {count} 张人脸,请上传单人照"],
+            valid=False,
+            width=width,
+            height=height,
+            face_count=count,
+            face_check="ok",
+            errors=[f"检测到 {count} 张人脸,请上传单人照"],
         )
     _x, _y, w, h = faces[0]
     ratio = (w * h) / (width * height)
     if ratio < min_face_ratio:
         return AssetVerdict(
-            valid=False, width=width, height=height, face_count=1, face_ratio=round(ratio, 4),
+            valid=False,
+            width=width,
+            height=height,
+            face_count=1,
+            face_ratio=round(ratio, 4),
             face_check="ok",
             errors=["面部占画面比例过小(全身远景),请上传人物占画面 50%-70% 的半身照"],
         )
     if ratio > max_face_ratio:
         return AssetVerdict(
-            valid=False, width=width, height=height, face_count=1, face_ratio=round(ratio, 4),
-            face_check="ok", errors=["面部占画面比例过大(大头贴),请退后拍摄半身照"],
+            valid=False,
+            width=width,
+            height=height,
+            face_count=1,
+            face_ratio=round(ratio, 4),
+            face_check="ok",
+            errors=["面部占画面比例过大(大头贴),请退后拍摄半身照"],
         )
     return AssetVerdict(
-        valid=True, width=width, height=height, face_count=1,
-        face_ratio=round(ratio, 4), face_check="ok",
+        valid=True,
+        width=width,
+        height=height,
+        face_count=1,
+        face_ratio=round(ratio, 4),
+        face_check="ok",
     )
 
 
@@ -206,9 +229,7 @@ def _load_default_detector() -> Any | None:
         import cv2
 
         cascade = (
-            Path(cv2.__file__).resolve().parent
-            / "data"
-            / "haarcascade_frontalface_default.xml"
+            Path(cv2.__file__).resolve().parent / "data" / "haarcascade_frontalface_default.xml"
         )
         if not cascade.is_file():
             return None

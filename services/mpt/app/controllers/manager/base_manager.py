@@ -43,7 +43,9 @@ class TaskManager:
                         f"reject task: {func.__name__}, queue_size: {queue_size}, "
                         f"max_queued_tasks: {self.max_queued_tasks}"
                     )
-                    raise TaskQueueFullError("task queue is full, please try again later")
+                    raise TaskQueueFullError(
+                        "task queue is full, please try again later"
+                    )
 
                 logger.info(
                     f"enqueue task: {func.__name__}, current_tasks: {self.current_tasks}, "

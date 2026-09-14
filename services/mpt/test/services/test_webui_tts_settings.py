@@ -160,7 +160,11 @@ def test_elevenlabs_environment_key_is_used_without_persisting_it():
 
 def test_minimax_reconnect_restores_saved_tts_key():
     """浏览器重连后的空状态不能清除已经保存的 MiniMax TTS Key。"""
-    test_config = dict(config.minimax_tts, api_key="saved-tts-key", base_url=voice.MINIMAX_TTS_GLOBAL_URL)
+    test_config = dict(
+        config.minimax_tts,
+        api_key="saved-tts-key",
+        base_url=voice.MINIMAX_TTS_GLOBAL_URL,
+    )
     test_ui = dict(config.ui, voice_mode="tts", tts_server="minimax-tts", voice_name="")
 
     with (

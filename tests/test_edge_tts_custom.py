@@ -1,4 +1,3 @@
-
 """hevi.audio.edge_tts_custom 测试 —— edge_tts 语速/音高/音色覆盖
 (hevi 自有实现,不改 vendored oprim)。
 
@@ -25,6 +24,7 @@ from hevi.audio.edge_tts_custom import (
 
 def _patch_edge_tts_prim(calls: list[dict]):
     """在 oprim.edge_tts_word_boundary 边界打桩:记录 text/voice/rate/pitch 并产出假音频。"""
+
     async def _synth(text: str, voice: str, *, rate=None, pitch=None, output_path=None) -> dict:
         calls.append({"text": text, "voice": voice, "rate": rate, "pitch": pitch})
         Path(output_path).write_bytes(b"\x00" * 64)

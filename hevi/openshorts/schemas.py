@@ -21,13 +21,15 @@ from pydantic import BaseModel, Field
 
 class ReframingMode(str, Enum):
     """OpenShorts 三种 9:16 重构模式。"""
-    TRACK = "track"      # MediaPipe + YOLOv8 面部跟踪
+
+    TRACK = "track"  # MediaPipe + YOLOv8 面部跟踪
     GENERAL = "general"  # 模糊背景
-    SPLIT = "split"      # 两位说话人叠加
+    SPLIT = "split"  # 两位说话人叠加
 
 
 class ClipSpec(BaseModel):
     """单个 Short clip 规格。"""
+
     clip_index: int
     start_time_s: float
     end_time_s: float
@@ -46,6 +48,7 @@ class ClipSpec(BaseModel):
 
 class ClipGeneratorJob(BaseModel):
     """Clip Generator 完整作业。"""
+
     job_id: str = ""
     user_id: str = ""
     video_path: str = ""
@@ -67,12 +70,14 @@ class ClipGeneratorJob(BaseModel):
 
 class AICostMode(str, Enum):
     """AI Shorts 两种成本模式。"""
-    LOW_COST = "low_cost"        # ~$0.65/video: Hailuo 2.3 Fast + VEED Lipsync
-    PREMIUM = "premium"          # ~$2/video: Kling Avatar v2
+
+    LOW_COST = "low_cost"  # ~$0.65/video: Hailuo 2.3 Fast + VEED Lipsync
+    PREMIUM = "premium"  # ~$2/video: Kling Avatar v2
 
 
 class AICostPlan(BaseModel):
     """AI Shorts 成本计划。"""
+
     mode: AICostMode = AICostMode.LOW_COST
     estimated_cost_usd: float = 0.65
     video_gen_provider: str = "hailuo_2.3_fast"
@@ -82,31 +87,34 @@ class AICostPlan(BaseModel):
 
 class AIActor(BaseModel):
     """AI 演员生成参数。"""
+
     provider: str = "flux_2_pro"
-    source_image: str = ""      # 上传照片路径（可选）
-    source_url: str = ""        # 上传照片 URL（可选）
-    prompt: str = ""            # 生成提示
+    source_image: str = ""  # 上传照片路径（可选）
+    source_url: str = ""  # 上传照片 URL（可选）
+    prompt: str = ""  # 生成提示
     style: str = "professional"  # professional | casual | lifestyle
-    portrait_path: str = ""     # 生成的肖像路径
-    gallery_id: str = ""        # 共享角色库 ID
+    portrait_path: str = ""  # 生成的肖像路径
+    gallery_id: str = ""  # 共享角色库 ID
 
 
 class AIScript(BaseModel):
     """AI Shorts 脚本。"""
-    hook: str = ""              # 前 3 秒 Hook
-    problem: str = ""           # 问题描述
-    solution: str = ""          # 解决方案
-    cta: str = ""               # 行动号召
+
+    hook: str = ""  # 前 3 秒 Hook
+    problem: str = ""  # 问题描述
+    solution: str = ""  # 解决方案
+    cta: str = ""  # 行动号召
     segments: list[dict[str, Any]] = Field(default_factory=list)
     total_duration_s: float = 60.0
 
 
 class AIShortJob(BaseModel):
     """AI Shorts 完整作业。"""
+
     job_id: str = ""
     user_id: str = ""
     # 输入
-    product_url: str = ""       # 产品 URL（可选）
+    product_url: str = ""  # 产品 URL（可选）
     product_description: str = ""  # 手动描述
     # 脚本
     script: AIScript = Field(default_factory=AIScript)
@@ -133,6 +141,7 @@ class AIShortJob(BaseModel):
 
 class YouTubeTitle(BaseModel):
     """AI 生成的 YouTube 标题。"""
+
     title: str
     viral_score: float = 0.0  # 0-10
     reasoning: str = ""
@@ -140,6 +149,7 @@ class YouTubeTitle(BaseModel):
 
 class YouTubeThumbnail(BaseModel):
     """YouTube 缩略图。"""
+
     path: str = ""
     face_overlay: bool = True
     style: str = "bold_text"
@@ -147,6 +157,7 @@ class YouTubeThumbnail(BaseModel):
 
 class YouTubeChapter(BaseModel):
     """YouTube 章节。"""
+
     title: str
     start_s: float
     end_s: float
@@ -154,6 +165,7 @@ class YouTubeChapter(BaseModel):
 
 class YouTubeDescription(BaseModel):
     """YouTube 描述。"""
+
     text: str = ""
     chapters: list[YouTubeChapter] = Field(default_factory=list)
     hashtags: list[str] = Field(default_factory=list)
@@ -161,6 +173,7 @@ class YouTubeDescription(BaseModel):
 
 class YouTubeStudioJob(BaseModel):
     """YouTube Studio 完整作业。"""
+
     job_id: str = ""
     user_id: str = ""
     video_path: str = ""
@@ -185,6 +198,7 @@ class YouTubeStudioJob(BaseModel):
 
 class SceneDetection(BaseModel):
     """场景检测结果。"""
+
     scene_id: str = ""
     start_s: float = 0.0
     end_s: float = 0.0
@@ -195,6 +209,7 @@ class SceneDetection(BaseModel):
 
 class TranscriptWindow(BaseModel):
     """转录窗口。"""
+
     window_id: str = ""
     start_s: float = 0.0
     end_s: float = 0.0
@@ -203,6 +218,7 @@ class TranscriptWindow(BaseModel):
 
 class WordTimestamp(BaseModel):
     """词级时间戳。"""
+
     word: str = ""
     start_s: float = 0.0
     end_s: float = 0.0
@@ -210,6 +226,7 @@ class WordTimestamp(BaseModel):
 
 class ViralMoment(BaseModel):
     """病毒时刻标记。"""
+
     moment_id: str = ""
     start_s: float = 0.0
     end_s: float = 0.0
@@ -219,6 +236,7 @@ class ViralMoment(BaseModel):
 
 class PublishTicket(BaseModel):
     """社交分发交接单。"""
+
     platform: str
     media_path: str
     title: str = ""
@@ -233,6 +251,7 @@ class PublishTicket(BaseModel):
 
 def make_clip_generator_job(video_path: str, user_id: str = "") -> ClipGeneratorJob:
     import uuid
+
     return ClipGeneratorJob(
         job_id=f"clipgen-{uuid.uuid4().hex[:12]}",
         user_id=user_id,
@@ -242,6 +261,7 @@ def make_clip_generator_job(video_path: str, user_id: str = "") -> ClipGenerator
 
 def make_ai_short_job(description: str = "", url: str = "", user_id: str = "") -> AIShortJob:
     import uuid
+
     return AIShortJob(
         job_id=f"aishort-{uuid.uuid4().hex[:12]}",
         user_id=user_id,
@@ -252,6 +272,7 @@ def make_ai_short_job(description: str = "", url: str = "", user_id: str = "") -
 
 def make_youtube_studio_job(video_path: str, user_id: str = "") -> YouTubeStudioJob:
     import uuid
+
     return YouTubeStudioJob(
         job_id=f"ytstudio-{uuid.uuid4().hex[:12]}",
         user_id=user_id,

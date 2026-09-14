@@ -41,9 +41,7 @@ def classify_variation(
 ) -> tuple[VariationType, str]:
     """启发式分类。有末帧文本且与首帧差很大时抬到 medium/large。"""
     blob = " ".join(
-        part
-        for part in (visual_desc, ff_desc, lf_desc, " ".join(action_beats or []))
-        if part
+        part for part in (visual_desc, ff_desc, lf_desc, " ".join(action_beats or [])) if part
     ).lower()
     for marker in _LARGE_MARKERS:
         if marker.lower() in blob:

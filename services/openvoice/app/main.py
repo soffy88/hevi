@@ -31,4 +31,6 @@ def synthesize(_: SynthesisRequest) -> None:
     status = model_status()
     if status.get("status") != "READY":
         raise HTTPException(status_code=503, detail=status)
-    raise HTTPException(status_code=501, detail="OpenVoice inference runtime is not installed in this image")
+    raise HTTPException(
+        status_code=501, detail="OpenVoice inference runtime is not installed in this image"
+    )

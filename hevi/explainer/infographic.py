@@ -39,8 +39,7 @@ def deck_spec_from_narration(text: str, duration_ms: int) -> dict[str, Any]:
         "core_idea": text.strip()[:80],
         "relationship_type": infer_relationship(text),
         "items": [
-            {"id": f"p{i:02d}", "text": phrase}
-            for i, phrase in enumerate(phrases[:8], start=1)
+            {"id": f"p{i:02d}", "text": phrase} for i, phrase in enumerate(phrases[:8], start=1)
         ],
         "duration_ms": int(duration_ms),
     }

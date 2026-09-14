@@ -4,6 +4,7 @@ This entry point composes direct, current-tree scans.  Canonical element
 counts come from the checked-out packages' manifests; migration artifacts are
 never used as audit input.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,19 +28,29 @@ def git_sha(path: Path) -> str:
 
 
 def run_json(script: str) -> dict:
-    result = subprocess.run([sys.executable, str(ROOT / script)], cwd=ROOT, text=True, capture_output=True, check=True)
+    result = subprocess.run(
+        [sys.executable, str(ROOT / script)], cwd=ROOT, text=True, capture_output=True, check=True
+    )
     return json.loads(result.stdout.strip().splitlines()[-1])
 
 
 def run_status(script: str) -> bool:
-    return subprocess.run([sys.executable, str(ROOT / script)], cwd=ROOT, text=True, capture_output=True).returncode == 0
+    return (
+        subprocess.run(
+            [sys.executable, str(ROOT / script)], cwd=ROOT, text=True, capture_output=True
+        ).returncode
+        == 0
+    )
 
 
 def main() -> int:
     manifest = run_json("scripts/ci/run_3o_v3_manifest_audit.py")
     subprocess.run(
         [sys.executable, str(ROOT / "scripts/ci/build_3o_layer4_boundary.py")],
-        cwd=ROOT, text=True, capture_output=True, check=True,
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
     )
     boundary_path = ROOT / "artifacts/3o-v3/layer4-boundary-violations.json"
     boundary_data = json.loads(boundary_path.read_text(encoding="utf-8"))
@@ -49,7 +60,11 @@ def main() -> int:
     audited_shas = {"hevi": hevi_sha, **{name: git_sha(CHECKOUT_ROOT / name) for name in CANONICAL}}
     pins = {
         name: next(
-            (line.rsplit("@", 1)[1].split('"', 1)[0].strip() for line in (ROOT / "pyproject.toml").read_text().splitlines() if f'"{name}' in line and "git+" in line),
+            (
+                line.rsplit("@", 1)[1].split('"', 1)[0].strip()
+                for line in (ROOT / "pyproject.toml").read_text().splitlines()
+                if f'"{name}' in line and "git+" in line
+            ),
             "",
         )
         for name in CANONICAL
@@ -77,21 +92,43 @@ def main() -> int:
         "PII_GATE": "PASS",
     }
     zero_keys = (
-        "MANIFEST_DANGLING_ENTRIES", "MANIFEST_UNREGISTERED_CANONICAL_ASSETS", "MANIFEST_SIGNATURE_MISMATCHES",
-        "UNKNOWN_VIOLATIONS", "LAYER4_VIOLATIONS", "OPRIM_SIGNATURE_VIOLATIONS", "OPRIM_SIBLING_CALLS",
-        "OPRIM_REVERSE_DEPENDENCIES", "ZERO_OPRIM_OSKILLS", "ONE_OPRIM_OSKILLS", "OSKILL_STATEFUL",
-        "OSKILL_PERSISTENCE", "OSKILL_BUSINESS_ID_AWARE", "OSKILL_COMPOSITION_VIOLATIONS", "OMODUL_EDGES",
-        "OMODUL_SIBLING_CALLS", "OMODUL_DYNAMIC_CALLS", "OMODUL_CYCLES", "OMODUL_SIGNATURE_VIOLATIONS",
-        "OMODUL_PILLAR_VIOLATIONS", "FAKE_PILLAR_DECLARATIONS", "OBASE_REVERSE_DEPENDENCIES",
-        "OSERVI_HARDCODED_ELEMENTS", "OSERVI_BUSINESS_STATE", "LOCAL_3O_REAL_IMPLEMENTATIONS",
+        "MANIFEST_DANGLING_ENTRIES",
+        "MANIFEST_UNREGISTERED_CANONICAL_ASSETS",
+        "MANIFEST_SIGNATURE_MISMATCHES",
+        "UNKNOWN_VIOLATIONS",
+        "LAYER4_VIOLATIONS",
+        "OPRIM_SIGNATURE_VIOLATIONS",
+        "OPRIM_SIBLING_CALLS",
+        "OPRIM_REVERSE_DEPENDENCIES",
+        "ZERO_OPRIM_OSKILLS",
+        "ONE_OPRIM_OSKILLS",
+        "OSKILL_STATEFUL",
+        "OSKILL_PERSISTENCE",
+        "OSKILL_BUSINESS_ID_AWARE",
+        "OSKILL_COMPOSITION_VIOLATIONS",
+        "OMODUL_EDGES",
+        "OMODUL_SIBLING_CALLS",
+        "OMODUL_DYNAMIC_CALLS",
+        "OMODUL_CYCLES",
+        "OMODUL_SIGNATURE_VIOLATIONS",
+        "OMODUL_PILLAR_VIOLATIONS",
+        "FAKE_PILLAR_DECLARATIONS",
+        "OBASE_REVERSE_DEPENDENCIES",
+        "OSERVI_HARDCODED_ELEMENTS",
+        "OSERVI_BUSINESS_STATE",
+        "LOCAL_3O_REAL_IMPLEMENTATIONS",
         "DUPLICATE_IMPLEMENTATIONS",
     )
-    architecture_pass = sha_match and flat and single and all(report.get(key, 0) == 0 for key in zero_keys)
+    architecture_pass = (
+        sha_match and flat and single and all(report.get(key, 0) == 0 for key in zero_keys)
+    )
     report["FINAL_GLOBAL_INDEPENDENT_AUDIT"] = "PASS" if architecture_pass else "FAIL"
     report["3O_ARCHITECTURE_ZERO"] = "PASS" if architecture_pass else "FAIL"
     out = ROOT / "artifacts/qualification/3o-v3-global-independent-audit.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0 if architecture_pass else 1
 

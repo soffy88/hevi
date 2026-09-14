@@ -14,10 +14,18 @@ def test_discovery_uses_all_line_yaml_files(tmp_path: Path) -> None:
     expected = sorted(path.stem for path in (ROOT / "hevi/studio/lines").glob("*.yaml"))
     assert [item["line"] for item in reports] == expected
     assert len(reports) == 13
-    assert all(item["status"] in {
-        "PRODUCTION_COMPLETE", "QUALIFIED", "PARTIAL", "BLOCKED_PROVIDER",
-        "BLOCKED_HARDWARE", "FAILED",
-    } for item in reports)
+    assert all(
+        item["status"]
+        in {
+            "PRODUCTION_COMPLETE",
+            "QUALIFIED",
+            "PARTIAL",
+            "BLOCKED_PROVIDER",
+            "BLOCKED_HARDWARE",
+            "FAILED",
+        }
+        for item in reports
+    )
 
 
 def test_reports_are_machine_readable_and_never_fake_artifacts(tmp_path: Path) -> None:

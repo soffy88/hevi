@@ -1,4 +1,5 @@
 """3O v3 gate: canonical packages are flat; HEVI namespaces may only be shims."""
+
 from __future__ import annotations
 
 import sys

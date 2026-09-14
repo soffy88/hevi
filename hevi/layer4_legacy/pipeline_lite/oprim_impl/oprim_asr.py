@@ -62,7 +62,9 @@ async def extract_segment_timestamps(
             words = vibevoice_words
             logger.info(
                 "lite ASR: vibevoice %d 段 / %d 词 (audio %.2fs)",
-                len(vibevoice_segs), len(vibevoice_words), duration,
+                len(vibevoice_segs),
+                len(vibevoice_words),
+                duration,
             )
     if not segments and asr_engine != "vibevoice":
         try:
@@ -73,7 +75,9 @@ async def extract_segment_timestamps(
             words = whisper_words
             logger.info(
                 "lite ASR: whisper %d 段 / %d 词 (audio %.2fs)",
-                len(whisper_segs), len(whisper_words), duration,
+                len(whisper_segs),
+                len(whisper_words),
+                duration,
             )
         except Exception as exc:
             logger.warning("lite ASR: whisper 不可用, 按比例打轴: %s", exc)
@@ -97,11 +101,22 @@ async def extract_segment_timestamps(
 
 def _probe_duration(audio: Path) -> float:
     import subprocess
+
     try:
         result = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "default=nw=1:nk=1", str(audio)],
-            capture_output=True, text=True, timeout=30,
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=nw=1:nk=1",
+                str(audio),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode == 0 and result.stdout.strip():
             return max(0.5, float(result.stdout.strip()))

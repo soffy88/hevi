@@ -43,9 +43,7 @@ def is_enabled() -> bool:
 def _base_url() -> str:
     return str(
         config.app.get("sonilo_base_url", DEFAULT_BASE_URL) or DEFAULT_BASE_URL
-    ).rstrip(
-        "/"
-    )
+    ).rstrip("/")
 
 
 def _request_timeout() -> tuple[int, int]:
@@ -308,7 +306,9 @@ def _request_bgm(video_path: str, output_path: str, prompt: str) -> str:
         try:
             bgm_service.validate_audio_file(temp_audio_path, timeout_seconds=120)
         except (bgm_service.BgmUploadError, bgm_service.BgmServiceError) as exc:
-            raise SoniloError("Sonilo returned audio that FFmpeg cannot decode") from exc
+            raise SoniloError(
+                "Sonilo returned audio that FFmpeg cannot decode"
+            ) from exc
         os.replace(temp_audio_path, output_path)
         temp_audio_path = ""
         logger.info(

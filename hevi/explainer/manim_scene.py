@@ -13,6 +13,7 @@ from hevi.providers.manim.provider import manim_generate
 
 logger = logging.getLogger(__name__)
 
+
 def _job_id_for(output_dir: Path) -> str:
     resolved = output_dir.resolve()
     name = resolved.parent.name if resolved.name == "preview" else resolved.name

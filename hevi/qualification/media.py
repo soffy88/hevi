@@ -41,7 +41,7 @@ def _fps(stream: dict[str, Any]) -> float | None:
     try:
         numerator, denominator = str(raw).split("/", 1)
         return float(numerator) / float(denominator)
-    except (ValueError, ZeroDivisionError):
+    except ValueError, ZeroDivisionError:
         return None
 
 
@@ -59,32 +59,82 @@ def validate_media(path: str | Path, *, require_audio: bool = False) -> MediaVal
     if shutil.which("ffprobe") is None:
         errors.append("ffprobe_unavailable")
         return MediaValidation(
-            str(target), exists, nonzero, False, None, False, False, None,
-            None, None, None, errors, False,
+            str(target),
+            exists,
+            nonzero,
+            False,
+            None,
+            False,
+            False,
+            None,
+            None,
+            None,
+            None,
+            errors,
+            False,
         )
     if not exists or not nonzero:
         return MediaValidation(
-            str(target), exists, nonzero, False, None, False, False, None,
-            None, None, None, errors, False,
+            str(target),
+            exists,
+            nonzero,
+            False,
+            None,
+            False,
+            False,
+            None,
+            None,
+            None,
+            None,
+            errors,
+            False,
         )
     command = [
-        "ffprobe", "-v", "error", "-show_streams", "-show_format",
-        "-of", "json", str(target),
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-of",
+        "json",
+        str(target),
     ]
     try:
         completed = subprocess.run(command, capture_output=True, text=True, timeout=30)
         if completed.returncode != 0:
             errors.append("ffprobe_parse_failed")
             return MediaValidation(
-                str(target), True, True, False, None, False, False, None,
-                None, None, None, errors, False,
+                str(target),
+                True,
+                True,
+                False,
+                None,
+                False,
+                False,
+                None,
+                None,
+                None,
+                None,
+                errors,
+                False,
             )
         payload = json.loads(completed.stdout)
-    except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+    except OSError, subprocess.SubprocessError, json.JSONDecodeError:
         errors.append("ffprobe_parse_failed")
         return MediaValidation(
-            str(target), True, True, False, None, False, False, None,
-            None, None, None, errors, False,
+            str(target),
+            True,
+            True,
+            False,
+            None,
+            False,
+            False,
+            None,
+            None,
+            None,
+            None,
+            errors,
+            False,
         )
     streams = payload.get("streams", [])
     video = next((item for item in streams if item.get("codec_type") == "video"), None)
@@ -92,7 +142,7 @@ def validate_media(path: str | Path, *, require_audio: bool = False) -> MediaVal
     fmt = payload.get("format", {})
     try:
         duration = float(fmt.get("duration"))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         duration = None
     if duration is None or duration <= 0:
         errors.append("duration_invalid")
@@ -101,9 +151,17 @@ def validate_media(path: str | Path, *, require_audio: bool = False) -> MediaVal
     if require_audio and audio is None:
         errors.append("audio_stream_missing")
     return MediaValidation(
-        path=str(target), exists=True, nonzero=True, ffprobe_valid=True,
-        duration_s=duration, video_stream=video is not None, audio_stream=audio is not None,
-        codec=(video or {}).get("codec_name"), width=(video or {}).get("width"),
-        height=(video or {}).get("height"), fps=_fps(video or {}), errors=errors,
+        path=str(target),
+        exists=True,
+        nonzero=True,
+        ffprobe_valid=True,
+        duration_s=duration,
+        video_stream=video is not None,
+        audio_stream=audio is not None,
+        codec=(video or {}).get("codec_name"),
+        width=(video or {}).get("width"),
+        height=(video or {}).get("height"),
+        fps=_fps(video or {}),
+        errors=errors,
         passed=not errors,
     )

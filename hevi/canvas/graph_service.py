@@ -34,9 +34,7 @@ class GraphService:
     async def load_graph(self, graph_id: str) -> dict[str, Any] | None:
         return await self._repo.get(graph_id)
 
-    async def list_graphs(
-        self, *, user_id: str | None = None
-    ) -> list[dict[str, Any]]:
+    async def list_graphs(self, *, user_id: str | None = None) -> list[dict[str, Any]]:
         return await self._repo.list_graphs(user_id=user_id)
 
     async def update_graph(

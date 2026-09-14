@@ -87,9 +87,21 @@ _PERSONAS = [
     },
 ]
 _WORKFLOWS = [
-    {"id": "clone", "name": "声线克隆", "steps": ["reference", "transcribe", "synthesize", "review"]},
-    {"id": "dubbing", "name": "视频译制", "steps": ["asr", "translate", "speaker_map", "synthesize", "mix"]},
-    {"id": "long_form", "name": "长篇/有声书", "steps": ["chapterize", "voice_map", "batch", "package"]},
+    {
+        "id": "clone",
+        "name": "声线克隆",
+        "steps": ["reference", "transcribe", "synthesize", "review"],
+    },
+    {
+        "id": "dubbing",
+        "name": "视频译制",
+        "steps": ["asr", "translate", "speaker_map", "synthesize", "mix"],
+    },
+    {
+        "id": "long_form",
+        "name": "长篇/有声书",
+        "steps": ["chapterize", "voice_map", "batch", "package"],
+    },
     {"id": "batch", "name": "批量合成", "steps": ["validate", "queue", "synthesize", "manifest"]},
 ]
 
@@ -167,7 +179,9 @@ async def speech_catalog(_: Annotated[dict[str, Any], Depends(get_current_user)]
 
 
 @router.get("/profiles")
-async def speech_profiles(_: Annotated[dict[str, Any], Depends(get_current_user)]) -> dict[str, Any]:
+async def speech_profiles(
+    _: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
     return {"profiles": [item.to_dict() for item in list_voice_profiles()]}
 
 

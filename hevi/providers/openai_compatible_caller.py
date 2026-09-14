@@ -10,7 +10,9 @@ import httpx
 
 
 def _base_url() -> str:
-    return (os.getenv("OPENAI_BASE_URL", "").strip() or os.getenv("LONGCAT_BASE_URL", "").strip()).rstrip("/")
+    return (
+        os.getenv("OPENAI_BASE_URL", "").strip() or os.getenv("LONGCAT_BASE_URL", "").strip()
+    ).rstrip("/")
 
 
 def _model() -> str:

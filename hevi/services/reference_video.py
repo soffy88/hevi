@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 @dataclass
 class ReferenceAnalysisConfig:
     """参考视频分析配置"""
+
     whisper_endpoint: str = os.getenv("WHISPER_ENDPOINT", "http://localhost:9000")
     scene_detect_endpoint: str = os.getenv("SCENE_DETECT_ENDPOINT", "http://localhost:9001")
     clap_score_endpoint: str = os.getenv("CLAP_SCORE_ENDPOINT", "http://localhost:9002")
@@ -27,6 +28,7 @@ class ReferenceAnalysisConfig:
 
 class TranscriptSegment(BaseModel):
     """转录片段"""
+
     start_s: float
     end_s: float
     text: str
@@ -35,6 +37,7 @@ class TranscriptSegment(BaseModel):
 
 class RhythmAnalysis(BaseModel):
     """节奏分析"""
+
     total_duration_s: float
     shot_changes: list[float]  # timeline of shot boundaries
     beats_per_minute: float | None = None
@@ -43,6 +46,7 @@ class RhythmAnalysis(BaseModel):
 
 class SceneBreakdown(BaseModel):
     """场景分解"""
+
     scene_no: int
     start_s: float
     end_s: float
@@ -54,6 +58,7 @@ class SceneBreakdown(BaseModel):
 
 class ConceptVariant(BaseModel):
     """差异化概念"""
+
     concept_id: str
     title: str
     pitch: str
@@ -65,6 +70,7 @@ class ConceptVariant(BaseModel):
 
 class ReferenceVideoAnalysis(BaseModel):
     """参考视频分析结果"""
+
     source_url: str
     transcript: list[TranscriptSegment]
     rhythm: RhythmAnalysis
@@ -191,7 +197,9 @@ async def generate_concepts(
                 response = await response
             content = response.get("content") if isinstance(response, dict) else str(response)
             if isinstance(content, list):
-                content = "".join(str(item.get("text") or "") for item in content if isinstance(item, dict))
+                content = "".join(
+                    str(item.get("text") or "") for item in content if isinstance(item, dict)
+                )
             match = re.search(r"\[.*\]", str(content), re.DOTALL)
             if match:
                 raw = json.loads(match.group(0))
@@ -202,7 +210,9 @@ async def generate_concepts(
                         pitch=str(item.get("pitch") or "").strip(),
                         angle=str(item.get("angle") or "").strip(),
                         estimated_cost=float(item.get("estimated_cost") or 0.0),
-                        reference_similarity=max(0.0, min(1.0, float(item.get("reference_similarity") or 0.0))),
+                        reference_similarity=max(
+                            0.0, min(1.0, float(item.get("reference_similarity") or 0.0))
+                        ),
                         metadata={"generated_by": "injected_llm"},
                     )
                     for index, item in enumerate(raw[:3])

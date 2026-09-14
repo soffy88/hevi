@@ -45,8 +45,12 @@ GRADE_PRESETS: tuple[GradePreset, ...] = (
     GradePreset(name="warm_film", exposure=0.08, contrast=1.06, saturation=1.12, warmth=0.10),
     GradePreset(name="cool_tech", exposure=-0.04, contrast=1.12, saturation=0.92, warmth=-0.12),
     GradePreset(
-        name="retro_dv", exposure=0.12, contrast=0.9,
-        saturation=0.85, warmth=0.16, vignette=0.18,
+        name="retro_dv",
+        exposure=0.12,
+        contrast=0.9,
+        saturation=0.85,
+        warmth=0.16,
+        vignette=0.18,
     ),
     GradePreset(name="bw_cinema", exposure=0.02, contrast=1.18, saturation=0.0),
 )
@@ -113,21 +117,22 @@ def parse_cube_lut(path: str | Path) -> Lut3D:
             continue
         dm = _CUBE_DATA_LINE.match(line)
         if dm:
-            table.append(
-                (float(dm.group(1)), float(dm.group(2)), float(dm.group(3)))
-            )
+            table.append((float(dm.group(1)), float(dm.group(2)), float(dm.group(3))))
     lut = Lut3D(path=p, size=size, table=table)
     if not lut.valid:
-        raise ValueError(
-            f"invalid .cube: size={size}, rows={len(table)} (期望 {size**3})"
-        )
+        raise ValueError(f"invalid .cube: size={size}, rows={len(table)} (期望 {size**3})")
     return lut
 
 
 def grade_ffmpeg_command(input_path: Path, output_path: Path, lut: Lut3D) -> list[str]:
     """LUT 应用命令(ffmpeg lut3d filter);纯构建,不执行。"""
     return [
-        "ffmpeg", "-i", str(input_path),
-        "-vf", f"lut3d='{lut.path}':interp=tetrahedral",
-        "-c:a", "copy", str(output_path),
+        "ffmpeg",
+        "-i",
+        str(input_path),
+        "-vf",
+        f"lut3d='{lut.path}':interp=tetrahedral",
+        "-c:a",
+        "copy",
+        str(output_path),
     ]

@@ -70,8 +70,12 @@ async def test_budget_repository_lifecycle_is_idempotent_and_append_only(pool) -
             first.attempt_id, actual_cost_usd=2, provider_cost_ref="provider-2"
         )
         assert settled.status == "settled"
-        assert (await repository.settle_attempt(first.attempt_id, actual_cost_usd=9)).status == "settled"
-        refunded = await repository.refund_attempt(first.attempt_id, amount_usd=1, external_ref="refund-1")
+        assert (
+            await repository.settle_attempt(first.attempt_id, actual_cost_usd=9)
+        ).status == "settled"
+        refunded = await repository.refund_attempt(
+            first.attempt_id, amount_usd=1, external_ref="refund-1"
+        )
         assert refunded.refunded_cost_usd == Decimal("1")
         with pytest.raises(BudgetError, match="refund_exceeds_attempt_spend"):
             await repository.refund_attempt(first.attempt_id, amount_usd=2)
@@ -135,10 +139,20 @@ async def test_budget_repository_lifecycle_is_idempotent_and_append_only(pool) -
                 "SELECT id FROM production_budgets WHERE production_id=$1", production_id
             )
             if budget_id is not None:
-                await conn.execute("ALTER TABLE budget_ledger DISABLE TRIGGER budget_ledger_append_only")
-                await conn.execute("DELETE FROM budget_ledger WHERE production_budget_id=$1", budget_id)
-                await conn.execute("ALTER TABLE budget_ledger ENABLE TRIGGER budget_ledger_append_only")
-                await conn.execute("DELETE FROM budget_attempts WHERE production_budget_id=$1", budget_id)
-                await conn.execute("DELETE FROM stage_budgets WHERE production_budget_id=$1", budget_id)
+                await conn.execute(
+                    "ALTER TABLE budget_ledger DISABLE TRIGGER budget_ledger_append_only"
+                )
+                await conn.execute(
+                    "DELETE FROM budget_ledger WHERE production_budget_id=$1", budget_id
+                )
+                await conn.execute(
+                    "ALTER TABLE budget_ledger ENABLE TRIGGER budget_ledger_append_only"
+                )
+                await conn.execute(
+                    "DELETE FROM budget_attempts WHERE production_budget_id=$1", budget_id
+                )
+                await conn.execute(
+                    "DELETE FROM stage_budgets WHERE production_budget_id=$1", budget_id
+                )
                 await conn.execute("DELETE FROM production_budgets WHERE id=$1", budget_id)
             await conn.execute("DELETE FROM productions WHERE id=$1", production_id)

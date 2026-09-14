@@ -12,9 +12,13 @@ from hevi.narrative.bible import restore_bible, validate_bible
 from hevi.narrative.models import RevisionReceipt, StoryBible, to_dict
 
 
-def persist_bible(bible: StoryBible, path: Path, previous_revision: str | None = None) -> RevisionReceipt:
+def persist_bible(
+    bible: StoryBible, path: Path, previous_revision: str | None = None
+) -> RevisionReceipt:
     validate_bible(bible)
-    payload = json.dumps(to_dict(bible), ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    payload = (
+        json.dumps(to_dict(bible), ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     temp = Path(name)
@@ -31,4 +35,6 @@ def persist_bible(bible: StoryBible, path: Path, previous_revision: str | None =
 
 
 def revision_hash(bible: StoryBible) -> str:
-    return hashlib.sha256(json.dumps(to_dict(bible), sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(to_dict(bible), sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()

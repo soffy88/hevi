@@ -111,9 +111,7 @@ async def _run_cli(
     except TimeoutError:
         process.kill()
         await process.wait()
-        raise HyperframesRenderError(
-            f"hyperframes render 超时 {timeout_s:.0f}s"
-        ) from None
+        raise HyperframesRenderError(f"hyperframes render 超时 {timeout_s:.0f}s") from None
     log = (stdout or b"").decode("utf-8", errors="replace")
     return int(process.returncode or 0), log
 
@@ -189,9 +187,7 @@ async def hyperframes_generate(
     binary = detect_hyperframes_bin()
     if binary:
         try:
-            raw_timeout = cfg.get("timeout_s") or _settings_value(
-                "HYPERFRAMES_TIMEOUT_S", "600"
-            )
+            raw_timeout = cfg.get("timeout_s") or _settings_value("HYPERFRAMES_TIMEOUT_S", "600")
             await _render_with_cli(
                 binary,
                 work,

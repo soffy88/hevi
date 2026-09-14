@@ -114,9 +114,7 @@ def build_phrase_timeline(
         coverage = len(needle) / max(len(_normalized(phrase)), 1)
         confidence = min(first["confidence"], last["confidence"])
         if coverage < ANCHOR_COVERAGE_MIN or confidence < ANCHOR_CONFIDENCE_MIN:
-            raise RuntimeError(
-                f"短语对齐覆盖率/置信度不足: {phrase[:24]} coverage={coverage:.2f}"
-            )
+            raise RuntimeError(f"短语对齐覆盖率/置信度不足: {phrase[:24]} coverage={coverage:.2f}")
         rows.append(
             {
                 "id": f"p{index:02d}",

@@ -7,22 +7,12 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from hevi.digital_human.content_service import lock_content as _lock_content
 from hevi.digital_human.layer4.atoms import (
-    add_clip_to_timeline,
-    build_caption_plan,
-    build_timeline,
-    calibrate_audio_loudness,
-    generate_narration,
     lock_content,
-    run_preflight_check,
-    run_qa_gate,
 )
-from hevi.digital_human.layer4.atoms_caption import build_caption_plan as _build_caption_plan
 from hevi.digital_human.layer4.atoms_narration import build_narration_spine, topic_to_script
 from hevi.digital_human.layer4.atoms_qa import check_authorization, check_media_technical
 from hevi.digital_human.layer4.atoms_render import (
@@ -34,16 +24,11 @@ from hevi.digital_human.layer4.atoms_render import (
     loudnorm_two_pass,
 )
 from hevi.digital_human.schemas import (
-    AudioMeasurement,
     CaptionPlan,
     JobStatus,
     PresenterJob,
     QAReport,
     TimelinePlan,
-    make_default_caption_plan,
-    make_default_job,
-    make_default_qa_report,
-    make_default_timeline,
 )
 
 # ─── 内容锁定技能 ────────────────────────────────────
@@ -80,7 +65,12 @@ def visual_plan(
     """
     from hevi.digital_human.content_service import visual_plan as _visual_plan
 
-    return _visual_plan(job, narration_duration_s, opening_target_s=opening_target_s, closing_target_s=closing_target_s)
+    return _visual_plan(
+        job,
+        narration_duration_s,
+        opening_target_s=opening_target_s,
+        closing_target_s=closing_target_s,
+    )
 
 
 # ─── 字幕规划技能 ────────────────────────────────────
@@ -145,7 +135,6 @@ def delivery(
     对应 lanshu finalize_delivery.sh
     """
     import json
-    import os
 
     out_path = os.path.join(output_dir, stem)
     master_path = f"{out_path}-master.mp4"
@@ -196,9 +185,7 @@ def delivery(
         black_events=0,
     )
     Path(report_path).parent.mkdir(parents=True, exist_ok=True)
-    Path(report_path).write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    Path(report_path).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # 6. 更新作业状态
     job.rendered = master_path
@@ -233,7 +220,15 @@ def qa_gate(
     """
     from hevi.digital_human.content_service import qa_gate as _qa_gate
 
-    return _qa_gate(job, identity_coherent=identity_coherent, mouth_sync=mouth_sync, no_black_frames=no_black_frames, no_overlay=no_overlay, captions_readable=captions_readable, safe_zones_ok=safe_zones_ok)
+    return _qa_gate(
+        job,
+        identity_coherent=identity_coherent,
+        mouth_sync=mouth_sync,
+        no_black_frames=no_black_frames,
+        no_overlay=no_overlay,
+        captions_readable=captions_readable,
+        safe_zones_ok=safe_zones_ok,
+    )
 
 
 # ─── 预检查技能 ──────────────────────────────────────

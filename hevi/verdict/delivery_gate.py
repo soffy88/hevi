@@ -71,8 +71,16 @@ def _probe_duration(path: Path) -> float | None:
         return None
     try:
         proc = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(path),
+            ],
             capture_output=True,
             text=True,
             timeout=60,
@@ -90,8 +98,15 @@ def detect_flicker_ratio(video_path: Path) -> float | None:
     try:
         proc = subprocess.run(
             [
-                "ffmpeg", "-i", str(video_path), "-vf",
-                "blackdetect=d=0.1:pix_th=0.10", "-an", "-f", "null", "-",
+                "ffmpeg",
+                "-i",
+                str(video_path),
+                "-vf",
+                "blackdetect=d=0.1:pix_th=0.10",
+                "-an",
+                "-f",
+                "null",
+                "-",
             ],
             capture_output=True,
             text=True,
@@ -105,7 +120,7 @@ def detect_flicker_ratio(video_path: Path) -> float | None:
                     start = float(line.split("black_start:")[1].split()[0])
                     end = float(line.split("black_end:")[1].split()[0])
                     black_s += max(end - start, 0.0)
-                except (IndexError, ValueError):
+                except IndexError, ValueError:
                     continue
         duration = _probe_duration(video_path)
         if not duration or duration <= 0:
@@ -128,12 +143,12 @@ def parse_silence_events(
         if "silence_start:" in line:
             try:
                 pending_start = float(line.split("silence_start:")[1].split()[0])
-            except (IndexError, ValueError):
+            except IndexError, ValueError:
                 pending_start = None
         elif "silence_end:" in line and pending_start is not None:
             try:
                 end = float(line.split("silence_end:")[1].split()[0])
-            except (IndexError, ValueError):
+            except IndexError, ValueError:
                 end = pending_start
             dur = end - pending_start
             if dur >= floor_s:
@@ -151,8 +166,14 @@ def detect_silence_gaps(
     try:
         proc = subprocess.run(
             [
-                "ffmpeg", "-i", str(video_path), "-af",
-                f"silencedetect=noise=-35dB:d={floor_s}", "-f", "null", "-",
+                "ffmpeg",
+                "-i",
+                str(video_path),
+                "-af",
+                f"silencedetect=noise=-35dB:d={floor_s}",
+                "-f",
+                "null",
+                "-",
             ],
             capture_output=True,
             text=True,
@@ -247,9 +268,7 @@ def run_delivery_gate(
                     thumb_width=320,
                 )
                 result.contact_sheet_path = sheet
-                result.items.append(
-                    GateItem("contact_sheet", True, f"{len(frames)} 帧联络表")
-                )
+                result.items.append(GateItem("contact_sheet", True, f"{len(frames)} 帧联络表"))
             else:
                 result.items.append(
                     GateItem("contact_sheet", None, "抽帧失败", required=fail_closed)
@@ -274,9 +293,7 @@ def run_delivery_gate(
             GateItem(
                 "bgm_loop",
                 bgm_ok,
-                "BGM 时长 ≥ 视频时长"
-                if bgm_ok
-                else "BGM 短于成片,有循环跳变风险",
+                "BGM 时长 ≥ 视频时长" if bgm_ok else "BGM 短于成片,有循环跳变风险",
             )
         )
 

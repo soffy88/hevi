@@ -114,9 +114,16 @@ def _region_mask(
     return mask
 
 
-def _stamp(canvas: Image.Image, source: Image.Image, point: tuple[int, int], radius: int, ink: bool) -> None:
+def _stamp(
+    canvas: Image.Image, source: Image.Image, point: tuple[int, int], radius: int, ink: bool
+) -> None:
     x, y = point
-    box = (max(0, x - radius), max(0, y - radius), min(canvas.size[0], x + radius), min(canvas.size[1], y + radius))
+    box = (
+        max(0, x - radius),
+        max(0, y - radius),
+        min(canvas.size[0], x + radius),
+        min(canvas.size[1], y + radius),
+    )
     if box[2] <= box[0] or box[3] <= box[1]:
         return
     patch = source.crop(box)

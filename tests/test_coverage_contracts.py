@@ -307,7 +307,9 @@ def test_erduo_and_magiviz_contracts_parse_inputs_and_preserve_lineage() -> None
         make_story_outline,
     )
 
-    srt = parse_srt("1\n00:00:01,250 --> 00:00:02,500\n第一行\n\n2\n00:00:03,000 --> 00:00:04,000\n第二行\n")
+    srt = parse_srt(
+        "1\n00:00:01,250 --> 00:00:02,500\n第一行\n\n2\n00:00:03,000 --> 00:00:04,000\n第二行\n"
+    )
     assert [(entry.start_ms, entry.end_ms) for entry in srt] == [(1250, 2500), (3000, 4000)]
     assert parse_srt("not a subtitle") == []
     truth = Truth(srt=srt, design=DesignIntent(visual_style="ink"))
@@ -337,8 +339,12 @@ async def test_studio_dispatch_ops_return_real_structured_results(tmp_path: Path
     assert (await run_op("ingest_frames", {"source": "x"}))["frames"] == []
     assert (await run_op("ingest_transcript", {"transcript": "hello"}))["transcript"] == "hello"
     assert (await run_op("ingest_contact", {"frames": [1, 2]}))["frames"] == 2
-    assert (await run_op("episode_brief", {"topic": "T", "episode": {"beats": ["a"]}}))["brief"] == "T\na"
-    assert (await run_op("script_from_watch", {"transcript": "a。b"}))["script_lines"][1]["text"] == "b"
+    assert (await run_op("episode_brief", {"topic": "T", "episode": {"beats": ["a"]}}))[
+        "brief"
+    ] == "T\na"
+    assert (await run_op("script_from_watch", {"transcript": "a。b"}))["script_lines"][1][
+        "text"
+    ] == "b"
     assert (await run_op("tongjian_quotes", {"chapter_ir": {"quotes": ["q"]}}))["count"] == 1
     assert (await run_op("lint_stage", {}))["status"] == "ok"
     assert (await run_op("h3_cuts", {"durations": [2, 3]}))["starts"] == [0, 2]
@@ -346,25 +352,47 @@ async def test_studio_dispatch_ops_return_real_structured_results(tmp_path: Path
     assert (await run_op("h3_pack", {"shots": [1]}))["groups"] == [1]
     assert (await run_op("stock_query", {"topic": "history"}))["query"] == "history"
     assert (await run_op("audio_bgm", {"_tool_id": "audio.bgm.calm"}))["bgm"]["mood"] == "calm"
-    assert (await run_op("nle_drop", {"cuts": [{"id": 1}], "index": 0}))["cuts"][0]["action"] == "drop"
-    assert (await run_op("nle_transition", {"_tool_id": "transition.fade"}))["plan"]["transition"] == "fade"
-    assert (await run_op("camera_plan", {"_tool_id": "camera.close", "topic": "T"}))["plan"]["scene"] == "T"
+    assert (await run_op("nle_drop", {"cuts": [{"id": 1}], "index": 0}))["cuts"][0][
+        "action"
+    ] == "drop"
+    assert (await run_op("nle_transition", {"_tool_id": "transition.fade"}))["plan"][
+        "transition"
+    ] == "fade"
+    assert (await run_op("camera_plan", {"_tool_id": "camera.close", "topic": "T"}))["plan"][
+        "scene"
+    ] == "T"
     assert (await run_op("qc_layout", {"boxes": [1, 2]}))["boxes"] == 2
     assert (await run_op("qc_motion", {}))["ok"] is True
     assert (await run_op("qc_gate", {"_tool_id": "qc.final"}))["gate"] == "final"
-    assert (await run_op("clip_factory", {"edit_plan": {"cuts": [{"action": "keep"}, {"action": "drop"}]}}))["count"] == 1
+    assert (
+        await run_op(
+            "clip_factory", {"edit_plan": {"cuts": [{"action": "keep"}, {"action": "drop"}]}}
+        )
+    )["count"] == 1
     dubbed = await run_op("dub_translate", {"lines": [{"text": "a"}, "bad"], "lang": "en"})
     assert dubbed["lines"] == [{"text": "a", "lang": "en", "translated": False}]
     assert (await run_op("montage_queries", {"topic": "city"}))["queries"][-1] == "city city night"
-    assert (await run_op("character_beats", {"text": "x"}))["beats"] == ["trigger", "peak", "aftermath"]
+    assert (await run_op("character_beats", {"text": "x"}))["beats"] == [
+        "trigger",
+        "peak",
+        "aftermath",
+    ]
     assert (await run_op("batch_rank", {"candidates": ["best"]}))["best"] == "best"
-    assert (await run_op("explainer_card", {"_tool_id": "card.hook", "text": "T"}))["cue"]["card"] == "hook"
+    assert (await run_op("explainer_card", {"_tool_id": "card.hook", "text": "T"}))["cue"][
+        "card"
+    ] == "hook"
     assert (await run_op("out_profile", {"_tool_id": "out.tiktok"}))["profile"]["ar"] == "9:16"
-    assert (await run_op("material_src", {"_tool_id": "source.pexels", "topic": "T"}))["plan"]["source"] == "pexels"
-    assert (await run_op("layer_ticket", {"_tool_id": "layer.video", "topic": "T"}))["ticket"]["topic"] == "T"
+    assert (await run_op("material_src", {"_tool_id": "source.pexels", "topic": "T"}))["plan"][
+        "source"
+    ] == "pexels"
+    assert (await run_op("layer_ticket", {"_tool_id": "layer.video", "topic": "T"}))["ticket"][
+        "topic"
+    ] == "T"
     assert (await run_op("recipe_nodes", {"line_id": "missing"}))["status"] == "failed"
     assert (await run_op("nle_transition", {}))["plan"]["transition"] == "cut"
-    assert (await run_op("craft_shot_prompt", {"scene": {"text": "T"}, "style_context": {}}))["status"] == "ok"
+    assert (await run_op("craft_shot_prompt", {"scene": {"text": "T"}, "style_context": {}}))[
+        "status"
+    ] == "ok"
     assert (await run_op("delivery_validate", {}))["status"] == "failed"
     assert (await run_op("verdict_source_review", {}))["status"] == "failed"
     aligned = await run_op(
@@ -497,7 +525,9 @@ async def test_platform_content_comment_publish_and_share_boundaries(tmp_path: P
     target = MonitorTarget(id=7, platform="douyin", account_id=2, kind="comment")
     collected = await collect_content("douyin", target, object(), 2)
     assert collected.success and collected.records == []
-    unknown = await collect_content("douyin", MonitorTarget(platform="douyin", kind="unknown"), object(), 2)  # type: ignore[arg-type]
+    unknown = await collect_content(
+        "douyin", MonitorTarget(platform="douyin", kind="unknown"), object(), 2
+    )  # type: ignore[arg-type]
     assert not unknown.success and "unknown kind" in unknown.error
     skipped = await monitor_targets(
         [MonitorTarget(id=8, platform="douyin", enabled=False)],
@@ -602,7 +632,9 @@ async def test_h3_verdict_wardrobe_and_priority_decisions(
     async def vlm(**_kwargs: object) -> dict[str, str]:
         return {"content": '{"wardrobe_ok": false, "note": "color changed"}'}
 
-    monkeypatch.setattr(h3_checks, "_extract_frame", lambda _clip, _t, out: out.write_bytes(b"frame") or True)
+    monkeypatch.setattr(
+        h3_checks, "_extract_frame", lambda _clip, _t, out: out.write_bytes(b"frame") or True
+    )
     verdict = await h3_checks.verdict_h3_shot(
         shot_id="s1",
         clip_path=clip,
@@ -676,7 +708,9 @@ async def test_resilient_image_generation_recovers_gpu_cpu_and_cloud(
 
     monkeypatch.setattr(image, "check_gpu_available", gpu_ok)
     monkeypatch.setattr("hevi.image.sdxl_local_service.sdxl_local_generate_batch", batch)
-    assert await image.resilient_image_gen_batch([{"prompt": "p", "output_path": str(output)}]) == [{"ok": True}]
+    assert await image.resilient_image_gen_batch([{"prompt": "p", "output_path": str(output)}]) == [
+        {"ok": True}
+    ]
 
 
 @pytest.mark.asyncio
@@ -686,7 +720,10 @@ async def test_resilient_image_batch_uses_cpu_then_per_image_cloud(
     from hevi.image import resilient_image_gen as image
 
     paths = [tmp_path / "a.png", tmp_path / "b.png"]
-    requests = [{"prompt": "a", "output_path": str(paths[0]), "width": 100}, {"prompt": "b", "output_path": str(paths[1])}]
+    requests = [
+        {"prompt": "a", "output_path": str(paths[0]), "width": 100},
+        {"prompt": "b", "output_path": str(paths[1])},
+    ]
     phases = 0
 
     async def gpu() -> None:
@@ -724,12 +761,21 @@ async def test_funasr_bridge_normalizes_provider_shapes_and_chunks_text(
     assert [item["text"] for item in forced] == ["一二三", "四五六", "七"]
     merged = verify.merge_chunks_with_asr_results(
         [{"text": "甲"}, {"text": "乙"}],
-        [{"word": "甲甲甲", "start": 0.1, "end": 0.3}, {"word": "乙乙乙", "start": 0.4, "end": 0.8}],
+        [
+            {"word": "甲甲甲", "start": 0.1, "end": 0.3},
+            {"word": "乙乙乙", "start": 0.4, "end": 0.8},
+        ],
     )
     assert merged[0]["start_sec"] == 0.1 and merged[1]["end_sec"] == 0.8
-    assert verify.merge_chunks_with_asr_results([{"text": "x"}], []) == [{"text": "x", "start_sec": 0.0, "end_sec": 0.0}]
+    assert verify.merge_chunks_with_asr_results([{"text": "x"}], []) == [
+        {"text": "x", "start_sec": 0.0, "end_sec": 0.0}
+    ]
     normalized = verify._normalize_funasr_output(
-        [{"text": "a", "start": 0.1, "end": 0.4}, ["b", 0.4, 0.8], {"text": "", "start": 1, "end": 1}]
+        [
+            {"text": "a", "start": 0.1, "end": 0.4},
+            ["b", 0.4, 0.8],
+            {"text": "", "start": 1, "end": 1},
+        ]
     )
     assert [item["word"] for item in normalized] == ["a", "b"]
 
@@ -817,11 +863,44 @@ def test_runway_helpers_build_data_uris_and_validate_inputs(
     import asyncio
 
     with pytest.raises(runway_service.RunwayError):
-        asyncio.run(runway_service.runway_image_to_video(prompt="p", reference_images=[], output_path=tmp_path / "v.mp4", config={"RUNWAY_API_KEY": "k"}))
+        asyncio.run(
+            runway_service.runway_image_to_video(
+                prompt="p",
+                reference_images=[],
+                output_path=tmp_path / "v.mp4",
+                config={"RUNWAY_API_KEY": "k"},
+            )
+        )
     with pytest.raises(runway_service.RunwayError):
-        asyncio.run(runway_service.runway_text_to_image(prompt="p", output_path=tmp_path / "i.png", config={"RUNWAY_API_KEY": "k"}, reference_images=["a", "b", "c", "d"]))
-    assert asyncio.run(runway_service.runway_text_to_image(prompt="p", output_path=tmp_path / "i.png", config={"RUNWAY_API_KEY": "k"}, seed=3)) == tmp_path / "i.png"
-    assert asyncio.run(runway_service.runway_image_to_video(prompt="p", reference_images=[str(image)], output_path=tmp_path / "v.mp4", config={"RUNWAY_API_KEY": "k"}, duration=None, seed=3)) == tmp_path / "v.mp4"
+        asyncio.run(
+            runway_service.runway_text_to_image(
+                prompt="p",
+                output_path=tmp_path / "i.png",
+                config={"RUNWAY_API_KEY": "k"},
+                reference_images=["a", "b", "c", "d"],
+            )
+        )
+    assert (
+        asyncio.run(
+            runway_service.runway_text_to_image(
+                prompt="p", output_path=tmp_path / "i.png", config={"RUNWAY_API_KEY": "k"}, seed=3
+            )
+        )
+        == tmp_path / "i.png"
+    )
+    assert (
+        asyncio.run(
+            runway_service.runway_image_to_video(
+                prompt="p",
+                reference_images=[str(image)],
+                output_path=tmp_path / "v.mp4",
+                config={"RUNWAY_API_KEY": "k"},
+                duration=None,
+                seed=3,
+            )
+        )
+        == tmp_path / "v.mp4"
+    )
 
 
 def test_openshorts_atoms_and_skills_build_complete_deliverables(
@@ -840,14 +919,26 @@ def test_openshorts_atoms_and_skills_build_complete_deliverables(
     assert oprim.clip_reframing_params(oprim.ReframingMode.GENERAL)["blur_background"]
     assert oprim.detect_scenes_gemini("text", 10) == []
     assert oprim.extract_transcript_with_words("video.mp4")["segments"] == []
-    words = [WordTimestamp(word="a", start_s=1, end_s=2), WordTimestamp(word="b", start_s=3, end_s=4)]
+    words = [
+        WordTimestamp(word="a", start_s=1, end_s=2),
+        WordTimestamp(word="b", start_s=3, end_s=4),
+    ]
     assert oprim.snap_clip_to_words_auto(0, 4, words, 10, min_duration=1)[1] > 0
     assert oprim.snap_clip_to_words_auto(0, 2, [], 10) == (0.0, 2.0)
-    assert oprim.build_transcript_windows({"segments": [] , "text": "empty"}, 12)[0]["text"] == "empty"
-    windows = oprim.build_transcript_windows({"segments": [{"start": 0, "end": 1, "text": "one"}]}, 12)
+    assert (
+        oprim.build_transcript_windows({"segments": [], "text": "empty"}, 12)[0]["text"] == "empty"
+    )
+    windows = oprim.build_transcript_windows(
+        {"segments": [{"start": 0, "end": 1, "text": "one"}]}, 12
+    )
     assert windows[0]["start"] == 0
     script = oprim.generate_script_from_description("hook.problem.solution.cta")
-    assert [segment["focus"] for segment in script.segments] == ["hook", "problem", "solution", "cta"]
+    assert [segment["focus"] for segment in script.segments] == [
+        "hook",
+        "problem",
+        "solution",
+        "cta",
+    ]
     assert oprim.plan_ai_short_actor("x", AICostMode.PREMIUM).provider == "kling_avatar_v2"
     assert len(oprim.generate_youtube_titles("topic", 2)) == 2
     assert oprim.generate_youtube_thumbnail("v", False).face_overlay is False
@@ -863,11 +954,17 @@ def test_openshorts_atoms_and_skills_build_complete_deliverables(
     monkeypatch.setattr(
         oskill,
         "detect_scenes_gemini",
-        lambda *_args, **_kwargs: [SceneDetection(start_s=0, end_s=20, headline="hook", viral_score=9)],
+        lambda *_args, **_kwargs: [
+            SceneDetection(start_s=0, end_s=20, headline="hook", viral_score=9)
+        ],
     )
-    clips = oskill.generate_clips("video", reframing=oprim.ReframingMode.TRACK, target_clips=1, with_hook_text=True)
+    clips = oskill.generate_clips(
+        "video", reframing=oprim.ReframingMode.TRACK, target_clips=1, with_hook_text=True
+    )
     assert clips.status == "planned" and clips.clips[0].effects["hook_text"]
-    short = oskill.generate_ai_short("product", url="https://example.test", publish_platforms=["tiktok"])
+    short = oskill.generate_ai_short(
+        "product", url="https://example.test", publish_platforms=["tiktok"]
+    )
     assert short.status == "blocked" and short.publish_status == ""
     tickets = oskill.create_publish_tickets(short, ["tiktok", "youtube"])
     assert len(tickets) == 2 and tickets[0].media_path == short.composite_path
@@ -887,7 +984,9 @@ async def test_montage_atoms_and_stage_directors_persist_checkpoints(tmp_path: P
     assert not oprim.validate_pipeline_manifest(manifest)
     assert oprim.validate_pipeline_manifest(oprim.make_default_pipeline_manifest("empty"))
     registry: dict[str, ToolContract] = {}
-    oprim.register_tool(ToolContract(name="writer", capability=ToolCapability.SCRIPT, provider="local"), registry)
+    oprim.register_tool(
+        ToolContract(name="writer", capability=ToolCapability.SCRIPT, provider="local"), registry
+    )
     discovered_dir = tmp_path / "tools"
     discovered_dir.mkdir()
     (discovered_dir / "writer.schema.json").write_text('{"name":"writer2","capability":"script"}')
@@ -895,7 +994,9 @@ async def test_montage_atoms_and_stage_directors_persist_checkpoints(tmp_path: P
     envelope = oprim.build_tool_envelope(registry)
     assert oprim.provider_menu(envelope)["local"] == ["writer"]
     assert oprim.support_envelope(envelope)["total_tools"] == 1
-    budget = oprim.estimate_cost(oprim.make_default_cost_budget(), "writer", "local", "script", 2, 0.5)
+    budget = oprim.estimate_cost(
+        oprim.make_default_cost_budget(), "writer", "local", "script", 2, 0.5
+    )
     budget = oprim.reserve_cost(budget, "writer", 1)
     budget = oprim.reconcile_cost(budget, "writer", 0.25)
     assert budget.spent_usd == 0.25
@@ -905,7 +1006,12 @@ async def test_montage_atoms_and_stage_directors_persist_checkpoints(tmp_path: P
     playbook = tmp_path / "playbook.yaml"
     playbook.write_text("name: p\ncolor_rules:\n  text: white\n")
     loaded_playbook = oprim.load_playbook(playbook)
-    assert oprim.apply_playbook_to_compose(loaded_playbook, {"cuts": []})["playbook"]["color_rules"]["text"] == "white"
+    assert (
+        oprim.apply_playbook_to_compose(loaded_playbook, {"cuts": []})["playbook"]["color_rules"][
+            "text"
+        ]
+        == "white"
+    )
     checkpoint = oskill.checkpoint_write("p", "s", {"script": {"text": "x"}}, {"s": {"ok": True}})
     checkpoint_path = tmp_path / "checkpoint.json"
     oprim.write_checkpoint(checkpoint_path, checkpoint)
@@ -927,10 +1033,15 @@ async def test_montage_atoms_and_stage_directors_persist_checkpoints(tmp_path: P
     assert oskill.stage_mix({}, {})["mix_status"] == "skipped"
     timeline = oskill.stage_timeline({"topic": "T", "edit_plan": edit}, {})
     assert timeline["timeline_status"] == "created"
-    assert oskill.stage_runtime({"topic": "T", "render_runtime": "hyperframes"}, {})["runtime_pick"]["compiled"]
+    assert oskill.stage_runtime({"topic": "T", "render_runtime": "hyperframes"}, {})[
+        "runtime_pick"
+    ]["compiled"]
     order = oskill.stage_dispatch({"topic": "T", "timeline": timeline["timeline"]}, {})
     assert order["production_order"]["topic"] == "T"
-    assert len(oskill.stage_publish({"media_path": "v", "platforms": ["x"]}, {})["publish_results"]) == 1
+    assert (
+        len(oskill.stage_publish({"media_path": "v", "platforms": ["x"]}, {})["publish_results"])
+        == 1
+    )
     assert oskill.stage_publish({}, {})["publish_skipped"]
     planned = omodul.plan_reference_analysis("v")
     assert planned["analysis_tools"]
@@ -973,10 +1084,18 @@ def test_krillin_atoms_keep_artifact_paths_and_manifest_round_trip(
     assert oprim.synthesize_with_aliyun_tts("x").path.endswith("aliyun_tts.wav")
     assert oprim.synthesize_with_openai_tts("x").path.endswith("openai_tts.wav")
     assert oprim.synthesize_with_minimax_tts("x").path.endswith("minimax_tts.wav")
-    assert oprim.merge_tts_to_video(video.path, audio.path, str(tmp_path / "merged.mp4")).path.endswith("merged.mp4")
-    assert oprim.render_horizontal_bilingual(video.path, target.path, str(tmp_path / "hb.mp4"), RenderConfig()).path.endswith("hb.mp4")
-    assert oprim.render_horizontal_dubbed(video.path, str(tmp_path / "hd.mp4")).path.endswith("hd.mp4")
-    assert oprim.render_vertical(video.path, target.path, str(tmp_path / "v.mp4"), RenderConfig(), dubbed=True).path.endswith("v.mp4")
+    assert oprim.merge_tts_to_video(
+        video.path, audio.path, str(tmp_path / "merged.mp4")
+    ).path.endswith("merged.mp4")
+    assert oprim.render_horizontal_bilingual(
+        video.path, target.path, str(tmp_path / "hb.mp4"), RenderConfig()
+    ).path.endswith("hb.mp4")
+    assert oprim.render_horizontal_dubbed(video.path, str(tmp_path / "hd.mp4")).path.endswith(
+        "hd.mp4"
+    )
+    assert oprim.render_vertical(
+        video.path, target.path, str(tmp_path / "v.mp4"), RenderConfig(), dubbed=True
+    ).path.endswith("v.mp4")
     cover = oprim.generate_cover(video.path, "cover", "xhs", str(tmp_path / "cover.jpg"))
     assert cover.platform == "xhs"
     job = ClipGeneratorJob(input_source="source", workdir=str(tmp_path))
@@ -986,7 +1105,11 @@ def test_krillin_atoms_keep_artifact_paths_and_manifest_round_trip(
     assert oprim.get_artifact_path(str(tmp_path), "krillinai_manifest.json") is not None
     assert oprim.get_artifact_path(str(tmp_path), "missing") is None
     with pytest.raises(RuntimeError, match="yt-dlp failed"):
-        monkeypatch.setattr(oprim.subprocess, "run", lambda *_args, **_kwargs: SimpleNamespace(returncode=1, stderr="network"))
+        monkeypatch.setattr(
+            oprim.subprocess,
+            "run",
+            lambda *_args, **_kwargs: SimpleNamespace(returncode=1, stderr="network"),
+        )
         oprim.download_video("bad", str(tmp_path))
 
 
@@ -1036,7 +1159,11 @@ async def test_voicepro_asr_translation_tts_and_clone_paths(
         with pytest.raises(RuntimeError):
             await tts.synthesize_tts("hello", make_tts_config(provider))
     with pytest.raises(RuntimeError, match="edge-tts"):
-        monkeypatch.setattr(tts, "synthesize_edge_tts", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("edge-tts unavailable")))
+        monkeypatch.setattr(
+            tts,
+            "synthesize_edge_tts",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("edge-tts unavailable")),
+        )
         await tts.synthesize_tts("hello", make_tts_config(TTSProvider.EDGE_TTS))
 
     reference = tmp_path / "ref.wav"
@@ -1075,20 +1202,31 @@ def test_erduo_atoms_and_skills_enforce_canary_and_render_lineage(tmp_path: Path
     verified = oprim.verify_canary(canary, {canary[0].shot_id: "accept"})
     assert verified[0].technical_passed and oprim.canary_passed_threshold(verified, 1)
     assert not oprim.canary_passed_threshold(verified, 2)
-    assert oprim.generate_lead_samples(chapters, RuntimeBackend.REMOTION).opening_sample.endswith("remotion.mp4")
+    assert oprim.generate_lead_samples(chapters, RuntimeBackend.REMOTION).opening_sample.endswith(
+        "remotion.mp4"
+    )
     assert oprim.generate_lead_samples([], RuntimeBackend.REMOTION).opening_sample == ""
     assert oprim.render_shot(chapters[0].shots[0], RuntimeBackend.REMOTION, "/out").endswith(".mp4")
     assert len(oprim.render_chapter(chapters[0], RuntimeBackend.REMOTION, "/out")) == 2
-    assert oprim.assemble_master([["a.mp4"]], "/out/master.mp4", RuntimeBackend.REMOTION).endswith("master.mp4")
+    assert oprim.assemble_master([["a.mp4"]], "/out/master.mp4", RuntimeBackend.REMOTION).endswith(
+        "master.mp4"
+    )
 
     srt_path = tmp_path / "input.srt"
     design_path = tmp_path / "design.txt"
     srt_path.write_text("1\n00:00:00,000 --> 00:00:01,000\nhello")
     design_path.write_text("modern")
-    job = oskill.skill_full_production(str(srt_path), str(design_path), RuntimeBackend.HYPERFRAMES, "u")
+    job = oskill.skill_full_production(
+        str(srt_path), str(design_path), RuntimeBackend.HYPERFRAMES, "u"
+    )
     assert job.truth is not None and job.chapters and job.canary_results
     assert oskill.skill_build_chapters(job, 1).chapters[0].shots[0].sequence == 0
-    assert oskill.skill_canary_verify(job, {job.canary_results[0].shot_id: "revise"}).canary_results[0].user_choice == "revise"
+    assert (
+        oskill.skill_canary_verify(job, {job.canary_results[0].shot_id: "revise"})
+        .canary_results[0]
+        .user_choice
+        == "revise"
+    )
     assert not oskill.skill_canary_threshold(job, 1)
     assert oskill.skill_render_chapters(job, "/out") is job
     assert oskill.skill_assemble_master(job, "/out/master.mp4", "/out").endswith("master.mp4")
@@ -1101,7 +1239,9 @@ def test_magiviz_atoms_and_skills_produce_each_stage_output() -> None:
 
     outline = make_story_outline("Title", "Premise", aspect_ratio=VideoAspectRatio.SQUARE_1_1)
     details = oprim.generate_story_details(outline)
-    assert len(details.characters) == 3 and len(details.scenes) == 5 and len(details.dialogues) == 10
+    assert (
+        len(details.characters) == 3 and len(details.scenes) == 5 and len(details.dialogues) == 10
+    )
     details = oprim.generate_all_characters(details)
     assert all(character.reference_image.endswith(".png") for character in details.characters)
     scene = {"scene_number": 1, "description": "scene", "shots": 2, "characters": ["主角"]}
@@ -1112,13 +1252,17 @@ def test_magiviz_atoms_and_skills_produce_each_stage_output() -> None:
     scene_video = oprim.generate_scene_video(frame, VideoModel.KLING, seed=3)
     assert scene_video.seed == 3 and scene_video.video_model is VideoModel.KLING
     assert len(oprim.generate_scene_videos_parallel(storyboard)) == len(storyboard.frames)
-    assert oprim.compose_story_video([scene_video], "/out/final.mp4", False, False) == "/out/final.mp4"
+    assert (
+        oprim.compose_story_video([scene_video], "/out/final.mp4", False, False) == "/out/final.mp4"
+    )
     job = oskill.skill_run_full_pipeline(oskill.make_magiviz_job(outline, "u"))
     assert job.status.value == "completed" and job.final_video_path.endswith(".mp4")
     assert oskill.skill_character_generation(job).status.value == "character_generating"
     assert oskill.skill_storyboard_generation(job).status.value == "storyboard_generating"
     assert oskill.skill_scene_generation(job).status.value == "scenes_generating"
-    assert oskill.skill_video_composition(job, "/out/custom.mp4").final_video_path == "/out/custom.mp4"
+    assert (
+        oskill.skill_video_composition(job, "/out/custom.mp4").final_video_path == "/out/custom.mp4"
+    )
     assert oskill.skill_character_consistency(job) is job
 
 
@@ -1136,11 +1280,15 @@ async def test_platform_planners_bind_accounts_media_and_review_steps(tmp_path: 
     monitor = build_monitor_plan(targets, {"douyin": 7}, interval_seconds=60, backfill_count=3)
     assert monitor["platforms"] == ["douyin"]
     assert monitor["targets_by_platform"]["douyin"][0]["backfill_count"] == 2
-    comment = build_comment_plan("xhs", "auto_comment", 7, "keyword", ["hello"], target_kind="keyword")
+    comment = build_comment_plan(
+        "xhs", "auto_comment", 7, "keyword", ["hello"], target_kind="keyword"
+    )
     assert comment["rule"]["keyword"] == "keyword" and comment["review"]["required"] is False
     media = tmp_path / "out.jpg"
     media.write_bytes(b"image")
-    publish = build_publish_plan(7, "xhs", [str(media), "missing.mp4"], title="T", scheduled_at="2026-01-01T00:00:00Z")
+    publish = build_publish_plan(
+        7, "xhs", [str(media), "missing.mp4"], title="T", scheduled_at="2026-01-01T00:00:00Z"
+    )
     assert publish["media"]["paths"] == [str(media)]
     assert publish["media"]["missing"] == ["missing.mp4"]
     assert publish["scheduled_at"] == "2026-01-01T00:00:00"
@@ -1164,7 +1312,9 @@ def test_semantic_motion_profile_and_layout_share_one_frozen_time_contract() -> 
     assert infer_semantic_role("最后的结论", index=1, total=2) == "conclusion"
     assert infer_semantic_role("没有提示", index=1, total=3) == "statement"
 
-    profile = profile_from_explainer(aspect_ratio="16:9", motion_preset="premium-balanced", avatar_enabled=True)
+    profile = profile_from_explainer(
+        aspect_ratio="16:9", motion_preset="premium-balanced", avatar_enabled=True
+    )
     assert profile.width == 1920 and profile.height == 1080
     frozen = profile.freeze()
     assert_profile_fresh(frozen, profile.sha256())
@@ -1177,10 +1327,37 @@ def test_semantic_motion_profile_and_layout_share_one_frozen_time_contract() -> 
     assert check_occlusion(layout)
     element = LayoutElement("a", "title", 0, 0, 10, 10, True, 0, 1, 1)
     assert element.box() == (0, 0, 10, 10)
-    overlapping = {"scenes": [{"id": "s", "elements": [
-        {"id": "a", "role": "title", "x": 0, "y": 0, "width": 10, "height": 10, "start_s": 0, "end_s": 2, "protected": True},
-        {"id": "b", "role": "caption", "x": 5, "y": 5, "width": 10, "height": 10, "start_s": 1, "end_s": 2, "protected": True},
-    ]}]}
+    overlapping = {
+        "scenes": [
+            {
+                "id": "s",
+                "elements": [
+                    {
+                        "id": "a",
+                        "role": "title",
+                        "x": 0,
+                        "y": 0,
+                        "width": 10,
+                        "height": 10,
+                        "start_s": 0,
+                        "end_s": 2,
+                        "protected": True,
+                    },
+                    {
+                        "id": "b",
+                        "role": "caption",
+                        "x": 5,
+                        "y": 5,
+                        "width": 10,
+                        "height": 10,
+                        "start_s": 1,
+                        "end_s": 2,
+                        "protected": True,
+                    },
+                ],
+            }
+        ]
+    }
     assert check_occlusion(overlapping)
 
 
@@ -1190,9 +1367,16 @@ def test_material_cache_and_corpus_seed_keep_results_bounded(
     from hevi.studio import corpus_seed
     from hevi.video.cache import ArchiveCache, CacheStorage, CoverrCache, PixabayCache
 
-    assert corpus_seed._pick_smallest_mp4(["orig.mp4", "preview.mp4", "small.mp4"], max_mb=1) == "preview.mp4"
+    assert (
+        corpus_seed._pick_smallest_mp4(["orig.mp4", "preview.mp4", "small.mp4"], max_mb=1)
+        == "preview.mp4"
+    )
     assert corpus_seed._pick_smallest_mp4(["image.jpg"], max_mb=1) is None
-    monkeypatch.setattr(corpus_seed.httpx, "get", lambda *_args, **_kwargs: (_ for _ in ()).throw(corpus_seed.httpx.HTTPError("offline")))
+    monkeypatch.setattr(
+        corpus_seed.httpx,
+        "get",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(corpus_seed.httpx.HTTPError("offline")),
+    )
     assert corpus_seed.search_nasa_videos("space") == []
     assert corpus_seed.search_wikimedia_videos("space") == []
     storage = CacheStorage(tmp_path / "cache")
@@ -1228,7 +1412,9 @@ async def test_fal_image_adapter_handles_queue_completion_and_download(
         fal_image_service._resolve_api_key({})
 
     class Response:
-        def __init__(self, status_code: int, payload: dict[str, object] | None = None, content: bytes = b"") -> None:
+        def __init__(
+            self, status_code: int, payload: dict[str, object] | None = None, content: bytes = b""
+        ) -> None:
             self.status_code = status_code
             self._payload = payload or {}
             self.content = content
@@ -1258,7 +1444,11 @@ async def test_fal_image_adapter_handles_queue_completion_and_download(
     monkeypatch.setattr(fal_image_service.asyncio, "sleep", lambda _seconds: _done())
     output = tmp_path / "image.png"
     result = await fal_image_service.fal_image_generate(
-        prompt="subject", negative_prompt="blur", output_path=output, seed=4, config={"FAL_API_KEY": "key"}
+        prompt="subject",
+        negative_prompt="blur",
+        output_path=output,
+        seed=4,
+        config={"FAL_API_KEY": "key"},
     )
     assert result == {"output_path": str(output), "seed": 4}
     assert output.stat().st_size == 512
@@ -1321,7 +1511,9 @@ async def test_mpt_routes_map_provider_responses_without_leaking_client_details(
     assert status.progress == 42 and status.videos == ["v.mp4"]
     materials = await search_materials(MaterialSearchRequest(query="q"), client)
     assert materials[0].source == "pexels"
-    posted = await cross_post(CrossPostRequest(video_path="v", title="t", platforms=["xhs"]), client)
+    posted = await cross_post(
+        CrossPostRequest(video_path="v", title="t", platforms=["xhs"]), client
+    )
     assert posted["ok"]
     analyzed = await analyze_reference_video(ReferenceVideoRequest(url="u"), client)
     assert analyzed.transcript == "t"
@@ -1365,12 +1557,17 @@ def test_tongjian_state_helpers_preserve_layer_and_request_contracts(
     run_dir = tmp_path / "run"
     tongjian._persist_review(run_dir, record["constitution"], record["script"])
     assert (run_dir / "L2" / "review.json").exists()
+
     class Gate:
         passed = True
 
     assert tongjian._gate_decision(Gate()) == ("PASSED", None)
     assert tongjian._gate_decision({"errors": ["bad"]}) == ("DEGRADED", "bad")
-    avatar = tongjian.RunRequest(source_name="s", raw_text="t", layer_config={"L6": tongjian.LayerConfig(model="cloud_avatar")})
+    avatar = tongjian.RunRequest(
+        source_name="s",
+        raw_text="t",
+        layer_config={"L6": tongjian.LayerConfig(model="cloud_avatar")},
+    )
     tongjian._apply_cloud_avatar_preset(avatar)
     assert avatar.layer_config["L0"].model == "qwen_cloud"
     assert avatar.layer_config["L3"].model == "edge_tts"
@@ -1389,10 +1586,18 @@ def test_cli_and_runtime_helpers_keep_failure_signals_explicit(
     assert studio_cli._parse_slot("x={bad") == ("x", "{bad")
     with pytest.raises(Exception, match="slot must"):
         studio_cli._parse_slot("invalid")
-    monkeypatch.setattr(urllib.request, "urlopen", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("offline")))
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("offline")),
+    )
     assert free_cli._llm_rewrite("source", "title") == "source"
     assert "退回原文案" in capsys.readouterr().err
-    monkeypatch.setattr(media_cli, "resolve_media", lambda *args, **kwargs: (_ for _ in ()).throw(media_cli.ResolveError("no provider")))
+    monkeypatch.setattr(
+        media_cli,
+        "resolve_media",
+        lambda *args, **kwargs: (_ for _ in ()).throw(media_cli.ResolveError("no provider")),
+    )
     assert media_cli.main(["resolve", "--type", "bgm", "--intent", "warm"]) == 1
     assert "resolve failed" in capsys.readouterr().err
     manifest = tmp_path / "plans.json"
@@ -1438,7 +1643,15 @@ def test_history_series_animator_helpers_use_deterministic_media_commands(
     for movement in ("push_in", "pull_out", "pan", "tracking", "unknown"):
         animator._ken_burns(image, output, 1.0, movement)
     assert len(calls) == 6 and all(command[0] == "ffmpeg" for command in calls[1:])
-    monkeypatch.setattr(animator, "_get_pipe", lambda: lambda *_args, **_kwargs: SimpleNamespace(images=[SimpleNamespace(save=lambda path: Path(path).write_bytes(b"image"))]))
+    monkeypatch.setattr(
+        animator,
+        "_get_pipe",
+        lambda: (
+            lambda *_args, **_kwargs: SimpleNamespace(
+                images=[SimpleNamespace(save=lambda path: Path(path).write_bytes(b"image"))]
+            )
+        ),
+    )
     generated = animator._gen_keyframe("prompt", tmp_path / "frame.png")
     assert generated.read_bytes() == b"image"
     existing = tmp_path / "existing.png"
@@ -1454,6 +1667,7 @@ async def test_history_series_animator_tts_fallback_and_concat_paths(
     from hevi.history_series import series_animator as animator
 
     wav = tmp_path / "nar.mp3"
+
     async def voicebox(_text: str, path: Path) -> None:
         path.write_bytes(b"a" * 120)
 
@@ -1463,18 +1677,42 @@ async def test_history_series_animator_tts_fallback_and_concat_paths(
     existing = tmp_path / "existing.mp3"
     existing.write_bytes(b"a" * 120)
     assert await animator._tts("hello", existing) == 2.0
-    beat = GoldenBeat(index=0, shot_size="wide", movement="push_in", subject="s", action="a", emotion_expression="", atmosphere="", lighting="", duration_s=3, narration="n")
+    beat = GoldenBeat(
+        index=0,
+        shot_size="wide",
+        movement="push_in",
+        subject="s",
+        action="a",
+        emotion_expression="",
+        atmosphere="",
+        lighting="",
+        duration_s=3,
+        narration="n",
+    )
     monkeypatch.setattr(animator, "_tts", lambda *_args, **_kwargs: _async_value(2.0))
-    monkeypatch.setattr(animator, "_gen_keyframe", lambda _prompt, path: (path.write_bytes(b"frame") and path))
-    monkeypatch.setattr(animator, "_ken_burns", lambda _image, path, _duration, _movement: path.write_bytes(b"video"))
-    monkeypatch.setattr(animator, "_concat_videos", lambda _videos, path: path.write_bytes(b"videos"))
-    monkeypatch.setattr(animator, "_concat_audio", lambda _dir, _n, path: path.write_bytes(b"audio"))
+    monkeypatch.setattr(
+        animator, "_gen_keyframe", lambda _prompt, path: path.write_bytes(b"frame") and path
+    )
+    monkeypatch.setattr(
+        animator,
+        "_ken_burns",
+        lambda _image, path, _duration, _movement: path.write_bytes(b"video"),
+    )
+    monkeypatch.setattr(
+        animator, "_concat_videos", lambda _videos, path: path.write_bytes(b"videos")
+    )
+    monkeypatch.setattr(
+        animator, "_concat_audio", lambda _dir, _n, path: path.write_bytes(b"audio")
+    )
     monkeypatch.setattr(animator, "_mux", lambda _video, _audio, path: path.write_bytes(b"final"))
+
     async def beats(_story: str, _llm: object, **_kwargs: object) -> list[GoldenBeat]:
         return [beat]
 
     monkeypatch.setattr("hevi.cinematic.golden_formula.decompose_story_to_golden_beats", beats)
-    final, beats = await animator.animate_lesson("story", lesson_title="lesson", llm=object(), output_dir=tmp_path / "lesson")
+    final, beats = await animator.animate_lesson(
+        "story", lesson_title="lesson", llm=object(), output_dir=tmp_path / "lesson"
+    )
     assert final.read_bytes() == b"final" and len(beats) == 1
 
 
@@ -1509,11 +1747,15 @@ def test_sdxl_local_adapter_validates_gpu_and_preserves_prompt_contract(
     asyncio.run(sdxl.check_gpu_available())
     assert asyncio.run(sdxl._ensure_english_prompt("an English prompt")) == "an English prompt"
     monkeypatch.setattr(sdxl, "_EN_PROMPT_CACHE", {})
+
     class LLM:
         def __call__(self, **_kwargs: object) -> dict[str, str]:
             return {"content": "an English portrait"}
 
-    monkeypatch.setattr("obase.provider_registry.ProviderRegistry.get", lambda: SimpleNamespace(llm=lambda _name: LLM()))
+    monkeypatch.setattr(
+        "obase.provider_registry.ProviderRegistry.get",
+        lambda: SimpleNamespace(llm=lambda _name: LLM()),
+    )
     assert asyncio.run(sdxl._ensure_english_prompt("中文人物")) == "an English portrait"
     output = tmp_path / "image.png"
     captured: dict[str, object] = {}
@@ -1522,6 +1764,13 @@ def test_sdxl_local_adapter_validates_gpu_and_preserves_prompt_contract(
         captured.update(kwargs)
 
     monkeypatch.setattr(sdxl, "_run_worker", worker)
-    result = asyncio.run(sdxl.sdxl_local_generate(prompt="English", output_path=output, require_gpu=False, extra={"init_image": tmp_path / "init.png"}))
+    result = asyncio.run(
+        sdxl.sdxl_local_generate(
+            prompt="English",
+            output_path=output,
+            require_gpu=False,
+            extra={"init_image": tmp_path / "init.png"},
+        )
+    )
     assert result["seed"] is not None and captured["init_image"] == str(tmp_path / "init.png")
     assert captured["negative_prompt"]

@@ -47,8 +47,13 @@ async def test_dub_video_orchestration():
 
     llm = AsyncMock(return_value={"content": '{"0":"hello world"}'})
     res = await dub_video(
-        video_path="in.mp4", target_language="en", output_path="out_en.mp4",
-        llm=llm, transcribe_fn=transcribe_fn, synth_fn=synth_fn, mux_fn=mux_fn,
+        video_path="in.mp4",
+        target_language="en",
+        output_path="out_en.mp4",
+        llm=llm,
+        transcribe_fn=transcribe_fn,
+        synth_fn=synth_fn,
+        mux_fn=mux_fn,
     )
     assert res == {"output": "out_en.mp4", "language": "en", "cues": 1}
     assert calls["transcribed"] == "in.mp4"

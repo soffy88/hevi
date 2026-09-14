@@ -78,19 +78,13 @@ def _canon_map(canon: tuple[AuditClaim, ...]) -> dict[tuple[str, str, str], str]
     return {(item.dimension, item.subject, item.predicate): item.value for item in canon}
 
 
-def _reaudit(
-    engine: NarrativeAuditEngine, base: AuditContext
-) -> Callable[[str], NarrativeAudit]:
+def _reaudit(engine: NarrativeAuditEngine, base: AuditContext) -> Callable[[str], NarrativeAudit]:
     canon_map = _canon_map(base.state.canon_facts)
 
     def _run(text: str) -> NarrativeAudit:
         claims = tuple(
             claim.model_copy(
-                update={
-                    "value": canon_map[
-                        (claim.dimension, claim.subject, claim.predicate)
-                    ]
-                }
+                update={"value": canon_map[(claim.dimension, claim.subject, claim.predicate)]}
             )
             if (claim.dimension, claim.subject, claim.predicate) in canon_map
             and claim.value.casefold() not in text.casefold()
@@ -131,9 +125,7 @@ class RevisionGoldResult(BaseModel):
 
 
 def _scenarios() -> list[tuple[str, str, AuditContext, tuple[str, ...], tuple[str, ...], bool]]:
-    canon = (
-        _claim("CHARACTER_CONTINUITY", "Mara", "eye_color", "green", ref="character:mara"),
-    )
+    canon = (_claim("CHARACTER_CONTINUITY", "Mara", "eye_color", "green", ref="character:mara"),)
     return [
         (
             "single_style",
@@ -248,7 +240,14 @@ def run_revision_gold() -> RevisionGoldResult:
     conflict_handled = False
     max_iterations_enforced = False
 
-    for name, change_type, base, expect_resolved, expect_unresolved, expect_conflict in _scenarios():
+    for (
+        name,
+        change_type,
+        base,
+        expect_resolved,
+        expect_unresolved,
+        expect_conflict,
+    ) in _scenarios():
         audit = engine.audit_context(base)
         findings = tuple(sorted({finding.code or finding.dimension for finding in audit.findings}))
         final = revision.run_bounded(
@@ -259,9 +258,9 @@ def run_revision_gold() -> RevisionGoldResult:
             change_type=change_type,
             re_audit=_reaudit(engine, base),
         )
-        original_preserved = final.original_hash == hashlib.sha256(
-            base.text.encode("utf-8")
-        ).hexdigest()
+        original_preserved = (
+            final.original_hash == hashlib.sha256(base.text.encode("utf-8")).hexdigest()
+        )
         all_original_preserved = all_original_preserved and original_preserved
         diff_present = bool(final.diff)
         if expect_resolved:
@@ -273,17 +272,24 @@ def run_revision_gold() -> RevisionGoldResult:
         all_traces_complete = all_traces_complete and trace_complete
         re_audit = _reaudit(engine, base)
         re_audit_codes = tuple(
-            sorted({finding.code or finding.dimension for finding in re_audit(final.revised_text).findings})
+            sorted(
+                {
+                    finding.code or finding.dimension
+                    for finding in re_audit(final.revised_text).findings
+                }
+            )
         )
         if expect_resolved:
-            all_reaudit_clean = all_reaudit_clean and not (set(expect_resolved) & set(re_audit_codes))
+            all_reaudit_clean = all_reaudit_clean and not (
+                set(expect_resolved) & set(re_audit_codes)
+            )
         if expect_unresolved:
             all_unresolved_preserved = all_unresolved_preserved and set(expect_unresolved).issubset(
                 set(final.unresolved_codes)
             )
         if expect_conflict:
-            conflict_handled = expect_conflict and bool(expect_unresolved) and (
-                final.revised_text == base.text
+            conflict_handled = (
+                expect_conflict and bool(expect_unresolved) and (final.revised_text == base.text)
             )
         if final.pass_number <= revision.policy.max_passes:
             max_iterations_enforced = True
@@ -306,17 +312,13 @@ def run_revision_gold() -> RevisionGoldResult:
     # iteration bound is hard, not advisory
     limit_enforced = False
     try:
-        revision.candidate(
-            project_id=_PID, asset_id=_AID, base_revision=0, pass_number=4
-        )
+        revision.candidate(project_id=_PID, asset_id=_AID, base_revision=0, pass_number=4)
     except RevisionLimitError:
         limit_enforced = True
     max_iterations_enforced = max_iterations_enforced and limit_enforced
 
     # reject must not touch canon or the artifact; approve must be atomic
-    style_scenario = next(
-        item for item in results if item.name == "single_style"
-    )
+    style_scenario = next(item for item in results if item.name == "single_style")
     style_base = next(item[2] for item in _scenarios() if item[0] == "single_style")
     style_audit = engine.audit_context(style_base)
     style_execution = revision.execute(

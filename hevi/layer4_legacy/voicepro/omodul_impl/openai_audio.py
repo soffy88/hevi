@@ -80,7 +80,7 @@ async def synthesize_audio_file(
 
     output_path = wav_path
     if fmt != "wav":
-        output_path = root / f"{wav_path.stem}.{AUDIO_FORMATS[fmt][1].lstrip('.') }"
+        output_path = root / f"{wav_path.stem}.{AUDIO_FORMATS[fmt][1].lstrip('.')}"
         await _convert_audio(wav_path, output_path, fmt)
     artifact = Artifact.from_path(
         output_path,
@@ -138,8 +138,7 @@ def transcribe_audio_file(
             "text": item.text,
             "speaker": item.speaker or None,
             "words": [
-                {"word": word.word, "start": word.start, "end": word.end}
-                for word in item.words
+                {"word": word.word, "start": word.start, "end": word.end} for word in item.words
             ],
         }
         for index, item in enumerate(segments)
@@ -175,9 +174,7 @@ def _to_srt(segments: list[Any]) -> str:
 
 
 def _to_vtt(segments: list[Any]) -> str:
-    body = "\n\n".join(
-        f"{_clock(seg.start)} --> {_clock(seg.end)}\n{seg.text}" for seg in segments
-    )
+    body = "\n\n".join(f"{_clock(seg.start)} --> {_clock(seg.end)}\n{seg.text}" for seg in segments)
     return f"WEBVTT\n\n{body}" if body else "WEBVTT\n"
 
 

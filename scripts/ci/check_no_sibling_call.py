@@ -1,11 +1,19 @@
 """3O v3 import/call graph direction gate."""
+
 from __future__ import annotations
 
 import sys
-from _3o_common import CANONICAL, all_sources, call_names, import_edges, parse
 
+from _3o_common import CANONICAL, all_sources, import_edges, parse
 
-FORBIDDEN = {("oprim", "oskill"), ("oprim", "omodul"), ("oskill", "omodul"), ("obase", "oprim"), ("obase", "oskill"), ("obase", "omodul")}
+FORBIDDEN = {
+    ("oprim", "oskill"),
+    ("oprim", "omodul"),
+    ("oskill", "omodul"),
+    ("obase", "oprim"),
+    ("obase", "oskill"),
+    ("obase", "omodul"),
+}
 
 
 def main() -> int:
@@ -17,7 +25,11 @@ def main() -> int:
         for target, module, line in import_edges(tree):
             if (source.layer, target) in FORBIDDEN:
                 violations.append(f"{source.rel}:{line}: {source.layer} -> {target} ({module})")
-            if source.layer == "omodul" and target == "omodul" and not any(part.startswith("_") for part in module.split(".")):
+            if (
+                source.layer == "omodul"
+                and target == "omodul"
+                and not any(part.startswith("_") for part in module.split("."))
+            ):
                 violations.append(f"{source.rel}:{line}: sibling omodul import ({module})")
             if source.layer == "oservi" and target in {"oprim", "oskill", "omodul"}:
                 violations.append(f"{source.rel}:{line}: hardcoded oservi element ({module})")

@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 class RuntimeBackend(str, Enum):
     """渲染后端。"""
+
     HYPERFRAMES = "hyperframes"
     REMOTION = "remotion"
     AUTO = "auto"
@@ -27,6 +28,7 @@ class RuntimeBackend(str, Enum):
 
 class ShotStatus(str, Enum):
     """镜头状态。"""
+
     PENDING = "pending"
     CAN_PASSED = "can_passed"
     CAN_FAILED = "can_failed"
@@ -38,6 +40,7 @@ class ShotStatus(str, Enum):
 
 class ChapterStatus(str, Enum):
     """章节状态。"""
+
     PENDING = "pending"
     BUILDING = "building"
     CAN_REVIEW = "can_review"
@@ -50,6 +53,7 @@ class ChapterStatus(str, Enum):
 
 class SRTEntry(BaseModel):
     """SRT 字幕条目。"""
+
     index: int
     start_ms: int
     end_ms: int
@@ -59,7 +63,8 @@ class SRTEntry(BaseModel):
 
 class DesignIntent(BaseModel):
     """设计意图。"""
-    visual_style: str = ""      # 视觉风格
+
+    visual_style: str = ""  # 视觉风格
     signature_motion: str = ""  # 标志性动作
     color_palette: list[str] = Field(default_factory=list)
     font_choices: list[str] = Field(default_factory=list)
@@ -67,6 +72,7 @@ class DesignIntent(BaseModel):
 
 class Truth(BaseModel):
     """真相层：不可修改的核心约束。"""
+
     srt: list[SRTEntry]
     design: DesignIntent
     frozen_at: datetime = Field(default_factory=datetime.utcnow)
@@ -74,9 +80,10 @@ class Truth(BaseModel):
 
 class CreativeProposal(BaseModel):
     """创意提案层：可修改的创意建议。"""
+
     proposal_id: str = ""
     version: int = 1
-    rationale: str = ""           # 修改理由
+    rationale: str = ""  # 修改理由
     chapter_plan: list[dict[str, Any]] = Field(default_factory=list)  # 章节规划
     shot_concepts: list[dict[str, Any]] = Field(default_factory=list)  # 镜头概念
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -84,6 +91,7 @@ class CreativeProposal(BaseModel):
 
 class ShotSpec(BaseModel):
     """单镜头规格。"""
+
     shot_id: str = ""
     chapter_id: str = ""
     sequence: int = 0
@@ -100,6 +108,7 @@ class ShotSpec(BaseModel):
 
 class ChapterSpec(BaseModel):
     """章节规格。"""
+
     chapter_id: str = ""
     sequence: int = 0
     start_ms: int = 0
@@ -112,15 +121,17 @@ class ChapterSpec(BaseModel):
 
 class LeadSamples(BaseModel):
     """Lead 真样片。"""
-    opening_sample: str = ""      # 开头样片
-    dense_info_sample: str = ""   # 信息密集段样片
-    ending_sample: str = ""       # 后段样片
-    signature_motion: str = ""    # 标志性动作演示
+
+    opening_sample: str = ""  # 开头样片
+    dense_info_sample: str = ""  # 信息密集段样片
+    ending_sample: str = ""  # 后段样片
+    signature_motion: str = ""  # 标志性动作演示
     material_fusion_demo: str = ""  # 素材融合演示
 
 
 class CanaryResult(BaseModel):
     """Canary 验证结果。"""
+
     shot_id: str = ""
     technical_passed: bool = False
     visual_passed: bool = False
@@ -130,6 +141,7 @@ class CanaryResult(BaseModel):
 
 class ProductionJob(BaseModel):
     """完整生产作业。"""
+
     job_id: str = Field(default_factory=lambda: f"erduo-{__import__('uuid').uuid4().hex[:12]}")
     user_id: str = ""
     srt_path: str = ""
@@ -176,12 +188,14 @@ def parse_srt(srt_text: str) -> list[SRTEntry]:
             start_str, end_str = time_line.split(" --> ")
             start_ms = _time_to_ms(start_str)
             end_ms = _time_to_ms(end_str)
-            entries.append(SRTEntry(
-                index=index,
-                start_ms=start_ms,
-                end_ms=end_ms,
-                text=text,
-            ))
+            entries.append(
+                SRTEntry(
+                    index=index,
+                    start_ms=start_ms,
+                    end_ms=end_ms,
+                    text=text,
+                )
+            )
     return entries
 
 

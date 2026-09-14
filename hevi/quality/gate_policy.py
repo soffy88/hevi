@@ -188,7 +188,8 @@ def gate_verdict(
 
     return {
         "passed": cov_passed and eval_result["passed"],
-        "degraded": eval_result["degraded"] or bool(coverage and coverage.get("verification_rate", 1.0) < 1.0),
+        "degraded": eval_result["degraded"]
+        or bool(coverage and coverage.get("verification_rate", 1.0) < 1.0),
         "coverage_passed": cov_passed,
         "coverage_issues": cov_issues,
         "evaluation": eval_result,

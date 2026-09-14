@@ -19,19 +19,19 @@ from hevi.freezone import (
 
 
 async def _echo_generator(node, upstream):
-    return {"kind": node.kind, "prompt": node.params.get("prompt"),
-            "upstream": list(upstream)}
+    return {"kind": node.kind, "prompt": node.params.get("prompt"), "upstream": list(upstream)}
 
 
 @pytest.mark.asyncio
 async def test_topo_execution_with_upstream():
     """链式依赖: n1 → n2, n2 拿到 n1 输出。"""
-    g = FreezoneGraph([
-        NodeSpec("n1", "image", {"prompt": "雨夜"}),
-        NodeSpec("n2", "video", {"prompt": "追逐"}, ["n1"]),
-    ])
-    svc = FreezoneService(generators={"image": _echo_generator,
-                                      "video": _echo_generator})
+    g = FreezoneGraph(
+        [
+            NodeSpec("n1", "image", {"prompt": "雨夜"}),
+            NodeSpec("n2", "video", {"prompt": "追逐"}, ["n1"]),
+        ]
+    )
+    svc = FreezoneService(generators={"image": _echo_generator, "video": _echo_generator})
     run = await svc.run_graph(g)
     assert run.ok_count == 2
     n2 = run.results["n2"].output
@@ -41,13 +41,16 @@ async def test_topo_execution_with_upstream():
 @pytest.mark.asyncio
 async def test_failure_isolation():
     """某节点失败不影响兄弟节点。"""
+
     async def boom(node, upstream):
         raise RuntimeError("生成失败")
 
-    g = FreezoneGraph([
-        NodeSpec("a", "image", {}),
-        NodeSpec("b", "video", {}),
-    ])
+    g = FreezoneGraph(
+        [
+            NodeSpec("a", "image", {}),
+            NodeSpec("b", "video", {}),
+        ]
+    )
     svc = FreezoneService(generators={"image": boom, "video": _echo_generator})
     run = await svc.run_graph(g)
     assert run.results["a"].ok is False
@@ -57,10 +60,12 @@ async def test_failure_isolation():
 
 def test_cycle_detection():
     """环 → GraphCycleError (topo_order 时触发)。"""
-    g = FreezoneGraph([
-        NodeSpec("a", "image", {}, ["b"]),
-        NodeSpec("b", "video", {}, ["a"]),
-    ])
+    g = FreezoneGraph(
+        [
+            NodeSpec("a", "image", {}, ["b"]),
+            NodeSpec("b", "video", {}, ["a"]),
+        ]
+    )
     with pytest.raises(GraphCycleError):
         g.topo_order()
 

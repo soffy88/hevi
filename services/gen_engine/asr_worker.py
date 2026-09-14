@@ -35,10 +35,14 @@ def _main(args_path: str) -> None:
 
     cmd = [
         "/opt/vibeasr/asr_infer",
-        "--vae-model", vae_model,
-        "--lm-model", lm_model,
-        "--audio", str(audio_path),
-        "-t", str(data.get("threads", 4)),
+        "--vae-model",
+        vae_model,
+        "--lm-model",
+        lm_model,
+        "--audio",
+        str(audio_path),
+        "-t",
+        str(data.get("threads", 4)),
         "--greedy",
     ]
     if hotwords:
@@ -51,9 +55,7 @@ def _main(args_path: str) -> None:
 
     text = _extract_text(proc.stdout)
     utterances = (
-        [{"speaker": "", "start": "0.0", "end": "0.0", "text": text}]
-        if text.strip()
-        else []
+        [{"speaker": "", "start": "0.0", "end": "0.0", "text": text}] if text.strip() else []
     )
     out_path.write_text(
         json.dumps(

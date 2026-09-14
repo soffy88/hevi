@@ -49,7 +49,7 @@ def _as_segments(raw: Iterable[Any]) -> list[TranscriptSegment]:
                 continue
             start = float(raw_start)
             end = float(raw_end)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
         text = str(item.get("text") or "").strip()
         if start >= 0 and end > start and text:
@@ -86,8 +86,7 @@ def load_transcript(config: dict[str, Any], video_path: Path) -> list[Transcript
         )
     except TranscriptError as exc:
         raise RuntimeError(
-            "拆条需要真实字幕或可用的 faster-whisper 转写；"
-            f"未能取得转写: {exc}"
+            f"拆条需要真实字幕或可用的 faster-whisper 转写；未能取得转写: {exc}"
         ) from exc
 
 
@@ -171,7 +170,12 @@ def _write_srt(path: Path, highlight: Highlight, segments: list[TranscriptSegmen
 
         rows.extend([str(index + 1), f"{stamp(start)} --> {stamp(end)}", segment.text, ""])
     if not rows:
-        rows = ["1", "00:00:00,000 --> 00:00:01,000", highlight.hook_sentence or highlight.title, ""]
+        rows = [
+            "1",
+            "00:00:00,000 --> 00:00:01,000",
+            highlight.hook_sentence or highlight.title,
+            "",
+        ]
     path.write_text("\n".join(rows), encoding="utf-8")
 
 
@@ -292,8 +296,7 @@ def render_clip_batch(
         },
         "clips": rendered,
         "transcript": [
-            {"start": item.start, "end": item.end, "text": item.text}
-            for item in segments
+            {"start": item.start, "end": item.end, "text": item.text} for item in segments
         ],
         "config_json": {
             **cfg,

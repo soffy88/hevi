@@ -163,9 +163,7 @@ async def story_to_animation_workflow(
             ),
         }
         report_path = output_dir / "story_plan.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", "report_path": str(report_path), **report}
     except Exception as e:
         logger.exception("story_to_animation_workflow failed")

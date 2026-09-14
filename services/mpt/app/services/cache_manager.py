@@ -166,9 +166,7 @@ def clean_video_cache(max_age_days: int | None = None) -> VideoCacheCleanupResul
 
     _validate_max_age_days(max_age_days)
     now = time.time()
-    logger.info(
-        f"start cleaning video cache: max_age_days={max_age_days}"
-    )
+    logger.info(f"start cleaning video cache: max_age_days={max_age_days}")
 
     candidate_count = 0
     candidate_size = 0

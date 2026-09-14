@@ -421,9 +421,7 @@ class TestLiteLLMProvider(unittest.TestCase):
                     default_model=provider.default_model,
                     default_base_url=provider.effective_default_base_url,
                     model_docs_url=(
-                        default_endpoint.model_docs_url
-                        if default_endpoint
-                        else ""
+                        default_endpoint.model_docs_url if default_endpoint else ""
                     ),
                     docker_hint="",
                     **{
@@ -482,9 +480,7 @@ class TestLiteLLMProvider(unittest.TestCase):
                         default_model=provider.default_model,
                         default_base_url=provider.effective_default_base_url,
                         model_docs_url=(
-                            default_endpoint.model_docs_url
-                            if default_endpoint
-                            else ""
+                            default_endpoint.model_docs_url if default_endpoint else ""
                         ),
                         docker_hint="",
                         **{

@@ -53,6 +53,7 @@ async def stage_watch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
 
 async def stage_score(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
     from hevi.providers.registry import register_all_providers
+
     # 3O SaaS-4 保证在 stage_score 前先注册所有 L2 提供者
     register_all_providers()
     result = await invoke_tool(
@@ -190,7 +191,7 @@ async def stage_dispatch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
         for key, value in raw_slots.items():
             try:
                 json.dumps(value, ensure_ascii=False)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             safe_slots[str(key)] = value
     order = {
@@ -233,7 +234,9 @@ async def stage_dispatch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
 async def stage_publish(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
     raw_fulfill = data.get("fulfill")
     fulfill: dict[str, Any] = raw_fulfill if isinstance(raw_fulfill, dict) else {}
-    raw_media = data.get("media_path") or data.get("result_video_path") or fulfill.get("result_video_path")
+    raw_media = (
+        data.get("media_path") or data.get("result_video_path") or fulfill.get("result_video_path")
+    )
     media = raw_media if isinstance(raw_media, str) else None
     platforms = data.get("platforms") or []
     if not media or not platforms:

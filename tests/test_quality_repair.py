@@ -37,9 +37,7 @@ def test_missing_quality_checker_is_fail_closed_for_standard_and_cinema() -> Non
 
 def test_repair_controller_returns_scoped_action_then_exhausts_budget() -> None:
     policy = GatePolicy.for_profile("standard")
-    failed = QualityEvaluation.from_evidence(
-        [_failed(FailureCode.IDENTITY_MISMATCH)], policy
-    )
+    failed = QualityEvaluation.from_evidence([_failed(FailureCode.IDENTITY_MISMATCH)], policy)
     controller = RepairController(RepairBudget(max_attempts=1))
     controller.observe(failed)
 
@@ -58,12 +56,8 @@ def test_repair_controller_returns_scoped_action_then_exhausts_budget() -> None:
 def test_repair_controller_stops_on_new_failure_divergence() -> None:
     policy = GatePolicy.for_profile("standard")
     controller = RepairController(RepairBudget(max_attempts=3, max_new_failure_rate=0.5))
-    first = QualityEvaluation.from_evidence(
-        [_failed(FailureCode.IDENTITY_MISMATCH)], policy
-    )
-    second = QualityEvaluation.from_evidence(
-        [_failed(FailureCode.ANATOMY_ARTIFACT)], policy
-    )
+    first = QualityEvaluation.from_evidence([_failed(FailureCode.IDENTITY_MISMATCH)], policy)
+    second = QualityEvaluation.from_evidence([_failed(FailureCode.ANATOMY_ARTIFACT)], policy)
     controller.observe(first)
     controller.decide(first)
     controller.observe(second)

@@ -62,10 +62,14 @@ def test_review_video_uses_ffprobe(tmp_path: Path) -> None:
     fake_probe = {
         "format": {"duration": "12.5", "size": "1024", "bit_rate": "65536"},
         "streams": [
-            {"codec_type": "video", "codec_name": "h264",
-             "width": 1920, "height": 1080, "r_frame_rate": "30/1"},
-            {"codec_type": "audio", "codec_name": "aac",
-             "sample_rate": "48000", "channels": "2"},
+            {
+                "codec_type": "video",
+                "codec_name": "h264",
+                "width": 1920,
+                "height": 1080,
+                "r_frame_rate": "30/1",
+            },
+            {"codec_type": "audio", "codec_name": "aac", "sample_rate": "48000", "channels": "2"},
         ],
     }
     with patch("hevi.verdict.source_media_review._ffprobe_json", return_value=fake_probe):
@@ -98,8 +102,13 @@ def test_review_transcribe_optional(tmp_path: Path) -> None:
     fake_probe = {
         "format": {"duration": "20.0", "size": "1024", "bit_rate": "0"},
         "streams": [
-            {"codec_type": "video", "codec_name": "h264",
-             "width": 1280, "height": 720, "r_frame_rate": "30000/1001"},
+            {
+                "codec_type": "video",
+                "codec_name": "h264",
+                "width": 1280,
+                "height": 720,
+                "r_frame_rate": "30000/1001",
+            },
         ],
     }
 

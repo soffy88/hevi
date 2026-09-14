@@ -24,7 +24,6 @@ from hevi.digital_human.layer4.atoms import (
 )
 from hevi.digital_human.layer4.skill_logic import (
     caption_plan,
-    content_lock,
     delivery,
     generate_presenter,
     preflight_check,
@@ -36,12 +35,8 @@ from hevi.digital_human.schemas import (
     CaptionPlan,
     JobStatus,
     PresenterJob,
-    QAReport,
     TimelinePlan,
-    make_default_caption_plan,
     make_default_job,
-    make_default_qa_report,
-    make_default_timeline,
 )
 
 # ─── 作业初始化 ─────────────────────────────────────
@@ -328,7 +323,9 @@ def plan_composition(job: PresenterJob) -> dict[str, Any]:
     return plan
 
 
-def plan_delivery(job: PresenterJob, render_path: str, output_dir: str, stem: str = "presenter-video") -> dict[str, Any]:
+def plan_delivery(
+    job: PresenterJob, render_path: str, output_dir: str, stem: str = "presenter-video"
+) -> dict[str, Any]:
     """构建交付阶段计划 (composition_checked → verified)。
 
     对应 lanshu finalize_delivery.sh
@@ -614,7 +611,7 @@ def _ass_time(seconds: float) -> str:
 
 
 def _ass_text(text: str) -> str:
-    return str(text).replace("{", "\\{" ).replace("}", "\\}").replace("\n", r"\N")
+    return str(text).replace("{", "\\{").replace("}", "\\}").replace("\n", r"\N")
 
 
 def _write_caption_ass(job: PresenterJob, plan: CaptionPlan) -> Path:
@@ -674,7 +671,11 @@ def _burn_captions(job: PresenterJob) -> dict[str, Any]:
     )
     job.rendered = str(destination)
     job.updated_at = datetime.utcnow()
-    return {"path": str(destination), "caption_file": str(ass_path), "phrase_count": len(plan.phrases)}
+    return {
+        "path": str(destination),
+        "caption_file": str(ass_path),
+        "phrase_count": len(plan.phrases),
+    }
 
 
 def _add_keyword_effects(job: PresenterJob) -> dict[str, Any]:
@@ -720,7 +721,11 @@ def _add_keyword_effects(job: PresenterJob) -> dict[str, Any]:
     )
     job.qa_composition = str(report_path)
     job.updated_at = datetime.utcnow()
-    return {"path": str(destination), "report": str(report_path), "keyword_effect_count": len(filters)}
+    return {
+        "path": str(destination),
+        "report": str(report_path),
+        "keyword_effect_count": len(filters),
+    }
 
 
 def _calibrate_loudness(job: PresenterJob, target_lufs: float = -16) -> AudioMeasurement:

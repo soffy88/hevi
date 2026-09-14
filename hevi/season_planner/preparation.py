@@ -23,17 +23,72 @@ from typing import Any
 # ── 动作节拍关键词表(确定性推断,INC-001 §B 的零成本版) ─────────────────────
 
 _TRIGGER_KEYS = (
-    "听到", "看到", "看见", "发现", "察觉", "突然", "骤然", "猛地", "传来",
-    "响起", "回头", "转身", "抬头", "停下", "愣住", "一惊", "闯入", "出现",
+    "听到",
+    "看到",
+    "看见",
+    "发现",
+    "察觉",
+    "突然",
+    "骤然",
+    "猛地",
+    "传来",
+    "响起",
+    "回头",
+    "转身",
+    "抬头",
+    "停下",
+    "愣住",
+    "一惊",
+    "闯入",
+    "出现",
 )
 _PEAK_KEYS = (
-    "冲向", "扑向", "挥刀", "挥剑", "砸", "砍", "击", "爆发", "怒吼", "咆哮",
-    "飞起", "摔倒", "撞", "踢", "撕", "挣", "奔", "杀", "追", "燃", "炸",
-    "夺门", "拍案", "厉喝", "震怒", "狂奔",
+    "冲向",
+    "扑向",
+    "挥刀",
+    "挥剑",
+    "砸",
+    "砍",
+    "击",
+    "爆发",
+    "怒吼",
+    "咆哮",
+    "飞起",
+    "摔倒",
+    "撞",
+    "踢",
+    "撕",
+    "挣",
+    "奔",
+    "杀",
+    "追",
+    "燃",
+    "炸",
+    "夺门",
+    "拍案",
+    "厉喝",
+    "震怒",
+    "狂奔",
 )
 _AFTERMATH_KEYS = (
-    "倒地", "跪下", "沉默", "凝视", "久久", "垂下", "落幕", "离去", "熄灭",
-    "停止", "收刀", "喘息", "相视", "静默", "回望", "落泪", "俯身", "长叹",
+    "倒地",
+    "跪下",
+    "沉默",
+    "凝视",
+    "久久",
+    "垂下",
+    "落幕",
+    "离去",
+    "熄灭",
+    "停止",
+    "收刀",
+    "喘息",
+    "相视",
+    "静默",
+    "回望",
+    "落泪",
+    "俯身",
+    "长叹",
 )
 
 
@@ -51,15 +106,15 @@ def infer_action_beats(text: str) -> dict[str, str]:
         return {"trigger": "", "peak": "", "aftermath": ""}
     if len(sentences) == 1:
         return {
-            "trigger": sentences[0], "peak": sentences[0], "aftermath": sentences[0],
+            "trigger": sentences[0],
+            "peak": sentences[0],
+            "aftermath": sentences[0],
         }
 
     def _score(s: str, keys: tuple[str, ...]) -> int:
         return sum(1 for k in keys if k in s)
 
-    trigger = next(
-        (s for s in sentences if _score(s, _TRIGGER_KEYS) > 0), sentences[0]
-    )
+    trigger = next((s for s in sentences if _score(s, _TRIGGER_KEYS) > 0), sentences[0])
     aftermath = next(
         (s for s in reversed(sentences) if _score(s, _AFTERMATH_KEYS) > 0), sentences[-1]
     )
@@ -77,21 +132,62 @@ def infer_action_beats(text: str) -> dict[str, str]:
 
 #: 常用道具词表(剧本里"手持/握着/带着 X"等语境常用)。
 _PROP_KEYS = (
-    "刀", "剑", "枪", "斧", "锤", "弓", "箭", "书", "卷", "信", "令牌", "官印",
-    "钱袋", "火把", "灯笼", "茶", "酒", "碗", "锄", "锤", "戟", "鞭", "链",
-    "玉佩", "珠", "伞", "扇", "杖", "印", "弩", "盾",
+    "刀",
+    "剑",
+    "枪",
+    "斧",
+    "锤",
+    "弓",
+    "箭",
+    "书",
+    "卷",
+    "信",
+    "令牌",
+    "官印",
+    "钱袋",
+    "火把",
+    "灯笼",
+    "茶",
+    "酒",
+    "碗",
+    "锄",
+    "锤",
+    "戟",
+    "鞭",
+    "链",
+    "玉佩",
+    "珠",
+    "伞",
+    "扇",
+    "杖",
+    "印",
+    "弩",
+    "盾",
 )
 #: 常用服装词表(着/穿/披/戴 语境)。
 _COSTUME_KEYS = (
-    "袍", "甲", "冠", "裙", "衫", "裘", "氅", "巾", "带", "靴", "履",
-    "衮服", "盔", "披风", "斗篷", "蓑衣", "襦",
+    "袍",
+    "甲",
+    "冠",
+    "裙",
+    "衫",
+    "裘",
+    "氅",
+    "巾",
+    "带",
+    "靴",
+    "履",
+    "衮服",
+    "盔",
+    "披风",
+    "斗篷",
+    "蓑衣",
+    "襦",
 )
 
 
 #: 动词前缀(挥刀/持剑/握笔…)—— 道具名应取名词部分,丢掉动作动词。
-_PREFIX_SKIP = frozenset(
-    "挥持握拿扛背佩带执举提挎拔抽扬抡捧托端抱"
-)
+_PREFIX_SKIP = frozenset("挥持握拿扛背佩带执举提挎拔抽扬抡捧托端抱")
 
 
 def _extract_by_keys(text: str, keys: tuple[str, ...]) -> list[str]:
@@ -157,14 +253,9 @@ def extract_asset_candidates(
     return candidates
 
 
-def extract_dialogue_candidates(
-    text: str, *, speaker: str = ""
-) -> list[dict[str, Any]]:
+def extract_dialogue_candidates(text: str, *, speaker: str = "") -> list[dict[str, Any]]:
     """对白候选:仅来自引号内容(真正台词);叙述句不算对白。"""
-    lines = [
-        m.group(1).strip()
-        for m in re.finditer(r"[“\"]([^”\"]{2,80})[”\"]", text)
-    ]
+    lines = [m.group(1).strip() for m in re.finditer(r"[“\"]([^”\"]{2,80})[”\"]", text)]
     out: list[dict[str, Any]] = []
     for i, ln in enumerate(lines[:20]):
         out.append(
@@ -203,9 +294,7 @@ class ShotPreparation:
     @property
     def pending_count(self) -> int:
         return sum(
-            1
-            for c in [*self.candidates, *self.dialogue_candidates]
-            if c.get("status") == "pending"
+            1 for c in [*self.candidates, *self.dialogue_candidates] if c.get("status") == "pending"
         )
 
     @property
@@ -249,9 +338,7 @@ def confirm_candidate(
         if c.get("id") == candidate_id:
             c["status"] = "accepted" if decision == "accept" else "ignored"
             if decision == "accept" and c.get("type") in ("prop", "costume"):
-                prep.entity_links.append(
-                    {"type": c["type"], "name": c["name"], "linked": True}
-                )
+                prep.entity_links.append({"type": c["type"], "name": c["name"], "linked": True})
             break
     if prep.pending_count == 0:
         prep.status = "ready"

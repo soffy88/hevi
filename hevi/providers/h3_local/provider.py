@@ -131,9 +131,7 @@ async def h3_local_generate(
 
     client = ComfyClient(
         base_url=cfg.get("comfy_url") or os.getenv("H3_COMFY_URL"),
-        timeout_s=float(
-            str(cfg.get("timeout_s") or os.getenv("H3_SHOT_TIMEOUT_S") or "1800")
-        ),
+        timeout_s=float(str(cfg.get("timeout_s") or os.getenv("H3_SHOT_TIMEOUT_S") or "1800")),
     )
     if not await client.health():
         raise H3ComfyError(f"ComfyUI 不可达: {client.base_url}(h3_local 需要本地 ComfyUI 在跑)")
@@ -166,7 +164,14 @@ async def h3_local_generate(
     raw_path = outp.with_name(f"{outp.stem}.h3raw.mp4")
     logger.info(
         "h3_local: %s mode=%s dur=%.1fs len=%d %dx%d refs=%d seed=%s",
-        outp.name, mode, duration, length, w, h, len(refs), seed or "random",
+        outp.name,
+        mode,
+        duration,
+        length,
+        w,
+        h,
+        len(refs),
+        seed or "random",
     )
     async with scheduler.acquire(VRAM_H3_LOCAL):
         await client.run_workflow(workflow, output_path=raw_path)
@@ -183,9 +188,7 @@ async def h3_local_generate(
     post_cfg.setdefault("upscale", os.getenv("POST_UPSCALE", "flashvsr"))
     post_cfg.setdefault("interp", os.getenv("POST_INTERP", "rife2x"))
     try:
-        await run_post_pipeline(
-            raw_path, outp, config=post_cfg, fps_in=24, comfy_client=client
-        )
+        await run_post_pipeline(raw_path, outp, config=post_cfg, fps_in=24, comfy_client=client)
     except Exception as e:
         logger.warning("h3_local: 后处理失败,降级交付 raw: %s", e)
         shutil.copy2(raw_path, outp)

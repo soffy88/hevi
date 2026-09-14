@@ -1,4 +1,5 @@
 """3O v3 Layer4 gate: business code cannot recreate canonical 3O algorithms."""
+
 from __future__ import annotations
 
 import sys
@@ -9,7 +10,9 @@ from _3o_common import CANONICAL, HEVI, import_edges, parse
 def main() -> int:
     violations: list[str] = []
     for path in HEVI.rglob("*.py"):
-        if "__pycache__" in path.parts or any(part in CANONICAL for part in path.relative_to(HEVI).parts):
+        if "__pycache__" in path.parts or any(
+            part in CANONICAL for part in path.relative_to(HEVI).parts
+        ):
             continue
         tree = parse(path)
         # A Layer4 function name is not evidence of duplicated 3O logic.  The

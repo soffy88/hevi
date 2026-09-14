@@ -173,7 +173,10 @@ class ProductionHarness:
         cancelled = run.model_copy(
             update={
                 "status": "CANCELLED",
-                "stage_results": (*run.stage_results, StageResult(stage=stage, status="CANCELLED", error_code=reason)),
+                "stage_results": (
+                    *run.stage_results,
+                    StageResult(stage=stage, status="CANCELLED", error_code=reason),
+                ),
                 "failure": FailureRecord(
                     code=reason,
                     message=f"{stage} cancelled by operator",

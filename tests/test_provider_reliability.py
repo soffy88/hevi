@@ -49,7 +49,8 @@ def config(
         circuit_failure_threshold=threshold,
         circuit_recovery_s=recovery_s,
         rate_limit=RateLimitPolicy(None),
-        budget=budget or BudgetLimits(max_requests=100, max_input_tokens=10000, max_output_tokens=10000),
+        budget=budget
+        or BudgetLimits(max_requests=100, max_input_tokens=10000, max_output_tokens=10000),
     )
 
 
@@ -149,8 +150,10 @@ async def test_retryable_5xx_retries_only_idempotent_request():
 
     def handler(request):
         seen["count"] += 1
-        return response(request, 500) if seen["count"] == 1 else response(
-            request, choices=[{"message": {"content": "ok"}}], usage={}
+        return (
+            response(request, 500)
+            if seen["count"] == 1
+            else response(request, choices=[{"message": {"content": "ok"}}], usage={})
         )
 
     result = await call(handler, idempotent=True)
@@ -235,7 +238,9 @@ async def test_circuit_open_half_open_and_recovery():
             "circuit-provider", "model", config=config(attempts=1, threshold=2), async_client=client
         )
         for _ in range(2):
-            result = await wrapper.request_json("GET", "https://provider.test/health", idempotent=True)
+            result = await wrapper.request_json(
+                "GET", "https://provider.test/health", idempotent=True
+            )
             assert result.error_class is ProviderErrorClass.SERVER_ERROR
         assert wrapper.breaker.state is CircuitState.OPEN
         result = await wrapper.request_json("GET", "https://provider.test/health", idempotent=True)
@@ -272,25 +277,30 @@ async def test_bulkhead_rejects_saturation_without_waiting():
 
 @pytest.mark.asyncio
 async def test_request_token_and_cost_budgets_fail_closed():
-    limits = BudgetLimits(max_requests=1, max_input_tokens=100, max_output_tokens=8, max_cost_usd=0.01)
+    limits = BudgetLimits(
+        max_requests=1, max_input_tokens=100, max_output_tokens=8, max_cost_usd=0.01
+    )
     reliability = config(attempts=1, budget=limits)
     wrapper = ProviderExecutionWrapper("budget-provider", "model", config=reliability)
 
     async def successful_response():
         return {"usage": {"prompt_tokens": 1}}
 
-    first = await wrapper.execute(
-        successful_response, idempotent=True, estimated_cost_usd=0.001
-    )
+    first = await wrapper.execute(successful_response, idempotent=True, estimated_cost_usd=0.001)
     second = await wrapper.execute(successful_response, idempotent=True)
     assert first.ok and second.error_class is ProviderErrorClass.BUDGET_EXCEEDED
 
     cost_limited = ProviderExecutionWrapper(
-        "cost-provider", "model", config=config(
+        "cost-provider",
+        "model",
+        config=config(
             attempts=1,
-            budget=BudgetLimits(max_requests=10, max_input_tokens=100, max_output_tokens=100, max_cost_usd=0.001),
-        )
+            budget=BudgetLimits(
+                max_requests=10, max_input_tokens=100, max_output_tokens=100, max_cost_usd=0.001
+            ),
+        ),
     )
+
     async def empty_response():
         return {"usage": {}}
 
@@ -304,7 +314,9 @@ async def test_request_token_and_cost_budgets_fail_closed():
         "model",
         config=config(
             attempts=1,
-            budget=BudgetLimits(max_requests=10, max_input_tokens=1, max_output_tokens=1, max_cost_usd=0.001),
+            budget=BudgetLimits(
+                max_requests=10, max_input_tokens=1, max_output_tokens=1, max_cost_usd=0.001
+            ),
         ),
     )
     rejected = await token_limited.execute(
@@ -315,9 +327,7 @@ async def test_request_token_and_cost_budgets_fail_closed():
 
 @pytest.mark.asyncio
 async def test_duplicate_retry_does_not_duplicate_evidence_or_fsrs():
-    result = ProviderExecutionWrapper(
-        "learning-provider", "model", config=config(attempts=2)
-    )
+    result = ProviderExecutionWrapper("learning-provider", "model", config=config(attempts=2))
     state = {"attempts": 0}
 
     async def op():
@@ -421,11 +431,14 @@ def test_reliability_policy_validation_and_usage_helpers_are_fail_closed():
             cost_per_1k_input=1,
             cost_per_1k_output=1,
         )
-    assert usage_from_payload(
-        {"usage": "provider omitted usage details"},
-        cost_per_1k_input=1,
-        cost_per_1k_output=1,
-    ) == ProviderUsage()
+    assert (
+        usage_from_payload(
+            {"usage": "provider omitted usage details"},
+            cost_per_1k_input=1,
+            cost_per_1k_output=1,
+        )
+        == ProviderUsage()
+    )
 
     with pytest.raises(ValueError, match="cannot be negative"):
         _BudgetLedger(BudgetLimits()).reserve(-1, 0, 0)

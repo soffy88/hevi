@@ -764,7 +764,9 @@ async def test_produce_schedules_tongjian_render_with_voices_and_refs():
     call_kwargs = svc.create_task.await_args.kwargs
     assert call_kwargs["video_provider"] not in {"auto", ""}
     assert call_kwargs["provider_decision"]["selected_provider"] == call_kwargs["video_provider"]
-    assert call_kwargs["provider_fallback_candidates"] == call_kwargs["provider_decision"]["eligible"]
+    assert (
+        call_kwargs["provider_fallback_candidates"] == call_kwargs["provider_decision"]["eligible"]
+    )
 
     # 后台调度了通鉴渲染,且拿到了正确的音色映射 + 角色参考图
     assert len(bg.tasks) == 1

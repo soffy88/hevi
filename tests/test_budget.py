@@ -67,18 +67,14 @@ def test_stage_borrow_is_explicit_and_reported() -> None:
 
 def test_retake_never_consumes_rendering_budget() -> None:
     budget = envelope()
-    budget, _ = budget.reserve(
-        attempt_id=uuid4(), amount_usd=55, stage_category="rendering"
-    )
+    budget, _ = budget.reserve(attempt_id=uuid4(), amount_usd=55, stage_category="rendering")
     budget, _ = budget.reserve(
         attempt_id=uuid4(), amount_usd=10, stage_category="retake", is_retake=True
     )
     assert budget.retake_remaining_usd == Decimal("0")
     assert budget.stages["rendering"].reserved_usd == Decimal("55")
     with pytest.raises(BudgetExceeded, match="retake_pool_exhausted"):
-        budget.reserve(
-            attempt_id=uuid4(), amount_usd=0.01, stage_category="retake", is_retake=True
-        )
+        budget.reserve(attempt_id=uuid4(), amount_usd=0.01, stage_category="retake", is_retake=True)
 
 
 def test_ledger_entries_are_immutable_models() -> None:

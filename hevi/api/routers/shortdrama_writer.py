@@ -32,7 +32,9 @@ class WriterReviewRequest(BaseModel):
 
 
 @router.get("/capabilities")
-async def capabilities(_: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
+async def capabilities(
+    _: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     return {
         "id": "ai-short-drama-screenwriter",
         "available": True,

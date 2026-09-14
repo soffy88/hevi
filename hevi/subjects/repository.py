@@ -32,9 +32,7 @@ class SubjectRepository:
             return None
         return result
 
-    async def update(
-        self, subject_id: str, updates: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    async def update(self, subject_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
         existing = await self.get(subject_id)
         if existing is None:
             return None

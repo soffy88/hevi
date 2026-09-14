@@ -99,10 +99,7 @@ def resolve_stage_fn(ref: str) -> Callable[..., Any]:
         raise ValueError(f"fn ref must be 'module:function', got {ref!r}")
     module_name, func_name = ref.rsplit(":", 1)
     if not module_name.startswith(_ALLOWED_MODULES):
-        raise ValueError(
-            f"fn ref module {module_name!r} not in allowlist "
-            f"{_ALLOWED_MODULES}"
-        )
+        raise ValueError(f"fn ref module {module_name!r} not in allowlist {_ALLOWED_MODULES}")
     try:
         module = importlib.import_module(module_name)
     except ImportError as exc:

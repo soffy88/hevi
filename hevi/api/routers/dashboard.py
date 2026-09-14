@@ -154,9 +154,7 @@ async def get_task(
             raise HTTPException(status_code=404, detail="task 不存在")
         return _canonical_task_to_dict(task)
     with Session(engine) as session:
-        row = session.exec(
-            select(TaskRun).where(TaskRun.task_id == task_id)
-        ).first()
+        row = session.exec(select(TaskRun).where(TaskRun.task_id == task_id)).first()
     if row is None:
         raise HTTPException(status_code=404, detail="task 不存在")
     return _task_to_dict(row)
@@ -179,9 +177,7 @@ async def serve_task_output(
         video = await _canonical_video(task)
         return FileResponse(str(video), media_type="video/mp4", filename=f"{task_id}.mp4")
     with Session(engine) as session:
-        row = session.exec(
-            select(TaskRun).where(TaskRun.task_id == task_id)
-        ).first()
+        row = session.exec(select(TaskRun).where(TaskRun.task_id == task_id)).first()
     if row is None:
         raise HTTPException(status_code=404, detail="task 不存在")
     legacy_video = _discover_video(row)

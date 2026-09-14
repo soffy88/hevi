@@ -38,12 +38,12 @@ async def _main() -> None:
 
 asyncio.run(_main())
 """
-MODEL = "wan_2_7"               # wan2.7-t2v (阿里云 Model Studio 已开通)
+MODEL = "wan_2_7"  # wan2.7-t2v (阿里云 Model Studio 已开通)
 RESOLUTION = "720P"
 MIN_SHOT_S = 3
 MAX_SHOT_S = 15
 
-ProgressCb = Callable[[int, str, int], None]   # (percent, stage, shot_index)
+ProgressCb = Callable[[int, str, int], None]  # (percent, stage, shot_index)
 
 
 def _run(cmd: list[str]) -> None:
@@ -54,9 +54,9 @@ def _run(cmd: list[str]) -> None:
 
 def _wav_duration(wav: Path) -> float:
     p = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-show_entries", "format=duration",
-         "-of", "csv=p=0", str(wav)],
-        capture_output=True, text=True,
+        ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", str(wav)],
+        capture_output=True,
+        text=True,
     )
     return float(p.stdout.strip() or 0.0)
 
@@ -96,8 +96,7 @@ async def _tts(beat: GoldenBeat, wav: Path) -> float:
     # 3. edge-tts 最后兜底，保留重试但不再是默认 provider
     for attempt in range(3):
         try:
-            _run([sys.executable, "-c", _EDGE_TTS_SNIPPET,
-                  beat.narration, str(wav)])
+            _run([sys.executable, "-c", _EDGE_TTS_SNIPPET, beat.narration, str(wav)])
             if wav.exists() and wav.stat().st_size > 0:
                 return _wav_duration(wav)
         except Exception as exc:
@@ -107,8 +106,12 @@ async def _tts(beat: GoldenBeat, wav: Path) -> float:
 
 
 async def _gen_shot(
-    beat: GoldenBeat, duration_s: int, out: Path, ratio: str,
-    html_dir: Path | None = None, narration_audio: Path | None = None,
+    beat: GoldenBeat,
+    duration_s: int,
+    out: Path,
+    ratio: str,
+    html_dir: Path | None = None,
+    narration_audio: Path | None = None,
 ) -> str:
     """降级链: 阿里云 wan_2_7 → WaveSpeed → 本机 HTML/CSS 动画 (零额度)。
 
@@ -122,8 +125,12 @@ async def _gen_shot(
     # 1) 阿里云 wan_2_7 (免费额度)
     try:
         await alibaba_maas_generate(
-            prompt=beat.shot_prompt, output_path=out, model=MODEL,
-            ratio=ratio, resolution=RESOLUTION, duration=duration_s,
+            prompt=beat.shot_prompt,
+            output_path=out,
+            model=MODEL,
+            ratio=ratio,
+            resolution=RESOLUTION,
+            duration=duration_s,
             seed=20260711 + beat.index,
         )
         return "wan"
@@ -132,8 +139,12 @@ async def _gen_shot(
     # 2) WaveSpeed wan_2_7
     try:
         await wavespeed_generate(
-            prompt=beat.shot_prompt, output_path=out, model=MODEL,
-            aspect_ratio=ratio, resolution="720p", duration_s=duration_s,
+            prompt=beat.shot_prompt,
+            output_path=out,
+            model=MODEL,
+            aspect_ratio=ratio,
+            resolution="720p",
+            duration_s=duration_s,
             seed=20260711 + beat.index,
         )
         return "wavespeed"
@@ -143,8 +154,7 @@ async def _gen_shot(
     if html_dir is None or narration_audio is None:
         raise RuntimeError("动画 provider 全失败且无 HTML 降级输入")
     w, h = (1280, 720) if ratio == "16:9" else (720, 1280)
-    await render_html_shot(beat, html_dir, out, narration_audio=narration_audio,
-                           width=w, height=h)
+    await render_html_shot(beat, html_dir, out, narration_audio=narration_audio, width=w, height=h)
     return "html"
 
 
@@ -184,18 +194,20 @@ async def run_animation_pipeline(
         _cb(10 + int(80 * i / n), f"解说+演绎 镜{i + 1}/{n}", i)
         nar = output_dir / f"nar_{i:02d}.mp3"
         durs.append(await _tts(beat, nar))
-        shot_dur = max(MIN_SHOT_S, min(MAX_SHOT_S, round(max(
-            beat.duration_s, durs[-1] + 0.8))))
+        shot_dur = max(MIN_SHOT_S, min(MAX_SHOT_S, round(max(beat.duration_s, durs[-1] + 0.8))))
         shot = output_dir / f"beat_{i:02d}.mp4"
         renderer = "cached"
         if not (shot.exists() and shot.stat().st_size > 100_000):
             renderer = await _gen_shot(
-                beat, shot_dur, shot, ratio,
-                html_dir=output_dir / "html", narration_audio=nar,
+                beat,
+                shot_dur,
+                shot,
+                ratio,
+                html_dir=output_dir / "html",
+                narration_audio=nar,
             )
         renderers.append(renderer)
-        logger.info("animation %s shot %d done (%.1fs via %s)",
-                    task_id, i, durs[-1], renderer)
+        logger.info("animation %s shot %d done (%.1fs via %s)", task_id, i, durs[-1], renderer)
 
     # 3. 拼接
     _cb(92, "拼接合成", -1)
@@ -213,26 +225,70 @@ def _concat(output_dir: Path, n: int) -> Path:
         v = output_dir / f"beat_{i:02d}.mp4"
         nv = norm / f"v{i:02d}.mp4"
         if not nv.exists():
-            _run(["ffmpeg", "-y", "-i", str(v), "-vf", "scale=1280:720,fps=24",
-                  "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(nv)])
+            _run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(v),
+                    "-vf",
+                    "scale=1280:720,fps=24",
+                    "-c:v",
+                    "libx264",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-an",
+                    str(nv),
+                ]
+            )
         normed.append(nv)
     vlist = output_dir / "vlist.txt"
     vlist.write_text("".join(f"file '{p.resolve()}'\n" for p in normed))
     video = output_dir / "video_concat.mp4"
-    _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(vlist),
-          "-c", "copy", str(video)])
+    _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(vlist), "-c", "copy", str(video)])
     alist = output_dir / "alist.txt"
-    alist.write_text("".join(
-        f"file '{(output_dir / f'nar_{i:02d}.mp3').resolve()}'\n"
-        for i in range(n)
-    ))
+    alist.write_text(
+        "".join(f"file '{(output_dir / f'nar_{i:02d}.mp3').resolve()}'\n" for i in range(n))
+    )
     audio = output_dir / "audio_concat.m4a"
-    _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(alist),
-          "-af", "apad=pad_dur=2", "-c:a", "aac", str(audio)])
+    _run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(alist),
+            "-af",
+            "apad=pad_dur=2",
+            "-c:a",
+            "aac",
+            str(audio),
+        ]
+    )
     final = output_dir / "final.mp4"
-    _run(["ffmpeg", "-y", "-i", str(video), "-i", str(audio),
-          "-c:v", "copy", "-c:a", "aac", "-map", "0:v:0", "-map", "1:a:0",
-          "-shortest", str(final)])
+    _run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-i",
+            str(audio),
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+            "-shortest",
+            str(final),
+        ]
+    )
     return final
 
 

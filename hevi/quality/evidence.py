@@ -19,6 +19,7 @@ class EvaluationEvidence(BaseModel):
     pass/fail (missing reference, unavailable model), it must return UNKNOWN
     rather than defaulting to PASS.
     """
+
     id: str
     attempt_id: str
     artifact_id: str
@@ -47,6 +48,7 @@ class ConstraintEvaluation(BaseModel):
     Evidence references are immutable audit trail.
     reason explains why UNKNOWN when evaluator cannot run.
     """
+
     constraint_id: str
     status: Literal["pass", "fail", "unknown", "not_applicable"]
     score: float | None = None

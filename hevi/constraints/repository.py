@@ -255,7 +255,9 @@ class ConstraintRepository:
             )
             return result
 
-    async def record_derived_constraints(self, revision_id: str, expected: int, derived: int) -> None:
+    async def record_derived_constraints(
+        self, revision_id: str, expected: int, derived: int
+    ) -> None:
         """Set expected_fields and derived_constraints on coverage."""
         async with self.pool.acquire() as conn:
             await conn.execute(

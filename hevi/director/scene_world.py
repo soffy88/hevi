@@ -89,9 +89,7 @@ def check_scene_consistency(
         for shot in scene_shots:
             if shot.camera:
                 camera_coverage += 1
-            if lock_prefix and lock_prefix.split("]")[0] not in (
-                shot.visual_prompt or ""
-            ):
+            if lock_prefix and lock_prefix.split("]")[0] not in (shot.visual_prompt or ""):
                 lock_missing += 1
             # 同镜内同一角色位置冲突
             seen: dict[str, str] = {}
@@ -101,7 +99,8 @@ def check_scene_consistency(
                 if b.character_name in seen and seen[b.character_name] != b.position:
                     conflicts.append(
                         f"{shot.shot_id} 角色 {b.character_name} 走位矛盾 "
-                        f"({seen[b.character_name]} vs {b.position})")
+                        f"({seen[b.character_name]} vs {b.position})"
+                    )
                 seen[b.character_name] = b.position
         report[scene_name] = {
             "shot_count": len(scene_shots),

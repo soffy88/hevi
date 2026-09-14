@@ -73,8 +73,10 @@ def test_script_to_shot_plan_roundtrip(tmp_path) -> None:
 
 def test_storyboard_rejects_scene_ref_mismatch() -> None:
     project_id = uuid4()
-    script = ScriptModule().create(
-        project_id=project_id, title="Owned Script", scenes=_scenes(project_id)
-    ).script
+    script = (
+        ScriptModule()
+        .create(project_id=project_id, title="Owned Script", scenes=_scenes(project_id))
+        .script
+    )
     with pytest.raises(ValueError, match="STORYBOARD_SCENE_REF_MISMATCH"):
         StoryboardModule().create(project_id=project_id, script=script, scenes=())

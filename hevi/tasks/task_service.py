@@ -290,7 +290,9 @@ class TaskService:
                 attempt_id=str(task["id"]),
                 artifact_id="",
                 constraint_id=str(item.get("code") if isinstance(item, dict) else item),
-                evaluator_id=str(normalize_failure(item.get("code") if isinstance(item, dict) else item)),
+                evaluator_id=str(
+                    normalize_failure(item.get("code") if isinstance(item, dict) else item)
+                ),
                 evaluator_version="1.0",
                 metric=str(item.get("code") if isinstance(item, dict) else item),
                 passed=False,
@@ -320,9 +322,7 @@ class TaskService:
                 decision=decision,
                 evaluation=evaluation,
                 revision_id=(
-                    uuid.UUID(str(config["revision_id"]))
-                    if config.get("revision_id")
-                    else None
+                    uuid.UUID(str(config["revision_id"])) if config.get("revision_id") else None
                 ),
                 attempt_id=str(task.get("_attempt_id") or task.get("id")),
                 evidence_artifact_id=str(config.get("evidence_artifact_id") or "") or None,
@@ -791,9 +791,7 @@ class TaskService:
             config_json["artifact_manifest"] = manifest.model_dump(mode="json")
             await self.repository.update_task(task_id, {"config_json": config_json})
             result = {**result, "config_json": config_json}
-            artifact_path = result.get("result_video_path") or str(
-                manifest.primary_path() or ""
-            )
+            artifact_path = result.get("result_video_path") or str(manifest.primary_path() or "")
             if not artifact_path:
                 raise RuntimeError("artifact manifest has no primary artifact")
             completion = {
@@ -1256,9 +1254,7 @@ class TaskService:
                         else None
                     )
                     quality_score = (
-                        float(consistency)
-                        if isinstance(consistency, (int, float))
-                        else None
+                        float(consistency) if isinstance(consistency, (int, float)) else None
                     )
                     await self._record_provider_outcome(
                         task,
@@ -1332,16 +1328,15 @@ class TaskService:
                         if actual_credits > credits_reserved:
                             # Charge original reservation fully, then supplemental for delta
                             await self.billing_svc.consume(
-                                reservation_id,
-                                credits_reserved,
-                                external_ref=f"{task_id}:consume"
+                                reservation_id, credits_reserved, external_ref=f"{task_id}:consume"
                             )
                             delta = actual_credits - credits_reserved
                             # Create supplemental reservation for the extra amount
                             await self.billing_svc.reserve(
-                                user_id, delta,
+                                user_id,
+                                delta,
                                 task_id=str(task_id),
-                                external_ref=f"{task_id}:supplemental:{credits_reserved}"
+                                external_ref=f"{task_id}:supplemental:{credits_reserved}",
                             )
                         else:
                             # Charge actual, reservation auto-closes (full reserved amount released)
@@ -1479,7 +1474,11 @@ class TaskService:
                 )
                 profile = str(task["config_json"].get("quality_profile") or "standard")
                 has_quality_contract = quality is not None or "quality_evaluation" in quality_config
-                if profile in {"standard", "cinema"} and has_quality_contract and not quality_passed:
+                if (
+                    profile in {"standard", "cinema"}
+                    and has_quality_contract
+                    and not quality_passed
+                ):
                     error = "quality gate failed after bounded repair"
                     failed = {
                         "status": "failed",
@@ -1654,9 +1653,7 @@ class TaskService:
         if not shot_ids:
             raise ValueError("shot_ids must not be empty")
         if not isinstance(self.repository.pool, PgPool):
-            return await self.regenerate_task_shots(
-                task_id, shot_ids=shot_ids, hints=hints
-            )
+            return await self.regenerate_task_shots(task_id, shot_ids=shot_ids, hints=hints)
         config = dict(task.get("config_json") or {})
         config["rework_request"] = {
             "shot_ids": sorted({int(item) for item in shot_ids}),
@@ -1690,9 +1687,7 @@ class TaskService:
             },
         )
         try:
-            result = await self.regenerate_task_shots(
-                task_id, shot_ids=shot_ids, hints=hints
-            )
+            result = await self.regenerate_task_shots(task_id, shot_ids=shot_ids, hints=hints)
             video_path = result.get("result_video_path")
             if not isinstance(video_path, str):
                 raise RuntimeError("queued rework returned no video path")

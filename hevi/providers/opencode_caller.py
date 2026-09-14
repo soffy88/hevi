@@ -107,7 +107,7 @@ def _make_opencode_caller(
             choices = data.get("choices") or []
             if not choices:
                 raise RuntimeError("OpenCode response missing choices")
-            message = (choices[0].get("message") or {})
+            message = choices[0].get("message") or {}
             content = message.get("content")
             if not content:
                 # 推理模型(reasoning): content 可能为 null, 回退 reasoning 字段。
@@ -132,9 +132,7 @@ def register_opencode_llm() -> None:
 
     key = _api_key()
     if not key:
-        logger.warning(
-            "OpenCode LLM 未注册: 未设置 OPENCODE_API_KEY(research 回落 NIM/default)"
-        )
+        logger.warning("OpenCode LLM 未注册: 未设置 OPENCODE_API_KEY(research 回落 NIM/default)")
         return
     caller = _make_opencode_caller(
         key,

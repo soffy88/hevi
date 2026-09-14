@@ -66,7 +66,7 @@ def duix_health_ok(url: str | None = None, *, timeout: float = 5.0) -> bool:
     try:
         with urlopen(target, timeout=timeout) as response:
             return 200 <= int(response.status) < 400
-    except (URLError, OSError, TimeoutError, ValueError):
+    except URLError, OSError, TimeoutError, ValueError:
         return False
 
 

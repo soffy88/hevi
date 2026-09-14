@@ -69,8 +69,7 @@ def _default_script_planner(topic: str, cfg: QuickVideoConfig) -> list[dict[str,
     hook = f"你知道吗?{topic}背后藏着这些细节。"
     lines = [hook]
     lines.extend(
-        f"{topic}的第{i}个关键点:值得你记住。"
-        for i in range(1, min(cfg.max_lines, 5) - 1)
+        f"{topic}的第{i}个关键点:值得你记住。" for i in range(1, min(cfg.max_lines, 5) - 1)
     )
     lines.append(f"关于{topic},你还想了解什么?评论区告诉我。")
     return [{"text": t, "scene": i} for i, t in enumerate(lines)]

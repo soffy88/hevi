@@ -18,6 +18,7 @@ from pydantic import BaseModel
 @dataclass
 class MaterialSearchConfig:
     """素材搜索配置"""
+
     pexels_api_key: str = ""
     pixabay_api_key: str = ""
     coverr_api_key: str = ""
@@ -29,6 +30,7 @@ class MaterialSearchConfig:
 
 class MaterialItem(BaseModel):
     """统一素材项"""
+
     url: str
     thumbnail: str | None = None
     duration: float = 0.0
@@ -45,6 +47,7 @@ class MaterialItem(BaseModel):
 
 class MaterialSearchResult(BaseModel):
     """素材搜索结果"""
+
     query: str
     source: str
     total: int
@@ -65,14 +68,18 @@ async def search_pexels(query: str, count: int = 10, min_duration: int = 5) -> M
     """从 Pexels 搜索视频素材"""
     config = _get_config()
     if not config.pexels_api_key:
-        return MaterialSearchResult(query=query, source="pexels", total=0, items=[], error="PEXELS_API_KEY not set")
+        return MaterialSearchResult(
+            query=query, source="pexels", total=0, items=[], error="PEXELS_API_KEY not set"
+        )
 
     headers = {"Authorization": config.pexels_api_key}
     params: dict[str, str | int] = {"query": query, "per_page": count, "orientation": "portrait"}
 
     async with httpx.AsyncClient(timeout=30) as client:
         try:
-            resp = await client.get("https://api.pexels.com/videos/search", headers=headers, params=params)
+            resp = await client.get(
+                "https://api.pexels.com/videos/search", headers=headers, params=params
+            )
             resp.raise_for_status()
             data = resp.json()
 
@@ -86,32 +93,47 @@ async def search_pexels(query: str, count: int = 10, min_duration: int = 5) -> M
                     w = rend.get("width", 0)
                     h = rend.get("height", 0)
                     if w >= 480 and h >= 480:
-                        items.append(MaterialItem(
-                            url=rend["link"],
-                            thumbnail=v.get("picture"),
-                            duration=duration,
-                            width=w,
-                            height=h,
-                            source="pexels",
-                            search_term=query,
-                            asset_id=str(v.get("id")),
-                            source_page=v.get("url"),
-                            creator={"name": v.get("user", {}).get("name", "")} if v.get("user") else None,
-                            rendition={"width": w, "height": h},
-                            score=(v.get("promoted", False) and 1.0) or 0.5,
-                        ))
+                        items.append(
+                            MaterialItem(
+                                url=rend["link"],
+                                thumbnail=v.get("picture"),
+                                duration=duration,
+                                width=w,
+                                height=h,
+                                source="pexels",
+                                search_term=query,
+                                asset_id=str(v.get("id")),
+                                source_page=v.get("url"),
+                                creator={"name": v.get("user", {}).get("name", "")}
+                                if v.get("user")
+                                else None,
+                                rendition={"width": w, "height": h},
+                                score=(v.get("promoted", False) and 1.0) or 0.5,
+                            )
+                        )
 
-            return MaterialSearchResult(query=query, source="pexels", total=data.get("total", len(items)), items=items[:count])
+            return MaterialSearchResult(
+                query=query,
+                source="pexels",
+                total=data.get("total", len(items)),
+                items=items[:count],
+            )
         except Exception as e:
             logger.error(f"Pexels search failed: {e}")
-            return MaterialSearchResult(query=query, source="pexels", total=0, items=[], error=str(e))
+            return MaterialSearchResult(
+                query=query, source="pexels", total=0, items=[], error=str(e)
+            )
 
 
-async def search_pixabay(query: str, count: int = 10, min_duration: int = 5) -> MaterialSearchResult:
+async def search_pixabay(
+    query: str, count: int = 10, min_duration: int = 5
+) -> MaterialSearchResult:
     """从 Pixabay 搜索视频素材"""
     config = _get_config()
     if not config.pixabay_api_key:
-        return MaterialSearchResult(query=query, source="pixabay", total=0, items=[], error="PIXABAY_API_KEY not set")
+        return MaterialSearchResult(
+            query=query, source="pixabay", total=0, items=[], error="PIXABAY_API_KEY not set"
+        )
 
     page = 1
     items: list[MaterialItem] = []
@@ -139,20 +161,22 @@ async def search_pixabay(query: str, count: int = 10, min_duration: int = 5) -> 
                         w = vid.get("width", 0)
                         hgt = vid.get("height", 0)
                         if w >= 480 and hgt >= 480:
-                            items.append(MaterialItem(
-                                url=vid.get("url", ""),
-                                thumbnail=h.get("picture"),
-                                duration=duration,
-                                width=w,
-                                height=hgt,
-                                source="pixabay",
-                                search_term=query,
-                                asset_id=str(h.get("id")),
-                                source_page=h.get("pageURL"),
-                                creator={"name": h.get("user", "")},
-                                rendition={"width": w, "height": hgt},
-                                score=0.5,
-                            ))
+                            items.append(
+                                MaterialItem(
+                                    url=vid.get("url", ""),
+                                    thumbnail=h.get("picture"),
+                                    duration=duration,
+                                    width=w,
+                                    height=hgt,
+                                    source="pixabay",
+                                    search_term=query,
+                                    asset_id=str(h.get("id")),
+                                    source_page=h.get("pageURL"),
+                                    creator={"name": h.get("user", "")},
+                                    rendition={"width": w, "height": hgt},
+                                    score=0.5,
+                                )
+                            )
 
                 if page >= data.get("totalHits", 0) // params["per_page"] or not hits:
                     break
@@ -161,14 +185,20 @@ async def search_pixabay(query: str, count: int = 10, min_duration: int = 5) -> 
                 logger.error(f"Pixabay search failed: {e}")
                 break
 
-    return MaterialSearchResult(query=query, source="pixabay", total=len(items), items=items[:count])
+    return MaterialSearchResult(
+        query=query, source="pixabay", total=len(items), items=items[:count]
+    )
 
 
-async def search_archive_org(query: str, count: int = 10, min_duration: int = 5) -> MaterialSearchResult:
+async def search_archive_org(
+    query: str, count: int = 10, min_duration: int = 5
+) -> MaterialSearchResult:
     """从 Archive.org 搜索公开素材"""
     config = _get_config()
     if not config.archive_org_enabled:
-        return MaterialSearchResult(query=query, source="archive_org", total=0, items=[], error="Archive.org disabled")
+        return MaterialSearchResult(
+            query=query, source="archive_org", total=0, items=[], error="Archive.org disabled"
+        )
 
     params: dict[str, str | int] = {
         "q": f"collection:movies AND mediatype:movies AND {query}",
@@ -190,26 +220,34 @@ async def search_archive_org(query: str, count: int = 10, min_duration: int = 5)
                 if duration < min_duration:
                     continue
                 identifier = doc.get("identifier", "")
-                items.append(MaterialItem(
-                    url=f"https://archive.org/download/{identifier}/{identifier}.mp4",
-                    thumbnail=f"https://archive.org/download/{identifier}/{identifier}.thumb",
-                    duration=duration,
-                    width=1280,
-                    height=720,
-                    source="archive_org",
-                    search_term=query,
-                    asset_id=identifier,
-                    source_page=f"https://archive.org/details/{identifier}",
-                    score=0.5,
-                ))
+                items.append(
+                    MaterialItem(
+                        url=f"https://archive.org/download/{identifier}/{identifier}.mp4",
+                        thumbnail=f"https://archive.org/download/{identifier}/{identifier}.thumb",
+                        duration=duration,
+                        width=1280,
+                        height=720,
+                        source="archive_org",
+                        search_term=query,
+                        asset_id=identifier,
+                        source_page=f"https://archive.org/details/{identifier}",
+                        score=0.5,
+                    )
+                )
 
-            return MaterialSearchResult(query=query, source="archive_org", total=len(items), items=items[:count])
+            return MaterialSearchResult(
+                query=query, source="archive_org", total=len(items), items=items[:count]
+            )
         except Exception as e:
             logger.error(f"Archive.org search failed: {e}")
-            return MaterialSearchResult(query=query, source="archive_org", total=0, items=[], error=str(e))
+            return MaterialSearchResult(
+                query=query, source="archive_org", total=0, items=[], error=str(e)
+            )
 
 
-async def search_materials(query: str, source: str = "all", count: int = 10, min_duration: int = 5) -> dict[str, Any]:
+async def search_materials(
+    query: str, source: str = "all", count: int = 10, min_duration: int = 5
+) -> dict[str, Any]:
     """搜索素材 (聚合多个来源)"""
     results: dict[str, Any] = {}
 
@@ -223,7 +261,9 @@ async def search_materials(query: str, source: str = "all", count: int = 10, min
         elif src == "archive_org":
             result = await search_archive_org(query, count, min_duration)
         else:
-            result = MaterialSearchResult(query=query, source=src, total=0, items=[], error=f"Unknown source: {src}")
+            result = MaterialSearchResult(
+                query=query, source=src, total=0, items=[], error=f"Unknown source: {src}"
+            )
 
         results[src] = result.model_dump()
 

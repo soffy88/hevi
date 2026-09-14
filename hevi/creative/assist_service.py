@@ -136,9 +136,7 @@ class AssistService:
     ) -> MultiAngleResult:
         if not subject_description.strip():
             raise ValueError("subject_description must not be empty")
-        return await multi_angle(
-            subject_description, caller=self._wrapped_caller(), angles=angles
-        )
+        return await multi_angle(subject_description, caller=self._wrapped_caller(), angles=angles)
 
     async def make_transition(
         self,

@@ -185,9 +185,7 @@ class QueueWorker:
                         result = await self.task_service.run_task(task_id)
                         result_status = result.get("status") if isinstance(result, dict) else None
                         attempt_status = (
-                            "success"
-                            if result_status in {"completed", "succeeded"}
-                            else "error"
+                            "success" if result_status in {"completed", "succeeded"} else "error"
                         )
                     except Exception as e:
                         logger.error(f"Error running task {self._current_task_id}: {e}")

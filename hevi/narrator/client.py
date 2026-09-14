@@ -47,7 +47,9 @@ def _hint(has_cli: bool, has_key: bool) -> str:
     return "；".join(parts)
 
 
-def run_narrator(verb: str, extra: list[str] | None = None, *, timeout: float = 60.0) -> dict[str, Any]:
+def run_narrator(
+    verb: str, extra: list[str] | None = None, *, timeout: float = 60.0
+) -> dict[str, Any]:
     status = narrator_status()
     if not status["cli"] or not status["app_key"]:
         raise NarratorUnavailable(status["hint"])

@@ -39,9 +39,7 @@ logger = logging.getLogger(__name__)
 NIM_BASE = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 # stratum 飞轮共用密钥池(命名槽位),见 /data/soffy/projects/stratum/aii/.pipeline_keys.json
-_PIPELINE_KEYS_CANDIDATES = (
-    Path("/data/soffy/projects/stratum/aii/.pipeline_keys.json"),
-)
+_PIPELINE_KEYS_CANDIDATES = (Path("/data/soffy/projects/stratum/aii/.pipeline_keys.json"),)
 
 DEFAULT_NIM_MODEL = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
 
@@ -158,6 +156,7 @@ def _make_nim_caller(
             key = keys[idx]
             _throttle(idx)
             try:
+
                 def _request(request_key: str = key) -> dict[str, Any]:
                     resp = _client.post(
                         NIM_BASE,
@@ -173,12 +172,18 @@ def _make_nim_caller(
                         raise ValueError("NIM response is not an object")
                     return data
 
-                data = _wrappers[idx].execute_sync(
-                    _request,
-                    idempotent=True,
-                    input_tokens=sum(len(str(m.get("content", ""))) for m in payload["messages"]),
-                    output_token_budget=int(payload["max_tokens"]),
-                ).require_value()
+                data = (
+                    _wrappers[idx]
+                    .execute_sync(
+                        _request,
+                        idempotent=True,
+                        input_tokens=sum(
+                            len(str(m.get("content", ""))) for m in payload["messages"]
+                        ),
+                        output_token_budget=int(payload["max_tokens"]),
+                    )
+                    .require_value()
+                )
                 content = (data.get("choices") or [{}])[0].get("message", {}).get("content")
                 if content is None or not str(content).strip():
                     # nemotron-super 等 reasoning 模型偶发 content=null
@@ -187,11 +192,7 @@ def _make_nim_caller(
             except Exception as exc:
                 last_err = exc
         # 双 key 都返回空 content(reasoning 模型偶发 content=None)→ 兜底模型重试一次
-        if (
-            fallback_model
-            and isinstance(last_err, RuntimeError)
-            and "空 content" in str(last_err)
-        ):
+        if fallback_model and isinstance(last_err, RuntimeError) and "空 content" in str(last_err):
             logger.warning("NIM 主模型空 content,兜底 %s 重试", fallback_model)
             try:
                 idx = start % len(keys)
@@ -214,14 +215,18 @@ def _make_nim_caller(
                         raise ValueError("NIM fallback response is not an object")
                     return data
 
-                data = _wrappers[idx].execute_sync(
-                    _fallback_request,
-                    idempotent=True,
-                    input_tokens=sum(
-                        len(str(m.get("content", ""))) for m in fallback_payload["messages"]
-                    ),
-                    output_token_budget=int(fallback_payload["max_tokens"]),
-                ).require_value()
+                data = (
+                    _wrappers[idx]
+                    .execute_sync(
+                        _fallback_request,
+                        idempotent=True,
+                        input_tokens=sum(
+                            len(str(m.get("content", ""))) for m in fallback_payload["messages"]
+                        ),
+                        output_token_budget=int(fallback_payload["max_tokens"]),
+                    )
+                    .require_value()
+                )
                 content = (data.get("choices") or [{}])[0].get("message", {}).get("content")
                 if content and str(content).strip():
                     return str(content)

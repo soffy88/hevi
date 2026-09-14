@@ -19,6 +19,7 @@ from hevi.verdict.replay_trace import load_traces
 
 # ---- wire ①: 失败注册表 → 负向子句 ----
 
+
 def test_shot_negative_clause_action_layer():
     clause = shot_negative_clause("action")
     assert clause.startswith("负面约束:")
@@ -38,6 +39,7 @@ def test_with_failure_registry_clause_keeps_base():
 
 
 # ---- wire ②: 成片交付门 ----
+
 
 def test_parse_silence_events():
     stderr = (
@@ -84,7 +86,9 @@ def test_delivery_gate_profile_controls_checker_failure(tmp_path, monkeypatch):
     vid.write_bytes(b"video")
     monkeypatch.setattr("hevi.verdict.delivery_gate.detect_flicker_ratio", lambda _path: None)
     monkeypatch.setattr("hevi.verdict.delivery_gate.detect_silence_gaps", lambda _path: None)
-    monkeypatch.setattr("hevi.verdict.delivery_gate.extract_watch_frames", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        "hevi.verdict.delivery_gate.extract_watch_frames", lambda *args, **kwargs: []
+    )
 
     economy = run_delivery_gate(vid, out_dir=tmp_path / "economy", profile="economy")
     standard = run_delivery_gate(vid, out_dir=tmp_path / "standard", profile="standard")
@@ -93,6 +97,7 @@ def test_delivery_gate_profile_controls_checker_failure(tmp_path, monkeypatch):
 
 
 # ---- wire ③: replay trace 接 verdict ----
+
 
 def test_verdict_shot_with_trace(tmp_path):
     import av
@@ -146,9 +151,7 @@ def test_verdict_shot_without_trace_unchanged(tmp_path):
             container.mux(packet)
 
     v = asyncio.run(
-        verdict_shot(
-            shot_index=1, shot_id="shot_0001", clip_path=clip, identity_score=0.9
-        )
+        verdict_shot(shot_index=1, shot_id="shot_0001", clip_path=clip, identity_score=0.9)
     )
     # 全黑帧 → 判不过(re_roll);trace_root=None 不落盘
     assert v.passed is False
@@ -156,6 +159,7 @@ def test_verdict_shot_without_trace_unchanged(tmp_path):
 
 
 # ---- wire ④: 资产导出 ----
+
 
 def test_export_embrace_assets(tmp_path):
     from scripts.export_embrace_assets import main as export_main

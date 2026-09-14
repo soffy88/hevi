@@ -55,12 +55,20 @@ def _require(project_id: str) -> ScreenshotProject:
 
 
 @router.get("/presets")
-async def presets(_: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
-    return {"frames": list(FRAME_PRESETS), "annotations": list(ANNOTATION_KINDS), "formats": ["png", "jpg", "svg-plan"]}
+async def presets(
+    _: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    return {
+        "frames": list(FRAME_PRESETS),
+        "annotations": list(ANNOTATION_KINDS),
+        "formats": ["png", "jpg", "svg-plan"],
+    }
 
 
 @router.get("/projects")
-async def projects(_: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
+async def projects(
+    _: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     items = [item.to_dict() for item in list_projects()]
     return {"projects": items, "total": len(items)}
 

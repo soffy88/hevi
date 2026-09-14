@@ -354,8 +354,11 @@ async def orchestrate_longvideo(
             _intro_path = await render_intro_outro_async(
                 text=intro_clip[5:],
                 output_path=Path("output/free_intro.mp4"),
-                width=_target_w, height=_target_h, fps=_target_fps,
-                is_intro=True, title=topic[:20],
+                width=_target_w,
+                height=_target_h,
+                fps=_target_fps,
+                is_intro=True,
+                title=topic[:20],
             )
         elif Path(intro_clip).is_file():
             _intro_path = Path(intro_clip)
@@ -367,8 +370,11 @@ async def orchestrate_longvideo(
             _outro_path = await render_intro_outro_async(
                 text=outro_clip[5:],
                 output_path=Path("output/free_outro.mp4"),
-                width=_target_w, height=_target_h, fps=_target_fps,
-                is_intro=False, title=topic[:20],
+                width=_target_w,
+                height=_target_h,
+                fps=_target_fps,
+                is_intro=False,
+                title=topic[:20],
             )
         elif Path(outro_clip).is_file():
             _outro_path = Path(outro_clip)
@@ -885,9 +891,7 @@ async def orchestrate_longvideo(
                             title=topic[:20],
                         )
                         if _fb is not None and _fb.stat().st_size > 1024:
-                            logger.warning(
-                                "shot %s → freevideo 动画兜底 %s", outp.name, _fb
-                            )
+                            logger.warning("shot %s → freevideo 动画兜底 %s", outp.name, _fb)
                             return _fb
                     except Exception as _fbe:
                         logger.error(f"freevideo fallback also failed: {_fbe}")
@@ -991,7 +995,10 @@ async def orchestrate_longvideo(
                     _bgm_path = bgm_wav
                     logger.info(
                         "procedural bgm %s @%.0fbpm %d拍 → %s",
-                        _procedural_bgm_mood, grid.bpm, grid.beat_count, bgm_wav,
+                        _procedural_bgm_mood,
+                        grid.bpm,
+                        grid.beat_count,
+                        bgm_wav,
                     )
                 except Exception as _bge:
                     logger.warning("程序化 BGM 生成失败,跳过配乐: %s", _bge)
@@ -1145,7 +1152,7 @@ async def orchestrate_longvideo(
                     try:
                         candidate = Path(first)
                         usable = candidate.is_file() and candidate.stat().st_size > 0
-                    except (OSError, TypeError, ValueError):
+                    except OSError, TypeError, ValueError:
                         usable = False
                 return SimpleNamespace(passed=usable, best_frame=first)
 

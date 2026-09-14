@@ -39,9 +39,7 @@ class WatchResult:
     @property
     def transcript_text(self) -> str:
         """时间戳文本拼接(供 LLM 上下文/检索)。"""
-        return "\n".join(
-            f"[{s.start:07.2f}-{s.end:07.2f}] {s.text}" for s in self.transcript
-        )
+        return "\n".join(f"[{s.start:07.2f}-{s.end:07.2f}] {s.text}" for s in self.transcript)
 
 
 def watch_video(
@@ -86,7 +84,9 @@ def watch_video(
         video = fetch_video(source, work_dir)
     except Exception:
         # transcript 档的 URL 不下载也能拉字幕;下载失败不阻断转写尝试
-        if detail_enum == WatchDetail.TRANSCRIPT and str(source).startswith(("http://", "https://")):
+        if detail_enum == WatchDetail.TRANSCRIPT and str(source).startswith(
+            ("http://", "https://")
+        ):
             video = Path(str(source))
         else:
             raise
@@ -108,7 +108,9 @@ def watch_video(
     # 3) 抽帧(transcript 档跳过)
     frames: list[ExtractedFrame] = []
     duration_s = 0.0
-    if detail_enum != WatchDetail.TRANSCRIPT and not str(source).startswith(("http://", "https://")):
+    if detail_enum != WatchDetail.TRANSCRIPT and not str(source).startswith(
+        ("http://", "https://")
+    ):
         try:
             frames = extract_watch_frames(
                 video,

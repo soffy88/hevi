@@ -97,10 +97,7 @@ def _decode_frames(
             thumb = _gray16_thumb(frame.to_image())  # type: ignore[no-untyped-call]
             if scene_aware:
                 # 与上一个候选比较(非上一帧),与去重同思路,抓慢渐变
-                if (
-                    last_thumb is not None
-                    and frame_delta_of(thumb, last_thumb) <= SCENE_THRESHOLD
-                ):
+                if last_thumb is not None and frame_delta_of(thumb, last_thumb) <= SCENE_THRESHOLD:
                     continue
                 last_thumb = thumb
             images.append(frame.to_image())  # type: ignore[no-untyped-call]
@@ -117,9 +114,7 @@ def frame_delta_of(a: bytes, b: bytes) -> float:
     return frame_delta(a, b)
 
 
-def _even_sample(
-    indexes: list[int], budget: int, *, force_ends: bool = True
-) -> list[int]:
+def _even_sample(indexes: list[int], budget: int, *, force_ends: bool = True) -> list[int]:
     """在候选下标上均匀采样到 budget,首/末必留。"""
     n = len(indexes)
     if n <= budget:

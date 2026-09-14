@@ -97,8 +97,4 @@ async def manual_topup(
     credits, so this is hard-gated behind debug mode."""
     if not settings.debug:
         raise HTTPException(status_code=404, detail="Not found")
-    return await svc.topup(
-        user_id=str(user["id"]), 
-        amount=body.amount, 
-        order_ref=body.order_ref
-    )
+    return await svc.topup(user_id=str(user["id"]), amount=body.amount, order_ref=body.order_ref)

@@ -60,10 +60,10 @@ MOOD_PRESETS: dict[str, dict[str, Any]] = {
     "calm": {
         "bpm": 70,
         "progression": [
-            {"root": 0, "chord": (0, 3, 7)},    # Am
-            {"root": -4, "chord": (0, 3, 7)},   # F
-            {"root": -9, "chord": (0, 4, 7)},   # C
-            {"root": -2, "chord": (0, 3, 7)},   # G
+            {"root": 0, "chord": (0, 3, 7)},  # Am
+            {"root": -4, "chord": (0, 3, 7)},  # F
+            {"root": -9, "chord": (0, 4, 7)},  # C
+            {"root": -2, "chord": (0, 3, 7)},  # G
         ],
         "drums": "soft",
         "wave": "saw",
@@ -99,10 +99,10 @@ MOOD_PRESETS: dict[str, dict[str, Any]] = {
     "tense": {
         "bpm": 110,
         "progression": [
-            {"root": 0, "chord": (0, 3, 6)},    # Am
-            {"root": 1, "chord": (0, 3, 6)},    # A#dim-ish
+            {"root": 0, "chord": (0, 3, 6)},  # Am
+            {"root": 1, "chord": (0, 3, 6)},  # A#dim-ish
             {"root": 0, "chord": (0, 3, 6)},
-            {"root": 8, "chord": (0, 3, 6)},    # F
+            {"root": 8, "chord": (0, 3, 6)},  # F
         ],
         "drums": "hard",
         "wave": "saw",
@@ -183,7 +183,7 @@ def _adsr_envelope(n: int, *, attack_s: float, release_s: float, sr: int = SR) -
         env[:a] = np.linspace(0.0, 1.0, a)
     r = int(release_s * sr)
     if r > 0 and r < n:
-        env[n - r:] = np.linspace(1.0, 0.0, r) ** 1.5
+        env[n - r :] = np.linspace(1.0, 0.0, r) ** 1.5
     return env
 
 
@@ -281,8 +281,8 @@ def synthesize_bgm(config: BgmConfig) -> tuple[np.ndarray, BeatGrid]:
             else:
                 tone = _lowpass1(tone, 700.0)
             env = _adsr_envelope(n_span, attack_s=bar_s * 0.35, release_s=bar_s * 0.4)
-            seg = mix[int(bar_start * SR): int(bar_start * SR) + n_span]
-            mix[int(bar_start * SR): int(bar_start * SR) + n_span] = seg + tone * env * 0.5
+            seg = mix[int(bar_start * SR) : int(bar_start * SR) + n_span]
+            mix[int(bar_start * SR) : int(bar_start * SR) + n_span] = seg + tone * env * 0.5
         # ── bass:根音低八度,半音符时值 ──
         bass_freq = _freq(root + bass_oct)
         n_bass = int(beat_s * 2 * SR)
@@ -290,7 +290,7 @@ def synthesize_bgm(config: BgmConfig) -> tuple[np.ndarray, BeatGrid]:
         bass = _wave("sine", 2.0 * math.pi * bass_freq * t_b)
         bass_env = _adsr_envelope(n_bass, attack_s=0.02, release_s=beat_s * 0.8)
         start = int((bar_start + beat_s * 0) * SR)
-        mix[start: start + n_bass] += bass * bass_env * 0.55
+        mix[start : start + n_bass] += bass * bass_env * 0.55
         # ── 鼓组(每拍) ──
         if config.with_drums:
             for beat in range(4):
@@ -299,13 +299,13 @@ def synthesize_bgm(config: BgmConfig) -> tuple[np.ndarray, BeatGrid]:
                 pos = int(b_time * SR)
                 if ev["kick"] > 0:
                     k = _kick() * ev["kick"]
-                    mix[pos: pos + len(k)] += k
+                    mix[pos : pos + len(k)] += k
                 if ev["snare"] > 0:
                     s = _snare() * ev["snare"]
-                    mix[pos: pos + len(s)] += s
+                    mix[pos : pos + len(s)] += s
                 if ev["hat"] > 0:
                     h = _hat() * ev["hat"]
-                    mix[pos: pos + len(h)] += h
+                    mix[pos : pos + len(h)] += h
                 beat_times.append(b_time)
         else:
             beat_times.extend(bar_start + beat * beat_s for beat in range(4))

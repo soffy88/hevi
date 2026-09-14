@@ -14,8 +14,7 @@ import pytest
 from hevi.history_series.arc_adapter import assemble_run_request, dump_g1a_report
 
 _FIXTURE = (
-    Path(__file__).resolve().parents[2]
-    / "history_series" / "fixtures" / "sample.sanjiafenjin.json"
+    Path(__file__).resolve().parents[2] / "history_series" / "fixtures" / "sample.sanjiafenjin.json"
 )
 
 
@@ -32,9 +31,9 @@ def test_assemble_source_name_and_raw_text(contract):
     """source_name 带事件标题；raw_text 含主述（史记）并陈（通鉴/战国策）+ 出处。"""
     req = assemble_run_request(contract)
     assert req["source_name"] == "历史现场·晋阳之战（智伯之亡）"
-    assert "史记·赵世家" in req["raw_text"]          # 主述出处标注
-    assert "（并陈）" in req["raw_text"]              # 并陈块
-    assert "资治通鉴·周纪一" in req["raw_text"]      # 并陈出处
+    assert "史记·赵世家" in req["raw_text"]  # 主述出处标注
+    assert "（并陈）" in req["raw_text"]  # 并陈块
+    assert "资治通鉴·周纪一" in req["raw_text"]  # 并陈出处
     assert "战国策·赵策一" in req["raw_text"]
     assert "城中懸釜而炊" in req["raw_text"]  # 主述原文(史记·赵世家)
 
@@ -43,8 +42,8 @@ def test_mainline_account_choice(contract):
     """主述 = event.mainline_account_ref（史记·赵世家），不是第一条。"""
     next(a for a in contract["accounts"] if a["account_id"] == "ac:jinyang-shiji")
     req = assemble_run_request(contract)
-    assert "知伯益驕" in req["raw_text"]              # 史记·赵世家原文（主述）
-    assert "智伯請地於韓康子" in req["raw_text"]      # 通鉴原文（并陈）
+    assert "知伯益驕" in req["raw_text"]  # 史记·赵世家原文（主述）
+    assert "智伯請地於韓康子" in req["raw_text"]  # 通鉴原文（并陈）
 
 
 def test_conflict_corner_note(contract):
@@ -61,7 +60,7 @@ def test_registry_injection(contract):
     refs = l1.get("character_refs", [])
     assert any(r["ref"] == "per:zhibo" for r in refs)
     zhibo = next(r for r in refs if r["ref"] == "per:zhibo")
-    assert "智伯" in zhibo["names"]                    # 别名注入
+    assert "智伯" in zhibo["names"]  # 别名注入
 
 
 def test_textbook_mainline_override(contract):

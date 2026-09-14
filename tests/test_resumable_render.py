@@ -8,13 +8,19 @@ from hevi.execution.resumable_render import execute_checkpoint_render
 
 
 @pytest.mark.asyncio
-async def test_resumable_render_skips_completed_shots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_resumable_render_skips_completed_shots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     task_id = uuid.uuid4()
     first = {
         "id": task_id,
         "user_id": "tester",
-        "config_json": {"total_shots": 4, "crash_after_shot": 2, "production_id": str(uuid.uuid4())},
+        "config_json": {
+            "total_shots": 4,
+            "crash_after_shot": 2,
+            "production_id": str(uuid.uuid4()),
+        },
     }
     with pytest.raises(RuntimeError, match="injected crash"):
         await execute_checkpoint_render(first, pool=None)
@@ -26,8 +32,14 @@ async def test_resumable_render_skips_completed_shots(tmp_path: Path, monkeypatc
             "completed_shots": 2,
             "state_json": {
                 "shots": [
-                    {"index": 0, "path": str(tmp_path / "output/tasks" / str(task_id) / "shot_000.bin")},
-                    {"index": 1, "path": str(tmp_path / "output/tasks" / str(task_id) / "shot_001.bin")},
+                    {
+                        "index": 0,
+                        "path": str(tmp_path / "output/tasks" / str(task_id) / "shot_000.bin"),
+                    },
+                    {
+                        "index": 1,
+                        "path": str(tmp_path / "output/tasks" / str(task_id) / "shot_001.bin"),
+                    },
                 ]
             },
         },

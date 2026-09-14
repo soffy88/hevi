@@ -11,9 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 
-SKILL_SCRIPT = (
-    Path(__file__).parent.parent.parent / "docs" / "skill" / "mpt_agent.py"
-)
+SKILL_SCRIPT = Path(__file__).parent.parent.parent / "docs" / "skill" / "mpt_agent.py"
 SKILL_DOCUMENT = SKILL_SCRIPT.with_name("SKILL.md")
 SPEC = importlib.util.spec_from_file_location("mpt_agent_skill", SKILL_SCRIPT)
 mpt_agent = importlib.util.module_from_spec(SPEC)
@@ -39,9 +37,7 @@ class TestMptAgentSkill(unittest.TestCase):
         """创建足够完成安装和配置检查的最小项目结构。"""
         root.mkdir()
         (root / "cli.py").write_text("", encoding="utf-8")
-        (root / "config.example.toml").write_text(
-            MINIMAL_CONFIG, encoding="utf-8"
-        )
+        (root / "config.example.toml").write_text(MINIMAL_CONFIG, encoding="utf-8")
 
     class FakeHttpResponse:
         status = 200
@@ -57,7 +53,7 @@ class TestMptAgentSkill(unittest.TestCase):
         text = SKILL_DOCUMENT.read_text(encoding="utf-8")
 
         self.assertIn(
-            'uv run --no-project --python 3.11 python mpt_agent.py --subject',
+            "uv run --no-project --python 3.11 python mpt_agent.py --subject",
             text,
         )
         self.assertIn("workdir=SKILL_DIR", text)
@@ -87,9 +83,7 @@ class TestMptAgentSkill(unittest.TestCase):
             self.assertNotIn("Alibaba Cloud Qwen", text)
             self.assertNotIn("Microsoft Azure OpenAI", text)
             self.assertNotIn("xAI Grok", text)
-            self.assertIn(
-                f"PEXELS_API_KEY_URL={mpt_agent.PEXELS_API_KEY_URL}", text
-            )
+            self.assertIn(f"PEXELS_API_KEY_URL={mpt_agent.PEXELS_API_KEY_URL}", text)
 
     def test_environment_keys_are_written_without_being_logged(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -99,15 +93,18 @@ class TestMptAgentSkill(unittest.TestCase):
             llm_key = "secret-llm-key"
             pexels_key = "secret-pexels-key"
 
-            with patch.dict(
-                os.environ,
-                {
-                    "MPT_LLM_PROVIDER": "deepseek",
-                    "MPT_LLM_API_KEY": llm_key,
-                    "MPT_PEXELS_API_KEY": pexels_key,
-                },
-                clear=True,
-            ), redirect_stdout(output):
+            with (
+                patch.dict(
+                    os.environ,
+                    {
+                        "MPT_LLM_PROVIDER": "deepseek",
+                        "MPT_LLM_API_KEY": llm_key,
+                        "MPT_PEXELS_API_KEY": pexels_key,
+                    },
+                    clear=True,
+                ),
+                redirect_stdout(output),
+            ):
                 mpt_agent.apply_environment_config(config_path)
 
             config = config_path.read_text(encoding="utf-8")
@@ -163,9 +160,7 @@ class TestMptAgentSkill(unittest.TestCase):
         output = io.StringIO()
 
         with redirect_stdout(output):
-            code = mpt_agent.report_missing_config(
-                "deepseek", ["pexels_api_keys"]
-            )
+            code = mpt_agent.report_missing_config("deepseek", ["pexels_api_keys"])
 
         text = output.getvalue()
         self.assertEqual(code, mpt_agent.NEEDS_INPUT_EXIT_CODE)
@@ -214,9 +209,7 @@ class TestMptAgentSkill(unittest.TestCase):
             config = config_path.read_text(encoding="utf-8")
             self.assertIn('llm_provider = "oneapi"', config)
             self.assertIn('oneapi_api_key = "custom-key"', config)
-            self.assertIn(
-                'oneapi_base_url = "https://llm.example.com/v1"', config
-            )
+            self.assertIn('oneapi_base_url = "https://llm.example.com/v1"', config)
             self.assertIn('oneapi_model_name = "example-model"', config)
 
     def test_zip_extraction_rejects_parent_directory_escape(self):
@@ -227,8 +220,9 @@ class TestMptAgentSkill(unittest.TestCase):
             with zipfile.ZipFile(archive_path, "w") as archive:
                 archive.writestr("../outside.txt", "unsafe")
 
-            with zipfile.ZipFile(archive_path) as archive, self.assertRaises(
-                mpt_agent.SkillError
+            with (
+                zipfile.ZipFile(archive_path) as archive,
+                self.assertRaises(mpt_agent.SkillError),
             ):
                 mpt_agent._safe_extract(archive, destination)
 
@@ -247,18 +241,17 @@ class TestMptAgentSkill(unittest.TestCase):
             output = io.StringIO()
 
             def validate(request, timeout):
-                self.assertEqual(
-                    request.full_url, mpt_agent.PEXELS_VALIDATION_URL
-                )
+                self.assertEqual(request.full_url, mpt_agent.PEXELS_VALIDATION_URL)
                 if request.get_header("Authorization") == bad_key:
                     raise mpt_agent.urllib.error.HTTPError(
                         request.full_url, 401, "Unauthorized", None, None
                     )
                 return self.FakeHttpResponse()
 
-            with patch.object(
-                mpt_agent.urllib.request, "urlopen", side_effect=validate
-            ), redirect_stdout(output):
+            with (
+                patch.object(mpt_agent.urllib.request, "urlopen", side_effect=validate),
+                redirect_stdout(output),
+            ):
                 valid = mpt_agent.validate_pexels_config(config_path, [])
 
             config = config_path.read_text(encoding="utf-8")
@@ -285,9 +278,7 @@ class TestMptAgentSkill(unittest.TestCase):
                 None,
             )
 
-            with patch.object(
-                mpt_agent.urllib.request, "urlopen", side_effect=error
-            ):
+            with patch.object(mpt_agent.urllib.request, "urlopen", side_effect=error):
                 valid = mpt_agent.validate_pexels_config(config_path, [])
 
             self.assertFalse(valid)
@@ -324,9 +315,7 @@ class TestMptAgentSkill(unittest.TestCase):
             self.assertEqual(result["video_files"], [str(videos[0])])
             command = run_mock.call_args.args[0]
             voice_index = command.index("--voice-name")
-            self.assertEqual(
-                command[voice_index + 1], mpt_agent.DEFAULT_VOICE_NAME
-            )
+            self.assertEqual(command[voice_index + 1], mpt_agent.DEFAULT_VOICE_NAME)
             self.assertEqual(command[-2:], ["--stop-at", "video"])
 
     def test_generation_failure_prints_original_model_error(self):
@@ -365,9 +354,11 @@ class TestMptAgentSkill(unittest.TestCase):
             stdout="Installed package-a\nInstalled package-b\n",
         )
 
-        with patch.object(
-            mpt_agent.subprocess, "run", return_value=result
-        ), redirect_stdout(stdout), redirect_stderr(stderr):
+        with (
+            patch.object(mpt_agent.subprocess, "run", return_value=result),
+            redirect_stdout(stdout),
+            redirect_stderr(stderr),
+        ):
             mpt_agent.run_checked(["uv", "sync", "--frozen"], cwd=Path.cwd())
 
         self.assertNotIn("package-a", stdout.getvalue())

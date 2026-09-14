@@ -39,7 +39,8 @@ def _llm_rewrite(text: str, title: str) -> str:
     ).encode("utf-8")
     try:
         req = urllib.request.Request(
-            "http://localhost:11434/api/generate", data=body,
+            "http://localhost:11434/api/generate",
+            data=body,
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=180) as resp:
@@ -47,7 +48,8 @@ def _llm_rewrite(text: str, title: str) -> str:
         # 去掉 qwen3 的 <think> 思考块与 markdown 痕迹,其余行全部采用。
         out = re.sub(r"<think>.*?</think>", "", out, flags=re.S)
         lines = [
-            ln.strip() for ln in out.splitlines()
+            ln.strip()
+            for ln in out.splitlines()
             if ln.strip() and not ln.strip().startswith(("#", "-", "*"))
         ]
         cleaned = "\n".join(lines)
@@ -63,20 +65,31 @@ def main(argv: list[str] | None = None) -> int:
     src.add_argument("--text", default="", help="中文内容/故事/要点(确定性分句成镜)")
     src.add_argument("--json", dest="plans_json", default="", help="结构化分镜 JSON 文件")
     parser.add_argument("--title", default="", help="视频标题(首末镜 kicker)")
-    parser.add_argument("--kind", default=None, choices=FRAME_KINDS,
-                        help="指定单一动画模板;缺省自动轮换")
+    parser.add_argument(
+        "--kind", default=None, choices=FRAME_KINDS, help="指定单一动画模板;缺省自动轮换"
+    )
     parser.add_argument("--palette", default="deep", choices=["deep", "paper"])
-    parser.add_argument("--mood", dest="bgm_mood", default=None,
-                        choices=["calm", "bright", "epic", "tense", "warm"],
-                        help="免费程序化 BGM 情绪(给定时自动合成并混入成片)")
+    parser.add_argument(
+        "--mood",
+        dest="bgm_mood",
+        default=None,
+        choices=["calm", "bright", "epic", "tense", "warm"],
+        help="免费程序化 BGM 情绪(给定时自动合成并混入成片)",
+    )
     parser.add_argument("--bgm-bpm", type=int, default=0, help="BGM 拍速(0=用 mood 预设)")
     parser.add_argument("--bgm-dur", type=float, default=0.0, help="BGM 时长(0=随成片)")
-    parser.add_argument("--voice", default=None,
-                        help="免费配音音色(edge_tts):zh_male_deep/zh_female_standard/... "
-                             "(见 hevi.audio.edge_tts_custom.CURATED_VOICES)")
+    parser.add_argument(
+        "--voice",
+        default=None,
+        help="免费配音音色(edge_tts):zh_male_deep/zh_female_standard/... "
+        "(见 hevi.audio.edge_tts_custom.CURATED_VOICES)",
+    )
     parser.add_argument("--narration", default="", help="显式旁白文本;缺省自动拼接各帧 body")
-    parser.add_argument("--llm", action="store_true",
-                        help="先用本地 ollama(qwen3-8b)改写文案为口语化旁白,再分镜(零成本)")
+    parser.add_argument(
+        "--llm",
+        action="store_true",
+        help="先用本地 ollama(qwen3-8b)改写文案为口语化旁白,再分镜(零成本)",
+    )
     parser.add_argument("--w", type=int, default=1280)
     parser.add_argument("--h", type=int, default=720)
     parser.add_argument("--fps", type=int, default=30)
@@ -85,10 +98,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     config = FreeVideoConfig(
-        width=args.w, height=args.h, fps=args.fps,
-        frame_duration=args.dur, palette=args.palette, frame_kind=args.kind,
-        bgm_mood=args.bgm_mood, bgm_bpm=args.bgm_bpm, bgm_duration_s=args.bgm_dur,
-        voice=args.voice, narration=args.narration,
+        width=args.w,
+        height=args.h,
+        fps=args.fps,
+        frame_duration=args.dur,
+        palette=args.palette,
+        frame_kind=args.kind,
+        bgm_mood=args.bgm_mood,
+        bgm_bpm=args.bgm_bpm,
+        bgm_duration_s=args.bgm_dur,
+        voice=args.voice,
+        narration=args.narration,
     )
 
     text = args.text
@@ -108,8 +128,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(f"free: {res['status']}  {res['frames']} 帧  {res['resolution']}")
     for p in res.get("plan", []):
-        print(f"  · {p['kind']:<11} {p['title'][:24]}  {p['duration']}s" +
-              (f"  broll={p.get('broll')}" if p.get('broll') else ""))
+        print(
+            f"  · {p['kind']:<11} {p['title'][:24]}  {p['duration']}s"
+            + (f"  broll={p.get('broll')}" if p.get("broll") else "")
+        )
     if res.get("bgm"):
         b = res["bgm"]
         print(f"free: BGM {b['mood']} @{b['bpm']:.0f}bpm {b['beats']}拍(程序化合成,零成本)")

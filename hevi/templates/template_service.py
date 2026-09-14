@@ -49,7 +49,7 @@ class TemplateService:
         template = await self.get_template(template_id)
         if not template:
             raise ValueError(f"Template not found: {template_id}")
-        
+
         # Returns canvas_json for initializing a new canvas
         return template["canvas_json"]  # type: ignore[no-any-return]
 

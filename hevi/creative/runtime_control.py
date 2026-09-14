@@ -1,4 +1,5 @@
 """Layer 4 authority for HEVI production-run state transitions."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,7 +20,12 @@ class ProgressEvent:
     percent: float
 
     def to_dict(self) -> dict[str, object]:
-        return {"event_type": f"creative.run.{self.status.lower()}", "run_id": self.run_id, "stage": self.stage, "percent": self.percent}
+        return {
+            "event_type": f"creative.run.{self.status.lower()}",
+            "run_id": self.run_id,
+            "stage": self.stage,
+            "percent": self.percent,
+        }
 
 
 class BackgroundRunController:
@@ -28,8 +34,17 @@ class BackgroundRunController:
     def progress(self, run: ProductionRun) -> ProgressEvent:
         total = len(run.stage_results)
         completed = sum(item.status in _TERMINAL for item in run.stage_results)
-        current = next((item.stage for item in reversed(run.stage_results) if item.status == "RUNNING"), None)
-        return ProgressEvent(str(run.object_id), run.status, current, completed, total, round(completed / total * 100, 4) if total else 0.0)
+        current = next(
+            (item.stage for item in reversed(run.stage_results) if item.status == "RUNNING"), None
+        )
+        return ProgressEvent(
+            str(run.object_id),
+            run.status,
+            current,
+            completed,
+            total,
+            round(completed / total * 100, 4) if total else 0.0,
+        )
 
     def notification(self, event: ProgressEvent) -> dict[str, object]:
         return event.to_dict()
@@ -37,12 +52,32 @@ class BackgroundRunController:
     def cancel(self, run: ProductionRun) -> ProductionRun:
         if run.status in _TERMINAL:
             return run
-        return run.model_copy(update={"status": "CANCELLED", "updated_at": datetime.now(UTC), "revision": run.revision + 1})
+        return run.model_copy(
+            update={
+                "status": "CANCELLED",
+                "updated_at": datetime.now(UTC),
+                "revision": run.revision + 1,
+            }
+        )
 
     def retry(self, run: ProductionRun) -> ProductionRun:
         if run.status not in {"FAILED", "BLOCKED"}:
             raise ValueError("only failed or blocked runs can be retried")
-        return run.model_copy(update={"status": "RUNNING", "failure": None, "updated_at": datetime.now(UTC), "revision": run.revision + 1})
+        return run.model_copy(
+            update={
+                "status": "RUNNING",
+                "failure": None,
+                "updated_at": datetime.now(UTC),
+                "revision": run.revision + 1,
+            }
+        )
 
     def fail(self, run: ProductionRun, failure: FailureRecord) -> ProductionRun:
-        return run.model_copy(update={"status": "FAILED", "failure": failure, "updated_at": datetime.now(UTC), "revision": run.revision + 1})
+        return run.model_copy(
+            update={
+                "status": "FAILED",
+                "failure": failure,
+                "updated_at": datetime.now(UTC),
+                "revision": run.revision + 1,
+            }
+        )

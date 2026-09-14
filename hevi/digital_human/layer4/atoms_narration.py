@@ -31,6 +31,7 @@ def build_narration_spine(
 def topic_to_script(topic: str, duration_s: int = 60) -> str:
     """把主题展开为可审阅的确定性旁白草稿。"""
     spine = build_narration_spine(topic, duration_s=duration_s)
-    parts = [spine["hook"], spine["promise"]] + spine["beats"] + [spine["synthesis"], spine["close"]]
+    parts = (
+        [spine["hook"], spine["promise"]] + spine["beats"] + [spine["synthesis"], spine["close"]]
+    )
     return "。".join(parts) + "。"
-

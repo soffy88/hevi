@@ -53,8 +53,20 @@ def test_video_evidence_index_and_search_return_traceable_refs(tmp_path: Path) -
     source.write_bytes(b"local media")
     output_dir = tmp_path / "evidence"
     segments = [
-        {"segment_id": "s1", "start_s": 0, "end_s": 3, "transcript": "a dog runs", "caption": "dog"},
-        {"segment_id": "s2", "start_s": 3, "end_s": 6, "transcript": "a cat sleeps", "caption": "cat"},
+        {
+            "segment_id": "s1",
+            "start_s": 0,
+            "end_s": 3,
+            "transcript": "a dog runs",
+            "caption": "dog",
+        },
+        {
+            "segment_id": "s2",
+            "start_s": 3,
+            "end_s": 6,
+            "transcript": "a cat sleeps",
+            "caption": "cat",
+        },
     ]
     indexed = asyncio.run(
         video_evidence_index(
@@ -99,7 +111,9 @@ def test_semantic_search_blocks_without_transcript_or_caption(tmp_path: Path) ->
     )
     assert indexed["status"] == "planned"
     searched = asyncio.run(
-        video_evidence_search(None, {"index_path": indexed["index_path"], "query": "dog"}, output_dir)
+        video_evidence_search(
+            None, {"index_path": indexed["index_path"], "query": "dog"}, output_dir
+        )
     )
     assert searched["status"] == "blocked"
     assert searched["evidence_refs"] == []

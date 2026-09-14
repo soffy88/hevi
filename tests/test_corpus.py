@@ -38,7 +38,10 @@ def test_save_and_load_roundtrip(tmp_path: Path):
     c = Corpus(root=tmp_path)
     c.records.append(
         ClipRecord(
-            clip_id="c1", source="local", source_id="x", source_url="",
+            clip_id="c1",
+            source="local",
+            source_id="x",
+            source_url="",
             local_path="clips/x.mp4",
         )
     )

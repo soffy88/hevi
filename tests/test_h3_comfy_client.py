@@ -163,9 +163,7 @@ def test_to_h3_refs_double_shot_and_secondary() -> None:
 
 def test_to_h3_refs_unknown_subject_degrades() -> None:
     shot = FakeShot(primary_speaker="不存在的人")
-    refs = to_h3_refs(
-        shot=shot, cast_map={"不存在的人": "char_999"}, subjects={}, scenes={}
-    )
+    refs = to_h3_refs(shot=shot, cast_map={"不存在的人": "char_999"}, subjects={}, scenes={})
     assert refs.primary_ref is None
     assert refs.ref_images == []
 

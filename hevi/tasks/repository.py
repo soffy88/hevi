@@ -296,8 +296,7 @@ class TaskRepository:
                     "WHERE status IN ('claimed', 'running') GROUP BY user_id"
                 )
                 tenant_running = {
-                    str(row["user_id"] or "anonymous"): int(row["running"])
-                    for row in active_rows
+                    str(row["user_id"] or "anonymous"): int(row["running"]) for row in active_rows
                 }
                 resources = ResourceSnapshot(
                     worker_id=worker_id,

@@ -61,9 +61,7 @@ def check_env(
     Returns:
         PreflightReport(can_proceed 为操作门)。
     """
-    missing: list[str] = [
-        binary for binary in REQUIRED_BINARIES if shutil.which(binary) is None
-    ]
+    missing: list[str] = [binary for binary in REQUIRED_BINARIES if shutil.which(binary) is None]
 
     whisper_ok = False
     if check_whisper:

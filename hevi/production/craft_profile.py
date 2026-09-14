@@ -41,14 +41,10 @@ class CraftProfile:
     illustration_box: dict[str, float] = field(default_factory=lambda: _box(0.08, 0.22, 0.84, 0.50))
     avatar_box: dict[str, float] = field(default_factory=lambda: _box(0.04, 0.70, 0.28, 0.22))
     avatar_enabled: bool = False
-    transition_families: list[str] = field(
-        default_factory=lambda: ["push-slide", "crossfade"]
-    )
+    transition_families: list[str] = field(default_factory=lambda: ["push-slide", "crossfade"])
     publish_platforms: list[str] = field(default_factory=lambda: ["generic"])
     illustration_required: bool = False
-    stock_sources: list[str] = field(
-        default_factory=lambda: ["pexels", "pixabay", "coverr"]
-    )
+    stock_sources: list[str] = field(default_factory=lambda: ["pexels", "pixabay", "coverr"])
     extra: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:

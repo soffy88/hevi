@@ -7,6 +7,7 @@ from app.config import config
 ROOT_DIR = Path(__file__).parent.parent.parent
 WEBUI_MAIN = ROOT_DIR / "webui" / "Main.py"
 
+
 def _widget_by_key(elements, key):
     return next(
         item
@@ -40,9 +41,7 @@ def test_webui_upload_post_checkboxes_stay_decoupled():
     # settings dialog must not rewrite either key, and each checkbox must
     # reflect and write only its own key.
     test_app_config = dict(
-        config.app,
-        upload_post_enabled=True,
-        upload_post_auto_upload=False
+        config.app, upload_post_enabled=True, upload_post_auto_upload=False
     )
 
     with (
@@ -69,13 +68,14 @@ def test_webui_upload_post_checkboxes_stay_decoupled():
         assert config.app["upload_post_enabled"] is True
         assert config.app["upload_post_auto_upload"] is True
 
+
 def test_webui_upload_post_youtube_privacy_fallback_to_public():
     # If the config somehow contains an invalid YouTube privacy value (e.g. "draft"),
     # it should not crash the UI and should silently fallback to "public".
     test_app_config = dict(
         config.app,
         upload_post_platforms=["youtube"],
-        upload_post_youtube_privacy_status="draft"
+        upload_post_youtube_privacy_status="draft",
     )
 
     with (
@@ -88,5 +88,7 @@ def test_webui_upload_post_youtube_privacy_fallback_to_public():
         app.run()
 
         # The selectbox should be rendered and its value should fallback to "public"
-        yt_privacy_selectbox = _widget_by_key(app.selectbox, "upload_post_youtube_privacy_status_selectbox")
+        yt_privacy_selectbox = _widget_by_key(
+            app.selectbox, "upload_post_youtube_privacy_status_selectbox"
+        )
         assert yt_privacy_selectbox.value == "public"

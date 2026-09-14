@@ -36,8 +36,10 @@ class RepairRepository:
     ) -> uuid.UUID:
         run_id = uuid.uuid5(uuid.NAMESPACE_URL, f"hevi:repair-run:{task_id}")
         current = controller.rounds[-1] if controller.rounds else None
-        status = "passed" if decision.stop_reason == "gates_passed" else (
-            "running" if decision.should_repair else "stopped"
+        status = (
+            "passed"
+            if decision.stop_reason == "gates_passed"
+            else ("running" if decision.should_repair else "stopped")
         )
         now = datetime.now(UTC).replace(tzinfo=None)
         async with self.pool.acquire() as conn, conn.transaction():
@@ -128,7 +130,9 @@ class RepairRepository:
                         item.evaluator_id,
                         severity_for(item.metric) if item.score is not None else 3.0,
                         str(evidence.get("message") or evidence.get("detail") or item.evaluator_id),
-                        any(action.reason.value == item.evaluator_id for action in decision.actions),
+                        any(
+                            action.reason.value == item.evaluator_id for action in decision.actions
+                        ),
                         item.constraint_id or item.evaluator_id,
                         evidence,
                         now,

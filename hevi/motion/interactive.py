@@ -77,9 +77,7 @@ def interactive_frame_budget(
     raise ValueError(f"unknown control_kind {control_kind!r}")
 
 
-def map_input_to_frame(
-    input_value: float, frame_count: int, *, mapping: str = "scroll"
-) -> int:
+def map_input_to_frame(input_value: float, frame_count: int, *, mapping: str = "scroll") -> int:
     """输入 → 目标帧(确定性)。
 
     - scroll/drag(一维):progress 0-1 → 帧(0..count-1),clamp。

@@ -36,9 +36,7 @@ def get_subtitle_filter(subtitle_path: Path, style: str = "default") -> str:
         fonts_dir = str(Path(font_file).parent).replace("\\", "/").replace(":", "\\:")
         preset = _STYLE_PRESETS.get(style)
         force_style = f"FontName={Path(font_file).stem}" + (f",{preset}" if preset else "")
-        return (
-            f"subtitles='{path_str}':fontsdir='{fonts_dir}':force_style='{force_style}'"
-        )
+        return f"subtitles='{path_str}':fontsdir='{fonts_dir}':force_style='{force_style}'"
     preset = _STYLE_PRESETS.get(style)
     force_style = f"FontName={font_name}" + (f",{preset}" if preset else "")
     return f"subtitles='{path_str}':force_style='{force_style}'"

@@ -108,9 +108,7 @@ class WorkspaceManager:
         """工单首次出现时落一行 pending;已存在则只刷新 pipeline_type。"""
         init_db()
         with Session(engine) as session:
-            existing = session.exec(
-                select(TaskRun).where(TaskRun.task_id == self.task_id)
-            ).first()
+            existing = session.exec(select(TaskRun).where(TaskRun.task_id == self.task_id)).first()
             if existing is None:
                 session.add(
                     TaskRun(

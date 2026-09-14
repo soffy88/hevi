@@ -69,7 +69,11 @@ class JianyingDraft:
         for i, clip in enumerate(self.clips):
             mid = f"{clip.track}-{i:03d}"
             bucket = (
-                "videos" if clip.track == "video" else "audios" if clip.track == "audio" else "texts"
+                "videos"
+                if clip.track == "video"
+                else "audios"
+                if clip.track == "audio"
+                else "texts"
             )
             materials[bucket].append(
                 {
@@ -91,9 +95,7 @@ class JianyingDraft:
                 "ratio": f"{self.width}:{self.height}",
             },
             "materials": materials,
-            "tracks": [
-                {"type": kind, "segments": segs} for kind, segs in tracks.items() if segs
-            ],
+            "tracks": [{"type": kind, "segments": segs} for kind, segs in tracks.items() if segs],
         }
 
     def to_meta(self) -> dict[str, Any]:

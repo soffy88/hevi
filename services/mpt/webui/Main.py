@@ -188,9 +188,7 @@ CREDENTIAL_COMPANION_KEYS = {
     ),
 }
 
-NON_LLM_COMPANION_KEYS = {
-    "app": ("upload_post_username",)
-}
+NON_LLM_COMPANION_KEYS = {"app": ("upload_post_username",)}
 # 同一个密钥在不同面板可能使用各自的控件 key：音频面板直接编辑 Gemini 和
 # MiMo 的 LLM 密钥，胜算云密钥的控件没有 _input 后缀。恢复备份时必须清除
 # 每一个别名，否则遗留的旧值会在下一次 rerun 覆盖刚刚恢复的密钥。
@@ -490,9 +488,7 @@ def _initialize_session_state():
         ),
         "subtitle_enabled_checkbox": _saved_ui_bool("subtitle_enabled", True),
         "stroke_color_picker": _saved_ui_color("stroke_color", "#000000"),
-        "stroke_width_slider": _saved_ui_number(
-            "stroke_width", 1.5, 0.0, 10.0
-        ),
+        "stroke_width_slider": _saved_ui_number("stroke_width", 1.5, 0.0, 10.0),
         "loomloom_candidate_count": _saved_ui_number(
             "loomloom_candidate_count",
             3,
@@ -1897,8 +1893,10 @@ def format_llm_connection_error(provider_id, base_url, error):
         "unauthorized",
     )
     provider = get_llm_provider(provider_id)
-    if provider is None or not provider.service_endpoints or not any(
-        marker in normalized_error for marker in authentication_markers
+    if (
+        provider is None
+        or not provider.service_endpoints
+        or not any(marker in normalized_error for marker in authentication_markers)
     ):
         return error_text
 
@@ -2598,7 +2596,11 @@ def _render_settings_dialog():
         )
 
         with publish_config_panel:
-            st.write(tr("Automatically publish generated videos to social media using upload-post.com"))
+            st.write(
+                tr(
+                    "Automatically publish generated videos to social media using upload-post.com"
+                )
+            )
             st.info(
                 tr("Upload-Post Setup Guide").format(
                     api_keys_url=UPLOAD_POST_API_KEYS_URL,
@@ -2615,7 +2617,7 @@ def _render_settings_dialog():
             upload_post_enabled = st.checkbox(
                 tr("Enable Upload-Post Integration"),
                 value=is_enabled,
-                key="upload_post_enabled_checkbox"
+                key="upload_post_enabled_checkbox",
             )
             if upload_post_enabled != is_enabled:
                 _set_runtime_config("app", "upload_post_enabled", upload_post_enabled)
@@ -2623,10 +2625,12 @@ def _render_settings_dialog():
             upload_post_auto_upload = st.checkbox(
                 tr("Enable Auto-Publish"),
                 value=is_auto,
-                key="upload_post_auto_upload_checkbox"
+                key="upload_post_auto_upload_checkbox",
             )
             if upload_post_auto_upload != is_auto:
-                _set_runtime_config("app", "upload_post_auto_upload", upload_post_auto_upload)
+                _set_runtime_config(
+                    "app", "upload_post_auto_upload", upload_post_auto_upload
+                )
 
             upload_post_api_key = st.text_input(
                 tr("Upload-Post API Key"),
@@ -2635,7 +2639,7 @@ def _render_settings_dialog():
                 help=tr("Upload-Post API Key Help").format(
                     api_keys_url=UPLOAD_POST_API_KEYS_URL
                 ),
-                key="upload_post_api_key_input"
+                key="upload_post_api_key_input",
             )
             if upload_post_api_key != config.app.get("upload_post_api_key", ""):
                 _set_runtime_config("app", "upload_post_api_key", upload_post_api_key)
@@ -2646,7 +2650,7 @@ def _render_settings_dialog():
                 help=tr("Upload-Post Profile Username Help").format(
                     manage_users_url=UPLOAD_POST_MANAGE_USERS_URL
                 ),
-                key="upload_post_username_input"
+                key="upload_post_username_input",
             )
             if upload_post_username != config.app.get("upload_post_username", ""):
                 _set_runtime_config("app", "upload_post_username", upload_post_username)
@@ -2654,26 +2658,40 @@ def _render_settings_dialog():
             upload_post_platforms = st.multiselect(
                 tr("Platforms"),
                 options=["tiktok", "instagram", "youtube"],
-                default=config.app.get("upload_post_platforms", ["tiktok", "instagram"]),
+                default=config.app.get(
+                    "upload_post_platforms", ["tiktok", "instagram"]
+                ),
                 help="Select platforms to publish to",
-                key="upload_post_platforms_multiselect"
+                key="upload_post_platforms_multiselect",
             )
-            if upload_post_platforms != config.app.get("upload_post_platforms", ["tiktok", "instagram"]):
-                _set_runtime_config("app", "upload_post_platforms", upload_post_platforms)
+            if upload_post_platforms != config.app.get(
+                "upload_post_platforms", ["tiktok", "instagram"]
+            ):
+                _set_runtime_config(
+                    "app", "upload_post_platforms", upload_post_platforms
+                )
 
             if "youtube" in upload_post_platforms:
                 yt_status_options = ["public", "private", "unlisted"]
-                yt_saved = config.app.get("upload_post_youtube_privacy_status", "public")
+                yt_saved = config.app.get(
+                    "upload_post_youtube_privacy_status", "public"
+                )
                 if yt_saved not in yt_status_options:
                     yt_saved = "public"
                 upload_post_youtube_privacy_status = st.selectbox(
                     tr("YouTube Privacy Status"),
                     options=yt_status_options,
                     index=yt_status_options.index(yt_saved),
-                    key="upload_post_youtube_privacy_status_selectbox"
+                    key="upload_post_youtube_privacy_status_selectbox",
                 )
-                if upload_post_youtube_privacy_status != config.app.get("upload_post_youtube_privacy_status", "public"):
-                    _set_runtime_config("app", "upload_post_youtube_privacy_status", upload_post_youtube_privacy_status)
+                if upload_post_youtube_privacy_status != config.app.get(
+                    "upload_post_youtube_privacy_status", "public"
+                ):
+                    _set_runtime_config(
+                        "app",
+                        "upload_post_youtube_privacy_status",
+                        upload_post_youtube_privacy_status,
+                    )
 
         # 左侧面板 - 日志设置
         with left_config_panel:
@@ -2745,14 +2763,12 @@ def _render_settings_dialog():
                 # 选择服务区域，再由 Registry 同步 API 申请入口和 Base URL，
                 # 避免手工组合错误。已有空 Base URL 配置继续沿用中国站，只有
                 # 尚未填写 Key 的全新配置才根据界面语言推荐对应入口。
-                selected_service_endpoint = (
-                    llm_provider_spec.select_service_endpoint(
-                        configured_llm_base_url,
-                        has_api_key=bool(str(llm_api_key).strip()),
-                        prefer_international=(
-                            st.session_state.get("ui_language", "en") != "zh"
-                        ),
-                    )
+                selected_service_endpoint = llm_provider_spec.select_service_endpoint(
+                    configured_llm_base_url,
+                    has_api_key=bool(str(llm_api_key).strip()),
+                    prefer_international=(
+                        st.session_state.get("ui_language", "en") != "zh"
+                    ),
                 )
                 endpoint_options = [
                     endpoint.endpoint_id
@@ -3432,9 +3448,7 @@ def _render_loomloom_script_generation(params):
         key="loomloom_script_duration_seconds",
     )
     _set_runtime_config("ui", "loomloom_candidate_count", int(candidate_count))
-    _set_runtime_config(
-        "ui", "loomloom_script_duration_seconds", int(duration_seconds)
-    )
+    _set_runtime_config("ui", "loomloom_script_duration_seconds", int(duration_seconds))
     input_signature = _loomloom_script_signature(
         subject=params.video_subject,
         language=params.video_language,
@@ -3918,9 +3932,7 @@ def _render_video_settings(panel, params):
                 key="video_clip_duration_select",
                 help=tr("Clip Duration Help"),
             )
-            _set_runtime_config(
-                "ui", "video_clip_duration", params.video_clip_duration
-            )
+            _set_runtime_config("ui", "video_clip_duration", params.video_clip_duration)
             clip_speed_key = localized_widget_key("video_clip_speed_slider")
             # session_state 可能来自旧任务、API 参数或旧版页面状态。控件创建前
             # 统一归一化，既保留合法选择，也确保 slider 始终收到 0.5～2.0
@@ -3945,9 +3957,7 @@ def _render_video_settings(panel, params):
             params.video_count = stable_selectbox(
                 tr("Number of Videos Generated Simultaneously"),
                 options=video_count_options,
-                default_value=_saved_ui_choice(
-                    "video_count", video_count_options, 1
-                ),
+                default_value=_saved_ui_choice("video_count", video_count_options, 1),
                 key="video_count_select",
             )
             _set_runtime_config("ui", "video_count", params.video_count)
@@ -4013,9 +4023,7 @@ def _render_wavespeed_video_settings(params):
         max_clips = max(
             math.ceil(estimated_range[1] * video_count / clip_duration), min_clips
         )
-        st.warning(
-            tr("WaveSpeed Billing Notice").format(min=min_clips, max=max_clips)
-        )
+        st.warning(tr("WaveSpeed Billing Notice").format(min=min_clips, max=max_clips))
     else:
         st.warning(tr("WaveSpeed Billing Notice Without Script"))
     st.checkbox(
@@ -4784,9 +4792,7 @@ def _render_background_music_settings(params, elevenlabs_api_key_rendered=False)
             key="custom_bgm_file_input",
             disabled=uploaded_bgm_file is not None,
         )
-        _set_runtime_config(
-            "ui", "custom_bgm_file", custom_bgm_file.strip()
-        )
+        _set_runtime_config("ui", "custom_bgm_file", custom_bgm_file.strip())
         if uploaded_bgm_file is None and custom_bgm_file and bgm_enabled:
             # 文件名由服务层映射到 storage/bgm 或 resource/songs 后校验，
             # UI 不接受两个白名单目录之外的任意路径。
@@ -4808,9 +4814,7 @@ def _render_background_music_settings(params, elevenlabs_api_key_rendered=False)
             max_chars=sonilo_service.MAX_PROMPT_LENGTH,
             help=tr("Sonilo Music Prompt Help"),
         ).strip()
-        _set_runtime_config(
-            "ui", "sonilo_bgm_prompt", params.video_music_prompt
-        )
+        _set_runtime_config("ui", "sonilo_bgm_prompt", params.video_music_prompt)
         if params.video_count > 1:
             st.warning(tr("Sonilo Multiple Videos Warning"))
         if st.button(
@@ -4837,9 +4841,7 @@ def _render_background_music_settings(params, elevenlabs_api_key_rendered=False)
             max_chars=elevenlabs_music_service.MAX_PROMPT_LENGTH,
             help=tr("ElevenLabs Music Prompt Help"),
         ).strip()
-        _set_runtime_config(
-            "ui", "elevenlabs_music_prompt", params.video_music_prompt
-        )
+        _set_runtime_config("ui", "elevenlabs_music_prompt", params.video_music_prompt)
         if params.video_count > 1:
             st.warning(tr("ElevenLabs Multiple Videos Warning"))
         if st.button(
@@ -5019,9 +5021,8 @@ def _render_audio_settings(panel, params):
                 if voice.is_fish_audio_voice(v):
                     parts = v.split(":", 2)
                     display_name = parts[2] if len(parts) >= 3 else v
-                    return (
-                        display_name.replace("Female", tr("Female"))
-                        .replace("Male", tr("Male"))
+                    return display_name.replace("Female", tr("Female")).replace(
+                        "Male", tr("Male")
                     )
                 return (
                     v.replace("Female", tr("Female"))
@@ -5213,7 +5214,8 @@ def _render_audio_settings(panel, params):
             ):
                 saved_fish_api_key = (
                     config.fish_audio.get("api_key", "")
-                    if hasattr(config, "fish_audio") and isinstance(config.fish_audio, dict)
+                    if hasattr(config, "fish_audio")
+                    and isinstance(config.fish_audio, dict)
                     else ""
                 )
                 fish_audio_api_key = st.text_input(
@@ -5231,7 +5233,8 @@ def _render_audio_settings(panel, params):
                 ]
                 saved_fish_model = (
                     config.fish_audio.get("model", "s2.1-pro-free")
-                    if hasattr(config, "fish_audio") and isinstance(config.fish_audio, dict)
+                    if hasattr(config, "fish_audio")
+                    and isinstance(config.fish_audio, dict)
                     else "s2.1-pro-free"
                 )
                 if saved_fish_model not in _fish_audio_models:

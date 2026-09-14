@@ -63,11 +63,13 @@ def character_error_rate(expected: str, actual: str) -> float:
     for index, char in enumerate(source, start=1):
         current = [index]
         for target_index, target_char in enumerate(target, start=1):
-            current.append(min(
-                current[-1] + 1,
-                previous[target_index] + 1,
-                previous[target_index - 1] + (char != target_char),
-            ))
+            current.append(
+                min(
+                    current[-1] + 1,
+                    previous[target_index] + 1,
+                    previous[target_index - 1] + (char != target_char),
+                )
+            )
         previous = current
     return previous[-1] / len(source)
 
@@ -123,8 +125,13 @@ async def verify_and_retry(
         words = result.get("words", []) if isinstance(result, dict) else []
         cer = character_error_rate(text, transcript)
         if cer < max_cer:
-            return {"passed": True, "attempt": attempt, "cer": cer, "transcript": transcript,
-                    "lines": chunk_word_timestamps_for_mobile(words) if words else []}
+            return {
+                "passed": True,
+                "attempt": attempt,
+                "cer": cer,
+                "transcript": transcript,
+                "lines": chunk_word_timestamps_for_mobile(words) if words else [],
+            }
         if retry_synthesize is not None and attempt <= retries:
             retried = retry_synthesize()
             audio_path = Path(await retried if inspect.isawaitable(retried) else retried)

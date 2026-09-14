@@ -523,9 +523,7 @@ async def assemble_longvideo(
 
         # ② 视频拼接
         silent = tmp_dir / "video_silent.mp4"
-        xfade_d: float = (
-            min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
-        )
+        xfade_d: float = min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
         use_xfade = transition != "cut" and len(durations) > 1 and xfade_d > 0.05
 
         if use_xfade and bgm_beat_align and bgm_path is not None and bgm_path.exists():
@@ -535,9 +533,7 @@ async def assemble_longvideo(
 
             beats = await asyncio.to_thread(detect_beat_times, bgm_path)
             if beats:
-                snapped = beat_snapped_xfade_durations(
-                    durations, base_xfade_d=xfade_d, beats=beats
-                )
+                snapped = beat_snapped_xfade_durations(durations, base_xfade_d=xfade_d, beats=beats)
                 xfade_d = snapped[0] if isinstance(snapped, list) else snapped
 
         if use_xfade:

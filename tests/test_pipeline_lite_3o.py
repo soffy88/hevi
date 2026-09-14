@@ -176,9 +176,7 @@ def test_lite_broll_atom_parses_pexels_videos(monkeypatch: pytest.MonkeyPatch) -
     fake_client = httpx.AsyncClient(transport=httpx.MockTransport(_fake_get))
 
     async def with_key() -> None:
-        items = await fetch_broll_video_url(
-            "物理", api_key="k", client=fake_client
-        )
+        items = await fetch_broll_video_url("物理", api_key="k", client=fake_client)
         assert items and len(items) == 1
         # 优先 mp4 直链(跳过 hls)。
         assert items[0]["preview_url"] == "https://videos.pexels.com/hd.mp4"
@@ -195,10 +193,20 @@ def _fake_tts(duration_s: float = 2.4):
         out = Path(str(output_path))
         out.parent.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(
-            ["ffmpeg", "-y", "-f", "lavfi", "-i",
-             f"sine=frequency=440:duration={duration_s}",
-             "-c:a", "pcm_s16le", str(out)],
-            capture_output=True, text=True, timeout=60,
+            [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"sine=frequency=440:duration={duration_s}",
+                "-c:a",
+                "pcm_s16le",
+                str(out),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         if result.returncode != 0:
             raise RuntimeError(f"fake TTS ffmpeg 失败: {result.stderr[-200:]}")
@@ -260,9 +268,7 @@ def _chromium_available() -> bool:
     return any(
         (candidates / name / "chrome-linux" / "chrome").exists()
         or (candidates / name / "chrome-headless-shell-linux64" / "chrome-headless-shell").exists()
-        for name in (
-            entry.name for entry in candidates.iterdir() if entry.is_dir()
-        )
+        for name in (entry.name for entry in candidates.iterdir() if entry.is_dir())
     )
 
 
@@ -292,16 +298,38 @@ def test_lite_assembler_e2e_produces_nonempty_mp4(tmp_path: Path) -> None:
         assert final.exists() and final.stat().st_size > 0
         # ffprobe: mp4 容器 + 必须包含音频轨(音画同步产物)。
         probe = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=format_name",
-             "-of", "default=nw=1", str(final)],
-            capture_output=True, text=True, timeout=30,
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=format_name",
+                "-of",
+                "default=nw=1",
+                str(final),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         assert probe.returncode == 0
         assert "mp4" in (probe.stdout or "")
         audio = subprocess.run(
-            ["ffprobe", "-v", "error", "-select_streams", "a",
-             "-show_entries", "stream=index", "-of", "csv=p=0", str(final)],
-            capture_output=True, text=True, timeout=30,
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=index",
+                "-of",
+                "csv=p=0",
+                str(final),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         assert audio.returncode == 0 and audio.stdout.strip(), "final.mp4 缺少音频轨"
         # 时间戳文件存在且与 cue 对齐。

@@ -135,16 +135,10 @@ def validate_skill_definition(skill: SkillDefinition) -> list[str]:
         skill.capabilities.can_apply_canvas_patch
         and not skill.capabilities.can_propose_canvas_patch
     ):
-        issues.append(
-            f"{skill.skill_id}: can_apply_canvas_patch 必须伴随 can_propose_canvas_patch"
-        )
-    patch_outputs = [
-        o for o in skill.outputs if o.media_type in ("node_patch", "graph_patch")
-    ]
+        issues.append(f"{skill.skill_id}: can_apply_canvas_patch 必须伴随 can_propose_canvas_patch")
+    patch_outputs = [o for o in skill.outputs if o.media_type in ("node_patch", "graph_patch")]
     if skill.capabilities.can_apply_canvas_patch and not patch_outputs:
-        issues.append(
-            f"{skill.skill_id}: 声明可改画布但无 node_patch/graph_patch 输出"
-        )
+        issues.append(f"{skill.skill_id}: 声明可改画布但无 node_patch/graph_patch 输出")
     if skill.capabilities.can_read_canvas and not skill.inputs:
         issues.append(f"{skill.skill_id}: 声明读画布但无输入规格")
     return issues
@@ -170,6 +164,4 @@ class SkillRegistry:
         """按能力查询(如"谁能改画布")。"""
         if capability not in CAPABILITIES:
             raise KeyError(f"unknown capability {capability!r}")
-        return [
-            s for s in self._skills.values() if getattr(s.capabilities, capability)
-        ]
+        return [s for s in self._skills.values() if getattr(s.capabilities, capability)]

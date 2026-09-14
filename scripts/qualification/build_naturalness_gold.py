@@ -68,8 +68,7 @@ CASES: dict[str, dict[str, list[tuple[str, str | None, dict[str, Any] | None]]]]
     "GENERIC_TRANSITION": {
         "positive": [
             (
-                "Meanwhile the gate opened. Meanwhile the yard emptied. "
-                "Meanwhile the wind fell.",
+                "Meanwhile the gate opened. Meanwhile the yard emptied. Meanwhile the wind fell.",
                 "sentence:1",
                 None,
             ),
@@ -204,12 +203,28 @@ CASES: dict[str, dict[str, list[tuple[str, str | None, dict[str, Any] | None]]]]
     },
     "SYNTACTIC_MONOTONY": {
         "positive": [
-            ("The gate was open. A yard was empty. A wind was cold. The road was long.", "text:all", None),
-            ("The bell was loud. A room was dark. A door was shut. The hall was still.", "text:all", None),
+            (
+                "The gate was open. A yard was empty. A wind was cold. The road was long.",
+                "text:all",
+                None,
+            ),
+            (
+                "The bell was loud. A room was dark. A door was shut. The hall was still.",
+                "text:all",
+                None,
+            ),
         ],
         "negative": [
-            ("The gate stood open. A yard lay empty. A wind cut cold. The road bent long.", None, None),
-            ("The bell rang loud. A room fell dark. A door swung shut. The hall went still.", None, None),
+            (
+                "The gate stood open. A yard lay empty. A wind cut cold. The road bent long.",
+                None,
+                None,
+            ),
+            (
+                "The bell rang loud. A room fell dark. A door swung shut. The hall went still.",
+                None,
+                None,
+            ),
         ],
     },
 }

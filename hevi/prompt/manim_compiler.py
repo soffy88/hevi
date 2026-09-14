@@ -90,12 +90,12 @@ class ManimSceneIR:
         for item in data.get("series") or []:
             try:
                 series.append(float(item))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
         labels = [str(item) for item in (data.get("labels") or [])]
         try:
             duration = float(data.get("duration_s") or 5.0)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             duration = 5.0
         return ManimSceneIR(
             recipe=recipe,
@@ -258,8 +258,7 @@ def _recipe_body(scene: ManimSceneIR, *, token_cls: str, fg: str, accent: str) -
         items = scene.bullets or [tex]
         lines.append("        group = VGroup()")
         lines.extend(
-            f"        group.add(Text({item!r}, font_size=32, color={fg!r}))"
-            for item in items[:6]
+            f"        group.add(Text({item!r}, font_size=32, color={fg!r}))" for item in items[:6]
         )
         lines.append("        group.arrange(DOWN, aligned_edge=LEFT, buff=0.35)")
         lines.append("        group.move_to(ORIGIN)")
@@ -278,8 +277,7 @@ def _recipe_body(scene: ManimSceneIR, *, token_cls: str, fg: str, accent: str) -
         return "\n".join(lines) + "\n"
     if scene.recipe == "number_line":
         lines.append(
-            "        line = NumberLine("
-            "x_range=[-4, 4, 1], length=10, include_numbers=True)"
+            "        line = NumberLine(x_range=[-4, 4, 1], length=10, include_numbers=True)"
         )
         lines.append(f"        dot = Dot(color={accent!r}).move_to(line.n2p(0))")
         lines.append("        self.play(Create(line), run_time=0.8)")
@@ -290,8 +288,7 @@ def _recipe_body(scene: ManimSceneIR, *, token_cls: str, fg: str, accent: str) -
         series = scene.series or [0.4, 1.1, 0.8, 1.6, 1.2]
         pairs = ", ".join(f"({index}, {value:.4f})" for index, value in enumerate(series))
         lines.append(
-            "        axes = Axes(x_range=[0, 6, 1], y_range=[0, 3, 1],"
-            " x_length=8, y_length=4)"
+            "        axes = Axes(x_range=[0, 6, 1], y_range=[0, 3, 1], x_length=8, y_length=4)"
         )
         lines.append(
             f"        dots = VGroup(*[Dot(axes.c2p(x, y), color={accent!r})"

@@ -61,9 +61,7 @@ def emotion_tts_params(emotion: str) -> dict[str, str]:
     return EMOTION_PROFILES.get(emotion, EMOTION_PROFILES["neutral"])
 
 
-def apply_emotion_to_edge_tts(
-    base_params: dict[str, str], emotion: str
-) -> dict[str, str]:
+def apply_emotion_to_edge_tts(base_params: dict[str, str], emotion: str) -> dict[str, str]:
     """把情感参数合入 edge-tts 调用参数(显式情感覆盖 base)。"""
     merged = dict(base_params)
     prof = emotion_tts_params(emotion)

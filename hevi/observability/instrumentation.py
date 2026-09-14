@@ -38,9 +38,7 @@ async def track_provider_call(provider: str) -> AsyncGenerator[None]:
 
 
 @asynccontextmanager
-async def track_video_generation(
-    provider: str, duration_archetype: str
-) -> AsyncGenerator[None]:
+async def track_video_generation(provider: str, duration_archetype: str) -> AsyncGenerator[None]:
     """Metrics instrumentation for a video generation job."""
     video_generation_in_progress.inc()
     start = time.monotonic()

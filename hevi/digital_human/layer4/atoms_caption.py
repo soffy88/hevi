@@ -48,7 +48,10 @@ def split_into_phrases(
     for sentence in sentences:
         # 长句子进一步拆分
         if len(sentence) > max_phrase_chars:
-            sub_phrases = [sentence[i:i+max_phrase_chars] for i in range(0, len(sentence), max_phrase_chars)]
+            sub_phrases = [
+                sentence[i : i + max_phrase_chars]
+                for i in range(0, len(sentence), max_phrase_chars)
+            ]
         else:
             sub_phrases = [sentence]
 

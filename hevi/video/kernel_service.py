@@ -21,9 +21,9 @@ _WAN_MAX_FRAMES = 161  # ~10s @16fps,1.3B 单卡 10GB 的务实上限
 def _wan_local_size(resolution: tuple[int, int]) -> tuple[int, int]:
     """把目标分辨率夹取为 wan 可行的 480p 级,保留朝向(竖/横/方)。"""
     w, h = resolution
-    if w < h:        # 竖屏
+    if w < h:  # 竖屏
         return (480, 832)
-    if w > h:        # 横屏
+    if w > h:  # 横屏
         return (832, 480)
     return (576, 576)  # 方形
 
@@ -80,10 +80,14 @@ async def generate_clip(
     # RFC-002 item 9: 单片内核入口校验 provider 能力,非法分辨率/时长/fps/模式
     # 在消耗算力/API 前 fail-fast(此前 validate_request 是死代码)。
     from hevi.video.capability_guard import PROVIDER_LIMITS, validate_request
+
     if provider_str in PROVIDER_LIMITS:
         await validate_request(
-            provider=provider_str, mode=mode, resolution=resolution,
-            duration_s=duration_s, fps=profile.fps,
+            provider=provider_str,
+            mode=mode,
+            resolution=resolution,
+            duration_s=duration_s,
+            fps=profile.fps,
         )
 
     async with track_provider_call(provider_str):

@@ -32,7 +32,10 @@ def test_screenshot_studio_renders_local_frame_and_keyframes(tmp_path: Path) -> 
     source = tmp_path / "screen.png"
     Image.new("RGB", (400, 240), "#ffffff").save(source)
     project = new_project(title="demo", screenshot_path=str(source), frame="browser")
-    project.keyframes = [{"layer_id": "screen-1", "time_s": 0}, {"layer_id": "screen-1", "time_s": 1.2}]
+    project.keyframes = [
+        {"layer_id": "screen-1", "time_s": 0},
+        {"layer_id": "screen-1", "time_s": 1.2},
+    ]
     assert animation_plan(project)["valid"] is True
     result = render_project(project, tmp_path / "out.png")
     assert Path(result["output_path"]).exists()
@@ -86,7 +89,12 @@ def test_timeline_split_preserves_nle_clip_properties() -> None:
     )
     split_at(timeline.timeline_id, 2)
     right = next(clip for clip in timeline.clips if clip.clip_id.startswith("v0s"))
-    assert (right.speed, right.reverse, right.transition, right.effect) == (2, True, "dissolve", "warm")
+    assert (right.speed, right.reverse, right.transition, right.effect) == (
+        2,
+        True,
+        "dissolve",
+        "warm",
+    )
     assert right.source_in_s == 4
 
 

@@ -34,9 +34,7 @@ class CoverModule:
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes(payload)
             provenance.append(
-                ProvenanceRef(
-                    ref_id=str(destination), ref_type="COVER_ARTIFACT", sha256=digest
-                )
+                ProvenanceRef(ref_id=str(destination), ref_type="COVER_ARTIFACT", sha256=digest)
             )
         artifact = CreativeArtifact(
             project_id=brief.project_id,

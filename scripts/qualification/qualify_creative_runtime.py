@@ -1133,9 +1133,7 @@ def qualify_revision(root: Path) -> Evidence:
             "REAUDIT": gold.checks["REAUDIT"],
             "ISSUE_RESOLUTION_TRACE": gold.checks["ISSUE_RESOLUTION_TRACE"],
             "UNRESOLVED_ISSUES_PRESERVED": gold.checks["UNRESOLVED_ISSUES_PRESERVED"],
-            "MAX_REVISION_ITERATIONS_ENFORCED": gold.checks[
-                "MAX_REVISION_ITERATIONS_ENFORCED"
-            ],
+            "MAX_REVISION_ITERATIONS_ENFORCED": gold.checks["MAX_REVISION_ITERATIONS_ENFORCED"],
             "REJECT_NO_CANON_MUTATION": gold.checks["REJECT_NO_CANON_MUTATION"],
             "CONFLICTING_ISSUES_HELD": gold.checks["CONFLICTING_ISSUES_HELD"],
         },
@@ -2491,9 +2489,7 @@ def qualify_play(root: Path) -> Evidence:
             "WORLD_ID_PRESERVED": restored.world_id == world.object_id,
             "NO_DUPLICATE_TURNS": len({turn.turn_id for turn in restored.turn_history}) == 50,
             "INVENTORY_EVIDENCE_RELATIONSHIP_STATE": (
-                sum(
-                    item.quantity for item in restored.inventory if item.item_id == "harbour-key"
-                )
+                sum(item.quantity for item in restored.inventory if item.item_id == "harbour-key")
                 == 3
                 and len(restored.evidence) == 1
                 and restored.evidence[0].discovered_at_turn == 10
@@ -2736,7 +2732,11 @@ def qualify_analytics(root: Path) -> Evidence:
         revision_count=2,
         usage=(
             UsageRecord(
-                model="local", prompt_tokens=10, completion_tokens=5, cost_usd=0.02, latency_ms=100.0
+                model="local",
+                prompt_tokens=10,
+                completion_tokens=5,
+                cost_usd=0.02,
+                latency_ms=100.0,
             ),
             UsageRecord(
                 model="remote",
@@ -2746,7 +2746,11 @@ def qualify_analytics(root: Path) -> Evidence:
                 latency_ms=200.0,
             ),
             UsageRecord(
-                model="remote", prompt_tokens=5, completion_tokens=5, cost_usd=0.20, latency_ms=300.0
+                model="remote",
+                prompt_tokens=5,
+                completion_tokens=5,
+                cost_usd=0.20,
+                latency_ms=300.0,
             ),
         ),
     )
@@ -2775,9 +2779,7 @@ def qualify_analytics(root: Path) -> Evidence:
                 and restored["latency_ms_avg"] == 200.0
             ),
             "MISSING_TELEMETRY_ZEROED": (
-                empty.token_usage == {}
-                and empty.cost_usd == 0.0
-                and empty.latency_ms_avg == 0.0
+                empty.token_usage == {} and empty.cost_usd == 0.0 and empty.latency_ms_avg == 0.0
             ),
             "PRIVACY_NO_TEXT": "one two three" not in path.read_text(),
         },
@@ -2956,7 +2958,7 @@ def qualify_webhooks(root: Path) -> Evidence:
                 valid = signer.verify(
                     self.headers.get("X-Hevi-Signature", ""), event, envelope["payload"]
                 )
-            except (ValueError, KeyError, TypeError):
+            except ValueError, KeyError, TypeError:
                 valid = False
             received.append(valid)
             attempts_seen[event] = attempts_seen.get(event, 0) + 1
@@ -3128,9 +3130,7 @@ def qualify_studio(root: Path) -> Evidence:
             active = state["gateway"]
             parsed = urllib.parse.urlsplit(self.path)
             if parsed.path == "/studio/status":
-                self._send_json(
-                    200, {"progress": active.progress(), "order": list(active.order)}
-                )
+                self._send_json(200, {"progress": active.progress(), "order": list(active.order)})
             elif parsed.path == "/studio/artifact":
                 ref = urllib.parse.parse_qs(parsed.query).get("ref", [""])[0]
                 blob = (art_dir / f"{ref.split(':', 1)[-1]}.txt").read_bytes()
@@ -3296,9 +3296,7 @@ def qualify_genre(root: Path) -> Evidence:
     )
     fatigue_gate = any(
         finding.code == "FATIGUE_WORD"
-        for finding in module.audit(
-            mystery, "Suddenly a. Suddenly b. Suddenly c. Suddenly d."
-        )
+        for finding in module.audit(mystery, "Suddenly a. Suddenly b. Suddenly c. Suddenly d.")
     )
     required_gate = any(
         finding.code == "REQUIRED_PATTERN_MISSING"
@@ -3394,15 +3392,13 @@ def qualify_naturalness(root: Path) -> Evidence:
         "synthetic-writing-quality",
         str(metrics_path),
         {
-            "NATURALNESS_DETECTION": gold.detection_rate
-            >= gold.thresholds["detection_rate"],
+            "NATURALNESS_DETECTION": gold.detection_rate >= gold.thresholds["detection_rate"],
             "NATURALNESS_FALSE_POSITIVE_GATE": gold.false_positive_rate
             <= gold.thresholds["false_positive_rate"],
             "NATURALNESS_REVISION": gold.revision_improvement_rate
             >= gold.thresholds["revision_improvement_rate"],
             "FULL_DEFECT_CORPUS": gold.total_fixtures >= 44 and gold.positive_fixtures >= 22,
-            "NATURALNESS_LOCATION": gold.location_accuracy
-            >= gold.thresholds["location_accuracy"],
+            "NATURALNESS_LOCATION": gold.location_accuracy >= gold.thresholds["location_accuracy"],
             "CLEAN_FALSE_POSITIVE": clean.status == "PASS",
             "DEFECT_DETECTED": bool(defect.findings),
             "LOCATION_TRACE": traced,

@@ -57,7 +57,9 @@ def test_infographic_without_timeline_does_not_stagger_by_chars(tmp_path: Path) 
     dest = tmp_path / "deck.mp4"
     spec = deck_spec_from_narration("盐税是间接税。因为短缺所以涨价。", 400)
     assert spec["relationship_type"] == "cause"
-    out = render_infographic_cue("盐税是间接税。因为短缺所以涨价。", duration_ms=400, dest=dest, width=320, height=180, fps=8)
+    out = render_infographic_cue(
+        "盐税是间接税。因为短缺所以涨价。", duration_ms=400, dest=dest, width=320, height=180, fps=8
+    )
     assert out.exists()
 
 

@@ -13,12 +13,17 @@ CATALOG = ROOT / "docs/generated/line_catalog.md"
 
 def main() -> int:
     before = CATALOG.read_text(encoding="utf-8") if CATALOG.exists() else None
-    subprocess.run([sys.executable, str(ROOT / "scripts/generate_line_catalog.py")], cwd=ROOT, check=True)
+    subprocess.run(
+        [sys.executable, str(ROOT / "scripts/generate_line_catalog.py")], cwd=ROOT, check=True
+    )
     after = CATALOG.read_text(encoding="utf-8")
     if before != after:
         if before is not None:
             CATALOG.write_text(before, encoding="utf-8")
-        print("line catalog drift: run scripts/generate_line_catalog.py and commit the result", file=sys.stderr)
+        print(
+            "line catalog drift: run scripts/generate_line_catalog.py and commit the result",
+            file=sys.stderr,
+        )
         return 1
     return 0
 

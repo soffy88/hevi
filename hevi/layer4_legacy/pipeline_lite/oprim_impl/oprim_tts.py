@@ -111,13 +111,19 @@ async def _concat_with_gap(segments: list[Path], output: Path, *, gap_s: float) 
     filters.append(f"{concat_inputs}concat=n={len(segments)}:v=0:a=1[out]")
 
     cmd = [
-        "ffmpeg", "-y",
+        "ffmpeg",
+        "-y",
         *inputs,
-        "-filter_complex", ";".join(filters),
-        "-map", "[out]",
-        "-c:a", "pcm_s16le",
-        "-ar", "24000",
-        "-ac", "1",
+        "-filter_complex",
+        ";".join(filters),
+        "-map",
+        "[out]",
+        "-c:a",
+        "pcm_s16le",
+        "-ar",
+        "24000",
+        "-ac",
+        "1",
         str(output),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)

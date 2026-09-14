@@ -137,7 +137,9 @@ class OnnxEmbedder:
             ort = importlib.import_module("onnxruntime")
         except ImportError as exc:  # pragma: no cover - optional environment
             raise RuntimeError("onnxruntime is not installed for ONNX memory embeddings") from exc
-        self._session = ort.InferenceSession(str(self.model_path), providers=["CPUExecutionProvider"])
+        self._session = ort.InferenceSession(
+            str(self.model_path), providers=["CPUExecutionProvider"]
+        )
         return self._session
 
     def embed(self, text: str) -> list[float]:
@@ -157,7 +159,9 @@ class OnnxEmbedder:
             values = values[0]
         if values and isinstance(values[0], list):
             rows = values
-            values = [sum(float(row[index]) for row in rows) / len(rows) for index in range(len(rows[0]))]
+            values = [
+                sum(float(row[index]) for row in rows) / len(rows) for index in range(len(rows[0]))
+            ]
         if not isinstance(values, list):
             values = [values]
         vector = [float(item) for item in values]
@@ -215,9 +219,7 @@ class MemoryStore:
         if kind not in ("short_term", "summary", "semantic"):
             raise ValueError(f"unknown memory kind: {kind}")
         if embedding is None:
-            embedding = self._embedder(
-                key + " " + json.dumps(payload, ensure_ascii=False)[:2000]
-            )
+            embedding = self._embedder(key + " " + json.dumps(payload, ensure_ascii=False)[:2000])
         now = datetime.now(UTC).isoformat()
         payload_json = json.dumps(payload, ensure_ascii=False)
         with self._connect() as conn:
@@ -288,9 +290,7 @@ class MemoryStore:
         return hits[:k]
 
     def _query(self, where: str, params: tuple[Any, ...]) -> list[MemoryHit]:
-        sql = (
-            "SELECT id, kind, key, payload, created_at FROM memories WHERE " + where
-        )
+        sql = "SELECT id, kind, key, payload, created_at FROM memories WHERE " + where
         with self._connect() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [
@@ -340,11 +340,15 @@ class MemoryStore:
             if row["key"] != key and key not in str(row["payload"]):
                 continue
             facts.append(f"{row['key']}: {row['payload']}")
-        summary = "\n".join(facts)[:max(1, int(max_chars))]
+        summary = "\n".join(facts)[: max(1, int(max_chars))]
         return self.remember(
             "summary",
             key,
-            {"summary": summary, "source_count": len(facts), "generated_by": "hevi-deterministic-consolidator"},
+            {
+                "summary": summary,
+                "source_count": len(facts),
+                "generated_by": "hevi-deterministic-consolidator",
+            },
         )
 
 

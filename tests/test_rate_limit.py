@@ -1,4 +1,5 @@
 """Rate limiting — disabled under debug, enforced otherwise (per-IP sliding window)."""
+
 import uuid
 from typing import Any
 
@@ -39,7 +40,5 @@ async def test_limit_disabled_under_debug(client: Any) -> None:
     """debug 模式(测试默认)下不限流 — 连发不出现 429。"""
     rl._BUCKETS.clear()
     body = {"email": f"nope_{uuid.uuid4().hex[:6]}@example.com", "password": "wrongpass1"}
-    statuses = [
-        (await client.post("/api/auth/login", json=body)).status_code for _ in range(15)
-    ]
+    statuses = [(await client.post("/api/auth/login", json=body)).status_code for _ in range(15)]
     assert 429 not in statuses

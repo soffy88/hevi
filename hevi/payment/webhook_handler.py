@@ -10,12 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebhookHandler:
-    def __init__(
-        self, 
-        order_svc: OrderService, 
-        paddle_svc: PaddleService,
-        repo: OrderRepository
-    ):
+    def __init__(self, order_svc: OrderService, paddle_svc: PaddleService, repo: OrderRepository):
         self._order_svc = order_svc
         self._paddle_svc = paddle_svc
         self._repo = repo
@@ -29,6 +24,7 @@ class WebhookHandler:
 
         # 2. Parse payload
         import json
+
         try:
             payload = json.loads(raw_body)
         except json.JSONDecodeError:
@@ -37,7 +33,7 @@ class WebhookHandler:
         event_id = payload.get("event_id")
         event_type = payload.get("event_type")
         data = payload.get("data", {})
-        
+
         if not event_id or not event_type:
             raise ValueError("Missing event_id or event_type")
 
@@ -56,11 +52,11 @@ class WebhookHandler:
                 await self._order_svc.fulfill_order(order_id, event_id)
             else:
                 logger.error(f"Webhook {event_id} missing order_id in custom_data")
-        
+
         elif event_type == "transaction.failed":
             order_id = data.get("custom_data", {}).get("order_id")
             if order_id:
                 await self._order_svc.fail_order(order_id)
-        
+
         else:
             logger.info(f"Unhandled webhook event type: {event_type}")

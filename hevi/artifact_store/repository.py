@@ -56,9 +56,7 @@ class ArtifactRepository:
         sql = (
             "SELECT id, revision_id, kind, logical_role, uri, sha256, byte_size, "
             "media_type, created_by_attempt_id, metadata "
-            "FROM artifacts WHERE "
-            + " AND ".join(clauses)
-            + " ORDER BY created_at ASC, id ASC"
+            "FROM artifacts WHERE " + " AND ".join(clauses) + " ORDER BY created_at ASC, id ASC"
         )
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(sql, *params)
@@ -168,9 +166,7 @@ class ArtifactRepository:
                 and artifact.sha256
                 and artifact.byte_size is not None
             ):
-                raise ValueError(
-                    "production artifact requires object URI, sha256, and byte_size"
-                )
+                raise ValueError("production artifact requires object URI, sha256, and byte_size")
         source_artifacts = [
             artifact.model_copy(
                 update={

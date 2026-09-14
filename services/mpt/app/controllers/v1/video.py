@@ -28,7 +28,7 @@ from app.models.schema import (
     TaskResponse,
     TaskVideoRequest,
     VideoMaterialUploadResponse,
-    VideoMaterialRetrieveResponse
+    VideoMaterialRetrieveResponse,
 )
 from app.services import bgm as bgm_service
 from app.services import material_upload as material_upload_service
@@ -76,7 +76,9 @@ def _sanitize_upload_filename(filename: str, request_id: str) -> str:
     return normalized_name
 
 
-def _resolve_path_within_directory(base_dir: str, unsafe_path: str, request_id: str) -> str:
+def _resolve_path_within_directory(
+    base_dir: str, unsafe_path: str, request_id: str
+) -> str:
     try:
         return file_security.resolve_path_within_directory(base_dir, unsafe_path)
     except ValueError as exc:
@@ -231,6 +233,7 @@ def create_task(
             task_id=task_id, status_code=400, message=f"{request_id}: {str(e)}"
         )
 
+
 @router.get("/tasks", response_model=TaskListResponse, summary="Get all tasks")
 def get_all_tasks(
     request: Request,
@@ -246,7 +249,6 @@ def get_all_tasks(
         "page_size": page_size,
     }
     return utils.get_response(200, response)
-
 
 
 @router.get(
@@ -379,8 +381,11 @@ def upload_bgm_file(request: Request, file: UploadFile = File(...)):
     response = {"file": safe_filename}
     return utils.get_response(200, response)
 
+
 @router.get(
-    "/video_materials", response_model=VideoMaterialRetrieveResponse, summary="Retrieve local video materials"
+    "/video_materials",
+    response_model=VideoMaterialRetrieveResponse,
+    summary="Retrieve local video materials",
 )
 def get_video_materials_list(request: Request):
     allowed_suffixes = tuple(
@@ -426,8 +431,7 @@ def upload_video_material_file(request: Request, file: UploadFile = File(...)):
         )
     except material_upload_service.MaterialUploadError as exc:
         logger.warning(
-            f"local material upload rejected: request_id={request_id}, "
-            f"error={str(exc)}"
+            f"local material upload rejected: request_id={request_id}, error={str(exc)}"
         )
         raise HttpException(
             task_id=request_id,
@@ -436,8 +440,7 @@ def upload_video_material_file(request: Request, file: UploadFile = File(...)):
         )
     except material_upload_service.MaterialServiceError as exc:
         logger.error(
-            f"local material upload failed: request_id={request_id}, "
-            f"error={str(exc)}"
+            f"local material upload failed: request_id={request_id}, error={str(exc)}"
         )
         raise HttpException(
             task_id=request_id,
@@ -447,6 +450,7 @@ def upload_video_material_file(request: Request, file: UploadFile = File(...)):
 
     response = {"file": stored_filename}
     return utils.get_response(200, response)
+
 
 @router.get("/stream/{file_path:path}")
 async def stream_video(request: Request, file_path: str):

@@ -86,10 +86,7 @@ async def test_pack(vault_pool, tmp_path):
         rng = random.Random(20260712)
         noise = Image.new("RGB", (256, 256))
         noise.putdata(
-            [
-                (rng.randrange(256), rng.randrange(256), rng.randrange(256))
-                for _ in range(256 * 256)
-            ]
+            [(rng.randrange(256), rng.randrange(256), rng.randrange(256)) for _ in range(256 * 256)]
         )
         noise.save(portrait_path)
     action_path = tmp_path / "action_pose.png"

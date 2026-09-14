@@ -43,25 +43,28 @@ def analyze_reel(
     for index, (start, end) in enumerate(ranges, start=1):
         shot_motion = MotionAnalyzer(sample_count=8).analyze(str(path), probe)
         shot_id = f"shot_{index:04d}"
-        shots.append(ShotObservation(
-            shot_id=shot_id,
-            asset_id=asset.asset_id,
-            start_ms=start,
-            end_ms=end,
-            duration_ms=end - start,
-            boundary_evidence=[
-                item for item in boundaries if start <= item.timestamp_ms <= end
-            ] or [ShotBoundaryEvidence(
-                timestamp_ms=start,
-                method="PIPELINE_BOUNDARY",
-                source="AUTO_SCENE_DETECT",
-            )],
-            motion_evidence=shot_motion,
-            semantic=ShotSemantic(
-                description=f"Observed shot {shot_id}; semantic provider={'requested' if semantic else 'not_requested'}",
-            ),
-            rhythm=rhythm_for_position(index - 1, len(ranges), end - start),
-        ))
+        shots.append(
+            ShotObservation(
+                shot_id=shot_id,
+                asset_id=asset.asset_id,
+                start_ms=start,
+                end_ms=end,
+                duration_ms=end - start,
+                boundary_evidence=[item for item in boundaries if start <= item.timestamp_ms <= end]
+                or [
+                    ShotBoundaryEvidence(
+                        timestamp_ms=start,
+                        method="PIPELINE_BOUNDARY",
+                        source="AUTO_SCENE_DETECT",
+                    )
+                ],
+                motion_evidence=shot_motion,
+                semantic=ShotSemantic(
+                    description=f"Observed shot {shot_id}; semantic provider={'requested' if semantic else 'not_requested'}",
+                ),
+                rhythm=rhythm_for_position(index - 1, len(ranges), end - start),
+            )
+        )
     durations = [shot.duration_ms for shot in shots]
     stats = ReelStatistics(
         shot_count=len(shots),
@@ -73,15 +76,21 @@ def analyze_reel(
         camera_motion_distribution={"UNKNOWN": len(shots)},
         rhythm_distribution=(
             {
-            role: sum(1 for shot in shots if shot.rhythm and shot.rhythm.role.value == role)
-            for role in {shot.rhythm.role.value for shot in shots if shot.rhythm}
+                role: sum(1 for shot in shots if shot.rhythm and shot.rhythm.role.value == role)
+                for role in {shot.rhythm.role.value for shot in shots if shot.rhythm}
             }
             if any(shot.rhythm for shot in shots)
             else {}
         ),
         motion_distribution={
-            state: sum(1 for shot in shots if shot.motion_evidence and shot.motion_evidence.motion_class.value == state)
-            for state in {shot.motion_evidence.motion_class.value for shot in shots if shot.motion_evidence}
+            state: sum(
+                1
+                for shot in shots
+                if shot.motion_evidence and shot.motion_evidence.motion_class.value == state
+            )
+            for state in {
+                shot.motion_evidence.motion_class.value for shot in shots if shot.motion_evidence
+            }
         },
     )
     quality = evaluate_reel_quality(shots, probe.duration_ms)
@@ -109,7 +118,15 @@ def save_analysis(analysis: ReelAnalysis, output_dir: str | Path) -> None:
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     payload = analysis.model_dump(mode="json")
-    (destination / "analysis.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    (destination / "shots.json").write_text(json.dumps(payload["shots"], ensure_ascii=False, indent=2), encoding="utf-8")
-    (destination / "quality.json").write_text(json.dumps(payload["quality_report"], ensure_ascii=False, indent=2), encoding="utf-8")
-    (destination / "provenance.json").write_text(json.dumps(payload["provenance"], ensure_ascii=False, indent=2), encoding="utf-8")
+    (destination / "analysis.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (destination / "shots.json").write_text(
+        json.dumps(payload["shots"], ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (destination / "quality.json").write_text(
+        json.dumps(payload["quality_report"], ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (destination / "provenance.json").write_text(
+        json.dumps(payload["provenance"], ensure_ascii=False, indent=2), encoding="utf-8"
+    )

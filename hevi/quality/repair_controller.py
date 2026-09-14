@@ -88,7 +88,11 @@ class RepairController:
         current_codes: set[FailureCode] = set()
         for item in evaluation.evidence:
             if not item.passed and item.evaluator_id:
-                code = FailureCode(item.evaluator_id) if item.evaluator_id in FailureCode.__members__ else FailureCode.DELIVERY_INTEGRITY
+                code = (
+                    FailureCode(item.evaluator_id)
+                    if item.evaluator_id in FailureCode.__members__
+                    else FailureCode.DELIVERY_INTEGRITY
+                )
                 current_codes.add(code)
         if previous is None:
             marginal_gain = 0.0
@@ -131,9 +135,7 @@ class RepairController:
         ):
             return self._stop("divergence_detected", attempts_left, budget_left)
         low_gain = sum(
-            1
-            for item in self.rounds[1:]
-            if item.marginal_gain < self.budget.min_marginal_gain
+            1 for item in self.rounds[1:] if item.marginal_gain < self.budget.min_marginal_gain
         )
         if low_gain >= self.budget.low_gain_rounds_to_stop:
             return self._stop("convergence_stalled", attempts_left, budget_left)

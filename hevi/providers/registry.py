@@ -130,16 +130,16 @@ def register_all_providers() -> None:
 
     _provider_reliability = ReliabilityConfig(
         timeout=TimeoutPolicy(connect_s=5.0, read_s=30.0, write_s=10.0, pool_s=5.0, total_s=60.0),
-        retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+        retry=RetryPolicy(
+            max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25
+        ),
         max_concurrency=8,
         rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
     )
     _qwen_compat_wrapper = ProviderExecutionWrapper(
         "qwen", "qwen-plus", config=_provider_reliability
     )
-    _qwen_maas_wrapper = ProviderExecutionWrapper(
-        "qwen", "qwen-plus", config=_provider_reliability
-    )
+    _qwen_maas_wrapper = ProviderExecutionWrapper("qwen", "qwen-plus", config=_provider_reliability)
 
     def _compat_llm_call(**kwargs: Any) -> dict[str, Any]:
         """Call DashScope via OpenAI-compatible REST endpoint."""
@@ -272,7 +272,10 @@ def register_all_providers() -> None:
 
     # Local/private OpenAI-compatible proxy.  No bearer token is sent for a
     # trusted loopback endpoint; public endpoints still require their token.
-    if os.getenv("HEVI_LLM_PROVIDER", "").strip().lower() in {"openai_compatible", "local_openai_compatible"}:
+    if os.getenv("HEVI_LLM_PROVIDER", "").strip().lower() in {
+        "openai_compatible",
+        "local_openai_compatible",
+    }:
         from hevi.providers.openai_compatible_caller import register_openai_compatible_llm
 
         register_openai_compatible_llm()
@@ -474,12 +477,8 @@ def register_all_providers() -> None:
             raise Prop3DError("prop3d_render 需要 reference_image 与 out_dir")
         blueprint = build_prop_blueprint(reference, llm=llm)
         model_code = blueprint_to_threejs(blueprint, llm=llm)
-        frames = render_azimuth_frames(
-            model_code, azimuths=azimuths, out_dir=out_dir
-        )
+        frames = render_azimuth_frames(model_code, azimuths=azimuths, out_dir=out_dir)
         return {"frames": [str(f) for f in frames], "provider": "img2threejs"}
 
-    ProviderRegistry.register(
-        "prop3d", "img2threejs", _prop3d_capability, replace=True
-    )
+    ProviderRegistry.register("prop3d", "img2threejs", _prop3d_capability, replace=True)
     logger.info("prop3d provider: img2threejs(图生3D 视角资产,3GS G2)")

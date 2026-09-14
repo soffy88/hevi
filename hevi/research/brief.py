@@ -31,9 +31,7 @@ logger = logging.getLogger(__name__)
 class LLMCaller(Protocol):
     """oskill.LLMCaller 的最小面(注入点)。"""
 
-    async def call(
-        self, system: str, prompt: str, temperature: float = 0.2
-    ) -> str: ...
+    async def call(self, system: str, prompt: str, temperature: float = 0.2) -> str: ...
 
 
 @dataclass
@@ -73,7 +71,9 @@ def plan_research_questions(topic: str, angles: list[str] | None = None) -> list
 class ResearchReport:
     topic: str
     questions: list[str] = field(default_factory=list)
-    findings: list[dict[str, Any]] = field(default_factory=list)  # {question, summary, confidence, sources}
+    findings: list[dict[str, Any]] = field(
+        default_factory=list
+    )  # {question, summary, confidence, sources}
     sources: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -96,17 +96,13 @@ async def run_research(
     单问题失败降级(记 note), 不阻断整个研究阶段。
     """
     report = ResearchReport(topic=brief.topic)
-    questions = plan_research_questions(brief.topic, brief.angles)[
-        : brief.max_questions
-    ]
+    questions = plan_research_questions(brief.topic, brief.angles)[: brief.max_questions]
     report.questions = questions
     for q in questions:
         try:
             if not callable(web_research):
                 raise RuntimeError("installed oskill does not expose web_research callable")
-            res: ResearchResult = await web_research(
-                q, caller=caller, max_sources=max_sources
-            )
+            res: ResearchResult = await web_research(q, caller=caller, max_sources=max_sources)
             finding = {
                 "question": q,
                 "summary": res.summary,

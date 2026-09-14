@@ -21,7 +21,9 @@ class GenerationResult:
 
 def parse_structured_output(raw: str, completion: GenerationCompletionStatus) -> GenerationResult:
     if completion.status != "COMPLETE":
-        raise NarrativeGenerationError(f"LLM_{completion.status}: structured output is not commit-ready")
+        raise NarrativeGenerationError(
+            f"LLM_{completion.status}: structured output is not commit-ready"
+        )
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as exc:

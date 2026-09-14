@@ -43,6 +43,7 @@ from hevi.verdict.convergence import ConvergenceLog
 
 # ---- ① 候选提升双轨 ----
 
+
 def test_promotion_promote_gate():
     pool = PromotionPool()
     cand = PromotionCandidate(
@@ -56,8 +57,11 @@ def test_promotion_promote_gate():
     # 同名冲突:再提一个同名 → 被拦
     pool.add_candidate(
         PromotionCandidate(
-            candidate_id="c2", kind="character", name="主角",
-            source="pool", score=0.95,
+            candidate_id="c2",
+            kind="character",
+            name="主角",
+            source="pool",
+            score=0.95,
         )
     )
     _, issues2 = pool.promote("c2")
@@ -68,8 +72,11 @@ def test_promotion_low_score_rejected():
     pool = PromotionPool()
     pool.add_candidate(
         PromotionCandidate(
-            candidate_id="c1", kind="prop", name="剑",
-            source="generated", score=0.4,
+            candidate_id="c1",
+            kind="prop",
+            name="剑",
+            source="generated",
+            score=0.4,
         )
     )
     asset, issues = pool.promote("c1")
@@ -81,8 +88,11 @@ def test_promotion_reject_records_reason():
     pool = PromotionPool()
     pool.add_candidate(
         PromotionCandidate(
-            candidate_id="c1", kind="scene", name="院落",
-            source="generated", score=0.5,
+            candidate_id="c1",
+            kind="scene",
+            name="院落",
+            source="generated",
+            score=0.5,
         )
     )
     assert pool.reject("c1", "构图不合格")
@@ -110,8 +120,11 @@ def test_promotion_roundtrip_json(tmp_path):
     pool = PromotionPool()
     pool.add_candidate(
         PromotionCandidate(
-            candidate_id="c1", kind="voice", name="声线",
-            source="generated", score=0.85,
+            candidate_id="c1",
+            kind="voice",
+            name="声线",
+            source="generated",
+            score=0.85,
         )
     )
     pool.promote("c1")
@@ -124,6 +137,7 @@ def test_promotion_roundtrip_json(tmp_path):
 
 
 # ---- ② 修复 agent 编排 ----
+
 
 def test_plan_repair_known_diagnoses():
     failures = [
@@ -171,6 +185,7 @@ def test_repair_agents_table_covers_common():
 
 # ---- ③ 风格画像 ----
 
+
 def _make_image(path: Path, color: tuple[int, int, int], size: tuple[int, int] = (32, 24)) -> Path:
     from PIL import Image
 
@@ -216,6 +231,7 @@ def test_merge_with_draft_and_save(tmp_path):
 
 
 # ---- ④ 草图编辑子系统 ----
+
 
 def _make_sketch(path: Path) -> Path:
     from PIL import Image
@@ -278,6 +294,7 @@ def test_score_sketch_with_labels():
 
 
 # ---- ⑤ Xia 会话层 ----
+
 
 def _session_with_state() -> XiaSession:
     return XiaSession(

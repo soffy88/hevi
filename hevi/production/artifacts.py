@@ -109,11 +109,7 @@ class ArtifactManifest(BaseModel):
     def verify_integrity(self) -> list[str]:
         """Return artifact ids/paths that cannot be verified locally."""
 
-        return [
-            item.artifact_id or item.path
-            for item in self.artifacts
-            if not item.integrity_ok()
-        ]
+        return [item.artifact_id or item.path for item in self.artifacts if not item.integrity_ok()]
 
     @staticmethod
     def _resolve(artifact: Artifact | None) -> Path | None:
@@ -173,6 +169,7 @@ def verify_local_manifest(
     if failures:
         raise ArtifactVerificationError("; ".join(failures))
     return normalized
+
 
 def manifest_from_task(task: dict[str, Any]) -> ArtifactManifest | None:
     raw = (task.get("config_json") or {}).get("artifact_manifest")

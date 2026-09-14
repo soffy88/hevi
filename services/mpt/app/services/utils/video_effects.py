@@ -37,9 +37,9 @@ def slidein_transition(clip: Clip, t: float, side: str) -> Clip:
         clip.duration
     )
     moving_clip = clip.with_position(position)
-    return CompositeVideoClip([background, moving_clip], size=(width, height)).with_duration(
-        clip.duration
-    )
+    return CompositeVideoClip(
+        [background, moving_clip], size=(width, height)
+    ).with_duration(clip.duration)
 
 
 # SlideOut
@@ -52,9 +52,7 @@ def slideout_transition(clip: Clip, t: float, side: str) -> Clip:
         if current_time <= transition_start:
             return (0, 0)
 
-        progress = min(
-            max((current_time - transition_start) / max(t, 0.001), 0), 1
-        )
+        progress = min(max((current_time - transition_start) / max(t, 0.001), 0), 1)
 
         if side == "left":
             return (-width * progress, 0)
@@ -70,9 +68,9 @@ def slideout_transition(clip: Clip, t: float, side: str) -> Clip:
         clip.duration
     )
     moving_clip = clip.with_position(position)
-    return CompositeVideoClip([background, moving_clip], size=(width, height)).with_duration(
-        clip.duration
-    )
+    return CompositeVideoClip(
+        [background, moving_clip], size=(width, height)
+    ).with_duration(clip.duration)
 
 
 # 保留原始设计的 20% 缩放幅度，让三秒左右的短片也有清晰可见的 Ken Burns 运动感。

@@ -132,7 +132,8 @@ class PromotionPool:
         if issues:
             return None, issues
         asset = LockedAsset(
-            kind=cand.kind, name=cand.name,
+            kind=cand.kind,
+            name=cand.name,
             asset_id=f"asset-{uuid.uuid4().hex[:10]}",
             metadata=dict(cand.payload),
         )
@@ -195,8 +196,10 @@ class PromotionPool:
             ],
             locked=[
                 LockedAsset(
-                    kind=item["kind"], name=item["name"],
-                    asset_id=item["asset_id"], metadata=dict(item.get("metadata", {})),
+                    kind=item["kind"],
+                    name=item["name"],
+                    asset_id=item["asset_id"],
+                    metadata=dict(item.get("metadata", {})),
                 )
                 for item in raw.get("locked", [])
             ],

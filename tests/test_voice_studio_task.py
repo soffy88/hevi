@@ -104,7 +104,9 @@ async def test_voice_studio_route_creates_a_real_shared_task(monkeypatch) -> Non
     async def _validation_stub(_engine: str) -> None:
         return None
 
-    monkeypatch.setattr("hevi.api.routers.voice_studio._validate_synthesis_engine", _validation_stub)
+    monkeypatch.setattr(
+        "hevi.api.routers.voice_studio._validate_synthesis_engine", _validation_stub
+    )
 
     result = await synthesize(
         SynthesisRequest(text="给普通人解释复利", engine="voicebox"),

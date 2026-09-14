@@ -64,9 +64,7 @@ def resolve_delivery_promise(
 
     raw = spec.get("delivery_promise")
     if isinstance(raw, dict):
-        promise = classify_from_brief(
-            str(spec.get("pipeline_type") or ""), {}
-        )
+        promise = classify_from_brief(str(spec.get("pipeline_type") or ""), {})
         promise = type(promise).from_dict(raw)
     elif isinstance(raw, str) and raw in _PROMISE_STR_TO_TYPE:
         promise = classify_from_brief(
@@ -99,17 +97,15 @@ def resolve_delivery_promise(
         )
 
     # 前置约束检查(只记不拦)
-    if (
-        promise.promise_type in (PromiseType.MOTION_LED, PromiseType.AVATAR_PRESENTER)
-        and not spec.get("video_provider")
-    ):
+    if promise.promise_type in (
+        PromiseType.MOTION_LED,
+        PromiseType.AVATAR_PRESENTER,
+    ) and not spec.get("video_provider"):
         notes.append(
             f"承诺 {promise.promise_type.value} 需要真实视频生成, 但 spec 未给 video_provider"
         )
     if promise.source_required and not has_source_media:
-        notes.append(
-            f"承诺 {promise.promise_type.value} 依赖用户素材, 但未检测到素材文件"
-        )
+        notes.append(f"承诺 {promise.promise_type.value} 依赖用户素材, 但未检测到素材文件")
 
     return promise, notes
 
@@ -249,7 +245,10 @@ async def dispatch_season(
 
     logger.info(
         "dispatch_season: series=%s episodes=%d promise=%s notes=%d",
-        series_id, len(episodes), promise.promise_type.value, len(gate_notes),
+        series_id,
+        len(episodes),
+        promise.promise_type.value,
+        len(gate_notes),
     )
     return {
         "series_id": series_id,

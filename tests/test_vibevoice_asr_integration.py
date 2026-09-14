@@ -23,18 +23,23 @@ def _chapter_ir() -> ChapterIR:
         meta={"source": "资治通鉴·周纪一", "year_range": (0, 0), "char_count": 100},
         characters=[
             CharacterIR(
-                character_id="c_zhihu", canonical_name="智伯",
-                aliases=["智瑶"], role_in_chapter="antagonist",
+                character_id="c_zhihu",
+                canonical_name="智伯",
+                aliases=["智瑶"],
+                role_in_chapter="antagonist",
             ),
             CharacterIR(
-                character_id="c_xiangzi", canonical_name="赵襄子",
+                character_id="c_xiangzi",
+                canonical_name="赵襄子",
                 role_in_chapter="protagonist",
             ),
         ],
         events=[
             EventIR(
-                event_id="E1", summary="智伯围晋阳而灌之",
-                actors=["c_zhihu", "c_xiangzi"], dramatic_weight=5,
+                event_id="E1",
+                summary="智伯围晋阳而灌之",
+                actors=["c_zhihu", "c_xiangzi"],
+                dramatic_weight=5,
             ),
         ],
         quotes=[QuoteIR(quote_id="Q1", speaker="c_zhihu", original="吾欲地于赵", event_id="E1")],
@@ -65,9 +70,7 @@ def test_speaker_check_no_overlap_warns() -> None:
     script = Script(
         lines=[ScriptLine(line_id="LN001", act=1, type="dialogue", speaker="c_zhihu", text="x")]
     )
-    note = _asr_speaker_check(
-        [{"speaker": "SPEAKER_02", "text": "x"}], script
-    )
+    note = _asr_speaker_check([{"speaker": "SPEAKER_02", "text": "x"}], script)
     assert "无交集" in note
 
 

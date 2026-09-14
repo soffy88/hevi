@@ -19,12 +19,16 @@ class NarrativeQualityReport:
 
 
 class NarrativeQualityGate:
-    def evaluate(self, bible: StoryBible, scene: SceneBlueprint, continuity: ContinuityReport) -> NarrativeQualityReport:
+    def evaluate(
+        self, bible: StoryBible, scene: SceneBlueprint, continuity: ContinuityReport
+    ) -> NarrativeQualityReport:
         findings: list[object] = list(continuity.findings)
         if not scene.purpose:
             findings.append("scene missing purpose")
         if any(finding.get("severity") == "FAIL" for finding in continuity.findings):
-            return NarrativeQualityReport("FAIL", tuple(str(item.get("code")) for item in findings if isinstance(item, dict)))
+            return NarrativeQualityReport(
+                "FAIL", tuple(str(item.get("code")) for item in findings if isinstance(item, dict))
+            )
         if not scene.objective.text:
             return NarrativeQualityReport("FAIL", ("scene missing purpose",))
         warnings = [str(item.get("code")) for item in findings if isinstance(item, dict)]

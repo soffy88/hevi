@@ -40,6 +40,7 @@ def has_a1(cookie_str: str) -> bool:
         return False
     # a1 通常是 a1=xxx; 的形式
     import re
+
     return bool(re.search(r"(^|;\s*)a1\s*=", cookie_str))
 
 
@@ -51,6 +52,7 @@ def is_creator_cookie(cookie_str: str) -> bool:
     if not cookie_str:
         return False
     import re
+
     # 小红书创作者平台需要 xsec_token, a1, web_session 等
     return bool(re.search(r"(xsec_token|web_session)", cookie_str, re.IGNORECASE))
 
@@ -61,7 +63,13 @@ def validate_storage_state(state_json: str) -> dict[str, Any]:
     返回: {"valid": bool, "cookies_count": int, "has_a1": bool, "is_creator": bool, "errors": []}
     """
     if not state_json:
-        return {"valid": False, "cookies_count": 0, "has_a1": False, "is_creator": False, "errors": ["empty"]}
+        return {
+            "valid": False,
+            "cookies_count": 0,
+            "has_a1": False,
+            "is_creator": False,
+            "errors": ["empty"],
+        }
 
     try:
         data = json.loads(state_json)
@@ -75,7 +83,13 @@ def validate_storage_state(state_json: str) -> dict[str, Any]:
             "errors": [],
         }
     except Exception as e:
-        return {"valid": False, "cookies_count": 0, "has_a1": False, "is_creator": False, "errors": [str(e)]}
+        return {
+            "valid": False,
+            "cookies_count": 0,
+            "has_a1": False,
+            "is_creator": False,
+            "errors": [str(e)],
+        }
 
 
 # ─── 平台特定登录判定 ───
@@ -83,7 +97,11 @@ def validate_storage_state(state_json: str) -> dict[str, Any]:
 
 def platform_needs_creator_state(platform: str) -> bool:
     """判断平台是否需要创作者态进行发布。"""
-    return platform in (PlatformName.DOUYIN.value, PlatformName.KUAISHOU.value, PlatformName.SHIPINHAO.value)
+    return platform in (
+        PlatformName.DOUYIN.value,
+        PlatformName.KUAISHOU.value,
+        PlatformName.SHIPINHAO.value,
+    )
 
 
 def platform_supports_keyword_collection(platform: str) -> bool:

@@ -26,12 +26,14 @@ def check_authorization(job: PresenterJob) -> dict[str, Any]:
         "adult_presenter_confirmed": job.adult_presenter_confirmed,
         "remote_upload_approved": job.remote_upload_approved,
         "voice_clone_approved": job.voice_clone_approved,
-        "remote_ready": all([
-            job.rights_confirmed,
-            job.adult_presenter_confirmed,
-            job.remote_upload_approved,
-            job.voice_clone_approved,
-        ]),
+        "remote_ready": all(
+            [
+                job.rights_confirmed,
+                job.adult_presenter_confirmed,
+                job.remote_upload_approved,
+                job.voice_clone_approved,
+            ]
+        ),
     }
 
 
@@ -76,7 +78,9 @@ def check_media_technical(job: PresenterJob) -> dict[str, Any]:
         else:
             try:
                 probe_result = _ffprobe(path)
-                streams = [s for s in probe_result.get("streams", []) if s.get("codec_type") == "audio"]
+                streams = [
+                    s for s in probe_result.get("streams", []) if s.get("codec_type") == "audio"
+                ]
                 if not streams:
                     errors.append("voice sample has no audio stream")
                 duration = float(probe_result.get("duration", 0) or 0)
@@ -195,6 +199,6 @@ def _ffprobe(path: Path) -> dict[str, Any]:
 def _finite_float(value: Any) -> float | None:
     try:
         number = float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return number if number == number and abs(number) != float("inf") else None

@@ -62,9 +62,7 @@ async def create_checkout(
     """Initialize payment and get checkout URL."""
     try:
         url = await svc.create_checkout(
-            user_id=str(user["id"]),
-            email=user["email"],
-            plan_id=plan_id
+            user_id=str(user["id"]), email=user["email"], plan_id=plan_id
         )
         return {"checkout_url": url}
     except ValueError as exc:
@@ -80,7 +78,7 @@ async def paddle_webhook(
     """Paddle webhook endpoint (unprotected, uses signature verification)."""
     if not paddle_signature:
         raise HTTPException(status_code=401, detail="Missing signature")
-    
+
     raw_body = await request.body()
     try:
         await handler.handle_webhook(raw_body, paddle_signature)

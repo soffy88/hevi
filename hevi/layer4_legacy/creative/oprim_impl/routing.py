@@ -65,9 +65,7 @@ class ModelRouter:
             from obase.provider_registry import ProviderRegistry
 
             if not ProviderRegistry.has("llm", route.provider):
-                raise ProviderNotFoundError(
-                    f"llm provider {route.provider!r} is not registered"
-                )
+                raise ProviderNotFoundError(f"llm provider {route.provider!r} is not registered")
             call_llm = cast(
                 Callable[..., Awaitable[dict[str, Any]]],
                 ProviderRegistry.get().llm(route.provider),

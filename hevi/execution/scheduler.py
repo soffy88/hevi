@@ -75,9 +75,7 @@ class SchedulingRequest(BaseModel):
             ),
             provider_id=str(task.get("video_provider") or "") or None,
             expected_cost_usd=float(
-                task.get("expected_cost_usd")
-                or config.get("estimated_usd")
-                or 0.0
+                task.get("expected_cost_usd") or config.get("estimated_usd") or 0.0
             ),
             budget_remaining_usd=(
                 float(budget_remaining) if budget_remaining is not None else None

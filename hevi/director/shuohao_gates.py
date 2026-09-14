@@ -69,7 +69,11 @@ def lint_beat_coverage(
             continue
         if not any(shot.beat_range for shot in shots):
             continue
-        expected = [beat.beat_id for beat in sorted(stage.beats, key=lambda item: item.order) if beat.beat_id]
+        expected = [
+            beat.beat_id
+            for beat in sorted(stage.beats, key=lambda item: item.order)
+            if beat.beat_id
+        ]
         claimed: list[str] = []
         shot_ids = [shot.shot_id for shot in shots]
         for shot in shots:
@@ -133,9 +137,7 @@ def lint_dialogue_fit(shot_list: ShotList) -> list[LintFinding]:
 
 
 def _d_block_pattern(text: str) -> re.Pattern[str]:
-    return re.compile(
-        re.escape(H3_DIALOGUE_OPEN) + re.escape(text) + re.escape(H3_DIALOGUE_CLOSE)
-    )
+    return re.compile(re.escape(H3_DIALOGUE_OPEN) + re.escape(text) + re.escape(H3_DIALOGUE_CLOSE))
 
 
 def lint_h3_prompt_contract(shot_list: ShotList) -> list[LintFinding]:

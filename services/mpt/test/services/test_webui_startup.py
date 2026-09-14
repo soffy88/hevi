@@ -26,9 +26,7 @@ class TestWebuiStartup(unittest.TestCase):
             env = os.environ.copy()
             existing_pythonpath = env.get("PYTHONPATH")
             env["PYTHONPATH"] = os.pathsep.join(
-                part
-                for part in (str(conflicting_root), existing_pythonpath)
-                if part
+                part for part in (str(conflicting_root), existing_pythonpath) if part
             )
             script = textwrap.dedent(
                 f"""

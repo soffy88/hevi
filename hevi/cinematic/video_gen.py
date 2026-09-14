@@ -303,8 +303,13 @@ async def generate_shot(
 
         cg6 = (
             await _run_cg6(
-                output_path, shot, pool, pack_id, version,
-                vlm=vlm, skip_identity=(shot.style == "animation"),
+                output_path,
+                shot,
+                pool,
+                pack_id,
+                version,
+                vlm=vlm,
+                skip_identity=(shot.style == "animation"),
             )
             if pack_id
             else CG6Result(passed=True)

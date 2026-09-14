@@ -147,14 +147,11 @@ def render_html(comp: HyperComposition) -> str:
             f'data-track-index="{i}">'
             f"<{tag}>{escape(clip.text)}</{tag}></section>"
         )
-    empty = (
-        '    <section class="clip" data-start="0" data-duration="3">'
-        "<h1>HEVI</h1></section>"
-    )
+    empty = '    <section class="clip" data-start="0" data-duration="3"><h1>HEVI</h1></section>'
     body = "\n".join(clips_html) or empty
     total_s = comp.duration_s or 3.0
     return (
-        "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n"
+        '<!doctype html>\n<html lang="zh-CN">\n<head>\n'
         f'  <meta charset="utf-8"/>\n  <title>{escape(comp.title)}</title>\n'
         "  <style>\n"
         f"    :root {{\n{vars_css}\n    }}\n"
@@ -167,11 +164,11 @@ def render_html(comp: HyperComposition) -> str:
         "    h1{font-size:clamp(32px,6vw,84px);letter-spacing:.04em;margin:0}\n"
         "    p{font-size:clamp(22px,3.4vw,48px);line-height:1.35;margin:0;max-width:20em}\n"
         "  </style>\n</head>\n<body>\n"
-        "  <div id=\"root\" "
+        '  <div id="root" '
         f'data-composition-id="main" data-start="0" '
         f'data-duration="{total_s:.2f}" '
         f'data-width="{comp.width}" data-height="{comp.height}" '
-        'data-no-timeline>\n'
+        "data-no-timeline>\n"
         f"{body}\n"
         "  </div>\n"
         "</body>\n</html>\n"

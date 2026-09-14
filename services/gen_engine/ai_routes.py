@@ -160,7 +160,9 @@ async def _run_worker_async(worker: Path, args: dict[str, Any], *, python: str) 
     args_path = Path(tempfile.mkdtemp(prefix="hevi-ai-worker-")) / "args.json"
     args_path.write_text(json.dumps(args, ensure_ascii=False), encoding="utf-8")
     proc = await asyncio.create_subprocess_exec(
-        python, str(worker), str(args_path),
+        python,
+        str(worker),
+        str(args_path),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )
@@ -327,7 +329,9 @@ async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
         )
         worker = Path(__file__).resolve().parent / "tts_worker.py"
         proc = await asyncio.create_subprocess_exec(
-            _asr_python(), str(worker), str(args_path),
+            _asr_python(),
+            str(worker),
+            str(args_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -464,11 +468,17 @@ async def generate_longcat(
             }
         )
         cmd = [
-            sys.executable, "-m", "longcat.run",
-            "--image", str(img_path),
-            "--audio", str(aud_path),
-            "--output", str(out_path),
-            "--preset", preset_name,
+            sys.executable,
+            "-m",
+            "longcat.run",
+            "--image",
+            str(img_path),
+            "--audio",
+            str(aud_path),
+            "--output",
+            str(out_path),
+            "--preset",
+            preset_name,
         ]
         logger.info("LongCat: %s", " ".join(cmd))
         proc = await asyncio.create_subprocess_exec(
@@ -547,7 +557,9 @@ async def synthesize_fish_speech(
         )
         worker = Path(__file__).resolve().parent / "fish_worker.py"
         proc = await asyncio.create_subprocess_exec(
-            _ai_python(), str(worker), str(args_path),
+            _ai_python(),
+            str(worker),
+            str(args_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -628,7 +640,9 @@ async def transcribe_asr(
         )
         worker = Path(__file__).resolve().parent / "asr_worker.py"
         proc = await asyncio.create_subprocess_exec(
-            _asr_python(), str(worker), str(args_path),
+            _asr_python(),
+            str(worker),
+            str(args_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -649,5 +663,3 @@ async def transcribe_asr(
         media_type="application/json",
         headers={"X-Engine": "vibevoice-asr"},
     )
-
-

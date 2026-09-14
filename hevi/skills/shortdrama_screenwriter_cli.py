@@ -26,7 +26,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     screenplay = asyncio.run(
         generate_screenplay_draft(
-            concept=Concept(theme=args.premise, tone=args.tone, style=args.style, quality_bar=args.genre),
+            concept=Concept(
+                theme=args.premise, tone=args.tone, style=args.style, quality_bar=args.genre
+            ),
             material_text=args.raw_text.strip() or args.premise,
             mode=args.mode,
         )
@@ -34,7 +36,8 @@ def main(argv: list[str] | None = None) -> int:
     review = review_screenplay(screenplay)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     (args.out_dir / "screenplay.json").write_text(
-        json.dumps(screenplay.model_dump(mode="json"), ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(screenplay.model_dump(mode="json"), ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
     (args.out_dir / "screenplay.md").write_text(
         screenplay_markdown(screenplay, title=args.title), encoding="utf-8"
@@ -42,7 +45,11 @@ def main(argv: list[str] | None = None) -> int:
     (args.out_dir / "review.json").write_text(
         json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(json.dumps({"status": "ok", "out_dir": str(args.out_dir), "review": review}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {"status": "ok", "out_dir": str(args.out_dir), "review": review}, ensure_ascii=False
+        )
+    )
     return 0 if review["passed"] else 2
 
 

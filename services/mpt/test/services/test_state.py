@@ -112,7 +112,9 @@ class TestMemoryState(unittest.TestCase):
         for thread in threads:
             thread.join()
 
-        tasks, total = state.get_all_tasks(page=1, page_size=thread_count * tasks_per_thread)
+        tasks, total = state.get_all_tasks(
+            page=1, page_size=thread_count * tasks_per_thread
+        )
 
         self.assertEqual(total, thread_count * tasks_per_thread)
         self.assertEqual(len(tasks), total)

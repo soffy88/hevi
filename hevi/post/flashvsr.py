@@ -57,7 +57,8 @@ async def require_nodes(client: ComfyClient, classes: tuple[str, ...]) -> None:
     missing = [k for k in classes if k not in available]
     if missing:
         raise FlashVSRUnavailable(
-            "FlashVSR 节点未安装: " + ", ".join(missing)
+            "FlashVSR 节点未安装: "
+            + ", ".join(missing)
             + "（装 1038lab/ComfyUI-FlashVSR 后重试;或 POST_UPSCALE=off 降级交付 raw）"
         )
 

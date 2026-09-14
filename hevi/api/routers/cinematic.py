@@ -1,4 +1,5 @@
 """cinematic_router —— 动画演绎任务路由 (黄金公式出片)。"""
+
 from __future__ import annotations
 
 import asyncio
@@ -177,6 +178,7 @@ async def _run_animation(
             stage=stage,
             shot_index=shot_idx,
         )
+
     try:
         output_dir = WorkspaceManager(task_id).outputs
         llm = _default_llm()

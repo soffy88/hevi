@@ -126,9 +126,7 @@ async def test_talking_face_duix_does_not_placeholder(
         ),
     ):
         with pytest.raises(TalkingFaceUnavailable, match="duix down"):
-            await generate_talking_face(
-                image_path=image, audio_path=audio, output_path=out
-            )
+            await generate_talking_face(image_path=image, audio_path=audio, output_path=out)
 
 
 @pytest.mark.asyncio
@@ -157,7 +155,5 @@ async def test_talking_face_echo_does_not_call_duix(
             AsyncMock(side_effect=AssertionError("echo must not call duix")),
         ),
     ):
-        result = await generate_talking_face(
-            image_path=image, audio_path=audio, output_path=out
-        )
+        result = await generate_talking_face(image_path=image, audio_path=audio, output_path=out)
     assert result.read_bytes() == b"echo"

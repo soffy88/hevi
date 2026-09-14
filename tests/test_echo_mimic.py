@@ -94,9 +94,7 @@ async def test_talking_face_echomimic_engine(
         ),
         patch("hevi.digital_human.talking_face._run_echo_mimic", _fake),
     ):
-        result = await generate_talking_face(
-            image_path=image, audio_path=audio, output_path=out
-        )
+        result = await generate_talking_face(image_path=image, audio_path=audio, output_path=out)
     assert result == out
     assert out.read_bytes() == b"fake-echo-mp4"
 
@@ -126,6 +124,4 @@ async def test_talking_face_echomimic_does_not_placeholder(
         ),
     ):
         with pytest.raises(TalkingFaceUnavailable, match="comfy down"):
-            await generate_talking_face(
-                image_path=image, audio_path=audio, output_path=out
-            )
+            await generate_talking_face(image_path=image, audio_path=audio, output_path=out)

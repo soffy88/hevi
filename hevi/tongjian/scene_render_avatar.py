@@ -252,7 +252,9 @@ def _say_dur(text: str, per_char: float) -> int:
 
 
 def _echo_talking_face_on() -> bool:
-    return (os.getenv("TALKING_FACE_ENGINE", "echomimic") or "echomimic").strip().lower() == "echomimic"
+    return (
+        os.getenv("TALKING_FACE_ENGINE", "echomimic") or "echomimic"
+    ).strip().lower() == "echomimic"
 
 
 async def _render_dialogue_talk(
@@ -996,9 +998,7 @@ async def build_frame_manifest_avatar(
             (ln for ln in lines if ln.type == "dialogue" and ln.speaker != "NARRATOR"), None
         )
         is_dialogue = dlg_line is not None
-        lead = (
-            dlg_line.speaker if dlg_line else (shot.characters[0] if shot.characters else None)
-        )
+        lead = dlg_line.speaker if dlg_line else (shot.characters[0] if shot.characters else None)
         emotion = (
             dlg_line.emotion if dlg_line else (lines[0].emotion if lines else "")
         ) or "神情自然"

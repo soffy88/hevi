@@ -125,9 +125,7 @@ async def music_to_video_workflow(
             ),
         }
         report_path = output_dir / "music_video_report.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", "report_path": str(report_path), **report}
     except Exception as e:
         logger.exception("music_to_video_workflow failed")

@@ -11,7 +11,12 @@ from hevi.verdict.scene_pacing import assert_alignment, step_duration, trace
 
 # 模拟合成 UI 场景: 安装步骤 + 旁白 cue。
 INSTALL_STEPS = [
-    {"kind": "cmd", "text": "git clone https://github.com/example/repo", "typeSpeed": 0.035, "holdSeconds": 0.3},
+    {
+        "kind": "cmd",
+        "text": "git clone https://github.com/example/repo",
+        "typeSpeed": 0.035,
+        "holdSeconds": 0.3,
+    },
     {"kind": "out", "text": "Cloning into 'repo'...", "holdSeconds": 0.15},
     {"kind": "cmd", "text": "make setup", "typeSpeed": 0.035, "holdSeconds": 0.3},
     {"kind": "pause", "seconds": 2.0},
@@ -22,7 +27,9 @@ INSTALL_STEPS = [
 
 def test_step_duration_kinds() -> None:
     # cmd: 打字帧数(取整) + hold —— 3 字符 × 0.035 × 30 = 3.15 → ceil 4 帧 = 0.133
-    d = step_duration({"kind": "cmd", "text": "abc", "typeSpeed": 0.035, "holdSeconds": 0.3}, fps=30)
+    d = step_duration(
+        {"kind": "cmd", "text": "abc", "typeSpeed": 0.035, "holdSeconds": 0.3}, fps=30
+    )
     assert d == pytest.approx(0.1333 + 0.3, abs=1 / 30)
     # out: 固定 0.08s reveal(2 帧) + hold
     d = step_duration({"kind": "out", "holdSeconds": 0.15}, fps=30)
@@ -61,22 +68,31 @@ def test_assert_alignment_missed_cue_raises() -> None:
     total = sum(step_duration(s) for s in INSTALL_STEPS)
     with pytest.raises(AssertionError, match="无视觉对齐"):
         assert_alignment(
-            INSTALL_STEPS, scene_start=50.0, scene_end=50.0 + total,
-            narration_cues=[(53.0, "late cue")], tolerance=0.5,
+            INSTALL_STEPS,
+            scene_start=50.0,
+            scene_end=50.0 + total,
+            narration_cues=[(53.0, "late cue")],
+            tolerance=0.5,
         )
 
 
 def test_assert_alignment_overflow_raises() -> None:
     with pytest.raises(AssertionError, match="溢出场景"):
         assert_alignment(
-            INSTALL_STEPS, scene_start=50.0, scene_end=51.0,
-            narration_cues=[], tolerance=1.0,
+            INSTALL_STEPS,
+            scene_start=50.0,
+            scene_end=51.0,
+            narration_cues=[],
+            tolerance=1.0,
         )
 
 
 def test_assert_alignment_underfill_raises() -> None:
     with pytest.raises(AssertionError, match="欠填场景"):
         assert_alignment(
-            INSTALL_STEPS, scene_start=50.0, scene_end=200.0,
-            narration_cues=[], tolerance=1.0,
+            INSTALL_STEPS,
+            scene_start=50.0,
+            scene_end=200.0,
+            narration_cues=[],
+            tolerance=1.0,
         )

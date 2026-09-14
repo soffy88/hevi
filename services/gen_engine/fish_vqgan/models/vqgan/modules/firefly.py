@@ -1,7 +1,7 @@
 import math
+from collections.abc import Callable
 from functools import partial
 from math import prod
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
@@ -45,13 +45,9 @@ def get_extra_padding_for_conv1d(
     n_frames = (length - kernel_size + padding_total) / stride + 1
     # for tracer, math.ceil will make onnx graph become constant
     if isinstance(n_frames, torch.Tensor):
-        ideal_length = (torch.ceil(n_frames).long() - 1) * stride + (
-            kernel_size - padding_total
-        )
+        ideal_length = (torch.ceil(n_frames).long() - 1) * stride + (kernel_size - padding_total)
     else:
-        ideal_length = (math.ceil(n_frames) - 1) * stride + (
-            kernel_size - padding_total
-        )
+        ideal_length = (math.ceil(n_frames) - 1) * stride + (kernel_size - padding_total)
     return ideal_length - length
 
 
@@ -77,15 +73,12 @@ def pad1d(
         padded = F.pad(x, paddings, mode, value)
         end = padded.shape[-1] - extra_pad
         return padded[..., :end]
-    else:
-        return F.pad(x, paddings, mode, value)
+    return F.pad(x, paddings, mode, value)
 
 
 class FishConvNet(nn.Module):
-    def __init__(
-        self, in_channels, out_channels, kernel_size, dilation=1, stride=1, groups=1
-    ):
-        super(FishConvNet, self).__init__()
+    def __init__(self, in_channels, out_channels, kernel_size, dilation=1, stride=1, groups=1):
+        super().__init__()
         self.conv = nn.Conv1d(
             in_channels,
             out_channels,
@@ -100,9 +93,7 @@ class FishConvNet(nn.Module):
 
     def forward(self, x):
         pad = self.kernel_size - self.stride
-        extra_padding = get_extra_padding_for_conv1d(
-            x, self.kernel_size, self.stride, pad
-        )
+        extra_padding = get_extra_padding_for_conv1d(x, self.kernel_size, self.stride, pad)
         x = pad1d(x, (pad, extra_padding), mode="constant", value=0)
         return self.conv(x).contiguous()
 
@@ -117,7 +108,7 @@ class FishConvNet(nn.Module):
 
 class FishTransConvNet(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, dilation=1, stride=1):
-        super(FishTransConvNet, self).__init__()
+        super().__init__()
         self.conv = nn.ConvTranspose1d(
             in_channels, out_channels, kernel_size, stride=stride, dilation=dilation
         )
@@ -231,9 +222,7 @@ class HiFiGANGenerator(nn.Module):
     ):
         super().__init__()
 
-        assert (
-            prod(upsample_rates) == hop_length
-        ), f"hop_length must be {prod(upsample_rates)}"
+        assert prod(upsample_rates) == hop_length, f"hop_length must be {prod(upsample_rates)}"
 
         self.conv_pre = FishConvNet(
             num_mels,
@@ -261,14 +250,10 @@ class HiFiGANGenerator(nn.Module):
         self.resblocks = nn.ModuleList()
         for i in range(len(self.ups)):
             ch = upsample_initial_channel // (2 ** (i + 1))
-            self.resblocks.append(
-                ParallelBlock(ch, resblock_kernel_sizes, resblock_dilation_sizes)
-            )
+            self.resblocks.append(ParallelBlock(ch, resblock_kernel_sizes, resblock_dilation_sizes))
 
         self.activation_post = post_activation()
-        self.conv_post = FishConvNet(
-            ch, 1, post_conv_kernel_size, stride=1
-        ).weight_norm()
+        self.conv_post = FishConvNet(ch, 1, post_conv_kernel_size, stride=1).weight_norm()
         self.ups.apply(init_weights)
         self.conv_post.apply(init_weights)
 
@@ -304,9 +289,7 @@ class HiFiGANGenerator(nn.Module):
 
 
 # DropPath copied from timm library
-def drop_path(
-    x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True
-):
+def drop_path(x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True):
     """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
 
     This is the same as the DropConnect impl I created for EfficientNet, etc networks, however,
@@ -315,14 +298,12 @@ def drop_path(
     changing the layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use
     'survival rate' as the argument.
 
-    """  # noqa: E501
+    """
 
     if drop_prob == 0.0 or not training:
         return x
     keep_prob = 1 - drop_prob
-    shape = (x.shape[0],) + (1,) * (
-        x.ndim - 1
-    )  # work with diff dim tensors, not just 2D ConvNets
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
     random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
     if keep_prob > 0.0 and scale_by_keep:
         random_tensor.div_(keep_prob)
@@ -330,10 +311,10 @@ def drop_path(
 
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""  # noqa: E501
+    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
 
     def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
-        super(DropPath, self).__init__()
+        super().__init__()
         self.drop_prob = drop_prob
         self.scale_by_keep = scale_by_keep
 
@@ -341,7 +322,7 @@ class DropPath(nn.Module):
         return drop_path(x, self.drop_prob, self.training, self.scale_by_keep)
 
     def extra_repr(self):
-        return f"drop_prob={round(self.drop_prob,3):0.3f}"
+        return f"drop_prob={round(self.drop_prob, 3):0.3f}"
 
 
 class LayerNorm(nn.Module):
@@ -349,7 +330,7 @@ class LayerNorm(nn.Module):
     The ordering of the dimensions in the inputs. channels_last corresponds to inputs with
     shape (batch_size, height, width, channels) while channels_first corresponds to inputs
     with shape (batch_size, channels, height, width).
-    """  # noqa: E501
+    """
 
     def __init__(self, normalized_shape, eps=1e-6, data_format="channels_last"):
         super().__init__()
@@ -363,10 +344,8 @@ class LayerNorm(nn.Module):
 
     def forward(self, x):
         if self.data_format == "channels_last":
-            return F.layer_norm(
-                x, self.normalized_shape, self.weight, self.bias, self.eps
-            )
-        elif self.data_format == "channels_first":
+            return F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
+        if self.data_format == "channels_first":
             u = x.mean(1, keepdim=True)
             s = (x - u).pow(2).mean(1, keepdim=True)
             x = (x - u) / torch.sqrt(s + self.eps)
@@ -388,7 +367,7 @@ class ConvNeXtBlock(nn.Module):
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4.0.
         kernel_size (int): Kernel size for depthwise conv. Default: 7.
         dilation (int): Dilation for depthwise conv. Default: 1.
-    """  # noqa: E501
+    """
 
     def __init__(
         self,
@@ -415,7 +394,7 @@ class ConvNeXtBlock(nn.Module):
         self.act = nn.GELU()
         self.pwconv2 = nn.Linear(int(mlp_ratio * dim), dim)
         self.gamma = (
-            nn.Parameter(layer_scale_init_value * torch.ones((dim)), requires_grad=True)
+            nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
             if layer_scale_init_value > 0
             else None
         )
@@ -577,9 +556,7 @@ class FireflyArchitecture(nn.Module):
             indices.shape[2] * self.downsample_factor,
         )
         mel_masks_float_conv = mel_masks[:, None, :].float()
-        audio_lengths = (
-            feature_lengths * self.downsample_factor * self.spec_transform.hop_length
-        )
+        audio_lengths = feature_lengths * self.downsample_factor * self.spec_transform.hop_length
 
         audio_masks = sequence_mask(
             audio_lengths,

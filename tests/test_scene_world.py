@@ -15,11 +15,22 @@ from hevi.director.scene_world import (
 )
 
 
-def _shot(shot_id: str, scene_name: str, *, camera: str = "", prompt: str = "",
-          blocking: list[ShotBlocking] | None = None) -> ShotListItem:
+def _shot(
+    shot_id: str,
+    scene_name: str,
+    *,
+    camera: str = "",
+    prompt: str = "",
+    blocking: list[ShotBlocking] | None = None,
+) -> ShotListItem:
     return ShotListItem(
-        shot_id=shot_id, scene_no=1, camera=camera, visual_prompt=prompt,
-        scene_name=scene_name, blocking=blocking or [])
+        shot_id=shot_id,
+        scene_no=1,
+        camera=camera,
+        visual_prompt=prompt,
+        scene_name=scene_name,
+        blocking=blocking or [],
+    )
 
 
 def test_scene_lock_prompt():
@@ -56,9 +67,16 @@ def test_consistency_no_conflicts():
 def test_consistency_blocking_conflict():
     """同镜内同一角色两个矛盾位置 → conflict。"""
     shots = [
-        _shot("B1", "客厅", camera="平视", prompt="x",
-              blocking=[ShotBlocking(character_name="甲", position="左侧"),
-                        ShotBlocking(character_name="甲", position="右侧")]),
+        _shot(
+            "B1",
+            "客厅",
+            camera="平视",
+            prompt="x",
+            blocking=[
+                ShotBlocking(character_name="甲", position="左侧"),
+                ShotBlocking(character_name="甲", position="右侧"),
+            ],
+        ),
     ]
     report = check_scene_consistency(shots)
     assert len(report["客厅"]["conflicts"]) == 1
@@ -71,8 +89,7 @@ def test_consistency_lock_missing_when_world_registered():
     w.register(SceneState(scene_name="客厅", layout="沙发居左"))
     shots = [
         _shot("C1", "客厅", camera="平视", prompt="自由发挥的画面"),  # 无锁定前缀
-        _shot("C2", "客厅", camera="近景",
-              prompt="[场景锁定:客厅 | 空间:沙发居左] 画面"),
+        _shot("C2", "客厅", camera="近景", prompt="[场景锁定:客厅 | 空间:沙发居左] 画面"),
     ]
     report = check_scene_consistency(shots, scene_world=w)
     assert report["客厅"]["lock_missing"] == 1
@@ -83,6 +100,7 @@ def test_consistency_lock_missing_when_world_registered():
 def test_screenplay_mode_tails():
     """剧本三模式 prompt 尾注齐全(与 generate_screenplay_draft 的 mode 联动)。"""
     from hevi.director.screenplay import _SCREENPLAY_MODE_TAILS
+
     assert set(_SCREENPLAY_MODE_TAILS) == {"adaptive", "literal", "staged"}
     assert "贴原文" in _SCREENPLAY_MODE_TAILS["literal"]
     assert "舞台化" in _SCREENPLAY_MODE_TAILS["staged"]

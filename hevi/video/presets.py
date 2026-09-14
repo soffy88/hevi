@@ -9,6 +9,7 @@ fields still win (see resolve_preset).
   balanced — cloud standard quality, cost/speed midpoint (default).
   fast     — cloud high quality, fastest turnaround, highest cost.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -75,9 +76,7 @@ DEFAULT_PRESET = "balanced"
 
 def get_execution_preset(name: str = DEFAULT_PRESET) -> ExecutionPreset:
     if name not in EXECUTION_PRESETS:
-        raise ValueError(
-            f"Unknown execution preset: {name!r}. Valid: {sorted(EXECUTION_PRESETS)}"
-        )
+        raise ValueError(f"Unknown execution preset: {name!r}. Valid: {sorted(EXECUTION_PRESETS)}")
     return EXECUTION_PRESETS[name]
 
 

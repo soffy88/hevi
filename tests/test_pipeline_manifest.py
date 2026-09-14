@@ -105,6 +105,7 @@ def test_build_pipeline_contract():
     # stage func 是异步且返回 dict(obase Stage 契约)
     for stage in pipeline.stages:
         import inspect
+
         assert inspect.iscoroutinefunction(stage.func)
 
 

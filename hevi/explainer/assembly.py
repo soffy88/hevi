@@ -185,28 +185,28 @@ async def _fulfill_stock_visuals(
     user_id: str = "explainer_session",
 ) -> None:
     """🚨 v9.0: 视觉素材装填 —— 为 stock_broll cues 检索真实画面。
-    
+
     遍历所有 cues，对 visual_type==stock_broll 且没有 mediaUrl 的条目：
     1. 从 cue.visual_search_query 提取关键词
     2. 调用 StockSearchService.search() 检索 Pexels
     3. 下载并通过 media-use 台账冻结到本地，再写入 cue.visual_config[assetUrl]
     4. 如果检索失败，降级为 browser_broll fallback（用 search query 搜图）
     """
-    
+
     for idx, cue in enumerate(cues):
         if cue.visual_type != "stock_broll":
             continue
-        
+
         # Skip if already has a media URL
         if cue.visual_config.get("assetUrl"):
             continue
-        
+
         query = getattr(cue, "visual_search_query", "") or ""
         if not query.strip():
             logger.warning(f"stock_broll cue {idx} missing visual_search_query; skipping")
             cue.visual_type = "voiceover"  # degrade gracefully
             continue
-        
+
         try:
             results = await stock_svc.search(
                 user_id=user_id,
@@ -249,7 +249,7 @@ async def _fulfill_stock_visuals(
                         continue
         except Exception as exc:
             logger.warning(f"Pexels search failed for cue {idx}: {exc}")
-        
+
         # Fallback: use image instead of video
         try:
             img_results = await stock_svc.search(

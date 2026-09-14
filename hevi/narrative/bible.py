@@ -49,7 +49,10 @@ def validate_bible(bible: StoryBible) -> None:
             raise NarrativeSchemaError(f"duplicate {label} id")
     character_ids = {item.id for item in bible.characters}
     for relation in bible.relationships:
-        if relation.from_character not in character_ids or relation.to_character not in character_ids:
+        if (
+            relation.from_character not in character_ids
+            or relation.to_character not in character_ids
+        ):
             raise NarrativeSchemaError(f"dangling relationship {relation.id}")
     fact_ids = {item.id for item in bible.established_facts}
     for fact in bible.established_facts:
@@ -75,4 +78,10 @@ def update_bible(bible: StoryBible, **changes: Any) -> StoryBible:
 def compare_bible(left: StoryBible, right: StoryBible) -> dict[str, Any]:
     before = to_dict(left)
     after = to_dict(right)
-    return {"changed": before != after, "before_revision": left.revision, "after_revision": right.revision, "before": before, "after": after}
+    return {
+        "changed": before != after,
+        "before_revision": left.revision,
+        "after_revision": right.revision,
+        "before": before,
+        "after": after,
+    }

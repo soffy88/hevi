@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class PipelineCategory(str, Enum):
     """Pipeline 类别。"""
+
     GENERATED = "generated"
     FOOTAGE_BASED = "footage_based"
     SCREEN_RECORDING = "screen_recording"
@@ -45,6 +46,7 @@ class CheckpointPolicy(str, Enum):
 
 class PipelineManifest(BaseModel):
     """Pipeline 清单契约。对应 OpenMontage pipeline_defs/*.yaml"""
+
     model_config = ConfigDict(extra="allow")
 
     name: str
@@ -88,6 +90,7 @@ class PipelineManifest(BaseModel):
 
 class StageDef(BaseModel):
     """单阶段定义。"""
+
     model_config = ConfigDict(extra="allow")
 
     name: str
@@ -141,6 +144,7 @@ class ToolCapability(str, Enum):
 
 class ToolContract(BaseModel):
     """工具契约。对应 OpenMontage BaseTool contract。"""
+
     model_config = ConfigDict(extra="allow")
 
     name: str
@@ -162,6 +166,7 @@ class ToolContract(BaseModel):
 
 class ToolEnvelope(BaseModel):
     """能力信封：当前环境可用工具的概览。"""
+
     capabilities: dict[str, list[str]] = Field(default_factory=dict)  # capability -> [tool_names]
     providers: dict[str, list[str]] = Field(default_factory=dict)  # capability -> [providers]
     total_tools: int = 0
@@ -178,6 +183,7 @@ class CostPhase(str, Enum):
 
 class CostLineItem(BaseModel):
     """成本明细项。"""
+
     tool_name: str
     provider: str
     capability: str
@@ -191,6 +197,7 @@ class CostLineItem(BaseModel):
 
 class CostBudget(BaseModel):
     """成本预算。"""
+
     budget_usd: float = 2.0
     spent_usd: float = 0.0
     reserved_usd: float = 0.0
@@ -220,6 +227,7 @@ class ArtifactType(str, Enum):
 
 class Artifact(BaseModel):
     """标准产物。"""
+
     model_config = ConfigDict(extra="allow")
 
     type: ArtifactType
@@ -238,6 +246,7 @@ class Artifact(BaseModel):
 
 class VideoAnalysisBrief(BaseModel):
     """参考视频分析摘要。"""
+
     model_config = ConfigDict(extra="allow")
 
     source_url: str = ""
@@ -258,6 +267,7 @@ class VideoAnalysisBrief(BaseModel):
 
 class PlaybookSchema(BaseModel):
     """风格手册。对应 OpenMontage styles/*.yaml。"""
+
     model_config = ConfigDict(extra="allow")
 
     name: str
@@ -283,6 +293,7 @@ class PlaybookSchema(BaseModel):
 
 class CheckpointState(BaseModel):
     """检查点状态。"""
+
     model_config = ConfigDict(extra="allow")
 
     pipeline: str

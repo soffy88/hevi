@@ -18,9 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from hevi.creative.layer4.style import StyleModule
 from hevi.obase.creative import StyleProfile
 
-DEFAULT_CORPUS_ROOT = (
-    Path(__file__).resolve().parents[3] / "tests/fixtures/writing_naturalness"
-)
+DEFAULT_CORPUS_ROOT = Path(__file__).resolve().parents[3] / "tests/fixtures/writing_naturalness"
 
 _NS: UUID = UUID("00000000-0000-0000-0000-0000000000aa")
 

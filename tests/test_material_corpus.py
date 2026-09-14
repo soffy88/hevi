@@ -28,7 +28,16 @@ from hevi.video.material_corpus import (
 
 
 def _m(**kw) -> MaterialInfo:
-    base = {"source": "pexels", "id": "1", "url": "https://x/1.mp4", "width": 720, "height": 1280, "duration_s": 5.0, "title": "sunset", "keywords": ("sunset", "sky")}
+    base = {
+        "source": "pexels",
+        "id": "1",
+        "url": "https://x/1.mp4",
+        "width": 720,
+        "height": 1280,
+        "duration_s": 5.0,
+        "title": "sunset",
+        "keywords": ("sunset", "sky"),
+    }
     base.update(kw)
     return MaterialInfo(**base)
 
@@ -140,6 +149,7 @@ def test_search_pexels_success():
             }
         ]
     }
+
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["Authorization"] == "KEY123"
         return httpx.Response(200, json=payload)
@@ -175,6 +185,7 @@ def test_search_pixabay_success():
             }
         ]
     }
+
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=payload)
 
@@ -187,11 +198,20 @@ def test_search_pixabay_success():
 
 def test_search_coverr_and_archive_success():
     coverr_payload = {
-        "hits": [{"id": "c1", "title": "beach", "duration": 10, "mp4": "https://c/1.mp4", "tags": ["beach"]}]
+        "hits": [
+            {
+                "id": "c1",
+                "title": "beach",
+                "duration": 10,
+                "mp4": "https://c/1.mp4",
+                "tags": ["beach"],
+            }
+        ]
     }
     archive_payload = {
         "response": {"docs": [{"identifier": "id-1", "title": "old film", "length": 60.0}]}
     }
+
     def handler(request: httpx.Request) -> httpx.Response:
         if "coverr" in str(request.url):
             return httpx.Response(200, json=coverr_payload)
@@ -209,14 +229,28 @@ def test_search_all_merges_and_dedupes():
     def pexels_ok(**kw):
         return httpx.Response(
             200,
-            json={"videos": [{"id": 1, "duration": 5, "url": "u", "video_files": [{"width": 720, "height": 1280, "link": "https://d/1.mp4"}]}]},
+            json={
+                "videos": [
+                    {
+                        "id": 1,
+                        "duration": 5,
+                        "url": "u",
+                        "video_files": [{"width": 720, "height": 1280, "link": "https://d/1.mp4"}],
+                    }
+                ]
+            },
         )
 
     def handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
         if "pexels" in url:
             return pexels_ok()
-        return httpx.Response(200, json={"hits": []} if "pixabay" in url or "coverr" in url else {"response": {"docs": []}})
+        return httpx.Response(
+            200,
+            json={"hits": []}
+            if "pixabay" in url or "coverr" in url
+            else {"response": {"docs": []}},
+        )
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
     items = search_all(

@@ -34,17 +34,30 @@ async def test_workflow_runs_and_writes_report(tmp_path: Path) -> None:
     c0 = tmp_path / "s0.mp4"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "color=c=red:s=320x240:d=2",
-            "-pix_fmt", "yuv420p", str(c0),
+            "ffmpeg",
+            "-y",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=red:s=320x240:d=2",
+            "-pix_fmt",
+            "yuv420p",
+            str(c0),
         ],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     steps: list[dict] = []
     result = await video_assemble_workflow(
         AssembleConfig(
             shots=[ShotSegment(c0), ShotSegment(c0)],
             output_path=tmp_path / "final.mp4",
-            width=320, height=240, fps=12, transition="cut",
+            width=320,
+            height=240,
+            fps=12,
+            transition="cut",
         ),
         AssembleInput(),
         tmp_path,

@@ -112,9 +112,11 @@ class TestInMemoryTaskManager(unittest.TestCase):
         """
         manager = InMemoryTaskManager(max_concurrent_tasks=1, max_queued_tasks=1)
 
-        with patch.object(manager, "is_queue_empty", return_value=False), patch.object(
-            manager, "dequeue", return_value=None
-        ), patch.object(manager, "execute_task") as execute_task:
+        with (
+            patch.object(manager, "is_queue_empty", return_value=False),
+            patch.object(manager, "dequeue", return_value=None),
+            patch.object(manager, "execute_task") as execute_task,
+        ):
             manager.check_queue()
 
         execute_task.assert_not_called()
@@ -220,9 +222,10 @@ class TestRedisTaskManager(unittest.TestCase):
             "args": [],
             "kwargs": {
                 "task_id": "task-stale",
-                "params": {**VideoParams(video_subject="Coffee").model_dump(
-                    warnings=False
-                ), "video_count": 0},
+                "params": {
+                    **VideoParams(video_subject="Coffee").model_dump(warnings=False),
+                    "video_count": 0,
+                },
             },
         }
         valid_payload = {
@@ -230,9 +233,7 @@ class TestRedisTaskManager(unittest.TestCase):
             "args": [],
             "kwargs": {
                 "task_id": "task-valid",
-                "params": VideoParams(video_subject="Tea").model_dump(
-                    warnings=False
-                ),
+                "params": VideoParams(video_subject="Tea").model_dump(warnings=False),
             },
         }
         self.redis_client.lpop.side_effect = [
@@ -254,9 +255,10 @@ class TestRedisTaskManager(unittest.TestCase):
             "args": [],
             "kwargs": {
                 "task_id": "task-stale",
-                "params": {**VideoParams(video_subject="Coffee").model_dump(
-                    warnings=False
-                ), "video_count": -1},
+                "params": {
+                    **VideoParams(video_subject="Coffee").model_dump(warnings=False),
+                    "video_count": -1,
+                },
             },
         }
         self.redis_client.lpop.side_effect = [json.dumps(stale_payload), None]
@@ -276,9 +278,10 @@ class TestRedisTaskManager(unittest.TestCase):
             "args": [],
             "kwargs": {
                 "task_id": "task-stale",
-                "params": {**VideoParams(video_subject="Coffee").model_dump(
-                    warnings=False
-                ), "video_count": 0},
+                "params": {
+                    **VideoParams(video_subject="Coffee").model_dump(warnings=False),
+                    "video_count": 0,
+                },
             },
         }
         self.redis_client.lpop.side_effect = [json.dumps(stale_payload), None]
@@ -302,9 +305,10 @@ class TestRedisTaskManager(unittest.TestCase):
             "args": [],
             "kwargs": {
                 "task_id": "task-deleted",
-                "params": {**VideoParams(video_subject="Coffee").model_dump(
-                    warnings=False
-                ), "video_count": 0},
+                "params": {
+                    **VideoParams(video_subject="Coffee").model_dump(warnings=False),
+                    "video_count": 0,
+                },
             },
         }
         self.redis_client.lpop.side_effect = [json.dumps(stale_payload), None]

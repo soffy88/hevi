@@ -1,4 +1,5 @@
 """3O v3 single-source gate: local implementations cannot shadow canonical code."""
+
 from __future__ import annotations
 
 import sys

@@ -30,7 +30,9 @@ class _LocalLLM(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
-        _LocalLLM.calls.append({"body": body, "authorized": bool(self.headers.get("Authorization"))})
+        _LocalLLM.calls.append(
+            {"body": body, "authorized": bool(self.headers.get("Authorization"))}
+        )
         data = json.dumps(
             {
                 "id": "gold-completion",

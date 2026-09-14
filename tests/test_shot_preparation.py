@@ -42,9 +42,7 @@ def test_infer_action_beats_empty():
 
 def test_extract_asset_candidates():
     text = "王生手持一把短刀,腰佩令牌,走进山洞。突然火光一闪,他举起火把照向石壁。"
-    cands = extract_asset_candidates(
-        text=text, known_characters=["王生"], known_scenes=["山洞"]
-    )
+    cands = extract_asset_candidates(text=text, known_characters=["王生"], known_scenes=["山洞"])
     types = {c["type"] for c in cands}
     names = [c["name"] for c in cands]
     assert "character" in types and "王生" in names
@@ -65,9 +63,7 @@ def test_extract_dialogue_candidates():
 
 def test_build_preparation_status():
     text = "王生听到动静,突然回头。他冲向洞口,抽出短刀。黑影倒地,他长叹一声。"
-    prep = build_shot_preparation(
-        script_excerpt=text, known_characters=["王生"]
-    )
+    prep = build_shot_preparation(script_excerpt=text, known_characters=["王生"])
     assert prep.status == "pending"
     assert prep.pending_count > 0
     assert prep.action_beats["trigger"]
@@ -84,9 +80,7 @@ def test_build_preparation_ready_when_nothing_to_confirm():
 
 def test_confirm_candidate_accept_then_ready():
     prep = ShotPreparation(
-        candidates=[
-            {"id": "prop_0", "type": "prop", "name": "短刀", "status": "pending"}
-        ]
+        candidates=[{"id": "prop_0", "type": "prop", "name": "短刀", "status": "pending"}]
     )
     confirm_candidate(prep, candidate_id="prop_0", decision="accept")
     assert prep.candidates[0]["status"] == "accepted"

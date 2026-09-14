@@ -176,7 +176,9 @@ class TestStabilityPrecheck:
 
 
 @pytest.mark.asyncio
-async def test_build_identity_pack_skips_video_and_promotes(vault_pool, tmp_path, local_clip_weights):
+async def test_build_identity_pack_skips_video_and_promotes(
+    vault_pool, tmp_path, local_clip_weights
+):
     minio = get_minio_client()
     pack_id = "identity/TEST-C001"
     await _cleanup(vault_pool, pack_id)
@@ -240,7 +242,9 @@ async def test_build_identity_pack_with_turnaround_video(vault_pool, tmp_path, l
 
 
 @pytest.mark.asyncio
-async def test_build_identity_pack_stays_draft_when_stability_fails(vault_pool, tmp_path, local_clip_weights):
+async def test_build_identity_pack_stays_draft_when_stability_fails(
+    vault_pool, tmp_path, local_clip_weights
+):
     minio = get_minio_client()
     pack_id = "identity/TEST-C003"
     await _cleanup(vault_pool, pack_id)

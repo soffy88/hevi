@@ -21,4 +21,3 @@ async def voicebox_synthesize(
         raise ValueError("Voicebox synthesis requires non-empty text")
     await synthesize(text, output_path, instruct=emotion or None)
     return output_path
-

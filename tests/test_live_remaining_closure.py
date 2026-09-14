@@ -28,7 +28,9 @@ async def _close_live_pool(pool: object) -> None:
 
 
 @pytest.mark.asyncio
-async def test_live_render_crash_is_resumed_from_checkpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_live_render_crash_is_resumed_from_checkpoint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from hevi.artifact_store import ArtifactRepository, expire_artifacts, get_object_store
     from hevi.db.pg_pool import get_hevi_pg_pool
     from hevi.execution.resumable_render import execute_checkpoint_render
@@ -268,11 +270,7 @@ async def test_live_cost_p90_estimate_error_meets_slo() -> None:
                     now,
                 )
         pairs = await load_settled_cost_pairs(pool, limit=50)
-        relevant = [
-            pair
-            for pair in pairs
-            if pair in samples
-        ]
+        relevant = [pair for pair in pairs if pair in samples]
         summary = summarize_calibration(relevant or pairs[:12])
         assert summary["samples"] >= 10
         assert summary["p90"] < 0.20
@@ -368,9 +366,7 @@ async def test_live_four_consumers_and_graph_reads_are_consistent() -> None:
                 "DELETE FROM event_consumer_offsets WHERE consumer_name LIKE $1",
                 "live-four-%",
             )
-            await conn.execute(
-                "DELETE FROM domain_events WHERE aggregate_id = $1", aggregate_id
-            )
+            await conn.execute("DELETE FROM domain_events WHERE aggregate_id = $1", aggregate_id)
             await conn.execute("DELETE FROM productions WHERE id = $1", aggregate_id)
         await _close_live_pool(pool)
 

@@ -13,10 +13,14 @@ class LineTtsError(RuntimeError):
 
 def _provider() -> str:
     return (
-        os.getenv("HEVI_TTS_FORMAL_PROVIDER")
-        or os.getenv("HEVI_EXPLAINER_TTS_PROVIDER")
-        or "voicebox"
-    ).strip().lower()
+        (
+            os.getenv("HEVI_TTS_FORMAL_PROVIDER")
+            or os.getenv("HEVI_EXPLAINER_TTS_PROVIDER")
+            or "voicebox"
+        )
+        .strip()
+        .lower()
+    )
 
 
 async def synthesize_line(text: str, output_path: Path) -> Path:

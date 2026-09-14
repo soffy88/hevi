@@ -25,7 +25,24 @@ class Presenter(BaseModel):
     __table__: ClassVar[Any] = type(
         "_PresenterTableCompat",
         (),
-        {"columns": frozenset({"id", "user_id", "name", "subject_id", "voice_profile_id", "performance", "motion", "lipsync", "delivery_json", "description", "created_at", "updated_at"})},
+        {
+            "columns": frozenset(
+                {
+                    "id",
+                    "user_id",
+                    "name",
+                    "subject_id",
+                    "voice_profile_id",
+                    "performance",
+                    "motion",
+                    "lipsync",
+                    "delivery_json",
+                    "description",
+                    "created_at",
+                    "updated_at",
+                }
+            )
+        },
     )()
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, alias="_id")

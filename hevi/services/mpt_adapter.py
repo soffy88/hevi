@@ -163,7 +163,9 @@ async def execute_mpt_task(task: dict[str, Any], _pool: Any) -> dict[str, Any]:
     (external_id, status, paths), retry_evidence = await with_retry_evidence(
         run_once,
         operation_id=f"mpt:{task['id']}",
-        idempotency_key=str(config.get("idempotency_key") or task.get("idempotency_key") or task["id"]),
+        idempotency_key=str(
+            config.get("idempotency_key") or task.get("idempotency_key") or task["id"]
+        ),
         policy=RetryPolicy(max_attempts=3, base_delay_s=0.1, max_delay_s=1.0, jitter=False),
     )
     if not paths:

@@ -68,7 +68,7 @@ def safe_dict(val: Any) -> dict[str, Any]:
         try:
             parsed = json.loads(text)
             return parsed if isinstance(parsed, dict) else {}
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             return {}
     return {}
 
@@ -83,9 +83,11 @@ def deep_unpack_json(data: Any) -> Any:
     if isinstance(data, str):
         data_str = data.strip()
         # {…} / […] / "…"(二重转义:整条 payload 再被字符串化一次)都要尝试解包
-        if (data_str.startswith("{") and data_str.endswith("}")) or (
-            data_str.startswith("[") and data_str.endswith("]")
-        ) or (data_str.startswith('"') and data_str.endswith('"')):
+        if (
+            (data_str.startswith("{") and data_str.endswith("}"))
+            or (data_str.startswith("[") and data_str.endswith("]"))
+            or (data_str.startswith('"') and data_str.endswith('"'))
+        ):
             try:
                 parsed = json.loads(data_str)
                 return deep_unpack_json(parsed)  # 递归解包可能嵌套的二重转义
@@ -103,6 +105,7 @@ def deep_unpack_json(data: Any) -> Any:
             return data
     return data
 
+
 def safe_list(val: Any) -> list[Any]:
     """防御性转列表:list 原样返回;JSON 数组字符串自动解析;其余 → []。"""
     if isinstance(val, list):
@@ -114,7 +117,7 @@ def safe_list(val: Any) -> list[Any]:
         try:
             parsed = json.loads(text)
             return parsed if isinstance(parsed, list) else []
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             return []
     return []
 
@@ -150,7 +153,7 @@ def ensure_dict(obj: Any) -> Any:
         try:
             parsed = json.loads(obj)
             return parsed if isinstance(parsed, dict) else obj
-        except (json.JSONDecodeError, ValueError):
+        except json.JSONDecodeError, ValueError:
             return obj
     return obj
 

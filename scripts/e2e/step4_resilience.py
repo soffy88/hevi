@@ -134,11 +134,9 @@ async def wait_until_partial_then_interrupt(
 
     # 取消任务(模拟进程被 kill)
     try:
-        cancel_resp = await _api_post(
-            api_base, f"/api/tasks/{task_id}/cancel", {}
-        )
+        cancel_resp = await _api_post(api_base, f"/api/tasks/{task_id}/cancel", {})
         print(f"[step4.2] ✓ 任务已取消: {cancel_resp.get('status')!r}")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"[step4.2] ⚠ 取消任务失败 (可忽略): {exc}")
 
     return checkpoint_id

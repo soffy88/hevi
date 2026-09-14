@@ -32,7 +32,7 @@ class OAuthRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    token: str           # alias for frontend compatibility
+    token: str  # alias for frontend compatibility
     token_type: str = "bearer"
     user: dict[str, Any]
 

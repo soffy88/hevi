@@ -159,11 +159,7 @@ async def get_shot_cards(
         card
         for card in library.values()
         if (not category or card.category == category)
-        and (
-            not needle
-            or needle in card.name.lower()
-            or needle in card.purpose.lower()
-        )
+        and (not needle or needle in card.name.lower() or needle in card.purpose.lower())
     ]
     return {
         "cards": [card_runtime_spec(card) for card in cards],

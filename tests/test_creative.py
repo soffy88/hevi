@@ -36,9 +36,7 @@ def workflow() -> WorkflowService:
 async def test_gen_three_view_valid(assist: AssistService) -> None:
     from oprim.character_three_view import ThreeViewResult
 
-    expected = ThreeViewResult(
-        front_prompt="front", side_prompt="side", back_prompt="back"
-    )
+    expected = ThreeViewResult(front_prompt="front", side_prompt="side", back_prompt="back")
     with patch(
         "hevi.creative.assist_service.character_three_view",
         new_callable=AsyncMock,
@@ -333,9 +331,7 @@ def _make_script() -> Any:
     return Script(
         title="Test",
         description="",
-        scenes=[
-            Scene(index=0, narration="narr", duration_s=5.0, visual_description="hero")
-        ],
+        scenes=[Scene(index=0, narration="narr", duration_s=5.0, visual_description="hero")],
         estimated_duration_s=5.0,
     )
 
@@ -514,9 +510,7 @@ async def test_api_multi_angle(client: Any) -> None:
 
     svc = _mock_assist()
     svc.gen_multi_angle = AsyncMock(  # type: ignore[method-assign]
-        return_value=MultiAngleResult(
-            angle_prompts={"front": "fp"}, subject_description="car"
-        )
+        return_value=MultiAngleResult(angle_prompts={"front": "fp"}, subject_description="car")
     )
     app.dependency_overrides[get_assist_service] = lambda: svc
     app.dependency_overrides[get_current_user] = lambda: _AUTH_USER
@@ -621,9 +615,7 @@ async def test_api_storyboard_workflow(client: Any) -> None:
     wf = _mock_workflow()
     wf.run_storyboard_workflow = AsyncMock(  # type: ignore[method-assign]
         return_value=MagicMock(
-            model_dump=MagicMock(
-                return_value={"shots": [], "grid_preview": None}
-            )
+            model_dump=MagicMock(return_value={"shots": [], "grid_preview": None})
         )
     )
     app.dependency_overrides[get_workflow_service] = lambda: wf

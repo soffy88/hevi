@@ -8,7 +8,7 @@
 
 使用方式：
     from hevi.audio.audio_router import route_and_stitch_master_audio
-    
+
     master_path = await route_and_stitch_master_audio(
         cues=[...],       # list of ExplainerCue with text/audio_style fields
         output_dir=Path("output/audio"),
@@ -44,8 +44,23 @@ def _infer_audio_style(text: str) -> AudioStyle:
       → conversational
     - Otherwise → formal (default).
     """
-    conversational_markers = ["啦", "呢", "嘛", "哈", "嘿", "哇", "哦", "嗯", "好吧",
-                              "嘿嘿", "哈哈哈", "哎呀", "其实", "说白了", "要知道"]
+    conversational_markers = [
+        "啦",
+        "呢",
+        "嘛",
+        "哈",
+        "嘿",
+        "哇",
+        "哦",
+        "嗯",
+        "好吧",
+        "嘿嘿",
+        "哈哈哈",
+        "哎呀",
+        "其实",
+        "说白了",
+        "要知道",
+    ]
     for marker in conversational_markers:
         if marker in text:
             return "conversational"
@@ -63,7 +78,7 @@ async def route_single_cue(
 ) -> Path:
     """Route one cue to the correct TTS backend based on audio_style."""
     style = cue_style or _infer_audio_style(cue_text)
-    
+
     # Ensure parent directory exists
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -85,7 +100,7 @@ async def route_single_cue(
                 instruct=instruct,
                 **tts_kwargs,
             )
-        
+
         if not result_path.exists() or result_path.stat().st_size < 100:
             raise AudioRoutingError(f"Synthesis produced empty file: {result_path}")
         return result_path
@@ -117,6 +132,7 @@ async def _synthesize_conversational(
     if provider == "chattts":
         try:
             from oprim import chattts_call as _chattts_api
+
             result = _chattts_api(text=text, output_path=str(output_path))
             return Path(result) if isinstance(result, str) else output_path
         except ImportError:
@@ -124,6 +140,7 @@ async def _synthesize_conversational(
 
     # Default: Voicebox with emotional instruction
     from hevi.explainer.voicebox_client import synthesize as vb_synthesize
+
     await vb_synthesize(text, output_path, instruct=instruct or "casual, conversational")
     return output_path
 
@@ -138,6 +155,7 @@ async def _synthesize_formal(
         from types import SimpleNamespace
 
         from hevi.audio.cosyvoice_service import cosyvoice_synthesize
+
         mode = os.getenv("HEVI_COSY_INFERENCE_MODE", "").strip() or None
         celeb = (_kw.get("celeb") or os.getenv("COSY_CELEB") or "").strip()
         voice_ref = None
@@ -181,6 +199,7 @@ async def _synthesize_formal(
                 "F5_TTS_REFERENCE_TEXT(参考音频 + 其转录文本)"
             )
         from hevi.audio.f5_tts_service import f5_tts_synthesize
+
         await f5_tts_synthesize(
             text=text,
             output_path=output_path,
@@ -215,9 +234,10 @@ async def _synthesize_formal(
                 "HEVI_TTS_FORMAL_PROVIDER=voxcpm 但 HEVI native voice runtime 不可用"
                 "(需要 espeak-ng/espeak)"
             )
-        ref_audio = os.getenv("VOXCPM_REFERENCE_AUDIO", "").strip() or os.getenv(
-            "F5_TTS_REFERENCE_AUDIO", ""
-        ).strip()
+        ref_audio = (
+            os.getenv("VOXCPM_REFERENCE_AUDIO", "").strip()
+            or os.getenv("F5_TTS_REFERENCE_AUDIO", "").strip()
+        )
         design = os.getenv("VOXCPM_VOICE_DESIGN", "").strip()
         await synth_with_voxcpm(
             text=text,
@@ -250,12 +270,14 @@ async def _synthesize_formal(
 
     if provider == "voicebox":
         from hevi.explainer.voicebox_client import synthesize as vb_synthesize
+
         await vb_synthesize(text, output_path, instruct=instruct or "professional, clear narration")
         return output_path
 
     # Last resort: edge-tts
     try:
         import edge_tts
+
         comm = edge_tts.Communicate(text, voice)
         await comm.save(str(output_path))
         return output_path
@@ -313,18 +335,20 @@ async def route_and_stitch_master_audio(
             logger.error("Failed to route cue %s: %s", cue_id, e)
             continue
 
-        manifest_segments.append({
-            "id": cue_id,
-            "text": cue_text,
-            "audio_file": str(routed),
-            "duration_sec": round(dur, 3),
-            "start_sec": round(cursor_sec, 3),
-            "captions": cue_captions if isinstance(cue_captions, list) else [],
-            "visual_type": getattr(cue, "visual_type", "voiceover"),
-            "visual_config": getattr(cue, "visual_config", {}),
-            "layout_mode": getattr(cue, "layout_mode", "fullscreen"),
-            "keywords": getattr(cue, "keywords", []),
-        })
+        manifest_segments.append(
+            {
+                "id": cue_id,
+                "text": cue_text,
+                "audio_file": str(routed),
+                "duration_sec": round(dur, 3),
+                "start_sec": round(cursor_sec, 3),
+                "captions": cue_captions if isinstance(cue_captions, list) else [],
+                "visual_type": getattr(cue, "visual_type", "voiceover"),
+                "visual_config": getattr(cue, "visual_config", {}),
+                "layout_mode": getattr(cue, "layout_mode", "fullscreen"),
+                "keywords": getattr(cue, "keywords", []),
+            }
+        )
         cursor_sec += dur
 
     # Stitch all segments into master audio
@@ -337,22 +361,33 @@ async def route_and_stitch_master_audio(
         concat_list.write_text("\n".join(lines))
 
         cmd = [
-            "ffmpeg", "-y",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", str(concat_list),
-            "-c:a", "pcm_s16le" if stitch_format == "wav" else "aac",
-            "-b:a", "192k" if stitch_format != "wav" else "0",
-            "-ar", "48000",
-            "-ac", "1",
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(concat_list),
+            "-c:a",
+            "pcm_s16le" if stitch_format == "wav" else "aac",
+            "-b:a",
+            "192k" if stitch_format != "wav" else "0",
+            "-ar",
+            "48000",
+            "-ac",
+            "1",
             str(master_path),
         ]
-        await asyncio.create_subprocess_exec(*cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        await asyncio.create_subprocess_exec(
+            *cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
         concat_list.unlink(missing_ok=True)
 
     if not master_path.exists() and segment_paths:
         # Copy the single segment as master
         import shutil
+
         shutil.copy2(segment_paths[0], master_path)
 
     return {

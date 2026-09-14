@@ -72,14 +72,18 @@ def _paragraph_count(value: str) -> int:
 def _non_negative_float(value: str) -> float:
     parsed = float(value)
     if not math.isfinite(parsed) or parsed < 0:
-        raise argparse.ArgumentTypeError(f"value must be a finite number >= 0, got {value!r}")
+        raise argparse.ArgumentTypeError(
+            f"value must be a finite number >= 0, got {value!r}"
+        )
     return parsed
 
 
 def _positive_float(value: str) -> float:
     parsed = float(value)
     if not math.isfinite(parsed) or parsed <= 0:
-        raise argparse.ArgumentTypeError(f"value must be a finite number > 0, got {value!r}")
+        raise argparse.ArgumentTypeError(
+            f"value must be a finite number > 0, got {value!r}"
+        )
     return parsed
 
 
@@ -228,9 +232,7 @@ Batch manifests:
     content_group.add_argument(
         "--video-language",
         default=None,
-        help=(
-            "script language code, such as zh-CN or en-US (default: auto-detect)"
-        ),
+        help=("script language code, such as zh-CN or en-US (default: auto-detect)"),
     )
     content_group.add_argument(
         "--paragraph-number",
@@ -579,9 +581,13 @@ Batch manifests:
         and args.subtitle_enabled is False
     ):
         parser.error("--stop-at subtitle cannot be combined with --no-subtitle-enabled")
-    if not args.batch_file and args.subtitle_background_enabled is False and (
-        args.subtitle_background_color is not None
-        or args.rounded_subtitle_background is True
+    if (
+        not args.batch_file
+        and args.subtitle_background_enabled is False
+        and (
+            args.subtitle_background_color is not None
+            or args.rounded_subtitle_background is True
+        )
     ):
         parser.error(
             "subtitle background color or rounding cannot be enabled together with "
@@ -771,17 +777,13 @@ def build_video_params(args: argparse.Namespace) -> VideoParams:
         # 用户只开启了背景而没有覆盖颜色，因此优先沿用 WebUI 保存的颜色，
         # 只有在没有可用保存值时才回退到默认背景。
         params_kwargs["text_background_color"] = (
-            _ui_config_value(
-                ui_config, "subtitle_background_color", str, _hex_color
-            )
+            _ui_config_value(ui_config, "subtitle_background_color", str, _hex_color)
             or True
         )
     else:
         # “关闭背景”加上颜色作为命令行组合是参数错误；但作为保存的设置，
         # 同样的组合不应中断运行，只表示禁用背景。
-        ui_enabled = _ui_config_value(
-            ui_config, "subtitle_background_enabled", bool
-        )
+        ui_enabled = _ui_config_value(ui_config, "subtitle_background_enabled", bool)
         ui_color = _ui_config_value(
             ui_config, "subtitle_background_color", str, _hex_color
         )
@@ -930,9 +932,7 @@ def _validate_batch_task_params(
         raise ValueError("one of video_subject or video_script is required")
 
     if params.video_source not in {"pexels", "pixabay", "coverr", "local"}:
-        raise ValueError(
-            "video_source must be one of: pexels, pixabay, coverr, local"
-        )
+        raise ValueError("video_source must be one of: pexels, pixabay, coverr, local")
     for field_name, value in (
         ("video_aspect", params.video_aspect),
         ("video_concat_mode", params.video_concat_mode),
@@ -943,9 +943,7 @@ def _validate_batch_task_params(
         if value is None:
             raise ValueError(f"{field_name} cannot be null")
     if params.video_source == "local" and stop_at == "terms":
-        raise ValueError(
-            "stop_at=terms has no effect with video_source=local"
-        )
+        raise ValueError("stop_at=terms has no effect with video_source=local")
     if (
         params.video_source == "local"
         and stop_at in {"materials", "video"}
@@ -966,7 +964,10 @@ def _validate_batch_task_params(
         )
     if custom_position_is_explicit and params.subtitle_position != "custom":
         raise ValueError("custom_position requires subtitle_position=custom")
-    if not math.isfinite(params.custom_position) or not 0 <= params.custom_position <= 100:
+    if (
+        not math.isfinite(params.custom_position)
+        or not 0 <= params.custom_position <= 100
+    ):
         raise ValueError("custom_position must be a finite number between 0 and 100")
     if params.video_clip_speed is not None and (
         not math.isfinite(params.video_clip_speed)
@@ -1040,9 +1041,7 @@ def _build_batch_tasks(args: argparse.Namespace) -> list[VideoParams]:
             allowed_fields=allowed_fields,
         )
         try:
-            params = VideoParams.model_validate(
-                {**copy.deepcopy(base_values), **entry}
-            )
+            params = VideoParams.model_validate({**copy.deepcopy(base_values), **entry})
             override_fields = set(entry)
             _resolve_batch_entry_paths(
                 params,
@@ -1113,7 +1112,11 @@ def _resolve_cli_file(
         else os.path.join(os.getcwd(), expanded_path)
     )
     resolved_path = os.path.realpath(candidate)
-    if not os.path.isfile(resolved_path) and fallback_dir and not os.path.isabs(expanded_path):
+    if (
+        not os.path.isfile(resolved_path)
+        and fallback_dir
+        and not os.path.isabs(expanded_path)
+    ):
         resolved_path = os.path.realpath(os.path.join(fallback_dir, expanded_path))
 
     if not os.path.isfile(resolved_path):
@@ -1155,9 +1158,7 @@ def _resolve_managed_resource_file(
             resolved_path, resource_dir
         ):
             return resolved_path
-    raise ValueError(
-        f"{description} file must exist inside {resource_dir}: {raw_path}"
-    )
+    raise ValueError(f"{description} file must exist inside {resource_dir}: {raw_path}")
 
 
 def _validate_cli_files(
@@ -1217,9 +1218,7 @@ def _validate_cli_files(
                 # 维护白名单。
                 params.bgm_file = bgm_service.resolve_bgm_file(params.bgm_file)
             except ValueError as exc:
-                supported_extensions = ", ".join(
-                    bgm_service.SUPPORTED_BGM_EXTENSIONS
-                )
+                supported_extensions = ", ".join(bgm_service.SUPPORTED_BGM_EXTENSIONS)
                 raise ValueError(
                     "background music must be a supported audio file inside "
                     f"storage/bgm or resource/songs ({supported_extensions}): "
@@ -1268,8 +1267,7 @@ def _remove_cli_material_copies(created_paths: Sequence[str]) -> None:
                 os.remove(file_path)
         except OSError as exc:
             logger.warning(
-                f"failed to remove prepared CLI material: path={file_path}, "
-                f"error={exc}"
+                f"failed to remove prepared CLI material: path={file_path}, error={exc}"
             )
 
 

@@ -75,15 +75,27 @@ class RuntimeStore:
 
     # ── convergence_rounds ──
     def save_convergence_round(
-        self, *, episode_num: int, phase: str, round_num: int,
-        residual_count: int, fixed_count: int, new_failures: list[str] | None = None,
+        self,
+        *,
+        episode_num: int,
+        phase: str,
+        round_num: int,
+        residual_count: int,
+        fixed_count: int,
+        new_failures: list[str] | None = None,
     ) -> None:
         self._conn.execute(
             "INSERT OR REPLACE INTO convergence_rounds "
             "(episode_num, phase, round_num, residual_count, fixed_count, new_failures) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (episode_num, phase, round_num, residual_count, fixed_count,
-             json.dumps(new_failures or [], ensure_ascii=False)),
+            (
+                episode_num,
+                phase,
+                round_num,
+                residual_count,
+                fixed_count,
+                json.dumps(new_failures or [], ensure_ascii=False),
+            ),
         )
         self._conn.commit()
 
@@ -99,8 +111,11 @@ class RuntimeStore:
             ).fetchall()
         return [
             {
-                "episode_num": r[1], "phase": r[2], "round_num": r[3],
-                "residual_count": r[4], "fixed_count": r[5],
+                "episode_num": r[1],
+                "phase": r[2],
+                "round_num": r[3],
+                "residual_count": r[4],
+                "fixed_count": r[5],
                 "new_failures": json.loads(r[6] or "[]"),
             }
             for r in rows

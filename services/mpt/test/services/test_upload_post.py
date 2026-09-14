@@ -109,12 +109,16 @@ class TestUploadPostYouTubePayload(unittest.TestCase):
         mock_post.return_value = _mock_response()
         svc = UploadPostService()
 
-        svc.upload_video("/fake/v.mp4", "Título", youtube_extra={
-            "youtube_title": "Mi Short",
-            "youtube_description": "Descripción",
-            "tags": ["ia", "shorts"],
-            "privacyStatus": "unlisted",
-        })
+        svc.upload_video(
+            "/fake/v.mp4",
+            "Título",
+            youtube_extra={
+                "youtube_title": "Mi Short",
+                "youtube_description": "Descripción",
+                "tags": ["ia", "shorts"],
+                "privacyStatus": "unlisted",
+            },
+        )
 
         data = mock_post.call_args[1]["data"]
         self.assertEqual(_get(data, "youtube_title"), "Mi Short")
@@ -131,15 +135,20 @@ class TestUploadPostYouTubePayload(unittest.TestCase):
         mock_post.return_value = _mock_response()
         svc = UploadPostService()
 
-        svc.upload_video("/fake/v.mp4", "T", youtube_extra={"containsSyntheticMedia": False})
+        svc.upload_video(
+            "/fake/v.mp4", "T", youtube_extra={"containsSyntheticMedia": False}
+        )
 
         data = mock_post.call_args[1]["data"]
         self.assertEqual(_get(data, "containsSyntheticMedia"), "true")
 
-    @patch("app.services.upload_post.config.app", {
-        **_CONFIG_BASE,
-        "upload_post_platforms": ["tiktok", "instagram"],
-    })
+    @patch(
+        "app.services.upload_post.config.app",
+        {
+            **_CONFIG_BASE,
+            "upload_post_platforms": ["tiktok", "instagram"],
+        },
+    )
     @patch("app.services.upload_post.os.path.exists", return_value=True)
     @patch("builtins.open", mock_open(read_data=b"fake"))
     @patch("app.services.upload_post.requests.post")
@@ -153,17 +162,24 @@ class TestUploadPostYouTubePayload(unittest.TestCase):
         self.assertFalse(_has_key(data, "containsSyntheticMedia"))
         self.assertFalse(_has_key(data, "privacyStatus"))
 
-    @patch("app.services.upload_post.config.app", {
-        **_CONFIG_BASE,
-        "upload_post_platforms": ["tiktok"],
-    })
+    @patch(
+        "app.services.upload_post.config.app",
+        {
+            **_CONFIG_BASE,
+            "upload_post_platforms": ["tiktok"],
+        },
+    )
     @patch("app.services.upload_post.os.path.exists", return_value=True)
     @patch("builtins.open", mock_open(read_data=b"fake"))
     @patch("app.services.upload_post.requests.post")
-    def test_youtube_extra_ignorado_si_youtube_no_en_platforms(self, mock_post, _exists):
+    def test_youtube_extra_ignorado_si_youtube_no_en_platforms(
+        self, mock_post, _exists
+    ):
         mock_post.return_value = _mock_response()
         svc = UploadPostService()
-        svc.upload_video("/fake/v.mp4", "T", youtube_extra={"youtube_title": "irrelevante"})
+        svc.upload_video(
+            "/fake/v.mp4", "T", youtube_extra={"youtube_title": "irrelevante"}
+        )
 
         data = mock_post.call_args[1]["data"]
         self.assertFalse(_has_key(data, "youtube_title"))
@@ -178,7 +194,9 @@ class TestUploadPostYouTubePayload(unittest.TestCase):
         svc.upload_video("/fake/v.mp4", "T")
 
         call_url = mock_post.call_args[0][0]
-        self.assertTrue(call_url.endswith("/api/upload"), f"Endpoint incorrecto: {call_url}")
+        self.assertTrue(
+            call_url.endswith("/api/upload"), f"Endpoint incorrecto: {call_url}"
+        )
 
         data = mock_post.call_args[1]["data"]
         platforms = _get_all(data, "platform[]")
@@ -200,25 +218,25 @@ class TestUploadPostServiceDynamicConfig(unittest.TestCase):
             "upload_post_auto_upload": False,
             "upload_post_platforms": ["tiktok"],
         }
-        
+
         with patch("app.services.upload_post.config.app", test_app_config):
             service = UploadPostService()
             self.assertFalse(service.is_configured())
             self.assertFalse(service.enabled)
             self.assertFalse(service.auto_upload)
-            
+
             test_app_config["upload_post_enabled"] = True
             test_app_config["upload_post_auto_upload"] = True
             test_app_config["upload_post_api_key"] = "test-key"
             test_app_config["upload_post_username"] = "test-user"
             test_app_config["upload_post_platforms"] = ["tiktok", "instagram"]
-            
+
             self.assertTrue(service.enabled)
             self.assertTrue(service.auto_upload)
             self.assertEqual(service.api_key, "test-key")
             self.assertTrue(service.is_configured())
             self.assertIn("instagram", service.platforms)
-            
+
             test_app_config["upload_post_enabled"] = False
             self.assertFalse(service.enabled)
             self.assertFalse(service.is_configured())

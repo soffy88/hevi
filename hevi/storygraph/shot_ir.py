@@ -171,9 +171,7 @@ def from_tongjian_shot(shots: list[dict[str, Any]], *, title: str = "") -> ShotI
     return ir
 
 
-def from_storyboard_node(
-    nodes: list[dict[str, Any]], *, title: str = ""
-) -> ShotIR:
+def from_storyboard_node(nodes: list[dict[str, Any]], *, title: str = "") -> ShotIR:
     """omodul storyboard 节点列表(dict 化)→ ShotIR。
     节点字段常见:scene_id/shot_type/image_prompt/caption/duration。
     """

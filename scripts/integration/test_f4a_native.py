@@ -2,12 +2,12 @@
 
 用法: /home/soffy/projects/AII/.venv/bin/python test_f4a_native.py
 """
+
 from __future__ import annotations
 
 import subprocess
 import time
 from pathlib import Path
-
 
 MODEL_DIR = Path.home() / "models/vibevoice-1.5b"
 OUTPUT_DIR = Path("output/f4a_tts")
@@ -16,7 +16,8 @@ OUTPUT_DIR = Path("output/f4a_tts")
 def _mem_mib() -> int:
     r = subprocess.run(
         ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     try:
         return int(r.stdout.strip())
@@ -26,10 +27,18 @@ def _mem_mib() -> int:
 
 def _ffprobe(path: Path) -> str:
     r = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-show_entries",
-         "format=duration,size : stream=sample_rate,channels,codec_name",
-         "-of", "default=noprint_wrappers=1", str(path)],
-        capture_output=True, text=True,
+        [
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-show_entries",
+            "format=duration,size : stream=sample_rate,channels,codec_name",
+            "-of",
+            "default=noprint_wrappers=1",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
     )
     return r.stdout.strip() or r.stderr.strip()
 
@@ -60,8 +69,10 @@ def main() -> None:
     model.set_ddpm_inference_steps(num_steps=10)
     t_load1 = time.perf_counter()
     mem_after_load = _mem_mib()
-    print(f"[F4a] Model loaded in {t_load1 - t_load0:.1f}s | GPU: {mem_after_load} MiB "
-          f"(delta: +{mem_after_load - mem_before_load} MiB)")
+    print(
+        f"[F4a] Model loaded in {t_load1 - t_load0:.1f}s | GPU: {mem_after_load} MiB "
+        f"(delta: +{mem_after_load - mem_before_load} MiB)"
+    )
 
     # ── Helper ───────────────────────────────────────────────────────────────
     def synthesize(script_text: str, voice_samples, out_path: Path) -> tuple[float, int]:
@@ -93,7 +104,9 @@ def main() -> None:
 
     # ── 1. Single speaker ────────────────────────────────────────────────────
     print("\n[F4a] === 单说话人合成 ===")
-    single_script = "Speaker 1: 欢迎来到 VibeVoice 真跑验证。今天我们测试本地 1.5B 模型推理，合成质量与速度。"
+    single_script = (
+        "Speaker 1: 欢迎来到 VibeVoice 真跑验证。今天我们测试本地 1.5B 模型推理，合成质量与速度。"
+    )
     single_out = OUTPUT_DIR / "single_speaker.wav"
     t_single, mem_single = synthesize(single_script, None, single_out)
     print(f"  输出: {single_out} ({single_out.stat().st_size} bytes)")
@@ -137,8 +150,10 @@ def main() -> None:
     print(f"  单说话人耗时:      {t_single:.1f}s")
     print(f"  多说话人耗时:      {t_multi:.1f}s")
     print(f"  模型加载耗时:      {t_load1 - t_load0:.1f}s")
-    print(f"  水印验证:          oprim 默认 watermark=True，"
-          "vibevoice 包内置 responsible-AI 水印(pass placeholder 在 M3 中)")
+    print(
+        "  水印验证:          oprim 默认 watermark=True，"
+        "vibevoice 包内置 responsible-AI 水印(pass placeholder 在 M3 中)"
+    )
     print("=" * 60)
 
 

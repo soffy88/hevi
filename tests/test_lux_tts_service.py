@@ -26,9 +26,7 @@ def test_synth_raises_when_not_available(tmp_path: Path):
         with pytest.raises(RuntimeError, match="luxvoice not available"):
             import asyncio
 
-            asyncio.run(
-                synth_with_luxvoice("你好", tmp_path / "out.wav")
-            )
+            asyncio.run(synth_with_luxvoice("你好", tmp_path / "out.wav"))
 
 
 def test_synth_module_api_path(tmp_path: Path):

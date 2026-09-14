@@ -47,7 +47,9 @@ _OLLAMA_VL_WRAPPER = ProviderExecutionWrapper(
     _OLLAMA_VL_MODEL,
     config=ReliabilityConfig(
         timeout=TimeoutPolicy(connect_s=3.0, read_s=30.0, write_s=10.0, pool_s=3.0, total_s=60.0),
-        retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+        retry=RetryPolicy(
+            max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25
+        ),
         max_concurrency=1,
         rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
     ),
@@ -61,7 +63,9 @@ def _vl_inventory_wrapper() -> ProviderExecutionWrapper:
         _OLLAMA_VL_MODEL,
         config=ReliabilityConfig(
             timeout=TimeoutPolicy(connect_s=3.0, read_s=3.0, write_s=3.0, pool_s=3.0, total_s=10.0),
-            retry=RetryPolicy(max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25),
+            retry=RetryPolicy(
+                max_attempts=3, base_backoff_s=0.25, max_backoff_s=2.0, jitter_ratio=0.25
+            ),
             max_concurrency=1,
             rate_limit=RateLimitPolicy(requests_per_minute=120.0, burst=4),
         ),

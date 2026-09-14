@@ -62,9 +62,19 @@ def test_render_intro_outro_smoke(tmp_path: Path):
     import subprocess
 
     r = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "default=nw=1:nk=1", str(out)],
-        capture_output=True, text=True, timeout=30,
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=nw=1:nk=1",
+            str(out),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     assert r.returncode == 0 and float(r.stdout.strip()) > 2.0
 
@@ -105,15 +115,19 @@ def test_voice_fish_uses_local_backend(tmp_path):
     def _fake_mux(args, **_kwargs):
         Path(args[-1]).write_bytes(b"muxed video")
 
-    with patch("hevi.assembly.freevideo.workflow.render_frames",
-               new=_fake_render_frames), \
-         patch("hevi.assembly.freevideo.render._ffmpeg", new=_fake_mux), \
-         patch("hevi.pipeline_lite.oprim.oprim_ffmpeg.assert_audio_track",
-               return_value=True), \
-         patch("hevi.assembly.freevideo.workflow._synthesize_narration",
-               new=AsyncMock(side_effect=_fake_edge)) as mock_edge, \
-         patch("hevi.audio.fish_speech_local.fish_speech_local_synthesize",
-               new=AsyncMock(side_effect=RuntimeError("no gpu"))) as mock_fish:
+    with (
+        patch("hevi.assembly.freevideo.workflow.render_frames", new=_fake_render_frames),
+        patch("hevi.assembly.freevideo.render._ffmpeg", new=_fake_mux),
+        patch("hevi.pipeline_lite.oprim.oprim_ffmpeg.assert_audio_track", return_value=True),
+        patch(
+            "hevi.assembly.freevideo.workflow._synthesize_narration",
+            new=AsyncMock(side_effect=_fake_edge),
+        ) as mock_edge,
+        patch(
+            "hevi.audio.fish_speech_local.fish_speech_local_synthesize",
+            new=AsyncMock(side_effect=RuntimeError("no gpu")),
+        ) as mock_fish,
+    ):
         res = asyncio.run(free_video_workflow(cfg, FreeVideoInput(plans=[plan]), out))
         # fish 失败 → 自动退回 edge_tts,流程仍 completed
         mock_fish.assert_awaited_once()

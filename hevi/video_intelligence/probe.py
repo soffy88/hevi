@@ -28,7 +28,14 @@ def probe_video(path: str | Path, *, asset_id: str | None = None) -> VideoProbe:
     if not target.is_file() or target.stat().st_size == 0:
         raise VideoProbeError(f"VIDEO_NOT_FOUND:{target}")
     command = [
-        "ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(target)
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_streams",
+        "-show_format",
+        "-of",
+        "json",
+        str(target),
     ]
     try:
         completed = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
@@ -57,11 +64,13 @@ def probe_video(path: str | Path, *, asset_id: str | None = None) -> VideoProbe:
         left, right = raw_rate.split("/", 1)
         with suppress(ValueError):
             fps_num, fps_den = int(left), int(right)
+
     def _int(value: object) -> int | None:
         try:
             return int(str(value)) if value is not None else None
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
+
     return VideoProbe(
         asset_id=asset_id,
         path=str(target),

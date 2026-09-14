@@ -84,9 +84,7 @@ def test_engine_envelope_status_is_fail_closed() -> None:
     engine = NarrativeAuditEngine()
     defect = next(fixture for fixture in CORPUS if fixture.case_type == "POSITIVE")
     clean = next(
-        fixture
-        for fixture in CORPUS
-        if fixture.case_type == "NEGATIVE" and fixture.must_not_find
+        fixture for fixture in CORPUS if fixture.case_type == "NEGATIVE" and fixture.must_not_find
     )
     assert engine.audit_context(defect.context()).status in {"FAIL", "WARN"}
     assert engine.audit_context(clean.context()).status == "PASS"
@@ -132,7 +130,9 @@ def test_model_assisted_verifier_requires_repeatability() -> None:
         )
 
     verifier = ModelAssistedVerifier(flaky)
-    assert verifier.verify("PROSE_CLARITY", "x", evidence_span="span", location="sentence:1") is None
+    assert (
+        verifier.verify("PROSE_CLARITY", "x", evidence_span="span", location="sentence:1") is None
+    )
 
 
 def test_model_assisted_verifier_rejects_evasion_goals() -> None:

@@ -90,7 +90,9 @@ def test_quick_video_assemble_with_injected_tts(tmp_path: Path):
         assert result["status"] == "ok"
 
         # assemble_quick 注入式路径(注入假 TTS)
-        plan = await plan_quick("潮汐", QuickVideoConfig(max_lines=3), material_search=lambda t, c: [])
+        plan = await plan_quick(
+            "潮汐", QuickVideoConfig(max_lines=3), material_search=lambda t, c: []
+        )
         manifest = await assemble_quick(plan, tmp_path, QuickVideoConfig(), tts_synth=fake_tts)
         assert manifest.exists()
         assert len(plan.tts_segments) == 3

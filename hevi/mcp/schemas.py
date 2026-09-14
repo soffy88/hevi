@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
-def _obj(
-    props: dict[str, Any], required: list[str] | None = None
-) -> dict[str, Any]:
+def _obj(props: dict[str, Any], required: list[str] | None = None) -> dict[str, Any]:
     s: dict[str, Any] = {"type": "object", "properties": props}
     if required:
         s["required"] = required
@@ -87,9 +85,7 @@ PREDICT_STORY_INPUT = _obj(
     required=["reference_image", "direction"],
 )
 
-PREDICT_STORY_OUTPUT = _obj(
-    {"predictions": {"type": "array", "items": {"type": "string"}}}
-)
+PREDICT_STORY_OUTPUT = _obj({"predictions": {"type": "array", "items": {"type": "string"}}})
 
 MULTI_ANGLE_INPUT = _obj(
     {
@@ -128,9 +124,7 @@ ELEMENT_EDIT_INPUT = _obj(
     required=["elements", "operation", "target_index", "replacement"],
 )
 
-ELEMENT_EDIT_OUTPUT = _obj(
-    {"elements": {"type": "array", "items": {"type": "object"}}}
-)
+ELEMENT_EDIT_OUTPUT = _obj({"elements": {"type": "array", "items": {"type": "object"}}})
 
 # ── Creative workflow ─────────────────────────────────────────────────────────
 
@@ -173,9 +167,7 @@ STORYBOARD_WORKFLOW_INPUT = _obj(
     required=["script", "image_provider"],
 )
 
-STORYBOARD_WORKFLOW_OUTPUT = _obj(
-    {"shots": {"type": "array", "items": {"type": "object"}}}
-)
+STORYBOARD_WORKFLOW_OUTPUT = _obj({"shots": {"type": "array", "items": {"type": "object"}}})
 
 COMIC_TO_ANIMATION_INPUT = _obj(
     {

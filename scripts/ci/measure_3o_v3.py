@@ -3,6 +3,7 @@
 This module deliberately reports unresolved/dynamic calls as unresolved instead
 of treating imports, aliases, or re-exports as composition.
 """
+
 from __future__ import annotations
 
 import ast
@@ -13,14 +14,17 @@ from collections import defaultdict
 from _3o_common import CANONICAL, ROOT, all_sources, canonical_sources, local_sources, parse
 
 
-def _element_nodes(layer: str) -> list[tuple[object, ast.Module, ast.FunctionDef | ast.AsyncFunctionDef]]:
+def _element_nodes(
+    layer: str,
+) -> list[tuple[object, ast.Module, ast.FunctionDef | ast.AsyncFunctionDef]]:
     out = []
     for source in all_sources(layer):
         tree = parse(source.path)
         out.extend(
             (source, tree, node)
             for node in tree.body
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_")
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and not node.name.startswith("_")
         )
     return out
 
@@ -31,7 +35,11 @@ def _imported_functions(tree: ast.Module) -> tuple[dict[str, tuple[str, str]], d
     for node in tree.body:
         if isinstance(node, ast.ImportFrom) and node.module:
             root = node.module.split(".")[0]
-            target = root if root in CANONICAL else next((part for part in node.module.split(".") if part in CANONICAL), None)
+            target = (
+                root
+                if root in CANONICAL
+                else next((part for part in node.module.split(".") if part in CANONICAL), None)
+            )
             if target:
                 for alias in node.names:
                     funcs[alias.asname or alias.name] = (target, alias.name)
@@ -52,15 +60,38 @@ def single_oprim_measurement() -> dict[str, object]:
         for call in ast.walk(fn):
             if not isinstance(call, ast.Call):
                 continue
-            if isinstance(call.func, ast.Name) and call.func.id in funcs and funcs[call.func.id][0] == "oprim":
+            if (
+                isinstance(call.func, ast.Name)
+                and call.func.id in funcs
+                and funcs[call.func.id][0] == "oprim"
+            ):
                 called.add(f"oprim.{funcs[call.func.id][1]}")
-            elif isinstance(call.func, ast.Attribute) and isinstance(call.func.value, ast.Name) and call.func.value.id in modules and modules[call.func.value.id].startswith("oprim"):
+            elif (
+                isinstance(call.func, ast.Attribute)
+                and isinstance(call.func.value, ast.Name)
+                and call.func.value.id in modules
+                and modules[call.func.value.id].startswith("oprim")
+            ):
                 called.add(f"oprim.{call.func.attr}")
         bucket = "zero" if not called else "one" if len(called) == 1 else "multi"
         counts[bucket] += 1
         if bucket != "multi":
-            rows.append({"symbol": f"{source.rel}::{fn.name}", "oprim_calls": sorted(called), "distinct_oprims": len(called), "reason": "fewer than two distinct direct oprim call sites"})
-    return {"count": len(rows), "zero": counts["zero"], "one": counts["one"], "multi": counts["multi"], "oskills": rows, "source": "AST function call sites"}
+            rows.append(
+                {
+                    "symbol": f"{source.rel}::{fn.name}",
+                    "oprim_calls": sorted(called),
+                    "distinct_oprims": len(called),
+                    "reason": "fewer than two distinct direct oprim call sites",
+                }
+            )
+    return {
+        "count": len(rows),
+        "zero": counts["zero"],
+        "one": counts["one"],
+        "multi": counts["multi"],
+        "oskills": rows,
+        "source": "AST function call sites",
+    }
 
 
 def _omodul_graph() -> dict[str, object]:
@@ -82,9 +113,18 @@ def _omodul_graph() -> dict[str, object]:
             if not isinstance(call, ast.Call):
                 continue
             target = None
-            if isinstance(call.func, ast.Name) and call.func.id in funcs and funcs[call.func.id][0] == "omodul":
+            if (
+                isinstance(call.func, ast.Name)
+                and call.func.id in funcs
+                and funcs[call.func.id][0] == "omodul"
+            ):
                 target = funcs[call.func.id][1]
-            elif isinstance(call.func, ast.Attribute) and isinstance(call.func.value, ast.Name) and call.func.value.id in modules and modules[call.func.value.id].startswith("omodul"):
+            elif (
+                isinstance(call.func, ast.Attribute)
+                and isinstance(call.func.value, ast.Name)
+                and call.func.value.id in modules
+                and modules[call.func.value.id].startswith("omodul")
+            ):
                 target = call.func.attr
             if target:
                 direct_calls += 1
@@ -94,9 +134,19 @@ def _omodul_graph() -> dict[str, object]:
                     edges.add((current, candidate))
                     if candidate == current:
                         self_calls += 1
-            elif (isinstance(call.func, ast.Name) and call.func.id in {"eval", "exec", "getattr", "__import__"}) or (isinstance(call.func, ast.Attribute) and call.func.attr in {"getattr", "import_module"}):
+            elif (
+                isinstance(call.func, ast.Name)
+                and call.func.id in {"eval", "exec", "getattr", "__import__"}
+            ) or (
+                isinstance(call.func, ast.Attribute)
+                and call.func.attr in {"getattr", "import_module"}
+            ):
                 dynamic_calls += 1
-            elif isinstance(call.func, ast.Name) and call.func.id in funcs and funcs[call.func.id][0] == "omodul":
+            elif (
+                isinstance(call.func, ast.Name)
+                and call.func.id in funcs
+                and funcs[call.func.id][0] == "omodul"
+            ):
                 unresolved += 1
     adjacency = defaultdict(list)
     for left, right in edges:
@@ -134,7 +184,21 @@ def _omodul_graph() -> dict[str, object]:
     for node in sorted(nodes):
         if node not in indices:
             visit(node)
-    return {"nodes": sorted(nodes), "edges": [{"source": a, "target": b} for a, b in sorted(edges)], "cycles": sccs, "strongly_connected_components": sccs, "OMODUL_NODES": len(nodes), "OMODUL_EDGES": len(edges), "OMODUL_DIRECT_CALL_SITES": direct_calls, "OMODUL_CYCLES": len(sccs), "OMODUL_SCCS": len(sccs), "OMODUL_SELF_CALLS": self_calls, "OMODUL_DYNAMIC_CALLS": dynamic_calls, "OMODUL_UNRESOLVED_CALL_TARGETS": unresolved, "source": "AST direct call graph"}
+    return {
+        "nodes": sorted(nodes),
+        "edges": [{"source": a, "target": b} for a, b in sorted(edges)],
+        "cycles": sccs,
+        "strongly_connected_components": sccs,
+        "OMODUL_NODES": len(nodes),
+        "OMODUL_EDGES": len(edges),
+        "OMODUL_DIRECT_CALL_SITES": direct_calls,
+        "OMODUL_CYCLES": len(sccs),
+        "OMODUL_SCCS": len(sccs),
+        "OMODUL_SELF_CALLS": self_calls,
+        "OMODUL_DYNAMIC_CALLS": dynamic_calls,
+        "OMODUL_UNRESOLVED_CALL_TARGETS": unresolved,
+        "source": "AST direct call graph",
+    }
 
 
 def _pillar_measurement() -> dict[str, object]:
@@ -144,20 +208,56 @@ def _pillar_measurement() -> dict[str, object]:
         tree = parse(source.path)
         declared: set[str] = set()
         for node in ast.walk(tree):
-            if isinstance(node, ast.Assign) and isinstance(node.value, (ast.Set, ast.Tuple, ast.List)) and any(isinstance(t, ast.Name) and t.id == "_enabled_pillars" for t in node.targets):
-                declared |= {x.value for x in node.value.elts if isinstance(x, ast.Constant) and isinstance(x.value, str)}
+            if (
+                isinstance(node, ast.Assign)
+                and isinstance(node.value, (ast.Set, ast.Tuple, ast.List))
+                and any(
+                    isinstance(t, ast.Name) and t.id == "_enabled_pillars" for t in node.targets
+                )
+            ):
+                declared |= {
+                    x.value
+                    for x in node.value.elts
+                    if isinstance(x, ast.Constant) and isinstance(x.value, str)
+                }
         for pillar in sorted(declared):
             text = source.path.read_text(encoding="utf-8").lower()
             implemented = {
                 "fingerprint": "compute_fingerprint_for" in text,
-                "decision_trail": "decision_trail" in text and any(x in text for x in ("append(", "trail =", "trail:")),
-                "report": any(x in text for x in ("report_path", "report =", "write_report", "report.json")),
-                "cost": any(x in text for x in ("cost =", "cost:", "cost_tracker", "estimate_cost", "total_cost")),
+                "decision_trail": "decision_trail" in text
+                and any(x in text for x in ("append(", "trail =", "trail:")),
+                "report": any(
+                    x in text for x in ("report_path", "report =", "write_report", "report.json")
+                ),
+                "cost": any(
+                    x in text
+                    for x in ("cost =", "cost:", "cost_tracker", "estimate_cost", "total_cost")
+                ),
             }.get(pillar, False)
-            returned = any(isinstance(node, ast.Return) and isinstance(node.value, ast.Dict) and any(isinstance(k, ast.Constant) and k.value in {pillar, f"{pillar}_path"} for k in node.value.keys) for node in ast.walk(tree))
+            returned = any(
+                isinstance(node, ast.Return)
+                and isinstance(node.value, ast.Dict)
+                and any(
+                    isinstance(k, ast.Constant) and k.value in {pillar, f"{pillar}_path"}
+                    for k in node.value.keys
+                )
+                for node in ast.walk(tree)
+            )
             if pillar not in allowed or not implemented or not returned:
-                rows.append({"symbol": source.rel, "pillar": pillar, "declared": True, "implemented": implemented, "returned": returned})
-    return {"count": len(rows), "declarations": rows, "source": "AST declaration/implementation/return scan"}
+                rows.append(
+                    {
+                        "symbol": source.rel,
+                        "pillar": pillar,
+                        "declared": True,
+                        "implemented": implemented,
+                        "returned": returned,
+                    }
+                )
+    return {
+        "count": len(rows),
+        "declarations": rows,
+        "source": "AST declaration/implementation/return scan",
+    }
 
 
 def main() -> int:
@@ -172,7 +272,10 @@ def main() -> int:
     for name, payload in targets.items():
         out = ROOT / "artifacts/3o-v3" / name
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        out.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     print(f"SINGLE_OPRIM_OSKILLS={single['count']}")
     print(f"ZERO_OPRIM_OSKILLS={single['zero']}")
     print(f"ONE_OPRIM_OSKILLS={single['one']}")

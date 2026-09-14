@@ -42,8 +42,7 @@ def _content(value: Any) -> str:
         return value
     if isinstance(value, list):
         return "".join(
-            str(item.get("text") or "") if isinstance(item, dict) else str(item)
-            for item in value
+            str(item.get("text") or "") if isinstance(item, dict) else str(item) for item in value
         )
     return "" if value is None else str(value)
 

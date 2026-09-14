@@ -159,9 +159,7 @@ class MPTClient:
             # former therefore needs the leading ``tasks/`` removed before it
             # is sent to ``/api/v1/download``.
             download_relative = (
-                relative.removeprefix("tasks/")
-                if relative.startswith("tasks/")
-                else relative
+                relative.removeprefix("tasks/") if relative.startswith("tasks/") else relative
             )
             candidate_urls = [
                 f"{self.config.api_base.rstrip('/')}/api/v1/download/{download_relative}"

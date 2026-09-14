@@ -119,9 +119,7 @@ async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
         return {}
 
 
-def _fallback_shots_for_scene(
-    scene: ScreenplayScene, scene_idx: int
-) -> list[ShotListItem]:
+def _fallback_shots_for_scene(scene: ScreenplayScene, scene_idx: int) -> list[ShotListItem]:
     """LLM 失败时的兜底:整场只切一镜,叙述当旁白行,每句台词各自一行(character_name
     照抄剧本,至少台词不会丢——比整体失败强)。"""
     dialogue_lines = [
@@ -269,7 +267,10 @@ async def _shots_for_scene(
 
 
 async def generate_shot_list_draft(
-    *, screenplay: Screenplay, design_list: DesignList, llm: Any = None,
+    *,
+    screenplay: Screenplay,
+    design_list: DesignList,
+    llm: Any = None,
     scene_world: Any = None,
 ) -> ShotList:
     """锁定 Screenplay + DesignList → ShotList 草稿,逐场切镜头。每场一次 LLM 调用

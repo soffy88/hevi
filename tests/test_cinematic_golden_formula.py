@@ -55,7 +55,7 @@ async def test_decompose_uses_golden_formula():
     assert len(beats) == 2
     b = beats[0]
     assert b.shot_size == "medium"
-    assert b.emotion_expression == "嘴角上扬欢笑"      # 情绪已视觉动作化
+    assert b.emotion_expression == "嘴角上扬欢笑"  # 情绪已视觉动作化
     assert b.lighting == "明亮日光"
     assert 3.0 <= b.duration_s <= 5.0
     assert "轻" in b.atmosphere
@@ -63,10 +63,16 @@ async def test_decompose_uses_golden_formula():
 
 def test_shot_prompt_golden_formula_assembly():
     """shot_prompt = [景别/运镜]+[主体+动作+表情]+[氛围/光线]。"""
-    b = GoldenBeat(index=0, shot_size="close", movement="push_in",
-                   subject="小孩", action="掉入巨型水缸",
-                   emotion_expression="双手乱抓、双眼张大极度恐慌",
-                   atmosphere="惊慌", lighting="水花溅起")
+    b = GoldenBeat(
+        index=0,
+        shot_size="close",
+        movement="push_in",
+        subject="小孩",
+        action="掉入巨型水缸",
+        emotion_expression="双手乱抓、双眼张大极度恐慌",
+        atmosphere="惊慌",
+        lighting="水花溅起",
+    )
     p = b.shot_prompt
     assert p.startswith("close, push_in")
     assert "双手乱抓" in p and "水花溅起" in p
@@ -75,7 +81,7 @@ def test_shot_prompt_golden_formula_assembly():
 
 
 def test_parse_tolerates_markdown_fence():
-    raw = '```json\n' + _SIMGUA_JSON + '\n```'
+    raw = "```json\n" + _SIMGUA_JSON + "\n```"
     beats = parse_golden_beats(raw)
     assert len(beats) == 2
     assert beats[1].movement == "push_in"
@@ -92,9 +98,13 @@ async def test_plan_shots_carries_golden_variables():
         scene_id="s1",
         characters=["smg"],
         beats=[
-            Beat(beat_id="b1", action="跑跳追逐",
-                 emotion_expression="嘴角上扬欢笑",
-                 atmosphere="轻松嬉戏", lighting="明亮日光"),
+            Beat(
+                beat_id="b1",
+                action="跑跳追逐",
+                emotion_expression="嘴角上扬欢笑",
+                atmosphere="轻松嬉戏",
+                lighting="明亮日光",
+            ),
         ],
     )
     shots = await plan_shots(scene, art_direction="水墨动画风格")
@@ -103,20 +113,26 @@ async def test_plan_shots_carries_golden_variables():
     assert shot.lighting == "明亮日光"
     assert "嘴角上扬欢笑" in shot.prompt
     assert "轻松嬉戏" in shot.prompt
-    assert shot.style == "live"                      # 默认 live, 向后兼容
+    assert shot.style == "live"  # 默认 live, 向后兼容
 
 
 def test_cineshot_animation_style():
-    s = CineShot(shot_id="SH01", scene_id="s1", style="animation",
-                 prompt="close, 司马光砸缸(水墨动画)")
+    s = CineShot(
+        shot_id="SH01", scene_id="s1", style="animation", prompt="close, 司马光砸缸(水墨动画)"
+    )
     assert s.style == "animation"
 
 
 @pytest.mark.asyncio
 async def test_generate_attempt_animation_uses_text_to_video(tmp_path):
     """动画分支: 无参考图, 调纯文生视频 provider。"""
-    shot = CineShot(shot_id="SH01", scene_id="s1", style="animation",
-                    est_duration_s=4.0, prompt="close, 司马光砸缸(水墨动画)")
+    shot = CineShot(
+        shot_id="SH01",
+        scene_id="s1",
+        style="animation",
+        est_duration_s=4.0,
+        prompt="close, 司马光砸缸(水墨动画)",
+    )
     calls = {}
 
     async def fake_t2v(**kw):
@@ -124,25 +140,29 @@ async def test_generate_attempt_animation_uses_text_to_video(tmp_path):
         kw["output_path"].write_bytes(b"fake-video")
 
     out = await _generate_attempt(
-        shot, [], output_path=tmp_path / "a.mp4", seed=42,
-        video_gen=fake_t2v, open_mouth=True,
+        shot,
+        [],
+        output_path=tmp_path / "a.mp4",
+        seed=42,
+        video_gen=fake_t2v,
+        open_mouth=True,
     )
     assert out.name == "a.mp4"
     assert calls["prompt"].startswith("close")
     assert calls["duration"] == 4
-    assert "reference_images" not in calls      # 不传参考图
+    assert "reference_images" not in calls  # 不传参考图
 
 
 @pytest.mark.asyncio
 async def test_run_cg6_animation_skips_identity(tmp_path):
     """动画 CG6: identity 跳过 (置通过), 保留台词/VLM 检查。"""
-    shot = CineShot(shot_id="SH01", scene_id="s1", style="animation",
-                    est_duration_s=4.0)
+    shot = CineShot(shot_id="SH01", scene_id="s1", style="animation", est_duration_s=4.0)
     video = tmp_path / "a.mp4"
     video.write_bytes(b"fake")
 
-    result = await _run_cg6(video, shot, pool=None, pack_id="",
-                            version="", vlm=None, skip_identity=True)
+    result = await _run_cg6(
+        video, shot, pool=None, pack_id="", version="", vlm=None, skip_identity=True
+    )
     assert result.identity_passed is True
     assert result.identity_distance is None
     # Missing ASR/VLM evidence is fail-closed; animation only skips identity.

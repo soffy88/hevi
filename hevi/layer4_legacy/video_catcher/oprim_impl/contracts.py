@@ -6,7 +6,15 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-QUALITY_LIMITS = {"best": None, "360p": 360, "480p": 480, "720p": 720, "1080p": 1080, "1440p": 1440, "2160p": 2160}
+QUALITY_LIMITS = {
+    "best": None,
+    "360p": 360,
+    "480p": 480,
+    "720p": 720,
+    "1080p": 1080,
+    "1440p": 1440,
+    "2160p": 2160,
+}
 
 
 def is_url(value: str) -> bool:

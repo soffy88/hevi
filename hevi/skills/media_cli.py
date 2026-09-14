@@ -50,9 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     # resolve 使用 HEVI 的真实 provider 链：本地库优先，stock 负责检索并冻结
     # 到本地缓存，生成 provider 只在明确可用时参与。没有密钥或服务时仍然
     # fail-closed，不伪造远程 URL/产物。
-    resolve_ledger: MediaLedger | None = (
-        MediaLedger.load(args.ledger) if args.ledger else None
-    )
+    resolve_ledger: MediaLedger | None = MediaLedger.load(args.ledger) if args.ledger else None
     from hevi.sourcing.media_providers import default_providers
 
     providers: MediaProviders = default_providers()
@@ -67,7 +65,9 @@ def main(argv: list[str] | None = None) -> int:
         )
     except ResolveError as e:
         print(f"resolve failed: {e}", file=sys.stderr)
-        print("提示: 请检查 providers_cli status、素材 API Key、缓存目录和本地库。", file=sys.stderr)
+        print(
+            "提示: 请检查 providers_cli status、素材 API Key、缓存目录和本地库。", file=sys.stderr
+        )
         return 1
     print(
         f"resolved {resolution.id} -> {resolution.path} "

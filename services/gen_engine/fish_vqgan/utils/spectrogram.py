@@ -1,7 +1,6 @@
 import torch
 import torchaudio.functional as F
 from torch import Tensor, nn
-from torchaudio.transforms import MelScale
 
 
 class LinearSpectrogram(nn.Module):
@@ -108,9 +107,7 @@ class LogMelSpectrogram(nn.Module):
     def apply_mel_scale(self, x: Tensor) -> Tensor:
         return torch.matmul(x.transpose(-1, -2), self.fb).transpose(-1, -2)
 
-    def forward(
-        self, x: Tensor, return_linear: bool = False, sample_rate: int = None
-    ) -> Tensor:
+    def forward(self, x: Tensor, return_linear: bool = False, sample_rate: int = None) -> Tensor:
         if sample_rate is not None and sample_rate != self.sample_rate:
             x = F.resample(x, orig_freq=sample_rate, new_freq=self.sample_rate)
 

@@ -58,27 +58,44 @@ PROMO_ENERGY_ARC = SequencePattern(
     one_liner="低开品牌 → 单主角立传 → 字卡呼吸间隔的功能爬升段 → 发布会峰值收场",
     segments=(
         SequenceSegment(
-            role="brand_open", share_min=0.08, share_max=0.12, energy="low",
+            role="brand_open",
+            share_min=0.08,
+            share_max=0.12,
+            energy="low",
             purpose="字标压印 + hold ≥1s,交棒产品页面",
-            candidate_cards=("brand-ink-open",), hold_at_end=True,
+            candidate_cards=("brand-ink-open",),
+            hold_at_end=True,
         ),
         SequenceSegment(
-            role="hero", share_min=0.12, share_max=0.15, energy="medium",
+            role="hero",
+            share_min=0.12,
+            share_max=0.15,
+            energy="medium",
             purpose="一个主角、一条完整动作弧 ≥3s,立出产品原子单位",
             candidate_cards=("spotlight-hero-card",),
         ),
         SequenceSegment(
-            role="feature_climb", share_min=0.55, share_max=0.65, energy="high",
+            role="feature_climb",
+            share_min=0.55,
+            share_max=0.65,
+            energy="high",
             purpose="每镜绑一个独特功能、一种手法只当一次主角;能量高⇄低交替",
             candidate_cards=(
-                "deck-deal-flyin", "type-and-filter", "list-stack-press",
-                "row-embed", "document-typewriter-reveal",
+                "deck-deal-flyin",
+                "type-and-filter",
+                "list-stack-press",
+                "row-embed",
+                "document-typewriter-reveal",
             ),
         ),
         SequenceSegment(
-            role="launch_peak", share_min=0.13, share_max=0.16, energy="high",
+            role="launch_peak",
+            share_min=0.13,
+            share_max=0.16,
+            energy="high",
             purpose="已展示功能各出代表元素合影围住字标,sign-off hold ≥1s",
-            candidate_cards=("outro-group-photo-launch",), hold_at_end=True,
+            candidate_cards=("outro-group-photo-launch",),
+            hold_at_end=True,
         ),
     ),
     known_pitfalls=(
@@ -166,9 +183,13 @@ def plan_sequence(
     hold = HOLD_FRAMES if seg0.hold_at_end else 0
     shots.append(
         PlannedShot(
-            role=seg0.role, index=idx, start_frame=cursor,
-            duration_frames=frames_per_segment[0], energy=seg0.energy,
-            purpose=seg0.purpose, candidate_cards=seg0.candidate_cards,
+            role=seg0.role,
+            index=idx,
+            start_frame=cursor,
+            duration_frames=frames_per_segment[0],
+            energy=seg0.energy,
+            purpose=seg0.purpose,
+            candidate_cards=seg0.candidate_cards,
             hold_frames=hold,
         )
     )
@@ -178,9 +199,13 @@ def plan_sequence(
     seg1 = pattern.segments[1]
     shots.append(
         PlannedShot(
-            role=seg1.role, index=idx, start_frame=cursor,
-            duration_frames=frames_per_segment[1], energy=seg1.energy,
-            purpose=seg1.purpose, candidate_cards=seg1.candidate_cards,
+            role=seg1.role,
+            index=idx,
+            start_frame=cursor,
+            duration_frames=frames_per_segment[1],
+            energy=seg1.energy,
+            purpose=seg1.purpose,
+            candidate_cards=seg1.candidate_cards,
         )
     )
     cursor += frames_per_segment[1]
@@ -196,8 +221,11 @@ def plan_sequence(
         energy = _alternate_energy(i)
         feature_shots.append(
             PlannedShot(
-                role=seg2.role, index=0, start_frame=0,
-                duration_frames=per_feature, energy=energy,
+                role=seg2.role,
+                index=0,
+                start_frame=0,
+                duration_frames=per_feature,
+                energy=energy,
                 purpose=seg2.purpose,
                 candidate_cards=seg2.candidate_cards,
                 rest_frames=REST_FRAMES,
@@ -209,20 +237,19 @@ def plan_sequence(
     if feature_count > 0:
         gaps = feature_count - 1  # 功能镜之间的间隔数
         insert_after = sorted(
-            {
-                (gaps * k) // (breath_cards + 1)
-                for k in range(1, breath_cards + 1)
-                if gaps > 0
-            }
+            {(gaps * k) // (breath_cards + 1) for k in range(1, breath_cards + 1) if gaps > 0}
         )
         for i, shot in enumerate(feature_shots):
             merged.append(shot)
             if i in insert_after and i < feature_count - 1:
                 merged.append(
                     PlannedShot(
-                        role="breath", index=0, start_frame=0,
+                        role="breath",
+                        index=0,
+                        start_frame=0,
                         duration_frames=sum(BREATH_CARD_RANGE) // 2,
-                        energy="low", purpose="呼吸字卡:信息落定后的节奏位",
+                        energy="low",
+                        purpose="呼吸字卡:信息落定后的节奏位",
                         candidate_cards=("paper-title-card",),
                         hold_frames=HOLD_FRAMES,
                     )
@@ -237,9 +264,13 @@ def plan_sequence(
     seg3 = pattern.segments[-1]
     shots.append(
         PlannedShot(
-            role=seg3.role, index=idx, start_frame=cursor,
-            duration_frames=frames_per_segment[-1], energy=seg3.energy,
-            purpose=seg3.purpose, candidate_cards=seg3.candidate_cards,
+            role=seg3.role,
+            index=idx,
+            start_frame=cursor,
+            duration_frames=frames_per_segment[-1],
+            energy=seg3.energy,
+            purpose=seg3.purpose,
+            candidate_cards=seg3.candidate_cards,
             hold_frames=HOLD_FRAMES,
         )
     )

@@ -16,7 +16,19 @@ from typing import Any
 from hevi.studio.timeline import Timeline, TimelineClip, export_timeline, get_timeline, ripple
 
 _ORDINAL = r"(?:第\s*(?P<index>[0-9一二三四五六七八九十百]+)\s*(?:个)?\s*(?:镜头|镜|片段)|(?P<index2>[0-9]+)\s*(?:号)?\s*(?:镜头|镜|片段))"
-_CHINESE_DIGITS = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10, "百": 100}
+_CHINESE_DIGITS = {
+    "一": 1,
+    "二": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+    "十": 10,
+    "百": 100,
+}
 
 
 @dataclass(frozen=True)
@@ -81,17 +93,31 @@ def parse_edit_command(text: str) -> EditCommand:
         seconds = float(duration.group(1))
         if seconds <= 0:
             raise ValueError("镜头时长必须大于 0")
-        return EditCommand("duration", clip_index=index, value=seconds, description=f"第 {index} 个镜头改为 {seconds:g} 秒")
-    caption = re.search(r"(?:字幕|台词|文案).{0,12}?(?:改成|替换为|换成|设置为)\s*[‘'\"“]?(.+?)[’'\"”]?$", message)
+        return EditCommand(
+            "duration",
+            clip_index=index,
+            value=seconds,
+            description=f"第 {index} 个镜头改为 {seconds:g} 秒",
+        )
+    caption = re.search(
+        r"(?:字幕|台词|文案).{0,12}?(?:改成|替换为|换成|设置为)\s*[‘'\"“]?(.+?)[’'\"”]?$", message
+    )
     if caption:
         value = caption.group(1).strip(" 。")
         if value:
-            return EditCommand("caption", clip_index=index, value=value, description=f"第 {index} 个镜头字幕改为“{value}”")
+            return EditCommand(
+                "caption",
+                clip_index=index,
+                value=value,
+                description=f"第 {index} 个镜头字幕改为“{value}”",
+            )
     if re.search(r"移到.*(?:最后|片尾|结尾)", message):
         return EditCommand("move_end", clip_index=index, description=f"第 {index} 个镜头移到最后")
     if re.search(r"移到.*(?:最前|开头|片头)", message):
         return EditCommand("move_start", clip_index=index, description=f"第 {index} 个镜头移到开头")
-    raise ValueError("我识别到了镜头，但没有识别出动作；支持删除、恢复、改时长、改字幕、重排和换 BGM")
+    raise ValueError(
+        "我识别到了镜头，但没有识别出动作；支持删除、恢复、改时长、改字幕、重排和换 BGM"
+    )
 
 
 def _video_clips(timeline: Timeline) -> list[TimelineClip]:
@@ -109,7 +135,9 @@ def _related_clips(timeline: Timeline, index: int) -> list[TimelineClip]:
     related.extend(
         clip
         for clip in timeline.clips
-        if clip is not video and clip.clip_id[1:].split("s", 1)[0] == stem and clip.track in {"audio", "captions"}
+        if clip is not video
+        and clip.clip_id[1:].split("s", 1)[0] == stem
+        and clip.track in {"audio", "captions"}
     )
     # Imported timelines may not use matching IDs; time overlap is a safe fallback.
     if len(related) == 1:

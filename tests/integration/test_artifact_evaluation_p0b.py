@@ -34,7 +34,9 @@ class _ArtifactContext:
     store: LocalObjectStore
 
 
-async def _make_context(pool: PgPool, tmp_path: Path, payload: bytes = b"artifact-pass") -> _ArtifactContext:
+async def _make_context(
+    pool: PgPool, tmp_path: Path, payload: bytes = b"artifact-pass"
+) -> _ArtifactContext:
     production_id = uuid.uuid4()
     attempt_id = uuid.uuid4()
     revision = await ProductionGraphRepository(pool).create(
@@ -192,7 +194,9 @@ async def test_p0b_b1_real_artifact_evaluator_evidence_is_queryable(
 
 
 @pytest.mark.asyncio
-async def test_p0b_b2_missing_reference_is_unknown_and_blocked(pool: PgPool, tmp_path: Path) -> None:
+async def test_p0b_b2_missing_reference_is_unknown_and_blocked(
+    pool: PgPool, tmp_path: Path
+) -> None:
     context = await _make_context(pool, tmp_path)
     try:
         evidence = _evidence(
@@ -220,6 +224,7 @@ async def test_p0b_b2_missing_reference_is_unknown_and_blocked(pool: PgPool, tmp
 async def test_p0b_b3_evaluator_exception_becomes_unknown(pool: PgPool, tmp_path: Path) -> None:
     context = await _make_context(pool, tmp_path)
     try:
+
         async def evaluator() -> EvaluationEvidence:
             raise RuntimeError("evaluator unavailable")
 
@@ -232,9 +237,12 @@ async def test_p0b_b3_evaluator_exception_becomes_unknown(pool: PgPool, tmp_path
                 details={"reason": "evaluator_exception", "error": str(exc)},
             )
         assert evidence.passed is None
-        assert QualityEvaluation.from_evidence(
-            [evidence], GatePolicy.for_profile("standard")
-        ).violations[0].status == "unknown"
+        assert (
+            QualityEvaluation.from_evidence([evidence], GatePolicy.for_profile("standard"))
+            .violations[0]
+            .status
+            == "unknown"
+        )
         assert gate_verdict([evidence], GatePolicy.for_profile("standard"))["passed"] is False
     finally:
         await _cleanup(pool, context)

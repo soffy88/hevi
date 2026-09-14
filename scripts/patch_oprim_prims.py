@@ -25,6 +25,7 @@ helios-plat/oprim 仓库(函数签名与 SPEC 完全一致,平移零改动)。
 Usage:
     python scripts/patch_oprim_prims.py [venv_dir]
 """
+
 from __future__ import annotations
 
 import sys

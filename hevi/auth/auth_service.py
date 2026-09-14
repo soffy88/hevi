@@ -73,13 +73,15 @@ class AuthService:
             email = "oauth_test@example.com"
             user = await self._repo.get_by_email(email)
             if not user:
-                user = await self._repo.create({
-                    "email": email,
-                    "display_name": "OAuth Test",
-                    "auth_provider": provider,
-                    "oauth_sub": "test_sub_123",
-                    "is_active": True
-                })
+                user = await self._repo.create(
+                    {
+                        "email": email,
+                        "display_name": "OAuth Test",
+                        "auth_provider": provider,
+                        "oauth_sub": "test_sub_123",
+                        "is_active": True,
+                    }
+                )
             token = sign_access_token(str(user["id"]))
             return _safe_user(user), token
 

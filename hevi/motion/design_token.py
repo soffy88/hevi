@@ -68,10 +68,9 @@ def _norm_color(value: str) -> str | None:
     return None
 
 
-def normalize_design_tokens(
-    raw: dict[str, object], *, source: str = ""
-) -> DesignTokens:
+def normalize_design_tokens(raw: dict[str, object], *, source: str = "") -> DesignTokens:
     """把爬取的原始计算样式归一化为 DesignTokens(去重保序,非法值丢弃)。"""
+
     def _floats(key: str) -> list[float]:
         vals = raw.get(key)
         if not isinstance(vals, list):
@@ -80,7 +79,7 @@ def normalize_design_tokens(
         for v in vals:
             try:
                 f = _css_px(str(v)) if not isinstance(v, (int, float)) else float(v)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if f not in out:
                 out.append(f)
@@ -107,9 +106,7 @@ def normalize_design_tokens(
 
     raw_weights = raw.get("font_weights")
     weights = (
-        [w for w in raw_weights if isinstance(w, int)]
-        if isinstance(raw_weights, list)
-        else []
+        [w for w in raw_weights if isinstance(w, int)] if isinstance(raw_weights, list) else []
     )
 
     return DesignTokens(
@@ -124,6 +121,7 @@ def normalize_design_tokens(
         source=source,
     )
 
+
 def validate_tokens(tokens: DesignTokens) -> list[str]:
     """校验:关键维度非空 + 色板可解析。空 = 合规。"""
     issues: list[str] = []
@@ -131,11 +129,7 @@ def validate_tokens(tokens: DesignTokens) -> list[str]:
         issues.append("no font families")
     if not tokens.colors:
         issues.append("no colors")
-    issues.extend(
-        f"bad color {c!r}"
-        for c in tokens.colors
-        if len(c) != 7 or not c.startswith("#")
-    )
+    issues.extend(f"bad color {c!r}" for c in tokens.colors if len(c) != 7 or not c.startswith("#"))
     return issues
 
 

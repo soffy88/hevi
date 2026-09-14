@@ -12,9 +12,7 @@ from hevi.audio.voxcpm_service import synth_with_voxcpm, voxcpm_available
 
 def test_available_from_hevi_native_runtime(monkeypatch):
     monkeypatch.setattr("hevi.audio.voxcpm_service._import_voxcpm", lambda: None)
-    monkeypatch.setattr(
-        "hevi.voicepro.oskill.native_voice.native_voice_available", lambda: True
-    )
+    monkeypatch.setattr("hevi.voicepro.oskill.native_voice.native_voice_available", lambda: True)
     assert voxcpm_available() is True
 
 
@@ -24,9 +22,7 @@ def test_synth_uses_hevi_native_runtime_when_upstream_missing(tmp_path: Path, mo
 
     monkeypatch.setattr("hevi.audio.voxcpm_service._import_voxcpm", lambda: None)
     monkeypatch.setattr("hevi.audio.voxcpm_service._isolated_worker_python", lambda: None)
-    monkeypatch.setattr(
-        "hevi.voicepro.oskill.synthesize_native_voice_sync", fake_native
-    )
+    monkeypatch.setattr("hevi.voicepro.oskill.synthesize_native_voice_sync", fake_native)
     result = asyncio.run(synth_with_voxcpm("你好", tmp_path / "out.wav"))
     assert result == tmp_path / "out.wav"
 

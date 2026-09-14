@@ -85,11 +85,20 @@ PROMISE_RULES: dict[str, dict[str, Any]] = {
 }
 
 # 幻灯片式语法(有转场但**不是**真实运动)。
-_SLIDE_GRAMMAR_TYPES = frozenset({
-    "text_card", "stat_card", "chart", "bar_chart",
-    "line_chart", "pie_chart", "kpi_grid", "comparison",
-    "progress", "callout",
-})
+_SLIDE_GRAMMAR_TYPES = frozenset(
+    {
+        "text_card",
+        "stat_card",
+        "chart",
+        "bar_chart",
+        "line_chart",
+        "pie_chart",
+        "kpi_grid",
+        "comparison",
+        "progress",
+        "callout",
+    }
+)
 # 真实运动来源。
 _REAL_MOTION_TYPES = frozenset({"video", "animation", "avatar"})
 _VIDEO_EXTS = frozenset({"mp4", "mov", "webm", "avi", "mkv"})
@@ -102,8 +111,8 @@ class DeliveryPromise:
     promise_type: PromiseType
     motion_required: bool
     source_required: bool
-    tone_mode: str          # "cinematic" | "educational" | "corporate" | "playful" | "raw"
-    quality_floor: str      # "draft" | "presentable" | "broadcast"
+    tone_mode: str  # "cinematic" | "educational" | "corporate" | "playful" | "raw"
+    quality_floor: str  # "draft" | "presentable" | "broadcast"
     approved_fallback: str | None = None  # "animatic" | "still_led" | None
 
     def to_dict(self) -> dict[str, Any]:
@@ -136,8 +145,14 @@ class DeliveryPromise:
         violations: list[str] = []
 
         if not cuts:
-            return {"valid": False, "violations": ["无切点"], "motion_ratio": 0.0,
-                    "motion_cuts": 0, "slide_cuts": 0, "still_cuts": 0}
+            return {
+                "valid": False,
+                "violations": ["无切点"],
+                "motion_ratio": 0.0,
+                "motion_cuts": 0,
+                "slide_cuts": 0,
+                "still_cuts": 0,
+            }
 
         motion_cuts = slide_cuts = still_cuts = 0
         for cut in cuts:

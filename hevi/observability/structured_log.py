@@ -22,9 +22,9 @@ def log_event(
         "level": level,
         **fields,
     }
-    
+
     msg = json.dumps(record, ensure_ascii=False)
-    
+
     if level == "error":
         logger.error(msg)
     elif level == "warning":

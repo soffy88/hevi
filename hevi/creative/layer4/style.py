@@ -387,9 +387,7 @@ def _detect_cliche_density(text: str) -> list[NaturalnessFinding]:
     ]
 
 
-def _detect_style_drift(
-    text: str, style_profile: StyleProfile | None
-) -> list[NaturalnessFinding]:
+def _detect_style_drift(text: str, style_profile: StyleProfile | None) -> list[NaturalnessFinding]:
     if style_profile is None or style_profile.sentence_length is None:
         return []
     try:
@@ -540,9 +538,7 @@ class StyleModule:
             metrics={"finding_count": float(len(findings))},
         )
 
-    def revise_naturalness(
-        self, text: str, audit: WritingNaturalnessAudit
-    ) -> NaturalnessRevision:
+    def revise_naturalness(self, text: str, audit: WritingNaturalnessAudit) -> NaturalnessRevision:
         """Apply deterministic, quality-only repairs for the observed findings."""
 
         codes = {finding.code for finding in audit.findings}

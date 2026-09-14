@@ -105,7 +105,9 @@ def test_revision_repairs_repeat_and_enforces_limit() -> None:
             ),
         ),
     )
-    plan = engine.plan(asset_id=artifact.object_id, base_revision=0, audit=audit, change_type="POLISH")
+    plan = engine.plan(
+        asset_id=artifact.object_id, base_revision=0, audit=audit, change_type="POLISH"
+    )
     execution = engine.execute(
         asset_id=artifact.object_id,
         base_revision=0,

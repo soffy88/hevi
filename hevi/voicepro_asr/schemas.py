@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 class ASRProvider(str, Enum):
     """语音识别提供商。"""
+
     OPEN_AI_WHISPER = "openai_whisper"
     FASTER_WHISPER = "faster_whisper"
     WHISPER_KIT = "whisper_kit"
@@ -30,6 +31,7 @@ class WordTimestamp(BaseModel):
 
     openai-whisper / faster-whisper 输出的核心结构。
     """
+
     word: str = ""
     start_s: float = 0.0
     end_s: float = 0.0
@@ -42,6 +44,7 @@ class SentenceSegment(BaseModel):
 
     包含：开始时间、结束时间、文本、是否完整。
     """
+
     start_s: float = 0.0
     end_s: float = 0.0
     text: str = ""
@@ -54,6 +57,7 @@ class SentenceSegment(BaseModel):
 
 class ASRConfig(BaseModel):
     """ASR 识别配置。"""
+
     provider: ASRProvider = ASRProvider.FASTER_WHISPER
     model: str = "large-v2"  # tiny/medium/large-v2
     language: str = "zh"
@@ -70,6 +74,7 @@ class ASRConfig(BaseModel):
 
 class ASRResult(BaseModel):
     """ASR 识别结果。"""
+
     text: str = ""
     words: list[WordTimestamp] = Field(default_factory=list)
     segments: list[SentenceSegment] = Field(default_factory=list)
@@ -85,6 +90,7 @@ class ASRResult(BaseModel):
 
 class FunASRWord(BaseModel):
     """FunASR 原始输出词条。"""
+
     text: str = ""
     start: float = 0.0
     end: float = 0.0
@@ -92,6 +98,7 @@ class FunASRWord(BaseModel):
 
 class FunASRResult(BaseModel):
     """FunASR 结果。"""
+
     text: str = ""
     result: list[FunASRWord] = Field(default_factory=list)
     status: str = ""
@@ -102,6 +109,7 @@ class FunASRResult(BaseModel):
 
 class ASRCapability(BaseModel):
     """ASR 能力信封：当前环境可用的 ASR 工具。"""
+
     capabilities: dict[str, list[str]] = Field(default_factory=dict)
     # capability -> [tool_names], e.g., "transcribe": ["faster_whisper", "whisper_cpp"]
     providers: dict[str, list[str]] = Field(default_factory=dict)

@@ -73,10 +73,13 @@ class TestSoniloService(unittest.TestCase):
             ("invalid", (15, 600)),
         ]
         for configured_timeout, expected in test_cases:
-            with self.subTest(configured_timeout=configured_timeout), patch.object(
-                sonilo.config,
-                "app",
-                {"sonilo_timeout": configured_timeout},
+            with (
+                self.subTest(configured_timeout=configured_timeout),
+                patch.object(
+                    sonilo.config,
+                    "app",
+                    {"sonilo_timeout": configured_timeout},
+                ),
             ):
                 self.assertEqual(sonilo._request_timeout(), expected)
 
@@ -119,9 +122,7 @@ class TestSoniloService(unittest.TestCase):
         for payload in invalid_payloads:
             with (
                 self.subTest(payload=payload),
-                patch.object(
-                    sonilo.config, "app", {"sonilo_api_key": "test-key"}
-                ),
+                patch.object(sonilo.config, "app", {"sonilo_api_key": "test-key"}),
                 patch.object(
                     sonilo.requests,
                     "get",
@@ -132,9 +133,7 @@ class TestSoniloService(unittest.TestCase):
                     sonilo.test_connection()
 
     def test_connection_rejects_key_without_video_to_music_service(self):
-        response = _StreamingResponse(
-            payload={"available_services": ["text_to_music"]}
-        )
+        response = _StreamingResponse(payload={"available_services": ["text_to_music"]})
         with (
             patch.object(sonilo.config, "app", {"sonilo_api_key": "test-key"}),
             patch.object(sonilo.requests, "get", return_value=response),
@@ -178,16 +177,17 @@ class TestSoniloService(unittest.TestCase):
                 patch.object(
                     sonilo.utils, "get_ffmpeg_binary", return_value="test-ffmpeg"
                 ),
-                patch.object(
-                    sonilo.subprocess, "run", side_effect=create_proxy
-                ) as run,
+                patch.object(sonilo.subprocess, "run", side_effect=create_proxy) as run,
             ):
                 proxy_path = sonilo._create_video_proxy(str(source))
 
             command = run.call_args.args[0]
             self.assertEqual(command[0], "test-ffmpeg")
             self.assertIn("-an", command)
-            self.assertIn("force_original_aspect_ratio=decrease", command[command.index("-vf") + 1])
+            self.assertIn(
+                "force_original_aspect_ratio=decrease",
+                command[command.index("-vf") + 1],
+            )
             self.assertEqual(Path(proxy_path).read_bytes(), b"proxy-video")
             Path(proxy_path).unlink()
 
@@ -219,9 +219,7 @@ class TestSoniloService(unittest.TestCase):
                     else {"side_effect": result_or_error}
                 )
                 with patch.object(sonilo.subprocess, "run", **run_kwargs):
-                    with self.assertRaisesRegex(
-                        sonilo.SoniloError, expected_message
-                    ):
+                    with self.assertRaisesRegex(sonilo.SoniloError, expected_message):
                         sonilo._create_video_proxy(str(source))
 
                 self.assertEqual(list(Path(temp_dir).glob(".sonilo-proxy-*")), [])
@@ -251,9 +249,7 @@ class TestSoniloService(unittest.TestCase):
                         return_value=expected_size,
                     ),
                 ):
-                    with self.assertRaisesRegex(
-                        sonilo.SoniloError, "empty or exceeds"
-                    ):
+                    with self.assertRaisesRegex(sonilo.SoniloError, "empty or exceeds"):
                         sonilo._create_video_proxy(str(source))
 
                 self.assertEqual(list(Path(temp_dir).glob(".sonilo-proxy-*")), [])
@@ -293,9 +289,7 @@ class TestSoniloService(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as temp_dir:
             with self.assertRaisesRegex(sonilo.SoniloError, "before completion"):
-                sonilo._stream_audio(
-                    incomplete, str(Path(temp_dir) / "incomplete.m4a")
-                )
+                sonilo._stream_audio(incomplete, str(Path(temp_dir) / "incomplete.m4a"))
 
     def test_stream_audio_rejects_malformed_json_and_base64(self):
         invalid_cases = [
@@ -361,9 +355,7 @@ class TestSoniloService(unittest.TestCase):
                     sonilo.bgm_service, "validate_audio_file"
                 ) as validate_audio,
             ):
-                result = sonilo._request_bgm(
-                    str(video_path), str(output_path), "warm"
-                )
+                result = sonilo._request_bgm(str(video_path), str(output_path), "warm")
 
             self.assertEqual(result, str(output_path))
             self.assertEqual(output_path.read_bytes(), audio_bytes)
@@ -408,9 +400,7 @@ class TestSoniloService(unittest.TestCase):
                 video_path.write_bytes(b"video")
                 output_path.write_bytes(b"existing-music")
                 with (
-                    patch.object(
-                        sonilo.config, "app", {"sonilo_api_key": "test-key"}
-                    ),
+                    patch.object(sonilo.config, "app", {"sonilo_api_key": "test-key"}),
                     patch.object(sonilo.requests, "post", return_value=response),
                     patch.object(
                         sonilo.bgm_service,
@@ -418,12 +408,8 @@ class TestSoniloService(unittest.TestCase):
                         side_effect=validation_error,
                     ),
                 ):
-                    with self.assertRaisesRegex(
-                        sonilo.SoniloError, expected_message
-                    ):
-                        sonilo._request_bgm(
-                            str(video_path), str(output_path), ""
-                        )
+                    with self.assertRaisesRegex(sonilo.SoniloError, expected_message):
+                        sonilo._request_bgm(str(video_path), str(output_path), "")
 
                 self.assertEqual(output_path.read_bytes(), b"existing-music")
                 self.assertEqual(list(Path(temp_dir).glob(".sonilo-audio-*")), [])
@@ -436,9 +422,7 @@ class TestSoniloService(unittest.TestCase):
             proxy.write_bytes(b"proxy")
             with (
                 patch.object(sonilo.config, "app", {"sonilo_api_key": "test-key"}),
-                patch.object(
-                    sonilo, "_create_video_proxy", return_value=str(proxy)
-                ),
+                patch.object(sonilo, "_create_video_proxy", return_value=str(proxy)),
                 patch.object(
                     sonilo,
                     "_request_bgm",
@@ -461,9 +445,7 @@ class TestSoniloService(unittest.TestCase):
             proxy.write_bytes(b"proxy")
             with (
                 patch.object(sonilo.config, "app", {"sonilo_api_key": "test-key"}),
-                patch.object(
-                    sonilo, "_create_video_proxy", return_value=str(proxy)
-                ),
+                patch.object(sonilo, "_create_video_proxy", return_value=str(proxy)),
                 patch.object(
                     sonilo,
                     "_request_bgm",
@@ -481,9 +463,7 @@ class TestSoniloService(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             source = Path(temp_dir) / "source.mp4"
             source.write_bytes(b"video")
-            with patch.object(
-                sonilo.config, "app", {"sonilo_api_key": "test-key"}
-            ):
+            with patch.object(sonilo.config, "app", {"sonilo_api_key": "test-key"}):
                 for duration in (0, -1, float("nan"), 361):
                     with self.subTest(duration=duration):
                         with self.assertRaises(sonilo.SoniloError):
@@ -515,9 +495,7 @@ class TestSoniloService(unittest.TestCase):
                 create_proxy.assert_not_called()
 
             with (
-                patch.object(
-                    sonilo.config, "app", {"sonilo_api_key": "test-key"}
-                ),
+                patch.object(sonilo.config, "app", {"sonilo_api_key": "test-key"}),
                 patch.object(sonilo, "_create_video_proxy") as create_proxy,
             ):
                 with self.assertRaisesRegex(sonilo.SoniloError, "does not exist"):

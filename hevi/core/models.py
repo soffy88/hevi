@@ -32,9 +32,7 @@ class TaskRun(SQLModel, table=True):
     progress: int = Field(default=0, ge=0, le=100)
     error_log: str | None = Field(default=None, max_length=4000)
     # 颗粒度状态机:{"tts_status": "done", "asr_status": "done", ...}
-    state_json: dict[str, Any] = Field(
-        default_factory=dict, sa_column=Column(JSON, default=dict)
-    )
+    state_json: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, default=dict))
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 

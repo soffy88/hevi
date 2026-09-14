@@ -96,13 +96,18 @@ async def render_animation_fallback_async(
         duration=max(2.0, min(10.0, duration)),
     )
     config = FreeVideoConfig(
-        width=width, height=height, fps=fps,
-        frame_duration=plan.duration, palette="deep",
+        width=width,
+        height=height,
+        fps=fps,
+        frame_duration=plan.duration,
+        palette="deep",
     )
     # 单镜 → 单帧直出(workflow 会把它 concat 成一个 mp4)。
     with tempfile.TemporaryDirectory(prefix="hevi_fallback_") as td:
         result = await free_video_workflow(
-            config, FreeVideoInput(plans=[plan]), Path(td),
+            config,
+            FreeVideoInput(plans=[plan]),
+            Path(td),
         )
         if result.get("status") != "completed":
             logger.warning("freevideo fallback failed: %s", result.get("error"))
@@ -132,8 +137,14 @@ def render_intro_outro(
     intro_clip/outro_clip 参数(该参数接受文件路径)。"""
     return asyncio.run(
         render_intro_outro_async(
-            text=text, output_path=output_path, width=width, height=height,
-            fps=fps, duration=duration, title=title, is_intro=is_intro,
+            text=text,
+            output_path=output_path,
+            width=width,
+            height=height,
+            fps=fps,
+            duration=duration,
+            title=title,
+            is_intro=is_intro,
         )
     )
 

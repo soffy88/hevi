@@ -56,9 +56,7 @@ def generate_video_terms(request: Request, body: VideoTermsRequest):
     response_model=VideoSocialMetadataResponse,
     summary="Generate social publishing metadata",
 )
-def generate_video_social_metadata(
-    request: Request, body: VideoSocialMetadataRequest
-):
+def generate_video_social_metadata(request: Request, body: VideoSocialMetadataRequest):
     metadata = llm.generate_social_metadata(
         video_subject=body.video_subject,
         video_script=body.video_script,

@@ -73,12 +73,16 @@ def generate_creative_proposal(
     # 基于 SRT 生成章节规划
     chapters = []
     for i in range(0, len(truth.srt), 20):
-        chapters.append({
-            "chapter_id": f"ch_{i // 20}",
-            "start_ms": truth.srt[i].start_ms if i < len(truth.srt) else 0,
-            "end_ms": truth.srt[min(i + 19, len(truth.srt) - 1)].end_ms if i + 19 < len(truth.srt) else truth.srt[-1].end_ms,
-            "srt_indices": list(range(i, min(i + 20, len(truth.srt)))),
-        })
+        chapters.append(
+            {
+                "chapter_id": f"ch_{i // 20}",
+                "start_ms": truth.srt[i].start_ms if i < len(truth.srt) else 0,
+                "end_ms": truth.srt[min(i + 19, len(truth.srt) - 1)].end_ms
+                if i + 19 < len(truth.srt)
+                else truth.srt[-1].end_ms,
+                "srt_indices": list(range(i, min(i + 20, len(truth.srt)))),
+            }
+        )
 
     return CreativeProposal(
         proposal_id=f"cp_{hashlib.md5(str(truth.srt[0].text).encode()).hexdigest()[:8]}",
@@ -105,23 +109,27 @@ def plan_chapters(
     for ch in creative_proposal.chapter_plan:
         shots = []
         for shot_idx in range(shots_per_chapter):
-            shots.append(ShotSpec(
-                shot_id=f"{ch['chapter_id']}_shot_{shot_idx}",
+            shots.append(
+                ShotSpec(
+                    shot_id=f"{ch['chapter_id']}_shot_{shot_idx}",
+                    chapter_id=ch["chapter_id"],
+                    sequence=shot_idx,
+                    start_ms=ch["start_ms"] + shot_idx * 2000,
+                    end_ms=ch["start_ms"] + (shot_idx + 1) * 2000,
+                    visual_concept=f"镜头 {shot_idx + 1}",
+                    composition="三分法构图",
+                )
+            )
+        chapters.append(
+            ChapterSpec(
                 chapter_id=ch["chapter_id"],
-                sequence=shot_idx,
-                start_ms=ch["start_ms"] + shot_idx * 2000,
-                end_ms=ch["start_ms"] + (shot_idx + 1) * 2000,
-                visual_concept=f"镜头 {shot_idx + 1}",
-                composition="三分法构图",
-            ))
-        chapters.append(ChapterSpec(
-            chapter_id=ch["chapter_id"],
-            sequence=int(ch["chapter_id"].split("_")[1]),
-            start_ms=ch["start_ms"],
-            end_ms=ch["end_ms"],
-            srt_indices=ch["srt_indices"],
-            shots=shots,
-        ))
+                sequence=int(ch["chapter_id"].split("_")[1]),
+                start_ms=ch["start_ms"],
+                end_ms=ch["end_ms"],
+                srt_indices=ch["srt_indices"],
+                shots=shots,
+            )
+        )
     return chapters
 
 

@@ -379,8 +379,12 @@ def test_coerce_script_accepts_chinese_keys():
         ],
     }
     ir = ChapterIR(
-        source_name="t", raw_text="x", meta={"source": "t"},
-        characters=[], events=[], quotes=[],
+        source_name="t",
+        raw_text="x",
+        meta={"source": "t"},
+        characters=[],
+        events=[],
+        quotes=[],
     )
     script = _coerce_script(draft, ir)
     assert len(script.lines) == 2

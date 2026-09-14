@@ -28,6 +28,7 @@ from hevi.voicepro_tts.schemas import (
 
 # ── Edge-TTS 合成 ───────────────────────────────────
 
+
 async def synthesize_edge_tts(
     text: str,
     voice: str = "zh-CN-Xiaoyan",
@@ -47,7 +48,9 @@ async def synthesize_edge_tts(
     if not output_path:
         output_path = "/tmp/edge_tts_output.mp3"
 
-    communicate = edge_tts.Communicate(text, voice, rate=f"{int((speed - 1.0) * 100)}%", pitch=f"{int((pitch - 1.0) * 100)}%")
+    communicate = edge_tts.Communicate(
+        text, voice, rate=f"{int((speed - 1.0) * 100)}%", pitch=f"{int((pitch - 1.0) * 100)}%"
+    )
     await communicate.save(output_path)
 
     return make_tts_result(
@@ -60,6 +63,7 @@ async def synthesize_edge_tts(
 
 
 # ── OpenAI TTS 合成 ─────────────────────────────────
+
 
 async def synthesize_openai_tts(
     text: str,
@@ -97,6 +101,7 @@ async def synthesize_openai_tts(
 
 # ── MiniMax TTS 合成 ────────────────────────────────
 
+
 async def synthesize_minimax_tts(
     text: str,
     voice: str = "Chinese Male",
@@ -129,7 +134,7 @@ async def synthesize_minimax_tts(
             body = response.json()
     except (httpx.HTTPError, OSError, ValueError) as exc:
         raise RuntimeError(f"MiniMax TTS request failed: {exc}") from exc
-    encoded = ((body.get("data") or {}).get("audio") if isinstance(body, dict) else None)
+    encoded = (body.get("data") or {}).get("audio") if isinstance(body, dict) else None
     if not encoded:
         raise RuntimeError("MiniMax TTS response did not contain audio")
     try:
@@ -140,10 +145,13 @@ async def synthesize_minimax_tts(
         except (ValueError, binascii.Error) as exc:
             raise RuntimeError("MiniMax TTS returned invalid audio encoding") from exc
     _write_nonempty_audio(output, audio, "MiniMax")
-    return make_tts_result(audio_path=str(output), text=text, voice=voice, provider=TTSProvider.MINIMAX_TTS)
+    return make_tts_result(
+        audio_path=str(output), text=text, voice=voice, provider=TTSProvider.MINIMAX_TTS
+    )
 
 
 # ── CosyVoice 合成 ─────────────────────────────────
+
 
 async def synthesize_cosyvoice(
     text: str,
@@ -165,10 +173,16 @@ async def synthesize_cosyvoice(
     )
     await cosyvoice_synthesize(script=[line], output_path=output)
     _require_nonempty_audio(output, "CosyVoice")
-    return make_tts_result(audio_path=str(output), text=text, voice=voice_ref or "default", provider=TTSProvider.COSYVOICE_TTS)
+    return make_tts_result(
+        audio_path=str(output),
+        text=text,
+        voice=voice_ref or "default",
+        provider=TTSProvider.COSYVOICE_TTS,
+    )
 
 
 # ── F5-TTS 合成 ────────────────────────────────────
+
 
 async def synthesize_f5_tts(
     text: str,
@@ -195,10 +209,13 @@ async def synthesize_f5_tts(
         model_name=model,
     )
     _require_nonempty_audio(output, "F5-TTS")
-    return make_tts_result(audio_path=str(output), text=text, voice=voice_ref or "default", provider=TTSProvider.F5_TTS)
+    return make_tts_result(
+        audio_path=str(output), text=text, voice=voice_ref or "default", provider=TTSProvider.F5_TTS
+    )
 
 
 # ── Kokoro TTS 合成 ────────────────────────────────
+
 
 async def synthesize_kokoro_tts(
     text: str,
@@ -227,10 +244,13 @@ async def synthesize_kokoro_tts(
     except Exception as exc:
         raise RuntimeError(f"Kokoro TTS failed: {exc}") from exc
     _require_nonempty_audio(output, "Kokoro")
-    return make_tts_result(audio_path=str(output), text=text, voice=voice, provider=TTSProvider.KOKORO_TTS)
+    return make_tts_result(
+        audio_path=str(output), text=text, voice=voice, provider=TTSProvider.KOKORO_TTS
+    )
 
 
 # ── Azure TTS 合成 ─────────────────────────────────
+
 
 async def synthesize_azure_tts(
     text: str,
@@ -264,7 +284,9 @@ async def synthesize_azure_tts(
 
     await asyncio.to_thread(_run)
     _require_nonempty_audio(output, "Azure")
-    return make_tts_result(audio_path=str(output), text=text, voice=voice, provider=TTSProvider.AZURE_TTS)
+    return make_tts_result(
+        audio_path=str(output), text=text, voice=voice, provider=TTSProvider.AZURE_TTS
+    )
 
 
 def _write_nonempty_audio(path: Path, data: bytes, provider: str) -> None:
@@ -282,6 +304,7 @@ def _require_nonempty_audio(path: Path, provider: str) -> None:
 
 # ── 通用 TTS 合成（根据 provider 自动选择） ─────────
 
+
 async def synthesize_tts(
     text: str,
     config: TTSConfig,
@@ -294,9 +317,13 @@ async def synthesize_tts(
     if config.provider == TTSProvider.MINIMAX_TTS:
         return await synthesize_minimax_tts(text, config.voice, config.speed)
     if config.provider == TTSProvider.COSYVOICE_TTS:
-        return await synthesize_cosyvoice(text, config.clone_source_audio, config.clone_mode.value, config.speed)
+        return await synthesize_cosyvoice(
+            text, config.clone_source_audio, config.clone_mode.value, config.speed
+        )
     if config.provider == TTSProvider.F5_TTS:
-        return await synthesize_f5_tts(text, voice_ref=config.clone_source_audio, speed=config.speed)
+        return await synthesize_f5_tts(
+            text, voice_ref=config.clone_source_audio, speed=config.speed
+        )
     if config.provider == TTSProvider.KOKORO_TTS:
         return await synthesize_kokoro_tts(text, config.voice, config.speed)
     if config.provider == TTSProvider.AZURE_TTS:

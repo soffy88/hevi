@@ -27,7 +27,9 @@ def _gpu_headroom_mb() -> int:
     """当前 GPU 可用显存(MiB)。"""
     out = subprocess.run(
         ["nvidia-smi", "--query-gpu=memory.used,memory.total", "--format=csv,noheader,nounits"],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     used, total = (int(x) for x in out.stdout.strip().split(","))
     return total - used
@@ -78,7 +80,9 @@ async def main(real: bool) -> None:
         frame_num=81,
         reference_image=keyframe,
     )
-    print(f"[{time.strftime('%H:%M:%S')}] ✅ i2v 剪辑 → {clip} ({(time.monotonic()-t0)/60:.1f}min)")
+    print(
+        f"[{time.strftime('%H:%M:%S')}] ✅ i2v 剪辑 → {clip} ({(time.monotonic() - t0) / 60:.1f}min)"
+    )
 
     result = {"keyframe": str(keyframe), "clip": str(clip), "ok": True}
     payload = json.dumps(result, ensure_ascii=False, indent=2)

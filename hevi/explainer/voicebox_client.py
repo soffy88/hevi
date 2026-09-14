@@ -34,7 +34,7 @@ async def _response_error(response: httpx.Response) -> str:
         detail = payload.get("detail") if isinstance(payload, dict) else None
         if detail:
             return str(detail)
-    except (ValueError, json.JSONDecodeError, httpx.ResponseNotRead):
+    except ValueError, json.JSONDecodeError, httpx.ResponseNotRead:
         pass
     return response.text[:500] or f"HTTP {response.status_code}"
 
@@ -111,9 +111,7 @@ async def synthesize(
             terminal = await _wait_for_generation(client, str(generation_id))
             if terminal.get("status") != "completed":
                 reason = terminal.get("error") or terminal.get("status", "unknown")
-                raise VoiceboxError(
-                    f"Voicebox 生成失败: {reason}"
-                )
+                raise VoiceboxError(f"Voicebox 生成失败: {reason}")
 
             audio = await client.get(f"/audio/{generation_id}")
             if audio.status_code >= 400:

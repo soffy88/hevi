@@ -26,8 +26,12 @@ class DuixLiveService:
         "commercial_review_required": True,
     }
 
-    def __init__(self, *, base_url: str | None = None, client: httpx.AsyncClient | None = None) -> None:
-        self._base_url = (base_url if base_url is not None else os.getenv("DUIX_SERVICE_URL", "")).rstrip("/")
+    def __init__(
+        self, *, base_url: str | None = None, client: httpx.AsyncClient | None = None
+    ) -> None:
+        self._base_url = (
+            base_url if base_url is not None else os.getenv("DUIX_SERVICE_URL", "")
+        ).rstrip("/")
         self._health_path = os.getenv("DUIX_HEALTH_PATH", "/health")
         self._live_path = os.getenv("DUIX_LIVESTREAM_PATH", "").strip()
         self._client = client
@@ -48,7 +52,11 @@ class DuixLiveService:
         }
 
     def contract_metadata(self) -> dict[str, object]:
-        return {"provider": self.provider, "capabilities": self.capabilities, "license": self.license_metadata}
+        return {
+            "provider": self.provider,
+            "capabilities": self.capabilities,
+            "license": self.license_metadata,
+        }
 
     async def health(self) -> dict[str, Any]:
         if not self._base_url:
@@ -63,18 +71,29 @@ class DuixLiveService:
             payload = response.json()
         except ValueError:
             payload = {"status": "ok"}
-        if isinstance(payload, dict) and str(payload.get("status", "ok")).lower() not in {"ok", "ready", "healthy"}:
+        if isinstance(payload, dict) and str(payload.get("status", "ok")).lower() not in {
+            "ok",
+            "ready",
+            "healthy",
+        }:
             raise DuixUnavailable(f"Duix 未就绪：{payload.get('status')}")
         return payload if isinstance(payload, dict) else {"status": "ok"}
 
-    async def start(self, *, presenter_id: str | None, avatar_id: str | None, scene: str | None, script: str) -> dict[str, Any]:
+    async def start(
+        self, *, presenter_id: str | None, avatar_id: str | None, scene: str | None, script: str
+    ) -> dict[str, Any]:
         if not self.configured:
             raise DuixUnavailable("未配置 DUIX_LIVESTREAM_PATH，无法建立真实直播会话")
         await self.health()
         response = await self._request(
             "POST",
             self._live_path,
-            json={"presenter_id": presenter_id, "avatar_id": avatar_id, "scene": scene, "script": script},
+            json={
+                "presenter_id": presenter_id,
+                "avatar_id": avatar_id,
+                "scene": scene,
+                "script": script,
+            },
         )
         if response.status_code >= 400:
             raise DuixUnavailable(f"Duix 建立直播失败：HTTP {response.status_code}")
@@ -85,10 +104,17 @@ class DuixLiveService:
         if not isinstance(payload, dict):
             raise DuixUnavailable("Duix 建立直播返回无效数据")
         session_id = payload.get("session_id")
-        stream_url = payload.get("stream_url") or payload.get("webrtc_url") or payload.get("rtmp_url")
+        stream_url = (
+            payload.get("stream_url") or payload.get("webrtc_url") or payload.get("rtmp_url")
+        )
         if not session_id or not stream_url:
             raise DuixUnavailable("Duix 未返回真实 session_id 或可播放 stream_url")
-        return {"session_id": str(session_id), "stream_url": str(stream_url), "provider": self.provider, "status": "started"}
+        return {
+            "session_id": str(session_id),
+            "stream_url": str(stream_url),
+            "provider": self.provider,
+            "status": "started",
+        }
 
     async def stop(self, session_id: str) -> dict[str, Any]:
         if not self.configured:

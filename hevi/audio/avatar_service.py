@@ -1,4 +1,5 @@
 """hevi.audio.avatar_service — delegates to oprim.avatar_generate."""
+
 from __future__ import annotations
 
 import os

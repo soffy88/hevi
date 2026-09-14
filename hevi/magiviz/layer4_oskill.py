@@ -5,8 +5,6 @@ Magiviz 技能：组合五步工作流原子为完整技能。
 
 from __future__ import annotations
 
-from typing import Any
-
 from hevi.magiviz.oprim import (
     compose_story_video,
     generate_all_characters,
@@ -18,14 +16,8 @@ from hevi.magiviz.oprim import (
 from hevi.magiviz.schemas import (
     JobStatus,
     MagivizJob,
-    SceneVideo,
-    Storyboard,
-    StoryDetails,
-    StoryOutline,
     VideoAspectRatio,
     VideoModel,
-    make_magiviz_job,
-    make_story_outline,
 )
 
 # ── 技能 1: 完整流水线执行 ────────────────────────────

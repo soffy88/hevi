@@ -17,6 +17,7 @@ from hevi.ingest.preflight import PreflightReport, check_env
 
 # ---- story_to_animation(手绘日记漫画)----
 
+
 def test_segment_story_chinese_sentences():
     sentences = segment_story("王生慕道赴崂山。跪求道士收留,初遭拒绝后以死相誓!终获准入观。")
     # 句号/感叹号切分;逗号不切;一句一拍
@@ -84,6 +85,7 @@ def test_story_workflow_plan(tmp_path):
 
 # ---- env preflight ----
 
+
 def test_preflight_structure():
     report = check_env()
     assert isinstance(report, PreflightReport)
@@ -113,14 +115,20 @@ def test_preflight_to_dict_and_save(tmp_path):
 
 # ---- story_cli ----
 
+
 def test_story_cli_plan(tmp_path, capsys):
     from hevi.skills.story_cli import main
 
-    rc = main([
-        "--text", "一句故事。",
-        "--mode", "plan",
-        "--out-dir", str(tmp_path),
-    ])
+    rc = main(
+        [
+            "--text",
+            "一句故事。",
+            "--mode",
+            "plan",
+            "--out-dir",
+            str(tmp_path),
+        ]
+    )
     assert rc == 0
     out = capsys.readouterr().out
     assert "beats: 1" in out

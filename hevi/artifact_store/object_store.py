@@ -157,11 +157,14 @@ class MinioObjectStore:
         if not uri.startswith(prefix):
             raise ValueError(f"URI does not belong to bucket {self.bucket!r}: {uri}")
         digest = uri.removeprefix(prefix)
-        return cast(str | None, self.client.presigned_get_object(
-            self.bucket,
-            digest,
-            expires=timedelta(seconds=max(1, expires_s)),
-        ))
+        return cast(
+            str | None,
+            self.client.presigned_get_object(
+                self.bucket,
+                digest,
+                expires=timedelta(seconds=max(1, expires_s)),
+            ),
+        )
 
     async def delete(self, uri: str) -> None:
         prefix = f"s3://{self.bucket}/"

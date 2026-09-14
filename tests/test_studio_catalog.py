@@ -50,7 +50,11 @@ async def test_catalog_ops_run() -> None:
         {
             "transcript": [
                 {"start": 0, "end": 8, "text": "闲聊天气"},
-                {"start": 8, "end": 70, "text": "其实没人告诉你这个秘密。数据显示原来可以三步记住。"},
+                {
+                    "start": 8,
+                    "end": 70,
+                    "text": "其实没人告诉你这个秘密。数据显示原来可以三步记住。",
+                },
             ],
             "target_clips": 1,
         },

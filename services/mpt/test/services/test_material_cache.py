@@ -207,9 +207,7 @@ class TestMaterialSearchCache(unittest.TestCase):
 
     def test_coverr_signed_urls_are_never_cached(self):
         """Coverr 下载地址包含签名 JWT，不能进入可长期保留的磁盘缓存。"""
-        item = self._item(
-            "https://storage.coverr.co/video/download?token=signed-jwt"
-        )
+        item = self._item("https://storage.coverr.co/video/download?token=signed-jwt")
         item.provider = "coverr"
         item.source_info["provider"] = "coverr"
 
@@ -445,11 +443,14 @@ class TestMaterialSearchCache(unittest.TestCase):
         remote_items = [self._item()]
         remote_search = Mock(return_value=remote_items)
 
-        with patch.object(
-            material_cache,
-            "load_material_search_cache",
-            side_effect=RuntimeError("cache read failed"),
-        ), patch.object(material_cache.logger, "warning") as warning:
+        with (
+            patch.object(
+                material_cache,
+                "load_material_search_cache",
+                side_effect=RuntimeError("cache read failed"),
+            ),
+            patch.object(material_cache.logger, "warning") as warning,
+        ):
             results = material._search_videos_with_cache(
                 provider="pixabay",
                 search_videos=remote_search,
@@ -467,15 +468,19 @@ class TestMaterialSearchCache(unittest.TestCase):
         remote_items = [self._item()]
         remote_search = Mock(return_value=remote_items)
 
-        with patch.object(
-            material_cache,
-            "load_material_search_cache",
-            return_value=None,
-        ), patch.object(
-            material_cache,
-            "save_material_search_cache",
-            side_effect=RuntimeError("cache write failed"),
-        ), patch.object(material_cache.logger, "warning") as warning:
+        with (
+            patch.object(
+                material_cache,
+                "load_material_search_cache",
+                return_value=None,
+            ),
+            patch.object(
+                material_cache,
+                "save_material_search_cache",
+                side_effect=RuntimeError("cache write failed"),
+            ),
+            patch.object(material_cache.logger, "warning") as warning,
+        ):
             results = material._search_videos_with_cache(
                 provider="pixabay",
                 search_videos=remote_search,

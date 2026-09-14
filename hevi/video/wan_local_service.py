@@ -6,6 +6,7 @@ Measured performance (RTX 3080, profile 5 = VerylowRAM_LowVRAM, int8 T5):
 
 Replaces native wan.WanT2V (40 min / 30 steps) with Wan2GP + CausVid (3m46s / 8 steps).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -29,9 +30,9 @@ _WAN2GP_PYTHON = _WAN2GP_DIR / "venv_wan/bin/python"
 _WAN2GP_SCRIPT = _WAN2GP_DIR / "wgp.py"
 _CAUSVID_LORA = "Wan21_CausVid_bidirect2_T2V_1_3B_lora_rank32.safetensors"
 
-_DEFAULT_SIZE = (832, 480)   # 480P 16:9 (W×H)
-_DEFAULT_FRAMES = 81          # ~5s @ 16fps
-_VACE_STEPS = 15             # VACE 参考条件化无 CausVid 加速, 用标准步数(质量/速度折中)
+_DEFAULT_SIZE = (832, 480)  # 480P 16:9 (W×H)
+_DEFAULT_FRAMES = 81  # ~5s @ 16fps
+_VACE_STEPS = 15  # VACE 参考条件化无 CausVid 加速, 用标准步数(质量/速度折中)
 # RFC-001 P1-4: richer default negative prompt (was 3 words). Wan honors a native
 # negative; cloud providers don't expose one, so this is wan_local-specific.
 _DEFAULT_NEGATIVE = (
@@ -55,6 +56,7 @@ def _seed_for(output_path: Path) -> int:
     """
     digest = hashlib.sha256(output_path.stem.encode("utf-8")).hexdigest()
     return int(digest[:8], 16)
+
 
 # Model files that wgp.py loads for T2V-1.3B (profile 5).
 # Pre-warming ensures they're in OS page cache before the subprocess starts,
@@ -94,7 +96,10 @@ async def prewarm_wan_cache() -> None:
         speed_mbs = size_mb / max(elapsed, 0.001)
         logger.info(
             "wan_local: cache-warm %s  %.0f MB in %.1fs (%.0f MB/s)",
-            model_file.name, size_mb, elapsed, speed_mbs,
+            model_file.name,
+            size_mb,
+            elapsed,
+            speed_mbs,
         )
 
 
@@ -208,9 +213,13 @@ async def _run_wgp(
         cmd = [
             str(_WAN2GP_PYTHON),
             str(_WAN2GP_SCRIPT),
-            model_flag, "--profile", "5",
-            "--process", str(task_json),
-            "--output-dir", str(out_dir),
+            model_flag,
+            "--profile",
+            "5",
+            "--process",
+            str(task_json),
+            "--output-dir",
+            str(out_dir),
         ]
 
         env = {**os.environ, "PYTHONUNBUFFERED": "1"}
@@ -233,7 +242,7 @@ async def _run_wgp(
 
         try:
             rc = await asyncio.wait_for(_consume_and_wait(), timeout=_WAN_TIMEOUT_S)
-        except (TimeoutError, asyncio.CancelledError):
+        except TimeoutError, asyncio.CancelledError:
             # Never leave a hung/orphaned subprocess holding the GPU scheduler lock.
             logger.error("wan_local: subprocess timed out/cancelled — killing wgp.py")
             proc.kill()

@@ -24,7 +24,9 @@ def main() -> int:
     preflight = preflight_video(args.video, output_dir=args.output)
     if preflight.status != "READY":
         blocked_payload = {"status": "BLOCKED", "errors": preflight.errors}
-        print(json.dumps(blocked_payload, ensure_ascii=False) if args.json_output else blocked_payload)
+        print(
+            json.dumps(blocked_payload, ensure_ascii=False) if args.json_output else blocked_payload
+        )
         return 2
     try:
         analysis = analyze_reel(args.video, threshold=args.shot_threshold, semantic=args.semantic)
@@ -44,7 +46,9 @@ def main() -> int:
             "provenance": str(args.output / "provenance.json"),
         },
         "metrics": analysis.statistics.model_dump(mode="json"),
-        "errors": [item.message for item in analysis.quality_report.findings if item.status.value == "FAIL"],
+        "errors": [
+            item.message for item in analysis.quality_report.findings if item.status.value == "FAIL"
+        ],
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2) if args.json_output else payload)
     return 0 if payload["status"] == "SUCCEEDED" else 1

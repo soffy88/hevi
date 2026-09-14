@@ -31,9 +31,7 @@ class GraphRepository:
         if existing is None:
             return None
         updates["updated_at"] = datetime.now(UTC).replace(tzinfo=None)
-        await update_one(
-            self._pool, table="canvas_graphs", id=uuid.UUID(graph_id), data=updates
-        )
+        await update_one(self._pool, table="canvas_graphs", id=uuid.UUID(graph_id), data=updates)
         return await self.get(graph_id)
 
     async def delete(self, graph_id: str) -> bool:

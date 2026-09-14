@@ -549,8 +549,9 @@ async def test_shot_router_propagates_floor_to_route():
         assert seen["mode"] == "i2v"
 
     # H3_ROUTING=off(矩阵里可关):空镜也回落 route_video_provider,floor 透传
-    with _patch("hevi.cost.shot_router.route_video_provider", fake_route), _patch(
-        "hevi.cost.shot_router.os.getenv", return_value="off"
+    with (
+        _patch("hevi.cost.shot_router.route_video_provider", fake_route),
+        _patch("hevi.cost.shot_router.os.getenv", return_value="off"),
     ):
         seen.clear()
         await SR.route_shot_provider(

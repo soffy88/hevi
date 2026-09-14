@@ -1,4 +1,5 @@
 """Adversarial tests for local 3O implementation classification."""
+
 from __future__ import annotations
 
 import ast
@@ -15,7 +16,9 @@ def test_pure_reexport_is_not_real() -> None:
 
 
 def test_pure_delegate_is_not_real() -> None:
-    assert not classify("from canonical import foo\ndef old(*args, **kwargs):\n    return foo(*args, **kwargs)")
+    assert not classify(
+        "from canonical import foo\ndef old(*args, **kwargs):\n    return foo(*args, **kwargs)"
+    )
 
 
 def test_transform_delegate_is_real() -> None:

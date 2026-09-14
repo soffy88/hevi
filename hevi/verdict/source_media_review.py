@@ -54,8 +54,14 @@ def _ffprobe_json(path: Path) -> dict[str, Any] | None:
     try:
         result = subprocess.run(
             [
-                "ffprobe", "-v", "quiet", "-print_format", "json",
-                "-show_format", "-show_streams", str(path),
+                "ffprobe",
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
+                "-show_format",
+                "-show_streams",
+                str(path),
             ],
             capture_output=True,
             text=True,
@@ -77,7 +83,7 @@ def _parse_fps(fps_str: str) -> float:
             num, den = fps_str.split("/")
             return round(int(num) / max(int(den), 1), 2)
         return float(fps_str)
-    except (ValueError, ZeroDivisionError):
+    except ValueError, ZeroDivisionError:
         return 0.0
 
 
@@ -93,7 +99,11 @@ def _sample_timestamps(duration: float, count: int = 4) -> list[float]:
 
 def _probe_video(path: Path, transcribe: Callable[[Path], str] | None = None) -> dict[str, Any]:
     """视频: ffprobe 技术探测 + 代表帧 + 质量风险。"""
-    result: dict[str, Any] = {"technical_probe": {}, "representative_frames": [], "quality_risks": []}
+    result: dict[str, Any] = {
+        "technical_probe": {},
+        "representative_frames": [],
+        "quality_risks": [],
+    }
 
     raw = _ffprobe_json(path)
     if raw:
@@ -160,7 +170,9 @@ def _probe_video(path: Path, transcribe: Callable[[Path], str] | None = None) ->
             if text and text.strip():
                 words = text.split()
                 if len(words) > 100:
-                    result["transcript_summary"] = f"{' '.join(words[:100])}... ({len(words)} words total)"
+                    result["transcript_summary"] = (
+                        f"{' '.join(words[:100])}... ({len(words)} words total)"
+                    )
                 else:
                     result["transcript_summary"] = text.strip()
         except Exception as exc:
@@ -302,8 +314,7 @@ def review_source_media(
             res = probe.get("resolution", "unknown")
             has_audio = bool(probe.get("audio_codec"))
             entry["content_summary"] = (
-                f"Video file: {dur:.1f}s at {res}, "
-                f"{'with' if has_audio else 'without'} audio"
+                f"Video file: {dur:.1f}s at {res}, {'with' if has_audio else 'without'} audio"
             )
             entry["usable_for"] = _infer_video_usability(probe, transcript)
         elif media_type == "audio":
@@ -319,8 +330,7 @@ def review_source_media(
         summaries.append(f"{file_path.name}: {entry['content_summary']}")
         reviewed.append(entry)
         implications.extend(
-            f"Quality risk in {file_path.name}: {risk}"
-            for risk in entry.get("quality_risks", [])
+            f"Quality risk in {file_path.name}: {risk}" for risk in entry.get("quality_risks", [])
         )
 
     if not reviewed:
@@ -334,11 +344,15 @@ def review_source_media(
     has_images = any(f["media_type"] == "image" for f in reviewed)
 
     if has_video:
-        implications.append("Source video available — consider source-led or hybrid production approach")
+        implications.append(
+            "Source video available — consider source-led or hybrid production approach"
+        )
     if has_audio and not has_video:
         implications.append("Audio-only source — production needs visual assets to accompany audio")
     if has_images and not has_video:
-        implications.append("Image-only source — motion must come from animation or video generation")
+        implications.append(
+            "Image-only source — motion must come from animation or video generation"
+        )
 
     if not implications:
         implications.append("No specific constraints identified from source media.")

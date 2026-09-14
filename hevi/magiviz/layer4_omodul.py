@@ -5,18 +5,14 @@ Magiviz 规划：五步工作流规划 + 可中断恢复。
 
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from hevi.magiviz.oprim import run_full_pipeline
 from hevi.magiviz.schemas import (
     MagivizJob,
     StoryOutline,
-    VideoAspectRatio,
     VideoModel,
     make_magiviz_job,
-    make_story_outline,
 )
 
 # ── 完整流水线规划 ────────────────────────────────────
@@ -40,8 +36,16 @@ def plan_magiviz_pipeline(
         "preferred_models": [m.value for m in job.preferred_models],
         "steps": [
             {"step": "story_generation", "skill": "skill_story_generation", "parallel": False},
-            {"step": "character_generation", "skill": "skill_character_generation", "parallel": True},
-            {"step": "storyboard_generation", "skill": "skill_storyboard_generation", "parallel": True},
+            {
+                "step": "character_generation",
+                "skill": "skill_character_generation",
+                "parallel": True,
+            },
+            {
+                "step": "storyboard_generation",
+                "skill": "skill_storyboard_generation",
+                "parallel": True,
+            },
             {"step": "scene_generation", "skill": "skill_scene_generation", "parallel": True},
             {"step": "video_composition", "skill": "skill_video_composition", "parallel": False},
         ],

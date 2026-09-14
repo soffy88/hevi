@@ -39,13 +39,15 @@ from hevi.openshorts.schemas import (
 
 # ── Clip Generator 原子 ────────────────────────────────
 
+
 def clip_reframing_params(
     mode: ReframingMode,
-    source_w: int = 1920, source_h: int = 1080,
+    source_w: int = 1920,
+    source_h: int = 1080,
 ) -> dict[str, Any]:
     """计算 9:16 重构参数（对应 OpenShorts 三种布局模式）。"""
     _target_w, _target_h = 1080, 1920  # 9:16
-    
+
     if mode == ReframingMode.TRACK:
         # 面部跟踪模式：保持主要面部在中心，动态跟踪
         return {
@@ -71,7 +73,8 @@ def clip_reframing_params(
 
 
 def detect_scenes_gemini(
-    transcript_text: str, video_duration: float,
+    transcript_text: str,
+    video_duration: float,
     viral_keywords: list[str] | None = None,
     analyzer: Any | None = None,
 ) -> list[SceneDetection]:
@@ -142,8 +145,19 @@ def extract_transcript_with_words(video_path: str) -> dict[str, Any]:
             read_subtitle_file,
         )
 
-        segments = read_subtitle_file(subtitle_path) if subtitle_path else fetch_transcript(path, whisper_fallback=True)
-    except (FileNotFoundError, OSError, ValueError, TranscriptError, RuntimeError, ImportError) as exc:
+        segments = (
+            read_subtitle_file(subtitle_path)
+            if subtitle_path
+            else fetch_transcript(path, whisper_fallback=True)
+        )
+    except (
+        FileNotFoundError,
+        OSError,
+        ValueError,
+        TranscriptError,
+        RuntimeError,
+        ImportError,
+    ) as exc:
         return {"segments": [], "text": "", "duration": 0.0, "error": str(exc)}
     rows: list[dict[str, Any]] = [
         {
@@ -165,7 +179,8 @@ def extract_transcript_with_words(video_path: str) -> dict[str, Any]:
 
 
 def snap_clip_to_words_auto(
-    start_s: float, end_s: float,
+    start_s: float,
+    end_s: float,
     words: list[WordTimestamp],
     video_duration: float,
     min_duration: float = 15.0,
@@ -251,12 +266,14 @@ def build_transcript_windows(
             if segments[j].get("end", 0) - w_start >= window_seconds:
                 break
         w_end = segments[j].get("end", video_duration) if segments else video_duration
-        windows.append({
-            "id": f"window_{window_index:03d}",
-            "start": round(float(w_start), 3),
-            "end": round(float(w_end), 3),
-            "text": " ".join(str(seg.get("text", "")) for seg in segments[i:j + 1]),
-        })
+        windows.append(
+            {
+                "id": f"window_{window_index:03d}",
+                "start": round(float(w_start), 3),
+                "end": round(float(w_end), 3),
+                "text": " ".join(str(seg.get("text", "")) for seg in segments[i : j + 1]),
+            }
+        )
         window_index += 1
         if j >= n - 1:
             break
@@ -267,16 +284,19 @@ def build_transcript_windows(
         i = max(k, i + 1)
 
     if not windows:
-        windows.append({
-            "id": "window_001",
-            "start": 0.0,
-            "end": round(float(video_duration), 3),
-            "text": transcript_result.get("text", ""),
-        })
+        windows.append(
+            {
+                "id": "window_001",
+                "start": 0.0,
+                "end": round(float(video_duration), 3),
+                "text": transcript_result.get("text", ""),
+            }
+        )
     return windows
 
 
 # ── AI Shorts 原子 ──────────────────────────────────────
+
 
 def generate_script_from_description(
     description: str, cost_mode: AICostMode = AICostMode.LOW_COST
@@ -289,12 +309,12 @@ def generate_script_from_description(
     # 解析描述，生成 hook/problem/solution/CTA 结构。中英文标点都保留，
     # 这是本地可复现脚本原子；接入 LLM 时由上层注入 script provider。
     lines = [line.strip() for line in re.split(r"[.!?。！？；;\n]+", description) if line.strip()]
-    
+
     hook = lines[0] if len(lines) > 0 else "为什么" + description[:20]
     problem = lines[1] if len(lines) > 1 else description[:50] + "的问题"
     solution = lines[2] if len(lines) > 2 else "了解" + description[:30] + "的解决方案"
     cta = lines[3] if len(lines) > 3 else "了解更多"
-    
+
     # 生成 segments (每个 segment 约 8-10 秒)
     total_duration = 60.0
     segment_duration = total_duration / 4  # hook + problem + solution + cta
@@ -302,14 +322,16 @@ def generate_script_from_description(
     for i in range(4):
         start = i * segment_duration
         end = min((i + 1) * segment_duration, total_duration)
-        segments.append({
-            "segment_id": i,
-            "start_s": round(start, 3),
-            "end_s": round(end, 3),
-            "focus": ["hook", "problem", "solution", "cta"][i],
-            "text": [hook, problem, solution, cta][i],
-        })
-    
+        segments.append(
+            {
+                "segment_id": i,
+                "start_s": round(start, 3),
+                "end_s": round(end, 3),
+                "focus": ["hook", "problem", "solution", "cta"][i],
+                "text": [hook, problem, solution, cta][i],
+            }
+        )
+
     return AIScript(
         hook=hook,
         problem=problem,
@@ -320,9 +342,7 @@ def generate_script_from_description(
     )
 
 
-def plan_ai_short_actor(
-    description: str, cost_mode: AICostMode = AICostMode.LOW_COST
-) -> AIActor:
+def plan_ai_short_actor(description: str, cost_mode: AICostMode = AICostMode.LOW_COST) -> AIActor:
     """根据描述规划 AI Shorts 演员。
 
     返回 AIActor 实例，包含 provider、prompt、style 等。
@@ -334,7 +354,7 @@ def plan_ai_short_actor(
     else:
         provider = "flux_2_pro"
         style = "professional"
-    
+
     return AIActor(
         provider=provider,
         prompt=description[:100] + "..." if len(description) > 100 else description,
@@ -344,9 +364,8 @@ def plan_ai_short_actor(
 
 # ── YouTube Studio 原子 ────────────────────────────────
 
-def generate_youtube_titles(
-    video_content: str, target_count: int = 10
-) -> list[YouTubeTitle]:
+
+def generate_youtube_titles(video_content: str, target_count: int = 10) -> list[YouTubeTitle]:
     """为现有视频生成 10 个带 viral_score 的 YouTube 标题。
 
     OpenShorts YouTube Studio 功能。
@@ -366,28 +385,45 @@ def generate_youtube_titles(
         if i >= len(patterns):
             title = f"{title}（第 {i + 1} 版）"
         viral_score = round(max(0.0, min(10.0, 6.0 + (len(title) % 17) / 10.0)), 1)
-        titles.append(YouTubeTitle(
-            title=title,
-            viral_score=viral_score,
-            reasoning="本地启发式标题：主题长度、疑问/对照结构；不是模型预测分数",
-        ))
+        titles.append(
+            YouTubeTitle(
+                title=title,
+                viral_score=viral_score,
+                reasoning="本地启发式标题：主题长度、疑问/对照结构；不是模型预测分数",
+            )
+        )
     return titles
 
 
 def generate_youtube_thumbnail(
-    video_path: str, face_overlay: bool = True,
+    video_path: str,
+    face_overlay: bool = True,
     style: str = "bold_text",
     output_path: str | Path | None = None,
 ) -> YouTubeThumbnail:
     """从本地视频抽取真实首帧作为缩略图；缺输入时返回未生成计划。"""
     path = Path(video_path).expanduser()
-    destination = Path(output_path).expanduser() if output_path else path.with_suffix(".thumbnail.jpg")
+    destination = (
+        Path(output_path).expanduser() if output_path else path.with_suffix(".thumbnail.jpg")
+    )
     if path.is_file() and shutil.which("ffmpeg"):
         destination.parent.mkdir(parents=True, exist_ok=True)
         process = subprocess.run(
             [
-                "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-                "-ss", "0", "-i", str(path), "-frames:v", "1", "-q:v", "2", str(destination),
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-ss",
+                "0",
+                "-i",
+                str(path),
+                "-frames:v",
+                "1",
+                "-q:v",
+                "2",
+                str(destination),
             ],
             capture_output=True,
             text=True,
@@ -406,8 +442,7 @@ def generate_youtube_thumbnail(
 
 
 def generate_youtube_description(
-    video_title: str, video_content: str, 
-    auto_chapters: bool = True
+    video_title: str, video_content: str, auto_chapters: bool = True
 ) -> YouTubeDescription:
     """生成 YouTube 描述 + 章节。
 
@@ -420,18 +455,20 @@ def generate_youtube_description(
         for i in range(10):
             start = i * 60
             end = min((i + 1) * 60, 600)
-            chapters.append(YouTubeChapter(
-                title=f"章节 {i+1}: 关键点 {i+1}",
-                start_s=start,
-                end_s=end,
-            ))
-    
+            chapters.append(
+                YouTubeChapter(
+                    title=f"章节 {i + 1}: 关键点 {i + 1}",
+                    start_s=start,
+                    end_s=end,
+                )
+            )
+
     # 生成 hashtags (从视频标题提取关键词)
     hashtags = []
     if video_title:
         keywords = video_title.split()
         hashtags = [f"#{kw.replace(' ', '')}" for kw in keywords[:5]]
-    
+
     return YouTubeDescription(
         text=f"了解{video_title}的更多信息。",
         chapters=chapters,
@@ -441,9 +478,13 @@ def generate_youtube_description(
 
 # ── 辅助工厂 ───────────────────────────────────────────
 
+
 def make_clip_spec(
-    clip_index: int, start_s: float, end_s: float,
-    headline: str, reframe_mode: ReframingMode = ReframingMode.GENERAL
+    clip_index: int,
+    start_s: float,
+    end_s: float,
+    headline: str,
+    reframe_mode: ReframingMode = ReframingMode.GENERAL,
 ) -> ClipSpec:
     """创建 ClipSpec 实例（便捷工厂）。"""
     return ClipSpec(
@@ -460,16 +501,35 @@ def make_clip_spec(
 
 __all__ = [
     # Schema exports
-    "ReframingMode", "ClipSpec", "ClipGeneratorJob", "AICostMode", "AICostPlan",
-    "AIActor", "AIScript", "AIShortJob", "YouTubeTitle", "YouTubeThumbnail",
-    "YouTubeChapter", "YouTubeDescription", "SceneDetection", "WordTimestamp",
-    "ViralMoment", "PublishTicket",
-    "make_clip_generator_job", "make_ai_short_job", "make_youtube_studio_job",
+    "ReframingMode",
+    "ClipSpec",
+    "ClipGeneratorJob",
+    "AICostMode",
+    "AICostPlan",
+    "AIActor",
+    "AIScript",
+    "AIShortJob",
+    "YouTubeTitle",
+    "YouTubeThumbnail",
+    "YouTubeChapter",
+    "YouTubeDescription",
+    "SceneDetection",
+    "WordTimestamp",
+    "ViralMoment",
+    "PublishTicket",
+    "make_clip_generator_job",
+    "make_ai_short_job",
+    "make_youtube_studio_job",
     "make_clip_spec",
     # Oprim functions
-    "clip_reframing_params", "detect_scenes_gemini", "extract_transcript_with_words",
-    "snap_clip_to_words_auto", "build_transcript_windows",
-    "generate_script_from_description", "plan_ai_short_actor",
-    "generate_youtube_titles", "generate_youtube_thumbnail",
+    "clip_reframing_params",
+    "detect_scenes_gemini",
+    "extract_transcript_with_words",
+    "snap_clip_to_words_auto",
+    "build_transcript_windows",
+    "generate_script_from_description",
+    "plan_ai_short_actor",
+    "generate_youtube_titles",
+    "generate_youtube_thumbnail",
     "generate_youtube_description",
 ]

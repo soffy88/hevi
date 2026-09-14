@@ -29,8 +29,10 @@ def _chapter_ir() -> ChapterIR:
         ],
         events=[
             EventIR(
-                event_id="E1", summary="智伯向赵襄子索地",
-                actors=["c_zhihu", "c_xiangzi"], dramatic_weight=5,
+                event_id="E1",
+                summary="智伯向赵襄子索地",
+                actors=["c_zhihu", "c_xiangzi"],
+                dramatic_weight=5,
             ),
         ],
         quotes=[
@@ -84,10 +86,24 @@ def test_gate_requires_coverage_and_boundaries() -> None:
     ir = _chapter_ir()
     # 完整档案 → 通过。
     full = [
-        {"character_id": "c_zhihu", "goal": "g", "pressure": "p", "resources": ["r"],
-         "knowledge_boundary": ["知道: x", "不能提前知道: y"], "offscreen_action": "o", "decision_model": "d"},
-        {"character_id": "c_xiangzi", "goal": "g", "pressure": "p", "resources": ["r"],
-         "knowledge_boundary": ["知道: x", "不能提前知道: y"], "offscreen_action": "o", "decision_model": "d"},
+        {
+            "character_id": "c_zhihu",
+            "goal": "g",
+            "pressure": "p",
+            "resources": ["r"],
+            "knowledge_boundary": ["知道: x", "不能提前知道: y"],
+            "offscreen_action": "o",
+            "decision_model": "d",
+        },
+        {
+            "character_id": "c_xiangzi",
+            "goal": "g",
+            "pressure": "p",
+            "resources": ["r"],
+            "knowledge_boundary": ["知道: x", "不能提前知道: y"],
+            "offscreen_action": "o",
+            "decision_model": "d",
+        },
     ]
     g = gate_character_states(full, ir)
     assert g.passed is True
@@ -114,11 +130,16 @@ def test_dump_load_roundtrip(tmp_path: pytest.TempPathFactory) -> None:
     states = [{"character_id": "c_zhihu", "goal": "g"}]
     path = tmp_path / "L2" / "character_sim.json"
     dump_character_states(states, path)
-    loaded = __import__("hevi.tongjian.character_sim", fromlist=["load_character_states"]).load_character_states(path)
+    loaded = __import__(
+        "hevi.tongjian.character_sim", fromlist=["load_character_states"]
+    ).load_character_states(path)
     assert loaded == states
-    assert __import__("hevi.tongjian.character_sim", fromlist=["load_character_states"]).load_character_states(
-        tmp_path / "missing.json"
-    ) is None
+    assert (
+        __import__(
+            "hevi.tongjian.character_sim", fromlist=["load_character_states"]
+        ).load_character_states(tmp_path / "missing.json")
+        is None
+    )
 
 
 def test_extract_json_strips_markdown() -> None:

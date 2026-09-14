@@ -94,8 +94,19 @@ def test_probe_duration_real_ffmpeg(tmp_path: Path) -> None:
     wav = tmp_path / "tone.wav"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
-            "sine=frequency=440:duration=1.5", "-ar", "8000", "-ac", "1", str(wav),
+            "ffmpeg",
+            "-y",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440:duration=1.5",
+            "-ar",
+            "8000",
+            "-ac",
+            "1",
+            str(wav),
         ],
         check=True,
         capture_output=True,

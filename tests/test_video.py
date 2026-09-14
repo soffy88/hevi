@@ -250,8 +250,9 @@ async def test_wan_local_generate_calls_provider(tmp_path):
 def test_register_all_providers():
     ProviderRegistry.clear()
 
-    with patch("hevi.providers.registry.ltx2_cloud_generate"), patch(
-        "hevi.providers.registry.video_generate"
+    with (
+        patch("hevi.providers.registry.ltx2_cloud_generate"),
+        patch("hevi.providers.registry.video_generate"),
     ):
         register_all_providers()
 

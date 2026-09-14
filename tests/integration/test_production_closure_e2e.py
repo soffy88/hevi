@@ -335,9 +335,7 @@ async def test_cross_p0_production_closure_lineage(
             "evidence": quality_v1.evidence,
         }
         assert verdict_v1["passed"] is False
-        await service._finish_attempt(
-            claimed, status="failed", error="quality gate failed"
-        )
+        await service._finish_attempt(claimed, status="failed", error="quality gate failed")
         await task_repository.update_task(task_id, {"status": "failed"})
 
         async def runner(attempt_id: uuid.UUID, nodes: list[str]) -> ArtifactManifest:
@@ -399,9 +397,7 @@ async def test_cross_p0_production_closure_lineage(
             policy=policy,
         )
         lineage.attempt_v2_id = str(repaired["attempt"]["id"])
-        lineage.artifact_v2_ids = [
-            str(item.artifact_id) for item in repaired["manifest"].artifacts
-        ]
+        lineage.artifact_v2_ids = [str(item.artifact_id) for item in repaired["manifest"].artifacts]
         assert repaired["evaluation"].passed is True
         assert repaired["verdict"]["passed"] is True
         consumed = await billing.consume(
@@ -472,9 +468,7 @@ async def test_cross_p0_production_closure_lineage(
             assert reservation_row["task_id"] == task_id
             assert reservation_row["attempt_id"] == uuid.UUID(lineage.attempt_v1_id)
             assert reservation_row["status"] == "consumed"
-            task_row = await conn.fetchrow(
-                "SELECT status FROM video_tasks WHERE id = $1", task_id
-            )
+            task_row = await conn.fetchrow("SELECT status FROM video_tasks WHERE id = $1", task_id)
             assert task_row["status"] == "completed"
 
         assert lineage.plan_v2_id
@@ -501,8 +495,14 @@ async def test_cross_p0_production_closure_lineage(
         )
     finally:
         async with pool.acquire() as conn:
-            await conn.execute("DELETE FROM billing_reservations WHERE production_id = $1", production_id)
-            await conn.execute("DELETE FROM credit_transactions WHERE user_id = $1", uuid.UUID(fresh_user))
-            await conn.execute("DELETE FROM execution_plans WHERE production_id = $1", production_id)
+            await conn.execute(
+                "DELETE FROM billing_reservations WHERE production_id = $1", production_id
+            )
+            await conn.execute(
+                "DELETE FROM credit_transactions WHERE user_id = $1", uuid.UUID(fresh_user)
+            )
+            await conn.execute(
+                "DELETE FROM execution_plans WHERE production_id = $1", production_id
+            )
             await conn.execute("DELETE FROM video_tasks WHERE id = $1", task_id)
             await conn.execute("DELETE FROM productions WHERE id = $1", production_id)

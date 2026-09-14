@@ -39,7 +39,9 @@ def headless_task_app(tmp_path, monkeypatch):
 
 
 def _button_by_key_prefix(app, key_prefix):
-    return next(button for button in app.button if str(button.key).startswith(key_prefix))
+    return next(
+        button for button in app.button if str(button.key).startswith(key_prefix)
+    )
 
 
 def test_headless_play_renders_and_closes_browser_preview(headless_task_app):

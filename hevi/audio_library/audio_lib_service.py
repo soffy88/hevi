@@ -48,11 +48,7 @@ class AudioLibraryService:
         user_id: str | None = None,
     ) -> list[dict[str, Any]]:
         return await self._repo.search(
-            asset_type=asset_type,
-            mood=mood,
-            tags=tags,
-            query_text=query,
-            user_id=user_id
+            asset_type=asset_type, mood=mood, tags=tags, query_text=query, user_id=user_id
         )
 
     async def delete_audio_asset(self, asset_id: str) -> bool:
@@ -60,7 +56,7 @@ class AudioLibraryService:
 
     def get_physical_path(self, file_path: str) -> str:
         """Resolve database file_path to physical filesystem path using bgm_library.
-        
+
         This handles integration with P10.C bgm_library.
         """
         # If it's BGM, check if it's in bgm_library dirs

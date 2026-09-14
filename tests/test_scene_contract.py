@@ -36,6 +36,7 @@ def _shot(
 
 # ---- 方位角 / 银幕方向推导 ----
 
+
 def test_camera_angle_azimuth():
     assert camera_angle_azimuth("侧45°", None) == 45.0
     assert camera_angle_azimuth("右侧", None) == 90.0
@@ -55,6 +56,7 @@ def test_screen_direction():
 
 
 # ---- 越轴检查 ----
+
 
 def test_no_axis_crossing_same_direction():
     shots = [_shot("s1", camera_angle="左侧"), _shot("s2", camera_angle="左侧")]
@@ -89,6 +91,7 @@ def test_unknown_direction_skipped():
 
 # ---- One-Move Rule ----
 
+
 def test_one_move_rule_ok():
     # 3 拍 = 一条完整动作弧(trigger/peak/aftermath),不违规
     shots = [_shot("s1", action_beats=["起", "承", "落"])]
@@ -104,6 +107,7 @@ def test_one_move_rule_multi_action():
 
 # ---- 机位字段完备 ----
 
+
 def test_character_shot_requires_camera_angle():
     shots = [_shot("s1", camera_angle="", characters=["A"])]
     issues = check_camera_field_completeness(shots)
@@ -114,6 +118,7 @@ def test_character_shot_requires_camera_angle():
 
 
 # ---- 聚合 ----
+
 
 def test_full_continuity_report():
     shots = [

@@ -31,19 +31,33 @@ def extract_key_frames(
             timestamp_ms = round(start_ms + (end_ms - start_ms) * ratio)
             output = destination / f"{shot_id}-{label}.jpg"
             command = [
-                "ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", f"{timestamp_ms / 1000:.3f}",
-                "-i", str(video), "-frames:v", "1", "-q:v", "3", str(output), "-y",
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-ss",
+                f"{timestamp_ms / 1000:.3f}",
+                "-i",
+                str(video),
+                "-frames:v",
+                "1",
+                "-q:v",
+                "3",
+                str(output),
+                "-y",
             ]
             completed = subprocess.run(command, capture_output=True, timeout=60, check=False)
             if completed.returncode != 0 or not output.is_file() or output.stat().st_size == 0:
                 raise RuntimeError(f"FRAME_EXTRACTION_FAILED:{shot_id}:{label}")
-            rows.append({
-                "frame_id": f"frame:{_hash(output)[:16]}",
-                "path": str(output),
-                "sha256": _hash(output),
-                "timestamp_ms": timestamp_ms,
-                "shot_id": shot_id,
-                "source_video_sha256": None,
-                "source_duration_ms": probe.duration_ms,
-            })
+            rows.append(
+                {
+                    "frame_id": f"frame:{_hash(output)[:16]}",
+                    "path": str(output),
+                    "sha256": _hash(output),
+                    "timestamp_ms": timestamp_ms,
+                    "shot_id": shot_id,
+                    "source_video_sha256": None,
+                    "source_duration_ms": probe.duration_ms,
+                }
+            )
     return rows

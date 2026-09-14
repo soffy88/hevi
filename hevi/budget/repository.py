@@ -66,8 +66,7 @@ class BudgetRepository:
         retake = money(retake_pool_usd) if retake_pool_usd is not None else hard * Decimal("0.10")
         soft = money(soft_limit_usd) if soft_limit_usd is not None else hard * Decimal("0.90")
         allocations = {
-            category: money(hard * ratio)
-            for category, ratio in DEFAULT_STAGE_RATIOS.items()
+            category: money(hard * ratio) for category, ratio in DEFAULT_STAGE_RATIOS.items()
         }
         if stage_allocations is not None:
             allocations = {category: money(value) for category, value in stage_allocations.items()}
@@ -150,9 +149,7 @@ class BudgetRepository:
                     allocation_usd=_decimal(stage["allocation_usd"]),
                     reserved_usd=_decimal(stage["reserved_usd"]),
                     spent_usd=_decimal(stage["spent_usd"]),
-                    borrow_policy=cast(
-                        Any, str(stage["borrow_policy"] or "none")
-                    ),
+                    borrow_policy=cast(Any, str(stage["borrow_policy"] or "none")),
                 )
                 for stage in stages
             },

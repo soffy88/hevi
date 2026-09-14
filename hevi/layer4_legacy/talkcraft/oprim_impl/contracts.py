@@ -34,9 +34,7 @@ class TalkcraftRequest:
         if not 0 <= self.broll_ratio <= 1:
             errors.append("broll_ratio must be between 0 and 1")
         errors.extend(
-            f"cue has invalid range: {cue.cue_id}"
-            for cue in self.cues
-            if cue.end_s <= cue.start_s
+            f"cue has invalid range: {cue.cue_id}" for cue in self.cues if cue.end_s <= cue.start_s
         )
         return errors
 

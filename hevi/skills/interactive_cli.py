@@ -70,8 +70,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.verb == "manifest":
         manifest = build_atlas_manifest(
-            frames=args.frames, cols=args.cols, rows=args.rows,
-            cell_width=args.cell, cell_height=args.cell, mapping=args.mapping,
+            frames=args.frames,
+            cols=args.cols,
+            rows=args.rows,
+            cell_width=args.cell,
+            cell_height=args.cell,
+            mapping=args.mapping,
         )
         print(json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2))
         return 0

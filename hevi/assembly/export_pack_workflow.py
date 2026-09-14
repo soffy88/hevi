@@ -74,9 +74,7 @@ def build_export_manifest(config: ExportPackConfig, input_data: ExportPackInput)
     ]
     for arc_name, path, label in candidates:
         if path is not None and path.exists():
-            manifest.entries.append(
-                {"arc": arc_name, "path": str(path), "label": label}
-            )
+            manifest.entries.append({"arc": arc_name, "path": str(path), "label": label})
         else:
             manifest.missing.append(f"{arc_name}({label})")
     for arc_name, path in sorted(input_data.extra_files.items()):
@@ -139,9 +137,7 @@ async def export_pack_workflow(
             "missing": manifest.missing,
         }
         report_path = output_dir / "export_report.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", **report, "report_path": str(report_path)}
     except Exception as e:
         logger.exception("export_pack_workflow failed")

@@ -253,11 +253,9 @@ async def manim_generate(
     wanted_engine = str(engine or cfg.get("engine") or _settings_value("MANIM_ENGINE", "ce"))
     quality_name = str(quality or cfg.get("quality") or _settings_value("MANIM_QUALITY", "high"))
     try:
-        raw_timeout = timeout_s or cfg.get("timeout_s") or _settings_value(
-            "MANIM_TIMEOUT_S", "180"
-        )
+        raw_timeout = timeout_s or cfg.get("timeout_s") or _settings_value("MANIM_TIMEOUT_S", "180")
         limit = float(raw_timeout)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         limit = 180.0
     use_mathtex = bool(cfg.get("use_mathtex") or kwargs.get("use_mathtex"))
     if not use_mathtex:

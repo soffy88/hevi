@@ -9,7 +9,7 @@
 
 使用方式：
     from hevi.audio.asr_verify import verify_and_retry, chunk_word_timestamps_for_mobile
-    
+
     result = await verify_and_retry(
         text="解说文本",
         audio_path=Path("audio.wav"),
@@ -55,6 +55,7 @@ async def funasr_timestamp_generator(
 
     try:
         from oprim import funasr_asr as _funasr_raw
+
         raw_result = _funasr_raw(
             audio_path=audio_path,
             language=language,
@@ -86,27 +87,31 @@ def _normalize_funasr_output(raw_words: list[Any]) -> list[dict[str, Any]]:
             start = float(item.get("start", item.get("begin", 0)) or 0)
             end = float(item.get("end", item.get("finish", 0)) or 0)
             if word.strip() and end > start:
-                normalized.append({
-                    "word": word,
-                    "text": word,
-                    "start_ms": int(start * 1000),
-                    "end_ms": int(end * 1000),
-                    "start": round(start, 3),
-                    "end": round(end, 3),
-                })
+                normalized.append(
+                    {
+                        "word": word,
+                        "text": word,
+                        "start_ms": int(start * 1000),
+                        "end_ms": int(end * 1000),
+                        "start": round(start, 3),
+                        "end": round(end, 3),
+                    }
+                )
         elif isinstance(item, (list, tuple)) and len(item) >= 3:
             word = str(item[0])
             start = float(item[1])
             end = float(item[2])
             if word.strip() and end > start:
-                normalized.append({
-                    "word": word,
-                    "text": word,
-                    "start_ms": int(start * 1000),
-                    "end_ms": int(end * 1000),
-                    "start": round(start, 3),
-                    "end": round(end, 3),
-                })
+                normalized.append(
+                    {
+                        "word": word,
+                        "text": word,
+                        "start_ms": int(start * 1000),
+                        "end_ms": int(end * 1000),
+                        "start": round(start, 3),
+                        "end": round(end, 3),
+                    }
+                )
     return normalized
 
 
@@ -115,7 +120,7 @@ def _heuristic_timestamps(audio_path: str) -> list[dict[str, Any]]:
     from oprim import probe_duration
 
     probe_duration(Path(audio_path))  # type: ignore[no-untyped-call]
-    
+
     # Read audio metadata to get approximate length
     # For now, use a simple placeholder — the real value comes from FunASR
     return []
@@ -143,7 +148,7 @@ def chunk_by_punctuation_with_limit(
     """
     # Phase 1: Split by punctuation
     segments = _SENTENCE_BOUNDARIES.split(text)
-    
+
     # Clean up empty/whitespace-only segments and trim punctuation from ends
     cleaned = []
     for seg in segments:
@@ -171,18 +176,20 @@ def chunk_by_punctuation_with_limit(
                 # Last resort: force-split into equal chunks
                 chunk_size = max_chars_per_line
                 for i in range(0, len(seg), chunk_size):
-                    chunk = seg[i:i+chunk_size]
+                    chunk = seg[i : i + chunk_size]
                     if chunk:
                         final_chunks.append(chunk)
 
     # Build chunk list with placeholder timestamps (filled later by ASR)
     chunks: list[dict[str, Any]] = []
     for _index, text in enumerate(final_chunks):
-        chunks.append({
-            "text": text,
-            "start_sec": 0.0,   # filled during verification
-            "end_sec": 0.0,     # filled during verification
-        })
+        chunks.append(
+            {
+                "text": text,
+                "start_sec": 0.0,  # filled during verification
+                "end_sec": 0.0,  # filled during verification
+            }
+        )
 
     return chunks
 
@@ -206,10 +213,10 @@ def merge_chunks_with_asr_results(
     for chunk in chunks:
         chunk_text = chunk["text"].strip()
         target_len = len(chunk_text)
-        
+
         start_idx = wi
         consumed = 0
-        
+
         while wi < len(asr_words) and consumed < target_len + 2:  # +2 tolerance for slight mismatch
             word = asr_words[wi].get("word", asr_words[wi].get("text", ""))
             consumed += len(word)
@@ -221,11 +228,13 @@ def merge_chunks_with_asr_results(
         if wi > start_idx:
             start_t = asr_words[start_idx].get("start", asr_words[start_idx].get("start_sec", 0))
             end_t = asr_words[wi - 1].get("end", asr_words[wi - 1].get("end_sec", 0))
-            merged.append({
-                "text": chunk_text,
-                "start_sec": round(float(start_t), 3),
-                "end_sec": round(float(end_t), 3),
-            })
+            merged.append(
+                {
+                    "text": chunk_text,
+                    "start_sec": round(float(start_t), 3),
+                    "end_sec": round(float(end_t), 3),
+                }
+            )
         else:
             merged.append({**chunk, "start_sec": 0.0, "end_sec": 0.0})
 

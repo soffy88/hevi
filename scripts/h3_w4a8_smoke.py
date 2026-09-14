@@ -6,13 +6,12 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from hevi.providers.h3_local.comfy_client import (  # noqa: E402
+from hevi.providers.h3_local.comfy_client import (
     ComfyClient,
     h3_length_for_duration,
 )

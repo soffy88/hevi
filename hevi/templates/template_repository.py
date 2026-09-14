@@ -19,24 +19,20 @@ class TemplateRepository:
         data.setdefault("updated_at", now)
         data.setdefault("is_official", False)
         data.setdefault("version", 1)
-        
-        template_id = await insert_one(
-            self._pool, table="templates", data=data, returning="id"
-        )
+
+        template_id = await insert_one(self._pool, table="templates", data=data, returning="id")
         return await self.get(str(template_id)) or {}
 
     async def get(self, template_id: str) -> dict[str, Any] | None:
         # We manually query to ensure deleted_at IS NULL
         rows = await query(
-            self._pool, 
-            sql="SELECT * FROM templates WHERE id = $1 AND deleted_at IS NULL", 
-            params=[uuid.UUID(template_id)]
+            self._pool,
+            sql="SELECT * FROM templates WHERE id = $1 AND deleted_at IS NULL",
+            params=[uuid.UUID(template_id)],
         )
         return rows[0] if rows else None
 
-    async def update(
-        self, template_id: str, updates: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    async def update(self, template_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
         updates["updated_at"] = datetime.now(UTC).replace(tzinfo=None)
         await update_one(
             self._pool,
@@ -47,9 +43,7 @@ class TemplateRepository:
         return await self.get(template_id)
 
     async def delete(self, template_id: str) -> bool:
-        return await soft_delete_one(
-            self._pool, table="templates", id=uuid.UUID(template_id)
-        )
+        return await soft_delete_one(self._pool, table="templates", id=uuid.UUID(template_id))
 
     async def list_templates(
         self,
@@ -81,7 +75,7 @@ class TemplateRepository:
 
         where = " AND ".join(conditions)
         sql = f"SELECT * FROM templates WHERE {where} ORDER BY created_at DESC"
-        
+
         rows: list[dict[str, Any]] = await query(
             self._pool,
             sql=sql,

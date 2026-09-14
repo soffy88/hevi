@@ -27,7 +27,13 @@ def main() -> int:
         plan = plan_for_line(line, intents)
         assert plan is not None
         qa = validate_shot_plan(plan)
-        output[line] = {"shots": len(plan.shots), "qa": qa.status, "remotion": to_remotion(plan), "ffmpeg": to_ffmpeg(plan), "prompts": to_generated_video_prompt(plan)}
+        output[line] = {
+            "shots": len(plan.shots),
+            "qa": qa.status,
+            "remotion": to_remotion(plan),
+            "ffmpeg": to_ffmpeg(plan),
+            "prompts": to_generated_video_prompt(plan),
+        }
     print(json.dumps(output, ensure_ascii=False, indent=2))
     return 0
 

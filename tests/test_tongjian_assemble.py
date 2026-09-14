@@ -395,8 +395,10 @@ async def test_build_final_video_end_to_end(tmp_path):
 
 # ── v9.1: 门禁降级记录 degrade_reason(排障不展开 gate_report JSON) ──────────
 
+
 def test_gate_done_records_degrade_reason() -> None:
     """门禁不过 → DEGRADED + error/degrade_reason 投影首条原因。"""
+
     class _FakeGate:
         passed = False
 

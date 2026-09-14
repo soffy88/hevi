@@ -40,8 +40,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from hevi.cinematic.schemas import Beat, BeatDialogue
 from hevi.cinematic.scene_adapt import adapt_scene, gate_scene_adapt
+from hevi.cinematic.schemas import Beat, BeatDialogue
 from hevi.cinematic.shot_planning import gate_shotlist, plan_shots
 from hevi.cinematic.video_gen import generate_shot
 from hevi.core.config import settings

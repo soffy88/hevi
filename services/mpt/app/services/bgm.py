@@ -149,7 +149,9 @@ def _validate_audio(file_path: str, timeout_seconds: int = 30) -> None:
     except subprocess.TimeoutExpired as exc:
         raise BgmServiceError("FFmpeg background music validation timed out") from exc
     except OSError as exc:
-        raise BgmServiceError("failed to run FFmpeg for background music validation") from exc
+        raise BgmServiceError(
+            "failed to run FFmpeg for background music validation"
+        ) from exc
     if decoded.returncode != 0:
         raise BgmUploadError("uploaded file must contain a decodable audio stream")
 
@@ -204,7 +206,9 @@ def _stage_bgm_upload(filename: str, source: BinaryIO) -> tuple[str, str, int]:
                     raise BgmUploadError("background music upload must be binary")
                 total_bytes += len(chunk)
                 if total_bytes > MAX_BGM_UPLOAD_BYTES:
-                    raise BgmUploadError("background music file exceeds the 30 MB limit")
+                    raise BgmUploadError(
+                        "background music file exceeds the 30 MB limit"
+                    )
                 output.write(chunk)
             output.flush()
             os.fsync(output.fileno())

@@ -98,20 +98,21 @@ class TestFishAudioAPIKey(unittest.TestCase):
     """get_fish_audio_api_key reads from config and env."""
 
     def test_api_key_from_config(self):
-        with patch.object(
-            vs.config, "fish_audio", {"api_key": "config-key-123"}
-        ):
+        with patch.object(vs.config, "fish_audio", {"api_key": "config-key-123"}):
             self.assertEqual(vs.get_fish_audio_api_key(), "config-key-123")
 
     def test_api_key_from_env_fallback(self):
-        with patch.object(vs.config, "fish_audio", {"api_key": ""}), \
-             patch.dict(os.environ, {"FISH_API_KEY": "env-key-456"}):
+        with (
+            patch.object(vs.config, "fish_audio", {"api_key": ""}),
+            patch.dict(os.environ, {"FISH_API_KEY": "env-key-456"}),
+        ):
             self.assertEqual(vs.get_fish_audio_api_key(), "env-key-456")
 
     def test_api_key_config_takes_precedence(self):
-        with patch.object(
-            vs.config, "fish_audio", {"api_key": "config-key"}
-        ), patch.dict(os.environ, {"FISH_API_KEY": "env-key"}):
+        with (
+            patch.object(vs.config, "fish_audio", {"api_key": "config-key"}),
+            patch.dict(os.environ, {"FISH_API_KEY": "env-key"}),
+        ):
             self.assertEqual(vs.get_fish_audio_api_key(), "config-key")
 
 
@@ -121,11 +122,11 @@ class TestFishAudioDispatch(unittest.TestCase):
     def test_dispatch_default_voice(self):
         sentinel = object()
         with patch.object(vs, "fish_audio_tts", return_value=sentinel) as mock:
-            result = vs.tts("hello", "fish_audio:default:Default Voice", 1.0, "out.mp3", 1.0)
+            result = vs.tts(
+                "hello", "fish_audio:default:Default Voice", 1.0, "out.mp3", 1.0
+            )
         self.assertIs(result, sentinel)
-        mock.assert_called_once_with(
-            "hello", "out.mp3", 1.0, 1.0, reference_id=None
-        )
+        mock.assert_called_once_with("hello", "out.mp3", 1.0, 1.0, reference_id=None)
 
     def test_dispatch_custom_reference_id(self):
         sentinel = object()
@@ -140,9 +141,14 @@ class TestFishAudioDispatch(unittest.TestCase):
 class TestFishAudioTTSRequest(unittest.TestCase):
     """fish_audio_tts sends correct request payloads."""
 
-    def _call_with_capture(self, voice_rate=1.0, voice_volume=1.0,
-                           reference_id=None, model="s2.1-pro-free",
-                           response=None):
+    def _call_with_capture(
+        self,
+        voice_rate=1.0,
+        voice_volume=1.0,
+        reference_id=None,
+        model="s2.1-pro-free",
+        response=None,
+    ):
         """Helper: call fish_audio_tts and capture the outgoing request."""
         captured = {}
 
@@ -152,10 +158,14 @@ class TestFishAudioTTSRequest(unittest.TestCase):
             captured["headers"] = headers
             return response or _FakeResponse()
 
-        with tempfile.TemporaryDirectory() as tmp_dir, \
-             patch.object(vs.config, "fish_audio", {"api_key": "test-key", "model": model}), \
-             patch.object(vs.requests, "post", side_effect=_fake_post), \
-             patch.object(vs, "AudioFileClip", return_value=_FakeClip()):
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch.object(
+                vs.config, "fish_audio", {"api_key": "test-key", "model": model}
+            ),
+            patch.object(vs.requests, "post", side_effect=_fake_post),
+            patch.object(vs, "AudioFileClip", return_value=_FakeClip()),
+        ):
             voice_file = str(Path(tmp_dir) / "fish.mp3")
             result = vs.fish_audio_tts(
                 "Test sentence.",
@@ -224,10 +234,16 @@ class TestFishAudioErrorHandling(unittest.TestCase):
     def _call_with_status(self, status_code, text="error"):
         resp = _FakeResponse(status_code=status_code, content=b"", text=text)
 
-        with tempfile.TemporaryDirectory() as tmp_dir, \
-             patch.object(vs.config, "fish_audio", {"api_key": "test-key", "model": "s2.1-pro-free"}), \
-             patch.object(vs.requests, "post", return_value=resp), \
-             patch.object(vs, "AudioFileClip", return_value=_FakeClip()):
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch.object(
+                vs.config,
+                "fish_audio",
+                {"api_key": "test-key", "model": "s2.1-pro-free"},
+            ),
+            patch.object(vs.requests, "post", return_value=resp),
+            patch.object(vs, "AudioFileClip", return_value=_FakeClip()),
+        ):
             voice_file = str(Path(tmp_dir) / "fish.mp3")
             result = vs.fish_audio_tts("Test.", voice_file)
         return result
@@ -248,16 +264,24 @@ class TestFishAudioErrorHandling(unittest.TestCase):
     def test_empty_audio_returns_none(self):
         """Response with too-small content is rejected."""
         resp = _FakeResponse(status_code=200, content=b"tiny")
-        with tempfile.TemporaryDirectory() as tmp_dir, \
-             patch.object(vs.config, "fish_audio", {"api_key": "test-key", "model": "s2.1-pro-free"}), \
-             patch.object(vs.requests, "post", return_value=resp):
+        with (
+            tempfile.TemporaryDirectory() as tmp_dir,
+            patch.object(
+                vs.config,
+                "fish_audio",
+                {"api_key": "test-key", "model": "s2.1-pro-free"},
+            ),
+            patch.object(vs.requests, "post", return_value=resp),
+        ):
             voice_file = str(Path(tmp_dir) / "fish.mp3")
             result = vs.fish_audio_tts("Test.", voice_file)
         self.assertIsNone(result)
 
     def test_missing_api_key_returns_none(self):
-        with patch.object(vs.config, "fish_audio", {"api_key": ""}), \
-             patch.dict(os.environ, {"FISH_API_KEY": ""}, clear=False):
+        with (
+            patch.object(vs.config, "fish_audio", {"api_key": ""}),
+            patch.dict(os.environ, {"FISH_API_KEY": ""}, clear=False),
+        ):
             result = vs.fish_audio_tts("Test.", "/tmp/fish.mp3")
         self.assertIsNone(result)
 

@@ -72,9 +72,15 @@ def split_voice_text(text: str, *, max_chars: int = 180) -> list[str]:
     limit = max(32, int(max_chars))
     chunks: list[str] = []
     current = ""
-    for token in normalized.replace("。", "。|").replace("！", "！|").replace("？", "？|").replace(
-        ".", ".|"
-    ).replace("!", "!|").replace("?", "?|").split("|"):
+    for token in (
+        normalized.replace("。", "。|")
+        .replace("！", "！|")
+        .replace("？", "？|")
+        .replace(".", ".|")
+        .replace("!", "!|")
+        .replace("?", "?|")
+        .split("|")
+    ):
         token = token.strip()
         if not token:
             continue
@@ -130,9 +136,7 @@ def probe_reference_audio(audio_path: str | Path) -> dict[str, Any]:
     normalized = [sample / scale for sample in mono]
     rms = math.sqrt(sum(sample * sample for sample in normalized) / len(normalized))
     crossings = sum(
-        1
-        for left, right in pairwise(normalized)
-        if (left < 0 <= right) or (left >= 0 > right)
+        1 for left, right in pairwise(normalized) if (left < 0 <= right) or (left >= 0 > right)
     )
     duration = frame_count / sample_rate
     pitch_hz = max(50.0, min(500.0, crossings * sample_rate / max(1, len(mono) * 2)))
@@ -157,11 +161,11 @@ def resolve_voice_conditioning(
     """Turn catalog/reference/design inputs into portable speech controls."""
 
     voice_key = str(voice or "").strip().lower()
-    preset_language, preset_speed, preset_pitch = _VOICE_PRESETS.get(
-        voice_key, ("", 170, 50)
-    )
+    preset_language, preset_speed, preset_pitch = _VOICE_PRESETS.get(voice_key, ("", 170, 50))
     language_key = str(language or preset_language or "en").strip().lower()
-    lang = _LANGUAGE_VOICES.get(language_key, _LANGUAGE_VOICES.get(language_key.split("-")[0], "en-us"))
+    lang = _LANGUAGE_VOICES.get(
+        language_key, _LANGUAGE_VOICES.get(language_key.split("-")[0], "en-us")
+    )
     rate = round(preset_speed * max(0.5, min(2.0, float(speed or 1.0))))
     rate = max(80, min(360, rate))
     pitch = preset_pitch

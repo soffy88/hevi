@@ -67,14 +67,10 @@ def _prepare_prompt_wav(ref_audio: Path, tmp_dir: Path) -> Path:
     from cosyvoice.utils.file_utils import load_wav  # type: ignore[import-not-found]
 
     speech = load_wav(str(ref_audio), _PROMPT_SR)
-    speech, _ = librosa.effects.trim(
-        speech, top_db=60, frame_length=440, hop_length=220
-    )
+    speech, _ = librosa.effects.trim(speech, top_db=60, frame_length=440, hop_length=220)
     if speech.abs().max() > _MAX_VAL:
         speech = speech / speech.abs().max() * _MAX_VAL
-    speech = torch.concat(
-        [speech, torch.zeros(1, int(_PROMPT_SR * 0.2))], dim=1
-    )
+    speech = torch.concat([speech, torch.zeros(1, int(_PROMPT_SR * 0.2))], dim=1)
     prompt_wav = tmp_dir / "prompt.wav"
     sf.write(str(prompt_wav), speech.squeeze(0).cpu().numpy(), _PROMPT_SR)
     return prompt_wav
@@ -115,28 +111,36 @@ def _synthesize_line(
         instruct = instruct_text or ""
         instruct = prefix + instruct if family == "cosyvoice3" else instruct
         gen = cosyvoice.inference_instruct2(
-            text, instruct, str(prompt_wav),
-            stream=False, speed=speed,
+            text,
+            instruct,
+            str(prompt_wav),
+            stream=False,
+            speed=speed,
         )
     elif mode == "cross_lingual":
         gen = cosyvoice.inference_cross_lingual(
-            prefix + text, str(prompt_wav),
-            stream=False, speed=speed, text_frontend=False,
+            prefix + text,
+            str(prompt_wav),
+            stream=False,
+            speed=speed,
+            text_frontend=False,
         )
     else:
         # zero-shot: 参考文本条件(发音/语气更贴参考); CV3 前缀系统提示词。
         gen = cosyvoice.inference_zero_shot(
-            text, prefix + (ref_text or ""), str(prompt_wav),
-            stream=False, speed=speed, text_frontend=False,
+            text,
+            prefix + (ref_text or ""),
+            str(prompt_wav),
+            stream=False,
+            speed=speed,
+            text_frontend=False,
         )
     for chunk in gen:
         speech = chunk["tts_speech"]
         if speech is not None:
             chunks.append(speech.detach().cpu())
     if not chunks:
-        raise RuntimeError(
-            f"CosyVoice 未产出音频(行: {text[:40]}…) —— CV3 缺系统提示词? 模型损坏?"
-        )
+        raise RuntimeError(f"CosyVoice 未产出音频(行: {text[:40]}…) —— CV3 缺系统提示词? 模型损坏?")
     return torch.cat(chunks, dim=1)
 
 
@@ -161,9 +165,7 @@ def _main(args_path: str) -> None:
         random.seed(int(seed))
         set_all_random_seed(int(seed))
 
-    cosyvoice = (
-        CosyVoice3(str(model_dir)) if family == "cosyvoice3" else CosyVoice2(str(model_dir))
-    )
+    cosyvoice = CosyVoice3(str(model_dir)) if family == "cosyvoice3" else CosyVoice2(str(model_dir))
 
     with tempfile.TemporaryDirectory(prefix="hevi-cosy-") as tmp:
         tmp_dir = Path(tmp)
@@ -192,8 +194,8 @@ def _main(args_path: str) -> None:
                 )
             )
 
-    import torch  # type: ignore[import-not-found]
     import soundfile as sf  # type: ignore[import-not-found]
+    import torch  # type: ignore[import-not-found]
 
     wav = torch.cat(chunks, dim=1)
     out_path.parent.mkdir(parents=True, exist_ok=True)

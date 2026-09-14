@@ -264,7 +264,7 @@ def derive_constraints(
                 f"scene_stage.stages[{stage_index}].blocking.sightlines[{index}]",
                 dict(_dump(sightline) or {}),
             )
-        coverage = (stage.get("coverage_plan") or {})
+        coverage = stage.get("coverage_plan") or {}
         setups = list(coverage.get("setups") or [])
         if coverage.get("master"):
             setups.append(coverage["master"])

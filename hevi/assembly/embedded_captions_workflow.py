@@ -159,9 +159,7 @@ async def embedded_captions_workflow(
             from hevi.ingest.video_transcript import TranscriptError, fetch_transcript
 
             try:
-                transcript = fetch_transcript(
-                    config.video_path, whisper_fallback=True
-                )
+                transcript = fetch_transcript(config.video_path, whisper_fallback=True)
             except TranscriptError as e:
                 logger.warning("captions: transcript unavailable: %s", e)
         _step("transcript", 40.0)
@@ -176,9 +174,7 @@ async def embedded_captions_workflow(
 
         report = {"status": "completed", "plan": plan.to_dict()}
         report_path = output_dir / "captions_report.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", "plan": plan.to_dict(), "report_path": str(report_path)}
     except Exception as e:
         logger.exception("embedded_captions_workflow failed")

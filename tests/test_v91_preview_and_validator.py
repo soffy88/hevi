@@ -74,7 +74,8 @@ def test_validate_local_path_reads_from_disk(tmp_path: Path) -> None:
 
 
 def test_upload_presenter_image_endpoint_accepts_valid_jpeg(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """上传接口:合法底图 → 落盘并返回可读回路径;无脸/坏字节 → 422。"""
     import asyncio
@@ -146,9 +147,7 @@ def test_full_assemble_requires_preview_confirmed() -> None:
     assert exc.value.status_code == 409
     assert "试播" in str(exc.value.detail)
 
-    require_preview_gate(
-        ExplainerAssembleRequest(final_script_cues=[cue], preview_mode=True)
-    )
+    require_preview_gate(ExplainerAssembleRequest(final_script_cues=[cue], preview_mode=True))
     require_preview_gate(
         ExplainerAssembleRequest(
             final_script_cues=[cue], preview_mode=False, preview_confirmed=True

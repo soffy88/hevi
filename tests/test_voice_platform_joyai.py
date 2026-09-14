@@ -53,7 +53,10 @@ def test_model_registry_reports_local_path_truthfully(tmp_path: Path) -> None:
         path=str(model_path),
     )
     assert ready["state"] == "ready"
-    assert route_model(kind="tts", preferred="local-tts-ready")["selected"]["model_id"] == "local-tts-ready"
+    assert (
+        route_model(kind="tts", preferred="local-tts-ready")["selected"]["model_id"]
+        == "local-tts-ready"
+    )
     assert any(row["model_id"] == "local-tts" for row in list_model_catalog())
 
     custom = register_model(
@@ -65,7 +68,10 @@ def test_model_registry_reports_local_path_truthfully(tmp_path: Path) -> None:
     )
     assert custom["state"] == "ready"
     assert not custom["execution_ready"]
-    assert route_model(kind="tts", preferred="custom-unwired")["selected"]["model_id"] != "custom-unwired"
+    assert (
+        route_model(kind="tts", preferred="custom-unwired")["selected"]["model_id"]
+        != "custom-unwired"
+    )
 
 
 def test_voice_gallery_requires_existing_reference_audio(tmp_path: Path) -> None:

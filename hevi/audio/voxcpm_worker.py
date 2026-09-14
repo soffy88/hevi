@@ -23,7 +23,9 @@ def main() -> int:
         text = str(request.get("text") or "").strip()
         output_path_value = str(request.get("output_path") or "").strip()
         output_path = Path(output_path_value).expanduser()
-        model_id = str(request.get("model_id") or os.getenv("HEVI_VOXCPM_MODEL", "openbmb/VoxCPM-0.5B"))
+        model_id = str(
+            request.get("model_id") or os.getenv("HEVI_VOXCPM_MODEL", "openbmb/VoxCPM-0.5B")
+        )
         if not text:
             return _error("VoxCPM text cannot be empty")
         if operation != "stream" and not output_path_value:
@@ -53,7 +55,9 @@ def main() -> int:
 
             sample_rate = int(getattr(getattr(model, "tts_model", None), "sample_rate", 48_000))
             for index, chunk in enumerate(model.generate_streaming(**generation)):
-                values = chunk.detach().cpu().numpy() if hasattr(chunk, "detach") else np.asarray(chunk)
+                values = (
+                    chunk.detach().cpu().numpy() if hasattr(chunk, "detach") else np.asarray(chunk)
+                )
                 if values.dtype.kind == "f":
                     pcm = (np.clip(values, -1.0, 1.0) * 32767.0).astype("<i2")
                 else:

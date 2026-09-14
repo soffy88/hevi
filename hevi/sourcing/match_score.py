@@ -18,8 +18,29 @@ from typing import Any
 _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+")
 _STOPWORDS = frozenset(
     {
-        "的", "了", "和", "与", "及", "在", "是", "有", "这", "那", "一个", "之",
-        "the", "a", "an", "of", "and", "or", "in", "on", "with", "to", "for",
+        "的",
+        "了",
+        "和",
+        "与",
+        "及",
+        "在",
+        "是",
+        "有",
+        "这",
+        "那",
+        "一个",
+        "之",
+        "the",
+        "a",
+        "an",
+        "of",
+        "and",
+        "or",
+        "in",
+        "on",
+        "with",
+        "to",
+        "for",
     }
 )
 

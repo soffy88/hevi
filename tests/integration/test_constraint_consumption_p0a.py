@@ -73,7 +73,10 @@ class _ConstraintProviderAdapter:
         mappings: list[dict[str, Any]] = []
         for instruction in compiled:
             constraint_id = str(instruction["constraint_id"])
-            if self.mapped_constraint_ids is not None and constraint_id not in self.mapped_constraint_ids:
+            if (
+                self.mapped_constraint_ids is not None
+                and constraint_id not in self.mapped_constraint_ids
+            ):
                 continue
             if self.fail_mapping:
                 raise ValueError(f"adapter mapping failed for {constraint_id}")
@@ -179,7 +182,9 @@ async def _scenario(pool: PgPool, count: int = 2) -> _Scenario:
             mapping_path=f"compiled.instructions[{compiled.compiled_constraint_ids.index(instruction['constraint_id'])}]",
             payload_hash=_payload_hash(instruction),
         )
-    return _Scenario(production_id, revision_id, attempt_id, graph, compiled.compiled_constraint_ids)
+    return _Scenario(
+        production_id, revision_id, attempt_id, graph, compiled.compiled_constraint_ids
+    )
 
 
 async def _rows(pool: PgPool, scenario: _Scenario) -> list[dict[str, Any]]:
@@ -280,8 +285,7 @@ async def test_p0a_a3_provider_submit_success_returns_job_id(pool: PgPool) -> No
                 "revision_id": str(scenario.revision_id),
                 "attempt_id": str(scenario.attempt_id),
                 "compiled_instructions": [
-                    {"constraint_id": cid, "payload": {"id": cid}}
-                    for cid in scenario.compiled_ids
+                    {"constraint_id": cid, "payload": {"id": cid}} for cid in scenario.compiled_ids
                 ],
             },
             pool,
@@ -321,8 +325,7 @@ async def test_p0a_a4_required_unmapped_is_not_consumed(pool: PgPool) -> None:
                 "revision_id": str(scenario.revision_id),
                 "attempt_id": str(scenario.attempt_id),
                 "compiled_instructions": [
-                    {"constraint_id": cid, "payload": {"id": cid}}
-                    for cid in scenario.compiled_ids
+                    {"constraint_id": cid, "payload": {"id": cid}} for cid in scenario.compiled_ids
                 ],
             },
             pool,

@@ -84,7 +84,8 @@ def test_cache_save_and_load_round_trip(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
 
 def test_cache_save_is_atomic_and_overwrites(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
     save_research_cache("abc-123", payload={"version": 1})
@@ -94,7 +95,8 @@ def test_cache_save_is_atomic_and_overwrites(
 
 
 def test_cache_processing_envelope_round_trip(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     """异步研究先落盘 processing 信封,前端轮询能拿到状态。"""
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
@@ -106,7 +108,8 @@ def test_cache_processing_envelope_round_trip(
 
 
 def test_cache_failed_envelope_round_trip(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
     save_research_cache("abc-123", status="failed", error="模型不可用")
@@ -116,7 +119,8 @@ def test_cache_failed_envelope_round_trip(
 
 
 def test_cache_load_missing_or_corrupt_returns_none(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     directory = tmp_path / "cache"
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(directory))
@@ -127,7 +131,8 @@ def test_cache_load_missing_or_corrupt_returns_none(
 
 
 def test_cache_dir_cleans_unsafe_session_ids(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
     # 目录穿越等脏 id 会被清洗成新 uuid,绝不落进文件路径。
@@ -156,7 +161,8 @@ def _capturing_research(monkeypatch: pytest.MonkeyPatch, result):
 
 @pytest.mark.asyncio
 async def test_research_endpoint_returns_202_processing_envelope(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     """POST /research 秒回 202 + processing 信封 + session_id(不再同步跑)。"""
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
@@ -174,7 +180,8 @@ async def test_research_endpoint_returns_202_processing_envelope(
 
 @pytest.mark.asyncio
 async def test_research_job_completes_to_ready_and_restores(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     """后台任务跑完覆盖 ready;GET 轮询拿到完整确稿 payload(断点续传保留)。"""
     monkeypatch.setenv("EXPLAINER_CACHE_DIR", str(tmp_path / "cache"))
@@ -196,7 +203,8 @@ async def test_research_job_completes_to_ready_and_restores(
 
 @pytest.mark.asyncio
 async def test_research_job_records_capability_failure(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     """Capability 错误 → failed 信封(供前端显示错误 + 重试)。"""
     from hevi.explainer.contracts import ExplainerCapabilityError
@@ -332,9 +340,7 @@ async def test_assemble_endpoint_recovers_double_serialized_body_and_dispatches(
     assert len(background.tasks) == 1  # 后台装配任务已排队
     stored = repo.created[0]["input_json"]
     assert stored["final_script_cues"][0]["text"] == "开场钩子旁白"
-    assert stored["final_script_cues"][0]["visual_config"]["chart_data"] == {
-        "values": [1, 2]
-    }
+    assert stored["final_script_cues"][0]["visual_config"]["chart_data"] == {"values": [1, 2]}
 
 
 # ── 隐患点 B:ensure_dict 彻底解构 ────────────────────────────────────────

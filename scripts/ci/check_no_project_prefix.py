@@ -1,4 +1,5 @@
 """3O v3 gate: canonical public element names describe capability, not owner."""
+
 from __future__ import annotations
 
 import sys

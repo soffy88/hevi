@@ -245,8 +245,13 @@ def search_pexels_videos(
             files = v.get("video_files") or []
             best = None
             for f in files:
-                if f.get("width") and f.get("height") and (
-                    best is None or (f["width"] * f["height"]) > (best["width"] * best["height"])
+                if (
+                    f.get("width")
+                    and f.get("height")
+                    and (
+                        best is None
+                        or (f["width"] * f["height"]) > (best["width"] * best["height"])
+                    )
                 ):
                     best = f
             if not best or not best.get("link"):

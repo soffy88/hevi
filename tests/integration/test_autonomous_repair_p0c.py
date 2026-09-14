@@ -251,7 +251,9 @@ async def test_p0c_c3_preserve_artifacts_and_create_new_b_d_artifacts(
                 )
             )
             new_ids[node] = str(committed.artifacts[0].artifact_id)
-        loaded = await repo.get_manifest(str(context.production_id), revision_id=str(context.revision_id))
+        loaded = await repo.get_manifest(
+            str(context.production_id), revision_id=str(context.revision_id)
+        )
         assert loaded is not None
         by_role = {item.logical_role: str(item.artifact_id) for item in loaded.artifacts}
         for node in ("A", "C", "E"):
@@ -393,7 +395,9 @@ async def test_p0c_c7_insufficient_budget_stops(pool: PgPool, tmp_path: Path) ->
 async def test_p0c_c8_oscillating_stops(pool: PgPool, tmp_path: Path) -> None:
     context = await _make_context(pool, tmp_path)
     try:
-        should_repair, reason = decide_repair(0.2, None, 0, 10.0, 1.0, convergence_state="oscillating")
+        should_repair, reason = decide_repair(
+            0.2, None, 0, 10.0, 1.0, convergence_state="oscillating"
+        )
         assert should_repair is False
         assert reason == "convergence_oscillating"
     finally:
@@ -404,7 +408,9 @@ async def test_p0c_c8_oscillating_stops(pool: PgPool, tmp_path: Path) -> None:
 async def test_p0c_c9_diverging_stops(pool: PgPool, tmp_path: Path) -> None:
     context = await _make_context(pool, tmp_path)
     try:
-        should_repair, reason = decide_repair(0.2, None, 0, 10.0, 1.0, convergence_state="diverging")
+        should_repair, reason = decide_repair(
+            0.2, None, 0, 10.0, 1.0, convergence_state="diverging"
+        )
         assert should_repair is False
         assert reason == "convergence_diverging"
     finally:

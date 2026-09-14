@@ -192,14 +192,18 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
             "/api/stream-edit/sessions",
             "/api/stream-edit/sessions/{session_id}/stream",
         ),
-        bool(os.getenv("JOYAI_STREAM_WS_URL", "").strip() or os.getenv("JOYAI_BASE_URL", "").strip()),
+        bool(
+            os.getenv("JOYAI_STREAM_WS_URL", "").strip() or os.getenv("JOYAI_BASE_URL", "").strip()
+        ),
         "JoyAI-compatible WebSocket Provider 已配置，可进行 live/upload 因果帧编辑。"
         if os.getenv("JOYAI_STREAM_WS_URL", "").strip() or os.getenv("JOYAI_BASE_URL", "").strip()
         else "JoyAI streaming Provider 未配置；可创建 blocked session 供审计，不会生成伪造帧。",
         None
         if os.getenv("JOYAI_STREAM_WS_URL", "").strip() or os.getenv("JOYAI_BASE_URL", "").strip()
         else "配置 JOYAI_STREAM_WS_URL，或配置 JOYAI_BASE_URL + JOYAI_STREAM_WS_PATH。",
-        execution_ready=bool(os.getenv("JOYAI_STREAM_WS_URL", "").strip() or os.getenv("JOYAI_BASE_URL", "").strip()),
+        execution_ready=bool(
+            os.getenv("JOYAI_STREAM_WS_URL", "").strip() or os.getenv("JOYAI_BASE_URL", "").strip()
+        ),
         quality_gate_ready=False,
         production_ready=False,
     ),
@@ -238,9 +242,7 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         "Pexels 已配置；搜索结果会持久化来源与许可证快照。"
         if os.getenv("PEXELS_API_KEY", "").strip()
         else "Pexels Provider 未配置；不会返回伪造素材。",
-        None
-        if os.getenv("PEXELS_API_KEY", "").strip()
-        else "配置 PEXELS_API_KEY 后自动开放。",
+        None if os.getenv("PEXELS_API_KEY", "").strip() else "配置 PEXELS_API_KEY 后自动开放。",
         execution_ready=True,
         quality_gate_ready=False,
         production_ready=False,
@@ -249,14 +251,22 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         "livestream",
         "数字人直播",
         ("/api/pro/livestream/start",),
-        bool(os.getenv("DUIX_SERVICE_URL", "").strip() and os.getenv("DUIX_LIVESTREAM_PATH", "").strip()),
+        bool(
+            os.getenv("DUIX_SERVICE_URL", "").strip()
+            and os.getenv("DUIX_LIVESTREAM_PATH", "").strip()
+        ),
         "Duix 直播端点已配置；启动前仍会执行健康检查并要求 Provider 返回真实播放地址。"
-        if os.getenv("DUIX_SERVICE_URL", "").strip() and os.getenv("DUIX_LIVESTREAM_PATH", "").strip()
+        if os.getenv("DUIX_SERVICE_URL", "").strip()
+        and os.getenv("DUIX_LIVESTREAM_PATH", "").strip()
         else "数字人直播 Provider 未完整配置；不会创建伪直播会话。",
         None
-        if os.getenv("DUIX_SERVICE_URL", "").strip() and os.getenv("DUIX_LIVESTREAM_PATH", "").strip()
+        if os.getenv("DUIX_SERVICE_URL", "").strip()
+        and os.getenv("DUIX_LIVESTREAM_PATH", "").strip()
         else "配置 DUIX_SERVICE_URL 与 DUIX_LIVESTREAM_PATH，并接入返回 stream_url 的 WebRTC/RTMP 适配器。",
-        execution_ready=bool(os.getenv("DUIX_SERVICE_URL", "").strip() and os.getenv("DUIX_LIVESTREAM_PATH", "").strip()),
+        execution_ready=bool(
+            os.getenv("DUIX_SERVICE_URL", "").strip()
+            and os.getenv("DUIX_LIVESTREAM_PATH", "").strip()
+        ),
         quality_gate_ready=False,
         production_ready=False,
     ),
@@ -410,8 +420,7 @@ def _runtime_descriptor(descriptor: CapabilityDescriptor) -> CapabilityDescripto
         configured = bool(os.getenv("VOICE_ASR_STREAM_WS_URL", "").strip())
     elif descriptor.id == "streaming_v2v":
         configured = bool(
-            os.getenv("JOYAI_STREAM_WS_URL", "").strip()
-            or os.getenv("JOYAI_BASE_URL", "").strip()
+            os.getenv("JOYAI_STREAM_WS_URL", "").strip() or os.getenv("JOYAI_BASE_URL", "").strip()
         )
     elif descriptor.id == "stock_search":
         configured = bool(os.getenv("PEXELS_API_KEY", "").strip())

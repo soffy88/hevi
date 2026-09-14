@@ -120,9 +120,7 @@ async def _bind_explainer_presenter(
             uuid.UUID(requested_id)
         except ValueError:
             if body.presenter_id:
-                raise HTTPException(
-                    status_code=422, detail="presenter_id 格式无效"
-                ) from None
+                raise HTTPException(status_code=422, detail="presenter_id 格式无效") from None
             # Backward compatibility: old callers may still send a raw HeyGen
             # provider ID through heygen_presenter_id.
             body.presenter_provider = "heygen"
@@ -136,9 +134,7 @@ async def _bind_explainer_presenter(
 
     delivery = row.get("delivery_json") or {}
     configured_provider = str(delivery.get("provider") or "remotion").lower()
-    external_id = delivery.get("heygen_presenter_id") or delivery.get(
-        "provider_presenter_id"
-    )
+    external_id = delivery.get("heygen_presenter_id") or delivery.get("provider_presenter_id")
     body.presenter_id = str(row["id"])
     body.presenter_name = str(row.get("name") or "HEVI 数字人")
     if configured_provider == "heygen" and external_id:
@@ -647,9 +643,7 @@ async def upload_presenter_image_endpoint(
         raise HTTPException(status_code=422, detail=f"数字人底图不合规: {verdict.reason}")
 
     namespace = f"presenter-{uuid.uuid4()}"
-    path = ReferenceStore().save_upload(
-        namespace, file.filename or "presenter.png", data
-    )
+    path = ReferenceStore().save_upload(namespace, file.filename or "presenter.png", data)
     return PresenterImageCheckResponse(
         valid=True,
         reason=path,
@@ -686,9 +680,7 @@ async def assemble_explainer(
                 status_code=422,
                 detail=f"数字人底图不合规: {verdict.reason}",
             )
-    has_avatar_cue = any(
-        cue.visual_type == "heygen_avatar" for cue in body.final_script_cues
-    )
+    has_avatar_cue = any(cue.visual_type == "heygen_avatar" for cue in body.final_script_cues)
     if has_avatar_cue:
         await _bind_explainer_presenter(
             body,
@@ -704,9 +696,7 @@ async def assemble_explainer(
         user_id=str(user["id"]),
         topic=topic,
         source=_KIND,
-        video_provider=(
-            body.presenter_provider if has_avatar_cue else "remotion"
-        ),
+        video_provider=(body.presenter_provider if has_avatar_cue else "remotion"),
         audio_provider=body.voice_profile,
         config={
             "run_id": run_id,

@@ -27,7 +27,9 @@ def serialize_plan(plan: ShotPlan) -> dict[str, Any]:
 
 
 def canonical_json(plan: ShotPlan) -> str:
-    return json.dumps(serialize_plan(plan), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return json.dumps(
+        serialize_plan(plan), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
 
 
 def persist_plan(plan: ShotPlan, path: Path) -> Path:
@@ -59,7 +61,11 @@ def replay_plan(plan: ShotPlan) -> ShotPlan:
 
 
 def _cue(value: dict[str, Any]) -> BeatCue:
-    return BeatCue(time_s=float(value["time_s"]), kind=str(value.get("kind", "beat")), strength=float(value.get("strength", 1.0)))
+    return BeatCue(
+        time_s=float(value["time_s"]),
+        kind=str(value.get("kind", "beat")),
+        strength=float(value.get("strength", 1.0)),
+    )
 
 
 def _recipe(value: dict[str, Any]) -> ShotRecipe:
@@ -77,7 +83,9 @@ def _recipe(value: dict[str, Any]) -> ShotRecipe:
         narration_compatible=bool(value.get("narration_compatible", True)),
         music_compatible=bool(value.get("music_compatible", True)),
         text_overlay_compatible=bool(value.get("text_overlay_compatible", True)),
-        renderer_capabilities=tuple(value.get("renderer_capabilities", ("remotion", "ffmpeg", "generated_video"))),
+        renderer_capabilities=tuple(
+            value.get("renderer_capabilities", ("remotion", "ffmpeg", "generated_video"))
+        ),
         constraints=tuple(value.get("constraints", ())),
         tags=tuple(value.get("tags", ())),
         provenance={str(k): str(v) for k, v in (value.get("provenance") or {}).items()},

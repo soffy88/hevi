@@ -273,14 +273,23 @@ def _measure_loudnorm(
 def _finite_float(value: Any) -> float | None:
     try:
         number = float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return number if number == number and abs(number) != float("inf") else None
 
 
 def _probe_duration(source: Path) -> float:
     completed = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(source)],
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=nw=1:nk=1",
+            str(source),
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -316,9 +325,7 @@ def calculate_contact_timestamps(duration_s: float, frame_count: int = 9) -> lis
         return [0.2] * frame_count
 
     timestamps = [0.2]
-    timestamps.extend(
-        duration_s * (i + 1) / (frame_count + 1) for i in range(1, frame_count - 1)
-    )
+    timestamps.extend(duration_s * (i + 1) / (frame_count + 1) for i in range(1, frame_count - 1))
     timestamps.append(max(0.2, duration_s - 0.2))
     return timestamps
 

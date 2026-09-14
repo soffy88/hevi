@@ -96,21 +96,15 @@ def begin_trace(
         raise ReplayTraceError(f"begin_trace failed: {e}") from e
 
 
-def record_prompt_and_response(
-    handle: TraceHandle, *, prompt: str, response: str
-) -> None:
+def record_prompt_and_response(handle: TraceHandle, *, prompt: str, response: str) -> None:
     """阶段 2:记录 prompt 字节 + response 字节(存版本指纹,原文落盘)。"""
     handle.data["prompt_version"] = _sha12(prompt)
     handle.data["response_version"] = _sha12(response)
     try:
         artifacts = handle.root / "artifacts"
         artifacts.mkdir(parents=True, exist_ok=True)
-        (artifacts / f"{handle.trace_id}.prompt.txt").write_text(
-            prompt, encoding="utf-8"
-        )
-        (artifacts / f"{handle.trace_id}.response.txt").write_text(
-            response, encoding="utf-8"
-        )
+        (artifacts / f"{handle.trace_id}.prompt.txt").write_text(prompt, encoding="utf-8")
+        (artifacts / f"{handle.trace_id}.response.txt").write_text(response, encoding="utf-8")
         _write_trace(handle.root, handle.trace_id, handle.data)
     except OSError as e:
         raise ReplayTraceError(f"record_prompt_and_response failed: {e}") from e

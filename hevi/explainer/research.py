@@ -39,15 +39,11 @@ class ResearchProvider(Protocol):
 
 
 class ScriptGenerator(Protocol):
-    async def generate(
-        self, topic_or_url: str, research: dict[str, Any]
-    ) -> dict[str, Any]: ...
+    async def generate(self, topic_or_url: str, research: dict[str, Any]) -> dict[str, Any]: ...
 
 
 ResearchCallable = Callable[[str], Awaitable[dict[str, Any]] | dict[str, Any]]
-ScriptCallable = Callable[
-    [str, dict[str, Any]], Awaitable[dict[str, Any]] | dict[str, Any]
-]
+ScriptCallable = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]] | dict[str, Any]]
 
 
 _JSON_PROMPT = """你是 HEVI 深度解说研究与脚本编剧。对下面选题做可核验的资料提炼，
@@ -460,9 +456,15 @@ class _TolerantJsonParser:
         self.pos += 1  # 开引号
         out: list[str] = []
         escapes = {
-            "n": "\n", "t": "\t", "r": "\r", "b": "\b",
-            "f": "\f", "/": "/", "\\": "\\",
-            '"': '"', "'": "'",
+            "n": "\n",
+            "t": "\t",
+            "r": "\r",
+            "b": "\b",
+            "f": "\f",
+            "/": "/",
+            "\\": "\\",
+            '"': '"',
+            "'": "'",
         }
         while self.pos < length:
             ch = text[self.pos]
@@ -682,9 +684,7 @@ async def _llm_research(topic_or_url: str, target_duration: str = "1-3") -> dict
     )
 
 
-async def _llm_json(
-    llm: Any, prompt: str, max_tokens: int, *, retries: int = 1
-) -> dict[str, Any]:
+async def _llm_json(llm: Any, prompt: str, max_tokens: int, *, retries: int = 1) -> dict[str, Any]:
     """调用 LLM 并强解析 JSON。
 
     JSON 解析失败(本地小模型常见)自动重试;Provider 层错误直接包装成
@@ -716,9 +716,7 @@ async def _llm_json(
         except ExplainerCapabilityError as exc:
             last_error = str(exc)
             logger.warning("LLM JSON 解析失败(第 %s 次尝试): %s", attempt + 1, exc)
-    raise ExplainerCapabilityError(
-        "MODEL_OUTPUT_INVALID", f"模型 JSON 多次解析失败: {last_error}"
-    )
+    raise ExplainerCapabilityError("MODEL_OUTPUT_INVALID", f"模型 JSON 多次解析失败: {last_error}")
 
 
 def _build_chapter_cues_prompt(
@@ -738,8 +736,7 @@ def _build_chapter_cues_prompt(
         f"思考链: {version.reasoning_depth}"
     )
     expansion_block = "\n".join(
-        f"【素材点 {index}】{entry.original_material_point}\n"
-        f"【深度扩写】{entry.deep_explanation}"
+        f"【素材点 {index}】{entry.original_material_point}\n【深度扩写】{entry.deep_explanation}"
         for index, entry in enumerate(chapter.expansions, start=1)
     )
     min_cues = max(2, int(chapter_min_words / 150))
@@ -798,8 +795,7 @@ def _coerce_outline(raw: dict[str, Any], topic_or_url: str) -> dict[str, Any]:
         function = _NARRATIVE_ORDER[index % len(_NARRATIVE_ORDER)]
         if isinstance(item, str) and item.strip():
             hooks.append(
-                {"hook_id": f"H{index + 1}", "text": item.strip(),
-                 "narrative_function": function}
+                {"hook_id": f"H{index + 1}", "text": item.strip(), "narrative_function": function}
             )
             continue
         if not isinstance(item, dict):
@@ -901,9 +897,7 @@ async def _llm_research_chunked(
     try:
         outline = ExplainerOutline.model_validate(_coerce_outline(outline_raw, topic_or_url))
     except Exception as exc:
-        raise ExplainerCapabilityError(
-            "MODEL_OUTPUT_INVALID", f"分章大纲校验失败: {exc}"
-        ) from exc
+        raise ExplainerCapabilityError("MODEL_OUTPUT_INVALID", f"分章大纲校验失败: {exc}") from exc
     if not outline.material_coverage_matrix:
         # 矩阵被截断时,从章节扩写重建(章节扩写是矩阵的子集分组)。
         rebuilt = [entry for chapter in outline.chapters for entry in chapter.expansions]
@@ -981,14 +975,12 @@ async def _mcp_research(topic_or_url: str) -> dict[str, Any] | None:
 
         client_name = os.environ.get("HEVI_EXPLAINER_RESEARCH_MCP", "gpt_researcher")
         client = McpClientRegistry.get(client_name)
-    except (ImportError, KeyError):
+    except ImportError, KeyError:
         return None
     try:
         tools = await client.list_tools()
         names = {
-            str(tool.get("name"))
-            for tool in tools
-            if isinstance(tool, dict) and tool.get("name")
+            str(tool.get("name")) for tool in tools if isinstance(tool, dict) and tool.get("name")
         }
         tool_name = next(
             (name for name in ("research", "deep_research", "gpt_research") if name in names),
@@ -1047,9 +1039,7 @@ def _to_hook_node(item: Any, index: int) -> HookNode:
                 # LLM 输出枚举值不可靠(如拼错 opening_suspuspense) → 相似度归一。
                 item = {
                     **item,
-                    "narrative_function": _normalise_narrative_function(
-                        item["narrative_function"]
-                    ),
+                    "narrative_function": _normalise_narrative_function(item["narrative_function"]),
                 }
             node = HookNode.model_validate(item)
             if not node.hook_id:
@@ -1066,9 +1056,7 @@ def _to_hook_node(item: Any, index: int) -> HookNode:
             text=draft.text,
             associated_concepts=[],
         )
-    return HookNode(
-        hook_id=f"H{index + 1}", title=str(item)[:24], text=str(item)
-    )
+    return HookNode(hook_id=f"H{index + 1}", title=str(item)[:24], text=str(item))
 
 
 def _normalise_narrative_function(value: Any) -> HookNarrativeFunction:
@@ -1168,9 +1156,7 @@ def _normalise(raw: dict[str, Any], topic_or_url: str, provider: str) -> Explain
             HookNode(
                 hook_id=f"H{len(usable_hooks) + 1}",
                 title=script.viewpoint or text[:24],
-                narrative_function=_NARRATIVE_ORDER[
-                    len(usable_hooks) % len(_NARRATIVE_ORDER)
-                ],
+                narrative_function=_NARRATIVE_ORDER[len(usable_hooks) % len(_NARRATIVE_ORDER)],
                 suggested_placement_s=0.0,
                 text=text,
                 associated_concepts=[],
@@ -1183,17 +1169,13 @@ def _normalise(raw: dict[str, Any], topic_or_url: str, provider: str) -> Explain
             "研究结果没有可用 Hook，且脚本中也没有可提取的 Hook",
         )
     if not scripts:
-        raise ExplainerCapabilityError(
-            "MODEL_OUTPUT_INVALID", "研究结果至少需要包含 1 个脚本版本"
-        )
+        raise ExplainerCapabilityError("MODEL_OUTPUT_INVALID", "研究结果至少需要包含 1 个脚本版本")
     for script in scripts:
         if not script.cues:
             raise ExplainerCapabilityError(
                 "MODEL_OUTPUT_INVALID", f"脚本 {script.id} 缺少视觉脚手架"
             )
-    summary = str(raw.get("research_summary") or "；".join(
-        fact.claim for fact in facts[:5]
-    ))
+    summary = str(raw.get("research_summary") or "；".join(fact.claim for fact in facts[:5]))
     # 素材吸收与扩写矩阵:跨脚本版本并集(按 original_material_point 去重),
     # 确稿台在选定版本前即可看到全部素材点被如何深度扩写。
     coverage: list[ConceptExpansion] = []
@@ -1231,13 +1213,13 @@ async def research_and_generate(
     """Run research and script generation with explicit provider errors."""
     if researcher is None and script_generator is None:
         mcp_result = await _mcp_research(request.topic_or_url)
-        raw = mcp_result if mcp_result is not None else await _llm_research(
-            request.topic_or_url, request.target_duration
+        raw = (
+            mcp_result
+            if mcp_result is not None
+            else await _llm_research(request.topic_or_url, request.target_duration)
         )
         provider = (
-            "obase.mcp.gpt_researcher"
-            if mcp_result is not None
-            else "provider_registry.default"
+            "obase.mcp.gpt_researcher" if mcp_result is not None else "provider_registry.default"
         )
         return _normalise(raw, request.topic_or_url, provider)
 
@@ -1253,9 +1235,7 @@ async def research_and_generate(
     generated = research
     if script_generator is not None:
         if hasattr(script_generator, "generate"):
-            generated = await _invoke(
-                script_generator.generate, request.topic_or_url, research
-            )
+            generated = await _invoke(script_generator.generate, request.topic_or_url, research)
         else:
             generated = await _invoke(script_generator, request.topic_or_url, research)
     if not isinstance(generated, dict):

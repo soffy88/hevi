@@ -18,7 +18,13 @@ def _ass_ts(seconds: float) -> str:
 
 
 def _escape(text: str) -> str:
-    return (text or "").replace("\\", r"\\").replace("{", r"\{").replace("}", r"\}").replace("\n", r"\N")
+    return (
+        (text or "")
+        .replace("\\", r"\\")
+        .replace("{", r"\{")
+        .replace("}", r"\}")
+        .replace("\n", r"\N")
+    )
 
 
 def cues_to_ass(
@@ -61,11 +67,7 @@ def cues_to_ass(
             primary, secondary = item
         start = _ass_ts(primary.start)
         end = _ass_ts(primary.end)
-        events.append(
-            f"Dialogue: 0,{start},{end},Primary,,0,0,0,,{_escape(primary.text)}"
-        )
+        events.append(f"Dialogue: 0,{start},{end},Primary,,0,0,0,,{_escape(primary.text)}")
         if bilingual and secondary is not None and secondary.text.strip():
-            events.append(
-                f"Dialogue: 0,{start},{end},Secondary,,0,0,0,,{_escape(secondary.text)}"
-            )
+            events.append(f"Dialogue: 0,{start},{end},Secondary,,0,0,0,,{_escape(secondary.text)}")
     return header + "\n".join(events) + ("\n" if events else "")

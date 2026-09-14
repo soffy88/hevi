@@ -114,13 +114,12 @@ class TestElevenLabsMusicService(unittest.TestCase):
             ),
         ]
         for configured, expected_model, expected_timeout in test_cases:
-            with self.subTest(configured=configured), patch.object(
-                elevenlabs_music.config, "elevenlabs", configured
+            with (
+                self.subTest(configured=configured),
+                patch.object(elevenlabs_music.config, "elevenlabs", configured),
             ):
                 self.assertEqual(elevenlabs_music._model_id(), expected_model)
-                self.assertEqual(
-                    elevenlabs_music._request_timeout(), expected_timeout
-                )
+                self.assertEqual(elevenlabs_music._request_timeout(), expected_timeout)
 
     def test_connection_uses_non_billing_user_endpoint(self):
         response = _StreamingResponse(payload={"tier": "creator"})
@@ -139,12 +138,8 @@ class TestElevenLabsMusicService(unittest.TestCase):
             result = elevenlabs_music.test_connection()
 
         self.assertEqual(result, {"tier": "creator"})
-        self.assertTrue(
-            request.call_args.args[0].endswith("/v1/user/subscription")
-        )
-        self.assertEqual(
-            request.call_args.kwargs["headers"]["xi-api-key"], "test-key"
-        )
+        self.assertTrue(request.call_args.args[0].endswith("/v1/user/subscription"))
+        self.assertEqual(request.call_args.kwargs["headers"]["xi-api-key"], "test-key")
         self.assertTrue(request.call_args.kwargs["stream"])
         self.assertTrue(response.closed)
 
@@ -296,9 +291,7 @@ class TestElevenLabsMusicService(unittest.TestCase):
 
             def create_proxy(command, **_kwargs):
                 Path(command[-1]).write_bytes(b"proxy-video")
-                return elevenlabs_music.subprocess.CompletedProcess(
-                    command, 0, "", ""
-                )
+                return elevenlabs_music.subprocess.CompletedProcess(command, 0, "", "")
 
             with (
                 patch.object(
@@ -357,9 +350,7 @@ class TestElevenLabsMusicService(unittest.TestCase):
                     )
                     else {"side_effect": result_or_error}
                 )
-                with patch.object(
-                    elevenlabs_music.subprocess, "run", **run_kwargs
-                ):
+                with patch.object(elevenlabs_music.subprocess, "run", **run_kwargs):
                     with self.assertRaisesRegex(
                         elevenlabs_music.ElevenLabsMusicError,
                         expected_message,
@@ -367,11 +358,7 @@ class TestElevenLabsMusicService(unittest.TestCase):
                         elevenlabs_music._create_video_proxy(str(source))
 
                 self.assertEqual(
-                    list(
-                        Path(temp_dir).glob(
-                            ".elevenlabs-music-proxy-*"
-                        )
-                    ),
+                    list(Path(temp_dir).glob(".elevenlabs-music-proxy-*")),
                     [],
                 )
 
@@ -381,9 +368,7 @@ class TestElevenLabsMusicService(unittest.TestCase):
             with self.assertRaisesRegex(
                 elevenlabs_music.ElevenLabsMusicError, "no audio"
             ):
-                elevenlabs_music._stream_audio(
-                    _StreamingResponse([]), str(output_path)
-                )
+                elevenlabs_music._stream_audio(_StreamingResponse([]), str(output_path))
 
             with (
                 patch.object(
@@ -391,9 +376,7 @@ class TestElevenLabsMusicService(unittest.TestCase):
                     "MAX_GENERATED_AUDIO_BYTES",
                     3,
                 ),
-                self.assertRaisesRegex(
-                    elevenlabs_music.ElevenLabsMusicError, "50 MB"
-                ),
+                self.assertRaisesRegex(elevenlabs_music.ElevenLabsMusicError, "50 MB"),
             ):
                 elevenlabs_music._stream_audio(
                     _StreamingResponse([b"four"]), str(output_path)
@@ -447,18 +430,14 @@ class TestElevenLabsMusicService(unittest.TestCase):
             # 返回 422 Field required，因此测试固定真实可用的协议字段。
             self.assertEqual(post.call_args.kwargs["files"][0][0], "videos")
             self.assertEqual(post.call_args.kwargs["stream"], True)
-            self.assertEqual(
-                list(Path(temp_dir).glob(".elevenlabs-music-*")), []
-            )
+            self.assertEqual(list(Path(temp_dir).glob(".elevenlabs-music-*")), [])
 
     def test_request_bgm_preserves_existing_output_after_failures(self):
         failure_cases = [
             (_StreamingResponse(status_code=403), None, "403"),
             (
                 _StreamingResponse(
-                    iter_error=elevenlabs_music.requests.ConnectionError(
-                        "stream lost"
-                    )
+                    iter_error=elevenlabs_music.requests.ConnectionError("stream lost")
                 ),
                 None,
                 "failed to request",
@@ -504,9 +483,7 @@ class TestElevenLabsMusicService(unittest.TestCase):
                         )
 
                 self.assertEqual(output_path.read_bytes(), b"existing-music")
-                self.assertEqual(
-                    list(Path(temp_dir).glob(".elevenlabs-music-*")), []
-                )
+                self.assertEqual(list(Path(temp_dir).glob(".elevenlabs-music-*")), [])
 
     def test_generate_bgm_validates_boundaries_before_proxy_work(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -518,15 +495,11 @@ class TestElevenLabsMusicService(unittest.TestCase):
                     "elevenlabs",
                     {"api_key": "test-key"},
                 ),
-                patch.object(
-                    elevenlabs_music, "_create_video_proxy"
-                ) as create_proxy,
+                patch.object(elevenlabs_music, "_create_video_proxy") as create_proxy,
             ):
                 for duration in (0, -1, float("nan"), 601):
                     with self.subTest(duration=duration):
-                        with self.assertRaises(
-                            elevenlabs_music.ElevenLabsMusicError
-                        ):
+                        with self.assertRaises(elevenlabs_music.ElevenLabsMusicError):
                             elevenlabs_music.generate_bgm(
                                 str(source),
                                 str(Path(temp_dir) / "music.mp3"),
@@ -563,14 +536,10 @@ class TestElevenLabsMusicService(unittest.TestCase):
                 patch.object(
                     elevenlabs_music,
                     "_request_bgm",
-                    side_effect=elevenlabs_music.ElevenLabsMusicError(
-                        "network failed"
-                    ),
+                    side_effect=elevenlabs_music.ElevenLabsMusicError("network failed"),
                 ),
             ):
-                with self.assertRaises(
-                    elevenlabs_music.ElevenLabsMusicError
-                ):
+                with self.assertRaises(elevenlabs_music.ElevenLabsMusicError):
                     elevenlabs_music.generate_bgm(
                         str(source),
                         str(Path(temp_dir) / "music.mp3"),

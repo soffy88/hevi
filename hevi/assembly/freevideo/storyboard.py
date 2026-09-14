@@ -48,9 +48,7 @@ class FramePlan:
 
 def _validate_kind(kind: str) -> str:
     if kind not in FRAME_KINDS:
-        raise ValueError(
-            f"unknown frame kind {kind!r}; expected one of {', '.join(FRAME_KINDS)}"
-        )
+        raise ValueError(f"unknown frame kind {kind!r}; expected one of {', '.join(FRAME_KINDS)}")
     return kind
 
 
@@ -98,7 +96,12 @@ def plan_from_text(
     # 末镜:收束(指定 kind 时同用,否则大标题)
     last = sentences[-1]
     plans.append(
-        FramePlan(kind=kind if kind else "title", title=title or last[:16], body=last, duration=frame_duration)
+        FramePlan(
+            kind=kind if kind else "title",
+            title=title or last[:16],
+            body=last,
+            duration=frame_duration,
+        )
     )
     return plans
 

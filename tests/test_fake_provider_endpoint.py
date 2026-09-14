@@ -66,7 +66,10 @@ async def _wrapped_call(
         config=_config(attempts=attempts, total_s=total_s),
         async_client=client,
     )
-    body: dict[str, Any] = {"scenario": scenario, "messages": [{"role": "user", "content": "fixture"}]}
+    body: dict[str, Any] = {
+        "scenario": scenario,
+        "messages": [{"role": "user", "content": "fixture"}],
+    }
     if delay_ms is not None:
         body["delay_ms"] = delay_ms
     return await wrapper.request_json(

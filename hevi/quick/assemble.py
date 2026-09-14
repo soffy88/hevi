@@ -50,9 +50,7 @@ async def assemble_quick(
         seg_path = output_dir / f"seg_{i:02d}.mp3"
         try:
             await synth(line["text"], seg_path, cfg)
-            tts_segments.append(
-                {"index": i, "text": line["text"], "audio": str(seg_path)}
-            )
+            tts_segments.append({"index": i, "text": line["text"], "audio": str(seg_path)})
         except Exception as exc:
             logger.warning("quick tts segment %d failed: %s", i, exc)
             plan.notes.append(f"tts segment {i} failed: {exc}")
@@ -77,7 +75,5 @@ async def assemble_quick(
         ),
         encoding="utf-8",
     )
-    plan.notes.append(
-        "装配清单已产出(assembly.json); 视频合成由上游 explainer/assembly 消费。"
-    )
+    plan.notes.append("装配清单已产出(assembly.json); 视频合成由上游 explainer/assembly 消费。")
     return manifest

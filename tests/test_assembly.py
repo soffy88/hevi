@@ -27,7 +27,6 @@ def mock_subtitle(tmp_path):
 async def test_extract_cover(mock_video, tmp_path):
     out = tmp_path / "cover.jpg"
     with patch("hevi.assembly.cover_extractor.run", new_callable=AsyncMock) as mock_run:
-
         # Simulate file creation by run
         def side_effect(*args, **kwargs):
             out.write_text("dummy cover")
@@ -69,12 +68,12 @@ def test_transition_filters():
 @pytest.mark.asyncio
 async def test_postprocess_video_basic(mock_video, tmp_path, mock_subtitle):
     out_dir = tmp_path / "output"
-    with patch(
-        "hevi.assembly.postprocess_service.run", new_callable=AsyncMock
-    ) as mock_run, patch(
-        "hevi.assembly.postprocess_service.extract_cover", new_callable=AsyncMock
-    ) as mock_extract:
-
+    with (
+        patch("hevi.assembly.postprocess_service.run", new_callable=AsyncMock) as mock_run,
+        patch(
+            "hevi.assembly.postprocess_service.extract_cover", new_callable=AsyncMock
+        ) as mock_extract,
+    ):
         mock_extract.return_value = out_dir / "cover.jpg"
 
         results = await postprocess_video(
@@ -105,10 +104,10 @@ async def test_postprocess_video_basic(mock_video, tmp_path, mock_subtitle):
 @pytest.mark.asyncio
 async def test_postprocess_video_no_sub_no_watermark(mock_video, tmp_path):
     out_dir = tmp_path / "output"
-    with patch("hevi.assembly.postprocess_service.run", new_callable=AsyncMock), patch(
-        "hevi.assembly.postprocess_service.extract_cover", new_callable=AsyncMock
+    with (
+        patch("hevi.assembly.postprocess_service.run", new_callable=AsyncMock),
+        patch("hevi.assembly.postprocess_service.extract_cover", new_callable=AsyncMock),
     ):
-
         results = await postprocess_video(
             input_video=mock_video, aspect_ratios=[AspectRatio.RATIO_9_16], output_dir=out_dir
         )

@@ -1,4 +1,5 @@
 """series_producer —— 每日自动产线核心 (P2)。"""
+
 from __future__ import annotations
 
 import logging
@@ -60,9 +61,7 @@ async def _produced_orders(pool: PgPool | None = None) -> set[int]:
         }
 
 
-async def _existing_produced_task_id(
-    lesson_order: int, pool: PgPool | None = None
-) -> str | None:
+async def _existing_produced_task_id(lesson_order: int, pool: PgPool | None = None) -> str | None:
     """Return the durable task identity for an already-produced lesson.
 
     Idempotent callers must receive the original task id.  Generating a new
@@ -125,9 +124,7 @@ async def next_lesson(tb_id: str = TB_ID, pool: PgPool | None = None) -> LessonI
     for r in rows:
         order = int(r["display_order"])
         if order not in produced:
-            return LessonInfo(
-                order=order, title=str(r["name"]), ku_count=int(r["ku_cnt"] or 0)
-            )
+            return LessonInfo(order=order, title=str(r["name"]), ku_count=int(r["ku_cnt"] or 0))
     return None
 
 

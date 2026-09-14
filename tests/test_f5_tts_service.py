@@ -74,8 +74,10 @@ async def test_f5_missing_reference_text_rejected(tmp_path: Path) -> None:
     ref.write_bytes(b"RIFF-fake-ref")
     with pytest.raises(ValueError, match="reference_text 必填"):
         await f5_tts_synthesize(
-            text="x", output_path=tmp_path / "o.wav",
-            reference_audio=ref, reference_text="  ",
+            text="x",
+            output_path=tmp_path / "o.wav",
+            reference_audio=ref,
+            reference_text="  ",
         )
 
 
@@ -84,8 +86,10 @@ async def test_f5_missing_reference_audio_rejected(tmp_path: Path) -> None:
     """参考音频文件不存在时抛 AiEngineError(调用方可见原因)。"""
     with pytest.raises(AiEngineError, match="参考音频不存在"):
         await f5_tts_synthesize(
-            text="x", output_path=tmp_path / "o.wav",
-            reference_audio=tmp_path / "nope.wav", reference_text="t",
+            text="x",
+            output_path=tmp_path / "o.wav",
+            reference_audio=tmp_path / "nope.wav",
+            reference_text="t",
         )
 
 
@@ -99,8 +103,10 @@ async def test_f5_501_raises_engine_error(tmp_path: Path) -> None:
     )
     with patcher, pytest.raises(AiEngineError, match="未部署"):
         await f5_tts_synthesize(
-            text="x", output_path=tmp_path / "o.wav",
-            reference_audio=ref, reference_text="t",
+            text="x",
+            output_path=tmp_path / "o.wav",
+            reference_audio=ref,
+            reference_text="t",
         )
 
 
@@ -113,6 +119,8 @@ async def test_f5_engine_down_raises(tmp_path: Path) -> None:
     fake.raise_on_post(httpx.ConnectError("engine down"))
     with patcher, pytest.raises(AiEngineError, match="服务不可用"):
         await f5_tts_synthesize(
-            text="x", output_path=tmp_path / "o.wav",
-            reference_audio=ref, reference_text="t",
+            text="x",
+            output_path=tmp_path / "o.wav",
+            reference_audio=ref,
+            reference_text="t",
         )

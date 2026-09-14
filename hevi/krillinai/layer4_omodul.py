@@ -13,45 +13,15 @@ Pipeline 结构：
 
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from hevi.krillinai.schemas import (
-    ASRConfig,
     ClipGeneratorJob,
-    JobStatus,
-    LLMConfig,
-    RenderConfig,
-    TTSConfig,
     make_clip_generator_job,
-)
-from hevi.layer4_legacy.krillinai.oprim_impl import (
-    download_video,
-    extract_audio,
-    generate_cover,
-    generate_short_mixed_srt,
-    get_artifact_path,
-    merge_tts_to_video,
-    read_manifest,
-    render_horizontal_bilingual,
-    render_horizontal_dubbed,
-    render_vertical,
-    segment_subtitle,
-    synthesize_tts,
-    synthesize_with_aliyun_tts,
-    synthesize_with_minimax_tts,
-    synthesize_with_openai_tts,
-    transcribe_audio,
-    transcribe_with_faster_whisper,
-    transcribe_with_whisper_cpp,
-    translate_subtitle,
-    write_manifest,
 )
 from hevi.layer4_legacy.krillinai.oskill_impl import (
     skill_acquire_video,
     skill_cover,
-    skill_full_pipeline,
     skill_render,
     skill_segment,
     skill_transcribe,

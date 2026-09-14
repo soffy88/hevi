@@ -175,7 +175,10 @@ def _resolve_llm(llm: Any) -> Any:
 
 
 async def generate_screenplay_draft(
-    *, concept: Concept, material_text: str, llm: Any = None,
+    *,
+    concept: Concept,
+    material_text: str,
+    llm: Any = None,
     mode: str = "adaptive",
 ) -> Screenplay:
     """锁定 Concept + 素材原文 → Screenplay 草稿。mode: adaptive/literal/staged
@@ -190,12 +193,15 @@ async def generate_screenplay_draft(
         logger.warning("screenplay LLM unavailable, using fallback: %s", e)
         resolved_llm = None
     tail = _SCREENPLAY_MODE_TAILS.get(mode, _SCREENPLAY_MODE_TAILS["adaptive"])
-    prompt = _SCREENPLAY_PROMPT.format(
-        theme=concept.theme or "(未定)",
-        tone=concept.tone or "(未定)",
-        style=concept.style or "(未定)",
-        material_text=material_text,
-    ) + tail
+    prompt = (
+        _SCREENPLAY_PROMPT.format(
+            theme=concept.theme or "(未定)",
+            tone=concept.tone or "(未定)",
+            style=concept.style or "(未定)",
+            material_text=material_text,
+        )
+        + tail
+    )
     try:
         data = await _call_llm_json(resolved_llm, prompt) if resolved_llm else {}
     except Exception as e:

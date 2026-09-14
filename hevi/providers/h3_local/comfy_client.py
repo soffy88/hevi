@@ -102,7 +102,8 @@ class ComfyClient:
         # H3_SERIAL=1(默认):串行队列,一次一个任务(8GB 纪律)。
         self.serial = bool(os.getenv("H3_SERIAL", "1") == "1") if serial is None else serial
         self.workflows_dir = Path(
-            workflows_dir or os.getenv("H3_WORKFLOWS_DIR", "")
+            workflows_dir
+            or os.getenv("H3_WORKFLOWS_DIR", "")
             or (Path(__file__).resolve().parent / "workflows")
         )
         self._lock = asyncio.Lock()
@@ -269,9 +270,7 @@ class ComfyClient:
                 ) from None
         return str(r.json()["prompt_id"])
 
-    async def wait_prompt(
-        self, prompt_id: str, timeout_s: float | None = None
-    ) -> dict[str, Any]:
+    async def wait_prompt(self, prompt_id: str, timeout_s: float | None = None) -> dict[str, Any]:
         """轮询 /history/{prompt_id} 直到完成/失败,返回 history 条目。"""
         deadline = asyncio.get_event_loop().time() + (timeout_s or self.timeout_s)
         # 单请求 60s:Comfy 推理时 event loop 会堵,/history 经常 >15s 才回
@@ -300,6 +299,7 @@ class ComfyClient:
                         f"ComfyUI 任务超时({timeout_s or self.timeout_s:.0f}s): {prompt_id}"
                     )
                 await asyncio.sleep(_POLL_INTERVAL_S)
+
     @staticmethod
     def find_video_output(entry: dict[str, Any]) -> dict[str, Any] | None:
         """history 条目里找第一个 mp4 输出。

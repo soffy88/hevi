@@ -27,7 +27,15 @@ logger = logging.getLogger(__name__)
 
 #: 支持的媒体类型(与 hyperframes media-use resolve --type 对齐)。
 MEDIA_TYPES: tuple[str, ...] = (
-    "bgm", "sfx", "image", "icon", "logo", "voice", "grade", "lut", "video",
+    "bgm",
+    "sfx",
+    "image",
+    "icon",
+    "logo",
+    "voice",
+    "grade",
+    "lut",
+    "video",
 )
 
 #: 供应链顺序:先台账复用 → 本地库 → 素材检索 → 生成。
@@ -89,9 +97,7 @@ class MediaLedger:
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(
-            json.dumps(
-                [e.to_dict() for e in self._entries], ensure_ascii=False, indent=2
-            ),
+            json.dumps([e.to_dict() for e in self._entries], ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
 
@@ -134,7 +140,7 @@ def _source_metadata(path: Path) -> dict[str, Any]:
         return {}
     try:
         data = json.loads(sidecar.read_text(encoding="utf-8"))
-    except (OSError, ValueError, json.JSONDecodeError):
+    except OSError, ValueError, json.JSONDecodeError:
         return {}
     return {"source_record": data} if isinstance(data, dict) else {}
 
@@ -185,9 +191,7 @@ def resolve_media(
         candidates = ledger.reuse_candidates(media_type, intent)
         if candidates:
             best = candidates[0]
-            if verify_paths and (
-                not best.path.is_file() or best.path.stat().st_size <= 0
-            ):
+            if verify_paths and (not best.path.is_file() or best.path.stat().st_size <= 0):
                 logger.warning("media_use: skip stale ledger path %s", best.path)
             else:
                 logger.info("media_use: reuse %s -> %s", best.id, best.path)

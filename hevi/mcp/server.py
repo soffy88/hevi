@@ -56,9 +56,7 @@ def build_hevi_mcp_server(
     for skill in build_embrace_skills():  # 3O 内化能力(watch/media/repair/promote/chat)
         server.register_skill(skill)
 
-    for skill in build_creative_skills(
-        assist_svc=assist_svc, workflow_svc=workflow_svc
-    ):
+    for skill in build_creative_skills(assist_svc=assist_svc, workflow_svc=workflow_svc):
         server.register_skill(skill)
 
     for skill in build_subject_skills(subject_svc=subject_svc):

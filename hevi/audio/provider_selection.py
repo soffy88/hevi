@@ -25,9 +25,22 @@ async def select_tts_provider(
     if requested != "auto":
         raise ValueError(f"unsupported TTS provider selection: {requested}")
     if line not in OPENVOICE_LINES:
-        return existing, {"requested_provider": requested, "provider_selection": existing, "fallback_reason": "line_not_openvoice_enabled"}
+        return existing, {
+            "requested_provider": requested,
+            "provider_selection": existing,
+            "fallback_reason": "line_not_openvoice_enabled",
+        }
     provider = openvoice or OpenVoiceProvider()
     readiness = await provider.readiness()
     if readiness.get("status") == "READY":
-        return "openvoice", {"requested_provider": requested, "provider_selection": "openvoice", "readiness": readiness}
-    return existing, {"requested_provider": requested, "provider_selection": existing, "fallback_reason": readiness.get("blocker", readiness.get("status", "unavailable")), "openvoice_readiness": readiness}
+        return "openvoice", {
+            "requested_provider": requested,
+            "provider_selection": "openvoice",
+            "readiness": readiness,
+        }
+    return existing, {
+        "requested_provider": requested,
+        "provider_selection": existing,
+        "fallback_reason": readiness.get("blocker", readiness.get("status", "unavailable")),
+        "openvoice_readiness": readiness,
+    }

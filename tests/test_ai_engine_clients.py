@@ -177,9 +177,7 @@ async def test_talking_face_falls_back_when_no_longcat_model(
             _placeholder_writer(out),
         ),
     ):
-        result = await generate_talking_face(
-            image_path=image, audio_path=audio, output_path=out
-        )
+        result = await generate_talking_face(image_path=image, audio_path=audio, output_path=out)
     assert result == out
 
 

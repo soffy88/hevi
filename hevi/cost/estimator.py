@@ -1,4 +1,5 @@
 """hevi cost estimator — delegates to obase.CostTracker.estimate_steps."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -40,22 +41,24 @@ def _build_estimation_tracker(
     in its PricingTable lookup (StepUsage.category is metadata-only in v0.15.10).
     """
     return CostTracker(
-        pricing_table=PricingTable(entries=[
-            PricingEntry(
-                category="default",
-                provider=video_provider,
-                model_or_tier="default",
-                unit="per_second",
-                price_usd=video_price_per_s,
-            ),
-            PricingEntry(
-                category="default",
-                provider=audio_provider,
-                model_or_tier="default",
-                unit=audio_unit,
-                price_usd=audio_price,
-            ),
-        ]),
+        pricing_table=PricingTable(
+            entries=[
+                PricingEntry(
+                    category="default",
+                    provider=video_provider,
+                    model_or_tier="default",
+                    unit="per_second",
+                    price_usd=video_price_per_s,
+                ),
+                PricingEntry(
+                    category="default",
+                    provider=audio_provider,
+                    model_or_tier="default",
+                    unit=audio_unit,
+                    price_usd=audio_price,
+                ),
+            ]
+        ),
         strict_pricing=False,
     )
 

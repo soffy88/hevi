@@ -31,9 +31,7 @@ async def _subscribe(
 ) -> None:
     import json
 
-    await socket.send(
-        json.dumps({"type": "subscribe", "resource_ids": [str(aggregate_id)]})
-    )
+    await socket.send(json.dumps({"type": "subscribe", "resource_ids": [str(aggregate_id)]}))
     message = json.loads(await asyncio.wait_for(socket.recv(), timeout=5))
     if message.get("type") != "subscribed":
         raise RuntimeError(f"WS subscription failed: {message!r}")
@@ -157,9 +155,7 @@ async def _main() -> None:
                 await socket.close()
         async with pool.acquire() as conn:
             if task_ids:
-                await conn.execute(
-                    "DELETE FROM video_tasks WHERE id = ANY($1::uuid[])", task_ids
-                )
+                await conn.execute("DELETE FROM video_tasks WHERE id = ANY($1::uuid[])", task_ids)
             if event_ids:
                 await conn.execute(
                     "DELETE FROM domain_events WHERE id = ANY($1::uuid[])", event_ids

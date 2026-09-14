@@ -46,7 +46,12 @@ class CheckResult:
     severity: str = "warning"  # warning / error
 
     def to_dict(self) -> dict[str, Any]:
-        return {"name": self.name, "passed": self.passed, "details": self.details, "severity": self.severity}
+        return {
+            "name": self.name,
+            "passed": self.passed,
+            "details": self.details,
+            "severity": self.severity,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -77,10 +82,14 @@ def check_scene_pacing(
     too_long = [d for d in durations if d > max_s]
     if too_short:
         res.passed = False
-        res.details.append(f"{len(too_short)} 个场景过短(<{min_s}s): {[round(d,1) for d in too_short][:5]}")
+        res.details.append(
+            f"{len(too_short)} 个场景过短(<{min_s}s): {[round(d, 1) for d in too_short][:5]}"
+        )
     if too_long:
         res.passed = False
-        res.details.append(f"{len(too_long)} 个场景过长(>{max_s}s): {[round(d,1) for d in too_long][:5]}")
+        res.details.append(
+            f"{len(too_long)} 个场景过长(>{max_s}s): {[round(d, 1) for d in too_long][:5]}"
+        )
     if len(durations) >= 3:
         cv = statistics.pstdev(durations) / (statistics.mean(durations) or 1.0)
         if cv > 0.9:
@@ -212,7 +221,9 @@ def run_production_checks(
             results.append(res)
         except Exception as exc:  # 检查器自身异常不阻断其他项
             results.append(
-                CheckResult(name=name, passed=False, details=[f"检查器异常: {exc}"], severity="error")
+                CheckResult(
+                    name=name, passed=False, details=[f"检查器异常: {exc}"], severity="error"
+                )
             )
     failed = [r for r in results if not r.passed]
     return {

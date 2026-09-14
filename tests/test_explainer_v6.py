@@ -80,7 +80,6 @@ def _matrix_payload() -> dict:
     }
 
 
-
 class _Researcher:
     async def research(self, _topic: str) -> dict:
         return {"facts": _payload()["facts"]}
@@ -316,7 +315,8 @@ def test_v6_cues_keep_visual_scaffold_metadata_for_remotion() -> None:
 
 @pytest.mark.asyncio
 async def test_stock_broll_is_fulfilled_when_service_injected(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     captured = {}
 
@@ -360,7 +360,8 @@ async def test_stock_broll_is_fulfilled_when_service_injected(
 
 @pytest.mark.asyncio
 async def test_v8_local_presenter_is_renderable_without_heygen_provider(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     captured = {}
 
@@ -412,7 +413,8 @@ def test_v6_cue_normalizes_legacy_null_estimate() -> None:
 
 @pytest.mark.asyncio
 async def test_v9_service_entry_deep_unpacks_double_escaped_payload(
-    monkeypatch: pytest.MonkeyPatch, tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
 ) -> None:
     """服务入口(service.assemble)第一行递归解包:字符串化的 chart_data /
     visual_config 全部还原成 dict,绝不带着 str 进装配。"""

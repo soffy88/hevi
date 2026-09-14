@@ -1,4 +1,5 @@
 """Layer4 asset store + E4 asset_loader bridge."""
+
 import pytest
 
 from hevi.sourcing import AssetRepository, load_asset_map, make_asset_loader
@@ -12,11 +13,14 @@ def test_asset_types_taxonomy():
 @pytest.mark.asyncio
 async def test_asset_crud_and_isolation(client):
     from hevi.db.pg_pool import get_hevi_pg_pool
+
     repo = AssetRepository(await get_hevi_pg_pool())
 
     a = await repo.create(
-        asset_type="character", name="Ada",
-        data={"reference_images": ["img/ada.jpg"]}, user_id="u1",
+        asset_type="character",
+        name="Ada",
+        data={"reference_images": ["img/ada.jpg"]},
+        user_id="u1",
     )
     assert a["asset_type"] == "character"
     got = await repo.get(str(a["id"]))
@@ -35,6 +39,7 @@ async def test_asset_crud_and_isolation(client):
 @pytest.mark.asyncio
 async def test_invalid_asset_type_rejected(client):
     from hevi.db.pg_pool import get_hevi_pg_pool
+
     repo = AssetRepository(await get_hevi_pg_pool())
     with pytest.raises(ValueError, match="Invalid asset_type"):
         await repo.create(asset_type="alien", name="x")
@@ -46,10 +51,13 @@ async def test_loader_bridges_to_oskill_asset_reference_inject(client):
     from oskill.asset_reference_inject import asset_reference_inject
 
     from hevi.db.pg_pool import get_hevi_pg_pool
+
     repo = AssetRepository(await get_hevi_pg_pool())
     char = await repo.create(
-        asset_type="character", name="Hero",
-        data={"reference_images": ["img/hero.jpg"]}, user_id="u1",
+        asset_type="character",
+        name="Hero",
+        data={"reference_images": ["img/hero.jpg"]},
+        user_id="u1",
     )
 
     asset_refs = {"character_id": str(char["id"])}

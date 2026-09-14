@@ -38,8 +38,8 @@ class PromoteIn(BaseModel):
 @router.post("/graphs")
 async def create_graph(body: GraphIn) -> dict[str, Any]:
     graph = FreezoneGraph(
-        [NodeSpec(id=n.id, kind=n.kind, params=n.params, inputs=n.inputs)
-         for n in body.nodes])
+        [NodeSpec(id=n.id, kind=n.kind, params=n.params, inputs=n.inputs) for n in body.nodes]
+    )
     gid = f"fzg_{len(_GRAPHS) + 1}"
     _GRAPHS[gid] = graph
     return {"graph_id": gid, "nodes": graph.to_dict()["nodes"]}

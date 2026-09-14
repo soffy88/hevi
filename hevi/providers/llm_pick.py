@@ -1,4 +1,5 @@
 """文本 LLM 选取:云端结构化优先,再走 TeamoRouter 免费槽,再回落本地。"""
+
 from __future__ import annotations
 
 from typing import Any

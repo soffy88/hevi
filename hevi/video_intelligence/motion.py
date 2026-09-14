@@ -21,23 +21,40 @@ class MotionAnalyzer:
             raise RuntimeError("MOTION_ANALYSIS_FAILED:invalid_duration")
         fps = 2.0
         command = [
-            "ffmpeg", "-hide_banner", "-loglevel", "error", "-i", path,
-            "-vf", f"fps={fps},scale=64:36,format=gray",
-            "-frames:v", str(self.sample_count), "-f", "rawvideo", "-",
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            path,
+            "-vf",
+            f"fps={fps},scale=64:36,format=gray",
+            "-frames:v",
+            str(self.sample_count),
+            "-f",
+            "rawvideo",
+            "-",
         ]
         try:
             completed = subprocess.run(command, capture_output=True, timeout=300, check=False)
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise RuntimeError(f"MOTION_ANALYSIS_FAILED:{exc}") from exc
         if completed.returncode != 0:
-            raise RuntimeError(f"MOTION_ANALYSIS_FAILED:{completed.stderr[-300:].decode(errors='replace')}")
+            raise RuntimeError(
+                f"MOTION_ANALYSIS_FAILED:{completed.stderr[-300:].decode(errors='replace')}"
+            )
         width, height = 64, 36
         frame_size = width * height
-        frames = [completed.stdout[i:i + frame_size] for i in range(0, len(completed.stdout), frame_size)]
+        frames = [
+            completed.stdout[i : i + frame_size]
+            for i in range(0, len(completed.stdout), frame_size)
+        ]
         frames = [frame for frame in frames if len(frame) == frame_size]
         deltas: list[float] = []
         for before, after in pairwise(frames):
-            deltas.append(sum(abs(a - b) for a, b in zip(before, after, strict=False)) / frame_size / 255)
+            deltas.append(
+                sum(abs(a - b) for a, b in zip(before, after, strict=False)) / frame_size / 255
+            )
         if not deltas:
             raise RuntimeError("MOTION_ANALYSIS_FAILED:no_frames")
         ordered = sorted(deltas)
@@ -45,9 +62,13 @@ class MotionAnalyzer:
         mean = statistics.fmean(deltas)
         median = statistics.median(deltas)
         motion_class = (
-            MotionClass.STATIC if median < 0.015 else
-            MotionClass.LOW if median < 0.05 else
-            MotionClass.MEDIUM if median < 0.12 else MotionClass.HIGH
+            MotionClass.STATIC
+            if median < 0.015
+            else MotionClass.LOW
+            if median < 0.05
+            else MotionClass.MEDIUM
+            if median < 0.12
+            else MotionClass.HIGH
         )
         return MotionEvidence(
             median_frame_delta=median,

@@ -46,6 +46,7 @@ from hevi.verdict.aesthetic_canon import (
 
 # ---- recipe cards ----
 
+
 def test_seed_library_covers_all_categories():
     from hevi.motion.recipe_card import CARD_CATEGORIES
 
@@ -81,6 +82,7 @@ def test_recipe_library_roundtrip(tmp_path):
 
 # ---- motion stylepack ----
 
+
 def test_motion_presets_resolution():
     assert MOTION_PRESETS
     # 高能活泼 → bold/playful;沉稳严肃 → enterprise
@@ -102,6 +104,7 @@ def test_motion_voice_check():
 
 
 # ---- beat sync (pure math) ----
+
 
 def test_fit_beat_grid_exact():
     # 100 BPM, t0=0.5, 20 拍,加 ±5ms 噪声
@@ -136,6 +139,7 @@ def test_analyze_beat_grid_missing_file():
 
 # ---- sound design ----
 
+
 def test_vocabulary_by_piece_type():
     assert "whoosh" in pick_sound_vocabulary("product_promo")
     assert pick_sound_vocabulary("unknown") == pick_sound_vocabulary("product_promo")
@@ -165,6 +169,7 @@ def test_bgm_volume_env():
 
 
 # ---- aesthetic canon ----
+
 
 def test_canon_numbering_only_appends():
     canon = AestheticCanon()
@@ -197,6 +202,7 @@ def test_canon_roundtrip_json(tmp_path):
 
 
 # ---- design tokens ----
+
 
 def test_normalize_tokens():
     raw = {

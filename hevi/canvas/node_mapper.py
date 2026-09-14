@@ -73,9 +73,7 @@ async def _image_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
             r = await svc.gen_multi_angle(subject_description=desc)
         return {"type": "image", "sub_type": sub, "output": _serialize_result(r)}
     except Exception as e:
-        logger.warning(
-            "image node %s real service unavailable, plan-only: %s", node.node_id, e
-        )
+        logger.warning("image node %s real service unavailable, plan-only: %s", node.node_id, e)
         return {
             "type": "image",
             "sub_type": sub,
@@ -176,9 +174,7 @@ async def _script_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
         r = await svc.gen_storyboard(script_text=text, shots=int(cfg.get("shots", 6)))
         return {"type": "script", "sub_type": sub, "output": _serialize_result(r)}
     except Exception as e:
-        logger.warning(
-            "script node %s real service unavailable, plan-only: %s", node.node_id, e
-        )
+        logger.warning("script node %s real service unavailable, plan-only: %s", node.node_id, e)
         return {"type": "script", "sub_type": sub, "config": cfg, "note": f"plan-only: {e}"}
 
 

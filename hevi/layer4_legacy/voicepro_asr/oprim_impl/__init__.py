@@ -41,10 +41,16 @@ def normalize_audio(
     KrillinAI/Azure/OpenAI 等 ASR 系统的标准预处理。
     """
     args = [
-        "ffmpeg", "-y", "-i", audio_path,
-        "-ar", str(sample_rate),
-        "-ac", str(channels),
-        "-c:a", "pcm_s16le",
+        "ffmpeg",
+        "-y",
+        "-i",
+        audio_path,
+        "-ar",
+        str(sample_rate),
+        "-ac",
+        str(channels),
+        "-c:a",
+        "pcm_s16le",
         output_path,
     ]
     subprocess.run(args, check=True, capture_output=True)
@@ -52,6 +58,7 @@ def normalize_audio(
 
 
 # ── Stage 2: Faster-Whisper 识别 ─────────────────────
+
 
 async def transcribe_faster_whisper(
     audio_path: str,
@@ -119,6 +126,7 @@ async def transcribe_faster_whisper(
 
 # ── Stage 3: Whisper.cpp 识别 ───────────────────────
 
+
 async def transcribe_whisper_cpp(
     audio_path: str,
     config: ASRConfig,
@@ -177,7 +185,9 @@ async def transcribe_whisper_cpp(
         end_s = _whisper_timestamp(row.get("offsets", {}).get("to"), 1000.0)
         if text:
             text_parts.append(text)
-            segments_list.append(SentenceSegment(start_s=start_s, end_s=end_s, text=text, is_complete=True))
+            segments_list.append(
+                SentenceSegment(start_s=start_s, end_s=end_s, text=text, is_complete=True)
+            )
     return ASRResult(
         text=" ".join(text_parts),
         words=words,
@@ -189,6 +199,7 @@ async def transcribe_whisper_cpp(
 
 
 # ── Stage 4: Alibaba Cloud ASR ────────────────────────
+
 
 async def transcribe_aliyun_asr(
     audio_path: str,
@@ -205,6 +216,7 @@ async def transcribe_aliyun_asr(
 
 
 # ── Stage 5: OpenAI Whisper API ─────────────────────
+
 
 async def transcribe_openai_whisper(
     audio_path: str,
@@ -249,7 +261,9 @@ async def transcribe_openai_whisper(
         text = str(row.get("text") or "").strip()
         start_s = float(row.get("start") or 0.0)
         end_s = float(row.get("end") or start_s)
-        segments_list.append(SentenceSegment(start_s=start_s, end_s=end_s, text=text, is_complete=True))
+        segments_list.append(
+            SentenceSegment(start_s=start_s, end_s=end_s, text=text, is_complete=True)
+        )
     for row in payload.get("words", []):
         start_s = float(row.get("start") or 0.0)
         end_s = float(row.get("end") or start_s)
@@ -267,7 +281,9 @@ async def transcribe_openai_whisper(
         words=words,
         segments=segments_list,
         language=str(payload.get("language") or config.language),
-        duration_s=float(payload.get("duration") or (segments_list[-1].end_s if segments_list else 0.0)),
+        duration_s=float(
+            payload.get("duration") or (segments_list[-1].end_s if segments_list else 0.0)
+        ),
         model_used=f"openai_whisper:{data['model']}",
     )
 
@@ -275,7 +291,7 @@ async def transcribe_openai_whisper(
 def _whisper_timestamp(value: Any, divisor: float) -> float:
     try:
         return float(value) / divisor
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0.0
 
 
@@ -290,11 +306,10 @@ def _character_error_rate(expected: str, actual: str) -> float:
     for i, left in enumerate(expected, 1):
         current = [i]
         for j, right in enumerate(actual, 1):
-            current.append(
-                min(current[-1] + 1, previous[j] + 1, previous[j - 1] + (left != right))
-            )
+            current.append(min(current[-1] + 1, previous[j] + 1, previous[j - 1] + (left != right)))
         previous = current
     return previous[-1] / len(expected)
+
 
 def verify_asr_result(
     result: ASRResult,

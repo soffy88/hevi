@@ -54,28 +54,53 @@ def collect() -> dict[str, Any]:
             Path("hevi/providers") / name / "__init__.py",
             Path("hevi/video") / f"provider_{name}.py",
         ]
-        capability = any(path.exists() for path in module_candidates) or name in {"llm", "tts", "media_source", "ffmpeg", "remotion"}
-        endpoint = os.getenv("H3_COMFY_URL") if name in {"h3_local", "ComfyUI/local_gpu_backend"} else None
-        records.append({
-            "provider": name,
-            "capability": capability,
-            "env_vars": ENV_VARS.get(name, []),
-            "endpoint": endpoint,
-            "local": name not in {"llm", "media_source"},
-            "required_by_lines": sorted(line for line, providers in required.items() if name in providers),
-            "auth_probe_supported": name in {"llm", "media_source"},
-            "real_generation_probe_supported": name in {"llm", "tts", "media_source", "remotion", "hyperframes", "h3_local", "ComfyUI/local_gpu_backend"},
-        })
+        capability = any(path.exists() for path in module_candidates) or name in {
+            "llm",
+            "tts",
+            "media_source",
+            "ffmpeg",
+            "remotion",
+        }
+        endpoint = (
+            os.getenv("H3_COMFY_URL") if name in {"h3_local", "ComfyUI/local_gpu_backend"} else None
+        )
+        records.append(
+            {
+                "provider": name,
+                "capability": capability,
+                "env_vars": ENV_VARS.get(name, []),
+                "endpoint": endpoint,
+                "local": name not in {"llm", "media_source"},
+                "required_by_lines": sorted(
+                    line for line, providers in required.items() if name in providers
+                ),
+                "auth_probe_supported": name in {"llm", "media_source"},
+                "real_generation_probe_supported": name
+                in {
+                    "llm",
+                    "tts",
+                    "media_source",
+                    "remotion",
+                    "hyperframes",
+                    "h3_local",
+                    "ComfyUI/local_gpu_backend",
+                },
+            }
+        )
     return {"providers": records, "line_dependencies": required}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, default=Path("artifacts/qualification/provider_inventory.json"))
+    parser.add_argument(
+        "--output", type=Path, default=Path("artifacts/qualification/provider_inventory.json")
+    )
     args = parser.parse_args()
     payload = collect()
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0
 

@@ -140,9 +140,7 @@ class ConceptExpansion(BaseModel):
             "底层原理、技术/数学/物理图景 + 通俗比喻,禁止一句话带过。"
         ),
     )
-    source: str = Field(
-        default="", max_length=500, description="素材出处(无法核验可为空)"
-    )
+    source: str = Field(default="", max_length=500, description="素材出处(无法核验可为空)")
 
 
 class ScriptVersionMeta(BaseModel):
@@ -158,7 +156,7 @@ class ScriptVersionMeta(BaseModel):
 
 class VideoPackaging(BaseModel):
     """🚨 v9.0: 视频包装配置 —— 强制的独立节点,不可与 cues 混在一起。
-    
+
     LLM 必须显式指定开场主题画参数,Remotion 在 Frame 0 渲染 3-5s 标题卡序列。
     """
 
@@ -179,8 +177,7 @@ class VideoPackaging(BaseModel):
     presenter_image_url: str = Field(
         default="",
         description=(
-            "数字人母体照片 URL（可选）。可上传或选择一张带背景的高清照片"
-            "作为全时段解说员。"
+            "数字人母体照片 URL（可选）。可上传或选择一张带背景的高清照片作为全时段解说员。"
         ),
     )
 

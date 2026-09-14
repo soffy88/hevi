@@ -54,10 +54,7 @@ def _prompt(chapter_ir: ChapterIR) -> str:
         f"  {e.event_id}: {e.summary}  actor={e.actors}  location={e.location or '-'}"
         for e in chapter_ir.events
     )
-    quotes = "\n".join(
-        f"  {q.quote_id}({q.speaker}): {q.original}"
-        for q in chapter_ir.quotes[:20]
-    )
+    quotes = "\n".join(f"  {q.quote_id}({q.speaker}): {q.original}" for q in chapter_ir.quotes[:20])
     return f"""你是历史剧角色推演师。基于以下章节原文事件与引语, 为每个角色推演独立状态。
 
 角色名册:
@@ -105,9 +102,7 @@ async def simulate_character_states(
                     "character_id": s["character_id"],
                     "goal": str(s.get("goal") or ""),
                     "pressure": str(s.get("pressure") or ""),
-                    "resources": [
-                        str(r) for r in (s.get("resources") or []) if str(r).strip()
-                    ],
+                    "resources": [str(r) for r in (s.get("resources") or []) if str(r).strip()],
                     "knowledge_boundary": [
                         str(k) for k in (s.get("knowledge_boundary") or []) if str(k).strip()
                     ],
@@ -121,18 +116,14 @@ async def simulate_character_states(
         return []
 
 
-def gate_character_states(
-    states: list[dict[str, Any]], chapter_ir: ChapterIR
-) -> GateResult:
+def gate_character_states(states: list[dict[str, Any]], chapter_ir: ChapterIR) -> GateResult:
     """角色档案完整性门禁: 事件角色都有档案 + 知识边界非空 + 离屏行动非空。
 
     不过标 → GateResult(passed=False), 由 _gate_done 标 DEGRADED(不阻断)。
     """
     errors: list[str] = []
     by_id = {s.get("character_id"): s for s in states}
-    event_actors = sorted(
-        {actor for e in chapter_ir.events for actor in (e.actors or [])}
-    )
+    event_actors = sorted({actor for e in chapter_ir.events for actor in (e.actors or [])})
     missing = [a for a in event_actors if a not in by_id]
     if missing:
         errors.append(f"事件角色缺少推演档案: {missing}")
@@ -147,9 +138,7 @@ def gate_character_states(
         passed=not errors,
         coverage=round(covered / total, 3),
         errors=errors,
-        warnings=[
-            f"推演角色 {len(states)} 个; 事件角色 {len(event_actors)} 个"
-        ],
+        warnings=[f"推演角色 {len(states)} 个; 事件角色 {len(event_actors)} 个"],
     )
 
 
@@ -182,7 +171,7 @@ def load_character_states(path: Path) -> list[dict[str, Any]] | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return data.get("characters") or []
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return None
 
 

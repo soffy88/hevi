@@ -100,8 +100,7 @@ async def test_presenter(
     lipsync = str(row.get("lipsync") or "none")
     delivery = row.get("delivery_json") or {}
     is_generated_local = (
-        delivery.get("provider") == "remotion"
-        and delivery.get("variant") == "generated"
+        delivery.get("provider") == "remotion" and delivery.get("variant") == "generated"
     )
     if motion != "voice_over" and not row.get("subject_id") and not is_generated_local:
         issues.append("on-camera Presenter 需要 subject_id")

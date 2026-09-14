@@ -32,7 +32,10 @@ def extract_short_link(text: str) -> str | None:
     """从文本中提取短链(如 v.douyin.com/xxx)。"""
     if not text:
         return None
-    m = re.search(r"(?:v\.douyin\.com|douyin\.com|iesdouyin\.com|xiaohongshu\.com|xhslink\.com|kuaishou\.com|ks\.com)/([A-Za-z0-9]+)", text)
+    m = re.search(
+        r"(?:v\.douyin\.com|douyin\.com|iesdouyin\.com|xiaohongshu\.com|xhslink\.com|kuaishou\.com|ks\.com)/([A-Za-z0-9]+)",
+        text,
+    )
     if m:
         return m.group(0)
     return None
@@ -68,6 +71,7 @@ def extract_query_params(url: str) -> dict[str, str]:
     if not url:
         return {}
     from urllib.parse import parse_qs, urlparse
+
     parsed = urlparse(url)
     return {k: v[0] for k, v in parse_qs(parsed.query).items()}
 

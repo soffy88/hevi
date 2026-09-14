@@ -249,7 +249,9 @@ async def test_dispatch_season_promise_from_pipeline_type():
     """spec 无 delivery_promise, 从 pipeline_type 分类。"""
     svc = _FakeSeriesService()
     result = await dispatch_season(
-        _plan(), _story(), series_service=svc,
+        _plan(),
+        _story(),
+        series_service=svc,
         spec={"pipeline_type": "talking-head", "video_provider": "fal"},
     )
     assert result["delivery_promise"]["promise_type"] == "avatar_presenter"

@@ -5,7 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def build_contact_sheet(frame_paths: list[str | Path], output: str | Path, *, columns: int = 5) -> Path:
+def build_contact_sheet(
+    frame_paths: list[str | Path], output: str | Path, *, columns: int = 5
+) -> Path:
     if not frame_paths:
         raise ValueError("FRAME_EXTRACTION_FAILED:no_frames")
     try:

@@ -208,7 +208,9 @@ def _positive(
     )
 
 
-def _negative(dimension: str, index: int, context: dict[str, Any], rationale: str) -> dict[str, Any]:
+def _negative(
+    dimension: str, index: int, context: dict[str, Any], rationale: str
+) -> dict[str, Any]:
     return _fixture(
         f"{dimension}-NEG-{index:02d}",
         dimension,
@@ -387,7 +389,12 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 _context(
                     claims=[
                         _claim(
-                            "TIMELINE_CONTINUITY", "battle", "order", "2", "sentence:1", "event:battle"
+                            "TIMELINE_CONTINUITY",
+                            "battle",
+                            "order",
+                            "2",
+                            "sentence:1",
+                            "event:battle",
                         )
                     ],
                     canon=[_canon("TIMELINE_CONTINUITY", "battle", "order", "5", "event:battle")],
@@ -404,7 +411,12 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 _context(
                     claims=[
                         _claim(
-                            "TIMELINE_CONTINUITY", "battle", "order", "9", "sentence:1", "event:battle"
+                            "TIMELINE_CONTINUITY",
+                            "battle",
+                            "order",
+                            "9",
+                            "sentence:1",
+                            "event:battle",
                         )
                     ],
                     canon=[_canon("TIMELINE_CONTINUITY", "battle", "order", "5", "event:battle")],
@@ -419,7 +431,12 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 _context(
                     claims=[
                         _claim(
-                            "TIMELINE_CONTINUITY", "battle", "order", "5", "sentence:1", "event:battle"
+                            "TIMELINE_CONTINUITY",
+                            "battle",
+                            "order",
+                            "5",
+                            "sentence:1",
+                            "event:battle",
                         )
                     ],
                     canon=[_canon("TIMELINE_CONTINUITY", "battle", "order", "5", "event:battle")],
@@ -436,8 +453,19 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 "LOCATION_CONTINUITY",
                 1,
                 _context(
-                    claims=[_claim("LOCATION_CONTINUITY", "gate", "state", "open", "sentence:1", "location:gate")],
-                    canon=[_canon("LOCATION_CONTINUITY", "gate", "state", "closed", "location:gate")],
+                    claims=[
+                        _claim(
+                            "LOCATION_CONTINUITY",
+                            "gate",
+                            "state",
+                            "open",
+                            "sentence:1",
+                            "location:gate",
+                        )
+                    ],
+                    canon=[
+                        _canon("LOCATION_CONTINUITY", "gate", "state", "closed", "location:gate")
+                    ],
                 ),
                 [("LC_CONFLICT", "ERROR", "sentence:1", ["location:gate"])],
                 "Draft opens a gate that canon records as closed.",
@@ -459,8 +487,19 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 "LOCATION_CONTINUITY",
                 2,
                 _context(
-                    claims=[_claim("LOCATION_CONTINUITY", "gate", "state", "closed", "sentence:1", "location:gate")],
-                    canon=[_canon("LOCATION_CONTINUITY", "gate", "state", "closed", "location:gate")],
+                    claims=[
+                        _claim(
+                            "LOCATION_CONTINUITY",
+                            "gate",
+                            "state",
+                            "closed",
+                            "sentence:1",
+                            "location:gate",
+                        )
+                    ],
+                    canon=[
+                        _canon("LOCATION_CONTINUITY", "gate", "state", "closed", "location:gate")
+                    ],
                 ),
                 "Draft and canon agree on the location state.",
             ),
@@ -534,10 +573,10 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 [("REL_CONFLICT", "ERROR", "sentence:1", ["relationship:mara-ash"])],
                 "Draft reverses a canon relationship.",
             ),
-            _negative("RELATIONSHIP_CONTINUITY", 1, _context(), "No relationship claim is present."),
             _negative(
-                "RELATIONSHIP_CONTINUITY", 2, consistent, "Relationship matches canon."
+                "RELATIONSHIP_CONTINUITY", 1, _context(), "No relationship claim is present."
             ),
+            _negative("RELATIONSHIP_CONTINUITY", 2, consistent, "Relationship matches canon."),
         ],
     )
 
@@ -561,9 +600,7 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 "Draft has a character acting on knowledge canon says is unknown.",
             ),
             _negative("INFORMATION_CONTINUITY", 1, _context(), "No information claim is present."),
-            _negative(
-                "INFORMATION_CONTINUITY", 2, consistent, "Information state matches canon."
-            ),
+            _negative("INFORMATION_CONTINUITY", 2, consistent, "Information state matches canon."),
         ],
     )
 
@@ -612,9 +649,7 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 "Draft has an injured character acting uninjured.",
             ),
             _negative("PHYSICAL_STATE_CONTINUITY", 1, _context(), "No physical claim is present."),
-            _negative(
-                "PHYSICAL_STATE_CONTINUITY", 2, consistent, "Physical state matches canon."
-            ),
+            _negative("PHYSICAL_STATE_CONTINUITY", 2, consistent, "Physical state matches canon."),
         ],
     )
 
@@ -692,9 +727,7 @@ def build() -> dict[str, list[dict[str, Any]]]:
                         )
                     ],
                     canon=[
-                        _canon(
-                            "HOOK_CONTINUITY", "hook:letter", "status", "open", "hook:letter"
-                        )
+                        _canon("HOOK_CONTINUITY", "hook:letter", "status", "open", "hook:letter")
                     ],
                 ),
                 [("HC_CONFLICT", "ERROR", None, ["hook:letter"])],
@@ -770,7 +803,14 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 1,
                 _context(
                     claims=[
-                        _claim("PAYOFF", "gunshot", "payoff", "the gun fires", "sentence:2", "payoff:gunshot")
+                        _claim(
+                            "PAYOFF",
+                            "gunshot",
+                            "payoff",
+                            "the gun fires",
+                            "sentence:2",
+                            "payoff:gunshot",
+                        )
                     ]
                 ),
                 [("PO_NO_SETUP", "WARN", "sentence:2", ["payoff:gunshot"])],
@@ -782,7 +822,14 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 2,
                 _context(
                     claims=[
-                        _claim("PAYOFF", "gunshot", "payoff", "the gun fires", "sentence:2", "payoff:gunshot")
+                        _claim(
+                            "PAYOFF",
+                            "gunshot",
+                            "payoff",
+                            "the gun fires",
+                            "sentence:2",
+                            "payoff:gunshot",
+                        )
                     ],
                     payoff_setup_refs=[["gunshot", "foreshadow:gun"]],
                 ),
@@ -799,7 +846,11 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 1,
                 _context(
                     scenes=[_scene(1, purpose="errand", objective="buy bread")],
-                    canon=[_canon("ARC_ALIGNMENT", "arc:revenge", "goal", "avenge father", "arc:revenge")],
+                    canon=[
+                        _canon(
+                            "ARC_ALIGNMENT", "arc:revenge", "goal", "avenge father", "arc:revenge"
+                        )
+                    ],
                 ),
                 [("AA_BEAT_OFF_ARC", "WARN", "scene:1", ["arc:revenge"])],
                 "A scene objective does not advance any registered arc goal.",
@@ -810,7 +861,11 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 2,
                 _context(
                     scenes=[_scene(1, purpose="revenge beat", objective="avenge father")],
-                    canon=[_canon("ARC_ALIGNMENT", "arc:revenge", "goal", "avenge father", "arc:revenge")],
+                    canon=[
+                        _canon(
+                            "ARC_ALIGNMENT", "arc:revenge", "goal", "avenge father", "arc:revenge"
+                        )
+                    ],
                 ),
                 "The scene objective advances the registered arc.",
             ),
@@ -831,7 +886,9 @@ def build() -> dict[str, list[dict[str, Any]]]:
             _negative(
                 "SCENE_PURPOSE",
                 2,
-                _context(scenes=[_scene(1), _scene(2, purpose="complicate", objective="lose the key")]),
+                _context(
+                    scenes=[_scene(1), _scene(2, purpose="complicate", objective="lose the key")]
+                ),
                 "Both scenes declare purpose and objective.",
             ),
         ],
@@ -846,7 +903,9 @@ def build() -> dict[str, list[dict[str, Any]]]:
                 _context(
                     scenes=[
                         _scene(1, purpose="talk", objective="reach the gate", beat_kind="dialogue"),
-                        _scene(2, purpose="reflect", objective="reach the gate", beat_kind="reflection"),
+                        _scene(
+                            2, purpose="reflect", objective="reach the gate", beat_kind="reflection"
+                        ),
                         _scene(3, purpose="turn", objective="reach the gate", beat_kind="turn"),
                     ],
                     genre={"name": "action", "min_action_ratio": 0.5},
@@ -1046,7 +1105,9 @@ def build() -> dict[str, list[dict[str, Any]]]:
             _negative(
                 "STRUCTURE",
                 2,
-                _context(scenes=[_scene(1), _scene(2, purpose="second", objective="hold the gate")]),
+                _context(
+                    scenes=[_scene(1), _scene(2, purpose="second", objective="hold the gate")]
+                ),
                 "Two contiguous scenes with a turn.",
             ),
         ],
@@ -1066,7 +1127,10 @@ def build() -> dict[str, list[dict[str, Any]]]:
             _negative(
                 "POINT_OF_VIEW",
                 2,
-                _context(text="Mara ran toward the gate. Ash followed her.", style={"pov": "third-limited"}),
+                _context(
+                    text="Mara ran toward the gate. Ash followed her.",
+                    style={"pov": "third-limited"},
+                ),
                 "Narration holds a single third-person point of view.",
             ),
         ],
@@ -1161,7 +1225,9 @@ def build() -> dict[str, list[dict[str, Any]]]:
             _positive(
                 "AUTHOR_INTENT_ALIGNMENT",
                 1,
-                _context(author_intent={"constraints": ["no violence"], "success_criteria": ["hope"]}),
+                _context(
+                    author_intent={"constraints": ["no violence"], "success_criteria": ["hope"]}
+                ),
                 [
                     ("AI_CONSTRAINT_VIOLATION", "WARN", "text:all", []),
                     ("AI_MISSING_CRITERIA", "WARN", "text:all", []),

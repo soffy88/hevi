@@ -65,9 +65,7 @@ def _plain(output: Any) -> Any:
 class FreezoneService:
     """无限画布服务:建图 → 执行 → 候选 → 提升。"""
 
-    def __init__(
-        self, generators: dict[str, Callable[..., Any]] | None = None
-    ) -> None:
+    def __init__(self, generators: dict[str, Callable[..., Any]] | None = None) -> None:
         # kind -> async (params, upstream) -> output
         self.generators: dict[str, Callable[..., Any]] = {}
         if generators:
@@ -91,9 +89,7 @@ class FreezoneService:
 
     def _runner(self) -> Generator:
         # 图执行 runner: 把 node 分发到注册生成器
-        async def runner(
-            node: NodeSpec, upstream: dict[str, Any]
-        ) -> Any:
+        async def runner(node: NodeSpec, upstream: dict[str, Any]) -> Any:
             return await self._generator_for(node)(node, upstream)
 
         return runner

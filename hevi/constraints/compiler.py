@@ -56,7 +56,11 @@ class CompilationResult(BaseModel):
     @property
     def constraint_ids(self) -> list[str]:
         """Primary accessor for constraint IDs that were compiled (not consumed)."""
-        return self.compiled_constraint_ids if self.compiled_constraint_ids else self.consumed_constraint_ids
+        return (
+            self.compiled_constraint_ids
+            if self.compiled_constraint_ids
+            else self.consumed_constraint_ids
+        )
 
 
 class CompilationReceipt(BaseModel):
@@ -66,6 +70,7 @@ class CompilationReceipt(BaseModel):
     when the adapter maps constraints to request payloads (ADAPTER_CONSUMED)
     and the request is submitted (PROVIDER_SUBMITTED).
     """
+
     provider_id: str
     adapter_id: str
     compiled_instructions: list[dict[str, Any]]

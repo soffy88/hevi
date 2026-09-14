@@ -114,7 +114,9 @@ def apply_style(
     bgm: str = "",
 ) -> dict[str, Any]:
     """套到新素材上,产出 edit_plan。不渲染。"""
-    plan_clips = list(clips or [{"source": media_path, "source_in_s": 0.0, "duration_s": 0.0, "track": "video"}])
+    plan_clips = list(
+        clips or [{"source": media_path, "source_in_s": 0.0, "duration_s": 0.0, "track": "video"}]
+    )
     for clip in plan_clips:
         clip.setdefault("source", media_path)
         clip.setdefault("track", "video")

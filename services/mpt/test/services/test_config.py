@@ -71,7 +71,9 @@ class TestConfigPersistence:
         """重复 BOM 不应阻止 Windows 用户启动，也不能改写已有配置。"""
         with TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.toml"
-            original_content = b"\xef\xbb\xbf\xef\xbb\xbf[app]\nvideo_source = \"pexels\"\n"
+            original_content = (
+                b'\xef\xbb\xbf\xef\xbb\xbf[app]\nvideo_source = "pexels"\n'
+            )
             config_path.write_bytes(original_content)
 
             with patch.object(config, "config_file", str(config_path)):
@@ -84,7 +86,7 @@ class TestConfigPersistence:
         """BOM 兼容不能掩盖真实语法错误，失败时应保留明确诊断日志。"""
         with TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config.toml"
-            config_path.write_text("[app\nvideo_source = \"pexels\"\n", encoding="utf-8")
+            config_path.write_text('[app\nvideo_source = "pexels"\n', encoding="utf-8")
 
             with (
                 patch.object(config, "config_file", str(config_path)),

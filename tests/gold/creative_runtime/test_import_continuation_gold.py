@@ -56,9 +56,7 @@ def test_canon_links_all_reconstructed_state() -> None:
     assert state.canon.hook_ids == tuple(h.object_id for h in state.hooks)
     assert state.canon.timeline_state_id == state.timeline.object_id
     assert state.canon.revision == result.canon.revision + 1
-    assert all(
-        summary.character_ids == state.canon.character_ids for summary in state.summaries
-    )
+    assert all(summary.character_ids == state.canon.character_ids for summary in state.summaries)
 
 
 def test_continuation_commits_to_canon() -> None:
@@ -101,9 +99,7 @@ def test_stale_continuation_rejected() -> None:
     )
     engine = NarrativeObservationEngine()
     delta = engine.propose_delta(observation=observation, canon=state.canon)
-    committed, _ = engine.settle(
-        canon=state.canon, delta=delta, approved_fact_indexes=(0,)
-    )
+    committed, _ = engine.settle(canon=state.canon, delta=delta, approved_fact_indexes=(0,))
 
     with pytest.raises(ValueError, match="STALE_REVISION"):
         engine.propose_delta(observation=observation, canon=committed)

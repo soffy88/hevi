@@ -25,9 +25,7 @@ from hevi.studio.timeline import get_timeline, reset_timelines, timeline_from_ed
 
 @pytest.mark.asyncio
 async def test_execute_without_line_renderer_is_blocked() -> None:
-    result = await run_slate(
-        Slate(line_id="shorts_clip", slots={}, execute=True)
-    )
+    result = await run_slate(Slate(line_id="shorts_clip", slots={}, execute=True))
     assert result.status == "blocked"
     assert "media_path" in result.missing
 
@@ -36,9 +34,7 @@ def test_local_audio_manifest_is_verified_and_missing_artifact_rejected(tmp_path
     audio = tmp_path / "voice.wav"
     audio.write_bytes(b"RIFF" + b"\x00" * 40)
     verified = verify_local_manifest(
-        ArtifactManifest(
-            artifacts=[Artifact(kind="audio", path=str(audio), primary=True)]
-        )
+        ArtifactManifest(artifacts=[Artifact(kind="audio", path=str(audio), primary=True)])
     )
     assert verified.artifacts[0].sha256
     assert verified.artifacts[0].byte_size == audio.stat().st_size

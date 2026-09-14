@@ -20,6 +20,7 @@ from hevi.verdict.replay_trace import (
 
 # ---- failure registry ----
 
+
 def test_seed_registry_layers():
     reg = default_registry()
     assert len(reg.modes) == len(reg.modes)
@@ -67,6 +68,7 @@ def test_failure_hits_top():
 
 
 # ---- replay trace ----
+
 
 def test_four_stage_handshake(tmp_path):
     h = begin_trace(

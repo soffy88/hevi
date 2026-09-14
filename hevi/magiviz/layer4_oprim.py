@@ -10,9 +10,6 @@ Open-Magiviz 五步工作流原子实现：
 
 from __future__ import annotations
 
-import json
-import uuid
-from pathlib import Path
 from typing import Any
 
 from hevi.magiviz.schemas import (
@@ -26,8 +23,6 @@ from hevi.magiviz.schemas import (
     StoryOutline,
     VideoAspectRatio,
     VideoModel,
-    make_magiviz_job,
-    make_story_outline,
 )
 
 # ── Step 1: AI 剧情生成 ───────────────────────────────
@@ -45,33 +40,39 @@ def generate_story_details(
     # 占位：实际调用 LLM 生成
     characters = []
     for i, char_name in enumerate(["主角", "配角1", "配角2"]):
-        characters.append(CharacterDesign(
-            character_id=f"char_{i}",
-            name=char_name,
-            role=["protagonist", "supporting", "antagonist"][i % 3],
-            visual_description=f"{char_name}的视觉特征",
-            personality=f"{char_name}的性格特征",
-        ))
+        characters.append(
+            CharacterDesign(
+                character_id=f"char_{i}",
+                name=char_name,
+                role=["protagonist", "supporting", "antagonist"][i % 3],
+                visual_description=f"{char_name}的视觉特征",
+                personality=f"{char_name}的性格特征",
+            )
+        )
 
     scenes = []
     for i in range(5):
-        scenes.append({
-            "scene_number": i + 1,
-            "title": f"场景 {i+1}",
-            "description": f"场景 {i+1} 的详细描述",
-            "location": "室内/室外",
-            "time": "白天/夜晚",
-            "mood": "紧张/轻松",
-        })
+        scenes.append(
+            {
+                "scene_number": i + 1,
+                "title": f"场景 {i + 1}",
+                "description": f"场景 {i + 1} 的详细描述",
+                "location": "室内/室外",
+                "time": "白天/夜晚",
+                "mood": "紧张/轻松",
+            }
+        )
 
     dialogues = []
     for i in range(10):
-        dialogues.append({
-            "line_id": i,
-            "speaker": characters[i % len(characters)].name,
-            "text": f"台词 {i+1}",
-            "emotion": "neutral",
-        })
+        dialogues.append(
+            {
+                "line_id": i,
+                "speaker": characters[i % len(characters)].name,
+                "text": f"台词 {i + 1}",
+                "emotion": "neutral",
+            }
+        )
 
     return StoryDetails(
         outline=outline,
@@ -244,7 +245,9 @@ def run_full_pipeline(
 
     # Step 5: 视频合成
     job.status = JobStatus.COMPOSING
-    job.final_video_path = compose_story_video(job.scene_videos, f"/tmp/magiviz/{job.job_id}_final.mp4")
+    job.final_video_path = compose_story_video(
+        job.scene_videos, f"/tmp/magiviz/{job.job_id}_final.mp4"
+    )
 
     job.status = JobStatus.COMPLETED
     return job

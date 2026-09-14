@@ -51,9 +51,7 @@ class TestBackgroundMusicService(unittest.TestCase):
         ]
         for bgm_type, bgm_volume, expected in test_cases:
             with self.subTest(bgm_type=bgm_type, bgm_volume=bgm_volume):
-                self.assertEqual(
-                    bgm.should_use_bgm(bgm_type, bgm_volume), expected
-                )
+                self.assertEqual(bgm.should_use_bgm(bgm_type, bgm_volume), expected)
 
     def test_sanitize_upload_filename_strips_directory_components(self):
         self.assertEqual(
@@ -110,7 +108,11 @@ class TestBackgroundMusicService(unittest.TestCase):
                 Path(temp_dir, saved_name).read_bytes(), b"valid-mp3-placeholder"
             )
             self.assertEqual(
-                [name for name in os.listdir(temp_dir) if name.startswith(".bgm-upload-")],
+                [
+                    name
+                    for name in os.listdir(temp_dir)
+                    if name.startswith(".bgm-upload-")
+                ],
                 [],
             )
             # 服务会把文件指针恢复到开头，同一个 UploadedFile 仍可供 Streamlit
@@ -140,12 +142,8 @@ class TestBackgroundMusicService(unittest.TestCase):
         for source, expected_error in invalid_sources:
             with self.subTest(expected_error=expected_error):
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    with patch.object(
-                        bgm, "uploaded_bgm_dir", return_value=temp_dir
-                    ):
-                        with self.assertRaisesRegex(
-                            bgm.BgmUploadError, expected_error
-                        ):
+                    with patch.object(bgm, "uploaded_bgm_dir", return_value=temp_dir):
+                        with self.assertRaisesRegex(bgm.BgmUploadError, expected_error):
                             bgm.save_bgm_upload("invalid.mp3", source)
                     self.assertEqual(os.listdir(temp_dir), [])
             self.assertEqual(source.tell(), 0)
@@ -216,7 +214,9 @@ class TestBackgroundMusicService(unittest.TestCase):
                 )
 
             self.assertNotEqual(first_name, second_name)
-            self.assertEqual(Path(temp_dir, first_name).read_bytes(), b"first-user-audio")
+            self.assertEqual(
+                Path(temp_dir, first_name).read_bytes(), b"first-user-audio"
+            )
             self.assertEqual(
                 Path(temp_dir, second_name).read_bytes(), b"second-user-audio"
             )
@@ -309,9 +309,7 @@ class TestBackgroundMusicService(unittest.TestCase):
             (bgm.BgmServiceError("FFmpeg unavailable"), 500),
         ):
             with self.subTest(expected_status=expected_status):
-                with patch.object(
-                    bgm, "save_bgm_upload", side_effect=service_error
-                ):
+                with patch.object(bgm, "save_bgm_upload", side_effect=service_error):
                     with self.assertRaises(HttpException) as context:
                         video_controller.upload_bgm_file(request, upload)
                 self.assertEqual(context.exception.status_code, expected_status)

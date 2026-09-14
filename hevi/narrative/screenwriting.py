@@ -40,8 +40,14 @@ def plan_scene(scene: SceneBlueprint) -> SceneBlueprint:
 
 
 def evaluate_scene(bible: StoryBible, scene: SceneBlueprint) -> NarrativeReview:
-    missing = [ref for ref in scene.required_facts if ref not in {fact.id for fact in bible.established_facts}]
-    return NarrativeReview("FAIL" if missing else "PASS", tuple(f"missing fact:{ref}" for ref in missing))
+    missing = [
+        ref
+        for ref in scene.required_facts
+        if ref not in {fact.id for fact in bible.established_facts}
+    ]
+    return NarrativeReview(
+        "FAIL" if missing else "PASS", tuple(f"missing fact:{ref}" for ref in missing)
+    )
 
 
 def revise_scene(scene: SceneBlueprint, **changes: object) -> SceneBlueprint:

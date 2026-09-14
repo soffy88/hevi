@@ -19,7 +19,12 @@ logger = logging.getLogger(__name__)
 
 #: 覆盖层类型(hyperframes talking-head-recut 词汇)。
 OVERLAY_KINDS: tuple[str, ...] = (
-    "lower_third", "pull_quote", "kinetic_title", "data_callout", "pip", "side_panel",
+    "lower_third",
+    "pull_quote",
+    "kinetic_title",
+    "data_callout",
+    "pip",
+    "side_panel",
 )
 
 
@@ -140,9 +145,7 @@ async def talking_head_recut_workflow(
         _step("plan", 60.0)
         report = {"status": "completed", "plan": plan.to_dict()}
         report_path = output_dir / "recut_report.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         return {"status": "completed", "plan": plan.to_dict(), "report_path": str(report_path)}
     except Exception as e:
         logger.exception("talking_head_recut_workflow failed")

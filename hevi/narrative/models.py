@@ -123,7 +123,9 @@ class TimelineEvent:
 class NarrativeAssertion:
     id: str
     text: str
-    type: Literal["SOURCE_FACT", "DERIVED_CLAIM", "INTERPRETATION", "DRAMATIZATION", "FICTIONAL_BRIDGE"]
+    type: Literal[
+        "SOURCE_FACT", "DERIVED_CLAIM", "INTERPRETATION", "DRAMATIZATION", "FICTIONAL_BRIDGE"
+    ]
     evidence_refs: tuple[str, ...] = ()
     historically_verified: bool = False
 

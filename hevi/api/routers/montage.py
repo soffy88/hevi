@@ -66,7 +66,11 @@ class VideoAgentRequest(BaseModel):
 async def pipelines(
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
-    return {"pipelines": [{"id": key, "description": value} for key, value in AVAILABLE_PIPELINES.items()]}
+    return {
+        "pipelines": [
+            {"id": key, "description": value} for key, value in AVAILABLE_PIPELINES.items()
+        ]
+    }
 
 
 @router.post("/run")

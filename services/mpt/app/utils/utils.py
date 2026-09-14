@@ -418,4 +418,4 @@ def load_locales(i18n_dir):
 
 
 def parse_extension(filename):
-    return Path(filename).suffix.lower().lstrip('.')
+    return Path(filename).suffix.lower().lstrip(".")

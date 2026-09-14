@@ -81,7 +81,7 @@ def _load_project(project_id: str) -> NLEProject | None:
         )
         history = body.get("history") or []
         _HISTORY[project.project_id] = [item for item in history if isinstance(item, dict)]
-    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+    except OSError, ValueError, TypeError, json.JSONDecodeError:
         return None
     _PROJECTS[project.project_id] = project
     return project

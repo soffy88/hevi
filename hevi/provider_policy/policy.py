@@ -64,8 +64,7 @@ class ProviderPolicyError(ValueError):
         super().__init__(
             "no provider satisfies policy: "
             + "; ".join(
-                f"{item.provider_id} ({', '.join(item.reasons)})"
-                for item in decision.rejected
+                f"{item.provider_id} ({', '.join(item.reasons)})" for item in decision.rejected
             )
         )
 
@@ -174,16 +173,11 @@ async def evaluate_provider_policy(
         eligible.append((provider_id, score))
     if eligible:
         decision.eligible = [
-            provider_id
-            for provider_id, _ in sorted(eligible, key=lambda item: (-item[1], item[0]))
+            provider_id for provider_id, _ in sorted(eligible, key=lambda item: (-item[1], item[0]))
         ]
         selected, _ = max(eligible, key=lambda item: (item[1], item[0]))
         explorers = decision.eligible[1:4]
-        if (
-            policy.exploration_rate > 0
-            and explorers
-            and random.random() < policy.exploration_rate
-        ):
+        if policy.exploration_rate > 0 and explorers and random.random() < policy.exploration_rate:
             selected = explorers[0]
             decision.explored = True
         decision.selected_provider = selected

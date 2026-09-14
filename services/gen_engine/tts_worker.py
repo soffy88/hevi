@@ -97,7 +97,7 @@ def _load_model(model_dir: Path) -> tuple[Any, Any, str]:
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
             device_map=device,
         )
-    except (RuntimeError, torch.cuda.OutOfMemoryError):  # type: ignore[attr-defined]
+    except RuntimeError, torch.cuda.OutOfMemoryError:  # type: ignore[attr-defined]
         if device == "cuda":
             import gc
 

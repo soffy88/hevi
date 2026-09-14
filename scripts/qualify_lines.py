@@ -58,7 +58,10 @@ def main() -> int:
                 prior = json.loads(path.read_text(encoding="utf-8"))
                 if prior.get("evidence", {}).get("git_sha") != current_sha:
                     report["stale"] = True
-                    report["stale_evidence"] = {"previous_git_sha": prior.get("evidence", {}).get("git_sha"), "current_git_sha": current_sha}
+                    report["stale_evidence"] = {
+                        "previous_git_sha": prior.get("evidence", {}).get("git_sha"),
+                        "current_git_sha": current_sha,
+                    }
                     existing.append(report)
                 else:
                     existing.append(prior)
@@ -66,7 +69,26 @@ def main() -> int:
                 existing.append(report)
         reports = existing
     if args.real:
-        priority = {name: index for index, name in enumerate(("kinetic_promo", "shorts_clip", "history_scene", "localization_dub", "explainer", "documentary_montage", "podcast_repurpose", "reference_adapt", "character_animation", "director_pipeline", "cinematic", "talking_head", "avatar_spokesperson"))}
+        priority = {
+            name: index
+            for index, name in enumerate(
+                (
+                    "kinetic_promo",
+                    "shorts_clip",
+                    "history_scene",
+                    "localization_dub",
+                    "explainer",
+                    "documentary_montage",
+                    "podcast_repurpose",
+                    "reference_adapt",
+                    "character_animation",
+                    "director_pipeline",
+                    "cinematic",
+                    "talking_head",
+                    "avatar_spokesperson",
+                )
+            )
+        }
         reports.sort(key=lambda item: priority.get(item["line"], 999))
         current_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         for index, report in enumerate(reports):
@@ -76,8 +98,16 @@ def main() -> int:
                     merged = {**report, **evidence}
                     merged.pop("stale", None)
                     merged.pop("stale_evidence", None)
-                    merged["evidence"] = {**report.get("evidence", {}), **evidence.get("evidence", {}), "git_sha": current_sha}
-                    merged["production_completeness"] = round(100 * sum(bool(merged[field]) for field in PRODUCTION_FIELDS) / len(PRODUCTION_FIELDS))
+                    merged["evidence"] = {
+                        **report.get("evidence", {}),
+                        **evidence.get("evidence", {}),
+                        "git_sha": current_sha,
+                    }
+                    merged["production_completeness"] = round(
+                        100
+                        * sum(bool(merged[field]) for field in PRODUCTION_FIELDS)
+                        / len(PRODUCTION_FIELDS)
+                    )
                     merged["completeness_percent"] = merged["production_completeness"]
                     reports[index] = merged
                 elif not args.eligible_only:

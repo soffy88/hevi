@@ -169,9 +169,7 @@ def _attach_procedural_bgm(video_path: Path, duration_s: float, work_dir: Path) 
 
 async def _run_remotion_render(composition_id: str, output_path: Path) -> None:
     if not _HEVI_REMOTION_DIR.is_dir():
-        raise RenderError(
-            f"Remotion 项目目录不存在: {_HEVI_REMOTION_DIR}；请重建 API 镜像"
-        )
+        raise RenderError(f"Remotion 项目目录不存在: {_HEVI_REMOTION_DIR}；请重建 API 镜像")
     if not _REMOTION_BIN.is_file():
         raise RenderError(
             f"Remotion CLI 不可用: {_REMOTION_BIN}；请重建 API 镜像并安装 hevi-remotion 依赖"

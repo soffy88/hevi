@@ -124,7 +124,7 @@ class BacklotEventLog:
                         ts=d.get("ts", ""),
                     )
                 )
-            except (json.JSONDecodeError, KeyError):
+            except json.JSONDecodeError, KeyError:
                 continue
         return out
 
@@ -134,9 +134,7 @@ class BacklotEventLog:
 # ---------------------------------------------------------------------------
 
 
-def backlot_status(
-    log: BacklotEventLog, run_id: str
-) -> dict[str, Any]:
+def backlot_status(log: BacklotEventLog, run_id: str) -> dict[str, Any]:
     """run 级状态汇总(阶段亮灯/事件计数/最后心跳/花费估算输入)。
 
     纯派生, 不落盘; 供 GET /api/backlot/runs/{run_id}/status 消费。

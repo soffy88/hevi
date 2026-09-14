@@ -22,7 +22,9 @@ model = None
 def create(audio_file, subtitle_file: str = ""):
     global model
     if WhisperModel is None:
-        logger.warning("faster_whisper not available, skipping whisper subtitle generation")
+        logger.warning(
+            "faster_whisper not available, skipping whisper subtitle generation"
+        )
         return ""
     if not model:
         model_path = f"{utils.root_dir()}/models/whisper-{model_size}"

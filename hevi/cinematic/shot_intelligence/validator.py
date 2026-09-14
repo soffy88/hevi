@@ -32,7 +32,9 @@ def validate_shot_plan(plan: ShotPlan) -> VisualQAResult:
             failures.append(f"hard_safe_area_violation:{shot.id}")
         if shot.transition.name not in shot.transition.compatible_with:
             failures.append(f"transition_incompatibility:{shot.id}")
-    if plan.shots and not any("wide" in shot.tags or shot.shot_type == "establishing" for shot in plan.shots):
+    if plan.shots and not any(
+        "wide" in shot.tags or shot.shot_type == "establishing" for shot in plan.shots
+    ):
         warnings.append("missing_establishing_context")
     status = "FAIL" if failures else ("WARN" if warnings else "PASS")
     return VisualQAResult(status, tuple(dict.fromkeys(warnings)), tuple(dict.fromkeys(failures)))

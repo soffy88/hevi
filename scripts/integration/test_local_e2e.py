@@ -6,6 +6,7 @@ GPU serial scheduling via GpuScheduler throughout.
 Run: python3 test_local_e2e.py
 Prerequisites: duix stopped, ollama running, Wan2GP venv ready
 """
+
 import asyncio
 import os
 import subprocess
@@ -22,7 +23,8 @@ def vram_used() -> int:
     try:
         r = subprocess.run(
             ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         return int(r.stdout.strip())
     except Exception:
@@ -30,9 +32,9 @@ def vram_used() -> int:
 
 
 def section(title: str) -> None:
-    print(f"\n{'='*55}")
+    print(f"\n{'=' * 55}")
     print(f"  {title}")
-    print('='*55)
+    print("=" * 55)
 
 
 async def step_script(llm: object) -> tuple[str, list[dict]]:
@@ -56,18 +58,24 @@ async def step_script(llm: object) -> tuple[str, list[dict]]:
     print(f"  Scenes      : {len(script.scenes)}")
     print(f"  Duration est: {script.estimated_duration_s}s")
     print(f"  Time        : {elapsed:.1f}s")
-    print(f"  VRAM        : {v_before} → {v_after} MiB (delta: {v_after-v_before:+d})")
+    print(f"  VRAM        : {v_before} → {v_after} MiB (delta: {v_after - v_before:+d})")
 
     scenes = []
     for sc in script.scenes[:1]:  # only 1 scene for speed
-        sc_dict = sc if isinstance(sc, dict) else (sc.model_dump() if hasattr(sc, "model_dump") else vars(sc))
+        sc_dict = (
+            sc
+            if isinstance(sc, dict)
+            else (sc.model_dump() if hasattr(sc, "model_dump") else vars(sc))
+        )
         scenes.append(sc_dict)
         narr = sc_dict.get("narration", sc_dict.get("visual_description", ""))[:80]
         print(f"  Scene[0]    : {narr}")
 
     # Use first scene narration as video prompt
     sc0 = scenes[0] if scenes else {}
-    video_prompt = sc0.get("visual_description") or sc0.get("narration") or "deep ocean mysterious creatures"
+    video_prompt = (
+        sc0.get("visual_description") or sc0.get("narration") or "deep ocean mysterious creatures"
+    )
     return video_prompt, scenes
 
 
@@ -77,12 +85,13 @@ async def step_unload_qwen() -> None:
     v_before = vram_used()
     proc = subprocess.run(
         ["ollama", "stop", "qwen3.5:9b"],
-        capture_output=True, timeout=30,
+        capture_output=True,
+        timeout=30,
     )
     await asyncio.sleep(2)
     v_after = vram_used()
     print(f"  ollama stop exit: {proc.returncode}")
-    print(f"  VRAM freed: {v_before} → {v_after} MiB (delta: {v_after-v_before:+d})")
+    print(f"  VRAM freed: {v_before} → {v_after} MiB (delta: {v_after - v_before:+d})")
 
 
 async def step_video(video_prompt: str) -> Path:
@@ -92,7 +101,7 @@ async def step_video(video_prompt: str) -> Path:
     t0 = time.time()
     v_before = vram_used()
     print(f"  Prompt: {video_prompt[:80]}")
-    print(f"  Generating...")
+    print("  Generating...")
 
     from hevi.video.wan_local_service import wan_local_generate
 
@@ -105,7 +114,7 @@ async def step_video(video_prompt: str) -> Path:
     v_after = vram_used()
     size_mb = result.stat().st_size / 1024 / 1024
 
-    print(f"  Time  : {elapsed:.0f}s ({elapsed/60:.1f}min)")
+    print(f"  Time  : {elapsed:.0f}s ({elapsed / 60:.1f}min)")
     print(f"  Output: {result} ({size_mb:.1f} MB)")
     print(f"  VRAM  : {v_before} → {v_after} MiB")
     return result
@@ -147,11 +156,16 @@ async def step_assemble(video_clip: Path, audio_path: Path | None) -> Path:
 
     if audio_path and audio_path.exists():
         cmd = [
-            "ffmpeg", "-y",
-            "-i", str(video_clip),
-            "-i", str(audio_path),
-            "-c:v", "copy",
-            "-c:a", "aac",
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video_clip),
+            "-i",
+            str(audio_path),
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
             "-shortest",
             str(output),
         ]
@@ -166,15 +180,15 @@ async def step_assemble(video_clip: Path, audio_path: Path | None) -> Path:
         print(f"  Time  : {elapsed:.1f}s")
         print(f"  Output: {output} ({size_mb:.1f} MB)")
         return output
-    else:
-        print(f"  ffmpeg failed (exit {proc.returncode}), using clip directly")
-        return video_clip
+    print(f"  ffmpeg failed (exit {proc.returncode}), using clip directly")
+    return video_clip
 
 
 async def main() -> None:
     t_total = time.time()
 
     from hevi.providers.registry import register_all_providers
+
     register_all_providers()
 
     from hevi.providers.local_qwen_adapter import LocalQwenAdapter
@@ -213,16 +227,24 @@ async def main() -> None:
 
         # ffprobe check
         r = subprocess.run(
-            ["ffprobe", "-v", "quiet", "-show_entries",
-             "stream=codec_name,width,height,nb_frames,duration",
-             "-of", "csv=p=0", str(final)],
-            capture_output=True, text=True,
+            [
+                "ffprobe",
+                "-v",
+                "quiet",
+                "-show_entries",
+                "stream=codec_name,width,height,nb_frames,duration",
+                "-of",
+                "csv=p=0",
+                str(final),
+            ],
+            capture_output=True,
+            text=True,
         )
         if r.returncode == 0:
             print(f"  Video  : {r.stdout.strip()}")
 
-    print(f"  Total  : {elapsed_total:.0f}s ({elapsed_total/60:.1f}min)")
-    print(f"  Cost   : ~$0 (100% local GPU)")
+    print(f"  Total  : {elapsed_total:.0f}s ({elapsed_total / 60:.1f}min)")
+    print("  Cost   : ~$0 (100% local GPU)")
     print()
     print("  Sub D — M8 vs hevi orchestration analysis:")
     print("  ✓ M8 CAN use local video (wan_local) + audio (vibevoice) via ProviderRegistry")

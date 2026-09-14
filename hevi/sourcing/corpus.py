@@ -194,7 +194,8 @@ class Corpus:
         # 扩展名匹配为主(Prelinger 的 MPEG4/h.264 格式名不统一),大小限制。
         video = next(
             (
-                f for f in files
+                f
+                for f in files
                 if str(f.get("name", "")).lower().endswith((".mp4", ".m4v"))
                 and not str(f.get("name", "")).lower().startswith(("thumbs", "thumb", "\u003c"))
                 and f.get("size") is not None
@@ -205,7 +206,8 @@ class Corpus:
         if video is None:
             logger.info(
                 "archive.org %s 无可下载 mp4(文件数=%d),跳过",
-                ident, len(files),
+                ident,
+                len(files),
             )
             return None
         clip_id = f"archive_{ident[:40]}"
@@ -271,9 +273,7 @@ class Corpus:
             import torch
 
             with torch.no_grad():
-                feats = model.get_text_features(
-                    **processor(text=[query_en], return_tensors="pt")
-                )
+                feats = model.get_text_features(**processor(text=[query_en], return_tensors="pt"))
             v = feats[0]
             norm = float(v.norm())
             if norm == 0.0:
@@ -329,14 +329,16 @@ class Corpus:
             else:
                 best_idx = max(
                     range(len(remaining)),
-                    key=lambda k: self._cos(seed, self._embeddings[remaining[k][0]])
-                    - 0.5
-                    * max(
-                        (
-                            self._cos(self._embeddings[remaining[k][0]], self._embeddings[j])
-                            for j in picked
-                        ),
-                        default=0.0,
+                    key=lambda k: (
+                        self._cos(seed, self._embeddings[remaining[k][0]])
+                        - 0.5
+                        * max(
+                            (
+                                self._cos(self._embeddings[remaining[k][0]], self._embeddings[j])
+                                for j in picked
+                            ),
+                            default=0.0,
+                        )
                     ),
                 )
             i, _rec = remaining.pop(best_idx)
@@ -392,7 +394,7 @@ async def _archive_search(
     *, query: str, count: int, collection: str, client: httpx.AsyncClient
 ) -> list[dict[str, Any]]:
     """Archive.org advancedsearch:collection 内按 query 检影片条目。"""
-    q = f'collection:{collection} AND ({query}) AND mediatype:movies'
+    q = f"collection:{collection} AND ({query}) AND mediatype:movies"
     resp = await client.get(
         _ARCHIVE_SEARCH,
         params={"q": q, "fl[]": ["identifier", "title"], "rows": count, "output": "json"},
@@ -419,11 +421,10 @@ def _to_english(text: str, *, timeout_s: float = 30.0) -> str:
             "Translate the following Chinese video-scene description to English. "
             "Output ONLY the translation, no explanation.\n\n" + text
         )
-        body = _json.dumps(
-            {"model": "qwen3-8b", "prompt": prompt, "stream": False}
-        ).encode("utf-8")
+        body = _json.dumps({"model": "qwen3-8b", "prompt": prompt, "stream": False}).encode("utf-8")
         req = urllib.request.Request(
-            "http://localhost:11434/api/generate", data=body,
+            "http://localhost:11434/api/generate",
+            data=body,
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
@@ -438,13 +439,25 @@ def _extract_first_frame(video: Path, out: Path) -> Path:
     """ffmpeg 抽首帧(失败返回不存在路径,调用方降级)。"""
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-v", "error", "-ss", "0.5", "-i", str(video),
-             "-frames:v", "1", str(out)],
-            capture_output=True, timeout=60,
+            [
+                "ffmpeg",
+                "-y",
+                "-v",
+                "error",
+                "-ss",
+                "0.5",
+                "-i",
+                str(video),
+                "-frames:v",
+                "1",
+                str(out),
+            ],
+            capture_output=True,
+            timeout=60,
         )
         if out.exists() and out.stat().st_size > 0:
             return out
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         pass
     return out  # 不存在 → 调用方检查 exists
 

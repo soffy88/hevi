@@ -361,9 +361,7 @@ async def regenerate_task_shots(
 
         hints = hints_from_failures(existing_shots, body.shot_ids)
     if isinstance(svc.repository.pool, PgPool):
-        queued = await svc.enqueue_rework(
-            task_id, shot_ids=body.shot_ids, hints=hints
-        )
+        queued = await svc.enqueue_rework(task_id, shot_ids=body.shot_ids, hints=hints)
         return _serialize_task(queued)
     background_tasks.add_task(
         svc.regenerate_task_shots, task_id, shot_ids=body.shot_ids, hints=hints
@@ -471,7 +469,7 @@ async def get_task_video(
 async def get_task_video_url(
     task_id: UUID,
     repo: Annotated[TaskRepository, Depends(get_repository)],
-    token: Annotated[str | None, Query(description="JWT")]=None,
+    token: Annotated[str | None, Query(description="JWT")] = None,
 ) -> dict[str, Any]:
     """Return a short-lived signed URL for a committed video artifact.
 
@@ -638,7 +636,8 @@ async def get_shots_preparation(
     cfg = task.get("config_json") or {}
     episode_plan = cfg.get("episode_plan") or {}
     known_characters = [
-        str(c.get("name") or "") for c in (episode_plan.get("characters_present") or [])
+        str(c.get("name") or "")
+        for c in (episode_plan.get("characters_present") or [])
         if isinstance(c, dict) and c.get("name")
     ] or [str(c) for c in (episode_plan.get("characters") or []) if isinstance(c, str)]
 
@@ -678,9 +677,7 @@ async def get_shots_preparation(
         from hevi.season_planner.preparation import extract_asset_candidates
 
         brief = str(episode_plan.get("title") or "")
-        locations = [
-            str(x) for x in (episode_plan.get("locations") or []) if x
-        ]
+        locations = [str(x) for x in (episode_plan.get("locations") or []) if x]
         candidates = extract_asset_candidates(
             text=brief,
             known_characters=known_characters,
@@ -741,13 +738,9 @@ async def confirm_shot_candidate(
     prep = read_preparation(shot)
     if prep is None:
         prep = build_shot_preparation(
-            script_excerpt=str(
-                (shot.get("selection_json") or {}).get("script_excerpt") or ""
-            )
+            script_excerpt=str((shot.get("selection_json") or {}).get("script_excerpt") or "")
         )
-    confirm_candidate(
-        prep, candidate_id=candidate_id, decision=body.decision, scope=body.scope
-    )
+    confirm_candidate(prep, candidate_id=candidate_id, decision=body.decision, scope=body.scope)
     await repo.save_shot(upsert_preparation(shot, prep))
     return {
         "shot_index": shot_index,

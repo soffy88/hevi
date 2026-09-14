@@ -54,16 +54,14 @@ def is_enabled() -> bool:
 
 def _base_url() -> str:
     return str(
-        config.elevenlabs.get("music_base_url", DEFAULT_BASE_URL)
-        or DEFAULT_BASE_URL
+        config.elevenlabs.get("music_base_url", DEFAULT_BASE_URL) or DEFAULT_BASE_URL
     ).rstrip("/")
 
 
 def _model_id() -> str:
     """只允许官方 Video-to-Music 当前公开的模型，错误配置时安全回退。"""
     model_id = str(
-        config.elevenlabs.get("music_model_id", DEFAULT_MODEL_ID)
-        or DEFAULT_MODEL_ID
+        config.elevenlabs.get("music_model_id", DEFAULT_MODEL_ID) or DEFAULT_MODEL_ID
     ).strip()
     return model_id if model_id in SUPPORTED_MODEL_IDS else DEFAULT_MODEL_ID
 
@@ -137,9 +135,7 @@ def test_connection() -> dict[str, Any]:
                     "ElevenLabs returned an invalid subscription response"
                 ) from exc
     except requests.RequestException as exc:
-        raise ElevenLabsMusicError(
-            f"failed to connect to ElevenLabs: {exc}"
-        ) from exc
+        raise ElevenLabsMusicError(f"failed to connect to ElevenLabs: {exc}") from exc
     if not isinstance(payload, dict):
         raise ElevenLabsMusicError(
             "ElevenLabs returned an unexpected subscription response"
@@ -186,8 +182,7 @@ def _remove_file(file_path: str) -> None:
         os.remove(file_path)
     except OSError as exc:
         logger.warning(
-            "failed to remove ElevenLabs temporary file: "
-            f"path={file_path}, error={exc}"
+            f"failed to remove ElevenLabs temporary file: path={file_path}, error={exc}"
         )
 
 
@@ -263,8 +258,7 @@ def _create_video_proxy(video_path: str) -> str:
             "ElevenLabs video proxy is empty or exceeds the 200 MB limit"
         )
     logger.info(
-        "ElevenLabs video proxy prepared: "
-        f"source={video_path}, size={proxy_size} bytes"
+        f"ElevenLabs video proxy prepared: source={video_path}, size={proxy_size} bytes"
     )
     return proxy_path
 
@@ -278,9 +272,7 @@ def _stream_audio(response: requests.Response, temp_audio_path: str) -> int:
                 continue
             total_bytes += len(chunk)
             if total_bytes > MAX_GENERATED_AUDIO_BYTES:
-                raise ElevenLabsMusicError(
-                    "ElevenLabs audio exceeds the 50 MB limit"
-                )
+                raise ElevenLabsMusicError("ElevenLabs audio exceeds the 50 MB limit")
             output.write(chunk)
         output.flush()
         os.fsync(output.fileno())
@@ -374,20 +366,14 @@ def generate_bgm(
     try:
         duration = float(video_duration)
     except (TypeError, ValueError) as exc:
-        raise ElevenLabsMusicError(
-            "ElevenLabs video duration is invalid"
-        ) from exc
+        raise ElevenLabsMusicError("ElevenLabs video duration is invalid") from exc
     if not math.isfinite(duration) or duration <= 0:
         raise ElevenLabsMusicError("ElevenLabs video duration is invalid")
     if duration > MAX_VIDEO_DURATION_SECONDS:
-        raise ElevenLabsMusicError(
-            "ElevenLabs supports videos up to 600 seconds"
-        )
+        raise ElevenLabsMusicError("ElevenLabs supports videos up to 600 seconds")
     prompt = str(prompt or "").strip()
     if len(prompt) > MAX_PROMPT_LENGTH:
-        raise ElevenLabsMusicError(
-            "ElevenLabs music prompt exceeds 1000 characters"
-        )
+        raise ElevenLabsMusicError("ElevenLabs music prompt exceeds 1000 characters")
 
     proxy_path = ""
     try:

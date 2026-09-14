@@ -89,9 +89,7 @@ async def fish_speech_local_synthesize(
         except TimeoutError:
             proc.kill()
             await proc.wait()
-            raise FishSpeechLocalError(
-                f"fish-speech 超时(>{timeout_s:.0f}s)"
-            ) from None
+            raise FishSpeechLocalError(f"fish-speech 超时(>{timeout_s:.0f}s)") from None
 
     if rc != 0:
         tail = "\n".join(log_lines[-8:])

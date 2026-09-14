@@ -28,10 +28,7 @@ def list_mocap(*, root: Path | None = None) -> list[dict[str, Any]]:
     clips = dest / "clips"
     if not clips.is_dir():
         return []
-    return [
-        {"name": path.stem, "path": str(path)}
-        for path in sorted(clips.glob("*.json"))
-    ]
+    return [{"name": path.stem, "path": str(path)} for path in sorted(clips.glob("*.json"))]
 
 
 def get_mocap(name: str, *, root: Path | None = None) -> dict[str, Any] | None:

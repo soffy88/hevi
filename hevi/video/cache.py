@@ -19,10 +19,9 @@ from hevi.video.material_corpus import (
 
 # 缓存接口协议
 class CacheProtocol(Protocol):
-    def get(self, query: str) -> list[dict[str, Any]] | None:
-        ...
-    def put(self, results: list[dict[str, Any]], ttl: int) -> None:
-        ...
+    def get(self, query: str) -> list[dict[str, Any]] | None: ...
+    def put(self, results: list[dict[str, Any]], ttl: int) -> None: ...
+
 
 # Pixabay缓存
 class PixabayCache(CacheProtocol):
@@ -37,6 +36,7 @@ class PixabayCache(CacheProtocol):
         key = hashlib.sha256(json.dumps(results, sort_keys=True).encode()).hexdigest()
         self.storage.save_to_disk(key, json.dumps(results), ttl)
 
+
 # Coverr缓存
 class CoverrCache(CacheProtocol):
     def __init__(self, storage: CacheStorage) -> None:
@@ -49,6 +49,7 @@ class CoverrCache(CacheProtocol):
     def put(self, results: list[dict[str, Any]], ttl: int) -> None:
         key = hashlib.sha256(json.dumps(results, sort_keys=True).encode()).hexdigest()
         self.storage.save_to_disk(key, json.dumps(results), ttl)
+
 
 # Archive缓存
 class ArchiveCache(CacheProtocol):
@@ -75,10 +76,9 @@ class CacheStorage:
     def save_to_disk(self, key: str, content: str, ttl: int) -> None:
         fd = self.dir / f"{key}.json"
         expires = (datetime.now() + timedelta(seconds=ttl)).isoformat()
-        fd.write_text(json.dumps({
-            "results": json.loads(content),
-            "expires": expires
-        }), encoding="utf-8")
+        fd.write_text(
+            json.dumps({"results": json.loads(content), "expires": expires}), encoding="utf-8"
+        )
 
     def load_or_fetch(self, key: str, search_func: Callable[..., Any]) -> list[dict[str, Any]]:
         fd = self.dir / f"{key}.json"
@@ -87,6 +87,7 @@ class CacheStorage:
             if datetime.fromisoformat(data["expires"]) > datetime.now():
                 return cast(list[dict[str, Any]], data["results"])
         return cast(list[dict[str, Any]], search_func(key))
+
 
 # 配置
 CACHE_STORAGE = CacheStorage(Path(getattr(settings, "material_cache_dir", "data/material_cache")))

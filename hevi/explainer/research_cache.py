@@ -70,9 +70,7 @@ def save_research_cache(
         "topic_or_url": topic_or_url,
         "session_id": safe_id,
     }
-    tmp_file.write_text(
-        json.dumps(envelope, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    tmp_file.write_text(json.dumps(envelope, ensure_ascii=False, indent=2), encoding="utf-8")
     os.replace(tmp_file, cache_file)
     return cache_file
 
@@ -87,7 +85,7 @@ def load_research_cache(session_id: str) -> dict[str, Any] | None:
         with open(cache_file, encoding="utf-8") as f:
             data = json.load(f)
         return data if isinstance(data, dict) else None
-    except (json.JSONDecodeError, OSError, ValueError):
+    except json.JSONDecodeError, OSError, ValueError:
         return None
 
 

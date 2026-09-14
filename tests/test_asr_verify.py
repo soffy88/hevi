@@ -38,9 +38,7 @@ async def test_verify_and_retry_only_retries_failed_sentence(tmp_path) -> None:
     async def retry() -> object:
         return audio
 
-    result = await verify_and_retry(
-        "目标旁白", audio, asr=asr, retry_synthesize=retry, retries=1
-    )
+    result = await verify_and_retry("目标旁白", audio, asr=asr, retry_synthesize=retry, retries=1)
     assert result["passed"] is True
     assert result["attempt"] == 2
 

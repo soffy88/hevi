@@ -62,17 +62,18 @@ async def test_synth_injects_emotion_params():
     pr.ProviderRegistry.get = lambda: SimpleNamespace(generic=lambda *a, **k: fake_edge_tts)
     try:
         cues = [
-            Cue(start=0, end=1, text="哈哈,太高兴了"),       # → happy
+            Cue(start=0, end=1, text="哈哈,太高兴了"),  # → happy
             Cue(start=1, end=2, text="普通句子", emotion="neutral"),
             Cue(start=2, end=3, text="愤怒的话", emotion="angry"),
         ]
         await _synth.synth_cues_edge_tts(
-            cues=cues, language="zh-CN", output_path=Path("/tmp/x.wav"))
+            cues=cues, language="zh-CN", output_path=Path("/tmp/x.wav")
+        )
         script = calls["script"]
-        assert script[0].rate == "+10%"   # happy
-        assert script[2].rate == "+5%"    # angry
+        assert script[0].rate == "+10%"  # happy
+        assert script[2].rate == "+5%"  # angry
         assert script[2].volume == "+15%"
-        assert script[1].rate == "+0%"    # neutral
+        assert script[1].rate == "+0%"  # neutral
     finally:
         pr.ProviderRegistry.get = orig_get
 
@@ -110,9 +111,7 @@ async def test_plan_shots_with_pool():
             )
         }
 
-    shots = await plan_shots(
-        topic="雨夜追逐", num_shots=3, llm=fake_llm, image_pool_size=2
-    )
+    shots = await plan_shots(topic="雨夜追逐", num_shots=3, llm=fake_llm, image_pool_size=2)
     assert len(shots) == 3
     assert any("雨夜" in s for s in shots)  # 池选择倾向主题相关
 
@@ -139,8 +138,11 @@ def test_checkpoint_store_roundtrip():
 def test_build_checkpoint_from_task():
     tid = uuid4()
     task = {
-        "task_id": tid, "status": "failed", "completed_shots": 4,
-        "total_shots": 8, "progress_pct": 50.0,
+        "task_id": tid,
+        "status": "failed",
+        "completed_shots": 4,
+        "total_shots": 8,
+        "progress_pct": 50.0,
         "config_json": {"stage": "镜头生成"},
     }
     cp = build_checkpoint_from_task(task)
@@ -149,8 +151,13 @@ def test_build_checkpoint_from_task():
 
 def test_resume_decision_matrix():
     tid = uuid4()
-    failed = {"task_id": tid, "status": "failed", "completed_shots": 4,
-              "total_shots": 8, "progress_pct": 50.0}
+    failed = {
+        "task_id": tid,
+        "status": "failed",
+        "completed_shots": 4,
+        "total_shots": 8,
+        "progress_pct": 50.0,
+    }
     cp = build_checkpoint_from_task(failed)
 
     # 可续跑: failed + 有 checkpoint + 未到终局
@@ -169,9 +176,7 @@ def test_resume_decision_matrix():
     # 不可续跑: 已到终局
     d4 = resume_decision(
         failed,
-        Checkpoint(
-            task_id=tid, stage="装配成片", completed_shots=8, total_shots=8
-        ),
+        Checkpoint(task_id=tid, stage="装配成片", completed_shots=8, total_shots=8),
     )
     assert d4["resumable"] is False
 
@@ -180,8 +185,13 @@ def test_store_memory_resume_flow():
     """端到端: 失败 → checkpoint 保存 → resume 决策 → 更新 resumed_count。"""
     store = CheckpointStore()
     tid = uuid4()
-    task = {"task_id": tid, "status": "cancelled", "completed_shots": 2,
-            "total_shots": 10, "progress_pct": 20.0}
+    task = {
+        "task_id": tid,
+        "status": "cancelled",
+        "completed_shots": 2,
+        "total_shots": 10,
+        "progress_pct": 20.0,
+    }
     cp = build_checkpoint_from_task(task)
     store.save(cp)
     d = resume_decision(task, store.get(tid))

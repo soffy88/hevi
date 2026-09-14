@@ -127,9 +127,7 @@ def blueprint_to_threejs(blueprint: PropBlueprint, *, llm: Callable[..., str] | 
         color = comp.get("color", "#cccccc")
         metalness = float(comp.get("metalness", 0.0))
         roughness = float(comp.get("roughness", 0.5))
-        lines.append(
-            f"const g{i} = new THREE.{geo}({size[0]}, {size[1]}, {size[2]});"
-        )
+        lines.append(f"const g{i} = new THREE.{geo}({size[0]}, {size[1]}, {size[2]});")
         lines.append(
             f"const m{i} = new THREE.MeshStandardMaterial({{color: 0x{color.lstrip('#')}, "
             f"metalness: {metalness}, roughness: {roughness}}});"
@@ -221,8 +219,12 @@ def render_azimuth_frames(
         page = browser.new_page(viewport={"width": width, "height": height})
         for az in azimuths:
             harness = build_harness(
-                model_code, azimuth_deg=az, out_path=out_dir / f"az_{az:03.0f}.html",
-                width=width, height=height, camera=camera,
+                model_code,
+                azimuth_deg=az,
+                out_path=out_dir / f"az_{az:03.0f}.html",
+                width=width,
+                height=height,
+                camera=camera,
             )
             page.goto(f"file://{harness}", wait_until="load", timeout=timeout_ms)
             page.wait_for_timeout(800)  # three.js CDN 加载 + 渲染

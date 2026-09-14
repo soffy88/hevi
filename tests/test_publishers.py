@@ -74,9 +74,7 @@ class TestPublishEntry:
         media.write_bytes(b"fake")
         reg = FakePublisher(available=True)
         register_publisher(reg)
-        r = await publish_to_platform(
-            "fake_pub", media, title="T", description="D", tags=["a"]
-        )
+        r = await publish_to_platform("fake_pub", media, title="T", description="D", tags=["a"])
         assert r.status == "published"
         assert r.external_id == "ext-1"
         assert r.url == "https://fake.example/v/1"

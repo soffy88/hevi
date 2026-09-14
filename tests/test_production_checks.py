@@ -88,20 +88,35 @@ def test_episode_independence_pass():
 
 
 def test_episode_independence_missing_recap():
-    ep = {"title": "E3", "recap_present": False, "cold_open": False, "cliffhanger_present": True, "self_contained_refs": True}
+    ep = {
+        "title": "E3",
+        "recap_present": False,
+        "cold_open": False,
+        "cliffhanger_present": True,
+        "self_contained_refs": True,
+    }
     r = check_episode_independence(ep)
     assert not r.passed
 
 
 def test_episode_independence_forward_refs():
-    ep = {"title": "E3", "recap_present": True, "cliffhanger_present": True, "self_contained_refs": False}
+    ep = {
+        "title": "E3",
+        "recap_present": True,
+        "cliffhanger_present": True,
+        "self_contained_refs": False,
+    }
     r = check_episode_independence(ep)
     assert not r.passed
     assert "自包含" in r.details[0]
 
 
 def test_voice_stability_pass():
-    stats = [{"rms": 0.30, "pitch_hz": 180}, {"rms": 0.32, "pitch_hz": 182}, {"rms": 0.31, "pitch_hz": 179}]
+    stats = [
+        {"rms": 0.30, "pitch_hz": 180},
+        {"rms": 0.32, "pitch_hz": 182},
+        {"rms": 0.31, "pitch_hz": 179},
+    ]
     assert check_voice_stability(stats).passed
 
 

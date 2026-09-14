@@ -157,9 +157,7 @@ def plan_to_cues(plan: ProsodyPlan) -> list[dict[str, Any]]:
     return [u.to_dict() for u in plan.units]
 
 
-def merge_with_srt(
-    plan: ProsodyPlan, segments: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def merge_with_srt(plan: ProsodyPlan, segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """韵律单元与已有字幕段(含 start/end)合并, 供对齐校验。
 
     segments: [{"text", "start", "end"}]。按文本顺序贪心配对: 字幕段文本包含

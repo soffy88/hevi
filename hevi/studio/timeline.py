@@ -31,7 +31,7 @@ def _load_from_disk(timeline_id: str) -> Timeline | None:
         if not isinstance(payload, dict):
             return None
         timeline = Timeline.from_dict(payload)
-    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+    except OSError, ValueError, TypeError, json.JSONDecodeError:
         return None
     _STORE[timeline.timeline_id] = timeline
     return timeline

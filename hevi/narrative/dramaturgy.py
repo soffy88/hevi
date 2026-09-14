@@ -21,7 +21,9 @@ class DramaturgyPlan:
     resolution: str = ""
 
 
-def plan_dramaturgy(bible: StoryBible, architecture: str = "CUSTOM", beats: tuple[StoryBeat, ...] = ()) -> DramaturgyPlan:
+def plan_dramaturgy(
+    bible: StoryBible, architecture: str = "CUSTOM", beats: tuple[StoryBeat, ...] = ()
+) -> DramaturgyPlan:
     return DramaturgyPlan(
         architecture=architecture,
         premise=bible.premise.text if bible.premise else "",

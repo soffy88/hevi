@@ -64,9 +64,7 @@ class AestheticCanon:
         # 只增不重排:新序号必须 > 该族当前最大序号(允许中间补号,不允许降序插入)
         max_number = max((_parse_code(r.code)[1] for r in existing), default=0)
         if number <= max_number:
-            raise CanonError(
-                f"{rule.code}: numbering must only append (max {family}{max_number})"
-            )
+            raise CanonError(f"{rule.code}: numbering must only append (max {family}{max_number})")
         self._rules.append(rule)
         self._rules.sort(key=lambda r: (_parse_code(r.code)[0], _parse_code(r.code)[1]))
 
@@ -94,9 +92,7 @@ class AestheticCanon:
     def save(self, path: str | Path) -> None:
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(
-            json.dumps(self.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        p.write_text(json.dumps(self.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
 
     @classmethod
     def load(cls, path: str | Path) -> AestheticCanon:
@@ -186,9 +182,7 @@ def default_canon() -> AestheticCanon:
     return AestheticCanon(list(SEED_CANON))
 
 
-def build_self_check_report(
-    canon: AestheticCanon, results: dict[str, str | None]
-) -> str:
+def build_self_check_report(canon: AestheticCanon, results: dict[str, str | None]) -> str:
     """生成自检报告:`编号 ✓` 或 `编号 ✗(位置)`;未检 = `编号 ?`。
 
     Args:

@@ -54,6 +54,7 @@ class JobStatus(str, Enum):
 
 class StoryOutline(BaseModel):
     """用户输入的故事大纲。"""
+
     model_config = ConfigDict(extra="allow")
 
     title: str = ""
@@ -68,6 +69,7 @@ class StoryOutline(BaseModel):
 
 class CharacterDesign(BaseModel):
     """角色设计。"""
+
     model_config = ConfigDict(extra="allow")
 
     character_id: str = ""
@@ -82,6 +84,7 @@ class CharacterDesign(BaseModel):
 
 class StoryDetails(BaseModel):
     """AI 生成的详细故事。"""
+
     model_config = ConfigDict(extra="allow")
 
     outline: StoryOutline = Field(default_factory=StoryOutline)
@@ -96,6 +99,7 @@ class StoryDetails(BaseModel):
 
 class StoryboardFrame(BaseModel):
     """单个分镜帧。"""
+
     model_config = ConfigDict(extra="allow")
 
     frame_id: str = ""
@@ -114,6 +118,7 @@ class StoryboardFrame(BaseModel):
 
 class Storyboard(BaseModel):
     """完整分镜。"""
+
     model_config = ConfigDict(extra="allow")
 
     frames: list[StoryboardFrame] = Field(default_factory=list)
@@ -126,6 +131,7 @@ class Storyboard(BaseModel):
 
 class SceneVideo(BaseModel):
     """单个场景视频。"""
+
     model_config = ConfigDict(extra="allow")
 
     scene_id: str = ""
@@ -145,6 +151,7 @@ class SceneVideo(BaseModel):
 
 class MagivizJob(BaseModel):
     """Magiviz 完整视频创作作业。"""
+
     model_config = ConfigDict(extra="allow")
 
     job_id: str = Field(default_factory=lambda: f"magiviz-{__import__('uuid').uuid4().hex[:12]}")

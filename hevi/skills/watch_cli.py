@@ -24,16 +24,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="hevi-watch: 摄入侧视频理解")
     parser.add_argument("source", help="URL 或本地视频路径")
     parser.add_argument("--out-dir", type=Path, default=Path(".hevi_watch"), help="产物目录")
-    parser.add_argument(
-        "--detail", default="balanced", choices=[d.value for d in WatchDetail]
-    )
+    parser.add_argument("--detail", default="balanced", choices=[d.value for d in WatchDetail])
     parser.add_argument("--budget", type=int, default=None, help="帧预算(默认按时长自动)")
     parser.add_argument("--start", type=float, default=None, help="只看窗口起点(秒)")
     parser.add_argument("--end", type=float, default=None, help="只看窗口终点(秒)")
     parser.add_argument("--whisper-fallback", action="store_true", help="无字幕时走 faster-whisper")
     parser.add_argument("--contact-sheet", action="store_true", help="额外生成联络表")
     parser.add_argument("--preflight", action="store_true", help="先跑环境预检")
-    parser.add_argument("--localize", action="store_true", help="转写后出 ASS 烧录计划(xiaohu 译制档)")
+    parser.add_argument(
+        "--localize", action="store_true", help="转写后出 ASS 烧录计划(xiaohu 译制档)"
+    )
     parser.add_argument(
         "--execute-localize",
         action="store_true",
@@ -47,7 +47,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--dub", action="store_true", help="译制后按字幕时钟生成配音并替换音轨")
     parser.add_argument("--tts-engine", default="edge_tts", help="--dub 使用的 TTS engine")
-    parser.add_argument("--bilingual", action="store_true", help="双语 ASS(需同时给译文,否则降级单语)")
+    parser.add_argument(
+        "--bilingual", action="store_true", help="双语 ASS(需同时给译文,否则降级单语)"
+    )
     parser.add_argument("--speakers", action="store_true", help="停顿启发式说话人标签")
     parser.add_argument("--rough-cut", action="store_true", help="去掉语气词再出转写")
     args = parser.parse_args(argv)

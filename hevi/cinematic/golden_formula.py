@@ -33,12 +33,17 @@ class GoldenBeat(dict[str, Any]):
     @property
     def shot_prompt(self) -> str:
         camera = f"{self.get('shot_size', 'medium')}, {self.get('movement', 'static')}"
-        body = ", ".join(str(self.get(k) or '') for k in ('subject', 'action', 'emotion_expression') if self.get(k))
-        env = "、".join(str(self.get(k) or '') for k in ('atmosphere', 'lighting') if self.get(k))
+        body = ", ".join(
+            str(self.get(k) or "")
+            for k in ("subject", "action", "emotion_expression")
+            if self.get(k)
+        )
+        env = "、".join(str(self.get(k) or "") for k in ("atmosphere", "lighting") if self.get(k))
         return ", ".join(x for x in (camera, body, env) if x)
 
     def to_dict(self) -> dict[str, Any]:
         return dict(self)
+
 
 _DECOMPOSE_SYSTEM = """你是初中历史教材讲解视频的分镜导演。把课文切成 3-5 秒镜头, 每镜严格填充:
 [景别/运镜] + [主体/画面] + [氛围/光线] + [解说旁白]。
@@ -63,10 +68,10 @@ async def decompose_story_to_golden_beats(
 ) -> list[GoldenBeat]:
     """LLM 按黄金公式切分教材课文 → 分镜矩阵。"""
     user = f"课文内容:\n{story}\n\n最多 {max_beats} 镜, 每镜 3-5s, 输出 JSON 数组。"
-    messages = [{"role": "system", "content": _DECOMPOSE_SYSTEM},
-                {"role": "user", "content": user}]
+    messages = [{"role": "system", "content": _DECOMPOSE_SYSTEM}, {"role": "user", "content": user}]
     try:
         import inspect
+
         out = llm(messages=messages)
         if inspect.isawaitable(out):
             out = await out
@@ -114,11 +119,10 @@ def parse_golden_beats(raw: str, *, max_beats: int = 8) -> list[GoldenBeat]:
     for item in data[:max_beats]:
         if not isinstance(item, dict):
             continue
+
         # 中英文键兼容
         def v(*keys: str, _item: dict[str, Any] = item) -> str:
-            return next(
-                (str(_item.get(k)) for k in keys if _item.get(k) is not None), ""
-            )
+            return next((str(_item.get(k)) for k in keys if _item.get(k) is not None), "")
 
         dur_raw = str(v("duration_s", "duration", "时长") or "4")
         dur_raw = dur_raw.replace("s", "").replace("秒", "").strip()
@@ -126,15 +130,17 @@ def parse_golden_beats(raw: str, *, max_beats: int = 8) -> list[GoldenBeat]:
         dur = max(MIN_BEAT_S, min(MAX_BEAT_S, dur))
         scene_text = str(v("画面", "action"))
         narration = str(v("narration", "旁白", "解说") or "")
-        beats.append(GoldenBeat(
-            shot_size=str(v("shot_size", "景别") or "medium"),
-            movement=str(v("movement", "运镜") or "static"),
-            subject=str(v("subject", "主体") or ""),
-            action=str(v("action", "动作") or scene_text or ""),
-            emotion_expression=str(v("emotion_expression", "表情", "情绪") or ""),
-            atmosphere=str(v("atmosphere", "氛围") or ""),
-            lighting=str(v("lighting", "光线") or ""),
-            duration_s=dur,
-            narration=narration,
-        ))
+        beats.append(
+            GoldenBeat(
+                shot_size=str(v("shot_size", "景别") or "medium"),
+                movement=str(v("movement", "运镜") or "static"),
+                subject=str(v("subject", "主体") or ""),
+                action=str(v("action", "动作") or scene_text or ""),
+                emotion_expression=str(v("emotion_expression", "表情", "情绪") or ""),
+                atmosphere=str(v("atmosphere", "氛围") or ""),
+                lighting=str(v("lighting", "光线") or ""),
+                duration_s=dur,
+                narration=narration,
+            )
+        )
     return beats

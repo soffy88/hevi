@@ -15,6 +15,7 @@ Run: cd ~/projects/hevi && source .venv/bin/activate
      PYTHONUNBUFFERED=1 python3 test_local_e2e_v3.py
 Prerequisites: ollama running, Wan2GP venv ready, duix container created
 """
+
 from __future__ import annotations
 
 import os
@@ -31,7 +32,7 @@ os.environ.setdefault("VIBEVOICE_MODEL_DIR", str(Path.home() / "models/vibevoice
 os.environ.setdefault("DUIX_HOST_DATA_DIR", str(Path.home() / "duix_avatar_data/face2face"))
 os.environ.setdefault("DUIX_CONTAINER_DATA_DIR", "/code/data")
 
-import asyncio  # noqa: E402
+import asyncio
 
 WORK_DIR = Path("/tmp/hevi_e2e_v3")
 WORK_DIR.mkdir(exist_ok=True)
@@ -52,7 +53,8 @@ def vram() -> int:
     try:
         r = subprocess.run(
             ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         return int(r.stdout.strip())
     except Exception:
@@ -60,7 +62,7 @@ def vram() -> int:
 
 
 def section(title: str) -> None:
-    print(f"\n{'='*58}")
+    print(f"\n{'=' * 58}")
     print(f"  {title}")
     print("=" * 58)
     sys.stdout.flush()
@@ -69,6 +71,7 @@ def section(title: str) -> None:
 # ────────────────────────────────────────────────────────────
 # Step 1: Script generation via qwen3.5:9b
 # ────────────────────────────────────────────────────────────
+
 
 async def step_script(llm: object) -> tuple[str, list[SpeakerLine]]:
     section("Step 1 — Script  qwen3.5:9b  ~7766M")
@@ -88,11 +91,13 @@ async def step_script(llm: object) -> tuple[str, list[SpeakerLine]]:
     print(f"  Title    : {script.title}")
     print(f"  Scenes   : {len(script.scenes)}")
     print(f"  Time     : {elapsed:.1f}s")
-    print(f"  VRAM     : {v0} → {v1} MiB ({v1-v0:+d})")
+    print(f"  VRAM     : {v0} → {v1} MiB ({v1 - v0:+d})")
 
     sc0 = script.scenes[0]
-    sc_dict = sc0 if isinstance(sc0, dict) else (
-        sc0.model_dump() if hasattr(sc0, "model_dump") else vars(sc0)
+    sc_dict = (
+        sc0
+        if isinstance(sc0, dict)
+        else (sc0.model_dump() if hasattr(sc0, "model_dump") else vars(sc0))
     )
     narration = sc_dict.get("narration", sc_dict.get("visual_description", "人工智能"))
     visual = sc_dict.get("visual_description", sc_dict.get("narration", "AI technology"))
@@ -108,12 +113,13 @@ async def step_unload_qwen() -> None:
     subprocess.run(["ollama", "stop", "qwen3.5:9b"], capture_output=True, timeout=30)
     await asyncio.sleep(2)
     v1 = vram()
-    print(f"  VRAM freed : {v0} → {v1} MiB ({v1-v0:+d})")
+    print(f"  VRAM freed : {v0} → {v1} MiB ({v1 - v0:+d})")
 
 
 # ────────────────────────────────────────────────────────────
 # Step 2: Video clip via wan_local CausVid
 # ────────────────────────────────────────────────────────────
+
 
 async def step_video(video_prompt: str) -> Path:
     section("Step 2 — Video  wan_local CausVid 8-step  ~5407M  ~3m46s")
@@ -126,8 +132,8 @@ async def step_video(video_prompt: str) -> Path:
     result = await wan_local_generate(prompt=video_prompt, output_path=out, seed=42)
     elapsed = time.time() - t0
     v1 = vram()
-    print(f"  Time   : {elapsed:.0f}s  ({elapsed/60:.1f}min)")
-    print(f"  Output : {result}  ({result.stat().st_size/1024/1024:.1f} MB)")
+    print(f"  Time   : {elapsed:.0f}s  ({elapsed / 60:.1f}min)")
+    print(f"  Output : {result}  ({result.stat().st_size / 1024 / 1024:.1f} MB)")
     print(f"  VRAM   : {v0} → {v1} MiB  (subprocess exit → OS reclaim ✓)")
     return result
 
@@ -135,6 +141,7 @@ async def step_video(video_prompt: str) -> Path:
 # ────────────────────────────────────────────────────────────
 # Step 3: Audio via vibevoice subprocess
 # ────────────────────────────────────────────────────────────
+
 
 async def step_audio(lines: list[SpeakerLine]) -> Path:
     section("Step 3 — Audio  vibevoice 1.5B subprocess  ~8513M")
@@ -171,6 +178,7 @@ async def step_audio(lines: list[SpeakerLine]) -> Path:
 # Step 4: Duix avatar
 # ────────────────────────────────────────────────────────────
 
+
 async def step_duix(audio_path: Path) -> Path | None:
     section("Step 4 — Avatar  duix container  ~5242M")
 
@@ -181,9 +189,9 @@ async def step_duix(audio_path: Path) -> Path | None:
     v_before = vram()
     print(f"  VRAM before duix start : {v_before} MiB  (need headroom ≥5242)")
     if v_before + 5242 > 10240:
-        print(f"  ⚠ VRAM {v_before}+5242={v_before+5242} > 10240 — OOM risk!")
+        print(f"  ⚠ VRAM {v_before}+5242={v_before + 5242} > 10240 — OOM risk!")
     else:
-        print(f"  ✓ Sufficient VRAM: {v_before}+5242={v_before+5242} ≤ 10240")
+        print(f"  ✓ Sufficient VRAM: {v_before}+5242={v_before + 5242} ≤ 10240")
 
     print(f"  Starting {DUIX_CONTAINER}...")
     subprocess.run(["docker", "start", DUIX_CONTAINER], capture_output=True, timeout=30)
@@ -191,6 +199,7 @@ async def step_duix(audio_path: Path) -> Path | None:
 
     # Health check
     import urllib.request
+
     try:
         urllib.request.urlopen("http://127.0.0.1:8383/easy/query?code=ping", timeout=8)
         print("  Duix service ready ✓")
@@ -238,6 +247,7 @@ async def step_duix(audio_path: Path) -> Path | None:
 # Step 5: ffmpeg assembly
 # ────────────────────────────────────────────────────────────
 
+
 async def step_assemble(video: Path, audio: Path, avatar: Path | None) -> Path:
     section("Step 5 — Assembly  ffmpeg (CPU)")
     out = WORK_DIR / "final.mp4"
@@ -248,11 +258,18 @@ async def step_assemble(video: Path, audio: Path, avatar: Path | None) -> Path:
         source = "duix avatar (lip-sync)"
     else:
         cmd = [
-            "ffmpeg", "-y",
-            "-i", str(video),
-            "-i", str(audio),
-            "-c:v", "copy", "-c:a", "aac",
-            "-shortest", str(out),
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video),
+            "-i",
+            str(audio),
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-shortest",
+            str(out),
         ]
         source = "wan video + vibevoice audio"
 
@@ -265,30 +282,36 @@ async def step_assemble(video: Path, audio: Path, avatar: Path | None) -> Path:
         print(f"  Time   : {elapsed:.2f}s")
         print(f"  Output : {out}  ({sz:.1f} MB)")
         return out
-    else:
-        stderr = proc.stderr.decode(errors="replace")[:200]
-        print(f"  ffmpeg failed (exit {proc.returncode}): {stderr}")
-        return video
+    stderr = proc.stderr.decode(errors="replace")[:200]
+    print(f"  ffmpeg failed (exit {proc.returncode}): {stderr}")
+    return video
 
 
 # ────────────────────────────────────────────────────────────
 # Main
 # ────────────────────────────────────────────────────────────
 
+
 async def main() -> None:
     t_start = time.time()
 
     from hevi.providers.registry import register_all_providers
+
     register_all_providers()
 
     from hevi.providers.local_qwen_adapter import LocalQwenAdapter
+
     print(f"LLM: {LocalQwenAdapter.__name__} (qwen3.5:9b via ollama)")
     print("GPU total: 10240 MiB (RTX 3080)")
     print("vibevoice: subprocess isolation (OS VRAM reclaim on exit) ← v3 key fix")
 
     from hevi.gpu.providers import (
-        VRAM_DUIX, VRAM_QWEN_LOCAL, VRAM_VIBEVOICE, VRAM_WAN_LOCAL,
+        VRAM_DUIX,
+        VRAM_QWEN_LOCAL,
+        VRAM_VIBEVOICE,
+        VRAM_WAN_LOCAL,
     )
+
     pairs = [
         ("qwen", int(VRAM_QWEN_LOCAL)),
         ("wan", int(VRAM_WAN_LOCAL)),
@@ -297,9 +320,9 @@ async def main() -> None:
     ]
     print("\n  VRAM pair check (serial required if sum > 10240):")
     for i, (n1, v1) in enumerate(pairs):
-        for n2, v2 in pairs[i + 1:]:
+        for n2, v2 in pairs[i + 1 :]:
             flag = "serial" if v1 + v2 > 10240 else "fits"
-            print(f"    {n1}({v1})+{n2}({v2})={v1+v2}  ✓ {flag}")
+            print(f"    {n1}({v1})+{n2}({v2})={v1 + v2}  ✓ {flag}")
 
     # Stop any running ollama models (may have stale generation from previous run)
     subprocess.run(["ollama", "stop", "qwen3.5:9b"], capture_output=True, timeout=30)
@@ -318,25 +341,35 @@ async def main() -> None:
     final = await step_assemble(video_clip, audio_path, avatar_clip)
 
     r = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-show_entries",
-         "stream=codec_name,width,height,duration",
-         "-of", "csv=p=0", str(final)],
-        capture_output=True, text=True,
+        [
+            "ffprobe",
+            "-v",
+            "quiet",
+            "-show_entries",
+            "stream=codec_name,width,height,duration",
+            "-of",
+            "csv=p=0",
+            str(final),
+        ],
+        capture_output=True,
+        text=True,
     )
     probe_out = r.stdout.strip()
 
     total = time.time() - t_start
 
     section("RESULT — Full Local E2E v3")
-    print(f"  Chain    : qwen → wan → vibevoice(subprocess) → {'duix → ' if avatar_clip else ''}ffmpeg")
+    print(
+        f"  Chain    : qwen → wan → vibevoice(subprocess) → {'duix → ' if avatar_clip else ''}ffmpeg"
+    )
     print(f"  Output   : {final}")
     print(f"  Exists   : {final.exists()}")
     if final.exists():
-        print(f"  Size     : {final.stat().st_size/1024/1024:.1f} MB")
+        print(f"  Size     : {final.stat().st_size / 1024 / 1024:.1f} MB")
     if probe_out:
         print(f"  Stream   : {probe_out}")
-    print(f"  Total    : {total:.0f}s  ({total/60:.1f}min)")
-    print(f"  Cost     : ~$0  (100% local GPU)")
+    print(f"  Total    : {total:.0f}s  ({total / 60:.1f}min)")
+    print("  Cost     : ~$0  (100% local GPU)")
 
     print()
     print("  vibevoice subprocess isolation:")

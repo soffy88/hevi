@@ -43,19 +43,22 @@ FINAL_REVIEW_CHECKS: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
     ("P", "P2", "成片注意力是否放在确认/记录的功能优先级上", ("brief", "shot_mapping")),
     ("P", "P3", "是否出现项目不存在/未经确认/误导的功能宣称", ("brief",)),
     (
-        "P", "P4",
+        "P",
+        "P4",
         "决策表执行选择能否在分镜/文案/页面/音频/素材中找到落地",
         ("decision_table", "final_storyboard"),
     ),
     (
-        "F", "F1",
+        "F",
+        "F1",
         "每个必须展示的功能是否至少有一个清楚可辨的镜头",
         ("brief", "final_storyboard"),
     ),
     ("F", "F2", "每镜头是否提供新信息,有无重复功能/重复 tagline", ("final_storyboard",)),
     ("F", "F3", "页面状态是否让观众理解功能,而非装饰性运动", ("final_mp4", "keyframes")),
     (
-        "V", "V1",
+        "V",
+        "V1",
         "字体/色板/材质/圆角/光感/信息密度是否符合视觉方向",
         ("visual_direction", "final_mp4"),
     ),
@@ -64,12 +67,14 @@ FINAL_REVIEW_CHECKS: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
     ("V", "V4", "禁用的颜色/效果/品牌特征是否被使用", ("visual_direction",)),
     ("S", "S1", "功能映射中的镜头卡是否实际出现在对应镜头", ("shot_mapping", "final_storyboard")),
     (
-        "S", "S2",
+        "S",
+        "S2",
         "点名的 卡名·样式名 的 style-key/demo TSX/参考样片是否同变体且成片采用",
         ("card_library", "demo_tsx", "reference_preview"),
     ),
     (
-        "S", "S3",
+        "S",
+        "S3",
         "对照 demo TSX 与参考样片,是否保留动作语法/关键时值/缓动/遮罩时机",
         ("demo_tsx", "reference_preview", "final_mp4"),
     ),
@@ -144,8 +149,14 @@ def run_final_review(
         if missing_deps:
             result.unverifiable.append(f"{code}(缺输入: {', '.join(missing_deps)})")
             result.checks.append(
-                {"group": group, "code": code, "text": text, "status": None,
-                 "state": "unverifiable", "missing_inputs": missing_deps}
+                {
+                    "group": group,
+                    "code": code,
+                    "text": text,
+                    "status": None,
+                    "state": "unverifiable",
+                    "missing_inputs": missing_deps,
+                }
             )
             continue
         state = "unchecked"

@@ -82,10 +82,7 @@ def _outline_json() -> str:
                 {
                     "chapter_id": "C3",
                     "title": "第三章 重碰撞死结",
-                    "goal": (
-                        "本章要讲透素材点2的拓扑树重碰撞，"
-                        "用比喻把死结具象化并引出破解方向"
-                    ),
+                    "goal": ("本章要讲透素材点2的拓扑树重碰撞，用比喻把死结具象化并引出破解方向"),
                     "expansions": [_expansion("素材点2:拓扑树上的重碰撞")],
                 },
                 {
@@ -410,7 +407,7 @@ def test_tolerant_parser_recovers_big_combined_defective_output() -> None:
             '    {"step_id": 1, "visual_type": "voiceover", "text": "第一行',
             '第二行旁白\\"带引号\\"继续"}',
             '    {"step_id": 2, "visual_type": "remotion_chart", "chart_data": {"type": "bar"}}',
-            '  ],',
+            "  ],",
             '  "ok": True,',
             '  "none_val": None，',
             '  "full_width"：2',
@@ -419,10 +416,10 @@ def test_tolerant_parser_recovers_big_combined_defective_output() -> None:
     )
     value = _extract_json("\n".join(lines))
     assert len(value["cues"]) == 2
-    assert value["cues"][0]["text"] == "第一行\n第二行旁白\"带引号\"继续"
+    assert value["cues"][0]["text"] == '第一行\n第二行旁白"带引号"继续'
     assert value["cues"][1]["chart_data"] == {"type": "bar"}
     assert value["ok"] is True and value["none_val"] is None and value["full_width"] == 2
-    assert value["key_1"] == "第1段旁白 他说\"BBGKY\" 很关键"
+    assert value["key_1"] == '第1段旁白 他说"BBGKY" 很关键'
 
 
 def test_tolerant_parser_does_not_swallow_document_via_missing_comma() -> None:
@@ -452,9 +449,7 @@ def test_tolerant_parser_salvages_truncated_output() -> None:
                     "id": "A",
                     "title": "版本A",
                     "hook": "H1",
-                    "cues": [
-                        {"step_id": 1, "visual_type": "voiceover", "text": "旁白一"}
-                    ],
+                    "cues": [{"step_id": 1, "visual_type": "voiceover", "text": "旁白一"}],
                 }
             ],
         },
@@ -478,28 +473,45 @@ def _broken_outline_json() -> str:
             "research_summary": "邓煜团队通过调和分析与相干抵消突破 BBGKY 方程",
             "facts": ["邓煜用调和分析突破 BBGKY", {"claim": "拓扑树重碰撞", "confidence": 0.8}],
             "hooks": [
-                {"hook_id": "H1", "text": "为什么经典力学失效?",
-                 "narrative_function": "opening_suspense"},
+                {
+                    "hook_id": "H1",
+                    "text": "为什么经典力学失效?",
+                    "narrative_function": "opening_suspense",
+                },
                 {"hook_id": "H2", "text": "拓扑树死结", "narrative_function": "mid_conflict"},
-                {"hook_id": "H3", "text": "调和分析钥匙",
-                 "narrative_function": "climax_breakthrough"},
+                {
+                    "hook_id": "H3",
+                    "text": "调和分析钥匙",
+                    "narrative_function": "climax_breakthrough",
+                },
                 {"hook_id": "H4", "text": "哲学启示", "narrative_function": "philosophical_lesson"},
             ],
             "material_coverage_matrix": [
                 {"original_material_point": "BBGKY 方程", "deep_explanation": "深" * 80},
             ],
             "chapters": [
-                {"chapter_id": "C1", "title": "反常导入",
-                 "goal": "本章要把 BBGKY 方程被长期忽视的反常机制彻底讲透并用比喻层层展开",
-                 "expansions": [{"original_material_point": "BBGKY 方程",
-                                 "deep_explanation": "深" * 80}]},
-                {"chapter_id": "C2", "title": "底层机制",
-                 "goal": "本章要拆解调和分析的数学物理图景讲清经典方法失效的根源并可视化",
-                 "expansions": [{"original_material_point": "相干抵"}]},  # 缺 deep_explanation
-                {"chapter_id": "C3", "title": "突破收束",
-                 "goal": "本章收束到最终结论把反常原理死结串成完整逻辑链给出突破图景",
-                 "expansions": [{"original_material_point": "调和分析",
-                                 "deep_explanation": "深" * 80}]},
+                {
+                    "chapter_id": "C1",
+                    "title": "反常导入",
+                    "goal": "本章要把 BBGKY 方程被长期忽视的反常机制彻底讲透并用比喻层层展开",
+                    "expansions": [
+                        {"original_material_point": "BBGKY 方程", "deep_explanation": "深" * 80}
+                    ],
+                },
+                {
+                    "chapter_id": "C2",
+                    "title": "底层机制",
+                    "goal": "本章要拆解调和分析的数学物理图景讲清经典方法失效的根源并可视化",
+                    "expansions": [{"original_material_point": "相干抵"}],
+                },  # 缺 deep_explanation
+                {
+                    "chapter_id": "C3",
+                    "title": "突破收束",
+                    "goal": "本章收束到最终结论把反常原理死结串成完整逻辑链给出突破图景",
+                    "expansions": [
+                        {"original_material_point": "调和分析", "deep_explanation": "深" * 80}
+                    ],
+                },
             ],
             # versions 整个缺失(大纲末字段被 max_tokens 截掉)
         },
@@ -560,8 +572,7 @@ def test_normalise_drops_textless_cue_instead_of_killing_research() -> None:
         "facts": [{"claim": "事实", "confidence": 0.9}],
         "hooks": [{"text": "Hook"}],
         "scripts": [
-            {"id": "A", "title": "版本A", "hook": "Hook",
-             "cues": [good, bad, good3]},
+            {"id": "A", "title": "版本A", "hook": "Hook", "cues": [good, bad, good3]},
         ],
     }
     result = _normalise(raw, "测试", "test")
@@ -572,10 +583,15 @@ def test_normalise_drops_script_whose_cues_are_all_textless() -> None:
     """整本脚本 cues 全废 → 整本剔除;另一本保底。"""
     good = {"time_range": "00:00-06.0s", "visual_type": "voiceover", "text": "旁白"}
     raw = {
-        "facts": [], "hooks": [{"text": "Hook"}],
+        "facts": [],
+        "hooks": [{"text": "Hook"}],
         "scripts": [
-            {"id": "X", "title": "全废", "hook": "Hook",
-             "cues": [{"visual_type": "voiceover"}, {"text": "   "}]},
+            {
+                "id": "X",
+                "title": "全废",
+                "hook": "Hook",
+                "cues": [{"visual_type": "voiceover"}, {"text": "   "}],
+            },
             {"id": "A", "title": "版本A", "hook": "Hook", "cues": [good]},
         ],
     }
@@ -586,7 +602,8 @@ def test_normalise_drops_script_whose_cues_are_all_textless() -> None:
 def test_normalise_rejects_when_all_scripts_empty() -> None:
     """全部脚本都掏空 → “至少需要包含 1 个脚本版本”(保留最后防线)。"""
     raw = {
-        "facts": [], "hooks": [{"text": "Hook"}],
+        "facts": [],
+        "hooks": [{"text": "Hook"}],
         "scripts": [
             {"id": "A", "title": "t", "hook": "Hook", "cues": [{"visual_type": "voiceover"}]},
         ],
@@ -598,10 +615,15 @@ def test_normalise_rejects_when_all_scripts_empty() -> None:
 def test_normalise_defaults_invalid_visual_type_to_voiceover() -> None:
     """visual_type 越界(如 'avatar') → 兑底 voiceover,不让一个坏值废全本。"""
     raw = {
-        "facts": [], "hooks": [{"text": "Hook"}],
+        "facts": [],
+        "hooks": [{"text": "Hook"}],
         "scripts": [
-            {"id": "A", "title": "t", "hook": "Hook",
-             "cues": [{"text": "旁白", "visual_type": "avatar"}]},
+            {
+                "id": "A",
+                "title": "t",
+                "hook": "Hook",
+                "cues": [{"text": "旁白", "visual_type": "avatar"}],
+            },
         ],
     }
     result = _normalise(raw, "x", "t")

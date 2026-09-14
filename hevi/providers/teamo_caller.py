@@ -155,9 +155,7 @@ def teamo_chat_completions(
     )
 
     def _request() -> dict[str, Any]:
-        with httpx.Client(
-            trust_env=True, timeout=wrapper.config.timeout.httpx_timeout
-        ) as client:
+        with httpx.Client(trust_env=True, timeout=wrapper.config.timeout.httpx_timeout) as client:
             response = client.post(
                 url,
                 headers={

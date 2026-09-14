@@ -50,16 +50,37 @@ def bible() -> StoryBible:
         dramatic_question=DramaticQuestion("Will the evidence survive?"),
         characters=(Character("c1", "Lin", knowledge_state=("letter",)),),
         timeline=(TimelineEvent("t1", "arrival", 1),),
-        established_facts=(NarrativeAssertion("f1", "The letter exists", "SOURCE_FACT", ("source:1",), True),),
+        established_facts=(
+            NarrativeAssertion("f1", "The letter exists", "SOURCE_FACT", ("source:1",), True),
+        ),
     )
 
 
 def scene(**changes: object) -> SceneBlueprint:
-    base = SceneBlueprint("s1", "seq1", "reveal", SceneObjective("find proof"), SceneObstacle("guard"), "truth vs fear", SceneTurn("opens letter"), SceneOutcome("knows truth"), ("c1",), "archive", "t1", required_facts=("f1",), evidence_refs=("source:1",), continuity_constraints=(ContinuityConstraint("cc1", "fact", "fact remains", ("f1",)),))
+    base = SceneBlueprint(
+        "s1",
+        "seq1",
+        "reveal",
+        SceneObjective("find proof"),
+        SceneObstacle("guard"),
+        "truth vs fear",
+        SceneTurn("opens letter"),
+        SceneOutcome("knows truth"),
+        ("c1",),
+        "archive",
+        "t1",
+        required_facts=("f1",),
+        evidence_refs=("source:1",),
+        continuity_constraints=(ContinuityConstraint("cc1", "fact", "fact remains", ("f1",)),),
+    )
     return replace(base, **changes)
 
 
-@pytest.mark.parametrize("case", json.loads((Path(__file__).parents[1] / "fixtures/narrative_gold/cases.json").read_text()), ids=lambda item: item["id"])
+@pytest.mark.parametrize(
+    "case",
+    json.loads((Path(__file__).parents[1] / "fixtures/narrative_gold/cases.json").read_text()),
+    ids=lambda item: item["id"],
+)
 def test_narrative_gold_cases_are_declared(case: dict[str, str]) -> None:
     assert case["id"] and case["kind"]
 
@@ -94,7 +115,12 @@ def test_continuity_reports_dangling_character() -> None:
 
 
 def test_fact_dramatization_boundary() -> None:
-    bad = replace(bible(), established_facts=(NarrativeAssertion("f", "invented", "DRAMATIZATION", historically_verified=True),))
+    bad = replace(
+        bible(),
+        established_facts=(
+            NarrativeAssertion("f", "invented", "DRAMATIZATION", historically_verified=True),
+        ),
+    )
     with pytest.raises(NarrativeSchemaError):
         validate_bible(bad)
 
@@ -119,14 +145,28 @@ def test_atomic_revision_commit(tmp_path: Path) -> None:
 
 
 def test_scene_blueprint_schema_and_quality_gate() -> None:
-    narrative = replace(bible(), episodes=(EpisodeBlueprint("e1", 1, "premise", "goal", beats=(StoryBeat("b1", "turn", "reveal", change="truth changes"),)),))
+    narrative = replace(
+        bible(),
+        episodes=(
+            EpisodeBlueprint(
+                "e1",
+                1,
+                "premise",
+                "goal",
+                beats=(StoryBeat("b1", "turn", "reveal", change="truth changes"),),
+            ),
+        ),
+    )
     report = ContinuityEngine().check(narrative, (scene(),))
     quality = NarrativeQualityGate().evaluate(narrative, scene(), report)
     assert quality.ready is True
 
 
 def test_setup_payoff_and_thread_tracking() -> None:
-    threads = (NarrativeThread("th1", "HIGH_PRIORITY", "s1"), NarrativeThread("th1", "HIGH_PRIORITY", "s2"))
+    threads = (
+        NarrativeThread("th1", "HIGH_PRIORITY", "s1"),
+        NarrativeThread("th1", "HIGH_PRIORITY", "s2"),
+    )
     from hevi.narrative.threads import thread_diagnostics
 
     assert "DUPLICATE_THREAD" in thread_diagnostics(threads)

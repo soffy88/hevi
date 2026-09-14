@@ -59,10 +59,7 @@ def test_weighted_score_matches_hand_computation():
         continuity=0.0,
     )
     assert s.weighted_score == pytest.approx(0.30)
-    expected = (
-        1.0 * DEFAULT_WEIGHTS["task_fit"]
-        + 0.0 * DEFAULT_WEIGHTS["output_quality"]
-    )
+    expected = 1.0 * DEFAULT_WEIGHTS["task_fit"] + 0.0 * DEFAULT_WEIGHTS["output_quality"]
     assert s.weighted_score == pytest.approx(expected)
 
 

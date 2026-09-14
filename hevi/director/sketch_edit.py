@@ -107,7 +107,8 @@ def apply_sketch_edits(
             head_y = cy - int(scale * 1.6)
             draw.ellipse(
                 (cx - head_r, head_y - head_r, cx + head_r, head_y + head_r),
-                outline=(255, 60, 60, 220), width=3,
+                outline=(255, 60, 60, 220),
+                width=3,
             )
             neck = (cx, head_y)
             hip = (cx, cy)

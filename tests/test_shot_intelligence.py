@@ -21,7 +21,14 @@ def _intents(line: str = "kinetic_promo") -> list[ShotIntent]:
     return [
         ShotIntent(line, "open", "establishing", "subject", target_duration_s=3),
         ShotIntent(line, "action", "action", "subject", target_duration_s=3),
-        ShotIntent(line, "close", "cta", "subject", target_duration_s=2, beat_map=cues_from_times([0.0, 1.0])),
+        ShotIntent(
+            line,
+            "close",
+            "cta",
+            "subject",
+            target_duration_s=2,
+            beat_map=cues_from_times([0.0, 1.0]),
+        ),
     ]
 
 

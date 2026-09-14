@@ -7,6 +7,7 @@
 
 用法: /home/soffy/projects/hevi/.venv/bin/python test_f5_duix.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -23,7 +24,8 @@ OUTPUT_DIR = Path("output/f5_duix")
 def _mem_mib() -> int:
     r = subprocess.run(
         ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     try:
         return int(r.stdout.strip())
@@ -33,6 +35,7 @@ def _mem_mib() -> int:
 
 def _check_service() -> bool:
     import urllib.request
+
     try:
         urllib.request.urlopen("http://127.0.0.1:8383/easy/query?code=ping", timeout=5)
         return True
@@ -52,7 +55,7 @@ async def run_f5() -> None:
     print(f"\n[F5] GPU 显存(调用前): {mem_before} MiB")
 
     out_path = OUTPUT_DIR / "f5_lipsync.mp4"
-    print(f"\n[F5] 调用 generate_avatar_clip ...")
+    print("\n[F5] 调用 generate_avatar_clip ...")
     t0 = time.perf_counter()
 
     try:
@@ -70,10 +73,18 @@ async def run_f5() -> None:
         print(f"[F5] GPU 显存(完成后): {mem_after} MiB | 增量: +{mem_after - mem_before} MiB")
 
         r = subprocess.run(
-            ["ffprobe", "-v", "quiet", "-show_entries",
-             "format=duration,size : stream=codec_name,width,height,r_frame_rate",
-             "-of", "default=noprint_wrappers=1", str(result)],
-            capture_output=True, text=True,
+            [
+                "ffprobe",
+                "-v",
+                "quiet",
+                "-show_entries",
+                "format=duration,size : stream=codec_name,width,height,r_frame_rate",
+                "-of",
+                "default=noprint_wrappers=1",
+                str(result),
+            ],
+            capture_output=True,
+            text=True,
         )
         print(f"[F5] ffprobe:\n{r.stdout.strip() or r.stderr.strip()}")
 
@@ -96,7 +107,7 @@ async def run_f5() -> None:
 
 def main() -> None:
     print("[F5] Duix 唇形合成 真跑")
-    print(f"     服务地址: http://127.0.0.1:8383")
+    print("     服务地址: http://127.0.0.1:8383")
 
     print("[F5] 检查 Duix 服务连通性 ...")
     if not _check_service():

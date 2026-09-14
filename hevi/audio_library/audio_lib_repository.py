@@ -18,24 +18,20 @@ class AudioLibraryRepository:
         data.setdefault("created_at", now)
         data.setdefault("updated_at", now)
         data.setdefault("is_official", False)
-        
-        asset_id = await insert_one(
-            self._pool, table="audio_assets", data=data, returning="id"
-        )
+
+        asset_id = await insert_one(self._pool, table="audio_assets", data=data, returning="id")
         return await self.get(str(asset_id)) or {}
 
     async def get(self, asset_id: str) -> dict[str, Any] | None:
         rows = await query(
             self._pool,
             sql="SELECT * FROM audio_assets WHERE id = $1 AND deleted_at IS NULL",
-            params=[uuid.UUID(asset_id)]
+            params=[uuid.UUID(asset_id)],
         )
         return rows[0] if rows else None
 
     async def delete(self, asset_id: str) -> bool:
-        return await soft_delete_one(
-            self._pool, table="audio_assets", id=uuid.UUID(asset_id)
-        )
+        return await soft_delete_one(self._pool, table="audio_assets", id=uuid.UUID(asset_id))
 
     async def search(
         self,
@@ -82,7 +78,7 @@ class AudioLibraryRepository:
 
         where = " AND ".join(conditions)
         sql = f"SELECT * FROM audio_assets WHERE {where} ORDER BY created_at DESC"
-        
+
         rows: list[dict[str, Any]] = await query(
             self._pool,
             sql=sql,

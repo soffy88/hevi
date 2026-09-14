@@ -91,7 +91,7 @@ def deliver(
                 if 200 <= response.status < 300:
                     ledger.delivered.add(event_id)
                     return True
-        except (urllib.error.URLError, TimeoutError, OSError):
+        except urllib.error.URLError, TimeoutError, OSError:
             continue
     ledger.dead_letters[event_id] = f"exhausted {max_attempts} attempts"
     return False

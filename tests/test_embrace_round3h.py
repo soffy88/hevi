@@ -35,22 +35,37 @@ def _png(path: Path, color: tuple[int, int, int] = (120, 90, 60)) -> Path:
 def _good_blueprint() -> dict[str, object]:
     return {
         "macro": {
-            "description": "一把剑", "overall_shape": "composite",
-            "proportions": "长条", "axis_aligned_size": [0.1, 1.0, 0.1],
+            "description": "一把剑",
+            "overall_shape": "composite",
+            "proportions": "长条",
+            "axis_aligned_size": [0.1, 1.0, 0.1],
         },
         "components": [
-            {"name": "剑身", "primitive": "cube", "position": [0, 0.5, 0],
-             "size": [0.05, 0.8, 0.02], "color": "#c0c0c0",
-             "metalness": 0.9, "roughness": 0.2},
-            {"name": "剑柄", "primitive": "cylinder", "position": [0, -0.2, 0],
-             "size": [0.08, 0.3, 0.08], "color": "#4a2f1b",
-             "metalness": 0.1, "roughness": 0.6},
+            {
+                "name": "剑身",
+                "primitive": "cube",
+                "position": [0, 0.5, 0],
+                "size": [0.05, 0.8, 0.02],
+                "color": "#c0c0c0",
+                "metalness": 0.9,
+                "roughness": 0.2,
+            },
+            {
+                "name": "剑柄",
+                "primitive": "cylinder",
+                "position": [0, -0.2, 0],
+                "size": [0.08, 0.3, 0.08],
+                "color": "#4a2f1b",
+                "metalness": 0.1,
+                "roughness": 0.6,
+            },
         ],
         "topology": {"origin": [0, 0, 0], "orientation": "up=+Y"},
     }
 
 
 # ---- 相机方位角数学(机位驱动渲染的几何核心)----
+
 
 def test_camera_position_azimuths():
     # az=0 → 正对 +Z
@@ -81,6 +96,7 @@ def test_screen_direction_from_azimuth():
 
 
 # ---- M.C.M.T 蓝图 ----
+
 
 def test_lint_blueprint():
     assert lint_blueprint(_good_blueprint()) == []
@@ -129,6 +145,7 @@ def test_blueprint_to_threejs():
 
 # ---- HTML harness ----
 
+
 def test_build_harness(tmp_path):
     code = blueprint_to_threejs(PropBlueprint(**_good_blueprint()))  # type: ignore[arg-type]
     harness = build_harness(code, azimuth_deg=45.0, out_path=tmp_path / "az45.html")
@@ -139,6 +156,7 @@ def test_build_harness(tmp_path):
 
 
 # ---- scene_block_workflow ----
+
 
 def test_scene_block_missing_llm(tmp_path):
     img = _png(tmp_path / "sword.png")

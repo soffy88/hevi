@@ -4,6 +4,7 @@ Root ``__all__`` is deliberately broader than the 3O manifest for backwards
 compatibility.  This evidence keeps that support surface explicit instead of
 silently treating it as an element.
 """
+
 from __future__ import annotations
 
 import ast
@@ -11,12 +12,12 @@ import json
 import subprocess
 from pathlib import Path
 
-from _3o_common import CANONICAL, ROOT
+from _3o_common import ROOT
 
 
 def consumer_count(name: str) -> int:
     result = subprocess.run(
-        ["rg", "-l", rf"\b{ name }\b", "hevi", "tests"],
+        ["rg", "-l", rf"\b{name}\b", "hevi", "tests"],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -48,7 +49,11 @@ def main() -> int:
         package = item["package"]
         name = item["name"]
         classification = "INFRASTRUCTURE_SUPPORT" if package == "obase" else "RUNTIME_SUPPORT"
-        action = "RECLASSIFY" if name.endswith("Engine") or name in {"FS", "Cache", "http"} else "MAKE_PRIVATE"
+        action = (
+            "RECLASSIFY"
+            if name.endswith("Engine") or name in {"FS", "Cache", "http"}
+            else "MAKE_PRIVATE"
+        )
         rows.append(
             {
                 "repo": package,
@@ -67,7 +72,17 @@ def main() -> int:
     out = ROOT / "artifacts/3o-v3/unregistered-canonical-assets.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
-        json.dumps({"source": "current manifest-authoritative export scan", "count": len(rows), "assets": rows}, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        json.dumps(
+            {
+                "source": "current manifest-authoritative export scan",
+                "count": len(rows),
+                "assets": rows,
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
         encoding="utf-8",
     )
     print(f"NON_ELEMENT_EXPORTS={len(rows)}")

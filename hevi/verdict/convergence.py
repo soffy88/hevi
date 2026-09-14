@@ -57,9 +57,7 @@ class ConvergenceLog:
 
     def next_round_num(self, episode_num: int, phase: str) -> int:
         relevant = (
-            r.round_num
-            for r in self._rounds
-            if r.episode_num == episode_num and r.phase == phase
+            r.round_num for r in self._rounds if r.episode_num == episode_num and r.phase == phase
         )
         return max(relevant, default=0) + 1
 
@@ -97,9 +95,7 @@ class ConvergenceLog:
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(
-            json.dumps(
-                [r.to_dict() for r in self._rounds], ensure_ascii=False, indent=2
-            ),
+            json.dumps([r.to_dict() for r in self._rounds], ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
 
@@ -128,6 +124,7 @@ def _strictly_rising(values: list[int]) -> bool:
     """连续两两严格上升。"""
     return all(b > a for a, b in itertools.pairwise(values))
 
+
 def trend(
     log: ConvergenceLog,
     *,
@@ -153,16 +150,11 @@ def trend(
     if latest < RESIDUAL_TARGET:
         return {"status": "stable", **base}
 
-    if len(residuals) >= DIVERGENCE_STREAK + 1 and _strictly_rising(
-        residuals[-DIVERGENCE_STREAK:]
-    ):
+    if len(residuals) >= DIVERGENCE_STREAK + 1 and _strictly_rising(residuals[-DIVERGENCE_STREAK:]):
         return {
             "status": "diverging",
             **base,
-            "suggestion": (
-                "发散:停止重掷,走降级交付 + 部分退款;"
-                "先诊断根因,一次只改一个变量"
-            ),
+            "suggestion": ("发散:停止重掷,走降级交付 + 部分退款;先诊断根因,一次只改一个变量"),
         }
 
     direction_changes = sum(

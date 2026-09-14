@@ -163,11 +163,13 @@ async def test_live_two_workers_claim_one_task_and_same_attempt_is_idempotent() 
         repository = TaskRepository(pool)
         claimed = await asyncio.gather(
             repository.claim_next_queued_task(
-                worker_id="live-worker-a", scheduled_only=False,
+                worker_id="live-worker-a",
+                scheduled_only=False,
                 resource_class="gpu-video",
             ),
             repository.claim_next_queued_task(
-                worker_id="live-worker-b", scheduled_only=False,
+                worker_id="live-worker-b",
+                scheduled_only=False,
                 resource_class="gpu-video",
             ),
         )
@@ -248,8 +250,7 @@ async def test_live_provider_state_is_persistent_and_policy_reacts() -> None:
         )
         assert blocked.selected_provider is None
         assert any(
-            reason.startswith("health_below_floor")
-            for reason in blocked.rejected[0].reasons
+            reason.startswith("health_below_floor") for reason in blocked.rejected[0].reasons
         )
 
         await repository.upsert(provider, health=1.0, quota_remaining=3, source="live-test")
@@ -640,9 +641,7 @@ async def test_live_scheduler_leader_lease() -> None:
     await _close_live_pool(pool)
 
 
-@pytest.mark.skipif(
-    os.getenv("HEVI_LIVE_WS") != "1", reason="two-instance WS check is opt-in"
-)
+@pytest.mark.skipif(os.getenv("HEVI_LIVE_WS") != "1", reason="two-instance WS check is opt-in")
 @pytest.mark.asyncio
 async def test_live_cross_instance_ws_fanout_latency() -> None:
     import websockets.asyncio.client
@@ -652,7 +651,10 @@ async def test_live_cross_instance_ws_fanout_latency() -> None:
 
     pool = await get_hevi_pg_pool()
     url_a = os.getenv("HEVI_LIVE_WS_URL_A", "ws://hevi-live-api-a:8000/api/ws/tasks")
-    url_b = os.getenv("HEVI_LIVE_WS_URL_B", os.getenv("HEVI_LIVE_WS_URL", "ws://hevi-live-api-b:8000/api/ws/tasks"))
+    url_b = os.getenv(
+        "HEVI_LIVE_WS_URL_B",
+        os.getenv("HEVI_LIVE_WS_URL", "ws://hevi-live-api-b:8000/api/ws/tasks"),
+    )
     sample_count = max(5, int(os.getenv("HEVI_LIVE_WS_SAMPLES", "20")))
     event_ids: list[uuid.UUID] = []
     try:
@@ -661,9 +663,7 @@ async def test_live_cross_instance_ws_fanout_latency() -> None:
                 aggregate_id = uuid.uuid4()
                 for socket in (socket_a, socket_b):
                     await socket.send(
-                        json.dumps(
-                            {"type": "subscribe", "resource_ids": [str(aggregate_id)]}
-                        )
+                        json.dumps({"type": "subscribe", "resource_ids": [str(aggregate_id)]})
                     )
                     subscribed = json.loads(await asyncio.wait_for(socket.recv(), timeout=2))
                     assert subscribed["type"] == "subscribed"
@@ -769,9 +769,7 @@ async def test_live_stale_worker_cannot_finish_after_recovery() -> None:
         attempts = AttemptRepository(pool)
         recovered = await attempts.recover_expired(limit=10)
         assert any(str(item.get("task_id")) == str(task_id) for item in recovered)
-        assert not await attempts.finish(
-            attempt_id, lease_token=stale_token, status="succeeded"
-        )
+        assert not await attempts.finish(attempt_id, lease_token=stale_token, status="succeeded")
 
         repository = TaskRepository(pool)
         claimed = await repository.claim_next_queued_task(
@@ -789,9 +787,7 @@ async def test_live_stale_worker_cannot_finish_after_recovery() -> None:
         assert await attempts.finish(
             fresh["id"], lease_token=str(claimed["lease_token"]), status="succeeded"
         )
-        assert not await attempts.finish(
-            attempt_id, lease_token=stale_token, status="succeeded"
-        )
+        assert not await attempts.finish(attempt_id, lease_token=stale_token, status="succeeded")
     finally:
         async with pool.acquire() as conn:
             await conn.execute("DELETE FROM domain_events WHERE aggregate_id = $1", task_id)
@@ -906,6 +902,7 @@ async def test_live_two_consumer_cursors_fan_out_p95() -> None:
     aggregate_id = uuid.uuid4()
     received_a: list[str] = []
     received_b: list[str] = []
+
     async def _capture_a(event: DomainEvent) -> None:
         received_a.append(str(event.id))
 

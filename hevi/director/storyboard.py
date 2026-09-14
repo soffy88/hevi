@@ -62,7 +62,10 @@ async def plan_shots(
 
     if image_pool_size > 1:
         return await _plan_with_pool(
-            topic=topic, num_shots=num_shots, style=style, llm=llm,
+            topic=topic,
+            num_shots=num_shots,
+            style=style,
+            llm=llm,
             pool_size=image_pool_size,
         )
 
@@ -129,7 +132,7 @@ async def _plan_with_pool(
     total = num_shots * pool_size
     prompt = (
         f"为主题《{topic}》(风格:{style})写 {total} 个分镜画面候选(每镜 {pool_size} 个变体)。"
-        f'只输出 JSON 数组,每条一句具体的视觉描述,尽量互不相同。'
+        f"只输出 JSON 数组,每条一句具体的视觉描述,尽量互不相同。"
     )
     try:
         resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
@@ -142,7 +145,7 @@ async def _plan_with_pool(
     # 按 pool_size 分组,每组池选择 1 条;不足组数时用兜底
     shots: list[str] = []
     for i in range(num_shots):
-        group = candidates[i * pool_size:(i + 1) * pool_size]
+        group = candidates[i * pool_size : (i + 1) * pool_size]
         if group:
             shots.append(select_best_from_pool(group, topic))
         else:

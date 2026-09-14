@@ -27,8 +27,16 @@ class DistributionRequest(BaseModel):
 
 async def _run(req: DistributionRequest, mode: str, _user: dict[str, Any] | None) -> dict[str, Any]:
     try:
-        target = DistributionTarget.model_validate(req.model_dump(exclude={"source", "artifact_id", "idempotency_key", "quality_passed"}))
-        job = create_job(req.source, target, artifact_id=req.artifact_id, quality_passed=req.quality_passed, idempotency_key=req.idempotency_key)
+        target = DistributionTarget.model_validate(
+            req.model_dump(exclude={"source", "artifact_id", "idempotency_key", "quality_passed"})
+        )
+        job = create_job(
+            req.source,
+            target,
+            artifact_id=req.artifact_id,
+            quality_passed=req.quality_passed,
+            idempotency_key=req.idempotency_key,
+        )
         result = await execute_job(job, req.source, mode=mode)
     except (OSError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -36,32 +44,47 @@ async def _run(req: DistributionRequest, mode: str, _user: dict[str, Any] | None
 
 
 @router.get("/probe")
-async def probe(_user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
+async def probe(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     return await matrixmedia_provider().probe()
 
 
 @router.get("/accounts")
-async def accounts(_user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
+async def accounts(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     items = await matrixmedia_provider().list_accounts()
     return {"accounts": [item.model_dump(mode="json") for item in items]}
 
 
 @router.get("/history")
-async def history(_user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
+async def history(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     items = await matrixmedia_provider().history()
     return {"history": list(items)}
 
 
 @router.post("/publish")
-async def publish(req: DistributionRequest, _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
+async def publish(
+    req: DistributionRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     return await _run(req, "publish", _user)
 
 
 @router.post("/schedule")
-async def schedule(req: DistributionRequest, _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
+async def schedule(
+    req: DistributionRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     return await _run(req, "schedule", _user)
 
 
 @router.post("/draft")
-async def draft(req: DistributionRequest, _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None) -> dict[str, Any]:
+async def draft(
+    req: DistributionRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
     return await _run(req, "draft", _user)

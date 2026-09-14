@@ -69,9 +69,18 @@ def extract_audio(video_path: str, workdir: str) -> AudioFile:
     """
     audio_path = Path(workdir) / "origin_audio.wav"
     args = [
-        "ffmpeg", "-y", "-i", video_path,
-        "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
-        str(audio_path)
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-vn",
+        "-acodec",
+        "pcm_s16le",
+        "-ar",
+        "16000",
+        "-ac",
+        "1",
+        str(audio_path),
     ]
     subprocess.run(args, check=True, capture_output=True)
 
@@ -233,11 +242,26 @@ def merge_tts_to_video(
     output_path: str,
 ) -> VideoFile:
     """将 TTS 音频合并到视频 (生成 video_with_tts.mp4)。"""
-    subprocess.run([
-        "ffmpeg", "-y", "-i", video_path, "-i", audio_path,
-        "-c:v", "copy", "-map", "0:v:0", "-map", "1:a:0",
-        "-shortest", output_path
-    ], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-i",
+            audio_path,
+            "-c:v",
+            "copy",
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+            "-shortest",
+            output_path,
+        ],
+        check=True,
+        capture_output=True,
+    )
 
     return VideoFile(path=output_path)
 
@@ -250,11 +274,21 @@ def render_horizontal_bilingual(
 ) -> VideoFile:
     """渲染横屏双语视频。"""
     # 使用 FFmpeg 烧录字幕
-    subprocess.run([
-        "ffmpeg", "-y", "-i", video_path,
-        "-vf", f"subtitles={srt_path}",
-        "-c:a", "copy", output_path
-    ], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-vf",
+            f"subtitles={srt_path}",
+            "-c:a",
+            "copy",
+            output_path,
+        ],
+        check=True,
+        capture_output=True,
+    )
 
     return VideoFile(path=output_path)
 
@@ -264,10 +298,11 @@ def render_horizontal_dubbed(
     output_path: str,
 ) -> VideoFile:
     """渲染横屏旁白视频。"""
-    subprocess.run([
-        "ffmpeg", "-y", "-i", video_path,
-        "-c:v", "copy", "-c:a", "copy", output_path
-    ], check=True, capture_output=True)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", video_path, "-c:v", "copy", "-c:a", "copy", output_path],
+        check=True,
+        capture_output=True,
+    )
 
     return VideoFile(path=output_path)
 
@@ -288,11 +323,21 @@ def render_vertical(
     - 目标：屏幕保持 1 行英文 + 1 行中文
     """
     # 实际实现使用 FFmpeg + 字幕滤镜
-    subprocess.run([
-        "ffmpeg", "-y", "-i", video_path,
-        "-vf", f"subtitles={srt_path}",
-        "-c:a", "copy", output_path
-    ], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-vf",
+            f"subtitles={srt_path}",
+            "-c:a",
+            "copy",
+            output_path,
+        ],
+        check=True,
+        capture_output=True,
+    )
 
     return VideoFile(path=output_path)
 
@@ -312,11 +357,21 @@ def generate_cover(
     """
     # 1. 提取视频首帧/关键帧
     thumb_path = Path(output_path).with_suffix(".thumb.jpg")
-    subprocess.run([
-        "ffmpeg", "-y", "-i", video_path,
-        "-vf", "select=eq(n\\,0)", "-vframes", "1",
-        str(thumb_path)
-    ], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            video_path,
+            "-vf",
+            "select=eq(n\\,0)",
+            "-vframes",
+            "1",
+            str(thumb_path),
+        ],
+        check=True,
+        capture_output=True,
+    )
 
     # 2. 使用图像生成模型 (Flux 2 Pro / DALL-E / SD) 生成封面
     # 实际实现调用相应的图像生成 API
@@ -365,21 +420,31 @@ def get_artifact_path(workdir: str, artifact: str) -> Path | None:
 
 __all__ = [
     # Video acquisition
-    "download_video", "extract_audio",
+    "download_video",
+    "extract_audio",
     # Transcription
-    "transcribe_audio", "transcribe_with_faster_whisper", "transcribe_with_whisper_cpp",
+    "transcribe_audio",
+    "transcribe_with_faster_whisper",
+    "transcribe_with_whisper_cpp",
     # Segmentation
     "segment_subtitle",
     # Translation
-    "translate_subtitle", "generate_short_mixed_srt",
+    "translate_subtitle",
+    "generate_short_mixed_srt",
     # TTS
-    "synthesize_tts", "synthesize_with_aliyun_tts", "synthesize_with_openai_tts",
+    "synthesize_tts",
+    "synthesize_with_aliyun_tts",
+    "synthesize_with_openai_tts",
     "synthesize_with_minimax_tts",
     # Rendering
-    "merge_tts_to_video", "render_horizontal_bilingual", "render_horizontal_dubbed",
+    "merge_tts_to_video",
+    "render_horizontal_bilingual",
+    "render_horizontal_dubbed",
     "render_vertical",
     # Cover
     "generate_cover",
     # Manifest
-    "write_manifest", "read_manifest", "get_artifact_path",
+    "write_manifest",
+    "read_manifest",
+    "get_artifact_path",
 ]

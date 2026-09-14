@@ -93,5 +93,6 @@ def test_kimi_platform_selection_keeps_endpoint_configuration_consistent():
         error_messages = [str(item.value) for item in app.error]
         assert any("platform.kimi.ai" in message for message in error_messages)
         assert any("api.moonshot.ai" in message for message in error_messages)
-        assert any("401 Invalid Authentication" in message for message in error_messages)
-
+        assert any(
+            "401 Invalid Authentication" in message for message in error_messages
+        )

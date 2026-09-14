@@ -6,25 +6,16 @@
 
 from __future__ import annotations
 
-import os
-import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from hevi.digital_human.schemas import (
     AudioMeasurement,
-    CaptionPhrase,
     CaptionPlan,
     ClipSpec,
-    JobStatus,
     PresenterJob,
     QAReport,
     TimelinePlan,
-    make_default_caption_plan,
-    make_default_job,
-    make_default_qa_report,
-    make_default_timeline,
 )
 
 # ─── 内容锁定/文案原子 ──────────────────────────────
@@ -235,9 +226,7 @@ def run_qa_gate(
             all_errors.append(f"FAILED: {check_name}")
 
     for label, media_path in (("final_audio", job.final_audio), ("rendered", job.rendered)):
-        if media_path and (
-            not Path(media_path).is_file() or Path(media_path).stat().st_size == 0
-        ):
+        if media_path and (not Path(media_path).is_file() or Path(media_path).stat().st_size == 0):
             all_errors.append(f"FAILED: {label}_artifact_missing")
 
     # 累积报告中的错误

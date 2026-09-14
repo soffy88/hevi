@@ -113,7 +113,7 @@ def _luma_std(px: list[tuple[int, int, int]]) -> float:
     luma = [0.299 * r + 0.587 * g + 0.114 * b for r, g, b in px]
     mean = sum(luma) / len(luma)
     var = sum((v - mean) ** 2 for v in luma) / len(luma)
-    return float((var ** 0.5) / 255.0)
+    return float((var**0.5) / 255.0)
 
 
 #: VLM 草稿注入钩子(可复用 draft_from_reference.draft_style_from_reference)。

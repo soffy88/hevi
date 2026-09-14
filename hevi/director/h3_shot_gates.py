@@ -56,9 +56,7 @@ def lint_h3_vocab(
 ) -> list[LintFinding]:
     findings: list[LintFinding] = []
     for rule, shot_id, message in lint_h3_camera(list(shot_list.shots)):
-        findings.append(
-            LintFinding(rule=rule, scene_no=0, shot_ids=[shot_id], message=message)
-        )
+        findings.append(LintFinding(rule=rule, scene_no=0, shot_ids=[shot_id], message=message))
     for rule, shot_id, message in lint_recipes(list(shot_list.shots), cards):
         findings.append(
             LintFinding(

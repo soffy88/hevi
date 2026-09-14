@@ -4,6 +4,7 @@ Element contracts come only from each installed package's ``__manifest__``;
 private implementation functions are inspected separately and never promoted
 to elements by discovery.
 """
+
 from __future__ import annotations
 
 import ast
@@ -39,11 +40,17 @@ def source_for(module_name: str) -> Path | None:
     return path if path.exists() else None
 
 
-def functions(path: Path | None) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]:
+def functions(
+    path: Path | None,
+) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]:
     if path is None or not path.exists():
         return {}
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    return {node.name: node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))}
+    return {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+    }
 
 
 def entity_exists(path: Path | None, name: str, seen: set[Path] | None = None) -> bool:
@@ -59,7 +66,10 @@ def entity_exists(path: Path | None, name: str, seen: set[Path] | None = None) -
     for node in tree.body:
         if not isinstance(node, ast.ImportFrom) or not node.module:
             continue
-        if not any(alias.asname == name or (alias.name == name and not alias.asname) for alias in node.names):
+        if not any(
+            alias.asname == name or (alias.name == name and not alias.asname)
+            for alias in node.names
+        ):
             continue
         imported = source_for(node.module)
         if entity_exists(imported, name, seen):
@@ -74,7 +84,19 @@ def manifest_rows(package: str, manifest: dict) -> list[dict]:
         name = entry.get("name", "")
         path = source_for(module)
         fn = functions(path).get(name) if path else None
-        rows.append({"name": name, "module": module, "symbol": f"{module}:{name}", "signature": entry.get("signature"), "version": manifest.get("version"), "is_async": bool(isinstance(fn, ast.AsyncFunctionDef)), "metadata": entry, "path": str(path) if path else None, "dangling": not entity_exists(path, name)})
+        rows.append(
+            {
+                "name": name,
+                "module": module,
+                "symbol": f"{module}:{name}",
+                "signature": entry.get("signature"),
+                "version": manifest.get("version"),
+                "is_async": bool(isinstance(fn, ast.AsyncFunctionDef)),
+                "metadata": entry,
+                "path": str(path) if path else None,
+                "dangling": not entity_exists(path, name),
+            }
+        )
     return rows
 
 
@@ -82,10 +104,12 @@ def exported_names(package: str) -> set[str]:
     root = CHECKOUTS[package] / package / "__init__.py"
     tree = ast.parse(root.read_text(encoding="utf-8"))
     for node in tree.body:
-        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets):
+        if isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
+        ):
             try:
                 return set(ast.literal_eval(node.value))
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 return set()
     return set()
 
@@ -105,7 +129,11 @@ def canonical_export_names(package: str) -> set[str]:
             for target in node.targets
         ):
             value = node.value
-            if isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id == "frozenset":
+            if (
+                isinstance(value, ast.Call)
+                and isinstance(value.func, ast.Name)
+                and value.func.id == "frozenset"
+            ):
                 value = value.args[0]
             return set(ast.literal_eval(value))
     raise RuntimeError(f"{package} lacks __3o_canonical_exports__")
@@ -120,7 +148,19 @@ def git_sha(package: str) -> str:
 def direct_element_calls(row: dict, allowed: dict[str, set[str]]) -> set[str]:
     path = Path(row["path"]) if row["path"] else None
     tree = ast.parse(path.read_text(encoding="utf-8")) if path else None
-    fn = next((node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == row["name"]), None) if tree else None
+    fn = (
+        next(
+            (
+                node
+                for node in tree.body
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name == row["name"]
+            ),
+            None,
+        )
+        if tree
+        else None
+    )
     calls = set()
     if fn:
         for node in ast.walk(fn):
@@ -136,9 +176,15 @@ def direct_element_calls(row: dict, allowed: dict[str, set[str]]) -> set[str]:
 def main() -> int:
     data = manifests()
     rows = {package: manifest_rows(package, manifest) for package, manifest in data.items()}
-    allowed = {package: {row["name"] for row in package_rows} for package, package_rows in rows.items()}
+    allowed = {
+        package: {row["name"] for row in package_rows} for package, package_rows in rows.items()
+    }
     dangling = [row for package_rows in rows.values() for row in package_rows if row["dangling"]]
-    unregistered = [{"package": package, "name": name} for package in CANONICAL for name in sorted(canonical_export_names(package) - allowed[package])]
+    unregistered = [
+        {"package": package, "name": name}
+        for package in CANONICAL
+        for name in sorted(canonical_export_names(package) - allowed[package])
+    ]
     support_exports = [
         {"package": package, "name": name}
         for package in CANONICAL
@@ -162,12 +208,23 @@ def main() -> int:
         if not fn:
             continue
         for node in ast.walk(fn):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in allowed["omodul"]:
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id in allowed["omodul"]
+            ):
                 omodul_edges.add((row["name"], node.func.id))
     report = {
         "source": "manifest-authoritative AST audit",
         "audited_shas": {package: git_sha(package) for package in CANONICAL},
-        "packages": {package: {"path": str(source_for(package)), "version": data[package].get("version"), "manifest_elements": rows[package]} for package in CANONICAL},
+        "packages": {
+            package: {
+                "path": str(source_for(package)),
+                "version": data[package].get("version"),
+                "manifest_elements": rows[package],
+            }
+            for package in CANONICAL
+        },
         "MANIFEST_DANGLING_ENTRIES": len(dangling),
         "MANIFEST_UNREGISTERED_CANONICAL_ASSETS": len(unregistered),
         "MANIFEST_SIGNATURE_MISMATCHES": 0,
@@ -200,9 +257,23 @@ def main() -> int:
     }
     out = ROOT / "artifacts/qualification/3o-v3-global-audit-after-oprim-oskill.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
-    return 1 if any(report[key] for key in ("MANIFEST_DANGLING_ENTRIES", "MANIFEST_UNREGISTERED_CANONICAL_ASSETS", "OPRIM_SIGNATURE_VIOLATIONS", "OMODUL_EDGES")) else 0
+    return (
+        1
+        if any(
+            report[key]
+            for key in (
+                "MANIFEST_DANGLING_ENTRIES",
+                "MANIFEST_UNREGISTERED_CANONICAL_ASSETS",
+                "OPRIM_SIGNATURE_VIOLATIONS",
+                "OMODUL_EDGES",
+            )
+        )
+        else 0
+    )
 
 
 if __name__ == "__main__":

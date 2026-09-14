@@ -90,8 +90,6 @@ def _detail(response: httpx.Response) -> str:
         payload = response.json()
         if isinstance(payload, dict) and payload.get("detail"):
             return str(payload["detail"])
-    except (ValueError, json.JSONDecodeError):
+    except ValueError, json.JSONDecodeError:
         pass
     return response.text[:300] or f"HTTP {response.status_code}"
-
-

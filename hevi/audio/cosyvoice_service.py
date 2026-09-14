@@ -110,13 +110,10 @@ async def cosyvoice_synthesize(
         async with httpx.AsyncClient(base_url=_base_url(), timeout=timeout) as client:
             response = await client.post("/api/ai/cosyvoice", json=payload)
             if response.status_code == 501:
-                raise AiEngineError(
-                    f"AI 引擎无 CosyVoice 模型可用: {_detail(response)}"
-                )
+                raise AiEngineError(f"AI 引擎无 CosyVoice 模型可用: {_detail(response)}")
             if response.status_code >= 400:
                 raise AiEngineError(
-                    f"AI 引擎 CosyVoice 合成失败 (HTTP {response.status_code}): "
-                    f"{_detail(response)}"
+                    f"AI 引擎 CosyVoice 合成失败 (HTTP {response.status_code}): {_detail(response)}"
                 )
             if not response.content:
                 raise AiEngineError("AI 引擎返回空音频")
@@ -138,6 +135,6 @@ def _detail(response: httpx.Response) -> str:
         payload = response.json()
         if isinstance(payload, dict) and payload.get("detail"):
             return str(payload["detail"])
-    except (ValueError, json.JSONDecodeError):
+    except ValueError, json.JSONDecodeError:
         pass
     return response.text[:300] or f"HTTP {response.status_code}"

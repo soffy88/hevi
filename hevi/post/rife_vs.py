@@ -77,9 +77,7 @@ def build_vpy(*, input_path: Path, rife_kwargs: dict[str, Any] | None = None) ->
     kwargs = dict(_DEFAULT_RIFE_KWARGS)
     kwargs.update(rife_kwargs or {})
     rendered = ", ".join(f"{k}={v!r}" for k, v in kwargs.items())
-    return _VPY_TEMPLATE.replace("%%INPUT%%", str(input_path)).replace(
-        "%%RIFE_KWARGS%%", rendered
-    )
+    return _VPY_TEMPLATE.replace("%%INPUT%%", str(input_path)).replace("%%RIFE_KWARGS%%", rendered)
 
 
 async def has_audio(path: Path) -> bool:
@@ -175,9 +173,7 @@ async def _run_vspipe(
         ff.kill()
         raise RifeUnavailable(f"vspipe 插帧超时({timeout_s:.0f}s): {output_path.name}") from None
     if proc.returncode != 0 or ff.returncode != 0:
-        raise RifeUnavailable(
-            f"vspipe 插帧失败(vspipe={proc.returncode}, ffmpeg={ff.returncode})"
-        )
+        raise RifeUnavailable(f"vspipe 插帧失败(vspipe={proc.returncode}, ffmpeg={ff.returncode})")
     if not output_path.exists() or output_path.stat().st_size < 1024:
         raise RifeUnavailable(f"vspipe 插帧产物缺失: {output_path}")
     return output_path
@@ -250,7 +246,8 @@ async def _run_comfy_vfi(
         missing = [k for k in _VFI_NODE_CLASSES if k not in info]
         if missing:
             raise RifeUnavailable(
-                "ComfyUI VFI 节点缺失: " + ", ".join(missing)
+                "ComfyUI VFI 节点缺失: "
+                + ", ".join(missing)
                 + "(ComfyUI ≥0.31 自带;升级或改 POST_RIFE_ENGINE=vspipe)"
             )
         options = _model_options(info)
@@ -336,8 +333,13 @@ async def interpolate_rife(
 
     if engine == "comfy_vfi":
         return await _run_comfy_vfi(
-            inp, outp, model=model, multiplier=multiplier, fps=fps,
-            client=cfg.get("client"), timeout_s=timeout_s,
+            inp,
+            outp,
+            model=model,
+            multiplier=multiplier,
+            fps=fps,
+            client=cfg.get("client"),
+            timeout_s=timeout_s,
         )
     if engine == "flowframes":
         exe = cfg.get("flowframes_exe") or os.getenv("POST_FLOWFRAMES_EXE", "")

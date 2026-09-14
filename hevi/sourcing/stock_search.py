@@ -15,7 +15,9 @@ class StockAssetRepository:
     def __init__(self, pool: PgPool) -> None:
         self._pool = pool
 
-    async def record_many(self, *, user_id: str, assets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    async def record_many(
+        self, *, user_id: str, assets: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         recorded: list[dict[str, Any]] = []
         for asset in assets:
             provider = str(asset["provider"])
@@ -94,7 +96,9 @@ class StockSearchService:
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._repository = repository
-        self._api_key = (api_key if api_key is not None else os.getenv("PEXELS_API_KEY", "")).strip()
+        self._api_key = (
+            api_key if api_key is not None else os.getenv("PEXELS_API_KEY", "")
+        ).strip()
         self._client = client
 
     @property
@@ -123,7 +127,9 @@ class StockSearchService:
             else:
                 async with httpx.AsyncClient(timeout=20.0) as client:
                     response = await client.get(
-                        f"{_PEXELS_API}{path}", params=params, headers={"Authorization": self._api_key}
+                        f"{_PEXELS_API}{path}",
+                        params=params,
+                        headers={"Authorization": self._api_key},
                     )
         except httpx.HTTPError as exc:
             raise StockProviderError(f"Pexels 请求失败：{exc}") from exc
@@ -148,7 +154,11 @@ class StockSearchService:
         if media_type == "video":
             files = item.get("video_files") or []
             preview_url = next(
-                (str(file["link"]) for file in files if isinstance(file, dict) and file.get("link")),
+                (
+                    str(file["link"])
+                    for file in files
+                    if isinstance(file, dict) and file.get("link")
+                ),
                 None,
             )
             thumbnail = item.get("image")

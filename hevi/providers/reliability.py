@@ -346,9 +346,7 @@ class _RequestRateLimiter:
 
     def __init__(self, policy: RateLimitPolicy) -> None:
         self._rate_per_s = (
-            policy.requests_per_minute / 60.0
-            if policy.requests_per_minute is not None
-            else None
+            policy.requests_per_minute / 60.0 if policy.requests_per_minute is not None else None
         )
         self._capacity = policy.burst
         self._tokens = float(policy.burst)
@@ -382,7 +380,10 @@ class _BudgetLedger:
         if min(input_tokens, output_tokens, cost_usd) < 0:
             raise ValueError("budget values cannot be negative")
         with self.lock:
-            if self.limits.max_requests is not None and self.requests + 1 > self.limits.max_requests:
+            if (
+                self.limits.max_requests is not None
+                and self.requests + 1 > self.limits.max_requests
+            ):
                 raise _BudgetError
             if (
                 self.limits.max_input_tokens is not None
@@ -416,8 +417,14 @@ class _BudgetLedger:
             output_tokens = self.output_tokens + usage.output_tokens - reserved_output
             cost_usd = self.cost_usd + usage.cost_usd - reserved_cost
             within_budget = (
-                (self.limits.max_input_tokens is None or input_tokens <= self.limits.max_input_tokens)
-                and (self.limits.max_output_tokens is None or output_tokens <= self.limits.max_output_tokens)
+                (
+                    self.limits.max_input_tokens is None
+                    or input_tokens <= self.limits.max_input_tokens
+                )
+                and (
+                    self.limits.max_output_tokens is None
+                    or output_tokens <= self.limits.max_output_tokens
+                )
                 and (self.limits.max_cost_usd is None or cost_usd <= self.limits.max_cost_usd)
             )
             # Account for observed usage even when it breaches the preflight
@@ -435,13 +442,18 @@ def estimate_input_tokens(payload: Any) -> int:
     if isinstance(payload, str):
         return max(1, math.ceil(len(payload) / 4))
     if isinstance(payload, Mapping):
-        return sum(estimate_input_tokens(key) + estimate_input_tokens(value) for key, value in payload.items())
+        return sum(
+            estimate_input_tokens(key) + estimate_input_tokens(value)
+            for key, value in payload.items()
+        )
     if isinstance(payload, (list, tuple)):
         return sum(estimate_input_tokens(item) for item in payload)
     return 0
 
 
-def usage_from_payload(payload: Any, *, cost_per_1k_input: float, cost_per_1k_output: float) -> ProviderUsage:
+def usage_from_payload(
+    payload: Any, *, cost_per_1k_input: float, cost_per_1k_output: float
+) -> ProviderUsage:
     usage = payload.get("usage", {}) if isinstance(payload, Mapping) else {}
     if not isinstance(usage, Mapping):
         usage = {}
@@ -449,8 +461,7 @@ def usage_from_payload(payload: Any, *, cost_per_1k_input: float, cost_per_1k_ou
     output_tokens = int(usage.get("completion_tokens", usage.get("output_tokens", 0)) or 0)
     cost = float(
         usage.get("cost_usd", 0.0)
-        or (input_tokens / 1000 * cost_per_1k_input)
-        + (output_tokens / 1000 * cost_per_1k_output)
+        or (input_tokens / 1000 * cost_per_1k_input) + (output_tokens / 1000 * cost_per_1k_output)
     )
     if min(input_tokens, output_tokens, cost) < 0:
         raise ValueError("provider usage cannot be negative")
@@ -573,8 +584,10 @@ class ProviderExecutionWrapper:
         output_token_budget: int,
         estimated_cost_usd: float,
     ) -> tuple[int, int, float]:
-        return input_tokens, output_token_budget, estimated_cost_usd + (
-            output_token_budget / 1000 * self.cost_per_1k_output
+        return (
+            input_tokens,
+            output_token_budget,
+            estimated_cost_usd + (output_token_budget / 1000 * self.cost_per_1k_output),
         )
 
     async def execute(
@@ -739,7 +752,10 @@ class ProviderExecutionWrapper:
             evidence_eligible=False,
         )
         self._record(
-            outcome=last_error.value, error_class=last_error, latency_s=result.latency_s, usage=ProviderUsage()
+            outcome=last_error.value,
+            error_class=last_error,
+            latency_s=result.latency_s,
+            usage=ProviderUsage(),
         )
         return result
 
@@ -774,7 +790,8 @@ class ProviderExecutionWrapper:
             self.budget.reserve(*reserved)
         except _BudgetError:
             result = ProviderCallResult[T](
-                ok=False, error_class=ProviderErrorClass.BUDGET_EXCEEDED,
+                ok=False,
+                error_class=ProviderErrorClass.BUDGET_EXCEEDED,
                 latency_s=time.monotonic() - started,
             )
             self._record(
@@ -787,7 +804,8 @@ class ProviderExecutionWrapper:
         if not self.breaker.allow():
             self.budget.settle(*reserved, ProviderUsage())
             result = ProviderCallResult[T](
-                ok=False, error_class=ProviderErrorClass.CIRCUIT_OPEN,
+                ok=False,
+                error_class=ProviderErrorClass.CIRCUIT_OPEN,
                 latency_s=time.monotonic() - started,
             )
             self._record(
@@ -815,7 +833,8 @@ class ProviderExecutionWrapper:
         if not self._sync_bulkhead.acquire():
             self.budget.settle(*reserved, ProviderUsage())
             result = ProviderCallResult[T](
-                ok=False, error_class=ProviderErrorClass.BULKHEAD_SATURATED,
+                ok=False,
+                error_class=ProviderErrorClass.BULKHEAD_SATURATED,
                 latency_s=time.monotonic() - started,
             )
             self._record(
@@ -871,7 +890,11 @@ class ProviderExecutionWrapper:
                     return result
                 except Exception as exc:
                     last_error, retry_after = _classify_exception(exc)
-                    if not idempotent or attempt >= self.config.retry.max_attempts or last_error not in _RETRYABLE_ERRORS:
+                    if (
+                        not idempotent
+                        or attempt >= self.config.retry.max_attempts
+                        or last_error not in _RETRYABLE_ERRORS
+                    ):
                         break
                     delay = retry_after if retry_after is not None else self._backoff(attempt)
                     if time.monotonic() + delay >= deadline:
@@ -999,7 +1022,9 @@ class ProviderExecutionWrapper:
         if not self.breaker.allow():
             self.budget.settle(*reserved, ProviderUsage())
             result = ProviderCallResult[T | Any](
-                ok=False, error_class=ProviderErrorClass.CIRCUIT_OPEN, latency_s=time.monotonic() - started
+                ok=False,
+                error_class=ProviderErrorClass.CIRCUIT_OPEN,
+                latency_s=time.monotonic() - started,
             )
             self._record(
                 outcome=ProviderErrorClass.CIRCUIT_OPEN.value,
@@ -1064,7 +1089,8 @@ class ProviderExecutionWrapper:
                         if raw_retry_after:
                             with contextlib.suppress(ValueError):
                                 retry_after = max(
-                                    0.0, min(float(raw_retry_after), self.config.retry.max_backoff_s)
+                                    0.0,
+                                    min(float(raw_retry_after), self.config.retry.max_backoff_s),
                                 )
                         raise _HttpStatusError(response.status_code, retry_after)
                     try:
@@ -1117,7 +1143,11 @@ class ProviderExecutionWrapper:
                     return result
                 except Exception as exc:
                     last_error, retry_after = _classify_exception(exc)
-                    if not idempotent or attempt >= self.config.retry.max_attempts or last_error not in _RETRYABLE_ERRORS:
+                    if (
+                        not idempotent
+                        or attempt >= self.config.retry.max_attempts
+                        or last_error not in _RETRYABLE_ERRORS
+                    ):
                         break
                     delay = retry_after if retry_after is not None else self._backoff(attempt)
                     if time.monotonic() + delay >= deadline:

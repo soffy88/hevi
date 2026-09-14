@@ -17,8 +17,13 @@ def compare_intent_to_artifact(intent: IntentProfile, analysis: ReelAnalysis) ->
         count_status = "PASS" if low <= observed_count <= high else "WARN"
         count_score = 1.0 if count_status == "PASS" else 0.0
     dimensions: dict[str, dict[str, Any]] = {
-        "SHOT_COUNT": {"expected": intent.expected_shot_count_range, "observed": observed_count,
-                       "score": count_score, "status": count_status, "evidence_refs": ["statistics:shot_count"]},
+        "SHOT_COUNT": {
+            "expected": intent.expected_shot_count_range,
+            "observed": observed_count,
+            "score": count_score,
+            "status": count_status,
+            "evidence_refs": ["statistics:shot_count"],
+        },
     }
     if intent.expected_pacing:
         average = analysis.statistics.average_shot_duration_ms
@@ -42,10 +47,13 @@ def compare_intent_to_artifact(intent: IntentProfile, analysis: ReelAnalysis) ->
         }
     statuses = {item["status"] for item in dimensions.values()}
     overall = (
-        GateStatus.FAIL if "FAIL" in statuses else
-        GateStatus.WARN if "WARN" in statuses else
-        GateStatus.NOT_EVALUABLE if "NOT_EVALUABLE" in statuses else
-        GateStatus.PASS
+        GateStatus.FAIL
+        if "FAIL" in statuses
+        else GateStatus.WARN
+        if "WARN" in statuses
+        else GateStatus.NOT_EVALUABLE
+        if "NOT_EVALUABLE" in statuses
+        else GateStatus.PASS
     )
     return ArtifactComparison(
         comparison_id=f"comparison:{uuid.uuid4().hex}",

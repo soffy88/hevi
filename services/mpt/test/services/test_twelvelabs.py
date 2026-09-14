@@ -39,9 +39,7 @@ class TestTwelveLabsService(unittest.TestCase):
         self.assertFalse(twelvelabs.is_enabled())
         # rerank must return the input list unchanged
         terms = ["b", "a", "c"]
-        self.assertEqual(
-            twelvelabs.rerank_terms_by_subject("subject", terms), terms
-        )
+        self.assertEqual(twelvelabs.rerank_terms_by_subject("subject", terms), terms)
         # analyze must be a no-op returning None
         self.assertIsNone(twelvelabs.analyze_clip("https://x/y.mp4"))
 

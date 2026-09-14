@@ -18,7 +18,9 @@ def test_status_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_run_refuses_unknown_verb(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("NARRATOR_APP_KEY", "x")
-    monkeypatch.setattr("hevi.narrator.client.shutil.which", lambda _name: "/usr/bin/narrator-ai-cli")
+    monkeypatch.setattr(
+        "hevi.narrator.client.shutil.which", lambda _name: "/usr/bin/narrator-ai-cli"
+    )
     with pytest.raises(ValueError, match="白名单"):
         run_narrator("rm")
 
@@ -30,7 +32,9 @@ def test_run_unavailable_without_cli(monkeypatch: pytest.MonkeyPatch) -> None:
         run_narrator("material-list")
 
 
-def test_cli_status_exits_2_without_key(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_status_exits_2_without_key(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     from hevi.skills.narrator_cli import main
 
     monkeypatch.delenv("NARRATOR_APP_KEY", raising=False)

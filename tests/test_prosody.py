@@ -29,7 +29,7 @@ def test_comma_is_not_sentence_break():
 
 
 def test_emphasis_quoted_words():
-    plan = analyze_prosody('他说“必须”离开。')
+    plan = analyze_prosody("他说“必须”离开。")
     assert "必须" in plan.units[0].emphasis
 
 
@@ -47,7 +47,9 @@ def test_emphasis_en_keywords():
 def test_speed_by_length():
     plan = analyze_prosody("短。")
     assert plan.units[0].speed > 1.0
-    plan2 = analyze_prosody("这是一个特别特别长的句子，它超过了二十八个字符的长度限制，所以应该降速。")
+    plan2 = analyze_prosody(
+        "这是一个特别特别长的句子，它超过了二十八个字符的长度限制，所以应该降速。"
+    )
     assert plan2.units[0].speed < 1.0
 
 

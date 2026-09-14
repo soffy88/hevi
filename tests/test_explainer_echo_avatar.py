@@ -58,9 +58,7 @@ def test_assembly_does_not_call_talking_face_with_placeholder(
     assert "presenter_image_url" not in packaging
 
 
-def test_assembly_stamps_presenter_video(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_assembly_stamps_presenter_video(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     captured: dict[str, object] = {}
 
     async def fake_render(storyboard, _output_dir, **_kwargs):
@@ -144,11 +142,11 @@ async def test_attach_echo_after_real_wav(tmp_path: Path) -> None:
     assert out is not None
     assert out.exists()
     assert (public / "continuous_avatar" / "continuous_avatar_l.mp4").exists()
-    assert storyboard.segments[0].visual_config["packaging"]["presenter_image_url"] == str(
-        face
-    )
-    assert storyboard.segments[0].visual_config["packaging"]["avatar_src"].endswith(
-        "continuous_avatar_p.mp4"
+    assert storyboard.segments[0].visual_config["packaging"]["presenter_image_url"] == str(face)
+    assert (
+        storyboard.segments[0]
+        .visual_config["packaging"]["avatar_src"]
+        .endswith("continuous_avatar_p.mp4")
     )
     assert manifest[0].visual_config["packaging"]["presenter_image_url"] == str(face)
 

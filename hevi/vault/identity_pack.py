@@ -199,9 +199,7 @@ async def _stability_precheck(
             cost_limit=cost_limit,
             cost_tracker=cost_tracker,
         )
-        batch_errors = {
-            i: r for i, r in enumerate(batch_results) if isinstance(r, Exception)
-        }
+        batch_errors = {i: r for i, r in enumerate(batch_results) if isinstance(r, Exception)}
 
     candidate_paths: list[Path] = []
     pass_flags: list[bool] = []

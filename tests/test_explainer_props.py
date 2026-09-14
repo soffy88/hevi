@@ -75,9 +75,7 @@ def test_deep_unpack_scalars_pass_through() -> None:
 
 def test_safe_dict_passthrough_and_json_string() -> None:
     assert safe_dict({"a": 1}) == {"a": 1}
-    assert safe_dict('{"chart_data": {"type": "bar"}}') == {
-        "chart_data": {"type": "bar"}
-    }
+    assert safe_dict('{"chart_data": {"type": "bar"}}') == {"chart_data": {"type": "bar"}}
 
 
 def test_safe_dict_tolerates_bad_input() -> None:

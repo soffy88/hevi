@@ -24,13 +24,18 @@ def validate_control(message: dict[str, Any]) -> list[str]:
             ("fps", 1, 60),
         ):
             try:
-                value = int(message.get(field) or (840 if field == "width" else 480 if field == "height" else 24))
-            except (TypeError, ValueError):
+                value = int(
+                    message.get(field)
+                    or (840 if field == "width" else 480 if field == "height" else 24)
+                )
+            except TypeError, ValueError:
                 errors.append(f"{field} must be an integer")
                 continue
             if not minimum <= value <= maximum:
                 errors.append(f"{field} must be {minimum}..{maximum}")
-    if kind == "frame" and not (message.get("index") is not None or message.get("timestamp_ms") is not None):
+    if kind == "frame" and not (
+        message.get("index") is not None or message.get("timestamp_ms") is not None
+    ):
         errors.append("frame.index or frame.timestamp_ms is required")
     return errors
 

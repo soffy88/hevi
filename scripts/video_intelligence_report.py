@@ -20,15 +20,17 @@ def main() -> int:
         analysis = ReelAnalysis.model_validate_json(
             (root / "real" / name / "analysis.json").read_text(encoding="utf-8")
         )
-        rows.append({
-            "line": name,
-            "video_probe": "PASS",
-            "shot_analysis": "PASS",
-            "quality_gate": analysis.quality_report.status.value,
-            "provenance": "PASS",
-            "shot_count": analysis.statistics.shot_count,
-            "artifact_sha256": analysis.video_asset.sha256,
-        })
+        rows.append(
+            {
+                "line": name,
+                "video_probe": "PASS",
+                "shot_analysis": "PASS",
+                "quality_gate": analysis.quality_report.status.value,
+                "provenance": "PASS",
+                "shot_count": analysis.statistics.shot_count,
+                "artifact_sha256": analysis.video_asset.sha256,
+            }
+        )
     report = {
         "contract_version": 1,
         "core_gpu_required": False,

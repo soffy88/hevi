@@ -51,7 +51,11 @@ def strip_emoji(text: str) -> str:
     result = []
     for ch in text:
         cp = ord(ch)
-        if (0x20 <= cp <= 0x7E) or (0x4E00 <= cp <= 0x9FFF) or cp in (0x0020, 0x002E, 0x002C, 0x003A, 0x003B, 0x0021, 0x003F, 0x0022, 0x0027):
+        if (
+            (0x20 <= cp <= 0x7E)
+            or (0x4E00 <= cp <= 0x9FFF)
+            or cp in (0x0020, 0x002E, 0x002C, 0x003A, 0x003B, 0x0021, 0x003F, 0x0022, 0x0027)
+        ):
             result.append(ch)
     return "".join(result)
 
@@ -68,7 +72,10 @@ def extract_short_link(text: str) -> str | None:
     """从文本中提取短链(如 v.douyin.com/xxx)。"""
     if not text:
         return None
-    m = re.search(r"(?:v\.douyin\.com|douyin\.com|iesdouyin\.com|xiaohongshu\.com|xhslink\.com|kuaishou\.com|ks\.com)/([A-Za-z0-9]+)", text)
+    m = re.search(
+        r"(?:v\.douyin\.com|douyin\.com|iesdouyin\.com|xiaohongshu\.com|xhslink\.com|kuaishou\.com|ks\.com)/([A-Za-z0-9]+)",
+        text,
+    )
     if m:
         return m.group(0)
     return None
@@ -95,6 +102,7 @@ def extract_query_params(url: str) -> dict[str, str]:
     if not url:
         return {}
     from urllib.parse import parse_qs, urlparse
+
     parsed = urlparse(url)
     return {k: v[0] for k, v in parse_qs(parsed.query).items()}
 

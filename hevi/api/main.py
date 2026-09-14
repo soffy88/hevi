@@ -134,8 +134,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
                 # uvicorn workers and makes them compete instead of fanning
                 # out the same event stream to every WebSocket instance.
                 consumer_name=(
-                    settings.event_consumer_name
-                    or f"api-{socket.gethostname()}-{os.getpid()}"
+                    settings.event_consumer_name or f"api-{socket.gethostname()}-{os.getpid()}"
                 ),
                 poll_interval=settings.event_consumer_poll_interval_s,
                 max_attempts=settings.event_consumer_max_attempts,

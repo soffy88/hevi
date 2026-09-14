@@ -56,8 +56,7 @@ def plan_broll(payload: dict[str, Any]) -> dict[str, Any]:
     """stock vs generate:有可检索关键词走语料库,抽象概念才生成。"""
     text = str(payload.get("text") or payload.get("topic") or "")
     abstract = bool(
-        re.search(r"概念|定理|制度|抽象|公式|原则", text)
-        or payload.get("force_generate")
+        re.search(r"概念|定理|制度|抽象|公式|原则", text) or payload.get("force_generate")
     )
     query = _first_clause(text) or text[:24]
     return {

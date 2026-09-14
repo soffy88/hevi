@@ -1,4 +1,5 @@
 """Test qwen_local provider: script_writer + storyboard generation."""
+
 import asyncio
 import os
 import time
@@ -6,14 +7,14 @@ import time
 os.environ["HEVI_LLM_PROVIDER"] = "qwen_local"
 
 import subprocess
-import json
 
 
 def vram_used_mib() -> int:
     try:
         r = subprocess.run(
             ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         return int(r.stdout.strip())
     except Exception:
@@ -21,8 +22,9 @@ def vram_used_mib() -> int:
 
 
 async def main() -> None:
-    from hevi.providers.registry import register_all_providers
     from obase.provider_registry import ProviderRegistry
+
+    from hevi.providers.registry import register_all_providers
 
     register_all_providers()
 
@@ -33,10 +35,12 @@ async def main() -> None:
     print("\n=== Test 1: raw LocalQwenAdapter call ===")
     vram_before = vram_used_mib()
     t0 = time.time()
-    resp = llm(messages=[
-        {"role": "system", "content": "You are a helpful assistant. Reply briefly in Chinese."},
-        {"role": "user", "content": "用一句话介绍人工智能。"},
-    ])
+    resp = llm(
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant. Reply briefly in Chinese."},
+            {"role": "user", "content": "用一句话介绍人工智能。"},
+        ]
+    )
     elapsed = time.time() - t0
     vram_after = vram_used_mib()
     content = resp.get("content", "")
@@ -59,7 +63,9 @@ async def main() -> None:
         elapsed2 = time.time() - t1
         vram_post = vram_used_mib()
         print(f"  Title: {script.title}")
-        print(f"  Scenes: {len(script.scenes)}, estimated_duration_s: {script.estimated_duration_s}")
+        print(
+            f"  Scenes: {len(script.scenes)}, estimated_duration_s: {script.estimated_duration_s}"
+        )
         print(f"  Time: {elapsed2:.1f}s | VRAM: {vram_pre}→{vram_post} MiB")
         if script.scenes:
             print(f"  Scene[0] narration: {script.scenes[0].narration[:120]}")
@@ -79,7 +85,9 @@ async def main() -> None:
             num_characters=2,
         )
         elapsed3 = time.time() - t2
-        print(f"  Chapters: {len(chapter_script.chapters)}, total_duration_s: {chapter_script.total_duration_s}")
+        print(
+            f"  Chapters: {len(chapter_script.chapters)}, total_duration_s: {chapter_script.total_duration_s}"
+        )
         print(f"  Characters: {chapter_script.characters}")
         print(f"  Time: {elapsed3:.1f}s")
         if chapter_script.chapters:
@@ -92,7 +100,7 @@ async def main() -> None:
     print("\n=== Summary ===")
     print(f"  {os.getenv('OLLAMA_MODEL', 'qwen2.5vl:7b')} via Ollama: working={content != ''}")
     print(f"  GPU VRAM peak: ~{max(vram_after, vram_post if 'vram_post' in dir() else 0)} MiB")
-    print(f"  DashScope dependency: ELIMINATED for script/storyboard steps")
+    print("  DashScope dependency: ELIMINATED for script/storyboard steps")
 
 
 asyncio.run(main())

@@ -327,9 +327,7 @@ async def test_task_service_run_task_with_fallback_integration():
         "duration_archetype": "1-5min",
         "video_provider": "ltx2_cloud",
         "audio_provider": "vibevoice",
-        "config_json": {
-            "provider_fallback_candidates": ["ltx2_cloud", "happyhorse_1_1_maas_lock"]
-        },
+        "config_json": {"provider_fallback_candidates": ["ltx2_cloud", "happyhorse_1_1_maas_lock"]},
     }
 
     service = TaskService(repo)

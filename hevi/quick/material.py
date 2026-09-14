@@ -26,9 +26,7 @@ def _to_dicts(items: list[MaterialInfo]) -> list[dict[str, Any]]:
     return out
 
 
-def search_materials_for_topic(
-    topic: str, cfg: QuickVideoConfig
-) -> list[dict[str, Any]]:
+def search_materials_for_topic(topic: str, cfg: QuickVideoConfig) -> list[dict[str, Any]]:
     """主题 → 多源素材检索, 返回按相关性排序的归一化条目(每源取最优 1 条)。
 
     无 key 的源自动降级; 全部失败返回空列表(不阻断 quick_video)。

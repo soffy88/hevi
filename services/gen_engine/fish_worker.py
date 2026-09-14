@@ -82,15 +82,14 @@ async def _main(args_path: str) -> None:
         decoder = _instantiate_dac(yaml.safe_load(cfg_path.read_text()))
         state_dict = torch.load(
             str(model_dir / "firefly-gan-vq-fsq-8x1024-21hz-generator.pth"),
-            map_location=device, weights_only=True,
+            map_location=device,
+            weights_only=True,
         )
         if "state_dict" in state_dict:
             state_dict = state_dict["state_dict"]
         if any("generator" in k for k in state_dict):
             state_dict = {
-                k.replace("generator.", ""): v
-                for k, v in state_dict.items()
-                if "generator." in k
+                k.replace("generator.", ""): v for k, v in state_dict.items() if "generator." in k
             }
         decoder.load_state_dict(state_dict, strict=False)
         decoder.eval().to(device=device)
@@ -105,8 +104,7 @@ async def _main(args_path: str) -> None:
         import gc
 
         is_oom = (
-            "out of memory" in str(_exc).lower()
-            or isinstance(_exc, torch.cuda.OutOfMemoryError)  # type: ignore[attr-defined]
+            "out of memory" in str(_exc).lower() or isinstance(_exc, torch.cuda.OutOfMemoryError)  # type: ignore[attr-defined]
         )
         if not is_oom:
             raise

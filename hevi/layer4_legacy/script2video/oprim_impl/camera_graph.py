@@ -87,11 +87,7 @@ def generation_order(tree: CameraTree) -> list[int]:
 def get_priority_shots(tree: CameraTree) -> list[int]:
     """被其他相机当父锚的镜头,必须先出首帧。"""
     return sorted(
-        {
-            node.parent_shot_idx
-            for node in tree.all_cameras
-            if node.parent_shot_idx is not None
-        }
+        {node.parent_shot_idx for node in tree.all_cameras if node.parent_shot_idx is not None}
     )
 
 

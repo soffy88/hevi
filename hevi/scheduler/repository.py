@@ -14,9 +14,7 @@ class SchedulerRepository:
     def __init__(self, pool: PgPool) -> None:
         self.pool = pool
 
-    async def acquire_leader(
-        self, name: str, owner_id: str, *, lease_seconds: int = 15
-    ) -> bool:
+    async def acquire_leader(self, name: str, owner_id: str, *, lease_seconds: int = 15) -> bool:
         """Acquire/renew one leader lease without a process-local mutex."""
 
         async with self.pool.acquire() as conn:
@@ -80,8 +78,7 @@ class SchedulerRepository:
                    GROUP BY user_id"""
             )
             running = {
-                str(row["user_id"] or "anonymous"): int(row["running"])
-                for row in active_rows
+                str(row["user_id"] or "anonymous"): int(row["running"]) for row in active_rows
             }
             resources = resources.model_copy(update={"tenant_running": running})
             requests = [SchedulingRequest.from_task(dict(row)) for row in rows]

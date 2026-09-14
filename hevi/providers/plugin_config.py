@@ -43,7 +43,15 @@ from hevi.providers.scoring import CapabilityRow, score_candidates_from_capabili
 logger = logging.getLogger(__name__)
 
 _ALLOWED_KINDS = {
-    "video", "image", "tts", "asr", "llm", "stock_video", "stock_image", "render", "other"
+    "video",
+    "image",
+    "tts",
+    "asr",
+    "llm",
+    "stock_video",
+    "stock_image",
+    "render",
+    "other",
 }
 
 
@@ -116,9 +124,7 @@ def score_plugins(decls: list[ProviderDecl], tool_name: str) -> list[dict[str, A
     scored = score_candidates_from_capabilities(rows, tool_name)
     out: list[dict[str, Any]] = []
     for s in scored:
-        meta = next(
-            (d.meta for d in decls if d.id == s.provider and d.tool == tool_name), {}
-        )
+        meta = next((d.meta for d in decls if d.id == s.provider and d.tool == tool_name), {})
         item = s.to_dict()
         item["id"] = s.provider  # 声明 id 与评分 provider 同键, 供路由/UI 统一消费
         out.append({**item, "meta": meta})
@@ -146,9 +152,7 @@ def _dir_fingerprint(d: Path) -> tuple[float, ...] | None:
         return None
 
 
-def load_catalog(
-    path: Path, catalog: PluginCatalog | None = None
-) -> PluginCatalog:
+def load_catalog(path: Path, catalog: PluginCatalog | None = None) -> PluginCatalog:
     """加载插件目录。mtime 未变则复用缓存(即时生效: 文件改动后下次调用即重载)。
 
     - path 为文件: 加载单文件;
@@ -160,9 +164,7 @@ def load_catalog(
     return _load_catalog_file(path, catalog)
 
 
-def _load_catalog_file(
-    path: Path, catalog: PluginCatalog | None = None
-) -> PluginCatalog:
+def _load_catalog_file(path: Path, catalog: PluginCatalog | None = None) -> PluginCatalog:
     if not path.exists():
         return PluginCatalog(source=path)
     try:
@@ -179,9 +181,7 @@ def _load_catalog_file(
     return PluginCatalog(source=path, mtime=mtime, decls=pf.providers)
 
 
-def _load_catalog_dir(
-    d: Path, catalog: PluginCatalog | None = None
-) -> PluginCatalog:
+def _load_catalog_dir(d: Path, catalog: PluginCatalog | None = None) -> PluginCatalog:
     fp = _dir_fingerprint(d)
     if fp is None:
         return PluginCatalog(source=d)
@@ -258,7 +258,11 @@ def invoke_declared_provider(
     command = meta.get("command")
     if isinstance(command, str):
         command = [command]
-    if not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command):
+    if (
+        not isinstance(command, list)
+        or not command
+        or not all(isinstance(item, str) and item for item in command)
+    ):
         raise ValueError(f"provider {decl.id} has no valid meta.endpoint or meta.command")
     try:
         completed = subprocess.run(

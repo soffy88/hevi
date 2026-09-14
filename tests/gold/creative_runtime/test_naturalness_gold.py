@@ -63,7 +63,9 @@ def test_every_positive_is_detected_with_a_location() -> None:
         audit = module.audit_naturalness(fixture.text, style_profile=fixture.profile())
         codes = {finding.code for finding in audit.findings}
         assert set(fixture.expected_codes).issubset(codes), fixture.fixture_id
-        primary = next(finding for finding in audit.findings if finding.code in fixture.expected_codes)
+        primary = next(
+            finding for finding in audit.findings if finding.code in fixture.expected_codes
+        )
         assert primary.location == fixture.expected_location, fixture.fixture_id
         assert primary.explanation, fixture.fixture_id
 

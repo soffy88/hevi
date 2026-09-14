@@ -49,7 +49,9 @@ def test_scene_blueprint_backward_compatibility() -> None:
 
 def test_revision_receipt_backward_compatibility(tmp_path: Path) -> None:
     receipt = persist_bible(_minimal(), tmp_path / "bible.json")
-    assert {"asset_id", "previous_revision", "new_revision", "committed", "validation"} <= set(receipt.__dataclass_fields__)
+    assert {"asset_id", "previous_revision", "new_revision", "committed", "validation"} <= set(
+        receipt.__dataclass_fields__
+    )
 
 
 def test_provenance_backward_compatibility() -> None:

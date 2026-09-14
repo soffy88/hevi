@@ -22,15 +22,7 @@ from hevi.ingest.video_watch import WatchResult
 
 
 def _watch(transcript: str | None = None, duration_s: float = 60.0) -> WatchResult:
-    segs = (
-        [
-            TranscriptSegment(
-                start=0.0, end=duration_s, text=transcript
-            )
-        ]
-        if transcript
-        else []
-    )
+    segs = [TranscriptSegment(start=0.0, end=duration_s, text=transcript)] if transcript else []
     return WatchResult(
         source="https://example.com/ref.mp4",
         frames=[],
@@ -127,16 +119,12 @@ class TestConceptsWithLLM:
         out = await derive_reference_concepts(_watch("x"), llm=FakeLLM(payload=bad))
         assert out[0]["duration_archetype"] == "short"
 
-    async def test_cost_estimate_failure_degrades(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_cost_estimate_failure_degrades(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def boom(**kw: object) -> object:
             raise RuntimeError("no pricing")
 
         monkeypatch.setattr("hevi.cost.estimator.estimate_cost", boom)
-        out = await derive_reference_concepts(
-            _watch("x"), llm=FakeLLM(payload=_llm_json(1))
-        )
+        out = await derive_reference_concepts(_watch("x"), llm=FakeLLM(payload=_llm_json(1)))
         assert out[0]["cost_estimate_usd"] is None
 
 

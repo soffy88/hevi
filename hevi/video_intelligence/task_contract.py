@@ -12,10 +12,13 @@ def preflight_video(path: str | Path, *, output_dir: str | Path) -> PreflightRes
     destination = Path(output_dir)
     checks = {
         "video_exists": target.is_file() and target.stat().st_size > 0,
-        "output_writable": (destination.exists() and destination.is_dir()) or destination.parent.exists(),
+        "output_writable": (destination.exists() and destination.is_dir())
+        or destination.parent.exists(),
     }
     errors = [name for name, passed in checks.items() if not passed]
-    return PreflightResult(status="READY" if not errors else "BLOCKED", checks=checks, errors=errors)
+    return PreflightResult(
+        status="READY" if not errors else "BLOCKED", checks=checks, errors=errors
+    )
 
 
 def validate_task_dependencies(task: VideoTask, completed: set[str]) -> PreflightResult:

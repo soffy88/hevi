@@ -77,6 +77,8 @@ class AssetRepository:
             data={"deleted_at": datetime.now(UTC).replace(tzinfo=None)},
         )
         return bool(ok)
+
+
 """Bridge hevi's async asset store to oskill's synchronous asset_loader contract.
 
 oskill.asset_reference_inject(*, shot_spec, asset_refs, asset_loader) calls

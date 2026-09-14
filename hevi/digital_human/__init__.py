@@ -26,14 +26,15 @@ from hevi.digital_human.avatar_render import (
     score_consistency,
 )
 from hevi.digital_human.duix_service import DuixLiveService, DuixUnavailable
-from hevi.digital_human.lipsync_driver import (
-    LipSyncCapability,
-    LipSyncUnsupported,
-    drive_lip_sync,
-    ensure_lip_sync,
-    lip_sync_capability,
+from hevi.digital_human.layer4.atoms import (
+    add_clip_to_timeline,
+    build_timeline,
+    calibrate_audio_loudness,
+    generate_narration,
+    lock_content,
+    run_preflight_check,
+    run_qa_gate,
 )
-from hevi.digital_human.models import Presenter
 from hevi.digital_human.layer4.production import (
     build_full_job_plan,
     execute_plan,
@@ -44,15 +45,6 @@ from hevi.digital_human.layer4.production import (
     plan_presenter_generation,
     plan_visual,
 )
-from hevi.digital_human.layer4.atoms import (
-    add_clip_to_timeline,
-    build_timeline,
-    calibrate_audio_loudness,
-    generate_narration,
-    lock_content,
-    run_preflight_check,
-    run_qa_gate,
-)
 from hevi.digital_human.layer4.skill_logic import (
     caption_plan,
     content_lock,
@@ -62,6 +54,14 @@ from hevi.digital_human.layer4.skill_logic import (
     qa_gate,
     visual_plan,
 )
+from hevi.digital_human.lipsync_driver import (
+    LipSyncCapability,
+    LipSyncUnsupported,
+    drive_lip_sync,
+    ensure_lip_sync,
+    lip_sync_capability,
+)
+from hevi.digital_human.models import Presenter
 
 # 3O 层导出
 from hevi.digital_human.schemas import (

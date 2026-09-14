@@ -35,6 +35,7 @@ class Constraint(BaseModel):
 
 class ConsumptionStage(StrEnum):
     """Lifecycle stage of a constraint as it flows from derivation to provider."""
+
     COMPILED = "compiled"
     ADAPTER_CONSUMED = "adapter_consumed"
     PROVIDER_SUBMITTED = "provider_submitted"
@@ -43,6 +44,7 @@ class ConsumptionStage(StrEnum):
 
 class ConstraintMapping(BaseModel):
     """Maps a single constraint to a location in the provider request payload."""
+
     constraint_id: str
     mapping_type: str  # prompt/reference/control/audio/camera/etc
     mapping_path: str  # e.g. request.image_refs[0], prompt.variables.subject
@@ -58,6 +60,7 @@ class ConstraintConsumptionReceipt(BaseModel):
     3. PROVIDER_SUBMITTED: request sent and accepted by provider
     4. PROVIDER_ACKED: provider returns job/request id
     """
+
     id: str
     production_id: str
     revision_id: str
@@ -79,6 +82,7 @@ class CoverageReport(BaseModel):
     renamed: consumed_constraints -> compiled_constraints
     new: adapter_consumed_constraints, provider_submitted_constraints, verified_constraints
     """
+
     expected_fields: int = 0
     derived_constraints: int = 0
     compiled_constraints: int = 0

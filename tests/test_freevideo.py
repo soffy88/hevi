@@ -64,10 +64,20 @@ def test_plan_from_json_structured():
         {
             "title": "Demo",
             "frames": [
-                {"kind": "bar", "title": "增长", "body": "季度", "duration": 5,
-                 "data": {"items": [{"label": "Q1", "value": 10}, {"label": "Q2", "value": 30}]}},
-                {"kind": "big_number", "title": "用户", "body": "突破", "duration": 4,
-                 "data": {"number": 1200000, "unit": "人"}},
+                {
+                    "kind": "bar",
+                    "title": "增长",
+                    "body": "季度",
+                    "duration": 5,
+                    "data": {"items": [{"label": "Q1", "value": 10}, {"label": "Q2", "value": 30}]},
+                },
+                {
+                    "kind": "big_number",
+                    "title": "用户",
+                    "body": "突破",
+                    "duration": 4,
+                    "data": {"number": 1200000, "unit": "人"},
+                },
                 {"kind": "quote", "title": "结语", "body": "让视频回归表达。"},
             ],
         }
@@ -115,7 +125,7 @@ def test_every_kind_renders_self_contained(kind):
     assert html.startswith("<!DOCTYPE html>")
     assert "</html>" in html
     # 自包含:无外链 http(s) 资源(除 CDN 外一律禁止)
-    assert not re.search(r'https?://(?!fonts\.gstatic|fonts\.google)', html)
+    assert not re.search(r"https?://(?!fonts\.gstatic|fonts\.google)", html)
     # 有 CSS 动画
     assert "@keyframes" in html
     # 每个模板有开场动画;单次动画时长不应失控(probe 上限 30s,成片时长由
@@ -175,8 +185,13 @@ def test_plan_from_json_parses_broll(tmp_path):
         json.dumps(
             {
                 "frames": [
-                    {"kind": "quote", "title": "T", "body": "B",
-                     "broll": "/tmp/x.mp4", "duration": 4},
+                    {
+                        "kind": "quote",
+                        "title": "T",
+                        "body": "B",
+                        "broll": "/tmp/x.mp4",
+                        "duration": 4,
+                    },
                     {"kind": "quote", "title": "T2", "body": "B2", "duration": 4},
                 ]
             }

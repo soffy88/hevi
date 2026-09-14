@@ -76,10 +76,12 @@ class ProviderScore:
 
     @property
     def weighted_score(self) -> float:
-        return float(round(
-            sum(getattr(self, dim) * self.weights.get(dim, 0.0) for dim in _DIMENSION_ORDER),
-            4,
-        ))
+        return float(
+            round(
+                sum(getattr(self, dim) * self.weights.get(dim, 0.0) for dim in _DIMENSION_ORDER),
+                4,
+            )
+        )
 
     def explain(self) -> str:
         """人类可读的评分解释, 供决策日志/审计。"""
@@ -148,9 +150,7 @@ def choose_provider(
     返回最高分 ProviderScore(候选为空 → None)。decision_log 非空时把全部候选
     评分与选中项追加写入 JSONL(无 PII, 字段仅 provider/tool_name/维度分/总分)。
     """
-    scored = score_providers(
-        tool_name, candidates, weights=weights, default_scores=default_scores
-    )
+    scored = score_providers(tool_name, candidates, weights=weights, default_scores=default_scores)
     if not scored:
         return None
     winner = scored[0]

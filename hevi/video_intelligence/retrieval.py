@@ -28,7 +28,9 @@ class RetrievalResult(StrictModel):
 def temporal_iou(
     observed_start_ms: int, observed_end_ms: int, expected_start_ms: int, expected_end_ms: int
 ) -> float:
-    intersection = max(0, min(observed_end_ms, expected_end_ms) - max(observed_start_ms, expected_start_ms))
+    intersection = max(
+        0, min(observed_end_ms, expected_end_ms) - max(observed_start_ms, expected_start_ms)
+    )
     union = max(observed_end_ms, expected_end_ms) - min(observed_start_ms, expected_start_ms)
     return intersection / union if union else 0.0
 
@@ -74,15 +76,23 @@ class VideoTemporalIndex(StrictModel):
 
     @classmethod
     def from_analysis(cls, analysis: Any) -> VideoTemporalIndex:
-        return cls(entries=[{
-            "asset_id": shot.asset_id,
-            "start_ms": shot.start_ms,
-            "end_ms": shot.end_ms,
-            "semantic_text": shot.semantic.description,
-            "structured_tags": [shot.semantic.category.value, shot.semantic.camera_motion.value],
-            "shot_refs": [shot.shot_id],
-            "event_refs": [],
-        } for shot in analysis.shots])
+        return cls(
+            entries=[
+                {
+                    "asset_id": shot.asset_id,
+                    "start_ms": shot.start_ms,
+                    "end_ms": shot.end_ms,
+                    "semantic_text": shot.semantic.description,
+                    "structured_tags": [
+                        shot.semantic.category.value,
+                        shot.semantic.camera_motion.value,
+                    ],
+                    "shot_refs": [shot.shot_id],
+                    "event_refs": [],
+                }
+                for shot in analysis.shots
+            ]
+        )
 
     def retrieve(self, query: RetrievalQuery, limit: int = 5) -> list[RetrievalResult]:
         words = set(query.raw_intent.lower().split())
@@ -91,10 +101,15 @@ class VideoTemporalIndex(StrictModel):
             text = f"{entry['semantic_text']} {' '.join(entry['structured_tags'])}".lower()
             overlap = len(words & set(text.split()))
             score = overlap / max(1, len(words))
-            rows.append(RetrievalResult(
-                asset_id=entry["asset_id"], start_ms=entry["start_ms"], end_ms=entry["end_ms"],
-                score=score, score_components={"metadata_overlap": score},
-                reason="indexed metadata match" if score else "indexed temporal candidate",
-                evidence_refs=entry["shot_refs"],
-            ))
+            rows.append(
+                RetrievalResult(
+                    asset_id=entry["asset_id"],
+                    start_ms=entry["start_ms"],
+                    end_ms=entry["end_ms"],
+                    score=score,
+                    score_components={"metadata_overlap": score},
+                    reason="indexed metadata match" if score else "indexed temporal candidate",
+                    evidence_refs=entry["shot_refs"],
+                )
+            )
         return sorted(rows, key=lambda row: (-row.score, row.start_ms))[:limit]
