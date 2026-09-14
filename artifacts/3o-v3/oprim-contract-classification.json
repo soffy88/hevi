@@ -1,0 +1,1416 @@
+{
+  "count": 141,
+  "source": "local HEVI AST",
+  "symbols": [
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.backup_workspace",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/backup.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/creative/oprim/backup.py::backup_workspace"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.restore_workspace",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/backup.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/creative/oprim/backup.py::restore_workspace"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.preview_semantic_edit",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/editing.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/creative/oprim/editing.py::preview_semantic_edit"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.preview_exact_edit",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/editing.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/creative/oprim/editing.py::preview_exact_edit"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.apply_exact_edit",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/editing.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/creative/oprim/editing.py::apply_exact_edit"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.persist_model",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/persistence.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/creative/oprim/persistence.py::persist_model"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.restore_model",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/persistence.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/creative/oprim/persistence.py::restore_model"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.compare_versions",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/state.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/creative/oprim/state.py::compare_versions"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.apply_state_delta",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/state.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/creative/oprim/state.py::apply_state_delta"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.claim_delivery",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/creative/oprim/webhooks.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/creative/oprim/webhooks.py::claim_delivery"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.calibrate_audio_loudness",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/digital_human/oprim/__init__.py::calibrate_audio_loudness"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.build_timeline",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 4,
+      "symbol": "hevi/digital_human/oprim/__init__.py::build_timeline"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.add_clip_to_timeline",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 7,
+      "symbol": "hevi/digital_human/oprim/__init__.py::add_clip_to_timeline"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.build_caption_plan",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/digital_human/oprim/__init__.py::build_caption_plan"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.run_qa_gate",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 7,
+      "symbol": "hevi/digital_human/oprim/__init__.py::run_qa_gate"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.split_into_phrases",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/caption.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 5,
+      "symbol": "hevi/digital_human/oprim/caption.py::split_into_phrases"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.assign_keyword_presets",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/caption.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/digital_human/oprim/caption.py::assign_keyword_presets"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.build_caption_plan",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/caption.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 4,
+      "symbol": "hevi/digital_human/oprim/caption.py::build_caption_plan"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.build_narration_spine",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/narration.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/digital_human/oprim/narration.py::build_narration_spine"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.topic_to_script",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/narration.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/digital_human/oprim/narration.py::topic_to_script"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.check_audio_loudness",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/qa.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 2,
+      "symbol": "hevi/digital_human/oprim/qa.py::check_audio_loudness"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.loudnorm_two_pass",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/render.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 5,
+      "symbol": "hevi/digital_human/oprim/render.py::loudnorm_two_pass"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.build_loudnorm_filter",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/render.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/digital_human/oprim/render.py::build_loudnorm_filter"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.encode_video",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/render.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 6,
+      "symbol": "hevi/digital_human/oprim/render.py::encode_video"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_contact_sheet",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/render.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/digital_human/oprim/render.py::generate_contact_sheet"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.calculate_contact_timestamps",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/render.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/digital_human/oprim/render.py::calculate_contact_timestamps"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.delivery_report",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/digital_human/oprim/render.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 9,
+      "symbol": "hevi/digital_human/oprim/render.py::delivery_report"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.freeze_truth",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/erduo/oprim/__init__.py::freeze_truth"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_creative_proposal",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/erduo/oprim/__init__.py::generate_creative_proposal"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.plan_chapters",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 3,
+      "symbol": "hevi/erduo/oprim/__init__.py::plan_chapters"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.plan_canary",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/erduo/oprim/__init__.py::plan_canary"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_lead_samples",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/erduo/oprim/__init__.py::generate_lead_samples"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_shot_sample",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/erduo/oprim/__init__.py::generate_shot_sample"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.render_shot",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/erduo/oprim/__init__.py::render_shot"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.render_chapter",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 3,
+      "symbol": "hevi/erduo/oprim/__init__.py::render_chapter"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.assemble_master",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/erduo/oprim/__init__.py::assemble_master"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.verify_canary",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/erduo/oprim/__init__.py::verify_canary"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.canary_passed_threshold",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/erduo/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/erduo/oprim/__init__.py::canary_passed_threshold"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.download_video",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 3,
+      "symbol": "hevi/krillinai/oprim/__init__.py::download_video"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.extract_audio",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::extract_audio"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.transcribe_audio",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::transcribe_audio"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.transcribe_with_faster_whisper",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/krillinai/oprim/__init__.py::transcribe_with_faster_whisper"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.transcribe_with_whisper_cpp",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::transcribe_with_whisper_cpp"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.segment_subtitle",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::segment_subtitle"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.translate_subtitle",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/krillinai/oprim/__init__.py::translate_subtitle"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_short_mixed_srt",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::generate_short_mixed_srt"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 3,
+      "symbol": "hevi/krillinai/oprim/__init__.py::synthesize_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_with_aliyun_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 3,
+      "symbol": "hevi/krillinai/oprim/__init__.py::synthesize_with_aliyun_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_with_openai_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::synthesize_with_openai_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_with_minimax_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::synthesize_with_minimax_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.merge_tts_to_video",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 3,
+      "symbol": "hevi/krillinai/oprim/__init__.py::merge_tts_to_video"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.render_horizontal_bilingual",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 4,
+      "symbol": "hevi/krillinai/oprim/__init__.py::render_horizontal_bilingual"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.render_horizontal_dubbed",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::render_horizontal_dubbed"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.render_vertical",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 5,
+      "symbol": "hevi/krillinai/oprim/__init__.py::render_vertical"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_cover",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 4,
+      "symbol": "hevi/krillinai/oprim/__init__.py::generate_cover"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.write_manifest",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::write_manifest"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.get_artifact_path",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/krillinai/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/krillinai/oprim/__init__.py::get_artifact_path"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.rank_context_blocks",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/longcat/oprim/context.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/longcat/oprim/context.py::rank_context_blocks"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.pack_context",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/longcat/oprim/context.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/longcat/oprim/context.py::pack_context"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_story_details",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/magiviz/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 3,
+      "symbol": "hevi/magiviz/oprim/__init__.py::generate_story_details"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_character_image",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/magiviz/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/magiviz/oprim/__init__.py::generate_character_image"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_all_characters",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/magiviz/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/magiviz/oprim/__init__.py::generate_all_characters"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_storyboard_frame",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/magiviz/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 4,
+      "symbol": "hevi/magiviz/oprim/__init__.py::generate_storyboard_frame"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_storyboard",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/magiviz/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/magiviz/oprim/__init__.py::generate_storyboard"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_scene_video",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/magiviz/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/magiviz/oprim/__init__.py::generate_scene_video"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_scene_videos_parallel",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/magiviz/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/magiviz/oprim/__init__.py::generate_scene_videos_parallel"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.compose_story_video",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/magiviz/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 5,
+      "symbol": "hevi/magiviz/oprim/__init__.py::compose_story_video"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.register_tool",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/montage/oprim/__init__.py::register_tool"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.estimate_cost",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 6,
+      "symbol": "hevi/montage/oprim/__init__.py::estimate_cost"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.reserve_cost",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 3,
+      "symbol": "hevi/montage/oprim/__init__.py::reserve_cost"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.reconcile_cost",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 3,
+      "symbol": "hevi/montage/oprim/__init__.py::reconcile_cost"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.analyze_reference_video",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/montage/oprim/__init__.py::analyze_reference_video"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.sample_frames",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/montage/oprim/__init__.py::sample_frames"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.apply_playbook_to_compose",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/montage/oprim/__init__.py::apply_playbook_to_compose"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.write_checkpoint",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/montage/oprim/__init__.py::write_checkpoint"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.update_checkpoint_approval",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/montage/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 3,
+      "symbol": "hevi/montage/oprim/__init__.py::update_checkpoint_approval"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.clip_reframing_params",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 3,
+      "symbol": "hevi/openshorts/oprim/__init__.py::clip_reframing_params"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.detect_scenes_gemini",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 4,
+      "symbol": "hevi/openshorts/oprim/__init__.py::detect_scenes_gemini"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.snap_clip_to_words_auto",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 6,
+      "symbol": "hevi/openshorts/oprim/__init__.py::snap_clip_to_words_auto"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.build_transcript_windows",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 4,
+      "symbol": "hevi/openshorts/oprim/__init__.py::build_transcript_windows"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_script_from_description",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/openshorts/oprim/__init__.py::generate_script_from_description"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.plan_ai_short_actor",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/openshorts/oprim/__init__.py::plan_ai_short_actor"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_youtube_titles",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/openshorts/oprim/__init__.py::generate_youtube_titles"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_youtube_thumbnail",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 4,
+      "symbol": "hevi/openshorts/oprim/__init__.py::generate_youtube_thumbnail"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.generate_youtube_description",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 3,
+      "symbol": "hevi/openshorts/oprim/__init__.py::generate_youtube_description"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.make_clip_spec",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/openshorts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 5,
+      "symbol": "hevi/openshorts/oprim/__init__.py::make_clip_spec"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.extract_segment_timestamps",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/pipeline_lite/oprim/oprim_asr.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 3,
+      "symbol": "hevi/pipeline_lite/oprim/oprim_asr.py::extract_segment_timestamps"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.mux_audio_video",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/pipeline_lite/oprim/oprim_ffmpeg.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 3,
+      "symbol": "hevi/pipeline_lite/oprim/oprim_ffmpeg.py::mux_audio_video"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.render_lite_html",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/pipeline_lite/oprim/oprim_html_gen.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 3,
+      "symbol": "hevi/pipeline_lite/oprim/oprim_html_gen.py::render_lite_html"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.record_html_to_video",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/pipeline_lite/oprim/oprim_playwright.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/pipeline_lite/oprim/oprim_playwright.py::record_html_to_video"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_master_audio",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/pipeline_lite/oprim/oprim_tts.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/pipeline_lite/oprim/oprim_tts.py::synthesize_master_audio"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.resolve_scene",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/pipeline_lite/oprim/oprim_visual_scenes.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 3,
+      "symbol": "hevi/pipeline_lite/oprim/oprim_visual_scenes.py::resolve_scene"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.resolve_browser_mode",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/platforms/oprim/login.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/platforms/oprim/login.py::resolve_browser_mode"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.cooldown_for_error",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/platforms/oprim/risk.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/platforms/oprim/risk.py::cooldown_for_error"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.next_risk_check_time",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/platforms/oprim/risk.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/platforms/oprim/risk.py::next_risk_check_time"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.sign_request",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/platforms/oprim/signing.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/platforms/oprim/signing.py::sign_request"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.sign_xhs_request",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/platforms/oprim/signing.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/platforms/oprim/signing.py::sign_xhs_request"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.default_description",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/cameo_bind.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/cameo_bind.py::default_description"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.children_of",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/camera_graph.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/camera_graph.py::children_of"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.compute_missing_info",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/camera_graph.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/camera_graph.py::compute_missing_info"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.should_split_identities",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/character_fuse.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/character_fuse.py::should_split_identities"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.merge_feature_text",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/character_fuse.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/character_fuse.py::merge_feature_text"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.token_overlap_score",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/novel_split.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/novel_split.py::token_overlap_score"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.retrieve_chunks",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/novel_split.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/novel_split.py::retrieve_chunks"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.select_pairs_by_indices",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/reference_pick.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/reference_pick.py::select_pairs_by_indices"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.build_transition_prompt",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/script2video/oprim/transition_prompt.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/script2video/oprim/transition_prompt.py::build_transition_prompt"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.normalize_text",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/cue_clock.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro/oprim/cue_clock.py::normalize_text"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.should_break_group",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/cue_clock.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro/oprim/cue_clock.py::should_break_group"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.join_group_text",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/cue_clock.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro/oprim/cue_clock.py::join_group_text"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.char_weighted_spans",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/cue_clock.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 3,
+      "symbol": "hevi/voicepro/oprim/cue_clock.py::char_weighted_spans"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.get_model",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/f5_catalog.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro/oprim/f5_catalog.py::get_model"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.pick_model_for_language",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/f5_catalog.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro/oprim/f5_catalog.py::pick_model_for_language"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.place_clips_on_clock",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/timeline_pad.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro/oprim/timeline_pad.py::place_clips_on_clock"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.should_keep_original",
+      "classification": "TRUE_OPRIM",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/translate_backoff.py",
+      "migration_action": "RECLASSIFY_OPRIM",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro/oprim/translate_backoff.py::should_keep_original"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.merge_batch_and_retries",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro/oprim/translate_backoff.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 3,
+      "symbol": "hevi/voicepro/oprim/translate_backoff.py::merge_batch_and_retries"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.normalize_audio",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_asr/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_asr/oprim/__init__.py::normalize_audio"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.transcribe_faster_whisper",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_asr/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_asr/oprim/__init__.py::transcribe_faster_whisper"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.transcribe_whisper_cpp",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_asr/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_asr/oprim/__init__.py::transcribe_whisper_cpp"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.transcribe_aliyun_asr",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_asr/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_asr/oprim/__init__.py::transcribe_aliyun_asr"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.transcribe_openai_whisper",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_asr/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_asr/oprim/__init__.py::transcribe_openai_whisper"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.verify_asr_result",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_asr/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 3,
+      "symbol": "hevi/voicepro_asr/oprim/__init__.py::verify_asr_result"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.cosyvoice_zero_shot",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_clone/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_clone/oprim/__init__.py::cosyvoice_zero_shot"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.cosyvoice_cross_lingual",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_clone/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 5,
+      "symbol": "hevi/voicepro_clone/oprim/__init__.py::cosyvoice_cross_lingual"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.cosyvoice_instruct",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_clone/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_clone/oprim/__init__.py::cosyvoice_instruct"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.f5_tts_zero_shot",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_clone/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_clone/oprim/__init__.py::f5_tts_zero_shot"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.merge_voice_clones",
+      "classification": "MISCLASSIFIED_LAYER4",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_clone/oprim/__init__.py",
+      "migration_action": "MOVE_LAYER4",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_clone/oprim/__init__.py::merge_voice_clones"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.verify_clone_quality",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_clone/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_clone/oprim/__init__.py::verify_clone_quality"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.translate_deepl",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_translate/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_translate/oprim/__init__.py::translate_deepl"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.translate_deep_translator",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_translate/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_translate/oprim/__init__.py::translate_deep_translator"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.translate_azure_translator",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_translate/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 5,
+      "symbol": "hevi/voicepro_translate/oprim/__init__.py::translate_azure_translator"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.translate_llm",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_translate/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 7,
+      "symbol": "hevi/voicepro_translate/oprim/__init__.py::translate_llm"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.translate_text",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_translate/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_translate/oprim/__init__.py::translate_text"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.apply_terminology",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_translate/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_translate/oprim/__init__.py::apply_terminology"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_edge_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_tts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 5,
+      "symbol": "hevi/voicepro_tts/oprim/__init__.py::synthesize_edge_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_openai_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_tts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 5,
+      "symbol": "hevi/voicepro_tts/oprim/__init__.py::synthesize_openai_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_minimax_tts",
+      "classification": "MOVE_OBASE",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_tts/oprim/__init__.py",
+      "migration_action": "MOVE_OBASE",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_tts/oprim/__init__.py::synthesize_minimax_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_cosyvoice",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_tts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 5,
+      "symbol": "hevi/voicepro_tts/oprim/__init__.py::synthesize_cosyvoice"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_f5_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_tts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 5,
+      "symbol": "hevi/voicepro_tts/oprim/__init__.py::synthesize_f5_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_kokoro_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_tts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_tts/oprim/__init__.py::synthesize_kokoro_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_azure_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_tts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 4,
+      "symbol": "hevi/voicepro_tts/oprim/__init__.py::synthesize_azure_tts"
+    },
+    {
+      "blocking_symbols": [],
+      "canonical_equivalent": "oprim.synthesize_tts",
+      "classification": "MISCLASSIFIED_OMODUL",
+      "consumer_search_root": "/data/soffy/projects/hevi",
+      "current_path": "hevi/voicepro_tts/oprim/__init__.py",
+      "migration_action": "RECLASSIFY_OMODUL",
+      "positional_arguments": 2,
+      "symbol": "hevi/voicepro_tts/oprim/__init__.py::synthesize_tts"
+    }
+  ]
+}
