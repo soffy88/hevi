@@ -28,7 +28,14 @@ from hevi.creative.omodul.cover import CoverGeneration, CoverModule
 from hevi.creative.omodul.export import ExportModule
 from hevi.creative.omodul.fanfic import DerivedCanon, FanficModule
 from hevi.creative.omodul.forecast import ForecastEngine, ForecastResult, StaleForecastError
-from hevi.creative.omodul.genre import GenreFinding, GenreModule
+from hevi.creative.omodul.genre import (
+    BLUEPRINTS,
+    GenreBlueprint,
+    GenreFinding,
+    GenreModule,
+    GenrePlan,
+    GenreValidationError,
+)
 from hevi.creative.omodul.importer import ImportModule, ImportResult
 from hevi.creative.omodul.interactive import (
     GraphFinding,
@@ -129,6 +136,10 @@ __all__ = [
     "TrendSnapshot",
     "GenreFinding",
     "GenreModule",
+    "GenreBlueprint",
+    "GenrePlan",
+    "GenreValidationError",
+    "BLUEPRINTS",
     "ImportModule",
     "ImportResult",
     "GraphFinding",

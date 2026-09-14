@@ -1,34 +1,48 @@
 {
   "capability_id": "extensible-genre-system",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/extensible-genre-system/run-2d4f98d7a81c/short-package.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/extensible-genre-system/run-71b2d12988ea/genre-plans.json",
   "checks": {
-    "FIVE_PROFILES": true,
+    "BUILTIN_PROFILES": true,
+    "DISTINCT_PLANNING": true,
+    "PACING_EFFECT": true,
+    "DIALOGUE_EFFECT": true,
+    "GENRE_AUDIT_EFFECT": true,
     "FORBIDDEN_PATTERN_RULE": true,
     "FATIGUE_RULE": true,
+    "REQUIRED_PATTERN_GATE": true,
     "PROJECT_SCOPED": true,
     "INVALID_RULE_FAIL_CLOSED": true,
-    "PLANNING_AND_PACING_EFFECT": false
+    "COPY_BEFORE_EDIT": true,
+    "PLANNING_AND_PACING_EFFECT": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/extensible-genre-system/run-2d4f98d7a81c/short-package.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/extensible-genre-system/run-71b2d12988ea/genre-plans.json"
   ],
   "recovery": [
-    "reload short package and style profile"
+    "reload genre plans",
+    "copy built-in before editing"
   ],
   "failure_injections": [
-    "empty brief",
-    "naturalness defect corpus",
-    "genre forbidden patterns"
+    "unknown genre",
+    "empty rule",
+    "duplicate profile",
+    "forbidden pattern"
   ],
   "details": {
-    "genre_finding_counts": [
-      1,
-      1,
-      1,
-      1,
-      1
-    ]
+    "builtin_count": 8,
+    "distinct_plans": 8,
+    "pacing_profiles": [
+      "accelerating",
+      "dread",
+      "kinetic",
+      "measured",
+      "procedural",
+      "quest",
+      "reflective",
+      "slow-burn"
+    ],
+    "audit_vectors": 8
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

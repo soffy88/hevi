@@ -593,7 +593,7 @@ capabilities:
     hevi_capability_id: creative.genre_system
     qualification_test: built-in, custom, invalid rule, applied audit, project isolation
     qualification_evidence_path: artifacts/qualification/creative-runtime/extensible-genre-system.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: market-radar
     name: Market and audience radar

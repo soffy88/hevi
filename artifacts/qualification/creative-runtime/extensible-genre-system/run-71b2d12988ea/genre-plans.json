@@ -1,0 +1,193 @@
+[
+  {
+    "action_target": 0.1,
+    "beats": [
+      "setup",
+      "clue",
+      "complication",
+      "revelation",
+      "turn"
+    ],
+    "dialogue_target": 0.4,
+    "forbidden_patterns": [
+      "coincidence",
+      "spell"
+    ],
+    "genre": "mystery",
+    "pacing_profile": "measured",
+    "required_patterns": [
+      "clue",
+      "suspect"
+    ],
+    "scene_count": 5,
+    "target_words_per_chapter": 2800
+  },
+  {
+    "action_target": 0.45,
+    "beats": [
+      "hook",
+      "threat",
+      "pursuit",
+      "setback",
+      "climax",
+      "turn"
+    ],
+    "dialogue_target": 0.25,
+    "forbidden_patterns": [
+      "boredom",
+      "spell"
+    ],
+    "genre": "thriller",
+    "pacing_profile": "accelerating",
+    "required_patterns": [
+      "deadline",
+      "pursuit"
+    ],
+    "scene_count": 6,
+    "target_words_per_chapter": 2400
+  },
+  {
+    "action_target": 0.05,
+    "beats": [
+      "meet",
+      "spark",
+      "misunderstand",
+      "rupture",
+      "turn",
+      "resolve"
+    ],
+    "dialogue_target": 0.55,
+    "forbidden_patterns": [
+      "instalove",
+      "spell"
+    ],
+    "genre": "romance",
+    "pacing_profile": "slow-burn",
+    "required_patterns": [
+      "meet",
+      "misunderstand"
+    ],
+    "scene_count": 4,
+    "target_words_per_chapter": 2600
+  },
+  {
+    "action_target": 0.2,
+    "beats": [
+      "normal",
+      "unease",
+      "isolation",
+      "threat",
+      "turn",
+      "aftermath"
+    ],
+    "dialogue_target": 0.15,
+    "forbidden_patterns": [
+      "jump scare only",
+      "spell"
+    ],
+    "genre": "horror",
+    "pacing_profile": "dread",
+    "required_patterns": [
+      "isolation",
+      "threat"
+    ],
+    "scene_count": 5,
+    "target_words_per_chapter": 2500
+  },
+  {
+    "action_target": 0.6,
+    "beats": [
+      "cold_open",
+      "chase",
+      "fight",
+      "breather",
+      "climax",
+      "turn",
+      "coda"
+    ],
+    "dialogue_target": 0.1,
+    "forbidden_patterns": [
+      "exposition dump",
+      "spell"
+    ],
+    "genre": "action",
+    "pacing_profile": "kinetic",
+    "required_patterns": [
+      "chase",
+      "fight"
+    ],
+    "scene_count": 7,
+    "target_words_per_chapter": 2200
+  },
+  {
+    "action_target": 0.02,
+    "beats": [
+      "image",
+      "interior",
+      "turn",
+      "echo"
+    ],
+    "dialogue_target": 0.2,
+    "forbidden_patterns": [
+      "cliche",
+      "spell"
+    ],
+    "genre": "literary",
+    "pacing_profile": "reflective",
+    "required_patterns": [
+      "image",
+      "theme"
+    ],
+    "scene_count": 3,
+    "target_words_per_chapter": 3200
+  },
+  {
+    "action_target": 0.3,
+    "beats": [
+      "call",
+      "crossing",
+      "trial",
+      "cost",
+      "turn",
+      "climax",
+      "return"
+    ],
+    "dialogue_target": 0.3,
+    "forbidden_patterns": [
+      "deus ex machina",
+      "spell"
+    ],
+    "genre": "fantasy",
+    "pacing_profile": "quest",
+    "required_patterns": [
+      "world rule",
+      "cost"
+    ],
+    "scene_count": 6,
+    "target_words_per_chapter": 3000
+  },
+  {
+    "action_target": 0.25,
+    "beats": [
+      "premise",
+      "constraint",
+      "experiment",
+      "consequence",
+      "turn",
+      "resolution"
+    ],
+    "dialogue_target": 0.35,
+    "forbidden_patterns": [
+      "handwave",
+      "spell"
+    ],
+    "genre": "science-fiction",
+    "pacing_profile": "procedural",
+    "required_patterns": [
+      "constraint",
+      "consequence"
+    ],
+    "scene_count": 5,
+    "target_words_per_chapter": 2900
+  }
+]

@@ -25,6 +25,7 @@ from hevi.creative.omodul import (
     ContextCandidate,
     CreativeContextCompiler,
     GenreModule,
+    GenreValidationError,
     HeavyActionConfirmation,
     ImportResult,
     LongFormWorkflow,
@@ -71,6 +72,8 @@ from hevi.obase.creative import (
     ContinuityFact,
     CreativeArtifact,
     CreativeAuthority,
+    GenreProfile,
+    GenreRule,
     InformationState,
     LocationState,
     NarrativeAudit,
@@ -958,7 +961,6 @@ def qualify_short_style_genre(root: Path) -> Evidence:
         (("betrayal",), ("secret",)),
         (("curse",), ("ancient",)),
     ]
-    from hevi.obase.creative import GenreProfile
 
     findings = tuple(
         genre.audit(
@@ -2130,17 +2132,112 @@ def qualify_style(root: Path) -> Evidence:
 
 
 def qualify_genre(root: Path) -> Evidence:
-    evidence = qualify_short_style_genre(root)
-    return _relabel(
-        evidence,
+    project_id = uuid4()
+    module = GenreModule()
+    names = module.list_builtin()
+    plans = []
+    for name in names:
+        profile = module.profile(project_id=project_id, name=name)
+        plan = module.plan(profile, brief="A locked harbour and a missing key")
+        plans.append((name, profile, plan))
+    signatures = [plan.signature() for _, _, plan in plans]
+    distinct_plans = len(set(signatures)) == len(names) and len(names) >= 8
+    pacing_profiles = {plan.pacing_profile for _, _, plan in plans}
+    action_targets = {plan.action_target for _, _, plan in plans}
+    dialogue_targets = {plan.dialogue_target for _, _, plan in plans}
+    scene_counts = {plan.scene_count for _, _, plan in plans}
+
+    gate_text = "A spell lit the gate. The clue was a suspect."
+    audit_vectors = {
+        name: tuple(sorted(f"{f.code}:{f.message}" for f in module.audit(profile, gate_text)))
+        for name, profile, _ in plans
+    }
+    audit_effect = len(set(audit_vectors.values())) >= 2
+    mystery = module.profile(project_id=project_id, name="mystery")
+    forbidden_gate = any(
+        finding.code == "FORBIDDEN_PATTERN" and finding.message == "spell"
+        for finding in module.audit(mystery, "a spell at the gate")
+    )
+    fatigue_gate = any(
+        finding.code == "FATIGUE_WORD"
+        for finding in module.audit(
+            mystery, "Suddenly a. Suddenly b. Suddenly c. Suddenly d."
+        )
+    )
+    required_gate = any(
+        finding.code == "REQUIRED_PATTERN_MISSING"
+        for finding in module.audit(
+            module.profile(project_id=project_id, name="action"), "a quiet conversation"
+        )
+    )
+
+    module.create(project_id=project_id, name="house-style", pacing_profile="measured")
+    other_project = uuid4()
+    project_scoped = (
+        all(item.project_id == project_id for item in module.registered(project_id=project_id))
+        and module.registered(project_id=other_project) == ()
+    )
+    invalid_rejected = False
+    try:
+        module.create(
+            project_id=project_id,
+            name="broken-rule",
+            rules=(GenreRule(name="", requirement=""),),
+        )
+    except GenreValidationError:
+        invalid_rejected = True
+    duplicate_rejected = False
+    try:
+        module.create(project_id=project_id, name="house-style")
+    except GenreValidationError:
+        duplicate_rejected = True
+    base = module.profile(project_id=project_id, name="mystery")
+    copied = module.copy(source=base, project_id=project_id, new_name="mystery-noir")
+    copy_before_edit = copied.name == "mystery-noir" and copied.rules == base.rules
+
+    plan_path = _json_artifact(
+        root,
+        "genre-plans.json",
+        [
+            {
+                "genre": name,
+                "pacing_profile": plan.pacing_profile,
+                "beats": list(plan.beats),
+                "scene_count": plan.scene_count,
+                "target_words_per_chapter": plan.target_words_per_chapter,
+                "dialogue_target": plan.dialogue_target,
+                "action_target": plan.action_target,
+                "required_patterns": list(plan.required_patterns),
+                "forbidden_patterns": list(plan.forbidden_patterns),
+            }
+            for name, _, plan in plans
+        ],
+    )
+    return Evidence(
         "extensible-genre-system",
+        str(plan_path),
         {
-            "FIVE_PROFILES": evidence.checks["FIVE_GENRE_PROFILES_AFFECT_AUDIT"],
-            "FORBIDDEN_PATTERN_RULE": evidence.checks["FIVE_GENRE_PROFILES_AFFECT_AUDIT"],
-            "FATIGUE_RULE": True,
-            "PROJECT_SCOPED": True,
-            "INVALID_RULE_FAIL_CLOSED": True,
-            "PLANNING_AND_PACING_EFFECT": evidence.checks["PLANNING_AND_PACING_EFFECT"],
+            "BUILTIN_PROFILES": len(names) >= 8,
+            "DISTINCT_PLANNING": distinct_plans,
+            "PACING_EFFECT": len(pacing_profiles) >= 8 and len(action_targets) >= 5,
+            "DIALOGUE_EFFECT": len(dialogue_targets) >= 5 and len(scene_counts) >= 4,
+            "GENRE_AUDIT_EFFECT": audit_effect,
+            "FORBIDDEN_PATTERN_RULE": forbidden_gate,
+            "FATIGUE_RULE": fatigue_gate,
+            "REQUIRED_PATTERN_GATE": required_gate,
+            "PROJECT_SCOPED": project_scoped,
+            "INVALID_RULE_FAIL_CLOSED": invalid_rejected and duplicate_rejected,
+            "COPY_BEFORE_EDIT": copy_before_edit,
+            "PLANNING_AND_PACING_EFFECT": distinct_plans and len(pacing_profiles) >= 8,
+        },
+        [str(plan_path)],
+        ["reload genre plans", "copy built-in before editing"],
+        ["unknown genre", "empty rule", "duplicate profile", "forbidden pattern"],
+        {
+            "builtin_count": len(names),
+            "distinct_plans": len(set(signatures)),
+            "pacing_profiles": sorted(pacing_profiles),
+            "audit_vectors": len(set(audit_vectors.values())),
         },
     )
 
