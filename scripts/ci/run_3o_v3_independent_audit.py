@@ -14,6 +14,7 @@ from _3o_common import (
     import_edges,
     parse,
 )
+from measure_3o_v3 import _omodul_graph, _pillar_measurement, single_oprim_measurement
 
 
 def _count(predicate) -> int:
@@ -22,6 +23,9 @@ def _count(predicate) -> int:
 
 def main() -> int:
     local = [s for s in all_sources() if s.local]
+    single = single_oprim_measurement()
+    graph = _omodul_graph()
+    fake = _pillar_measurement()
     real_local = [s for s in local if has_real_implementation(parse(s.path))]
     flat = len(real_local)
     prefix = sum(1 for s in canonical_sources() for n in ast.walk(parse(s.path)) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name.startswith(("hevi_", "inkos_", "digital_human_", "pipeline_lite_", "voicepro_")))
@@ -71,9 +75,12 @@ def main() -> int:
         "OSKILL_PERSISTENCE": oskill_persistence,
         "OSKILL_BUSINESS_ID_AWARE": oskill_business,
         "OSKILL_COMPOSITION_VIOLATIONS": oskill_comp,
+        "SINGLE_OPRIM_OSKILLS": single["count"],
         "OMODUL_SIBLING_CALLS": omodul_sibling,
+        "OMODUL_CYCLES": graph["OMODUL_CYCLES"],
         "OMODUL_SIGNATURE_VIOLATIONS": omodul_sig,
         "OMODUL_PILLAR_VIOLATIONS": omodul_pillar,
+        "FAKE_PILLAR_DECLARATIONS": fake["count"],
         "OBASE_REVERSE_DEPENDENCIES": reverse,
         "OSERVI_HARDCODED_ELEMENTS": oservi_hardcoded,
         "OSERVI_BUSINESS_STATE": oservi_business,
