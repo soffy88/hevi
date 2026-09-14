@@ -1,0 +1,980 @@
+{
+  "3O_ARCHITECTURE_ZERO": "PASS",
+  "ALL_CANONICAL_SHA_MATCH": "PASS",
+  "AUDITED_HEVI_SHA": "fd2a67bc457ccb6b2bedb72dfe0d8394bf9b5b8a",
+  "AUDITED_OBASE_SHA": "a229627f96845ee5dccef9c8997241bd727f32ca",
+  "AUDITED_OMODUL_SHA": "5a436d4d5d98e41c2588026b15db81faef343b39",
+  "AUDITED_OPRIM_SHA": "833243d7ca7087116606f70cdb88e8f1f631f260",
+  "AUDITED_OSERVI_SHA": "fba9d20781bfb3c753dc4510bbd80645ea5c4d34",
+  "AUDITED_OSKILL_SHA": "e949980a257f2f84f3b4c5325c73817678c57eaa",
+  "AUDITED_SHAS": {
+    "hevi": "fd2a67bc457ccb6b2bedb72dfe0d8394bf9b5b8a",
+    "obase": "a229627f96845ee5dccef9c8997241bd727f32ca",
+    "omodul": "5a436d4d5d98e41c2588026b15db81faef343b39",
+    "oprim": "833243d7ca7087116606f70cdb88e8f1f631f260",
+    "oservi": "fba9d20781bfb3c753dc4510bbd80645ea5c4d34",
+    "oskill": "e949980a257f2f84f3b4c5325c73817678c57eaa"
+  },
+  "AUDIT_CODE_SHA": "632e486479bb5750cf471fe058c5b2034820df588d3908dccffcc7c661c64b67",
+  "AUDIT_VERSION": "3o-v3-final-global-independent-1",
+  "DUPLICATE_IMPLEMENTATIONS": 0,
+  "FAKE_PILLAR_DECLARATIONS": 0,
+  "FINAL_GLOBAL_INDEPENDENT_AUDIT": "PASS",
+  "FLAT_NAMESPACE": "PASS",
+  "LAYER4_BOUNDARY": "PASS",
+  "LAYER4_VIOLATIONS": 0,
+  "LOCAL_3O_REAL_IMPLEMENTATIONS": 0,
+  "MANIFEST_DANGLING_ENTRIES": 0,
+  "MANIFEST_SIGNATURE_MISMATCHES": 0,
+  "MANIFEST_UNREGISTERED_CANONICAL_ASSETS": 0,
+  "MULTI_OPRIM_OSKILLS": 1,
+  "NON_ELEMENT_EXPORTS": [
+    {
+      "name": "BudgetExceeded",
+      "package": "obase"
+    },
+    {
+      "name": "Cache",
+      "package": "obase"
+    },
+    {
+      "name": "CacheError",
+      "package": "obase"
+    },
+    {
+      "name": "CircuitBreaker",
+      "package": "obase"
+    },
+    {
+      "name": "CircuitBreakerOpenError",
+      "package": "obase"
+    },
+    {
+      "name": "CostBreakdown",
+      "package": "obase"
+    },
+    {
+      "name": "CostTracker",
+      "package": "obase"
+    },
+    {
+      "name": "CryptoError",
+      "package": "obase"
+    },
+    {
+      "name": "EnvLoadError",
+      "package": "obase"
+    },
+    {
+      "name": "FS",
+      "package": "obase"
+    },
+    {
+      "name": "FSError",
+      "package": "obase"
+    },
+    {
+      "name": "GitResult",
+      "package": "obase"
+    },
+    {
+      "name": "GpuScheduler",
+      "package": "obase"
+    },
+    {
+      "name": "IntradayPollScheduler",
+      "package": "obase"
+    },
+    {
+      "name": "LocalModelProvider",
+      "package": "obase"
+    },
+    {
+      "name": "LspClientManager",
+      "package": "obase"
+    },
+    {
+      "name": "LspServerHandle",
+      "package": "obase"
+    },
+    {
+      "name": "McpClientHandle",
+      "package": "obase"
+    },
+    {
+      "name": "McpClientRegistry",
+      "package": "obase"
+    },
+    {
+      "name": "MigrationResult",
+      "package": "obase"
+    },
+    {
+      "name": "ModelRegistry",
+      "package": "obase"
+    },
+    {
+      "name": "NotificationComplianceFilter",
+      "package": "obase"
+    },
+    {
+      "name": "OBaseError",
+      "package": "obase"
+    },
+    {
+      "name": "ObaseAuthError",
+      "package": "obase"
+    },
+    {
+      "name": "ObaseSecretsError",
+      "package": "obase"
+    },
+    {
+      "name": "PauseRequested",
+      "package": "obase"
+    },
+    {
+      "name": "Pipeline",
+      "package": "obase"
+    },
+    {
+      "name": "PricingEntry",
+      "package": "obase"
+    },
+    {
+      "name": "PricingNotConfiguredError",
+      "package": "obase"
+    },
+    {
+      "name": "PricingTable",
+      "package": "obase"
+    },
+    {
+      "name": "ProviderDiscoveryError",
+      "package": "obase"
+    },
+    {
+      "name": "ProviderNotFoundError",
+      "package": "obase"
+    },
+    {
+      "name": "RateLimitExceeded",
+      "package": "obase"
+    },
+    {
+      "name": "RateLimitRegistry",
+      "package": "obase"
+    },
+    {
+      "name": "RateLimiter",
+      "package": "obase"
+    },
+    {
+      "name": "RetryPolicy",
+      "package": "obase"
+    },
+    {
+      "name": "RunState",
+      "package": "obase"
+    },
+    {
+      "name": "SSRFBlockedError",
+      "package": "obase"
+    },
+    {
+      "name": "Span",
+      "package": "obase"
+    },
+    {
+      "name": "Stage",
+      "package": "obase"
+    },
+    {
+      "name": "StageContractViolation",
+      "package": "obase"
+    },
+    {
+      "name": "StepUsage",
+      "package": "obase"
+    },
+    {
+      "name": "ToolMeta",
+      "package": "obase"
+    },
+    {
+      "name": "ToolRegistry",
+      "package": "obase"
+    },
+    {
+      "name": "ToolRegistryConflict",
+      "package": "obase"
+    },
+    {
+      "name": "Tracer",
+      "package": "obase"
+    },
+    {
+      "name": "Trail",
+      "package": "obase"
+    },
+    {
+      "name": "VectorMetric",
+      "package": "obase"
+    },
+    {
+      "name": "audit",
+      "package": "obase"
+    },
+    {
+      "name": "bootstrap",
+      "package": "obase"
+    },
+    {
+      "name": "cached",
+      "package": "obase"
+    },
+    {
+      "name": "circuit_breaker",
+      "package": "obase"
+    },
+    {
+      "name": "collector_base",
+      "package": "obase"
+    },
+    {
+      "name": "config_loader",
+      "package": "obase"
+    },
+    {
+      "name": "convert_currency",
+      "package": "obase"
+    },
+    {
+      "name": "crypto",
+      "package": "obase"
+    },
+    {
+      "name": "decrypt_token",
+      "package": "obase"
+    },
+    {
+      "name": "derive_master_key",
+      "package": "obase"
+    },
+    {
+      "name": "email_client",
+      "package": "obase"
+    },
+    {
+      "name": "encrypt_token",
+      "package": "obase"
+    },
+    {
+      "name": "ensure_column",
+      "package": "obase"
+    },
+    {
+      "name": "ensure_extension",
+      "package": "obase"
+    },
+    {
+      "name": "ensure_index",
+      "package": "obase"
+    },
+    {
+      "name": "ensure_table",
+      "package": "obase"
+    },
+    {
+      "name": "environ_processor_base",
+      "package": "obase"
+    },
+    {
+      "name": "get_tracer",
+      "package": "obase"
+    },
+    {
+      "name": "gpu",
+      "package": "obase"
+    },
+    {
+      "name": "http",
+      "package": "obase"
+    },
+    {
+      "name": "is_safe_ip",
+      "package": "obase"
+    },
+    {
+      "name": "load_env",
+      "package": "obase"
+    },
+    {
+      "name": "load_trail",
+      "package": "obase"
+    },
+    {
+      "name": "make_ssrf_safe_opener",
+      "package": "obase"
+    },
+    {
+      "name": "migration",
+      "package": "obase"
+    },
+    {
+      "name": "notify",
+      "package": "obase"
+    },
+    {
+      "name": "observability",
+      "package": "obase"
+    },
+    {
+      "name": "ohlcv_store",
+      "package": "obase"
+    },
+    {
+      "name": "persistence",
+      "package": "obase"
+    },
+    {
+      "name": "price_store",
+      "package": "obase"
+    },
+    {
+      "name": "query_trail",
+      "package": "obase"
+    },
+    {
+      "name": "register_tool",
+      "package": "obase"
+    },
+    {
+      "name": "resolve_and_check",
+      "package": "obase"
+    },
+    {
+      "name": "retry",
+      "package": "obase"
+    },
+    {
+      "name": "retry_with_backoff",
+      "package": "obase"
+    },
+    {
+      "name": "run_git",
+      "package": "obase"
+    },
+    {
+      "name": "run_migration",
+      "package": "obase"
+    },
+    {
+      "name": "symbol_normalize",
+      "package": "obase"
+    },
+    {
+      "name": "sympy_runtime",
+      "package": "obase"
+    },
+    {
+      "name": "telegram_client",
+      "package": "obase"
+    },
+    {
+      "name": "text",
+      "package": "obase"
+    },
+    {
+      "name": "transaction",
+      "package": "obase"
+    },
+    {
+      "name": "ts_writer",
+      "package": "obase"
+    },
+    {
+      "name": "upsert_batch",
+      "package": "obase"
+    },
+    {
+      "name": "uuid7",
+      "package": "obase"
+    },
+    {
+      "name": "vector_search",
+      "package": "obase"
+    },
+    {
+      "name": "webhook",
+      "package": "obase"
+    },
+    {
+      "name": "ActionPlannerEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "AgenticLoopEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "AlerterEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "AppInstallerEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "BulkExportWorkerEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "BulkImportWorkerEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "CronSchedulerEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "EngineSkeleton",
+      "package": "oservi"
+    },
+    {
+      "name": "EventWebhookDispatcherEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "ExecutionEvent",
+      "package": "oservi"
+    },
+    {
+      "name": "FeedTrackerEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "Injection",
+      "package": "oservi"
+    },
+    {
+      "name": "ManifestValidationError",
+      "package": "oservi"
+    },
+    {
+      "name": "McpBridgeEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "ResearcherEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "SagaComposerEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "ServiceManifest",
+      "package": "oservi"
+    },
+    {
+      "name": "StateMachineEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "SubagentOrchestratorEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "TriageEngine",
+      "package": "oservi"
+    },
+    {
+      "name": "assemble",
+      "package": "oservi"
+    },
+    {
+      "name": "get_skeleton",
+      "package": "oservi"
+    },
+    {
+      "name": "list_skeletons",
+      "package": "oservi"
+    },
+    {
+      "name": "register_skeleton",
+      "package": "oservi"
+    },
+    {
+      "name": "validate_manifest",
+      "package": "oservi"
+    }
+  ],
+  "OMODUL_CYCLES": 0,
+  "OMODUL_DYNAMIC_CALLS": 0,
+  "OMODUL_EDGES": 0,
+  "OMODUL_MANIFEST_ELEMENTS": 4,
+  "OMODUL_PILLAR_VIOLATIONS": 0,
+  "OMODUL_SIBLING_CALLS": 0,
+  "OMODUL_SIGNATURE_VIOLATIONS": 0,
+  "ONE_OPRIM_OSKILLS": 0,
+  "OPRIM_MANIFEST_ELEMENTS": 7,
+  "OPRIM_REVERSE_DEPENDENCIES": 0,
+  "OPRIM_SIBLING_CALLS": 0,
+  "OPRIM_SIGNATURE_VIOLATIONS": 0,
+  "OSERVI_BUSINESS_STATE": 0,
+  "OSERVI_HARDCODED_ELEMENTS": 0,
+  "OSERVI_MANIFEST_ELEMENTS": 2,
+  "OSKILL_BUSINESS_ID_AWARE": 0,
+  "OSKILL_COMPOSITION_VIOLATIONS": 0,
+  "OSKILL_MANIFEST_ELEMENTS": 1,
+  "OSKILL_PERSISTENCE": 0,
+  "OSKILL_STATEFUL": 0,
+  "PII_GATE": "PASS",
+  "PINNED_SHAS": {
+    "obase": "a229627f96845ee5dccef9c8997241bd727f32ca",
+    "omodul": "5a436d4d5d98e41c2588026b15db81faef343b39",
+    "oprim": "833243d7ca7087116606f70cdb88e8f1f631f260",
+    "oservi": "fba9d20781bfb3c753dc4510bbd80645ea5c4d34",
+    "oskill": "e949980a257f2f84f3b4c5325c73817678c57eaa"
+  },
+  "SINGLE_SOURCE": "PASS",
+  "UNKNOWN_VIOLATIONS": 0,
+  "UNREGISTERED": [],
+  "ZERO_OPRIM_OSKILLS": 0,
+  "audited_shas": {
+    "obase": "a229627f96845ee5dccef9c8997241bd727f32ca",
+    "omodul": "5a436d4d5d98e41c2588026b15db81faef343b39",
+    "oprim": "833243d7ca7087116606f70cdb88e8f1f631f260",
+    "oservi": "fba9d20781bfb3c753dc4510bbd80645ea5c4d34",
+    "oskill": "e949980a257f2f84f3b4c5325c73817678c57eaa"
+  },
+  "packages": {
+    "obase": {
+      "manifest_elements": [
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "provider_registry",
+            "module": "obase.provider_registry",
+            "name": "ProviderRegistry",
+            "pillars": [
+              "cost",
+              "fingerprint",
+              "trail",
+              "report"
+            ],
+            "signature": "ProviderRegistry.get() -> ProviderRegistry"
+          },
+          "module": "obase.provider_registry",
+          "name": "ProviderRegistry",
+          "path": "/tmp/hevi-3o-canonical/obase/obase/provider_registry.py",
+          "signature": "ProviderRegistry.get() -> ProviderRegistry",
+          "symbol": "obase.provider_registry:ProviderRegistry",
+          "version": "0.18.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "persistence",
+            "module": "obase.persistence",
+            "name": "PgPool",
+            "pillars": [
+              "trail",
+              "report"
+            ],
+            "signature": "PgPool(dsn) -> PgPool"
+          },
+          "module": "obase.persistence",
+          "name": "PgPool",
+          "path": "/tmp/hevi-3o-canonical/obase/obase/persistence/__init__.py",
+          "signature": "PgPool(dsn) -> PgPool",
+          "symbol": "obase.persistence:PgPool",
+          "version": "0.18.0"
+        },
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [],
+            "kind": "orchestration_primitive",
+            "module": "obase.orchestrator",
+            "name": "run_pipeline",
+            "pillars": [
+              "trail",
+              "report"
+            ],
+            "signature": "(stages, context) -> RunState"
+          },
+          "module": "obase.orchestrator",
+          "name": "run_pipeline",
+          "path": "/tmp/hevi-3o-canonical/obase/obase/orchestrator.py",
+          "signature": "(stages, context) -> RunState",
+          "symbol": "obase.orchestrator:run_pipeline",
+          "version": "0.18.0"
+        }
+      ],
+      "path": "/tmp/hevi-3o-canonical/obase/obase/__init__.py",
+      "version": "0.18.0"
+    },
+    "omodul": {
+      "manifest_elements": [
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [
+              "agentic_longvideo_pipeline"
+            ],
+            "kind": "omodul",
+            "module": "omodul.longvideo_produce",
+            "name": "longvideo_produce",
+            "pillars": [
+              "cost",
+              "decision_trail",
+              "fingerprint",
+              "report"
+            ],
+            "signature": "(config, input_data, output_dir) -> dict"
+          },
+          "module": "omodul.longvideo_produce",
+          "name": "longvideo_produce",
+          "path": "/tmp/hevi-3o-canonical/omodul/omodul/longvideo_produce.py",
+          "signature": "(config, input_data, output_dir) -> dict",
+          "symbol": "omodul.longvideo_produce:longvideo_produce",
+          "version": "1.36.0"
+        },
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [
+              "injected_renderer"
+            ],
+            "kind": "omodul",
+            "module": "omodul.narrated_video_produce",
+            "name": "narrated_video_produce",
+            "pillars": [
+              "cost",
+              "decision_trail",
+              "fingerprint",
+              "report"
+            ],
+            "signature": "(config, input_data, output_dir) -> dict"
+          },
+          "module": "omodul.narrated_video_produce",
+          "name": "narrated_video_produce",
+          "path": "/tmp/hevi-3o-canonical/omodul/omodul/narrated_video_produce.py",
+          "signature": "(config, input_data, output_dir) -> dict",
+          "symbol": "omodul.narrated_video_produce:narrated_video_produce",
+          "version": "1.36.0"
+        },
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [
+              "injected_renderer"
+            ],
+            "kind": "omodul",
+            "module": "omodul.presenter_video_produce",
+            "name": "presenter_video_produce",
+            "pillars": [
+              "cost",
+              "decision_trail",
+              "fingerprint",
+              "report"
+            ],
+            "signature": "(config, input_data, output_dir) -> dict"
+          },
+          "module": "omodul.presenter_video_produce",
+          "name": "presenter_video_produce",
+          "path": "/tmp/hevi-3o-canonical/omodul/omodul/presenter_video_produce.py",
+          "signature": "(config, input_data, output_dir) -> dict",
+          "symbol": "omodul.presenter_video_produce:presenter_video_produce",
+          "version": "1.36.0"
+        },
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [
+              "injected_renderer"
+            ],
+            "kind": "omodul",
+            "module": "omodul.shot_rework_produce",
+            "name": "shot_rework_produce",
+            "pillars": [
+              "cost",
+              "decision_trail",
+              "fingerprint",
+              "report"
+            ],
+            "signature": "(config, input_data, output_dir) -> dict"
+          },
+          "module": "omodul.shot_rework_produce",
+          "name": "shot_rework_produce",
+          "path": "/tmp/hevi-3o-canonical/omodul/omodul/shot_rework_produce.py",
+          "signature": "(config, input_data, output_dir) -> dict",
+          "symbol": "omodul.shot_rework_produce:shot_rework_produce",
+          "version": "1.36.0"
+        }
+      ],
+      "path": "/tmp/hevi-3o-canonical/omodul/omodul/__init__.py",
+      "version": "1.36.0"
+    },
+    "oprim": {
+      "manifest_elements": [
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [
+              "obase.provider_registry"
+            ],
+            "kind": "oprim",
+            "module": "oprim._video_generate",
+            "name": "video_generate",
+            "pillars": [
+              "cost",
+              "fingerprint",
+              "trail",
+              "report"
+            ],
+            "signature": "(request, /, *, provider, output_path) -> Path"
+          },
+          "module": "oprim._video_generate",
+          "name": "video_generate",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/_video_generate.py",
+          "signature": "(request, /, *, provider, output_path) -> Path",
+          "symbol": "oprim._video_generate:video_generate",
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [
+              "obase.ffmpeg"
+            ],
+            "kind": "oprim",
+            "module": "oprim._edge_tts_synthesize",
+            "name": "edge_tts_synthesize",
+            "pillars": [
+              "cost",
+              "fingerprint",
+              "trail",
+              "report"
+            ],
+            "signature": "(request, /, *, output_path) -> Path"
+          },
+          "module": "oprim._edge_tts_synthesize",
+          "name": "edge_tts_synthesize",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/_edge_tts_synthesize.py",
+          "signature": "(request, /, *, output_path) -> Path",
+          "symbol": "oprim._edge_tts_synthesize:edge_tts_synthesize",
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [
+              "obase.provider_registry"
+            ],
+            "kind": "oprim",
+            "module": "oprim._avatar_generate",
+            "name": "avatar_generate",
+            "pillars": [
+              "cost",
+              "fingerprint",
+              "trail",
+              "report"
+            ],
+            "signature": "(request, /, *, provider, output_path) -> Path"
+          },
+          "module": "oprim._avatar_generate",
+          "name": "avatar_generate",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/_avatar_generate.py",
+          "signature": "(request, /, *, provider, output_path) -> Path",
+          "symbol": "oprim._avatar_generate:avatar_generate",
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "oprim",
+            "module": "oprim.fixed_list",
+            "name": "fixed_list",
+            "pillars": [
+              "fingerprint"
+            ],
+            "signature": "(symbols, *, venue, instrument_type, market_metadata=None) -> dict"
+          },
+          "module": "oprim.fixed_list",
+          "name": "fixed_list",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/fixed_list.py",
+          "signature": "(symbols, *, venue, instrument_type, market_metadata=None) -> dict",
+          "symbol": "oprim.fixed_list:fixed_list",
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "oprim",
+            "module": "oprim.style_marker_prompt",
+            "name": "style_marker_prompt",
+            "pillars": [
+              "fingerprint"
+            ],
+            "signature": "(*, base_prompt, style) -> str"
+          },
+          "module": "oprim.style_marker_prompt",
+          "name": "style_marker_prompt",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/style_marker_prompt/__init__.py",
+          "signature": "(*, base_prompt, style) -> str",
+          "symbol": "oprim.style_marker_prompt:style_marker_prompt",
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "oprim",
+            "module": "oprim.lighting_control_prompt",
+            "name": "lighting_control_prompt",
+            "pillars": [
+              "fingerprint"
+            ],
+            "signature": "(*, base_prompt, lighting) -> str"
+          },
+          "module": "oprim.lighting_control_prompt",
+          "name": "lighting_control_prompt",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/lighting_control_prompt/__init__.py",
+          "signature": "(*, base_prompt, lighting) -> str",
+          "symbol": "oprim.lighting_control_prompt:lighting_control_prompt",
+          "version": "3.13.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [],
+            "kind": "oprim",
+            "module": "oprim.asset_reference_inject",
+            "name": "asset_reference_inject",
+            "pillars": [
+              "fingerprint"
+            ],
+            "signature": "(*, shot_spec, asset_refs, asset_loader) -> dict"
+          },
+          "module": "oprim.asset_reference_inject",
+          "name": "asset_reference_inject",
+          "path": "/tmp/hevi-3o-canonical/oprim/oprim/asset_reference_inject.py",
+          "signature": "(*, shot_spec, asset_refs, asset_loader) -> dict",
+          "symbol": "oprim.asset_reference_inject:asset_reference_inject",
+          "version": "3.13.0"
+        }
+      ],
+      "path": "/tmp/hevi-3o-canonical/oprim/oprim/__init__.py",
+      "version": "3.13.0"
+    },
+    "oservi": {
+      "manifest_elements": [
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [
+              "omodul.operation"
+            ],
+            "kind": "oservi",
+            "module": "oservi.engines.production_execution",
+            "name": "ProductionExecutionEngine",
+            "pillars": [
+              "cost",
+              "fingerprint",
+              "trail",
+              "report"
+            ],
+            "signature": "run(*, input_data, output_dir, config=None) -> dict"
+          },
+          "module": "oservi.engines.production_execution",
+          "name": "ProductionExecutionEngine",
+          "path": "/tmp/hevi-3o-canonical/oservi/oservi/engines/production_execution.py",
+          "signature": "run(*, input_data, output_dir, config=None) -> dict",
+          "symbol": "oservi.engines.production_execution:ProductionExecutionEngine",
+          "version": "1.4.0"
+        },
+        {
+          "dangling": false,
+          "is_async": false,
+          "metadata": {
+            "depends_on": [
+              "omodul.operation"
+            ],
+            "kind": "oservi",
+            "module": "oservi.engines.sequential_composer",
+            "name": "SequentialComposerEngine",
+            "pillars": [
+              "cost",
+              "fingerprint",
+              "trail",
+              "report"
+            ],
+            "signature": "run(input_data) -> dict"
+          },
+          "module": "oservi.engines.sequential_composer",
+          "name": "SequentialComposerEngine",
+          "path": "/tmp/hevi-3o-canonical/oservi/oservi/engines/sequential_composer.py",
+          "signature": "run(input_data) -> dict",
+          "symbol": "oservi.engines.sequential_composer:SequentialComposerEngine",
+          "version": "1.4.0"
+        }
+      ],
+      "path": "/tmp/hevi-3o-canonical/oservi/oservi/__init__.py",
+      "version": "1.4.0"
+    },
+    "oskill": {
+      "manifest_elements": [
+        {
+          "dangling": false,
+          "is_async": true,
+          "metadata": {
+            "depends_on": [
+              "oprim.style_marker_prompt",
+              "oprim.lighting_control_prompt"
+            ],
+            "kind": "oskill",
+            "module": "oskill.storyboard_planner",
+            "name": "storyboard_planner",
+            "pillars": [
+              "cost",
+              "fingerprint",
+              "trail",
+              "report"
+            ],
+            "signature": "(config, request, llm) -> dict"
+          },
+          "module": "oskill.storyboard_planner",
+          "name": "storyboard_planner",
+          "path": "/tmp/hevi-3o-canonical/oskill/oskill/storyboard_planner.py",
+          "signature": "(config, request, llm) -> dict",
+          "symbol": "oskill.storyboard_planner:storyboard_planner",
+          "version": "4.6.0"
+        }
+      ],
+      "path": "/tmp/hevi-3o-canonical/oskill/oskill/__init__.py",
+      "version": "4.6.0"
+    }
+  }
+}
