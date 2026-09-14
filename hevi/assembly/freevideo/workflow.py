@@ -124,7 +124,7 @@ async def free_video_workflow(
         if config.bgm_mood or config.voice:
             from hevi.assembly.freevideo.render import _ffmpeg
             from hevi.audio.procedural_bgm import BgmConfig, generate_bgm_file
-            from hevi.layer4_legacy.pipeline_lite.oprim_impl.oprim_ffmpeg import assert_audio_track
+            from hevi.pipeline_lite.oprim.oprim_ffmpeg import assert_audio_track
 
             bgm_wav: Path | None = None
             if config.bgm_mood:
