@@ -1,6 +1,6 @@
 {
   "capability_id": "model-provider-routing",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/model-provider-routing/run-4254f3a46485/routing.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/model-provider-routing/run-21d7d96fb627/routing.json",
   "checks": {
     "DEFAULT": true,
     "PER_CAPABILITY": true,
@@ -8,16 +8,20 @@
     "EXPLICIT_PROVIDER_OVERRIDE": true,
     "FAILURE_PRESERVES_PROVENANCE": true,
     "NO_CATALOG_AUTHORITY": true,
-    "REAL_PROVIDER_EXECUTION": false
+    "REAL_PROVIDER_EXECUTION": true,
+    "UNAVAILABLE_PROVIDER": true,
+    "SECRET_REDACTED": true,
+    "DETERMINISTIC_CONFIG_TRACE": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/model-provider-routing/run-4254f3a46485/routing.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/model-provider-routing/run-21d7d96fb627/routing.json"
   ],
   "recovery": [
     "reload route manifest"
   ],
   "failure_injections": [
-    "unknown route falls back to explicit default"
+    "unknown route falls back to explicit default",
+    "unregistered provider fails closed"
   ],
   "details": {
     "routes": {
@@ -39,8 +43,9 @@
         "capability": null,
         "stage": "audit"
       }
-    }
+    },
+    "provider_calls": 1
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

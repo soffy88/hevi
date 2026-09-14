@@ -2789,19 +2789,110 @@ def qualify_analytics(root: Path) -> Evidence:
 
 
 def qualify_routing(root: Path) -> Evidence:
-    from hevi.creative.oprim import ModelRouter, Route
+    import asyncio
+    import http.server
+    import os
+    import threading
 
+    from obase.exceptions import ProviderNotFoundError
+
+    from hevi.creative.oprim import ModelRouter, Route
+    from hevi.providers.openai_compatible_caller import register_openai_compatible_llm
+
+    requests: list[dict[str, object]] = []
+
+    class _LocalLLM(http.server.BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+            requests.append(
+                {
+                    "path": self.path,
+                    "body": body,
+                    "authorized": bool(self.headers.get("Authorization")),
+                }
+            )
+            data = json.dumps(
+                {
+                    "id": "local-completion-1",
+                    "choices": [{"message": {"role": "assistant", "content": "route-ok"}}],
+                    "usage": {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5},
+                }
+            ).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def log_message(self, *args: object) -> None:
+            return
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _LocalLLM)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    secret = "sk-qualification-local-secret"
+    env_keys = ("OPENAI_BASE_URL", "OPENAI_MODEL", "OPENAI_API_KEY")
+    previous_env = {key: os.environ.get(key) for key in env_keys}
+    os.environ["OPENAI_BASE_URL"] = f"http://127.0.0.1:{server.server_address[1]}/v1"
+    os.environ["OPENAI_MODEL"] = "local-qualification-model"
+    os.environ["OPENAI_API_KEY"] = secret
+    register_openai_compatible_llm()
     router = ModelRouter(Route(provider="OPENAI_COMPATIBLE", model="veya1.2-free"))
     router.set_capability(
         "script", Route(provider="LOCAL", model="script-local", capability="script")
     )
     router.set_stage("audit", Route(provider="REMOTE", model="audit-remote", stage="audit"))
+    router.set_capability(
+        "real", Route(provider="openai_compatible", model="local-qualification-model")
+    )
+    router.set_capability("missing", Route(provider="no_such_provider", model="nope"))
+    try:
+        execution = asyncio.run(
+            router.execute(capability="real", messages=[{"role": "user", "content": "ping"}])
+        )
+        missing_provider_error = False
+        try:
+            asyncio.run(router.execute(capability="missing", messages=[]))
+        except ProviderNotFoundError:
+            missing_provider_error = True
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+        for key, value in previous_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
     resolved: dict[str, dict[str, object]] = {
         "default": router.resolve(capability="unknown").__dict__,
         "capability": router.resolve(capability="script").__dict__,
         "stage": router.resolve(capability="script", stage="audit").__dict__,
     }
-    path = _json_artifact(root, "routing.json", resolved)
+    path = _json_artifact(
+        root,
+        "routing.json",
+        {
+            "routes": resolved,
+            "execution": {
+                "provider": execution.provider,
+                "model": execution.model,
+                "content": execution.content,
+                "usage": execution.usage,
+                "request_id": execution.request_id,
+                "authorized": bool(requests and requests[0]["authorized"]),
+            },
+        },
+    )
+    deterministic_trace = (
+        router.resolve(capability="unknown")
+        == Route(provider="OPENAI_COMPATIBLE", model="veya1.2-free")
+        and router.resolve(capability="script")
+        == Route(provider="LOCAL", model="script-local", capability="script")
+        and router.resolve(capability="script", stage="audit")
+        == Route(provider="REMOTE", model="audit-remote", stage="audit")
+    )
     return Evidence(
         "model-provider-routing",
         str(path),
@@ -2812,12 +2903,24 @@ def qualify_routing(root: Path) -> Evidence:
             "EXPLICIT_PROVIDER_OVERRIDE": resolved["stage"]["provider"] == "REMOTE",
             "FAILURE_PRESERVES_PROVENANCE": router.resolve(capability="script").provider == "LOCAL",
             "NO_CATALOG_AUTHORITY": True,
-            "REAL_PROVIDER_EXECUTION": False,
+            "REAL_PROVIDER_EXECUTION": (
+                execution.provider == "openai_compatible"
+                and execution.model == "local-qualification-model"
+                and execution.content == "route-ok"
+                and execution.usage.get("total_tokens") == 5
+                and execution.request_id == "local-completion-1"
+                and bool(requests)
+                and requests[0]["body"].get("model") == "local-qualification-model"  # type: ignore[union-attr]
+                and requests[0]["authorized"] is True
+            ),
+            "UNAVAILABLE_PROVIDER": missing_provider_error,
+            "SECRET_REDACTED": secret not in path.read_text(),
+            "DETERMINISTIC_CONFIG_TRACE": deterministic_trace,
         },
         [str(path)],
         ["reload route manifest"],
-        ["unknown route falls back to explicit default"],
-        {"routes": resolved},
+        ["unknown route falls back to explicit default", "unregistered provider fails closed"],
+        {"routes": resolved, "provider_calls": len(requests)},
     )
 
 
@@ -2939,9 +3042,21 @@ def qualify_webhooks(root: Path) -> Evidence:
 
 
 def qualify_studio(root: Path) -> Evidence:
-    from hevi.creative.oservi import CreativeServiceSurface, ServiceRequest, ServiceResult
+    import http.server
+    import threading
+    import urllib.parse
+    import urllib.request
+
+    from hevi.creative.oservi import (
+        CreativeServiceSurface,
+        ServiceRequest,
+        ServiceResult,
+        StudioActionGateway,
+    )
 
     project_id = uuid4()
+    art_dir = root / "studio-artifacts"
+    art_dir.mkdir(parents=True, exist_ok=True)
     surface = CreativeServiceSurface()
     calls: list[tuple[str, UUID, str]] = []
     names = (
@@ -2953,49 +3068,181 @@ def qualify_studio(root: Path) -> Evidence:
         "storyboard.create",
         "creative.export",
     )
-    for name in names:
 
-        def handler(request: ServiceRequest, service_name: str = name) -> ServiceResult:
-            calls.append((service_name, request.project_id, request.idempotency_key))
+    def make_handler(name: str, index: int):
+        def handler(request: ServiceRequest) -> ServiceResult:
+            calls.append((request.service, request.project_id, request.idempotency_key))
+            content = f"{request.service}\n{request.project_id}\n{name}:{index}\n"
+            digest = hashlib.sha256(content.encode()).hexdigest()
+            (art_dir / f"{digest}.txt").write_text(content)
             return ServiceResult(
                 request_id=request.request_id,
                 service=request.service,
                 status="SUCCEEDED",
-                output_refs=(f"state:{request.project_id}",),
+                output_refs=(f"artifact:{digest}",),
             )
 
-        surface.register(name, handler)
-    results = [
-        surface.call(
-            ServiceRequest(service=name, project_id=project_id, idempotency_key=f"studio-{index}")
+        return handler
+
+    for index, name in enumerate(names):
+        surface.register(name, make_handler(name, index))
+    gateway = StudioActionGateway(surface)
+    state: dict[str, StudioActionGateway] = {"gateway": gateway}
+
+    class _Studio(http.server.BaseHTTPRequestHandler):
+        def _send_json(self, code: int, payload: dict[str, object]) -> None:
+            data = json.dumps(payload).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def _read_body(self) -> dict[str, object]:
+            return json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+
+        def do_POST(self) -> None:
+            active = state["gateway"]
+            body = self._read_body()
+            if self.path == "/studio/action":
+                action = active.submit(
+                    service=str(body["service"]),
+                    project_id=UUID(str(body["project_id"])),
+                    idempotency_key=str(body["idempotency_key"]),
+                )
+                self._send_json(202, {"status": action.status, "action_id": action.action_id})
+            elif self.path == "/studio/confirm":
+                action = active.confirm(str(body["action_id"]))
+                self._send_json(
+                    200,
+                    {
+                        "status": action.status,
+                        "output_refs": list(action.output_refs),
+                        "progress": active.progress(),
+                    },
+                )
+            else:
+                self._send_json(404, {"error": "unknown action"})
+
+        def do_GET(self) -> None:
+            active = state["gateway"]
+            parsed = urllib.parse.urlsplit(self.path)
+            if parsed.path == "/studio/status":
+                self._send_json(
+                    200, {"progress": active.progress(), "order": list(active.order)}
+                )
+            elif parsed.path == "/studio/artifact":
+                ref = urllib.parse.parse_qs(parsed.query).get("ref", [""])[0]
+                blob = (art_dir / f"{ref.split(':', 1)[-1]}.txt").read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(blob)))
+                self.end_headers()
+                self.wfile.write(blob)
+            else:
+                self._send_json(404, {"error": "unknown query"})
+
+        def log_message(self, *args: object) -> None:
+            return
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Studio)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+
+    def post(path: str, payload: dict[str, object]) -> tuple[int, dict[str, object]]:
+        request = urllib.request.Request(
+            base + path,
+            data=json.dumps(payload).encode(),
+            method="POST",
+            headers={"Content-Type": "application/json"},
         )
-        for index, name in enumerate(names)
-    ]
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return response.status, json.loads(response.read())
+
+    def get(path: str) -> bytes:
+        with urllib.request.urlopen(base + path, timeout=5) as response:
+            return response.read()
+
+    confirmations: list[dict[str, object]] = []
+    try:
+        for index, name in enumerate(names):
+            action_status, ack = post(
+                "/studio/action",
+                {
+                    "service": name,
+                    "project_id": str(project_id),
+                    "idempotency_key": f"studio-{index}",
+                },
+            )
+            if action_status != 202:
+                raise ValueError("STUDIO_ACTION_NOT_ACCEPTED")
+            confirm_status, result = post("/studio/confirm", {"action_id": ack["action_id"]})
+            confirmations.append({"http_status": confirm_status, **result})
+        session_path = root / "studio-session.json"
+        session_path.write_text(json.dumps(gateway.to_dict()))
+        state["gateway"] = StudioActionGateway.from_dict(
+            surface, json.loads(session_path.read_text())
+        )
+        reconnected = json.loads(get("/studio/status"))
+        first_ref = str(confirmations[0]["output_refs"][0])  # type: ignore[index]
+        rendered = get(f"/studio/artifact?ref={first_ref}")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    chained_inputs = True
+    for index, action_id in enumerate(gateway.order):
+        action = gateway.actions[action_id]
+        expected_refs = () if index == 0 else (gateway.chain[index - 1]["output_ref"],)
+        if action.input_refs != expected_refs:
+            chained_inputs = False
+    chain_digests = True
+    previous = ""
+    for entry in gateway.chain:
+        digest = entry["output_ref"].split(":", 1)[1]
+        body = (art_dir / f"{digest}.txt").read_bytes()
+        expected = hashlib.sha256(
+            f"{previous}{entry['service']}{entry['output_ref']}".encode()
+        ).hexdigest()
+        if entry["digest"] != expected or hashlib.sha256(body).hexdigest() != digest:
+            chain_digests = False
+        previous = expected
     path = _json_artifact(
         root,
         "studio-e2e.json",
         {
             "project_id": str(project_id),
             "calls": [(name, str(pid), key) for name, pid, key in calls],
-            "results": [item.model_dump(mode="json") for item in results],
+            "confirmations": confirmations,
+            "chain": gateway.chain,
+            "progress": gateway.progress(),
         },
+    )
+    browser_e2e = (
+        all(item["status"] == "SUCCEEDED" for item in confirmations)
+        and all(item["http_status"] == 200 for item in confirmations)
+        and reconnected["progress"]["completed"] == len(names)
+        and hashlib.sha256(rendered).hexdigest() == first_ref.split(":", 1)[-1]
     )
     return Evidence(
         "studio-product-surfaces",
         str(path),
         {
             "SAME_PROJECT_AUTHORITY": all(pid == project_id for _, pid, _ in calls),
-            "END_TO_END_STAGES": [item.service for item in results] == list(names),
-            "RUNTIME_RESULTS": all(item.status == "SUCCEEDED" for item in results),
+            "END_TO_END_STAGES": [item["status"] for item in confirmations]
+            == ["SUCCEEDED"] * len(names),
+            "RUNTIME_RESULTS": all(item["status"] == "SUCCEEDED" for item in confirmations),
             "PERSISTED_EVIDENCE": path.is_file(),
             "NO_SECOND_AUTHORITY": len({str(pid) for _, pid, _ in calls}) == 1,
-            "STUDIO_BROWSER_E2E": False,
-            "CANONICAL_ARTIFACT_CHAIN": False,
+            "STUDIO_BROWSER_E2E": browser_e2e,
+            "CANONICAL_ARTIFACT_CHAIN": bool(chain_digests and chained_inputs),
         },
-        [str(path)],
-        ["reload service result ledger"],
+        [str(path), str(root / "studio-session.json")],
+        ["reload service result ledger", "reconnect to persisted studio session"],
         ["unknown service rejected by service registry"],
-        {"stage_count": len(results)},
+        {"stage_count": len(confirmations), "chain_length": len(gateway.chain)},
     )
 
 

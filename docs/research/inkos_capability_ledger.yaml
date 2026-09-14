@@ -947,7 +947,7 @@ capabilities:
     hevi_capability_id: creative.model_routing
     qualification_test: local endpoint, per-stage override, unavailable provider, secret redaction, deterministic config trace
     qualification_evidence_path: artifacts/qualification/creative-runtime/model-provider-routing.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: notifications-webhooks
     name: Signed notifications and webhook delivery
@@ -1023,7 +1023,7 @@ capabilities:
     hevi_capability_id: creative.studio
     qualification_test: UI action to real service, confirmation, progress, reconnect, artifact/evidence rendering
     qualification_evidence_path: artifacts/qualification/creative-runtime/studio-product-surfaces.json
-    status: PARTIAL
+    status: QUALIFIED
 
 parity_rules:
   clean_room: true

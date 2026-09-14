@@ -19,7 +19,7 @@ from hevi.creative.oprim.persistence import (
     persist_model,
     restore_model,
 )
-from hevi.creative.oprim.routing import ModelRouter, Route
+from hevi.creative.oprim.routing import ModelRouter, Route, RouteExecution
 from hevi.creative.oprim.state import (
     CreativeStateDelta,
     StateOperation,
@@ -54,6 +54,7 @@ __all__ = [
     "ProjectLock",
     "ResourceBusy",
     "Route",
+    "RouteExecution",
     "SemanticLocator",
     "TargetNotUnique",
     "WebhookLedger",

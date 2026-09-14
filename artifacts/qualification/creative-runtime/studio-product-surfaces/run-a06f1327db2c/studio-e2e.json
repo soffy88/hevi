@@ -1,0 +1,168 @@
+{
+  "calls": [
+    [
+      "creative.project.create",
+      "dd18f795-a21d-4202-bb7e-e466184c097f",
+      "studio-0"
+    ],
+    [
+      "narrative.plan",
+      "dd18f795-a21d-4202-bb7e-e466184c097f",
+      "studio-1"
+    ],
+    [
+      "narrative.write",
+      "dd18f795-a21d-4202-bb7e-e466184c097f",
+      "studio-2"
+    ],
+    [
+      "narrative.audit",
+      "dd18f795-a21d-4202-bb7e-e466184c097f",
+      "studio-3"
+    ],
+    [
+      "narrative.revise",
+      "dd18f795-a21d-4202-bb7e-e466184c097f",
+      "studio-4"
+    ],
+    [
+      "storyboard.create",
+      "dd18f795-a21d-4202-bb7e-e466184c097f",
+      "studio-5"
+    ],
+    [
+      "creative.export",
+      "dd18f795-a21d-4202-bb7e-e466184c097f",
+      "studio-6"
+    ]
+  ],
+  "chain": [
+    {
+      "digest": "a4dafb5300fe6df23cc5ff2e183fc526ffc8f39817e1b26e0932d57ff4af271f",
+      "output_ref": "artifact:ef2c25e03713cd5856eb4f88cc94417bc60f8a11bb24005e63e63e407908765a",
+      "service": "creative.project.create"
+    },
+    {
+      "digest": "3d908440eb3406a2ef45e86cef13331995b3ec267326d518f09eca50adecd595",
+      "output_ref": "artifact:4d03df86d8b8bfcb404aeb5ad99221a51651d08986fb432114591f7f9fe257a5",
+      "service": "narrative.plan"
+    },
+    {
+      "digest": "64a72e50d735f5bcf4d3935af0c04251a206b802da0438dfb9108fbc28400e81",
+      "output_ref": "artifact:28b8ef18be0ecfe75cbe5e53545c8556e5dac197abfd707e444245ee37667063",
+      "service": "narrative.write"
+    },
+    {
+      "digest": "620979c44f29adbd31869f21f1b3a5d032472ed8598f6af3119a79cf21af9a79",
+      "output_ref": "artifact:bca9b4a88824e8760df948530a6601b738c712c873dc153abce3495a7fc21507",
+      "service": "narrative.audit"
+    },
+    {
+      "digest": "7ba59bee4100e3c86945496d6d62596373fb6bc63c70aa9a0c05f316ac2e3136",
+      "output_ref": "artifact:e831e9d0db478886cafb212e5f1019c750db778d6704ffcf3f7e7570c6286123",
+      "service": "narrative.revise"
+    },
+    {
+      "digest": "0c29047486d1ad5f0f8ff5fed5d0f9faca07e13031dc76dedb934847b0b0537a",
+      "output_ref": "artifact:619a0e1daa5a6d65005a672c038b327af4dcecc47645e0c926861b0746664d64",
+      "service": "storyboard.create"
+    },
+    {
+      "digest": "d35f1f7fbca4f65c6e541f8cd51e548be515cfc0e26f8f52e4051952de3608f9",
+      "output_ref": "artifact:cdd582e77d2685e1fa47bc13f66b8a388827aa014662845d4c337e18eded02f0",
+      "service": "creative.export"
+    }
+  ],
+  "confirmations": [
+    {
+      "http_status": 200,
+      "output_refs": [
+        "artifact:ef2c25e03713cd5856eb4f88cc94417bc60f8a11bb24005e63e63e407908765a"
+      ],
+      "progress": {
+        "chain_length": 1,
+        "completed": 1,
+        "total": 1
+      },
+      "status": "SUCCEEDED"
+    },
+    {
+      "http_status": 200,
+      "output_refs": [
+        "artifact:4d03df86d8b8bfcb404aeb5ad99221a51651d08986fb432114591f7f9fe257a5"
+      ],
+      "progress": {
+        "chain_length": 2,
+        "completed": 2,
+        "total": 2
+      },
+      "status": "SUCCEEDED"
+    },
+    {
+      "http_status": 200,
+      "output_refs": [
+        "artifact:28b8ef18be0ecfe75cbe5e53545c8556e5dac197abfd707e444245ee37667063"
+      ],
+      "progress": {
+        "chain_length": 3,
+        "completed": 3,
+        "total": 3
+      },
+      "status": "SUCCEEDED"
+    },
+    {
+      "http_status": 200,
+      "output_refs": [
+        "artifact:bca9b4a88824e8760df948530a6601b738c712c873dc153abce3495a7fc21507"
+      ],
+      "progress": {
+        "chain_length": 4,
+        "completed": 4,
+        "total": 4
+      },
+      "status": "SUCCEEDED"
+    },
+    {
+      "http_status": 200,
+      "output_refs": [
+        "artifact:e831e9d0db478886cafb212e5f1019c750db778d6704ffcf3f7e7570c6286123"
+      ],
+      "progress": {
+        "chain_length": 5,
+        "completed": 5,
+        "total": 5
+      },
+      "status": "SUCCEEDED"
+    },
+    {
+      "http_status": 200,
+      "output_refs": [
+        "artifact:619a0e1daa5a6d65005a672c038b327af4dcecc47645e0c926861b0746664d64"
+      ],
+      "progress": {
+        "chain_length": 6,
+        "completed": 6,
+        "total": 6
+      },
+      "status": "SUCCEEDED"
+    },
+    {
+      "http_status": 200,
+      "output_refs": [
+        "artifact:cdd582e77d2685e1fa47bc13f66b8a388827aa014662845d4c337e18eded02f0"
+      ],
+      "progress": {
+        "chain_length": 7,
+        "completed": 7,
+        "total": 7
+      },
+      "status": "SUCCEEDED"
+    }
+  ],
+  "progress": {
+    "chain_length": 7,
+    "completed": 7,
+    "total": 7
+  },
+  "project_id": "dd18f795-a21d-4202-bb7e-e466184c097f"
+}

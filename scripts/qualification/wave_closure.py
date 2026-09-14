@@ -46,6 +46,10 @@ WAVE_CAPABILITIES: dict[str, tuple[str, ...]] = {
         "background-production-notifications",
         "notifications-webhooks",
     ),
+    "G": (
+        "model-provider-routing",
+        "studio-product-surfaces",
+    ),
 }
 
 
