@@ -1279,7 +1279,7 @@ requires-dist = [
     { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=62f9df0" },
     { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=5730adc" },
     { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=2797792" },
-    { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=b63d4f7" },
+    { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=a5cd1dd" },
     { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=02022c7" },
     { name = "pillow", specifier = ">=10" },
     { name = "playwright", specifier = ">=1.49" },
@@ -2415,7 +2415,7 @@ wheels = [
 [[package]]
 name = "oservi"
 version = "1.4.0"
-source = { git = "https://github.com/helios-plat/oservi.git?rev=b63d4f7#b63d4f7f7cbd5706164ec0fb4bcbb4fb0e9ac51c" }
+source = { git = "https://github.com/helios-plat/oservi.git?rev=a5cd1dd#a5cd1dd1ba953598be21a139b41baa1210ea3c41" }
 dependencies = [
     { name = "croniter" },
     { name = "obase" },
