@@ -510,11 +510,11 @@
   "UNREGISTERED": [],
   "ZERO_OPRIM_OSKILLS": 0,
   "audited_shas": {
-    "obase": "a229627f96845ee5dccef9c8997241bd727f32ca",
-    "omodul": "5a436d4d5d98e41c2588026b15db81faef343b39",
-    "oprim": "833243d7ca7087116606f70cdb88e8f1f631f260",
-    "oservi": "fba9d20781bfb3c753dc4510bbd80645ea5c4d34",
-    "oskill": "e949980a257f2f84f3b4c5325c73817678c57eaa"
+    "obase": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+    "omodul": "bdb48f52032e69818281c779169959e0650a558d",
+    "oprim": "e7f9c65196437d3bff09401aa02bc817d071eec3",
+    "oservi": "2527968d4d7e2455a48b280cb191012f4266d0bb",
+    "oskill": "cac39df03778d4e4e44db3c006f8fc788dc757f6"
   },
   "packages": {
     "obase": {
