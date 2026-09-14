@@ -1,0 +1,90 @@
+{
+  "script": {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T11:26:11.431450Z",
+    "format": "SCREENPLAY",
+    "language": "en",
+    "object_id": "0b393f1e-5f20-4e40-9552-39974905f5de",
+    "project_id": "aa113b14-6e3a-411f-b14b-bbd7b6066b2e",
+    "provenance": [],
+    "revision": 0,
+    "scene_ids": [
+      "4881634a-b807-4244-abc5-7d138397aeaf",
+      "f96df250-5d03-4e8c-82a3-d6a1b173459d"
+    ],
+    "schema_version": 1,
+    "title": "Owned Script",
+    "updated_at": "2026-09-14T11:26:11.431450Z"
+  },
+  "shot_intents": [
+    {
+      "aspect_ratio": "16:9",
+      "available_assets": [],
+      "available_providers": [],
+      "beat_map": [],
+      "dialogue_present": false,
+      "line": "Mara opens the gate",
+      "narration_present": true,
+      "narrative_purpose": "open the gate",
+      "pacing": "medium",
+      "scene_intent": "a locked gate",
+      "style": "",
+      "subject": "Mara",
+      "target_duration_s": 3.0
+    }
+  ],
+  "storyboard": {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T11:26:11.431486Z",
+    "object_id": "daa2e16b-bca3-452d-b4cc-5fe461ebc57c",
+    "project_id": "aa113b14-6e3a-411f-b14b-bbd7b6066b2e",
+    "provenance": [],
+    "revision": 0,
+    "scenes": [
+      {
+        "scene_id": "4881634a-b807-4244-abc5-7d138397aeaf",
+        "shot_ids": [
+          "efd51e5b-a58f-431b-b8b8-2a567feb8615"
+        ]
+      },
+      {
+        "scene_id": "f96df250-5d03-4e8c-82a3-d6a1b173459d",
+        "shot_ids": [
+          "d495fefc-9376-4fd7-bdac-f2a1ded3d84e"
+        ]
+      }
+    ],
+    "schema_version": 1,
+    "script_id": "0b393f1e-5f20-4e40-9552-39974905f5de",
+    "shots": [
+      {
+        "action": "open the gate",
+        "audio_refs": [],
+        "camera": null,
+        "duration_ms": 3000,
+        "environment": "UNSPECIFIED",
+        "framing": "MEDIUM",
+        "shot_id": "efd51e5b-a58f-431b-b8b8-2a567feb8615",
+        "subject": null,
+        "transition": null,
+        "visual_intent": "open the gate"
+      },
+      {
+        "action": "choose the route",
+        "audio_refs": [],
+        "camera": null,
+        "duration_ms": 3000,
+        "environment": "UNSPECIFIED",
+        "framing": "MEDIUM",
+        "shot_id": "d495fefc-9376-4fd7-bdac-f2a1ded3d84e",
+        "subject": null,
+        "transition": null,
+        "visual_intent": "choose the route"
+      }
+    ],
+    "title": "Owned Script",
+    "updated_at": "2026-09-14T11:26:11.431487Z"
+  }
+}

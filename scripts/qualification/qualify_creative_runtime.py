@@ -712,6 +712,88 @@ def qualify_harness(root: Path) -> Evidence:
         ).result.status
         == "FAILED"
     )
+    cancel_proposal = harness.propose(
+        project_id=project_id,
+        capability="creative.harness",
+        kind=ActionKind.WRITE,
+        summary="cancellable action",
+        heavy=False,
+    )
+    cancel_outcome = harness.cancel(proposal=cancel_proposal, run=run)
+    cancelled_run_refused = False
+    try:
+        harness.execute(
+            proposal=cancel_proposal,
+            run=cancel_outcome.run,
+            artifact_factory=lambda _: (artifact,),
+        )
+    except ValueError as exc:
+        cancelled_run_refused = "CANCELLED" in str(exc)
+    cancellation = (
+        cancel_outcome.result.status == "CANCELLED"
+        and cancel_outcome.run.status == "CANCELLED"
+        and cancel_outcome.run.failure is not None
+        and cancel_outcome.run.failure.code == "ACTION_CANCELLED"
+        and cancelled_run_refused
+    )
+    retry_attempts: list[int] = []
+
+    def flaky_factory(_: ProductionRun) -> tuple[CreativeArtifact, ...]:
+        retry_attempts.append(len(retry_attempts) + 1)
+        return (artifact,) if len(retry_attempts) >= 2 else ()
+
+    retry_proposal = harness.propose(
+        project_id=project_id,
+        capability="creative.harness",
+        kind=ActionKind.RENDER,
+        summary="flaky render",
+        heavy=False,
+    )
+    retry_outcome = harness.execute(
+        proposal=retry_proposal,
+        run=run,
+        artifact_factory=flaky_factory,
+        max_attempts=3,
+    )
+    exhausted_outcome = harness.execute(
+        proposal=retry_proposal,
+        run=run,
+        artifact_factory=lambda _: (),
+        max_attempts=3,
+    )
+    bounded_retry = (
+        retry_outcome.result.status == "SUCCEEDED"
+        and len(retry_attempts) == 2
+        and exhausted_outcome.result.status == "FAILED"
+        and len(exhausted_outcome.run.stage_results) == 3
+        and all(entry.status == "FAILED" for entry in exhausted_outcome.run.stage_results)
+        and exhausted_outcome.run.failure is not None
+        and exhausted_outcome.run.failure.retryable
+    )
+    session_run = ProductionRun(
+        project_id=project_id,
+        run_key="harness-background",
+        capability="creative.harness",
+        status="RUNNING",
+    )
+    session_outcome = harness.cancel(proposal=cancel_proposal, run=session_run)
+    session_path = root / "session-run.json"
+    persist_model(session_path, session_outcome.run)
+    restored_session = restore_model(session_path, ProductionRun)
+    resumed_session = harness.resume(run=restored_session)
+    resumed_outcome = harness.execute(
+        proposal=cancel_proposal,
+        run=resumed_session,
+        artifact_factory=lambda _: (artifact,),
+    )
+    background_restore = (
+        restored_session.object_id == session_run.object_id
+        and restored_session.status == "CANCELLED"
+        and resumed_session.status == "RUNNING"
+        and resumed_session.failure is None
+        and resumed_outcome.result.status == "SUCCEEDED"
+        and resumed_outcome.run.status == "SUCCEEDED"
+    )
     return Evidence(
         "unified-agent-production-harness",
         str(root),
@@ -724,11 +806,11 @@ def qualify_harness(root: Path) -> Evidence:
             "PERSISTED_RUN": restored.artifact_manifest.hashes == (artifact.sha256,),
             "FAIL_CLOSED": no_artifact_failed,
             "RESTART_RESTORE": restored.object_id == final_run.object_id,
-            "CANCELLATION": False,
-            "BOUNDED_RETRY": False,
-            "BACKGROUND_RESTORE": False,
+            "CANCELLATION": cancellation,
+            "BOUNDED_RETRY": bounded_retry,
+            "BACKGROUND_RESTORE": background_restore,
         },
-        [str(root / "artifact.txt"), str(run_path)],
+        [str(root / "artifact.txt"), str(run_path), str(session_path)],
         ["persist and reload ProductionRun"],
         ["missing heavy confirmation", "missing artifact"],
         {"run_id": str(run.object_id), "artifact_id": str(artifact.object_id)},
@@ -1785,6 +1867,15 @@ def qualify_import_continuation(root: Path) -> Evidence:
 
 
 def qualify_script_storyboard(root: Path) -> Evidence:
+    from hevi.cinematic.shot_intelligence import (
+        ShotIntent,
+        ShotSelector,
+        canonical_json,
+        load_plan,
+        persist_plan,
+        replay_plan,
+        validate_shot_plan,
+    )
     from hevi.creative.omodul import ScriptModule, StoryboardModule
     from hevi.narrative.adapters.shot_intelligence import scene_to_shot_intents
     from hevi.narrative.models import SceneBlueprint as NarrativeSceneBlueprint
@@ -1834,6 +1925,32 @@ def qualify_script_storyboard(root: Path) -> Evidence:
         visual_intent="a locked gate",
     )
     shot_intents = scene_to_shot_intents(blueprint, "Mara opens the gate")
+    storyboard_intents = [
+        ShotIntent(
+            line=shot.action,
+            scene_intent=shot.visual_intent,
+            narrative_purpose="establishing" if index == 0 else "action",
+            subject=shot.subject or "Mara",
+            target_duration_s=shot.duration_ms / 1000.0,
+        )
+        for index, shot in enumerate(storyboard_bundle.shots)
+    ]
+    shot_plan = ShotSelector().plan(storyboard_intents)
+    plan_path = persist_plan(shot_plan, root / "shot-plan.json")
+    loaded_plan = load_plan(plan_path)
+    validation = validate_shot_plan(loaded_plan)
+    plan_artifact = _text_artifact(
+        root, "shot-plan.txt", canonical_json(loaded_plan) + "\n", project_id
+    )
+    downstream_consumption = (
+        len(loaded_plan.shots) == len(storyboard_bundle.shots)
+        and canonical_json(loaded_plan) == canonical_json(shot_plan)
+        and replay_plan(shot_plan) == shot_plan
+        and validation.status == "PASS"
+        and all(shot.provenance for shot in loaded_plan.shots)
+        and plan_artifact.quality_gate_status == "PASS"
+        and _sha(Path(plan_artifact.uri)) == plan_artifact.sha256
+    )
     manifest = _json_artifact(
         root,
         "production-handoff.json",
@@ -1857,13 +1974,22 @@ def qualify_script_storyboard(root: Path) -> Evidence:
             "SHOT_INTELLIGENCE_HANDOFF": len(shot_intents) == 1
             and shot_intents[0].narrative_purpose == "open the gate",
             "FAIL_CLOSED_REF_MISMATCH": _storyboard_ref_failure(project_id, script_bundle.script),
+            "DOWNSTREAM_PRODUCTION_CONSUMPTION": downstream_consumption,
         },
-        [str(root / "script.json"), str(root / "storyboard.json"), str(manifest)],
+        [
+            str(root / "script.json"),
+            str(root / "storyboard.json"),
+            str(manifest),
+            str(plan_path),
+            str(plan_artifact.uri),
+        ],
         ["reload script and storyboard", "downstream shot-intent projection"],
         ["storyboard scene reference mismatch"],
         {
             "script_id": str(script_bundle.script.object_id),
             "storyboard_id": str(storyboard_bundle.storyboard.object_id),
+            "shot_plan_status": validation.status,
+            "shot_plan_shots": len(loaded_plan.shots),
         },
     )
 
@@ -1880,7 +2006,9 @@ def qualify_storyboard(root: Path) -> Evidence:
             "SHOT_INTELLIGENCE_HANDOFF": evidence.checks["SHOT_INTELLIGENCE_HANDOFF"],
             "PERSISTENCE": evidence.checks["STORYBOARD_HANDOFF"],
             "FAIL_CLOSED": evidence.checks["FAIL_CLOSED_REF_MISMATCH"],
-            "DOWNSTREAM_PRODUCTION_CONSUMPTION": False,
+            "DOWNSTREAM_PRODUCTION_CONSUMPTION": evidence.checks[
+                "DOWNSTREAM_PRODUCTION_CONSUMPTION"
+            ],
         },
     )
 

@@ -1,0 +1,37 @@
+{
+  "capabilities": [
+    {
+      "capability_id": "unified-agent-production-harness",
+      "check_count": 10,
+      "checks_passed": true,
+      "details": {
+        "artifact_id": "64462823-23fa-4421-b0a7-cc2cf0608a1d",
+        "run_id": "fc829a10-c7e9-48d5-9775-a7ca06da4726"
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/unified-agent-production-harness.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "production-storyboard",
+      "check_count": 7,
+      "checks_passed": true,
+      "details": {
+        "script_id": "0b393f1e-5f20-4e40-9552-39974905f5de",
+        "shot_plan_shots": 2,
+        "shot_plan_status": "PASS",
+        "storyboard_id": "daa2e16b-bca3-452d-b4cc-5fe461ebc57c"
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/production-storyboard.json",
+      "status": "QUALIFIED"
+    }
+  ],
+  "ledger": {
+    "MISSING": 0,
+    "PARTIAL": 9,
+    "QUALIFIED": 30,
+    "TOTAL": 39,
+    "UNQUALIFIED": 0
+  },
+  "wave": "C",
+  "wave_status": "QUALIFIED"
+}

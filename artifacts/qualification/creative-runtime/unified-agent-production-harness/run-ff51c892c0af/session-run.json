@@ -1,0 +1,31 @@
+{
+  "artifact_manifest": {
+    "artifact_ids": [],
+    "hashes": []
+  },
+  "authority": "CANONICAL",
+  "capability": "creative.harness",
+  "created_at": "2026-09-14T11:24:41.875834Z",
+  "failure": {
+    "code": "ACTION_CANCELLED",
+    "message": "WRITE cancelled by operator",
+    "retryable": true,
+    "stage": "WRITE"
+  },
+  "object_id": "8d1f6e41-42e2-4ecd-8e44-6b5dd0e36ddb",
+  "project_id": "44a8d892-f363-4eb4-acdb-c73974261293",
+  "provenance": [],
+  "revision": 1,
+  "run_key": "harness-background",
+  "schema_version": 1,
+  "stage_results": [
+    {
+      "artifact_ids": [],
+      "error_code": "ACTION_CANCELLED",
+      "stage": "WRITE",
+      "status": "CANCELLED"
+    }
+  ],
+  "status": "CANCELLED",
+  "updated_at": "2026-09-14T11:24:41.875837Z"
+}

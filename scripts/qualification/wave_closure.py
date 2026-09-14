@@ -29,6 +29,10 @@ WAVE_CAPABILITIES: dict[str, tuple[str, ...]] = {
         "longform-narrative-production",
         "short-fiction-production",
     ),
+    "C": (
+        "unified-agent-production-harness",
+        "production-storyboard",
+    ),
 }
 
 

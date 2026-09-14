@@ -9,7 +9,12 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hevi.obase.creative import CreativeArtifact, ProductionRun
+from hevi.obase.creative import (
+    CreativeArtifact,
+    FailureRecord,
+    ProductionRun,
+    StageResult,
+)
 
 
 class ActionKind(StrEnum):
@@ -89,29 +94,109 @@ class ProductionHarness:
         run: ProductionRun,
         artifact_factory: ArtifactFactory,
         confirmation: HeavyActionConfirmation | None = None,
+        max_attempts: int = 1,
+        retryable_codes: tuple[str, ...] = ("ARTIFACT_REQUIRED_FOR_SUCCESS",),
     ) -> ProductionOutcome:
+        if run.status == "CANCELLED":
+            raise ValueError("RUN_CANCELLED")
+        if max_attempts < 1:
+            raise ValueError("INVALID_RETRY_BOUND")
         if proposal.heavy and (
             confirmation is None
             or confirmation.action_id != proposal.action_id
             or not confirmation.confirmed
         ):
             raise PermissionError("HEAVY_ACTION_CONFIRMATION_REQUIRED")
-        artifacts = artifact_factory(run)
-        if not artifacts:
-            result = ActionResult(
-                action_id=proposal.action_id,
-                status="FAILED",
-                run_id=run.object_id,
-                failure_code="ARTIFACT_REQUIRED_FOR_SUCCESS",
-            )
-            return ProductionOutcome(run, (), result)
+        stage = proposal.kind.value
+        attempts: list[StageResult] = []
+        for attempt in range(1, max_attempts + 1):
+            artifacts = artifact_factory(run)
+            if artifacts:
+                attempts.append(
+                    StageResult(
+                        stage=stage,
+                        status="SUCCEEDED",
+                        artifact_ids=tuple(artifact.object_id for artifact in artifacts),
+                    )
+                )
+                final_run = run.model_copy(
+                    update={
+                        "status": "SUCCEEDED",
+                        "stage_results": (*run.stage_results, *attempts),
+                        "failure": None,
+                        "revision": run.revision + 1,
+                    }
+                )
+                result = ActionResult(
+                    action_id=proposal.action_id,
+                    status="SUCCEEDED",
+                    artifact_ids=tuple(artifact.object_id for artifact in artifacts),
+                    run_id=run.object_id,
+                )
+                return ProductionOutcome(final_run, artifacts, result)
+            code = "ARTIFACT_REQUIRED_FOR_SUCCESS"
+            attempts.append(StageResult(stage=stage, status="FAILED", error_code=code))
+            if code not in retryable_codes or attempt == max_attempts:
+                failure = FailureRecord(
+                    code=code,
+                    message=f"{stage} produced no artifact after {attempt} attempt(s)",
+                    retryable=code in retryable_codes,
+                    stage=stage,
+                )
+                final_run = run.model_copy(
+                    update={
+                        "status": "FAILED",
+                        "stage_results": (*run.stage_results, *attempts),
+                        "failure": failure,
+                        "revision": run.revision + 1,
+                    }
+                )
+                result = ActionResult(
+                    action_id=proposal.action_id,
+                    status="FAILED",
+                    run_id=run.object_id,
+                    failure_code=code,
+                )
+                return ProductionOutcome(final_run, (), result)
+        raise AssertionError("unreachable retry state")
+
+    def cancel(
+        self,
+        *,
+        proposal: ActionProposal,
+        run: ProductionRun,
+        reason: str = "ACTION_CANCELLED",
+    ) -> ProductionOutcome:
+        if run.status != "RUNNING":
+            raise ValueError("RUN_NOT_CANCELLABLE")
+        stage = proposal.kind.value
+        cancelled = run.model_copy(
+            update={
+                "status": "CANCELLED",
+                "stage_results": (*run.stage_results, StageResult(stage=stage, status="CANCELLED", error_code=reason)),
+                "failure": FailureRecord(
+                    code=reason,
+                    message=f"{stage} cancelled by operator",
+                    retryable=True,
+                    stage=stage,
+                ),
+                "revision": run.revision + 1,
+            }
+        )
         result = ActionResult(
             action_id=proposal.action_id,
-            status="SUCCEEDED",
-            artifact_ids=tuple(artifact.object_id for artifact in artifacts),
+            status="CANCELLED",
             run_id=run.object_id,
+            failure_code=reason,
         )
-        return ProductionOutcome(run, artifacts, result)
+        return ProductionOutcome(cancelled, (), result)
+
+    def resume(self, *, run: ProductionRun) -> ProductionRun:
+        if run.status not in ("FAILED", "CANCELLED"):
+            raise ValueError("RUN_NOT_RESUMABLE")
+        return run.model_copy(
+            update={"status": "RUNNING", "failure": None, "revision": run.revision + 1}
+        )
 
 
 __all__ = [

@@ -1,6 +1,6 @@
 {
   "capability_id": "script-runtime",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-267b7cf955b1/production-handoff.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-3c4a5241b93b/production-handoff.json",
   "checks": {
     "STRUCTURED_SCRIPT": true,
     "SCRIPT_PERSISTENCE": true,
@@ -8,12 +8,15 @@
     "STORYBOARD_HANDOFF": true,
     "PRODUCTION_EXECUTABLE_SHOTS": true,
     "SHOT_INTELLIGENCE_HANDOFF": true,
-    "FAIL_CLOSED_REF_MISMATCH": true
+    "FAIL_CLOSED_REF_MISMATCH": true,
+    "DOWNSTREAM_PRODUCTION_CONSUMPTION": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-267b7cf955b1/script.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-267b7cf955b1/storyboard.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-267b7cf955b1/production-handoff.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-3c4a5241b93b/script.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-3c4a5241b93b/storyboard.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-3c4a5241b93b/production-handoff.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-3c4a5241b93b/shot-plan.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-3c4a5241b93b/shot-plan.txt"
   ],
   "recovery": [
     "reload script and storyboard",
@@ -23,8 +26,10 @@
     "storyboard scene reference mismatch"
   ],
   "details": {
-    "script_id": "fb614a7d-81d5-4f58-b4b5-6dcedbb9d67a",
-    "storyboard_id": "f3154404-f963-44d7-9000-139a43084f72"
+    "script_id": "40aa1b23-a6ed-476a-a810-92144cc6d482",
+    "storyboard_id": "b3ed6b10-6454-42cd-a526-6081edb7157f",
+    "shot_plan_status": "PASS",
+    "shot_plan_shots": 2
   },
   "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"

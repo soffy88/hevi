@@ -1,6 +1,6 @@
 {
   "capability_id": "unified-agent-production-harness",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-5f8974d0cc25",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-ff51c892c0af",
   "checks": {
     "TYPED_ACTION": true,
     "HEAVY_CONFIRMATION": true,
@@ -9,13 +9,14 @@
     "PERSISTED_RUN": true,
     "FAIL_CLOSED": true,
     "RESTART_RESTORE": true,
-    "CANCELLATION": false,
-    "BOUNDED_RETRY": false,
-    "BACKGROUND_RESTORE": false
+    "CANCELLATION": true,
+    "BOUNDED_RETRY": true,
+    "BACKGROUND_RESTORE": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-5f8974d0cc25/artifact.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-5f8974d0cc25/run.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-ff51c892c0af/artifact.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-ff51c892c0af/run.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-ff51c892c0af/session-run.json"
   ],
   "recovery": [
     "persist and reload ProductionRun"
@@ -25,9 +26,9 @@
     "missing artifact"
   ],
   "details": {
-    "run_id": "882c7641-76dd-4f6e-8a11-503b1c2737b8",
-    "artifact_id": "9c23b0f3-6423-4ed0-babf-80f499014e90"
+    "run_id": "fc829a10-c7e9-48d5-9775-a7ca06da4726",
+    "artifact_id": "64462823-23fa-4421-b0a7-cc2cf0608a1d"
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

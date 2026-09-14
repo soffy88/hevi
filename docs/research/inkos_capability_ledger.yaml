@@ -49,7 +49,7 @@ capabilities:
     hevi_capability_id: creative.production_harness
     qualification_test: real typed action, confirmation, cancellation, restart, artifact-grounded completion
     qualification_evidence_path: artifacts/qualification/creative-runtime/unified-agent-production-harness.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: longform-narrative-production
     name: Long-form narrative production lifecycle
@@ -363,7 +363,7 @@ capabilities:
     hevi_capability_id: creative.production_storyboard
     qualification_test: script-to-shot-plan-to-real-artifact with provenance and quality gate
     qualification_evidence_path: artifacts/qualification/creative-runtime/production-storyboard.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: interactive-film
     name: Interactive film authoring and playable export

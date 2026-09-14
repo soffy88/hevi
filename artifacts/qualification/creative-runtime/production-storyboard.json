@@ -1,6 +1,6 @@
 {
   "capability_id": "production-storyboard",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-2d21b71fe0cf/production-handoff.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-c0306cb2f267/production-handoff.json",
   "checks": {
     "SCRIPT_INPUT": true,
     "SHOT_ORDER": true,
@@ -8,12 +8,14 @@
     "SHOT_INTELLIGENCE_HANDOFF": true,
     "PERSISTENCE": true,
     "FAIL_CLOSED": true,
-    "DOWNSTREAM_PRODUCTION_CONSUMPTION": false
+    "DOWNSTREAM_PRODUCTION_CONSUMPTION": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-2d21b71fe0cf/script.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-2d21b71fe0cf/storyboard.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-2d21b71fe0cf/production-handoff.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-c0306cb2f267/script.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-c0306cb2f267/storyboard.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-c0306cb2f267/production-handoff.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-c0306cb2f267/shot-plan.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/production-storyboard/run-c0306cb2f267/shot-plan.txt"
   ],
   "recovery": [
     "reload script and storyboard",
@@ -23,9 +25,11 @@
     "storyboard scene reference mismatch"
   ],
   "details": {
-    "script_id": "69ed0c00-913e-44d3-a097-6389274a2827",
-    "storyboard_id": "3fc6e127-8e3b-47fd-bb07-9f6a26f2a957"
+    "script_id": "0b393f1e-5f20-4e40-9552-39974905f5de",
+    "storyboard_id": "daa2e16b-bca3-452d-b4cc-5fe461ebc57c",
+    "shot_plan_status": "PASS",
+    "shot_plan_shots": 2
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }
