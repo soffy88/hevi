@@ -1278,7 +1278,7 @@ requires-dist = [
     { name = "minio", specifier = ">=7.2.20" },
     { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=62f9df0" },
     { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=8d7d0c1" },
-    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=7c0b237" },
+    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=631a1d8" },
     { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=ad30a98" },
     { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=184362c" },
     { name = "pillow", specifier = ">=10" },
@@ -2364,7 +2364,7 @@ wheels = [
 [[package]]
 name = "oprim"
 version = "3.12.0"
-source = { git = "https://github.com/helios-plat/oprim.git?rev=7c0b237#7c0b2378140f4697dcdeb5326f2df99bdccec89e" }
+source = { git = "https://github.com/helios-plat/oprim.git?rev=631a1d8#631a1d82ce6d4eb12ea1559371a5e65da9595daf" }
 dependencies = [
     { name = "chardet" },
     { name = "dnspython" },
