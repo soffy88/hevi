@@ -1,0 +1,25 @@
+{
+  "schema": "hevi.legacy-3o-v3-debt/v1",
+  "spec": "3O Paradigm SPEC v3.0",
+  "policy": "Legacy 3O elements that predate v3.0 are recorded here and NOT refactored during WAVE B-G. A new element must never appear in this ledger. Each allowlist entry is validated for freshness: a recorded violation that stops being observed is a hard failure so the ledger can only shrink.",
+  "created": "wave-b-recon",
+  "checks": {
+    "check_oprim_keyword_only": {
+      "rule": "New oprim primitives must be keyword-only (SPEC v3.0 4.2). Legacy primitives listed below predate v3.0 and keep their positional signatures until LEGACY_3O_V3_COMPLIANCE_AUDIT.",
+      "allow": [
+        "hevi/creative/oprim/backup.py::backup_workspace",
+        "hevi/creative/oprim/backup.py::restore_workspace",
+        "hevi/creative/oprim/editing.py::apply_exact_edit",
+        "hevi/creative/oprim/editing.py::preview_exact_edit",
+        "hevi/creative/oprim/editing.py::preview_semantic_edit",
+        "hevi/creative/oprim/persistence.py::persist_model",
+        "hevi/creative/oprim/persistence.py::restore_model",
+        "hevi/creative/oprim/state.py::apply_state_delta",
+        "hevi/creative/oprim/state.py::canonical_json",
+        "hevi/creative/oprim/state.py::compare_versions",
+        "hevi/creative/oprim/state.py::hash_bytes",
+        "hevi/creative/oprim/webhooks.py::claim_delivery"
+      ]
+    }
+  }
+}

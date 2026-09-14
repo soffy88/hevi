@@ -1,0 +1,485 @@
+{
+  "layers": {
+    "obase": {
+      "module_count": 2,
+      "modules": {
+        "creative.py": [
+          "CREATIVE_CONTRACT_VERSION",
+          "CreativeAuthority",
+          "CreativeObject",
+          "ProvenanceRef",
+          "AuthorIntent",
+          "StoryRule",
+          "CharacterState",
+          "CharacterVoice",
+          "Character",
+          "WorldRule",
+          "WorldState",
+          "LocationState",
+          "RelationshipState",
+          "ResourceState",
+          "InformationState",
+          "EmotionState",
+          "PhysicalState",
+          "TimelineState",
+          "StoryArc",
+          "StoryBeat",
+          "ChapterIntent",
+          "SceneIntent",
+          "PendingHook",
+          "Foreshadow",
+          "Payoff",
+          "ChapterSummary",
+          "ContinuityFact",
+          "NarrativeCanon",
+          "StoryBible",
+          "NarrativeProject",
+          "CreativeProject",
+          "CreativeSource",
+          "CreativeEvidence",
+          "ResearchReport",
+          "Material",
+          "NarrativeBranch",
+          "ObservationFact",
+          "NarrativeObservation",
+          "NarrativeDelta",
+          "BranchBeat",
+          "ProjectedCharacterChange",
+          "ProjectedWorldChange",
+          "BranchRisk",
+          "IntentAlignment",
+          "BranchSnapshot",
+          "NarrativeForecast",
+          "SelectedBranchPlan",
+          "ContextItem",
+          "ContextManifest",
+          "RevisionProposal",
+          "CandidateRevision",
+          "ReviewReport",
+          "ParentCanonRef",
+          "ImportedCanonSnapshot",
+          "CanonInheritancePolicy",
+          "CanonDeviation",
+          "CoverBrief",
+          "NarrativeIntentProfile",
+          "ArtifactProfile",
+          "CreativeComparison",
+          "RevisionFeedback",
+          "ScriptScene",
+          "Script",
+          "StoryboardShot",
+          "StoryboardScene",
+          "Storyboard",
+          "Condition",
+          "Choice",
+          "StoryNode",
+          "InteractiveFilm",
+          "InventoryItem",
+          "InteractiveWorld",
+          "GlossaryEntry",
+          "TranslationSegment",
+          "TranslationProject",
+          "StyleProfile",
+          "GenreRule",
+          "GenreProfile",
+          "CreativeSkill",
+          "CreativePolicy",
+          "StageResult",
+          "FailureRecord",
+          "ArtifactManifest",
+          "ProductionRun",
+          "RunSnapshot",
+          "CreativeArtifact",
+          "AuditFinding",
+          "NarrativeAudit",
+          "Revision",
+          "Approval",
+          "ExportArtifact"
+        ],
+        "provider_presets.py": [
+          "list_presets",
+          "get_preset",
+          "resolve_preset"
+        ]
+      }
+    },
+    "omodul": {
+      "module_count": 31,
+      "modules": {
+        "analytics.py": [
+          "CreativeAnalytics",
+          "calculate_analytics"
+        ],
+        "audit.py": [
+          "AuditDimension",
+          "NarrativeAuditEngine"
+        ],
+        "audit_dimensions.py": [
+          "Severity",
+          "canonical_ref",
+          "AuditClaim",
+          "SceneSpec",
+          "StyleSpec",
+          "GenreSpec",
+          "AuthorIntentSpec",
+          "LengthTarget",
+          "AuditState",
+          "AuditContext",
+          "DimensionFinding",
+          "_sentences",
+          "_sentence_location",
+          "_words",
+          "_casefold_contains",
+          "_canon_index",
+          "_continuity_findings",
+          "_code_prefix",
+          "_verify_character_continuity",
+          "_verify_world_continuity",
+          "_verify_timeline_continuity",
+          "_verify_location_continuity",
+          "_verify_object_continuity",
+          "_verify_resource_continuity",
+          "_verify_relationship_continuity",
+          "_verify_information_continuity",
+          "_verify_emotional_continuity",
+          "_verify_physical_state_continuity",
+          "_verify_motivation_continuity",
+          "_verify_fact_consistency",
+          "_verify_hook_continuity",
+          "_verify_foreshadowing",
+          "_verify_payoff",
+          "_has_payoff",
+          "_verify_arc_alignment",
+          "_verify_scene_purpose",
+          "_verify_pacing",
+          "_dialogue_ratio",
+          "_verify_repetition",
+          "_verify_dialogue_quality",
+          "_verify_prose_clarity",
+          "_verify_style_alignment",
+          "_verify_genre_alignment",
+          "_verify_fatigue_words",
+          "_verify_length_governance",
+          "_verify_structure",
+          "_verify_point_of_view",
+          "_verify_tone",
+          "_verify_visual_filmability",
+          "_verify_shot_feasibility",
+          "_verify_safety",
+          "_verify_author_intent_alignment",
+          "_verify_character_voice",
+          "Verifier",
+          "ModelAssistedVerifier",
+          "run_dimensions"
+        ],
+        "audit_gold.py": [
+          "DEFAULT_CORPUS_ROOT",
+          "AuditGoldFixture",
+          "_claims",
+          "_scenes",
+          "DimensionMetric",
+          "AuditGoldMetrics",
+          "load_corpus",
+          "_fixture_evidence",
+          "evaluate"
+        ],
+        "background.py": [
+          "BackgroundRunController"
+        ],
+        "comparison.py": [
+          "IntentArtifactComparison",
+          "ComparisonFinding",
+          "ComparisonModule"
+        ],
+        "context.py": [
+          "ContextBuildError",
+          "ContextBudget",
+          "ContextCandidate",
+          "CreativeContextCompiler"
+        ],
+        "cover.py": [
+          "CoverGeneration",
+          "CoverModule"
+        ],
+        "export.py": [
+          "ExportModule"
+        ],
+        "fanfic.py": [
+          "DerivedCanon",
+          "FanficModule"
+        ],
+        "forecast.py": [
+          "StaleForecastError",
+          "ForecastResult",
+          "ForecastEngine"
+        ],
+        "genre.py": [
+          "GenreValidationError",
+          "GenreBlueprint",
+          "_rule",
+          "GenrePlan",
+          "rounded",
+          "GenreModule",
+          "GenreFinding",
+          "_dialogue_ratio"
+        ],
+        "importer.py": [
+          "ImportResult",
+          "ImportModule"
+        ],
+        "interactive.py": [
+          "GraphFinding",
+          "GraphValidation",
+          "InteractiveFilmGraph",
+          "InteractiveFilmModule"
+        ],
+        "length.py": [
+          "LengthPolicy",
+          "LengthReport",
+          "LengthModule"
+        ],
+        "long_horizon.py": [
+          "HorizonReport",
+          "LongHorizonQualifier"
+        ],
+        "market.py": [
+          "TrendEvidence",
+          "TrendSnapshot",
+          "MarketTrend",
+          "MarketRadar"
+        ],
+        "materials.py": [
+          "MaterialCitation",
+          "MaterialModule"
+        ],
+        "narrative.py": [
+          "NarrativeStage",
+          "ObservationValidationError",
+          "WorkflowSnapshot",
+          "LongFormWorkflow",
+          "NarrativeObservationEngine"
+        ],
+        "naturalness_gold.py": [
+          "DEFAULT_CORPUS_ROOT",
+          "NaturalnessGoldFixture",
+          "NaturalnessGoldMetrics",
+          "load_corpus",
+          "evaluate"
+        ],
+        "play.py": [
+          "ActionKind",
+          "WorldContract",
+          "WorldClock",
+          "PlayerState",
+          "CharacterAgentState",
+          "Evidence",
+          "Relationship",
+          "WorldEvent",
+          "Action",
+          "FreeAction",
+          "HUDState",
+          "Turn",
+          "TurnResult",
+          "PlayState",
+          "PlayStart",
+          "PlayEngine"
+        ],
+        "policy.py": [
+          "PolicyDiff",
+          "PolicyModule"
+        ],
+        "research.py": [
+          "ResearchModule"
+        ],
+        "review.py": [
+          "ReviewMode",
+          "ReviewWorkflow"
+        ],
+        "revision.py": [
+          "ChangeType",
+          "_EXPAND_CODES",
+          "_CONTRACT_CODES",
+          "_EXPOSITION_MARKERS",
+          "_INTENSIFIERS",
+          "RevisionLimitError",
+          "RevisionPolicy",
+          "RevisionOperation",
+          "RevisionPlan",
+          "RevisionExecution",
+          "RevisionCommit",
+          "_hash",
+          "_sentences",
+          "_split_long_sentences",
+          "_collapse_repeats",
+          "_trim_sentence",
+          "_align_to_canon",
+          "_remove_forbidden",
+          "_reduce_fatigue",
+          "_remove_exposition",
+          "_externalize_interior",
+          "_strip_intensifiers",
+          "_append_beat",
+          "_repair_text",
+          "_describe",
+          "RevisionEngine",
+          "_diff_lines"
+        ],
+        "revision_gold.py": [
+          "_PID",
+          "_AID",
+          "CANON_HASH",
+          "_claim",
+          "_context",
+          "_canon_map",
+          "_reaudit",
+          "RevisionScenarioResult",
+          "RevisionGoldResult",
+          "_scenarios",
+          "run_revision_gold"
+        ],
+        "runtime.py": [
+          "ActionKind",
+          "ActionProposal",
+          "HeavyActionConfirmation",
+          "ActionResult",
+          "ProductionOutcome",
+          "ArtifactFactory",
+          "ProductionHarness"
+        ],
+        "script.py": [
+          "ScriptBundle",
+          "ScriptModule",
+          "StoryboardBundle",
+          "StoryboardModule"
+        ],
+        "short.py": [
+          "SalesPackage",
+          "ShortProduction",
+          "ShortFictionModule"
+        ],
+        "style.py": [
+          "_STOPWORDS",
+          "NaturalnessFinding",
+          "WritingNaturalnessAudit",
+          "NaturalnessRevision",
+          "StyleApplication",
+          "_sentences",
+          "_paragraphs",
+          "_words",
+          "_location",
+          "_dialogue_ratio",
+          "_finding",
+          "_detect_repetitive_phrase",
+          "_detect_template_cadence",
+          "_detect_generic_transition",
+          "_detect_empty_intensifier",
+          "_detect_semantic_repetition",
+          "_detect_unnatural_dialogue",
+          "_detect_over_explanation",
+          "_detect_cliche_density",
+          "_detect_style_drift",
+          "_detect_paragraph_monotony",
+          "_SYNTAX_TEMPLATE",
+          "_detect_syntactic_monotony",
+          "StyleModule",
+          "_collapse_trigrams",
+          "_vary_openings",
+          "_replace_repeats"
+        ],
+        "translation.py": [
+          "Translator",
+          "TranslationModule"
+        ]
+      }
+    },
+    "oprim": {
+      "module_count": 9,
+      "modules": {
+        "backup.py": [
+          "BackupError",
+          "backup_workspace",
+          "restore_workspace"
+        ],
+        "editing.py": [
+          "TargetNotUnique",
+          "PatchPreview",
+          "SemanticLocator",
+          "CascadeImpact",
+          "preview_semantic_edit",
+          "preview_exact_edit",
+          "apply_exact_edit"
+        ],
+        "locking.py": [
+          "ResourceBusy",
+          "ProjectLock"
+        ],
+        "memory.py": [
+          "MemoryRecord",
+          "MemoryHit",
+          "CreativeMemoryIndex"
+        ],
+        "persistence.py": [
+          "StaleRevisionError",
+          "PersistenceValidationError",
+          "RevisionReceipt",
+          "_read_revision",
+          "persist_model",
+          "restore_model"
+        ],
+        "routing.py": [
+          "Route",
+          "ModelRouter"
+        ],
+        "state.py": [
+          "JsonScalar",
+          "JsonValue",
+          "StateOperation",
+          "CreativeStateDelta",
+          "_PROTECTED_PATHS",
+          "canonical_json",
+          "hash_bytes",
+          "compare_versions",
+          "apply_state_delta"
+        ],
+        "webhooks.py": [
+          "WebhookLedger",
+          "WebhookSigner",
+          "claim_delivery"
+        ],
+        "workspace.py": [
+          "WorkspaceCommitError",
+          "AtomicWorkspace"
+        ]
+      }
+    },
+    "oservi": {
+      "module_count": 2,
+      "modules": {
+        "registry.py": [
+          "ServiceRequest",
+          "ServiceResult",
+          "Handler",
+          "CreativeServiceRegistry"
+        ],
+        "services.py": [
+          "CREATIVE_SERVICE_NAMES",
+          "CreativeServiceSurface"
+        ]
+      }
+    },
+    "oskill": {
+      "module_count": 1,
+      "modules": {
+        "registry.py": [
+          "SkillSafetyError",
+          "RegisteredSkill",
+          "SkillRegistry",
+          "DEFAULT_SKILL_NAMES",
+          "default_skill"
+        ]
+      }
+    }
+  },
+  "purpose": "flat-namespace asset inventory for single-source admission",
+  "spec": "3O Paradigm SPEC v3.0"
+}
