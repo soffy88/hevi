@@ -1358,57 +1358,130 @@ def qualify_import(root: Path) -> Evidence:
 
 
 def qualify_import_continuation(root: Path) -> Evidence:
-    result, source_path = _import_fixture(root, chapter_count=20)
-    from hevi.obase.creative import PendingHook
+    from hevi.creative.omodul import ImportModule
 
-    character = Character(project_id=result.project.project_id, name="Mara", role="navigator")
-    world_rule = WorldRule(
-        project_id=result.project.project_id, statement="the harbour freezes in winter"
+    result, source_path = _import_fixture(root, chapter_count=20)
+    module = ImportModule()
+    reconstructed = module.reconstruct(result)
+    persist_model(
+        root / "canon.json",
+        reconstructed.canon,
+        expected_previous_revision=result.canon.revision,
     )
-    timeline = TimelineState(project_id=result.project.project_id, current_marker="chapter-20")
-    hook = PendingHook(
-        project_id=result.project.project_id,
-        description="find the northern channel",
-        priority="HIGH",
+    state_root = root / "state"
+    state_objects = (
+        *reconstructed.characters,
+        *reconstructed.world_rules,
+        reconstructed.timeline,
+        *reconstructed.hooks,
+        *reconstructed.summaries,
     )
-    reconstructed = {
-        "character_ids": [str(character.object_id)],
-        "world_rule_ids": [str(world_rule.object_id)],
-        "timeline_id": str(timeline.object_id),
-        "hook_ids": [str(hook.object_id)],
+    for state_object in state_objects:
+        persist_model(
+            state_root / f"{type(state_object).__name__}-{state_object.object_id}.json",
+            state_object,
+        )
+    reconstruction = {
+        "character_ids": [str(character.object_id) for character in reconstructed.characters],
+        "world_rule_ids": [str(rule.object_id) for rule in reconstructed.world_rules],
+        "timeline_id": str(reconstructed.timeline.object_id),
+        "hook_ids": [str(hook.object_id) for hook in reconstructed.hooks],
+        "chapter_summary_ids": [str(summary.object_id) for summary in reconstructed.summaries],
+        "canon_revision": reconstructed.canon.revision,
         "source_sha256": _sha(source_path),
     }
-    _json_artifact(root, "reconstruction.json", reconstructed)
-    continued = (
-        *result.chapters,
-        "Mara records continuation chapter 21.",
-        "Mara records continuation chapter 22.",
-        "Mara records continuation chapter 23.",
-    )
+    reconstruction_path = _json_artifact(root, "reconstruction.json", reconstruction)
+    restored_canon = restore_model(root / "canon.json", NarrativeCanon)
+
+    continuation_chapters = module.draft_continuation(result, reconstructed, count=3)
     continuation = _text_artifact(
-        root, "continuation.txt", "\n\n".join(continued[-3:]), result.project.project_id
+        root,
+        "continuation.txt",
+        "\n\n".join(continuation_chapters),
+        result.project.project_id,
     )
+    observation = module.continuation_observation(
+        reconstructed, chapters=continuation_chapters, artifact=continuation
+    )
+    engine = NarrativeObservationEngine()
+    delta = engine.propose_delta(observation=observation, canon=reconstructed.canon)
+    committed, facts = engine.settle(
+        canon=reconstructed.canon,
+        delta=delta,
+        approved_fact_indexes=tuple(range(len(observation.facts))),
+    )
+    persist_model(
+        root / "canon.json",
+        committed,
+        expected_previous_revision=reconstructed.canon.revision,
+    )
+    replayed_canon = restore_model(root / "canon.json", NarrativeCanon)
+
+    character_ids = tuple(character.object_id for character in reconstructed.characters)
+    chapter_summary_bound = all(
+        summary.character_ids == character_ids for summary in reconstructed.summaries
+    )
+    canonical_reconstruction = (
+        restored_canon.character_ids == character_ids
+        and restored_canon.world_rule_ids
+        == tuple(rule.object_id for rule in reconstructed.world_rules)
+        and restored_canon.hook_ids == tuple(hook.object_id for hook in reconstructed.hooks)
+        and restored_canon.timeline_state_id == reconstructed.timeline.object_id
+        and restored_canon.revision == result.canon.revision + 1
+        and len(reconstructed.characters) >= 1
+        and len(reconstructed.world_rules) >= 1
+        and len(reconstructed.hooks) >= 1
+        and chapter_summary_bound
+    )
+    continuation_commit = (
+        len(facts) == len(continuation_chapters)
+        and committed.revision == reconstructed.canon.revision + 1
+        and len(committed.continuity_fact_ids)
+        == len(reconstructed.canon.continuity_fact_ids) + len(facts)
+        and replayed_canon.continuity_fact_ids == committed.continuity_fact_ids
+        and all(fact.authority is CreativeAuthority.CANONICAL for fact in facts)
+    )
+    source_ref = observation.facts[0].source_ref
     return Evidence(
         "existing-work-import-continuation",
         str(source_path),
         {
+            "SOURCE_READ": source_path.is_file(),
             "TWENTY_CHAPTER_IMPORT": len(result.chapters) == 20,
-            "CHARACTER_RECONSTRUCTION": len(reconstructed["character_ids"]) == 1,
-            "WORLD_RECONSTRUCTION": len(reconstructed["world_rule_ids"]) == 1,
-            "TIMELINE_RECONSTRUCTION": reconstructed["timeline_id"] == str(timeline.object_id),
-            "HOOK_RECONSTRUCTION": len(reconstructed["hook_ids"]) == 1,
-            "STATE_REPLAY": all(reconstructed.values()),
-            "THREE_CHAPTER_CONTINUATION": len(continued) == 23
+            "ORDER_PRESERVED": result.chapters[0].startswith("Mara records chapter 1")
+            and result.chapters[-1].startswith("Mara records chapter 20"),
+            "UNRESOLVED_REVIEW_REQUIRED": len(result.unresolved) == 2,
+            "CHARACTER_RECONSTRUCTION": len(reconstructed.characters) >= 1,
+            "WORLD_RECONSTRUCTION": len(reconstructed.world_rules) >= 1,
+            "TIMELINE_RECONSTRUCTION": reconstructed.timeline.current_marker == "chapter-20",
+            "HOOK_RECONSTRUCTION": len(reconstructed.hooks) >= 1,
+            "CHAPTER_SUMMARY_RECONSTRUCTION": len(reconstructed.summaries) == 20,
+            "STATE_REPLAY": restored_canon.object_id == reconstructed.canon.object_id
+            and chapter_summary_bound,
+            "THREE_CHAPTER_CONTINUATION": len(continuation_chapters) == 3
             and continuation.quality_gate_status == "PASS",
-            "CONTINUITY_SOURCE_BOUND": continuation.provenance[0].sha256
-            == _sha(root / "continuation.txt"),
-            "CANONICAL_RECONSTRUCTION_RUNTIME": False,
-            "CONTINUATION_CANON_COMMIT": False,
+            "CONTINUITY_SOURCE_BOUND": source_ref is not None
+            and source_ref.sha256 == continuation.sha256,
+            "CANONICAL_RECONSTRUCTION_RUNTIME": canonical_reconstruction,
+            "CONTINUATION_CANON_COMMIT": continuation_commit,
         },
-        [str(source_path), str(root / "reconstruction.json"), str(root / "continuation.txt")],
-        ["restore imported project and replay reconstructed state"],
+        [
+            str(source_path),
+            str(reconstruction_path),
+            str(root / "canon.json"),
+            str(continuation.uri),
+        ],
+        [
+            "restore imported canon and replay reconstructed state",
+            "resume continuation from checkpoint",
+        ],
         ["malformed chapter heading", "cross-project continuation scope rejection"],
-        {"imported_chapters": len(result.chapters), "continued_chapters": len(continued)},
+        {
+            "imported_chapters": len(result.chapters),
+            "continued_chapters": len(continuation_chapters),
+            "characters": [character.name for character in reconstructed.characters],
+            "world_rules": [rule.statement for rule in reconstructed.world_rules],
+        },
     )
 
 

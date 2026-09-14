@@ -1,0 +1,36 @@
+{
+  "canon_revision": 1,
+  "chapter_summary_ids": [
+    "a299faed-0878-488f-a979-013bbe7b4c75",
+    "856cfe29-88a4-47ce-a5a7-3cd4bac843fc",
+    "2000440a-be16-46a7-82cb-ae64034f7850",
+    "48785bd9-d4d8-4b72-9819-d4f683e2b768",
+    "cc397de1-5be7-4b5c-89db-572c7e081c56",
+    "391df9ac-6eae-47e9-bca6-0e90cc1e5761",
+    "e4e41bb2-ae63-4716-8453-204b2d103e64",
+    "3e95eb61-f52f-4f42-8004-205fe8a79565",
+    "ca42b0fa-f00f-43f6-8ed4-5efa9472c7de",
+    "829112d3-57ad-404f-979e-dbd352264538",
+    "6f9bce60-6740-4a37-b405-ce405fe223fc",
+    "3d6178b7-4e73-4aac-b222-6ef9e5f66f20",
+    "345aeafc-1d46-4cd4-a721-5083d8910d36",
+    "2800e8b9-5655-476f-9d5c-bd072e0b013d",
+    "e3f8dd5b-970d-4297-92aa-48a206aad980",
+    "3fd58c13-2892-4c8d-bbab-431623b79220",
+    "a8d91fd9-8734-461a-aaca-2f5a76640838",
+    "0cf00bb4-8f6b-40b7-aa2b-53e32a118a65",
+    "ac41e881-e387-49e7-b223-20bef7227716",
+    "810ea502-1ca1-4686-8eaa-888fdd179f90"
+  ],
+  "character_ids": [
+    "5826a6b7-5775-4d7e-b5d0-b1e332a341b5"
+  ],
+  "hook_ids": [
+    "1dfdd2fb-c530-4dd6-85d4-2e0d806d88d7"
+  ],
+  "source_sha256": "97f9bad22fa2e620093f174a33e2c66ef894ff6d54b351e4540486b554246f87",
+  "timeline_id": "174a61a2-1541-49bf-8b60-721dad212aca",
+  "world_rule_ids": [
+    "d66bde1f-f24c-4b4c-8720-20126a650085"
+  ]
+}

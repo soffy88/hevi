@@ -36,7 +36,7 @@ from hevi.creative.omodul.genre import (
     GenrePlan,
     GenreValidationError,
 )
-from hevi.creative.omodul.importer import ImportModule, ImportResult
+from hevi.creative.omodul.importer import ImportModule, ImportResult, ReconstructedState
 from hevi.creative.omodul.interactive import (
     GraphFinding,
     GraphValidation,
@@ -152,6 +152,7 @@ __all__ = [
     "BLUEPRINTS",
     "ImportModule",
     "ImportResult",
+    "ReconstructedState",
     "GraphFinding",
     "GraphValidation",
     "InteractiveFilmGraph",

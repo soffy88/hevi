@@ -1,25 +1,31 @@
 {
   "capability_id": "existing-work-import-continuation",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-f281d097e92d/manuscript.md",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-e9fab472a86b/manuscript.md",
   "checks": {
+    "SOURCE_READ": true,
     "TWENTY_CHAPTER_IMPORT": true,
+    "ORDER_PRESERVED": true,
+    "UNRESOLVED_REVIEW_REQUIRED": true,
     "CHARACTER_RECONSTRUCTION": true,
     "WORLD_RECONSTRUCTION": true,
     "TIMELINE_RECONSTRUCTION": true,
     "HOOK_RECONSTRUCTION": true,
+    "CHAPTER_SUMMARY_RECONSTRUCTION": true,
     "STATE_REPLAY": true,
     "THREE_CHAPTER_CONTINUATION": true,
     "CONTINUITY_SOURCE_BOUND": true,
-    "CANONICAL_RECONSTRUCTION_RUNTIME": false,
-    "CONTINUATION_CANON_COMMIT": false
+    "CANONICAL_RECONSTRUCTION_RUNTIME": true,
+    "CONTINUATION_CANON_COMMIT": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-f281d097e92d/manuscript.md",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-f281d097e92d/reconstruction.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-f281d097e92d/continuation.txt"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-e9fab472a86b/manuscript.md",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-e9fab472a86b/reconstruction.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-e9fab472a86b/canon.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/existing-work-import-continuation/run-e9fab472a86b/continuation.txt"
   ],
   "recovery": [
-    "restore imported project and replay reconstructed state"
+    "restore imported canon and replay reconstructed state",
+    "resume continuation from checkpoint"
   ],
   "failure_injections": [
     "malformed chapter heading",
@@ -27,8 +33,14 @@
   ],
   "details": {
     "imported_chapters": 20,
-    "continued_chapters": 23
+    "continued_chapters": 3,
+    "characters": [
+      "Mara"
+    ],
+    "world_rules": [
+      "winter harbour"
+    ]
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

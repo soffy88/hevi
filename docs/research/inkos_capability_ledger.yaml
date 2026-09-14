@@ -492,7 +492,7 @@ capabilities:
     hevi_capability_id: creative.import_continuation
     qualification_test: 20 chapters, split/order/restart, reconstruction, continuation, continuity audit
     qualification_evidence_path: artifacts/qualification/creative-runtime/existing-work-import-continuation.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: fanfic-spinoff-canon-import
     name: Fan fiction, spinoff, and canon inheritance
