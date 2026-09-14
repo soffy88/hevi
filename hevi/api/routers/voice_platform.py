@@ -20,12 +20,12 @@ from pydantic import BaseModel, Field
 
 from hevi.audio.speech_platform import build_batch_plan, get_engine, list_voice_profiles
 from hevi.auth.dependencies import get_current_user
-from hevi.voicepro.omodul.openai_audio import (
+from hevi.layer4_legacy.voicepro.omodul_impl.openai_audio import (
     AUDIO_FORMATS,
     synthesize_audio_file,
     transcribe_audio_file,
 )
-from hevi.voicepro.omodul.platform import (
+from hevi.layer4_legacy.voicepro.omodul_impl.platform import (
     create_voice_profile,
     delete_voice_profile,
     list_gallery_profiles,
@@ -121,17 +121,23 @@ async def models(_: Annotated[dict[str, Any], Depends(get_current_user)]) -> dic
 
 
 @router.post("/models/register")
-async def register(body: ModelRegisterRequest, _: Annotated[dict[str, Any], Depends(get_current_user)]) -> dict[str, Any]:
+async def register(
+    body: ModelRegisterRequest, _: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
     return register_model(**body.model_dump())
 
 
 @router.delete("/models/{model_id}")
-async def unregister(model_id: str, _: Annotated[dict[str, Any], Depends(get_current_user)]) -> dict[str, Any]:
+async def unregister(
+    model_id: str, _: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
     return {"model_id": model_id, "removed": unregister_model(model_id)}
 
 
 @router.post("/route")
-async def route(body: ModelRouteRequest, _: Annotated[dict[str, Any], Depends(get_current_user)]) -> dict[str, Any]:
+async def route(
+    body: ModelRouteRequest, _: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
     return route_model(kind=body.kind, preferred=body.preferred, device=body.device)
 
 
@@ -299,7 +305,9 @@ async def speech(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (RuntimeError, OSError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return FileResponse(result["path"], media_type=result["media_type"], filename=Path(result["path"]).name)
+    return FileResponse(
+        result["path"], media_type=result["media_type"], filename=Path(result["path"]).name
+    )
 
 
 @openai_router.post("/audio/speech/stream")
@@ -391,7 +399,11 @@ async def transcription_stream(websocket: WebSocket) -> None:
                 message = await websocket.receive()
                 if message.get("type") == "websocket.disconnect":
                     break
-                payload = message.get("bytes") if message.get("bytes") is not None else message.get("text", "")
+                payload = (
+                    message.get("bytes")
+                    if message.get("bytes") is not None
+                    else message.get("text", "")
+                )
                 if payload is None or not isinstance(payload, (str, bytes)):
                     continue
                 await upstream.send(payload)
@@ -401,7 +413,9 @@ async def transcription_stream(websocket: WebSocket) -> None:
                 else:
                     await websocket.send_text(response)
     except Exception as exc:
-        await websocket.send_json({"type": "error", "code": "STREAMING_ASR_FAILED", "message": str(exc)[:300]})
+        await websocket.send_json(
+            {"type": "error", "code": "STREAMING_ASR_FAILED", "message": str(exc)[:300]}
+        )
         await websocket.close(code=1011)
 
 

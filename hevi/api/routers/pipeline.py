@@ -78,7 +78,7 @@ def _fuse_generate_options(source_channel: str, cfg: UnifiedGenerateConfig) -> d
     try:
         from pathlib import Path
 
-        from hevi.script2video.omodul.fuse import fuse_production
+        from hevi.layer4_legacy.script2video.omodul_impl.fuse import fuse_production
 
         photos = [Path(p) for p in raw_photos if p]
         photos = [p for p in photos if p.exists()]
@@ -135,10 +135,7 @@ async def list_capabilities(
             item["readiness"] = "provider_unavailable"
             item["status"] = "provider_unavailable"
             item["production_ready"] = False
-            item["message"] = (
-                f"{item['name']} 接口已存在，但 Provider 当前不可用；"
-                "任务不会提交。"
-            )
+            item["message"] = f"{item['name']} 接口已存在，但 Provider 当前不可用；任务不会提交。"
     return {"capabilities": capabilities}
 
 

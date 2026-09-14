@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID, uuid4
 
-from hevi.creative.oservi.registry import (
+from hevi.layer4_legacy.creative.oservi_impl.registry import (
     CreativeServiceRegistry,
     ServiceRequest,
     ServiceResult,
@@ -158,7 +158,9 @@ class StudioActionGateway:
 
     def progress(self) -> dict[str, int]:
         return {
-            "completed": sum(item.status != "AWAITING_CONFIRMATION" for item in self.actions.values()),
+            "completed": sum(
+                item.status != "AWAITING_CONFIRMATION" for item in self.actions.values()
+            ),
             "total": len(self.actions),
             "chain_length": len(self.chain),
         }
@@ -181,4 +183,9 @@ class StudioActionGateway:
         return gateway
 
 
-__all__ = ["CREATIVE_SERVICE_NAMES", "CreativeServiceSurface", "StudioAction", "StudioActionGateway"]
+__all__ = [
+    "CREATIVE_SERVICE_NAMES",
+    "CreativeServiceSurface",
+    "StudioAction",
+    "StudioActionGateway",
+]

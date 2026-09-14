@@ -6,15 +6,8 @@ Voice-Pro 的语音合成能力内部化：
 
 from __future__ import annotations
 
-# ── Omodul ──
-from hevi.voicepro_tts.omodul import (
-    plan_ai_short,
-    plan_clip_generator,
-    plan_youtube_studio,
-)
-
 # ── Oprim ──
-from hevi.voicepro_tts.oprim import (
+from hevi.layer4_legacy.voicepro_tts.oprim_impl import (
     make_tts_config,
     make_tts_result,
     synthesize_azure_tts,
@@ -26,18 +19,25 @@ from hevi.voicepro_tts.oprim import (
     synthesize_openai_tts,
     synthesize_tts,
 )
-from hevi.voicepro_tts.oskill import (
+from hevi.layer4_legacy.voicepro_tts.oskill_impl import (
     make_tts_config as skill_make_tts_config,
 )
-from hevi.voicepro_tts.oskill import (
+from hevi.layer4_legacy.voicepro_tts.oskill_impl import (
     make_tts_result as skill_make_tts_result,
 )
 
 # ── Oskill ──
-from hevi.voicepro_tts.oskill import (
+from hevi.layer4_legacy.voicepro_tts.oskill_impl import (
     skill_batch_synthesize,
     skill_clone_voice,
     skill_synthesize_tts,
+)
+
+# ── Omodul ──
+from hevi.voicepro_tts.omodul import (
+    plan_ai_short,
+    plan_clip_generator,
+    plan_youtube_studio,
 )
 
 # ── Schemas ──

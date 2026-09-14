@@ -1,27 +1,2 @@
-"""JoyAI streaming workflow composition."""
-
-from hevi.joyai.omodul.stream_edit import (
-    capabilities,
-    create_session,
-    finish_session,
-    get_session,
-    list_sessions,
-    record_frame,
-    record_output,
-    reset_sessions,
-    start_session,
-    stream_provider_url,
-)
-
-__all__ = [
-    "capabilities",
-    "create_session",
-    "finish_session",
-    "get_session",
-    "list_sessions",
-    "record_frame",
-    "record_output",
-    "reset_sessions",
-    "start_session",
-    "stream_provider_url",
-]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.joyai.omodul_impl import *  # noqa: F403

@@ -6,19 +6,19 @@ agent execution.  LongCat weights and inference kernels remain optional
 providers; HEVI never installs or vendors the upstream model.
 """
 
-from hevi.longcat.omodul import (
+from hevi.layer4_legacy.longcat.omodul_impl import (
     LongCatConfig,
     longcat_agent_workflow,
     longcat_capabilities,
 )
-from hevi.longcat.oprim import (
+from hevi.layer4_legacy.longcat.oprim_impl import (
     LongCatContextBlock,
     LongCatRequest,
     LongCatTool,
     estimate_tokens,
     pack_context,
 )
-from hevi.longcat.oservi import (
+from hevi.layer4_legacy.longcat.oservi_impl import (
     build_longcat_caller,
     longcat_provider_status,
 )

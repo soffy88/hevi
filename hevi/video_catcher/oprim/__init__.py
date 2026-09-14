@@ -1,3 +1,2 @@
-from hevi.video_catcher.oprim.contracts import VideoCatchRequest, VideoDiscovery, is_url
-
-__all__ = ["VideoCatchRequest", "VideoDiscovery", "is_url"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.video_catcher.oprim_impl import *  # noqa: F403

@@ -3,6 +3,7 @@
 These helpers intentionally do not consume an audit manifest.  The gates resolve
 the installed pinned packages and inspect Python source directly.
 """
+
 from __future__ import annotations
 
 import ast
@@ -69,7 +70,9 @@ def canonical_sources(layer: str | None = None) -> list[Source]:
         root = package_root(name)
         if root is None or not root.exists():
             continue
-        out.extend(Source(p, name, False) for p in root.rglob("*.py") if "__pycache__" not in p.parts)
+        out.extend(
+            Source(p, name, False) for p in root.rglob("*.py") if "__pycache__" not in p.parts
+        )
     return sorted(out, key=lambda x: str(x.path))
 
 
@@ -120,16 +123,34 @@ def defined_functions(tree: ast.AST) -> Iterable[ast.FunctionDef | ast.AsyncFunc
 
 def has_real_implementation(tree: ast.Module) -> bool:
     """Whether a local namespace file contains code rather than a compatibility shim."""
+    imported_names: set[str] = set()
+    for statement in tree.body:
+        if isinstance(statement, ast.Import):
+            imported_names.update(
+                alias.asname or alias.name.split(".")[-1] for alias in statement.names
+            )
+        elif isinstance(statement, ast.ImportFrom):
+            imported_names.update(alias.asname or alias.name for alias in statement.names)
+
     def is_delegate(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
         body = list(node.body)
-        if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+        if (
+            body
+            and isinstance(body[0], ast.Expr)
+            and isinstance(body[0].value, ast.Constant)
+            and isinstance(body[0].value.value, str)
+        ):
             body.pop(0)
         if body and isinstance(body[0], (ast.Import, ast.ImportFrom)):
             body.pop(0)
-        if len(body) != 1 or not isinstance(body[0], ast.Return) or not isinstance(body[0].value, ast.Call):
+        if (
+            len(body) != 1
+            or not isinstance(body[0], ast.Return)
+            or not isinstance(body[0].value, ast.Call)
+        ):
             return False
         call = body[0].value
-        return isinstance(call.func, (ast.Name, ast.Attribute))
+        return isinstance(call.func, ast.Name) and call.func.id in imported_names
 
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -139,15 +160,25 @@ def has_real_implementation(tree: ast.Module) -> bool:
         if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
             # __all__ and direct imported aliases are shim metadata.
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            if not all(isinstance(t, ast.Name) and t.id in {"__all__", "__version__", "__3o_compatibility__"} for t in targets):
+            if not all(
+                isinstance(t, ast.Name)
+                and t.id in {"__all__", "__version__", "__3o_compatibility__"}
+                for t in targets
+            ):
                 return True
-        if isinstance(node, ast.Expr) and not (isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)):
+        if isinstance(node, ast.Expr) and not (
+            isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)
+        ):
             return True
     return False
 
 
 def public_functions(tree: ast.Module) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
-    return [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")]
+    return [
+        n
+        for n in tree.body
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")
+    ]
 
 
 def call_names(tree: ast.AST) -> list[str]:

@@ -70,12 +70,10 @@ async def translate_cues(
         logger.warning("translate LLM failed, keeping source text: %s", e)
 
     if retry_missing and any(i not in batch for i in range(len(texts))):
-        from hevi.voicepro.oskill.translate_retry import fill_missing_lines
+        from hevi.layer4_legacy.voicepro.oskill_impl.translate_retry import fill_missing_lines
 
         async def _one(text: str) -> str:
-            one_prompt = (
-                f"把下面字幕翻译成{target_language}。只输出译文,不要额外文字。\n{text}"
-            )
+            one_prompt = f"把下面字幕翻译成{target_language}。只输出译文,不要额外文字。\n{text}"
             resp = await llm(messages=[{"role": "user", "content": one_prompt}], max_tokens=512)
             content = resp.get("content") if hasattr(resp, "get") else str(resp)
             return str(content or "").strip()
@@ -99,16 +97,11 @@ async def translate_cues(
 def _to_timed(cues: list[Cue]) -> list[Any]:
     from hevi.voicepro.schemas import TimedCue
 
-    return [
-        TimedCue(start=c.start, end=c.end, text=c.text, emotion=c.emotion)
-        for c in cues
-    ]
+    return [TimedCue(start=c.start, end=c.end, text=c.text, emotion=c.emotion) for c in cues]
 
 
 def _from_timed(cues: list[Any]) -> list[Cue]:
-    return [
-        Cue(start=c.start, end=c.end, text=c.text, emotion=c.emotion) for c in cues
-    ]
+    return [Cue(start=c.start, end=c.end, text=c.text, emotion=c.emotion) for c in cues]
 
 
 async def dub_video(
@@ -144,7 +137,7 @@ async def dub_video(
     cues = transcribe_fn(video_path)
     tcues = await translate_cues(cues, target_language=target_language, llm=llm)
     if sentence_merge and tcues:
-        from hevi.voicepro.oskill.subtitle_timeline import merge_and_split_cues
+        from hevi.layer4_legacy.voicepro.oskill_impl.subtitle_timeline import merge_and_split_cues
 
         tcues = _from_timed(merge_and_split_cues(_to_timed(tcues), lang=None))
 

@@ -13,21 +13,8 @@
 
 from __future__ import annotations
 
-# ── Omodul ──
-from hevi.openshorts.omodul import (
-    AVAILABLE_COST_MODES,
-    AVAILABLE_LAYOUTS,
-    SOCIAL_PLATFORMS,
-    execute_ai_short,
-    execute_clip_generator,
-    execute_youtube_studio,
-    plan_ai_short,
-    plan_clip_generator,
-    plan_youtube_studio,
-)
-
 # ── Oprim ──
-from hevi.openshorts.oprim import (
+from hevi.layer4_legacy.openshorts.oprim_impl import (
     build_transcript_windows,
     clip_reframing_params,
     detect_scenes_gemini,
@@ -39,6 +26,19 @@ from hevi.openshorts.oprim import (
     make_clip_spec,
     plan_ai_short_actor,
     snap_clip_to_words_auto,
+)
+
+# ── Omodul ──
+from hevi.openshorts.omodul import (
+    AVAILABLE_COST_MODES,
+    AVAILABLE_LAYOUTS,
+    SOCIAL_PLATFORMS,
+    execute_ai_short,
+    execute_clip_generator,
+    execute_youtube_studio,
+    plan_ai_short,
+    plan_clip_generator,
+    plan_youtube_studio,
 )
 
 # ── Oskill ──

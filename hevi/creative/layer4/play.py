@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hevi.creative.oprim.persistence import persist_model, restore_model
+from hevi.layer4_legacy.creative.oprim_impl.persistence import persist_model, restore_model
 from hevi.obase.creative import InteractiveWorld, InventoryItem
 
 
@@ -168,9 +168,7 @@ class PlayEngine:
                 "clock": WorldClock(value=state.clock.value + 1, unit=state.clock.unit),
                 "inventory": _merge_inventory(state.inventory, applied.inventory),
                 "evidence": (*state.evidence, *applied.evidence),
-                "relationships": _merge_relationships(
-                    state.relationships, applied.relationships
-                ),
+                "relationships": _merge_relationships(state.relationships, applied.relationships),
                 "events": (*state.events, event),
                 "turn_history": (*state.turn_history, turn),
                 "visual_refs": (*state.visual_refs, *applied.visual_refs),
@@ -216,8 +214,7 @@ def _merge_relationships(
     for item in added:
         values[(item.from_id, item.to_id)] = item.value
     return tuple(
-        Relationship(from_id=pair[0], to_id=pair[1], value=value)
-        for pair, value in values.items()
+        Relationship(from_id=pair[0], to_id=pair[1], value=value) for pair, value in values.items()
     )
 
 

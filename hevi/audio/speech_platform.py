@@ -132,7 +132,7 @@ _TTS_SPECS: tuple[dict[str, Any], ...] = (
         "name": "Edge TTS",
         "mode": "network",
         "requires_gpu": False,
-        "languages": ("100+" ,),
+        "languages": ("100+",),
         "capabilities": ("tts", "multilingual", "word_timestamps"),
         "description": "多语言网络语音；作为明确标注的网络降级通道。",
         "setup": "安装 edge-tts，并确保运行环境可以访问服务。",
@@ -176,7 +176,7 @@ _ASR_SPECS: tuple[dict[str, Any], ...] = (
 def _module_available(name: str) -> bool:
     try:
         return importlib.util.find_spec(name) is not None
-    except (ImportError, ModuleNotFoundError, ValueError):
+    except ImportError, ModuleNotFoundError, ValueError:
         return False
 
 
@@ -195,7 +195,7 @@ def _tts_available(spec: dict[str, Any]) -> bool:
         )
     if engine_id == "voxcpm":
         try:
-            from hevi.voicepro.oskill.native_voice import native_voice_available
+            from hevi.layer4_legacy.voicepro.oskill_impl.native_voice import native_voice_available
 
             return native_voice_available() or _module_available("voxcpm")
         except Exception:

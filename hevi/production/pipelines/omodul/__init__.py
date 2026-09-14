@@ -1,3 +1,2 @@
-from hevi.production.pipelines.omodul.runtime import compile_pipeline_request, list_pipelines
-
-__all__ = ["compile_pipeline_request", "list_pipelines"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.production.pipelines.omodul_impl import *  # noqa: F403

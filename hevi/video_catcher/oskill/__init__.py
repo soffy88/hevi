@@ -1,3 +1,2 @@
-from hevi.video_catcher.oskill.compiler import format_selector, select_source_mode
-
-__all__ = ["format_selector", "select_source_mode"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.video_catcher.oskill_impl import *  # noqa: F403

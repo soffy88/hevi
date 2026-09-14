@@ -10,7 +10,7 @@ free_video_workflow(config, input_data, output_dir) →
   - 内容/分镜纪律来自 hevi-story(分句成镜)与 hevi-promo(配方卡/节奏);
   - 渲染路线复刻 html-video(nexu-io/html-video)Hyperframes:自包含动画 HTML
     帧 + headless Chromium 录屏 + ffmpeg 拼接;
-  - 录屏原子能力复用 hevi.pipeline_lite.oprim.oprim_playwright(字体冻结/
+  - 录屏原子能力复用 hevi.layer4_legacy.pipeline_lite.oprim_impl.oprim_playwright(字体冻结/
     动画探测已内化)。
 """
 
@@ -62,9 +62,7 @@ class FreeVideoInput:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
-def build_plans(
-    config: FreeVideoConfig, input_data: FreeVideoInput
-) -> list[FramePlan]:
+def build_plans(config: FreeVideoConfig, input_data: FreeVideoInput) -> list[FramePlan]:
     """输入 → FramePlan 列表(确定性,不调模型)。"""
     if input_data.plans:
         return input_data.plans
@@ -126,7 +124,7 @@ async def free_video_workflow(
         if config.bgm_mood or config.voice:
             from hevi.assembly.freevideo.render import _ffmpeg
             from hevi.audio.procedural_bgm import BgmConfig, generate_bgm_file
-            from hevi.pipeline_lite.oprim.oprim_ffmpeg import assert_audio_track
+            from hevi.layer4_legacy.pipeline_lite.oprim_impl.oprim_ffmpeg import assert_audio_track
 
             bgm_wav: Path | None = None
             if config.bgm_mood:
@@ -151,9 +149,7 @@ async def free_video_workflow(
 
             narr_wav: Path | None = None
             if config.voice:
-                narration = config.narration or "。".join(
-                    p.body for p in plans if p.body
-                )
+                narration = config.narration or "。".join(p.body for p in plans if p.body)
                 if config.voice.startswith("fish"):
                     # 本地 fish-speech(Dual-AR,零样本声音克隆):fish / fish:/path/ref.wav
                     from hevi.audio.fish_speech_local import fish_speech_local_synthesize
@@ -161,13 +157,9 @@ async def free_video_workflow(
                     ref = config.voice.split(":", 1)[1] if ":" in config.voice else None
                     narr_wav = output_dir / "narration.wav"
                     try:
-                        await fish_speech_local_synthesize(
-                            narration, narr_wav, reference_audio=ref
-                        )
+                        await fish_speech_local_synthesize(narration, narr_wav, reference_audio=ref)
                     except Exception as _fse:
-                        logger.warning(
-                            "fish-speech 本地合成失败(%s),退回 edge_tts", _fse
-                        )
+                        logger.warning("fish-speech 本地合成失败(%s),退回 edge_tts", _fse)
                         narr_wav = None
                 if narr_wav is None:
                     from hevi.audio.edge_tts_custom import CURATED_VOICES
@@ -206,10 +198,21 @@ async def free_video_workflow(
                 _ffmpeg(
                     [
                         *inputs,
-                        "-filter_complex", ";".join(filters),
-                        "-map", "0:v", "-map", "[a_out]",
-                        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-                        "-shortest", "-movflags", "+faststart",
+                        "-filter_complex",
+                        ";".join(filters),
+                        "-map",
+                        "0:v",
+                        "-map",
+                        "[a_out]",
+                        "-c:v",
+                        "copy",
+                        "-c:a",
+                        "aac",
+                        "-b:a",
+                        "192k",
+                        "-shortest",
+                        "-movflags",
+                        "+faststart",
                         str(muxed),
                     ]
                 )
@@ -230,10 +233,13 @@ async def free_video_workflow(
             "plan": [p.to_dict() for p in plans],
         }
         report_path = output_dir / "freevideo_report.json"
-        report_path.write_text(
-            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        return {"status": "completed", "output_path": str(output_path), "report_path": str(report_path), **report}
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        return {
+            "status": "completed",
+            "output_path": str(output_path),
+            "report_path": str(report_path),
+            **report,
+        }
     except Exception as exc:
         logger.exception("free_video_workflow failed")
         return {

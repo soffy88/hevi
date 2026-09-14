@@ -1,3 +1,2 @@
-from hevi.previs.omodul.runtime import compile_previs_scene
-
-__all__ = ["compile_previs_scene"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.previs.omodul_impl import *  # noqa: F403

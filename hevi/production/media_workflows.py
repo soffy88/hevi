@@ -68,7 +68,7 @@ def _segments(raw: Any) -> list[TranscriptSegment]:
                 continue
             start = float(raw_start)
             end = float(raw_end)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
         text = str(item.get("text") or "").strip()
         if start >= 0 and end > start and text:
@@ -110,7 +110,9 @@ def _safe_fingerprint(operation: str, config: dict[str, Any], input_data: dict[s
         "operation": operation,
         "config": clean_config,
         "schema_version": input_data.get("schema_version", 1),
-        "has_source_segments": bool(input_data.get("source_segments") or input_data.get("segments")),
+        "has_source_segments": bool(
+            input_data.get("source_segments") or input_data.get("segments")
+        ),
         "has_translation": bool(
             input_data.get("translated_segments") or input_data.get("translated")
         ),
@@ -163,7 +165,9 @@ def _coerce_translation(raw: Any, source: list[TranscriptSegment]) -> list[Trans
         if isinstance(item, TranscriptSegment):
             text = item.text
         elif isinstance(item, dict):
-            text = str(item.get("text") or item.get("translated_text") or item.get("translation") or "")
+            text = str(
+                item.get("text") or item.get("translated_text") or item.get("translation") or ""
+            )
         else:
             text = str(item)
         text = str(text or "").strip()
@@ -209,7 +213,7 @@ async def _translate(
 
     # The project-side 3O translation skill composes its public translation
     # primitives.  Provider SDKs remain optional and failures are surfaced.
-    from hevi.voicepro_translate.oskill import skill_batch_translate
+    from hevi.layer4_legacy.voicepro_translate.oskill_impl import skill_batch_translate
     from hevi.voicepro_translate.schemas import TranslateProvider
 
     provider_name = str(config.get("translation_provider") or "llm_translate")
@@ -267,9 +271,7 @@ async def _translate_with_hevi_llm(
         response = await response
     content = response.get("content") if isinstance(response, dict) else str(response)
     if isinstance(content, list):
-        content = "".join(
-            str(item.get("text") or "") for item in content if isinstance(item, dict)
-        )
+        content = "".join(str(item.get("text") or "") for item in content if isinstance(item, dict))
     raw = str(content or "").strip()
     match = re.search(r"\{.*\}", raw, re.DOTALL)
     if match is None:
@@ -299,7 +301,7 @@ async def _burn_subtitles(
 
     try:
         from oprim import subtitle_burn
-    except (ImportError, AttributeError):
+    except ImportError, AttributeError:
         subtitle_burn = None
     if subtitle_burn is not None and not watermark.strip():
         await subtitle_burn(
@@ -321,14 +323,8 @@ async def _burn_subtitles(
             escaped = str(path).replace("\\", "/").replace(":", r"\:").replace("'", r"\'")
             filters.append(f"subtitles='{escaped}':force_style='Alignment={alignment}'")
         if watermark.strip():
-            text = (
-                watermark.replace("\\", "\\\\")
-                .replace("'", r"\'")
-                .replace(":", r"\:")
-            )
-            filters.append(
-                f"drawtext=text='{text}':x=w-tw-24:y=24:fontsize=20:fontcolor=white@0.7"
-            )
+            text = watermark.replace("\\", "\\\\").replace("'", r"\'").replace(":", r"\:")
+            filters.append(f"drawtext=text='{text}':x=w-tw-24:y=24:fontsize=20:fontcolor=white@0.7")
         await ffmpeg_run(
             args=[
                 "-y",
@@ -431,7 +427,9 @@ async def video_localization_workflow(
         trail.append({"stage": stage, **metadata})
 
     try:
-        source_path = Path(str(data.get("source_video_path") or data.get("video_path") or "")).expanduser()
+        source_path = Path(
+            str(data.get("source_video_path") or data.get("video_path") or "")
+        ).expanduser()
         if not source_path.is_file():
             raise FileNotFoundError(f"source video not found: {source_path}")
 
@@ -638,7 +636,9 @@ async def shorts_generation_workflow(
             }
         )
         await _notify(on_step, "report", 90.0, clips=len(clips))
-        raw_manifest = (result.get("config_json") or {}).get("artifact_manifest") or {"artifacts": []}
+        raw_manifest = (result.get("config_json") or {}).get("artifact_manifest") or {
+            "artifacts": []
+        }
         manifest = ArtifactManifest.model_validate(raw_manifest)
         report = {
             "status": "succeeded",
@@ -757,7 +757,10 @@ async def execute_video_localize_task(task: dict[str, Any], _pool: Any) -> dict[
     if not output_path.is_file():
         return {
             "status": "failed",
-            "error": {"code": "ARTIFACT_MISSING", "message": "localization returned no video artifact"},
+            "error": {
+                "code": "ARTIFACT_MISSING",
+                "message": "localization returned no video artifact",
+            },
             "config_json": config,
         }
     from hevi.video.quality_check import quality_report

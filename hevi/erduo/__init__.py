@@ -13,23 +13,6 @@ from hevi.erduo.omodul import (
     plan_full_erduo_pipeline,
 )
 
-# ── Oprim ──
-from hevi.erduo.oprim import (
-    assemble_master,
-    canary_passed_threshold,
-    freeze_truth,
-    generate_creative_proposal,
-    generate_lead_samples,
-    generate_shot_sample,
-    parse_design,
-    parse_srt_text,
-    plan_canary,
-    plan_chapters,
-    render_chapter,
-    render_shot,
-    verify_canary,
-)
-
 # ── Oskill ──
 from hevi.erduo.oskill import (
     skill_assemble_master,
@@ -57,6 +40,23 @@ from hevi.erduo.schemas import (
     Truth,
     make_production_job,
     parse_srt,
+)
+
+# ── Oprim ──
+from hevi.layer4_legacy.erduo.oprim_impl import (
+    assemble_master,
+    canary_passed_threshold,
+    freeze_truth,
+    generate_creative_proposal,
+    generate_lead_samples,
+    generate_shot_sample,
+    parse_design,
+    parse_srt_text,
+    plan_canary,
+    plan_chapters,
+    render_chapter,
+    render_shot,
+    verify_canary,
 )
 
 __all__ = [

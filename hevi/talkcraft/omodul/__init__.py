@@ -1,3 +1,2 @@
-from hevi.talkcraft.omodul.runtime import compile_talkcraft_plan
-
-__all__ = ["compile_talkcraft_plan"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.talkcraft.omodul_impl import *  # noqa: F403

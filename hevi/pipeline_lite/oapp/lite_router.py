@@ -24,19 +24,19 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from hevi.core.workspace import new_task_id
-from hevi.pipeline_lite.omodul.omodul_lite_assembler import run_lite_pipeline
-from hevi.pipeline_lite.omodul.omodul_run_store import (
+from hevi.layer4_legacy.pipeline_lite.omodul_impl.omodul_lite_assembler import run_lite_pipeline
+from hevi.layer4_legacy.pipeline_lite.omodul_impl.omodul_run_store import (
     load_run,
     save_run,
 )
-from hevi.pipeline_lite.omodul.omodul_run_store import (
+from hevi.layer4_legacy.pipeline_lite.omodul_impl.omodul_run_store import (
     preview_html_path as store_preview_path,
 )
-from hevi.pipeline_lite.omodul.omodul_script_loop import (
+from hevi.layer4_legacy.pipeline_lite.omodul_impl.omodul_script_loop import (
     cues_from_script_text,
     run_veya_loop,
 )
-from hevi.pipeline_lite.oprim.oprim_html_gen import render_lite_html
+from hevi.layer4_legacy.pipeline_lite.oprim_impl.oprim_html_gen import render_lite_html
 from hevi.pipeline_lite.schemas import (
     LiteAssembleResult,
     LiteCue,

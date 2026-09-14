@@ -5,7 +5,7 @@
   → Playwright 无头录屏 → ffmpeg 拼接 → 真动画 MP4。
 
 渲染路线复刻 html-video(nexu-io/html-video)的 Hyperframes 引擎工程细节:
-字体冻结、动画时长探测、lead-in 裁剪;录制/编码复用 hevi.pipeline_lite.oprim。
+字体冻结、动画时长探测、lead-in 裁剪;录制/编码复用 hevi.layer4_legacy.pipeline_lite.oprim_impl。
 
 模块:
   - storyboard : 内容 → 分镜计划(FramePlan 列表)

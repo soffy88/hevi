@@ -9,21 +9,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from hevi.erduo.oprim import (
-    assemble_master,
-    canary_passed_threshold,
-    freeze_truth,
-    generate_creative_proposal,
-    generate_lead_samples,
-    generate_shot_sample,
-    parse_design,
-    parse_srt_text,
-    plan_canary,
-    plan_chapters,
-    render_chapter,
-    render_shot,
-    verify_canary,
-)
 from hevi.erduo.oskill import (
     skill_assemble_master,
     skill_build_chapters,
@@ -37,6 +22,21 @@ from hevi.erduo.schemas import (
     ProductionJob,
     RuntimeBackend,
     make_production_job,
+)
+from hevi.layer4_legacy.erduo.oprim_impl import (
+    assemble_master,
+    canary_passed_threshold,
+    freeze_truth,
+    generate_creative_proposal,
+    generate_lead_samples,
+    generate_shot_sample,
+    parse_design,
+    parse_srt_text,
+    plan_canary,
+    plan_chapters,
+    render_chapter,
+    render_shot,
+    verify_canary,
 )
 
 # ── Pipeline 规划 ─────────────────────────────────────
@@ -54,6 +54,7 @@ def plan_erduo_pipeline(
     对应 erduo-broll-loop-engineering 的完整 pipeline。
     """
     import uuid
+
     f"tasks/{uuid.uuid4().hex[:8]}"
     runtime_backend = RuntimeBackend(backend)
     make_production_job(
@@ -99,7 +100,9 @@ def plan_full_erduo_pipeline(
     backend: str = "hyperframes",
 ) -> dict[str, Any]:
     """规划完整的 erduo pipeline（7个stage）。"""
-    return plan_erduo_pipeline(srt_path=srt_path, design_path=design_path, user_id=user_id, backend=backend)
+    return plan_erduo_pipeline(
+        srt_path=srt_path, design_path=design_path, user_id=user_id, backend=backend
+    )
 
 
 # ── 执行器 ─────────────────────────────────────────
@@ -147,9 +150,7 @@ async def execute_erduo_pipeline(
     # Stage 5: 渲染章节
     for chapter in job.chapters:
         for shot in chapter.shots:
-            shot.rendered_path = render_shot(
-                shot, runtime_backend, f"/tmp/erduo/{job.job_id}"
-            )
+            shot.rendered_path = render_shot(shot, runtime_backend, f"/tmp/erduo/{job.job_id}")
 
     # Stage 6: 组装 Master
     chapter_paths = []
@@ -170,7 +171,11 @@ async def execute_erduo_pipeline(
         "outputs": {
             "master_path": master_path,
             "chapters": [c.chapter_id for c in job.chapters],
-            "lead_samples": [job.lead_samples.opening_sample, job.lead_samples.dense_info_sample, job.lead_samples.ending_sample],
+            "lead_samples": [
+                job.lead_samples.opening_sample,
+                job.lead_samples.dense_info_sample,
+                job.lead_samples.ending_sample,
+            ],
             "rendered_shots": [s.shot_id for c in job.chapters for s in c.shots],
         },
     }

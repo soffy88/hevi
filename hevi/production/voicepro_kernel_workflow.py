@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from hevi.voicepro.omodul.dub_plan import plan_dub_artifacts
+from hevi.layer4_legacy.voicepro.omodul_impl.dub_plan import plan_dub_artifacts
 
 logger = logging.getLogger(__name__)
 

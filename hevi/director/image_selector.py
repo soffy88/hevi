@@ -1,6 +1,6 @@
 """导演层薄转发 —— best-of-k 选图 + 参考图选择。"""
 
-from hevi.script2video.oskill.reference_select import (
+from hevi.layer4_legacy.script2video.oskill_impl.reference_select import (
     CandidateImage,
     SelectionResult,
     generate_and_select,

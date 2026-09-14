@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from hevi.openshorts.oprim import (
+from hevi.layer4_legacy.openshorts.oprim_impl import (
     build_transcript_windows,
     clip_reframing_params,
     detect_scenes_gemini,
@@ -45,6 +45,7 @@ from hevi.openshorts.schemas import (
 )
 
 # ── Clip Generator 技能 ────────────────────────────────
+
 
 def generate_clips(
     video_path: str,
@@ -119,7 +120,7 @@ def generate_clips(
     scenes = detect_scenes_gemini(
         transcript.get("text", ""),
         video_duration,
-        viral_keywords=["important", "key", "trend", "viral"] if gemini_client else None
+        viral_keywords=["important", "key", "trend", "viral"] if gemini_client else None,
     )
     if not scenes:
         from hevi.ingest.video_transcript import TranscriptSegment
@@ -166,7 +167,8 @@ def generate_clips(
     for i, scene in enumerate(selected):
         # Snap to word boundaries (placeholder: use scene bounds)
         start_s, end_s = snap_clip_to_words_auto(
-            scene.start_s, scene.end_s,
+            scene.start_s,
+            scene.end_s,
             [WordTimestamp(word="", start_s=0) for _ in range(0)],  # 占位
             video_duration,
         )
@@ -178,7 +180,7 @@ def generate_clips(
             clip_index=i,
             start_s=start_s,
             end_s=end_s,
-            headline=scene.headline or f"Key takeaway {i+1}",
+            headline=scene.headline or f"Key takeaway {i + 1}",
             reframe_mode=reframing,
         )
         clip.reframe_params = reframe_params
@@ -186,7 +188,7 @@ def generate_clips(
 
         if with_hook_text and i == 0:
             clip.effects = {
-                "hook_text": f"Clip {i+1}: key takeaway",
+                "hook_text": f"Clip {i + 1}: key takeaway",
                 "visual_effect": "none",
                 "transitions": ["cut"],
             }
@@ -199,8 +201,10 @@ def generate_clips(
 
 # ── AI Shorts 技能 ────────────────────────────────────
 
+
 def generate_ai_short(
-    description: str = "", url: str = "",
+    description: str = "",
+    url: str = "",
     user_id: str = "",
     cost_mode: AICostMode = AICostMode.LOW_COST,
     with_voiceover: bool = True,
@@ -247,16 +251,19 @@ def create_publish_tickets(
 
     tickets = []
     for platform in platforms:
-        tickets.append(PublishTicket(
-            platform=platform,
-            media_path=media_path,
-            title=title,
-            description=desc,
-        ))
+        tickets.append(
+            PublishTicket(
+                platform=platform,
+                media_path=media_path,
+                title=title,
+                description=desc,
+            )
+        )
     return tickets
 
 
 # ── YouTube Studio 技能 ────────────────────────────────
+
 
 def generate_youtube_package(
     video_path: str,
@@ -276,9 +283,7 @@ def generate_youtube_package(
     job.source_description = source_description
 
     # 1. Titles
-    job.titles = generate_youtube_titles(
-        source_title or source_description, target_titles
-    )
+    job.titles = generate_youtube_titles(source_title or source_description, target_titles)
     # Auto-select highest viral_score
     if job.titles:
         job.selected_title = max(job.titles, key=lambda t: t.viral_score).title
@@ -287,9 +292,7 @@ def generate_youtube_package(
     job.thumbnail = generate_youtube_thumbnail(video_path)
 
     # 3. Description
-    job.description = generate_youtube_description(
-        job.selected_title, source_description
-    )
+    job.description = generate_youtube_description(job.selected_title, source_description)
 
     job.status = "completed" if job.thumbnail.path else "partial"
     return job
@@ -301,7 +304,8 @@ __all__ = [
     # Clip Generator
     "generate_clips",
     # AI Shorts
-    "generate_ai_short", "create_publish_tickets",
+    "generate_ai_short",
+    "create_publish_tickets",
     # YouTube Studio
     "generate_youtube_package",
 ]

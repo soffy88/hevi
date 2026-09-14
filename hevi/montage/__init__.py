@@ -12,7 +12,7 @@ schemas → oprim → oskill → omodul
 from __future__ import annotations
 
 # ── Omodul ──
-from hevi.montage.omodul import (
+from hevi.layer4_legacy.montage.omodul_impl import (
     AVAILABLE_PIPELINES,
     AgenticMontageConfig,
     VideoEvidenceConfig,
@@ -32,7 +32,7 @@ from hevi.montage.omodul import (
 )
 
 # ── Oprim ──
-from hevi.montage.oprim import (
+from hevi.layer4_legacy.montage.oprim_impl import (
     EvidenceQuery,
     EvidenceRef,
     PlanEdge,
@@ -65,7 +65,7 @@ from hevi.montage.oprim import (
 )
 
 # ── Oskill ──
-from hevi.montage.oskill import (
+from hevi.layer4_legacy.montage.oskill_impl import (
     build_video_agent_plan,
     checkpoint_approve,
     checkpoint_write,

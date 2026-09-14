@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from hevi.audio.speech_platform import build_batch_plan
-from hevi.voicepro.omodul.platform import (
+from hevi.layer4_legacy.voicepro.omodul_impl.platform import (
     list_gallery_profiles,
     list_model_catalog,
     plan_audiobook,

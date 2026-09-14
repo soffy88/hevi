@@ -7,7 +7,7 @@ Voice-Pro 的声纹克隆能力内部化：
 from __future__ import annotations
 
 # ── Oprim ──
-from hevi.voicepro_clone.oprim import (
+from hevi.layer4_legacy.voicepro_clone.oprim_impl import (
     cosyvoice_cross_lingual,
     cosyvoice_instruct,
     cosyvoice_zero_shot,

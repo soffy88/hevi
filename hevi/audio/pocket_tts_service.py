@@ -30,7 +30,9 @@ def _import_pocket_tts() -> Any | None:
     try:
         return importlib.import_module("pocket_tts")
     except ImportError:
-        logger.debug("optional Pocket TTS module unavailable; HEVI native runtime remains available")
+        logger.debug(
+            "optional Pocket TTS module unavailable; HEVI native runtime remains available"
+        )
         return None
 
 
@@ -44,7 +46,7 @@ def pocket_tts_available() -> bool:
     mod = _import_pocket_tts()
     if mod is not None and getattr(mod, "TTSModel", None) is not None:
         return True
-    from hevi.voicepro.oskill import native_voice_available
+    from hevi.layer4_legacy.voicepro.oskill_impl import native_voice_available
 
     return native_voice_available()
 
@@ -64,7 +66,7 @@ def _load_model(config: str = "", language: str = "") -> Any:
     load_model = model_cls.load_model
     try:
         signature = inspect.signature(load_model)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         signature = None
     kwargs: dict[str, Any] = {}
     if language and signature is not None and "language" in signature.parameters:
@@ -103,8 +105,7 @@ def _write_wav(output_path: Path, sample_rate: int, audio: Any) -> None:
         sf = importlib.import_module("soundfile")
     except ImportError as exc:
         raise RuntimeError(
-            "Pocket TTS produced audio but no WAV writer is installed; "
-            "install scipy or soundfile"
+            "Pocket TTS produced audio but no WAV writer is installed; install scipy or soundfile"
         ) from exc
     sf.write(str(output_path), samples, int(sample_rate))
 
@@ -114,7 +115,7 @@ def _load_for_request(config: str, language: str) -> Any:
 
     try:
         parameters: Any = inspect.signature(_load_model).parameters
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         parameters = {}
     if "language" in parameters:
         return _load_model(config, language)
@@ -134,7 +135,7 @@ def _synth_sync(
 ) -> None:
     mod = _import_pocket_tts()
     if mod is None or getattr(mod, "TTSModel", None) is None:
-        from hevi.voicepro.oskill import synthesize_native_voice_sync
+        from hevi.layer4_legacy.voicepro.oskill_impl import synthesize_native_voice_sync
 
         synthesize_native_voice_sync(
             text,
@@ -249,7 +250,7 @@ async def stream_pocket_tts(
             yield value
         return
 
-    from hevi.voicepro.oskill import stream_native_voice
+    from hevi.layer4_legacy.voicepro.oskill_impl import stream_native_voice
 
     async for chunk in stream_native_voice(
         text,

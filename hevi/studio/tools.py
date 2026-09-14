@@ -185,7 +185,7 @@ async def _watch_concepts(payload: dict[str, Any]) -> dict[str, Any]:
 async def _video_evidence_index(payload: dict[str, Any]) -> dict[str, Any]:
     """VideoAgent 证据索引工具；事务本身负责 report/fingerprint/trail。"""
 
-    from hevi.montage.omodul.video_agent import video_evidence_index
+    from hevi.layer4_legacy.montage.omodul_impl.video_agent import video_evidence_index
 
     return await video_evidence_index(
         payload,
@@ -197,7 +197,7 @@ async def _video_evidence_index(payload: dict[str, Any]) -> dict[str, Any]:
 async def _video_evidence_search(payload: dict[str, Any]) -> dict[str, Any]:
     """VideoAgent 证据检索工具；只返回时间戳 EvidenceRef。"""
 
-    from hevi.montage.omodul.video_agent import video_evidence_search
+    from hevi.layer4_legacy.montage.omodul_impl.video_agent import video_evidence_search
 
     return await video_evidence_search(
         payload,
@@ -207,21 +207,27 @@ async def _video_evidence_search(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _video_script_from_transcript(payload: dict[str, Any]) -> dict[str, Any]:
-    from hevi.montage.omodul.video_agent import video_script_from_transcript
+    from hevi.layer4_legacy.montage.omodul_impl.video_agent import video_script_from_transcript
 
-    return await video_script_from_transcript(payload, payload, payload.get("output_dir") or "output")
+    return await video_script_from_transcript(
+        payload, payload, payload.get("output_dir") or "output"
+    )
 
 
 async def _video_summary(payload: dict[str, Any]) -> dict[str, Any]:
     """无 LLM 时提供可追溯的抽取式概览；高级摘要由 caller 注入。"""
 
-    from hevi.montage.omodul.video_agent import _read_refs
+    from hevi.layer4_legacy.montage.omodul_impl.video_agent import _read_refs
 
     index_path = Path(str(payload.get("index_path") or ""))
     if not index_path.is_file():
         return {"status": "blocked", "reason": "summary requires a local evidence index"}
     refs = _read_refs(index_path)
-    text = " ".join((ref.transcript or ref.caption).strip() for ref in refs if (ref.transcript or ref.caption).strip())
+    text = " ".join(
+        (ref.transcript or ref.caption).strip()
+        for ref in refs
+        if (ref.transcript or ref.caption).strip()
+    )
     if not text:
         return {"status": "blocked", "reason": "evidence index has no transcript or caption"}
     summary = text[:1200]
@@ -242,7 +248,7 @@ async def _video_qa(payload: dict[str, Any]) -> dict[str, Any]:
     index_path = str(payload.get("index_path") or "")
     if not index_path:
         return {"status": "blocked", "reason": "qa requires a local evidence index"}
-    from hevi.montage.omodul.video_agent import video_evidence_search
+    from hevi.layer4_legacy.montage.omodul_impl.video_agent import video_evidence_search
 
     result = await video_evidence_search(
         payload,
@@ -268,8 +274,11 @@ async def _video_qa(payload: dict[str, Any]) -> dict[str, Any]:
 async def _video_agent_plan(payload: dict[str, Any]) -> dict[str, Any]:
     """VideoAgent 控制平面：只规划与反思，不执行生产副作用。"""
 
-    from hevi.montage.omodul.video_agent import _mapping
-    from hevi.montage.oskill.video_agent import build_video_agent_plan, reflect_video_agent_plan
+    from hevi.layer4_legacy.montage.omodul_impl.video_agent import _mapping
+    from hevi.layer4_legacy.montage.oskill_impl.video_agent import (
+        build_video_agent_plan,
+        reflect_video_agent_plan,
+    )
 
     data = _mapping(payload)
     available = {item.tool_id for item in list_tools()}
@@ -290,7 +299,7 @@ async def _video_agent_plan(payload: dict[str, Any]) -> dict[str, Any]:
 async def _video_agent_run(payload: dict[str, Any]) -> dict[str, Any]:
     """VideoAgent 事务入口；execute=false 时仅返回可审查计划。"""
 
-    from hevi.montage.omodul.video_agent import video_agent_transaction
+    from hevi.layer4_legacy.montage.omodul_impl.video_agent import video_agent_transaction
 
     output_dir = payload.get("output_dir") or "output/montage/video-agent"
     return await video_agent_transaction(payload, payload, output_dir)
@@ -531,31 +540,73 @@ def _register_defaults() -> None:
         _watch_concepts,
     )
     register_tool(
-        ToolSpec("video.evidence.index", "watch", "本地视频→带 hash/时间戳的证据索引", ("source_path",), ("index_path", "manifest_path")),
+        ToolSpec(
+            "video.evidence.index",
+            "watch",
+            "本地视频→带 hash/时间戳的证据索引",
+            ("source_path",),
+            ("index_path", "manifest_path"),
+        ),
         _video_evidence_index,
     )
     register_tool(
-        ToolSpec("video.evidence.search", "material", "细粒度视觉查询→EvidenceRef", ("index_path", "queries"), ("evidence_refs", "per_query")),
+        ToolSpec(
+            "video.evidence.search",
+            "material",
+            "细粒度视觉查询→EvidenceRef",
+            ("index_path", "queries"),
+            ("evidence_refs", "per_query"),
+        ),
         _video_evidence_search,
     )
     register_tool(
-        ToolSpec("video.script.from_transcript", "script", "带时间戳转写→脚本分段", ("transcript",), ("script_lines",)),
+        ToolSpec(
+            "video.script.from_transcript",
+            "script",
+            "带时间戳转写→脚本分段",
+            ("transcript",),
+            ("script_lines",),
+        ),
         _video_script_from_transcript,
     )
     register_tool(
-        ToolSpec("video.summary", "watch", "证据约束的视频抽取式概览", ("index_path",), ("result", "evidence_refs")),
+        ToolSpec(
+            "video.summary",
+            "watch",
+            "证据约束的视频抽取式概览",
+            ("index_path",),
+            ("result", "evidence_refs"),
+        ),
         _video_summary,
     )
     register_tool(
-        ToolSpec("video.qa", "watch", "证据约束 Video QA", ("index_path", "question"), ("result", "evidence_refs")),
+        ToolSpec(
+            "video.qa",
+            "watch",
+            "证据约束 Video QA",
+            ("index_path", "question"),
+            ("result", "evidence_refs"),
+        ),
         _video_qa,
     )
     register_tool(
-        ToolSpec("video.agent.plan", "director", "自然语言→类型化 VideoAgent DAG", ("requirement",), ("plan", "reflection")),
+        ToolSpec(
+            "video.agent.plan",
+            "director",
+            "自然语言→类型化 VideoAgent DAG",
+            ("requirement",),
+            ("plan", "reflection"),
+        ),
         _video_agent_plan,
     )
     register_tool(
-        ToolSpec("video.agent.run", "director", "VideoAgent 规划/检索/执行事务", ("requirement",), ("findings", "artifact_manifest")),
+        ToolSpec(
+            "video.agent.run",
+            "director",
+            "VideoAgent 规划/检索/执行事务",
+            ("requirement",),
+            ("findings", "artifact_manifest"),
+        ),
         _video_agent_run,
     )
     register_tool(

@@ -8,21 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from hevi.erduo.oprim import (
-    assemble_master,
-    canary_passed_threshold,
-    freeze_truth,
-    generate_creative_proposal,
-    generate_lead_samples,
-    generate_shot_sample,
-    parse_design,
-    parse_srt_text,
-    plan_canary,
-    plan_chapters,
-    render_chapter,
-    render_shot,
-    verify_canary,
-)
 from hevi.erduo.schemas import (
     CanaryResult,
     ChapterSpec,
@@ -38,6 +23,21 @@ from hevi.erduo.schemas import (
     Truth,
     make_production_job,
     parse_srt,
+)
+from hevi.layer4_legacy.erduo.oprim_impl import (
+    assemble_master,
+    canary_passed_threshold,
+    freeze_truth,
+    generate_creative_proposal,
+    generate_lead_samples,
+    generate_shot_sample,
+    parse_design,
+    parse_srt_text,
+    plan_canary,
+    plan_chapters,
+    render_chapter,
+    render_shot,
+    verify_canary,
 )
 
 # ── 技能 1: 完整生产流程 ─────────────────────────────

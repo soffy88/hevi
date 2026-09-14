@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from pydantic import BaseModel, Field
 
 from hevi.auth.dependencies import get_current_user
-from hevi.joyai.omodul.stream_edit import (
+from hevi.layer4_legacy.joyai.omodul_impl.stream_edit import (
     capabilities,
     create_session,
     finish_session,
@@ -22,7 +22,7 @@ from hevi.joyai.omodul.stream_edit import (
     start_session,
     stream_provider_url,
 )
-from hevi.joyai.oprim.stream_contract import frame_budget, validate_control
+from hevi.layer4_legacy.joyai.oprim_impl.stream_contract import frame_budget, validate_control
 from hevi.provider_policy.runtime import probe_provider
 
 router = APIRouter(prefix="/stream-edit", tags=["stream-edit"])
@@ -120,7 +120,9 @@ async def stream_socket(websocket: WebSocket, session_id: str) -> None:
     await websocket.accept()
     session = get_session(session_id)
     if session is None:
-        await _send_provider_error(websocket, "STREAM_SESSION_NOT_FOUND", "stream session not found")
+        await _send_provider_error(
+            websocket, "STREAM_SESSION_NOT_FOUND", "stream session not found"
+        )
         return
     if session.status == "blocked":
         await _send_provider_error(
@@ -160,12 +162,20 @@ async def stream_socket(websocket: WebSocket, session_id: str) -> None:
                         payload = json.loads(raw)
                     except json.JSONDecodeError:
                         await websocket.send_json(
-                            {"type": "error", "code": "INVALID_STREAM_JSON", "message": "控制消息必须是 JSON"}
+                            {
+                                "type": "error",
+                                "code": "INVALID_STREAM_JSON",
+                                "message": "控制消息必须是 JSON",
+                            }
                         )
                         continue
                     if not isinstance(payload, dict):
                         await websocket.send_json(
-                            {"type": "error", "code": "INVALID_STREAM_CONTROL", "message": "控制消息必须是 object"}
+                            {
+                                "type": "error",
+                                "code": "INVALID_STREAM_CONTROL",
+                                "message": "控制消息必须是 object",
+                            }
                         )
                         continue
                     errors = validate_control(payload)

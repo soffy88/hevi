@@ -1,3 +1,2 @@
-from hevi.previs.oprim.contracts import CameraCue, CastItem, PrevisScene, TimelineCue
-
-__all__ = ["CameraCue", "CastItem", "PrevisScene", "TimelineCue"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.previs.oprim_impl import *  # noqa: F403

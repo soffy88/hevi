@@ -33,7 +33,7 @@ def voxcpm_available() -> bool:
     # Import the concrete runtime symbol so tests and diagnostics can patch the
     # exact provider capability being probed.  The package-level export is a
     # convenience API and may otherwise retain a stale function reference.
-    from hevi.voicepro.oskill.native_voice import native_voice_available
+    from hevi.layer4_legacy.voicepro.oskill_impl.native_voice import native_voice_available
 
     return native_voice_available()
 
@@ -159,12 +159,12 @@ async def _stream_with_isolated_worker(
     await process.stdin.drain()
     process.stdin.close()
     saw_final = False
-    from hevi.voicepro.oskill.native_voice import NativeAudioChunk
+    from hevi.layer4_legacy.voicepro.oskill_impl.native_voice import NativeAudioChunk
 
     async for raw_line in process.stdout:
         try:
             response = json.loads(raw_line.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
+        except UnicodeDecodeError, json.JSONDecodeError:
             continue
         status = response.get("status")
         if status == "chunk":
@@ -218,7 +218,7 @@ async def synth_with_voxcpm(
             if not output_path.is_file() or output_path.stat().st_size == 0:
                 raise RuntimeError("VoxCPM worker completed without a non-empty WAV artifact")
             return output_path
-        from hevi.voicepro.oskill import synthesize_native_voice_sync
+        from hevi.layer4_legacy.voicepro.oskill_impl import synthesize_native_voice_sync
 
         await asyncio.to_thread(
             synthesize_native_voice_sync,
@@ -286,7 +286,7 @@ async def stream_voxcpm(
             yield chunk
         return
 
-    from hevi.voicepro.oskill import stream_native_voice
+    from hevi.layer4_legacy.voicepro.oskill_impl import stream_native_voice
 
     async for chunk in stream_native_voice(
         text,

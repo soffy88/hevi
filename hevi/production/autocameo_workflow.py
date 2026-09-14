@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from hevi.script2video.omodul.cameo_plan import plan_autocameo
+from hevi.layer4_legacy.script2video.omodul_impl.cameo_plan import plan_autocameo
 
 logger = logging.getLogger(__name__)
 

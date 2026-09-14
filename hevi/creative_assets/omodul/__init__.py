@@ -1,3 +1,2 @@
-from hevi.creative_assets.omodul.runtime import execute_visual_asset, plan_visual_asset
-
-__all__ = ["execute_visual_asset", "plan_visual_asset"]
+"""Deprecated compatibility shim; implementation is Layer4-owned."""
+from hevi.layer4_legacy.creative_assets.omodul_impl import *  # noqa: F403

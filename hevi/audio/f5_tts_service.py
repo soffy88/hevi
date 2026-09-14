@@ -76,7 +76,7 @@ async def f5_tts_synthesize(
     }
     chosen = (model_name or os.environ.get("F5_TTS_MODEL_NAME") or "").strip()
     if not chosen and language:
-        from hevi.voicepro.oskill.f5_speakers import pick_catalog_model
+        from hevi.layer4_legacy.voicepro.oskill_impl.f5_speakers import pick_catalog_model
 
         chosen = pick_catalog_model(language)
     data: dict[str, Any] = {
@@ -93,13 +93,10 @@ async def f5_tts_synthesize(
         async with httpx.AsyncClient(base_url=_base_url(), timeout=timeout) as client:
             response = await client.post("/api/ai/f5_tts", data=data, files=files)
             if response.status_code == 501:
-                raise AiEngineError(
-                    f"AI 引擎无 F5-TTS 模型可用: {_detail(response)}"
-                )
+                raise AiEngineError(f"AI 引擎无 F5-TTS 模型可用: {_detail(response)}")
             if response.status_code >= 400:
                 raise AiEngineError(
-                    f"AI 引擎 F5-TTS 合成失败 (HTTP {response.status_code}): "
-                    f"{_detail(response)}"
+                    f"AI 引擎 F5-TTS 合成失败 (HTTP {response.status_code}): {_detail(response)}"
                 )
             if not response.content:
                 raise AiEngineError("AI 引擎返回空音频")
@@ -121,6 +118,6 @@ def _detail(response: httpx.Response) -> str:
         payload = response.json()
         if isinstance(payload, dict) and payload.get("detail"):
             return str(payload["detail"])
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         pass
     return response.text[:300] or f"HTTP {response.status_code}"

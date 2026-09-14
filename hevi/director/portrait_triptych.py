@@ -1,6 +1,6 @@
-"""导演层薄转发 —— 角色三联画。实现在 hevi.script2video.oskill。"""
+"""导演层薄转发 —— 角色三联画。实现在 hevi.layer4_legacy.script2video.oskill_impl。"""
 
-from hevi.script2video.oskill.portrait_triptych import (
+from hevi.layer4_legacy.script2video.oskill_impl.portrait_triptych import (
     generate_all_portraits,
     generate_portrait_triptych,
     generate_portrait_view,

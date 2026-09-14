@@ -1,2 +1,3 @@
 """Deprecated compatibility shim; HEVI business orchestration lives in Layer4."""
-from hevi.erduo.layer4_oskill import *
+
+from hevi.erduo.layer4_oskill import *  # noqa: F403

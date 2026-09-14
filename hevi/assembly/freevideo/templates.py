@@ -26,7 +26,7 @@ import html
 import re
 from typing import Any
 
-from hevi.pipeline_lite.oprim.oprim_visual_scenes import (
+from hevi.layer4_legacy.pipeline_lite.oprim_impl.oprim_visual_scenes import (
     VISUAL_CSS,
     build_visual_html,
     resolve_scene,
@@ -155,9 +155,9 @@ def _base_css(
     return f"""
 :root {{
   --w: {w}px; --h: {h}px;
-  --bg0: {pal['bg0']}; --bg1: {pal['bg1']};
-  --fg: {pal['fg']}; --muted: {pal['muted']};
-  --accent: {pal['accent']}; --accent2: {pal['accent2']}; --accent3: {pal['accent3']};
+  --bg0: {pal["bg0"]}; --bg1: {pal["bg1"]};
+  --fg: {pal["fg"]}; --muted: {pal["muted"]};
+  --accent: {pal["accent"]}; --accent2: {pal["accent2"]}; --accent3: {pal["accent3"]};
 }}
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 html, body {{
@@ -209,7 +209,13 @@ def _sweep_css() -> str:
 
 
 def _tpl_title(
-    title: str, body: str, data: Any, w: int, h: int, pal: dict[str, str], dur: float,
+    title: str,
+    body: str,
+    data: Any,
+    w: int,
+    h: int,
+    pal: dict[str, str],
+    dur: float,
     broll: str | None = None,
 ) -> str:
     chars = list(title)
@@ -251,15 +257,20 @@ def _tpl_title(
   <div class="sweep"></div>
 </div>
 """
-    return _doc(css, body_html, broll=broll,
-    title=title[:40])
+    return _doc(css, body_html, broll=broll, title=title[:40])
 
 
 # ── 模板 2:typewriter 打字机 ──────────────────────────────────────────────
 
 
 def _tpl_typewriter(
-    title: str, body: str, data: Any, w: int, h: int, pal: dict[str, str], dur: float,
+    title: str,
+    body: str,
+    data: Any,
+    w: int,
+    h: int,
+    pal: dict[str, str],
+    dur: float,
     broll: str | None = None,
 ) -> str:
     text = body or title
@@ -268,9 +279,7 @@ def _tpl_typewriter(
     # JS 计时器不在 CSS 动画探测范围内 —— 间隔按帧时长自适应,保证在
     # 帧内打完 + 留 0.6s 收尾光扫(字数多时自动加速,不截断)。
     type_ms = max(30, min(120, int((dur - 1.4) * 1000 / max(len(tokens), 1))))
-    spans = "".join(
-        f'<span class="tw" data-i="{i}">{_esc(t)}</span>' for i, t in enumerate(tokens)
-    )
+    spans = "".join(f'<span class="tw" data-i="{i}">{_esc(t)}</span>' for i, t in enumerate(tokens))
     css = _base_css(
         w,
         h,
@@ -313,15 +322,20 @@ def _tpl_typewriter(
 }})();
 </script>
 """
-    return _doc(css, body_html, broll=broll,
-    title=f"typewriter · {title[:24]}")
+    return _doc(css, body_html, broll=broll, title=f"typewriter · {title[:24]}")
 
 
 # ── 模板 3:bar 数据条形图 ────────────────────────────────────────────────
 
 
 def _tpl_bar(
-    title: str, body: str, data: Any, w: int, h: int, pal: dict[str, str], dur: float,
+    title: str,
+    body: str,
+    data: Any,
+    w: int,
+    h: int,
+    pal: dict[str, str],
+    dur: float,
     broll: str | None = None,
 ) -> str:
     items = _normalize_items(data, title=title, fallback=body)
@@ -331,9 +345,7 @@ def _tpl_bar(
     bar_css = ""
     for idx, it in enumerate(items):
         pct = max(8.0, it["value"] / max_v * 100)
-        color = it.get("color") or (
-            pal["accent"] if idx % 2 == 0 else pal["accent2"]
-        )
+        color = it.get("color") or (pal["accent"] if idx % 2 == 0 else pal["accent2"])
         bar_css += f"""
 .b{idx} {{ --bh: {pct:.1f}%; background: linear-gradient(180deg, {color}, {color}99);
   animation-delay: {0.5 + idx * 0.13:.2f}s; }}
@@ -374,9 +386,9 @@ def _tpl_bar(
     for idx, it in enumerate(items):
         cols += f"""
 <div class="col">
-  <div class="v" id="v{idx}" data-v="{it['value']}">0</div>
+  <div class="v" id="v{idx}" data-v="{it["value"]}">0</div>
   <div class="bar b{idx}"></div>
-  <div class="lbl">{_esc(it['label'])}</div>
+  <div class="lbl">{_esc(it["label"])}</div>
 </div>"""
     body_html = f"""
 <div class="stage">
@@ -412,15 +424,20 @@ def _tpl_bar(
 }})();
 </script>
 """
-    return _doc(css, body_html, broll=broll,
-    title=f"bar · {title[:24]}")
+    return _doc(css, body_html, broll=broll, title=f"bar · {title[:24]}")
 
 
 # ── 模板 4:big_number 大数字 ──────────────────────────────────────────────
 
 
 def _tpl_big_number(
-    title: str, body: str, data: Any, w: int, h: int, pal: dict[str, str], dur: float,
+    title: str,
+    body: str,
+    data: Any,
+    w: int,
+    h: int,
+    pal: dict[str, str],
+    dur: float,
     broll: str | None = None,
 ) -> str:
     num = _extract_number(data, body)
@@ -459,7 +476,7 @@ def _tpl_big_number(
     <div class="num" id="num" data-v="{num}">0</div>
     <div class="unit" id="unit">{_esc(unit)}</div>
   </div>
-  <div class="sub" style="margin-top:26px;font-size:{max(18, int(w*0.022))}px;color:var(--muted);text-align:center;max-width:72%;line-height:1.7">{_esc(body)}</div>
+  <div class="sub" style="margin-top:26px;font-size:{max(18, int(w * 0.022))}px;color:var(--muted);text-align:center;max-width:72%;line-height:1.7">{_esc(body)}</div>
   <div class="orbit">
     <div class="ring r1"><div class="dot d1"></div></div>
     <div class="ring r2"><div class="dot d2"></div></div>
@@ -481,15 +498,20 @@ def _tpl_big_number(
 }})();
 </script>
 """
-    return _doc(css, body_html, broll=broll,
-    title=f"big number · {title[:24]}")
+    return _doc(css, body_html, broll=broll, title=f"big number · {title[:24]}")
 
 
 # ── 模板 5:cards 要点卡片 ─────────────────────────────────────────────────
 
 
 def _tpl_cards(
-    title: str, body: str, data: Any, w: int, h: int, pal: dict[str, str], dur: float,
+    title: str,
+    body: str,
+    data: Any,
+    w: int,
+    h: int,
+    pal: dict[str, str],
+    dur: float,
     broll: str | None = None,
 ) -> str:
     items = _cards_from(data, body)
@@ -498,8 +520,8 @@ def _tpl_cards(
         cards += f"""
 <div class="card" style="animation-delay:{0.35 + idx * 0.16:.2f}s">
   <span class="no">{idx + 1:02d}</span>
-  <div class="ct">{_esc(it['title'])}</div>
-  <div class="cs">{_esc(it['sub'])}</div>
+  <div class="ct">{_esc(it["title"])}</div>
+  <div class="cs">{_esc(it["sub"])}</div>
 </div>"""
     n = len(items)
     css = _base_css(
@@ -532,9 +554,7 @@ def _tpl_cards(
   opacity: .3; animation: dotOn .4s ease both; }}
 """,
     )
-    dots = "".join(
-        f'<i style="animation-delay:{1.0 + idx * 0.1:.2f}s"></i>' for idx in range(n)
-    )
+    dots = "".join(f'<i style="animation-delay:{1.0 + idx * 0.1:.2f}s"></i>' for idx in range(n))
     body_html = f"""
 <div class="stage">
   <div class="kicker">{_esc(title[:28])}</div>
@@ -542,15 +562,20 @@ def _tpl_cards(
   <div class="dots">{dots}</div>
 </div>
 """
-    return _doc(css, body_html, broll=broll,
-    title=f"cards · {title[:24]}")
+    return _doc(css, body_html, broll=broll, title=f"cards · {title[:24]}")
 
 
 # ── 模板 6:quote 金句 ─────────────────────────────────────────────────────
 
 
 def _tpl_quote(
-    title: str, body: str, data: Any, w: int, h: int, pal: dict[str, str], dur: float,
+    title: str,
+    body: str,
+    data: Any,
+    w: int,
+    h: int,
+    pal: dict[str, str],
+    dur: float,
     broll: str | None = None,
 ) -> str:
     text = body or title
@@ -593,15 +618,20 @@ def _tpl_quote(
   <div class="src">{_esc(title)}</div>
 </div>
 """
-    return _doc(css, body_html, broll=broll,
-    title=f"quote · {title[:24]}")
+    return _doc(css, body_html, broll=broll, title=f"quote · {title[:24]}")
 
 
 # ── 模板 7:timeline 时间轴 ────────────────────────────────────────────────
 
 
 def _tpl_timeline(
-    title: str, body: str, data: Any, w: int, h: int, pal: dict[str, str], dur: float,
+    title: str,
+    body: str,
+    data: Any,
+    w: int,
+    h: int,
+    pal: dict[str, str],
+    dur: float,
     broll: str | None = None,
 ) -> str:
     items = _timeline_from(data, body)
@@ -613,8 +643,8 @@ def _tpl_timeline(
         nodes += f"""
 <div class="node" style="left:{left:.1f}%; animation-delay:{0.5 + idx * 0.28:.2f}s">
   <i class="dot"></i>
-  <div class="nt">{_esc(it['title'])}</div>
-  <div class="ns">{_esc(it['sub'])}</div>
+  <div class="nt">{_esc(it["title"])}</div>
+  <div class="ns">{_esc(it["sub"])}</div>
 </div>"""
     css = _base_css(
         w,
@@ -654,18 +684,23 @@ def _tpl_timeline(
     <div class="fill"></div>
     {nodes}
   </div>
-  <div class="sub" style="margin-top:22px;font-size:{max(15, int(w*0.018))}px;color:var(--muted);max-width:74%;text-align:center;line-height:1.6">{_esc(body)}</div>
+  <div class="sub" style="margin-top:22px;font-size:{max(15, int(w * 0.018))}px;color:var(--muted);max-width:74%;text-align:center;line-height:1.6">{_esc(body)}</div>
 </div>
 """
-    return _doc(css, body_html, broll=broll,
-    title=f"timeline · {title[:24]}")
+    return _doc(css, body_html, broll=broll, title=f"timeline · {title[:24]}")
 
 
 # ── 模板 8:scene 程序化场景 ───────────────────────────────────────────────
 
 
 def _tpl_scene(
-    title: str, body: str, data: Any, w: int, h: int, pal: dict[str, str], dur: float,
+    title: str,
+    body: str,
+    data: Any,
+    w: int,
+    h: int,
+    pal: dict[str, str],
+    dur: float,
     broll: str | None = None,
 ) -> str:
     scene = str(data.get("scene")) if isinstance(data, dict) and data.get("scene") else ""
@@ -697,8 +732,7 @@ def _tpl_scene(
   <div class="cap">{_esc(body)}</div>
 </div>
 """
-    return _doc(css, body_html, broll=broll,
-    title=f"scene {scene} · {title[:20]}")
+    return _doc(css, body_html, broll=broll, title=f"scene {scene} · {title[:20]}")
 
 
 # ── 数据归一化助手 ────────────────────────────────────────────────────────
@@ -717,7 +751,7 @@ def _normalize_items(data: Any, *, title: str, fallback: str) -> list[dict[str, 
                 label = str(it.get("label") or it.get("name") or "")
                 try:
                     value = float(it.get("value", it.get("v", 0)) or 0)
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     value = 0.0
                 if label:
                     items.append({"label": label, "value": value, "color": it.get("color")})
@@ -726,9 +760,9 @@ def _normalize_items(data: Any, *, title: str, fallback: str) -> list[dict[str, 
     if not items:
         # 无结构化数据:把正文按逗号/分号/换行切成条目,值取条目标号。
         parts = [p.strip() for p in re.split(r"[，,；;。\n]", fallback) if p.strip()][:6]
-        items = [
-            {"label": p[:14], "value": (i + 1) * 10} for i, p in enumerate(parts)
-        ] or [{"label": title[:14], "value": 10.0}]
+        items = [{"label": p[:14], "value": (i + 1) * 10} for i, p in enumerate(parts)] or [
+            {"label": title[:14], "value": 10.0}
+        ]
     return items
 
 
@@ -738,7 +772,7 @@ def _extract_number(data: Any, fallback: str) -> float:
             if key in data:
                 try:
                     return float(data[key])
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     break
     if isinstance(data, (int, float)):
         return float(data)
@@ -768,9 +802,7 @@ def _cards_from(data: Any, fallback: str) -> list[dict[str, str]]:
         )
     if not out:
         parts = [p.strip() for p in re.split(r"[，,；;。\n]", fallback) if p.strip()][:6]
-        out = [{"title": p[:18], "sub": ""} for p in parts] or [
-            {"title": fallback[:18], "sub": ""}
-        ]
+        out = [{"title": p[:18], "sub": ""} for p in parts] or [{"title": fallback[:18], "sub": ""}]
     return out
 
 
@@ -823,9 +855,7 @@ def render_frame_html(
     if builder is None:
         kind = "quote"
         builder = _tpl_quote
-    return builder(
-        plan.title, plan.body, plan.data, width, height, pal, frame_duration, broll
-    )
+    return builder(plan.title, plan.body, plan.data, width, height, pal, frame_duration, broll)
 
 
 __all__ = ["FRAME_KINDS", "render_frame_html"]

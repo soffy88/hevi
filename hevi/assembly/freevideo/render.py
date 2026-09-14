@@ -18,7 +18,7 @@ from pathlib import Path
 
 from hevi.assembly.freevideo.storyboard import FramePlan
 from hevi.assembly.freevideo.templates import render_frame_html
-from hevi.pipeline_lite.oprim.oprim_playwright import record_html_to_video
+from hevi.layer4_legacy.pipeline_lite.oprim_impl.oprim_playwright import record_html_to_video
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,14 @@ def _probe_duration(path: Path) -> float:
     try:
         r = subprocess.run(
             [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                "-of", "default=nw=1:nk=1", str(path),
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=nw=1:nk=1",
+                str(path),
             ],
             capture_output=True,
             text=True,
@@ -46,7 +52,7 @@ def _probe_duration(path: Path) -> float:
         )
         if r.returncode == 0 and r.stdout.strip():
             return float(r.stdout.strip())
-    except (ValueError, OSError):
+    except ValueError, OSError:
         pass
     return 0.0
 
@@ -55,9 +61,7 @@ def _ffmpeg(args: list[str], *, timeout: int = 900) -> None:
     """跑 ffmpeg,失败抛 RuntimeError(带 stderr 尾部)。"""
     if not shutil.which("ffmpeg"):
         raise RuntimeError("ffmpeg 不在 PATH,无法编码")
-    proc = subprocess.run(
-        ["ffmpeg", "-y", *args], capture_output=True, text=True, timeout=timeout
-    )
+    proc = subprocess.run(["ffmpeg", "-y", *args], capture_output=True, text=True, timeout=timeout)
     if proc.returncode != 0:
         raise RuntimeError(f"ffmpeg 失败: {proc.stderr[-500:]}")
 
@@ -72,19 +76,44 @@ def _trim_to_exact(src: Path, dst: Path, duration_s: float, fps: int) -> Path:
     if actual <= 0:
         # 探测失败:直接用 -t 硬裁(不补尾,短了就短了)
         _ffmpeg(
-            ["-i", str(src), "-t", f"{duration_s:.3f}", "-r", str(fps),
-             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
-             str(dst)]
+            [
+                "-i",
+                str(src),
+                "-t",
+                f"{duration_s:.3f}",
+                "-r",
+                str(fps),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-preset",
+                "veryfast",
+                str(dst),
+            ]
         )
         return dst
     # 无论长短都走 tpad+trim:不满足时 clone 末帧补足,满足时 -t 收齐。
     _ffmpeg(
-        ["-i", str(src),
-         "-vf", f"tpad=stop_mode=clone:stop_duration={duration_s + 1.0:.3f}",
-         "-t", f"{duration_s:.3f}",
-         "-r", str(fps), "-c:v", "libx264", "-pix_fmt", "yuv420p",
-         "-preset", "veryfast", "-movflags", "+faststart",
-         str(dst)]
+        [
+            "-i",
+            str(src),
+            "-vf",
+            f"tpad=stop_mode=clone:stop_duration={duration_s + 1.0:.3f}",
+            "-t",
+            f"{duration_s:.3f}",
+            "-r",
+            str(fps),
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-preset",
+            "veryfast",
+            "-movflags",
+            "+faststart",
+            str(dst),
+        ]
     )
     return dst
 
@@ -126,14 +155,18 @@ async def _render_one_frame(
     if plan.broll:
         # 语料库检索 B-roll:"corpus:<槽描述>" → 从本地素材语料库选最佳片段。
         if isinstance(plan.broll, str) and plan.broll.startswith("corpus:"):
-            slot = plan.broll[len("corpus:"):].strip()
+            slot = plan.broll[len("corpus:") :].strip()
             hit = _resolve_corpus_broll(slot)
             if hit is None:
                 logger.warning("语料库无匹配片段(slot=%r),该帧无背景", slot)
             else:
                 plan = FramePlan(
-                    kind=plan.kind, title=plan.title, body=plan.body,
-                    data=plan.data, broll=hit, duration=plan.duration,
+                    kind=plan.kind,
+                    title=plan.title,
+                    body=plan.body,
+                    data=plan.data,
+                    broll=hit,
+                    duration=plan.duration,
                 )
         # 把背景视频复制到帧目录同侧,HTML 用相对名(file:// 下最稳)。
         broll_path = plan.broll or ""
@@ -146,8 +179,12 @@ async def _render_one_frame(
             logger.warning("broll 不存在,跳过: %s", plan.broll)
 
     html_doc = render_frame_html(
-        plan, width=width, height=height, palette=palette,
-        frame_duration=plan.duration, broll=broll_src,
+        plan,
+        width=width,
+        height=height,
+        palette=palette,
+        frame_duration=plan.duration,
+        broll=broll_src,
     )
     html_path.parent.mkdir(parents=True, exist_ok=True)
     html_path.write_text(html_doc, encoding="utf-8")
@@ -175,10 +212,26 @@ def _concat_frames(frame_mp4s: list[Path], output: Path, *, fps: int) -> Path:
     n = len(frame_mp4s)
     filter_expr = "".join(f"[{i}:v]" for i in range(n)) + f"concat=n={n}:v=1:a=0[v]"
     _ffmpeg(
-        [*inputs, "-filter_complex", filter_expr, "-map", "[v]",
-         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-         "-pix_fmt", "yuv420p", "-r", str(fps), "-movflags", "+faststart",
-         str(output)],
+        [
+            *inputs,
+            "-filter_complex",
+            filter_expr,
+            "-map",
+            "[v]",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-r",
+            str(fps),
+            "-movflags",
+            "+faststart",
+            str(output),
+        ],
         timeout=1800,
     )
     return output
@@ -213,8 +266,13 @@ async def render_frames(
         mp4_out = frames_dir / f"{base}.mp4"
         _step(on_step, f"record {i + 1}/{total} [{plan.kind}]", (i / total) * 90)
         await _render_one_frame(
-            plan, html_path, mp4_out,
-            width=width, height=height, fps=fps, palette=palette,
+            plan,
+            html_path,
+            mp4_out,
+            width=width,
+            height=height,
+            fps=fps,
+            palette=palette,
         )
         if not mp4_out.exists() or mp4_out.stat().st_size == 0:
             raise RuntimeError(f"帧 {i + 1} 渲染失败: {mp4_out}")

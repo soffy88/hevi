@@ -7,7 +7,7 @@ Voice-Pro 的翻译能力内部化：
 from __future__ import annotations
 
 # ── Oprim ──
-from hevi.voicepro_translate.oprim import (
+from hevi.layer4_legacy.voicepro_translate.oprim_impl import (
     apply_terminology,
     translate_azure_translator,
     translate_deep_translator,
@@ -17,7 +17,7 @@ from hevi.voicepro_translate.oprim import (
 )
 
 # ── Oskill ──
-from hevi.voicepro_translate.oskill import (
+from hevi.layer4_legacy.voicepro_translate.oskill_impl import (
     skill_apply_terminology,
     skill_batch_translate,
     skill_translate_text,

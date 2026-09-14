@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from hevi.script2video.omodul.idea_plan import plan_idea2video
+from hevi.layer4_legacy.script2video.omodul_impl.idea_plan import plan_idea2video
 
 logger = logging.getLogger(__name__)
 

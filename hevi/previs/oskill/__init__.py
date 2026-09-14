@@ -1,3 +1,2 @@
-from hevi.previs.oskill.compiler import camera_from_instruction
-
-__all__ = ["camera_from_instruction"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.previs.oskill_impl import *  # noqa: F403

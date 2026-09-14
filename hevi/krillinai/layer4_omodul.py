@@ -17,7 +17,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from hevi.krillinai.oprim import (
+from hevi.krillinai.schemas import (
+    ASRConfig,
+    ClipGeneratorJob,
+    JobStatus,
+    LLMConfig,
+    RenderConfig,
+    TTSConfig,
+    make_clip_generator_job,
+)
+from hevi.layer4_legacy.krillinai.oprim_impl import (
     download_video,
     extract_audio,
     generate_cover,
@@ -39,7 +48,7 @@ from hevi.krillinai.oprim import (
     translate_subtitle,
     write_manifest,
 )
-from hevi.krillinai.oskill import (
+from hevi.layer4_legacy.krillinai.oskill_impl import (
     skill_acquire_video,
     skill_cover,
     skill_full_pipeline,
@@ -48,15 +57,6 @@ from hevi.krillinai.oskill import (
     skill_transcribe,
     skill_translate,
     skill_tts,
-)
-from hevi.krillinai.schemas import (
-    ASRConfig,
-    ClipGeneratorJob,
-    JobStatus,
-    LLMConfig,
-    RenderConfig,
-    TTSConfig,
-    make_clip_generator_job,
 )
 
 # ── Pipeline 规划 ─────────────────────────────────────
@@ -71,8 +71,13 @@ AVAILABLE_MODES = {
 }
 
 AVAILABLE_PLATFORMS = [
-    "bilibili", "xiaohongshu", "douyin", "shipinhao",
-    "kuaishou", "youtube", "tiktok",
+    "bilibili",
+    "xiaohongshu",
+    "douyin",
+    "shipinhao",
+    "kuaishou",
+    "youtube",
+    "tiktok",
 ]
 
 
@@ -97,7 +102,11 @@ def plan_clip_generator(
         target_clips = 5
 
     # 确定渲染模式
-    modes = ["horizontal_bilingual", "vertical_bilingual"] if target_clips > 1 else ["horizontal_bilingual"]
+    modes = (
+        ["horizontal_bilingual", "vertical_bilingual"]
+        if target_clips > 1
+        else ["horizontal_bilingual"]
+    )
 
     return {
         "pipeline": "clip_generator",
@@ -115,7 +124,11 @@ def plan_clip_generator(
             {"stage": "translate", "mode": "llm_translate", "desc": "专业翻译 + 双语字幕"},
             {"stage": "tts", "mode": "tts_synthesize", "desc": "TTS 配音 + video_with_tts.mp4"},
             {"stage": "render", "mode": ", ".join(modes), "desc": "横竖屏渲染"},
-            {"stage": "cover", "mode": ", ".join(publish_platforms or []) if publish_platforms else "all", "desc": "平台封面生成"},
+            {
+                "stage": "cover",
+                "mode": ", ".join(publish_platforms or []) if publish_platforms else "all",
+                "desc": "平台封面生成",
+            },
         ],
         "estimated_stages": 7,
         "checkpoint_policy": "after_every_stage",
@@ -175,7 +188,11 @@ def plan_youtube_studio(
         "user_id": user_id,
         "stages": [
             {"stage": "titles", "mode": "gemini", "desc": "10 个带 viral_score 的标题"},
-            {"stage": "thumbnail", "mode": "flux_2_pro + ffmpeg", "desc": "AI 缩略图 + face overlay"},
+            {
+                "stage": "thumbnail",
+                "mode": "flux_2_pro + ffmpeg",
+                "desc": "AI 缩略图 + face overlay",
+            },
             {"stage": "description", "mode": "gemini", "desc": "SEO 描述 + 章节时间戳 + hashtags"},
             {"stage": "publish", "mode": "upload_post", "desc": "一键发布到 YouTube"},
         ],
@@ -185,6 +202,7 @@ def plan_youtube_studio(
 
 
 # ── 执行器 ────────────────────────────────────────────
+
 
 async def execute_clip_generator(
     input_source: str,
@@ -223,8 +241,7 @@ async def execute_clip_generator(
     from hevi.krillinai.schemas import RenderMode
 
     render_modes = [
-        RenderMode(mode)
-        for mode in (modes or ["horizontal_bilingual", "vertical_bilingual"])
+        RenderMode(mode) for mode in (modes or ["horizontal_bilingual", "vertical_bilingual"])
     ]
     job = skill_render(job, render_modes)
 

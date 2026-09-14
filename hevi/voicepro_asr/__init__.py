@@ -6,14 +6,8 @@ Voice-Pro 的音频识别能力内部化：
 
 from __future__ import annotations
 
-# ── Omodul ──
-from hevi.voicepro_asr.omodul import (
-    plan_clip_generator,
-    plan_transcribe_pipeline,
-)
-
 # ── Oprim ──
-from hevi.voicepro_asr.oprim import (
+from hevi.layer4_legacy.voicepro_asr.oprim_impl import (
     make_asr_config,
     normalize_audio,
     transcribe_aliyun_asr,
@@ -24,10 +18,16 @@ from hevi.voicepro_asr.oprim import (
 )
 
 # ── Oskill ──
-from hevi.voicepro_asr.oskill import (
+from hevi.layer4_legacy.voicepro_asr.oskill_impl import (
     skill_batch_transcribe,
     skill_transcribe,
     skill_verify,
+)
+
+# ── Omodul ──
+from hevi.voicepro_asr.omodul import (
+    plan_clip_generator,
+    plan_transcribe_pipeline,
 )
 
 # ── Schemas ──

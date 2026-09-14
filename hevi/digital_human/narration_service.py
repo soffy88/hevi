@@ -4,6 +4,7 @@ This operation owns PresenterJob mutation and artifact placement.  It is kept
 outside the 3O namespaces; the old ``digital_human.oprim`` entry point only
 delegates here for compatibility during the migration.
 """
+
 from __future__ import annotations
 
 import os
@@ -31,9 +32,11 @@ def generate_narration(
     if not job.script.strip():
         raise ValueError("cannot generate narration before content is locked")
 
-    from hevi.voicepro.oskill import synthesize_native_voice_sync
+    from hevi.layer4_legacy.voicepro.oskill_impl import synthesize_native_voice_sync
 
-    output_root = Path(os.getenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", "data/digital_human")).expanduser()
+    output_root = Path(
+        os.getenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", "data/digital_human")
+    ).expanduser()
     output_path = output_root / job.job_id / "audio" / "narration.wav"
     synthesize_native_voice_sync(
         job.script,

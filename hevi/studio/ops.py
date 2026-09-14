@@ -226,14 +226,14 @@ def speech_catalog(_p: dict[str, Any]) -> dict[str, Any]:
 
 
 def speech_models(_p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.voicepro.omodul.platform import list_model_catalog
+    from hevi.layer4_legacy.voicepro.omodul_impl.platform import list_model_catalog
 
     models = list_model_catalog()
     return _ok(models=models, total=len(models))
 
 
 def speech_route(p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.voicepro.omodul.platform import route_model
+    from hevi.layer4_legacy.voicepro.omodul_impl.platform import route_model
 
     return _ok(
         route=route_model(
@@ -245,7 +245,7 @@ def speech_route(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def speech_register(p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.voicepro.omodul.platform import register_model
+    from hevi.layer4_legacy.voicepro.omodul_impl.platform import register_model
 
     return _ok(
         model=register_model(
@@ -262,7 +262,7 @@ def speech_register(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def speech_gallery(_p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.voicepro.omodul.platform import list_gallery_profiles
+    from hevi.layer4_legacy.voicepro.omodul_impl.platform import list_gallery_profiles
 
     profiles = list_gallery_profiles()
     return _ok(voices=profiles, total=len(profiles))
@@ -281,7 +281,7 @@ def speech_diagnostics(_p: dict[str, Any]) -> dict[str, Any]:
 
 
 def speech_dubbing_plan(p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.voicepro.omodul.platform import plan_dubbing
+    from hevi.layer4_legacy.voicepro.omodul_impl.platform import plan_dubbing
 
     return _ok(
         plan=plan_dubbing(
@@ -296,7 +296,7 @@ def speech_dubbing_plan(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def speech_audiobook_plan(p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.voicepro.omodul.platform import plan_audiobook
+    from hevi.layer4_legacy.voicepro.omodul_impl.platform import plan_audiobook
 
     return _ok(
         plan=plan_audiobook(
@@ -308,7 +308,7 @@ def speech_audiobook_plan(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def speech_dictation_plan(p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.voicepro.omodul.platform import plan_dictation
+    from hevi.layer4_legacy.voicepro.omodul_impl.platform import plan_dictation
 
     return _ok(
         plan=plan_dictation(
@@ -319,7 +319,7 @@ def speech_dictation_plan(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def speech_watermark_plan(p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.voicepro.omodul.platform import plan_watermark
+    from hevi.layer4_legacy.voicepro.omodul_impl.platform import plan_watermark
 
     return _ok(
         plan=plan_watermark(
@@ -330,13 +330,13 @@ def speech_watermark_plan(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def stream_capabilities(_p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.joyai.omodul.stream_edit import capabilities
+    from hevi.layer4_legacy.joyai.omodul_impl.stream_edit import capabilities
 
     return _ok(capabilities=capabilities())
 
 
 def stream_budget(p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.joyai.oprim.stream_contract import frame_budget
+    from hevi.layer4_legacy.joyai.oprim_impl.stream_contract import frame_budget
 
     return _ok(
         budget=frame_budget(
@@ -349,7 +349,7 @@ def stream_budget(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def stream_session(p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.joyai.omodul.stream_edit import create_session
+    from hevi.layer4_legacy.joyai.omodul_impl.stream_edit import create_session
 
     session = create_session(
         prompt=str(p.get("prompt") or ""),
@@ -386,7 +386,11 @@ def screenshot_render(p: dict[str, Any]) -> dict[str, Any]:
     project = get_project(str(p.get("project_id") or ""))
     if project is None:
         return _fail("unknown screenshot project")
-    return _ok(**render_project(project, Path(str(p.get("output_path") or "output/screenshots/project.png"))))
+    return _ok(
+        **render_project(
+            project, Path(str(p.get("output_path") or "output/screenshots/project.png"))
+        )
+    )
 
 
 def shortdrama_review(p: dict[str, Any]) -> dict[str, Any]:
@@ -510,8 +514,12 @@ def clip_factory(p: dict[str, Any]) -> dict[str, Any]:
         return _ok(clips=cuts, count=len(cuts))
     transcript = p.get("transcript") or plan.get("transcript")
     if transcript:
-        scored = clip_virality({"transcript": transcript, "target_clips": p.get("target_clips") or 5})
-        return _ok(clips=scored.get("clips") or [], count=int(scored.get("count") or 0), via="virality")
+        scored = clip_virality(
+            {"transcript": transcript, "target_clips": p.get("target_clips") or 5}
+        )
+        return _ok(
+            clips=scored.get("clips") or [], count=int(scored.get("count") or 0), via="virality"
+        )
     return _ok(clips=[], count=0)
 
 
@@ -587,7 +595,11 @@ def dub_translate(p: dict[str, Any]) -> dict[str, Any]:
             )
         else:
             lines.append({**line, "lang": lang, "translated": False})
-    return _ok(lines=lines, lang=lang, note="no silent fake translation; pass translation= to apply glossary")
+    return _ok(
+        lines=lines,
+        lang=lang,
+        note="no silent fake translation; pass translation= to apply glossary",
+    )
 
 
 def ingest_localize(p: dict[str, Any]) -> dict[str, Any]:
@@ -616,7 +628,9 @@ def ingest_speakers(p: dict[str, Any]) -> dict[str, Any]:
 
     labeled = label_speakers(_transcript_segments(p.get("transcript")))
     return _ok(
-        transcript=[{"start": s.start, "end": s.end, "text": s.text, "speaker": s.speaker} for s in labeled],
+        transcript=[
+            {"start": s.start, "end": s.end, "text": s.text, "speaker": s.speaker} for s in labeled
+        ],
         speakers=sorted({s.speaker for s in labeled if s.speaker}),
     )
 
@@ -929,8 +943,11 @@ def delivery_validate(p: dict[str, Any]) -> dict[str, Any]:
     if promise is None:
         return _fail("promise 缺失, 无法校验切点合规")
     verdict = promise.validate_cuts(cuts)
-    return _ok(valid=verdict["valid"], violations=verdict["violations"],
-               motion_ratio=verdict["motion_ratio"])
+    return _ok(
+        valid=verdict["valid"],
+        violations=verdict["violations"],
+        motion_ratio=verdict["motion_ratio"],
+    )
 
 
 def verdict_scene_pacing(p: dict[str, Any]) -> dict[str, Any]:
@@ -940,10 +957,12 @@ def verdict_scene_pacing(p: dict[str, Any]) -> dict[str, Any]:
     start = float(p.get("scene_start") or 0)
     end = p.get("scene_end")
     landmarks = trace(steps, scene_start=start, quiet=True)
-    result: dict[str, Any] = {"status": "ok", "landmarks": [
-        {"video_time": lm.video_time, "kind": lm.kind, "text": lm.text[:80]}
-        for lm in landmarks
-    ]}
+    result: dict[str, Any] = {
+        "status": "ok",
+        "landmarks": [
+            {"video_time": lm.video_time, "kind": lm.kind, "text": lm.text[:80]} for lm in landmarks
+        ],
+    }
     if end is not None:
         try:
             assert_alignment(

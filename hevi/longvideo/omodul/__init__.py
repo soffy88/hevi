@@ -1,3 +1,2 @@
-from hevi.longvideo.omodul.runtime import compile_longvideo_plan, longvideo_capabilities
-
-__all__ = ["compile_longvideo_plan", "longvideo_capabilities"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.longvideo.omodul_impl import *  # noqa: F403

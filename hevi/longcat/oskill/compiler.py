@@ -1,4 +1,2 @@
-"""Deprecated compatibility export; implementation lives at Layer 4."""
-from hevi.longcat.request_compiler import compile_longcat_request
-
-__all__ = ["compile_longcat_request"]
+"""Deprecated compatibility shim; implementation is Layer4-owned."""
+from hevi.layer4_legacy.longcat.oskill_impl.compiler import *  # noqa: F403

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from hevi.director.pipeline_schemas import ShotList, ShotListItem
-from hevi.script2video.omodul.kernel_plan import plan_kernel_artifacts
+from hevi.layer4_legacy.script2video.omodul_impl.kernel_plan import plan_kernel_artifacts
 from hevi.script2video.schemas import KernelPlan
 
 
@@ -48,4 +48,3 @@ def plan_kernel_from_shot_list(
 ) -> KernelPlan:
     payload = [kernel_shot_payload(shot, index=index) for index, shot in enumerate(shot_list.shots)]
     return plan_kernel_artifacts(payload, characters or [])
-

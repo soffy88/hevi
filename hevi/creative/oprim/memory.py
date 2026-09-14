@@ -1,2 +1,2 @@
-"""Deprecated compatibility shim; implementation is HEVI Layer4-owned."""
-from hevi.creative.layer4.memory import *
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.creative.oprim_impl.memory import *  # noqa: F403

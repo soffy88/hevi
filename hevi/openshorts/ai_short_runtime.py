@@ -23,10 +23,13 @@ from urllib.parse import urlparse
 
 import httpx
 
-from hevi.openshorts.oprim import generate_script_from_description, plan_ai_short_actor
+from hevi.layer4_legacy.openshorts.oprim_impl import (
+    generate_script_from_description,
+    plan_ai_short_actor,
+)
+from hevi.layer4_legacy.voicepro.oskill_impl import synthesize_native_voice
 from hevi.openshorts.schemas import AICostMode
 from hevi.production.artifacts import Artifact, ArtifactManifest
-from hevi.voicepro.oskill import synthesize_native_voice
 
 
 class _VisibleTextParser(HTMLParser):
@@ -100,14 +103,28 @@ def _provider(data: dict[str, Any], config: dict[str, Any], name: str) -> Any:
         if callable(value):
             return value
         if isinstance(value, str) and value.startswith(("http://", "https://")):
-            return _endpoint_provider(value, token=str(config.get("provider_token") or os.getenv("HEVI_AI_SHORT_PROVIDER_TOKEN", "")))
+            return _endpoint_provider(
+                value,
+                token=str(
+                    config.get("provider_token") or os.getenv("HEVI_AI_SHORT_PROVIDER_TOKEN", "")
+                ),
+            )
         return None
     value = data.get(f"{name}_provider") or config.get(f"{name}_provider")
     if callable(value):
         return value
-    endpoint = str(data.get(f"{name}_endpoint") or config.get(f"{name}_endpoint") or os.getenv(f"HEVI_AI_SHORT_{name.upper()}_ENDPOINT", "")).strip()
+    endpoint = str(
+        data.get(f"{name}_endpoint")
+        or config.get(f"{name}_endpoint")
+        or os.getenv(f"HEVI_AI_SHORT_{name.upper()}_ENDPOINT", "")
+    ).strip()
     if endpoint.startswith(("http://", "https://")):
-        return _endpoint_provider(endpoint, token=str(config.get("provider_token") or os.getenv("HEVI_AI_SHORT_PROVIDER_TOKEN", "")))
+        return _endpoint_provider(
+            endpoint,
+            token=str(
+                config.get("provider_token") or os.getenv("HEVI_AI_SHORT_PROVIDER_TOKEN", "")
+            ),
+        )
     return None
 
 
@@ -127,7 +144,9 @@ def _artifact_path(value: Any, *, label: str) -> Path:
         value = value.get("path") or value.get("output_path") or value.get("artifact")
     path = Path(str(value or "")).expanduser()
     if not path.is_file() or path.stat().st_size <= 0:
-        raise FileNotFoundError(f"{label} provider did not return a non-empty local artifact: {path}")
+        raise FileNotFoundError(
+            f"{label} provider did not return a non-empty local artifact: {path}"
+        )
     return path
 
 
@@ -183,17 +202,48 @@ def _compose(
     output.parent.mkdir(parents=True, exist_ok=True)
     if voiceover is not None:
         args = [
-            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-            "-i", str(talking_head), "-i", str(voiceover),
-            "-map", "0:v:0", "-map", "1:a:0", "-shortest",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
-            "-movflags", "+faststart", str(output),
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(talking_head),
+            "-i",
+            str(voiceover),
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+            "-shortest",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-movflags",
+            "+faststart",
+            str(output),
         ]
     else:
         args = [
-            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-            "-i", str(talking_head), "-map", "0:v:0", "-an",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-i",
+            str(talking_head),
+            "-map",
+            "0:v:0",
+            "-an",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
             str(output),
         ]
     _run_ffmpeg(args, output=output)
@@ -257,7 +307,9 @@ async def ai_shorts_generation_workflow(
         url = str(data.get("url") or data.get("product_url") or "").strip()
         if not description and url:
             await _notify(on_step, "analyze", 10.0)
-            description = await fetch_product_description(url, timeout_s=float(cfg.get("url_timeout_s") or 20.0))
+            description = await fetch_product_description(
+                url, timeout_s=float(cfg.get("url_timeout_s") or 20.0)
+            )
             trail.append({"stage": "analyze", "source": "url_snapshot", "chars": len(description)})
         if not description:
             raise ValueError("AI Shorts requires description or a readable product URL")
@@ -266,7 +318,9 @@ async def ai_shorts_generation_workflow(
         mode = AICostMode(mode_value)
         await _notify(on_step, "script", 25.0)
         script_provider = _provider(data, cfg, "script")
-        script = await _call_provider(script_provider, {"description": description, "cost_mode": mode.value})
+        script = await _call_provider(
+            script_provider, {"description": description, "cost_mode": mode.value}
+        )
         if script is None:
             script = generate_script_from_description(description, mode)
         if isinstance(script, dict):
@@ -275,24 +329,39 @@ async def ai_shorts_generation_workflow(
             script = AIScript.model_validate(script)
         if not _script_narration(script):
             raise ValueError("script stage returned empty narration")
-        trail.append({"stage": "script", "provider": "injected" if script_provider else "hevi-native"})
+        trail.append(
+            {"stage": "script", "provider": "injected" if script_provider else "hevi-native"}
+        )
 
         actor = plan_ai_short_actor(description, mode)
         actor_provider = _provider(data, cfg, "actor")
-        actor_result = await _call_provider(actor_provider, {"description": description, "actor": actor.model_dump(mode="json")})
+        actor_result = await _call_provider(
+            actor_provider, {"description": description, "actor": actor.model_dump(mode="json")}
+        )
         portrait = None
         if actor_result is not None:
             portrait = _artifact_path(actor_result, label="actor")
             actor.portrait_path = str(portrait)
         elif data.get("actor_image") or data.get("portrait_path"):
-            portrait = _artifact_path(data.get("actor_image") or data.get("portrait_path"), label="actor")
+            portrait = _artifact_path(
+                data.get("actor_image") or data.get("portrait_path"), label="actor"
+            )
             actor.portrait_path = str(portrait)
-        trail.append({"stage": "actor", "provider": "injected" if actor_provider else ("local_asset" if portrait else "not_required")})
+        trail.append(
+            {
+                "stage": "actor",
+                "provider": "injected"
+                if actor_provider
+                else ("local_asset" if portrait else "not_required"),
+            }
+        )
 
         talking_provider = _provider(data, cfg, "talking_head") or _provider(data, cfg, "video")
         talking_asset = data.get("talking_head_path") or cfg.get("talking_head_path")
         if talking_provider is None and not talking_asset:
-            raise RuntimeError("AI Shorts 缺少 talking_head_path；请注入 talking_head/video provider")
+            raise RuntimeError(
+                "AI Shorts 缺少 talking_head_path；请注入 talking_head/video provider"
+            )
 
         voiceover: Path | None = None
         if bool(data.get("with_voiceover", cfg.get("with_voiceover", True))):
@@ -311,12 +380,20 @@ async def ai_shorts_generation_workflow(
                 voice_source = "local_asset"
             else:
                 voiceover = output / "voiceover.wav"
-                language = str(data.get("language") or cfg.get("language") or ("zh" if re.search(r"[\u4e00-\u9fff]", _script_narration(script)) else "en"))
-                voice_engine = str(
-                    data.get("voice_engine")
-                    or cfg.get("voice_engine")
-                    or os.getenv("HEVI_AI_SHORT_TTS_PROVIDER", "native")
-                ).strip().lower()
+                language = str(
+                    data.get("language")
+                    or cfg.get("language")
+                    or ("zh" if re.search(r"[\u4e00-\u9fff]", _script_narration(script)) else "en")
+                )
+                voice_engine = (
+                    str(
+                        data.get("voice_engine")
+                        or cfg.get("voice_engine")
+                        or os.getenv("HEVI_AI_SHORT_TTS_PROVIDER", "native")
+                    )
+                    .strip()
+                    .lower()
+                )
                 voice_kwargs: dict[str, Any] = {
                     "language": language,
                     "reference_audio": data.get("reference_audio") or cfg.get("reference_audio"),
@@ -330,7 +407,8 @@ async def ai_shorts_generation_workflow(
                         _script_narration(script),
                         output_path=voiceover,
                         voice=str(data.get("voice") or cfg.get("voice") or "alba"),
-                        config=str(data.get("model_config") or cfg.get("model_config") or "") or None,
+                        config=str(data.get("model_config") or cfg.get("model_config") or "")
+                        or None,
                         **voice_kwargs,
                     )
                     voice_engine = "pocket_tts"
@@ -367,33 +445,78 @@ async def ai_shorts_generation_workflow(
                 "output_dir": str(output),
             },
         )
-        talking_path = talking_result or data.get("talking_head_path") or cfg.get("talking_head_path")
+        talking_path = (
+            talking_result or data.get("talking_head_path") or cfg.get("talking_head_path")
+        )
         if not talking_path:
-            raise RuntimeError("AI Shorts 缺少 talking_head_path；请注入 talking_head/video provider")
+            raise RuntimeError(
+                "AI Shorts 缺少 talking_head_path；请注入 talking_head/video provider"
+            )
         talking_head = _artifact_path(talking_path, label="talking-head")
-        trail.append({"stage": "video", "provider": "injected" if talking_provider else "local_asset", "path": str(talking_head)})
+        trail.append(
+            {
+                "stage": "video",
+                "provider": "injected" if talking_provider else "local_asset",
+                "path": str(talking_head),
+            }
+        )
 
         b_roll: list[Path] = []
         broll_provider = _provider(data, cfg, "b_roll") or _provider(data, cfg, "broll")
         broll_result = await _call_provider(
             broll_provider,
-            {"description": description, "script": script.model_dump(mode="json"), "output_dir": str(output)},
+            {
+                "description": description,
+                "script": script.model_dump(mode="json"),
+                "output_dir": str(output),
+            },
         )
-        raw_broll = broll_result if broll_result is not None else data.get("b_roll_paths") or cfg.get("b_roll_paths") or []
+        raw_broll = (
+            broll_result
+            if broll_result is not None
+            else data.get("b_roll_paths") or cfg.get("b_roll_paths") or []
+        )
         if isinstance(raw_broll, (str, Path)):
             raw_broll = [raw_broll]
         b_roll = [_artifact_path(item, label="b-roll") for item in raw_broll]
-        trail.append({"stage": "broll", "provider": "injected" if broll_provider else ("local_asset" if b_roll else "none"), "count": len(b_roll)})
+        trail.append(
+            {
+                "stage": "broll",
+                "provider": "injected" if broll_provider else ("local_asset" if b_roll else "none"),
+                "count": len(b_roll),
+            }
+        )
 
         await _notify(on_step, "composite", 82.0)
         composite = _compose(talking_head, output / "composite.mp4", voiceover=voiceover)
         artifacts = [
-            Artifact.from_path(composite, kind="video", media_type="video/mp4", primary=True, logical_role="ai_short_composite"),
-            Artifact.from_path(talking_head, kind="video", media_type="video/mp4", logical_role="talking_head"),
+            Artifact.from_path(
+                composite,
+                kind="video",
+                media_type="video/mp4",
+                primary=True,
+                logical_role="ai_short_composite",
+            ),
+            Artifact.from_path(
+                talking_head, kind="video", media_type="video/mp4", logical_role="talking_head"
+            ),
         ]
         if voiceover:
-            artifacts.append(Artifact.from_path(voiceover, kind="audio", media_type="audio/wav", logical_role="voiceover"))
-        artifacts.extend(Artifact.from_path(path, kind="image" if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"} else "video", logical_role="b_roll") for path in b_roll)
+            artifacts.append(
+                Artifact.from_path(
+                    voiceover, kind="audio", media_type="audio/wav", logical_role="voiceover"
+                )
+            )
+        artifacts.extend(
+            Artifact.from_path(
+                path,
+                kind="image"
+                if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+                else "video",
+                logical_role="b_roll",
+            )
+            for path in b_roll
+        )
         manifest = ArtifactManifest(artifacts=artifacts)
         trail.append({"stage": "composite", "path": str(composite), "verified": True})
 
@@ -401,7 +524,9 @@ async def ai_shorts_generation_workflow(
         for platform in data.get("publish_to") or data.get("publish_platforms") or []:
             from hevi.publishers import publish_to_platform
 
-            result = await publish_to_platform(str(platform), composite, title=script.hook, description=_script_narration(script))
+            result = await publish_to_platform(
+                str(platform), composite, title=script.hook, description=_script_narration(script)
+            )
             publish_results.append(result.to_dict())
         report = {
             "status": "succeeded",
@@ -435,10 +560,28 @@ async def ai_shorts_generation_workflow(
             },
         }
     except (FileNotFoundError, ValueError, RuntimeError, httpx.HTTPError) as exc:
-        status = "blocked" if isinstance(exc, (FileNotFoundError, ValueError)) and "provider" in str(exc).lower() else "failed"
-        return _report_error(output, status=status, operation="ai_shorts_generation_workflow", fingerprint=fingerprint, trail=trail, error=exc)
+        status = (
+            "blocked"
+            if isinstance(exc, (FileNotFoundError, ValueError)) and "provider" in str(exc).lower()
+            else "failed"
+        )
+        return _report_error(
+            output,
+            status=status,
+            operation="ai_shorts_generation_workflow",
+            fingerprint=fingerprint,
+            trail=trail,
+            error=exc,
+        )
     except Exception as exc:  # provider SDKs must not leak an unrecorded failure
-        return _report_error(output, status="failed", operation="ai_shorts_generation_workflow", fingerprint=fingerprint, trail=trail, error=exc)
+        return _report_error(
+            output,
+            status="failed",
+            operation="ai_shorts_generation_workflow",
+            fingerprint=fingerprint,
+            trail=trail,
+            error=exc,
+        )
 
 
 __all__ = ["ai_shorts_generation_workflow", "fetch_product_description"]

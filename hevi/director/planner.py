@@ -24,7 +24,7 @@ from hevi.director.director import build_canvas_graph
 from hevi.director.intent import parse_intent
 from hevi.director.producer import produce
 from hevi.director.storyboard import plan_shots
-from hevi.script2video.omodul.fuse import fuse_production
+from hevi.layer4_legacy.script2video.omodul_impl.fuse import fuse_production
 
 
 async def plan_from_text(

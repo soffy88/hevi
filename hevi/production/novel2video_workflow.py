@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hevi.layer4_legacy.script2video.omodul_impl.novel_plan import plan_novel2video
 from hevi.script2video.adapter_schemas import LengthBudget
-from hevi.script2video.omodul.novel_plan import plan_novel2video
 
 logger = logging.getLogger(__name__)
 

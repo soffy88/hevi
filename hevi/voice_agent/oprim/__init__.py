@@ -1,3 +1,2 @@
-from hevi.voice_agent.oprim.contracts import VoiceAgentRequest, VoicePipeline, VoiceStage
-
-__all__ = ["VoiceAgentRequest", "VoicePipeline", "VoiceStage"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.voice_agent.oprim_impl import *  # noqa: F403

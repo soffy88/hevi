@@ -105,7 +105,7 @@ router = APIRouter(prefix="/director-pipeline", tags=["director-pipeline"])
 def _attach_kernel_plan(shot_list: ShotList) -> dict[str, Any]:
     """分镜草案生成后叠五核(机位键/动作弧)。失败返回空 dict,不挡下游。"""
     try:
-        from hevi.script2video.omodul.fuse import fuse_production
+        from hevi.layer4_legacy.script2video.omodul_impl.fuse import fuse_production
 
         fused = fuse_production("", existing_shot_list=shot_list)
         shot_list.shots.clear()
@@ -130,6 +130,7 @@ def _record_shot_lints(
     rec["scene_stage_lint"] = [asdict(f) for f in findings]
     append_gate_log(None, gate_log_entries(source="director", findings=findings))
 
+
 # Explicit local-mode projection/cache. Production requests must always read
 # PostgreSQL; this map is intentionally unavailable to SaaS reads/writes.
 _LOCAL_WORK_PROJECTIONS: dict[str, dict[str, Any]] = {}
@@ -142,6 +143,8 @@ def __getattr__(name: str) -> Any:
     if name == "_WORKS":
         return _LOCAL_WORK_PROJECTIONS
     raise AttributeError(name)
+
+
 # 身份锚图 art direction(2026-07-16 实证重写):旧值 "cinematic character portrait" + 战败场
 # 的戏剧化 appearance(浴血/怒目)→ qwen-image 脑补成发光红眼、金龙肩甲的恶鬼(实测)。锚图
 # 是下游 canonical/关键帧的派生源,必须是**干净中性定妆照**:平静表情、纯背景、写实真人。
@@ -828,9 +831,7 @@ async def list_works(
     if _has_pool(pool):
         records = await ProductionGraphRepository(pool).list_for_user(str(user["id"]))
         return [_work_status(record) for record in records]
-    mine = [
-        r for r in _LOCAL_WORK_PROJECTIONS.values() if r.get("user_id") == str(user["id"])
-    ]
+    mine = [r for r in _LOCAL_WORK_PROJECTIONS.values() if r.get("user_id") == str(user["id"])]
     return [_work_status(r) for r in sorted(mine, key=lambda r: r["created_at"], reverse=True)]
 
 
@@ -1638,9 +1639,7 @@ async def _run_industrial_dispatch(
         rec["video_task_id"] = task_ids[0] if task_ids else None
         rec["status"] = "dispatched"
         rec["error"] = None
-        _append_trail(
-            rec, "season_dispatch", "succeeded", f"已派发 {len(task_ids)} 个真实生产任务"
-        )
+        _append_trail(rec, "season_dispatch", "succeeded", f"已派发 {len(task_ids)} 个真实生产任务")
         await _persist_work(rec, pool, reason="season_dispatched")
     except asyncio.CancelledError:
         rec["status"] = "dispatch_cancelled"
@@ -2083,13 +2082,9 @@ async def _verdict_and_retake(
                     decision=decision,
                     evaluation=evaluation,
                     revision_id=(
-                        uuid.UUID(str(config["revision_id"]))
-                        if config.get("revision_id")
-                        else None
+                        uuid.UUID(str(config["revision_id"])) if config.get("revision_id") else None
                     ),
-                    attempt_id=str(
-                        (current or {}).get("current_attempt_id") or task_id
-                    ),
+                    attempt_id=str((current or {}).get("current_attempt_id") or task_id),
                 )
         except Exception as exc:
             logger.warning("repair convergence state write failed for %s: %s", task_id, exc)
@@ -2349,9 +2344,9 @@ async def _run_director_via_tongjian(
         )
         config_json["artifact_manifest"] = artifact_manifest.model_dump(mode="json")
         if artifact_manifest.production_id:
-            committed = await ArtifactRepository(
-                task_repo.pool, get_object_store()
-            ).commit(artifact_manifest)
+            committed = await ArtifactRepository(task_repo.pool, get_object_store()).commit(
+                artifact_manifest
+            )
             config_json["artifact_manifest"] = committed.model_dump(mode="json")
         else:
             committed = artifact_manifest
@@ -2401,8 +2396,8 @@ async def _run_director_via_tongjian(
                     "error": verdict.reason[:500],
                     "config_json": config_json,
                     "updated_at": datetime.now(UTC).replace(tzinfo=None),
-                    },
-                )
+                },
+            )
             await settle_budget(
                 actual_usd=float(config_json.get("actual_usd") or 0.0), release=False
             )
@@ -2444,8 +2439,8 @@ async def _run_director_via_tongjian(
                 "error": None,
                 "config_json": config_json,
                 "updated_at": datetime.now(UTC).replace(tzinfo=None),
-                },
-            )
+            },
+        )
         await settle_budget(actual_usd=float(config_json.get("actual_usd") or 0.0), release=False)
         await task_repo.delete_shots(task_id)
         for shot in shots:
@@ -2495,9 +2490,7 @@ async def execute_task(task: dict[str, Any], pool: PgPool) -> dict[str, Any]:
     design_list = DesignList.model_validate(payload["design_list"])
     concept = Concept.model_validate(payload["concept"])
     scene_stage = (
-        SceneStageSet.model_validate(payload["scene_stage"])
-        if payload.get("scene_stage")
-        else None
+        SceneStageSet.model_validate(payload["scene_stage"]) if payload.get("scene_stage") else None
     )
     subject_svc = SubjectService(SubjectRepository(pool))
     await _run_director_via_tongjian(

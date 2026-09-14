@@ -1,2 +1,3 @@
 """Deprecated compatibility shim; canonical HEVI Layer4 code moved to creative.layer4."""
-from hevi.creative.layer4 import *
+
+from hevi.creative.layer4 import *  # noqa: F403

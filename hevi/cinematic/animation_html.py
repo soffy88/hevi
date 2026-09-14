@@ -20,11 +20,20 @@ from hevi.cinematic.golden_formula import GoldenBeat
 
 # 情绪关键词 → emoji + 强调色
 _EMOTION_MAP: list[tuple[str, str, str]] = [
-    ("欢", "😊", "#ffd27d"), ("笑", "😊", "#ffd27d"), ("乐", "😄", "#ffd27d"),
-    ("慌", "😱", "#7f9cf5"), ("恐", "😱", "#7f9cf5"), ("惊", "😱", "#7f9cf5"),
-    ("坚定", "💪", "#f9a825"), ("专注", "🤔", "#90cdf4"),
-    ("疑", "🤨", "#c3b8f5"), ("暖", "🥰", "#ffb3c1"), ("温馨", "🥰", "#ffb3c1"),
-    ("赞", "👍", "#7fd1a5"), ("怒", "😠", "#f56565"), ("平静", "😌", "#a0aec0"),
+    ("欢", "😊", "#ffd27d"),
+    ("笑", "😊", "#ffd27d"),
+    ("乐", "😄", "#ffd27d"),
+    ("慌", "😱", "#7f9cf5"),
+    ("恐", "😱", "#7f9cf5"),
+    ("惊", "😱", "#7f9cf5"),
+    ("坚定", "💪", "#f9a825"),
+    ("专注", "🤔", "#90cdf4"),
+    ("疑", "🤨", "#c3b8f5"),
+    ("暖", "🥰", "#ffb3c1"),
+    ("温馨", "🥰", "#ffb3c1"),
+    ("赞", "👍", "#7fd1a5"),
+    ("怒", "😠", "#f56565"),
+    ("平静", "😌", "#a0aec0"),
 ]
 
 # 氛围关键词 → 背景渐变
@@ -111,8 +120,7 @@ def golden_beat_html(beat: GoldenBeat, narration_audio: Path | None) -> str:
     audio_js = ""
     if narration_audio and narration_audio.exists():
         data_uri = (
-            "data:audio/mpeg;base64,"
-            + base64.b64encode(narration_audio.read_bytes()).decode()
+            "data:audio/mpeg;base64," + base64.b64encode(narration_audio.read_bytes()).decode()
         )
         audio_tag = f'<audio id="nar" src="{data_uri}" autoplay></audio>'
         audio_js = (
@@ -135,7 +143,7 @@ def golden_beat_html(beat: GoldenBeat, narration_audio: Path | None) -> str:
   .line{{color:#2d3748;font-weight:800;line-height:1.35;{size_style}
     text-shadow:0 2px 10px rgba(255,255,255,.5);}}
   .emoji{{font-size:clamp(64px,12vw,140px);filter:drop-shadow(0 6px 14px rgba(0,0,0,.25));}}
-  .light{{position:absolute;inset:0;pointer-events:none;{('background:' + light) if light else ''}}}
+  .light{{position:absolute;inset:0;pointer-events:none;{("background:" + light) if light else ""}}}
   .foot{{position:absolute;bottom:6vh;width:100%;text-align:center;
     color:rgba(45,55,72,.55);font-size:clamp(20px,4vw,34px);font-weight:600;}}
 </style></head><body>
@@ -162,15 +170,20 @@ async def render_html_shot(
     height: int = 1280,
 ) -> Path:
     """渲染一镜 HTML 动画 → 录屏成视频 (音频驱动时长)。"""
-    from hevi.pipeline_lite.oprim.oprim_playwright import record_html_to_video
+    from hevi.layer4_legacy.pipeline_lite.oprim_impl.oprim_playwright import record_html_to_video
 
     html_dir = Path(html_dir)
     html_dir.mkdir(parents=True, exist_ok=True)
     html_path = html_dir / f"beat_{beat.index:02d}.html"
     html_path.write_text(golden_beat_html(beat, narration_audio), encoding="utf-8")
     return await record_html_to_video(
-        html_path, out, width=width, height=height, fps=24,
-        duration_s=beat.duration_s, scroll=False,
+        html_path,
+        out,
+        width=width,
+        height=height,
+        fps=24,
+        duration_s=beat.duration_s,
+        scroll=False,
     )
 
 

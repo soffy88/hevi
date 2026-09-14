@@ -6,8 +6,12 @@ import argparse
 import json
 import sys
 
-from hevi.joyai.omodul.stream_edit import capabilities, create_session, get_session
-from hevi.joyai.oprim.stream_contract import frame_budget
+from hevi.layer4_legacy.joyai.omodul_impl.stream_edit import (
+    capabilities,
+    create_session,
+    get_session,
+)
+from hevi.layer4_legacy.joyai.oprim_impl.stream_contract import frame_budget
 
 
 def main(argv: list[str] | None = None) -> int:

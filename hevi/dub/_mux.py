@@ -43,7 +43,10 @@ async def mux_remix_into_video(
     """新配音盖回原片音频或独立伴奏床(Voice-Pro Demucs mix-back)。"""
     from obase.ffmpeg import run as ffmpeg_run
 
-    from hevi.voicepro.oskill.vocal_remix import mux_args_for_plan, plan_vocal_remix
+    from hevi.layer4_legacy.voicepro.oskill_impl.vocal_remix import (
+        mux_args_for_plan,
+        plan_vocal_remix,
+    )
 
     output.parent.mkdir(parents=True, exist_ok=True)
     kwargs: dict[str, float] = {}

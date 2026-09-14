@@ -1,3 +1,2 @@
-from hevi.talkcraft.oskill.compiler import choose_motion_cards
-
-__all__ = ["choose_motion_cards"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.talkcraft.oskill_impl import *  # noqa: F403

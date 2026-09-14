@@ -49,7 +49,7 @@ async def synth_cues_on_timeline(
     concat_fn: Any = None,
 ) -> Path:
     """逐条 TTS 后按 SRT 时钟垫静音拼接(Voice-Pro srt_to_voice)。"""
-    from hevi.voicepro.oskill.subtitle_timeline import plan_timeline
+    from hevi.layer4_legacy.voicepro.oskill_impl.subtitle_timeline import plan_timeline
     from hevi.voicepro.schemas import TimedCue
 
     output_path = Path(output_path)
@@ -86,7 +86,7 @@ async def _synth_one_edge(*, cue: Cue, language: str, output_path: Path) -> Path
 async def _concat_with_pads(*, clips: list[Path], slots: Any, output_path: Path) -> Path:
     from obase.ffmpeg import run as ffmpeg_run
 
-    from hevi.voicepro.oprim.timeline_pad import leading_silence_ms
+    from hevi.layer4_legacy.voicepro.oprim_impl.timeline_pad import leading_silence_ms
 
     parts: list[str] = []
     lead = leading_silence_ms(slots)
@@ -96,7 +96,14 @@ async def _concat_with_pads(*, clips: list[Path], slots: Any, output_path: Path)
         parts.extend(["-i", str(clip)])
         if slot.pad_after_ms > 0:
             parts.extend(
-                ["-f", "lavfi", "-t", f"{slot.pad_after_ms / 1000:.3f}", "-i", "anullsrc=r=24000:cl=mono"]
+                [
+                    "-f",
+                    "lavfi",
+                    "-t",
+                    f"{slot.pad_after_ms / 1000:.3f}",
+                    "-i",
+                    "anullsrc=r=24000:cl=mono",
+                ]
             )
     n_inputs = sum(1 for item in parts if item == "-i")
     concat = "".join(f"[{i}:a]" for i in range(n_inputs)) + f"concat=n={n_inputs}:v=0:a=1[a]"

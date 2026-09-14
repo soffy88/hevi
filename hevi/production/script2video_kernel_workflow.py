@@ -13,9 +13,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from hevi.script2video.omodul.kernel_plan import plan_kernel_artifacts
-from hevi.script2video.oprim.camera_graph import generation_order, get_priority_shots
-from hevi.script2video.oprim.variation import needs_last_frame
+from hevi.layer4_legacy.script2video.omodul_impl.kernel_plan import plan_kernel_artifacts
+from hevi.layer4_legacy.script2video.oprim_impl.camera_graph import (
+    generation_order,
+    get_priority_shots,
+)
+from hevi.layer4_legacy.script2video.oprim_impl.variation import needs_last_frame
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +82,9 @@ async def script2video_kernel_workflow(
 
         portraits_path = None
         if config.generate_portraits and input_data.image_gen is not None:
-            from hevi.script2video.oskill.portrait_triptych import generate_all_portraits
+            from hevi.layer4_legacy.script2video.oskill_impl.portrait_triptych import (
+                generate_all_portraits,
+            )
 
             _step("portraits", 45.0)
             registry = await generate_all_portraits(
@@ -91,9 +96,7 @@ async def script2video_kernel_workflow(
             portraits_path = str(
                 output_dir / "character_portraits" / "character_portraits_registry.json"
             )
-            decision_trail.append(
-                {"stage": "portraits", "count": len(registry.portraits)}
-            )
+            decision_trail.append({"stage": "portraits", "count": len(registry.portraits)})
 
         if config.generate_transitions and input_data.video_gen is not None:
             _step("transitions", 75.0)

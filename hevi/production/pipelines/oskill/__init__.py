@@ -1,3 +1,2 @@
-from hevi.production.pipelines.oskill.compiler import pipeline_for_brief
-
-__all__ = ["pipeline_for_brief"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.production.pipelines.oskill_impl import *  # noqa: F403

@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from hevi.openshorts.oprim import (
+from hevi.layer4_legacy.openshorts.oprim_impl import (
     clip_reframing_params,
     generate_script_from_description,
     generate_youtube_description,
@@ -67,8 +67,16 @@ def plan_clip_generator(
         "with_voiceover": with_voiceover,
         "with_hook_text": with_hook_text,
         "stages": [
-            {"stage": "transcribe", "tool": "faster-whisper", "output": "transcript + word timestamps"},
-            {"stage": "detect_scenes", "tool": "PySceneDetect/TransNet v2", "output": "scene boundaries"},
+            {
+                "stage": "transcribe",
+                "tool": "faster-whisper",
+                "output": "transcript + word timestamps",
+            },
+            {
+                "stage": "detect_scenes",
+                "tool": "PySceneDetect/TransNet v2",
+                "output": "scene boundaries",
+            },
             {"stage": "viral_detect", "tool": "gemini", "output": "3-15 viral moments with scores"},
             {"stage": "build_windows", "tool": "clip_selection.py", "output": "transcript windows"},
             {"stage": "reframe", "tool": reframing, "output": f"9:16 clips in {reframing} mode"},
@@ -124,12 +132,28 @@ def plan_ai_short(
         "publish_to": publish_to or [],
         "stages": [
             {"stage": "analyze", "tool": "gemini", "description": "网页抓取 + Gemini 研究"},
-            {"stage": "script", "tool": "gemini", "description": "病毒式脚本 (hook→problem→solution→CTA)"},
+            {
+                "stage": "script",
+                "tool": "gemini",
+                "description": "病毒式脚本 (hook→problem→solution→CTA)",
+            },
             {"stage": "actor", "tool": cost_info["actor"], "description": "AI 演员生成"},
             {"stage": "voice", "tool": "elevenlabs", "description": "TTS 旁白 (English/Spanish)"},
-            {"stage": "video", "tool": cost_info["video_gen"], "description": "Talking head + lipsync"},
-            {"stage": "broll", "tool": cost_info["actor"], "description": "Ken Burns B-roll images"},
-            {"stage": "composite", "tool": "ffmpeg", "description": "ASS subtitles + hook overlays"},
+            {
+                "stage": "video",
+                "tool": cost_info["video_gen"],
+                "description": "Talking head + lipsync",
+            },
+            {
+                "stage": "broll",
+                "tool": cost_info["actor"],
+                "description": "Ken Burns B-roll images",
+            },
+            {
+                "stage": "composite",
+                "tool": "ffmpeg",
+                "description": "ASS subtitles + hook overlays",
+            },
             {"stage": "gallery", "tool": "s3", "description": "上传到 public S3 + SEO pages"},
             {"stage": "publish", "tool": "upload_post", "description": "TikTok/Instagram/YouTube"},
         ],
@@ -139,6 +163,7 @@ def plan_ai_short(
 
 
 # ── YouTube Studio Pipeline 规划 ──────────────────────
+
 
 def plan_youtube_studio(
     video_path: str,
@@ -156,8 +181,16 @@ def plan_youtube_studio(
         "user_id": user_id,
         "stages": [
             {"stage": "titles", "tool": "gemini", "description": "10 个带 viral_score 的标题"},
-            {"stage": "thumbnail", "tool": "flux_2_pro + ffmpeg", "description": "AI 缩略图 + face overlay"},
-            {"stage": "description", "tool": "gemini", "description": "SEO 描述 + 章节时间戳 + hashtags"},
+            {
+                "stage": "thumbnail",
+                "tool": "flux_2_pro + ffmpeg",
+                "description": "AI 缩略图 + face overlay",
+            },
+            {
+                "stage": "description",
+                "tool": "gemini",
+                "description": "SEO 描述 + 章节时间戳 + hashtags",
+            },
             {"stage": "publish", "tool": "upload_post", "description": "一键发布到 YouTube"},
         ],
         "estimated_cost_usd": 0.0,  # Gemini free tier
@@ -176,7 +209,11 @@ async def execute_clip_generator(
     with_voiceover: bool = False,
 ) -> ClipGeneratorJob:
     """执行 Clip Generator pipeline。"""
-    mode = ReframingMode(reframing) if reframing in ReframingMode.__members__.values() else ReframingMode.GENERAL
+    mode = (
+        ReframingMode(reframing)
+        if reframing in ReframingMode.__members__.values()
+        else ReframingMode.GENERAL
+    )
     return generate_clips(
         video_path=video_path,
         user_id=user_id,
@@ -215,7 +252,9 @@ async def execute_ai_short(
     result = await ai_shorts_generation_workflow(
         {**(config or {}), "cost_mode": cm.value},
         data,
-        output_dir or Path("output/openshorts") / f"{user_id or 'anonymous'}-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}",
+        output_dir
+        or Path("output/openshorts")
+        / f"{user_id or 'anonymous'}-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}",
         on_step=on_step,
     )
     job = make_ai_short_job(description=data["description"], url=data["url"], user_id=user_id)
@@ -237,7 +276,9 @@ async def execute_ai_short(
     job.error = str(error.get("message") if isinstance(error, dict) else error or "")
     publish_results = findings.get("publish_results") or []
     if publish_results:
-        statuses = {str(item.get("status") or "") for item in publish_results if isinstance(item, dict)}
+        statuses = {
+            str(item.get("status") or "") for item in publish_results if isinstance(item, dict)
+        }
         job.publish_status = "published" if "published" in statuses else "handoff"
     return job
 

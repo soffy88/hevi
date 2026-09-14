@@ -17,8 +17,29 @@ from hevi.krillinai.omodul import (
     plan_youtube_studio,
 )
 
+# ── Schemas ──
+from hevi.krillinai.schemas import (
+    ASRConfig,
+    ASRProvider,
+    AudioFile,
+    ClipGeneratorJob,
+    CoverFile,
+    JobStatus,
+    LLMConfig,
+    LLMProvider,
+    RenderConfig,
+    RenderMode,
+    SubtitleFile,
+    SubtitleSegment,
+    TranslationPair,
+    TTSConfig,
+    TTSProvider,
+    VideoFile,
+    make_clip_generator_job,
+)
+
 # ── Oprim ──
-from hevi.krillinai.oprim import (
+from hevi.layer4_legacy.krillinai.oprim_impl import (
     download_video,
     extract_audio,
     generate_cover,
@@ -42,7 +63,7 @@ from hevi.krillinai.oprim import (
 )
 
 # ── Oskill ──
-from hevi.krillinai.oskill import (
+from hevi.layer4_legacy.krillinai.oskill_impl import (
     skill_acquire_video,
     skill_cover,
     skill_full_pipeline,
@@ -51,27 +72,6 @@ from hevi.krillinai.oskill import (
     skill_transcribe,
     skill_translate,
     skill_tts,
-)
-
-# ── Schemas ──
-from hevi.krillinai.schemas import (
-    ASRConfig,
-    ASRProvider,
-    AudioFile,
-    ClipGeneratorJob,
-    CoverFile,
-    JobStatus,
-    LLMConfig,
-    LLMProvider,
-    RenderConfig,
-    RenderMode,
-    SubtitleFile,
-    SubtitleSegment,
-    TranslationPair,
-    TTSConfig,
-    TTSProvider,
-    VideoFile,
-    make_clip_generator_job,
 )
 
 __all__ = [

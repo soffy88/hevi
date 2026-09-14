@@ -62,7 +62,7 @@ async def _stamp_cameo_from_photo(
     if not photo.exists():
         return subject
     try:
-        from hevi.script2video.oskill.autocameo import person_from_photo
+        from hevi.layer4_legacy.script2video.oskill_impl.autocameo import person_from_photo
 
         info = person_from_photo(photo)
         sid = str(subject["id"])

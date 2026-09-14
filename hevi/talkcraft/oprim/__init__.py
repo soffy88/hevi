@@ -1,3 +1,2 @@
-from hevi.talkcraft.oprim.contracts import TalkcraftRequest, TalkCue
-
-__all__ = ["TalkCue", "TalkcraftRequest"]
+"""Deprecated compatibility shim; canonical HEVI implementation is Layer4-owned."""
+from hevi.layer4_legacy.talkcraft.oprim_impl import *  # noqa: F403
