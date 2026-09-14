@@ -1,0 +1,42 @@
+{
+  "scenes": [
+    {
+      "action": "open the gate",
+      "dialogue": [],
+      "location": "UNSPECIFIED",
+      "production_notes": [
+        "gate opens"
+      ],
+      "scene_id": "e81d77e3-3803-43d7-84bd-594a43182dfb",
+      "time": null
+    },
+    {
+      "action": "choose the route",
+      "dialogue": [],
+      "location": "UNSPECIFIED",
+      "production_notes": [
+        "route chosen"
+      ],
+      "scene_id": "06f205e9-e17d-4cce-8f61-c5d4662b2e86",
+      "time": null
+    }
+  ],
+  "script": {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T11:32:00.056088Z",
+    "format": "SCREENPLAY",
+    "language": "en",
+    "object_id": "994b1e80-66ff-4e12-a022-ded64f653f53",
+    "project_id": "129fb85f-f80f-4050-9496-4d3b3e4fceae",
+    "provenance": [],
+    "revision": 0,
+    "scene_ids": [
+      "e81d77e3-3803-43d7-84bd-594a43182dfb",
+      "06f205e9-e17d-4cce-8f61-c5d4662b2e86"
+    ],
+    "schema_version": 1,
+    "title": "Owned Export",
+    "updated_at": "2026-09-14T11:32:00.056088Z"
+  }
+}

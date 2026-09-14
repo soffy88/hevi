@@ -1,0 +1,74 @@
+{
+  "provider": "local-pillow",
+  "selected_artifact_id": "03257224-73f0-49f0-8acd-0c1b78fbf8a5",
+  "versions": [
+    {
+      "artifact_type": "COVER",
+      "authority": "CANONICAL",
+      "content_hash": null,
+      "created_at": "2026-09-14T11:31:58.228414Z",
+      "media_type": "image/png",
+      "object_id": "c66ee27a-adab-4a50-86b8-f08652df9c05",
+      "project_id": "5f197e1e-eef3-4162-9435-634d657c2b22",
+      "provenance": [
+        {
+          "locator": null,
+          "ref_id": "1b9a3db8-5549-43c6-8324-b5bc1b5288d2",
+          "ref_type": "COVER_BRIEF",
+          "sha256": null,
+          "uri": null
+        },
+        {
+          "locator": null,
+          "ref_id": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-0ad73c14e0a5/cover-v1.png",
+          "ref_type": "COVER_ARTIFACT",
+          "sha256": "7cc4711a2597e461aa94ec2234822eebfc0ffe4ad379dce699cc2777a4b1e231",
+          "uri": null
+        }
+      ],
+      "quality_gate_status": "PASS",
+      "revision": 0,
+      "schema_version": 1,
+      "sha256": "7cc4711a2597e461aa94ec2234822eebfc0ffe4ad379dce699cc2777a4b1e231",
+      "source_ids": [
+        "1b9a3db8-5549-43c6-8324-b5bc1b5288d2"
+      ],
+      "updated_at": "2026-09-14T11:31:58.228417Z",
+      "uri": "memory://cover/7cc4711a2597e461aa94ec2234822eebfc0ffe4ad379dce699cc2777a4b1e231"
+    },
+    {
+      "artifact_type": "COVER",
+      "authority": "CANONICAL",
+      "content_hash": null,
+      "created_at": "2026-09-14T11:31:58.229949Z",
+      "media_type": "image/png",
+      "object_id": "03257224-73f0-49f0-8acd-0c1b78fbf8a5",
+      "project_id": "5f197e1e-eef3-4162-9435-634d657c2b22",
+      "provenance": [
+        {
+          "locator": null,
+          "ref_id": "1b9a3db8-5549-43c6-8324-b5bc1b5288d2",
+          "ref_type": "COVER_BRIEF",
+          "sha256": null,
+          "uri": null
+        },
+        {
+          "locator": null,
+          "ref_id": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-0ad73c14e0a5/cover-v2.png",
+          "ref_type": "COVER_ARTIFACT",
+          "sha256": "701bb5edc994ada9ed24d81f0e838d9a3c2a93f4bf2f1708b779d2aa5339665d",
+          "uri": null
+        }
+      ],
+      "quality_gate_status": "PASS",
+      "revision": 0,
+      "schema_version": 1,
+      "sha256": "701bb5edc994ada9ed24d81f0e838d9a3c2a93f4bf2f1708b779d2aa5339665d",
+      "source_ids": [
+        "1b9a3db8-5549-43c6-8324-b5bc1b5288d2"
+      ],
+      "updated_at": "2026-09-14T11:31:58.229951Z",
+      "uri": "memory://cover/701bb5edc994ada9ed24d81f0e838d9a3c2a93f4bf2f1708b779d2aa5339665d"
+    }
+  ]
+}

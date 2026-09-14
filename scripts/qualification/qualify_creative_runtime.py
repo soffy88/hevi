@@ -2024,51 +2024,116 @@ def _storyboard_ref_failure(project_id: UUID, script: object) -> bool:
 
 
 def qualify_cover(root: Path) -> Evidence:
+    from io import BytesIO
+
+    from PIL import Image, ImageDraw
+
+    from hevi.creative.omodul import CoverModule
     from hevi.creative_assets.omodul.runtime import plan_visual_asset
     from hevi.creative_assets.oprim.contracts import VisualAssetRequest
     from hevi.obase.creative import CoverBrief
 
     project_id = uuid4()
-    brief = CoverBrief(project_id=project_id, title="Owned Cover", visual_concept="winter harbour")
+    brief = CoverBrief(
+        project_id=project_id,
+        title="Owned Cover",
+        visual_concept="winter harbour",
+        palette=("#1b2a41", "#f2f2f2"),
+    )
     request = VisualAssetRequest(kind="cover", subject=brief.visual_concept, platform="generic")
     plan = plan_visual_asset(request)
-    provider_available = bool(os.getenv("HEVI_VISUAL_ASSET_PROVIDER", "").strip())
+
+    def local_provider(cover_brief: CoverBrief) -> tuple[bytes, str]:
+        background = cover_brief.palette[0] if cover_brief.palette else "#1b2a41"
+        foreground = cover_brief.palette[-1] if cover_brief.palette else "#ffffff"
+        image = Image.new("RGB", (256, 256), background)
+        draw = ImageDraw.Draw(image)
+        draw.text((12, 120), cover_brief.title, fill=foreground)
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        return buffer.getvalue(), "image/png"
+
+    def failing_provider(_: CoverBrief) -> tuple[bytes, str]:
+        raise RuntimeError("cover provider unavailable")
+
+    module = CoverModule()
+    first = module.create(brief=brief, provider=local_provider, output_path=root / "cover-v1.png")
+    regenerated = brief.model_copy(update={"palette": ("#402a1b", "#ffffff")})
+    second = module.create(
+        brief=regenerated, provider=local_provider, output_path=root / "cover-v2.png"
+    )
+    selection = _json_artifact(
+        root,
+        "cover-selection.json",
+        {
+            "selected_artifact_id": str(second.artifact.object_id),
+            "provider": "local-pillow",
+            "versions": [
+                first.artifact.model_dump(mode="json"),
+                second.artifact.model_dump(mode="json"),
+            ],
+        },
+    )
+    provider_failure = False
+    try:
+        module.create(brief=brief, provider=failing_provider)
+    except RuntimeError:
+        provider_failure = True
+    empty_result = False
+    try:
+        module.create(brief=brief, provider=lambda _: (b"", "image/png"))
+    except ValueError as exc:
+        empty_result = "COVER_EMPTY_PROVIDER_RESULT" in str(exc)
+    with Image.open(root / "cover-v1.png") as reopened:
+        reopened.load()
+        reopened_ok = reopened.size == (256, 256) and reopened.format == "PNG"
+    real_artifact = (
+        (root / "cover-v2.png").is_file()
+        and _sha(root / "cover-v2.png") == second.artifact.sha256
+        and first.artifact.sha256 != second.artifact.sha256
+        and second.artifact.source_ids == (brief.object_id,)
+        and any(ref.ref_type == "COVER_ARTIFACT" for ref in second.artifact.provenance)
+        and reopened_ok
+    )
     output = _json_artifact(
         root,
         "cover-provider-plan.json",
         {
             "brief": brief.model_dump(mode="json"),
             "plan": plan.to_dict(),
-            "provider_available": provider_available,
+            "provider": "local-pillow",
         },
     )
-    if not provider_available:
-        return Evidence(
-            "cover-visual-asset-runtime",
-            str(output),
-            {
-                "BRIEF": True,
-                "EXISTING_VISUAL_BOUNDARY": plan.status in {"planned", "blocked"},
-                "REAL_PROVIDER_ARTIFACT": False,
-            },
-            [str(output)],
-            ["provider preflight"],
-            ["no configured HEVI image provider"],
-            {"status": "BLOCKED_PROVIDER"},
-        )
     return Evidence(
         "cover-visual-asset-runtime",
         str(output),
-        {"BRIEF": True, "EXISTING_VISUAL_BOUNDARY": True, "REAL_PROVIDER_ARTIFACT": False},
-        [str(output)],
-        ["provider preflight"],
-        ["real provider execution deferred to configured provider"],
-        {"status": "PROVIDER_NOT_EXECUTED"},
+        {
+            "BRIEF": True,
+            "EXISTING_VISUAL_BOUNDARY": plan.status in {"planned", "blocked"},
+            "REAL_PROVIDER_ARTIFACT": real_artifact,
+            "REGENERATE_AND_SELECT": first.artifact.object_id != second.artifact.object_id
+            and selection.is_file(),
+            "FAILURE_STATE": provider_failure and empty_result,
+            "PROVENANCE": all(
+                item.source_ids == (brief.object_id,) and bool(item.provenance)
+                for item in (first.artifact, second.artifact)
+            ),
+        },
+        [
+            str(output),
+            str(selection),
+            str(root / "cover-v1.png"),
+            str(root / "cover-v2.png"),
+        ],
+        ["persist cover selection", "reopen generated PNG"],
+        ["provider failure", "empty provider result"],
+        {"provider": "local-pillow", "versions": 2},
     )
 
 
 def qualify_export(root: Path) -> Evidence:
-    from hevi.creative.omodul import ExportModule
+    from hevi.creative.omodul import ExportModule, ScriptModule, StoryboardModule
+    from hevi.obase.creative import Choice, InteractiveFilm, SceneIntent, StoryNode
 
     project_id = uuid4()
     source = _text_artifact(root, "source.txt", "Chapter one.\n\nChapter two.", project_id)
@@ -2112,6 +2177,78 @@ def qualify_export(root: Path) -> Evidence:
         )
     except ValueError as exc:
         invalid_rejected = "QUALITY_GATE" in str(exc)
+    scene_intents = (
+        SceneIntent(
+            project_id=project_id,
+            sequence=1,
+            purpose="enter",
+            objective="open the gate",
+            outcome="gate opens",
+        ),
+        SceneIntent(
+            project_id=project_id,
+            sequence=2,
+            purpose="turn",
+            objective="choose the route",
+            outcome="route chosen",
+        ),
+    )
+    script_bundle = ScriptModule().create(
+        project_id=project_id, title="Owned Export", scenes=scene_intents
+    )
+    storyboard_bundle = StoryboardModule().create(
+        project_id=project_id, script=script_bundle.script, scenes=script_bundle.scenes
+    )
+    start_node = StoryNode(title="start")
+    ending_node = StoryNode(title="ending", ending=True)
+    finish = Choice(label="finish", target_node_id=ending_node.node_id)
+    start_node = start_node.model_copy(update={"choice_ids": (finish.choice_id,)})
+    film = InteractiveFilm(
+        project_id=project_id,
+        title="Owned Export",
+        start_node_id=start_node.node_id,
+        node_ids=(start_node.node_id, ending_node.node_id),
+        choice_ids=(finish.choice_id,),
+        ending_node_ids=(ending_node.node_id,),
+    )
+    structured_payloads = {
+        "script": {
+            "script": script_bundle.script.model_dump(mode="json"),
+            "scenes": [scene.model_dump(mode="json") for scene in script_bundle.scenes],
+        },
+        "storyboard": {
+            "storyboard": storyboard_bundle.storyboard.model_dump(mode="json"),
+            "shots": [shot.model_dump(mode="json") for shot in storyboard_bundle.shots],
+        },
+        "playable": {
+            "film": film.model_dump(mode="json"),
+            "nodes": [
+                start_node.model_dump(mode="json"),
+                ending_node.model_dump(mode="json"),
+            ],
+            "choices": [finish.model_dump(mode="json")],
+        },
+    }
+    structured_formats = {"script": "JSON", "storyboard": "JSON", "playable": "PLAYABLE"}
+    structured_exports = {}
+    structured_paths = {}
+    for name, payload in structured_payloads.items():
+        structured_exports[name] = module.export_structured(
+            project_id=project_id,
+            source=source,
+            value=payload,
+            export_format=structured_formats[name],
+        )
+        structured_paths[name] = root / f"export-{name}.json"
+        structured_paths[name].write_bytes(module.export_json(payload))
+        persist_model(root / f"export-{name}-artifact.json", structured_exports[name])
+    script_and_interactive = all(
+        artifact.sha256 == _sha(structured_paths[name])
+        and artifact.export_format == structured_formats[name]
+        and artifact.source_ids == (source.object_id,)
+        and artifact.quality_gate_status == "PASS"
+        for name, artifact in structured_exports.items()
+    )
     manifest = _json_artifact(
         root,
         "export-manifest.json",
@@ -2130,14 +2267,15 @@ def qualify_export(root: Path) -> Evidence:
                 artifact.source_ids == (source.object_id,) for artifact in artifacts.values()
             ),
             "QUALITY_GATE_REQUIRED": invalid_rejected,
-            "SCRIPT_AND_INTERACTIVE_EXPORTS": False,
+            "SCRIPT_AND_INTERACTIVE_EXPORTS": script_and_interactive,
         },
         [str(path) for path in payload_paths.values()]
         + [str(manifest)]
-        + [str(root / f"export-{fmt}.json") for fmt in artifacts],
+        + [str(root / f"export-{fmt}.json") for fmt in artifacts]
+        + [str(path) for path in structured_paths.values()],
         ["persist export manifest", "reopen EPUB bytes"],
         ["source quality gate failure"],
-        {"formats": list(artifacts)},
+        {"formats": list(artifacts), "structured_formats": list(structured_formats.values())},
     )
 
 

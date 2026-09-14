@@ -1,23 +1,32 @@
 {
   "capability_id": "cover-visual-asset-runtime",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-6e1274228a18/cover-provider-plan.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-0ad73c14e0a5/cover-provider-plan.json",
   "checks": {
     "BRIEF": true,
     "EXISTING_VISUAL_BOUNDARY": true,
-    "REAL_PROVIDER_ARTIFACT": false
+    "REAL_PROVIDER_ARTIFACT": true,
+    "REGENERATE_AND_SELECT": true,
+    "FAILURE_STATE": true,
+    "PROVENANCE": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-6e1274228a18/cover-provider-plan.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-0ad73c14e0a5/cover-provider-plan.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-0ad73c14e0a5/cover-selection.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-0ad73c14e0a5/cover-v1.png",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/cover-visual-asset-runtime/run-0ad73c14e0a5/cover-v2.png"
   ],
   "recovery": [
-    "provider preflight"
+    "persist cover selection",
+    "reopen generated PNG"
   ],
   "failure_injections": [
-    "no configured HEVI image provider"
+    "provider failure",
+    "empty provider result"
   ],
   "details": {
-    "status": "BLOCKED_PROVIDER"
+    "provider": "local-pillow",
+    "versions": 2
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

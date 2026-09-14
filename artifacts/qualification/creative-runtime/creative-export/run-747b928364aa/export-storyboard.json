@@ -1,0 +1,81 @@
+{
+  "shots": [
+    {
+      "action": "open the gate",
+      "audio_refs": [],
+      "camera": null,
+      "duration_ms": 3000,
+      "environment": "UNSPECIFIED",
+      "framing": "MEDIUM",
+      "shot_id": "6ad385fd-0f57-4a15-948b-ecd652f68999",
+      "subject": null,
+      "transition": null,
+      "visual_intent": "open the gate"
+    },
+    {
+      "action": "choose the route",
+      "audio_refs": [],
+      "camera": null,
+      "duration_ms": 3000,
+      "environment": "UNSPECIFIED",
+      "framing": "MEDIUM",
+      "shot_id": "e814184b-4bc6-4697-8fcd-11e0fd611fb2",
+      "subject": null,
+      "transition": null,
+      "visual_intent": "choose the route"
+    }
+  ],
+  "storyboard": {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T11:32:00.056120Z",
+    "object_id": "79abe914-fc81-4bc6-ac03-fe5296e87bdf",
+    "project_id": "129fb85f-f80f-4050-9496-4d3b3e4fceae",
+    "provenance": [],
+    "revision": 0,
+    "scenes": [
+      {
+        "scene_id": "e81d77e3-3803-43d7-84bd-594a43182dfb",
+        "shot_ids": [
+          "6ad385fd-0f57-4a15-948b-ecd652f68999"
+        ]
+      },
+      {
+        "scene_id": "06f205e9-e17d-4cce-8f61-c5d4662b2e86",
+        "shot_ids": [
+          "e814184b-4bc6-4697-8fcd-11e0fd611fb2"
+        ]
+      }
+    ],
+    "schema_version": 1,
+    "script_id": "994b1e80-66ff-4e12-a022-ded64f653f53",
+    "shots": [
+      {
+        "action": "open the gate",
+        "audio_refs": [],
+        "camera": null,
+        "duration_ms": 3000,
+        "environment": "UNSPECIFIED",
+        "framing": "MEDIUM",
+        "shot_id": "6ad385fd-0f57-4a15-948b-ecd652f68999",
+        "subject": null,
+        "transition": null,
+        "visual_intent": "open the gate"
+      },
+      {
+        "action": "choose the route",
+        "audio_refs": [],
+        "camera": null,
+        "duration_ms": 3000,
+        "environment": "UNSPECIFIED",
+        "framing": "MEDIUM",
+        "shot_id": "e814184b-4bc6-4697-8fcd-11e0fd611fb2",
+        "subject": null,
+        "transition": null,
+        "visual_intent": "choose the route"
+      }
+    ],
+    "title": "Owned Export",
+    "updated_at": "2026-09-14T11:32:00.056121Z"
+  }
+}

@@ -58,6 +58,35 @@ class ExportModule:
             quality_gate_status="PASS",
         )
 
+    def export_structured(
+        self,
+        *,
+        project_id: UUID,
+        source: CreativeArtifact,
+        value: object,
+        export_format: Literal["JSON", "PLAYABLE"] = "JSON",
+        media_type: str = "application/json",
+    ) -> ExportArtifact:
+        if source.quality_gate_status != "PASS":
+            raise ValueError("EXPORT_SOURCE_QUALITY_GATE_REQUIRED")
+        payload = self.export_json(value)
+        digest = hashlib.sha256(payload).hexdigest()
+        return ExportArtifact(
+            project_id=project_id,
+            artifact_type="CREATIVE_EXPORT",
+            uri=f"memory://export/{digest}",
+            media_type=media_type,
+            sha256=digest,
+            source_ids=(source.object_id,),
+            export_format=export_format,
+            provenance=(
+                ProvenanceRef(
+                    ref_id=str(source.object_id), ref_type="SOURCE_ARTIFACT", sha256=source.sha256
+                ),
+            ),
+            quality_gate_status="PASS",
+        )
+
     @staticmethod
     def export_json(value: object) -> bytes:
         return (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n").encode(

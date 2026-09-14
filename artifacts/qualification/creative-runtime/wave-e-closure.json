@@ -1,0 +1,43 @@
+{
+  "capabilities": [
+    {
+      "capability_id": "creative-export",
+      "check_count": 7,
+      "checks_passed": true,
+      "details": {
+        "formats": [
+          "txt",
+          "markdown",
+          "epub"
+        ],
+        "structured_formats": [
+          "JSON",
+          "JSON",
+          "PLAYABLE"
+        ]
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/creative-export.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "cover-visual-asset-runtime",
+      "check_count": 6,
+      "checks_passed": true,
+      "details": {
+        "provider": "local-pillow",
+        "versions": 2
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/cover-visual-asset-runtime.json",
+      "status": "QUALIFIED"
+    }
+  ],
+  "ledger": {
+    "MISSING": 0,
+    "PARTIAL": 5,
+    "QUALIFIED": 34,
+    "TOTAL": 39,
+    "UNQUALIFIED": 0
+  },
+  "wave": "E",
+  "wave_status": "QUALIFIED"
+}

@@ -37,6 +37,10 @@ WAVE_CAPABILITIES: dict[str, tuple[str, ...]] = {
         "interactive-film",
         "persistent-interactive-play",
     ),
+    "E": (
+        "creative-export",
+        "cover-visual-asset-runtime",
+    ),
 }
 
 
