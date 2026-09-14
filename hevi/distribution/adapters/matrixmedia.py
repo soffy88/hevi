@@ -80,10 +80,15 @@ class MatrixMediaDistributionProvider(DistributionProvider):
             failure = "ACCOUNT_LOGGED_OUT" if "login" in text.lower() else "PROVIDER_REJECTION"
             raise MatrixMediaError(failure, text or f"MatrixMedia exited {process.returncode}")
         raw = stdout.decode(errors="replace").strip()
-        try:
-            value = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise MatrixMediaError("INVALID_RESPONSE", "MatrixMedia did not return JSON") from exc
+        value: Any = None
+        for line in reversed(raw.splitlines()):
+            try:
+                value = json.loads(line.strip())
+                break
+            except json.JSONDecodeError:
+                continue
+        if value is None:
+            raise MatrixMediaError("INVALID_RESPONSE", "MatrixMedia did not return JSON")
         return value if isinstance(value, dict) else {"items": value}
 
     async def probe(self) -> dict[str, Any]:

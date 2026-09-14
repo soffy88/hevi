@@ -1,75 +1,97 @@
 {
-  "generated_at": "2026-09-13T23:38:26.514185+00:00",
+  "generated_at": "2026-09-13T23:58:00.150681+00:00",
   "qualification_workspace": "/data/soffy/qualification/MatrixMedia",
   "upstream_sha": "8b6216006005f38dde83018b97847274ee970688",
   "version": "0.11.3",
   "license": "                    GNU GENERAL PUBLIC LICENSE",
   "source_copied_into_hevi": false,
+  "artifact": "/data/soffy/qualification/MatrixMedia-v0.11.3/MatrixMedia-0.11.3-linux-x64/matrixmedia",
+  "sha_verified": "YES",
+  "release_artifacts": {
+    "appimage": {
+      "name": "MatrixMedia-0.11.3-linux-x86_64.AppImage",
+      "sha256": "306e9e7b57dc8120ca5cf076cfa37d36f01a7a9f70a8f9957b5ee2f2b217b034",
+      "sha_verified": true,
+      "probe": "BLOCKED_HOST_SANDBOX"
+    },
+    "tar_gz": {
+      "name": "MatrixMedia-0.11.3-linux-x64.tar.gz",
+      "sha256": "4d3cd9569cccd786e3a5c7ebe3e54d966bcd59cf50b01968a5cb2fa753b95dcc",
+      "sha_verified": true,
+      "probe": "PASS_UNDER_XVFB"
+    }
+  },
+  "runtime_root_cause": "AppImage direct blocked by chrome-sandbox permissions; tar.gz works under xvfb",
   "cli": {
     "accounts_json": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:17\n    throw new Error('Electron failed to install correctly, please delete node_modules/electron and try installing again');\n    ^\n\nError: Electron failed to install correctly, please delete node_modules/electron and try installing again\n    at getElectronPath (/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:17:11)\n    at Object.<anonymous> (/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:21:18)\n    at Module._compile (node:internal/modules/cjs/loader:1944:14)\n    at Object..js (node:internal/modules/cjs/loader:2084:10)\n    at Module.load (node:internal/modules/cjs/loader:1666:32)\n    at Module._load (node:internal/modules/cjs/loader:1447:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:260:19)\n    at Module.require (node:internal/modules/cjs/loader:1689:12)\n    at require (node:internal/modules/helpers:191:16)\n    at Object.<anonymous> (/data/soffy/qualification/MatrixMedia/node_modules/electron/cli.js:3:18)\n\nNode.js v26.4.0\n",
-      "status": "NOT_VERIFIED"
+      "exit_code": 0,
+      "stdout": "0.11.3 -------\n[startup] 开始初始化 puppeteer-in-electron\n[startup] puppeteer-in-electron 初始化完成，调试端口=40925\n[startup] Electron app ready\n[startup] CLI 参数已识别，开始执行命令\n[]\n[startup] CLI 执行结束，退出码=0\n",
+      "stderr": "\nDevTools listening on ws://127.0.0.1:40925/devtools/browser/2eab63ae-28e2-4889-b218-e5b578a0b9fe\n[3953091:0100/000000.066929:ERROR:connection.cc(46)] X connection error received.\n[3953091:0100/000000.067102:ERROR:angle_platform_impl.cc(43)] Display.cpp:1019 (initialize): ANGLE Display::initialize error 12289: Could not open the default X display.\nERR: Display.cpp:1019 (initialize): ANGLE Display::initialize error 12289: Could not open the default X display.\n[3953091:0100/000000.067138:ERROR:gl_display.cc(504)] EGL Driver message (Critical) eglInitialize: Could not open the default X display.\n[3953091:0100/000000.067151:ERROR:gl_display.cc(793)] eglInitialize OpenGL failed with error EGL_NOT_INITIALIZED, trying next display type\n[3953091:0100/000000.067209:ERROR:angle_platform_impl.cc(43)] Display.cpp:1019 (initialize): ANGLE Display::initialize error 12289: Could not open the default X display.\nERR: Display.cpp:1019 (initialize): ANGLE Display::initialize error 12289: Could not open the default X display.\n[3953091:0100/000000.067231:ERROR:gl_display.cc(504)] EGL Driver message (Critical) eglInitialize: Could not open the default X display.\n[3953091:0100/000000.067242:ERROR:gl_display.cc(793)] eglInitialize OpenGLES failed with error EGL_NOT_INITIALIZED\n[3953091:0100/000000.067252:ERROR:gl_display.cc(819)] Initialization of all EGL display types failed.\n[3953091:0100/000000.067263:ERROR:gl_ozone_egl.cc(26)] GLDisplayEGL::Initialize failed.\n[3953091:0100/000000.097962:ERROR:angle_platform_impl.cc(43)] Display.cpp:1019 (initialize): ANGLE Display::initialize error 12289: Could not open the default X display.\nERR: Display.cpp:1019 (initialize): ANGLE Display::initialize error 12289: Could not open the default X display.\n[3953091:0100/000000.098023:ERROR:gl_display.cc(504)] EGL Driver message (Critical) eglInitialize: Could not open the default X display.\n[3953091:0100/000000.098035:ERROR:gl_display.cc(793)] eglInitialize OpenGL failed with error EGL_NOT_INITIALIZED, trying next display type\n[3953091:0100/000000.098148:ERROR:angle_platform_impl.cc(43)] Display.cpp:1019 (initialize): ANGLE Display::initialize error 12289: Could not open the default X display.\nERR: Display.cpp:1019 (initialize): ANGLE Display::initialize error 12289: Could not open the default X display.\n[3953091:0100/000000.098170:ERROR:gl_display.cc(504)] EGL Driver message (Critical) eglInitialize: Could not open the default X display.\n[3953091:0100/000000.098182:ERROR:gl_display.cc(793)] eglInitialize OpenGLES failed with error EGL_NOT_INITIALIZED\n[3953091:0100/000000.098194:ERROR:gl_display.cc(819)] Initialization of all EGL display types failed.\n[3953091:0100/000000.098206:ERROR:gl_ozone_egl.cc(26)] GLDisplayEGL::Initialize failed.\n",
+      "status": "RUNTIME_VERIFIED_NO_LOGGED_IN_ACCOUNT"
     },
     "history_json": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:17\n    throw new Error('Electron failed to install correctly, please delete node_modules/electron and try installing again');\n    ^\n\nError: Electron failed to install correctly, please delete node_modules/electron and try installing again\n    at getElectronPath (/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:17:11)\n    at Object.<anonymous> (/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:21:18)\n    at Module._compile (node:internal/modules/cjs/loader:1944:14)\n    at Object..js (node:internal/modules/cjs/loader:2084:10)\n    at Module.load (node:internal/modules/cjs/loader:1666:32)\n    at Module._load (node:internal/modules/cjs/loader:1447:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:260:19)\n    at Module.require (node:internal/modules/cjs/loader:1689:12)\n    at require (node:internal/modules/helpers:191:16)\n    at Object.<anonymous> (/data/soffy/qualification/MatrixMedia/node_modules/electron/cli.js:3:18)\n\nNode.js v26.4.0\n",
-      "status": "NOT_VERIFIED"
+      "exit_code": 0,
+      "stdout": "0.11.3 -------\n[startup] 初始化完成\n[]\n[startup] CLI 执行结束，退出码=0\n",
+      "status": "RUNTIME_VERIFIED_NO_LOGGED_IN_ACCOUNT"
     },
     "publish_help": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:17\n    throw new Error('Electron failed to install correctly, please delete node_modules/electron and try installing again');\n    ^\n\nError: Electron failed to install correctly, please delete node_modules/electron and try installing again\n    at getElectronPath (/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:17:11)\n    at Object.<anonymous> (/data/soffy/qualification/MatrixMedia/node_modules/electron/index.js:21:18)\n    at Module._compile (node:internal/modules/cjs/loader:1944:14)\n    at Object..js (node:internal/modules/cjs/loader:2084:10)\n    at Module.load (node:internal/modules/cjs/loader:1666:32)\n    at Module._load (node:internal/modules/cjs/loader:1447:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:260:19)\n    at Module.require (node:internal/modules/cjs/loader:1689:12)\n    at require (node:internal/modules/helpers:191:16)\n    at Object.<anonymous> (/data/soffy/qualification/MatrixMedia/node_modules/electron/cli.js:3:18)\n\nNode.js v26.4.0\n",
-      "status": "NOT_VERIFIED"
+      "exit_code": 0,
+      "stdout": "0.11.3 -------\n[startup] 开始初始化 puppeteer-in-electron\n[startup] puppeteer-in-electron 初始化完成，调试端口=46859\n[startup] Electron app ready\n[startup] CLI 参数已识别，开始执行命令\n用法: <应用> cli publish [选项]\n\n字段与 GUI「本地视频发布」弹窗一致（见 LocalVideoPublish buildVideoPayload）：\n\n选项:\n  -p, --platform <id>   平台：dy|抖音、tt|头条、ks|快手、blbl|哔哩哔哩、bjh|百家号、sph|视频号、xhs|小红书、fqsp|番茄视频\n  -f, --file <path>     本地视频文件路径，或 http(s) 远程视频 URL（远程会先下载到临时目录，发布结束后自动删除）\n      --dir <path>          [batch] video directory path; must be paired with --config\n      --config <path>       [batch] xlsx 声明文件（列：文件名/标题/简介/标签/视频号短标题/创作声明）\n      --cs, --creative-statement <val>  creative statement value for single-file mode.\n                            Valid values: none | ai_generated | fiction | marketing | personal_opinion | repost | self_made_no_repost\n                            (self_made_no_repost is blbl-only). Default: none.\n      --phone <id>      账号手机号（与 GUI 账号树一致，可与 partition 二选一）\n      --partition <p>   完整 session partition，如 persist:13800138000抖音\n  -t, --title <text>    视频标题（必填）→ data.title\n      --description <text> 视频简介或正文 → data.description\n      --short-title <text> 视频号短标题 → data.shortTitle，建议 6～16 字\n      --name <n>        名称 / 任务记录名 → bookName；默认与视频文件名（无扩展名）一致\n      --book-name <n>   同 --name\n      --bt2 <text>      旧兼容字段：视频号作为短标题，其他平台作为简介\n      --tags <text>     视频标签 → data.bq（同 --bq）。多个标签用【空格】分隔，例如 \"减脂 健身 教程\"。\n                            【上限 4 个话题】：超过 4 个会触发 warn，agent 生成时请按相关性裁到 ≤ 4。\n                            • 视频号/抖音/快手：整串拼进描述末尾；未写 # 的标签会自动补上（与 GUI 标签多选一致）。\n                            • 哔哩哔哩/小红书：按空格切分为独立标签，前导 # 会被自动剥离，可省。\n                            • 百家号/头条：当前代码不消费 bq，无需填。\n      --publish-at <t>  一次性定时发布，格式 \"YYYY-MM-DD HH:mm:ss\"。创建后立即写入发布历史，\n                            到点后由应用主进程调度执行；不支持每日/每周/每月循环。\n      --show            （已忽略）CLI 不显示自动化窗口\n      --no-close-window 发布后不自动关窗（仅 GUI 显示窗口时有效；CLI 始终后台运行）\n      --draft           显式发布到草稿箱（小红书点「暂存离开」）。若账号在 GUI「媒体平台管理」\n                            里开启了「默认发布到草稿」，即使不加该参数也会自动走草稿。\n      --sph-product-id <id>   视频号商品上架（快捷参数，等价于 product + 商品编号）\n      --sph-link-type <type>  视频号链接类型：none | product；传给其他平台时忽略\n      --sph-link-value <id>   视频号商品编号；可单独传（默认按商品上架）\n  -h, --help            显示帮助\n\n退出码 (单文件): 0 成功, 1 异常, 2 参数错误, 3 任务失败（上传未成功）, 4 已转存草稿需检查\n退出码 (批量 --dir): 0 全部成功, 1 部分失败, 2 全部失败\n\n示例:\n  矩媒.exe cli publish -p dy --phone 13800138000 -f C:\\\\v.mp4 -t \"我的视频标题\" --tags \"#减脂 #健身\"\n  electron . cli publish -p dy --phone 13800138000 -f ./a.mp4 --name \"任务A\" -t \"标题\" --tags \"#标签1 #标签2\"\n  # 视频号用 --short-title，其他平台用 --description：\n  matrixmedia cli publish -p sph --phone 13800138000 -f ./v.mp4 \\\\\n    -t \"新手第一天跑步就坚持 5 公里是什么体验\" \\\\\n    --description \"第一次跑步的完整过程\" \\\\\n    --short-title \"5公里新手挑战\" \\\\\n    --tags \"跑步 新手 减脂\" \\\n    --sph-product-id 10000591263144 --draft\n  # 哔哩哔哩独立标签控件，空格分隔、是否带 # 都可：\n  matrixmedia cli publish -p blbl --phone 13800138000 -f ./v.mp4 -t \"标题\" --tags \"游戏 解说 开黑\"\n  # 一次性定时发布：必须提供实际视频、标题、账号等完整发布参数\n  matrixmedia cli publish -p dy --phone 13800138000 -f ./v.mp4 -t \"标题\" --publish-at \"2026-05-05 20:30:00\"\n  # batch publish with xlsx config:\n  matrixmedia cli publish -p dy --phone 13800138000 --dir ./videos --config ./videos/batch.xlsx\n[startup] CLI 执行结束，退出码=0\n",
+      "stderr": "",
+      "status": "PASS"
     }
   },
   "mcp": {
-    "list_accounts": "NOT_VERIFIED: MCP build blocked by remote package policy",
-    "list_history": "NOT_VERIFIED: MCP build blocked by remote package policy",
+    "list_tools": "PASS: MCP server built and advertised tools",
+    "list_accounts": "BLOCKED_ENVIRONMENT: MCP child lifecycle did not return within probe timeout",
+    "list_history": "BLOCKED_ENVIRONMENT: MCP child lifecycle did not return within probe timeout",
     "publish_video": "NOT_VERIFIED: no real logged-in publish was attempted"
+  },
+  "transport_matrix": {
+    "cli": "RUNTIME_VERIFIED_NO_LOGGED_IN_ACCOUNT",
+    "mcp": "PARTIAL: tools advertised; child account/history lifecycle not verified",
+    "http": "NOT_VERIFIED: no MatrixMedia GUI HTTP service started"
   },
   "platforms": {
     "douyin": {
       "alias": "dy",
       "status": "NOT_VERIFIED",
-      "reason": "runtime unavailable; no account probe or publish evidence"
+                "reason": "runtime verified; no logged-in account or real publication evidence"
     },
     "kuaishou": {
       "alias": "ks",
       "status": "NOT_VERIFIED",
-      "reason": "runtime unavailable; no account probe or publish evidence"
+                "reason": "runtime verified; no logged-in account or real publication evidence"
     },
     "bilibili": {
       "alias": "blbl",
       "status": "NOT_VERIFIED",
-      "reason": "runtime unavailable; no account probe or publish evidence"
+                "reason": "runtime verified; no logged-in account or real publication evidence"
     },
     "xiaohongshu": {
       "alias": "xhs",
       "status": "NOT_VERIFIED",
-      "reason": "runtime unavailable; no account probe or publish evidence"
+                "reason": "runtime verified; no logged-in account or real publication evidence"
     },
     "wechat_channels": {
       "alias": "sph",
       "status": "NOT_VERIFIED",
-      "reason": "runtime unavailable; no account probe or publish evidence"
+                "reason": "runtime verified; no logged-in account or real publication evidence"
     },
     "toutiao": {
       "alias": "tt",
       "status": "NOT_VERIFIED",
-      "reason": "runtime unavailable; no account probe or publish evidence"
+                "reason": "runtime verified; no logged-in account or real publication evidence"
     },
     "baijiahao": {
       "alias": "bjh",
       "status": "NOT_VERIFIED",
-      "reason": "runtime unavailable; no account probe or publish evidence"
+                "reason": "runtime verified; no logged-in account or real publication evidence"
     },
     "fanqie_video": {
       "alias": "fqsp",
       "status": "NOT_VERIFIED",
-      "reason": "runtime unavailable; no account probe or publish evidence"
+                "reason": "runtime verified; no logged-in account or real publication evidence"
     }
   },
   "real_publish": "NOT_VERIFIED",
@@ -78,5 +100,5 @@
   "idempotency": "IMPLEMENTED_NOT_PROVIDER_QUALIFIED",
   "retry": "IMPLEMENTED_NOT_PROVIDER_QUALIFIED",
   "fail_closed": "PASS_BY_CONTRACT",
-  "duplicate_publications": 0
+  "duplicate_publications": "0_OBSERVED_WITHOUT_REAL_PROVIDER_QUALIFICATION"
 }

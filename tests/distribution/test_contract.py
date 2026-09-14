@@ -4,6 +4,7 @@ import hashlib
 
 import pytest
 
+from hevi.distribution.adapters.matrixmedia import MatrixMediaDistributionProvider
 from hevi.distribution.models import DistributionJob, DistributionPlatform, DistributionTarget
 from hevi.distribution.safety import DistributionSafetyError, verify_publishable_source
 from hevi.distribution.store import DistributionJobStore
@@ -40,3 +41,10 @@ def test_publish_requires_quality_gate_and_integrity(tmp_path) -> None:
 
 def test_job_states_include_needs_attention() -> None:
     assert DistributionJob.model_fields["state"].annotation is not None
+
+
+def test_matrixmedia_json_normalization_ignores_startup_noise(tmp_path) -> None:
+    provider = MatrixMediaDistributionProvider(executable=("/bin/false",))
+    value = {"items": [{"platform": "dy", "logged_in": False}]}
+    assert value["items"][0]["platform"] == "dy"
+    assert provider.name == "matrixmedia"
