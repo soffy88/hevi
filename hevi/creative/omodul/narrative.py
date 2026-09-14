@@ -90,9 +90,7 @@ class LongFormWorkflow:
 
     def snapshot(self, run: ProductionRun) -> WorkflowSnapshot:
         completed = tuple(
-            NarrativeStage(item.stage)
-            for item in run.stage_results
-            if item.status == "SUCCEEDED"
+            NarrativeStage(item.stage) for item in run.stage_results if item.status == "SUCCEEDED"
         )
         current = LONGFORM_STAGES[len(completed)] if len(completed) < len(LONGFORM_STAGES) else None
         return WorkflowSnapshot(
@@ -149,7 +147,10 @@ class NarrativeObservationEngine:
         )
         next_canon = canon.model_copy(
             update={
-                "continuity_fact_ids": (*canon.continuity_fact_ids, *(fact.object_id for fact in facts)),
+                "continuity_fact_ids": (
+                    *canon.continuity_fact_ids,
+                    *(fact.object_id for fact in facts),
+                ),
                 "revision": canon.revision + 1,
                 "updated_at": datetime.now(UTC),
             }

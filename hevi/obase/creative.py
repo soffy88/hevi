@@ -612,6 +612,7 @@ class StoryNode(BaseModel):
 
 class InteractiveFilm(CreativeObject):
     title: str
+    start_node_id: UUID | None = None
     node_ids: tuple[UUID, ...] = ()
     choice_ids: tuple[UUID, ...] = ()
     variable_names: tuple[str, ...] = ()
@@ -869,6 +870,7 @@ __all__ = [
     "StoryArc",
     "StoryBeat",
     "StoryBible",
+    "StoryNode",
     "StoryRule",
     "Storyboard",
     "StoryboardScene",

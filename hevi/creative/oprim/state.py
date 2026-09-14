@@ -19,6 +19,7 @@ from hevi.obase.creative import CreativeAuthority, CreativeObject
 JsonScalar = str | int | float | bool | None
 JsonValue = JsonScalar | tuple[JsonScalar, ...]
 
+
 class StateOperation(BaseModel):
     """A deliberately narrow top-level update operation."""
 

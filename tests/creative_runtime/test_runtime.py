@@ -151,9 +151,7 @@ def test_audit_is_fail_closed_and_revision_is_proposal_only() -> None:
         project_id=project_id,
         artifact=artifact,
         canon=NarrativeCanon(project_id=project_id),
-        scene_intents=(
-            SceneIntent(project_id=project_id, sequence=1, purpose="", objective=""),
-        ),
+        scene_intents=(SceneIntent(project_id=project_id, sequence=1, purpose="", objective=""),),
         text="",
     )
 

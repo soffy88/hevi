@@ -1,5 +1,14 @@
 """HEVI creative deterministic primitives."""
 
+from hevi.creative.oprim.backup import BackupError, backup_workspace, restore_workspace
+from hevi.creative.oprim.editing import (
+    PatchPreview,
+    TargetNotUnique,
+    apply_exact_edit,
+    preview_exact_edit,
+)
+from hevi.creative.oprim.locking import ProjectLock, ResourceBusy
+from hevi.creative.oprim.memory import CreativeMemoryIndex, MemoryHit, MemoryRecord
 from hevi.creative.oprim.persistence import (
     PersistenceValidationError,
     RevisionReceipt,
@@ -7,6 +16,7 @@ from hevi.creative.oprim.persistence import (
     persist_model,
     restore_model,
 )
+from hevi.creative.oprim.routing import ModelRouter, Route
 from hevi.creative.oprim.state import (
     CreativeStateDelta,
     StateOperation,
@@ -15,6 +25,8 @@ from hevi.creative.oprim.state import (
     compare_versions,
     hash_bytes,
 )
+from hevi.creative.oprim.webhooks import WebhookLedger, WebhookSigner, claim_delivery
+from hevi.creative.oprim.workspace import AtomicWorkspace, WorkspaceCommitError
 
 __all__ = [
     "CreativeStateDelta",
@@ -28,4 +40,23 @@ __all__ = [
     "StaleRevisionError",
     "persist_model",
     "restore_model",
+    "AtomicWorkspace",
+    "BackupError",
+    "CreativeMemoryIndex",
+    "MemoryHit",
+    "MemoryRecord",
+    "ModelRouter",
+    "PatchPreview",
+    "ProjectLock",
+    "ResourceBusy",
+    "Route",
+    "TargetNotUnique",
+    "WebhookLedger",
+    "WebhookSigner",
+    "WorkspaceCommitError",
+    "apply_exact_edit",
+    "backup_workspace",
+    "claim_delivery",
+    "preview_exact_edit",
+    "restore_workspace",
 ]
