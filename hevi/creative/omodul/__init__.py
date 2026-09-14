@@ -66,7 +66,15 @@ from hevi.creative.omodul.play import (
 from hevi.creative.omodul.policy import PolicyDiff, PolicyModule
 from hevi.creative.omodul.research import ResearchModule
 from hevi.creative.omodul.review import ReviewMode, ReviewWorkflow
-from hevi.creative.omodul.revision import RevisionEngine, RevisionLimitError, RevisionPolicy
+from hevi.creative.omodul.revision import (
+    RevisionCommit,
+    RevisionEngine,
+    RevisionExecution,
+    RevisionLimitError,
+    RevisionOperation,
+    RevisionPlan,
+    RevisionPolicy,
+)
 from hevi.creative.omodul.runtime import (
     ActionKind,
     ActionProposal,
@@ -156,6 +164,10 @@ __all__ = [
     "RevisionEngine",
     "RevisionLimitError",
     "RevisionPolicy",
+    "RevisionCommit",
+    "RevisionExecution",
+    "RevisionOperation",
+    "RevisionPlan",
     "WorkflowSnapshot",
     "PlayEngine",
     "PlayStart",

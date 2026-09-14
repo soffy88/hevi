@@ -263,7 +263,7 @@ capabilities:
     hevi_capability_id: creative.revision
     qualification_test: polish, spot-fix, rewrite, structural rework, stale write, bounded passes, rejection
     qualification_evidence_path: artifacts/qualification/creative-runtime/governed-revision.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: length-governance-normalization
     name: Length governance and normalization

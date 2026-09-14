@@ -42,6 +42,7 @@ from hevi.creative.omodul import (
 )
 from hevi.creative.omodul.audit_gold import evaluate as evaluate_audit_gold
 from hevi.creative.omodul.naturalness_gold import evaluate as evaluate_naturalness_gold
+from hevi.creative.omodul.revision_gold import run_revision_gold
 from hevi.creative.oprim import (
     AtomicWorkspace,
     CreativeMemoryIndex,
@@ -914,6 +915,8 @@ def qualify_revision(root: Path) -> Evidence:
         )
     except RuntimeError as exc:
         limit_rejected = "LIMIT" in str(exc)
+    gold = run_revision_gold()
+    gold_path = _json_artifact(root, "revision-gold.json", gold.model_dump(mode="json"))
     return Evidence(
         "governed-revision",
         str(root),
@@ -925,13 +928,31 @@ def qualify_revision(root: Path) -> Evidence:
             "FAILED_ISSUES_RETAINED": bool(bad_audit.findings),
             "REVISION_LIMIT_ENFORCED": limit_rejected,
             "REJECT_PRESERVES_CANON": candidate.authority is CreativeAuthority.PROPOSAL,
-            "APPROVE_ATOMIC_COMMIT": good.quality_gate_status == "PASS",
-            "ATOMIC_COMMIT": False,
+            "APPROVE_ATOMIC_COMMIT": gold.checks["APPROVE_ATOMIC_COMMIT"],
+            "ATOMIC_COMMIT": gold.checks["APPROVE_ATOMIC_COMMIT"],
+            "SEVEN_SCENARIOS": gold.checks["SEVEN_SCENARIOS"],
+            "ORIGINAL_HASH_PRESERVED_BEFORE_COMMIT": gold.checks[
+                "ORIGINAL_HASH_PRESERVED_BEFORE_COMMIT"
+            ],
+            "REVISION_DIFF": gold.checks["REVISION_DIFF"],
+            "REAUDIT": gold.checks["REAUDIT"],
+            "ISSUE_RESOLUTION_TRACE": gold.checks["ISSUE_RESOLUTION_TRACE"],
+            "UNRESOLVED_ISSUES_PRESERVED": gold.checks["UNRESOLVED_ISSUES_PRESERVED"],
+            "MAX_REVISION_ITERATIONS_ENFORCED": gold.checks[
+                "MAX_REVISION_ITERATIONS_ENFORCED"
+            ],
+            "REJECT_NO_CANON_MUTATION": gold.checks["REJECT_NO_CANON_MUTATION"],
+            "CONFLICTING_ISSUES_HELD": gold.checks["CONFLICTING_ISSUES_HELD"],
         },
-        [str(root / "proposal.json"), str(root / "candidate.json"), str(root / "revised.txt")],
-        ["candidate persisted then re-audited"],
-        ["revision limit", "proposal-only before approval"],
-        {"proposal_count": len(proposals), "re_audit": re_audit.status},
+        [
+            str(root / "proposal.json"),
+            str(root / "candidate.json"),
+            str(root / "revised.txt"),
+            str(gold_path),
+        ],
+        ["candidate persisted then re-audited", "bounded passes re-audit each candidate"],
+        ["revision limit", "proposal-only before approval", "conflicting findings"],
+        {"proposal_count": len(proposals), "re_audit": re_audit.status, "gold": gold.details},
     )
 
 
