@@ -1,4 +1,6 @@
-"""Deprecated compatibility shim; implementation is Layer4-owned."""
+"""Deprecated compatibility module alias; implementation remains Layer4-owned."""
 
-from hevi.layer4_legacy.montage.oprim_impl import *  # noqa: F403
-from hevi.montage.schemas import make_default_cost_budget, make_default_pipeline_manifest
+import importlib
+import sys
+
+sys.modules[__name__] = importlib.import_module("hevi.layer4_legacy.montage.oprim_impl")

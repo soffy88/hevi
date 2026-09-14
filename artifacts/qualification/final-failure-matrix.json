@@ -1,0 +1,98 @@
+{
+  "source": {
+    "hevi_sha": "9748e1679af1b2040d5715f8c5f2a05dbfaf0b1d",
+    "canonical_shas": {
+      "obase": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+      "oprim": "e7f9c65196437d3bff09401aa02bc817d071eec3",
+      "oskill": "cac39df03778d4e4e44db3c006f8fc788dc757f6",
+      "omodul": "62b23b6ae56d4248e8cb8bae37e633a7df7294f8",
+      "oservi": "f87783382b2988d8716039d39bb82f1a72de4902"
+    },
+    "commands": [
+      "uv run pytest -q (each canonical checkout)",
+      ".venv/bin/pytest -q (HEVI full suite)"
+    ]
+  },
+  "failures": [
+    {
+      "repo": "obase",
+      "test": "tests/test_git.py::test_run_git_timeout",
+      "exception_type": "ProcessLookupError",
+      "exception_message": "process exited before timeout cleanup kill",
+      "failing_import": null,
+      "missing_dependency": null,
+      "missing_export": null,
+      "expected_symbol": "run_git",
+      "actual_symbol": "run_git",
+      "root_cause": "REAL_RUNTIME_REGRESSION",
+      "affected_consumers": ["obase git adapter"],
+      "fix_owner": "OBASE",
+      "status": "fixed_targeted_test_passed"
+    },
+    {
+      "repo": "oprim",
+      "test": "104 collection failures",
+      "exception_type": "ModuleNotFoundError/ImportError",
+      "exception_message": "legacy tests import assets/modules no longer present in the canonical export surface",
+      "failing_import": "oprim.distance, oprim.storage, legacy root exports",
+      "missing_dependency": null,
+      "missing_export": "multiple legacy public symbols",
+      "expected_symbol": "legacy test asset set",
+      "actual_symbol": "manifest-authoritative asset set",
+      "root_cause": "RENAMED_SYMBOL_COMPATIBILITY",
+      "affected_consumers": ["oprim legacy test suite", "oskill consumers", "omodul consumers"],
+      "fix_owner": "OPRIM"
+    },
+    {
+      "repo": "oskill",
+      "test": "8 collection failures",
+      "exception_type": "ModuleNotFoundError/ImportError",
+      "exception_message": "legacy consumers request oprim.storage and removed root aliases",
+      "failing_import": "oprim.storage, oprim.network_http_health, oprim.docker_container_inspect",
+      "missing_dependency": null,
+      "missing_export": "legacy oprim compatibility surface",
+      "expected_symbol": "legacy oprim symbols",
+      "actual_symbol": "canonical oprim module paths",
+      "root_cause": "HEVI_STALE_IMPORT",
+      "affected_consumers": ["oskill legacy tests"],
+      "fix_owner": "OPRIM/OSKILL"
+    },
+    {
+      "repo": "omodul",
+      "test": "21 collection failures",
+      "exception_type": "ModuleNotFoundError/ImportError",
+      "exception_message": "missing optional feature packages and stale lower-layer exports",
+      "failing_import": "fitz, duckdb, mcp.server.fastmcp, legacy oprim exports",
+      "missing_dependency": "pymupdf, duckdb, mcp v1 API",
+      "missing_export": "legacy oprim symbols",
+      "expected_symbol": "legacy test asset set",
+      "actual_symbol": "current canonical package contracts",
+      "root_cause": "MISSING_OPTIONAL_EXTRA",
+      "affected_consumers": ["omodul knowledge/sync tests"],
+      "fix_owner": "OMODUL/OPRIM"
+    },
+    {
+      "repo": "oservi",
+      "test": "tests/test_event_webhook_dispatcher.py::TestEventWebhookDispatcherIntegration::test_run_receives_published_event_end_to_end",
+      "exception_type": "ModuleNotFoundError",
+      "exception_message": "asyncpg.connection unavailable in the isolated environment",
+      "failing_import": "asyncpg.connection",
+      "missing_dependency": "asyncpg runtime installation integrity",
+      "missing_export": null,
+      "expected_symbol": "asyncpg.connection",
+      "actual_symbol": null,
+      "root_cause": "ENVIRONMENT_ONLY",
+      "affected_consumers": ["oservi webhook integration test"],
+      "fix_owner": "OSERVI"
+    }
+  ],
+  "hevi_full_suite": {
+    "command": ".venv/bin/pytest -q",
+    "result": "INCONCLUSIVE_ENVIRONMENT_ABORT",
+    "exit_code": 120,
+    "observed": "SQLite disk I/O error while creating test databases",
+    "root_cause": "ENVIRONMENT_ONLY",
+    "fix_owner": "HEVI_TEST_ENVIRONMENT"
+  },
+  "unknown": 0
+}

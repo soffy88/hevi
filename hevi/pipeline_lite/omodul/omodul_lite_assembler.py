@@ -1,3 +1,8 @@
-"""Deprecated compatibility shim; implementation is Layer4-owned."""
+"""Deprecated compatibility module alias; implementation remains Layer4-owned."""
 
-from hevi.layer4_legacy.pipeline_lite.omodul_impl.omodul_lite_assembler import *  # noqa: F403
+import importlib
+import sys
+
+sys.modules[__name__] = importlib.import_module(
+    "hevi.layer4_legacy.pipeline_lite.omodul_impl.omodul_lite_assembler"
+)

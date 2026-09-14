@@ -1,7 +1,22 @@
-"""Deprecated compatibility shim; HEVI business orchestration lives in Layer4."""
+"""Deprecated compatibility module alias; implementation remains Layer4-owned."""
 
-from hevi.layer4_legacy.openshorts.oprim_impl import (
-    detect_scenes_gemini,
-    extract_transcript_with_words,
-)
-from hevi.openshorts.layer4_oskill import *  # noqa: F403
+import importlib
+import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from hevi.openshorts.layer4_oskill import (
+        create_publish_tickets,
+        generate_ai_short,
+        generate_clips,
+        generate_youtube_package,
+    )
+
+__all__ = [
+    "create_publish_tickets",
+    "generate_ai_short",
+    "generate_clips",
+    "generate_youtube_package",
+]
+
+sys.modules[__name__] = importlib.import_module("hevi.openshorts.layer4_oskill")

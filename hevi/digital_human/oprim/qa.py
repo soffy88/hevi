@@ -1,3 +1,6 @@
-"""Deprecated compatibility shim; implementation is HEVI Layer4-owned."""
+"""Deprecated compatibility module alias; implementation remains Layer4-owned."""
 
-from hevi.digital_human.layer4.atoms_qa import *  # noqa: F403
+import importlib
+import sys
+
+sys.modules[__name__] = importlib.import_module("hevi.digital_human.layer4.atoms_qa")

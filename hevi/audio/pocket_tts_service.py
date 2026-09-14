@@ -46,7 +46,7 @@ def pocket_tts_available() -> bool:
     mod = _import_pocket_tts()
     if mod is not None and getattr(mod, "TTSModel", None) is not None:
         return True
-    from hevi.layer4_legacy.voicepro.oskill_impl import native_voice_available
+    from hevi.voicepro.oskill import native_voice_available
 
     return native_voice_available()
 
@@ -135,7 +135,7 @@ def _synth_sync(
 ) -> None:
     mod = _import_pocket_tts()
     if mod is None or getattr(mod, "TTSModel", None) is None:
-        from hevi.layer4_legacy.voicepro.oskill_impl import synthesize_native_voice_sync
+        from hevi.voicepro.oskill import synthesize_native_voice_sync
 
         synthesize_native_voice_sync(
             text,
@@ -250,7 +250,7 @@ async def stream_pocket_tts(
             yield value
         return
 
-    from hevi.layer4_legacy.voicepro.oskill_impl import stream_native_voice
+    from hevi.voicepro.oskill import stream_native_voice
 
     async for chunk in stream_native_voice(
         text,
