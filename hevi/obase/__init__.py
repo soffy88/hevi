@@ -5,6 +5,7 @@
 仅传 preset 名称或预设级别,由这里解析为完整的 provider 路由/成本/上下文策略。
 """
 
+from hevi.obase.creative import CREATIVE_CONTRACT_VERSION
 from hevi.obase.provider_presets import (
     PRESET_LEVELS,
     PRESETS,
@@ -12,4 +13,10 @@ from hevi.obase.provider_presets import (
     list_presets,
 )
 
-__all__ = ["PRESETS", "PRESET_LEVELS", "get_preset", "list_presets"]
+__all__ = [
+    "CREATIVE_CONTRACT_VERSION",
+    "PRESETS",
+    "PRESET_LEVELS",
+    "get_preset",
+    "list_presets",
+]
