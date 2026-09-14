@@ -1,6 +1,6 @@
 {
   "FAKE_PILLAR_DECLARATIONS": 0,
-  "MANIFEST_DANGLING_ENTRIES": 4,
+  "MANIFEST_DANGLING_ENTRIES": 0,
   "MANIFEST_SIGNATURE_MISMATCHES": 0,
   "MANIFEST_UNREGISTERED_CANONICAL_ASSETS": 65,
   "MULTI_OPRIM_OSKILLS": 0,
@@ -292,7 +292,7 @@
     "obase": {
       "manifest_elements": [
         {
-          "dangling": true,
+          "dangling": false,
           "is_async": false,
           "metadata": {
             "depends_on": [],
@@ -315,7 +315,7 @@
           "version": "0.18.0"
         },
         {
-          "dangling": true,
+          "dangling": false,
           "is_async": false,
           "metadata": {
             "depends_on": [],
@@ -570,7 +570,7 @@
     "oservi": {
       "manifest_elements": [
         {
-          "dangling": true,
+          "dangling": false,
           "is_async": false,
           "metadata": {
             "depends_on": [
@@ -595,7 +595,7 @@
           "version": "1.4.0"
         },
         {
-          "dangling": true,
+          "dangling": false,
           "is_async": false,
           "metadata": {
             "depends_on": [

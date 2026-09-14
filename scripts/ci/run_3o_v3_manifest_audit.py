@@ -38,11 +38,32 @@ def source_for(module_name: str) -> Path | None:
     return path if path.exists() else None
 
 
-def functions(path: Path | None) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+def functions(path: Path | None) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]:
     if path is None or not path.exists():
         return {}
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    return {node.name: node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    return {node.name: node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))}
+
+
+def entity_exists(path: Path | None, name: str, seen: set[Path] | None = None) -> bool:
+    if path is None or not path.exists():
+        return False
+    seen = seen or set()
+    if path in seen:
+        return False
+    seen.add(path)
+    if name in functions(path):
+        return True
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if not isinstance(node, ast.ImportFrom) or not node.module:
+            continue
+        if not any(alias.asname == name or (alias.name == name and not alias.asname) for alias in node.names):
+            continue
+        imported = source_for(node.module)
+        if entity_exists(imported, name, seen):
+            return True
+    return False
 
 
 def manifest_rows(package: str, manifest: dict) -> list[dict]:
@@ -52,7 +73,7 @@ def manifest_rows(package: str, manifest: dict) -> list[dict]:
         name = entry.get("name", "")
         path = source_for(module)
         fn = functions(path).get(name) if path else None
-        rows.append({"name": name, "module": module, "symbol": f"{module}:{name}", "signature": entry.get("signature"), "version": manifest.get("version"), "is_async": bool(isinstance(fn, ast.AsyncFunctionDef)), "metadata": entry, "path": str(path) if path else None, "dangling": path is None or fn is None})
+        rows.append({"name": name, "module": module, "symbol": f"{module}:{name}", "signature": entry.get("signature"), "version": manifest.get("version"), "is_async": bool(isinstance(fn, ast.AsyncFunctionDef)), "metadata": entry, "path": str(path) if path else None, "dangling": not entity_exists(path, name)})
     return rows
 
 
