@@ -83,7 +83,9 @@ from hevi.creative.omodul.script import (
 )
 from hevi.creative.omodul.short import SalesPackage, ShortFictionModule, ShortProduction
 from hevi.creative.omodul.style import (
+    FORBIDDEN_EVASION_GOALS,
     NaturalnessFinding,
+    NaturalnessRevision,
     StyleApplication,
     StyleModule,
     WritingNaturalnessAudit,
@@ -171,6 +173,8 @@ __all__ = [
     "StoryboardBundle",
     "StoryboardModule",
     "NaturalnessFinding",
+    "NaturalnessRevision",
+    "FORBIDDEN_EVASION_GOALS",
     "StyleApplication",
     "StyleModule",
     "WritingNaturalnessAudit",

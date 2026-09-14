@@ -1,34 +1,46 @@
 {
   "capability_id": "synthetic-writing-quality",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/synthetic-writing-quality/run-691c92a4e2c6/short-package.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/synthetic-writing-quality/run-ef7aa1760f4c/naturalness-gold-metrics.json",
   "checks": {
-    "REPETITIVE_PHRASE": true,
-    "EMPTY_INTENSIFIER": true,
+    "NATURALNESS_DETECTION": true,
+    "NATURALNESS_FALSE_POSITIVE_GATE": true,
+    "NATURALNESS_REVISION": true,
+    "FULL_DEFECT_CORPUS": true,
+    "NATURALNESS_LOCATION": true,
     "CLEAN_FALSE_POSITIVE": true,
-    "FULL_DEFECT_CORPUS": false,
-    "NO_EVASION_GOAL": true,
-    "BOUNDED_REPAIR_INPUT": true
+    "DEFECT_DETECTED": true,
+    "LOCATION_TRACE": true,
+    "EXPLANATION": true,
+    "REVISION_PROPOSAL": true,
+    "NO_EVASION_GOAL": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/synthetic-writing-quality/run-691c92a4e2c6/short-package.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/synthetic-writing-quality/run-ef7aa1760f4c/naturalness-gold-metrics.json"
   ],
   "recovery": [
-    "reload short package and style profile"
+    "reload naturalness metrics",
+    "re-audit revised draft"
   ],
   "failure_injections": [
-    "empty brief",
-    "naturalness defect corpus",
-    "genre forbidden patterns"
+    "repetition",
+    "template cadence",
+    "generic transition",
+    "empty intensifier",
+    "semantic repetition",
+    "unnatural dialogue",
+    "over-explanation",
+    "cliche density",
+    "style drift",
+    "paragraph monotony",
+    "syntactic monotony"
   ],
   "details": {
-    "genre_finding_counts": [
-      1,
-      1,
-      1,
-      1,
-      1
-    ]
+    "gold_fixtures": 44,
+    "detection_rate": 1.0,
+    "false_positive_rate": 0.0,
+    "location_accuracy": 1.0,
+    "revision_improvement_rate": 1.0
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

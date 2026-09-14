@@ -20,6 +20,7 @@ from uuid import UUID, uuid4
 
 from hevi.creative.omodul import (
     ALL_AUDIT_DIMENSIONS,
+    FORBIDDEN_EVASION_GOALS,
     ActionKind,
     ContextBudget,
     ContextCandidate,
@@ -40,6 +41,7 @@ from hevi.creative.omodul import (
     StyleModule,
 )
 from hevi.creative.omodul.audit_gold import evaluate as evaluate_audit_gold
+from hevi.creative.omodul.naturalness_gold import evaluate as evaluate_naturalness_gold
 from hevi.creative.oprim import (
     AtomicWorkspace,
     CreativeMemoryIndex,
@@ -2243,17 +2245,58 @@ def qualify_genre(root: Path) -> Evidence:
 
 
 def qualify_naturalness(root: Path) -> Evidence:
-    evidence = qualify_short_style_genre(root)
-    return _relabel(
-        evidence,
+    gold = evaluate_naturalness_gold()
+    module = StyleModule()
+    clean = module.audit_naturalness("The bell rings once.")
+    defect = module.audit_naturalness("It was very very very just.")
+    revision = module.revise_naturalness("It was very very very just.", defect)
+    evasion_codes = set(FORBIDDEN_EVASION_GOALS)
+    traced = all(finding.location for finding in defect.findings)
+    explained = all(finding.explanation for finding in defect.findings)
+    metrics_path = _json_artifact(
+        root, "naturalness-gold-metrics.json", gold.model_dump(mode="json")
+    )
+    return Evidence(
         "synthetic-writing-quality",
+        str(metrics_path),
         {
-            "REPETITIVE_PHRASE": evidence.checks["NATURALNESS_DEFECT"],
-            "EMPTY_INTENSIFIER": evidence.checks["NATURALNESS_DEFECT"],
-            "CLEAN_FALSE_POSITIVE": evidence.checks["NATURALNESS_CLEAN"],
-            "FULL_DEFECT_CORPUS": False,
-            "NO_EVASION_GOAL": True,
-            "BOUNDED_REPAIR_INPUT": True,
+            "NATURALNESS_DETECTION": gold.detection_rate
+            >= gold.thresholds["detection_rate"],
+            "NATURALNESS_FALSE_POSITIVE_GATE": gold.false_positive_rate
+            <= gold.thresholds["false_positive_rate"],
+            "NATURALNESS_REVISION": gold.revision_improvement_rate
+            >= gold.thresholds["revision_improvement_rate"],
+            "FULL_DEFECT_CORPUS": gold.total_fixtures >= 44 and gold.positive_fixtures >= 22,
+            "NATURALNESS_LOCATION": gold.location_accuracy
+            >= gold.thresholds["location_accuracy"],
+            "CLEAN_FALSE_POSITIVE": clean.status == "PASS",
+            "DEFECT_DETECTED": bool(defect.findings),
+            "LOCATION_TRACE": traced,
+            "EXPLANATION": explained,
+            "REVISION_PROPOSAL": bool(revision.operations),
+            "NO_EVASION_GOAL": not (evasion_codes & {f.code for f in defect.findings}),
+        },
+        [str(metrics_path)],
+        ["reload naturalness metrics", "re-audit revised draft"],
+        [
+            "repetition",
+            "template cadence",
+            "generic transition",
+            "empty intensifier",
+            "semantic repetition",
+            "unnatural dialogue",
+            "over-explanation",
+            "cliche density",
+            "style drift",
+            "paragraph monotony",
+            "syntactic monotony",
+        ],
+        {
+            "gold_fixtures": gold.total_fixtures,
+            "detection_rate": gold.detection_rate,
+            "false_positive_rate": gold.false_positive_rate,
+            "location_accuracy": gold.location_accuracy,
+            "revision_improvement_rate": gold.revision_improvement_rate,
         },
     )
 

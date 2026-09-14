@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "CLICHE_DENSITY",
+    "expected_codes": [
+      "CLICHE_DENSITY"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "CLICHE_DENSITY-POS-01",
+    "must_not_find": [],
+    "rationale": "CLICHE_DENSITY defect present in a real passage.",
+    "style_profile": null,
+    "text": "At the end of the day, the gate opened."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "CLICHE_DENSITY",
+    "expected_codes": [
+      "CLICHE_DENSITY"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "CLICHE_DENSITY-POS-02",
+    "must_not_find": [],
+    "rationale": "CLICHE_DENSITY defect present in a real passage.",
+    "style_profile": null,
+    "text": "Her heart of gold carried the whole crew."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "CLICHE_DENSITY",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "CLICHE_DENSITY-NEG-01",
+    "must_not_find": [
+      "CLICHE_DENSITY"
+    ],
+    "rationale": "Clean control that must not report CLICHE_DENSITY.",
+    "style_profile": null,
+    "text": "By evening, the gate opened."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "CLICHE_DENSITY",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "CLICHE_DENSITY-NEG-02",
+    "must_not_find": [
+      "CLICHE_DENSITY"
+    ],
+    "rationale": "Clean control that must not report CLICHE_DENSITY.",
+    "style_profile": null,
+    "text": "Her steady generosity carried the whole crew."
+  }
+]

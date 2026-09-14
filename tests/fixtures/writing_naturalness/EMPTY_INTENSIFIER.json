@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "EMPTY_INTENSIFIER",
+    "expected_codes": [
+      "EMPTY_INTENSIFIER"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "EMPTY_INTENSIFIER-POS-01",
+    "must_not_find": [],
+    "rationale": "EMPTY_INTENSIFIER defect present in a real passage.",
+    "style_profile": null,
+    "text": "It was very cold that morning by the gate."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "EMPTY_INTENSIFIER",
+    "expected_codes": [
+      "EMPTY_INTENSIFIER"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "EMPTY_INTENSIFIER-POS-02",
+    "must_not_find": [],
+    "rationale": "EMPTY_INTENSIFIER defect present in a real passage.",
+    "style_profile": null,
+    "text": "She was really tired after the long walk."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "EMPTY_INTENSIFIER",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "EMPTY_INTENSIFIER-NEG-01",
+    "must_not_find": [
+      "EMPTY_INTENSIFIER"
+    ],
+    "rationale": "Clean control that must not report EMPTY_INTENSIFIER.",
+    "style_profile": null,
+    "text": "It was cold that morning by the gate."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "EMPTY_INTENSIFIER",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "EMPTY_INTENSIFIER-NEG-02",
+    "must_not_find": [
+      "EMPTY_INTENSIFIER"
+    ],
+    "rationale": "Clean control that must not report EMPTY_INTENSIFIER.",
+    "style_profile": null,
+    "text": "She was tired after the long walk."
+  }
+]

@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "REPETITIVE_PHRASE",
+    "expected_codes": [
+      "REPETITIVE_PHRASE"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "REPETITIVE_PHRASE-POS-01",
+    "must_not_find": [],
+    "rationale": "REPETITIVE_PHRASE defect present in a real passage.",
+    "style_profile": null,
+    "text": "He ran ran ran toward the gate."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "REPETITIVE_PHRASE",
+    "expected_codes": [
+      "REPETITIVE_PHRASE"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "REPETITIVE_PHRASE-POS-02",
+    "must_not_find": [],
+    "rationale": "REPETITIVE_PHRASE defect present in a real passage.",
+    "style_profile": null,
+    "text": "the gate opened the gate opened the gate opened the yard"
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "REPETITIVE_PHRASE",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "REPETITIVE_PHRASE-NEG-01",
+    "must_not_find": [
+      "REPETITIVE_PHRASE"
+    ],
+    "rationale": "Clean control that must not report REPETITIVE_PHRASE.",
+    "style_profile": null,
+    "text": "He walked toward the gate and waited."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "REPETITIVE_PHRASE",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "REPETITIVE_PHRASE-NEG-02",
+    "must_not_find": [
+      "REPETITIVE_PHRASE"
+    ],
+    "rationale": "Clean control that must not report REPETITIVE_PHRASE.",
+    "style_profile": null,
+    "text": "The gate opened once. He stepped through. Rain began."
+  }
+]

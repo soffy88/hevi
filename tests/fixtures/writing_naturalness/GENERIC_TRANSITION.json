@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "GENERIC_TRANSITION",
+    "expected_codes": [
+      "GENERIC_TRANSITION"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "GENERIC_TRANSITION-POS-01",
+    "must_not_find": [],
+    "rationale": "GENERIC_TRANSITION defect present in a real passage.",
+    "style_profile": null,
+    "text": "Meanwhile the gate opened. Meanwhile the yard emptied. Meanwhile the wind fell."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "GENERIC_TRANSITION",
+    "expected_codes": [
+      "GENERIC_TRANSITION"
+    ],
+    "expected_location": "sentence:2",
+    "fixture_id": "GENERIC_TRANSITION-POS-02",
+    "must_not_find": [],
+    "rationale": "GENERIC_TRANSITION defect present in a real passage.",
+    "style_profile": null,
+    "text": "The bell rang. Suddenly the gate opened. Suddenly the yard emptied."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "GENERIC_TRANSITION",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "GENERIC_TRANSITION-NEG-01",
+    "must_not_find": [
+      "GENERIC_TRANSITION"
+    ],
+    "rationale": "Clean control that must not report GENERIC_TRANSITION.",
+    "style_profile": null,
+    "text": "The gate opened. The yard emptied. The wind fell."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "GENERIC_TRANSITION",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "GENERIC_TRANSITION-NEG-02",
+    "must_not_find": [
+      "GENERIC_TRANSITION"
+    ],
+    "rationale": "Clean control that must not report GENERIC_TRANSITION.",
+    "style_profile": null,
+    "text": "The bell rang. The gate opened. The yard emptied."
+  }
+]

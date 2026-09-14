@@ -568,7 +568,7 @@ capabilities:
     hevi_capability_id: creative.writing_naturalness
     qualification_test: anti-pattern corpus, false positives, style drift, bounded revision, no evasion claim
     qualification_evidence_path: artifacts/qualification/creative-runtime/synthetic-writing-quality.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: extensible-genre-system
     name: Extensible genre and progression rules

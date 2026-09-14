@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "UNNATURAL_DIALOGUE",
+    "expected_codes": [
+      "UNNATURAL_DIALOGUE"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "UNNATURAL_DIALOGUE-POS-01",
+    "must_not_find": [],
+    "rationale": "UNNATURAL_DIALOGUE defect present in a real passage.",
+    "style_profile": null,
+    "text": "She said, \"It is I who opened the gate.\""
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "UNNATURAL_DIALOGUE",
+    "expected_codes": [
+      "UNNATURAL_DIALOGUE"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "UNNATURAL_DIALOGUE-POS-02",
+    "must_not_find": [],
+    "rationale": "UNNATURAL_DIALOGUE defect present in a real passage.",
+    "style_profile": null,
+    "text": "He said, \"I am not able to open the gate.\""
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "UNNATURAL_DIALOGUE",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "UNNATURAL_DIALOGUE-NEG-01",
+    "must_not_find": [
+      "UNNATURAL_DIALOGUE"
+    ],
+    "rationale": "Clean control that must not report UNNATURAL_DIALOGUE.",
+    "style_profile": null,
+    "text": "She said, \"I opened the gate.\""
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "UNNATURAL_DIALOGUE",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "UNNATURAL_DIALOGUE-NEG-02",
+    "must_not_find": [
+      "UNNATURAL_DIALOGUE"
+    ],
+    "rationale": "Clean control that must not report UNNATURAL_DIALOGUE.",
+    "style_profile": null,
+    "text": "He said, \"I can't open the gate.\""
+  }
+]

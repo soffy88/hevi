@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "SYNTACTIC_MONOTONY",
+    "expected_codes": [
+      "SYNTACTIC_MONOTONY"
+    ],
+    "expected_location": "text:all",
+    "fixture_id": "SYNTACTIC_MONOTONY-POS-01",
+    "must_not_find": [],
+    "rationale": "SYNTACTIC_MONOTONY defect present in a real passage.",
+    "style_profile": null,
+    "text": "The gate was open. A yard was empty. A wind was cold. The road was long."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "SYNTACTIC_MONOTONY",
+    "expected_codes": [
+      "SYNTACTIC_MONOTONY"
+    ],
+    "expected_location": "text:all",
+    "fixture_id": "SYNTACTIC_MONOTONY-POS-02",
+    "must_not_find": [],
+    "rationale": "SYNTACTIC_MONOTONY defect present in a real passage.",
+    "style_profile": null,
+    "text": "The bell was loud. A room was dark. A door was shut. The hall was still."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "SYNTACTIC_MONOTONY",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "SYNTACTIC_MONOTONY-NEG-01",
+    "must_not_find": [
+      "SYNTACTIC_MONOTONY"
+    ],
+    "rationale": "Clean control that must not report SYNTACTIC_MONOTONY.",
+    "style_profile": null,
+    "text": "The gate stood open. A yard lay empty. A wind cut cold. The road bent long."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "SYNTACTIC_MONOTONY",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "SYNTACTIC_MONOTONY-NEG-02",
+    "must_not_find": [
+      "SYNTACTIC_MONOTONY"
+    ],
+    "rationale": "Clean control that must not report SYNTACTIC_MONOTONY.",
+    "style_profile": null,
+    "text": "The bell rang loud. A room fell dark. A door swung shut. The hall went still."
+  }
+]

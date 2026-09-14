@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "PARAGRAPH_MONOTONY",
+    "expected_codes": [
+      "PARAGRAPH_MONOTONY"
+    ],
+    "expected_location": "paragraph:all",
+    "fixture_id": "PARAGRAPH_MONOTONY-POS-01",
+    "must_not_find": [],
+    "rationale": "PARAGRAPH_MONOTONY defect present in a real passage.",
+    "style_profile": null,
+    "text": "The gate opened. A yard stood empty.\n\nThe wind rose. One road bent north.\n\nMara waited. Ash watched her."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "PARAGRAPH_MONOTONY",
+    "expected_codes": [
+      "PARAGRAPH_MONOTONY"
+    ],
+    "expected_location": "paragraph:all",
+    "fixture_id": "PARAGRAPH_MONOTONY-POS-02",
+    "must_not_find": [],
+    "rationale": "PARAGRAPH_MONOTONY defect present in a real passage.",
+    "style_profile": null,
+    "text": "The bell rang. A door opened.\n\nThe lamp dimmed. One shadow moved.\n\nMara turned. Ash followed."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "PARAGRAPH_MONOTONY",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "PARAGRAPH_MONOTONY-NEG-01",
+    "must_not_find": [
+      "PARAGRAPH_MONOTONY"
+    ],
+    "rationale": "Clean control that must not report PARAGRAPH_MONOTONY.",
+    "style_profile": null,
+    "text": "The gate opened. A yard stood empty. The bell rang.\n\nThe wind rose.\n\nMara waited. Ash watched her. Rain fell."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "PARAGRAPH_MONOTONY",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "PARAGRAPH_MONOTONY-NEG-02",
+    "must_not_find": [
+      "PARAGRAPH_MONOTONY"
+    ],
+    "rationale": "Clean control that must not report PARAGRAPH_MONOTONY.",
+    "style_profile": null,
+    "text": "The gate opened.\n\nThe wind rose. A road bent north.\n\nMara waited. Ash watched her. Rain fell."
+  }
+]

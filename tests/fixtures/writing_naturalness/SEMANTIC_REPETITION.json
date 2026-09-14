@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "SEMANTIC_REPETITION",
+    "expected_codes": [
+      "SEMANTIC_REPETITION"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "SEMANTIC_REPETITION-POS-01",
+    "must_not_find": [],
+    "rationale": "SEMANTIC_REPETITION defect present in a real passage.",
+    "style_profile": null,
+    "text": "The gate opened. A gate closed. That gate held. One gate broke."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "SEMANTIC_REPETITION",
+    "expected_codes": [
+      "SEMANTIC_REPETITION"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "SEMANTIC_REPETITION-POS-02",
+    "must_not_find": [],
+    "rationale": "SEMANTIC_REPETITION defect present in a real passage.",
+    "style_profile": null,
+    "text": "The lantern burned. A lantern dimmed. That lantern smoked. One lantern died."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "SEMANTIC_REPETITION",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "SEMANTIC_REPETITION-NEG-01",
+    "must_not_find": [
+      "SEMANTIC_REPETITION"
+    ],
+    "rationale": "Clean control that must not report SEMANTIC_REPETITION.",
+    "style_profile": null,
+    "text": "The gate opened. A door closed. That barrier held. One port broke."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "SEMANTIC_REPETITION",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "SEMANTIC_REPETITION-NEG-02",
+    "must_not_find": [
+      "SEMANTIC_REPETITION"
+    ],
+    "rationale": "Clean control that must not report SEMANTIC_REPETITION.",
+    "style_profile": null,
+    "text": "The lantern burned. A candle dimmed. That torch smoked. One lamp died."
+  }
+]

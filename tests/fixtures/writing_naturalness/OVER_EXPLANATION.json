@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "OVER_EXPLANATION",
+    "expected_codes": [
+      "OVER_EXPLANATION"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "OVER_EXPLANATION-POS-01",
+    "must_not_find": [],
+    "rationale": "OVER_EXPLANATION defect present in a real passage.",
+    "style_profile": null,
+    "text": "He left, which meant that the gate stayed shut."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "OVER_EXPLANATION",
+    "expected_codes": [
+      "OVER_EXPLANATION"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "OVER_EXPLANATION-POS-02",
+    "must_not_find": [],
+    "rationale": "OVER_EXPLANATION defect present in a real passage.",
+    "style_profile": null,
+    "text": "She ran, this is because the bell had rung."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "OVER_EXPLANATION",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "OVER_EXPLANATION-NEG-01",
+    "must_not_find": [
+      "OVER_EXPLANATION"
+    ],
+    "rationale": "Clean control that must not report OVER_EXPLANATION.",
+    "style_profile": null,
+    "text": "He left. The gate stayed shut."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "OVER_EXPLANATION",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "OVER_EXPLANATION-NEG-02",
+    "must_not_find": [
+      "OVER_EXPLANATION"
+    ],
+    "rationale": "Clean control that must not report OVER_EXPLANATION.",
+    "style_profile": null,
+    "text": "She ran. The bell had rung."
+  }
+]

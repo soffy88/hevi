@@ -1,0 +1,17 @@
+{
+  "class_count": 11,
+  "classes": [
+    "REPETITIVE_PHRASE",
+    "TEMPLATE_CADENCE",
+    "GENERIC_TRANSITION",
+    "EMPTY_INTENSIFIER",
+    "SEMANTIC_REPETITION",
+    "UNNATURAL_DIALOGUE",
+    "OVER_EXPLANATION",
+    "CLICHE_DENSITY",
+    "STYLE_DRIFT",
+    "PARAGRAPH_MONOTONY",
+    "SYNTACTIC_MONOTONY"
+  ],
+  "fixture_total": 44
+}

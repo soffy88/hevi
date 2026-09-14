@@ -1,0 +1,62 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "STYLE_DRIFT",
+    "expected_codes": [
+      "STYLE_DRIFT"
+    ],
+    "expected_location": "text:all",
+    "fixture_id": "STYLE_DRIFT-POS-01",
+    "must_not_find": [],
+    "rationale": "STYLE_DRIFT defect present in a real passage.",
+    "style_profile": {
+      "sentence_length": 4.0
+    },
+    "text": "The wind moved across the empty yard while the tall gate stood open before her."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "STYLE_DRIFT",
+    "expected_codes": [
+      "STYLE_DRIFT"
+    ],
+    "expected_location": "text:all",
+    "fixture_id": "STYLE_DRIFT-POS-02",
+    "must_not_find": [],
+    "rationale": "STYLE_DRIFT defect present in a real passage.",
+    "style_profile": {
+      "sentence_length": 3.0
+    },
+    "text": "Mara walked slowly along the harbour wall and counted every lantern on the pier."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "STYLE_DRIFT",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "STYLE_DRIFT-NEG-01",
+    "must_not_find": [
+      "STYLE_DRIFT"
+    ],
+    "rationale": "Clean control that must not report STYLE_DRIFT.",
+    "style_profile": {
+      "sentence_length": 9.0
+    },
+    "text": "Mara crossed the quiet yard and reached the gate."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "STYLE_DRIFT",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "STYLE_DRIFT-NEG-02",
+    "must_not_find": [
+      "STYLE_DRIFT"
+    ],
+    "rationale": "Clean control that must not report STYLE_DRIFT.",
+    "style_profile": {
+      "sentence_length": 5.0
+    },
+    "text": "The gate stood open. She stepped through."
+  }
+]

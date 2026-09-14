@@ -1,0 +1,54 @@
+[
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "TEMPLATE_CADENCE",
+    "expected_codes": [
+      "TEMPLATE_CADENCE"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "TEMPLATE_CADENCE-POS-01",
+    "must_not_find": [],
+    "rationale": "TEMPLATE_CADENCE defect present in a real passage.",
+    "style_profile": null,
+    "text": "The gate opened slowly today. The yard lay empty. The wind carried salt. The road bent north. The bell rang twice."
+  },
+  {
+    "case_type": "POSITIVE",
+    "defect_class": "TEMPLATE_CADENCE",
+    "expected_codes": [
+      "TEMPLATE_CADENCE"
+    ],
+    "expected_location": "sentence:1",
+    "fixture_id": "TEMPLATE_CADENCE-POS-02",
+    "must_not_find": [],
+    "rationale": "TEMPLATE_CADENCE defect present in a real passage.",
+    "style_profile": null,
+    "text": "Mara waited by the harbour. Mara counted the boats. Mara watched the tide. Mara listened for steps. Mara held her breath."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "TEMPLATE_CADENCE",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "TEMPLATE_CADENCE-NEG-01",
+    "must_not_find": [
+      "TEMPLATE_CADENCE"
+    ],
+    "rationale": "Clean control that must not report TEMPLATE_CADENCE.",
+    "style_profile": null,
+    "text": "The gate opened. He stepped through. Rain began."
+  },
+  {
+    "case_type": "NEGATIVE",
+    "defect_class": "TEMPLATE_CADENCE",
+    "expected_codes": [],
+    "expected_location": null,
+    "fixture_id": "TEMPLATE_CADENCE-NEG-02",
+    "must_not_find": [
+      "TEMPLATE_CADENCE"
+    ],
+    "rationale": "Clean control that must not report TEMPLATE_CADENCE.",
+    "style_profile": null,
+    "text": "The gate opened slowly. Rain fell. Then the wind turned. Mara waited. Ash arrived at dusk."
+  }
+]
