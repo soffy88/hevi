@@ -1,0 +1,84 @@
+{
+  "artifact_manifest": {
+    "artifact_ids": [],
+    "hashes": []
+  },
+  "authority": "CANONICAL",
+  "capability": "LONGFORM_NARRATIVE",
+  "created_at": "2026-09-14T11:16:14.832763Z",
+  "object_id": "5d0c14a4-0424-407d-b3db-649d49993a52",
+  "project_id": "6c38d164-e6d6-42e5-ac11-fc5469268b62",
+  "provenance": [],
+  "revision": 15,
+  "run_key": "longform-qualification",
+  "schema_version": 1,
+  "stage_results": [
+    {
+      "artifact_ids": [],
+      "stage": "RESEARCH",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "ARCHITECT",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "PLAN",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "COMPOSE",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "DRAFT",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "OBSERVE",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "REFLECT",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "NORMALIZE",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "AUDIT",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "REVISE",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "RE_AUDIT",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "SETTLEMENT",
+      "status": "SUCCEEDED"
+    },
+    {
+      "artifact_ids": [],
+      "stage": "STATE_COMMIT",
+      "status": "SUCCEEDED"
+    }
+  ],
+  "status": "SUCCEEDED",
+  "updated_at": "2026-09-14T11:16:14.849714Z"
+}

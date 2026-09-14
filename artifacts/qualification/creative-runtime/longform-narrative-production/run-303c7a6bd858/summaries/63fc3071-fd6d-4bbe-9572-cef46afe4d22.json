@@ -1,0 +1,16 @@
+{
+  "authority": "CANONICAL",
+  "chapter_id": "ec4a1e35-4f90-54a3-a54f-258f5abdceec",
+  "character_ids": [
+    "d0409fc5-5675-4040-bfc4-ddeb126ee3a0"
+  ],
+  "created_at": "2026-09-14T11:16:14.850808Z",
+  "object_id": "63fc3071-fd6d-4bbe-9572-cef46afe4d22",
+  "project_id": "6c38d164-e6d6-42e5-ac11-fc5469268b62",
+  "provenance": [],
+  "revision": 0,
+  "schema_version": 1,
+  "source_refs": [],
+  "summary": "Chapter 3: Mara advances the route.",
+  "updated_at": "2026-09-14T11:16:14.850808Z"
+}

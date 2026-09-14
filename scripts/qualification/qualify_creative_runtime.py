@@ -16,11 +16,12 @@ import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal, cast
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from hevi.creative.omodul import (
     ALL_AUDIT_DIMENSIONS,
     FORBIDDEN_EVASION_GOALS,
+    LONGFORM_STAGES,
     ActionKind,
     ContextBudget,
     ContextCandidate,
@@ -70,6 +71,7 @@ from hevi.creative.oskill import (
 from hevi.obase.creative import (
     ArtifactManifest,
     AuditFinding,
+    ChapterSummary,
     Character,
     CharacterState,
     ContinuityFact,
@@ -734,23 +736,72 @@ def qualify_longform(root: Path) -> Evidence:
     run = workflow.start(project_id=project_id, run_key="longform-qualification")
     chapter_dir = root / "chapters"
     chapter_dir.mkdir(parents=True, exist_ok=True)
+    run_file = root / "run.json"
     stage_paths: list[str] = []
-    for stage in tuple(NarrativeStage):
+
+    def advance(stage: NarrativeStage) -> ProductionRun:
+        nonlocal run
         path = chapter_dir / f"{stage.value.lower()}.txt"
         path.write_text(f"{stage.value}: Mara advances the route.\n", encoding="utf-8")
         stage_paths.append(str(path))
         run = workflow.advance(run, stage)
-        run_file = root / "run.json"
         persist_model(
             run_file,
             run,
             expected_previous_revision=run.revision - 1 if run_file.exists() else None,
         )
+        return run
+
+    # Drive the pipeline to a mid-run checkpoint, then simulate a provider crash.
+    for stage in LONGFORM_STAGES:
+        advance(stage)
+        if stage is NarrativeStage.COMPOSE:
+            break
+    snapshot = workflow.checkpoint(run)
+    snapshot_path = root / "snapshot.json"
+    persist_model(snapshot_path, snapshot)
+    crash_index = len(workflow.snapshot(run).completed_stages)
+    crash_stage = LONGFORM_STAGES[crash_index]
+    crashed = workflow.fail(
+        run,
+        stage=crash_stage,
+        error_code="PROVIDER_FAILURE",
+        message="simulated draft provider failure",
+    )
+    persist_model(run_file, crashed, expected_previous_revision=run.revision)
+    run = crashed
+
+    # Restart from persisted state and resume exactly at the failed stage.
+    restarted = restore_model(run_file, ProductionRun)
+    restored_snapshot = restore_model(snapshot_path, RunSnapshot)
+    run = workflow.resume(restarted)
+    persist_model(run_file, run, expected_previous_revision=restarted.revision)
+    for stage in LONGFORM_STAGES[len(workflow.snapshot(run).completed_stages) :]:
+        advance(stage)
+
     chapters = tuple(
         {"character": "Mara knows the route", "world": "winter harbour", "hook": f"hook-{i}"}
         for i in range(50)
     )
     horizon = LongHorizonQualifier().qualify(chapters)
+    character = Character(project_id=project_id, name="Mara", role="navigator")
+    summaries = tuple(
+        workflow.summarize_chapter(
+            project_id=project_id,
+            chapter_id=uuid5(NAMESPACE_URL, f"{project_id}:longform-chapter:{index}"),
+            text=f"Chapter {index}: Mara advances the route.",
+            character_ids=(character.object_id,),
+        )
+        for index in range(len(chapters))
+    )
+    summary_dir = root / "summaries"
+    for summary in summaries:
+        persist_model(summary_dir / f"{summary.object_id}.json", summary)
+    restored_summaries = tuple(
+        restore_model(summary_dir / f"{summary.object_id}.json", ChapterSummary)
+        for summary in summaries
+    )
+
     manuscript = root / "manuscript.txt"
     manuscript.write_text(
         "\n".join(Path(path).read_text() for path in stage_paths), encoding="utf-8"
@@ -758,24 +809,81 @@ def qualify_longform(root: Path) -> Evidence:
     final_artifact = _text_artifact(
         root, "manuscript-final.txt", manuscript.read_text(encoding="utf-8"), project_id
     )
-    restored = restore_model(root / "run.json", ProductionRun)
+    canon = NarrativeCanon(project_id=project_id, character_ids=(character.object_id,))
+    facts = tuple(
+        ObservationFact(
+            fact_type="INFORMATION",
+            statement=f"chapter-{index}: Mara advances the route.",
+            source_ref=final_artifact.provenance[0],
+        )
+        for index in range(len(chapters))
+    )
+    observation = NarrativeObservation(
+        project_id=project_id,
+        artifact_id=final_artifact.object_id,
+        canon_revision=canon.revision,
+        extractor="longform-settlement",
+        facts=facts,
+        authority=CreativeAuthority.PROJECTION,
+    )
+    engine = NarrativeObservationEngine()
+    delta = engine.propose_delta(observation=observation, canon=canon)
+    settled, committed = engine.settle(
+        canon=canon, delta=delta, approved_fact_indexes=tuple(range(len(facts)))
+    )
+    persist_model(root / "canon.json", settled)
+    restored_canon = restore_model(root / "canon.json", NarrativeCanon)
+
+    restored = restore_model(run_file, ProductionRun)
+    summaries_complete = (
+        len(restored_summaries) == len(chapters)
+        and len({summary.chapter_id for summary in restored_summaries}) == len(chapters)
+        and all(
+            summary.summary and summary.character_ids == (character.object_id,)
+            for summary in restored_summaries
+        )
+    )
+    recovery_complete = (
+        restarted.status == "FAILED"
+        and restarted.failure is not None
+        and restored_snapshot.run_id == restarted.object_id
+        and restored_snapshot.stage == crash_stage.value
+        and restored.status == "SUCCEEDED"
+        and restored.failure is None
+        and len(restored.stage_results) == len(LONGFORM_STAGES)
+        and all(result.status == "SUCCEEDED" for result in restored.stage_results)
+    )
     return Evidence(
         "longform-narrative-production",
         str(manuscript),
         {
             "MANUSCRIPT_COMPLETE": manuscript.stat().st_size > 0,
-            "CANON_COMPLETE": restored.status == "SUCCEEDED",
-            "CHAPTER_SUMMARIES_COMPLETE": False,
+            "CANON_COMPLETE": restored_canon.revision == 1
+            and len(restored_canon.continuity_fact_ids) == len(chapters),
+            "CHAPTER_SUMMARIES_COMPLETE": summaries_complete,
             "HOOK_LEDGER_COMPLETE": horizon.hook_loss == 0 and horizon.duplicate_hook == 0,
-            "STATE_SETTLEMENT_COMPLETE": len(restored.stage_results) == len(tuple(NarrativeStage)),
+            "STATE_SETTLEMENT_COMPLETE": len(restored.stage_results) == len(LONGFORM_STAGES),
             "AUDIT_COMPLETE": final_artifact.quality_gate_status == "PASS",
-            "REVISION_COMPLETE": restored.revision == len(tuple(NarrativeStage)),
-            "RECOVERY_COMPLETE": False,
+            "REVISION_COMPLETE": restored.revision == len(LONGFORM_STAGES) + 2,
+            "RECOVERY_COMPLETE": recovery_complete,
+            "CANON_COMMIT_ATOMIC": len(committed) == len(chapters)
+            and len(set(restored_canon.continuity_fact_ids)) == len(chapters),
         },
-        [*stage_paths, str(manuscript), str(root / "run.json")],
-        ["persist every governed stage", "reload final ProductionRun"],
-        ["stage restart before settlement"],
-        {"stage_count": len(restored.stage_results), "chapter_count": horizon.chapter_count},
+        [
+            *stage_paths,
+            str(manuscript),
+            str(run_file),
+            str(snapshot_path),
+            str(root / "canon.json"),
+        ],
+        ["persist every governed stage", "restart a failed run from its checkpoint"],
+        ["provider failure at DRAFT", "stage restart before settlement"],
+        {
+            "stage_count": len(restored.stage_results),
+            "chapter_count": horizon.chapter_count,
+            "crash_stage": crash_stage.value,
+            "recovered_revision": restored.revision,
+        },
     )
 
 

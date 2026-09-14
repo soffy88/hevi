@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
@@ -9,13 +10,16 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from hevi.obase.creative import (
+    ChapterSummary,
     ContinuityFact,
     CreativeAuthority,
+    FailureRecord,
     NarrativeCanon,
     NarrativeDelta,
     NarrativeObservation,
     ObservationFact,
     ProductionRun,
+    RunSnapshot,
     StageResult,
 )
 
@@ -99,6 +103,95 @@ class LongFormWorkflow:
             completed_stages=completed,
             status=run.status,
             revision=run.revision,
+        )
+
+    @staticmethod
+    def _completed_stages(run: ProductionRun) -> tuple[NarrativeStage, ...]:
+        return tuple(
+            NarrativeStage(item.stage) for item in run.stage_results if item.status == "SUCCEEDED"
+        )
+
+    def checkpoint(self, run: ProductionRun) -> RunSnapshot:
+        """Persist enough state to restart a run at the next uncommitted stage."""
+        completed = self._completed_stages(run)
+        current = (
+            LONGFORM_STAGES[len(completed)].value
+            if len(completed) < len(LONGFORM_STAGES)
+            else "COMPLETE"
+        )
+        state_hash = hashlib.sha256(
+            f"{run.object_id}:{run.revision}:{'|'.join(stage.value for stage in completed)}".encode()
+        ).hexdigest()
+        return RunSnapshot(
+            project_id=run.project_id,
+            run_id=run.object_id,
+            stage=current,
+            state_hash=state_hash,
+            resume_token=f"{run.object_id}:{run.revision}",
+        )
+
+    def fail(
+        self,
+        run: ProductionRun,
+        *,
+        stage: NarrativeStage,
+        error_code: str,
+        message: str,
+        retryable: bool = True,
+    ) -> ProductionRun:
+        """Record a terminal stage failure without dropping committed progress."""
+        completed = self._completed_stages(run)
+        if len(completed) >= len(LONGFORM_STAGES) or LONGFORM_STAGES[len(completed)] is not stage:
+            raise ValueError("invalid narrative failure stage")
+        return run.model_copy(
+            update={
+                "stage_results": (
+                    *run.stage_results,
+                    StageResult(stage=stage.value, status="FAILED", error_code=error_code),
+                ),
+                "revision": run.revision + 1,
+                "updated_at": datetime.now(UTC),
+                "status": "FAILED",
+                "failure": FailureRecord(
+                    code=error_code, message=message, retryable=retryable, stage=stage.value
+                ),
+            }
+        )
+
+    def resume(self, run: ProductionRun) -> ProductionRun:
+        """Drop the single failed stage and return the run to a resumable state."""
+        succeeded = tuple(item for item in run.stage_results if item.status == "SUCCEEDED")
+        failed = tuple(item for item in run.stage_results if item.status == "FAILED")
+        if len(failed) != 1 or tuple(run.stage_results[: len(succeeded)]) != succeeded:
+            raise ValueError("RUN_NOT_RESUMABLE")
+        if LONGFORM_STAGES[len(succeeded)].value != failed[0].stage:
+            raise ValueError("RUN_NOT_RESUMABLE")
+        return run.model_copy(
+            update={
+                "stage_results": succeeded,
+                "revision": run.revision + 1,
+                "updated_at": datetime.now(UTC),
+                "status": "RUNNING",
+                "failure": None,
+            }
+        )
+
+    def summarize_chapter(
+        self,
+        *,
+        project_id: UUID,
+        chapter_id: UUID,
+        text: str,
+        character_ids: tuple[UUID, ...] = (),
+    ) -> ChapterSummary:
+        first_line = text.strip().splitlines()[0].strip() if text.strip() else ""
+        if not first_line:
+            raise ValueError("LONGFORM_EMPTY_CHAPTER")
+        return ChapterSummary(
+            project_id=project_id,
+            chapter_id=chapter_id,
+            summary=first_line,
+            character_ids=character_ids,
         )
 
 

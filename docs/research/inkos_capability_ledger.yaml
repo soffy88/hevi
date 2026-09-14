@@ -79,7 +79,7 @@ capabilities:
     hevi_capability_id: creative.longform_production
     qualification_test: 50 chapter run with persisted state, audit, bounded revision, restart, and recovery
     qualification_evidence_path: artifacts/qualification/creative-runtime/longform-narrative-production.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: canonical-narrative-state
     name: Canonical narrative state and authority

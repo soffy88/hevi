@@ -1,44 +1,50 @@
 {
   "capability_id": "longform-narrative-production",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/manuscript.txt",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/manuscript.txt",
   "checks": {
     "MANUSCRIPT_COMPLETE": true,
     "CANON_COMPLETE": true,
-    "CHAPTER_SUMMARIES_COMPLETE": false,
+    "CHAPTER_SUMMARIES_COMPLETE": true,
     "HOOK_LEDGER_COMPLETE": true,
     "STATE_SETTLEMENT_COMPLETE": true,
     "AUDIT_COMPLETE": true,
     "REVISION_COMPLETE": true,
-    "RECOVERY_COMPLETE": false
+    "RECOVERY_COMPLETE": true,
+    "CANON_COMMIT_ATOMIC": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/research.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/architect.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/plan.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/compose.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/draft.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/observe.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/reflect.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/normalize.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/audit.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/revise.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/re_audit.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/settlement.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/chapters/state_commit.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/manuscript.txt",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-02e85d5a20b3/run.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/research.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/architect.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/plan.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/compose.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/draft.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/observe.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/reflect.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/normalize.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/audit.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/revise.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/re_audit.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/settlement.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/chapters/state_commit.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/manuscript.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/run.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/snapshot.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/longform-narrative-production/run-303c7a6bd858/canon.json"
   ],
   "recovery": [
     "persist every governed stage",
-    "reload final ProductionRun"
+    "restart a failed run from its checkpoint"
   ],
   "failure_injections": [
+    "provider failure at DRAFT",
     "stage restart before settlement"
   ],
   "details": {
     "stage_count": 13,
-    "chapter_count": 50
+    "chapter_count": 50,
+    "crash_stage": "DRAFT",
+    "recovered_revision": 15
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }
