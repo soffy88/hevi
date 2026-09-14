@@ -1,0 +1,119 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "STRUCTURE",
+    "expected_canonical_refs": [
+      []
+    ],
+    "expected_findings": [
+      {
+        "code": "ST_SCENE_ORDER",
+        "dimension": "STRUCTURE"
+      }
+    ],
+    "expected_location": [
+      "scene:all"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "STRUCTURE-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "advance the crossing",
+          "sequence": 1
+        },
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "advance the crossing",
+          "sequence": 3
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Scene sequence has a gap."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "STRUCTURE",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "STRUCTURE-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "STRUCTURE"
+    ],
+    "rationale": "The base scene sequence is contiguous."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "STRUCTURE",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "STRUCTURE-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "advance the crossing",
+          "sequence": 1
+        },
+        {
+          "beat_kind": "turn",
+          "objective": "hold the gate",
+          "purpose": "second",
+          "sequence": 2
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "STRUCTURE"
+    ],
+    "rationale": "Two contiguous scenes with a turn."
+  }
+]

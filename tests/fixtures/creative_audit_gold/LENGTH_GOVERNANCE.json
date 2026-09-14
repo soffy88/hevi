@@ -1,0 +1,114 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "LENGTH_GOVERNANCE",
+    "expected_canonical_refs": [
+      []
+    ],
+    "expected_findings": [
+      {
+        "code": "LG_BELOW_TARGET",
+        "dimension": "LENGTH_GOVERNANCE"
+      }
+    ],
+    "expected_location": [
+      "text:all"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "LENGTH_GOVERNANCE-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "length_target": {
+        "min_words": 100
+      },
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft falls below the configured word floor."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "LENGTH_GOVERNANCE",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "LENGTH_GOVERNANCE-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "LENGTH_GOVERNANCE"
+    ],
+    "rationale": "No length target is configured."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "LENGTH_GOVERNANCE",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "LENGTH_GOVERNANCE-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "length_target": {
+        "max_words": 50,
+        "min_words": 1
+      },
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "LENGTH_GOVERNANCE"
+    ],
+    "rationale": "Draft is within the configured length band."
+  }
+]

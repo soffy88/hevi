@@ -2,6 +2,20 @@
 
 from hevi.creative.omodul.analytics import CreativeAnalytics, calculate_analytics
 from hevi.creative.omodul.audit import ALL_AUDIT_DIMENSIONS, AuditDimension, NarrativeAuditEngine
+from hevi.creative.omodul.audit_dimensions import (
+    DIMENSION_VERIFIERS,
+    HARD_CONTINUITY_DIMENSIONS,
+    MODEL_ASSISTED_DIMENSIONS,
+    AuditClaim,
+    AuditContext,
+    AuditState,
+    DimensionFinding,
+    GenreSpec,
+    ModelAssistedVerifier,
+    SceneSpec,
+    StyleSpec,
+    run_dimensions,
+)
 from hevi.creative.omodul.background import BackgroundRunController
 from hevi.creative.omodul.comparison import ComparisonModule, IntentArtifactComparison
 from hevi.creative.omodul.context import (
@@ -77,6 +91,18 @@ __all__ = [
     "ALL_AUDIT_DIMENSIONS",
     "AuditDimension",
     "NarrativeAuditEngine",
+    "DIMENSION_VERIFIERS",
+    "HARD_CONTINUITY_DIMENSIONS",
+    "MODEL_ASSISTED_DIMENSIONS",
+    "AuditClaim",
+    "AuditContext",
+    "AuditState",
+    "DimensionFinding",
+    "GenreSpec",
+    "ModelAssistedVerifier",
+    "SceneSpec",
+    "StyleSpec",
+    "run_dimensions",
     "CreativeAnalytics",
     "calculate_analytics",
     "BackgroundRunController",

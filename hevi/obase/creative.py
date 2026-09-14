@@ -853,6 +853,11 @@ class AuditFinding(BaseModel):
     canonical_refs: tuple[UUID, ...] = ()
     recommendation: str
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    # Deterministic verifiers attach a stable defect code and a human message so
+    # downstream review and the gold corpus can trace an issue without parsing
+    # the recommendation text.  Both are additive and optional for legacy flows.
+    code: str | None = None
+    message: str | None = None
 
 
 class NarrativeAudit(CreativeObject):

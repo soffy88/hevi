@@ -38,6 +38,7 @@ from hevi.creative.omodul import (
     ShortFictionModule,
     StyleModule,
 )
+from hevi.creative.omodul.audit_gold import evaluate as evaluate_audit_gold
 from hevi.creative.oprim import (
     AtomicWorkspace,
     CreativeMemoryIndex,
@@ -2185,6 +2186,12 @@ def qualify_audit(root: Path) -> Evidence:
         "audit-report.json",
         {"clean": clean.model_dump(mode="json"), "defect": bad.model_dump(mode="json")},
     )
+    gold = evaluate_audit_gold()
+    gold_path = _json_artifact(
+        root,
+        "audit-gold-metrics.json",
+        gold.model_dump(mode="json"),
+    )
     return Evidence(
         "continuity-and-multidimensional-audit",
         str(report),
@@ -2218,12 +2225,33 @@ def qualify_audit(root: Path) -> Evidence:
                 )
             ),
             "DETERMINISTIC_STRUCTURAL_GATE": True,
-            "ALL_DIMENSION_DEFECT_CORPUS": False,
+            "ALL_DIMENSION_DEFECT_CORPUS": gold.passed and gold.total_fixtures >= 99,
+            "AUDIT_TRUE_POSITIVE_RATE": gold.true_positive_rate
+            >= gold.thresholds["true_positive_rate"],
+            "AUDIT_FALSE_POSITIVE_RATE": gold.false_positive_rate
+            <= gold.thresholds["false_positive_rate"],
+            "AUDIT_LOCATION_ACCURACY": gold.location_accuracy
+            >= gold.thresholds["location_accuracy"],
+            "AUDIT_CANON_REF_ACCURACY": gold.canon_ref_accuracy
+            >= gold.thresholds["canon_ref_accuracy"],
+            "HARD_CONTINUITY_100_PERCENT": gold.hard_continuity_true_positive_rate == 1.0,
+            "NO_MUST_NOT_FIND_VIOLATION": gold.must_not_find_violations == 0,
         },
-        [str(report), str(root / "audit-input.txt")],
-        ["reload audit report", "repeat clean audit"],
-        ["empty draft", "missing provenance", "missing scene purpose"],
-        {"dimensions": len(clean.dimensions_checked), "defect_findings": len(bad.findings)},
+        [str(report), str(root / "audit-input.txt"), str(gold_path)],
+        ["reload audit report", "repeat clean audit", "rerun gold corpus"],
+        ["empty draft", "missing provenance", "missing scene purpose", "gold defect corpus"],
+        {
+            "dimensions": len(clean.dimensions_checked),
+            "defect_findings": len(bad.findings),
+            "gold_fixtures": gold.total_fixtures,
+            "gold_expected_findings": gold.expected_findings,
+            "gold_matched_findings": gold.matched_findings,
+            "gold_true_positive_rate": gold.true_positive_rate,
+            "gold_hard_continuity_rate": gold.hard_continuity_true_positive_rate,
+            "gold_false_positive_rate": gold.false_positive_rate,
+            "gold_location_accuracy": gold.location_accuracy,
+            "gold_canon_ref_accuracy": gold.canon_ref_accuracy,
+        },
     )
 
 

@@ -1,0 +1,107 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "VISUAL_FILMABILITY",
+    "expected_canonical_refs": [
+      []
+    ],
+    "expected_findings": [
+      {
+        "code": "VF_ABSTRACT_NARRATION",
+        "dimension": "VISUAL_FILMABILITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "VISUAL_FILMABILITY-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara thought about the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Interior narration is not directly filmable."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "VISUAL_FILMABILITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "VISUAL_FILMABILITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "VISUAL_FILMABILITY"
+    ],
+    "rationale": "The base text is filmable action."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "VISUAL_FILMABILITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "VISUAL_FILMABILITY-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara gripped the cold bar and pulled the gate wide."
+    },
+    "must_not_find": [
+      "VISUAL_FILMABILITY"
+    ],
+    "rationale": "The sentence is external, observable action."
+  }
+]

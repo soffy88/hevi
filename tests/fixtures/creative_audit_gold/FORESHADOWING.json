@@ -1,0 +1,140 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "FORESHADOWING",
+    "expected_canonical_refs": [
+      [
+        "foreshadow:gun"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "FS_NO_PAYOFF",
+        "dimension": "FORESHADOWING"
+      }
+    ],
+    "expected_location": [
+      "sentence:2"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "FORESHADOWING-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "FORESHADOWING",
+          "entity_ref": "foreshadow:gun",
+          "location": "sentence:2",
+          "predicate": "setup",
+          "subject": "gun",
+          "value": "a gun on the wall"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "A foreshadow has no registered payoff."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "FORESHADOWING",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "FORESHADOWING-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "FORESHADOWING"
+    ],
+    "rationale": "No foreshadow is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": [
+        [
+          "gun",
+          "foreshadow:gun"
+        ]
+      ]
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "FORESHADOWING",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "FORESHADOWING-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "FORESHADOWING",
+          "entity_ref": "foreshadow:gun",
+          "location": "sentence:2",
+          "predicate": "setup",
+          "subject": "gun",
+          "value": "a gun on the wall"
+        },
+        {
+          "dimension": "PAYOFF",
+          "entity_ref": "payoff:gun",
+          "location": "sentence:3",
+          "predicate": "payoff",
+          "subject": "gun",
+          "value": "the gun fires"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "FORESHADOWING"
+    ],
+    "rationale": "The setup has a matching registered payoff."
+  }
+]

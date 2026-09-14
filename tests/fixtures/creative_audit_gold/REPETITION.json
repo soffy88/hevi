@@ -1,0 +1,107 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "REPETITION",
+    "expected_canonical_refs": [
+      []
+    ],
+    "expected_findings": [
+      {
+        "code": "RP_REPEATED_PHRASE",
+        "dimension": "REPETITION"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "REPETITION-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "It was very very very cold."
+    },
+    "must_not_find": [],
+    "rationale": "A word repeats three times in a row."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "REPETITION",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "REPETITION-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "REPETITION"
+    ],
+    "rationale": "The base text has no repeated phrase."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "REPETITION",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "REPETITION-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the yard. The gate stood open. Wind moved the grass."
+    },
+    "must_not_find": [
+      "REPETITION"
+    ],
+    "rationale": "Three varied sentences with distinct openings."
+  }
+]

@@ -1,0 +1,107 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "DIALOGUE_QUALITY",
+    "expected_canonical_refs": [
+      []
+    ],
+    "expected_findings": [
+      {
+        "code": "DQ_EXPOSITION",
+        "dimension": "DIALOGUE_QUALITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "DIALOGUE_QUALITY-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara said, \"As you know, the gate opens at dawn.\""
+    },
+    "must_not_find": [],
+    "rationale": "Dialogue states plot information with an exposition marker."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "DIALOGUE_QUALITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "DIALOGUE_QUALITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "DIALOGUE_QUALITY"
+    ],
+    "rationale": "The base text contains no dialogue."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "DIALOGUE_QUALITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "DIALOGUE_QUALITY-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara said, \"The gate is open.\" Then she ran."
+    },
+    "must_not_find": [
+      "DIALOGUE_QUALITY"
+    ],
+    "rationale": "Dialogue is short and does not expose plot."
+  }
+]

@@ -1,0 +1,143 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "OBJECT_CONTINUITY",
+          "entity_ref": "object:key",
+          "predicate": "state",
+          "subject": "key",
+          "value": "destroyed"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "OBJECT_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "object:key"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "OC_CONFLICT",
+        "dimension": "OBJECT_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "OBJECT_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "OBJECT_CONTINUITY",
+          "entity_ref": "object:key",
+          "location": "sentence:1",
+          "predicate": "state",
+          "subject": "key",
+          "value": "intact"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft uses an object canon records as destroyed."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "OBJECT_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "OBJECT_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "OBJECT_CONTINUITY"
+    ],
+    "rationale": "No object claim is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "OBJECT_CONTINUITY",
+          "entity_ref": "object:key",
+          "predicate": "state",
+          "subject": "key",
+          "value": "destroyed"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "OBJECT_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "OBJECT_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "OBJECT_CONTINUITY",
+          "entity_ref": "object:key",
+          "location": "sentence:1",
+          "predicate": "state",
+          "subject": "key",
+          "value": "destroyed"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "OBJECT_CONTINUITY"
+    ],
+    "rationale": "Object state matches canon."
+  }
+]

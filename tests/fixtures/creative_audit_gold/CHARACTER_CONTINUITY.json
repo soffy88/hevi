@@ -1,0 +1,197 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "CHARACTER_CONTINUITY",
+          "entity_ref": "character:mara",
+          "predicate": "eye_color",
+          "subject": "Mara",
+          "value": "green"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "CHARACTER_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "character:mara"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "CC_CONFLICT",
+        "dimension": "CHARACTER_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "CHARACTER_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "CHARACTER_CONTINUITY",
+          "entity_ref": "character:mara",
+          "location": "sentence:1",
+          "predicate": "eye_color",
+          "subject": "Mara",
+          "value": "blue"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft changes Mara's canon eye colour."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [
+        "character:mara"
+      ],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "CHARACTER_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "character:ghost"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "CC_UNKNOWN_ENTITY",
+        "dimension": "CHARACTER_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "CHARACTER_CONTINUITY-POS-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "CHARACTER_CONTINUITY",
+          "entity_ref": "character:ghost",
+          "location": "sentence:1",
+          "predicate": "presence",
+          "subject": "Ghost",
+          "value": "here"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft introduces a character absent from canon."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "CHARACTER_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "CHARACTER_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "CHARACTER_CONTINUITY"
+    ],
+    "rationale": "No draft claim is made, so nothing can conflict with canon."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "CHARACTER_CONTINUITY",
+          "entity_ref": "character:mara",
+          "predicate": "eye_color",
+          "subject": "Mara",
+          "value": "green"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "CHARACTER_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "CHARACTER_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "CHARACTER_CONTINUITY",
+          "entity_ref": "character:mara",
+          "location": "sentence:1",
+          "predicate": "eye_color",
+          "subject": "Mara",
+          "value": "green"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "CHARACTER_CONTINUITY"
+    ],
+    "rationale": "Draft repeats the canon value, so there is no conflict."
+  }
+]

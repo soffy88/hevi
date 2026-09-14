@@ -12,6 +12,11 @@ from enum import StrEnum
 from typing import Literal
 from uuid import UUID
 
+from hevi.creative.omodul.audit_dimensions import (
+    AuditContext,
+    canonical_ref,
+    run_dimensions,
+)
 from hevi.obase.creative import (
     AuditFinding,
     CreativeArtifact,
@@ -144,6 +149,50 @@ class NarrativeAuditEngine:
             artifact_id=artifact.object_id,
             status=status,
             findings=tuple(findings),
+            dimensions_checked=ALL_AUDIT_DIMENSIONS,
+            authority=CreativeAuthority.PROJECTION,
+        )
+
+    def audit_context(
+        self,
+        context: AuditContext,
+        *,
+        evidence_refs: Iterable[ProvenanceRef] = (),
+    ) -> NarrativeAudit:
+        """Run all 33 deterministic dimension verifiers over structured evidence.
+
+        The envelope is fail-closed: an empty draft or an unsupported dimension
+        is a finding, never a pass.  Findings carry their stable defect code,
+        evidence location, and the canonical refs they contradict.
+        """
+
+        refs = tuple(evidence_refs)
+        findings = tuple(
+            AuditFinding(
+                severity=item.severity,
+                dimension=item.dimension,
+                evidence=refs,
+                artifact_location=item.location,
+                canonical_refs=tuple(canonical_ref(ref) for ref in item.canon_refs),
+                recommendation=item.recommendation,
+                confidence=item.confidence,
+                code=item.code,
+                message=item.message,
+            )
+            for item in run_dimensions(context)
+        )
+        status: Literal["PASS", "WARN", "FAIL"] = (
+            "FAIL"
+            if any(item.severity in {"ERROR", "FATAL"} for item in findings)
+            else "WARN"
+            if findings
+            else "PASS"
+        )
+        return NarrativeAudit(
+            project_id=context.project_id,
+            artifact_id=context.artifact_id,
+            status=status,
+            findings=findings,
             dimensions_checked=ALL_AUDIT_DIMENSIONS,
             authority=CreativeAuthority.PROJECTION,
         )

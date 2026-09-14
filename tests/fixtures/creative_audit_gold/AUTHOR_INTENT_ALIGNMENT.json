@@ -1,0 +1,130 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "AUTHOR_INTENT_ALIGNMENT",
+    "expected_canonical_refs": [
+      [],
+      []
+    ],
+    "expected_findings": [
+      {
+        "code": "AI_CONSTRAINT_VIOLATION",
+        "dimension": "AUTHOR_INTENT_ALIGNMENT"
+      },
+      {
+        "code": "AI_MISSING_CRITERIA",
+        "dimension": "AUTHOR_INTENT_ALIGNMENT"
+      }
+    ],
+    "expected_location": [
+      "text:all",
+      "text:all"
+    ],
+    "expected_severity": [
+      "WARN",
+      "WARN"
+    ],
+    "fixture_id": "AUTHOR_INTENT_ALIGNMENT-POS-01",
+    "input_artifact": {
+      "author_intent": {
+        "constraints": [
+          "no violence"
+        ],
+        "success_criteria": [
+          "hope"
+        ]
+      },
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "The draft neither honours a constraint nor evidences a success criterion."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "AUTHOR_INTENT_ALIGNMENT",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "AUTHOR_INTENT_ALIGNMENT-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "AUTHOR_INTENT_ALIGNMENT"
+    ],
+    "rationale": "No author intent is configured."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "AUTHOR_INTENT_ALIGNMENT",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "AUTHOR_INTENT_ALIGNMENT-NEG-02",
+    "input_artifact": {
+      "author_intent": {
+        "constraints": [
+          "gate"
+        ],
+        "success_criteria": [
+          "Mara"
+        ]
+      },
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "AUTHOR_INTENT_ALIGNMENT"
+    ],
+    "rationale": "The constraint and success criterion are both evidenced."
+  }
+]

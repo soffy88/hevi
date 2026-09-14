@@ -1,0 +1,121 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "FATIGUE_WORDS",
+    "expected_canonical_refs": [
+      [
+        "genre:thriller"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "FW_OVERUSED",
+        "dimension": "FATIGUE_WORDS"
+      }
+    ],
+    "expected_location": [
+      "text:all"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "FATIGUE_WORDS-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "genre": {
+        "fatigue_lexicon": [
+          "suddenly"
+        ],
+        "name": "thriller"
+      },
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "The gate moved suddenly. It stopped suddenly. Then the wind fell suddenly. All went still suddenly."
+    },
+    "must_not_find": [],
+    "rationale": "A fatigue word is used more than three times."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "FATIGUE_WORDS",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "FATIGUE_WORDS-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "FATIGUE_WORDS"
+    ],
+    "rationale": "No fatigue lexicon is configured."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "FATIGUE_WORDS",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "FATIGUE_WORDS-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "genre": {
+        "fatigue_lexicon": [
+          "suddenly"
+        ],
+        "name": "thriller"
+      },
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "FATIGUE_WORDS"
+    ],
+    "rationale": "The fatigue word never appears."
+  }
+]

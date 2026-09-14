@@ -1,0 +1,125 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "ARC_ALIGNMENT",
+          "entity_ref": "arc:revenge",
+          "predicate": "goal",
+          "subject": "arc:revenge",
+          "value": "avenge father"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "ARC_ALIGNMENT",
+    "expected_canonical_refs": [
+      [
+        "arc:revenge"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "AA_BEAT_OFF_ARC",
+        "dimension": "ARC_ALIGNMENT"
+      }
+    ],
+    "expected_location": [
+      "scene:1"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "ARC_ALIGNMENT-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "buy bread",
+          "purpose": "errand",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "A scene objective does not advance any registered arc goal."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "ARC_ALIGNMENT",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "ARC_ALIGNMENT-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "ARC_ALIGNMENT"
+    ],
+    "rationale": "No arc goal is registered."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "ARC_ALIGNMENT",
+          "entity_ref": "arc:revenge",
+          "predicate": "goal",
+          "subject": "arc:revenge",
+          "value": "avenge father"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "ARC_ALIGNMENT",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "ARC_ALIGNMENT-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "avenge father",
+          "purpose": "revenge beat",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "ARC_ALIGNMENT"
+    ],
+    "rationale": "The scene objective advances the registered arc."
+  }
+]

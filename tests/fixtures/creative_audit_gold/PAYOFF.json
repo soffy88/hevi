@@ -1,0 +1,132 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "PAYOFF",
+    "expected_canonical_refs": [
+      [
+        "payoff:gunshot"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "PO_NO_SETUP",
+        "dimension": "PAYOFF"
+      }
+    ],
+    "expected_location": [
+      "sentence:2"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "PAYOFF-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "PAYOFF",
+          "entity_ref": "payoff:gunshot",
+          "location": "sentence:2",
+          "predicate": "payoff",
+          "subject": "gunshot",
+          "value": "the gun fires"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "A payoff has no matching setup."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "PAYOFF",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "PAYOFF-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "PAYOFF"
+    ],
+    "rationale": "No payoff is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": [
+        [
+          "gunshot",
+          "foreshadow:gun"
+        ]
+      ]
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "PAYOFF",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "PAYOFF-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "PAYOFF",
+          "entity_ref": "payoff:gunshot",
+          "location": "sentence:2",
+          "predicate": "payoff",
+          "subject": "gunshot",
+          "value": "the gun fires"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "PAYOFF"
+    ],
+    "rationale": "The payoff has a registered setup."
+  }
+]

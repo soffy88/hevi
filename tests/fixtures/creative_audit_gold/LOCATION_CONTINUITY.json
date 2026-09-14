@@ -1,0 +1,199 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "LOCATION_CONTINUITY",
+          "entity_ref": "location:gate",
+          "predicate": "state",
+          "subject": "gate",
+          "value": "closed"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "LOCATION_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "location:gate"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "LC_CONFLICT",
+        "dimension": "LOCATION_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "LOCATION_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "LOCATION_CONTINUITY",
+          "entity_ref": "location:gate",
+          "location": "sentence:1",
+          "predicate": "state",
+          "subject": "gate",
+          "value": "open"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft opens a gate that canon records as closed."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "LOCATION_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "character:Mara"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "LC_MULTIPLE_LOCATIONS",
+        "dimension": "LOCATION_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      null
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "LOCATION_CONTINUITY-POS-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "LOCATION_CONTINUITY",
+          "predicate": "location",
+          "subject": "Mara",
+          "value": "harbour"
+        },
+        {
+          "dimension": "LOCATION_CONTINUITY",
+          "predicate": "location",
+          "subject": "Mara",
+          "value": "tower"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "One character occupies two locations in the same scene."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "LOCATION_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "LOCATION_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "LOCATION_CONTINUITY"
+    ],
+    "rationale": "No location claim is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "LOCATION_CONTINUITY",
+          "entity_ref": "location:gate",
+          "predicate": "state",
+          "subject": "gate",
+          "value": "closed"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "LOCATION_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "LOCATION_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "LOCATION_CONTINUITY",
+          "entity_ref": "location:gate",
+          "location": "sentence:1",
+          "predicate": "state",
+          "subject": "gate",
+          "value": "closed"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "LOCATION_CONTINUITY"
+    ],
+    "rationale": "Draft and canon agree on the location state."
+  }
+]

@@ -48,6 +48,7 @@ capabilities:
     3o_target: obase/oprim/omodul/oservi
     hevi_capability_id: creative.production_harness
     qualification_test: real typed action, confirmation, cancellation, restart, artifact-grounded completion
+    qualification_evidence_path: artifacts/qualification/creative-runtime/unified-agent-production-harness.json
     status: PARTIAL
 
   - id: longform-narrative-production
@@ -77,6 +78,7 @@ capabilities:
     3o_target: omodul/oservi/oskill
     hevi_capability_id: creative.longform_production
     qualification_test: 50 chapter run with persisted state, audit, bounded revision, restart, and recovery
+    qualification_evidence_path: artifacts/qualification/creative-runtime/longform-narrative-production.json
     status: PARTIAL
 
   - id: canonical-narrative-state
@@ -102,6 +104,7 @@ capabilities:
     3o_target: obase/oprim
     hevi_capability_id: narrative.canonical_state
     qualification_test: roundtrip, delta validation, stale write rejection, projection rebuild, cross-project isolation
+    qualification_evidence_path: artifacts/qualification/creative-runtime/canonical-narrative-state.json
     status: QUALIFIED
 
   - id: observer-state-extraction
@@ -127,6 +130,7 @@ capabilities:
     3o_target: obase/oprim/omodul
     hevi_capability_id: narrative.observation_delta
     qualification_test: synthetic chapter with all nine classes, malformed output, conflict, stale version, atomic apply
+    qualification_evidence_path: artifacts/qualification/creative-runtime/observer-state-extraction.json
     status: QUALIFIED
 
   - id: governed-context-composer
@@ -153,6 +157,7 @@ capabilities:
     3o_target: oprim/omodul/oskill
     hevi_capability_id: creative.context_compilation
     qualification_test: context budget, protected fact retention, project isolation, trace roundtrip
+    qualification_evidence_path: artifacts/qualification/creative-runtime/governed-context-composer.json
     status: QUALIFIED
 
   - id: long-term-creative-memory
@@ -178,6 +183,7 @@ capabilities:
     3o_target: obase/oprim/oservi
     hevi_capability_id: creative.memory_retrieval
     qualification_test: rebuild, relevance, source trace, project isolation, no credential indexing, restart
+    qualification_evidence_path: artifacts/qualification/creative-runtime/long-term-creative-memory.json
     status: QUALIFIED
 
   - id: narrative-forecast-branch-simulation
@@ -203,6 +209,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: narrative.forecast
     qualification_test: 3 branches, canon mutation guard, stale detection, comparison, selection, restart
+    qualification_evidence_path: tests/creative_runtime/test_capabilities.py
     status: QUALIFIED
 
   - id: continuity-and-multidimensional-audit
@@ -229,7 +236,8 @@ capabilities:
     3o_target: oskill/omodul/obase
     hevi_capability_id: narrative.audit
     qualification_test: all dimension classes, severity/evidence trace, false-positive control, re-audit persistence
-    status: PARTIAL
+    qualification_evidence_path: artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit.json
+    status: QUALIFIED
 
   - id: governed-revision
     name: Bounded revision workflow
@@ -254,6 +262,7 @@ capabilities:
     3o_target: oprim/omodul/oservi
     hevi_capability_id: creative.revision
     qualification_test: polish, spot-fix, rewrite, structural rework, stale write, bounded passes, rejection
+    qualification_evidence_path: artifacts/qualification/creative-runtime/governed-revision.json
     status: PARTIAL
 
   - id: length-governance-normalization
@@ -278,6 +287,7 @@ capabilities:
     3o_target: oprim/oskill/omodul
     hevi_capability_id: narrative.length_governance
     qualification_test: under, within, over soft range, over hard range, one-pass bound, restart
+    qualification_evidence_path: tests/creative_runtime/test_capabilities.py
     status: QUALIFIED
 
   - id: short-fiction-production
@@ -302,6 +312,7 @@ capabilities:
     3o_target: omodul/oservi/oskill
     hevi_capability_id: creative.short_fiction
     qualification_test: complete short package, invalid input, retry, resume, export, artifact provenance
+    qualification_evidence_path: artifacts/qualification/creative-runtime/short-fiction-production.json
     status: PARTIAL
 
   - id: script-runtime
@@ -326,6 +337,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.script_runtime
     qualification_test: structured script to executable storyboard and real production graph handoff
+    qualification_evidence_path: artifacts/qualification/creative-runtime/script-runtime.json
     status: QUALIFIED
 
   - id: production-storyboard
@@ -350,6 +362,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.production_storyboard
     qualification_test: script-to-shot-plan-to-real-artifact with provenance and quality gate
+    qualification_evidence_path: artifacts/qualification/creative-runtime/production-storyboard.json
     status: PARTIAL
 
   - id: interactive-film
@@ -376,6 +389,7 @@ capabilities:
     3o_target: obase/oprim/omodul/oservi
     hevi_capability_id: creative.interactive_film
     qualification_test: 30 nodes, multiple branches, flags, relationships, 3 endings, all paths, export/playback
+    qualification_evidence_path: artifacts/qualification/creative-runtime/interactive-film.json
     status: PARTIAL
 
   - id: persistent-interactive-play
@@ -401,6 +415,7 @@ capabilities:
     3o_target: obase/oprim/omodul/oservi
     hevi_capability_id: creative.persistent_play
     qualification_test: 50 turns, persistence, inventory, evidence, relation, time, crash resume, redo
+    qualification_evidence_path: artifacts/qualification/creative-runtime/persistent-interactive-play.json
     status: PARTIAL
 
   - id: creative-research
@@ -425,6 +440,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.research
     qualification_test: source/claim trace, unknowns, confidence, no automatic canon mutation, explicit commit
+    qualification_evidence_path: artifacts/qualification/creative-runtime/creative-research.json
     status: QUALIFIED
 
   - id: material-library
@@ -449,6 +465,7 @@ capabilities:
     3o_target: obase/oprim/oservi
     hevi_capability_id: creative.material_library
     qualification_test: all input classes, source hash, project isolation, citation, rebuild, invalid input
+    qualification_evidence_path: artifacts/qualification/creative-runtime/material-library.json
     status: QUALIFIED
 
   - id: existing-work-import-continuation
@@ -474,6 +491,7 @@ capabilities:
     3o_target: oprim/omodul/oservi
     hevi_capability_id: creative.import_continuation
     qualification_test: 20 chapters, split/order/restart, reconstruction, continuation, continuity audit
+    qualification_evidence_path: artifacts/qualification/creative-runtime/existing-work-import-continuation.json
     status: PARTIAL
 
   - id: fanfic-spinoff-canon-import
@@ -499,6 +517,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.fanfic_spinoff
     qualification_test: canon/AU/OOC/CP, parent update isolation, conflict, provenance, audit
+    qualification_evidence_path: tests/gold/creative_runtime/test_qualification.py
     status: QUALIFIED
 
   - id: style-intelligence
@@ -523,6 +542,7 @@ capabilities:
     3o_target: obase/oskill/omodul
     hevi_capability_id: creative.style_intelligence
     qualification_test: analyze/save/apply/audit, source hash, no text retention, deterministic metrics
+    qualification_evidence_path: artifacts/qualification/creative-runtime/style-intelligence.json
     status: QUALIFIED
 
   - id: synthetic-writing-quality
@@ -547,6 +567,7 @@ capabilities:
     3o_target: oskill/omodul
     hevi_capability_id: creative.writing_naturalness
     qualification_test: anti-pattern corpus, false positives, style drift, bounded revision, no evasion claim
+    qualification_evidence_path: artifacts/qualification/creative-runtime/synthetic-writing-quality.json
     status: PARTIAL
 
   - id: extensible-genre-system
@@ -571,6 +592,7 @@ capabilities:
     3o_target: obase/oskill/oservi
     hevi_capability_id: creative.genre_system
     qualification_test: built-in, custom, invalid rule, applied audit, project isolation
+    qualification_evidence_path: artifacts/qualification/creative-runtime/extensible-genre-system.json
     status: PARTIAL
 
   - id: market-radar
@@ -595,6 +617,7 @@ capabilities:
     3o_target: omodul/oservi
     hevi_capability_id: creative.market_radar
     qualification_test: source trace, stale snapshot, low confidence, no canon mutation
+    qualification_evidence_path: tests/creative_runtime/test_capabilities.py
     status: QUALIFIED
 
   - id: creative-analytics
@@ -618,6 +641,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.analytics
     qualification_test: full project aggregation, missing telemetry, rebuild, privacy, cost/latency evidence
+    qualification_evidence_path: artifacts/qualification/creative-runtime/creative-analytics.json
     status: PARTIAL
 
   - id: translation-localization
@@ -644,6 +668,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.translation
     qualification_test: real TXT/Markdown/EPUB/text-PDF fixtures, coverage, glossary, resume, roundtrip
+    qualification_evidence_path: artifacts/qualification/creative-runtime/translation-localization.json
     status: QUALIFIED
 
   - id: cover-visual-asset-runtime
@@ -668,6 +693,7 @@ capabilities:
     3o_target: oskill/omodul/oservi
     hevi_capability_id: creative.cover
     qualification_test: brief, provider adapter, regenerate, selection, provenance, failure state
+    qualification_evidence_path: artifacts/qualification/creative-runtime/cover-visual-asset-runtime.json
     status: PARTIAL
 
   - id: professional-skills
@@ -692,6 +718,7 @@ capabilities:
     3o_target: oskill/obase
     hevi_capability_id: creative.skills
     qualification_test: all listed skill domains, permission boundary, no direct state write, provenance
+    qualification_evidence_path: artifacts/qualification/creative-runtime/professional-skills.json
     status: QUALIFIED
 
   - id: creative-policy-packs
@@ -716,6 +743,7 @@ capabilities:
     3o_target: obase/oprim/oservi
     hevi_capability_id: creative.policy_packs
     qualification_test: default/override precedence, diff, rollback, invalid pack, runtime trace
+    qualification_evidence_path: artifacts/qualification/creative-runtime/creative-policy-packs.json
     status: QUALIFIED
 
   - id: review-workflow
@@ -740,6 +768,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.review
     qualification_test: approve/reject/edit/revision request, persistence, stale guard, batch approval safety
+    qualification_evidence_path: artifacts/qualification/creative-runtime/review-workflow.json
     status: QUALIFIED
 
   - id: background-production-notifications
@@ -765,6 +794,7 @@ capabilities:
     3o_target: oprim/oservi
     hevi_capability_id: creative.background_runs
     qualification_test: background run, reconnect, cancel, resume, retry, signed event, delivery ledger
+    qualification_evidence_path: artifacts/qualification/creative-runtime/background-production-notifications.json
     status: PARTIAL
 
   - id: run-snapshot-recovery
@@ -790,6 +820,7 @@ capabilities:
     3o_target: obase/oprim/oservi
     hevi_capability_id: creative.run_snapshots
     qualification_test: crash injection at each stage, resume, artifact retention, no false completion
+    qualification_evidence_path: artifacts/qualification/creative-runtime/run-snapshot-recovery.json
     status: QUALIFIED
 
   - id: atomic-creative-workspace
@@ -814,6 +845,7 @@ capabilities:
     3o_target: oprim/obase
     hevi_capability_id: creative.atomic_workspace
     qualification_test: fault injection for every listed failure, no half-commit, read-back validation
+    qualification_evidence_path: artifacts/qualification/creative-runtime/atomic-creative-workspace.json
     status: QUALIFIED
 
   - id: backup-restore-rollback
@@ -838,6 +870,7 @@ capabilities:
     3o_target: oprim/oservi
     hevi_capability_id: creative.backup_restore
     qualification_test: backup, corruption, restore, rollback, manifest hash, destructive confirmation
+    qualification_evidence_path: artifacts/qualification/creative-runtime/backup-restore-rollback.json
     status: QUALIFIED
 
   - id: concurrency-and-locks
@@ -862,6 +895,7 @@ capabilities:
     3o_target: oprim/obase
     hevi_capability_id: creative.concurrency
     qualification_test: conflicting writes, stale lock, crash recovery, no last-writer-wins
+    qualification_evidence_path: artifacts/qualification/creative-runtime/concurrency-and-locks.json
     status: QUALIFIED
 
   - id: targeted-editing
@@ -886,6 +920,7 @@ capabilities:
     3o_target: oprim/omodul/oservi
     hevi_capability_id: creative.targeted_editing
     qualification_test: exact patch, ambiguous location, preview diff, stale guard, cascade finding
+    qualification_evidence_path: artifacts/qualification/creative-runtime/targeted-editing.json
     status: QUALIFIED
 
   - id: model-provider-routing
@@ -911,6 +946,7 @@ capabilities:
     3o_target: obase/oservi
     hevi_capability_id: creative.model_routing
     qualification_test: local endpoint, per-stage override, unavailable provider, secret redaction, deterministic config trace
+    qualification_evidence_path: artifacts/qualification/creative-runtime/model-provider-routing.json
     status: PARTIAL
 
   - id: notifications-webhooks
@@ -935,6 +971,7 @@ capabilities:
     3o_target: obase/oservi
     hevi_capability_id: creative.notifications
     qualification_test: signed event, filter, retry, idempotency, secret redaction, failure ledger
+    qualification_evidence_path: artifacts/qualification/creative-runtime/notifications-webhooks.json
     status: PARTIAL
 
   - id: creative-export
@@ -959,6 +996,7 @@ capabilities:
     3o_target: oprim/omodul/oservi
     hevi_capability_id: creative.export
     qualification_test: TXT/MD/EPUB, approved-only, hash manifest, invalid source, playable package
+    qualification_evidence_path: artifacts/qualification/creative-runtime/creative-export.json
     status: PARTIAL
 
   - id: studio-product-surfaces
@@ -984,6 +1022,7 @@ capabilities:
     3o_target: oservi/omodul
     hevi_capability_id: creative.studio
     qualification_test: UI action to real service, confirmation, progress, reconnect, artifact/evidence rendering
+    qualification_evidence_path: artifacts/qualification/creative-runtime/studio-product-surfaces.json
     status: PARTIAL
 
 parity_rules:

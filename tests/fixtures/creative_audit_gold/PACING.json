@@ -1,0 +1,141 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "PACING",
+    "expected_canonical_refs": [
+      [
+        "genre:action"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "PA_PROFILE_DEVIATION",
+        "dimension": "PACING"
+      }
+    ],
+    "expected_location": [
+      "scene:all"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "PACING-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "genre": {
+        "min_action_ratio": 0.5,
+        "name": "action"
+      },
+      "scenes": [
+        {
+          "beat_kind": "dialogue",
+          "objective": "reach the gate",
+          "purpose": "talk",
+          "sequence": 1
+        },
+        {
+          "beat_kind": "reflection",
+          "objective": "reach the gate",
+          "purpose": "reflect",
+          "sequence": 2
+        },
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "turn",
+          "sequence": 3
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Action density is below the genre pacing floor."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "PACING",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "PACING-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "PACING"
+    ],
+    "rationale": "No genre pacing profile is configured."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "PACING",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "PACING-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "genre": {
+        "min_action_ratio": 0.5,
+        "name": "action"
+      },
+      "scenes": [
+        {
+          "beat_kind": "action",
+          "objective": "reach the gate",
+          "purpose": "advance the crossing",
+          "sequence": 1
+        },
+        {
+          "beat_kind": "action",
+          "objective": "reach the gate",
+          "purpose": "advance the crossing",
+          "sequence": 2
+        },
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "advance the crossing",
+          "sequence": 3
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "PACING"
+    ],
+    "rationale": "Action density meets the genre floor."
+  }
+]

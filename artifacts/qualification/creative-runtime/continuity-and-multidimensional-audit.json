@@ -1,6 +1,6 @@
 {
   "capability_id": "continuity-and-multidimensional-audit",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-95c53e0f704a/audit-report.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3e3c8dca1381/audit-report.json",
   "checks": {
     "ALL_DIMENSIONS_DECLARED": true,
     "CLEAN_PASS": true,
@@ -9,25 +9,42 @@
     "SEVERITY": true,
     "REPEATABLE": true,
     "DETERMINISTIC_STRUCTURAL_GATE": true,
-    "ALL_DIMENSION_DEFECT_CORPUS": false
+    "ALL_DIMENSION_DEFECT_CORPUS": true,
+    "AUDIT_TRUE_POSITIVE_RATE": true,
+    "AUDIT_FALSE_POSITIVE_RATE": true,
+    "AUDIT_LOCATION_ACCURACY": true,
+    "AUDIT_CANON_REF_ACCURACY": true,
+    "HARD_CONTINUITY_100_PERCENT": true,
+    "NO_MUST_NOT_FIND_VIOLATION": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-95c53e0f704a/audit-report.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-95c53e0f704a/audit-input.txt"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3e3c8dca1381/audit-report.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3e3c8dca1381/audit-input.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-3e3c8dca1381/audit-gold-metrics.json"
   ],
   "recovery": [
     "reload audit report",
-    "repeat clean audit"
+    "repeat clean audit",
+    "rerun gold corpus"
   ],
   "failure_injections": [
     "empty draft",
     "missing provenance",
-    "missing scene purpose"
+    "missing scene purpose",
+    "gold defect corpus"
   ],
   "details": {
     "dimensions": 33,
-    "defect_findings": 3
+    "defect_findings": 3,
+    "gold_fixtures": 103,
+    "gold_expected_findings": 40,
+    "gold_matched_findings": 40,
+    "gold_true_positive_rate": 1.0,
+    "gold_hard_continuity_rate": 1.0,
+    "gold_false_positive_rate": 0.0,
+    "gold_location_accuracy": 1.0,
+    "gold_canon_ref_accuracy": 1.0
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

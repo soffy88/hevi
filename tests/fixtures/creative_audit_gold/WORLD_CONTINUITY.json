@@ -1,0 +1,143 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "WORLD_CONTINUITY",
+          "entity_ref": "world:magic",
+          "predicate": "cost",
+          "subject": "magic",
+          "value": "blood"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "WORLD_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "world:magic"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "WC_CONFLICT",
+        "dimension": "WORLD_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "WORLD_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "WORLD_CONTINUITY",
+          "entity_ref": "world:magic",
+          "location": "sentence:1",
+          "predicate": "cost",
+          "subject": "magic",
+          "value": "nothing"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft breaks the canon rule that magic costs blood."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "WORLD_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "WORLD_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "WORLD_CONTINUITY"
+    ],
+    "rationale": "No world claim is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "WORLD_CONTINUITY",
+          "entity_ref": "world:magic",
+          "predicate": "cost",
+          "subject": "magic",
+          "value": "blood"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "WORLD_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "WORLD_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "WORLD_CONTINUITY",
+          "entity_ref": "world:magic",
+          "location": "sentence:1",
+          "predicate": "cost",
+          "subject": "magic",
+          "value": "blood"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "WORLD_CONTINUITY"
+    ],
+    "rationale": "Draft honours the world rule."
+  }
+]

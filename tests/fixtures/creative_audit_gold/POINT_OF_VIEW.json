@@ -1,0 +1,110 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "POINT_OF_VIEW",
+    "expected_canonical_refs": [
+      []
+    ],
+    "expected_findings": [
+      {
+        "code": "POV_HEAD_HOPPING",
+        "dimension": "POINT_OF_VIEW"
+      }
+    ],
+    "expected_location": [
+      "text:all"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "POINT_OF_VIEW-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "I ran toward the gate. He followed."
+    },
+    "must_not_find": [],
+    "rationale": "First-person and third-person markers are mixed."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "POINT_OF_VIEW",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "POINT_OF_VIEW-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "POINT_OF_VIEW"
+    ],
+    "rationale": "No point-of-view markers are mixed."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "POINT_OF_VIEW",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "POINT_OF_VIEW-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "style": {
+        "pov": "third-limited"
+      },
+      "text": "Mara ran toward the gate. Ash followed her."
+    },
+    "must_not_find": [
+      "POINT_OF_VIEW"
+    ],
+    "rationale": "Narration holds a single third-person point of view."
+  }
+]

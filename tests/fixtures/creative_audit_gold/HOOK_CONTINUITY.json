@@ -1,0 +1,178 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 5,
+      "hook_deadlines": [
+        [
+          "hook:letter",
+          2
+        ]
+      ],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "HOOK_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "hook:letter"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "HC_STALE_HOOK",
+        "dimension": "HOOK_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      null
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "HOOK_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "An open hook passed its deadline without resolution."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "HOOK_CONTINUITY",
+          "entity_ref": "hook:letter",
+          "predicate": "status",
+          "subject": "hook:letter",
+          "value": "open"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "HOOK_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "hook:letter"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "HC_CONFLICT",
+        "dimension": "HOOK_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      null
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "HOOK_CONTINUITY-POS-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "HOOK_CONTINUITY",
+          "entity_ref": "hook:letter",
+          "predicate": "status",
+          "subject": "hook:letter",
+          "value": "resolved"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft resolves a hook in a way that contradicts canon."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "HOOK_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "HOOK_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "HOOK_CONTINUITY"
+    ],
+    "rationale": "No hook is tracked."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 3,
+      "hook_deadlines": [
+        [
+          "hook:letter",
+          9
+        ]
+      ],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "HOOK_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "HOOK_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "HOOK_CONTINUITY"
+    ],
+    "rationale": "The hook is still within its deadline."
+  }
+]

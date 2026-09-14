@@ -1,0 +1,143 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "PHYSICAL_STATE_CONTINUITY",
+          "entity_ref": "character:mara",
+          "predicate": "arm",
+          "subject": "Mara",
+          "value": "broken"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "PHYSICAL_STATE_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "character:mara"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "PSC_CONFLICT",
+        "dimension": "PHYSICAL_STATE_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "PHYSICAL_STATE_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "PHYSICAL_STATE_CONTINUITY",
+          "entity_ref": "character:mara",
+          "location": "sentence:1",
+          "predicate": "arm",
+          "subject": "Mara",
+          "value": "fine"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft has an injured character acting uninjured."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "PHYSICAL_STATE_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "PHYSICAL_STATE_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "PHYSICAL_STATE_CONTINUITY"
+    ],
+    "rationale": "No physical claim is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "PHYSICAL_STATE_CONTINUITY",
+          "entity_ref": "character:mara",
+          "predicate": "arm",
+          "subject": "Mara",
+          "value": "broken"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "PHYSICAL_STATE_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "PHYSICAL_STATE_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "PHYSICAL_STATE_CONTINUITY",
+          "entity_ref": "character:mara",
+          "location": "sentence:1",
+          "predicate": "arm",
+          "subject": "Mara",
+          "value": "broken"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "PHYSICAL_STATE_CONTINUITY"
+    ],
+    "rationale": "Physical state matches canon."
+  }
+]

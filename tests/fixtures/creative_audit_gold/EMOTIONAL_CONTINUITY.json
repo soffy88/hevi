@@ -1,0 +1,143 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "EMOTIONAL_CONTINUITY",
+          "entity_ref": "character:mara",
+          "predicate": "emotion",
+          "subject": "Mara",
+          "value": "calm"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "EMOTIONAL_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "character:mara"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "EC_UNMOTIVATED_SHIFT",
+        "dimension": "EMOTIONAL_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "WARN"
+    ],
+    "fixture_id": "EMOTIONAL_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "EMOTIONAL_CONTINUITY",
+          "entity_ref": "character:mara",
+          "location": "sentence:1",
+          "predicate": "emotion",
+          "subject": "Mara",
+          "value": "furious"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft shifts emotion without a bridging beat."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "EMOTIONAL_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "EMOTIONAL_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "EMOTIONAL_CONTINUITY"
+    ],
+    "rationale": "No emotion claim is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "EMOTIONAL_CONTINUITY",
+          "entity_ref": "character:mara",
+          "predicate": "emotion",
+          "subject": "Mara",
+          "value": "calm"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "EMOTIONAL_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "EMOTIONAL_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "EMOTIONAL_CONTINUITY",
+          "entity_ref": "character:mara",
+          "location": "sentence:1",
+          "predicate": "emotion",
+          "subject": "Mara",
+          "value": "calm"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "EMOTIONAL_CONTINUITY"
+    ],
+    "rationale": "Emotion matches canon."
+  }
+]

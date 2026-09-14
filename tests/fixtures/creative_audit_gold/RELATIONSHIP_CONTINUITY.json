@@ -1,0 +1,143 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "RELATIONSHIP_CONTINUITY",
+          "entity_ref": "relationship:mara-ash",
+          "predicate": "type",
+          "subject": "Mara-Ash",
+          "value": "ally"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "RELATIONSHIP_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "relationship:mara-ash"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "REL_CONFLICT",
+        "dimension": "RELATIONSHIP_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "RELATIONSHIP_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "RELATIONSHIP_CONTINUITY",
+          "entity_ref": "relationship:mara-ash",
+          "location": "sentence:1",
+          "predicate": "type",
+          "subject": "Mara-Ash",
+          "value": "enemy"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft reverses a canon relationship."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "RELATIONSHIP_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "RELATIONSHIP_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "RELATIONSHIP_CONTINUITY"
+    ],
+    "rationale": "No relationship claim is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "RELATIONSHIP_CONTINUITY",
+          "entity_ref": "relationship:mara-ash",
+          "predicate": "type",
+          "subject": "Mara-Ash",
+          "value": "ally"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "RELATIONSHIP_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "RELATIONSHIP_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "RELATIONSHIP_CONTINUITY",
+          "entity_ref": "relationship:mara-ash",
+          "location": "sentence:1",
+          "predicate": "type",
+          "subject": "Mara-Ash",
+          "value": "ally"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "RELATIONSHIP_CONTINUITY"
+    ],
+    "rationale": "Relationship matches canon."
+  }
+]

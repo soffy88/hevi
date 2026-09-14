@@ -1,0 +1,133 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "GENRE_ALIGNMENT",
+    "expected_canonical_refs": [
+      [
+        "genre:mystery"
+      ],
+      [
+        "genre:mystery"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "GA_FORBIDDEN_PATTERN",
+        "dimension": "GENRE_ALIGNMENT"
+      },
+      {
+        "code": "GA_REQUIRED_RULE_UNMET",
+        "dimension": "GENRE_ALIGNMENT"
+      }
+    ],
+    "expected_location": [
+      "sentence:1",
+      "text:all"
+    ],
+    "expected_severity": [
+      "ERROR",
+      "WARN"
+    ],
+    "fixture_id": "GENRE_ALIGNMENT-POS-01",
+    "input_artifact": {
+      "claims": [],
+      "genre": {
+        "forbidden_patterns": [
+          "spell"
+        ],
+        "name": "mystery",
+        "required_patterns": [
+          "clue"
+        ]
+      },
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "A spell lit the gate."
+    },
+    "must_not_find": [],
+    "rationale": "The draft uses a forbidden pattern and omits a required genre element."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "GENRE_ALIGNMENT",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "GENRE_ALIGNMENT-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "GENRE_ALIGNMENT"
+    ],
+    "rationale": "No genre profile is configured."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "GENRE_ALIGNMENT",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "GENRE_ALIGNMENT-NEG-02",
+    "input_artifact": {
+      "claims": [],
+      "genre": {
+        "name": "mystery",
+        "required_patterns": [
+          "gate"
+        ]
+      },
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "GENRE_ALIGNMENT"
+    ],
+    "rationale": "The required genre element is present."
+  }
+]

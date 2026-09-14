@@ -1,0 +1,143 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "RESOURCE_CONTINUITY",
+          "entity_ref": "resource:potions",
+          "predicate": "quantity",
+          "subject": "potions",
+          "value": "2"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "RESOURCE_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "resource:potions"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "RSC_CONFLICT",
+        "dimension": "RESOURCE_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "RESOURCE_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "RESOURCE_CONTINUITY",
+          "entity_ref": "resource:potions",
+          "location": "sentence:1",
+          "predicate": "quantity",
+          "subject": "potions",
+          "value": "4"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft spends more of a resource than canon holds."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "RESOURCE_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "RESOURCE_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "RESOURCE_CONTINUITY"
+    ],
+    "rationale": "No resource claim is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "RESOURCE_CONTINUITY",
+          "entity_ref": "resource:potions",
+          "predicate": "quantity",
+          "subject": "potions",
+          "value": "2"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "RESOURCE_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "RESOURCE_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "RESOURCE_CONTINUITY",
+          "entity_ref": "resource:potions",
+          "location": "sentence:1",
+          "predicate": "quantity",
+          "subject": "potions",
+          "value": "2"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "RESOURCE_CONTINUITY"
+    ],
+    "rationale": "Resource quantity matches canon."
+  }
+]

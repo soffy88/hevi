@@ -1,0 +1,212 @@
+[
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "TIMELINE_CONTINUITY",
+          "entity_ref": "event:battle",
+          "predicate": "order",
+          "subject": "battle",
+          "value": "5"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "TIMELINE_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "event:battle"
+      ],
+      [
+        "event:battle"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "TC_CONFLICT",
+        "dimension": "TIMELINE_CONTINUITY"
+      },
+      {
+        "code": "TC_ORDER_VIOLATION",
+        "dimension": "TIMELINE_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1",
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR",
+      "ERROR"
+    ],
+    "fixture_id": "TIMELINE_CONTINUITY-POS-01",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "TIMELINE_CONTINUITY",
+          "entity_ref": "event:battle",
+          "location": "sentence:1",
+          "predicate": "order",
+          "subject": "battle",
+          "value": "2"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft places the battle before its canon prerequisite."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "TIMELINE_CONTINUITY",
+          "entity_ref": "event:battle",
+          "predicate": "order",
+          "subject": "battle",
+          "value": "5"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "POSITIVE",
+    "dimension": "TIMELINE_CONTINUITY",
+    "expected_canonical_refs": [
+      [
+        "event:battle"
+      ]
+    ],
+    "expected_findings": [
+      {
+        "code": "TC_CONFLICT",
+        "dimension": "TIMELINE_CONTINUITY"
+      }
+    ],
+    "expected_location": [
+      "sentence:1"
+    ],
+    "expected_severity": [
+      "ERROR"
+    ],
+    "fixture_id": "TIMELINE_CONTINUITY-POS-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "TIMELINE_CONTINUITY",
+          "entity_ref": "event:battle",
+          "location": "sentence:1",
+          "predicate": "order",
+          "subject": "battle",
+          "value": "9"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [],
+    "rationale": "Draft moves the battle to a different but non-violating order."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "TIMELINE_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "TIMELINE_CONTINUITY-NEG-01",
+    "input_artifact": {
+      "claims": [],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "TIMELINE_CONTINUITY"
+    ],
+    "rationale": "No timeline claim is present."
+  },
+  {
+    "canon_state": {
+      "canon_facts": [
+        {
+          "dimension": "TIMELINE_CONTINUITY",
+          "entity_ref": "event:battle",
+          "predicate": "order",
+          "subject": "battle",
+          "value": "5"
+        }
+      ],
+      "current_chapter": 1,
+      "hook_deadlines": [],
+      "known_entities": [],
+      "payoff_setup_refs": []
+    },
+    "case_type": "NEGATIVE",
+    "dimension": "TIMELINE_CONTINUITY",
+    "expected_canonical_refs": [],
+    "expected_findings": [],
+    "expected_location": [],
+    "expected_severity": [],
+    "fixture_id": "TIMELINE_CONTINUITY-NEG-02",
+    "input_artifact": {
+      "claims": [
+        {
+          "dimension": "TIMELINE_CONTINUITY",
+          "entity_ref": "event:battle",
+          "location": "sentence:1",
+          "predicate": "order",
+          "subject": "battle",
+          "value": "5"
+        }
+      ],
+      "scenes": [
+        {
+          "beat_kind": "turn",
+          "objective": "reach the gate",
+          "purpose": "establish the crossing",
+          "sequence": 1
+        }
+      ],
+      "text": "Mara crossed the quiet yard and reached the gate."
+    },
+    "must_not_find": [
+      "TIMELINE_CONTINUITY"
+    ],
+    "rationale": "Draft keeps the canon event order."
+  }
+]
