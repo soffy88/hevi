@@ -249,3 +249,81 @@ def test_intent_comparison_does_not_turn_not_evaluable_into_pass() -> None:
     artifact = ArtifactProfile(project_id=project_id, artifact_id=uuid4())
     comparison = ComparisonModule().compare(intent=intent, artifact=artifact)
     assert comparison.status == "NOT_EVALUABLE"
+
+
+def test_length_governance_has_hard_range_and_bounded_normalization() -> None:
+    from hevi.creative.omodul import LengthModule, LengthPolicy
+
+    policy = LengthPolicy(target_words=5, soft_min=4, soft_max=6, hard_min=2, hard_max=8)
+    module = LengthModule()
+    assert module.inspect("one two", policy).status == "WARN"
+    text, report = module.normalize(
+        "one two",
+        policy,
+        generator=lambda current, _direction, target: (
+            current + " three four five" if target == 5 else current
+        ),
+    )
+    assert len(text.split()) == 5
+    assert report.passes == 1
+
+
+def test_policy_skill_run_snapshot_workspace_backup_routing_webhook_and_service(tmp_path) -> None:
+    from hevi.creative.omodul import BackgroundRunController, PolicyModule
+    from hevi.creative.oprim import (
+        AtomicWorkspace,
+        ModelRouter,
+        Route,
+        WebhookLedger,
+        WebhookSigner,
+        backup_workspace,
+        claim_delivery,
+    )
+    from hevi.creative.oservi import CreativeServiceSurface, ServiceRequest, ServiceResult
+    from hevi.creative.oskill import default_skill
+    from hevi.obase.creative import CreativePolicy, ProductionRun, RunSnapshot
+
+    project_id = uuid4()
+    skill = default_skill("long-form-writing", project_id)
+    assert skill.can_write_state is False
+    policy = CreativePolicy(project_id=project_id, name="base", scope="PROJECT", rules=("safe",))
+    updated = policy.model_copy(update={"rules": ("safe", "concise"), "version": 2})
+    assert PolicyModule().diff(policy, updated).added == ("concise",)
+    run = ProductionRun(project_id=project_id, run_key="r", capability="x", status="RUNNING")
+    cancelled = BackgroundRunController().cancel(run)
+    assert cancelled.status == "CANCELLED"
+    snapshot = RunSnapshot(
+        project_id=project_id, run_id=run.object_id, stage="draft", state_hash="h"
+    )
+    assert snapshot.run_id == run.object_id
+    workspace_root = tmp_path / "workspace"
+    workspace = AtomicWorkspace(workspace_root)
+    workspace.begin()
+    workspace.stage_json("state.json", {"project": str(project_id)})
+    workspace.commit()
+    assert (workspace_root / "state.json").is_file()
+    backup = backup_workspace(workspace_root, tmp_path / "backup")
+    assert (backup / "manifest.json").is_file()
+    route = ModelRouter(Route(provider="OPENAI_COMPATIBLE", model="veya1.2-free"))
+    route.set_capability("script", Route(provider="LOCAL", model="creative"))
+    assert route.resolve(capability="script").model == "creative"
+    signer = WebhookSigner(b"test")
+    signature = signer.sign("event", {"status": "done"})
+    assert signer.verify(signature, "event", {"status": "done"})
+    ledger = WebhookLedger()
+    assert claim_delivery(ledger, "event") is True
+    assert claim_delivery(ledger, "event") is False
+    surface = CreativeServiceSurface()
+
+    def handler(request: ServiceRequest) -> ServiceResult:
+        return ServiceResult(
+            request_id=request.request_id, service=request.service, status="SUCCEEDED"
+        )
+
+    surface.register("creative.export", handler)
+    request = ServiceRequest(
+        service="creative.export",
+        project_id=project_id,
+        idempotency_key="x",
+    )
+    assert surface.call(request).status == "SUCCEEDED"

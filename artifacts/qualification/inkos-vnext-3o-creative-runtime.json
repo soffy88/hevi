@@ -1,7 +1,8 @@
 {
   "branch": "feature/vnext-3o-creative-runtime",
   "base_distribution_sha": "1c0be2d89b1ae6a14cf904ab4804380b772e9f44",
-  "head": "d03fca104ea23b8aa9987db7aaef88c51d28a018",
+  "code_snapshot": "d03fca104ea23b8aa9987db7aaef88c51d28a018",
+  "report_commit": "26483f46af48856245424da3517079afe21549c9",
   "clean_room": {
     "upstream_sha": "091048383f411eb99948a8764f42b6fd13006f9b",
     "license": "AGPL-3.0-only",
@@ -16,7 +17,7 @@
   },
   "creative_qualification": {
     "gold_catalog_total": 20,
-    "gold_and_runtime_tests": 32,
+    "gold_and_runtime_tests": 34,
     "gold_and_runtime_tests_status": "PASS",
     "long_horizon_chapters": 50,
     "interactive_nodes": 31,
@@ -44,10 +45,10 @@
   },
   "ledger_snapshot": {
     "total": 39,
-    "missing": 4,
+    "missing": 0,
     "partial": 35,
     "implemented_unqualified": 0,
-    "qualified": 0,
+    "qualified": 4,
     "source": "docs/research/inkos_capability_ledger.yaml"
   },
   "parity": "PENDING_FULL_SUITE_AND_REMAINING_CAPABILITY_QUALIFICATION"

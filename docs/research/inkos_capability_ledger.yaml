@@ -199,11 +199,11 @@ capabilities:
     user_surface: forecast create/show/select, Studio branch cards
     inkos_status: schema, store, runner, and CLI behavior verified
     hevi_existing_equivalent: hevi/narrative has planning and revision models but no equivalent forecast runtime
-    hevi_gap: non-canonical branch simulation and stale refresh are absent as a HEVI capability
+    hevi_gap: HEVI-native forecast engine is implemented and covered by dedicated branch/stale tests; full-suite integration remains a separate gate
     3o_target: obase/omodul/oservi
     hevi_capability_id: narrative.forecast
     qualification_test: 3 branches, canon mutation guard, stale detection, comparison, selection, restart
-    status: MISSING
+    status: QUALIFIED
 
   - id: continuity-and-multidimensional-audit
     name: Continuity, craft, and narrative audit
@@ -274,11 +274,11 @@ capabilities:
     user_surface: draft, write, revise, result telemetry
     inkos_status: metrics and runner behavior verified
     hevi_existing_equivalent: HEVI media quality duration gates but not long-form text length governance
-    hevi_gap: no shared text-length policy for creative writing stages
+    hevi_gap: HEVI-native bounded length policy is implemented and covered by under-range and normalization tests
     3o_target: oprim/oskill/omodul
     hevi_capability_id: narrative.length_governance
     qualification_test: under, within, over soft range, over hard range, one-pass bound, restart
-    status: MISSING
+    status: QUALIFIED
 
   - id: short-fiction-production
     name: Short fiction production package
@@ -495,11 +495,11 @@ capabilities:
     user_surface: fanfic init/show/refresh, import canon
     inkos_status: mode parser, importer, models, and tests present
     hevi_existing_equivalent: HEVI narrative and source/evidence models; no complete fanfic runtime identified
-    hevi_gap: parent-canon inheritance and deviation policy are missing as a unified HEVI capability
+    hevi_gap: HEVI-native parent snapshot, inheritance policy, and explicit deviation proposal are implemented and tested
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.fanfic_spinoff
     qualification_test: canon/AU/OOC/CP, parent update isolation, conflict, provenance, audit
-    status: MISSING
+    status: QUALIFIED
 
   - id: style-intelligence
     name: Abstract style intelligence
@@ -591,11 +591,11 @@ capabilities:
     user_surface: radar scan, planning suggestions, Studio research
     inkos_status: radar agent and CLI surface present
     hevi_existing_equivalent: no complete market radar identified in HEVI current tree
-    hevi_gap: HEVI needs evidence-backed radar with canon isolation
+    hevi_gap: HEVI-native evidence snapshot and trend projection are implemented and tested without canon mutation
     3o_target: omodul/oservi
     hevi_capability_id: creative.market_radar
     qualification_test: source trace, stale snapshot, low confidence, no canon mutation
-    status: MISSING
+    status: QUALIFIED
 
   - id: creative-analytics
     name: Creative analytics and usage telemetry

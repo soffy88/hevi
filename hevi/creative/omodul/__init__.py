@@ -22,6 +22,7 @@ from hevi.creative.omodul.interactive import (
     InteractiveFilmGraph,
     InteractiveFilmModule,
 )
+from hevi.creative.omodul.length import LengthModule, LengthPolicy, LengthReport
 from hevi.creative.omodul.long_horizon import HorizonReport, LongHorizonQualifier
 from hevi.creative.omodul.market import MarketRadar, MarketTrend, TrendEvidence, TrendSnapshot
 from hevi.creative.omodul.materials import MaterialCitation, MaterialModule
@@ -41,6 +42,7 @@ from hevi.creative.omodul.play import (
     PlayState,
     TurnResult,
 )
+from hevi.creative.omodul.policy import PolicyDiff, PolicyModule
 from hevi.creative.omodul.research import ResearchModule
 from hevi.creative.omodul.review import ReviewMode, ReviewWorkflow
 from hevi.creative.omodul.revision import RevisionEngine, RevisionLimitError, RevisionPolicy
@@ -90,6 +92,9 @@ __all__ = [
     "StaleForecastError",
     "HorizonReport",
     "LongHorizonQualifier",
+    "LengthModule",
+    "LengthPolicy",
+    "LengthReport",
     "MaterialCitation",
     "MaterialModule",
     "MarketRadar",
@@ -119,6 +124,8 @@ __all__ = [
     "TurnResult",
     "Action",
     "FreeAction",
+    "PolicyDiff",
+    "PolicyModule",
     "ResearchModule",
     "ReviewMode",
     "ReviewWorkflow",
