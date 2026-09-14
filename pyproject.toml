@@ -21,9 +21,9 @@ dependencies = [
     "oprim @ git+https://github.com/helios-plat/oprim.git@e7f9c65196437d3bff09401aa02bc817d071eec3",
     "oskill @ git+https://github.com/helios-plat/oskill.git@cac39df03778d4e4e44db3c006f8fc788dc757f6",
     # 标准长视频及镜头返工事务：兼容 v1.36.0 的已测提交，待上游 tag 后替换 ref。
-    "omodul @ git+https://github.com/helios-plat/omodul.git@62b23b6ae56d4248e8cb8bae37e633a7df7294f8",
+    "omodul @ git+https://github.com/helios-plat/omodul.git@bdb48f52032e69818281c779169959e0650a558d",
     # 统一的无状态服务执行骨架。固定到已测试的 3O 功能提交；合入上游 tag 后只替换 ref。
-    "oservi @ git+https://github.com/helios-plat/oservi.git@f87783382b2988d8716039d39bb82f1a72de4902",
+    "oservi @ git+https://github.com/helios-plat/oservi.git@2527968d4d7e2455a48b280cb191012f4266d0bb",
     "python-frontmatter>=1.3.0",  # oprim v3.10 transitive dep (not declared in oprim)
     "vibevoice==0.0.1",  # oprim._vibevoice_synthesize runtime dep (not declared in oprim metadata)
     "dashscope>=1.20",  # oprim v3.10.33 embedding.qwen3_dashscope runtime dep (undeclared)
