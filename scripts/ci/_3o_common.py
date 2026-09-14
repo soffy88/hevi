@@ -1,77 +1,152 @@
-"""Shared helpers for the 3O v3.0 CI checks (SPEC v3.0 §6.1).
+"""Shared, source-based helpers for the 3O v3 architecture gates.
 
-The 3O v3.0 paradigm fixes a flat namespace, a single source per element, and a
-strict layer direction.  Legacy code that predates v3.0 is *recorded*, never
-silently fixed or ignored, in ``artifacts/qualification/legacy-3o-v3-debt.json``.
-
-Every check follows the same contract:
-
-  - collect ``violations`` as stable string identifiers,
-  - call :func:`report`, which subtracts the recorded legacy allowlist,
-  - exit ``0`` only when there is no *blocking* violation and no *stale* debt.
-
-A new element must never appear in the debt ledger; stale entries are treated as
-a hard failure so the ledger can only shrink.
+These helpers intentionally do not consume an audit manifest.  The gates resolve
+the installed pinned packages and inspect Python source directly.
 """
-
 from __future__ import annotations
 
-import json
+import ast
+import importlib.util
+from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 HEVI = ROOT / "hevi"
-CREATIVE = HEVI / "creative"
-LAYERS = ("oprim", "oskill", "omodul", "oservi")
-OBASE = HEVI / "obase"
-DEBT_PATH = ROOT / "artifacts/qualification/legacy-3o-v3-debt.json"
-
-#: Names carrying a project / vendor prefix are not flat 3O names.
-FORBIDDEN_PREFIXES = ("hevi", "inkos")
+CANONICAL = ("obase", "oprim", "oskill", "omodul", "oservi")
+PILLARS = {"fingerprint", "decision_trail", "report", "cost"}
+PROJECT_PREFIXES = ("hevi_", "inkos_", "digital_human_", "pipeline_lite_", "voicepro_")
 
 
-def layer_paths() -> list[Path]:
-    """All first-party files that belong to the 3O layers (excluding __init__)."""
-    paths: list[Path] = []
-    for layer in LAYERS:
-        paths.extend(sorted(p for p in (CREATIVE / layer).glob("*.py") if p.name != "__init__.py"))
-    return paths
+@dataclass(frozen=True)
+class Source:
+    path: Path
+    layer: str
+    local: bool
+
+    @property
+    def rel(self) -> str:
+        try:
+            return str(self.path.relative_to(ROOT))
+        except ValueError:
+            return str(self.path)
 
 
-def rel(path: Path) -> str:
-    return path.relative_to(ROOT).as_posix()
+def parse(path: Path) -> ast.Module:
+    return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
 
-def has_project_prefix(name: str) -> bool:
-    lowered = name.lower()
-    return any(
-        lowered == prefix or lowered.startswith((prefix + "_", prefix + "-"))
-        for prefix in FORBIDDEN_PREFIXES
-    )
+def local_sources(layer: str | None = None) -> list[Source]:
+    out: list[Source] = []
+    for path in HEVI.rglob("*.py"):
+        if "__pycache__" in path.parts:
+            continue
+        parts = path.relative_to(HEVI).parts
+        if layer is None:
+            if not set(parts) & set(CANONICAL):
+                continue
+            found = next((p for p in parts if p in CANONICAL), None)
+        else:
+            found = layer if layer in parts else None
+        if found:
+            out.append(Source(path, found, True))
+    return sorted(out, key=lambda x: str(x.path))
 
 
-def allowlist(check_name: str) -> set[str]:
-    if not DEBT_PATH.exists():
-        return set()
-    try:
-        payload = json.loads(DEBT_PATH.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return set()
-    return set(payload.get("checks", {}).get(check_name, {}).get("allow", ()))
+def package_root(name: str) -> Path | None:
+    spec = importlib.util.find_spec(name)
+    if spec is None:
+        return None
+    if spec.submodule_search_locations:
+        return Path(next(iter(spec.submodule_search_locations)))
+    return Path(spec.origin).parent if spec.origin else None
 
 
-def report(check_name: str, violations: list[str], *, header: str) -> int:
-    allowed = allowlist(check_name)
-    observed = set(violations)
-    blocking = sorted(observed - allowed)
-    stale = sorted(allowed - observed)
-    if blocking or stale:
-        print(header)
-        for item in blocking:
-            print(f"  BLOCK {item}")
-        for item in stale:
-            print(f"  STALE_DEBT {check_name}: {item}")
-        print(f"{check_name}: FAIL (blocking={len(blocking)} stale={len(stale)})")
-        return 1
-    print(f"{check_name}: PASS (legacy allowlisted={len(allowed)})")
-    return 0
+def canonical_sources(layer: str | None = None) -> list[Source]:
+    names = (layer,) if layer else CANONICAL
+    out: list[Source] = []
+    for name in names:
+        root = package_root(name)
+        if root is None or not root.exists():
+            continue
+        out.extend(Source(p, name, False) for p in root.rglob("*.py") if "__pycache__" not in p.parts)
+    return sorted(out, key=lambda x: str(x.path))
+
+
+def all_sources(layer: str | None = None) -> list[Source]:
+    return local_sources(layer) + canonical_sources(layer)
+
+
+def imported_layers(tree: ast.AST) -> set[str]:
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root = alias.name.split(".")[0]
+                if root in CANONICAL:
+                    found.add(root)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            root = node.module.split(".")[0]
+            if root in CANONICAL:
+                found.add(root)
+    return found
+
+
+def import_edges(tree: ast.AST) -> list[tuple[str, str, int]]:
+    edges: list[tuple[str, str, int]] = []
+    for node in ast.walk(tree):
+        module = None
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                module = alias.name
+                root = module.split(".")[0]
+                if root in CANONICAL:
+                    edges.append((root, module, node.lineno))
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            module = node.module
+            root = module.split(".")[0]
+            if root in CANONICAL:
+                edges.append((root, module, node.lineno))
+            elif root == "hevi":
+                target = next((part for part in module.split(".") if part in CANONICAL), None)
+                if target:
+                    edges.append((target, module, node.lineno))
+    return edges
+
+
+def defined_functions(tree: ast.AST) -> Iterable[ast.FunctionDef | ast.AsyncFunctionDef]:
+    return (n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)))
+
+
+def has_real_implementation(tree: ast.Module) -> bool:
+    """Whether a local namespace file contains code rather than a compatibility shim."""
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            return True
+        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            # __all__ and direct imported aliases are shim metadata.
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if not all(isinstance(t, ast.Name) and t.id in {"__all__", "__version__"} for t in targets):
+                return True
+        if isinstance(node, ast.Expr) and not (isinstance(node.value, ast.Constant) and isinstance(node.value.value, str)):
+            return True
+    return False
+
+
+def public_functions(tree: ast.Module) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    return [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")]
+
+
+def call_names(tree: ast.AST) -> list[str]:
+    names: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name):
+                names.append(node.func.id)
+            elif isinstance(node.func, ast.Attribute):
+                names.append(node.func.attr)
+    return names
+
+
+def json_ready(items: list[str]) -> list[str]:
+    return sorted(set(items))
