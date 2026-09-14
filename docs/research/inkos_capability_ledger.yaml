@@ -313,7 +313,7 @@ capabilities:
     hevi_capability_id: creative.short_fiction
     qualification_test: complete short package, invalid input, retry, resume, export, artifact provenance
     qualification_evidence_path: artifacts/qualification/creative-runtime/short-fiction-production.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: script-runtime
     name: Canonical script runtime

@@ -1,0 +1,28 @@
+{
+  "asset_id": "d2d283c5-82d5-4e0f-886b-95ef0b29123e",
+  "base_revision": 0,
+  "change_type": "POLISH",
+  "conflict_codes": [],
+  "diff": [
+    "-alpha alpha alpha alpha beta",
+    "+alpha beta"
+  ],
+  "operations": [
+    {
+      "change_type": "POLISH",
+      "code": "RP_REPEATED_PHRASE",
+      "description": "collapse the repeated phrase",
+      "dimension": "REPETITION"
+    }
+  ],
+  "original_hash": "2e7e55954ccae157ab30dbfb9b9fe10efdfdf372b85be90b73dcb5b8bb8a52ee",
+  "original_text": "alpha alpha alpha alpha beta",
+  "pass_number": 1,
+  "re_audit_status": "UNCHANGED",
+  "resolved_codes": [
+    "RP_REPEATED_PHRASE"
+  ],
+  "revised_hash": "1a989ea86150171c687b0727f218eedbb94c4665a7da9b0add1bf5de607f2bf1",
+  "revised_text": "alpha beta",
+  "unresolved_codes": []
+}

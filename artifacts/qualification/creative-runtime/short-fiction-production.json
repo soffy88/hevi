@@ -1,6 +1,6 @@
 {
   "capability_id": "short-fiction-production",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-65d4051a964f/short-package.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-32b620a3807d/short-package.json",
   "checks": {
     "COMPLETE_MANUSCRIPT": true,
     "OUTLINE": true,
@@ -9,24 +9,32 @@
     "NATURALNESS_DEFECT": true,
     "NATURALNESS_CLEAN": true,
     "FIVE_GENRE_PROFILES_AFFECT_AUDIT": true,
-    "PLANNING_AND_PACING_EFFECT": false,
+    "PLANNING_AND_PACING_EFFECT": true,
     "RUN_PERSISTENCE": true,
     "ARTIFACT_MANIFEST": true,
-    "AUDIT_REPORT": false,
-    "REVISION_RESULT": false,
-    "EXPORT_ROUNDTRIP": false,
-    "RECOVERY": false
+    "AUDIT_REPORT": true,
+    "REVISION_RESULT": true,
+    "EXPORT_ROUNDTRIP": true,
+    "RECOVERY": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-65d4051a964f/short-package.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-32b620a3807d/short-package.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-32b620a3807d/short-audit.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-32b620a3807d/short-revision.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-32b620a3807d/short-project.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-32b620a3807d/short-export.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-32b620a3807d/short-export.md",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/short-fiction-production/run-32b620a3807d/short-export.epub"
   ],
   "recovery": [
-    "reload short package and style profile"
+    "persist short package, audit, and revision result",
+    "restore package and retry a rejected export"
   ],
   "failure_injections": [
     "empty brief",
     "naturalness defect corpus",
-    "genre forbidden patterns"
+    "genre forbidden patterns",
+    "quality gate failure"
   ],
   "details": {
     "genre_finding_counts": [
@@ -35,8 +43,15 @@
       1,
       1,
       1
+    ],
+    "pacing_profile": "measured",
+    "target_words_per_chapter": 2800,
+    "export_formats": [
+      "txt",
+      "markdown",
+      "epub"
     ]
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

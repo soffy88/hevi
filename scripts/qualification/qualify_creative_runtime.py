@@ -26,10 +26,13 @@ from hevi.creative.omodul import (
     ContextBudget,
     ContextCandidate,
     CreativeContextCompiler,
+    ExportModule,
     GenreModule,
     GenreValidationError,
     HeavyActionConfirmation,
     ImportResult,
+    LengthModule,
+    LengthPolicy,
     LongFormWorkflow,
     LongHorizonQualifier,
     NarrativeAuditEngine,
@@ -37,6 +40,8 @@ from hevi.creative.omodul import (
     NarrativeStage,
     ProductionHarness,
     RevisionEngine,
+    RevisionExecution,
+    RevisionLimitError,
     RevisionPolicy,
     ShortFictionModule,
     StyleModule,
@@ -1066,12 +1071,16 @@ def qualify_revision(root: Path) -> Evidence:
 
 def qualify_short_style_genre(root: Path) -> Evidence:
     project_id = uuid4()
+    title = "The Harbour Key"
+    brief = "Mara chooses whether to open the gate"
+    genre_name = "mystery"
+    chapter_count = 3
     short = ShortFictionModule().create(
         project_id=project_id,
-        title="The Harbour Key",
-        direction="Mara chooses whether to open the gate",
-        genre="mystery",
-        chapter_count=3,
+        title=title,
+        direction=brief,
+        genre=genre_name,
+        chapter_count=chapter_count,
         length=30,
         language="en",
         materials=("public-domain harbour map",),
@@ -1105,17 +1114,177 @@ def qualify_short_style_genre(root: Path) -> Evidence:
         )
         for index, profile in enumerate(genre_profiles)
     )
+    planner = GenreModule()
+    profile = planner.profile(project_id=project_id, name=genre_name)
+    plan = planner.plan(profile, brief=brief, chapter_count=chapter_count)
+    planned_outline = tuple(
+        f"Chapter {index + 1} [{plan.beats[index % len(plan.beats)]}]: {brief}"
+        for index in range(len(short.outline))
+    )
+    target_words = plan.target_words_per_chapter
+    length_policy = LengthPolicy(
+        target_words=target_words,
+        soft_min=int(target_words * 0.8),
+        soft_max=int(target_words * 1.2),
+        hard_min=int(target_words * 0.5),
+        hard_max=int(target_words * 2.0),
+    )
+
+    def expand(current: str, _direction: str, word_target: int) -> str:
+        words = current.split()
+        index = 0
+        while len(words) < word_target:
+            words.append(plan.beats[index % len(plan.beats)])
+            index += 1
+        return " ".join(words)
+
+    normalized = tuple(
+        LengthModule().normalize(chapter, length_policy, generator=expand)
+        for chapter in short.manuscript
+    )
+    paced_chapters = tuple(text for text, _ in normalized)
+    pacing_reports = tuple(report for _, report in normalized)
+    paced_text = "\n\n".join(paced_chapters)
+    planning_effect = (
+        plan.pacing_profile == profile.pacing_profile
+        and bool(plan.beats)
+        and paced_chapters != short.manuscript
+        and all(any(beat in chapter for beat in plan.beats) for chapter in paced_chapters)
+        and planned_outline != short.outline
+        and all(report.status == "PASS" for report in pacing_reports)
+        and all(report.word_count == target_words for report in pacing_reports)
+    )
+
+    short_artifact = _text_artifact(root, "short-manuscript.txt", paced_text, project_id)
+    audit = NarrativeAuditEngine().audit(
+        project_id=project_id,
+        artifact=short_artifact,
+        canon=NarrativeCanon(project_id=project_id),
+        text=paced_text,
+        evidence_refs=short_artifact.provenance,
+    )
+    audit_path = root / "short-audit.json"
+    persist_model(audit_path, audit)
+    restored_audit = restore_model(audit_path, NarrativeAudit)
+
+    revision_engine = RevisionEngine(RevisionPolicy(max_passes=2))
+    revision_audit = NarrativeAudit(
+        project_id=project_id,
+        artifact_id=short_artifact.object_id,
+        status="FAIL",
+        findings=(
+            AuditFinding(
+                severity="WARN",
+                dimension="REPETITION",
+                recommendation="collapse the repeated phrase",
+                code="RP_REPEATED_PHRASE",
+            ),
+        ),
+    )
+    revision_plan = revision_engine.plan(
+        asset_id=short_artifact.object_id,
+        base_revision=0,
+        audit=revision_audit,
+        change_type="POLISH",
+    )
+    revision_result = revision_engine.execute(
+        asset_id=short_artifact.object_id,
+        base_revision=0,
+        plan=revision_plan,
+        text="alpha alpha alpha alpha beta",
+        change_type="POLISH",
+    )
+    revision_path = root / "short-revision.json"
+    persist_model(revision_path, revision_result)
+    restored_revision = restore_model(revision_path, RevisionExecution)
+    revision_limit_enforced = False
+    try:
+        revision_engine.candidate(
+            project_id=project_id,
+            asset_id=short_artifact.object_id,
+            base_revision=0,
+            pass_number=3,
+        )
+    except RevisionLimitError:
+        revision_limit_enforced = True
+
+    export_module = ExportModule()
+    export_chapters = tuple(paced_chapters)
+    exports = {
+        fmt: export_module.export_text(
+            project_id=project_id,
+            source=short_artifact,
+            title=short.project.title,
+            chapters=export_chapters,
+            fmt=fmt,
+        )
+        for fmt in ("txt", "markdown", "epub")
+    }
+    export_payloads: dict[str, bytes] = {
+        "txt": paced_text.encode("utf-8"),
+        "markdown": f"# {short.project.title}\n\n{paced_text}\n".encode(),
+        "epub": export_module._epub(short.project.title, export_chapters),
+    }
+    export_paths: dict[str, Path] = {}
+    for fmt, payload in export_payloads.items():
+        path = root / f"short-export.{fmt if fmt != 'markdown' else 'md'}"
+        path.write_bytes(payload)
+        export_paths[fmt] = path
+        persist_model(root / f"short-export-{fmt}.json", exports[fmt])
+    reopened_epub = export_module._epub(short.project.title, export_chapters)
+
+    rejected_source = short_artifact.model_copy(update={"quality_gate_status": "FAIL"})
+    export_rejected = False
+    try:
+        export_module.export_text(
+            project_id=project_id,
+            source=rejected_source,
+            title="rejected",
+            chapters=export_chapters,
+            fmt="txt",
+        )
+    except ValueError as exc:
+        export_rejected = "QUALITY_GATE" in str(exc)
+
     package_path = _json_artifact(
         root,
         "short-package.json",
-        {"outline": short.outline, "manuscript": short.manuscript, "style": style.model_dump()},
+        {
+            "outline": planned_outline,
+            "manuscript": paced_chapters,
+            "style": style.model_dump(mode="json"),
+        },
+    )
+    persist_model(root / "short-project.json", short.project)
+    restored_project = restore_model(root / "short-project.json", NarrativeProject)
+    recovered_export = export_module.export_text(
+        project_id=project_id,
+        source=short_artifact,
+        title=restored_project.title,
+        chapters=export_chapters,
+        fmt="txt",
+    )
+    recovery = (
+        export_rejected
+        and restored_project.object_id == short.project.object_id
+        and recovered_export.sha256 == exports["txt"].sha256
+        and recovered_export.source_ids == (short_artifact.object_id,)
+    )
+    export_roundtrip = (
+        exports["txt"].sha256 == _sha(export_paths["txt"])
+        and exports["markdown"].sha256 == _sha(export_paths["markdown"])
+        and exports["epub"].export_format == "EPUB"
+        and reopened_epub.startswith(b"PK")
+        and len(reopened_epub) == len(export_payloads["epub"])
+        and all(item.source_ids == (short_artifact.object_id,) for item in exports.values())
+        and all(item.quality_gate_status == "PASS" for item in exports.values())
     )
     return Evidence(
         "short-fiction-production",
         str(package_path),
         {
-            "COMPLETE_MANUSCRIPT": len(short.manuscript) == 3,
-            "OUTLINE": len(short.outline) == 3,
+            "COMPLETE_MANUSCRIPT": len(paced_chapters) == 3,
+            "OUTLINE": len(planned_outline) == 3,
             "SALES_PACKAGE": bool(
                 short.sales_package.synopsis and short.sales_package.selling_points
             ),
@@ -1123,18 +1292,40 @@ def qualify_short_style_genre(root: Path) -> Evidence:
             "NATURALNESS_DEFECT": bool(natural_bad),
             "NATURALNESS_CLEAN": natural_clean.status == "PASS",
             "FIVE_GENRE_PROFILES_AFFECT_AUDIT": all(findings),
-            "PLANNING_AND_PACING_EFFECT": False,
+            "PLANNING_AND_PACING_EFFECT": planning_effect,
             "RUN_PERSISTENCE": package_path.is_file(),
             "ARTIFACT_MANIFEST": _sha(package_path) != "",
-            "AUDIT_REPORT": False,
-            "REVISION_RESULT": False,
-            "EXPORT_ROUNDTRIP": False,
-            "RECOVERY": False,
+            "AUDIT_REPORT": restored_audit.artifact_id == short_artifact.object_id
+            and restored_audit.object_id == audit.object_id,
+            "REVISION_RESULT": restored_revision.resolved_codes == ("RP_REPEATED_PHRASE",)
+            and restored_revision.original_hash != restored_revision.revised_hash
+            and revision_limit_enforced,
+            "EXPORT_ROUNDTRIP": export_roundtrip,
+            "RECOVERY": recovery,
         },
-        [str(package_path)],
-        ["reload short package and style profile"],
-        ["empty brief", "naturalness defect corpus", "genre forbidden patterns"],
-        {"genre_finding_counts": [len(item) for item in findings]},
+        [
+            str(package_path),
+            str(audit_path),
+            str(revision_path),
+            str(root / "short-project.json"),
+            *[str(path) for path in export_paths.values()],
+        ],
+        [
+            "persist short package, audit, and revision result",
+            "restore package and retry a rejected export",
+        ],
+        [
+            "empty brief",
+            "naturalness defect corpus",
+            "genre forbidden patterns",
+            "quality gate failure",
+        ],
+        {
+            "genre_finding_counts": [len(item) for item in findings],
+            "pacing_profile": plan.pacing_profile,
+            "target_words_per_chapter": target_words,
+            "export_formats": list(exports),
+        },
     )
 
 
