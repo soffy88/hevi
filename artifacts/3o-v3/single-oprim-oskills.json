@@ -1,7 +1,7 @@
 {
-  "count": 427,
+  "count": 426,
   "multi": 143,
-  "one": 77,
+  "one": 76,
   "oskills": [
     {
       "distinct_oprims": 0,
@@ -98,14 +98,6 @@
       "oprim_calls": [],
       "reason": "fewer than two distinct direct oprim call sites",
       "symbol": "hevi/krillinai/oskill/__init__.py::skill_full_pipeline"
-    },
-    {
-      "distinct_oprims": 1,
-      "oprim_calls": [
-        "oprim.pack_context"
-      ],
-      "reason": "fewer than two distinct direct oprim call sites",
-      "symbol": "hevi/longcat/oskill/compiler.py::compile_longcat_request"
     },
     {
       "distinct_oprims": 1,

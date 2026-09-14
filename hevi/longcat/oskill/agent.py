@@ -8,7 +8,7 @@ from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
 from hevi.longcat.oprim import LongCatRequest, ModelTurn, ToolCall, normalize_model_turn
-from hevi.longcat.oskill.compiler import compile_longcat_request
+from hevi.longcat.request_compiler import compile_longcat_request
 
 
 class ModelCaller(Protocol):
