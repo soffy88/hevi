@@ -1277,10 +1277,10 @@ requires-dist = [
     { name = "mcp", specifier = ">=1.28.1,<2.0" },
     { name = "minio", specifier = ">=7.2.20" },
     { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=62f9df0" },
-    { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=5730adc" },
-    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=2797792" },
+    { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=331e072" },
+    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=c06293e" },
     { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=a5cd1dd" },
-    { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=02022c7" },
+    { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=cad320c" },
     { name = "pillow", specifier = ">=10" },
     { name = "playwright", specifier = ">=1.49" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
@@ -2325,7 +2325,7 @@ docker = [
 [[package]]
 name = "omodul"
 version = "1.36.0"
-source = { git = "https://github.com/helios-plat/omodul.git?rev=5730adc#5730adc940dbc9d6b15b81681c9bbf0b5e0e0d19" }
+source = { git = "https://github.com/helios-plat/omodul.git?rev=331e072#331e072d0685128853ebbd7f4d3f539416615e63" }
 dependencies = [
     { name = "apscheduler" },
     { name = "numpy" },
@@ -2364,7 +2364,7 @@ wheels = [
 [[package]]
 name = "oprim"
 version = "3.12.0"
-source = { git = "https://github.com/helios-plat/oprim.git?rev=2797792#27977920fcc033552c030d5883d9b9f424dec8e0" }
+source = { git = "https://github.com/helios-plat/oprim.git?rev=c06293e#c06293e6f4ce61c4a9169495c4bc20ab0c35d003" }
 dependencies = [
     { name = "chardet" },
     { name = "dnspython" },
@@ -2427,7 +2427,7 @@ dependencies = [
 [[package]]
 name = "oskill"
 version = "4.5.0"
-source = { git = "https://github.com/helios-plat/oskill.git?rev=02022c7#02022c7fc41cf241aba33d2a90d74e9e4ae163c9" }
+source = { git = "https://github.com/helios-plat/oskill.git?rev=cad320c#cad320cb390550ac71c0ae90cf5402fde2344f38" }
 dependencies = [
     { name = "aiohttp" },
     { name = "numpy" },
