@@ -1,0 +1,1421 @@
+{
+  "OMODUL_CYCLES": 0,
+  "OMODUL_EDGES": 238,
+  "OMODUL_NODES": 456,
+  "OMODUL_SCCS": 0,
+  "cycles": [],
+  "edges": [
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/adaptive_quiz_session.py::adaptive_quiz_session",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/adaptive_quiz_session.py::adaptive_quiz_session",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/analyze_paper.py::analyze_paper_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/animation_workflow.py::animation_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/animation_workflow.py::animation_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/appstore_deploy.py::appstore_deploy",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/appstore_deploy.py::appstore_deploy",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/appstore_deploy.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/audience_data_workflow.py::audience_data_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/audience_data_workflow.py::audience_data_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/audience_data_workflow.py::audience_data_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/audience_data_workflow.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/audit_record.py::audit_record",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/auth.py::login_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/auth.py::register_student_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/auth.py::send_code_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/autoheal_cycle.py::autoheal_cycle",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/autoheal_cycle.py::autoheal_cycle",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/autoheal_cycle.py::autoheal_cycle",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/backtest_gate.py::backtest_gate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/backup_app_data.py::backup_app_data",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/backup_app_data.py::backup_app_data",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/backup_app_data.py::backup_app_data",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/backup_app_data.py::compute_fingerprint_for_backup_app_data",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/book_understanding_synthesize.py::book_understanding_synthesize",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/book_understanding_synthesize.py::book_understanding_synthesize",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::write_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/book_understanding_synthesize.py::compute_fingerprint_for_book_understanding_synthesize",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/breakpoint_remediation_workflow.py::breakpoint_remediation_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/breakpoint_remediation_workflow.py::breakpoint_remediation_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/candidate_pool.py::candidate_pool",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/candidate_pool.py::candidate_pool",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/cognitive.py::process_interaction_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/compact_session.py::compact_session",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/compact_session.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/configure_domain_for_app.py::compute_fingerprint_for_configure_domain_for_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/configure_domain_for_app.py::configure_domain_for_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/configure_domain_for_app.py::configure_domain_for_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/configure_domain_for_app.py::configure_domain_for_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/conflict_detection_workflow.py::conflict_detection_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/conflict_detection_workflow.py::conflict_detection_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/create_session.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/create_session.py::create_session",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/cross_asset_opportunity_ranking.py::cross_asset_opportunity_ranking",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/cross_asset_opportunity_ranking.py::cross_asset_opportunity_ranking",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/cross_asset_opportunity_ranking.py::cross_asset_opportunity_ranking",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/cross_project_health_aggregate.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/cross_project_health_aggregate.py::cross_project_health_aggregate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/cross_project_health_aggregate.py::cross_project_health_aggregate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/daily_digest_workflow.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/daily_digest_workflow.py::daily_digest_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/daily_digest_workflow.py::daily_digest_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/daily_mission_workflow.py::daily_mission_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/daily_mission_workflow.py::daily_mission_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_connection_pool.py::compute_fingerprint_for_diagnose_connection_pool",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_connection_pool.py::diagnose_connection_pool",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_connection_pool.py::diagnose_connection_pool",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_connection_pool.py::diagnose_connection_pool",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_connection_pool.py::diagnose_connection_pool",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_queue_health.py::compute_fingerprint_for_diagnose_queue_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_queue_health.py::diagnose_queue_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_queue_health.py::diagnose_queue_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_queue_health.py::diagnose_queue_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_queue_health.py::diagnose_queue_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_root_cause.py::compute_fingerprint_for_diagnose_root_cause",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_root_cause.py::diagnose_root_cause",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_root_cause.py::diagnose_root_cause",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_root_cause.py::diagnose_root_cause",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_service_health.py::compute_fingerprint_for_diagnose_service_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_service_health.py::diagnose_service_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_service_health.py::diagnose_service_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_service_health.py::diagnose_service_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/diagnose_service_health.py::diagnose_service_health",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/discipline_banner_toast_data.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/discipline_banner_toast_data.py::discipline_banner_toast_data",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/discipline_banner_toast_data.py::discipline_banner_toast_data",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/due_recall_push.py::due_recall_push_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::build_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/due_recall_push.py::due_recall_push_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/error_journal.py::error_journal_diagnostic",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::build_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/error_journal.py::error_journal_diagnostic",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/essay_review_workflow.py::compute_fingerprint_for_essay_review_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/essay_review_workflow.py::essay_review_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/essay_review_workflow.py::essay_review_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::write_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/execute_tool.py::execute_tool",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/export_substrate_markdown.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/export_substrate_markdown.py::export_substrate_markdown",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/export_substrate_markdown.py::export_substrate_markdown",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/export_substrate_markdown.py::export_substrate_markdown",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/export_substrate_markdown.py::export_substrate_markdown",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/export_user_data_csv.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/export_user_data_csv.py::export_user_data_csv",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/force_analysis_workflow.py::force_analysis_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/force_analysis_workflow.py::force_analysis_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/fork_session.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/fork_session.py::fork_session",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/funding_arb.py::funding_arb",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/fusion_score_workflow.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/fusion_score_workflow.py::fusion_score_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/fusion_score_workflow.py::fusion_score_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generate_incident_postmortem.py::compute_fingerprint_for_generate_incident_postmortem",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generate_incident_postmortem.py::generate_incident_postmortem",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generate_incident_postmortem.py::generate_incident_postmortem",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generate_incident_postmortem.py::generate_incident_postmortem",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generate_lesson_page.py::generate_lesson_page",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generate_lesson_page.py::generate_lesson_page",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generative_video_pipeline.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generative_video_pipeline.py::generative_video_pipeline",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generative_video_pipeline.py::generative_video_pipeline",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/generative_video_pipeline.py::generative_video_pipeline",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/grade_paper_workflow.py::grade_paper_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/grade_paper_workflow.py::grade_paper_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/index_codebase.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/index_codebase.py::index_codebase",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/index_codebase.py::index_codebase",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/init_project.py::init_project",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/init_project.py::init_project",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::extract_text"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/init_project.py::init_project",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::write_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/install_self_hosted_app.py::compute_fingerprint_for_install_self_hosted_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/install_self_hosted_app.py::install_self_hosted_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/install_self_hosted_app.py::install_self_hosted_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/install_self_hosted_app.py::install_self_hosted_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/instant_solve.py::instant_solve",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::build_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/instant_solve.py::instant_solve",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/knowledge_profiling_workflow.py::knowledge_profiling_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/knowledge_profiling_workflow.py::knowledge_profiling_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/learning_progress_report.py::learning_progress_report",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/learning_progress_report.py::learning_progress_report",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/lhb_institution_vs_hotmoney_panel.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/lhb_institution_vs_hotmoney_panel.py::lhb_institution_vs_hotmoney_panel",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/lhb_institution_vs_hotmoney_panel.py::lhb_institution_vs_hotmoney_panel",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/llm_alpha_mine.py::llm_alpha_mine",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/llm_alpha_mine.py::llm_alpha_mine",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/llm_workflows/multi_agent_consensus.py::multi_agent_consensus",
+      "target": ".venv/lib/python3.14/site-packages/omodul/llm_workflows/_audit_evidence.py::build_audit_evidence"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/login_provider.py::login_provider",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/longvideo_produce.py::longvideo_produce",
+      "target": ".venv/lib/python3.14/site-packages/omodul/agentic_longvideo_pipeline.py::agentic_longvideo_pipeline"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/longvideo_produce.py::rework_longvideo_shots",
+      "target": ".venv/lib/python3.14/site-packages/omodul/agentic_longvideo_pipeline.py::regenerate_shots"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/longvideo_produce.py::run_longvideo_pipeline",
+      "target": ".venv/lib/python3.14/site-packages/omodul/agentic_longvideo_pipeline.py::agentic_longvideo_pipeline"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/macro_daily_report.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/macro_daily_report.py::macro_daily_report",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/macro_daily_report.py::macro_daily_report",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/macro_daily_report.py::macro_daily_report",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/market_summary_workflow.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/market_summary_workflow.py::market_summary_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/market_summary_workflow.py::market_summary_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/monthly_review_cron_orchestrator.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/monthly_review_cron_orchestrator.py::monthly_review_cron_orchestrator",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/monthly_review_cron_orchestrator.py::monthly_review_cron_orchestrator",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/monthly_review_cron_orchestrator.py::monthly_review_cron_orchestrator",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/node_register.py::node_register",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/node_register.py::node_register",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/node_register.py::node_register",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/notification_dispatch_workflow.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/notification_dispatch_workflow.py::notification_dispatch_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/ohlcv_backfill.py::ohlcv_backfill",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/paper.py::upload_paper_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/parent_review.py::parent_review_summary",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::build_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/parent_review.py::parent_review_summary",
+      "target": ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/plan_card_render.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/plan_card_render.py::plan_card_render",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/plan_card_render.py::plan_card_render",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/practice_workflow.py::practice_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/practice_workflow.py::practice_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_inbox_substrate.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_inbox_substrate.py::process_inbox_substrate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_inbox_substrate.py::process_inbox_substrate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_inbox_substrate.py::process_inbox_substrate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_inbox_substrate.py::process_inbox_substrate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_media_substrate.py::compute_fingerprint_for_process_media_substrate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_media_substrate.py::process_media_substrate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_media_substrate.py::process_media_substrate",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::write_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/process_prompt.py::process_prompt",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/propose_action_plan.py::compute_fingerprint_for_propose_action_plan",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/propose_action_plan.py::propose_action_plan",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/propose_action_plan.py::propose_action_plan",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/propose_action_plan.py::propose_action_plan",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/reading_guide_workflow.py::reading_guide_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/reading_guide_workflow.py::reading_guide_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/regime_inference.py::regime_inference",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/regime_inference.py::regime_inference",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/register_ku_ontology.py::register_ku_ontology",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/register_ku_ontology.py::register_ku_ontology",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/reset_password_workflow.py::reset_password_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/reset_password_workflow.py::reset_password_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/rollback_app.py::rollback_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/rollback_app.py::rollback_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/rollback_app.py::rollback_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/run_subagent_task.py::run_subagent_task",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/send_welcome_email.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/send_welcome_email.py::send_welcome_email",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/share_session.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/share_session.py::share_session",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/socratic_session_workflow.py::socratic_session_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/socratic_session_workflow.py::socratic_session_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/socratic_tutor_session.py::socratic_tutor_session",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/socratic_tutor_session.py::socratic_tutor_session",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/speaking_practice_workflow.py::speaking_practice_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/stat_arb.py::stat_arb",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/strategies/tradingagents_v1.py::tradingagents_v1",
+      "target": ".venv/lib/python3.14/site-packages/omodul/llm_workflows/multi_agent_consensus.py::multi_agent_consensus"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/summary_synthesize.py::compute_fingerprint_for_summary_synthesize",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/summary_synthesize.py::summary_synthesize",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/symbol_dim_score.py::symbol_dim_score",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/symbol_dim_score.py::symbol_dim_score",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/sync_models_catalog.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/sync_models_catalog.py::sync_models_catalog",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/sync_user_preferences.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/sync_user_preferences.py::sync_user_preferences",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/timeframes_compute_workflow.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/timeframes_compute_workflow.py::timeframes_compute_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/timeframes_compute_workflow.py::timeframes_compute_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/triage_signal.py::compute_fingerprint_for_triage_signal",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/triage_signal.py::triage_signal",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/triage_signal.py::triage_signal",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/triage_signal.py::triage_signal",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/undo_changes.py::undo_changes",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/upgrade_self_hosted_app.py::compute_fingerprint_for_upgrade_self_hosted_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/upgrade_self_hosted_app.py::upgrade_self_hosted_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/upgrade_self_hosted_app.py::upgrade_self_hosted_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/upgrade_self_hosted_app.py::upgrade_self_hosted_app",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/user_data_workflow.py::user_data_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/user_data_workflow.py::user_data_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/variant_generation_workflow.py::variant_generation_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/variant_generation_workflow.py::variant_generation_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/verify_email_workflow.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/verify_email_workflow.py::verify_email_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/watch_cycle.py::watch_cycle",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/watch_cycle.py::watch_cycle",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/watch_cycle.py::watch_cycle",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/web_research_task.py::web_research_task",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/web_research_task.py::web_research_task",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::extract_text"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/web_research_task.py::web_research_task",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::write_report"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/weekly_review_workflow.py::compute_fingerprint_for",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint"
+    },
+    {
+      "source": ".venv/lib/python3.14/site-packages/omodul/weekly_review_workflow.py::weekly_review_workflow",
+      "target": ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step"
+    },
+    {
+      "source": "hevi/creative/omodul/audit_gold.py::evaluate",
+      "target": "hevi/creative/omodul/audit_dimensions.py::canonical_ref"
+    },
+    {
+      "source": "hevi/montage/omodul/__init__.py::execute_pipeline",
+      "target": "hevi/montage/omodul/agentic.py::agentic_montage_workflow"
+    },
+    {
+      "source": "hevi/script2video/omodul/fuse.py::fuse_production",
+      "target": "hevi/script2video/omodul/idea_plan.py::plan_idea2video"
+    },
+    {
+      "source": "hevi/script2video/omodul/fuse.py::fuse_production",
+      "target": "hevi/script2video/omodul/kernel_plan.py::plan_kernel_artifacts"
+    },
+    {
+      "source": "hevi/script2video/omodul/fuse.py::fuse_production",
+      "target": "hevi/script2video/omodul/novel_plan.py::plan_novel2video"
+    },
+    {
+      "source": "hevi/script2video/omodul/idea_plan.py::plan_idea2video",
+      "target": "hevi/script2video/omodul/kernel_plan.py::plan_kernel_artifacts"
+    },
+    {
+      "source": "hevi/script2video/omodul/novel_plan.py::plan_novel2video",
+      "target": "hevi/script2video/omodul/kernel_plan.py::plan_kernel_artifacts"
+    }
+  ],
+  "nodes": [
+    ".venv/lib/python3.14/site-packages/omodul/__init__.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/_base.py::build_result",
+    ".venv/lib/python3.14/site-packages/omodul/_base.py::compute_fingerprint",
+    ".venv/lib/python3.14/site-packages/omodul/_base.py::extract_text",
+    ".venv/lib/python3.14/site-packages/omodul/_base.py::llm_call",
+    ".venv/lib/python3.14/site-packages/omodul/_base.py::write_report",
+    ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::build_decision_trail",
+    ".venv/lib/python3.14/site-packages/omodul/_decision_trail.py::record_step",
+    ".venv/lib/python3.14/site-packages/omodul/_fingerprint.py::compute_fingerprint",
+    ".venv/lib/python3.14/site-packages/omodul/_report.py::write_markdown_report",
+    ".venv/lib/python3.14/site-packages/omodul/adaptive_quiz_session.py::adaptive_quiz_session",
+    ".venv/lib/python3.14/site-packages/omodul/agentic_longvideo_pipeline.py::agentic_longvideo_pipeline",
+    ".venv/lib/python3.14/site-packages/omodul/agentic_longvideo_pipeline.py::regenerate_shots",
+    ".venv/lib/python3.14/site-packages/omodul/alpha_signals.py::bocpd_trend",
+    ".venv/lib/python3.14/site-packages/omodul/alpha_signals.py::funding_rate_directional",
+    ".venv/lib/python3.14/site-packages/omodul/alpha_signals.py::ofi_meanrev",
+    ".venv/lib/python3.14/site-packages/omodul/analyze_paper.py::analyze_paper_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/animation_workflow.py::animation_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/append_episode.py::append_episode",
+    ".venv/lib/python3.14/site-packages/omodul/apply_changeset.py::apply_changeset",
+    ".venv/lib/python3.14/site-packages/omodul/apply_changeset.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/appstore_deploy.py::appstore_deploy",
+    ".venv/lib/python3.14/site-packages/omodul/appstore_deploy.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/asset_pricing/ez_workflow.py::epstein_zin_asset_pricing_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/audience_data_workflow.py::audience_data_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/audience_data_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/audit.py::vcp_silver_record",
+    ".venv/lib/python3.14/site-packages/omodul/audit_record.py::audit_record",
+    ".venv/lib/python3.14/site-packages/omodul/audit_record.py::audit_verify",
+    ".venv/lib/python3.14/site-packages/omodul/auth.py::login_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/auth.py::register_student_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/auth.py::send_code_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/autoheal_cycle.py::autoheal_cycle",
+    ".venv/lib/python3.14/site-packages/omodul/backtest/user_system_backtest.py::user_system_backtest",
+    ".venv/lib/python3.14/site-packages/omodul/backtest_gate.py::backtest_gate",
+    ".venv/lib/python3.14/site-packages/omodul/backup_app_data.py::backup_app_data",
+    ".venv/lib/python3.14/site-packages/omodul/backup_app_data.py::compute_fingerprint_for_backup_app_data",
+    ".venv/lib/python3.14/site-packages/omodul/base.py::build_fingerprint",
+    ".venv/lib/python3.14/site-packages/omodul/base.py::standard_return",
+    ".venv/lib/python3.14/site-packages/omodul/behavior.py::monthly_trade_review",
+    ".venv/lib/python3.14/site-packages/omodul/behavior.py::shadow_account_simulator",
+    ".venv/lib/python3.14/site-packages/omodul/behavior.py::trade_journal_analyzer",
+    ".venv/lib/python3.14/site-packages/omodul/behavior.py::training_task_recommend",
+    ".venv/lib/python3.14/site-packages/omodul/behavioral/portfolio_workflow.py::behavioral_portfolio_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/book_understanding_synthesize.py::book_understanding_synthesize",
+    ".venv/lib/python3.14/site-packages/omodul/book_understanding_synthesize.py::compute_fingerprint_for_book_understanding_synthesize",
+    ".venv/lib/python3.14/site-packages/omodul/breakpoint_remediation_workflow.py::breakpoint_remediation_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/candidate_pool.py::candidate_pool",
+    ".venv/lib/python3.14/site-packages/omodul/candidate_pool.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/code_review.py::code_review",
+    ".venv/lib/python3.14/site-packages/omodul/cognitive.py::mastery_overview_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/cognitive.py::process_interaction_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/cognitive.py::review_queue_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/cognitive_diagnosis.py::diagnose",
+    ".venv/lib/python3.14/site-packages/omodul/cognitive_diagnosis.py::estimate_ability",
+    ".venv/lib/python3.14/site-packages/omodul/cognitive_diagnosis.py::estimate_item_params",
+    ".venv/lib/python3.14/site-packages/omodul/cognitive_diagnosis.py::fit_dina",
+    ".venv/lib/python3.14/site-packages/omodul/cognitive_diagnosis.py::run_diagnosis",
+    ".venv/lib/python3.14/site-packages/omodul/compact_conversation.py::compact_conversation",
+    ".venv/lib/python3.14/site-packages/omodul/compact_session.py::compact_session",
+    ".venv/lib/python3.14/site-packages/omodul/compact_session.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/compute_fingerprint_for.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/compute_fingerprint_for_generate_tests.py::compute_fingerprint_for_generate_tests",
+    ".venv/lib/python3.14/site-packages/omodul/compute_fingerprint_for_initialize.py::compute_fingerprint_for_initialize",
+    ".venv/lib/python3.14/site-packages/omodul/compute_fingerprint_for_run_subagent.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/configure_domain_for_app.py::compute_fingerprint_for_configure_domain_for_app",
+    ".venv/lib/python3.14/site-packages/omodul/configure_domain_for_app.py::configure_domain_for_app",
+    ".venv/lib/python3.14/site-packages/omodul/conflict_detection_workflow.py::conflict_detection_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/create_checkpoint.py::create_checkpoint",
+    ".venv/lib/python3.14/site-packages/omodul/create_session.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/create_session.py::create_session",
+    ".venv/lib/python3.14/site-packages/omodul/cross_asset_opportunity_ranking.py::cross_asset_opportunity_ranking",
+    ".venv/lib/python3.14/site-packages/omodul/cross_project_health_aggregate.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/cross_project_health_aggregate.py::cross_project_health_aggregate",
+    ".venv/lib/python3.14/site-packages/omodul/daily_digest_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/daily_digest_workflow.py::daily_digest_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/daily_mission_workflow.py::daily_mission_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/data_normalization.py::okx_to_nautilus",
+    ".venv/lib/python3.14/site-packages/omodul/data_quality.py::cross_source_consistency_check",
+    ".venv/lib/python3.14/site-packages/omodul/data_quality.py::panel_data_quality_check",
+    ".venv/lib/python3.14/site-packages/omodul/diagnose_connection_pool.py::compute_fingerprint_for_diagnose_connection_pool",
+    ".venv/lib/python3.14/site-packages/omodul/diagnose_connection_pool.py::diagnose_connection_pool",
+    ".venv/lib/python3.14/site-packages/omodul/diagnose_queue_health.py::compute_fingerprint_for_diagnose_queue_health",
+    ".venv/lib/python3.14/site-packages/omodul/diagnose_queue_health.py::diagnose_queue_health",
+    ".venv/lib/python3.14/site-packages/omodul/diagnose_root_cause.py::compute_fingerprint_for_diagnose_root_cause",
+    ".venv/lib/python3.14/site-packages/omodul/diagnose_root_cause.py::diagnose_root_cause",
+    ".venv/lib/python3.14/site-packages/omodul/diagnose_service_health.py::compute_fingerprint_for_diagnose_service_health",
+    ".venv/lib/python3.14/site-packages/omodul/diagnose_service_health.py::diagnose_service_health",
+    ".venv/lib/python3.14/site-packages/omodul/discipline_banner_toast_data.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/discipline_banner_toast_data.py::discipline_banner_toast_data",
+    ".venv/lib/python3.14/site-packages/omodul/due_recall_push.py::due_recall_push_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/error_journal.py::error_journal_diagnostic",
+    ".venv/lib/python3.14/site-packages/omodul/essay_review_workflow.py::compute_fingerprint_for_essay_review_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/essay_review_workflow.py::essay_review_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/execute_tool.py::execute_tool",
+    ".venv/lib/python3.14/site-packages/omodul/execution_models.py::aggressive_limit",
+    ".venv/lib/python3.14/site-packages/omodul/execution_models.py::twap_with_impact",
+    ".venv/lib/python3.14/site-packages/omodul/explain_codebase.py::explain_codebase",
+    ".venv/lib/python3.14/site-packages/omodul/export_substrate_markdown.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/export_substrate_markdown.py::export_substrate_markdown",
+    ".venv/lib/python3.14/site-packages/omodul/export_user_data_csv.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/export_user_data_csv.py::export_user_data_csv",
+    ".venv/lib/python3.14/site-packages/omodul/force_analysis_workflow.py::force_analysis_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/fork_session.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/fork_session.py::fork_session",
+    ".venv/lib/python3.14/site-packages/omodul/funding_arb.py::funding_arb",
+    ".venv/lib/python3.14/site-packages/omodul/fusion_score_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/fusion_score_workflow.py::fusion_score_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/generate_commit_message.py::generate_commit_message",
+    ".venv/lib/python3.14/site-packages/omodul/generate_incident_postmortem.py::compute_fingerprint_for_generate_incident_postmortem",
+    ".venv/lib/python3.14/site-packages/omodul/generate_incident_postmortem.py::generate_incident_postmortem",
+    ".venv/lib/python3.14/site-packages/omodul/generate_lesson_page.py::generate_lesson_page",
+    ".venv/lib/python3.14/site-packages/omodul/generate_tests.py::generate_tests",
+    ".venv/lib/python3.14/site-packages/omodul/generative_video_pipeline.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/generative_video_pipeline.py::generative_video_pipeline",
+    ".venv/lib/python3.14/site-packages/omodul/governance_adjudicate.py::governance_adjudicate",
+    ".venv/lib/python3.14/site-packages/omodul/grade_paper_workflow.py::grade_paper_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/graphrag_query.py::graphrag_query",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::abstain_aware_recommendation",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::alert_personalization",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::backtest_validation",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::data_quality_pipeline",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::decision_audit_trail",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::key_moment_traversal",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::signal_fusion_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::user_feedback_loop",
+    ".venv/lib/python3.14/site-packages/omodul/helios_workflows.py::what_if_scenario",
+    ".venv/lib/python3.14/site-packages/omodul/index_codebase.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/index_codebase.py::index_codebase",
+    ".venv/lib/python3.14/site-packages/omodul/init_project.py::init_project",
+    ".venv/lib/python3.14/site-packages/omodul/initialize_project.py::initialize_project",
+    ".venv/lib/python3.14/site-packages/omodul/install_plugin.py::install_plugin",
+    ".venv/lib/python3.14/site-packages/omodul/install_self_hosted_app.py::compute_fingerprint_for_install_self_hosted_app",
+    ".venv/lib/python3.14/site-packages/omodul/install_self_hosted_app.py::install_self_hosted_app",
+    ".venv/lib/python3.14/site-packages/omodul/instant_solve.py::instant_solve",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/agents/registry.py::get_registry",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/agents/registry.py::register_agent",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/__main__.py::main",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/auth.py::get_token",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/auth.py::init_token",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/auth.py::verify_token",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/page_capture.py::extract_main_content",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/server.py::health",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/server.py::ingest_page",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/server.py::sidebar_search",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/url_dedup.py::check_url_existing",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/url_dedup.py::mark_url_ingested",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/browser_extension/url_dedup.py::normalize_url",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/process_inbox.py::process_inbox",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/scheduler/builtin_jobs.py::install_builtin_jobs",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/start_mcp_server.py::create_stratum_mcp_server",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/start_mcp_server.py::start_mcp_server",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/applier.py::apply_view",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/crud.py::create_view",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/crud.py::delete_view",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/crud.py::get_default_view",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/crud.py::get_view",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/crud.py::list_views",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/crud.py::set_default",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/crud.py::update_view",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge/views/preset_loader.py::install_builtin_views",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_profiling_workflow.py::knowledge_profiling_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::check_coherence",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::check_contradictions",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::check_dangling",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::check_missing_fields",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::check_missing_inverse",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::check_supersede_stale",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::compute_coherence",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::reflux",
+    ".venv/lib/python3.14/site-packages/omodul/knowledge_reflux.py::run_reflux",
+    ".venv/lib/python3.14/site-packages/omodul/learning_distill.py::learning_distill",
+    ".venv/lib/python3.14/site-packages/omodul/learning_progress_report.py::learning_progress_report",
+    ".venv/lib/python3.14/site-packages/omodul/lhb_institution_vs_hotmoney_panel.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/lhb_institution_vs_hotmoney_panel.py::lhb_institution_vs_hotmoney_panel",
+    ".venv/lib/python3.14/site-packages/omodul/llm_alpha_mine.py::llm_alpha_mine",
+    ".venv/lib/python3.14/site-packages/omodul/llm_workflows/_audit_evidence.py::build_audit_evidence",
+    ".venv/lib/python3.14/site-packages/omodul/llm_workflows/multi_agent_consensus.py::multi_agent_consensus",
+    ".venv/lib/python3.14/site-packages/omodul/login_provider.py::login_provider",
+    ".venv/lib/python3.14/site-packages/omodul/longvideo_produce.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/longvideo_produce.py::default_longvideo_shot_generator",
+    ".venv/lib/python3.14/site-packages/omodul/longvideo_produce.py::longvideo_produce",
+    ".venv/lib/python3.14/site-packages/omodul/longvideo_produce.py::rework_longvideo_shots",
+    ".venv/lib/python3.14/site-packages/omodul/longvideo_produce.py::run_longvideo_pipeline",
+    ".venv/lib/python3.14/site-packages/omodul/macro_daily_report.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/macro_daily_report.py::macro_daily_report",
+    ".venv/lib/python3.14/site-packages/omodul/macro_daily_report_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/macro_daily_report_workflow.py::macro_daily_report_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/market_summary_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/market_summary_workflow.py::market_summary_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/microstructure/state_mm_strategy.py::state_dependent_market_making_strategy",
+    ".venv/lib/python3.14/site-packages/omodul/migrate_dependency.py::migrate_dependency",
+    ".venv/lib/python3.14/site-packages/omodul/monthly_review_cron_orchestrator.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/monthly_review_cron_orchestrator.py::monthly_review_cron_orchestrator",
+    ".venv/lib/python3.14/site-packages/omodul/narrated_video_produce.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/narrated_video_produce.py::narrated_video_produce",
+    ".venv/lib/python3.14/site-packages/omodul/node_register.py::node_register",
+    ".venv/lib/python3.14/site-packages/omodul/notification_dispatch_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/notification_dispatch_workflow.py::notification_dispatch_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/ohlcv_backfill.py::ohlcv_backfill",
+    ".venv/lib/python3.14/site-packages/omodul/paper.py::upload_paper_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/parent_review.py::parent_review_summary",
+    ".venv/lib/python3.14/site-packages/omodul/plan_card_render.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/plan_card_render.py::plan_card_render",
+    ".venv/lib/python3.14/site-packages/omodul/policy_sector_classify_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/policy_sector_classify_workflow.py::policy_sector_classify_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/portfolio/__init__.py::execution_cost_model",
+    ".venv/lib/python3.14/site-packages/omodul/portfolio/__init__.py::kelly_allocator",
+    ".venv/lib/python3.14/site-packages/omodul/portfolio/__init__.py::risk_parity",
+    ".venv/lib/python3.14/site-packages/omodul/portfolio/high_dim_workflow.py::high_dim_portfolio_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/portfolio_construction.py::vol_target",
+    ".venv/lib/python3.14/site-packages/omodul/practice_workflow.py::practice_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/presenter_video_produce.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/presenter_video_produce.py::presenter_video_produce",
+    ".venv/lib/python3.14/site-packages/omodul/process_inbox_substrate.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/process_inbox_substrate.py::process_inbox_substrate",
+    ".venv/lib/python3.14/site-packages/omodul/process_media_substrate.py::compute_fingerprint_for_process_media_substrate",
+    ".venv/lib/python3.14/site-packages/omodul/process_media_substrate.py::process_media_substrate",
+    ".venv/lib/python3.14/site-packages/omodul/process_prompt.py::process_prompt",
+    ".venv/lib/python3.14/site-packages/omodul/profile/individual_profile_workflow.py::individual_profile_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/propose_action_plan.py::compute_fingerprint_for_propose_action_plan",
+    ".venv/lib/python3.14/site-packages/omodul/propose_action_plan.py::propose_action_plan",
+    ".venv/lib/python3.14/site-packages/omodul/reading_guide_workflow.py::reading_guide_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/refactor_transaction.py::refactor_transaction",
+    ".venv/lib/python3.14/site-packages/omodul/regime.py::regime_change_detector",
+    ".venv/lib/python3.14/site-packages/omodul/regime.py::regime_conditional_dashboard_data",
+    ".venv/lib/python3.14/site-packages/omodul/regime.py::regime_replay_search",
+    ".venv/lib/python3.14/site-packages/omodul/regime_inference.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/regime_inference.py::regime_inference",
+    ".venv/lib/python3.14/site-packages/omodul/register_entity.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/register_entity.py::register_entity",
+    ".venv/lib/python3.14/site-packages/omodul/register_ku.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/register_ku.py::register_ku",
+    ".venv/lib/python3.14/site-packages/omodul/register_ku_ontology.py::register_ku_ontology",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::cold_start_briefing",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::counterfactual_analysis",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::cross_sectional_ranking_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::cross_timeframe_analysis",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::decision_log_correlation",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::insight_generation",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::multi_source_data_collection",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::ohlcv_merge_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::pack_promotion_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::regime_conditional_analysis",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::signal_failure_postmortem",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::strategy_capacity_assessment",
+    ".venv/lib/python3.14/site-packages/omodul/remaining_workflows.py::walk_forward_validation",
+    ".venv/lib/python3.14/site-packages/omodul/reporting/cross_framework_benchmark.py::cross_framework_benchmark_report",
+    ".venv/lib/python3.14/site-packages/omodul/reset_password_workflow.py::reset_password_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/reuse_strategy.py::reuse_strategy",
+    ".venv/lib/python3.14/site-packages/omodul/rewind_to_checkpoint.py::rewind_to_checkpoint",
+    ".venv/lib/python3.14/site-packages/omodul/risk/__init__.py::scenario_stress_test",
+    ".venv/lib/python3.14/site-packages/omodul/risk/__init__.py::tail_risk_analyzer",
+    ".venv/lib/python3.14/site-packages/omodul/risk/systemic_dashboard.py::systemic_risk_dashboard",
+    ".venv/lib/python3.14/site-packages/omodul/risk_models.py::drawdown_circuit_breaker",
+    ".venv/lib/python3.14/site-packages/omodul/robust/decision_workflow.py::robust_decision_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/rollback_app.py::rollback_app",
+    ".venv/lib/python3.14/site-packages/omodul/run_and_fix.py::run_and_fix",
+    ".venv/lib/python3.14/site-packages/omodul/run_subagent.py::run_subagent",
+    ".venv/lib/python3.14/site-packages/omodul/run_subagent_task.py::run_subagent_task",
+    ".venv/lib/python3.14/site-packages/omodul/security_audit.py::security_audit",
+    ".venv/lib/python3.14/site-packages/omodul/send_welcome_email.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/send_welcome_email.py::send_welcome_email",
+    ".venv/lib/python3.14/site-packages/omodul/share_session.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/share_session.py::share_session",
+    ".venv/lib/python3.14/site-packages/omodul/shot_rework_produce.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/shot_rework_produce.py::shot_rework_produce",
+    ".venv/lib/python3.14/site-packages/omodul/signals.py::alert_calibration_engine",
+    ".venv/lib/python3.14/site-packages/omodul/signals.py::buy_sell_analysis",
+    ".venv/lib/python3.14/site-packages/omodul/signals.py::thesis_invalidation_monitor",
+    ".venv/lib/python3.14/site-packages/omodul/similarity.py::event_cascade_clusterer",
+    ".venv/lib/python3.14/site-packages/omodul/similarity.py::smart_peer_finder",
+    ".venv/lib/python3.14/site-packages/omodul/simulation/paper_trading_session.py::paper_trading_session",
+    ".venv/lib/python3.14/site-packages/omodul/socratic_session_workflow.py::socratic_session_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/socratic_tutor_session.py::socratic_tutor_session",
+    ".venv/lib/python3.14/site-packages/omodul/speaking_practice_workflow.py::speaking_practice_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/stat_arb.py::stat_arb",
+    ".venv/lib/python3.14/site-packages/omodul/store_memory.py::store_memory",
+    ".venv/lib/python3.14/site-packages/omodul/strategies.py::bocpd_trend_following",
+    ".venv/lib/python3.14/site-packages/omodul/strategies.py::funding_rate_arbitrage",
+    ".venv/lib/python3.14/site-packages/omodul/strategies.py::microstructure_scalper",
+    ".venv/lib/python3.14/site-packages/omodul/strategies/__init__.py::bocpd_trend_following",
+    ".venv/lib/python3.14/site-packages/omodul/strategies/__init__.py::funding_rate_arbitrage",
+    ".venv/lib/python3.14/site-packages/omodul/strategies/__init__.py::microstructure_scalper",
+    ".venv/lib/python3.14/site-packages/omodul/strategies/spot_trend.py::spot_trend",
+    ".venv/lib/python3.14/site-packages/omodul/strategies/tradingagents_v1.py::tradingagents_v1",
+    ".venv/lib/python3.14/site-packages/omodul/strategies/trend_dual.py::trend_dual",
+    ".venv/lib/python3.14/site-packages/omodul/strategies/vwap_mr_dual.py::vwap_mr_dual",
+    ".venv/lib/python3.14/site-packages/omodul/strategy.py::factor_attribution_report",
+    ".venv/lib/python3.14/site-packages/omodul/strategy.py::strategy_backtest_report",
+    ".venv/lib/python3.14/site-packages/omodul/strategy.py::strategy_decay_monitor",
+    ".venv/lib/python3.14/site-packages/omodul/strategy/daily_plan_generator.py::daily_plan_generate",
+    ".venv/lib/python3.14/site-packages/omodul/summarize_session.py::summarize_session",
+    ".venv/lib/python3.14/site-packages/omodul/summary_synthesize.py::compute_fingerprint_for_summary_synthesize",
+    ".venv/lib/python3.14/site-packages/omodul/summary_synthesize.py::summary_synthesize",
+    ".venv/lib/python3.14/site-packages/omodul/symbol_dim_score.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/symbol_dim_score.py::symbol_dim_score",
+    ".venv/lib/python3.14/site-packages/omodul/sync_models_catalog.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/sync_models_catalog.py::sync_models_catalog",
+    ".venv/lib/python3.14/site-packages/omodul/sync_user_preferences.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/sync_user_preferences.py::sync_user_preferences",
+    ".venv/lib/python3.14/site-packages/omodul/timeframes_compute_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/timeframes_compute_workflow.py::timeframes_compute_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/triage_signal.py::compute_fingerprint_for_triage_signal",
+    ".venv/lib/python3.14/site-packages/omodul/triage_signal.py::triage_signal",
+    ".venv/lib/python3.14/site-packages/omodul/undo_changes.py::undo_changes",
+    ".venv/lib/python3.14/site-packages/omodul/universe_selection.py::fixed_list",
+    ".venv/lib/python3.14/site-packages/omodul/upgrade_self_hosted_app.py::compute_fingerprint_for_upgrade_self_hosted_app",
+    ".venv/lib/python3.14/site-packages/omodul/upgrade_self_hosted_app.py::upgrade_self_hosted_app",
+    ".venv/lib/python3.14/site-packages/omodul/user_data_workflow.py::reset_store",
+    ".venv/lib/python3.14/site-packages/omodul/user_data_workflow.py::user_data_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/variant_generation_workflow.py::variant_generation_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/verify_email_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/verify_email_workflow.py::verify_email_workflow",
+    ".venv/lib/python3.14/site-packages/omodul/verify_knowledge.py::verify_knowledge",
+    ".venv/lib/python3.14/site-packages/omodul/watch_cycle.py::watch_cycle",
+    ".venv/lib/python3.14/site-packages/omodul/web_research_task.py::web_research_task",
+    ".venv/lib/python3.14/site-packages/omodul/weekly_review_workflow.py::compute_fingerprint_for",
+    ".venv/lib/python3.14/site-packages/omodul/weekly_review_workflow.py::weekly_review_workflow",
+    "hevi/creative/omodul/analytics.py::calculate_analytics",
+    "hevi/creative/omodul/audit_dimensions.py::canonical_ref",
+    "hevi/creative/omodul/audit_dimensions.py::run_dimensions",
+    "hevi/creative/omodul/audit_gold.py::evaluate",
+    "hevi/creative/omodul/audit_gold.py::load_corpus",
+    "hevi/creative/omodul/genre.py::rounded",
+    "hevi/creative/omodul/naturalness_gold.py::evaluate",
+    "hevi/creative/omodul/naturalness_gold.py::load_corpus",
+    "hevi/creative/omodul/revision_gold.py::run_revision_gold",
+    "hevi/creative_assets/omodul/runtime.py::execute_visual_asset",
+    "hevi/creative_assets/omodul/runtime.py::plan_visual_asset",
+    "hevi/digital_human/omodul/__init__.py::build_full_job_plan",
+    "hevi/digital_human/omodul/__init__.py::execute_plan",
+    "hevi/digital_human/omodul/__init__.py::init_job",
+    "hevi/digital_human/omodul/__init__.py::plan_composition",
+    "hevi/digital_human/omodul/__init__.py::plan_delivery",
+    "hevi/digital_human/omodul/__init__.py::plan_generation",
+    "hevi/digital_human/omodul/__init__.py::plan_presenter_generation",
+    "hevi/digital_human/omodul/__init__.py::plan_visual",
+    "hevi/erduo/omodul/__init__.py::execute_erduo_pipeline",
+    "hevi/erduo/omodul/__init__.py::plan_erduo_pipeline",
+    "hevi/erduo/omodul/__init__.py::plan_full_erduo_pipeline",
+    "hevi/joyai/omodul/stream_edit.py::capabilities",
+    "hevi/joyai/omodul/stream_edit.py::create_session",
+    "hevi/joyai/omodul/stream_edit.py::finish_session",
+    "hevi/joyai/omodul/stream_edit.py::get_session",
+    "hevi/joyai/omodul/stream_edit.py::list_sessions",
+    "hevi/joyai/omodul/stream_edit.py::provider_available",
+    "hevi/joyai/omodul/stream_edit.py::provider_url",
+    "hevi/joyai/omodul/stream_edit.py::record_frame",
+    "hevi/joyai/omodul/stream_edit.py::record_output",
+    "hevi/joyai/omodul/stream_edit.py::reset_sessions",
+    "hevi/joyai/omodul/stream_edit.py::start_session",
+    "hevi/joyai/omodul/stream_edit.py::stream_provider_url",
+    "hevi/krillinai/omodul/__init__.py::execute_clip_generator",
+    "hevi/krillinai/omodul/__init__.py::plan_ai_short",
+    "hevi/krillinai/omodul/__init__.py::plan_clip_generator",
+    "hevi/krillinai/omodul/__init__.py::plan_youtube_studio",
+    "hevi/longcat/omodul/runtime.py::longcat_agent_workflow",
+    "hevi/longcat/omodul/runtime.py::longcat_capabilities",
+    "hevi/longvideo/omodul/runtime.py::compile_longvideo_plan",
+    "hevi/longvideo/omodul/runtime.py::longvideo_capabilities",
+    "hevi/magiviz/omodul/__init__.py::execute_magiviz_plan",
+    "hevi/magiviz/omodul/__init__.py::plan_character_generation",
+    "hevi/magiviz/omodul/__init__.py::plan_magiviz_pipeline",
+    "hevi/magiviz/omodul/__init__.py::plan_scene_generation",
+    "hevi/magiviz/omodul/__init__.py::plan_story_generation",
+    "hevi/magiviz/omodul/__init__.py::plan_storyboard_generation",
+    "hevi/magiviz/omodul/__init__.py::plan_video_composition",
+    "hevi/montage/omodul/__init__.py::execute_pipeline",
+    "hevi/montage/omodul/__init__.py::identify_pipeline",
+    "hevi/montage/omodul/__init__.py::plan_delivery",
+    "hevi/montage/omodul/__init__.py::plan_full_pipeline",
+    "hevi/montage/omodul/__init__.py::plan_reference_analysis",
+    "hevi/montage/omodul/__init__.py::plan_stage",
+    "hevi/montage/omodul/__init__.py::select_pipeline",
+    "hevi/montage/omodul/agentic.py::agentic_montage_workflow",
+    "hevi/montage/omodul/video_agent.py::compute_video_agent_fingerprint",
+    "hevi/montage/omodul/video_agent.py::video_agent_transaction",
+    "hevi/montage/omodul/video_agent.py::video_evidence_index",
+    "hevi/montage/omodul/video_agent.py::video_evidence_search",
+    "hevi/montage/omodul/video_agent.py::video_script_from_transcript",
+    "hevi/openshorts/omodul/__init__.py::execute_ai_short",
+    "hevi/openshorts/omodul/__init__.py::execute_clip_generator",
+    "hevi/openshorts/omodul/__init__.py::execute_youtube_studio",
+    "hevi/openshorts/omodul/__init__.py::plan_ai_short",
+    "hevi/openshorts/omodul/__init__.py::plan_clip_generator",
+    "hevi/openshorts/omodul/__init__.py::plan_youtube_studio",
+    "hevi/pipeline_lite/omodul/omodul_lite_assembler.py::run_lite_pipeline",
+    "hevi/pipeline_lite/omodul/omodul_run_store.py::delete_run_dir",
+    "hevi/pipeline_lite/omodul/omodul_run_store.py::list_run_ids",
+    "hevi/pipeline_lite/omodul/omodul_run_store.py::load_run",
+    "hevi/pipeline_lite/omodul/omodul_run_store.py::preview_html_path",
+    "hevi/pipeline_lite/omodul/omodul_run_store.py::run_dir",
+    "hevi/pipeline_lite/omodul/omodul_run_store.py::run_json_path",
+    "hevi/pipeline_lite/omodul/omodul_run_store.py::runs_root",
+    "hevi/pipeline_lite/omodul/omodul_run_store.py::save_run",
+    "hevi/pipeline_lite/omodul/omodul_script_loop.py::cues_from_script_text",
+    "hevi/pipeline_lite/omodul/omodul_script_loop.py::deterministic_verdict",
+    "hevi/pipeline_lite/omodul/omodul_script_loop.py::draft_from_dict",
+    "hevi/pipeline_lite/omodul/omodul_script_loop.py::draft_script",
+    "hevi/pipeline_lite/omodul/omodul_script_loop.py::llm_verdict",
+    "hevi/pipeline_lite/omodul/omodul_script_loop.py::merge_verdicts",
+    "hevi/pipeline_lite/omodul/omodul_script_loop.py::rewrite_draft",
+    "hevi/pipeline_lite/omodul/omodul_script_loop.py::run_veya_loop",
+    "hevi/platforms/omodul/plan_comment.py::build_comment_plan",
+    "hevi/platforms/omodul/plan_monitor.py::build_monitor_plan",
+    "hevi/platforms/omodul/plan_publish.py::build_publish_plan",
+    "hevi/platforms/omodul/plan_publish.py::execute_publish_plan",
+    "hevi/previs/omodul/runtime.py::compile_previs_scene",
+    "hevi/production/pipelines/omodul/runtime.py::compile_pipeline_request",
+    "hevi/production/pipelines/omodul/runtime.py::get_pipeline",
+    "hevi/production/pipelines/omodul/runtime.py::list_pipelines",
+    "hevi/script2video/omodul/cameo_plan.py::plan_autocameo",
+    "hevi/script2video/omodul/fuse.py::cameo_plan_from_photos",
+    "hevi/script2video/omodul/fuse.py::enrich_shot_list_with_kernel",
+    "hevi/script2video/omodul/fuse.py::fuse_production",
+    "hevi/script2video/omodul/fuse.py::kernel_plan_to_shot_list",
+    "hevi/script2video/omodul/fuse.py::last_frame_shot_indices",
+    "hevi/script2video/omodul/fuse.py::shot_list_from_kernels",
+    "hevi/script2video/omodul/idea_plan.py::plan_idea2video",
+    "hevi/script2video/omodul/kernel_plan.py::characters_from_payload",
+    "hevi/script2video/omodul/kernel_plan.py::plan_kernel_artifacts",
+    "hevi/script2video/omodul/kernel_plan.py::shots_from_payload",
+    "hevi/script2video/omodul/novel_plan.py::plan_novel2video",
+    "hevi/talkcraft/omodul/runtime.py::compile_talkcraft_plan",
+    "hevi/video_catcher/omodul/runtime.py::discover_video",
+    "hevi/video_catcher/omodul/runtime.py::download_video",
+    "hevi/video_catcher/omodul/runtime.py::verify_media",
+    "hevi/voice_agent/omodul/runtime.py::compile_voice_pipeline",
+    "hevi/voice_agent/omodul/runtime.py::voice_agent_capabilities",
+    "hevi/voicepro/omodul/dub_plan.py::cues_from_payload",
+    "hevi/voicepro/omodul/dub_plan.py::plan_dub_artifacts",
+    "hevi/voicepro/omodul/native_voice.py::native_voice_workflow",
+    "hevi/voicepro/omodul/openai_audio.py::synthesize_audio_file",
+    "hevi/voicepro/omodul/openai_audio.py::transcribe_audio_file",
+    "hevi/voicepro/omodul/platform.py::create_voice_profile",
+    "hevi/voicepro/omodul/platform.py::delete_voice_profile",
+    "hevi/voicepro/omodul/platform.py::list_gallery_profiles",
+    "hevi/voicepro/omodul/platform.py::list_model_catalog",
+    "hevi/voicepro/omodul/platform.py::plan_audiobook",
+    "hevi/voicepro/omodul/platform.py::plan_dictation",
+    "hevi/voicepro/omodul/platform.py::plan_dubbing",
+    "hevi/voicepro/omodul/platform.py::plan_watermark",
+    "hevi/voicepro/omodul/platform.py::platform_diagnostics",
+    "hevi/voicepro/omodul/platform.py::register_model",
+    "hevi/voicepro/omodul/platform.py::reset_platform",
+    "hevi/voicepro/omodul/platform.py::route_model",
+    "hevi/voicepro/omodul/platform.py::unregister_model",
+    "hevi/voicepro_asr/omodul/__init__.py::plan_clip_generator",
+    "hevi/voicepro_asr/omodul/__init__.py::plan_transcribe_pipeline",
+    "hevi/voicepro_translate/omodul/__init__.py::plan_ai_short",
+    "hevi/voicepro_translate/omodul/__init__.py::plan_clip_generator",
+    "hevi/voicepro_translate/omodul/__init__.py::plan_youtube_studio",
+    "hevi/voicepro_tts/omodul/__init__.py::plan_ai_short",
+    "hevi/voicepro_tts/omodul/__init__.py::plan_clip_generator",
+    "hevi/voicepro_tts/omodul/__init__.py::plan_youtube_studio"
+  ],
+  "source": "AST direct call graph",
+  "strongly_connected_components": []
+}
