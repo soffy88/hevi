@@ -2621,7 +2621,8 @@ def qualify_translation(root: Path) -> Evidence:
 
 def qualify_background(root: Path) -> Evidence:
     from hevi.creative.omodul import BackgroundRunController
-    from hevi.obase.creative import FailureRecord
+    from hevi.creative.oprim import WebhookLedger, WebhookSigner, claim_delivery
+    from hevi.obase.creative import FailureRecord, StageResult
 
     project_id = uuid4()
     controller = BackgroundRunController()
@@ -2630,10 +2631,35 @@ def qualify_background(root: Path) -> Evidence:
         run_key="background",
         capability="creative.longform",
         status="RUNNING",
+        stage_results=(
+            StageResult(stage="plan", status="SUCCEEDED"),
+            StageResult(stage="draft", status="RUNNING"),
+        ),
     )
     run_path = root / "run.json"
     persist_model(run_path, run)
-    cancelled = controller.cancel(restore_model(run_path, ProductionRun))
+    before_disconnect = controller.progress(run)
+    progress_path = root / "progress-journal.json"
+    progress_path.write_text(json.dumps([before_disconnect.to_dict()]))
+    reconnected = restore_model(run_path, ProductionRun)
+    after_reconnect = controller.progress(reconnected)
+    payload = controller.notification(after_reconnect)
+    signer = WebhookSigner(b"background-secret")
+    signature = signer.sign(str(reconnected.object_id), payload)
+    signature_ok = signer.verify(signature, str(reconnected.object_id), payload)
+    ledger = WebhookLedger()
+    claim_delivery(ledger, str(reconnected.object_id))
+    notification_report = _json_artifact(
+        root,
+        "background-notifications.json",
+        {
+            "payload": payload,
+            "signature": signature,
+            "verified": signature_ok,
+            "attempts": dict(ledger.attempts),
+        },
+    )
+    cancelled = controller.cancel(reconnected)
     persist_model(run_path, cancelled)
     failed = controller.fail(
         cancelled.model_copy(update={"status": "RUNNING"}),
@@ -2655,6 +2681,14 @@ def qualify_background(root: Path) -> Evidence:
             "terminal": terminal.model_dump(mode="json"),
         },
     )
+    progress_reconnect_notifications = (
+        progress_path.is_file()
+        and before_disconnect == after_reconnect
+        and before_disconnect.percent == 50.0
+        and payload["percent"] == 50.0
+        and signature_ok
+        and ledger.attempts[str(reconnected.object_id)] == 1
+    )
     return Evidence(
         "background-production-notifications",
         str(report),
@@ -2665,17 +2699,17 @@ def qualify_background(root: Path) -> Evidence:
             "RETRY": resumed.status == "RUNNING" and resumed.revision > failed.revision,
             "TERMINAL_RESTORE": restored.status == "CANCELLED",
             "NO_CHAT_DERIVED_STATUS": True,
-            "PROGRESS_RECONNECT_NOTIFICATIONS": False,
+            "PROGRESS_RECONNECT_NOTIFICATIONS": progress_reconnect_notifications,
         },
-        [str(run_path), str(report)],
+        [str(run_path), str(progress_path), str(notification_report), str(report)],
         ["reload through cancel/fail/retry lifecycle"],
         ["cancel terminal run", "retry non-failed run rejected"],
-        {"final_status": restored.status},
+        {"final_status": restored.status, "progress_percent": before_disconnect.percent},
     )
 
 
 def qualify_analytics(root: Path) -> Evidence:
-    from hevi.creative.omodul import calculate_analytics
+    from hevi.creative.omodul import UsageRecord, calculate_analytics
 
     project_id = uuid4()
     good = NarrativeAudit(project_id=project_id, artifact_id=uuid4(), status="PASS")
@@ -2696,8 +2730,27 @@ def qualify_analytics(root: Path) -> Evidence:
         ProductionRun(project_id=project_id, run_key="bad", capability="x", status="FAILED"),
     )
     analytics = calculate_analytics(
-        texts=("one two three",), audits=(good, bad), runs=runs, revision_count=2
+        texts=("one two three",),
+        audits=(good, bad),
+        runs=runs,
+        revision_count=2,
+        usage=(
+            UsageRecord(
+                model="local", prompt_tokens=10, completion_tokens=5, cost_usd=0.02, latency_ms=100.0
+            ),
+            UsageRecord(
+                model="remote",
+                prompt_tokens=20,
+                completion_tokens=10,
+                cost_usd=0.20,
+                latency_ms=200.0,
+            ),
+            UsageRecord(
+                model="remote", prompt_tokens=5, completion_tokens=5, cost_usd=0.20, latency_ms=300.0
+            ),
+        ),
     )
+    empty = calculate_analytics(texts=(), audits=(), runs=(), revision_count=0)
     path = _json_artifact(root, "analytics.json", asdict(analytics))
     restored = json.loads(path.read_text())
     return Evidence(
@@ -2712,7 +2765,21 @@ def qualify_analytics(root: Path) -> Evidence:
             "FAILURE_RATE": restored["run_failure_rate"] == 0.5,
             "RECOVERY_RATE": restored["run_recovery_rate"] == 0.0,
             "LEDGER_RECONCILED": analytics == type(analytics)(**restored),
-            "MODEL_TOKEN_COST_LATENCY": False,
+            "MODEL_TOKEN_COST_LATENCY": (
+                restored["model_usage"] == {"local": 1, "remote": 2}
+                and restored["token_usage"] == {"local": 15, "remote": 40}
+                and restored["prompt_tokens"] == 35
+                and restored["completion_tokens"] == 20
+                and abs(restored["cost_usd"] - 0.42) < 1e-9
+                and restored["latency_ms_total"] == 600.0
+                and restored["latency_ms_avg"] == 200.0
+            ),
+            "MISSING_TELEMETRY_ZEROED": (
+                empty.token_usage == {}
+                and empty.cost_usd == 0.0
+                and empty.latency_ms_avg == 0.0
+            ),
+            "PRIVACY_NO_TEXT": "one two three" not in path.read_text(),
         },
         [str(path)],
         ["reload analytics ledger"],
@@ -2755,7 +2822,11 @@ def qualify_routing(root: Path) -> Evidence:
 
 
 def qualify_webhooks(root: Path) -> Evidence:
-    from hevi.creative.oprim import WebhookLedger, WebhookSigner, claim_delivery
+    import http.server
+    import socket
+    import threading
+
+    from hevi.creative.oprim import WebhookLedger, WebhookSigner, claim_delivery, deliver
 
     signer = WebhookSigner(b"qualification-secret")
     ledger = WebhookLedger()
@@ -2766,6 +2837,63 @@ def qualify_webhooks(root: Path) -> Evidence:
     first = claim_delivery(ledger, event_id)
     duplicate = claim_delivery(ledger, event_id)
     bad_signature = signer.verify(signature, event_id, {"status": "tampered"})
+
+    received: list[bool] = []
+    attempts_seen: dict[str, int] = {}
+
+    class _Receiver(http.server.BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length)
+            event = "unknown"
+            valid = False
+            try:
+                envelope = json.loads(body)
+                event = str(envelope["event_id"])
+                valid = signer.verify(
+                    self.headers.get("X-Hevi-Signature", ""), event, envelope["payload"]
+                )
+            except (ValueError, KeyError, TypeError):
+                valid = False
+            received.append(valid)
+            attempts_seen[event] = attempts_seen.get(event, 0) + 1
+            if event == "retry-1" and attempts_seen[event] < 3:
+                self.send_response(503)
+            else:
+                self.send_response(204 if valid else 400)
+            self.end_headers()
+
+        def log_message(self, *args: object) -> None:
+            return
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Receiver)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    endpoint = f"http://127.0.0.1:{server.server_address[1]}/hook"
+    try:
+        local_ok = deliver(
+            event_id="local-1", payload=payload, endpoint=endpoint, signer=signer, ledger=ledger
+        )
+        retry_ok = deliver(
+            event_id="retry-1", payload=payload, endpoint=endpoint, signer=signer, ledger=ledger
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    dead_port = probe.getsockname()[1]
+    probe.close()
+    dead_ok = not deliver(
+        event_id="dead-1",
+        payload=payload,
+        endpoint=f"http://127.0.0.1:{dead_port}/hook",
+        signer=signer,
+        ledger=ledger,
+        max_attempts=2,
+    )
     path = _json_artifact(
         root,
         "webhook-ledger.json",
@@ -2775,6 +2903,12 @@ def qualify_webhooks(root: Path) -> Evidence:
             "first": first,
             "duplicate": duplicate,
             "attempts": ledger.attempts,
+            "delivered": sorted(ledger.delivered),
+            "dead_letters": ledger.dead_letters,
+            "receiver_valid": received,
+            "local_ok": local_ok,
+            "retry_ok": retry_ok,
+            "dead_ok": dead_ok,
         },
     )
     return Evidence(
@@ -2787,12 +2921,19 @@ def qualify_webhooks(root: Path) -> Evidence:
             "IDEMPOTENT": first and not duplicate,
             "TAMPER_REJECTED": not bad_signature,
             "SECRET_REDACTED": "qualification-secret" not in path.read_text(),
-            "LOCAL_RECEIVER": False,
-            "DELIVERY_RETRY": False,
+            "LOCAL_RECEIVER": bool(local_ok and received and all(received)),
+            "DELIVERY_RETRY": bool(
+                retry_ok
+                and ledger.attempts["retry-1"] == 3
+                and "retry-1" in ledger.delivered
+                and dead_ok
+                and ledger.attempts["dead-1"] == 2
+                and ledger.dead_letters.get("dead-1", "").startswith("exhausted")
+            ),
         },
         [str(path)],
         ["persist delivery ledger", "replay duplicate event"],
-        ["tampered signature", "duplicate delivery"],
+        ["tampered signature", "duplicate delivery", "non-2xx then recovery", "dead endpoint"],
         {"delivery_attempts": ledger.attempts},
     )
 

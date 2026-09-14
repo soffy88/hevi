@@ -1,6 +1,6 @@
 """Composed HEVI creative production modules."""
 
-from hevi.creative.omodul.analytics import CreativeAnalytics, calculate_analytics
+from hevi.creative.omodul.analytics import CreativeAnalytics, UsageRecord, calculate_analytics
 from hevi.creative.omodul.audit import ALL_AUDIT_DIMENSIONS, AuditDimension, NarrativeAuditEngine
 from hevi.creative.omodul.audit_dimensions import (
     DIMENSION_VERIFIERS,
@@ -16,7 +16,7 @@ from hevi.creative.omodul.audit_dimensions import (
     StyleSpec,
     run_dimensions,
 )
-from hevi.creative.omodul.background import BackgroundRunController
+from hevi.creative.omodul.background import BackgroundRunController, ProgressEvent
 from hevi.creative.omodul.comparison import ComparisonModule, IntentArtifactComparison
 from hevi.creative.omodul.context import (
     ContextBudget,
@@ -122,7 +122,9 @@ __all__ = [
     "run_dimensions",
     "CreativeAnalytics",
     "calculate_analytics",
+    "UsageRecord",
     "BackgroundRunController",
+    "ProgressEvent",
     "ComparisonModule",
     "IntentArtifactComparison",
     "CoverGeneration",

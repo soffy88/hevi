@@ -642,7 +642,7 @@ capabilities:
     hevi_capability_id: creative.analytics
     qualification_test: full project aggregation, missing telemetry, rebuild, privacy, cost/latency evidence
     qualification_evidence_path: artifacts/qualification/creative-runtime/creative-analytics.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: translation-localization
     name: Long-document translation and localization
@@ -795,7 +795,7 @@ capabilities:
     hevi_capability_id: creative.background_runs
     qualification_test: background run, reconnect, cancel, resume, retry, signed event, delivery ledger
     qualification_evidence_path: artifacts/qualification/creative-runtime/background-production-notifications.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: run-snapshot-recovery
     name: Production run snapshots and crash recovery
@@ -972,7 +972,7 @@ capabilities:
     hevi_capability_id: creative.notifications
     qualification_test: signed event, filter, retry, idempotency, secret redaction, failure ledger
     qualification_evidence_path: artifacts/qualification/creative-runtime/notifications-webhooks.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: creative-export
     name: Creative export and package delivery

@@ -41,6 +41,11 @@ WAVE_CAPABILITIES: dict[str, tuple[str, ...]] = {
         "creative-export",
         "cover-visual-asset-runtime",
     ),
+    "F": (
+        "creative-analytics",
+        "background-production-notifications",
+        "notifications-webhooks",
+    ),
 }
 
 

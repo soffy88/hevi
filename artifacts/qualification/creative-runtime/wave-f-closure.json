@@ -1,0 +1,72 @@
+{
+  "capabilities": [
+    {
+      "capability_id": "creative-analytics",
+      "check_count": 11,
+      "checks_passed": true,
+      "details": {
+        "analytics": {
+          "artifact_count": 1,
+          "audit_pass_rate": 0.5,
+          "completion_tokens": 20,
+          "cost_usd": 0.42000000000000004,
+          "issue_distribution": {
+            "PACING": 1
+          },
+          "latency_ms_avg": 200.0,
+          "latency_ms_total": 600.0,
+          "model_usage": {
+            "local": 1,
+            "remote": 2
+          },
+          "prompt_tokens": 35,
+          "revision_count": 2,
+          "run_failure_rate": 0.5,
+          "run_recovery_rate": 0.0,
+          "token_usage": {
+            "local": 15,
+            "remote": 40
+          },
+          "word_count": 3
+        }
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/creative-analytics.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "background-production-notifications",
+      "check_count": 7,
+      "checks_passed": true,
+      "details": {
+        "final_status": "CANCELLED",
+        "progress_percent": 50.0
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/background-production-notifications.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "notifications-webhooks",
+      "check_count": 8,
+      "checks_passed": true,
+      "details": {
+        "delivery_attempts": {
+          "dead-1": 2,
+          "event-1": 1,
+          "local-1": 1,
+          "retry-1": 3
+        }
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/notifications-webhooks.json",
+      "status": "QUALIFIED"
+    }
+  ],
+  "ledger": {
+    "MISSING": 0,
+    "PARTIAL": 2,
+    "QUALIFIED": 37,
+    "TOTAL": 39,
+    "UNQUALIFIED": 0
+  },
+  "wave": "F",
+  "wave_status": "QUALIFIED"
+}

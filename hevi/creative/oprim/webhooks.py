@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import urllib.error
+import urllib.request
 from dataclasses import dataclass, field
 from time import time
 
@@ -13,6 +15,7 @@ from time import time
 class WebhookLedger:
     delivered: set[str] = field(default_factory=set)
     attempts: dict[str, int] = field(default_factory=dict)
+    dead_letters: dict[str, str] = field(default_factory=dict)
 
 
 class WebhookSigner:
@@ -57,4 +60,41 @@ def claim_delivery(ledger: WebhookLedger, event_id: str) -> bool:
     return True
 
 
-__all__ = ["WebhookLedger", "WebhookSigner", "claim_delivery"]
+def deliver(
+    *,
+    event_id: str,
+    payload: dict[str, object],
+    endpoint: str,
+    signer: WebhookSigner,
+    ledger: WebhookLedger,
+    max_attempts: int = 3,
+    timeout_s: float = 5.0,
+) -> bool:
+    """POST a signed event with bounded retry, recording the delivery ledger."""
+
+    if max_attempts < 1:
+        raise ValueError("DELIVERY_ATTEMPT_BOUND_INVALID")
+    if event_id in ledger.delivered:
+        return True
+    signature = signer.sign(event_id, payload)
+    body = json.dumps({"event_id": event_id, "payload": payload}, sort_keys=True).encode()
+    for _ in range(max_attempts):
+        ledger.attempts[event_id] = ledger.attempts.get(event_id, 0) + 1
+        request = urllib.request.Request(
+            endpoint,
+            data=body,
+            method="POST",
+            headers={"Content-Type": "application/json", "X-Hevi-Signature": signature},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_s) as response:
+                if 200 <= response.status < 300:
+                    ledger.delivered.add(event_id)
+                    return True
+        except (urllib.error.URLError, TimeoutError, OSError):
+            continue
+    ledger.dead_letters[event_id] = f"exhausted {max_attempts} attempts"
+    return False
+
+
+__all__ = ["WebhookLedger", "WebhookSigner", "claim_delivery", "deliver"]

@@ -1,0 +1,13 @@
+{
+  "attempts": {
+    "db6b17c5-e602-4ba6-a1c8-2bded2b3dd6c": 1
+  },
+  "payload": {
+    "event_type": "creative.run.running",
+    "percent": 50.0,
+    "run_id": "db6b17c5-e602-4ba6-a1c8-2bded2b3dd6c",
+    "stage": "draft"
+  },
+  "signature": "t=1789385722,v1=80b88e9ec7e0043e793eea85cab645219e42e734005ee9ec19e0590303dd4857",
+  "verified": true
+}

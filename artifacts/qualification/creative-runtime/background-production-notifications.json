@@ -1,6 +1,6 @@
 {
   "capability_id": "background-production-notifications",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/background-production-notifications/run-075867adeb76/background-report.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/background-production-notifications/run-4ad84495059d/background-report.json",
   "checks": {
     "PERSISTED_RUNNING": true,
     "CANCEL": true,
@@ -8,11 +8,13 @@
     "RETRY": true,
     "TERMINAL_RESTORE": true,
     "NO_CHAT_DERIVED_STATUS": true,
-    "PROGRESS_RECONNECT_NOTIFICATIONS": false
+    "PROGRESS_RECONNECT_NOTIFICATIONS": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/background-production-notifications/run-075867adeb76/run.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/background-production-notifications/run-075867adeb76/background-report.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/background-production-notifications/run-4ad84495059d/run.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/background-production-notifications/run-4ad84495059d/progress-journal.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/background-production-notifications/run-4ad84495059d/background-notifications.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/background-production-notifications/run-4ad84495059d/background-report.json"
   ],
   "recovery": [
     "reload through cancel/fail/retry lifecycle"
@@ -22,8 +24,9 @@
     "retry non-failed run rejected"
   ],
   "details": {
-    "final_status": "CANCELLED"
+    "final_status": "CANCELLED",
+    "progress_percent": 50.0
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

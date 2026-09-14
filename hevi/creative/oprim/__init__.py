@@ -28,7 +28,7 @@ from hevi.creative.oprim.state import (
     compare_versions,
     hash_bytes,
 )
-from hevi.creative.oprim.webhooks import WebhookLedger, WebhookSigner, claim_delivery
+from hevi.creative.oprim.webhooks import WebhookLedger, WebhookSigner, claim_delivery, deliver
 from hevi.creative.oprim.workspace import AtomicWorkspace, WorkspaceCommitError
 
 __all__ = [
@@ -62,6 +62,7 @@ __all__ = [
     "apply_exact_edit",
     "backup_workspace",
     "claim_delivery",
+    "deliver",
     "preview_exact_edit",
     "preview_semantic_edit",
     "restore_workspace",

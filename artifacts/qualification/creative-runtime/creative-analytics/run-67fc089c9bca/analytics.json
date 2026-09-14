@@ -1,0 +1,24 @@
+{
+  "artifact_count": 1,
+  "audit_pass_rate": 0.5,
+  "completion_tokens": 20,
+  "cost_usd": 0.42000000000000004,
+  "issue_distribution": {
+    "PACING": 1
+  },
+  "latency_ms_avg": 200.0,
+  "latency_ms_total": 600.0,
+  "model_usage": {
+    "local": 1,
+    "remote": 2
+  },
+  "prompt_tokens": 35,
+  "revision_count": 2,
+  "run_failure_rate": 0.5,
+  "run_recovery_rate": 0.0,
+  "token_usage": {
+    "local": 15,
+    "remote": 40
+  },
+  "word_count": 3
+}
