@@ -257,15 +257,9 @@ def qa_gate(
 
     对应 lanshu qa-recovery.md acceptance gates
     """
-    return run_qa_gate(
-        job,
-        identity_coherent=identity_coherent,
-        mouth_sync=mouth_sync,
-        no_black_frames=no_black_frames,
-        no_overlay=no_overlay,
-        captions_readable=captions_readable,
-        safe_zones_ok=safe_zones_ok,
-    )
+    from hevi.digital_human.content_service import qa_gate as _qa_gate
+
+    return _qa_gate(job, identity_coherent=identity_coherent, mouth_sync=mouth_sync, no_black_frames=no_black_frames, no_overlay=no_overlay, captions_readable=captions_readable, safe_zones_ok=safe_zones_ok)
 
 
 # ─── 预检查技能 ──────────────────────────────────────
@@ -276,7 +270,9 @@ def preflight_check(job: PresenterJob) -> QAReport:
 
     对应 lanshu preflight.py
     """
-    return run_preflight_check(job)
+    from hevi.digital_human.content_service import preflight_check as _preflight_check
+
+    return _preflight_check(job)
 
 
 # ─── 导出 ───────────────────────────────────────────

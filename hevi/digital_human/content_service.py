@@ -5,7 +5,12 @@ return data and never hold business state.
 """
 from __future__ import annotations
 
-from hevi.digital_human.oprim import build_timeline, generate_narration
+from hevi.digital_human.oprim import (
+    build_timeline,
+    generate_narration,
+    run_preflight_check,
+    run_qa_gate,
+)
 from hevi.digital_human.oprim.caption import build_caption_plan as build_caption_plan_atom
 from hevi.digital_human.oprim.narration import topic_to_script
 from hevi.digital_human.schemas import CaptionPlan, JobStatus, PresenterJob, TimelinePlan
@@ -42,3 +47,21 @@ def caption_plan(job: PresenterJob, audio_duration_s: float, *, keyword_anchors:
     plan = build_caption_plan_atom(audio_duration_s=audio_duration_s, script_text=job.script, keyword_anchors=keyword_anchors)
     job.caption_json = plan.model_dump_json()
     return plan
+
+
+def preflight_check(job: PresenterJob):
+    """Run the HEVI preflight transaction at the Layer 4 boundary."""
+    return run_preflight_check(job)
+
+
+def qa_gate(job: PresenterJob, *, identity_coherent: bool = True, mouth_sync: bool = True, no_black_frames: bool = True, no_overlay: bool = True, captions_readable: bool = True, safe_zones_ok: bool = True):
+    """Run the HEVI acceptance transaction at the Layer 4 boundary."""
+    return run_qa_gate(
+        job,
+        identity_coherent=identity_coherent,
+        mouth_sync=mouth_sync,
+        no_black_frames=no_black_frames,
+        no_overlay=no_overlay,
+        captions_readable=captions_readable,
+        safe_zones_ok=safe_zones_ok,
+    )
