@@ -106,6 +106,7 @@ def caption_plan(
 
 def generate_presenter(
     job: PresenterJob,
+    *,
     mode: str = "pilot",  # pilot | full
     pilot_duration_s: float = 5.0,
 ) -> PresenterJob:
@@ -113,36 +114,9 @@ def generate_presenter(
 
     对应 lanshu generation.md 第 2 节
     """
-    if not job.presenter_image:
-        raise ValueError("presenter_image is required before presenter generation")
-    if not Path(job.presenter_image).is_file():
-        raise FileNotFoundError(f"presenter image not found: {job.presenter_image}")
-    if not job.final_audio or not Path(job.final_audio).is_file():
-        raise FileNotFoundError("final_audio must be a real file before presenter generation")
+    from hevi.digital_human.production_service import generate_presenter as _generate_presenter
 
-    output_root = Path(
-        os.getenv("HEVI_DIGITAL_HUMAN_OUTPUT_DIR", "data/digital_human")
-    ).expanduser()
-    if mode == "pilot":
-        output_path = output_root / job.job_id / "video" / "pilot.mp4"
-    else:
-        output_path = output_root / job.job_id / "video" / "presenter.mp4"
-
-    from hevi.digital_human.talking_face import generate_talking_face
-
-    _run_coroutine(
-        generate_talking_face(
-            image_path=job.presenter_image,
-            audio_path=job.final_audio,
-            output_path=output_path,
-        )
-    )
-    if not output_path.is_file() or output_path.stat().st_size == 0:
-        raise RuntimeError("Talking Face completed without a presenter video artifact")
-    job.rendered = str(output_path)
-
-    job.status = JobStatus.PRESENTER_GENERATED
-    return job
+    return _generate_presenter(job, mode=mode, pilot_duration_s=pilot_duration_s)
 
 
 def _run_coroutine(coroutine: Any) -> Any:
