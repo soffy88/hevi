@@ -1,0 +1,1009 @@
+ledger_version: 1
+purpose: clean_room_capability_reverse_spec
+upstream:
+  name: InkOS
+  repository: https://github.com/Narcooo/inkos
+  branch: master
+  sha: 091048383f411eb99948a8764f42b6fd13006f9b
+  version_observed: 1.8.0
+  license: AGPL-3.0-only
+  source_workspace: /data/soffy/qualification/inkos
+  source_imported_into_hevi: false
+  evidence_policy: public behavior and repository metadata only; no source or text copied
+hevi_baseline:
+  distribution_sha: 1c0be2d89b1ae6a14cf904ab4804380b772e9f44
+  branch: feature/vnext-3o-creative-runtime
+  frozen_baseline_preserved: true
+  phase: 0
+status_vocabulary:
+  - EXISTING_EQUIVALENT
+  - EXISTING_SUPERSET
+  - MISSING
+  - PARTIAL
+  - IMPLEMENTED_UNQUALIFIED
+  - QUALIFIED
+  - NON_CAPABILITY
+capabilities:
+  - id: unified-agent-production-harness
+    name: Unified agent and production harness
+    domain: A
+    source_evidence:
+      - README.md#核心特性
+      - README.md#工作原理
+      - packages/core/src/production/harness.ts
+      - packages/core/src/interaction/runtime.ts
+      - packages/core/src/interaction/action-envelope.ts
+      - packages/cli/src/commands/interact.ts
+    observable_behavior: Natural language is converted into typed actions; host tools execute deterministic work and completion is grounded in tool results and files.
+    inputs: natural_language_request, structured_action, project_scope, confirmation_policy
+    outputs: typed_action_result, artifact_refs, progress_events, failure_record
+    persistent_state: interaction_session, production_run, action_envelope, transcript
+    side_effects: file_changes, model_calls, background_tasks, notifications
+    failure_semantics: invalid_action, unavailable_provider, rejected_confirmation, timeout, missing_artifact, partial_run
+    recovery_semantics: cancel, retry, restore_session, resume_run, inspect_real_tool_result
+    user_surface: Studio Chat, CLI interact, TUI, daemon
+    inkos_status: observable_and_build_verified
+    hevi_existing_equivalent: hevi production graph, execution runtime, API task services
+    hevi_gap: unified creative action envelope and parity across Studio/CLI/TUI are not one verified 3O contract
+    3o_target: obase/oprim/omodul/oservi
+    hevi_capability_id: creative.production_harness
+    qualification_test: real typed action, confirmation, cancellation, restart, artifact-grounded completion
+    status: PARTIAL
+
+  - id: longform-narrative-production
+    name: Long-form narrative production lifecycle
+    domain: B
+    source_evidence:
+      - README.md#工作原理
+      - README.md#写第一本书
+      - packages/core/src/agents/architect.ts
+      - packages/core/src/agents/planner.ts
+      - packages/core/src/agents/composer.ts
+      - packages/core/src/agents/writer.ts
+      - packages/core/src/agents/continuity.ts
+      - packages/core/src/agents/reviser.ts
+      - packages/core/src/production/harness.ts
+    observable_behavior: A project can be created and progressed through planning, composition, drafting, observation, normalization, audit, revision, and settlement.
+    inputs: creative_brief, author_intent, book_config, materials, model_config
+    outputs: outline, chapter_draft, runtime_state_delta, audit_report, revision_candidate, settlement
+    persistent_state: book_config, story_state, chapter_index, chapter_workspace, summaries, hooks
+    side_effects: chapter_files, state_files, memory_index, model_usage
+    failure_semantics: invalid_foundation, malformed_delta, audit_failure, length_warning, provider_failure
+    recovery_semantics: chapter_snapshot_restore, bounded_revision, resume_import, retry_failed_stage
+    user_surface: book create, plan, compose, draft, write next, audit, revise, review
+    inkos_status: pipeline_and_cli_verified
+    hevi_existing_equivalent: hevi/narrative, hevi/production_graph, hevi/quality
+    hevi_gap: no verified long-horizon narrative production graph with all settlement stages and canonical commit evidence
+    3o_target: omodul/oservi/oskill
+    hevi_capability_id: creative.longform_production
+    qualification_test: 50 chapter run with persisted state, audit, bounded revision, restart, and recovery
+    status: PARTIAL
+
+  - id: canonical-narrative-state
+    name: Canonical narrative state and authority
+    domain: C
+    source_evidence:
+      - README.md#长期记忆
+      - packages/core/src/state/runtime-state-store.ts
+      - packages/core/src/state/state-validator.ts
+      - packages/core/src/state/state-reducer.ts
+      - packages/core/src/models.ts
+    observable_behavior: Structured state files are authoritative while Markdown files are readable projections; state deltas are validated before immutable application.
+    inputs: project, book, author_intent, rules, proposed_delta
+    outputs: canonical_state, projection_files, versioned_delta, validation_result
+    persistent_state: characters, world, resources, relationships, hooks, timeline, chapter_summaries, rules
+    side_effects: atomic state replacement, projection update, index update
+    failure_semantics: schema_invalid, conflict, stale_version, forbidden_field, dangling_reference
+    recovery_semantics: reject_delta, restore_snapshot, migrate_legacy_state, rebuild_projection
+    user_surface: book state, status, Studio foundation panels, review artifacts
+    inkos_status: schema_and_state_tests_present
+    hevi_existing_equivalent: hevi/narrative/models.py and StoryBible
+    hevi_gap: HEVI StoryBible is narrower than the complete runtime state authority required for long-form memory and all state dimensions
+    3o_target: obase/oprim
+    hevi_capability_id: narrative.canonical_state
+    qualification_test: roundtrip, delta validation, stale write rejection, projection rebuild, cross-project isolation
+    status: PARTIAL
+
+  - id: observer-state-extraction
+    name: Observer and structured narrative delta extraction
+    domain: D
+    source_evidence:
+      - README.md#工作原理
+      - packages/core/src/agents/observer-prompts.ts
+      - packages/core/src/agents/chapter-analyzer.ts
+      - packages/core/src/agents/settler-delta-parser.ts
+      - packages/core/src/__tests__/chapter-analyzer.test.ts
+    observable_behavior: Chapter output is analyzed into nine fact classes and a JSON delta rather than directly replacing canonical documents.
+    inputs: chapter_artifact, current_state, chapter_context
+    outputs: NarrativeObservation, proposed_delta, conflict_findings
+    persistent_state: observation_record, accepted_delta, source_locations
+    side_effects: model_call only before explicit state application
+    failure_semantics: malformed_json, unknown_entity, contradictory_delta, stale_state
+    recovery_semantics: reject_and_retry, human_review, apply_only_valid_fields
+    user_surface: audit result, chapter settlement, issue details
+    inkos_status: source and parser behavior verified
+    hevi_existing_equivalent: hevi/narrative/screenwriting.py and quality reports
+    hevi_gap: no unified nine-class observation/delta contract tied to HEVI canonical authority
+    3o_target: obase/oprim/omodul
+    hevi_capability_id: narrative.observation_delta
+    qualification_test: synthetic chapter with all nine classes, malformed output, conflict, stale version, atomic apply
+    status: PARTIAL
+
+  - id: governed-context-composer
+    name: Governed context compilation
+    domain: E
+    source_evidence:
+      - README.md#输入治理控制面
+      - README.md#控制面与运行时产物
+      - packages/core/src/agents/composer.ts
+      - packages/core/src/agents/planner-context.ts
+      - packages/core/src/context-filter.ts
+      - packages/core/src/governed-working-set.ts
+    observable_behavior: Author intent, current focus, state, rules, summaries, hooks, and material references are selected into task-specific runtime context with a trace.
+    inputs: goal, stage, canon_version, artifact_refs, retrieval_candidates, skill_refs, context_budget
+    outputs: ContextManifest, intent_artifact, rule_stack, trace
+    persistent_state: runtime_context_artifacts, selection_trace
+    side_effects: retrieval, context artifact writes, model call for planning where needed
+    failure_semantics: missing_required_fact, budget_exceeded, invalid_reference, source_unavailable
+    recovery_semantics: compress_allowed_context, retry retrieval, fail closed for protected facts
+    user_surface: plan, compose, runtime trace, Studio focus controls
+    inkos_status: runtime artifact behavior verified
+    hevi_existing_equivalent: hevi/narrative/context.py, hevi/narrative/bible.py
+    hevi_gap: HEVI lacks one auditable ContextManifest with protected/compressed/excluded decisions across all creative modules
+    3o_target: oprim/omodul/oskill
+    hevi_capability_id: creative.context_compilation
+    qualification_test: context budget, protected fact retention, project isolation, trace roundtrip
+    status: PARTIAL
+
+  - id: long-term-creative-memory
+    name: Long-term creative memory and retrieval
+    domain: F
+    source_evidence:
+      - README.md#长期记忆
+      - packages/core/src/state/memory-db.ts
+      - packages/core/src/memory-retrieval.ts
+      - packages/core/src/materials/retrieve.ts
+      - packages/core/src/__tests__/memory-retrieval.test.ts
+    observable_behavior: Project/book-scoped facts, summaries, hooks, and materials can be indexed and retrieved by relevance with source pointers.
+    inputs: project_id, book_id, memory_items, query, time_scope
+    outputs: ranked_memory_refs, source_locations, rebuild_report
+    persistent_state: temporal_memory_db, source_files, retrieval_index
+    side_effects: local index writes and rebuilds
+    failure_semantics: missing_index, corrupt_record, cross_project_reference, unsupported_query
+    recovery_semantics: rebuild_index, ignore_invalid_record, restore source authority
+    user_surface: continued writing, compose context, material search, status
+    inkos_status: local memory implementation and tests present
+    hevi_existing_equivalent: hevi/memory and hevi/services/material.py
+    hevi_gap: no verified project-isolated long-form memory contract with temporal relevance and credential exclusion
+    3o_target: obase/oprim/oservi
+    hevi_capability_id: creative.memory_retrieval
+    qualification_test: rebuild, relevance, source trace, project isolation, no credential indexing, restart
+    status: PARTIAL
+
+  - id: narrative-forecast-branch-simulation
+    name: Narrative forecast and isolated branch simulation
+    domain: G
+    source_evidence:
+      - README.md#比较长篇走向
+      - packages/core/src/forecast/schema.ts
+      - packages/core/src/forecast/runner.ts
+      - packages/core/src/forecast/store.ts
+      - packages/core/src/__tests__/forecast-runner.test.ts
+    observable_behavior: Two to five isolated candidate futures can be created, compared, rechecked against canon, and selected without mutating canon.
+    inputs: canon_version, divergence, branch_count, horizon, model_config
+    outputs: NarrativeForecast, branches, comparison, SelectedBranchPlan
+    persistent_state: forecast_snapshot, branch_snapshots, stale_marker, selected_plan
+    side_effects: model calls and forecast files only
+    failure_semantics: invalid_branch_count, stale_canon, malformed_branch, unavailable_model
+    recovery_semantics: refresh_forecast, mark_stale, discard_branch, select_plan_without_commit
+    user_surface: forecast create/show/select, Studio branch cards
+    inkos_status: schema, store, runner, and CLI behavior verified
+    hevi_existing_equivalent: hevi/narrative has planning and revision models but no equivalent forecast runtime
+    hevi_gap: non-canonical branch simulation and stale refresh are absent as a HEVI capability
+    3o_target: obase/omodul/oservi
+    hevi_capability_id: narrative.forecast
+    qualification_test: 3 branches, canon mutation guard, stale detection, comparison, selection, restart
+    status: MISSING
+
+  - id: continuity-and-multidimensional-audit
+    name: Continuity, craft, and narrative audit
+    domain: H
+    source_evidence:
+      - README.en.md#37-dimension-audit
+      - packages/core/src/agents/continuity.ts
+      - packages/core/src/agents/post-write-validator.ts
+      - packages/core/src/agents/ai-tells.ts
+      - packages/core/src/agents/fanfic-dimensions.ts
+      - packages/core/src/__tests__/continuity.test.ts
+    observable_behavior: Drafts are checked across continuity, structure, style, pacing, genre, prose, safety, and AI-pattern dimensions with findings and recommendations.
+    inputs: draft, canon, outline, rules, style_profile, genre_profile, previous_audits
+    outputs: NarrativeAuditResult, severity, dimensions, evidence, recommendations
+    persistent_state: audit_report, issue status, review decision
+    side_effects: model calls, optional bounded spot-fixes
+    failure_semantics: parse_failure, missing_state, contradictory_fact, quality_gate_fail
+    recovery_semantics: preserve findings, bounded re-audit, manual review
+    user_surface: audit, eval, review, Studio analysis
+    inkos_status: multidimensional audit code/tests present
+    hevi_existing_equivalent: hevi/narrative/quality.py, hevi/quality, hevi/video_intelligence quality gates
+    hevi_gap: HEVI narrative audit dimensions and evidence model are not yet parity-complete
+    3o_target: oskill/omodul/obase
+    hevi_capability_id: narrative.audit
+    qualification_test: all dimension classes, severity/evidence trace, false-positive control, re-audit persistence
+    status: PARTIAL
+
+  - id: governed-revision
+    name: Bounded revision workflow
+    domain: I
+    source_evidence:
+      - README.md#工作原理
+      - packages/core/src/agents/reviser.ts
+      - packages/core/src/revision-gate.ts
+      - packages/core/src/commands/revise.ts
+      - packages/core/src/__tests__/revision-gate.test.ts
+    observable_behavior: Audit findings produce bounded revision candidates; changes are reviewed and unresolved issues remain visible after the final pass.
+    inputs: artifact, audit, revision_mode, author_brief, retry_limit
+    outputs: RevisionProposal, CandidateRevision, diff, ReAudit, commit_or_reject
+    persistent_state: revision_history, candidate_artifact, approval, remaining_findings
+    side_effects: candidate file writes, optional canonical commit after approval
+    failure_semantics: no_target, stale_revision, revision_limit, invalid_patch, audit_fail
+    recovery_semantics: reject, retry within bound, preserve candidate, manual review
+    user_surface: revise, review, approve, reject, Studio revision controls
+    inkos_status: bounded revision and review tests present
+    hevi_existing_equivalent: hevi/narrative/revision.py and quality repair controller
+    hevi_gap: no verified creative artifact-to-proposal-to-commit workflow spanning all HEVI creative artifacts
+    3o_target: oprim/omodul/oservi
+    hevi_capability_id: creative.revision
+    qualification_test: polish, spot-fix, rewrite, structural rework, stale write, bounded passes, rejection
+    status: PARTIAL
+
+  - id: length-governance-normalization
+    name: Length governance and normalization
+    domain: J
+    source_evidence:
+      - README.md#字数治理
+      - packages/core/src/length-metrics.ts
+      - packages/core/src/agents/polisher.ts
+      - packages/core/src/__tests__/length-metrics.test.ts
+    observable_behavior: Target length produces soft and hard ranges; limited compression or expansion runs before a warning is retained.
+    inputs: draft, target_length, language, unit, normalization_policy
+    outputs: length_metrics, normalization_candidate, warning_or_pass
+    persistent_state: target, measured_length, normalization_attempts, warning
+    side_effects: bounded model revision and artifact write
+    failure_semantics: invalid_target, unsupported_unit, hard_range_exceeded
+    recovery_semantics: one bounded normalization, preserve warning, manual revision
+    user_surface: draft, write, revise, result telemetry
+    inkos_status: metrics and runner behavior verified
+    hevi_existing_equivalent: HEVI media quality duration gates but not long-form text length governance
+    hevi_gap: no shared text-length policy for creative writing stages
+    3o_target: oprim/oskill/omodul
+    hevi_capability_id: narrative.length_governance
+    qualification_test: under, within, over soft range, over hard range, one-pass bound, restart
+    status: MISSING
+
+  - id: short-fiction-production
+    name: Short fiction production package
+    domain: K
+    source_evidence:
+      - README.md#完整短篇
+      - packages/core/src/agents/short-fiction.ts
+      - packages/cli/src/commands/short-fiction.ts
+      - packages/core/src/__tests__/short-fiction-public.test.ts
+    observable_behavior: A standalone short story run produces manuscript, outline, review, synopsis, selling points, cover brief, and optional cover.
+    inputs: direction, genre, chapter_count, length, language, style, materials, model_config
+    outputs: manuscript, outline, audit, sales_package, synopsis, selling_points, cover_brief, cover
+    persistent_state: short_story_project, stage artifacts, review status
+    side_effects: model calls, files, optional image generation
+    failure_semantics: invalid_length, provider_failure, review_failure, cover_failure
+    recovery_semantics: stage resume, cover-only retry, bounded revision
+    user_surface: short run, Studio short workflow
+    inkos_status: CLI and core workflow present
+    hevi_existing_equivalent: HEVI creative/shortdrama and production graph
+    hevi_gap: no verified native text-first short fiction package with all requested sales artifacts
+    3o_target: omodul/oservi/oskill
+    hevi_capability_id: creative.short_fiction
+    qualification_test: complete short package, invalid input, retry, resume, export, artifact provenance
+    status: PARTIAL
+
+  - id: script-runtime
+    name: Canonical script runtime
+    domain: L
+    source_evidence:
+      - README.md#scripts-and-storyboards
+      - packages/core/src/agents/script-storyboard.ts
+      - packages/core/src/__tests__/script-storyboard.test.ts
+      - packages/cli/src/commands/write.ts
+    observable_behavior: Idea, prose, or source material becomes structured scenes, characters, dialogue, actions, locations, and production notes.
+    inputs: idea, prose, source_refs, format, language, style
+    outputs: ScriptArtifact, scene list, dialogue, action, location, production notes
+    persistent_state: script revisions, source refs, review state
+    side_effects: artifact persistence, optional downstream production plan
+    failure_semantics: schema_invalid, missing_scene, unresolved_character, malformed_output
+    recovery_semantics: bounded continuation, revision proposal, reject malformed structure
+    user_surface: Studio script creation, CLI/agent action
+    inkos_status: script/storyboard agent and tests present
+    hevi_existing_equivalent: hevi/script2video, hevi/explainer contracts, tongjian Script
+    hevi_gap: existing HEVI script models are split and not one canonical creative ScriptArtifact contract
+    3o_target: obase/omodul/oservi
+    hevi_capability_id: creative.script_runtime
+    qualification_test: structured script to executable storyboard and real production graph handoff
+    status: PARTIAL
+
+  - id: production-storyboard
+    name: Production-executable storyboard
+    domain: M
+    source_evidence:
+      - README.md#scripts-and-storyboards
+      - packages/core/src/agents/script-storyboard.ts
+      - packages/core/src/__tests__/script-storyboard.test.ts
+      - packages/studio/src/components/film
+    observable_behavior: Script elements are mapped to scenes and shots with visual, camera, subject, action, environment, duration, transition, and audio mappings.
+    inputs: script, scene intents, visual style, assets, target format
+    outputs: storyboard, shot list, visual intent, render-ready mapping
+    persistent_state: storyboard revisions, asset bindings, approval
+    side_effects: production graph submission only after validation
+    failure_semantics: unresolved shot, missing asset, invalid duration, unsupported renderer
+    recovery_semantics: revise storyboard, fail closed, preserve previous plan
+    user_surface: Studio storyboard, production plan, shot board
+    inkos_status: behavior described and source workflow present
+    hevi_existing_equivalent: HEVI Shot Intelligence and production storyboard paths
+    hevi_gap: canonical bridge from script artifact to frozen ShotPlan with full audio/dialogue trace is incomplete
+    3o_target: obase/omodul/oservi
+    hevi_capability_id: creative.production_storyboard
+    qualification_test: script-to-shot-plan-to-real-artifact with provenance and quality gate
+    status: PARTIAL
+
+  - id: interactive-film
+    name: Interactive film authoring and playable export
+    domain: N
+    source_evidence:
+      - README.md#互动影游
+      - packages/core/src/interactive-film/graph-schema.ts
+      - packages/core/src/interactive-film/validation.ts
+      - packages/core/src/interactive-film/paths.ts
+      - packages/core/src/interactive-film/export-html.ts
+      - packages/core/src/__tests__/if-validation.test.ts
+    observable_behavior: Branch graph supports nodes, choices, variables, flags, relationships, endings, node images, validation, path enumeration, and playable export.
+    inputs: film premise, nodes, choices, conditions, variables, images, endings
+    outputs: InteractiveFilmProject, validation report, path report, playable package
+    persistent_state: graph, node assets, variables, revisions, authoring session
+    side_effects: asset generation, project package writes, export
+    failure_semantics: dead node, unreachable ending, invalid condition, inconsistent variable, cycle error
+    recovery_semantics: graph delta reject, revision, revalidate, export previous valid version
+    user_surface: Studio film wizard, flow editor, player, export
+    inkos_status: source, schema, validation, and Studio tests present
+    hevi_existing_equivalent: hevi/storygraph and hevi/canvas
+    hevi_gap: no unified HEVI interactive-film canonical graph and playable package contract
+    3o_target: obase/oprim/omodul/oservi
+    hevi_capability_id: creative.interactive_film
+    qualification_test: 30 nodes, multiple branches, flags, relationships, 3 endings, all paths, export/playback
+    status: PARTIAL
+
+  - id: persistent-interactive-play
+    name: Persistent interactive world play
+    domain: O
+    source_evidence:
+      - README.md#inkos-play
+      - packages/core/src/play/play-runner.ts
+      - packages/core/src/play/play-reducer.ts
+      - packages/core/src/play/play-store.ts
+      - packages/core/src/__tests__/play-runner.test.ts
+    observable_behavior: Turns update durable world clock, player state, characters, inventory, evidence, relationships, HUD, and visuals through choices or free actions.
+    inputs: world_contract, player_action, choice_or_free_action, current_turn
+    outputs: TurnResult, HUDState, world events, visual refs
+    persistent_state: player, characters, locations, inventory, evidence, relationships, time, turns
+    side_effects: durable turn commit, optional image generation
+    failure_semantics: invalid_action, stale_turn, model_failure, illegal_transition
+    recovery_semantics: redo/revise turn, restore snapshot, crash resume
+    user_surface: Studio Play, interact command
+    inkos_status: reducer/store/runner and tests present
+    hevi_existing_equivalent: hevi interactive skill and storygraph
+    hevi_gap: no verified durable 50-turn HEVI world runtime with full evidence/inventory/redo semantics
+    3o_target: obase/oprim/omodul/oservi
+    hevi_capability_id: creative.persistent_play
+    qualification_test: 50 turns, persistence, inventory, evidence, relation, time, crash resume, redo
+    status: PARTIAL
+
+  - id: creative-research
+    name: Traceable creative research
+    domain: P
+    source_evidence:
+      - README.md#traceable-web-research
+      - packages/core/src/agents/researcher.ts
+      - packages/core/src/agents/radar-source.ts
+      - packages/core/src/__tests__/researcher.test.ts
+    observable_behavior: Research requests produce reports with sources and claims that remain reference material until explicitly accepted into canon.
+    inputs: query, domain, project_scope, source_policy
+    outputs: ResearchReport, sources, claims, unknowns, confidence
+    persistent_state: query log, retrieved_at, source refs, report revision
+    side_effects: network retrieval, local report write
+    failure_semantics: unreachable source, conflicting claims, low confidence, missing citation
+    recovery_semantics: retry source, preserve unknowns, manual accept/reject claim
+    user_surface: research command, Studio research/materials
+    inkos_status: researcher and source tests present
+    hevi_existing_equivalent: hevi/research/brief.py and explainer research
+    hevi_gap: explicit Review -> AcceptClaim -> CanonCommit boundary is not verified in one HEVI research runtime
+    3o_target: obase/omodul/oservi
+    hevi_capability_id: creative.research
+    qualification_test: source/claim trace, unknowns, confidence, no automatic canon mutation, explicit commit
+    status: PARTIAL
+
+  - id: material-library
+    name: Project material library
+    domain: Q
+    source_evidence:
+      - README.md#长期记忆
+      - packages/core/src/materials/ingest.ts
+      - packages/core/src/materials/retrieve.ts
+      - packages/core/src/__tests__/material-ingestion.test.ts
+    observable_behavior: Text, Markdown, documents, images, and references can be imported, archived, bound to a book, retrieved, and cited.
+    inputs: material file, external reference, project/book binding, purpose
+    outputs: Material, archive record, retrieval result, citation
+    persistent_state: material metadata, source hash, project binding, archive
+    side_effects: file copy/archive, indexing
+    failure_semantics: unsupported file, hash mismatch, path traversal, missing source
+    recovery_semantics: re-ingest, rebuild index, preserve source pointer
+    user_surface: materials, attachments, import commands, Studio project
+    inkos_status: material ingestion/retrieval code and tests present
+    hevi_existing_equivalent: hevi/services/material.py and hevi/video/material_corpus.py
+    hevi_gap: HEVI lacks a single creative Material authority with citation and book/content binding
+    3o_target: obase/oprim/oservi
+    hevi_capability_id: creative.material_library
+    qualification_test: all input classes, source hash, project isolation, citation, rebuild, invalid input
+    status: PARTIAL
+
+  - id: existing-work-import-continuation
+    name: Existing work import and continuation
+    domain: R
+    source_evidence:
+      - README.md#续写已有作品
+      - packages/cli/src/commands/import.ts
+      - packages/core/src/agent/chapter-import-source.ts
+      - packages/core/src/__tests__/chapter-import-source.test.ts
+      - packages/core/src/__tests__/chapter-state-recovery.test.ts
+    observable_behavior: Text files or chapter directories are split, ordered, analyzed into state, and made writable for continuation with resumable import.
+    inputs: manuscript, directory, split_rule, resume_from, series_mode
+    outputs: NarrativeProject, chapters, reconstructed state, summaries, hooks, import report
+    persistent_state: import checkpoint, chapter files, reconstructed canon, source hashes
+    side_effects: file ingestion, state extraction, index writes
+    failure_semantics: malformed chapter, duplicate order, unreadable input, reconstruction conflict
+    recovery_semantics: resume from chapter, skip only explicit invalid unit, rollback partial import
+    user_surface: import chapters, continue writing, Studio import
+    inkos_status: CLI importer and recovery tests present
+    hevi_existing_equivalent: HEVI history series and narrative import primitives
+    hevi_gap: no verified import-to-NarrativeProject reconstruction with chapter replay and continuation
+    3o_target: oprim/omodul/oservi
+    hevi_capability_id: creative.import_continuation
+    qualification_test: 20 chapters, split/order/restart, reconstruction, continuation, continuity audit
+    status: PARTIAL
+
+  - id: fanfic-spinoff-canon-import
+    name: Fan fiction, spinoff, and canon inheritance
+    domain: S
+    source_evidence:
+      - README.md#同人创作
+      - packages/cli/src/commands/fanfic.ts
+      - packages/cli/src/commands/import.ts
+      - packages/core/src/agents/fanfic-canon-importer.ts
+      - packages/core/src/__tests__/fanfic-canon-importer.test.ts
+    observable_behavior: A derived work can inherit canon, AU, OOC, or CP policy with information boundaries and dedicated audit dimensions.
+    inputs: parent_material, mode, genre, project_config, deviation_policy
+    outputs: derived project, ParentCanonRef, ImportedCanonSnapshot, CanonDeviation, audit
+    persistent_state: parent snapshot hash, inheritance policy, deviations, derived canon
+    side_effects: source import, derived project creation
+    failure_semantics: missing parent, unsupported mode, canon conflict, forbidden fact
+    recovery_semantics: refresh snapshot explicitly, preserve old derived snapshot, reject conflict
+    user_surface: fanfic init/show/refresh, import canon
+    inkos_status: mode parser, importer, models, and tests present
+    hevi_existing_equivalent: HEVI narrative and source/evidence models; no complete fanfic runtime identified
+    hevi_gap: parent-canon inheritance and deviation policy are missing as a unified HEVI capability
+    3o_target: obase/omodul/oservi
+    hevi_capability_id: creative.fanfic_spinoff
+    qualification_test: canon/AU/OOC/CP, parent update isolation, conflict, provenance, audit
+    status: MISSING
+
+  - id: style-intelligence
+    name: Abstract style intelligence
+    domain: T
+    source_evidence:
+      - README.md#文风仿写
+      - packages/core/src/agents/style-analyzer.ts
+      - packages/cli/src/commands/style.ts
+      - packages/core/src/__tests__/style-analyzer.test.ts
+    observable_behavior: Reference text is analyzed into statistical/style features and can be saved and applied without storing source prose as a prompt template.
+    inputs: reference_text, language, project/book, style_name
+    outputs: StyleProfile, statistical fingerprint, style guidance, audit findings
+    persistent_state: style profile, source hash, project binding, revision
+    side_effects: reference ingestion, profile persistence, optional model call
+    failure_semantics: empty source, unsupported language, invalid profile, source unavailable
+    recovery_semantics: stats-only mode, reanalyze, reject invalid profile
+    user_surface: style analyze/import, Studio style settings
+    inkos_status: analyzer, CLI, and tests present
+    hevi_existing_equivalent: hevi/style/style_analyzer.py and style service
+    hevi_gap: HEVI style profile needs abstract feature contract, apply/audit linkage, and text non-copying proof
+    3o_target: obase/oskill/omodul
+    hevi_capability_id: creative.style_intelligence
+    qualification_test: analyze/save/apply/audit, source hash, no text retention, deterministic metrics
+    status: PARTIAL
+
+  - id: synthetic-writing-quality
+    name: Synthetic writing quality and anti-pattern detection
+    domain: U
+    source_evidence:
+      - README.md#多维度审计
+      - packages/core/src/agents/ai-tells.ts
+      - packages/core/src/agents/detector.ts
+      - packages/core/src/__tests__/ai-tells.test.ts
+    observable_behavior: Repetition, template cadence, empty intensifiers, generic transitions, exposition, cliché density, and style drift are reported as quality issues.
+    inputs: draft, style_profile, genre_profile, language_profile
+    outputs: WritingNaturalnessAudit, issue distribution, recommendations
+    persistent_state: audit report, issue status, revision linkage
+    side_effects: local analysis and optional model call
+    failure_semantics: unsupported language, malformed text, analyzer failure
+    recovery_semantics: retain warning, bounded revise, manual review
+    user_surface: detect, audit, eval, revise mode
+    inkos_status: detector and AI-tell tests present
+    hevi_existing_equivalent: HEVI narrative quality and language/style services
+    hevi_gap: no dedicated HEVI writing-naturalness contract separated from security or evasion goals
+    3o_target: oskill/omodul
+    hevi_capability_id: creative.writing_naturalness
+    qualification_test: anti-pattern corpus, false positives, style drift, bounded revision, no evasion claim
+    status: PARTIAL
+
+  - id: extensible-genre-system
+    name: Extensible genre and progression rules
+    domain: V
+    source_evidence:
+      - README.md#genre-exploration
+      - packages/cli/src/commands/genre.ts
+      - packages/core/src/genres
+      - packages/core/src/__tests__/genre-command.test.ts
+    observable_behavior: Built-in genre profiles can be listed, shown, copied, and extended with rules, progression mechanics, and language defaults.
+    inputs: genre_profile, custom_rules, language, platform
+    outputs: GenreProfile, GenreRule, pacing and forbidden-pattern rules
+    persistent_state: project genre config, custom profile files, revisions
+    side_effects: profile file writes
+    failure_semantics: invalid rule, duplicate profile, incompatible language
+    recovery_semantics: copy before edit, validate and reject, restore previous profile
+    user_surface: genre list/show/copy/create, Studio genre settings
+    inkos_status: profiles, CLI, and tests present
+    hevi_existing_equivalent: HEVI style packs and production line profiles
+    hevi_gap: no unified creative GenreProfile with progression mechanics and audit binding
+    3o_target: obase/oskill/oservi
+    hevi_capability_id: creative.genre_system
+    qualification_test: built-in, custom, invalid rule, applied audit, project isolation
+    status: PARTIAL
+
+  - id: market-radar
+    name: Market and audience radar
+    domain: W
+    source_evidence:
+      - README.md#市场雷达
+      - packages/core/src/agents/radar.ts
+      - packages/core/src/agents/radar-source.ts
+      - packages/cli/src/commands/radar.ts
+    observable_behavior: Optional trend scanning produces platform, genre, audience, evidence, and confidence signals for planning.
+    inputs: platform, genre, audience, query, source_policy
+    outputs: PlatformTrend, GenreTrend, AudiencePreference, TrendEvidence, TrendSnapshot
+    persistent_state: scan history, evidence refs, confidence, timestamp
+    side_effects: external retrieval, report persistence
+    failure_semantics: source unavailable, stale data, conflicting evidence, low confidence
+    recovery_semantics: preserve prior snapshot, mark stale, retry sources, never mutate canon automatically
+    user_surface: radar scan, planning suggestions, Studio research
+    inkos_status: radar agent and CLI surface present
+    hevi_existing_equivalent: no complete market radar identified in HEVI current tree
+    hevi_gap: HEVI needs evidence-backed radar with canon isolation
+    3o_target: omodul/oservi
+    hevi_capability_id: creative.market_radar
+    qualification_test: source trace, stale snapshot, low confidence, no canon mutation
+    status: MISSING
+
+  - id: creative-analytics
+    name: Creative analytics and usage telemetry
+    domain: X
+    source_evidence:
+      - README.md#analytics
+      - packages/cli/src/commands/analytics.ts
+      - packages/core/src/__tests__/analytics.test.ts
+    observable_behavior: Reports word counts, audit pass rates, issue distribution, chapter ranking, token usage, model usage, and cost.
+    inputs: project/book, artifact history, run telemetry
+    outputs: analytics report, usage metrics, rankings, issue distribution
+    persistent_state: telemetry ledger, aggregation snapshots
+    side_effects: metrics persistence
+    failure_semantics: incomplete telemetry, invalid aggregation, missing chapter
+    recovery_semantics: rebuild aggregation, mark unknown metrics, retain raw evidence
+    user_surface: analytics/stats CLI, Studio analytics
+    inkos_status: CLI and tests present
+    hevi_existing_equivalent: HEVI observability and qualification metrics
+    hevi_gap: no unified creative analytics ledger connecting narrative artifacts, audits, revisions, cost, and latency
+    3o_target: obase/omodul/oservi
+    hevi_capability_id: creative.analytics
+    qualification_test: full project aggregation, missing telemetry, rebuild, privacy, cost/latency evidence
+    status: PARTIAL
+
+  - id: translation-localization
+    name: Long-document translation and localization
+    domain: Y
+    source_evidence:
+      - README.md#长文档翻译
+      - packages/core/src/translation/project.ts
+      - packages/core/src/translation/runner.ts
+      - packages/core/src/translation/epub.ts
+      - packages/core/src/translation/text.ts
+      - packages/core/src/__tests__/translation-runner.test.ts
+    observable_behavior: EPUB, text PDF, TXT, and Markdown are segmented, translated with glossary/context carry-over, reviewed side-by-side, resumed, and exported.
+    inputs: source_document, source_language, target_language, glossary, segment_policy, model_config
+    outputs: TranslationProject, segments, glossary, TranslationMemory, review, TXT/MD/EPUB export
+    persistent_state: source hash, segment statuses, translations, glossary, review, checkpoints
+    side_effects: document ingestion, model calls, translated artifact writes
+    failure_semantics: unsupported PDF, missing segment, duplicate segment, provider failure, glossary conflict
+    recovery_semantics: resume checkpoint, retry segment, review/edit, export prior valid version
+    user_surface: translate init/run/export, Studio localization
+    inkos_status: source types, runner, export, and tests present
+    hevi_existing_equivalent: HEVI localization_dub and translation helpers
+    hevi_gap: no complete long-form multi-format TranslationProject with glossary, review, restart, and export roundtrip
+    3o_target: obase/omodul/oservi
+    hevi_capability_id: creative.translation
+    qualification_test: real TXT/Markdown/EPUB/text-PDF fixtures, coverage, glossary, resume, roundtrip
+    status: PARTIAL
+
+  - id: cover-visual-asset-runtime
+    name: Cover and visual asset direction
+    domain: Z
+    source_evidence:
+      - README.md#单独制作封面
+      - packages/core/src/llm/cover-providers.ts
+      - packages/cli/src/commands/short-fiction.ts
+      - packages/core/src/interactive-film/node-image.ts
+    observable_behavior: A cover brief/prompt can produce, regenerate, provenance-track, and select an optional cover image.
+    inputs: title, synopsis, visual_direction, image_provider, size, project_scope
+    outputs: cover_brief, cover_artifact, provider metadata, selection
+    persistent_state: brief revision, image artifact versions, selection, provenance
+    side_effects: image provider call, file artifact writes
+    failure_semantics: provider unavailable, invalid dimensions, generation failure, missing provenance
+    recovery_semantics: regenerate, select prior artifact, keep brief without image
+    user_surface: short run, Studio cover/film image workflow
+    inkos_status: provider contract and short-fiction integration present
+    hevi_existing_equivalent: HEVI visual providers and artifact provenance
+    hevi_gap: no unified creative cover capability bound to NarrativeProject and existing visual runtime
+    3o_target: oskill/omodul/oservi
+    hevi_capability_id: creative.cover
+    qualification_test: brief, provider adapter, regenerate, selection, provenance, failure state
+    status: PARTIAL
+
+  - id: professional-skills
+    name: Professional creative skills
+    domain: AA
+    source_evidence:
+      - skills/SKILL.md
+      - packages/core/src/skills
+      - packages/core/src/agent/skill-tool.ts
+      - packages/core/src/__tests__/skill-registry.test.ts
+    observable_behavior: Medium-specific craft guidance and static references are discoverable and cannot grant permissions or directly write state.
+    inputs: skill_id, capability, project context
+    outputs: skill references, policy guidance, examples, selected skill metadata
+    persistent_state: skill registry, project/local skill refs
+    side_effects: local skill loading only
+    failure_semantics: missing skill, malformed skill metadata, unsupported capability
+    recovery_semantics: fallback to built-in skill, fail closed for unsafe permission requests
+    user_surface: Agent Skills, Studio settings, forced skill selection
+    inkos_status: skill package and registry behavior observed
+    hevi_existing_equivalent: HEVI oskill directories and skills registry
+    hevi_gap: HEVI needs a unified creative skill registry with explicit authority and permission boundaries
+    3o_target: oskill/obase
+    hevi_capability_id: creative.skills
+    qualification_test: all listed skill domains, permission boundary, no direct state write, provenance
+    status: PARTIAL
+
+  - id: creative-policy-packs
+    name: Editable creative policy/profile packs
+    domain: AB
+    source_evidence:
+      - README.md#创作规则体系
+      - packages/core/src/prompts/prompt-pack.ts
+      - packages/core/src/__tests__/prompt-pack.test.ts
+      - packages/studio/src/__tests__/prompt-packs-endpoint.test.ts
+    observable_behavior: Global defaults and project overrides can be inspected, versioned, validated, and applied as prompt/policy inputs.
+    inputs: global_profile, project_override, capability_override, version, diff, rollback
+    outputs: CreativePolicyPack, effective profile, validation report, diff
+    persistent_state: profile files, revisions, effective policy trace
+    side_effects: profile writes, future generation behavior
+    failure_semantics: invalid override, conflict, missing pack, stale revision
+    recovery_semantics: rollback, reject invalid change, preserve prior effective pack
+    user_surface: Studio project settings, config commands
+    inkos_status: prompt pack and endpoint tests present
+    hevi_existing_equivalent: HEVI style packs and provider policy configuration
+    hevi_gap: no single creative profile contract with per-capability override and rollback
+    3o_target: obase/oprim/oservi
+    hevi_capability_id: creative.policy_packs
+    qualification_test: default/override precedence, diff, rollback, invalid pack, runtime trace
+    status: PARTIAL
+
+  - id: review-workflow
+    name: Review, approval, and human gates
+    domain: AC
+    source_evidence:
+      - README.md#工作原理
+      - packages/cli/src/commands/review.ts
+      - packages/core/src/__tests__/chapter-review-cycle.test.ts
+      - packages/core/src/__tests__/review-gate.test.ts
+    observable_behavior: Drafts can be listed, approved, rejected, edited, revised, or batch-approved with durable review decisions.
+    inputs: artifact, audit, reviewer_decision, rejection_reason, revision_request
+    outputs: Approval, ReviewDecision, next stage or human attention
+    persistent_state: review record, approval history, artifact version
+    side_effects: approval state mutation only after authorization
+    failure_semantics: stale artifact, invalid decision, missing reviewer, unresolved hard finding
+    recovery_semantics: reject, request revision, resume review, preserve prior decision history
+    user_surface: review list/approve/reject/approve-all, Studio review panel
+    inkos_status: CLI and review tests present
+    hevi_existing_equivalent: HEVI quality gates and frontend confirmation flows
+    hevi_gap: creative review approval authority is not unified with HEVI artifact/canonical revision contracts
+    3o_target: obase/omodul/oservi
+    hevi_capability_id: creative.review
+    qualification_test: approve/reject/edit/revision request, persistence, stale guard, batch approval safety
+    status: PARTIAL
+
+  - id: background-production-notifications
+    name: Background production and notifications
+    domain: AD
+    source_evidence:
+      - README.md#守护进程
+      - packages/cli/src/commands/daemon.ts
+      - packages/core/src/scheduler.ts
+      - packages/core/src/webhook.ts
+      - packages/core/src/__tests__/daemon.test.ts
+    observable_behavior: Long runs can continue in background, expose progress, be cancelled/resumed, and notify configured channels.
+    inputs: production request, schedule, notification policy, retry policy
+    outputs: progress events, terminal result, notification delivery ledger
+    persistent_state: run state, daemon state, notification attempts
+    side_effects: background process, webhook/Telegram/Feishu/WeCom delivery
+    failure_semantics: task failure, notification failure, cancellation, lost connection
+    recovery_semantics: reconnect, resume, retry notification, restore terminal state
+    user_surface: inkos up/down, Studio task activity, notifications
+    inkos_status: daemon, scheduler, notification code/tests present
+    hevi_existing_equivalent: HEVI production runtime, task service, webhook surfaces
+    hevi_gap: no verified creative background run contract across all new creative modules
+    3o_target: oprim/oservi
+    hevi_capability_id: creative.background_runs
+    qualification_test: background run, reconnect, cancel, resume, retry, signed event, delivery ledger
+    status: PARTIAL
+
+  - id: run-snapshot-recovery
+    name: Production run snapshots and crash recovery
+    domain: AE
+    source_evidence:
+      - README.md#可靠性保障
+      - packages/core/src/state/chapter-workspace.ts
+      - packages/core/src/state/runtime-state-store.ts
+      - packages/core/src/production/harness.ts
+      - packages/core/src/__tests__/chapter-state-recovery.test.ts
+    observable_behavior: Creative runs retain snapshots, stage results, partial artifacts, failures, and can resume after interruption.
+    inputs: production graph, stage, artifact refs, failure, cancellation
+    outputs: ProductionRun, RunSnapshot, StageResult, ArtifactManifest, FailureRecord
+    persistent_state: run snapshots, stage checkpoints, artifact manifests
+    side_effects: checkpoint writes, temporary artifact retention
+    failure_semantics: crash, cancelled, partial artifact, stale resume
+    recovery_semantics: resume from safe stage, retain partial artifact, rollback failed stage
+    user_surface: progress, status, resume, retry
+    inkos_status: chapter/runtime recovery behavior verified
+    hevi_existing_equivalent: HEVI execution/resumable render and task service
+    hevi_gap: shared snapshot contract is not yet applied to all creative domains
+    3o_target: obase/oprim/oservi
+    hevi_capability_id: creative.run_snapshots
+    qualification_test: crash injection at each stage, resume, artifact retention, no false completion
+    status: PARTIAL
+
+  - id: atomic-creative-workspace
+    name: Atomic workspace and state commit
+    domain: AF
+    source_evidence:
+      - README.md#可靠性保障
+      - packages/core/src/atomic-file-set.ts
+      - packages/core/src/state/chapter-workspace.ts
+      - packages/core/src/__tests__/atomic-file-set.test.ts
+    observable_behavior: Canonical state, draft artifacts, audit, and state deltas are committed through a workspace boundary rather than partial direct writes.
+    inputs: canonical_version, draft artifacts, proposed_delta, audit, commit request
+    outputs: atomic commit receipt, new revision, rollback evidence
+    persistent_state: workspace, temp files, commit manifest, hash
+    side_effects: atomic rename/replace and canonical revision update
+    failure_semantics: artifact write failure, state write failure, audit crash, stale version
+    recovery_semantics: discard workspace, restore prior version, resume from checkpoint
+    user_surface: all creative production results and errors
+    inkos_status: chapter atomic boundary and tests present
+    hevi_existing_equivalent: HEVI narrative revision/persistence and execution workspaces
+    hevi_gap: not all creative objects share one atomic workspace/commit authority
+    3o_target: oprim/obase
+    hevi_capability_id: creative.atomic_workspace
+    qualification_test: fault injection for every listed failure, no half-commit, read-back validation
+    status: PARTIAL
+
+  - id: backup-restore-rollback
+    name: Backup, restore, and rollback
+    domain: AG
+    source_evidence:
+      - README.md#可靠性保障
+      - packages/cli/src/book-backup.ts
+      - packages/cli/src/commands/book.ts
+      - packages/core/src/__tests__/book-backup.test.ts
+    observable_behavior: Whole-book backups, chapter deletion, state rollback, and restore are available with manifests and versioned files.
+    inputs: project/book, snapshot, restore target, deletion request
+    outputs: backup manifest, restored project, rollback receipt
+    persistent_state: backup archives, hashes, version map
+    side_effects: archive creation, file replacement, chapter deletion
+    failure_semantics: invalid backup, hash mismatch, missing target, destructive confirmation missing
+    recovery_semantics: restore prior backup, reject destructive action, verify read-back
+    user_surface: book backup/restore, write rewrite, Studio restore
+    inkos_status: backup command and tests present
+    hevi_existing_equivalent: HEVI deploy backup and artifact stores
+    hevi_gap: no narrative-project backup/restore authority spanning canon, materials, artifacts, and revision ledger
+    3o_target: oprim/oservi
+    hevi_capability_id: creative.backup_restore
+    qualification_test: backup, corruption, restore, rollback, manifest hash, destructive confirmation
+    status: PARTIAL
+
+  - id: concurrency-and-locks
+    name: Creative concurrency and lock recovery
+    domain: AH
+    source_evidence:
+      - README.md#可靠性保障
+      - packages/core/src/state/chapter-workspace.ts
+      - packages/core/src/__tests__/chapter-workspace.test.ts
+      - packages/core/src/__tests__/state-manager.test.ts
+    observable_behavior: Concurrent book mutations are serialized or rejected; stale locks can be recovered without silent last-writer-wins.
+    inputs: project_id, operation_id, owner_id, lock_timeout
+    outputs: lock receipt, RESOURCE_BUSY, stale recovery, commit result
+    persistent_state: lock owner/run, heartbeat, revision
+    side_effects: lock file/db record, serialized write
+    failure_semantics: busy, stale owner, conflicting revision, process crash
+    recovery_semantics: stale lock recovery, retry after release, reject conflicting write
+    user_surface: background run, editor, CLI concurrent operations
+    inkos_status: chapter workspace locking behavior present
+    hevi_existing_equivalent: HEVI runtime/store locks are distributed across modules
+    hevi_gap: no shared creative lock contract with owner/run evidence
+    3o_target: oprim/obase
+    hevi_capability_id: creative.concurrency
+    qualification_test: conflicting writes, stale lock, crash recovery, no last-writer-wins
+    status: PARTIAL
+
+  - id: targeted-editing
+    name: Targeted editing with patch preview
+    domain: AI
+    source_evidence:
+      - README.md#可靠性保障
+      - packages/core/src/interaction/edit-controller.ts
+      - packages/core/src/spot-fix-patches.ts
+      - packages/core/src/__tests__/spot-fix-patches.test.ts
+    observable_behavior: A high-confidence target can receive a previewable patch; ambiguous locations fail closed instead of editing an approximate location.
+    inputs: artifact, exact_location, semantic_target, patch, expected_revision
+    outputs: patch preview, cascade impact, applied revision or fail-closed result
+    persistent_state: edit proposal, accepted patch, revision receipt
+    side_effects: artifact/canonical update only after confirmation
+    failure_semantics: ambiguous target, stale revision, invalid patch, unsafe cascade
+    recovery_semantics: reject, request clarification, apply exact patch after confirmation
+    user_surface: Studio editor, agent action, revise/spot-fix
+    inkos_status: edit controller and patch tests present
+    hevi_existing_equivalent: HEVI revision feedback and frontend confirmation gate
+    hevi_gap: no common exact-location patch contract across narrative/script/storyboard/artifact targets
+    3o_target: oprim/omodul/oservi
+    hevi_capability_id: creative.targeted_editing
+    qualification_test: exact patch, ambiguous location, preview diff, stale guard, cascade finding
+    status: PARTIAL
+
+  - id: model-provider-routing
+    name: Model and provider routing
+    domain: AJ
+    source_evidence:
+      - README.md#多模型路由
+      - packages/core/src/llm/service-resolver.ts
+      - packages/core/src/llm/providers/lookup.ts
+      - packages/cli/src/commands/config.ts
+      - packages/core/src/__tests__/service-resolver.test.ts
+    observable_behavior: Global, agent, stage, and per-run model/provider overrides resolve through a common provider configuration with local compatible endpoints.
+    inputs: capability, stage, agent, provider, model, base_url, secret reference, stream policy
+    outputs: effective model config, probe, request result, usage/latency
+    persistent_state: project config, global config, model overrides
+    side_effects: provider calls, secret lookup, config writes
+    failure_semantics: invalid config, missing secret, endpoint failure, malformed response, timeout
+    recovery_semantics: bounded retry, fallback only by explicit policy, preserve effective config evidence
+    user_surface: config set-model, Studio service settings, runtime metadata
+    inkos_status: resolver/provider tests and CLI behavior verified
+    hevi_existing_equivalent: HEVI local OpenAI-compatible provider and provider policy
+    hevi_gap: creative per-stage routing and model-card policy are not unified with HEVI canonical capability registry
+    3o_target: obase/oservi
+    hevi_capability_id: creative.model_routing
+    qualification_test: local endpoint, per-stage override, unavailable provider, secret redaction, deterministic config trace
+    status: PARTIAL
+
+  - id: notifications-webhooks
+    name: Signed notifications and webhook delivery
+    domain: AK
+    source_evidence:
+      - README.md#守护进程
+      - packages/core/src/webhook.ts
+      - packages/core/src/notify-format.ts
+      - packages/core/src/__tests__/webhook.test.ts
+    observable_behavior: Production, audit, failure, and human-attention events can be filtered, signed, retried, and recorded in a delivery ledger.
+    inputs: event, filter, endpoint, signing secret reference, retry policy
+    outputs: signed payload, delivery attempt, terminal delivery status
+    persistent_state: delivery ledger, attempt count, event idempotency key
+    side_effects: network webhook or messaging delivery
+    failure_semantics: bad endpoint, non-2xx, timeout, signature failure, duplicate event
+    recovery_semantics: bounded retry, idempotent redelivery, dead-letter/human attention
+    user_surface: daemon notification config, Studio system settings
+    inkos_status: webhook and notification tests present
+    hevi_existing_equivalent: HEVI provider notifications and API event surfaces
+    hevi_gap: no verified creative event taxonomy and delivery ledger bound to HEVI ProductionRun
+    3o_target: obase/oservi
+    hevi_capability_id: creative.notifications
+    qualification_test: signed event, filter, retry, idempotency, secret redaction, failure ledger
+    status: PARTIAL
+
+  - id: creative-export
+    name: Creative export and package delivery
+    domain: AL
+    source_evidence:
+      - README.md#导出
+      - packages/cli/src/commands/export.ts
+      - packages/core/src/interaction/export-artifact.ts
+      - packages/core/src/translation/export.ts
+    observable_behavior: Narrative and interactive projects export to TXT, Markdown, EPUB, structured packages, and playable formats with approval filtering.
+    inputs: project, approved_only, format, output_path, package manifest
+    outputs: ExportArtifact, TXT, Markdown, EPUB, structured JSON, playable package
+    persistent_state: export manifest, source revisions, hashes
+    side_effects: files/archive generation
+    failure_semantics: missing approval, unsupported format, invalid path, incomplete artifact
+    recovery_semantics: retry export, preserve previous export, fail closed on incomplete source
+    user_surface: export CLI, Studio export controls, production manifest
+    inkos_status: CLI and export modules present
+    hevi_existing_equivalent: HEVI artifact/export surfaces and media manifests
+    hevi_gap: no unified creative export contract for narrative, script, storyboard, and interactive packages
+    3o_target: oprim/omodul/oservi
+    hevi_capability_id: creative.export
+    qualification_test: TXT/MD/EPUB, approved-only, hash manifest, invalid source, playable package
+    status: PARTIAL
+
+  - id: studio-product-surfaces
+    name: Studio product surfaces for creative capabilities
+    domain: AM
+    source_evidence:
+      - README.md#studio-chat-action-surface
+      - packages/studio/src/App.tsx
+      - packages/studio/src/components/Sidebar.tsx
+      - packages/studio/src/components/film
+      - packages/studio/src/api/server.ts
+    observable_behavior: Studio exposes projects, chat/action surface, authoring, review, interactive film, play, analysis, export, and service configuration over one backend.
+    inputs: user action, project scope, attachments, confirmation
+    outputs: UI state, typed action request, progress, artifact links, review controls
+    persistent_state: server run store, project state, session transcript, UI projection
+    side_effects: API calls, production runs, artifact writes
+    failure_semantics: loading, action rejection, task failure, stale UI, unavailable model
+    recovery_semantics: reconnect, refresh runtime state, resume/cancel, retry explicit action
+    user_surface: Studio web workbench, chat, sidebar, authoring views, play views
+    inkos_status: built Studio and e2e/unit tests verified
+    hevi_existing_equivalent: HEVI Studio frontend and production APIs
+    hevi_gap: HEVI needs a unified creative surface over the new 3O capability graph without exposing internal 3O names
+    3o_target: oservi/omodul
+    hevi_capability_id: creative.studio
+    qualification_test: UI action to real service, confirmation, progress, reconnect, artifact/evidence rendering
+    status: PARTIAL
+
+parity_rules:
+  clean_room: true
+  forbidden_in_hevi:
+    - source_code
+    - prompt_text
+    - skill_text
+    - tests
+    - fixtures
+    - templates
+    - css_or_ui_assets
+  accepted_evidence:
+    - upstream_license_and_metadata
+    - public_readme_behavior
+    - CLI_help_and_json_contract
+    - source_tree_capability_presence_without_copying_expression
+    - HEVI_independent_tests
+  final_gate:
+    missing: 0
+    partial: 0
+    implemented_unqualified: 0
+    required_classification: HEVI_3O_CREATIVE_RUNTIME_PRODUCTION_COMPLETE
