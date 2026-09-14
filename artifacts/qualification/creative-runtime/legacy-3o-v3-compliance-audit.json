@@ -1,0 +1,62 @@
+{
+  "baseline_commit": "534c448",
+  "classification": "HEVI_3O_CREATIVE_RUNTIME_PRODUCTION_COMPLETE",
+  "gates": {
+    "capabilities": {
+      "missing": 0,
+      "partial": 0,
+      "passed": true,
+      "qualified": 39,
+      "total": 39,
+      "unqualified": 0
+    },
+    "legacy_debt": {
+      "entries": 12,
+      "freshness": {
+        "check_oprim_keyword_only": true
+      },
+      "passed": true,
+      "policy": "Legacy 3O elements that predate v3.0 are recorded here and NOT refactored during WAVE B-G. A new element must never appear in this ledger. Each allowlist entry is validated for freshness: a recorded violation that stops being observed is a hard failure so the ledger can only shrink."
+    },
+    "lint": {
+      "passed": true,
+      "verdict": "3O_V3_LINT=PASS"
+    },
+    "new_elements": {
+      "added_elements": [
+        "omodul/analytics.py::UsageRecord",
+        "omodul/background.py::ProgressEvent",
+        "omodul/background.py::_TERMINAL",
+        "omodul/importer.py::ReconstructedState",
+        "omodul/importer.py::_STOPWORDS",
+        "omodul/play.py::TurnEffects",
+        "omodul/play.py::_merge_inventory",
+        "omodul/play.py::_merge_relationships",
+        "oprim/routing.py::RouteExecution",
+        "oprim/webhooks.py::deliver",
+        "oservi/services.py::StudioAction",
+        "oservi/services.py::StudioActionGateway"
+      ],
+      "added_modules": [],
+      "conflicting_new_elements": {},
+      "passed": true,
+      "removed_elements": []
+    },
+    "waves": {
+      "passed": true,
+      "waves": {
+        "A": "QUALIFIED",
+        "B": "QUALIFIED",
+        "C": "QUALIFIED",
+        "D": "QUALIFIED",
+        "E": "QUALIFIED",
+        "F": "QUALIFIED",
+        "G": "QUALIFIED"
+      }
+    }
+  },
+  "milestone": "LEGACY_3O_V3_COMPLIANCE_AUDIT",
+  "schema": "hevi.legacy-3o-v3-compliance-audit/v1",
+  "spec": "3O Paradigm SPEC v3.0",
+  "status": "PASS"
+}
