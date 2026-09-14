@@ -51,6 +51,7 @@ from hevi.digital_human.schemas import (
 
 def content_lock(
     job: PresenterJob,
+    *,
     voice_id: str | None = None,
     rate: float | None = None,
 ) -> PresenterJob:
@@ -58,13 +59,9 @@ def content_lock(
 
     对应 lanshu generation.md 第 1 节
     """
-    # 锁定内容
-    job = lock_content(job)
+    from hevi.digital_human.content_service import content_lock as _content_lock
 
-    # 生成旁白
-    job = generate_narration(job, voice_id=voice_id, rate=rate)
-
-    return job
+    return _content_lock(job, voice_id=voice_id, rate=rate)
 
 
 # ─── 视觉规划技能 ────────────────────────────────────

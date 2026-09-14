@@ -1,6 +1,6 @@
 {
-  "count": 429,
-  "multi": 144,
+  "count": 430,
+  "multi": 143,
   "one": 81,
   "oskills": [
     {
@@ -20,6 +20,12 @@
       "oprim_calls": [],
       "reason": "fewer than two distinct direct oprim call sites",
       "symbol": "hevi/creative_assets/oskill/compiler.py::compile_visual_prompt"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/digital_human/oskill/__init__.py::content_lock"
     },
     {
       "distinct_oprims": 1,
@@ -2741,5 +2747,5 @@
     }
   ],
   "source": "AST function call sites",
-  "zero": 348
+  "zero": 349
 }

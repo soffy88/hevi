@@ -49,9 +49,12 @@ def main() -> int:
         if s.layer == "oprim":
             oprim_sig += sum(len(n.args.posonlyargs + n.args.args) > 1 for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_"))
         if s.layer == "oskill":
-            oskill_stateful += int("self." in text or "status =" in text)
-            oskill_persistence += int(any(x in text for x in ("write_text", "write_bytes", "commit(", "insert(")))
-            oskill_business += int(any(x in text for x in ("user_id", "tenant_id", "project_id", "job_id")))
+            public = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")]
+            for fn in public:
+                fn_text = ast.unparse(fn).lower()
+                oskill_stateful += int(any(x in fn_text for x in ("self.", "status =", "timeline =", "rendered =", "caption_json =", "current_status")))
+                oskill_persistence += int(any(x in fn_text for x in ("write_text", "write_bytes", "mkdir(", "commit(", "insert(", "update(")))
+                oskill_business += int(any(x in fn_text for x in ("user_id", "tenant_id", "project_id", "job_id", "production_run_id", "creative_project_id")))
         if s.layer == "omodul":
             public = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("_")]
             omodul_sig += sum([n.args.args[:3][i].arg for i in range(min(3, len(n.args.args)))] != ["config", "input_data", "output_dir"] for n in public)
