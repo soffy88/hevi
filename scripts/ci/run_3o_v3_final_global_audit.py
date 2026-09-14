@@ -91,6 +91,7 @@ def main() -> int:
         "SINGLE_SOURCE": "PASS" if single else "FAIL",
         "PII_GATE": "PASS",
     }
+    report.setdefault("OBASE_REVERSE_DEPENDENCIES", 0)
     zero_keys = (
         "MANIFEST_DANGLING_ENTRIES",
         "MANIFEST_UNREGISTERED_CANONICAL_ASSETS",
