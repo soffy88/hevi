@@ -1,5 +1,5 @@
 {
-  "count": 119,
+  "count": 115,
   "source": "direct AST scan",
   "violations": [
     {
@@ -41,46 +41,6 @@
       "expected_owner": "hevi Layer4",
       "path": "hevi/creative/omodul/audit_gold.py",
       "symbol": "hevi/creative/omodul/audit_gold.py::context",
-      "violation": "PROJECT_IDENTITY_IN_3O"
-    },
-    {
-      "current_layer": "omodul",
-      "evidence": [
-        "productionrun"
-      ],
-      "expected_owner": "hevi Layer4",
-      "path": "hevi/creative/omodul/background.py",
-      "symbol": "hevi/creative/omodul/background.py::progress",
-      "violation": "BUSINESS_STATE_IN_3O"
-    },
-    {
-      "current_layer": "omodul",
-      "evidence": [
-        "productionrun"
-      ],
-      "expected_owner": "hevi Layer4",
-      "path": "hevi/creative/omodul/background.py",
-      "symbol": "hevi/creative/omodul/background.py::cancel",
-      "violation": "PROJECT_IDENTITY_IN_3O"
-    },
-    {
-      "current_layer": "omodul",
-      "evidence": [
-        "productionrun"
-      ],
-      "expected_owner": "hevi Layer4",
-      "path": "hevi/creative/omodul/background.py",
-      "symbol": "hevi/creative/omodul/background.py::retry",
-      "violation": "PROJECT_IDENTITY_IN_3O"
-    },
-    {
-      "current_layer": "omodul",
-      "evidence": [
-        "productionrun"
-      ],
-      "expected_owner": "hevi Layer4",
-      "path": "hevi/creative/omodul/background.py",
-      "symbol": "hevi/creative/omodul/background.py::fail",
       "violation": "PROJECT_IDENTITY_IN_3O"
     },
     {

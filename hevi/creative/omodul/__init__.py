@@ -16,7 +16,6 @@ from hevi.creative.omodul.audit_dimensions import (
     StyleSpec,
     run_dimensions,
 )
-from hevi.creative.omodul.background import BackgroundRunController, ProgressEvent
 from hevi.creative.omodul.comparison import ComparisonModule, IntentArtifactComparison
 from hevi.creative.omodul.context import (
     ContextBudget,
@@ -99,6 +98,7 @@ from hevi.creative.omodul.style import (
     WritingNaturalnessAudit,
 )
 from hevi.creative.omodul.translation import TranslationModule
+from hevi.creative.runtime_control import BackgroundRunController, ProgressEvent
 
 __all__ = [
     "ContextBudget",
