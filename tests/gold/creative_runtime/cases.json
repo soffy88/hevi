@@ -1,0 +1,22 @@
+[
+  {"id": "LONGFORM", "domain": "longform", "happy": true, "failure": "STALE_REVISION"},
+  {"id": "SHORT", "domain": "short", "happy": true, "failure": "SHORT_INVALID_LENGTH"},
+  {"id": "SCRIPT", "domain": "script", "happy": true, "failure": "SCRIPT_EMPTY"},
+  {"id": "STORYBOARD", "domain": "storyboard", "happy": true, "failure": "STORYBOARD_SCENE_REF_MISMATCH"},
+  {"id": "INTERACTIVE_FILM", "domain": "interactive_film", "happy": true, "failure": "INVALID_CONDITION"},
+  {"id": "PLAY", "domain": "play", "happy": true, "failure": "RESOURCE_BUSY"},
+  {"id": "TRANSLATION", "domain": "translation", "happy": true, "failure": "TRANSLATION_INCOMPLETE"},
+  {"id": "IMPORT", "domain": "import", "happy": true, "failure": "IMPORT_EMPTY_SOURCE"},
+  {"id": "FANFIC", "domain": "fanfic", "happy": true, "failure": "CANON_DEVIATION_NOT_ALLOWED"},
+  {"id": "SPINOFF", "domain": "spinoff", "happy": true, "failure": "CANON_DEVIATION_NOT_ALLOWED"},
+  {"id": "FORECAST", "domain": "forecast", "happy": true, "failure": "FORECAST_STALE"},
+  {"id": "RESEARCH", "domain": "research", "happy": true, "failure": "SOURCE_EVIDENCE_MISSING"},
+  {"id": "STYLE", "domain": "style", "happy": true, "failure": "STYLE_EMPTY_INPUT"},
+  {"id": "GENRE", "domain": "genre", "happy": true, "failure": "FORBIDDEN_PATTERN"},
+  {"id": "COVER", "domain": "cover", "happy": true, "failure": "COVER_EMPTY_PROVIDER_RESULT"},
+  {"id": "REVIEW", "domain": "review", "happy": true, "failure": "APPROVAL_REQUIRED"},
+  {"id": "AUDIT", "domain": "audit", "happy": true, "failure": "NARRATIVE_SCHEMA_INVALID"},
+  {"id": "REVISION", "domain": "revision", "happy": true, "failure": "REVISION_LIMIT"},
+  {"id": "ANALYTICS", "domain": "analytics", "happy": true, "failure": "ANALYTICS_INPUT_INVALID"},
+  {"id": "EXPORT", "domain": "export", "happy": true, "failure": "EXPORT_EMPTY"}
+]

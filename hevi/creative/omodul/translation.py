@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import io
+import subprocess
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
@@ -151,8 +152,16 @@ class TranslationModule:
         if path.suffix.lower() == ".pdf":
             try:
                 pdf_module = importlib.import_module("pypdf")
-            except ImportError as exc:  # pragma: no cover - optional parser
-                raise RuntimeError("PDF_READER_UNAVAILABLE") from exc
+            except ImportError:
+                completed = subprocess.run(
+                    ["pdftotext", "-layout", str(path), "-"],
+                    capture_output=True,
+                    check=False,
+                    timeout=30,
+                )
+                if completed.returncode != 0:
+                    raise RuntimeError("PDF_READER_UNAVAILABLE") from None
+                return completed.stdout.decode("utf-8", errors="replace")
             return "\n\n".join(
                 page.extract_text() or "" for page in pdf_module.PdfReader(path).pages
             )

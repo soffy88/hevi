@@ -108,6 +108,7 @@ def test_observation_requires_explicit_settlement() -> None:
         artifact_id=uuid4(),
         canon_revision=0,
         extractor="test",
+        authority=CreativeAuthority.PROJECTION,
         facts=(
             ObservationFact(
                 fact_type="CHARACTER",

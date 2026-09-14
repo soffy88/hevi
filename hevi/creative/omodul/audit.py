@@ -145,6 +145,7 @@ class NarrativeAuditEngine:
             status=status,
             findings=tuple(findings),
             dimensions_checked=ALL_AUDIT_DIMENSIONS,
+            authority=CreativeAuthority.PROJECTION,
         )
 
     @staticmethod

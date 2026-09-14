@@ -24,6 +24,8 @@ class ExportModule:
     ) -> ExportArtifact:
         if not chapters:
             raise ValueError("EXPORT_EMPTY")
+        if source.quality_gate_status != "PASS":
+            raise ValueError("EXPORT_SOURCE_QUALITY_GATE_REQUIRED")
         if fmt not in {"txt", "markdown", "epub"}:
             raise ValueError(f"unsupported export format: {fmt}")
         body = "\n\n".join(chapters)

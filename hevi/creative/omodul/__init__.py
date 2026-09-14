@@ -23,6 +23,8 @@ from hevi.creative.omodul.interactive import (
     InteractiveFilmModule,
 )
 from hevi.creative.omodul.long_horizon import HorizonReport, LongHorizonQualifier
+from hevi.creative.omodul.market import MarketRadar, MarketTrend, TrendEvidence, TrendSnapshot
+from hevi.creative.omodul.materials import MaterialCitation, MaterialModule
 from hevi.creative.omodul.narrative import (
     LONGFORM_STAGES,
     LongFormWorkflow,
@@ -88,6 +90,12 @@ __all__ = [
     "StaleForecastError",
     "HorizonReport",
     "LongHorizonQualifier",
+    "MaterialCitation",
+    "MaterialModule",
+    "MarketRadar",
+    "MarketTrend",
+    "TrendEvidence",
+    "TrendSnapshot",
     "GenreFinding",
     "GenreModule",
     "ImportModule",

@@ -27,6 +27,8 @@ def calculate_analytics(
     runs: Iterable[ProductionRun],
     revision_count: int,
 ) -> CreativeAnalytics:
+    if revision_count < 0:
+        raise ValueError("ANALYTICS_INPUT_INVALID")
     audit_list = tuple(audits)
     run_list = tuple(runs)
     issues = Counter(finding.dimension for audit in audit_list for finding in audit.findings)

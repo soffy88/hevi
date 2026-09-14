@@ -19,7 +19,12 @@ class ResearchModule:
     """Store research as evidence; only explicit acceptance creates a fact."""
 
     def create_report(self, *, project_id: UUID, query: str) -> ResearchReport:
-        return ResearchReport(project_id=project_id, query=query, retrieved_at=datetime.now(UTC))
+        return ResearchReport(
+            project_id=project_id,
+            query=query,
+            retrieved_at=datetime.now(UTC),
+            authority=CreativeAuthority.EVIDENCE,
+        )
 
     def add_source(
         self,
@@ -54,6 +59,8 @@ class ResearchModule:
     ) -> tuple[ResearchReport, CreativeEvidence]:
         if source.project_id != report.project_id:
             raise ValueError("research source belongs to another project")
+        if not claim.strip():
+            raise ValueError("SOURCE_EVIDENCE_MISSING")
         evidence = CreativeEvidence(
             project_id=report.project_id,
             source_id=source.object_id,

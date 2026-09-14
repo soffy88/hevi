@@ -310,6 +310,7 @@ class NarrativeProject(CreativeObject):
     author_intent_id: UUID | None = None
     story_bible_id: UUID | None = None
     canon_id: UUID | None = None
+    current_focus: str | None = None
 
 
 class CreativeProject(CreativeObject):
@@ -395,6 +396,12 @@ class NarrativeObservation(CreativeObject):
     canon_revision: int = Field(ge=0)
     facts: tuple[ObservationFact, ...] = ()
     extractor: str
+
+    @model_validator(mode="after")
+    def observation_is_projection(self) -> NarrativeObservation:
+        if self.authority is CreativeAuthority.CANONICAL:
+            raise ValueError("observations must remain projections until settled")
+        return self
 
 
 class NarrativeDelta(CreativeObject):

@@ -45,6 +45,23 @@ Narrative canon
 
 Downstream evaluation must not silently mutate an upstream canonical object.
 
+## Capability composition
+
+The additive vNext modules cover the following HEVI-native flows:
+
+- long-form stage progression, observation settlement, context compilation,
+  forecast branches, audit, bounded revision, and explicit review;
+- project-scoped memory, material/source evidence, import/reconstruction,
+  fanfic/spinoff inheritance, style/genre/naturalness analysis, and market
+  evidence;
+- short fiction, script, production-executable storyboard, interactive film
+  graph validation, durable play turns, translation resume/export, covers,
+  analytics, and creative service names.
+
+These modules use the existing HEVI production graph as their execution
+boundary. They do not create a second agent swarm, renderer, provider
+catalogue, task queue, or artifact authority.
+
 ## Contract envelope
 
 Every creative object has a stable object ID, project scope, schema version,

@@ -5,5 +5,12 @@ from hevi.creative.oservi.registry import (
     ServiceRequest,
     ServiceResult,
 )
+from hevi.creative.oservi.services import CREATIVE_SERVICE_NAMES, CreativeServiceSurface
 
-__all__ = ["CreativeServiceRegistry", "ServiceRequest", "ServiceResult"]
+__all__ = [
+    "CREATIVE_SERVICE_NAMES",
+    "CreativeServiceRegistry",
+    "CreativeServiceSurface",
+    "ServiceRequest",
+    "ServiceResult",
+]

@@ -35,6 +35,7 @@ from hevi.obase.creative import (
     InteractiveFilm,
     InteractiveWorld,
     NarrativeCanon,
+    ProvenanceRef,
     SceneIntent,
     StoryNode,
 )
@@ -172,3 +173,79 @@ def test_memory_is_project_isolated_and_rejects_credentials() -> None:
 def test_targeted_editing_fails_closed_when_ambiguous() -> None:
     with pytest.raises(TargetNotUnique):
         preview_exact_edit("same same", "same", "new")
+
+
+def test_materials_and_market_radar_remain_project_scoped_evidence() -> None:
+    from hevi.creative.omodul import MarketRadar, MaterialModule, TrendEvidence
+
+    project_id = uuid4()
+    material, source = MaterialModule().import_material(
+        project_id=project_id,
+        name="notes",
+        material_type="TEXT",
+        uri="hevi://material/1",
+    )
+    assert material.source_id == source.object_id
+    evidence = TrendEvidence(
+        topic="genre",
+        value="rising",
+        confidence=0.8,
+        source=ProvenanceRef(ref_id=str(source.object_id), ref_type="MATERIAL"),
+    )
+    snapshot = MarketRadar().snapshot(project_id=project_id, evidence=(evidence,))
+    assert MarketRadar().summarize(snapshot)[0].topic == "genre"
+
+
+def test_production_harness_requires_artifact_and_confirmation() -> None:
+    from hevi.creative.omodul import HeavyActionConfirmation, ProductionHarness
+    from hevi.obase.creative import ProductionRun
+
+    project_id = uuid4()
+    harness = ProductionHarness()
+    proposal = harness.propose(
+        project_id=project_id,
+        capability="SCRIPT",
+        kind="RENDER",
+        summary="render draft",
+        heavy=True,
+    )
+    run = ProductionRun(project_id=project_id, run_key="r", capability="SCRIPT")
+    with pytest.raises(PermissionError):
+        harness.execute(proposal=proposal, run=run, artifact_factory=lambda _: ())
+    result = harness.execute(
+        proposal=proposal,
+        run=run,
+        confirmation=HeavyActionConfirmation(
+            action_id=proposal.action_id,
+            actor_id="owner",
+            confirmed=True,
+        ),
+        artifact_factory=lambda _: (),
+    )
+    assert result.result.status == "FAILED"
+
+
+def test_short_fiction_is_a_structured_production_package() -> None:
+    from hevi.creative.omodul import ShortFictionModule
+
+    production = ShortFictionModule().create(
+        project_id=uuid4(),
+        title="Short",
+        direction="a choice",
+        genre="mystery",
+        chapter_count=2,
+        length=10,
+        language="en",
+    )
+    assert len(production.manuscript) == 2
+
+
+def test_intent_comparison_does_not_turn_not_evaluable_into_pass() -> None:
+    from hevi.creative.omodul.comparison import ComparisonModule
+    from hevi.obase.creative import ArtifactProfile, NarrativeIntentProfile
+
+    project_id = uuid4()
+    intent = NarrativeIntentProfile(project_id=project_id, goal="goal")
+    artifact = ArtifactProfile(project_id=project_id, artifact_id=uuid4())
+    comparison = ComparisonModule().compare(intent=intent, artifact=artifact)
+    assert comparison.status == "NOT_EVALUABLE"

@@ -117,7 +117,7 @@ class PlayState(BaseModel):
     state_id: UUID = Field(default_factory=uuid4)
     world_id: UUID
     revision: int = Field(default=0, ge=0)
-    clock: WorldClock = WorldClock()
+    clock: WorldClock = Field(default_factory=WorldClock)
     player: PlayerState
     agents: tuple[CharacterAgentState, ...] = ()
     inventory: tuple[InventoryItem, ...] = ()
@@ -165,9 +165,9 @@ class PlayEngine:
         return next_state, result
 
     def persist_turn(self, path: str | Path, state: PlayState) -> None:
-        persist_model(
-            path, state, expected_previous_revision=state.revision - 1 if state.revision else None
-        )
+        destination = Path(path)
+        expected = state.revision - 1 if destination.exists() and state.revision else None
+        persist_model(path, state, expected_previous_revision=expected)
 
     def restore(self, path: str | Path) -> PlayState:
         return restore_model(path, PlayState)
