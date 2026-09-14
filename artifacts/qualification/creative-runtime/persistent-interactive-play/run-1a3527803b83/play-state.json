@@ -1,0 +1,693 @@
+{
+  "agents": [],
+  "clock": {
+    "unit": "turn",
+    "value": 50
+  },
+  "events": [
+    {
+      "description": "inspect-0",
+      "event_id": "008d637f-6f26-41cc-a7b9-685144ca3f92",
+      "turn": 0
+    },
+    {
+      "description": "inspect-1",
+      "event_id": "382e0030-44d0-454b-97f4-741cb5a8cd22",
+      "turn": 1
+    },
+    {
+      "description": "inspect-2",
+      "event_id": "5af0c36d-ccd7-4250-abc7-c8f40f1aeba7",
+      "turn": 2
+    },
+    {
+      "description": "inspect-3",
+      "event_id": "5affb346-c47a-458d-b003-fc8a313cf691",
+      "turn": 3
+    },
+    {
+      "description": "inspect-4",
+      "event_id": "1d725d88-f29d-4f59-9e57-bdbec1f75d95",
+      "turn": 4
+    },
+    {
+      "description": "inspect-5",
+      "event_id": "1d49aa0e-e545-4755-98da-984fa77e84eb",
+      "turn": 5
+    },
+    {
+      "description": "inspect-6",
+      "event_id": "4b3a0e95-32e9-4f13-8159-36882dcbf2fc",
+      "turn": 6
+    },
+    {
+      "description": "inspect-7",
+      "event_id": "e497d594-e350-4ffe-b42e-9ec81aea0268",
+      "turn": 7
+    },
+    {
+      "description": "inspect-8",
+      "event_id": "03ddd93d-3ba2-402f-ad33-733c9cca6204",
+      "turn": 8
+    },
+    {
+      "description": "inspect-9",
+      "event_id": "7d6514a6-cf05-4ecb-af29-e30405e8ce37",
+      "turn": 9
+    },
+    {
+      "description": "inspect-10",
+      "event_id": "ddbaba6d-98d4-4cde-945f-0866c329957a",
+      "turn": 10
+    },
+    {
+      "description": "inspect-11",
+      "event_id": "d075d0c3-5f31-4618-83df-277141d2f0b1",
+      "turn": 11
+    },
+    {
+      "description": "inspect-12",
+      "event_id": "a95808b4-444b-4cf4-b66b-348ee8805b10",
+      "turn": 12
+    },
+    {
+      "description": "inspect-13",
+      "event_id": "a80c719c-6aad-442f-8689-536a685041bb",
+      "turn": 13
+    },
+    {
+      "description": "inspect-14",
+      "event_id": "291b960f-b93e-4622-a94b-2615c5499332",
+      "turn": 14
+    },
+    {
+      "description": "inspect-15",
+      "event_id": "2af2f975-52f8-4c0c-aee6-cc7c6d39ca90",
+      "turn": 15
+    },
+    {
+      "description": "inspect-16",
+      "event_id": "48df6c28-81a4-4428-94ae-472883db42c3",
+      "turn": 16
+    },
+    {
+      "description": "inspect-17",
+      "event_id": "763f34e0-5c11-4e83-b1df-f06939a4de80",
+      "turn": 17
+    },
+    {
+      "description": "inspect-18",
+      "event_id": "a66a5216-31be-45bf-ab6a-21295547aa40",
+      "turn": 18
+    },
+    {
+      "description": "inspect-19",
+      "event_id": "d307e23a-3cf4-45aa-b7f4-4f8367872fe1",
+      "turn": 19
+    },
+    {
+      "description": "inspect-20",
+      "event_id": "3439b07d-1518-45f9-94a7-22108963d9e6",
+      "turn": 20
+    },
+    {
+      "description": "inspect-21",
+      "event_id": "a0e764aa-e074-401a-b36c-4ba2bf902d22",
+      "turn": 21
+    },
+    {
+      "description": "inspect-22",
+      "event_id": "0fe1f443-85ae-4452-a2b5-37ceb2538dca",
+      "turn": 22
+    },
+    {
+      "description": "inspect-23",
+      "event_id": "77a7871f-2ee8-4a75-b371-508e736bab6a",
+      "turn": 23
+    },
+    {
+      "description": "inspect-24",
+      "event_id": "3293ca24-ff4f-4d75-b26f-13633d0d9e78",
+      "turn": 24
+    },
+    {
+      "description": "inspect-25",
+      "event_id": "4b3c2e31-bf8e-4f58-8410-ece3ba5c8f1e",
+      "turn": 25
+    },
+    {
+      "description": "inspect-26",
+      "event_id": "a582310f-1fce-42ab-bab6-0ebf3f941144",
+      "turn": 26
+    },
+    {
+      "description": "inspect-27",
+      "event_id": "09701c02-41a0-4c7d-8ebe-964c7abd3161",
+      "turn": 27
+    },
+    {
+      "description": "inspect-28",
+      "event_id": "2ed851a4-c092-41e9-8d36-abd021821076",
+      "turn": 28
+    },
+    {
+      "description": "inspect-29",
+      "event_id": "a8f8c900-bcdd-4233-af9c-ea073f17c41b",
+      "turn": 29
+    },
+    {
+      "description": "inspect-30",
+      "event_id": "e94d95a6-54df-4682-842d-d87ae0caf163",
+      "turn": 30
+    },
+    {
+      "description": "inspect-31",
+      "event_id": "d3013d52-2ddd-4d16-8465-d1f88e2938b4",
+      "turn": 31
+    },
+    {
+      "description": "inspect-32",
+      "event_id": "d2537d86-5bca-4579-aebe-54944545b921",
+      "turn": 32
+    },
+    {
+      "description": "inspect-33",
+      "event_id": "dd9eca2c-0647-48b7-9c18-c1ef481b923f",
+      "turn": 33
+    },
+    {
+      "description": "inspect-34",
+      "event_id": "fab6db78-84ae-4b0a-8866-246f48aaf2c7",
+      "turn": 34
+    },
+    {
+      "description": "inspect-35",
+      "event_id": "5275647e-1507-4220-85d4-a6085c581910",
+      "turn": 35
+    },
+    {
+      "description": "inspect-36",
+      "event_id": "27004596-41eb-4288-a12c-903c28c3d547",
+      "turn": 36
+    },
+    {
+      "description": "inspect-37",
+      "event_id": "c4e53914-6b4a-4088-b3ea-141ab1c96d7f",
+      "turn": 37
+    },
+    {
+      "description": "inspect-38",
+      "event_id": "ba9afc79-4fc3-43b2-aa79-04d3f313c745",
+      "turn": 38
+    },
+    {
+      "description": "inspect-39",
+      "event_id": "3cf66395-70a9-4914-b647-5304ca74a14c",
+      "turn": 39
+    },
+    {
+      "description": "inspect-40",
+      "event_id": "0bc3e1ea-c833-4552-83f1-f3d02313d2dc",
+      "turn": 40
+    },
+    {
+      "description": "inspect-41",
+      "event_id": "14f43daf-26af-4e96-9b56-37d7773e6a0c",
+      "turn": 41
+    },
+    {
+      "description": "inspect-42",
+      "event_id": "62af7670-de91-4e7e-9a5d-698cd828256a",
+      "turn": 42
+    },
+    {
+      "description": "inspect-43",
+      "event_id": "b3ec3efb-697a-4d95-94d3-77b11586320f",
+      "turn": 43
+    },
+    {
+      "description": "inspect-44",
+      "event_id": "15d3ce02-d97d-4c97-86df-64fb5efa7b48",
+      "turn": 44
+    },
+    {
+      "description": "inspect-45",
+      "event_id": "cb10e7d8-e525-4cdf-b230-c21f5ebc114a",
+      "turn": 45
+    },
+    {
+      "description": "inspect-46",
+      "event_id": "fe9c09da-59bc-4662-b9b8-68e2ac6e89a0",
+      "turn": 46
+    },
+    {
+      "description": "inspect-47",
+      "event_id": "8721d8fe-ded4-418f-b529-6e9b709c454a",
+      "turn": 47
+    },
+    {
+      "description": "inspect-48",
+      "event_id": "db0f58b4-700f-47ce-9146-88b626bd75f9",
+      "turn": 48
+    },
+    {
+      "description": "inspect-49",
+      "event_id": "fce14b5d-3758-4b5c-8c9b-f462c268787c",
+      "turn": 49
+    }
+  ],
+  "evidence": [
+    {
+      "discovered_at_turn": 10,
+      "evidence_id": "key-found",
+      "statement": "found the harbour key"
+    }
+  ],
+  "inventory": [
+    {
+      "item_id": "harbour-key",
+      "quantity": 3
+    }
+  ],
+  "player": {
+    "location": "harbour",
+    "player_id": "qualification-player",
+    "relationship_values": []
+  },
+  "relationships": [
+    {
+      "from_id": "player",
+      "to_id": "Mara",
+      "value": 0.8
+    }
+  ],
+  "revision": 50,
+  "state_id": "aa152d39-2a0d-4c85-b859-b0f2bb04d576",
+  "turn_history": [
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-0"
+      },
+      "number": 0,
+      "turn_id": "7e2e61f2-9f00-4b91-9504-9ed44fe33741"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-1"
+      },
+      "number": 1,
+      "turn_id": "470aba19-19bb-4d11-ba86-46267cd4e605"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-2"
+      },
+      "number": 2,
+      "turn_id": "112ae13b-3d1e-43ee-b2f7-69505bb54e72"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-3"
+      },
+      "number": 3,
+      "turn_id": "bc064d16-ca58-4b8e-813f-876759ff6bc1"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-4"
+      },
+      "number": 4,
+      "turn_id": "c9e163b9-f4de-4b68-89aa-dabd5e41c389"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-5"
+      },
+      "number": 5,
+      "turn_id": "d6878326-aab5-4cfa-a92b-bece8a956b42"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-6"
+      },
+      "number": 6,
+      "turn_id": "14cc29e6-593e-4db0-a8d6-4b1053893f5f"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-7"
+      },
+      "number": 7,
+      "turn_id": "b4407659-ad7d-41ef-89e0-8ce05b20363d"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-8"
+      },
+      "number": 8,
+      "turn_id": "b0f7f610-d52d-4712-82c9-a4446597ad27"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-9"
+      },
+      "number": 9,
+      "turn_id": "4b92dae4-cec3-4230-9d79-bfa8b7917ec8"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-10"
+      },
+      "number": 10,
+      "turn_id": "bf31441e-f777-4880-9227-24163e1ed166"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-11"
+      },
+      "number": 11,
+      "turn_id": "b5b1f60f-f1fe-488b-9036-1c25f62ea961"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-12"
+      },
+      "number": 12,
+      "turn_id": "061ee18d-bd12-4478-82f2-5c3a41d8bf0d"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-13"
+      },
+      "number": 13,
+      "turn_id": "ab183053-b2ee-4593-b514-23230d483ab5"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-14"
+      },
+      "number": 14,
+      "turn_id": "d740a0cc-6754-42fe-8f8e-1f78a1183a40"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-15"
+      },
+      "number": 15,
+      "turn_id": "1b0da231-1ab9-4d29-99ee-9c4bd16a0bfd"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-16"
+      },
+      "number": 16,
+      "turn_id": "aa41793e-51b2-46f4-a52b-36f5a0dcf266"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-17"
+      },
+      "number": 17,
+      "turn_id": "bc66bed2-d092-490b-99bc-5a481777c1ca"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-18"
+      },
+      "number": 18,
+      "turn_id": "a9dfd890-0b9a-4c50-a428-0f892684e50c"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-19"
+      },
+      "number": 19,
+      "turn_id": "d728a110-da2d-4d3d-8e4f-529cb3048f49"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-20"
+      },
+      "number": 20,
+      "turn_id": "581e715c-833f-434b-8074-d825c1d02bf4"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-21"
+      },
+      "number": 21,
+      "turn_id": "c934d241-f9da-41fd-a0dd-e70e819bae3b"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-22"
+      },
+      "number": 22,
+      "turn_id": "d66fa4c2-9123-4efd-9406-c205e1a1dd91"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-23"
+      },
+      "number": 23,
+      "turn_id": "ddd8e967-9f1f-4719-b643-ae7127891748"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-24"
+      },
+      "number": 24,
+      "turn_id": "856c26a4-2c1d-43d6-846b-a7e73fc00102"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-25"
+      },
+      "number": 25,
+      "turn_id": "16daaa73-7618-4529-9e7d-e6d4ad4e7d9c"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-26"
+      },
+      "number": 26,
+      "turn_id": "2417a8ff-95a5-4209-9753-132772e3755f"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-27"
+      },
+      "number": 27,
+      "turn_id": "83a5d665-487e-41ab-8129-25b079f3ea0e"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-28"
+      },
+      "number": 28,
+      "turn_id": "3d717986-83dc-41d0-a64f-8c820a77b44d"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-29"
+      },
+      "number": 29,
+      "turn_id": "cc53278c-5492-4147-b80c-153c20549a89"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-30"
+      },
+      "number": 30,
+      "turn_id": "69fea369-b17c-4eed-ad20-1562356d4311"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-31"
+      },
+      "number": 31,
+      "turn_id": "30e75335-7e10-408b-98b5-673f5dc1402b"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-32"
+      },
+      "number": 32,
+      "turn_id": "e7f1d586-ed36-457d-9898-edcd2cf2ac44"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-33"
+      },
+      "number": 33,
+      "turn_id": "f1b4d302-9cca-4f2d-9d5c-0777dcccff68"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-34"
+      },
+      "number": 34,
+      "turn_id": "7cda4bce-978d-427c-85ef-09667f444290"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-35"
+      },
+      "number": 35,
+      "turn_id": "09e0953e-8431-4734-927b-ea62d1b26567"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-36"
+      },
+      "number": 36,
+      "turn_id": "43fd5651-a77d-4e9f-b25e-7499fa17df0e"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-37"
+      },
+      "number": 37,
+      "turn_id": "cab70f4a-07d3-4ba6-abc4-ca77af3c06df"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-38"
+      },
+      "number": 38,
+      "turn_id": "fe4d3c7b-4550-49c0-8787-bb1003b19548"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-39"
+      },
+      "number": 39,
+      "turn_id": "b9d848c4-4ab2-440d-9e08-6d4d961d1840"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-40"
+      },
+      "number": 40,
+      "turn_id": "f9ba6ad0-9385-4cac-bb37-1812931bc2e4"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-41"
+      },
+      "number": 41,
+      "turn_id": "2c2b61ff-4cfa-4b12-8d8c-5cde5895a405"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-42"
+      },
+      "number": 42,
+      "turn_id": "091348f9-1343-4e6a-91a1-9cbbed2208c1"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-43"
+      },
+      "number": 43,
+      "turn_id": "f08a15b2-b419-4ede-869c-8a418c6a4110"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-44"
+      },
+      "number": 44,
+      "turn_id": "2bddca96-94f3-49b6-8d60-b9a6b5a70c9a"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-45"
+      },
+      "number": 45,
+      "turn_id": "e8af0964-4c96-4f72-9297-bc1d2bebfda9"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-46"
+      },
+      "number": 46,
+      "turn_id": "8ee9681d-a934-4e3b-a6d3-c284d4abcf2c"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-47"
+      },
+      "number": 47,
+      "turn_id": "2f9beb83-1cac-4af7-8d30-56a7bf694712"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-48"
+      },
+      "number": 48,
+      "turn_id": "8b2a57e6-f443-46c5-9f0c-32fbdc3cd2ca"
+    },
+    {
+      "action": {
+        "kind": "CHOICE",
+        "label": "inspect-49"
+      },
+      "number": 49,
+      "turn_id": "c3e70f8c-80fe-4e72-aa0f-ddd287375027"
+    }
+  ],
+  "visual_refs": [
+    "visual://harbour/key",
+    "visual://harbour/gate"
+  ],
+  "world_id": "593952f7-9942-4731-8b4e-1d868df7e561"
+}

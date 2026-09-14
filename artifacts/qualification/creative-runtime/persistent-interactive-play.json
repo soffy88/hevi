@@ -1,6 +1,6 @@
 {
   "capability_id": "persistent-interactive-play",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/persistent-interactive-play/run-1ff28bed0fee/play-state.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/persistent-interactive-play/run-1a3527803b83/play-state.json",
   "checks": {
     "FIFTY_TURNS": true,
     "DURABLE_TURNS": true,
@@ -9,13 +9,13 @@
     "REDO": true,
     "WORLD_ID_PRESERVED": true,
     "NO_DUPLICATE_TURNS": true,
-    "INVENTORY_EVIDENCE_RELATIONSHIP_STATE": false,
-    "VISUAL_ASSET_LINK": false
+    "INVENTORY_EVIDENCE_RELATIONSHIP_STATE": true,
+    "VISUAL_ASSET_LINK": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/persistent-interactive-play/run-1ff28bed0fee/play-state.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/persistent-interactive-play/run-1ff28bed0fee/world.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/persistent-interactive-play/run-1ff28bed0fee/play-report.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/persistent-interactive-play/run-1a3527803b83/play-state.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/persistent-interactive-play/run-1a3527803b83/world.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/persistent-interactive-play/run-1a3527803b83/play-report.json"
   ],
   "recovery": [
     "reload after turn 25 crash checkpoint",
@@ -29,6 +29,6 @@
     "final_revision": 50,
     "crash_revision": 25
   },
-  "status": "PARTIAL",
+  "status": "QUALIFIED",
   "generated_by": "scripts/qualification/qualify_creative_runtime.py"
 }

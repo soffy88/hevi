@@ -121,6 +121,14 @@ class InteractiveFilmModule:
                     message="no ending is reachable from the start",
                 )
             )
+        if self._has_cycle(graph.film.start_node_id, edges):
+            findings.append(
+                GraphFinding(
+                    code="CYCLE",
+                    severity="ERROR",
+                    message="choice graph contains a cycle",
+                )
+            )
         status: Literal["PASS", "FAIL"] = "FAIL" if findings else "PASS"
         return GraphValidation(
             status=status,
@@ -156,6 +164,26 @@ class InteractiveFilmModule:
 
         visit(graph.film.start_node_id, ())
         return tuple(paths)
+
+    @staticmethod
+    def _has_cycle(start: UUID | None, edges: dict[UUID, tuple[UUID, ...]]) -> bool:
+        if start is None or start not in edges:
+            return False
+        white, grey, black = 0, 1, 2
+        color: dict[UUID, int] = {}
+
+        def visit(node_id: UUID) -> bool:
+            color[node_id] = grey
+            for target in edges.get(node_id, ()):
+                state = color.get(target, white)
+                if state == grey:
+                    return True
+                if state == white and visit(target):
+                    return True
+            color[node_id] = black
+            return False
+
+        return visit(start)
 
     @staticmethod
     def _reachable(start: UUID | None, edges: dict[UUID, tuple[UUID, ...]]) -> set[UUID]:

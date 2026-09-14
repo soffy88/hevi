@@ -33,6 +33,10 @@ WAVE_CAPABILITIES: dict[str, tuple[str, ...]] = {
         "unified-agent-production-harness",
         "production-storyboard",
     ),
+    "D": (
+        "interactive-film",
+        "persistent-interactive-play",
+    ),
 }
 
 

@@ -390,7 +390,7 @@ capabilities:
     hevi_capability_id: creative.interactive_film
     qualification_test: 30 nodes, multiple branches, flags, relationships, 3 endings, all paths, export/playback
     qualification_evidence_path: artifacts/qualification/creative-runtime/interactive-film.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: persistent-interactive-play
     name: Persistent interactive world play
@@ -416,7 +416,7 @@ capabilities:
     hevi_capability_id: creative.persistent_play
     qualification_test: 50 turns, persistence, inventory, evidence, relation, time, crash resume, redo
     qualification_evidence_path: artifacts/qualification/creative-runtime/persistent-interactive-play.json
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: creative-research
     name: Traceable creative research

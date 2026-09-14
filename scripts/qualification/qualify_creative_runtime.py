@@ -2205,6 +2205,44 @@ def qualify_interactive(root: Path) -> Evidence:
         tuple(choices),
     )
     negative = module.validate(invalid)
+    ghost_choice = Choice(
+        label="ghost",
+        target_node_id=endings[0].node_id,
+        condition=Condition(expression="ghost == true", variable_refs=("ghost",)),
+    )
+    ghost_node = StoryNode(title="ghost", choice_ids=(ghost_choice.choice_id,))
+    ghost_graph = InteractiveFilmGraph(
+        film.model_copy(
+            update={
+                "node_ids": (*film.node_ids, ghost_node.node_id),
+                "choice_ids": (*film.choice_ids, ghost_choice.choice_id),
+            }
+        ),
+        (*nodes, ghost_node),
+        (*choices, ghost_choice),
+    )
+    ghost_validation = module.validate(ghost_graph)
+    cycle_choice = Choice(label="loop", target_node_id=nodes[0].node_id)
+    cycle_node = StoryNode(title="loop", choice_ids=(cycle_choice.choice_id,))
+    loop_entry = Choice(label="loop-entry", target_node_id=cycle_node.node_id)
+    looped_start = nodes[0].model_copy(
+        update={"choice_ids": (*nodes[0].choice_ids, loop_entry.choice_id)}
+    )
+    cycle_graph = InteractiveFilmGraph(
+        film.model_copy(
+            update={
+                "node_ids": (*film.node_ids, cycle_node.node_id),
+                "choice_ids": (
+                    *film.choice_ids,
+                    cycle_choice.choice_id,
+                    loop_entry.choice_id,
+                ),
+            }
+        ),
+        (looped_start, *nodes[1:], cycle_node),
+        (*choices, cycle_choice, loop_entry),
+    )
+    cycle_validation = module.validate(cycle_graph)
     return Evidence(
         "interactive-film",
         str(root / "playable-package.json"),
@@ -2220,8 +2258,10 @@ def qualify_interactive(root: Path) -> Evidence:
             "GRAPH_PASS": validation.status == "PASS",
             "PATH_ENUMERATION": len(paths) == 3,
             "DEAD_NODE_DETECTED": any(item.code == "DEAD_NODE" for item in negative.findings),
-            "INVALID_CONDITION_DETECTED": False,
-            "CYCLE_VALIDATION": False,
+            "INVALID_CONDITION_DETECTED": ghost_validation.status == "FAIL"
+            and any(item.code == "INVALID_CONDITION" for item in ghost_validation.findings),
+            "CYCLE_VALIDATION": cycle_validation.status == "FAIL"
+            and any(item.code == "CYCLE" for item in cycle_validation.findings),
             "PERSISTED_PLAYABLE_PACKAGE": (root / "playable-package.json").is_file(),
         },
         [str(root / "film.json"), str(root / "playable-package.json")],
@@ -2233,8 +2273,17 @@ def qualify_interactive(root: Path) -> Evidence:
 
 def qualify_play(root: Path) -> Evidence:
     from hevi.creative.omodul import Action, PlayEngine
-    from hevi.creative.omodul.play import ActionKind as PlayActionKind
-    from hevi.obase.creative import InteractiveWorld
+    from hevi.creative.omodul.play import (
+        ActionKind as PlayActionKind,
+    )
+    from hevi.creative.omodul.play import (
+        Evidence as PlayEvidence,
+    )
+    from hevi.creative.omodul.play import (
+        Relationship,
+        TurnEffects,
+    )
+    from hevi.obase.creative import InteractiveWorld, InventoryItem
 
     project_id = uuid4()
     world = InteractiveWorld(
@@ -2248,7 +2297,31 @@ def qualify_play(root: Path) -> Evidence:
     path = root / "play-state.json"
     crash_snapshot = None
     for turn in range(50):
-        state, _ = engine.step(state, Action(kind=PlayActionKind.CHOICE, label=f"inspect-{turn}"))
+        applied = None
+        if turn == 10:
+            applied = TurnEffects(
+                inventory=(InventoryItem(item_id="harbour-key", quantity=1),),
+                evidence=(
+                    PlayEvidence(
+                        evidence_id="key-found",
+                        statement="found the harbour key",
+                        discovered_at_turn=turn,
+                    ),
+                ),
+                relationships=(Relationship(from_id="player", to_id="Mara", value=0.5),),
+                visual_refs=("visual://harbour/key",),
+            )
+        elif turn == 20:
+            applied = TurnEffects(
+                inventory=(InventoryItem(item_id="harbour-key", quantity=2),),
+                relationships=(Relationship(from_id="player", to_id="Mara", value=0.8),),
+                visual_refs=("visual://harbour/gate",),
+            )
+        state, _ = engine.step(
+            state,
+            Action(kind=PlayActionKind.CHOICE, label=f"inspect-{turn}"),
+            effects=applied,
+        )
         engine.persist_turn(path, state)
         if turn == 24:
             crash_snapshot = engine.restore(path)
@@ -2279,8 +2352,22 @@ def qualify_play(root: Path) -> Evidence:
             "REDO": redo.revision == 26,
             "WORLD_ID_PRESERVED": restored.world_id == world.object_id,
             "NO_DUPLICATE_TURNS": len({turn.turn_id for turn in restored.turn_history}) == 50,
-            "INVENTORY_EVIDENCE_RELATIONSHIP_STATE": False,
-            "VISUAL_ASSET_LINK": False,
+            "INVENTORY_EVIDENCE_RELATIONSHIP_STATE": (
+                sum(
+                    item.quantity for item in restored.inventory if item.item_id == "harbour-key"
+                )
+                == 3
+                and len(restored.evidence) == 1
+                and restored.evidence[0].discovered_at_turn == 10
+                and any(
+                    item.from_id == "player" and item.to_id == "Mara" and item.value == 0.8
+                    for item in restored.relationships
+                )
+            ),
+            "VISUAL_ASSET_LINK": restored.visual_refs
+            == ("visual://harbour/key", "visual://harbour/gate")
+            and engine.restore(path).visual_refs
+            == ("visual://harbour/key", "visual://harbour/gate"),
         },
         [str(path), str(root / "world.json"), str(root / "play-report.json")],
         ["reload after turn 25 crash checkpoint", "restore terminal state"],

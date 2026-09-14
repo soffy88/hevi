@@ -109,6 +109,16 @@ class TurnResult(BaseModel):
     narrative: str
     events: tuple[WorldEvent, ...] = ()
     hud: HUDState
+    visual_refs: tuple[str, ...] = ()
+
+
+class TurnEffects(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    inventory: tuple[InventoryItem, ...] = ()
+    evidence: tuple[Evidence, ...] = ()
+    relationships: tuple[Relationship, ...] = ()
+    visual_refs: tuple[str, ...] = ()
 
 
 class PlayState(BaseModel):
@@ -125,6 +135,7 @@ class PlayState(BaseModel):
     relationships: tuple[Relationship, ...] = ()
     events: tuple[WorldEvent, ...] = ()
     turn_history: tuple[Turn, ...] = ()
+    visual_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -141,15 +152,28 @@ class PlayEngine:
         )
         return PlayStart(world, state)
 
-    def step(self, state: PlayState, action: Action) -> tuple[PlayState, TurnResult]:
+    def step(
+        self,
+        state: PlayState,
+        action: Action,
+        *,
+        effects: TurnEffects | None = None,
+    ) -> tuple[PlayState, TurnResult]:
+        applied = effects or TurnEffects()
         turn = Turn(number=state.clock.value, action=action)
         event = WorldEvent(turn=turn.number, description=action.label)
         next_state = state.model_copy(
             update={
                 "revision": state.revision + 1,
                 "clock": WorldClock(value=state.clock.value + 1, unit=state.clock.unit),
+                "inventory": _merge_inventory(state.inventory, applied.inventory),
+                "evidence": (*state.evidence, *applied.evidence),
+                "relationships": _merge_relationships(
+                    state.relationships, applied.relationships
+                ),
                 "events": (*state.events, event),
                 "turn_history": (*state.turn_history, turn),
+                "visual_refs": (*state.visual_refs, *applied.visual_refs),
             }
         )
         result = TurnResult(
@@ -161,6 +185,7 @@ class PlayEngine:
                 location=next_state.player.location,
                 inventory_count=sum(item.quantity for item in next_state.inventory),
             ),
+            visual_refs=applied.visual_refs,
         )
         return next_state, result
 
@@ -171,6 +196,29 @@ class PlayEngine:
 
     def restore(self, path: str | Path) -> PlayState:
         return restore_model(path, PlayState)
+
+
+def _merge_inventory(
+    current: tuple[InventoryItem, ...], added: tuple[InventoryItem, ...]
+) -> tuple[InventoryItem, ...]:
+    totals: dict[str, int] = {item.item_id: item.quantity for item in current}
+    for item in added:
+        totals[item.item_id] = totals.get(item.item_id, 0) + item.quantity
+    return tuple(InventoryItem(item_id=key, quantity=value) for key, value in totals.items())
+
+
+def _merge_relationships(
+    current: tuple[Relationship, ...], added: tuple[Relationship, ...]
+) -> tuple[Relationship, ...]:
+    values: dict[tuple[str, str], float] = {
+        (item.from_id, item.to_id): item.value for item in current
+    }
+    for item in added:
+        values[(item.from_id, item.to_id)] = item.value
+    return tuple(
+        Relationship(from_id=pair[0], to_id=pair[1], value=value)
+        for pair, value in values.items()
+    )
 
 
 __all__ = [
@@ -186,6 +234,7 @@ __all__ = [
     "PlayerState",
     "Relationship",
     "Turn",
+    "TurnEffects",
     "TurnResult",
     "WorldClock",
     "WorldContract",

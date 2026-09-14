@@ -1,0 +1,35 @@
+{
+  "capabilities": [
+    {
+      "capability_id": "interactive-film",
+      "check_count": 10,
+      "checks_passed": true,
+      "details": {
+        "node_count": 31,
+        "path_count": 3
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/interactive-film.json",
+      "status": "QUALIFIED"
+    },
+    {
+      "capability_id": "persistent-interactive-play",
+      "check_count": 9,
+      "checks_passed": true,
+      "details": {
+        "crash_revision": 25,
+        "final_revision": 50
+      },
+      "evidence_path": "artifacts/qualification/creative-runtime/persistent-interactive-play.json",
+      "status": "QUALIFIED"
+    }
+  ],
+  "ledger": {
+    "MISSING": 0,
+    "PARTIAL": 7,
+    "QUALIFIED": 32,
+    "TOTAL": 39,
+    "UNQUALIFIED": 0
+  },
+  "wave": "D",
+  "wave_status": "QUALIFIED"
+}
