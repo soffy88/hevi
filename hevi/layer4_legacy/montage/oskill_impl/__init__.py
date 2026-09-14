@@ -262,7 +262,7 @@ def stage_script(
         return {"script_lines": [], "script_status": "skipped"}
 
     # 实际由 invoke_tool("script.quick", ...) 完成
-    result = {
+    return {
         "script_lines": [
             {"line": f"关于 {topic} 的介绍", "duration_s": 8},
             {"line": f"核心概念: {topic}", "duration_s": 12},
@@ -270,7 +270,6 @@ def stage_script(
         ],
         "script_status": "generated",
     }
-    return result
 
 
 def stage_assets(
@@ -366,7 +365,7 @@ def stage_edit_plan(
             }
         )
         cursor += max(0.4, duration)
-    edit_plan = {
+    return {
         "edit_plan": {
             "kind": "nle_edit_plan",
             "cuts": cuts,
@@ -375,7 +374,6 @@ def stage_edit_plan(
         },
         "preview_gate": {"total_s": round(cursor, 3)},
     }
-    return edit_plan
 
 
 def stage_mix(

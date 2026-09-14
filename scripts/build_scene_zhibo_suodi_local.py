@@ -186,7 +186,7 @@ async def main() -> None:
     minio_client = get_minio_client()
 
     chapter_ir = ChapterIR.model_validate_json((_DATA_DIR / "chapter_ir.json").read_text())
-    constitution = Constitution.model_validate_json((_DATA_DIR / "constitution.json").read_text())
+    Constitution.model_validate_json((_DATA_DIR / "constitution.json").read_text())
     script = Script.model_validate_json((_DATA_DIR / "script.json").read_text())
 
     logger.info("C2.5 场景化改编...")

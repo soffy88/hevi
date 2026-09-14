@@ -50,9 +50,7 @@ def _clauses_of(text: str) -> list[str]:
 async def _synthesize(text: str, out_path: Path, *, voice: str, rate: str) -> list[dict[str, Any]]:
     """3O §2 Task 2.2:委托 oprim.edge_tts_word_boundary 原子(单源),
     返回词级 WordBoundary 时间戳(秒)。"""
-    result = await edge_tts_word_boundary(  # type: ignore[no-untyped-call]
-        text, voice=voice, rate=rate, output_path=out_path
-    )
+    result = await edge_tts_word_boundary(text, voice=voice, rate=rate, output_path=out_path)
     return list(result["words"])
 
 
@@ -199,7 +197,7 @@ async def synthesize_storyboard(
             except AsrVerificationError as exc:
                 raise VoiceoverError(f"段 {seg.id} ASR 校验失败: {exc}") from exc
 
-        duration = probe_duration(out_path)  # type: ignore[no-untyped-call]
+        duration = probe_duration(out_path)
         captions = (
             _captions_from_words(seg.narration, words)
             if words

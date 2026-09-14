@@ -333,9 +333,7 @@ def skill_full_pipeline(
     job = skill_render(job, modes)
 
     # Stage 7: 封面生成
-    job = skill_cover(job, platforms)
-
-    return job
+    return skill_cover(job, platforms)
 
 
 # ── 导出 ───────────────────────────────────────────────

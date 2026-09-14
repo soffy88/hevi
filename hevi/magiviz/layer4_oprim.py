@@ -50,29 +50,27 @@ def generate_story_details(
             )
         )
 
-    scenes = []
-    for i in range(5):
-        scenes.append(
-            {
-                "scene_number": i + 1,
-                "title": f"场景 {i + 1}",
-                "description": f"场景 {i + 1} 的详细描述",
-                "location": "室内/室外",
-                "time": "白天/夜晚",
-                "mood": "紧张/轻松",
-            }
-        )
+    scenes = [
+        {
+            "scene_number": i + 1,
+            "title": f"场景 {i + 1}",
+            "description": f"场景 {i + 1} 的详细描述",
+            "location": "室内/室外",
+            "time": "白天/夜晚",
+            "mood": "紧张/轻松",
+        }
+        for i in range(5)
+    ]
 
-    dialogues = []
-    for i in range(10):
-        dialogues.append(
-            {
-                "line_id": i,
-                "speaker": characters[i % len(characters)].name,
-                "text": f"台词 {i + 1}",
-                "emotion": "neutral",
-            }
-        )
+    dialogues = [
+        {
+            "line_id": i,
+            "speaker": characters[i % len(characters)].name,
+            "text": f"台词 {i + 1}",
+            "emotion": "neutral",
+        }
+        for i in range(10)
+    ]
 
     return StoryDetails(
         outline=outline,
@@ -127,7 +125,7 @@ def generate_storyboard_frame(
 
     对应 Open-Magiviz /api/ai/generate-storyboard-image
     """
-    frame = StoryboardFrame(
+    return StoryboardFrame(
         frame_id=f"frame_{frame_number}",
         scene_number=scene.get("scene_number", 1),
         shot_number=frame_number,
@@ -140,7 +138,6 @@ def generate_storyboard_frame(
         characters_present=scene.get("characters", []),
         visual_prompt=f"Storyboard frame for scene {scene.get('scene_number', 1)}",
     )
-    return frame
 
 
 def generate_storyboard(
@@ -176,7 +173,7 @@ def generate_scene_video(
 
     对应 Open-Magiviz /api/ai/generate-story-video
     """
-    scene_video = SceneVideo(
+    return SceneVideo(
         scene_id=storyboard_frame.frame_id,
         storyboard_frame_ids=[storyboard_frame.frame_id],
         video_model=model,
@@ -187,7 +184,6 @@ def generate_scene_video(
         prompt=storyboard_frame.visual_prompt,
         negative_prompt="low quality, blurry, distorted",
     )
-    return scene_video
 
 
 def generate_scene_videos_parallel(
@@ -195,10 +191,7 @@ def generate_scene_videos_parallel(
     model: VideoModel = VideoModel.WAN,
 ) -> list[SceneVideo]:
     """并行生成所有场景视频。"""
-    scene_videos = []
-    for frame in storyboard.frames:
-        scene_videos.append(generate_scene_video(frame, model))
-    return scene_videos
+    return [generate_scene_video(frame, model) for frame in storyboard.frames]
 
 
 # ── Step 5: 视频合成 ─────────────────────────────────

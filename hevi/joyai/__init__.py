@@ -2,10 +2,24 @@
 
 from importlib import import_module
 
-_EXPORTS = dict.fromkeys(("capabilities", "create_session", "finish_session", "get_session", "list_sessions", "record_frame", "record_output", "reset_sessions", "start_session", "stream_provider_url"), "hevi.layer4_legacy.joyai.omodul_impl.stream_edit")
+_EXPORTS = dict.fromkeys(
+    (
+        "capabilities",
+        "create_session",
+        "finish_session",
+        "get_session",
+        "list_sessions",
+        "record_frame",
+        "record_output",
+        "reset_sessions",
+        "start_session",
+        "stream_provider_url",
+    ),
+    "hevi.layer4_legacy.joyai.omodul_impl.stream_edit",
+)
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     module_name = _EXPORTS.get(name)
     if module_name is None:
         raise AttributeError(name)

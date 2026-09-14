@@ -171,4 +171,5 @@ async def execute_erduo_pipeline(
 __all__ = [
     "execute_erduo_pipeline",
     "plan_erduo_pipeline",
+    "plan_full_erduo_pipeline",
 ]

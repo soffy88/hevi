@@ -129,7 +129,7 @@ def plan_generation(job: PresenterJob) -> dict[str, Any]:
     # 预检
     preflight = preflight_check(job)
 
-    plan = {
+    return {
         "phase": "generation",
         "job_id": job.job_id,
         "current_status": job.status.value,
@@ -168,15 +168,13 @@ def plan_generation(job: PresenterJob) -> dict[str, Any]:
         },
     }
 
-    return plan
-
 
 def plan_visual(job: PresenterJob, narration_duration_s: float) -> dict[str, Any]:
     """构建视觉规划阶段计划 (audio_locked → visual_plan_locked)。
 
     对应 lanshu editing.md 的视觉路线选择 + 时间轴构建
     """
-    plan = {
+    return {
         "phase": "visual_plan",
         "job_id": job.job_id,
         "current_status": job.status.value,
@@ -211,15 +209,13 @@ def plan_visual(job: PresenterJob, narration_duration_s: float) -> dict[str, Any
         },
     }
 
-    return plan
-
 
 def plan_presenter_generation(job: PresenterJob) -> dict[str, Any]:
     """构建人物生成阶段计划 (visual_plan_locked → presenter_generated)。
 
     对应 lanshu generation.md 第 2 节：试片 → 全片
     """
-    plan = {
+    return {
         "phase": "presenter_generation",
         "job_id": job.job_id,
         "current_status": job.status.value,
@@ -260,15 +256,13 @@ def plan_presenter_generation(job: PresenterJob) -> dict[str, Any]:
         },
     }
 
-    return plan
-
 
 def plan_composition(job: PresenterJob) -> dict[str, Any]:
     """构建合成/剪辑阶段计划 (presenter_generated → composition_checked)。
 
     对应 lanshu editing.md 第 3-4 节：时间轴合成 + 字幕/动效烧录
     """
-    plan = {
+    return {
         "phase": "composition",
         "job_id": job.job_id,
         "current_status": job.status.value,
@@ -320,8 +314,6 @@ def plan_composition(job: PresenterJob) -> dict[str, Any]:
         },
     }
 
-    return plan
-
 
 def plan_delivery(
     job: PresenterJob, render_path: str, output_dir: str, stem: str = "presenter-video"
@@ -330,7 +322,7 @@ def plan_delivery(
 
     对应 lanshu finalize_delivery.sh
     """
-    plan = {
+    return {
         "phase": "delivery",
         "job_id": job.job_id,
         "current_status": job.status.value,
@@ -370,8 +362,6 @@ def plan_delivery(
             ],
         },
     }
-
-    return plan
 
 
 # ─── 完整作业计划 ────────────────────────────────────

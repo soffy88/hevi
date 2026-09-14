@@ -241,7 +241,7 @@ def provenance():
     if lock.exists():
         data = json.loads(lock.read_text(encoding="utf-8"))
         entries = []
-        for pkg_name, pkg in data.get("packages", {}).items():
+        for pkg in data.get("packages", {}).values():
             for entry in pkg.get("closure", []):
                 entry = dict(entry)
                 entry.setdefault("canonical_sha", pkg.get("commit"))

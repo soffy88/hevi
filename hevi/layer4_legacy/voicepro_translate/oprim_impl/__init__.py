@@ -34,7 +34,7 @@ async def translate_deepl(
     try:
         import deepl
     except ImportError:
-        raise RuntimeError("deepl 未安装")
+        raise RuntimeError("deepl 未安装") from None
 
     client = deepl.Translator(api_key)
     result = client.translate_text(
@@ -72,7 +72,7 @@ async def translate_deep_translator(
             LibreTranslator,
         )
     except ImportError:
-        raise RuntimeError("deep-translator 未安装")
+        raise RuntimeError("deep-translator 未安装") from None
 
     translator_cls = {
         "GoogleTranslator": GoogleTranslator,
@@ -172,7 +172,7 @@ async def translate_llm(
     try:
         from openai import AsyncOpenAI
     except ImportError:
-        raise RuntimeError("openai 未安装")
+        raise RuntimeError("openai 未安装") from None
 
     client = AsyncOpenAI(
         base_url=base_url if base_url else None,

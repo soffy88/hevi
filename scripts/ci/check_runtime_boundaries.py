@@ -20,7 +20,7 @@ def main() -> int:
         tree = ast.parse(path.read_text(encoding="utf-8"), str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Attribute) and node.attr == "run_task_background":
-                violations.append(f"{path.relative_to(ROOT)}:{node.lineno}")
+                violations.extend([f"{path.relative_to(ROOT)}:{node.lineno}"])
     if violations:
         print("runtime boundary violations:")
         for violation in violations:

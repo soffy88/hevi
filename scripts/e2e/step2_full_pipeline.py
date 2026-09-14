@@ -103,29 +103,31 @@ async def poll_sse_progress(token: str, task_id: str, timeout_s: float = 1200.0)
     deadline = time.monotonic() + timeout_s
     status = "unknown"
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_s)) as client:
-        async with client.stream("GET", url, headers={"Authorization": f"Bearer {token}"}) as resp:
-            resp.raise_for_status()
-            async for line in resp.aiter_lines():
-                if time.monotonic() > deadline:
-                    print("[step2.2] ⚠ SSE timeout")
-                    break
-                if not line.startswith("data:"):
-                    continue
-                raw = line[5:].strip()
-                if not raw or raw == "[DONE]":
-                    break
-                try:
-                    event = json.loads(raw)
-                except json.JSONDecodeError:
-                    continue
+    async with (
+        httpx.AsyncClient(timeout=httpx.Timeout(timeout_s)) as client,
+        client.stream("GET", url, headers={"Authorization": f"Bearer {token}"}) as resp,
+    ):
+        resp.raise_for_status()
+        async for line in resp.aiter_lines():
+            if time.monotonic() > deadline:
+                print("[step2.2] ⚠ SSE timeout")
+                break
+            if not line.startswith("data:"):
+                continue
+            raw = line[5:].strip()
+            if not raw or raw == "[DONE]":
+                break
+            try:
+                event = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
 
-                pct = event.get("progress_pct", 0)
-                msg = event.get("message", "")
-                status = event.get("status", status)
-                print(f"[step2.2] {pct:3.0f}% {status} — {msg}")
-                if status in ("completed", "failed"):
-                    break
+            pct = event.get("progress_pct", 0)
+            msg = event.get("message", "")
+            status = event.get("status", status)
+            print(f"[step2.2] {pct:3.0f}% {status} — {msg}")
+            if status in ("completed", "failed"):
+                break
 
     print(f"[step2.2] ✓ 最终状态: {status!r}")
     return status

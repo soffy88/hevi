@@ -49,9 +49,7 @@ async def skill_synthesize_tts(
         config = make_tts_config(provider, voice, speed)
 
     # 合成语音
-    result = await synthesize_tts(text, config)
-
-    return result
+    return await synthesize_tts(text, config)
 
 
 # ── 声纹克隆技能 ────────────────────────────────────

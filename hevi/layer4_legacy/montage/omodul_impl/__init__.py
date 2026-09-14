@@ -212,7 +212,7 @@ def plan_stage(
     if not stage_def:
         return {"error": f"Stage {stage} not found in pipeline {pipeline}"}
 
-    plan = {
+    return {
         "pipeline": pipeline,
         "stage": stage,
         "stage_def": stage_def.model_dump(),
@@ -228,8 +228,6 @@ def plan_stage(
         "success_criteria": stage_def.success_criteria,
         "budget_remaining": budget.remaining(),
     }
-
-    return plan
 
 
 def plan_full_pipeline(

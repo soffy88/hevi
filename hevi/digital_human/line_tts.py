@@ -46,7 +46,7 @@ async def synthesize_line(text: str, output_path: Path) -> Path:
         else:
             from oprim import edge_tts_word_boundary
 
-            await edge_tts_word_boundary(  # type: ignore[no-untyped-call]
+            await edge_tts_word_boundary(
                 spoken,
                 voice="zh-CN-YunxiNeural",
                 rate="-10%",

@@ -130,7 +130,7 @@ def main() -> None:
     # ── 3. Watermark default ─────────────────────────────────────────────────
     print("\n[F4a] === watermark=True 验证 ===")
     wm_out = OUTPUT_DIR / "watermark_test.wav"
-    t_wm, mem_wm = synthesize("Speaker 1: Watermark verification test complete.", None, wm_out)
+    _t_wm, mem_wm = synthesize("Speaker 1: Watermark verification test complete.", None, wm_out)
     print(f"  watermark=True (oprim default) → {wm_out} ({wm_out.stat().st_size} bytes)")
     print(f"  ffprobe:\n{_ffprobe(wm_out)}")
 

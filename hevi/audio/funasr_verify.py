@@ -119,7 +119,7 @@ def _heuristic_timestamps(audio_path: str) -> list[dict[str, Any]]:
     """Fallback: estimate timestamps from file duration and text splitting."""
     from oprim import probe_duration
 
-    probe_duration(Path(audio_path))  # type: ignore[no-untyped-call]
+    probe_duration(Path(audio_path))
 
     # Read audio metadata to get approximate length
     # For now, use a simple placeholder — the real value comes from FunASR

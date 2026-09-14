@@ -225,10 +225,10 @@ async def execute_clip_generator(
 # ── 导出 ───────────────────────────────────────────────
 
 __all__ = [
-    # 规划
-    "plan_clip_generator",
-    "plan_ai_short",
-    "plan_youtube_studio",
     # 执行
     "execute_clip_generator",
+    "plan_ai_short",
+    # 规划
+    "plan_clip_generator",
+    "plan_youtube_studio",
 ]

@@ -281,7 +281,7 @@ def _probe_sync(path: Path) -> float:
     """同步 ffprobe 时长探测(供 assemble_talking_clips 使用)。"""
     from oprim import probe_duration as _probe
 
-    out = _probe(path)  # type: ignore[no-untyped-call]
+    out = _probe(path)
     return float(out)
 
 

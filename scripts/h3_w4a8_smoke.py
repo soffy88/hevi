@@ -22,7 +22,7 @@ async def main() -> None:
     out = Path("/data/soffy/projects/hevi/output/h3_e2e_test/w4a8_smoke.mp4")
     length = h3_length_for_duration(5.0)  # 124 帧
     print(f"length={length} (124 期望)")
-    result = await client.run_workflow(
+    await client.run_workflow(
         client.build_workflow(
             client.load_workflow("h3_w4a8_zh.json"),
             prompt="【场景】雨夜街角。昏黄路灯下,一个撑着红伞的行人缓步走过积水路面。",

@@ -71,7 +71,7 @@ async def transcribe_faster_whisper(
     try:
         import faster_whisper
     except ImportError:
-        raise RuntimeError("faster-whisper 未安装")
+        raise RuntimeError("faster-whisper 未安装") from None
 
     model = faster_whisper.WhisperModel(
         config.model,

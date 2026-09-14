@@ -66,6 +66,11 @@ extend-exclude = [
     # vendored 上游代码(voice-pro 重供 CosyVoice + Matcha-TTS), 不做本地 lint
     "services/gen_engine/cosyvoice/",
     "services/gen_engine/third_party/",
+    # 独立 git submodule，拥有自己的 package/test/lint 生命周期；HEVI 不 vendoring 其源码。
+    "services/voicebox/",
+    # Bundled upstream model implementations; their upstream lint contract is external.
+    "services/gen_engine/fish_vqgan/",
+    "services/gen_engine/vibevoice_asr/",
 ]
 
 [tool.ruff.lint]
@@ -102,6 +107,13 @@ ignore = ["E501", "RUF001", "RUF002", "RUF003"]
 "hevi/canvas/node_mapper.py" = ["E501"]
 "hevi/audio/funasr_verify.py" = ["E501"]
 "hevi/audio/audio_router.py" = ["E501"]
+# These executable build flows intentionally call load_dotenv() before importing
+# settings/provider adapters; the delayed imports must retain that initialization order.
+"scripts/build_identity_packs_exec01.py" = ["E402"]
+"scripts/build_scene_zhibo_full.py" = ["E402"]
+"scripts/build_scene_zhibo_suodi.py" = ["E402"]
+"scripts/build_scene_zhibo_suodi_local.py" = ["E402"]
+"scripts/g1_shortdrama_run.py" = ["E402"]
 # 3O adapter packages intentionally re-export large public contracts from
 # their oprim/oskill/omodul boundary modules.  These are API surfaces rather
 # than ordinary implementation modules; keep semantic lint (undefined names,

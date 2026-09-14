@@ -90,27 +90,29 @@ async def run_pipeline(token: str, provider: str, expected_final_provider: str, 
     url = f"{BASE_URL}/api/tasks/{task_id}/progress"
     deadline = time.monotonic() + 1800
     status = "unknown"
-    async with httpx.AsyncClient(timeout=1800.0) as client:
-        async with client.stream("GET", url, headers={"Authorization": f"Bearer {token}"}) as resp:
-            resp.raise_for_status()
-            async for line in resp.aiter_lines():
-                if time.monotonic() > deadline:
-                    break
-                if not line.startswith("data:"):
-                    continue
-                raw = line[5:].strip()
-                if not raw or raw == "[DONE]":
-                    break
-                try:
-                    event = json.loads(raw)
-                except:
-                    continue
-                pct = event.get("progress_pct", 0)
-                msg = event.get("message", "")
-                status = event.get("status", status)
-                print(f"      [{pct:3.0f}%] {status} - {msg}")
-                if status in ("completed", "failed"):
-                    break
+    async with (
+        httpx.AsyncClient(timeout=1800.0) as client,
+        client.stream("GET", url, headers={"Authorization": f"Bearer {token}"}) as resp,
+    ):
+        resp.raise_for_status()
+        async for line in resp.aiter_lines():
+            if time.monotonic() > deadline:
+                break
+            if not line.startswith("data:"):
+                continue
+            raw = line[5:].strip()
+            if not raw or raw == "[DONE]":
+                break
+            try:
+                event = json.loads(raw)
+            except json.JSONDecodeError, TypeError:
+                continue
+            pct = event.get("progress_pct", 0)
+            msg = event.get("message", "")
+            status = event.get("status", status)
+            print(f"      [{pct:3.0f}%] {status} - {msg}")
+            if status in ("completed", "failed"):
+                break
 
     if status != "completed":
         raise RuntimeError(f"Task failed with status {status}")
@@ -136,23 +138,30 @@ async def test_scenario(name: str, env_vars: dict, provider: str, expected: str)
     env = os.environ.copy()
     env.update(env_vars)
 
-    log_file = open(f"step3_{name.split()[0]}.log", "w")
-    proc = subprocess.Popen(
-        ["uv", "run", "uvicorn", "hevi.api.main:app", "--host", "127.0.0.1", "--port", str(PORT)],
-        env=env,
-        stdout=log_file,
-        stderr=subprocess.STDOUT,
-    )
-
-    try:
-        await wait_for_server()
-        token = await get_auth_token()
-        await run_pipeline(token, provider, expected, name)
-        print(f"✓ 场景 '{name}' 验证通过\n")
-    finally:
-        proc.send_signal(signal.SIGTERM)
-        proc.wait()
-        log_file.close()
+    with open(f"step3_{name.split()[0]}.log", "w") as log_file:
+        proc = subprocess.Popen(
+            [
+                "uv",
+                "run",
+                "uvicorn",
+                "hevi.api.main:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(PORT),
+            ],
+            env=env,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+        )
+        try:
+            await wait_for_server()
+            token = await get_auth_token()
+            await run_pipeline(token, provider, expected, name)
+            print(f"✓ 场景 '{name}' 验证通过\n")
+        finally:
+            proc.send_signal(signal.SIGTERM)
+            proc.wait()
 
 
 async def main():

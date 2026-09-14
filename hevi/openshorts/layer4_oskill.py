@@ -240,17 +240,15 @@ def create_publish_tickets(
         title = job.selected_title
         desc = job.description.text
 
-    tickets = []
-    for platform in platforms:
-        tickets.append(
-            PublishTicket(
-                platform=platform,
-                media_path=media_path,
-                title=title,
-                description=desc,
-            )
+    return [
+        PublishTicket(
+            platform=platform,
+            media_path=media_path,
+            title=title,
+            description=desc,
         )
-    return tickets
+        for platform in platforms
+    ]
 
 
 # ── YouTube Studio 技能 ────────────────────────────────
@@ -292,11 +290,11 @@ def generate_youtube_package(
 # ── 导出 ───────────────────────────────────────────────
 
 __all__ = [
-    # Clip Generator
-    "generate_clips",
+    "create_publish_tickets",
     # AI Shorts
     "generate_ai_short",
-    "create_publish_tickets",
+    # Clip Generator
+    "generate_clips",
     # YouTube Studio
     "generate_youtube_package",
 ]

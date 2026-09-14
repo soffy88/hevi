@@ -192,7 +192,7 @@ async def synthesize_with_voice_control(
             # 单行合成走 oprim.edge_tts_word_boundary 原子(输出路径直写)。
             for _attempt in range(3):
                 try:
-                    await edge_tts_word_boundary(  # type: ignore[no-untyped-call]
+                    await edge_tts_word_boundary(
                         text,
                         v,
                         rate=_r or "+0%",

@@ -110,27 +110,29 @@ async def wait_until_partial_then_interrupt(
     print(f"[step4.2] 轮询进度直到 {interrupt_at_pct:.0f}%: {url}")
     checkpoint_id = ""
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client:
-        async with client.stream("GET", url) as resp:
-            resp.raise_for_status()
-            async for line in resp.aiter_lines():
-                if not line.startswith("data:"):
-                    continue
-                raw = line[5:].strip()
-                if not raw or raw == "[DONE]":
-                    break
-                try:
-                    event = json.loads(raw)
-                except json.JSONDecodeError:
-                    continue
+    async with (
+        httpx.AsyncClient(timeout=httpx.Timeout(300.0)) as client,
+        client.stream("GET", url) as resp,
+    ):
+        resp.raise_for_status()
+        async for line in resp.aiter_lines():
+            if not line.startswith("data:"):
+                continue
+            raw = line[5:].strip()
+            if not raw or raw == "[DONE]":
+                break
+            try:
+                event = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
 
-                pct = float(event.get("progress_pct", 0))
-                checkpoint_id = str(event.get("checkpoint_id", ""))
-                print(f"[step4.2] {pct:5.1f}% checkpoint={checkpoint_id!r}")
+            pct = float(event.get("progress_pct", 0))
+            checkpoint_id = str(event.get("checkpoint_id", ""))
+            print(f"[step4.2] {pct:5.1f}% checkpoint={checkpoint_id!r}")
 
-                if pct >= interrupt_at_pct:
-                    print(f"[step4.2] 到达 {pct:.0f}%,模拟中断...")
-                    break
+            if pct >= interrupt_at_pct:
+                print(f"[step4.2] 到达 {pct:.0f}%,模拟中断...")
+                break
 
     # 取消任务(模拟进程被 kill)
     try:
@@ -172,26 +174,28 @@ async def verify_resumed_output(api_base: str, task_id: str, timeout_s: float = 
     url = f"{api_base}/api/tasks/{task_id}/progress"
     status = "unknown"
 
-    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_s)) as client:
-        async with client.stream("GET", url) as resp:
-            resp.raise_for_status()
-            async for line in resp.aiter_lines():
-                if time.monotonic() > deadline:
-                    break
-                if not line.startswith("data:"):
-                    continue
-                raw = line[5:].strip()
-                if not raw or raw == "[DONE]":
-                    break
-                try:
-                    event = json.loads(raw)
-                except json.JSONDecodeError:
-                    continue
-                pct = float(event.get("progress_pct", 0))
-                status = str(event.get("status", status))
-                print(f"[step4.4] {pct:5.1f}% {status}")
-                if status in ("completed", "failed"):
-                    break
+    async with (
+        httpx.AsyncClient(timeout=httpx.Timeout(timeout_s)) as client,
+        client.stream("GET", url) as resp,
+    ):
+        resp.raise_for_status()
+        async for line in resp.aiter_lines():
+            if time.monotonic() > deadline:
+                break
+            if not line.startswith("data:"):
+                continue
+            raw = line[5:].strip()
+            if not raw or raw == "[DONE]":
+                break
+            try:
+                event = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            pct = float(event.get("progress_pct", 0))
+            status = str(event.get("status", status))
+            print(f"[step4.4] {pct:5.1f}% {status}")
+            if status in ("completed", "failed"):
+                break
 
     task_resp = await _api_get(api_base, f"/api/tasks/{task_id}")
     video_path = str(task_resp.get("result", {}).get("video_path", ""))  # type: ignore[union-attr]

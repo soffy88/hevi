@@ -46,9 +46,7 @@ async def skill_translate_text(
         config = make_translate_config(provider, source_lang, target_lang)
 
     # 执行翻译
-    result = await translate_text(text, config)
-
-    return result
+    return await translate_text(text, config)
 
 
 # ── 批量翻译技能 ────────────────────────────────────

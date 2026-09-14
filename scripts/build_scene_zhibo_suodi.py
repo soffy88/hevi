@@ -35,6 +35,7 @@ import asyncio
 import logging
 import uuid
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -243,7 +244,7 @@ async def main() -> None:
             result.attempts,
         )
 
-    print("\n=== 汇总(run_id=%s) ===" % run_id)
+    print(f"\n=== 汇总(run_id={run_id}) ===")
     for r in results:
         mark = "✓" if r.cg6.passed and not r.degraded else ("△" if r.output_path else "✗")
         print(

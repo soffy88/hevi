@@ -215,23 +215,23 @@ async def _build_one(
     # 上一批卡通像误当成这次生成的收进 manifest(见类内注释踩过的坑)。
     version = "0.1.3-dryrun" if dry_run else "0.1.3"
     output_dir = _OUTPUT_ROOT / f"{char['character_id'].lower()}{'-dryrun' if dry_run else '-v013'}"
-    kwargs: dict = dict(
-        pool=pool,
-        minio_client=minio_client,
-        character_id=char["character_id"],
-        name=char["name"],
-        appearance=char["appearance"],
-        era_lock=char["era_lock"],
-        art_direction=_IMAGE_ART_DIRECTION,
-        output_dir=output_dir,
-        version=version,
-        voice=char["voice"],
-        cost_limit=cost_limit,
-        cost_tracker=cost_tracker,
-        build_turnaround_video=build_turnaround_video,
-        image_appearance=char["image_appearance"],
-        image_era_lock=char["image_era_lock"],
-    )
+    kwargs: dict = {
+        "pool": pool,
+        "minio_client": minio_client,
+        "character_id": char["character_id"],
+        "name": char["name"],
+        "appearance": char["appearance"],
+        "era_lock": char["era_lock"],
+        "art_direction": _IMAGE_ART_DIRECTION,
+        "output_dir": output_dir,
+        "version": version,
+        "voice": char["voice"],
+        "cost_limit": cost_limit,
+        "cost_tracker": cost_tracker,
+        "build_turnaround_video": build_turnaround_video,
+        "image_appearance": char["image_appearance"],
+        "image_era_lock": char["image_era_lock"],
+    }
     if dry_run:
         kwargs["image_gen"] = _placeholder_image_gen()
         kwargs["vlm"] = _mock_vlm_always_pass()

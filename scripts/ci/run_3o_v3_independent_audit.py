@@ -33,7 +33,7 @@ def main() -> int:
     graph = _omodul_graph()
     fake = _pillar_measurement()
     real_local = [s for s in local if has_real_implementation(parse(s.path))]
-    flat = len(real_local)
+    len(real_local)
     prefix = sum(
         1
         for s in canonical_sources()

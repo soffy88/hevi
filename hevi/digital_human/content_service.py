@@ -14,7 +14,7 @@ from hevi.digital_human.layer4.atoms import (
 )
 from hevi.digital_human.layer4.atoms_caption import build_caption_plan as build_caption_plan_atom
 from hevi.digital_human.layer4.atoms_narration import topic_to_script
-from hevi.digital_human.schemas import CaptionPlan, JobStatus, PresenterJob, TimelinePlan
+from hevi.digital_human.schemas import CaptionPlan, JobStatus, PresenterJob, QAReport, TimelinePlan
 
 
 def lock_content(job: PresenterJob) -> PresenterJob:
@@ -63,7 +63,7 @@ def caption_plan(
     return plan
 
 
-def preflight_check(job: PresenterJob):
+def preflight_check(job: PresenterJob) -> QAReport:
     """Run the HEVI preflight transaction at the Layer 4 boundary."""
     return run_preflight_check(job)
 
@@ -77,7 +77,7 @@ def qa_gate(
     no_overlay: bool = True,
     captions_readable: bool = True,
     safe_zones_ok: bool = True,
-):
+) -> QAReport:
     """Run the HEVI acceptance transaction at the Layer 4 boundary."""
     return run_qa_gate(
         job,

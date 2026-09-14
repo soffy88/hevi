@@ -17,41 +17,41 @@ DUR = 24.0  # 24s 循环底噪,装配器按成片时长自动 loop/截断(amix d
 
 # 情绪 → (根音 Hz, 和弦音程比例, 波形谐波权重, 颤音速度, 整体电平)
 MOODS: dict[str, dict] = {
-    "warm": dict(
-        root=196.0,
-        intervals=(1.0, 1.25, 1.5),
-        harmonics=(1.0, 0.4, 0.15),
-        vibrato_hz=3.0,
-        gain=0.18,
-    ),
-    "upbeat": dict(
-        root=261.6,
-        intervals=(1.0, 1.25, 1.5, 2.0),
-        harmonics=(1.0, 0.5, 0.3, 0.15),
-        vibrato_hz=5.5,
-        gain=0.16,
-    ),
-    "tense": dict(
-        root=110.0,
-        intervals=(1.0, 1.0595, 1.4142),
-        harmonics=(1.0, 0.6, 0.35),
-        vibrato_hz=7.0,
-        gain=0.15,
-    ),
-    "epic": dict(
-        root=98.0,
-        intervals=(1.0, 1.5, 2.0, 3.0),
-        harmonics=(1.0, 0.55, 0.35, 0.2),
-        vibrato_hz=2.0,
-        gain=0.22,
-    ),
-    "mystery": dict(
-        root=146.8,
-        intervals=(1.0, 1.1892, 1.4983),
-        harmonics=(1.0, 0.3, 0.2),
-        vibrato_hz=1.2,
-        gain=0.14,
-    ),
+    "warm": {
+        "root": 196.0,
+        "intervals": (1.0, 1.25, 1.5),
+        "harmonics": (1.0, 0.4, 0.15),
+        "vibrato_hz": 3.0,
+        "gain": 0.18,
+    },
+    "upbeat": {
+        "root": 261.6,
+        "intervals": (1.0, 1.25, 1.5, 2.0),
+        "harmonics": (1.0, 0.5, 0.3, 0.15),
+        "vibrato_hz": 5.5,
+        "gain": 0.16,
+    },
+    "tense": {
+        "root": 110.0,
+        "intervals": (1.0, 1.0595, 1.4142),
+        "harmonics": (1.0, 0.6, 0.35),
+        "vibrato_hz": 7.0,
+        "gain": 0.15,
+    },
+    "epic": {
+        "root": 98.0,
+        "intervals": (1.0, 1.5, 2.0, 3.0),
+        "harmonics": (1.0, 0.55, 0.35, 0.2),
+        "vibrato_hz": 2.0,
+        "gain": 0.22,
+    },
+    "mystery": {
+        "root": 146.8,
+        "intervals": (1.0, 1.1892, 1.4983),
+        "harmonics": (1.0, 0.3, 0.2),
+        "vibrato_hz": 1.2,
+        "gain": 0.14,
+    },
 }
 
 

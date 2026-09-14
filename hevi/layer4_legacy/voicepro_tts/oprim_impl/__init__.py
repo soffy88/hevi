@@ -43,7 +43,7 @@ async def synthesize_edge_tts(
     try:
         import edge_tts
     except ImportError:
-        raise RuntimeError("edge-tts 未安装")
+        raise RuntimeError("edge-tts 未安装") from None
 
     if not output_path:
         output_path = "/tmp/edge_tts_output.mp3"
@@ -76,7 +76,7 @@ async def synthesize_openai_tts(
     try:
         from openai import AsyncOpenAI
     except ImportError:
-        raise RuntimeError("openai 未安装")
+        raise RuntimeError("openai 未安装") from None
 
     if not output_path:
         output_path = "/tmp/openai_tts_output.mp3"

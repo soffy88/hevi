@@ -61,7 +61,9 @@ async def synth_cues_on_timeline(
     if synth_one is None:
         synth_one = _synth_one_edge
     if probe is None:
-        from oprim import probe_duration as probe
+        from oprim import probe_duration as probe_duration_fn
+
+        probe = probe_duration_fn
     if concat_fn is None:
         concat_fn = _concat_with_pads
 

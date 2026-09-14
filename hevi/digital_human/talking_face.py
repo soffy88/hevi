@@ -304,7 +304,7 @@ async def _generate_placeholder_avoiding_null(*, audio_path: Path, output_path: 
     """
     from oprim import probe_duration
 
-    duration_s = probe_duration(audio_path)  # type: ignore[no-untyped-call]
+    duration_s = probe_duration(audio_path)
 
     # Use ffmpeg to render a simple animated avatar placeholder
     color_bg = "#0B0F2E"

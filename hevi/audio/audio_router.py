@@ -330,7 +330,7 @@ async def route_and_stitch_master_audio(
                 voice=voice,
             )
             segment_paths.append(routed)
-            dur = probe_duration(routed)  # type: ignore[no-untyped-call]
+            dur = probe_duration(routed)
         except Exception as e:
             logger.error("Failed to route cue %s: %s", cue_id, e)
             continue
