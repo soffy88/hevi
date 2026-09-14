@@ -1276,11 +1276,11 @@ requires-dist = [
     { name = "manim", marker = "extra == 'manim'", specifier = ">=0.18" },
     { name = "mcp", specifier = ">=1.28.1,<2.0" },
     { name = "minio", specifier = ">=7.2.20" },
-    { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=a229627f96845ee5dccef9c8997241bd727f32ca" },
-    { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=3063213f8c9792a7c70ca5defacc308fb3f8cdb1" },
+    { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=d7bcf9abb7a5baef5003075ad2808dfc0b5e4cac" },
+    { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=a36597c56d30b7fc8914873c695683089e40a0b1" },
     { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=e7f9c65196437d3bff09401aa02bc817d071eec3" },
-    { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=08896eb3e4cf4e511ed2eb539ed7ff4de46e57ef" },
-    { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=7edb9044a742302a6a525bc35edbb6f6775c021b" },
+    { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=2cdf4868d421b4f1f8e518820d5a99ffc0ca27de" },
+    { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=7af95aff71ef5c358b277a1a68cd3a71459adecf" },
     { name = "pillow", specifier = ">=10" },
     { name = "playwright", specifier = ">=1.49" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
@@ -2295,7 +2295,7 @@ wheels = [
 [[package]]
 name = "obase"
 version = "0.18.0"
-source = { git = "https://github.com/helios-plat/obase.git?rev=a229627f96845ee5dccef9c8997241bd727f32ca#a229627f96845ee5dccef9c8997241bd727f32ca" }
+source = { git = "https://github.com/helios-plat/obase.git?rev=d7bcf9abb7a5baef5003075ad2808dfc0b5e4cac#d7bcf9abb7a5baef5003075ad2808dfc0b5e4cac" }
 dependencies = [
     { name = "argon2-cffi" },
     { name = "asyncpg" },
@@ -2305,6 +2305,7 @@ dependencies = [
     { name = "pgvector" },
     { name = "pillow" },
     { name = "pydantic" },
+    { name = "pydantic-settings" },
     { name = "pyjwt" },
     { name = "pyotp" },
     { name = "pyyaml" },
@@ -2325,7 +2326,7 @@ docker = [
 [[package]]
 name = "omodul"
 version = "1.36.0"
-source = { git = "https://github.com/helios-plat/omodul.git?rev=3063213f8c9792a7c70ca5defacc308fb3f8cdb1#3063213f8c9792a7c70ca5defacc308fb3f8cdb1" }
+source = { git = "https://github.com/helios-plat/omodul.git?rev=a36597c56d30b7fc8914873c695683089e40a0b1#a36597c56d30b7fc8914873c695683089e40a0b1" }
 dependencies = [
     { name = "apscheduler" },
     { name = "numpy" },
@@ -2415,7 +2416,7 @@ wheels = [
 [[package]]
 name = "oservi"
 version = "1.4.0"
-source = { git = "https://github.com/helios-plat/oservi.git?rev=08896eb3e4cf4e511ed2eb539ed7ff4de46e57ef#08896eb3e4cf4e511ed2eb539ed7ff4de46e57ef" }
+source = { git = "https://github.com/helios-plat/oservi.git?rev=2cdf4868d421b4f1f8e518820d5a99ffc0ca27de#2cdf4868d421b4f1f8e518820d5a99ffc0ca27de" }
 dependencies = [
     { name = "croniter" },
     { name = "obase" },
@@ -2427,7 +2428,7 @@ dependencies = [
 [[package]]
 name = "oskill"
 version = "4.5.0"
-source = { git = "https://github.com/helios-plat/oskill.git?rev=7edb9044a742302a6a525bc35edbb6f6775c021b#7edb9044a742302a6a525bc35edbb6f6775c021b" }
+source = { git = "https://github.com/helios-plat/oskill.git?rev=7af95aff71ef5c358b277a1a68cd3a71459adecf#7af95aff71ef5c358b277a1a68cd3a71459adecf" }
 dependencies = [
     { name = "aiohttp" },
     { name = "numpy" },
