@@ -1,0 +1,24 @@
+{
+  "exact": {
+    "after": "Mara enters the harbour.\n\nThe map is sealed.\n\nThe bell rings once.",
+    "before": "Mara enters the harbour.\n\nThe map remains dry.\n\nThe bell rings once.",
+    "end": 46,
+    "start": 26
+  },
+  "impact": {
+    "affected_refs": [
+      "canon:map",
+      "scene:2"
+    ],
+    "changed_range": [
+      26,
+      46
+    ]
+  },
+  "semantic": {
+    "after": "Mara enters the harbour.\n\nThe map is sealed.\n\nThe bell rings once.",
+    "before": "Mara enters the harbour.\n\nThe map remains dry.\n\nThe bell rings once.",
+    "end": 46,
+    "start": 26
+  }
+}

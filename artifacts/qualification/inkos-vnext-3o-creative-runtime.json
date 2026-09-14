@@ -37,19 +37,38 @@
     "mypy_changed_scope": "PASS"
   },
   "full_suite": {
-    "status": "BLOCKED_ENVIRONMENT",
-    "root_cause": "existing external oprim package does not expose probe_duration during hevi.api.main import",
-    "tests_started": false,
-    "regressions": "NOT_VERIFIED",
-    "frozen_baseline_modified": false
+    "status": "PASS",
+    "command": "DATABASE_URL=postgresql://hevi:hevi@127.0.0.1:5432/hevi HEVI_TEST_DSN=postgresql://hevi:hevi@127.0.0.1:5432/hevi JWT_SECRET=<ephemeral> PYTHONPATH=. uv run --no-sync pytest -q",
+    "passed": 2847,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 29,
+    "tests_started": true,
+    "environment_recovery": "Alembic f0e1d2c3b4a7 -> f7a8b9c0d1e2; qualification venv patched by existing scripts/patch_oprim_prims.py",
+    "frozen_baseline_modified": false,
+    "log": "/tmp/hevi-vnext-full-suite.log"
   },
   "ledger_snapshot": {
     "total": 39,
     "missing": 0,
-    "partial": 35,
+    "partial": 27,
     "implemented_unqualified": 0,
-    "qualified": 4,
+    "qualified": 12,
     "source": "docs/research/inkos_capability_ledger.yaml"
   },
-  "parity": "PENDING_FULL_SUITE_AND_REMAINING_CAPABILITY_QUALIFICATION"
+  "wave_1": {
+    "status": "PASS",
+    "qualified": [
+      "narrative.canonical_state",
+      "creative.memory_retrieval",
+      "creative.context_compilation",
+      "creative.run_snapshots",
+      "creative.atomic_workspace",
+      "creative.backup_restore",
+      "creative.concurrency",
+      "creative.targeted_editing"
+    ],
+    "evidence_root": "artifacts/qualification/creative-runtime/"
+  },
+  "parity": "PENDING_REMAINING_CAPABILITY_QUALIFICATION"
 }

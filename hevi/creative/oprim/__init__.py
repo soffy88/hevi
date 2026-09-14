@@ -2,10 +2,13 @@
 
 from hevi.creative.oprim.backup import BackupError, backup_workspace, restore_workspace
 from hevi.creative.oprim.editing import (
+    CascadeImpact,
     PatchPreview,
+    SemanticLocator,
     TargetNotUnique,
     apply_exact_edit,
     preview_exact_edit,
+    preview_semantic_edit,
 )
 from hevi.creative.oprim.locking import ProjectLock, ResourceBusy
 from hevi.creative.oprim.memory import CreativeMemoryIndex, MemoryHit, MemoryRecord
@@ -41,6 +44,7 @@ __all__ = [
     "persist_model",
     "restore_model",
     "AtomicWorkspace",
+    "CascadeImpact",
     "BackupError",
     "CreativeMemoryIndex",
     "MemoryHit",
@@ -50,6 +54,7 @@ __all__ = [
     "ProjectLock",
     "ResourceBusy",
     "Route",
+    "SemanticLocator",
     "TargetNotUnique",
     "WebhookLedger",
     "WebhookSigner",
@@ -58,5 +63,6 @@ __all__ = [
     "backup_workspace",
     "claim_delivery",
     "preview_exact_edit",
+    "preview_semantic_edit",
     "restore_workspace",
 ]

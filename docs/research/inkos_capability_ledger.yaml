@@ -102,7 +102,7 @@ capabilities:
     3o_target: obase/oprim
     hevi_capability_id: narrative.canonical_state
     qualification_test: roundtrip, delta validation, stale write rejection, projection rebuild, cross-project isolation
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: observer-state-extraction
     name: Observer and structured narrative delta extraction
@@ -153,7 +153,7 @@ capabilities:
     3o_target: oprim/omodul/oskill
     hevi_capability_id: creative.context_compilation
     qualification_test: context budget, protected fact retention, project isolation, trace roundtrip
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: long-term-creative-memory
     name: Long-term creative memory and retrieval
@@ -178,7 +178,7 @@ capabilities:
     3o_target: obase/oprim/oservi
     hevi_capability_id: creative.memory_retrieval
     qualification_test: rebuild, relevance, source trace, project isolation, no credential indexing, restart
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: narrative-forecast-branch-simulation
     name: Narrative forecast and isolated branch simulation
@@ -790,7 +790,7 @@ capabilities:
     3o_target: obase/oprim/oservi
     hevi_capability_id: creative.run_snapshots
     qualification_test: crash injection at each stage, resume, artifact retention, no false completion
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: atomic-creative-workspace
     name: Atomic workspace and state commit
@@ -814,7 +814,7 @@ capabilities:
     3o_target: oprim/obase
     hevi_capability_id: creative.atomic_workspace
     qualification_test: fault injection for every listed failure, no half-commit, read-back validation
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: backup-restore-rollback
     name: Backup, restore, and rollback
@@ -838,7 +838,7 @@ capabilities:
     3o_target: oprim/oservi
     hevi_capability_id: creative.backup_restore
     qualification_test: backup, corruption, restore, rollback, manifest hash, destructive confirmation
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: concurrency-and-locks
     name: Creative concurrency and lock recovery
@@ -862,7 +862,7 @@ capabilities:
     3o_target: oprim/obase
     hevi_capability_id: creative.concurrency
     qualification_test: conflicting writes, stale lock, crash recovery, no last-writer-wins
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: targeted-editing
     name: Targeted editing with patch preview
@@ -886,7 +886,7 @@ capabilities:
     3o_target: oprim/omodul/oservi
     hevi_capability_id: creative.targeted_editing
     qualification_test: exact patch, ambiguous location, preview diff, stale guard, cascade finding
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: model-provider-routing
     name: Model and provider routing

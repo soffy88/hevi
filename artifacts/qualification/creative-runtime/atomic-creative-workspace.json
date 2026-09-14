@@ -1,0 +1,28 @@
+{
+  "capability_id": "atomic-creative-workspace",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/atomic-creative-workspace/run-8f227f396e71/workspace",
+  "checks": {
+    "NO_HALF_COMMIT": true,
+    "PARTIAL_ARTIFACT_DISCOVERABLE": true,
+    "ROLLBACK_CLEAN": true,
+    "READ_BACK_VALIDATION": true,
+    "ATOMIC_COMMIT": true,
+    "DUPLICATE_SIDE_EFFECTS_ZERO": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/atomic-creative-workspace/run-8f227f396e71/workspace/state.json"
+  ],
+  "recovery": [
+    "fault before workspace commit",
+    "successful read-back commit"
+  ],
+  "failure_injections": [
+    "artifact write then state failure",
+    "commit interruption boundary"
+  ],
+  "details": {
+    "final_revision": 2
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

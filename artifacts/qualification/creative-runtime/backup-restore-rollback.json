@@ -1,0 +1,28 @@
+{
+  "capability_id": "backup-restore-rollback",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/backup-restore-rollback/run-baab5903d5ad/backup",
+  "checks": {
+    "MANIFEST": true,
+    "HASHES": true,
+    "ARTIFACT_COUNT": true,
+    "CANON_VERSION": true,
+    "CORRUPT_BACKUP_REJECTED": true,
+    "RESTORE_SEMANTICALLY_EQUAL": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/backup-restore-rollback/run-baab5903d5ad/backup/manifest.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/backup-restore-rollback/run-baab5903d5ad/restored"
+  ],
+  "recovery": [
+    "restore into new workspace",
+    "corruption refusal"
+  ],
+  "failure_injections": [
+    "corrupt manifest member"
+  ],
+  "details": {
+    "manifest_sha256": "c24dff9a208a47bb9a8e4512cae519588ea4fb9b007c6bbd7ef1a35950e6345c"
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

@@ -1,0 +1,30 @@
+{
+  "capability_id": "run-snapshot-recovery",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ac004ec609c/run.json",
+  "checks": {
+    "SNAPSHOT_PERSISTED": true,
+    "PROCESS_RELOAD": true,
+    "RUN_RESTORED": true,
+    "PARTIAL_ARTIFACT_DISCOVERABLE": true,
+    "RESUME_IDEMPOTENT": true,
+    "NO_FALSE_COMPLETION": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ac004ec609c/run.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ac004ec609c/snapshot.json"
+  ],
+  "recovery": [
+    "subprocess reload",
+    "abandoned workspace rollback"
+  ],
+  "failure_injections": [
+    "audit/process interruption",
+    "partial artifact before settlement"
+  ],
+  "details": {
+    "run_id": "c4fdf27f-a602-4a59-8482-e9ae3ba87554",
+    "snapshot_stage": "DRAFT"
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

@@ -1,0 +1,32 @@
+{
+  "capability_id": "targeted-editing",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/targeted-editing/run-085b438e21fa/edit-preview.json",
+  "checks": {
+    "PATCH_PREVIEW": true,
+    "CASCADE_IMPACT": true,
+    "EXACT_EDIT": true,
+    "HIGH_CONFIDENCE_EDIT": true,
+    "AMBIGUOUS_FAIL_CLOSED": true,
+    "STALE_SOURCE_REJECTED": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/targeted-editing/run-085b438e21fa/edit-preview.json"
+  ],
+  "recovery": [
+    "exact patch",
+    "paragraph semantic patch",
+    "stale source rejection"
+  ],
+  "failure_injections": [
+    "ambiguous locator",
+    "source changed after preview"
+  ],
+  "details": {
+    "changed_range": [
+      26,
+      46
+    ]
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

@@ -1,0 +1,707 @@
+{
+  "schema_version": 1,
+  "generated_from": "docs/research/inkos_capability_ledger.yaml",
+  "partial_total": 35,
+  "entries": [
+    {
+      "capability_id": "unified-agent-production-harness",
+      "current_status": "PARTIAL",
+      "missing_evidence": "Studio/CLI/TUI parity and persisted artifact-grounded completion",
+      "missing_runtime_path": "service -> ProductionHarness -> persisted ProductionRun",
+      "missing_persistence": "durable action envelope and run snapshot",
+      "missing_fault_test": "cancel/reconnect and missing-artifact fail-closed run",
+      "missing_e2e": "real service request through completion and restart",
+      "missing_product_surface": "canonical Studio service route",
+      "missing_quality_gate": "artifact and result truth gate",
+      "blocking_dependency": "service/runtime integration",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability unified-agent-production-harness"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/unified-agent-production-harness.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "longform-narrative-production",
+      "current_status": "PARTIAL",
+      "missing_evidence": "complete stage settlement with canonical commit and restart recovery",
+      "missing_runtime_path": "LongFormWorkflow stage output -> workspace -> canon commit",
+      "missing_persistence": "stage artifacts, summaries, hooks, and canon revision",
+      "missing_fault_test": "settlement crash and bounded revision recovery",
+      "missing_e2e": "one real multi-stage longform run with durable artifacts",
+      "missing_product_surface": "longform ProductionRun surface",
+      "missing_quality_gate": "manuscript/canon/hook/audit completeness",
+      "blocking_dependency": "atomic workspace and snapshot evidence",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability longform-narrative-production"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/longform-narrative-production.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "canonical-narrative-state",
+      "current_status": "PARTIAL",
+      "missing_evidence": "all state dimensions and cross-project authority validation",
+      "missing_runtime_path": "typed delta -> authority validator -> canonical persistence",
+      "missing_persistence": "projection rebuild and revision ledger",
+      "missing_fault_test": "malformed, duplicate, stale, and cross-project deltas",
+      "missing_e2e": "real project mutation sequence and reload",
+      "missing_product_surface": "canonical state service surface",
+      "missing_quality_gate": "monotonic revision and provenance completeness",
+      "blocking_dependency": "state authority integration",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability canonical-narrative-state"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/canonical-narrative-state.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "observer-state-extraction",
+      "current_status": "PARTIAL",
+      "missing_evidence": "nine-class observation stored and explicitly settled",
+      "missing_runtime_path": "chapter artifact -> observation -> validated delta",
+      "missing_persistence": "observation and accepted-delta records",
+      "missing_fault_test": "malformed JSON, unknown entity, conflict, stale revision",
+      "missing_e2e": "real chapter observation with restart",
+      "missing_product_surface": "observation/audit service result",
+      "missing_quality_gate": "no direct LLM canonical mutation",
+      "blocking_dependency": "canonical state closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability observer-state-extraction"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/observer-state-extraction.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "governed-context-composer",
+      "current_status": "PARTIAL",
+      "missing_evidence": "cross-module ContextManifest selection trace",
+      "missing_runtime_path": "task request -> governed working set -> persisted manifest",
+      "missing_persistence": "selected/excluded/compressed/protected decisions",
+      "missing_fault_test": "protected fact overflow and stale source reference",
+      "missing_e2e": "draft/revision/audit/forecast/script contexts",
+      "missing_product_surface": "context trace in production run",
+      "missing_quality_gate": "protected constraints never silently dropped",
+      "blocking_dependency": "canonical state and memory closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability governed-context-composer"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/governed-context-composer.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "long-term-creative-memory",
+      "current_status": "PARTIAL",
+      "missing_evidence": "50-chapter relevance, temporal retrieval, and rebuild report",
+      "missing_runtime_path": "chapter/material facts -> isolated index -> traced retrieval",
+      "missing_persistence": "rebuildable records and source hashes",
+      "missing_fault_test": "corrupt record and credential/cross-project leakage",
+      "missing_e2e": "restart and index rebuild on longform fixture",
+      "missing_product_surface": "memory query service",
+      "missing_quality_gate": "source trace and no secret indexing",
+      "blocking_dependency": "canonical state closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability long-term-creative-memory"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/long-term-creative-memory.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "continuity-and-multidimensional-audit",
+      "current_status": "PARTIAL",
+      "missing_evidence": "positive/negative deterministic corpus for every audit dimension",
+      "missing_runtime_path": "artifact/canon -> 33-dimension audit -> persisted findings",
+      "missing_persistence": "findings, locations, refs, severity, and re-audit history",
+      "missing_fault_test": "missing state and malformed audit input fail closed",
+      "missing_e2e": "defect corpus through audit and repeatability",
+      "missing_product_surface": "review/audit artifact surface",
+      "missing_quality_gate": "deterministic gates for structural facts",
+      "blocking_dependency": "canonical state and revision closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability continuity-and-multidimensional-audit"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "governed-revision",
+      "current_status": "PARTIAL",
+      "missing_evidence": "all four revision modes with re-audit and atomic approval",
+      "missing_runtime_path": "audit -> proposal -> candidate -> diff -> approval -> commit",
+      "missing_persistence": "candidate, diff, approval, remaining findings",
+      "missing_fault_test": "stale write, rejection, limit, and process interruption",
+      "missing_e2e": "real artifact revision and reload",
+      "missing_product_surface": "revision proposal/approval service",
+      "missing_quality_gate": "failed issues retained and no false pass",
+      "blocking_dependency": "atomic workspace closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability governed-revision"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/governed-revision.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "short-fiction-production",
+      "current_status": "PARTIAL",
+      "missing_evidence": "complete sales package persistence and export recovery",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "complete short package, invalid input, retry, resume, export, artifact provenance",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability short-fiction-production"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/short-fiction-production.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "script-runtime",
+      "current_status": "PARTIAL",
+      "missing_evidence": "downstream production graph handoff with artifact provenance",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "structured script to executable storyboard and real production graph handoff",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability script-runtime"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/script-runtime.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "production-storyboard",
+      "current_status": "PARTIAL",
+      "missing_evidence": "real ShotPlan/production consumption and quality evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "script-to-shot-plan-to-real-artifact with provenance and quality gate",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability production-storyboard"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/production-storyboard.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "interactive-film",
+      "current_status": "PARTIAL",
+      "missing_evidence": "playable package persistence and full graph negative controls",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "30 nodes, multiple branches, flags, relationships, 3 endings, all paths, export/playback",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability interactive-film"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/interactive-film.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "persistent-interactive-play",
+      "current_status": "PARTIAL",
+      "missing_evidence": "durable redo/recovery and visual asset references",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "50 turns, persistence, inventory, evidence, relation, time, crash resume, redo",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability persistent-interactive-play"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/persistent-interactive-play.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "creative-research",
+      "current_status": "PARTIAL",
+      "missing_evidence": "explicit claim acceptance and canonical commit evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "source/claim trace, unknowns, confidence, no automatic canon mutation, explicit commit",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability creative-research"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/creative-research.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "material-library",
+      "current_status": "PARTIAL",
+      "missing_evidence": "multi-format source authority, citation, and isolation evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "all input classes, source hash, project isolation, citation, rebuild, invalid input",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability material-library"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/material-library.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "existing-work-import-continuation",
+      "current_status": "PARTIAL",
+      "missing_evidence": "20+ chapter reconstruction and three-chapter continuation",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "20 chapters, split/order/restart, reconstruction, continuation, continuity audit",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability existing-work-import-continuation"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/existing-work-import-continuation.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "style-intelligence",
+      "current_status": "PARTIAL",
+      "missing_evidence": "abstract profile persistence and no-text-retention evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "analyze/save/apply/audit, source hash, no text retention, deterministic metrics",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability style-intelligence"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/style-intelligence.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "synthetic-writing-quality",
+      "current_status": "PARTIAL",
+      "missing_evidence": "defect corpus with bounded repair and false-positive evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "anti-pattern corpus, false positives, style drift, bounded revision, no evasion claim",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability synthetic-writing-quality"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/synthetic-writing-quality.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "extensible-genre-system",
+      "current_status": "PARTIAL",
+      "missing_evidence": "five effective profiles with planning/audit behavior evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "built-in, custom, invalid rule, applied audit, project isolation",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability extensible-genre-system"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/extensible-genre-system.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "creative-analytics",
+      "current_status": "PARTIAL",
+      "missing_evidence": "ledger reconciliation for cost, latency, recovery, and audit metrics",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "full project aggregation, missing telemetry, rebuild, privacy, cost/latency evidence",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability creative-analytics"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/creative-analytics.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "translation-localization",
+      "current_status": "PARTIAL",
+      "missing_evidence": "review/resume/roundtrip evidence across four formats",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "real TXT/Markdown/EPUB/text-PDF fixtures, coverage, glossary, resume, roundtrip",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability translation-localization"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/translation-localization.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "cover-visual-asset-runtime",
+      "current_status": "PARTIAL",
+      "missing_evidence": "existing visual provider artifact and regeneration provenance",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "brief, provider adapter, regenerate, selection, provenance, failure state",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability cover-visual-asset-runtime"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/cover-visual-asset-runtime.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "professional-skills",
+      "current_status": "PARTIAL",
+      "missing_evidence": "adversarial authority/permission boundary evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "all listed skill domains, permission boundary, no direct state write, provenance",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability professional-skills"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/professional-skills.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "creative-policy-packs",
+      "current_status": "PARTIAL",
+      "missing_evidence": "precedence, version diff, rollback, and invalid-pack evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "default/override precedence, diff, rollback, invalid pack, runtime trace",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability creative-policy-packs"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/creative-policy-packs.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "review-workflow",
+      "current_status": "PARTIAL",
+      "missing_evidence": "durable approval/rejection and stale guard evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "approve/reject/edit/revision request, persistence, stale guard, batch approval safety",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability review-workflow"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/review-workflow.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "background-production-notifications",
+      "current_status": "PARTIAL",
+      "missing_evidence": "runtime-backed reconnect/cancel/resume and event evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "background run, reconnect, cancel, resume, retry, signed event, delivery ledger",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability background-production-notifications"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/background-production-notifications.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "run-snapshot-recovery",
+      "current_status": "PARTIAL",
+      "missing_evidence": "stage-wide crash/restart and partial-artifact evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "crash injection at each stage, resume, artifact retention, no false completion",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability run-snapshot-recovery"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/run-snapshot-recovery.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "atomic-creative-workspace",
+      "current_status": "PARTIAL",
+      "missing_evidence": "all listed transaction fault paths and read-back evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "fault injection for every listed failure, no half-commit, read-back validation",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability atomic-creative-workspace"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/atomic-creative-workspace.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "backup-restore-rollback",
+      "current_status": "PARTIAL",
+      "missing_evidence": "corruption rejection and semantic restore evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "backup, corruption, restore, rollback, manifest hash, destructive confirmation",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability backup-restore-rollback"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/backup-restore-rollback.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "concurrency-and-locks",
+      "current_status": "PARTIAL",
+      "missing_evidence": "two-writer live lock/lease recovery evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "conflicting writes, stale lock, crash recovery, no last-writer-wins",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability concurrency-and-locks"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/concurrency-and-locks.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "targeted-editing",
+      "current_status": "PARTIAL",
+      "missing_evidence": "semantic locator and CAS/cascade evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "exact patch, ambiguous location, preview diff, stale guard, cascade finding",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability targeted-editing"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/targeted-editing.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "model-provider-routing",
+      "current_status": "PARTIAL",
+      "missing_evidence": "real endpoint routing/failure and provenance trace",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "local endpoint, per-stage override, unavailable provider, secret redaction, deterministic config trace",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability model-provider-routing"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/model-provider-routing.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "notifications-webhooks",
+      "current_status": "PARTIAL",
+      "missing_evidence": "event taxonomy, receiver, retry, idempotency, redaction",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "signed event, filter, retry, idempotency, secret redaction, failure ledger",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability notifications-webhooks"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/notifications-webhooks.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "creative-export",
+      "current_status": "PARTIAL",
+      "missing_evidence": "approved artifact package hashes and EPUB reopen evidence",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "TXT/MD/EPUB, approved-only, hash manifest, invalid source, playable package",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability creative-export"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/creative-export.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    },
+    {
+      "capability_id": "studio-product-surfaces",
+      "current_status": "PARTIAL",
+      "missing_evidence": "real Studio E2E over one canonical backend",
+      "missing_runtime_path": "existing module -> qualification runner -> persisted evidence",
+      "missing_persistence": "durable artifact/state/revision manifest",
+      "missing_fault_test": "capability-specific interruption and fail-closed path",
+      "missing_e2e": "UI action to real service, confirmation, progress, reconnect, artifact/evidence rendering",
+      "missing_product_surface": "HEVI service or Studio surface",
+      "missing_quality_gate": "deterministic capability quality gate",
+      "blocking_dependency": "wave dependency closure",
+      "acceptance_commands": [
+        "PYTHONPATH=. uv run --no-sync pytest -q tests/creative_runtime tests/gold/creative_runtime",
+        "PYTHONPATH=. uv run --no-sync python scripts/qualification/qualify_creative_runtime.py --capability studio-product-surfaces"
+      ],
+      "evidence_paths": [
+        "artifacts/qualification/creative-runtime/studio-product-surfaces.json",
+        "tests/gold/creative_runtime/test_qualification.py"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "capability_id": "concurrency-and-locks",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/concurrency-and-locks/run-faa2a16c2ff5/project.lock",
+  "checks": {
+    "RESOURCE_BUSY": true,
+    "NO_SILENT_LAST_WRITER_WINS": true,
+    "STALE_LOCK_RECOVERY": true,
+    "PARALLEL_NONCONFLICTING": true,
+    "OWNER_EVIDENCE": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/concurrency-and-locks/run-faa2a16c2ff5/project.lock",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/concurrency-and-locks/run-faa2a16c2ff5/stale.lock"
+  ],
+  "recovery": [
+    "two live writers",
+    "dead owner recovery",
+    "parallel projects"
+  ],
+  "failure_injections": [
+    "conflicting writer",
+    "stale lock",
+    "crashed owner"
+  ],
+  "details": {
+    "conflict_owner": "writer-a",
+    "rejected_owner": "writer-b"
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}
