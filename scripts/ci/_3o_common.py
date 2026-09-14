@@ -152,6 +152,28 @@ def has_real_implementation(tree: ast.Module) -> bool:
         call = body[0].value
         return isinstance(call.func, ast.Name) and call.func.id in imported_names
 
+    def is_module_alias(node: ast.Assign) -> bool:
+        """Recognize a pure module identity alias used by compatibility paths."""
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Subscript):
+            return False
+        target = node.targets[0]
+        if not (
+            isinstance(target.value, ast.Attribute) and isinstance(target.value.value, ast.Name)
+        ):
+            return False
+        if target.value.value.id != "sys" or target.value.attr != "modules":
+            return False
+        value = node.value
+        return (
+            isinstance(value, ast.Call)
+            and isinstance(value.func, ast.Attribute)
+            and isinstance(value.func.value, ast.Name)
+            and value.func.value.id == "importlib"
+            and value.func.attr == "import_module"
+            and len(value.args) == 1
+            and isinstance(value.args[0], ast.Constant)
+        )
+
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and is_delegate(node):
@@ -159,6 +181,8 @@ def has_real_implementation(tree: ast.Module) -> bool:
             return True
         if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
             # __all__ and direct imported aliases are shim metadata.
+            if isinstance(node, ast.Assign) and is_module_alias(node):
+                continue
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             if not all(
                 isinstance(t, ast.Name)
