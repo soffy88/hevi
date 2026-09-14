@@ -1277,8 +1277,8 @@ requires-dist = [
     { name = "mcp", specifier = ">=1.28.1,<2.0" },
     { name = "minio", specifier = ">=7.2.20" },
     { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=62f9df0" },
-    { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=8d7d0c1" },
-    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=af56b91" },
+    { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=5730adc" },
+    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=2797792" },
     { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=ad30a98" },
     { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=02022c7" },
     { name = "pillow", specifier = ">=10" },
@@ -2325,7 +2325,7 @@ docker = [
 [[package]]
 name = "omodul"
 version = "1.36.0"
-source = { git = "https://github.com/helios-plat/omodul.git?rev=8d7d0c1#8d7d0c1db32a87e4d5b1324de5289cfdd1c0f069" }
+source = { git = "https://github.com/helios-plat/omodul.git?rev=5730adc#5730adc940dbc9d6b15b81681c9bbf0b5e0e0d19" }
 dependencies = [
     { name = "apscheduler" },
     { name = "numpy" },
@@ -2364,7 +2364,7 @@ wheels = [
 [[package]]
 name = "oprim"
 version = "3.12.0"
-source = { git = "https://github.com/helios-plat/oprim.git?rev=af56b91#af56b916f75877ba1d3b4271970d651847e2b0b7" }
+source = { git = "https://github.com/helios-plat/oprim.git?rev=2797792#27977920fcc033552c030d5883d9b9f424dec8e0" }
 dependencies = [
     { name = "chardet" },
     { name = "dnspython" },
