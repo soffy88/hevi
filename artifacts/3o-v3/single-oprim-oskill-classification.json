@@ -1,0 +1,3567 @@
+{
+  "schema_version": 1,
+  "source": "/data/soffy/projects/hevi/artifacts/3o-v3/single-oprim-oskills.json",
+  "count": 426,
+  "items": [
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/creative/oskill/registry.py::default_skill",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/digital_human/oskill/__init__.py::content_lock",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/digital_human/oskill/__init__.py::visual_plan",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/digital_human/oskill/__init__.py::caption_plan",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/digital_human/oskill/__init__.py::generate_presenter",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/digital_human/oskill/__init__.py::qa_gate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/digital_human/oskill/__init__.py::preflight_check",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.plan_chapters"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/erduo/oskill/__init__.py::skill_build_chapters",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.verify_canary"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/erduo/oskill/__init__.py::skill_canary_verify",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.canary_passed_threshold"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/erduo/oskill/__init__.py::skill_canary_threshold",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.render_chapter"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/erduo/oskill/__init__.py::skill_render_chapters",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.assemble_master"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/erduo/oskill/__init__.py::skill_assemble_master",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.generate_lead_samples"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/erduo/oskill/__init__.py::skill_generate_lead_samples",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/krillinai/oskill/__init__.py::skill_full_pipeline",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.run_full_pipeline"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/magiviz/oskill/__init__.py::skill_run_full_pipeline",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.generate_story_details"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/magiviz/oskill/__init__.py::skill_story_generation",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.generate_all_characters"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/magiviz/oskill/__init__.py::skill_character_generation",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.generate_storyboard"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/magiviz/oskill/__init__.py::skill_storyboard_generation",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.generate_scene_videos_parallel"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/magiviz/oskill/__init__.py::skill_scene_generation",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.compose_story_video"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/magiviz/oskill/__init__.py::skill_video_composition",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/magiviz/oskill/__init__.py::skill_character_consistency",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_intake",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_research",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.analyze_reference_video"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_watch",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_script",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_assets",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_edit_plan",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_mix",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_timeline",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_runtime",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_dispatch",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::stage_publish",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::checkpoint_write",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.update_checkpoint_approval"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/__init__.py::checkpoint_approve",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/video_agent.py::rank_evidence_candidates",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.VideoIntent"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/video_agent.py::infer_video_intent",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.validate_video_agent_plan"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/montage/oskill/video_agent.py::reflect_video_agent_plan",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/openshorts/oskill/__init__.py::create_publish_tickets",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/account.py::load_account_state",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/account.py::save_account_state",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/comment.py::create_comment_rule",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/comment.py::extract_xsec_token_from_target",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/comment.py::parse_comment_target",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/comment.py::execute_comment_rule",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/comment.py::check_interval_safety",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.classify_auth_failure"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/content.py::collect_content",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/content.py::monitor_targets",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/content.py::download_media",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/publish.py::create_publish_task",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/publish.py::publish_to_platform",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/publish.py::repost_content",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/risk.py::check_account_risk",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/risk.py::apply_cooldown",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/risk.py::schedule_recovery",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/platforms/oskill/share_downloader.py::resolve_share_link",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.CameraCue"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/previs/oskill/compiler.py::camera_from_instruction",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/production/pipelines/oskill/compiler.py::pipeline_for_brief",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/autocameo.py::integrate_cameos",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.parse_length_budget"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/idea_screenwrite.py::develop_story",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.split_story_scenes"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/idea_screenwrite.py::write_scene_scripts",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.parse_length_budget"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/idea_screenwrite.py::plan_idea_screenplay",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.extract_name_candidates"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/novel_adapt.py::extract_events",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/novel_adapt.py::plan_novel_adaptation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.build_portrait_prompt"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/portrait_triptych.py::generate_portrait_view",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/portrait_triptych.py::generate_portrait_triptych",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/portrait_triptych.py::generate_all_portraits",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.select_pairs_by_indices"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/reference_select.py::select_pairs",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/reference_select.py::generate_and_select",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.classify_variation"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/shot_decompose.py::decompose_shot_visual",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/shot_decompose.py::decompose_all_shots",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.needs_last_frame"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/shot_decompose.py::last_frame_required",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.build_transition_prompt"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/transition_video.py::generate_transition_video",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/script2video/oskill/transition_video.py::generate_all_transitions",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/talkcraft/oskill/compiler.py::choose_motion_cards",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/video_catcher/oskill/compiler.py::format_selector",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.is_url"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/video_catcher/oskill/compiler.py::select_source_mode",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/cosy_payload.py::build_engine_script",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.parse_conversation"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/f5_speakers.py::conversation_turns",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/f5_speakers.py::refs_exist",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/native_voice.py::native_voice_available",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/native_voice.py::synthesize_native_voice",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.split_voice_text"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/native_voice.py::stream_native_voice",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/native_voice.py::synthesize_native_batch",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.place_clips_on_clock"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/subtitle_timeline.py::plan_timeline",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.plan_mix"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/vocal_remix.py::plan_vocal_remix",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.demucs_separate_args"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro/oskill/vocal_remix.py::stem_split_command",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.verify_asr_result"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro_asr/oskill/__init__.py::skill_verify",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro_asr/oskill/__init__.py::skill_batch_transcribe",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro_translate/oskill/__init__.py::skill_batch_translate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.apply_terminology"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro_translate/oskill/__init__.py::skill_apply_terminology",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": "hevi/voicepro_tts/oskill/__init__.py::skill_batch_synthesize",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_apply_edit_block.py::apply_edit_block",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_apply_todo_update.py::apply_todo_update",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_apply_unified_diff.py::apply_unified_diff",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_asset_reference_inject.py::asset_reference_inject",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.AnimationResult"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_batch_generate_animations.py::batch_generate_animations",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_build_subagent_prompt.py::build_subagent_prompt",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_build_undo_plan.py::build_undo_plan",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.GapReport"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_capability_gap_analyze.py::capability_gap_analyze",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.CascadeDeleteResult"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_cascade_delete.py::cascade_delete",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.Community"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_community_cluster.py::community_cluster",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_compose_plugin_manifest.py::compose_plugin_manifest",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.count_tokens"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_compress_context.py::compress_context",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_dedup_edits.py::dedup_edits",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.SpeakingPracticeResult"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_english_speaking_practice.py::english_speaking_practice",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_escalate_thinking_budget.py::escalate_thinking_budget",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_evaluate_hooks.py::evaluate_hooks",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_format_diagnostics.py::format_diagnostics",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.compute_diff"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_generate_patch_preview.py::generate_patch_preview",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.GraphRetrievalResult"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_graph_expand_retrieval.py::graph_expand_retrieval",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.file_read"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_load_skill_progressive.py::load_skill_progressive",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_match_permission_rule.py::match_permission_rule",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_media_to_structured_md.py::media_to_structured_md",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_merge_config.py::merge_config",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_merge_subagent_result.py::merge_subagent_result",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.OntologyExtractResult"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_ontology_extract.py::ontology_extract",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_parse_llm_tool_calls.py::parse_llm_tool_calls",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_physics_force_analysis_guide.py::physics_force_analysis_guide",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_plan_decompose.py::plan_decompose",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_plan_to_todos.py::plan_to_todos",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_rank_relevant_files.py::rank_relevant_files",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_reading_comprehension_guide.py::reading_comprehension_guide",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_regenerate_animation.py::regenerate_animation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.RelationResult"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_relation_extract_llm.py::relation_extract_llm",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.file_read"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_resolve_memory_hierarchy.py::resolve_memory_hierarchy",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_select_skill.py::select_skill",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_select_tools.py::select_tools",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.count_tokens"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_semantic_search.py::semantic_search",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.detect_language"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_syntax_check.py::syntax_check",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.TheoremVerifyResult"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_theorem_verify_3way.py::theorem_verify_3way",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.compute_diff"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_three_way_merge.py::three_way_merge",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.TwoStepIngestResult"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_two_step_ingest.py::two_step_ingest",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_utils.py::extract_confidence",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.detect_language"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_validate_edit.py::validate_edit",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_video_cost_proposal.py::video_cost_proposal",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.video_filter_rules"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/_video_filter_by_rules.py::video_filter_by_rules",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/agentic_investigate_loop.py::agentic_investigate_loop",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::syntax_check",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::validate_edit",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::chunk_code",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::extract_symbols",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::repo_map_build",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::resolve_mentions",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::select_skill",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::load_skill_progressive",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/analysis.py::resolve_memory_hierarchy",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.rfc6962_inclusion_proof"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/audit.py::merkle_batch_proof",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/avatar_assembler.py::avatar_assembler",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest/embargo_cv.py::embargo_purged_cv",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest/random_subsampling.py::random_subsampling_validation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest/walk_forward_optimization.py::walk_forward_optimization_pipeline",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::portfolio_backtest_simulation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::transaction_cost_model",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::walk_forward_analysis",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::monte_carlo_significance_test",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::strategy_benchmark_comparison",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::strategy_capacity_estimation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::out_of_sample_validation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::risk_metrics_bundle",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::turnover_churn_analysis",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::signal_crowding_analysis",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::comparative_score_anchoring",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::risk_scale_calculation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backtest_strategy_skills.py::similar_historical_context_search",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.OprimConnectionError"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/backup_schedule_check.py::backup_schedule_check",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/bayesian/gp_regression.py::gaussian_process_regression",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/bayesian/hierarchical.py::hierarchical_bayes_normal",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/bayesian/linear_regression.py::bayesian_linear_regression",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/bayesian/posterior_diagnostics.py::posterior_diagnostics",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/bayesian/var.py::bayesian_var",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/behavioral/cpt_analytical.py::cpt_portfolio_analytical",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/behavioral/cpt_portfolio.py::cpt_portfolio_optimize",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/behavioral/salience_pricing.py::salience_asset_pricing",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/bocpd_changepoint.py::bocpd_changepoint",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/change_point/bayesian_online.py::bocpd_bayesian",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/change_point/pelt.py::pelt_change_point",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/character_consistency_workflow/__init__.py::character_consistency_workflow",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/character_three_view/__init__.py::character_three_view",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/check_reference_integrity.py::check_reference_integrity",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/circuit_breaker_check.py::circuit_breaker_check",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.evaluate_threshold_condition"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/classifier/rule_based.py::rule_based_classifier",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.evaluate_threshold_condition"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/classifier/rule_based.py::rule_based_veto_check",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/classify_signal.py::classify_signal",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/cointegration_pairs.py::cointegration_pairs",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/comic_to_animation_workflow/__init__.py::comic_to_animation_workflow",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/compute_capacity_forecast.py::compute_capacity_forecast",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/compute_severity_score.py::compute_severity_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/conformal/adaptive_cp.py::adaptive_conformal_inference",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/consistency_check.py::consistency_check",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.http_health_probe"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/container_health_aggregate.py::container_health_aggregate",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/container_resource_rank.py::container_resource_rank",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/cost/_sigmoid.py::crypto_market_impact_sigmoid",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/covariance/denoising.py::denoised_covariance",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/covariance/shrinkage.py::ledoit_wolf_shrinkage",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/cross_layer_search.py::cross_layer_search",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::get_symbol_basis",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::get_symbol_daily_klines",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::get_symbol_onchain_metrics",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::get_symbol_options_skew",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::get_symbol_max_pain",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::get_etf_inflow_7d",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::get_30d_returns_stddev",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::fear_greed_fetch_all",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::dex_cex_check",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::proxy_check_and_notify",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::evaluate_stale",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::stale_check_and_notify",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::compute_signal_quality",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::collect_cycle",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::collect_sectors",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::collect_sentiment",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::store_market",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_data_skills.py::collect_write_event",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::derivatives_agg_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::dex_truth_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::dex_truth_dydx_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::dex_truth_gmx_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::etf_flow_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::etf_flow_per_ticker_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::macro_environ_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::onchain_aggregate_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::exchange_netflow_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_environ_processors.py::options_environ_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_fusion_scorers.py::trend_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_fusion_scorers.py::flow_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_fusion_scorers.py::sentiment_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_fusion_scorers.py::onchain_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_fusion_scorers.py::derivatives_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_fusion_scorers.py::macro_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/crypto_fusion_scorers.py::support_resistance_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/data/__init__.py::point_in_time_join",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/data/calendar_surprise_detect.py::calendar_surprise_detect",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/diagnose_pattern_match.py::diagnose_pattern_match",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/distributional_rl/iqn.py::implicit_quantile_loss",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/distributional_rl/quantile_regression.py::quantile_regression_loss",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/dsl/evaluator.py::dsl_rule_validate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/dsl/evaluator.py::dsl_rule_evaluate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/edit.py::apply_edit_block",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/edit.py::apply_unified_diff",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/edit.py::three_way_merge",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/edit.py::generate_patch_preview",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/edit.py::dedup_edits",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/edit.py::build_undo_plan",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/essay_guide.py::essay_guide",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/event_trail_correlate.py::event_trail_correlate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/exchange/okx_demo/_signing.py::sign_request",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/exchange/okx_demo/_signing.py::make_timestamp",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.parse_obsidian_tasks"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/expand_tasks_from_note.py::expand_tasks_from_note",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/barra.py::barra_style_decomposition",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/carhart.py::carhart_4_factor_model",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/disclosure_scoring.py::disclosure_event_scoring",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/event_theme_cluster.py::event_theme_cluster",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/fama_french.py::fama_french_5_factor_model",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/ic.py::factor_ic",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/neutralization.py::factor_neutralization",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.sharpe_ratio"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/quantile_returns.py::factor_quantile_returns",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/factor/sector_rotation.py::sector_capital_rotation_detect",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/flapping_detect.py::flapping_detect",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/formal_proof_verify.py::formal_proof_verify",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/frame_renderer.py::frame_renderer",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/generate_practice_set.py::generate_practice_set",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/hmm.py::gaussian_hmm",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/hmm_regime_detect.py::hmm_regime_detect",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/hybrid_search.py::hybrid_search",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/image_to_video_workflow.py::image_to_video_workflow",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/interleave_select.py::interleave_select",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/_context.py::stratum_home",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/_context.py::meta_db_path",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/_context.py::tantivy_path",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/_context.py::lancedb_path",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/_context.py::substrate_data_path",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/classify_inbox_file.py::classify_inbox_file",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.open_meta_db"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/detect_duplicate_substrate.py::detect_duplicate_substrate",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.tts_synthesize"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/generate_audio_narration.py::generate_audio_narration",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/generate_derivative.py::generate_derivative",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.open_meta_db"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/lint.py::lint",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.SearxngClient"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/knowledge/web_search_augmented.py::web_search_augmented",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/lint_substrate_graph.py::lint_substrate_graph",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/liquidation_cascade_risk.py::liquidation_cascade_risk",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm/batch_classify.py::llm_batch_classify",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm/consistency.py::llm_response_consistency",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm/cot.py::chain_of_thought_extractor",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm/text_translate.py::text_translate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.canonical_json"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm/tool_validation.py::tool_call_validator",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_agent/_parsing.py::extract_json",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_agent/_parsing.py::coerce_confidence",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_agent/bear_analyst.py::bear_analyst",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_agent/bull_analyst.py::bull_analyst",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_agent/referee.py::referee",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_factor_debate.py::llm_factor_debate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_skills.py::summarize_file",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_skills.py::compress_context",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_skills.py::plan_decompose",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_skills.py::rank_relevant_files",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_skills.py::build_repo_context",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/llm_skills.py::semantic_search",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/longitudinal_pattern.py::longitudinal_pattern",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/market_impact_sigmoid.py::market_impact_sigmoid",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/merge_platform_user_results.py::merge_platform_user_results",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/metacog_scaffold.py::metacog_scaffold",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/metadata_generate.py::metadata_generate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/metric_baseline_compare.py::metric_baseline_compare",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/microstructure/bar_aggregation.py::dollar_bar_aggregation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/microstructure/bar_aggregation.py::volume_imbalance_bar",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/microstructure/bar_aggregation.py::tick_imbalance_bar",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.hawkes_nll"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/microstructure/hawkes.py::hawkes_branching_ratio",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/microstructure/liquidity.py::kyle_lambda_estimator",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/microstructure/liquidity.py::amihud_illiquidity",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/microstructure/order_flow.py::order_flow_imbalance",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/microstructure/state_hawkes.py::order_book_state_hawkes",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/ml_finance/bet_sizing.py::bet_sizing",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/ml_finance/cusum_filter.py::cusum_filter",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/ml_finance/fractional_diff.py::fractional_differentiation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/ml_finance/meta_labeling.py::meta_labeling",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/ml_finance/sample_weights.py::sample_uniqueness_weights",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/ml_finance/sample_weights.py::return_attribution_weights",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/ml_finance/triple_barrier.py::triple_barrier_label",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/mllm_frame_consistency_check.py::mllm_frame_consistency_check",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/multi_angle_9/__init__.py::multi_angle_9",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/multi_node_health_sweep.py::multi_node_health_sweep",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/networks/centrality.py::financial_network_centrality",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/networks/clearing.py::eisenberg_noe_clearing",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/networks/contagion.py::contagion_simulate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/operational_risk/lda.py::operational_risk_lda",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/performance.py::trade_pnl_statistics",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/performance.py::rule_compliance_winrate_diff",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/performance.py::subject_forward_winrate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/point_process.py::fit_hawkes",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/portfolio/hrp.py::hierarchical_risk_parity_v2",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/portfolio/ssd_milp.py::ssd_milp_optimizer",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/rag/chunking.py::chunking_strategy_apply",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/rag/reranking.py::reranker_score",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/recommend_content.py::recommend_content",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/recursive_utility/ez_solver.py::epstein_zin_solver",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/reference_generator.py::reference_generator",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/regime/multi_state_classify.py::multi_state_classify",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/regime_conditional_score_weighted.py::regime_conditional_score_weighted",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/regime_gate_eval.py::regime_gate_eval",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/regime_smoothing.py::regime_smoothing",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/render_template.py::render_template",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/resolve_conflict.py::resolve_conflict",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/retrieve_and_synthesize.py::retrieve_and_synthesize",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/retrieve_runbook.py::retrieve_runbook",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/risk/systemic.py::systemic_risk_metrics",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/robust/maxmin_eu.py::maxmin_expected_utility_portfolio",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/robust/multiplier_preferences.py::multiplier_preferences_robust",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/robust/smooth_ambiguity.py::smooth_ambiguity_portfolio",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/robust/variational_preferences.py::variational_preferences_estimate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/runbook_match.py::runbook_match",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/scm_fit.py::structural_causal_model_fit",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/screening/__init__.py::candidate_pool_builder",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/script_writer.py::script_writer",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/select_reference.py::select_reference",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/shorts_recompose.py::shorts_recompose",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/shot_generator.py::shot_generator",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_detection.py::adx",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_detection.py::cusum_detector",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_detection.py::platt_calibration",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::fusion_score_with_uncertainty",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::signal_quality_gate",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::temporal_fusion",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::behavioral_weighting",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::pack_evaluation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::alphalens_style_ic",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::regime_aware_scoring",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::relative_strength_rank",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::backtest_metric_suite",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::walkforward_validator",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::data_drift_detector",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signal_fusion_skills.py::counterfactual_generator",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signals/aggregation.py::weighted_signal_aggregation",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signals/ensemble.py::signal_ensemble",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.percentile_value"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signals/forward_returns.py::aggregate_signal_returns",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signature/kernel.py::signature_kernel",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/signature/pricing.py::signature_based_pricing",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/similarity.py::multi_dim_nearest_search",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.percentile_value"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/similarity.py::forward_outcome_distribution",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/similarity_indexing.py::batch_similarity_indexing",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/socratic_loop.py::process_socratic_turn",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/socratic_loop.py::create_socratic_state",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/solve_and_visualize.py::solve_and_visualize",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/spectral/clustering.py::spectral_asset_clustering",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/spectral/laplacian.py::graph_laplacian_compute",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/state_space/kalman.py::kalman_filter_pipeline",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/state_space/kalman.py::kalman_smoother",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/state_space/particle.py::particle_filter_pipeline",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/storyboard_grid/__init__.py::storyboard_grid",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/structured_log_anomaly_cluster.py::structured_log_anomaly_cluster",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.resolve_subagent_tools"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/subagent_dispatch.py::subagent_dispatch",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/subtitle_generator.py::subtitle_generator",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/sync/apply_remote_events.py::apply_remote_events",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.ChangefeedReader"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/sync/flush_outbox.py::flush_outbox",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.ChangefeedSnapshot"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/sync/restore_from_snapshot.py::restore_from_snapshot",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.ChangefeedSnapshot"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/sync/snapshot_backup.py::snapshot_backup",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/synthesize_action_plan.py::synthesize_action_plan",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/threeo_ingester.py::threeo_ingester",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tool_call_loop.py::tool_call_loop",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::format_diagnostics",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::parse_llm_tool_calls",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::select_tools",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::merge_config",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::evaluate_hooks",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::match_permission_rule",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::escalate_thinking_budget",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::plan_to_todos",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::apply_todo_update",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::compose_plugin_manifest",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::build_subagent_prompt",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/tooling.py::merge_subagent_result",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/validation/csv.py::combinatorially_symmetric_cv",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/validation/deflated_sharpe.py::deflated_sharpe_ratio",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/validation/full_cpcv.py::full_combinatorial_purged_cv",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/validation/haircut.py::haircut_sharpe",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.sharpe_ratio"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/validation/pbo.py::probability_of_backtest_overfitting",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/validation/trial_correction.py::bonferroni_holm_correction",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.network_http_health"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/verify_health_after_action.py::verify_health_after_action",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 1,
+      "oprim_calls": [
+        "oprim.network_http_health"
+      ],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/verify_health_after_action.py::verify_health_after_action_detail",
+      "classification": "NEEDS_REDESIGN",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/video_assembler.py::video_assembler",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/video_self_assess.py::video_self_assess",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/walk_forward.py::walk_forward",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/wave2_skills.py::ic_root_cause_decompose",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/wave2_skills.py::signal_directionality_profile",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/wave2_skills.py::cross_asset_score_normalization",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/wave2_skills.py::regime_dynamic_weight_adjustment",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    },
+    {
+      "distinct_oprims": 0,
+      "oprim_calls": [],
+      "reason": "fewer than two distinct direct oprim call sites",
+      "symbol": ".venv/lib/python3.14/site-packages/oskill/worktree_prepare.py::worktree_prepare",
+      "classification": "DEAD_OR_STALE",
+      "classification_basis": "AST direct distinct oprim call count; M3 migration intentionally not performed"
+    }
+  ]
+}

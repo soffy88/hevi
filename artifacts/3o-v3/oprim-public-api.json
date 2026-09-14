@@ -1,0 +1,2034 @@
+{
+  "schema_version": 1,
+  "source_sha": "6902d022f099a21d1f6effe4155a09e9844205eb",
+  "elements": [
+    {
+      "name": "log_returns",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import log_returns",
+      "manifest_entry": true,
+      "signature": "prices: pd.Series, periods: list[int] | None=None, handle_gaps: Literal['skip', 'interpolate', 'raise']='skip'",
+      "call_site_count": 0
+    },
+    {
+      "name": "cumulative_returns",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import cumulative_returns",
+      "manifest_entry": true,
+      "signature": "returns: pd.Series, return_type: Literal['log', 'simple']='log', initial_capital: float=1.0, compound: bool=True",
+      "call_site_count": 6
+    },
+    {
+      "name": "rolling_window_split",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import rolling_window_split",
+      "manifest_entry": true,
+      "signature": "n_samples: int, window_size: int, step: int=1, include_partial: bool=False",
+      "call_site_count": 6
+    },
+    {
+      "name": "lag_forward_fill",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import lag_forward_fill",
+      "manifest_entry": true,
+      "signature": "data: pd.Series | pd.DataFrame, max_gap: int | pd.Timedelta=5, lag: int=0, strict: bool=False",
+      "call_site_count": 0
+    },
+    {
+      "name": "percentile_rank",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import percentile_rank",
+      "manifest_entry": true,
+      "signature": "data: pd.Series | pd.DataFrame, window: int | None=None, method: Literal['rolling', 'cross_sectional', 'expanding']='rolling', ties: Literal['average', 'min', 'max']='average'",
+      "call_site_count": 17
+    },
+    {
+      "name": "ewma_smooth",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import ewma_smooth",
+      "manifest_entry": true,
+      "signature": "data: pd.Series, half_life: float | None=None, span: int | None=None, alpha: float | None=None, adjust: bool=True, ignore_na: bool=False",
+      "call_site_count": 2
+    },
+    {
+      "name": "realized_vol",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import realized_vol",
+      "manifest_entry": true,
+      "signature": "returns: pd.Series, window: int=20, estimator: Literal['close_to_close', 'garman_klass', 'parkinson', 'yang_zhang']='close_to_close', annualization_factor: int=252, ohlc: pd.DataFrame | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "zscore_normalize",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import zscore_normalize",
+      "manifest_entry": true,
+      "signature": "data: pd.Series | pd.DataFrame, window: int | None=None, min_periods: int=20, clip_extreme: float | None=5.0",
+      "call_site_count": 13
+    },
+    {
+      "name": "gap_detect",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import gap_detect",
+      "manifest_entry": true,
+      "signature": "times: pd.DatetimeIndex, expected_interval: pd.Timedelta | None=None, asset_class: Literal['equity', 'crypto', 'fx', 'commodity']='equity', severity_thresholds: dict | None=None",
+      "call_site_count": 2
+    },
+    {
+      "name": "resample_align",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import resample_align",
+      "manifest_entry": true,
+      "signature": "data_dict: dict[str, pd.DataFrame], target_freq: str='D', method: Literal['last', 'mean', 'ohlc']='last', timezone: str='UTC', forward_fill_limit: int | None=5",
+      "call_site_count": 0
+    },
+    {
+      "name": "purge_embargo_split",
+      "definition_file": "oprim/_time_series.py",
+      "public_export_path": "from oprim import purge_embargo_split",
+      "manifest_entry": true,
+      "signature": "times: pd.DatetimeIndex, n_splits: int, embargo_pct: float=0.01, label_horizon: int | pd.Timedelta=0",
+      "call_site_count": 2
+    },
+    {
+      "name": "bootstrap_ci",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import bootstrap_ci",
+      "manifest_entry": true,
+      "signature": "data: np.ndarray, statistic_fn: Callable[[np.ndarray], float], n_bootstrap: int=1000, confidence_level: float=0.95, method: Literal['percentile', 'bca', 'basic']='percentile', random_state: int | None=None",
+      "call_site_count": 10
+    },
+    {
+      "name": "percentile_ci",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import percentile_ci",
+      "manifest_entry": true,
+      "signature": "samples: np.ndarray, quantiles: list[float] | None=None, interpolation: str='linear'",
+      "call_site_count": 0
+    },
+    {
+      "name": "percentile_value",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import percentile_value",
+      "manifest_entry": true,
+      "signature": "data: np.ndarray, q: float, window: int | None=None, method: str='linear'",
+      "call_site_count": 13
+    },
+    {
+      "name": "distribution_summary",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import distribution_summary",
+      "manifest_entry": true,
+      "signature": "data: np.ndarray, percentiles: list[float] | None=None",
+      "call_site_count": 12
+    },
+    {
+      "name": "skew_kurt_robust",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import skew_kurt_robust",
+      "manifest_entry": true,
+      "signature": "data: np.ndarray, bias: bool=False, nan_policy: Literal['propagate', 'raise', 'omit']='omit'",
+      "call_site_count": 7
+    },
+    {
+      "name": "kolmogorov_smirnov_test",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import kolmogorov_smirnov_test",
+      "manifest_entry": true,
+      "signature": "sample_a: np.ndarray, sample_b: np.ndarray | str | None=None, mode: Literal['one_sample', 'two_sample']='two_sample', alternative: Literal['two-sided', 'less', 'greater']='two-sided'",
+      "call_site_count": 4
+    },
+    {
+      "name": "mann_kendall_trend",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import mann_kendall_trend",
+      "manifest_entry": true,
+      "signature": "data: np.ndarray, alpha: float=0.05, hamed_rao_correction: bool=True",
+      "call_site_count": 3
+    },
+    {
+      "name": "bayes_beta_update",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import bayes_beta_update",
+      "manifest_entry": true,
+      "signature": "prior_alpha: float, prior_beta: float, successes: int, failures: int, posterior_quantiles: list[float] | None=None",
+      "call_site_count": 3
+    },
+    {
+      "name": "brier_score_decomposed",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import brier_score_decomposed",
+      "manifest_entry": true,
+      "signature": "forecasts: np.ndarray, outcomes: np.ndarray, n_bins: int=10, method: Literal['binned', 'binless']='binned'",
+      "call_site_count": 4
+    },
+    {
+      "name": "pearson_spearman_corr",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import pearson_spearman_corr",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray, y: np.ndarray, min_samples: int=30, nan_policy: Literal['propagate', 'raise', 'omit']='omit'",
+      "call_site_count": 2
+    },
+    {
+      "name": "kde_density",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import kde_density",
+      "manifest_entry": true,
+      "signature": "data: np.ndarray, bandwidth: Literal['silverman', 'scott'] | float='silverman', eval_points: np.ndarray | None=None",
+      "call_site_count": 2
+    },
+    {
+      "name": "correlation_batch",
+      "definition_file": "oprim/_statistics.py",
+      "public_export_path": "from oprim import correlation_batch",
+      "manifest_entry": true,
+      "signature": "data: pd.DataFrame, method: Literal['pearson', 'spearman']='pearson'",
+      "call_site_count": 0
+    },
+    {
+      "name": "bayesian_changepoint",
+      "definition_file": null,
+      "public_export_path": "from oprim import bayesian_changepoint",
+      "manifest_entry": true,
+      "signature": null,
+      "call_site_count": 0,
+      "status": "UNRESOLVED_DEFINITION"
+    },
+    {
+      "name": "posterior_run_length",
+      "definition_file": null,
+      "public_export_path": "from oprim import posterior_run_length",
+      "manifest_entry": true,
+      "signature": null,
+      "call_site_count": 0,
+      "status": "UNRESOLVED_DEFINITION"
+    },
+    {
+      "name": "bkt_new_state",
+      "definition_file": null,
+      "public_export_path": "from oprim import bkt_new_state",
+      "manifest_entry": true,
+      "signature": null,
+      "call_site_count": 0,
+      "status": "UNRESOLVED_DEFINITION"
+    },
+    {
+      "name": "bkt_update",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import bkt_update",
+      "manifest_entry": true,
+      "signature": "*, state: KCState, is_correct: bool, retrievability: float | None=None, days_since: float | None=None, difficulty: float | None=None",
+      "call_site_count": 13
+    },
+    {
+      "name": "bkt_classify_error",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import bkt_classify_error",
+      "manifest_entry": true,
+      "signature": "*, state: KCState, difficulty: float | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "bkt_predict_correct",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import bkt_predict_correct",
+      "manifest_entry": true,
+      "signature": "*, state: KCState, retrievability: float | None=None, difficulty: float | None=None",
+      "call_site_count": 2
+    },
+    {
+      "name": "exp_forgetting",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import exp_forgetting",
+      "manifest_entry": true,
+      "signature": "*, days_since: float, halflife_days: float=7.0",
+      "call_site_count": 3
+    },
+    {
+      "name": "fsrs_new_card",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import fsrs_new_card",
+      "manifest_entry": true,
+      "signature": "",
+      "call_site_count": 38
+    },
+    {
+      "name": "fsrs_review",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import fsrs_review",
+      "manifest_entry": true,
+      "signature": "*, card_dict: dict, rating: str, now: datetime | None=None",
+      "call_site_count": 17
+    },
+    {
+      "name": "fsrs_retrievability",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import fsrs_retrievability",
+      "manifest_entry": true,
+      "signature": "*, card_dict: dict, now: datetime | None=None",
+      "call_site_count": 18
+    },
+    {
+      "name": "fsrs_map_rating",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import fsrs_map_rating",
+      "manifest_entry": true,
+      "signature": "*, is_correct: bool, used_answer: bool=False, struggled: bool=False, effortless: bool=False",
+      "call_site_count": 4
+    },
+    {
+      "name": "fsrs_due_date",
+      "definition_file": "oprim/_cognitive.py",
+      "public_export_path": "from oprim import fsrs_due_date",
+      "manifest_entry": true,
+      "signature": "*, card_dict: dict",
+      "call_site_count": 5
+    },
+    {
+      "name": "wasserstein_distance",
+      "definition_file": "oprim/_distance.py",
+      "public_export_path": "from oprim import wasserstein_distance",
+      "manifest_entry": true,
+      "signature": "u: np.ndarray, v: np.ndarray, mode: Literal['1d', 'sliced_multi_d']='1d', n_projections: int=100, random_state: int | None=None",
+      "call_site_count": 10
+    },
+    {
+      "name": "dtw_distance",
+      "definition_file": "oprim/_distance.py",
+      "public_export_path": "from oprim import dtw_distance",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray, y: np.ndarray, window: int | None=None, distance_metric: Literal['euclidean', 'manhattan']='euclidean', multivariate_mode: Literal['independent', 'dependent'] | None=None",
+      "call_site_count": 2
+    },
+    {
+      "name": "cosine_similarity_batch",
+      "definition_file": "oprim/_distance.py",
+      "public_export_path": "from oprim import cosine_similarity_batch",
+      "manifest_entry": true,
+      "signature": "query: np.ndarray, database: np.ndarray, pre_normalize: bool=False, top_k: int | None=None",
+      "call_site_count": 14
+    },
+    {
+      "name": "euclidean_distance_matrix",
+      "definition_file": "oprim/_distance.py",
+      "public_export_path": "from oprim import euclidean_distance_matrix",
+      "manifest_entry": true,
+      "signature": "X: np.ndarray, Y: np.ndarray | None=None, weights: np.ndarray | None=None",
+      "call_site_count": 4
+    },
+    {
+      "name": "symmetric_kl_divergence",
+      "definition_file": "oprim/_distance.py",
+      "public_export_path": "from oprim import symmetric_kl_divergence",
+      "manifest_entry": true,
+      "signature": "p: np.ndarray, q: np.ndarray, mode: Literal['js', 'symmetric_kl']='js', base: Literal['e', '2']='e', epsilon: float=1e-12",
+      "call_site_count": 2
+    },
+    {
+      "name": "distributional_distance",
+      "definition_file": "oprim/_distance.py",
+      "public_export_path": "from oprim import distributional_distance",
+      "manifest_entry": true,
+      "signature": "sample_a: np.ndarray | pd.Series, sample_b: np.ndarray | pd.Series, *, metric: Literal['wasserstein_1', 'kolmogorov_smirnov', 'cramer_von_mises', 'energy']='wasserstein_1', weights_a: np.ndarray | None=None, weights_b: np.ndarray | None=None",
+      "call_site_count": 3
+    },
+    {
+      "name": "logsumexp_safe",
+      "definition_file": "oprim/_numerics.py",
+      "public_export_path": "from oprim import logsumexp_safe",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray, axis: int | None=None, weights: np.ndarray | None=None, keepdims: bool=False",
+      "call_site_count": 0
+    },
+    {
+      "name": "softmax_safe",
+      "definition_file": "oprim/_numerics.py",
+      "public_export_path": "from oprim import softmax_safe",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray, axis: int=-1, temperature: float=1.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "clip_with_warning",
+      "definition_file": "oprim/_numerics.py",
+      "public_export_path": "from oprim import clip_with_warning",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray | float, lower: float | None=None, upper: float | None=None, warning_threshold_pct: float=0.05, logger: logging.Logger | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "regime_filter_data",
+      "definition_file": "oprim/_regime.py",
+      "public_export_path": "from oprim import regime_filter_data",
+      "manifest_entry": true,
+      "signature": "data: pd.DataFrame, regime_labels: pd.Series, target_regime: str | list[str], mode: Literal['hard', 'soft']='hard', min_probability: float=0.5",
+      "call_site_count": 10
+    },
+    {
+      "name": "regime_transition_matrix",
+      "definition_file": "oprim/_regime.py",
+      "public_export_path": "from oprim import regime_transition_matrix",
+      "manifest_entry": true,
+      "signature": "regime_labels: pd.Series, states: list[str] | None=None, include_duration: bool=True",
+      "call_site_count": 2
+    },
+    {
+      "name": "regime_label_align",
+      "definition_file": "oprim/_regime.py",
+      "public_export_path": "from oprim import regime_label_align",
+      "manifest_entry": true,
+      "signature": "target_index: pd.DatetimeIndex, regime_labels: pd.Series, method: Literal['asof', 'ffill']='asof', tolerance: pd.Timedelta | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "drawdown_curve",
+      "definition_file": "oprim/_finance.py",
+      "public_export_path": "from oprim import drawdown_curve",
+      "manifest_entry": true,
+      "signature": "equity_or_returns: pd.Series, input_type: Literal['equity', 'returns']='equity', compound: bool=True",
+      "call_site_count": 13
+    },
+    {
+      "name": "sharpe_ratio",
+      "definition_file": "oprim/_finance.py",
+      "public_export_path": "from oprim import sharpe_ratio",
+      "manifest_entry": true,
+      "signature": "returns: pd.Series, risk_free_rate: float | pd.Series=0.0, annualization_factor: int=252, ddof: int=1",
+      "call_site_count": 25
+    },
+    {
+      "name": "beta_alpha_ols",
+      "definition_file": "oprim/_finance.py",
+      "public_export_path": "from oprim import beta_alpha_ols",
+      "manifest_entry": true,
+      "signature": "asset_returns: pd.Series, market_returns: pd.Series | pd.DataFrame, use_hac: bool=False, hac_lags: int | None=None, min_samples: int=30",
+      "call_site_count": 6
+    },
+    {
+      "name": "value_at_risk",
+      "definition_file": "oprim/_finance.py",
+      "public_export_path": "from oprim import value_at_risk",
+      "manifest_entry": true,
+      "signature": "returns: pd.Series, confidence_level: float=0.95, method: Literal['historical', 'parametric', 'cornish_fisher']='historical', include_es: bool=True",
+      "call_site_count": 5
+    },
+    {
+      "name": "nelson_siegel_yield_curve",
+      "definition_file": "oprim/_finance.py",
+      "public_export_path": "from oprim import nelson_siegel_yield_curve",
+      "manifest_entry": true,
+      "signature": "tenors: np.ndarray, yields: np.ndarray, initial_lambda: float=1.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "futures_curve_shape",
+      "definition_file": "oprim/_finance.py",
+      "public_export_path": "from oprim import futures_curve_shape",
+      "manifest_entry": true,
+      "signature": "prices_by_tenor: dict[int, float], spot_price: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "shannon_entropy",
+      "definition_file": "oprim/_information.py",
+      "public_export_path": "from oprim import shannon_entropy",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray, base: float=2.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "ordinal_pattern",
+      "definition_file": "oprim/_information.py",
+      "public_export_path": "from oprim import ordinal_pattern",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray, d: int=3",
+      "call_site_count": 6
+    },
+    {
+      "name": "phase_randomize",
+      "definition_file": "oprim/_information.py",
+      "public_export_path": "from oprim import phase_randomize",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray, rng: np.random.Generator | None=None",
+      "call_site_count": 2
+    },
+    {
+      "name": "linear_slope",
+      "definition_file": "oprim/_signal_processing.py",
+      "public_export_path": "from oprim import linear_slope",
+      "manifest_entry": true,
+      "signature": "values: np.ndarray, normalize: bool=True",
+      "call_site_count": 0
+    },
+    {
+      "name": "atr",
+      "definition_file": "oprim/_signal_processing.py",
+      "public_export_path": "from oprim import atr",
+      "manifest_entry": true,
+      "signature": "highs: np.ndarray, lows: np.ndarray, closes: np.ndarray, period: int=14",
+      "call_site_count": 0
+    },
+    {
+      "name": "hurst_exponent",
+      "definition_file": "oprim/_signal_processing.py",
+      "public_export_path": "from oprim import hurst_exponent",
+      "manifest_entry": true,
+      "signature": "series: np.ndarray, min_window: int=10",
+      "call_site_count": 0
+    },
+    {
+      "name": "compute_dwt",
+      "definition_file": "oprim/_signal_processing.py",
+      "public_export_path": "from oprim import compute_dwt",
+      "manifest_entry": true,
+      "signature": "returns: np.ndarray, wavelet: str='db4', level: int=6",
+      "call_site_count": 0
+    },
+    {
+      "name": "H_change_rate_std",
+      "definition_file": "oprim/_signal_processing.py",
+      "public_export_path": "from oprim import H_change_rate_std",
+      "manifest_entry": true,
+      "signature": "values: np.ndarray, window: int=6",
+      "call_site_count": 0
+    },
+    {
+      "name": "orderbook_entropy",
+      "definition_file": "oprim/_signal_processing.py",
+      "public_export_path": "from oprim import orderbook_entropy",
+      "manifest_entry": true,
+      "signature": "sizes: np.ndarray",
+      "call_site_count": 0
+    },
+    {
+      "name": "takens_embed",
+      "definition_file": "oprim/_topology.py",
+      "public_export_path": "from oprim import takens_embed",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray, d: int=4, tau: int=1",
+      "call_site_count": 0
+    },
+    {
+      "name": "persistence_landscape",
+      "definition_file": "oprim/_topology.py",
+      "public_export_path": "from oprim import persistence_landscape",
+      "manifest_entry": true,
+      "signature": "dgm: np.ndarray, resolution: int=100, x_min: float=0.0, x_max: float=2.0, k: int=1",
+      "call_site_count": 0
+    },
+    {
+      "name": "hawkes_nll",
+      "definition_file": "oprim/_point_process.py",
+      "public_export_path": "from oprim import hawkes_nll",
+      "manifest_entry": true,
+      "signature": "params: np.ndarray, event_times: np.ndarray, T: float",
+      "call_site_count": 1
+    },
+    {
+      "name": "sma",
+      "definition_file": "oprim/technical/moving_averages.py",
+      "public_export_path": "from oprim import sma",
+      "manifest_entry": true,
+      "signature": "prices: np.ndarray | pd.Series, window: int",
+      "call_site_count": 1
+    },
+    {
+      "name": "ema",
+      "definition_file": "oprim/technical/moving_averages.py",
+      "public_export_path": "from oprim import ema",
+      "manifest_entry": true,
+      "signature": "prices: np.ndarray | pd.Series, window: int, *, adjust: bool=False",
+      "call_site_count": 2
+    },
+    {
+      "name": "vwap",
+      "definition_file": "oprim/technical/moving_averages.py",
+      "public_export_path": "from oprim import vwap",
+      "manifest_entry": true,
+      "signature": "prices: np.ndarray | pd.Series, volumes: np.ndarray | pd.Series, window: int | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "macd",
+      "definition_file": "oprim/technical/moving_averages.py",
+      "public_export_path": "from oprim import macd",
+      "manifest_entry": true,
+      "signature": "prices: np.ndarray | pd.Series, *, fast_period: int=12, slow_period: int=26, signal_period: int=9",
+      "call_site_count": 1
+    },
+    {
+      "name": "rsi_normalized",
+      "definition_file": "oprim/technical/oscillators.py",
+      "public_export_path": "from oprim import rsi_normalized",
+      "manifest_entry": true,
+      "signature": "prices: np.ndarray | pd.Series, *, period: int=14",
+      "call_site_count": 2
+    },
+    {
+      "name": "bollinger_bands",
+      "definition_file": "oprim/technical/bands.py",
+      "public_export_path": "from oprim import bollinger_bands",
+      "manifest_entry": true,
+      "signature": "prices: np.ndarray | pd.Series, *, window: int=20, num_std: float=2.0",
+      "call_site_count": 2
+    },
+    {
+      "name": "donchian_channel",
+      "definition_file": "oprim/technical/bands.py",
+      "public_export_path": "from oprim import donchian_channel",
+      "manifest_entry": true,
+      "signature": "highs: np.ndarray | pd.Series, lows: np.ndarray | pd.Series, *, window: int=20",
+      "call_site_count": 0
+    },
+    {
+      "name": "chandelier_exit",
+      "definition_file": "oprim/technical/exits.py",
+      "public_export_path": "from oprim import chandelier_exit",
+      "manifest_entry": true,
+      "signature": "highs: np.ndarray | pd.Series, lows: np.ndarray | pd.Series, closes: np.ndarray | pd.Series, *, period: int=22, multiplier: float=3.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "sha256_hash",
+      "definition_file": "oprim/crypto/hashing.py",
+      "public_export_path": "from oprim import sha256_hash",
+      "manifest_entry": true,
+      "signature": "data: bytes | str",
+      "call_site_count": 48
+    },
+    {
+      "name": "hmac_sha256",
+      "definition_file": "oprim/crypto/hashing.py",
+      "public_export_path": "from oprim import hmac_sha256",
+      "manifest_entry": true,
+      "signature": "key: bytes, data: bytes | str",
+      "call_site_count": 0
+    },
+    {
+      "name": "rfc6962_merkle_root",
+      "definition_file": "oprim/crypto/merkle.py",
+      "public_export_path": "from oprim import rfc6962_merkle_root",
+      "manifest_entry": true,
+      "signature": "leaves: list[bytes]",
+      "call_site_count": 2
+    },
+    {
+      "name": "rfc6962_inclusion_proof",
+      "definition_file": "oprim/crypto/merkle.py",
+      "public_export_path": "from oprim import rfc6962_inclusion_proof",
+      "manifest_entry": true,
+      "signature": "leaves: list[bytes], leaf_index: int",
+      "call_site_count": 4
+    },
+    {
+      "name": "canonical_json",
+      "definition_file": "oprim/serialization/canonical.py",
+      "public_export_path": "from oprim import canonical_json",
+      "manifest_entry": true,
+      "signature": "obj: dict | list | str | int | float | bool | None",
+      "call_site_count": 55
+    },
+    {
+      "name": "cvar",
+      "definition_file": "oprim/risk/cvar.py",
+      "public_export_path": "from oprim import cvar",
+      "manifest_entry": true,
+      "signature": "returns: np.ndarray | pd.Series, *, alpha: float=0.05, method: Literal['historical', 'gaussian']='historical'",
+      "call_site_count": 0
+    },
+    {
+      "name": "cumulative_returns_perf",
+      "definition_file": null,
+      "public_export_path": "from oprim import cumulative_returns_perf",
+      "manifest_entry": true,
+      "signature": null,
+      "call_site_count": 0,
+      "status": "UNRESOLVED_DEFINITION"
+    },
+    {
+      "name": "cagr",
+      "definition_file": "oprim/performance/annualization.py",
+      "public_export_path": "from oprim import cagr",
+      "manifest_entry": true,
+      "signature": "returns, *, periods_per_year: float=252, method: str='geometric'",
+      "call_site_count": 2
+    },
+    {
+      "name": "ornstein_uhlenbeck_fit",
+      "definition_file": "oprim/mean_reversion/ornstein_uhlenbeck.py",
+      "public_export_path": "from oprim import ornstein_uhlenbeck_fit",
+      "manifest_entry": true,
+      "signature": "series, *, dt: float=1.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "ornstein_uhlenbeck_half_life",
+      "definition_file": "oprim/mean_reversion/ornstein_uhlenbeck.py",
+      "public_export_path": "from oprim import ornstein_uhlenbeck_half_life",
+      "manifest_entry": true,
+      "signature": "series, *, method: str='regression'",
+      "call_site_count": 0
+    },
+    {
+      "name": "garch_fit",
+      "definition_file": "oprim/volatility/garch.py",
+      "public_export_path": "from oprim import garch_fit",
+      "manifest_entry": true,
+      "signature": "returns, *, p: int=1, q: int=1, mean: str='constant', distribution: str='normal', max_iter: int=1000",
+      "call_site_count": 0
+    },
+    {
+      "name": "garch_forecast",
+      "definition_file": "oprim/volatility/garch.py",
+      "public_export_path": "from oprim import garch_forecast",
+      "manifest_entry": true,
+      "signature": "params: dict, last_residual: float, last_variance: float, *, horizon: int=1, p: int=1, q: int=1",
+      "call_site_count": 0
+    },
+    {
+      "name": "ewma_volatility",
+      "definition_file": "oprim/volatility/ewma.py",
+      "public_export_path": "from oprim import ewma_volatility",
+      "manifest_entry": true,
+      "signature": "returns, *, lambda_: float=0.94, initial_variance=None, annualize: bool=False, periods_per_year: int=252",
+      "call_site_count": 0
+    },
+    {
+      "name": "black_scholes_price",
+      "definition_file": "oprim/derivatives/black_scholes.py",
+      "public_export_path": "from oprim import black_scholes_price",
+      "manifest_entry": true,
+      "signature": "spot: float, strike: float, time_to_expiry: float, risk_free_rate: float, volatility: float, *, option_type: str='call', dividend_yield: float=0.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "black_scholes_greeks",
+      "definition_file": "oprim/derivatives/black_scholes.py",
+      "public_export_path": "from oprim import black_scholes_greeks",
+      "manifest_entry": true,
+      "signature": "spot: float, strike: float, time_to_expiry: float, risk_free_rate: float, volatility: float, *, option_type: str='call', dividend_yield: float=0.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "implied_volatility",
+      "definition_file": "oprim/derivatives/black_scholes.py",
+      "public_export_path": "from oprim import implied_volatility",
+      "manifest_entry": true,
+      "signature": "market_price: float, spot: float, strike: float, time_to_expiry: float, risk_free_rate: float, *, option_type: str='call', dividend_yield: float=0.0, method: str='brent', tolerance: float=1e-06, max_iter: int=100",
+      "call_site_count": 0
+    },
+    {
+      "name": "vector_similarity",
+      "definition_file": "oprim/similarity/vector.py",
+      "public_export_path": "from oprim import vector_similarity",
+      "manifest_entry": true,
+      "signature": "query: np.ndarray, corpus: np.ndarray, *, metric: Literal['cosine', 'dot', 'euclidean', 'manhattan']='cosine', normalize: bool=True",
+      "call_site_count": 2
+    },
+    {
+      "name": "binomial_tree_price",
+      "definition_file": "oprim/derivatives/binomial_tree.py",
+      "public_export_path": "from oprim import binomial_tree_price",
+      "manifest_entry": true,
+      "signature": "spot: float, strike: float, time_to_expiry: float, risk_free_rate: float, volatility: float, *, n_steps: int=100, option_type: Literal['call', 'put']='call', exercise: Literal['european', 'american']='european', method: Literal['crr', 'jarrow_rudd']='crr', dividend_yield: float=0.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "mc_european_price",
+      "definition_file": "oprim/derivatives/monte_carlo.py",
+      "public_export_path": "from oprim import mc_european_price",
+      "manifest_entry": true,
+      "signature": "spot: float, strike: float, time_to_expiry: float, risk_free_rate: float, volatility: float, *, n_simulations: int=10000, option_type: Literal['call', 'put']='call', dividend_yield: float=0.0, seed: int | None=None, antithetic: bool=True, control_variate: bool=False",
+      "call_site_count": 0
+    },
+    {
+      "name": "mc_asian_price",
+      "definition_file": "oprim/derivatives/monte_carlo.py",
+      "public_export_path": "from oprim import mc_asian_price",
+      "manifest_entry": true,
+      "signature": "spot: float, strike: float, time_to_expiry: float, risk_free_rate: float, volatility: float, *, n_simulations: int=10000, n_averaging_dates: int=252, option_type: Literal['call', 'put']='call', averaging: Literal['arithmetic', 'geometric']='arithmetic', strike_type: Literal['fixed', 'floating']='fixed', dividend_yield: float=0.0, seed: int | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "barrier_option_price",
+      "definition_file": "oprim/derivatives/exotic.py",
+      "public_export_path": "from oprim import barrier_option_price",
+      "manifest_entry": true,
+      "signature": "spot: float, strike: float, barrier: float, time_to_expiry: float, risk_free_rate: float, volatility: float, *, barrier_type: Literal['up_and_in', 'up_and_out', 'down_and_in', 'down_and_out']='up_and_out', option_type: Literal['call', 'put']='call', rebate: float=0.0, dividend_yield: float=0.0, method: Literal['closed_form', 'monte_carlo']='closed_form', n_simulations: int | None=None",
+      "call_site_count": 2
+    },
+    {
+      "name": "lookback_option_price",
+      "definition_file": "oprim/derivatives/exotic.py",
+      "public_export_path": "from oprim import lookback_option_price",
+      "manifest_entry": true,
+      "signature": "spot: float, strike: float, time_to_expiry: float, risk_free_rate: float, volatility: float, *, option_type: Literal['call', 'put']='call', strike_type: Literal['fixed', 'floating']='floating', dividend_yield: float=0.0, method: Literal['closed_form', 'monte_carlo']='closed_form', n_simulations: int | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "lsm_american_price",
+      "definition_file": "oprim/derivatives/american.py",
+      "public_export_path": "from oprim import lsm_american_price",
+      "manifest_entry": true,
+      "signature": "spot: float, strike: float, time_to_expiry: float, risk_free_rate: float, volatility: float, *, n_simulations: int=10000, n_time_steps: int=50, option_type: Literal['call', 'put']='put', basis_functions: Literal['polynomial', 'laguerre', 'hermite']='polynomial', n_basis: int=3, dividend_yield: float=0.0, seed: int | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "svensson_yield_curve",
+      "definition_file": "oprim/derivatives/rates.py",
+      "public_export_path": "from oprim import svensson_yield_curve",
+      "manifest_entry": true,
+      "signature": "maturities: np.ndarray | pd.Series, yields: np.ndarray | pd.Series, *, initial_params: dict | None=None, max_iter: int=1000",
+      "call_site_count": 0
+    },
+    {
+      "name": "cubic_spline_yield_curve",
+      "definition_file": "oprim/derivatives/rates.py",
+      "public_export_path": "from oprim import cubic_spline_yield_curve",
+      "manifest_entry": true,
+      "signature": "maturities: np.ndarray | pd.Series, yields: np.ndarray | pd.Series, *, boundary_type: Literal['natural', 'clamped', 'not_a_knot']='natural', smoothing: float=0.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "mean_deviation",
+      "definition_file": "oprim/risk/dispersion.py",
+      "public_export_path": "from oprim import mean_deviation",
+      "manifest_entry": true,
+      "signature": "series: np.ndarray | pd.Series, *, window: int | None=None, center: str='mean'",
+      "call_site_count": 0
+    },
+    {
+      "name": "adf_test",
+      "definition_file": "oprim/timeseries/stationarity.py",
+      "public_export_path": "from oprim import adf_test",
+      "manifest_entry": true,
+      "signature": "series: np.ndarray | pd.Series, *, max_lag: int | None=None, regression: str='c', autolag: str='AIC'",
+      "call_site_count": 0
+    },
+    {
+      "name": "kpss_test",
+      "definition_file": "oprim/timeseries/stationarity.py",
+      "public_export_path": "from oprim import kpss_test",
+      "manifest_entry": true,
+      "signature": "series: np.ndarray | pd.Series, *, regression: str='c', n_lags: int | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "engle_granger_cointegration",
+      "definition_file": "oprim/timeseries/cointegration.py",
+      "public_export_path": "from oprim import engle_granger_cointegration",
+      "manifest_entry": true,
+      "signature": "y: np.ndarray | pd.Series, x: np.ndarray | pd.Series, *, trend: str='c'",
+      "call_site_count": 0
+    },
+    {
+      "name": "johansen_cointegration",
+      "definition_file": "oprim/timeseries/cointegration.py",
+      "public_export_path": "from oprim import johansen_cointegration",
+      "manifest_entry": true,
+      "signature": "data: np.ndarray | pd.DataFrame, *, det_order: int=0, k_ar_diff: int=1",
+      "call_site_count": 0
+    },
+    {
+      "name": "ljung_box_test",
+      "definition_file": "oprim/timeseries/autocorrelation.py",
+      "public_export_path": "from oprim import ljung_box_test",
+      "manifest_entry": true,
+      "signature": "residuals: np.ndarray | pd.Series, *, lags: int | list[int]=10, boxpierce: bool=False",
+      "call_site_count": 0
+    },
+    {
+      "name": "durbin_watson",
+      "definition_file": "oprim/timeseries/autocorrelation.py",
+      "public_export_path": "from oprim import durbin_watson",
+      "manifest_entry": true,
+      "signature": "residuals: np.ndarray | pd.Series",
+      "call_site_count": 0
+    },
+    {
+      "name": "granger_causality_test",
+      "definition_file": "oprim/timeseries/causality.py",
+      "public_export_path": "from oprim import granger_causality_test",
+      "manifest_entry": true,
+      "signature": "y: np.ndarray | pd.Series, x: np.ndarray | pd.Series, *, max_lag: int=4, test: str='F'",
+      "call_site_count": 0
+    },
+    {
+      "name": "jarque_bera_test",
+      "definition_file": "oprim/timeseries/distribution_tests.py",
+      "public_export_path": "from oprim import jarque_bera_test",
+      "manifest_entry": true,
+      "signature": "data: np.ndarray | pd.Series",
+      "call_site_count": 0
+    },
+    {
+      "name": "breusch_pagan_test",
+      "definition_file": "oprim/timeseries/heteroskedasticity.py",
+      "public_export_path": "from oprim import breusch_pagan_test",
+      "manifest_entry": true,
+      "signature": "residuals: np.ndarray | pd.Series, exog: np.ndarray | pd.DataFrame",
+      "call_site_count": 0
+    },
+    {
+      "name": "egarch_fit",
+      "definition_file": "oprim/volatility/egarch.py",
+      "public_export_path": "from oprim import egarch_fit",
+      "manifest_entry": true,
+      "signature": "returns, *, p: int=1, q: int=1, o: int=1, distribution: str='normal', max_iter: int=1000",
+      "call_site_count": 0
+    },
+    {
+      "name": "egarch_forecast",
+      "definition_file": "oprim/volatility/egarch.py",
+      "public_export_path": "from oprim import egarch_forecast",
+      "manifest_entry": true,
+      "signature": "params: dict, last_z: float, last_log_variance: float, *, horizon: int=1",
+      "call_site_count": 0
+    },
+    {
+      "name": "gjr_garch_fit",
+      "definition_file": "oprim/volatility/gjr_garch.py",
+      "public_export_path": "from oprim import gjr_garch_fit",
+      "manifest_entry": true,
+      "signature": "returns, *, p: int=1, q: int=1, o: int=1, distribution: str='normal', max_iter: int=1000",
+      "call_site_count": 0
+    },
+    {
+      "name": "gjr_garch_forecast",
+      "definition_file": "oprim/volatility/gjr_garch.py",
+      "public_export_path": "from oprim import gjr_garch_forecast",
+      "manifest_entry": true,
+      "signature": "params: dict, last_eps2: float, last_sigma2: float, *, horizon: int=1, expected_neg_frac: float=0.5",
+      "call_site_count": 0
+    },
+    {
+      "name": "realized_variance",
+      "definition_file": "oprim/volatility/realized.py",
+      "public_export_path": "from oprim import realized_variance",
+      "manifest_entry": true,
+      "signature": "high_freq_returns, *, sampling_frequency: str='5min', annualize: bool=False, periods_per_year: int=252",
+      "call_site_count": 0
+    },
+    {
+      "name": "parkinson_volatility",
+      "definition_file": "oprim/volatility/range_based.py",
+      "public_export_path": "from oprim import parkinson_volatility",
+      "manifest_entry": true,
+      "signature": "highs, lows, *, annualize: bool=False, periods_per_year: int=252",
+      "call_site_count": 0
+    },
+    {
+      "name": "garman_klass_volatility",
+      "definition_file": "oprim/volatility/range_based.py",
+      "public_export_path": "from oprim import garman_klass_volatility",
+      "manifest_entry": true,
+      "signature": "opens, highs, lows, closes, *, annualize: bool=False, periods_per_year: int=252",
+      "call_site_count": 0
+    },
+    {
+      "name": "yang_zhang_volatility",
+      "definition_file": "oprim/volatility/range_based.py",
+      "public_export_path": "from oprim import yang_zhang_volatility",
+      "manifest_entry": true,
+      "signature": "opens, highs, lows, closes, *, window: int=20, annualize: bool=False, periods_per_year: int=252",
+      "call_site_count": 0
+    },
+    {
+      "name": "kama",
+      "definition_file": "oprim/technical/adaptive.py",
+      "public_export_path": "from oprim import kama",
+      "manifest_entry": true,
+      "signature": "prices: np.ndarray | pd.Series, *, er_period: int=10, fast_period: int=2, slow_period: int=30",
+      "call_site_count": 0
+    },
+    {
+      "name": "stochastic_oscillator",
+      "definition_file": "oprim/technical/oscillators.py",
+      "public_export_path": "from oprim import stochastic_oscillator",
+      "manifest_entry": true,
+      "signature": "highs: np.ndarray | pd.Series, lows: np.ndarray | pd.Series, closes: np.ndarray | pd.Series, *, k_period: int=14, d_period: int=3, smooth_k: int=3, normalize: bool=True",
+      "call_site_count": 2
+    },
+    {
+      "name": "cci",
+      "definition_file": "oprim/technical/oscillators.py",
+      "public_export_path": "from oprim import cci",
+      "manifest_entry": true,
+      "signature": "highs: np.ndarray | pd.Series, lows: np.ndarray | pd.Series, closes: np.ndarray | pd.Series, *, period: int=20, constant: float=0.015",
+      "call_site_count": 0
+    },
+    {
+      "name": "williams_r",
+      "definition_file": "oprim/technical/oscillators.py",
+      "public_export_path": "from oprim import williams_r",
+      "manifest_entry": true,
+      "signature": "highs: np.ndarray | pd.Series, lows: np.ndarray | pd.Series, closes: np.ndarray | pd.Series, *, period: int=14, normalize: bool=True",
+      "call_site_count": 0
+    },
+    {
+      "name": "keltner_channels",
+      "definition_file": "oprim/technical/bands.py",
+      "public_export_path": "from oprim import keltner_channels",
+      "manifest_entry": true,
+      "signature": "highs: np.ndarray | pd.Series, lows: np.ndarray | pd.Series, closes: np.ndarray | pd.Series, *, ema_period: int=20, atr_period: int=10, multiplier: float=2.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "obv",
+      "definition_file": "oprim/technical/volume.py",
+      "public_export_path": "from oprim import obv",
+      "manifest_entry": true,
+      "signature": "closes: np.ndarray | pd.Series, volumes: np.ndarray | pd.Series",
+      "call_site_count": 0
+    },
+    {
+      "name": "mfi",
+      "definition_file": "oprim/technical/volume.py",
+      "public_export_path": "from oprim import mfi",
+      "manifest_entry": true,
+      "signature": "highs: np.ndarray | pd.Series, lows: np.ndarray | pd.Series, closes: np.ndarray | pd.Series, volumes: np.ndarray | pd.Series, *, period: int=14, normalize: bool=True",
+      "call_site_count": 0
+    },
+    {
+      "name": "path_signature_compute",
+      "definition_file": "oprim/signature/compute.py",
+      "public_export_path": "from oprim import path_signature_compute",
+      "manifest_entry": true,
+      "signature": "path: np.ndarray, *, truncation_depth: int=4, augment_with_time: bool=True, augment_with_lead_lag: bool=False, return_log_signature: bool=False",
+      "call_site_count": 5
+    },
+    {
+      "name": "fisher_rao_distance",
+      "definition_file": "oprim/info_geometry/fisher_rao.py",
+      "public_export_path": "from oprim import fisher_rao_distance",
+      "manifest_entry": true,
+      "signature": "distribution_a: dict[str, Any], distribution_b: dict[str, Any], *, distribution_family: str='univariate_gaussian', family_params: dict[str, Any] | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "rough_volatility_simulate",
+      "definition_file": "oprim/volatility/rough.py",
+      "public_export_path": "from oprim import rough_volatility_simulate",
+      "manifest_entry": true,
+      "signature": "initial_price: float, *, model: str='rough_bergomi', hurst: float=0.1, eta: float=1.5, rho: float=-0.7, xi0: float=0.04, time_to_expiry: float=1.0, n_time_steps: int=252, n_paths: int=1000, seed: int | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "sabr_implied_volatility",
+      "definition_file": "oprim/derivatives/sabr.py",
+      "public_export_path": "from oprim import sabr_implied_volatility",
+      "manifest_entry": true,
+      "signature": "forward: float, strike: float, time_to_expiry: float, *, alpha: float, beta: float=0.5, rho: float=0.0, nu: float=0.0, formula: str='hagan_2014'",
+      "call_site_count": 0
+    },
+    {
+      "name": "cpt_value_function",
+      "definition_file": "oprim/behavioral/cpt.py",
+      "public_export_path": "from oprim import cpt_value_function",
+      "manifest_entry": true,
+      "signature": "x: np.ndarray | float, *, reference_point: float=0.0, alpha: float=0.88, beta: float=0.88, loss_aversion: float=2.25",
+      "call_site_count": 2
+    },
+    {
+      "name": "probability_weighting_function",
+      "definition_file": "oprim/behavioral/weighting.py",
+      "public_export_path": "from oprim import probability_weighting_function",
+      "manifest_entry": true,
+      "signature": "p: np.ndarray | float, *, form: Literal['tk', 'prelec']='tk', gamma_gain: float=0.61, gamma_loss: float=0.69, delta: float=1.0, side: Literal['gain', 'loss']='gain'",
+      "call_site_count": 2
+    },
+    {
+      "name": "salience_function",
+      "definition_file": "oprim/behavioral/salience.py",
+      "public_export_path": "from oprim import salience_function",
+      "manifest_entry": true,
+      "signature": "payoff: np.ndarray, reference: np.ndarray | float, *, theta: float=0.1",
+      "call_site_count": 1
+    },
+    {
+      "name": "large_loss_aversion_degree",
+      "definition_file": "oprim/behavioral/llad.py",
+      "public_export_path": "from oprim import large_loss_aversion_degree",
+      "manifest_entry": true,
+      "signature": "*, alpha: float, beta: float, loss_aversion: float, return_distribution_params: dict[str, float] | None=None",
+      "call_site_count": 3
+    },
+    {
+      "name": "salience_ranking_weights",
+      "definition_file": "oprim/behavioral/salience.py",
+      "public_export_path": "from oprim import salience_ranking_weights",
+      "manifest_entry": true,
+      "signature": "salience_scores: np.ndarray, *, delta: float=0.7, rank_dim: int=-1",
+      "call_site_count": 1
+    },
+    {
+      "name": "marchenko_pastur_threshold",
+      "definition_file": "oprim/spectral/marchenko_pastur.py",
+      "public_export_path": "from oprim import marchenko_pastur_threshold",
+      "manifest_entry": true,
+      "signature": "n_samples: int, n_features: int, *, sigma_sq: float=1.0",
+      "call_site_count": 1
+    },
+    {
+      "name": "rotationally_invariant_estimator",
+      "definition_file": "oprim/spectral/rie.py",
+      "public_export_path": "from oprim import rotationally_invariant_estimator",
+      "manifest_entry": true,
+      "signature": "sample_cov: np.ndarray, *, n_samples: int, method: Literal['bouchaud', 'ledoit_peche']='bouchaud', eps: float=1e-06",
+      "call_site_count": 2
+    },
+    {
+      "name": "ledoit_wolf_shrinkage",
+      "definition_file": "oprim/spectral/ledoit_wolf.py",
+      "public_export_path": "from oprim import ledoit_wolf_shrinkage",
+      "manifest_entry": true,
+      "signature": "returns: np.ndarray, *, target: Literal['identity', 'diagonal', 'constant_corr']='constant_corr'",
+      "call_site_count": 0
+    },
+    {
+      "name": "spectral_eigengap_detect",
+      "definition_file": "oprim/spectral/eigengap.py",
+      "public_export_path": "from oprim import spectral_eigengap_detect",
+      "manifest_entry": true,
+      "signature": "eigenvalues: np.ndarray, *, method: Literal['largest_gap', 'relative', 'elbow']='largest_gap', max_k: int | None=None",
+      "call_site_count": 2
+    },
+    {
+      "name": "epstein_zin_aggregator",
+      "definition_file": "oprim/recursive_utility/epstein_zin.py",
+      "public_export_path": "from oprim import epstein_zin_aggregator",
+      "manifest_entry": true,
+      "signature": "consumption: np.ndarray, continuation_value: np.ndarray, *, discount: float, risk_aversion: float, ies: float",
+      "call_site_count": 3
+    },
+    {
+      "name": "score_ma200_position",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_ma200_position",
+      "manifest_entry": true,
+      "signature": "*, price: float, ma200: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_ma50_slope",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_ma50_slope",
+      "manifest_entry": true,
+      "signature": "*, ma50_now: float, ma50_10d_ago: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_ma_arrangement",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_ma_arrangement",
+      "manifest_entry": true,
+      "signature": "*, price: float, ma50: float, ma200: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_stablecoin_inflow",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_stablecoin_inflow",
+      "manifest_entry": true,
+      "signature": "*, change_7d: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_etf_inflow",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_etf_inflow",
+      "manifest_entry": true,
+      "signature": "*, net_flow_7d_usd: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_cex_balance_change",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_cex_balance_change",
+      "manifest_entry": true,
+      "signature": "*, change_7d: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_funding_rate",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_funding_rate",
+      "manifest_entry": true,
+      "signature": "*, rate_8h: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_basis",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_basis",
+      "manifest_entry": true,
+      "signature": "*, basis: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_mvrv_zscore",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_mvrv_zscore",
+      "manifest_entry": true,
+      "signature": "*, z: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_active_addresses_change",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_active_addresses_change",
+      "manifest_entry": true,
+      "signature": "*, change_7d: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_lth_change",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_lth_change",
+      "manifest_entry": true,
+      "signature": "*, lth_pct_change: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_options_skew",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_options_skew",
+      "manifest_entry": true,
+      "signature": "*, skew_pp: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_max_pain_distance",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_max_pain_distance",
+      "manifest_entry": true,
+      "signature": "*, distance: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_oi_change",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_oi_change",
+      "manifest_entry": true,
+      "signature": "*, oi_change_7d: float, price_change_7d: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_resistance_distance",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_resistance_distance",
+      "manifest_entry": true,
+      "signature": "*, dist_pct: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_support_distance",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_support_distance",
+      "manifest_entry": true,
+      "signature": "*, dist_pct: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "score_vpvr_position",
+      "definition_file": "oprim/_crypto_scoring.py",
+      "public_export_path": "from oprim import score_vpvr_position",
+      "manifest_entry": true,
+      "signature": "*, density_ratio: float",
+      "call_site_count": 0
+    },
+    {
+      "name": "regime_score",
+      "definition_file": "oprim/_crypto_lookup.py",
+      "public_export_path": "from oprim import regime_score",
+      "manifest_entry": true,
+      "signature": "*, regime: str, confidence: float=0.5",
+      "call_site_count": 0
+    },
+    {
+      "name": "seasonality_score",
+      "definition_file": "oprim/_crypto_lookup.py",
+      "public_export_path": "from oprim import seasonality_score",
+      "manifest_entry": true,
+      "signature": "*, month: int, symbol: str='BTC-USDT', months_since_halving: float | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "sector_rotation_score",
+      "definition_file": "oprim/_crypto_lookup.py",
+      "public_export_path": "from oprim import sector_rotation_score",
+      "manifest_entry": true,
+      "signature": "*, btc_dominance: float | None=None, btc_dom_change: float | None=None, eth_btc_change: float | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "compute_vpvr",
+      "definition_file": "oprim/_crypto_technical.py",
+      "public_export_path": "from oprim import compute_vpvr",
+      "manifest_entry": true,
+      "signature": "*, klines: list[dict], spot: float, n_buckets: int=50",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_pivots",
+      "definition_file": "oprim/_crypto_technical.py",
+      "public_export_path": "from oprim import detect_pivots",
+      "manifest_entry": true,
+      "signature": "*, highs: list[float], lows: list[float], lookback: int=50",
+      "call_site_count": 0
+    },
+    {
+      "name": "compute_cross_asset_divergence_revert",
+      "definition_file": "oprim/_crypto_technical.py",
+      "public_export_path": "from oprim import compute_cross_asset_divergence_revert",
+      "manifest_entry": true,
+      "signature": "*, btc_close_30d_ago: float, btc_close_now: float, eth_close_30d_ago: float, eth_close_now: float, sol_close_30d_ago: float, sol_close_now: float, target: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "compute_stablecoin_event_revert",
+      "definition_file": "oprim/_crypto_technical.py",
+      "public_export_path": "from oprim import compute_stablecoin_event_revert",
+      "manifest_entry": true,
+      "signature": "*, net_mint_burn_24h: float | None",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_yahoo_history",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_yahoo_history",
+      "manifest_entry": true,
+      "signature": "*, client: HttpClient, symbol: str, days: int=365, base_url: str=''",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_yahoo_quote",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_yahoo_quote",
+      "manifest_entry": true,
+      "signature": "*, client: HttpClient, symbol: str, base_url: str=''",
+      "call_site_count": 2
+    },
+    {
+      "name": "fetch_crypto",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_crypto",
+      "manifest_entry": true,
+      "signature": "*, client: HttpClient, symbols: list[str] | None=None, base_url: str='https://api.coingecko.com'",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_stablecoin_mcap",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_stablecoin_mcap",
+      "manifest_entry": true,
+      "signature": "*, client: HttpClient, base_url: str='https://api.coingecko.com'",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_rss",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_rss",
+      "manifest_entry": true,
+      "signature": "*, client: HttpClient, url: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_current_price",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_current_price",
+      "manifest_entry": true,
+      "signature": "*, client: HttpClient, asset: str, base_url: str=''",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_coingecko_history",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_coingecko_history",
+      "manifest_entry": true,
+      "signature": "*, client: HttpClient, days: int=90, base_url: str=''",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_equity_series",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_equity_series",
+      "manifest_entry": true,
+      "signature": "*, db: Any, account_id: str, since: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_decision_count",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_decision_count",
+      "manifest_entry": true,
+      "signature": "*, db: Any, account_id: str, since: str, as_of: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_strategy_trades",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_strategy_trades",
+      "manifest_entry": true,
+      "signature": "*, db: Any, strategy: str, since: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_prefs",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_prefs",
+      "manifest_entry": true,
+      "signature": "*, db: Any",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_btc_spy_corr",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_btc_spy_corr",
+      "manifest_entry": true,
+      "signature": "*, db: Any",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_regime_crisis_flips",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_regime_crisis_flips",
+      "manifest_entry": true,
+      "signature": "*, db: Any",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_regime",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import fetch_regime",
+      "manifest_entry": true,
+      "signature": "*, cache: Any",
+      "call_site_count": 0
+    },
+    {
+      "name": "get_active_event",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import get_active_event",
+      "manifest_entry": true,
+      "signature": "*, db: Any, preset: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "get_regime_by_date",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import get_regime_by_date",
+      "manifest_entry": true,
+      "signature": "*, db: Any, lookback_days: int=30",
+      "call_site_count": 0
+    },
+    {
+      "name": "get_previous_30d",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import get_previous_30d",
+      "manifest_entry": true,
+      "signature": "*, db: Any, asset_a: str, asset_b: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "get_stablecoin_change_7d",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import get_stablecoin_change_7d",
+      "manifest_entry": true,
+      "signature": "*, cache: Any, client: HttpClient | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "get_etf_weight_modifier",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import get_etf_weight_modifier",
+      "manifest_entry": true,
+      "signature": "*, cache: Any, symbol: str='BTC-USDT'",
+      "call_site_count": 0
+    },
+    {
+      "name": "get_symbol_funding_rate",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import get_symbol_funding_rate",
+      "manifest_entry": true,
+      "signature": "*, cache: Any, symbol: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "get_symbol_oi_change_7d",
+      "definition_file": "oprim/_io_fetch.py",
+      "public_export_path": "from oprim import get_symbol_oi_change_7d",
+      "manifest_entry": true,
+      "signature": "*, cache: Any, symbol: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "write_rows",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import write_rows",
+      "manifest_entry": true,
+      "signature": "*, db: Any, rows: list[tuple], table: str='cross_market_correlation'",
+      "call_site_count": 0
+    },
+    {
+      "name": "store_news",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import store_news",
+      "manifest_entry": true,
+      "signature": "*, db: Any, items: list[dict]",
+      "call_site_count": 0
+    },
+    {
+      "name": "upsert_events",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import upsert_events",
+      "manifest_entry": true,
+      "signature": "*, db: Any, rows: list[dict]",
+      "call_site_count": 0
+    },
+    {
+      "name": "upsert_canonical_metric",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import upsert_canonical_metric",
+      "manifest_entry": true,
+      "signature": "*, db: Any, **kwargs: Any",
+      "call_site_count": 0
+    },
+    {
+      "name": "upsert_equity_series",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import upsert_equity_series",
+      "manifest_entry": true,
+      "signature": "*, db: Any, agent: str, strategy: str, market: str, as_of_date: str, equity: float, daily_return: float | None=None",
+      "call_site_count": 0
+    },
+    {
+      "name": "write_event",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import write_event",
+      "manifest_entry": true,
+      "signature": "*, db: Any, preset: str, trigger_data: dict, summary: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "clear_event",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import clear_event",
+      "manifest_entry": true,
+      "signature": "*, db: Any, event_id: str, reason: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "is_deduped",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import is_deduped",
+      "manifest_entry": true,
+      "signature": "*, db: Any, preset: str, hours: int=24",
+      "call_site_count": 0
+    },
+    {
+      "name": "refresh_view",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import refresh_view",
+      "manifest_entry": true,
+      "signature": "*, db: Any, view: str, concurrently: bool=True",
+      "call_site_count": 0
+    },
+    {
+      "name": "send_alert",
+      "definition_file": "oprim/_io_write.py",
+      "public_export_path": "from oprim import send_alert",
+      "manifest_entry": true,
+      "signature": "*, cache: Any, level: str, title: str, message: str",
+      "call_site_count": 0
+    },
+    {
+      "name": "kdj",
+      "definition_file": "oprim/_kdj.py",
+      "public_export_path": "from oprim import kdj",
+      "manifest_entry": true,
+      "signature": "*, high: list[float], low: list[float], close: list[float], n: int=9, k_smooth: int=3, d_smooth: int=3",
+      "call_site_count": 1
+    },
+    {
+      "name": "limit_status_calc",
+      "definition_file": "oprim/_limit_status_calc.py",
+      "public_export_path": "from oprim import limit_status_calc",
+      "manifest_entry": true,
+      "signature": "*, close: list[float], limit_pct: float=0.1, lookback: int=5",
+      "call_site_count": 3
+    },
+    {
+      "name": "beneish_m_score",
+      "definition_file": "oprim/_beneish_m_score.py",
+      "public_export_path": "from oprim import beneish_m_score",
+      "manifest_entry": true,
+      "signature": "*, current: BeneishInput, prior: BeneishInput",
+      "call_site_count": 1
+    },
+    {
+      "name": "dupont_decomposition",
+      "definition_file": "oprim/_dupont_decomposition.py",
+      "public_export_path": "from oprim import dupont_decomposition",
+      "manifest_entry": true,
+      "signature": "*, net_income: float, revenue: float, total_assets: float, total_equity: float",
+      "call_site_count": 1
+    },
+    {
+      "name": "dcf_valuation",
+      "definition_file": "oprim/_dcf_valuation.py",
+      "public_export_path": "from oprim import dcf_valuation",
+      "manifest_entry": true,
+      "signature": "*, free_cash_flows: list[float], discount_rate: float=0.1, terminal_growth_rate: float=0.025, shares_outstanding: float, forecast_years: int=5",
+      "call_site_count": 1
+    },
+    {
+      "name": "financial_metric_extraction",
+      "definition_file": "oprim/_financial_metric_extraction.py",
+      "public_export_path": "from oprim import financial_metric_extraction",
+      "manifest_entry": true,
+      "signature": "*, news: list[NewsItem]",
+      "call_site_count": 2
+    },
+    {
+      "name": "policy_event_extraction",
+      "definition_file": "oprim/_policy_event_extraction.py",
+      "public_export_path": "from oprim import policy_event_extraction",
+      "manifest_entry": true,
+      "signature": "*, policies: list[PolicyNews]",
+      "call_site_count": 3
+    },
+    {
+      "name": "industry_attribution",
+      "definition_file": "oprim/_industry_attribution.py",
+      "public_export_path": "from oprim import industry_attribution",
+      "manifest_entry": true,
+      "signature": "*, events: list[PolicyEvent], industry: dict[str, str]",
+      "call_site_count": 2
+    },
+    {
+      "name": "pattern_detection",
+      "definition_file": "oprim/_pattern_detection.py",
+      "public_export_path": "from oprim import pattern_detection",
+      "manifest_entry": true,
+      "signature": "*, ohlcv: OHLCVInput",
+      "call_site_count": 1
+    },
+    {
+      "name": "volume_ratio",
+      "definition_file": "oprim/_volume_ratio.py",
+      "public_export_path": "from oprim import volume_ratio",
+      "manifest_entry": true,
+      "signature": "*, volumes: list[float], window: int=5",
+      "call_site_count": 3
+    },
+    {
+      "name": "apply_screen_filter",
+      "definition_file": "oprim/_apply_screen_filter.py",
+      "public_export_path": "from oprim import apply_screen_filter",
+      "manifest_entry": true,
+      "signature": "*, candidates: pd.DataFrame, rules: list[ScreenRule]",
+      "call_site_count": 2
+    },
+    {
+      "name": "url_safety_check",
+      "definition_file": "oprim/_url_safety_check.py",
+      "public_export_path": "from oprim import url_safety_check",
+      "manifest_entry": true,
+      "signature": "*, url: str, allowed_schemes: list[str] | None=None, block_loopback: bool=True, block_private: bool=True, block_link_local: bool=True, block_reserved: bool=True, block_multicast: bool=True",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_sector_collapse",
+      "definition_file": "oprim/_detect_sector_collapse.py",
+      "public_export_path": "from oprim import detect_sector_collapse",
+      "manifest_entry": true,
+      "signature": "*, price_1h_ago: float, price_now: float, constituent_changes: list[float], config: SectorCollapseConfig=SectorCollapseConfig()",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_dragon_switch",
+      "definition_file": "oprim/_detect_dragon_switch.py",
+      "public_export_path": "from oprim import detect_dragon_switch",
+      "manifest_entry": true,
+      "signature": "*, top1_change_pct: float, new_top3_vol_ratios: list[float], config: DragonSwitchConfig=DragonSwitchConfig()",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_hot_money_converge",
+      "definition_file": "oprim/_detect_hot_money_converge.py",
+      "public_export_path": "from oprim import detect_hot_money_converge",
+      "manifest_entry": true,
+      "signature": "*, seat_names: list[str], net_buy_total: float, known_tycoon_seats: list[str], config: HotMoneyConvergeConfig=HotMoneyConvergeConfig()",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_limit_board_explosion",
+      "definition_file": "oprim/_detect_limit_board_explosion.py",
+      "public_export_path": "from oprim import detect_limit_board_explosion",
+      "manifest_entry": true,
+      "signature": "*, close: list[float], volumes: list[float], config: LimitBoardExplosionConfig=LimitBoardExplosionConfig()",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_volume_spike",
+      "definition_file": "oprim/_detect_volume_spike.py",
+      "public_export_path": "from oprim import detect_volume_spike",
+      "manifest_entry": true,
+      "signature": "*, close: list[float], volumes: list[float], five_min_return: float, config: VolumeSpikeConfig=VolumeSpikeConfig()",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_northbound_reversal",
+      "definition_file": "oprim/_detect_northbound_reversal.py",
+      "public_export_path": "from oprim import detect_northbound_reversal",
+      "manifest_entry": true,
+      "signature": "*, flow_series: list[float], config: NorthboundReversalConfig=NorthboundReversalConfig()",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_news_shock",
+      "definition_file": "oprim/_detect_news_shock.py",
+      "public_export_path": "from oprim import detect_news_shock",
+      "manifest_entry": true,
+      "signature": "*, news: list[NewsItem], five_min_prices: list[float], config: NewsShockConfig=NewsShockConfig()",
+      "call_site_count": 0
+    },
+    {
+      "name": "compute_seat_t3_return",
+      "definition_file": "oprim/_compute_seat_t3_return.py",
+      "public_export_path": "from oprim import compute_seat_t3_return",
+      "manifest_entry": true,
+      "signature": "*, seat_name: str, buy_price: float, t3_price: float",
+      "call_site_count": 3
+    },
+    {
+      "name": "fetch_themes_daily",
+      "definition_file": "oprim/_fetch_themes_daily.py",
+      "public_export_path": "from oprim import fetch_themes_daily",
+      "manifest_entry": true,
+      "signature": "*, as_of_date: date | None=None, source: Literal['akshare']='akshare'",
+      "call_site_count": 1
+    },
+    {
+      "name": "theme_to_sw_industry_mapping",
+      "definition_file": "oprim/_theme_to_sw_industry_mapping.py",
+      "public_export_path": "from oprim import theme_to_sw_industry_mapping",
+      "manifest_entry": true,
+      "signature": "*, theme_names: list[str], mapping_table: dict[str, str]",
+      "call_site_count": 1
+    },
+    {
+      "name": "fetch_sector_returns",
+      "definition_file": "oprim/_fetch_sector_returns.py",
+      "public_export_path": "from oprim import fetch_sector_returns",
+      "manifest_entry": true,
+      "signature": "*, as_of_date: date | None=None, top_n: int | None=None, source: Literal['akshare']='akshare'",
+      "call_site_count": 3
+    },
+    {
+      "name": "pe_ttm_lookback_safe",
+      "definition_file": "oprim/_pe_ttm_lookback_safe.py",
+      "public_export_path": "from oprim import pe_ttm_lookback_safe",
+      "manifest_entry": true,
+      "signature": "*, price: float, eps_quarterly: list[tuple[date, float]], as_of_date: date, lag_days: int=45",
+      "call_site_count": 1
+    },
+    {
+      "name": "stop_loss_compliance_check",
+      "definition_file": "oprim/_stop_loss_compliance_check.py",
+      "public_export_path": "from oprim import stop_loss_compliance_check",
+      "manifest_entry": true,
+      "signature": "*, entry_price: float, current_price: float, stop_loss_pct: float",
+      "call_site_count": 3
+    },
+    {
+      "name": "stamp_tax_rate_by_date",
+      "definition_file": "oprim/_stamp_tax_rate_by_date.py",
+      "public_export_path": "from oprim import stamp_tax_rate_by_date",
+      "manifest_entry": true,
+      "signature": "*, trade_date: date, side: Literal['buy', 'sell']",
+      "call_site_count": 0
+    },
+    {
+      "name": "broker_export_render",
+      "definition_file": "oprim/_broker_export_render.py",
+      "public_export_path": "from oprim import broker_export_render",
+      "manifest_entry": true,
+      "signature": "*, broker_name: str, template_config: dict[str, Any], order_data: list[dict[str, Any]]",
+      "call_site_count": 0
+    },
+    {
+      "name": "compliance_disclaimer_inject",
+      "definition_file": "oprim/_compliance_disclaimer_inject.py",
+      "public_export_path": "from oprim import compliance_disclaimer_inject",
+      "manifest_entry": true,
+      "signature": "*, text: str, position: Literal['prefix', 'suffix', 'both']='suffix', disclaimer: str=DISCLAIMER",
+      "call_site_count": 0
+    },
+    {
+      "name": "monthly_review_jinja2_render",
+      "definition_file": "oprim/_monthly_review_jinja2_render.py",
+      "public_export_path": "from oprim import monthly_review_jinja2_render",
+      "manifest_entry": true,
+      "signature": "*, template_name: str, context: dict[str, Any], template_dir: Path | str",
+      "call_site_count": 2
+    },
+    {
+      "name": "train_val_oos_splitter",
+      "definition_file": "oprim/_train_val_oos_splitter.py",
+      "public_export_path": "from oprim import train_val_oos_splitter",
+      "manifest_entry": true,
+      "signature": "*, data: list[Any], train_ratio: float=0.6, val_ratio: float=0.2",
+      "call_site_count": 1
+    },
+    {
+      "name": "detect_volume_dryup_breakout",
+      "definition_file": "oprim/_detect_volume_dryup_breakout.py",
+      "public_export_path": "from oprim import detect_volume_dryup_breakout",
+      "manifest_entry": true,
+      "signature": "*, close: list[float], volume: list[float], lookback: int=20, dryup_pct: float=0.7, breakout_vol_mult: float=1.5, min_dryup_days: int=3",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_macro_m2",
+      "definition_file": "oprim/_fetch_macro_m2.py",
+      "public_export_path": "from oprim import fetch_macro_m2",
+      "manifest_entry": true,
+      "signature": "*, start_date: date | None=None, end_date: date | None=None, source: Literal['wind', 'akshare', 'tushare']='akshare'",
+      "call_site_count": 1
+    },
+    {
+      "name": "fetch_macro_pboc",
+      "definition_file": "oprim/_fetch_macro_pboc.py",
+      "public_export_path": "from oprim import fetch_macro_pboc",
+      "manifest_entry": true,
+      "signature": "*, start_date: date | None=None, end_date: date | None=None, source: Literal['wind', 'akshare', 'tushare']='akshare'",
+      "call_site_count": 1
+    },
+    {
+      "name": "fetch_macro_cpi_ppi_pmi",
+      "definition_file": "oprim/_fetch_macro_cpi_ppi_pmi.py",
+      "public_export_path": "from oprim import fetch_macro_cpi_ppi_pmi",
+      "manifest_entry": true,
+      "signature": "*, start_date: date | None=None, end_date: date | None=None, source: Literal['wind', 'akshare', 'tushare']='akshare'",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_macro_lpr",
+      "definition_file": "oprim/_fetch_macro_lpr.py",
+      "public_export_path": "from oprim import fetch_macro_lpr",
+      "manifest_entry": true,
+      "signature": "*, start_date: date | None=None, end_date: date | None=None, source: Literal['wind', 'akshare', 'tushare']='akshare'",
+      "call_site_count": 1
+    },
+    {
+      "name": "fetch_macro_rrr",
+      "definition_file": "oprim/_fetch_macro_rrr.py",
+      "public_export_path": "from oprim import fetch_macro_rrr",
+      "manifest_entry": true,
+      "signature": "*, start_date: date | None=None, end_date: date | None=None, source: Literal['wind', 'akshare', 'tushare']='akshare'",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_macro_yield_spread",
+      "definition_file": "oprim/_fetch_macro_yield_spread.py",
+      "public_export_path": "from oprim import fetch_macro_yield_spread",
+      "manifest_entry": true,
+      "signature": "*, start_date: date | None=None, end_date: date | None=None, source: Literal['wind', 'akshare', 'tushare']='akshare'",
+      "call_site_count": 0
+    },
+    {
+      "name": "fetch_macro_calendar",
+      "definition_file": "oprim/_fetch_macro_calendar.py",
+      "public_export_path": "from oprim import fetch_macro_calendar",
+      "manifest_entry": true,
+      "signature": "*, start_date: date | None=None, end_date: date | None=None, source: Literal['wind', 'akshare', 'tushare']='akshare'",
+      "call_site_count": 1
+    },
+    {
+      "name": "fetch_macro_policy_news",
+      "definition_file": "oprim/_fetch_macro_policy_news.py",
+      "public_export_path": "from oprim import fetch_macro_policy_news",
+      "manifest_entry": true,
+      "signature": "*, start_date: date | None=None, end_date: date | None=None, source: Literal['wind', 'akshare', 'tushare']='akshare'",
+      "call_site_count": 0
+    },
+    {
+      "name": "detect_daily_limit_up",
+      "definition_file": "oprim/_detect_daily_limit_up.py",
+      "public_export_path": "from oprim import detect_daily_limit_up",
+      "manifest_entry": true,
+      "signature": "*, close_price: float, prev_close: float, limit_pct: float",
+      "call_site_count": 2
+    },
+    {
+      "name": "detect_daily_limit_down",
+      "definition_file": "oprim/_detect_daily_limit_down.py",
+      "public_export_path": "from oprim import detect_daily_limit_down",
+      "manifest_entry": true,
+      "signature": "*, close_price: float, prev_close: float, limit_pct: float",
+      "call_site_count": 2
+    },
+    {
+      "name": "t_plus_n_blocked",
+      "definition_file": "oprim/_t_plus_n_blocked.py",
+      "public_export_path": "from oprim import t_plus_n_blocked",
+      "manifest_entry": true,
+      "signature": "*, entry_date: date, current_date: date, t_plus_n: int",
+      "call_site_count": 2
+    },
+    {
+      "name": "compute_commission",
+      "definition_file": "oprim/_compute_commission.py",
+      "public_export_path": "from oprim import compute_commission",
+      "manifest_entry": true,
+      "signature": "*, trade_amount: float, rate: float, min_fee: float=0.0",
+      "call_site_count": 1
+    },
+    {
+      "name": "compute_stamp_tax",
+      "definition_file": "oprim/_compute_stamp_tax.py",
+      "public_export_path": "from oprim import compute_stamp_tax",
+      "manifest_entry": true,
+      "signature": "*, trade_amount: float, rate: float, direction: Literal['buy', 'sell', 'both']",
+      "call_site_count": 1
+    },
+    {
+      "name": "template_render",
+      "definition_file": "oprim/_template_render.py",
+      "public_export_path": "from oprim import template_render",
+      "manifest_entry": true,
+      "signature": "*, template: str, context: dict[str, Any], strict: bool=True",
+      "call_site_count": 7
+    },
+    {
+      "name": "crypto_token_generate",
+      "definition_file": "oprim/_crypto_token_generate.py",
+      "public_export_path": "from oprim import crypto_token_generate",
+      "manifest_entry": true,
+      "signature": "*, length: int=32, url_safe: bool=True",
+      "call_site_count": 1
+    },
+    {
+      "name": "file_size_limiter",
+      "definition_file": "oprim/_file_size_limiter.py",
+      "public_export_path": "from oprim import file_size_limiter",
+      "manifest_entry": true,
+      "signature": "*, file_size: int, client_type: ClientType",
+      "call_site_count": 0
+    },
+    {
+      "name": "file_type_detector",
+      "definition_file": "oprim/_file_type_detector.py",
+      "public_export_path": "from oprim import file_type_detector",
+      "manifest_entry": true,
+      "signature": "*, file_path: Path",
+      "call_site_count": 2
+    },
+    {
+      "name": "http_post",
+      "definition_file": "oprim/_http_post.py",
+      "public_export_path": "from oprim import http_post",
+      "manifest_entry": true,
+      "signature": "*, url: str, json_data: dict[str, Any] | None=None, headers: dict[str, str] | None=None, timeout: float=30.0",
+      "call_site_count": 0
+    },
+    {
+      "name": "migration_runner",
+      "definition_file": "oprim/_migration_runner.py",
+      "public_export_path": "from oprim import migration_runner",
+      "manifest_entry": true,
+      "signature": "*, action: Literal['upgrade', 'downgrade', 'history', 'current', 'stamp'], dsn: str, migrations_path: Path, target: str='head'",
+      "call_site_count": 0
+    },
+    {
+      "name": "file_parser_pdf",
+      "definition_file": "oprim/__init__.py",
+      "public_export_path": "from oprim import file_parser_pdf",
+      "manifest_entry": true,
+      "signature": "*args, **kwargs",
+      "call_site_count": 2
+    },
+    {
+      "name": "file_parser_epub",
+      "definition_file": "oprim/__init__.py",
+      "public_export_path": "from oprim import file_parser_epub",
+      "manifest_entry": true,
+      "signature": "*args, **kwargs",
+      "call_site_count": 2
+    },
+    {
+      "name": "file_parser_html",
+      "definition_file": "oprim/__init__.py",
+      "public_export_path": "from oprim import file_parser_html",
+      "manifest_entry": true,
+      "signature": "*args, **kwargs",
+      "call_site_count": 2
+    },
+    {
+      "name": "file_parser_markdown",
+      "definition_file": "oprim/_file_parser_markdown.py",
+      "public_export_path": "from oprim import file_parser_markdown",
+      "manifest_entry": true,
+      "signature": "*, file_path: Path",
+      "call_site_count": 2
+    },
+    {
+      "name": "file_parser_plaintext",
+      "definition_file": "oprim/_file_parser_plaintext.py",
+      "public_export_path": "from oprim import file_parser_plaintext",
+      "manifest_entry": true,
+      "signature": "*, file_path: Path",
+      "call_site_count": 2
+    },
+    {
+      "name": "document_structure_extractor",
+      "definition_file": "oprim/_document_structure_extractor.py",
+      "public_export_path": "from oprim import document_structure_extractor",
+      "manifest_entry": true,
+      "signature": "*, parsed_doc: ParsedDocument",
+      "call_site_count": 2
+    },
+    {
+      "name": "llm_summarize",
+      "definition_file": "oprim/__init__.py",
+      "public_export_path": "from oprim import llm_summarize",
+      "manifest_entry": true,
+      "signature": "*args, **kwargs",
+      "call_site_count": 2
+    },
+    {
+      "name": "file_upload_handler",
+      "definition_file": "oprim/_file_upload_handler.py",
+      "public_export_path": "from oprim import file_upload_handler",
+      "manifest_entry": true,
+      "signature": "*, upload_stream: BinaryIO, filename: str, total_size: int, dest_dir: Path, chunk_size: int=5 * 1024 * 1024",
+      "call_site_count": 0
+    },
+    {
+      "name": "temp_file_manager",
+      "definition_file": "oprim/_temp_file_manager.py",
+      "public_export_path": "from oprim import temp_file_manager",
+      "manifest_entry": true,
+      "signature": "*, action: Literal['create', 'get', 'cleanup_expired', 'cleanup_user'], file_path: Path | None=None, user_key_hash: str | None=None, suffix: str='.tmp'",
+      "call_site_count": 0
+    },
+    {
+      "name": "push_email",
+      "definition_file": "oprim/_push_email.py",
+      "public_export_path": "from oprim import push_email",
+      "manifest_entry": true,
+      "signature": "*, to: str, subject: str, body: str, from_addr: str, smtp_host: str, smtp_port: int=587, smtp_user: str | None=None, smtp_password: str | None=None, use_tls: bool=True, html_body: str | None=None",
+      "call_site_count": 7
+    },
+    {
+      "name": "otp_generate",
+      "definition_file": "oprim/_otp_generate.py",
+      "public_export_path": "from oprim import otp_generate",
+      "manifest_entry": true,
+      "signature": "*, secret: str | None=None, digits: int=6, period: int=30",
+      "call_site_count": 2
+    }
+  ]
+}

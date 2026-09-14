@@ -22,6 +22,11 @@ def _count(predicate) -> int:
 
 
 def main() -> int:
+    matrix_path = ROOT / "artifacts/3o-v3/implementation-provenance-matrix.json"
+    api_path = ROOT / "artifacts/3o-v3/oprim-public-api.json"
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8")) if matrix_path.exists() else {}
+    api = json.loads(api_path.read_text(encoding="utf-8")) if api_path.exists() else {}
+    matrix_counts = matrix.get("counts", {})
     local = [s for s in all_sources() if s.local]
     single = single_oprim_measurement()
     graph = _omodul_graph()
@@ -62,7 +67,8 @@ def main() -> int:
             omodul_pillar += int(not declared or not (declared & {"fingerprint", "decision_trail", "report", "cost"}) or bool(declared - {"fingerprint", "decision_trail", "report", "cost"}))
         if s.layer == "oservi":
             oservi_business += int(any(x in text for x in ("creativeproject", "narrativecanon", "productionrun", "user_id", "tenant_id")))
-    duplicate = len(real_local)
+    duplicate = matrix_counts.get("REAL_DUPLICATE_IMPLEMENTATION", 0)
+    public_sig = json.loads((ROOT / "artifacts/3o-v3/oprim-signature-migration.json").read_text(encoding="utf-8")).get("recalculated_count", oprim_sig)
     report = {
         "AUDIT_PROJECT_SCOPE": [
             "projects/platform/obase",
@@ -72,14 +78,21 @@ def main() -> int:
             "projects/platform/oservi",
         ],
         "classification": "MNEME_PLATFORM_3O_V3_M2",
+        "PLATFORM_CANONICAL_SYMBOLS": matrix_counts.get("CANONICAL_SOURCE", 0),
+        "MNEME_REPLICA_SYMBOLS": matrix_counts.get("CONTROLLED_EXACT_REPLICA", 0),
+        "MNEME_THIN_REEXPORT_SYMBOLS": matrix_counts.get("THIN_REEXPORT", 0),
+        "MNEME_LAYER4_SYMBOLS": matrix_counts.get("LAYER4_IMPLEMENTATION", 0),
         "source": "independent AST/import/filesystem audit",
-        "FLAT_NAMESPACE": flat,
+        "FLAT_NAMESPACE": "PASS" if api.get("elements") and all(x.get("public_export_path", "").startswith("from oprim import ") for x in api["elements"]) else "FAIL",
         "PROJECT_PREFIX_VIOLATIONS": prefix,
-        "LOCAL_3O_REAL_IMPLEMENTATIONS": flat,
+        "LOCAL_3O_REAL_IMPLEMENTATIONS": matrix_counts.get("REAL_DUPLICATE_IMPLEMENTATION", 0),
         "DUPLICATE_IMPLEMENTATIONS": duplicate,
+        "REAL_DUPLICATE_IMPLEMENTATIONS": duplicate,
         "OPRIM_SIBLING_CALLS": sibling,
         "OPRIM_REVERSE_DEPENDENCIES": reverse,
-        "OPRIM_SIGNATURE_VIOLATIONS": oprim_sig,
+        "OPRIM_SIGNATURE_VIOLATIONS": public_sig,
+        "OPRIM_PUBLIC_ELEMENTS": len(api.get("elements", [])),
+        "OPRIM_FLAT_PUBLIC_NAMESPACE": "PASS" if api.get("elements") and all(x.get("public_export_path", "").startswith("from oprim import ") for x in api["elements"]) else "FAIL",
         "OSKILL_STATEFUL": oskill_stateful,
         "OSKILL_PERSISTENCE": oskill_persistence,
         "OSKILL_BUSINESS_ID_AWARE": oskill_business,
