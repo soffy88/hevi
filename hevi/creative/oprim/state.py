@@ -93,7 +93,7 @@ def apply_state_delta[T: CreativeObject](
         raise ValueError("state delta project does not match canonical object")
     compare_versions(current, delta.base_revision)
 
-    updates: dict[str, JsonValue] = {}
+    updates: dict[str, Any] = {}
     fields = type(current).model_fields
     for operation in delta.operations:
         if operation.path in _PROTECTED_PATHS:

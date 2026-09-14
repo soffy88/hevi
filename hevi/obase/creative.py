@@ -370,6 +370,173 @@ class NarrativeBranch(CreativeObject):
         return self
 
 
+class ObservationFact(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    fact_type: Literal[
+        "CHARACTER",
+        "LOCATION",
+        "RESOURCE",
+        "RELATIONSHIP",
+        "EMOTION",
+        "INFORMATION",
+        "HOOK",
+        "TIME",
+        "PHYSICAL_STATE",
+    ]
+    subject_ref: UUID | None = None
+    statement: str
+    source_ref: ProvenanceRef | None = None
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+class NarrativeObservation(CreativeObject):
+    artifact_id: UUID
+    canon_revision: int = Field(ge=0)
+    facts: tuple[ObservationFact, ...] = ()
+    extractor: str
+
+
+class NarrativeDelta(CreativeObject):
+    observation_id: UUID
+    base_canon_revision: int = Field(ge=0)
+    proposed_facts: tuple[ObservationFact, ...] = ()
+    conflicts: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def delta_is_proposal(self) -> NarrativeDelta:
+        if self.authority is not CreativeAuthority.PROPOSAL:
+            raise ValueError("narrative deltas must remain proposals")
+        return self
+
+
+class BranchBeat(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    beat_id: UUID
+    description: str
+    change: str
+
+
+class ProjectedCharacterChange(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    character_id: UUID
+    before: str
+    after: str
+
+
+class ProjectedWorldChange(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    subject: str
+    before: str
+    after: str
+
+
+class BranchRisk(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    code: str
+    severity: Literal["LOW", "MEDIUM", "HIGH"]
+    description: str
+
+
+class IntentAlignment(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    score: float = Field(ge=0.0, le=1.0)
+    reasons: tuple[str, ...] = ()
+
+
+class BranchSnapshot(CreativeObject):
+    branch_id: UUID
+    base_canon_revision: int = Field(ge=0)
+    projected_character_changes: tuple[ProjectedCharacterChange, ...] = ()
+    projected_world_changes: tuple[ProjectedWorldChange, ...] = ()
+    hooks: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def snapshot_is_non_canonical(self) -> BranchSnapshot:
+        if self.authority is CreativeAuthority.CANONICAL:
+            raise ValueError("branch snapshots must remain non-canonical")
+        return self
+
+
+class NarrativeForecast(CreativeObject):
+    canon_revision: int = Field(ge=0)
+    branch_ids: tuple[UUID, ...] = ()
+    refreshed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def forecast_is_non_canonical(self) -> NarrativeForecast:
+        if self.authority is CreativeAuthority.CANONICAL:
+            raise ValueError("forecasts must remain non-canonical")
+        if not 2 <= len(self.branch_ids) <= 5:
+            raise ValueError("forecasts must contain between 2 and 5 branches")
+        return self
+
+
+class SelectedBranchPlan(CreativeObject):
+    forecast_id: UUID
+    branch_id: UUID
+    canon_revision: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def selection_is_non_canonical(self) -> SelectedBranchPlan:
+        if self.authority is CreativeAuthority.CANONICAL:
+            raise ValueError("selection is a plan until explicitly committed")
+        return self
+
+
+class ContextItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    ref: ProvenanceRef
+    text: str
+    priority: Literal["P0", "P1", "P2", "P3"]
+    protected: bool = False
+    compressed: bool = False
+
+
+class ContextManifest(CreativeObject):
+    task: str
+    selected: tuple[ContextItem, ...] = ()
+    excluded: tuple[ProvenanceRef, ...] = ()
+    dropped_refs: tuple[ProvenanceRef, ...] = ()
+    truncated: bool = False
+    estimated_tokens: int = Field(default=0, ge=0)
+
+
+class RevisionProposal(CreativeObject):
+    asset_id: UUID
+    base_revision: int = Field(ge=0)
+    change_type: Literal["POLISH", "SPOT_FIX", "REWRITE", "STRUCTURAL_REWORK", "QUALITY_DRIVEN"]
+    reason: str
+    operations: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def proposal_only(self) -> RevisionProposal:
+        if self.authority is not CreativeAuthority.PROPOSAL:
+            raise ValueError("revision proposals must remain proposals")
+        return self
+
+
+class CandidateRevision(CreativeObject):
+    asset_id: UUID
+    base_revision: int = Field(ge=0)
+    candidate_revision: int = Field(ge=1)
+    artifact_id: UUID | None = None
+    audit_id: UUID | None = None
+
+
+class ReviewReport(CreativeObject):
+    artifact_id: UUID
+    status: Literal["PASS", "WARN", "FAIL"]
+    dimensions: tuple[str, ...] = ()
+    audit_id: UUID | None = None
+
+
 class ScriptScene(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -640,6 +807,10 @@ __all__ = [
     "ArtifactManifest",
     "AuditFinding",
     "AuthorIntent",
+    "BranchBeat",
+    "BranchRisk",
+    "BranchSnapshot",
+    "CandidateRevision",
     "ChapterIntent",
     "ChapterSummary",
     "Character",
@@ -647,6 +818,8 @@ __all__ = [
     "CharacterVoice",
     "Choice",
     "Condition",
+    "ContextItem",
+    "ContextManifest",
     "ContinuityFact",
     "CreativeArtifact",
     "CreativeAuthority",
@@ -672,20 +845,27 @@ __all__ = [
     "NarrativeAudit",
     "NarrativeBranch",
     "NarrativeCanon",
+    "NarrativeDelta",
+    "NarrativeForecast",
+    "NarrativeObservation",
     "NarrativeProject",
     "Payoff",
     "PendingHook",
     "PhysicalState",
     "ProductionRun",
+    "ProjectedCharacterChange",
+    "ProjectedWorldChange",
     "ProvenanceRef",
     "RelationshipState",
     "ResearchReport",
     "ResourceState",
+    "ReviewReport",
     "Revision",
     "RunSnapshot",
     "SceneIntent",
     "Script",
     "ScriptScene",
+    "SelectedBranchPlan",
     "StoryArc",
     "StoryBeat",
     "StoryBible",
