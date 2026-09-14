@@ -17,13 +17,13 @@ dependencies = [
     "pyjwt[crypto]>=2.10",
     # 3O 基线：所有直接引用固定到通过消费者契约测试的精确提交；版本/锁文件/manifests
     # 必须同时更新。HEVI 保留业务语义，通用执行与媒体能力在对应 3O 库演进。
-    "obase[cache,docker] @ git+https://github.com/helios-plat/obase.git@d7bcf9abb7a5baef5003075ad2808dfc0b5e4cac",
+    "obase[cache,docker] @ git+https://github.com/helios-plat/obase.git@7d31719d8411b4fb34952ae4098ab320625d14dd",
     "oprim @ git+https://github.com/helios-plat/oprim.git@e7f9c65196437d3bff09401aa02bc817d071eec3",
-    "oskill @ git+https://github.com/helios-plat/oskill.git@2554f4a96941991bef80381a9b06aee0d99f30cb",
+    "oskill @ git+https://github.com/helios-plat/oskill.git@96588d5520fbad257f6a28ff311b0c491fbf945e",
     # 标准长视频及镜头返工事务：兼容 v1.36.0 的已测提交，待上游 tag 后替换 ref。
-    "omodul @ git+https://github.com/helios-plat/omodul.git@b0c59686bb217b2fba19d307b85e5273d5964307",
+    "omodul @ git+https://github.com/helios-plat/omodul.git@d232956871461b7c339e0a194e484fe5bc739234",
     # 统一的无状态服务执行骨架。固定到已测试的 3O 功能提交；合入上游 tag 后只替换 ref。
-    "oservi @ git+https://github.com/helios-plat/oservi.git@46f4fbd97c19a0bf6b139331d2a6dc7bd4104add",
+    "oservi @ git+https://github.com/helios-plat/oservi.git@5dd5f61a0126cfe9c600c2575474ba15db36c8c0",
     "python-frontmatter>=1.3.0",  # oprim v3.10 transitive dep (not declared in oprim)
     "vibevoice==0.0.1",  # oprim._vibevoice_synthesize runtime dep (not declared in oprim metadata)
     "dashscope>=1.20",  # oprim v3.10.33 embedding.qwen3_dashscope runtime dep (undeclared)
