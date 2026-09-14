@@ -63,6 +63,14 @@ def main() -> int:
             oservi_business += int(any(x in text for x in ("creativeproject", "narrativecanon", "productionrun", "user_id", "tenant_id")))
     duplicate = len(real_local)
     report = {
+        "AUDIT_PROJECT_SCOPE": [
+            "projects/platform/obase",
+            "projects/platform/oprim",
+            "projects/platform/oskill",
+            "projects/platform/omodul",
+            "projects/platform/oservi",
+        ],
+        "classification": "MNEME_PLATFORM_3O_V3_M2",
         "source": "independent AST/import/filesystem audit",
         "FLAT_NAMESPACE": flat,
         "PROJECT_PREFIX_VIOLATIONS": prefix,
