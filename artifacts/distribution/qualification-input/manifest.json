@@ -1,0 +1,19 @@
+{
+  "artifact_id": "hevi-kinetic-qualification-20260914T011144Z",
+  "path": "artifacts/distribution/qualification-input/hevi-kinetic-qualification.mp4",
+  "sha256": "8a188289ee0c4ddfb75ad39f0d27b50bc04bba05c9cc91e3d56808ef3efbf2b5",
+  "source": "HEVI existing kinetic_promo production runtime",
+  "source_run_id": "20260914T011144Z",
+  "provider": "hyperframes",
+  "quality_gate": "PASS",
+  "ffprobe": "PASS",
+  "duration_seconds": 4.4,
+  "resolution": "1920x1080",
+  "video_codec": "h264",
+  "audio_codec": null,
+  "loudness": "NOT_APPLICABLE_NO_AUDIO_STREAM",
+  "provenance": "/data/soffy/transfer_tmp/distribution-qualification-evidence/kinetic_promo/20260914T011144Z/provenance.json",
+  "ffprobe_evidence": "/data/soffy/transfer_tmp/distribution-qualification-evidence/fixture-ffprobe.json",
+  "quality_evidence": "/data/soffy/transfer_tmp/distribution-qualification-evidence/kinetic_promo/20260914T011144Z/quality.json",
+  "sensitive_data": false
+}

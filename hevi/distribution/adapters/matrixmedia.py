@@ -76,7 +76,9 @@ class MatrixMediaDistributionProvider(DistributionProvider):
         except OSError as exc:
             raise MatrixMediaError("MATRIXMEDIA_UNAVAILABLE", str(exc)) from exc
         if process.returncode != 0:
-            text = stderr.decode(errors="replace").strip() or stdout.decode(errors="replace").strip()
+            text = (
+                stderr.decode(errors="replace").strip() or stdout.decode(errors="replace").strip()
+            )
             failure = "ACCOUNT_LOGGED_OUT" if "login" in text.lower() else "PROVIDER_REJECTION"
             raise MatrixMediaError(failure, text or f"MatrixMedia exited {process.returncode}")
         raw = stdout.decode(errors="replace").strip()
@@ -96,8 +98,18 @@ class MatrixMediaDistributionProvider(DistributionProvider):
         try:
             result = await self._run("accounts", "--json")
         except MatrixMediaError as exc:
-            return {"provider": self.name, "reachable": False, "failure_class": exc.failure_class, "message": str(exc)}
-        return {"provider": self.name, "reachable": True, "latency_ms": round((time.monotonic() - started) * 1000, 2), "accounts": result}
+            return {
+                "provider": self.name,
+                "reachable": False,
+                "failure_class": exc.failure_class,
+                "message": str(exc),
+            }
+        return {
+            "provider": self.name,
+            "reachable": True,
+            "latency_ms": round((time.monotonic() - started) * 1000, 2),
+            "accounts": result,
+        }
 
     async def list_accounts(self) -> Sequence[DistributionAccount]:
         result = await self._run("accounts", "--json")
@@ -109,7 +121,9 @@ class MatrixMediaDistributionProvider(DistributionProvider):
                 continue
             output.append(
                 DistributionAccount(
-                    account_ref=str(item.get("account_ref") or item.get("phone") or item.get("id") or "unknown"),
+                    account_ref=str(
+                        item.get("account_ref") or item.get("phone") or item.get("id") or "unknown"
+                    ),
                     platform=platform,
                     display_name=item.get("name"),
                     logged_in=bool(item.get("logged_in", item.get("isLogin", False))),
@@ -126,7 +140,9 @@ class MatrixMediaDistributionProvider(DistributionProvider):
         return await self._submit(job, source)
 
     async def schedule(self, job: DistributionJob, source: Path) -> DistributionResult:
-        return await self._submit(job, source, "--publish-at", job.scheduled_at.isoformat() if job.scheduled_at else "")
+        return await self._submit(
+            job, source, "--publish-at", job.scheduled_at.isoformat() if job.scheduled_at else ""
+        )
 
     async def save_draft(self, job: DistributionJob, source: Path) -> DistributionResult:
         return await self._submit(job, source, "--draft")
@@ -134,8 +150,17 @@ class MatrixMediaDistributionProvider(DistributionProvider):
     async def _submit(self, job: DistributionJob, source: Path, *extra: str) -> DistributionResult:
         alias = PLATFORM_ALIASES[job.platform]
         args = [
-            "publish", "--platform", alias, "--file", str(source), "--title", job.title,
-            "--description", job.description, "--phone", job.account_ref,
+            "publish",
+            "--platform",
+            alias,
+            "--file",
+            str(source),
+            "--title",
+            job.title,
+            "--description",
+            job.description,
+            "--phone",
+            job.account_ref,
         ]
         for tag in job.tags:
             args.extend(("--tags", tag))
@@ -143,37 +168,88 @@ class MatrixMediaDistributionProvider(DistributionProvider):
         try:
             raw = await self._run(*args)
         except MatrixMediaError as exc:
-            state = "RETRYABLE_FAILED" if exc.failure_class in {"TIMEOUT", "UPLOAD_FAILURE"} else "NEEDS_ATTENTION"
-            failed = job.model_copy(update={"state": state, "failure_class": exc.failure_class, "attempt": job.attempt + 1})
-            return DistributionResult(job=failed, provider_status="failed", success=False, failure_class=exc.failure_class, message=str(exc))
-        provider_ref = str(raw.get("id") or raw.get("job_id") or raw.get("external_id") or "") or None
+            state = (
+                "RETRYABLE_FAILED"
+                if exc.failure_class in {"TIMEOUT", "UPLOAD_FAILURE"}
+                else "NEEDS_ATTENTION"
+            )
+            failed = job.model_copy(
+                update={
+                    "state": state,
+                    "failure_class": exc.failure_class,
+                    "attempt": job.attempt + 1,
+                }
+            )
+            return DistributionResult(
+                job=failed,
+                provider_status="failed",
+                success=False,
+                failure_class=exc.failure_class,
+                message=str(exc),
+            )
+        provider_ref = (
+            str(raw.get("id") or raw.get("job_id") or raw.get("external_id") or "") or None
+        )
         digest = hashlib.sha256(source.read_bytes()).hexdigest()
-        artifact = DistributionArtifact(artifact_id=job.source_artifact_id, sha256=digest, uri=str(source))
-        state = "DRAFTED" if "draft" in extra else ("SCHEDULED" if "--publish-at" in extra else "PUBLISHED")
-        updated = job.model_copy(update={"state": state, "provider_job_ref": provider_ref, "attempt": job.attempt + 1})
+        artifact = DistributionArtifact(
+            artifact_id=job.source_artifact_id, sha256=digest, uri=str(source)
+        )
+        state = (
+            "DRAFTED"
+            if "draft" in extra
+            else ("SCHEDULED" if "--publish-at" in extra else "PUBLISHED")
+        )
+        updated = job.model_copy(
+            update={"state": state, "provider_job_ref": provider_ref, "attempt": job.attempt + 1}
+        )
         provenance = DistributionProvenance(
             source_artifact_id=job.source_artifact_id,
             source_artifact_sha256=digest,
             provider=self.name,
             platform=job.platform,
             account_ref=job.account_ref,
-            provider_request={"command": "cli publish", "platform": alias, "idempotency_key": job.idempotency_key},
+            provider_request={
+                "command": "cli publish",
+                "platform": alias,
+                "idempotency_key": job.idempotency_key,
+            },
             provider_job_ref=provider_ref,
             provider_result=raw,
         )
-        return DistributionResult(job=updated.model_copy(update={"provenance": provenance}), artifact=artifact, provider_status="success", success=True, message="MatrixMedia accepted the request")
+        return DistributionResult(
+            job=updated.model_copy(update={"provenance": provenance}),
+            artifact=artifact,
+            provider_status="success",
+            success=True,
+            message="MatrixMedia accepted the request",
+        )
 
     async def poll(self, job: DistributionJob) -> DistributionResult:
         history = await self.history(platform=job.platform.value)
-        match = next((item for item in history if str(item.get("id")) == job.provider_job_ref), None)
+        match = next(
+            (item for item in history if str(item.get("id")) == job.provider_job_ref), None
+        )
         if match is None:
-            return DistributionResult(job=job, provider_status="unknown", success=False, failure_class="NOT_FOUND", message="provider job not present in history")
-        return DistributionResult(job=job, provider_status=str(match.get("status", "unknown")), success=match.get("status") == "success", message="history result normalized")
+            return DistributionResult(
+                job=job,
+                provider_status="unknown",
+                success=False,
+                failure_class="NOT_FOUND",
+                message="provider job not present in history",
+            )
+        return DistributionResult(
+            job=job,
+            provider_status=str(match.get("status", "unknown")),
+            success=match.get("status") == "success",
+            message="history result normalized",
+        )
 
     async def history(self, *, platform: str | None = None) -> Sequence[dict[str, Any]]:
         args = ["history", "--json"]
         if platform:
-            args.extend(("--platform", PLATFORM_ALIASES.get(DistributionPlatform(platform), platform)))
+            args.extend(
+                ("--platform", PLATFORM_ALIASES.get(DistributionPlatform(platform), platform))
+            )
         result = await self._run(*args)
         items = result.get("history", result.get("items", []))
         return items if isinstance(items, list) else []

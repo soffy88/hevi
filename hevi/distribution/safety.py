@@ -32,6 +32,4 @@ def verify_publishable_source(
 def ambiguous_publish(job: DistributionJob, reason: str) -> DistributionJob:
     """Never retry an unknown provider side effect automatically."""
 
-    return job.model_copy(
-        update={"state": "NEEDS_ATTENTION", "failure_class": reason}
-    )
+    return job.model_copy(update={"state": "NEEDS_ATTENTION", "failure_class": reason})

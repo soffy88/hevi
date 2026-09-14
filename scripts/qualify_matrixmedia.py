@@ -36,7 +36,11 @@ def run_cli(*args: str) -> dict[str, object]:
     if packaged:
         command = [packaged, "--no-sandbox", "cli", *args]
     elif not electron.exists():
-        return {"status": "NOT_VERIFIED", "failure_class": "MATRIXMEDIA_UNAVAILABLE", "stderr": "electron binary missing"}
+        return {
+            "status": "NOT_VERIFIED",
+            "failure_class": "MATRIXMEDIA_UNAVAILABLE",
+            "stderr": "electron binary missing",
+        }
     else:
         command = [str(electron), ".", "cli", *args]
     if os.getenv("MATRIXMEDIA_USE_XVFB") == "1":
@@ -80,7 +84,9 @@ def main() -> None:
         "qualification_workspace": str(ROOT),
         "upstream_sha": "8b6216006005f38dde83018b97847274ee970688",
         "version": package["version"],
-        "license": license_path.read_text(encoding="utf-8").splitlines()[0] if license_path.exists() else "UNKNOWN",
+        "license": license_path.read_text(encoding="utf-8").splitlines()[0]
+        if license_path.exists()
+        else "UNKNOWN",
         "source_copied_into_hevi": False,
         "artifact": packaged or "source checkout",
         "sha_verified": os.getenv("MATRIXMEDIA_SHA_VERIFIED", "NO"),

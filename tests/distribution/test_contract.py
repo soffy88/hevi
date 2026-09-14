@@ -14,7 +14,9 @@ def test_distribution_job_roundtrip_and_atomic_store(tmp_path) -> None:
     source = tmp_path / "video.mp4"
     source.write_bytes(b"owned test artifact")
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
-    target = DistributionTarget(platform=DistributionPlatform.DOUYIN, account_ref="acct-1", title="test")
+    target = DistributionTarget(
+        platform=DistributionPlatform.DOUYIN, account_ref="acct-1", title="test"
+    )
     job = DistributionJob(
         distribution_job_id="job-1",
         source_artifact_id="artifact-1",

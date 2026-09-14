@@ -43,13 +43,13 @@
   },
   "mcp": {
     "list_tools": "PASS: MCP server built and advertised tools",
-    "list_accounts": "BLOCKED_ENVIRONMENT: MCP child lifecycle did not return within probe timeout",
-    "list_history": "BLOCKED_ENVIRONMENT: MCP child lifecycle did not return within probe timeout",
+    "list_accounts": "PASS: real read-only MCP invocation returned complete JSON and owned process group was reaped",
+    "list_history": "PASS: real read-only MCP invocation returned complete JSON and owned process group was reaped",
     "publish_video": "NOT_VERIFIED: no real logged-in publish was attempted"
   },
   "transport_matrix": {
     "cli": "RUNTIME_VERIFIED_NO_LOGGED_IN_ACCOUNT",
-    "mcp": "PARTIAL: tools advertised; child account/history lifecycle not verified",
+    "mcp": "PASS_READ_ONLY_RUNTIME_VERIFIED_NO_LOGGED_IN_ACCOUNT",
     "http": "NOT_VERIFIED: no MatrixMedia GUI HTTP service started"
   },
   "platforms": {
@@ -100,5 +100,15 @@
   "idempotency": "IMPLEMENTED_NOT_PROVIDER_QUALIFIED",
   "retry": "IMPLEMENTED_NOT_PROVIDER_QUALIFIED",
   "fail_closed": "PASS_BY_CONTRACT",
-  "duplicate_publications": "0_OBSERVED_WITHOUT_REAL_PROVIDER_QUALIFICATION"
+  "duplicate_publications": "0_OBSERVED_WITHOUT_REAL_PROVIDER_QUALIFICATION",
+  "mcp_lifecycle": {
+    "transport": "stdio",
+    "invocation_mode": "xvfb-run + node MCP server",
+    "owned_process_group_cleanup": true,
+    "process_exit": "PASS",
+    "process_leaks": 0,
+    "zombies": 0,
+    "result_evidence": "accounts/history returned [] with no logged-in account",
+    "wrapper_root_cause": "Electron descendants retained inherited stdio pipes; qualification wrapper captures stdio before returning"
+  }
 }

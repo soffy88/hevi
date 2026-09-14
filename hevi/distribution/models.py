@@ -105,4 +105,3 @@ class DistributionResult(DistributionBase):
     retry_evidence: dict[str, Any] = Field(default_factory=dict)
     duplicate_side_effects: int = 0
     message: str = ""
-

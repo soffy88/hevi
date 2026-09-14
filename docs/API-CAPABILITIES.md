@@ -124,6 +124,17 @@
 | GET | `/api/director-pipeline/works/{work_id}/shots/{shot_id}/preparation-state` | Get Shot Preparation State |
 | PATCH | `/api/director-pipeline/works/{work_id}/shots/{shot_id}/readiness` | Patch Shot Readiness |
 
+## distribution
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/distribution/accounts` | Accounts |
+| POST | `/api/distribution/draft` | Draft |
+| GET | `/api/distribution/history` | History |
+| GET | `/api/distribution/probe` | Probe |
+| POST | `/api/distribution/publish` | Publish |
+| POST | `/api/distribution/schedule` | Schedule |
+
 ## embrace
 
 | 方法 | 路径 | 说明 |
@@ -405,6 +416,9 @@
 | GET | `/api/studio/veya/capabilities` | Get Veya Capabilities |
 | GET | `/api/studio/veya/jobs/{job_id}` | Get Veya Job |
 | POST | `/api/studio/veya/produce` | Post Veya Produce |
+| POST | `/api/studio/video/analyze` | Analyze Video |
+| POST | `/api/studio/video/compare` | Compare Video |
+| POST | `/api/studio/video/feedback` | Create Video Feedback |
 | GET | `/api/studio/voices` | Get Studio Voices |
 
 ## style-packs

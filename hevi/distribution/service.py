@@ -17,14 +17,25 @@ from hevi.distribution.store import DistributionJobStore
 
 
 def matrixmedia_provider() -> MatrixMediaDistributionProvider:
-    return MatrixMediaDistributionProvider(timeout_s=float(os.getenv("MATRIXMEDIA_TIMEOUT_S", "60")))
+    return MatrixMediaDistributionProvider(
+        timeout_s=float(os.getenv("MATRIXMEDIA_TIMEOUT_S", "60"))
+    )
 
 
 def job_store() -> DistributionJobStore:
-    return DistributionJobStore(os.getenv("HEVI_DISTRIBUTION_JOB_STORE", "data/distribution/jobs.json"))
+    return DistributionJobStore(
+        os.getenv("HEVI_DISTRIBUTION_JOB_STORE", "data/distribution/jobs.json")
+    )
 
 
-def create_job(source: str | Path, target: DistributionTarget, *, artifact_id: str, quality_passed: bool, idempotency_key: str | None = None) -> DistributionJob:
+def create_job(
+    source: str | Path,
+    target: DistributionTarget,
+    *,
+    artifact_id: str,
+    quality_passed: bool,
+    idempotency_key: str | None = None,
+) -> DistributionJob:
     source_path = Path(source).expanduser().resolve()
     digest = hashlib.sha256(source_path.read_bytes()).hexdigest() if source_path.is_file() else ""
     verify_publishable_source(source_path, expected_sha256=digest, quality_passed=quality_passed)
@@ -45,12 +56,19 @@ def create_job(source: str | Path, target: DistributionTarget, *, artifact_id: s
     return job_store().put(job)
 
 
-async def execute_job(job: DistributionJob, source: str | Path, *, mode: str = "publish") -> DistributionResult:
+async def execute_job(
+    job: DistributionJob, source: str | Path, *, mode: str = "publish"
+) -> DistributionResult:
     provider = matrixmedia_provider()
     source_path = Path(source).expanduser().resolve()
     existing = job_store().get(job.distribution_job_id)
     if existing and existing.state in {"PUBLISHED", "SCHEDULED", "DRAFTED"}:
-        return DistributionResult(job=existing, provider_status="idempotent_replay", success=True, message="existing terminal success returned without duplicate publish")
+        return DistributionResult(
+            job=existing,
+            provider_status="idempotent_replay",
+            success=True,
+            message="existing terminal success returned without duplicate publish",
+        )
     if existing:
         job = existing
     job = job.model_copy(update={"state": "PUBLISHING"})
