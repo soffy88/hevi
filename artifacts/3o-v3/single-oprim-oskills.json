@@ -1,5 +1,5 @@
 {
-  "count": 430,
+  "count": 427,
   "multi": 143,
   "one": 77,
   "oskills": [
@@ -8,18 +8,6 @@
       "oprim_calls": [],
       "reason": "fewer than two distinct direct oprim call sites",
       "symbol": "hevi/creative/oskill/registry.py::default_skill"
-    },
-    {
-      "distinct_oprims": 0,
-      "oprim_calls": [],
-      "reason": "fewer than two distinct direct oprim call sites",
-      "symbol": "hevi/creative_assets/oskill/compiler.py::default_aspect_ratio"
-    },
-    {
-      "distinct_oprims": 0,
-      "oprim_calls": [],
-      "reason": "fewer than two distinct direct oprim call sites",
-      "symbol": "hevi/creative_assets/oskill/compiler.py::compile_visual_prompt"
     },
     {
       "distinct_oprims": 0,
@@ -118,12 +106,6 @@
       ],
       "reason": "fewer than two distinct direct oprim call sites",
       "symbol": "hevi/longcat/oskill/compiler.py::compile_longcat_request"
-    },
-    {
-      "distinct_oprims": 0,
-      "oprim_calls": [],
-      "reason": "fewer than two distinct direct oprim call sites",
-      "symbol": "hevi/longvideo/oskill/compiler.py::normalize_shot_prompts"
     },
     {
       "distinct_oprims": 1,
@@ -2739,5 +2721,5 @@
     }
   ],
   "source": "AST function call sites",
-  "zero": 353
+  "zero": 350
 }

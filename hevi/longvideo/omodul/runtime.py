@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 from hevi.longvideo.oprim.contracts import LongVideoRequest
-from hevi.longvideo.oskill.compiler import normalize_shot_prompts
+from hevi.longvideo.shot_compiler import normalize_shot_prompts
 
 
 def compile_longvideo_plan(request: LongVideoRequest) -> dict[str, Any]:
