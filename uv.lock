@@ -1280,7 +1280,7 @@ requires-dist = [
     { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=8d7d0c1" },
     { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=631a1d8" },
     { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=ad30a98" },
-    { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=184362c" },
+    { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=02022c7" },
     { name = "pillow", specifier = ">=10" },
     { name = "playwright", specifier = ">=1.49" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
@@ -2427,7 +2427,7 @@ dependencies = [
 [[package]]
 name = "oskill"
 version = "4.5.0"
-source = { git = "https://github.com/helios-plat/oskill.git?rev=184362c#184362c7e6a64f5895a604a3445137e9bf981757" }
+source = { git = "https://github.com/helios-plat/oskill.git?rev=02022c7#02022c7fc41cf241aba33d2a90d74e9e4ae163c9" }
 dependencies = [
     { name = "aiohttp" },
     { name = "numpy" },
