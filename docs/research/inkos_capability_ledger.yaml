@@ -127,7 +127,7 @@ capabilities:
     3o_target: obase/oprim/omodul
     hevi_capability_id: narrative.observation_delta
     qualification_test: synthetic chapter with all nine classes, malformed output, conflict, stale version, atomic apply
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: governed-context-composer
     name: Governed context compilation
@@ -326,7 +326,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.script_runtime
     qualification_test: structured script to executable storyboard and real production graph handoff
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: production-storyboard
     name: Production-executable storyboard
@@ -425,7 +425,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.research
     qualification_test: source/claim trace, unknowns, confidence, no automatic canon mutation, explicit commit
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: material-library
     name: Project material library
@@ -449,7 +449,7 @@ capabilities:
     3o_target: obase/oprim/oservi
     hevi_capability_id: creative.material_library
     qualification_test: all input classes, source hash, project isolation, citation, rebuild, invalid input
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: existing-work-import-continuation
     name: Existing work import and continuation
@@ -523,7 +523,7 @@ capabilities:
     3o_target: obase/oskill/omodul
     hevi_capability_id: creative.style_intelligence
     qualification_test: analyze/save/apply/audit, source hash, no text retention, deterministic metrics
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: synthetic-writing-quality
     name: Synthetic writing quality and anti-pattern detection
@@ -644,7 +644,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.translation
     qualification_test: real TXT/Markdown/EPUB/text-PDF fixtures, coverage, glossary, resume, roundtrip
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: cover-visual-asset-runtime
     name: Cover and visual asset direction
@@ -692,7 +692,7 @@ capabilities:
     3o_target: oskill/obase
     hevi_capability_id: creative.skills
     qualification_test: all listed skill domains, permission boundary, no direct state write, provenance
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: creative-policy-packs
     name: Editable creative policy/profile packs
@@ -716,7 +716,7 @@ capabilities:
     3o_target: obase/oprim/oservi
     hevi_capability_id: creative.policy_packs
     qualification_test: default/override precedence, diff, rollback, invalid pack, runtime trace
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: review-workflow
     name: Review, approval, and human gates
@@ -740,7 +740,7 @@ capabilities:
     3o_target: obase/omodul/oservi
     hevi_capability_id: creative.review
     qualification_test: approve/reject/edit/revision request, persistence, stale guard, batch approval safety
-    status: PARTIAL
+    status: QUALIFIED
 
   - id: background-production-notifications
     name: Background production and notifications

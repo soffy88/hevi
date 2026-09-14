@@ -1,0 +1,21 @@
+{
+  "authority": "EVIDENCE",
+  "canon_commit_required": true,
+  "confidence": 0.0,
+  "created_at": "2026-09-14T09:01:40.546651Z",
+  "evidence_ids": [
+    "d3d6ec8d-b384-4105-ac0e-b3e5979fc93f"
+  ],
+  "object_id": "383dd32d-6b69-47b4-b151-b2e513d83c83",
+  "project_id": "204011d9-a8ae-4152-9b10-fb164d8e76ee",
+  "provenance": [],
+  "query": "harbour navigation",
+  "retrieved_at": "2026-09-14T09:01:40.546645Z",
+  "revision": 0,
+  "schema_version": 1,
+  "source_ids": [
+    "f0afa366-1f2e-4f10-ad6b-217203e2b300"
+  ],
+  "unknowns": [],
+  "updated_at": "2026-09-14T09:01:40.546652Z"
+}

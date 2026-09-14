@@ -1,0 +1,13 @@
+{
+  "character_ids": [
+    "d194b53c-5642-4790-826f-d94ef2bbde4a"
+  ],
+  "hook_ids": [
+    "ec58b494-ac36-48b8-97b5-7daa48ee5a77"
+  ],
+  "source_sha256": "97f9bad22fa2e620093f174a33e2c66ef894ff6d54b351e4540486b554246f87",
+  "timeline_id": "ea460117-f302-47bb-bbee-3ba81d1518d4",
+  "world_rule_ids": [
+    "600faa1c-c171-4bad-abc9-55562970a493"
+  ]
+}

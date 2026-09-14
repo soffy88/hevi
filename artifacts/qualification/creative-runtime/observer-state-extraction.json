@@ -1,0 +1,39 @@
+{
+  "capability_id": "observer-state-extraction",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/observer-state-extraction/run-7342006b1b92",
+  "checks": {
+    "NINE_FACT_CLASSES": true,
+    "SCHEMA_VALIDATION": true,
+    "AUTHORITY_VALIDATION": true,
+    "EXPLICIT_SETTLEMENT": true,
+    "STALE_VERSION_REJECTED": true,
+    "MALFORMED_OUTPUT_REJECTED": true,
+    "ATOMIC_APPLICATION": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/observer-state-extraction/run-7342006b1b92/canon.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/observer-state-extraction/run-7342006b1b92/observation.json"
+  ],
+  "recovery": [
+    "reload settled canon"
+  ],
+  "failure_injections": [
+    "malformed observation",
+    "stale canon revision"
+  ],
+  "details": {
+    "fact_types": [
+      "CHARACTER",
+      "LOCATION",
+      "RESOURCE",
+      "RELATIONSHIP",
+      "EMOTION",
+      "INFORMATION",
+      "HOOK",
+      "TIME",
+      "PHYSICAL_STATE"
+    ]
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

@@ -1,0 +1,15 @@
+{
+  "artifact_id": "54fc4f0f-66d8-4f94-9923-741a8a0e4d5b",
+  "asset_id": "54fc4f0f-66d8-4f94-9923-741a8a0e4d5b",
+  "audit_id": "e588fc87-a354-4338-806f-f09da3d8bd0e",
+  "authority": "PROPOSAL",
+  "base_revision": 0,
+  "candidate_revision": 1,
+  "created_at": "2026-09-14T08:59:00.391865Z",
+  "object_id": "1c23c779-e93f-4645-b4da-5d3ad18318b9",
+  "project_id": "025d6b6c-4635-4e3f-921d-a3d738e85a1a",
+  "provenance": [],
+  "revision": 0,
+  "schema_version": 1,
+  "updated_at": "2026-09-14T08:59:00.391866Z"
+}

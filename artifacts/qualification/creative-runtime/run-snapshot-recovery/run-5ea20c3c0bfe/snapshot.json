@@ -1,0 +1,14 @@
+{
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T09:01:40.357603Z",
+  "object_id": "bfd43264-d0cf-472a-a039-76149a38883c",
+  "project_id": "724d56a0-bcc9-4121-ae6a-ce4315b6abd3",
+  "provenance": [],
+  "resume_token": "resume-1",
+  "revision": 0,
+  "run_id": "b8c2db61-ac86-45fe-9385-28f886e7a7dd",
+  "schema_version": 1,
+  "stage": "DRAFT",
+  "state_hash": "6401d75c3b7d0d7f27fb3f4260b7c14340dad0ae358bb514954407dd9f5ec216",
+  "updated_at": "2026-09-14T09:01:40.357604Z"
+}

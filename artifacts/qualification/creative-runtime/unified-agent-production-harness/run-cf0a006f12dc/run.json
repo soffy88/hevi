@@ -1,0 +1,22 @@
+{
+  "artifact_manifest": {
+    "artifact_ids": [
+      "2fa39eeb-b7da-4371-adae-34d1070102f9"
+    ],
+    "hashes": [
+      "1d027a99fa92a76c26a39f4b7ccfd0800bd4f5d9b0394bb832d716d2b4affde9"
+    ]
+  },
+  "authority": "CANONICAL",
+  "capability": "creative.harness",
+  "created_at": "2026-09-14T08:39:41.260482Z",
+  "object_id": "7e713880-a315-4c5c-bd17-860756d13a0b",
+  "project_id": "aa495659-c01a-4eeb-8cf4-f9cc125789b5",
+  "provenance": [],
+  "revision": 1,
+  "run_key": "harness-qualification",
+  "schema_version": 1,
+  "stage_results": [],
+  "status": "SUCCEEDED",
+  "updated_at": "2026-09-14T08:39:41.260490Z"
+}

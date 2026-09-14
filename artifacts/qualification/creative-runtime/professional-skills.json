@@ -1,0 +1,25 @@
+{
+  "capability_id": "professional-skills",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/professional-skills/run-be35b65cdbfd/skills.json",
+  "checks": {
+    "ALL_SKILL_DOMAINS": true,
+    "NO_DIRECT_STATE_WRITE": true,
+    "NO_PERMISSION_ESCALATION": true,
+    "NO_QUALITY_GATE_BYPASS": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/professional-skills/run-be35b65cdbfd/skills.json"
+  ],
+  "recovery": [
+    "registry reload"
+  ],
+  "failure_injections": [
+    "adversarial state-write skill",
+    "adversarial gate-bypass skill"
+  ],
+  "details": {
+    "skill_count": 15
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

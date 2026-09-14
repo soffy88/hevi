@@ -1,0 +1,34 @@
+{
+  "manuscript": [
+    "Chapter 1: Mara chooses whether to open the gate\n\nMara chooses whether to open the gate",
+    "Chapter 2: Mara chooses whether to open the gate\n\nMara chooses whether to open the gate",
+    "Chapter 3: Mara chooses whether to open the gate\n\nMara chooses whether to open the gate"
+  ],
+  "outline": [
+    "Chapter 1: Mara chooses whether to open the gate",
+    "Chapter 2: Mara chooses whether to open the gate",
+    "Chapter 3: Mara chooses whether to open the gate"
+  ],
+  "style": {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14 08:59:00.407596+00:00",
+    "descriptive_density": "measured",
+    "dialogue_ratio": 0.0,
+    "lexical_characteristics": [
+      "compact"
+    ],
+    "name": "qualification-style",
+    "object_id": "5a0cb187-e5c5-4a69-8771-7e20e558fc2f",
+    "paragraph_structure": "multi-paragraph",
+    "pov_tendencies": [],
+    "project_id": "578e4e4a-725e-44c6-8c4d-f6043074e597",
+    "provenance": [],
+    "revision": 0,
+    "rhythm": "varied",
+    "schema_version": 1,
+    "sentence_length": "4.0",
+    "tone": [],
+    "updated_at": "2026-09-14 08:59:00.407597+00:00"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "asset_id": "54fc4f0f-66d8-4f94-9923-741a8a0e4d5b",
+  "authority": "PROPOSAL",
+  "base_revision": 0,
+  "change_type": "POLISH",
+  "created_at": "2026-09-14T08:59:00.391835Z",
+  "object_id": "4033d75c-2b43-4f2d-bee2-2eefd7d60125",
+  "operations": [
+    "PROSE_CLARITY: replace empty draft"
+  ],
+  "project_id": "025d6b6c-4635-4e3f-921d-a3d738e85a1a",
+  "provenance": [],
+  "reason": "PROSE_CLARITY: replace empty draft",
+  "revision": 0,
+  "schema_version": 1,
+  "updated_at": "2026-09-14T08:59:00.391835Z"
+}

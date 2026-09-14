@@ -1,0 +1,18 @@
+{
+  "artifact_manifest": {
+    "artifact_ids": [],
+    "hashes": []
+  },
+  "authority": "CANONICAL",
+  "capability": "creative",
+  "created_at": "2026-09-14T09:01:40.352129Z",
+  "object_id": "b8c2db61-ac86-45fe-9385-28f886e7a7dd",
+  "project_id": "724d56a0-bcc9-4121-ae6a-ce4315b6abd3",
+  "provenance": [],
+  "revision": 0,
+  "run_key": "snapshot-qualification",
+  "schema_version": 1,
+  "stage_results": [],
+  "status": "RUNNING",
+  "updated_at": "2026-09-14T09:01:40.352131Z"
+}

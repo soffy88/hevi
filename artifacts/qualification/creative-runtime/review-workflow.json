@@ -1,0 +1,30 @@
+{
+  "capability_id": "review-workflow",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/review-workflow/run-5aa9fbd2bac1/review-policy-skills.json",
+  "checks": {
+    "ALL_REVIEW_MODES": true,
+    "APPROVAL_DURABLE": true,
+    "REJECTION_OR_REVISION_VISIBLE": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/review-workflow/run-5aa9fbd2bac1/review-policy-skills.json"
+  ],
+  "recovery": [
+    "persist review decisions"
+  ],
+  "failure_injections": [
+    "strict review",
+    "manual revision request"
+  ],
+  "details": {
+    "decision_modes": [
+      "REJECT",
+      "APPROVE",
+      "REVISION_REQUEST",
+      "REVISION_REQUEST",
+      "APPROVE"
+    ]
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

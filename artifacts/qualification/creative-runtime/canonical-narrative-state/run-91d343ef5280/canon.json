@@ -1,0 +1,47 @@
+{
+  "arc_ids": [],
+  "authority": "CANONICAL",
+  "beat_ids": [],
+  "chapter_intent_ids": [],
+  "character_ids": [
+    "62d44911-5798-408b-97f1-7c381f775289"
+  ],
+  "character_state_ids": [
+    "745cd732-98d7-470a-9d5f-da343333a282"
+  ],
+  "continuity_fact_ids": [
+    "d3d33210-d11e-4b67-ba2e-16621d03955f"
+  ],
+  "created_at": "2026-09-14T08:59:00.174855Z",
+  "emotion_state_ids": [],
+  "foreshadow_ids": [],
+  "hook_ids": [],
+  "information_state_ids": [
+    "58441015-9e58-43ae-9dd3-296fcf1d432d"
+  ],
+  "location_ids": [
+    "6cbb5935-a2f4-47dd-b18f-2e0cd58bf794"
+  ],
+  "object_id": "a23ad1fb-39c9-415b-8e66-1cd9fb285ce8",
+  "payoff_ids": [],
+  "physical_state_ids": [
+    "300f7635-dc58-42d8-be0f-96afc7c6e5ba"
+  ],
+  "project_id": "14c8a624-7cbd-42e9-8874-33e12cfb70f9",
+  "provenance": [],
+  "relationship_state_ids": [
+    "3dcccaad-e641-4cd8-a91a-e481e5ad4ffb"
+  ],
+  "resource_state_ids": [
+    "1d49ccd1-7e7d-4287-bafa-c46feb83f4a6"
+  ],
+  "revision": 1,
+  "scene_intent_ids": [],
+  "schema_version": 1,
+  "timeline_state_id": "5c747c79-daa7-47bb-90a2-498bedbd189b",
+  "updated_at": "2026-09-14T08:59:00.174856Z",
+  "world_rule_ids": [
+    "a0edaadc-5218-4cd5-a728-5501f342d4e6"
+  ],
+  "world_state_id": "cd99bd43-c981-4c4d-b3ed-d19a6cffa8be"
+}

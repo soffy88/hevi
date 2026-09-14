@@ -1,0 +1,23 @@
+{
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T09:01:41.207079Z",
+  "glossary": [
+    {
+      "term": "Harbour",
+      "translation": "港口"
+    }
+  ],
+  "object_id": "d682fac6-254b-4fed-a263-c38177b471a7",
+  "project_id": "f4820ff7-8dca-47e5-a335-c7ac22c52138",
+  "provenance": [],
+  "revision": 0,
+  "schema_version": 1,
+  "segment_ids": [
+    "ec0b9c7b-9775-4374-a6cc-007766f392c4"
+  ],
+  "source_artifact_id": "611b2cea-d477-4ba8-80e6-49ef10549c81",
+  "source_language": "en",
+  "status": "CREATED",
+  "target_language": "zh",
+  "updated_at": "2026-09-14T09:01:41.207082Z"
+}

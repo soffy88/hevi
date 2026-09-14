@@ -1,0 +1,38 @@
+{
+  "capability_id": "creative-export",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-export/run-efd771ea9137/export-manifest.json",
+  "checks": {
+    "TXT": true,
+    "MARKDOWN": true,
+    "EPUB": true,
+    "EPUB_REOPEN": true,
+    "MANIFEST_PROVENANCE": true,
+    "QUALITY_GATE_REQUIRED": true,
+    "SCRIPT_AND_INTERACTIVE_EXPORTS": false
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-export/run-efd771ea9137/export.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-export/run-efd771ea9137/export.md",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-export/run-efd771ea9137/export.epub",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-export/run-efd771ea9137/export-manifest.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-export/run-efd771ea9137/export-txt.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-export/run-efd771ea9137/export-markdown.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-export/run-efd771ea9137/export-epub.json"
+  ],
+  "recovery": [
+    "persist export manifest",
+    "reopen EPUB bytes"
+  ],
+  "failure_injections": [
+    "source quality gate failure"
+  ],
+  "details": {
+    "formats": [
+      "txt",
+      "markdown",
+      "epub"
+    ]
+  },
+  "status": "PARTIAL",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

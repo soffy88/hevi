@@ -1,0 +1,15 @@
+{
+  "accepted_to_canon": false,
+  "authority": "EVIDENCE",
+  "claim": "The harbour uses a marked northern channel.",
+  "confidence": 0.98,
+  "created_at": "2026-09-14T08:53:24.422379Z",
+  "locator": "owned-research.txt:1",
+  "object_id": "9d793cf1-76cd-421a-9b3c-e1d1671f21ed",
+  "project_id": "774b6ae8-5320-4141-8897-47a64c0173a0",
+  "provenance": [],
+  "revision": 0,
+  "schema_version": 1,
+  "source_id": "00de0b89-b36f-41f4-9263-9c2074bb6356",
+  "updated_at": "2026-09-14T08:53:24.422380Z"
+}

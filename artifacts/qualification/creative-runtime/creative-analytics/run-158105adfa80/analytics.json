@@ -1,0 +1,11 @@
+{
+  "artifact_count": 1,
+  "audit_pass_rate": 0.5,
+  "issue_distribution": {
+    "PACING": 1
+  },
+  "revision_count": 2,
+  "run_failure_rate": 0.5,
+  "run_recovery_rate": 0.0,
+  "word_count": 3
+}

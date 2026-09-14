@@ -1,0 +1,36 @@
+{
+  "capability_id": "translation-localization",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/translation-report.json",
+  "checks": {
+    "FOUR_INPUT_FORMATS": true,
+    "SEGMENT_COVERAGE": true,
+    "NO_DUPLICATE_SEGMENTS": true,
+    "ORDERING": true,
+    "GLOSSARY": true,
+    "RESUME": true,
+    "EXPORT_ROUNDTRIP": true,
+    "PERSISTENCE": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/translation-report.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/source.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/source.md",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/source.epub",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/source.pdf"
+  ],
+  "recovery": [
+    "restart/resume partial segment set",
+    "reload translation projects"
+  ],
+  "failure_injections": [
+    "missing segment",
+    "duplicate segment",
+    "unsupported source format"
+  ],
+  "details": {
+    "input_count": 4,
+    "output_count": 12
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

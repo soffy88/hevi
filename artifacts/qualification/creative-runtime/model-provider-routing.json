@@ -1,0 +1,46 @@
+{
+  "capability_id": "model-provider-routing",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/model-provider-routing/run-4254f3a46485/routing.json",
+  "checks": {
+    "DEFAULT": true,
+    "PER_CAPABILITY": true,
+    "PER_STAGE": true,
+    "EXPLICIT_PROVIDER_OVERRIDE": true,
+    "FAILURE_PRESERVES_PROVENANCE": true,
+    "NO_CATALOG_AUTHORITY": true,
+    "REAL_PROVIDER_EXECUTION": false
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/model-provider-routing/run-4254f3a46485/routing.json"
+  ],
+  "recovery": [
+    "reload route manifest"
+  ],
+  "failure_injections": [
+    "unknown route falls back to explicit default"
+  ],
+  "details": {
+    "routes": {
+      "default": {
+        "provider": "OPENAI_COMPATIBLE",
+        "model": "veya1.2-free",
+        "capability": null,
+        "stage": null
+      },
+      "capability": {
+        "provider": "LOCAL",
+        "model": "script-local",
+        "capability": "script",
+        "stage": null
+      },
+      "stage": {
+        "provider": "REMOTE",
+        "model": "audit-remote",
+        "capability": null,
+        "stage": "audit"
+      }
+    }
+  },
+  "status": "PARTIAL",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

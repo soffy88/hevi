@@ -1,6 +1,6 @@
 {
   "capability_id": "governed-context-composer",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/governed-context-composer/run-173a8e32b2cc/context-manifests.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/governed-context-composer/run-6905e694292c/context-manifests.json",
   "checks": {
     "PROTECTED_CONTEXT_PRESERVED": true,
     "IRRELEVANT_CONTEXT_EXCLUDED": true,
@@ -11,7 +11,7 @@
     "NO_FULL_CONTEXT_DUMP": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/governed-context-composer/run-173a8e32b2cc/context-manifests.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/governed-context-composer/run-6905e694292c/context-manifests.json"
   ],
   "recovery": [
     "restore persisted ContextManifest after process boundary"

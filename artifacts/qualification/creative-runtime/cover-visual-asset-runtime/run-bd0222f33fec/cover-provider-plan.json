@@ -1,0 +1,38 @@
+{
+  "brief": {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:59:00.594219Z",
+    "negative_constraints": [],
+    "object_id": "60a94186-a718-4245-b41c-c5f57328bebe",
+    "palette": [],
+    "project_id": "95594f6d-06bb-4b7a-bdbc-33e0937ea103",
+    "provenance": [],
+    "revision": 0,
+    "schema_version": 1,
+    "title": "Owned Cover",
+    "typography_direction": null,
+    "updated_at": "2026-09-14T08:59:00.594222Z",
+    "visual_concept": "winter harbour"
+  },
+  "plan": {
+    "errors": [],
+    "output_path": null,
+    "prompt": "winter harbour, cinematic product photography, controlled key light, 16:9 composition, clear subject separation, production-ready framing",
+    "provider": null,
+    "request": {
+      "aspect_ratio": null,
+      "kind": "cover",
+      "metadata": {},
+      "negative_prompt": "",
+      "platform": "generic",
+      "prompt_only": false,
+      "reference_path": null,
+      "style": "cinematic",
+      "subject": "winter harbour"
+    },
+    "size": "1280*720",
+    "status": "planned"
+  },
+  "provider_available": false
+}

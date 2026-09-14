@@ -1,0 +1,27 @@
+{
+  "capability_id": "creative-policy-packs",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-policy-packs/run-785ddd60b93f/policy.json",
+  "checks": {
+    "GLOBAL_DEFAULT": true,
+    "PROJECT_OVERRIDE_SCOPE": true,
+    "CAPABILITY_OVERRIDE": true,
+    "VERSIONED": true,
+    "DIFF": true,
+    "ROLLBACK": true,
+    "INVALID_REJECTED": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-policy-packs/run-785ddd60b93f/policy.json"
+  ],
+  "recovery": [
+    "rollback and reload policy"
+  ],
+  "failure_injections": [
+    "invalid empty policy rule"
+  ],
+  "details": {
+    "rollback_version": 3
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

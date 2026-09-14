@@ -1,0 +1,15 @@
+{
+  "authority": "EVIDENCE",
+  "created_at": "2026-09-14T08:53:24.422305Z",
+  "license_ref": "HEVI-OWNED",
+  "object_id": "00de0b89-b36f-41f4-9263-9c2074bb6356",
+  "project_id": "774b6ae8-5320-4141-8897-47a64c0173a0",
+  "provenance": [],
+  "revision": 0,
+  "schema_version": 1,
+  "sha256": "672dd6cc2083d14984e64a0ad93e0a69be8e635616369343806f8d11d53fa84e",
+  "source_type": "RESEARCH",
+  "title": "Owned research fixture",
+  "updated_at": "2026-09-14T08:53:24.422306Z",
+  "uri": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-research/run-64782e5e91aa/owned-research.txt"
+}

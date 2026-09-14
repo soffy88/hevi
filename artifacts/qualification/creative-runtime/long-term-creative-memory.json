@@ -1,6 +1,6 @@
 {
   "capability_id": "long-term-creative-memory",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/long-term-creative-memory/run-ab7b4c44cb07/memory-records.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/long-term-creative-memory/run-3936143852bb/memory-records.json",
   "checks": {
     "EPISODIC_RETRIEVAL": true,
     "CANONICAL_RETRIEVAL": true,
@@ -13,7 +13,7 @@
     "NO_CROSS_PROJECT_LEAK": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/long-term-creative-memory/run-ab7b4c44cb07/memory-records.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/long-term-creative-memory/run-3936143852bb/memory-records.json"
   ],
   "recovery": [
     "rebuild index in a new process-equivalent instance"

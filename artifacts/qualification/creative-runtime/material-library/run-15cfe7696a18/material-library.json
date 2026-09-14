@@ -1,0 +1,30 @@
+{
+  "archived": {
+    "archive": true,
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:59:00.433922Z",
+    "material_type": "TEXT",
+    "name": "material-0.text",
+    "object_id": "fffdda13-3829-45d4-bf05-3f9544adbb05",
+    "project_id": "d0e0f8dd-0cdd-4a83-90b1-69e25fd91b16",
+    "provenance": [],
+    "purpose": "qualification evidence",
+    "revision": 1,
+    "schema_version": 1,
+    "source_id": "a6df10d2-372e-4314-a9e1-41ea5894edb2",
+    "updated_at": "2026-09-14T08:59:00.433922Z"
+  },
+  "citation": {
+    "locator": "line:1",
+    "material_id": "fffdda13-3829-45d4-bf05-3f9544adbb05",
+    "source_id": "a6df10d2-372e-4314-a9e1-41ea5894edb2"
+  },
+  "retrieved": [
+    "0ec34159-dcd9-4371-829f-632eb4204063",
+    "3387c93a-ca37-45a9-b5d6-88b41babf2fc",
+    "540bb9f5-cee0-47f1-9032-730dd66ab590",
+    "df3248c6-84e4-47ed-a29d-4fe351667525",
+    "fffdda13-3829-45d4-bf05-3f9544adbb05"
+  ]
+}

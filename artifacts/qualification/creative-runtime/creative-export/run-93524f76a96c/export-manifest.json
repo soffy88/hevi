@@ -1,0 +1,89 @@
+{
+  "epub": {
+    "artifact_type": "CREATIVE_EXPORT",
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:53:41.823854Z",
+    "export_format": "EPUB",
+    "manifest_id": null,
+    "media_type": "application/epub+zip",
+    "object_id": "ffc23caa-0da0-4235-96d7-6d660b618ad0",
+    "project_id": "e7c853e0-2d94-4374-9757-e605ac7e7496",
+    "provenance": [
+      {
+        "locator": null,
+        "ref_id": "1787082d-5f04-4578-9b8b-26e1f472c20a",
+        "ref_type": "SOURCE_ARTIFACT",
+        "sha256": "8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07",
+        "uri": null
+      }
+    ],
+    "quality_gate_status": "PASS",
+    "revision": 0,
+    "schema_version": 1,
+    "sha256": "2275af813a3e0d59c1f42fc4fcbf0a06969467af09f3e000dde7cb9bffaa9c3d",
+    "source_ids": [
+      "1787082d-5f04-4578-9b8b-26e1f472c20a"
+    ],
+    "updated_at": "2026-09-14T08:53:41.823857Z",
+    "uri": "memory://export/2275af813a3e0d59c1f42fc4fcbf0a06969467af09f3e000dde7cb9bffaa9c3d"
+  },
+  "markdown": {
+    "artifact_type": "CREATIVE_EXPORT",
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:53:41.817849Z",
+    "export_format": "MARKDOWN",
+    "manifest_id": null,
+    "media_type": "text/markdown",
+    "object_id": "fc8c5ba9-cf60-4c83-bf33-6d8f6e8f751f",
+    "project_id": "e7c853e0-2d94-4374-9757-e605ac7e7496",
+    "provenance": [
+      {
+        "locator": null,
+        "ref_id": "1787082d-5f04-4578-9b8b-26e1f472c20a",
+        "ref_type": "SOURCE_ARTIFACT",
+        "sha256": "8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07",
+        "uri": null
+      }
+    ],
+    "quality_gate_status": "PASS",
+    "revision": 0,
+    "schema_version": 1,
+    "sha256": "0377594d35ec5ee2c490ed8e93c97779006d1128988a0b737ab970f8f8ae85f1",
+    "source_ids": [
+      "1787082d-5f04-4578-9b8b-26e1f472c20a"
+    ],
+    "updated_at": "2026-09-14T08:53:41.817854Z",
+    "uri": "memory://export/0377594d35ec5ee2c490ed8e93c97779006d1128988a0b737ab970f8f8ae85f1"
+  },
+  "txt": {
+    "artifact_type": "CREATIVE_EXPORT",
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:53:41.808555Z",
+    "export_format": "TXT",
+    "manifest_id": null,
+    "media_type": "text/plain",
+    "object_id": "85351682-4f92-445e-a31a-41a78d6a43ef",
+    "project_id": "e7c853e0-2d94-4374-9757-e605ac7e7496",
+    "provenance": [
+      {
+        "locator": null,
+        "ref_id": "1787082d-5f04-4578-9b8b-26e1f472c20a",
+        "ref_type": "SOURCE_ARTIFACT",
+        "sha256": "8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07",
+        "uri": null
+      }
+    ],
+    "quality_gate_status": "PASS",
+    "revision": 0,
+    "schema_version": 1,
+    "sha256": "8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07",
+    "source_ids": [
+      "1787082d-5f04-4578-9b8b-26e1f472c20a"
+    ],
+    "updated_at": "2026-09-14T08:53:41.808556Z",
+    "uri": "memory://export/8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07"
+  }
+}

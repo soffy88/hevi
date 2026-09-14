@@ -1,0 +1,33 @@
+{
+  "capability_id": "creative-research",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-research/run-82dd5d0296cf/owned-research.txt",
+  "checks": {
+    "REPORT_PERSISTED": true,
+    "SOURCE_PROVENANCE": true,
+    "CLAIM_TRACEABLE": true,
+    "RESEARCH_NOT_CANON": true,
+    "EXPLICIT_ACCEPT_CLAIM": true,
+    "CROSS_PROJECT_REJECTED": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-research/run-82dd5d0296cf/owned-research.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-research/run-82dd5d0296cf/report.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-research/run-82dd5d0296cf/source.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-research/run-82dd5d0296cf/evidence.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-research/run-82dd5d0296cf/accepted-fact.json"
+  ],
+  "recovery": [
+    "reload report and evidence",
+    "explicit claim acceptance after non-mutating review"
+  ],
+  "failure_injections": [
+    "cross-project claim",
+    "research result before explicit canon commit"
+  ],
+  "details": {
+    "report_id": "383dd32d-6b69-47b4-b151-b2e513d83c83",
+    "evidence_id": "d3d6ec8d-b384-4105-ac0e-b3e5979fc93f"
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

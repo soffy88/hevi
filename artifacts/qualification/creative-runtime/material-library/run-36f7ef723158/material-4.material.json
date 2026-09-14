@@ -1,0 +1,15 @@
+{
+  "archive": false,
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T09:01:40.634737Z",
+  "material_type": "EXTERNAL_REFERENCE",
+  "name": "material-4.external_reference",
+  "object_id": "22ff7e53-49fb-438f-af10-94eb99336f23",
+  "project_id": "2284e356-fbf0-42e8-8142-555566a7ae2a",
+  "provenance": [],
+  "purpose": "qualification evidence",
+  "revision": 0,
+  "schema_version": 1,
+  "source_id": "2188934f-ad0c-481c-8ddd-7d6e1dcb7f77",
+  "updated_at": "2026-09-14T09:01:40.634738Z"
+}

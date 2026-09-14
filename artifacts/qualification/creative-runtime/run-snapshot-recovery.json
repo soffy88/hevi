@@ -1,6 +1,6 @@
 {
   "capability_id": "run-snapshot-recovery",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ac004ec609c/run.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ea20c3c0bfe/run.json",
   "checks": {
     "SNAPSHOT_PERSISTED": true,
     "PROCESS_RELOAD": true,
@@ -10,8 +10,8 @@
     "NO_FALSE_COMPLETION": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ac004ec609c/run.json",
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ac004ec609c/snapshot.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ea20c3c0bfe/run.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/run-snapshot-recovery/run-5ea20c3c0bfe/snapshot.json"
   ],
   "recovery": [
     "subprocess reload",
@@ -22,7 +22,7 @@
     "partial artifact before settlement"
   ],
   "details": {
-    "run_id": "c4fdf27f-a602-4a59-8482-e9ae3ba87554",
+    "run_id": "b8c2db61-ac86-45fe-9385-28f886e7a7dd",
     "snapshot_stage": "DRAFT"
   },
   "status": "QUALIFIED",

@@ -1,0 +1,25 @@
+RESEARCH: Mara advances the route.
+
+ARCHITECT: Mara advances the route.
+
+PLAN: Mara advances the route.
+
+COMPOSE: Mara advances the route.
+
+DRAFT: Mara advances the route.
+
+OBSERVE: Mara advances the route.
+
+REFLECT: Mara advances the route.
+
+NORMALIZE: Mara advances the route.
+
+AUDIT: Mara advances the route.
+
+REVISE: Mara advances the route.
+
+RE_AUDIT: Mara advances the route.
+
+SETTLEMENT: Mara advances the route.
+
+STATE_COMMIT: Mara advances the route.

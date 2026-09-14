@@ -1,0 +1,14 @@
+{
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T09:01:40.616642Z",
+  "license_ref": "HEVI-OWNED",
+  "object_id": "8c699b8d-bc7f-4d7c-8ac7-0410c1d51f54",
+  "project_id": "2284e356-fbf0-42e8-8142-555566a7ae2a",
+  "provenance": [],
+  "revision": 0,
+  "schema_version": 1,
+  "source_type": "UPLOADED",
+  "title": "material-3.image",
+  "updated_at": "2026-09-14T09:01:40.616644Z",
+  "uri": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-3.image"
+}

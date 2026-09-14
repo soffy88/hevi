@@ -1,0 +1,87 @@
+{
+  "cancelled": {
+    "artifact_manifest": {
+      "artifact_ids": [],
+      "hashes": []
+    },
+    "authority": "CANONICAL",
+    "capability": "creative.longform",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:56:45.891867Z",
+    "failure": null,
+    "object_id": "c88613c1-48f7-4127-b515-436c301823d9",
+    "project_id": "035afe4c-fa9d-4ee5-93c2-35c036b904bf",
+    "provenance": [],
+    "revision": 1,
+    "run_key": "background",
+    "schema_version": 1,
+    "stage_results": [],
+    "status": "CANCELLED",
+    "updated_at": "2026-09-14T08:56:45.901663Z"
+  },
+  "failed": {
+    "artifact_manifest": {
+      "artifact_ids": [],
+      "hashes": []
+    },
+    "authority": "CANONICAL",
+    "capability": "creative.longform",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:56:45.891867Z",
+    "failure": {
+      "code": "TEMPORARY",
+      "message": "owned fault",
+      "retryable": true,
+      "stage": "draft"
+    },
+    "object_id": "c88613c1-48f7-4127-b515-436c301823d9",
+    "project_id": "035afe4c-fa9d-4ee5-93c2-35c036b904bf",
+    "provenance": [],
+    "revision": 2,
+    "run_key": "background",
+    "schema_version": 1,
+    "stage_results": [],
+    "status": "FAILED",
+    "updated_at": "2026-09-14T08:56:45.911616Z"
+  },
+  "resumed": {
+    "artifact_manifest": {
+      "artifact_ids": [],
+      "hashes": []
+    },
+    "authority": "CANONICAL",
+    "capability": "creative.longform",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:56:45.891867Z",
+    "failure": null,
+    "object_id": "c88613c1-48f7-4127-b515-436c301823d9",
+    "project_id": "035afe4c-fa9d-4ee5-93c2-35c036b904bf",
+    "provenance": [],
+    "revision": 3,
+    "run_key": "background",
+    "schema_version": 1,
+    "stage_results": [],
+    "status": "RUNNING",
+    "updated_at": "2026-09-14T08:56:45.920581Z"
+  },
+  "terminal": {
+    "artifact_manifest": {
+      "artifact_ids": [],
+      "hashes": []
+    },
+    "authority": "CANONICAL",
+    "capability": "creative.longform",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:56:45.891867Z",
+    "failure": null,
+    "object_id": "c88613c1-48f7-4127-b515-436c301823d9",
+    "project_id": "035afe4c-fa9d-4ee5-93c2-35c036b904bf",
+    "provenance": [],
+    "revision": 4,
+    "run_key": "background",
+    "schema_version": 1,
+    "stage_results": [],
+    "status": "CANCELLED",
+    "updated_at": "2026-09-14T08:56:45.929580Z"
+  }
+}

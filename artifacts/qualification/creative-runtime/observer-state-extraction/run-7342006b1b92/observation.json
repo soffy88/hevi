@@ -1,0 +1,60 @@
+{
+  "artifact_id": "1ed27233-3b59-4bbd-819c-9dd2cffccd52",
+  "authority": "PROJECTION",
+  "canon_revision": 0,
+  "created_at": "2026-09-14T09:01:40.335180Z",
+  "extractor": "qualification-observer",
+  "facts": [
+    {
+      "confidence": 0.0,
+      "fact_type": "CHARACTER",
+      "statement": "observed character"
+    },
+    {
+      "confidence": 0.0,
+      "fact_type": "LOCATION",
+      "statement": "observed location"
+    },
+    {
+      "confidence": 0.0,
+      "fact_type": "RESOURCE",
+      "statement": "observed resource"
+    },
+    {
+      "confidence": 0.0,
+      "fact_type": "RELATIONSHIP",
+      "statement": "observed relationship"
+    },
+    {
+      "confidence": 0.0,
+      "fact_type": "EMOTION",
+      "statement": "observed emotion"
+    },
+    {
+      "confidence": 0.0,
+      "fact_type": "INFORMATION",
+      "statement": "observed information"
+    },
+    {
+      "confidence": 0.0,
+      "fact_type": "HOOK",
+      "statement": "observed hook"
+    },
+    {
+      "confidence": 0.0,
+      "fact_type": "TIME",
+      "statement": "observed time"
+    },
+    {
+      "confidence": 0.0,
+      "fact_type": "PHYSICAL_STATE",
+      "statement": "observed physical_state"
+    }
+  ],
+  "object_id": "7f386e91-72fb-4bb9-8e6a-8b445e4e6c11",
+  "project_id": "0cbc06d7-7e62-4474-96fa-fd67bd8ec61c",
+  "provenance": [],
+  "revision": 0,
+  "schema_version": 1,
+  "updated_at": "2026-09-14T09:01:40.335181Z"
+}

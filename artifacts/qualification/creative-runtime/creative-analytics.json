@@ -1,0 +1,39 @@
+{
+  "capability_id": "creative-analytics",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-analytics/run-d47707556151/analytics.json",
+  "checks": {
+    "WORD_COUNTS": true,
+    "ARTIFACT_COUNTS": true,
+    "AUDIT_RATE": true,
+    "ISSUE_DISTRIBUTION": true,
+    "REVISION_COUNT": true,
+    "FAILURE_RATE": true,
+    "RECOVERY_RATE": true,
+    "LEDGER_RECONCILED": true,
+    "MODEL_TOKEN_COST_LATENCY": false
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/creative-analytics/run-d47707556151/analytics.json"
+  ],
+  "recovery": [
+    "reload analytics ledger"
+  ],
+  "failure_injections": [
+    "negative revision count rejected"
+  ],
+  "details": {
+    "analytics": {
+      "artifact_count": 1,
+      "audit_pass_rate": 0.5,
+      "issue_distribution": {
+        "PACING": 1
+      },
+      "revision_count": 2,
+      "run_failure_rate": 0.5,
+      "run_recovery_rate": 0.0,
+      "word_count": 3
+    }
+  },
+  "status": "PARTIAL",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

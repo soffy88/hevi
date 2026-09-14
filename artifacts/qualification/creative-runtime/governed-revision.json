@@ -1,0 +1,33 @@
+{
+  "capability_id": "governed-revision",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/governed-revision/run-a85432c6e485",
+  "checks": {
+    "FOUR_REVISION_MODES": true,
+    "ORIGINAL_UNCHANGED_BEFORE_COMMIT": true,
+    "DIFF_AVAILABLE": true,
+    "REAUDIT_RUN": true,
+    "FAILED_ISSUES_RETAINED": true,
+    "REVISION_LIMIT_ENFORCED": true,
+    "REJECT_PRESERVES_CANON": true,
+    "APPROVE_ATOMIC_COMMIT": true,
+    "ATOMIC_COMMIT": false
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/governed-revision/run-a85432c6e485/proposal.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/governed-revision/run-a85432c6e485/candidate.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/governed-revision/run-a85432c6e485/revised.txt"
+  ],
+  "recovery": [
+    "candidate persisted then re-audited"
+  ],
+  "failure_injections": [
+    "revision limit",
+    "proposal-only before approval"
+  ],
+  "details": {
+    "proposal_count": 4,
+    "re_audit": "PASS"
+  },
+  "status": "PARTIAL",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

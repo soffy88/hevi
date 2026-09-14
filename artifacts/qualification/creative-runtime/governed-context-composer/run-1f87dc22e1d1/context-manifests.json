@@ -1,0 +1,367 @@
+[
+  {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:59:00.199172Z",
+    "dropped_refs": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "estimated_tokens": 31,
+    "excluded": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "object_id": "6abd5409-8b40-4bda-bb63-e7f81e8aae5c",
+    "project_id": "738baae3-ff12-4b1a-8100-0b4fb8b8889d",
+    "provenance": [],
+    "revision": 0,
+    "schema_version": 1,
+    "selected": [
+      {
+        "compressed": false,
+        "priority": "P0",
+        "protected": true,
+        "ref": {
+          "locator": "revision:4",
+          "ref_id": "canon:1",
+          "ref_type": "CANON",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "protected canonical constraint: the map is in the harbour"
+      },
+      {
+        "compressed": false,
+        "priority": "P1",
+        "protected": false,
+        "ref": {
+          "locator": "revision:3",
+          "ref_id": "summary:adjacent",
+          "ref_type": "SUMMARY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "adjacent scene summary: the ferry arrives"
+      },
+      {
+        "compressed": true,
+        "priority": "P3",
+        "protected": false,
+        "ref": {
+          "locator": "revision:1",
+          "ref_id": "old:history",
+          "ref_type": "HISTORY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "old history summary"
+      }
+    ],
+    "task": "draft",
+    "truncated": true,
+    "updated_at": "2026-09-14T08:59:00.199177Z"
+  },
+  {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:59:00.199212Z",
+    "dropped_refs": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "estimated_tokens": 31,
+    "excluded": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "object_id": "8b094239-a3da-47d0-9c3c-7925d1dae850",
+    "project_id": "738baae3-ff12-4b1a-8100-0b4fb8b8889d",
+    "provenance": [],
+    "revision": 0,
+    "schema_version": 1,
+    "selected": [
+      {
+        "compressed": false,
+        "priority": "P0",
+        "protected": true,
+        "ref": {
+          "locator": "revision:4",
+          "ref_id": "canon:1",
+          "ref_type": "CANON",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "protected canonical constraint: the map is in the harbour"
+      },
+      {
+        "compressed": false,
+        "priority": "P1",
+        "protected": false,
+        "ref": {
+          "locator": "revision:3",
+          "ref_id": "summary:adjacent",
+          "ref_type": "SUMMARY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "adjacent scene summary: the ferry arrives"
+      },
+      {
+        "compressed": true,
+        "priority": "P3",
+        "protected": false,
+        "ref": {
+          "locator": "revision:1",
+          "ref_id": "old:history",
+          "ref_type": "HISTORY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "old history summary"
+      }
+    ],
+    "task": "revision",
+    "truncated": true,
+    "updated_at": "2026-09-14T08:59:00.199212Z"
+  },
+  {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:59:00.199229Z",
+    "dropped_refs": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "estimated_tokens": 31,
+    "excluded": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "object_id": "b7a25311-eaf9-4bd8-88f1-7751e6ccd148",
+    "project_id": "738baae3-ff12-4b1a-8100-0b4fb8b8889d",
+    "provenance": [],
+    "revision": 0,
+    "schema_version": 1,
+    "selected": [
+      {
+        "compressed": false,
+        "priority": "P0",
+        "protected": true,
+        "ref": {
+          "locator": "revision:4",
+          "ref_id": "canon:1",
+          "ref_type": "CANON",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "protected canonical constraint: the map is in the harbour"
+      },
+      {
+        "compressed": false,
+        "priority": "P1",
+        "protected": false,
+        "ref": {
+          "locator": "revision:3",
+          "ref_id": "summary:adjacent",
+          "ref_type": "SUMMARY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "adjacent scene summary: the ferry arrives"
+      },
+      {
+        "compressed": true,
+        "priority": "P3",
+        "protected": false,
+        "ref": {
+          "locator": "revision:1",
+          "ref_id": "old:history",
+          "ref_type": "HISTORY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "old history summary"
+      }
+    ],
+    "task": "audit",
+    "truncated": true,
+    "updated_at": "2026-09-14T08:59:00.199230Z"
+  },
+  {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:59:00.199246Z",
+    "dropped_refs": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "estimated_tokens": 31,
+    "excluded": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "object_id": "f5320769-a546-4e92-b0e2-5d1e071e93b4",
+    "project_id": "738baae3-ff12-4b1a-8100-0b4fb8b8889d",
+    "provenance": [],
+    "revision": 0,
+    "schema_version": 1,
+    "selected": [
+      {
+        "compressed": false,
+        "priority": "P0",
+        "protected": true,
+        "ref": {
+          "locator": "revision:4",
+          "ref_id": "canon:1",
+          "ref_type": "CANON",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "protected canonical constraint: the map is in the harbour"
+      },
+      {
+        "compressed": false,
+        "priority": "P1",
+        "protected": false,
+        "ref": {
+          "locator": "revision:3",
+          "ref_id": "summary:adjacent",
+          "ref_type": "SUMMARY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "adjacent scene summary: the ferry arrives"
+      },
+      {
+        "compressed": true,
+        "priority": "P3",
+        "protected": false,
+        "ref": {
+          "locator": "revision:1",
+          "ref_id": "old:history",
+          "ref_type": "HISTORY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "old history summary"
+      }
+    ],
+    "task": "forecast",
+    "truncated": true,
+    "updated_at": "2026-09-14T08:59:00.199246Z"
+  },
+  {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T08:59:00.199259Z",
+    "dropped_refs": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "estimated_tokens": 31,
+    "excluded": [
+      {
+        "locator": "revision:0",
+        "ref_id": "old:irrelevant",
+        "ref_type": "HISTORY",
+        "sha256": null,
+        "uri": null
+      }
+    ],
+    "object_id": "f2980d30-7f79-49ff-9b03-9a94179342db",
+    "project_id": "738baae3-ff12-4b1a-8100-0b4fb8b8889d",
+    "provenance": [],
+    "revision": 0,
+    "schema_version": 1,
+    "selected": [
+      {
+        "compressed": false,
+        "priority": "P0",
+        "protected": true,
+        "ref": {
+          "locator": "revision:4",
+          "ref_id": "canon:1",
+          "ref_type": "CANON",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "protected canonical constraint: the map is in the harbour"
+      },
+      {
+        "compressed": false,
+        "priority": "P1",
+        "protected": false,
+        "ref": {
+          "locator": "revision:3",
+          "ref_id": "summary:adjacent",
+          "ref_type": "SUMMARY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "adjacent scene summary: the ferry arrives"
+      },
+      {
+        "compressed": true,
+        "priority": "P3",
+        "protected": false,
+        "ref": {
+          "locator": "revision:1",
+          "ref_id": "old:history",
+          "ref_type": "HISTORY",
+          "sha256": null,
+          "uri": null
+        },
+        "text": "old history summary"
+      }
+    ],
+    "task": "script",
+    "truncated": true,
+    "updated_at": "2026-09-14T08:59:00.199260Z"
+  }
+]

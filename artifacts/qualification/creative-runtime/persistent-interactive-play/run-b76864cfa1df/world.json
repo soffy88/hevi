@@ -1,0 +1,15 @@
+{
+  "authority": "CANONICAL",
+  "clock": "turn",
+  "created_at": "2026-09-14T08:53:48.152380Z",
+  "inventory": [],
+  "object_id": "b20c5f82-19a7-459e-ae42-2c0cad4854f3",
+  "project_id": "ac832134-b8fa-4f37-bcb3-e2ede0c3184d",
+  "provenance": [],
+  "revision": 0,
+  "schema_version": 1,
+  "title": "Owned World",
+  "turn": 0,
+  "updated_at": "2026-09-14T08:53:48.152385Z",
+  "world_contract": "stable"
+}

@@ -1,0 +1,26 @@
+{
+  "diff": {
+    "added": [
+      "dialogue"
+    ],
+    "removed": []
+  },
+  "rollback": {
+    "authority": "CANONICAL",
+    "content_hash": null,
+    "created_at": "2026-09-14T09:01:40.546399Z",
+    "enabled": true,
+    "name": "script-base",
+    "object_id": "31cfc140-e63f-4798-993c-45fc4b30a470",
+    "project_id": "1c2400f0-36cc-421b-8413-72798109fe64",
+    "provenance": [],
+    "revision": 0,
+    "rules": [
+      "safe"
+    ],
+    "schema_version": 1,
+    "scope": "CAPABILITY",
+    "updated_at": "2026-09-14T09:01:40.546399Z",
+    "version": 3
+  }
+}

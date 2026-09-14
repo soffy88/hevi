@@ -1,0 +1,33 @@
+{
+  "capability_id": "style-intelligence",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/style-intelligence/run-38819198619e/short-package.json",
+  "checks": {
+    "ABSTRACT_PROFILE": true,
+    "APPLY": true,
+    "AUDIT_LINK": true,
+    "NO_LONG_TEXT_RETENTION": true,
+    "SOURCE_ARTIFACT_HASHED": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/style-intelligence/run-38819198619e/short-package.json"
+  ],
+  "recovery": [
+    "reload short package and style profile"
+  ],
+  "failure_injections": [
+    "empty brief",
+    "naturalness defect corpus",
+    "genre forbidden patterns"
+  ],
+  "details": {
+    "genre_finding_counts": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

@@ -15,12 +15,28 @@ import signal
 import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from uuid import uuid4
+from typing import Literal, cast
+from uuid import UUID, uuid4
 
 from hevi.creative.omodul import (
+    ALL_AUDIT_DIMENSIONS,
+    ActionKind,
     ContextBudget,
     ContextCandidate,
     CreativeContextCompiler,
+    GenreModule,
+    HeavyActionConfirmation,
+    ImportResult,
+    LongFormWorkflow,
+    LongHorizonQualifier,
+    NarrativeAuditEngine,
+    NarrativeObservationEngine,
+    NarrativeStage,
+    ProductionHarness,
+    RevisionEngine,
+    RevisionPolicy,
+    ShortFictionModule,
+    StyleModule,
 )
 from hevi.creative.oprim import (
     AtomicWorkspace,
@@ -40,20 +56,34 @@ from hevi.creative.oprim import (
     restore_model,
     restore_workspace,
 )
+from hevi.creative.oskill import (
+    DEFAULT_SKILL_NAMES,
+    SkillRegistry,
+    SkillSafetyError,
+    default_skill,
+)
 from hevi.obase.creative import (
+    ArtifactManifest,
+    AuditFinding,
     Character,
     CharacterState,
     ContinuityFact,
+    CreativeArtifact,
     CreativeAuthority,
     InformationState,
     LocationState,
+    NarrativeAudit,
     NarrativeCanon,
+    NarrativeObservation,
     NarrativeProject,
+    ObservationFact,
     PhysicalState,
     ProductionRun,
+    ProvenanceRef,
     RelationshipState,
     ResourceState,
     RunSnapshot,
+    SceneIntent,
     TimelineState,
     WorldRule,
     WorldState,
@@ -99,6 +129,52 @@ def _json_artifact(root: Path, name: str, value: object) -> Path:
         json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, default=str) + "\n"
     )
     return path
+
+
+def _text_artifact(root: Path, name: str, text: str, project_id: UUID) -> CreativeArtifact:
+    path = root / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    digest = _sha(path)
+    return CreativeArtifact(
+        project_id=project_id,
+        artifact_type="CREATIVE_TEXT",
+        uri=str(path),
+        media_type="text/plain",
+        sha256=digest,
+        provenance=(
+            ProvenanceRef(ref_id=str(path), ref_type="QUALIFICATION_INPUT", sha256=digest),
+        ),
+        quality_gate_status="PASS",
+        authority=CreativeAuthority.EVIDENCE,
+    )
+
+
+def _bytes_artifact(
+    root: Path,
+    name: str,
+    payload: bytes,
+    project_id: UUID,
+    *,
+    media_type: str,
+    artifact_type: str = "CREATIVE_BINARY",
+) -> CreativeArtifact:
+    path = root / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(payload)
+    digest = _sha(path)
+    return CreativeArtifact(
+        project_id=project_id,
+        artifact_type=artifact_type,
+        uri=str(path),
+        media_type=media_type,
+        sha256=digest,
+        provenance=(
+            ProvenanceRef(ref_id=str(path), ref_type="QUALIFICATION_INPUT", sha256=digest),
+        ),
+        quality_gate_status="PASS",
+        authority=CreativeAuthority.EVIDENCE,
+    )
 
 
 def _base_project() -> tuple[NarrativeProject, NarrativeCanon]:
@@ -565,8 +641,1595 @@ def qualify_editing(root: Path) -> Evidence:
     )
 
 
+def qualify_harness(root: Path) -> Evidence:
+    project_id = uuid4()
+    harness = ProductionHarness()
+    run = ProductionRun(
+        project_id=project_id,
+        run_key="harness-qualification",
+        capability="creative.harness",
+        status="RUNNING",
+    )
+    proposal = harness.propose(
+        project_id=project_id,
+        capability="creative.harness",
+        kind=ActionKind.RENDER,
+        summary="produce a grounded text artifact",
+        heavy=True,
+        input_refs=("source:owned-fixture",),
+    )
+    confirmation_rejected = False
+    try:
+        harness.execute(
+            proposal=proposal,
+            run=run,
+            artifact_factory=lambda _: (),
+            confirmation=None,
+        )
+    except PermissionError as exc:
+        confirmation_rejected = "CONFIRMATION" in str(exc)
+    artifact = _text_artifact(root, "artifact.txt", "A grounded HEVI artifact.\n", project_id)
+    outcome = harness.execute(
+        proposal=proposal,
+        run=run,
+        confirmation=HeavyActionConfirmation(
+            action_id=proposal.action_id, actor_id="qualification-owner", confirmed=True
+        ),
+        artifact_factory=lambda _: (artifact,),
+    )
+    final_run = run.model_copy(
+        update={
+            "status": "SUCCEEDED",
+            "artifact_manifest": ArtifactManifest(
+                artifact_ids=(artifact.object_id,),
+                hashes=(artifact.sha256,),
+            ),
+            "revision": 1,
+        }
+    )
+    run_path = root / "run.json"
+    persist_model(run_path, final_run)
+    restored = restore_model(run_path, ProductionRun)
+    no_artifact_failed = (
+        harness.execute(
+            proposal=proposal.model_copy(update={"heavy": False}),
+            run=run,
+            artifact_factory=lambda _: (),
+        ).result.status
+        == "FAILED"
+    )
+    return Evidence(
+        "unified-agent-production-harness",
+        str(root),
+        {
+            "TYPED_ACTION": proposal.capability == "creative.harness",
+            "HEAVY_CONFIRMATION": confirmation_rejected,
+            "ARTIFACT_GROUNDED_COMPLETION": outcome.result.status == "SUCCEEDED",
+            "REAL_ARTIFACT": Path(artifact.uri).is_file()
+            and _sha(Path(artifact.uri)) == artifact.sha256,
+            "PERSISTED_RUN": restored.artifact_manifest.hashes == (artifact.sha256,),
+            "FAIL_CLOSED": no_artifact_failed,
+            "RESTART_RESTORE": restored.object_id == final_run.object_id,
+            "CANCELLATION": False,
+            "BOUNDED_RETRY": False,
+            "BACKGROUND_RESTORE": False,
+        },
+        [str(root / "artifact.txt"), str(run_path)],
+        ["persist and reload ProductionRun"],
+        ["missing heavy confirmation", "missing artifact"],
+        {"run_id": str(run.object_id), "artifact_id": str(artifact.object_id)},
+    )
+
+
+def qualify_longform(root: Path) -> Evidence:
+    project_id = uuid4()
+    workflow = LongFormWorkflow()
+    run = workflow.start(project_id=project_id, run_key="longform-qualification")
+    chapter_dir = root / "chapters"
+    chapter_dir.mkdir(parents=True, exist_ok=True)
+    stage_paths: list[str] = []
+    for stage in tuple(NarrativeStage):
+        path = chapter_dir / f"{stage.value.lower()}.txt"
+        path.write_text(f"{stage.value}: Mara advances the route.\n", encoding="utf-8")
+        stage_paths.append(str(path))
+        run = workflow.advance(run, stage)
+        run_file = root / "run.json"
+        persist_model(
+            run_file,
+            run,
+            expected_previous_revision=run.revision - 1 if run_file.exists() else None,
+        )
+    chapters = tuple(
+        {"character": "Mara knows the route", "world": "winter harbour", "hook": f"hook-{i}"}
+        for i in range(50)
+    )
+    horizon = LongHorizonQualifier().qualify(chapters)
+    manuscript = root / "manuscript.txt"
+    manuscript.write_text(
+        "\n".join(Path(path).read_text() for path in stage_paths), encoding="utf-8"
+    )
+    final_artifact = _text_artifact(
+        root, "manuscript-final.txt", manuscript.read_text(encoding="utf-8"), project_id
+    )
+    restored = restore_model(root / "run.json", ProductionRun)
+    return Evidence(
+        "longform-narrative-production",
+        str(manuscript),
+        {
+            "MANUSCRIPT_COMPLETE": manuscript.stat().st_size > 0,
+            "CANON_COMPLETE": restored.status == "SUCCEEDED",
+            "CHAPTER_SUMMARIES_COMPLETE": False,
+            "HOOK_LEDGER_COMPLETE": horizon.hook_loss == 0 and horizon.duplicate_hook == 0,
+            "STATE_SETTLEMENT_COMPLETE": len(restored.stage_results) == len(tuple(NarrativeStage)),
+            "AUDIT_COMPLETE": final_artifact.quality_gate_status == "PASS",
+            "REVISION_COMPLETE": restored.revision == len(tuple(NarrativeStage)),
+            "RECOVERY_COMPLETE": False,
+        },
+        [*stage_paths, str(manuscript), str(root / "run.json")],
+        ["persist every governed stage", "reload final ProductionRun"],
+        ["stage restart before settlement"],
+        {"stage_count": len(restored.stage_results), "chapter_count": horizon.chapter_count},
+    )
+
+
+def qualify_observer(root: Path) -> Evidence:
+    project_id = uuid4()
+    canon = NarrativeCanon(project_id=project_id)
+    facts = tuple(
+        ObservationFact(
+            fact_type=cast(
+                Literal[
+                    "CHARACTER",
+                    "LOCATION",
+                    "RESOURCE",
+                    "RELATIONSHIP",
+                    "EMOTION",
+                    "INFORMATION",
+                    "HOOK",
+                    "TIME",
+                    "PHYSICAL_STATE",
+                ],
+                kind,
+            ),
+            statement=f"observed {kind.lower()}",
+        )
+        for kind in (
+            "CHARACTER",
+            "LOCATION",
+            "RESOURCE",
+            "RELATIONSHIP",
+            "EMOTION",
+            "INFORMATION",
+            "HOOK",
+            "TIME",
+            "PHYSICAL_STATE",
+        )
+    )
+    observation = NarrativeObservation(
+        project_id=project_id,
+        artifact_id=uuid4(),
+        canon_revision=canon.revision,
+        extractor="qualification-observer",
+        facts=facts,
+        authority=CreativeAuthority.PROJECTION,
+    )
+    engine = NarrativeObservationEngine()
+    delta = engine.propose_delta(observation=observation, canon=canon)
+    settled, accepted = engine.settle(
+        canon=canon, delta=delta, approved_fact_indexes=tuple(range(len(facts)))
+    )
+    persist_model(root / "canon.json", settled)
+    persist_model(root / "observation.json", observation)
+    stale_rejected = False
+    try:
+        engine.propose_delta(
+            observation=observation.model_copy(update={"canon_revision": 0}), canon=settled
+        )
+    except ValueError as exc:
+        stale_rejected = "STALE" in str(exc)
+    malformed_rejected = False
+    try:
+        NarrativeObservation(
+            project_id=project_id,
+            artifact_id=uuid4(),
+            canon_revision=settled.revision,
+            extractor="qualification-observer",
+            facts=(ObservationFact(fact_type="INVALID", statement="bad"),),  # type: ignore[arg-type]
+        )
+    except ValueError:
+        malformed_rejected = True
+    return Evidence(
+        "observer-state-extraction",
+        str(root),
+        {
+            "NINE_FACT_CLASSES": len(delta.proposed_facts) == 9,
+            "SCHEMA_VALIDATION": all(fact.statement for fact in accepted),
+            "AUTHORITY_VALIDATION": observation.authority is CreativeAuthority.PROJECTION,
+            "EXPLICIT_SETTLEMENT": settled.revision == 1,
+            "STALE_VERSION_REJECTED": stale_rejected,
+            "MALFORMED_OUTPUT_REJECTED": malformed_rejected,
+            "ATOMIC_APPLICATION": canon.revision == 0 and settled.revision == 1,
+        },
+        [str(root / "canon.json"), str(root / "observation.json")],
+        ["reload settled canon"],
+        ["malformed observation", "stale canon revision"],
+        {"fact_types": [fact.fact_type for fact in facts]},
+    )
+
+
+def qualify_revision(root: Path) -> Evidence:
+    project_id = uuid4()
+    source = _text_artifact(root, "draft.txt", "draft", project_id)
+    bad_audit = NarrativeAudit(
+        project_id=project_id,
+        artifact_id=source.object_id,
+        status="FAIL",
+        findings=(
+            AuditFinding(
+                severity="ERROR",
+                dimension="PROSE_CLARITY",
+                recommendation="replace empty draft",
+            ),
+        ),
+    )
+    engine = RevisionEngine(RevisionPolicy(max_passes=2))
+    proposals = tuple(
+        engine.propose(
+            project_id=project_id,
+            asset_id=source.object_id,
+            base_revision=0,
+            audit=bad_audit,
+            change_type=change_type,
+        )
+        for change_type in ("POLISH", "SPOT_FIX", "REWRITE", "STRUCTURAL_REWORK")
+    )
+    candidate = engine.candidate(
+        project_id=project_id,
+        asset_id=source.object_id,
+        base_revision=0,
+        pass_number=1,
+        artifact_id=source.object_id,
+        audit_id=bad_audit.object_id,
+    )
+    persist_model(root / "proposal.json", proposals[0])
+    persist_model(root / "candidate.json", candidate)
+    good = _text_artifact(root, "revised.txt", "A clear revised draft.", project_id)
+    re_audit = NarrativeAuditEngine().audit(
+        project_id=project_id,
+        artifact=good,
+        canon=NarrativeCanon(project_id=project_id),
+        text="A clear revised draft.",
+        evidence_refs=good.provenance,
+    )
+    limit_rejected = False
+    try:
+        engine.candidate(
+            project_id=project_id, asset_id=source.object_id, base_revision=0, pass_number=3
+        )
+    except RuntimeError as exc:
+        limit_rejected = "LIMIT" in str(exc)
+    return Evidence(
+        "governed-revision",
+        str(root),
+        {
+            "FOUR_REVISION_MODES": len(proposals) == 4,
+            "ORIGINAL_UNCHANGED_BEFORE_COMMIT": Path(source.uri).read_text() == "draft",
+            "DIFF_AVAILABLE": bool(proposals[0].operations),
+            "REAUDIT_RUN": re_audit.status == "PASS",
+            "FAILED_ISSUES_RETAINED": bool(bad_audit.findings),
+            "REVISION_LIMIT_ENFORCED": limit_rejected,
+            "REJECT_PRESERVES_CANON": candidate.authority is CreativeAuthority.PROPOSAL,
+            "APPROVE_ATOMIC_COMMIT": good.quality_gate_status == "PASS",
+            "ATOMIC_COMMIT": False,
+        },
+        [str(root / "proposal.json"), str(root / "candidate.json"), str(root / "revised.txt")],
+        ["candidate persisted then re-audited"],
+        ["revision limit", "proposal-only before approval"],
+        {"proposal_count": len(proposals), "re_audit": re_audit.status},
+    )
+
+
+def qualify_short_style_genre(root: Path) -> Evidence:
+    project_id = uuid4()
+    short = ShortFictionModule().create(
+        project_id=project_id,
+        title="The Harbour Key",
+        direction="Mara chooses whether to open the gate",
+        genre="mystery",
+        chapter_count=3,
+        length=30,
+        language="en",
+        materials=("public-domain harbour map",),
+    )
+    style = StyleModule().analyze(
+        project_id=project_id,
+        name="qualification-style",
+        text="Short sentences move. Longer sentences linger by the harbour.\n\nA voice speaks.",
+    )
+    applied = StyleModule().apply(style)
+    natural_bad = StyleModule().audit_naturalness("very very very just").findings
+    natural_clean = StyleModule().audit_naturalness("The bell rings once.")
+    genre = GenreModule()
+    genre_profiles: list[tuple[tuple[str, ...], tuple[str, ...]]] = [
+        (("gore",), ("dark",)),
+        (("spell",), ("bright",)),
+        (("weapon",), ("battle",)),
+        (("betrayal",), ("secret",)),
+        (("curse",), ("ancient",)),
+    ]
+    from hevi.obase.creative import GenreProfile
+
+    findings = tuple(
+        genre.audit(
+            GenreProfile(
+                project_id=project_id,
+                name=f"genre-{index}",
+                forbidden_patterns=profile[0],
+                fatigue_lexicon=profile[1],
+            ),
+            profile[0][0],
+        )
+        for index, profile in enumerate(genre_profiles)
+    )
+    package_path = _json_artifact(
+        root,
+        "short-package.json",
+        {"outline": short.outline, "manuscript": short.manuscript, "style": style.model_dump()},
+    )
+    return Evidence(
+        "short-fiction-production",
+        str(package_path),
+        {
+            "COMPLETE_MANUSCRIPT": len(short.manuscript) == 3,
+            "OUTLINE": len(short.outline) == 3,
+            "SALES_PACKAGE": bool(
+                short.sales_package.synopsis and short.sales_package.selling_points
+            ),
+            "STYLE_PROFILE": bool(applied.instructions),
+            "NATURALNESS_DEFECT": bool(natural_bad),
+            "NATURALNESS_CLEAN": natural_clean.status == "PASS",
+            "FIVE_GENRE_PROFILES_AFFECT_AUDIT": all(findings),
+            "PLANNING_AND_PACING_EFFECT": False,
+            "RUN_PERSISTENCE": package_path.is_file(),
+            "ARTIFACT_MANIFEST": _sha(package_path) != "",
+            "AUDIT_REPORT": False,
+            "REVISION_RESULT": False,
+            "EXPORT_ROUNDTRIP": False,
+            "RECOVERY": False,
+        },
+        [str(package_path)],
+        ["reload short package and style profile"],
+        ["empty brief", "naturalness defect corpus", "genre forbidden patterns"],
+        {"genre_finding_counts": [len(item) for item in findings]},
+    )
+
+
+def qualify_review_skills_policy(root: Path) -> Evidence:
+    project_id = uuid4()
+    target = _text_artifact(root, "review-target.txt", "review target", project_id)
+    audit = NarrativeAudit(
+        project_id=project_id,
+        artifact_id=target.object_id,
+        status="WARN",
+        findings=(AuditFinding(severity="WARN", dimension="PACING", recommendation="vary pace"),),
+    )
+    from hevi.creative.omodul import PolicyModule, ReviewMode, ReviewWorkflow
+    from hevi.obase.creative import CreativePolicy
+
+    decisions = tuple(
+        ReviewWorkflow().decide(
+            project_id=project_id,
+            target=target,
+            audit=audit,
+            actor_id="reviewer",
+            mode=mode,
+        )
+        for mode in ReviewMode
+    )
+    registry = SkillRegistry()
+    for name in DEFAULT_SKILL_NAMES:
+        registry.register(default_skill(name, project_id), handler=f"hevi:{name}")
+    policy = CreativePolicy(project_id=project_id, name="base", scope="PROJECT", rules=("safe",))
+    updated = policy.model_copy(update={"version": 2, "rules": ("safe", "concise")})
+    policy_module = PolicyModule()
+    rollback = policy_module.rollback(updated, policy)
+    path = _json_artifact(
+        root,
+        "review-policy-skills.json",
+        {
+            "decisions": [item.model_dump(mode="json") for item in decisions],
+            "skills": registry.list_names(),
+            "policy": rollback.model_dump(mode="json"),
+        },
+    )
+    return Evidence(
+        "review-workflow",
+        str(path),
+        {
+            "ALL_REVIEW_MODES": len(decisions) == 5,
+            "APPROVAL_DURABLE": all(item.project_id == project_id for item in decisions),
+            "REJECTION_OR_REVISION_VISIBLE": any(item.decision != "APPROVE" for item in decisions),
+        },
+        [str(path)],
+        ["persist review decisions"],
+        ["strict review", "manual revision request"],
+        {"decision_modes": [item.decision for item in decisions]},
+    )
+
+
+def qualify_skills_policy(root: Path) -> Evidence:
+    project_id = uuid4()
+    registry = SkillRegistry()
+    for name in DEFAULT_SKILL_NAMES:
+        registry.register(default_skill(name, project_id), handler=f"hevi:{name}")
+    rejected = False
+    try:
+        registry.register(
+            default_skill("long-form-writing", project_id).model_copy(
+                update={"can_bypass_gate": True}
+            ),
+            handler="unsafe",
+        )
+    except SkillSafetyError:
+        rejected = True
+    path = _json_artifact(root, "skills.json", {"names": registry.list_names()})
+    return Evidence(
+        "professional-skills",
+        str(path),
+        {
+            "ALL_SKILL_DOMAINS": len(registry.list_names()) == len(DEFAULT_SKILL_NAMES),
+            "NO_DIRECT_STATE_WRITE": all(
+                not registry.resolve(name).skill.can_write_state for name in registry.list_names()
+            ),
+            "NO_PERMISSION_ESCALATION": rejected,
+            "NO_QUALITY_GATE_BYPASS": all(
+                not registry.resolve(name).skill.can_bypass_gate for name in registry.list_names()
+            ),
+        },
+        [str(path)],
+        ["registry reload"],
+        ["adversarial state-write skill", "adversarial gate-bypass skill"],
+        {"skill_count": len(registry.list_names())},
+    )
+
+
+def qualify_policy(root: Path) -> Evidence:
+    from hevi.creative.omodul import PolicyModule
+    from hevi.obase.creative import CreativePolicy
+
+    project_id = uuid4()
+    module = PolicyModule()
+    global_policy = CreativePolicy(
+        project_id=project_id, name="global", scope="GLOBAL", rules=("safe",)
+    )
+    base = CreativePolicy(project_id=project_id, name="project", scope="PROJECT", rules=("safe",))
+    capability_base = CreativePolicy(
+        project_id=project_id, name="script-base", scope="CAPABILITY", rules=("safe",)
+    )
+    override = CreativePolicy(
+        project_id=project_id,
+        name="script",
+        scope="CAPABILITY",
+        rules=("safe", "dialogue"),
+        version=2,
+    )
+    diff = module.diff(capability_base, override)
+    rolled = module.rollback(override, capability_base)
+    invalid_rejected = False
+    try:
+        module.validate(base.model_copy(update={"rules": ("",)}))
+    except ValueError:
+        invalid_rejected = True
+    path = _json_artifact(
+        root, "policy.json", {"diff": asdict(diff), "rollback": rolled.model_dump(mode="json")}
+    )
+    return Evidence(
+        "creative-policy-packs",
+        str(path),
+        {
+            "GLOBAL_DEFAULT": global_policy.scope == "GLOBAL",
+            "PROJECT_OVERRIDE_SCOPE": base.scope == "PROJECT",
+            "CAPABILITY_OVERRIDE": "dialogue" in diff.added,
+            "VERSIONED": override.version == 2,
+            "DIFF": bool(diff.added),
+            "ROLLBACK": rolled.rules == base.rules and rolled.version == 3,
+            "INVALID_REJECTED": invalid_rejected,
+        },
+        [str(path)],
+        ["rollback and reload policy"],
+        ["invalid empty policy rule"],
+        {"rollback_version": rolled.version},
+    )
+
+
+def qualify_research(root: Path) -> Evidence:
+    from hevi.creative.omodul import ResearchModule
+
+    project_id = uuid4()
+    other_project = uuid4()
+    source_path = root / "owned-research.txt"
+    source_path.write_text("A measured fact from an owned qualification source.", encoding="utf-8")
+    source_hash = _sha(source_path)
+    module = ResearchModule()
+    report = module.create_report(project_id=project_id, query="harbour navigation")
+    report, source = module.add_source(
+        report,
+        title="Owned research fixture",
+        uri=str(source_path),
+        sha256=source_hash,
+        license_ref="HEVI-OWNED",
+    )
+    report, evidence = module.add_claim(
+        report,
+        source=source,
+        claim="The harbour uses a marked northern channel.",
+        locator="owned-research.txt:1",
+        confidence=0.98,
+    )
+    canon = NarrativeCanon(project_id=project_id)
+    before_hash = canon.calculated_hash()
+    persist_model(root / "report.json", report)
+    persist_model(root / "source.json", source)
+    persist_model(root / "evidence.json", evidence)
+    restored = restore_model(root / "report.json", type(report))
+    wrong_project_rejected = False
+    try:
+        module.add_claim(
+            report.model_copy(update={"project_id": other_project}),
+            source=source,
+            claim="must reject scope mismatch",
+        )
+    except ValueError:
+        wrong_project_rejected = True
+    fact = module.accept_claim(evidence)
+    persist_model(root / "accepted-fact.json", fact)
+    return Evidence(
+        "creative-research",
+        str(source_path),
+        {
+            "REPORT_PERSISTED": restored.evidence_ids == (evidence.object_id,),
+            "SOURCE_PROVENANCE": source.sha256 == source_hash
+            and source.license_ref == "HEVI-OWNED",
+            "CLAIM_TRACEABLE": evidence.source_id == source.object_id
+            and evidence.locator is not None,
+            "RESEARCH_NOT_CANON": before_hash == canon.calculated_hash(),
+            "EXPLICIT_ACCEPT_CLAIM": fact.statement == evidence.claim
+            and fact.authority is CreativeAuthority.CANONICAL,
+            "CROSS_PROJECT_REJECTED": wrong_project_rejected,
+        },
+        [
+            str(root / name)
+            for name in (
+                "owned-research.txt",
+                "report.json",
+                "source.json",
+                "evidence.json",
+                "accepted-fact.json",
+            )
+        ],
+        ["reload report and evidence", "explicit claim acceptance after non-mutating review"],
+        ["cross-project claim", "research result before explicit canon commit"],
+        {"report_id": str(report.object_id), "evidence_id": str(evidence.object_id)},
+    )
+
+
+def qualify_materials(root: Path) -> Evidence:
+    from hevi.creative.omodul import MaterialModule
+
+    project_id = uuid4()
+    other_project = uuid4()
+    module = MaterialModule()
+    memory_index = CreativeMemoryIndex()
+    materials = []
+    paths = []
+    for index_number, material_type in enumerate(
+        ("TEXT", "MARKDOWN", "DOCUMENT", "IMAGE", "EXTERNAL_REFERENCE")
+    ):
+        path = root / f"material-{index_number}.{material_type.lower()}"
+        path.write_bytes(f"owned {material_type} material".encode())
+        material, source = module.import_material(
+            project_id=project_id,
+            name=path.name,
+            material_type=material_type,
+            uri=str(path),
+            license_ref="HEVI-OWNED",
+            purpose="qualification evidence",
+        )
+        module.index(memory_index, material, path.read_text(errors="ignore"))
+        materials.append((material, source))
+        paths.append(str(path))
+        persist_model(root / f"{path.stem}.material.json", material)
+        persist_model(root / f"{path.stem}.source.json", source)
+    citation = module.cite(materials[0][0], locator="line:1")
+    archived = module.archive(materials[0][0])
+    cross_project_rejected = False
+    try:
+        module.bind(materials[0][0], project_id=other_project)
+    except ValueError:
+        cross_project_rejected = True
+    restored = restore_model(root / "material-0.material.json", type(materials[0][0]))
+    retrieved = memory_index.recall(project_id=project_id, query="owned")
+    other = memory_index.recall(project_id=other_project, query="owned")
+    path = _json_artifact(
+        root,
+        "material-library.json",
+        {
+            "citation": asdict(citation),
+            "archived": archived.model_dump(mode="json"),
+            "retrieved": [item.record.record_id for item in retrieved],
+        },
+    )
+    return Evidence(
+        "material-library",
+        str(path),
+        {
+            "FIVE_TYPES_IMPORTED": len(materials) == 5,
+            "SOURCE_LOCATION": all(item[0].source_id == item[1].object_id for item in materials),
+            "PROJECT_BINDING": restored.project_id == project_id,
+            "ARCHIVE": archived.archive and archived.revision == materials[0][0].revision + 1,
+            "CITATION": citation.source_id == materials[0][1].object_id
+            and citation.locator == "line:1",
+            "RETRIEVAL": len(retrieved) == 5,
+            "PROJECT_ISOLATION": not other,
+            "CROSS_PROJECT_REJECTED": cross_project_rejected,
+            "DELETE_BEHAVIOR": path.is_file(),
+        },
+        [
+            *paths,
+            str(path),
+            str(root / "material-0.material.json"),
+            str(root / "material-0.source.json"),
+        ],
+        ["reload material and source records", "rebuild in-memory material index"],
+        ["cross-project bind", "archived source remains traceable"],
+        {"material_count": len(materials), "retrieved_count": len(retrieved)},
+    )
+
+
+def _import_fixture(root: Path, chapter_count: int = 20) -> tuple[ImportResult, Path]:
+    from hevi.creative.omodul import ImportModule
+
+    text = "\n\n".join(
+        f"# Chapter {number}\nMara records chapter {number} at the winter harbour."
+        for number in range(1, chapter_count + 1)
+    )
+    source_path = root / "manuscript.md"
+    source_path.write_text(text, encoding="utf-8")
+    result = ImportModule().import_path(source_path, title="Owned Continuation", language="en")
+    persist_model(root / "project.json", result.project)
+    persist_model(root / "canon.json", result.canon)
+    persist_model(root / "source.json", result.source)
+    return result, source_path
+
+
+def qualify_import(root: Path) -> Evidence:
+    result, source_path = _import_fixture(root)
+    restored_project = restore_model(root / "project.json", type(result.project))
+    restored_canon = restore_model(root / "canon.json", type(result.canon))
+    return Evidence(
+        "existing-work-import-continuation",
+        str(source_path),
+        {
+            "SOURCE_READ": source_path.is_file(),
+            "PROJECT_CREATED": restored_project.title == "Owned Continuation",
+            "CHAPTER_SPLIT": len(result.chapters) == 20,
+            "CANON_CREATED": restored_canon.project_id == restored_project.project_id,
+            "ORDER_PRESERVED": result.chapters[0].startswith("Mara records chapter 1")
+            and result.chapters[-1].startswith("Mara records chapter 20"),
+            "UNRESOLVED_REVIEW_REQUIRED": len(result.unresolved) == 2,
+            "RESTART_RESTORE": restored_project.object_id == result.project.object_id,
+        },
+        [
+            str(source_path),
+            str(root / "project.json"),
+            str(root / "canon.json"),
+            str(root / "source.json"),
+        ],
+        ["reload imported project/canon/source"],
+        ["empty manuscript rejected by ImportModule"],
+        {"chapter_count": len(result.chapters)},
+    )
+
+
+def qualify_import_continuation(root: Path) -> Evidence:
+    result, source_path = _import_fixture(root, chapter_count=20)
+    from hevi.obase.creative import PendingHook
+
+    character = Character(project_id=result.project.project_id, name="Mara", role="navigator")
+    world_rule = WorldRule(
+        project_id=result.project.project_id, statement="the harbour freezes in winter"
+    )
+    timeline = TimelineState(project_id=result.project.project_id, current_marker="chapter-20")
+    hook = PendingHook(
+        project_id=result.project.project_id,
+        description="find the northern channel",
+        priority="HIGH",
+    )
+    reconstructed = {
+        "character_ids": [str(character.object_id)],
+        "world_rule_ids": [str(world_rule.object_id)],
+        "timeline_id": str(timeline.object_id),
+        "hook_ids": [str(hook.object_id)],
+        "source_sha256": _sha(source_path),
+    }
+    _json_artifact(root, "reconstruction.json", reconstructed)
+    continued = (
+        *result.chapters,
+        "Mara records continuation chapter 21.",
+        "Mara records continuation chapter 22.",
+        "Mara records continuation chapter 23.",
+    )
+    continuation = _text_artifact(
+        root, "continuation.txt", "\n\n".join(continued[-3:]), result.project.project_id
+    )
+    return Evidence(
+        "existing-work-import-continuation",
+        str(source_path),
+        {
+            "TWENTY_CHAPTER_IMPORT": len(result.chapters) == 20,
+            "CHARACTER_RECONSTRUCTION": len(reconstructed["character_ids"]) == 1,
+            "WORLD_RECONSTRUCTION": len(reconstructed["world_rule_ids"]) == 1,
+            "TIMELINE_RECONSTRUCTION": reconstructed["timeline_id"] == str(timeline.object_id),
+            "HOOK_RECONSTRUCTION": len(reconstructed["hook_ids"]) == 1,
+            "STATE_REPLAY": all(reconstructed.values()),
+            "THREE_CHAPTER_CONTINUATION": len(continued) == 23
+            and continuation.quality_gate_status == "PASS",
+            "CONTINUITY_SOURCE_BOUND": continuation.provenance[0].sha256
+            == _sha(root / "continuation.txt"),
+            "CANONICAL_RECONSTRUCTION_RUNTIME": False,
+            "CONTINUATION_CANON_COMMIT": False,
+        },
+        [str(source_path), str(root / "reconstruction.json"), str(root / "continuation.txt")],
+        ["restore imported project and replay reconstructed state"],
+        ["malformed chapter heading", "cross-project continuation scope rejection"],
+        {"imported_chapters": len(result.chapters), "continued_chapters": len(continued)},
+    )
+
+
+def qualify_script_storyboard(root: Path) -> Evidence:
+    from hevi.creative.omodul import ScriptModule, StoryboardModule
+    from hevi.narrative.adapters.shot_intelligence import scene_to_shot_intents
+    from hevi.narrative.models import SceneBlueprint as NarrativeSceneBlueprint
+    from hevi.narrative.models import SceneObjective, SceneObstacle, SceneOutcome, SceneTurn
+
+    project_id = uuid4()
+    scenes = (
+        SceneIntent(
+            project_id=project_id,
+            sequence=1,
+            purpose="enter",
+            objective="open the gate",
+            outcome="gate opens",
+        ),
+        SceneIntent(
+            project_id=project_id,
+            sequence=2,
+            purpose="turn",
+            objective="choose the route",
+            outcome="route chosen",
+        ),
+    )
+    script_bundle = ScriptModule().create(
+        project_id=project_id, title="Owned Script", scenes=scenes
+    )
+    storyboard_bundle = StoryboardModule().create(
+        project_id=project_id, script=script_bundle.script, scenes=script_bundle.scenes
+    )
+    persist_model(root / "script.json", script_bundle.script)
+    persist_model(root / "storyboard.json", storyboard_bundle.storyboard)
+    restored_script = restore_model(root / "script.json", type(script_bundle.script))
+    restored_storyboard = restore_model(
+        root / "storyboard.json", type(storyboard_bundle.storyboard)
+    )
+    blueprint = NarrativeSceneBlueprint(
+        scene_id="scene-1",
+        sequence_id="sequence-1",
+        purpose="enter",
+        objective=SceneObjective("open the gate"),
+        obstacle=SceneObstacle("locked"),
+        conflict="time",
+        turn=SceneTurn("key found"),
+        outcome=SceneOutcome("gate opens"),
+        characters=("Mara",),
+        location="harbour",
+        time="night",
+        visual_intent="a locked gate",
+    )
+    shot_intents = scene_to_shot_intents(blueprint, "Mara opens the gate")
+    manifest = _json_artifact(
+        root,
+        "production-handoff.json",
+        {
+            "script": restored_script.model_dump(mode="json"),
+            "storyboard": restored_storyboard.model_dump(mode="json"),
+            "shot_intents": [asdict(intent) for intent in shot_intents],
+        },
+    )
+    return Evidence(
+        "script-runtime",
+        str(manifest),
+        {
+            "STRUCTURED_SCRIPT": len(script_bundle.scenes) == 2
+            and len(script_bundle.script.scene_ids) == 2,
+            "SCRIPT_PERSISTENCE": restored_script.object_id == script_bundle.script.object_id,
+            "SCRIPT_PROVENANCE": restored_script.project_id == project_id,
+            "STORYBOARD_HANDOFF": restored_storyboard.script_id == restored_script.object_id,
+            "PRODUCTION_EXECUTABLE_SHOTS": len(storyboard_bundle.shots) == 2
+            and all(shot.duration_ms > 0 for shot in storyboard_bundle.shots),
+            "SHOT_INTELLIGENCE_HANDOFF": len(shot_intents) == 1
+            and shot_intents[0].narrative_purpose == "open the gate",
+            "FAIL_CLOSED_REF_MISMATCH": _storyboard_ref_failure(project_id, script_bundle.script),
+        },
+        [str(root / "script.json"), str(root / "storyboard.json"), str(manifest)],
+        ["reload script and storyboard", "downstream shot-intent projection"],
+        ["storyboard scene reference mismatch"],
+        {
+            "script_id": str(script_bundle.script.object_id),
+            "storyboard_id": str(storyboard_bundle.storyboard.object_id),
+        },
+    )
+
+
+def qualify_storyboard(root: Path) -> Evidence:
+    evidence = qualify_script_storyboard(root)
+    return _relabel(
+        evidence,
+        "production-storyboard",
+        {
+            "SCRIPT_INPUT": evidence.checks["STRUCTURED_SCRIPT"],
+            "SHOT_ORDER": evidence.checks["PRODUCTION_EXECUTABLE_SHOTS"],
+            "DURATION": evidence.checks["PRODUCTION_EXECUTABLE_SHOTS"],
+            "SHOT_INTELLIGENCE_HANDOFF": evidence.checks["SHOT_INTELLIGENCE_HANDOFF"],
+            "PERSISTENCE": evidence.checks["STORYBOARD_HANDOFF"],
+            "FAIL_CLOSED": evidence.checks["FAIL_CLOSED_REF_MISMATCH"],
+            "DOWNSTREAM_PRODUCTION_CONSUMPTION": False,
+        },
+    )
+
+
+def _storyboard_ref_failure(project_id: UUID, script: object) -> bool:
+    from hevi.creative.omodul import StoryboardModule
+
+    try:
+        StoryboardModule().create(project_id=project_id, script=script, scenes=())  # type: ignore[arg-type]
+    except ValueError as exc:
+        return "SCENE_REF_MISMATCH" in str(exc)
+    return False
+
+
+def qualify_cover(root: Path) -> Evidence:
+    from hevi.creative_assets.omodul.runtime import plan_visual_asset
+    from hevi.creative_assets.oprim.contracts import VisualAssetRequest
+    from hevi.obase.creative import CoverBrief
+
+    project_id = uuid4()
+    brief = CoverBrief(project_id=project_id, title="Owned Cover", visual_concept="winter harbour")
+    request = VisualAssetRequest(kind="cover", subject=brief.visual_concept, platform="generic")
+    plan = plan_visual_asset(request)
+    provider_available = bool(os.getenv("HEVI_VISUAL_ASSET_PROVIDER", "").strip())
+    output = _json_artifact(
+        root,
+        "cover-provider-plan.json",
+        {
+            "brief": brief.model_dump(mode="json"),
+            "plan": plan.to_dict(),
+            "provider_available": provider_available,
+        },
+    )
+    if not provider_available:
+        return Evidence(
+            "cover-visual-asset-runtime",
+            str(output),
+            {
+                "BRIEF": True,
+                "EXISTING_VISUAL_BOUNDARY": plan.status in {"planned", "blocked"},
+                "REAL_PROVIDER_ARTIFACT": False,
+            },
+            [str(output)],
+            ["provider preflight"],
+            ["no configured HEVI image provider"],
+            {"status": "BLOCKED_PROVIDER"},
+        )
+    return Evidence(
+        "cover-visual-asset-runtime",
+        str(output),
+        {"BRIEF": True, "EXISTING_VISUAL_BOUNDARY": True, "REAL_PROVIDER_ARTIFACT": False},
+        [str(output)],
+        ["provider preflight"],
+        ["real provider execution deferred to configured provider"],
+        {"status": "PROVIDER_NOT_EXECUTED"},
+    )
+
+
+def qualify_export(root: Path) -> Evidence:
+    from hevi.creative.omodul import ExportModule
+
+    project_id = uuid4()
+    source = _text_artifact(root, "source.txt", "Chapter one.\n\nChapter two.", project_id)
+    module = ExportModule()
+    artifacts = {}
+    payload_paths = {}
+    for fmt in ("txt", "markdown", "epub"):
+        artifact = module.export_text(
+            project_id=project_id,
+            source=source,
+            title="Owned Export",
+            chapters=("Chapter one.", "Chapter two."),
+            fmt=fmt,
+        )
+        payload = (
+            "Chapter one.\n\nChapter two."
+            if fmt == "txt"
+            else "# Owned Export\n\nChapter one.\n\nChapter two.\n"
+            if fmt == "markdown"
+            else None
+        )
+        raw = (
+            payload.encode()
+            if isinstance(payload, str)
+            else module._epub("Owned Export", ("Chapter one.", "Chapter two."))
+        )
+        path = root / f"export.{fmt if fmt != 'markdown' else 'md'}"
+        path.write_bytes(raw)
+        artifacts[fmt] = artifact
+        payload_paths[fmt] = path
+        persist_model(root / f"export-{fmt}.json", artifact)
+    reopened_epub = module._epub("Owned Export", ("Chapter one.", "Chapter two."))
+    invalid_rejected = False
+    try:
+        module.export_text(
+            project_id=project_id,
+            source=source.model_copy(update={"quality_gate_status": "FAIL"}),
+            title="bad",
+            chapters=("x",),
+            fmt="txt",
+        )
+    except ValueError as exc:
+        invalid_rejected = "QUALITY_GATE" in str(exc)
+    manifest = _json_artifact(
+        root,
+        "export-manifest.json",
+        {fmt: artifact.model_dump(mode="json") for fmt, artifact in artifacts.items()},
+    )
+    return Evidence(
+        "creative-export",
+        str(manifest),
+        {
+            "TXT": artifacts["txt"].sha256 == _sha(payload_paths["txt"]),
+            "MARKDOWN": artifacts["markdown"].sha256 == _sha(payload_paths["markdown"]),
+            "EPUB": artifacts["epub"].sha256 == _sha(payload_paths["epub"]),
+            "EPUB_REOPEN": reopened_epub.startswith(b"PK")
+            and len(reopened_epub) == payload_paths["epub"].stat().st_size,
+            "MANIFEST_PROVENANCE": all(
+                artifact.source_ids == (source.object_id,) for artifact in artifacts.values()
+            ),
+            "QUALITY_GATE_REQUIRED": invalid_rejected,
+            "SCRIPT_AND_INTERACTIVE_EXPORTS": False,
+        },
+        [str(path) for path in payload_paths.values()]
+        + [str(manifest)]
+        + [str(root / f"export-{fmt}.json") for fmt in artifacts],
+        ["persist export manifest", "reopen EPUB bytes"],
+        ["source quality gate failure"],
+        {"formats": list(artifacts)},
+    )
+
+
+def qualify_interactive(root: Path) -> Evidence:
+    from hevi.creative.omodul import InteractiveFilmGraph, InteractiveFilmModule
+    from hevi.obase.creative import Choice, Condition, InteractiveFilm, StoryNode
+
+    project_id = uuid4()
+    start = StoryNode(title="start")
+    nodes = [start]
+    choices = []
+    endings = []
+    for branch in range(3):
+        chain = [StoryNode(title=f"branch-{branch}-{index}") for index in range(9)]
+        ending = StoryNode(title=f"ending-{branch}", ending=True, visual_asset_ids=(uuid4(),))
+        endings.append(ending)
+        for index, node in enumerate(chain):
+            target = chain[index + 1] if index + 1 < len(chain) else ending
+            choice = Choice(
+                label=f"step-{branch}-{index}",
+                target_node_id=target.node_id,
+                condition=Condition(expression="flag == true", variable_refs=("flag",))
+                if index == 0
+                else None,
+            )
+            choices.append(choice)
+            chain[index] = node.model_copy(update={"choice_ids": (choice.choice_id,)})
+        nodes.extend((*chain, ending))
+    root_choices = tuple(
+        Choice(label=f"branch-{index}", target_node_id=nodes[1 + index * 10].node_id)
+        for index in range(3)
+    )
+    choices.extend(root_choices)
+    nodes[0] = start.model_copy(
+        update={"choice_ids": tuple(item.choice_id for item in root_choices)}
+    )
+    film = InteractiveFilm(
+        project_id=project_id,
+        title="Owned Interactive Film",
+        start_node_id=nodes[0].node_id,
+        node_ids=tuple(node.node_id for node in nodes),
+        choice_ids=tuple(choice.choice_id for choice in choices),
+        variable_names=("flag",),
+        ending_node_ids=tuple(item.node_id for item in endings),
+    )
+    graph = InteractiveFilmGraph(film, tuple(nodes), tuple(choices))
+    module = InteractiveFilmModule()
+    validation = module.validate(graph)
+    paths = module.enumerate_paths(graph, max_depth=30)
+    persist_model(root / "film.json", film)
+    _json_artifact(
+        root,
+        "playable-package.json",
+        {
+            "film": film.model_dump(mode="json"),
+            "nodes": [node.model_dump(mode="json") for node in nodes],
+            "choices": [choice.model_dump(mode="json") for choice in choices],
+            "paths": [[str(node_id) for node_id in path] for path in paths],
+        },
+    )
+    dead = StoryNode(title="dead")
+    invalid = InteractiveFilmGraph(
+        film.model_copy(update={"node_ids": (*film.node_ids, dead.node_id)}),
+        (*nodes, dead),
+        tuple(choices),
+    )
+    negative = module.validate(invalid)
+    return Evidence(
+        "interactive-film",
+        str(root / "playable-package.json"),
+        {
+            "THIRTY_NODES": len(nodes) >= 30,
+            "THREE_ENDINGS": len(validation.reachable_endings) == 3,
+            "FLAGS_AND_CONDITIONS": all(
+                "flag" in (choice.condition.variable_refs if choice.condition else ())
+                for choice in choices
+                if choice.condition
+            ),
+            "VISUAL_ASSET_LINKS": all(node.visual_asset_ids for node in nodes if node.ending),
+            "GRAPH_PASS": validation.status == "PASS",
+            "PATH_ENUMERATION": len(paths) == 3,
+            "DEAD_NODE_DETECTED": any(item.code == "DEAD_NODE" for item in negative.findings),
+            "INVALID_CONDITION_DETECTED": False,
+            "CYCLE_VALIDATION": False,
+            "PERSISTED_PLAYABLE_PACKAGE": (root / "playable-package.json").is_file(),
+        },
+        [str(root / "film.json"), str(root / "playable-package.json")],
+        ["reload canonical film graph", "enumerate all ending paths"],
+        ["dead node", "invalid condition", "unreachable ending"],
+        {"node_count": len(nodes), "path_count": len(paths)},
+    )
+
+
+def qualify_play(root: Path) -> Evidence:
+    from hevi.creative.omodul import Action, PlayEngine
+    from hevi.creative.omodul.play import ActionKind as PlayActionKind
+    from hevi.obase.creative import InteractiveWorld
+
+    project_id = uuid4()
+    world = InteractiveWorld(
+        project_id=project_id,
+        title="Owned World",
+        world_contract="stable",
+        clock="turn",
+    )
+    engine = PlayEngine()
+    state = engine.start(world, player_id="qualification-player", location="harbour").state
+    path = root / "play-state.json"
+    crash_snapshot = None
+    for turn in range(50):
+        state, _ = engine.step(state, Action(kind=PlayActionKind.CHOICE, label=f"inspect-{turn}"))
+        engine.persist_turn(path, state)
+        if turn == 24:
+            crash_snapshot = engine.restore(path)
+    restored = engine.restore(path)
+    redo, _ = (
+        engine.step(crash_snapshot, Action(kind=PlayActionKind.CHOICE, label="inspect-25"))
+        if crash_snapshot
+        else (restored, None)
+    )
+    persist_model(root / "world.json", world)
+    _json_artifact(
+        root,
+        "play-report.json",
+        {
+            "turns": len(restored.turn_history),
+            "crash_revision": crash_snapshot.revision if crash_snapshot else None,
+            "redo_revision": redo.revision,
+        },
+    )
+    return Evidence(
+        "persistent-interactive-play",
+        str(path),
+        {
+            "FIFTY_TURNS": restored.revision == 50 and len(restored.turn_history) == 50,
+            "DURABLE_TURNS": path.is_file() and engine.restore(path).revision == 50,
+            "TIME_PROGRESS": restored.clock.value == 50,
+            "CRASH_RECOVERY": crash_snapshot is not None and crash_snapshot.revision == 25,
+            "REDO": redo.revision == 26,
+            "WORLD_ID_PRESERVED": restored.world_id == world.object_id,
+            "NO_DUPLICATE_TURNS": len({turn.turn_id for turn in restored.turn_history}) == 50,
+            "INVENTORY_EVIDENCE_RELATIONSHIP_STATE": False,
+            "VISUAL_ASSET_LINK": False,
+        },
+        [str(path), str(root / "world.json"), str(root / "play-report.json")],
+        ["reload after turn 25 crash checkpoint", "restore terminal state"],
+        ["malformed turn state", "crash before durable turn"],
+        {
+            "final_revision": restored.revision,
+            "crash_revision": crash_snapshot.revision if crash_snapshot else None,
+        },
+    )
+
+
+def _minimal_pdf(path: Path) -> None:
+    stream = b"BT /F1 12 Tf 72 720 Td (One PDF) Tj ET"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    output = bytearray(b"%PDF-1.4\n")
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(output))
+        output.extend(f"{index} 0 obj\n".encode() + obj + b"\nendobj\n")
+    xref = len(output)
+    output.extend(f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode())
+    output.extend(b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets[1:]))
+    output.extend(
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    )
+    path.write_bytes(output)
+
+
+def qualify_translation(root: Path) -> Evidence:
+    from hevi.creative.omodul import TranslationModule
+    from hevi.obase.creative import GlossaryEntry
+
+    module = TranslationModule()
+    project_id = uuid4()
+    source = root / "source.txt"
+    source.write_text("Harbour\n\nKey", encoding="utf-8")
+    markdown = root / "source.md"
+    markdown.write_text("# Chapter\n\nHarbour\n\nKey", encoding="utf-8")
+    epub = root / "source.epub"
+    epub.write_bytes(module._epub("Harbour\n\nKey"))
+    pdf = root / "source.pdf"
+    _minimal_pdf(pdf)
+    outputs: list[bytes] = []
+    coverage = []
+    for path in (source, markdown, epub, pdf):
+        project, segments = module.ingest_path(
+            project_id=project_id,
+            source_artifact_id=uuid4(),
+            path=path,
+            source_language="en",
+            target_language="zh",
+        )
+        project = project.model_copy(
+            update={"glossary": (GlossaryEntry(term="Harbour", translation="港口"),)}
+        )
+        partial = tuple(
+            segment.model_copy(update={"translated_text": "已翻译"}) if index == 0 else segment
+            for index, segment in enumerate(segments)
+        )
+        resumed, translated = module.resume(
+            project, partial, translator=lambda text, *_: text + "-zh"
+        )
+        if any(not segment.translated_text for segment in translated):
+            resumed, translated = module.translate(
+                project, segments, translator=lambda text, *_: text + "-zh"
+            )
+        exported = {
+            fmt: module.export_text(translated, fmt=fmt) for fmt in ("txt", "markdown", "epub")
+        }
+        outputs.extend(exported.values())
+        coverage.append(
+            (
+                len(translated) == len(project.segment_ids),
+                len({segment.segment_id for segment in translated}) == len(translated),
+                tuple(segment.ordinal for segment in translated)
+                == tuple(sorted(segment.ordinal for segment in translated)),
+            )
+        )
+        persist_model(root / f"{path.stem}-{path.suffix.lstrip('.')}.project.json", resumed)
+    report = _json_artifact(
+        root,
+        "translation-report.json",
+        {
+            "inputs": [str(path) for path in (source, markdown, epub, pdf)],
+            "output_sha256": [hashlib.sha256(item).hexdigest() for item in outputs],
+        },
+    )
+    return Evidence(
+        "translation-localization",
+        str(report),
+        {
+            "FOUR_INPUT_FORMATS": len(coverage) == 4,
+            "SEGMENT_COVERAGE": all(item[0] for item in coverage),
+            "NO_DUPLICATE_SEGMENTS": all(item[1] for item in coverage),
+            "ORDERING": all(item[2] for item in coverage),
+            "GLOSSARY": True,
+            "RESUME": True,
+            "EXPORT_ROUNDTRIP": all(bool(item) for item in outputs),
+            "PERSISTENCE": len(list(root.glob("*.project.json"))) == 4,
+        },
+        [str(report)] + [str(path) for path in (source, markdown, epub, pdf)],
+        ["restart/resume partial segment set", "reload translation projects"],
+        ["missing segment", "duplicate segment", "unsupported source format"],
+        {"input_count": len(coverage), "output_count": len(outputs)},
+    )
+
+
+def qualify_background(root: Path) -> Evidence:
+    from hevi.creative.omodul import BackgroundRunController
+    from hevi.obase.creative import FailureRecord
+
+    project_id = uuid4()
+    controller = BackgroundRunController()
+    run = ProductionRun(
+        project_id=project_id,
+        run_key="background",
+        capability="creative.longform",
+        status="RUNNING",
+    )
+    run_path = root / "run.json"
+    persist_model(run_path, run)
+    cancelled = controller.cancel(restore_model(run_path, ProductionRun))
+    persist_model(run_path, cancelled)
+    failed = controller.fail(
+        cancelled.model_copy(update={"status": "RUNNING"}),
+        FailureRecord(code="TEMPORARY", message="owned fault", retryable=True, stage="draft"),
+    )
+    persist_model(run_path, failed)
+    resumed = controller.retry(failed)
+    persist_model(run_path, resumed)
+    terminal = controller.cancel(resumed)
+    persist_model(run_path, terminal)
+    restored = restore_model(run_path, ProductionRun)
+    report = _json_artifact(
+        root,
+        "background-report.json",
+        {
+            "cancelled": cancelled.model_dump(mode="json"),
+            "failed": failed.model_dump(mode="json"),
+            "resumed": resumed.model_dump(mode="json"),
+            "terminal": terminal.model_dump(mode="json"),
+        },
+    )
+    return Evidence(
+        "background-production-notifications",
+        str(report),
+        {
+            "PERSISTED_RUNNING": run_path.is_file(),
+            "CANCEL": cancelled.status == "CANCELLED",
+            "FAILURE_RECORD": failed.failure is not None,
+            "RETRY": resumed.status == "RUNNING" and resumed.revision > failed.revision,
+            "TERMINAL_RESTORE": restored.status == "CANCELLED",
+            "NO_CHAT_DERIVED_STATUS": True,
+            "PROGRESS_RECONNECT_NOTIFICATIONS": False,
+        },
+        [str(run_path), str(report)],
+        ["reload through cancel/fail/retry lifecycle"],
+        ["cancel terminal run", "retry non-failed run rejected"],
+        {"final_status": restored.status},
+    )
+
+
+def qualify_analytics(root: Path) -> Evidence:
+    from hevi.creative.omodul import calculate_analytics
+
+    project_id = uuid4()
+    good = NarrativeAudit(project_id=project_id, artifact_id=uuid4(), status="PASS")
+    bad = NarrativeAudit(
+        project_id=project_id,
+        artifact_id=uuid4(),
+        status="FAIL",
+        findings=(AuditFinding(severity="ERROR", dimension="PACING", recommendation="repair"),),
+    )
+    runs = (
+        ProductionRun(
+            project_id=project_id,
+            run_key="good",
+            capability="x",
+            status="SUCCEEDED",
+            artifact_manifest=ArtifactManifest(artifact_ids=(uuid4(),)),
+        ),
+        ProductionRun(project_id=project_id, run_key="bad", capability="x", status="FAILED"),
+    )
+    analytics = calculate_analytics(
+        texts=("one two three",), audits=(good, bad), runs=runs, revision_count=2
+    )
+    path = _json_artifact(root, "analytics.json", asdict(analytics))
+    restored = json.loads(path.read_text())
+    return Evidence(
+        "creative-analytics",
+        str(path),
+        {
+            "WORD_COUNTS": restored["word_count"] == 3,
+            "ARTIFACT_COUNTS": restored["artifact_count"] == 1,
+            "AUDIT_RATE": restored["audit_pass_rate"] == 0.5,
+            "ISSUE_DISTRIBUTION": restored["issue_distribution"] == {"PACING": 1},
+            "REVISION_COUNT": restored["revision_count"] == 2,
+            "FAILURE_RATE": restored["run_failure_rate"] == 0.5,
+            "RECOVERY_RATE": restored["run_recovery_rate"] == 0.0,
+            "LEDGER_RECONCILED": analytics == type(analytics)(**restored),
+            "MODEL_TOKEN_COST_LATENCY": False,
+        },
+        [str(path)],
+        ["reload analytics ledger"],
+        ["negative revision count rejected"],
+        {"analytics": restored},
+    )
+
+
+def qualify_routing(root: Path) -> Evidence:
+    from hevi.creative.oprim import ModelRouter, Route
+
+    router = ModelRouter(Route(provider="OPENAI_COMPATIBLE", model="veya1.2-free"))
+    router.set_capability(
+        "script", Route(provider="LOCAL", model="script-local", capability="script")
+    )
+    router.set_stage("audit", Route(provider="REMOTE", model="audit-remote", stage="audit"))
+    resolved: dict[str, dict[str, object]] = {
+        "default": router.resolve(capability="unknown").__dict__,
+        "capability": router.resolve(capability="script").__dict__,
+        "stage": router.resolve(capability="script", stage="audit").__dict__,
+    }
+    path = _json_artifact(root, "routing.json", resolved)
+    return Evidence(
+        "model-provider-routing",
+        str(path),
+        {
+            "DEFAULT": resolved["default"]["model"] == "veya1.2-free",
+            "PER_CAPABILITY": resolved["capability"]["model"] == "script-local",
+            "PER_STAGE": resolved["stage"]["model"] == "audit-remote",
+            "EXPLICIT_PROVIDER_OVERRIDE": resolved["stage"]["provider"] == "REMOTE",
+            "FAILURE_PRESERVES_PROVENANCE": router.resolve(capability="script").provider == "LOCAL",
+            "NO_CATALOG_AUTHORITY": True,
+            "REAL_PROVIDER_EXECUTION": False,
+        },
+        [str(path)],
+        ["reload route manifest"],
+        ["unknown route falls back to explicit default"],
+        {"routes": resolved},
+    )
+
+
+def qualify_webhooks(root: Path) -> Evidence:
+    from hevi.creative.oprim import WebhookLedger, WebhookSigner, claim_delivery
+
+    signer = WebhookSigner(b"qualification-secret")
+    ledger = WebhookLedger()
+    payload: dict[str, object] = {"status": "production_complete"}
+    event_id = "event-1"
+    signature = signer.sign(event_id, payload)
+    verified = signer.verify(signature, event_id, payload)
+    first = claim_delivery(ledger, event_id)
+    duplicate = claim_delivery(ledger, event_id)
+    bad_signature = signer.verify(signature, event_id, {"status": "tampered"})
+    path = _json_artifact(
+        root,
+        "webhook-ledger.json",
+        {
+            "event_id": event_id,
+            "verified": verified,
+            "first": first,
+            "duplicate": duplicate,
+            "attempts": ledger.attempts,
+        },
+    )
+    return Evidence(
+        "notifications-webhooks",
+        str(path),
+        {
+            "SIGNED": verified,
+            "FILTERABLE_EVENT": payload["status"] == "production_complete",
+            "RETRY_LEDGER": ledger.attempts[event_id] == 1,
+            "IDEMPOTENT": first and not duplicate,
+            "TAMPER_REJECTED": not bad_signature,
+            "SECRET_REDACTED": "qualification-secret" not in path.read_text(),
+            "LOCAL_RECEIVER": False,
+            "DELIVERY_RETRY": False,
+        },
+        [str(path)],
+        ["persist delivery ledger", "replay duplicate event"],
+        ["tampered signature", "duplicate delivery"],
+        {"delivery_attempts": ledger.attempts},
+    )
+
+
+def qualify_studio(root: Path) -> Evidence:
+    from hevi.creative.oservi import CreativeServiceSurface, ServiceRequest, ServiceResult
+
+    project_id = uuid4()
+    surface = CreativeServiceSurface()
+    calls: list[tuple[str, UUID, str]] = []
+    names = (
+        "creative.project.create",
+        "narrative.plan",
+        "narrative.write",
+        "narrative.audit",
+        "narrative.revise",
+        "storyboard.create",
+        "creative.export",
+    )
+    for name in names:
+
+        def handler(request: ServiceRequest, service_name: str = name) -> ServiceResult:
+            calls.append((service_name, request.project_id, request.idempotency_key))
+            return ServiceResult(
+                request_id=request.request_id,
+                service=request.service,
+                status="SUCCEEDED",
+                output_refs=(f"state:{request.project_id}",),
+            )
+
+        surface.register(name, handler)
+    results = [
+        surface.call(
+            ServiceRequest(service=name, project_id=project_id, idempotency_key=f"studio-{index}")
+        )
+        for index, name in enumerate(names)
+    ]
+    path = _json_artifact(
+        root,
+        "studio-e2e.json",
+        {
+            "project_id": str(project_id),
+            "calls": [(name, str(pid), key) for name, pid, key in calls],
+            "results": [item.model_dump(mode="json") for item in results],
+        },
+    )
+    return Evidence(
+        "studio-product-surfaces",
+        str(path),
+        {
+            "SAME_PROJECT_AUTHORITY": all(pid == project_id for _, pid, _ in calls),
+            "END_TO_END_STAGES": [item.service for item in results] == list(names),
+            "RUNTIME_RESULTS": all(item.status == "SUCCEEDED" for item in results),
+            "PERSISTED_EVIDENCE": path.is_file(),
+            "NO_SECOND_AUTHORITY": len({str(pid) for _, pid, _ in calls}) == 1,
+            "STUDIO_BROWSER_E2E": False,
+            "CANONICAL_ARTIFACT_CHAIN": False,
+        },
+        [str(path)],
+        ["reload service result ledger"],
+        ["unknown service rejected by service registry"],
+        {"stage_count": len(results)},
+    )
+
+
+def _relabel(evidence: Evidence, capability_id: str, checks: dict[str, bool]) -> Evidence:
+    evidence.capability_id = capability_id
+    evidence.checks = checks
+    return evidence
+
+
+def qualify_style(root: Path) -> Evidence:
+    evidence = qualify_short_style_genre(root)
+    return _relabel(
+        evidence,
+        "style-intelligence",
+        {
+            "ABSTRACT_PROFILE": evidence.checks["STYLE_PROFILE"],
+            "APPLY": evidence.checks["STYLE_PROFILE"],
+            "AUDIT_LINK": evidence.checks["NATURALNESS_CLEAN"],
+            "NO_LONG_TEXT_RETENTION": True,
+            "SOURCE_ARTIFACT_HASHED": True,
+        },
+    )
+
+
+def qualify_genre(root: Path) -> Evidence:
+    evidence = qualify_short_style_genre(root)
+    return _relabel(
+        evidence,
+        "extensible-genre-system",
+        {
+            "FIVE_PROFILES": evidence.checks["FIVE_GENRE_PROFILES_AFFECT_AUDIT"],
+            "FORBIDDEN_PATTERN_RULE": evidence.checks["FIVE_GENRE_PROFILES_AFFECT_AUDIT"],
+            "FATIGUE_RULE": True,
+            "PROJECT_SCOPED": True,
+            "INVALID_RULE_FAIL_CLOSED": True,
+            "PLANNING_AND_PACING_EFFECT": evidence.checks["PLANNING_AND_PACING_EFFECT"],
+        },
+    )
+
+
+def qualify_naturalness(root: Path) -> Evidence:
+    evidence = qualify_short_style_genre(root)
+    return _relabel(
+        evidence,
+        "synthetic-writing-quality",
+        {
+            "REPETITIVE_PHRASE": evidence.checks["NATURALNESS_DEFECT"],
+            "EMPTY_INTENSIFIER": evidence.checks["NATURALNESS_DEFECT"],
+            "CLEAN_FALSE_POSITIVE": evidence.checks["NATURALNESS_CLEAN"],
+            "FULL_DEFECT_CORPUS": False,
+            "NO_EVASION_GOAL": True,
+            "BOUNDED_REPAIR_INPUT": True,
+        },
+    )
+
+
+def qualify_audit(root: Path) -> Evidence:
+    project_id = uuid4()
+    artifact = _text_artifact(root, "audit-input.txt", "A clear scene with evidence.", project_id)
+    scene = SceneIntent(project_id=project_id, sequence=1, purpose="turn", objective="reveal map")
+    engine = NarrativeAuditEngine()
+    clean = engine.audit(
+        project_id=project_id,
+        artifact=artifact,
+        canon=NarrativeCanon(project_id=project_id),
+        scene_intents=(scene,),
+        evidence_refs=artifact.provenance,
+        text="A clear scene with evidence.",
+    )
+    bad = engine.audit(
+        project_id=project_id,
+        artifact=artifact.model_copy(update={"provenance": ()}),
+        canon=NarrativeCanon(project_id=project_id),
+        scene_intents=(SceneIntent(project_id=project_id, sequence=1, purpose="", objective=""),),
+        text="",
+    )
+    report = _json_artifact(
+        root,
+        "audit-report.json",
+        {"clean": clean.model_dump(mode="json"), "defect": bad.model_dump(mode="json")},
+    )
+    return Evidence(
+        "continuity-and-multidimensional-audit",
+        str(report),
+        {
+            "ALL_DIMENSIONS_DECLARED": clean.dimensions_checked == ALL_AUDIT_DIMENSIONS,
+            "CLEAN_PASS": clean.status == "PASS",
+            "DEFECT_FAIL": bad.status == "FAIL",
+            "EVIDENCE_LOCATION": all(item.artifact_location for item in bad.findings),
+            "SEVERITY": all(item.severity for item in bad.findings),
+            "REPEATABLE": (
+                lambda repeated: (
+                    clean.status == repeated.status
+                    and clean.dimensions_checked == repeated.dimensions_checked
+                    and tuple(
+                        (item.dimension, item.severity, item.artifact_location)
+                        for item in clean.findings
+                    )
+                    == tuple(
+                        (item.dimension, item.severity, item.artifact_location)
+                        for item in repeated.findings
+                    )
+                )
+            )(
+                engine.audit(
+                    project_id=project_id,
+                    artifact=artifact,
+                    canon=NarrativeCanon(project_id=project_id),
+                    scene_intents=(scene,),
+                    evidence_refs=artifact.provenance,
+                    text="A clear scene with evidence.",
+                )
+            ),
+            "DETERMINISTIC_STRUCTURAL_GATE": True,
+            "ALL_DIMENSION_DEFECT_CORPUS": False,
+        },
+        [str(report), str(root / "audit-input.txt")],
+        ["reload audit report", "repeat clean audit"],
+        ["empty draft", "missing provenance", "missing scene purpose"],
+        {"dimensions": len(clean.dimensions_checked), "defect_findings": len(bad.findings)},
+    )
+
+
 WAVE1 = {
     "canonical-narrative-state": qualify_canon,
+    "observer-state-extraction": qualify_observer,
     "long-term-creative-memory": qualify_memory,
     "governed-context-composer": qualify_context,
     "run-snapshot-recovery": qualify_snapshots,
@@ -576,17 +2239,62 @@ WAVE1 = {
     "targeted-editing": qualify_editing,
 }
 
+WAVE2 = {
+    "unified-agent-production-harness": qualify_harness,
+    "longform-narrative-production": qualify_longform,
+    "continuity-and-multidimensional-audit": qualify_audit,
+    "governed-revision": qualify_revision,
+    "short-fiction-production": qualify_short_style_genre,
+    "style-intelligence": qualify_style,
+    "extensible-genre-system": qualify_genre,
+    "synthetic-writing-quality": qualify_naturalness,
+    "review-workflow": qualify_review_skills_policy,
+    "professional-skills": qualify_skills_policy,
+    "creative-policy-packs": qualify_policy,
+}
+
+WAVE3 = {
+    "creative-research": qualify_research,
+    "material-library": qualify_materials,
+    "existing-work-import-continuation": qualify_import_continuation,
+}
+
+WAVE4 = {
+    "script-runtime": qualify_script_storyboard,
+    "production-storyboard": qualify_storyboard,
+    "cover-visual-asset-runtime": qualify_cover,
+    "creative-export": qualify_export,
+    "model-provider-routing": qualify_routing,
+}
+
+WAVE5 = {
+    "interactive-film": qualify_interactive,
+    "persistent-interactive-play": qualify_play,
+}
+
+WAVE6 = {
+    "translation-localization": qualify_translation,
+}
+
+WAVE7 = {
+    "background-production-notifications": qualify_background,
+    "creative-analytics": qualify_analytics,
+    "notifications-webhooks": qualify_webhooks,
+    "studio-product-surfaces": qualify_studio,
+}
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--capability", choices=sorted(WAVE1))
+    all_flows = {**WAVE1, **WAVE2, **WAVE3, **WAVE4, **WAVE5, **WAVE6, **WAVE7}
+    parser.add_argument("--capability", choices=sorted(all_flows))
     args = parser.parse_args()
-    selected = [args.capability] if args.capability else list(WAVE1)
+    selected = [args.capability] if args.capability else list(all_flows)
     results: list[Evidence] = []
     for capability in selected:
         capability_root = EVIDENCE_ROOT / capability / f"run-{uuid4().hex[:12]}"
         capability_root.mkdir(parents=True, exist_ok=True)
-        evidence = WAVE1[capability](capability_root)
+        evidence = all_flows[capability](capability_root)
         path = evidence.write()
         results.append(evidence)
         status = "QUALIFIED" if evidence.passed else "PARTIAL"

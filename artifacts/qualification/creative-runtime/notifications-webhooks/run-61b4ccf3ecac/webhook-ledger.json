@@ -1,0 +1,9 @@
+{
+  "attempts": {
+    "event-1": 1
+  },
+  "duplicate": false,
+  "event_id": "event-1",
+  "first": true,
+  "verified": true
+}

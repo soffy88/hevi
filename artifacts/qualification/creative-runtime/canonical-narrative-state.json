@@ -1,6 +1,6 @@
 {
   "capability_id": "canonical-narrative-state",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/canonical-narrative-state/run-625c7c1aa1dc",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/canonical-narrative-state/run-f5bff771dd45",
   "checks": {
     "CANON_VERSION_MONOTONIC": true,
     "STATE_DELTA_VALIDATED": true,
@@ -10,7 +10,7 @@
     "PROVENANCE_COMPLETE": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/canonical-narrative-state/run-625c7c1aa1dc/canon.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/canonical-narrative-state/run-f5bff771dd45/canon.json"
   ],
   "recovery": [
     "reload NarrativeCanon",
@@ -22,7 +22,7 @@
     "cross-project reference"
   ],
   "details": {
-    "project_id": "a738c005-586c-474f-83f7-1e8fffa2f4ae",
+    "project_id": "48160ef6-7dea-4442-b687-73d7fd069f89",
     "canon_revision": 1
   },
   "status": "QUALIFIED",

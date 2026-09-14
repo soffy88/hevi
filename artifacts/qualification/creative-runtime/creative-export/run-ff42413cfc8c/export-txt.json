@@ -1,0 +1,25 @@
+{
+  "artifact_type": "CREATIVE_EXPORT",
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T08:59:00.594731Z",
+  "export_format": "TXT",
+  "media_type": "text/plain",
+  "object_id": "77b59e83-0a60-4d11-b094-26e1ad59780e",
+  "project_id": "b954052a-6e76-48a4-b5f7-e3d4dd871b24",
+  "provenance": [
+    {
+      "ref_id": "c1ef487a-2347-4588-bf01-8e6d6529fae9",
+      "ref_type": "SOURCE_ARTIFACT",
+      "sha256": "8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07"
+    }
+  ],
+  "quality_gate_status": "PASS",
+  "revision": 0,
+  "schema_version": 1,
+  "sha256": "8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07",
+  "source_ids": [
+    "c1ef487a-2347-4588-bf01-8e6d6529fae9"
+  ],
+  "updated_at": "2026-09-14T08:59:00.594732Z",
+  "uri": "memory://export/8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07"
+}

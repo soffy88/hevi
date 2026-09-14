@@ -1,0 +1,17 @@
+{
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T08:54:47.949189Z",
+  "format": "SCREENPLAY",
+  "language": "en",
+  "object_id": "0ef4fc09-ef1a-47ae-b77d-c929b48e7273",
+  "project_id": "414b4820-5721-4f16-82c0-447307e23a4e",
+  "provenance": [],
+  "revision": 0,
+  "scene_ids": [
+    "cf5a191f-49e6-4e22-aa41-10ffe87d206f",
+    "8586d027-1a73-4ed0-b47f-01bab631ac10"
+  ],
+  "schema_version": 1,
+  "title": "Owned Script",
+  "updated_at": "2026-09-14T08:54:47.949190Z"
+}

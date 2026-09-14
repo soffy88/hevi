@@ -1,0 +1,15 @@
+{
+  "archive": false,
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T08:55:25.839676Z",
+  "material_type": "IMAGE",
+  "name": "material-3.image",
+  "object_id": "683707af-e819-4ccb-ad39-553b96084f23",
+  "project_id": "8f04a411-a3d1-426b-b98e-8abb07e523d6",
+  "provenance": [],
+  "purpose": "qualification evidence",
+  "revision": 0,
+  "schema_version": 1,
+  "source_id": "3bfb699d-454d-47bd-879b-2dc2fd492ed2",
+  "updated_at": "2026-09-14T08:55:25.839677Z"
+}

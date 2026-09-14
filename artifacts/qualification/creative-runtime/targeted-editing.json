@@ -1,6 +1,6 @@
 {
   "capability_id": "targeted-editing",
-  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/targeted-editing/run-085b438e21fa/edit-preview.json",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/targeted-editing/run-0555a885edce/edit-preview.json",
   "checks": {
     "PATCH_PREVIEW": true,
     "CASCADE_IMPACT": true,
@@ -10,7 +10,7 @@
     "STALE_SOURCE_REJECTED": true
   },
   "artifacts": [
-    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/targeted-editing/run-085b438e21fa/edit-preview.json"
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/targeted-editing/run-0555a885edce/edit-preview.json"
   ],
   "recovery": [
     "exact patch",

@@ -1,0 +1,22 @@
+{
+  "inputs": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/source.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/source.md",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/source.epub",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/translation-localization/run-3c35a3c99048/source.pdf"
+  ],
+  "output_sha256": [
+    "8d2e754a39aa052e58246754ee5c54cc4c15c90acc0609006af2f9e189b28a74",
+    "3eac2ba5e16843541daf8581136da60985fc5a1b132957236c25f59119779055",
+    "a5f2e6734bb03eb80dc8d6fc8c0fc82a4a969cd333b7ccbb6ce1e8e37332b73c",
+    "a907e8b0a0f950822232d83fa74336097295850f595da1e6546b0eb7ab2a6dd3",
+    "87be594dbffd0cadfc7ba29568534180bf49283b611d4f7e00125de37b94824a",
+    "380149d0615e6d73b41bb6e2812527efd69c8b3aaa39d89e338d2b3b94cb6091",
+    "fe87640f656ca36a62f86a21a90565f682bd0ee45172fe4c5a975e491d86feb6",
+    "2cfbf8fce75ab8d93d2f3d0c9e4f7943bd2b8d81a673fb5832bae85eefdaa67d",
+    "cafae019aed32441233c5fd5976ef5d5dca2beaeff8d5abd7bdff5d0cb4997cc",
+    "fe87640f656ca36a62f86a21a90565f682bd0ee45172fe4c5a975e491d86feb6",
+    "2cfbf8fce75ab8d93d2f3d0c9e4f7943bd2b8d81a673fb5832bae85eefdaa67d",
+    "cafae019aed32441233c5fd5976ef5d5dca2beaeff8d5abd7bdff5d0cb4997cc"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "capability_id": "material-library",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-library.json",
+  "checks": {
+    "FIVE_TYPES_IMPORTED": true,
+    "SOURCE_LOCATION": true,
+    "PROJECT_BINDING": true,
+    "ARCHIVE": true,
+    "CITATION": true,
+    "RETRIEVAL": true,
+    "PROJECT_ISOLATION": true,
+    "CROSS_PROJECT_REJECTED": true,
+    "DELETE_BEHAVIOR": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-0.text",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-1.markdown",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-2.document",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-3.image",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-4.external_reference",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-library.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-0.material.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/material-library/run-36f7ef723158/material-0.source.json"
+  ],
+  "recovery": [
+    "reload material and source records",
+    "rebuild in-memory material index"
+  ],
+  "failure_injections": [
+    "cross-project bind",
+    "archived source remains traceable"
+  ],
+  "details": {
+    "material_count": 5,
+    "retrieved_count": 5
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

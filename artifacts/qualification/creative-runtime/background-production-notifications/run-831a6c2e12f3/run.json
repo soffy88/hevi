@@ -1,0 +1,18 @@
+{
+  "artifact_manifest": {
+    "artifact_ids": [],
+    "hashes": []
+  },
+  "authority": "CANONICAL",
+  "capability": "creative.longform",
+  "created_at": "2026-09-14T08:54:59.029822Z",
+  "object_id": "bf8f3b56-780f-4d3d-a64c-71076c34c96f",
+  "project_id": "6d68bedb-e643-4aa4-89dd-a9af9c15cc06",
+  "provenance": [],
+  "revision": 4,
+  "run_key": "background",
+  "schema_version": 1,
+  "stage_results": [],
+  "status": "CANCELLED",
+  "updated_at": "2026-09-14T08:54:59.052655Z"
+}

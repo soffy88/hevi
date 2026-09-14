@@ -1,0 +1,46 @@
+{
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T08:53:36.836406Z",
+  "object_id": "ba4d0c3a-70cf-400c-8333-25a169273fcc",
+  "project_id": "c6219b3f-d8ab-4655-a949-2dffdc1b38af",
+  "provenance": [],
+  "revision": 0,
+  "scenes": [
+    {
+      "scene_id": "9c295bdc-aae0-474e-ac30-2d749da14737",
+      "shot_ids": [
+        "e5143b0a-be2a-4164-9933-2d757c058730"
+      ]
+    },
+    {
+      "scene_id": "e4fd56ef-620b-40f4-b412-1a1f216d2c00",
+      "shot_ids": [
+        "ae7947a1-0698-4ac6-a05c-94c982309e68"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "script_id": "e2e43706-3229-474d-9374-5bc1f1a71602",
+  "shots": [
+    {
+      "action": "open the gate",
+      "audio_refs": [],
+      "duration_ms": 3000,
+      "environment": "UNSPECIFIED",
+      "framing": "MEDIUM",
+      "shot_id": "e5143b0a-be2a-4164-9933-2d757c058730",
+      "visual_intent": "open the gate"
+    },
+    {
+      "action": "choose the route",
+      "audio_refs": [],
+      "duration_ms": 3000,
+      "environment": "UNSPECIFIED",
+      "framing": "MEDIUM",
+      "shot_id": "ae7947a1-0698-4ac6-a05c-94c982309e68",
+      "visual_intent": "choose the route"
+    }
+  ],
+  "title": "Owned Script",
+  "updated_at": "2026-09-14T08:53:36.836407Z"
+}

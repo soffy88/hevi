@@ -1,0 +1,32 @@
+{
+  "capability_id": "notifications-webhooks",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/notifications-webhooks/run-61b4ccf3ecac/webhook-ledger.json",
+  "checks": {
+    "SIGNED": true,
+    "FILTERABLE_EVENT": true,
+    "RETRY_LEDGER": true,
+    "IDEMPOTENT": true,
+    "TAMPER_REJECTED": true,
+    "SECRET_REDACTED": true,
+    "LOCAL_RECEIVER": false,
+    "DELIVERY_RETRY": false
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/notifications-webhooks/run-61b4ccf3ecac/webhook-ledger.json"
+  ],
+  "recovery": [
+    "persist delivery ledger",
+    "replay duplicate event"
+  ],
+  "failure_injections": [
+    "tampered signature",
+    "duplicate delivery"
+  ],
+  "details": {
+    "delivery_attempts": {
+      "event-1": 1
+    }
+  },
+  "status": "PARTIAL",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

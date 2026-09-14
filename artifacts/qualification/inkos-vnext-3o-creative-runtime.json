@@ -1,7 +1,7 @@
 {
   "branch": "feature/vnext-3o-creative-runtime",
   "base_distribution_sha": "1c0be2d89b1ae6a14cf904ab4804380b772e9f44",
-  "code_snapshot": "d03fca104ea23b8aa9987db7aaef88c51d28a018",
+  "code_snapshot": "qualification-runner-wave-2",
   "report_commit": "b7651d76604241c183051eafc6d03042b664d627",
   "clean_room": {
     "upstream_sha": "091048383f411eb99948a8764f42b6fd13006f9b",
@@ -46,14 +46,14 @@
     "tests_started": true,
     "environment_recovery": "Alembic f0e1d2c3b4a7 -> f7a8b9c0d1e2; qualification venv patched by existing scripts/patch_oprim_prims.py",
     "frozen_baseline_modified": false,
-    "log": "/tmp/hevi-vnext-full-suite.log"
+    "log": "artifacts/qualification/creative-runtime/full-suite.log"
   },
   "ledger_snapshot": {
     "total": 39,
     "missing": 0,
-    "partial": 27,
+    "partial": 18,
     "implemented_unqualified": 0,
-    "qualified": 12,
+    "qualified": 21,
     "source": "docs/research/inkos_capability_ledger.yaml"
   },
   "wave_1": {
@@ -69,6 +69,23 @@
       "creative.targeted_editing"
     ],
     "evidence_root": "artifacts/qualification/creative-runtime/"
+  },
+  "wave_2_to_7": {
+    "status": "PARTIAL_CLOSURE_EVIDENCE",
+    "qualified": [
+      "narrative.observation_delta",
+      "creative.style_intelligence",
+      "creative.review",
+      "creative.skills",
+      "creative.policy_packs",
+      "creative.research",
+      "creative.material_library",
+      "creative.script_runtime",
+      "creative.translation"
+    ],
+    "remaining_partial": 18,
+    "partial_closure_ledger": "artifacts/qualification/creative-partial-closure.json",
+    "strict_rule": "contract-only, module-only, and mock evidence remain PARTIAL"
   },
   "parity": "PENDING_REMAINING_CAPABILITY_QUALIFICATION"
 }

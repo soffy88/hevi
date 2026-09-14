@@ -1,0 +1,33 @@
+{
+  "capability_id": "unified-agent-production-harness",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-5f8974d0cc25",
+  "checks": {
+    "TYPED_ACTION": true,
+    "HEAVY_CONFIRMATION": true,
+    "ARTIFACT_GROUNDED_COMPLETION": true,
+    "REAL_ARTIFACT": true,
+    "PERSISTED_RUN": true,
+    "FAIL_CLOSED": true,
+    "RESTART_RESTORE": true,
+    "CANCELLATION": false,
+    "BOUNDED_RETRY": false,
+    "BACKGROUND_RESTORE": false
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-5f8974d0cc25/artifact.txt",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/unified-agent-production-harness/run-5f8974d0cc25/run.json"
+  ],
+  "recovery": [
+    "persist and reload ProductionRun"
+  ],
+  "failure_injections": [
+    "missing heavy confirmation",
+    "missing artifact"
+  ],
+  "details": {
+    "run_id": "882c7641-76dd-4f6e-8a11-503b1c2737b8",
+    "artifact_id": "9c23b0f3-6423-4ed0-babf-80f499014e90"
+  },
+  "status": "PARTIAL",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

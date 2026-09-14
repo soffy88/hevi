@@ -1,0 +1,33 @@
+{
+  "capability_id": "continuity-and-multidimensional-audit",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-95c53e0f704a/audit-report.json",
+  "checks": {
+    "ALL_DIMENSIONS_DECLARED": true,
+    "CLEAN_PASS": true,
+    "DEFECT_FAIL": true,
+    "EVIDENCE_LOCATION": true,
+    "SEVERITY": true,
+    "REPEATABLE": true,
+    "DETERMINISTIC_STRUCTURAL_GATE": true,
+    "ALL_DIMENSION_DEFECT_CORPUS": false
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-95c53e0f704a/audit-report.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/continuity-and-multidimensional-audit/run-95c53e0f704a/audit-input.txt"
+  ],
+  "recovery": [
+    "reload audit report",
+    "repeat clean audit"
+  ],
+  "failure_injections": [
+    "empty draft",
+    "missing provenance",
+    "missing scene purpose"
+  ],
+  "details": {
+    "dimensions": 33,
+    "defect_findings": 3
+  },
+  "status": "PARTIAL",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}

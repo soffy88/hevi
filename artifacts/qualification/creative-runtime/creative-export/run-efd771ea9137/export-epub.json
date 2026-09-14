@@ -1,0 +1,25 @@
+{
+  "artifact_type": "CREATIVE_EXPORT",
+  "authority": "CANONICAL",
+  "created_at": "2026-09-14T09:01:40.750890Z",
+  "export_format": "EPUB",
+  "media_type": "application/epub+zip",
+  "object_id": "45730054-41d8-42d3-835d-d2d60e6f9366",
+  "project_id": "5c01f6a7-b212-4003-ac2d-054b6b51f475",
+  "provenance": [
+    {
+      "ref_id": "2cb5ecec-9ec8-4db0-8dff-a8fe5d807fcd",
+      "ref_type": "SOURCE_ARTIFACT",
+      "sha256": "8ec0e68341deecf7119f239d4b5af83b140db222ba13b66f573f6e223605aa07"
+    }
+  ],
+  "quality_gate_status": "PASS",
+  "revision": 0,
+  "schema_version": 1,
+  "sha256": "9b41497b057b4957bb3135a14f7980c0ee3995888f64f1927772c29b8cdfe0b6",
+  "source_ids": [
+    "2cb5ecec-9ec8-4db0-8dff-a8fe5d807fcd"
+  ],
+  "updated_at": "2026-09-14T09:01:40.750892Z",
+  "uri": "memory://export/9b41497b057b4957bb3135a14f7980c0ee3995888f64f1927772c29b8cdfe0b6"
+}

@@ -1,0 +1,31 @@
+{
+  "capability_id": "script-runtime",
+  "input_path": "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-267b7cf955b1/production-handoff.json",
+  "checks": {
+    "STRUCTURED_SCRIPT": true,
+    "SCRIPT_PERSISTENCE": true,
+    "SCRIPT_PROVENANCE": true,
+    "STORYBOARD_HANDOFF": true,
+    "PRODUCTION_EXECUTABLE_SHOTS": true,
+    "SHOT_INTELLIGENCE_HANDOFF": true,
+    "FAIL_CLOSED_REF_MISMATCH": true
+  },
+  "artifacts": [
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-267b7cf955b1/script.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-267b7cf955b1/storyboard.json",
+    "/data/soffy/projects/hevi-vnext-3o-creative-runtime/artifacts/qualification/creative-runtime/script-runtime/run-267b7cf955b1/production-handoff.json"
+  ],
+  "recovery": [
+    "reload script and storyboard",
+    "downstream shot-intent projection"
+  ],
+  "failure_injections": [
+    "storyboard scene reference mismatch"
+  ],
+  "details": {
+    "script_id": "fb614a7d-81d5-4f58-b4b5-6dcedbb9d67a",
+    "storyboard_id": "f3154404-f963-44d7-9000-139a43084f72"
+  },
+  "status": "QUALIFIED",
+  "generated_by": "scripts/qualification/qualify_creative_runtime.py"
+}
