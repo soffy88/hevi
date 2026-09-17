@@ -649,15 +649,24 @@ def ingest_rough_cut(p: dict[str, Any]) -> dict[str, Any]:
 def nle_jianying(p: dict[str, Any]) -> dict[str, Any]:
     from pathlib import Path
 
-    from hevi.studio.jianying import JianyingDraft, clips_from_recut, write_jianying_draft
+    from hevi.studio.jianying import (
+        JianyingDraft,
+        clips_from_presentation,
+        clips_from_recut,
+        write_jianying_draft,
+    )
 
     dest = Path(str(p.get("output_dir") or "output/nle/jianying-draft"))
-    clips = clips_from_recut(
-        p.get("clips") or [],
-        film=str(p.get("film") or p.get("media_path") or ""),
-        captions=p.get("captions") if isinstance(p.get("captions"), list) else None,
-        bgm=str(p.get("bgm") or ""),
-    )
+    presentation = p.get("presentation")
+    if isinstance(presentation, dict) and presentation.get("reader") == "jianying":
+        clips = clips_from_presentation(presentation)
+    else:
+        clips = clips_from_recut(
+            p.get("clips") or [],
+            film=str(p.get("film") or p.get("media_path") or ""),
+            captions=p.get("captions") if isinstance(p.get("captions"), list) else None,
+            bgm=str(p.get("bgm") or ""),
+        )
     draft = JianyingDraft(name=str(p.get("name") or "hevi-draft"), clips=clips)
     path = write_jianying_draft(draft, dest, copy_media=bool(p.get("copy_media")))
     return _ok(draft_dir=str(path), clips=len(clips), duration_s=draft.duration_s())

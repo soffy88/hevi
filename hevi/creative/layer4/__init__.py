@@ -63,6 +63,25 @@ from hevi.creative.layer4.play import (
     TurnResult,
 )
 from hevi.creative.layer4.policy import PolicyDiff, PolicyModule
+from hevi.creative.layer4.presentation import (
+    AudioMode,
+    CandidateMedia,
+    DurationPolicy,
+    MediaSourceType,
+    PresentationError,
+    PresentationLedger,
+    PresentationSelector,
+    PresentationSnapshot,
+    SelectedMedia,
+    for_composition,
+    for_download,
+    for_jianying,
+    for_preview,
+    for_publish,
+    for_subtitles,
+    presentation_from_task,
+    snapshot_from_manifest,
+)
 from hevi.creative.layer4.research import ResearchModule
 from hevi.creative.layer4.review import ReviewMode, ReviewWorkflow
 from hevi.creative.layer4.revision import (

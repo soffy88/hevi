@@ -110,6 +110,33 @@ class JianyingDraft:
         }
 
 
+def clips_from_presentation(view: dict[str, Any]) -> list[JianyingClip]:
+    """从 Presentation Read Model 的 for_jianying() 视图抽剪映轨。
+
+    纯投影:不重新选择视频/音频/字幕,不重算时长,只把同一 snapshot 的
+    tracks 变成 JianyingClip。调用方传入其它来源的 dict 不会被接受为
+    presentation(要求 reader 标记),防止"看起来像、实际不是同一选择"。
+    """
+    if view.get("reader") != "jianying":
+        raise ValueError("JIANYING_VIEW_MUST_COME_FROM_PRESENTATION_READ_MODEL")
+    out: list[JianyingClip] = []
+    for track in view.get("tracks") or []:
+        kind = str(track.get("track") or "")
+        if kind not in {"video", "audio", "text"}:
+            continue
+        out.append(
+            JianyingClip(
+                path=str(track.get("path") or ""),
+                start_s=0.0,
+                duration_s=max(0.04, float(track.get("duration_ms") or 0.0) / 1000.0),
+                track=kind,
+                text=str(track.get("text") or ""),
+                volume=float(track.get("gain", 1.0) if kind == "audio" else 1.0),
+            )
+        )
+    return out
+
+
 def clips_from_recut(
     clips: list[dict[str, Any]],
     *,
