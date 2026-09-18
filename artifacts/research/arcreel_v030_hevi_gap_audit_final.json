@@ -1,0 +1,2789 @@
+{
+ "arc_baseline": "v0.30.0",
+ "arc_release_commit": "7fb395c",
+ "arc_release_date": "2026-09-10",
+ "arc_repository": "https://github.com/ArcReel/ArcReel",
+ "audit_class": "RE-AUDIT against production HEAD. Original audit frozen above; final_* fields carry re-verified verdicts. Clean-room rules kept throughout.",
+ "code_changed": false,
+ "counts": {
+  "ARC_CAPABILITY_COUNT": 115,
+  "HEVI_LEDGER_TOTAL": 39,
+  "HEVI_MISSING": 15,
+  "HEVI_PARITY": 20,
+  "HEVI_PARTIAL": 73,
+  "HEVI_STRONGER": 2,
+  "NOT_APPLICABLE": 0,
+  "P0_GAPS": 3,
+  "P1_GAPS": 20,
+  "P2_GAPS": 64,
+  "P3_GAPS": 1,
+  "UNVERIFIED": 5
+ },
+ "hypotheses": {
+  "H1_presentation_read_model": {
+   "evidence": "No PresentationReadModel symbol in hevi/; preview (pipeline_lite/oapp/lite_router), export (assembly/exporter), compose (tongjian/assemble), jianying (studio/jianying) are 4 separate paths with no joint selector test.",
+   "mapping": [
+    "creative.export",
+    "creative.studio"
+   ],
+   "status": "HEVI_MISSING",
+   "verdict": "CONFIRMED GAP"
+  },
+  "H2_character_derivative": {
+   "evidence": "CharacterBibleEntry has single appearance/ref_image(+views)/voice_id; Subject has wardrobe_images uploads but no persistent variant identity, no @[role/derivative] script reference, no derivative-aware generation injection.",
+   "mapping": [
+    "creative.production_storyboard",
+    "narrative.canonical_state"
+   ],
+   "status": "HEVI_MISSING",
+   "verdict": "CONFIRMED GAP"
+  },
+  "H3_call_level_usage": {
+   "evidence": "HeviCostTracker + actual_usd + ProviderUsage aggregates exist; no per-call ledger with input/response/error code/source task/KPI/trend/deep-link/orphan reconciliation.",
+   "mapping": [
+    "creative.analytics",
+    "creative.model_routing"
+   ],
+   "status": "HEVI_MISSING",
+   "verdict": "CONFIRMED GAP"
+  },
+  "H4_declarative_custom_endpoint": {
+   "evidence": "plugin_config.py declare+validate+hot-reload+single-shot invoke exists; no endpoint CRUD, no 3-mode test runner, no request/result preview, no submit/poll/resume/download lifecycle, no market.",
+   "mapping": [
+    "creative.model_routing"
+   ],
+   "status": "HEVI_PARTIAL",
+   "verdict": "CONFIRMED GAP (declaration exists, lifecycle missing)"
+  },
+  "H5_download_resume": {
+   "evidence": "All provider downloads are whole-file write_bytes; no Range/Accept-Ranges/resume_download symbols; remote job id in-memory only so re-attach is impossible without re-POST (re-bill).",
+   "mapping": [
+    "creative.run_snapshots",
+    "creative.background_runs"
+   ],
+   "status": "HEVI_MISSING",
+   "verdict": "CONFIRMED GAP"
+  },
+  "H6_jianying_editable": {
+   "evidence": "studio/jianying.py emits real 3-track draft_content+meta+materials (video/audio/text), wired as nle.jianying_export; no transition serialization (cursor concat only); docstring declares handoff-only.",
+   "mapping": [
+    "creative.export"
+   ],
+   "status": "HEVI_PARTIAL",
+   "verdict": "CONFIRMED GAP (partial: tracks yes, transitions no)"
+  },
+  "H7_agent_memory": {
+   "evidence": "hevi/memory/store.py MemoryStore and creative/layer4/memory.py CreativeMemoryIndex both exist but disconnected; neither carries user preferences / project conventions / cross-session recall / editable memory into the creative runtime. Veya is a produce contract, not memory.",
+   "mapping": [
+    "creative.memory_retrieval"
+   ],
+   "status": "HEVI_MISSING",
+   "verdict": "CONFIRMED GAP"
+  },
+  "H8_voice_appearance_identity": {
+   "evidence": "Subject co-locates reference_images + metadata.voice_ref; CharacterBibleEntry co-locates appearance + ref_image + voice_id; narrative models carry visual_identity_ref/voice_identity_ref. No unified authority with ownership/admission/freshness/appearance-variant semantics.",
+   "mapping": [
+    "narrative.canonical_state",
+    "creative.production_storyboard"
+   ],
+   "status": "HEVI_PARTIAL",
+   "verdict": "CONFIRMED GAP (co-location exists, authority missing)"
+  },
+  "H9_artifact_staleness": {
+   "evidence": "ArtifactManifest (production/artifacts.py) has version/artifacts/integrity but no current/stale/history/missing/blocked states, no typed keys, no provenance, no invalidation. stale in hevi/ means rejected/recovered locks, never stale-but-usable previewable/exportable media.",
+   "mapping": [
+    "creative.export",
+    "creative.revision"
+   ],
+   "status": "HEVI_MISSING",
+   "verdict": "CONFIRMED GAP"
+  },
+  "H10_failure_transparency": {
+   "evidence": "Video services surface truncated real reasons (wavespeed failed:{error}); providers/reliability.py deliberately redacts LLM failures into ProviderErrorClass taxonomy (UNKNOWN). No unified desensitized-reason surfacing.",
+   "mapping": [
+    "creative.model_routing"
+   ],
+   "status": "HEVI_PARTIAL",
+   "verdict": "CONFIRMED GAP (video yes, generic path no)"
+  },
+  "S1_multiuser_isolation": {
+   "evidence": "Per-resource owner checks (_check_owner->404), server-side user_id, IDOR test (subjects 404 cross-user), asset isolation + path-traversal tests. No systematic adversarial/credential-scope suite, but strictly beyond ArcReel single-admin.",
+   "mapping": [
+    "creative.concurrency"
+   ],
+   "status": "HEVI_STRONGER",
+   "verdict": "HEVI STRONGER (relative, evidence-backed)"
+  },
+  "S2_production_graph": {
+   "evidence": "production_graph/contracts.py DAG + constraints compiler/derive/verdict RepairAction + quality repair_controller/executor + provenance + task regenerate; exceeds ArcReel plan depth, but explicit plan/next-action/blocked surfacing (K02) is missing.",
+   "mapping": [
+    "creative.production_harness",
+    "creative.longform_production"
+   ],
+   "status": "MIXED (graph depth stronger, plan surfacing missing)",
+   "verdict": "PARTIAL STRENGTH + one P1 gap (K02)"
+  },
+  "S3_3o_modularity": {
+   "evidence": "Provider interchangeability is real (h3_local/manim/libtv/maas behind router+capability guard) but no controlled comparison ran; claim restricted to interchangeability/testability/repairability observations.",
+   "mapping": [
+    "creative.model_routing"
+   ],
+   "status": "UNDECIDED",
+   "verdict": "NO blanket stronger verdict; observable interchangeability noted under E01/E02 PARITY rationale"
+  },
+  "S4_native_local_engines": {
+   "evidence": "h3_local real E2E (w4a8_smoke.mp4, post pipeline 1024^2@48fps + H3 native audio remix,账本全绿), EchoMimicV2 avatar wired to 2 consumers (62 tests), Manim fallback path tested. Beyond ArcReel provider-only model; I01 marked STRONGER on composition+post observable semantics.",
+   "mapping": [
+    "creative.export",
+    "creative.production_storyboard"
+   ],
+   "status": "HEVI STRONGER (scoped: composition/post/local option)",
+   "verdict": "HEVI STRONGER on I01; local-generation option recorded in Q3"
+  },
+  "S5_security_adversarial": {
+   "evidence": "Owner+JWT+IDOR+traversal tests real; no systematic adversarial/credential-scope/containment suite (S03 PARTIAL).",
+   "mapping": [],
+   "status": "NOT STRONGER",
+   "verdict": "No stronger claim; S-gap P2"
+  }
+ },
+ "ledger_taxonomy_changed": false,
+ "mapping": [
+  {
+   "arc_behavior": "Upload novel text; AI extracts characters+aliases, key scenes/props, arcs, episode boundaries into structured plan.",
+   "arc_evidence": "CONTEXT.md novel/division planning; workflows §2.1; lib/episode_ledger + planner (code+tests).",
+   "arc_id": "ARC-A01",
+   "arc_name": "Novel ingestion",
+   "category": "A",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "hevi/services/material.py, hevi/video/material_corpus.py, narrative import primitives; no verified import-to-NarrativeProject reconstruction with chapter replay.",
+   "hevi_names": [
+    "Existing work import and continuation",
+    "Project material library"
+   ],
+   "hevi_tests": "tests/creative_runtime/test_capabilities.py (forecast/length/market only); no import-reconstruction test",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Upload finished screenplay; dialogue/VO preserved verbatim; characters from author table; no extra-role inflation; normalize+board only.",
+   "arc_evidence": "CONTEXT.md screenplay/source-text; workflows §2.2; v0.20 drama utterances/source-anchor (code+tests).",
+   "arc_id": "ARC-A02",
+   "arc_name": "Finished screenplay ingestion",
+   "category": "A",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "hevi/script2video, explainer contracts, tongjian Script, director screenplay (split models, no canonical ScriptArtifact, no verbatim-preservation proof).",
+   "hevi_names": [
+    "Canonical script runtime"
+   ],
+   "hevi_tests": "none (qualification evidence file only, no executable test cited)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Upload product photos (front/side/detail/usage), selling points, audience, forbidden claims, brand visuals into ad project.",
+   "arc_evidence": "workflows §2.3; PRODUCT.md; product asset + sheet (code+tests).",
+   "arc_id": "ARC-A03",
+   "arc_name": "Product material ingestion",
+   "category": "A",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "No product-asset concept found in HEVI (generic materials/packs only).",
+   "hevi_names": [
+    "Project material library"
+   ],
+   "hevi_tests": "none found",
+   "status": "UNVERIFIED",
+   "final_status": "UNVERIFIED",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Project goal records platform, ratio, duration, audience, style, budget cap, narration need, jianying-edit intent.",
+   "arc_evidence": "workflows §6 stage 1; PRODUCT.md operating context.",
+   "arc_id": "ARC-A04",
+   "arc_name": "Project brief",
+   "category": "A",
+   "confidence": "DOCUMENTED",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "Director work config + style packs + budget envelopes cover fragments; no single brief authority.",
+   "hevi_names": [
+    "Long-form narrative production lifecycle",
+    "Editable creative policy/profile packs"
+   ],
+   "hevi_tests": "none specific",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Per-episode target duration steers plan volume (auto = AI decides within supported_durations).",
+   "arc_evidence": "v0.28 target duration; CONTEXT.md default_duration/supported_durations; duration constraints resolver (code+tests).",
+   "arc_id": "ARC-A05",
+   "arc_name": "Target duration",
+   "category": "A",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Narrative length governance tested, but STATUS G1 notes target_duration_s does not cap shot count (script_writer floors at 2 chapters); duration does not govern output volume.",
+   "hevi_names": [
+    "Length governance and normalization"
+   ],
+   "hevi_tests": "tests/creative_runtime/test_capabilities.py (text length only)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Project-level aspect ratio (9:16/16:9/1:1); resolution档 sets sharpness only; size derived deterministically.",
+   "arc_evidence": "CONTEXT.md aspect_ratio/resolution/size; ADR-0011 (docs).",
+   "arc_id": "ARC-A06",
+   "arc_name": "Aspect ratio",
+   "category": "A",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "Render/assembly handle 9:16/16:9 sizes (e.g. 512²/1024², jianying canvas mapping exists in studio/jianying).",
+   "hevi_names": [
+    "Production-executable storyboard",
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_assembler.py, tests/test_jianying_and_style.py",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Style selection writes expanded prompt snapshot into project (style_template); style vs reference-image mutually exclusive.",
+   "arc_evidence": "CONTEXT.md style_template; ADR-0023; workflows §6 stage 3.",
+   "arc_id": "ARC-A07",
+   "arc_name": "Style template",
+   "category": "A",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "hevi/style/style_analyzer.py + style packs exist; no abstract feature contract with apply/audit linkage and non-copying proof.",
+   "hevi_names": [
+    "Abstract style intelligence",
+    "Extensible genre and progression rules"
+   ],
+   "hevi_tests": "none specific",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Novel → characters/aliases, scenes, props, arcs, episode boundaries (agent-extracted, human-reviewable).",
+   "arc_evidence": "workflows §2.1/§6; subagent extraction tools (code+tests).",
+   "arc_id": "ARC-B01",
+   "arc_name": "Content analysis",
+   "category": "B",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "hevi/storygraph extract + season plan + tongjian chapter_ir span/ID machinery; no unified nine-class observation/delta contract tied to canonical authority.",
+   "hevi_names": [
+    "Observer and structured narrative delta extraction",
+    "Long-form narrative production lifecycle"
+   ],
+   "hevi_tests": "tests/test_storygraph.py, tests/test_season_planner.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Source text planned into episode arcs with titles/hooks/source ranges in one ledger; reset (full/partial) supported.",
+   "arc_evidence": "CONTEXT.md episode ledger/reset_episode_planning; episode planner+ledger tests.",
+   "arc_id": "ARC-B02",
+   "arc_name": "Episode planning",
+   "category": "B",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "hevi/season_planner (planner + gate_season_plan + dispatch_season); G1 accepted 2026-07-11 (10 real shots, same-Subject identity proxy).",
+   "hevi_names": [
+    "Long-form narrative production lifecycle"
+   ],
+   "hevi_tests": "tests/test_season_planner.py, tests/test_season_dispatch.py, scripts/g1_shortdrama_run.py",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Every unit carries source_text anchor; drama utterances ordered; finished script dialogue verbatim.",
+   "arc_evidence": "CONTEXT.md source_text/utterance; v0.20 drama fidelity (code+tests).",
+   "arc_id": "ARC-B03",
+   "arc_name": "Source anchoring + preservation",
+   "category": "B",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "chapter_ir.quotes quote_id + BeatDialogue provenance red-line (STATUS Never #3) enforced by CG2.5 gate.",
+   "hevi_names": [
+    "Canonical narrative state and authority",
+    "Observer and structured narrative delta extraction"
+   ],
+   "hevi_tests": "tongjian quality/provenance tests (CG2.5 gate)",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Source/idea organized into reviewable script_plan, then mechanically converted to formal script (prompts pending authoring).",
+   "arc_evidence": "CONTEXT.md script_plan/prompt_authoring/pending; v0.30 mechanical conversion (code+tests).",
+   "arc_id": "ARC-B04",
+   "arc_name": "Script planning + materialization",
+   "category": "B",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "Split script models (script2video/explainer/tongjian/director), no canonical ScriptArtifact; no plan→formal mechanical boundary.",
+   "hevi_names": [
+    "Canonical script runtime"
+   ],
+   "hevi_tests": "none specific",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Script content waits in review gate; confirmation converts plan to formal read-only script.",
+   "arc_evidence": "CONTEXT.md review gate/content confirmation; v0.20 web review (code+tests).",
+   "arc_id": "ARC-B05",
+   "arc_name": "Content confirmation gate",
+   "category": "B",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Per-surface preview/confirm gates (explainer require_preview_gate, director confirm_shot_candidate, shortdrama /confirm); no unified creative review authority bound to artifact revision contracts.",
+   "hevi_names": [
+    "Review, approval, and human gates"
+   ],
+   "hevi_tests": "tests/test_v91_preview_and_validator.py, tests/test_director_pipeline_router.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Narration content split by reading rhythm/semantic pauses; one segment = one clear visual point.",
+   "arc_evidence": "workflows §3.1; narration splitter subagent (code+tests).",
+   "arc_id": "ARC-B06",
+   "arc_name": "Narration segmentation",
+   "category": "B",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "Explainer Storyboard/StoryboardSegment generate + gate + voiceover synthesis per segment.",
+   "hevi_names": [
+    "Canonical script runtime",
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "explainer/storyboard tests (generate/gate)",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Drama normalized to scenes with ordered utterances (line or VO), per-scene source anchors.",
+   "arc_evidence": "CONTEXT.md utterance; script skeleton scenes (code+tests).",
+   "arc_id": "ARC-B07",
+   "arc_name": "Drama normalization",
+   "category": "B",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "ScreenplayDialogueLine + target_name→eyeline exists; no ordered utterance unit unifying line/VO with scene-level anchors.",
+   "hevi_names": [
+    "Canonical script runtime"
+   ],
+   "hevi_tests": "tests/test_scene_stage.py (beats anchored to dialogue lines)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Ad organized as shots around selling points/demos/CTA with explicit target duration; voiceover drafted post-export.",
+   "arc_evidence": "workflows §3.3; ad skeleton shots (code+tests).",
+   "arc_id": "ARC-B08",
+   "arc_name": "Ad structure",
+   "category": "B",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "No ad-specific structure (shots + selling-point order + CTA + post-export VO) identified; generic explainer/montage paths only.",
+   "hevi_names": [
+    "Short fiction production package",
+    "Canonical script runtime"
+   ],
+   "hevi_tests": "none specific",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Registered character with base look (description + sheet); @[name] references base in scripts.",
+   "arc_evidence": "CONTEXT.md character/base look/writing_syntax; asset routers + sheet generation (code+tests).",
+   "arc_id": "ARC-C01",
+   "arc_name": "Character (+identity/base look)",
+   "category": "C",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "Subject (refs+identity embedding+voice_ref) + CharacterBibleEntry (appearance+ref_image+voice_id) + aliases/hotwords; single appearance only, no unified canon authority.",
+   "hevi_names": [
+    "Canonical narrative state and authority",
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "tests/test_subjects.py, tests/test_tongjian_character_bible.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Reusable environment asset with fixed layout/decor; referenced by boards/units.",
+   "arc_evidence": "CONTEXT.md scene; asset routers (code+tests).",
+   "arc_id": "ARC-C02",
+   "arc_name": "Scene asset",
+   "category": "C",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "DesignScene environment/lighting/mood existed but render layer consumed nothing until 2026-07-17 Gap-3 fix (scene_desc_by_id); SceneStage now projects shot space. Authority still split.",
+   "hevi_names": [
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "tests/test_tongjian_scene_render_avatar.py (+3 Gap-3 wiring)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Key story item / product-accurate prop asset; model must not invent logo/structure.",
+   "arc_evidence": "CONTEXT.md (prop in project asset); workflows §8.",
+   "arc_id": "ARC-C03",
+   "arc_name": "Prop asset",
+   "category": "C",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "No first-class prop authority identified; generic references/materials only.",
+   "hevi_names": [
+    "Production-executable storyboard",
+    "Project material library"
+   ],
+   "hevi_tests": "none specific",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Advertised product asset grounded in uploaded product photos as appearance truth.",
+   "arc_evidence": "CONTEXT.md product; product asset flow (code+tests).",
+   "arc_id": "ARC-C04",
+   "arc_name": "Product asset",
+   "category": "C",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "No product-asset concept examined; cannot confirm or deny equivalence.",
+   "hevi_names": [
+    "Project material library"
+   ],
+   "hevi_tests": "none found",
+   "status": "UNVERIFIED",
+   "final_status": "UNVERIFIED",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Character aliases resolved to one identity at analysis time.",
+   "arc_evidence": "workflows §2.1 role+alias; extraction (code+tests).",
+   "arc_id": "ARC-C05",
+   "arc_name": "Aliases",
+   "category": "C",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "CharacterIR.aliases + storygraph/extract name→char_id parsing + hotwords; tested.",
+   "hevi_names": [
+    "Canonical narrative state and authority"
+   ],
+   "hevi_tests": "tests/test_storygraph.py (+2 relationships/alias handling)",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Same identity + persistent alternate looks (outfit/injury/disguise/age), shared name+voice, per-derivative sheet edited from base, @[role/derivative] script refs.",
+   "arc_evidence": "v0.29 derivative commits; CONTEXT.md derivative; ADR-0072; derivative routers+repo+migration tests.",
+   "arc_id": "ARC-C06",
+   "arc_name": "Character derivative",
+   "category": "C",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "Single appearance per bible entry/Subject; wardrobe uploads exist but carry no persistent variant identity, script reference, or stale/version tracking.",
+   "hevi_names": [
+    "Canonical narrative state and authority"
+   ],
+   "hevi_tests": "none (no variant tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Authority + variants visibility API live, but no production producer registers multi-appearance characters yet (bible carries one look).",
+   "final_evidence": "hevi/api/routers/authorities.py::character_variants",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Sheets are standard-look images reused downstream; also serve as reference inputs when used.",
+   "arc_evidence": "CONTEXT.md sheet/reference image; asset sheet flow (code+tests).",
+   "arc_id": "ARC-C07",
+   "arc_name": "Reference assets + global library",
+   "category": "C",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "Subject reference_images/roles + bible ref_image(_views); only media libraries (BGM/audio/motion recipes); no cross-project global asset library with derivative套件进出.",
+   "hevi_names": [
+    "Project material library"
+   ],
+   "hevi_tests": "tests/test_subjects.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Rename is an atomic cascade transaction (all refs incl. files updated at once); unregistered/missing-sheet refs block generation with names listed.",
+   "arc_evidence": "v0.26 rename cascade; v0.29 ref-block; CONTEXT.md asset rename; ADR-0057 (code+tests).",
+   "arc_id": "ARC-C08",
+   "arc_name": "Rename cascade + ref integrity",
+   "category": "C",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "update_subject_fields renames without cascade; embeddings fail-open (None non-blocking); no missing-reference admission block.",
+   "hevi_names": [
+    "Canonical narrative state and authority",
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "none (no cascade/blocking tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Atomic rename + missing-name blocking helpers proven, but produce entry still relies on shot-readiness blockers only.",
+   "final_evidence": "hevi/creative/layer4/character_authority.py::rename_character/check_references",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "One board image per unit fixing composition + start frame; drives that unit video.",
+   "arc_evidence": "CONTEXT.md storyboard_image; storyboard route (code+tests).",
+   "arc_id": "ARC-D01",
+   "arc_name": "Single storyboard",
+   "category": "D",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Storyboard fragments (explainer generate/gate/render, director plan_shots, sketch) exist; no unified single-board lifecycle with version/approval/provenance.",
+   "hevi_names": [
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "explainer storyboard tests; tests/test_embrace_phase_c.py (sketch)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Multiple boards generated on one grid sheet (auto 2x2/3x3 square split, cell ratio = project ratio) for consistency + batch review.",
+   "arc_evidence": "workflows §4.2; grid flow + split service (code+tests).",
+   "arc_id": "ARC-D02",
+   "arc_name": "Grid storyboard 2x2/3x3",
+   "category": "D",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "storyboard_grid + grid_9/grid_25 generation tests exist; no grid→split→per-board version linkage.",
+   "hevi_names": [
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "tests/test_creative.py (gen_storyboard/grid_9/grid_25)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Denser 4x4/5x5 only when image resolution档 = 4K (cell resolution guard for downstream video).",
+   "arc_evidence": "workflows §4.2 (4K gate documented).",
+   "arc_id": "ARC-D03",
+   "arc_name": "4x4/5x5 high-res mode",
+   "category": "D",
+   "confidence": "DOCUMENTED",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "grid_25 generation exists; no resolution-gated dense-grid policy.",
+   "hevi_names": [
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "tests/test_creative.py (grid_25)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Grid sheet auto-cut into per-board images, each carrying full reference set + grid record.",
+   "arc_evidence": "v0.30 grid split service + warnings orthogonality (code+tests).",
+   "arc_id": "ARC-D04",
+   "arc_name": "Grid split",
+   "category": "D",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Grid generation exists; no grid-split step examined — neither confirmed nor refuted.",
+   "hevi_names": [
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "none found",
+   "status": "UNVERIFIED",
+   "final_status": "UNVERIFIED",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Boards editable via image_edit (new version, prompt preserved); manual upload accepted as board.",
+   "arc_evidence": "v0.26 upload/rollback/split; CONTEXT.md image_edit (code+tests).",
+   "arc_id": "ARC-D05",
+   "arc_name": "Storyboard edit + manual upload",
+   "category": "D",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Reference/wardrobe uploads exist (subjects); director confirm/regenerate per-shot; no board-level edit-version + upload equivalence.",
+   "hevi_names": [
+    "Bounded revision workflow",
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "tests/test_director_pipeline_router.py (regenerate/confirm)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Every generation keeps versions; rollback restores prior without losing paid history.",
+   "arc_evidence": "architecture §11 version history; version routers + restore service (code+tests).",
+   "arc_id": "ARC-D06",
+   "arc_name": "Version history + rollback",
+   "category": "D",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Candidate preservation + director _rollback_downstream + run snapshots exist; no unified media version-history/rollback authority.",
+   "hevi_names": [
+    "Bounded revision workflow",
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "tests/test_director_pipeline_router.py, tests/test_live_production_closure.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Per-board user-intent end frame (收束 target); start frame drives i2v input.",
+   "arc_evidence": "CONTEXT.md end_frame_image; i2v/r2v task types (code+tests).",
+   "arc_id": "ARC-D07",
+   "arc_name": "Start/end frame",
+   "category": "D",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Start-frame img2img routine (SPEC-004 v2 B2/B5, real frames); end-frame intent field unverified.",
+   "hevi_names": [
+    "Production-executable storyboard"
+   ],
+   "hevi_tests": "SPEC-004 v2 B5 e2e script (start-frame orientation)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Generation-time conditional inputs with per-backend count caps; over-limit refs clamped pre-enqueue with visible warning; full set kept in provenance.",
+   "arc_evidence": "v0.30 reference clamping; CONTEXT.md clamping/compression; ADR-0062/0012 (code+tests).",
+   "arc_id": "ARC-D08",
+   "arc_name": "Reference images (+trim/provenance)",
+   "category": "D",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "reference_images list bridging (maas_lock data-URI) + Subject views exist; no count-cap clamping with user/agent-visible warning; provenance scattered (vault/video_intelligence), not per-generation.",
+   "hevi_names": [
+    "Production-executable storyboard",
+    "Model and provider routing"
+   ],
+   "hevi_tests": "none (no clamping/provenance tests)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Board image drives one video clip (i2v); per-board redo isolated.",
+   "arc_evidence": "workflows §4.1; i2v backends (code+tests).",
+   "arc_id": "ARC-E01",
+   "arc_name": "Storyboard-to-video",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "Cloud i2v (happyhorse maas_lock real 10-shot run) + local h3_local real E2E + libtv relay; per-shot regenerate_task_shots.",
+   "hevi_names": [
+    "Production-executable storyboard",
+    "Model and provider routing"
+   ],
+   "hevi_tests": "G1 real-run evidence; output/h3_e2e/ pipeline tests",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Asset sheets directly drive video without per-board images (r2v).",
+   "arc_evidence": "workflows §4.3; r2v backends (code+tests).",
+   "arc_id": "ARC-E02",
+   "arc_name": "Reference-to-video",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "maas_lock reference-to-video real run; vidu/dashscope/runway adapters with reference contracts.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "G1 real-run evidence",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Video models accept N reference images with type/weight limits differing per provider.",
+   "arc_evidence": "providers §7; backend capability descriptors (code+tests).",
+   "arc_id": "ARC-E03",
+   "arc_name": "Multi-reference",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "reference_images (list) bridging exists; no per-provider count/type/weight capability matching surfaced to admission.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "tests/test_provider_scoring.py (scoring, not ref-cap matching)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Discrete supported_durations narrowed per resolution/ref context server-side; resolution档 sharpness-only; native-audio flag; capability-aware controls disable unsupported combos pre-submit.",
+   "arc_evidence": "v0.29 duration narrowing; CONTEXT.md duration constraints/generate_audio; video-capabilities endpoint (code+tests).",
+   "arc_id": "ARC-E04",
+   "arc_name": "Duration/resolution/audio caps",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "ProviderLimits + validate_request modes/resolution/duration/fps + native_audio flag exist (video-only); duration does not govern downstream volume (G1 quirk); no server-narrowed option sets consumed by UI.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "tests/test_provider_policy.py (capability rejections)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "One-shot single generation and queued batch generation across image/video/audio channels.",
+   "arc_evidence": "architecture §8 independent channels; batch controls (code+tests).",
+   "arc_id": "ARC-E05",
+   "arc_name": "Single + batch generation",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "TaskService queue + regenerate_task_shots + progress/completed_shots; no batch-partition (succeeded/failed/blocked) semantics.",
+   "hevi_names": [
+    "Background production and notifications",
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "tests/test_live_production_closure.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Batch creation gated by one all-or-none admission verdict (go/confirm/blocked); blocked creates zero tasks; image/TTS batches exempt by design.",
+   "arc_evidence": "CONTEXT.md batch_admission; lib/batch_admission (code+tests); PRODUCT.md.",
+   "arc_id": "ARC-E06",
+   "arc_name": "All-or-none batch admission",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "No pre-creation admission verdict; preflight quotes cost but never gates creation all-or-none.",
+   "hevi_names": [
+    "Background production and notifications"
+   ],
+   "hevi_tests": "none (no admission tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "All-or-none admission proven with zero-admit semantics, but no production batch gate calls it yet.",
+   "final_evidence": "hevi/creative/layer4/plan_projection.py::admit_batch",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Any single unit regenerable; old paid versions preserved; no implicit overwrite.",
+   "arc_evidence": "architecture §11; regen endpoints preserving history (code+tests).",
+   "arc_id": "ARC-E07",
+   "arc_name": "Regeneration",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "regenerate_task_shots + confirm_shot_candidate + candidate preservation; paid-history preservation policy unverified.",
+   "hevi_names": [
+    "Bounded revision workflow",
+    "Review, approval, and human gates"
+   ],
+   "hevi_tests": "tests/test_tasks.py (regenerate_task_shots)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Restart resumes orphan video tasks by stored provider_job id (poll+download, never re-submit); interrupted artifact download resumes without new model call/bill.",
+   "arc_evidence": "v0.28 download resume; CONTEXT.md orphan/resume; resume path + tests.",
+   "arc_id": "ARC-E08",
+   "arc_name": "Remote resume + download resume",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "provider_job_id in-memory only (no DB column); resume_task re-runs; all downloads whole-file write_bytes, no Range resume → interrupt forces re-POST/re-bill.",
+   "hevi_names": [
+    "Production run snapshots and crash recovery",
+    "Background production and notifications"
+   ],
+   "hevi_tests": "none (no job-id persistence/download-resume tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Durable plane persists and recovers through task_service methods (repository roundtrips, cross-instance recovery proven), but legacy provider adapters still submit/poll/download in-memory per path.",
+   "final_evidence": "hevi/tasks/durable_execution.py, tests/test_task_durable_execution.py",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Failure surfaces desensitized real provider rejection reason in UI + notification, not UnknownError.",
+   "arc_evidence": "v0.29 failure-cause display; CONTEXT.md failure_observation; generation failure path (code+tests).",
+   "arc_id": "ARC-E09",
+   "arc_name": "Provider rejection reason",
+   "category": "E",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "OBSERVABILITY_GAP",
+   "hevi_impl": "Video submit/poll surfaces truncated real reasons; generic LLM reliability path redacts to ProviderErrorClass/UNKNOWN by design.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "tests/test_provider_policy.py; hevi/resilience/errors.py classify_error",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Standalone narration voice material (TTS) with voice catalog, sample audition, rate/length/format checks.",
+   "arc_evidence": "providers §9 TTS; CONTEXT.md narration_audio/voice/voice_sample; audio backend (code+tests).",
+   "arc_id": "ARC-F01",
+   "arc_name": "TTS",
+   "category": "F",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "audio_router + F5-TTS zero-shot + CosyVoice2/3 + VibeVoice + voice catalogs; 56 audio tests green; real Echo/F5 wiring.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "audio suite 56 passed; worker family-detection + multipart contract tests",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Per-model cross-clip timbre marker: native (ref-audio passthrough) / soft (prompt-described) / none (silent).",
+   "arc_evidence": "CONTEXT.md voice_consistency; character_voice lib + request projection (code+tests).",
+   "arc_id": "ARC-F02",
+   "arc_name": "Character voice consistency",
+   "category": "F",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "voice_ref plumbing + per-cue routing exist; no native/soft/none consistency-tier model derived from model×mode×binding.",
+   "hevi_names": [
+    "Canonical narrative state and authority"
+   ],
+   "hevi_tests": "tests/test_dub.py (routing, not tiers)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Project setting binding voice by prompt description (default) or attached reference audio for video models.",
+   "arc_evidence": "v0.28 voice binding setting; CONTEXT.md character_voice_binding (code+tests).",
+   "arc_id": "ARC-F03",
+   "arc_name": "Reference audio binding",
+   "category": "F",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "metadata.voice_ref + add_voice_reference + per-cue voice_ref routing exist; no project-level binding-mode setting consumed by generation.",
+   "hevi_names": [
+    "Canonical narrative state and authority"
+   ],
+   "hevi_tests": "tests/test_subjects.py (voice upload); tests/test_dub.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Narrator lines, character lines (derivative-scoped voice), mixed ownership, and unattributed-VO handling in r2v.",
+   "arc_evidence": "v0.29 dialogue-to-action placement + unattributed-VO drop; reference_video projection (code+tests).",
+   "arc_id": "ARC-F04",
+   "arc_name": "Speech ownership",
+   "category": "F",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "ScriptLine speaker=NARRATOR + narrator fallback in derive.py only; no narrator/character/mixed ownership model with derivative-scoped voice.",
+   "hevi_names": [
+    "Canonical script runtime"
+   ],
+   "hevi_tests": "none specific",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Ad/narration TTS overlaid at export time (TTS-overlay vs native-audio version choice).",
+   "arc_evidence": "jianying-export sound-version select; narration_delivery tasks (code+tests).",
+   "arc_id": "ARC-F05",
+   "arc_name": "Post-dubbing route",
+   "category": "F",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "hevi/dub (synth_cues_on_timeline, translate_cues, ffmpeg concat with pads) + localization workflow timed-dub exist; no unified post-dub route selectable at export.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_dub.py, tests/test_voicepro_kernel.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Track lengths use real media duration; billing settles on provider-reported billable seconds; TTS batches return per-item mapping with occupancy.",
+   "arc_evidence": "v0.29 per-item TTS mapping; usage actual-duration settlement (code+tests).",
+   "arc_id": "ARC-F06",
+   "arc_name": "Actual duration + admission",
+   "category": "F",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "oprim.probe_duration + ffprobe + ASR re-verify exist; no per-item speech admission mapping; audio freshness/staleness absent.",
+   "hevi_names": [
+    "Creative analytics and usage telemetry"
+   ],
+   "hevi_tests": "tests/test_subtitle_align.py (timing); no admission tests",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Preview, download bundle, and jianying export jointly consume one read model: selected video version + TTS version + real durations + native-audio flag + subtitle timing + current/history state; raw-only branch for unproven uploads.",
+   "arc_evidence": "architecture §13 presentation-read-model; presentation_read_model.py + bundle + presentations router (code+tests); migration backfills typed sources.",
+   "arc_id": "ARC-G01",
+   "arc_name": "Presentation Read Model",
+   "category": "G",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Four separate paths (lite preview HTML, tasks export_video, tongjian compose, studio jianying) with no shared selector; ArtifactManifest lacks version/duration/subtitle/currency selection.",
+   "hevi_names": [
+    "Creative export and package delivery",
+    "Studio product surfaces for creative capabilities"
+   ],
+   "hevi_tests": "none (no joint-selection test; separation proven by 4 disjoint test files)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "Production adoption landed: tasks authorize video/audio, dashboard, tongjian download, and cinematic serve via snapshot ids with probed actuals (stored snapshot wins, legacy fallback only on refusal); jianying consumes for_jianying views; live visibility endpoint serves for_download views. Draft-preview paths stay pre-commit by design.",
+   "final_evidence": "hevi/api/routers/tasks.py::_snapshot_preferred_ids, hevi/artifact_store/http.py::preferred_ids_for_serving, tests/creative_runtime/test_consumer_adoption.py, tests/test_authorities_api.py::task_presentation",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Mechanical subtitles per real media bounds/text length (novel text for narration; dialogue+VO for drama).",
+   "arc_evidence": "jianying-export contents; subtitle materialization in presentation bundle (code+tests).",
+   "arc_id": "ARC-H01",
+   "arc_name": "Subtitle generation + mapping",
+   "category": "H",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "subtitle_align (ASR cues replacing planned subs) + dub synth + localization SRT/ASS exist as separate primitives; no single speech→subtitle mapping contract.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_subtitle_align.py, tests/test_subtitle_burner.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Subtitle timing bound to actual media, not planned durations.",
+   "arc_evidence": "architecture §13 (durations from real media); presentation bundle tests.",
+   "arc_id": "ARC-H02",
+   "arc_name": "Actual-media-bound timing",
+   "category": "H",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "align_subtitles/transcribe_to_cues re-clock to narration audio; timeline slots with silence pads; not unified with TTS/post-dub selection.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_subtitle_align.py, tests/test_voicepro_kernel.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Subtitle staleness tracked; subtitles editable in Jianying after import.",
+   "arc_evidence": "artifact currency incl. subtitle entries; jianying text track editable (code+tests).",
+   "arc_id": "ARC-H03",
+   "arc_name": "Stale provenance + editable export",
+   "category": "H",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "EXPORT_GAP",
+   "hevi_impl": "Jianying text track + export-pack subtitles.srt give editable export (partial); no subtitle staleness provenance.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_jianying_and_style.py, tests/test_exporter.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "FFmpeg concat + transitions + audio mix/ducking + libx264/aac encode to final MP4.",
+   "arc_evidence": "architecture §13 composition; compose service (code+tests).",
+   "arc_id": "ARC-I01",
+   "arc_name": "FFmpeg composition",
+   "category": "I",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "assembler (normalize+xfade/acrossfade or concat demuxer + loudnorm/amix/ducking → MP4) + digital-human timeline composition + H3 post (FlashVSR 2x + RIFE 2x + native-audio remix,账本全绿, real outputs). Observable post semantics exceed ArcReel concat/transition/encode baseline.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_assembler.py, tests/test_video_assemble_workflow.py, tests/test_h3_post_pipeline.py",
+   "status": "HEVI_STRONGER",
+   "final_status": "HEVI_STRONGER",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Per-episode editable draft (video/audio/text tracks, mechanical subs, TTS overlay choice, transitions) as ZIP for Jianying 5.x/6+ desktop.",
+   "arc_evidence": "jianying-export guide; jianying_draft_service (code+tests); presentation-shared selection.",
+   "arc_id": "ARC-I02",
+   "arc_name": "Jianying editable draft",
+   "category": "I",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "EXPORT_GAP",
+   "hevi_impl": "Real 3-track draft (video+audio+text, captions→text, bgm→audio) via nle.jianying_export; no transition serialization; handoff-only disclaimer; not bound to shared presentation selection.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_jianying_and_style.py, tests/test_studio_catalog.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Project archive export + import with schema migration, migration report, and failure verdict blocking generation but not viewing.",
+   "arc_evidence": "CONTEXT.md project migration/report/verdict; archive service + migration runner (code+tests).",
+   "arc_id": "ARC-I03",
+   "arc_name": "Archive export/import",
+   "category": "I",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "EXPORT_GAP",
+   "hevi_impl": "Export-only ZIP (video+srt+shots+verdicts+manifest.json, missing tolerated); no project import/restore loader.",
+   "hevi_names": [
+    "Backup, restore, and rollback",
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_exporter.py; no archive-import test",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Single manifest registers every formal artifact's identity/location/basis; existence and consistency answered only via manifest.",
+   "arc_evidence": "CONTEXT.md artifact_manifest; ADR-0062; lib/artifact_manifest (code+tests).",
+   "arc_id": "ARC-J01",
+   "arc_name": "Artifact Manifest",
+   "category": "J",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "production/artifacts.py ArtifactManifest (version/artifacts/integrity/hash) + export manifest; no currency states, free-form kind/logical_role, no provenance/invalidation.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_artifact_lifecycle.py, tests/test_artifact_store.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Each entry judged current/stale/missing/blocked vs present inputs; stale viewable, exportable, composable; never auto re-billed.",
+   "arc_evidence": "CONTEXT.md artifact currency; lib/artifact_currency (code+tests); workflows §6.5 batch only backfills missing.",
+   "arc_id": "ARC-J02",
+   "arc_name": "Currency 4-state",
+   "category": "J",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "No currency states; stale means rejected locks, never stale-but-usable media; blocked-vs-missing undistinguished so blocked items risk paid rework.",
+   "hevi_names": [
+    "Creative export and package delivery",
+    "Bounded revision workflow"
+   ],
+   "hevi_tests": "none (opposite semantics tested: stale-rejection tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "Evaluator is the sole production decider of current/stale/missing/blocked (verified: revision_id never compared elsewhere); live per-entry visibility endpoint; W7 projection and W8 exports consume it.",
+   "final_evidence": "hevi/creative/layer4/currency.py, hevi/api/routers/authorities.py::task_currency",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Typed artifact keys with content provenance and source-version linkage per entry.",
+   "arc_evidence": "lib/artifact_provenance + version_provenance + input_claims (code+tests); v0.30 typed-source backfill.",
+   "arc_id": "ARC-J03",
+   "arc_name": "Typed keys + provenance",
+   "category": "J",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "kind/logical_role free-form; provenance scattered (cinematic models, vault.Provenance, video_intelligence); no per-entry source-version linkage.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "tests/test_constraints.py (content-hash only)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Failed regeneration preserves prior artifact; task success never implies artifact validity.",
+   "arc_evidence": "generation_result lib + video_artifact_commit tests; invalid-draft quarantine (code+tests).",
+   "arc_id": "ARC-J04",
+   "arc_name": "Failed-regen safety + validity",
+   "category": "J",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Verdict rewrite gates + completed_shots fix + candidate preservation approximate this; no explicit invalid-artifact quarantine / validity-vs-success contract.",
+   "hevi_names": [
+    "Bounded revision workflow",
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "verdict/rewrite regression tests (1799dd8 +12)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Manually uploaded video without generation provenance takes explicit raw-only branch: kept as-is, no guessed basis/currency, no TTS/subs, no derived presentation.",
+   "arc_evidence": "architecture §13 raw-only branch (code+tests).",
+   "arc_id": "ARC-J05",
+   "arc_name": "Manual/raw-only media",
+   "category": "J",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Post-failure raw fallback delivers degraded raw, but no raw-only provenance branch distinguishing unproven uploads from validated derivations.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "none specific",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Raw-only editable timelines with unproven-source flag proven, but production manual-upload paths do not build snapshots yet.",
+   "final_evidence": "hevi/creative/layer4/editable_delivery.py::source_unproven",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Entries invalidated when basis unreadable; invalidation blocks paid regen (blocked, not missing).",
+   "arc_evidence": "artifact activation/input-claims libs (code+tests).",
+   "arc_id": "ARC-J06",
+   "arc_name": "Artifact invalidation",
+   "category": "J",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "execution/plan.py rerun/preserve invalidated-input filter exists; no manifest-level invalidation states.",
+   "hevi_names": [
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "execution plan tests (rerun/preserve)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Single authoritative per-target status: step, blocks, confirmation, per-artifact 4-state detail.",
+   "arc_evidence": "workflow_state lib + status adapters (code+tests).",
+   "arc_id": "ARC-K01",
+   "arc_name": "Server workflow state",
+   "category": "K",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "_work_status + task query + preview gates exist per pipeline; no single authority unifying step/blocks/confirmation/artifact-currency.",
+   "hevi_names": [
+    "Unified agent and production harness"
+   ],
+   "hevi_tests": "tests/test_director_pipeline_router.py (status/lint exposure)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Ordered plan steps with status, required-ness, actions, artifacts, issues; next action computed server-side for Web + Agent.",
+   "arc_evidence": "workflow_plan lib + plan adapters; agent consumes same plan (code+tests).",
+   "arc_id": "ARC-K02",
+   "arc_name": "Production plan + next action",
+   "category": "K",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "No explicit production_plan/next_action fields; DAG+repair depth exists underneath but is not surfaced as an ordered plan.",
+   "hevi_names": [
+    "Unified agent and production harness",
+    "Long-form narrative production lifecycle"
+   ],
+   "hevi_tests": "none (no plan/next-action tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Projection is pure and twice-equal with actionable repairs, but no Studio/API surface consumes it yet.",
+   "final_evidence": "hevi/creative/layer4/plan_projection.py::project_plan",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Blocking items with causes continuously expressed in UI; failures needing manual retry listed, not auto re-billed.",
+   "arc_evidence": "PRODUCT.md interrupt semantics; workflow state blocks (code+tests).",
+   "arc_id": "ARC-K03",
+   "arc_name": "Blocked reason",
+   "category": "K",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "Task failed/cancelled/interrupted states + CAPABILITY_UNAVAILABLE shape exist; no unified blocked-reason list per production target.",
+   "hevi_names": [
+    "Unified agent and production harness"
+   ],
+   "hevi_tests": "tests/test_capability_truthfulness.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Repair actions attached to blocks (retry target, re-plan, fix refs).",
+   "arc_evidence": "repair affordances in plan adapters (code+tests).",
+   "arc_id": "ARC-K04",
+   "arc_name": "Repair action",
+   "category": "K",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "RepairAction + repair_controller (manual_repair_required) + repair_executor (regenerate_same_provider) + director repair_agents; tested.",
+   "hevi_names": [
+    "Long-form narrative production lifecycle"
+   ],
+   "hevi_tests": "quality repair tests; tests/test_director_pipeline_router.py",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "completed/partial/failed per target with current artifact snapshot.",
+   "arc_evidence": "workflow_state + project summary verified/registered dialects (code+tests).",
+   "arc_id": "ARC-K05",
+   "arc_name": "Outcome + artifact snapshot",
+   "category": "K",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "Progress/completed_shots/task terminal states exist; no completed/partial/failed outcome tied to a current-artifact snapshot.",
+   "hevi_names": [
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "tests/test_live_production_closure.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Queued/running tasks persisted with attempts, checkpoints, scheduler lease; crash-safe.",
+   "arc_evidence": "architecture §8; task repo + attempts/checkpoints migration + closure tests.",
+   "arc_id": "ARC-L01",
+   "arc_name": "Persistent task",
+   "category": "L",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "TaskRepository claim/lease + attempt_repository checkpoints + RESUMABLE_STATUSES + resumable_render; tested incl. crash injection.",
+   "hevi_names": [
+    "Background production and notifications",
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "tests/test_live_production_closure.py, tests/test_runtime_edge_coverage.py",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Remote provider_job id stored at submit; polling checkpointed against it.",
+   "arc_evidence": "architecture §8.1; provider_job persistence + poll loop (code+tests).",
+   "arc_id": "ARC-L02",
+   "arc_name": "Provider job id + polling",
+   "category": "L",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "provider_job_id passed as evidence field (provider_policy/runtime) and kept in-memory in video services (asyncio.sleep poll); no DB column, no durable poll checkpoint.",
+   "hevi_names": [
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "none (no job-id persistence tests)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Restart recovers orphans: with provider id → resume poll/download; expired → explicit fail (never silent re-submit).",
+   "arc_evidence": "CONTEXT.md orphan/resume; startup orphan sweep + resume-failure-cause tests.",
+   "arc_id": "ARC-L03",
+   "arc_name": "Restart/orphan resume",
+   "category": "L",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "resume_task re-runs; queue lease→interrupted recovery is task-level; no provider-id-anchored resume; expired-remote explicit-fail path absent.",
+   "hevi_names": [
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "tests/test_live_production_closure.py (task-level resume only)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Task identity + persisted state + provider id prevent double-billing on retry/duplicate-click/SSE-drop.",
+   "arc_evidence": "architecture §8.2 idempotency (code+tests).",
+   "arc_id": "ARC-L04",
+   "arc_name": "Idempotency + dup-click guard",
+   "category": "L",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "Idempotency-Key router support + migration, ExecutionPlan plan_hash ON CONFLICT, ADR-011 billing idempotency; retry gated on idempotent flag.",
+   "hevi_names": [
+    "Background production and notifications"
+   ],
+   "hevi_tests": "tests/integration/test_billing_reservation_p0d.py; reliability tests",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "User cancel works on queued+running in seconds, frees concurrency, marks cancelled_by (user/cascade).",
+   "arc_evidence": "CONTEXT.md cancel; cancel path + cascade (code+tests).",
+   "arc_id": "ARC-L05",
+   "arc_name": "Cancel",
+   "category": "L",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "cancel_task + lease clear + interrupted states; tested.",
+   "hevi_names": [
+    "Background production and notifications"
+   ],
+   "hevi_tests": "tests/test_live_production_closure.py (stale-worker cannot finish)",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Bounded retry; per-supplier RPM + image/video/audio independent concurrency; failure budget + global timeout.",
+   "arc_evidence": "v0.28 poll budget/timeout; queue channels + RPM (code+tests).",
+   "arc_id": "ARC-L06",
+   "arc_name": "Retry + RPM + concurrency",
+   "category": "L",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "RetryPolicy ≤3 + classify_error, RateLimitPolicy/_RequestRateLimiter, bulkheads, ResourceSnapshot capacity/provider tokens, per-supplier defaults.",
+   "hevi_names": [
+    "Background production and notifications",
+    "Model and provider routing"
+   ],
+   "hevi_tests": "reliability/resilience tests; tests/test_provider_presets.py",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Partial results retained; batch partitioned into succeeded/failed/blocked per item.",
+   "arc_evidence": "generation_batch lib + per-item task mapping (code+tests).",
+   "arc_id": "ARC-L07",
+   "arc_name": "Partial + batch partition",
+   "category": "L",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "completed_shots/progress_pct + extract_result_urls incremental only; no partition symbols.",
+   "hevi_names": [
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "none (no partition tests)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "One protocol per media type unifying request/task-create/poll/output/error/usage/cost entry.",
+   "arc_evidence": "architecture §7 four backends (code+tests).",
+   "arc_id": "ARC-M01",
+   "arc_name": "TextBackend",
+   "category": "M",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "LLM registry (default/qwen_cloud sync/async adapters) + scoring exist; no TextBackend protocol unifying request/poll/usage/cost.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "tests/test_provider_scoring.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "ImageBackend unifying image request/poll/output/usage/cost.",
+   "arc_evidence": "architecture §7; image backends (code+tests).",
+   "arc_id": "ARC-M02",
+   "arc_name": "ImageBackend",
+   "category": "M",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Per-provider image services (sdxl/qwen_image/libtv relay) + scoring; no unified ImageBackend protocol.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "tests/test_provider_scoring.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "VideoBackend unifying video submit/poll/download/usage/cost incl. async lifecycle.",
+   "arc_evidence": "architecture §7/§16; video backends + remote-id persistence (code+tests).",
+   "arc_id": "ARC-M03",
+   "arc_name": "VideoBackend",
+   "category": "M",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "VideoProvider enum (15) + ProviderLimits + capability_guard + per-provider services; no unified VideoBackend protocol (each service hand-rolls submit→poll→write_bytes).",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "tests/test_provider_policy.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "AudioBackend carrying TTS through the same generation queue.",
+   "arc_evidence": "CONTEXT.md media_type audio; ADR-0010; audio backend (code+tests).",
+   "arc_id": "ARC-M04",
+   "arc_name": "AudioBackend",
+   "category": "M",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "AudioProvider enum + audio_router + workers; no unified AudioBackend protocol.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "audio suite 56 passed (per-engine, not protocol)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Per-model capability descriptors (refs, audio, end-frame, durations) + model filtering; differences encapsulated, not pretended away.",
+   "arc_evidence": "architecture §7; capability descriptors + resolver narrowing (code+tests).",
+   "arc_id": "ARC-M05",
+   "arc_name": "Capability descriptors + filtering",
+   "category": "M",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Video-only limits/guard + scoring CapabilityRow; no cross-modal descriptor catalog or model filtering (only voicepro model lists).",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "tests/test_provider_scoring.py, tests/test_provider_policy.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "User-created provider binding one endpoint definition; builtin providers read-only; declarative builtins copyable to custom.",
+   "arc_evidence": "CONTEXT.md custom provider/builtin endpoint; custom provider CRUD (code+tests).",
+   "arc_id": "ARC-M06",
+   "arc_name": "Custom provider + decl endpoint",
+   "category": "M",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "plugin_config declare+validate+hot-reload+invoke (data-only, no code import) covers scoring/routing declaration; no provider-lifecycle (persist/submit/poll/resume/download) or builtin-declarative catalog.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "tests/test_provider_plugin.py, tests/test_provider_plugin_api.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Endpoint import/export (file + market install with source binding), validate, 3-mode test runner (check-response / preview-request / billable trial-run), result preview, cancelable trial with 24h retention.",
+   "arc_evidence": "v0.28 endpoint entity/CRUD/test UX + agent adapter skill; endpoint_tests router + market install (code+tests).",
+   "arc_id": "ARC-M07",
+   "arc_name": "Endpoint lifecycle + market",
+   "category": "M",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "providers router is read-only health/presets; no endpoint CRUD/validate/test/preview endpoints; no market concept.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "none (no endpoint-lifecycle tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Registry + full settings lifecycle + real-HTTP executor proven, but no production traffic runs through definitions yet.",
+   "final_evidence": "hevi/api/routers/authorities.py::endpoints_*, tests/creative_runtime/test_endpoint_execution.py",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Submit shows scope + estimated cost; batch especially gated on estimate.",
+   "arc_evidence": "PRODUCT.md cost-before-execution; preflight estimate (code+tests).",
+   "arc_id": "ARC-N01",
+   "arc_name": "Preflight quote",
+   "category": "N",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "cost/estimator.py estimate_cost + canvas run_preflight(estimated_cost_usd); tested.",
+   "hevi_names": [
+    "Creative analytics and usage telemetry"
+   ],
+   "hevi_tests": "preflight/estimator tests; tests/test_credits.py",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Post-call actuals recorded (provider-reported billable duration); raw adapter usage preserved; failed-task billing follows provider semantics.",
+   "arc_evidence": "usage settlement on provider duration; api_calls ledger (code+tests).",
+   "arc_id": "ARC-N02",
+   "arc_name": "Actual cost + raw usage",
+   "category": "N",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "config_json.actual_usd + HeviCostTracker + pricing_table + circuit_breaker daily spend + ProviderUsage prompt/completion/cost; tested.",
+   "hevi_names": [
+    "Creative analytics and usage telemetry"
+   ],
+   "hevi_tests": "tests/integration/test_billing_reservation_p0d.py; analytics gold UsageRecord",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Costs tracked per currency, never folded into unexplained totals; primary-currency charts.",
+   "arc_evidence": "multi-currency totals + primary currency (code+tests).",
+   "arc_id": "ARC-N03",
+   "arc_name": "Multi-currency",
+   "category": "N",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "OBSERVABILITY_GAP",
+   "hevi_impl": "USD-centric pricing/tracking; multi-currency handling not examined — neither confirmed nor refuted.",
+   "hevi_names": [
+    "Creative analytics and usage telemetry"
+   ],
+   "hevi_tests": "none found",
+   "status": "UNVERIFIED",
+   "final_status": "UNVERIFIED",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Spend attributable per project/episode/shot vs unattributed pool.",
+   "arc_evidence": "usage purpose attribution incl. task linkage (code+tests).",
+   "arc_id": "ARC-N04",
+   "arc_name": "Project/episode/shot rollups",
+   "category": "N",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "OBSERVABILITY_GAP",
+   "hevi_impl": "Budget envelopes with stage reserves/settles (preproduction/asset/render/audio) exist; no episode/shot cost rollups.",
+   "hevi_names": [
+    "Creative analytics and usage telemetry"
+   ],
+   "hevi_tests": "tests/test_budget_repository_coverage.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "One row per provider call with purpose/source linkage; KPI, trend, composition, failure-count, attention flags; filter + keyset paging.",
+   "arc_evidence": "v0.30 usage overhauls (#2402-2410); usage router + repo tests.",
+   "arc_id": "ARC-N05",
+   "arc_name": "Call-level records + KPI",
+   "category": "N",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "OBSERVABILITY_GAP",
+   "hevi_impl": "Aggregates only (UsageRecord, provider_*_total metrics, telemetry ledger); no per-call rows, KPI, trend, composition, or attention.",
+   "hevi_names": [
+    "Creative analytics and usage telemetry"
+   ],
+   "hevi_tests": "none (no call-row tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Ledger store + dashboard API live (ledger-only analytics), but no production producer appends rows yet.",
+   "final_evidence": "hevi/api/routers/authorities.py::usage_*",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Deep-linked call detail: input, response, machine error code, provider reason, source task; startup reconciles orphan pending rows.",
+   "arc_evidence": "v0.30 call detail + orphan reconciliation + cancel-not-failure (code+tests).",
+   "arc_id": "ARC-N06",
+   "arc_name": "Call detail + orphan reconcile",
+   "category": "N",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "OBSERVABILITY_GAP",
+   "hevi_impl": "Fragments only (provider_call_id trace, track_provider_call, error_code in service surface); no detail view, no billing-orphan reconciliation (canvas check_orphans = graph orphans).",
+   "hevi_names": [
+    "Creative analytics and usage telemetry"
+   ],
+   "hevi_tests": "none (no detail/orphan-billing tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Deep-link detail + reconcile semantics proven; orphan billing reconciliation awaits producers (same as N05).",
+   "final_evidence": "same as N05 plus reconcile tests",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Script/content reviewed before any generation spend; web confirmation gate.",
+   "arc_evidence": "v0.20 script web review; review-gate blocking generation (code+tests).",
+   "arc_id": "ARC-O01",
+   "arc_name": "Review before generation",
+   "category": "O",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "Per-surface preview/confirm gates; no generation-entry review gate spanning all creative artifacts.",
+   "hevi_names": [
+    "Review, approval, and human gates"
+   ],
+   "hevi_tests": "tests/test_v91_preview_and_validator.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Single asset redo; manual edits via editable drafts; targeted script edits preserving prompts/notes/transitions/artifacts.",
+   "arc_evidence": "v0.28 revisioned drafts + unified edit ops; draft tools (code+tests).",
+   "arc_id": "ARC-O02",
+   "arc_name": "Regen + manual edit",
+   "category": "O",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "regenerate_task_shots + confirm_shot_candidate + DP2 SceneStage editing + HeavyActionConfirmation; no draft-envelope with surgical edit preserving untouched entries.",
+   "hevi_names": [
+    "Bounded revision workflow",
+    "Review, approval, and human gates"
+   ],
+   "hevi_tests": "tests/test_director_pipeline_router.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Rollback to prior version without losing paid history.",
+   "arc_evidence": "version restore service (code+tests).",
+   "arc_id": "ARC-O03",
+   "arc_name": "Version rollback",
+   "category": "O",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "_rollback_downstream + candidate preservation exist; no user-facing media version rollback.",
+   "hevi_names": [
+    "Bounded revision workflow",
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "pipeline router rollback tests",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Stale outputs remain usable for preview/compose/export; refresh only via explicit regen.",
+   "arc_evidence": "artifact currency stale semantics; batch backfills missing-only (code+tests).",
+   "arc_id": "ARC-O04",
+   "arc_name": "Stale media reuse",
+   "category": "O",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Stale revisions/deltas/workers are rejected, never reused as previewable/exportable media; no explicit-regen-only policy.",
+   "hevi_names": [
+    "Bounded revision workflow"
+   ],
+   "hevi_tests": "stale-rejection tests (opposite semantics)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "Stale-usable semantics + explicit reuse/regen + preservation guards proven, but production regen paths do not consult them yet.",
+   "final_evidence": "hevi/creative/layer4/currency.py + W8 stale export tests",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Explicit forced regen; never implicit overwrite; paid history preserved across regen.",
+   "arc_evidence": "regen preserving history; versioned outputs (code+tests).",
+   "arc_id": "ARC-O05",
+   "arc_name": "Forced regen + no overwrite",
+   "category": "O",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Regen paths preserve candidates; no explicit forced-regen flag or no-implicit-overwrite contract; paid-history policy unverified.",
+   "hevi_names": [
+    "Bounded revision workflow"
+   ],
+   "hevi_tests": "regenerate tests (overwrite semantics unasserted)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Conversational AI understanding intent, organizing content, executing creative work.",
+   "arc_evidence": "agent_runtime on Claude Agent SDK; service + session manager (code+tests).",
+   "arc_id": "ARC-P01",
+   "arc_name": "Main Agent",
+   "category": "P",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "montage_agentic + video_agent + longcat_agent exist as separate surfaces; no single main creative Agent over the 39-capability graph.",
+   "hevi_names": [
+    "Unified agent and production harness"
+   ],
+   "hevi_tests": "montage/video-agent/longcat route tests",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Orchestration skill (state→next-step→tools→subagents→gates) + focused subagents keeping bulk reasoning out of main context.",
+   "arc_evidence": "architecture §5 orchestration + subagents; skills/ + sdk subagent tooling (code+tests).",
+   "arc_id": "ARC-P02",
+   "arc_name": "Orchestration + subagents",
+   "category": "P",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "MCP creative/video/subject/canvas tools + Timeline exist; no unified orchestration-skill + focused-subagent pattern.",
+   "hevi_names": [
+    "Professional creative skills",
+    "Unified agent and production harness"
+   ],
+   "hevi_tests": "round3 embrace skill tests (fragments)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "File/state/status/compose/archive operations run as deterministic tools, never free-generated prose.",
+   "arc_evidence": "architecture §5.3; sdk_tools + tool_runtime (code+tests).",
+   "arc_id": "ARC-P03",
+   "arc_name": "Deterministic tools",
+   "category": "P",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "MCP server + tool modules + studio tools + manim AST-sandboxed execution; real tool-result grounding.",
+   "hevi_names": [
+    "Professional creative skills"
+   ],
+   "hevi_tests": "mcp/embrace tool tests",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "One ordered event log per session as timeline read source; subagent messages fold into cards.",
+   "arc_evidence": "CONTEXT.md session event log/subagent timeline; session store (code+tests).",
+   "arc_id": "ARC-P04",
+   "arc_name": "Agent timeline",
+   "category": "P",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "studio/timeline.py Timeline + tongjian Timeline exist (production timelines); no conversational session event-log timeline.",
+   "hevi_names": [
+    "Unified agent and production harness"
+   ],
+   "hevi_tests": "timeline tests (production, not session)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Cold resume of sessions; message-rewrite branches into new session (old kept as hidden backup); interrupts supersede stale flows.",
+   "arc_evidence": "v0.26 branch sessions; session_branch + interrupt handling (code+tests).",
+   "arc_id": "ARC-P05",
+   "arc_name": "Session lifecycle",
+   "category": "P",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Task checkpoint/resume + paused/interrupted states + restore_session exist at production level; no message-rewrite→branch or turn-interrupt at agent level.",
+   "hevi_names": [
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "closure/resume tests (production-level only)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Orchestration waits for user confirmation at cost/stage boundaries (AskUser).",
+   "arc_evidence": "architecture §5.1 waits-for-confirmation; confirmation gates (code+tests).",
+   "arc_id": "ARC-P06",
+   "arc_name": "AskUser",
+   "category": "P",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "HeavyActionConfirmation (creative runtime) + per-surface confirm gates approximate AskUser; no agent-level AskUser primitive.",
+   "hevi_names": [
+    "Review, approval, and human gates"
+   ],
+   "hevi_tests": "creative runtime confirmation tests",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "External Agent via skills + scoped remote MCP/API key; project sandbox (kernel + app fences from one policy).",
+   "arc_evidence": "v0.28 external-agent guide; remote MCP endpoint; AgentAccessPolicy + sandbox ADR-0025/26/46 (code+tests).",
+   "arc_id": "ARC-P07",
+   "arc_name": "External API + sandbox",
+   "category": "P",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "SECURITY_GAP",
+   "hevi_impl": "MCP server + auth context + Veya produce contract + manim AST sandbox + owned-process distribution exist; no external-agent onboarding, scoped remote access, or project-scoped kernel sandbox.",
+   "hevi_names": [
+    "Professional creative skills"
+   ],
+   "hevi_tests": "mcp auth tests; manim sandbox tests",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Agent-persisted notes on creator identity/background + long-term prefs, all projects.",
+   "arc_evidence": "v0.29 user memory; agent_memory router + user-level store (code+tests).",
+   "arc_id": "ARC-Q01",
+   "arc_name": "User preference memory",
+   "category": "Q",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "MemoryStore (short/summary/semantic) is standalone infra; no user-preference memory integrated into creative runtime.",
+   "hevi_names": [
+    "Long-term creative memory and retrieval"
+   ],
+   "hevi_tests": "tests/test_memory_store.py (infra only)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "User preferences persist in SQLite via CreativeMemory over the real HEVI store, with cross-session recall, inspection/edit/disable API, and refusal gates. No Veya involvement.",
+   "final_evidence": "hevi/creative/layer4/creative_memory.py, tests/creative_runtime/test_creative_memory.py, tests/test_authorities_api.py::memory",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Per-project style/decisions/corrections memory + cross-session recall, traveling with project (private area, archive-excluded).",
+   "arc_evidence": "v0.29 project memory + private area; project-scoped memory APIs (code+tests).",
+   "arc_id": "ARC-Q02",
+   "arc_name": "Project convention memory",
+   "category": "Q",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "MODEL_GAP",
+   "hevi_impl": "CreativeMemoryIndex is in-memory lexical, project-isolated, with no conventions/cross-session/carry semantics; disconnected from MemoryStore.",
+   "hevi_names": [
+    "Long-term creative memory and retrieval"
+   ],
+   "hevi_tests": "none (no convention/cross-session tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "Project conventions persist per-project with override precedence over user prefs, same live surfaces and gates as Q01.",
+   "final_evidence": "same as Q01 plus precedence tests",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Creator views/edits/clears both memory levels in settings.",
+   "arc_evidence": "v0.29 memory settings UI + CRUD APIs (code+tests).",
+   "arc_id": "ARC-Q03",
+   "arc_name": "Memory inspection/editing",
+   "category": "Q",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "PRODUCT_GAP",
+   "hevi_impl": "No user-facing memory inspection/editing surface; memory consumers are internal (studio tools, stages).",
+   "hevi_names": [
+    "Long-term creative memory and retrieval"
+   ],
+   "hevi_tests": "none (no memory-UI/API tests)",
+   "status": "HEVI_MISSING",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "Inspection, edit (append-newer), and disable tombstones live behind the settings API with the PII gate inside the write path.",
+   "final_evidence": "tests/test_authorities_api.py::memory_settings",
+   "status_changed": true
+  },
+  {
+   "arc_behavior": "Project workspace with asset cards, material preview, browser preview of current presentation.",
+   "arc_evidence": "frontend workspace + asset cards + preview reading presentation model (code+tests).",
+   "arc_id": "ARC-R01",
+   "arc_name": "Workspace + cards + preview",
+   "category": "R",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "UX_GAP",
+   "hevi_impl": "SeasonBoard + DirectorPipelineConsole + SceneStagePanel + lite preview HTML exist; cards/preview read disjoint sources, not one selection.",
+   "hevi_names": [
+    "Studio product surfaces for creative capabilities"
+   ],
+   "hevi_tests": "board/console tests; tests/test_lite_preview_persist.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Queued/running/total durations live; long text+media tasks survive interruption.",
+   "arc_evidence": "v0.28 task durations; task monitor over durable queue (code+tests).",
+   "arc_id": "ARC-R02",
+   "arc_name": "Task monitor",
+   "category": "R",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "SSE progress (useSSEProgress) + task query + checkpoint resumable flags; real-time monitor surfaces.",
+   "hevi_names": [
+    "Background production and notifications"
+   ],
+   "hevi_tests": "task progress/query tests",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Settings usage area: per-call rows, KPI, trend, composition, attention, deep links.",
+   "arc_evidence": "v0.30 usage screens (#2408-2410) (code+tests).",
+   "arc_id": "ARC-R03",
+   "arc_name": "Usage dashboard",
+   "category": "R",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "UX_GAP",
+   "hevi_impl": "Analytics fragments (qualification metrics, observability) only; no creator-facing usage dashboard.",
+   "hevi_names": [
+    "Creative analytics and usage telemetry"
+   ],
+   "hevi_tests": "none (no dashboard tests)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Provider setup per media type with capability-aware controls (unsupported combos disabled with cause).",
+   "arc_evidence": "settings providers + video-capabilities duration_constraints; capability-aware UI (code+tests).",
+   "arc_id": "ARC-R04",
+   "arc_name": "Provider config + aware controls",
+   "category": "R",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "UX_GAP",
+   "hevi_impl": "capability_guard rejections + provider presets/status endpoints exist; no unified provider-config surface with capability-aware disabling.",
+   "hevi_names": [
+    "Model and provider routing",
+    "Studio product surfaces for creative capabilities"
+   ],
+   "hevi_tests": "tests/test_provider_presets.py, tests/test_provider_plugin_api.py",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "First-run path from deploy to first video (tutorial + sample-first discipline).",
+   "arc_evidence": "getting-started guide; onboarding docs.",
+   "arc_id": "ARC-R05",
+   "arc_name": "Onboarding",
+   "category": "R",
+   "confidence": "DOCUMENTED",
+   "gap_class": "UX_GAP",
+   "hevi_impl": "Onboarding flow not examined — neither confirmed nor refuted.",
+   "hevi_names": [
+    "Studio product surfaces for creative capabilities"
+   ],
+   "hevi_tests": "none found",
+   "status": "UNVERIFIED",
+   "final_status": "UNVERIFIED",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Uniform version history + diagnostics with real (desensitized) causes.",
+   "arc_evidence": "version UI + failure-cause display (code+tests).",
+   "arc_id": "ARC-R06",
+   "arc_name": "History + diagnostics",
+   "category": "R",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "UX_GAP",
+   "hevi_impl": "Regen/confirm histories + classify_error taxonomy exist per surface; no unified history/diagnostics surface.",
+   "hevi_names": [
+    "Studio product surfaces for creative capabilities"
+   ],
+   "hevi_tests": "resilience error tests",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Admin login (JWT session) + scoped automation API keys (hashed, no self-manage).",
+   "arc_evidence": "auth service: login/JWT/arc-keys (code+tests).",
+   "arc_id": "ARC-S01",
+   "arc_name": "Auth + JWT + API keys",
+   "category": "S",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "SECURITY_GAP",
+   "hevi_impl": "JWT sign/decode + get_current_user + task ?token= ownership exist; scoped API-key issuance/management unverified.",
+   "hevi_names": [
+    "Creative concurrency and lock recovery"
+   ],
+   "hevi_tests": "owner-auth tests (subjects/assets)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Multi-key per provider with single active credential; secrets never echoed (URL redaction, hashed storage).",
+   "arc_evidence": "v0.29 credential hygiene fixes; credential store (code+tests).",
+   "arc_id": "ARC-S02",
+   "arc_name": "Credential storage",
+   "category": "S",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "SECURITY_GAP",
+   "hevi_impl": "Env-based provider secrets + credential-exclusion from memory index; no multi-key/active-credential management or redaction tests found.",
+   "hevi_names": [
+    "Model and provider routing"
+   ],
+   "hevi_tests": "none (no credential-management tests)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Kernel sandbox (bwrap) + app fence from one AgentAccessPolicy; project path containment; symlink defense.",
+   "arc_evidence": "ADR-0025/26/46; sandbox + policy single class (code+tests).",
+   "arc_id": "ARC-S03",
+   "arc_name": "Sandbox + containment",
+   "category": "S",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "SECURITY_GAP",
+   "hevi_impl": "Manim AST-whitelist sandbox + ad-hoc Path.resolve checks + skill-symlink test exist; no kernel sandbox, unified policy, or systematic containment suite.",
+   "hevi_names": [
+    "Professional creative skills"
+   ],
+   "hevi_tests": "tests/test_embrace_round3.py (symlink); sandbox tests (manim only)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Short-lived export-only download tokens; self-authenticated endpoints for browser-native requests.",
+   "arc_evidence": "ADR-0071; download-token + self-auth endpoints (code+tests).",
+   "arc_id": "ARC-S04",
+   "arc_name": "Download authorization",
+   "category": "S",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "SECURITY_GAP",
+   "hevi_impl": "Owner-auth + task token query exist; no short-lived export-scoped token or self-authenticated endpoint pattern.",
+   "hevi_names": [
+    "Creative export and package delivery"
+   ],
+   "hevi_tests": "owner-auth tests only",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Single-admin self-hosted by design; no multi-tenant roles (documented limitation).",
+   "arc_evidence": "PRODUCT.md single-admin; out-of-scope multi-user (docs).",
+   "arc_id": "ARC-S05",
+   "arc_name": "Tenancy posture",
+   "category": "S",
+   "confidence": "DOCUMENTED",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "Per-user project ownership + server-side user_id + IDOR 404 + asset isolation tests — strictly beyond single-admin; multi-user is HEVI baseline, not a gap.",
+   "hevi_names": [
+    "Creative concurrency and lock recovery"
+   ],
+   "hevi_tests": "tests/test_subjects.py (IDOR 404); tests/test_assets.py (isolation)",
+   "status": "HEVI_STRONGER",
+   "final_status": "HEVI_STRONGER",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "One-command Docker Compose deploy (service + sandbox perms documented).",
+   "arc_evidence": "deploy/ compose; Dockerfile (repo).",
+   "arc_id": "ARC-T01",
+   "arc_name": "Docker",
+   "category": "T",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "docker-compose stacks (incl. monitoring/mpt/tunnel variants) + gen-engine/voicebox sidecars; production hevi.kanpan.co on compose.",
+   "hevi_names": [
+    "Background production and notifications"
+   ],
+   "hevi_tests": "deploy compose files (static evidence)",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "SQLite default (WAL) → PostgreSQL path; Alembic upgrades on boot; project schema migrations stepwise/idempotent/isolated.",
+   "arc_evidence": "alembic + migration runner + dialect support (code+tests).",
+   "arc_id": "ARC-T02",
+   "arc_name": "SQLite + PG + Alembic",
+   "category": "T",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "Alembic version chain (attempts/checkpoints/idempotency/production-graph indexes) + JSONB task config; SQLite→PG compatible patterns.",
+   "hevi_names": [
+    "Production run snapshots and crash recovery",
+    "Atomic workspace and state commit"
+   ],
+   "hevi_tests": "migration-named coverage via closure/billing tests",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "DB+files jointly backup-able; documented backup/restore procedures.",
+   "arc_evidence": "deployment ops docs; backup routines (code+docs).",
+   "arc_id": "ARC-T03",
+   "arc_name": "Backup + restore",
+   "category": "T",
+   "confidence": "DOCUMENTED",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Deploy backup + artifact stores exist; no narrative-project backup/restore authority spanning canon/materials/artifacts/revision ledger.",
+   "hevi_names": [
+    "Backup, restore, and rollback"
+   ],
+   "hevi_tests": "none specific",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Startup runs migrations, sweeps orphan pendings, replays safe resumes.",
+   "arc_evidence": "startup recovery + orphan sweep (code+tests).",
+   "arc_id": "ARC-T04",
+   "arc_name": "Startup recovery",
+   "category": "T",
+   "confidence": "VERIFIED_CODE",
+   "gap_class": "RUNTIME_GAP",
+   "hevi_impl": "Lease→interrupted recovery + migration-on-boot patterns exist; no provider-orphan sweep (no job ids to sweep).",
+   "hevi_names": [
+    "Production run snapshots and crash recovery"
+   ],
+   "hevi_tests": "closure recovery tests (task-level)",
+   "status": "HEVI_PARTIAL",
+   "final_status": "HEVI_PARTIAL",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  },
+  {
+   "arc_behavior": "Health endpoint; SSE reconnect with backoff-zero on foreground + task-query fallback.",
+   "arc_evidence": "v0.29 SSE reconnect; health checks (code+tests).",
+   "arc_id": "ARC-T05",
+   "arc_name": "Health + SSE reconnect",
+   "category": "T",
+   "confidence": "VERIFIED_CODE_AND_TEST",
+   "gap_class": "NO_GAP",
+   "hevi_impl": "Health endpoints + useSSEProgress + task progressUrl fallback; proven in SeasonBoard live cards.",
+   "hevi_names": [
+    "Background production and notifications"
+   ],
+   "hevi_tests": "board SSE tests; progress endpoint tests",
+   "status": "HEVI_PARITY",
+   "final_status": "HEVI_PARITY",
+   "final_rationale": "",
+   "final_evidence": "reaffirmed against current HEAD (full suite green, no related production change)",
+   "status_changed": false
+  }
+ ],
+ "priorities": {
+  "P0": [
+   "ARC-G01",
+   "ARC-J02",
+   "ARC-E08"
+  ],
+  "P1": [
+   "ARC-C06",
+   "ARC-C08",
+   "ARC-E06",
+   "ARC-K02",
+   "ARC-M06",
+   "ARC-M07",
+   "ARC-N05",
+   "ARC-N06",
+   "ARC-E04",
+   "ARC-F02",
+   "ARC-F03",
+   "ARC-F04",
+   "ARC-L02",
+   "ARC-L03",
+   "ARC-O04",
+   "ARC-I02",
+   "ARC-E09",
+   "ARC-J05",
+   "ARC-Q01",
+   "ARC-Q02"
+  ],
+  "P2": [
+   "ARC-A01",
+   "ARC-A02",
+   "ARC-A03",
+   "ARC-A04",
+   "ARC-A05",
+   "ARC-A07",
+   "ARC-B01",
+   "ARC-B04",
+   "ARC-B05",
+   "ARC-B07",
+   "ARC-B08",
+   "ARC-C01",
+   "ARC-C02",
+   "ARC-C03",
+   "ARC-C07",
+   "ARC-D01",
+   "ARC-D02",
+   "ARC-D03",
+   "ARC-D05",
+   "ARC-D06",
+   "ARC-D07",
+   "ARC-D08",
+   "ARC-E03",
+   "ARC-E05",
+   "ARC-E07",
+   "ARC-F05",
+   "ARC-F06",
+   "ARC-H01",
+   "ARC-H02",
+   "ARC-H03",
+   "ARC-I03",
+   "ARC-J01",
+   "ARC-J03",
+   "ARC-J04",
+   "ARC-J06",
+   "ARC-K01",
+   "ARC-K03",
+   "ARC-K05",
+   "ARC-L07",
+   "ARC-M01",
+   "ARC-M02",
+   "ARC-M03",
+   "ARC-M04",
+   "ARC-M05",
+   "ARC-O01",
+   "ARC-O02",
+   "ARC-O03",
+   "ARC-O05",
+   "ARC-P01",
+   "ARC-P02",
+   "ARC-P04",
+   "ARC-P05",
+   "ARC-P06",
+   "ARC-P07",
+   "ARC-R01",
+   "ARC-R03",
+   "ARC-R04",
+   "ARC-R06",
+   "ARC-S01",
+   "ARC-S02",
+   "ARC-S03",
+   "ARC-S04",
+   "ARC-T03",
+   "ARC-T04"
+  ],
+  "P3": [
+   "ARC-Q03"
+  ]
+ },
+ "questions": {
+  "Q1_missing": [
+   "ARC-G01 Presentation Read Model — no joint selector; 4 disjoint paths.",
+   "ARC-J02 Currency 4-state — no current/stale/missing/blocked; stale unusable by design.",
+   "ARC-E08 Remote + download resume — no job-id durability, no byte resume; interrupt re-bills.",
+   "ARC-N05/N06 Call-level ledger + detail + orphan reconcile — aggregates only.",
+   "ARC-M07 Endpoint lifecycle (CRUD/validate/3-mode test/preview/market) — read-only provider UI.",
+   "ARC-K02 Production plan + next action — depth exists, surfacing absent.",
+   "ARC-E06 All-or-none batch admission — no pre-creation gate.",
+   "ARC-C06 Character derivative — single appearance only.",
+   "ARC-C08 Rename cascade + ref-integrity blocking — rename untracked, refs fail-open.",
+   "ARC-Q01/Q02/Q03 Agent memory (user/project/cross-session/inspect-edit) — infra exists, runtime integration absent.",
+   "ARC-O04 Stale media reuse — stale rejected, never reusable.",
+   "ARC-J05 Raw-only branch — no unproven-upload branch."
+  ],
+  "Q2_weaker_but_present": [
+   " Regeneration/version-history/rollback (E07/O03/D06): per-surface regen exists, no unified version authority.",
+   "TTS/voice (F02-F06): routing + refs plumbed, no consistency tiers / binding modes / ownership model.",
+   "Jianying (I02): 3-track draft real, transitions + presentation-binding missing.",
+   "Subtitles (H01-H03): ASR/TTS-clocked primitives real, single bound contract + stale provenance missing.",
+   "Failure transparency (E09): video path real, generic LLM path redacted.",
+   "Provider system (M01-M06): video limits/guard + plugin declaration real, unified backends + lifecycle missing.",
+   "Cost (N01/N02/N04): quote/actual/envelopes real, dimensional rollups + call detail missing.",
+   "Agent (P01/P02/P04-P07): tools/MCP/timelines/confirmations exist as fragments, no unified orchestration + session model.",
+   "Storyboard (D01-D08): grids/edits/preflight fragments, no lifecycle authority.",
+   "Plan surfacing (K01/K03/K05): statuses exist per pipeline, no single authority."
+  ],
+  "Q3_hevi_stronger": [
+   "I01 FFmpeg composition + post: xfade/concat/loudnorm/ducking + FlashVSR 2x + RIFE 2x + H3 native-audio remix with green ledgers and real outputs (tests/test_h3_post_pipeline.py).",
+   "S05 Tenancy: per-user ownership + server-side user_id + IDOR 404 + isolation tests vs single-admin by design.",
+   "Production-graph depth (S2): DAG contracts + constraint compiler/derive/verdict + repair controller/executor + provenance + task-level resume — deeper than ArcReel plan model (plan surfacing itself still missing, K02).",
+   "Local-generation option (S4, scoped): h3_local real E2E outputs, EchoMimicV2 avatar on 2 consumers (62 tests), Manim fallback — provider-independent paths ArcReel has no counterpart for.",
+   "Source-text provenance red-line (B03): quote_id / is_performative gate enforced — stricter than ArcReel source_text anchoring."
+  ],
+  "Q4_not_worth_adopting": [
+   "S05 single-admin posture: HEVI must NOT regress to single-admin; ArcReel limitation is theirs, not a model.",
+   "Ad/post-export-VO doctrine (F05/B08-ad): HEVI dub-first timing model differs; adopt only the export-version-choice mechanic, not the doctrine.",
+   "Grid-as-consistency-strategy (D02/D03): HEVI IP-Adapter + Subject3D-view locking already addresses identity; dense grids trade cell resolution for batch convenience — adopt split/versioning ideas, not grid-first production.",
+   "Reference-upload-copy compression doctrine (D08-infra): HEVI data-URI bridging works; adopt only the visible-clamping + full-set-provenance rule.",
+   "Market/market-source apparatus (M07-infra): endpoint import/export + validation YES; multi-source market with install bindings is heavier than HEVI needs — a local endpoint registry suffices."
+  ],
+  "Q5_top5": [
+   "1. ARC-G01 Presentation Read Model → creative.export + creative.studio.",
+   "2. ARC-J02 Currency 4-state (+J01/J03/J06) → creative.export (+obase manifest).",
+   "3. ARC-E08/L02/L03 Durable provider plane (job-id persistence, poll checkpoint, remote + download resume) → creative.run_snapshots + creative.background_runs.",
+   "4. ARC-N05/N06 Call-level usage ledger + detail + orphan reconcile → creative.analytics.",
+   "5. ARC-M06/M07 Declarative endpoint lifecycle (persist/validate/3-mode test/preview/submit/poll) → creative.model_routing."
+  ],
+  "Q6_ledger_mapping_no_new_taxonomy": [
+   "G01 → creative.export (selection+materialization) + creative.studio (preview/download consumption). No new capability: a read-model over existing export/studio.",
+   "J02 (+J01/J03/J06) → creative.export (manifest authority) + creative.revision (stale/history) + creative.run_snapshots (missing/blocked derivation). No new capability: states over existing artifacts.",
+   "E08/L02/L03 → creative.run_snapshots (job-id + poll checkpoint persistence) + creative.background_runs (resume/download recovery execution). No new capability.",
+   "N05/N06 → creative.analytics (call rows, KPI/trend/attention, detail, orphan reconcile). No new capability: ledger depth, same analytics.",
+   "M06/M07 → creative.model_routing (endpoint definition registry, validation, test-runner, trial lifecycle). No new capability: routing depth, same model_routing.",
+   "All other PARTIAL/MISSING items attach to their listed hevi_capability_ids above; 39-count, names, and boundaries unchanged."
+  ],
+  "Q7_new_3o_vs_layer4": [
+   "New/strengthened canonical 3O assets: OBASE manifest-currency extension (J02 states + typed keys + invalidation, J01/J03/J06); OSERVI durable provider plane (job-id store, poll/resume/download scheduler: E08/L02/L03/T04) + usage-ledger ingest (N05/N06); OPRIM declarative-endpoint adapter runtime (M06/M07 submit/poll/download over endpoint definitions); OSKILL admission + currency-derivation evaluators (E06 batch admission, J02 staleness derivation, E04 capability matching).",
+   "HEVI_LAYER4-only (assembly/UI, no new canonical asset): G01 read-model assembly over obase manifest + preview/download/jianying consumers; K02 plan/next-action projection over existing graph; R03 usage dashboard; Q03 memory settings surface; I02 transition serialization in existing jianying module; H03 subtitle-stale display; O02 draft-envelope editing UX; S01/S02/S04 auth/credential/download-token assembly; P04-P07 agent session UX.",
+   "Rule applied: single provider HTTP call → OPRIM/OBASE adapter; matching/derivation algorithm → OSKILL; whole generation transaction → OMODUL (C08 cascade, O02/O05 regen transactions); persistent scheduler/retry → OSERVI; Studio/project/user/workflow assembly → HEVI_LAYER4."
+  ],
+  "Q8_invariants_hold": [
+   "YES — provided all 5 land as depth inside the mapped ledger capabilities: 39 taxonomy unchanged (no add/rename/merge/split); single source retained (obase manifest + ledger remain the only authorities; G01 is a derived read-model, not a second source); 3O v3 boundaries respected per Q7 owner split; one production authority (existing TaskService/graph + OSERVI durable plane; no second orchestrator — P02 ARC pattern must NOT be imported as a rival orchestrator, only deterministic tools + plan projection); clean-room kept (WHAT behavior specified, no ArcReel code/prompt/skill/template/fixture copied)."
+  ]
+ },
+ "top15": [
+  {
+   "arc": "ARC-G01 Presentation Read Model",
+   "dependencies": [
+    "ARC-J01/J02 (manifest + currency)"
+   ],
+   "evidence": "4 disjoint code paths + 4 disjoint test files; zero joint-selection symbols/tests.",
+   "failure_mode": "Preview shows X, export ships Y; subtitles/durations drift between preview, download, compose, jianying.",
+   "hevi_mapping": "creative.export + creative.studio",
+   "implementation_size": "M",
+   "priority": "P0",
+   "rank": 1,
+   "recommended_owner": "HEVI_LAYER4 (+OBASE manifest fields)",
+   "status": "HEVI_MISSING",
+   "user_impact": "Wrong-artifact delivery across all four exits."
+  },
+  {
+   "arc": "ARC-J02 Currency 4-state",
+   "dependencies": [
+    "ARC-J01 manifest fields"
+   ],
+   "evidence": "Manifest lacks currency states; stale-rejection tests prove opposite semantics.",
+   "failure_mode": "Blocked items re-billed as missing; users cannot intentionally reuse stale; refresh storms.",
+   "hevi_mapping": "creative.export + creative.revision + creative.run_snapshots",
+   "implementation_size": "M",
+   "priority": "P0",
+   "rank": 2,
+   "recommended_owner": "OBASE (+OSKILL derivation)",
+   "status": "HEVI_MISSING",
+   "user_impact": "Duplicate billing + lost paid work."
+  },
+  {
+   "arc": "ARC-E08 Remote + download resume",
+   "dependencies": [
+    "ARC-L02 job-id persistence"
+   ],
+   "evidence": "In-memory job ids; whole-file write_bytes everywhere; no Range symbols.",
+   "failure_mode": "Any restart/interrupt after provider success forces re-POST and re-bill.",
+   "hevi_mapping": "creative.run_snapshots + creative.background_runs",
+   "implementation_size": "M",
+   "priority": "P0",
+   "rank": 3,
+   "recommended_owner": "OSERVI (+OBASE job store, OPRIM range download)",
+   "status": "HEVI_MISSING",
+   "user_impact": "Duplicate billing on every interrupted remote task."
+  },
+  {
+   "arc": "ARC-N05 Call-level records + KPI",
+   "dependencies": [
+    "ARC-N06 detail schema"
+   ],
+   "evidence": "Aggregates only (UsageRecord, counters); no per-call rows/KPI/trend/attention.",
+   "failure_mode": "Cost anomalies undebuggable; model selection uninformed; failure-rate blindness.",
+   "hevi_mapping": "creative.analytics",
+   "implementation_size": "L",
+   "priority": "P1",
+   "rank": 4,
+   "recommended_owner": "OSERVI (ingest) + HEVI_LAYER4 (dashboard)",
+   "status": "HEVI_MISSING",
+   "user_impact": "No production cost observability."
+  },
+  {
+   "arc": "ARC-N06 Call detail + orphan reconcile",
+   "dependencies": [
+    "ARC-N05 rows"
+   ],
+   "evidence": "No detail view; canvas check_orphans is graph-orphans, not billing orphans.",
+   "failure_mode": "Failed-call causes lost; restart leaks pending rows; disputes unresolvable.",
+   "hevi_mapping": "creative.analytics",
+   "implementation_size": "M",
+   "priority": "P1",
+   "rank": 5,
+   "recommended_owner": "OSERVI",
+   "status": "HEVI_MISSING",
+   "user_impact": "Unreconcilable spend."
+  },
+  {
+   "arc": "ARC-M07 Endpoint lifecycle + market",
+   "dependencies": [
+    "ARC-M06 declaration (exists)"
+   ],
+   "evidence": "Providers router read-only; no CRUD/validate/test/preview endpoints; no market.",
+   "failure_mode": "Every new provider costs provider-specific Python; users cannot self-serve gateways/local models.",
+   "hevi_mapping": "creative.model_routing",
+   "implementation_size": "L",
+   "priority": "P1",
+   "rank": 6,
+   "recommended_owner": "OPRIM (+HEVI_LAYER4 settings UI)",
+   "status": "HEVI_MISSING",
+   "user_impact": "Provider onboarding blocked on engineering."
+  },
+  {
+   "arc": "ARC-C06 Character derivative",
+   "dependencies": [
+    "ARC-C08 rename/integrity"
+   ],
+   "evidence": "Single appearance fields; no variant identity/ref/strategy in code or tests.",
+   "failure_mode": "Outfit/injury/age changes drift identity or force duplicate characters splitting voice.",
+   "hevi_mapping": "narrative.canonical_state",
+   "implementation_size": "M",
+   "priority": "P1",
+   "rank": 7,
+   "recommended_owner": "OBASE",
+   "status": "HEVI_MISSING",
+   "user_impact": "Broken creative continuity for any transformation plot."
+  },
+  {
+   "arc": "ARC-K02 Production plan + next action",
+   "dependencies": [
+    "ARC-K01 state (exists fragmented)"
+   ],
+   "evidence": "No plan/next-action fields/endpoints/tests; agent cannot consume one plan.",
+   "failure_mode": "Users and agents guess next steps from disjoint statuses; recovery stalls.",
+   "hevi_mapping": "creative.production_harness + creative.longform_production",
+   "implementation_size": "S",
+   "priority": "P1",
+   "rank": 8,
+   "recommended_owner": "HEVI_LAYER4 (projection over existing graph)",
+   "status": "HEVI_MISSING",
+   "user_impact": "No authoritative next step; stalled productions."
+  },
+  {
+   "arc": "ARC-E06 Batch admission",
+   "dependencies": [
+    "ARC-N01 quote (exists)"
+   ],
+   "evidence": "No admission verdict/endpoint/tests; preflight never gates creation.",
+   "failure_mode": "One click creates unbounded spend batches; partial failures waste budget.",
+   "hevi_mapping": "creative.background_runs",
+   "implementation_size": "S",
+   "priority": "P1",
+   "rank": 9,
+   "recommended_owner": "OSKILL (admission evaluator)",
+   "status": "HEVI_MISSING",
+   "user_impact": "Unbounded batch spend."
+  },
+  {
+   "arc": "ARC-C08 Rename cascade + blocking",
+   "dependencies": [],
+   "evidence": "Rename without cascade; embeddings fail-open; no admission block.",
+   "failure_mode": "Renames orphan script refs; unregistered refs burn generation budget then fail downstream.",
+   "hevi_mapping": "narrative.canonical_state + creative.production_storyboard",
+   "implementation_size": "M",
+   "priority": "P1",
+   "rank": 10,
+   "recommended_owner": "OMODUL (atomic cascade transaction)",
+   "status": "HEVI_MISSING",
+   "user_impact": "Silent ref rot + wasted generations."
+  },
+  {
+   "arc": "ARC-I02 Jianying editable draft",
+   "dependencies": [
+    "ARC-G01 selection"
+   ],
+   "evidence": "3-track draft real (tests); zero transition fields; handoff-only docstring.",
+   "failure_mode": "Editors lose transitions/pacing intent; draft diverges from HEVI preview.",
+   "hevi_mapping": "creative.export",
+   "implementation_size": "M",
+   "priority": "P1",
+   "rank": 11,
+   "recommended_owner": "HEVI_LAYER4",
+   "status": "HEVI_PARTIAL",
+   "user_impact": "Lossy handoff to editors."
+  },
+  {
+   "arc": "ARC-Q01/Q02 Agent memory",
+   "dependencies": [
+    "ARC-Q03 inspect/edit"
+   ],
+   "evidence": "Two disconnected memory stores; no prefs/conventions/cross-session/ Shabby editing paths.",
+   "failure_mode": "Repeated corrections; per-project conventions forgotten every session.",
+   "hevi_mapping": "creative.memory_retrieval",
+   "implementation_size": "M",
+   "priority": "P1",
+   "rank": 12,
+   "recommended_owner": "OBASE (memory model) + HEVI_LAYER4 (settings)",
+   "status": "HEVI_MISSING",
+   "user_impact": "Agent amnesia tax on every project."
+  },
+  {
+   "arc": "ARC-O04 Stale media reuse",
+   "dependencies": [
+    "ARC-J02 currency"
+   ],
+   "evidence": "Stale-rejection tests; no reusable-stale paths.",
+   "failure_mode": "Usable paid media discarded; forced re-spend to recover identical output.",
+   "hevi_mapping": "creative.revision",
+   "implementation_size": "S",
+   "priority": "P1",
+   "rank": 13,
+   "recommended_owner": "OSKILL (reuse admission)",
+   "status": "HEVI_MISSING",
+   "user_impact": "Paid work unusable after input drift."
+  },
+  {
+   "arc": "ARC-M06 Custom provider + decl endpoint",
+   "dependencies": [],
+   "evidence": "Declaration + scoring + single-shot invoke tested; no lifecycle.",
+   "failure_mode": "Declaration cannot carry an async provider end-to-end; half-integration trap.",
+   "hevi_mapping": "creative.model_routing",
+   "implementation_size": "M",
+   "priority": "P1",
+   "rank": 14,
+   "recommended_owner": "OPRIM",
+   "status": "HEVI_PARTIAL",
+   "user_impact": "Custom providers stall at routing."
+  },
+  {
+   "arc": "ARC-F04 Speech ownership",
+   "dependencies": [
+    "ARC-F02/F03 tiers+binding"
+   ],
+   "evidence": "NARRATOR fallback only; no ownership/binding model.",
+   "failure_mode": "Character lines read as narration; derivative voices unscoped; dub mismatches.",
+   "hevi_mapping": "creative.script_runtime",
+   "implementation_size": "M",
+   "priority": "P1",
+   "rank": 15,
+   "recommended_owner": "OBASE",
+   "status": "HEVI_PARTIAL",
+   "user_impact": "Wrong-voice delivery in drama."
+  }
+ ],
+ "worktree_clean": true,
+ "reaudit": {
+  "basis_head": "5b6ec7e",
+  "changed_entries": 15,
+  "final_counts": {
+   "HEVI_PARTIAL": 83,
+   "UNVERIFIED": 5,
+   "HEVI_PARITY": 25,
+   "HEVI_STRONGER": 2
+  },
+  "remaining_p0": [
+   "ARC-E08"
+  ],
+  "remaining_p1": [
+   "ARC-C06",
+   "ARC-C08",
+   "ARC-E04",
+   "ARC-E06",
+   "ARC-E09",
+   "ARC-F02",
+   "ARC-F03",
+   "ARC-F04",
+   "ARC-I02",
+   "ARC-J05",
+   "ARC-K02",
+   "ARC-L02",
+   "ARC-L03",
+   "ARC-M06",
+   "ARC-M07",
+   "ARC-N05",
+   "ARC-N06",
+   "ARC-O04"
+  ],
+  "rule": "authority-without-production-consumer stays PARTIAL, never PARITY (W14S2)"
+ }
+}
