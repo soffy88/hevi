@@ -669,7 +669,16 @@ def nle_jianying(p: dict[str, Any]) -> dict[str, Any]:
         )
     draft = JianyingDraft(name=str(p.get("name") or "hevi-draft"), clips=clips)
     path = write_jianying_draft(draft, dest, copy_media=bool(p.get("copy_media")))
-    return _ok(draft_dir=str(path), clips=len(clips), duration_s=draft.duration_s())
+    result = _ok(draft_dir=str(path), clips=len(clips), duration_s=draft.duration_s())
+    transitions = p.get("transitions")
+    if isinstance(transitions, list) and transitions:
+        from hevi.studio.jianying import write_transitions_sidecar
+
+        sidecar = write_transitions_sidecar(
+            path, [dict(t) for t in transitions if isinstance(t, dict)]
+        )
+        result["transitions_sidecar"] = str(sidecar)
+    return result
 
 
 def nle_style_archive(p: dict[str, Any]) -> dict[str, Any]:

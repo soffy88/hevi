@@ -137,6 +137,18 @@ def clips_from_presentation(view: dict[str, Any]) -> list[JianyingClip]:
     return out
 
 
+def write_transitions_sidecar(dest_dir: Path, transitions: list[dict[str, Any]]) -> Path:
+    """Write transitions.json next to the draft without touching draft_content schema.
+
+    The desktop draft format is version-sensitive; transition intent travels
+    as an editable sidecar the canonical timeline owns, not as a guessed
+    draft_content mutation.
+    """
+    path = Path(dest_dir) / "transitions.json"
+    path.write_text(json.dumps(transitions, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
 def clips_from_recut(
     clips: list[dict[str, Any]],
     *,
