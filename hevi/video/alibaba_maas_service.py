@@ -50,7 +50,6 @@ Raises:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 from pathlib import Path
@@ -142,62 +141,93 @@ async def _submit_and_download(
     poll_interval_s: float,
     timeout_s: float,
     submit_path: str = _DEFAULT_SUBMIT_PATH,
+    durable: dict[str, Any] | None = None,
 ) -> Path:
     """提交任务、轮询至完成、下载视频到 output_path。t2v/参考图锁定/首尾帧生视频共用
     这一段(仨只有 payload 和提交 path 不同,轮询/下载/校验产物这套壳完全一样)。
     `submit_path` 默认是 t2v/参考图锁定用的 video-generation 端点;首尾帧生视频是
     阿里另一个端点(image2video),见 `alibaba_maas_keyframe_generate`。
+
+    Durable plane (W16): submit/poll/download run through the shared driver
+    over a W3 execution record. ``durable`` is the caller's config dict and
+    is updated in place after every event (submit persisted before any
+    worker exit); None keeps a throwaway record with identical semantics.
     """
-    try:
-        resp = await client.post(
-            f"https://{host}{submit_path}",
-            json=payload,
-            headers=submit_headers,
-        )
-        resp.raise_for_status()
-    except httpx.HTTPError as e:
-        raise AlibabaMaasError(f"{model} 任务提交失败: {e}") from e
+    from hevi.tasks.durable_provider import (
+        JobPoll,
+        PollTransient,
+        SubmitRejected,
+        run_durable_provider_job,
+    )
 
-    task_id = (resp.json().get("output") or {}).get("task_id")
-    if not task_id:
-        raise AlibabaMaasError(f"{model} 提交响应缺少 task_id: {resp.text[:300]}")
+    def _error(message: str) -> AlibabaMaasError:
+        if message.startswith("DURABLE_POLL_TIMEOUT"):
+            return AlibabaMaasError(f"{model} 任务在 {timeout_s}s 内未完成")
+        if message.startswith("DURABLE_DOWNLOAD_EMPTY"):
+            return AlibabaMaasError(f"{model} 产出空/过小文件: {output_path}")
+        return AlibabaMaasError(f"{model} {message}")
 
-    elapsed = 0.0
-    while elapsed < timeout_s:
-        await asyncio.sleep(poll_interval_s)
-        elapsed += poll_interval_s
+    async def _submit() -> str:
+        try:
+            resp = await client.post(
+                f"https://{host}{submit_path}",
+                json=payload,
+                headers=submit_headers,
+            )
+        except httpx.HTTPError:
+            raise  # ambiguous: surfaces for explicit resume, never retried blind
+        if resp.status_code >= 400:
+            raise SubmitRejected(resp.status_code, resp.text[:300])
+        task_id = (resp.json().get("output") or {}).get("task_id")
+        if not task_id:
+            raise SubmitRejected(None, f"提交响应缺少 task_id: {resp.text[:300]}")
+        return str(task_id)
+
+    async def _poll(task_id: str) -> JobPoll:
         try:
             status_resp = await client.get(
                 f"https://{host}/api/v1/tasks/{task_id}", headers=poll_headers
             )
             status_resp.raise_for_status()
         except httpx.HTTPError as e:
-            raise AlibabaMaasError(f"{model} 任务查询失败 (id={task_id}): {e}") from e
-
+            raise PollTransient(f"{model} 任务查询失败 (id={task_id}): {e}") from e
         output = status_resp.json().get("output") or {}
         status = output.get("task_status")
         if status == "SUCCEEDED":
             video_url = output.get("video_url")
             if not video_url:
-                raise AlibabaMaasError(f"{model} 任务 {task_id} 成功但无 video_url: {output}")
-            video_resp = await client.get(video_url, timeout=httpx.Timeout(300.0))
-            video_resp.raise_for_status()
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(video_resp.content)
-            if not output_path.exists() or output_path.stat().st_size < 1024:
-                raise AlibabaMaasError(f"{model} 产出空/过小文件: {output_path}")
-            logger.info(
-                "%s: task %s → %s (%d bytes)",
-                model,
-                task_id,
-                output_path.name,
-                output_path.stat().st_size,
-            )
-            return output_path
+                return JobPoll(state="failed", error=f"任务 {task_id} 成功但无 video_url: {output}")
+            return JobPoll(state="succeeded", artifact_url=str(video_url), terminal=status)
         if status in ("FAILED", "UNKNOWN", "CANCELED"):
-            raise AlibabaMaasError(f"{model} 任务 {task_id} 失败(status={status}): {output}")
+            return JobPoll(state="failed", error=f"任务 {task_id} 失败(status={status}): {output}")
         logger.debug("%s: task %s 状态 %s,继续轮询", model, task_id, status)
-    raise AlibabaMaasError(f"{model} 任务 {task_id} 在 {timeout_s}s 内未完成")
+        return JobPoll(state="running", terminal=status)
+
+    config = durable if durable is not None else {}
+    config, path, _record = await run_durable_provider_job(
+        config=config,
+        provider="alibaba-maas",
+        endpoint=submit_path,
+        model=model,
+        request=payload,
+        production_revision=str((durable or {}).get("revision_id") or ""),
+        target_artifact_id=str(output_path),
+        idempotency_key=None,
+        output_path=Path(output_path),
+        submit=_submit,
+        poll=_poll,
+        poll_interval_s=poll_interval_s,
+        timeout_s=timeout_s,
+        submit_max_attempts=1,
+        download_client=client,
+        error_factory=_error,
+        live_state=config,
+    )
+    if durable is not None:
+        durable.clear()
+        durable.update(config)
+    logger.info("%s: task %s → %s", model, _record.get("provider_job_id"), path.name)
+    return path
 
 
 async def alibaba_maas_generate(
@@ -213,6 +243,7 @@ async def alibaba_maas_generate(
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 5.0,
     timeout_s: float = 600.0,
+    durable: dict[str, Any] | None = None,
     **_kw: Any,
 ) -> Path:
     """提交一个阿里云 Model Studio 纯文生视频任务、轮询至完成、下载视频到 output_path。
@@ -263,6 +294,7 @@ async def alibaba_maas_generate(
             model=model,
             poll_interval_s=poll_interval_s,
             timeout_s=timeout_s,
+            durable=durable,
         )
 
 
@@ -280,6 +312,7 @@ async def alibaba_maas_reference_generate(
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 5.0,
     timeout_s: float = 600.0,
+    durable: dict[str, Any] | None = None,
     **_kw: Any,
 ) -> Path:
     """喂 1~9 张参考图 → 阿里官方 happyhorse-1.1-r2v 身份锁定生成(跟
@@ -343,6 +376,7 @@ async def alibaba_maas_reference_generate(
             model=f"{model}/reference",
             poll_interval_s=poll_interval_s,
             timeout_s=timeout_s,
+            durable=durable,
         )
 
 
@@ -442,6 +476,7 @@ async def alibaba_maas_keyframe_generate(
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 5.0,
     timeout_s: float = 600.0,
+    durable: dict[str, Any] | None = None,
     **_kw: Any,
 ) -> Path:
     """首尾帧生视频(wan2.2-kf2v-flash,阿里官方文档:
@@ -495,6 +530,7 @@ async def alibaba_maas_keyframe_generate(
             poll_interval_s=poll_interval_s,
             timeout_s=timeout_s,
             submit_path=_KEYFRAME_SUBMIT_PATH,
+            durable=durable,
         )
 
 
@@ -505,6 +541,7 @@ async def alibaba_maas_keyframe_lock_generate(
     duration_s: float,
     output_path: Path,
     timeout_s: float = 600.0,
+    durable: dict[str, Any] | None = None,
     **_kw: Any,
 ) -> Path:
     """`ProviderRegistry.register("image_to_video", ...)` 用的窄接口——匹配
@@ -519,4 +556,5 @@ async def alibaba_maas_keyframe_lock_generate(
         output_path=output_path,
         duration_s=duration_s,
         timeout_s=timeout_s,
+        durable=durable,
     )

@@ -15,7 +15,6 @@ RUNWAY_API_KEY 读取方式同 vidu_service.py:优先 config dict 覆盖,缺省�
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import logging
 import mimetypes
@@ -70,51 +69,94 @@ async def _submit_and_poll(
     output_path: Path,
     poll_interval_s: float,
     timeout_s: float,
+    durable: dict[str, Any] | None = None,
 ) -> Path:
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        try:
-            resp = await client.post(
-                f"{_BASE_URL}/{endpoint}", json=payload, headers=_headers(api_key)
-            )
-            resp.raise_for_status()
-        except httpx.HTTPError as e:
-            raise RunwayError(f"Runway 任务提交失败 ({endpoint}): {e} | {resp.text}") from e
-        task_id = resp.json().get("id")
-        if not task_id:
-            raise RunwayError(f"Runway 提交响应缺少 id: {resp.text}")
+    """Durable plane (W16): submit/poll/download run through the shared driver.
 
-        # 文档建议:提交后等 2-3s 再首次轮询,之后不要比 5s 更频繁。
-        await asyncio.sleep(max(poll_interval_s, 2.0))
-        elapsed = 0.0
-        while elapsed < timeout_s:
+    Also fixes a latent NameError: the old submit handler referenced
+    ``resp.text`` when the POST itself raised (``resp`` unbound).
+    """
+    from hevi.tasks.durable_provider import (
+        JobPoll,
+        PollTransient,
+        SubmitRejected,
+        run_durable_provider_job,
+    )
+
+    def _error(message: str) -> RunwayError:
+        if message.startswith("DURABLE_POLL_TIMEOUT"):
+            return RunwayError(f"Runway 任务在 {timeout_s}s 内未完成")
+        return RunwayError(f"Runway {message}")
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+
+        async def _submit() -> str:
+            try:
+                resp = await client.post(
+                    f"{_BASE_URL}/{endpoint}", json=payload, headers=_headers(api_key)
+                )
+            except httpx.HTTPError:
+                raise  # ambiguous: surfaces for explicit resume, never retried blind
+            if resp.status_code >= 400:
+                raise SubmitRejected(resp.status_code, resp.text[:300])
+            task_id = resp.json().get("id")
+            if not task_id:
+                raise SubmitRejected(None, f"Runway 提交响应缺少 id: {resp.text}")
+            return str(task_id)
+
+        async def _poll(task_id: str) -> JobPoll:
             try:
                 status_resp = await client.get(
                     f"{_BASE_URL}/tasks/{task_id}", headers=_headers(api_key)
                 )
                 status_resp.raise_for_status()
             except httpx.HTTPError as e:
-                raise RunwayError(f"Runway 任务查询失败 (task_id={task_id}): {e}") from e
-
+                raise PollTransient(f"Runway 任务查询失败 (task_id={task_id}): {e}") from e
             data = status_resp.json()
             status = data.get("status")
             if status == "SUCCEEDED":
                 output = data.get("output") or []
                 if not output:
-                    raise RunwayError(f"Runway 任务 {task_id} 状态 SUCCEEDED 但无产物: {data}")
-                result_resp = await client.get(output[0])
-                result_resp.raise_for_status()
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_bytes(result_resp.content)
-                logger.info("Runway: task %s 完成,已下载到 %s", task_id, output_path)
-                return output_path
+                    return JobPoll(
+                        state="failed",
+                        error=f"Runway 任务 {task_id} 状态 SUCCEEDED 但无产物: {data}",
+                    )
+                return JobPoll(state="succeeded", artifact_url=str(output[0]), terminal=status)
             if status == "FAILED":
-                raise RunwayError(f"Runway 任务 {task_id} 失败: {data.get('failure') or data}")
-
+                return JobPoll(
+                    state="failed",
+                    error=f"Runway 任务 {task_id} 失败: {data.get('failure') or data}",
+                )
             logger.debug("Runway: task %s 状态 %s,继续轮询", task_id, status)
-            await asyncio.sleep(poll_interval_s)
-            elapsed += poll_interval_s
+            return JobPoll(state="running", terminal=status)
 
-    raise RunwayError(f"Runway 任务 {task_id} 在 {timeout_s}s 内未完成")
+        config = durable if durable is not None else {}
+        config, path, _record = await run_durable_provider_job(
+            config=config,
+            provider="runway",
+            endpoint=endpoint,
+            model=endpoint,
+            request=payload,
+            production_revision=str((durable or {}).get("revision_id") or ""),
+            target_artifact_id=str(output_path),
+            idempotency_key=None,
+            output_path=Path(output_path),
+            submit=_submit,
+            poll=_poll,
+            poll_interval_s=poll_interval_s,
+            timeout_s=timeout_s,
+            initial_poll_delay_s=max(poll_interval_s, 2.0),
+            submit_max_attempts=1,
+            min_bytes=1,
+            download_client=client,
+            error_factory=_error,
+            live_state=config,
+        )
+        if durable is not None:
+            durable.clear()
+            durable.update(config)
+        logger.info("Runway: task %s → %s", _record.get("provider_job_id"), path.name)
+        return path
 
 
 async def runway_text_to_image(
@@ -128,6 +170,7 @@ async def runway_text_to_image(
     seed: int | None = None,
     poll_interval_s: float = 5.0,
     timeout_s: float = 300.0,
+    durable: dict[str, Any] | None = None,
 ) -> Path:
     """文本(+可选 1-3 张参考图)→ 生成图片,下载到 output_path。"""
     api_key = _resolve_api_key(config)
@@ -146,6 +189,7 @@ async def runway_text_to_image(
         output_path=Path(output_path),
         poll_interval_s=poll_interval_s,
         timeout_s=timeout_s,
+        durable=durable,
     )
 
 
@@ -161,6 +205,7 @@ async def runway_image_to_video(
     seed: int | None = None,
     poll_interval_s: float = 5.0,
     timeout_s: float = 600.0,
+    durable: dict[str, Any] | None = None,
 ) -> Path:
     """参考图(1 张 URL/本地路径/base64)+ 文本 prompt → 生成视频,下载到 output_path。"""
     api_key = _resolve_api_key(config)
@@ -185,4 +230,5 @@ async def runway_image_to_video(
         output_path=Path(output_path),
         poll_interval_s=poll_interval_s,
         timeout_s=timeout_s,
+        durable=durable,
     )

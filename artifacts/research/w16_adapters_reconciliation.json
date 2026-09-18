@@ -1,0 +1,123 @@
+{
+ "wave": "W16",
+ "arc_item": "ARC-E08 (per-adapter migration, last P0)",
+ "result": "PASS",
+ "architecture_audit": {
+  "check_architecture_invariants": 0,
+  "check_runtime_boundaries": 0,
+  "result": "3O_ARCHITECTURE_ZERO=PASS"
+ },
+ "adapter_inventory": "artifacts/research/provider_adapter_execution_inventory.json",
+ "classification": {
+  "migration_targets": [
+   "alibaba_maas",
+   "wavespeed",
+   "vidu",
+   "dashscope_i2v",
+   "runway",
+   "fal_image",
+   "qwen_image",
+   "libtv"
+  ],
+  "migrated_to_durable_plane": 8,
+  "sync_no_remote_job_or_not_applicable": [
+   "wan_local",
+   "kernel_service dispatch",
+   "sdxl_local + json2video_scene",
+   "resilient_image_gen router",
+   "audio/TTS workers",
+   "digital_human",
+   "LLM/reliability callers",
+   "manim/h3_local/hyperframes/declared",
+   "endpoint_execution (already durable)"
+  ],
+  "sync_providers_reshaped": 0
+ },
+ "generic_plane_responsibilities": [
+  "idempotency (fingerprint + derived key)",
+  "submit single-flight + persisted job id",
+  "poll checkpoint",
+  "restart recovery (resume poll / resume download / explicit fail)",
+  "download resume (Range + ETag, restart-without-resubmit)",
+  "billing safety (single billing transition)",
+  "duplicate-delivery prevention"
+ ],
+ "adapter_kept_responsibilities": [
+  "provider-specific request shape",
+  "provider-specific response parsing",
+  "provider-specific status normalization",
+  "provider-specific artifact URL extraction"
+ ],
+ "rejection_retry_rule": "retry only on HTTP error-status rejections (proof nothing created, e.g. 403/429 throttling); transport ambiguity surfaces for explicit resume, never blind resubmit",
+ "download_failure_rule": "REMOTE_SUCCEEDED + DOWNLOAD_FAILED retries/resumes download only; never submits a new provider generation",
+ "behaviors": [
+  {
+   "id": "W16-DURABLE-ASYNC-ADAPTERS",
+   "maps_to": [
+    "creative.run_snapshots",
+    "creative.background_runs",
+    "creative.model_routing"
+   ],
+   "tests": "tests/test_durable_adapters.py (10 tests, real loopback TLS origin + real ffmpeg media)",
+   "evidence": {
+    "REAL_INPUT": "scripted loopback HTTP origin per adapter (submit/poll/artifact)",
+    "REAL_RUNTIME": "adapters drive hevi/tasks/durable_provider.run_durable_provider_job",
+    "REAL_STATE": "provider_execution record with job id, remote/download state, billing",
+    "REAL_ARTIFACT": "downloaded file bytes >= expected size for every adapter",
+    "REAL_PERSISTENCE": "submit persisted before worker exit (job id present on caller dict after crash)",
+    "REAL_RECOVERY": "restart resumes poll/download; partial file resumes via Range; expired remote fails explicitly"
+   }
+  },
+  {
+   "id": "W16-DOWNLOAD-RESUME",
+   "maps_to": [
+    "creative.run_snapshots"
+   ],
+   "tests": "tests/test_durable_provider.py::test_download_with_resume_range_and_restart + tests/test_durable_adapters.py Range assertion",
+   "evidence": {
+    "REAL_RUNTIME": "download_with_resume sends Range=bytes=<n>-, honors ETag, restarts on 200/416/412",
+    "REAL_RECOVERY": "no new provider submit on any download path"
+   }
+  },
+  {
+   "id": "W16-LATENT-FIXES",
+   "maps_to": [
+    "creative.model_routing"
+   ],
+   "tests": "covered by adapter suites",
+   "evidence": {
+    "fixed": [
+     "runway submit error path referenced resp.text while resp unbound (NameError)",
+     "qwen ambiguous transport no longer blindly retried",
+     "caller durable dict now receives submit event on failure paths (live_state sync)"
+    ]
+   }
+  }
+ ],
+ "fault_gates": {
+  "LEGACY_ASYNC_PROVIDER_LOOPS": 0,
+  "PRODUCTION_ASYNC_ADAPTERS_ON_DURABLE_PLANE": "100%",
+  "DUPLICATE_PROVIDER_SUBMITS": 0,
+  "DUPLICATE_BILLING": 0,
+  "LOST_REMOTE_COMPLETION": 0,
+  "LOST_ARTIFACT": 0,
+  "FALSE_SUCCESS": 0,
+  "ARC_E08": "PARITY"
+ },
+ "fault_matrix_per_adapter": [
+  "worker dies during download -> submit+remote persisted, no second submit",
+  "restart resumes download only -> one submit, done, billed once",
+  "partial file resume -> Range honored, still one submit",
+  "duplicate delivery of finished job -> billed once",
+  "remote terminal failure -> explicit fail with provider message",
+  "remote expired -> explicit fail, never silent resubmit"
+ ],
+ "regressions": "adapter suites + task/runtime/coverage/director/shortdrama/pipeline sets green (264 passed in the broad touched-area run)",
+ "capability_taxonomy_changed": false,
+ "ledger_status_changed": false,
+ "lint": {
+  "ruff": "clean",
+  "mypy": "clean (durable_provider + 8 migrated adapters, strict)"
+ },
+ "commit": "feat(runtime): migrate async provider adapters to the durable plane"
+}

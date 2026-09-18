@@ -28,6 +28,7 @@ class _FakeResponse:
         self._json = json_data or {}
         self.content = content
         self.status_code = status
+        self.headers: dict[str, str] = {}
         self.text = json_module.dumps(self._json)
 
     def raise_for_status(self) -> None:
@@ -35,6 +36,10 @@ class _FakeResponse:
             import httpx
 
             raise httpx.HTTPStatusError("error", request=None, response=None)  # type: ignore[arg-type]
+
+    async def aiter_bytes(self, chunk_size: int = 65536):  # type: ignore[no-untyped-def]
+        for index in range(0, len(self.content), chunk_size):
+            yield self.content[index : index + chunk_size]
 
     def json(self) -> dict[str, Any]:
         return self._json

@@ -1751,7 +1751,13 @@ async def test_dashscope_i2v_submit_poll_download_and_failure_contracts(
         def __init__(self, body: dict[str, object], content: bytes = b"") -> None:
             self._body = body
             self.content = content
+            self.status_code = 200
+            self.headers: dict[str, str] = {}
             self.text = json.dumps(body)
+
+        async def aiter_bytes(self, chunk_size: int = 65536):  # type: ignore[no-untyped-def]
+            for index in range(0, len(self.content), chunk_size):
+                yield self.content[index : index + chunk_size]
 
         def json(self) -> dict[str, object]:
             return self._body
@@ -3021,6 +3027,12 @@ async def test_libtv_agent_boundary_extracts_and_downloads_results(
 
         def __init__(self, body: dict[str, object]) -> None:
             self.body = body
+            self.status_code = 200
+            self.headers: dict[str, str] = {}
+
+        async def aiter_bytes(self, chunk_size: int = 65536):  # type: ignore[no-untyped-def]
+            for index in range(0, len(self.content), chunk_size):
+                yield self.content[index : index + chunk_size]
 
         def json(self) -> dict[str, object]:
             return self.body
@@ -3431,7 +3443,13 @@ async def test_runway_and_json2video_provider_boundaries_cover_submit_poll_downl
         def __init__(self, body: dict[str, object], content: bytes = b"") -> None:
             self.body = body
             self.content = content
+            self.status_code = 200
+            self.headers: dict[str, str] = {}
             self.text = json.dumps(body)
+
+        async def aiter_bytes(self, chunk_size: int = 65536):  # type: ignore[no-untyped-def]
+            for index in range(0, len(self.content), chunk_size):
+                yield self.content[index : index + chunk_size]
 
         def json(self) -> dict[str, object]:
             return self.body
@@ -3461,7 +3479,7 @@ async def test_runway_and_json2video_provider_boundaries_cover_submit_poll_downl
         return None
 
     monkeypatch.setattr(httpx, "AsyncClient", ProviderClient)
-    monkeypatch.setattr("hevi.video.runway_service.asyncio.sleep", no_sleep)
+    monkeypatch.setattr("hevi.tasks.durable_provider.asyncio.sleep", no_sleep)
     local_uri = runway._as_uri(str(image))
     assert local_uri.startswith("data:image/png;base64,")
     assert runway._as_uri("https://cdn/image.png") == "https://cdn/image.png"
@@ -3824,6 +3842,12 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
             self.body = body
             self.text = json.dumps(body)
             self.content = b""
+            self.status_code = 200
+            self.headers: dict[str, str] = {}
+
+        async def aiter_bytes(self, chunk_size: int = 65536):  # type: ignore[no-untyped-def]
+            for index in range(0, len(self.content), chunk_size):
+                yield self.content[index : index + chunk_size]
 
         def json(self) -> dict[str, object]:
             return self.body
@@ -3898,7 +3922,7 @@ async def test_provider_boundaries_reject_malformed_and_terminal_failure_respons
             timeout_s=1,
         )
 
-    monkeypatch.setattr("hevi.video.runway_service.asyncio.sleep", no_sleep)
+    monkeypatch.setattr("hevi.tasks.durable_provider.asyncio.sleep", no_sleep)
 
     class FailedRunway(Client):
         async def post(self, _url: str, **_kwargs: object) -> Response:

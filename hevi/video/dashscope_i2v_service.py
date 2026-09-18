@@ -13,7 +13,6 @@ wan2.2-i2v-flash 对水墨帧保风格良好。
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import logging
 import os
@@ -49,6 +48,7 @@ async def happyhorse_animate(
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 6.0,
     timeout_s: float = 480.0,
+    durable: dict[str, Any] | None = None,
 ) -> Path:
     """happyhorse-1.1-r2v 参考图生视频 —— 说话镜头专用。相比 wan2.2-i2v 的通用动效,
     happyhorse 的**口型/表情/动作跟随更到位**(scene_v2 那种"会说话"的观感就来自它)。喂
@@ -73,6 +73,7 @@ async def happyhorse_animate(
         config=config,
         poll_interval_s=poll_interval_s,
         timeout_s=timeout_s,
+        durable=durable,
     )
 
 
@@ -86,6 +87,7 @@ async def i2v_animate(
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 6.0,
     timeout_s: float = 480.0,
+    durable: dict[str, Any] | None = None,
 ) -> Path:
     """首帧图 + 运动 prompt → 视频(wan2.2-i2v-flash)。画风由首帧定,通用动效;说话镜头用
     `happyhorse_animate`(口型/表情跟随更好)。"""
@@ -99,6 +101,7 @@ async def i2v_animate(
         config=config,
         poll_interval_s=poll_interval_s,
         timeout_s=timeout_s,
+        durable=durable,
     )
 
 
@@ -113,9 +116,22 @@ async def _submit_video(
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 6.0,
     timeout_s: float = 480.0,
+    durable: dict[str, Any] | None = None,
 ) -> Path:
     """阿里云百炼 video-synthesis 异步任务的共享壳:提交→轮询→下载(带重试与有界超时)。
-    i2v(img_url)和 happyhorse r2v(media 参考图)只是 input/model/parameters 不同。"""
+    i2v(img_url)和 happyhorse r2v(media 参考图)只是 input/model/parameters 不同。
+
+    Durable plane (W16): submit retries cover HTTP error-status rejections
+    only (transient 403/429 rate limits — the documented production case);
+    transport ambiguity surfaces for explicit resume instead of blind retry.
+    """
+    from hevi.tasks.durable_provider import (
+        JobPoll,
+        PollTransient,
+        SubmitRejected,
+        run_durable_provider_job,
+    )
+
     cfg = config or {}
     api_key = cfg.get("ALIBABA_MAAS_API_KEY") or os.getenv("ALIBABA_MAAS_API_KEY")
     host = cfg.get("ALIBABA_MAAS_HOST") or os.getenv("ALIBABA_MAAS_HOST")
@@ -137,88 +153,81 @@ async def _submit_video(
     }
     submit_url = f"https://{host}/api/v1/services/aigc/video-generation/video-synthesis"
 
+    def _error(message: str) -> DashScopeI2VError:
+        if message.startswith("DURABLE_POLL_TIMEOUT"):
+            return DashScopeI2VError(f"{model} 任务在 {timeout_s}s 内未完成")
+        if message.startswith("DURABLE_DOWNLOAD_EMPTY"):
+            return DashScopeI2VError(f"{model} 产出空/过小文件: {output_path}")
+        return DashScopeI2VError(f"{model} {message}")
+
     # 显式 connect/read 超时:轮询 GET 曾卡死 9 分钟不报错,必须给死;提交要上传 ~1.5MB base64
-    # 图 + 排队,MaaS 负载高时 60s 不够(实测 ReadTimeout),提交单独用更长超时 + 重试。
+    # 图 + 排队,MaaS 负载高时 60s 不够(实测 ReadTimeout),提交单独用更长超时。
     poll_timeout = httpx.Timeout(60.0, connect=15.0)
     submit_timeout = httpx.Timeout(180.0, connect=20.0)
     async with httpx.AsyncClient(timeout=poll_timeout) as client:
-        resp = None
-        ok = False
-        last_err: Exception | None = None
-        # MaaS 端点突发多请求(整集逐镜生成 + verdict 返工)会间歇 403 Forbidden / 429
-        # 限流一阵子,隔几十秒自己恢复(实测直接重试即成功)。一次失败就丢镜头降级空镜 →
-        # 成片只剩零星几镜(用户实测"11秒只有开头")。改 5 次指数退避(~78s),够清瞬时限流。
-        # 之前的 bug:3 次全败后 resp 是最后那个 403 响应(非 None),漏进下面报"缺 task_id"。
-        for attempt in range(5):
+
+        async def _submit() -> str:
+            # MaaS 端点突发多请求会间歇 403 Forbidden / 429 限流一阵子(实测直接重试
+            # 即成功)。只重试"服务器明确拒绝"(无任务创建);传输层歧义直接抛给显式恢复。
             try:
                 r = await client.post(
                     submit_url, json=payload, headers=submit_headers, timeout=submit_timeout
                 )
-                r.raise_for_status()
-                resp = r
-                ok = True
-                break
-            except httpx.HTTPError as e:
-                last_err = e
-                code = getattr(getattr(e, "response", None), "status_code", None)
-                wait = min(30, 4 * (2**attempt))
-                logger.warning(
-                    "%s 提交第 %d 次失败(%s code=%s),%ds 后重试",
-                    model,
-                    attempt + 1,
-                    type(e).__name__,
-                    code,
-                    wait,
-                )
-                await asyncio.sleep(wait)
-        if not ok or resp is None:
-            raise DashScopeI2VError(
-                f"{model} i2v 提交多次失败: {type(last_err).__name__} {last_err}"
-            )
-        task_id = (resp.json().get("output") or {}).get("task_id")
-        if not task_id:
-            raise DashScopeI2VError(f"{model} 提交响应缺少 task_id: {resp.text[:300]}")
+            except httpx.HTTPError:
+                raise
+            if r.status_code >= 400:
+                raise SubmitRejected(r.status_code, r.text[:300])
+            task_id = (r.json().get("output") or {}).get("task_id")
+            if not task_id:
+                raise SubmitRejected(None, f"{model} 提交响应缺少 task_id: {r.text[:300]}")
+            return str(task_id)
 
-        elapsed = 0.0
-        while elapsed < timeout_s:
-            await asyncio.sleep(poll_interval_s)
-            elapsed += poll_interval_s
+        async def _poll(task_id: str) -> JobPoll:
             try:
                 s = await client.get(f"https://{host}/api/v1/tasks/{task_id}", headers=poll_headers)
                 s.raise_for_status()
             except httpx.HTTPError as e:
-                logger.warning("%s 任务查询异常(id=%s),继续重试: %s", model, task_id, e)
-                continue
+                raise PollTransient(f"{model} 任务查询异常(id={task_id}),继续重试: {e}") from e
             output = s.json().get("output") or {}
             status = output.get("task_status")
             if status == "SUCCEEDED":
                 video_url = output.get("video_url")
                 if not video_url:
-                    raise DashScopeI2VError(f"{model} 任务 {task_id} 成功但无 video_url: {output}")
-                # 下载带重试 + 有界 read 超时(OSS 偶发慢/卡)。
-                data = b""
-                for attempt in range(3):
-                    try:
-                        v = await client.get(video_url, timeout=httpx.Timeout(90.0, connect=15.0))
-                        v.raise_for_status()
-                        data = v.content
-                        break
-                    except httpx.HTTPError as e:
-                        logger.warning("%s 视频下载第 %d 次失败,重试: %s", model, attempt + 1, e)
-                if not data:
-                    raise DashScopeI2VError(f"{model} 任务 {task_id} 视频下载多次失败: {video_url}")
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_bytes(data)
-                if not output_path.exists() or output_path.stat().st_size < 1024:
-                    raise DashScopeI2VError(f"{model} 产出空/过小文件: {output_path}")
-                logger.info(
-                    "%s i2v: task %s → %s (%d bytes)",
-                    model,
-                    task_id,
-                    output_path.name,
-                    output_path.stat().st_size,
-                )
-                return output_path
+                    return JobPoll(
+                        state="failed",
+                        error=f"{model} 任务 {task_id} 成功但无 video_url: {output}",
+                    )
+                return JobPoll(state="succeeded", artifact_url=str(video_url), terminal=status)
             if status in ("FAILED", "UNKNOWN", "CANCELED"):
-                raise DashScopeI2VError(f"{model} 任务 {task_id} 失败(status={status}): {output}")
-        raise DashScopeI2VError(f"{model} 任务 {task_id} 在 {timeout_s}s 内未完成")
+                return JobPoll(
+                    state="failed",
+                    error=f"{model} 任务 {task_id} 失败(status={status}): {output}",
+                )
+            return JobPoll(state="running", terminal=status)
+
+        state_config = durable if durable is not None else {}
+        state_config, path, _record = await run_durable_provider_job(
+            config=state_config,
+            provider="dashscope-i2v",
+            endpoint="video-synthesis",
+            model=model,
+            request=payload,
+            production_revision=str((durable or {}).get("revision_id") or ""),
+            target_artifact_id=str(output_path),
+            idempotency_key=None,
+            output_path=Path(output_path),
+            submit=_submit,
+            poll=_poll,
+            poll_interval_s=poll_interval_s,
+            timeout_s=timeout_s,
+            submit_max_attempts=5,
+            submit_backoff_s=(4.0, 8.0, 16.0, 30.0, 30.0),
+            download_client=client,
+            error_factory=_error,
+            live_state=state_config,
+        )
+        if durable is not None:
+            durable.clear()
+            durable.update(state_config)
+        logger.info("%s i2v: task %s → %s", model, _record.get("provider_job_id"), path.name)
+        return path

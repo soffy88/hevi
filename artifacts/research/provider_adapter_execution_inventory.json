@@ -1,0 +1,246 @@
+{
+ "adapters": [
+  {
+   "adapter": "hevi/video/alibaba_maas_service._submit_and_download",
+   "consumers": [
+    "alibaba_maas_generate",
+    "alibaba_maas_reference_generate",
+    "happyhorse_1_1_maas_generate",
+    "wan_2_7_maas_generate",
+    "happyhorse_1_1_maas_reference_to_video",
+    "happyhorse_1_1_maas_lock_generate",
+    "alibaba_maas_keyframe_generate",
+    "alibaba_maas_keyframe_lock_generate"
+   ],
+   "disposition": "MIGRATE (single shell covers 8 entrypoints)",
+   "download": "whole-file write_bytes, no resume",
+   "loop": "submit POST -> task_id -> while-poll GET tasks/{id} -> SUCCEEDED/FAILED|UNKNOWN|CANCELED -> write_bytes",
+   "model_family": "happyhorse-1.1 / wan-2.7 / keyframe",
+   "persist_download_state": true,
+   "persist_provider_job_id": true,
+   "persist_remote_state": true,
+   "provider": "alibaba-maas",
+   "retry": "none on submit; poll transport errors fatal",
+   "status": "FULLY_MIGRATED",
+   "submit": "POST video-generation (or image2video)",
+   "uses_durable_plane": true,
+   "uses_idempotency_key": true,
+   "uses_request_fingerprint": true,
+   "legacy_loop_removed": true,
+   "durable_module": "hevi/tasks/durable_provider.py + hevi/tasks/durable_execution.py",
+   "adapter_role": "provider-specific request/response/status/artifact-URL only",
+   "tests": "tests/test_durable_adapters.py (+ adapter unit suite)"
+  },
+  {
+   "adapter": "hevi/video/wavespeed_service._submit_and_download",
+   "disposition": "MIGRATE",
+   "download": "whole-file write_bytes",
+   "loop": "submit -> request_id -> poll predictions/{id}/result -> completed/failed -> write_bytes",
+   "persist_download_state": true,
+   "persist_provider_job_id": true,
+   "persist_remote_state": true,
+   "provider": "wavespeed",
+   "retry": "none",
+   "status": "FULLY_MIGRATED",
+   "uses_durable_plane": true,
+   "uses_idempotency_key": true,
+   "uses_request_fingerprint": true,
+   "legacy_loop_removed": true,
+   "durable_module": "hevi/tasks/durable_provider.py + hevi/tasks/durable_execution.py",
+   "adapter_role": "provider-specific request/response/status/artifact-URL only",
+   "tests": "tests/test_durable_adapters.py (+ adapter unit suite)"
+  },
+  {
+   "adapter": "hevi/video/vidu_service.vidu_reference_to_video",
+   "disposition": "MIGRATE",
+   "download": "whole-file write_bytes",
+   "loop": "submit -> task_id -> poll tasks/{id}/creations -> success/failed -> write_bytes",
+   "persist_download_state": true,
+   "persist_provider_job_id": true,
+   "persist_remote_state": true,
+   "provider": "vidu",
+   "retry": "none",
+   "status": "FULLY_MIGRATED",
+   "uses_durable_plane": true,
+   "uses_idempotency_key": true,
+   "uses_request_fingerprint": true,
+   "legacy_loop_removed": true,
+   "durable_module": "hevi/tasks/durable_provider.py + hevi/tasks/durable_execution.py",
+   "adapter_role": "provider-specific request/response/status/artifact-URL only",
+   "tests": "tests/test_durable_adapters.py (+ adapter unit suite)"
+  },
+  {
+   "adapter": "hevi/video/dashscope_i2v_service._submit_video",
+   "disposition": "MIGRATE (keep rejection-only submit retry, drop ambiguous retry)",
+   "download": "whole-file re-download x3 (no resubmit, no resume)",
+   "loop": "submit x5 backoff (403/429-driven) -> task_id -> tolerant poll -> SUCCEEDED -> download x3 -> write_bytes",
+   "persist_download_state": true,
+   "persist_provider_job_id": true,
+   "persist_remote_state": true,
+   "provider": "dashscope-i2v",
+   "retry": "submit 5x exp backoff incl. ambiguous timeouts (HOLE); download 3x whole-file",
+   "status": "FULLY_MIGRATED",
+   "uses_durable_plane": true,
+   "uses_idempotency_key": true,
+   "uses_request_fingerprint": true,
+   "legacy_loop_removed": true,
+   "durable_module": "hevi/tasks/durable_provider.py + hevi/tasks/durable_execution.py",
+   "adapter_role": "provider-specific request/response/status/artifact-URL only",
+   "tests": "tests/test_durable_adapters.py (+ adapter unit suite)"
+  },
+  {
+   "adapter": "hevi/video/runway_service._submit_and_poll",
+   "disposition": "MIGRATE",
+   "download": "whole-file write_bytes",
+   "loop": "submit -> id -> poll tasks/{id} -> SUCCEEDED/failed -> write_bytes",
+   "persist_download_state": true,
+   "persist_provider_job_id": true,
+   "persist_remote_state": true,
+   "provider": "runway",
+   "retry": "none",
+   "status": "FULLY_MIGRATED",
+   "uses_durable_plane": true,
+   "uses_idempotency_key": true,
+   "uses_request_fingerprint": true,
+   "legacy_loop_removed": true,
+   "durable_module": "hevi/tasks/durable_provider.py + hevi/tasks/durable_execution.py",
+   "adapter_role": "provider-specific request/response/status/artifact-URL only",
+   "tests": "tests/test_durable_adapters.py (+ adapter unit suite)"
+  },
+  {
+   "adapter": "hevi/image/fal_image_service.fal_image_generate",
+   "disposition": "MIGRATE (job id = status_url)",
+   "download": "whole-file write_bytes",
+   "loop": "submit -> status_url/response_url -> poll status_url -> COMPLETED/FAILED|CANCELLED|ERROR -> fetch response -> image_url -> write_bytes",
+   "persist_download_state": true,
+   "persist_provider_job_id": true,
+   "persist_remote_state": true,
+   "provider": "fal",
+   "retry": "none on submit",
+   "status": "FULLY_MIGRATED",
+   "uses_durable_plane": true,
+   "uses_idempotency_key": true,
+   "uses_request_fingerprint": true,
+   "legacy_loop_removed": true,
+   "durable_module": "hevi/tasks/durable_provider.py + hevi/tasks/durable_execution.py",
+   "adapter_role": "provider-specific request/response/status/artifact-URL only",
+   "tests": "tests/test_durable_adapters.py (+ adapter unit suite)"
+  },
+  {
+   "adapter": "hevi/image/qwen_image_service (submit helper + poll loop)",
+   "disposition": "MIGRATE (same rejection-only submit rule as dashscope)",
+   "download": "whole-file (verify section)",
+   "loop": "_submit_with_retry (4-5x incl. ambiguous) -> task_id -> tolerant poll -> results[0].url -> download",
+   "persist_download_state": true,
+   "persist_provider_job_id": true,
+   "persist_remote_state": true,
+   "provider": "dashscope-qwen-image",
+   "retry": "submit multi-retry incl. ambiguous (HOLE)",
+   "status": "FULLY_MIGRATED",
+   "uses_durable_plane": true,
+   "uses_idempotency_key": true,
+   "uses_request_fingerprint": true,
+   "legacy_loop_removed": true,
+   "durable_module": "hevi/tasks/durable_provider.py + hevi/tasks/durable_execution.py",
+   "adapter_role": "provider-specific request/response/status/artifact-URL only",
+   "tests": "tests/test_durable_adapters.py (+ adapter unit suite)"
+  },
+  {
+   "adapter": "hevi/video/libtv_service.generate_via_libtv",
+   "disposition": "MIGRATE (session-level record + shared resume downloader; multi-artifact shape kept)",
+   "download": "per-URL whole-file _download, no resume",
+   "loop": "create_session -> sessionId/projectUuid -> seq-poll query_session -> extract_result_urls -> per-url download",
+   "persist_download_state": true,
+   "persist_provider_job_id": true,
+   "persist_remote_state": true,
+   "provider": "liblib-agent-im",
+   "retry": "none",
+   "status": "FULLY_MIGRATED",
+   "uses_durable_plane": true,
+   "uses_idempotency_key": true,
+   "uses_request_fingerprint": true,
+   "legacy_loop_removed": true,
+   "durable_module": "hevi/tasks/durable_provider.py + hevi/tasks/durable_execution.py",
+   "adapter_role": "provider-specific request/response/status/artifact-URL only",
+   "tests": "tests/test_durable_adapters.py (+ adapter unit suite)"
+  },
+  {
+   "adapter": "hevi/video/wan_local_service.wan_local_generate",
+   "disposition": "NONE (local subprocess, no remote job)",
+   "status": "SYNC_NO_REMOTE_JOB"
+  },
+  {
+   "adapter": "hevi/video/kernel_service.generate_clip",
+   "disposition": "NONE (dispatcher to oprim/local; durability lives in callees)",
+   "status": "NOT_APPLICABLE"
+  },
+  {
+   "adapter": "hevi/video/local_fallback.py",
+   "disposition": "NONE (local)",
+   "status": "SYNC_NO_REMOTE_JOB"
+  },
+  {
+   "adapter": "hevi/image/sdxl_local_service + _sdxl_worker + json2video_scene_service",
+   "disposition": "NONE (local GPU)",
+   "status": "SYNC_NO_REMOTE_JOB"
+  },
+  {
+   "adapter": "hevi/image/resilient_image_gen (router + cross-provider fallback)",
+   "disposition": "NONE (delegates to sdxl/qwen/fal; inherits their durability; cross-provider fallback is explicit re-route, not same-job resubmit)",
+   "status": "NOT_APPLICABLE"
+  },
+  {
+   "adapter": "hevi/audio/* + voicepro_* + dub workers (edge_tts segments, cosyvoice, f5, vibevoice)",
+   "disposition": "NONE (synchronous request/response or local workers; no remote job ids observed)",
+   "status": "SYNC_NO_REMOTE_JOB"
+  },
+  {
+   "adapter": "hevi/digital_human/* + providers/echo_mimic (duix, livetalking, comfy-echo)",
+   "disposition": "NONE (local services/sync; no async poll loops observed)",
+   "status": "SYNC_NO_REMOTE_JOB"
+  },
+  {
+   "adapter": "hevi/providers/{nim,teamo,openai_compatible,local_qwen}_caller + llm_pick + reliability wrapper",
+   "disposition": "NONE (sync LLM/HTTP; retry/budget/circuit live in reliability.py, unchanged)",
+   "status": "SYNC_NO_REMOTE_JOB"
+  },
+  {
+   "adapter": "hevi/providers/{manim,h3_local,hyperframes} + plugin_config declared providers",
+   "disposition": "NONE (local engines / declaration-only)",
+   "status": "SYNC_NO_REMOTE_JOB"
+  },
+  {
+   "adapter": "hevi/creative/layer4/endpoint_execution.execute_endpoint",
+   "disposition": "NONE (durable by construction: W3 record, single submit, resume via existing_record)",
+   "status": "FULLY_MIGRATED"
+  }
+ ],
+ "generated": "W16 inventory scan 2026-09-18",
+ "migration_targets": [
+  "alibaba_maas",
+  "wavespeed",
+  "vidu",
+  "dashscope_i2v",
+  "runway",
+  "fal_image",
+  "qwen_image",
+  "libtv"
+ ],
+ "scope_note": "Only true async remote-job providers migrate. Sync HTTP/local providers are classified, never reshaped into polling providers.",
+ "migration_result": {
+  "generated": "W16 migration applied",
+  "migrated_adapters": 8,
+  "legacy_async_provider_loops": 0,
+  "async_adapters_on_durable_plane_pct": 100,
+  "driver": "hevi/tasks/durable_provider.py",
+  "downloaded_resume": "download_with_resume (Range/ETag, restart-without-resubmit)",
+  "universal_gates": {
+   "duplicate_provider_submits": 0,
+   "duplicate_billing": 0,
+   "lost_remote_completion": 0,
+   "lost_artifact": 0,
+   "false_success": 0
+  },
+  "sync_providers_unchanged": true
+ }
+}

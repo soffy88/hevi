@@ -40,7 +40,6 @@ Raises:
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import logging
 import os
@@ -141,58 +140,92 @@ async def _submit_and_download(
     model: str,
     poll_interval_s: float,
     timeout_s: float,
+    durable: dict[str, Any] | None = None,
 ) -> Path:
     """提交任务、轮询至完成、下载视频到 output_path。t2v 和参考图锁定生成共用这一段
-    (二者只有 endpoint + payload 不同,提交/轮询/下载/校验产物这套壳完全一样)。"""
-    try:
-        resp = await client.post(f"{_BASE_URL}/{endpoint}", json=payload, headers=headers)
-        resp.raise_for_status()
-    except httpx.HTTPError as e:
-        raise WaveSpeedError(f"WaveSpeed({model}) 任务提交失败: {e}") from e
+    (二者只有 endpoint + payload 不同,提交/轮询/下载/校验产物这套壳完全一样)。
 
-    request_id = _extract_request_id(resp.json())
-    if not request_id:
-        raise WaveSpeedError(f"WaveSpeed({model}) 提交响应缺少任务 id: {resp.text[:300]}")
+    Durable plane (W16): 见 alibaba_maas_service._submit_and_download 同款迁移。
+    ``durable`` 调用方 config dict,原地更新;None 用一次性 record,语义一致。
+    """
+    from hevi.tasks.durable_provider import (
+        JobPoll,
+        PollTransient,
+        SubmitRejected,
+        run_durable_provider_job,
+    )
 
-    elapsed = 0.0
-    while elapsed < timeout_s:
-        await asyncio.sleep(poll_interval_s)
-        elapsed += poll_interval_s
+    def _error(message: str) -> WaveSpeedError:
+        if message.startswith("DURABLE_POLL_TIMEOUT"):
+            return WaveSpeedError(f"WaveSpeed({model}) 任务在 {timeout_s}s 内未完成")
+        if message.startswith("DURABLE_DOWNLOAD_EMPTY"):
+            return WaveSpeedError(f"WaveSpeed({model}) 产出空/过小文件: {output_path}")
+        return WaveSpeedError(f"WaveSpeed({model}) {message}")
+
+    async def _submit() -> str:
+        try:
+            resp = await client.post(f"{_BASE_URL}/{endpoint}", json=payload, headers=headers)
+        except httpx.HTTPError:
+            raise  # ambiguous: surfaces for explicit resume, never retried blind
+        if resp.status_code >= 400:
+            raise SubmitRejected(resp.status_code, resp.text[:300])
+        request_id = _extract_request_id(resp.json())
+        if not request_id:
+            raise SubmitRejected(None, f"WaveSpeed({model}) 提交响应缺少任务 id: {resp.text[:300]}")
+        return request_id
+
+    async def _poll(request_id: str) -> JobPoll:
         try:
             status_resp = await client.get(
                 f"{_BASE_URL}/predictions/{request_id}/result", headers=headers
             )
             status_resp.raise_for_status()
         except httpx.HTTPError as e:
-            raise WaveSpeedError(f"WaveSpeed({model}) 任务查询失败 (id={request_id}): {e}") from e
-
+            raise PollTransient(f"WaveSpeed({model}) 任务查询失败 (id={request_id}): {e}") from e
         body = status_resp.json()
         data = body.get("data") if isinstance(body.get("data"), dict) else body
         status = data.get("status")
         if status == "completed":
             outputs = data.get("outputs") or []
             if not outputs:
-                raise WaveSpeedError(
-                    f"WaveSpeed({model}) 任务 {request_id} 状态 completed 但无产物: {str(body)[:300]}"
+                return JobPoll(
+                    state="failed",
+                    error=f"WaveSpeed({model}) 任务 {request_id} 状态 completed 但无产物: {str(body)[:300]}",
                 )
-            video_resp = await client.get(outputs[0], timeout=httpx.Timeout(300.0))
-            video_resp.raise_for_status()
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_bytes(video_resp.content)
-            if not output_path.exists() or output_path.stat().st_size < 1024:
-                raise WaveSpeedError(f"WaveSpeed({model}) 产出空/过小文件: {output_path}")
-            logger.info(
-                "WaveSpeed(%s): task %s → %s (%d bytes)",
-                model,
-                request_id,
-                output_path.name,
-                output_path.stat().st_size,
-            )
-            return output_path
+            return JobPoll(state="succeeded", artifact_url=str(outputs[0]), terminal=status)
         if status == "failed":
-            raise WaveSpeedError(f"WaveSpeed({model}) 任务 {request_id} 失败: {data.get('error')}")
+            return JobPoll(
+                state="failed",
+                error=f"WaveSpeed({model}) 任务 {request_id} 失败: {data.get('error')}",
+            )
         logger.debug("WaveSpeed(%s): task %s 状态 %s,继续轮询", model, request_id, status)
-    raise WaveSpeedError(f"WaveSpeed({model}) 任务 {request_id} 在 {timeout_s}s 内未完成")
+        return JobPoll(state="running", terminal=status)
+
+    config = durable if durable is not None else {}
+    config, path, _record = await run_durable_provider_job(
+        config=config,
+        provider="wavespeed",
+        endpoint=endpoint,
+        model=model,
+        request=payload,
+        production_revision=str((durable or {}).get("revision_id") or ""),
+        target_artifact_id=str(output_path),
+        idempotency_key=None,
+        output_path=Path(output_path),
+        submit=_submit,
+        poll=_poll,
+        poll_interval_s=poll_interval_s,
+        timeout_s=timeout_s,
+        submit_max_attempts=1,
+        download_client=client,
+        error_factory=_error,
+        live_state=config,
+    )
+    if durable is not None:
+        durable.clear()
+        durable.update(config)
+    logger.info("WaveSpeed(%s): task %s → %s", model, _record.get("provider_job_id"), path.name)
+    return path
 
 
 async def wavespeed_generate(
@@ -208,6 +241,7 @@ async def wavespeed_generate(
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 5.0,
     timeout_s: float = 600.0,
+    durable: dict[str, Any] | None = None,
     **_kw: Any,
 ) -> Path:
     """提交一个 WaveSpeed 纯文生视频任务、轮询至完成、下载视频到 output_path。
@@ -258,6 +292,7 @@ async def wavespeed_generate(
             model=model,
             poll_interval_s=poll_interval_s,
             timeout_s=timeout_s,
+            durable=durable,
         )
 
 
@@ -274,6 +309,7 @@ async def wavespeed_reference_generate(
     config: dict[str, Any] | None = None,
     poll_interval_s: float = 5.0,
     timeout_s: float = 600.0,
+    durable: dict[str, Any] | None = None,
     **_kw: Any,
 ) -> Path:
     """喂 1~9 张参考图 → 身份锁定生成(跟 vidu_reference_to_video 同一能力层级,可以
@@ -330,6 +366,7 @@ async def wavespeed_reference_generate(
             model=f"{model}/reference",
             poll_interval_s=poll_interval_s,
             timeout_s=timeout_s,
+            durable=durable,
         )
 
 

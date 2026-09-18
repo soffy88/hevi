@@ -103,11 +103,23 @@ def extract_result_urls(messages: list[dict[str, Any]]) -> list[str]:
 
 
 async def _download(url: str, path: Path) -> Path:
+    """Resumable single-file fetch (W16): crash restarts continue the bytes."""
+
+    from hevi.tasks.durable_provider import download_with_resume
+
     path.parent.mkdir(parents=True, exist_ok=True)
+    start = path.stat().st_size if path.is_file() else 0
     async with httpx.AsyncClient(timeout=120, follow_redirects=True) as c:
-        r = await c.get(url, headers={"User-Agent": "hevi-libtv/1.0"})
-        r.raise_for_status()
-        path.write_bytes(r.content)
+        total, _etag = await download_with_resume(
+            url,
+            path,
+            start_byte=start,
+            timeout_s=120.0,
+            min_bytes=1,
+            client=c,
+        )
+    if total <= 0 or not path.is_file():
+        raise LibtvError(f"libtv 下载空产物: {url}")
     return path
 
 
@@ -120,16 +132,76 @@ async def generate_via_libtv(
     timeout_s: float = 1800.0,
     want_video: bool = True,
     prefix: str = "libtv",
+    durable: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把创作指令 message 发给 agent-im,轮询到出结果 URL,下载到 out_dir。
     返回 {session_id, project_uuid, project_url, urls, files, video}。
-    want_video=True 时,轮询到出现视频 URL 才收(否则任何结果 URL 即收);超时抛 LibtvError。"""
-    sess = await create_session(message=message, session_id=session_id)
-    sid = sess.get("sessionId") or session_id
-    project_uuid = sess.get("projectUuid", "")
-    if not sid:
-        raise LibtvError(f"agent-im 未返回 sessionId: {sess}")
-    logger.info("libtv 会话 %s(project %s)已发指令,轮询出片…", sid, project_uuid)
+    want_video=True 时,轮询到出现视频 URL 才收(否则任何结果 URL 即收);超时抛 LibtvError。
+
+    Durable plane (W16, session-level): sessionId 作为 provider job id 持久化,
+    同一 fingerprint 重入只续跑轮询/下载,绝不重建会话重复计费;多文件下载逐个
+    断点续传。``durable`` 调用方 config dict,原地更新;None 用一次性 record。
+    """
+    from hevi.creative.layer4.provider_execution import NextAction
+    from hevi.tasks.durable_execution import apply_execution_event, begin_execution
+
+    state_config = durable if durable is not None else {}
+    state_config, record, action = begin_execution(
+        state_config,
+        provider="liblib-agent-im",
+        endpoint="openapi/session",
+        model="agent-im",
+        request={"message": message, "prefix": prefix, "want_video": want_video},
+        production_revision=str((durable or {}).get("revision_id") or ""),
+        target_artifact_id=str(Path(out_dir) / prefix),
+        idempotency_key=f"libtv:{prefix}:{out_dir!s}",
+    )
+
+    def _sync_state() -> None:
+        if durable is not None:
+            durable.clear()
+            durable.update(state_config)
+
+    if action is NextAction.DONE:
+        # Prior run completed: rebuild the file listing from disk, no resubmit.
+        out_path = Path(out_dir)
+        existing_files = sorted(str(p) for p in out_path.glob(f"{prefix}_*") if p.is_file())
+        existing_video = next(
+            (f for f in existing_files if Path(f).suffix.lower() in _VIDEO_EXTS), None
+        )
+        return {
+            "session_id": record.provider_job_id or session_id,
+            "project_uuid": str(state_config.get("libtv_project_uuid") or ""),
+            "project_url": (
+                f"https://www.liblib.tv/canvas?projectId={state_config.get('libtv_project_uuid')}"
+                if state_config.get("libtv_project_uuid")
+                else ""
+            ),
+            "urls": [],
+            "files": existing_files,
+            "video": existing_video,
+        }
+    if action is NextAction.EXPLICIT_FAIL:
+        raise LibtvError(f"libtv 会话显式失败,不重建: {record.last_error or ''}")
+
+    if action is NextAction.SUBMIT:
+        sess = await create_session(message=message, session_id=session_id)
+        sid = sess.get("sessionId") or session_id
+        project_uuid = sess.get("projectUuid", "")
+        if not sid:
+            raise LibtvError(f"agent-im 未返回 sessionId: {sess}")
+        state_config, record = apply_execution_event(
+            state_config, {"kind": "submitted", "provider_job_id": sid}
+        )
+        state_config["libtv_project_uuid"] = project_uuid
+        _sync_state()
+        logger.info("libtv 会话 %s(project %s)已发指令,轮询出片…", sid, project_uuid)
+    else:
+        sid = record.provider_job_id or session_id
+        project_uuid = ""
+        if not sid:
+            raise LibtvError("libtv 恢复缺少 sessionId,不重建会话")
+        logger.info("libtv 会话 %s 恢复续跑(不重建,不重复计费)…", sid)
 
     deadline_loops = max(1, int(timeout_s / max(1.0, poll_interval_s)))
     last_seq = 0
@@ -144,18 +216,59 @@ async def generate_via_libtv(
         for u in found:
             if u not in urls:
                 urls.append(u)
+        state_config, record = apply_execution_event(
+            state_config,
+            {"kind": "poll_checkpoint", "poll_checkpoint": record.poll_checkpoint + 1},
+        )
+        _sync_state()
         has_video = any(u.split("?")[0].lower().endswith(_VIDEO_EXTS) for u in urls)
         if urls and (has_video or not want_video):
             break
     if not urls:
+        state_config, record = apply_execution_event(
+            state_config,
+            {
+                "kind": "remote_failed",
+                "error": f"libtv 会话 {sid} 轮询 {timeout_s:.0f}s 未出任何结果 URL",
+            },
+        )
+        _sync_state()
         raise LibtvError(f"libtv 会话 {sid} 轮询 {timeout_s:.0f}s 未出任何结果 URL")
+    state_config, record = apply_execution_event(
+        state_config,
+        {
+            "kind": "remote_success",
+            "remote_artifact_url": urls[0],
+            "provider_terminal_state": "completed",
+        },
+    )
+    _sync_state()
 
     files: list[str] = []
     for i, u in enumerate(urls, 1):
         ext = Path(u.split("?")[0]).suffix or ".png"
-        p = await _download(u, out_dir / f"{prefix}_{i:02d}{ext}")
+        target = Path(out_dir) / f"{prefix}_{i:02d}{ext}"
+        if target.is_file():
+            files.append(str(target))  # restart resumes: present files skipped
+            continue
+        p = await _download(u, target)
         files.append(str(p))
+        state_config, record = apply_execution_event(
+            state_config,
+            {"kind": "download_progress", "received_bytes": target.stat().st_size, "etag": None},
+        )
+        _sync_state()
     video = next((f for f in files if Path(f).suffix.lower() in _VIDEO_EXTS), None)
+    state_config, record = apply_execution_event(
+        state_config,
+        {
+            "kind": "download_complete",
+            "local_artifact_path": video or (files[0] if files else ""),
+            "checksum": "",
+            "actual_cost": 0.0,
+        },
+    )
+    _sync_state()
     return {
         "session_id": sid,
         "project_uuid": project_uuid,

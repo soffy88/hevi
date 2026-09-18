@@ -1418,7 +1418,12 @@ async def test_fal_image_adapter_handles_queue_completion_and_download(
             self.status_code = status_code
             self._payload = payload or {}
             self.content = content
+            self.headers: dict[str, str] = {}
             self.text = "response"
+
+        async def aiter_bytes(self, chunk_size: int = 65536):  # type: ignore[no-untyped-def]
+            for index in range(0, len(self.content), chunk_size):
+                yield self.content[index : index + chunk_size]
 
         def json(self) -> dict[str, object]:
             return self._payload
@@ -1441,7 +1446,9 @@ async def test_fal_image_adapter_handles_queue_completion_and_download(
             return Response(200, content=b"i" * 512)
 
     monkeypatch.setattr(fal_image_service.httpx, "AsyncClient", lambda **_kwargs: Client())
-    monkeypatch.setattr(fal_image_service.asyncio, "sleep", lambda _seconds: _done())
+    import hevi.tasks.durable_provider as _durable_provider
+
+    monkeypatch.setattr(_durable_provider.asyncio, "sleep", lambda _seconds: _done())
     output = tmp_path / "image.png"
     result = await fal_image_service.fal_image_generate(
         prompt="subject",
