@@ -17,6 +17,21 @@ from hevi.creative.layer4.audit_dimensions import (
     run_dimensions,
 )
 from hevi.creative.layer4.comparison import ComparisonModule, IntentArtifactComparison
+from hevi.creative.layer4.character_authority import (
+    Appearance,
+    AppearanceKind,
+    Character,
+    CharacterAuthority,
+    CharacterError,
+    OwnerKind,
+    ReferenceCheck,
+    ScriptReference,
+    UtteranceOwner,
+    VoiceBinding,
+    VoiceConsistency,
+    VoiceIdentity,
+    derive_consistency,
+)
 from hevi.creative.layer4.context import (
     ContextBudget,
     ContextBuildError,
