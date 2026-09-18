@@ -171,6 +171,18 @@ def project_plan(facts: tuple[TargetFact, ...]) -> tuple[TargetPlan, ...]:
                 blocking_reason = "unreadable basis" if not fact.basis_readable else "blocked"
             if not repair_actions and blocking_reason is not None:
                 repair_actions = (derive_repair_for_reason(blocking_reason, fact.target_id),)
+        if status is TargetStatus.STALE and not repair_actions:
+            # Stale never auto re-bills: the proposed explicit-regenerate
+            # repair always requires confirmation; reuse stays the default.
+            repair_actions = (
+                RepairAction(
+                    action_id=f"repair-{fact.target_id}-regenerate-explicit",
+                    kind=RepairKind.REGENERATE_EXPLICIT,
+                    target_id=fact.target_id,
+                    detail="stale but usable; regenerate only with explicit confirmation",
+                    requires_confirmation=True,
+                ),
+            )
         next_actions: tuple[str, ...] = ()
         if status is TargetStatus.READY:
             next_actions = (f"generate:{fact.target_id}",)

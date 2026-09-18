@@ -2666,7 +2666,12 @@ async def test_tasks_router_media_delivery_and_stream_authorization_paths(
     audio.write_bytes(b"audio")
     repo.task = {**task, "config_json": {"artifact_manifest": manifest.model_dump(mode="json")}}
 
-    async def materialize(_manifest: ArtifactManifest, *, kind: str) -> Path:
+    async def materialize(
+        _manifest: ArtifactManifest, *, kind: str, preferred_artifact_id: str | None = None
+    ) -> Path:
+        # Fixture media are raw bytes (unprobable): snapshot selection must
+        # refuse and the serve path must fall back to legacy primary-first.
+        assert preferred_artifact_id is None
         return video if kind == "video" else audio
 
     monkeypatch.setattr(tasks_router, "materialize_artifact", materialize)
