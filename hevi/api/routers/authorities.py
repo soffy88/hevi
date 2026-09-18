@@ -1,0 +1,480 @@
+"""Authority visibility and settings surfaces (Gap Closure W13).
+
+Read-mostly product exposure for the W1-W9 authorities — no second
+statistics source, no re-selection, no secret acceptance:
+
+- usage ledger (W4 store): list / detail / analytics;
+- endpoint registry (W5 lifecycle): list / create / validate /
+  preview-request / check-response / check-capability / trial-record /
+  enable / disable / delete. Billable trials never execute here;
+- creative memory (W9 store): inspect / remember+edit / disable —
+  the PII/secret gate stays inside the memory path;
+- character variants (W6 view): appearances, default, voice inheritance;
+- task presentation + currency (W1/W2 over live task state).
+"""
+
+from __future__ import annotations
+
+import uuid
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from obase.persistence import PgPool
+from pydantic import BaseModel
+
+from hevi.auth.dependencies import get_current_user
+from hevi.creative.layer4.authority_stores import CallLedgerStore, EndpointRegistry
+from hevi.creative.layer4.creative_memory import CreativeMemory
+from hevi.db.pg_pool import get_hevi_pg_pool
+
+router = APIRouter(prefix="/authorities", tags=["authorities"])
+
+
+async def get_pg_pool() -> PgPool:
+    return await get_hevi_pg_pool()
+
+
+# ── usage ledger ─────────────────────────────────────────────────────────
+
+
+@router.get("/usage/calls")
+async def usage_calls(
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    provider: str = "",
+    model: str = "",
+    operation: str = "",
+    status: str = "",
+    project: str = "",
+    limit: int = Query(default=50, le=200),
+    offset: int = 0,
+) -> dict[str, Any]:
+    """List call rows. The ledger is the only usage source (USAGE_UI_AUTHORITY)."""
+
+    rows, total = CallLedgerStore().list_records(
+        provider=provider,
+        model=model,
+        operation=operation,
+        status=status,
+        project_ref=project,
+        limit=limit,
+        offset=offset,
+    )
+    return {"total": total, "calls": rows}
+
+
+@router.get("/usage/calls/{call_id}")
+async def usage_call_detail(
+    call_id: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """Deep-link target: one call row with input/response/error evidence."""
+
+    row = CallLedgerStore().get(call_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="call not found")
+    return row
+
+
+@router.get("/usage/analytics")
+async def usage_analytics(
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Cost/latency/rate rollups + attention flags, computed from ledger rows."""
+
+    from hevi.creative.layer4.usage_ledger import (
+        ProviderCallRecord,
+        aggregate,
+        detect_attention,
+    )
+
+    records = tuple(
+        ProviderCallRecord.model_validate(row) for row in CallLedgerStore().all_records()
+    )
+    analytics = aggregate(records)
+    attention = detect_attention(records)
+    return {
+        **analytics.model_dump(mode="json"),
+        "attention": [flag.model_dump(mode="json") for flag in attention],
+    }
+
+
+# ── endpoint registry ────────────────────────────────────────────────────
+
+
+class DefinitionBody(BaseModel):
+    definition: dict[str, Any]
+
+
+class ParamsBody(BaseModel):
+    params: dict[str, Any] = {}
+
+
+class SampleBody(BaseModel):
+    raw_response: dict[str, Any] = {}
+
+
+class RequirementBody(BaseModel):
+    requirement: dict[str, Any] = {}
+
+
+class TrialBody(BaseModel):
+    outcome: str = "success"
+    provider_job_ref: str = ""
+
+
+def _registry() -> EndpointRegistry:
+    return EndpointRegistry()
+
+
+@router.get("/endpoints")
+async def endpoints_list(
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    return {"endpoints": _registry().list_definitions()}
+
+
+@router.post("/endpoints", status_code=201)
+async def endpoints_create(
+    body: DefinitionBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """Import a definition: validated secret-free, always stored at DRAFT."""
+
+    from hevi.creative.layer4.endpoint_lifecycle import import_definition
+
+    try:
+        definition = import_definition(body.definition)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"invalid definition: {exc}") from exc
+    return {"name": _registry().save(definition.model_dump(mode="json"))}
+
+
+@router.get("/endpoints/{name}")
+async def endpoints_inspect(
+    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    row = _registry().get(name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="endpoint not found")
+    return row
+
+
+@router.delete("/endpoints/{name}")
+async def endpoints_delete(
+    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    if not _registry().delete(name):
+        raise HTTPException(status_code=404, detail="endpoint not found")
+    return {"deleted": name}
+
+
+def _loaded_definition(name: str) -> dict[str, Any]:
+    row = _registry().get(name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="endpoint not found")
+    return row
+
+
+@router.post("/endpoints/{name}/validate")
+async def endpoints_validate(
+    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    from hevi.creative.layer4.endpoint_lifecycle import (
+        DeclarativeEndpointDefinition,
+        mark_validated,
+        validate_definition,
+    )
+
+    definition = DeclarativeEndpointDefinition.model_validate(_loaded_definition(name))
+    report = validate_definition(definition)
+    if report.valid:
+        _registry().save(mark_validated(definition).model_dump(mode="json"))
+    return report.model_dump(mode="json")
+
+
+@router.post("/endpoints/{name}/preview-request")
+async def endpoints_preview_request(
+    name: str, body: ParamsBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """Render-only: never sends, never bills, secrets stay symbolic."""
+
+    from hevi.creative.layer4.endpoint_lifecycle import (
+        DeclarativeEndpointDefinition,
+        preview_request,
+    )
+
+    definition = DeclarativeEndpointDefinition.model_validate(_loaded_definition(name))
+    return preview_request(definition, body.params).model_dump(mode="json")
+
+
+@router.post("/endpoints/{name}/check-response")
+async def endpoints_check_response(
+    name: str, body: SampleBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """Validate taking paths against a supplier sample. Sends nothing."""
+
+    from hevi.creative.layer4.endpoint_lifecycle import (
+        DeclarativeEndpointDefinition,
+        preview_result,
+    )
+
+    definition = DeclarativeEndpointDefinition.model_validate(_loaded_definition(name))
+    return preview_result(definition, body.raw_response).model_dump(mode="json")
+
+
+@router.post("/endpoints/{name}/check-capability")
+async def endpoints_check_capability(
+    name: str, body: RequirementBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    from hevi.creative.layer4.endpoint_lifecycle import (
+        CapabilityRequirement,
+        DeclarativeEndpointDefinition,
+        check_capability,
+    )
+
+    definition = DeclarativeEndpointDefinition.model_validate(_loaded_definition(name))
+    requirement = CapabilityRequirement.model_validate(body.requirement)
+    return check_capability(definition, requirement).model_dump(mode="json")
+
+
+@router.post("/endpoints/{name}/trial")
+async def endpoints_record_trial(
+    name: str, body: TrialBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """Record a caller-executed trial. This API never executes billable runs."""
+
+    from hevi.creative.layer4.endpoint_lifecycle import (
+        DeclarativeEndpointDefinition,
+        record_trial,
+    )
+
+    definition = DeclarativeEndpointDefinition.model_validate(_loaded_definition(name))
+    try:
+        updated = record_trial(
+            definition, outcome=body.outcome, provider_job_ref=body.provider_job_ref
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    _registry().save(updated.model_dump(mode="json"))
+    return {"name": name, "state": updated.state.value, "trial_summary": updated.trial_summary}
+
+
+@router.post("/endpoints/{name}/enable")
+async def endpoints_enable(
+    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    from hevi.creative.layer4.endpoint_lifecycle import DeclarativeEndpointDefinition, enable
+
+    definition = DeclarativeEndpointDefinition.model_validate(_loaded_definition(name))
+    try:
+        updated = enable(definition)
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    _registry().save(updated.model_dump(mode="json"))
+    return {"name": name, "state": updated.state.value}
+
+
+@router.post("/endpoints/{name}/disable")
+async def endpoints_disable(
+    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    from hevi.creative.layer4.endpoint_lifecycle import DeclarativeEndpointDefinition, disable
+
+    definition = DeclarativeEndpointDefinition.model_validate(_loaded_definition(name))
+    try:
+        updated = disable(definition)
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    _registry().save(updated.model_dump(mode="json"))
+    return {"name": name, "state": updated.state.value}
+
+
+# ── creative memory settings ─────────────────────────────────────────────
+
+
+class MemoryBody(BaseModel):
+    scope: str = "user"
+    key: str = ""
+    content: str = ""
+    project_id: str = ""
+    session_id: str = ""
+
+
+def _memory() -> CreativeMemory:
+    from hevi.creative.layer4.authority_stores import memory_db_path
+
+    return CreativeMemory.at_path(memory_db_path())
+
+
+@router.get("/memory")
+async def memory_inspect(
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    scope: str = "user",
+    project_id: str = "",
+    include_disabled: bool = False,
+) -> dict[str, Any]:
+    return {
+        "entries": [
+            entry.model_dump(mode="json")
+            for entry in _memory().inspect(
+                scope=scope, project_id=project_id, include_disabled=include_disabled
+            )
+        ]
+    }
+
+
+@router.put("/memory")
+async def memory_remember(
+    body: MemoryBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """Remember/edit through the memory path, so the PII gate cannot be bypassed."""
+
+    from hevi.creative.layer4.creative_memory import MemoryError
+
+    try:
+        entry = _memory().edit(
+            scope=body.scope,
+            key=body.key,
+            content=body.content,
+            project_id=body.project_id,
+            session_id=body.session_id,
+        )
+    except MemoryError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return entry.model_dump(mode="json")
+
+
+@router.delete("/memory")
+async def memory_disable(
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    scope: str = "user",
+    key: str = "",
+    project_id: str = "",
+) -> dict[str, Any]:
+    _memory().disable(scope=scope, key=key, project_id=project_id)
+    return {"disabled": key, "scope": scope}
+
+
+# ── character variants ───────────────────────────────────────────────────
+
+
+async def _load_subject(pool: PgPool, character_id: str) -> dict[str, Any] | None:
+    from hevi.subjects.repository import SubjectRepository
+    from hevi.subjects.subject_service import SubjectService
+
+    try:
+        return await SubjectService(SubjectRepository(pool)).get_subject(character_id)
+    except Exception:
+        return None
+
+
+@router.get("/characters/{character_id}/variants")
+async def character_variants(
+    character_id: str,
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """Appearances, default look, and per-appearance voice inheritance."""
+
+    from hevi.creative.layer4.character_authority import character_view_from_sources
+
+    subject = await _load_subject(pool, character_id)
+    if not subject:
+        raise HTTPException(status_code=404, detail="character not found")
+    metadata = (subject or {}).get("metadata") or {}
+    refs = (subject or {}).get("reference_images") or []
+    voice_ref = metadata.get("voice_ref") if isinstance(metadata, dict) else None
+    view = character_view_from_sources(
+        character_id=str((subject or {}).get("id") or character_id),
+        canonical_name=str((subject or {}).get("name") or character_id),
+        aliases=tuple((subject or {}).get("aliases") or ()),
+        voice_id=str(voice_ref or ""),
+        reference_images=tuple(str(r) for r in refs),
+    )
+    return view.model_dump(mode="json")
+
+
+# ── task presentation + currency visibility ──────────────────────────────
+
+
+async def _load_task(pool: PgPool, task_id: uuid.UUID) -> dict[str, Any] | None:
+    from hevi.tasks.repository import TaskRepository
+
+    return await TaskRepository(pool).get_task(task_id)
+
+
+@router.get("/tasks/{task_id}/presentation")
+async def task_presentation(
+    task_id: str,
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """Current selected presentation for a task: same snapshot readers consume."""
+
+    from hevi.creative.layer4.presentation import for_download, snapshot_for_serving
+    from hevi.production.artifacts import manifest_from_task
+    from hevi.production.delivery_gate import probe_manifest_durations_ms
+
+    try:
+        task_uuid = uuid.UUID(task_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid task id") from exc
+    task = await _load_task(pool, task_uuid)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    manifest = manifest_from_task(task)
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="no artifact manifest")
+    try:
+        snapshot = snapshot_for_serving(
+            manifest, task=task, probe_durations_ms=probe_manifest_durations_ms(manifest)
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=409, detail=f"presentation not materializable: {exc}"
+        ) from exc
+    return for_download(snapshot)
+
+
+@router.get("/tasks/{task_id}/currency")
+async def task_currency(
+    task_id: str,
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """CURRENT/STALE/MISSING/BLOCKED per manifest entry, judged uniformly."""
+
+    from hevi.creative.layer4.currency import ArtifactBasis, annotate_selections, evaluate_all
+    from hevi.production.artifacts import manifest_from_task
+
+    try:
+        task_uuid = uuid.UUID(task_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid task id") from exc
+    task = await _load_task(pool, task_uuid)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    manifest = manifest_from_task(task)
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="no artifact manifest")
+    config = task.get("config_json") or {}
+    revision = str(config.get("revision_id") or config.get("production_revision") or "")
+    deps = {"revision": revision} if revision else {}
+    bases = tuple(
+        ArtifactBasis(
+            artifact_id=str(item.artifact_id or item.path),
+            role=str(item.logical_role or item.kind),
+            exists=True,
+            integrity_ok=bool(item.sha256),
+            dependency_revision=revision,
+        )
+        for item in manifest.artifacts
+    )
+    evaluations = evaluate_all(bases, deps)
+    usable = sum(1 for e in evaluations if e.usable)
+    return {
+        "evaluations": annotate_selections(evaluations),
+        "usable": usable,
+        "total": len(evaluations),
+    }
+
+
+__all__ = ["router"]

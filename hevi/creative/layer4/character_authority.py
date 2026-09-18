@@ -505,12 +505,90 @@ def voice_for_speaker(
     return owner.voice_id or default
 
 
+class CharacterView(BaseModel):
+    """Studio visibility projection: appearances, default, voice inheritance."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    character_id: str
+    canonical_name: str
+    aliases: tuple[str, ...] = ()
+    default_appearance_id: str = ""
+    appearances: tuple[dict[str, Any], ...] = ()
+    voice_by_appearance: dict[str, str] = Field(default_factory=dict)
+
+
+def character_view_from_sources(
+    *,
+    character_id: str,
+    canonical_name: str,
+    aliases: tuple[str, ...] = (),
+    voice_id: str = "",
+    reference_images: tuple[str, ...] = (),
+    appearance_text: str = "",
+    appearances: tuple[Appearance, ...] | None = None,
+) -> CharacterView:
+    """Build a visibility view from legacy subject/bible-shaped sources.
+
+    Legacy sources carry a single look: it becomes the default appearance
+    with inherited voice. Variant-aware callers pass ``appearances``
+    explicitly; every appearance reports its effective (inherited or
+    overridden) voice id.
+    """
+
+    if appearances is None:
+        appearances = (
+            Appearance(
+                appearance_id="default",
+                character_id=character_id,
+                kind=AppearanceKind.DEFAULT,
+                label=appearance_text or "default",
+                visual_asset_ids=reference_images,
+                reference_asset_ids=reference_images,
+                revision=f"{character_id}@default#1",
+            ),
+        )
+    character = Character(
+        character_id=character_id,
+        canonical_name=canonical_name,
+        aliases=aliases,
+        default_appearance_id="default"
+        if any(a.appearance_id == "default" for a in appearances)
+        else appearances[0].appearance_id,
+        appearances=appearances,
+        voice=VoiceIdentity(voice_id=voice_id or "unassigned"),
+    )
+    return CharacterView(
+        character_id=character.character_id,
+        canonical_name=character.canonical_name,
+        aliases=character.aliases,
+        default_appearance_id=character.default_appearance_id,
+        appearances=tuple(
+            {
+                "appearance_id": appearance.appearance_id,
+                "kind": appearance.kind.value,
+                "label": appearance.label,
+                "version": appearance.version,
+                "visual_asset_ids": list(appearance.visual_asset_ids),
+                "reference_asset_ids": list(appearance.reference_asset_ids),
+                "revision": appearance.revision,
+            }
+            for appearance in character.appearances
+        ),
+        voice_by_appearance={
+            appearance.appearance_id: character.effective_voice(appearance.appearance_id).voice_id
+            for appearance in character.appearances
+        },
+    )
+
+
 __all__ = [
     "Appearance",
     "AppearanceKind",
     "Character",
     "CharacterAuthority",
     "CharacterError",
+    "CharacterView",
     "OwnerKind",
     "ReferenceCheck",
     "ScriptReference",

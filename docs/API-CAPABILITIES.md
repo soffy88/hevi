@@ -21,6 +21,31 @@
 | POST | `/api/auth/oauth/google` | Google Oauth |
 | POST | `/api/auth/register` | Register |
 
+## authorities
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/authorities/characters/{character_id}/variants` | Character Variants |
+| GET | `/api/authorities/endpoints` | Endpoints List |
+| POST | `/api/authorities/endpoints` | Endpoints Create |
+| DELETE | `/api/authorities/endpoints/{name}` | Endpoints Delete |
+| GET | `/api/authorities/endpoints/{name}` | Endpoints Inspect |
+| POST | `/api/authorities/endpoints/{name}/check-capability` | Endpoints Check Capability |
+| POST | `/api/authorities/endpoints/{name}/check-response` | Endpoints Check Response |
+| POST | `/api/authorities/endpoints/{name}/disable` | Endpoints Disable |
+| POST | `/api/authorities/endpoints/{name}/enable` | Endpoints Enable |
+| POST | `/api/authorities/endpoints/{name}/preview-request` | Endpoints Preview Request |
+| POST | `/api/authorities/endpoints/{name}/trial` | Endpoints Record Trial |
+| POST | `/api/authorities/endpoints/{name}/validate` | Endpoints Validate |
+| DELETE | `/api/authorities/memory` | Memory Disable |
+| GET | `/api/authorities/memory` | Memory Inspect |
+| PUT | `/api/authorities/memory` | Memory Remember |
+| GET | `/api/authorities/tasks/{task_id}/currency` | Task Currency |
+| GET | `/api/authorities/tasks/{task_id}/presentation` | Task Presentation |
+| GET | `/api/authorities/usage/analytics` | Usage Analytics |
+| GET | `/api/authorities/usage/calls` | Usage Calls |
+| GET | `/api/authorities/usage/calls/{call_id}` | Usage Call Detail |
+
 ## backlot
 
 | 方法 | 路径 | 说明 |

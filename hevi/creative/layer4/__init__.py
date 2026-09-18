@@ -16,12 +16,20 @@ from hevi.creative.layer4.audit_dimensions import (
     StyleSpec,
     run_dimensions,
 )
+from hevi.creative.layer4.authority_stores import (
+    CallLedgerStore,
+    EndpointRegistry,
+    endpoints_db_path,
+    memory_db_path,
+    usage_db_path,
+)
 from hevi.creative.layer4.character_authority import (
     Appearance,
     AppearanceKind,
     Character,
     CharacterAuthority,
     CharacterError,
+    CharacterView,
     OwnerKind,
     ReferenceCheck,
     ScriptReference,
@@ -30,6 +38,7 @@ from hevi.creative.layer4.character_authority import (
     VoiceConsistency,
     VoiceIdentity,
     authority_from_voice_map,
+    character_view_from_sources,
     derive_consistency,
     voice_for_speaker,
 )
