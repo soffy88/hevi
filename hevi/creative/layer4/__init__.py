@@ -93,6 +93,26 @@ from hevi.creative.layer4.presentation import (
     presentation_from_task,
     snapshot_from_manifest,
 )
+from hevi.creative.layer4.provider_execution import (
+    AcquisitionState,
+    BillingState,
+    DownloadPlan,
+    ExecutionError,
+    NextAction,
+    ProviderExecutionRecord,
+    RemoteState,
+    apply_download_complete,
+    apply_download_progress,
+    apply_poll_failure,
+    apply_poll_success,
+    apply_remote_expired,
+    assert_no_duplicate_submit,
+    decide_next_action,
+    download_plan,
+    guarded_submit,
+    intent_fingerprint,
+    new_record,
+)
 from hevi.creative.layer4.research import ResearchModule
 from hevi.creative.layer4.review import ReviewMode, ReviewWorkflow
 from hevi.creative.layer4.revision import (
