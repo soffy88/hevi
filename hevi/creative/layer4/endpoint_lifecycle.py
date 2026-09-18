@@ -40,8 +40,33 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 SECRET_REF_RE = re.compile(r"^\{\$SECRET:[A-Za-z0-9_.-]{1,64}\}$")
-TEMPLATE_SLOT_RE = re.compile(r"\{\{([a-zA-Z0-9_.]+)\}\}")
+SECRET_REF_WITH_SCHEME_RE = re.compile(
+    r"^([A-Za-z][A-Za-z0-9_-]* )?(\{\$SECRET:[A-Za-z0-9_.-]{1,64}\})$"
+)
 SECRET_VALUE_RE = re.compile(r"sk-[A-Za-z0-9]{16,}|[A-Za-z0-9]{32,}")
+TEMPLATE_SLOT_RE = re.compile(r"\{\{([a-zA-Z0-9_.]+)\}\}")
+
+
+def _secret_name(value: str) -> str:
+    full = SECRET_REF_RE.match(value)
+    if full:
+        return value[len("{$SECRET:") : -1]
+    schemed = SECRET_REF_WITH_SCHEME_RE.match(value)
+    if schemed:
+        return schemed.group(2)[len("{$SECRET:") : -1]
+    raise EndpointError("ENDPOINT_VALUE_IS_NOT_A_SECRET_REFERENCE")
+
+
+def resolve_secret_reference(value: str, secrets: dict[str, str]) -> str:
+    """Substitute a secret reference; schemes (``Bearer ...``) are preserved."""
+
+    schemed = SECRET_REF_WITH_SCHEME_RE.match(value)
+    name = _secret_name(value)
+    if name not in secrets:
+        raise EndpointError(f"ENDPOINT_SECRET_UNRESOLVED:{name}")
+    if schemed and schemed.group(1):
+        return f"{schemed.group(1)}{secrets[name]}"
+    return secrets[name]
 
 
 class AuthMode(StrEnum):
@@ -130,7 +155,7 @@ class DeclarativeEndpointDefinition(BaseModel):
                 self.auth_mode is not AuthMode.NONE
                 and lowered in {"authorization", "x-api-key", "api-key"}
             ) or lowered in {"authorization", "x-api-key", "api-key"}
-            if is_auth_position and not SECRET_REF_RE.match(value):
+            if is_auth_position and not SECRET_REF_WITH_SCHEME_RE.match(value):
                 raise EndpointError("ENDPOINT_PLAINTEXT_SECRET_FORBIDDEN")
             if SECRET_VALUE_RE.search(value):
                 raise EndpointError("ENDPOINT_PLAINTEXT_SECRET_FORBIDDEN")

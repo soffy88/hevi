@@ -76,6 +76,11 @@ from hevi.creative.layer4.editable_delivery import (
     to_editable_doc,
     trim_clip,
 )
+from hevi.creative.layer4.endpoint_execution import (
+    EndpointExecutionError,
+    ExecutionReport,
+    execute_endpoint,
+)
 from hevi.creative.layer4.endpoint_lifecycle import (
     AdmissionVerdict,
     AuthMode,
@@ -103,6 +108,7 @@ from hevi.creative.layer4.endpoint_lifecycle import (
     promote_test_to_production,
     quarantine_test_artifact,
     record_trial,
+    resolve_secret_reference,
     validate_definition,
 )
 from hevi.creative.layer4.export import ExportModule
