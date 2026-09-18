@@ -16,7 +16,6 @@ from hevi.creative.layer4.audit_dimensions import (
     StyleSpec,
     run_dimensions,
 )
-from hevi.creative.layer4.comparison import ComparisonModule, IntentArtifactComparison
 from hevi.creative.layer4.character_authority import (
     Appearance,
     AppearanceKind,
@@ -32,6 +31,7 @@ from hevi.creative.layer4.character_authority import (
     VoiceIdentity,
     derive_consistency,
 )
+from hevi.creative.layer4.comparison import ComparisonModule, IntentArtifactComparison
 from hevi.creative.layer4.context import (
     ContextBudget,
     ContextBuildError,
@@ -109,6 +109,23 @@ from hevi.creative.layer4.narrative import (
     NarrativeStage,
     ObservationValidationError,
     WorkflowSnapshot,
+)
+from hevi.creative.layer4.plan_projection import (
+    AdmissionVerdict3,
+    NormalizedRejection,
+    PlanError,
+    RepairAction,
+    RepairKind,
+    TargetFact,
+    TargetPlan,
+    TargetStatus,
+    admit_batch,
+    admit_single,
+    derive_repair_for_reason,
+    derive_target_status,
+    normalize_rejection,
+    project_plan,
+    validate_repair_action,
 )
 from hevi.creative.layer4.play import (
     Action,
