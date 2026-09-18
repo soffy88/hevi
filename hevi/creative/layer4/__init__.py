@@ -39,6 +39,14 @@ from hevi.creative.layer4.context import (
     CreativeContextCompiler,
 )
 from hevi.creative.layer4.cover import CoverGeneration, CoverModule
+from hevi.creative.layer4.creative_memory import (
+    CreativeMemory,
+    MemoryEntry,
+    MemoryError,
+    MemorySource,
+    ResolvedMemory,
+    check_memory_safety,
+)
 from hevi.creative.layer4.currency import (
     ArtifactBasis,
     ArtifactCurrency,
