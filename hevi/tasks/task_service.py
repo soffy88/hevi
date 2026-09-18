@@ -2101,3 +2101,62 @@ class TaskService:
             return refreshed
 
         return task
+
+    # ── Durable provider execution (W11) ──────────────────────────────────
+    # The W3 execution plane persisted through the real repository. Every
+    # transition below reads/writes task.config_json via get_task/update_task,
+    # so a restarted worker recovers from the database, not from memory.
+
+    async def begin_durable_execution(
+        self,
+        task_id: uuid.UUID,
+        *,
+        provider: str,
+        endpoint: str,
+        model: str,
+        request: dict[str, Any],
+        production_revision: str,
+        target_artifact_id: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Open or re-enter durable execution. Non-SUBMIT actions submit nothing."""
+        from hevi.tasks.durable_execution import begin_execution
+
+        task = await self.repository.get_task(task_id)
+        if task is None:
+            raise ValueError(f"Task {task_id} not found")
+        config, record, action = begin_execution(
+            dict(task.get("config_json") or {}),
+            provider=provider,
+            endpoint=endpoint,
+            model=model,
+            request=request,
+            production_revision=production_revision,
+            target_artifact_id=target_artifact_id,
+            idempotency_key=idempotency_key,
+        )
+        await self.repository.update_task(task_id, {"config_json": config})
+        return {"action": action.value, "record": record.model_dump(mode="json")}
+
+    async def record_durable_event(
+        self, task_id: uuid.UUID, event: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Persist one provider-side event (submit/poll/download/failure)."""
+        from hevi.tasks.durable_execution import apply_execution_event
+
+        task = await self.repository.get_task(task_id)
+        if task is None:
+            raise ValueError(f"Task {task_id} not found")
+        config, record = apply_execution_event(dict(task.get("config_json") or {}), event)
+        await self.repository.update_task(task_id, {"config_json": config})
+        return {"record": record.model_dump(mode="json")}
+
+    async def recover_durable_execution(self, task_id: uuid.UUID) -> dict[str, Any]:
+        """Restart recovery decision from persisted state. Never re-submits."""
+        from hevi.tasks.durable_execution import recover_execution
+
+        task = await self.repository.get_task(task_id)
+        if task is None:
+            raise ValueError(f"Task {task_id} not found")
+        action, reason = recover_execution(dict(task.get("config_json") or {}))
+        return {"action": action.value, "reason": reason}
