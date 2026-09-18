@@ -26,6 +26,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from hevi.creative.layer4.currency import revision_matches
+
 
 class AudioMode(StrEnum):
     """Which sound the presentation carries."""
@@ -120,20 +122,14 @@ class PresentationSnapshot(BaseModel):
 
 
 def _is_current(candidate: CandidateMedia, dependency_revisions: Mapping[str, str]) -> bool:
-    """A candidate is current when its dependency revision still matches.
+    """A candidate is current when every gated dependency revision still matches.
 
-    Only keys present in ``dependency_revisions`` are compared, so callers
-    declare exactly which dependencies gate freshness; anything undeclared
-    cannot silently flip currency.
+    Callers declare exactly which dependencies gate freshness via
+    ``dependency_revisions``; anything undeclared cannot flip currency, but
+    every declared key must agree (token-exact, shared with currency W2).
     """
 
-    if not dependency_revisions:
-        return True
-    for key, revision in dependency_revisions.items():
-        marker = f"{key}@{revision}"
-        if marker in candidate.dependency_revision or candidate.dependency_revision == revision:
-            return True
-    return False
+    return revision_matches(candidate.dependency_revision, dependency_revisions)
 
 
 class PresentationSelector:

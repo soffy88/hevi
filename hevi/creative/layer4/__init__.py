@@ -24,6 +24,17 @@ from hevi.creative.layer4.context import (
     CreativeContextCompiler,
 )
 from hevi.creative.layer4.cover import CoverGeneration, CoverModule
+from hevi.creative.layer4.currency import (
+    ArtifactBasis,
+    ArtifactCurrency,
+    CurrencyError,
+    CurrencyEvaluation,
+    annotate_selections,
+    assert_no_usable_loss,
+    evaluate_all,
+    evaluate_currency,
+    invalidate_dependents,
+)
 from hevi.creative.layer4.export import ExportModule
 from hevi.creative.layer4.fanfic import DerivedCanon, FanficModule
 from hevi.creative.layer4.forecast import ForecastEngine, ForecastResult, StaleForecastError
