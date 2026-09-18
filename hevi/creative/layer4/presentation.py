@@ -593,6 +593,70 @@ def snapshot_from_manifest(
     )
 
 
+def infer_audio_mode(manifest: Any) -> AudioMode:
+    """Deterministic audio-mode inference over manifest entries.
+
+    TTS-family kinds mean a synthesized track; other audio entries mean
+    native capture; no audio entries mean silent. Callers with explicit
+    knowledge pass audio_mode directly instead.
+    """
+
+    kinds = {
+        str(getattr(item, "kind", "") or "").lower()
+        for item in (getattr(manifest, "artifacts", None) or ())
+    }
+    roles = {
+        str(getattr(item, "logical_role", "") or "").lower()
+        for item in (getattr(manifest, "artifacts", None) or ())
+    }
+    if kinds & {"tts", "voiceover", "dub"} or roles & {"tts", "voiceover", "dub"}:
+        return AudioMode.TTS
+    if kinds & {"audio"} or roles & {"audio"}:
+        return AudioMode.NATIVE
+    return AudioMode.SILENT
+
+
+def snapshot_for_serving(
+    manifest: Any,
+    *,
+    task: Mapping[str, Any] | None = None,
+    probe_durations_ms: Mapping[str, int],
+    audio_mode: AudioMode | None = None,
+    project_id: str = "",
+    production_run_id: str = "",
+    revision_id: str = "",
+    scope_id: str = "serve",
+) -> PresentationSnapshot:
+    """Materialize the serving selection: stored snapshot wins, else manifest.
+
+    Serve paths historically re-selected per request (primary-of-kind).
+    This is the single delegation point: a stored ``presentation_snapshot``
+    round-trips without re-selection; otherwise the manifest materializes
+    with probed real durations. Anything unprovable refuses with
+    PRESENTATION_DURATION_UNKNOWN and callers keep their legacy fallback.
+    """
+
+    if task is not None:
+        stored = presentation_from_task(task, actual_durations_ms=probe_durations_ms)
+        if stored is not None:
+            return stored
+    return snapshot_from_manifest(
+        manifest,
+        project_id=project_id
+        or str(
+            (task or {}).get("project_id")
+            or ((task or {}).get("config_json") or {}).get("project_id")
+            or "unknown"
+        ),
+        production_run_id=production_run_id or str((task or {}).get("id") or "unknown"),
+        revision_id=revision_id
+        or str(((task or {}).get("config_json") or {}).get("revision_id") or "unknown"),
+        scope_id=scope_id,
+        actual_durations_ms=probe_durations_ms,
+        audio_mode=audio_mode if audio_mode is not None else infer_audio_mode(manifest),
+    )
+
+
 def presentation_from_task(
     task: Mapping[str, Any], *, actual_durations_ms: Mapping[str, int]
 ) -> PresentationSnapshot | None:
@@ -640,6 +704,8 @@ __all__ = [
     "for_preview",
     "for_publish",
     "for_subtitles",
+    "infer_audio_mode",
     "presentation_from_task",
+    "snapshot_for_serving",
     "snapshot_from_manifest",
 ]

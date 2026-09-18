@@ -127,6 +127,22 @@ async def _load_task_manifest(
     return manifest_from_task(task)
 
 
+def _snapshot_preferred_ids(
+    task: dict[str, Any], manifest: ArtifactManifest
+) -> tuple[str | None, str | None]:
+    from hevi.artifact_store.http import preferred_ids_for_serving
+
+    return preferred_ids_for_serving(task, manifest)
+
+
+def _snapshot_preferred_video_id(task: dict[str, Any], manifest: ArtifactManifest) -> str | None:
+    return _snapshot_preferred_ids(task, manifest)[0]
+
+
+def _snapshot_preferred_audio_id(task: dict[str, Any], manifest: ArtifactManifest) -> str | None:
+    return _snapshot_preferred_ids(task, manifest)[1]
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 
@@ -417,7 +433,8 @@ async def _authorize_task_video(task_id: UUID, repo: TaskRepository, token: str 
 
     manifest = await _load_task_manifest(task, repo)
     if manifest is not None:
-        return await materialize_artifact(manifest, kind="video")
+        preferred = _snapshot_preferred_video_id(task, manifest)
+        return await materialize_artifact(manifest, kind="video", preferred_artifact_id=preferred)
     if not settings.local_mode and not settings.debug:
         raise HTTPException(status_code=409, detail="Video artifact is not committed")
     path_str = task.get("result_video_path")
@@ -445,7 +462,8 @@ async def _authorize_task_audio(task_id: UUID, repo: TaskRepository, token: str 
     manifest = await _load_task_manifest(task, repo)
     if manifest is None:
         raise HTTPException(status_code=409, detail="Audio not ready")
-    return await materialize_artifact(manifest, kind="audio")
+    preferred = _snapshot_preferred_audio_id(task, manifest)
+    return await materialize_artifact(manifest, kind="audio", preferred_artifact_id=preferred)
 
 
 @router.get("/{task_id}/video")

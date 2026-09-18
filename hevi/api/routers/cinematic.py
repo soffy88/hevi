@@ -274,7 +274,10 @@ async def get_animation_video(
         manifest = manifest_from_task(task)
         if task.get("status") != "completed" or manifest is None:
             raise HTTPException(status_code=404, detail="视频尚未生成")
-        video = await materialize_artifact(manifest, kind="video")
+        from hevi.artifact_store.http import preferred_ids_for_serving
+
+        preferred, _ = preferred_ids_for_serving(task, manifest)
+        video = await materialize_artifact(manifest, kind="video", preferred_artifact_id=preferred)
         return FileResponse(str(video), media_type="video/mp4", filename=f"{task_id}.mp4")
 
     row = session.exec(select(TaskRun).where(TaskRun.task_id == task_id)).first()

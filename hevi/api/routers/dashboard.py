@@ -92,10 +92,13 @@ def _canonical_task_to_dict(task: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _canonical_video(task: dict[str, Any]) -> Path:
+    from hevi.artifact_store.http import preferred_ids_for_serving
+
     manifest = manifest_from_task(task)
     if manifest is None or task.get("status") != "completed":
         raise HTTPException(status_code=404, detail="成片尚未生成")
-    return await materialize_artifact(manifest, kind="video")
+    preferred, _ = preferred_ids_for_serving(task, manifest)
+    return await materialize_artifact(manifest, kind="video", preferred_artifact_id=preferred)
 
 
 def _all_rows() -> list[TaskRun]:

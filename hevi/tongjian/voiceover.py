@@ -241,6 +241,13 @@ async def synthesize_voiceover(
     cursor_ms = 0
     prev_act: int | None = None
 
+    from hevi.creative.layer4.character_authority import (
+        authority_from_voice_map,
+        voice_for_speaker,
+    )
+
+    voice_authority = authority_from_voice_map(voice_by_speaker or {})
+
     for line in script.lines:
         if not line.text.strip():
             continue
@@ -258,7 +265,13 @@ async def synthesize_voiceover(
         filename = _audio_filename(line)
         file_path = output_dir / filename
 
-        voice = (voice_by_speaker or {}).get(line.speaker) if line.type == "dialogue" else None
+        is_dialogue = line.type == "dialogue"
+        voice = voice_for_speaker(
+            voice_authority,
+            line.speaker,
+            is_dialogue=is_dialogue,
+            default=(voice_by_speaker or {}).get(line.speaker) if is_dialogue else None,
+        )
         try:
             duration_ms = await _synthesize_line(line, file_path, tts_fn=tts_fn, voice=voice)
         except Exception as e:

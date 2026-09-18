@@ -88,6 +88,12 @@ def build_tongjian_inputs(
     tj_shots: list[Shot] = []
     bible_names = {c.name for c in design_list.characters if c.name}
     scene_names = {s.name for s in design_list.scenes if s.name}
+    from hevi.creative.layer4.character_authority import (
+        authority_from_voice_map,
+        voice_for_speaker,
+    )
+
+    voice_authority = authority_from_voice_map(voice_by_speaker or {})
     n = 0
     for shot in shot_list.shots:
         shot_line_ids: list[str] = []
@@ -165,7 +171,9 @@ def build_tongjian_inputs(
                 appearance=" ".join(
                     x for x in (c.appearance, c.wardrobe, c.hairstyle) if x
                 ).strip(),
-                voice_id=voice_by_speaker.get(c.name),
+                voice_id=voice_for_speaker(
+                    voice_authority, c.name, default=(voice_by_speaker or {}).get(c.name)
+                ),
             )
             for c in design_list.characters
             if c.name

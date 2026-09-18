@@ -1102,9 +1102,13 @@ async def download_run_video(
         raw_manifest = rec.get("artifact_manifest")
         if not raw_manifest:
             raise HTTPException(status_code=409, detail="成片尚未提交 Artifact Store")
-        path = await materialize_artifact(
-            ArtifactManifest.model_validate(raw_manifest), kind="video"
+        from hevi.artifact_store.http import preferred_ids_for_serving
+
+        validated = ArtifactManifest.model_validate(raw_manifest)
+        preferred, _ = preferred_ids_for_serving(
+            {"id": run_id, "config_json": {"artifact_manifest": raw_manifest}}, validated
         )
+        path = await materialize_artifact(validated, kind="video", preferred_artifact_id=preferred)
     else:
         path = Path("output/tongjian") / run_id / "L8" / "final.mp4"
     if not path.is_file():

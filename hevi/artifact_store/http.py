@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
@@ -15,7 +16,15 @@ from hevi.production.artifacts import Artifact, ArtifactManifest
 from .factory import get_object_store
 
 
-def _select(manifest: ArtifactManifest, kind: str) -> Artifact:
+def _select(
+    manifest: ArtifactManifest, kind: str, *, preferred_artifact_id: str | None = None
+) -> Artifact:
+    if preferred_artifact_id is not None:
+        for item in manifest.artifacts:
+            if (item.artifact_id or item.path) == preferred_artifact_id and (
+                not kind or item.kind == kind
+            ):
+                return item
     artifact = next(
         (item for item in manifest.artifacts if item.kind == kind and item.primary),
         next((item for item in manifest.artifacts if item.kind == kind), None),
@@ -25,10 +34,12 @@ def _select(manifest: ArtifactManifest, kind: str) -> Artifact:
     return artifact
 
 
-async def materialize_artifact(manifest: ArtifactManifest, *, kind: str) -> Path:
+async def materialize_artifact(
+    manifest: ArtifactManifest, *, kind: str, preferred_artifact_id: str | None = None
+) -> Path:
     """Resolve an artifact through the object store and verify its digest."""
 
-    artifact = _select(manifest, kind)
+    artifact = _select(manifest, kind, preferred_artifact_id=preferred_artifact_id)
     uri = str(artifact.uri or "")
     if not uri:
         # Legacy/local manifests predate the object-store contract. They are
@@ -70,6 +81,33 @@ async def materialize_artifact(manifest: ArtifactManifest, *, kind: str) -> Path
     if path.is_file():
         return _verify(path, artifact.sha256)
     raise HTTPException(status_code=409, detail="artifact URI is not a supported object URI")
+
+
+def preferred_ids_for_serving(
+    task: dict[str, Any], manifest: ArtifactManifest
+) -> tuple[str | None, str | None]:
+    """Serve selection delegates to the Presentation Read Model (W10).
+
+    Returns (video_id, audio_id) from the canonical snapshot when the
+    manifest materializes with probed real durations; (None, None) when
+    anything is unprovable, preserving the legacy primary-first fallback.
+    The fallback only triggers on refusal — never on a second opinion.
+    """
+    try:
+        from hevi.creative.layer4.presentation import for_download, snapshot_for_serving
+        from hevi.production.delivery_gate import probe_manifest_durations_ms
+
+        view = for_download(
+            snapshot_for_serving(
+                manifest, task=task, probe_durations_ms=probe_manifest_durations_ms(manifest)
+            )
+        )
+        video_id = view["video_artifact_id"]
+        return str(video_id), (
+            str(view["audio_artifact_id"]) if view["audio_artifact_id"] else None
+        )
+    except Exception:
+        return None, None
 
 
 async def artifact_delivery_url(

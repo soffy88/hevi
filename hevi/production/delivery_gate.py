@@ -102,6 +102,30 @@ def probe_video(path: str | Path) -> VideoProbe:
     return VideoProbe(dest, duration, _has("v:0"), _has("a:0"), size)
 
 
+def probe_manifest_durations_ms(manifest: Any) -> dict[str, int]:
+    """Probed real media durations for manifest entries, in milliseconds.
+
+    Keys cover both lookup identities the presentation selector derives
+    (artifact_id and path); only positive probes are recorded, so anything
+    unprovable stays absent and selection refuses instead of guessing.
+    """
+
+    out: dict[str, int] = {}
+    for item in getattr(manifest, "artifacts", None) or ():
+        path = str(getattr(item, "path", "") or "")
+        if not path:
+            continue
+        probe = probe_video(path)
+        if probe.duration_s <= 0:
+            continue
+        ms = int(probe.duration_s * 1000)
+        out[path] = ms
+        artifact_id = str(getattr(item, "artifact_id", "") or "")
+        if artifact_id:
+            out[artifact_id] = ms
+    return out
+
+
 def assert_explainer_compose(
     path: str | Path,
     *,

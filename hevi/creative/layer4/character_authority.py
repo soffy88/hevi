@@ -25,6 +25,7 @@ vs derivative-scoped voice.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -445,6 +446,65 @@ class CharacterAuthority:
         return invalidate_dependents((f"appearance:{appearance_id}",), edges)
 
 
+def authority_from_voice_map(
+    voice_by_speaker: Mapping[str, str], *, default_voice_id: str = ""
+) -> CharacterAuthority:
+    """Build an authority from a legacy speaker->voice map (W10 delegation).
+
+    Lets legacy pipelines resolve ``name`` and ``name/appearance`` speaker
+    strings through canonical identity with zero behavior change for plain
+    names: misses still fall back to the caller's default.
+    """
+
+    authority = CharacterAuthority()
+    for speaker, voice_id in voice_by_speaker.items():
+        name = str(speaker or "").strip()
+        if not name or name.strip().lower() in {"narrator", "vo", "voiceover"}:
+            continue
+        resolved_voice = str(voice_id or "").strip() or default_voice_id
+        if not resolved_voice:
+            continue
+        try:
+            authority.register(
+                character_id=name,
+                canonical_name=name,
+                voice=VoiceIdentity(voice_id=resolved_voice),
+            )
+        except CharacterError:
+            continue
+    return authority
+
+
+def voice_for_speaker(
+    authority: CharacterAuthority,
+    speaker: str | None,
+    *,
+    is_dialogue: bool = True,
+    default: str | None = None,
+) -> str | None:
+    """Resolve a speaker to its effective voice id with legacy fallback.
+
+    Dialogue speakers resolve through canonical identity (including
+    derivative-scoped voices); narration always yields None; anything
+    unregistered returns the caller's default — the P0 single-voice
+    fallback behavior is preserved, never replaced by refusal.
+    """
+
+    if not is_dialogue:
+        return None
+    if not speaker:
+        return default
+    try:
+        owner = authority.resolve_utterance_owner(speaker)
+    except CharacterError:
+        return default
+    if owner.kind is OwnerKind.NARRATOR:
+        # Speaker strings in narrator position keep the caller's mapping;
+        # true narration lines never reach here (is_dialogue=False above).
+        return default
+    return owner.voice_id or default
+
+
 __all__ = [
     "Appearance",
     "AppearanceKind",
@@ -458,5 +518,7 @@ __all__ = [
     "VoiceBinding",
     "VoiceConsistency",
     "VoiceIdentity",
+    "authority_from_voice_map",
     "derive_consistency",
+    "voice_for_speaker",
 ]

@@ -29,7 +29,9 @@ from hevi.creative.layer4.character_authority import (
     VoiceBinding,
     VoiceConsistency,
     VoiceIdentity,
+    authority_from_voice_map,
     derive_consistency,
+    voice_for_speaker,
 )
 from hevi.creative.layer4.comparison import ComparisonModule, IntentArtifactComparison
 from hevi.creative.layer4.context import (
@@ -175,7 +177,9 @@ from hevi.creative.layer4.presentation import (
     for_preview,
     for_publish,
     for_subtitles,
+    infer_audio_mode,
     presentation_from_task,
+    snapshot_for_serving,
     snapshot_from_manifest,
 )
 from hevi.creative.layer4.provider_execution import (
