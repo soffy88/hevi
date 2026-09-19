@@ -89,24 +89,32 @@ def build_tongjian_inputs(
     bible_names = {c.name for c in design_list.characters if c.name}
     scene_names = {s.name for s in design_list.scenes if s.name}
     from hevi.creative.layer4.character_authority import (
+        authority_from_character_names,
         authority_from_voice_map,
+        canonical_casting_key,
         voice_for_speaker,
     )
 
     voice_authority = authority_from_voice_map(voice_by_speaker or {})
+    casting_authority = authority_from_character_names(bible_names)
+
+    def _canonical(name: str) -> str:
+        return canonical_casting_key(casting_authority, name)[0]
+
+    canonical_bible = {_canonical(name) for name in bible_names}
     n = 0
     for shot in shot_list.shots:
         shot_line_ids: list[str] = []
         for dl in shot.dialogue_lines:
-            speaker = (dl.character_name or "").strip()
+            speaker = _canonical((dl.character_name or "").strip())
             text = (dl.text or "").strip()
             if not speaker or not text:
                 continue  # 旁白 / 空行:丢弃
             n += 1
             line_id = f"ln{n:03d}"
             # INC-001 §H:受话对象须是已锁定角色且不是说话人本人,才作 eyeline 数据源;否则丢弃。
-            target = (dl.target_name or "").strip()
-            if target not in bible_names or target == speaker:
+            target = _canonical((dl.target_name or "").strip())
+            if target not in canonical_bible or target == speaker:
                 target = ""
             lines.append(
                 ScriptLine(
@@ -120,7 +128,9 @@ def build_tongjian_inputs(
                 )
             )
             shot_line_ids.append(line_id)
-        shot_chars = [c for c in (shot.character_names or []) if c in bible_names]
+        shot_chars = [
+            _canonical(c) for c in (shot.character_names or []) if _canonical(c) in canonical_bible
+        ]
         visual = (shot.visual_prompt or "").strip()
         if not shot_line_ids:
             # 无对白镜头:保留为静默动作/建场空镜(电影语言:开场空镜、人物动作、
@@ -146,10 +156,10 @@ def build_tongjian_inputs(
                 # 走位透传(治"走位乱七八糟"):把 shot_list 生成的 blocking 格式化成
                 # "角色:位置,朝向"短句,喂给 L6 多角色关键帧指令定位每个人。只收在场且锁定的角色。
                 blocking=[
-                    f"{b.character_name}:{b.position or '画面中'}"
+                    f"{_canonical(b.character_name)}:{b.position or '画面中'}"
                     + (f",面向{b.facing}" if b.facing else "")
                     for b in (shot.blocking or [])
-                    if b.character_name in bible_names
+                    if _canonical(b.character_name) in canonical_bible
                 ],
                 # INC-002:performance_track 在桥接层编译成时序提示词随 Shot 透传。空 → 空串(inert)。
                 temporal_prompt=compile_temporal_prompt(shot.performance_track),

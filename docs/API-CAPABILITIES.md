@@ -41,6 +41,7 @@
 | GET | `/api/authorities/memory` | Memory Inspect |
 | PUT | `/api/authorities/memory` | Memory Remember |
 | GET | `/api/authorities/tasks/{task_id}/currency` | Task Currency |
+| GET | `/api/authorities/tasks/{task_id}/plan` | Task Plan |
 | GET | `/api/authorities/tasks/{task_id}/presentation` | Task Presentation |
 | GET | `/api/authorities/usage/analytics` | Usage Analytics |
 | GET | `/api/authorities/usage/calls` | Usage Calls |

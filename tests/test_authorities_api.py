@@ -271,3 +271,17 @@ def test_task_currency_missing_without_sha(authed, tmp_path, monkeypatch) -> Non
     currency = client.get(f"/api/authorities/tasks/{uuid.uuid4()}/currency").json()
     assert currency["evaluations"]["v-1"]["currency"] == "missing"
     assert currency["usable"] == 0
+
+
+def test_task_plan_projection_consumer(authed, tmp_path, monkeypatch) -> None:
+    """W17 K02 consumer: plan projection served for a real task state."""
+
+    async def fake_task(pool: Any, task_id: Any) -> dict[str, Any] | None:
+        return _task_with_manifest(tmp_path, with_sha=True)
+
+    monkeypatch.setattr(authorities, "_load_task", fake_task)
+    plan = client.get(f"/api/authorities/tasks/{uuid.uuid4()}/plan").json()
+    assert plan["counts"]["completed"] + plan["counts"]["ready"] == 1
+    target = plan["targets"][0]
+    assert target["target_id"] == "v-1"
+    assert target["status"] in {"completed", "ready"}

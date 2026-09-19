@@ -249,3 +249,38 @@ def test_utterance_ownership_narrator_character_derivative() -> None:
     derivative = authority.resolve_utterance_owner("Anna/wolf")
     assert derivative.appearance_id == "wolf"
     assert derivative.voice_id == "v-anna"
+
+
+def test_casting_keys_resolve_through_canonical_identity() -> None:
+    """W17 casting closure: names normalize to canonical id + appearance."""
+
+    from hevi.creative.layer4.character_authority import (
+        authority_from_character_names,
+        canonical_casting_key,
+    )
+
+    authority = authority_from_character_names(["Anna", "Bob", "Anna/armor", ""])
+    assert canonical_casting_key(authority, "Anna") == ("Anna", "default")
+    # appearance suffix shares the base character identity
+    assert canonical_casting_key(authority, "Anna/armor") == ("Anna", "armor")
+    # unregistered base keeps legacy fallback (identity is never invented)
+    assert canonical_casting_key(authority, "Ghost/armor") == ("Ghost", "armor")
+    assert canonical_casting_key(authority, "Ghost") == ("Ghost", "default")
+    assert canonical_casting_key(authority, "") == ("", "default")
+
+
+def test_director_voice_casting_keyed_by_canonical_id() -> None:
+    """Cast map keys are canonical ids, so name/appearance inherits the voice."""
+
+    from hevi.api.routers.director_pipeline import _assign_character_voices
+    from hevi.director.pipeline_schemas import DesignCharacter, DesignList
+
+    design = DesignList(
+        characters=[
+            DesignCharacter(name="Anna", voice_id="v-anna"),
+            DesignCharacter(name="Bob", voice_hint="少女"),
+        ]
+    )
+    voices = _assign_character_voices(design)
+    assert voices["Anna"] == "v-anna"
+    assert set(voices) == {"Anna", "Bob"}  # canonical keys only

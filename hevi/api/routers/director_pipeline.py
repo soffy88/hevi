@@ -1807,7 +1807,12 @@ def _assign_character_voices(design_list: DesignList) -> dict[str, str]:
     音色池里轮询分配,保证同性别的不同角色也落到不同声音(治"对话也像旁白——所有人
     一个声音")。声线倾向里带"低沉/沙哑/浑厚"的优先挑 deep 音色。"""
     from hevi.audio.edge_tts_custom import FEMALE_VOICE_POOL, MALE_VOICE_POOL
+    from hevi.creative.layer4.character_authority import (
+        authority_from_character_names,
+        canonical_casting_key,
+    )
 
+    casting_authority = authority_from_character_names([c.name for c in design_list.characters])
     pools = {"male": list(MALE_VOICE_POOL), "female": list(FEMALE_VOICE_POOL)}
     rr = {"male": 0, "female": 0}  # 池用尽后的兜底轮询计数
     used_voices: set[str] = set()  # 已占用的音色,保证还有余量时不重复
@@ -1815,8 +1820,11 @@ def _assign_character_voices(design_list: DesignList) -> dict[str, str]:
     for c in design_list.characters:
         if not c.name:
             continue
+        # Casting resolves through canonical character identity: `name` and
+        # `name/appearance` share one voice identity (W17 casting closure).
+        canonical, _appearance = canonical_casting_key(casting_authority, c.name)
         if c.voice_id:
-            out[c.name] = c.voice_id
+            out[canonical] = c.voice_id
             used_voices.add(c.voice_id)
             continue
         gender = _guess_gender(c)
@@ -1834,7 +1842,7 @@ def _assign_character_voices(design_list: DesignList) -> dict[str, str]:
             pick = pool[rr[gender] % len(pool)]
             rr[gender] += 1
         used_voices.add(pick)
-        out[c.name] = pick
+        out[canonical] = pick
     return out
 
 
@@ -1848,8 +1856,15 @@ async def _resolve_shot_character_refs(
     subject 或没有参考图的角色,静默跳过(不阻断整镜,orchestrator 侧本来就有"该镜头
     没有可用参考图 → 回退全片统一参考图"的兜底)。"""
     name_to_path: dict[str, str] = {}
+    from hevi.creative.layer4.character_authority import (
+        authority_from_character_names,
+        canonical_casting_key,
+    )
+
+    casting_authority = authority_from_character_names([c.name for c in design_list.characters])
     for c in design_list.characters:
-        if not c.subject_id or c.name in name_to_path:
+        canonical, _appearance = canonical_casting_key(casting_authority, c.name)
+        if not c.subject_id or canonical in name_to_path:
             continue
         try:
             subj = await subject_svc.get_subject(c.subject_id)
@@ -1858,11 +1873,15 @@ async def _resolve_shot_character_refs(
             continue
         refs = (subj or {}).get("reference_images") or []
         if refs:
-            name_to_path[c.name] = refs[0]
+            name_to_path[canonical] = refs[0]
 
     out: dict[int, list[str]] = {}
     for idx, shot in enumerate(shot_list.get("shots", [])):
-        paths = [name_to_path[n] for n in shot.get("character_names") or [] if n in name_to_path]
+        paths = [
+            name_to_path[canonical_casting_key(casting_authority, n)[0]]
+            for n in shot.get("character_names") or []
+            if canonical_casting_key(casting_authority, n)[0] in name_to_path
+        ]
         if paths:
             out[idx] = paths
     return out
@@ -1874,9 +1893,16 @@ async def _resolve_subject_ref_paths(
     """角色名 → 设计清单锁定时建的参考图路径(数字人 keyframe 的脸从这来)。查不到的角色
     静默跳过(scene_render_avatar 侧对没有 ref_image 的角色有兜底)。"""
     out: dict[str, str] = {}
+    from hevi.creative.layer4.character_authority import (
+        authority_from_character_names,
+        canonical_casting_key,
+    )
+
+    casting_authority = authority_from_character_names([c.name for c in design_list.characters])
     for c in design_list.characters:
         if not c.name or not c.subject_id:
             continue
+        canonical, _appearance = canonical_casting_key(casting_authority, c.name)
         try:
             subj = await subject_svc.get_subject(c.subject_id)
         except Exception as e:
@@ -1884,7 +1910,7 @@ async def _resolve_subject_ref_paths(
             continue
         refs = (subj or {}).get("reference_images") or []
         if refs:
-            out[c.name] = refs[0]
+            out[canonical] = refs[0]
     return out
 
 

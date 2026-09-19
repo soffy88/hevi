@@ -25,7 +25,7 @@ vs derivative-scoped voice.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -582,6 +582,57 @@ def character_view_from_sources(
     )
 
 
+def authority_from_character_names(names: Iterable[str]) -> CharacterAuthority:
+    """Build a single-look authority from legacy design/shot character names.
+
+    Every name registers as its own canonical character with a default
+    appearance, so `name` and `name/appearance` normalize consistently even
+    before derivative assets exist. Duplicate names collapse.
+    """
+
+    authority = CharacterAuthority()
+    for raw in names:
+        name = str(raw or "").strip()
+        if not name:
+            continue
+        base = name.split("/", 1)[0].strip()
+        if not base:
+            continue
+        try:
+            authority.register(
+                character_id=base,
+                canonical_name=base,
+                voice=VoiceIdentity(voice_id="unassigned"),
+            )
+        except CharacterError:
+            continue
+    return authority
+
+
+def canonical_casting_key(authority: CharacterAuthority, name: str) -> tuple[str, str]:
+    """Normalize a casting name to ``(canonical_character_id, appearance_id)``.
+
+    The base name resolves through the authority (registered → canonical id;
+    unregistered → the base literal, keeping legacy inputs working without
+    letting them become their own identity authority). An explicit
+    ``base/appearance`` suffix is preserved so derivative-aware callers can
+    look up that look, falling back to the base when no derivative exists.
+    """
+
+    raw = str(name or "").strip()
+    if not raw:
+        return "", "default"
+    base, _, appearance = raw.partition("/")
+    base, appearance = base.strip(), appearance.strip()
+    if not base:
+        return "", "default"
+    try:
+        resolved = authority.resolve_reference(base)
+    except CharacterError:
+        return base, (appearance or "default")
+    return resolved.character_id, (appearance or "default")
+
+
 __all__ = [
     "Appearance",
     "AppearanceKind",
@@ -596,7 +647,10 @@ __all__ = [
     "VoiceBinding",
     "VoiceConsistency",
     "VoiceIdentity",
+    "authority_from_character_names",
     "authority_from_voice_map",
+    "canonical_casting_key",
+    "character_view_from_sources",
     "derive_consistency",
     "voice_for_speaker",
 ]

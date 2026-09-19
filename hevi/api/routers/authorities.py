@@ -434,6 +434,67 @@ async def task_presentation(
     return for_download(snapshot)
 
 
+@router.get("/tasks/{task_id}/plan")
+async def task_plan(
+    task_id: str,
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """Production plan projection over current task state (K02 consumer).
+
+    Pure projection: completed/ready/blocked/stale/missing per target with
+    next_actions and repair_actions, derived from the artifact manifest and
+    the W2 currency evaluator. Stores nothing.
+    """
+
+    from hevi.creative.layer4.currency import ArtifactBasis, evaluate_all
+    from hevi.creative.layer4.plan_projection import TargetFact, project_plan
+    from hevi.production.artifacts import manifest_from_task
+
+    try:
+        task_uuid = uuid.UUID(task_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid task id") from exc
+    task = await _load_task(pool, task_uuid)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    manifest = manifest_from_task(task)
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="no artifact manifest")
+    config = task.get("config_json") or {}
+    revision = str(config.get("revision_id") or config.get("production_revision") or "")
+    deps = {"revision": revision} if revision else {}
+    bases = tuple(
+        ArtifactBasis(
+            artifact_id=str(item.artifact_id or item.path),
+            role=str(item.logical_role or item.kind),
+            exists=True,
+            integrity_ok=bool(item.sha256),
+            dependency_revision=revision,
+        )
+        for item in manifest.artifacts
+    )
+    evaluations = evaluate_all(bases, deps)
+    facts = tuple(
+        TargetFact(
+            target_id=evaluation.artifact_id,
+            currency=evaluation.currency,
+        )
+        for evaluation in evaluations
+    )
+    plans = project_plan(facts)
+    return {
+        "targets": [plan.model_dump(mode="json") for plan in plans],
+        "counts": {
+            "completed": sum(1 for p in plans if p.status.value == "completed"),
+            "ready": sum(1 for p in plans if p.status.value == "ready"),
+            "blocked": sum(1 for p in plans if p.status.value == "blocked"),
+            "stale": sum(1 for p in plans if p.status.value == "stale"),
+            "missing": sum(1 for p in plans if p.status.value == "missing"),
+        },
+    }
+
+
 @router.get("/tasks/{task_id}/currency")
 async def task_currency(
     task_id: str,
