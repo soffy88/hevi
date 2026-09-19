@@ -154,3 +154,28 @@ def test_e2e_d5_cross_owner_registry_refusal(tmp_path) -> None:
     store.save_identity("owner-a", identity.model_dump(mode="json"))
     with pytest.raises(IdentityError):
         registry.get_identity(identity.identity_id, owner_id="owner-b")
+
+
+def test_linked_subject_appearance_commits_continuity_fact(tmp_path, monkeypatch) -> None:
+    """Regression: the linked-subject appearance seam must use a valid
+    FactSource member and actually persist a continuity fact."""
+    monkeypatch.setenv("HEVI_IDENTITY_DB", str(tmp_path / "identities.db"))
+    monkeypatch.setenv("HEVI_INCIDENT_DB", str(tmp_path / "incidents.db"))
+    from hevi.api.routers.subjects import _record_appearance_continuity
+
+    store = IdentityStore(db_path=tmp_path / "identities.db")
+    registry = PersistentIdentityRegistry()
+    identity = registry.create_identity(
+        owner_id="owner-a", canonical_name="Aria", voice=VoiceIdentity(voice_id="v-aria")
+    )
+    store.save_identity("owner-a", identity.model_dump(mode="json"))
+    store.link_subject("owner-a", "subject-1", identity.identity_id)
+
+    _record_appearance_continuity(
+        owner_id="owner-a", subject_id="subject-1", appearance_id="coat", kind="outfit"
+    )
+
+    facts = store.load_facts("owner-a", identity.identity_id)
+    assert len(facts) == 1
+    assert facts[0]["provenance"] == "user"
+    assert facts[0]["category"] == "appearance"

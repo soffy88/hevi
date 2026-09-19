@@ -373,7 +373,7 @@ def _record_appearance_continuity(
             identity_id=identity_id,
             category=ContinuityCategory.APPEARANCE,
             statement=f"{appearance_id} ({kind}) registered on subject {subject_id}",
-            source=FactSource.USER,
+            source=FactSource.USER_CANON,
             source_artifact_id=subject_id,
         )
     except Exception:

@@ -123,7 +123,7 @@ def collect(*, real_probe: bool = False) -> dict[str, object]:
                 sys.executable,
                 "-c",
                 "from PIL import Image; "
-                "Image.new('RGB',(256,256),(200,150,120)).save(r'%s')" % image_path,
+                f"Image.new('RGB',(256,256),(200,150,120)).save(r'{image_path}')",
             ],
             check=True,
             timeout=60,
