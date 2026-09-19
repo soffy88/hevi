@@ -423,12 +423,16 @@ async def character_variants(
     metadata = (subject or {}).get("metadata") or {}
     refs = (subject or {}).get("reference_images") or []
     voice_ref = metadata.get("voice_ref") if isinstance(metadata, dict) else None
+    from hevi.creative.layer4.character_authority import appearances_from_records
+
+    appearances = appearances_from_records(metadata.get("appearances") or ())
     view = character_view_from_sources(
         character_id=str((subject or {}).get("id") or character_id),
         canonical_name=str((subject or {}).get("name") or character_id),
         aliases=tuple((subject or {}).get("aliases") or ()),
         voice_id=str(voice_ref or ""),
         reference_images=tuple(str(r) for r in refs),
+        appearances=appearances or None,
     )
     return view.model_dump(mode="json")
 

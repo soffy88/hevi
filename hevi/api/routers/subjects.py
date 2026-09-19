@@ -296,6 +296,50 @@ async def upload_subject_wardrobe(
     return _serialize_subject(updated)
 
 
+class AppearanceRequest(BaseModel):
+    """C06 producer: register a derivative appearance on the same character."""
+
+    appearance_id: str
+    kind: str = "outfit"
+    label: str = ""
+    visual_asset_ids: list[str] = []
+    reference_asset_ids: list[str] = []
+
+
+@router.post("/{subject_id}/appearances", status_code=201)
+async def register_subject_appearance(
+    subject_id: str,
+    body: AppearanceRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[SubjectService, Depends(get_subject_service)],
+) -> dict[str, Any]:
+    """Register a variant look (outfit/age/injured/disguise) canonically.
+
+    The same canonical character identity is preserved; only a new appearance
+    id/version with its own asset set is added. Never creates a new character.
+    """
+    subject = await svc.get_subject(subject_id)
+    if subject is None:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    _check_owner(subject, user)
+    from hevi.creative.layer4.character_authority import CharacterError
+
+    try:
+        updated = await svc.register_appearance(
+            subject_id,
+            appearance_id=body.appearance_id,
+            kind=body.kind,
+            label=body.label,
+            visual_asset_ids=tuple(body.visual_asset_ids),
+            reference_asset_ids=tuple(body.reference_asset_ids),
+        )
+    except (CharacterError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    return _serialize_subject(updated)
+
+
 @router.get("")
 @router.get("/", include_in_schema=False)
 async def list_subjects(

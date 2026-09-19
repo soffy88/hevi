@@ -413,3 +413,52 @@ def test_regenerate_blocked_by_admission(authed, tmp_path, monkeypatch) -> None:
         assert "batch admission blocked" in resp.json()["detail"]
     finally:
         app.dependency_overrides.pop(tasks_router.get_task_service, None)
+
+
+def test_variants_endpoint_reads_produced_appearances(authed, monkeypatch) -> None:
+    """C06 consumer: the variants surface projects produced appearances."""
+
+    from hevi.api.routers import authorities
+
+    async def fake_subject(pool: Any, character_id: str) -> dict[str, Any] | None:
+        if character_id == "ghost":
+            return None
+        return {
+            "id": "ch-anna",
+            "name": "Anna",
+            "reference_images": ["/r/anna.png"],
+            "metadata": {
+                "voice_ref": "v-anna",
+                "appearances": [
+                    {
+                        "appearance_id": "default",
+                        "character_id": "ch-anna",
+                        "kind": "default",
+                        "label": "default",
+                        "version": 1,
+                        "reference_asset_ids": ["/r/anna.png"],
+                        "revision": "ch-anna@default#1",
+                    },
+                    {
+                        "appearance_id": "armor",
+                        "character_id": "ch-anna",
+                        "kind": "outfit",
+                        "label": "battle",
+                        "version": 2,
+                        "reference_asset_ids": ["/r/armor-v2.png"],
+                        "revision": "ch-anna@armor#2",
+                    },
+                ],
+            },
+        }
+
+    monkeypatch.setattr(authorities, "_load_subject", fake_subject)
+    view = client.get("/api/authorities/characters/ch-anna/variants").json()
+    assert view["character_id"] == "ch-anna"
+    ids = [a["appearance_id"] for a in view["appearances"]]
+    assert ids == ["default", "armor"]
+    armor = next(a for a in view["appearances"] if a["appearance_id"] == "armor")
+    assert armor["kind"] == "outfit"
+    assert armor["version"] == 2
+    # voice identity is inherited by every appearance of the same character
+    assert view["voice_by_appearance"] == {"default": "v-anna", "armor": "v-anna"}

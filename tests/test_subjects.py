@@ -1222,3 +1222,44 @@ async def test_api_get_subject_image_wardrobe_missing_404(client: Any) -> None:
         )
         app.dependency_overrides.clear()
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_register_appearance_keeps_canonical_identity() -> None:
+    """C06: producer registers a variant without creating a new character."""
+
+    import uuid
+
+    from hevi.creative.layer4.character_authority import (
+        AppearanceKind,
+        build_appearance_record,
+        merge_appearance_record,
+    )
+
+    character_id = str(uuid.uuid4())
+    metadata: dict = {}
+    r1 = build_appearance_record(
+        character_id=character_id,
+        appearance_id="armor",
+        kind=AppearanceKind.OUTFIT,
+        label="battle armor",
+        reference_asset_ids=("ref-armor",),
+    )
+    assert r1["character_id"] == character_id
+    assert r1["kind"] == "outfit"
+    assert r1["version"] == 1
+    assert "armor#1" in r1["revision"]
+    metadata["appearances"] = merge_appearance_record([], r1)
+
+    # a second write bumps the version, same canonical character identity
+    r2 = build_appearance_record(
+        character_id=character_id,
+        appearance_id="armor",
+        kind=AppearanceKind.OUTFIT,
+        reference_asset_ids=("ref-armor-v2",),
+        version=2,
+    )
+    merged = merge_appearance_record(metadata["appearances"], r2)
+    assert len(merged) == 1
+    assert merged[0]["version"] == 2
+    assert merged[0]["character_id"] == character_id

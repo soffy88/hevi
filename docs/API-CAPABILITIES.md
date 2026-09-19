@@ -471,6 +471,7 @@
 | DELETE | `/api/subjects/{subject_id}` | Delete Subject |
 | GET | `/api/subjects/{subject_id}` | Get Subject |
 | PATCH | `/api/subjects/{subject_id}` | Update Subject |
+| POST | `/api/subjects/{subject_id}/appearances` | Register Subject Appearance |
 | GET | `/api/subjects/{subject_id}/image` | Get Subject Image |
 | POST | `/api/subjects/{subject_id}/reference` | Upload Subject Reference |
 | PUT | `/api/subjects/{subject_id}/reference-role` | Set Subject Reference Role |

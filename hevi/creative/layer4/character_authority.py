@@ -551,6 +551,64 @@ def voice_binding_from_project(config: Mapping[str, Any] | None) -> VoiceBinding
     return VoiceBinding.PROMPT_DESCRIPTION
 
 
+def build_appearance_record(
+    *,
+    character_id: str,
+    appearance_id: str,
+    kind: AppearanceKind | str,
+    label: str = "",
+    visual_asset_ids: tuple[str, ...] = (),
+    reference_asset_ids: tuple[str, ...] = (),
+    version: int = 1,
+    superseded_by_version: int | None = None,
+) -> dict[str, Any]:
+    """Validate and serialize one appearance through the canonical model.
+
+    Producers (asset generation, wardrobe upload, manual import, variant
+    regeneration) use this so every written appearance carries canonical
+    character id, appearance id/version, base/kind relation, reference assets
+    and provenance - never a loose filename or display-name relation.
+    """
+
+    appearance_kind = kind if isinstance(kind, AppearanceKind) else AppearanceKind(str(kind))
+    appearance = Appearance(
+        appearance_id=appearance_id,
+        character_id=character_id,
+        kind=appearance_kind,
+        label=label or appearance_id,
+        version=version,
+        visual_asset_ids=visual_asset_ids,
+        reference_asset_ids=reference_asset_ids,
+        superseded_by_version=superseded_by_version,
+        revision=f"{character_id}@{appearance_id}#{version}",
+    )
+    return appearance.model_dump(mode="json")
+
+
+def appearances_from_records(records: Iterable[Any]) -> tuple[Appearance, ...]:
+    """Parse persisted appearance records back into canonical appearances."""
+
+    out: list[Appearance] = []
+    for record in records or ():
+        try:
+            out.append(Appearance.model_validate(record))
+        except Exception:  # pragma: no cover - tolerate legacy bad rows
+            continue
+    return tuple(out)
+
+
+def merge_appearance_record(records: Iterable[Any], record: dict[str, Any]) -> list[dict[str, Any]]:
+    """Upsert one appearance record (latest wins), preserving the others."""
+
+    kept = [
+        dict(item)
+        for item in (records or ())
+        if isinstance(item, dict) and item.get("appearance_id") != record.get("appearance_id")
+    ]
+    kept.append(record)
+    return kept
+
+
 def authority_from_voice_map(
     voice_by_speaker: Mapping[str, str], *, default_voice_id: str = ""
 ) -> CharacterAuthority:
@@ -754,11 +812,14 @@ __all__ = [
     "VoiceBinding",
     "VoiceConsistency",
     "VoiceIdentity",
+    "appearances_from_records",
     "authority_from_character_names",
     "authority_from_voice_map",
+    "build_appearance_record",
     "canonical_casting_key",
     "character_view_from_sources",
     "derive_consistency",
+    "merge_appearance_record",
     "resolve_speech_segment_owner",
     "voice_binding_from_project",
     "voice_for_speaker",

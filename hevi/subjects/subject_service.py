@@ -350,6 +350,91 @@ class SubjectService:
         if path not in wardrobe:
             wardrobe.append(path)
         metadata["wardrobe_images"] = wardrobe
+        # C06 producer: the upload also registers a canonical OUTFIT appearance
+        # so the variant is traceable (identity + appearance + reference).
+        await self._register_appearance_metadata(
+            subject_id=str(existing.get("id") or subject_id),
+            metadata=metadata,
+            appearance_id=self._appearance_id_from_filename(filename),
+            kind="outfit",
+            label=filename,
+            reference_asset_ids=(path,),
+        )
+        return await self._repo.update(subject_id, {"metadata": metadata})
+
+    @staticmethod
+    def _appearance_id_from_filename(filename: str) -> str:
+        stem = (filename or "variant").rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        safe = "".join(ch if ch.isalnum() else "_" for ch in stem).strip("_")
+        return safe or "variant"
+
+    async def _register_appearance_metadata(
+        self,
+        *,
+        subject_id: str,
+        metadata: dict[str, Any],
+        appearance_id: str,
+        kind: str,
+        label: str = "",
+        visual_asset_ids: tuple[str, ...] = (),
+        reference_asset_ids: tuple[str, ...] = (),
+    ) -> dict[str, Any]:
+        """Upsert one canonical appearance record into subject metadata (C06)."""
+
+        from hevi.creative.layer4.character_authority import (
+            build_appearance_record,
+            merge_appearance_record,
+        )
+
+        existing_records = [
+            item for item in (metadata.get("appearances") or ()) if isinstance(item, dict)
+        ]
+        version = 1
+        for item in existing_records:
+            if item.get("appearance_id") == appearance_id:
+                version = int(item.get("version") or 1) + 1
+        record = build_appearance_record(
+            character_id=subject_id,
+            appearance_id=appearance_id,
+            kind=kind,
+            label=label,
+            visual_asset_ids=visual_asset_ids,
+            reference_asset_ids=reference_asset_ids,
+            version=version,
+        )
+        metadata["appearances"] = merge_appearance_record(existing_records, record)
+        return metadata
+
+    async def register_appearance(
+        self,
+        subject_id: str,
+        *,
+        appearance_id: str,
+        kind: str,
+        label: str = "",
+        visual_asset_ids: tuple[str, ...] = (),
+        reference_asset_ids: tuple[str, ...] = (),
+    ) -> dict[str, Any] | None:
+        """Producer entrypoint: register a derivative appearance (C06).
+
+        Same canonical character identity; only the appearance id/version,
+        asset set, and base relation are added. Variants are never new
+        characters.
+        """
+
+        existing = await self._repo.get(subject_id)
+        if existing is None:
+            return None
+        metadata = dict(existing.get("metadata", {}))
+        await self._register_appearance_metadata(
+            subject_id=str(existing.get("id") or subject_id),
+            metadata=metadata,
+            appearance_id=appearance_id,
+            kind=kind,
+            label=label,
+            visual_asset_ids=visual_asset_ids,
+            reference_asset_ids=reference_asset_ids,
+        )
         return await self._repo.update(subject_id, {"metadata": metadata})
 
     async def generate_subject3d(
