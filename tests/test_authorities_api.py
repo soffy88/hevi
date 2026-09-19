@@ -399,12 +399,10 @@ def test_regenerate_blocked_by_admission(authed, tmp_path, monkeypatch) -> None:
         class Svc:
             repository = repo
 
-            async def admit_regeneration_media(self, _task, *, shot_ids):  # noqa: ANN001
+            async def admit_regeneration_media(self, _task, *, shot_ids):
                 from hevi.tasks.task_service import TaskService
 
-                return await TaskService.admit_regeneration_media(
-                    self, _task, shot_ids=shot_ids
-                )
+                return await TaskService.admit_regeneration_media(self, _task, shot_ids=shot_ids)
 
         return Svc()
 
