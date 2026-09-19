@@ -42,7 +42,7 @@ describe('语音工作室情感配音(SPEC v5.0 §2.1)', () => {
     const user = (await import('@testing-library/user-event')).default;
     render(<VoiceStudioConsole />);
     // 等异步能力/预设加载完成(加载中… → Tab 渲染)
-    const emotionTab = await screen.findByRole('button', { name: /情感配音/ }, { timeout: 3000 });
+    const emotionTab = await screen.findByRole('tab', { name: /情感配音/ }, { timeout: 3000 });
     await user.click(emotionTab);
     expect(screen.getByText(/情绪化配音 \(Emotion-aware Voiceover\)/)).toBeInTheDocument();
     await user.type(screen.getByLabelText('合成文本'), '太棒了，我们赢了！');
