@@ -10,6 +10,7 @@ reported as ``OPTIONAL_CAPABILITY_BLOCKED`` and never make readiness fail.
 from __future__ import annotations
 
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -35,18 +36,34 @@ def _authority_stores(identity_db: Path | None = None, incident_db: Path | None 
     return report
 
 
+def _gpu_ready() -> bool:
+    """True only if a CUDA device is actually usable, not merely that the
+    nvidia-smi binary exists (it can be present while the device is gone)."""
+    if shutil.which("nvidia-smi") is None:
+        return False
+    try:
+        probe = subprocess.run(
+            ["nvidia-smi", "-L"], capture_output=True, text=True, timeout=5
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    text = f"{probe.stdout}\n{probe.stderr}".lower()
+    return (
+        probe.returncode == 0
+        and "no devices were found" not in text
+        and "unable to determine the device handle" not in text
+    )
+
+
 def optional_capabilities() -> dict[str, str]:
     """Non-fatal capability states. GPU/lip-sync are optional features."""
-    has_nvidia = shutil.which("nvidia-smi") is not None
-    has_ffmpeg = shutil.which("ffmpeg") is not None
-    has_ffprobe = shutil.which("ffprobe") is not None
-    gpu = "READY" if has_nvidia else "OPTIONAL_CAPABILITY_BLOCKED"
+    gpu_ready = _gpu_ready()
     return {
-        "gpu": gpu,
-        "lipsync_presenter": "OPTIONAL_CAPABILITY_BLOCKED" if gpu != "READY" else "UNQUALIFIED",
-        "local_gpu_runtime": "OPTIONAL_CAPABILITY_BLOCKED" if gpu != "READY" else "UNQUALIFIED",
-        "ffmpeg": "READY" if has_ffmpeg else "REQUIRED_MISSING",
-        "ffprobe": "READY" if has_ffprobe else "REQUIRED_MISSING",
+        "gpu": "READY" if gpu_ready else "OPTIONAL_CAPABILITY_BLOCKED",
+        "lipsync_presenter": "UNQUALIFIED" if gpu_ready else "OPTIONAL_CAPABILITY_BLOCKED",
+        "local_gpu_runtime": "UNQUALIFIED" if gpu_ready else "OPTIONAL_CAPABILITY_BLOCKED",
+        "ffmpeg": "READY" if shutil.which("ffmpeg") else "REQUIRED_MISSING",
+        "ffprobe": "READY" if shutil.which("ffprobe") else "REQUIRED_MISSING",
     }
 
 
