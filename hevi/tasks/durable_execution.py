@@ -165,14 +165,89 @@ def recover_execution(config: dict[str, Any]) -> tuple[NextAction, str]:
     return decide_next_action(record)
 
 
+def ensure_execution(
+    config: dict[str, Any],
+    *,
+    provider: str,
+    endpoint: str,
+    model: str,
+    request: dict[str, Any],
+    production_revision: str,
+    target_artifact_id: str,
+) -> tuple[dict[str, Any], ProviderExecutionRecord, bool]:
+    """Record task-level execution identity without gating re-execution.
+
+    Unlike :func:`begin_execution`, this never refuses because a record
+    exists — it is an observer for recovery/reporting, used by the task
+    runtime which owns the retry decision. Returns (config, record, created).
+    """
+
+    candidate = new_record(
+        provider=provider,
+        endpoint=endpoint,
+        model=model,
+        request=request,
+        production_revision=production_revision,
+        target_artifact_id=target_artifact_id,
+        idempotency_key="pending",
+    )
+    existing = load_record(config)
+    if existing is not None and existing.request_fingerprint == candidate.request_fingerprint:
+        return config, existing, False
+    record = candidate.touch(idempotency_key=candidate.request_fingerprint[:32])
+    return store_record(config, record), record, True
+
+
+def reconcile_executions(
+    tasks: tuple[dict[str, Any], ...],
+) -> tuple[dict[str, Any], ...]:
+    """Startup reconciliation over non-terminal task rows.
+
+    Pure: reports one decision per task carrying a durable execution record
+    so a restarted worker resumes the right phase instead of blindly
+    re-running or losing remote completion. Untracked tasks are reported as
+    ``untracked`` (the worker keeps its existing behavior).
+    """
+
+    report: list[dict[str, Any]] = []
+    for task in tasks:
+        config = dict(task.get("config_json") or {})
+        record = load_record(config)
+        if record is None:
+            report.append(
+                {
+                    "task_id": str(task.get("id") or ""),
+                    "action": "untracked",
+                    "provider_job_id": None,
+                    "reason": "no durable execution record",
+                }
+            )
+            continue
+        action, reason = decide_next_action(record)
+        report.append(
+            {
+                "task_id": str(task.get("id") or ""),
+                "action": action.value,
+                "provider_job_id": record.provider_job_id,
+                "reason": reason,
+                "remote_state": record.remote_state.value,
+                "acquisition_state": record.acquisition_state.value,
+                "billing_state": record.billing_state.value,
+            }
+        )
+    return tuple(report)
+
+
 __all__ = [
     "EXECUTION_CONFIG_KEY",
     "SUBMISSIONS_CONFIG_KEY",
     "DurableExecutionError",
     "apply_execution_event",
     "begin_execution",
+    "ensure_execution",
     "load_record",
     "note_submission",
+    "reconcile_executions",
     "recover_execution",
     "store_record",
     "submission_count",

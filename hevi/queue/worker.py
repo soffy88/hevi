@@ -137,11 +137,38 @@ class QueueWorker:
             except Exception as exc:
                 logger.error("zombie recovery: failed for task %s: %s", task_id, exc)
 
+    async def _reconcile_durable_executions(self) -> None:
+        """Startup sweep of the durable provider plane (W17-A).
+
+        Tasks carrying a persisted execution record are reported with their
+        recovery action so operators (and the resume path) can see orphaned
+        remote jobs and completed-but-undownloaded artifacts. Best-effort:
+        never blocks the worker loop.
+        """
+        try:
+            report = await self.task_service.reconcile_on_startup(limit=200)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error("durable reconciliation: sweep failed: %s", exc)
+            return
+        counts = report.get("counts", {})
+        pending = {
+            key: value
+            for key, value in counts.items()
+            if key in {"resume_poll", "resume_download", "verify", "explicit_fail"}
+        }
+        if pending:
+            logger.warning(
+                "durable reconciliation: %d task(s) need attention: %s", report["total"], pending
+            )
+        else:
+            logger.info("durable reconciliation: %d task(s) tracked, none pending", report["total"])
+
     async def run(self) -> None:
         """Run the worker loop."""
         self._running = True
         logger.info("Queue worker started")
         await self._recover_zombie_tasks()
+        await self._reconcile_durable_executions()
 
         # Setup signal handlers for graceful shutdown
         loop = asyncio.get_running_loop()

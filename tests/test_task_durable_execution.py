@@ -44,6 +44,14 @@ class DictRepository:
         self._rows[str(task_id)] = merged
         return True
 
+    async def list_tasks(
+        self, limit: int = 100, user_id: str | None = None, statuses: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        rows = [json.loads(json.dumps(r)) for r in self._rows.values()]
+        if statuses:
+            rows = [r for r in rows if r.get("status") in statuses]
+        return rows[:limit]
+
 
 def _intent(**kw: Any) -> dict[str, Any]:
     args: dict[str, Any] = {
@@ -175,3 +183,89 @@ async def test_task_service_expired_remote_fails_explicitly() -> None:
     await service.record_durable_event(task_id, {"kind": "remote_expired", "error": "job gone"})
     decision = await service.recover_durable_execution(task_id)
     assert decision["action"] == "explicit_fail"
+
+
+@pytest.mark.asyncio
+async def test_track_adapter_execution_persists_and_reconciles() -> None:
+    """W17-A: task runtime observes execution; startup reconciliation routes."""
+
+    from hevi.tasks.task_service import TaskService as _Svc
+
+    repo = DictRepository()
+    service = _Svc(repo)  # type: ignore[arg-type]
+    task_id = repo.seed(
+        {"status": "running", "topic": "t", "video_provider": "wan_cloud", "config_json": {}}
+    )
+    task = await repo.get_task(task_id)
+    assert task is not None
+
+    begun = await service.track_adapter_execution(task, phase="begin")
+    assert begun["remote_state"] == "submitted"
+    # observer re-entry must not record a second submit
+    task = await repo.get_task(task_id)
+    assert task is not None
+    again = await service.track_adapter_execution(task, phase="begin")
+    assert again["provider_job_id"] == str(task_id)
+
+    task = await repo.get_task(task_id)
+    assert task is not None
+    done = await service.track_adapter_execution(
+        task, phase="complete", artifact_path="/tmp/out.mp4"
+    )
+    assert done["remote_state"] == "remote_succeeded"
+    assert done["acquisition_state"] == "download_complete"
+    assert done["billing_state"] == "billed"
+
+    report = await service.reconcile_on_startup()
+    assert report["total"] >= 1
+    entry = next(t for t in report["tasks"] if t["task_id"] == str(task_id))
+    assert entry["action"] == "done"
+    assert entry["provider_job_id"] == str(task_id)
+
+
+@pytest.mark.asyncio
+async def test_reconcile_routes_orphan_states() -> None:
+    """STARTUP_RECONCILIATION: submitted -> resume_poll; success/dl-pending -> download."""
+
+    from hevi.tasks.durable_execution import apply_execution_event, begin_execution
+
+    repo = DictRepository()
+    service = TaskService(repo)  # type: ignore[arg-type]
+    poll_id = repo.seed({"status": "running", "config_json": {}})
+    dl_id = repo.seed({"status": "running", "config_json": {}})
+
+    intent = dict(
+        provider="p",
+        endpoint="e",
+        model="m",
+        request={"x": 1},
+        production_revision="r1",
+        target_artifact_id="t",
+        idempotency_key="k",
+    )
+    poll_task = await repo.get_task(poll_id)
+    assert poll_task is not None
+    config, _rec, _action = begin_execution(dict(poll_task["config_json"]), **intent)
+    config, _rec = apply_execution_event(
+        config, {"kind": "submitted", "provider_job_id": "job-poll"}
+    )
+    await repo.update_task(poll_id, {"config_json": config})
+
+    dl_task = await repo.get_task(dl_id)
+    assert dl_task is not None
+    config2, _rec2, _action2 = begin_execution(
+        dict(dl_task["config_json"]), **{**intent, "target_artifact_id": "t2"}
+    )
+    config2, _rec2 = apply_execution_event(
+        config2, {"kind": "submitted", "provider_job_id": "job-dl"}
+    )
+    config2, _rec2 = apply_execution_event(
+        config2, {"kind": "remote_success", "remote_artifact_url": "https://cdn/x"}
+    )
+    await repo.update_task(dl_id, {"config_json": config2})
+
+    report = await service.reconcile_on_startup()
+    by_task = {t["task_id"]: t for t in report["tasks"]}
+    assert by_task[str(poll_id)]["action"] == "resume_poll"
+    assert by_task[str(dl_id)]["action"] == "resume_download"
+    assert by_task[str(dl_id)]["provider_job_id"] == "job-dl"

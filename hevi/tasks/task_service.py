@@ -648,6 +648,9 @@ class TaskService:
             progress_pct=0.0,
             state={"status": "running"},
         )
+        # Durable-plane observation: persist the task's execution identity so
+        # a restart can reconcile this run (W17-A).
+        await self.track_adapter_execution(task, phase="begin")
         try:
 
             async def operation(
@@ -731,6 +734,7 @@ class TaskService:
                     "updated_at": datetime.now(UTC).replace(tzinfo=None),
                 }
                 await self.repository.update_task(task_id, update)
+                await self.track_adapter_execution(task, phase="fail", error=str(message)[:300])
                 await self._finish_attempt(task, status="failed", error=str(message)[:500])
                 await self._settle_budget_for_task(task, actual_usd=0.0, release=True)
                 return {**task, **update}
@@ -806,6 +810,9 @@ class TaskService:
             if result.get("completed_shots") is not None:
                 completion["completed_shots"] = result["completed_shots"]
             await self.repository.update_task(task_id, completion)
+            await self.track_adapter_execution(
+                task, phase="complete", artifact_path=str(artifact_path or "")
+            )
             await self._checkpoint(
                 task,
                 stage="completed",
@@ -2160,3 +2167,88 @@ class TaskService:
             raise ValueError(f"Task {task_id} not found")
         action, reason = recover_execution(dict(task.get("config_json") or {}))
         return {"action": action.value, "reason": reason}
+
+    async def reconcile_on_startup(self, *, limit: int = 200) -> dict[str, Any]:
+        """Sweep non-terminal tasks and report durable-plane recovery actions.
+
+        Called by the worker at boot. Each task with a persisted execution
+        record is routed to resume-poll / resume-download / explicit-fail, so a
+        restart resumes the right phase instead of re-running or losing a
+        completed remote job. Report-only: the runtime owns execution.
+        """
+        from hevi.tasks.durable_execution import reconcile_executions
+
+        rows = await self.repository.list_tasks(
+            statuses=["running", "claimed", "queued", "interrupted", "paused"],
+            limit=limit,
+        )
+        report = reconcile_executions(tuple(rows))
+        counts: dict[str, int] = {}
+        for item in report:
+            counts[item["action"]] = counts.get(item["action"], 0) + 1
+        return {"total": len(report), "counts": counts, "tasks": list(report)}
+
+    async def track_adapter_execution(
+        self, task: dict[str, Any], *, phase: str, artifact_path: str = "", error: str = ""
+    ) -> dict[str, Any]:
+        """Observe adapter execution on the durable plane (task granularity).
+
+        ``phase`` is begin / complete / fail. The record is persisted through
+        the repository so a restart can reconcile it; it never gates the
+        adapter's own retry decision.
+        """
+        from pathlib import Path
+
+        from hevi.creative.layer4.provider_execution import RemoteState
+        from hevi.tasks.durable_execution import (
+            apply_execution_event,
+            ensure_execution,
+            store_record,
+        )
+
+        task_id = uuid.UUID(str(task["id"]))
+        config = dict(task.get("config_json") or {})
+        provider = str(task.get("video_provider") or "adapter")
+        config, record, _created = ensure_execution(
+            config,
+            provider=provider,
+            endpoint=str(config.get("production_source") or "adapter"),
+            model=provider,
+            request={"topic": task.get("topic"), "task": str(task_id)},
+            production_revision=str(config.get("revision_id") or ""),
+            target_artifact_id=str(Path("output/tasks") / str(task_id)),
+        )
+        if phase == "begin":
+            if record.remote_state is RemoteState.UNSENT:
+                config, record = apply_execution_event(
+                    config, {"kind": "submitted", "provider_job_id": str(task_id)}
+                )
+            else:  # observer re-entry: checkpoint, never a second submit
+                record = record.touch(poll_checkpoint=record.poll_checkpoint + 1)
+                config = store_record(config, record)
+        elif phase == "complete":
+            config, record = apply_execution_event(
+                config,
+                {
+                    "kind": "remote_success",
+                    "remote_artifact_url": artifact_path,
+                    "provider_terminal_state": "completed",
+                },
+            )
+            config, record = apply_execution_event(
+                config,
+                {
+                    "kind": "download_complete",
+                    "local_artifact_path": artifact_path,
+                    "checksum": "",
+                    "actual_cost": float(config.get("actual_usd") or 0.0),
+                },
+            )
+        elif phase == "fail":
+            config, record = apply_execution_event(
+                config, {"kind": "remote_failed", "error": error or "adapter failed"}
+            )
+        else:
+            raise ValueError(f"unknown durable phase: {phase}")
+        await self.repository.update_task(task_id, {"config_json": config})
+        return record.model_dump(mode="json")
