@@ -1,0 +1,19 @@
+{
+  "probed_at": "2026-09-19T11:56:45.206941+00:00",
+  "GPU_AVAILABLE": false,
+  "NVIDIA_SMI": {
+    "returncode": 255,
+    "stdout": "Unable to determine the device handle for gpu 0000:05:00.0: Unknown Error",
+    "stderr": ""
+  },
+  "COMFYUI_REACHABLE": false,
+  "COMFYUI_DETAIL": "URLError",
+  "ECHOMIMIC_AVAILABLE": false,
+  "MODEL_AVAILABLE": true,
+  "WORKFLOW_PATH": "/data/soffy/projects/hevi/hevi/providers/echo_mimic/workflows/echomimic_v2_10g.json",
+  "REAL_PROBE": "SKIPPED_BLOCKED",
+  "ARTIFACT_VALID": false,
+  "D2A_REOPEN_ALLOWED": false,
+  "BLOCKER": "D2-A stays BLOCKED: GPU, COMFYUI, ECHOMIMIC",
+  "LIPSYNC_BLOCKER": "D2-A stays BLOCKED: GPU, COMFYUI, ECHOMIMIC"
+}

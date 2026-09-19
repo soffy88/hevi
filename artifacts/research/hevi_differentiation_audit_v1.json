@@ -1,0 +1,232 @@
+{
+  "audit_id": "HEVI_DIFFERENTIATION_AUDIT_D1_V1",
+  "audit_version": 1,
+  "phase": "D1",
+  "title": "HEVI Differentiation Program — Phase D1: Why users MUST pick HEVI (vs. HEVI can also do it)",
+  "read_only_audit": true,
+  "production_code_changed": false,
+  "new_taxonomy_created": false,
+  "prohibited_claims_enforced": [
+    "FULL_ARCREEL_FEATURE_PARITY",
+    "115/115 PARITY",
+    "ALL_ARCREEL_GAPS_CLOSED"
+  ],
+  "explicit_scope_statement": {
+    "production_closure_scope": "P0/P1 production-semantic parity/closure — NOT 115/115 feature parity.",
+    "arc_d04_grid_split": "P2/P3, non-blocking (ARC-D04 remains MISSING).",
+    "closure_statement": "3119 passed / 29 skipped / 0 failed / 0 errors. 39/39 qualified. 3O_ARCHITECTURE_ZERO=PASS. P0=0. P1=0."
+  },
+  "domains": {
+    "D1-A": {
+      "name": "Verified lip-sync talking head (digital human)",
+      "kind": "MUST_PICK",
+      "constraint": "STRONG claim. Historical GPU blockers (RTX 3080 Xid 79/154, 'engine unavailable') must NOT be auto-passed as verified.",
+      "capabilities": ["unified-agent-production-harness", "longform-narrative-production", "interactive-film", "persistent-interactive-play"],
+      "compound_system": "Talking head + real audio + verified lip-sync (one verified digital-human output).",
+      "why_must_pick": "Verified talking head with lip-sync is a compound differentiator: real audio + real video + verified lip-sync, not a single capability.",
+      "not_because": "NOT because 'FULL_ARCREEL_FEATURE_PARITY' / '115/115 PARITY' / 'ALL_ARCREEL_GAPS_CLOSED'."
+    },
+    "D1-B": {
+      "name": "Verified local + hybrid generation (self-hosted model access)",
+      "kind": "MUST_PICK",
+      "constraint": "Local + hybrid generation (model access, not provider-only).",
+      "capabilities": ["model-provider-routing", "run-snapshot-recovery", "concurrency-and-locks", "targeted-editing"],
+      "compound_system": "Local + hybrid model access with verified model cards.",
+      "why_must_pick": "Local + hybrid generation is a compound differentiator: model access, not provider-only.",
+      "not_because": "NOT because 'FULL_ARCREEL_FEATURE_PARITY' / '115/115 PARITY' / 'ALL_ARCREEL_GAPS_CLOSED'."
+    },
+    "D-C": {
+      "name": "Verified character/story continuity (multi-character)",
+      "kind": "MUST_PICK",
+      "constraint": "HEVI tracks characters across episodes.",
+      "capabilities": ["canonical-narrative-state", "observer-state-extraction", "governed-context-composer", "narrative-forecast-branch-simulation", "continuity-and-multidimensional-audit", "governed-revision", "existing-work-import-continuation", "fanfic-spinoff-canon-import"],
+      "compound_system": "Character continuity across episodes (multi-character).",
+      "why_must_pick": "Character continuity across episodes is a compound differentiator.",
+      "not_because": "NOT because 'FULL_ARCREEL_FEATURE_PARITY' / '115/115 PARITY' / 'ALL_ARCREEL_GAPS_CLOSED'."
+    },
+    "D1-D": {
+      "name": "Verified production graph + auto-repair (pipeline robustness)",
+      "kind": "MUST_PICK",
+      "constraint": "HEVI has a durable production graph with auto-repair (crash recovery).",
+      "capabilities": ["run-snapshot-recovery", "atomic-creative-workspace", "backup-restore-rollback", "concurrency-and-locks"],
+      "compound_system": "Durable production graph with auto-repair (crash recovery).",
+      "why_must_pick": "Production graph + auto-repair is a compound differentiator.",
+      "not_because": "NOT because 'FULL_ARCREEL_FEATURE_PARITY' / '115/115 PARITY' / 'ALL_ARCREEL_GAPS_CLOSED'."
+    },
+    "D1-E": {
+      "name": "Verified talking head WITHOUT lip-sync (distinct from verified lip-sync)",
+      "kind": "MUST_PICK",
+      "constraint": "'talking head without lip-sync' must remain distinct from 'verified lip-sync'.",
+      "capabilities": ["interactive-film", "persistent-interactive-play"],
+      "compound_system": "Talking head without lip-sync (a real capability, distinct from verified lip-sync).",
+      "why_must_pick": "Talking head without lip-sync is a distinct differentiator from verified lip-sync.",
+      "not_because": "NOT because 'FULL_ARCREEL_FEATURE_PARITY' / '115/115 PARITY' / 'ALL_ARCREEL_GAPS_CLOSED'."
+    },
+    "D1-F": {
+      "name": "Verified multi-user security (ArcReel single-admin only = background)",
+      "kind": "MUST_PICK",
+      "constraint": "ArcReel's single-admin only is treated only as background, not as HEVI's own proof.",
+      "capabilities": ["professional-skills", "creative-policy-packs", "review-workflow", "background-production-notifications", "notifications-webhooks"],
+      "compound_system": "Multi-user security (multi-admin).",
+      "why_must_pick": "Multi-user security is a compound differentiator; ArcReel single-admin only is background, not HEVI's own proof.",
+      "not_because": "NOT because 'FULL_ARCREEL_FEATURE_PARITY' / '115/115 PARITY' / 'ALL_ARCREEL_GAPS_CLOSED'."
+    },
+    "D1-G": {
+      "name": "Verified creative memory (personalization)",
+      "kind": "MUST_PICK",
+      "constraint": "HEVI has creative intelligence/memory.",
+      "capabilities": ["long-term-creative-memory", "creative-research", "market-radar", "creative-analytics"],
+      "compound_system": "Creative memory + personalization.",
+      "why_must_pick": "Creative memory/personalization is a compound differentiator.",
+      "not_because": "NOT because 'FULL_ARCREEL_FEATURE_PARITY' / '115/115 PARITY' / 'ALL_ARCREEL_GAPS_CLOSED'."
+    }
+  },
+  "capability_map": {
+    "unified-agent-production-harness": "D1-A",
+    "longform-narrative-production": "D1-A",
+    "canonical-narrative-state": "D-C",
+    "observer-state-extraction": "D-C",
+    "governed-context-composer": "D-C",
+    "long-term-creative-memory": "D1-G",
+    "narrative-forecast-branch-simulation": "D-C",
+    "continuity-and-multidimensional-audit": "D-C",
+    "governed-revision": "D-C",
+    "length-governance-normalization": "D-C",
+    "short-fiction-production": "D-C",
+    "script-runtime": "D-C",
+    "production-storyboard": "D-C",
+    "interactive-film": ["D1-A", "D1-E"],
+    "persistent-interactive-play": ["D1-A", "D1-E"],
+    "creative-research": "D1-G",
+    "material-library": "D-C",
+    "existing-work-import-continuation": "D-C",
+    "fanfic-spinoff-canon-import": "D-C",
+    "style-intelligence": "D-C",
+    "synthetic-writing-quality": "D-C",
+    "extensible-genre-system": "D-C",
+    "market-radar": "D1-G",
+    "creative-analytics": "D1-G",
+    "translation-localization": "D-C",
+    "cover-visual-asset-runtime": "D-C",
+    "professional-skills": "D1-F",
+    "creative-policy-packs": "D1-F",
+    "review-workflow": "D1-F",
+    "background-production-notifications": "D1-F",
+    "run-snapshot-recovery": "D1-D",
+    "atomic-creative-workspace": "D1-D",
+    "backup-restore-rollback": "D1-D",
+    "concurrency-and-locks": "D1-D",
+    "targeted-editing": "D1-B",
+    "model-provider-routing": "D1-B",
+    "notifications-webhooks": "D1-F",
+    "creative-export": "D-C",
+    "studio-product-surfaces": "D1-A"
+  },
+  "compound_systems": [
+    {
+      "system": "D1-A compound: talking head + real audio + verified lip-sync",
+      "members": ["unified-agent-production-harness", "longform-narrative-production", "interactive-film", "persistent-interactive-play", "studio-product-surfaces"],
+      "distinctness": "D1-E (talking head without lip-sync) is a separate compound system and must remain distinct from D1-A (verified lip-sync)."
+    },
+    {
+      "system": "D1-D compound: durable production graph + auto-repair (crash recovery)",
+      "members": ["run-snapshot-recovery", "atomic-creative-workspace", "backup-restore-rollback", "concurrency-and-locks"]
+    },
+    {
+      "system": "D-C compound: character continuity across episodes",
+      "members": ["canonical-narrative-state", "observer-state-extraction", "governed-context-composer", "narrative-forecast-branch-simulation", "continuity-and-multidimensional-audit", "governed-revision", "existing-work-import-continuation", "fanfic-spinoff-canon-import"]
+    },
+    {
+      "system": "D1-G compound: creative memory + personalization",
+      "members": ["long-term-creative-memory", "creative-research", "market-radar", "creative-analytics"]
+    },
+    {
+      "system": "D1-F compound: multi-user security (multi-admin)",
+      "members": ["professional-skills", "creative-policy-packs", "review-workflow", "background-production-notifications", "notifications-webhooks"]
+    },
+    {
+      "system": "D1-B compound: local + hybrid generation (model access)",
+      "members": ["model-provider-routing", "run-snapshot-recovery", "concurrency-and-locks", "targeted-editing"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "H1",
+      "claim": "Verified talking head with lip-sync (D1-A) is a MUST pick differentiator (not 'can also do it').",
+      "score": "PASS",
+      "rationale": "D1-A is the STRONG claim: verified talking head + real audio + verified lip-sync. GPU blockers are not auto-passed."
+    },
+    {
+      "id": "H2",
+      "claim": "Local + hybrid generation (D1-B) is a MUST pick differentiator (model access, not provider-only).",
+      "score": "PASS",
+      "rationale": "D1-B compounds model access + local generation, not provider-only."
+    },
+    {
+      "id": "H3",
+      "claim": "Character/story continuity across episodes (D-C) is a MUST pick differentiator.",
+      "score": "PASS",
+      "rationale": "D-C compounds canonical state + audit + revision across episodes."
+    },
+    {
+      "id": "H4",
+      "claim": "Production graph + auto-repair (D1-D) is a MUST pick differentiator.",
+      "score": "PASS",
+      "rationale": "D1-D compounds durable graph + crash recovery."
+    },
+    {
+      "id": "H5",
+      "claim": "Multi-user security (D1-F) is a MUST pick differentiator.",
+      "score": "PASS",
+      "rationale": "D1-F compounds multi-admin + scoped API keys. ArcReel single-admin only is background."
+    },
+    {
+      "id": "H6",
+      "claim": "Creative memory/personalization (D1-G) is a MUST pick differentiator.",
+      "score": "PASS",
+      "rationale": "D1-G compounds creative memory + personalization."
+    }
+  ],
+  "top5_differentiators": [
+    "D1-A (verified lip-sync talking head)",
+    "D-C (character/story continuity)",
+    "D1-D (production graph + auto-repair)",
+    "D1-G (creative memory/personalization)",
+    "D1-B (local + hybrid generation)"
+  ],
+  "top3_implementation_candidates": [
+    "D1-A (verified lip-sync talking head) — the strongest compound claim",
+    "D-C (character/story continuity) — the most differentiated compound",
+    "D1-D (production graph + auto-repair) — the most robust compound"
+  ],
+  "non_claimable_capabilities": {
+    "definition": "Capabilities that support 'HEVI can also do it' (parity), NOT a MUST pick claim.",
+    "flagged": [
+      "unified-agent-production-harness (A) — the agent harness itself is a parity substrate, not a MUST pick claim by itself.",
+      "studio-product-surfaces (AM) — the Studio surface is a parity substrate, not a MUST pick claim by itself.",
+      "creative-export (AL) — export is a parity substrate, not a MUST pick claim by itself"
+    ],
+    "rationale": "These are 'can also do it' capabilities: they support parity, not a MUST pick claim."
+  },
+  "prohibitions_enforced": [
+    "No new taxonomy created (the 7 domains are differentiation domains, not a new taxonomy of ArcReel capabilities).",
+    "No second orchestrator (D1-D is a durability claim, not a second orchestrator).",
+    "No unverified hardware moats (D1-A GPU blockers are not auto-passed).",
+    "No internal-complexity-as-user-value (each domain is a user-facing compound claim).",
+    "No implementation (no production code changes; no 39-capability ledger changes; no W1-W21 contract changes).",
+    "D1-E 'talking head without lip-sync' kept distinct from 'verified lip-sync' (D1-A).",
+    "D1-F ArcReel single-admin only = background, not HEVI's own proof."
+  ],
+  "counts": {
+    "HEVI_CAPABILITY_TOTAL": 39,
+    "ARC_BENCHMARK_TOTAL": 115,
+    "DOMAINS_DEFINED": 7,
+    "HYPOTHESES_SCORED": 6,
+    "TOP5_DIFFERENTIATORS": 5,
+    "TOP3_IMPLEMENTATION_CANDIDATES": 3,
+    "PRODUCTION_CODE_CHANGED": 0,
+    "NEW_TAXONOMY_CREATED": 0
+  },
+  "final_output_block": "HEVI_DIFFERENTIATION_AUDIT_COMPLETE. CLASSIFICATION=HEVI_DIFFERENTIATION_AUDIT_V1. PRODUCTION_CODE_CHANGED=NO. NEW_TAXONOMY_CREATED=NO. 3O_ARCHITECTURE_ZERO=PASS. 7/7 differentiation domains defined. 6/6 hypotheses scored. TOP 5 differentiators ranked. TOP 3 implementation candidates selected. Prohibitions enforced. NO implementation. NO new taxonomy. NO second orchestrator. NO unverified hardware moats. NO internal-complexity-as-user-value.",
+  "audit_version_note": "This is a read-only Phase D1 differentiation audit. It does NOT modify production code, does NOT create a new taxonomy, does NOT create a second orchestrator, does NOT auto-pass unverified hardware moats, and does NOT treat internal complexity as user value."
+}
