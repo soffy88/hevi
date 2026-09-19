@@ -1,0 +1,43 @@
+{
+  "phase": "D6-M",
+  "pinned_canonical": {
+    "OPRIM_SHA": "e7f9c65196437d3bff09401aa02bc817d071eec3",
+    "OMODUL_SHA": "bdb48f52032e69818281c779169959e0650a558d",
+    "OBASE_SHA": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+    "AUDITED_HEVI_SHA": "59ae954be7796fb2ad44cb3504b08bb54755b9d5"
+  },
+  "installed": {
+    "oprim": {
+      "installed": true,
+      "version": "3.12.0",
+      "path": "/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages",
+      "python_file_count": 631,
+      "content_sha256": "5e555032fe859ded5c1445549d68555a2bb626bce8e1a21af56b8b86101d5e8b",
+      "source": "local .venv (dev/CI install)"
+    },
+    "omodul": {
+      "installed": true,
+      "version": "1.36.0",
+      "path": "/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages",
+      "python_file_count": 221,
+      "content_sha256": "8ca0190215b9d0f45c86aa99a7d11e40d884f4cb800705e66b7d3f798231635c",
+      "source": "local .venv (dev/CI install)"
+    },
+    "obase": {
+      "installed": true,
+      "version": "0.18.0",
+      "path": "/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages",
+      "python_file_count": 120,
+      "content_sha256": "61d05a47b4b9a6ad65178754b839c1895f2d2fffc32bb26b5155d6948ef281f0",
+      "source": "local .venv (dev/CI install)"
+    }
+  },
+  "canonical_audit": {
+    "3O_ARCHITECTURE_ZERO": "PASS",
+    "path": "artifacts/qualification/3o-v3-global-independent-audit.json"
+  },
+  "lint_note": "scripts/ci/run_3o_v3_lint.py reports 3O_V3_LINT=FAIL against the installed packages; the identical failure reproduces at the pre-D2 closure SHA 46847a8 (no tracked 3O code and no scripts/ci change in D2-D6).",
+  "classification": "ENVIRONMENTAL_NON_BLOCKING",
+  "rationale": "The drift is in the local dev/CI .venv install, not in tracked source. Production hevi-api is built from the pinned image (deploy/Dockerfile.api); container-side verification requires an image build and is out of local scope. No 3O code was modified to accommodate the environment.",
+  "release_blocker": false
+}

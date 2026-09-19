@@ -1,0 +1,43 @@
+{
+  "phase": "D6-K",
+  "iterations": 30,
+  "note": "Baseline only; no absolute SLA. Re-run to detect regressions.",
+  "endpoints": {
+    "identity_library_load": {
+      "p50_ms": 6.585,
+      "p95_ms": 7.615,
+      "min_ms": 4.268,
+      "max_ms": 18.407
+    },
+    "continuity_summary": {
+      "p50_ms": 4.794,
+      "p95_ms": 5.366,
+      "min_ms": 3.246,
+      "max_ms": 21.025
+    },
+    "incident_list": {
+      "p50_ms": 3.808,
+      "p95_ms": 4.269,
+      "min_ms": 2.891,
+      "max_ms": 4.498
+    },
+    "project_health": {
+      "p50_ms": 4.05,
+      "p95_ms": 4.624,
+      "min_ms": 3.224,
+      "max_ms": 4.889
+    },
+    "product_metrics": {
+      "p50_ms": 4.546,
+      "p95_ms": 6.245,
+      "min_ms": 3.106,
+      "max_ms": 22.074
+    },
+    "project_load": {
+      "p50_ms": 4.047,
+      "p95_ms": 4.702,
+      "min_ms": 2.829,
+      "max_ms": 5.177
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "phase": "D6-0",
+  "method": "READ-ONLY frontend + backend product-surface audit at start SHA 480d51a",
+  "surfaces": {
+    "persistent_identity": {
+      "api_exists": true,
+      "api_paths": ["POST/GET /api/identities", "GET /api/identities/{id}", "POST /api/identities/{id}/appearances", "POST /api/identities/{id}/voice", "POST/GET /api/identities/projects/{pid}/bindings", "POST /api/identities/bindings/{id}/upgrade", "POST/DELETE /api/identities/subjects/{sid}/link"],
+      "studio_surface_exists": "PARTIAL (components/ops/OpsPanel.tsx only, unstyled, reachable via /assets 运维 tab)",
+      "user_discoverable": false,
+      "user_actionable": "PARTIAL (bind/upgrade exist in OpsPanel; no appearance/voice/project picker)",
+      "error_explained": false,
+      "empty_state": false,
+      "onboarding": false,
+      "documentation": false,
+      "default_path": "MISSING",
+      "advanced_path": "partial (OpsPanel)",
+      "classification": "FUNCTIONAL_BUT_HIDDEN",
+      "gaps": ["no archive/delete with binding guard", "no upgrade_available signal", "no projects-using-identity back-ref", "no appearance gallery/version history UI", "no rename/alias routes", "no integrity surface", "binding project_id is a free string"]
+    },
+    "continuity": {
+      "api_exists": true,
+      "api_paths": ["POST /api/continuity/facts", "GET /api/continuity/identities/{id}/facts", "POST /api/continuity/validate", "POST /api/continuity/gate", "GET /api/continuity/decisions", "GET /api/tasks/{id}/continuity-report"],
+      "studio_surface_exists": "TECHNICAL_UI (raw facts list in OpsPanel; no gate/validate/decisions UI; continuityApi defined but never called)",
+      "user_discoverable": false,
+      "user_actionable": false,
+      "error_explained": "no",
+      "empty_state": false,
+      "onboarding": false,
+      "documentation": false,
+      "default_path": "MISSING",
+      "advanced_path": "MISSING",
+      "classification": "MISSING",
+      "gaps": ["no pre-generation validate/gate UI", "no product summary endpoint (severity+scope+provenance)", "ContinuityFinding has no scope/provenance", "no override UX", "no project-level decision audit"]
+    },
+    "self_healing": {
+      "api_exists": true,
+      "api_paths": ["POST /api/incidents/open", "GET /api/incidents", "GET /api/incidents/{id}", "POST /api/incidents/{id}/propose|confirm|refuse|executed|retry|verify"],
+      "studio_surface_exists": "TECHNICAL_UI (OpsPanel confirm/refuse list only)",
+      "user_discoverable": false,
+      "user_actionable": "PARTIAL",
+      "error_explained": false,
+      "empty_state": false,
+      "onboarding": false,
+      "documentation": false,
+      "default_path": "MISSING",
+      "advanced_path": "partial (OpsPanel)",
+      "classification": "FUNCTIONAL_BUT_HIDDEN",
+      "gaps": ["auto-detected incidents never surface (track_task_failure / paid-regen omit owner_id)", "verify loads referenced task without owner check", "no repair timeline/events", "no cost/preserved first-class fields", "no incident detail view", "no project grouping"]
+    },
+    "creative_memory": {
+      "api_exists": true,
+      "api_paths": ["GET/PUT/DELETE /api/authorities/memory"],
+      "studio_surface_exists": false,
+      "user_discoverable": false,
+      "user_actionable": false,
+      "error_explained": "n/a",
+      "empty_state": false,
+      "onboarding": false,
+      "documentation": false,
+      "default_path": "MISSING",
+      "advanced_path": "MISSING",
+      "classification": "MISSING",
+      "gaps": ["no frontend client or UI", "copy must say 创作偏好/项目约定, not 'AI memory'"]
+    },
+    "production_status": {
+      "api_exists": "PARTIAL (task-scoped: /api/authorities/tasks/{id}/plan|currency|presentation|editable; no project-level health)",
+      "studio_surface_exists": "PARTIAL (TaskDashboard, ProductionConsole, projects/[id] task-only; dead project filter links)",
+      "user_discoverable": "PARTIAL",
+      "user_actionable": "PARTIAL",
+      "error_explained": "PARTIAL",
+      "empty_state": "PARTIAL",
+      "onboarding": false,
+      "documentation": false,
+      "default_path": "MISSING (no project health home)",
+      "advanced_path": "TECHNICAL_UI",
+      "classification": "PARTIAL",
+      "gaps": ["no project health projection", "no next-action authority surface", "no project registry (project_id is a free string)", "task vs project conflation in UI"]
+    }
+  },
+  "cross_cutting_findings": [
+    "Pre-existing: several /api/authorities/* routes (usage, endpoints, task presentation/currency/plan/editable, character variants) ignore the authenticated owner and can leak another tenant's task by UUID. This predates D6 and is a multi-tenant product risk.",
+    "Auto-detected incidents are opened with empty owner_id and are therefore invisible to owner-scoped listing — self-healing product journey would show nothing without a fix.",
+    "No first-class project entity; project_id is a free string across identities/presentation/usage/NLE."
+  ],
+  "classification_legend": ["READY", "FUNCTIONAL_BUT_HIDDEN", "TECHNICAL_UI", "PARTIAL", "MISSING"]
+}
