@@ -1,0 +1,28 @@
+{
+  "phase": "D7-0",
+  "baseline_tag": "hevi-productization-rc1-2026-09-19",
+  "baseline_sha": "c9f382d",
+  "method": "READ-ONLY audit (security subagent + ops subagent) at RC1",
+  "legend": ["BLOCKER", "HIGH", "MEDIUM", "LOW", "ACCEPTED_LIMITATION"],
+  "items": [
+    {"area": "security", "finding": "/api/authorities/usage/* and /endpoints/* are global registries with no owner dimension; any authenticated tenant could read/modify them", "severity": "BLOCKER", "action_taken": "D7-A admin-only fail-closed gate"},
+    {"area": "security", "finding": "/api/authorities/tasks/{id}/presentation|plan|currency|editable and /characters/{id}/variants bypass owner checks (_load_task/_load_subject)", "severity": "BLOCKER", "action_taken": "D7-A owner-scoped helpers"},
+    {"area": "auth", "finding": "no admin role/gate existed for global resources", "severity": "HIGH", "action_taken": "D7-A server-side HEVI_ADMIN_USER_IDS allowlist, empty=deny"},
+    {"area": "tenant_scoping", "finding": "identity/continuity/incident/memory already owner-scoped (D3-D5)", "severity": "LOW", "action_taken": "verified by D7-A adversarial tests"},
+    {"area": "project_identity", "finding": "project_id is a free string used as an authority key on bindings/continuity; no path/format validation", "severity": "HIGH", "action_taken": "D7-B validate_project_id + tests (no second project model)"},
+    {"area": "accessibility", "finding": "D6 new surfaces had labels/roles; no repo-wide audit; paid actions needed explicit wording", "severity": "MEDIUM", "action_taken": "D7-C DOM/ARIA contract tests + explicit paid-action hint"},
+    {"area": "deployment", "finding": "cftunnel stack runs API only; no worker/scheduler service; scheduler_required default true means queued tasks may not dequeue absent systemd units", "severity": "HIGH", "action_taken": "documented in D7-L/N operator contract; not code-changed (deployment topology, out of product scope)"},
+    {"area": "migration", "finding": "differentiation SQLite stores migrate implicitly with schema_version guard; no downgrade", "severity": "MEDIUM", "action_taken": "D7-F RC1->RC2 forward-migration test (data preserved, idempotent)"},
+    {"area": "backup_restore", "finding": "existing backup.sh covers only PostgreSQL+MinIO, not the data/ authority stores; store_backup.py had no operational caller", "severity": "HIGH", "action_taken": "D7-G scripts/ops/authority_backup.py + tests"},
+    {"area": "rollback", "finding": "no documented RC upgrade/rollback runbook", "severity": "HIGH", "action_taken": "D7-N documentation"},
+    {"area": "startup", "finding": "reconcile_on_startup is report-only; worker not started by cftunnel API lifespan", "severity": "HIGH", "action_taken": "ACCEPTED_LIMITATION documented (single-host operator must run worker/scheduler)"},
+    {"area": "shutdown", "finding": "QueueWorker.stop() does not drain/cancel in-flight task", "severity": "MEDIUM", "action_taken": "ACCEPTED_LIMITATION documented; durable resume covers restart"},
+    {"area": "health", "finding": "/api/health/ready checked PostgreSQL only; no authority-store/host-claim checks; no degraded signal", "severity": "HIGH", "action_taken": "D7-I readiness + qualification"},
+    {"area": "secrets", "finding": "redact_secrets was not a logging filter", "severity": "MEDIUM", "action_taken": "D7-J RedactionFilter installed in lifespan"},
+    {"area": "logging", "finding": "TraceContext had no request_id/run_id/incident_id; no response correlation header", "severity": "MEDIUM", "action_taken": "D7-J extended context + X-Request-ID/X-Trace-ID headers"},
+    {"area": "browser_ux", "finding": "no real-browser E2E harness in this environment (no Playwright/a browser)", "severity": "BLOCKER", "action_taken": "D7-K specs provided; NOT EXECUTED here"},
+    {"area": "documentation", "finding": "no install/upgrade/rollback/operator runbook", "severity": "HIGH", "action_taken": "D7-N docs/RELEASE-RC2.md + operator contract"},
+    {"area": "observability", "finding": "metrics endpoint unauthenticated; most logs unstructured", "severity": "LOW", "action_taken": "ACCEPTED_LIMITATION (metrics endpoint is internal-network operational surface)"},
+    {"area": "tenant_scoping", "finding": "authorities usage/endpoints data classes are inherently global (no owner column)", "severity": "HIGH", "action_taken": "D7-A admin-only; a per-tenant ledger is a future feature, not RC2"}
+  ]
+}

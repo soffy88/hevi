@@ -589,6 +589,7 @@
 |---|---|---|
 | GET | `/api/health` | Health |
 | GET | `/api/health/live` | Health Live |
+| GET | `/api/health/qualification` | Health Qualification |
 | GET | `/api/health/ready` | Health Ready |
 | GET | `/metrics` | Metrics |
 

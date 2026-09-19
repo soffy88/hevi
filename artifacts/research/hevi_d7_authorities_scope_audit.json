@@ -1,0 +1,43 @@
+{
+  "phase": "D7-A",
+  "router": "hevi/api/routers/authorities.py",
+  "prefix": "/api/authorities",
+  "status_model": ["OWNER_SCOPED", "PROJECT_SCOPED", "ADMIN_ONLY", "SAFE_GLOBAL", "DEPRECATED", "SECURITY_GAP"],
+  "routes": [
+    {"method": "GET", "path": "/usage/calls", "status": "ADMIN_ONLY", "note": "global provider-call ledger has no owner column"},
+    {"method": "GET", "path": "/usage/calls/{call_id}", "status": "ADMIN_ONLY"},
+    {"method": "GET", "path": "/usage/analytics", "status": "ADMIN_ONLY"},
+    {"method": "GET", "path": "/endpoints", "status": "ADMIN_ONLY", "note": "global declarative endpoint registry"},
+    {"method": "POST", "path": "/endpoints", "status": "ADMIN_ONLY", "write": true},
+    {"method": "GET", "path": "/endpoints/{name}", "status": "ADMIN_ONLY"},
+    {"method": "DELETE", "path": "/endpoints/{name}", "status": "ADMIN_ONLY", "write": true},
+    {"method": "POST", "path": "/endpoints/{name}/validate", "status": "ADMIN_ONLY", "write": true},
+    {"method": "POST", "path": "/endpoints/{name}/preview-request", "status": "ADMIN_ONLY"},
+    {"method": "POST", "path": "/endpoints/{name}/check-response", "status": "ADMIN_ONLY"},
+    {"method": "POST", "path": "/endpoints/{name}/check-capability", "status": "ADMIN_ONLY"},
+    {"method": "POST", "path": "/endpoints/{name}/trial", "status": "ADMIN_ONLY", "write": true},
+    {"method": "POST", "path": "/endpoints/{name}/enable", "status": "ADMIN_ONLY", "write": true},
+    {"method": "POST", "path": "/endpoints/{name}/disable", "status": "ADMIN_ONLY", "write": true},
+    {"method": "POST", "path": "/endpoints/{name}/run", "status": "ADMIN_ONLY", "write": "creates owner-scoped task from a global definition"},
+    {"method": "GET", "path": "/memory", "status": "OWNER_SCOPED"},
+    {"method": "PUT", "path": "/memory", "status": "OWNER_SCOPED", "write": true},
+    {"method": "DELETE", "path": "/memory", "status": "OWNER_SCOPED", "write": true},
+    {"method": "GET", "path": "/characters/{character_id}/variants", "status": "OWNER_SCOPED", "note": "_load_subject enforces subject.user_id"},
+    {"method": "GET", "path": "/tasks/{task_id}/presentation", "status": "OWNER_SCOPED", "note": "_load_task enforces task.user_id"},
+    {"method": "GET", "path": "/tasks/{task_id}/plan", "status": "OWNER_SCOPED"},
+    {"method": "GET", "path": "/tasks/{task_id}/currency", "status": "OWNER_SCOPED"},
+    {"method": "GET", "path": "/tasks/{task_id}/editable", "status": "OWNER_SCOPED"},
+    {"method": "GET", "path": "/providers/{provider}/capabilities", "status": "SAFE_GLOBAL", "note": "static PROVIDER_LIMITS, no tenant data"},
+    {"method": "POST", "path": "/admission/media", "status": "SAFE_GLOBAL", "note": "pure computation"},
+    {"method": "POST", "path": "/admission/batch", "status": "SAFE_GLOBAL", "note": "pure computation"}
+  ],
+  "mechanism": "Global registries are admin-only via require_admin (server-side HEVI_ADMIN_USER_IDS allowlist; empty allowlist denies everyone). Owner data uses the existing 'owner when present' convention (task.user_id / subject.user_id).",
+  "exit": {
+    "AUTHORITIES_SCOPE_AUDIT": "PASS",
+    "UNSCOPED_PRODUCTION_AUTHORITIES": 0,
+    "SECURITY_GAP_REMAINING": 0,
+    "CROSS_TENANT_AUTHORITY_READS": 0,
+    "CROSS_TENANT_AUTHORITY_WRITES": 0
+  },
+  "tests": ["tests/test_d7_authority_security.py", "tests/test_authorities_api.py"]
+}
