@@ -892,7 +892,10 @@ class TaskService:
                 completion["completed_shots"] = result["completed_shots"]
             await self.repository.update_task(task_id, completion)
             await self.track_adapter_execution(
-                task, phase="complete", artifact_path=str(artifact_path or "")
+                task,
+                phase="complete",
+                artifact_path=str(artifact_path or ""),
+                config_json=config_json,
             )
             await self._checkpoint(
                 task,
@@ -2273,13 +2276,21 @@ class TaskService:
         return {"total": len(report), "counts": counts, "tasks": list(report)}
 
     async def track_adapter_execution(
-        self, task: dict[str, Any], *, phase: str, artifact_path: str = "", error: str = ""
+        self,
+        task: dict[str, Any],
+        *,
+        phase: str,
+        artifact_path: str = "",
+        error: str = "",
+        config_json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Observe adapter execution on the durable plane (task granularity).
 
         ``phase`` is begin / complete / fail. The record is persisted through
         the repository so a restart can reconcile it; it never gates the
-        adapter's own retry decision.
+        adapter's own retry decision. ``config_json`` lets the caller pass the
+        freshest config (e.g. with the just-written artifact manifest) so the
+        execution record cannot clobber concurrent config updates.
         """
         from pathlib import Path
 
@@ -2291,7 +2302,7 @@ class TaskService:
         )
 
         task_id = uuid.UUID(str(task["id"]))
-        config = dict(task.get("config_json") or {})
+        config = dict(config_json if config_json is not None else (task.get("config_json") or {}))
         provider = str(task.get("video_provider") or "adapter")
         config, record, _created = ensure_execution(
             config,

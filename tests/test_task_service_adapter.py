@@ -47,8 +47,13 @@ async def test_task_service_dispatches_explainer_to_adapter_executor(tmp_path) -
     # TaskService projects the oservi start/success events in addition to the
     # initial running-state write, preserving existing task/SSE semantics.
     assert repo.update_task.await_count >= 4
-    assert repo.update_task.await_args_list[1].args[1]["config_json"]["stage"] == "started"
-    assert repo.update_task.await_args_list[2].args[1]["config_json"]["stage"] == "succeeded"
+    stages = [
+        call.args[1]["config_json"]["stage"]
+        for call in repo.update_task.await_args_list
+        if isinstance(call.args[1].get("config_json"), dict)
+        and "stage" in call.args[1]["config_json"]
+    ]
+    assert "started" in stages and "succeeded" in stages
 
 
 @pytest.mark.asyncio
