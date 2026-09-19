@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -11,6 +12,8 @@ from hevi.auth.jwt_handler import decode_access_token
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.subjects.repository import SubjectRepository
 from hevi.subjects.subject_service import SubjectService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/subjects", tags=["subjects"])
 
@@ -337,7 +340,44 @@ async def register_subject_appearance(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if updated is None:
         raise HTTPException(status_code=404, detail="Subject not found")
+    _record_appearance_continuity(
+        owner_id=str(user["id"]),
+        subject_id=subject_id,
+        appearance_id=body.appearance_id,
+        kind=str(body.kind),
+    )
     return _serialize_subject(updated)
+
+
+def _record_appearance_continuity(
+    *, owner_id: str, subject_id: str, appearance_id: str, kind: str
+) -> None:
+    """D3-B canonical commit path: a linked subject's new appearance becomes
+    a continuity fact on its persistent identity. Project-local subjects
+    (no link) stay local — never forced global. Best-effort: continuity
+    tracking must not break subject registration."""
+    try:
+        from hevi.creative.layer4.continuity_gate import FactSource, record_production_fact
+        from hevi.creative.layer4.identity_store import IdentityStore, load_owner_registry
+        from hevi.creative.layer4.persistent_identity import ContinuityCategory
+
+        store = IdentityStore()
+        identity_id = store.subject_identity(owner_id, subject_id)
+        if identity_id is None:
+            return
+        registry = load_owner_registry(store, owner_id)
+        record_production_fact(
+            store=store,
+            registry=registry,
+            owner_id=owner_id,
+            identity_id=identity_id,
+            category=ContinuityCategory.APPEARANCE,
+            statement=f"{appearance_id} ({kind}) registered on subject {subject_id}",
+            source=FactSource.USER,
+            source_artifact_id=subject_id,
+        )
+    except Exception:
+        logger.warning("continuity fact commit failed for subject %s", subject_id)
 
 
 @router.get("")
