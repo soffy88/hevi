@@ -294,6 +294,20 @@ from hevi.creative.layer4.script import (
     StoryboardModule,
 )
 from hevi.creative.layer4.short import SalesPackage, ShortFictionModule, ShortProduction
+from hevi.creative.layer4.store_backup import (
+    BackupError,
+    backup_stores,
+    restore_stores,
+    verify_backup,
+)
+from hevi.creative.layer4.store_topology import (
+    TOPOLOGY as STORE_TOPOLOGY,
+)
+from hevi.creative.layer4.store_topology import (
+    SplitBrainAuthorityError,
+    authority_host_id,
+    claim_authority,
+)
 from hevi.creative.layer4.style import (
     FORBIDDEN_EVASION_GOALS,
     NaturalnessFinding,

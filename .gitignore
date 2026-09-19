@@ -76,3 +76,14 @@ data/lite_runs/
 *.deb
 data/cinematic_output/
 data/corpus/
+
+# differentiation durable runtime state (per-host SQLite; never committed)
+data/identity/
+data/incidents/
+data/usage/
+data/anti_repeat/
+data/endpoints/
+data/memory/
+data/material_cache/
+data/digital_human/
+data/timelines/

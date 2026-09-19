@@ -22,6 +22,7 @@ from hevi.creative.layer4.persistent_identity import (
     ContinuityFactRecord,
     PersistentIdentityRegistry,
 )
+from hevi.creative.layer4.store_topology import claim_authority
 
 _SCHEMA_VERSION = 1
 
@@ -107,10 +108,13 @@ def _connect(db_path: Path) -> sqlite3.Connection:
 class IdentityStore:
     """Durable, owner-scoped persistence for identities/bindings/facts/links."""
 
-    def __init__(self, db_path: Path | None = None) -> None:
+    def __init__(
+        self, db_path: Path | None = None, *, authority_host_id: str | None = None
+    ) -> None:
         self.db_path = db_path or identity_db_path()
-        with _connect(self.db_path):
-            pass
+        with _connect(self.db_path) as conn:
+            # D5-B: single-host durable authority — refuse split-brain.
+            claim_authority(conn, store="identities", host_id=authority_host_id)
 
     # -- identities ----------------------------------------------------
 
@@ -285,6 +289,66 @@ class IdentityStore:
                 params,
             ).fetchall()
         return [json.loads(row["decision_json"]) for row in rows]
+
+    # -- referential integrity (D5-C) -----------------------------------
+
+    def integrity_report(self, owner_id: str) -> dict[str, list[str]]:
+        """Return dangling canonical references for one owner (empty = clean).
+
+        Dangling keys:
+        - binding.identity_id not in identities
+        - fact.identity_id not in identities
+        - decision.binding_id not in bindings
+        - subject_link.identity_id not in identities
+        """
+        with _connect(self.db_path) as conn:
+            identity_ids = {
+                str(row["identity_id"])
+                for row in conn.execute(
+                    "SELECT identity_id FROM identities WHERE owner_id=?", (owner_id,)
+                )
+            }
+            bindings = conn.execute(
+                "SELECT binding_id, identity_id FROM bindings WHERE owner_id=?",
+                (owner_id,),
+            ).fetchall()
+            facts = conn.execute(
+                "SELECT fact_id, identity_id FROM continuity_facts WHERE owner_id=?",
+                (owner_id,),
+            ).fetchall()
+            decisions = conn.execute(
+                "SELECT decision_id, binding_id FROM continuity_decisions WHERE owner_id=?",
+                (owner_id,),
+            ).fetchall()
+            links = conn.execute(
+                "SELECT subject_id, identity_id FROM subject_links WHERE owner_id=?",
+                (owner_id,),
+            ).fetchall()
+
+        binding_ids = {str(row["binding_id"]) for row in bindings}
+        dangling: dict[str, list[str]] = {
+            "binding_identity": [
+                str(row["binding_id"])
+                for row in bindings
+                if str(row["identity_id"]) not in identity_ids
+            ],
+            "fact_identity": [
+                str(row["fact_id"])
+                for row in facts
+                if str(row["identity_id"]) not in identity_ids
+            ],
+            "decision_binding": [
+                str(row["decision_id"])
+                for row in decisions
+                if str(row["binding_id"]) not in binding_ids
+            ],
+            "link_identity": [
+                str(row["subject_id"])
+                for row in links
+                if str(row["identity_id"]) not in identity_ids
+            ],
+        }
+        return {key: value for key, value in dangling.items() if value}
 
 
 __all__ = ["IdentityStore", "identity_db_path", "load_owner_registry"]

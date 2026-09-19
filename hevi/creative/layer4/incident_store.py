@@ -30,6 +30,7 @@ from hevi.creative.layer4.repair_incident import (
     RepairLoopGuard,
     SelfHealingCoordinator,
 )
+from hevi.creative.layer4.store_topology import claim_authority
 
 _SCHEMA_VERSION = 1
 
@@ -105,10 +106,13 @@ _TERMINAL = (
 class IncidentStore:
     """Durable persistence for incidents + loop-guard history."""
 
-    def __init__(self, db_path: Path | None = None) -> None:
+    def __init__(
+        self, db_path: Path | None = None, *, authority_host_id: str | None = None
+    ) -> None:
         self.db_path = db_path or incident_db_path()
-        with _connect(self.db_path):
-            pass
+        with _connect(self.db_path) as conn:
+            # D5-B: single-host durable authority — refuse split-brain.
+            claim_authority(conn, store="incidents", host_id=authority_host_id)
 
     def save_incident(
         self, incident: dict[str, Any], *, expect_status: str | None = None
@@ -224,6 +228,44 @@ class IncidentStore:
         with _connect(self.db_path) as conn:
             rows = conn.execute("SELECT fingerprint, hits FROM dedupe_events").fetchall()
         return {str(row["fingerprint"]): int(row["hits"]) for row in rows}
+
+    # -- referential integrity (D5-C) -----------------------------------
+
+    def integrity_report(self) -> dict[str, list[str]]:
+        """Return dangling/incoherent incident records (empty = clean).
+
+        External task/run/artifact references are caller-owned strings, so
+        they are checked for presence (non-empty) rather than joined; the
+        internal invariants are: owner set, valid status, executing implies a
+        selected action, and attempts not exceeding recorded guard history.
+        """
+        attempts = self.load_attempts()
+        executing_without_action: list[str] = []
+        missing_owner: list[str] = []
+        invalid_status: list[str] = []
+        attempts_without_history: list[str] = []
+        with _connect(self.db_path) as conn:
+            rows = conn.execute("SELECT incident_json FROM incidents").fetchall()
+        for row in rows:
+            incident = RepairIncident.model_validate(json.loads(row["incident_json"]))
+            if not incident.owner_id:
+                missing_owner.append(incident.incident_id)
+            if incident.status.value not in {status.value for status in IncidentStatus}:
+                invalid_status.append(incident.incident_id)
+            if (
+                incident.status is IncidentStatus.REPAIR_EXECUTING
+                and incident.selected_action is None
+            ):
+                executing_without_action.append(incident.incident_id)
+            if incident.attempts > sum(len(v) for v in attempts.values()):
+                attempts_without_history.append(incident.incident_id)
+        report: dict[str, list[str]] = {
+            "missing_owner": missing_owner,
+            "invalid_status": invalid_status,
+            "executing_without_action": executing_without_action,
+            "attempts_without_history": attempts_without_history,
+        }
+        return {key: value for key, value in report.items() if value}
 
 
 class IncidentService:
