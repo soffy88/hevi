@@ -1,0 +1,22 @@
+{
+  "phase": "D5-H",
+  "decision": "PRODUCTIZATION",
+  "allowed_options": ["PRODUCTIZATION", "DISTRIBUTED_DURABILITY", "GPU_RUNTIME_RECOVERY"],
+  "facts": {
+    "production_topology": "SINGLE_HOST_DURABLE (one hevi-api process group, --workers 1, in-process worker, host-bound stores; Postgres is the shared DB)",
+    "gpu_state": "BLOCKED (nvidia-smi: no devices; ComfyUI unreachable)",
+    "verified_moats": ["persistent cross-project identity", "continuity-aware production", "self-healing production"],
+    "product_surface_gaps": [
+      "creative memory has no Studio surface (backend/API only)",
+      "identity/continuity/repair are wired at required seams but not yet surfaced in the primary produce/Studio flows",
+      "OpsPanel exists but is minimal"
+    ],
+    "horizontal_scaling_requirement": "NOT established for the current product stage"
+  },
+  "rationale": "Topology is single-host and no near-term horizontal-scaling requirement is established, so per-host SQLite is adequate. The highest-value next step is to make the now-verified differentiators user-visible and consumed end-to-end in the main production/Studio flows (PRODUCTIZATION), not to distribute durability prematurely. Reopening GPU work is gated on hardware recovery.",
+  "triggers_to_switch": {
+    "DISTRIBUTED_DURABILITY": "when a second API/worker host must share the same project/identity/incident authority (then migrate the new authorities onto the existing canonical PostgreSQL infrastructure; do not create a second DB system)",
+    "GPU_RUNTIME_RECOVERY": "when the lip-sync/local qualification probe reports GPU_AVAILABLE/COMFYUI_REACHABLE/ECHOMIMIC/MODEL/REAL_PROBE/ARTIFACT_VALID all true"
+  },
+  "not_started": true
+}
