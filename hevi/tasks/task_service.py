@@ -979,6 +979,16 @@ class TaskService:
             }
             await self.repository.update_task(task_id, update)
             await self._finish_attempt(task, status="failed", error=str(exc)[:500])
+            # D3-C/C1: detection seam — classify + dedupe into a RepairIncident.
+            # Best-effort tracking; never changes the failure handling above.
+            from hevi.creative.layer4.incident_store import track_task_failure
+
+            track_task_failure(
+                production_run_id=str(task_id),
+                node_key="task.adapter",
+                failure=f"{type(exc).__name__}: {exc}"[:500],
+                evidence={"error_type": type(exc).__name__},
+            )
             await self._record_provider_outcome(
                 task,
                 str(task.get("video_provider") or "unknown"),
@@ -1735,6 +1745,15 @@ class TaskService:
                 await self.repository.update_task(task_id, update_data)
                 await self._finish_attempt(task, status="failed", error=str(e)[:500])
                 await self._settle_budget_for_task(task, actual_usd=0.0, release=True)
+                # D3-C/C1: detection seam — classify + dedupe into a RepairIncident.
+                from hevi.creative.layer4.incident_store import track_task_failure
+
+                track_task_failure(
+                    production_run_id=str(task_id),
+                    node_key="task.run",
+                    failure=f"{type(e).__name__}: {e}"[:500],
+                    evidence={"error_type": type(e).__name__},
+                )
                 if task.get("lease_token"):
                     await self.repository.clear_lease(task_id, task["lease_token"])
                 return {**task, **update_data}

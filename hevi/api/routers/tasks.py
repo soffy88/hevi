@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -28,6 +29,8 @@ from hevi.tasks.task_service import TaskService
 from hevi.video import resolve_preset
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+logger = logging.getLogger(__name__)
 
 
 # ── Request schemas ───────────────────────────────────────────────────────────
@@ -333,6 +336,9 @@ class RegenerateRequest(BaseModel):
     shot_ids: list[int]
     hints: dict[int, str] | None = None
     reuse_current: bool = False
+    identity_binding_id: str = ""
+    """D3-B: optional persistent-identity binding; when set, the continuity
+    gate runs before any paid generation is enqueued (BLOCK → 409)."""
 
 
 def _regeneration_plan(task: dict[str, Any]) -> dict[str, Any]:
@@ -458,13 +464,104 @@ async def regenerate_task_shots(
         from hevi.director.repair_agents import hints_from_failures
 
         hints = hints_from_failures(existing_shots, body.shot_ids)
+    # D3-B: continuity gate before paid generation (only when the caller binds
+    # a persistent identity; project-local regeneration is unaffected).
+    binding_ref = str(getattr(body, "identity_binding_id", "") or "").strip()
+    if binding_ref:
+        _gate_regeneration(
+            owner_id=str(user["id"]),
+            binding_id=binding_ref,
+        )
+    # D3-C: paid regeneration rides a RepairIncident (CONFIRM_REQUIRED). The
+    # explicit POST is the user's confirmation; the loop guard still caps
+    # repeated paid-regen storms per task.
+    repair_incident_id = _open_paid_regen_incident(
+        task_id=str(task_id), shot_ids=body.shot_ids
+    )
     if isinstance(svc.repository.pool, PgPool):
         queued = await svc.enqueue_rework(task_id, shot_ids=body.shot_ids, hints=hints)
+        _record_regen_execution(repair_incident_id)
         return _serialize_task(queued)
     background_tasks.add_task(
         svc.regenerate_task_shots, task_id, shot_ids=body.shot_ids, hints=hints
     )
+    _record_regen_execution(repair_incident_id)
     return _serialize_task(task)
+
+
+def _gate_regeneration(*, owner_id: str, binding_id: str) -> None:
+    """Continuity gate for paid regeneration. BLOCK → 409, never enqueued."""
+    from hevi.creative.layer4.continuity_gate import (
+        GateRefusal,
+        ProductionStage,
+        gate_production_stage,
+    )
+    from hevi.creative.layer4.identity_store import IdentityStore, load_owner_registry
+
+    store = IdentityStore()
+    registry = load_owner_registry(store, owner_id)
+    try:
+        binding = registry.get_binding(binding_id, owner_id=owner_id)
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    try:
+        gate_production_stage(
+            store=store,
+            registry=registry,
+            binding=binding,
+            owner_id=owner_id,
+            stage=ProductionStage.VIDEO_GENERATION,
+            overridden_by=owner_id,
+        )
+    except GateRefusal as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _open_paid_regen_incident(*, task_id: str, shot_ids: list[int]) -> str | None:
+    """Open + confirm the paid-regen incident. Best-effort tracking only:
+    incident-store failure must never break regeneration itself."""
+    try:
+        from hevi.creative.layer4.incident_store import IncidentService
+
+        service = IncidentService()
+        incident = service.open_or_get(
+            production_run_id=task_id,
+            node_key="shot.regenerate",
+            failure="DELIVERY_INTEGRITY",
+            evidence={
+                "signature": "artifact stale, paid regeneration requested",
+                "may_incur_cost": True,
+                "shot_ids": list(shot_ids),
+            },
+        )
+        action = (
+            incident.selected_action
+            or (incident.candidate_actions[0] if incident.candidate_actions else None)
+        )
+        if action is None:
+            return incident.incident_id
+        approved, reason = service.authorize(incident.incident_id, action, confirmed=True)
+        if not approved:
+            raise HTTPException(status_code=409, detail=f"repair not allowed: {reason}")
+        return incident.incident_id
+    except HTTPException:
+        raise
+    except Exception:
+        logger.warning("paid-regen incident tracking failed for task %s", task_id)
+        return None
+
+
+def _record_regen_execution(repair_incident_id: str | None) -> None:
+    if not repair_incident_id:
+        return
+    try:
+        from hevi.creative.layer4.incident_store import IncidentService
+
+        IncidentService().record_execution(repair_incident_id)
+    except Exception:
+        logger.warning("paid-regen execution record failed for %s", repair_incident_id)
 
 
 @router.get("/{task_id}/progress")
