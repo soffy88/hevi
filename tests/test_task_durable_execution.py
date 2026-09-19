@@ -400,3 +400,70 @@ async def test_declarative_endpoint_runs_through_task_runtime(tmp_path, monkeypa
     finally:
         server.shutdown()
         thread.join(timeout=5)
+
+
+def test_failure_classification_single_source() -> None:
+    """E09: provider failures normalize to stable codes, never UnknownError."""
+
+    from hevi.creative.layer4.plan_projection import classify_failure_code
+
+    assert classify_failure_code("DURABLE_SUBMIT_REJECTED:HTTP 429: busy") == "RATE_LIMITED"
+    assert classify_failure_code("DURABLE_SUBMIT_REJECTED:HTTP 500: boom") == "SERVER_ERROR"
+    assert classify_failure_code("DURABLE_POLL_TIMEOUT:600s") == "TIMEOUT"
+    assert classify_failure_code("DURABLE_JOB_FAILED:content rejected") == "PROVIDER_REJECTED"
+    assert classify_failure_code("DURABLE_JOB_EXPIRED:gone") == "PROVIDER_EXPIRED"
+    assert classify_failure_code("DURABLE_DOWNLOAD_HTTP_500") == "DOWNLOAD_ERROR"
+    assert classify_failure_code("ENDPOINT_ADMISSION_BLOCKED:duration") == "CAPABILITY_BLOCKED"
+    assert classify_failure_code("something else") == "PROVIDER_ERROR"
+
+
+def test_task_failure_evidence_is_safe_and_actionable() -> None:
+    """E09: repair action + desensitized reason surface on the task."""
+
+    from hevi.tasks.task_service import TaskService
+
+    evidence = TaskService._normalize_task_failure(
+        "DURABLE_JOB_FAILED: api_key=SECRET123 content rejected at provider",
+        __import__("uuid").uuid4(),
+    )
+    assert evidence["normalized_code"] == "PROVIDER_REJECTED"
+    assert "SECRET123" not in evidence["safe_message"]
+    assert evidence["repair_action"]["target_id"]  # always an actionable repair target
+
+
+@pytest.mark.asyncio
+async def test_adapter_failure_writes_normalized_evidence() -> None:
+    """E09: real adapter failure path persists normalized failure evidence."""
+
+    from hevi.production.adapters import ProductionAdapterRegistry
+    from hevi.tasks.task_service import TaskService
+
+    repo = DictRepository()
+    adapters = ProductionAdapterRegistry()
+
+    async def failing_adapter(task, pool):
+        return {
+            **task,
+            "status": "failed",
+            "error": {"message": "provider failure: quota exhausted"},
+        }
+
+    adapters.register("explainer", failing_adapter)
+    service = TaskService(repo, production_adapters=adapters)  # type: ignore[arg-type]
+    task_id = repo.seed(
+        {
+            "status": "running",
+            "status_source": None,
+            "config_json": {"production_source": "explainer"},
+        }
+    )
+    task = await repo.get_task(task_id)
+    assert task is not None
+    result = await service._run_adapter_task(task)
+    assert result["status"] == "failed"
+    stored = await repo.get_task(task_id)
+    assert stored is not None
+    failure = stored["config_json"]["failure"]
+    assert failure["normalized_code"] == "PROVIDER_ERROR"
+    assert failure["repair_action"]["target_id"] == str(task_id)
+    assert stored["error"]

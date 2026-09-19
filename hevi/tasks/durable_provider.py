@@ -66,25 +66,11 @@ class DurableProviderError(ValueError):
 
 
 def _normalized_error_code(message: str) -> str:
-    """Map a driver failure message to a stable analytics code."""
+    """Map a driver failure message to a stable analytics code (single source)."""
 
-    if "POLL_TIMEOUT" in message:
-        return "TIMEOUT"
-    if "SUBMIT_REJECTED" in message:
-        if "HTTP 429" in message or "HTTP 403" in message:
-            return "RATE_LIMITED"
-        if "HTTP 5" in message:
-            return "SERVER_ERROR"
-        return "INVALID_REQUEST"
-    if "JOB_FAILED" in message:
-        return "PROVIDER_REJECTED"
-    if "JOB_EXPIRED" in message:
-        return "PROVIDER_EXPIRED"
-    if "DOWNLOAD" in message:
-        return "DOWNLOAD_ERROR"
-    if "ADMISSION" in message or "CAPABILITY" in message:
-        return "CAPABILITY_BLOCKED"
-    return "PROVIDER_ERROR"
+    from hevi.creative.layer4.plan_projection import classify_failure_code
+
+    return classify_failure_code(message)
 
 
 async def download_with_resume(

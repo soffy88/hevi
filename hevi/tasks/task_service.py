@@ -628,6 +628,32 @@ class TaskService:
             **args,
         )
 
+    @staticmethod
+    def _normalize_task_failure(message: str, task_id: uuid.UUID) -> dict[str, Any]:
+        """Desensitized failure evidence for the task surface (W17-D/E09).
+
+        Preserves the provider's real cause as a safe message plus a stable
+        normalized code and a concrete repair action, instead of collapsing
+        everything into an opaque UnknownError. Secrets are stripped by the
+        shared ledger redactor.
+        """
+        from hevi.creative.layer4.plan_projection import (
+            classify_failure_code,
+            derive_repair_for_reason,
+            normalize_rejection,
+        )
+
+        normalized = normalize_rejection(
+            provider_code=None,
+            message=message,
+            normalized_code=classify_failure_code(message),
+        )
+        repair = derive_repair_for_reason(message, str(task_id))
+        return {
+            **normalized.model_dump(mode="json"),
+            "repair_action": repair.model_dump(mode="json"),
+        }
+
     async def _run_declarative_endpoint(self, task: dict[str, Any]) -> dict[str, Any]:
         """Run a declarative endpoint generation as a real production task (W17-B).
 
@@ -697,6 +723,10 @@ class TaskService:
         update = {
             "status": "failed",
             "error": message[:500],
+            "config_json": {
+                **(task.get("config_json") or {}),
+                "failure": self._normalize_task_failure(message, task_id),
+            },
             "updated_at": datetime.now(UTC).replace(tzinfo=None),
         }
         await self.repository.update_task(task_id, update)
@@ -812,10 +842,16 @@ class TaskService:
                 update: dict[str, Any] = {
                     "status": "failed",
                     "error": str(message)[:500],
+                    "config_json": {
+                        **(task.get("config_json") or {}),
+                        "failure": self._normalize_task_failure(str(message), task_id),
+                    },
                     "updated_at": datetime.now(UTC).replace(tzinfo=None),
                 }
                 await self.repository.update_task(task_id, update)
-                await self.track_adapter_execution(task, phase="fail", error=str(message)[:300])
+                await self.track_adapter_execution(
+                    task, phase="fail", error=str(message)[:300], config_json=update["config_json"]
+                )
                 await self._finish_attempt(task, status="failed", error=str(message)[:500])
                 await self._settle_budget_for_task(task, actual_usd=0.0, release=True)
                 return {**task, **update}

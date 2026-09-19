@@ -292,6 +292,36 @@ class NormalizedRejection(BaseModel):
 _RETRYABLE_CODES = {"RATE_LIMITED", "TIMEOUT", "SERVER_ERROR", "UNAVAILABLE"}
 
 
+def classify_failure_code(message: str) -> str:
+    """Single-source map from a failure message to a stable analytics code.
+
+    Used by both the durable provider driver (call ledger) and the task
+    runtime (task failure surface), so a provider rejection is described the
+    same way everywhere instead of collapsing to UnknownError.
+    """
+
+    text = message or ""
+    if "POLL_TIMEOUT" in text or "TIMEOUT" in text:
+        return "TIMEOUT"
+    if "SUBMIT_REJECTED" in text:
+        if "HTTP 429" in text or "HTTP 403" in text:
+            return "RATE_LIMITED"
+        if "HTTP 5" in text:
+            return "SERVER_ERROR"
+        return "INVALID_REQUEST"
+    if "JOB_FAILED" in text:
+        return "PROVIDER_REJECTED"
+    if "JOB_EXPIRED" in text:
+        return "PROVIDER_EXPIRED"
+    if "DOWNLOAD" in text:
+        return "DOWNLOAD_ERROR"
+    if "ADMISSION" in text or "CAPABILITY" in text:
+        return "CAPABILITY_BLOCKED"
+    if "not found" in text.lower() or "missing" in text.lower():
+        return "MISSING_DEPENDENCY"
+    return "PROVIDER_ERROR"
+
+
 def normalize_rejection(
     *, provider_code: str | None, message: str, normalized_code: str
 ) -> NormalizedRejection:
@@ -316,6 +346,7 @@ __all__ = [
     "TargetStatus",
     "admit_batch",
     "admit_single",
+    "classify_failure_code",
     "derive_repair_for_reason",
     "derive_target_status",
     "normalize_rejection",
