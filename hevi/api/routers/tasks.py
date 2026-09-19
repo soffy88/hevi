@@ -430,6 +430,12 @@ async def regenerate_task_shots(
                 "task_id": str(task_id),
                 "currency_targets": plan["targets"],
             }
+    # E06: all-or-none pre-submit admission. One blocked target blocks the
+    # whole batch before any task or provider submit is created.
+    try:
+        await svc.admit_regeneration_media(task, shot_ids=body.shot_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     # 重试次数硬上限(设计文档 §4.3):regenerate 是 fire-and-forget 后台任务,
     # TaskService.regenerate_task_shots 内部的 ValueError 不会传回这次 HTTP 请求——
     # 所以已到上限这件事要在这里同步查一遍,提前给调用方一个明确的 409,
