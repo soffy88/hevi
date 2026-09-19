@@ -90,8 +90,8 @@ test('BROWSER-E2E-2 character library cross-project reuse + upgrade', async ({ p
   });
   await page.reload();
   await page.getByRole('tab', { name: '角色库' }).click();
-  await expect(page.getByText('Reuse Character')).toBeVisible();
-  await expect(page.getByText('有新版本可用').first()).toBeVisible();
+  await expect(page.getByTestId('library-list').getByText('Reuse Character').first()).toBeVisible();
+  await expect(page.getByTestId('library-list').getByText('有新版本可用').first()).toBeVisible();
   void email;
 });
 
