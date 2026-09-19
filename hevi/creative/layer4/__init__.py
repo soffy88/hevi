@@ -49,6 +49,17 @@ from hevi.creative.layer4.context import (
     ContextCandidate,
     CreativeContextCompiler,
 )
+from hevi.creative.layer4.continuity_gate import (
+    APPROVED_SOURCES,
+    PAID_STAGES,
+    ContinuityDecision,
+    FactSource,
+    GateError,
+    GateRefusal,
+    ProductionStage,
+    gate_production_stage,
+    record_production_fact,
+)
 from hevi.creative.layer4.cover import CoverGeneration, CoverModule
 from hevi.creative.layer4.creative_memory import (
     CreativeMemory,
@@ -131,7 +142,18 @@ from hevi.creative.layer4.genre import (
     GenrePlan,
     GenreValidationError,
 )
+from hevi.creative.layer4.identity_store import (
+    IdentityStore,
+    identity_db_path,
+    load_owner_registry,
+)
 from hevi.creative.layer4.importer import ImportModule, ImportResult, ReconstructedState
+from hevi.creative.layer4.incident_store import (
+    IncidentService,
+    IncidentStore,
+    incident_db_path,
+    track_task_failure,
+)
 from hevi.creative.layer4.interactive import (
     GraphFinding,
     GraphValidation,
@@ -149,6 +171,22 @@ from hevi.creative.layer4.narrative import (
     NarrativeStage,
     ObservationValidationError,
     WorkflowSnapshot,
+)
+from hevi.creative.layer4.persistent_identity import (
+    OVERRIDABLE_FIELDS,
+    ContinuityCategory,
+    ContinuityFactRecord,
+    ContinuityFinding,
+    ContinuityLedger,
+    ContinuitySeverity,
+    ContinuityVerdict,
+    GlobalCreativeIdentity,
+    IdentityError,
+    IdentityKind,
+    PersistentIdentityRegistry,
+    ProjectCharacterBinding,
+    VoiceVersionRecord,
+    validate_pre_production,
 )
 from hevi.creative.layer4.plan_projection import (
     AdmissionVerdict3,
@@ -216,6 +254,19 @@ from hevi.creative.layer4.provider_execution import (
     guarded_submit,
     intent_fingerprint,
     new_record,
+)
+from hevi.creative.layer4.repair_incident import (
+    IncidentError,
+    IncidentStatus,
+    ProjectRepairPolicy,
+    RepairActionProposal,
+    RepairIncident,
+    RepairLoopGuard,
+    RepairPolicy,
+    RootCauseCategory,
+    SelfHealingCoordinator,
+    classify_deterministic,
+    incident_fingerprint,
 )
 from hevi.creative.layer4.research import ResearchModule
 from hevi.creative.layer4.review import ReviewMode, ReviewWorkflow

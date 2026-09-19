@@ -1415,3 +1415,72 @@ export interface MPTCrossPostResult {
   message?: string;
   error?: string;
 }
+
+// ── D3 differentiation surface: persistent identity / continuity / repair ──
+// These types mirror the canonical backend authorities; the Studio never
+// re-derives identity version, continuity verdict, or repair status locally.
+
+export interface PersistentIdentity {
+  identity_id: string;
+  canonical_name: string;
+  kind: string;
+  identity_version: number;
+  appearance_count: number;
+  voice_id: string;
+  binding_count: number;
+  linked_subjects: string[];
+}
+
+export interface IdentityBinding {
+  binding_id: string;
+  project_id: string;
+  identity_id: string;
+  owner_id: string;
+  pinned_identity_version: number;
+  pinned_appearance_versions: Record<string, number>;
+  overrides: Record<string, unknown>;
+}
+
+export interface ContinuityFact {
+  fact_id: string;
+  identity_id: string;
+  category: string;
+  statement: string;
+  episode: string;
+  scene: string;
+  shot: string;
+  revision: string;
+  source_artifact_id: string;
+  provenance: string;
+}
+
+export interface RepairIncident {
+  incident_id: string;
+  production_run_id: string;
+  node_key: string;
+  artifact_id: string;
+  root_cause: string;
+  failure_code: string;
+  evidence: Record<string, unknown>;
+  diagnosis: string;
+  candidate_actions: Array<{
+    kind: string;
+    target_id: string;
+    detail: string;
+    policy: string;
+    estimated_cost_usd: number;
+    idempotent: boolean;
+  }>;
+  selected_action: {
+    kind: string;
+    target_id: string;
+    detail: string;
+    policy: string;
+    estimated_cost_usd: number;
+    idempotent: boolean;
+  } | null;
+  needs_agent: boolean;
+  status: string;
+  attempts: number;
+  verification_result: Record<string, boolean>;
+}

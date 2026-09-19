@@ -66,6 +66,9 @@ from hevi.api.routers.tongjian import execute_task as tongjian_task_adapter
 from hevi.api.routers.tongjian import router as tongjian_router
 from hevi.api.routers.freezone import router as freezone_router
 from hevi.api.routers.embrace_runtime import router as embrace_router
+from hevi.api.routers.identities import router as identities_router
+from hevi.api.routers.continuity import router as continuity_router
+from hevi.api.routers.incidents import router as incidents_router
 from hevi.api.routers.lite import router as lite_router
 from hevi.api.routers.longcat import router as longcat_router
 from hevi.api.routers.montage import router as montage_router
@@ -193,6 +196,9 @@ app.include_router(production_tools_v2_router, prefix="/api")
 app.include_router(presenters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(subjects_router, prefix="/api")
+app.include_router(identities_router, prefix="/api")
+app.include_router(continuity_router, prefix="/api")
+app.include_router(incidents_router, prefix="/api")
 app.include_router(creative_router, prefix="/api")
 app.include_router(canvas_router, prefix="/api")
 app.include_router(templates_router, prefix="/api")

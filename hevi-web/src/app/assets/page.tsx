@@ -10,13 +10,14 @@ import { useState } from 'react';
 import { ShowcaseWall } from '@/components/gallery/ShowcaseWall';
 import { PresenterLibrary } from '@/components/presenters/PresenterLibrary';
 import { SubjectLibrary } from '@/components/panels/SubjectLibrary';
+import { OpsPanel } from '@/components/ops/OpsPanel';
 
-type AssetTab = '视频' | '图片' | '角色' | '声音' | '数字人' | '素材';
+type AssetTab = '视频' | '图片' | '角色' | '声音' | '数字人' | '素材' | '运维';
 
 export default function AssetsPage() {
   const [activeTab, setActiveTab] = useState<AssetTab>('视频');
 
-  const tabs: AssetTab[] = ['视频', '图片', '角色', '声音', '数字人', '素材'];
+  const tabs: AssetTab[] = ['视频', '图片', '角色', '声音', '数字人', '素材', '运维'];
 
   return (
     <div className="assets-page">
@@ -44,6 +45,7 @@ export default function AssetsPage() {
         {activeTab === '声音' && <VoiceAssets />}
         {activeTab === '数字人' && <PresenterLibrary />}
         {activeTab === '素材' && <MaterialAssets />}
+        {activeTab === '运维' && <OpsPanel />}
       </div>
     </div>
   );

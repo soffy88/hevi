@@ -12,6 +12,7 @@ import type {
   CapabilityDescriptor, Presenter, PresenterInput, PresenterReadiness, ProductionRequest, ProductionTask,
   AspectRatio, QualityProfile, LiteAssemblePayload, LiteAssembleAccepted,
   LiteRunCreatePayload, LiteRunRecord, LiteCueInput,
+  PersistentIdentity, IdentityBinding, ContinuityFact, RepairIncident,
 } from '@/types/api';
 import { API_BASE, USE_MOCK } from '@/lib/runtime-config';
 import type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
@@ -358,6 +359,63 @@ export const presenterApi = {
   update: (id: string, payload: PresenterInput) =>
     authedReq<Presenter>(`/api/presenters/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   test: (id: string) => authedReq<PresenterReadiness>(`/api/presenters/${id}/test`, { method: 'POST' }),
+};
+
+// ── D3 differentiation surface: persistent identity / continuity / repair ──
+// Thin client over the canonical authorities; no local status inference.
+export const identityApi = {
+  list: () => authedReq<PersistentIdentity[]>('/api/identities'),
+  inspect: (id: string) => authedReq<PersistentIdentity & { bindings: IdentityBinding[] }>(`/api/identities/${id}`),
+  create: (name: string, voiceId = 'unassigned') =>
+    authedReq<Record<string, unknown>>('/api/identities', {
+      method: 'POST', body: JSON.stringify({ canonical_name: name, voice_id: voiceId }),
+    }),
+  bind: (projectId: string, identityId: string) =>
+    authedReq<IdentityBinding>(`/api/identities/projects/${projectId}/bindings`, {
+      method: 'POST', body: JSON.stringify({ identity_id: identityId }),
+    }),
+  projectBindings: (projectId: string) =>
+    authedReq<IdentityBinding[]>(`/api/identities/projects/${projectId}/bindings`),
+  upgrade: (bindingId: string) =>
+    authedReq<IdentityBinding>(`/api/identities/bindings/${bindingId}/upgrade`, { method: 'POST' }),
+};
+
+export const continuityApi = {
+  facts: (identityId: string) =>
+    authedReq<{ identity_id: string; facts: ContinuityFact[] }>(
+      `/api/continuity/identities/${identityId}/facts`),
+  validate: (bindingId: string, planned: Record<string, unknown> = {}) =>
+    authedReq<{ verdict: string; findings: Array<{ severity: string; code: string; detail: string }> }>(
+      '/api/continuity/validate', {
+        method: 'POST', body: JSON.stringify({ binding_id: bindingId, ...planned }),
+      }),
+  gate: (bindingId: string, stage: string, planned: Record<string, unknown> = {}, overriddenBy = '') =>
+    authedReq<Record<string, unknown>>('/api/continuity/gate', {
+      method: 'POST',
+      body: JSON.stringify({ binding_id: bindingId, stage, overridden_by: overriddenBy, ...planned }),
+    }),
+  decisions: (bindingId: string) =>
+    authedReq<{ decisions: unknown[] }>(`/api/continuity/decisions?binding_id=${bindingId}`),
+};
+
+export const incidentApi = {
+  list: (productionRunId = '') =>
+    authedReq<{ incidents: RepairIncident[] }>(
+      `/api/incidents${productionRunId ? `?production_run_id=${productionRunId}` : ''}`),
+  get: (id: string) => authedReq<RepairIncident>(`/api/incidents/${id}`),
+  confirm: (id: string, confirmed: boolean) =>
+    authedReq<Record<string, unknown>>(`/api/incidents/${id}/confirm`, {
+      method: 'POST', body: JSON.stringify({ confirmed }),
+    }),
+  refuse: (id: string, reason = 'user_declined') =>
+    authedReq<RepairIncident>(`/api/incidents/${id}/refuse`, {
+      method: 'POST', body: JSON.stringify({ reason }),
+    }),
+  verify: (id: string, verification: Record<string, boolean> = {}, taskId = '') =>
+    authedReq<RepairIncident>(`/api/incidents/${id}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ verification, task_id: taskId }),
+    }),
 };
 
 export { USE_MOCK, API_BASE };

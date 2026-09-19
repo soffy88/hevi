@@ -86,6 +86,16 @@
 | GET | `/api/cinematic/tasks/{task_id}` | Get Animation Task |
 | GET | `/api/cinematic/tasks/{task_id}/video` | Get Animation Video |
 
+## continuity
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/continuity/decisions` | List Decisions |
+| POST | `/api/continuity/facts` | Record Fact |
+| POST | `/api/continuity/gate` | Gate Stage |
+| GET | `/api/continuity/identities/{identity_id}/facts` | List Facts |
+| POST | `/api/continuity/validate` | Validate Binding |
+
 ## creative
 
 | 方法 | 路径 | 说明 |
@@ -221,6 +231,35 @@
 | POST | `/api/history-series/produce` | Produce |
 | POST | `/api/history-series/produce-daily` | Produce Daily |
 | GET | `/api/history-series/queue` | Get Queue |
+
+## identities
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/identities` | List Identities |
+| POST | `/api/identities` | Create Identity |
+| POST | `/api/identities/bindings/{binding_id}/upgrade` | Upgrade Binding |
+| GET | `/api/identities/projects/{project_id}/bindings` | List Project Bindings |
+| POST | `/api/identities/projects/{project_id}/bindings` | Bind Identity To Project |
+| DELETE | `/api/identities/subjects/{subject_id}/link` | Unlink Subject From Identity |
+| POST | `/api/identities/subjects/{subject_id}/link` | Link Subject To Identity |
+| GET | `/api/identities/{identity_id}` | Inspect Identity |
+| POST | `/api/identities/{identity_id}/appearances` | Add Identity Appearance |
+| POST | `/api/identities/{identity_id}/voice` | Assign Identity Voice |
+
+## incidents
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/incidents` | List Incidents |
+| POST | `/api/incidents/open` | Open Incident |
+| GET | `/api/incidents/{incident_id}` | Get Incident |
+| POST | `/api/incidents/{incident_id}/confirm` | Confirm Action |
+| POST | `/api/incidents/{incident_id}/executed` | Mark Executed |
+| POST | `/api/incidents/{incident_id}/propose` | Propose Action |
+| POST | `/api/incidents/{incident_id}/refuse` | Refuse Action |
+| POST | `/api/incidents/{incident_id}/retry` | Retry Repair |
+| POST | `/api/incidents/{incident_id}/verify` | Verify Repair |
 
 ## lite
 
