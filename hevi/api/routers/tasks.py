@@ -332,6 +332,71 @@ class RegenerateRequest(BaseModel):
 
     shot_ids: list[int]
     hints: dict[int, str] | None = None
+    reuse_current: bool = False
+
+
+def _regeneration_plan(task: dict[str, Any]) -> dict[str, Any]:
+    """Currency-driven regeneration decision for the task's artifacts (O04).
+
+    Stale-but-usable media never auto-regenerates: the plan reports currency,
+    a next action, and repair actions so the caller decides explicitly.
+    """
+
+    from hevi.creative.layer4.currency import ArtifactBasis, evaluate_all
+    from hevi.creative.layer4.plan_projection import TargetFact, project_plan
+    from hevi.production.artifacts import manifest_from_task
+
+    manifest = manifest_from_task(task)
+    if manifest is None:
+        return {"available": False, "reason": "no artifact manifest", "targets": []}
+    config = task.get("config_json") or {}
+    revision = str(config.get("revision_id") or config.get("production_revision") or "")
+    deps = {"revision": revision} if revision else {}
+    bases = tuple(
+        ArtifactBasis(
+            artifact_id=str(item.artifact_id or item.path),
+            role=str(item.logical_role or item.kind),
+            exists=True,
+            integrity_ok=bool(item.sha256),
+            dependency_revision=revision,
+        )
+        for item in manifest.artifacts
+    )
+    evaluations = evaluate_all(bases, deps)
+    plans = project_plan(
+        tuple(TargetFact(target_id=e.artifact_id, currency=e.currency) for e in evaluations)
+    )
+    targets = [
+        {
+            "artifact_id": plan.target_id,
+            "status": plan.status.value,
+            "currency": plan.currency.value if plan.currency else None,
+            "next_actions": list(plan.next_actions),
+            "repair_actions": [a.model_dump(mode="json") for a in plan.repair_actions],
+        }
+        for plan in plans
+    ]
+    return {
+        "available": True,
+        "all_usable": bool(targets) and all(t["currency"] in ("current", "stale") for t in targets),
+        "targets": targets,
+    }
+
+
+@router.get("/{task_id}/regenerate/plan")
+async def regeneration_plan(
+    task_id: UUID,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[TaskService, Depends(get_task_service)],
+) -> dict[str, Any]:
+    """Explicit reuse surface: currency + repair actions before regenerating."""
+
+    task = await svc.repository.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.get("user_id") and task["user_id"] != str(user["id"]):
+        raise HTTPException(status_code=403, detail="Not your task")
+    return _regeneration_plan(task)
 
 
 @router.post("/{task_id}/regenerate")
@@ -354,6 +419,17 @@ async def regenerate_task_shots(
         raise HTTPException(
             status_code=409, detail="task must be completed before regenerating shots"
         )
+    # O04 explicit reuse: stale-but-usable media is never auto-regenerated.
+    # When the caller asks to reuse and every artifact is usable, no task is
+    # enqueued and no provider is billed.
+    if getattr(body, "reuse_current", False):
+        plan = _regeneration_plan(task)
+        if plan.get("all_usable"):
+            return {
+                "reused": True,
+                "task_id": str(task_id),
+                "currency_targets": plan["targets"],
+            }
     # 重试次数硬上限(设计文档 §4.3):regenerate 是 fire-and-forget 后台任务,
     # TaskService.regenerate_task_shots 内部的 ValueError 不会传回这次 HTTP 请求——
     # 所以已到上限这件事要在这里同步查一遍,提前给调用方一个明确的 409,

@@ -285,3 +285,47 @@ def test_task_plan_projection_consumer(authed, tmp_path, monkeypatch) -> None:
     target = plan["targets"][0]
     assert target["target_id"] == "v-1"
     assert target["status"] in {"completed", "ready"}
+
+
+def test_regeneration_plan_and_explicit_reuse(authed, tmp_path, monkeypatch) -> None:
+    """O04: stale/current media is reusable; reuse short-circuits regeneration."""
+
+    from hevi.api.routers import tasks as tasks_router
+
+    task = _task_with_manifest(tmp_path, with_sha=True)
+    task["user_id"] = "test-user"
+
+    class Repo:
+        pool = object()
+
+        async def get_task(self, _task_id: object) -> dict[str, Any]:
+            return task
+
+        async def get_shots(self, _task_id: object) -> list[dict[str, Any]]:
+            return []
+
+    repo = Repo()
+    monkeypatch.setattr(tasks_router, "_regeneration_plan", tasks_router._regeneration_plan)
+
+    async def fake_get_service() -> Any:
+        class Svc:
+            repository = repo
+
+        return Svc()
+
+    app.dependency_overrides[tasks_router.get_task_service] = fake_get_service
+    try:
+        task_id = task["id"]
+        plan = client.get(f"/api/tasks/{task_id}/regenerate/plan").json()
+        assert plan["available"] is True
+        assert plan["all_usable"] is True
+        assert plan["targets"][0]["currency"] == "current"
+
+        reused = client.post(
+            f"/api/tasks/{task_id}/regenerate",
+            json={"shot_ids": [0], "reuse_current": True},
+        ).json()
+        assert reused["reused"] is True
+        assert reused["currency_targets"][0]["artifact_id"] == "v-1"
+    finally:
+        app.dependency_overrides.pop(tasks_router.get_task_service, None)

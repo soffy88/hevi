@@ -494,6 +494,7 @@
 | GET | `/api/tasks/{task_id}/export` | Export Task Video |
 | GET | `/api/tasks/{task_id}/progress` | Stream Task Progress |
 | POST | `/api/tasks/{task_id}/regenerate` | Regenerate Task Shots |
+| GET | `/api/tasks/{task_id}/regenerate/plan` | Regeneration Plan |
 | POST | `/api/tasks/{task_id}/resume` | Resume Task |
 | GET | `/api/tasks/{task_id}/shots` | List Task Shots |
 | GET | `/api/tasks/{task_id}/shots/preparation` | Get Shots Preparation |
