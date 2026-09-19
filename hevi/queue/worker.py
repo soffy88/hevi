@@ -162,6 +162,22 @@ class QueueWorker:
             )
         else:
             logger.info("durable reconciliation: %d task(s) tracked, none pending", report["total"])
+        # N06: resolve PENDING provider call rows from execution evidence.
+        try:
+            calls = await self.task_service.reconcile_call_rows(limit=500)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error("call reconciliation: sweep failed: %s", exc)
+            return
+        if calls.get("changed"):
+            logger.warning(
+                "call reconciliation: %d/%d pending call row(s) terminalized",
+                calls["changed"],
+                calls["pending"],
+            )
+        else:
+            logger.info(
+                "call reconciliation: %d pending call row(s) stable", calls.get("pending", 0)
+            )
 
     async def run(self) -> None:
         """Run the worker loop."""

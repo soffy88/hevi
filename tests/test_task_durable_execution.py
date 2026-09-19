@@ -467,3 +467,173 @@ async def test_adapter_failure_writes_normalized_evidence() -> None:
     assert failure["normalized_code"] == "PROVIDER_ERROR"
     assert failure["repair_action"]["target_id"] == str(task_id)
     assert stored["error"]
+
+
+@pytest.mark.asyncio
+async def test_call_row_reconciliation_scenarios(tmp_path, monkeypatch) -> None:
+    """N06: pending rows terminalize from execution/task evidence, idempotently."""
+
+    from hevi.creative.layer4.authority_stores import CallLedgerStore
+    from hevi.creative.layer4.usage_ledger import begin_call
+
+    monkeypatch.setenv("HEVI_USAGE_DB", str(tmp_path / "usage.db"))
+    from hevi.tasks.durable_execution import apply_execution_event, begin_execution
+
+    repo = DictRepository()
+    service = TaskService(repo)  # type: ignore[arg-type]
+    store = CallLedgerStore()
+
+    # A: pending + active execution -> stays ACTIVE (still pending)
+    active_id = repo.seed({"status": "running", "config_json": {}})
+    active_task = await repo.get_task(active_id)
+    assert active_task is not None
+    cfg, _r, _a = begin_execution(
+        {},
+        provider="p",
+        endpoint="e",
+        model="m",
+        request={"x": 1},
+        production_revision="r",
+        target_artifact_id="t",
+        idempotency_key="k1",
+    )
+    cfg, _r = apply_execution_event(cfg, {"kind": "submitted", "provider_job_id": "job-a"})
+    await repo.update_task(active_id, {"config_json": cfg})
+    call_a = begin_call(
+        project_ref="p", provider="p", model="m", operation_type="generate", task_ref=str(active_id)
+    )
+    store.append(call_a.model_dump(mode="json"))
+
+    # B: pending + completed execution (remote success + download) -> RECONCILED
+    done_id = repo.seed({"status": "completed", "config_json": {}})
+    cfg2, _r2, _a2 = begin_execution(
+        {},
+        provider="p",
+        endpoint="e",
+        model="m",
+        request={"x": 2},
+        production_revision="r",
+        target_artifact_id="t2",
+        idempotency_key="k2",
+    )
+    cfg2, _r2 = apply_execution_event(cfg2, {"kind": "submitted", "provider_job_id": "job-b"})
+    cfg2, _r2 = apply_execution_event(
+        cfg2, {"kind": "remote_success", "remote_artifact_url": "https://cdn/b"}
+    )
+    cfg2, _r2 = apply_execution_event(
+        cfg2,
+        {
+            "kind": "download_complete",
+            "local_artifact_path": "/tmp/b",
+            "checksum": "b",
+            "actual_cost": 1.5,
+        },
+    )
+    await repo.update_task(done_id, {"config_json": cfg2})
+    call_b = begin_call(
+        project_ref="p", provider="p", model="m", operation_type="generate", task_ref=str(done_id)
+    )
+    store.append(call_b.model_dump(mode="json"))
+
+    # C: pending + failed execution -> FAILED
+    fail_id = repo.seed({"status": "failed", "config_json": {}})
+    cfg3, _r3, _a3 = begin_execution(
+        {},
+        provider="p",
+        endpoint="e",
+        model="m",
+        request={"x": 3},
+        production_revision="r",
+        target_artifact_id="t3",
+        idempotency_key="k3",
+    )
+    cfg3, _r3 = apply_execution_event(cfg3, {"kind": "submitted", "provider_job_id": "job-c"})
+    cfg3, _r3 = apply_execution_event(cfg3, {"kind": "remote_failed", "error": "content rejected"})
+    await repo.update_task(fail_id, {"config_json": cfg3})
+    call_c = begin_call(
+        project_ref="p", provider="p", model="m", operation_type="generate", task_ref=str(fail_id)
+    )
+    store.append(call_c.model_dump(mode="json"))
+
+    # D: pending + task missing -> ABANDONED
+    call_d = begin_call(
+        project_ref="p",
+        provider="p",
+        model="m",
+        operation_type="generate",
+        task_ref=str(uuid.uuid4()),
+    )
+    store.append(call_d.model_dump(mode="json"))
+    # E: pending + already-billed call (terminal) -> untouched
+    call_e = begin_call(
+        project_ref="p", provider="p", model="m", operation_type="generate", task_ref=""
+    )
+    from hevi.creative.layer4.usage_ledger import complete_call
+
+    store.append(complete_call(call_e, actual_cost=2.0).model_dump(mode="json"))
+
+    first = await service.reconcile_call_rows(limit=100)
+    assert first["pending"] == 4
+    assert first["changed"] == 3  # B->reconciled, C->failed, D->abandoned; A stays active
+
+    rows, _ = store.list_records(limit=100)
+    by_id = {r["call_id"]: r for r in rows}
+    assert by_id[str(call_a.call_id)]["status"] == "pending"  # ACTIVE preserved
+    assert by_id[str(call_b.call_id)]["status"] == "reconciled"
+    assert by_id[str(call_b.call_id)]["actual_cost"] == 1.5
+    assert by_id[str(call_c.call_id)]["status"] == "failed"
+    assert by_id[str(call_c.call_id)]["normalized_error_code"] == "PROVIDER_REJECTED"
+    assert by_id[str(call_d.call_id)]["status"] == "abandoned"
+    assert by_id[str(call_e.call_id)]["status"] == "succeeded"
+    assert by_id[str(call_e.call_id)]["actual_cost"] == 2.0
+
+    # idempotent: second and third runs change nothing, create no rows
+    second = await service.reconcile_call_rows(limit=100)
+    third = await service.reconcile_call_rows(limit=100)
+    assert second["changed"] == 0 and third["changed"] == 0
+    rows2, total2 = store.list_records(limit=100)
+    assert total2 == len(rows2) == 5
+    assert {r["call_id"] for r in rows2} == set(by_id)
+    assert by_id[str(call_b.call_id)]["actual_cost"] == 1.5  # cost not doubled
+
+
+@pytest.mark.asyncio
+async def test_reconcile_remote_success_download_pending_stays_active(
+    tmp_path, monkeypatch
+) -> None:
+    """N06: remote success + download recovering is ACTIVE, never SUCCEEDED early."""
+
+    from hevi.creative.layer4.authority_stores import CallLedgerStore
+    from hevi.creative.layer4.usage_ledger import begin_call
+    from hevi.tasks.durable_execution import apply_execution_event, begin_execution
+
+    monkeypatch.setenv("HEVI_USAGE_DB", str(tmp_path / "usage.db"))
+    repo = DictRepository()
+    service = TaskService(repo)  # type: ignore[arg-type]
+    store = CallLedgerStore()
+    task_id = repo.seed({"status": "running", "config_json": {}})
+    cfg, _r, _a = begin_execution(
+        {},
+        provider="p",
+        endpoint="e",
+        model="m",
+        request={"x": 1},
+        production_revision="r",
+        target_artifact_id="t",
+        idempotency_key="k",
+    )
+    cfg, _r = apply_execution_event(cfg, {"kind": "submitted", "provider_job_id": "job"})
+    cfg, _r = apply_execution_event(
+        cfg, {"kind": "remote_success", "remote_artifact_url": "https://cdn/x"}
+    )
+    await repo.update_task(task_id, {"config_json": cfg})
+    call = begin_call(
+        project_ref="p", provider="p", model="m", operation_type="generate", task_ref=str(task_id)
+    )
+    store.append(call.model_dump(mode="json"))
+
+    result = await service.reconcile_call_rows(limit=10)
+    assert result["changed"] == 0
+    rows, _ = store.list_records(limit=10)
+    assert rows[0]["status"] == "pending"
+    assert rows[0]["actual_cost"] is None  # unknown cost stays unknown, never 0

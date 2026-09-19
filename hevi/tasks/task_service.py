@@ -693,6 +693,7 @@ class TaskService:
                 out_dir,
                 project_ref=str(config.get("project_id") or task_id),
                 operation_type="video_generate",
+                task_ref=str(task_id),
             )
         except EndpointExecutionError as exc:
             if exc.details.get("call_record"):
@@ -2345,6 +2346,48 @@ class TaskService:
             raise ValueError(f"Task {task_id} not found")
         action, reason = recover_execution(dict(task.get("config_json") or {}))
         return {"action": action.value, "reason": reason}
+
+    async def reconcile_call_rows(self, *, limit: int = 500) -> dict[str, Any]:
+        """Startup reconciliation of PENDING provider call rows (N06).
+
+        Each pending row is resolved from the canonical execution authority
+        (task state + persisted ProviderExecutionRecord), never from the call
+        row alone. Idempotent: a second run over already-terminal rows changes
+        nothing, creates no second row, no second billing, and no provider
+        submit.
+        """
+        from hevi.creative.layer4.authority_stores import CallLedgerStore
+        from hevi.creative.layer4.usage_ledger import (
+            ProviderCallRecord,
+            reconcile_pending_rows,
+        )
+
+        store = CallLedgerStore()
+        rows, _total = store.list_records(status="pending", limit=limit)
+        records = tuple(ProviderCallRecord.model_validate(row) for row in rows)
+        if not records:
+            return {"pending": 0, "changed": 0}
+        evidence: dict[str, tuple[str | None, dict[str, Any] | None]] = {}
+        for record in records:
+            task_state: str | None = None
+            execution: dict[str, Any] | None = None
+            if record.task_ref:
+                try:
+                    task_uuid = uuid.UUID(str(record.task_ref))
+                except ValueError:
+                    task_uuid = None
+                if task_uuid is not None:
+                    task = await self.repository.get_task(task_uuid)
+                    if task is not None:
+                        task_state = str(task.get("status") or "")
+                        raw = (task.get("config_json") or {}).get("provider_execution")
+                        execution = raw if isinstance(raw, dict) else None
+            evidence[str(record.call_id)] = (task_state, execution)
+        resolved, changed = reconcile_pending_rows(records, evidence)
+        for record in resolved:
+            if record.status.value != "pending":
+                store.append(record.model_dump(mode="json"))
+        return {"pending": len(records), "changed": changed}
 
     async def reconcile_on_startup(self, *, limit: int = 200) -> dict[str, Any]:
         """Sweep non-terminal tasks and report durable-plane recovery actions.

@@ -28,6 +28,7 @@ Role split (one module, documented roles):
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -270,6 +271,99 @@ def reconcile_pending(
     return tuple(reconciled)
 
 
+def resolve_pending_record(
+    record: ProviderCallRecord,
+    *,
+    task_state: str | None,
+    execution: Mapping[str, Any] | None,
+) -> ProviderCallRecord:
+    """Terminalize one PENDING row from canonical execution/task evidence.
+
+    Never guesses from the call row alone: the canonical
+    ProviderExecutionRecord (serialized) and task state decide. A real
+    in-flight call stays PENDING (the only place PENDING is allowed); a
+    completed remote job followed by a completed download becomes
+    RECONCILED; terminal provider failure becomes FAILED. Billing is never
+    invented: unknown cost stays ``None`` (never 0), and the row's own
+    recorded cost is preserved.
+    """
+
+    remote = str((execution or {}).get("remote_state") or "")
+    acquisition = str((execution or {}).get("acquisition_state") or "")
+    exec_cost = (execution or {}).get("actual_cost")
+    preserved_cost = record.actual_cost if record.actual_cost is not None else exec_cost
+
+    def _finish(status: CallStatus, note: str, code: str | None = None) -> ProviderCallRecord:
+        done = datetime.now(UTC)
+        latency = max(0, int((done - record.started_at).total_seconds() * 1000))
+        return record.model_copy(
+            update={
+                "status": status,
+                "completed_at": done,
+                "latency_ms": latency,
+                "response_summary": note[:SUMMARY_MAX_LEN],
+                "normalized_error_code": code,
+                "actual_cost": preserved_cost,
+            }
+        )
+
+    active_task = task_state in {"running", "claimed", "queued", "pending", "paused", "interrupted"}
+
+    if execution is None:
+        if task_state is None:
+            return _finish(CallStatus.ABANDONED, "reconciled: no task or execution evidence")
+        if task_state == "completed":
+            return _finish(
+                CallStatus.RECONCILED, "reconciled: task completed without execution record"
+            )
+        if task_state == "failed":
+            return _finish(CallStatus.FAILED, "reconciled: task failed", "PROVIDER_ERROR")
+        if active_task:
+            return record  # still ACTIVE
+        return _finish(CallStatus.ABANDONED, f"reconciled: task state {task_state}")
+
+    if remote == "remote_succeeded":
+        if acquisition == "download_complete":
+            return _finish(
+                CallStatus.RECONCILED, "reconciled: remote success + artifact downloaded"
+            )
+        # download still recovering: active, never prematurely SUCCEEDED
+        return record
+    if remote in {"remote_failed", "remote_expired"}:
+        code = "PROVIDER_EXPIRED" if remote == "remote_expired" else "PROVIDER_REJECTED"
+        return _finish(CallStatus.FAILED, f"reconciled: {remote}", code)
+    if active_task or remote in {"unsent", "submitting", "submitted", "polling"}:
+        return record  # still ACTIVE
+    return _finish(CallStatus.ABANDONED, f"reconciled: stale execution ({remote or 'unknown'})")
+
+
+def reconcile_pending_rows(
+    records: tuple[ProviderCallRecord, ...],
+    evidence: Mapping[str, tuple[str | None, Mapping[str, Any] | None]],
+) -> tuple[tuple[ProviderCallRecord, ...], int]:
+    """Reconcile every PENDING row; returns (all records, changed_count).
+
+    ``evidence`` maps ``str(call_id)`` -> ``(task_state, execution_record)``.
+    Idempotent: re-running over already-terminal rows changes nothing, and
+    each call_id is terminalized at most once.
+    """
+
+    out: list[ProviderCallRecord] = []
+    changed = 0
+    for record in records:
+        if record.status is not CallStatus.PENDING:
+            out.append(record)
+            continue
+        task_state, execution = evidence.get(str(record.call_id), (None, None))
+        resolved = resolve_pending_record(record, task_state=task_state, execution=execution)
+        if resolved == record:
+            out.append(record)
+            continue
+        out.append(resolved)
+        changed += 1
+    return tuple(out), changed
+
+
 def find_call(records: tuple[ProviderCallRecord, ...], call_id: UUID | str) -> ProviderCallRecord:
     """Deep-link lookup: the call_id is the stable link target."""
 
@@ -426,5 +520,7 @@ __all__ = [
     "fail_call",
     "find_call",
     "reconcile_pending",
+    "reconcile_pending_rows",
     "redact_secrets",
+    "resolve_pending_record",
 ]

@@ -124,6 +124,7 @@ def execute_endpoint(
     timeout_s: float = 30.0,
     project_ref: str = "endpoint-smoke",
     operation_type: str = "video_generate",
+    task_ref: str = "",
     existing_record: ProviderExecutionRecord | None = None,
 ) -> ExecutionReport:
     """Run one declarative endpoint end to end over real HTTP."""
@@ -162,6 +163,7 @@ def execute_endpoint(
         operation_type=operation_type,
         request_summary=f"endpoint {definition.name} v{definition.version}",
         endpoint=planned.url,
+        task_ref=task_ref,
     )
     record = existing_record
     submitted = False

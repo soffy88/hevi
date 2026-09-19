@@ -156,6 +156,7 @@ async def run_durable_provider_job(
     live_state: dict[str, Any] | None = None,
     project_ref: str = "unknown",
     operation_type: str = "generate",
+    task_ref: str = "",
 ) -> tuple[dict[str, Any], Path, dict[str, Any]]:
     """Run one provider job durably. Returns (config, local_path, record_dump)."""
 
@@ -204,6 +205,7 @@ async def run_durable_provider_job(
         operation_type=operation_type,
         request_summary=f"{endpoint} v{record.request_fingerprint[:12]}",
         endpoint=endpoint,
+        task_ref=task_ref,
     )
 
     def _store() -> Any:  # best-effort ledger emission; never blocks the provider path
