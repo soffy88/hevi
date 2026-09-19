@@ -1,0 +1,68 @@
+{
+ "wave": "W18",
+ "resolved": [
+  {
+   "ARC_ID": "ARC-A03",
+   "ARC_CAPABILITY": "Product material ingestion",
+   "WHY_UNVERIFIED": "Audit found only a generic material library; the product-promo skeleton was not examined.",
+   "REQUIRED_EVIDENCE": "Ad-project ingestion of role-tagged product photos + selling points + audience + forbidden claims + brand visuals.",
+   "PRODUCTION_PATH": "hevi/creative/layer4/materials.py:20-44 (generic); hevi/assembly/promo_video_workflow.py:46-68 (skeleton, product_shots unused)",
+   "TEST_PATH": "tests/creative_runtime/test_capabilities.py:178-196; tests/test_embrace_phase_c.py:111-128",
+   "CLASSIFICATION": "HEVI_PARTIAL",
+   "BLOCKER": "",
+   "REQUIRED_EXTERNAL_CONDITION": "",
+   "RATIONALE": "Generic material ingestion + a product-promo plan skeleton exist (PromoConfig.product_name/features, guided brief with audience/positioning), but role-tagged product photos / selling points / forbidden claims / brand visuals are not a structured ad-project ingestion path; PromoInput.product_shots is declared and never consumed."
+  },
+  {
+   "ARC_ID": "ARC-C04",
+   "ARC_CAPABILITY": "Product asset",
+   "WHY_UNVERIFIED": "Audit did not examine subject_type=product or the canonical appearance authority.",
+   "REQUIRED_EVIDENCE": "Product appearance object grounded on uploaded product photos, consumed as appearance truth.",
+   "PRODUCTION_PATH": "hevi/subjects/subject_service.py:31-73,161-226 (generic embeddings); hevi/creative/layer4/character_authority.py:105-157 (character-scoped)",
+   "TEST_PATH": "tests/test_subjects.py:59,66-84 (product kind + images; no appearance-truth assertion)",
+   "CLASSIFICATION": "HEVI_PARTIAL",
+   "BLOCKER": "",
+   "REQUIRED_EXTERNAL_CONDITION": "",
+   "RATIONALE": "Product is a first-class subject kind and uploaded reference images compute CLIP identity embeddings, but the canonical appearance authority is character-scoped and the one production product path synthesizes a new reference instead of grounding on uploaded product photos."
+  },
+  {
+   "ARC_ID": "ARC-D04",
+   "ARC_CAPABILITY": "Grid split",
+   "WHY_UNVERIFIED": "Grid generation existed; no split step was looked for.",
+   "REQUIRED_EVIDENCE": "Crop a stitched grid sheet into per-cell images each carrying reference set + grid record.",
+   "PRODUCTION_PATH": "NOT FOUND (only generation: hevi/creative/workflow_service.py:44-64; hevi/director/image_pool.py:4 admits missing splitter)",
+   "TEST_PATH": "NOT FOUND (generation only: tests/test_creative.py:340-378)",
+   "CLASSIFICATION": "HEVI_MISSING",
+   "BLOCKER": "",
+   "REQUIRED_EXTERNAL_CONDITION": "",
+   "RATIONALE": "Only grid generation exists (oskill multi_shot_storyboard_workflow stitches a grid_preview). No production code or test crops a stitched grid sheet into per-board images with a reference set + grid record; HEVI's own image_pool docstring admits the missing splitter."
+  },
+  {
+   "ARC_ID": "ARC-N03",
+   "ARC_CAPABILITY": "Multi-currency",
+   "WHY_UNVERIFIED": "Audit saw USD-centric pricing and did not examine ledger/budget currency fields.",
+   "REQUIRED_EVIDENCE": "Per-currency records + refusal to fold + primary-currency chart/rollup.",
+   "PRODUCTION_PATH": "hevi/creative/layer4/usage_ledger.py:101,133,413-418; hevi/budget/models.py:78; no primary-currency rollup",
+   "TEST_PATH": "tests/creative_runtime/test_usage_ledger.py:135-139",
+   "CLASSIFICATION": "HEVI_PARTIAL",
+   "BLOCKER": "",
+   "REQUIRED_EXTERNAL_CONDITION": "",
+   "RATIONALE": "Per-call currency is first-class and aggregate() refuses to fold mixed currencies (USAGE_MULTI_CURRENCY_NOT_FOLDED), but there is no primary-currency selection, per-currency rollup, or conversion; hevi/cost is wholly USD."
+  },
+  {
+   "ARC_ID": "ARC-R05",
+   "ARC_CAPABILITY": "Onboarding",
+   "WHY_UNVERIFIED": "Audit did not search docs.",
+   "REQUIRED_EVIDENCE": "Getting-started/onboarding path deploy->first-video with sample-first guidance.",
+   "PRODUCTION_PATH": "README.md:15-23; docs/E2E_SETUP.md:1-157; scripts/e2e/README.md:1-98 (developer path; no sample-first)",
+   "TEST_PATH": "NOT FOUND (manual scripts only)",
+   "CLASSIFICATION": "HEVI_PARTIAL",
+   "BLOCKER": "",
+   "REQUIRED_EXTERNAL_CONDITION": "",
+   "RATIONALE": "A documented, runnable deploy-to-first-video developer path exists (README quickstart, docs/E2E_SETUP.md, scripts/e2e), but it requires external API keys, there is no tutorial/interactive onboarding, and no sample-first seed artifact."
+  }
+ ],
+ "remaining_unverified": 0,
+ "external_blockers": 0,
+ "note": "All five were verifiable in the current HEVI environment; none required an external blocker."
+}
