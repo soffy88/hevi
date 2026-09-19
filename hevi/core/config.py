@@ -120,6 +120,10 @@ class Settings(BaseSettings):
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
+    # Operator allowlist for global (non-tenant-scoped) admin routes. Empty
+    # means the global registries (usage ledger, declarative endpoints) are
+    # admin-only and deny everyone (fail closed).
+    admin_user_ids: str = ""
 
     @field_validator("jwt_secret")
     @classmethod

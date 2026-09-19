@@ -518,6 +518,12 @@ class PersistentIdentityRegistry:
         project = str(project_id or "").strip()
         if not project:
             raise IdentityError("IDENTITY_BINDING_PROJECT_REQUIRED")
+        from hevi.creative.layer4.project_identity import validate_project_id
+
+        try:
+            project = validate_project_id(project)
+        except ValueError as exc:
+            raise IdentityError(str(exc)) from exc
         identity = self.get_identity(identity_id, owner_id=owner)
         clean_overrides = dict(overrides or {})
         illegal = sorted(set(clean_overrides) - set(OVERRIDABLE_FIELDS))

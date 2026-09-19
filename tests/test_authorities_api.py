@@ -18,7 +18,10 @@ client = TestClient(app)
 
 
 @pytest.fixture()
-def authed():
+def authed(monkeypatch):
+    # Global registries (usage ledger, endpoints) are admin-only and fail
+    # closed; the D7-A authorization tests cover the 403 path.
+    monkeypatch.setenv("HEVI_ADMIN_USER_IDS", "test-user")
     app.dependency_overrides[get_current_user] = lambda: {"id": "test-user"}
     yield
     app.dependency_overrides.clear()
@@ -183,7 +186,7 @@ def test_memory_settings_with_pii_gate(authed, stores) -> None:
 
 
 def test_character_variants_visibility(authed, monkeypatch) -> None:
-    async def fake_subject(pool: Any, character_id: str) -> dict[str, Any] | None:
+    async def fake_subject(pool: Any, character_id: str, owner_id: str = "") -> dict[str, Any] | None:
         if character_id == "ghost":
             return None
         return {
@@ -248,7 +251,7 @@ def _task_with_manifest(tmp_path, with_sha: bool):
 
 
 def test_task_presentation_and_currency_visibility(authed, tmp_path, monkeypatch) -> None:
-    async def fake_task(pool: Any, task_id: Any) -> dict[str, Any] | None:
+    async def fake_task(pool: Any, task_id: Any, owner_id: str = "") -> dict[str, Any] | None:
         return _task_with_manifest(tmp_path, with_sha=True)
 
     monkeypatch.setattr(authorities, "_load_task", fake_task)
@@ -262,7 +265,7 @@ def test_task_presentation_and_currency_visibility(authed, tmp_path, monkeypatch
 
 
 def test_task_currency_missing_without_sha(authed, tmp_path, monkeypatch) -> None:
-    async def fake_task(pool: Any, task_id: Any) -> dict[str, Any] | None:
+    async def fake_task(pool: Any, task_id: Any, owner_id: str = "") -> dict[str, Any] | None:
         task = _task_with_manifest(tmp_path, with_sha=False)
         task["config_json"]["artifact_manifest"]["artifacts"][0]["path"] = "/nonexistent/x.mp4"
         return task
@@ -276,7 +279,7 @@ def test_task_currency_missing_without_sha(authed, tmp_path, monkeypatch) -> Non
 def test_task_plan_projection_consumer(authed, tmp_path, monkeypatch) -> None:
     """W17 K02 consumer: plan projection served for a real task state."""
 
-    async def fake_task(pool: Any, task_id: Any) -> dict[str, Any] | None:
+    async def fake_task(pool: Any, task_id: Any, owner_id: str = "") -> dict[str, Any] | None:
         return _task_with_manifest(tmp_path, with_sha=True)
 
     monkeypatch.setattr(authorities, "_load_task", fake_task)
@@ -420,7 +423,7 @@ def test_variants_endpoint_reads_produced_appearances(authed, monkeypatch) -> No
 
     from hevi.api.routers import authorities
 
-    async def fake_subject(pool: Any, character_id: str) -> dict[str, Any] | None:
+    async def fake_subject(pool: Any, character_id: str, owner_id: str = "") -> dict[str, Any] | None:
         if character_id == "ghost":
             return None
         return {
@@ -471,7 +474,7 @@ def test_editable_export_canonical_current_stale_history(authed, tmp_path, monke
 
     task = _task_with_manifest(tmp_path, with_sha=True)
 
-    async def fake_task(pool: Any, task_id: Any) -> dict[str, Any] | None:
+    async def fake_task(pool: Any, task_id: Any, owner_id: str = "") -> dict[str, Any] | None:
         return task
 
     monkeypatch.setattr(authorities, "_load_task", fake_task)
@@ -512,7 +515,7 @@ def test_editable_export_manual_raw_is_unproven(authed, tmp_path, monkeypatch) -
     task["config_json"]["artifact_manifest"]["artifacts"][0]["logical_role"] = "manual_upload"
     task["config_json"]["artifact_manifest"]["artifacts"][0]["kind"] = "video"
 
-    async def fake_task(pool: Any, task_id: Any) -> dict[str, Any] | None:
+    async def fake_task(pool: Any, task_id: Any, owner_id: str = "") -> dict[str, Any] | None:
         return task
 
     monkeypatch.setattr(authorities, "_load_task", fake_task)

@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
-from hevi.auth.dependencies import get_current_user
+from hevi.auth.dependencies import get_current_user, require_admin
 from hevi.creative.layer4.authority_stores import CallLedgerStore, EndpointRegistry
 from hevi.creative.layer4.creative_memory import CreativeMemory
 from hevi.db.pg_pool import get_hevi_pg_pool
@@ -39,7 +39,7 @@ async def get_pg_pool() -> PgPool:
 
 @router.get("/usage/calls")
 async def usage_calls(
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    _user: Annotated[dict[str, Any], Depends(require_admin)],
     provider: str = "",
     model: str = "",
     operation: str = "",
@@ -64,7 +64,7 @@ async def usage_calls(
 
 @router.get("/usage/calls/{call_id}")
 async def usage_call_detail(
-    call_id: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    call_id: str, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     """Deep-link target: one call row with input/response/error evidence."""
 
@@ -76,7 +76,7 @@ async def usage_call_detail(
 
 @router.get("/usage/analytics")
 async def usage_analytics(
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    _user: Annotated[dict[str, Any], Depends(require_admin)],
 ) -> dict[str, Any]:
     """Cost/latency/rate rollups + attention flags, computed from ledger rows."""
 
@@ -127,14 +127,14 @@ def _registry() -> EndpointRegistry:
 
 @router.get("/endpoints")
 async def endpoints_list(
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    _user: Annotated[dict[str, Any], Depends(require_admin)],
 ) -> dict[str, Any]:
     return {"endpoints": _registry().list_definitions()}
 
 
 @router.post("/endpoints", status_code=201)
 async def endpoints_create(
-    body: DefinitionBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    body: DefinitionBody, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     """Import a definition: validated secret-free, always stored at DRAFT."""
 
@@ -149,7 +149,7 @@ async def endpoints_create(
 
 @router.get("/endpoints/{name}")
 async def endpoints_inspect(
-    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     row = _registry().get(name)
     if row is None:
@@ -159,7 +159,7 @@ async def endpoints_inspect(
 
 @router.delete("/endpoints/{name}")
 async def endpoints_delete(
-    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     if not _registry().delete(name):
         raise HTTPException(status_code=404, detail="endpoint not found")
@@ -175,7 +175,7 @@ def _loaded_definition(name: str) -> dict[str, Any]:
 
 @router.post("/endpoints/{name}/validate")
 async def endpoints_validate(
-    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     from hevi.creative.layer4.endpoint_lifecycle import (
         DeclarativeEndpointDefinition,
@@ -192,7 +192,7 @@ async def endpoints_validate(
 
 @router.post("/endpoints/{name}/preview-request")
 async def endpoints_preview_request(
-    name: str, body: ParamsBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, body: ParamsBody, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     """Render-only: never sends, never bills, secrets stay symbolic."""
 
@@ -207,7 +207,7 @@ async def endpoints_preview_request(
 
 @router.post("/endpoints/{name}/check-response")
 async def endpoints_check_response(
-    name: str, body: SampleBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, body: SampleBody, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     """Validate taking paths against a supplier sample. Sends nothing."""
 
@@ -222,7 +222,7 @@ async def endpoints_check_response(
 
 @router.post("/endpoints/{name}/check-capability")
 async def endpoints_check_capability(
-    name: str, body: RequirementBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, body: RequirementBody, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     from hevi.creative.layer4.endpoint_lifecycle import (
         CapabilityRequirement,
@@ -237,7 +237,7 @@ async def endpoints_check_capability(
 
 @router.post("/endpoints/{name}/trial")
 async def endpoints_record_trial(
-    name: str, body: TrialBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, body: TrialBody, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     """Record a caller-executed trial. This API never executes billable runs."""
 
@@ -259,7 +259,7 @@ async def endpoints_record_trial(
 
 @router.post("/endpoints/{name}/enable")
 async def endpoints_enable(
-    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     from hevi.creative.layer4.endpoint_lifecycle import DeclarativeEndpointDefinition, enable
 
@@ -274,7 +274,7 @@ async def endpoints_enable(
 
 @router.post("/endpoints/{name}/disable")
 async def endpoints_disable(
-    name: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    name: str, _user: Annotated[dict[str, Any], Depends(require_admin)]
 ) -> dict[str, Any]:
     from hevi.creative.layer4.endpoint_lifecycle import DeclarativeEndpointDefinition, disable
 
@@ -371,7 +371,7 @@ class RunBody(BaseModel):
 async def endpoints_run(
     name: str,
     body: RunBody,
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(require_admin)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     """Create a production task that executes this endpoint (W17-B).
@@ -405,27 +405,33 @@ async def endpoints_run(
 # ── character variants ───────────────────────────────────────────────────
 
 
-async def _load_subject(pool: PgPool, character_id: str) -> dict[str, Any] | None:
+async def _load_subject(
+    pool: PgPool, character_id: str, owner_id: str = ""
+) -> dict[str, Any] | None:
     from hevi.subjects.repository import SubjectRepository
     from hevi.subjects.subject_service import SubjectService
 
     try:
-        return await SubjectService(SubjectRepository(pool)).get_subject(character_id)
+        subject = await SubjectService(SubjectRepository(pool)).get_subject(character_id)
     except Exception:
         return None
+    if subject is not None and subject.get("user_id") and subject["user_id"] != owner_id:
+        # Owner-scoped: never disclose another tenant's character by id.
+        return None
+    return subject
 
 
 @router.get("/characters/{character_id}/variants")
 async def character_variants(
     character_id: str,
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     """Appearances, default look, and per-appearance voice inheritance."""
 
     from hevi.creative.layer4.character_authority import character_view_from_sources
 
-    subject = await _load_subject(pool, character_id)
+    subject = await _load_subject(pool, character_id, str(user["id"]))
     if not subject:
         raise HTTPException(status_code=404, detail="character not found")
     metadata = (subject or {}).get("metadata") or {}
@@ -448,16 +454,22 @@ async def character_variants(
 # ── task presentation + currency visibility ──────────────────────────────
 
 
-async def _load_task(pool: PgPool, task_id: uuid.UUID) -> dict[str, Any] | None:
+async def _load_task(
+    pool: PgPool, task_id: uuid.UUID, owner_id: str = ""
+) -> dict[str, Any] | None:
     from hevi.tasks.repository import TaskRepository
 
-    return await TaskRepository(pool).get_task(task_id)
+    task = await TaskRepository(pool).get_task(task_id)
+    if task is not None and task.get("user_id") and task["user_id"] != owner_id:
+        # Owner-scoped: never disclose another tenant's task by id.
+        return None
+    return task
 
 
 @router.get("/tasks/{task_id}/presentation")
 async def task_presentation(
     task_id: str,
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     """Current selected presentation for a task: same snapshot readers consume."""
@@ -470,7 +482,7 @@ async def task_presentation(
         task_uuid = uuid.UUID(task_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="invalid task id") from exc
-    task = await _load_task(pool, task_uuid)
+    task = await _load_task(pool, task_uuid, str(user["id"]))
     if task is None:
         raise HTTPException(status_code=404, detail="task not found")
     manifest = manifest_from_task(task)
@@ -493,7 +505,7 @@ async def task_presentation(
 @router.get("/tasks/{task_id}/plan")
 async def task_plan(
     task_id: str,
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     """Production plan projection over current task state (K02 consumer).
@@ -511,7 +523,7 @@ async def task_plan(
         task_uuid = uuid.UUID(task_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="invalid task id") from exc
-    task = await _load_task(pool, task_uuid)
+    task = await _load_task(pool, task_uuid, str(user["id"]))
     if task is None:
         raise HTTPException(status_code=404, detail="task not found")
     manifest = manifest_from_task(task)
@@ -554,7 +566,7 @@ async def task_plan(
 @router.get("/tasks/{task_id}/currency")
 async def task_currency(
     task_id: str,
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> dict[str, Any]:
     """CURRENT/STALE/MISSING/BLOCKED per manifest entry, judged uniformly."""
@@ -566,7 +578,7 @@ async def task_currency(
         task_uuid = uuid.UUID(task_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="invalid task id") from exc
-    task = await _load_task(pool, task_uuid)
+    task = await _load_task(pool, task_uuid, str(user["id"]))
     if task is None:
         raise HTTPException(status_code=404, detail="task not found")
     manifest = manifest_from_task(task)
@@ -708,7 +720,7 @@ class BatchAdmissionBody(BaseModel):
 @router.get("/tasks/{task_id}/editable")
 async def task_editable_export(
     task_id: str,
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     pool: Annotated[PgPool, Depends(get_pg_pool)],
     as_history: bool = False,
 ) -> dict[str, Any]:
@@ -740,7 +752,7 @@ async def task_editable_export(
         task_uuid = uuid.UUID(task_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="invalid task id") from exc
-    task = await _load_task(pool, task_uuid)
+    task = await _load_task(pool, task_uuid, str(user["id"]))
     if task is None:
         raise HTTPException(status_code=404, detail="task not found")
     manifest = manifest_from_task(task)
