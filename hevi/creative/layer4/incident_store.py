@@ -17,6 +17,7 @@ import json
 import os
 import sqlite3
 import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -54,6 +55,14 @@ CREATE TABLE IF NOT EXISTS repair_attempts (
 CREATE TABLE IF NOT EXISTS dedupe_events (
   fingerprint TEXT PRIMARY KEY,
   hits INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS incident_events (
+  incident_id TEXT NOT NULL,
+  seq INTEGER NOT NULL,
+  event TEXT NOT NULL,
+  at REAL NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY (incident_id, seq)
 );
 CREATE TABLE IF NOT EXISTS schema_version (
   store TEXT PRIMARY KEY,
@@ -229,6 +238,41 @@ class IncidentStore:
             rows = conn.execute("SELECT fingerprint, hits FROM dedupe_events").fetchall()
         return {str(row["fingerprint"]): int(row["hits"]) for row in rows}
 
+    # -- repair timeline (D6-D4) ----------------------------------------
+
+    def append_event(
+        self, incident_id: str, event: str, *, detail: str = "", at: float | None = None
+    ) -> None:
+        moment = time.time() if at is None else at
+        with _connect(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT COALESCE(MAX(seq), -1) AS last FROM incident_events WHERE incident_id=?",
+                (incident_id,),
+            ).fetchone()
+            next_seq = int(row["last"]) + 1
+            conn.execute(
+                "INSERT INTO incident_events (incident_id, seq, event, at, detail)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (incident_id, next_seq, event, moment, detail),
+            )
+
+    def load_events(self, incident_id: str) -> list[dict[str, Any]]:
+        with _connect(self.db_path) as conn:
+            rows = conn.execute(
+                "SELECT seq, event, at, detail FROM incident_events WHERE incident_id=?"
+                " ORDER BY seq",
+                (incident_id,),
+            ).fetchall()
+        return [
+            {
+                "seq": int(row["seq"]),
+                "event": str(row["event"]),
+                "at": float(row["at"]),
+                "detail": str(row["detail"]),
+            }
+            for row in rows
+        ]
+
     # -- referential integrity (D5-C) -----------------------------------
 
     def integrity_report(self) -> dict[str, list[str]]:
@@ -299,6 +343,12 @@ class IncidentService:
         self.store.save_dedupe_hits(self.coordinator.dedupe_hits)
         return incident
 
+    def _log(self, incident_id: str, event: str, detail: str = "") -> None:
+        import contextlib
+
+        with contextlib.suppress(Exception):  # timeline must never break repair
+            self.store.append_event(incident_id, event, detail=detail)
+
     def _apply(
         self,
         incident_id: str,
@@ -345,7 +395,23 @@ class IncidentService:
                 evidence=evidence,
                 owner_id=owner_id,
             )
-            return self._persist(incident)
+            persisted = self._persist(incident)
+            if not self.store.load_events(incident.incident_id):
+                self._log(incident.incident_id, "detected", incident.failure_code)
+                self._log(incident.incident_id, "diagnosed", incident.root_cause.value)
+                if incident.needs_agent:
+                    self._log(incident.incident_id, "needs_decision", "creative decision required")
+                elif incident.candidate_actions:
+                    self._log(
+                        incident.incident_id,
+                        "action_proposed",
+                        incident.candidate_actions[0].kind.value,
+                    )
+            return persisted
+
+    def timeline(self, incident_id: str, *, owner_id: str = "") -> list[dict[str, Any]]:
+        self.get(incident_id, owner_id=owner_id)
+        return self.store.load_events(incident_id)
 
     def get(self, incident_id: str, *, owner_id: str = "") -> RepairIncident:
         incident = self.coordinator.get(incident_id, owner_id=owner_id)
@@ -355,13 +421,15 @@ class IncidentService:
     def decline(
         self, incident_id: str, *, reason: str = "user_declined", owner_id: str = ""
     ) -> RepairIncident:
-        return self._apply(
+        updated = self._apply(
             incident_id,
             owner_id,
             lambda iid: self.coordinator.decline_incident(
                 iid, reason=reason, owner_id=owner_id
             ),
         )
+        self._log(incident_id, "declined", reason)
+        return updated
 
     def list_incidents(
         self, *, production_run_id: str = "", owner_id: str | None = None
@@ -374,13 +442,15 @@ class IncidentService:
     def propose_agent_action(
         self, incident_id: str, action: RepairActionProposal, *, owner_id: str = ""
     ) -> RepairIncident:
-        return self._apply(
+        updated = self._apply(
             incident_id,
             owner_id,
             lambda iid: self.coordinator.propose_agent_action(
                 iid, action, owner_id=owner_id
             ),
         )
+        self._log(incident_id, "action_proposed", action.kind.value)
+        return updated
 
     def authorize(
         self,
@@ -407,14 +477,20 @@ class IncidentService:
             if not ok:
                 raise IncidentError("REPAIR_CONCURRENT_MODIFICATION")
             self.store.save_attempts(self.coordinator.loop_guard.export_history())
+            if approved:
+                self._log(incident_id, "authorized", action.kind.value)
+            else:
+                self._log(incident_id, "authorization_declined", reason)
             return approved, reason
 
     def record_execution(self, incident_id: str, *, owner_id: str = "") -> RepairIncident:
-        return self._apply(
+        updated = self._apply(
             incident_id,
             owner_id,
             lambda iid: self.coordinator.record_execution(iid, owner_id=owner_id),
         )
+        self._log(incident_id, "executed", f"attempt={updated.attempts}")
+        return updated
 
     def verify(
         self,
@@ -425,7 +501,7 @@ class IncidentService:
         preserved_intact: bool = True,
         owner_id: str = "",
     ) -> RepairIncident:
-        return self._apply(
+        updated = self._apply(
             incident_id,
             owner_id,
             lambda iid: self.coordinator.verify(
@@ -436,6 +512,13 @@ class IncidentService:
                 owner_id=owner_id,
             ),
         )
+        self._log(
+            incident_id,
+            "verified_resolved" if updated.status is IncidentStatus.RESOLVED
+            else "verification_failed",
+            updated.status.value,
+        )
+        return updated
 
 
 __all__ = ["IncidentService", "IncidentStore", "incident_db_path", "track_task_failure"]
@@ -448,6 +531,7 @@ def track_task_failure(
     failure: str,
     artifact_id: str = "",
     evidence: dict[str, Any] | None = None,
+    owner_id: str = "",
 ) -> str | None:
     """Best-effort detection seam for task/durable failure paths (D3-C/C1).
 
@@ -464,6 +548,7 @@ def track_task_failure(
             failure=failure,
             artifact_id=artifact_id,
             evidence=evidence,
+            owner_id=owner_id,
         )
     except Exception:
         return None

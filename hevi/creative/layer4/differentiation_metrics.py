@@ -24,9 +24,9 @@ from hevi.creative.layer4.incident_store import IncidentStore
 
 
 def compute_metrics(
-    identity_store: IdentityStore, incident_store: IncidentStore
+    identity_store: IdentityStore, incident_store: IncidentStore, *, owner_id: str = ""
 ) -> dict[str, float | int]:
-    scan = _scan_identity_store(identity_store)
+    scan = _scan_identity_store(identity_store, owner_id=owner_id)
     identities = scan["identities"]
     bindings = scan["bindings"]
     blocks = warns = 0
@@ -40,7 +40,12 @@ def compute_metrics(
     attempts_total = 0
     closed = 0
     preserved = 0
-    for row in incident_store.load_incidents():
+    incidents = (
+        incident_store.load_incidents(owner_id=owner_id)
+        if owner_id
+        else incident_store.load_incidents()
+    )
+    for row in incidents:
         status = str(row.get("status") or "")
         if status == "resolved":
             closed += 1
@@ -73,19 +78,31 @@ def compute_metrics(
     }
 
 
-def _scan_identity_store(store: IdentityStore) -> dict[str, Any]:
-    """Owner-agnostic scan using the store's own SQL (no private access)."""
+def _scan_identity_store(store: IdentityStore, *, owner_id: str = "") -> dict[str, Any]:
+    """Owner-scoped (or global) scan using the store's own SQL."""
     import sqlite3
 
     identities = 0
     bindings = 0
     decisions: list[dict[str, Any]] = []
+    where = " WHERE owner_id=?" if owner_id else ""
+    params: tuple[Any, ...] = (owner_id,) if owner_id else ()
     with sqlite3.connect(str(store.db_path), timeout=30.0) as conn:
         conn.row_factory = sqlite3.Row
         try:
-            identities = int(conn.execute("SELECT COUNT(*) AS n FROM identities").fetchone()["n"])
-            bindings = int(conn.execute("SELECT COUNT(*) AS n FROM bindings").fetchone()["n"])
-            rows = conn.execute("SELECT decision_json FROM continuity_decisions").fetchall()
+            identities = int(
+                conn.execute(
+                    f"SELECT COUNT(*) AS n FROM identities{where}", params
+                ).fetchone()["n"]
+            )
+            bindings = int(
+                conn.execute(
+                    f"SELECT COUNT(*) AS n FROM bindings{where}", params
+                ).fetchone()["n"]
+            )
+            rows = conn.execute(
+                f"SELECT decision_json FROM continuity_decisions{where}", params
+            ).fetchall()
         except Exception:
             return {"identities": 0, "bindings": 0, "decisions": []}
     import json

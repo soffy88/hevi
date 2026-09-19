@@ -206,3 +206,63 @@ async def list_decisions(
     owner_id = _owner(user)
     decisions = IdentityStore().load_decisions(owner_id, binding_id=binding_id)
     return {"decisions": decisions}
+
+
+@router.get("/projects/{project_id}/summary")
+async def project_continuity_summary(
+    project_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Product continuity summary for a project: one severity-ranked payload
+    with scope + provenance, plus whether generation may proceed."""
+    from hevi.creative.layer4.persistent_identity import validate_pre_production
+
+    owner_id = _owner(user)
+    store = IdentityStore()
+    registry = _load_registry(store, owner_id)
+    bindings = registry.bindings_for_project(project_id, owner_id=owner_id)
+    issues: list[dict[str, Any]] = []
+    facts: list[dict[str, Any]] = []
+    worst = "pass"
+    for binding in bindings:
+        identity = registry.get_identity(binding.identity_id, owner_id=owner_id)
+        verdict = validate_pre_production(
+            registry=registry, binding=binding, owner_id=owner_id
+        )
+        for finding in verdict.findings:
+            issues.append(
+                {
+                    "binding_id": binding.binding_id,
+                    "identity_id": identity.identity_id,
+                    "identity_name": identity.canonical_name,
+                    "severity": finding.severity.value,
+                    "code": finding.code,
+                    "detail": finding.detail,
+                }
+            )
+            if finding.severity.value == "block":
+                worst = "block"
+            elif finding.severity.value == "warn" and worst != "block":
+                worst = "warn"
+        facts.extend(
+            {
+                "identity_id": identity.identity_id,
+                "category": fact.category.value,
+                "statement": fact.statement,
+                "episode": fact.episode,
+                "scene": fact.scene,
+                "shot": fact.shot,
+                "revision": fact.revision,
+                "provenance": fact.provenance,
+                "source_artifact_id": fact.source_artifact_id,
+            }
+            for fact in registry.ledger.active_facts(identity.identity_id)
+        )
+    return {
+        "project_id": project_id,
+        "verdict": worst,
+        "gate_ready": worst != "block",
+        "binding_count": len(bindings),
+        "issues": issues,
+        "facts": facts,
+    }

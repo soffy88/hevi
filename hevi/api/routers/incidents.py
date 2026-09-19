@@ -83,6 +83,44 @@ def _serialize(incident: Any) -> dict[str, Any]:
     return dict(incident.model_dump(mode="json"))
 
 
+def _product_view(incident: Any) -> dict[str, Any]:
+    """Product-facing projection: outcome, cost, preserved, confirmation.
+
+    No new canonical truth — derived from the incident's own fields.
+    """
+    selected = incident.selected_action
+    policy = selected.policy.value if selected is not None else ""
+    candidate = incident.candidate_actions[0] if incident.candidate_actions else None
+    if not policy and candidate is not None:
+        policy = candidate.policy.value
+    estimated = (
+        selected.estimated_cost_usd
+        if selected is not None
+        else (candidate.estimated_cost_usd if candidate is not None else 0.0)
+    )
+    evidence = incident.evidence or {}
+    preserved = evidence.get("preserved_artifact_ids") or []
+    return {
+        "incident_id": incident.incident_id,
+        "production_run_id": incident.production_run_id,
+        "node_key": incident.node_key,
+        "status": incident.status.value,
+        "root_cause": incident.root_cause.value,
+        "failure_code": incident.failure_code,
+        "diagnosis": incident.diagnosis,
+        "needs_agent": incident.needs_agent,
+        "policy": policy,
+        "requires_confirmation": policy == "confirm_required",
+        "estimated_cost_usd": estimated,
+        "preserved_artifact_ids": list(preserved),
+        "preserved_intact": bool(evidence.get("preserved_intact", True)),
+        "attempts": incident.attempts,
+        "verification_result": dict(incident.verification_result or {}),
+        "candidate_action": candidate.model_dump(mode="json") if candidate else None,
+        "selected_action": selected.model_dump(mode="json") if selected else None,
+    }
+
+
 def _owner(user: dict[str, Any]) -> str:
     return str(user["id"])
 
@@ -120,22 +158,40 @@ async def open_incident(
 async def list_incidents(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     production_run_id: str = "",
+    product: bool = False,
 ) -> dict[str, Any]:
     incidents = _service().list_incidents(
         production_run_id=production_run_id, owner_id=_owner(user)
     )
+    if product:
+        return {"incidents": [_product_view(incident) for incident in incidents]}
     return {"incidents": [_serialize(incident) for incident in incidents]}
+
+
+@router.get("/{incident_id}/timeline")
+async def incident_timeline(
+    incident_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Product repair timeline: detected → diagnosed → proposed → … → resolved."""
+    try:
+        events = _service().timeline(incident_id, owner_id=_owner(user))
+    except IncidentError as exc:
+        raise _not_found(exc) from exc
+    return {"incident_id": incident_id, "events": events}
 
 
 @router.get("/{incident_id}")
 async def get_incident(
     incident_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    product: bool = False,
 ) -> dict[str, Any]:
     try:
-        return _serialize(_service().get(incident_id, owner_id=_owner(user)))
+        incident = _service().get(incident_id, owner_id=_owner(user))
     except IncidentError as exc:
         raise _not_found(exc) from exc
+    return _product_view(incident) if product else _serialize(incident)
 
 
 @router.post("/{incident_id}/propose")
@@ -320,7 +376,8 @@ async def verify_repair(
         except ValueError:
             raise HTTPException(status_code=422, detail="invalid task_id") from None
         task = await svc.repository.get_task(task_uuid)
-        if task is None:
+        if task is None or (task.get("user_id") and task["user_id"] != owner_id):
+            # Owner-scoped: never use another tenant's task as evidence.
             raise HTTPException(status_code=404, detail="Task not found")
     verification = _server_verification(task, dict(body.verification or {}))
     try:

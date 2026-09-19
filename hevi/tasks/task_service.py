@@ -988,6 +988,7 @@ class TaskService:
                 node_key="task.adapter",
                 failure=f"{type(exc).__name__}: {exc}"[:500],
                 evidence={"error_type": type(exc).__name__},
+                owner_id=str(task.get("user_id") or ""),
             )
             await self._record_provider_outcome(
                 task,
@@ -1753,6 +1754,7 @@ class TaskService:
                     node_key="task.run",
                     failure=f"{type(e).__name__}: {e}"[:500],
                     evidence={"error_type": type(e).__name__},
+                    owner_id=str((task or {}).get("user_id") or ""),
                 )
                 if task.get("lease_token"):
                     await self.repository.clear_lease(task_id, task["lease_token"])

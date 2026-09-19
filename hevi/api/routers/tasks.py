@@ -476,7 +476,9 @@ async def regenerate_task_shots(
     # explicit POST is the user's confirmation; the loop guard still caps
     # repeated paid-regen storms per task.
     repair_incident_id = _open_paid_regen_incident(
-        task_id=str(task_id), shot_ids=body.shot_ids
+        task_id=str(task_id),
+        shot_ids=body.shot_ids,
+        owner_id=str(user["id"]),
     )
     if isinstance(svc.repository.pool, PgPool):
         queued = await svc.enqueue_rework(task_id, shot_ids=body.shot_ids, hints=hints)
@@ -519,7 +521,9 @@ def _gate_regeneration(*, owner_id: str, binding_id: str) -> None:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-def _open_paid_regen_incident(*, task_id: str, shot_ids: list[int]) -> str | None:
+def _open_paid_regen_incident(
+    *, task_id: str, shot_ids: list[int], owner_id: str = ""
+) -> str | None:
     """Open + confirm the paid-regen incident. Best-effort tracking only:
     incident-store failure must never break regeneration itself."""
     try:
@@ -535,6 +539,7 @@ def _open_paid_regen_incident(*, task_id: str, shot_ids: list[int]) -> str | Non
                 "may_incur_cost": True,
                 "shot_ids": list(shot_ids),
             },
+            owner_id=owner_id,
         )
         action = (
             incident.selected_action
@@ -542,7 +547,9 @@ def _open_paid_regen_incident(*, task_id: str, shot_ids: list[int]) -> str | Non
         )
         if action is None:
             return incident.incident_id
-        approved, reason = service.authorize(incident.incident_id, action, confirmed=True)
+        approved, reason = service.authorize(
+            incident.incident_id, action, confirmed=True, owner_id=owner_id
+        )
         if not approved:
             raise HTTPException(status_code=409, detail=f"repair not allowed: {reason}")
         return incident.incident_id

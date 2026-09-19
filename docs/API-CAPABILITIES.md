@@ -94,6 +94,7 @@
 | POST | `/api/continuity/facts` | Record Fact |
 | POST | `/api/continuity/gate` | Gate Stage |
 | GET | `/api/continuity/identities/{identity_id}/facts` | List Facts |
+| GET | `/api/continuity/projects/{project_id}/summary` | Project Continuity Summary |
 | POST | `/api/continuity/validate` | Validate Binding |
 
 ## creative
@@ -245,6 +246,9 @@
 | POST | `/api/identities/subjects/{subject_id}/link` | Link Subject To Identity |
 | GET | `/api/identities/{identity_id}` | Inspect Identity |
 | POST | `/api/identities/{identity_id}/appearances` | Add Identity Appearance |
+| POST | `/api/identities/{identity_id}/archive` | Archive Identity |
+| GET | `/api/identities/{identity_id}/integrity` | Identity Integrity |
+| POST | `/api/identities/{identity_id}/unarchive` | Unarchive Identity |
 | POST | `/api/identities/{identity_id}/voice` | Assign Identity Voice |
 
 ## incidents
@@ -259,6 +263,7 @@
 | POST | `/api/incidents/{incident_id}/propose` | Propose Action |
 | POST | `/api/incidents/{incident_id}/refuse` | Refuse Action |
 | POST | `/api/incidents/{incident_id}/retry` | Retry Repair |
+| GET | `/api/incidents/{incident_id}/timeline` | Incident Timeline |
 | POST | `/api/incidents/{incident_id}/verify` | Verify Repair |
 
 ## lite
@@ -384,6 +389,14 @@
 | GET | `/api/production/v2/recipes/{name}` | Get Recipe |
 | POST | `/api/production/v2/recipes/{name}/execute` | Execute Recipe |
 | POST | `/api/production/v2/seedance/generate` | Seedance |
+
+## products
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/products/continuity/stages` | Continuity Stages |
+| GET | `/api/products/metrics` | Product Metrics |
+| GET | `/api/products/projects/{project_id}/health` | Project Health |
 
 ## providers
 

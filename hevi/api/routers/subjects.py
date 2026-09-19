@@ -486,4 +486,11 @@ async def delete_subject(
     deleted = await svc.delete_subject(subject_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Subject not found")
+    # D6 product hygiene: never leave a dangling identity link behind.
+    try:
+        from hevi.creative.layer4.identity_store import IdentityStore
+
+        IdentityStore().unlink_subject(str(user["id"]), subject_id)
+    except Exception:
+        logger.warning("subject identity unlink failed for %s", subject_id)
     return {"status": "deleted", "subject_id": subject_id}

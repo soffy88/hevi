@@ -107,6 +107,7 @@ class GlobalCreativeIdentity(BaseModel):
     canon_constraints: tuple[str, ...] = ()
     identity_version: int = Field(ge=1, default=1)
     revision: str = ""
+    archived: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     appearance_history: tuple[Appearance, ...] = ()
     voice_history: tuple[VoiceVersionRecord, ...] = ()
@@ -561,6 +562,21 @@ class PersistentIdentityRegistry:
     @property
     def identities(self) -> tuple[GlobalCreativeIdentity, ...]:
         return tuple(self._identities.values())
+
+    def archive_identity(self, identity_id: str, *, owner_id: str) -> GlobalCreativeIdentity:
+        """Archive instead of delete: bindings/facts/history are preserved, so
+        historical projects never dangle. Archived identities are hidden from
+        default listing but remain resolvable by explicit id."""
+        identity = self.get_identity(identity_id, owner_id=owner_id)
+        updated = identity.model_copy(update={"archived": True})
+        self._identities[identity_id] = updated
+        return updated
+
+    def unarchive_identity(self, identity_id: str, *, owner_id: str) -> GlobalCreativeIdentity:
+        identity = self.get_identity(identity_id, owner_id=owner_id)
+        updated = identity.model_copy(update={"archived": False})
+        self._identities[identity_id] = updated
+        return updated
 
     def bindings_for_project(self, project_id: str, *, owner_id: str) -> tuple[ProjectCharacterBinding, ...]:
         owner = _require_owner(owner_id)

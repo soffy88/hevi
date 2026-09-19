@@ -95,12 +95,24 @@ def _serialize_identity(
     for identity in registry.identities:
         if identity.identity_id == identity_id:
             dump = identity.model_dump(mode="json")
-            dump["bindings"] = [
-                binding.model_dump(mode="json")
-                for binding in registry.bindings_for_identity(identity_id, owner_id=owner_id)
-            ]
+            bindings = _binding_views(registry, identity, owner_id=owner_id)
+            dump["bindings"] = bindings
+            dump["upgrade_available"] = any(b["upgrade_available"] for b in bindings)
+            dump["projects_using"] = sorted({b["project_id"] for b in bindings})
             return dump
     raise IdentityError(f"IDENTITY_UNKNOWN:{identity_id}")
+
+
+def _binding_views(
+    registry: PersistentIdentityRegistry, identity: Any, *, owner_id: str
+) -> list[dict[str, Any]]:
+    views: list[dict[str, Any]] = []
+    for binding in registry.bindings_for_identity(identity.identity_id, owner_id=owner_id):
+        row = binding.model_dump(mode="json")
+        row["upgrade_available"] = binding.pinned_identity_version < identity.identity_version
+        row["current_identity_version"] = identity.identity_version
+        views.append(row)
+    return views
 
 
 @router.post("", status_code=201)
@@ -146,25 +158,91 @@ async def create_identity(
 @router.get("")
 async def list_identities(
     user: Annotated[dict[str, Any], Depends(get_current_user)],
+    include_archived: bool = False,
 ) -> list[dict[str, Any]]:
     owner_id = _owner(user)
     store = _store()
     registry = _load_registry(store, owner_id)
-    return [
-        {
-            "identity_id": identity.identity_id,
-            "canonical_name": identity.canonical_name,
-            "kind": identity.kind.value,
-            "identity_version": identity.identity_version,
-            "appearance_count": len(identity.appearance_library),
-            "voice_id": identity.voice.voice_id,
-            "binding_count": len(
-                registry.bindings_for_identity(identity.identity_id, owner_id=owner_id)
-            ),
-            "linked_subjects": store.linked_subjects(owner_id, identity.identity_id),
-        }
-        for identity in registry.identities
-    ]
+    out: list[dict[str, Any]] = []
+    for identity in registry.identities:
+        if identity.archived and not include_archived:
+            continue
+        bindings = _binding_views(registry, identity, owner_id=owner_id)
+        out.append(
+            {
+                "identity_id": identity.identity_id,
+                "canonical_name": identity.canonical_name,
+                "aliases": list(identity.aliases),
+                "kind": identity.kind.value,
+                "identity_version": identity.identity_version,
+                "archived": identity.archived,
+                "upgrade_available": any(b["upgrade_available"] for b in bindings),
+                "appearance_count": len(identity.appearance_library),
+                "appearances": [
+                    {
+                        "appearance_id": a.appearance_id,
+                        "kind": a.kind.value,
+                        "label": a.label,
+                        "version": a.version,
+                    }
+                    for a in identity.appearance_library
+                ],
+                "voice_id": identity.voice.voice_id,
+                "binding_count": len(bindings),
+                "projects_using": sorted({b["project_id"] for b in bindings}),
+                "linked_subjects": store.linked_subjects(owner_id, identity.identity_id),
+            }
+        )
+    return out
+
+
+@router.get("/{identity_id}/integrity")
+async def identity_integrity(
+    identity_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    owner_id = _owner(user)
+    store = _store()
+    registry = _load_registry(store, owner_id)
+    try:
+        registry.get_identity(identity_id, owner_id=owner_id)
+    except IdentityError as exc:
+        raise _not_found(exc) from exc
+    return {"identity_id": identity_id, "dangling": store.integrity_report(owner_id)}
+
+
+@router.post("/{identity_id}/archive")
+async def archive_identity(
+    identity_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Archive, never hard-delete: bindings/facts/history are preserved so
+    historical projects never dangle."""
+    owner_id = _owner(user)
+    store = _store()
+    registry = _load_registry(store, owner_id)
+    try:
+        updated = registry.archive_identity(identity_id, owner_id=owner_id)
+    except IdentityError as exc:
+        raise _not_found(exc) from exc
+    store.save_identity(owner_id, updated.model_dump(mode="json"))
+    return _serialize_identity(registry, identity_id, owner_id=owner_id)
+
+
+@router.post("/{identity_id}/unarchive")
+async def unarchive_identity(
+    identity_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    owner_id = _owner(user)
+    store = _store()
+    registry = _load_registry(store, owner_id)
+    try:
+        updated = registry.unarchive_identity(identity_id, owner_id=owner_id)
+    except IdentityError as exc:
+        raise _not_found(exc) from exc
+    store.save_identity(owner_id, updated.model_dump(mode="json"))
+    return _serialize_identity(registry, identity_id, owner_id=owner_id)
 
 
 @router.get("/{identity_id}")
