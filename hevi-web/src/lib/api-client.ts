@@ -13,6 +13,7 @@ import type {
   AspectRatio, QualityProfile, LiteAssemblePayload, LiteAssembleAccepted,
   LiteRunCreatePayload, LiteRunRecord, LiteCueInput,
   PersistentIdentity, IdentityBinding, ContinuityFact, RepairIncident,
+  IdentitySummary, ContinuityProjectSummary, IncidentTimelineEvent, IncidentProductView, ProjectHealth,
 } from '@/types/api';
 import { API_BASE, USE_MOCK } from '@/lib/runtime-config';
 import type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
@@ -364,8 +365,9 @@ export const presenterApi = {
 // ── D3 differentiation surface: persistent identity / continuity / repair ──
 // Thin client over the canonical authorities; no local status inference.
 export const identityApi = {
-  list: () => authedReq<PersistentIdentity[]>('/api/identities'),
-  inspect: (id: string) => authedReq<PersistentIdentity & { bindings: IdentityBinding[] }>(`/api/identities/${id}`),
+  list: (includeArchived = false) =>
+    authedReq<IdentitySummary[]>(`/api/identities${includeArchived ? '?include_archived=true' : ''}`),
+  inspect: (id: string) => authedReq<PersistentIdentity & { bindings: IdentityBinding[]; upgrade_available: boolean; projects_using: string[] }>(`/api/identities/${id}`),
   create: (name: string, voiceId = 'unassigned') =>
     authedReq<Record<string, unknown>>('/api/identities', {
       method: 'POST', body: JSON.stringify({ canonical_name: name, voice_id: voiceId }),
@@ -378,6 +380,12 @@ export const identityApi = {
     authedReq<IdentityBinding[]>(`/api/identities/projects/${projectId}/bindings`),
   upgrade: (bindingId: string) =>
     authedReq<IdentityBinding>(`/api/identities/bindings/${bindingId}/upgrade`, { method: 'POST' }),
+  archive: (id: string) =>
+    authedReq<Record<string, unknown>>(`/api/identities/${id}/archive`, { method: 'POST' }),
+  unarchive: (id: string) =>
+    authedReq<Record<string, unknown>>(`/api/identities/${id}/unarchive`, { method: 'POST' }),
+  integrity: (id: string) =>
+    authedReq<{ identity_id: string; dangling: Record<string, string[]> }>(`/api/identities/${id}/integrity`),
 };
 
 export const continuityApi = {
@@ -396,13 +404,28 @@ export const continuityApi = {
     }),
   decisions: (bindingId: string) =>
     authedReq<{ decisions: unknown[] }>(`/api/continuity/decisions?binding_id=${bindingId}`),
+  projectSummary: (projectId: string) =>
+    authedReq<ContinuityProjectSummary>(`/api/continuity/projects/${projectId}/summary`),
 };
 
 export const incidentApi = {
-  list: (productionRunId = '') =>
+  list: (productionRunId = '', product = false) =>
     authedReq<{ incidents: RepairIncident[] }>(
-      `/api/incidents${productionRunId ? `?production_run_id=${productionRunId}` : ''}`),
+      `/api/incidents?${new URLSearchParams({
+        ...(productionRunId ? { production_run_id: productionRunId } : {}),
+        ...(product ? { product: 'true' } : {}),
+      }).toString()}`),
+  listProduct: (productionRunId = '') =>
+    authedReq<{ incidents: IncidentProductView[] }>(
+      `/api/incidents?${new URLSearchParams({
+        ...(productionRunId ? { production_run_id: productionRunId } : {}),
+        product: 'true',
+      }).toString()}`),
   get: (id: string) => authedReq<RepairIncident>(`/api/incidents/${id}`),
+  getProduct: (id: string) =>
+    authedReq<IncidentProductView>(`/api/incidents/${id}?product=true`),
+  timeline: (id: string) =>
+    authedReq<{ incident_id: string; events: IncidentTimelineEvent[] }>(`/api/incidents/${id}/timeline`),
   confirm: (id: string, confirmed: boolean) =>
     authedReq<Record<string, unknown>>(`/api/incidents/${id}/confirm`, {
       method: 'POST', body: JSON.stringify({ confirmed }),
@@ -416,6 +439,14 @@ export const incidentApi = {
       method: 'POST',
       body: JSON.stringify({ verification, task_id: taskId }),
     }),
+};
+
+export const productApi = {
+  projectHealth: (projectId: string, bindingId = '') =>
+    authedReq<ProjectHealth>(
+      `/api/products/projects/${projectId}/health${bindingId ? `?binding_id=${encodeURIComponent(bindingId)}` : ''}`),
+  metrics: () =>
+    authedReq<{ owner_id: string; metrics: Record<string, number> }>('/api/products/metrics'),
 };
 
 export { USE_MOCK, API_BASE };

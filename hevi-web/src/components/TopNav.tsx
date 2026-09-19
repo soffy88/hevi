@@ -16,6 +16,7 @@ import { isAuthenticated, logout } from '@/lib/auth-store';
 
 const NAV = [
   { href: '/studio', label: '创作' },
+  { href: '/workspace', label: '工作台' },
   { href: '/projects', label: '项目' },
   { href: '/assets', label: '素材' },
   { href: '/analysis', label: '视频分析' },

@@ -1906,3 +1906,20 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
   font-size: 12px; pointer-events: none; white-space: nowrap;
 }
 @media (max-width: 720px) { .hevi-store__stat { margin-left: 0; flex-basis: 100%; } }
+
+/* ── D6 product surfaces (workspace / character library / continuity / repair / health) ── */
+.hevi-workspace-page { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+.workspace-project { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; font-size: 14px; }
+.workspace-project input { padding: 6px 10px; border: 1px solid var(--hevi-border, #d0d5dd); border-radius: 6px; }
+.product-lib ul, [data-testid="issues-list"] { list-style: none; padding: 0; display: grid; gap: 12px; }
+.product-lib .actions, .hevi-card__actions, [data-testid^="confirm-box"] .actions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+}
+[data-testid="project-health"][data-status="BLOCKED"] .hevi-card { border-left: 4px solid #d92d20; }
+[data-testid="project-health"][data-status="NEEDS_ATTENTION"] .hevi-card { border-left: 4px solid #f79009; }
+[data-testid="project-health"][data-status="COMPLETE"] .hevi-card { border-left: 4px solid #12b76a; }
+.demo-badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+  background: #fef0c7; color: #b54708; font-size: 12px; }
+.badge { padding: 2px 8px; border-radius: 999px; background: #eff8ff; color: #175cd3; font-size: 12px; }
+[data-testid="continuity-panel"][data-verdict="block"] { border-left: 4px solid #d92d20; padding-left: 12px; }
+[data-testid="continuity-panel"][data-verdict="warn"] { border-left: 4px solid #f79009; padding-left: 12px; }

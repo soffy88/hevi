@@ -1484,3 +1484,96 @@ export interface RepairIncident {
   attempts: number;
   verification_result: Record<string, boolean>;
 }
+
+// ── D6 product types (UI projections over canonical authorities) ──
+export interface IdentitySummary {
+  identity_id: string;
+  canonical_name: string;
+  aliases: string[];
+  kind: string;
+  identity_version: number;
+  archived: boolean;
+  upgrade_available: boolean;
+  appearance_count: number;
+  appearances: Array<{ appearance_id: string; kind: string; label: string; version: number }>;
+  voice_id: string;
+  binding_count: number;
+  projects_using: string[];
+  linked_subjects: string[];
+}
+
+export interface ContinuityIssue {
+  binding_id?: string;
+  identity_id?: string;
+  identity_name?: string;
+  severity: 'pass' | 'warn' | 'block';
+  code: string;
+  detail: string;
+}
+
+export interface ContinuityProjectSummary {
+  project_id: string;
+  verdict: 'pass' | 'warn' | 'block';
+  gate_ready: boolean;
+  binding_count: number;
+  issues: ContinuityIssue[];
+  facts: Array<{
+    identity_id: string;
+    category: string;
+    statement: string;
+    episode: string;
+    scene: string;
+    shot: string;
+    revision: string;
+    provenance: string;
+    source_artifact_id: string;
+  }>;
+}
+
+export interface IncidentTimelineEvent {
+  seq: number;
+  event: string;
+  at: number;
+  detail: string;
+}
+
+export interface IncidentProductView {
+  incident_id: string;
+  production_run_id: string;
+  node_key: string;
+  status: string;
+  root_cause: string;
+  failure_code: string;
+  diagnosis: string;
+  needs_agent: boolean;
+  policy: string;
+  requires_confirmation: boolean;
+  estimated_cost_usd: number;
+  preserved_artifact_ids: string[];
+  preserved_intact: boolean;
+  attempts: number;
+  verification_result: Record<string, boolean>;
+}
+
+export type ProjectHealthStatus =
+  | 'READY' | 'GENERATING' | 'NEEDS_ATTENTION' | 'BLOCKED' | 'COMPLETE' | 'UNKNOWN';
+
+export interface ProjectHealth {
+  project_id: string;
+  status: ProjectHealthStatus;
+  task_status: string;
+  currency: { available: boolean; counts: Record<string, number>; stale?: number; missing?: number; blocked?: number };
+  continuity: { verdict: string; issues: ContinuityIssue[] } | null;
+  incidents: Array<{
+    incident_id: string;
+    node_key: string;
+    status: string;
+    root_cause: string;
+    diagnosis: string;
+    policy: string;
+    requires_confirmation: boolean;
+    estimated_cost_usd: number;
+    attempts: number;
+  }>;
+  next_action: { kind: string; label: string; incident_id?: string; requires_confirmation?: boolean; detail?: string };
+}
