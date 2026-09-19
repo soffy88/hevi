@@ -310,7 +310,7 @@ async def test_ledger_emission_success_and_failure(tmp_path, monkeypatch) -> Non
     async def poll_fail(job_id: str) -> JobPoll:
         return JobPoll(state="failed", error="content rejected")
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017 - driver error type varies by provider
         await run_durable_provider_job(
             **_spec(
                 config={},
