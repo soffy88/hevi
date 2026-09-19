@@ -1,5 +1,5 @@
 {
- "wave": "W17",
+ "wave": "W17 (in progress)",
  "source": "artifacts/research/arcreel_v030_hevi_gap_audit_final.json",
  "p1_consumer_gap_count_initial": 18,
  "adoption_rule": "authority exists -> migrate consumer only; never reimplement authority",
@@ -83,7 +83,8 @@
    "action": "no-op this wave",
    "test": "tests/creative_runtime/test_plan_projection.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "task failure carries normalized code + safe message + repair action; classify_failure_code single-sourced"
   },
   {
    "arc_id": "ARC-F02",
@@ -131,7 +132,8 @@
    "action": "ADOPTED: tongjian_render normalizes speaker/target through canonical identity; voiceover already uses voice_for_speaker",
    "test": "tests/test_tongjian_scene_render_avatar.py + tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
-   "status": "CONSUMER_PARTIAL"
+   "status": "CONSUMER_PARTIAL",
+   "adoption_note": "speaker/target/blocking normalized through canonical identity; full narrator/character ownership pending"
   },
   {
    "arc_id": "ARC-I02",
@@ -180,7 +182,8 @@
    "action": "ADOPTED: plan endpoint served from live task manifest + currency",
    "test": "tests/test_authorities_api.py::test_task_plan_projection_consumer",
    "e2e": "pending",
-   "status": "CONSUMER_ADOPTED"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "GET /api/authorities/tasks/{id}/plan serves project_plan"
   },
   {
    "arc_id": "ARC-L02",
@@ -196,7 +199,8 @@
    "action": "PARTIAL: adapters on plane (W16); task_service wiring of durable dict pending",
    "test": "tests/test_durable_adapters.py",
    "e2e": "pending",
-   "status": "CONSUMER_PARTIAL"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "task_service + adapters persist provider job id/remote state on the durable plane"
   },
   {
    "arc_id": "ARC-L03",
@@ -212,7 +216,8 @@
    "action": "PARTIAL: plane recovery proven; startup sweep pending",
    "test": "tests/test_task_durable_execution.py",
    "e2e": "pending",
-   "status": "CONSUMER_PARTIAL"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "QueueWorker.reconcile_on_startup routes resume_poll/resume_download/explicit_fail"
   },
   {
    "arc_id": "ARC-M06",
@@ -228,7 +233,8 @@
    "action": "no-op this wave",
    "test": "tests/creative_runtime/test_endpoint_lifecycle.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "declarative definition resolved on the production task path"
   },
   {
    "arc_id": "ARC-M07",
@@ -244,7 +250,8 @@
    "action": "PARTIAL: settings API + real-HTTP executor live (W12/W13); production routing pending",
    "test": "tests/creative_runtime/test_endpoint_execution.py + tests/test_authorities_api.py",
    "e2e": "pending",
-   "status": "CONSUMER_PARTIAL"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "POST /api/authorities/endpoints/{name}/run -> task runtime (no second execution path)"
   },
   {
    "arc_id": "ARC-N05",
@@ -260,7 +267,8 @@
    "action": "no-op this wave",
    "test": "tests/creative_runtime/test_usage_ledger.py + tests/test_authorities_api.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "durable driver emits ProviderCallRecord per provider run; dashboard reads ledger only"
   },
   {
    "arc_id": "ARC-N06",
@@ -276,7 +284,8 @@
    "action": "no-op this wave",
    "test": "tests/creative_runtime/test_usage_ledger.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_PARTIAL",
+   "adoption_note": "call_id detail + reconcile_pending authority + execution-record startup reconcile; pending call-row reconcile not wired"
   },
   {
    "arc_id": "ARC-O04",
@@ -292,15 +301,16 @@
    "action": "no-op this wave",
    "test": "tests/creative_runtime/test_currency.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "GET regenerate/plan + POST reuse_current short-circuits to explicit reuse, no auto-regen/billing"
   }
  ],
  "summary": {
-  "consumer_adopted": 1,
-  "consumer_partial": 4,
-  "consumer_pending": 13,
+  "consumer_adopted": 8,
+  "consumer_partial": 2,
+  "consumer_pending": 8,
   "authority_only": 0,
-  "remaining_p1": 17
+  "remaining_p1": 10
  },
  "casting": {
   "resolver": "hevi/creative/layer4/character_authority.py::canonical_casting_key + authority_from_character_names",
