@@ -32,10 +32,11 @@
    "entrypoint": "director_pipeline.produce_work -> shot_preparation.produce_blockers",
    "current_legacy": "shot-readiness blockers only",
    "target": "character_authority.check_references",
-   "action": "no-op this wave",
+   "action": "produce gate resolves shot character references canonically and blocks unregistered names",
    "test": "tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "produce gate resolves shot character references canonically and blocks unregistered names"
   },
   {
    "arc_id": "ARC-E04",
@@ -48,10 +49,11 @@
    "entrypoint": "provider settings / video-capabilities",
    "current_legacy": "video/capability_guard.py per-provider limits",
    "target": "check_capability + capability descriptor",
-   "action": "no-op this wave",
+   "action": "GET /api/authorities/providers/{provider}/capabilities + POST /admission/media; check_declared_capability single-sourced",
    "test": "tests/creative_runtime/test_endpoint_lifecycle.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "GET /api/authorities/providers/{provider}/capabilities + POST /admission/media; check_declared_capability single-sourced"
   },
   {
    "arc_id": "ARC-E06",
@@ -64,10 +66,11 @@
    "entrypoint": "task_service batch/regenerate_shots",
    "current_legacy": "per-shot preflight, no all-or-none",
    "target": "plan_projection.admit_batch",
-   "action": "no-op this wave",
+   "action": "POST /admission/batch + all-or-none gate in enqueue_rework/regenerate/regenerate API (409 before any task)",
    "test": "tests/creative_runtime/test_plan_projection.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "POST /admission/batch + all-or-none gate in enqueue_rework/regenerate/regenerate API (409 before any task)"
   },
   {
    "arc_id": "ARC-E09",
@@ -306,11 +309,11 @@
   }
  ],
  "summary": {
-  "consumer_adopted": 8,
+  "consumer_adopted": 11,
   "consumer_partial": 2,
-  "consumer_pending": 8,
+  "consumer_pending": 5,
   "authority_only": 0,
-  "remaining_p1": 10
+  "remaining_p1": 7
  },
  "casting": {
   "resolver": "hevi/creative/layer4/character_authority.py::canonical_casting_key + authority_from_character_names",
