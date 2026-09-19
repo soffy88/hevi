@@ -1846,6 +1846,33 @@ def _assign_character_voices(design_list: DesignList) -> dict[str, str]:
     return out
 
 
+def _missing_character_references(design_list: DesignList, shot_list: ShotList) -> tuple[str, ...]:
+    """Names referenced by shots that resolve to no registered character (C08).
+
+    Reference integrity is judged through canonical identity: a ``name`` or
+    ``name/appearance`` resolves to a design-list character, otherwise the
+    produce gate blocks and lists the unregistered names instead of silently
+    generating with a guessed reference.
+    """
+
+    from hevi.creative.layer4.character_authority import (
+        authority_from_character_names,
+        canonical_casting_key,
+    )
+
+    authority = authority_from_character_names([c.name for c in design_list.characters])
+    registered = {
+        canonical_casting_key(authority, c.name)[0] for c in design_list.characters if c.name
+    }
+    missing: list[str] = []
+    for shot in shot_list.shots:
+        for raw in shot.character_names or []:
+            canonical = canonical_casting_key(authority, raw)[0]
+            if canonical and canonical not in registered and raw not in missing:
+                missing.append(raw)
+    return tuple(missing)
+
+
 async def _resolve_shot_character_refs(
     shot_list: dict[str, Any], design_list: DesignList, *, subject_svc: SubjectService
 ) -> dict[int, list[str]]:
@@ -2562,6 +2589,15 @@ async def produce_work(
 
     design_list = DesignList.model_validate(rec["design_list"])
     concept = Concept.model_validate(rec["concept"])
+    shot_list = ShotList.model_validate(rec["shot_list"])
+    # C08 引用完整性闸门:分镜引用了解锁角色之外的未登记名字 → 拦产集并列名,
+    # 不让生成用猜测的参考图悄悄继续。
+    missing_refs = _missing_character_references(design_list, shot_list)
+    if missing_refs:
+        raise HTTPException(
+            status_code=409,
+            detail=f"分镜引用了未登记角色(先登记或改名):{list(missing_refs[:8])}",
+        )
 
     # 每个角色一个不同音色(治"对话也像旁白");用角色名当 key,通鉴 voice_by_speaker
     # 也是按 speaker(=角色名)查。

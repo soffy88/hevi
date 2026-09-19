@@ -959,3 +959,27 @@ async def test_preparation_overview_merges_shotlist_with_readiness():
     assert resp["shots"][0]["shot_id"] == "SH001_01"
     assert resp["shots"][0]["status"] == "ready"
     assert resp["blockers"] == []
+
+
+def test_missing_character_references_gate() -> None:
+    """C08: shot references resolve through canonical identity or block."""
+
+    design = _design_list()
+    ok = dp._missing_character_references(design, _shot_list())
+    assert ok == ()
+
+    bad = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH001_01",
+                scene_no=1,
+                character_names=["智伯", "Ghost", "Ghost/armor"],
+                dialogue_lines=[],
+                visual_prompt="x",
+            )
+        ]
+    )
+    missing = dp._missing_character_references(design, bad)
+    assert "Ghost" in missing
+    assert "Ghost/armor" in missing
+    assert "智伯" not in missing
