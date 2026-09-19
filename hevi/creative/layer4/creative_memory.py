@@ -73,20 +73,30 @@ class ResolvedMemory(BaseModel):
     scope: str
 
 
-def _namespaced_key(scope: str, project_id: str, key: str) -> str:
+def _namespaced_key(scope: str, project_id: str, key: str, owner_id: str = "") -> str:
+    """Owner-first namespace (D5-A): memory is private to its owner.
+
+    ``owner`` is server-derived; it is never accepted from a client body.
+    """
+    owner = str(owner_id or "").strip() or "shared"
     if scope == USER_SCOPE:
-        return f"user-pref:{key}"
-    return f"{PROJECT_SCOPE_PREFIX}{project_id}:convention:{key}"
+        return f"owner:{owner}:user-pref:{key}"
+    return f"owner:{owner}:project:{project_id}:convention:{key}"
 
 
-def _scope_of(namespaced: str) -> tuple[str, str]:
-    if namespaced.startswith("user-pref:"):
-        return USER_SCOPE, ""
-    if namespaced.startswith(PROJECT_SCOPE_PREFIX):
-        rest = namespaced[len(PROJECT_SCOPE_PREFIX) :]
-        project_id, _, _ = rest.partition(":convention:")
-        return f"{PROJECT_SCOPE_PREFIX}{project_id}", project_id
-    return "unknown", ""
+def _scope_of(namespaced: str) -> tuple[str, str, str]:
+    """Parse back (owner_id, scope, project_id) from a namespaced key."""
+    if not namespaced.startswith("owner:"):
+        return "", "unknown", ""
+    rest = namespaced[len("owner:") :]
+    owner, _, remainder = rest.partition(":")
+    if remainder.startswith("user-pref:"):
+        return owner, USER_SCOPE, ""
+    if remainder.startswith(PROJECT_SCOPE_PREFIX):
+        after = remainder[len(PROJECT_SCOPE_PREFIX) :]
+        project_id, _, _ = after.partition(":convention:")
+        return owner, f"{PROJECT_SCOPE_PREFIX}{project_id}", project_id
+    return owner, "unknown", ""
 
 
 def check_memory_safety(content: str) -> None:
@@ -118,8 +128,13 @@ class CreativeMemory:
         content: str,
         project_id: str = "",
         session_id: str = "",
+        owner_id: str = "",
     ) -> MemoryEntry:
-        """Store one scoped memory. Secrets/PII refuse; never stored redacted."""
+        """Store one scoped memory. Secrets/PII refuse; never stored redacted.
+
+        ``owner_id`` must be the server-derived owner; it is never taken from
+        a client request body.
+        """
 
         if scope != USER_SCOPE and not scope.startswith(PROJECT_SCOPE_PREFIX):
             raise MemoryError(f"MEMORY_SCOPE_UNKNOWN:{scope}")
@@ -130,11 +145,12 @@ class CreativeMemory:
         if not content.strip():
             raise MemoryError("MEMORY_CONTENT_EMPTY")
         check_memory_safety(content)
-        namespaced = _namespaced_key(scope, project_id, key.strip())
+        namespaced = _namespaced_key(scope, project_id, key.strip(), owner_id)
         payload: dict[str, Any] = {
             "content": content,
             "scope": scope,
             "project_id": project_id,
+            "owner_id": owner_id,
             "disabled": False,
             "session_id": session_id,
             "stored_at": datetime.now(UTC).isoformat(),
@@ -150,18 +166,30 @@ class CreativeMemory:
         )
 
     def edit(
-        self, *, scope: str, key: str, content: str, project_id: str = "", session_id: str = ""
+        self,
+        *,
+        scope: str,
+        key: str,
+        content: str,
+        project_id: str = "",
+        session_id: str = "",
+        owner_id: str = "",
     ) -> MemoryEntry:
         """Edit = append a newer row; latest row per (scope, key) wins."""
 
         return self.remember(
-            scope=scope, key=key, content=content, project_id=project_id, session_id=session_id
+            scope=scope,
+            key=key,
+            content=content,
+            project_id=project_id,
+            session_id=session_id,
+            owner_id=owner_id,
         )
 
-    def disable(self, *, scope: str, key: str, project_id: str = "") -> None:
+    def disable(self, *, scope: str, key: str, project_id: str = "", owner_id: str = "") -> None:
         """Disable/ignore: tombstone row; history preserved, recall skips."""
 
-        namespaced = _namespaced_key(scope, project_id, key.strip())
+        namespaced = _namespaced_key(scope, project_id, key.strip(), owner_id)
         self._store.remember(
             self.KIND,
             namespaced,
@@ -169,32 +197,43 @@ class CreativeMemory:
                 "content": "",
                 "scope": scope,
                 "project_id": project_id,
+                "owner_id": owner_id,
                 "disabled": True,
                 "session_id": "",
                 "stored_at": datetime.now(UTC).isoformat(),
             },
         )
 
-    def _latest(self) -> dict[tuple[str, str, str], dict[str, Any]]:
+    def _latest(self, owner_id: str = "") -> dict[tuple[str, str, str], dict[str, Any]]:
+        owner = str(owner_id or "").strip() or "shared"
         latest: dict[tuple[str, str, str], dict[str, Any]] = {}
         for hit in self._store.recent(self.KIND, limit=1000):
-            payload = dict(hit.payload)
-            scope, project_id = _scope_of(hit.key)
-            if scope == "unknown":
+            entry_owner, scope, project_id = _scope_of(hit.key)
+            if scope == "unknown" or entry_owner != owner:
                 continue
             entry_key = hit.key.split(":")[-1]
             marker = (scope, entry_key, project_id)
             if marker not in latest:
-                latest[marker] = {**payload, "_key": entry_key}
+                latest[marker] = {**dict(hit.payload), "_key": entry_key}
         return latest
 
     def inspect(
-        self, *, scope: str, project_id: str = "", include_disabled: bool = False
+        self,
+        *,
+        scope: str,
+        project_id: str = "",
+        include_disabled: bool = False,
+        owner_id: str = "",
     ) -> tuple[MemoryEntry, ...]:
-        """MEMORY_INSPECTION: creators can list what the agent remembers."""
+        """MEMORY_INSPECTION: creators can list what the agent remembers.
+
+        Only the caller's own owner namespace is ever returned.
+        """
 
         entries: list[MemoryEntry] = []
-        for (entry_scope, entry_key, entry_project), payload in sorted(self._latest().items()):
+        for (entry_scope, entry_key, entry_project), payload in sorted(
+            self._latest(owner_id).items()
+        ):
             if entry_scope != scope:
                 continue
             if scope.startswith(PROJECT_SCOPE_PREFIX) and entry_project != project_id:
@@ -215,16 +254,20 @@ class CreativeMemory:
         return tuple(entries)
 
     def recall_for_project(
-        self, project_id: str, query: str, *, k: int = 5
+        self, project_id: str, query: str, *, k: int = 5, owner_id: str = ""
     ) -> tuple[MemoryEntry, ...]:
-        """Cross-session recall: user prefs + this project's conventions."""
+        """Cross-session recall: user prefs + this project's conventions.
 
+        Scoped to the caller's owner namespace only.
+        """
+
+        owner = str(owner_id or "").strip() or "shared"
         hits = self._store.recall(query, k=max(k * 4, 10), kinds=(self.KIND,))
         seen: set[tuple[str, str, str]] = set()
         entries: list[MemoryEntry] = []
         for hit in hits:
-            scope, hit_project = _scope_of(hit.key)
-            if scope == "unknown":
+            entry_owner, scope, hit_project = _scope_of(hit.key)
+            if scope == "unknown" or entry_owner != owner:
                 continue
             if scope.startswith(PROJECT_SCOPE_PREFIX) and hit_project != project_id:
                 continue
@@ -250,14 +293,16 @@ class CreativeMemory:
                 break
         return tuple(entries)
 
-    def resolve(self, project_id: str, *, instruction: str = "") -> tuple[ResolvedMemory, ...]:
+    def resolve(
+        self, project_id: str, *, instruction: str = "", owner_id: str = ""
+    ) -> tuple[ResolvedMemory, ...]:
         """Precedence: explicit instruction > project convention > user preference.
 
         Same entry_key at a higher precedence shadows the lower one; the
-        shadowed row stays stored and inspectable.
+        shadowed row stays stored and inspectable. Owner-scoped.
         """
 
-        latest = self._latest()
+        latest = self._latest(owner_id)
         by_key: dict[str, MemoryEntry] = {}
         for scope in (USER_SCOPE, f"{PROJECT_SCOPE_PREFIX}{project_id}"):
             for (entry_scope, entry_key, entry_project), payload in latest.items():

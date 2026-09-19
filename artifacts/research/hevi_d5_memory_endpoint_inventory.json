@@ -1,0 +1,70 @@
+{
+  "phase": "D5-A",
+  "closure": "MEMORY_ENDPOINT_SCOPE=PASS; owner-first namespace enforced server-side; client cannot select user_id",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/authorities/memory",
+      "handler": "memory_inspect",
+      "file": "hevi/api/routers/authorities.py",
+      "auth_required": true,
+      "user_id_source": "server (get_current_user)",
+      "project_id_source": "client query param (namespace only)",
+      "reads_user_data": true,
+      "writes_user_data": false,
+      "production_reachable": true,
+      "callers": ["hevi-web (none yet)", "external API clients"],
+      "tests": ["tests/test_authorities_api.py", "tests/test_d5_memory_security.py"],
+      "classification_before": "SECURITY_GAP",
+      "classification_after": "OWNER_SCOPED",
+      "fix": "owner_id threaded into owner-first key namespace; inspect filters owner"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/authorities/memory",
+      "handler": "memory_remember",
+      "file": "hevi/api/routers/authorities.py",
+      "auth_required": true,
+      "user_id_source": "server (get_current_user)",
+      "project_id_source": "client body (namespace only)",
+      "reads_user_data": true,
+      "writes_user_data": true,
+      "production_reachable": true,
+      "callers": ["external API clients"],
+      "tests": ["tests/test_authorities_api.py", "tests/test_d5_memory_security.py"],
+      "classification_before": "SECURITY_GAP",
+      "classification_after": "OWNER_SCOPED",
+      "fix": "owner_id threaded into owner-first key namespace; PII gate unchanged"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/authorities/memory",
+      "handler": "memory_disable",
+      "file": "hevi/api/routers/authorities.py",
+      "auth_required": true,
+      "user_id_source": "server (get_current_user)",
+      "project_id_source": "client query param (namespace only)",
+      "reads_user_data": true,
+      "writes_user_data": true,
+      "production_reachable": true,
+      "callers": ["external API clients"],
+      "tests": ["tests/test_d5_memory_security.py"],
+      "classification_before": "SECURITY_GAP",
+      "classification_after": "OWNER_SCOPED",
+      "fix": "owner_id threaded into owner-first key namespace; tombstones only own namespace"
+    }
+  ],
+  "internal_callers": {
+    "CreativeMemory": "only hevi/api/routers/authorities.py; qualification uses CreativeMemoryIndex (separate, project-scoped, no cross-owner read)",
+    "MemoryStore": "shared HEVI memory authority (SQLite/WAL); unchanged"
+  },
+  "namespace": "owner:{owner_id}:user-pref:{key} / owner:{owner_id}:project:{project_id}:convention:{key}",
+  "project_ownership_note": "Project conventions are owner-scoped by namespace; there is no external project registry to check against, so isolation is by owner namespace (a project's convention truth is never shared across owners).",
+  "exit": {
+    "MEMORY_ENDPOINT_SCOPE": "PASS",
+    "CROSS_TENANT_MEMORY_READS": 0,
+    "CROSS_TENANT_MEMORY_WRITES": 0,
+    "ANONYMOUS_MEMORY_ACCESS": 0,
+    "MEMORY_SECURITY_BYPASS_COUNT": 0
+  }
+}

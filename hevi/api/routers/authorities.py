@@ -306,16 +306,21 @@ def _memory() -> CreativeMemory:
 
 @router.get("/memory")
 async def memory_inspect(
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     scope: str = "user",
     project_id: str = "",
     include_disabled: bool = False,
 ) -> dict[str, Any]:
+    # D5-A: owner is server-derived; a caller can only ever read its own
+    # namespace, so passing scope/project_id cannot reach another tenant.
     return {
         "entries": [
             entry.model_dump(mode="json")
             for entry in _memory().inspect(
-                scope=scope, project_id=project_id, include_disabled=include_disabled
+                scope=scope,
+                project_id=project_id,
+                include_disabled=include_disabled,
+                owner_id=str(user["id"]),
             )
         ]
     }
@@ -323,7 +328,7 @@ async def memory_inspect(
 
 @router.put("/memory")
 async def memory_remember(
-    body: MemoryBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+    body: MemoryBody, user: Annotated[dict[str, Any], Depends(get_current_user)]
 ) -> dict[str, Any]:
     """Remember/edit through the memory path, so the PII gate cannot be bypassed."""
 
@@ -336,6 +341,7 @@ async def memory_remember(
             content=body.content,
             project_id=body.project_id,
             session_id=body.session_id,
+            owner_id=str(user["id"]),
         )
     except MemoryError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -344,12 +350,14 @@ async def memory_remember(
 
 @router.delete("/memory")
 async def memory_disable(
-    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
     scope: str = "user",
     key: str = "",
     project_id: str = "",
 ) -> dict[str, Any]:
-    _memory().disable(scope=scope, key=key, project_id=project_id)
+    _memory().disable(
+        scope=scope, key=key, project_id=project_id, owner_id=str(user["id"])
+    )
     return {"disabled": key, "scope": scope}
 
 

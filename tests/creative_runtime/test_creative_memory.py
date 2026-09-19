@@ -119,6 +119,7 @@ def test_integration_uses_real_hevi_store(tmp_path) -> None:
 
     memory = _memory(tmp_path)
     assert isinstance(memory._store, RealStore)
-    memory.remember(scope="user", key="provider", content="偏好本地引擎")
+    memory.remember(scope="user", key="provider", content="偏好本地引擎", owner_id="owner-x")
     assert memory._store.count() >= 1
-    assert memory._store.by_key("user-pref:provider")
+    # D5-A: namespaced owner-first, so entries are never shared across owners.
+    assert memory._store.by_key("owner:owner-x:user-pref:provider")
