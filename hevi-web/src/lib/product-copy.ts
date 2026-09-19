@@ -47,6 +47,7 @@ export const PRODUCT_COPY = {
     confirmRepair: '确认修复',
     notNow: '暂不处理',
     regenerates: '将重新生成',
+    confirmHint: '确认后会重新生成相关素材，可能产生费用。',
     willBePreserved: '会保留的内容',
     estimatedCost: (n: string) => `预计新增费用 ${n}`,
     noExtraCost: '不会产生新的付费生成',

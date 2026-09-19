@@ -104,6 +104,9 @@ export function ProductionIssuesPanel({ productionRunId = '' }: { productionRunI
                         ? C.repair.estimatedCost(money(incident.estimated_cost_usd))
                         : C.repair.noExtraCost}
                     </p>
+                    <p data-testid={`confirm-hint-${incident.incident_id}`}>
+                      {C.repair.confirmHint}
+                    </p>
                     <div className="actions">
                       <ActionButton
                         onClick={() =>
