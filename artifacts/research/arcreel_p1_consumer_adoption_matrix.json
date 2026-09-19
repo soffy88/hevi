@@ -15,10 +15,11 @@
    "entrypoint": "director_pipeline design_list -> character bible; shortdrama subject prebind",
    "current_legacy": "single-look CharacterBibleEntry.appearance/ref_image",
    "target": "hevi/creative/layer4/character_authority.py::CharacterAuthority",
-   "action": "no-op this wave",
+   "action": "canonical appearance producers (wardrobe upload + POST /subjects/{id}/appearances); variants consumes",
    "test": "tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "canonical appearance producers (wardrobe upload + POST /subjects/{id}/appearances); variants consumes"
   },
   {
    "arc_id": "ARC-C08",
@@ -100,10 +101,11 @@
    "entrypoint": "tongjian voiceover / director voice assignment",
    "current_legacy": "per-cue voice_ref only",
    "target": "derive_consistency",
-   "action": "no-op this wave",
+   "action": "derive_consistency tier in the single speech-ownership resolver",
    "test": "tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "derive_consistency tier in the single speech-ownership resolver"
   },
   {
    "arc_id": "ARC-F03",
@@ -116,10 +118,11 @@
    "entrypoint": "project settings -> voiceover",
    "current_legacy": "metadata.voice_ref per subject",
    "target": "VoiceIdentity binding",
-   "action": "no-op this wave",
+   "action": "voice_binding_from_project feeds the resolver; binding drives consistency",
    "test": "tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "voice_binding_from_project feeds the resolver; binding drives consistency"
   },
   {
    "arc_id": "ARC-F04",
@@ -132,11 +135,11 @@
    "entrypoint": "tongjian script/voiceover",
    "current_legacy": "speaker string + NARRATOR fallback",
    "target": "resolve_utterance_owner",
-   "action": "ADOPTED: tongjian_render normalizes speaker/target through canonical identity; voiceover already uses voice_for_speaker",
+   "action": "resolve_speech_segment_owner stamps per-segment ownership; presentation exposes it",
    "test": "tests/test_tongjian_scene_render_avatar.py + tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
-   "status": "CONSUMER_PARTIAL",
-   "adoption_note": "speaker/target/blocking normalized through canonical identity; full narrator/character ownership pending"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "resolve_speech_segment_owner stamps per-segment ownership; presentation exposes it"
   },
   {
    "arc_id": "ARC-I02",
@@ -149,10 +152,11 @@
    "entrypoint": "/api/tasks/{id} jianying export",
    "current_legacy": "clips_from_recut standalone",
    "target": "build_timeline + clips_from_presentation",
-   "action": "no-op this wave",
+   "action": "GET /api/authorities/tasks/{id}/editable builds timeline/jianying/transitions from one snapshot",
    "test": "tests/creative_runtime/test_editable_delivery.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "GET /api/authorities/tasks/{id}/editable builds timeline/jianying/transitions from one snapshot"
   },
   {
    "arc_id": "ARC-J05",
@@ -165,10 +169,11 @@
    "entrypoint": "task upload / manual media",
    "current_legacy": "no unproven-upload branch",
    "target": "snapshot_from_manifest MANUAL_RAW",
-   "action": "no-op this wave",
+   "action": "manual/raw media exports as source_unproven with no generation claims",
    "test": "tests/creative_runtime/test_presentation.py",
    "e2e": "pending",
-   "status": "CONSUMER_PENDING"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "manual/raw media exports as source_unproven with no generation claims"
   },
   {
    "arc_id": "ARC-K02",
@@ -309,11 +314,11 @@
   }
  ],
  "summary": {
-  "consumer_adopted": 11,
-  "consumer_partial": 2,
-  "consumer_pending": 5,
+  "consumer_adopted": 17,
+  "consumer_partial": 1,
+  "consumer_pending": 0,
   "authority_only": 0,
-  "remaining_p1": 7
+  "remaining_p1": 1
  },
  "casting": {
   "resolver": "hevi/creative/layer4/character_authority.py::canonical_casting_key + authority_from_character_names",
