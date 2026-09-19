@@ -470,7 +470,10 @@ async def task_presentation(
         raise HTTPException(status_code=404, detail="no artifact manifest")
     try:
         snapshot = snapshot_for_serving(
-            manifest, task=task, probe_durations_ms=probe_manifest_durations_ms(manifest)
+            manifest,
+            task=task,
+            probe_durations_ms=probe_manifest_durations_ms(manifest),
+            allow_stale=True,  # explicit editable export: stale is usable
         )
     except Exception as exc:
         raise HTTPException(
@@ -692,6 +695,87 @@ class BatchItemBody(BaseModel):
 class BatchAdmissionBody(BaseModel):
     items: list[BatchItemBody] = []
     confirm_above_cost: float = 0.0
+
+
+@router.get("/tasks/{task_id}/editable")
+async def task_editable_export(
+    task_id: str,
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+    as_history: bool = False,
+) -> dict[str, Any]:
+    """Editable delivery built from the Presentation read model (I02/J05).
+
+    One selection source: the timeline, jianying projection, transitions and
+    provenance all come from the same snapshot. STALE exports are explicit
+    (never auto-regenerated); HISTORY re-commits the prior selection without
+    silently switching back to current; manual/raw media exports unproven with
+    no generation claims.
+    """
+
+    from hevi.creative.layer4.editable_delivery import (
+        EditableError,
+        assert_snapshot_parity,
+        build_timeline,
+        to_editable_doc,
+    )
+    from hevi.creative.layer4.presentation import (
+        PresentationError,
+        PresentationLedger,
+        for_jianying,
+        snapshot_for_serving,
+    )
+    from hevi.production.artifacts import manifest_from_task
+    from hevi.production.delivery_gate import probe_manifest_durations_ms
+
+    try:
+        task_uuid = uuid.UUID(task_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid task id") from exc
+    task = await _load_task(pool, task_uuid)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    manifest = manifest_from_task(task)
+    if manifest is None:
+        raise HTTPException(status_code=404, detail="no artifact manifest")
+    try:
+        snapshot = snapshot_for_serving(
+            manifest,
+            task=task,
+            probe_durations_ms=probe_manifest_durations_ms(manifest),
+            allow_stale=True,  # explicit editable export: stale is usable
+        )
+    except PresentationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if as_history:
+        ledger = PresentationLedger()
+        ledger.commit_candidate(snapshot, {snapshot.video.artifact_id: True})
+        snapshot = ledger.select_history(snapshot.presentation_version)
+    timeline = build_timeline(snapshot)
+    try:
+        assert_snapshot_parity(timeline, snapshot)
+    except EditableError as exc:  # pragma: no cover - guard
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    transitions = [
+        {
+            "clip_id": clip.clip_id,
+            "in": clip.transition_in.model_dump(mode="json"),
+            "out": clip.transition_out.model_dump(mode="json"),
+        }
+        for clip in timeline.clips
+    ]
+    return {
+        "editable": to_editable_doc(timeline),
+        "jianying": for_jianying(snapshot),
+        "transitions": transitions,
+        "selection": {
+            "presentation_version": timeline.presentation_version,
+            "history_source_version": timeline.history_source_version,
+            "currency": timeline.selection_currency,
+            "source_unproven": timeline.source_unproven,
+            "snapshot_id": str(snapshot.snapshot_id),
+        },
+    }
 
 
 @router.post("/admission/batch")

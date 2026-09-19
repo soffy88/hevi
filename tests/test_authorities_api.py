@@ -462,3 +462,60 @@ def test_variants_endpoint_reads_produced_appearances(authed, monkeypatch) -> No
     assert armor["version"] == 2
     # voice identity is inherited by every appearance of the same character
     assert view["voice_by_appearance"] == {"default": "v-anna", "armor": "v-anna"}
+
+
+def test_editable_export_canonical_current_stale_history(authed, tmp_path, monkeypatch) -> None:
+    """I02/J05: editable export consumes one selection; CURRENT/STALE/HISTORY."""
+
+    from hevi.api.routers import authorities
+
+    task = _task_with_manifest(tmp_path, with_sha=True)
+
+    async def fake_task(pool: Any, task_id: Any) -> dict[str, Any] | None:
+        return task
+
+    monkeypatch.setattr(authorities, "_load_task", fake_task)
+    tid = task["id"]
+
+    current = client.get(f"/api/authorities/tasks/{tid}/editable").json()
+    assert current["selection"]["currency"] == "current"
+    assert current["selection"]["source_unproven"] is False
+    assert current["editable"]["presentation_snapshot_id"] == current["selection"]["snapshot_id"]
+    assert current["jianying"]["video_artifact_id"] == "v-1"
+    assert current["transitions"][0]["clip_id"] == "v-main"
+
+    history = client.get(
+        f"/api/authorities/tasks/{tid}/editable", params={"as_history": True}
+    ).json()
+    assert history["selection"]["history_source_version"] is not None
+    assert history["selection"]["presentation_version"] == 2
+
+    # stale-but-usable: export is explicit and allowed, never regenerated.
+    # The artifact records the revision it was generated at; the task has
+    # since moved on.
+    task["config_json"]["artifact_manifest"]["artifacts"][0].setdefault("metadata", {})[
+        "revision_id"
+    ] = "rev-1"
+    task["config_json"]["revision_id"] = "rev-2"
+    stale = client.get(f"/api/authorities/tasks/{tid}/editable").json()
+    assert stale["selection"]["currency"] == "stale"
+    assert stale["selection"]["snapshot_id"]
+
+
+def test_editable_export_manual_raw_is_unproven(authed, tmp_path, monkeypatch) -> None:
+    """J05: manual media exports as editable without generation claims."""
+
+    from hevi.api.routers import authorities
+
+    task = _task_with_manifest(tmp_path, with_sha=True)
+    task["config_json"]["revision_id"] = ""
+    task["config_json"]["artifact_manifest"]["artifacts"][0]["logical_role"] = "manual_upload"
+    task["config_json"]["artifact_manifest"]["artifacts"][0]["kind"] = "video"
+
+    async def fake_task(pool: Any, task_id: Any) -> dict[str, Any] | None:
+        return task
+
+    monkeypatch.setattr(authorities, "_load_task", fake_task)
+    body = client.get(f"/api/authorities/tasks/{task['id']}/editable").json()
+    assert body["selection"]["source_unproven"] is True
+    assert body["jianying"]["video_source"] == "manual_raw"

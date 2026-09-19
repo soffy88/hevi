@@ -45,6 +45,7 @@
 | PUT | `/api/authorities/memory` | Memory Remember |
 | GET | `/api/authorities/providers/{provider}/capabilities` | Provider Capabilities |
 | GET | `/api/authorities/tasks/{task_id}/currency` | Task Currency |
+| GET | `/api/authorities/tasks/{task_id}/editable` | Task Editable Export |
 | GET | `/api/authorities/tasks/{task_id}/plan` | Task Plan |
 | GET | `/api/authorities/tasks/{task_id}/presentation` | Task Presentation |
 | GET | `/api/authorities/usage/analytics` | Usage Analytics |

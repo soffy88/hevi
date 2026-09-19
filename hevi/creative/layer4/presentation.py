@@ -541,6 +541,8 @@ def snapshot_from_manifest(
     audio_mode: AudioMode = AudioMode.SILENT,
     aspect_ratio: str = "16:9",
     source_graph_revision: str = "",
+    dependency_revisions: Mapping[str, str] | None = None,
+    allow_stale: bool = False,
 ) -> PresentationSnapshot:
     """Bridge existing ArtifactManifest-shaped state into one snapshot.
 
@@ -562,6 +564,14 @@ def snapshot_from_manifest(
     def _candidate(item: Any) -> CandidateMedia:
         artifact_id = str(getattr(item, "artifact_id", None) or getattr(item, "path", ""))
         kind = str(getattr(item, "kind", "") or "file")
+        metadata = getattr(item, "metadata", None) or {}
+        # Provenance revision recorded at generation time wins; falling back to
+        # the current revision would hide staleness (W2 semantics).
+        recorded_revision = str(
+            (metadata.get("revision_id") if isinstance(metadata, dict) else None)
+            or (metadata.get("production_revision") if isinstance(metadata, dict) else None)
+            or revision_id
+        )
         return CandidateMedia(
             artifact_id=artifact_id,
             version=int(getattr(item, "version", 1) or 1),
@@ -570,7 +580,7 @@ def snapshot_from_manifest(
             source_type=MediaSourceType.MANUAL_RAW
             if _is_manual(item)
             else MediaSourceType.GENERATED,
-            dependency_revision=str(revision_id),
+            dependency_revision=recorded_revision,
             provider_id=None,
             generation_prompt_ref=None,
         )
@@ -612,6 +622,8 @@ def snapshot_from_manifest(
         subtitle_candidates=tuple(_candidate(item) for item in subs),
         aspect_ratio=aspect_ratio,
         source_graph_revision=source_graph_revision or revision_id,
+        dependency_revisions=dependency_revisions,
+        allow_stale=allow_stale,
     )
 
 
@@ -648,6 +660,7 @@ def snapshot_for_serving(
     production_run_id: str = "",
     revision_id: str = "",
     scope_id: str = "serve",
+    allow_stale: bool = False,
 ) -> PresentationSnapshot:
     """Materialize the serving selection: stored snapshot wins, else manifest.
 
@@ -659,9 +672,13 @@ def snapshot_for_serving(
     """
 
     if task is not None:
-        stored = presentation_from_task(task, actual_durations_ms=probe_durations_ms)
-        if stored is not None:
-            return stored
+        stored = (task.get("config_json") or {}).get("presentation_snapshot")
+        if stored:
+            # Round-trip a committed selection without re-selection.
+            return PresentationSnapshot.model_validate(stored)
+    effective_revision = revision_id or str(
+        ((task or {}).get("config_json") or {}).get("revision_id") or "unknown"
+    )
     return snapshot_from_manifest(
         manifest,
         project_id=project_id
@@ -671,11 +688,12 @@ def snapshot_for_serving(
             or "unknown"
         ),
         production_run_id=production_run_id or str((task or {}).get("id") or "unknown"),
-        revision_id=revision_id
-        or str(((task or {}).get("config_json") or {}).get("revision_id") or "unknown"),
+        revision_id=effective_revision,
         scope_id=scope_id,
         actual_durations_ms=probe_durations_ms,
         audio_mode=audio_mode if audio_mode is not None else infer_audio_mode(manifest),
+        dependency_revisions={"revision": effective_revision},
+        allow_stale=allow_stale,
     )
 
 
