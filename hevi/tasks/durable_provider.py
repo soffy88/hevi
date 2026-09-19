@@ -23,6 +23,7 @@ tests).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -62,6 +63,28 @@ class PollTransient(Exception):
 
 class DurableProviderError(ValueError):
     """Terminal driver failure with a stable machine code."""
+
+
+def _normalized_error_code(message: str) -> str:
+    """Map a driver failure message to a stable analytics code."""
+
+    if "POLL_TIMEOUT" in message:
+        return "TIMEOUT"
+    if "SUBMIT_REJECTED" in message:
+        if "HTTP 429" in message or "HTTP 403" in message:
+            return "RATE_LIMITED"
+        if "HTTP 5" in message:
+            return "SERVER_ERROR"
+        return "INVALID_REQUEST"
+    if "JOB_FAILED" in message:
+        return "PROVIDER_REJECTED"
+    if "JOB_EXPIRED" in message:
+        return "PROVIDER_EXPIRED"
+    if "DOWNLOAD" in message:
+        return "DOWNLOAD_ERROR"
+    if "ADMISSION" in message or "CAPABILITY" in message:
+        return "CAPABILITY_BLOCKED"
+    return "PROVIDER_ERROR"
 
 
 async def download_with_resume(
@@ -145,6 +168,8 @@ async def run_durable_provider_job(
     error_factory: Callable[[str], Exception] | None = None,
     persist: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     live_state: dict[str, Any] | None = None,
+    project_ref: str = "unknown",
+    operation_type: str = "generate",
 ) -> tuple[dict[str, Any], Path, dict[str, Any]]:
     """Run one provider job durably. Returns (config, local_path, record_dump)."""
 
@@ -184,115 +209,157 @@ async def run_durable_provider_job(
     if action_value == "explicit_fail":
         raise _fail(f"DURABLE_JOB_EXPLICIT_FAIL:{record.last_error or 'unknown'}")
 
-    if action_value == "submit":
-        job_id: str | None = None
-        last_rejection: str = "no attempts"
-        for attempt in range(max(1, submit_max_attempts)):
-            try:
-                job_id = await submit()
-                break
-            except SubmitRejected as exc:
-                last_rejection = f"HTTP {exc.status_code}: {exc}"
-                if attempt + 1 < max(1, submit_max_attempts):
-                    await asyncio.sleep(submit_backoff_s[min(attempt, len(submit_backoff_s) - 1)])
-                    continue
-                raise _fail(f"DURABLE_SUBMIT_REJECTED:{last_rejection}") from exc
-        if job_id is None:  # pragma: no cover - loop always breaks or raises
-            raise _fail(f"DURABLE_SUBMIT_REJECTED:{last_rejection}")
-        config, record = apply_execution_event(
-            config, {"kind": "submitted", "provider_job_id": job_id}
-        )
-        await _persist(config)
-    else:
-        job_id = record.provider_job_id
-        if job_id is None:
-            raise _fail("DURABLE_RESUME_WITHOUT_JOB_ID")
+    from hevi.creative.layer4.usage_ledger import begin_call, complete_call, fail_call
 
-    if action_value in ("submit", "resume_poll"):
-        if initial_poll_delay_s > 0:
-            await asyncio.sleep(initial_poll_delay_s)
-        elapsed = 0.0
-        while elapsed < timeout_s:
-            await asyncio.sleep(poll_interval_s)
-            elapsed += poll_interval_s
-            try:
-                result = await poll(job_id)
-            except PollTransient:
-                # Poll transport errors mutate nothing: checkpoint and continue.
-                config, record = apply_execution_event(
-                    config,
-                    {"kind": "poll_checkpoint", "poll_checkpoint": record.poll_checkpoint + 1},
-                )
-                await _persist(config)
-                continue
-            if result.state == "running":
-                config, record = apply_execution_event(
-                    config,
-                    {"kind": "poll_checkpoint", "poll_checkpoint": record.poll_checkpoint + 1},
-                )
-                await _persist(config)
-                continue
-            if result.state == "succeeded":
-                config, record = apply_execution_event(
-                    config,
-                    {
-                        "kind": "remote_success",
-                        "remote_artifact_url": result.artifact_url,
-                        "provider_terminal_state": result.terminal or "succeeded",
-                    },
-                )
-                await _persist(config)
-                break
-            if result.state == "expired":
-                config, record = apply_execution_event(
-                    config, {"kind": "remote_expired", "error": result.error or "expired"}
-                )
-                await _persist(config)
-                raise _fail(f"DURABLE_JOB_EXPIRED:{result.error or ''}")
+    call = begin_call(
+        project_ref=project_ref,
+        provider=provider,
+        model=model,
+        operation_type=operation_type,
+        request_summary=f"{endpoint} v{record.request_fingerprint[:12]}",
+        endpoint=endpoint,
+    )
+
+    def _store() -> Any:  # best-effort ledger emission; never blocks the provider path
+        from hevi.creative.layer4.authority_stores import CallLedgerStore
+
+        return CallLedgerStore()
+
+    def _emit_ok(cost: float) -> None:
+        with contextlib.suppress(Exception):  # ledger must not fail the call
+            _store().append(
+                complete_call(
+                    call, actual_cost=cost, response_summary=str(record.provider_job_id)
+                ).model_dump(mode="json")
+            )
+
+    def _emit_fail(message: str) -> None:
+        with contextlib.suppress(Exception):
+            _store().append(
+                fail_call(
+                    call,
+                    provider_error_code=None,
+                    normalized_error_code=_normalized_error_code(message),
+                    safe_error_message=message[:300],
+                ).model_dump(mode="json")
+            )
+
+    try:
+        if action_value == "submit":
+            job_id: str | None = None
+            last_rejection: str = "no attempts"
+            for attempt in range(max(1, submit_max_attempts)):
+                try:
+                    job_id = await submit()
+                    break
+                except SubmitRejected as exc:
+                    last_rejection = f"HTTP {exc.status_code}: {exc}"
+                    if attempt + 1 < max(1, submit_max_attempts):
+                        await asyncio.sleep(
+                            submit_backoff_s[min(attempt, len(submit_backoff_s) - 1)]
+                        )
+                        continue
+                    raise _fail(f"DURABLE_SUBMIT_REJECTED:{last_rejection}") from exc
+            if job_id is None:  # pragma: no cover - loop always breaks or raises
+                raise _fail(f"DURABLE_SUBMIT_REJECTED:{last_rejection}")
             config, record = apply_execution_event(
-                config, {"kind": "remote_failed", "error": result.error or "failed"}
+                config, {"kind": "submitted", "provider_job_id": job_id}
             )
             await _persist(config)
-            raise _fail(f"DURABLE_JOB_FAILED:{result.error or ''}")
         else:
-            raise _fail(f"DURABLE_POLL_TIMEOUT:{timeout_s}s")
+            job_id = record.provider_job_id
+            if job_id is None:
+                raise _fail("DURABLE_RESUME_WITHOUT_JOB_ID")
 
-    location = record.remote_artifact_url or record.remote_artifact_ref or ""
-    if not location:
-        raise _fail("DURABLE_NO_ARTIFACT_LOCATION")
-    try:
-        total, response_etag = await download_with_resume(
-            location,
-            output_path,
-            start_byte=record.download_bytes,
-            etag=record.download_etag,
-            timeout_s=download_timeout_s,
-            min_bytes=min_bytes,
-            client=download_client,
+        if action_value in ("submit", "resume_poll"):
+            if initial_poll_delay_s > 0:
+                await asyncio.sleep(initial_poll_delay_s)
+            elapsed = 0.0
+            while elapsed < timeout_s:
+                await asyncio.sleep(poll_interval_s)
+                elapsed += poll_interval_s
+                try:
+                    result = await poll(job_id)
+                except PollTransient:
+                    # Poll transport errors mutate nothing: checkpoint and continue.
+                    config, record = apply_execution_event(
+                        config,
+                        {"kind": "poll_checkpoint", "poll_checkpoint": record.poll_checkpoint + 1},
+                    )
+                    await _persist(config)
+                    continue
+                if result.state == "running":
+                    config, record = apply_execution_event(
+                        config,
+                        {"kind": "poll_checkpoint", "poll_checkpoint": record.poll_checkpoint + 1},
+                    )
+                    await _persist(config)
+                    continue
+                if result.state == "succeeded":
+                    config, record = apply_execution_event(
+                        config,
+                        {
+                            "kind": "remote_success",
+                            "remote_artifact_url": result.artifact_url,
+                            "provider_terminal_state": result.terminal or "succeeded",
+                        },
+                    )
+                    await _persist(config)
+                    break
+                if result.state == "expired":
+                    config, record = apply_execution_event(
+                        config, {"kind": "remote_expired", "error": result.error or "expired"}
+                    )
+                    await _persist(config)
+                    raise _fail(f"DURABLE_JOB_EXPIRED:{result.error or ''}")
+                config, record = apply_execution_event(
+                    config, {"kind": "remote_failed", "error": result.error or "failed"}
+                )
+                await _persist(config)
+                raise _fail(f"DURABLE_JOB_FAILED:{result.error or ''}")
+            else:
+                raise _fail(f"DURABLE_POLL_TIMEOUT:{timeout_s}s")
+
+        location = record.remote_artifact_url or record.remote_artifact_ref or ""
+        if not location:
+            raise _fail("DURABLE_NO_ARTIFACT_LOCATION")
+        try:
+            total, response_etag = await download_with_resume(
+                location,
+                output_path,
+                start_byte=record.download_bytes,
+                etag=record.download_etag,
+                timeout_s=download_timeout_s,
+                min_bytes=min_bytes,
+                client=download_client,
+            )
+        except DurableProviderError as exc:
+            raise _fail(str(exc)) from exc
+        config, record = apply_execution_event(
+            config,
+            {
+                "kind": "download_progress",
+                "received_bytes": total,
+                "etag": response_etag,
+            },
         )
-    except DurableProviderError as exc:
-        raise _fail(str(exc)) from exc
-    config, record = apply_execution_event(
-        config,
-        {
-            "kind": "download_progress",
-            "received_bytes": total,
-            "etag": response_etag,
-        },
-    )
-    await _persist(config)
-    digest = hashlib.sha256(output_path.read_bytes()).hexdigest()
-    config, record = apply_execution_event(
-        config,
-        {
-            "kind": "download_complete",
-            "local_artifact_path": str(output_path),
-            "checksum": digest,
-            "actual_cost": actual_cost,
-        },
-    )
-    await _persist(config)
-    return config, output_path, record.model_dump(mode="json")
+        await _persist(config)
+        digest = hashlib.sha256(output_path.read_bytes()).hexdigest()
+        config, record = apply_execution_event(
+            config,
+            {
+                "kind": "download_complete",
+                "local_artifact_path": str(output_path),
+                "checksum": digest,
+                "actual_cost": actual_cost,
+            },
+        )
+        await _persist(config)
+        _emit_ok(actual_cost)
+        return config, output_path, record.model_dump(mode="json")
+    except Exception as exc:
+        _emit_fail(str(exc))
+        raise
 
 
 __all__ = [

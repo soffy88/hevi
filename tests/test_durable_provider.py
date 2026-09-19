@@ -279,3 +279,81 @@ async def test_download_with_resume_range_and_restart(tmp_path) -> None:
     finally:
         server.shutdown()
         thread.join(timeout=5)
+
+
+@pytest.mark.asyncio
+async def test_ledger_emission_success_and_failure(tmp_path, monkeypatch) -> None:
+    """W17-C: every provider run emits exactly one call-ledger row."""
+
+    monkeypatch.setenv("HEVI_USAGE_DB", str(tmp_path / "usage.db"))
+    _ok_download(monkeypatch)
+    from hevi.creative.layer4.authority_stores import CallLedgerStore
+
+    async def submit() -> str:
+        return "job-ledger"
+
+    async def poll_ok(job_id: str) -> JobPoll:
+        return JobPoll(state="succeeded", artifact_url="https://cdn.example/a.mp4")
+
+    await run_durable_provider_job(
+        **_spec(config={}, output_path=tmp_path / "a.mp4", project_ref="proj-x"),
+        submit=submit,
+        poll=poll_ok,
+        poll_interval_s=0,
+    )
+    rows, total = CallLedgerStore().list_records()
+    assert total == 1
+    assert rows[0]["status"] == "succeeded"
+    assert rows[0]["project_ref"] == "proj-x"
+    assert rows[0]["provider"] == "fake"
+
+    async def poll_fail(job_id: str) -> JobPoll:
+        return JobPoll(state="failed", error="content rejected")
+
+    with pytest.raises(Exception):
+        await run_durable_provider_job(
+            **_spec(
+                config={},
+                output_path=tmp_path / "b.mp4",
+                request={"prompt": "y"},
+                provider="fake2",
+            ),
+            submit=submit,
+            poll=poll_fail,
+            poll_interval_s=0,
+        )
+    rows2, total2 = CallLedgerStore().list_records()
+    assert total2 == 2
+    failed = next(r for r in rows2 if r["status"] == "failed")
+    assert failed["normalized_error_code"] == "PROVIDER_REJECTED"
+    assert "content rejected" in failed["safe_error_message"]
+
+
+@pytest.mark.asyncio
+async def test_ledger_no_duplicate_row_on_redelivery(tmp_path, monkeypatch) -> None:
+    """Retry/recovery must not fabricate a second call row for a finished job."""
+
+    monkeypatch.setenv("HEVI_USAGE_DB", str(tmp_path / "usage.db"))
+    _ok_download(monkeypatch)
+    from hevi.creative.layer4.authority_stores import CallLedgerStore
+
+    async def submit() -> str:
+        return "job-once"
+
+    async def poll(job_id: str) -> JobPoll:
+        return JobPoll(state="succeeded", artifact_url="https://cdn.example/a.mp4")
+
+    config, _, _ = await run_durable_provider_job(
+        **_spec(config={}, output_path=tmp_path / "a.mp4"),
+        submit=submit,
+        poll=poll,
+        poll_interval_s=0,
+    )
+    await run_durable_provider_job(
+        **_spec(config=config, output_path=tmp_path / "a.mp4"),
+        submit=submit,
+        poll=poll,
+        poll_interval_s=0,
+    )
+    _rows, total = CallLedgerStore().list_records()
+    assert total == 1

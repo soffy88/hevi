@@ -155,6 +155,8 @@ async def vidu_reference_to_video(
             download_client=client,
             error_factory=_error,
             live_state=state_config,
+            project_ref=str((durable or {}).get("project_id") or output_path),
+            operation_type="video_generate",
         )
         if durable is not None:
             durable.clear()
