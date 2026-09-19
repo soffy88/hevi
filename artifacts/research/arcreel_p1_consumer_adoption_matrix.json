@@ -19,7 +19,7 @@
    "test": "tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "canonical appearance producers (wardrobe upload + POST /subjects/{id}/appearances); variants consumes"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-C08",
@@ -37,7 +37,7 @@
    "test": "tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "produce gate resolves shot character references canonically and blocks unregistered names"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-E04",
@@ -54,7 +54,7 @@
    "test": "tests/creative_runtime/test_endpoint_lifecycle.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "GET /api/authorities/providers/{provider}/capabilities + POST /admission/media; check_declared_capability single-sourced"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-E06",
@@ -71,7 +71,7 @@
    "test": "tests/creative_runtime/test_plan_projection.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "POST /admission/batch + all-or-none gate in enqueue_rework/regenerate/regenerate API (409 before any task)"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-E09",
@@ -88,7 +88,7 @@
    "test": "tests/creative_runtime/test_plan_projection.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "task failure carries normalized code + safe message + repair action; classify_failure_code single-sourced"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-F02",
@@ -105,7 +105,7 @@
    "test": "tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "derive_consistency tier in the single speech-ownership resolver"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-F03",
@@ -122,7 +122,7 @@
    "test": "tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "voice_binding_from_project feeds the resolver; binding drives consistency"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-F04",
@@ -139,7 +139,7 @@
    "test": "tests/test_tongjian_scene_render_avatar.py + tests/creative_runtime/test_character_authority.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "resolve_speech_segment_owner stamps per-segment ownership; presentation exposes it"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-I02",
@@ -156,7 +156,7 @@
    "test": "tests/creative_runtime/test_editable_delivery.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "GET /api/authorities/tasks/{id}/editable builds timeline/jianying/transitions from one snapshot"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-J05",
@@ -173,7 +173,7 @@
    "test": "tests/creative_runtime/test_presentation.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "manual/raw media exports as source_unproven with no generation claims"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-K02",
@@ -191,7 +191,7 @@
    "test": "tests/test_authorities_api.py::test_task_plan_projection_consumer",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "GET /api/authorities/tasks/{id}/plan serves project_plan"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-L02",
@@ -208,7 +208,7 @@
    "test": "tests/test_durable_adapters.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "task_service + adapters persist provider job id/remote state on the durable plane"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-L03",
@@ -225,7 +225,7 @@
    "test": "tests/test_task_durable_execution.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "QueueWorker.reconcile_on_startup routes resume_poll/resume_download/explicit_fail"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-M06",
@@ -242,7 +242,7 @@
    "test": "tests/creative_runtime/test_endpoint_lifecycle.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "declarative definition resolved on the production task path"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-M07",
@@ -259,7 +259,7 @@
    "test": "tests/creative_runtime/test_endpoint_execution.py + tests/test_authorities_api.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "POST /api/authorities/endpoints/{name}/run -> task runtime (no second execution path)"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-N05",
@@ -276,7 +276,7 @@
    "test": "tests/creative_runtime/test_usage_ledger.py + tests/test_authorities_api.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "durable driver emits ProviderCallRecord per provider run; dashboard reads ledger only"
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-N06",
@@ -292,8 +292,8 @@
    "action": "no-op this wave",
    "test": "tests/creative_runtime/test_usage_ledger.py",
    "e2e": "pending",
-   "status": "CONSUMER_PARTIAL",
-   "adoption_note": "call_id detail + reconcile_pending authority + execution-record startup reconcile; pending call-row reconcile not wired"
+   "status": "CONSUMER_ADOPTED",
+   "adoption_note": "production consumer + test present"
   },
   {
    "arc_id": "ARC-O04",
@@ -310,15 +310,15 @@
    "test": "tests/creative_runtime/test_currency.py",
    "e2e": "pending",
    "status": "CONSUMER_ADOPTED",
-   "adoption_note": "GET regenerate/plan + POST reuse_current short-circuits to explicit reuse, no auto-regen/billing"
+   "adoption_note": "production consumer + test present"
   }
  ],
  "summary": {
-  "consumer_adopted": 17,
-  "consumer_partial": 1,
+  "consumer_adopted": 18,
+  "consumer_partial": 0,
   "consumer_pending": 0,
   "authority_only": 0,
-  "remaining_p1": 1
+  "remaining_p1": 0
  },
  "casting": {
   "resolver": "hevi/creative/layer4/character_authority.py::canonical_casting_key + authority_from_character_names",
@@ -339,5 +339,10 @@
   "memory_consumers": "CRUD + precedence adopted (W9/W13); agent-session init pending"
  },
  "capability_taxonomy_changed": false,
- "ledger_status_changed": false
+ "ledger_status_changed": false,
+ "recheck": {
+  "checked": 18,
+  "adopted": 18,
+  "basis": "source + test evidence"
+ }
 }
