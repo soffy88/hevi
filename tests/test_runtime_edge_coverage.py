@@ -2446,6 +2446,11 @@ async def test_tasks_router_creation_repair_preparation_and_checkpoint_paths(
         async def enqueue_rework(self, _task_id: object, **_kwargs: object) -> dict[str, object]:
             return {**task, "status": "queued"}
 
+        async def admit_regeneration_media(
+            self, _task: object, *, shot_ids: object
+        ) -> tuple[str, ...]:
+            return ()
+
     service = Service()
     monkeypatch.setattr(tasks_router, "schedule_local_compat", lambda *_args: None)
     created = await tasks_router._create_task(
