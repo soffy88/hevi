@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS incidents (
 );
 CREATE INDEX IF NOT EXISTS idx_incidents_run_node ON incidents(production_run_id, node_key);
 CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);
-CREATE INDEX IF NOT EXISTS idx_incidents_owner ON incidents(owner_id);
 CREATE TABLE IF NOT EXISTS repair_attempts (
   fingerprint TEXT PRIMARY KEY,
   timestamps_json TEXT NOT NULL
@@ -76,7 +75,7 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     existing = {row["name"] for row in conn.execute("PRAGMA table_info(incidents)")}
     if "owner_id" not in existing:
         conn.execute("ALTER TABLE incidents ADD COLUMN owner_id TEXT NOT NULL DEFAULT ''")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_incidents_owner ON incidents(owner_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_incidents_owner ON incidents(owner_id)")
     row = conn.execute(
         "SELECT version FROM schema_version WHERE store='incidents'"
     ).fetchone()

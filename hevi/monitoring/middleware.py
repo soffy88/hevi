@@ -1,6 +1,7 @@
 """HTTP request metrics middleware."""
 
 import time
+import uuid
 from collections.abc import Awaitable, Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -13,7 +14,7 @@ from hevi.monitoring.metrics import (
     http_requests_in_progress,
     http_requests_total,
 )
-from hevi.observability import bind_trace_context, start_trace
+from hevi.observability import bind_trace_context, current_trace_context, start_trace
 
 _RequestResponseEndpoint = Callable[[Request], Awaitable[Response]]
 
@@ -27,6 +28,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         http_requests_in_progress.inc()
         start = time.perf_counter()
         trace_id = request.headers.get("x-trace-id")
+        request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
         identifiers = {
             field: request.headers.get(f"x-{field.replace('_', '-')}")
             for field in (
@@ -34,12 +36,15 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
                 "revision_id",
                 "plan_id",
                 "task_id",
+                "run_id",
                 "attempt_id",
                 "node_id",
+                "incident_id",
                 "artifact_id",
                 "evaluation_id",
             )
         }
+        identifiers["request_id"] = request_id
         try:
             with start_trace(trace_id), bind_trace_context(**identifiers):
                 response = await call_next(request)
@@ -52,6 +57,11 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
                 http_request_duration_seconds.labels(method=method, path=path_template).observe(
                     duration
                 )
+                # Return correlation ids so clients/operators can trace a request.
+                response.headers["X-Request-ID"] = request_id
+                resolved_trace = current_trace_context().trace_id
+                if resolved_trace:
+                    response.headers["X-Trace-ID"] = str(resolved_trace)
                 return response
         finally:
             http_requests_in_progress.dec()

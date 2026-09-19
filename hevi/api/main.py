@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager, suppress
 import asyncio
 import os
 import socket
+from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -113,6 +114,10 @@ def _cors_list(raw: str) -> list[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     register_all_providers()  # L-021
+    # D7-J: never let credentials reach logs.
+    from hevi.observability.redaction import install_redaction_filter
+
+    install_redaction_filter()
     event_consumer: EventConsumer | None = None
     event_consumer_task: asyncio.Task[None] | None = None
 
@@ -249,19 +254,38 @@ async def health_live() -> dict[str, str]:
 
 
 @app.get("/api/health/ready", response_model=None)
-async def health_ready() -> dict[str, str] | JSONResponse:
-    """Readiness probe that verifies the production database when required."""
-    if settings.local_mode:
-        return {"status": "ready", "database": "local"}
-    try:
-        from hevi.db.pg_pool import get_hevi_pg_pool
+async def health_ready() -> JSONResponse:
+    """Readiness probe: database + authority stores + host claim.
 
-        pool = await asyncio.wait_for(get_hevi_pg_pool(), timeout=2.0)
-        async with pool.acquire() as conn:
-            await asyncio.wait_for(conn.fetchval("SELECT 1"), timeout=1.0)
-    except Exception:
-        return JSONResponse(
-            status_code=503,
-            content={"status": "not_ready", "database": "unavailable"},
-        )
-    return {"status": "ready", "database": "ok"}
+    Missing optional capabilities (GPU/lip-sync/local runtime) are reported but
+    never make readiness fail.
+    """
+    from hevi.api.health import readiness_report
+
+    database_ok = bool(settings.local_mode)
+    if not database_ok:
+        try:
+            from hevi.db.pg_pool import get_hevi_pg_pool
+
+            pool = await asyncio.wait_for(get_hevi_pg_pool(), timeout=2.0)
+            async with pool.acquire() as conn:
+                await asyncio.wait_for(conn.fetchval("SELECT 1"), timeout=1.0)
+            database_ok = True
+        except Exception:
+            database_ok = False
+    report = readiness_report(database_ok=database_ok)
+    return JSONResponse(
+        status_code=200 if report["status"] == "ready" else 503, content=report
+    )
+
+
+@app.get("/api/health/qualification")
+async def health_qualification() -> dict[str, Any]:
+    """Non-fatal qualification view: optional capabilities and store integrity."""
+    from hevi.api.health import optional_capabilities
+
+    return {
+        "status": "ok",
+        "optional_capabilities": optional_capabilities(),
+        "durability_topology": "single_host_durable",
+    }
