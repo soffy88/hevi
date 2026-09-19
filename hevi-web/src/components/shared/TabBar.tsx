@@ -35,11 +35,13 @@ export function TabBar<T extends string>({
 }: TabBarProps<T>) {
   if (variant === 'pill') {
     return (
-      <div className={`hevi-tabbar hevi-tabbar--pill ${className}`}>
+      <div className={`hevi-tabbar hevi-tabbar--pill ${className}`} role="tablist">
         {items.map((item) => (
           <button
             key={item.key}
             type="button"
+            role="tab"
+            aria-selected={active === item.key}
             className={`hevi-tabbar__item ${active === item.key ? 'hevi-tabbar__item--active' : ''}`}
             onClick={() => onChange(item.key)}
           >
@@ -55,11 +57,13 @@ export function TabBar<T extends string>({
   // Default: underline
   return (
     <div className={`hevi-tabbar hevi-tabbar--underline ${className}`}>
-      <nav className="hevi-tabbar__nav">
+      <nav className="hevi-tabbar__nav" role="tablist">
         {items.map((item) => (
           <button
             key={item.key}
             type="button"
+            role="tab"
+            aria-selected={active === item.key}
             className={`hevi-tabbar__item ${active === item.key ? 'hevi-tabbar__item--active' : ''}`}
             onClick={() => onChange(item.key)}
           >
