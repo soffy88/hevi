@@ -293,14 +293,20 @@ def execute_endpoint(
     if not test_only:
         from hevi.production.delivery_gate import probe_manifest_durations_ms
 
-        snapshot = snapshot_for_serving(
-            manifest,
-            probe_durations_ms=probe_manifest_durations_ms(manifest),
-            project_id=project_ref,
-            production_run_id=params.get("production_run_id", "unknown"),
-            revision_id=params.get("production_revision", "rev-1"),
-        )
-        presentation_view = snapshot.model_dump(mode="json")
+        try:
+            snapshot = snapshot_for_serving(
+                manifest,
+                probe_durations_ms=probe_manifest_durations_ms(manifest),
+                project_id=project_ref,
+                production_run_id=params.get("production_run_id", "unknown"),
+                revision_id=params.get("production_revision", "rev-1"),
+            )
+        except Exception:
+            # Artifact download already succeeded; an unprobeable file stays a
+            # registered artifact without a presentation selection.
+            snapshot = None
+        if snapshot is not None:
+            presentation_view = snapshot.model_dump(mode="json")
     return ExecutionReport(
         test_only=test_only,
         submitted=submitted,

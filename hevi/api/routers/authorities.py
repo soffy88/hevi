@@ -353,6 +353,47 @@ async def memory_disable(
     return {"disabled": key, "scope": scope}
 
 
+class RunBody(BaseModel):
+    params: dict[str, Any] = {}
+    secrets: dict[str, str] = {}
+    topic: str = "declarative endpoint run"
+
+
+@router.post("/endpoints/{name}/run", status_code=201)
+async def endpoints_run(
+    name: str,
+    body: RunBody,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    pool: Annotated[PgPool, Depends(get_pg_pool)],
+) -> dict[str, Any]:
+    """Create a production task that executes this endpoint (W17-B).
+
+    The task runs through the standard runtime: worker -> durable provider
+    plane -> usage ledger -> artifact manifest -> presentation. No
+    endpoint-specific execution path.
+    """
+
+    from hevi.tasks.repository import TaskRepository as _TaskRepository
+    from hevi.tasks.task_service import TaskService as _TaskService
+
+    if _registry().get(name) is None:
+        raise HTTPException(status_code=404, detail="endpoint not found")
+    service = _TaskService(_TaskRepository(pool))
+    task = await service.create_task(
+        topic=body.topic,
+        duration_archetype="1-5min",
+        video_provider="declarative_endpoint",
+        audio_provider="none",
+        user_id=str(user["id"]),
+        production_source="declarative_endpoint",
+        endpoint_name=name,
+        endpoint_params=body.params,
+        endpoint_secrets=body.secrets,
+    )
+    submitted = await service.submit_task(task["id"])
+    return {"task_id": str(submitted.get("id") or task["id"]), "status": submitted.get("status")}
+
+
 # ── character variants ───────────────────────────────────────────────────
 
 

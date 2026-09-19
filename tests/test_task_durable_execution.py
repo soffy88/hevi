@@ -29,7 +29,7 @@ class DictRepository:
 
     def seed(self, task: dict[str, Any]) -> uuid.UUID:
         task_id = uuid.uuid4()
-        self._rows[str(task_id)] = json.loads(json.dumps({**task, "id": str(task_id)}))
+        self._rows[str(task_id)] = json.loads(json.dumps({**task, "id": str(task_id)}, default=str))
         return task_id
 
     async def get_task(self, task_id: uuid.UUID) -> dict[str, Any] | None:
@@ -40,14 +40,14 @@ class DictRepository:
         row = self._rows.get(str(task_id))
         if row is None:
             return False
-        merged = json.loads(json.dumps({**row, **data}))
+        merged = json.loads(json.dumps({**row, **data}, default=str))
         self._rows[str(task_id)] = merged
         return True
 
     async def list_tasks(
         self, limit: int = 100, user_id: str | None = None, statuses: list[str] | None = None
     ) -> list[dict[str, Any]]:
-        rows = [json.loads(json.dumps(r)) for r in self._rows.values()]
+        rows = [json.loads(json.dumps(r, default=str)) for r in self._rows.values()]
         if statuses:
             rows = [r for r in rows if r.get("status") in statuses]
         return rows[:limit]
@@ -269,3 +269,134 @@ async def test_reconcile_routes_orphan_states() -> None:
     assert by_task[str(poll_id)]["action"] == "resume_poll"
     assert by_task[str(dl_id)]["action"] == "resume_download"
     assert by_task[str(dl_id)]["provider_job_id"] == "job-dl"
+
+
+@pytest.mark.asyncio
+async def test_declarative_endpoint_runs_through_task_runtime(tmp_path, monkeypatch) -> None:
+    """W17-B: registry -> task runtime -> executor -> ledger -> manifest/presentation."""
+
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    from hevi.creative.layer4.authority_stores import CallLedgerStore, EndpointRegistry
+    from hevi.creative.layer4.endpoint_lifecycle import (
+        AuthMode,
+        CapabilityDeclaration,
+        DeclarativeEndpointDefinition,
+        SyncMode,
+        enable,
+        mark_validated,
+        record_trial,
+    )
+
+    monkeypatch.setenv("HEVI_USAGE_DB", str(tmp_path / "usage.db"))
+    monkeypatch.setenv("HEVI_ENDPOINTS_DB", str(tmp_path / "endpoints.db"))
+    monkeypatch.chdir(tmp_path)
+
+    import shutil
+    import subprocess
+
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg required for real-media presentation probe")
+    clip = tmp_path / "clip.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=1:size=128x128:rate=10",
+            "-pix_fmt",
+            "yuv420p",
+            str(clip),
+            "-y",
+        ],
+        check=True,
+    )
+    file_bytes = clip.read_bytes()
+
+    class Handler(BaseHTTPRequestHandler):
+        submits = 0
+
+        def log_message(self, *a):
+            pass
+
+        def _json(self, payload):
+            import json as _json
+
+            body = _json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length", 0))
+            self.rfile.read(length)
+            type(self).submits += 1
+            self._json({"video_url": f"http://127.0.0.1:{self.server.server_port}/f.mp4"})
+
+        def do_GET(self):
+            if self.path == "/f.mp4":
+                self.send_response(200)
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Content-Length", str(len(file_bytes)))
+                self.end_headers()
+                self.wfile.write(file_bytes)
+                return
+            self.send_error(404)
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        definition = DeclarativeEndpointDefinition(
+            name="task-ep",
+            provider_family="fake",
+            base_url=f"{base}/v1/generate",
+            auth_mode=AuthMode.NONE,
+            request_schema={"properties": {"prompt": {}, "duration_s": {}}},
+            request_template='{"prompt": "{{prompt}}"}',
+            sync_mode=SyncMode.SYNC,
+            artifact_url_path="video_url",
+            capability=CapabilityDeclaration(media_type="video", durations_s=(5,), async_job=False),
+        )
+        enabled = enable(record_trial(mark_validated(definition), outcome="success"))
+        EndpointRegistry().save(enabled.model_dump(mode="json"))
+
+        repo = DictRepository()
+        service = TaskService(repo)  # type: ignore[arg-type]
+        task_id = repo.seed(
+            {
+                "status": "running",
+                "topic": "t",
+                "video_provider": "declarative_endpoint",
+                "config_json": {
+                    "production_source": "declarative_endpoint",
+                    "endpoint_name": "task-ep",
+                    "endpoint_params": {"prompt": "x", "duration_s": 5},
+                    "endpoint_secrets": {},
+                    "revision_id": "rev-1",
+                },
+            }
+        )
+        task = await repo.get_task(task_id)
+        assert task is not None
+        result = await service._run_declarative_endpoint(task)
+        assert result["status"] == "completed"
+        stored = await repo.get_task(task_id)
+        assert stored is not None
+        config = stored["config_json"]
+        assert config["artifact_manifest"]["artifacts"][0]["artifact_id"] == str(task_id)
+        assert config["presentation_snapshot"]["video"]["artifact_id"] == str(task_id)
+        assert Handler.submits == 1
+        rows, total = CallLedgerStore().list_records()
+        assert total == 1 and rows[0]["status"] == "succeeded"
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)

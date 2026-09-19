@@ -628,6 +628,87 @@ class TaskService:
             **args,
         )
 
+    async def _run_declarative_endpoint(self, task: dict[str, Any]) -> dict[str, Any]:
+        """Run a declarative endpoint generation as a real production task (W17-B).
+
+        One path only: registry definition -> admission/execution via the W12
+        executor (durable W3 records) -> usage ledger row -> artifact manifest
+        + presentation snapshot persisted on the task. No endpoint-specific
+        second execution path exists.
+        """
+        from hevi.creative.layer4.authority_stores import CallLedgerStore, EndpointRegistry
+        from hevi.creative.layer4.endpoint_execution import EndpointExecutionError, execute_endpoint
+        from hevi.creative.layer4.endpoint_lifecycle import DeclarativeEndpointDefinition
+
+        task_id = uuid.UUID(str(task["id"]))
+        config = dict(task.get("config_json") or {})
+        definition_name = str(config.get("endpoint_name") or "")
+        row = EndpointRegistry().get(definition_name)
+        if row is None:
+            return await self._fail_task(
+                task, task_id, f"declarative endpoint not found: {definition_name}"
+            )
+        definition = DeclarativeEndpointDefinition.model_validate(row)
+        if definition.state.value != "enabled":
+            return await self._fail_task(
+                task, task_id, f"declarative endpoint not enabled: {definition.state.value}"
+            )
+        secrets = dict(config.get("endpoint_secrets") or {})
+        params = dict(config.get("endpoint_params") or {})
+        params.setdefault("production_revision", str(config.get("revision_id") or ""))
+        params.setdefault("target_artifact_id", str(task_id))
+        out_dir = Path("output/tasks") / str(task_id)
+        try:
+            report = await asyncio.to_thread(
+                execute_endpoint,
+                definition,
+                params,
+                secrets,
+                out_dir,
+                project_ref=str(config.get("project_id") or task_id),
+                operation_type="video_generate",
+            )
+        except EndpointExecutionError as exc:
+            if exc.details.get("call_record"):
+                CallLedgerStore().append(exc.details["call_record"])
+            return await self._fail_task(task, task_id, str(exc))
+        CallLedgerStore().append(report.call_record)
+        manifest = report.manifest
+        config["artifact_manifest"] = manifest
+        config["presentation_snapshot"] = report.presentation
+        config["provider_execution"] = report.execution_record
+        completion = {
+            "status": "completed",
+            "progress_pct": 100.0,
+            "result_video_path": report.artifact_local_path,
+            "config_json": config,
+            "updated_at": datetime.now(UTC).replace(tzinfo=None),
+        }
+        await self.repository.update_task(task_id, completion)
+        await self._checkpoint(
+            task, stage="completed", progress_pct=100.0, state={"status": "completed"}
+        )
+        await self._finish_attempt(task, status="completed")
+        return {**task, **completion}
+
+    async def _fail_task(
+        self, task: dict[str, Any], task_id: uuid.UUID, message: str
+    ) -> dict[str, Any]:
+        update = {
+            "status": "failed",
+            "error": message[:500],
+            "updated_at": datetime.now(UTC).replace(tzinfo=None),
+        }
+        await self.repository.update_task(task_id, update)
+        await self._checkpoint(
+            task,
+            stage="failed",
+            progress_pct=float(task.get("progress_pct") or 0.0),
+            state={"status": "failed", "reason": message},
+        )
+        await self._finish_attempt(task, status="failed", error=message[:500])
+        return {**task, **update}
+
     async def _run_adapter_task(self, task: dict[str, Any]) -> dict[str, Any]:
         """Run an adapter-owned renderer through the shared task lifecycle."""
         task_id = uuid.UUID(str(task["id"]))
@@ -1097,6 +1178,9 @@ class TaskService:
             rework_request = (task.get("config_json") or {}).get("rework_request")
             if isinstance(rework_request, dict):
                 return await self._run_queued_rework(task, rework_request)
+
+            if (task.get("config_json") or {}).get("production_source") == "declarative_endpoint":
+                return await self._run_declarative_endpoint(task)
 
             if (task.get("config_json") or {}).get("production_source") in {
                 "director_graph",

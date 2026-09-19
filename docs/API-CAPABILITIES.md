@@ -35,6 +35,7 @@
 | POST | `/api/authorities/endpoints/{name}/disable` | Endpoints Disable |
 | POST | `/api/authorities/endpoints/{name}/enable` | Endpoints Enable |
 | POST | `/api/authorities/endpoints/{name}/preview-request` | Endpoints Preview Request |
+| POST | `/api/authorities/endpoints/{name}/run` | Endpoints Run |
 | POST | `/api/authorities/endpoints/{name}/trial` | Endpoints Record Trial |
 | POST | `/api/authorities/endpoints/{name}/validate` | Endpoints Validate |
 | DELETE | `/api/authorities/memory` | Memory Disable |
