@@ -320,6 +320,24 @@ class PresentationSelector:
         )
 
 
+def _speech_owner_for_snapshot(snapshot: PresentationSnapshot) -> str:
+    """Presentation-level speech ownership, resolved once (never re-guessed).
+
+    Mirrors the canonical speech owner type: provider-native audio, uploaded
+    audio, synthesized TTS (character or narrator), or none.
+    """
+
+    if snapshot.audio is None or snapshot.audio_mode is AudioMode.SILENT:
+        return "NONE"
+    if snapshot.audio_mode is AudioMode.NATIVE:
+        return "NATIVE_AUDIO"
+    if snapshot.audio_mode is AudioMode.UPLOADED:
+        return "UPLOADED_AUDIO"
+    if snapshot.audio.source_type is MediaSourceType.MANUAL_RAW:
+        return "UPLOADED_AUDIO"
+    return "TTS"
+
+
 def _selection_view(snapshot: PresentationSnapshot) -> dict[str, Any]:
     """Shared selection core: every reader projects from this, never reselects."""
 
@@ -337,6 +355,10 @@ def _selection_view(snapshot: PresentationSnapshot) -> dict[str, Any]:
         "audio_version": snapshot.audio.version if snapshot.audio else None,
         "audio_path": snapshot.audio.path if snapshot.audio else None,
         "audio_mode": snapshot.audio_mode.value,
+        "speech_owner_type": _speech_owner_for_snapshot(snapshot),
+        "speech_owner_provenance": (
+            snapshot.audio.source_type.value if snapshot.audio is not None else "none"
+        ),
         "subtitle_artifact_id": snapshot.subtitle.artifact_id if snapshot.subtitle else None,
         "subtitle_version": snapshot.subtitle.version if snapshot.subtitle else None,
         "subtitle_path": snapshot.subtitle.path if snapshot.subtitle else None,

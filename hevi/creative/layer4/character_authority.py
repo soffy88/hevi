@@ -60,6 +60,29 @@ class OwnerKind(StrEnum):
     CHARACTER = "character"
 
 
+class SpeechOwnerType(StrEnum):
+    """Canonical owner of one spoken/audio segment."""
+
+    NARRATOR = "NARRATOR"
+    CHARACTER = "CHARACTER"
+    NATIVE_AUDIO = "NATIVE_AUDIO"
+    UPLOADED_AUDIO = "UPLOADED_AUDIO"
+    NONE = "NONE"
+
+
+class SpeechSegmentOwner(BaseModel):
+    """Resolved speech ownership: never guessed from strings downstream."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    owner_type: SpeechOwnerType
+    character_id: str | None = None
+    appearance_id: str | None = None
+    voice_id: str | None = None
+    consistency: VoiceConsistency | None = None
+    provenance: str = ""
+
+
 class CharacterError(ValueError):
     """Refusal with a stable machine code."""
 
@@ -446,6 +469,88 @@ class CharacterAuthority:
         return invalidate_dependents((f"appearance:{appearance_id}",), edges)
 
 
+def resolve_speech_segment_owner(
+    authority: CharacterAuthority,
+    *,
+    speaker_ref: str | None = None,
+    audio_mode: str = "tts",
+    narrator_voice_id: str = "",
+    binding: VoiceBinding = VoiceBinding.PROMPT_DESCRIPTION,
+    model_has_audio_track: bool = True,
+    reference_driven_mode: bool = False,
+    provenance: str = "",
+) -> SpeechSegmentOwner:
+    """Single canonical speech-ownership resolver (F02/F03/F04).
+
+    Provider-native audio is native by provenance and never re-guessed;
+    uploaded audio is manual by provenance. TTS segments resolve to a
+    character through canonical identity (voice inherited from the
+    authority, derivative-scoped) or to the narrator otherwise.
+    """
+
+    mode = str(audio_mode or "").lower()
+    if mode == "native":
+        return SpeechSegmentOwner(
+            owner_type=SpeechOwnerType.NATIVE_AUDIO,
+            consistency=derive_consistency(
+                model_has_audio_track=model_has_audio_track,
+                reference_driven_mode=reference_driven_mode,
+                binding=binding,
+            ),
+            provenance=provenance or "provider-native",
+        )
+    if mode == "uploaded":
+        return SpeechSegmentOwner(
+            owner_type=SpeechOwnerType.UPLOADED_AUDIO,
+            provenance=provenance or "manual-upload",
+        )
+    if mode == "silent":
+        return SpeechSegmentOwner(
+            owner_type=SpeechOwnerType.NONE, provenance=provenance or "silent"
+        )
+    if not speaker_ref:
+        return SpeechSegmentOwner(
+            owner_type=SpeechOwnerType.NARRATOR,
+            voice_id=narrator_voice_id or None,
+            provenance=provenance or "narrator",
+        )
+    try:
+        owner = authority.resolve_utterance_owner(speaker_ref)
+    except CharacterError:
+        return SpeechSegmentOwner(
+            owner_type=SpeechOwnerType.NARRATOR,
+            voice_id=narrator_voice_id or None,
+            provenance=provenance or "unregistered-speaker",
+        )
+    if owner.kind is OwnerKind.NARRATOR:
+        return SpeechSegmentOwner(
+            owner_type=SpeechOwnerType.NARRATOR,
+            voice_id=narrator_voice_id or owner.voice_id or None,
+            provenance=provenance or "narrator",
+        )
+    return SpeechSegmentOwner(
+        owner_type=SpeechOwnerType.CHARACTER,
+        character_id=owner.character_id,
+        appearance_id=owner.appearance_id,
+        voice_id=owner.voice_id,
+        consistency=derive_consistency(
+            model_has_audio_track=model_has_audio_track,
+            reference_driven_mode=reference_driven_mode,
+            binding=binding,
+        ),
+        provenance=provenance or "character",
+    )
+
+
+def voice_binding_from_project(config: Mapping[str, Any] | None) -> VoiceBinding:
+    """Project-level voice binding setting -> canonical binding (F03)."""
+
+    raw = str((config or {}).get("character_voice_binding") or "prompt").strip().lower()
+    if raw in {"reference_audio", "reference", "audio"}:
+        return VoiceBinding.REFERENCE_AUDIO
+    return VoiceBinding.PROMPT_DESCRIPTION
+
+
 def authority_from_voice_map(
     voice_by_speaker: Mapping[str, str], *, default_voice_id: str = ""
 ) -> CharacterAuthority:
@@ -643,6 +748,8 @@ __all__ = [
     "OwnerKind",
     "ReferenceCheck",
     "ScriptReference",
+    "SpeechOwnerType",
+    "SpeechSegmentOwner",
     "UtteranceOwner",
     "VoiceBinding",
     "VoiceConsistency",
@@ -652,5 +759,7 @@ __all__ = [
     "canonical_casting_key",
     "character_view_from_sources",
     "derive_consistency",
+    "resolve_speech_segment_owner",
+    "voice_binding_from_project",
     "voice_for_speaker",
 ]

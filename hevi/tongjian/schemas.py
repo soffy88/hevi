@@ -149,6 +149,9 @@ class AudioSegment(BaseModel):
     duration_ms: int = 0
     t_start_ms: int = 0
     t_end_ms: int = 0
+    # Canonical speech ownership (F02/F03/F04): resolved once, upstream.
+    speech_owner_type: str = "NARRATOR"
+    speech_owner_id: str = ""
 
 
 class TimelineGap(BaseModel):

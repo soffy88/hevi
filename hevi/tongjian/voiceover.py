@@ -243,7 +243,7 @@ async def synthesize_voiceover(
 
     from hevi.creative.layer4.character_authority import (
         authority_from_voice_map,
-        voice_for_speaker,
+        resolve_speech_segment_owner,
     )
 
     voice_authority = authority_from_voice_map(voice_by_speaker or {})
@@ -266,11 +266,18 @@ async def synthesize_voiceover(
         file_path = output_dir / filename
 
         is_dialogue = line.type == "dialogue"
-        voice = voice_for_speaker(
+        owner = resolve_speech_segment_owner(
             voice_authority,
-            line.speaker,
-            is_dialogue=is_dialogue,
-            default=(voice_by_speaker or {}).get(line.speaker) if is_dialogue else None,
+            speaker_ref=line.speaker if is_dialogue else None,
+            audio_mode="tts",
+            provenance="tts",
+        )
+        voice = (
+            owner.voice_id
+            if owner.owner_type.value == "CHARACTER"
+            else (voice_by_speaker or {}).get(line.speaker)
+            if is_dialogue
+            else None
         )
         try:
             duration_ms = await _synthesize_line(line, file_path, tts_fn=tts_fn, voice=voice)
@@ -288,6 +295,8 @@ async def synthesize_voiceover(
             duration_ms=duration_ms,
             t_start_ms=cursor_ms,
             t_end_ms=cursor_ms + duration_ms,
+            speech_owner_type=owner.owner_type.value,
+            speech_owner_id=owner.character_id or owner.voice_id or "",
         )
         segments.append(seg)
         cursor_ms += duration_ms

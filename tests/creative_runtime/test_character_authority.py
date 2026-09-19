@@ -284,3 +284,83 @@ def test_director_voice_casting_keyed_by_canonical_id() -> None:
     voices = _assign_character_voices(design)
     assert voices["Anna"] == "v-anna"
     assert set(voices) == {"Anna", "Bob"}  # canonical keys only
+
+
+def test_speech_owner_resolver_is_the_single_source() -> None:
+    """F02/F03/F04: ownership resolves canonically, never by string guessing."""
+
+    from hevi.creative.layer4.character_authority import (
+        SpeechOwnerType,
+        VoiceBinding,
+        authority_from_voice_map,
+        resolve_speech_segment_owner,
+        voice_binding_from_project,
+    )
+
+    authority = authority_from_voice_map({"Anna": "v-anna"})
+    char = resolve_speech_segment_owner(authority, speaker_ref="Anna", audio_mode="tts")
+    assert char.owner_type is SpeechOwnerType.CHARACTER
+    assert char.character_id == "Anna"
+    assert char.voice_id == "v-anna"
+    assert char.consistency is not None
+
+    narr = resolve_speech_segment_owner(
+        authority, speaker_ref=None, audio_mode="tts", narrator_voice_id="v-narr"
+    )
+    assert narr.owner_type is SpeechOwnerType.NARRATOR
+    assert narr.voice_id == "v-narr"
+
+    native = resolve_speech_segment_owner(authority, audio_mode="native")
+    assert native.owner_type is SpeechOwnerType.NATIVE_AUDIO
+    assert native.provenance == "provider-native"
+    assert native.voice_id is None  # no voice is invented for native audio
+
+    uploaded = resolve_speech_segment_owner(authority, audio_mode="uploaded")
+    assert uploaded.owner_type is SpeechOwnerType.UPLOADED_AUDIO
+    assert uploaded.provenance == "manual-upload"
+
+    assert (
+        resolve_speech_segment_owner(authority, audio_mode="silent").owner_type
+        is SpeechOwnerType.NONE
+    )
+    # unregistered speaker degrades to narrator, never a fabricated character
+    ghost = resolve_speech_segment_owner(authority, speaker_ref="Ghost", audio_mode="tts")
+    assert ghost.owner_type is SpeechOwnerType.NARRATOR
+
+    assert voice_binding_from_project({"character_voice_binding": "reference_audio"}) is (
+        VoiceBinding.REFERENCE_AUDIO
+    )
+    assert voice_binding_from_project({}) is VoiceBinding.PROMPT_DESCRIPTION
+
+
+def test_presentation_exposes_speech_owner() -> None:
+    """AUDIO_PRESENTATION_PARITY: export never re-guesses the owner."""
+
+    from hevi.creative.layer4.presentation import (
+        AudioMode,
+        PresentationSelector,
+        for_composition,
+        for_download,
+    )
+    from tests.creative_runtime.test_presentation import _audio, _subs, _video
+
+    def _snap(mode, audio):
+        return PresentationSelector().select(
+            project_id="p",
+            production_run_id="r",
+            revision_id="rev",
+            scope_id="s",
+            video_candidates=(_video(),),
+            actual_durations_ms={"vid-1": 5000, "aud-1": 4800, "sub-1": 5000},
+            audio_mode=mode,
+            audio_candidates=audio,
+            subtitle_candidates=(_subs(),),
+            dependency_revisions={"graph": "7"},
+        )
+
+    tts = for_download(_snap(AudioMode.TTS, (_audio(),)))
+    assert tts["speech_owner_type"] == "TTS"
+    native = for_composition(_snap(AudioMode.NATIVE, (_audio(),)))
+    assert native["speech_owner_type"] == "NATIVE_AUDIO"
+    silent = for_download(_snap(AudioMode.SILENT, ()))
+    assert silent["speech_owner_type"] == "NONE"
