@@ -1,1 +1,135 @@
-{"claims":[{"claim":"Persistent cross-project creative identity","d4_evidence":"hevi_d4_long_horizon (test_d4a_long_horizon_identity.py 4 tests + E2E-D4-1): 1 owner / 3 projects / 3+ revisions / 2 appearances / 1 voice; pinned vs explicit-upgrade proven; rename keeps old name as alias; durable snapshot round-trip keeps appearance/voice history.","limitations":["Durable authority is SQLite per-host, not a distributed/multi-region store.","Identity owner scope is a single owner id string; it is not backed by the auth provider's org/team model (org-wide sharing is out of scope).","Cross-project reuse is same-owner only by construction; explicit share grants are not implemented."],"non_claimable_boundary":"Not 'universal global characters' and not cross-tenant sharing; 'global' means one owner's persistent identity, private by default.","real_evidence":["artifacts/research/hevi_d4_legacy_path_inventory.json (PRODUCTION_AUTHORITY_LEGACY_BYPASS=0)","tests/creative_runtime/test_d4a_long_horizon_identity.py","tests/integration/test_d4_qualification_e2e.py::test_e2e_d4_1_three_projects_version_pinning","IdentityStore (owner_id on every row; CAS transitions)"],"status":"VERIFIED"},{"claim":"Continuity-aware production","d4_evidence":"Continuity gate wired to subjects appearance commit + paid regenerate; deterministic PASS/WARN/BLOCK; inferred facts cannot hard-BLOCK; failed generations never mutate facts; history append-only; E2E-D4-2.","limitations":["Hard-constraint contradiction detection is an explicit negation-marker match, not full NLU entailment.","WARN severity for unrecorded location/prop is heuristic (does not prove a contradiction, only an unrecorded state).","Not every legacy writing-room path (narrative bible/tongjian sim) persists into the ledger; those remain project-local creative inputs."],"non_claimable_boundary":"Not 'automatically understands all continuity' — it enforces structured, provenance-tracked facts; free-form semantic conflict resolution is not claimed.","real_evidence":["tests/creative_runtime/test_d4b_long_horizon_continuity.py (72 facts, supersede, determinism)","tests/creative_runtime/test_identity_store_gate.py","hevi/api/routers/continuity.py (facts/validate/gate/decisions)","tests/integration/test_d3_production_e2e.py::test_e2e_d3_2_continuity_gate_blocks_then_updates"],"status":"VERIFIED"},{"claim":"Self-healing production","d4_evidence":"RepairIncident durable + owner-scoped; fingerprint dedupe stops storms; AUTO_SAFE zero-billing; CONFIRM_REQUIRED gate; MANUAL_ONLY; enforced post-repair verification; loop guard max-attempts/cooldown; restart at every lifecycle stage; backup/restore resume.","limitations":["Detection seams are wired at task/paid-regen failure paths; adapter-internal retries remain transport-level primitives that surface outcomes at the task seam rather than opening their own incidents.","Repair execution still delegates to existing runtime/repair planners (by design, single orchestrator); the incident store records policy/verification, not provider execution.","Currency verification recompute uses the task manifest only; it does not re-probe remote provider state."],"non_claimable_boundary":"Not an autonomous agent that executes creative repairs by itself, and not a second orchestrator; it is a durable, policy-gated repair record + verifier over the existing runtime.","real_evidence":["tests/creative_runtime/test_d4c_repair_soak.py","tests/creative_runtime/test_d4e_durable_store.py","tests/integration/test_d4_qualification_e2e.py::test_e2e_d4_3_incident_storm/test_e2e_d4_4_repair_three_restarts","IncidentStore CAS + schema_version"],"status":"VERIFIED"},{"claim":"Multi-user isolation (multi-admin)","d4_evidence":"Owner scoping on identity store, binding, facts, decisions and incidents; cross-owner list/bind/upgrade/inspect/confirm/refuse/retry/verify all refused; 3-owner threaded E2E.","limitations":["Isolation tested at owner-id granularity with runtime tests + test client; not a full external pentest.","Incident owner scoping is enforced in the service layer (owner_id param); pre-D4 ownerless rows are quarantined rather than migrated.","The legacy `/authorities/memory` endpoints remain unscoped (pre-existing); not claimed as part of multi-user isolation."],"non_claimable_boundary":"This is app-level tenant isolation, not a claim of certified compliance (SOC2/ISO) or hardened infrastructure isolation.","real_evidence":["tests/creative_runtime/test_d4d_concurrency.py","tests/test_d3_adoption_api.py::test_identity_tenant_isolation","hevi/api/routers/identities.py + incidents.py owner enforcement"],"status":"VERIFIED"},{"claim":"Creative memory (personalization)","d4_evidence":"D1-G substrate re-qualified (D3-E composition PASS_NO_DELTA); memory + identity + continuity jointly resolve planning inputs; API exists.","limitations":["No dedicated Studio surface for memory yet (backend/API only).","Memory endpoints are not owner-scoped (pre-existing), so this is not claimed under the multi-user isolation moat.","No new memory capability was added in D4 (per no-feature-expansion)."],"non_claimable_boundary":"Not a new memory engine and not claimed as cross-tenant-safe personalization.","real_evidence":["tests/creative_runtime/test_d3e_composition.py","hevi/api/routers/authorities.py (/memory)","tests/creative_runtime/test_creative_memory.py"],"status":"PARTIAL"},{"claim":"Local / hybrid generation","d4_evidence":"Control plane audited ready: adapters, provider policy, cost/privacy routing, hardware detection; 35 control-plane tests pass.","limitations":["LOCAL_RUNTIME=BLOCKED_HARDWARE: nvidia-smi reports no devices; ComfyUI :8188 unreachable.","No local generation artifact can be produced on this host right now.","No model support was expanded in D4."],"non_claimable_boundary":"CONTROL_PLANE_READY is not LOCAL_GENERATION_VERIFIED; no local moat is claimed while hardware is absent.","real_evidence":["artifacts/research/hevi_d3_local_hybrid_qualification.json","tests/test_provider_policy.py + tests/test_cost.py","Hevi d3-G control-plane inventory"],"status":"BLOCKED"},{"claim":"Lip-sync presenter","d4_evidence":"Production lip-sync runtime probe re-run (D4-G): D2A_REOPEN_ALLOWED=false.","limitations":["GPU unavailable, ComfyUI unavailable, EchoMimic unavailable on this host.","D2-A remains BLOCKED; no lip-sync artifact produced or claimed.","Talking-head-without-lip-sync is explicitly NOT counted as lip-sync."],"non_claimable_boundary":"Not claimable until the qualification probe returns GPU_AVAILABLE/COMFYUI_REACHABLE/ECHOMIMIC/MODEL/REAL_PROBE/ARTIFACT_VALID all true.","real_evidence":["artifacts/qualification/lipsync_runtime_probe.json","scripts/qualification/lipsync_runtime_probe.py"],"status":"BLOCKED"}],"phase":"D4-H","prohibited_overclaims":["FULL_ARCREEL_FEATURE_PARITY","115/115 PARITY","ALL_ARCREEL_GAPS_CLOSED","universal all-user global characters","autonomous repair agent","certified compliance"]}
+{
+  "phase": "D5-D",
+  "release": "hevi-differentiation-production-qualified-2026-09-19",
+  "durability_topology": "single_host_durable",
+  "durability_boundary": "Durable across process restart on the single authoritative host. NOT distributed, multi-node or HA durable; a second authority host pointed at the same stores fails closed (SplitBrainAuthorityError).",
+  "claims": [
+    {
+      "claim": "Persistent cross-project creative identity",
+      "status": "VERIFIED",
+      "allowed_language": "Owner-scoped persistent creative identities can be reused across projects with version pinning.",
+      "real_evidence": [
+        "tests/creative_runtime/test_d4a_long_horizon_identity.py",
+        "tests/integration/test_d4_qualification_e2e.py::test_e2e_d4_1_three_projects_version_pinning",
+        "tests/integration/test_d5_release_e2e.py::test_e2e_d5_2_backup_boundary_mutual_consistency",
+        "tests/creative_runtime/test_d5_topology_integrity.py",
+        "hevi/creative/layer4/identity_store.py (owner_id rows, schema_version, integrity_report)"
+      ],
+      "limitations": [
+        "Durable authority is per-host SQLite (topology=single_host_durable), not distributed/HA.",
+        "Owner scope is a single owner id string; org/team sharing is not implemented.",
+        "Cross-project reuse is same-owner only; explicit share grants are not implemented."
+      ],
+      "non_claimable_boundary": "NOT a globally shared character network; NOT cross-tenant sharing. 'Global' means one owner's persistent identity, private by default."
+    },
+    {
+      "claim": "Continuity-aware production",
+      "status": "VERIFIED",
+      "allowed_language": "HEVI validates structured canon and continuity before production and can block hard contradictions.",
+      "real_evidence": [
+        "tests/creative_runtime/test_d4b_long_horizon_continuity.py",
+        "tests/creative_runtime/test_identity_store_gate.py",
+        "tests/integration/test_d5_release_e2e.py::test_e2e_d5_2_backup_boundary_mutual_consistency",
+        "hevi/api/routers/continuity.py"
+      ],
+      "limitations": [
+        "Hard-constraint contradiction detection is an explicit negation-marker match, not full NLU entailment.",
+        "Unrecorded location/prop yields WARN (unrecorded state), not a proven contradiction.",
+        "Legacy writing-room paths (narrative bible/tongjian sim) remain project-local creative inputs, not ledger truth."
+      ],
+      "non_claimable_boundary": "NOT 'AI guarantees narrative consistency'; it enforces structured, provenance-tracked facts."
+    },
+    {
+      "claim": "Self-healing production",
+      "status": "VERIFIED",
+      "allowed_language": "HEVI can automatically recover selected deterministic failures and requires confirmation before paid or creative-changing repairs.",
+      "real_evidence": [
+        "tests/creative_runtime/test_d4c_repair_soak.py",
+        "tests/creative_runtime/test_d4e_durable_store.py",
+        "tests/integration/test_d4_qualification_e2e.py",
+        "tests/creative_runtime/test_d5_topology_integrity.py (incident integrity + coordinated backup)"
+      ],
+      "limitations": [
+        "Detection seams are wired at task/paid-regen failure paths; adapter-internal retries remain transport primitives surfacing at the task seam.",
+        "Repair execution delegates to the existing runtime/planners (single orchestrator); the incident store records policy/verification, not provider execution.",
+        "Currency verification recompute uses the task manifest; it does not re-probe remote provider state.",
+        "Incident durability is per-host (single_host_durable), not distributed."
+      ],
+      "non_claimable_boundary": "NOT 'HEVI automatically fixes every production failure' and NOT a second orchestrator/autonomous agent."
+    },
+    {
+      "claim": "Multi-user isolation",
+      "status": "VERIFIED",
+      "allowed_language": "Authenticated, owner-scoped authorities: identity, continuity, incident and creative memory are private to the server-derived owner; cross-owner reads and writes are refused.",
+      "real_evidence": [
+        "tests/creative_runtime/test_d4d_concurrency.py",
+        "tests/test_d3_adoption_api.py::test_identity_tenant_isolation",
+        "tests/test_d5_memory_security.py (D5-A closure)",
+        "tests/integration/test_d5_release_e2e.py::test_e2e_d5_1_owner_b_cannot_reach_owner_a",
+        "hevi/api/routers/authorities.py (memory owner derived server-side)",
+        "hevi/creative/layer4/creative_memory.py (owner-first namespace)"
+      ],
+      "limitations": [
+        "Runtime/test-level isolation (test client + threaded stores), not an external third-party pentest.",
+        "Legacy incidents created before D4 owner-scoping are quarantined (invisible to owner-scoped callers), not back-filled.",
+        "Infrastructure-level hardening and compliance certification are out of scope."
+      ],
+      "non_claimable_boundary": "NOT SOC2/ISO certification and NOT hardened infrastructure isolation; it is application-level tenant isolation."
+    },
+    {
+      "claim": "Creative memory (personalization)",
+      "status": "PARTIAL",
+      "allowed_language": "Owner-scoped creative memory API exists and is consumed in planning composition.",
+      "real_evidence": [
+        "tests/creative_runtime/test_d3e_composition.py",
+        "tests/test_d5_memory_security.py",
+        "hevi/api/routers/authorities.py (/memory, owner-scoped)"
+      ],
+      "limitations": [
+        "Backend/API only; no dedicated Studio surface.",
+        "No net-new memory capability in D4/D5 (no feature expansion)."
+      ],
+      "non_claimable_boundary": "NOT a new memory engine; not claimed as a full personalization product surface."
+    },
+    {
+      "claim": "Local / hybrid generation",
+      "status": "BLOCKED",
+      "allowed_language": "Control plane is ready (adapters, policy, cost/privacy routing, hardware detection).",
+      "real_evidence": [
+        "artifacts/research/hevi_d3_local_hybrid_qualification.json",
+        "tests/test_provider_policy.py",
+        "tests/test_cost.py"
+      ],
+      "limitations": [
+        "LOCAL_RUNTIME=BLOCKED_HARDWARE (nvidia-smi: no devices; ComfyUI unreachable).",
+        "No local generation artifact produced on this host."
+      ],
+      "non_claimable_boundary": "CONTROL_PLANE_READY is NOT LOCAL_GENERATION_VERIFIED."
+    },
+    {
+      "claim": "Lip-sync presenter",
+      "status": "BLOCKED",
+      "allowed_language": "A fail-closed lip-sync runtime qualification probe exists.",
+      "real_evidence": [
+        "artifacts/qualification/lipsync_runtime_probe.json",
+        "scripts/qualification/lipsync_runtime_probe.py"
+      ],
+      "limitations": [
+        "GPU unavailable, ComfyUI unavailable, EchoMimic unavailable; D2A_REOPEN_ALLOWED=false.",
+        "Talking-head-without-lip-sync is explicitly NOT counted as lip-sync."
+      ],
+      "non_claimable_boundary": "NOT claimable until the probe returns GPU_AVAILABLE/COMFYUI_REACHABLE/ECHOMIMIC/MODEL/REAL_PROBE/ARTIFACT_VALID all true."
+    }
+  ],
+  "prohibited_overclaims": [
+    "FULL_ARCREEL_FEATURE_PARITY",
+    "115/115 PARITY",
+    "ALL_ARCREEL_GAPS_CLOSED",
+    "all differentiators verified",
+    "globally shared character network",
+    "AI guarantees narrative consistency",
+    "HEVI automatically fixes every production failure",
+    "distributed / multi-node / HA durable",
+    "certified compliance (SOC2/ISO)"
+  ]
+}

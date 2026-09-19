@@ -1,0 +1,99 @@
+{
+  "phase": "D5-0",
+  "head_sha": "46847a89a8e702c0b51a89f60e9df3f30cf7b9e5",
+  "method": "git status --short + git diff --stat; each entry classified; UNKNOWN must be 0",
+  "unknown": 0,
+  "summary": {
+    "tracked_modified": 12,
+    "untracked": 40,
+    "commit_grouped": 47,
+    "excluded_unrelated_preexisting": 3,
+    "ignored_runtime_dirs": 2
+  },
+  "excluded_unrelated_preexisting": [
+    {
+      "path": "artifacts/qualification/3o-v3-global-independent-audit.json",
+      "category": "UNRELATED_PREEXISTING",
+      "reason": "modified before D2 started (AUDITED_HEVI_SHA re-point from 59ae954 to 46847a8); not part of differentiation work",
+      "action": "restore_to_head"
+    },
+    {
+      "path": "docs/openapi.json",
+      "category": "UNRELATED_PREEXISTING",
+      "reason": "generated spec stale at HEAD (missing 114 routes that predate D3, e.g. voice-studio/distribution/montage; schema-generation drift). Regenerated in D3 as a side effect; committing it would fold ~19k lines of unrelated drift into the release",
+      "action": "restore_to_head"
+    },
+    {
+      "path": "data/memory/studio.db",
+      "category": "UNRELATED_PREEXISTING",
+      "reason": "tracked runtime SQLite mutated by local test/run activity",
+      "action": "restore_to_head"
+    }
+  ],
+  "ignored_runtime_dirs": [
+    {"path": "data/anti_repeat/", "category": "UNRELATED_PREEXISTING", "action": "add_to_gitignore"},
+    {"path": "data/usage/", "category": "UNRELATED_PREEXISTING", "action": "add_to_gitignore"},
+    {"path": "data/identity/", "category": "D4_DURABILITY", "action": "add_to_gitignore_future_runtime"},
+    {"path": "data/incidents/", "category": "D4_DURABILITY", "action": "add_to_gitignore_future_runtime"}
+  ],
+  "entries": [
+    {"path": "hevi/creative/layer4/persistent_identity.py", "category": "D4_IDENTITY", "group": 1},
+    {"path": "hevi/creative/layer4/identity_store.py", "category": "D4_DURABILITY", "group": 1},
+    {"path": "hevi/api/routers/identities.py", "category": "D4_IDENTITY", "group": 1},
+    {"path": "tests/creative_runtime/test_persistent_identity.py", "category": "D4_IDENTITY", "group": 1},
+    {"path": "tests/creative_runtime/test_d4a_long_horizon_identity.py", "category": "D4_IDENTITY", "group": 1},
+    {"path": "hevi/creative/layer4/continuity_gate.py", "category": "D4_CONTINUITY", "group": 2},
+    {"path": "hevi/api/routers/continuity.py", "category": "D4_CONTINUITY", "group": 2},
+    {"path": "hevi/api/routers/subjects.py", "category": "D4_CONTINUITY", "group": 2},
+    {"path": "tests/creative_runtime/test_identity_store_gate.py", "category": "D4_CONTINUITY", "group": 2},
+    {"path": "tests/creative_runtime/test_d4b_long_horizon_continuity.py", "category": "D4_CONTINUITY", "group": 2},
+    {"path": "tests/creative_runtime/test_d3e_composition.py", "category": "D4_CONTINUITY", "group": 2},
+    {"path": "hevi/creative/layer4/repair_incident.py", "category": "D4_REPAIR", "group": 3},
+    {"path": "hevi/creative/layer4/incident_store.py", "category": "D4_DURABILITY", "group": 3},
+    {"path": "hevi/api/routers/incidents.py", "category": "D4_REPAIR", "group": 3},
+    {"path": "hevi/api/routers/tasks.py", "category": "D4_REPAIR", "group": 3},
+    {"path": "hevi/tasks/task_service.py", "category": "D4_REPAIR", "group": 3},
+    {"path": "tests/creative_runtime/test_repair_incident.py", "category": "D4_REPAIR", "group": 3},
+    {"path": "tests/creative_runtime/test_d4c_repair_soak.py", "category": "D4_REPAIR", "group": 3},
+    {"path": "tests/integration/test_d3_production_e2e.py", "category": "D4_REPAIR", "group": 3},
+    {"path": "tests/creative_runtime/test_d4d_concurrency.py", "category": "D4_CONCURRENCY", "group": 4},
+    {"path": "tests/test_d3_adoption_api.py", "category": "D4_CONCURRENCY", "group": 4},
+    {"path": "tests/creative_runtime/test_d4e_durable_store.py", "category": "D4_DURABILITY", "group": 5},
+    {"path": "hevi/creative/layer4/differentiation_metrics.py", "category": "D4_METRICS", "group": 6},
+    {"path": "tests/creative_runtime/test_d4f_metrics.py", "category": "D4_METRICS", "group": 6},
+    {"path": "hevi/creative/layer4/__init__.py", "category": "D4_REPORTS", "group": 7},
+    {"path": "hevi/api/main.py", "category": "D4_IDENTITY", "group": 7},
+    {"path": "tests/integration/test_d4_qualification_e2e.py", "category": "D4_REPORTS", "group": 7},
+    {"path": "hevi-web/src/app/assets/page.tsx", "category": "D4_IDENTITY", "group": 7},
+    {"path": "hevi-web/src/lib/api-client.ts", "category": "D4_IDENTITY", "group": 7},
+    {"path": "hevi-web/src/types/api.ts", "category": "D4_IDENTITY", "group": 7},
+    {"path": "hevi-web/src/components/ops/OpsPanel.tsx", "category": "D4_IDENTITY", "group": 7},
+    {"path": "hevi-web/src/components/ops/OpsPanel.test.tsx", "category": "D4_IDENTITY", "group": 7},
+    {"path": "docs/API-CAPABILITIES.md", "category": "D4_REPORTS", "group": 7},
+    {"path": "scripts/qualification/lipsync_runtime_probe.py", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/qualification/lipsync_runtime_probe.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_audit_v1.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_audit_v1.md", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_d2_preimplementation_qualification.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_d3_adoption_inventory.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_d3_local_hybrid_qualification.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_d4_legacy_path_inventory.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_claim_matrix.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_phase_d2_report.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_phase_d2_report.md", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_phase_d3_report.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_phase_d3_report.md", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_phase_d4_report.json", "category": "D4_REPORTS", "group": 8},
+    {"path": "artifacts/research/hevi_differentiation_phase_d4_report.md", "category": "D4_REPORTS", "group": 8}
+  ],
+  "commit_groups": [
+    {"group": 1, "message": "feat(identity): add owner-scoped persistent creative identity authority"},
+    {"group": 2, "message": "feat(continuity): add continuity ledger and deterministic production gate"},
+    {"group": 3, "message": "feat(repair): add durable self-healing incident runtime"},
+    {"group": 4, "message": "test(security): qualify multi-user isolation and concurrent transitions"},
+    {"group": 5, "message": "test(durability): version and crash-protect differentiation stores"},
+    {"group": 6, "message": "feat(metrics): expose canonical differentiation metrics"},
+    {"group": 7, "message": "feat(studio): wire differentiation adoption surface and API"},
+    {"group": 8, "message": "docs(research): record D1-D4 differentiation audit and qualification"}
+  ]
+}
