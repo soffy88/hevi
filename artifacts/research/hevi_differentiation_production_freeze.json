@@ -1,0 +1,75 @@
+{
+  "freeze": "hevi-differentiation-production-qualified-2026-09-19",
+  "phase": "D5",
+  "d4_uncommitted_sha": "46847a89a8e702c0b51a89f60e9df3f30cf7b9e5",
+  "d5_implementation_sha": "13d659c38a592a9e983a53c12420262d2e960b9a",
+  "worktree_clean_at_freeze": true,
+  "durability_topology": "single_host_durable",
+  "topology_boundary": "Durable across process restart on the single authoritative host; a second authority host pointed at the same stores fails closed. NOT distributed/multi-node/HA durable.",
+  "d5_results": {
+    "D5_A_MEMORY_SECURITY": "PASS",
+    "D5_B_DURABILITY_TOPOLOGY": "PASS",
+    "D5_C_STORE_INTEGRITY": "PASS",
+    "D5_D_CLAIM_MATRIX": "PASS",
+    "D5_E_RELEASE_QUALIFICATION": "PASS",
+    "D5_F_LONG_HORIZON_E2E": "PASS",
+    "MEMORY_ENDPOINT_SCOPE": "PASS",
+    "CROSS_TENANT_MEMORY_READS": 0,
+    "CROSS_TENANT_MEMORY_WRITES": 0,
+    "ANONYMOUS_MEMORY_ACCESS": 0,
+    "MEMORY_SECURITY_BYPASS_COUNT": 0,
+    "PRODUCTION_TOPOLOGY": "SINGLE_HOST_DURABLE",
+    "SHARED_DURABLE_AUTHORITY": "NOT_APPLICABLE_SINGLE_HOST",
+    "SPLIT_BRAIN_AUTHORITY": 0,
+    "MULTI_HOST_AUTHORITY_CLAIM": "NOT_CLAIMED",
+    "STORE_REFERENTIAL_INTEGRITY": "PASS",
+    "UNKNOWN_SCHEMA_FAIL_CLOSED": "PASS",
+    "CONSISTENT_BACKUP_BOUNDARY": "PASS",
+    "RESTORE_REFERENCES_VALID": "PASS"
+  },
+  "claims": {
+    "CLAIM_PERSISTENT_IDENTITY": "VERIFIED",
+    "CLAIM_CONTINUITY_AWARE_PRODUCTION": "VERIFIED",
+    "CLAIM_SELF_HEALING_PRODUCTION": "VERIFIED",
+    "CLAIM_MULTI_USER_SECURITY": "VERIFIED",
+    "CLAIM_CREATIVE_MEMORY": "PARTIAL",
+    "CLAIM_LOCAL_HYBRID": "BLOCKED",
+    "CLAIM_LIPSYNC": "BLOCKED"
+  },
+  "e2e": {
+    "E2E_D5_1": "PASS",
+    "E2E_D5_2": "PASS",
+    "E2E_D5_3": "PASS"
+  },
+  "quality": {
+    "RUFF": "PASS",
+    "MYPY": "PASS (strict, 1244 source files)",
+    "FULL_SUITE_PASSED": 3219,
+    "FULL_SUITE_FAILED": 0,
+    "FULL_SUITE_ERRORS": 0,
+    "FULL_SUITE_SKIPPED": 29,
+    "FRONTEND_TESTS": "159 passed (31 files)",
+    "FRONTEND_TYPECHECK": "PASS (tsc --noEmit)",
+    "CREATIVE_FULL_REGRESSION": "PASS",
+    "STUDIO_E2E": "PASS (vitest incl. OpsPanel)",
+    "FAULT_INJECTION": "PASS (soak/dedupe/exhaustion/cooldown/duplicate/restart)",
+    "SECURITY_ADVERSARIAL": "PASS (cross-owner identity/continuity/incident/memory + split-brain)",
+    "D5_SECURITY_GATES_PASSED": 42,
+    "3O_ARCHITECTURE_ZERO": "PASS (canonical artifacts/qualification/3o-v3-global-independent-audit.json)",
+    "INKOS_CAPABILITY_TOTAL": 39,
+    "QUALIFIED": 39,
+    "PARTIAL": 0,
+    "MISSING": 0,
+    "UNQUALIFIED": 0,
+    "LEDGER_TAXONOMY_CHANGED": "NO"
+  },
+  "known_issues": [
+    {
+      "id": "legacy_3o_v3_lint",
+      "severity": "pre-existing/environmental",
+      "detail": "scripts/ci/run_3o_v3_lint.py reports 3O_V3_LINT=FAIL (check_no_sibling_call/check_omodul_signature/check_enabled_pillars/check_oprim_keyword_only) because the installed oprim/omodul packages in .venv have drifted. Verified identical failure at the pre-D2 closure SHA 46847a8; no tracked 3O code and no scripts/ci change in D2-D5. Not caused by the differentiation work.",
+      "action": "out_of_scope_for_differentiation_release"
+    }
+  ],
+  "next_phase": "PENDING_D5_H"
+}
