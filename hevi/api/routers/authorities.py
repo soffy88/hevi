@@ -580,3 +580,136 @@ async def task_currency(
 
 
 __all__ = ["router"]
+
+
+# ── E04/E06: capability narrowing + pre-submit media admission ───────────
+
+
+def _provider_declaration(provider: str) -> tuple[Any, Any]:
+    """Bridge real provider limits into the canonical capability contract."""
+
+    from hevi.creative.layer4.endpoint_lifecycle import CapabilityDeclaration
+    from hevi.video.capability_guard import PROVIDER_LIMITS
+
+    limits = PROVIDER_LIMITS.get(provider)
+    if limits is None:
+        raise HTTPException(status_code=404, detail=f"unknown provider: {provider}")
+    return (
+        CapabilityDeclaration(
+            media_type="video",
+            resolutions=tuple(f"{w}x{h}" for w, h in (limits.max_resolution,)),
+            native_audio=limits.native_audio,
+            async_job=True,
+        ),
+        limits,
+    )
+
+
+def _media_limit_reasons(provider: str, requirement: Any) -> list[str]:
+    """Provider envelope reasons shared by single and batch admission."""
+
+    _declaration, limits = _provider_declaration(provider)
+    reasons: list[str] = []
+    if requirement.duration_s is not None and requirement.duration_s > limits.max_duration_s:
+        reasons.append(
+            f"duration {requirement.duration_s}s exceeds provider max {limits.max_duration_s}s"
+        )
+    return reasons
+
+
+def _requirement_from_request(payload: dict[str, Any]) -> Any:
+    from hevi.creative.layer4.endpoint_lifecycle import CapabilityRequirement
+
+    references = payload.get("reference_images") or []
+    return CapabilityRequirement(
+        media_type=str(payload.get("media_type") or "video"),
+        duration_s=(int(payload["duration_s"]) if payload.get("duration_s") is not None else None),
+        resolution=payload.get("resolution"),
+        references=len(references) if isinstance(references, (list, tuple)) else 0,
+        start_end_frame=bool(payload.get("start_frame") or payload.get("end_frame")),
+        native_audio=bool(payload.get("native_audio")),
+        async_job=bool(payload.get("async_job", True)),
+    )
+
+
+@router.get("/providers/{provider}/capabilities")
+async def provider_capabilities(
+    provider: str, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """Server-narrowed capability options for provider settings (E04)."""
+
+    declaration, limits = _provider_declaration(provider)
+    return {
+        "provider": provider,
+        "media_type": declaration.media_type,
+        "modes": sorted(limits.modes),
+        "max_resolution": list(limits.max_resolution),
+        "max_duration_s": limits.max_duration_s,
+        "fps_options": sorted(limits.fps_options),
+        "native_audio": declaration.native_audio,
+        "lip_sync": limits.lip_sync,
+        "last_verified": limits.last_verified,
+    }
+
+
+class MediaAdmissionBody(BaseModel):
+    requirement: dict[str, Any] = {}
+
+
+@router.post("/admission/media")
+async def admission_media(
+    body: MediaAdmissionBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """Admit one media request before submit; blocked never reaches a provider."""
+
+    from hevi.creative.layer4.endpoint_lifecycle import (
+        check_declared_capability as check_capability,
+    )
+
+    provider = str(body.requirement.get("provider") or "")
+    declaration, limits = _provider_declaration(provider)
+    requirement = _requirement_from_request(body.requirement)
+    verdict = check_capability(declaration, requirement)
+    reasons = list(verdict.reasons) + _media_limit_reasons(provider, requirement)
+    return {
+        "admitted": verdict.admitted and not reasons,
+        "reasons": reasons,
+        "provider": provider,
+        "last_verified": limits.last_verified,
+    }
+
+
+class BatchItemBody(BaseModel):
+    item_id: str
+    requirement: dict[str, Any] = {}
+    estimated_cost: float = 0.0
+
+
+class BatchAdmissionBody(BaseModel):
+    items: list[BatchItemBody] = []
+    confirm_above_cost: float = 0.0
+
+
+@router.post("/admission/batch")
+async def admission_batch(
+    body: BatchAdmissionBody, _user: Annotated[dict[str, Any], Depends(get_current_user)]
+) -> dict[str, Any]:
+    """All-or-none batch admission before task creation (E06)."""
+
+    from hevi.creative.layer4.plan_projection import admit_batch
+
+    items: list[tuple[str, Any, Any, float]] = []
+    limit_reasons: list[str] = []
+    for item in body.items:
+        provider = str(item.requirement.get("provider") or "")
+        declaration, _limits = _provider_declaration(provider)
+        requirement = _requirement_from_request(item.requirement)
+        limit_reasons.extend(
+            f"{item.item_id}: {reason}" for reason in _media_limit_reasons(provider, requirement)
+        )
+        items.append((item.item_id, declaration, requirement, item.estimated_cost))
+    if limit_reasons:
+        return {"decision": "blocked", "reasons": limit_reasons, "admitted_items": []}
+    return admit_batch(tuple(items), confirm_above_cost=body.confirm_above_cost).model_dump(
+        mode="json"
+    )

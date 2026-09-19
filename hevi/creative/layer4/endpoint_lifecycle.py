@@ -424,7 +424,18 @@ def check_capability(
 ) -> AdmissionVerdict:
     """Declaring a capability proves nothing: match before admission."""
 
-    capability = definition.capability
+    return check_declared_capability(definition.capability, requirement)
+
+
+def check_declared_capability(
+    capability: CapabilityDeclaration, requirement: CapabilityRequirement
+) -> AdmissionVerdict:
+    """Match a requirement against a capability declaration (single source).
+
+    Shared by declarative endpoints and provider-limit bridges so admission
+    semantics cannot drift between them.
+    """
+
     reasons: list[str] = []
     if capability.media_type != requirement.media_type:
         reasons.append(f"media {capability.media_type} != {requirement.media_type}")
@@ -481,6 +492,7 @@ __all__ = [
     "ValidationReport",
     "bump_version",
     "check_capability",
+    "check_declared_capability",
     "disable",
     "enable",
     "export_definition",

@@ -329,3 +329,89 @@ def test_regeneration_plan_and_explicit_reuse(authed, tmp_path, monkeypatch) -> 
         assert reused["currency_targets"][0]["artifact_id"] == "v-1"
     finally:
         app.dependency_overrides.pop(tasks_router.get_task_service, None)
+
+
+def test_provider_capabilities_narrowing(authed) -> None:
+    """E04: one descriptor, server-derived, no UI recomputation."""
+
+    ok = client.get("/api/authorities/providers/wan_local/capabilities").json()
+    assert ok["provider"] == "wan_local"
+    assert ok["max_duration_s"] == 10.0
+    assert "t2v" in ok["modes"] and "i2v" in ok["modes"]
+    assert ok["last_verified"]
+    assert client.get("/api/authorities/providers/nope/capabilities").status_code == 404
+
+
+def test_media_admission_blocks_before_submit(authed) -> None:
+    """E04: unsupported requests are blocked pre-submit, not provider-rejected."""
+
+    blocked = client.post(
+        "/api/authorities/admission/media",
+        json={"requirement": {"provider": "wan_local", "duration_s": 60}},
+    ).json()
+    assert blocked["admitted"] is False
+    assert any("duration 60s" in r for r in blocked["reasons"])
+    ok = client.post(
+        "/api/authorities/admission/media",
+        json={"requirement": {"provider": "wan_local", "duration_s": 5}},
+    ).json()
+    assert ok["admitted"] is True
+
+
+def test_batch_admission_all_or_none(authed) -> None:
+    """E06: one blocked item blocks the whole batch (zero admitted)."""
+
+    verdict = client.post(
+        "/api/authorities/admission/batch",
+        json={
+            "items": [
+                {"item_id": "a", "requirement": {"provider": "wan_local", "duration_s": 5}},
+                {"item_id": "b", "requirement": {"provider": "wan_local", "duration_s": 99}},
+            ]
+        },
+    ).json()
+    assert verdict["decision"] == "blocked"
+    assert verdict["admitted_items"] == []
+    assert any(r.startswith("b:") for r in verdict["reasons"])
+
+
+def test_regenerate_blocked_by_admission(authed, tmp_path, monkeypatch) -> None:
+    """E06: the real batch rework entrypoint refuses before creating tasks."""
+
+    from hevi.api.routers import tasks as tasks_router
+
+    task = _task_with_manifest(tmp_path, with_sha=True)
+    task.update({"user_id": "test-user", "video_provider": "wan_local"})
+    task["config_json"]["target_duration_s"] = 60
+
+    class Repo:
+        pool = object()
+
+        async def get_task(self, _task_id: object) -> dict[str, Any]:
+            return task
+
+        async def get_shots(self, _task_id: object) -> list[dict[str, Any]]:
+            return []
+
+    repo = Repo()
+
+    async def fake_get_service() -> Any:
+        class Svc:
+            repository = repo
+
+            async def admit_regeneration_media(self, _task, *, shot_ids):  # noqa: ANN001
+                from hevi.tasks.task_service import TaskService
+
+                return await TaskService.admit_regeneration_media(
+                    self, _task, shot_ids=shot_ids
+                )
+
+        return Svc()
+
+    app.dependency_overrides[tasks_router.get_task_service] = fake_get_service
+    try:
+        resp = client.post(f"/api/tasks/{task['id']}/regenerate", json={"shot_ids": [0]})
+        assert resp.status_code == 409
+        assert "batch admission blocked" in resp.json()["detail"]
+    finally:
+        app.dependency_overrides.pop(tasks_router.get_task_service, None)

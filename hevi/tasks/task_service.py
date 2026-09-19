@@ -1769,6 +1769,59 @@ class TaskService:
         )
         return await self.submit_task(task_id)
 
+    async def admit_regeneration_media(
+        self, task: dict[str, Any], *, shot_ids: list[int]
+    ) -> tuple[str, ...]:
+        """All-or-none pre-submit admission for a rework batch (E06).
+
+        Every requested target is judged against the canonical capability
+        contract before any task or provider submit is created; a single
+        blocked target blocks the whole batch. Provider runtime failures are
+        NOT admission failures and are handled by the durable plane instead.
+        """
+        from hevi.creative.layer4.endpoint_lifecycle import (
+            CapabilityDeclaration,
+            CapabilityRequirement,
+        )
+        from hevi.creative.layer4.endpoint_lifecycle import (
+            check_declared_capability as check_capability,
+        )
+        from hevi.video.capability_guard import PROVIDER_LIMITS
+
+        provider = str(task.get("video_provider") or "")
+        limits = PROVIDER_LIMITS.get(provider)
+        if limits is None:
+            return ()  # no descriptor: nothing canonical to admit against
+        config = task.get("config_json") or {}
+        references = config.get("reference_images") or []
+        resolution = config.get("resolution")
+        declaration = CapabilityDeclaration(
+            media_type="video",
+            resolutions=tuple(f"{w}x{h}" for w, h in (limits.max_resolution,)),
+            native_audio=limits.native_audio,
+            async_job=True,
+        )
+        requirement = CapabilityRequirement(
+            media_type="video",
+            duration_s=(
+                int(config["target_duration_s"]) if config.get("target_duration_s") else None
+            ),
+            resolution=str(resolution) if resolution else None,
+            references=len(references) if isinstance(references, (list, tuple)) else 0,
+            start_end_frame=bool(config.get("start_frame") or config.get("end_frame")),
+            native_audio=bool(config.get("native_audio")),
+            async_job=True,
+        )
+        verdict = check_capability(declaration, requirement)
+        reasons = list(verdict.reasons)
+        duration = requirement.duration_s
+        if duration is not None and duration > limits.max_duration_s:
+            reasons.append(f"duration {duration}s exceeds provider max {limits.max_duration_s}s")
+        if reasons:
+            raise ValueError("batch admission blocked (no tasks created): " + "; ".join(reasons))
+        _ = shot_ids
+        return tuple(reasons)
+
     async def enqueue_rework(
         self,
         task_id: uuid.UUID,
@@ -1782,6 +1835,7 @@ class TaskService:
             raise ValueError(f"Task {task_id} not found")
         if not shot_ids:
             raise ValueError("shot_ids must not be empty")
+        await self.admit_regeneration_media(task, shot_ids=shot_ids)
         if not isinstance(self.repository.pool, PgPool):
             return await self.regenerate_task_shots(task_id, shot_ids=shot_ids, hints=hints)
         config = dict(task.get("config_json") or {})
@@ -2035,6 +2089,7 @@ class TaskService:
             raise ValueError(f"Task {task_id} not found")
         if not shot_ids:
             raise ValueError("shot_ids must not be empty")
+        await self.admit_regeneration_media(task, shot_ids=shot_ids)
 
         existing_shots = await self.repository.get_shots(task_id)
         retry_by_index: dict[int, int] = {

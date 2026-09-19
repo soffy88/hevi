@@ -25,6 +25,8 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| POST | `/api/authorities/admission/batch` | Admission Batch |
+| POST | `/api/authorities/admission/media` | Admission Media |
 | GET | `/api/authorities/characters/{character_id}/variants` | Character Variants |
 | GET | `/api/authorities/endpoints` | Endpoints List |
 | POST | `/api/authorities/endpoints` | Endpoints Create |
@@ -41,6 +43,7 @@
 | DELETE | `/api/authorities/memory` | Memory Disable |
 | GET | `/api/authorities/memory` | Memory Inspect |
 | PUT | `/api/authorities/memory` | Memory Remember |
+| GET | `/api/authorities/providers/{provider}/capabilities` | Provider Capabilities |
 | GET | `/api/authorities/tasks/{task_id}/currency` | Task Currency |
 | GET | `/api/authorities/tasks/{task_id}/plan` | Task Plan |
 | GET | `/api/authorities/tasks/{task_id}/presentation` | Task Presentation |

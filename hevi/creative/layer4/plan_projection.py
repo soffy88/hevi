@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -32,7 +33,7 @@ from hevi.creative.layer4.endpoint_lifecycle import (
     AdmissionVerdict,
     CapabilityRequirement,
     DeclarativeEndpointDefinition,
-    check_capability,
+    check_declared_capability,
 )
 from hevi.creative.layer4.usage_ledger import redact_secrets
 
@@ -219,16 +220,22 @@ class AdmissionVerdict3(BaseModel):
 
 
 def admit_single(
-    definition: DeclarativeEndpointDefinition,
+    definition: Any,
     requirement: CapabilityRequirement,
     *,
     estimated_cost: float = 0.0,
     confirm_above_cost: float = 0.0,
     item_id: str = "item",
 ) -> AdmissionVerdict3:
-    """Pre-submit single admission reusing the W5 capability matcher."""
+    """Pre-submit single admission reusing the canonical capability matcher.
 
-    verdict: AdmissionVerdict = check_capability(definition, requirement)
+    Accepts either a declarative endpoint definition or a bare capability
+    declaration, so provider-limit bridges and declarative endpoints share
+    one admission semantics.
+    """
+
+    capability = getattr(definition, "capability", definition)
+    verdict: AdmissionVerdict = check_declared_capability(capability, requirement)
     if not verdict.admitted:
         return AdmissionVerdict3(decision="blocked", reasons=verdict.reasons, admitted_items=())
     if confirm_above_cost > 0 and estimated_cost >= confirm_above_cost:
