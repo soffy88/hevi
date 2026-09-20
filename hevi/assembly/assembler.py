@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from obase.ffmpeg import run as ffmpeg_run
+from oskill.quality import compute_luma_correction
 
 logger = logging.getLogger(__name__)
 
@@ -139,14 +140,9 @@ def _measure_avg_luma(path: Path) -> float | None:
             return sum(i * c for i, c in enumerate(hist)) / total
 
 
-def _brightness_correction(luma: float, target_luma: float, *, max_delta: float = 0.15) -> float:
-    """luma/target_luma 是 0-255 平均灰度。ffmpeg `eq` 的 brightness 参数是 -1..1
-    的加性偏移。把两者的相对差值转成修正量,夹在 ±max_delta 内——只做"缩小组间
-    差异",不做激进的重新打光,避免过度修正把正常的明暗节奏(比如刻意的夜戏)
-    拉平成一个亮度。
-    """
-    diff = (target_luma - luma) / 255.0
-    return max(-max_delta, min(max_delta, diff))
+# Use canonical oskill.compute_luma_correction for brightness correction
+# 3O §3: pure algorithm extraction
+_brightness_correction = compute_luma_correction
 
 
 async def _normalize_shot(

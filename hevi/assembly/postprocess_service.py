@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from obase.ffmpeg import run
+from oprim import ffmpeg_encode
 
 from hevi.assembly.aspect_ratio import AspectRatio, get_aspect_ratio_filter
 from hevi.assembly.cover_extractor import extract_cover
@@ -57,17 +57,14 @@ async def postprocess_video(
 
         filter_str = ",".join(filters)
 
-        args = [
-            "-i",
-            str(input_video),
-            "-vf",
-            filter_str,
-            "-c:a",
-            "copy",  # reuse audio
-            str(output_path),
-        ]
-
-        await run(args=args, expected_output=output_path)
+        await ffmpeg_encode(
+            input_path=input_video,
+            output_path=output_path,
+            vf=filter_str,
+            crf=20,
+            preset="veryfast",
+            pix_fmt="yuv420p",
+        )
         results[ratio.value] = output_path
 
     return results

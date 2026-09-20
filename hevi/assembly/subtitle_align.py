@@ -1,4 +1,4 @@
-"""RFC-002 item 6: ASR 强制对齐字幕 —— 用 faster-whisper 转写旁白音频,
+"""RFC-002 item 6: ASR 强制对齐字幕 —— 用 oprim.transcribe_audio 转写旁白音频,
 生成时间码精确的 SRT,取代 omodul 的规划时长字幕(会漂移)。
 
 设计: 转写在 CPU 上跑(base 模型小, 避免与 wan 抢 GPU)。SRT 格式化为纯函数,
@@ -7,16 +7,11 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# faster-whisper 模型目录: 优先 env, 兜底本地 large-v3-turbo。
-_MODEL_DIR = os.environ.get(
-    "FASTER_WHISPER_MODEL_DIR",
-    str(Path.home() / "models/faster-whisper-large-v3-turbo"),
-)
+from oprim import TranscriptResult, transcribe_audio
 
 
 @dataclass(frozen=True)
@@ -48,28 +43,13 @@ def cues_to_srt(cues: list[Cue]) -> str:
     return "\n".join(blocks)
 
 
-def transcribe_to_cues(
-    audio_path: Path,
-    *,
-    language: str | None = None,
-    model_dir: str | None = None,
-) -> list[Cue]:
-    """用 faster-whisper 转写音频为带时间码的字幕段(强制对齐)。"""
-    resolved_model_dir = Path(model_dir or _MODEL_DIR).expanduser()
-    if not resolved_model_dir.is_dir():
-        raise FileNotFoundError(
-            f"faster-whisper model directory is unavailable: {resolved_model_dir}; "
-            "configure FASTER_WHISPER_MODEL_DIR with a downloaded model"
-        )
-    from faster_whisper import WhisperModel
-
-    model = WhisperModel(str(resolved_model_dir), device="cpu", compute_type="int8")
-    segments, _info = model.transcribe(str(audio_path), language=language, vad_filter=True)
+def transcript_result_to_cues(result: TranscriptResult) -> list[Cue]:
+    """Convert oprim TranscriptResult to Cue list."""
     cues: list[Cue] = []
-    for seg in segments:
-        text = (seg.text or "").strip()
+    for seg in result.segments:
+        text = (seg.get("text") or "").strip()
         if text:
-            cues.append(Cue(start=float(seg.start), end=float(seg.end), text=text))
+            cues.append(Cue(start=float(seg["start"]), end=float(seg["end"]), text=text))
     return cues
 
 
@@ -78,25 +58,31 @@ async def align_subtitles(
     output_srt: Path,
     *,
     language: str | None = None,
+    backend: str = "local",
+    model_size: str = "base",
+    model_path: str | None = None,
 ) -> Path | None:
     """转写旁白 → 写 ASR 对齐 SRT。失败返回 None(装配器据此跳过烧字幕)。
 
-    在线程池跑(faster-whisper 是同步 CPU 调用),不阻塞事件循环。
+    使用 oprim.transcribe_audio 规范原语。
     """
-    import asyncio
-
     if not audio_path.exists():
         return None
     try:
-        cues = await asyncio.to_thread(
-            transcribe_to_cues,
-            audio_path,
-            language=language,
+        result = await transcribe_audio(
+            audio_path=audio_path,
+            backend=backend,
+            model_size=model_size,
+            language=language or "zh",
+            model_path=model_path or "/models/whisper",
         )
     except Exception:
         return None
+
+    cues = transcript_result_to_cues(result)
     if not cues:
         return None
+
     output_srt.parent.mkdir(parents=True, exist_ok=True)
     output_srt.write_text(cues_to_srt(cues), encoding="utf-8")
     return output_srt
@@ -123,26 +109,30 @@ async def align_subtitles_bilingual(
     source_language: str | None = None,
     target_language: str,
     llm: Any = None,
+    backend: str = "local",
+    model_size: str = "base",
+    model_path: str | None = None,
 ) -> Path | None:
     """转写旁白 → 翻译 → 双语 SRT(每条 cue 原文+译文两行,同时间码)。
 
-    复用 transcribe_to_cues(ASR)+ translate_cues(§3 L2 已有的 dub 翻译步骤,保时间码)。
+    复用 oprim.transcribe_audio + translate_cues(§3 L2 已有的 dub 翻译步骤,保时间码)。
     任一步失败 → None,装配器据此跳过烧字幕(不阻断出片)。
     """
-    import asyncio
-
     from hevi.dub.translate import translate_cues
 
     if not audio_path.exists():
         return None
     try:
-        cues = await asyncio.to_thread(
-            transcribe_to_cues,
-            audio_path,
-            language=source_language,
+        result = await transcribe_audio(
+            audio_path=audio_path,
+            backend=backend,
+            model_size=model_size,
+            language=source_language or "zh",
+            model_path=model_path or "/models/whisper",
         )
-        if not cues:
+        if not result.segments:
             return None
+        cues = transcript_result_to_cues(result)
         tcues = await translate_cues(cues, target_language=target_language, llm=llm)
         merged = merge_bilingual_cues(cues, tcues)
     except Exception:

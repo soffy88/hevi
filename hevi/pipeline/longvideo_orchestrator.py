@@ -915,6 +915,8 @@ async def orchestrate_longvideo(
                 output_path.write_bytes(b"\x00" * 64)
                 return
 
+            from oskill.timeline_math import calculate_shot_durations
+
             from hevi.assembly.assembler import (
                 ShotSegment,
                 assemble_longvideo,
@@ -930,20 +932,13 @@ async def orchestrate_longvideo(
                 assert audio_path is not None
                 manifest = load_timing_manifest(audio_path)
                 total_audio = manifest[0] if manifest else await probe_duration(audio_path)
+            
+            # Use canonical oskill for duration allocation (3O §3)
+            target_durations = calculate_shot_durations(native, total_audio)
             segments: list[ShotSegment] = []
-            sum_native = sum(d for d in native if d > 0) or float(len(valid_shots))
-            # 时长驱动修复:旁白通常应与画面时长相当;但脚本旁白过短时(如 qwen 给
-            # 1-5min 目标只写出 ~7s 旁白),绝不能把整段画面压到旁白长度 —— 会变成每
-            # 镜头零点几秒的闪切(曾致 14 镜头压成 6s)。取 max(旁白, 画面自然总长):
-            # 旁白更长 → 拉伸镜头填满(原音画同步行为);旁白更短 → 保画面自然时长,
-            # 旁白在前段播放、其后由装配器 apad 补静音。
-            effective_total = max(total_audio, sum_native) if total_audio > 0 else 0.0
-            for p, nat in zip(valid_shots, native, strict=False):
-                if effective_total > 0:
-                    share = (nat if nat > 0 else sum_native / len(valid_shots)) / sum_native
-                    segments.append(
-                        ShotSegment(p, target_duration=max(0.8, effective_total * share))
-                    )
+            for p, target_dur in zip(valid_shots, target_durations, strict=False):
+                if target_dur is not None:
+                    segments.append(ShotSegment(p, target_duration=max(0.8, target_dur)))
                 else:
                     segments.append(ShotSegment(p, target_duration=None))
 
