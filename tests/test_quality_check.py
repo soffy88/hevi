@@ -188,7 +188,7 @@ def test_subtitle_alignment_rate_empty_srt_returns_none(tmp_path: Path) -> None:
 def test_subtitle_alignment_rate_computes_overlap_fraction(tmp_path: Path) -> None:
     """mock ASR(同 test_subtitle_align.py 的既有惯例,不需要真跑 faster-whisper 模型):
     2 条字幕窗口,1 条跟 ASR 检测到的语音重叠,1 条完全对不上 → 对齐率 0.5。"""
-    from hevi.assembly.subtitle_align import Cue
+    from oprim import TranscriptResult
 
     srt = tmp_path / "s.srt"
     srt.write_text(
@@ -197,10 +197,16 @@ def test_subtitle_alignment_rate_computes_overlap_fraction(tmp_path: Path) -> No
     )
     video = tmp_path / "v.mp4"
     video.write_bytes(b"\x00")
-    with patch(
-        "hevi.assembly.subtitle_align.transcribe_to_cues",
-        return_value=[Cue(start=0.1, end=1.9, text="hello")],
-    ):
+
+    async def fake_transcribe(**_kwargs):
+        return TranscriptResult(
+            text="hello",
+            segments=[{"start": 0.1, "end": 1.9, "text": "hello"}],
+            language="zh",
+            duration=2.0,
+        )
+
+    with patch("oprim.transcribe_audio", new=fake_transcribe):
         rate = subtitle_alignment_rate(video, srt)
     assert rate == pytest.approx(0.5)
 

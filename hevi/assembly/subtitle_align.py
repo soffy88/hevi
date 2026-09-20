@@ -7,11 +7,18 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from oprim import TranscriptResult, transcribe_audio
+
+# faster-whisper 模型目录: 优先 env, 兜底本地 large-v3-turbo。
+DEFAULT_ASR_MODEL_DIR = os.environ.get(
+    "FASTER_WHISPER_MODEL_DIR",
+    str(Path.home() / "models/faster-whisper-large-v3-turbo"),
+)
 
 
 @dataclass(frozen=True)
@@ -74,7 +81,8 @@ async def align_subtitles(
             backend=backend,
             model_size=model_size,
             language=language or "zh",
-            model_path=model_path or "/models/whisper",
+            model_path=model_path or DEFAULT_ASR_MODEL_DIR,
+            vad_filter=True,
         )
     except Exception:
         return None
@@ -128,7 +136,8 @@ async def align_subtitles_bilingual(
             backend=backend,
             model_size=model_size,
             language=source_language or "zh",
-            model_path=model_path or "/models/whisper",
+            model_path=model_path or DEFAULT_ASR_MODEL_DIR,
+            vad_filter=True,
         )
         if not result.segments:
             return None
