@@ -191,7 +191,7 @@ async def test_short_duration_is_explicitly_configured_without_global_patch():
     register_all_providers()  # orchestrate 需从注册表取 LLM "default"
     captured = {}
 
-    async def fake_pipeline(*, config, providers):
+    async def fake_pipeline(*, config, _providers):
         captured["target_duration_s"] = config.target_duration_s
         from pathlib import Path
 
@@ -208,7 +208,7 @@ async def test_short_duration_is_explicitly_configured_without_global_patch():
 
     with (
         patch(
-            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             side_effect=fake_pipeline,
         ),
         patch("hevi.providers.local_qwen_vl_adapter.vl_model_available", return_value=False),

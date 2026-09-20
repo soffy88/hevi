@@ -336,7 +336,7 @@ async def test_orchestrate_with_style_preset_engineers_topic():
     mock_result.video_path.stat.return_value.st_size = 2048
     with (
         patch(
-            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
             return_value=mock_result,
         ),
@@ -373,7 +373,7 @@ async def test_orchestrate_without_style_preset_skips_engineering():
     mock_result.video_path.stat.return_value.st_size = 2048
     with (
         patch(
-            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
             return_value=mock_result,
         ),
@@ -421,7 +421,7 @@ async def test_orchestrate_style_reference_image_derives_text_fields(tmp_path):
     )
     with (
         patch(
-            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
             return_value=mock_result,
         ),
@@ -468,7 +468,7 @@ async def test_orchestrate_style_reference_image_does_not_override_explicit_text
     fake_draft = AsyncMock()
     with (
         patch(
-            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
             return_value=mock_result,
         ),

@@ -15,8 +15,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from oprim import remotion_render_component
-
 from hevi.explainer.avatar_pip import compose_avatar_overlay, strip_audio
 from hevi.explainer.echo_avatar import (
     _presenter_src,
@@ -33,6 +31,7 @@ logger = logging.getLogger(__name__)
 _HEVI_REMOTION_DIR = Path(__file__).resolve().parent.parent.parent / "hevi-remotion"
 _MANIFEST_PATH = _HEVI_REMOTION_DIR / "src" / "data" / "run_manifest.json"
 _PUBLIC_DIR = _HEVI_REMOTION_DIR / "public"
+_REMOTION_BIN = _HEVI_REMOTION_DIR / "node_modules" / ".bin" / "remotion"
 _TITLE_CARD_S = 3.0
 _REMOTION_LOCK = asyncio.Lock()
 
@@ -169,45 +168,33 @@ def _attach_procedural_bgm(video_path: Path, duration_s: float, work_dir: Path) 
 
 
 async def _run_remotion_render(composition_id: str, output_path: Path) -> None:
-    """Render single Remotion composition using canonical oprim primitive."""
-    output_path = output_path.resolve()
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Validate Remotion project exists
     if not _HEVI_REMOTION_DIR.is_dir():
         raise RenderError(f"Remotion 项目目录不存在: {_HEVI_REMOTION_DIR}；请重建 API 镜像")
-    if not (_HEVI_REMOTION_DIR / "package.json").exists():
-        raise RenderError(f"Remotion 项目不完整: {_HEVI_REMOTION_DIR} 缺少 package.json")
-
-    # Read the current manifest to get props
-    import json
-    if _MANIFEST_PATH.exists():
-        props = json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
-    else:
-        props = {}
-
-    # Calculate duration from manifest (approximate)
-    duration_frames = 0
-    if isinstance(props, list):
-        for seg in props:
-            dur = seg.get("duration_sec", 0)
-            if dur:
-                duration_frames += int(dur * 24)  # assume 24fps
-    if duration_frames == 0:
-        duration_frames = 72  # default 3 seconds at 24fps
-
-    try:
-        await remotion_render_component(
-            component_name=composition_id,
-            props=props,
-            output_path=output_path,
-            duration_frames=duration_frames,
-            fps=24,
-            remotion_root=_HEVI_REMOTION_DIR,
+    if not _REMOTION_BIN.is_file():
+        raise RenderError(
+            f"Remotion CLI 不可用: {_REMOTION_BIN}；请重建 API 镜像并安装 hevi-remotion 依赖"
         )
-    except Exception as exc:
-        raise RenderError(f"remotion render {composition_id} 失败: {exc}") from exc
-
+    # Remotion runs with hevi-remotion/ as cwd. Resolve the output first, or a
+    # relative ``output/explainer/...`` path would be written inside the
+    # unmounted Remotion project instead of the shared /app/output volume.
+    output_path = output_path.resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    proc = await asyncio.create_subprocess_exec(
+        str(_REMOTION_BIN),
+        "render",
+        composition_id,
+        str(output_path),
+        "--concurrency=4",
+        cwd=str(_HEVI_REMOTION_DIR),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    stdout, _ = await proc.communicate()
+    log_tail = stdout.decode(errors="replace")[-4000:] if stdout else ""
+    if proc.returncode != 0:
+        raise RenderError(
+            f"remotion render {composition_id} 失败 (exit={proc.returncode}): {log_tail}"
+        )
     logger.info("explainer render: %s 完成 -> %s", composition_id, output_path)
 
 

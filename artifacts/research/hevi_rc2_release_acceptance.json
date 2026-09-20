@@ -1,67 +1,110 @@
 {
-  "phase": "R-final-2",
+  "phase": "R-final",
   "candidate": "hevi-productization-rc2-2026-09-19",
-  "baseline_sha": "6c54a50",
+  "baseline_sha": "0de2250",
   "decision": "RC2_TAG_NOT_CREATED",
   "blocker_count": 2,
-  "classification": "HEVI_RC2_HARDENING_INCOMPLETE_TAG_BLOCKED",
-  "dependency_root_cause": "3O_DEPENDENCY_CONTRACT_MISMATCH — HEVI imports 7 symbols that no canonical 3O package provides; 2 are module-scope and break a clean install, and the workstation .venv masked this via unpublished local oprim drift.",
-  "3O_dependency_contract": "FAIL",
-  "symbols_reconciled": 7,
-  "missing_pinned_symbols": 7,
-  "symbol_owners": {
-    "probe_duration": "oprim (ADD_TO_CANONICAL_OWNER; module-scope blocker)",
-    "edge_tts_word_boundary": "oprim (ADD_TO_CANONICAL_OWNER; module-scope blocker)",
-    "funasr_asr": "obase (ADD_TO_CANONICAL_OWNER)",
-    "whisper_asr_verify": "obase (ADD_TO_CANONICAL_OWNER)",
-    "heygen_avatar_generate": "obase (ADD_TO_CANONICAL_OWNER)",
-    "cover_extract_and_render": "oskill/omodul (ADD_TO_CANONICAL_OWNER)",
-    "chattts_call": "obase (ADD_TO_CANONICAL_OWNER)"
+  "decision_reason": "CASE B: a clean install from the declared pinned dependencies cannot import HEVI. The pinned canonical oprim (git e7f9c651, package version 3.12.0) does not provide 7 symbols HEVI imports; the workstation .venv oprim is locally drifted (3.13.0 + extra modules) and was masking this. Fresh-env 3O_V3_LINT also FAILs. Per the RC2 rule the tag is withheld.",
+  "root_cause": {
+    "summary": "HEVI source depends on oprim symbols absent from the pinned canonical commit.",
+    "pinned_oprim": {"commit": "e7f9c65196437d3bff09401aa02bc817d071eec3", "package_version": "3.12.0"},
+    "workstation_oprim": {"package_version": "3.13.0", "drift": "has oprim/_probe_duration.py + 6 other exported symbols not in the pinned commit"},
+    "missing_symbols": [
+      "oprim.probe_duration (module-scope import in hevi/audio/audio_router.py:28; also 8 more sites)",
+      "oprim.edge_tts_word_boundary (hevi/audio/edge_tts_custom.py:153, hevi/explainer/voiceover.py:23, hevi/digital_human/line_tts.py:47)",
+      "oprim.funasr_asr (hevi/audio/funasr_verify.py:57)",
+      "oprim.whisper_asr_verify (hevi/explainer/asr_verify.py:54, hevi/explainer/voiceover.py:168)",
+      "oprim.heygen_avatar_generate (hevi/explainer/heygen.py:24)",
+      "oprim.cover_extract_and_render (hevi/explainer/cover.py:19)",
+      "oprim.chattts_call (hevi/audio/audio_router.py:134)"
+    ],
+    "evidence": [
+      "uv sync --frozen completed; `python -c 'from hevi.api.main import app'` -> ImportError: cannot import name 'probe_duration' from 'oprim'",
+      "fresh-env scripts/ci/run_3o_v3_lint.py -> 3O_V3_LINT=FAIL (check_no_sibling_call, check_omodul_signature, check_enabled_pillars, check_oprim_keyword_only)",
+      "both installs report direct_url commit e7f9c651; fresh dist version 3.12.0 vs workstation 3.13.0"
+    ],
+    "conclusion": "This is NOT environmental-only drift. The previous ENVIRONMENTAL_NON_BLOCKING classification is superseded."
   },
-  "r11_execution": "BLOCKED — required canonical APIs do not exist in any 3O repo; adding them needs publish authority over the independent helios-plat repos and a product decision to move HEVI from pinned oprim 3.12.0 (e7f9c651) to a current line (local canonical head 3.19.0). Workstation 3.13.0 is unpublished local drift and cannot be pinned.",
-  "r11_artifact": "artifacts/research/hevi_rc2_3o_dependency_reconciliation.json",
-  "new_shas": {"NEW_OBASE_SHA": "unchanged", "NEW_OPRIM_SHA": "unchanged", "NEW_OSKILL_SHA": "unchanged", "NEW_OMODUL_SHA": "unchanged", "NEW_OSERVI_SHA": "unchanged"},
-  "gates": {
-    "PINNED_3O_IMPORT_CONTRACT": "FAIL",
-    "BACKEND_CLEAN_INSTALL": "FAIL",
-    "HEVI_IMPORT_SMOKE": "FAIL",
-    "FRONTEND_CLEAN_INSTALL": "PASS",
-    "NODE_MODULES_REUSED": "NO",
-    "FRESH_ENV_3O_LINT": "FAIL",
-    "FINAL_GLOBAL_INDEPENDENT_AUDIT": "PASS",
+  "waves": {
+    "B1_BROWSER_E2E": "PASS",
+    "B2_BACKEND_CLEAN_INSTALL": "FAIL",
+    "B2_FRONTEND_CLEAN_INSTALL": "NOT_RUN",
+    "B3_BACKUP_RESTORE": "PASS",
+    "B4_FRESH_ENV_3O_LINT": "FAIL"
+  },
+  "R2_browser_e2e": {
+    "stack": "fresh Postgres (5544) + alembic upgrade head + fresh uvicorn (8001, fresh authority stores) + real next.js production server (3171, staging build of HEAD) + real /api/auth (no backend test hook)",
+    "result": "5/5 PASS",
+    "tests": {
+      "E2E_1_quick_start": "PASS",
+      "E2E_2_character_library_reuse_version_pin_upgrade": "PASS",
+      "E2E_3_continuity_warn_block_refuses_paid": "PASS",
+      "E2E_4_production_issues_autosafe_confirm_refuse": "PASS",
+      "E2E_5_tenant_isolation": "PASS"
+    },
+    "note": "Run on the workstation venv (whose drifted oprim imports); the browser flow itself is real and green. A clean-install runtime cannot yet start (see B2)."
+  },
+  "R3_backend_clean_install": {
+    "venv": "/tmp/opencode/rc2-venv via UV_PROJECT_ENVIRONMENT + uv sync --frozen",
+    "import_smoke": "FAIL (oprim.probe_duration ImportError)",
+    "migration": "FAIL (import fails before migration)",
+    "conclusion": "FAIL"
+  },
+  "R4_frontend_clean_install": "NOT_RUN (avoided destroying the working tree before qualification; lockfile present, `npm ci` not executed)",
+  "R5_fresh_deployment": {
+    "fresh_postgres": "PASS",
+    "migrations": "PASS",
+    "authority_stores": "PASS",
+    "liveness": "PASS",
+    "readiness": "PASS",
+    "first_user": "PASS",
+    "first_project_flow": "PASS (browser E2E-1..5 on the fresh stack)"
+  },
+  "R6_backup_restore": {
+    "authority_backup": "PASS (coordinated set, boundary token, hashes verified)",
+    "authority_restore": "PASS (fresh target, references valid)",
+    "postgres_backup": "PASS (pg_dump 108702 bytes)",
+    "postgres_restore": "PASS (fresh DB hevi_restore, 21 users)",
+    "restored_production_flow": "NOT_RUN (restore verified at data level; full restart flow not re-executed)",
+    "rollback_procedure": "PASS (documented)"
+  },
+  "R7_fresh_env_3o": {
+    "sources": {
+      "OBASE_SOURCE": "git", "OBASE_SHA": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+      "OPRIM_SOURCE": "git", "OPRIM_SHA": "e7f9c65196437d3bff09401aa02bc817d071eec3",
+      "OSKILL_SOURCE": "git", "OSKILL_SHA": "cac39df03778d4e4e44db3c006f8fc788dc757f6",
+      "OMODUL_SOURCE": "git", "OMODUL_SHA": "bdb48f52032e69818281c779169959e0650a558d",
+      "OSERVI_SOURCE": "git", "OSERVI_SHA": "2527968d4d7e2455a48b280cb191012f4266d0bb"
+    },
+    "fresh_lint": "FAIL",
+    "canonical_global_audit": "PASS",
     "3O_ARCHITECTURE_ZERO": "PASS",
-    "BROWSER_E2E": "PASS",
-    "BROWSER_E2E_COUNT": 5,
-    "FRESH_DEPLOYMENT": "PASS",
-    "FIRST_USER": "PASS",
-    "FIRST_PROJECT": "PASS",
-    "FIRST_PRODUCTION_FLOW": "PASS",
-    "FULL_BACKUP": "PASS",
-    "FULL_RESTORE": "PASS",
-    "RESTORE_REFERENCES_VALID": "PASS",
-    "RESTORED_PRODUCTION_FLOW": "NOT_RUN",
-    "ROLLBACK_PROCEDURE": "PASS",
-    "CROSS_TENANT_READS": 0,
-    "CROSS_TENANT_WRITES": 0,
-    "D7_A": "PASS", "D7_B": "PASS", "D7_C": "PASS", "D7_D": "FAIL", "D7_E": "PASS",
-    "D7_F": "PASS", "D7_G": "PASS", "D7_H": "PASS", "D7_I": "PASS", "D7_J": "PASS",
-    "D7_K": "PASS", "D7_L": "PASS", "D7_M": "FAIL", "D7_N": "PASS", "D7_O": "BLOCKED"
+    "3O_ENVIRONMENT_DRIFT": "SUPERSEDED — real dependency mismatch (see root_cause)"
+  },
+  "R8_security": {"cross_tenant_reads": 0, "cross_tenant_writes": 0, "admin_global_registry": "fail-closed unless HEVI_ADMIN_USER_IDS"},
+  "gates": {
+    "BROWSER_E2E": "PASS", "BROWSER_E2E_COUNT": 5,
+    "BACKEND_CLEAN_INSTALL": "FAIL", "FRONTEND_CLEAN_INSTALL": "NOT_RUN", "NODE_MODULES_REUSED": "YES",
+    "FRESH_DEPLOYMENT": "PASS", "FIRST_USER": "PASS", "FIRST_PROJECT": "PASS", "FIRST_PRODUCTION_FLOW": "PASS",
+    "FULL_BACKUP": "PASS", "FULL_RESTORE": "PASS", "RESTORED_PRODUCTION_FLOW": "NOT_RUN", "RESTORE_REFERENCES_VALID": "PASS", "ROLLBACK_PROCEDURE": "PASS",
+    "FRESH_ENV_3O_LINT": "FAIL", "FINAL_GLOBAL_INDEPENDENT_AUDIT": "PASS", "3O_ARCHITECTURE_ZERO": "PASS",
+    "CORE_START_WITHOUT_GPU": "PASS",
+    "D7_A": "PASS", "D7_B": "PASS", "D7_C": "PASS", "D7_D": "FAIL", "D7_E": "PASS", "D7_F": "PASS",
+    "D7_G": "PASS", "D7_H": "PASS", "D7_I": "PASS", "D7_J": "PASS", "D7_K": "PASS", "D7_L": "PASS",
+    "D7_M": "FAIL", "D7_N": "PASS", "D7_O": "BLOCKED"
   },
   "quality": {
-    "BACKEND_TESTS": "3256 passed / 28 skipped / 0 failed",
+    "BACKEND_TESTS": "3255 passed / 29 skipped / 0 failed",
     "FRONTEND_TESTS": "186 passed / 38 files",
     "FRONTEND_TYPECHECK": "PASS",
     "FRONTEND_BUILD": "PASS",
-    "RUFF": "PASS", "MYPY": "PASS (strict, 1248 files)",
+    "RUFF": "PASS", "MYPY": "PASS",
     "INKOS_CAPABILITY_TOTAL": 39, "QUALIFIED": 39, "PARTIAL": 0, "MISSING": 0, "UNQUALIFIED": 0,
     "LEDGER_TAXONOMY_CHANGED": "NO"
   },
   "remaining_work_to_tag": [
-    "Product/dependency decision: define canonical owners and land probe_duration + edge_tts_word_boundary (oprim) and the 5 provider/algorithm symbols (obase/oskill) with tests/lint/mypy in their independent repos, cut releases, and re-pin HEVI to exact new SHAs.",
-    "Then: backend clean install (fresh venv, frozen) + HEVI import smoke.",
-    "Then: fresh-env 3O_V3_LINT=PASS and resolve the 4 lint checks.",
-    "Run R15 restored-environment production flow.",
-    "Full regression after the dependency change (R16)."
-  ],
-  "note": "BROWSER_E2E 5/5, fresh deployment, backup/restore and the full backend/frontend suites are green; the sole remaining blocker class is the canonical 3O dependency contract."
+    "Resolve the pinned-oprim mismatch: either pin/publish a canonical oprim that provides probe_duration + the other 6 symbols, or remove/replace HEVI's dependency on those non-canonical symbols (product decision; out of D7 scope).",
+    "Re-run backend clean install + fresh-env 3O lint after the dependency is consistent.",
+    "Run a fresh-frontend `npm ci` install and a full restore-environment restart."
+  ]
 }

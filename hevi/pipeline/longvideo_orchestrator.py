@@ -57,6 +57,21 @@ def _order_and_dedup_shots(paths: list[Path]) -> list[Path]:
     return ordered
 
 
+# Test-only hook: set this to a dict of provider overrides before calling run_task.
+# orchestrate_longvideo reads this at call time (not import time), so task_service
+# picks it up even though it imported the function reference earlier.
+# Must be reset to None after the test.
+_PROVIDERS_OVERRIDE: dict[str, Any] | None = None
+
+
+async def agentic_longvideo_pipeline(
+    *, config: Any, _providers: dict[str, Any] | None = None
+) -> Any:
+    """Compatibility seam for HEVI tests while invoking the public omodul hook."""
+
+    return await run_longvideo_pipeline(config=config, providers=_providers)
+
+
 async def orchestrate_longvideo(
     *,
     config: Any = None,  # hevi app config if needed
@@ -900,8 +915,6 @@ async def orchestrate_longvideo(
                 output_path.write_bytes(b"\x00" * 64)
                 return
 
-            from oskill.timeline_math import calculate_shot_durations
-
             from hevi.assembly.assembler import (
                 ShotSegment,
                 assemble_longvideo,
@@ -917,13 +930,20 @@ async def orchestrate_longvideo(
                 assert audio_path is not None
                 manifest = load_timing_manifest(audio_path)
                 total_audio = manifest[0] if manifest else await probe_duration(audio_path)
-            
-            # Use canonical oskill for duration allocation (3O §3)
-            target_durations = calculate_shot_durations(native, total_audio)
             segments: list[ShotSegment] = []
-            for p, target_dur in zip(valid_shots, target_durations, strict=False):
-                if target_dur is not None:
-                    segments.append(ShotSegment(p, target_duration=max(0.8, target_dur)))
+            sum_native = sum(d for d in native if d > 0) or float(len(valid_shots))
+            # 时长驱动修复:旁白通常应与画面时长相当;但脚本旁白过短时(如 qwen 给
+            # 1-5min 目标只写出 ~7s 旁白),绝不能把整段画面压到旁白长度 —— 会变成每
+            # 镜头零点几秒的闪切(曾致 14 镜头压成 6s)。取 max(旁白, 画面自然总长):
+            # 旁白更长 → 拉伸镜头填满(原音画同步行为);旁白更短 → 保画面自然时长,
+            # 旁白在前段播放、其后由装配器 apad 补静音。
+            effective_total = max(total_audio, sum_native) if total_audio > 0 else 0.0
+            for p, nat in zip(valid_shots, native, strict=False):
+                if effective_total > 0:
+                    share = (nat if nat > 0 else sum_native / len(valid_shots)) / sum_native
+                    segments.append(
+                        ShotSegment(p, target_duration=max(0.8, effective_total * share))
+                    )
                 else:
                     segments.append(ShotSegment(p, target_duration=None))
 
@@ -1180,6 +1200,12 @@ async def orchestrate_longvideo(
                     )
                     logger.info("consistency_fn: 身份锚评分卡已注入(角色锁定 → 双变体按身份选优)")
 
+        # Test-only: merge overrides injected via _PROVIDERS_OVERRIDE module var.
+        import hevi.pipeline.longvideo_orchestrator as _self
+
+        if _self._PROVIDERS_OVERRIDE:
+            _providers.update(_self._PROVIDERS_OVERRIDE)
+
         if regenerate_shot_ids:
             # C3 verdict→返工:复用已建好的 _providers,只重生成指定镜头(hints 并入 prompt)。
             result = await rework_longvideo_shots(
@@ -1190,7 +1216,7 @@ async def orchestrate_longvideo(
                 providers=_providers,
             )
         else:
-            result = await run_longvideo_pipeline(config=lv_config, providers=_providers)
+            result = await agentic_longvideo_pipeline(config=lv_config, _providers=_providers)
 
         # SaaS-3/P10.F3 Fix: omodul suppresses shot failures by returning placeholders.
         # We must detect this to trigger Hevi's provider-level fallback.

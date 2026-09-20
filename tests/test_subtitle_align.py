@@ -100,24 +100,17 @@ async def test_align_subtitles_bilingual_writes_merged_srt(tmp_path: Path) -> No
     """转写+翻译 mock,验证落盘的 SRT 每块含原文+译文两行。"""
     from unittest.mock import patch
 
-    from oprim import TranscriptResult
-
     audio = tmp_path / "narration.wav"
-    audio.write_bytes(b"\x00" * 64)  # 只需存在,transcribe_audio 被 mock 掉
-
-    async def fake_transcribe(**_kwargs):
-        return TranscriptResult(
-            text="hi",
-            segments=[{"start": 0.0, "end": 1.0, "text": "hi"}],
-            language="zh",
-            duration=1.0,
-        )
+    audio.write_bytes(b"\x00" * 64)  # 只需存在,transcribe_to_cues 被 mock 掉
 
     async def fake_translate(cues, *, target_language, llm=None):
         return [Cue(c.start, c.end, c.text.upper()) for c in cues]
 
     with (
-        patch("hevi.assembly.subtitle_align.transcribe_audio", new=fake_transcribe),
+        patch(
+            "hevi.assembly.subtitle_align.transcribe_to_cues",
+            return_value=[Cue(0.0, 1.0, "hi")],
+        ),
         patch("hevi.dub.translate.translate_cues", new=fake_translate),
     ):
         out = await align_subtitles_bilingual(audio, tmp_path / "bi.srt", target_language="en")

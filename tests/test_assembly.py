@@ -26,18 +26,18 @@ def mock_subtitle(tmp_path):
 @pytest.mark.asyncio
 async def test_extract_cover(mock_video, tmp_path):
     out = tmp_path / "cover.jpg"
-    with patch("hevi.assembly.cover_extractor.ffmpeg_extract_cover", new_callable=AsyncMock) as mock_ffmpeg:
-        # Simulate file creation by ffmpeg_extract_cover
-        async def side_effect(*args, **kwargs):
+    with patch("hevi.assembly.cover_extractor.run", new_callable=AsyncMock) as mock_run:
+        # Simulate file creation by run
+        def side_effect(*args, **kwargs):
             out.write_text("dummy cover")
-            return out
+            return "done"
 
-        mock_ffmpeg.side_effect = side_effect
+        mock_run.side_effect = side_effect
 
         res = await extract_cover(mock_video, out)
         assert res == out
         assert out.exists()
-        mock_ffmpeg.assert_called_once()
+        mock_run.assert_called_once()
 
 
 def test_aspect_ratio_filters():
@@ -69,7 +69,7 @@ def test_transition_filters():
 async def test_postprocess_video_basic(mock_video, tmp_path, mock_subtitle):
     out_dir = tmp_path / "output"
     with (
-        patch("hevi.assembly.postprocess_service.ffmpeg_encode", new_callable=AsyncMock) as mock_encode,
+        patch("hevi.assembly.postprocess_service.run", new_callable=AsyncMock) as mock_run,
         patch(
             "hevi.assembly.postprocess_service.extract_cover", new_callable=AsyncMock
         ) as mock_extract,
@@ -88,12 +88,13 @@ async def test_postprocess_video_basic(mock_video, tmp_path, mock_subtitle):
         assert "9:16" in results
         assert "16:9" in results
 
-        # Should have called mock_encode for each aspect ratio
-        assert mock_encode.call_count == 2
+        # Should have called mock_run for each aspect ratio
+        assert mock_run.call_count == 2
 
         # Verify filter components in one call
-        last_call_kwargs = mock_encode.call_args.kwargs
-        filter_str = last_call_kwargs["vf"]
+        last_call_args = mock_run.call_args.kwargs["args"]
+        vf_idx = last_call_args.index("-vf")
+        filter_str = last_call_args[vf_idx + 1]
 
         assert "Hevi AI" in filter_str
         assert "subtitles" in filter_str
@@ -104,7 +105,7 @@ async def test_postprocess_video_basic(mock_video, tmp_path, mock_subtitle):
 async def test_postprocess_video_no_sub_no_watermark(mock_video, tmp_path):
     out_dir = tmp_path / "output"
     with (
-        patch("hevi.assembly.postprocess_service.ffmpeg_encode", new_callable=AsyncMock),
+        patch("hevi.assembly.postprocess_service.run", new_callable=AsyncMock),
         patch("hevi.assembly.postprocess_service.extract_cover", new_callable=AsyncMock),
     ):
         results = await postprocess_video(
@@ -115,10 +116,7 @@ async def test_postprocess_video_no_sub_no_watermark(mock_video, tmp_path):
 
 @pytest.mark.asyncio
 async def test_postprocess_invalid_ratio(mock_video, tmp_path):
-    with (
-        patch("hevi.assembly.postprocess_service.ffmpeg_encode", new_callable=AsyncMock),
-        patch("hevi.assembly.postprocess_service.extract_cover", new_callable=AsyncMock),
-    ):
+    with patch("hevi.assembly.postprocess_service.extract_cover", new_callable=AsyncMock):
         with pytest.raises(ValueError):
             await postprocess_video(
                 input_video=mock_video, aspect_ratios=["invalid"], output_dir=tmp_path / "out"

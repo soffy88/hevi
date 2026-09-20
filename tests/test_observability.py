@@ -197,7 +197,7 @@ async def test_trace_id_propagation_orchestrator():
     with (
         start_trace(str(tid)),
         patch(
-            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
         ) as mock_pipe,
     ):

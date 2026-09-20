@@ -199,11 +199,7 @@ def subtitle_alignment_rate(
 
     ASR/字幕文件缺失或转写失败 → None(best-effort,不阻断体检,也不是测出对齐率=0)。
     """
-    import asyncio
-
-    from oprim import transcribe_audio
-
-    from hevi.assembly.subtitle_align import DEFAULT_ASR_MODEL_DIR, transcript_result_to_cues
+    from hevi.assembly.subtitle_align import transcribe_to_cues
 
     if not subtitle_path.exists():
         return None
@@ -211,18 +207,7 @@ def subtitle_alignment_rate(
     if not windows:
         return None
     try:
-        # Sync entry point (called from a worker thread): bridge to the canonical
-        # async ASR primitive without a nested running loop.
-        result = asyncio.run(
-            transcribe_audio(
-                audio_path=video_path,
-                backend="local",
-                language="zh",
-                model_path=DEFAULT_ASR_MODEL_DIR,
-                vad_filter=True,
-            )
-        )
-        asr_cues = transcript_result_to_cues(result)
+        asr_cues = transcribe_to_cues(video_path)
     except Exception:
         return None
     if not asr_cues:

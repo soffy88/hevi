@@ -63,7 +63,7 @@ def mock_lv_result():
 @pytest.mark.asyncio
 async def test_orchestrate_longvideo_basic(mock_lv_result):
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline", new_callable=AsyncMock
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline", new_callable=AsyncMock
     ) as mock_pipeline:
         mock_pipeline.return_value = mock_lv_result
         res = await orchestrate_longvideo(
@@ -86,7 +86,7 @@ async def test_orchestrate_longvideo_basic(mock_lv_result):
 @pytest.mark.asyncio
 async def test_orchestrate_multi_character(mock_lv_result):
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline", new_callable=AsyncMock
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline", new_callable=AsyncMock
     ) as mock_pipeline:
         mock_pipeline.return_value = mock_lv_result
         await orchestrate_longvideo(
@@ -247,7 +247,7 @@ async def test_orchestrate_regenerate_dispatches_to_omodul(mock_lv_result):
             "hevi.pipeline.longvideo_orchestrator.rework_longvideo_shots", new_callable=AsyncMock
         ) as mock_regen,
         patch(
-            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
         ) as mock_full,
         patch("hevi.providers.local_qwen_vl_adapter.vl_model_available", return_value=False),
@@ -287,7 +287,7 @@ def test_register_all_providers_full():
 @pytest.mark.asyncio
 async def test_orchestrate_longvideo_style_lang(mock_lv_result):
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline", new_callable=AsyncMock
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline", new_callable=AsyncMock
     ) as mock_pipeline:
         mock_pipeline.return_value = mock_lv_result
         await orchestrate_longvideo(
@@ -306,7 +306,7 @@ async def test_orchestrate_longvideo_style_lang(mock_lv_result):
 @pytest.mark.asyncio
 async def test_orchestrate_15_45min(mock_lv_result):
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline", new_callable=AsyncMock
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline", new_callable=AsyncMock
     ) as mock_pipeline:
         mock_pipeline.return_value = mock_lv_result
         await orchestrate_longvideo(
@@ -322,7 +322,7 @@ async def test_orchestrate_15_45min(mock_lv_result):
 @pytest.mark.asyncio
 async def test_orchestrate_45min_plus(mock_lv_result):
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline", new_callable=AsyncMock
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline", new_callable=AsyncMock
     ) as mock_pipeline:
         mock_pipeline.return_value = mock_lv_result
         await orchestrate_longvideo(
@@ -338,7 +338,7 @@ async def test_orchestrate_45min_plus(mock_lv_result):
 @pytest.mark.asyncio
 async def test_orchestrate_with_fallback(mock_lv_result):
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline", new_callable=AsyncMock
+        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline", new_callable=AsyncMock
     ) as mock_pipeline:
         mock_pipeline.return_value = mock_lv_result
         await orchestrate_longvideo(
@@ -368,7 +368,7 @@ async def test_orchestrate_attaches_quality_report(mock_lv_result):
     )
     with (
         patch(
-            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
             new_callable=AsyncMock,
         ) as mp,
         patch("hevi.video.quality_check.quality_report", new_callable=AsyncMock) as mq,
