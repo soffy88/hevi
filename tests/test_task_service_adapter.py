@@ -121,3 +121,78 @@ async def test_task_service_keeps_human_review_adapter_paused() -> None:
     assert result["review_pending"] is True
     statuses = [call.args[1].get("status") for call in repo.update_task.await_args_list]
     assert "paused" in statuses
+
+
+@pytest.mark.asyncio
+async def test_blender_previz_is_registered_adapter_and_dispatched(tmp_path) -> None:
+    """BLENDER_ADAPTER_REGISTERED: blender_previz routes through _run_adapter_task."""
+    from hevi.production.adapters import default_production_adapters
+
+    assert "blender_previz" in default_production_adapters().sources()
+
+    repo = MagicMock()
+    repo.pool = MagicMock()
+    repo.update_task = AsyncMock()
+    adapters = ProductionAdapterRegistry()
+
+    async def fake_blender(task, pool):
+        return {
+            **task,
+            "status": "completed",
+            "config_json": {
+                **task["config_json"],
+                "artifact_manifest": ArtifactManifest(
+                    artifacts=[
+                        {
+                            "kind": "image",
+                            "path": str(tmp_path / "x.png"),
+                            "primary": True,
+                        }
+                    ]
+                ).model_dump(mode="json"),
+            },
+        }
+
+    adapters.register("blender_previz", fake_blender)
+    service = TaskService(repo, production_adapters=adapters)
+    (tmp_path / "x.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 100)
+    result = await service._run_adapter_task(
+        {"id": uuid4(), "config_json": {"production_source": "blender_previz"}}
+    )
+    assert result["status"] == "completed"
+    assert result["config_json"]["artifact_manifest"]["artifacts"][0]["sha256"]
+    assert (tmp_path / "x.png").is_file()
+
+
+@pytest.mark.asyncio
+async def test_blender_previz_routes_past_provider_policy(tmp_path) -> None:
+    """BLENDER_DURABLE_RUN_WIRING: blender_previz skips _apply_provider_policy."""
+    repo = MagicMock()
+    repo.pool = MagicMock()
+    repo.update_task = AsyncMock()
+    adapters = ProductionAdapterRegistry()
+
+    async def fake_blender(task, pool):
+        return {
+            "status": "succeeded",
+            "result_video_path": str(tmp_path / "out.png"),
+            "config_json": {
+                "artifact_manifest": ArtifactManifest.for_video(
+                    str(tmp_path / "out.png")
+                ).model_dump(mode="json"),
+            },
+            "review_pending": False,
+            "artifacts": [],
+            "report": {"legacy_result": {}},
+        }
+
+    adapters.register("blender_previz", fake_blender)
+    service = TaskService(repo, production_adapters=adapters)
+    with patch(
+        "hevi.tasks.task_service.TaskService._apply_provider_policy",
+        new_callable=AsyncMock,
+    ) as policy:
+        await service._run_adapter_task(
+            {"id": uuid4(), "config_json": {"production_source": "blender_previz"}}
+        )
+    policy.assert_not_called()

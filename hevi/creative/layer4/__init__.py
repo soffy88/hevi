@@ -23,6 +23,15 @@ from hevi.creative.layer4.authority_stores import (
     memory_db_path,
     usage_db_path,
 )
+from hevi.creative.layer4.blender_workflow import (
+    BLENDER_VERSION_EXPECTED,
+    BlenderRenderResult,
+    BlenderScriptResult,
+    blender_render_workflow,
+    execute_headless_blender,
+    generate_script_from_shot_spec,
+    validate_blender_output,
+)
 from hevi.creative.layer4.character_authority import (
     Appearance,
     AppearanceKind,
@@ -439,4 +448,11 @@ __all__ = [
     "SalesPackage",
     "ShortFictionModule",
     "ShortProduction",
+    "BLENDER_VERSION_EXPECTED",
+    "BlenderRenderResult",
+    "BlenderScriptResult",
+    "blender_render_workflow",
+    "execute_headless_blender",
+    "generate_script_from_shot_spec",
+    "validate_blender_output",
 ]

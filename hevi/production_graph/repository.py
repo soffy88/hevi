@@ -91,6 +91,71 @@ class ProductionGraphRepository:
             records.append(_restore_datetime(snapshot))
         return records
 
+    async def get_active_revision_id(self, work_id: str) -> uuid.UUID | None:
+        """Return the canonical active revision id for a production, if any."""
+
+        production_id = _uuid(work_id)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT active_revision_id FROM productions WHERE id = $1",
+                production_id,
+            )
+        if row is None or row["active_revision_id"] is None:
+            return None
+        return uuid.UUID(str(row["active_revision_id"]))
+
+    async def revision_exists(self, revision_id: str | uuid.UUID) -> bool:
+        """Check that a production_revisions row exists (FK guard)."""
+
+        try:
+            rid = _uuid(revision_id)
+        except (ValueError, AttributeError, TypeError):
+            return False
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT id FROM production_revisions WHERE id = $1",
+                rid,
+            )
+        return row is not None
+
+    async def ensure_execution_context(
+        self, record: dict[str, Any], *, reason: str = "task_execution"
+    ) -> dict[str, Any]:
+        """Ensure graph + revision rows exist; return canonical identity.
+
+        Generic production invariant: no caller may guess a revision id.
+        The canonical ``production_revisions.revision_id`` is always returned
+        from this repository authority.  Handles all three cases:
+        graph missing -> create graph + revision; graph exists + revision
+        exists -> reuse; graph exists + revision missing -> append revision.
+        """
+
+        production_id = _uuid(str(record["work_id"]))
+        existing = await self.get(str(production_id))
+        if existing is not None:
+            canonical_revision = existing.get("revision_id")
+            if canonical_revision and await self.revision_exists(canonical_revision):
+                return {
+                    "production_id": str(production_id),
+                    "revision_id": str(canonical_revision),
+                    "snapshot": existing,
+                    "reused": True,
+                }
+        # Graph missing entirely, or graph exists but active revision is
+        # orphaned/missing: append a fresh revision via the single save()
+        # path (never raw SQL here, never a second repository).
+        base: dict[str, Any] = dict(existing) if isinstance(existing, dict) else {}
+        base.update(record)
+        base["work_id"] = str(production_id)
+        saved = await self.save(base, reason=reason)
+        canonical_revision = str(saved["revision_id"])
+        return {
+            "production_id": str(production_id),
+            "revision_id": canonical_revision,
+            "snapshot": saved,
+            "reused": False,
+        }
+
     async def save_execution_plan(
         self, plan: ImmutableExecutionPlan | LegacyExecutionPlan
     ) -> ImmutableExecutionPlan:

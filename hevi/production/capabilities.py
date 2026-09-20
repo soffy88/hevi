@@ -375,6 +375,18 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         "MPT 由 Hevi TaskService 排队/轮询，多视频结果统一回流 ArtifactManifest。",
         "启动 MPT API，并配置可被 Hevi 读取的 MPT 输出目录。",
     ),
+    "blender_previz": CapabilityDescriptor(
+        "blender_previz",
+        "Blender 预视渲染",
+        ("/api/blender/previz", "/api/blender/render"),
+        bool(os.getenv("BLENDER_PREVIZ_ENABLED", "").strip()),
+        "Blender 二进制已配置且可执行；预视脚本由 HEVI Layer4 生成并通过二进制执行。"
+        if os.getenv("BLENDER_PREVIZ_ENABLED", "").strip()
+        else "BLENDER_PREVIZ_ENABLED 未配置；不会创建无法执行的 Blender 任务。",
+        None
+        if os.getenv("BLENDER_PREVIZ_ENABLED", "").strip()
+        else "配置 BLENDER_PREVIZ_ENABLED 并确保 Blender 二进制可用后自动开放。",
+    ),
 }
 
 
@@ -431,6 +443,8 @@ def _runtime_descriptor(descriptor: CapabilityDescriptor) -> CapabilityDescripto
         )
     elif descriptor.id == "longcat_agent":
         configured = bool(os.getenv("LONGCAT_BASE_URL", "").strip())
+    elif descriptor.id == "blender_previz":
+        configured = bool(os.getenv("BLENDER_PREVIZ_ENABLED", "").strip())
 
     if configured is None:
         return descriptor

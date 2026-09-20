@@ -140,21 +140,30 @@ class TaskService:
             error=error,
         )
 
-    async def _ensure_production_graph(self, task: dict[str, Any]) -> None:
-        """Ensure every PostgreSQL task has a durable Production identity."""
+    async def _ensure_production_graph(self, task: dict[str, Any]) -> dict[str, str]:
+        """Ensure durable Production identity + canonical revision (generic).
 
-        if not isinstance(self.repository.pool, PgPool):
-            return
+        Invariant: any production task that may reach ``_record_quality_repair``
+        must carry a ``revision_id`` guaranteed to exist in
+        ``production_revisions``.  The id is always sourced from
+        ``ProductionGraphRepository.ensure_execution_context`` -- never guessed
+        from ``config_json``.  Stale caller-supplied ids are overwritten with
+        the canonical id (fail-closed reuse, never trusted blindly).
+        """
+
         config = task.setdefault("config_json", {})
+        if not isinstance(self.repository.pool, PgPool):
+            return {
+                "production_id": str(config.get("production_id") or task.get("id") or ""),
+                "revision_id": str(config.get("revision_id") or ""),
+            }
         production_id = str(config.get("production_id") or task["id"])
         uuid.UUID(production_id)
         config["production_id"] = production_id
         from hevi.production_graph.repository import ProductionGraphRepository
 
         graph_repo = ProductionGraphRepository(self.repository.pool)
-        if await graph_repo.get(production_id) is not None:
-            return
-        await graph_repo.create(
+        ctx = await graph_repo.ensure_execution_context(
             {
                 "work_id": production_id,
                 "user_id": str(task.get("user_id") or ""),
@@ -164,8 +173,20 @@ class TaskService:
                 "production_source": str(config.get("production_source") or "task"),
                 "production_config": config,
                 "decision_trail": [],
-            }
+            },
+            reason="task_execution",
         )
+        canonical_revision = str(ctx["revision_id"])
+        # Stale config revision ids are never trusted: overwrite with the
+        # repository-canonical identity and stash it on the in-memory task so
+        # downstream code never reads config_json as a DB authority.
+        config["revision_id"] = canonical_revision
+        task["_canonical_revision_id"] = canonical_revision
+        task["_canonical_production_id"] = str(ctx["production_id"])
+        return {
+            "production_id": str(ctx["production_id"]),
+            "revision_id": canonical_revision,
+        }
 
     async def _apply_provider_policy(self, task: dict[str, Any]) -> None:
         """Resolve and persist the dynamic provider decision at execution time."""
@@ -314,6 +335,29 @@ class TaskService:
         config["repair_decision"] = decision.model_dump(mode="json")
         if isinstance(self.repository.pool, PgPool):
             production_id = config.get("production_id")
+            # Canonical revision contract: never trust a caller-guessed
+            # config_json.revision_id.  Prefer the execution-context identity
+            # attached by _ensure_production_graph; re-validate existence so a
+            # stale id can never reach RepairRepository as an FK violation.
+            candidate_revision = str(
+                task.get("_canonical_revision_id") or config.get("revision_id") or ""
+            )
+            revision_uuid: uuid.UUID | None = None
+            if candidate_revision:
+                from hevi.production_graph.repository import ProductionGraphRepository
+
+                graph_repo = ProductionGraphRepository(self.repository.pool)
+                if not await graph_repo.revision_exists(candidate_revision):
+                    raise RuntimeError(
+                        f"PRODUCTION_REVISION_MISSING:{candidate_revision} "
+                        "(stale config revision_id not trusted)"
+                    )
+                revision_uuid = uuid.UUID(candidate_revision)
+            if revision_uuid is None:
+                raise RuntimeError(
+                    "PRODUCTION_REVISION_MISSING:no canonical revision_id "
+                    "in execution context (ensure graph+revision before quality repair)"
+                )
             await RepairRepository(self.repository.pool).save_run(
                 task_id=uuid.UUID(str(task["id"])),
                 production_id=uuid.UUID(str(production_id)) if production_id else None,
@@ -321,9 +365,7 @@ class TaskService:
                 controller=controller,
                 decision=decision,
                 evaluation=evaluation,
-                revision_id=(
-                    uuid.UUID(str(config["revision_id"])) if config.get("revision_id") else None
-                ),
+                revision_id=revision_uuid,
                 attempt_id=str(task.get("_attempt_id") or task.get("id")),
                 evidence_artifact_id=str(config.get("evidence_artifact_id") or "") or None,
             )
@@ -743,6 +785,10 @@ class TaskService:
     async def _run_adapter_task(self, task: dict[str, Any]) -> dict[str, Any]:
         """Run an adapter-owned renderer through the shared task lifecycle."""
         task_id = uuid.UUID(str(task["id"]))
+        # Defensive invariant: direct _run_adapter_task callers (tests,
+        # harnesses) bypass _run_task_impl, so re-ensure the canonical
+        # graph+revision context here.  Idempotent; reuses existing revision.
+        await self._ensure_production_graph(task)
         if not await self._renew_lease(task):
             logger.warning("task %s lease lost before adapter execution", task_id)
             return task
@@ -751,6 +797,7 @@ class TaskService:
             {
                 "status": "running",
                 "progress_pct": 0.0,
+                "config_json": task.get("config_json") or {},
                 "updated_at": datetime.now(UTC).replace(tzinfo=None),
             },
         )
@@ -1206,6 +1253,7 @@ class TaskService:
                 "clip_video",
                 "localize_video",
                 "mpt",
+                "blender_previz",
             }:
                 await self._apply_provider_policy(task)
             await self._start_attempt(task)
@@ -1247,6 +1295,7 @@ class TaskService:
                 "clip_video",
                 "localize_video",
                 "mpt",
+                "blender_previz",
             }:
                 return await self._run_adapter_task(task)
 
