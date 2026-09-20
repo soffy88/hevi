@@ -57,14 +57,6 @@ def _order_and_dedup_shots(paths: list[Path]) -> list[Path]:
     return ordered
 
 
-async def agentic_longvideo_pipeline(
-    *, config: Any, _providers: dict[str, Any] | None = None
-) -> Any:
-    """Compatibility seam for HEVI tests while invoking the public omodul hook."""
-
-    return await run_longvideo_pipeline(config=config, providers=_providers)
-
-
 async def orchestrate_longvideo(
     *,
     config: Any = None,  # hevi app config if needed
@@ -1198,7 +1190,7 @@ async def orchestrate_longvideo(
                 providers=_providers,
             )
         else:
-            result = await agentic_longvideo_pipeline(config=lv_config, _providers=_providers)
+            result = await run_longvideo_pipeline(config=lv_config, providers=_providers)
 
         # SaaS-3/P10.F3 Fix: omodul suppresses shot failures by returning placeholders.
         # We must detect this to trigger Hevi's provider-level fallback.

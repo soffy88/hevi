@@ -58,13 +58,13 @@ async def test_locked_shot_list_produces_multi_speaker_dialogues_and_shot_plans(
     跟锁定镜头数一致(纯旁白镜头保留画面,只是没台词)。"""
     captured: dict = {}
 
-    async def fake_pipeline(*, config, _providers):
-        chapter_script = await _providers["script_fn"]()
+    async def fake_pipeline(*, config, providers):
+        chapter_script = await providers["script_fn"]()
         captured["dialogues"] = chapter_script.chapters[0].dialogues
         all_plans = []
         for chapter in chapter_script.chapters:
-            storyboard = await _providers["storyboard_fn"](script=chapter, llm=None)
-            plans = await _providers["shot_gen_fn"](storyboard=storyboard, llm=None)
+            storyboard = await providers["storyboard_fn"](script=chapter, llm=None)
+            plans = await providers["shot_gen_fn"](storyboard=storyboard, llm=None)
             all_plans.extend(plans)
         captured["plans"] = all_plans
 
@@ -80,7 +80,7 @@ async def test_locked_shot_list_produces_multi_speaker_dialogues_and_shot_plans(
         )
 
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
         side_effect=fake_pipeline,
     ):
         await orchestrate_longvideo(
@@ -111,8 +111,8 @@ async def test_no_locked_shot_list_leaves_script_fn_unregistered(tmp_path):
     script_writer,不受这次改动影响)。"""
     captured: dict = {}
 
-    async def fake_pipeline(*, config, _providers):
-        captured["has_script_fn"] = "script_fn" in _providers
+    async def fake_pipeline(*, config, providers):
+        captured["has_script_fn"] = "script_fn" in providers
         config.output_dir.mkdir(parents=True, exist_ok=True)
         vp = config.output_dir / "final.mp4"
         vp.write_bytes(b"\x00" * 2048)
@@ -125,7 +125,7 @@ async def test_no_locked_shot_list_leaves_script_fn_unregistered(tmp_path):
         )
 
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
         side_effect=fake_pipeline,
     ):
         await orchestrate_longvideo(
@@ -160,9 +160,9 @@ async def test_shot_character_refs_overrides_per_shot_reference_image(tmp_path):
     ProviderRegistry.register("video", "ltx2_cloud", capturing_video, replace=True)
     shots = tmp_path / "task" / "shots"
 
-    async def fake_pipeline(*, config, _providers):
+    async def fake_pipeline(*, config, providers):
         shots.mkdir(parents=True, exist_ok=True)
-        vfn = _providers["video_fn"]
+        vfn = providers["video_fn"]
         await vfn(prompt="p", output_path=shots / "shot_0000_v0.mp4", reference_image=None)
         vp = tmp_path / "task" / "final.mp4"
         vp.write_bytes(b"\x00" * 2048)
@@ -175,7 +175,7 @@ async def test_shot_character_refs_overrides_per_shot_reference_image(tmp_path):
         )
 
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
         side_effect=fake_pipeline,
     ):
         await orchestrate_longvideo(
@@ -209,9 +209,9 @@ async def test_shot_character_refs_missing_falls_back_to_global_reference(tmp_pa
     ProviderRegistry.register("video", "ltx2_cloud", capturing_video, replace=True)
     shots = tmp_path / "task" / "shots"
 
-    async def fake_pipeline(*, config, _providers):
+    async def fake_pipeline(*, config, providers):
         shots.mkdir(parents=True, exist_ok=True)
-        vfn = _providers["video_fn"]
+        vfn = providers["video_fn"]
         await vfn(prompt="p", output_path=shots / "shot_0000_v0.mp4", reference_image=None)
         vp = tmp_path / "task" / "final.mp4"
         vp.write_bytes(b"\x00" * 2048)
@@ -224,7 +224,7 @@ async def test_shot_character_refs_missing_falls_back_to_global_reference(tmp_pa
         )
 
     with patch(
-        "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+        "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
         side_effect=fake_pipeline,
     ):
         await orchestrate_longvideo(
@@ -265,9 +265,9 @@ async def test_shot_character_refs_multi_char_composes_via_qwen_image_edit(tmp_p
         output_path.write_bytes(b"\x00" * 4096)
         return output_path
 
-    async def fake_pipeline(*, config, _providers):
+    async def fake_pipeline(*, config, providers):
         shots.mkdir(parents=True, exist_ok=True)
-        vfn = _providers["video_fn"]
+        vfn = providers["video_fn"]
         await vfn(prompt="p", output_path=shots / "shot_0000_v0.mp4", reference_image=None)
         vp = tmp_path / "task" / "final.mp4"
         vp.write_bytes(b"\x00" * 2048)
@@ -281,7 +281,7 @@ async def test_shot_character_refs_multi_char_composes_via_qwen_image_edit(tmp_p
 
     with (
         patch(
-            "hevi.pipeline.longvideo_orchestrator.agentic_longvideo_pipeline",
+            "hevi.pipeline.longvideo_orchestrator.run_longvideo_pipeline",
             side_effect=fake_pipeline,
         ),
         patch("hevi.image.qwen_image_service.qwen_image_edit", fake_qwen_edit),
