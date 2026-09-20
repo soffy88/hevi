@@ -1,0 +1,587 @@
+--- a/oservi/__init__.py
++++ b/oservi/__init__.py
+@@ -15,7 +15,10 @@
+ """
+ 
+ __version__ = "1.4.0"
+-__3o_canonical_exports__ = frozenset({"ProductionExecutionEngine", "SequentialComposerEngine"})
++__3o_canonical_exports__ = frozenset({
++    "ProductionExecutionEngine", "SequentialComposerEngine", "PipelineComposerEngine",
++    "StepSpec",
++})
+ 
+ # Public contract for service composition.  Engines remain stateless and only
+ # describe injected dependencies; application persistence stays outside this
+@@ -40,6 +43,14 @@
+             "depends_on": ["omodul.operation"],
+             "pillars": ["cost", "fingerprint", "trail", "report"],
+         },
++        {
++            "name": "PipelineComposerEngine",
++            "kind": "oservi",
++            "module": "oservi.engines.pipeline_composer",
++            "signature": "run(*, config=None, input_data=None, output_dir=None, on_step=None) -> dict",
++            "depends_on": ["omodul.transaction"],
++            "pillars": ["trail"],
++        },
+     ],
+ }
+ 
+@@ -62,6 +73,7 @@
+ from oservi.engines.action_planner import ActionPlannerEngine
+ from oservi.engines.app_installer import AppInstallerEngine
+ from oservi.engines.sequential_composer import SequentialComposerEngine
++from oservi.engines.pipeline_composer import PipelineComposerEngine, StepSpec, StepEnvelope
+ from oservi.engines.production_execution import ExecutionEvent, ProductionExecutionEngine
+ from oservi.engines.subagent_orchestrator import SubagentOrchestratorEngine
+ from oservi.engines.mcp_bridge import McpBridgeEngine
+@@ -95,6 +107,9 @@
+     "ActionPlannerEngine",
+     "AppInstallerEngine",
+     "SequentialComposerEngine",
++    "PipelineComposerEngine",
++    "StepSpec",
++    "StepEnvelope",
+     "ExecutionEvent",
+     "ProductionExecutionEngine",
+     "SubagentOrchestratorEngine",
+--- a/oservi/engines/__init__.py
++++ b/oservi/engines/__init__.py
+@@ -27,6 +27,7 @@
+ from oservi.engines import researcher as _researcher  # noqa: F401
+ from oservi.engines import feed_tracker as _feed_tracker  # noqa: F401
+ from oservi.engines import sequential_composer as _sequential_composer  # noqa: F401
++from oservi.engines import pipeline_composer as _pipeline_composer  # noqa: F401
+ from oservi.engines import subagent_orchestrator as _subagent_orchestrator  # noqa: F401
+ from oservi.engines import mcp_bridge as _mcp_bridge  # noqa: F401
+ from oservi.engines import saga_composer as _saga_composer  # noqa: F401
+@@ -49,6 +50,7 @@
+ from oservi.engines.researcher import ResearcherEngine
+ from oservi.engines.feed_tracker import FeedTrackerEngine
+ from oservi.engines.sequential_composer import SequentialComposerEngine
++from oservi.engines.pipeline_composer import PipelineComposerEngine, StepSpec, StepEnvelope
+ from oservi.engines.subagent_orchestrator import SubagentOrchestratorEngine
+ from oservi.engines.mcp_bridge import McpBridgeEngine
+ from oservi.engines.saga_composer import SagaComposerEngine
+@@ -75,6 +77,9 @@
+     "ResearcherEngine",
+     "FeedTrackerEngine",
+     "SequentialComposerEngine",
++    "PipelineComposerEngine",
++    "StepSpec",
++    "StepEnvelope",
+     "SubagentOrchestratorEngine",
+     "McpBridgeEngine",
+     "SagaComposerEngine",
+--- /dev/null
++++ b/oservi/engines/pipeline_composer.py
+@@ -0,0 +1,509 @@
++"""Pipeline Composer Engine Skeleton — generic declarative pipeline composition.
++
++机制 (固化):
++- 按依赖图执行注入的 omodul transactions (canonical contract)
++- 支持 sequential / fan_out / fan_in topology
++- 传播 failure / cancellation (generic, 不解释 business semantics)
++- 支持 Layer4 注入 resume/reuse decision
++- 返回 generic envelope (不做 transaction-specific 解释)
++
++业务 (注入):
++- steps: StepSpec 列表 (声明 step_id / transaction / depends_on / mode)
++- decision_fn: Layer4 callable, 决定 RUN / REUSE_EXISTING / SKIP (可选)
++- input_resolver: Layer4 callable, 从已完成 step results 解析下一步 input_data (可选)
++
++红线对照:
++- 红线 1 (≥2 真实项目实证): HEVI media pipeline + 通用 DAG 场景
++- 红线 2 (机制/业务分离): step 业务全靠注入, 骨架不 import HEVI 语义
++- 红线 3 (注入契约): steps=omodul(1..n) / decision_fn=layer4(0..1) / input_resolver=layer4(0..1)
++- 红线 4 (无状态骨架): 状态只在实例
++- 红线 5 (不反向依赖): 不 import 3O 四包
++"""
++
++from __future__ import annotations
++
++import asyncio
++import inspect
++import logging
++from collections.abc import Callable
++from dataclasses import dataclass, field
++from datetime import UTC, datetime
++from typing import Any, ClassVar, Literal
++
++from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
++
++logger = logging.getLogger(__name__)
++
++StepMode = Literal["sequential", "fan_out", "fan_in"]
++ExecutionDecision = Literal["run", "reuse_existing", "skip"]
++
++
++@dataclass(frozen=True)
++class StepSpec:
++    """声明式 step 定义.
++
++    Args:
++        step_id: 唯一标识 (e.g. "previz_generate")
++        transaction: canonical omodul transaction (callable)
++        depends_on: 依赖的 step_id 列表
++        mode: 执行模式 (sequential / fan_out / fan_in)
++        optional: True 时失败不阻断依赖者 (best-effort)
++        priority: 同层排序键 (确定性执行顺序)
++    """
++
++    step_id: str
++    transaction: Callable[..., Any]
++    depends_on: tuple[str, ...] = ()
++    mode: StepMode = "sequential"
++    optional: bool = False
++    priority: int = 0
++
++
++@dataclass
++class StepEnvelope:
++    """Generic step execution envelope (oservi 不解释 result 内容)."""
++
++    step_id: str
++    status: Literal["completed", "failed", "skipped", "reused", "cancelled"]
++    result: Any = None
++    error: dict[str, Any] | None = None
++    started_at: str | None = None
++    finished_at: str | None = None
++    dependency_state: dict[str, str] = field(default_factory=dict)
++
++
++def _now_iso() -> str:
++    return datetime.now(UTC).isoformat()
++
++
++async def _call_transaction(
++    transaction: Callable[..., Any],
++    *,
++    config: Any,
++    input_data: dict[str, Any],
++    output_dir: Any,
++    on_step: Callable[[dict[str, Any]], None] | None,
++) -> dict[str, Any]:
++    """Invoke canonical omodul transaction with its 3O contract.
++
++    Canonical contract: (config, input_data, output_dir, *, on_step=None) -> dict
++    Falls back to keyword invocation for callables with narrower signatures.
++    """
++    sig = inspect.signature(transaction)
++    params = sig.parameters
++    accepts_on_step = "on_step" in params or any(
++        p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
++    )
++    kwargs: dict[str, Any] = {}
++    if accepts_on_step and on_step is not None:
++        kwargs["on_step"] = on_step
++
++    raw = transaction(config, input_data, output_dir, **kwargs)
++    if inspect.isawaitable(raw):
++        raw = await raw
++    return raw if isinstance(raw, dict) else {"status": "completed", "result": raw}
++
++
++class PipelineComposerEngine(EngineSkeleton):
++    """Generic declarative pipeline composer.
++
++    Executes a DAG of canonical omodul transactions with sequential /
++    fan_out / fan_in topology. Returns a generic envelope only.
++
++    Example::
++
++        engine = PipelineComposerEngine(
++            steps=[
++                StepSpec("previz_generate", previz_generate),
++                StepSpec("previz_guided_v2v_render", previz_guided_v2v_render,
++                         depends_on=("previz_generate",)),
++            ],
++            trigger={"on_demand": True},
++            config={},
++            name="previz-pipeline",
++        )
++        result = await engine.run(config=cfg, input_data={...}, output_dir=tmp)
++    """
++
++    injection_points: ClassVar[dict] = {
++        "steps": Injection(
++            kind="omodul",
++            cardinality="1..n",
++            description="Declarative omodul step specs (DAG)",
++        ),
++        "decision_fn": Injection(
++            kind="layer4",
++            cardinality="0..1",
++            description="Optional RUN / REUSE_EXISTING / SKIP decision resolver",
++        ),
++        "input_resolver": Injection(
++            kind="layer4",
++            cardinality="0..1",
++            description="Optional per-step input_data resolver from prior results",
++        ),
++    }
++    trigger_mode: str = "on_demand"
++
++    def __init__(
++        self,
++        *,
++        steps: list[StepSpec],
++        decision_fn: Callable[..., Any] | None = None,
++        input_resolver: Callable[..., Any] | None = None,
++        trigger: dict[str, Any],
++        config: dict[str, Any],
++        name: str,
++    ) -> None:
++        self.name = name
++        self.step_specs: list[StepSpec] = list(steps)
++        self.decision_fn = decision_fn
++        self.input_resolver = input_resolver
++        self.trigger = trigger
++        self.config = config
++
++        self._stop_event = asyncio.Event()
++        self._cancelled = False
++        self._last_error: str | None = None
++
++    # ── topology ──────────────────────────────────────────────────────
++
++    def _validate_graph(self) -> None:
++        ids = [s.step_id for s in self.step_specs]
++        if len(ids) != len(set(ids)):
++            raise ValueError(f"duplicate step_id in pipeline '{self.name}'")
++        known = set(ids)
++        for spec in self.step_specs:
++            for dep in spec.depends_on:
++                if dep not in known:
++                    raise ValueError(
++                        f"step '{spec.step_id}' depends on unknown step '{dep}'"
++                    )
++        # cycle detection (DFS)
++        WHITE, GRAY, BLACK = 0, 1, 2
++        color = dict.fromkeys(ids, WHITE)
++        by_id = {s.step_id: s for s in self.step_specs}
++
++        def visit(node: str) -> None:
++            color[node] = GRAY
++            for dep in by_id[node].depends_on:
++                if color[dep] == GRAY:
++                    raise ValueError(f"cycle detected in pipeline '{self.name}' at '{dep}'")
++                if color[dep] == WHITE:
++                    visit(dep)
++            color[node] = BLACK
++
++        for sid in ids:
++            if color[sid] == WHITE:
++                visit(sid)
++
++    def _layers(self) -> list[list[StepSpec]]:
++        """Topological layers; deterministic by (priority, step_id)."""
++        remaining = {s.step_id: s for s in self.step_specs}
++        done: set[str] = set()
++        layers: list[list[StepSpec]] = []
++        while remaining:
++            ready = [
++                s
++                for s in remaining.values()
++                if all(dep in done for dep in s.depends_on)
++            ]
++            if not ready:
++                raise ValueError(f"unresolvable dependency graph in '{self.name}'")
++            ready.sort(key=lambda s: (s.priority, s.step_id))
++            layers.append(ready)
++            for s in ready:
++                done.add(s.step_id)
++                remaining.pop(s.step_id)
++        return layers
++
++    # ── execution ─────────────────────────────────────────────────────
++
++    async def run(  # type: ignore[override]
++        self,
++        *,
++        config: Any = None,
++        input_data: dict[str, Any] | None = None,
++        output_dir: Any = None,
++        on_step: Callable[[dict[str, Any]], None] | None = None,
++    ) -> dict[str, Any]:
++        """Execute the declared pipeline DAG.
++
++        Returns generic envelope::
++
++            {"status": "completed"|"failed"|"partial"|"cancelled",
++             "steps": {step_id: StepEnvelope dict},
++             "order": [step_id, ...]}
++        """
++        self._validate_graph()
++        layers = self._layers()
++        effective_config = config if config is not None else self.config
++        base_input = dict(input_data or {})
++
++        envelopes: dict[str, StepEnvelope] = {}
++        order: list[str] = []
++        failed = False
++
++        for layer in layers:
++            if self._cancelled or self._stop_event.is_set():
++                for spec in layer:
++                    envelopes[spec.step_id] = StepEnvelope(
++                        step_id=spec.step_id,
++                        status="cancelled",
++                        dependency_state=self._dep_state(spec, envelopes),
++                    )
++                    order.append(spec.step_id)
++                break
++
++            # Within a layer, fan_out executes concurrently; sequential executes in order.
++            parallel = any(s.mode == "fan_out" for s in layer)
++            if parallel:
++                layer_envelopes = await self._run_parallel_layer(
++                    layer, envelopes, effective_config, base_input, output_dir, on_step
++                )
++            else:
++                layer_envelopes = []
++                for spec in layer:
++                    env = await self._run_step(
++                        spec, envelopes, effective_config, base_input, output_dir, on_step
++                    )
++                    layer_envelopes.append(env)
++
++            for env in layer_envelopes:
++                envelopes[env.step_id] = env
++                order.append(env.step_id)
++
++            # Failure propagation: non-optional failure stops dependents.
++            if any(
++                e.status == "failed" and not self._is_optional(e.step_id)
++                for e in layer_envelopes
++            ):
++                failed = True
++                break
++
++        # Mark dependents of failed steps as skipped (generic propagation).
++        if failed:
++            self._mark_unreachable(envelopes)
++
++        status = self._aggregate_status(envelopes, failed)
++        return {
++            "status": status,
++            "steps": {
++                sid: {
++                    "step_id": env.step_id,
++                    "status": env.status,
++                    "result": env.result,
++                    "error": env.error,
++                    "started_at": env.started_at,
++                    "finished_at": env.finished_at,
++                    "dependency_state": env.dependency_state,
++                }
++                for sid, env in envelopes.items()
++            },
++            "order": order,
++        }
++
++    def _is_optional(self, step_id: str) -> bool:
++        for s in self.step_specs:
++            if s.step_id == step_id:
++                return s.optional
++        return False
++
++    def _dep_state(
++        self, spec: StepSpec, envelopes: dict[str, StepEnvelope]
++    ) -> dict[str, str]:
++        return {dep: envelopes[dep].status for dep in spec.depends_on if dep in envelopes}
++
++    def _mark_unreachable(self, envelopes: dict[str, StepEnvelope]) -> None:
++        by_id = {s.step_id: s for s in self.step_specs}
++        for spec in self.step_specs:
++            if spec.step_id in envelopes:
++                continue
++            if any(
++                envelopes.get(dep) and envelopes[dep].status in ("failed", "skipped", "cancelled")
++                for dep in spec.depends_on
++            ):
++                envelopes[spec.step_id] = StepEnvelope(
++                    step_id=spec.step_id,
++                    status="skipped",
++                    dependency_state=self._dep_state(spec, envelopes),
++                )
++            # note: by_id retained for future use of transitive closure
++        _ = by_id
++
++    def _aggregate_status(self, envelopes: dict[str, StepEnvelope], failed: bool) -> str:
++        if self._cancelled:
++            return "cancelled"
++        statuses = {e.status for e in envelopes.values()}
++        if "failed" in statuses:
++            return "failed"
++        if "skipped" in statuses or "cancelled" in statuses:
++            return "partial"
++        if not envelopes:
++            return "completed"
++        return "completed"
++
++    async def _run_parallel_layer(
++        self,
++        layer: list[StepSpec],
++        envelopes: dict[str, StepEnvelope],
++        config: Any,
++        base_input: dict[str, Any],
++        output_dir: Any,
++        on_step: Callable[[dict[str, Any]], None] | None,
++    ) -> list[StepEnvelope]:
++        tasks = [
++            asyncio.create_task(
++                self._run_step(spec, envelopes, config, base_input, output_dir, on_step)
++            )
++            for spec in layer
++        ]
++        return list(await asyncio.gather(*tasks))
++
++    async def _run_step(
++        self,
++        spec: StepSpec,
++        envelopes: dict[str, StepEnvelope],
++        config: Any,
++        base_input: dict[str, Any],
++        output_dir: Any,
++        on_step: Callable[[dict[str, Any]], None] | None,
++    ) -> StepEnvelope:
++        dep_state = self._dep_state(spec, envelopes)
++
++        # Skip only if a REQUIRED dependency failed/skipped (optional deps don't block).
++        if any(
++            dep_state.get(dep) in ("failed", "skipped", "cancelled")
++            and not self._is_optional(dep)
++            for dep in spec.depends_on
++        ):
++            return StepEnvelope(
++                step_id=spec.step_id,
++                status="skipped",
++                dependency_state=dep_state,
++            )
++
++        # Layer4-provided resume/reuse decision.
++        decision: ExecutionDecision = "run"
++        reuse_result: Any = None
++        if self.decision_fn is not None:
++            raw_decision = self.decision_fn(
++                step_id=spec.step_id,
++                dependency_results={
++                    dep: envelopes[dep].result for dep in spec.depends_on if dep in envelopes
++                },
++                config=config,
++            )
++            if inspect.isawaitable(raw_decision):
++                raw_decision = await raw_decision
++            if isinstance(raw_decision, dict):
++                decision = raw_decision.get("decision", "run")
++                reuse_result = raw_decision.get("result")
++            elif isinstance(raw_decision, str):
++                decision = raw_decision  # type: ignore[assignment]
++
++        if decision == "skip":
++            return StepEnvelope(
++                step_id=spec.step_id,
++                status="skipped",
++                dependency_state=dep_state,
++            )
++        if decision == "reuse_existing":
++            return StepEnvelope(
++                step_id=spec.step_id,
++                status="reused",
++                result=reuse_result,
++                dependency_state=dep_state,
++                started_at=_now_iso(),
++                finished_at=_now_iso(),
++            )
++
++        # Resolve input_data: generic default + optional Layer4 resolver.
++        step_input = dict(base_input)
++        if self.input_resolver is not None:
++            resolved = self.input_resolver(
++                step_id=spec.step_id,
++                dependency_results={
++                    dep: envelopes[dep].result for dep in spec.depends_on if dep in envelopes
++                },
++                base_input=base_input,
++                config=config,
++            )
++            if inspect.isawaitable(resolved):
++                resolved = await resolved
++            if isinstance(resolved, dict):
++                step_input.update(resolved)
++
++        env = StepEnvelope(
++            step_id=spec.step_id,
++            status="completed",
++            started_at=_now_iso(),
++            dependency_state=dep_state,
++        )
++        try:
++            raw = await _call_transaction(
++                spec.transaction,
++                config=config,
++                input_data=step_input,
++                output_dir=output_dir,
++                on_step=on_step,
++            )
++        except Exception as exc:  # programmer error / broken invariant
++            self._last_error = f"step '{spec.step_id}': {type(exc).__name__}: {exc}"
++            logger.exception("PipelineComposerEngine '%s' step '%s' raised", self.name, spec.step_id)
++            env.status = "failed"
++            env.error = {"code": "STEP_EXCEPTION", "message": str(exc), "retryable": False}
++            env.result = None
++            env.finished_at = _now_iso()
++            self._emit(on_step, env)
++            return env
++
++        # Interpret canonical transaction envelope (generic only).
++        if isinstance(raw, dict) and raw.get("status") == "failed":
++            env.status = "failed"
++            env.error = raw.get("error") or {"code": "STEP_FAILED", "message": "step returned failed"}
++            env.result = raw.get("result")
++        else:
++            env.status = "completed"
++            env.result = raw
++        env.finished_at = _now_iso()
++        self._emit(on_step, env)
++        return env
++
++    def _emit(self, on_step: Callable[[dict[str, Any]], None] | None, env: StepEnvelope) -> None:
++        if on_step is None:
++            return
++        try:
++            on_step(
++                {
++                    "step_id": env.step_id,
++                    "status": env.status,
++                    "error": env.error,
++                }
++            )
++        except Exception as cb_err:  # callback must never break pipeline
++            logger.warning("on_step callback failed at '%s': %s", env.step_id, cb_err)
++
++    def cancel(self) -> None:
++        """Propagate cancellation to the pipeline (generic)."""
++        self._cancelled = True
++        self._stop_event.set()
++
++    def stop(self) -> None:
++        """Graceful stop (alias of cancel for on_demand engines)."""
++        self.cancel()
++
++    def health(self) -> dict[str, Any]:
++        return {
++            "status": "healthy",
++            "details": {
++                "name": self.name,
++                "steps_count": len(self.step_specs),
++                "has_decision_fn": self.decision_fn is not None,
++                "has_input_resolver": self.input_resolver is not None,
++                "cancelled": self._cancelled,
++                "last_error": self._last_error,
++            },
++        }
++
++
++register_skeleton("pipeline_composer", PipelineComposerEngine)

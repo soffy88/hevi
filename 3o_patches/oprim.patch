@@ -1,0 +1,1553 @@
+--- a/oprim/__init__.py
++++ b/oprim/__init__.py
+@@ -9,6 +9,11 @@
+ __3o_canonical_exports__ = frozenset({
+     "video_generate", "edge_tts_synthesize", "avatar_generate", "fixed_list",
+     "style_marker_prompt", "lighting_control_prompt", "asset_reference_inject",
++    "blender_render_headless", "remotion_render_component", "v2v_dispatch_infer",
++    "ffmpeg_concat", "ffmpeg_mux_audio", "ffmpeg_burn_subtitles", "ffmpeg_encode",
++    "ffmpeg_probe", "ffmpeg_probe_duration", "ffmpeg_probe_resolution", "ffmpeg_probe_fps",
++    "ffmpeg_has_audio", "ffmpeg_extract_cover", "transcribe_audio", "edge_tts_word_boundary",
++    "tts_synthesize", "video_concat", "render_html_to_mp4",
+ })
+ 
+ # Public-package contract for 3O consumers.  It describes only stable atomic
+@@ -60,6 +65,114 @@
+             "signature": "(*, shot_spec, asset_refs, asset_loader) -> dict",
+             "depends_on": [], "pillars": ["fingerprint"],
+         },
++        {
++            "name": "blender_render_headless", "kind": "oprim",
++            "module": "oprim._blender_render_headless",
++            "signature": "(script_path, /, *, output_path, fps=24, resolution=(1080,1920), engine='BLENDER_WORKBENCH', xvfb=True, timeout_s=600.0) -> Path",
++            "depends_on": [], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "remotion_render_component", "kind": "oprim",
++            "module": "oprim._remotion_render_component",
++            "signature": "(component_name, /, *, props, output_path, duration_frames, fps=24, remotion_root=None, timeout_s=600.0, concurrency=4) -> Path",
++            "depends_on": [], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "v2v_dispatch_infer", "kind": "oprim",
++            "module": "oprim._v2v_dispatch_infer",
++            "signature": "(ref_video_path, /, *, prompt, model_provider, output_path, guidance_scale=7.5, timeout_s=600.0, **provider_kwargs) -> dict",
++            "depends_on": ["obase.provider_registry"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "ffmpeg_concat", "kind": "oprim",
++            "module": "oprim._ffmpeg_concat",
++            "signature": "(*, inputs, output_path, method='concat_demuxer', timeout_s=600.0, vf=None, trim_lead_frames=0, transitions=None, assumed_fps=30.0) -> Path",
++            "depends_on": ["obase.ffmpeg"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "ffmpeg_mux_audio", "kind": "oprim",
++            "module": "oprim._ffmpeg_mux_audio",
++            "signature": "(video_path, audio_path, /, *, output_path, filter_complex, timeout_s=300.0, copy_video=True, audio_codec='aac', audio_bitrate='192k') -> Path",
++            "depends_on": ["obase.ffmpeg"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "ffmpeg_burn_subtitles", "kind": "oprim",
++            "module": "oprim._ffmpeg_burn_subtitles",
++            "signature": "(video_path, subtitles_path, /, *, output_path, style_spec=None, timeout_s=300.0, crf=20, preset='veryfast', pix_fmt='yuv420p') -> Path",
++            "depends_on": ["obase.ffmpeg"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "ffmpeg_encode", "kind": "oprim",
++            "module": "oprim._ffmpeg_encode",
++            "signature": "(input_path, /, *, output_path, vf, crf=20, preset='veryfast', pix_fmt='yuv420p', timeout_s=300.0, an=False, audio_codec='aac', audio_bitrate='192k') -> Path",
++            "depends_on": ["obase.ffmpeg"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "ffmpeg_probe", "kind": "oprim",
++            "module": "oprim._ffmpeg_probe",
++            "signature": "(path, /) -> dict",
++            "depends_on": [], "pillars": ["fingerprint"],
++        },
++        {
++            "name": "ffmpeg_probe_duration", "kind": "oprim",
++            "module": "oprim._ffmpeg_probe",
++            "signature": "(path, /) -> float",
++            "depends_on": [], "pillars": ["fingerprint"],
++        },
++        {
++            "name": "ffmpeg_probe_resolution", "kind": "oprim",
++            "module": "oprim._ffmpeg_probe",
++            "signature": "(path, /) -> tuple[int,int] | None",
++            "depends_on": [], "pillars": ["fingerprint"],
++        },
++        {
++            "name": "ffmpeg_probe_fps", "kind": "oprim",
++            "module": "oprim._ffmpeg_probe",
++            "signature": "(path, /) -> float | None",
++            "depends_on": [], "pillars": ["fingerprint"],
++        },
++        {
++            "name": "ffmpeg_has_audio", "kind": "oprim",
++            "module": "oprim._ffmpeg_probe",
++            "signature": "(path, /) -> bool",
++            "depends_on": [], "pillars": ["fingerprint"],
++        },
++        {
++            "name": "ffmpeg_extract_cover", "kind": "oprim",
++            "module": "oprim._ffmpeg_extract_cover",
++            "signature": "(video_path, output_path, /, *, timestamp=0.0, timeout_s=60.0) -> Path",
++            "depends_on": ["obase.ffmpeg"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "transcribe_audio", "kind": "oprim",
++            "module": "oprim._transcribe_audio",
++            "signature": "(*, audio_path, backend='local', model_size='base', language='zh', model_path='/models/whisper', vad_filter=False) -> TranscriptResult",
++            "depends_on": [], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "edge_tts_word_boundary", "kind": "oprim",
++            "module": "oprim._edge_tts_word_boundary",
++            "signature": "(text, voice, /, *, rate=None, pitch=None, output_path=None) -> dict",
++            "depends_on": ["obase.ffmpeg"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "tts_synthesize", "kind": "oprim",
++            "module": "oprim.tts_synthesize",
++            "signature": "(*, provider, text, voice, output_path, rate='+0%', pitch='+0Hz', timeout_s=60.0) -> Path",
++            "depends_on": ["obase.provider_registry"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "video_concat", "kind": "oprim",
++            "module": "oprim.video_concat",
++            "signature": "(*, inputs, output_path, method='concat_demuxer', timeout_s=600.0, tail_frame_handling=False, trim_lead_frames=0, transitions=None) -> Path",
++            "depends_on": ["obase.ffmpeg"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
++        {
++            "name": "render_html_to_mp4", "kind": "oprim",
++            "module": "oprim._render_html_to_mp4",
++            "signature": "(*, html, output_path, duration_s, width=1920, height=1080, fps=30, validate=True, timeout_s=120.0) -> Path",
++            "depends_on": ["obase.ffmpeg"], "pillars": ["cost", "fingerprint", "trail", "report"],
++        },
+     ],
+ }
+ 
+--- /dev/null
++++ b/oprim/_blender_render_headless.py
+@@ -0,0 +1,114 @@
++"""oprim.blender_render_headless — Headless Blender script execution.
++
++Single atomic operation: execute a Blender Python script in headless mode
++and produce MP4 or PNG sequence output.
++"""
++
++from __future__ import annotations
++
++import asyncio
++import shutil
++import tempfile
++from pathlib import Path
++
++
++class BlenderRenderError(Exception):
++    """Headless Blender render failed."""
++
++
++async def blender_render_headless(
++    script_path: Path,
++    *,
++    output_path: Path,
++    fps: int = 24,
++    resolution: tuple[int, int] = (1080, 1920),
++    engine: str = "BLENDER_WORKBENCH",
++    xvfb: bool = True,
++    timeout_s: float = 600.0,
++) -> Path:
++    """Execute a Blender Python script headless and produce video output.
++
++    Args:
++        script_path: Path to .py script containing Blender bpy operations.
++        output_path: Destination file path (MP4 or PNG sequence directory).
++        fps: Output frame rate.
++        resolution: (width, height) in pixels.
++        engine: Blender render engine (BLENDER_WORKBENCH, BLENDER_EEVEE, CYCLES).
++        xvfb: Use Xvfb virtual framebuffer (required for headless GPU rendering).
++        timeout_s: Hard timeout for the render process.
++
++    Returns:
++        The output_path on success.
++
++    Raises:
++        BlenderRenderError: Blender not found, script error, or output not produced.
++    """
++    blender_bin = shutil.which("blender")
++    if blender_bin is None:
++        raise BlenderRenderError("blender binary not found on PATH")
++
++    output_path = Path(output_path)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++
++    width, height = resolution
++    script_content = script_path.read_text(encoding="utf-8")
++
++    # Inject render settings into script
++    render_setup = f"""
++import bpy
++bpy.context.scene.render.fps = {fps}
++bpy.context.scene.render.resolution_x = {width}
++bpy.context.scene.render.resolution_y = {height}
++bpy.context.scene.render.engine = '{engine}'
++bpy.context.scene.render.filepath = '{output_path}'
++bpy.context.scene.render.image_settings.file_format = 'FFMPEG'
++bpy.context.scene.render.ffmpeg.format = 'MPEG4'
++bpy.context.scene.render.ffmpeg.codec = 'H264'
++bpy.context.scene.render.ffmpeg.constant_rate_factor = 'PERC_LOSSLESS'
++"""
++
++    full_script = render_setup + "\n" + script_content
++
++    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
++        f.write(full_script)
++        temp_script = Path(f.name)
++
++    try:
++        cmd = [blender_bin, "-b", "-P", str(temp_script)]
++        if xvfb:
++            xvfb_bin = shutil.which("xvfb-run")
++            if xvfb_bin:
++                cmd = [xvfb_bin, "-a", "--server-args=-screen 0 1920x1080x24", *cmd]
++
++        proc = await asyncio.create_subprocess_exec(
++            *cmd,
++            stdout=asyncio.subprocess.PIPE,
++            stderr=asyncio.subprocess.PIPE,
++        )
++
++        try:
++            stdout_bytes, stderr_bytes = await asyncio.wait_for(
++                proc.communicate(), timeout=timeout_s
++            )
++        except TimeoutError:
++            proc.kill()
++            await proc.communicate()
++            raise BlenderRenderError(f"Blender render timed out after {timeout_s}s") from None
++
++        stderr_text = stderr_bytes.decode(errors="replace")
++
++        if proc.returncode != 0:
++            raise BlenderRenderError(
++                f"Blender exited with code {proc.returncode}: {stderr_text[-2000:]}"
++            )
++
++        if not output_path.exists():
++            raise BlenderRenderError(f"Blender did not produce output: {output_path}")
++
++        return output_path
++
++    finally:
++        temp_script.unlink(missing_ok=True)
++
++
++__all__ = ["blender_render_headless", "BlenderRenderError"]
+\ No newline at end of file
+--- /dev/null
++++ b/oprim/_remotion_render_component.py
+@@ -0,0 +1,131 @@
++"""oprim.remotion_render_component — Render single Remotion composition.
++
++Single atomic operation: invoke Remotion CLI to render one composition
++to MP4 with given props and duration.
++"""
++
++from __future__ import annotations
++
++import asyncio
++import json
++import shutil
++import tempfile
++from pathlib import Path
++
++
++class RemotionRenderError(Exception):
++    """Remotion render failed."""
++
++
++async def remotion_render_component(
++    component_name: str,
++    *,
++    props: dict,
++    output_path: Path,
++    duration_frames: int,
++    fps: int = 24,
++    remotion_root: Path | None = None,
++    timeout_s: float = 600.0,
++    concurrency: int = 4,
++) -> Path:
++    """Render a single Remotion composition to MP4.
++
++    Args:
++        component_name: Remotion composition ID (e.g., "Explainer-Portrait").
++        props: Props dict passed to the composition.
++        output_path: Destination MP4 file path.
++        duration_frames: Number of frames to render.
++        fps: Frame rate.
++        remotion_root: Path to Remotion project root (package.json location).
++                       If None, uses HEVI_REMOTION_DIR env var or default.
++        timeout_s: Hard timeout for render process.
++        concurrency: Remotion render concurrency.
++
++    Returns:
++        The output_path on success.
++
++    Raises:
++        RemotionRenderError: Remotion CLI not found, project missing, or render failed.
++    """
++    remotion_cli = shutil.which("remotion")
++    if remotion_cli is None:
++        # Try local node_modules/.bin/remotion
++        if remotion_root:
++            local_cli = remotion_root / "node_modules" / ".bin" / "remotion"
++            if local_cli.exists():
++                remotion_cli = str(local_cli)
++            else:
++                raise RemotionRenderError(
++                    f"Remotion CLI not found at {local_cli}; "
++                    "ensure hevi-remotion dependencies are installed"
++                )
++        else:
++            raise RemotionRenderError("remotion CLI not found on PATH and no remotion_root provided")
++
++    output_path = Path(output_path)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++
++    # Determine remotion project root
++    if remotion_root is None:
++        import os
++        remotion_root = Path(os.environ.get("HEVI_REMOTION_DIR", "/app/hevi-remotion"))
++    remotion_root = Path(remotion_root)
++
++    if not (remotion_root / "package.json").exists():
++        raise RemotionRenderError(f"Remotion project not found at {remotion_root}")
++
++    # Write props to manifest file (Remotion reads from src/data/run_manifest.json).
++    # The manifest is a SHARED bundle-time input imported by other compositions.
++    # Only overwrite it when props are supplied, and restore the previous content
++    # after the render so one composition cannot corrupt the project for the next.
++    manifest_path = remotion_root / "src" / "data" / "run_manifest.json"
++    manifest_path.parent.mkdir(parents=True, exist_ok=True)
++    previous_manifest: str | None = None
++    if props:
++        previous_manifest = (
++            manifest_path.read_text(encoding="utf-8") if manifest_path.exists() else None
++        )
++        manifest_path.write_text(
++            json.dumps(props, ensure_ascii=False, indent=2), encoding="utf-8"
++        )
++
++    cmd = [
++        remotion_cli,
++        "render",
++        component_name,
++        str(output_path),
++        f"--concurrency={concurrency}",
++    ]
++
++    try:
++        proc = await asyncio.create_subprocess_exec(
++            *cmd,
++            cwd=str(remotion_root),
++            stdout=asyncio.subprocess.PIPE,
++            stderr=asyncio.subprocess.STDOUT,
++        )
++
++        try:
++            stdout_bytes, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
++        except TimeoutError:
++            proc.kill()
++            await proc.communicate()
++            raise RemotionRenderError(f"Remotion render timed out after {timeout_s}s") from None
++    finally:
++        if previous_manifest is not None:
++            manifest_path.write_text(previous_manifest, encoding="utf-8")
++
++    stdout_text = stdout_bytes.decode(errors="replace") if stdout_bytes else ""
++
++    if proc.returncode != 0:
++        raise RemotionRenderError(
++            f"Remotion render failed (exit={proc.returncode}): {stdout_text[-4000:]}"
++        )
++
++    if not output_path.exists() or output_path.stat().st_size == 0:
++        raise RemotionRenderError(f"Remotion did not produce valid output: {output_path}")
++
++    return output_path
++
++
++__all__ = ["remotion_render_component", "RemotionRenderError"]
+\ No newline at end of file
+--- /dev/null
++++ b/oprim/_v2v_dispatch_infer.py
+@@ -0,0 +1,122 @@
++"""oprim.v2v_dispatch_infer — Video-to-Video style transfer inference.
++
++Single atomic operation: execute one V2V inference call with reference video
++and prompt, returning stylized output plus motion vectors for drift analysis.
++"""
++
++from __future__ import annotations
++
++from pathlib import Path
++from typing import Any
++
++from obase import ProviderRegistry
++from obase.exceptions import ProviderNotFoundError
++
++
++class V2VInferError(Exception):
++    """V2V inference failed."""
++
++
++class V2VProviderNotFoundError(Exception):
++    """V2V provider not registered."""
++
++
++async def v2v_dispatch_infer(
++    ref_video_path: Path,
++    *,
++    prompt: str,
++    model_provider: str,
++    output_path: Path,
++    guidance_scale: float = 7.5,
++    timeout_s: float = 600.0,
++    **provider_kwargs: Any,
++) -> dict[str, Any]:
++    """Execute single V2V inference with structure-locked reference video.
++
++    Args:
++        ref_video_path: Path to reference/whitebox video (structure lock).
++        prompt: Text prompt for style transfer.
++        model_provider: Provider name registered in obase.ProviderRegistry
++                        (category='v2v' or 'video_gen' with i2v mode).
++        output_path: Destination MP4 file path.
++        guidance_scale: CFG guidance scale for diffusion models.
++        timeout_s: Hard timeout for inference.
++        **provider_kwargs: Additional provider-specific parameters.
++
++    Returns:
++        Dict with keys:
++            - "output_path": Path to generated video
++            - "ref_motion_vectors": list[list[float]] motion vectors from reference
++            - "out_motion_vectors": list[list[float]] motion vectors from output
++            - "cost_usd": float estimated cost
++            - "provider": str provider name used
++
++    Raises:
++        V2VProviderNotFoundError: Provider not registered.
++        V2VInferError: Inference failed or output not produced.
++    """
++    output_path = Path(output_path)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++
++    if not ref_video_path.exists():
++        raise V2VInferError(f"Reference video not found: {ref_video_path}")
++
++    # Try v2v category first, then video_gen with i2v mode
++    provider_fn = None
++    used_category = None
++    used_provider = model_provider
++
++    try:
++        provider_fn = ProviderRegistry.get().generic("v2v", model_provider)
++        used_category = "v2v"
++    except ProviderNotFoundError:
++        try:
++            provider_fn = ProviderRegistry.get().generic("video_gen", model_provider)
++            used_category = "video_gen"
++        except ProviderNotFoundError:
++            pass
++
++    if provider_fn is None:
++        raise V2VProviderNotFoundError(
++            f"V2V provider not found in categories 'v2v' or 'video_gen': {model_provider!r}"
++        )
++
++    # Prepare kwargs for provider call
++    call_kwargs = {
++        "prompt": prompt,
++        "reference_video": ref_video_path,
++        "output_path": output_path,
++        "guidance_scale": guidance_scale,
++        "timeout_s": timeout_s,
++        **provider_kwargs,
++    }
++
++    import asyncio
++
++    try:
++        result = await asyncio.wait_for(provider_fn(**call_kwargs), timeout=timeout_s)
++    except TimeoutError:
++        raise V2VInferError(f"V2V inference timed out after {timeout_s}s") from None
++    except Exception as exc:
++        raise V2VInferError(f"V2V inference failed: {exc}") from exc
++
++    if not output_path.exists():
++        raise V2VInferError(f"Provider did not produce output: {output_path}")
++
++    # Extract motion vectors from result if available
++    # Providers may return them directly or we compute them
++    ref_motion_vectors = result.get("ref_motion_vectors", []) if isinstance(result, dict) else []
++    out_motion_vectors = result.get("out_motion_vectors", []) if isinstance(result, dict) else []
++    cost_usd = result.get("cost_usd", 0.0) if isinstance(result, dict) else 0.0
++
++    return {
++        "output_path": output_path,
++        "ref_motion_vectors": ref_motion_vectors,
++        "out_motion_vectors": out_motion_vectors,
++        "cost_usd": cost_usd,
++        "provider": used_provider,
++        "category": used_category,
++    }
++
++
++__all__ = ["v2v_dispatch_infer", "V2VInferError", "V2VProviderNotFoundError"]
+\ No newline at end of file
+--- /dev/null
++++ b/oprim/_ffmpeg_concat.py
+@@ -0,0 +1,322 @@
++"""oprim.ffmpeg_concat — Concatenate videos with single ffmpeg invocation.
++
++Semantic unit: concat demuxer OR filter_complex concat + re-encode in ONE call.
++"""
++
++from __future__ import annotations
++
++import asyncio
++import json
++import tempfile
++from pathlib import Path
++from typing import Literal
++
++from obase.ffmpeg import FFmpegError
++from obase.ffmpeg import run as ffmpeg_run
++
++
++class FFmpegConcatError(Exception):
++    """FFmpeg concat operation failed."""
++
++
++async def ffmpeg_concat(
++    *,
++    inputs: list[Path],
++    output_path: Path,
++    method: Literal["concat_demuxer", "concat_filter"] = "concat_demuxer",
++    timeout_s: float = 600.0,
++    vf: str | None = None,
++    trim_lead_frames: int = 0,
++    transitions: list[dict] | None = None,
++    assumed_fps: float = 30.0,
++) -> Path:
++    """Concatenate multiple video files into one with single ffmpeg call.
++
++    Args:
++        inputs: List of video file paths (≥2 required).
++        output_path: Destination file.
++        method: 'concat_demuxer' (fast, stream copy) or 'concat_filter' (re-encode).
++        timeout_s: FFmpeg timeout in seconds.
++        vf: Video filter string applied to all inputs (e.g., scale/pad/fps normalization).
++        trim_lead_frames: Leading frames to trim from each clip after first.
++        transitions: Optional list of transition specs between clips.
++        assumed_fps: FPS for frame-to-time conversion.
++
++    Returns:
++        The output_path on success.
++
++    Raises:
++        FFmpegConcatError: On validation failure or FFmpeg error.
++    """
++    if len(inputs) < 2:
++        raise FFmpegConcatError("At least 2 input videos required")
++
++    for p in inputs:
++        if not p.exists():
++            raise FFmpegConcatError(f"Input file not found: {p}")
++
++    output_path = Path(output_path)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++
++    if transitions is not None and len(transitions) != len(inputs) - 1:
++        raise FFmpegConcatError(
++            f"transitions length ({len(transitions)}) must equal len(inputs)-1 "
++            f"({len(inputs) - 1})"
++        )
++
++    needs_reencode = vf is not None or trim_lead_frames > 0 or transitions is not None
++    effective_method = "concat_filter" if needs_reencode else method
++
++    # Silent clips (previz / motion-graphic renders) carry no audio stream; the
++    # filter paths must not reference a non-existent [i:a] pad. Probe once and
++    # treat the batch as audio-carrying only when every input has audio.
++    has_audio = all(
++        [await _probe_has_audio(p) for p in inputs]
++    ) if effective_method == "concat_filter" else True
++
++    try:
++        if effective_method == "concat_demuxer":
++            await _concat_demuxer(inputs, output_path, timeout_s)
++        else:
++            await _concat_filter(
++                inputs, output_path, timeout_s,
++                vf=vf,
++                trim_lead_frames=trim_lead_frames,
++                transitions=transitions or [],
++                assumed_fps=assumed_fps,
++                has_audio=has_audio,
++            )
++    except FFmpegError as exc:
++        raise FFmpegConcatError(f"FFmpeg concat failed: {exc}") from exc
++
++    return output_path
++
++
++async def _concat_demuxer(inputs: list[Path], output_path: Path, timeout_s: float) -> None:
++    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
++        for p in inputs:
++            f.write(f"file '{p.resolve()}'\n")
++        list_path = Path(f.name)
++
++    try:
++        args = [
++            "-f", "concat",
++            "-safe", "0",
++            "-i", str(list_path),
++            "-c", "copy",
++            str(output_path),
++        ]
++        await ffmpeg_run(args=args, timeout_s=timeout_s, expected_output=output_path)
++    finally:
++        list_path.unlink(missing_ok=True)
++
++
++_XFADE_KIND = {"dissolve": "fade", "flash": "fadewhite"}
++
++
++async def _concat_filter(
++    inputs: list[Path],
++    output_path: Path,
++    timeout_s: float,
++    vf: str | None,
++    trim_lead_frames: int,
++    transitions: list[dict],
++    assumed_fps: float,
++    has_audio: bool = True,
++) -> None:
++    if transitions:
++        await _concat_with_transitions(
++            inputs, output_path, timeout_s,
++            vf=vf,
++            trim_lead_frames=trim_lead_frames,
++            transitions=transitions,
++            assumed_fps=assumed_fps,
++            has_audio=has_audio,
++        )
++        return
++
++    n = len(inputs)
++    args: list[str] = []
++    for p in inputs:
++        args.extend(["-i", str(p)])
++
++    filter_parts: list[str] = []
++    for i in range(n):
++        v_label = f"[{i}:v]"
++        if i > 0 and trim_lead_frames > 0:
++            filter_parts.append(f"[{i}:v]trim=start_frame={trim_lead_frames}[v{i}t];")
++            v_label = f"[v{i}t]"
++            if has_audio:
++                filter_parts.append(f"[{i}:a]atrim=start={trim_lead_frames / assumed_fps:.4f}[a{i}t];")
++
++        if vf:
++            filter_parts.append(f"{v_label}{vf}[v{i}f];")
++            v_label = f"[v{i}f]"
++
++        if has_audio:
++            a_label = f"[a{i}t]" if (i > 0 and trim_lead_frames > 0) else f"[{i}:a]"
++            filter_parts.append(f"{v_label}{a_label}")
++        else:
++            filter_parts.append(v_label)
++
++    concat_inputs = "".join(filter_parts)
++    if has_audio:
++        filter_complex = f"{concat_inputs}concat=n={n}:v=1:a=1[outv][outa]"
++        maps = ["-map", "[outv]", "-map", "[outa]"]
++    else:
++        filter_complex = f"{concat_inputs}concat=n={n}:v=1:a=0[outv]"
++        maps = ["-map", "[outv]"]
++
++    args.extend([
++        "-filter_complex", filter_complex,
++        *maps,
++        "-c:v", "libx264",
++        "-preset", "veryfast",
++        "-crf", "20",
++        "-pix_fmt", "yuv420p",
++        str(output_path),
++    ])
++    await ffmpeg_run(args=args, timeout_s=timeout_s, expected_output=output_path)
++
++
++async def _concat_with_transitions(
++    inputs: list[Path],
++    output_path: Path,
++    timeout_s: float,
++    vf: str | None,
++    trim_lead_frames: int,
++    transitions: list[dict],
++    assumed_fps: float,
++    has_audio: bool = True,
++) -> None:
++    n = len(inputs)
++
++    needs_durations = any(
++        spec.get("type", "hard") != "hard" and float(spec.get("duration_s", 0.0)) > 0.0
++        for spec in transitions
++    )
++    durations = await _probe_durations(inputs) if needs_durations else [0.0] * n
++
++    args: list[str] = []
++    for p in inputs:
++        args.extend(["-i", str(p)])
++
++    parts: list[str] = []
++    base_v: list[str] = []
++    base_a: list[str] = []
++
++    for i in range(n):
++        vf_parts: list[str] = []
++        af_parts: list[str] = []
++        if i > 0 and trim_lead_frames > 0:
++            vf_parts.append(f"trim=start_frame={trim_lead_frames}")
++            af_parts.append(f"atrim=start={trim_lead_frames / assumed_fps:.4f}")
++        if vf:
++            vf_parts.append(vf)
++        # xfade demands a constant frame rate; the fps filter must run after the
++        # PTS reset (fps-then-setpts leaves the rate unset and xfade rejects it).
++        vf_parts.extend(["format=yuv420p", "setpts=PTS-STARTPTS", f"fps={assumed_fps}"])
++        parts.append(f"[{i}:v]{','.join(vf_parts)}[bv{i}];")
++        base_v.append(f"[bv{i}]")
++        if has_audio:
++            af_parts.append("asetpts=PTS-STARTPTS")
++            parts.append(f"[{i}:a]{','.join(af_parts)}[ba{i}];")
++            base_a.append(f"[ba{i}]")
++
++    v_acc = base_v[0]
++    a_acc = base_a[0] if has_audio else ""
++    running = durations[0]
++
++    for i in range(1, n):
++        spec = transitions[i - 1]
++        ttype = spec.get("type", "hard")
++        dur = float(spec.get("duration_s", 0.0))
++        v_out = f"[vc{i}]"
++        a_out = f"[ac{i}]"
++
++        if ttype == "hard" or dur <= 0.0:
++            parts.append(f"{v_acc}{base_v[i]}concat=n=2:v=1:a=0{v_out};")
++            if has_audio:
++                parts.append(f"{a_acc}{base_a[i]}concat=n=2:v=0:a=1{a_out};")
++            running += durations[i]
++        else:
++            kind = _XFADE_KIND.get(ttype, "fade")
++            offset = max(0.0, running - dur)
++            parts.append(
++                f"{v_acc}{base_v[i]}xfade=transition={kind}:duration={dur:.4f}:offset={offset:.4f}{v_out};"
++            )
++            if has_audio:
++                parts.append(f"{a_acc}{base_a[i]}acrossfade=d={dur:.4f}{a_out};")
++            running += durations[i] - dur
++
++        v_acc = v_out
++        if has_audio:
++            a_acc = a_out
++
++    filter_complex = "".join(parts).rstrip(";")
++
++    args.extend([
++        "-filter_complex", filter_complex,
++        "-map", v_acc,
++    ])
++    if has_audio:
++        args.extend(["-map", a_acc])
++    args.extend([
++        "-c:v", "libx264",
++        "-preset", "veryfast",
++        "-crf", "20",
++        "-pix_fmt", "yuv420p",
++        str(output_path),
++    ])
++    await ffmpeg_run(args=args, timeout_s=timeout_s, expected_output=output_path)
++
++
++async def _probe_has_audio(path: Path) -> bool:
++    """Return True when the media file has at least one audio stream."""
++    cmd = [
++        "ffprobe", "-v", "error",
++        "-select_streams", "a",
++        "-show_entries", "stream=codec_type",
++        "-of", "csv=p=0",
++        str(path),
++    ]
++    try:
++        proc = await asyncio.create_subprocess_exec(
++            *cmd,
++            stdout=asyncio.subprocess.PIPE,
++            stderr=asyncio.subprocess.PIPE,
++        )
++        stdout, _ = await proc.communicate()
++    except FileNotFoundError as exc:
++        raise FFmpegConcatError("ffprobe not found on PATH") from exc
++    if proc.returncode != 0:
++        return False
++    return bool(stdout.decode(errors="replace").strip())
++
++
++async def _probe_durations(inputs: list[Path]) -> list[float]:
++    durations: list[float] = []
++    for p in inputs:
++        cmd = [
++            "ffprobe", "-v", "quiet", "-print_format", "json",
++            "-show_format", str(p),
++        ]
++        try:
++            proc = await asyncio.create_subprocess_exec(
++                *cmd,
++                stdout=asyncio.subprocess.PIPE,
++                stderr=asyncio.subprocess.PIPE,
++            )
++            stdout, _ = await proc.communicate()
++        except FileNotFoundError as exc:
++            raise FFmpegConcatError("ffprobe not found on PATH") from exc
++        if proc.returncode != 0:
++            raise FFmpegConcatError(f"ffprobe failed for {p}")
++        try:
++            durations.append(float(json.loads(stdout.decode())["format"]["duration"]))
++        except (KeyError, ValueError) as exc:
++            raise FFmpegConcatError(f"Could not parse duration for {p}") from exc
++    return durations
++
++
++__all__ = ["ffmpeg_concat", "FFmpegConcatError"]
+\ No newline at end of file
+--- /dev/null
++++ b/oprim/_ffmpeg_mux_audio.py
+@@ -0,0 +1,158 @@
++"""oprim.ffmpeg_mux_audio — Mux video + audio with filter_complex in single ffmpeg call.
++
++Semantic unit: video + audio mixing (amix, sidechain, loudnorm) + mux in ONE call.
++"""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++from obase.ffmpeg import FFmpegError
++from obase.ffmpeg import run as ffmpeg_run
++
++
++class FFmpegMuxAudioError(Exception):
++    """FFmpeg audio mux operation failed."""
++
++
++async def ffmpeg_mux_audio(
++    video_path: Path,
++    audio_path: Path,
++    *,
++    output_path: Path,
++    filter_complex: str,
++    timeout_s: float = 300.0,
++    copy_video: bool = True,
++    audio_codec: str = "aac",
++    audio_bitrate: str = "192k",
++) -> Path:
++    """Mux video with processed audio using single ffmpeg invocation.
++
++    Args:
++        video_path: Input video file (video stream source).
++        audio_path: Input audio file (narration/BGM/SFX).
++        output_path: Destination file.
++        filter_complex: FFmpeg filter_complex for audio processing
++                        (e.g., loudnorm + sidechain + amix).
++        timeout_s: FFmpeg timeout in seconds.
++        copy_video: If True, copy video stream (-c:v copy); else re-encode.
++        audio_codec: Audio codec for output.
++        audio_bitrate: Audio bitrate for output.
++
++    Returns:
++        The output_path on success.
++
++    Raises:
++        FFmpegMuxAudioError: On validation failure or FFmpeg error.
++    """
++    for p in (video_path, audio_path):
++        if not p.exists():
++            raise FFmpegMuxAudioError(f"Input file not found: {p}")
++
++    output_path = Path(output_path)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++
++    args = [
++        "-y",
++        "-i", str(video_path),
++        "-i", str(audio_path),
++        "-filter_complex", filter_complex,
++        "-map", "0:v",
++        "-map", "[aout]",
++    ]
++
++    if copy_video:
++        args.extend(["-c:v", "copy"])
++    else:
++        args.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p"])
++
++    args.extend(["-c:a", audio_codec, "-b:a", audio_bitrate, "-shortest", str(output_path)])
++
++    try:
++        await ffmpeg_run(args=args, timeout_s=timeout_s, expected_output=output_path)
++    except FFmpegError as exc:
++        raise FFmpegMuxAudioError(f"FFmpeg mux audio failed: {exc}") from exc
++
++    return output_path
++
++
++async def build_loudnorm_filter(
++    narration_idx: int,
++    bgm_idx: int | None = None,
++    sfx_idx: int | None = None,
++    target_lufs: float = -14.0,
++    bgm_gain_db: float = -18.0,
++    sfx_gain_db: float = -6.0,
++    total_duration_s: float = 0.0,
++) -> tuple[str, str]:
++    """Build filter_complex for narration loudnorm + BGM ducking + SFX mix.
++
++    Returns:
++        (filter_complex_string, audio_output_label)
++    """
++    parts: list[str] = []
++    mix_inputs: list[str] = []
++
++    # Narration: loudnorm + apad to total duration
++    parts.append(
++        f"[{narration_idx}:a]loudnorm=I={target_lufs}:TP=-1.5:LRA=11,"
++        f"apad=whole_dur={max(total_duration_s, 0.1):.3f}[narrp]"
++    )
++    mix_inputs.append("[narrp]")
++
++    # BGM: gain + sidechain ducking against narration
++    if bgm_idx is not None:
++        parts.append(f"[{bgm_idx}:a]volume={bgm_gain_db}dB[bgmv]")
++        parts.append(
++            "[bgmv][narrp]sidechaincompress=threshold=0.03:ratio=8:"
++            "attack=20:release=300[bgmduck]"
++        )
++        mix_inputs.append("[bgmduck]")
++
++    # SFX: fixed gain
++    if sfx_idx is not None:
++        parts.append(f"[{sfx_idx}:a]volume={sfx_gain_db}dB[sfxv]")
++        mix_inputs.append("[sfxv]")
++
++    # Final amix
++    n = len(mix_inputs)
++    aout_label = "[aout]"
++    parts.append("".join(mix_inputs) + f"amix=inputs={n}:duration=longest:dropout_transition=2{aout_label}")
++
++    return ";".join(parts), aout_label
++
++
++async def build_narration_only_filter(
++    narration_idx: int,
++    target_lufs: float = -14.0,
++    total_duration_s: float = 0.0,
++) -> tuple[str, str]:
++    """Build filter_complex for narration-only (loudnorm + apad)."""
++    filter_str = (
++        f"[{narration_idx}:a]loudnorm=I={target_lufs}:TP=-1.5:LRA=11,"
++        f"apad=whole_dur={max(total_duration_s, 0.1):.3f}[aout]"
++    )
++    return filter_str, "[aout]"
++
++
++async def build_bgm_only_filter(
++    bgm_idx: int,
++    bgm_gain_db: float = -18.0,
++    total_duration_s: float = 0.0,
++) -> tuple[str, str]:
++    """Build filter_complex for BGM-only (gain + fade out)."""
++    fade_start = max(0.0, total_duration_s - 2.0)
++    filter_str = (
++        f"[{bgm_idx}:a]volume={bgm_gain_db}dB,"
++        f"afade=t=out:st={fade_start:.2f}:d=2[aout]"
++    )
++    return filter_str, "[aout]"
++
++
++__all__ = [
++    "ffmpeg_mux_audio",
++    "FFmpegMuxAudioError",
++    "build_loudnorm_filter",
++    "build_narration_only_filter",
++    "build_bgm_only_filter",
++]
+\ No newline at end of file
+--- /dev/null
++++ b/oprim/_ffmpeg_burn_subtitles.py
+@@ -0,0 +1,113 @@
++"""oprim.ffmpeg_burn_subtitles — Burn subtitles into video in single ffmpeg call.
++
++Semantic unit: video + subtitle filter → burn-in + encode in ONE call.
++"""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++from obase.ffmpeg import FFmpegError
++from obase.ffmpeg import run as ffmpeg_run
++
++
++class FFmpegBurnSubtitlesError(Exception):
++    """FFmpeg subtitle burn operation failed."""
++
++
++async def ffmpeg_burn_subtitles(
++    video_path: Path,
++    subtitles_path: Path,
++    *,
++    output_path: Path,
++    style_spec: dict | None = None,
++    timeout_s: float = 300.0,
++    crf: int = 20,
++    preset: str = "veryfast",
++    pix_fmt: str = "yuv420p",
++) -> Path:
++    """Burn subtitles into video with single ffmpeg invocation.
++
++    Args:
++        video_path: Input video file.
++        subtitles_path: Subtitle file (SRT/ASS).
++        output_path: Destination file.
++        style_spec: Optional style dict for force_style parameter.
++                    e.g., {"FontName": "Arial", "FontSize": 24, "PrimaryColour": "&HFFFFFF&"}
++        timeout_s: FFmpeg timeout in seconds.
++        crf: Constant rate factor for encoding.
++        preset: Encoder preset.
++        pix_fmt: Pixel format.
++
++    Returns:
++        The output_path on success.
++
++    Raises:
++        FFmpegBurnSubtitlesError: On validation failure or FFmpeg error.
++    """
++    for p in (video_path, subtitles_path):
++        if not p.exists():
++            raise FFmpegBurnSubtitlesError(f"Input file not found: {p}")
++
++    output_path = Path(output_path)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++
++    # Build subtitles filter
++    sub_filter = f"subtitles='{subtitles_path.resolve()}'"
++    if style_spec:
++        style_str = ",".join(f"{k}={v}" for k, v in style_spec.items())
++        sub_filter += f":force_style='{style_str}'"
++
++    args = [
++        "-y",
++        "-i", str(video_path),
++        "-vf", sub_filter,
++        "-c:a", "copy",
++        "-c:v", "libx264",
++        "-preset", preset,
++        "-crf", str(crf),
++        "-pix_fmt", pix_fmt,
++        str(output_path),
++    ]
++
++    try:
++        await ffmpeg_run(args=args, timeout_s=timeout_s, expected_output=output_path)
++    except FFmpegError as exc:
++        raise FFmpegBurnSubtitlesError(f"FFmpeg burn subtitles failed: {exc}") from exc
++
++    return output_path
++
++
++async def build_ass_karaoke_filter(
++    subtitles_path: Path,
++    *,
++    font_name: str = "Arial",
++    font_size: int = 28,
++    primary_color: str = "&HFFFFFF&",
++    outline_color: str = "&H000000&",
++    outline_width: int = 2,
++    shadow_distance: int = 1,
++    alignment: int = 2,  # bottom center
++    margin_v: int = 40,
++) -> dict:
++    """Generate style_spec for ASS karaoke subtitles (\\k tags).
++
++    Returns style_spec dict for force_style parameter.
++    """
++    return {
++        "FontName": font_name,
++        "FontSize": str(font_size),
++        "PrimaryColour": primary_color,
++        "OutlineColour": outline_color,
++        "Outline": str(outline_width),
++        "Shadow": str(shadow_distance),
++        "Alignment": str(alignment),
++        "MarginV": str(margin_v),
++    }
++
++
++__all__ = [
++    "ffmpeg_burn_subtitles",
++    "FFmpegBurnSubtitlesError",
++    "build_ass_karaoke_filter",
++]
+\ No newline at end of file
+--- /dev/null
++++ b/oprim/_ffmpeg_encode.py
+@@ -0,0 +1,162 @@
++"""oprim.ffmpeg_encode — Transcode video to target spec in single ffmpeg call.
++
++Semantic unit: scale/pad/fps/normalize + encode in ONE call.
++"""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++from obase.ffmpeg import FFmpegError
++from obase.ffmpeg import run as ffmpeg_run
++
++
++class FFmpegEncodeError(Exception):
++    """FFmpeg encode operation failed."""
++
++
++async def ffmpeg_encode(
++    input_path: Path,
++    *,
++    output_path: Path,
++    vf: str,
++    crf: int = 20,
++    preset: str = "veryfast",
++    pix_fmt: str = "yuv420p",
++    timeout_s: float = 300.0,
++    an: bool = False,
++    audio_codec: str = "aac",
++    audio_bitrate: str = "192k",
++) -> Path:
++    """Transcode video to unified spec with single ffmpeg invocation.
++
++    Args:
++        input_path: Input video file.
++        output_path: Destination file.
++        vf: Video filter string (scale, pad, setsar, fps, eq brightness, etc.).
++        crf: Constant rate factor.
++        preset: Encoder preset.
++        pix_fmt: Pixel format.
++        timeout_s: FFmpeg timeout in seconds.
++        an: If True, strip audio (-an).
++        audio_codec: Audio codec if not stripping audio.
++        audio_bitrate: Audio bitrate.
++
++    Returns:
++        The output_path on success.
++
++    Raises:
++        FFmpegEncodeError: On validation failure or FFmpeg error.
++    """
++    if not input_path.exists():
++        raise FFmpegEncodeError(f"Input file not found: {input_path}")
++
++    output_path = Path(output_path)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++
++    args = [
++        "-y",
++        "-i", str(input_path),
++        "-vf", vf,
++        "-c:v", "libx264",
++        "-preset", preset,
++        "-crf", str(crf),
++        "-pix_fmt", pix_fmt,
++    ]
++
++    if an:
++        args.append("-an")
++    else:
++        args.extend(["-c:a", audio_codec, "-b:a", audio_bitrate])
++
++    args.append(str(output_path))
++
++    try:
++        await ffmpeg_run(args=args, timeout_s=timeout_s, expected_output=output_path)
++    except FFmpegError as exc:
++        raise FFmpegEncodeError(f"FFmpeg encode failed: {exc}") from exc
++
++    return output_path
++
++
++async def build_normalize_vf(
++    width: int,
++    height: int,
++    fps: int,
++    *,
++    brightness: float = 0.0,
++    force_sar: bool = True,
++) -> str:
++    """Build standard normalization vf string: scale + pad + setsar + fps + optional eq."""
++    vf = (
++        f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
++        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2"
++    )
++    if force_sar:
++        vf += ",setsar=1"
++    vf += f",fps={fps}"
++    if brightness:
++        vf += f",eq=brightness={brightness:.4f}"
++    return vf
++
++
++async def measure_avg_luma(path: Path) -> float | None:
++    """Measure average luma of video middle frame (0-255). Returns None on failure."""
++    import subprocess
++    import tempfile
++    from PIL import Image
++
++    try:
++        dur_out = subprocess.run(
++            [
++                "ffprobe", "-v", "error",
++                "-show_entries", "format=duration",
++                "-of", "default=noprint_wrappers=1:nokey=1",
++                str(path),
++            ],
++            capture_output=True, text=True, check=True,
++        )
++        dur = float(dur_out.stdout.strip())
++    except (subprocess.CalledProcessError, ValueError):
++        return None
++
++    with tempfile.TemporaryDirectory(prefix="luma_") as td:
++        frame = Path(td) / "f.png"
++        subprocess.run(
++            [
++                "ffmpeg", "-y",
++                "-ss", f"{dur / 2:.3f}",
++                "-i", str(path),
++                "-frames:v", "1", "-q:v", "3",
++                str(frame),
++            ],
++            capture_output=True,
++        )
++        if not frame.exists():
++            return None
++        with Image.open(frame) as im:
++            hist = im.convert("L").histogram()
++            total = sum(hist)
++            if total == 0:
++                return None
++            return sum(i * c for i, c in enumerate(hist)) / total
++
++
++async def compute_brightness_correction(
++    luma: float,
++    target_luma: float,
++    *,
++    max_delta: float = 0.15,
++) -> float:
++    """Convert luma difference to ffmpeg eq brightness parameter [-1, 1]."""
++    diff = (target_luma - luma) / 255.0
++    return max(-max_delta, min(max_delta, diff))
++
++
++__all__ = [
++    "ffmpeg_encode",
++    "FFmpegEncodeError",
++    "build_normalize_vf",
++    "measure_avg_luma",
++    "compute_brightness_correction",
++]
+\ No newline at end of file
+--- /dev/null
++++ b/oprim/_ffmpeg_probe.py
+@@ -0,0 +1,153 @@
++"""oprim.ffmpeg_probe — Media metadata extraction via ffprobe.
++
++Semantic unit: read-only ffprobe invocation.
++"""
++
++from __future__ import annotations
++
++import asyncio
++import json
++from pathlib import Path
++
++
++class FFmpegProbeError(Exception):
++    """FFmpeg probe operation failed."""
++
++
++async def ffmpeg_probe(path: Path) -> dict:
++    """Run ffprobe and return full JSON metadata.
++
++    Args:
++        path: Media file path.
++
++    Returns:
++        Parsed ffprobe JSON output.
++
++    Raises:
++        FFmpegProbeError: ffprobe not found or failed.
++    """
++    if not path.exists():
++        raise FFmpegProbeError(f"File not found: {path}")
++
++    cmd = [
++        "ffprobe", "-v", "quiet",
++        "-print_format", "json",
++        "-show_format", "-show_streams",
++        str(path),
++    ]
++
++    try:
++        proc = await asyncio.create_subprocess_exec(
++            *cmd,
++            stdout=asyncio.subprocess.PIPE,
++            stderr=asyncio.subprocess.PIPE,
++        )
++        stdout, stderr = await proc.communicate()
++    except FileNotFoundError as exc:
++        raise FFmpegProbeError("ffprobe not found on PATH") from exc
++
++    if proc.returncode != 0:
++        raise FFmpegProbeError(f"ffprobe failed: {stderr.decode(errors='replace')}")
++
++    try:
++        return json.loads(stdout.decode())
++    except json.JSONDecodeError as exc:
++        raise FFmpegProbeError(f"Failed to parse ffprobe JSON: {exc}") from exc
++
++
++async def ffmpeg_probe_duration(path: Path) -> float:
++    """Get media duration in seconds via ffprobe.
++
++    Args:
++        path: Media file path.
++
++    Returns:
++        Duration in seconds.
++
++    Raises:
++        FFmpegProbeError: ffprobe failed or duration not parseable.
++    """
++    if not path.exists():
++        raise FFmpegProbeError(f"File not found: {path}")
++
++    cmd = [
++        "ffprobe", "-v", "error",
++        "-show_entries", "format=duration",
++        "-of", "default=noprint_wrappers=1:nokey=1",
++        str(path),
++    ]
++
++    try:
++        proc = await asyncio.create_subprocess_exec(
++            *cmd,
++            stdout=asyncio.subprocess.PIPE,
++            stderr=asyncio.subprocess.PIPE,
++        )
++        stdout, stderr = await proc.communicate()
++    except FileNotFoundError as exc:
++        raise FFmpegProbeError("ffprobe not found on PATH") from exc
++
++    if proc.returncode != 0:
++        raise FFmpegProbeError(f"ffprobe failed: {stderr.decode(errors='replace')}")
++
++    try:
++        return float(stdout.decode().strip())
++    except ValueError as exc:
++        raise FFmpegProbeError(f"Unparsable duration: {stdout!r}") from exc
++
++
++async def ffmpeg_probe_resolution(path: Path) -> tuple[int, int] | None:
++    """Get video resolution (width, height) via ffprobe.
++
++    Args:
++        path: Media file path.
++
++    Returns:
++        (width, height) or None if no video stream.
++    """
++    meta = await ffmpeg_probe(path)
++    for stream in meta.get("streams", []):
++        if stream.get("codec_type") == "video":
++            w = stream.get("width")
++            h = stream.get("height")
++            if w and h:
++                return (int(w), int(h))
++    return None
++
++
++async def ffmpeg_probe_fps(path: Path) -> float | None:
++    """Get video frame rate via ffprobe.
++
++    Args:
++        path: Media file path.
++
++    Returns:
++        FPS as float, or None if not available.
++    """
++    meta = await ffmpeg_probe(path)
++    for stream in meta.get("streams", []):
++        if stream.get("codec_type") == "video":
++            r = stream.get("r_frame_rate") or stream.get("avg_frame_rate")
++            if r and "/" in r:
++                num, den = r.split("/")
++                try:
++                    return float(num) / float(den)
++                except (ValueError, ZeroDivisionError):
++                    pass
++    return None
++
++
++async def ffmpeg_has_audio(path: Path) -> bool:
++    """Check if media file has audio stream."""
++    meta = await ffmpeg_probe(path)
++    return any(s.get("codec_type") == "audio" for s in meta.get("streams", []))
++
++
++__all__ = [
++    "ffmpeg_probe",
++    "ffmpeg_probe_duration",
++    "ffmpeg_probe_resolution",
++    "ffmpeg_probe_fps",
++    "ffmpeg_has_audio",
++    "FFmpegProbeError",
++]
+\ No newline at end of file
+--- /dev/null
++++ b/oprim/_ffmpeg_extract_cover.py
+@@ -0,0 +1,62 @@
++"""oprim.ffmpeg_extract_cover — Extract single frame as cover image.
++
++Semantic unit: single ffmpeg frame extraction.
++"""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++from obase.ffmpeg import FFmpegError
++from obase.ffmpeg import run as ffmpeg_run
++
++
++class FFmpegExtractCoverError(Exception):
++    """FFmpeg cover extraction failed."""
++
++
++async def ffmpeg_extract_cover(
++    video_path: Path,
++    output_path: Path,
++    *,
++    timestamp: float = 0.0,
++    timeout_s: float = 60.0,
++) -> Path:
++    """Extract a single frame from video as cover image.
++
++    Args:
++        video_path: Input video file.
++        output_path: Destination image file (JPG/PNG).
++        timestamp: Timestamp in seconds to extract frame from.
++        timeout_s: FFmpeg timeout in seconds.
++
++    Returns:
++        The output_path on success.
++
++    Raises:
++        FFmpegExtractCoverError: On validation failure or FFmpeg error.
++    """
++    if not video_path.exists():
++        raise FFmpegExtractCoverError(f"Video file not found: {video_path}")
++
++    output_path = Path(output_path)
++    output_path.parent.mkdir(parents=True, exist_ok=True)
++
++    args = [
++        "-y",
++        "-ss", f"{timestamp:.3f}",
++        "-i", str(video_path),
++        "-frames:v", "1",
++        "-q:v", "2",
++        str(output_path),
++    ]
++
++    try:
++        await ffmpeg_run(args=args, timeout_s=timeout_s, expected_output=output_path)
++    except FFmpegError as exc:
++        raise FFmpegExtractCoverError(f"FFmpeg extract cover failed: {exc}") from exc
++
++    return output_path
++
++
++__all__ = ["ffmpeg_extract_cover", "FFmpegExtractCoverError"]
+\ No newline at end of file
+--- a/oprim/_transcribe_audio.py
++++ b/oprim/_transcribe_audio.py
+@@ -28,6 +28,7 @@
+     model_size: str = "base",
+     language: str = "zh",
+     model_path: str = "/models/whisper",
++    vad_filter: bool = False,
+ ) -> TranscriptResult:
+     """Transcribe audio to text.
+ 
+@@ -38,6 +39,8 @@
+         language: BCP-47 language tag ("zh", "en", etc.).
+         model_path: Directory containing the faster-whisper model weights.
+                     Ignored for dashscope. Must exist — model is not downloaded automatically.
++        vad_filter: Apply voice-activity filtering before decoding (local backend).
++                    Required for silence: without it Whisper hallucinates speech.
+ 
+     Returns:
+         TranscriptResult with text, segments, language, and duration.
+@@ -53,7 +56,11 @@
+ 
+     if backend == "local":
+         return await _transcribe_local(
+-            audio_path, model_size=model_size, language=language, model_path=model_path
++            audio_path,
++            model_size=model_size,
++            language=language,
++            model_path=model_path,
++            vad_filter=vad_filter,
+         )
+     elif backend == "dashscope":
+         return await _transcribe_dashscope(audio_path, language=language)
+@@ -71,6 +78,7 @@
+     model_size: str,
+     language: str,
+     model_path: str,
++    vad_filter: bool = False,
+ ) -> TranscriptResult:
+     try:
+         from faster_whisper import WhisperModel  # type: ignore[import]
+@@ -90,7 +98,9 @@
+ 
+     def _run() -> tuple[str, list[dict], str, float]:
+         model = WhisperModel(str(mp), device="cpu", compute_type="int8")
+-        segments_gen, info = model.transcribe(str(audio_path), language=language)
++        segments_gen, info = model.transcribe(
++            str(audio_path), language=language, vad_filter=vad_filter
++        )
+         segments: list[dict] = []
+         parts: list[str] = []
+         for seg in segments_gen:
