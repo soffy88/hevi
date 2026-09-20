@@ -5,7 +5,9 @@
 | Repository | SHA | Worktree Clean |
 |------------|-----|----------------|
 | **omodul** (canonical) | `bdb48f52032e69818281c779169959e0650a558d` | YES (canonical repo immutable) |
-| **HEVI** | `9e949c0ddf3e1cd9e9afaa45b429d6613a2f5a0d` | NO (7 modified caller files from P1/P2) |
+| **HEVI** | `583209c2ffab9ca65a9712ab62c78523c6312161` | YES (P1/P2 migration committed) |
+
+`HEVI_MODIFIED_FILE_COUNT=8` (committed in `583209c`)
 
 ---
 
@@ -77,12 +79,22 @@
 
 | Smoke | Status | Notes |
 |-------|--------|-------|
-| `PREVIZ_REAL_SMOKE` | CONTRACT | Requires Blender runtime |
-| `REMOTION_REAL_SMOKE` | CONTRACT | Requires Remotion project |
-| `TIMELINE_REAL_SMOKE` | CONTRACT | Requires FFmpeg |
+| `PREVIZ_REAL_SMOKE` | CONTRACT_ONLY | Requires Blender runtime |
+| `REMOTION_REAL_SMOKE` | CONTRACT_ONLY | Requires Remotion project |
+| `TIMELINE_REAL_SMOKE` | CONTRACT_ONLY | Requires FFmpeg |
 | `V2V_LIVE_SMOKE` | BLOCKED_ENVIRONMENT | No live V2V provider in CI |
 
 > Note: Contract tests verify signatures, error handling, and output structure. Live provider/runtime smokes require dedicated GPU/GPU-cloud environment.
+
+### Qualification Labels
+
+```
+P2_ARCHITECTURE_QUALIFIED=YES
+P2_CONTRACT_QUALIFIED=YES
+P2_LIVE_RUNTIME_QUALIFIED=NO
+```
+
+P2 gate is 3O transaction architecture/contract, not production runtime qualification. P2 remains PASS.
 
 ---
 
@@ -107,7 +119,10 @@
 P1_RELEASE_CLOSED=YES
 
 NEW_OMODUL_SHA=bdb48f52032e69818281c779169959e0650a558d
-P2_HEVI_SHA=9e949c0ddf3e1cd9e9afaa45b429d6613a2f5a0d
+P2_HEVI_SHA=583209c2ffab9ca65a9712ab62c78523c6312161
+
+HEVI_MODIFIED_FILE_COUNT=0
+HEVI_WORKTREE_CLEAN=YES
 
 OMODUL_TESTS=PASS
 OMODUL_RUFF=PASS
@@ -130,22 +145,6 @@ FINAL_GLOBAL_INDEPENDENT_AUDIT=PASS
 3O_ARCHITECTURE_ZERO=PASS
 
 P2=PASS
+P2_RELEASE_CLOSED=YES
 NEXT_PHASE=P3_OSERVI_ASSEMBLY
-```
-
----
-
-## 9. HEVI WORKTREE NOTE
-
-HEVI worktree has uncommitted changes from P1/P2 caller migrations (7 modified files). These should be committed before P3 begins.
-
-```
-M hevi/assembly/assembler.py
-M hevi/assembly/cover_extractor.py
-M hevi/assembly/postprocess_service.py
-M hevi/assembly/subtitle_align.py
-M hevi/explainer/render.py
-M hevi/pipeline/longvideo_orchestrator.py
-M tests/test_assembly.py
-M tests/test_explainer_render.py
 ```

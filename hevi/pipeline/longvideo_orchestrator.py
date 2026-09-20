@@ -57,13 +57,6 @@ def _order_and_dedup_shots(paths: list[Path]) -> list[Path]:
     return ordered
 
 
-# Test-only hook: set this to a dict of provider overrides before calling run_task.
-# orchestrate_longvideo reads this at call time (not import time), so task_service
-# picks it up even though it imported the function reference earlier.
-# Must be reset to None after the test.
-_PROVIDERS_OVERRIDE: dict[str, Any] | None = None
-
-
 async def agentic_longvideo_pipeline(
     *, config: Any, _providers: dict[str, Any] | None = None
 ) -> Any:
@@ -1194,12 +1187,6 @@ async def orchestrate_longvideo(
                         _ref_emb, subject_ref_embedding_face=_ref_emb_face, capture=_scorecards
                     )
                     logger.info("consistency_fn: 身份锚评分卡已注入(角色锁定 → 双变体按身份选优)")
-
-        # Test-only: merge overrides injected via _PROVIDERS_OVERRIDE module var.
-        import hevi.pipeline.longvideo_orchestrator as _self
-
-        if _self._PROVIDERS_OVERRIDE:
-            _providers.update(_self._PROVIDERS_OVERRIDE)
 
         if regenerate_shot_ids:
             # C3 verdict→返工:复用已建好的 _providers,只重生成指定镜头(hints 并入 prompt)。
