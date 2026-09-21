@@ -14,12 +14,17 @@ process's already-patched module object — every real TTS call was hitting
 from __future__ import annotations
 
 import importlib
+import importlib.metadata
 import logging
 import sys
 import types
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+class VibeVoiceCompatibilityError(RuntimeError):
+    """The installed VibeVoice/Transformers pair is outside the tested seam."""
 
 
 def _ensure_vibevoice_transformers_compat() -> None:
@@ -58,48 +63,62 @@ def patch_vibevoice_exports() -> None:
     initialization idempotent.
     """
     try:
-        import vibevoice
-        from transformers.models.auto import AutoModel
-
-        _ensure_vibevoice_transformers_compat()
-        from vibevoice.modular.configuration_vibevoice import (
-            VibeVoiceAcousticTokenizerConfig,
-            VibeVoiceConfig,
-            VibeVoiceSemanticTokenizerConfig,
+        transformers_version = importlib.metadata.version("transformers")
+        vibevoice_version = importlib.metadata.version("vibevoice")
+    except importlib.metadata.PackageNotFoundError as exc:
+        raise VibeVoiceCompatibilityError(
+            f"VibeVoice compatibility guard cannot resolve installed package: {exc}"
+        ) from exc
+    if not transformers_version.startswith("5.") or vibevoice_version != "0.0.1":
+        raise VibeVoiceCompatibilityError(
+            "unsupported VibeVoice compatibility pair: "
+            f"transformers={transformers_version}, vibevoice={vibevoice_version}; "
+            "tested pair is transformers 5.x + vibevoice 0.0.1"
         )
 
-        mapping = AutoModel._model_mapping
-        original_register = mapping.register
-        allowed_configs = {
-            VibeVoiceAcousticTokenizerConfig,
-            VibeVoiceSemanticTokenizerConfig,
-            VibeVoiceConfig,
-        }
+    vibevoice = sys.modules.get("vibevoice")
+    if vibevoice is not None and all(
+        hasattr(vibevoice, name)
+        for name in ("VibeVoiceForConditionalGenerationInference", "VibeVoiceProcessor")
+    ):
+        return
 
+    from transformers.models.auto import AutoModel, AutoModelForCausalLM
+
+    _ensure_vibevoice_transformers_compat()
+    mappings = [AutoModel._model_mapping, AutoModelForCausalLM._model_mapping]
+    originals = [mapping.register for mapping in mappings]
+
+    def _is_vibevoice_config(key: Any) -> bool:
+        module = str(getattr(key, "__module__", ""))
+        return module.startswith("vibevoice.") and str(getattr(key, "__name__", "")).startswith("VibeVoice")
+
+    def _make_register_compat(original: Any) -> Any:
         def _register_compat(key: Any, value: Any, exist_ok: bool = False) -> None:
-            if key in allowed_configs:
-                return original_register(key, value, exist_ok=True)
-            return original_register(key, value, exist_ok=exist_ok)
+            # Only VibeVoice's own config classes receive idempotent registration;
+            # every unrelated Transformers registration retains upstream semantics.
+            original(key, value, exist_ok=True if _is_vibevoice_config(key) else exist_ok)
 
-        mapping.register = _register_compat  # type: ignore[method-assign]
-        try:
-            from vibevoice.modular.modeling_vibevoice_inference import (
-                VibeVoiceForConditionalGenerationInference,
-            )
-        finally:
-            mapping.register = original_register  # type: ignore[method-assign]
+        return _register_compat
 
-        from vibevoice.processor.vibevoice_processor import (
-            VibeVoiceProcessor,
+    for mapping, original in zip(mappings, originals, strict=True):
+        mapping.register = _make_register_compat(original)  # type: ignore[method-assign]
+    try:
+        importlib.import_module("vibevoice")
+        from vibevoice.modular.modeling_vibevoice_inference import (
+            VibeVoiceForConditionalGenerationInference,
         )
+        from vibevoice.processor.vibevoice_processor import VibeVoiceProcessor
+    finally:
+        for mapping, original in zip(mappings, originals, strict=True):
+            mapping.register = original  # type: ignore[method-assign]
 
-        vibevoice.VibeVoiceForConditionalGenerationInference = (
-            VibeVoiceForConditionalGenerationInference
-        )
-        vibevoice.VibeVoiceProcessor = VibeVoiceProcessor
-        logger.info("Main library bug patched: vibevoice top-level exports (empty __init__.py)")
-    except Exception as e:
-        logger.error(f"Failed to patch vibevoice exports: {e}")
+    vibevoice_module: Any = sys.modules["vibevoice"]
+    vibevoice_module.VibeVoiceForConditionalGenerationInference = (
+        VibeVoiceForConditionalGenerationInference
+    )
+    vibevoice_module.VibeVoiceProcessor = VibeVoiceProcessor
+    logger.info("VibeVoice compatibility registration seam initialized")
 
 
 def patch_vibevoice_reference_audio_kwarg() -> None:
