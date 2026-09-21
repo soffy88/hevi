@@ -7,6 +7,8 @@ import time
 import uuid
 from datetime import UTC, datetime
 
+from obase.persistence import PgPool
+
 from hevi.core.config import settings
 from hevi.monitoring.metrics import (
     lease_expirations_total,
@@ -14,6 +16,7 @@ from hevi.monitoring.metrics import (
     task_queue_latency_seconds,
     worker_utilization,
 )
+from hevi.queue.heartbeat import WorkerHeartbeat
 from hevi.queue.task_queue import dequeue
 from hevi.tasks.attempt_repository import AttemptRepository
 from hevi.tasks.task_service import TaskService
@@ -65,7 +68,25 @@ class QueueWorker:
         self.warm_providers = warm_providers or set()
         self._running = False
         self._current_task_id = None
+        self._current_run_task: asyncio.Task[object] | None = None
         self.worker_id = f"worker-{uuid.uuid4()}"
+        self._heartbeat = (
+            WorkerHeartbeat(task_service.repository.pool, worker_id=self.worker_id)
+            if isinstance(task_service.repository.pool, PgPool)
+            else None
+        )
+
+    async def _heartbeat_loop(self) -> None:
+        assert self._heartbeat is not None
+        interval = max(1.0, float(settings.worker_heartbeat_interval_s))
+        while self._running:
+            try:
+                await self._heartbeat.beat()
+            except Exception:
+                # A heartbeat outage must be visible to readiness, but must
+                # not turn an otherwise recoverable worker into a crash loop.
+                logger.exception("worker heartbeat persistence failed")
+            await asyncio.sleep(interval)
 
     async def _recover_zombie_tasks(self) -> None:
         """Recover only tasks whose durable lease has actually expired.
@@ -182,71 +203,96 @@ class QueueWorker:
     async def run(self) -> None:
         """Run the worker loop."""
         self._running = True
-        logger.info("Queue worker started")
-        await self._recover_zombie_tasks()
-        await self._reconcile_durable_executions()
-
-        # Setup signal handlers for graceful shutdown
-        loop = asyncio.get_running_loop()
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            # Signal handlers not supported on all platforms (e.g. Windows)
-            with contextlib.suppress(NotImplementedError):
-                loop.add_signal_handler(sig, self.stop)
-
-        while self._running:
+        heartbeat_task: asyncio.Task[None] | None = None
+        if self._heartbeat is not None:
             try:
-                # Recovery is a live part of the worker loop, not only a
-                # startup migration.  A healthy sibling worker must be able
-                # to take over after another worker dies without restarting.
-                await self._recover_zombie_tasks()
-                task = await dequeue(
-                    self.task_service.repository,
-                    self.worker_id,
-                    resource_class=self.resource_class,
-                    available_vram_mb=self.available_vram_mb,
-                    capacity_slots=self.capacity_slots,
-                    provider_tokens=self.provider_tokens,
-                    warm_providers=self.warm_providers,
-                    scheduled_only=settings.scheduler_required,
-                )
-                if task:
-                    task_id = task["id"]
-                    self._current_task_id = task_id
-                    task_class = _task_class(task)
-                    queued_age = _queue_age_seconds(task.get("queued_at"))
-                    if queued_age is not None:
-                        task_queue_latency_seconds.labels(
-                            task_class=task_class, resource_class=self.resource_class
-                        ).observe(queued_age)
-                    worker_utilization.labels(resource_class=self.resource_class).set(
-                        min(1.0, 1.0 / max(1, self.capacity_slots))
-                    )
-                    attempt_started = time.monotonic()
-                    attempt_status = "error"
-                    logger.info(f"Processing task {task_id}")
-                    try:
-                        result = await self.task_service.run_task(task_id)
-                        result_status = result.get("status") if isinstance(result, dict) else None
-                        attempt_status = (
-                            "success" if result_status in {"completed", "succeeded"} else "error"
-                        )
-                    except Exception as e:
-                        logger.error(f"Error running task {self._current_task_id}: {e}")
-                    finally:
-                        task_attempt_duration_seconds.labels(
-                            task_class=task_class, status=attempt_status
-                        ).observe(time.monotonic() - attempt_started)
-                        worker_utilization.labels(resource_class=self.resource_class).set(0.0)
-                        self._current_task_id = None
-                else:
-                    await asyncio.sleep(self.poll_interval)
-            except Exception as e:
-                logger.error(f"Worker loop error: {e}")
-                await asyncio.sleep(self.poll_interval)
+                await self._heartbeat.beat()
+                heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+            except Exception:
+                logger.exception("worker heartbeat could not start")
+        logger.info("Queue worker started")
+        try:
+            await self._recover_zombie_tasks()
+            await self._reconcile_durable_executions()
 
-        logger.info("Queue worker stopped")
+            # Setup signal handlers for graceful shutdown
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                # Signal handlers not supported on all platforms (e.g. Windows)
+                with contextlib.suppress(NotImplementedError):
+                    loop.add_signal_handler(sig, self.stop)
+
+            while self._running:
+                try:
+                    # Recovery is a live part of the worker loop, not only a
+                    # startup migration.  A healthy sibling worker must be able
+                    # to take over after another worker dies without restarting.
+                    await self._recover_zombie_tasks()
+                    task = await dequeue(
+                        self.task_service.repository,
+                        self.worker_id,
+                        resource_class=self.resource_class,
+                        available_vram_mb=self.available_vram_mb,
+                        capacity_slots=self.capacity_slots,
+                        provider_tokens=self.provider_tokens,
+                        warm_providers=self.warm_providers,
+                        scheduled_only=settings.scheduler_required,
+                    )
+                    if task:
+                        task_id = task["id"]
+                        self._current_task_id = task_id
+                        task_class = _task_class(task)
+                        queued_age = _queue_age_seconds(task.get("queued_at"))
+                        if queued_age is not None:
+                            task_queue_latency_seconds.labels(
+                                task_class=task_class, resource_class=self.resource_class
+                            ).observe(queued_age)
+                        worker_utilization.labels(resource_class=self.resource_class).set(
+                            min(1.0, 1.0 / max(1, self.capacity_slots))
+                        )
+                        attempt_started = time.monotonic()
+                        attempt_status = "error"
+                        logger.info(f"Processing task {task_id}")
+                        self._current_run_task = asyncio.create_task(
+                            self.task_service.run_task(task_id)
+                        )
+                        try:
+                            result = await self._current_run_task
+                            result_status = result.get("status") if isinstance(result, dict) else None
+                            attempt_status = (
+                                "success" if result_status in {"completed", "succeeded"} else "error"
+                            )
+                        except Exception as e:
+                            logger.error(f"Error running task {self._current_task_id}: {e}")
+                        finally:
+                            self._current_run_task = None
+                            task_attempt_duration_seconds.labels(
+                                task_class=task_class, status=attempt_status
+                            ).observe(time.monotonic() - attempt_started)
+                            worker_utilization.labels(resource_class=self.resource_class).set(0.0)
+                            self._current_task_id = None
+                    else:
+                        await asyncio.sleep(self.poll_interval)
+                except Exception as e:
+                    logger.error(f"Worker loop error: {e}")
+                    await asyncio.sleep(self.poll_interval)
+        finally:
+            self._running = False
+            if heartbeat_task is not None:
+                heartbeat_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await heartbeat_task
+            if self._heartbeat is not None:
+                with contextlib.suppress(Exception):
+                    await self._heartbeat.mark_stopped()
+            logger.info("Queue worker stopped")
 
     def stop(self) -> None:
         """Signal the worker to stop."""
         logger.info("Stopping queue worker...")
         self._running = False
+        if self._current_run_task is not None and not self._current_run_task.done():
+            # Do not let Docker's graceful-stop window turn a mid-run restart
+            # into a completed run. The task remains running with its durable
+            # attempt lease; the next worker recovers it after expiry.
+            self._current_run_task.cancel()

@@ -230,25 +230,30 @@ async def health_live() -> dict[str, str]:
 
 @app.get("/api/health/ready", response_model=None)
 async def health_ready() -> JSONResponse:
-    """Readiness probe: database + authority stores + host claim.
+    """Readiness probe: every production dependency plus authority stores.
 
     Missing optional capabilities (GPU/lip-sync/local runtime) are reported but
     never make readiness fail.
     """
-    from hevi.api.health import readiness_report
+    from hevi.api.health import production_readiness_dependencies, readiness_report
 
     database_ok = bool(settings.local_mode)
+    pool: Any | None = None
     if not database_ok:
         try:
             from hevi.db.pg_pool import get_hevi_pg_pool
 
             pool = await asyncio.wait_for(get_hevi_pg_pool(), timeout=2.0)
+            assert pool is not None
             async with pool.acquire() as conn:
                 await asyncio.wait_for(conn.fetchval("SELECT 1"), timeout=1.0)
             database_ok = True
         except Exception:
             database_ok = False
-    report = readiness_report(database_ok=database_ok)
+    dependencies = None
+    if database_ok and not settings.local_mode and pool is not None:
+        dependencies = await production_readiness_dependencies(pool=pool)
+    report = readiness_report(database_ok=database_ok, dependencies=dependencies)
     return JSONResponse(
         status_code=200 if report["status"] == "ready" else 503, content=report
     )

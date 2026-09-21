@@ -9,6 +9,7 @@ then claims a new attempt and continues from ``AttemptRepository.latest``.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from pathlib import Path
 from typing import Any
@@ -60,11 +61,17 @@ async def execute_checkpoint_render(task: dict[str, Any], pool: Any) -> dict[str
                 total_shots=total,
                 state={"shots": shots, "stage": f"shot:{index}"},
             )
+        if float(config.get("step_delay_s") or 0.0) > 0:
+            await asyncio.sleep(float(config["step_delay_s"]))
         completed = index + 1
 
     final_path = output_dir / "final.mp4"
     payload = b"FTW1" + b"".join(Path(item["path"]).read_bytes() for item in shots)
     final_path.write_bytes(payload)
+    final_kind = str(config.get("final_artifact_kind") or "video")
+    final_media_type = (
+        "application/octet-stream" if final_kind != "video" else "video/mp4"
+    )
     manifest = ArtifactManifest(
         production_id=str(config.get("production_id") or ""),
         revision_id=(str(config["revision_id"]) if config.get("revision_id") else None),
@@ -73,8 +80,8 @@ async def execute_checkpoint_render(task: dict[str, Any], pool: Any) -> dict[str
         artifacts=[
             Artifact.from_path(
                 final_path,
-                kind="video",
-                media_type="video/mp4",
+                kind=final_kind,
+                media_type=final_media_type,
                 primary=True,
                 logical_role="final",
             ),

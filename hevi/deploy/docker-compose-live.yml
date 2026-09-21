@@ -71,6 +71,7 @@ services:
     environment:
       DATABASE_URL: postgresql://hevi:hevi@postgres:5432/hevi
       SCHEDULER_REQUIRED: "true"
+      JWT_SECRET: ${JWT_SECRET:-live-test-secret}
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,6 +89,8 @@ services:
       MINIO_SECRET_KEY: livehevi12345
       MINIO_BUCKET: hevi-assets
       SCHEDULER_REQUIRED: "true"
+      JWT_SECRET: ${JWT_SECRET:-live-test-secret}
+      TASK_LEASE_SECONDS: ${TASK_LEASE_SECONDS:-10}
       HEVI_EXPLAINER_TTS_PROVIDER: ${HEVI_EXPLAINER_TTS_PROVIDER:-edge_tts}
     depends_on:
       postgres:

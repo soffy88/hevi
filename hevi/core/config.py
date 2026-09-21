@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # fenced before another worker can reclaim the attempt.
     task_lease_seconds: int = 120
     task_heartbeat_interval_s: float = 30.0
+    # Process-level heartbeat is independent from task leases.  Readiness
+    # fails closed when no running worker has persisted a beat inside this TTL.
+    worker_heartbeat_interval_s: float = 5.0
+    worker_heartbeat_ttl_s: int = 15
     # A production worker consumes scheduler decisions written by the
     # standalone scheduler service.  Keep the switch explicit so local/fake
     # repositories and old development stacks can still exercise dequeue().
@@ -30,6 +34,7 @@ class Settings(BaseSettings):
     scheduler_poll_interval_s: float = 2.0
     scheduler_leader_name: str = "hevi-scheduler"
     scheduler_lease_seconds: int = 15
+    scheduler_heartbeat_ttl_s: int = 30
     scheduler_candidate_limit: int = 128
     scheduler_worker_id: str = "scheduler"
     provider_exploration_rate: float = 0.03
