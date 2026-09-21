@@ -324,6 +324,11 @@ def _register_builtin_adapters() -> None:
 
         return await execute_motion_graphics_task(task, pool)
 
+    async def execute_visual_quality(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.production.visual_quality_workflow import execute_visual_quality_task
+
+        return await execute_visual_quality_task(task, pool)
+
     _DEFAULT.register("checkpoint_render", execute_checkpoint, replace=True)
     _DEFAULT.register("clip_video", execute_clip_video, replace=True)
     _DEFAULT.register("localize_video", execute_localize_video, replace=True)
@@ -334,6 +339,7 @@ def _register_builtin_adapters() -> None:
     _DEFAULT.register("subtitle_timeline", execute_subtitle_timeline, replace=True)
     _DEFAULT.register("audio_master_clock", execute_audio_master_clock, replace=True)
     _DEFAULT.register("motion_graphics", execute_motion_graphics, replace=True)
+    _DEFAULT.register("visual_quality", execute_visual_quality, replace=True)
 
 
 _register_builtin_adapters()

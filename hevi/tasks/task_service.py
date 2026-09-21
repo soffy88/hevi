@@ -1258,6 +1258,7 @@ class TaskService:
                 "subtitle_timeline",
                 "audio_master_clock",
                 "motion_graphics",
+                "visual_quality",
             }:
                 await self._apply_provider_policy(task)
             await self._start_attempt(task)
@@ -1304,6 +1305,7 @@ class TaskService:
                 "subtitle_timeline",
                 "audio_master_clock",
                 "motion_graphics",
+                "visual_quality",
             }:
                 return await self._run_adapter_task(task)
 

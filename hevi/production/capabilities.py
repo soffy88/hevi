@@ -433,6 +433,17 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         quality_gate_ready=True,
         production_ready=True,
     ),
+    "visual_quality": CapabilityDescriptor(
+        "visual_quality",
+        "统一视觉质量门",
+        ("/api/tasks",),
+        True,
+        "Real sampled frame measurements → existing Layer4 quality policy → Artifact/RepairIncident authority.",
+        "需要可解码的视频 artifact；V2V 仅复用 contract，不调用 provider。",
+        execution_ready=True,
+        quality_gate_ready=True,
+        production_ready=True,
+    ),
 }
 
 
