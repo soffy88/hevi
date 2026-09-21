@@ -18,6 +18,8 @@ from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService
 from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.production.composition import configure_application_adapters
+from hevi.providers.registry import register_all_providers
 from hevi.queue.worker import QueueWorker
 from hevi.resilience.balance_prober import BalanceProber
 from hevi.tasks.repository import TaskRepository
@@ -28,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 async def run() -> None:
     load_dotenv()
+    register_all_providers()
+    configure_application_adapters()
     pool = await get_hevi_pg_pool()
     repository = TaskRepository(pool)
     billing = BillingService(AccountService(CreditRepository(pool)))

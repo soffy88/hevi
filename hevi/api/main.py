@@ -16,7 +16,6 @@ load_dotenv()  # 标准: 在所有本地 import 之前
 
 from hevi.api.mcp_mount import mount_mcp
 from hevi.api.routers.audio_library import router as audio_router
-from hevi.audio.task_adapter import execute_voice_studio_task
 from hevi.api.routers.auth import router as auth_router
 from hevi.api.routers.authorities import router as authorities_router
 from hevi.api.routers.backlot import router as backlot_router
@@ -26,23 +25,10 @@ from hevi.api.routers.credits import router as credits_router
 from hevi.api.routers.dashboard import router as dashboard_router
 from hevi.api.routers.distribution import router as distribution_router
 from hevi.api.routers.director import router as director_router
-from hevi.director.graph_render import execute_task as director_graph_task_adapter
-from hevi.season_planner.production import execute_shortdrama_task
-from hevi.studio.slate import execute_lot_task
-from hevi.api.routers.director_pipeline import (
-    execute_task as director_tongjian_task_adapter,
-    router as director_pipeline_router,
-)
-from hevi.api.routers.explainer import (
-    execute_task as explainer_task_adapter,
-)
+from hevi.api.routers.director_pipeline import router as director_pipeline_router
 from hevi.api.routers.explainer import router as explainer_router
 from hevi.api.routers.gallery import router as gallery_router
-from hevi.api.routers.cinematic import execute_task as cinematic_task_adapter
 from hevi.api.routers.cinematic import router as cinematic_router
-from hevi.api.routers.history_series import (
-    execute_animation_task as history_animation_task_adapter,
-)
 from hevi.api.routers.history_series import router as history_series_router
 from hevi.api.routers.payment import router as payment_router
 from hevi.api.routers.pipeline import router as pipeline_router
@@ -63,7 +49,6 @@ from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.subjects import router as subjects_router
 from hevi.api.routers.tasks import router as tasks_router
 from hevi.api.routers.templates import router as templates_router
-from hevi.api.routers.tongjian import execute_task as tongjian_task_adapter
 from hevi.api.routers.tongjian import router as tongjian_router
 from hevi.api.routers.freezone import router as freezone_router
 from hevi.api.routers.embrace_runtime import router as embrace_router
@@ -87,19 +72,9 @@ from hevi.events import EventConsumer, EventGateway
 from hevi.monitoring.middleware import PrometheusMiddleware
 from hevi.monitoring.router import router as metrics_router
 from hevi.providers.registry import register_all_providers
-from hevi.production.adapters import configure_default_adapters
+from hevi.production.composition import configure_application_adapters
 
-configure_default_adapters(
-    director_graph=director_graph_task_adapter,
-    director_tongjian=director_tongjian_task_adapter,
-    explainer=explainer_task_adapter,
-    shortdrama=execute_shortdrama_task,
-    tongjian=tongjian_task_adapter,
-    voice_studio_tts=execute_voice_studio_task,
-    lot=execute_lot_task,
-    cinematic_animation=cinematic_task_adapter,
-    history_animation=history_animation_task_adapter,
-)
+configure_application_adapters()
 
 
 def _cors_list(raw: str) -> list[str]:

@@ -318,7 +318,8 @@ class TaskRepository:
                 UPDATE video_tasks
                 SET status = 'claimed', worker_id = $1, lease_token = $2,
                     lease_until = NOW() + ($3 * interval '1 second'),
-                    heartbeat_at = NOW(), scheduled_at = NULL, updated_at = NOW()
+                    heartbeat_at = NOW(), scheduled_at = NULL,
+                    current_attempt_id = NULL, updated_at = NOW()
                 WHERE id = $4 AND status = 'queued'
                 RETURNING video_tasks.*
                 """,

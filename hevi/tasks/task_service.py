@@ -557,6 +557,18 @@ class TaskService:
         alive = await self.repository.heartbeat(
             task_id, str(token), lease_seconds=settings.task_lease_seconds
         )
+        if not alive:
+            # Some legacy application adapters persist their domain run's
+            # terminal state before returning to the shared task lifecycle.
+            # The worker still owns the row (same worker id), so allow the
+            # outer lifecycle to perform manifest validation and artifact
+            # commit instead of silently returning a false-success task.
+            current = await self.repository.get_task(task_id)
+            return bool(
+                current
+                and current.get("status") == "completed"
+                and current.get("worker_id") == task.get("worker_id")
+            )
         attempt_id = task.get("_attempt_id") or task.get("current_attempt_id")
         if not alive or self.attempt_repository is None or not attempt_id:
             return alive
@@ -950,6 +962,11 @@ class TaskService:
             manifest = manifest.model_copy(
                 update={
                     "production_id": (task.get("config_json") or {}).get("production_id"),
+                    "revision_id": (
+                        task.get("_canonical_revision_id")
+                        or task.get("revision_id")
+                        or (task.get("config_json") or {}).get("revision_id")
+                    ),
                     "attempt_id": str(task.get("_attempt_id") or task_id),
                 }
             )

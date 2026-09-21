@@ -349,7 +349,6 @@ def default_production_adapters() -> ProductionAdapterRegistry:
     """Return the application-configured registry without importing routers."""
     return _DEFAULT
 
-
 def configure_default_adapters(**adapters: ProductionAdapter) -> ProductionAdapterRegistry:
     """Inject adapters at process composition time.
 
