@@ -411,6 +411,17 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         quality_gate_ready=True,
         production_ready=True,
     ),
+    "audio_master_clock": CapabilityDescriptor(
+        "audio_master_clock",
+        "真实 TTS/ASR 音频主时钟",
+        ("/api/tasks",),
+        True,
+        "Layer4 voice authority → real TTS → real ASR timestamps → existing subtitle timeline.",
+        "需要可用 Edge TTS、faster-whisper model、两个真实视频片段及 Layer4 voice_identity。",
+        execution_ready=True,
+        quality_gate_ready=True,
+        production_ready=True,
+    ),
 }
 
 

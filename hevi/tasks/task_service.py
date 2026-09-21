@@ -1256,6 +1256,7 @@ class TaskService:
                 "blender_previz",
                 "v2v",
                 "subtitle_timeline",
+                "audio_master_clock",
             }:
                 await self._apply_provider_policy(task)
             await self._start_attempt(task)
@@ -1300,6 +1301,7 @@ class TaskService:
                 "blender_previz",
                 "v2v",
                 "subtitle_timeline",
+                "audio_master_clock",
             }:
                 return await self._run_adapter_task(task)
 
