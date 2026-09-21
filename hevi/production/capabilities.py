@@ -387,6 +387,19 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         if os.getenv("BLENDER_PREVIZ_ENABLED", "").strip()
         else "配置 BLENDER_PREVIZ_ENABLED 并确保 Blender 二进制可用后自动开放。",
     ),
+    "v2v": CapabilityDescriptor(
+        "v2v",
+        "Previz 驱动的 provider 视频生成",
+        ("/api/tasks",),
+        bool(os.getenv("V2V_ENABLED", "").strip()),
+        "V2V 已开放：Blender previz 产物经现有 provider plane"
+        "(Alibaba MaaS workspace) 生成视频并回流 Artifact authority。"
+        if os.getenv("V2V_ENABLED", "").strip()
+        else "V2V_ENABLED 未配置；不会创建无法执行的 V2V 任务。",
+        None
+        if os.getenv("V2V_ENABLED", "").strip()
+        else "配置 V2V_ENABLED 并确保 MaaS 凭证可用后自动开放。",
+    ),
 }
 
 
@@ -445,6 +458,8 @@ def _runtime_descriptor(descriptor: CapabilityDescriptor) -> CapabilityDescripto
         configured = bool(os.getenv("LONGCAT_BASE_URL", "").strip())
     elif descriptor.id == "blender_previz":
         configured = bool(os.getenv("BLENDER_PREVIZ_ENABLED", "").strip())
+    elif descriptor.id == "v2v":
+        configured = bool(os.getenv("V2V_ENABLED", "").strip())
 
     if configured is None:
         return descriptor

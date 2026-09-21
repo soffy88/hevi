@@ -206,30 +206,36 @@ async def _submit_video(
             return JobPoll(state="running", terminal=status)
 
         state_config = durable if durable is not None else {}
-        state_config, path, _record = await run_durable_provider_job(
-            config=state_config,
-            provider="dashscope-i2v",
-            endpoint="video-synthesis",
-            model=model,
-            request=payload,
-            production_revision=str((durable or {}).get("revision_id") or ""),
-            target_artifact_id=str(output_path),
-            idempotency_key=None,
-            output_path=Path(output_path),
-            submit=_submit,
-            poll=_poll,
-            poll_interval_s=poll_interval_s,
-            timeout_s=timeout_s,
-            submit_max_attempts=5,
-            submit_backoff_s=(4.0, 8.0, 16.0, 30.0, 30.0),
-            download_client=client,
-            error_factory=_error,
-            live_state=state_config,
-            project_ref=str((durable or {}).get("project_id") or output_path),
-            operation_type="video_generate",
-        )
-        if durable is not None:
-            durable.clear()
-            durable.update(state_config)
+        try:
+            state_config, path, _record = await run_durable_provider_job(
+                config=state_config,
+                provider="dashscope-i2v",
+                endpoint="video-synthesis",
+                model=model,
+                request=payload,
+                production_revision=str((durable or {}).get("revision_id") or ""),
+                target_artifact_id=str(output_path),
+                idempotency_key=None,
+                output_path=Path(output_path),
+                submit=_submit,
+                poll=_poll,
+                poll_interval_s=poll_interval_s,
+                timeout_s=timeout_s,
+                submit_max_attempts=5,
+                submit_backoff_s=(4.0, 8.0, 16.0, 30.0, 30.0),
+                download_client=client,
+                error_factory=_error,
+                live_state=state_config,
+                project_ref=str((durable or {}).get("project_id") or output_path),
+                operation_type="video_generate",
+            )
+        finally:
+            # Sync durable state even when the job raises (timeout/rejection):
+            # callers need provider_job_id for resume and postmortem polling.
+            # state_config may still BE the caller's dict (already synced via
+            # live_state) — never clear+update an object onto itself.
+            if durable is not None and state_config is not durable:
+                durable.clear()
+                durable.update(state_config)
         logger.info("%s i2v: task %s → %s", model, _record.get("provider_job_id"), path.name)
         return path

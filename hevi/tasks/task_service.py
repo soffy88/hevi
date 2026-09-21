@@ -1254,6 +1254,7 @@ class TaskService:
                 "localize_video",
                 "mpt",
                 "blender_previz",
+                "v2v",
             }:
                 await self._apply_provider_policy(task)
             await self._start_attempt(task)
@@ -1296,6 +1297,7 @@ class TaskService:
                 "localize_video",
                 "mpt",
                 "blender_previz",
+                "v2v",
             }:
                 return await self._run_adapter_task(task)
 

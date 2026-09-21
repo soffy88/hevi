@@ -343,6 +343,18 @@ from hevi.creative.layer4.usage_ledger import (
     reconcile_pending,
     redact_secrets,
 )
+from hevi.creative.layer4.v2v_workflow import (
+    V2V_MODEL_DEFAULT,
+    V2V_PROVIDER_DEFAULT,
+    V2V_PROVIDER_MODELS,
+    V2VContractError,
+    V2VRenderResult,
+    assess_v2v_quality,
+    build_v2v_request,
+    resolve_artifact_local_path,
+    v2v_render_workflow,
+    validate_v2v_output,
+)
 from hevi.creative.runtime_control import BackgroundRunController, ProgressEvent
 
 __all__ = [

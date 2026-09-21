@@ -151,12 +151,171 @@ def _register_builtin_adapters() -> None:
             },
         }
 
+    async def execute_v2v(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.creative.layer4.v2v_workflow import (
+            V2VContractError,
+            assess_v2v_quality,
+            v2v_render_workflow,
+        )
+        from hevi.production.artifacts import Artifact, ArtifactManifest
+
+        config = task.get("config_json", {})
+        v2v_spec = dict(config.get("v2v_spec") or {})
+        output_path = config.get("output_path", "output/v2v_result.mp4")
+
+        async def _fail(
+            reason: str, failure_code: str, job_id: str | None = None
+        ) -> dict[str, Any]:
+            from hevi.creative.layer4.incident_store import track_task_failure
+
+            track_task_failure(
+                production_run_id=str(task.get("id", "")),
+                node_key="v2v",
+                failure=failure_code,
+                evidence={
+                    "error_message": reason,
+                    "failure_code": failure_code,
+                    "provider_job_id": job_id,
+                },
+                owner_id="hevi_layer4",
+            )
+            return {
+                "status": "failed",
+                "error": reason,
+                "review_pending": False,
+                "artifacts": [],
+                "config_json": {
+                    **config,
+                    "v2v_job_id": job_id,
+                    "v2v_failure_code": failure_code,
+                },
+                "report": {"legacy_result": {"error": reason}},
+            }
+
+        # Resolve the reference from the artifact authority by id (lineage);
+        # an explicit source_path is accepted but recorded as such.
+        source_artifact_id = str(v2v_spec.get("source_artifact_id") or "")
+        source_path = str(v2v_spec.get("source_path") or config.get("source_path") or "")
+        source_sha256: str | None = None
+        lineage_by_id = False
+        if source_artifact_id:
+            from obase.persistence import PgPool
+
+            if isinstance(pool, PgPool):
+                from hevi.artifact_store import ArtifactRepository
+
+                manifest = await ArtifactRepository(pool).get_manifest(
+                    str(config.get("production_id", ""))
+                )
+                found = None
+                if manifest is not None:
+                    for art in manifest.artifacts:
+                        if str(art.artifact_id or "") == source_artifact_id:
+                            found = art
+                            break
+                if found is None:
+                    return await _fail(
+                        f"V2V source artifact not found: {source_artifact_id}",
+                        "V2V_REFERENCE_UNRESOLVED",
+                    )
+                from hevi.creative.layer4.v2v_workflow import (
+                    resolve_artifact_local_path as _resolve,
+                )
+
+                local = _resolve(found)
+                if local is None:
+                    return await _fail(
+                        f"V2V source artifact not on this host: {source_artifact_id}",
+                        "V2V_REFERENCE_UNRESOLVED",
+                    )
+                source_path = local
+                source_sha256 = found.sha256
+                lineage_by_id = True
+        if not source_path:
+            return await _fail("V2V reference input missing", "V2V_REFERENCE_REQUIRED")
+        try:
+            result = await v2v_render_workflow(
+                v2v_spec={**v2v_spec, "source_artifact_id": source_artifact_id},
+                source_path=source_path,
+                output_path=output_path,
+                timeout_s=float(v2v_spec.get("timeout_s") or 480.0),
+                durable={
+                    "project_id": str(config.get("production_id") or task.get("id")),
+                    "revision_id": str(
+                        task.get("_canonical_revision_id")
+                        or config.get("revision_id")
+                        or ""
+                    ),
+                },
+            )
+        except V2VContractError as exc:
+            return await _fail(str(exc), str(exc))
+        if not result.success:
+            return await _fail(
+                result.error_message or "V2V provider execution failed",
+                result.failure_code or "V2V_PROVIDER_FAILURE",
+                result.provider_job_id,
+            )
+        quality_signal = assess_v2v_quality(
+            requested_duration=(
+                float(v2v_spec["duration"])
+                if v2v_spec.get("duration") is not None
+                else None
+            ),
+            actual_duration=result.duration_s,
+            has_video=True,
+            lineage_ok=bool(source_artifact_id) or bool(source_path),
+        )
+        manifest_artifacts = [
+            Artifact(
+                kind="video",
+                path=result.output_path or output_path,
+                media_type="video/mp4",
+                primary=True,
+                logical_role="final_render",
+                artifact_id=None,
+                sha256=result.output_sha256,
+                byte_size=result.output_size,
+            )
+        ]
+        manifest = ArtifactManifest(
+            production_id=str(config.get("production_id", "tmp")),
+            revision_id=str(
+                task.get("_canonical_revision_id") or config.get("revision_id") or ""
+            ),
+            attempt_id=str(task.get("_attempt_id", "")),
+            tenant_id="hevi_layer4",
+            artifacts=manifest_artifacts,
+        )
+        return {
+            "status": "completed",
+            "result_video_path": result.output_path,
+            "config_json": {
+                "artifact_manifest": manifest.model_dump(mode="json"),
+                "production_id": str(config.get("production_id", "tmp")),
+                "revision_id": str(
+                    task.get("_canonical_revision_id") or config.get("revision_id") or ""
+                ),
+                "v2v_provider": result.provider,
+                "v2v_model": result.model,
+                "v2v_job_id": result.provider_job_id,
+                "v2v_quality_signal": quality_signal,
+                "v2v_source_artifact_id": source_artifact_id,
+                "v2v_source_sha256": source_sha256,
+                "v2v_source_lineage_by_id": lineage_by_id,
+            },
+            "review_pending": False,
+            "artifacts": [a.model_dump(mode="json") for a in manifest_artifacts],
+            "report": {"legacy_result": {"result_video_path": result.output_path}},
+        }
+
     _DEFAULT.register("checkpoint_render", execute_checkpoint, replace=True)
     _DEFAULT.register("clip_video", execute_clip_video, replace=True)
     _DEFAULT.register("localize_video", execute_localize_video, replace=True)
     _DEFAULT.register("mpt", execute_mpt, replace=True)
     _DEFAULT.register("lot", execute_lot, replace=True)
     _DEFAULT.register("blender_previz", execute_blender_previz, replace=True)
+    _DEFAULT.register("v2v", execute_v2v, replace=True)
 
 
 _register_builtin_adapters()
