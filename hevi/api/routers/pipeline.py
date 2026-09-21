@@ -6,6 +6,7 @@ uses the same TaskService lifecycle as the regular task API.
 
 from __future__ import annotations
 
+import os
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -208,6 +209,42 @@ async def create_production(
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     """Start one production regardless of which content adapter prepared it."""
+    visual_mode = str(body.options.get("visual_mode") or "").strip().lower()
+    if visual_mode in {"v2v", "streaming_v2v"}:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "CAPABILITY_BLOCKED",
+                "capability": "v2v",
+                "status": "WIRING_QUALIFIED_PROVIDER_BLOCKED",
+                "message": "V2V 当前仅完成 wiring qualification，不能用于 production。",
+            },
+        )
+    local_media_requested = body.source == "local_media" or (
+        body.source == "automatic" and visual_mode in {"local_media", "motion_graphics", "blender"}
+    )
+    if local_media_requested:
+        # The UI may submit the stable automatic source contract, but the
+        # backend owns the semantic normalization.  This prevents a local
+        # media request from entering the generic video-provider plane.
+        normalized_options = {
+            **body.options,
+            "visual_mode": "local_media",
+            "provider_mode": "local_media",
+            "requested_capability": "local_media",
+            "voice_identity": body.options.get("voice_identity") or {"voice_id": "zh_female_standard"},
+        }
+        model_dir = os.getenv("FASTER_WHISPER_MODEL_DIR", "").strip()
+        if model_dir:
+            normalized_options.setdefault("asr_model_dir", model_dir)
+        body = body.model_copy(
+            update={
+                "source": "local_media",
+                "video_provider": "remotion",
+                "audio_provider": "edge_tts",
+                "options": normalized_options,
+            }
+        )
     try:
         task = await svc.create_production(body, user_id=str(user["id"]))
         task = await svc.submit_task(task["id"])

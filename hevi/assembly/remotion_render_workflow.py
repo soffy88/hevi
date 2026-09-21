@@ -132,7 +132,11 @@ async def remotion_render_workflow(
                     decision_trail.append({"stage": "copy_asset", "src": str(src), "dst": str(dst)})
         _step("assets_staged", 30.0)
 
-        props_json = output_dir / "props.json"
+        # The Remotion CLI runs with ``cwd=project_dir``.  Pass absolute
+        # paths so a relative HEVI output path cannot be resolved inside the
+        # Remotion project and silently miss the durable artifact/props file.
+        props_json = (output_dir / "props.json").resolve()
+        rendered_output = Path(config.output_path).resolve()
         props_json.write_text(
             __import__("json").dumps(config.props, ensure_ascii=False), encoding="utf-8"
         )
@@ -142,7 +146,7 @@ async def remotion_render_workflow(
             "remotion",
             "render",
             config.composition_id,
-            str(config.output_path),
+            str(rendered_output),
             "--props",
             str(props_json),
             f"--concurrency={config.concurrency}",
@@ -166,7 +170,7 @@ async def remotion_render_workflow(
         # does not prove that a usable media artifact was written. Verify the
         # actual file with the same media quality primitive used by delivery
         # paths before exposing a completed result.
-        rendered_path = Path(config.output_path)
+        rendered_path = rendered_output
         if not rendered_path.is_file() or rendered_path.stat().st_size <= 0:
             return {
                 "status": "failed",

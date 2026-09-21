@@ -85,9 +85,64 @@ test('real production create reaches the canonical task/artifact evidence UI', a
   await expect(row).toContainText('已完成', { timeout: 20_000 });
   await row.getByRole('button', { name: '查看 evidence' }).click();
   await expect(page.getByTestId('production-evidence')).toBeVisible();
-  await expect(page.getByText(taskId!)).toBeVisible();
+  await expect(page.getByTestId('production-evidence').getByText(taskId!).first()).toBeVisible();
   await expect(page.getByText('Artifact Currency authority')).toBeVisible();
   await expect(page.getByText('Quality evidence')).toBeVisible();
+});
+
+test('blocked V2V is visible but not selectable and the backend fails closed', async ({ page }) => {
+  await authedPage(page);
+  await page.goto('/production');
+  await expect(page.getByTestId('production-readiness')).toHaveText('READY', { timeout: 20_000 });
+  await expect(page.getByTestId('v2v-capability-state')).toContainText('WIRING_QUALIFIED_PROVIDER_BLOCKED');
+  await expect(page.getByRole('option', { name: /V2V/ })).toHaveAttribute('disabled', '');
+
+  const rejected = await api.post(`${API}/api/pipeline/productions`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      source: 'automatic',
+      topic: 'explicit blocked V2V qualification request',
+      video_provider: 'auto',
+      audio_provider: 'edge_tts',
+      options: { visual_mode: 'v2v' },
+    },
+  });
+  expect(rejected.status()).toBe(409);
+  const detail = await rejected.json() as { detail?: { code?: string; status?: string } };
+  expect(detail.detail?.code).toBe('CAPABILITY_BLOCKED');
+  expect(detail.detail?.status).toBe('WIRING_QUALIFIED_PROVIDER_BLOCKED');
+});
+
+test('low-quality provider rejection is shown as a real failed production', async ({ page }) => {
+  const rejected = await api.post(`${API}/api/pipeline/productions`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      source: 'automatic',
+      topic: 'frontend provider policy rejection qualification path',
+      video_provider: 'wan_local',
+      audio_provider: 'edge_tts',
+      options: {
+        provider_candidates: ['wan_local'],
+        provider_quality_floor: 9,
+      },
+    },
+  });
+  expect(rejected.status()).toBe(201);
+  const created = await rejected.json() as { id?: string; task_id?: string };
+  const taskId = created.task_id ?? created.id;
+  expect(taskId).toBeTruthy();
+
+  await expect.poll(async () => (await getTask(taskId!)).status, {
+    timeout: 45_000,
+    intervals: [2_000],
+  }).toBe('failed');
+
+  await authedPage(page);
+  await page.goto('/production');
+  const row = page.locator('tbody tr').filter({ hasText: `#${taskId!.slice(0, 8)}` });
+  await expect(row).toContainText('失败', { timeout: 20_000 });
+  await row.getByRole('button', { name: '查看 evidence' }).click();
+  await expect(page.getByTestId('production-evidence')).toContainText('quality_below_floor');
 });
 
 test('real RepairIncident failure is shown without frontend success inference', async ({ page }) => {

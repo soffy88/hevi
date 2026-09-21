@@ -20,6 +20,18 @@ function json(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function currencyFor(
+  currency: ArtifactCurrencyResponse | null,
+  artifactId: string | null | undefined,
+): Record<string, unknown> | null {
+  if (!currency || !artifactId) return null;
+  const evaluations = currency.evaluations;
+  if (Array.isArray(evaluations)) {
+    return evaluations.find(item => item.artifact_id === artifactId || item.target_id === artifactId) ?? null;
+  }
+  return evaluations[artifactId] ?? null;
+}
+
 export function ProductionEvidencePanel({ taskId, onClose }: { taskId: string; onClose: () => void }) {
   const [task, setTask] = useState<TaskInfo | null>(null);
   const [checkpoint, setCheckpoint] = useState<TaskCheckpoint | null>(null);
@@ -81,7 +93,7 @@ export function ProductionEvidencePanel({ taskId, onClose }: { taskId: string; o
       <h3>Artifact Currency authority</h3>
       {currency ? <p>{currency.usable}/{currency.total} usable；current state 由 authority evaluations 返回。</p> : <p>当前 revision 尚无可读 currency projection。</p>}
       {manifest ? <div className="hevi-artifact-list">{manifest.artifacts.map(artifact => {
-        const evaluation = currency?.evaluations.find(item => item.artifact_id === artifact.artifact_id || item.target_id === artifact.artifact_id);
+        const evaluation = currencyFor(currency, artifact.artifact_id);
         return <article key={artifact.artifact_id ?? artifact.path}><strong>{artifact.logical_role ?? artifact.kind}</strong><span>artifact_id：{artifact.artifact_id ?? '—'}</span><span>type：{artifact.kind}</span><span>revision：{manifest.revision_id ?? '—'}</span><span>sha256：{artifact.sha256 ?? '—'}</span><span>currency：{String(evaluation?.currency ?? evaluation?.status ?? 'authority evidence unavailable')}</span><span>delivery：{isTaskTerminal(task.status) && presentation ? 'authority presentation available' : 'not available'}</span><small>lineage parents：{artifact.parent_artifact_ids?.join(', ') || '—'}</small></article>;
       })}</div> : <p>后端未返回 artifact manifest。</p>}
 

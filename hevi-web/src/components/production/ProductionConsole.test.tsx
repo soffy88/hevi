@@ -38,6 +38,11 @@ vi.mock('@/lib/backend-health', () => ({
 
 vi.mock('@/lib/api-client', () => ({
   USE_MOCK: false,
+  productionApi: {
+    capabilities: vi.fn().mockResolvedValue({ capabilities: [
+      { id: 'local_media', name: 'Local Media Golden Path', available: true, production_ready: true, routes: [], status: 'ready', message: '' },
+    ] }),
+  },
   taskApi: {
     list: listMock.mockResolvedValue(TASKS),
     videoUrl: (id: string) => `/api/tasks/${id}/video`,

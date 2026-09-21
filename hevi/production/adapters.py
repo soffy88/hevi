@@ -329,6 +329,11 @@ def _register_builtin_adapters() -> None:
 
         return await execute_visual_quality_task(task, pool)
 
+    async def execute_local_media(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.production.local_media_workflow import execute_local_media_task
+
+        return await execute_local_media_task(task, pool)
+
     _DEFAULT.register("checkpoint_render", execute_checkpoint, replace=True)
     _DEFAULT.register("clip_video", execute_clip_video, replace=True)
     _DEFAULT.register("localize_video", execute_localize_video, replace=True)
@@ -340,6 +345,7 @@ def _register_builtin_adapters() -> None:
     _DEFAULT.register("audio_master_clock", execute_audio_master_clock, replace=True)
     _DEFAULT.register("motion_graphics", execute_motion_graphics, replace=True)
     _DEFAULT.register("visual_quality", execute_visual_quality, replace=True)
+    _DEFAULT.register("local_media", execute_local_media, replace=True)
 
 
 _register_builtin_adapters()

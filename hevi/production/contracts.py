@@ -18,6 +18,7 @@ ProductionSource = Literal[
     "voice_studio_tts",
     "director_graph",
     "lot",
+    "local_media",
 ]
 
 

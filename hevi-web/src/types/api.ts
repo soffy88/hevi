@@ -170,6 +170,7 @@ export interface CapabilityDescriptor {
   provider_configured?: boolean | null;
   provider_reachable?: boolean | null;
   provider_ready?: boolean | null;
+  provider_error?: string | null;
   readiness?: string;
   status: string;
   message: string;
@@ -828,7 +829,9 @@ export interface TaskCheckpoint {
 }
 
 export interface ArtifactCurrencyResponse {
-  evaluations: Array<Record<string, unknown>>;
+  // The canonical API currently returns an artifact-id keyed map.  The
+  // legacy array shape remains accepted for older compatible projections.
+  evaluations: Array<Record<string, unknown>> | Record<string, Record<string, unknown>>;
   usable: number;
   total: number;
 }

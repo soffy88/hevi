@@ -433,6 +433,17 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         quality_gate_ready=True,
         production_ready=True,
     ),
+    "local_media": CapabilityDescriptor(
+        "local_media",
+        "Local Media Golden Path",
+        ("/api/pipeline/productions", "/api/tasks"),
+        True,
+        "Backend-selected local media composition: real TTS/ASR → Remotion/Blender → subtitle/timeline → visual quality → Artifact authority.",
+        "The backend selects only a production-qualified local renderer; blocked V2V is never an implicit fallback.",
+        execution_ready=True,
+        quality_gate_ready=True,
+        production_ready=True,
+    ),
     "visual_quality": CapabilityDescriptor(
         "visual_quality",
         "统一视觉质量门",
@@ -466,6 +477,29 @@ def _runtime_descriptor(descriptor: CapabilityDescriptor) -> CapabilityDescripto
     """
 
     configured: bool | None = None
+    if descriptor.id == "local_media":
+        # Local Media is a composition capability.  It is production-ready
+        # only while at least one of its backend-owned qualified renderers is
+        # production-ready; the UI must never infer this from a label.
+        renderer_ids = ("motion_graphics", "blender_previz")
+        renderers = [
+            _runtime_descriptor(_CATALOG[renderer_id]).public()
+            for renderer_id in renderer_ids
+        ]
+        qualified = any(bool(item.get("production_ready")) for item in renderers)
+        return replace(
+            descriptor,
+            available=qualified,
+            execution_ready=qualified,
+            quality_gate_ready=qualified,
+            production_ready=qualified,
+            message=(
+                descriptor.message
+                if qualified
+                else "没有 production-qualified local renderer；不会提交无法执行的 production。"
+            ),
+            setup=None if qualified else "启用至少一个 production-qualified Remotion/Blender renderer。",
+        )
     if descriptor.id == "voice_studio_tts":
         configured = bool(
             os.getenv("VOICEBOX_BASE_URL", "").strip()

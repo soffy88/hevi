@@ -1276,8 +1276,16 @@ class TaskService:
                 "audio_master_clock",
                 "motion_graphics",
                 "visual_quality",
+                "local_media",
             }:
-                await self._apply_provider_policy(task)
+                try:
+                    await self._apply_provider_policy(task)
+                except Exception as policy_error:
+                    # A rejected provider is a durable failed task, not a
+                    # claimed task that the worker will retry forever.  The
+                    # policy remains fail-closed: no provider is selected and
+                    # no execution side effect is attempted.
+                    return await self._fail_task(task, uuid.UUID(str(task_id)), str(policy_error))
             await self._start_attempt(task)
             if self.attempt_repository is not None:
                 latest = await self.attempt_repository.latest(uuid.UUID(str(task["id"])))
@@ -1323,11 +1331,13 @@ class TaskService:
                 "audio_master_clock",
                 "motion_graphics",
                 "visual_quality",
+                "local_media",
             }:
                 return await self._run_adapter_task(task)
 
             # 成本感知路由 v1(§7-2):video_provider="auto" → 在(能力 mode ∧ 活状态可路由 ∧
-            # 质量下限)的 provider 中选最便宜。解析失败回退零成本本地 wan。
+            # 质量下限)的 provider 中选最便宜。解析失败必须 fail-closed；不得把被
+            # quality floor 拒绝的 wan_local 伪装成可执行 fallback。
             if task.get("video_provider") == "auto":
                 try:
                     from hevi.cost.router import route_video_provider
@@ -1339,8 +1349,8 @@ class TaskService:
                         mode="i2v" if _char else "t2v",
                     )
                 except Exception as re:
-                    logger.warning(f"cost-aware routing failed → wan_local: {re}")
-                    routed = "wan_local"
+                    logger.error("cost-aware routing failed closed: %s", re)
+                    raise
                 task["video_provider"] = routed
                 await self.repository.update_task(task_id, {"video_provider": routed})
                 log_event(
