@@ -422,6 +422,17 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         quality_gate_ready=True,
         production_ready=True,
     ),
+    "motion_graphics": CapabilityDescriptor(
+        "motion_graphics",
+        "Remotion 动态图形",
+        ("/api/tasks",),
+        True,
+        "Layer4 motion spec → existing Remotion runtime → Artifact → subtitle/timeline interop.",
+        "需要真实 Node/Remotion runtime、Audio Master Clock audio、source image 和字幕 cues。",
+        execution_ready=True,
+        quality_gate_ready=True,
+        production_ready=True,
+    ),
 }
 
 

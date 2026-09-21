@@ -1257,6 +1257,7 @@ class TaskService:
                 "v2v",
                 "subtitle_timeline",
                 "audio_master_clock",
+                "motion_graphics",
             }:
                 await self._apply_provider_policy(task)
             await self._start_attempt(task)
@@ -1302,6 +1303,7 @@ class TaskService:
                 "v2v",
                 "subtitle_timeline",
                 "audio_master_clock",
+                "motion_graphics",
             }:
                 return await self._run_adapter_task(task)
 

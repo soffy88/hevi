@@ -4,6 +4,7 @@ import { Zhibo } from "./Zhibo";
 import { ExplainerVideo, getTotalDurationInFrames } from "./ExplainerVideo";
 import { HandDrawnDiary, getHandDrawnDuration } from "./HandDrawnDiary/HandDrawnDiary";
 import { PaperPromo, getPaperPromoDuration } from "./templates/PaperPromo/PaperPromo";
+import { MotionGraphics, getMotionDuration } from "./MotionGraphics";
 
 const FPS = 30;
 
@@ -65,6 +66,30 @@ export const RemotionRoot: React.FC = () => {
           features: ["核心功能一", "核心功能二"],
           pages: [],
         }}
+      />
+      <Composition
+        id="MotionGraphics"
+        component={MotionGraphics}
+        durationInFrames={120}
+        fps={30}
+        width={1920}
+        height={1080}
+        defaultProps={{
+          spec: {
+            composition_id: "MotionGraphics",
+            width: 1920,
+            height: 1080,
+            fps: 30,
+            duration_frames: 120,
+            layers: [],
+          },
+        }}
+        calculateMetadata={({ props }) => ({
+          durationInFrames: getMotionDuration(props),
+          fps: props.spec.fps,
+          width: props.spec.width,
+          height: props.spec.height,
+        })}
       />
     </>
   );
