@@ -15,6 +15,15 @@ function money(usd: number): string {
   return usd > 0 ? `$${usd.toFixed(2)}` : '';
 }
 
+const INCIDENT_STATUS_LABELS: Record<string, string> = {
+  open: '已检测，待处理',
+  repair_planned: '已制定修复计划',
+  repair_executing: '修复执行中',
+  resolved: '已验证修复',
+  repair_failed: '修复失败',
+  escalated_manual: '需要人工处理',
+};
+
 export function ProductionIssuesPanel({ productionRunId = '' }: { productionRunId?: string }) {
   const [incidents, setIncidents] = useState<IncidentProductView[]>([]);
   const [timelines, setTimelines] = useState<Record<string, IncidentTimelineEvent[]>>({});
@@ -85,12 +94,13 @@ export function ProductionIssuesPanel({ productionRunId = '' }: { productionRunI
 
       <ul data-testid="issues-list">
         {incidents.map(incident => {
-          const autoRecovered = incident.status === 'resolved' && incident.policy === 'auto_safe';
+          const autoRecovered = incident.status === 'resolved';
           const manual = incident.status === 'escalated_manual' || incident.policy === 'manual_only';
           const failed = incident.status === 'repair_failed';
           return (
             <li key={incident.incident_id} data-testid={`issue-${incident.incident_id}`}>
-              <Card title={incident.diagnosis || incident.root_cause} subtitle={incident.status}>
+              <Card title={incident.diagnosis || incident.root_cause} subtitle={INCIDENT_STATUS_LABELS[incident.status] ?? `未知 RepairIncident 状态：${incident.status}`}>
+                <p><strong>failure_code：</strong>{incident.failure_code || '—'}</p>
                 {autoRecovered && (
                   <p data-testid={`recovered-${incident.incident_id}`}>{C.repair.autoRecovered}</p>
                 )}
@@ -141,7 +151,7 @@ export function ProductionIssuesPanel({ productionRunId = '' }: { productionRunI
                 )}
 
                 {!incident.requires_confirmation && !manual && !autoRecovered && !failed && (
-                  <p>{C.repair.autoRecovered}</p>
+                  <p>后端尚未报告 resolved；当前状态：{INCIDENT_STATUS_LABELS[incident.status] ?? '未知（已阻断）'}</p>
                 )}
 
                 <ActionButton variant="ghost" size="sm" onClick={() => showTimeline(incident.incident_id)}>

@@ -13,6 +13,7 @@ import { checkBackendHealth } from '@/lib/backend-health';
 
 export function useBackendStatus(pollIntervalMs = 30_000) {
   const [online, setOnline] = useState(false);
+  const [ready, setReady] = useState(false);
   const [checking, setChecking] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
 
@@ -20,10 +21,12 @@ export function useBackendStatus(pollIntervalMs = 30_000) {
     setChecking(true);
     try {
       const health = await checkBackendHealth();
-      setOnline(health.state === 'healthy' || health.state === 'degraded');
+      setOnline(health.live);
+      setReady(health.ready);
       setLastError(null);
     } catch (err) {
       setOnline(false);
+      setReady(false);
       setLastError((err as Error)?.message || 'unknown error');
     } finally {
       setChecking(false);
@@ -36,5 +39,5 @@ export function useBackendStatus(pollIntervalMs = 30_000) {
     return () => clearInterval(interval);
   }, [recheck, pollIntervalMs]);
 
-  return { online, checking, lastError, recheck };
+  return { online, ready, checking, lastError, recheck };
 }

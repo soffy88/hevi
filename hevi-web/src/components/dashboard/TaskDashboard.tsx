@@ -10,14 +10,34 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { dashboardApi } from '@/lib/api-client';
+import { taskApi } from '@/lib/api-client';
 import { syncAuthToken } from '@/lib/auth-store';
 import { useTaskWebSocket } from '@/hooks/useTaskWebSocket';
 import { TaskRow } from '@/components/dashboard/TaskRow';
 import { StatsSkeleton, TaskStats } from '@/components/dashboard/TaskStats';
-import type { DashboardTask } from '@/types/api';
+import type { DashboardTask, TaskInfo } from '@/types/api';
 
-const PAGE_SIZE = 20;
+function toDashboardTask(task: TaskInfo): DashboardTask {
+  return {
+    task_id: task.task_id,
+    pipeline_type: task.production_source ?? 'task',
+    status: task.status,
+    progress: task.percent ?? task.progress_pct ?? null,
+    stage: task.stage,
+    production_id: task.production_id,
+    revision_id: task.revision_id,
+    root_task_id: task.root_task_id,
+    current_attempt_id: task.current_attempt_id,
+    started_at: task.started_at,
+    finished_at: task.finished_at,
+    error_code: task.error_code,
+    error_log: task.error ?? null,
+    state_json: task.config_json ?? null,
+    artifact_manifest: task.artifact_manifest,
+    created_at: task.created_at ?? '',
+    updated_at: task.updated_at ?? '',
+  };
+}
 
 const FILTER_TABS: Array<{ key: string; label: string }> = [
   { key: 'all', label: '全部' },
@@ -28,10 +48,8 @@ const FILTER_TABS: Array<{ key: string; label: string }> = [
 
 export function TaskDashboard() {
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
 
@@ -52,17 +70,19 @@ export function TaskDashboard() {
   );
 
   const ws = useTaskWebSocket<DashboardTask>([], { onTaskUpdate });
-  const { tasks, seedTasks, appendTasks } = ws;
+  const { tasks, seedTasks } = ws;
 
   const loadFirstPage = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const page = await dashboardApi.listTasks({ limit: PAGE_SIZE, offset: 0 });
-      setTotal(page.total);
-      setOffset(page.items.length);
-      setCounts(previous => ({ ...(page.status_counts ?? {}), ...previous }));
-      seedTasks(page.items);
+      const page = (await taskApi.list()).map(toDashboardTask);
+      setTotal(page.length);
+      setCounts(page.reduce<Record<string, number>>((result, item) => {
+        result[item.status] = (result[item.status] ?? 0) + 1;
+        return result;
+      }, {}));
+      seedTasks(page);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '任务大盘加载失败');
     } finally {
@@ -75,34 +95,17 @@ export function TaskDashboard() {
     void loadFirstPage();
   }, [loadFirstPage]);
 
-  const loadMore = useCallback(async () => {
-    if (loadingMore || offset >= total) return;
-    setLoadingMore(true);
-    try {
-      const page = await dashboardApi.listTasks({ limit: PAGE_SIZE, offset });
-      setTotal(page.total);
-      setOffset(previous => previous + page.items.length);
-      appendTasks(page.items);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '加载更多失败');
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [appendTasks, loadingMore, offset, total]);
-
   const visible = useMemo(
     () => (statusFilter === 'all' ? tasks : tasks.filter(item => item.status === statusFilter)),
     [tasks, statusFilter],
   );
-
-  const loadedAll = total > 0 && tasks.length >= total;
 
   return (
     <div className="ex-v6">
       <header className="ex-v6__hero">
         <p className="ex-v6__eyebrow">HEVI · TASK DASHBOARD v9.1</p>
         <h1>生成任务大盘</h1>
-        <p>SQLite TaskRun 全量历史 + WebSocket 实时进度：提交装配后无需刷新，进度条平滑跳动。</p>
+        <p>当前用户的 canonical production tasks + WebSocket 实时进度：状态与 artifact 均来自后端。</p>
       </header>
 
       {ws.connected
@@ -149,19 +152,6 @@ export function TaskDashboard() {
         <p className="tdash__empty">当前过滤条件下暂无任务。</p>
       )}
 
-      {!loadedAll && tasks.length > 0 && (
-        <div className="tdash__pager">
-          <button
-            type="button"
-            className="ex-v6__secondary"
-            disabled={loadingMore}
-            onClick={() => void loadMore()}
-          >
-            {loadingMore ? '加载中…' : '加载更早任务'}
-          </button>
-          <span>{tasks.length} / {total}</span>
-        </div>
-      )}
     </div>
   );
 }

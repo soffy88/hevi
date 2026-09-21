@@ -5,24 +5,21 @@ import { TaskDashboard } from './TaskDashboard';
 
 const hoisted = vi.hoisted(() => {
   const state = {
-    listTasks: vi.fn(),
-    getTask: vi.fn(),
-    outputUrl: vi.fn(),
+    list: vi.fn(),
+    get: vi.fn(),
+    videoUrl: vi.fn(),
     // WS 状态融合 mock: seedTasks 写入、tasks 实时可读(函数引用稳定, 避免 effect 循环)。
     tasks: [] as Array<Record<string, unknown>>,
     seedTasks: vi.fn((next: Array<Record<string, unknown>>) => { state.tasks = next; }),
-    appendTasks: vi.fn((older: Array<Record<string, unknown>>) => {
-      state.tasks = [...state.tasks, ...older];
-    }),
   };
   return state;
 });
 
 vi.mock('@/lib/api-client', () => ({
-  dashboardApi: {
-    listTasks: hoisted.listTasks,
-    getTask: hoisted.getTask,
-    outputUrl: hoisted.outputUrl,
+  taskApi: {
+    list: hoisted.list,
+    get: hoisted.get,
+    videoUrl: hoisted.videoUrl,
   },
 }));
 
@@ -35,7 +32,6 @@ vi.mock('@/hooks/useTaskWebSocket', () => ({
     lastError: null,
     tasks: hoisted.tasks,
     seedTasks: hoisted.seedTasks,
-    appendTasks: hoisted.appendTasks,
   }),
 }));
 
@@ -76,8 +72,17 @@ function makeTasks() {
 beforeEach(() => {
   vi.clearAllMocks();
   hoisted.tasks = [];
-  hoisted.outputUrl.mockReturnValue('http://test/api/dashboard/tasks/task-done-2/output');
-  hoisted.listTasks.mockResolvedValue(makeTasks());
+  hoisted.videoUrl.mockReturnValue('http://test/api/tasks/task-done-2/video');
+  hoisted.list.mockResolvedValue(makeTasks().items.map(item => ({
+    task_id: item.task_id,
+    production_source: item.pipeline_type,
+    status: item.status,
+    percent: item.progress,
+    error: item.error_log,
+    config_json: item.state_json,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  })));
 });
 
 describe('TaskDashboard', () => {
@@ -93,7 +98,7 @@ describe('TaskDashboard', () => {
     // 已完成行提供预览/下载操作。
     expect(screen.getByRole('button', { name: '预览' })).toBeTruthy();
     expect(screen.getByRole('link', { name: '下载' })).toHaveProperty('href');
-    expect(hoisted.listTasks).toHaveBeenCalledWith({ limit: 20, offset: 0 });
+    expect(hoisted.list).toHaveBeenCalledTimes(1);
   });
 
   it('点击预览打开沉浸式放映室(原生 video 播放成片)', async () => {
@@ -105,7 +110,7 @@ describe('TaskDashboard', () => {
     expect(screen.getByRole('dialog', { name: /task-done-2 成片预览/ })).toBeTruthy();
     const video = document.querySelector('video.vmodal__video') as HTMLVideoElement | null;
     expect(video).not.toBeNull();
-    expect(video?.getAttribute('src')).toContain('/api/dashboard/tasks/task-done-2/output');
+    expect(video?.getAttribute('src')).toContain('/api/tasks/task-done-2/video');
     // ESC / 关闭按钮可关闭。
     await user.click(screen.getByRole('button', { name: '关闭预览' }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -118,27 +123,19 @@ describe('TaskDashboard', () => {
     await user.click(screen.getAllByRole('tab', { name: /已完成/ })[0]);
     expect(screen.queryByText(/task-runni/)).toBeNull();
     expect(screen.getByText(/task-done-/)).toBeTruthy();
-    expect(hoisted.listTasks).toHaveBeenCalledTimes(1);
+    expect(hoisted.list).toHaveBeenCalledTimes(1);
   });
 
   it('列表为空时展示引导文案', async () => {
-    hoisted.listTasks.mockResolvedValue({ total: 0, limit: 20, offset: 0, items: [] });
+    hoisted.list.mockResolvedValue([]);
     render(<TaskDashboard />);
     expect(await screen.findByText(/还没有生成任务/)).toBeTruthy();
   });
 
-  it('加载更多把更早分页追加到队尾(去重)', async () => {
-    const user = userEvent.setup();
-    hoisted.listTasks
-      .mockResolvedValueOnce(makeTasks())
-      .mockResolvedValueOnce({
-        total: 3, limit: 20, offset: 2,
-        items: [{ id: 3, task_id: 'task-old-3', pipeline_type: 'main_remotion', status: 'completed', progress: 100, error_log: null, state_json: null, created_at: '2025-08-02T00:00:00Z', updated_at: '2025-08-02T00:00:00Z' }],
-      });
+  it('reads the owner-scoped canonical list without dashboard shadow state', async () => {
     render(<TaskDashboard />);
     await screen.findByText(/task-runni/);
-    await user.click(screen.getByRole('button', { name: /加载更早任务/ }));
-    await waitFor(() => expect(screen.getByText(/task-old-3/)).toBeTruthy());
-    expect(hoisted.listTasks).toHaveBeenLastCalledWith({ limit: 20, offset: 2 });
+    expect(screen.queryByRole('button', { name: /加载更早任务/ })).toBeNull();
+    expect(hoisted.list).toHaveBeenCalledTimes(1);
   });
 });

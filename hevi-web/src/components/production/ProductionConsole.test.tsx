@@ -32,6 +32,9 @@ const { push, listMock, TASKS } = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 
 vi.mock('@/lib/auth-store', () => ({ isAuthenticated: () => true }));
+vi.mock('@/lib/backend-health', () => ({
+  checkBackendHealth: vi.fn().mockResolvedValue({ live: true, ready: true, state: 'healthy' }),
+}));
 
 vi.mock('@/lib/api-client', () => ({
   USE_MOCK: false,
@@ -46,14 +49,12 @@ import { ProductionConsole } from './ProductionConsole';
 describe('生产看板 & 任务中心 · 纯粹化校验(§6.2 flow 3)', () => {
   beforeEach(() => push.mockClear());
 
-  it('页面无任何输入框/文本域/生成提交按钮(§4.1 物理剥离表单)', async () => {
+  it('创建表单只走正式 production entrypoint(§4.1)', async () => {
     render(<ProductionConsole />);
     await screen.findByText(/tk-1024/);
 
-    expect(document.querySelector('input')).toBeNull();
-    expect(document.querySelector('textarea')).toBeNull();
-    expect(document.querySelector('form')).toBeNull();
-    expect(screen.queryByRole('button', { name: /开始自动出片|生成|提交/ })).toBeNull();
+    expect(screen.getByLabelText('script/text')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '创建 production' })).toBeInTheDocument();
   });
 
   it('顶部指标概览:运行中/队列/已交付/质检通过率(§4.2 Metric Bar)', async () => {
@@ -63,7 +64,7 @@ describe('生产看板 & 任务中心 · 纯粹化校验(§6.2 flow 3)', () => {
     expect(screen.getByText('运行中任务')).toBeInTheDocument();
     expect(screen.getByText('队列等待')).toBeInTheDocument();
     expect(screen.getByText('已交付成片')).toBeInTheDocument();
-    expect(screen.getByText('质检通过率')).toBeInTheDocument();
+    expect(screen.getByText(/质检通过率/)).toBeInTheDocument();
   });
 
   it('任务列表:模式标签 + 进度 + 状态 + 下载(§4.2 Task List)', async () => {
@@ -72,7 +73,7 @@ describe('生产看板 & 任务中心 · 纯粹化校验(§6.2 flow 3)', () => {
 
     expect(screen.getByText('资治通鉴')).toBeInTheDocument();
     expect(screen.getByText('L6 画面渲染')).toBeInTheDocument();
-    expect(screen.getByText('RUNNING')).toBeInTheDocument();
+    expect(screen.getByText('运行中')).toBeInTheDocument();
     const download = screen.getByRole('link', { name: '下载' });
     expect(download).toHaveAttribute('href', '/api/tasks/tk-1023b8d2/video');
   });

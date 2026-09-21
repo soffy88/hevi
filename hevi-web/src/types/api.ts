@@ -50,7 +50,9 @@ export interface CanvasGraph {
 export type EdgeValidation = { valid: boolean; reason?: string };
 
 // ── 任务/进度 ─────────────────────────────────────
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'paused';
+export type TaskStatus =
+  | 'pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'failed'
+  | 'blocked' | 'cancelled' | 'paused' | 'interrupted' | 'unknown';
 
 export type DurationArchetype = 'short' | '1-5min' | '5-15min' | '15-45min' | '45min+';
 export type VideoProvider = 'wan_local' | 'veo3' | 'kling_v2' | 'hailuo' | 'ltx2_cloud' | 'wan_cloud';
@@ -75,16 +77,31 @@ export type StylePreset = typeof STYLE_PRESETS[number];
 
 export interface TaskInfo {
   task_id: string;
+  production_source?: ProductionSource | string;
   status: TaskStatus;
   percent: number;
+  progress_pct?: number | null;
   stage?: string;
   created_at?: string;
+  updated_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  production_id?: string | null;
+  revision_id?: string | null;
+  root_task_id?: string | null;
+  current_attempt_id?: string | null;
   error?: string | null;
+  error_code?: string | null;
   result_video_path?: string | null;
+  config_json?: Record<string, unknown> | null;
+  artifact_manifest?: ArtifactManifest | null;
 }
 
 // ── 统一生产契约 / 数字人 Presenter ───────────────────────────────
-export type ProductionSource = 'studio' | 'automatic' | 'tongjian' | 'shortdrama' | 'explainer';
+export type ProductionSource =
+  | 'studio' | 'automatic' | 'tongjian' | 'shortdrama' | 'explainer' | 'presenter'
+  | 'seedance' | 'clip_video' | 'localize_video' | 'mpt' | 'voice_studio_tts'
+  | 'director_graph' | 'lot';
 export type PresenterPerformance = 'presenter' | 'narrator' | 'character_dialogue';
 export type PresenterMotion = 'still' | 'talking_head' | 'half_body' | 'full_body' | 'picture_in_picture' | 'voice_over';
 export type PresenterLipsync = 'native_audio' | 'dedicated_lipsync' | 'avatar_provider' | 'none';
@@ -145,7 +162,16 @@ export interface CapabilityDescriptor {
   name: string;
   routes: string[];
   available: boolean;
-  status: 'available' | 'unavailable';
+  interface_available?: boolean;
+  execution_ready?: boolean | null;
+  quality_gate_ready?: boolean | null;
+  production_ready?: boolean | null;
+  provider?: string | null;
+  provider_configured?: boolean | null;
+  provider_reachable?: boolean | null;
+  provider_ready?: boolean | null;
+  readiness?: string;
+  status: string;
   message: string;
   setup?: string | null;
 }
@@ -735,18 +761,88 @@ export interface PresenterImageCheckResponse {
 
 /** SQLite TaskRun 行(SQLModel,见 hevi/core/models.py)。 */
 export interface DashboardTask {
-  id: number;
+  id?: number;
   task_id: string;
   pipeline_type: string;
-  status: string;
-  progress: number;
+  status: TaskStatus;
+  progress?: number | null;
+  progress_pct?: number | null;
+  stage?: string | null;
+  production_id?: string | null;
+  revision_id?: string | null;
+  root_task_id?: string | null;
+  current_attempt_id?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error_code?: string | null;
   error_log?: string | null;
   /** 颗粒度状态机快照:如 {tts_status: "done", html_status: "done"}。 */
   state_json?: Record<string, unknown> | null;
   /** 完成任务的成片沙盒路径(非 null 时输出端点可下载)。 */
   result_video_path?: string | null;
+  artifact_manifest?: ArtifactManifest | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ArtifactRecord {
+  kind: string;
+  path: string;
+  media_type?: string | null;
+  primary?: boolean;
+  artifact_id?: string | null;
+  uri?: string | null;
+  sha256?: string | null;
+  byte_size?: number | null;
+  logical_role?: string | null;
+  created_by_attempt_id?: string | null;
+  parent_artifact_ids?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface ArtifactManifest {
+  version?: number;
+  production_id?: string | null;
+  revision_id?: string | null;
+  attempt_id?: string | null;
+  tenant_id?: string | null;
+  artifacts: ArtifactRecord[];
+}
+
+export interface TaskCheckpoint {
+  task_id: string;
+  has_checkpoint: boolean;
+  resumable?: boolean;
+  checkpoint_id?: string;
+  attempt_id?: string;
+  attempt_no?: number;
+  attempt_status?: string;
+  sequence?: number;
+  stage?: string | null;
+  progress_pct?: number;
+  completed_shots?: number;
+  total_shots?: number;
+  state?: Record<string, unknown>;
+  artifact_manifest?: ArtifactManifest | null;
+  created_at?: string;
+}
+
+export interface ArtifactCurrencyResponse {
+  evaluations: Array<Record<string, unknown>>;
+  usable: number;
+  total: number;
+}
+
+export interface ArtifactPresentationResponse {
+  [key: string]: unknown;
+}
+
+export interface QualityEvidence {
+  measurements?: Record<string, unknown>;
+  policy?: Record<string, unknown>;
+  decision?: string;
+  verdict?: string;
+  [key: string]: unknown;
 }
 
 export interface DashboardTaskList {

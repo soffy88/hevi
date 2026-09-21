@@ -15,6 +15,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { normalizeTaskStatus, type FrontendTaskStatus } from '@/lib/backend-contract';
 
 const WS_PATH = '/api/ws/tasks';
 const HEARTBEAT_MS = 25_000;
@@ -23,8 +24,8 @@ const MAX_BACKOFF_MS = 15_000;
 export interface TaskUpdatePayload {
   type: 'task_update';
   task_id: string;
-  status: string;
-  progress: number;
+  status: FrontendTaskStatus;
+  progress?: number | null;
   /** 附加字段(如 error/stage)。 */
   [key: string]: unknown;
 }
@@ -78,10 +79,12 @@ export function useTaskWebSocket<T extends RealtimeTaskLike>(
   /** WS 广播 → 就地融合:命中行替换(新引用), 新 task_id 插到队首。 */
   const applyUpdate = useCallback((payload: TaskUpdatePayload) => {
     if (payload.type !== 'task_update') return;
-    setUpdates(previous => ({ ...previous, [payload.task_id]: payload }));
+    const normalizedStatus = normalizeTaskStatus(payload.status);
+    const normalizedPayload = { ...payload, status: normalizedStatus };
+    setUpdates(previous => ({ ...previous, [payload.task_id]: normalizedPayload }));
 
     const patch: Record<string, unknown> = {
-      status: payload.status,
+      status: normalizedStatus,
       progress: payload.progress,
       updated_at: new Date().toISOString(),
       ...(typeof payload.error === 'string' ? { error_log: payload.error } : {}),
@@ -92,13 +95,13 @@ export function useTaskWebSocket<T extends RealtimeTaskLike>(
         const prevStatus = (previous[index] as { status?: unknown }).status as
           | string
           | undefined;
-        options.onTaskUpdate?.(payload, prevStatus ?? null);
+        options.onTaskUpdate?.(normalizedPayload, prevStatus ?? null);
         const next = [...previous];
         // 只重建命中行, 其余行保持引用稳定 → React.memo 跳过未变化行。
         next[index] = { ...next[index], ...patch };
         return next;
       }
-      options.onTaskUpdate?.(payload, null);
+      options.onTaskUpdate?.(normalizedPayload, null);
       const fresh = {
         ...patch,
         task_id: payload.task_id,

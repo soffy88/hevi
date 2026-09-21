@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth-store';
 import { taskApi } from '@/lib/api-client';
-import type { TaskInfo } from '@/types/api';
+import type { ProductionTask, TaskInfo } from '@/types/api';
+import { ProductionCreatePanel } from '@/components/production/ProductionCreatePanel';
+import { ProductionEvidencePanel } from '@/components/production/ProductionEvidencePanel';
+import { boundedBackendProgress, isTaskActive, normalizeTaskStatus, TASK_STATUS_LABELS } from '@/lib/backend-contract';
 
 const SOURCE_LABELS: Record<string, string> = {
   automatic: '极简单片',
@@ -22,6 +25,7 @@ function labelFor(task: TaskInfo): string {
 export function ProductionConsole() {
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = () => {
@@ -29,23 +33,28 @@ export function ProductionConsole() {
     taskApi.list().then(setTasks).catch(e => setError(e instanceof Error ? e.message : '任务加载失败'));
   };
 
+  const addCreatedTask = (task: ProductionTask) => {
+    setTasks(previous => [task, ...previous.filter(item => item.task_id !== task.task_id)]);
+  };
+
   useEffect(() => { refresh(); }, [router]);
   useEffect(() => {
-    const hasActive = tasks.some(task => !['completed', 'failed'].includes(task.status));
+    const hasActive = tasks.some(task => isTaskActive(task.status));
     if (!hasActive) return;
     const timer = window.setInterval(refresh, 3000);
     return () => window.clearInterval(timer);
   }, [tasks]);
 
   const metrics = useMemo(() => ({
-    running: tasks.filter(task => ['running', 'pending', 'paused'].includes(task.status)).length,
-    queued: tasks.filter(task => task.status === 'pending').length,
-    completed: tasks.filter(task => task.status === 'completed').length,
-    passed: tasks.filter(task => task.status === 'completed').length,
+    running: tasks.filter(task => isTaskActive(task.status) && !['pending', 'queued'].includes(normalizeTaskStatus(task.status))).length,
+    queued: tasks.filter(task => ['pending', 'queued'].includes(normalizeTaskStatus(task.status))).length,
+    completed: tasks.filter(task => normalizeTaskStatus(task.status) === 'completed').length,
+    passed: tasks.filter(task => normalizeTaskStatus(task.status) === 'completed' && (task as TaskInfo & { config_json?: Record<string, unknown> }).config_json?.quality_evaluation).length,
   }), [tasks]);
 
   return (
     <div className="hevi-production hevi-task-manager">
+      <ProductionCreatePanel onCreated={addCreatedTask} />
       <header className="hevi-production__hero">
         <div>
           <p className="hevi-production__eyebrow">Task &amp; Asset Manager</p>
@@ -59,7 +68,7 @@ export function ProductionConsole() {
         <div><strong>{metrics.running}</strong><span>运行中任务</span></div>
         <div><strong>{metrics.queued}</strong><span>队列等待</span></div>
         <div><strong>{metrics.completed}</strong><span>已交付成片</span></div>
-        <div><strong>{metrics.passed ? '100%' : '—'}</strong><span>质检通过率</span></div>
+        <div><strong>{metrics.completed ? `${metrics.passed}/${metrics.completed}` : '—'}</strong><span>质检通过率（后端证据）</span></div>
       </section>
 
       {error && <div className="hevi-production__notice is-error">{error}</div>}
@@ -69,17 +78,20 @@ export function ProductionConsole() {
         {tasks.length === 0 ? <div className="hevi-task-empty">暂无任务。请从首页生成中心或导演控制台创建任务。</div> : (
           <div className="hevi-task-table-wrap"><table className="hevi-task-table"><thead><tr><th>Task ID</th><th>模式 / 适配器</th><th>进度</th><th>阶段</th><th>状态</th><th>操作</th></tr></thead><tbody>
             {tasks.map(task => {
-              const percent = Math.max(0, Math.min(100, task.percent ?? 0));
-              const done = task.status === 'completed';
-              return <tr key={task.task_id}><td className="hevi-task-id">#{task.task_id.slice(0, 8)}</td><td>{labelFor(task)}</td><td><div className="hevi-task-progress"><i style={{ width: `${percent}%` }} /></div><small>{percent}%</small></td><td>{task.stage || (task.status === 'pending' ? '队列等待' : '处理中')}</td><td><span className={`hevi-task-status hevi-task-status--${task.status}`}>{task.status === 'completed' ? 'PASS · 已完成' : task.status === 'failed' ? 'FAILED' : 'RUNNING'}</span></td><td><button className="hevi-task-action" onClick={() => router.push(`/account?task=${encodeURIComponent(task.task_id)}`)}>查看</button>{done && <a className="hevi-task-action" href={taskApi.videoUrl(task.task_id)} download>下载</a>}</td></tr>;
+              const status = normalizeTaskStatus(task.status);
+              const percent = boundedBackendProgress(task.percent ?? task.progress_pct);
+              const done = status === 'completed';
+              return <tr key={task.task_id}><td className="hevi-task-id">#{task.task_id.slice(0, 8)}</td><td>{labelFor(task)}<br /><small>production {task.production_id ?? '—'} · revision {task.revision_id ?? '—'}</small></td><td>{percent === null ? '—' : <><div className="hevi-task-progress"><i style={{ width: `${percent}%` }} /></div><small>{percent}%</small></>}</td><td>{task.stage ?? '后端未提供阶段'}</td><td><span className={`hevi-task-status hevi-task-status--${status}`}>{TASK_STATUS_LABELS[status]}</span></td><td><button className="hevi-task-action" onClick={() => setSelectedTaskId(task.task_id)}>查看 evidence</button>{done && <a className="hevi-task-action" href={taskApi.videoUrl(task.task_id)} download>下载</a>}</td></tr>;
             })}
           </tbody></table></div>
         )}
       </section>
 
+      {selectedTaskId && <ProductionEvidencePanel taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} />}
+
       <section className="hevi-task-section hevi-task-assets">
         <div className="hevi-task-section__head"><div><h2>媒体交付库</h2><p>成片、封面、字幕与导出记录统一从任务产物索引读取。</p></div><button className="hevi-task-action" onClick={() => router.push('/account')}>打开完整资产库 →</button></div>
-        <div className="hevi-asset-grid">{tasks.filter(task => task.status === 'completed').slice(0, 6).map(task => <article className="hevi-asset-card" key={task.task_id}><div className="hevi-asset-card__thumb">▶</div><div><strong>{labelFor(task)}</strong><span>{task.created_at ? new Date(task.created_at).toLocaleString() : '刚刚完成'}</span></div><a href={taskApi.videoUrl(task.task_id)} download>下载 MP4</a></article>)}{tasks.every(task => task.status !== 'completed') && <div className="hevi-task-empty">完成的成片会自动出现在这里。</div>}</div>
+        <div className="hevi-asset-grid">{tasks.filter(task => normalizeTaskStatus(task.status) === 'completed').slice(0, 6).map(task => <article className="hevi-asset-card" key={task.task_id}><div className="hevi-asset-card__thumb">▶</div><div><strong>{labelFor(task)}</strong><span>{task.created_at ? new Date(task.created_at).toLocaleString() : '后端未提供时间'}</span></div><a href={taskApi.videoUrl(task.task_id)} download>下载 MP4</a></article>)}{tasks.every(task => normalizeTaskStatus(task.status) !== 'completed') && <div className="hevi-task-empty">后端没有返回 completed artifact。</div>}</div>
       </section>
     </div>
   );

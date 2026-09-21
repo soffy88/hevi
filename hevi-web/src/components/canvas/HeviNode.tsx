@@ -18,7 +18,7 @@ export interface HeviNodeData {
   result?: NodeResult;
 }
 
-const STATUS_RING: Record<TaskStatus, string> = {
+const STATUS_RING: Partial<Record<TaskStatus, string>> = {
   pending:   'transparent',
   running:   'var(--primary)',
   completed: 'var(--success, oklch(0.62 0.18 145))',

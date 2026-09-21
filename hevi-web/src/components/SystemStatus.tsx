@@ -18,7 +18,7 @@ import { checkBackendHealth } from '@/lib/backend-health';
 import { USE_MOCK, API_BASE } from '@/lib/runtime-config';
 
 export function SystemStatus() {
-  const [health, setHealth] = useState<{ state: string; latencyMs?: number } | null>(null);
+  const [health, setHealth] = useState<Awaited<ReturnType<typeof checkBackendHealth>> | null>(null);
   const [authStatus, setAuthStatus] = useState<'logged in' | 'logged out'>('logged out');
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +28,7 @@ export function SystemStatus() {
     async function initialCheck() {
       try {
         const result = await checkBackendHealth();
-        setHealth({
-          state: result.state,
-          latencyMs: result.latencyMs,
-        });
+        setHealth(result);
         setLastCheck(new Date());
         setError(null);
       } catch (err: unknown) {
@@ -39,9 +36,7 @@ export function SystemStatus() {
           (err as Error).message ||
             'Failed to check backend health'
         );
-        setHealth({
-          state: 'offline' as const,
-        });
+        setHealth(null);
         setLastCheck(new Date());
       }
     }
@@ -56,10 +51,7 @@ export function SystemStatus() {
       if (!alive) return;
       try {
         const result = await checkBackendHealth();
-        setHealth({
-          state: result.state,
-          latencyMs: result.latencyMs,
-        });
+        setHealth(result);
         setLastCheck(new Date());
         setError(null);
       } catch (err: unknown) {
@@ -67,9 +59,7 @@ export function SystemStatus() {
           (err as Error).message ||
             'Failed to check backend health'
         );
-        setHealth({
-          state: 'offline' as const,
-        });
+        setHealth(null);
         setLastCheck(new Date());
       }
     }, 30_000);
@@ -90,8 +80,8 @@ export function SystemStatus() {
   const mode = USE_MOCK ? 'MOCK' : 'REAL';
 
   const statusClass =
-    health?.state === 'healthy' ? 'status-healthy'
-    : health?.state === 'degraded' ? 'status-degraded'
+    health?.live && health.ready ? 'status-healthy'
+    : health?.live ? 'status-degraded'
     : 'status-offline';
 
   const modeClass = mode === 'REAL' ? 'mode-real' : 'mode-mock';
@@ -100,8 +90,15 @@ export function SystemStatus() {
     <div className="system-status">
       <div className="system-status__row">
         <span className="system-status__label">Backend</span>
-        <span className={statusClass}>
-          {health?.state === 'healthy' ? 'Connected' : health?.state === 'degraded' ? 'Degraded' : 'Offline'}
+        <span className={statusClass} data-testid="api-live-status">
+          {health?.live ? 'PASS · API live' : 'FAIL · API offline'}
+        </span>
+      </div>
+
+      <div className="system-status__row">
+        <span className="system-status__label">Production ready</span>
+        <span className={health?.ready ? 'status-healthy' : 'status-degraded'} data-testid="system-ready-status">
+          {health?.ready ? 'PASS · system ready' : 'FAIL · degraded / unavailable'}
         </span>
       </div>
 
@@ -119,6 +116,13 @@ export function SystemStatus() {
         <div className="system-status__row">
           <span className="system-status__label">Latency</span>
           <span>{health.latencyMs} ms</span>
+        </div>
+      )}
+
+      {health?.readyReport?.worker_heartbeat && (
+        <div className="system-status__row">
+          <span className="system-status__label">Worker heartbeat</span>
+          <span>{String(health.readyReport.worker_heartbeat.status ?? 'unknown')}</span>
         </div>
       )}
 

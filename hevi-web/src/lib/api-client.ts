@@ -14,6 +14,7 @@ import type {
   LiteRunCreatePayload, LiteRunRecord, LiteCueInput,
   PersistentIdentity, IdentityBinding, ContinuityFact, RepairIncident,
   IdentitySummary, ContinuityProjectSummary, IncidentTimelineEvent, IncidentProductView, ProjectHealth,
+  TaskCheckpoint, ArtifactCurrencyResponse, ArtifactPresentationResponse,
 } from '@/types/api';
 import { API_BASE, USE_MOCK } from '@/lib/runtime-config';
 import type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
@@ -292,6 +293,7 @@ export const taskApi = {
   create:   (r: LongVideoTaskReq) => authedReq<TaskInfo>('/api/tasks', { method: 'POST', body: JSON.stringify(r) }),
   list:     () => authedReq<TaskInfo[]>('/api/tasks'),
   get:      (id: string) => authedReq<TaskInfo>(`/api/tasks/${id}`),
+  checkpoint: (id: string) => authedReq<TaskCheckpoint>(`/api/tasks/${id}/checkpoint`),
   // 镜头级卡片(剧集看板)——逐镜状态 + 一致性/诊断摘要
   shots:    (id: string) => authedReq<TaskShot[]>(`/api/tasks/${id}/shots`),
   // C3 verdict→定向返工(剧集看板可编辑,SPEC-001 §4.3):后台重生成指定镜头,fire-and-forget
@@ -320,6 +322,19 @@ export const taskApi = {
     `${API_BASE}/api/tasks/${id}/audio${authToken ? `?token=${encodeURIComponent(authToken)}` : ''}`,
   // 成本预估
   estimate: (r: LongVideoTaskReq) => req<CostEstimateRes>('/api/tasks/estimate', { method: 'POST', body: JSON.stringify(r) }),
+};
+
+/** Canonical artifact/currency projections. The UI never infers latest == current. */
+export const artifactAuthorityApi = {
+  presentation: (taskId: string) =>
+    authedReq<ArtifactPresentationResponse>(`/api/authorities/tasks/${encodeURIComponent(taskId)}/presentation`),
+  currency: (taskId: string) =>
+    authedReq<ArtifactCurrencyResponse>(`/api/authorities/tasks/${encodeURIComponent(taskId)}/currency`),
+};
+
+export const healthApi = {
+  live: () => req<{ status: string; version?: string }>('/api/health/live'),
+  ready: () => req<Record<string, unknown>>('/api/health/ready'),
 };
 
 // ── 统一自动生产 / 数字人预设 ─────────────────────────────────────
