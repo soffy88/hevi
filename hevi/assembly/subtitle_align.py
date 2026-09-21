@@ -12,6 +12,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from hevi.assembly.subtitle_timeline_atoms import (
+    CueMs,
+    align_cues,
+    cues_to_ass,
+    normalize_cues,
+    validate_ass,
+    validate_srt,
+)
+from hevi.voicepro.oprim.subtitle_timeline import (
+    cues_to_srt as cues_to_srt_ms,
+)
+
 # faster-whisper 模型目录: 优先 env, 兜底本地 large-v3-turbo。
 _MODEL_DIR = os.environ.get(
     "FASTER_WHISPER_MODEL_DIR",
@@ -46,6 +58,29 @@ def cues_to_srt(cues: list[Cue]) -> str:
     for i, c in enumerate(cues, 1):
         blocks.append(f"{i}\n{_fmt_ts(c.start)} --> {_fmt_ts(c.end)}\n{c.text.strip()}\n")
     return "\n".join(blocks)
+
+
+def normalize_cues_ms(
+    cues: list[Any], *, audio_duration_ms: int, unit: str = "ms", fps: int = 24
+) -> list[CueMs]:
+    """Canonical millisecond facade retained at the existing subtitle entrypoint."""
+
+    return align_cues(cues, audio_duration_ms=audio_duration_ms, fps=fps, unit=unit)
+
+
+__all__ = [
+    "Cue",
+    "CueMs",
+    "align_cues",
+    "cues_to_ass",
+    "cues_to_srt",
+    "cues_to_srt_ms",
+    "normalize_cues",
+    "normalize_cues_ms",
+    "transcribe_to_cues",
+    "validate_ass",
+    "validate_srt",
+]
 
 
 def transcribe_to_cues(

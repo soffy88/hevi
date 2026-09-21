@@ -400,6 +400,17 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         if os.getenv("V2V_ENABLED", "").strip()
         else "配置 V2V_ENABLED 并确保 MaaS 凭证可用后自动开放。",
     ),
+    "subtitle_timeline": CapabilityDescriptor(
+        "subtitle_timeline",
+        "字幕时间线装配",
+        ("/api/tasks",),
+        True,
+        "ASR 时间戳 → SRT/ASS → 现有 FFmpeg timeline assembler → HEVI Layer4 Artifact authority。",
+        "需要真实视频片段、真实音频和 ASR cues/timestamps；不猜测时长，不调用 provider。",
+        execution_ready=True,
+        quality_gate_ready=True,
+        production_ready=True,
+    ),
 }
 
 

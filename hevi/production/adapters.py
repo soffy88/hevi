@@ -309,6 +309,11 @@ def _register_builtin_adapters() -> None:
             "report": {"legacy_result": {"result_video_path": result.output_path}},
         }
 
+    async def execute_subtitle_timeline(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.production.subtitle_timeline_workflow import execute_subtitle_timeline_task
+
+        return await execute_subtitle_timeline_task(task, pool)
+
     _DEFAULT.register("checkpoint_render", execute_checkpoint, replace=True)
     _DEFAULT.register("clip_video", execute_clip_video, replace=True)
     _DEFAULT.register("localize_video", execute_localize_video, replace=True)
@@ -316,6 +321,7 @@ def _register_builtin_adapters() -> None:
     _DEFAULT.register("lot", execute_lot, replace=True)
     _DEFAULT.register("blender_previz", execute_blender_previz, replace=True)
     _DEFAULT.register("v2v", execute_v2v, replace=True)
+    _DEFAULT.register("subtitle_timeline", execute_subtitle_timeline, replace=True)
 
 
 _register_builtin_adapters()

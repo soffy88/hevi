@@ -1255,6 +1255,7 @@ class TaskService:
                 "mpt",
                 "blender_previz",
                 "v2v",
+                "subtitle_timeline",
             }:
                 await self._apply_provider_policy(task)
             await self._start_attempt(task)
@@ -1298,6 +1299,7 @@ class TaskService:
                 "mpt",
                 "blender_previz",
                 "v2v",
+                "subtitle_timeline",
             }:
                 return await self._run_adapter_task(task)
 
