@@ -158,7 +158,12 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
         product=rec.product,
         production_order=order,
         data=data,
-        reason=str(fulfill.get("reason") or "") if status in {"blocked", "failed"} else "",
+        reason=str(
+            fulfill.get("reason")
+            or fulfill.get("error")
+            or (state.data or {}).get("failure")
+            or ""
+        ) if status in {"blocked", "failed"} else "",
     )
 
 

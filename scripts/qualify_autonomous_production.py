@@ -78,7 +78,10 @@ async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
                 "line": line, "entrypoint": "hevi.studio.veya:produce", "run_id": job.job_id,
                 "status": status, "zero_human": True, "real_e2e": True,
                 "final_mp4": bool(path and path.is_file()),
-                "ffprobe_valid": bool((fulfill.get("artifact_verification") or {}).get("verified")),
+                "ffprobe_valid": bool(
+                    (fulfill.get("artifact_verification") or {}).get("verified")
+                    or (fulfill.get("artifact_manifest") or {}).get("truth_gate", {}).get("verified")
+                ),
                 "artifact_sha256": artifact_sha, "false_success": bool(violation and job.status in {"ready", "completed"}),
                 "fresh": True, "quality_gate": bool((fulfill.get("quality") or {}).get("passed")),
                 "provenance_complete": bool(fulfill.get("provenance") or prod.get("provenance")),
