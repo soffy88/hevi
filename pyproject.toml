@@ -41,6 +41,7 @@ dependencies = [
     "sqlmodel>=0.0.39",  # v9.1: 任务大盘 SQLite ORM (TaskRun 状态机)
     "pillow>=10",  # v9.1: 素材质检(尺寸/像素总量/EXIF 方向)前端拦截的后端兜底
     "playwright>=1.49",  # v9.1 Lite 管道:无头浏览器录屏(hevi.pipeline_lite.oprim.oprim_playwright)
+    "deep-translator>=1.11",
 ]
 
 [project.optional-dependencies]

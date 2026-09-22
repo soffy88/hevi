@@ -66,22 +66,27 @@ async def translate_deep_translator(
     支持 Google / Bing / LibreTranslate 后端。
     """
     try:
-        from deep_translator import (
-            BingTranslator,
-            GoogleTranslator,
-            LibreTranslator,
-        )
+        from deep_translator import GoogleTranslator, LibreTranslator
     except ImportError:
         raise RuntimeError("deep-translator 未安装") from None
+
+    try:
+        from deep_translator import BingTranslator
+    except ImportError:
+        BingTranslator = None  # type: ignore[assignment,misc]
 
     translator_cls = {
         "GoogleTranslator": GoogleTranslator,
         "BingTranslator": BingTranslator,
         "LibreTranslator": LibreTranslator,
     }.get(backend, GoogleTranslator)
+    if translator_cls is None:
+        raise RuntimeError(f"translation backend unavailable: {backend}")
 
     translator = translator_cls(
-        source=source_lang if source_lang != "auto" else None,
+        # GoogleTranslator accepts the literal ``auto`` source language;
+        # passing None is rejected by current deep-translator releases.
+        source=source_lang or "auto",
         target=target_lang,
     )
 
@@ -94,6 +99,31 @@ async def translate_deep_translator(
         target_lang=target_lang,
         provider=TranslateProvider.DEEP_TRANSLATOR,
     )
+
+
+async def translate_deep_translator_batch(
+    texts: list[str],
+    source_lang: str = "auto",
+    target_lang: str = "zh-CN",
+    backend: str = "GoogleTranslator",
+) -> list[TranslateResult]:
+    """Translate a batch in one provider request to respect public rate limits."""
+    try:
+        from deep_translator import GoogleTranslator, LibreTranslator
+    except ImportError:
+        raise RuntimeError("deep-translator 未安装") from None
+    if backend == "GoogleTranslator":
+        translator_cls = GoogleTranslator
+    elif backend == "LibreTranslator":
+        translator_cls = LibreTranslator
+    else:
+        return [await translate_deep_translator(text, source_lang, target_lang, backend) for text in texts]
+    translator = translator_cls(source=source_lang or "auto", target=target_lang)
+    translated = translator.translate_batch(texts)
+    return [
+        make_translate_result(text, str(result), source_lang, target_lang, TranslateProvider.DEEP_TRANSLATOR)
+        for text, result in zip(texts, translated, strict=True)
+    ]
 
 
 # ── Azure Translator 翻译 ─────────────────────────

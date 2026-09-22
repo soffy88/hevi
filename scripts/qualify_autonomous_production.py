@@ -49,7 +49,7 @@ def _slots(line: str) -> dict[str, Any]:
     if line == "shorts_clip":
         values["media_path"] = podcast_video
     if line == "localization_dub":
-        values.update({"media_path": source_video, "lang": "en-US", "dub": True})
+        values.update({"media_path": source_video, "lang": "en", "dub": True, "translation_provider": "deep_translator"})
     if line in {"talking_head", "avatar_spokesperson"}:
         values["image_path"] = presenter_image
     if line == "history_scene": values["source_text"] = values["topic"]
@@ -78,7 +78,10 @@ def _blocker_matrix_row(line: str, row: dict[str, Any]) -> dict[str, Any]:
     lowered = message.lower()
     if not message:
         return {"line": line, "status": "PASS", "failed_stage": "", "failed_gate": "", "provider": "", "root_cause": "", "software_bug": False, "env_blocker": False, "input_blocker": False, "quality_blocker": False, "retry_verified": row.get("retry_verified", False), "remediation": "none"}
-    if "comfyui" in lowered or "8188" in lowered or "hardware" in lowered:
+    if "default llm is unavailable" in lowered or "credential" in lowered or "function not found" in lowered:
+        kind, stage, remediation = "PROVIDER_CREDENTIAL", "translate/provider_call", "configure a valid LLM translation route and verify one authenticated inference request"
+        software, env, inp, quality = False, True, False, False
+    elif "comfyui" in lowered or "8188" in lowered or "hardware" in lowered:
         kind, stage, remediation = "PROVIDER_HARDWARE", "render/avatar", "start EchoMimic ComfyUI on the reserved GPU and rerun talking_head/avatar_spokesperson"
         software, env, inp, quality = False, True, False, False
     elif "410" in lowered or "model" in lowered and "retired" in lowered:
@@ -133,6 +136,7 @@ async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
             status = "completed" if not blocker else ("blocked" if job.status == "blocked" else "failed")
             rows.append({
                 "line": line, "entrypoint": "hevi.studio.veya:produce", "run_id": job.job_id,
+                "provider": {"localization_dub": "llm_translate+edge_tts", "history_scene": "NIM", "cinematic": "NIM", "director_pipeline": "NIM", "talking_head": "EchoMimicV2/ComfyUI", "avatar_spokesperson": "EchoMimicV2/ComfyUI"}.get(line, "canonical_renderer"),
                 "status": status, "zero_human": True, "real_e2e": True,
                 "final_mp4": bool(path and path.is_file()),
                 "ffprobe_valid": bool(

@@ -14,6 +14,7 @@ from hevi.layer4_legacy.voicepro_translate.oprim_impl import (
     make_translate_result,
     translate_azure_translator,
     translate_deep_translator,
+    translate_deep_translator_batch,
     translate_deepl,
     translate_llm,
     translate_text,
@@ -59,6 +60,8 @@ async def skill_batch_translate(
     target_lang: str = "zh-CN",
 ) -> list[TranslateResult]:
     """批量翻译技能。"""
+    if str(provider) in {TranslateProvider.DEEP_TRANSLATOR.value, str(TranslateProvider.DEEP_TRANSLATOR)}:
+        return await translate_deep_translator_batch(texts, source_lang, target_lang)
     results = []
     for text in texts:
         result = await skill_translate_text(text, provider, source_lang, target_lang)
