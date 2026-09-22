@@ -6,8 +6,11 @@ ComfyUI 必须用 `bash /home/soffy/ComfyUI/start-echomimic.sh` 起
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +49,25 @@ def _client() -> ComfyClient:
     )
 
 
+async def _ensure_runtime() -> None:
+    """Bootstrap the managed ComfyUI runtime; never ask production users to."""
+    client = _client()
+    if await client.health():
+        return
+    if os.getenv("HEVI_AUTOSTART_COMFYUI", "1").strip().lower() in {"0", "false", "no"}:
+        return
+    probe = Path(__file__).resolve().parents[3] / "scripts/preflight_avatar_runtime.py"
+    proc = await asyncio.to_thread(
+        subprocess.run,
+        [sys.executable, str(probe), "--start", "--json"],
+        capture_output=True,
+        text=True,
+        timeout=90,
+    )
+    if proc.returncode != 0:
+        logger.warning("EchoMimic runtime preflight failed: %s", proc.stdout[-1200:])
+
+
 async def echo_mimic_generate(
     *,
     image_path: Path | str,
@@ -68,6 +90,8 @@ async def echo_mimic_generate(
     if max(width, height) > 768:
         raise H3ComfyError(f"10G 卡禁止 {width}x{height}(上限 768,推荐 512)")
 
+    client = _client()
+    await _ensure_runtime()
     client = _client()
     if not await client.health():
         raise H3ComfyError(

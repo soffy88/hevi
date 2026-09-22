@@ -84,6 +84,9 @@ def _blocker_matrix_row(line: str, row: dict[str, Any]) -> dict[str, Any]:
     elif "too many requests" in lowered or "toomanyrequests" in lowered or "429" in lowered:
         kind, stage, remediation = "PROVIDER_QUOTA", "translate/provider_call", "wait for provider quota reset or configure an authorized translation provider"
         software, env, inp, quality = False, True, False, False
+    elif row.get("provider") == "NIM" and "network_error" in lowered:
+        kind, stage, remediation = "PROVIDER_CONFIGURATION", "provider_call", "audit NIM endpoint/model/function/account entitlement and configure an available route"
+        software, env, inp, quality = False, True, False, False
     elif "comfyui" in lowered or "8188" in lowered or "hardware" in lowered:
         kind, stage, remediation = "PROVIDER_HARDWARE", "render/avatar", "start EchoMimic ComfyUI on the reserved GPU and rerun talking_head/avatar_spokesperson"
         software, env, inp, quality = False, True, False, False
@@ -110,8 +113,13 @@ async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     if not consistency["passed"]:
         raise SystemExit(json.dumps({"registry": consistency}, ensure_ascii=False))
     git_sha = _git_sha()
+    selected = set(args.lines or CANONICAL_LINES)
+    if unknown := selected.difference(CANONICAL_LINES):
+        raise ValueError(f"unknown qualification lines: {sorted(unknown)}")
     rows: list[dict[str, Any]] = []
     for line in CANONICAL_LINES:
+        if line not in selected:
+            continue
         started = time.time()
         try:
             # P1 controlled transient fault: the production retry layer must
@@ -164,6 +172,7 @@ def main() -> int:
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--real", action="store_true")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--lines", nargs="+", choices=CANONICAL_LINES)
     args = parser.parse_args()
     head = _git_sha()
     root = args.output or Path("artifacts/qualification/autonomous-production") / head
