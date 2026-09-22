@@ -2,15 +2,16 @@
   {
     "id": "cue-1",
     "sceneType": "hook",
-    "text": "1872年，波尔兹曼面临物理学史上最深的鸿沟：微观世界的时间可逆性与宏观熵增的单向性。这个悖论的解决，需要打破经典力学的时间对称性。我们从李乌尼夫定理的数学形式开始，揭示其隐藏的时间悖论。",
-    "audioFile": "audio/cue-1.mp3",
-    "durationSec": 21.048,
+    "text": "你知道吗?HEVI autonomous production qualification: avatar_spokesperson背后藏着这些细节。",
+    "audioFile": "runs/avatar_spokesperson/audio/cue-1.mp3",
+    "durationSec": 9.384,
     "startSec": 0.0,
     "keywords": [
-      "1872年，波尔兹曼面临物理学史上最深的鸿沟：微观世界的时间可逆性与宏观熵增的单向性。这个悖论的解决，需要打破经典力学的时间对称性。我们从李乌尼夫定理的数学形式开始，揭示其隐藏的时间悖论。"
+      "你知道吗?HEVI",
+      "autonomous"
     ],
     "props": {
-      "title": "1872年，波尔兹曼面临",
+      "title": "你知道吗?HEVI au",
       "subtitle": "深度解说",
       "items": [
         {
@@ -21,26 +22,42 @@
     },
     "captions": [
       {
-        "text": "1872年，波尔兹曼面临物理学史上最深的鸿沟：微观世界的时间可逆性与宏观熵增的单向性",
+        "text": "你知道吗",
         "start": 0.105541,
-        "end": 9.791666
+        "end": 0.786083
       },
       {
-        "text": "这个悖论的解决，需要打破经典力学的时间对称性",
-        "start": 9.819458,
-        "end": 15.180582
+        "text": "HEVI",
+        "start": 1.202791,
+        "end": 1.536124
       },
       {
-        "text": "我们从李乌尼夫定理的数学形式开始，揭示其隐藏的时间悖论",
-        "start": 15.208333,
-        "end": 20.069458
+        "text": "autonomous",
+        "start": 1.55,
+        "end": 2.216666
+      },
+      {
+        "text": "production",
+        "start": 2.230541,
+        "end": 2.952749
+      },
+      {
+        "text": "qualification",
+        "start": 2.966666,
+        "end": 3.980541
+      },
+      {
+        "text": "avatar_spokesperson背后藏着这些细节",
+        "start": 4.466666,
+        "end": 8.39725
       }
     ],
     "visualType": "heygen_avatar",
     "visualConfig": {
+      "hevi_presenter_image": "data/workspace/assets/celebrities30s/English/Michio Kaku.jpg",
       "local_presenter": true,
       "presenter_name": "HEVI 默认解说数字人",
-      "time_range": "00:00-08.5s",
+      "time_range": "00:00-05.0s",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -52,16 +69,16 @@
   {
     "id": "cue-2",
     "sceneType": "definition",
-    "text": "观察H定理的标准形式：dH/dt = -K。这个等式暗示了H函数的单调递减，但当我们逆转时间参数ε→-ε时，方程结构如何变化？这正是波尔兹曼引入Λ因子的关键——通过时演化算符T(εt)，打破李乌尼夫定理的严格时间对称性。",
-    "audioFile": "audio/cue-2.mp3",
-    "durationSec": 23.904,
-    "startSec": 21.048,
+    "text": "HEVI autonomous production qualification: avatar_spokesperson的第1个关键点:值得你记住。",
+    "audioFile": "runs/avatar_spokesperson/audio/cue-2.mp3",
+    "durationSec": 8.736,
+    "startSec": 9.384,
     "keywords": [
-      "观察H定理的标准形式：dH/dt",
-      "="
+      "HEVI",
+      "autonomous"
     ],
     "props": {
-      "question": "观察H定理的标准形式：dH/dt = -K。这个等式暗示了H",
+      "question": "HEVI autonomous production qua",
       "formulaHead": "核心概念",
       "formulaLines": [
         "= 事实与证据",
@@ -84,41 +101,247 @@
     },
     "captions": [
       {
-        "text": "观察H定理的标准形式：dH/dt",
+        "text": "HEVI",
         "start": 0.105541,
-        "end": 4.522249
+        "end": 0.480541
       },
       {
-        "text": "=",
-        "start": 5.152791,
-        "end": 5.444457
+        "text": "autonomous",
+        "start": 0.494458,
+        "end": 1.161124
       },
       {
-        "text": "-K",
-        "start": 5.458333,
-        "end": 5.819458
+        "text": "production",
+        "start": 1.175,
+        "end": 1.883333
       },
       {
-        "text": "这个等式暗示了H函数的单调递减，但当我们逆转时间参数ε→-ε时，方程结构如何变化？这正是波尔兹曼引入Λ因子的关键——通过时演化算符T",
-        "start": 5.847208,
-        "end": 21.944416
+        "text": "qualification",
+        "start": 1.897208,
+        "end": 2.897208
       },
       {
-        "text": "εt",
-        "start": 21.958333,
-        "end": 22.333333
+        "text": "avatar_spokesperson的第1个关键点",
+        "start": 3.383333,
+        "end": 6.619458
       },
       {
-        "text": "，打破李乌尼夫定理的严格时间对称性",
-        "start": 22.361125,
-        "end": 22.930583
+        "text": "值得你记住",
+        "start": 6.911125,
+        "end": 7.744457
       }
     ],
-    "visualType": "voiceover",
+    "visualType": "heygen_avatar",
     "visualConfig": {
-      "time_range": "00:00-35.0s",
-      "target_url": "https://physicsarchive.org/boltzmann",
-      "highlight_selector": ".equation-3",
+      "local_presenter": true,
+      "presenter_name": "HEVI 默认解说数字人",
+      "time_range": "00:00-05.0s",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-3",
+    "sceneType": "cards",
+    "text": "HEVI autonomous production qualification: avatar_spokesperson的第2个关键点:值得你记住。",
+    "audioFile": "runs/avatar_spokesperson/audio/cue-3.mp3",
+    "durationSec": 8.832,
+    "startSec": 18.12,
+    "keywords": [
+      "HEVI",
+      "autonomous"
+    ],
+    "props": {
+      "header": "关键画面",
+      "cards": [
+        {
+          "emoji": "📰",
+          "title": "证据",
+          "desc": "HEVI autonomous production qualification"
+        }
+      ]
+    },
+    "captions": [
+      {
+        "text": "HEVI",
+        "start": 0.105541,
+        "end": 0.494416
+      },
+      {
+        "text": "autonomous",
+        "start": 0.508333,
+        "end": 1.188874
+      },
+      {
+        "text": "production",
+        "start": 1.202791,
+        "end": 1.938916
+      },
+      {
+        "text": "qualification",
+        "start": 1.952791,
+        "end": 2.952791
+      },
+      {
+        "text": "avatar_spokesperson的第2个关键点",
+        "start": 3.438875,
+        "end": 6.730583
+      },
+      {
+        "text": "值得你记住",
+        "start": 7.022208,
+        "end": 7.855582
+      }
+    ],
+    "visualType": "heygen_avatar",
+    "visualConfig": {
+      "local_presenter": true,
+      "presenter_name": "HEVI 默认解说数字人",
+      "time_range": "00:00-05.0s",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-4",
+    "sceneType": "reason",
+    "text": "HEVI autonomous production qualification: avatar_spokesperson的第3个关键点:值得你记住。",
+    "audioFile": "runs/avatar_spokesperson/audio/cue-4.mp3",
+    "durationSec": 8.832,
+    "startSec": 26.952,
+    "keywords": [
+      "HEVI",
+      "autonomous"
+    ],
+    "props": {
+      "question": "为什么重要？",
+      "brainLine": "HEVI autonomous production qualification",
+      "bubbleText": "把证据放回上下文。",
+      "leftLabel": {
+        "title": "只看表面",
+        "sub": "容易误判"
+      },
+      "rightLabel": {
+        "title": "看清机制",
+        "sub": "做出判断"
+      }
+    },
+    "captions": [
+      {
+        "text": "HEVI",
+        "start": 0.105541,
+        "end": 0.494416
+      },
+      {
+        "text": "autonomous",
+        "start": 0.508333,
+        "end": 1.188874
+      },
+      {
+        "text": "production",
+        "start": 1.202791,
+        "end": 1.911124
+      },
+      {
+        "text": "qualification",
+        "start": 1.925,
+        "end": 2.925
+      },
+      {
+        "text": "avatar_spokesperson的第3个关键点",
+        "start": 3.397208,
+        "end": 6.702791
+      },
+      {
+        "text": "值得你记住",
+        "start": 6.994458,
+        "end": 7.841666
+      }
+    ],
+    "visualType": "heygen_avatar",
+    "visualConfig": {
+      "local_presenter": true,
+      "presenter_name": "HEVI 默认解说数字人",
+      "time_range": "00:00-05.0s",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-5",
+    "sceneType": "method",
+    "text": "关于HEVI autonomous production qualification: avatar_spokesperson,你还想了解什么?评论区告诉我。",
+    "audioFile": "runs/avatar_spokesperson/audio/cue-5.mp3",
+    "durationSec": 9.864,
+    "startSec": 35.784000000000006,
+    "keywords": [
+      "关于HEVI",
+      "autonomous"
+    ],
+    "props": {
+      "header": "三个检查动作",
+      "points": [
+        {
+          "num": "1",
+          "title": "关于HEVI autonomous produc",
+          "sub": "核对来源与时间"
+        }
+      ]
+    },
+    "captions": [
+      {
+        "text": "关于HEVI",
+        "start": 0.105541,
+        "end": 1.369416
+      },
+      {
+        "text": "autonomous",
+        "start": 1.383333,
+        "end": 2.063874
+      },
+      {
+        "text": "production",
+        "start": 2.077791,
+        "end": 2.799999
+      },
+      {
+        "text": "qualification",
+        "start": 2.813875,
+        "end": 3.8
+      },
+      {
+        "text": "avatar_spokesperson",
+        "start": 4.244458,
+        "end": 6.355541
+      },
+      {
+        "text": "你还想了解什么",
+        "start": 6.661125,
+        "end": 7.647208
+      },
+      {
+        "text": "评论区告诉我",
+        "start": 7.911125,
+        "end": 8.897249
+      }
+    ],
+    "visualType": "heygen_avatar",
+    "visualConfig": {
+      "local_presenter": true,
+      "presenter_name": "HEVI 默认解说数字人",
+      "time_range": "00:00-05.0s",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },

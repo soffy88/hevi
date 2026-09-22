@@ -81,6 +81,9 @@ def _blocker_matrix_row(line: str, row: dict[str, Any]) -> dict[str, Any]:
     if "default llm is unavailable" in lowered or "credential" in lowered or "function not found" in lowered:
         kind, stage, remediation = "PROVIDER_CREDENTIAL", "translate/provider_call", "configure a valid LLM translation route and verify one authenticated inference request"
         software, env, inp, quality = False, True, False, False
+    elif "too many requests" in lowered or "toomanyrequests" in lowered or "429" in lowered:
+        kind, stage, remediation = "PROVIDER_QUOTA", "translate/provider_call", "wait for provider quota reset or configure an authorized translation provider"
+        software, env, inp, quality = False, True, False, False
     elif "comfyui" in lowered or "8188" in lowered or "hardware" in lowered:
         kind, stage, remediation = "PROVIDER_HARDWARE", "render/avatar", "start EchoMimic ComfyUI on the reserved GPU and rerun talking_head/avatar_spokesperson"
         software, env, inp, quality = False, True, False, False
