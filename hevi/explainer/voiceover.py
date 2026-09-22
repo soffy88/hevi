@@ -107,13 +107,14 @@ async def synthesize_storyboard(
     voice: str = DEFAULT_VOICE,
     rate: str = DEFAULT_RATE,
     audio_public_prefix: str = "audio",
+    provider: str | None = None,
 ) -> list[ManifestSegment]:
     """storyboard(E0 产出)→ 逐段配音,写音频到 audio_dir,返回 ManifestSegment 列表。
 
     audio_dir 写到 hevi-remotion/public/<prefix>(按 job 隔离)。ManifestSegment.audio_file
     是相对 public/ 的路径(Remotion staticFile() 约定),不是绝对路径。
     """
-    provider = _provider()
+    provider = (provider or _provider()).strip().lower()
     if provider not in {"cosyvoice", "voicebox", "edge_tts"}:
         raise VoiceoverError(f"不支持的解说 TTS provider: {provider}")
     manifest: list[ManifestSegment] = []

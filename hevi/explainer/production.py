@@ -41,6 +41,7 @@ async def _render_remotion_storyboard(
         output_dir,
         voice=str(config.get("voice") or DEFAULT_VOICE),
         rate=str(config.get("rate") or DEFAULT_RATE),
+        tts_provider=str(config.get("tts_provider") or "") or None,
     )
     return {
         "portrait_path": str(result.portrait_path),
@@ -68,6 +69,7 @@ async def render_narrated_storyboard(
     *,
     voice: str = DEFAULT_VOICE,
     rate: str = DEFAULT_RATE,
+    tts_provider: str | None = None,
 ) -> NarratedRenderResult:
     """Execute E2 through standard 3O transaction + stateless service engine."""
 
@@ -75,6 +77,7 @@ async def render_narrated_storyboard(
         "renderer": "hevi-remotion",
         "voice": voice,
         "rate": rate,
+        "tts_provider": tts_provider or "",
         "format": "explainer-remotion-v1",
         "schema_version": 1,
         "require_landscape": True,

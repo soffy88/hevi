@@ -387,6 +387,7 @@ async def assemble_explainer_cues(
     preview_mode: bool = False,
     source_text: str = "",
     reference_url: str = "",
+    tts_provider: str | None = None,
 ) -> NarratedRenderResult:
     """Compile edited cues and run the standard injected Remotion transaction.
 
@@ -546,7 +547,9 @@ async def assemble_explainer_cues(
             if segment.visual_type == "heygen_avatar":
                 segment.visual_config["circle_avatar_mask"] = False
     render_target = _preview_output_dir(output_dir) if preview_mode else output_dir
-    result = await render_narrated_storyboard(storyboard, render_target, voice=voice)
+    result = await render_narrated_storyboard(
+        storyboard, render_target, voice=voice, tts_provider=tts_provider
+    )
     if preview_mode:
         budget = sum(float(cue.time_estimate_s or 5.0) for cue in prepared_cues)
         cover = render_target / "cover.jpg"

@@ -37,10 +37,66 @@ def _git_sha() -> str:
 
 def _slots(line: str) -> dict[str, Any]:
     values: dict[str, Any] = {"topic": f"HEVI autonomous production qualification: {line}"}
+    # Canonical real inputs are existing local source assets. They are inputs
+    # only; no historical final artifact is copied or counted as output.
+    source_video = "outputs/13-line-product-acceptance/artifacts/documentary_montage_cosyvoice_acceptance/documentary_montage_final.mp4"
+    podcast_video = "outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4"
+    presenter_image = "data/workspace/assets/celebrities30s/English/Michio Kaku.jpg"
+    if line == "documentary_montage":
+        values["source"] = source_video
+    if line == "podcast_repurpose":
+        values.update({"source": podcast_video, "media_path": podcast_video})
+    if line == "shorts_clip":
+        values["media_path"] = podcast_video
+    if line == "localization_dub":
+        values.update({"media_path": source_video, "lang": "en-US", "dub": True})
+    if line in {"talking_head", "avatar_spokesperson"}:
+        values["image_path"] = presenter_image
     if line == "history_scene": values["source_text"] = values["topic"]
     if line == "director_pipeline": values["manuscript"] = values["topic"]
     if line == "reference_adapt": values["transcript"] = values["topic"]
+    if line in {"documentary_montage", "explainer", "reference_adapt", "history_scene", "cinematic", "director_pipeline", "talking_head", "avatar_spokesperson"}:
+        values["tts_engine"] = "edge_tts"
     return values
+
+
+def _input_manifest() -> dict[str, Any]:
+    paths = {
+        "source_video": "outputs/13-line-product-acceptance/artifacts/documentary_montage_cosyvoice_acceptance/documentary_montage_final.mp4",
+        "podcast_video": "outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4",
+        "presenter_image": "data/workspace/assets/celebrities30s/English/Michio Kaku.jpg",
+    }
+    result = {}
+    for name, raw in paths.items():
+        path = Path(raw)
+        result[name] = {"path": raw, "exists": path.is_file(), "sha256": _sha256(path) if path.is_file() else None}
+    return {"schema_version": 1, "inputs": result}
+
+
+def _blocker_matrix_row(line: str, row: dict[str, Any]) -> dict[str, Any]:
+    message = str(row.get("blocker") or "")
+    lowered = message.lower()
+    if not message:
+        return {"line": line, "status": "PASS", "failed_stage": "", "failed_gate": "", "provider": "", "root_cause": "", "software_bug": False, "env_blocker": False, "input_blocker": False, "quality_blocker": False, "retry_verified": row.get("retry_verified", False), "remediation": "none"}
+    if "comfyui" in lowered or "8188" in lowered or "hardware" in lowered:
+        kind, stage, remediation = "PROVIDER_HARDWARE", "render/avatar", "start EchoMimic ComfyUI on the reserved GPU and rerun talking_head/avatar_spokesperson"
+        software, env, inp, quality = False, True, False, False
+    elif "410" in lowered or "model" in lowered and "retired" in lowered:
+        kind, stage, remediation = "PROVIDER_CONFIGURATION", "research/provider_call", "use an available NIM model and verify a real inference response"
+        software, env, inp, quality = True, False, False, False
+    elif "source video" in lowered or "media_path" in lowered or "image" in lowered:
+        kind, stage, remediation = "INPUT_MISSING", "intake", "provide the canonical source asset from input_manifest"
+        software, env, inp, quality = False, False, True, False
+    elif "quality" in lowered or "ffprobe" in lowered or "audio" in lowered or "duration" in lowered:
+        kind, stage, remediation = "QUALITY_GATE", "artifact/qa", "repair renderer or mux output and rerun the affected line"
+        software, env, inp, quality = True, False, False, True
+    elif "network" in lowered or "timeout" in lowered or "502" in lowered:
+        kind, stage, remediation = "PROVIDER_NETWORK", "provider_call", "verify endpoint/inference boundary and retry with the configured provider"
+        software, env, inp, quality = False, True, False, False
+    else:
+        kind, stage, remediation = "UNCLASSIFIED_FAILURE", "pipeline", "inspect the persisted failure payload before any rerun"
+        software, env, inp, quality = True, False, False, False
+    return {"line": line, "status": row.get("status"), "failed_stage": stage, "failed_gate": kind, "provider": row.get("provider") or "unknown", "root_cause": kind, "software_bug": software, "env_blocker": env, "input_blocker": inp, "quality_blocker": quality, "retry_verified": row.get("retry_verified", False), "remediation": remediation}
 
 
 async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
@@ -73,7 +129,8 @@ async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
                 "quality": prod.get("quality_report") or fulfill.get("quality") or {},
                 "provenance": prod.get("provenance") or fulfill.get("provenance") or {},
             })
-            status = "completed" if not violation else ("blocked" if job.status == "blocked" else "failed")
+            blocker = None if not violation else (job.reason or violation)
+            status = "completed" if not blocker else ("blocked" if job.status == "blocked" else "failed")
             rows.append({
                 "line": line, "entrypoint": "hevi.studio.veya:produce", "run_id": job.job_id,
                 "status": status, "zero_human": True, "real_e2e": True,
@@ -82,12 +139,12 @@ async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
                     (fulfill.get("artifact_verification") or {}).get("verified")
                     or (fulfill.get("artifact_manifest") or {}).get("truth_gate", {}).get("verified")
                 ),
-                "artifact_sha256": artifact_sha, "false_success": bool(violation and job.status in {"ready", "completed"}),
+                "artifact_sha256": artifact_sha, "false_success": bool(blocker and job.status in {"ready", "completed"}),
                 "fresh": True, "quality_gate": bool((fulfill.get("quality") or {}).get("passed")),
                 "provenance_complete": bool(fulfill.get("provenance") or prod.get("provenance")),
                 "retry": fulfill.get("retry_evidence") or {},
                 "retry_verified": bool((fulfill.get("retry_evidence") or {}).get("retry_exercised")) and (fulfill.get("retry_evidence") or {}).get("side_effect_duplicate_count", 0) == 0,
-                "blocker": violation or job.reason or None, "elapsed_s": round(time.time() - started, 3),
+                "blocker": blocker, "elapsed_s": round(time.time() - started, 3),
                 "git_sha": git_sha, "recipe": line,
             })
         except Exception as exc:
@@ -105,6 +162,7 @@ def main() -> int:
     root = args.output or Path("artifacts/qualification/autonomous-production") / head
     root.mkdir(parents=True, exist_ok=True)
     evidence = asyncio.run(_run(args, root / "runs"))
+    evidence["input_manifest"] = _input_manifest()
     evidence["canonical_production_lines"] = len(CANONICAL_LINES)
     evidence["qualification_lines"] = len(evidence["lines"])
     evidence["full_auto_verified"] = sum(item["status"] == "completed" and item["zero_human"] for item in evidence["lines"])
@@ -120,7 +178,8 @@ def main() -> int:
     evidence["false_success"] = sum(bool(item.get("false_success")) for item in evidence["lines"])
     evidence["placeholder_artifacts"] = sum("placeholder" in str(item.get("blocker") or "").lower() for item in evidence["lines"])
     evidence["duplicate_side_effects"] = sum((item.get("retry") or {}).get("side_effect_duplicate_count", 0) for item in evidence["lines"])
-    evidence["blocked_lines"] = [item["line"] for item in evidence["lines"] if item["status"] == "blocked"]
+    evidence["blocker_matrix"] = [_blocker_matrix_row(item["line"], item) for item in evidence["lines"]]
+    evidence["blocked_lines"] = [item["line"] for item in evidence["lines"] if item["status"] != "completed"]
     evidence["blockers"] = {item["line"]: item.get("blocker") for item in evidence["lines"] if item.get("blocker")}
     evidence["classification"] = "FULL_ALL_LINES_PRODUCTION_COMPLETE" if evidence["full_auto_verified"] == 13 else "SOFTWARE_QUALIFIED_ENV_BLOCKED"
     (root / "summary.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

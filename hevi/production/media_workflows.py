@@ -439,10 +439,13 @@ async def video_localization_workflow(
         if not source and subtitle_path:
             source = read_subtitle_file(str(subtitle_path))
         if not source:
+            source_language = str(cfg.get("source_language") or "").strip()
+            if source_language.lower() in {"", "auto", "automatic"}:
+                source_language = None
             source = fetch_transcript(
                 source_path,
                 whisper_fallback=True,
-                language=str(cfg.get("source_language") or "") or None,
+                language=source_language,
                 work_dir=output_dir / "transcript",
             )
         if not source:

@@ -204,6 +204,7 @@ async def render_storyboard(
     *,
     voice: str = DEFAULT_VOICE,
     rate: str = DEFAULT_RATE,
+    tts_provider: str | None = None,
 ) -> RenderResult:
     """storyboard(E0 产出,未配音)→ 配音 + 写 manifest/audio → 子进程渲染竖屏/横屏。"""
     output_dir = output_dir.resolve()
@@ -221,6 +222,7 @@ async def render_storyboard(
         voice=voice,
         rate=rate,
         audio_public_prefix=audio_prefix,
+        provider=tts_provider,
     )
     _write_manifest(manifest, output_dir / "run_manifest.json")
 

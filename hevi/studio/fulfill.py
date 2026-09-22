@@ -317,6 +317,7 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
         presenter_image_url=str(presenter_image) if presenter_image else None,
         presenter_reference_video=str(presenter_video) if presenter_video else None,
         presenter_provider="remotion",
+        tts_provider=str(_slot(order, "tts_engine") or "edge_tts"),
         source_text=str(order.get("source_text") or ""),
         reference_url=str(_slot(order, "reference_url") or ""),
     )

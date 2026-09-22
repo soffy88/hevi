@@ -41,7 +41,10 @@ NIM_BASE = "https://integrate.api.nvidia.com/v1/chat/completions"
 # stratum 飞轮共用密钥池(命名槽位),见 /data/soffy/projects/stratum/aii/.pipeline_keys.json
 _PIPELINE_KEYS_CANDIDATES = (Path("/data/soffy/projects/stratum/aii/.pipeline_keys.json"),)
 
-DEFAULT_NIM_MODEL = "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+# Keep the default on a model currently exposed by the NIM catalog.  The
+# previous super-49b model was retired and returned HTTP 410, which the
+# reliability wrapper surfaced only as a generic network_error.
+DEFAULT_NIM_MODEL = "nvidia/llama-3.1-nemotron-51b-instruct"
 
 # 实测选型(2026-08-03,研究 JSON 任务):
 # - meta/llama-3.1-70b-instruct: content 稳定但 ~11 tok/s,8000 token 大纲单次
@@ -111,7 +114,7 @@ def _make_nim_caller(
     if not keys:
         raise ValueError("NIM caller 需要至少 1 个 key")
     if fallback_model is None:
-        fallback_model = os.getenv("HEVI_NIM_FALLBACK_MODEL", "meta/llama-3.1-8b-instruct") or None
+        fallback_model = os.getenv("HEVI_NIM_FALLBACK_MODEL", "mistralai/mistral-nemotron") or None
     timeout_s = min(max(float(timeout), 1.0), 60.0)
     reliability = ReliabilityConfig(
         timeout=TimeoutPolicy(
