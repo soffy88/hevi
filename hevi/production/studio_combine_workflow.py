@@ -17,6 +17,7 @@ from hevi.studio.compose_gate import apply_compose_after_qc
 from hevi.studio.fulfill import fulfill_order
 from hevi.studio.nle import plan_recut
 from hevi.studio.packaging import pack_queue, write_pack_tickets
+from hevi.production.contracts import completion_failure
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,19 @@ async def studio_combine_workflow(
             output_dir=output_dir / "dispatch",
         )
         trail.append({"stage": "fulfill", **{k: fulfilled.get(k) for k in ("status", "target")}})
+        violation = completion_failure(fulfilled)
+        if violation:
+            failure = {
+                "class": "fulfill_contract",
+                "message": violation,
+                "canonical_failure": fulfilled.get("failure") or fulfilled.get("reason") or violation,
+            }
+            return {
+                "status": "blocked" if fulfilled.get("status") == "blocked" else "failed",
+                "failure": failure,
+                "fulfill": fulfilled,
+                "decision_trail": trail,
+            }
 
         brick: ShotBrick | None = None
         imported: dict[str, Any] = {}

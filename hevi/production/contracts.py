@@ -72,3 +72,69 @@ class ProductionRequest(BaseModel):
             "production_source": self.source,
             **self.options,
         }
+
+
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from typing import ClassVar
+
+PRODUCTION_STATUSES = frozenset({"pending", "running", "completed", "blocked", "failed", "cancelled"})
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+@dataclass
+class ProductionResult:
+    """Canonical result envelope shared by all Studio production lines."""
+
+    run_id: str
+    line_id: str
+    status: str = "pending"
+    input_manifest: dict[str, Any] = field(default_factory=dict)
+    recipe_id: str = ""
+    recipe_version: str = "1"
+    stage_trace: list[dict[str, Any]] = field(default_factory=list)
+    provider_trace: list[dict[str, Any]] = field(default_factory=list)
+    artifact_manifest: dict[str, Any] = field(default_factory=dict)
+    result_video_path: str | None = None
+    quality_report: dict[str, Any] = field(default_factory=dict)
+    provenance: dict[str, Any] = field(default_factory=dict)
+    started_at: str = field(default_factory=utc_now)
+    completed_at: str | None = None
+    failure: dict[str, Any] | None = None
+
+    STATUSES: ClassVar[frozenset[str]] = PRODUCTION_STATUSES
+
+    def __post_init__(self) -> None:
+        if self.status not in PRODUCTION_STATUSES:
+            raise ValueError(f"invalid production status: {self.status}")
+        if self.status == "completed" and not self.completion_valid:
+            raise ValueError("completed production result failed the completion contract")
+
+    @property
+    def completion_valid(self) -> bool:
+        return bool(self.result_video_path and self.artifact_manifest.get("verified") is True and self.quality_report.get("passed") is True and self.provenance)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ProductionResult":
+        fields = {"run_id", "line_id", "status", "input_manifest", "recipe_id", "recipe_version", "stage_trace", "provider_trace", "artifact_manifest", "result_video_path", "quality_report", "provenance", "started_at", "completed_at", "failure"}
+        return cls(**{key: payload[key] for key in fields if key in payload})
+
+
+def completion_failure(result: dict[str, Any]) -> str | None:
+    if result.get("status") != "completed":
+        return f"status={result.get('status')!r}"
+    if not result.get("result_video_path"):
+        return "result_video_path missing"
+    if (result.get("artifact_manifest") or {}).get("verified") is not True:
+        return "artifact_manifest.verified is not true"
+    if (result.get("quality") or result.get("quality_report") or {}).get("passed") is not True:
+        return "quality gate did not pass"
+    if not (result.get("provenance") or result.get("provenance_complete")):
+        return "provenance incomplete"
+    return None

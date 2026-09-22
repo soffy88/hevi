@@ -9,6 +9,7 @@ from typing import Any
 
 from hevi.pipeline.manifest import run_with_checkpoint
 from hevi.studio.recipes import Recipe, get_recipe
+from hevi.production.contracts import ProductionResult
 
 
 @dataclass
@@ -62,6 +63,7 @@ class SlateResult:
                     "artifact_manifest",
                     "result_video_path",
                     "quality",
+                    "production_result",
                 )
                 if k in self.data
             },
@@ -130,6 +132,25 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
         data["artifact_manifest"] = fulfill["artifact_manifest"]
     if fulfill.get("quality"):
         data["quality"] = fulfill["quality"]
+    if slate.execute:
+        production = ProductionResult(
+            run_id=slate.slate_id,
+            line_id=rec.id,
+            status="running",
+            input_manifest={"slots": slate.slots},
+            recipe_id=rec.id,
+            stage_trace=data.get("stage_trace") or [],
+            provider_trace=fulfill.get("provider_trace") or [],
+            artifact_manifest=data.get("artifact_manifest") or {},
+            result_video_path=data.get("result_video_path"),
+            quality_report=data.get("quality") or {},
+            provenance=fulfill.get("provenance") or {},
+            failure=fulfill.get("failure"),
+        )
+        production.status = "completed" if status == "completed" and production.completion_valid else ("blocked" if status == "blocked" else "failed")
+        if production.status == "completed":
+            production.completed_at = production.completed_at or production.started_at
+        data["production_result"] = production.to_dict()
     return SlateResult(
         status=status,
         slate_id=slate.slate_id,

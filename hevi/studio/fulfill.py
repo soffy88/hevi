@@ -13,7 +13,9 @@ from hevi.production.artifacts import (
     ArtifactManifest,
     ArtifactVerificationError,
     verify_local_manifest,
+    verify_production_artifact,
 )
+from hevi.production.contracts import completion_failure
 from hevi.studio.kit import explainer_cues_from_text, storygraph_extract, tongjian_l0
 
 TARGETS = ("explainer", "tongjian", "shortdrama")
@@ -566,6 +568,35 @@ _RENDERERS = {
 }
 
 
+def _enforce_final_contract(result: dict[str, Any], *, line_id: str) -> dict[str, Any]:
+    """Convert renderer claims into the canonical fail-closed result."""
+    if result.get("status") != "completed":
+        return result
+    path = result.get("result_video_path")
+    media = verify_production_artifact(
+        path,
+        require_audio=line_id not in {
+            "shorts_clip", "podcast_repurpose", "localization_dub",
+            "character_animation", "kinetic_promo",
+        },
+    ) if path else {"verified": False, "passed": False, "errors": ["result_video_path missing"]}
+    quality = result.get("quality") or result.get("quality_report") or {}
+    if media["verified"] and quality.get("passed") is True:
+        manifest = dict(result.get("artifact_manifest") or {})
+        manifest["verified"] = True
+        manifest["truth_gate"] = media
+        result["artifact_manifest"] = manifest
+        result["quality_report"] = quality
+        result.setdefault("provenance", {"line_id": line_id, "artifact_sha256": media.get("sha256"), "source": "canonical_renderer"})
+        result["provider_trace"] = result.get("provider_trace") or [{"resolved_provider": result.get("render_runtime", "canonical_renderer"), "fallback_used": False}]
+        return result
+    result["status"] = "blocked" if any(item in " ".join(media.get("errors", [])) for item in ("ffprobe", "stream", "path", "duration")) else "failed"
+    result["reason"] = "FINAL_ARTIFACT_TRUTH_GATE_FAILED"
+    result["quality"] = {**quality, "passed": False, "violations": list(quality.get("violations", [])) + media.get("errors", [])}
+    result["artifact_verification"] = media
+    return result
+
+
 async def fulfill_order(
     order: dict[str, Any],
     *,
@@ -596,10 +627,10 @@ async def fulfill_order(
             )
         try:
             if line_id in {
-                "character_animation",
-                "podcast_repurpose",
-                "documentary_montage",
-                "kinetic_promo",
+                "character_animation", "kinetic_promo", "documentary_montage",
+                "podcast_repurpose", "shorts_clip", "localization_dub", "explainer",
+                "reference_adapt", "history_scene", "cinematic", "director_pipeline",
+                "talking_head", "avatar_spokesperson",
             }:
                 from hevi.resilience import RetryPolicy, with_retry_evidence
                 from hevi.resilience.errors import RetryableError
@@ -625,8 +656,8 @@ async def fulfill_order(
                 result["retry_evidence"] = retry_evidence.to_dict()
                 if line_id == "kinetic_promo" and result.get("status") == "completed":
                     _persist_hyperframes_evidence(dest, order, result)
-                return result
-            return await renderer(order, dest)
+                return _enforce_final_contract(result, line_id=line_id)
+            return _enforce_final_contract(await renderer(order, dest), line_id=line_id)
         except (ArtifactVerificationError, FileNotFoundError, ValueError) as exc:
             return _blocked(str(exc), target=target, line_id=line_id)
         except Exception as exc:

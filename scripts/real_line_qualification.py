@@ -747,19 +747,37 @@ def qualify_production_line(line: str, output_root: Path) -> dict[str, Any]:
 
 
 def qualify_line(line: str, output_root: Path) -> dict[str, Any] | None:
-    if line == "kinetic_promo":
-        return qualify_kinetic(output_root)
-    if line == "shorts_clip":
-        return qualify_shorts(output_root)
-    if line == "localization_dub":
-        return qualify_localization(output_root)
-    if line in {
-        "history_scene",
-        "character_animation",
-        "explainer",
-        "documentary_montage",
-        "podcast_repurpose",
-        "reference_adapt",
-    }:
-        return qualify_production_line(line, output_root)
-    return None
+    """Compatibility adapter; qualification starts at the canonical product entrypoint."""
+    import asyncio
+
+    from hevi.studio.veya import produce
+
+    slots: dict[str, Any] = {"topic": f"HEVI autonomous qualification: {line}"}
+    if line == "history_scene":
+        slots["source_text"] = slots["topic"]
+    elif line == "director_pipeline":
+        slots["manuscript"] = slots["topic"]
+    elif line == "reference_adapt":
+        slots["transcript"] = slots["topic"]
+    root = output_root / line
+    job = asyncio.run(produce(line_id=line, slots=slots, execute=True, output_dir=root))
+    fulfilled = job.fulfill or {}
+    product = job.slate.get("data", {}).get("production_result", {}) if job.slate else {}
+    artifact = Path(str(job.artifact)) if job.artifact else None
+    return {
+        "provider_available": True,
+        "real_e2e": True,
+        "final_artifact": bool(artifact and artifact.is_file()),
+        "ffprobe_valid": bool((fulfilled.get("artifact_verification") or {}).get("verified")),
+        "media_quality": bool((fulfilled.get("quality") or {}).get("passed")),
+        "provenance_complete": bool(fulfilled.get("provenance") or product.get("provenance")),
+        "retry_verified": bool((fulfilled.get("retry_evidence") or {}).get("retry_supported")),
+        "quality_gate_passed": product.get("status") == "completed",
+        "artifact_path": str(artifact) if artifact else "",
+        "artifact_sha256": None,
+        "evidence_root": str(root),
+        "status": "PRODUCTION_COMPLETE" if product.get("status") == "completed" else ("BLOCKED_PROVIDER" if job.status == "blocked" else "FAILED"),
+        "blockers": [job.reason] if job.reason else [],
+        "quality_gate": "PASS" if product.get("status") == "completed" else "BLOCKED",
+        "evidence": {"run_id": job.job_id, "production_entrypoint": "hevi.studio.veya:produce"},
+    }

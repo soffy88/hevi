@@ -6,7 +6,9 @@ from hevi.production.artifacts import (
     ArtifactVerificationError,
     manifest_from_task,
     verify_local_manifest,
+    verify_production_artifact,
 )
+from hevi.production.contracts import ProductionResult, PRODUCTION_STATUSES, completion_failure
 from hevi.production.contracts import ExecutionBinding, ProductionRequest, ProductionSource
 from hevi.production.execution import execute_standard_operation, execution_binding
 
@@ -21,4 +23,8 @@ __all__ = [
     "execution_binding",
     "manifest_from_task",
     "verify_local_manifest",
+    "verify_production_artifact",
+    "ProductionResult",
+    "PRODUCTION_STATUSES",
+    "completion_failure",
 ]
