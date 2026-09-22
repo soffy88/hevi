@@ -1029,6 +1029,7 @@ async def veya_produce(p: dict[str, Any]) -> dict[str, Any]:
         publish=bool(p.get("publish")),
         platforms=p.get("platforms"),
         output_dir=p.get("output_dir"),
+        production_mode=p.get("production_mode"),
     )
     return _ok(job=job.to_dict())
 

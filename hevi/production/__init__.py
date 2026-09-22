@@ -11,6 +11,15 @@ from hevi.production.artifacts import (
 from hevi.production.contracts import ProductionResult, PRODUCTION_STATUSES, completion_failure
 from hevi.production.contracts import ExecutionBinding, ProductionRequest, ProductionSource
 from hevi.production.execution import execute_standard_operation, execution_binding
+from hevi.production.gpu_compute import (
+    GpuComputeProvider,
+    GpuLease,
+    GpuResultCache,
+    GpuWorkQueue,
+    HourlyGpuProvider,
+    LocalGpuProvider,
+    RemoteGpuProvider,
+)
 
 __all__ = [
     "Artifact",
@@ -27,4 +36,11 @@ __all__ = [
     "ProductionResult",
     "PRODUCTION_STATUSES",
     "completion_failure",
+    "GpuComputeProvider",
+    "GpuLease",
+    "GpuResultCache",
+    "GpuWorkQueue",
+    "HourlyGpuProvider",
+    "LocalGpuProvider",
+    "RemoteGpuProvider",
 ]

@@ -89,8 +89,77 @@ async def produce(
     publish: bool = False,
     platforms: list[str] | None = None,
     output_dir: str | Path | None = None,
+    production_mode: str | None = None,
 ) -> ProduceJob:
     filled = dict(slots or {})
+    from hevi.production.low_cost import policy_for
+
+    requested_mode = production_mode or filled.get("production_mode") or "auto"
+    # ``auto`` defaults compatible, CPU-first behavior for the two currently
+    # supported low-cost recipes. Existing canonical lines retain their
+    # established standard renderer until their low-cost strategy is declared.
+    mode = "low_cost" if requested_mode == "auto" and line_id in {"emotional_reading", "history_scene"} else requested_mode
+    if mode == "auto":
+        mode = "production"
+    policy = policy_for(str(mode))
+    if policy.mode == "low_cost":
+        # Low-cost is an explicit strategy.  It must never silently fall back
+        # to the standard GPU/provider renderer when its own prerequisites are
+        # unavailable.
+        supported = {"emotional_reading", "history_scene"}
+        job_id = str(uuid.uuid4())
+        dest_root = Path(output_dir or "output/veya")
+        if line_id not in supported:
+            job = ProduceJob(
+                job_id=job_id,
+                line_id=line_id,
+                status="blocked",
+                render_runtime="ffmpeg",
+                production_order={"target": line_id, "requested_mode": requested_mode, "production_mode": "low_cost", "policy": policy.__dict__},
+                reason="LOW_COST_RECIPE_NOT_SUPPORTED",
+            )
+            _JOBS[job.job_id] = job
+            return job
+        if not execute:
+            job = ProduceJob(
+                job_id=job_id,
+                line_id=line_id,
+                status="planned",
+                render_runtime="ffmpeg",
+                production_order={"target": line_id, "requested_mode": requested_mode, "production_mode": "low_cost", "policy": policy.__dict__},
+                reason="LOW_COST_REQUIRES_EXECUTE_TRUE",
+            )
+            _JOBS[job.job_id] = job
+            return job
+        from hevi.production.low_cost import LowCostBlocked, execute_low_cost
+
+        filled["production_mode"] = "low_cost"
+        try:
+            result = await execute_low_cost(line_id=line_id, slots=filled, output_dir=dest_root / job_id)
+        except LowCostBlocked as exc:
+            result = {
+                "status": "blocked",
+                "line_id": line_id,
+                "result_video_path": None,
+                "artifact_manifest": {},
+                "reason": str(exc),
+                "policy": policy.__dict__,
+            }
+        artifact = str(result.get("result_video_path") or "")
+        job = ProduceJob(
+            job_id=job_id,
+            line_id=line_id,
+            status="ready" if result.get("status") == "completed" and artifact else result.get("status", "blocked"),
+            render_runtime="ffmpeg",
+            product="情绪读书视频" if line_id == "emotional_reading" else "历史场景",
+            artifact=artifact,
+            production_order={"target": line_id, "requested_mode": requested_mode, "production_mode": "low_cost", "policy": policy.__dict__},
+            fulfill=result,
+            slate={"slate_id": job_id, "line_id": line_id, "status": result.get("status", "blocked"), "production_mode": "low_cost"},
+            reason=str(result.get("reason") or ""),
+        )
+        _JOBS[job.job_id] = job
+        return job
     rec = get_recipe(line_id)
     if rec is None:
         job = ProduceJob(

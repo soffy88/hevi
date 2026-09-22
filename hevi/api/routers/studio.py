@@ -429,6 +429,7 @@ class VeyaProduceRequest(BaseModel):
     execute: bool = False
     publish: bool = False
     platforms: list[str] = Field(default_factory=list)
+    production_mode: str | None = None
 
 
 @router.get("/daily/calendars")
@@ -520,6 +521,7 @@ async def post_veya_produce(
         execute=req.execute,
         publish=req.publish,
         platforms=req.platforms,
+        production_mode=req.production_mode,
     )
     return job.to_dict()
 
