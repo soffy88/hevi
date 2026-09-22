@@ -79,5 +79,5 @@ def test_register_registers_nim_provider(monkeypatch):
     register_nim_llm()
     llm = ProviderRegistry.get().llm("nim")
     assert callable(llm)
-    # 模型名默认 nemotron-super-49b(实测速度/质量平衡)
-    assert nim_caller.DEFAULT_NIM_MODEL == "nvidia/llama-3.3-nemotron-super-49b-v1.5"
+    # The retired super-49b route is no longer exposed by the NIM catalog.
+    assert nim_caller.DEFAULT_NIM_MODEL == "nvidia/llama-3.1-nemotron-51b-instruct"
