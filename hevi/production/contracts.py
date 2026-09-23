@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
+from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -78,15 +80,13 @@ class ProductionRequest(BaseModel):
         }
 
 
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from typing import ClassVar
-
-PRODUCTION_STATUSES = frozenset({"pending", "running", "completed", "blocked", "failed", "cancelled"})
+PRODUCTION_STATUSES = frozenset(
+    {"pending", "running", "completed", "blocked", "failed", "cancelled"}
+)
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 @dataclass
@@ -119,14 +119,35 @@ class ProductionResult:
 
     @property
     def completion_valid(self) -> bool:
-        return bool(self.result_video_path and self.artifact_manifest.get("verified") is True and self.quality_report.get("passed") is True and self.provenance)
+        return bool(
+            self.result_video_path
+            and self.artifact_manifest.get("verified") is True
+            and self.quality_report.get("passed") is True
+            and self.provenance
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "ProductionResult":
-        fields = {"run_id", "line_id", "status", "input_manifest", "recipe_id", "recipe_version", "stage_trace", "provider_trace", "artifact_manifest", "result_video_path", "quality_report", "provenance", "started_at", "completed_at", "failure"}
+    def from_dict(cls, payload: dict[str, Any]) -> ProductionResult:
+        fields = {
+            "run_id",
+            "line_id",
+            "status",
+            "input_manifest",
+            "recipe_id",
+            "recipe_version",
+            "stage_trace",
+            "provider_trace",
+            "artifact_manifest",
+            "result_video_path",
+            "quality_report",
+            "provenance",
+            "started_at",
+            "completed_at",
+            "failure",
+        }
         return cls(**{key: payload[key] for key in fields if key in payload})
 
 

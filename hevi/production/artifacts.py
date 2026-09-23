@@ -135,7 +135,10 @@ def verify_production_artifact(
     """Canonical final-video truth gate, returning persisted evidence."""
     dest = Path(path)
     errors: list[str] = []
-    if reject_fixture_names and any(token in dest.name.lower() for token in ("placeholder", "fixture", "test_artifact", "qualification")):
+    if reject_fixture_names and any(
+        token in dest.name.lower()
+        for token in ("placeholder", "fixture", "test_artifact", "qualification")
+    ):
         errors.append("placeholder_or_qualification_name")
     if not dest.is_file():
         errors.append("path_missing")
@@ -143,7 +146,13 @@ def verify_production_artifact(
         errors.append("artifact_below_minimum_size")
     probe: dict[str, Any] = {"path": str(dest), "video_stream": False, "audio_stream": False}
     if not errors and shutil.which("ffprobe"):
-        raw = subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(dest)], capture_output=True, text=True, timeout=60, check=False)
+        raw = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(dest)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
         if raw.returncode != 0:
             errors.append("ffprobe_failed")
         else:
@@ -154,13 +163,30 @@ def verify_production_artifact(
                 audio = next((s for s in streams if s.get("codec_type") == "audio"), None)
                 duration = float((payload.get("format") or {}).get("duration") or 0)
                 fps_raw = str((video or {}).get("r_frame_rate", "0/1")).split("/")
-                fps = float(fps_raw[0]) / float(fps_raw[1]) if len(fps_raw) == 2 and float(fps_raw[1]) else 0.0
-                probe.update({"video_stream": video is not None, "audio_stream": audio is not None, "duration": duration, "width": (video or {}).get("width", 0), "height": (video or {}).get("height", 0), "fps": fps})
-                if video is None: errors.append("video_stream_missing")
-                if duration <= 0: errors.append("duration_not_positive")
-                if not probe["width"] or not probe["height"] or probe["fps"] <= 0: errors.append("video_geometry_invalid")
-                if require_audio and audio is None: errors.append("audio_stream_missing")
-            except (ValueError, TypeError, json.JSONDecodeError):
+                fps = (
+                    float(fps_raw[0]) / float(fps_raw[1])
+                    if len(fps_raw) == 2 and float(fps_raw[1])
+                    else 0.0
+                )
+                probe.update(
+                    {
+                        "video_stream": video is not None,
+                        "audio_stream": audio is not None,
+                        "duration": duration,
+                        "width": (video or {}).get("width", 0),
+                        "height": (video or {}).get("height", 0),
+                        "fps": fps,
+                    }
+                )
+                if video is None:
+                    errors.append("video_stream_missing")
+                if duration <= 0:
+                    errors.append("duration_not_positive")
+                if not probe["width"] or not probe["height"] or probe["fps"] <= 0:
+                    errors.append("video_geometry_invalid")
+                if require_audio and audio is None:
+                    errors.append("audio_stream_missing")
+            except ValueError, TypeError, json.JSONDecodeError:
                 errors.append("ffprobe_invalid_json")
     elif not errors:
         errors.append("ffprobe_unavailable")
@@ -171,7 +197,15 @@ def verify_production_artifact(
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 h.update(chunk)
         digest = h.hexdigest()
-    return {"verified": not errors, "passed": not errors, "path": str(dest), "sha256": digest, "byte_size": dest.stat().st_size if dest.is_file() else 0, "errors": errors, "probe": probe}
+    return {
+        "verified": not errors,
+        "passed": not errors,
+        "path": str(dest),
+        "sha256": digest,
+        "byte_size": dest.stat().st_size if dest.is_file() else 0,
+        "errors": errors,
+        "probe": probe,
+    }
 
 
 def verify_local_manifest(

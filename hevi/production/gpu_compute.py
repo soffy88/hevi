@@ -70,7 +70,9 @@ class LocalGpuProvider(GpuComputeProvider):
             import torch
 
             available = bool(torch.cuda.is_available())
-            return GpuAvailability(available, self.name, "" if available else "HOST_GPU_UNAVAILABLE")
+            return GpuAvailability(
+                available, self.name, "" if available else "HOST_GPU_UNAVAILABLE"
+            )
         except Exception as exc:
             return GpuAvailability(False, self.name, f"CUDA_PROBE_FAILED:{type(exc).__name__}")
 
@@ -110,7 +112,9 @@ class _UnavailableRemoteProvider(GpuComputeProvider):
         return []
 
     def estimate_cost(self, job: dict[str, Any]) -> GpuCostEstimate:
-        return GpuCostEstimate(float(job.get("hourly_rate_usd") or 0.0), float(job.get("estimated_minutes") or 0.0))
+        return GpuCostEstimate(
+            float(job.get("hourly_rate_usd") or 0.0), float(job.get("estimated_minutes") or 0.0)
+        )
 
     async def acquire(self, job: dict[str, Any]) -> Any:
         raise RuntimeError(self.reason)
@@ -146,7 +150,7 @@ class GpuLease(AbstractAsyncContextManager["GpuLease"]):
         self.result: dict[str, Any] | None = None
         self.artifacts: list[str] = []
 
-    async def __aenter__(self) -> "GpuLease":
+    async def __aenter__(self) -> GpuLease:
         self.handle = await self.provider.acquire(self.job)
         if not await self.provider.health_check(self.handle):
             await self.provider.release(self.handle)
@@ -187,7 +191,9 @@ class GpuResultCache:
 
     @staticmethod
     def key(job: dict[str, Any]) -> str:
-        payload = json.dumps(job, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+        payload = json.dumps(
+            job, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
         return hashlib.sha256(payload).hexdigest()
 
     def path_for(self, job: dict[str, Any]) -> Path:
@@ -203,12 +209,20 @@ class GpuResultCache:
         directory = self.path_for(job)
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / "result.json"
-        path.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8")
+        path.write_text(
+            json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8"
+        )
         return path
 
 
 __all__ = [
-    "GpuAvailability", "GpuComputeProvider", "GpuCostEstimate", "GpuLease",
-    "GpuResultCache", "GpuWorkQueue", "HourlyGpuProvider", "LocalGpuProvider",
+    "GpuAvailability",
+    "GpuComputeProvider",
+    "GpuCostEstimate",
+    "GpuLease",
+    "GpuResultCache",
+    "GpuWorkQueue",
+    "HourlyGpuProvider",
+    "LocalGpuProvider",
     "RemoteGpuProvider",
 ]

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import subprocess
 from pathlib import Path
 
@@ -48,7 +47,9 @@ async def test_low_cost_entrypoint_does_not_fallback_to_standard_renderer(tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_low_cost_cpu_render_has_real_media_gates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_low_cost_cpu_render_has_real_media_gates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     image, audio = _make_test_inputs(tmp_path)
 
     async def tts(**kwargs: object) -> None:

@@ -8,8 +8,14 @@ from hevi.production.artifacts import (
     verify_local_manifest,
     verify_production_artifact,
 )
-from hevi.production.contracts import ProductionResult, PRODUCTION_STATUSES, completion_failure
-from hevi.production.contracts import ExecutionBinding, ProductionRequest, ProductionSource
+from hevi.production.contracts import (
+    PRODUCTION_STATUSES,
+    ExecutionBinding,
+    ProductionRequest,
+    ProductionResult,
+    ProductionSource,
+    completion_failure,
+)
 from hevi.production.execution import execute_standard_operation, execution_binding
 from hevi.production.gpu_compute import (
     GpuComputeProvider,

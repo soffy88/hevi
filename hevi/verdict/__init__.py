@@ -16,6 +16,17 @@ from hevi.verdict.aesthetic_canon import (
     default_canon,
     validate_canon,
 )
+from hevi.verdict.case_dimensions import (
+    DIMENSIONS as CASE_VERDICT_DIMENSIONS,
+)
+from hevi.verdict.case_dimensions import (
+    REASON_CODES as CASE_VERDICT_REASON_CODES,
+)
+from hevi.verdict.case_dimensions import (
+    VerdictDimensionStatus,
+    evaluate_case_artifact,
+    persist_case_verdict,
+)
 from hevi.verdict.convergence import ConvergenceLog, ConvergenceRound, trend
 from hevi.verdict.failure_registry import (
     SEED_FAILURE_MODES,
@@ -55,13 +66,6 @@ from hevi.verdict.scorecard import (
     coarse_diagnosis,
     make_scorecard_consistency_fn,
     shot_scorecard,
-)
-from hevi.verdict.case_dimensions import (
-    DIMENSIONS as CASE_VERDICT_DIMENSIONS,
-    REASON_CODES as CASE_VERDICT_REASON_CODES,
-    VerdictDimensionStatus,
-    evaluate_case_artifact,
-    persist_case_verdict,
 )
 from hevi.verdict.source_media_review import (
     detect_media_type,

@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from hevi.pipeline.manifest import run_with_checkpoint
-from hevi.studio.recipes import Recipe, get_recipe
 from hevi.production.contracts import ProductionResult
+from hevi.studio.recipes import Recipe, get_recipe
 
 
 @dataclass
@@ -147,7 +147,11 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
             provenance=fulfill.get("provenance") or {},
             failure=fulfill.get("failure"),
         )
-        production.status = "completed" if status == "completed" and production.completion_valid else ("blocked" if status == "blocked" else "failed")
+        production.status = (
+            "completed"
+            if status == "completed" and production.completion_valid
+            else ("blocked" if status == "blocked" else "failed")
+        )
         if production.status == "completed":
             production.completed_at = production.completed_at or production.started_at
         data["production_result"] = production.to_dict()
@@ -159,11 +163,10 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
         production_order=order,
         data=data,
         reason=str(
-            fulfill.get("reason")
-            or fulfill.get("error")
-            or (state.data or {}).get("failure")
-            or ""
-        ) if status in {"blocked", "failed"} else "",
+            fulfill.get("reason") or fulfill.get("error") or (state.data or {}).get("failure") or ""
+        )
+        if status in {"blocked", "failed"}
+        else "",
     )
 
 
