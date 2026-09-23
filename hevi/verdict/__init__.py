@@ -56,6 +56,13 @@ from hevi.verdict.scorecard import (
     make_scorecard_consistency_fn,
     shot_scorecard,
 )
+from hevi.verdict.case_dimensions import (
+    DIMENSIONS as CASE_VERDICT_DIMENSIONS,
+    REASON_CODES as CASE_VERDICT_REASON_CODES,
+    VerdictDimensionStatus,
+    evaluate_case_artifact,
+    persist_case_verdict,
+)
 from hevi.verdict.source_media_review import (
     detect_media_type,
     has_user_media,
@@ -105,4 +112,9 @@ __all__ = [
     "trace",
     "trend",
     "validate_canon",
+    "CASE_VERDICT_DIMENSIONS",
+    "CASE_VERDICT_REASON_CODES",
+    "VerdictDimensionStatus",
+    "evaluate_case_artifact",
+    "persist_case_verdict",
 ]

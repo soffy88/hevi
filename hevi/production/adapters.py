@@ -334,6 +334,26 @@ def _register_builtin_adapters() -> None:
 
         return await execute_local_media_task(task, pool)
 
+    async def execute_case_analysis(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.video_intelligence.runtime_adapters import execute_case_analysis_task
+
+        return await execute_case_analysis_task(task, pool)
+
+    async def execute_case_reproduction(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.video_intelligence.runtime_adapters import execute_case_reproduction_task
+
+        return await execute_case_reproduction_task(task, pool)
+
+    async def execute_case_benchmark(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.video_intelligence.intelligence_runtime import execute_case_benchmark_task
+
+        return await execute_case_benchmark_task(task, pool)
+
+    async def execute_template_qualification(task: dict[str, Any], pool: Any) -> dict[str, Any]:
+        from hevi.video_intelligence.intelligence_runtime import execute_template_qualification_task
+
+        return await execute_template_qualification_task(task, pool)
+
     _DEFAULT.register("checkpoint_render", execute_checkpoint, replace=True)
     _DEFAULT.register("clip_video", execute_clip_video, replace=True)
     _DEFAULT.register("localize_video", execute_localize_video, replace=True)
@@ -346,6 +366,10 @@ def _register_builtin_adapters() -> None:
     _DEFAULT.register("motion_graphics", execute_motion_graphics, replace=True)
     _DEFAULT.register("visual_quality", execute_visual_quality, replace=True)
     _DEFAULT.register("local_media", execute_local_media, replace=True)
+    _DEFAULT.register("case_analysis", execute_case_analysis, replace=True)
+    _DEFAULT.register("case_reproduction", execute_case_reproduction, replace=True)
+    _DEFAULT.register("case_benchmark", execute_case_benchmark, replace=True)
+    _DEFAULT.register("template_qualification", execute_template_qualification, replace=True)
 
 
 _register_builtin_adapters()

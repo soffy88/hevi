@@ -593,6 +593,17 @@
 | GET | `/api/health/ready` | Health Ready |
 | GET | `/metrics` | Metrics |
 
+## video-intelligence
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/intelligence/cases` | List Cases |
+| POST | `/api/intelligence/cases` | Ingest Case |
+| GET | `/api/intelligence/cases/{case_id}` | Get Case |
+| POST | `/api/intelligence/cases/{case_id}/analyze` | Analyze Case Endpoint |
+| POST | `/api/intelligence/cases/{case_id}/benchmark` | Benchmark Case Endpoint |
+| POST | `/api/intelligence/cases/{case_id}/reproduce` | Reproduce Case Endpoint |
+
 ## voice-platform
 
 | 方法 | 路径 | 说明 |

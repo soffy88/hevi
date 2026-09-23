@@ -19,6 +19,10 @@ ProductionSource = Literal[
     "director_graph",
     "lot",
     "local_media",
+    "case_analysis",
+    "case_reproduction",
+    "case_benchmark",
+    "template_qualification",
 ]
 
 

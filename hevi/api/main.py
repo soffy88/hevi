@@ -55,6 +55,7 @@ from hevi.api.routers.embrace_runtime import router as embrace_router
 from hevi.api.routers.identities import router as identities_router
 from hevi.api.routers.continuity import router as continuity_router
 from hevi.api.routers.incidents import router as incidents_router
+from hevi.api.routers.intelligence import router as intelligence_router
 from hevi.api.routers.product import router as product_router
 from hevi.api.routers.lite import router as lite_router
 from hevi.api.routers.longcat import router as longcat_router
@@ -180,6 +181,7 @@ app.include_router(subjects_router, prefix="/api")
 app.include_router(identities_router, prefix="/api")
 app.include_router(continuity_router, prefix="/api")
 app.include_router(incidents_router, prefix="/api")
+app.include_router(intelligence_router, prefix="/api")
 app.include_router(product_router, prefix="/api")
 app.include_router(creative_router, prefix="/api")
 app.include_router(canvas_router, prefix="/api")

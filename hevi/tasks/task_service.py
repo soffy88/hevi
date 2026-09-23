@@ -920,6 +920,29 @@ class TaskService:
                 error = engine_result.get("error") or {"message": "adapter produced no task result"}
                 raise RuntimeError(str(error.get("message", error)))
             config_json = dict(result.get("config_json") or task.get("config_json") or {})
+            # Analysis is a durable domain operation, not a media-delivery
+            # task.  It still uses the shared lease/attempt/queue lifecycle,
+            # but must not be forced through the final-video manifest gate.
+            if result.get("domain_only"):
+                completion = {
+                    "status": "completed",
+                    "progress_pct": 100.0,
+                    "config_json": config_json,
+                    "updated_at": datetime.now(UTC).replace(tzinfo=None),
+                }
+                await self.repository.update_task(task_id, completion)
+                await self.track_adapter_execution(
+                    task, phase="complete", config_json=config_json
+                )
+                await self._checkpoint(
+                    task, stage="completed", progress_pct=100.0,
+                    state={"status": "completed"},
+                )
+                await self._finish_attempt(task, status="succeeded")
+                await self._write_learning_completion(task, config_json, final_status="succeeded")
+                if task.get("lease_token"):
+                    await self.repository.clear_lease(task_id, task["lease_token"])
+                return {**result, **completion}
             if result.get("review_pending"):
                 update = {
                     "status": "paused",
@@ -1014,6 +1037,7 @@ class TaskService:
                 ),
             )
             await self._finish_attempt(task, status="succeeded")
+            await self._write_learning_completion(task, config_json, final_status="succeeded")
             await self._record_provider_outcome(
                 task,
                 str(task.get("video_provider") or "unknown"),
@@ -1060,10 +1084,64 @@ class TaskService:
                 status="failed",
                 error_code=type(exc).__name__,
             )
+            try:
+                await self._write_learning_completion(
+                    task, dict(task.get("config_json") or {}), final_status="failed"
+                )
+            except Exception:
+                logger.exception("learning writeback failed for task %s", task_id)
             await self._settle_budget_for_task(task, actual_usd=0.0, release=True)
             if task.get("lease_token"):
                 await self.repository.clear_lease(task_id, task["lease_token"])
             return {**task, **update}
+
+    async def _write_learning_completion(
+        self, task: dict[str, Any], result_config: dict[str, Any], *, final_status: str
+    ) -> None:
+        """Project canonical production completion into Case Learning.
+
+        The hook is opt-in through the existing task config's stable
+        ``learning_event`` payload.  It runs after the canonical task state
+        and verdict/artifact commit, and its unique database key makes replay
+        safe.  It does not create a provider or scoring path.
+        """
+        task_config = dict(task.get("config_json") or {})
+        payload = dict(task_config.get("learning_event") or {})
+        if not payload and task_config.get("production_id") and task_config.get("shot_id"):
+            payload = {
+                "production_id": task_config["production_id"],
+                "shot_id": task_config["shot_id"],
+                "workspace_id": task_config.get("workspace_id"),
+                "provider_id": task.get("video_provider") or "unknown",
+                "model_id": task_config.get("model_id") or "unknown",
+                "model_version": task_config.get("model_version"),
+                "pattern_ids": task_config.get("pattern_ids") or [],
+                "prompt_hash": task_config.get("prompt_hash"),
+                "generation_mode": task_config.get("generation_mode") or "unknown",
+                "generation_cost": task_config.get("actual_usd"),
+                "latency_ms": task_config.get("latency_ms"),
+                "retake_count": task_config.get("retake_count") or 0,
+                "initial_verdict_id": task_config.get("initial_verdict_id"),
+                "final_verdict_id": task_config.get("final_verdict_id"),
+            }
+        payload.update(dict(result_config.get("learning_event") or {}))
+        if not payload.get("production_id") or not payload.get("shot_id"):
+            return
+        user_id = str(task.get("user_id") or payload.get("user_id") or "")
+        if not user_id or not isinstance(self.repository.pool, PgPool):
+            return
+        payload.setdefault("provider_id", str(task.get("video_provider") or "unknown"))
+        payload.setdefault("model_id", str(payload.get("model") or "unknown"))
+        payload.setdefault("final_status", final_status)
+        payload.setdefault("idempotency_key", f"{payload['production_id']}:{payload['shot_id']}:{task['id']}")
+        from hevi.video_intelligence.intelligence_runtime import write_learning_event
+
+        await write_learning_event(
+            self.repository.pool,
+            user_id=user_id,
+            workspace_id=payload.get("workspace_id"),
+            payload=payload,
+        )
 
     async def create_task(
         self,
@@ -1277,6 +1355,10 @@ class TaskService:
                 "motion_graphics",
                 "visual_quality",
                 "local_media",
+                "case_analysis",
+                "case_reproduction",
+                "case_benchmark",
+                "template_qualification",
             }:
                 try:
                     await self._apply_provider_policy(task)
@@ -1332,6 +1414,10 @@ class TaskService:
                 "motion_graphics",
                 "visual_quality",
                 "local_media",
+                "case_analysis",
+                "case_reproduction",
+                "case_benchmark",
+                "template_qualification",
             }:
                 return await self._run_adapter_task(task)
 

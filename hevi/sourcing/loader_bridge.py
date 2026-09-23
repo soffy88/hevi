@@ -49,6 +49,15 @@ class AssetRepository:
             return None
         return result
 
+    async def get_for_user(self, asset_id: str, *, user_id: str) -> dict[str, Any] | None:
+        """Resolve an asset without crossing the tenant ownership boundary."""
+        asset = await self.get(asset_id)
+        if asset is None:
+            return None
+        if bool(asset.get("is_official")) or str(asset.get("user_id")) == str(user_id):
+            return asset
+        return None
+
     async def list_for_user(
         self, *, user_id: str, asset_type: str | None = None, limit: int = 200
     ) -> list[dict[str, Any]]:
