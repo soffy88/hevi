@@ -1,0 +1,46 @@
+{
+  "requested_runtimes": [
+    "remotion",
+    "hyperframes"
+  ],
+  "actual_runtimes": {
+    "remotion": "remotion",
+    "hyperframes": "hyperframes"
+  },
+  "input_revision": "c79707d9e30dea02474266e5c3c6ae67c1b36808efdcf5cd8fcce187cf3a72e2",
+  "runtime_versions": {
+    "remotion": "@remotion/cli 4.0.486",
+    "hyperframes": "0.8.68"
+  },
+  "render_outputs": {
+    "remotion": "/tmp/hevi-runtime-interop/remotion.mp4",
+    "hyperframes": "/tmp/hevi-runtime-interop/hyperframes.mp4"
+  },
+  "duration_s": {
+    "remotion": 3.050667,
+    "hyperframes": 3.0
+  },
+  "duration_delta_s": 0.050666999999999796,
+  "timing_delta_s": 0.050666999999999796,
+  "sampled_frames": {
+    "remotion": [
+      "6cae0435356e",
+      "c8e63aa07595",
+      "775318cf8d2b",
+      "775318cf8d2b",
+      "775318cf8d2b"
+    ],
+    "hyperframes": [
+      "562772e9ec64",
+      "562772e9ec64",
+      "562772e9ec64",
+      "562772e9ec64",
+      "d3a229337eb4"
+    ]
+  },
+  "missing_assets": [],
+  "structural_differences": [],
+  "no_silent_runtime_substitution": true,
+  "verdict": "PASS",
+  "blocker": null
+}

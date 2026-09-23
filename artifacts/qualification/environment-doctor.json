@@ -1,6 +1,6 @@
 {
   "doctor": "environment",
-  "generated_at": "2026-09-23T23:27:34Z",
+  "generated_at": "2026-09-23T23:37:20Z",
   "root": "/data/soffy/projects/hevi",
   "checks": [
     {
@@ -40,20 +40,19 @@
     },
     {
       "check": "hyperframes_cli",
-      "status": "ENV_BLOCKED",
-      "detail": "hyperframes binary not on PATH and HYPERFRAMES_BIN unset (HYPERFRAMES_CLI_UNAVAILABLE)"
+      "status": "PASS",
+      "detail": "hyperframes at /home/soffy/.nvm/versions/node/v26.4.0/bin/hyperframes"
     }
   ],
   "summary": {
-    "PASS": 6,
+    "PASS": 7,
     "FAIL": 0,
-    "ENV_BLOCKED": 2
+    "ENV_BLOCKED": 1
   },
   "software_gate": "PASS",
   "classification": {
     "ENV_BLOCKED": [
-      "cuda",
-      "hyperframes_cli"
+      "cuda"
     ],
     "note": "ENV_BLOCKED entries are hardware/tooling gaps classified for the final acceptance report; they do not fail the software gate."
   }

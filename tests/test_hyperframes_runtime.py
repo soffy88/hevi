@@ -57,6 +57,35 @@ def test_write_workspace_writes_project_files(tmp_path: Path) -> None:
     assert (tmp_path / "DESIGN.md").is_file()
 
 
+def test_compile_honors_declared_duration_frames() -> None:
+    comp = compile_composition(
+        {
+            "title": "HEVI runtime interop qualification",
+            "duration_frames": 90,
+            "fps": 30,
+        }
+    )
+    assert comp.declared_duration_s == pytest.approx(3.0)
+    assert comp.duration_s == pytest.approx(3.0)
+    assert all(clip.start_s + clip.duration_s <= 3.0 + 1e-9 for clip in comp.clips)
+    html = render_html(comp)
+    assert 'data-duration="3.00"' in html
+    assert 'data-fps="30"' in html
+    assert 'data-duration="0.60"' in html
+
+
+def test_compile_honors_spec_duration_frames() -> None:
+    comp = compile_composition({"title": "片头", "fps": 30, "spec": {"duration_frames": 60}})
+    assert comp.duration_s == pytest.approx(2.0)
+
+
+def test_compile_without_declared_duration_keeps_clip_derived_total() -> None:
+    comp = compile_composition({"topic": "盐税"})
+    assert comp.declared_duration_s is None
+    assert comp.duration_s == pytest.approx(4.4)
+    assert 'data-duration="4.40"' in render_html(comp)
+
+
 def test_runtime_selector_locks_and_intents() -> None:
     locked = select_runtime(locked="hyperframes", intent="随便")
     assert locked == {"runtime": "hyperframes", "locked": True, "reason": "recipe.lock"}

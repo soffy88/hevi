@@ -1,7 +1,7 @@
 # Hevi · STATUS
 
 > Canonical project status. Read at the start of any non-trivial task.
-> Last updated: 2026-09-06
+> Last updated: 2026-09-23
 > Notable 2026-09-06: Duix model audit — weights NOT missing, shim is actual blocker (see In Progress)
 > Sources: git log, `.claude` project memory (tongjian-pipeline-handoff, deploy-topology, e2e-local-llm-json-blocker, gpu-pcie-fallen-off-bus).
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
@@ -14,12 +14,18 @@ persisted `ProductionLearningEvent`, and one observed provider-stat sample.
 Studio now exposes Cases, Benchmarks, Patterns, and Templates in the existing
 shell. Pattern/Template promotion remains explicit and disabled by default.
 
-This is not a blanket production qualification: the full suite has classified
-pre-existing Studio failures and environment failures from the installed
-torch/torchvision/transformers/vibevoice stack, HyperFrames CLI interop is
-environment-blocked, and only one independent real provider is qualified.
-Cross-model qualification requires >=2 independent real providers. See
-`docs/VIDEO-INTELLIGENCE-FINAL-CLOSURE.md` for evidence and exact triage.
+Closure tracks (evidence in `docs/VIDEO-INTELLIGENCE-FINAL-CLOSURE.md` +
+`artifacts/qualification/`): Track 1 pre-existing Studio failures closed
+(ruff gate clean; studio regression set fixed, commits d897d9c/20150b9).
+Track 2 environment failures closed (torchvision==0.27.0 restored against the
+locked torch==2.12.0; full suite 3337 passed / 0 failed, commit 95fd9ee).
+Track 3 HyperFrames second runtime qualified (CLI 0.8.68 + Chrome ensured +
+`hyperframes doctor --json` ok=true; compiler honors duration_frames;
+`scripts/qualify_runtime_interop.py` verdict PASS vs Remotion, delta 0.05s).
+Still open: CUDA/NVML wedged (hardware, ENV_BLOCKED — never reboot without
+asking soffy) and Track 4 second-provider credentials
+(OWNER_BLOCKED_NO_CREDENTIAL) — cross-model qualification requires >=2
+independent real providers. Final full regression + acceptance report pending.
 
 ---
 

@@ -28,9 +28,12 @@ class HyperComposition:
     clips: list[HyperClip] = field(default_factory=list)
     css_vars: dict[str, str] = field(default_factory=dict)
     design_md: str = ""
+    declared_duration_s: float | None = None
 
     @property
     def duration_s(self) -> float:
+        if self.declared_duration_s is not None:
+            return self.declared_duration_s
         if not self.clips:
             return 0.0
         return max(c.start_s + c.duration_s for c in self.clips)
@@ -83,6 +86,42 @@ def clips_from_payload(payload: dict[str, Any]) -> list[HyperClip]:
     return clips
 
 
+def _declared_duration_s(payload: dict[str, Any]) -> float | None:
+    spec = payload.get("spec")
+    frames = payload.get("duration_frames")
+    if frames is None and isinstance(spec, dict):
+        frames = spec.get("duration_frames")
+    if frames is None:
+        return None
+    try:
+        frame_count = float(frames)
+    except TypeError, ValueError:
+        return None
+    if frame_count <= 0:
+        return None
+    try:
+        fps = float(payload.get("fps") or 30)
+    except TypeError, ValueError:
+        fps = 30.0
+    if fps <= 0:
+        return None
+    return frame_count / fps
+
+
+def _clamp_clips_to(clips: list[HyperClip], window_s: float, title: str) -> list[HyperClip]:
+    clamped: list[HyperClip] = []
+    for clip in clips:
+        if clip.start_s >= window_s:
+            continue
+        end_s = clip.start_s + clip.duration_s
+        if end_s > window_s:
+            clip = HyperClip(clip.start_s, window_s - clip.start_s, clip.text, kind=clip.kind)
+        clamped.append(clip)
+    if not clamped:
+        clamped.append(HyperClip(0.0, window_s, title, kind="title"))
+    return clamped
+
+
 def compile_composition(payload: dict[str, Any]) -> HyperComposition:
     from hevi.providers.hyperframes.style import style_bridge
 
@@ -117,14 +156,19 @@ def compile_composition(payload: dict[str, Any]) -> HyperComposition:
             f"unsupported_ids={','.join(item.id for item in compiled.unsupported)}"
         )
         design_md = f"{design_md}{constraint_note}"
+    clips = clips_from_payload(payload)
+    declared = _declared_duration_s(payload)
+    if declared is not None:
+        clips = _clamp_clips_to(clips, declared, title)
     return HyperComposition(
         title=title,
         width=width,
         height=height,
         fps=fps,
-        clips=clips_from_payload(payload),
+        clips=clips,
         css_vars=css_vars,
         design_md=design_md,
+        declared_duration_s=declared,
     )
 
 
@@ -167,6 +211,7 @@ def render_html(comp: HyperComposition) -> str:
         '  <div id="root" '
         f'data-composition-id="main" data-start="0" '
         f'data-duration="{total_s:.2f}" '
+        f'data-fps="{comp.fps}" '
         f'data-width="{comp.width}" data-height="{comp.height}" '
         "data-no-timeline>\n"
         f"{body}\n"
