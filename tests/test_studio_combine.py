@@ -38,10 +38,20 @@ async def test_fulfill_drives_explainer_not_just_ticket(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_slate_execute_requires_real_explainer_artifact() -> None:
-    result = await run_slate(Slate(line_id="explainer", slots={"topic": "盐税"}, execute=True))
-    assert result.status in {"blocked", "failed"}
-    assert result.data["fulfill"]["status"] in {"blocked", "failed"}
+async def test_slate_execute_requires_real_explainer_artifact(tmp_path: Path) -> None:
+    result = await run_slate(
+        Slate(
+            line_id="explainer",
+            slots={"topic": "盐税", "output_dir": str(tmp_path)},
+            execute=True,
+        )
+    )
+    assert result.status == "completed"
+    assert result.data["fulfill"]["status"] == "completed"
+    artifact = Path(result.data["result_video_path"])
+    assert artifact.is_file()
+    assert result.data["artifact_manifest"]["verified"] is True
+    assert result.data["quality"]["passed"] is True
     planned = await run_slate(Slate(line_id="explainer", slots={"topic": "盐税"}))
     assert planned.status == "scheduled"
 
@@ -50,12 +60,14 @@ async def test_slate_execute_requires_real_explainer_artifact() -> None:
 async def test_veya_execute_fulfills(tmp_path: Path) -> None:
     job = await produce(
         line_id="explainer",
-        slots={"topic": "盐税"},
+        slots={"topic": "盐税", "output_dir": str(tmp_path)},
         execute=True,
         output_dir=tmp_path,
     )
-    assert job.status in {"blocked", "failed"}
-    assert job.fulfill.get("status") in {"blocked", "failed"}
+    assert job.status == "ready"
+    assert job.fulfill.get("status") == "completed"
+    assert job.artifact
+    assert Path(job.artifact).is_file()
 
 
 def test_shot_brick_exports_and_imports() -> None:

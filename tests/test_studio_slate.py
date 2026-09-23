@@ -142,17 +142,41 @@ async def test_unknown_line_failed() -> None:
 
 @pytest.mark.asyncio
 async def test_lot_adapter(tmp_path: Path) -> None:
+    import subprocess
     from unittest.mock import AsyncMock, patch
 
     store = MemoryStore(tmp_path / "m.db")
+    artifact = tmp_path / "final.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=320x240:d=2:r=24",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440:duration=2",
+            "-shortest",
+            "-c:v",
+            "libx264",
+            "-c:a",
+            "aac",
+            str(artifact),
+        ],
+        check=True,
+    )
     fake = AsyncMock(
         return_value={
             "status": "completed",
-            "result_video_path": str(tmp_path / "final.mp4"),
+            "result_video_path": str(artifact),
             "artifact_manifest": {
-                "artifacts": [
-                    {"kind": "video", "path": str(tmp_path / "final.mp4"), "primary": True}
-                ]
+                "artifacts": [{"kind": "video", "path": str(artifact), "primary": True}]
             },
             "quality": {"passed": True, "verdict": "pass", "violations": []},
         }
@@ -171,3 +195,36 @@ async def test_lot_adapter(tmp_path: Path) -> None:
         )
     assert out["status"] == "completed"
     assert out["production_order"]["target"] == "explainer"
+    assert artifact.is_file()
+
+
+@pytest.mark.asyncio
+async def test_lot_adapter_rejects_unverified_artifact_claim(tmp_path: Path) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    store = MemoryStore(tmp_path / "m.db")
+    ghost = tmp_path / "ghost.mp4"
+    fake = AsyncMock(
+        return_value={
+            "status": "completed",
+            "result_video_path": str(ghost),
+            "artifact_manifest": {
+                "artifacts": [{"kind": "video", "path": str(ghost), "primary": True}]
+            },
+            "quality": {"passed": True, "verdict": "pass", "violations": []},
+        }
+    )
+    with patch.dict("hevi.studio.fulfill._RENDERERS", {"explainer": fake}, clear=False):
+        out = await execute_lot_task(
+            {
+                "id": "task-2",
+                "topic": "盐",
+                "config_json": {
+                    "line_id": "explainer",
+                    "slots": {"topic": "盐", "memory_store": store},
+                },
+            },
+            pool=None,
+        )
+    assert out["status"] == "failed"
+    assert out["error"] == "FINAL_ARTIFACT_TRUTH_GATE_FAILED"
