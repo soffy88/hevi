@@ -597,12 +597,18 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET | `/api/intelligence/benchmarks` | List Benchmarks |
+| GET | `/api/intelligence/benchmarks/{benchmark_id}` | Get Benchmark |
 | GET | `/api/intelligence/cases` | List Cases |
 | POST | `/api/intelligence/cases` | Ingest Case |
 | GET | `/api/intelligence/cases/{case_id}` | Get Case |
 | POST | `/api/intelligence/cases/{case_id}/analyze` | Analyze Case Endpoint |
 | POST | `/api/intelligence/cases/{case_id}/benchmark` | Benchmark Case Endpoint |
 | POST | `/api/intelligence/cases/{case_id}/reproduce` | Reproduce Case Endpoint |
+| GET | `/api/intelligence/patterns` | List Patterns |
+| GET | `/api/intelligence/patterns/{pattern_id}` | Get Pattern |
+| GET | `/api/intelligence/templates` | List Templates |
+| GET | `/api/intelligence/templates/{template_id}` | Get Template |
 
 ## voice-platform
 

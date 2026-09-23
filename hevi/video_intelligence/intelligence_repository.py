@@ -29,6 +29,141 @@ class IntelligenceRepository:
     def __init__(self, pool: PgPool) -> None:
         self.pool = pool
 
+    async def list_case_summaries(
+        self, *, user_id: str, case_ids: list[str]
+    ) -> dict[str, dict[str, Any]]:
+        """Return owner-scoped reproduction/verdict summaries for the Cases UI.
+
+        The intelligence tables remain projections; this query only joins
+        canonical case reproductions and verdicts and never creates a second
+        case authority.  The owner predicate is applied to every joined
+        projection so a foreign reproduction cannot leak through a case row.
+        """
+        if not case_ids:
+            return {}
+        ids = [uuid.UUID(str(item)) for item in case_ids]
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT c.id, COUNT(r.id)::int AS reproduction_count, "
+                "(ARRAY_AGG(r.status ORDER BY r.created_at DESC) "
+                "FILTER (WHERE r.id IS NOT NULL))[1] AS latest_reproduction_status, "
+                "(ARRAY_AGG(r.verdict_id ORDER BY r.created_at DESC) "
+                "FILTER (WHERE r.verdict_id IS NOT NULL))[1] AS latest_verdict_id "
+                "FROM video_cases c LEFT JOIN case_reproductions r "
+                "ON r.case_id=c.id AND r.user_id=c.user_id "
+                "WHERE c.user_id=$1 AND c.id = ANY($2::uuid[]) "
+                "GROUP BY c.id",
+                uuid.UUID(user_id), ids,
+            )
+        return {
+            str(row["id"]): {
+                "reproduction_count": int(row["reproduction_count"] or 0),
+                "latest_reproduction_status": row["latest_reproduction_status"],
+                "latest_verdict_id": str(row["latest_verdict_id"])
+                if row["latest_verdict_id"]
+                else None,
+            }
+            for row in rows
+        }
+
+    async def list_benchmarks(self, *, user_id: str, limit: int = 100) -> list[dict[str, Any]]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT b.*, p.analysis_revision, p.plan_json, "
+                "(SELECT COUNT(*)::int FROM case_benchmark_entries e "
+                "WHERE e.benchmark_id=b.id) AS entry_count, "
+                "COALESCE((SELECT json_agg(json_build_object( "
+                "'id',e.id,'reproduction_id',e.reproduction_id,'provider_id',e.provider_id, "
+                "'model_id',e.model_id,'verdict_id',e.verdict_id, "
+                "'dimension_comparison',e.dimension_comparison,'cost_amount',e.cost_amount, "
+                "'latency_ms',e.latency_ms) ORDER BY e.provider_id,e.model_id) "
+                "FROM case_benchmark_entries e WHERE e.benchmark_id=b.id), '[]'::json) AS entries "
+                "FROM case_benchmarks b JOIN benchmark_plans p "
+                "ON p.id=b.benchmark_plan_id AND p.user_id=b.user_id "
+                "WHERE b.user_id=$1 ORDER BY b.created_at DESC LIMIT $2",
+                uuid.UUID(user_id), max(1, min(limit, 500)),
+            )
+        return [dict(row) for row in rows]
+
+    async def get_benchmark(self, benchmark_id: str, *, user_id: str) -> dict[str, Any] | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT b.*, p.analysis_revision, p.plan_json "
+                "FROM case_benchmarks b JOIN benchmark_plans p "
+                "ON p.id=b.benchmark_plan_id AND p.user_id=b.user_id "
+                "WHERE b.id=$1 AND b.user_id=$2",
+                uuid.UUID(benchmark_id), uuid.UUID(user_id),
+            )
+            if row is None:
+                return None
+            entries = await conn.fetch(
+                "SELECT * FROM case_benchmark_entries "
+                "WHERE benchmark_id=$1 ORDER BY provider_id,model_id",
+                uuid.UUID(benchmark_id),
+            )
+        result = dict(row)
+        result["entries"] = [dict(item) for item in entries]
+        return result
+
+    async def list_patterns(self, *, user_id: str, limit: int = 100) -> list[dict[str, Any]]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT p.*, COUNT(e.id)::int AS evidence_count, "
+                "COUNT(e.id) FILTER (WHERE e.evidence_type IN "
+                "('negative','counter_example'))::int AS counter_evidence_count "
+                "FROM video_patterns p LEFT JOIN video_pattern_evidence e "
+                "ON e.pattern_id=p.id AND e.user_id=p.user_id "
+                "WHERE p.user_id=$1 GROUP BY p.id ORDER BY p.updated_at DESC LIMIT $2",
+                uuid.UUID(user_id), max(1, min(limit, 500)),
+            )
+        return [dict(row) for row in rows]
+
+    async def get_pattern(self, pattern_id: str, *, user_id: str) -> dict[str, Any] | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM video_patterns WHERE id=$1 AND user_id=$2",
+                uuid.UUID(pattern_id), uuid.UUID(user_id),
+            )
+            if row is None:
+                return None
+            evidence = await conn.fetch(
+                "SELECT * FROM video_pattern_evidence "
+                "WHERE pattern_id=$1 AND user_id=$2 ORDER BY created_at DESC",
+                uuid.UUID(pattern_id), uuid.UUID(user_id),
+            )
+        result = dict(row)
+        result["evidence"] = [dict(item) for item in evidence]
+        return result
+
+    async def list_templates(self, *, user_id: str, limit: int = 100) -> list[dict[str, Any]]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT t.*, COUNT(q.id)::int AS qualification_run_count, "
+                "MAX(q.completed_at) AS last_qualified_at "
+                "FROM prompt_templates t LEFT JOIN template_qualification_runs q "
+                "ON q.template_id=t.id AND q.user_id=t.user_id "
+                "WHERE t.user_id=$1 GROUP BY t.id ORDER BY t.name,t.version DESC LIMIT $2",
+                uuid.UUID(user_id), max(1, min(limit, 500)),
+            )
+        return [dict(row) for row in rows]
+
+    async def get_template(self, template_id: str, *, user_id: str) -> dict[str, Any] | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM prompt_templates WHERE id=$1 AND user_id=$2",
+                uuid.UUID(template_id), uuid.UUID(user_id),
+            )
+            if row is None:
+                return None
+            runs = await conn.fetch(
+                "SELECT * FROM template_qualification_runs "
+                "WHERE template_id=$1 AND user_id=$2 ORDER BY completed_at DESC",
+                uuid.UUID(template_id), uuid.UUID(user_id),
+            )
+        result = dict(row)
+        result["qualification_runs"] = [dict(item) for item in runs]
+        return result
+
     async def create_benchmark_plan(
         self, *, user_id: str, workspace_id: str | None, case_id: str,
         analysis_revision: str, plan: dict[str, Any], plan_hash: str,
@@ -248,6 +383,24 @@ class IntelligenceRepository:
             raise RuntimeError("LEARNING_EVENT_PERSISTENCE_FAILED")
         return dict(row)
 
+    async def attach_learning_verdict(
+        self, *, event_id: str, user_id: str, verdict_id: str
+    ) -> bool:
+        """Attach a verdict produced by the canonical production evaluator.
+
+        Production completion is durable before the learning projection is
+        written.  This owner-scoped, idempotent link lets a post-completion
+        verdict stage finish the same event without creating another event or
+        another scoring authority.
+        """
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE production_learning_events SET final_verdict_id=$1 "
+                "WHERE id=$2 AND user_id=$3 AND final_verdict_id IS NULL",
+                uuid.UUID(verdict_id), uuid.UUID(event_id), uuid.UUID(user_id),
+            )
+        return str(result).endswith("1")
+
     async def write_retake_record(
         self, *, user_id: str, workspace_id: str | None, payload: dict[str, Any]
     ) -> dict[str, Any]:
@@ -272,13 +425,23 @@ class IntelligenceRepository:
     async def refresh_observed_stats(self, *, user_id: str) -> int:
         """Refresh only from persisted reproductions/events, never declarations."""
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
+            reproduction_rows = await conn.fetch(
                 "SELECT r.provider_id,r.model_id,COALESCE(r.model_version,'') AS model_version,"
                 "r.generation_mode,r.status,r.cost_amount,r.latency_ms,v.checks_json "
                 "FROM case_reproductions r LEFT JOIN shot_verdict v ON v.id=r.verdict_id "
                 "WHERE r.user_id=$1",
                 uuid.UUID(user_id),
             )
+            learning_rows = await conn.fetch(
+                "SELECT e.provider_id,e.model_id,COALESCE(e.model_version,'') AS model_version,"
+                "e.generation_mode,e.final_status AS status,e.generation_cost AS cost_amount,"
+                "e.latency_ms,v.checks_json "
+                "FROM production_learning_events e "
+                "LEFT JOIN shot_verdict v ON v.id=e.final_verdict_id "
+                "WHERE e.user_id=$1",
+                uuid.UUID(user_id),
+            )
+            rows = [*reproduction_rows, *learning_rows]
             buckets: dict[tuple[str, str, str, str], list[Any]] = {}
             for row in rows:
                 key = (row["provider_id"], row["model_id"], row["model_version"], row["generation_mode"])

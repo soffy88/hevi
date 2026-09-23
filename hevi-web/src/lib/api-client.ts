@@ -214,6 +214,22 @@ export const studioApi = {
     authedReq<Record<string, unknown>>(`/api/studio/nle/projects/${projectId}/revisions`),
 };
 
+/**
+ * Video Intelligence uses the same authenticated backend and ownership
+ * fences as the rest of Studio.  The UI only consumes canonical projections;
+ * it never owns a second case, provider, verdict, or job store.
+ */
+export const videoIntelligenceApi = {
+  cases: () => authedReq<{ cases: Array<Record<string, unknown>>; total: number }>('/api/intelligence/cases'),
+  case: (id: string) => authedReq<{ case: Record<string, unknown> }>(`/api/intelligence/cases/${id}`),
+  benchmarks: () => authedReq<{ benchmarks: Array<Record<string, unknown>>; total: number }>('/api/intelligence/benchmarks'),
+  benchmark: (id: string) => authedReq<{ benchmark: Record<string, unknown> }>(`/api/intelligence/benchmarks/${id}`),
+  patterns: () => authedReq<{ patterns: Array<Record<string, unknown>>; total: number }>('/api/intelligence/patterns'),
+  pattern: (id: string) => authedReq<{ pattern: Record<string, unknown> }>(`/api/intelligence/patterns/${id}`),
+  templates: () => authedReq<{ templates: Array<Record<string, unknown>>; total: number }>('/api/intelligence/templates'),
+  template: (id: string) => authedReq<{ template: Record<string, unknown> }>(`/api/intelligence/templates/${id}`),
+};
+
 export type StudioTimelineClip = {
   clip_id: string; track: string; start_s: number; duration_s: number;
   label: string; action: string; source: string; text: string; source_in_s?: number;

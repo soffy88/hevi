@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 
 from hevi.auth.dependencies import get_current_user
@@ -183,7 +184,17 @@ async def list_cases(
     limit: int = 100,
 ) -> dict[str, Any]:
     cases = await repo.list_owned(user_id=str(user["id"]), limit=limit)
-    return {"cases": [case.model_dump(mode="json") for case in cases], "total": len(cases)}
+    case_payloads = [case.model_dump(mode="json") for case in cases]
+    summaries = await IntelligenceRepository(repo.pool).list_case_summaries(
+        user_id=str(user["id"]), case_ids=[case.id for case in cases]
+    )
+    for payload in case_payloads:
+        payload.update(summaries.get(str(payload["id"]), {
+            "reproduction_count": 0,
+            "latest_reproduction_status": None,
+            "latest_verdict_id": None,
+        }))
+    return {"cases": case_payloads, "total": len(case_payloads)}
 
 
 @router.get("/cases/{case_id}")
@@ -337,6 +348,84 @@ async def benchmark_case_endpoint(
     )
     submitted = await service.submit_task(task["id"])
     return {"benchmark": benchmark, "task": {"id": str(submitted["id"]), "status": submitted["status"]}}
+
+
+@router.get("/benchmarks")
+async def list_benchmarks(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[CaseRepository, Depends(_repo)],
+    limit: int = 100,
+) -> dict[str, Any]:
+    rows = await IntelligenceRepository(repo.pool).list_benchmarks(
+        user_id=str(user["id"]), limit=limit
+    )
+    return {"benchmarks": jsonable_encoder(rows), "total": len(rows)}
+
+
+@router.get("/benchmarks/{benchmark_id}")
+async def get_benchmark(
+    benchmark_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[CaseRepository, Depends(_repo)],
+) -> dict[str, Any]:
+    row = await IntelligenceRepository(repo.pool).get_benchmark(
+        benchmark_id, user_id=str(user["id"])
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="benchmark not found")
+    return {"benchmark": jsonable_encoder(row)}
+
+
+@router.get("/patterns")
+async def list_patterns(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[CaseRepository, Depends(_repo)],
+    limit: int = 100,
+) -> dict[str, Any]:
+    rows = await IntelligenceRepository(repo.pool).list_patterns(
+        user_id=str(user["id"]), limit=limit
+    )
+    return {"patterns": jsonable_encoder(rows), "total": len(rows)}
+
+
+@router.get("/patterns/{pattern_id}")
+async def get_pattern(
+    pattern_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[CaseRepository, Depends(_repo)],
+) -> dict[str, Any]:
+    row = await IntelligenceRepository(repo.pool).get_pattern(
+        pattern_id, user_id=str(user["id"])
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="pattern not found")
+    return {"pattern": jsonable_encoder(row)}
+
+
+@router.get("/templates")
+async def list_templates(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[CaseRepository, Depends(_repo)],
+    limit: int = 100,
+) -> dict[str, Any]:
+    rows = await IntelligenceRepository(repo.pool).list_templates(
+        user_id=str(user["id"]), limit=limit
+    )
+    return {"templates": jsonable_encoder(rows), "total": len(rows)}
+
+
+@router.get("/templates/{template_id}")
+async def get_template(
+    template_id: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    repo: Annotated[CaseRepository, Depends(_repo)],
+) -> dict[str, Any]:
+    row = await IntelligenceRepository(repo.pool).get_template(
+        template_id, user_id=str(user["id"])
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="template not found")
+    return {"template": jsonable_encoder(row)}
 
 
 __all__ = ["router"]

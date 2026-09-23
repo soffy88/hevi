@@ -910,4 +910,22 @@ v2.x 确立骨架(五层 + 导演台唯一出品),v3.0 填密度到顶级:
 
 ---
 
+## Video Intelligence implementation status (2026-09-23)
+
+Video Intelligence extends this architecture; it does not add a provider,
+asset, verdict, job, or render authority. The canonical path is:
+
+```text
+case provenance → analysis → existing ProviderRegistry → existing Asset/Verdict
+→ durable production completion → learning event → observed provider projection
+```
+
+The existing Studio shell exposes Cases, Benchmarks, Patterns, and Templates.
+Pattern and Template promotion is explicit and never automatic. Runtime and
+production claims are evidence-based: `CODE_COMPLETE`, `RUNTIME_CONNECTED`,
+`RUNTIME_QUALIFIED`, `PRODUCTION_QUALIFIED`, `ENV_BLOCKED`, and `OWNER_BLOCKED`
+are distinct states. Cross-model qualification requires at least two
+independent real providers. Current closure evidence and blockers are in
+`docs/VIDEO-INTELLIGENCE-FINAL-CLOSURE.md`.
+
 *文档结束(v3.2)。*

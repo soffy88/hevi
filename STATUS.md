@@ -6,6 +6,21 @@
 > Sources: git log, `.claude` project memory (tongjian-pipeline-handoff, deploy-topology, e2e-local-llm-json-blocker, gpu-pcie-fallen-off-bus).
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
 
+## Video Intelligence closure (2026-09-23)
+
+The existing durable Case Learning runtime is connected and runtime-qualified;
+the production-learning path has produced a real MP4, canonical Verdict,
+persisted `ProductionLearningEvent`, and one observed provider-stat sample.
+Studio now exposes Cases, Benchmarks, Patterns, and Templates in the existing
+shell. Pattern/Template promotion remains explicit and disabled by default.
+
+This is not a blanket production qualification: the full suite has classified
+pre-existing Studio failures and environment failures from the installed
+torch/torchvision/transformers/vibevoice stack, HyperFrames CLI interop is
+environment-blocked, and only one independent real provider is qualified.
+Cross-model qualification requires >=2 independent real providers. See
+`docs/VIDEO-INTELLIGENCE-FINAL-CLOSURE.md` for evidence and exact triage.
+
 ---
 
 ## 🔒 Never (hard constraints — do not violate)
