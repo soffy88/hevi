@@ -48,11 +48,32 @@ was classified; they do not mean the environment-blocked suite is green.
   was idempotently linked to the final verdict and refreshed one real observed
   provider-stat sample.
 - Runtime interop rendered Remotion with actual runtime identity. HyperFrames
-  was not silently substituted: its CLI is absent, so interop is
-  `ENV_BLOCKED` with `HYPERFRAMES_CLI_UNAVAILABLE`.
-- The provider inventory has one qualified real backend for the current case
-  corpus. A second independent provider was not counted without a real,
-  authorized qualification run.
+  was not silently substituted: its CLI was absent at the original triage, so
+  interop was `ENV_BLOCKED` with `HYPERFRAMES_CLI_UNAVAILABLE`. Track 3 later
+  installed CLI 0.8.68 and re-qualified interop PASS (delta 0.05s vs Remotion).
+- The provider inventory has **two** qualified real backends for the current
+  case corpus. Track 4 ran real durable manim `case_reproduction`s through the
+  canonical path alongside the hyperframes baseline (see
+  `artifacts/qualification/second-provider-manim-repro.json` for the latest
+  succeeded row: reproduction `f80d36eb-…`, task `3b9ddb39-…`, verdict
+  `8b5a2cb9-…`, 13755-byte MP4; an earlier run `37fe0626-…` also succeeded).
+  Live corpus projection: `distinct_succeeded_repro_providers=2`. See
+  `artifacts/qualification/second-provider-audit.json`
+  (`cross_model_qualified=true`, `software_gate=PASS`) and
+  `artifacts/qualification/second-provider-benchmark.json`
+  (`provider_count=2`, `failure_code=CHILD_REPRODUCTIONS_NOT_SUBMITTED`).
+- Remaining external non-pass states are classified, not silent: CUDA/NVML
+  wedged (`ENV_BLOCKED`, hardware — never reboot the shared host without
+  asking soffy); WaveSpeed key absent (`OWNER_BLOCKED_NO_CREDENTIAL`); FAL/MAAS
+  credentials present but spending requires soffy authorization
+  (`OWNER_BLOCKED_SPEND`); h3_local/wan_local/ltx2_local `ENV_BLOCKED`.
+  remotion/ffmpeg/motion_graphics are `NOT_REGISTERED_VIDEO`.
+- Benchmark gate note: with `<2` `benchmark_providers` a benchmark finishes
+  `blocked/SECOND_REAL_PROVIDER_UNAVAILABLE`; with `>=2` it reaches
+  `CHILD_REPRODUCTIONS_NOT_SUBMITTED` because no composition-layer child
+  submission exists. Pattern promotion still requires `total>=5` and
+  `provider_count>=2` on `video_pattern_evidence` (caller-less today) — not
+  fabricated for this closure.
 
 ## Status vocabulary
 
@@ -62,6 +83,9 @@ canonical durable path is wired; `RUNTIME_QUALIFIED` requires real evidence;
 and `OWNER_BLOCKED` are explicit non-pass states. Cross-model qualification
 requires at least two independent real providers.
 
-Current result: production learning E2E is real and auditable, but the release
-remains externally blocked by the installed ML dependency/runtime failures,
-missing HyperFrames CLI, and absence of a second qualified provider.
+Current result: production learning E2E is real and auditable; Tracks 1–4
+closed their software blockers (studio regressions, env import chain,
+HyperFrames CLI, second independent provider). Remaining non-pass states are
+hardware/credential ENV_BLOCKED and OWNER_BLOCKED classifications above — not
+`SECOND_PROVIDER_UNQUALIFIED`. Final full regression + acceptance report
+pending.

@@ -1,0 +1,36 @@
+{
+  "benchmark_id": "fc0b79ee-12b0-45ea-8c1e-3e3aae7b64da",
+  "task_id": "5bb98627-4139-4813-b79d-11a7017e43e6",
+  "benchmark_providers": [
+    "hyperframes",
+    "manim"
+  ],
+  "benchmark": {
+    "id": "fc0b79ee-12b0-45ea-8c1e-3e3aae7b64da",
+    "workspace_id": "closure-smoke",
+    "user_id": "7914fd9b-2bf6-403e-8384-fb4c29e362e0",
+    "case_id": "295b72d0-25a7-44bb-ab94-bc0a4233c47a",
+    "benchmark_plan_id": "b8300889-a97c-4f2e-ab9d-c91c3ce43fc6",
+    "status": "pending",
+    "provider_count": 2,
+    "reproduction_count": 0,
+    "idempotency_key": "manim-hyperframes-benchmark-1790209520",
+    "failure_code": "CHILD_REPRODUCTIONS_NOT_SUBMITTED",
+    "created_at": "2026-09-24 00:25:20.542557",
+    "started_at": null,
+    "completed_at": "2026-09-24 00:25:20.735126",
+    "analysis_revision": "qualification-track4",
+    "plan_json": {
+      "case_id": "295b72d0-25a7-44bb-ab94-bc0a4233c47a",
+      "duration_ms": 1000,
+      "aspect_ratio": "16:9",
+      "shot_structure": [],
+      "generation_mode": "exact_structure",
+      "analysis_revision": "qualification-track4",
+      "reference_bindings": [],
+      "acceptance_dimensions": [],
+      "compiled_semantic_intent": "A single subject with a simple camera move."
+    },
+    "entries": []
+  }
+}

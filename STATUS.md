@@ -22,10 +22,21 @@ locked torch==2.12.0; full suite 3337 passed / 0 failed, commit 95fd9ee).
 Track 3 HyperFrames second runtime qualified (CLI 0.8.68 + Chrome ensured +
 `hyperframes doctor --json` ok=true; compiler honors duration_frames;
 `scripts/qualify_runtime_interop.py` verdict PASS vs Remotion, delta 0.05s).
-Still open: CUDA/NVML wedged (hardware, ENV_BLOCKED — never reboot without
-asking soffy) and Track 4 second-provider credentials
-(OWNER_BLOCKED_NO_CREDENTIAL) — cross-model qualification requires >=2
-independent real providers. Final full regression + acceptance report pending.
+Track 4 second independent provider qualified: manim durable case_reproduction
+succeeded twice (`37fe0626-…` then `f80d36eb-…` in
+`second-provider-manim-repro.json`, real MP4, canonical verdict);
+`distinct_succeeded_repro_providers=2` (hyperframes+manim);
+`second-provider-audit.json` `cross_model_qualified=true`, software_gate PASS;
+benchmark with `[hyperframes, manim]` reaches
+`CHILD_REPRODUCTIONS_NOT_SUBMITTED` (provider_count=2), not
+`SECOND_REAL_PROVIDER_UNAVAILABLE`.
+Candidate classification (not blanket OWNER_BLOCKED): hyperframes
+BASELINE_QUALIFIED; manim FREE_LOCAL_RUNNABLE (counted after real run);
+WaveSpeed pair OWNER_BLOCKED_NO_CREDENTIAL; FAL/MAAS candidates
+OWNER_BLOCKED_SPEND; h3/wan_local/ltx2_local ENV_BLOCKED; remotion/ffmpeg/
+motion_graphics NOT_REGISTERED_VIDEO. Still open: CUDA/NVML wedged (hardware,
+ENV_BLOCKED — never reboot without asking soffy). Final full regression +
+acceptance report pending.
 
 ---
 

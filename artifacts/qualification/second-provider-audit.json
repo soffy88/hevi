@@ -1,0 +1,369 @@
+{
+  "doctor": "second_provider",
+  "generated_at": "2026-09-24T00:26:24Z",
+  "root": "/data/soffy/projects/hevi",
+  "registration_error": null,
+  "registered_video_providers": [
+    "h3_local",
+    "hailuo",
+    "happyhorse_1_1",
+    "happyhorse_1_1_maas",
+    "happyhorse_1_1_maas_lock",
+    "happyhorse_1_1_maas_ref",
+    "happyhorse_1_1_ref",
+    "hyperframes",
+    "kling_v2",
+    "ltx2_cloud",
+    "ltx2_local",
+    "manim",
+    "veo3",
+    "vidu",
+    "wan_2_7",
+    "wan_2_7_maas",
+    "wan_cloud",
+    "wan_local"
+  ],
+  "gpu": {
+    "available": false,
+    "detail": "nvidia-smi rc=255: Unable to determine the device handle for gpu 0000:05:00.0: Unknown Error"
+  },
+  "candidates": [
+    {
+      "provider": "h3_local",
+      "registered_video": true,
+      "credential_env": {
+        "H3_COMFY_URL": "ABSENT"
+      },
+      "capability_modes": [
+        "i2v",
+        "t2v"
+      ],
+      "probe": null,
+      "status": "ENV_BLOCKED",
+      "reason": "ComfyUI unreachable (URLError)"
+    },
+    {
+      "provider": "hailuo",
+      "registered_video": true,
+      "credential_env": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "capability_modes": [
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_SPEND",
+      "reason": "credentials present; real qualification run spends owner budget"
+    },
+    {
+      "provider": "happyhorse_1_1",
+      "registered_video": true,
+      "credential_env": {
+        "WAVESPEED_API_KEY": "ABSENT"
+      },
+      "capability_modes": [
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_NO_CREDENTIAL",
+      "reason": "WAVESPEED_API_KEY absent"
+    },
+    {
+      "provider": "happyhorse_1_1_maas",
+      "registered_video": true,
+      "credential_env": {
+        "ALIBABA_MAAS_API_KEY": "PRESENT"
+      },
+      "capability_modes": [
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_SPEND",
+      "reason": "credentials present; real qualification run spends owner budget"
+    },
+    {
+      "provider": "happyhorse_1_1_maas_lock",
+      "registered_video": true,
+      "credential_env": {
+        "ALIBABA_MAAS_API_KEY": "PRESENT"
+      },
+      "capability_modes": [
+        "i2v",
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_SPEND",
+      "reason": "credentials present; real qualification run spends owner budget"
+    },
+    {
+      "provider": "happyhorse_1_1_maas_ref",
+      "registered_video": true,
+      "credential_env": {},
+      "capability_modes": null,
+      "probe": null,
+      "status": "ENV_BLOCKED",
+      "reason": "no free authorized path classified"
+    },
+    {
+      "provider": "happyhorse_1_1_ref",
+      "registered_video": true,
+      "credential_env": {},
+      "capability_modes": null,
+      "probe": null,
+      "status": "ENV_BLOCKED",
+      "reason": "no free authorized path classified"
+    },
+    {
+      "provider": "hyperframes",
+      "registered_video": true,
+      "credential_env": {},
+      "capability_modes": null,
+      "probe": null,
+      "status": "BASELINE_QUALIFIED",
+      "reason": "first independent provider; corpus case_reproductions already succeeded under this provider"
+    },
+    {
+      "provider": "kling_v2",
+      "registered_video": true,
+      "credential_env": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "capability_modes": [
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_SPEND",
+      "reason": "credentials present; real qualification run spends owner budget"
+    },
+    {
+      "provider": "ltx2_cloud",
+      "registered_video": true,
+      "credential_env": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "capability_modes": [
+        "i2v",
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_SPEND",
+      "reason": "credentials present; real qualification run spends owner budget"
+    },
+    {
+      "provider": "ltx2_local",
+      "registered_video": true,
+      "credential_env": {},
+      "capability_modes": [
+        "i2v",
+        "t2v"
+      ],
+      "probe": null,
+      "status": "ENV_BLOCKED",
+      "reason": "GPU required: nvidia-smi rc=255: Unable to determine the device handle for gpu 0000:05:00.0: Unknown Error"
+    },
+    {
+      "provider": "manim",
+      "registered_video": true,
+      "credential_env": {},
+      "capability_modes": [
+        "code_scene"
+      ],
+      "probe": {
+        "passed": true,
+        "latency_ms": 323,
+        "bytes": 25307,
+        "error": null
+      },
+      "status": "FREE_LOCAL_RUNNABLE",
+      "reason": "registered free local video provider; real MP4 produced (Manim CLI absent → documented Pillow+ffmpeg fallback, same fallback class as the baseline corpus run)"
+    },
+    {
+      "provider": "veo3",
+      "registered_video": true,
+      "credential_env": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "capability_modes": [
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_SPEND",
+      "reason": "credentials present; real qualification run spends owner budget"
+    },
+    {
+      "provider": "vidu",
+      "registered_video": true,
+      "credential_env": {},
+      "capability_modes": null,
+      "probe": null,
+      "status": "ENV_BLOCKED",
+      "reason": "no free authorized path classified"
+    },
+    {
+      "provider": "wan_2_7",
+      "registered_video": true,
+      "credential_env": {
+        "WAVESPEED_API_KEY": "ABSENT"
+      },
+      "capability_modes": [
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_NO_CREDENTIAL",
+      "reason": "WAVESPEED_API_KEY absent"
+    },
+    {
+      "provider": "wan_2_7_maas",
+      "registered_video": true,
+      "credential_env": {
+        "ALIBABA_MAAS_API_KEY": "PRESENT"
+      },
+      "capability_modes": [
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_SPEND",
+      "reason": "credentials present; real qualification run spends owner budget"
+    },
+    {
+      "provider": "wan_cloud",
+      "registered_video": true,
+      "credential_env": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "capability_modes": [
+        "i2v",
+        "t2v"
+      ],
+      "probe": null,
+      "status": "OWNER_BLOCKED_SPEND",
+      "reason": "credentials present; real qualification run spends owner budget"
+    },
+    {
+      "provider": "wan_local",
+      "registered_video": true,
+      "credential_env": {},
+      "capability_modes": [
+        "i2v",
+        "t2v"
+      ],
+      "probe": null,
+      "status": "ENV_BLOCKED",
+      "reason": "GPU required: nvidia-smi rc=255: Unable to determine the device handle for gpu 0000:05:00.0: Unknown Error"
+    },
+    {
+      "provider": "remotion",
+      "registered_video": false,
+      "credential_env": {},
+      "capability_modes": null,
+      "probe": null,
+      "status": "NOT_REGISTERED_VIDEO",
+      "reason": "readiness READY via hevi-remotion npx render, but no generic video registration and no prompt→composition compiler"
+    },
+    {
+      "provider": "ffmpeg",
+      "registered_video": false,
+      "credential_env": {},
+      "capability_modes": null,
+      "probe": null,
+      "status": "NOT_REGISTERED_VIDEO",
+      "reason": "helper tool, not a registered video provider"
+    },
+    {
+      "provider": "motion_graphics",
+      "registered_video": false,
+      "credential_env": {},
+      "capability_modes": null,
+      "probe": null,
+      "status": "NOT_REGISTERED_VIDEO",
+      "reason": "production_source name, not a registered video provider (uses remotion assembly path)"
+    }
+  ],
+  "corpus": {
+    "video_cases": 9,
+    "succeeded_analyses": 9,
+    "reproductions_by_provider": [
+      {
+        "provider_id": "hyperframes",
+        "status": "failed",
+        "n": 1
+      },
+      {
+        "provider_id": "hyperframes",
+        "status": "succeeded",
+        "n": 9
+      },
+      {
+        "provider_id": "manim",
+        "status": "succeeded",
+        "n": 2
+      }
+    ],
+    "distinct_succeeded_repro_providers": 2,
+    "benchmarks": [
+      {
+        "status": "blocked",
+        "provider_count": 1,
+        "failure_code": "SECOND_REAL_PROVIDER_UNAVAILABLE",
+        "n": 1
+      },
+      {
+        "status": "pending",
+        "provider_count": 2,
+        "failure_code": "CHILD_REPRODUCTIONS_NOT_SUBMITTED",
+        "n": 1
+      }
+    ],
+    "pattern": {
+      "lifecycle_status": "candidate",
+      "positive_evidence_count": 1,
+      "negative_evidence_count": 1
+    },
+    "pattern_distinct_repro_providers": 1
+  },
+  "summary": {
+    "BASELINE_QUALIFIED": [
+      "hyperframes"
+    ],
+    "FREE_LOCAL_RUNNABLE": [
+      "manim"
+    ],
+    "OWNER_BLOCKED": [
+      "hailuo",
+      "happyhorse_1_1",
+      "happyhorse_1_1_maas",
+      "happyhorse_1_1_maas_lock",
+      "kling_v2",
+      "ltx2_cloud",
+      "veo3",
+      "wan_2_7",
+      "wan_2_7_maas",
+      "wan_cloud"
+    ],
+    "ENV_BLOCKED": [
+      "h3_local",
+      "happyhorse_1_1_maas_ref",
+      "happyhorse_1_1_ref",
+      "ltx2_local",
+      "vidu",
+      "wan_local"
+    ],
+    "NOT_REGISTERED_VIDEO": [
+      "remotion",
+      "ffmpeg",
+      "motion_graphics"
+    ]
+  },
+  "second_independent_provider_ready": true,
+  "second_independent_provider_counted": true,
+  "distinct_succeeded_repro_providers": 2,
+  "cross_model_gate": "READY_FOR_REAL_RUN",
+  "cross_model_qualified": true,
+  "software_gate": "PASS",
+  "notes": [
+    "A FREE_LOCAL_RUNNABLE candidate is not yet counted as the second independent provider until a real durable case_reproduction succeeds under it (canonical path, not a direct probe).",
+    "owner-blocked candidates require soffy authorization before any spending run; credentials are reported PRESENT/ABSENT only.",
+    "baseline corpus repros predate the HyperFrames CLI install and used the provider's documented ffmpeg card fallback — that is the honesty bar applied to free-local fallbacks as well.",
+    "second independent provider counted: distinct_succeeded_repro_providers=2"
+  ]
+}

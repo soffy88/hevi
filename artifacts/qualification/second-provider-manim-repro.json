@@ -1,0 +1,25 @@
+{
+  "reused_open_repro": false,
+  "case_id": "0a6abe10-aad7-4874-85e5-2e3929385130",
+  "analysis_id": "02d627ca-c09b-487d-95f2-21aa9779d06d",
+  "user_id": "7914fd9b-2bf6-403e-8384-fb4c29e362e0",
+  "reproduction_id": "f80d36eb-8c34-4791-8fb9-de0bb9653a29",
+  "task_id": "3b9ddb39-3a5a-4efd-a0d8-40e3a6846515",
+  "task_status": "completed",
+  "task_error": null,
+  "reproduction_status": "succeeded",
+  "provider_id": "manim",
+  "verdict_id": "8b5a2cb9-79be-4a1b-bf90-4b25b471a48a",
+  "failure_code": null,
+  "failure_detail": null,
+  "artifact_path": "output/case_reproductions/f80d36eb-8c34-4791-8fb9-de0bb9653a29/reproduction.mp4",
+  "artifact_bytes": 13755,
+  "elapsed_ms": 379,
+  "generation_parameters": {
+    "width": 320,
+    "height": 240,
+    "duration_s": 1.0,
+    "mode": "code_scene"
+  },
+  "prompt": "A real case corpus subject performs a simple structured action, case 1."
+}

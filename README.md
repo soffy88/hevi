@@ -13,8 +13,9 @@ Verdict 和 observed-provider 统计证据。
 状态必须区分：`CODE_COMPLETE`、`RUNTIME_CONNECTED`、`RUNTIME_QUALIFIED`、
 `PRODUCTION_QUALIFIED`、`ENV_BLOCKED`、`OWNER_BLOCKED`。Pattern 与 Template
 不会自动 promotion。Cross-model qualification 必须有至少两个独立真实
-provider；当前第二 provider 和 HyperFrames CLI 仍是外部 qualification
-blocker。详细证据见
+provider；当前已有 hyperframes + manim 两条 durable 成功路径
+（`distinct_succeeded_repro_providers=2`）。CUDA/NVML 硬件与部分
+credential 仍为显式 `ENV_BLOCKED`/`OWNER_BLOCKED` 分类。详细证据见
 [`docs/VIDEO-INTELLIGENCE-FINAL-CLOSURE.md`](docs/VIDEO-INTELLIGENCE-FINAL-CLOSURE.md)。
 
 ## 架构
