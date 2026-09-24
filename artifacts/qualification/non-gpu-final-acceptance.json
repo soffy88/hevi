@@ -46,7 +46,8 @@
     "pytest_skipped": 31,
     "pytest_failed": 0,
     "CLEAN_INSTALL_GATE": "PASS",
-    "CLEAN_INSTALL_BASIS": "pins/pyproject/lock unchanged from 501936f; reverify artifact 3o-clean-install-reverify.json still authoritative",
+    "CLEAN_INSTALL_REGRESSION": "PASS",
+    "CLEAN_INSTALL_BASIS": "pyproject/uv.lock diff vs 501936f = 0 lines; 5x3O pins match required_pins in 3o-clean-install-reverify.json (CLEAN_INSTALL_GATE=PASS, pins_match=true, patch_script_absent=true, PYTHONPATH_masking=false, editable_install_of_oprim=false)",
     "SECURITY_IDENTITY_DURABILITY_REGRESSION": "PASS",
     "GPU_POLICY": "SKIPPED_BY_OWNER"
   },
