@@ -2,6 +2,8 @@
 # hevi v6 — production compose (app + postgres + minio + nginx)
 # Usage: docker compose --env-file .env -f hevi/deploy/docker-compose-prod.yml up -d
 # Requires: .env at repo root (copy from .env.example and fill all values)
+# Secrets are required (no weak defaults). APP_ENV=production fails closed in
+# Settings if DATABASE_URL / MINIO / VAULT / JWT still use sample credentials.
 
 name: hevi-prod
 
@@ -11,7 +13,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: hevi
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hevi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for production}
       POSTGRES_DB: hevi
     volumes:
       - pg_data:/var/lib/postgresql/data
@@ -33,10 +35,8 @@ services:
     restart: always
     command: server /data --console-address ":9001"
     environment:
-      # Explicit defaults keep a fresh compose smoke-test bootable; production
-      # deployments must override both values through the environment.
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio12345}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
     volumes:
       - minio_data:/data
     ports:
@@ -57,8 +57,8 @@ services:
         condition: service_healthy
     restart: on-failure
     environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio12345}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
       MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
     entrypoint: >
       /bin/sh -c "
@@ -81,7 +81,8 @@ services:
       - path: ../../.env
         required: false
     environment:
-      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      APP_ENV: production
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for production}@postgres:5432/hevi
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,8 +100,11 @@ services:
       - path: ../../.env
         required: false   # 生产环境由外部注入,dev 阶段可缺失
     environment:
-      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      APP_ENV: production
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for production}@postgres:5432/hevi
       MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
     depends_on:
       postgres:
         condition: service_healthy
@@ -129,8 +133,11 @@ services:
       - path: ../../.env
         required: false
     environment:
-      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      APP_ENV: production
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for production}@postgres:5432/hevi
       MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
     depends_on:
       postgres:
         condition: service_healthy
@@ -153,7 +160,8 @@ services:
       - path: ../../.env
         required: false
     environment:
-      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      APP_ENV: production
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for production}@postgres:5432/hevi
       SCHEDULER_REQUIRED: "true"
     depends_on:
       postgres:
@@ -175,7 +183,8 @@ services:
       - path: ../../.env
         required: false
     environment:
-      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      APP_ENV: production
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for production}@postgres:5432/hevi
     depends_on:
       postgres:
         condition: service_healthy
@@ -196,7 +205,8 @@ services:
       - path: ../../.env
         required: false
     environment:
-      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:-hevi}@postgres:5432/hevi
+      APP_ENV: production
+      DATABASE_URL: postgresql://hevi:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required for production}@postgres:5432/hevi
       REDIS_URL: redis://redis:6379/0
       EVENT_PUBLISHER_ENABLED: "true"
     depends_on:

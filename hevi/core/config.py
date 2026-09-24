@@ -1,7 +1,35 @@
 import sys
+from urllib.parse import unquote, urlparse
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Known development / sample credentials. Production (APP_ENV=production)
+# rejects these for DB/Vault/MinIO/JWT; development and CI keep them.
+_WEAK_SECRETS = frozenset(
+    {
+        "",
+        "hevi",
+        "hevi1234",
+        "minio",
+        "minio12345",
+        "password",
+        "changeme",
+        "livehevi12345",
+        "live-test-secret",
+        "ci-only-release-closure-secret",
+    }
+)
+
+
+def _url_password(url: str) -> str | None:
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return None
+    if parsed.password is None:
+        return None
+    return unquote(parsed.password)
 
 
 class Settings(BaseSettings):
@@ -9,6 +37,9 @@ class Settings(BaseSettings):
 
     app_name: str = "hevi"
     app_version: str = "6.0.0"
+    # development (default) | staging | production.
+    # production fails closed on weak DB / Vault / MinIO / JWT credentials.
+    app_env: str = "development"
     debug: bool = False
     # SQLite is a deliberate local projection only.  SaaS/API mode must use
     # PostgreSQL and migrations; it must never call SQLModel create_all().
@@ -137,6 +168,34 @@ class Settings(BaseSettings):
             print("FATAL: JWT_SECRET must be set in .env", file=sys.stderr)
             sys.exit(1)
         return v
+
+    @model_validator(mode="after")
+    def production_fail_closed_secrets(self) -> Settings:
+        if self.app_env != "production":
+            return self
+        problems: list[str] = []
+        if (_url_password(self.database_url) or "") in _WEAK_SECRETS:
+            problems.append("DATABASE_URL")
+        if (_url_password(self.vault_database_url) or "") in _WEAK_SECRETS:
+            problems.append("VAULT_DATABASE_URL")
+        if self.minio_secret_key in _WEAK_SECRETS:
+            problems.append("MINIO_SECRET_KEY")
+        if self.vault_minio_secret_key in _WEAK_SECRETS:
+            problems.append("VAULT_MINIO_SECRET_KEY")
+        if self.vault_minio_access_key in _WEAK_SECRETS:
+            problems.append("VAULT_MINIO_ACCESS_KEY")
+        if self.jwt_secret in _WEAK_SECRETS:
+            problems.append("JWT_SECRET")
+        if problems:
+            # Field names only — never echo secret values.
+            print(
+                "FATAL: PRODUCTION_WEAK_SECRET: weak or empty credentials for "
+                + ", ".join(problems)
+                + "; set APP_ENV=development only for local/CI",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        return self
 
     # Cost settings
     ltx2_price_usd: float = 0.04  # per second (legacy; 2D pricing in pricing_table.py)

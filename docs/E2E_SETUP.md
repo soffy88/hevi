@@ -104,6 +104,8 @@ export DUIX_SERVICE_URL=http://localhost:8088
 
 ## 生产部署
 
+**必填强口令（无弱默认）**：`.env` 中设置 `POSTGRES_PASSWORD`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`、`VAULT_MINIO_SECRET_KEY`、`JWT_SECRET`，并设 `APP_ENV=production`。`Settings` 在 `APP_ENV=production` 下对 `hevi:hevi` / `hevi1234` / `minio12345` 等样例凭据 fail-closed（`PRODUCTION_WEAK_SECRET`），不会打印密钥明文。
+
 ### 域名 & HTTPS
 
 1. 修改 `hevi/deploy/nginx/hevi.conf` 中的 `server_name`
@@ -111,8 +113,9 @@ export DUIX_SERVICE_URL=http://localhost:8088
    ```bash
    # 参考 hevi/deploy/certbot/README.md
    ```
-3. 启动 prod compose:
+3. 启动 prod compose（先 export 强口令,compose 对缺失变量 fail-closed）:
    ```bash
+   export POSTGRES_PASSWORD=... MINIO_ACCESS_KEY=... MINIO_SECRET_KEY=...
    docker compose -f hevi/deploy/docker-compose-prod.yml up -d
    ```
 

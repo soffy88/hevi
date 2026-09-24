@@ -96,15 +96,16 @@ services:
       - path: ../.env
         required: false
     environment:
-      DATABASE_URL: ${CFTUNNEL_DATABASE_URL:-postgresql://hevi:hevi@host.docker.internal:5441/hevi}
+      DATABASE_URL: ${CFTUNNEL_DATABASE_URL:?CFTUNNEL_DATABASE_URL is required for production}
       MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
       # MPT is a separate host-published stack; 127.0.0.1 inside this
       # container would point back to hevi-api rather than the MPT container.
       MPT_API_BASE: http://host.docker.internal:8080
       MPT_WEBUI_BASE: http://host.docker.internal:8501
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-hevi}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-hevi1234}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
       MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+      APP_ENV: production
       CORS_ORIGINS: https://hevi.kanpan.co
       VIBEVOICE_MODEL_DIR: /models/vibevoice-1.5b
       WAN2GP_DIR: /Wan2GP
