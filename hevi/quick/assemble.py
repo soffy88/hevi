@@ -26,13 +26,13 @@ async def _default_tts(text: str, output_path: Path, cfg: QuickVideoConfig) -> P
     """默认 TTS: 走 hevi.audio.audio_router 的正式档(cosyvoice/f5/voicebox)。"""
     from hevi.audio.audio_router import _synthesize_formal
 
-    await _synthesize_formal(
+    envelope = await _synthesize_formal(
         text=text,
         output_path=output_path,
         voice="zh-CN-XiaoxiaoNeural",
         instruct="clear, energetic short-video narration",
     )
-    return output_path
+    return Path(envelope["path"])
 
 
 async def assemble_quick(

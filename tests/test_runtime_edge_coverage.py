@@ -490,44 +490,54 @@ async def test_audio_router_routes_backends_and_stitches_successful_segments(
         path.write_bytes(b"audio" * 30)
         return path
 
+    def envelope(path: Path, provider: str = "voicebox") -> dict[str, object]:
+        return {
+            "path": path,
+            "requested_provider": provider,
+            "actual_provider": provider,
+            "substituted": False,
+        }
+
     calls: list[str] = []
 
-    async def conversational(**kwargs: object) -> Path:
+    async def conversational(**kwargs: object) -> dict[str, object]:
         calls.append("conversation")
-        return write_audio(kwargs["output_path"])  # type: ignore[arg-type]
+        path = write_audio(kwargs["output_path"])  # type: ignore[arg-type]
+        return envelope(path, "voicebox")
 
-    async def formal(**kwargs: object) -> Path:
+    async def formal(**kwargs: object) -> dict[str, object]:
         calls.append("formal")
-        return write_audio(kwargs["output_path"])  # type: ignore[arg-type]
+        path = write_audio(kwargs["output_path"])  # type: ignore[arg-type]
+        return envelope(path, "cosyvoice")
 
     monkeypatch.setattr(audio_router, "_synthesize_conversational", conversational)
     monkeypatch.setattr(audio_router, "_synthesize_formal", formal)
-    assert (
-        await audio_router.route_single_cue(
-            cue_text="哈哈", cue_style=None, output_path=tmp_path / "c.mp3", voice="v"
-        )
-        == tmp_path / "c.mp3"
+    inferred = await audio_router.route_single_cue(
+        cue_text="哈哈", cue_style=None, output_path=tmp_path / "c.mp3", voice="v"
     )
-    assert (
-        await audio_router.route_single_cue(
-            cue_text="formal", cue_style="formal", output_path=tmp_path / "f.mp3", voice="v"
-        )
-        == tmp_path / "f.mp3"
+    assert Path(inferred["path"]) == tmp_path / "c.mp3"
+    assert inferred["requested_style"] == "conversational"
+    formal_out = await audio_router.route_single_cue(
+        cue_text="formal", cue_style="formal", output_path=tmp_path / "f.mp3", voice="v"
     )
+    assert Path(formal_out["path"]) == tmp_path / "f.mp3"
+    assert formal_out["requested_style"] == "formal"
 
-    async def broken(**_kwargs: object) -> Path:
+    async def broken(**_kwargs: object) -> dict[str, object]:
         raise RuntimeError("provider down")
 
     monkeypatch.setattr(audio_router, "_synthesize_conversational", broken)
-    assert (
-        await audio_router.route_single_cue(
-            cue_text="x",
-            cue_style="conversational",
-            output_path=tmp_path / "fallback.mp3",
-            voice="v",
-        )
-        == tmp_path / "fallback.mp3"
+    fallback_out = await audio_router.route_single_cue(
+        cue_text="x",
+        cue_style="conversational",
+        output_path=tmp_path / "fallback.mp3",
+        voice="v",
     )
+    assert Path(fallback_out["path"]) == tmp_path / "fallback.mp3"
+    assert fallback_out["substituted"] is True
+    assert fallback_out["requested_style"] == "conversational"
+    assert fallback_out["actual_style"] == "formal"
+    assert str(fallback_out.get("fallback_reason", "")).startswith("style_fallback:")
     assert calls == ["conversation", "formal", "formal"]
 
     class Cue:
@@ -537,8 +547,9 @@ async def test_audio_router_routes_backends_and_stitches_successful_segments(
             self.audio_style = "formal"
             self.captions = [{"text": text}]
 
-    async def route(**kwargs: object) -> Path:
-        return write_audio(kwargs["output_path"])  # type: ignore[arg-type]
+    async def route(**kwargs: object) -> dict[str, object]:
+        path = write_audio(kwargs["output_path"])  # type: ignore[arg-type]
+        return envelope(path, "cosyvoice")
 
     monkeypatch.setattr(audio_router, "route_single_cue", route)
     monkeypatch.setattr(audio_router, "probe_duration", lambda _path: 1.25)
@@ -556,6 +567,9 @@ async def test_audio_router_routes_backends_and_stitches_successful_segments(
     )
     assert result["total_duration_s"] == 2.5
     assert len(result["manifest"]) == 2
+    assert result["manifest"][0]["requested_provider"] == "cosyvoice"
+    assert result["manifest"][0]["actual_provider"] == "cosyvoice"
+    assert result["manifest"][0]["substituted"] is False
     assert (tmp_path / "master" / "_concat_list.txt").exists() is False
     single = await audio_router.route_and_stitch_master_audio(
         [Cue("single", "S")], tmp_path / "single", stitch_format="wav"
@@ -576,10 +590,13 @@ async def test_audio_router_provider_specific_paths_and_empty_fallback(
 
     monkeypatch.setattr("hevi.explainer.voicebox_client.synthesize", vb)
     monkeypatch.setenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "voicebox")
-    assert (
-        await audio_router._synthesize_conversational(text="x", output_path=out, instruct=None)
-        == out
+    conv_voicebox = await audio_router._synthesize_conversational(
+        text="x", output_path=out, instruct=None
     )
+    assert Path(conv_voicebox["path"]) == out
+    assert conv_voicebox["requested_provider"] == "voicebox"
+    assert conv_voicebox["actual_provider"] == "voicebox"
+    assert conv_voicebox["substituted"] is False
     monkeypatch.setenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "chattts")
     monkeypatch.setattr(
         audio_router, "_synthesize_conversational", audio_router._synthesize_conversational
@@ -587,16 +604,22 @@ async def test_audio_router_provider_specific_paths_and_empty_fallback(
     import oprim
 
     monkeypatch.setattr(oprim, "chattts_call", lambda **_kwargs: str(out), raising=False)
-    assert (
-        await audio_router._synthesize_conversational(text="x", output_path=out, instruct=None)
-        == out
+    conv_chattts = await audio_router._synthesize_conversational(
+        text="x", output_path=out, instruct=None
     )
+    assert Path(conv_chattts["path"]) == out
+    assert conv_chattts["requested_provider"] == "chattts"
+    assert conv_chattts["actual_provider"] == "chattts"
+    assert conv_chattts["substituted"] is False
 
     monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "voicebox")
-    assert (
-        await audio_router._synthesize_formal(text="x", output_path=out, voice="v", instruct=None)
-        == out
+    formal_voicebox = await audio_router._synthesize_formal(
+        text="x", output_path=out, voice="v", instruct=None
     )
+    assert Path(formal_voicebox["path"]) == out
+    assert formal_voicebox["requested_provider"] == "voicebox"
+    assert formal_voicebox["actual_provider"] == "voicebox"
+    assert formal_voicebox["substituted"] is False
     monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "f5")
     monkeypatch.delenv("F5_TTS_REFERENCE_AUDIO", raising=False)
     monkeypatch.delenv("F5_TTS_REFERENCE_TEXT", raising=False)
@@ -607,8 +630,14 @@ async def test_audio_router_provider_specific_paths_and_empty_fallback(
     with pytest.raises(audio_router.AudioRoutingError, match="luxvoice"):
         await audio_router._synthesize_formal(text="x", output_path=out, voice="v", instruct=None)
 
-    async def missing(**_kwargs: object) -> Path:
-        return tmp_path / "missing.wav"
+    async def missing(**_kwargs: object) -> dict[str, object]:
+        missing_path = tmp_path / "missing.wav"
+        return {
+            "path": missing_path,
+            "requested_provider": "cosyvoice",
+            "actual_provider": "cosyvoice",
+            "substituted": False,
+        }
 
     monkeypatch.setattr(audio_router, "_synthesize_formal", missing)
     with pytest.raises(audio_router.AudioRoutingError, match="All TTS"):

@@ -9,12 +9,15 @@
 使用方式：
     from hevi.audio.audio_router import route_and_stitch_master_audio
 
-    master_path = await route_and_stitch_master_audio(
-        cues=[...],       # list of ExplainerCue with text/audio_style fields
-        output_dir=Path("output/audio"),
-        voice="cosyvoice_default",
-    )
-"""
+        master_path = await route_and_stitch_master_audio(
+            cues=[...],       # list of ExplainerCue with text/audio_style fields
+            output_dir=Path("output/audio"),
+            voice="cosyvoice_default",
+        )
+
+    Provider identity (P1-D): route_single_cue returns explicit
+    requested/actual/substituted provenance — no silent provider substitution.
+    """
 
 from __future__ import annotations
 
@@ -34,6 +37,32 @@ AudioStyle = Literal["formal", "conversational"]
 
 class AudioRoutingError(RuntimeError):
     """音频路由/拼接失败。"""
+
+
+def _identity_envelope(
+    path: Path,
+    *,
+    requested_provider: str,
+    actual_provider: str,
+    fallback_reason: str | None = None,
+) -> dict[str, Any]:
+    envelope: dict[str, Any] = {
+        "path": path,
+        "requested_provider": requested_provider,
+        "actual_provider": actual_provider,
+        "substituted": requested_provider != actual_provider,
+    }
+    if fallback_reason is not None:
+        envelope["fallback_reason"] = fallback_reason
+    return envelope
+
+
+def _formal_requested_provider() -> str:
+    return os.getenv("HEVI_TTS_FORMAL_PROVIDER", "cosyvoice").strip().lower()
+
+
+def _conversational_requested_provider() -> str:
+    return os.getenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "voicebox").strip().lower()
 
 
 def _infer_audio_style(text: str) -> AudioStyle:
@@ -75,25 +104,31 @@ async def route_single_cue(
     voice: str,
     instruct: str | None = None,
     **tts_kwargs: Any,
-) -> Path:
-    """Route one cue to the correct TTS backend based on audio_style."""
-    style = cue_style or _infer_audio_style(cue_text)
+) -> dict[str, Any]:
+    """Route one cue to the correct TTS backend based on audio_style.
 
-    # Ensure parent directory exists
+    Returns an envelope with the audio path and explicit provider identity:
+    requested/actual provider + style, substituted flag, optional fallback_reason.
+    """
+    style = cue_style or _infer_audio_style(cue_text)
+    requested_style = style
+    if style == "conversational":
+        requested_provider = _conversational_requested_provider()
+    else:
+        requested_provider = _formal_requested_provider()
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
         if style == "conversational":
-            # Try Voicebox first (supports emotion/instruct)
-            result_path = await _synthesize_conversational(
+            synth = await _synthesize_conversational(
                 text=cue_text,
                 output_path=output_path,
                 instruct=instruct,
                 **tts_kwargs,
             )
         else:
-            # Formal → CosyVoice or default Voicebox profile
-            result_path = await _synthesize_formal(
+            synth = await _synthesize_formal(
                 text=cue_text,
                 output_path=output_path,
                 voice=voice,
@@ -101,55 +136,100 @@ async def route_single_cue(
                 **tts_kwargs,
             )
 
+        result_path = Path(synth["path"])
         if not result_path.exists() or result_path.stat().st_size < 100:
             raise AudioRoutingError(f"Synthesis produced empty file: {result_path}")
-        return result_path
+
+        actual_provider = str(synth["actual_provider"])
+        identity = dict(synth)
+        identity.update(
+            {
+                "path": result_path,
+                "requested_provider": str(synth.get("requested_provider", requested_provider)),
+                "actual_provider": actual_provider,
+                "requested_style": requested_style,
+                "actual_style": style,
+                "substituted": bool(synth.get("substituted"))
+                or requested_provider != actual_provider
+                or requested_style != style,
+            }
+        )
+        return identity
 
     except Exception as exc:
         logger.warning("TTS routing failed for cue style=%s: %s", style, exc)
-        # Fallback: always attempt voicebox
         fallback = await _synthesize_formal(
             text=cue_text,
             output_path=output_path,
             voice=voice,
             **tts_kwargs,
         )
-        if fallback.exists():
-            return fallback
+        fallback_path = Path(fallback["path"])
+        if fallback_path.exists():
+            return {
+                **fallback,
+                "path": fallback_path,
+                "requested_provider": requested_provider,
+                "actual_provider": str(fallback["actual_provider"]),
+                "requested_style": requested_style,
+                "actual_style": "formal",
+                "substituted": True,
+                "fallback_reason": f"style_fallback:{exc}",
+            }
         raise AudioRoutingError(f"All TTS backends failed: {exc}") from exc
 
 
 async def _synthesize_conversational(
     *, text: str, output_path: Path, instruct: str | None, **_kw: Any
-) -> Path:
+) -> dict[str, Any]:
     """Conversational synthesis — supports ChatTTS-style control tokens.
 
     Voicebox handles emotion tags like [laugh], [uv_break], [breath] natively.
     For raw ChatTTS, this delegates to the oprim.chattts_call entry point.
     """
-    provider = os.getenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "voicebox").strip().lower()
+    requested = _conversational_requested_provider()
 
-    if provider == "chattts":
+    if requested == "chattts":
         try:
             from oprim import chattts_call as _chattts_api
 
             result = _chattts_api(text=text, output_path=str(output_path))
-            return Path(result) if isinstance(result, str) else output_path
+            path = Path(result) if isinstance(result, str) else output_path
+            return _identity_envelope(
+                path, requested_provider="chattts", actual_provider="chattts"
+            )
         except ImportError:
             logger.debug("ChatTTS oprim not installed; falling back to voicebox")
+            from hevi.explainer.voicebox_client import synthesize as vb_synthesize
 
-    # Default: Voicebox with emotional instruction
+            await vb_synthesize(text, output_path, instruct=instruct or "casual, conversational")
+            return _identity_envelope(
+                output_path,
+                requested_provider="chattts",
+                actual_provider="voicebox",
+                fallback_reason="chattts_unavailable",
+            )
+
     from hevi.explainer.voicebox_client import synthesize as vb_synthesize
 
     await vb_synthesize(text, output_path, instruct=instruct or "casual, conversational")
-    return output_path
+    if requested == "voicebox":
+        return _identity_envelope(
+            output_path, requested_provider="voicebox", actual_provider="voicebox"
+        )
+    return _identity_envelope(
+        output_path,
+        requested_provider=requested,
+        actual_provider="voicebox",
+        fallback_reason=f"unsupported_conversational_provider:{requested}",
+    )
 
 
 async def _synthesize_formal(
     *, text: str, output_path: Path, voice: str, instruct: str | None, **_kw: Any
-) -> Path:
+) -> dict[str, Any]:
     """Formal synthesis — CosyVoice authoritative broadcast style."""
-    provider = os.getenv("HEVI_TTS_FORMAL_PROVIDER", "cosyvoice").strip().lower()
+    provider = _formal_requested_provider()
 
     if provider == "cosyvoice":
         from types import SimpleNamespace
@@ -179,7 +259,9 @@ async def _synthesize_formal(
             ],
             output_path=output_path,
         )
-        return output_path
+        return _identity_envelope(
+            output_path, requested_provider="cosyvoice", actual_provider="cosyvoice"
+        )
 
     if provider == "f5":
         # F5-TTS 零样本克隆: 用环境配置的固定参考音色做解说。
@@ -207,7 +289,7 @@ async def _synthesize_formal(
             reference_text=ref_text,
             model_name=os.getenv("F5_TTS_MODEL_NAME", "").strip() or None,
         )
-        return output_path
+        return _identity_envelope(output_path, requested_provider="f5", actual_provider="f5")
 
     if provider == "lux":
         # LuxTTS 轻量克隆档(差距 B8): 低资源(<1GB VRAM/CPU), 需 luxvoice 可用。
@@ -224,7 +306,7 @@ async def _synthesize_formal(
             output_path=output_path,
             reference_audio=ref_audio or None,
         )
-        return output_path
+        return _identity_envelope(output_path, requested_provider="lux", actual_provider="lux")
 
     if provider == "voxcpm":
         from hevi.audio.voxcpm_service import synth_with_voxcpm, voxcpm_available
@@ -247,7 +329,9 @@ async def _synthesize_formal(
             voice_design=design,
             speed=float(_kw.get("speed") or 1.0),
         )
-        return output_path
+        return _identity_envelope(
+            output_path, requested_provider="voxcpm", actual_provider="voxcpm"
+        )
 
     if provider in {"pocket_tts", "pocket-tts", "pocket"}:
         from hevi.audio.pocket_tts_service import pocket_tts_available, synth_with_pocket_tts
@@ -266,21 +350,29 @@ async def _synthesize_formal(
             voice_design=str(_kw.get("voice_design") or os.getenv("POCKET_TTS_VOICE_DESIGN", "")),
             speed=float(_kw.get("speed") or 1.0),
         )
-        return output_path
+        return _identity_envelope(
+            output_path, requested_provider=provider, actual_provider="pocket_tts"
+        )
 
     if provider == "voicebox":
         from hevi.explainer.voicebox_client import synthesize as vb_synthesize
 
         await vb_synthesize(text, output_path, instruct=instruct or "professional, clear narration")
-        return output_path
+        return _identity_envelope(
+            output_path, requested_provider="voicebox", actual_provider="voicebox"
+        )
 
-    # Last resort: edge-tts
     try:
         import edge_tts
 
         comm = edge_tts.Communicate(text, voice)
         await comm.save(str(output_path))
-        return output_path
+        return _identity_envelope(
+            output_path,
+            requested_provider=provider,
+            actual_provider="edge_tts",
+            fallback_reason=f"unmatched_formal_provider:{provider}",
+        )
     except ImportError:
         pass
 
@@ -302,7 +394,7 @@ async def route_and_stitch_master_audio(
             "master_path": Path,           # Stitched master WAV/MP3
             "segment_paths": [Path, ...],  # Individual cue audio files
             "total_duration_s": float,     # Combined duration
-            "manifest": list[dict],        # Per-segment metadata (for Remotion)
+            "manifest": list[dict],        # Per-segment metadata + provider identity
         }
     """
     output_dir = Path(output_dir)
@@ -329,8 +421,9 @@ async def route_and_stitch_master_audio(
                 output_path=seg_path,
                 voice=voice,
             )
-            segment_paths.append(routed)
-            dur = probe_duration(routed)
+            routed_path = Path(routed["path"])
+            segment_paths.append(routed_path)
+            dur = probe_duration(routed_path)
         except Exception as e:
             logger.error("Failed to route cue %s: %s", cue_id, e)
             continue
@@ -339,7 +432,7 @@ async def route_and_stitch_master_audio(
             {
                 "id": cue_id,
                 "text": cue_text,
-                "audio_file": str(routed),
+                "audio_file": str(routed_path),
                 "duration_sec": round(dur, 3),
                 "start_sec": round(cursor_sec, 3),
                 "captions": cue_captions if isinstance(cue_captions, list) else [],
@@ -347,6 +440,12 @@ async def route_and_stitch_master_audio(
                 "visual_config": getattr(cue, "visual_config", {}),
                 "layout_mode": getattr(cue, "layout_mode", "fullscreen"),
                 "keywords": getattr(cue, "keywords", []),
+                "requested_provider": routed.get("requested_provider"),
+                "actual_provider": routed.get("actual_provider"),
+                "substituted": bool(routed.get("substituted")),
+                "requested_style": routed.get("requested_style"),
+                "actual_style": routed.get("actual_style"),
+                "fallback_reason": routed.get("fallback_reason"),
             }
         )
         cursor_sec += dur

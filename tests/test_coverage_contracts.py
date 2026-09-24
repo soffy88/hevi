@@ -819,29 +819,41 @@ async def test_audio_router_selects_styles_and_stitches_single_segment(
     assert audio_router._infer_audio_style("其实呢，这很简单") == "conversational"
     calls: list[str] = []
 
-    async def formal(**kwargs: object) -> Path:
+    def envelope(path: Path, provider: str) -> dict[str, object]:
+        return {
+            "path": path,
+            "requested_provider": provider,
+            "actual_provider": provider,
+            "substituted": False,
+        }
+
+    async def formal(**kwargs: object) -> dict[str, object]:
         calls.append("formal")
         path = kwargs["output_path"]
         assert isinstance(path, Path)
         path.write_bytes(b"x" * 120)
-        return path
+        return envelope(path, "cosyvoice")
 
-    async def conversational(**kwargs: object) -> Path:
+    async def conversational(**kwargs: object) -> dict[str, object]:
         calls.append("conversational")
         path = kwargs["output_path"]
         assert isinstance(path, Path)
         path.write_bytes(b"y" * 120)
-        return path
+        return envelope(path, "voicebox")
 
     monkeypatch.setattr(audio_router, "_synthesize_formal", formal)
     monkeypatch.setattr(audio_router, "_synthesize_conversational", conversational)
-    formal_path = await audio_router.route_single_cue(
+    formal_out = await audio_router.route_single_cue(
         cue_text="news", cue_style="formal", output_path=tmp_path / "f.wav", voice="Dylan"
     )
-    conversational_path = await audio_router.route_single_cue(
+    conversational_out = await audio_router.route_single_cue(
         cue_text="news", cue_style="conversational", output_path=tmp_path / "c.wav", voice="Dylan"
     )
-    assert formal_path.exists() and conversational_path.exists()
+    assert Path(formal_out["path"]).exists() and Path(conversational_out["path"]).exists()
+    assert formal_out["requested_style"] == "formal"
+    assert conversational_out["requested_style"] == "conversational"
+    assert formal_out["substituted"] is False
+    assert conversational_out["substituted"] is False
     assert calls == ["formal", "conversational"]
 
     def probe(_path: Path) -> float:
