@@ -162,6 +162,7 @@ async def route_single_cue(
             text=cue_text,
             output_path=output_path,
             voice=voice,
+            instruct=instruct,
             **tts_kwargs,
         )
         fallback_path = Path(fallback["path"])
