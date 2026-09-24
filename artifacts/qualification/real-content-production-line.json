@@ -1,0 +1,450 @@
+{
+  "TASK": "HEVI_REAL_CONTENT_PRODUCTION_LINE_QUALIFICATION",
+  "generated_at": "2026-09-24T08:59:30.888564Z",
+  "production_id": "real-content-3a4714566b94",
+  "task_id": "real-content-3a4714566b94",
+  "output_dir": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z",
+  "paid_apis_invoked": false,
+  "gpu_invoked": false,
+  "douyin_published": false,
+  "steps": [
+    {
+      "name": "PRODUCT_INPUT",
+      "at": "2026-09-24T08:59:30.888580Z",
+      "topic": "HEVI Real Content Production Line Qualification Sample"
+    },
+    {
+      "name": "PROJECT_ORCHESTRATION",
+      "at": "2026-09-24T08:59:30.888614Z",
+      "production_id": "real-content-3a4714566b94"
+    },
+    {
+      "name": "GOLDEN_PATH",
+      "at": "2026-09-24T08:59:58.566296Z",
+      "status": "completed",
+      "elapsed_s": 27.64
+    },
+    {
+      "name": "ASSET_PROVENANCE",
+      "at": "2026-09-24T08:59:58.566394Z",
+      "artifact_count": 9
+    },
+    {
+      "name": "REAL_TTS",
+      "at": "2026-09-24T08:59:58.566469Z",
+      "provider": "edge_tts"
+    },
+    {
+      "name": "TTS_PROVIDER_IDENTITY",
+      "at": "2026-09-24T08:59:58.566475Z",
+      "substituted": false
+    },
+    {
+      "name": "REAL_VISUAL_PATH",
+      "at": "2026-09-24T08:59:58.566486Z",
+      "provider": "remotion"
+    },
+    {
+      "name": "SUBTITLE_TIMELINE",
+      "at": "2026-09-24T08:59:58.566727Z",
+      "cues": 3,
+      "drift_ms": 11
+    },
+    {
+      "name": "ASSEMBLY_RENDER",
+      "at": "2026-09-24T08:59:58.598095Z",
+      "bytes": 497591,
+      "duration_s": 12.083333
+    },
+    {
+      "name": "FINAL_ARTIFACT_PLAYABLE",
+      "at": "2026-09-24T08:59:58.598128Z",
+      "streams": 2
+    },
+    {
+      "name": "VERDICT",
+      "at": "2026-09-24T08:59:58.622422Z",
+      "visual_quality": "PASS",
+      "delivery": true
+    },
+    {
+      "name": "LINEAGE_COMPLETE",
+      "at": "2026-09-24T08:59:58.622587Z",
+      "nodes": 9,
+      "linked": 6
+    },
+    {
+      "name": "RETAKE_PATH",
+      "at": "2026-09-24T08:59:59.536059Z",
+      "status": "completed",
+      "tts_delta": 0
+    },
+    {
+      "name": "DURABILITY_IDEMPOTENCY",
+      "at": "2026-09-24T08:59:59.536108Z",
+      "duplicate_tts": 0,
+      "short_circuit": true
+    },
+    {
+      "name": "FALSE_SUCCESS",
+      "at": "2026-09-24T08:59:59.536117Z",
+      "value": "PASS"
+    }
+  ],
+  "PRODUCT_INPUT": {
+    "PASS": true,
+    "topic": "HEVI Real Content Production Line Qualification Sample",
+    "narration_chars": 174,
+    "source": "local_media",
+    "real_input": true
+  },
+  "PROJECT_ORCHESTRATION": {
+    "PASS": true,
+    "task_id": "real-content-3a4714566b94",
+    "production_id": "real-content-3a4714566b94",
+    "adapter": "local_media",
+    "composition": "execute_local_media_task"
+  },
+  "ASSET_PROVENANCE": {
+    "PASS": true,
+    "artifact_count": 9,
+    "roles": [
+      "asr_transcript_timestamps",
+      "final_video",
+      "local_media_source_image",
+      "motion_spec",
+      "remotion_motion_video",
+      "subtitle_ass",
+      "subtitle_srt",
+      "tts_audio",
+      "visual_quality_evidence"
+    ],
+    "all_have_sha256": true,
+    "all_files_exist": true
+  },
+  "REAL_TTS": {
+    "PASS": true,
+    "provider": "edge_tts",
+    "voice": "en-US-AriaNeural",
+    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/tts_master.wav",
+    "bytes": 1064830,
+    "duration_ms": 12072,
+    "audio_master_clock": "PASS",
+    "cer": 0.013986013986013986
+  },
+  "TTS_PROVIDER_IDENTITY": {
+    "PASS": true,
+    "requested_provider": "edge_tts",
+    "actual_provider": "edge_tts",
+    "substituted": false,
+    "second_voice_authority": 0
+  },
+  "REAL_VISUAL_PATH": {
+    "PASS": true,
+    "provider": "remotion",
+    "renderer": "motion_graphics",
+    "provider_policy": {
+      "mode": "local_media",
+      "quality_floor": 9,
+      "candidates": [
+        "motion_graphics",
+        "blender_previz"
+      ],
+      "considered": [
+        "motion_graphics",
+        "blender_previz"
+      ],
+      "eligible": [
+        "motion_graphics"
+      ],
+      "rejected": [
+        {
+          "provider_id": "blender_previz",
+          "reasons": [
+            "not_production_qualified"
+          ]
+        }
+      ],
+      "selected_provider": "motion_graphics",
+      "selected_reason": "backend capability catalog production_ready"
+    },
+    "remotion_real_render": "PASS",
+    "motion_spec_deterministic": "PASS",
+    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/local_media_remotion.mp4",
+    "requested_provider": "remotion",
+    "actual_provider": "remotion",
+    "substituted": false,
+    "gpu": false,
+    "paid": false
+  },
+  "SUBTITLE_TIMELINE": {
+    "PASS": true,
+    "clock_source": "REAL_AUDIO_OR_ASR_TIMESTAMP",
+    "audio_duration_ms": 12072,
+    "video_duration_ms": 12083,
+    "clock_drift_ms": 11,
+    "srt_path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/subtitles.srt",
+    "ass_path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/subtitles.ass",
+    "cue_blocks": 3,
+    "asr_provider": "faster_whisper",
+    "derived_from_this_run_audio": true,
+    "timeline_capability": "subtitle_timeline",
+    "source_audio_artifact_id": "501550f6-7e13-5797-b723-efde90665fa3"
+  },
+  "ASSEMBLY_RENDER": {
+    "PASS": true,
+    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+    "bytes": 497591,
+    "duration_s": 12.083333,
+    "stream_count": 2,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "width": 1280,
+    "height": 720,
+    "fps": 24.0,
+    "sha256": "ba2ab095ae413d87e92bb299e492367bb2391dc421cf18a52465e18362f52f8b",
+    "gate_error": null
+  },
+  "FINAL_ARTIFACT_PLAYABLE": {
+    "PASS": true,
+    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+    "sha256": "ba2ab095ae413d87e92bb299e492367bb2391dc421cf18a52465e18362f52f8b",
+    "bytes": 497591,
+    "duration_s": 12.083333,
+    "duration_ms": 12083,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "stream_count": 2,
+    "width": 1280,
+    "height": 720,
+    "fps": 24.0
+  },
+  "VERDICT": {
+    "PASS": true,
+    "visual_quality_status": "PASS",
+    "visual_quality_decision": {
+      "status": "PASS",
+      "reasons": [],
+      "thresholds": {
+        "black_frame_block_ratio": 0.6,
+        "freeze_frame_block_ratio": 0.9,
+        "low_luma_block_ratio": 0.95,
+        "high_luma_block_ratio": 0.95,
+        "camera_drift_warn_score": 0.45,
+        "frame_delta_tolerance": 1,
+        "clock_tolerance_ms": 1000,
+        "planned_shot_count_warn_delta": 1
+      }
+    },
+    "delivery_probe": {
+      "ok": true,
+      "duration_s": 12.083333,
+      "size_bytes": 497591
+    },
+    "audio_master_clock": "PASS",
+    "subtitle_timeline": true,
+    "false_success": false
+  },
+  "DELIVERY_GATE": {
+    "PASS": true,
+    "assert_explainer_compose": "PASS",
+    "has_video": true,
+    "has_audio": true,
+    "duration_within_tolerance": true,
+    "policy_owner": "HEVI_LAYER4"
+  },
+  "LINEAGE_COMPLETE": {
+    "PASS": true,
+    "nodes": [
+      {
+        "role": "local_media_source_image",
+        "artifact_id": "c33517ad-7a74-588d-b167-bbcbe29c8a74",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/local_media_source.svg",
+        "sha256": "6a0272fbca86e10fbbc3f98e33a20a1ae46242eb57554e7ff32ebded7fa51810",
+        "parents": [],
+        "metadata": {}
+      },
+      {
+        "role": "tts_audio",
+        "artifact_id": "501550f6-7e13-5797-b723-efde90665fa3",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/tts_master.wav",
+        "sha256": "51b34d4e731372b03ee50e16abab59373f5c35a5c69ad03368246231d4780d79",
+        "parents": [],
+        "metadata": {}
+      },
+      {
+        "role": "asr_transcript_timestamps",
+        "artifact_id": "5460a14e-9b28-5810-8596-7aa8ad2794b7",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/asr_transcript.json",
+        "sha256": "2572e636e7a2bf84d6328d3f1aaca3dcd82c480d96334f3d2207f29a345cafc6",
+        "parents": [],
+        "metadata": {}
+      },
+      {
+        "role": "motion_spec",
+        "artifact_id": "0000a050-e5fe-54ad-92b1-b84a48084c77",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/motion_spec.json",
+        "sha256": "9292b900d434ef824f1ceb8e2e6e89c08712075862dcf426796d50c98c629de7",
+        "parents": [
+          "501550f6-7e13-5797-b723-efde90665fa3",
+          "c33517ad-7a74-588d-b167-bbcbe29c8a74"
+        ],
+        "metadata": {},
+        "linked": true
+      },
+      {
+        "role": "remotion_motion_video",
+        "artifact_id": "3c3edc03-5b1d-59fe-a4fa-64628143cd23",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/local_media_remotion.mp4",
+        "sha256": "c5efb030615baa6dabe6e081bc37948f14b88a15b034b4c0d27fed3e434fe230",
+        "parents": [
+          "501550f6-7e13-5797-b723-efde90665fa3",
+          "c33517ad-7a74-588d-b167-bbcbe29c8a74"
+        ],
+        "metadata": {},
+        "linked": true
+      },
+      {
+        "role": "subtitle_srt",
+        "artifact_id": "e4575a62-fb21-50d8-b69e-6abf24fef885",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/subtitles.srt",
+        "sha256": "1b64a4845cf0a5da854320c3bb99c1ceb6b31f1258f110a5dbaff72550199e5e",
+        "parents": [
+          "501550f6-7e13-5797-b723-efde90665fa3",
+          "501550f6-7e13-5797-b723-efde90665fa3"
+        ],
+        "metadata": {
+          "source_video_artifact_ids": [],
+          "source_audio_artifact_id": "501550f6-7e13-5797-b723-efde90665fa3"
+        },
+        "linked": true
+      },
+      {
+        "role": "subtitle_ass",
+        "artifact_id": "ce988cd5-48a4-5644-a774-bb4a9d212c78",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/subtitles.ass",
+        "sha256": "c08b1f80d2a2fde99502313eb3a45e1384d47a25db8e105ee65374c24421cb4d",
+        "parents": [
+          "501550f6-7e13-5797-b723-efde90665fa3",
+          "501550f6-7e13-5797-b723-efde90665fa3"
+        ],
+        "metadata": {
+          "source_video_artifact_ids": [],
+          "source_audio_artifact_id": "501550f6-7e13-5797-b723-efde90665fa3"
+        },
+        "linked": true
+      },
+      {
+        "role": "final_video",
+        "artifact_id": "eb454973-8612-5b9c-af2b-e4601833dfff",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+        "sha256": "ba2ab095ae413d87e92bb299e492367bb2391dc421cf18a52465e18362f52f8b",
+        "parents": [
+          "501550f6-7e13-5797-b723-efde90665fa3",
+          "5460a14e-9b28-5810-8596-7aa8ad2794b7",
+          "c33517ad-7a74-588d-b167-bbcbe29c8a74",
+          "501550f6-7e13-5797-b723-efde90665fa3"
+        ],
+        "metadata": {
+          "source_video_artifact_ids": [],
+          "source_audio_artifact_id": "501550f6-7e13-5797-b723-efde90665fa3"
+        },
+        "linked": true
+      },
+      {
+        "role": "visual_quality_evidence",
+        "artifact_id": "3e47d8ba-42b8-5d41-a30a-aa48dfd6642e",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/quality/visual_quality_evidence.json",
+        "sha256": "e34013cbc3ba66dc8af435915502e2f1d3b39c9224360b38f3d9895a86d5fe6f",
+        "parents": [
+          "eb454973-8612-5b9c-af2b-e4601833dfff",
+          "501550f6-7e13-5797-b723-efde90665fa3"
+        ],
+        "metadata": {},
+        "linked": true
+      }
+    ],
+    "node_count": 9,
+    "linked_parents": 6,
+    "required_roles_present": true,
+    "final_linked": true,
+    "quality_linked": true,
+    "complete": true,
+    "chain": [
+      "source_image",
+      "tts_audio",
+      "asr_transcript",
+      "motion_spec",
+      "remotion_visual",
+      "subtitle_timeline",
+      "assembly_final",
+      "visual_quality_verdict",
+      "delivery_gate"
+    ]
+  },
+  "RETAKE_PATH": {
+    "PASS": true,
+    "intentional_failure_injected": true,
+    "failure_scope": "visual_quality",
+    "repair_decision": {
+      "should_repair": true,
+      "stop_reason": null,
+      "actions": [
+        {
+          "kind": "retry_new_seed",
+          "scope": "visual_quality",
+          "reason": "DELIVERY_INTEGRITY",
+          "expected_gain": 0.8
+        }
+      ],
+      "attempts_left": 1,
+      "budget_left_usd": 0.0
+    },
+    "failed_node_rerun": "completed",
+    "only_failed_node_reran": true,
+    "tts_calls_delta_during_retake": 0,
+    "notes": "RepairController decided repair on injected DELIVERY_INTEGRITY; only execute_visual_quality_task re-entered; edge_tts not re-invoked."
+  },
+  "DURABILITY_IDEMPOTENCY": {
+    "PASS": true,
+    "restart_status": "completed",
+    "short_circuit_elapsed_s": 0.0,
+    "original_elapsed_s": 27.641,
+    "tts_calls_after_golden_path": 19,
+    "tts_calls_after_idempotent_rerun": 19,
+    "duplicate_expensive_side_effect": 0,
+    "cache_short_circuit": true
+  },
+  "DUPLICATE_EXPENSIVE_SIDE_EFFECT": 0,
+  "FALSE_SUCCESS": "PASS",
+  "LIPSYNC_FALSE_SUCCESS": 0,
+  "gates": {
+    "PRODUCT_INPUT": true,
+    "PROJECT_ORCHESTRATION": true,
+    "ASSET_PROVENANCE": true,
+    "REAL_TTS": true,
+    "TTS_PROVIDER_IDENTITY": true,
+    "REAL_VISUAL_PATH": true,
+    "SUBTITLE_TIMELINE": true,
+    "ASSEMBLY_RENDER": true,
+    "FINAL_ARTIFACT_PLAYABLE": true,
+    "VERDICT": true,
+    "RETAKE_PATH": true,
+    "DELIVERY_GATE": true,
+    "LINEAGE_COMPLETE": true,
+    "DURABILITY_IDEMPOTENCY": true,
+    "FALSE_SUCCESS": true,
+    "DUPLICATE_EXPENSIVE_SIDE_EFFECT": true
+  },
+  "all_pass": true,
+  "elapsed_s": 28.65,
+  "REAL_SAMPLE": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+  "ACTUAL_TTS_PROVIDER": "edge_tts",
+  "ACTUAL_VISUAL_PROVIDER": "remotion",
+  "FINAL_ARTIFACT": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+  "FINAL_ARTIFACT_SHA256": "ba2ab095ae413d87e92bb299e492367bb2391dc421cf18a52465e18362f52f8b",
+  "FINAL_DURATION": 12.083333,
+  "FINAL_STREAMS": 2,
+  "RETAKE_VERIFIED": true,
+  "FINAL_CLASSIFICATION": "REAL_CONTENT_CHAIN_QUALIFIED"
+}

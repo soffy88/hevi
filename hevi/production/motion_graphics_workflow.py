@@ -152,10 +152,22 @@ async def execute_motion_graphics_task(task: dict[str, Any], pool: Any) -> dict[
         motion_probe = _probe(output_path)
         if motion_probe["size"] <= 0 or motion_probe["fps"] != spec["fps"]:
             raise ValueError("Remotion output validation failed")
-        remotion_artifact = _artifact(output_path, kind="video", media_type="video/mp4", role="remotion_motion_video",
-                                      production_id=production_id, metadata={"motion_spec": str(spec_path), **motion_probe})
-        spec_artifact = _artifact(spec_path, kind="motion_spec", media_type="application/json", role="motion_spec",
-                                  production_id=production_id, metadata={"deterministic": True, "audio_duration_ms": duration_ms})
+        motion_parents = [
+            str(config.get("source_audio_artifact_id") or ""),
+            str(config.get("source_image_artifact_id") or ""),
+        ]
+        remotion_artifact = _artifact(
+            output_path, kind="video", media_type="video/mp4", role="remotion_motion_video",
+            production_id=production_id,
+            parents=[item for item in motion_parents if item],
+            metadata={"motion_spec": str(spec_path), **motion_probe},
+        )
+        spec_artifact = _artifact(
+            spec_path, kind="motion_spec", media_type="application/json", role="motion_spec",
+            production_id=production_id,
+            parents=[item for item in motion_parents if item],
+            metadata={"deterministic": True, "audio_duration_ms": duration_ms},
+        )
 
         stage = "timeline"
         clips = [Path(str(p)) for p in (config.get("source_video_paths") or [str(output_path), str(output_path)])]

@@ -57,6 +57,12 @@ async def execute_visual_quality_task(task: dict[str, Any], pool: Any) -> dict[s
             allow_static=bool(config.get("allow_static", False)),
         )
         source_sha = _sha(source)
+        evidence_artifact_id = str(
+            __import__("uuid").uuid5(
+                __import__("uuid").NAMESPACE_URL,
+                f"hevi:visual-quality:{production_id}:{source_sha}:{evidence_path.name}",
+            )
+        )
         report = {
             "source_video_artifact_id": str(config.get("source_video_artifact_id") or ""),
             "source_audio_artifact_id": str(config.get("source_audio_artifact_id") or ""),
@@ -82,7 +88,7 @@ async def execute_visual_quality_task(task: dict[str, Any], pool: Any) -> dict[s
             evidence_path, kind="quality_evidence", media_type="application/json", primary=True,
             logical_role="visual_quality_evidence", parent_artifact_ids=[x for x in [config.get("source_video_artifact_id"), config.get("source_audio_artifact_id"), config.get("source_subtitle_artifact_id")] if x],
             metadata={"source_sha256": source_sha, "decision": decision.status, "policy_owner": "HEVI_LAYER4"},
-        )
+        ).model_copy(update={"artifact_id": evidence_artifact_id})
         manifest = ArtifactManifest(
             production_id=production_id, revision_id=str(task.get("revision_id") or ""),
             attempt_id=str(task.get("_attempt_id") or task.get("id") or ""), tenant_id="HEVI_LAYER4", artifacts=[evidence_artifact],

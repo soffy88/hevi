@@ -7,6 +7,7 @@ existing ``hevi.assembly.assembler.assemble_longvideo`` owner.
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 import subprocess
 import uuid
@@ -153,20 +154,32 @@ async def execute_subtitle_timeline_task(task: dict[str, Any], _pool: Any) -> di
         source_parent_ids = _source_ids(config) + (
             [lineage["source_audio_artifact_id"]] if lineage["source_audio_artifact_id"] else []
         )
+        srt_sha = hashlib.sha256(srt_path.read_bytes()).hexdigest()
+        ass_sha = hashlib.sha256(ass_path.read_bytes()).hexdigest()
+
+        def _stable(sha: str) -> str:
+            return str(uuid.uuid5(uuid.NAMESPACE_URL, f"hevi:timeline:{production_id}:{sha}"))
+
         subtitle_artifact = Artifact.from_path(
             srt_path,
             kind="subtitle",
             media_type="application/x-subrip",
             logical_role="subtitle_srt",
+            parent_artifact_ids=_persistable_parent_ids(
+                [lineage["source_audio_artifact_id"]] if lineage["source_audio_artifact_id"] else []
+            ),
             metadata={**lineage, "format": "srt"},
-        )
+        ).model_copy(update={"artifact_id": _stable(srt_sha)})
         ass_artifact = Artifact.from_path(
             ass_path,
             kind="subtitle",
             media_type="text/x-ass",
             logical_role="subtitle_ass",
+            parent_artifact_ids=_persistable_parent_ids(
+                [lineage["source_audio_artifact_id"]] if lineage["source_audio_artifact_id"] else []
+            ),
             metadata={**lineage, "format": "ass"},
-        )
+        ).model_copy(update={"artifact_id": _stable(ass_sha)})
         final_artifact = Artifact.from_path(
             output_path,
             kind="video",
