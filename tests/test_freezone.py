@@ -95,7 +95,7 @@ async def test_candidate_pool_promote():
 @pytest.mark.asyncio
 async def test_candidate_reject_and_list_filter():
     g = FreezoneGraph([NodeSpec("n1", "image", {})])
-    svc = FreezoneService()
+    svc = FreezoneService(generators={"image": _echo_generator})
     run = await svc.run_graph(g)
     cid = run.candidate_ids[0]
     assert svc.reject(cid) is True

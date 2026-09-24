@@ -20,7 +20,9 @@ from hevi.freezone.graph import (
 from hevi.freezone.service import (
     FreezoneRun,
     FreezoneService,
+    UnknownGeneratorError,
 )
+from hevi.freezone.store import FreezoneStateStore
 
 __all__ = [
     "CANDIDATE",
@@ -31,7 +33,9 @@ __all__ = [
     "FreezoneGraph",
     "FreezoneRun",
     "FreezoneService",
+    "FreezoneStateStore",
     "GraphCycleError",
     "NodeResult",
     "NodeSpec",
+    "UnknownGeneratorError",
 ]
