@@ -105,6 +105,15 @@ from hevi.obase.creative import (
 
 ROOT = Path(__file__).parents[2]
 EVIDENCE_ROOT = ROOT / "artifacts/qualification/creative-runtime"
+_QUALIFY_JWT = "hevi-qualify-child-jwt-not-for-production-0123456789abcdef"
+
+
+def _child_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["APP_ENV"] = "development"
+    env["JWT_SECRET"] = env.get("JWT_SECRET") or _QUALIFY_JWT
+    env["PYTHONPATH"] = str(ROOT) + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    return env
 
 
 @dataclass
@@ -472,6 +481,8 @@ def qualify_snapshots(root: Path) -> Evidence:
         ],
         stdout=subprocess.PIPE,
         text=True,
+        cwd=Path(__file__).resolve().parents[2],
+        env=_child_env(),
     )
     stdout, _ = child.communicate(timeout=20)
     restored_run = restore_model(run_path, ProductionRun)

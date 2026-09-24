@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from hevi.core.config import Settings
+from hevi.core.exceptions import ConfigurationError
 from hevi.creative.layer4.usage_ledger import redact_secrets
 from hevi.observability.redaction import RedactionFilter
 
@@ -37,13 +38,16 @@ def test_development_allows_weak_defaults() -> None:
     assert s.vault_minio_secret_key == "hevi1234"
 
 
-def test_production_rejects_weak_defaults_without_echoing_values(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    with pytest.raises(SystemExit) as exc_info:
+def test_empty_jwt_raises_configuration_error() -> None:
+    with pytest.raises(ConfigurationError) as exc_info:
+        Settings(app_env="development", jwt_secret="")
+    assert "JWT_SECRET" in str(exc_info.value)
+
+
+def test_production_rejects_weak_defaults_without_echoing_values() -> None:
+    with pytest.raises(ConfigurationError) as exc_info:
         Settings(app_env="production", jwt_secret=STRONG_JWT)
-    assert exc_info.value.code == 1
-    err = capsys.readouterr().err
+    err = str(exc_info.value)
     assert "PRODUCTION_WEAK_SECRET" in err
     assert "DATABASE_URL" in err
     assert "VAULT_MINIO_SECRET_KEY" in err
@@ -52,21 +56,19 @@ def test_production_rejects_weak_defaults_without_echoing_values(
     assert STRONG_JWT not in err
 
 
-def test_production_rejects_weak_database_url_password(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    with pytest.raises(SystemExit):
+def test_production_rejects_weak_database_url_password() -> None:
+    with pytest.raises(ConfigurationError) as exc_info:
         _prod_settings(database_url="postgresql+asyncpg://hevi:hevi@localhost:5432/hevi")
-    err = capsys.readouterr().err
+    err = str(exc_info.value)
     assert "PRODUCTION_WEAK_SECRET" in err
     assert "DATABASE_URL" in err
     assert "hevi:hevi" not in err
 
 
-def test_production_rejects_weak_jwt(capsys: pytest.CaptureFixture[str]) -> None:
-    with pytest.raises(SystemExit):
+def test_production_rejects_weak_jwt() -> None:
+    with pytest.raises(ConfigurationError) as exc_info:
         _prod_settings(jwt_secret="live-test-secret")
-    err = capsys.readouterr().err
+    err = str(exc_info.value)
     assert "PRODUCTION_WEAK_SECRET" in err
     assert "JWT_SECRET" in err
     assert "live-test-secret" not in err

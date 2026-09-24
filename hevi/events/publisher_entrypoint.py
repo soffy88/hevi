@@ -9,11 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from contextlib import suppress
 
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from hevi.core.config import settings
+from hevi.core.exceptions import ConfigurationError
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.events.outbox import DomainEvent, OutboxRepository
 from hevi.events.publisher import OutboxPublisher
@@ -22,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 
 async def run() -> None:
-    load_dotenv()
     if not settings.event_publisher_enabled:
         logger.info("event publisher disabled")
         return
@@ -62,7 +65,11 @@ async def run() -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except ConfigurationError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":

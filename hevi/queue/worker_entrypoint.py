@@ -9,11 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from contextlib import suppress
 
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from hevi.core.config import settings
+from hevi.core.exceptions import ConfigurationError
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService
 from hevi.credits.repository import CreditRepository
@@ -29,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 
 async def run() -> None:
-    load_dotenv()
     register_all_providers()
     configure_application_adapters()
     pool = await get_hevi_pg_pool()
@@ -58,7 +61,11 @@ async def run() -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except ConfigurationError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from exc
 
 
 if __name__ == "__main__":

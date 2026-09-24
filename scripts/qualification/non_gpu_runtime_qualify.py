@@ -25,6 +25,16 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 ART = ROOT / "artifacts" / "qualification"
+# Strong test-only JWT for qualification children. Never a production secret.
+_QUALIFY_JWT = "hevi-qualify-child-jwt-not-for-production-0123456789abcdef"
+
+
+def _child_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["APP_ENV"] = "development"
+    env["JWT_SECRET"] = env.get("JWT_SECRET") or _QUALIFY_JWT
+    env["PYTHONPATH"] = str(ROOT) + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    return env
 
 _CREDENTIAL_ENVS: dict[str, list[str]] = {
     "happyhorse_1_1": ["WAVESPEED_API_KEY"],
@@ -319,6 +329,7 @@ def w4_w5_digital_human() -> dict[str, Any]:
         capture_output=True,
         text=True,
         cwd=ROOT,
+        env=_child_env(),
         timeout=180,
     )
     tail = (proc.stdout or "").strip().splitlines()
@@ -428,6 +439,7 @@ def w10_w14_distribution() -> dict[str, Any]:
         capture_output=True,
         text=True,
         cwd=ROOT,
+        env=_child_env(),
         timeout=120,
     )
     # control-plane checks without network

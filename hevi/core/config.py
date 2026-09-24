@@ -1,8 +1,9 @@
-import sys
 from urllib.parse import unquote, urlparse
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from hevi.core.exceptions import ConfigurationError
 
 # Known development / sample credentials. Production (APP_ENV=production)
 # rejects these for DB/Vault/MinIO/JWT; development and CI keep them.
@@ -165,8 +166,7 @@ class Settings(BaseSettings):
     @classmethod
     def jwt_secret_required(cls, v: str) -> str:
         if not v:
-            print("FATAL: JWT_SECRET must be set in .env", file=sys.stderr)
-            sys.exit(1)
+            raise ConfigurationError("FATAL: JWT_SECRET must be set in .env")
         return v
 
     @model_validator(mode="after")
@@ -188,13 +188,11 @@ class Settings(BaseSettings):
             problems.append("JWT_SECRET")
         if problems:
             # Field names only — never echo secret values.
-            print(
+            raise ConfigurationError(
                 "FATAL: PRODUCTION_WEAK_SECRET: weak or empty credentials for "
                 + ", ".join(problems)
-                + "; set APP_ENV=development only for local/CI",
-                file=sys.stderr,
+                + "; set APP_ENV=development only for local/CI"
             )
-            sys.exit(1)
         return self
 
     # Cost settings
