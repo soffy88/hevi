@@ -63,11 +63,14 @@ def drive_lip_sync(provider: str, *, audio: Any, video: Any) -> dict[str, Any]:
 
     当前仅承载能力门禁 + 原生 provider 直通;返回决策记录,供 decision_trail/
     可观测性消费。后处理 lip-sync 一旦实现,在此按 provider 分发。
+    POST_PROCESS_LIPSYNC_IMPLEMENTED is hard-coded False in this module — never
+    claim a post-process path exists.
     """
     cap = ensure_lip_sync(provider)
     return {
         "provider": provider,
         "mode": "native" if cap.native else "none",
+        "post_process_lipsync_implemented": False,
         "audio": str(audio),
         "video": str(video),
         "note": "native audio-video sync (no post-processing lip-sync)",

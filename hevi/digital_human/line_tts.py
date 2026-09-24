@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from types import SimpleNamespace
+
+logger = logging.getLogger(__name__)
 
 
 class LineTtsError(RuntimeError):
@@ -30,13 +33,14 @@ async def synthesize_line(text: str, output_path: Path) -> Path:
     spoken = (text or "").strip()
     if not spoken:
         raise LineTtsError("空台词")
-    provider = _provider()
+    requested = _provider()
+    actual = requested
     try:
-        if provider == "voicebox":
+        if requested == "voicebox":
             from hevi.explainer.voicebox_client import synthesize
 
             await synthesize(spoken, output_path)
-        elif provider == "cosyvoice":
+        elif requested == "cosyvoice":
             from hevi.audio.cosyvoice_service import cosyvoice_synthesize
 
             await cosyvoice_synthesize(
@@ -46,6 +50,7 @@ async def synthesize_line(text: str, output_path: Path) -> Path:
         else:
             from oprim import edge_tts_word_boundary
 
+            actual = "edge_tts"
             await edge_tts_word_boundary(
                 spoken,
                 voice="zh-CN-YunxiNeural",
@@ -53,7 +58,17 @@ async def synthesize_line(text: str, output_path: Path) -> Path:
                 output_path=output_path,
             )
     except Exception as exc:
-        raise LineTtsError(f"{provider} 合成失败: {exc}") from exc
+        raise LineTtsError(f"{requested} 合成失败: {exc}") from exc
     if not output_path.exists() or output_path.stat().st_size == 0:
         raise LineTtsError(f"TTS 产物为空: {output_path}")
+    if actual != requested:
+        logger.info(
+            "line_tts_identity %s",
+            {
+                "requested_provider": requested,
+                "actual_provider": actual,
+                "substituted": True,
+                "fallback_reason": "unmatched_line_tts_provider",
+            },
+        )
     return output_path

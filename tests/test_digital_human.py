@@ -42,6 +42,7 @@ def test_drive_lip_sync_records_decision(monkeypatch):
     rec = drive_lip_sync("veo3", audio="a.wav", video="v.mp4")
     assert rec["provider"] == "veo3"
     assert rec["mode"] == "native"
+    assert rec["post_process_lipsync_implemented"] is False
     assert "note" in rec
 
 

@@ -269,7 +269,11 @@ async def _render_dialogue_talk(
     per_char: float,
     concat_fn: Any,
 ) -> None:
-    """Dialogue talking clip: Echo (photo+TTS) first, happyhorse if that fails."""
+    """Dialogue talking clip: Echo (photo+TTS) first, happyhorse if that fails.
+
+    Fallback is explicit identity substitution (requested=echomimic,
+    actual=happyhorse_1_1, fallback_reason recorded) — never silent.
+    """
     if _echo_talking_face_on():
         try:
             from hevi.digital_human.line_tts import synthesize_line
@@ -285,6 +289,15 @@ async def _render_dialogue_talk(
             logger.info("Echo 对白: %s", output_path.name)
             return
         except Exception as exc:
+            logger.warning(
+                "talking_face_identity %s",
+                {
+                    "requested_provider": "echomimic",
+                    "actual_provider": "happyhorse_1_1",
+                    "substituted": True,
+                    "fallback_reason": f"echo_failed:{type(exc).__name__}",
+                },
+            )
             logger.warning("Echo 对白失败,回落 happyhorse: %s", exc)
 
     text_chunks = _split_text_for_dialogue(text, per_char)

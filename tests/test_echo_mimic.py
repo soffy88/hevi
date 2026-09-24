@@ -8,7 +8,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from hevi.digital_human.talking_face import TalkingFaceUnavailable, generate_talking_face
+from hevi.digital_human.talking_face import (
+    TalkingFaceUnavailable,
+    _resolve_engine,
+    generate_talking_face,
+    talking_face_identity,
+)
 from hevi.providers.echo_mimic.provider import echo_mimic_generate
 from hevi.providers.h3_local.comfy_client import ComfyClient, H3ComfyError
 
@@ -97,6 +102,42 @@ async def test_talking_face_echomimic_engine(
         result = await generate_talking_face(image_path=image, audio_path=audio, output_path=out)
     assert result == out
     assert out.read_bytes() == b"fake-echo-mp4"
+    identity = json.loads((tmp_path / "talk.mp4.identity.json").read_text())
+    assert identity["requested_provider"] == "echomimic"
+    assert identity["actual_provider"] == "echomimic"
+    assert identity["substituted"] is False
+
+
+def test_resolve_engine_explicit_wins_over_longcat_capability() -> None:
+    for explicit in ("echomimic", "duix", "longcat", "generic", "placeholder"):
+        engine, identity = _resolve_engine(explicit, {"longcat": True})
+        assert engine == explicit
+        assert identity["requested_provider"] == explicit
+        assert identity["actual_provider"] == explicit
+        assert identity["substituted"] is False
+
+
+def test_resolve_engine_unknown_fails_even_with_longcat_capability() -> None:
+    with pytest.raises(TalkingFaceUnavailable, match="未知 Talking Face"):
+        _resolve_engine("unknown", {"longcat": True})
+
+
+def test_resolve_engine_auto_capability_longcat_is_explicit_substitution() -> None:
+    engine, identity = _resolve_engine("auto", {"longcat": True})
+    assert engine == "longcat"
+    assert identity["requested_provider"] == "auto"
+    assert identity["actual_provider"] == "longcat"
+    assert identity["substituted"] is True
+    assert identity["fallback_reason"] == "capability_longcat"
+
+
+def test_talking_face_identity_envelope() -> None:
+    env = talking_face_identity(requested_provider="a", actual_provider="b")
+    assert env["substituted"] is True
+    env2 = talking_face_identity(
+        requested_provider="a", actual_provider="b", fallback_reason="x"
+    )
+    assert env2["fallback_reason"] == "x"
 
 
 @pytest.mark.asyncio

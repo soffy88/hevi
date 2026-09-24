@@ -53,8 +53,8 @@ async def test_dialogue_uses_echo_when_engine_set(
 
 
 @pytest.mark.asyncio
-async def test_dialogue_falls_back_to_happyhorse(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+async def test_dialogue_falls_back_to_happyhorse_with_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setenv("TALKING_FACE_ENGINE", "echomimic")
     image = tmp_path / "kf.png"
@@ -70,6 +70,7 @@ async def test_dialogue_falls_back_to_happyhorse(
     with (
         patch("hevi.digital_human.line_tts.synthesize_line", boom),
         patch("hevi.tongjian.scene_render_avatar.happyhorse_animate", fake_hh),
+        caplog.at_level("WARNING"),
     ):
         await _render_dialogue_talk(
             image_path=image,
@@ -83,3 +84,6 @@ async def test_dialogue_falls_back_to_happyhorse(
             concat_fn=lambda *_a, **_k: None,
         )
     assert out.read_bytes() == b"hh"
+    assert "talking_face_identity" in caplog.text
+    assert "happyhorse_1_1" in caplog.text
+    assert "substituted" in caplog.text

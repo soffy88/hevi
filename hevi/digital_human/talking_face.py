@@ -18,6 +18,7 @@ TalkingFaceUnavailable(hevi.digital_human 与 explainer.assembly 依赖)。
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 from pathlib import Path
@@ -30,6 +31,50 @@ logger = logging.getLogger(__name__)
 
 class TalkingFaceUnavailable(RuntimeError):
     """Talking Face 引擎不可用(引擎未部署/无模型, 或降级路径也失败)。"""
+
+
+_KNOWN_ENGINES = frozenset({"duix", "echomimic", "longcat", "generic", "placeholder"})
+
+
+def talking_face_identity(
+    *,
+    requested_provider: str,
+    actual_provider: str,
+    fallback_reason: str | None = None,
+    substituted: bool | None = None,
+) -> dict[str, Any]:
+    """Provider identity envelope — no silent substitution (P1-D pattern)."""
+    if substituted is None:
+        substituted = requested_provider != actual_provider
+    envelope: dict[str, Any] = {
+        "requested_provider": requested_provider,
+        "actual_provider": actual_provider,
+        "substituted": substituted,
+    }
+    if fallback_reason is not None:
+        envelope["fallback_reason"] = fallback_reason
+    return envelope
+
+
+def _resolve_engine(
+    engine: str, capabilities: dict[str, Any]
+) -> tuple[str, dict[str, Any]]:
+    """Resolve explicit engine first; capability longcat only for non-explicit names."""
+    requested = engine
+    if engine in _KNOWN_ENGINES:
+        return engine, talking_face_identity(
+            requested_provider=requested, actual_provider=engine
+        )
+    if engine in {"", "auto"} and capabilities.get("longcat"):
+        return "longcat", talking_face_identity(
+            requested_provider=requested or "auto",
+            actual_provider="longcat",
+            fallback_reason="capability_longcat",
+        )
+    raise TalkingFaceUnavailable(
+        f"未知 Talking Face 引擎: {engine}; "
+        "请选择 echomimic、duix、longcat、generic 或显式 placeholder。"
+    )
 
 
 def _engine_base_url() -> str:
@@ -163,8 +208,9 @@ async def generate_talking_face(
        失败直接抛 TalkingFaceUnavailable,不静默占位圈。
     2. TALKING_FACE_ENGINE=duix → 本机 Duix 容器离线口型,用完停容器。
     3. TALKING_FACE_ENGINE=longcat → 强制走引擎 LongCat 端点。
-    4. 引擎能力表声明 longcat 可用且未指定 echomimic/duix → 走引擎端点。
-    5. generic → 只有显式选择时才使用频谱可视化；placeholder 也必须显式选择。
+    4. TALKING_FACE_ENGINE=auto 且能力表声明 longcat → 走引擎端点(显式 identity)。
+    5. generic/placeholder → 只有显式选择时才使用。
+    6. 未知配置一律失败；成功产物旁写 .identity.json provider identity。
 
     生产原则：引擎不可达、模型缺失或未知配置都会失败，不再把占位视频
     当作真实数字人产物交付。
@@ -184,9 +230,11 @@ async def generate_talking_face(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     preset_name = preset_name or "default"
 
-    engine = (os.getenv("TALKING_FACE_ENGINE", "echomimic") or "echomimic").strip().lower()
+    raw_engine = (os.getenv("TALKING_FACE_ENGINE", "echomimic") or "echomimic").strip().lower()
     capabilities = await _engine_capabilities()
-    engine_has_longcat = bool(capabilities.get("longcat"))
+    engine, identity = _resolve_engine(raw_engine, capabilities)
+    identity["engine_selection"] = {"raw": raw_engine, "resolved": engine}
+    logger.info("talking_face_identity %s", identity)
 
     try:
         if engine == "duix":
@@ -202,7 +250,7 @@ async def generate_talking_face(
                 audio_path=audio_path,
                 output_path=output_path,
             )
-        elif engine == "longcat" or engine_has_longcat:
+        elif engine == "longcat":
             result_path = await _run_engine_longcat(
                 image_path=image_path,
                 audio_path=audio_path,
@@ -238,6 +286,10 @@ async def generate_talking_face(
     if not result_path.exists() or result_path.stat().st_size == 0:
         raise TalkingFaceUnavailable(f"Talking Face engine produced no output: {result_path}")
 
+    identity_path = result_path.with_suffix(result_path.suffix + ".identity.json")
+    identity_path.write_text(
+        json.dumps(identity, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     return result_path
 
 
