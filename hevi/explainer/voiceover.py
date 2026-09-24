@@ -31,6 +31,7 @@ from hevi.explainer.voicebox_client import synthesize as synthesize_voicebox
 logger = logging.getLogger(__name__)
 
 DEFAULT_VOICE = "Dylan"  # Voicebox Qwen3-TTS 中文预置音色；可用 VOICEBOX_PROFILE_ID 替换
+DEFAULT_EDGE_VOICE = "zh-CN-XiaoxiaoNeural"  # edge-tts provider/fallback 必须使用 Edge 原生 neural voice
 DEFAULT_RATE = "-10%"  # 仅 edge_tts 使用；Voicebox 通过 instruct 控制表达
 
 _CLAUSE_SPLIT_CHARS = [*list(",,。;;::!!??……~~“”\"'()()·"), r"\s+"]
@@ -100,6 +101,15 @@ def _allow_edge_fallback() -> bool:
     )
 
 
+def _edge_voice(voice: str) -> str:
+    """Resolve a provider-compatible Edge voice without leaking Voicebox presets."""
+    candidate = (voice or "").strip()
+    if candidate.endswith("Neural") and "-" in candidate:
+        return candidate
+    configured = os.environ.get("HEVI_EXPLAINER_EDGE_VOICE", "").strip()
+    return configured or DEFAULT_EDGE_VOICE
+
+
 async def synthesize_storyboard(
     storyboard: Storyboard,
     audio_dir: Path,
@@ -139,7 +149,7 @@ async def synthesize_storyboard(
             elif provider == "voicebox":
                 await synthesize_voicebox(seg.narration, out_path)
             else:
-                words = await _synthesize(seg.narration, out_path, voice=voice, rate=rate)
+                words = await _synthesize(seg.narration, out_path, voice=_edge_voice(voice), rate=rate)
         except Exception as e:
             if provider not in {"cosyvoice", "voicebox"}:
                 raise VoiceoverError(f"段 {seg.id} 配音合成失败: {e}") from e
@@ -155,7 +165,7 @@ async def synthesize_storyboard(
             active_provider = "edge_tts"
             out_path = audio_dir / f"{seg.id}.mp3"
             try:
-                words = await _synthesize(seg.narration, out_path, voice=voice, rate=rate)
+                words = await _synthesize(seg.narration, out_path, voice=_edge_voice(voice), rate=rate)
             except Exception as fallback_error:
                 raise VoiceoverError(
                     f"段 {seg.id} {provider_label}/edge_tts 均失败: {fallback_error}"

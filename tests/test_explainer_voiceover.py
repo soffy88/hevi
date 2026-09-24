@@ -59,3 +59,49 @@ async def test_voicebox_failure_is_not_silently_replaced(monkeypatch, tmp_path: 
 
     with pytest.raises(VoiceoverError, match="Voicebox 配音失败: sidecar down"):
         await synthesize_storyboard(_storyboard(), tmp_path)
+
+
+@pytest.mark.asyncio
+async def test_edge_tts_default_voice_is_resolved_to_native_neural_voice(monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("HEVI_EXPLAINER_TTS_PROVIDER", "edge_tts")
+    seen: dict[str, str] = {}
+
+    async def fake_edge(text: str, *, voice: str, rate: str, output_path: Path):
+        seen["voice"] = voice
+        output_path.write_bytes(b"fake mp3")
+        return {
+            "words": [
+                {"text": "第一句", "start": 0.0, "end": 0.8},
+                {"text": "第二句", "start": 0.9, "end": 1.8},
+            ]
+        }
+
+    monkeypatch.setattr("hevi.explainer.voiceover.edge_tts_word_boundary", fake_edge)
+    monkeypatch.setattr("hevi.explainer.voiceover.probe_duration", lambda _path: 2.0)
+
+    manifest = await synthesize_storyboard(_storyboard(), tmp_path)
+
+    assert seen["voice"] == "zh-CN-XiaoxiaoNeural"
+    assert manifest[0].audio_file == "audio/hook.mp3"
+
+
+@pytest.mark.asyncio
+async def test_edge_tts_preserves_explicit_native_voice(monkeypatch, tmp_path: Path):
+    seen: dict[str, str] = {}
+
+    async def fake_edge(text: str, *, voice: str, rate: str, output_path: Path):
+        seen["voice"] = voice
+        output_path.write_bytes(b"fake mp3")
+        return {"words": [{"text": text, "start": 0.0, "end": 1.0}]}
+
+    monkeypatch.setattr("hevi.explainer.voiceover.edge_tts_word_boundary", fake_edge)
+    monkeypatch.setattr("hevi.explainer.voiceover.probe_duration", lambda _path: 1.0)
+
+    await synthesize_storyboard(
+        _storyboard(),
+        tmp_path,
+        provider="edge_tts",
+        voice="en-US-AriaNeural",
+    )
+
+    assert seen["voice"] == "en-US-AriaNeural"
