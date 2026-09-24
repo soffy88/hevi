@@ -14,6 +14,14 @@
         text="解说文本",
         audio_path=Path("audio.wav"),
     )
+
+FunASR bridge (fail-closed by default):
+    from hevi.audio.funasr_verify import funasr_timestamp_generator, FunASRUnavailableError
+
+    envelope = await funasr_timestamp_generator(audio_path=Path("audio.wav"))
+    # {"words": [...], "verified": True, "source": "funasr"}
+    # or FunASRUnavailableError when FunASR cannot produce verified words.
+    # allow_heuristic_preview=True → verified=False, source="heuristic_preview".
 """
 
 from __future__ import annotations
@@ -33,49 +41,69 @@ from hevi.audio.asr_verify import (  # noqa: F401 - re-export for compatibility
 logger = logging.getLogger(__name__)
 
 
+class FunASRUnavailableError(RuntimeError):
+    """FunASR pipeline unavailable or returned no usable timestamps (fail-closed)."""
+
+
 # ─── FunASR Bridge ────────────────────────────────────────────────
 async def funasr_timestamp_generator(
     *,
     audio_path: str | Path,
     language: str = "zh",
     batch_size_s: float = 60.0,
-) -> list[dict[str, Any]]:
-    """Call FunASR pipeline and return word-level timestamp dict compatible with Remotion WordSubtitle.
+    allow_heuristic_preview: bool = False,
+) -> dict[str, Any]:
+    """Call FunASR and return word-level timestamps with explicit verification status.
 
-    FunASR output format expected:
-    [
-        {"text": "...", "start": 0.12, "end": 0.85},
-        ...
-    ]
+    Envelope:
+        {"words": [...], "verified": True, "source": "funasr"}
+        {"words": [...], "verified": False, "source": "heuristic_preview", "reason": "..."}
 
-    If the oprim.funasr module is not installed, falls back to a simple
-    whitespace-based segmentation with estimated timestamps.
+    Default is fail-closed: raise FunASRUnavailableError when FunASR is
+    missing, fails, or yields no usable words — never a silent heuristic
+    as production success. Set allow_heuristic_preview=True to obtain an
+    explicitly unverified preview instead of raising.
     """
-    audio_path = str(audio_path)
+    audio_path_str = str(audio_path)
+    failure: str | None = None
 
     try:
         from oprim import funasr_asr as _funasr_raw
 
         raw_result = _funasr_raw(
-            audio_path=audio_path,
+            audio_path=audio_path_str,
             language=language,
             batch_size_s=batch_size_s,
         )
         if isinstance(raw_result, dict):
-            words = raw_result.get("words", raw_result.get("timestamps", []))
+            raw_words = raw_result.get("words", raw_result.get("timestamps", []))
         elif isinstance(raw_result, list):
-            words = raw_result
+            raw_words = raw_result
         else:
-            words = []
+            raw_words = []
+
+        words = _normalize_funasr_output(raw_words) if isinstance(raw_words, list) else []
 
         if words:
-            return _normalize_funasr_output(words)
+            return {"words": words, "verified": True, "source": "funasr"}
+        failure = "FunASR returned no usable word timestamps"
+    except ImportError as exc:
+        failure = f"oprim.funasr_asr unavailable: {exc}"
+    except Exception as exc:
+        failure = f"FunASR failed: {exc}"
 
-    except (ImportError, Exception) as exc:
-        logger.debug("FunASR unavailable (%s); using heuristic fallback", exc)
+    if not allow_heuristic_preview:
+        raise FunASRUnavailableError(failure or "FunASR unavailable")
 
-    # Heuristic fallback: split by punctuation and assign proportional time
-    return _heuristic_timestamps(audio_path)
+    logger.warning(
+        "FunASR unavailable; heuristic_preview (verified=false): %s", failure
+    )
+    return {
+        "words": _heuristic_timestamps(audio_path_str),
+        "verified": False,
+        "source": "heuristic_preview",
+        "reason": failure,
+    }
 
 
 def _normalize_funasr_output(raw_words: list[Any]) -> list[dict[str, Any]]:

@@ -781,17 +781,30 @@ async def test_funasr_bridge_normalizes_provider_shapes_and_chunks_text(
 
     import oprim
 
+    from hevi.audio.funasr_verify import FunASRUnavailableError
+
     monkeypatch.setattr(
         oprim,
         "funasr_asr",
         lambda **_kwargs: {"words": [{"text": "你", "start": 0.0, "end": 0.5}]},
         raising=False,
     )
-    result = await verify.funasr_timestamp_generator(audio_path=tmp_path / "audio.wav")
-    assert result[0]["start_ms"] == 0
+    verified = await verify.funasr_timestamp_generator(audio_path=tmp_path / "audio.wav")
+    assert verified["verified"] is True
+    assert verified["source"] == "funasr"
+    assert verified["words"][0]["start_ms"] == 0
+
     monkeypatch.setattr(oprim, "funasr_asr", lambda **_kwargs: [], raising=False)
     monkeypatch.setattr(oprim, "probe_duration", lambda _path: 1.0)
-    assert await verify.funasr_timestamp_generator(audio_path=tmp_path / "audio.wav") == []
+    with pytest.raises(FunASRUnavailableError):
+        await verify.funasr_timestamp_generator(audio_path=tmp_path / "audio.wav")
+
+    preview = await verify.funasr_timestamp_generator(
+        audio_path=tmp_path / "audio.wav", allow_heuristic_preview=True
+    )
+    assert preview["verified"] is False
+    assert preview["source"] == "heuristic_preview"
+    assert preview["reason"]
 
 
 @pytest.mark.asyncio

@@ -7,6 +7,7 @@ from hevi.audio.audio_router import (
 from hevi.audio.avatar_service import generate_avatar_clip
 from hevi.audio.bgm_library import BGMLibrary
 from hevi.audio.funasr_verify import (
+    FunASRUnavailableError,
     chunk_by_punctuation_with_limit,
     funasr_timestamp_generator,
     merge_chunks_with_asr_results,
@@ -17,6 +18,7 @@ __all__ = [
     "AudioProvider",
     "AudioRoutingError",
     "BGMLibrary",
+    "FunASRUnavailableError",
     "chunk_by_punctuation_with_limit",
     "funasr_timestamp_generator",
     "generate_avatar_clip",
