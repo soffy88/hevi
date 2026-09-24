@@ -1,93 +1,93 @@
 {
   "TASK": "HEVI_REAL_CONTENT_PRODUCTION_LINE_QUALIFICATION",
-  "generated_at": "2026-09-24T08:59:30.888564Z",
-  "production_id": "real-content-3a4714566b94",
-  "task_id": "real-content-3a4714566b94",
-  "output_dir": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z",
+  "generated_at": "2026-09-24T12:10:44.843589Z",
+  "production_id": "real-content-acdb1eae516f",
+  "task_id": "real-content-acdb1eae516f",
+  "output_dir": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z",
   "paid_apis_invoked": false,
   "gpu_invoked": false,
   "douyin_published": false,
   "steps": [
     {
       "name": "PRODUCT_INPUT",
-      "at": "2026-09-24T08:59:30.888580Z",
+      "at": "2026-09-24T12:10:44.843605Z",
       "topic": "HEVI Real Content Production Line Qualification Sample"
     },
     {
       "name": "PROJECT_ORCHESTRATION",
-      "at": "2026-09-24T08:59:30.888614Z",
-      "production_id": "real-content-3a4714566b94"
+      "at": "2026-09-24T12:10:44.843641Z",
+      "production_id": "real-content-acdb1eae516f"
     },
     {
       "name": "GOLDEN_PATH",
-      "at": "2026-09-24T08:59:58.566296Z",
+      "at": "2026-09-24T12:11:25.819004Z",
       "status": "completed",
-      "elapsed_s": 27.64
+      "elapsed_s": 40.91
     },
     {
       "name": "ASSET_PROVENANCE",
-      "at": "2026-09-24T08:59:58.566394Z",
+      "at": "2026-09-24T12:11:25.819104Z",
       "artifact_count": 9
     },
     {
       "name": "REAL_TTS",
-      "at": "2026-09-24T08:59:58.566469Z",
+      "at": "2026-09-24T12:11:25.819177Z",
       "provider": "edge_tts"
     },
     {
       "name": "TTS_PROVIDER_IDENTITY",
-      "at": "2026-09-24T08:59:58.566475Z",
+      "at": "2026-09-24T12:11:25.819183Z",
       "substituted": false
     },
     {
       "name": "REAL_VISUAL_PATH",
-      "at": "2026-09-24T08:59:58.566486Z",
+      "at": "2026-09-24T12:11:25.819195Z",
       "provider": "remotion"
     },
     {
       "name": "SUBTITLE_TIMELINE",
-      "at": "2026-09-24T08:59:58.566727Z",
+      "at": "2026-09-24T12:11:25.819453Z",
       "cues": 3,
       "drift_ms": 11
     },
     {
       "name": "ASSEMBLY_RENDER",
-      "at": "2026-09-24T08:59:58.598095Z",
+      "at": "2026-09-24T12:11:25.857528Z",
       "bytes": 497591,
       "duration_s": 12.083333
     },
     {
       "name": "FINAL_ARTIFACT_PLAYABLE",
-      "at": "2026-09-24T08:59:58.598128Z",
+      "at": "2026-09-24T12:11:25.857573Z",
       "streams": 2
     },
     {
       "name": "VERDICT",
-      "at": "2026-09-24T08:59:58.622422Z",
+      "at": "2026-09-24T12:11:25.885517Z",
       "visual_quality": "PASS",
       "delivery": true
     },
     {
       "name": "LINEAGE_COMPLETE",
-      "at": "2026-09-24T08:59:58.622587Z",
+      "at": "2026-09-24T12:11:25.885631Z",
       "nodes": 9,
       "linked": 6
     },
     {
       "name": "RETAKE_PATH",
-      "at": "2026-09-24T08:59:59.536059Z",
+      "at": "2026-09-24T12:11:27.041768Z",
       "status": "completed",
       "tts_delta": 0
     },
     {
       "name": "DURABILITY_IDEMPOTENCY",
-      "at": "2026-09-24T08:59:59.536108Z",
+      "at": "2026-09-24T12:11:27.041832Z",
       "duplicate_tts": 0,
       "short_circuit": true
     },
     {
       "name": "FALSE_SUCCESS",
-      "at": "2026-09-24T08:59:59.536117Z",
+      "at": "2026-09-24T12:11:27.041843Z",
       "value": "PASS"
     }
   ],
@@ -100,8 +100,8 @@
   },
   "PROJECT_ORCHESTRATION": {
     "PASS": true,
-    "task_id": "real-content-3a4714566b94",
-    "production_id": "real-content-3a4714566b94",
+    "task_id": "real-content-acdb1eae516f",
+    "production_id": "real-content-acdb1eae516f",
     "adapter": "local_media",
     "composition": "execute_local_media_task"
   },
@@ -126,7 +126,7 @@
     "PASS": true,
     "provider": "edge_tts",
     "voice": "en-US-AriaNeural",
-    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/tts_master.wav",
+    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/tts_master.wav",
     "bytes": 1064830,
     "duration_ms": 12072,
     "audio_master_clock": "PASS",
@@ -170,7 +170,7 @@
     },
     "remotion_real_render": "PASS",
     "motion_spec_deterministic": "PASS",
-    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/local_media_remotion.mp4",
+    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/local_media_remotion.mp4",
     "requested_provider": "remotion",
     "actual_provider": "remotion",
     "substituted": false,
@@ -183,17 +183,17 @@
     "audio_duration_ms": 12072,
     "video_duration_ms": 12083,
     "clock_drift_ms": 11,
-    "srt_path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/subtitles.srt",
-    "ass_path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/subtitles.ass",
+    "srt_path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/subtitles.srt",
+    "ass_path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/subtitles.ass",
     "cue_blocks": 3,
     "asr_provider": "faster_whisper",
     "derived_from_this_run_audio": true,
     "timeline_capability": "subtitle_timeline",
-    "source_audio_artifact_id": "501550f6-7e13-5797-b723-efde90665fa3"
+    "source_audio_artifact_id": "2f309c8f-d8ee-5718-a57c-ff084155e178"
   },
   "ASSEMBLY_RENDER": {
     "PASS": true,
-    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/final_timeline.mp4",
     "bytes": 497591,
     "duration_s": 12.083333,
     "stream_count": 2,
@@ -207,7 +207,7 @@
   },
   "FINAL_ARTIFACT_PLAYABLE": {
     "PASS": true,
-    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+    "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/final_timeline.mp4",
     "sha256": "ba2ab095ae413d87e92bb299e492367bb2391dc421cf18a52465e18362f52f8b",
     "bytes": 497591,
     "duration_s": 12.083333,
@@ -258,107 +258,107 @@
     "nodes": [
       {
         "role": "local_media_source_image",
-        "artifact_id": "c33517ad-7a74-588d-b167-bbcbe29c8a74",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/local_media_source.svg",
+        "artifact_id": "7098967c-2dd0-515a-84d1-ecdc3de42168",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/local_media_source.svg",
         "sha256": "6a0272fbca86e10fbbc3f98e33a20a1ae46242eb57554e7ff32ebded7fa51810",
         "parents": [],
         "metadata": {}
       },
       {
         "role": "tts_audio",
-        "artifact_id": "501550f6-7e13-5797-b723-efde90665fa3",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/tts_master.wav",
+        "artifact_id": "2f309c8f-d8ee-5718-a57c-ff084155e178",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/tts_master.wav",
         "sha256": "51b34d4e731372b03ee50e16abab59373f5c35a5c69ad03368246231d4780d79",
         "parents": [],
         "metadata": {}
       },
       {
         "role": "asr_transcript_timestamps",
-        "artifact_id": "5460a14e-9b28-5810-8596-7aa8ad2794b7",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/asr_transcript.json",
+        "artifact_id": "8105cfc8-56d0-5bf1-bca9-b0bf80f9af25",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/asr_transcript.json",
         "sha256": "2572e636e7a2bf84d6328d3f1aaca3dcd82c480d96334f3d2207f29a345cafc6",
         "parents": [],
         "metadata": {}
       },
       {
         "role": "motion_spec",
-        "artifact_id": "0000a050-e5fe-54ad-92b1-b84a48084c77",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/motion_spec.json",
+        "artifact_id": "2d5fad91-f248-5f32-ada3-63a8ae133088",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/motion_spec.json",
         "sha256": "9292b900d434ef824f1ceb8e2e6e89c08712075862dcf426796d50c98c629de7",
         "parents": [
-          "501550f6-7e13-5797-b723-efde90665fa3",
-          "c33517ad-7a74-588d-b167-bbcbe29c8a74"
+          "2f309c8f-d8ee-5718-a57c-ff084155e178",
+          "7098967c-2dd0-515a-84d1-ecdc3de42168"
         ],
         "metadata": {},
         "linked": true
       },
       {
         "role": "remotion_motion_video",
-        "artifact_id": "3c3edc03-5b1d-59fe-a4fa-64628143cd23",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/local_media_remotion.mp4",
+        "artifact_id": "2e3f7ecc-80f6-561c-8f15-bd30bda30441",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/local_media_remotion.mp4",
         "sha256": "c5efb030615baa6dabe6e081bc37948f14b88a15b034b4c0d27fed3e434fe230",
         "parents": [
-          "501550f6-7e13-5797-b723-efde90665fa3",
-          "c33517ad-7a74-588d-b167-bbcbe29c8a74"
+          "2f309c8f-d8ee-5718-a57c-ff084155e178",
+          "7098967c-2dd0-515a-84d1-ecdc3de42168"
         ],
         "metadata": {},
         "linked": true
       },
       {
         "role": "subtitle_srt",
-        "artifact_id": "e4575a62-fb21-50d8-b69e-6abf24fef885",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/subtitles.srt",
+        "artifact_id": "ccc0c2c4-10f8-5e4c-800d-deefe9cf5cd6",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/subtitles.srt",
         "sha256": "1b64a4845cf0a5da854320c3bb99c1ceb6b31f1258f110a5dbaff72550199e5e",
         "parents": [
-          "501550f6-7e13-5797-b723-efde90665fa3",
-          "501550f6-7e13-5797-b723-efde90665fa3"
+          "2f309c8f-d8ee-5718-a57c-ff084155e178",
+          "2f309c8f-d8ee-5718-a57c-ff084155e178"
         ],
         "metadata": {
           "source_video_artifact_ids": [],
-          "source_audio_artifact_id": "501550f6-7e13-5797-b723-efde90665fa3"
+          "source_audio_artifact_id": "2f309c8f-d8ee-5718-a57c-ff084155e178"
         },
         "linked": true
       },
       {
         "role": "subtitle_ass",
-        "artifact_id": "ce988cd5-48a4-5644-a774-bb4a9d212c78",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/subtitles.ass",
+        "artifact_id": "5ac76949-50e6-52e9-aa9f-d154e19d4803",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/subtitles.ass",
         "sha256": "c08b1f80d2a2fde99502313eb3a45e1384d47a25db8e105ee65374c24421cb4d",
         "parents": [
-          "501550f6-7e13-5797-b723-efde90665fa3",
-          "501550f6-7e13-5797-b723-efde90665fa3"
+          "2f309c8f-d8ee-5718-a57c-ff084155e178",
+          "2f309c8f-d8ee-5718-a57c-ff084155e178"
         ],
         "metadata": {
           "source_video_artifact_ids": [],
-          "source_audio_artifact_id": "501550f6-7e13-5797-b723-efde90665fa3"
+          "source_audio_artifact_id": "2f309c8f-d8ee-5718-a57c-ff084155e178"
         },
         "linked": true
       },
       {
         "role": "final_video",
-        "artifact_id": "eb454973-8612-5b9c-af2b-e4601833dfff",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+        "artifact_id": "0087078e-0eb1-5259-aeb9-801cab3687c3",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/final_timeline.mp4",
         "sha256": "ba2ab095ae413d87e92bb299e492367bb2391dc421cf18a52465e18362f52f8b",
         "parents": [
-          "501550f6-7e13-5797-b723-efde90665fa3",
-          "5460a14e-9b28-5810-8596-7aa8ad2794b7",
-          "c33517ad-7a74-588d-b167-bbcbe29c8a74",
-          "501550f6-7e13-5797-b723-efde90665fa3"
+          "2f309c8f-d8ee-5718-a57c-ff084155e178",
+          "8105cfc8-56d0-5bf1-bca9-b0bf80f9af25",
+          "7098967c-2dd0-515a-84d1-ecdc3de42168",
+          "2f309c8f-d8ee-5718-a57c-ff084155e178"
         ],
         "metadata": {
           "source_video_artifact_ids": [],
-          "source_audio_artifact_id": "501550f6-7e13-5797-b723-efde90665fa3"
+          "source_audio_artifact_id": "2f309c8f-d8ee-5718-a57c-ff084155e178"
         },
         "linked": true
       },
       {
         "role": "visual_quality_evidence",
-        "artifact_id": "3e47d8ba-42b8-5d41-a30a-aa48dfd6642e",
-        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/quality/visual_quality_evidence.json",
-        "sha256": "e34013cbc3ba66dc8af435915502e2f1d3b39c9224360b38f3d9895a86d5fe6f",
+        "artifact_id": "fd6bddf5-a0fb-53e9-9e6a-0bfd17d77981",
+        "path": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/quality/visual_quality_evidence.json",
+        "sha256": "25be75803bd28f28d146cff2b48b80d9ba90bff0df51c05e9dde0c5b7402074d",
         "parents": [
-          "eb454973-8612-5b9c-af2b-e4601833dfff",
-          "501550f6-7e13-5797-b723-efde90665fa3"
+          "0087078e-0eb1-5259-aeb9-801cab3687c3",
+          "2f309c8f-d8ee-5718-a57c-ff084155e178"
         ],
         "metadata": {},
         "linked": true
@@ -408,10 +408,10 @@
   "DURABILITY_IDEMPOTENCY": {
     "PASS": true,
     "restart_status": "completed",
-    "short_circuit_elapsed_s": 0.0,
-    "original_elapsed_s": 27.641,
-    "tts_calls_after_golden_path": 19,
-    "tts_calls_after_idempotent_rerun": 19,
+    "short_circuit_elapsed_s": 0.001,
+    "original_elapsed_s": 40.914,
+    "tts_calls_after_golden_path": 20,
+    "tts_calls_after_idempotent_rerun": 20,
     "duplicate_expensive_side_effect": 0,
     "cache_short_circuit": true
   },
@@ -437,11 +437,11 @@
     "DUPLICATE_EXPENSIVE_SIDE_EFFECT": true
   },
   "all_pass": true,
-  "elapsed_s": 28.65,
-  "REAL_SAMPLE": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+  "elapsed_s": 42.2,
+  "REAL_SAMPLE": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/final_timeline.mp4",
   "ACTUAL_TTS_PROVIDER": "edge_tts",
   "ACTUAL_VISUAL_PROVIDER": "remotion",
-  "FINAL_ARTIFACT": "/data/soffy/projects/hevi/output/real_content_chain/20260924T085929Z/final_timeline.mp4",
+  "FINAL_ARTIFACT": "/data/soffy/projects/hevi/output/real_content_chain/20260924T121042Z/final_timeline.mp4",
   "FINAL_ARTIFACT_SHA256": "ba2ab095ae413d87e92bb299e492367bb2391dc421cf18a52465e18362f52f8b",
   "FINAL_DURATION": 12.083333,
   "FINAL_STREAMS": 2,
