@@ -1,0 +1,39 @@
+{
+  "gate": "P1_FULL_CLEAN_INSTALL_REVERIFY",
+  "CLEAN_INSTALL_GATE": "PASS",
+  "generated_at": "2026-09-24T03:16:40.100922+00:00",
+  "clean_venv": "/data/soffy/tmp/hevi-clean-install/.venv",
+  "environment_isolated": true,
+  "PYTHONPATH_masking": false,
+  "editable_install_of_oprim": false,
+  "patch_script_absent": true,
+  "pins": {
+    "oprim": "25653ba2874bf0f9a5011f2a23ac3164ee673125",
+    "obase": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+    "oskill": "cac39df03778d4e4e44db3c006f8fc788dc757f6",
+    "omodul": "bdb48f52032e69818281c779169959e0650a558d",
+    "oservi": "2527968d4d7e2455a48b280cb191012f4266d0bb"
+  },
+  "required_pins": {
+    "oprim": "25653ba2874bf0f9a5011f2a23ac3164ee673125",
+    "obase": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+    "oskill": "cac39df03778d4e4e44db3c006f8fc788dc757f6",
+    "omodul": "bdb48f52032e69818281c779169959e0650a558d",
+    "oservi": "2527968d4d7e2455a48b280cb191012f4266d0bb"
+  },
+  "pins_match": true,
+  "probes": {
+    "oprim_exports": "PASS",
+    "oprim_import": "PASS",
+    "hevi_voiceover": "PASS",
+    "hevi_audio_router": "PASS",
+    "hevi_cover": "PASS",
+    "frontmatter_via_oprim_transitive": "PASS",
+    "patch_script_absent": "PASS",
+    "oprim_not_editable_local": "PASS",
+    "optional_capability_import_safe": "PASS"
+  },
+  "probes_all_pass": true,
+  "oprim_transitive_dependency_leak_count_after": 0,
+  "task": "HEVI_RELEASE_BLOCKER_CLOSURE"
+}

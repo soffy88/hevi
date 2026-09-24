@@ -1,0 +1,63 @@
+{
+  "gate": "P1_FULL_REGRESSION_AND_CLEAN_INSTALL",
+  "task": "HEVI_RELEASE_BLOCKER_CLOSURE",
+  "base_sha": "7c91cd9119c99724320bb85a3d19df488b7f4689",
+  "head_sha_at_verification": "d3df51c5c6fc1cb19c5c3c3dfbd7b1a8d190fc7e",
+  "final_docs_sha": "PENDING_DOCS_COMMIT",
+  "generated_at": "2026-09-24T12:00:00+00:00",
+  "ordered_commits": [
+    "b4bc81d fix(3o): close immutable dependency contract",
+    "a50a7ab fix(freezone): fail-closed generators, auth, tenant isolation",
+    "a906a80 fix(config): fail-closed production weak secrets",
+    "2331acb fix(audio): fail-closed FunASR verification",
+    "87b419d fix(audio): explicit provider identity provenance",
+    "d3df51c fix(cover): explicit extractor provenance for production path"
+  ],
+  "gates": {
+    "RUFF": "PASS",
+    "MYPY": "BASELINE",
+    "mypy_errors": 5,
+    "mypy_files": 4,
+    "NEW_MYPY_ERRORS": 0,
+    "mypy_baseline_errors": 5,
+    "mypy_baseline_files": 4,
+    "PYTEST": "PASS",
+    "pytest_passed": 3393,
+    "pytest_skipped": 31,
+    "pytest_failed": 0,
+    "CLEAN_INSTALL_GATE": "PASS",
+    "DIGITAL_HUMAN_REGRESSION": "PASS",
+    "DIGITAL_HUMAN_TESTS": "tests/test_digital_human.py + tests/distribution + related (28 green)",
+    "DISTRIBUTION_REGRESSION": "PASS",
+    "DISTRIBUTION_TESTS": "tests/distribution/ (contract, mcp_process, short_video_factory)",
+    "PRODUCTION_PATH_HONESTY": "PASS",
+    "PROVIDER_IDENTITY_NO_SILENT_SUBSTITUTION": "PASS",
+    "COVER_FALLBACK_PROVENANCE": "PASS"
+  },
+  "preserved_claims": {
+    "VIDEO_INTELLIGENCE": "QUALIFIED",
+    "CASE_LEARNING": "QUALIFIED",
+    "CROSS_MODEL_RUNTIME_QUALIFIED": true,
+    "DIGITAL_HUMAN_FAIL_CLOSED": "PASS",
+    "LIPSYNC_FALSE_SUCCESS": 0,
+    "DISTRIBUTION_CONTROL_PLANE": "SOURCE_VERIFIED"
+  },
+  "external_blockers_not_owned_by_hevi": [
+    "CUDA/NVML wedged (ENV_BLOCKED) — never reboot shared host without asking soffy",
+    "WAVESPEED_API_KEY absent (OWNER_BLOCKED_NO_CREDENTIAL)",
+    "FAL/MAAS spend blocked (OWNER_BLOCKED_SPEND)",
+    "Local2 ModuleNotFoundError: obase (EXECUTOR_ENV_BLOCKED)"
+  ],
+  "clean_install": {
+    "artifact": "artifacts/qualification/3o-clean-install-reverify.json",
+    "venv": "/data/soffy/tmp/hevi-clean-install/.venv",
+    "uv_lock_check": 0,
+    "patch_script_absent": true,
+    "PYTHONPATH_masking": false,
+    "editable_oprim": false,
+    "pins_match": true
+  },
+  "PRODUCTION_RELEASE_READY": "YES_WITH_EXTERNAL_BLOCKERS",
+  "FINAL_CLASSIFICATION": "RELEASE_QUALIFIED_WITH_EXTERNAL_BLOCKERS",
+  "notes": "All HEVI-controlled release blockers closed. External hardware/credential/spend blockers remain outside HEVI code ownership."
+}
