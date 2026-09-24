@@ -1,0 +1,37 @@
+{
+  "wave": "W2_TTS_RUNTIME_QUALIFICATION",
+  "generated_at": "2026-09-24T04:13:22.828747+00:00",
+  "edge_tts_smoke": {
+    "status": "PASS",
+    "bytes": 23904,
+    "word_count": 5,
+    "provider": "edge_tts",
+    "voice": "en-US-AriaNeural"
+  },
+  "identity_envelope_tests": {
+    "status": "PASS",
+    "requested_provider": "unknown_backend",
+    "actual_provider": "edge_tts",
+    "substituted": true,
+    "fallback_reason": "unmatched_formal_provider:unknown_backend",
+    "bytes": 17712
+  },
+  "funasr_verdict": {
+    "status": "FAIL_CLOSED_AS_EXPECTED",
+    "error": "FunASRUnavailableError: oprim.funasr_asr unavailable: cannot import name 'funasr_asr' from 'oprim' (/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim/__init__.py)",
+    "fail_closed_contract": true
+  },
+  "local_services": {
+    "voicebox": {
+      "reachable": false,
+      "detail": "URLError"
+    },
+    "cosyvoice_engine": {
+      "reachable": false,
+      "detail": "URLError"
+    }
+  },
+  "TTS_RUNTIME": "PASS",
+  "TTS_PROVIDER_IDENTITY": "PASS",
+  "FUNASR_FAIL_CLOSED": "PASS"
+}

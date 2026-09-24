@@ -1,0 +1,17 @@
+{
+  "wave": "W10_W14_DISTRIBUTION_CONTROL_PLANE",
+  "generated_at": "2026-09-24T04:13:48.932973+00:00",
+  "tests": [
+    "tests/distribution/test_contract.py",
+    "tests/distribution/test_mcp_process.py",
+    "tests/distribution/test_short_video_factory_regressions.py"
+  ],
+  "pytest_returncode": 0,
+  "pytest_summary": "21 passed, 1 warning in 6.35s",
+  "safety_gate": "PASS",
+  "idempotency_key": "PASS",
+  "DISTRIBUTION_CONTROL_PLANE": "SOURCE_VERIFIED",
+  "real_publish_authorized": false,
+  "douyin_blocker": "OWNER_BLOCKED_NOT_AUTHORIZED",
+  "note": "No real platform publish without owner account authorization."
+}

@@ -1,0 +1,100 @@
+{
+  "wave": "W3_LIPSYNC_CAPABILITY_TRUTH",
+  "generated_at": "2026-09-24T04:13:25.336478+00:00",
+  "POST_PROCESS_LIPSYNC_IMPLEMENTED": "NO",
+  "post_process_flag_in_decision": false,
+  "providers": [
+    {
+      "provider": "h3_local",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "hailuo",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "happyhorse_1_1",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "happyhorse_1_1_maas",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "happyhorse_1_1_maas_lock",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "kling_v2",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "ltx2_cloud",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "ltx2_local",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "manim",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "veo3",
+      "native": true,
+      "post_processing": false,
+      "matrix_lip_sync": true
+    },
+    {
+      "provider": "wan_2_7",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "wan_2_7_maas",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "wan_cloud",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    },
+    {
+      "provider": "wan_local",
+      "native": false,
+      "post_processing": false,
+      "matrix_lip_sync": false
+    }
+  ],
+  "unknown_provider_fail_closed": true,
+  "LIPSYNC_FALSE_SUCCESS": 0,
+  "NATIVE_LIPSYNC_CAPABLE_PROVIDERS": [
+    "veo3"
+  ],
+  "LIPSYNC_TRUTH": "PASS",
+  "runtime_lipsync_probe_ref": "artifacts/qualification/lipsync_runtime_probe.json",
+  "note": "Native matrix capability is not a talking-face runtime PASS."
+}

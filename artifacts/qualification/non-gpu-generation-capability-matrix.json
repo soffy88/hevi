@@ -1,0 +1,328 @@
+{
+  "wave": "W15_NON_GPU_GENERATION_CAPABILITY_MATRIX",
+  "generated_at": "2026-09-24T04:13:48.933288+00:00",
+  "rows": [
+    {
+      "capability_id": "talking_face_echomimic",
+      "provider_id": "echomimic",
+      "gpu_required": true,
+      "software_status": "QUALIFIED",
+      "runtime_status": "ENV_BLOCKED_GPU_UNSTABLE",
+      "blocker": "ENV_BLOCKED_GPU_UNSTABLE",
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "talking_face_duix",
+      "provider_id": "duix",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "SOFTWARE_OK_RUNTIME_DEPENDS_ON_CONTAINER",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "talking_face_longcat",
+      "provider_id": "longcat",
+      "gpu_required": true,
+      "software_status": "QUALIFIED",
+      "runtime_status": "ENV_BLOCKED_ENGINE_OR_GPU",
+      "blocker": "ENV_BLOCKED",
+      "local_or_remote": "remote_service",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "talking_face_generic_preview",
+      "provider_id": "generic",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE_PREVIEW",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "talking_face_placeholder_preview",
+      "provider_id": "placeholder",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE_PREVIEW",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "lipsync_native_capability_query",
+      "provider_id": "capability_guard_PROVIDERS",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "lipsync_post_process",
+      "provider_id": "none",
+      "gpu_required": false,
+      "software_status": "NOT_IMPLEMENTED",
+      "runtime_status": "N/A",
+      "blocker": "HEVI_SOFTWARE_BLOCKED",
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "tts_edge_tts",
+      "provider_id": "edge_tts",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE_NETWORK_DEPENDENT",
+      "blocker": null,
+      "local_or_remote": "remote_tts_endpoint",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "tts_voicebox",
+      "provider_id": "voicebox",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE_LOCAL_SERVICE",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "tts_cosyvoice",
+      "provider_id": "cosyvoice",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE_LOCAL_SERVICE",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "tts_f5_lux_voxcpm_pocket_fish_vibevoice",
+      "provider_id": "hevi_audio_local_family",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE_DEPENDS_ON_LOCAL_MODEL",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "tts_qwen_maas",
+      "provider_id": "qwen_tts_maas",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_fal_cloud_family",
+      "provider_id": "veo3",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_fal_cloud_family",
+      "provider_id": "kling_v2",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_fal_cloud_family",
+      "provider_id": "hailuo",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_fal_cloud_family",
+      "provider_id": "ltx2_cloud",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_fal_cloud_family",
+      "provider_id": "wan_cloud",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_maas_happyhorse_wan",
+      "provider_id": "happyhorse_1_1_maas",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_maas_happyhorse_wan",
+      "provider_id": "happyhorse_1_1_maas_lock",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_maas_happyhorse_wan",
+      "provider_id": "wan_2_7_maas",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_maas_happyhorse_wan",
+      "provider_id": "happyhorse_1_1_ref",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_wavespeed_happyhorse_wan",
+      "provider_id": "happyhorse_1_1",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "BLOCKED_NO_CREDENTIAL",
+      "blocker": "OWNER_BLOCKED_NO_CREDENTIAL",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_wavespeed_happyhorse_wan",
+      "provider_id": "wan_2_7",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "BLOCKED_NO_CREDENTIAL",
+      "blocker": "OWNER_BLOCKED_NO_CREDENTIAL",
+      "local_or_remote": "remote",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "video_h3_local",
+      "provider_id": "h3_local",
+      "gpu_required": true,
+      "software_status": "QUALIFIED",
+      "runtime_status": "ENV_BLOCKED_GPU_UNSTABLE",
+      "blocker": "ENV_BLOCKED_GPU_UNSTABLE",
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "video_wan_local",
+      "provider_id": "wan_local",
+      "gpu_required": true,
+      "software_status": "QUALIFIED",
+      "runtime_status": "ENV_BLOCKED_GPU_UNSTABLE",
+      "blocker": "ENV_BLOCKED_GPU_UNSTABLE",
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "video_ltx2_local",
+      "provider_id": "ltx2_local",
+      "gpu_required": true,
+      "software_status": "QUALIFIED",
+      "runtime_status": "ENV_BLOCKED_GPU_UNSTABLE",
+      "blocker": "ENV_BLOCKED_GPU_UNSTABLE",
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "video_manim",
+      "provider_id": "manim",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "BASELINE_QUALIFIED_SECOND_PROVIDER",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "video_hyperframes",
+      "provider_id": "hyperframes",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "BASELINE_QUALIFIED",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "distribution_control_plane",
+      "provider_id": "matrixmedia",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "CONTROL_PLANE_SOURCE_VERIFIED",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": true
+    },
+    {
+      "capability_id": "distribution_safety_gate",
+      "provider_id": "matrixmedia",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "funasr_audio_verdict",
+      "provider_id": "funasr",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    },
+    {
+      "capability_id": "cover_extractor_provenance",
+      "provider_id": "oprim_hevi_local",
+      "gpu_required": false,
+      "software_status": "QUALIFIED",
+      "runtime_status": "RUNNABLE",
+      "blocker": null,
+      "local_or_remote": "local",
+      "paid_side_effect": false
+    }
+  ],
+  "gpu_rows_present": true,
+  "MATRIX_COMPLETE": true
+}

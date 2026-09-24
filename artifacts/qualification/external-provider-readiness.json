@@ -1,0 +1,183 @@
+{
+  "wave": "W6_W9_EXTERNAL_PROVIDER_READINESS",
+  "generated_at": "2026-09-24T04:13:37.200933+00:00",
+  "software_gates_all_pass": true,
+  "EXPLICIT_PROVIDER_SUBSTITUTION": 0,
+  "providers": [
+    {
+      "provider": "h3_local",
+      "software_gate": "PASS",
+      "credentials": {
+        "H3_COMFY_URL": "ABSENT"
+      },
+      "runtime_status": "ENV_BLOCKED_GPU_UNSTABLE",
+      "blocker": "ENV_BLOCKED_GPU_UNSTABLE",
+      "paid_side_effect": false,
+      "requested_provider": "h3_local",
+      "actual_provider": "h3_local"
+    },
+    {
+      "provider": "hailuo",
+      "software_gate": "PASS",
+      "credentials": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "paid_side_effect": true,
+      "requested_provider": "hailuo",
+      "actual_provider": "hailuo"
+    },
+    {
+      "provider": "happyhorse_1_1",
+      "software_gate": "PASS",
+      "credentials": {
+        "WAVESPEED_API_KEY": "ABSENT"
+      },
+      "runtime_status": "BLOCKED_NO_CREDENTIAL",
+      "blocker": "OWNER_BLOCKED_NO_CREDENTIAL",
+      "paid_side_effect": true,
+      "requested_provider": "happyhorse_1_1",
+      "actual_provider": "happyhorse_1_1"
+    },
+    {
+      "provider": "happyhorse_1_1_maas",
+      "software_gate": "PASS",
+      "credentials": {
+        "ALIBABA_MAAS_API_KEY": "PRESENT"
+      },
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "paid_side_effect": true,
+      "requested_provider": "happyhorse_1_1_maas",
+      "actual_provider": "happyhorse_1_1_maas"
+    },
+    {
+      "provider": "happyhorse_1_1_maas_lock",
+      "software_gate": "PASS",
+      "credentials": {
+        "ALIBABA_MAAS_API_KEY": "PRESENT"
+      },
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "paid_side_effect": true,
+      "requested_provider": "happyhorse_1_1_maas_lock",
+      "actual_provider": "happyhorse_1_1_maas_lock"
+    },
+    {
+      "provider": "hyperframes",
+      "software_gate": "PASS",
+      "credentials": {},
+      "runtime_status": "LOCAL_RUNNABLE",
+      "blocker": null,
+      "paid_side_effect": false,
+      "requested_provider": "hyperframes",
+      "actual_provider": "hyperframes"
+    },
+    {
+      "provider": "kling_v2",
+      "software_gate": "PASS",
+      "credentials": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "paid_side_effect": true,
+      "requested_provider": "kling_v2",
+      "actual_provider": "kling_v2"
+    },
+    {
+      "provider": "ltx2_cloud",
+      "software_gate": "PASS",
+      "credentials": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "paid_side_effect": true,
+      "requested_provider": "ltx2_cloud",
+      "actual_provider": "ltx2_cloud"
+    },
+    {
+      "provider": "ltx2_local",
+      "software_gate": "PASS",
+      "credentials": {},
+      "runtime_status": "ENV_BLOCKED_GPU_UNSTABLE",
+      "blocker": "ENV_BLOCKED_GPU_UNSTABLE",
+      "paid_side_effect": false,
+      "requested_provider": "ltx2_local",
+      "actual_provider": "ltx2_local"
+    },
+    {
+      "provider": "manim",
+      "software_gate": "PASS",
+      "credentials": {},
+      "runtime_status": "LOCAL_RUNNABLE",
+      "blocker": null,
+      "paid_side_effect": false,
+      "requested_provider": "manim",
+      "actual_provider": "manim"
+    },
+    {
+      "provider": "veo3",
+      "software_gate": "PASS",
+      "credentials": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "paid_side_effect": true,
+      "requested_provider": "veo3",
+      "actual_provider": "veo3"
+    },
+    {
+      "provider": "wan_2_7",
+      "software_gate": "PASS",
+      "credentials": {
+        "WAVESPEED_API_KEY": "ABSENT"
+      },
+      "runtime_status": "BLOCKED_NO_CREDENTIAL",
+      "blocker": "OWNER_BLOCKED_NO_CREDENTIAL",
+      "paid_side_effect": true,
+      "requested_provider": "wan_2_7",
+      "actual_provider": "wan_2_7"
+    },
+    {
+      "provider": "wan_2_7_maas",
+      "software_gate": "PASS",
+      "credentials": {
+        "ALIBABA_MAAS_API_KEY": "PRESENT"
+      },
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "paid_side_effect": true,
+      "requested_provider": "wan_2_7_maas",
+      "actual_provider": "wan_2_7_maas"
+    },
+    {
+      "provider": "wan_cloud",
+      "software_gate": "PASS",
+      "credentials": {
+        "FAL_API_KEY": "PRESENT"
+      },
+      "runtime_status": "READY_NO_PAID_RUN",
+      "blocker": "OWNER_BLOCKED_SPEND",
+      "paid_side_effect": true,
+      "requested_provider": "wan_cloud",
+      "actual_provider": "wan_cloud"
+    },
+    {
+      "provider": "wan_local",
+      "software_gate": "PASS",
+      "credentials": {},
+      "runtime_status": "ENV_BLOCKED_GPU_UNSTABLE",
+      "blocker": "ENV_BLOCKED_GPU_UNSTABLE",
+      "paid_side_effect": false,
+      "requested_provider": "wan_local",
+      "actual_provider": "wan_local"
+    }
+  ],
+  "readiness_ref": "artifacts/qualification/provider_readiness.json",
+  "second_provider_audit_ref": "artifacts/qualification/second-provider-audit.json",
+  "EXTERNAL_PROVIDER_READINESS": "PASS"
+}

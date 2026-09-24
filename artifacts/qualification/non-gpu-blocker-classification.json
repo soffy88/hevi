@@ -1,0 +1,12 @@
+{
+  "wave": "W16_BLOCKER_CLASSIFICATION",
+  "generated_at": "2026-09-24T04:13:48.933448+00:00",
+  "counts": {
+    "ENV_BLOCKED": 5,
+    "NONE": 14,
+    "HEVI_SOFTWARE_BLOCKED": 1,
+    "OWNER_BLOCKED_SPEND": 10,
+    "OWNER_BLOCKED_NO_CREDENTIAL": 2
+  },
+  "HEVI_SOFTWARE_BLOCKED": 1
+}
