@@ -1,0 +1,60 @@
+{
+  "gate": "P0_3O_CLEAN_INSTALL",
+  "CLEAN_INSTALL_GATE": "PASS",
+  "generated_at": "2026-09-24T02:07:47.566751+00:00",
+  "clean_venv": "/data/soffy/tmp/hevi-clean-install/.venv",
+  "environment_isolated": true,
+  "PYTHONPATH_masking": false,
+  "editable_install_of_oprim": false,
+  "uv_lock_check_returncode": 0,
+  "uv_lock_check_output": "Resolved 243 packages in 0.76ms",
+  "patch_script_absent": true,
+  "pins": {
+    "oprim": "25653ba2874bf0f9a5011f2a23ac3164ee673125",
+    "obase": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+    "oskill": "cac39df03778d4e4e44db3c006f8fc788dc757f6",
+    "omodul": "bdb48f52032e69818281c779169959e0650a558d",
+    "oservi": "2527968d4d7e2455a48b280cb191012f4266d0bb"
+  },
+  "required_pins": {
+    "oprim": "25653ba2874bf0f9a5011f2a23ac3164ee673125",
+    "obase": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+    "oskill": "cac39df03778d4e4e44db3c006f8fc788dc757f6",
+    "omodul": "bdb48f52032e69818281c779169959e0650a558d",
+    "oservi": "2527968d4d7e2455a48b280cb191012f4266d0bb"
+  },
+  "pins_match": true,
+  "oprim_version_metadata": "3.12.0",
+  "oprim_direct_url": {
+    "url": "https://github.com/helios-plat/oprim.git",
+    "vcs_info": {
+      "vcs": "git",
+      "commit_id": "25653ba2874bf0f9a5011f2a23ac3164ee673125",
+      "requested_revision": "25653ba2874bf0f9a5011f2a23ac3164ee673125"
+    }
+  },
+  "probes": {
+    "oprim_exports": "PASS",
+    "oprim_private_errors": "PASS",
+    "hevi_voiceover": "PASS",
+    "hevi_audio_router": "PASS",
+    "test_oprim_prims_import": "PASS",
+    "frontmatter_via_oprim_transitive": "PASS",
+    "vibevoice_tts_call_absent": "PASS",
+    "no_hevi_frontmatter_declared": "PASS",
+    "probe_duration_module": "PASS"
+  },
+  "probes_all_pass": true,
+  "oprim_declares_python_frontmatter": true,
+  "hevi_declares_python_frontmatter": false,
+  "vibevoice_tts_call_not_exported": true,
+  "note": "Fresh UV_PROJECT_ENVIRONMENT venv on /data (tmpfs /tmp quota exceeded for torch/playwright); uv sync --frozen; no patch; no PYTHONPATH",
+  "editable_oprim": false,
+  "location_note": "On /data (tmpfs /tmp hit usrquota during torch/playwright copy)",
+  "patch_invocations_removed": [
+    "Dockerfile:45",
+    ".github/workflows/ci.yml:68-69"
+  ],
+  "task": "HEVI_RELEASE_BLOCKER_CLOSURE",
+  "base_sha": "7c91cd9119c99724320bb85a3d19df488b7f4689"
+}

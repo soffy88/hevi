@@ -42,7 +42,6 @@ RUN --mount=type=ssh uv sync --no-dev --frozen
 
 COPY scripts/ ./scripts/
 RUN python scripts/patch_vibevoice.py
-RUN python scripts/patch_oprim_prims.py
 
 # Playwright 浏览器 + 系统依赖(补齐 libgtk-3 等, 供 Lite 管道录屏)。
 RUN /app/.venv/bin/python -m playwright install --with-deps chromium

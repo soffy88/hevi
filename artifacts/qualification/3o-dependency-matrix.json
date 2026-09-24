@@ -1,0 +1,183 @@
+{
+  "task": "HEVI_RELEASE_BLOCKER_CLOSURE",
+  "base_sha": "7c91cd9119c99724320bb85a3d19df488b7f4689",
+  "oprim_pin": "25653ba2874bf0f9a5011f2a23ac3164ee673125",
+  "obase_pin": "7d31719d8411b4fb34952ae4098ab320625d14dd",
+  "oskill_pin": "cac39df03778d4e4e44db3c006f8fc788dc757f6",
+  "omodul_pin": "bdb48f52032e69818281c779169959e0650a558d",
+  "oservi_pin": "2527968d4d7e2455a48b280cb191012f4266d0bb",
+  "patch_script": "scripts/patch_oprim_prims.py (DELETED)",
+  "patch_invocations": [],
+  "patch_not_invoked_by": [
+    "deploy/Dockerfile.api",
+    "deploy/Dockerfile.web",
+    "scripts/check.sh",
+    "scripts/live_env.sh"
+  ],
+  "installed_site_packages_is_patched": false,
+  "matrix": [
+    {
+      "symbol": "probe_duration",
+      "owning_3O_package": "oprim",
+      "hevi_import_sites": [
+        "hevi/explainer/voiceover.py:23 (top-level)",
+        "hevi/audio/audio_router.py:28 (top-level)",
+        "hevi/assembly/assembler.py:42 (lazy)",
+        "hevi/assembly/assembler.py:282 (lazy)",
+        "hevi/audio/funasr_verify.py:120 (lazy)",
+        "hevi/digital_human/talking_face.py:305 (lazy)",
+        "hevi/dub/_synth.py:64 (lazy)",
+        "hevi/studio/timeline.py:315 (lazy)",
+        "hevi/tongjian/voiceover.py:106 (lazy)",
+        "tests/test_oprim_prims.py:14"
+      ],
+      "currently_exported_by_pin": true,
+      "currently_supplied_by_patch": false,
+      "required_runtime_dependency": "ffprobe (system binary)",
+      "canonical_owner": "oprim",
+      "resolution": "LANDED_IN_OPRIM@25653ba: package export; patch retired",
+      "landed_in_oprim_commit": "25653ba2874bf0f9a5011f2a23ac3164ee673125"
+    },
+    {
+      "symbol": "edge_tts_word_boundary",
+      "owning_3O_package": "oprim",
+      "hevi_import_sites": [
+        "hevi/explainer/voiceover.py:23 (top-level)",
+        "hevi/audio/edge_tts_custom.py:153 (lazy)",
+        "hevi/digital_human/line_tts.py:47 (lazy)",
+        "tests/test_oprim_prims.py:14"
+      ],
+      "currently_exported_by_pin": true,
+      "currently_supplied_by_patch": false,
+      "required_runtime_dependency": "edge-tts>=7.2 (oprim[tts] optional; HEVI also declares edge-tts directly)",
+      "canonical_owner": "oprim",
+      "resolution": "LANDED_IN_OPRIM@25653ba: package export; patch retired",
+      "landed_in_oprim_commit": "25653ba2874bf0f9a5011f2a23ac3164ee673125"
+    },
+    {
+      "symbol": "vibevoice_tts_call",
+      "owning_3O_package": "oprim (misclassified — delegates back into hevi.audio.tts_service)",
+      "hevi_import_sites": [],
+      "currently_exported_by_patch": true,
+      "currently_exported_by_pin": false,
+      "currently_supplied_by_patch": false,
+      "required_runtime_dependency": "hevi.audio.tts_service (circular oprim→hevi)",
+      "canonical_owner": "HEVI (no production import sites exist)",
+      "resolution": "RECLASSIFIED_NO_HEVI_CALLER: not landed; patch retired"
+    },
+    {
+      "symbol": "chattts_call",
+      "owning_3O_package": "oprim",
+      "hevi_import_sites": [
+        "hevi/audio/audio_router.py:134 (lazy; ImportError→voicebox fallback)"
+      ],
+      "currently_exported_by_pin": false,
+      "currently_supplied_by_patch": false,
+      "required_runtime_dependency": "ChatTTS runtime",
+      "canonical_owner": "oprim (optional capability)",
+      "resolution": "NO_PATCH_DEPENDENCY: already optional at HEVI boundary; not required for clean install; P1-D owns explicit provider identity for substitution"
+    },
+    {
+      "symbol": "funasr_asr",
+      "owning_3O_package": "oprim",
+      "hevi_import_sites": [
+        "hevi/audio/funasr_verify.py:57 (lazy; currently falls back to heuristic — P1-C)"
+      ],
+      "currently_exported_by_pin": false,
+      "currently_supplied_by_patch": false,
+      "required_runtime_dependency": "FunASR pipeline",
+      "canonical_owner": "oprim (optional capability)",
+      "resolution": "NO_PATCH_DEPENDENCY: not supplied by pin or patch; P1-C fail-closes heuristic path; not required for clean install"
+    },
+    {
+      "symbol": "whisper_asr_verify",
+      "owning_3O_package": "oprim",
+      "hevi_import_sites": [
+        "hevi/explainer/asr_verify.py:54 (lazy; AsrVerificationError on ImportError)",
+        "hevi/explainer/voiceover.py:169 (lazy; gated by HEVI_EXPLAINER_ASR_VERIFY)"
+      ],
+      "currently_exported_by_pin": false,
+      "currently_supplied_by_patch": false,
+      "required_runtime_dependency": "faster-whisper (HEVI declares; oprim._transcribe_audio lazy-imports it)",
+      "canonical_owner": "oprim (optional capability)",
+      "resolution": "NO_PATCH_DEPENDENCY: HEVI already fail-closes when missing; not required for clean install"
+    },
+    {
+      "symbol": "heygen_avatar_generate",
+      "owning_3O_package": "oprim",
+      "hevi_import_sites": [
+        "hevi/explainer/heygen.py:24 (lazy; HeyGenUnavailable on ImportError)"
+      ],
+      "currently_exported_by_pin": false,
+      "currently_supplied_by_patch": false,
+      "required_runtime_dependency": "HeyGen API",
+      "canonical_owner": "oprim (optional capability)",
+      "resolution": "NO_PATCH_DEPENDENCY: HEVI fail-closes; not required for clean install"
+    },
+    {
+      "symbol": "cover_extract_and_render",
+      "owning_3O_package": "oprim",
+      "hevi_import_sites": [
+        "hevi/explainer/cover.py:19 (lazy; ImportError→hevi.assembly.cover_extractor.extract_cover)"
+      ],
+      "currently_exported_by_pin": false,
+      "currently_supplied_by_patch": false,
+      "required_runtime_dependency": "ffprobe/ffmpeg frame extraction",
+      "canonical_owner": "oprim preferred; HEVI local extractor is current fallback",
+      "resolution": "NO_PATCH_DEPENDENCY: not supplied by pin or patch; P1-E cover fallback audit owns production path honesty"
+    }
+  ],
+  "transitive_dependency_ownership": [
+    {
+      "package": "python-frontmatter",
+      "hevi_declared": false,
+      "hevi_imports_directly": false,
+      "oprim_imports": [
+        "oprim/_file_parser_markdown.py:7"
+      ],
+      "oprim_declared_at_pin": false,
+      "classification": "OPRIM_TRANSITIVE_LEAK",
+      "resolution": "MOVED_TO_OPRIM@25653ba: python-frontmatter required by oprim; removed from HEVI pyproject"
+    },
+    {
+      "package": "vibevoice",
+      "hevi_declared": true,
+      "hevi_imports_directly": true,
+      "hevi_import_sites": [
+        "hevi/audio/vibevoice_patch.py",
+        "tests/test_providers.py"
+      ],
+      "oprim_imports": [
+        "oprim/_vibevoice_synthesize.py"
+      ],
+      "oprim_declared_at_pin": "optional-dependencies.tts (>=0.0.1)",
+      "classification": "HEVI_DIRECT_IMPORT_LEGAL",
+      "resolution": "KEEP_IN_HEVI: HEVI imports vibevoice directly; not a transitive-only leak"
+    },
+    {
+      "package": "dashscope",
+      "hevi_declared": true,
+      "hevi_imports_directly": true,
+      "hevi_import_sites": [
+        "hevi/audio/qwen_tts_maas.py:41"
+      ],
+      "oprim_imports": [
+        "oprim/embedding/qwen3_dashscope.py",
+        "oprim/providers/qwen3.py",
+        "oprim/_transcribe_audio.py"
+      ],
+      "oprim_declared_at_pin": "optional-dependencies.llm (>=1.14)",
+      "classification": "HEVI_DIRECT_IMPORT_LEGAL",
+      "resolution": "KEEP_IN_HEVI: HEVI imports dashscope directly; not a transitive-only leak"
+    }
+  ],
+  "oprim_transitive_dependency_leak_count_before": 1,
+  "oprim_transitive_dependency_leak_count_target": 0,
+  "oprim_pin_previous": "e7f9c65196437d3bff09401aa02bc817d071eec3",
+  "oprim_landed_branch": "fix/media-prims-probe-edge-tts",
+  "patch_retired": true,
+  "uv_sources_override": "tool.uv.override-dependencies forces oprim@25653ba across omodul/oskill/oservi hard-pins",
+  "oprim_transitive_dependency_leak_count_after": 0,
+  "uv_override_note": "tool.uv.override-dependencies forces single oprim URL across omodul/oskill/oservi hard-pins",
+  "clean_install_artifact": "artifacts/qualification/3o-clean-install.json"
+}

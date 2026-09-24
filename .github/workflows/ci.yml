@@ -65,9 +65,6 @@ jobs:
       - name: Install Playwright browser
         run: uv run playwright install --with-deps chromium
 
-      - name: Install 3O compatibility prims
-        run: uv run python scripts/patch_oprim_prims.py
-
       - name: Patch VibeVoice runtime compatibility
         run: uv run python scripts/patch_vibevoice.py
 

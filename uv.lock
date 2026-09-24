@@ -12,6 +12,7 @@ resolution-markers = [
 
 [manifest]
 overrides = [
+    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=25653ba2874bf0f9a5011f2a23ac3164ee673125" },
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "transformers", specifier = "==5.17.0" },
 ]
@@ -1250,7 +1251,6 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "python-dotenv" },
-    { name = "python-frontmatter" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "sqlmodel" },
     { name = "torch" },
@@ -1293,7 +1293,7 @@ requires-dist = [
     { name = "minio", specifier = ">=7.2.20" },
     { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=7d31719d8411b4fb34952ae4098ab320625d14dd" },
     { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=bdb48f52032e69818281c779169959e0650a558d" },
-    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=e7f9c65196437d3bff09401aa02bc817d071eec3" },
+    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=25653ba2874bf0f9a5011f2a23ac3164ee673125" },
     { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=2527968d4d7e2455a48b280cb191012f4266d0bb" },
     { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=cac39df03778d4e4e44db3c006f8fc788dc757f6" },
     { name = "pillow", specifier = ">=10" },
@@ -1304,7 +1304,6 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10" },
     { name = "python-dotenv", specifier = ">=1.0" },
-    { name = "python-frontmatter", specifier = ">=1.3.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "sqlmodel", specifier = ">=0.0.39" },
     { name = "torch", specifier = ">=2.12.0" },
@@ -2380,7 +2379,7 @@ wheels = [
 [[package]]
 name = "oprim"
 version = "3.12.0"
-source = { git = "https://github.com/helios-plat/oprim.git?rev=e7f9c65196437d3bff09401aa02bc817d071eec3#e7f9c65196437d3bff09401aa02bc817d071eec3" }
+source = { git = "https://github.com/helios-plat/oprim.git?rev=25653ba2874bf0f9a5011f2a23ac3164ee673125#25653ba2874bf0f9a5011f2a23ac3164ee673125" }
 dependencies = [
     { name = "chardet" },
     { name = "dnspython" },
@@ -2394,6 +2393,7 @@ dependencies = [
     { name = "psutil" },
     { name = "pydantic" },
     { name = "python-alipay-sdk" },
+    { name = "python-frontmatter" },
     { name = "python-magic" },
     { name = "python-ulid" },
     { name = "pyyaml" },
