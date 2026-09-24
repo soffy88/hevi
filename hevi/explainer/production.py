@@ -128,6 +128,19 @@ async def render_narrated_storyboard(
         output_dir / "cover.jpg",
         title=storyboard.topic,
     )
+    cover_outcome = "completed" if cover.get("status") == "succeeded" else "failed"
+    cover_trail: dict[str, Any] = {
+        "stage": "cover_extract_and_render",
+        "outcome": cover_outcome,
+        "requested_extractor": cover.get("requested_extractor"),
+        "actual_extractor": cover.get("actual_extractor"),
+        "extractor_substituted": bool(cover.get("extractor_substituted")),
+    }
+    if cover.get("fallback_reason"):
+        cover_trail["fallback_reason"] = cover["fallback_reason"]
+    if cover.get("status") != "succeeded" and cover.get("error"):
+        cover_trail["error"] = cover["error"]
+    result.setdefault("decision_trail", []).append(cover_trail)
     if cover.get("status") == "succeeded":
         result.setdefault("artifacts", []).append(
             {
@@ -135,10 +148,10 @@ async def render_narrated_storyboard(
                 "path": cover["path"],
                 "media_type": cover["media_type"],
                 "primary": False,
+                "requested_extractor": cover.get("requested_extractor"),
+                "actual_extractor": cover.get("actual_extractor"),
+                "extractor_substituted": bool(cover.get("extractor_substituted")),
             }
-        )
-        result.setdefault("decision_trail", []).append(
-            {"stage": "cover_extract_and_render", "outcome": "completed"}
         )
 
     portrait_path = _path_from_artifact(result, primary=True)

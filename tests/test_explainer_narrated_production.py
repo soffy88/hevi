@@ -44,6 +44,14 @@ async def test_e2_uses_standard_narrated_transaction_through_oservi(
     assert result.landscape_path == tmp_path / "landscape.mp4"
     assert result.engine_result["status"] == "succeeded"
     assert result.engine_result["artifacts"][0]["primary"] is True
+    cover_trail = [
+        t
+        for t in result.engine_result.get("decision_trail", [])
+        if t.get("stage") == "cover_extract_and_render"
+    ]
+    assert cover_trail, "cover stage must be recorded for production honesty"
+    assert cover_trail[0]["outcome"] in {"completed", "failed"}
+    assert "actual_extractor" in cover_trail[0]
 
 
 @pytest.mark.asyncio
