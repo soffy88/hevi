@@ -1,0 +1,103 @@
+{
+  "benchmark_id": "5c17d91d-c4aa-4b6a-bd45-c8399ae4c5b9",
+  "task_id": "54c3243c-e804-4f66-851e-8f25b6a04d78",
+  "task_status": "completed",
+  "task_error": null,
+  "case_id": "295b72d0-25a7-44bb-ab94-bc0a4233c47a",
+  "analysis_id": "dde8eeac-f821-418c-868e-9f9df932d1d8",
+  "plan_hash": "8658b34dea55bb19b1a9acde37cfd7a28ccc6a44243e0207dbc1a4c538669d95",
+  "plan_id": "632fd60b-ea36-4a88-a284-a2be8dbce26d",
+  "benchmark_providers": [
+    "hyperframes",
+    "manim"
+  ],
+  "benchmark": {
+    "status": "succeeded",
+    "failure_code": null,
+    "provider_count": 2,
+    "reproduction_count": 2
+  },
+  "children": [
+    {
+      "provider_id": "manim",
+      "status": "succeeded",
+      "id": "ce41bd3b-0bd7-419f-9771-adabd683acb4",
+      "verdict_id": "1542d2e7-3c8a-4cad-88e8-e9a934246219"
+    },
+    {
+      "provider_id": "hyperframes",
+      "status": "succeeded",
+      "id": "f2a7202d-fd7d-44ae-a3d6-365918b35a0f",
+      "verdict_id": "0c3a308b-57c3-47aa-9358-706bce574a07"
+    }
+  ],
+  "child_providers": [
+    "hyperframes",
+    "manim"
+  ],
+  "child_count": 2,
+  "child_terminal": true,
+  "entries": [
+    {
+      "id": "2eb8b2bb-6471-4aa2-8b02-2a1d00234adf",
+      "reproduction_id": "ce41bd3b-0bd7-419f-9771-adabd683acb4",
+      "provider_id": "manim",
+      "verdict_id": "1542d2e7-3c8a-4cad-88e8-e9a934246219",
+      "cost": null,
+      "latency_ms": 149.87696401658468
+    },
+    {
+      "id": "267a931f-74f8-4788-832f-ab9812abfaa6",
+      "reproduction_id": "f2a7202d-fd7d-44ae-a3d6-365918b35a0f",
+      "provider_id": "hyperframes",
+      "verdict_id": "0c3a308b-57c3-47aa-9358-706bce574a07",
+      "cost": null,
+      "latency_ms": 1456.9191570044495
+    }
+  ],
+  "entry_count": 2,
+  "evidence": [
+    {
+      "id": "619cd47a-d123-4014-a9a8-2eb00d193581",
+      "pattern_id": "01f5172b-fbda-4403-8e9e-919dc5330df0",
+      "evidence_type": "positive",
+      "reproduction_id": "f2a7202d-fd7d-44ae-a3d6-365918b35a0f"
+    },
+    {
+      "id": "a99c8df5-871c-4f18-9bdd-678bd69b3ffe",
+      "pattern_id": "01f5172b-fbda-4403-8e9e-919dc5330df0",
+      "evidence_type": "positive",
+      "reproduction_id": "ce41bd3b-0bd7-419f-9771-adabd683acb4"
+    }
+  ],
+  "evidence_count": 2,
+  "patterns": [
+    {
+      "id": "01f5172b-fbda-4403-8e9e-919dc5330df0",
+      "name": "benchmark-plan:8658b34dea55bb19",
+      "evidence_count": 2
+    }
+  ],
+  "config": {
+    "child_reproductions_submitted": true,
+    "child_reproductions_terminal": true,
+    "benchmark_aggregated": true,
+    "benchmark_entry_count": 2,
+    "failure_code": null,
+    "child_statuses": {
+      "hyperframes": "succeeded",
+      "manim": "succeeded"
+    }
+  },
+  "gates": {
+    "CHILD_REPRODUCTIONS_SUBMITTED": true,
+    "CHILD_REPRODUCTIONS_TERMINAL": true,
+    "BENCHMARK_AGGREGATED": true,
+    "REAL_BENCHMARK_ENTRY_COUNT_GE_2": true,
+    "REAL_BENCHMARK_PROVIDER_COUNT_GE_2": true,
+    "BENCHMARK_STATUS_SUCCEEDED": true,
+    "TASK_COMPLETED": true
+  },
+  "cross_model_runtime_qualified": true,
+  "auto_pattern_promotion": 0
+}

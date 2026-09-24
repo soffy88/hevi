@@ -34,6 +34,7 @@ from hevi.video_intelligence.intelligence_repository import (
     IntelligenceRepository,
     pattern_plan_hash,
 )
+from hevi.video_intelligence.intelligence_runtime import BENCHMARK_DIMENSIONS
 from hevi.video_intelligence.runtime_repository import (
     CaseAnalysisRepository,
     CaseReproductionRepository,
@@ -326,7 +327,7 @@ async def benchmark_case_endpoint(
         "reference_bindings": analysis_json.get("reference_bindings") or [],
         "duration_ms": case.duration_ms,
         "aspect_ratio": case.aspect_ratio,
-        "acceptance_dimensions": [],
+        "acceptance_dimensions": list(BENCHMARK_DIMENSIONS),
     }
     ir = IntelligenceRepository(repo.pool)
     plan_row = await ir.create_benchmark_plan(

@@ -21,7 +21,7 @@ BENCHMARK_DIMENSIONS = (
 
 
 async def execute_case_benchmark_task(task: dict[str, Any], pool: PgPool) -> dict[str, Any]:
-    """Freeze one plan and fail closed when a second real provider is absent."""
+    """Freeze one plan, fan out child reproductions, then durable fan-in."""
     config = dict(task.get("config_json") or {})
     user_id = str(task.get("user_id") or config.get("user_id") or "")
     case_id = str(config.get("case_id") or "")
@@ -44,6 +44,7 @@ async def execute_case_benchmark_task(task: dict[str, Any], pool: PgPool) -> dic
         "acceptance_dimensions": list(BENCHMARK_DIMENSIONS),
     }
     plan_hash = pattern_plan_hash(plan)
+    plan["plan_hash"] = plan_hash
     repo = IntelligenceRepository(pool)
     stored_plan = await repo.create_benchmark_plan(
         user_id=user_id, workspace_id=config.get("workspace_id"), case_id=case_id,
@@ -60,14 +61,21 @@ async def execute_case_benchmark_task(task: dict[str, Any], pool: PgPool) -> dic
             "status": "blocked", "error": "SECOND_REAL_PROVIDER_UNAVAILABLE",
             "config_json": {**config, "benchmark_plan_id": str(stored_plan["id"])},
         }
-    # The actual child reproductions are deliberately submitted through the
-    # existing case_reproduction durable path by the application composition
-    # layer.  This adapter never calls a provider directly.
-    await repo.finish_benchmark(
-        benchmark_id, user_id=user_id, status="pending", provider_count=len(providers),
-        reproduction_count=0, failure_code="CHILD_REPRODUCTIONS_NOT_SUBMITTED",
+    from .benchmark_composition import run_benchmark_composition
+
+    return await run_benchmark_composition(
+        pool=pool,
+        task=task,
+        config={**config, "benchmark_plan_id": str(stored_plan["id"])},
+        user_id=user_id,
+        case_id=case_id,
+        analysis_id=analysis_id,
+        benchmark_id=benchmark_id,
+        plan=plan,
+        plan_hash=plan_hash,
+        providers=providers,
+        workspace_id=config.get("workspace_id"),
     )
-    return {"status": "failed", "error": "CHILD_REPRODUCTIONS_NOT_SUBMITTED", "config_json": config}
 
 
 async def execute_template_qualification_task(task: dict[str, Any], pool: PgPool) -> dict[str, Any]:

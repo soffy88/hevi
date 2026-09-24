@@ -1,0 +1,81 @@
+{
+  "doctor": "cross_model_benchmark_runtime_closure",
+  "generated_at": "2026-09-24T01:26:57.912077+00:00",
+  "root": "/data/soffy/projects/hevi",
+  "branch": "closure/3o-v3-architecture-creative-baseline",
+  "BASE_SHA": "295f467",
+  "FINAL_SHA": null,
+  "claims": {
+    "SECOND_INDEPENDENT_PROVIDER": "QUALIFIED",
+    "CROSS_MODEL_BENCHMARK_RUNTIME": "QUALIFIED",
+    "note": "Two distinct claims. SECOND_INDEPENDENT_PROVIDER was already qualified from Track 4 (distinct_succeeded_repro_providers=2). CROSS_MODEL_BENCHMARK_RUNTIME is qualified only after the real child submission + fan-in + entries + aggregation closed 2026-09-24."
+  },
+  "real_benchmark": {
+    "benchmark_id": "5c17d91d-c4aa-4b6a-bd45-c8399ae4c5b9",
+    "task_id": "54c3243c-e804-4f66-851e-8f25b6a04d78",
+    "task_status": "completed",
+    "status": "succeeded",
+    "provider_count": 2,
+    "reproduction_count": 2,
+    "entry_count": 2,
+    "pattern_evidence_count": 2,
+    "child_providers": [
+      "hyperframes",
+      "manim"
+    ],
+    "child_reproductions_submitted": true,
+    "child_reproductions_terminal": true,
+    "benchmark_aggregated": true,
+    "failure_code": null,
+    "cross_model_runtime_qualified": true,
+    "AUTO_PATTERN_PROMOTION": 0,
+    "pattern_lifecycle_status": "candidate",
+    "evidence": "artifacts/qualification/cross-model-benchmark-runtime.json"
+  },
+  "gates": {
+    "RUFF": "PASS",
+    "MYPY_BASELINE_ERRORS": 13,
+    "NEW_MYPY_ERRORS": 0,
+    "PYTEST": "3365 passed, 30 skipped, 0 failed",
+    "TASK_INTRODUCED_REGRESSION": 0,
+    "WORKTREE_CLEAN": "YES",
+    "UNRELATED_DIRTY_PRESERVED": "YES"
+  },
+  "composition_layer": {
+    "module": "hevi/video_intelligence/benchmark_composition.py",
+    "adapter": "hevi/video_intelligence/intelligence_runtime.py::execute_case_benchmark_task",
+    "claim_task": "hevi/tasks/repository.py::claim_task",
+    "benchmark_entry_caller": "intelligence_repository.benchmark_entry",
+    "pattern_evidence_caller": "intelligence_repository.add_pattern_evidence",
+    "unit_tests": [
+      "tests/video_intelligence/test_benchmark_child_submission.py",
+      "tests/video_intelligence/test_benchmark_child_idempotency.py",
+      "tests/video_intelligence/test_benchmark_partial_completion.py",
+      "tests/video_intelligence/test_benchmark_restart_recovery.py",
+      "tests/video_intelligence/test_benchmark_fan_in.py",
+      "tests/video_intelligence/test_benchmark_entry_persistence.py",
+      "tests/video_intelligence/test_benchmark_pattern_evidence.py"
+    ]
+  },
+  "remaining_blockers": [
+    {
+      "id": "CUDA_NVML_WEDGED",
+      "class": "ENV_BLOCKED",
+      "owner": "hardware/soffy",
+      "blocks_software_gate": false
+    },
+    {
+      "id": "WAVESPEED_KEY_ABSENT",
+      "class": "OWNER_BLOCKED_NO_CREDENTIAL",
+      "owner": "soffy",
+      "blocks_software_gate": false
+    },
+    {
+      "id": "FAL_MAAS_SPEND",
+      "class": "OWNER_BLOCKED_SPEND",
+      "owner": "soffy",
+      "blocks_software_gate": false
+    }
+  ],
+  "FINAL_CLASSIFICATION": "CROSS_MODEL_BENCHMARK_RUNTIME_QUALIFIED_WITH_ENV_OWNER_CLASSIFICATIONS"
+}

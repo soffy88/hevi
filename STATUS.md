@@ -26,20 +26,38 @@ Track 4 second independent provider qualified: manim durable case_reproduction
 succeeded twice (`37fe0626-…` then `f80d36eb-…` in
 `second-provider-manim-repro.json`, real MP4, canonical verdict);
 `distinct_succeeded_repro_providers=2` (hyperframes+manim);
-`second-provider-audit.json` `cross_model_qualified=true`, software_gate PASS;
-benchmark with `[hyperframes, manim]` reaches
-`CHILD_REPRODUCTIONS_NOT_SUBMITTED` (provider_count=2), not
-`SECOND_REAL_PROVIDER_UNAVAILABLE`.
+`second-provider-audit.json` `cross_model_qualified=true`, software_gate PASS.
 Candidate classification (not blanket OWNER_BLOCKED): hyperframes
 BASELINE_QUALIFIED; manim FREE_LOCAL_RUNNABLE (counted after real run);
 WaveSpeed pair OWNER_BLOCKED_NO_CREDENTIAL; FAL/MAAS candidates
 OWNER_BLOCKED_SPEND; h3/wan_local/ltx2_local ENV_BLOCKED; remotion/ffmpeg/
 motion_graphics NOT_REGISTERED_VIDEO. Still open: CUDA/NVML wedged (hardware,
-ENV_BLOCKED — never reboot without asking soffy). **Final full regression +
-acceptance report recorded 2026-09-24**:
-`artifacts/qualification/final-acceptance-report.json` —
-`RUFF=PASS`, `MYPY=BASELINE (13 pre-existing)`, `PYTEST=3343 passed / 0 failed`,
-`WORKTREE_CLEAN=YES`, `UNRELATED_DIRTY_PRESERVED=YES` (.veya-project untouched).
+ENV_BLOCKED — never reboot without asking soffy).
+
+**Status correction 2026-09-24 — two distinct claims, both now real:**
+
+| claim | status | evidence |
+|---|---|---|
+| `SECOND_INDEPENDENT_PROVIDER=QUALIFIED` | **QUALIFIED** (was already true from Track 4) | `distinct_succeeded_repro_providers=2` (hyperframes+manim); `second-provider-audit.json` |
+| `CROSS_MODEL_BENCHMARK_RUNTIME=QUALIFIED` | **QUALIFIED** (closed 2026-09-24 by composition layer) | `artifacts/qualification/cross-model-benchmark-runtime.json` — benchmark `5c17d91d-…`, task `54c3243c-…` `completed`, children hyperframes `f2a7202d-…` + manim `ce41bd3b-…` both `succeeded`, `entry_count=2`, `pattern_evidence_count=2` (positive×2), `failure_code=null`, `cross_model_runtime_qualified=true`, `AUTO_PATTERN_PROMOTION=0` |
+
+The earlier Track 4 statement "benchmark reaches
+`CHILD_REPRODUCTIONS_NOT_SUBMITTED`" is historical: that was true before the
+composition layer existed. `execute_case_benchmark_task` now freezes the plan
+(`BENCHMARK_DIMENSIONS` shared with API so `plan_hash` matches) and delegates
+to `run_benchmark_composition` which submits children via `TaskService`,
+claims with `TaskRepository.claim_task`, runs nested under
+`worker_id=benchmark-composition`, fans in after all terminal, persists
+`BenchmarkEntry` + pattern evidence. Old row `fc0b79ee-…` still shows
+`CHILD_REPRODUCTIONS_NOT_SUBMITTED` as a historical failed run; the new
+succeeded run is `5c17d91d-…`.
+
+Regression after composition close: `RUFF=PASS`, `MYPY=BASELINE (13
+pre-existing)`, `PYTEST=3365 passed / 30 skipped / 0 failed`, pattern
+`lifecycle_status=candidate` (never auto-promoted), `PROMOTED_PATTERNS=0`.
+Acceptance report: `artifacts/qualification/final-acceptance-report.json`
+(tracks 1–4) + `artifacts/qualification/cross-model-benchmark-runtime.json`
+(composition E2E).
 
 ---
 

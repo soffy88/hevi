@@ -364,6 +364,75 @@ class TaskRepository:
             result["_scheduler_decision"] = decision.model_dump(mode="json")
             return result
 
+    async def claim_task(
+        self,
+        task_id: uuid.UUID | str,
+        *,
+        worker_id: str,
+        lease_seconds: int | None = None,
+    ) -> dict[str, Any] | None:
+        """Atomically claim one specific queued task by id.
+
+        Composition layers that already know which child task must run use this
+        instead of claim_next, so they never steal an unrelated queued row.
+        """
+        lease_seconds = lease_seconds or settings.task_lease_seconds
+        lease_token = str(uuid.uuid4())
+        target = uuid.UUID(str(task_id))
+        async with self.pool.acquire() as conn, conn.transaction():
+            claimed = await conn.fetchrow(
+                """
+                UPDATE video_tasks
+                SET status = 'claimed', worker_id = $1, lease_token = $2,
+                    lease_until = NOW() + ($3 * interval '1 second'),
+                    heartbeat_at = NOW(), scheduled_at = NULL,
+                    current_attempt_id = NULL, updated_at = NOW()
+                WHERE id = $4 AND status = 'queued'
+                  AND (available_at IS NULL OR available_at <= NOW())
+                RETURNING video_tasks.*
+                """,
+                worker_id,
+                lease_token,
+                lease_seconds,
+                target,
+            )
+            if claimed is None:
+                return None
+            await conn.execute(
+                """
+                INSERT INTO domain_events
+                    (id, aggregate_type, aggregate_id, event_type,
+                     schema_version, payload, created_at)
+                VALUES ($1, 'task', $2, 'task.status.claimed', 1, $3, NOW())
+                """,
+                uuid.uuid4(),
+                target,
+                {
+                    "task_id": str(target),
+                    "from_status": "queued",
+                    "to_status": "claimed",
+                    "worker_id": worker_id,
+                    "lease_token": lease_token,
+                    "claim": "claim_task_by_id",
+                },
+            )
+            await conn.execute(
+                """
+                INSERT INTO scheduler_dispatches
+                    (id, task_id, worker_id, score, policy_version, decision_json)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                """,
+                uuid.uuid4(),
+                target,
+                worker_id,
+                0.0,
+                1,
+                {"claim": "claim_task_by_id", "task_id": str(target)},
+            )
+            result = dict(claimed)
+            result["_scheduler_decision"] = {"claim": "claim_task_by_id"}
+            return result
+
     async def heartbeat(
         self, task_id: uuid.UUID, lease_token: str, lease_seconds: int = 120
     ) -> bool:

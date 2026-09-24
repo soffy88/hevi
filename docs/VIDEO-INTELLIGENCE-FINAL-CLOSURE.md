@@ -68,12 +68,15 @@ was classified; they do not mean the environment-blocked suite is green.
   credentials present but spending requires soffy authorization
   (`OWNER_BLOCKED_SPEND`); h3_local/wan_local/ltx2_local `ENV_BLOCKED`.
   remotion/ffmpeg/motion_graphics are `NOT_REGISTERED_VIDEO`.
-- Benchmark gate note: with `<2` `benchmark_providers` a benchmark finishes
-  `blocked/SECOND_REAL_PROVIDER_UNAVAILABLE`; with `>=2` it reaches
-  `CHILD_REPRODUCTIONS_NOT_SUBMITTED` because no composition-layer child
-  submission exists. Pattern promotion still requires `total>=5` and
-  `provider_count>=2` on `video_pattern_evidence` (caller-less today) — not
-  fabricated for this closure.
+- **Benchmark gate note (historical, superseded 2026-09-24):** with `<2`
+  `benchmark_providers` a benchmark finishes
+  `blocked/SECOND_REAL_PROVIDER_UNAVAILABLE`. With `>=2` providers it used
+  to end at `CHILD_REPRODUCTIONS_NOT_SUBMITTED` because no composition-layer
+  child submission existed (row `fc0b79ee-…` still records that state).
+  Pattern promotion still requires `total>=5` and `provider_count>=2` on
+  `video_pattern_evidence` — not fabricated for this closure.
+  **As of 2026-09-24** the composition layer is wired and a real two-provider
+  benchmark succeeds end-to-end; see the status-correction section below.
 
 ## Final acceptance report (2026-09-24)
 
@@ -116,6 +119,52 @@ missing composition-layer gaps — not `SECOND_PROVIDER_UNQUALIFIED`,
 `HYPERFRAMES_CLI_UNAVAILABLE`, `92_ENVIRONMENT_FAILURES`, or
 `10_PREEXISTING_STUDIO_FAILURES`.
 
+## Status correction (2026-09-24): composition layer + cross-model runtime
+
+Two claims must not be conflated:
+
+| claim | status | evidence |
+|---|---|---|
+| `SECOND_INDEPENDENT_PROVIDER=QUALIFIED` | **QUALIFIED** (Track 4, independent of composition layer) | `distinct_succeeded_repro_providers=2`; `second-provider-audit.json` `cross_model_qualified=true` |
+| `CROSS_MODEL_BENCHMARK_RUNTIME=QUALIFIED` | **QUALIFIED** (closed 2026-09-24) | `artifacts/qualification/cross-model-benchmark-runtime.json` |
+
+Historical note: before this correction, a `>=2` provider benchmark ended at
+`CHILD_REPRODUCTIONS_NOT_SUBMITTED` because no composition layer submitted
+child reproductions. That gate is now wired:
+
+- `execute_case_benchmark_task` freezes a plan using the same
+  `BENCHMARK_DIMENSIONS` as the API endpoint so `plan_hash` matches, then
+  delegates to `run_benchmark_composition` (`hevi/video_intelligence/benchmark_composition.py`).
+- Children are created with idempotency key
+  `benchmark:{benchmark_id}:{provider}:{plan_revision}` and task key
+  `case-benchmark-child:…`, claimed via `TaskRepository.claim_task`, run
+  nested under `worker_id=benchmark-composition`, and fan-in waits for all
+  children in `{succeeded,failed,blocked}` before aggregating.
+- Aggregation persists `BenchmarkEntry` rows (one per terminal succeeded
+  child with a verdict) and pattern evidence classified from real
+  `verdict.passed` (`positive` / `negative` / `counter_example`). Winner is
+  never emitted. Pattern gate remains `total>=5 AND provider_count>=2`;
+  `AUTO_PATTERN_PROMOTION` stays `0` (pattern `01f5172b-…` remains
+  `lifecycle_status=candidate`, `PROMOTED_PATTERNS=0`).
+
+Real E2E (`scripts/qualification/run_cross_model_benchmark.py`):
+
+| field | value |
+|---|---|
+| `benchmark_id` | `5c17d91d-c4aa-4b6a-bd45-c8399ae4c5b9` |
+| `task_id` | `54c3243c-e804-4f66-851e-8f25b6a04d78` `completed` |
+| children | hyperframes `f2a7202d-…` `succeeded` + manim `ce41bd3b-…` `succeeded` |
+| `entry_count` | 2 |
+| `pattern_evidence_count` | 2 (`positive`×2) |
+| `failure_code` | `null` |
+| `cross_model_runtime_qualified` | `true` |
+
+Regression after composition close: `RUFF=PASS`, `MYPY=BASELINE (13
+pre-existing)`, `PYTEST=3365 passed / 30 skipped / 0 failed`.
+Unit coverage: 7 files under `tests/video_intelligence/test_benchmark_*.py`
+(submission, idempotency, partial completion, restart recovery, fan-in,
+entry persistence, pattern evidence).
+
 ## Status vocabulary
 
 `CODE_COMPLETE` means source and tests exist; `RUNTIME_CONNECTED` means the
@@ -125,8 +174,8 @@ and `OWNER_BLOCKED` are explicit non-pass states. Cross-model qualification
 requires at least two independent real providers.
 
 Current result: production learning E2E is real and auditable; Tracks 1–4
-closed their software blockers (studio regressions, env import chain,
-HyperFrames CLI, second independent provider). Remaining non-pass states are
-hardware/credential ENV_BLOCKED and OWNER_BLOCKED classifications above — not
-`SECOND_PROVIDER_UNQUALIFIED`. Final full regression + acceptance report
-recorded above.
+closed their software blockers; cross-model benchmark runtime is now
+qualified with a real two-provider entry-persisting run. Remaining non-pass
+states are hardware/credential ENV_BLOCKED and OWNER_BLOCKED classifications
+above — not `SECOND_PROVIDER_UNQUALIFIED` or
+`CROSS_MODEL_BENCHMARK_RUNTIME_UNQUALIFIED`.

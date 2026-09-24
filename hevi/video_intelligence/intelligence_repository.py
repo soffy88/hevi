@@ -222,6 +222,21 @@ class IntelligenceRepository:
             raise RuntimeError("BENCHMARK_ENTRY_PERSISTENCE_FAILED")
         return dict(row)
 
+    async def mark_benchmark_running(
+        self, benchmark_id: str, *, user_id: str,
+        provider_count: int, reproduction_count: int = 0,
+    ) -> bool:
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE case_benchmarks SET status='running',provider_count=$1,"
+                "reproduction_count=$2,failure_code=NULL,"
+                "started_at=COALESCE(started_at,NOW()) "
+                "WHERE id=$3 AND user_id=$4 AND status IN ('pending','running')",
+                provider_count, reproduction_count,
+                uuid.UUID(benchmark_id), uuid.UUID(user_id),
+            )
+        return str(result).endswith("1")
+
     async def finish_benchmark(
         self, benchmark_id: str, *, user_id: str, status: str,
         provider_count: int, reproduction_count: int, failure_code: str | None = None,
