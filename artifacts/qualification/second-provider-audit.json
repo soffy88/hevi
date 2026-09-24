@@ -1,6 +1,6 @@
 {
   "doctor": "second_provider",
-  "generated_at": "2026-09-24T00:26:24Z",
+  "generated_at": "2026-09-24T00:36:06Z",
   "root": "/data/soffy/projects/hevi",
   "registration_error": null,
   "registered_video_providers": [
@@ -170,7 +170,7 @@
       ],
       "probe": {
         "passed": true,
-        "latency_ms": 323,
+        "latency_ms": 330,
         "bytes": 25307,
         "error": null
       },

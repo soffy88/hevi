@@ -75,6 +75,47 @@ was classified; they do not mean the environment-blocked suite is green.
   `provider_count>=2` on `video_pattern_evidence` (caller-less today) — not
   fabricated for this closure.
 
+## Final acceptance report (2026-09-24)
+
+Recorded in `artifacts/qualification/final-acceptance-report.json`.
+
+| gate | value |
+|---|---|
+| `RUFF` | `PASS` (`ruff check hevi tests`: 0 violations) |
+| `MYPY` | `BASELINE` (`mypy --strict hevi`: 13 pre-existing errors in 11 files, unchanged from `7f4ce6d`) |
+| `PYTEST` | `PASS` (3343 passed, 30 skipped, 0 failed, 0 errors, 374.02s) |
+| `WORKTREE_CLEAN` | `YES` (hevi-remotion test residue restored; no residual tracked changes) |
+| `UNRELATED_DIRTY_PRESERVED` | `YES` (`.veya-project/` untracked and untouched) |
+
+### PREEXISTING_STUDIO_FAILURE_MATRIX
+
+| file | baseline count | resolution |
+|---|---:|---|
+| `tests/test_studio_api.py` | 1 | ENVIRONMENT → PASS after Track 2 |
+| `tests/test_studio_combine.py` | 3 | 1 ENVIRONMENT + 2 fixed Track 1 (`20150b9`) |
+| `tests/test_studio_daily.py` | 1 | ENVIRONMENT → PASS after Track 2 |
+| `tests/test_studio_slate.py` | 3 | 2 ENVIRONMENT + 1 fixed Track 1 (`20150b9`) |
+| `tests/test_studio_veya.py` | 2 | ENVIRONMENT → PASS after Track 2 |
+| **total** | **10** | **0 open** (4 Track 1 fixes + 6 reclassified env then green) |
+
+### ENV_FAILURE_MATRIX
+
+| bucket | count | resolution |
+|---|---:|---|
+| setup errors (director/pipeline/providers) | 84 | closed by `torchvision==0.27.0` (`95fd9ee`) |
+| provider registration/auth/prompt failures | 8 | same root cause; closed by Track 2 |
+| **total baseline** | **92** | **0 open** |
+
+`environment-doctor.json`: software_gate PASS; `ENV_BLOCKED=[cuda]` (hardware).
+
+### Track closure summary
+
+Tracks 1–4 closed (`d897d9c`/`20150b9`, `95fd9ee`, `f5ee649`, `1c59daa`).
+Remaining non-pass states are classified ENV_BLOCKED / OWNER_BLOCKED /
+missing composition-layer gaps — not `SECOND_PROVIDER_UNQUALIFIED`,
+`HYPERFRAMES_CLI_UNAVAILABLE`, `92_ENVIRONMENT_FAILURES`, or
+`10_PREEXISTING_STUDIO_FAILURES`.
+
 ## Status vocabulary
 
 `CODE_COMPLETE` means source and tests exist; `RUNTIME_CONNECTED` means the
@@ -88,4 +129,4 @@ closed their software blockers (studio regressions, env import chain,
 HyperFrames CLI, second independent provider). Remaining non-pass states are
 hardware/credential ENV_BLOCKED and OWNER_BLOCKED classifications above — not
 `SECOND_PROVIDER_UNQUALIFIED`. Final full regression + acceptance report
-pending.
+recorded above.

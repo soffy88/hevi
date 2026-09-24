@@ -35,8 +35,11 @@ BASELINE_QUALIFIED; manim FREE_LOCAL_RUNNABLE (counted after real run);
 WaveSpeed pair OWNER_BLOCKED_NO_CREDENTIAL; FAL/MAAS candidates
 OWNER_BLOCKED_SPEND; h3/wan_local/ltx2_local ENV_BLOCKED; remotion/ffmpeg/
 motion_graphics NOT_REGISTERED_VIDEO. Still open: CUDA/NVML wedged (hardware,
-ENV_BLOCKED — never reboot without asking soffy). Final full regression +
-acceptance report pending.
+ENV_BLOCKED — never reboot without asking soffy). **Final full regression +
+acceptance report recorded 2026-09-24**:
+`artifacts/qualification/final-acceptance-report.json` —
+`RUFF=PASS`, `MYPY=BASELINE (13 pre-existing)`, `PYTEST=3343 passed / 0 failed`,
+`WORKTREE_CLEAN=YES`, `UNRELATED_DIRTY_PRESERVED=YES` (.veya-project untouched).
 
 ---
 
