@@ -4,7 +4,7 @@
   "root": "/data/soffy/projects/hevi",
   "branch": "closure/3o-v3-architecture-creative-baseline",
   "BASE_SHA": "295f467",
-  "FINAL_SHA": null,
+  "FINAL_SHA": "3b4a4ae",
   "claims": {
     "SECOND_INDEPENDENT_PROVIDER": "QUALIFIED",
     "CROSS_MODEL_BENCHMARK_RUNTIME": "QUALIFIED",
