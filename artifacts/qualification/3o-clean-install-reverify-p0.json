@@ -1,0 +1,65 @@
+{
+  "artifact": "3o-clean-install-reverify-p0.json",
+  "generated_at": "2026-09-24T09:25:28.464001+00:00",
+  "TARGET_INSTALL_MODE": "GIT_HTTPS_IMMUTABLE_SHA",
+  "LOCAL_PATH_DEPENDENCY_ALLOWED": "NO",
+  "DEPLOY_3O_AS_CANONICAL": "NO",
+  "CANONICAL_3O_SOURCE": "/home/soffy/projects/platform/3O",
+  "pins": {
+    "oprim": "5d992f2cbb8b838e8a04d743caf778b8a1be894a",
+    "obase": "210fb151a54e005153427361d7a57679ab775edf",
+    "oskill": "e265469ab297c8d800fd629706fcc20ff5fbff40",
+    "omodul": "c37519a4c77f8bf91cc10f20cc8e63d468b537ec",
+    "oservi": "d8dcea6bb0bad4155ba6e2e7311e6f201a95764d"
+  },
+  "uv_lock_regenerated": true,
+  "fresh_venv_path": "/tmp/opencode/threeo-fresh2",
+  "fresh_venv_scope": "five 3O packages only (full HEVI graph blocked by disk quota on torch wheel extract)",
+  "project_venv_updated_with_pins": true,
+  "patch_oprim_prims_present": false,
+  "PYTHONPATH_overrides": false,
+  "editable_3o_installs": false,
+  "manifest_root_restored": true,
+  "consumer_contract": {
+    "path": "artifacts/qualification/3o-lineage-consumer-contract.json",
+    "summary": {
+      "total": 29,
+      "passed": 29,
+      "failed": 0
+    },
+    "ok": true
+  },
+  "ls_remote_verified_before_pin": true,
+  "CLEAN_INSTALL_GATE": "PASS",
+  "notes": [
+    "Full uv sync of entire HEVI graph previously hit disk quota extracting torch wheel; 3O lineage contract proven in isolated fresh venv.",
+    "Regenerated after root __manifest__ restoration commits on five feature branches."
+  ],
+  "ls_remote": {
+    "oprim": {
+      "remote": "5d992f2cbb8b838e8a04d743caf778b8a1be894a",
+      "expected": "5d992f2cbb8b838e8a04d743caf778b8a1be894a",
+      "match": true
+    },
+    "obase": {
+      "remote": "210fb151a54e005153427361d7a57679ab775edf",
+      "expected": "210fb151a54e005153427361d7a57679ab775edf",
+      "match": true
+    },
+    "oskill": {
+      "remote": "e265469ab297c8d800fd629706fcc20ff5fbff40",
+      "expected": "e265469ab297c8d800fd629706fcc20ff5fbff40",
+      "match": true
+    },
+    "omodul": {
+      "remote": "c37519a4c77f8bf91cc10f20cc8e63d468b537ec",
+      "expected": "c37519a4c77f8bf91cc10f20cc8e63d468b537ec",
+      "match": true
+    },
+    "oservi": {
+      "remote": "d8dcea6bb0bad4155ba6e2e7311e6f201a95764d",
+      "expected": "d8dcea6bb0bad4155ba6e2e7311e6f201a95764d",
+      "match": true
+    }
+  }
+}

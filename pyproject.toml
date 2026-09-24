@@ -17,13 +17,13 @@ dependencies = [
     "pyjwt[crypto]>=2.10",
     # 3O 基线：所有直接引用固定到通过消费者契约测试的精确提交；版本/锁文件/manifests
     # 必须同时更新。HEVI 保留业务语义，通用执行与媒体能力在对应 3O 库演进。
-    "obase[cache,docker] @ git+https://github.com/helios-plat/obase.git@7d31719d8411b4fb34952ae4098ab320625d14dd",
-    "oprim @ git+https://github.com/helios-plat/oprim.git@25653ba2874bf0f9a5011f2a23ac3164ee673125",
-    "oskill @ git+https://github.com/helios-plat/oskill.git@cac39df03778d4e4e44db3c006f8fc788dc757f6",
-    # 标准长视频及镜头返工事务：兼容 v1.36.0 的已测提交，待上游 tag 后替换 ref。
-    "omodul @ git+https://github.com/helios-plat/omodul.git@bdb48f52032e69818281c779169959e0650a558d",
-    # 统一的无状态服务执行骨架。固定到已测试的 3O 功能提交；合入上游 tag 后只替换 ref。
-    "oservi @ git+https://github.com/helios-plat/oservi.git@2527968d4d7e2455a48b280cb191012f4266d0bb",
+    "obase[cache,docker] @ git+https://github.com/helios-plat/obase.git@210fb151a54e005153427361d7a57679ab775edf",
+    "oprim @ git+https://github.com/helios-plat/oprim.git@5d992f2cbb8b838e8a04d743caf778b8a1be894a",
+    "oskill @ git+https://github.com/helios-plat/oskill.git@e265469ab297c8d800fd629706fcc20ff5fbff40",
+    # 标准长视频及镜头返工事务：canonical contract commits on feat/v1.39.0-create-inventory-batch。
+    "omodul @ git+https://github.com/helios-plat/omodul.git@c37519a4c77f8bf91cc10f20cc8e63d468b537ec",
+    # 统一的无状态服务执行骨架。ProductionExecutionEngine restore on feat/restore-production-execution-engine。
+    "oservi @ git+https://github.com/helios-plat/oservi.git@d8dcea6bb0bad4155ba6e2e7311e6f201a95764d",
     "vibevoice==0.0.1",  # oprim._vibevoice_synthesize runtime dep (not declared in oprim metadata)
     "dashscope>=1.20",  # oprim v3.10.33 embedding.qwen3_dashscope runtime dep (undeclared)
     "edge-tts>=7.0",  # hevi.explainer.voiceover —— 短视频解说通道配音(词级时间戳)
@@ -114,6 +114,10 @@ ignore = ["E501", "RUF001", "RUF002", "RUF003"]
 "scripts/build_scene_zhibo_suodi.py" = ["E402"]
 "scripts/build_scene_zhibo_suodi_local.py" = ["E402"]
 "scripts/g1_shortdrama_run.py" = ["E402"]
+"hevi/events/publisher_entrypoint.py" = ["E402", "I001"]
+"hevi/queue/worker_entrypoint.py" = ["E402", "I001"]
+"hevi/scheduler/entrypoint.py" = ["E402", "I001"]
+"hevi/provider_policy/health_entrypoint.py" = ["E402", "I001"]
 # 3O adapter packages intentionally re-export large public contracts from
 # their oprim/oskill/omodul boundary modules.  These are API surfaces rather
 # than ordinary implementation modules; keep semantic lint (undefined names,
@@ -171,14 +175,14 @@ testpaths = ["tests"]
 # bounds. Keep secure versions in the root runtime while Voicebox/Gen Engine
 # inference environments remain independently pinned.
 #
-# omodul/oskill/oservi hard-pin oprim@e7f9c651 as a git URL in their metadata.
+# omodul/oskill/oservi hard-pin oprim as a git URL in their metadata.
 # Force the whole graph onto the canonical HEVI pin (media prims landed) so uv
 # resolves one oprim source instead of conflicting URLs for the same package.
 [tool.uv]
 override-dependencies = [
     "transformers==5.17.0",
     "pillow>=12.3.0",
-    "oprim @ git+https://github.com/helios-plat/oprim.git@25653ba2874bf0f9a5011f2a23ac3164ee673125",
+    "oprim @ git+https://github.com/helios-plat/oprim.git@5d992f2cbb8b838e8a04d743caf778b8a1be894a",
 ]
 
 

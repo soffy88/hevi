@@ -1,0 +1,225 @@
+{
+  "pins": {
+    "oprim": {
+      "version": "3.23.0",
+      "sha": "5d992f2cbb8b838e8a04d743caf778b8a1be894a",
+      "expected": "5d992f2cbb8b838e8a04d743caf778b8a1be894a",
+      "match": true,
+      "url": "https://github.com/helios-plat/oprim.git",
+      "installed_url": "https://github.com/helios-plat/oprim.git",
+      "lock_has_sha": true,
+      "remote_has_sha": true,
+      "pyproject_has_sha": true
+    },
+    "obase": {
+      "version": "0.31.0",
+      "sha": "210fb151a54e005153427361d7a57679ab775edf",
+      "expected": "210fb151a54e005153427361d7a57679ab775edf",
+      "match": true,
+      "url": "https://github.com/helios-plat/obase.git",
+      "installed_url": "https://github.com/helios-plat/obase.git",
+      "lock_has_sha": true,
+      "remote_has_sha": true,
+      "pyproject_has_sha": true
+    },
+    "oskill": {
+      "version": "4.14.0",
+      "sha": "e265469ab297c8d800fd629706fcc20ff5fbff40",
+      "expected": "e265469ab297c8d800fd629706fcc20ff5fbff40",
+      "match": true,
+      "url": "https://github.com/helios-plat/oskill.git",
+      "installed_url": "https://github.com/helios-plat/oskill.git",
+      "lock_has_sha": true,
+      "remote_has_sha": true,
+      "pyproject_has_sha": true
+    },
+    "omodul": {
+      "version": "1.49.0",
+      "sha": "c37519a4c77f8bf91cc10f20cc8e63d468b537ec",
+      "expected": "c37519a4c77f8bf91cc10f20cc8e63d468b537ec",
+      "match": true,
+      "url": "https://github.com/helios-plat/omodul.git",
+      "installed_url": "https://github.com/helios-plat/omodul.git",
+      "lock_has_sha": true,
+      "remote_has_sha": true,
+      "pyproject_has_sha": true
+    },
+    "oservi": {
+      "version": "1.4.0",
+      "sha": "d8dcea6bb0bad4155ba6e2e7311e6f201a95764d",
+      "expected": "d8dcea6bb0bad4155ba6e2e7311e6f201a95764d",
+      "match": true,
+      "url": "https://github.com/helios-plat/oservi.git",
+      "installed_url": "https://github.com/helios-plat/oservi.git",
+      "lock_has_sha": true,
+      "remote_has_sha": true,
+      "pyproject_has_sha": true
+    }
+  },
+  "checks": [
+    {
+      "name": "pin_oprim",
+      "pass": true,
+      "detail": "5d992f2cbb8b838e8a04d743caf778b8a1be894a"
+    },
+    {
+      "name": "not_local_path_oprim",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "pin_obase",
+      "pass": true,
+      "detail": "210fb151a54e005153427361d7a57679ab775edf"
+    },
+    {
+      "name": "not_local_path_obase",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "pin_oskill",
+      "pass": true,
+      "detail": "e265469ab297c8d800fd629706fcc20ff5fbff40"
+    },
+    {
+      "name": "not_local_path_oskill",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "pin_omodul",
+      "pass": true,
+      "detail": "c37519a4c77f8bf91cc10f20cc8e63d468b537ec"
+    },
+    {
+      "name": "not_local_path_omodul",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "pin_oservi",
+      "pass": true,
+      "detail": "d8dcea6bb0bad4155ba6e2e7311e6f201a95764d"
+    },
+    {
+      "name": "not_local_path_oservi",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "manifest_oprim",
+      "pass": true,
+      "detail": "5 elements"
+    },
+    {
+      "name": "manifest_obase",
+      "pass": true,
+      "detail": "4 elements"
+    },
+    {
+      "name": "manifest_oskill",
+      "pass": true,
+      "detail": "3 elements"
+    },
+    {
+      "name": "manifest_omodul",
+      "pass": true,
+      "detail": "4 elements"
+    },
+    {
+      "name": "manifest_oservi",
+      "pass": true,
+      "detail": "2 elements"
+    },
+    {
+      "name": "oskill_depends_on_storyboard_planner",
+      "pass": true,
+      "detail": "depends_on=2"
+    },
+    {
+      "name": "oskill_depends_on_resolve_display_batch",
+      "pass": true,
+      "detail": "depends_on=2"
+    },
+    {
+      "name": "oskill_depends_on_two_step_ingest",
+      "pass": true,
+      "detail": "depends_on=2"
+    },
+    {
+      "name": "oprim_probe_duration",
+      "pass": true,
+      "detail": "oprim.probe_duration"
+    },
+    {
+      "name": "oprim_edge_tts_word_boundary",
+      "pass": true,
+      "detail": "oprim.edge_tts_word_boundary"
+    },
+    {
+      "name": "obase_ProviderRegistry",
+      "pass": true,
+      "detail": "obase.ProviderRegistry"
+    },
+    {
+      "name": "omodul_longvideo_produce",
+      "pass": true,
+      "detail": "omodul.longvideo_produce.longvideo_produce"
+    },
+    {
+      "name": "omodul_narrated_video_produce",
+      "pass": true,
+      "detail": "omodul.narrated_video_produce.narrated_video_produce"
+    },
+    {
+      "name": "oservi_ProductionExecutionEngine",
+      "pass": true,
+      "detail": "oservi.ProductionExecutionEngine"
+    },
+    {
+      "name": "not_platform_path_oprim",
+      "pass": true,
+      "detail": "/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim/__init__.py"
+    },
+    {
+      "name": "not_platform_path_obase",
+      "pass": true,
+      "detail": "/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/obase/__init__.py"
+    },
+    {
+      "name": "not_platform_path_oskill",
+      "pass": true,
+      "detail": "/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oskill/__init__.py"
+    },
+    {
+      "name": "not_platform_path_omodul",
+      "pass": true,
+      "detail": "/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/omodul/__init__.py"
+    },
+    {
+      "name": "not_platform_path_oservi",
+      "pass": true,
+      "detail": "/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oservi/__init__.py"
+    }
+  ],
+  "notes": [
+    "Regenerated after root __manifest__ restoration on five pinned SHAs.",
+    "omodul/narrated produce symbols are submodule imports (HEVI usage), not package-root exports.",
+    "Optional oprim names are HEVI try/except ImportError paths when false."
+  ],
+  "oprim_optional_try_except": {
+    "chattts_call": false,
+    "funasr_asr": false,
+    "whisper_asr_verify": false,
+    "heygen_avatar_generate": false,
+    "cover_extract_and_render": false
+  },
+  "summary": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0
+  },
+  "ok": true,
+  "generated_at": "2026-09-24T09:25:14.466309+00:00"
+}
