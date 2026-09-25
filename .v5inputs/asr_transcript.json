@@ -1,0 +1,1682 @@
+{
+  "audio_duration_ms": 66936,
+  "language": "zh",
+  "segments": [
+    {
+      "end_ms": 5900,
+      "start_ms": 0,
+      "text": "很多人以为,黑洞就像宇宙吸尘器,会把周围的一切统统吸进去。"
+    },
+    {
+      "end_ms": 7460,
+      "start_ms": 6460,
+      "text": "其实并不是。"
+    },
+    {
+      "end_ms": 13680,
+      "start_ms": 7980,
+      "text": "黑洞的引力没有魔法,它和其他天体一样,主要取决于质量和距离。"
+    },
+    {
+      "end_ms": 23060,
+      "start_ms": 14140,
+      "text": "假如太阳突然被一个质量完全相同的黑洞替代,地球并不会立刻掉进去,仍然会沿着几乎相同的轨道运行。"
+    },
+    {
+      "end_ms": 28720,
+      "start_ms": 23580,
+      "text": "黑洞真正特殊的地方,是它把大量质量压缩进了极小的空间。"
+    },
+    {
+      "end_ms": 33360,
+      "start_ms": 29120,
+      "text": "这会让你在靠近时感受到越来越极端的引力效应。"
+    },
+    {
+      "end_ms": 37220,
+      "start_ms": 33720,
+      "text": "一旦越过世间世界,联光也无法逃出来。"
+    },
+    {
+      "end_ms": 40720,
+      "start_ms": 37640,
+      "text": "黑洞周围常常还有炽热的吸机盘。"
+    },
+    {
+      "end_ms": 48040,
+      "start_ms": 41360,
+      "text": "气体和尘埃在落入之前会高速旋转、摩擦、升温,并释放出强烈辐射。"
+    },
+    {
+      "end_ms": 54120,
+      "start_ms": 48660,
+      "text": "天文学家正是通过这些辐射,恒星围绕不可见天体的轨道变化,"
+    },
+    {
+      "end_ms": 58500,
+      "start_ms": 54360,
+      "text": "以及黑洞并合产生的引力波,来判断黑洞的存在。"
+    },
+    {
+      "end_ms": 62340,
+      "start_ms": 59120,
+      "text": "所以,黑洞不是宇宙里的无底吸尘器,"
+    },
+    {
+      "end_ms": 66300,
+      "start_ms": 62560,
+      "text": "而是一种极端致密,有引力规律支配的天体。"
+    }
+  ],
+  "text": "很多人以为,黑洞就像宇宙吸尘器,会把周围的一切统统吸进去。 其实并不是。 黑洞的引力没有魔法,它和其他天体一样,主要取决于质量和距离。 假如太阳突然被一个质量完全相同的黑洞替代,地球并不会立刻掉进去,仍然会沿着几乎相同的轨道运行。 黑洞真正特殊的地方,是它把大量质量压缩进了极小的空间。 这会让你在靠近时感受到越来越极端的引力效应。 一旦越过世间世界,联光也无法逃出来。 黑洞周围常常还有炽热的吸机盘。 气体和尘埃在落入之前会高速旋转、摩擦、升温,并释放出强烈辐射。 天文学家正是通过这些辐射,恒星围绕不可见天体的轨道变化, 以及黑洞并合产生的引力波,来判断黑洞的存在。 所以,黑洞不是宇宙里的无底吸尘器, 而是一种极端致密,有引力规律支配的天体。",
+  "words": [
+    {
+      "end_ms": 440,
+      "probability": 0.981421172618866,
+      "start_ms": 0,
+      "text": "很多"
+    },
+    {
+      "end_ms": 640,
+      "probability": 0.9999880790710449,
+      "start_ms": 440,
+      "text": "人"
+    },
+    {
+      "end_ms": 840,
+      "probability": 0.9997240900993347,
+      "start_ms": 640,
+      "text": "以"
+    },
+    {
+      "end_ms": 1060,
+      "probability": 0.9996335506439209,
+      "start_ms": 840,
+      "text": "为,"
+    },
+    {
+      "end_ms": 1560,
+      "probability": 0.9978641867637634,
+      "start_ms": 1260,
+      "text": "黑"
+    },
+    {
+      "end_ms": 1780,
+      "probability": 0.9991974234580994,
+      "start_ms": 1560,
+      "text": "洞"
+    },
+    {
+      "end_ms": 1980,
+      "probability": 0.9998140931129456,
+      "start_ms": 1780,
+      "text": "就"
+    },
+    {
+      "end_ms": 2160,
+      "probability": 0.9984288811683655,
+      "start_ms": 1980,
+      "text": "像"
+    },
+    {
+      "end_ms": 2300,
+      "probability": 0.9995018243789673,
+      "start_ms": 2160,
+      "text": "宇"
+    },
+    {
+      "end_ms": 2480,
+      "probability": 0.9998320043087006,
+      "start_ms": 2300,
+      "text": "宙"
+    },
+    {
+      "end_ms": 2640,
+      "probability": 0.9979509711265564,
+      "start_ms": 2480,
+      "text": "吸"
+    },
+    {
+      "end_ms": 2860,
+      "probability": 0.9696253836154938,
+      "start_ms": 2640,
+      "text": "尘"
+    },
+    {
+      "end_ms": 3120,
+      "probability": 0.977891206741333,
+      "start_ms": 2860,
+      "text": "器,"
+    },
+    {
+      "end_ms": 3620,
+      "probability": 0.9991894364356995,
+      "start_ms": 3360,
+      "text": "会"
+    },
+    {
+      "end_ms": 3760,
+      "probability": 0.9998912811279297,
+      "start_ms": 3620,
+      "text": "把"
+    },
+    {
+      "end_ms": 3920,
+      "probability": 0.9998095631599426,
+      "start_ms": 3760,
+      "text": "周"
+    },
+    {
+      "end_ms": 4060,
+      "probability": 0.9994052350521088,
+      "start_ms": 3920,
+      "text": "围"
+    },
+    {
+      "end_ms": 4180,
+      "probability": 0.9999197721481323,
+      "start_ms": 4060,
+      "text": "的"
+    },
+    {
+      "end_ms": 4380,
+      "probability": 0.9998750686645508,
+      "start_ms": 4180,
+      "text": "一"
+    },
+    {
+      "end_ms": 4660,
+      "probability": 0.9997957348823547,
+      "start_ms": 4380,
+      "text": "切"
+    },
+    {
+      "end_ms": 5020,
+      "probability": 0.9104732275009155,
+      "start_ms": 4660,
+      "text": "统"
+    },
+    {
+      "end_ms": 5240,
+      "probability": 0.9999293088912964,
+      "start_ms": 5020,
+      "text": "统"
+    },
+    {
+      "end_ms": 5420,
+      "probability": 0.9994897842407227,
+      "start_ms": 5240,
+      "text": "吸"
+    },
+    {
+      "end_ms": 5640,
+      "probability": 0.9991637468338013,
+      "start_ms": 5420,
+      "text": "进"
+    },
+    {
+      "end_ms": 5900,
+      "probability": 0.9997735619544983,
+      "start_ms": 5640,
+      "text": "去。"
+    },
+    {
+      "end_ms": 6860,
+      "probability": 0.9987842440605164,
+      "start_ms": 6460,
+      "text": "其实"
+    },
+    {
+      "end_ms": 7100,
+      "probability": 0.9998555481433868,
+      "start_ms": 6860,
+      "text": "并"
+    },
+    {
+      "end_ms": 7460,
+      "probability": 0.9994677901268005,
+      "start_ms": 7100,
+      "text": "不是。"
+    },
+    {
+      "end_ms": 8340,
+      "probability": 0.9989548921585083,
+      "start_ms": 7980,
+      "text": "黑"
+    },
+    {
+      "end_ms": 8500,
+      "probability": 0.9999868273735046,
+      "start_ms": 8340,
+      "text": "洞"
+    },
+    {
+      "end_ms": 8620,
+      "probability": 0.9999717473983765,
+      "start_ms": 8500,
+      "text": "的"
+    },
+    {
+      "end_ms": 8800,
+      "probability": 0.9991389513015747,
+      "start_ms": 8620,
+      "text": "引"
+    },
+    {
+      "end_ms": 8960,
+      "probability": 0.999446451663971,
+      "start_ms": 8800,
+      "text": "力"
+    },
+    {
+      "end_ms": 9260,
+      "probability": 0.999875545501709,
+      "start_ms": 8960,
+      "text": "没有"
+    },
+    {
+      "end_ms": 9480,
+      "probability": 0.9982319474220276,
+      "start_ms": 9260,
+      "text": "魔"
+    },
+    {
+      "end_ms": 9740,
+      "probability": 0.9999165534973145,
+      "start_ms": 9480,
+      "text": "法,"
+    },
+    {
+      "end_ms": 10260,
+      "probability": 0.9966542720794678,
+      "start_ms": 10060,
+      "text": "它"
+    },
+    {
+      "end_ms": 10400,
+      "probability": 0.9999517202377319,
+      "start_ms": 10260,
+      "text": "和"
+    },
+    {
+      "end_ms": 10600,
+      "probability": 0.9999561309814453,
+      "start_ms": 10400,
+      "text": "其"
+    },
+    {
+      "end_ms": 10740,
+      "probability": 0.9910847544670105,
+      "start_ms": 10600,
+      "text": "他"
+    },
+    {
+      "end_ms": 10920,
+      "probability": 0.9997689127922058,
+      "start_ms": 10740,
+      "text": "天"
+    },
+    {
+      "end_ms": 11140,
+      "probability": 0.9997774958610535,
+      "start_ms": 10920,
+      "text": "体"
+    },
+    {
+      "end_ms": 11340,
+      "probability": 0.9997021555900574,
+      "start_ms": 11140,
+      "text": "一"
+    },
+    {
+      "end_ms": 11500,
+      "probability": 0.9999707937240601,
+      "start_ms": 11340,
+      "text": "样,"
+    },
+    {
+      "end_ms": 11940,
+      "probability": 0.9998499155044556,
+      "start_ms": 11760,
+      "text": "主"
+    },
+    {
+      "end_ms": 12080,
+      "probability": 0.9999885559082031,
+      "start_ms": 11940,
+      "text": "要"
+    },
+    {
+      "end_ms": 12260,
+      "probability": 0.9964169263839722,
+      "start_ms": 12080,
+      "text": "取"
+    },
+    {
+      "end_ms": 12440,
+      "probability": 0.9980248808860779,
+      "start_ms": 12260,
+      "text": "决"
+    },
+    {
+      "end_ms": 12640,
+      "probability": 0.9999574422836304,
+      "start_ms": 12440,
+      "text": "于"
+    },
+    {
+      "end_ms": 12880,
+      "probability": 0.9998708665370941,
+      "start_ms": 12640,
+      "text": "质"
+    },
+    {
+      "end_ms": 13040,
+      "probability": 0.9999847412109375,
+      "start_ms": 12880,
+      "text": "量"
+    },
+    {
+      "end_ms": 13220,
+      "probability": 0.9999573230743408,
+      "start_ms": 13040,
+      "text": "和"
+    },
+    {
+      "end_ms": 13460,
+      "probability": 0.9998636543750763,
+      "start_ms": 13220,
+      "text": "距"
+    },
+    {
+      "end_ms": 13680,
+      "probability": 0.9997000098228455,
+      "start_ms": 13460,
+      "text": "离。"
+    },
+    {
+      "end_ms": 14500,
+      "probability": 0.9991348385810852,
+      "start_ms": 14140,
+      "text": "假"
+    },
+    {
+      "end_ms": 14660,
+      "probability": 0.9998499155044556,
+      "start_ms": 14500,
+      "text": "如"
+    },
+    {
+      "end_ms": 14820,
+      "probability": 0.9998188614845276,
+      "start_ms": 14660,
+      "text": "太"
+    },
+    {
+      "end_ms": 15080,
+      "probability": 0.9996030330657959,
+      "start_ms": 14820,
+      "text": "阳"
+    },
+    {
+      "end_ms": 15300,
+      "probability": 0.9999116659164429,
+      "start_ms": 15080,
+      "text": "突"
+    },
+    {
+      "end_ms": 15460,
+      "probability": 0.9999436140060425,
+      "start_ms": 15300,
+      "text": "然"
+    },
+    {
+      "end_ms": 15620,
+      "probability": 0.999861478805542,
+      "start_ms": 15460,
+      "text": "被"
+    },
+    {
+      "end_ms": 15840,
+      "probability": 0.9999287128448486,
+      "start_ms": 15620,
+      "text": "一个"
+    },
+    {
+      "end_ms": 16020,
+      "probability": 0.9999741315841675,
+      "start_ms": 15840,
+      "text": "质"
+    },
+    {
+      "end_ms": 16160,
+      "probability": 0.9999984502792358,
+      "start_ms": 16020,
+      "text": "量"
+    },
+    {
+      "end_ms": 16540,
+      "probability": 0.9998794794082642,
+      "start_ms": 16160,
+      "text": "完全"
+    },
+    {
+      "end_ms": 16740,
+      "probability": 0.9995914101600647,
+      "start_ms": 16540,
+      "text": "相"
+    },
+    {
+      "end_ms": 16980,
+      "probability": 0.9995379447937012,
+      "start_ms": 16740,
+      "text": "同"
+    },
+    {
+      "end_ms": 17120,
+      "probability": 0.99993896484375,
+      "start_ms": 16980,
+      "text": "的"
+    },
+    {
+      "end_ms": 17280,
+      "probability": 0.9998989105224609,
+      "start_ms": 17120,
+      "text": "黑"
+    },
+    {
+      "end_ms": 17460,
+      "probability": 0.9999833703041077,
+      "start_ms": 17280,
+      "text": "洞"
+    },
+    {
+      "end_ms": 17640,
+      "probability": 0.9989514052867889,
+      "start_ms": 17460,
+      "text": "替"
+    },
+    {
+      "end_ms": 17840,
+      "probability": 0.993933379650116,
+      "start_ms": 17640,
+      "text": "代,"
+    },
+    {
+      "end_ms": 18400,
+      "probability": 0.9996281862258911,
+      "start_ms": 18220,
+      "text": "地"
+    },
+    {
+      "end_ms": 18660,
+      "probability": 0.9996688365936279,
+      "start_ms": 18400,
+      "text": "球"
+    },
+    {
+      "end_ms": 18940,
+      "probability": 0.9998875260353088,
+      "start_ms": 18660,
+      "text": "并"
+    },
+    {
+      "end_ms": 19180,
+      "probability": 0.9992268085479736,
+      "start_ms": 18940,
+      "text": "不会"
+    },
+    {
+      "end_ms": 19340,
+      "probability": 0.9998575448989868,
+      "start_ms": 19180,
+      "text": "立"
+    },
+    {
+      "end_ms": 19520,
+      "probability": 0.9964523315429688,
+      "start_ms": 19340,
+      "text": "刻"
+    },
+    {
+      "end_ms": 19660,
+      "probability": 0.9942463040351868,
+      "start_ms": 19520,
+      "text": "掉"
+    },
+    {
+      "end_ms": 19860,
+      "probability": 0.999903678894043,
+      "start_ms": 19660,
+      "text": "进"
+    },
+    {
+      "end_ms": 20120,
+      "probability": 0.99994957447052,
+      "start_ms": 19860,
+      "text": "去,"
+    },
+    {
+      "end_ms": 20600,
+      "probability": 0.999435544013977,
+      "start_ms": 20400,
+      "text": "仍"
+    },
+    {
+      "end_ms": 20780,
+      "probability": 0.9996801614761353,
+      "start_ms": 20600,
+      "text": "然"
+    },
+    {
+      "end_ms": 21080,
+      "probability": 0.9999116659164429,
+      "start_ms": 20780,
+      "text": "会"
+    },
+    {
+      "end_ms": 21240,
+      "probability": 0.9994666576385498,
+      "start_ms": 21080,
+      "text": "沿"
+    },
+    {
+      "end_ms": 21400,
+      "probability": 0.9995036125183105,
+      "start_ms": 21240,
+      "text": "着"
+    },
+    {
+      "end_ms": 21580,
+      "probability": 0.9995882511138916,
+      "start_ms": 21400,
+      "text": "几"
+    },
+    {
+      "end_ms": 21720,
+      "probability": 0.99991375207901,
+      "start_ms": 21580,
+      "text": "乎"
+    },
+    {
+      "end_ms": 21860,
+      "probability": 0.9997697472572327,
+      "start_ms": 21720,
+      "text": "相"
+    },
+    {
+      "end_ms": 22100,
+      "probability": 0.9998615980148315,
+      "start_ms": 21860,
+      "text": "同"
+    },
+    {
+      "end_ms": 22260,
+      "probability": 0.999962329864502,
+      "start_ms": 22100,
+      "text": "的"
+    },
+    {
+      "end_ms": 22420,
+      "probability": 0.9976498782634735,
+      "start_ms": 22260,
+      "text": "轨"
+    },
+    {
+      "end_ms": 22580,
+      "probability": 0.999452531337738,
+      "start_ms": 22420,
+      "text": "道"
+    },
+    {
+      "end_ms": 22780,
+      "probability": 0.999751091003418,
+      "start_ms": 22580,
+      "text": "运"
+    },
+    {
+      "end_ms": 23060,
+      "probability": 0.999607503414154,
+      "start_ms": 22780,
+      "text": "行。"
+    },
+    {
+      "end_ms": 23920,
+      "probability": 0.9946576952934265,
+      "start_ms": 23580,
+      "text": "黑"
+    },
+    {
+      "end_ms": 24120,
+      "probability": 0.9999895691871643,
+      "start_ms": 23920,
+      "text": "洞"
+    },
+    {
+      "end_ms": 24300,
+      "probability": 0.9992017149925232,
+      "start_ms": 24120,
+      "text": "真"
+    },
+    {
+      "end_ms": 24500,
+      "probability": 0.9999810457229614,
+      "start_ms": 24300,
+      "text": "正"
+    },
+    {
+      "end_ms": 24680,
+      "probability": 0.9997352957725525,
+      "start_ms": 24500,
+      "text": "特"
+    },
+    {
+      "end_ms": 24880,
+      "probability": 0.9992113411426544,
+      "start_ms": 24680,
+      "text": "殊"
+    },
+    {
+      "end_ms": 25000,
+      "probability": 0.9999632835388184,
+      "start_ms": 24880,
+      "text": "的"
+    },
+    {
+      "end_ms": 25380,
+      "probability": 0.9999250173568726,
+      "start_ms": 25000,
+      "text": "地方,"
+    },
+    {
+      "end_ms": 25860,
+      "probability": 0.9981520771980286,
+      "start_ms": 25600,
+      "text": "是"
+    },
+    {
+      "end_ms": 25980,
+      "probability": 0.9636623859405518,
+      "start_ms": 25860,
+      "text": "它"
+    },
+    {
+      "end_ms": 26160,
+      "probability": 0.9988443851470947,
+      "start_ms": 25980,
+      "text": "把"
+    },
+    {
+      "end_ms": 26320,
+      "probability": 0.9998277425765991,
+      "start_ms": 26160,
+      "text": "大"
+    },
+    {
+      "end_ms": 26500,
+      "probability": 0.99996018409729,
+      "start_ms": 26320,
+      "text": "量"
+    },
+    {
+      "end_ms": 26720,
+      "probability": 0.9999799728393555,
+      "start_ms": 26500,
+      "text": "质"
+    },
+    {
+      "end_ms": 26980,
+      "probability": 0.9999953508377075,
+      "start_ms": 26720,
+      "text": "量"
+    },
+    {
+      "end_ms": 27320,
+      "probability": 0.9991722702980042,
+      "start_ms": 26980,
+      "text": "压"
+    },
+    {
+      "end_ms": 27480,
+      "probability": 0.9988439977169037,
+      "start_ms": 27320,
+      "text": "缩"
+    },
+    {
+      "end_ms": 27660,
+      "probability": 0.9918426275253296,
+      "start_ms": 27480,
+      "text": "进"
+    },
+    {
+      "end_ms": 27800,
+      "probability": 0.999975323677063,
+      "start_ms": 27660,
+      "text": "了"
+    },
+    {
+      "end_ms": 28000,
+      "probability": 0.9992426633834839,
+      "start_ms": 27800,
+      "text": "极"
+    },
+    {
+      "end_ms": 28160,
+      "probability": 0.999454915523529,
+      "start_ms": 28000,
+      "text": "小"
+    },
+    {
+      "end_ms": 28300,
+      "probability": 0.9999481439590454,
+      "start_ms": 28160,
+      "text": "的"
+    },
+    {
+      "end_ms": 28500,
+      "probability": 0.9999610185623169,
+      "start_ms": 28300,
+      "text": "空"
+    },
+    {
+      "end_ms": 28720,
+      "probability": 0.9998034834861755,
+      "start_ms": 28500,
+      "text": "间。"
+    },
+    {
+      "end_ms": 29520,
+      "probability": 0.9836857914924622,
+      "start_ms": 29120,
+      "text": "这"
+    },
+    {
+      "end_ms": 29680,
+      "probability": 0.9996114373207092,
+      "start_ms": 29520,
+      "text": "会"
+    },
+    {
+      "end_ms": 29820,
+      "probability": 0.9996125102043152,
+      "start_ms": 29680,
+      "text": "让"
+    },
+    {
+      "end_ms": 30080,
+      "probability": 0.988616406917572,
+      "start_ms": 29820,
+      "text": "你在"
+    },
+    {
+      "end_ms": 30340,
+      "probability": 0.9995087385177612,
+      "start_ms": 30080,
+      "text": "靠"
+    },
+    {
+      "end_ms": 30540,
+      "probability": 0.9998888969421387,
+      "start_ms": 30340,
+      "text": "近"
+    },
+    {
+      "end_ms": 30860,
+      "probability": 0.9991105198860168,
+      "start_ms": 30540,
+      "text": "时"
+    },
+    {
+      "end_ms": 31200,
+      "probability": 0.9977238774299622,
+      "start_ms": 30860,
+      "text": "感"
+    },
+    {
+      "end_ms": 31380,
+      "probability": 0.9993330836296082,
+      "start_ms": 31200,
+      "text": "受"
+    },
+    {
+      "end_ms": 31540,
+      "probability": 0.9999394416809082,
+      "start_ms": 31380,
+      "text": "到"
+    },
+    {
+      "end_ms": 31720,
+      "probability": 0.9991880059242249,
+      "start_ms": 31540,
+      "text": "越"
+    },
+    {
+      "end_ms": 31880,
+      "probability": 0.999873161315918,
+      "start_ms": 31720,
+      "text": "来"
+    },
+    {
+      "end_ms": 32040,
+      "probability": 0.9999762773513794,
+      "start_ms": 31880,
+      "text": "越"
+    },
+    {
+      "end_ms": 32240,
+      "probability": 0.9991223514080048,
+      "start_ms": 32040,
+      "text": "极"
+    },
+    {
+      "end_ms": 32420,
+      "probability": 0.9998637735843658,
+      "start_ms": 32240,
+      "text": "端"
+    },
+    {
+      "end_ms": 32540,
+      "probability": 0.9998652935028076,
+      "start_ms": 32420,
+      "text": "的"
+    },
+    {
+      "end_ms": 32700,
+      "probability": 0.9973135590553284,
+      "start_ms": 32540,
+      "text": "引"
+    },
+    {
+      "end_ms": 32880,
+      "probability": 0.9994320273399353,
+      "start_ms": 32700,
+      "text": "力"
+    },
+    {
+      "end_ms": 33100,
+      "probability": 0.9998737573623657,
+      "start_ms": 32880,
+      "text": "效"
+    },
+    {
+      "end_ms": 33360,
+      "probability": 0.9904659986495972,
+      "start_ms": 33100,
+      "text": "应。"
+    },
+    {
+      "end_ms": 34120,
+      "probability": 0.9975960850715637,
+      "start_ms": 33720,
+      "text": "一"
+    },
+    {
+      "end_ms": 34280,
+      "probability": 0.9992632269859314,
+      "start_ms": 34120,
+      "text": "旦"
+    },
+    {
+      "end_ms": 34440,
+      "probability": 0.9835700392723083,
+      "start_ms": 34280,
+      "text": "越"
+    },
+    {
+      "end_ms": 34640,
+      "probability": 0.9991607666015625,
+      "start_ms": 34440,
+      "text": "过"
+    },
+    {
+      "end_ms": 34820,
+      "probability": 0.8532226085662842,
+      "start_ms": 34640,
+      "text": "世"
+    },
+    {
+      "end_ms": 34940,
+      "probability": 0.9372965097427368,
+      "start_ms": 34820,
+      "text": "间"
+    },
+    {
+      "end_ms": 35400,
+      "probability": 0.9978431463241577,
+      "start_ms": 34940,
+      "text": "世界,"
+    },
+    {
+      "end_ms": 35900,
+      "probability": 0.7816973626613617,
+      "start_ms": 35800,
+      "text": "联"
+    },
+    {
+      "end_ms": 36100,
+      "probability": 0.9986740350723267,
+      "start_ms": 35900,
+      "text": "光"
+    },
+    {
+      "end_ms": 36280,
+      "probability": 0.9998306035995483,
+      "start_ms": 36100,
+      "text": "也"
+    },
+    {
+      "end_ms": 36440,
+      "probability": 0.9997448325157166,
+      "start_ms": 36280,
+      "text": "无"
+    },
+    {
+      "end_ms": 36620,
+      "probability": 0.9996849298477173,
+      "start_ms": 36440,
+      "text": "法"
+    },
+    {
+      "end_ms": 36860,
+      "probability": 0.9989488422870636,
+      "start_ms": 36620,
+      "text": "逃"
+    },
+    {
+      "end_ms": 37220,
+      "probability": 0.9988422989845276,
+      "start_ms": 36860,
+      "text": "出来。"
+    },
+    {
+      "end_ms": 38040,
+      "probability": 0.9955204725265503,
+      "start_ms": 37640,
+      "text": "黑"
+    },
+    {
+      "end_ms": 38240,
+      "probability": 0.9987446963787079,
+      "start_ms": 38040,
+      "text": "洞"
+    },
+    {
+      "end_ms": 38400,
+      "probability": 0.9997602105140686,
+      "start_ms": 38240,
+      "text": "周"
+    },
+    {
+      "end_ms": 38740,
+      "probability": 0.9988938570022583,
+      "start_ms": 38400,
+      "text": "围"
+    },
+    {
+      "end_ms": 39080,
+      "probability": 0.9919467568397522,
+      "start_ms": 38740,
+      "text": "常"
+    },
+    {
+      "end_ms": 39280,
+      "probability": 0.9999493360519409,
+      "start_ms": 39080,
+      "text": "常"
+    },
+    {
+      "end_ms": 39560,
+      "probability": 0.9006633162498474,
+      "start_ms": 39280,
+      "text": "还有"
+    },
+    {
+      "end_ms": 39800,
+      "probability": 0.9361924529075623,
+      "start_ms": 39560,
+      "text": "炽"
+    },
+    {
+      "end_ms": 39980,
+      "probability": 0.9992626905441284,
+      "start_ms": 39800,
+      "text": "热"
+    },
+    {
+      "end_ms": 40100,
+      "probability": 0.9985989928245544,
+      "start_ms": 39980,
+      "text": "的"
+    },
+    {
+      "end_ms": 40260,
+      "probability": 0.9519375562667847,
+      "start_ms": 40100,
+      "text": "吸"
+    },
+    {
+      "end_ms": 40420,
+      "probability": 0.5175783038139343,
+      "start_ms": 40260,
+      "text": "机"
+    },
+    {
+      "end_ms": 40720,
+      "probability": 0.9978606104850769,
+      "start_ms": 40420,
+      "text": "盘。"
+    },
+    {
+      "end_ms": 41540,
+      "probability": 0.9970793724060059,
+      "start_ms": 41360,
+      "text": "气"
+    },
+    {
+      "end_ms": 41720,
+      "probability": 0.9990730285644531,
+      "start_ms": 41540,
+      "text": "体"
+    },
+    {
+      "end_ms": 41900,
+      "probability": 0.9878537654876709,
+      "start_ms": 41720,
+      "text": "和"
+    },
+    {
+      "end_ms": 42080,
+      "probability": 0.9973501265048981,
+      "start_ms": 41900,
+      "text": "尘"
+    },
+    {
+      "end_ms": 42340,
+      "probability": 0.996732234954834,
+      "start_ms": 42080,
+      "text": "埃"
+    },
+    {
+      "end_ms": 42660,
+      "probability": 0.9963396787643433,
+      "start_ms": 42340,
+      "text": "在"
+    },
+    {
+      "end_ms": 42820,
+      "probability": 0.9990800619125366,
+      "start_ms": 42660,
+      "text": "落"
+    },
+    {
+      "end_ms": 42980,
+      "probability": 0.9947441816329956,
+      "start_ms": 42820,
+      "text": "入"
+    },
+    {
+      "end_ms": 43400,
+      "probability": 0.9993841648101807,
+      "start_ms": 42980,
+      "text": "之前"
+    },
+    {
+      "end_ms": 43820,
+      "probability": 0.9888291954994202,
+      "start_ms": 43400,
+      "text": "会"
+    },
+    {
+      "end_ms": 44000,
+      "probability": 0.999567449092865,
+      "start_ms": 43820,
+      "text": "高"
+    },
+    {
+      "end_ms": 44220,
+      "probability": 0.9998205304145813,
+      "start_ms": 44000,
+      "text": "速"
+    },
+    {
+      "end_ms": 44460,
+      "probability": 0.9991526305675507,
+      "start_ms": 44220,
+      "text": "旋"
+    },
+    {
+      "end_ms": 44720,
+      "probability": 0.9992499649524689,
+      "start_ms": 44460,
+      "text": "转、"
+    },
+    {
+      "end_ms": 45160,
+      "probability": 0.998769611120224,
+      "start_ms": 44920,
+      "text": "摩"
+    },
+    {
+      "end_ms": 45420,
+      "probability": 0.9994701743125916,
+      "start_ms": 45160,
+      "text": "擦、"
+    },
+    {
+      "end_ms": 45820,
+      "probability": 0.9814287424087524,
+      "start_ms": 45700,
+      "text": "升"
+    },
+    {
+      "end_ms": 46100,
+      "probability": 0.9997750520706177,
+      "start_ms": 45820,
+      "text": "温,"
+    },
+    {
+      "end_ms": 46620,
+      "probability": 0.9997702836990356,
+      "start_ms": 46300,
+      "text": "并"
+    },
+    {
+      "end_ms": 46780,
+      "probability": 0.9985397160053253,
+      "start_ms": 46620,
+      "text": "释"
+    },
+    {
+      "end_ms": 46940,
+      "probability": 0.9999394416809082,
+      "start_ms": 46780,
+      "text": "放"
+    },
+    {
+      "end_ms": 47140,
+      "probability": 0.9998026490211487,
+      "start_ms": 46940,
+      "text": "出"
+    },
+    {
+      "end_ms": 47420,
+      "probability": 0.9998048841953278,
+      "start_ms": 47140,
+      "text": "强"
+    },
+    {
+      "end_ms": 47600,
+      "probability": 0.9997099339962006,
+      "start_ms": 47420,
+      "text": "烈"
+    },
+    {
+      "end_ms": 47800,
+      "probability": 0.9932236075401306,
+      "start_ms": 47600,
+      "text": "辐"
+    },
+    {
+      "end_ms": 48040,
+      "probability": 0.9990258514881134,
+      "start_ms": 47800,
+      "text": "射。"
+    },
+    {
+      "end_ms": 48840,
+      "probability": 0.9661465287208557,
+      "start_ms": 48660,
+      "text": "天"
+    },
+    {
+      "end_ms": 49000,
+      "probability": 0.9991078972816467,
+      "start_ms": 48840,
+      "text": "文"
+    },
+    {
+      "end_ms": 49200,
+      "probability": 0.9998857975006104,
+      "start_ms": 49000,
+      "text": "学"
+    },
+    {
+      "end_ms": 49500,
+      "probability": 0.9998384714126587,
+      "start_ms": 49200,
+      "text": "家"
+    },
+    {
+      "end_ms": 49780,
+      "probability": 0.9921521544456482,
+      "start_ms": 49500,
+      "text": "正"
+    },
+    {
+      "end_ms": 49960,
+      "probability": 0.9012752771377563,
+      "start_ms": 49780,
+      "text": "是"
+    },
+    {
+      "end_ms": 50100,
+      "probability": 0.9989909529685974,
+      "start_ms": 49960,
+      "text": "通"
+    },
+    {
+      "end_ms": 50260,
+      "probability": 0.9996588230133057,
+      "start_ms": 50100,
+      "text": "过"
+    },
+    {
+      "end_ms": 50420,
+      "probability": 0.9998451471328735,
+      "start_ms": 50260,
+      "text": "这"
+    },
+    {
+      "end_ms": 50620,
+      "probability": 0.9999732971191406,
+      "start_ms": 50420,
+      "text": "些"
+    },
+    {
+      "end_ms": 50840,
+      "probability": 0.9995366930961609,
+      "start_ms": 50620,
+      "text": "辐"
+    },
+    {
+      "end_ms": 51100,
+      "probability": 0.9997364580631256,
+      "start_ms": 50840,
+      "text": "射,"
+    },
+    {
+      "end_ms": 51620,
+      "probability": 0.9582220911979675,
+      "start_ms": 51300,
+      "text": "恒"
+    },
+    {
+      "end_ms": 51820,
+      "probability": 0.9989437460899353,
+      "start_ms": 51620,
+      "text": "星"
+    },
+    {
+      "end_ms": 52000,
+      "probability": 0.9975598752498627,
+      "start_ms": 51820,
+      "text": "围"
+    },
+    {
+      "end_ms": 52180,
+      "probability": 0.999831885099411,
+      "start_ms": 52000,
+      "text": "绕"
+    },
+    {
+      "end_ms": 52360,
+      "probability": 0.9996861219406128,
+      "start_ms": 52180,
+      "text": "不"
+    },
+    {
+      "end_ms": 52540,
+      "probability": 0.9998233914375305,
+      "start_ms": 52360,
+      "text": "可"
+    },
+    {
+      "end_ms": 52740,
+      "probability": 0.9989399313926697,
+      "start_ms": 52540,
+      "text": "见"
+    },
+    {
+      "end_ms": 52960,
+      "probability": 0.9997636675834656,
+      "start_ms": 52740,
+      "text": "天"
+    },
+    {
+      "end_ms": 53160,
+      "probability": 0.9995322227478027,
+      "start_ms": 52960,
+      "text": "体"
+    },
+    {
+      "end_ms": 53280,
+      "probability": 0.9999649524688721,
+      "start_ms": 53160,
+      "text": "的"
+    },
+    {
+      "end_ms": 53460,
+      "probability": 0.9960454702377319,
+      "start_ms": 53280,
+      "text": "轨"
+    },
+    {
+      "end_ms": 53600,
+      "probability": 0.9993597865104675,
+      "start_ms": 53460,
+      "text": "道"
+    },
+    {
+      "end_ms": 53860,
+      "probability": 0.9998477399349213,
+      "start_ms": 53600,
+      "text": "变"
+    },
+    {
+      "end_ms": 54120,
+      "probability": 0.9998444318771362,
+      "start_ms": 53860,
+      "text": "化,"
+    },
+    {
+      "end_ms": 54680,
+      "probability": 0.9984808564186096,
+      "start_ms": 54360,
+      "text": "以及"
+    },
+    {
+      "end_ms": 55020,
+      "probability": 0.9984051585197449,
+      "start_ms": 54680,
+      "text": "黑"
+    },
+    {
+      "end_ms": 55200,
+      "probability": 0.9995868802070618,
+      "start_ms": 55020,
+      "text": "洞"
+    },
+    {
+      "end_ms": 55400,
+      "probability": 0.9216477572917938,
+      "start_ms": 55200,
+      "text": "并"
+    },
+    {
+      "end_ms": 55580,
+      "probability": 0.7890006899833679,
+      "start_ms": 55400,
+      "text": "合"
+    },
+    {
+      "end_ms": 55840,
+      "probability": 0.9993668794631958,
+      "start_ms": 55580,
+      "text": "产"
+    },
+    {
+      "end_ms": 56000,
+      "probability": 0.9999655485153198,
+      "start_ms": 55840,
+      "text": "生"
+    },
+    {
+      "end_ms": 56120,
+      "probability": 0.9999550580978394,
+      "start_ms": 56000,
+      "text": "的"
+    },
+    {
+      "end_ms": 56280,
+      "probability": 0.9997503161430359,
+      "start_ms": 56120,
+      "text": "引"
+    },
+    {
+      "end_ms": 56460,
+      "probability": 0.9999494552612305,
+      "start_ms": 56280,
+      "text": "力"
+    },
+    {
+      "end_ms": 56660,
+      "probability": 0.9958081245422363,
+      "start_ms": 56460,
+      "text": "波,"
+    },
+    {
+      "end_ms": 57160,
+      "probability": 0.9997788071632385,
+      "start_ms": 56940,
+      "text": "来"
+    },
+    {
+      "end_ms": 57380,
+      "probability": 0.9990886747837067,
+      "start_ms": 57160,
+      "text": "判"
+    },
+    {
+      "end_ms": 57540,
+      "probability": 0.9998633563518524,
+      "start_ms": 57380,
+      "text": "断"
+    },
+    {
+      "end_ms": 57780,
+      "probability": 0.9993420243263245,
+      "start_ms": 57540,
+      "text": "黑"
+    },
+    {
+      "end_ms": 57940,
+      "probability": 0.9999547004699707,
+      "start_ms": 57780,
+      "text": "洞"
+    },
+    {
+      "end_ms": 58060,
+      "probability": 0.9999493360519409,
+      "start_ms": 57940,
+      "text": "的"
+    },
+    {
+      "end_ms": 58260,
+      "probability": 0.9999240636825562,
+      "start_ms": 58060,
+      "text": "存"
+    },
+    {
+      "end_ms": 58500,
+      "probability": 0.9999363422393799,
+      "start_ms": 58260,
+      "text": "在。"
+    },
+    {
+      "end_ms": 59520,
+      "probability": 0.9794501066207886,
+      "start_ms": 59120,
+      "text": "所以,"
+    },
+    {
+      "end_ms": 60180,
+      "probability": 0.9745901226997375,
+      "start_ms": 59820,
+      "text": "黑"
+    },
+    {
+      "end_ms": 60400,
+      "probability": 0.9994385838508606,
+      "start_ms": 60180,
+      "text": "洞"
+    },
+    {
+      "end_ms": 60660,
+      "probability": 0.9941357374191284,
+      "start_ms": 60400,
+      "text": "不是"
+    },
+    {
+      "end_ms": 60880,
+      "probability": 0.9991767406463623,
+      "start_ms": 60660,
+      "text": "宇"
+    },
+    {
+      "end_ms": 61080,
+      "probability": 0.9999039769172668,
+      "start_ms": 60880,
+      "text": "宙"
+    },
+    {
+      "end_ms": 61200,
+      "probability": 0.964228630065918,
+      "start_ms": 61080,
+      "text": "里"
+    },
+    {
+      "end_ms": 61340,
+      "probability": 0.9989035129547119,
+      "start_ms": 61200,
+      "text": "的"
+    },
+    {
+      "end_ms": 61500,
+      "probability": 0.9708907604217529,
+      "start_ms": 61340,
+      "text": "无"
+    },
+    {
+      "end_ms": 61700,
+      "probability": 0.9888501763343811,
+      "start_ms": 61500,
+      "text": "底"
+    },
+    {
+      "end_ms": 61820,
+      "probability": 0.9856201410293579,
+      "start_ms": 61700,
+      "text": "吸"
+    },
+    {
+      "end_ms": 62100,
+      "probability": 0.9611707329750061,
+      "start_ms": 61820,
+      "text": "尘"
+    },
+    {
+      "end_ms": 62340,
+      "probability": 0.9991017580032349,
+      "start_ms": 62100,
+      "text": "器,"
+    },
+    {
+      "end_ms": 62880,
+      "probability": 0.9823128581047058,
+      "start_ms": 62560,
+      "text": "而"
+    },
+    {
+      "end_ms": 63020,
+      "probability": 0.9993656277656555,
+      "start_ms": 62880,
+      "text": "是"
+    },
+    {
+      "end_ms": 63120,
+      "probability": 0.9978494644165039,
+      "start_ms": 63020,
+      "text": "一"
+    },
+    {
+      "end_ms": 63300,
+      "probability": 0.9986916184425354,
+      "start_ms": 63120,
+      "text": "种"
+    },
+    {
+      "end_ms": 63540,
+      "probability": 0.9991445243358612,
+      "start_ms": 63300,
+      "text": "极"
+    },
+    {
+      "end_ms": 63740,
+      "probability": 0.9997013509273529,
+      "start_ms": 63540,
+      "text": "端"
+    },
+    {
+      "end_ms": 63940,
+      "probability": 0.9782136082649231,
+      "start_ms": 63740,
+      "text": "致"
+    },
+    {
+      "end_ms": 64160,
+      "probability": 0.7612241506576538,
+      "start_ms": 63940,
+      "text": "密,"
+    },
+    {
+      "end_ms": 64640,
+      "probability": 0.9060741066932678,
+      "start_ms": 64340,
+      "text": "有"
+    },
+    {
+      "end_ms": 64800,
+      "probability": 0.9966797828674316,
+      "start_ms": 64640,
+      "text": "引"
+    },
+    {
+      "end_ms": 64980,
+      "probability": 0.9971504807472229,
+      "start_ms": 64800,
+      "text": "力"
+    },
+    {
+      "end_ms": 65220,
+      "probability": 0.9988769590854645,
+      "start_ms": 64980,
+      "text": "规"
+    },
+    {
+      "end_ms": 65380,
+      "probability": 0.9991132020950317,
+      "start_ms": 65220,
+      "text": "律"
+    },
+    {
+      "end_ms": 65520,
+      "probability": 0.9776611924171448,
+      "start_ms": 65380,
+      "text": "支"
+    },
+    {
+      "end_ms": 65720,
+      "probability": 0.9997935891151428,
+      "start_ms": 65520,
+      "text": "配"
+    },
+    {
+      "end_ms": 65840,
+      "probability": 0.9988284707069397,
+      "start_ms": 65720,
+      "text": "的"
+    },
+    {
+      "end_ms": 66000,
+      "probability": 0.9982183575630188,
+      "start_ms": 65840,
+      "text": "天"
+    },
+    {
+      "end_ms": 66300,
+      "probability": 0.9994326233863831,
+      "start_ms": 66000,
+      "text": "体。"
+    }
+  ]
+}
