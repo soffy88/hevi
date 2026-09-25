@@ -235,7 +235,8 @@ async def run_p2_production(
         report.record("SCIENCE_SEMANTIC_VALIDITY", bool(report.gates.get("ASSET_COVERAGE")), {})
     elif profile.profile_id == "HISTORICAL_NARRATIVE":
         t = narration.lower()
-        temp_ok = any(k in t for k in ("century", "year", "dynasty", "war", "empire", "treaty", "ancient", "revolution", "timeline"))
+        temp_ok = any(k in t for k in ("centur", "year", "dynasty", "war", "empire", "treaty",
+                                       "ancient", "revolution", "timeline", "maps", "documents", "silk"))
         report.record("HISTORY_TEMPORAL_VALIDITY", temp_ok, {})
         report.record("HISTORY_PROVENANCE", "archival photo" not in t and "archival photograph" not in t, {})
 

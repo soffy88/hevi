@@ -515,12 +515,17 @@ class NarrativeArc:
             ))
             return
         
-        # For 3 beats: HOOK, DEVELOPMENT+ESCALATION combined, PAYOFF
+        # For 3 beats: HOOK, ORIENTATION+DEVELOPMENT+ESCALATION on beat 1, PAYOFF
         if n >= 3:
             self.phases.append(NarrativePhase(
                 phase="HOOK",
                 beat_indices=(0, 0),
                 key_beat_id=beats[0].beat_id if beats else None,
+            ))
+            self.phases.append(NarrativePhase(
+                phase="ORIENTATION",
+                beat_indices=(1, 1),
+                key_beat_id=beats[1].beat_id if len(beats) > 1 else None,
             ))
             self.phases.append(NarrativePhase(
                 phase="DEVELOPMENT",
