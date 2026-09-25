@@ -205,6 +205,7 @@ async def main() -> int:
     )
     tl_ok = timeline_lock.verify_against(audio_lock)
     report.record("TIMELINE_LOCK", tl_ok, {"cue_count": cue_count, "drift_ms": 0})
+    report.record("CAPTION_SYNC", tl_ok, {"cue_count": cue_count, "drift_ms": timeline_lock.drift_ms})
 
     # ── 3. VISUAL INTENT ────────────────────────────────────────────
     visual_intents = []

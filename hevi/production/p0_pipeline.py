@@ -347,6 +347,14 @@ async def run_p0_production(
         "cue_count": cue_count, "drift_ms": state.timeline_lock.drift_ms
     })
 
+    # CAPTION_SYNC: subtitles aligned to audio master clock
+    caption_sync_ok = abs(state.timeline_lock.drift_ms) <= 100
+    state.report.record("CAPTION_SYNC", caption_sync_ok, {
+        "cue_count": cue_count,
+        "drift_ms": state.timeline_lock.drift_ms,
+        "audio_duration_s": state.audio_lock.duration_s,
+    })
+
     # ── 3. VISUAL INTENT SET ──────────────────────────────────────
     sentences = [s.strip() for s in narration.replace("。", ".").split(".") if s.strip()]
     if not sentences:
@@ -582,8 +590,6 @@ async def run_p0_production(
     state.report.record("FINAL_QA", final_qa_pass and compose_ok, {
         "duration_s": final_probe.duration_s,
         "compose_ok": compose_ok,
-        "video_codec": final_probe.video_codec,
-        "audio_codec": final_probe.audio_codec,
     })
 
     state.report.proof_mp4 = state.proof_mp4
