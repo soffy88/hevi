@@ -10,20 +10,24 @@ Applies P0 gate verification on top.
 
 import asyncio
 import json
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 sys.path.insert(0, "/data/soffy/projects/hevi/.veya/worktrees/task-remote-2a517320364b870ee4d3")
 
 from hevi.production.audio_master_clock_workflow import prepare_audio_master_clock
+from hevi.production.delivery_gate import assert_explainer_compose, probe_video
 from hevi.production.motion_graphics_workflow import execute_motion_graphics_task
-from hevi.production.visual_quality_workflow import execute_visual_quality_task
-from hevi.production.delivery_gate import probe_video, assert_explainer_compose
 from hevi.production.p0_pipeline import (
-    AudioLock, TimelineLock, VisualIntent, ResolvedAsset,
-    ShotPlan, MotionPlan, ProductionGateReport, _sha256,
+    AudioLock,
+    ProductionGateReport,
+    ResolvedAsset,
+    TimelineLock,
+    VisualIntent,
+    _sha256,
 )
+from hevi.production.visual_quality_workflow import execute_visual_quality_task
 
 
 def _now() -> str:
@@ -154,7 +158,7 @@ async def main() -> int:
     report = ProductionGateReport(production_id=production_id)
 
     # ── 1. AUDIO LOCK (prepare_audio_master_clock - TTS + ASR only) ─────
-    print(f"[P0] Running AudioLock (prepare_audio_master_clock)...")
+    print("[P0] Running AudioLock (prepare_audio_master_clock)...")
     audio_prepared = await prepare_audio_master_clock(task, task["config_json"], output_dir / "audio", production_id)
 
     audio_path = audio_prepared["audio_path"]
@@ -225,7 +229,7 @@ async def main() -> int:
 
     # ── 4. ASSET RESOLUTION ─────────────────────────────────────────
     resolved_assets = []
-    for i, (sent, asset_path) in enumerate(zip(sentences, segment_assets)):
+    for i, (_sent, asset_path) in enumerate(zip(sentences, segment_assets, strict=True)):
         asset_sha = _sha256(asset_path)
         asset = ResolvedAsset(
             asset_id=f"{production_id}:asset-{i}",
@@ -271,7 +275,7 @@ async def main() -> int:
         },
     }
 
-    print(f"[P0] Running MotionGraphics (remotion)...")
+    print("[P0] Running MotionGraphics (remotion)...")
     motion_result = await execute_motion_graphics_task(motion_task, pool=None)
 
     if motion_result.get("status") != "completed":
@@ -283,14 +287,11 @@ async def main() -> int:
     
     # Find final_video (primary=True, logical_role=final_video)
     final_art = None
-    remotion_art = None
     for a in motion_artifacts:
         role = a.get("logical_role", "") if isinstance(a, dict) else getattr(a, "logical_role", "")
         is_primary = a.get("primary", False) if isinstance(a, dict) else getattr(a, "primary", False)
         if is_primary and role == "final_video":
             final_art = a
-        if role == "remotion_motion_video":
-            remotion_art = a
 
     if not final_art:
         print("[P0] ERROR: No final_video artifact")
@@ -319,7 +320,7 @@ async def main() -> int:
         },
     }
 
-    print(f"[P0] Running VisualQuality...")
+    print("[P0] Running VisualQuality...")
     quality_result = await execute_visual_quality_task(quality_task, pool=None)
 
     if quality_result.get("status") != "completed":
@@ -357,7 +358,7 @@ async def main() -> int:
     report.final_mp4 = str(final_path)
 
     # SOURCE_PROVENANCE
-    all_artifacts = [tts_artifact, asr_artifact] + motion_artifacts
+    all_artifacts = [tts_artifact, asr_artifact, *motion_artifacts]
     all_have_sha = all(_artifact_sha(a) for a in all_artifacts)
     report.record("SOURCE_PROVENANCE", all_have_sha, {"total_artifacts": len(all_artifacts)})
 
@@ -421,12 +422,10 @@ def _extract_concepts(text: str) -> list[str]:
 
 def _has_large_explanatory_text(text: str) -> bool:
     visual_kw = ["black hole", "disk", "binary", "orbit", "gravity", "NASA", "visual"]
-    if len(text) > 200 and not any(k in text.lower() for k in visual_kw):
-        return True
-    return False
+    return len(text) > 200 and not any(k in text.lower() for k in visual_kw)
 
 
 if __name__ == "__main__":
-    import uuid
     import json
+    import uuid
     sys.exit(asyncio.run(main()))
