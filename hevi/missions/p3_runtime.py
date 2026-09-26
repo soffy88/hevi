@@ -200,7 +200,9 @@ def _split_narration(narration: str, parts: int) -> list[str]:
     if not sents:
         return [narration]
     groups: list[list[str]]
-    if parts <= 1 or len(sents) <= parts:
+    if parts <= 1:
+        groups = [sents]
+    elif len(sents) <= parts:
         groups = [[s] for s in sents]
     else:
         # Contiguous chunks preserve narrative order (never round-robin).
@@ -362,7 +364,12 @@ class MissionExecutor:
             if only_kinds is not None:
                 ready = [n for n in ready if n.kind in only_kinds]
             if not ready:
-                break
+                # No ready nodes now; check if any RUNNING tasks still pending
+                running = any(n.status == "RUNNING" for n in mission.plan.nodes)
+                if not running:
+                    break
+                await asyncio.sleep(0.1)
+                continue
             # Budget gate before dispatch
             for n in ready:
                 ok, reason = self._check_budget(mission, n)
@@ -379,7 +386,8 @@ class MissionExecutor:
                     continue
                 todo.append(n)
             if not todo:
-                break
+                # All ready nodes are cached; continue loop to check for new ready
+                continue
 
             async def _one(node: PlanNode) -> None:
                 async with sem:

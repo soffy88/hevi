@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import http.server
 import json
+import shutil
+import socket
 import subprocess
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -81,8 +85,63 @@ def _image_data_uri(path: Path) -> str:
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
 
-def _audio_data_uri(path: Path) -> str:
-    return f"data:audio/wav;base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
+class _AudioAssetServer:
+    """Local HTTP server for serving audio assets during Remotion render."""
+    
+    def __init__(self, assets_dir: Path) -> None:
+        self.assets_dir = assets_dir
+        self.port = self._find_free_port()
+        self.server: http.server.HTTPServer | None = None
+        self.thread: threading.Thread | None = None
+    
+    def _find_free_port(self) -> int:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("", 0))
+            return int(s.getsockname()[1])
+    
+    def start(self) -> None:
+        def handler(*args: Any, **kwargs: Any) -> http.server.SimpleHTTPRequestHandler:
+            return http.server.SimpleHTTPRequestHandler(*args, directory=str(self.assets_dir), **kwargs)
+        self.server = http.server.HTTPServer(("127.0.0.1", self.port), handler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        import time
+        time.sleep(0.1)
+    
+    def stop(self) -> None:
+        if self.server:
+            self.server.shutdown()
+            self.server.server_close()
+        if self.thread:
+            self.thread.join(timeout=1.0)
+    
+    @property
+    def base_url(self) -> str:
+        return f"http://127.0.0.1:{self.port}"
+
+
+def _prepare_audio_asset(audio_path: Path, output_dir: Path) -> tuple[str, str]:
+    """Copy audio to assets dir and return (asset_name, local_path)."""
+    import hashlib
+    digest = hashlib.sha256()
+    with audio_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    sha = digest.hexdigest()[:16]
+    suffix = audio_path.suffix or ".wav"
+    asset_name = f"audio_{sha}{suffix}"
+    
+    assets_dir = output_dir / "assets"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = assets_dir / asset_name
+    shutil.copy2(audio_path, dest_path)
+    
+    return asset_name, str(dest_path)
+
+
+def _audio_http_url(asset_name: str, server: _AudioAssetServer) -> str:
+    """Return HTTP URL for audio asset served by local server."""
+    return f"{server.base_url}/{asset_name}"
 
 
 def _spec(config: dict[str, Any], *, duration_ms: int, image_uri: str) -> dict[str, Any]:
@@ -141,12 +200,20 @@ async def execute_motion_graphics_task(task: dict[str, Any], pool: Any) -> dict[
         spec_path.write_text(json.dumps(spec, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8")
         output_path = Path(config.get("output_path") or output_dir / "remotion.mp4")
         stage = "remotion"
-        rendered = await remotion_render_workflow(
-            RemotionConfig(project_dir=PROJECT_DIR, composition_id="MotionGraphics", output_path=output_path,
-                           width=spec["width"], height=spec["height"], fps=spec["fps"],
-                           props={"spec": spec, "audio_src": _audio_data_uri(audio_path)}, concurrency=1),
-            RemotionInput(), output_dir,
-        )
+        # Prepare audio asset and start local HTTP server for streaming
+        asset_name, _ = _prepare_audio_asset(audio_path, output_dir)
+        audio_server = _AudioAssetServer(output_dir / "assets")
+        audio_server.start()
+        try:
+            audio_http_url = _audio_http_url(asset_name, audio_server)
+            rendered = await remotion_render_workflow(
+                RemotionConfig(project_dir=PROJECT_DIR, composition_id="MotionGraphics", output_path=output_path,
+                               width=spec["width"], height=spec["height"], fps=spec["fps"],
+                               props={"spec": spec, "audio_src": audio_http_url}, concurrency=1),
+                RemotionInput(), output_dir,
+            )
+        finally:
+            audio_server.stop()
         if rendered.get("status") != "completed":
             raise RuntimeError(str(rendered.get("error") or "Remotion render failed"))
         motion_probe = _probe(output_path)

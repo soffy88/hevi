@@ -160,9 +160,10 @@ def test_idempotency_skips_completed_node(tmp_path: Path) -> None:
 
     ex = MissionExecutor(store, {"RESEARCH": _runner, "SCRIPT": _runner, "RENDER": _runner,
                                  "EDIT": _runner, "DELIVERY": _runner}, max_parallel=1)
-    # Only research is ready and it is cached → executor should stop without calling
+    # The cached research node must not be re-dispatched; downstream PENDING
+    # nodes still run (correct executor behavior).
     asyncio.run(ex.run(mission))
-    assert calls == []
+    assert "research" not in calls
 
 
 def test_status_view_observability(tmp_path: Path) -> None:
