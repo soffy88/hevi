@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import os
 import subprocess
 from pathlib import Path
 
@@ -76,6 +77,13 @@ P51_AUTHORISED_CHANGES: dict[str, tuple[str, ...]] = {
     "hevi/ops/p5_1_types.py": (),
 }
 
+#: Files that were already modified in the working tree before P5.2 started.
+#: They belong to unrelated in-progress work and must survive untouched.
+UNRELATED_PRE_EXISTING_DIRTY = (
+    "hevi/ops/p5_factory.py",
+    "hevi/ops/p5_volcano_tts.py",
+)
+
 #: Top-level definitions a P5.1 diff may introduce, flattened from the table above.
 P51_ALLOWED_NEW_SYMBOLS = frozenset(
     symbol for symbols in P51_AUTHORISED_CHANGES.values() for symbol in symbols
@@ -91,6 +99,17 @@ def _source(module: str) -> str:
 
 
 def _repo_root() -> Path:
+    """The repository the structural checks read from.
+
+    Overridable so a mutation can be evaluated against an isolated copy instead
+    of the live working tree. That is the whole point: a mutation check that has
+    to edit the tree in order to run is a check that will eventually delete
+    somebody's uncommitted work, and the way to make that impossible is to never
+    require it in the first place.
+    """
+    override = os.environ.get("HEVI_P52_REPO_ROOT", "").strip()
+    if override:
+        return Path(override)
     return Path(subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
         capture_output=True, text=True, check=True, cwd=Path(__file__).parent,
@@ -412,13 +431,35 @@ def test_p52_reuses_p51_types_by_import_not_copy(module: str, names: tuple[str, 
 
 
 def test_p52_did_not_touch_unrelated_pre_existing_work() -> None:
-    """p5_factory / p5_volcano were already dirty before P5.2 started."""
-    dirty = subprocess.run(
-        ["git", "status", "--porcelain"],
+    """The unrelated dirty files must be preserved, not left clean.
+
+    ``git status`` cannot answer this. These files were already modified in the
+    working tree before P5.2 began, so asserting they are clean would be
+    asserting that someone else's in-progress work had been reverted — and would
+    fail in the canonical checkout while passing in an isolated worktree, which
+    is the worst possible shape for a guard.
+
+    What can be checked is the thing that actually matters: P5.2's own diff never
+    touches them. Whether the working-tree copy is dirty is a fact about the
+    checkout, not about this layer.
+    """
+    touched = subprocess.run(
+        ["git", "diff", "--name-only", P52_BASE_SHA, "HEAD", "--",
+         *UNRELATED_PRE_EXISTING_DIRTY],
         capture_output=True, text=True, check=True, cwd=_repo_root(),
-    ).stdout
-    for path in ("hevi/ops/p5_factory.py", "hevi/ops/p5_volcano_tts.py"):
-        assert path not in dirty, f"unrelated file surfaced: {path}"
+    ).stdout.strip()
+    assert not touched, (
+        "P5.2's diff touches files that were already dirty before it started: "
+        f"{touched}"
+    )
+
+
+def test_unrelated_dirty_is_recorded_as_preserved() -> None:
+    """The declaration exists so a report can state it rather than imply it."""
+    assert set(UNRELATED_PRE_EXISTING_DIRTY) == {
+        "hevi/ops/p5_factory.py",
+        "hevi/ops/p5_volcano_tts.py",
+    }
 
 
 def test_no_forbidden_reference_project_code_was_imported() -> None:

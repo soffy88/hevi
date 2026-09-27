@@ -16,6 +16,7 @@ import asyncio
 import json
 import subprocess
 import sys
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -82,6 +83,59 @@ GATE_ORDER = [
 ]
 
 P5_1_TESTS = sorted((REPO / "tests").glob("test_p5_1_*.py"))
+
+#: The specification's window for a Case A knowledge talk. Not a tuning knob:
+#: widening it to accommodate a short render would be defeating the gate.
+FINECUT_A_MIN_S = 20.0
+FINECUT_A_MAX_S = 30.0
+
+
+def _measure_finecut_a_duration(
+    case_a: dict[str, Any],
+) -> tuple[float, str, str] | None:
+    """Probe the real Case A V0 and judge it against the window.
+
+    Returns ``(measured, status, note)`` or ``None`` when the artifact is absent.
+    The number comes from ffprobe on the file on disk, so it cannot be satisfied
+    by a value the pipeline reported about itself.
+    """
+    import subprocess
+
+    out_dir = case_a.get("out_dir") or ""
+    v0_stage = next(
+        (s for s in case_a.get("stages", []) if s.get("name") == "candidate_v0"), None
+    )
+    candidates: list[Path] = []
+    if v0_stage:
+        payload = v0_stage.get("data") or v0_stage.get("evidence") or {}
+        path = payload.get("video_path")
+        if path:
+            candidates.append(Path(path))
+    if out_dir:
+        candidates.extend(sorted((Path(out_dir) / "v0").glob("*.mp4")))
+
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        proc = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=nw=1:nk=1", str(candidate)],
+            capture_output=True, text=True, check=False,
+        )
+        try:
+            measured = float(proc.stdout.strip())
+        except ValueError:
+            continue
+        note = (
+            f"probed {candidate.name} = {measured:.3f}s, window "
+            f"[{FINECUT_A_MIN_S}, {FINECUT_A_MAX_S}]s"
+        )
+        status = "PASS" if FINECUT_A_MIN_S <= measured <= FINECUT_A_MAX_S else "FAIL"
+        return measured, status, note
+    return None
+
+
+
 
 
 @dataclass
@@ -289,6 +343,27 @@ def main() -> int:
         for name in ("PAIRWISE_CALIBRATION", "POSITION_SWAP_CONSISTENCY"):
             qualification.gates.append(Gate(name, "SKIPPED", "calibration not run"))
 
+    # Case A duration gate. Evaluated from the rendered artifact, not from the
+    # pipeline's own report: a gate that reads the number the thing it is gating
+    # produced is not a gate. The window is the spec's and is not tunable here --
+    # the narration is what has to fit inside it.
+    case_a = cases.get("a")
+    if not case_a:
+        qualification.gates.append(
+            Gate("FINECUT_A_DURATION_GATE", "FAIL", "case A did not run")
+        )
+    else:
+        detail = _measure_finecut_a_duration(case_a)
+        if detail is None:
+            qualification.gates.append(
+                Gate("FINECUT_A_DURATION_GATE", "FAIL", "case A V0 artifact absent")
+            )
+        else:
+            _, gate_status, note = detail
+            qualification.gates.append(Gate("FINECUT_A_DURATION_GATE", gate_status, note))
+            if gate_status != "PASS":
+                qualification.blocked.append(f"FINECUT_A_DURATION_GATE:{note}")
+
     # e2e gates
     for case_name, label in (("a", "A"), ("b", "B"), ("c", "C")):
         case = cases.get(case_name)
@@ -386,8 +461,39 @@ def main() -> int:
         "UNRELATED_DIRTY_PRESERVED": "YES",
     }
 
+    # Gate accounting, computed from the gate list rather than maintained by
+    # hand. A report that says "9 remaining" while listing ten is a reporting
+    # defect, and the only reliable defence is to derive every count from the
+    # same list the reader can see, then assert they add up.
+    counted = Counter(g.status for g in qualification.gates)
+    pass_gates = counted.get("PASS", 0)
+    fail_gates = counted.get("FAIL", 0)
+    blocked_gates = sum(
+        n for status, n in counted.items() if status.startswith("BLOCKED")
+    )
+    deferred_gates = sum(
+        n for status, n in counted.items() if status.startswith("DEFERRED")
+    )
+    skipped_gates = counted.get("SKIPPED", 0)
+    total_gates = len(qualification.gates)
+    accounted = pass_gates + fail_gates + blocked_gates + deferred_gates
+    gate_accounting_ok = accounted == total_gates
+    remaining = [g.name for g in qualification.gates if g.status != "PASS"]
+
     payload = {
         "verdict": qualification.verdict(),
+        "gate_accounting": {
+            "GATE_ACCOUNTING": "PASS" if gate_accounting_ok else "FAIL",
+            "TOTAL_GATES": total_gates,
+            "PASS_GATES": pass_gates,
+            "FAIL_GATES": fail_gates,
+            "BLOCKED_GATES": blocked_gates,
+            "DEFERRED_GATES": deferred_gates,
+            "SKIPPED_GATES": skipped_gates,
+            "ACCOUNTED": accounted,
+            "REMAINING_COUNT": len(remaining),
+            "REMAINING": remaining,
+        },
         "gates": [g.to_dict() for g in qualification.gates],
         "measurements": qualification.measurements,
         "blocked": qualification.blocked,
@@ -399,9 +505,23 @@ def main() -> int:
         json.dumps(payload, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
     )
 
-    failed = [g.name for g in qualification.gates if g.status != "PASS"]
+    failed = remaining
     print(f"VERDICT: {qualification.verdict()}")
-    print(f"GATES: {len(qualification.gates) - len(failed)}/{len(qualification.gates)} PASS")
+    print(
+        f"GATES: {pass_gates}/{total_gates} PASS "
+        f"(fail={fail_gates} blocked={blocked_gates} deferred={deferred_gates} "
+        f"skipped={skipped_gates})"
+    )
+    print(
+        f"GATE_ACCOUNTING: {payload['gate_accounting']['GATE_ACCOUNTING']} "
+        f"({accounted} accounted of {total_gates})"
+    )
+    if not gate_accounting_ok:
+        print(
+            "  gate accounting does not add up: "
+            f"{pass_gates}+{fail_gates}+{blocked_gates}+{deferred_gates}"
+            f"={accounted} but {total_gates} gates were recorded"
+        )
     if failed:
         print("NOT PASS:")
         for name in failed:

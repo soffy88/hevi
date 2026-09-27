@@ -104,11 +104,17 @@ CASES: dict[str, dict[str, Any]] = {
     "a": {
         "profile_id": "KNOWLEDGE_TALK_FINECUT",
         "label": "A: 20-30s knowledge talk, real interface evidence",
+        # The duration gate is 20-30s. The gate is not the thing being tuned:
+        # the narration is. These beats carry the actual explanation, and the
+        # measured speech length is what has to land inside the window. At the
+        # measured ~0.215 s/char for this voice, ~110 characters of narration
+        # lands near 24s.
         "narration": [
             ("b1", "说实话，第一次配置这个服务的时候，我也卡了很久。"),
             ("b2", "这是官方文档的界面，右侧就是你要找的设置入口。"),
             ("b3", "点进去之后，选择导出格式，再点确认。"),
-            ("b4", "总的来说，这三步就够了。"),
+            ("b5", "同一页下面还有码率和分辨率可以改，按需调整。"),
+            ("b4", "总的来说，这三步就够了，剩下的按默认值走。"),
         ],
         "evidence": [
             {
