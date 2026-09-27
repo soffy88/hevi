@@ -31,10 +31,12 @@ import re
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from hevi.editable.base import (
+    PARAMETRIC_TEXT_KEY,
     BackendProjection,
     EditabilityLevel,
     EditableBackendId,
@@ -43,6 +45,7 @@ from hevi.editable.base import (
     ProjectOutcome,
     TrackElement,
     lint_manifest,
+    parametric_text_declaration,
 )
 
 #: Pinned toolchain. A floating version is not a pin.
@@ -69,6 +72,27 @@ LAYER_TO_TRACK: dict[str, str] = {
 #: like any other asset, and calling it flattened would tell an editor not to
 #: look for controls that are in fact right there.
 _FLATTENED_ROLES = frozenset({"CAPTION"})
+
+#: Canonical parametric-text field -> the CapCut item key that carries it.
+#:
+#: This is CapCut's own capability statement, written in the manifest's
+#: vocabulary so the two can be compared field for field. A field absent from
+#: this map is not written and not hidden: it comes back from
+#: :meth:`CapCutCliBackend.text_capability` as unsupported, and the differential
+#: reports it. ``text`` is handled separately because it is also the fallback
+#: when an element carries no wording of its own.
+CAPCUT_TEXT_FIELD_MAP: dict[str, tuple[str, Callable[[Any], Any]]] = {
+    "font_size_px": ("fontSize", lambda v: int(v)),
+    "color": ("color", str),
+    "weight": ("weight", str),
+    "align": ("align", str),
+    "max_lines": ("maxLines", lambda v: int(v)),
+    "x": ("x", lambda v: float(v)),
+    "y": ("y", lambda v: float(v)),
+    "scale": ("scale", lambda v: float(v)),
+    "opacity": ("opacity", lambda v: float(v)),
+}
+
 
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.\-]{0,80}$")
 _TRAVERSAL = ("..", "~", "$", ";", "|", "&", "`", "\n", "\r", "\x00", "<", ">")
@@ -124,10 +148,14 @@ def classify_editability(element: TrackElement) -> EditabilityLevel:
 
     A caption whose text is baked into a rendered frame is not editable in
     CapCut, and calling it ``NATIVE_EDITABLE`` would send an editor chasing a
-    control that does not exist.
+    control that does not exist. Conversely an element whose text is a live
+    parameter is not merely a media file either, and calling it native would
+    overstate it: it is editable *as parameters*, which is a different promise.
     """
     if element.semantic_role in _FLATTENED_ROLES:
         return EditabilityLevel.FLATTENED_MEDIA
+    if parametric_text_declaration(element) is not None:
+        return EditabilityLevel.PARAMETRIC_EDITABLE
     if element.layer == "CAPTIONS":
         return EditabilityLevel.PARAMETRIC_EDITABLE
     return EditabilityLevel.NATIVE_EDITABLE
@@ -168,6 +196,53 @@ class CapCutCliBackend(EditableProjectBackend):
         found = self.installed_version()
         return found == EXPECTED_VERSION if found else False
 
+    def _text_item(
+        self, element: TrackElement, start: float, duration: float
+    ) -> dict[str, Any]:
+        """Build one CapCut text item from the manifest's canonical fields.
+
+        Every field this backend can express is written; every field it cannot is
+        returned alongside so the projection can report the gap. The previous
+        version read three keys and ignored the rest, which meant a colour or an
+        alignment set in the manifest simply never reached CapCut and nothing
+        downstream could tell.
+        """
+        properties = element.editable_properties
+        item: dict[str, Any] = {
+            "text": str(properties.get("text") or element.semantic_role),
+            "start": start,
+            "duration": duration,
+        }
+        for canonical, (target, cast) in CAPCUT_TEXT_FIELD_MAP.items():
+            value = properties.get(canonical)
+            if value in (None, ""):
+                continue
+            item[target] = cast(value)
+        return item
+
+    def text_capability(self, element: TrackElement) -> tuple[list[str], list[str], list[str]]:
+        """What this backend can express for one parametric text element.
+
+        Returns ``(expressed, unsupported, undeclared)`` in the manifest's own
+        vocabulary, so two backends can be compared field for field.
+        """
+        declared = parametric_text_declaration(element)
+        if declared is None:
+            return [], [], []
+        asked, undeclared = declared
+        # ``text`` is written as the item's own base key rather than through the
+        # field map, so it is supported by construction. Leaving it out would make
+        # the projection claim the one field it definitely carries is missing.
+        expressed = [
+            f for f in asked
+            if f in CAPCUT_TEXT_FIELD_MAP or f == PARAMETRIC_TEXT_KEY
+        ]
+        unsupported = [
+            f for f in asked
+            if f not in CAPCUT_TEXT_FIELD_MAP and f != PARAMETRIC_TEXT_KEY
+        ]
+        return expressed, unsupported, undeclared
+
     # ── Spec projection ──
     def build_spec(self, manifest: EditableProjectManifest) -> dict[str, Any]:
         """Project the eight semantic layers onto CapCut's three track types."""
@@ -179,12 +254,14 @@ class CapCutCliBackend(EditableProjectBackend):
             # there is no media file to put there -- and the two backends would
             # then disagree about how many layers the cut has. Routing it to the
             # text track keeps the overlay editable instead of quietly losing it.
-            if (
-                track_type == "video"
-                and not element.source_artifact
-                and element.editable_properties.get("text")
-            ):
-                track_type = "text"
+            if track_type == "video" and not element.source_artifact:
+                if parametric_text_declaration(element) is not None:
+                    track_type = "text"
+                else:
+                    # A media element whose file is simply absent has no
+                    # representation here. It is recorded by the caller, not
+                    # written as an item with an empty path.
+                    continue
             if track_type is None:
                 continue
             grouped.setdefault(track_type, []).append(element)
@@ -199,19 +276,7 @@ class CapCutCliBackend(EditableProjectBackend):
                 start = round(element.start_ms / 1000, 3)
                 duration = round(element.duration_ms / 1000, 3)
                 if track_type == "text":
-                    text = str(
-                        element.editable_properties.get("text")
-                        or element.semantic_role
-                    )
-                    items.append(
-                        {
-                            "text": text,
-                            "start": start,
-                            "duration": duration,
-                            "fontSize": int(element.editable_properties.get("font_size", 8)),
-                            "y": float(element.editable_properties.get("y", -0.62)),
-                        }
-                    )
+                    items.append(self._text_item(element, start, duration))
                     continue
                 source = element.source_artifact
                 # An empty source is a real case, not a malformed one: a
@@ -357,11 +422,58 @@ class CapCutCliBackend(EditableProjectBackend):
                 for e in manifest.elements
                 if classify_editability(e) is EditabilityLevel.FLATTENED_MEDIA
             )
+            self._record_text_capability(projection, manifest, spec)
             return projection
         finally:
             # Scratch never outlives the call: a partial run must not leave
             # project content in a temp directory.
             shutil.rmtree(scratch, ignore_errors=True)
+
+    def _record_text_capability(
+        self, projection: BackendProjection, manifest: EditableProjectManifest, spec: dict[str, Any]
+    ) -> None:
+        """Fold this backend's text capability into the projection.
+
+        The expressed set is read back from the spec this backend actually wrote,
+        not echoed from the manifest, so a projection cannot claim a field the
+        draft does not contain.
+        """
+        written = {
+            target
+            for track in spec.get("tracks", [])
+            if isinstance(track, dict) and track.get("type") == "text"
+            for item in track.get("items", [])
+            for target in item
+        }
+        expressed: set[str] = set()
+        unsupported: set[str] = set()
+        undeclared: set[str] = set()
+        for element in manifest.elements:
+            if parametric_text_declaration(element) is None:
+                continue
+            ok, missing, unknown = self.text_capability(element)
+            for field in ok:
+                target = (
+                    PARAMETRIC_TEXT_KEY
+                    if field == PARAMETRIC_TEXT_KEY
+                    else CAPCUT_TEXT_FIELD_MAP[field][0]
+                )
+                if target in written:
+                    expressed.add(field)
+                else:
+                    unsupported.add(field)
+            unsupported.update(missing)
+            undeclared.update(unknown)
+        projection.expressed_text_fields = sorted(expressed)
+        projection.unsupported_text_fields = sorted(unsupported)
+        projection.undeclared_text_fields = sorted(undeclared)
+        projection.dropped_elements = sorted(
+            e.element_id
+            for e in manifest.elements
+            if not e.source_artifact
+            and parametric_text_declaration(e) is None
+            and LAYER_TO_TRACK.get(e.layer) is not None
+        )
 
 
 __all__ = [

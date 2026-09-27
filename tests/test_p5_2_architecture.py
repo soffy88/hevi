@@ -41,13 +41,44 @@ P52_MODULES = (
 )
 
 #: P5.1 owns the review/diagnosis/comparison/revision chain and the promotion
-#: decision. P5.2 consumes it. These are the files that must not be edited.
-#: The commit P5.2 branched from. Diffing against it is what proves P5.1 is intact.
+#: decision. P5.2 consumes it.
+#:
+#: One change to P5.1 is authorised: teaching the layered editable draft to
+#: express a parametric text overlay, so both editable backends can deliver the
+#: same overlay instead of one of them dropping it. That authorisation is *pinned*
+#: below — the guard does not check "P5.1 is untouched", it checks "P5.1 differs
+#: only in the reviewed symbols for this one feature". A blanket
+#: byte-comparison would have been easy to satisfy by deleting the check, and an
+#: open-ended exception would let anything through under its cover.
 P52_BASE_SHA = "0048d021991295125bf2d499727b34a4c731a87a"
 
-P51_OWNED = (
-    "hevi/ops/p5_1_editable.py",
-    "hevi/ops/p5_1_types.py",
+#: P5.1 files, and for each: the symbols the authorised feature is allowed to
+#: add or change. A symbol appearing here that no longer exists, or a top-level
+#: definition appearing in the diff that is not listed, fails the test.
+P51_AUTHORISED_CHANGES: dict[str, tuple[str, ...]] = {
+    "hevi/ops/p5_1_editable.py": (
+        "PARAMETRIC_TEXT_LAYERS",
+        "PARAMETRIC_TEXT_KEY",
+        "PARAMETRIC_TEXT_STYLE_FIELDS",
+        "UNSUPPORTED_PARAMETRIC_TEXT_FIELDS",
+        "is_parametric_text_element",
+        "parametric_text_fields",
+        "add_parametric_text_material",
+        "_validate_parametric_text",
+        "_as_float",
+        "_segment_for",
+        "build_layered_draft",
+        "validate_layered_project",
+    ),
+    # Deliberately unchanged: the type vocabulary P5.2 imports. If the parametric
+    # text feature ever needed a new layer or enum member, this entry would have
+    # to change, which is the signal that it stopped being a P5.1-internal change.
+    "hevi/ops/p5_1_types.py": (),
+}
+
+#: Top-level definitions a P5.1 diff may introduce, flattened from the table above.
+P51_ALLOWED_NEW_SYMBOLS = frozenset(
+    symbol for symbols in P51_AUTHORISED_CHANGES.values() for symbol in symbols
 )
 
 
@@ -241,14 +272,109 @@ def test_entity_and_readiness_do_not_emit_media() -> None:
 # ── P5.1 is consumed, never rewritten ───────────────────────────────────
 
 
-@pytest.mark.parametrize("relative", P51_OWNED)
-def test_p51_owned_files_are_untouched_by_p52(relative: str) -> None:
-    """P5.2 must not edit the files that own review and promotion."""
-    result = subprocess.run(
-        ["git", "diff", "--name-only", P52_BASE_SHA, "--", *P51_OWNED],
-        capture_output=True, text=True, check=True, cwd=_repo_root(),
+def _top_level_symbols(source: str) -> set[str]:
+    """Names bound at module level, which is what a diff can introduce."""
+    tree = ast.parse(source)
+    names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(node.name)
+        elif isinstance(node, ast.Assign):
+            names.update(
+                target.id for target in node.targets if isinstance(target, ast.Name)
+            )
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names.add(node.target.id)
+    return names
+
+
+def _p51_worktree_source(relative: str) -> str | None:
+    """The P5.1 file as it exists at HEAD, or None if this layer did not add it."""
+    path = _repo_root() / relative
+    return path.read_text(encoding="utf-8") if path.is_file() else None
+
+
+def test_p51_changed_only_where_the_parametric_text_feature_requires() -> None:
+    """P5.2 may extend P5.1's expressiveness, and only in the reviewed places.
+
+    The check is on *symbols*, not on a byte comparison. ``p5_1_types.py`` must be
+    untouched outright: the type vocabulary is shared, so growing it would quietly
+    change the contract P5.2 imports. ``p5_1_editable.py`` may change, but any
+    top-level name the diff introduces has to be one this feature was reviewed to
+    add, and every one of those names has to still exist.
+    """
+    for relative, allowed in P51_AUTHORISED_CHANGES.items():
+        # Compared against the working tree rather than HEAD so the guard bites
+        # while the change is being written, not only once it is committed.
+        changed = subprocess.run(
+            ["git", "diff", "--name-only", P52_BASE_SHA, "--", relative],
+            capture_output=True, text=True, check=True, cwd=_repo_root(),
+        ).stdout.strip()
+
+        if not allowed:
+            assert not changed, (
+                f"{relative} was modified, but the authorised feature does not "
+                f"touch it"
+            )
+            continue
+
+        base = subprocess.run(
+            ["git", "show", f"{P52_BASE_SHA}:{relative}"],
+            capture_output=True, text=True, check=True, cwd=_repo_root(),
+        ).stdout
+        current = _p51_worktree_source(relative)
+        assert current is not None, relative
+
+        introduced = _top_level_symbols(current) - _top_level_symbols(base)
+        assert introduced <= set(allowed), (
+            f"{relative} introduces top-level names outside the authorised "
+            f"parametric-text change: {sorted(introduced - set(allowed))}"
+        )
+        missing = set(allowed) - _top_level_symbols(current)
+        assert not missing, (
+            f"{relative} no longer defines the authorised symbols {sorted(missing)}; "
+            f"the exception has drifted from the code it was written for"
+        )
+
+
+def test_p51_still_owns_the_editable_authority() -> None:
+    """Extending P5.1's expressiveness must not add a second authority.
+
+    The parametric text path writes into the same draft, through the same
+    builder, and is still validated by the same function. If any of that moved
+    into P5.2 the manifest would stop being the authority and the two backends
+    would be projecting two different descriptions of the cut.
+    """
+    import hevi.ops.p5_1_editable as p51
+    from hevi.editable.jianying import InternalJianyingBackend
+
+    source = _p51_worktree_source("hevi/ops/p5_1_editable.py") or ""
+    # The material is registered on the caller's builder, not a builder of its own.
+    assert "JianyingDraftBuilder(" not in source.split("def add_parametric_text_material")[1].split(
+        "def "
+    )[0], "the parametric text path constructs its own draft builder"
+    # Validation of the new element kind is P5.1's, not P5.2's.
+    assert hasattr(p51, "_validate_parametric_text")
+    jianying_source = _p51_worktree_source("hevi/editable/jianying.py") or ""
+    assert "_validate_parametric_text" not in jianying_source, (
+        "P5.2 re-implements P5.1's parametric text validation"
     )
-    assert not result.stdout.strip(), f"P5.2 modified P5.1 files: {result.stdout.strip()}"
+    assert InternalJianyingBackend.backend_id.value == "INTERNAL_JIANYING"
+
+
+def test_p51_keeps_its_own_refusal_rules() -> None:
+    """The new path must not have weakened the honesty rules it sits beside."""
+    import hevi.ops.p5_1_editable as p51
+    from hevi.ops.p5_1_types import EditableLayer
+
+    # A real media element with no file is still refused by name.
+    source = _p51_worktree_source("hevi/ops/p5_1_editable.py") or ""
+    assert "SOURCE_MISSING" in source
+    assert "CAPTIONS_REQUIRES_TEXT_SOURCE" in source
+    # And a text layer with neither a file nor wording is refused too, so an empty
+    # text material can never be written in its place.
+    assert "PARAMETRIC_TEXT_REQUIRES_TEXT" in source
+    assert EditableLayer.OVERLAY in p51.PARAMETRIC_TEXT_LAYERS
 
 
 @pytest.mark.parametrize("module", P52_MODULES)

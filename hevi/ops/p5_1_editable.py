@@ -172,6 +172,137 @@ class LayeredEditableProject:
 #: silently relabelled.
 CAPTION_SUFFIXES = (".srt", ".vtt", ".ass", ".ssa", ".txt", ".json")
 
+#: Layers that may carry a parametric text element — an element whose content
+#: *is* its parameters, so it has no media file behind it. A lower third whose
+#: wording is editable is the canonical case.
+PARAMETRIC_TEXT_LAYERS: frozenset[EditableLayer] = frozenset(
+    {EditableLayer.OVERLAY, EditableLayer.CAPTIONS}
+)
+
+#: The editable key that declares an element parametric. It has to be explicit:
+#: inferring it from "there is no file" would let a genuinely missing asset
+#: masquerade as a text overlay, which is the exact confusion this feature exists
+#: to remove.
+PARAMETRIC_TEXT_KEY = "text"
+
+#: Style fields the layered draft can carry on a parametric text element, and
+#: where each one lands in the draft.
+#:
+#: This is P5.1 declaring its own capability, not a shared vocabulary. Each
+#: backend states what it can express, and the differential compares the two
+#: statements; a single shared list would let one backend's limits be papered over
+#: by the other's.
+PARAMETRIC_TEXT_STYLE_FIELDS: dict[str, str] = {
+    "text": "material.content.text",
+    "font_size_px": "material.content.font_size_px",
+    "color": "material.content.color",
+    "weight": "material.content.weight",
+    "align": "material.content.align",
+    "max_lines": "material.content.max_lines",
+    "x": "segment.clip.transform.x",
+    "y": "segment.clip.transform.y",
+    "scale": "segment.clip.scale",
+    "opacity": "segment.clip.alpha",
+}
+
+#: Fields the layered draft understands but cannot express. A caller may pass
+#: them; they are recorded as unsupported rather than dropped without a trace.
+UNSUPPORTED_PARAMETRIC_TEXT_FIELDS: frozenset[str] = frozenset(
+    {"shadow", "stroke", "gradient", "animation_in", "animation_out", "letter_spacing"}
+)
+
+
+def is_parametric_text_element(element: LayerElement) -> bool:
+    """True when this element is text expressed as parameters, not a media clip.
+
+    Both halves have to hold: the layer has to be allowed to carry text, and the
+    element has to actually declare its text. A missing declaration on a text
+    layer is an authoring error, not a parametric element, and is reported as
+    such instead of being quietly written as an empty text material.
+    """
+    if element.layer not in PARAMETRIC_TEXT_LAYERS:
+        return False
+    return bool(str(element.editable_params.get(PARAMETRIC_TEXT_KEY, "")).strip())
+
+
+def parametric_text_fields(element: LayerElement) -> tuple[list[str], list[str]]:
+    """Split an element's declared text fields into supported and unsupported.
+
+    The unsupported half is returned rather than discarded so the caller can
+    surface it. A style field that one editor can honour and another cannot is a
+    capability divergence the delivery has to state, not a detail to lose.
+    """
+    declared = {
+        key for key, value in element.editable_params.items() if value not in (None, "")
+    }
+    supported = sorted(declared & set(PARAMETRIC_TEXT_STYLE_FIELDS))
+    unsupported = sorted(declared - set(PARAMETRIC_TEXT_STYLE_FIELDS))
+    return supported, unsupported
+
+
+def add_parametric_text_material(
+    builder: JianyingDraftBuilder,
+    element: LayerElement,
+    *,
+    style: dict[str, Any] | None = None,
+) -> str:
+    """Register a real text material for a parametric text element.
+
+    The text is written to a real sidecar file in the draft's materials directory
+    rather than left implicit. That keeps two existing promises intact: the draft
+    validator requires every material path to resolve to a real file, and §65's
+    "no fake empty asset" rule is satisfied because the file contains the actual
+    copy rather than a placeholder standing in for content nobody wrote.
+
+    The sidecar also carries the style, so the element stays editable: an editor
+    changing ``font_size_px`` changes a field in a real material, not a field
+    buried in a segment HEVI no longer controls.
+    """
+    params = style if style is not None else element.editable_params
+    supported, unsupported = parametric_text_fields(element)
+    content = {
+        field: params[field]
+        for field in PARAMETRIC_TEXT_STYLE_FIELDS
+        if field in params and params[field] not in (None, "")
+    }
+    material_id = f"text_param_{element.element_id}"
+    dest = builder.materials_dir / f"{material_id}.json"
+    dest.write_text(
+        json.dumps(
+            {
+                "kind": "PARAMETRIC_TEXT",
+                "element_id": element.element_id,
+                "layer": element.layer.value,
+                "semantic_role": element.semantic_role,
+                "content": content,
+                "supported_fields": supported,
+                # Recorded, not dropped. An editor that cannot honour these can
+                # see that HEVI knew they were asked for.
+                "unsupported_fields": unsupported,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    builder.materials.append(
+        JianyingMaterial(
+            material_id=material_id,
+            type="text",
+            path=str(dest),
+            duration=0,
+            metadata={
+                "parametric_text": True,
+                "element_id": element.element_id,
+                "semantic_role": element.semantic_role,
+                "text": str(params.get(PARAMETRIC_TEXT_KEY, "")),
+                "supported_fields": supported,
+                "unsupported_fields": unsupported,
+            },
+        )
+    )
+    return material_id
+
 
 def add_caption_material(
     builder: JianyingDraftBuilder, source: Path, *, style: dict[str, Any] | None = None
@@ -205,23 +336,50 @@ def add_caption_material(
 
 
 def _segment_for(element: LayerElement, material_id: str) -> JianyingSegment:
+    """Build one segment, carrying the element's own geometry.
+
+    Placement comes from the element, not from a hardcoded origin. An overlay
+    positioned at the lower third and one at the top of the frame are different
+    elements, and writing both at ``(0, 0)`` would silently collapse them into
+    the same thing while still reporting a successful delivery.
+    """
     duration_us = int(element.duration_ms * 1000)
+    params = element.editable_params
     return JianyingSegment(
         segment_id=f"seg_{element.element_id}",
         material_id=material_id,
         target_timerange={"start": int(element.start_ms * 1000), "duration": duration_us},
         source_timerange={"start": 0, "duration": duration_us},
         clip={
-            "alpha": 1.0,
-            "rotation": 0.0,
-            "scale": {"x": 1.0, "y": 1.0},
-            "transform": {"x": 0.0, "y": 0.0},
+            "alpha": _as_float(params.get("opacity", 1.0), 1.0),
+            "rotation": _as_float(params.get("rotation", 0.0), 0.0),
+            "scale": {
+                "x": _as_float(params.get("scale", 1.0), 1.0),
+                "y": _as_float(params.get("scale", 1.0), 1.0),
+            },
+            "transform": {
+                "x": _as_float(params.get("x", 0.0), 0.0),
+                "y": _as_float(params.get("y", 0.0), 0.0),
+            },
         },
         extra_material_refs=[],
         visible=True,
-        volume=float(element.editable_params.get("volume", 1.0)),
+        volume=_as_float(params.get("volume", 1.0), 1.0),
         speed=1.0,
     )
+
+
+def _as_float(value: Any, default: float) -> float:
+    """Coerce an editable parameter to a float, falling back rather than raising.
+
+    A delivery is not the place to die because a style field arrived as a string.
+    Falling back is safe only because the value is recorded in the manifest it
+    came from, so the original is never lost.
+    """
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def build_layered_draft(
@@ -242,6 +400,21 @@ def build_layered_draft(
     refused: list[str] = []
 
     for element in list(manifest.elements()):
+        # A parametric text element is handled before the file check, because it
+        # genuinely has no file and that is not a defect. Deciding this after the
+        # check would mean the feature could never be reached.
+        if is_parametric_text_element(element):
+            material_id = add_parametric_text_material(builder, element)
+            element_to_material[element.element_id] = material_id
+            continue
+        if element.layer in PARAMETRIC_TEXT_LAYERS and not element.source_path:
+            # A text layer with neither a file nor a text declaration. Writing an
+            # empty text material here would ship a placeholder that looks like
+            # content, so it is refused by name instead.
+            refused.append(f"{element.element_id}:PARAMETRIC_TEXT_REQUIRES_TEXT")
+            manifest.element_index.pop(element.element_id, None)
+            _drop(manifest, element)
+            continue
         source = Path(element.source_path) if element.source_path else None
         if source is None or not source.is_file():
             # No real backing file: drop the element so the layer is simply absent
@@ -303,6 +476,38 @@ def build_layered_draft(
         manifest=manifest,
         refused_elements=sorted(refused),
     )
+
+
+def _validate_parametric_text(
+    element: LayerElement, material: dict[str, Any], material_path: str
+) -> list[str]:
+    """A parametric text material must resolve to real, non-empty copy.
+
+    The sidecar existing is not enough: a truncated or emptied file would pass
+    every structural check and still hand an editor a text layer with nothing in
+    it. So the copy is read back and compared against what the manifest declared.
+    """
+    errors: list[str] = []
+    try:
+        payload = json.loads(Path(material_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"PARAMETRIC_TEXT_UNREADABLE:{element.element_id}:{exc}"]
+
+    declared = str(element.editable_params.get(PARAMETRIC_TEXT_KEY, "")).strip()
+    content = payload.get("content", {}) if isinstance(payload, dict) else {}
+    found = str(content.get(PARAMETRIC_TEXT_KEY, "")).strip() if isinstance(content, dict) else ""
+    if not found:
+        errors.append(f"PARAMETRIC_TEXT_EMPTY:{element.element_id}")
+    elif found != declared:
+        errors.append(
+            f"PARAMETRIC_TEXT_DRIFT:{element.element_id}:"
+            f"{found[:32]!r}!={declared[:32]!r}"
+        )
+    if payload.get("element_id") != element.element_id:
+        errors.append(
+            f"PARAMETRIC_TEXT_IDENTITY:{element.element_id}:{payload.get('element_id')}"
+        )
+    return errors
 
 
 def _drop(manifest: LayerManifest, element: LayerElement) -> None:
@@ -372,6 +577,8 @@ def validate_layered_project(project: LayeredEditableProject) -> tuple[bool, lis
         material_path = str(material.get("path", ""))
         if not material_path or material_path not in draft_paths or not Path(material_path).exists():
             errors.append(f"BROKEN_REFERENCE:{element.element_id}:{material_path}")
+        if material.get("metadata", {}).get("parametric_text"):
+            errors.extend(_validate_parametric_text(element, material, material_path))
         if element.source_path and not Path(element.source_path).exists():
             errors.append(f"SOURCE_ARTIFACT_MISSING:{element.element_id}:{element.source_path}")
 

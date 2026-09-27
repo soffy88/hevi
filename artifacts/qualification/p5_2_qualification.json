@@ -21,12 +21,12 @@
         "tests/test_p5_2_adversarial.py",
         "tests/test_p5_2_architecture.py"
       ],
-      "passed": 268,
+      "passed": 270,
       "failed": 0,
       "skipped": 0,
       "returncode": 0,
-      "summary": "268 passed in 18.16s",
-      "duration_s": 26.4,
+      "summary": "270 passed in 22.01s",
+      "duration_s": 30.1,
       "failures": [],
       "failure_detail": ""
     },
@@ -44,8 +44,8 @@
       "failed": 0,
       "skipped": 0,
       "returncode": 0,
-      "summary": "32 passed, 1 warning in 35.91s",
-      "duration_s": 42.3,
+      "summary": "32 passed, 1 warning in 56.83s",
+      "duration_s": 64.2,
       "failures": [],
       "failure_detail": ""
     },
@@ -67,8 +67,8 @@
       "failed": 0,
       "skipped": 0,
       "returncode": 0,
-      "summary": "257 passed in 7.53s",
-      "duration_s": 14.4,
+      "summary": "257 passed in 35.02s",
+      "duration_s": 43.4,
       "failures": [],
       "failure_detail": ""
     }
@@ -143,27 +143,39 @@
       "state": "NOT_ADOPTED",
       "evidence": "the pocket-tts runtime is not installed and its weights are not vendored by HEVI",
       "unblocks": "install the runtime, or leave it. Declared English-only either way: CHINESE_TTS=UNSUPPORTED and SILENT_LANGUAGE_FALLBACK=0 are asserted in the architecture suite so adoption can never quietly enable a silent Chinese fallback."
-    },
-    {
-      "id": "INTERNAL_JIANYING_PARAMETRIC",
-      "scope": "dual-backend delivery of a cut containing a parametric text overlay",
-      "state": "KNOWN_LIMITATION",
-      "evidence": "P5.1's layered draft refuses an element with no source path; the CapCut backend expresses the same overlay as a text track, so the two projections diverge and the differential reports it",
-      "unblocks": "text/sticker support in the P5.1 layered draft. Until then such a cut is not eligible for dual-backend delivery, which is the correct outcome rather than a silent loss of the overlay."
     }
   ],
   "external_blockers": [
     "FAL_CREDIT",
     "NO_GPU"
   ],
-  "known_limitations": [
-    "INTERNAL_JIANYING_PARAMETRIC"
-  ],
+  "known_limitations": [],
   "p51_integration": {
     "status": "DEFERRED_BLOCKED_BY_PROVIDER",
     "reason": "P5.1 native review needs fal.ai, which is locked for credit. P5.2 core is qualified independently and does not depend on it.",
     "p51_regression": "PASS"
   },
+  "parametric_text_overlay": {
+    "PARAMETRIC_TEXT_OVERLAY_INTERNAL": "PASS",
+    "PARAMETRIC_TEXT_OVERLAY_CAPCUT": "PASS",
+    "CROSS_BACKEND_SEMANTIC_EQUIVALENCE": "PASS",
+    "TEXT_CONTENT_PRESERVED": "YES",
+    "START_END_PRESERVED": "YES",
+    "POSITION_PRESERVED": "YES",
+    "STYLE_FIELDS_PRESERVED_WHERE_SUPPORTED": "YES",
+    "UNSUPPORTED_STYLE_EXPLICIT": "YES",
+    "SILENT_FLATTENING": 0,
+    "SILENT_DROP": 0
+  },
+  "resolved": [
+    {
+      "id": "INTERNAL_JIANYING_PARAMETRIC",
+      "was": "P5.1's layered draft refused an element with no source path, so a parametric text overlay reached CapCut and was silently dropped by the internal backend. The differential reported the divergence, which meant the cut was not eligible for dual-backend delivery.",
+      "now": "PARAMETRIC_TEXT_OVERLAY_INTERNAL=PASS, PARAMETRIC_TEXT_OVERLAY_CAPCUT=PASS, CROSS_BACKEND_SEMANTIC_EQUIVALENCE=PASS, TEXT_CONTENT_PRESERVED=YES, START_END_PRESERVED=YES, POSITION_PRESERVED=YES, STYLE_FIELDS_PRESERVED_WHERE_SUPPORTED=YES, UNSUPPORTED_STYLE_EXPLICIT=YES, SILENT_FLATTENING=0, SILENT_DROP=0",
+      "change": "P5.1 learned to express a parametric text element as a real text material whose copy lives in a real sidecar file, and to carry the element's own position, opacity and scale into the segment instead of writing every element at the origin. P5.2 introduced one canonical field vocabulary that each backend declares support for, and the differential now compares those declarations, so a style field one editor can honour and another cannot is reported as a CAPABILITY_DIVERGENCE rather than dropped.",
+      "authorised_p51_delta": "hevi/ops/p5_1_editable.py only, pinned by symbol in tests/test_p5_2_architecture.py. hevi/ops/p5_1_types.py is unchanged: the shared type vocabulary did not grow."
+    }
+  ],
   "defects_found_and_fixed": [
     {
       "id": "P52-D01",

@@ -706,3 +706,47 @@ def test_untrusted_html_test_rejects_remote_content() -> None:
     for url in ("https://cdn.example/x.js", "//evil.example/x.js", "http://a/b.css"):
         with pytest.raises(PermissionError):
             assert_no_unsafe_url(url)
+
+
+# ── A failed render says why ─────────────────────────────────────────────
+
+
+def test_a_failed_capture_names_the_attempt_count_and_cause(tmp_path: Path) -> None:
+    """A render that fails must be diagnosable, not just red.
+
+    An empty ``CAPTURE_FAILED:`` is how a browser launch race gets mistaken for a
+    content bug and then debugged in the wrong place for an afternoon. The reason
+    has to carry the exit status, the frame count, how many attempts were made,
+    and whatever the capture process actually printed.
+    """
+    from hevi.renderers.base import RenderOutcome, RenderPlan
+    from hevi.renderers.html_gsap import HtmlGsapRenderer
+
+    backend = HtmlGsapRenderer()
+    if not backend.detect():
+        pytest.skip(f"html/gsap renderer unavailable: {backend.unavailable_reason}")
+
+    from hevi.renderers import html_gsap
+
+    plan = RenderPlan(shot_id="a26", duration_s=0.4, fps=12, caption_text="x")
+    assert "_CAPTURE_JS" in Path(html_gsap.__file__).read_text(encoding="utf-8")
+
+    # With node unreachable the capture cannot run at all, which is the honest way
+    # to reach the failure path without faking a result.
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("PATH", "")
+        result = backend.render(plan, tmp_path / "fail")
+    if result.outcome is RenderOutcome.OK:
+        pytest.skip("node was still reachable despite the scrubbed PATH")
+    reason = result.reason
+    # Either the capture could not be launched, or it ran and failed. Both have to
+    # be readable: a bare exception from deep inside a render tells the reader
+    # nothing about which of the two happened or what to do about it.
+    assert reason.startswith(("CAPTURE_UNRUNNABLE:", "CAPTURE_FAILED:")), reason
+    if reason.startswith("CAPTURE_UNRUNNABLE:"):
+        assert "FileNotFoundError" in reason, reason
+    else:
+        assert "attempts=" in reason, reason
+        assert "frames=" in reason, reason
+        assert "exit=" in reason, reason
+    assert result.attempts >= 1

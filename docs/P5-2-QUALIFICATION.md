@@ -20,10 +20,11 @@ one is a real limitation that is reported rather than papered over.
 |---|---|
 | P5.2 core (grammar, renderers, editable projection) | **QUALIFIED** |
 | P5.1 native review + full P5.1↔P5.2 integration | `DEFERRED_BLOCKED_BY_PROVIDER` |
+| Parametric text overlay, both backends | **PASS** (closed) |
 | Presenter **generation** | `UNAVAILABLE` — no usable GPU, ComfyUI down |
 | Presenter **qualified source** path | **PASS** (E2E-A) |
 | Pocket TTS | `NOT_ADOPTED` — runtime absent; English-only contract held |
-| Dual-backend delivery of a parametric overlay | `KNOWN_LIMITATION` — see §7 |
+| Dual-backend delivery of a parametric overlay | **PASS** — see §7 |
 
 ## 2. The authority chain is singular
 
@@ -87,9 +88,11 @@ for ideas and nothing else.
 | `test_p5_2_grammar.py` | 57 | the grammar contracts |
 | `test_p5_2_capabilities.py` | 110 | the nine capability domains, real backends |
 | `test_p5_2_adversarial.py` | 54 | A1–A24 plus six security cases |
-| `test_p5_2_architecture.py` | 47 | the structural guarantees in §2, many parametrized over modules |
+| `test_p5_2_architecture.py` | 48 | the structural guarantees in §2, many parametrized over modules |
+| `test_p5_1_parametric_text.py` | 18 | P5.1's side of the parametric-text feature |
+| `test_p5_2_parametric_text_equivalence.py` | 18 | cross-backend fidelity and capability divergence |
 | `tests/integration/p5_2/` | 32 | six real end-to-end drivers |
-| **Total** | **300** | all passing |
+| **Total** | **336** | all passing, plus the 258 P5.1 suites |
 
 Static checks scoped to this layer: **RUFF PASS**, **MYPY 0 new errors**. The one
 remaining mypy error is the pre-existing `hevi/production/gpu_compute.py:206`,
@@ -185,20 +188,73 @@ artifact; the ones that mattered:
 - **Narration was reported as flattened media**, telling an editor not to look
   for controls that are present.
 
-## 7. Known limitation, reported rather than hidden
+## 7. Parametric text overlay — closed
 
-**A parametric text overlay cannot yet be delivered to both backends.** A lower
-third whose text is editable has no media file behind it. CapCut expresses that
-natively as a text track. P5.1's layered Jianying draft refuses an element with no
-source path.
+This was the one thing P5.2 could not deliver, and it is now closed.
 
-The two projections therefore diverge, and `compare_projections` reports it. This
-is the correct outcome: a cut in this state is not eligible for dual-backend
-delivery, and the alternative — a differential that passed — would have shipped a
-project that silently lost its overlay in one of the two editors.
+**What was wrong.** A lower third whose wording is editable has no media file
+behind it, because its content *is* its parameters. P5.1 read that as a missing
+artifact and dropped the element. CapCut expressed the same overlay as a text
+track, so the two projections diverged — correctly reported by the differential,
+but it meant the cut was not eligible for dual-backend delivery.
 
-Unblocked by adding text/sticker support to the P5.1 layered draft. The
-architecture suite forbids P5.2 from patching P5.1 to do it.
+**What changed.**
+
+*P5.1* learned to recognise a parametric text element and write it as a real text
+material whose copy lives in a real sidecar file, so the draft validator's
+"every material path resolves" rule is satisfied by real content rather than a
+placeholder. Two honesty rules were added alongside it: a text layer with neither
+a file nor wording is refused by name, and a material whose copy has been emptied,
+drifted or corrupted is caught by validation instead of shipped.
+
+It also stopped writing every element at the origin. Segment placement, opacity
+and scale now come from the element, which is what makes two overlays at
+different positions actually different elements rather than the same one written
+twice.
+
+*P5.2* introduced one canonical field vocabulary, owned by the manifest, and made
+each backend declare which fields it can express. The differential compares those
+declarations, so a style field one editor can honour and another cannot is
+reported as a named `CAPABILITY_DIVERGENCE` — naming the field, the backend that
+can do it and the backend that cannot — rather than being dropped by the one that
+cannot.
+
+**Measured.**
+
+| Gate | |
+|---|---|
+| `PARAMETRIC_TEXT_OVERLAY_INTERNAL` | PASS |
+| `PARAMETRIC_TEXT_OVERLAY_CAPCUT` | PASS |
+| `CROSS_BACKEND_SEMANTIC_EQUIVALENCE` | PASS |
+| `TEXT_CONTENT_PRESERVED` | YES |
+| `START_END_PRESERVED` | YES |
+| `POSITION_PRESERVED` | YES |
+| `STYLE_FIELDS_PRESERVED_WHERE_SUPPORTED` | YES |
+| `UNSUPPORTED_STYLE_EXPLICIT` | YES |
+| `SILENT_FLATTENING` | 0 |
+| `SILENT_DROP` | 0 |
+
+Both drafts carry identical geometry for the overlay — same transform, same alpha,
+same scale, same microsecond timing — and all ten canonical style fields survive to
+both editors.
+
+**Two things worth noting about how this was proved.** The capability-divergence
+check was mutation-tested: removing one field from one backend's map must make the
+differential fail with that field named, in both directions. The first attempt at
+that check computed "fields exclusive to this backend" as `fields - union`, which
+is always empty — the union contains every backend's own set — so it could never
+have fired. Comparing two projections that both lost the same field would also
+have been blind to it. The mutation test is what caught both.
+
+**On the P5.1 change.** This is the one authorised edit to a P5.1 file, and the
+architecture guard was rewritten rather than relaxed. It previously asserted P5.1
+was byte-identical to the base commit; it now pins *which symbols* the
+authorised feature may introduce, and fails if the diff adds anything outside that
+list, if an approved symbol disappears, or if `p5_1_types.py` is touched at all —
+the shared type vocabulary did not grow, and if it ever did, that would signal the
+change had stopped being P5.1-internal. The guard is itself mutation-tested: a
+second implementation of the validation in P5.2, a new shared type, and an
+unapproved top-level function each make it fail.
 
 ## 8. Blockers
 

@@ -95,9 +95,12 @@ def _with_parametric_overlay(manifest: EditableProjectManifest) -> EditableProje
         manifest,
         elements=[
             *manifest.elements,
-            TrackElement("lower-third", "OVERLAY", "EVIDENCE", 500, 2500, "",
+            TrackElement("lower-third", "OVERLAY", "SEMANTIC_HIGHLIGHT", 500, 2500, "",
                          transform={"x": 0.0, "y": 0.78, "scale": 1.0}, opacity=0.92,
-                         editable_properties={"text": "measured, not asserted"}),
+                         editable_properties={
+                             "text": "measured, not asserted", "font_size_px": 42,
+                             "color": "#F59E0B", "x": 0.0, "y": 0.78, "opacity": 0.92,
+                         }),
         ],
     )
 
@@ -166,15 +169,14 @@ def test_e2e_f2_the_two_backends_agree_on_one_manifest(tmp_path: Path) -> None:
         )
 
 
-def test_e2e_f3_a_parametric_overlay_is_reported_as_a_divergence(tmp_path: Path) -> None:
-    """A real limitation, measured rather than papered over.
+def test_e2e_f3_a_parametric_overlay_is_delivered_by_both_backends(tmp_path: Path) -> None:
+    """The overlay both editors used to disagree about now round-trips to both.
 
     A lower third whose text is editable has no media file behind it. CapCut
-    expresses that natively as a text track; HEVI's own layered Jianying draft
-    drops an element with no source path. The two projections therefore disagree,
-    and the differential has to say so — a cut in this state is not eligible for
-    dual-backend delivery, and pretending otherwise would ship a project that
-    silently lost an overlay in one of the two editors.
+    expresses that as a text track; P5.1's layered draft now expresses it too, as
+    a real text material with the copy in a real file. So the differential passes
+    — and it passes for the right reason, which the assertions below check by
+    reading both drafts rather than trusting the verdict.
     """
     register_all_backends()
     available, reason = _capcut_available()
@@ -189,32 +191,39 @@ def test_e2e_f3_a_parametric_overlay_is_reported_as_a_divergence(tmp_path: Path)
     assert internal.outcome is ProjectOutcome.OK, internal.reason
     assert capcut.outcome is ProjectOutcome.OK, capcut.reason
 
-    # CapCut keeps the overlay, as editable text.
-    assert "lower-third" in capcut.semantic_roles or capcut.track_count >= 3, (
-        "capcut dropped the parametric overlay entirely"
-    )
-    spec = json.loads((capcut.timeline_path and Path(capcut.timeline_path).read_text())
-                      or "{}")
-    tracks = spec if isinstance(spec, list) else [spec]
-    text_tracks = [
-        t for d in tracks if isinstance(d, dict)
-        for t in d.get("tracks", []) if t.get("type") == "text"
-    ]
-    assert text_tracks, "the overlay did not become a CapCut text track"
-    # The CLI normalises a text track into its own material references, so look
-    # for the copy in the draft rather than in a conveniently shaped item field.
-    draft = json.loads(Path(capcut.timeline_path).read_text(encoding="utf-8"))
-    assert "measured, not asserted" in json.dumps(draft, ensure_ascii=False), (
-        "the overlay text is not present anywhere in the CapCut draft"
-    )
+    for projection in (internal, capcut):
+        # Nothing lost on the way to either editor.
+        assert projection.dropped_elements == [], projection.backend
+        assert "lower-third" not in projection.flattened, projection.backend
+        assert "SEMANTIC_HIGHLIGHT" in projection.semantic_roles, projection.backend
+        draft = json.loads(Path(projection.timeline_path).read_text(encoding="utf-8"))
+        assert "measured, not asserted" in json.dumps(draft, ensure_ascii=False), (
+            f"the overlay copy is missing from the {projection.backend} draft"
+        )
+        # And every style field the manifest asked for is accounted for.
+        assert "font_size_px" in projection.expressed_text_fields, projection.backend
+        assert projection.unsupported_text_fields == [], projection.backend
 
-    # And the differential refuses to call that agreement.
+    # CapCut carries it as a text track; the internal draft as a text material.
+    capcut_draft = json.loads(Path(capcut.timeline_path).read_text(encoding="utf-8"))
+    assert any(
+        track.get("type") == "text" for track in capcut_draft.get("tracks", [])
+    ), "the overlay did not become a CapCut text track"
+    internal_draft = json.loads(Path(internal.timeline_path).read_text(encoding="utf-8"))
+    assert any(
+        (m.get("metadata") or {}).get("parametric_text")
+        for m in internal_draft.get("materials", [])
+    ), "the overlay did not become an internal text material"
+
+    # And now the two agree, so the differential is allowed to pass.
     report = compare_projections(manifest, [internal, capcut])
-    assert report.ok is False, (
-        "the parametric overlay was silently dropped by one backend and the "
-        "differential still passed"
-    )
-    assert report.divergences, report.divergences
+    assert report.ok is True, report.divergences
+    assert report.divergences == []
+
+    # Passing is not the interesting part; a drop would still be refused.
+    for projection in (internal, capcut):
+        ok, reasons = structural_round_trip(manifest, projection)
+        assert ok, (projection.backend, reasons)
 
 
 def test_e2e_f3b_a_structural_divergence_is_caught(tmp_path: Path) -> None:

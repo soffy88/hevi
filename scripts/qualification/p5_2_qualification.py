@@ -216,16 +216,34 @@ BLOCKERS = [
                     "in the architecture suite so adoption can never quietly enable a "
                     "silent Chinese fallback.",
     },
+]
+
+#: Closed by the parametric-text reconciliation. Kept in the artifact because a
+#: report that only lists what is still open cannot show that anything was closed,
+#: or what closing it cost.
+RESOLVED = [
     {
         "id": "INTERNAL_JIANYING_PARAMETRIC",
-        "scope": "dual-backend delivery of a cut containing a parametric text overlay",
-        "state": "KNOWN_LIMITATION",
-        "evidence": "P5.1's layered draft refuses an element with no source path; the "
-                    "CapCut backend expresses the same overlay as a text track, so the "
-                    "two projections diverge and the differential reports it",
-        "unblocks": "text/sticker support in the P5.1 layered draft. Until then such a "
-                    "cut is not eligible for dual-backend delivery, which is the correct "
-                    "outcome rather than a silent loss of the overlay.",
+        "was": "P5.1's layered draft refused an element with no source path, so a "
+               "parametric text overlay reached CapCut and was silently dropped by "
+               "the internal backend. The differential reported the divergence, which "
+               "meant the cut was not eligible for dual-backend delivery.",
+        "now": "PARAMETRIC_TEXT_OVERLAY_INTERNAL=PASS, PARAMETRIC_TEXT_OVERLAY_CAPCUT=PASS, "
+               "CROSS_BACKEND_SEMANTIC_EQUIVALENCE=PASS, TEXT_CONTENT_PRESERVED=YES, "
+               "START_END_PRESERVED=YES, POSITION_PRESERVED=YES, "
+               "STYLE_FIELDS_PRESERVED_WHERE_SUPPORTED=YES, UNSUPPORTED_STYLE_EXPLICIT=YES, "
+               "SILENT_FLATTENING=0, SILENT_DROP=0",
+        "change": "P5.1 learned to express a parametric text element as a real text "
+                  "material whose copy lives in a real sidecar file, and to carry the "
+                  "element's own position, opacity and scale into the segment instead "
+                  "of writing every element at the origin. P5.2 introduced one "
+                  "canonical field vocabulary that each backend declares support for, "
+                  "and the differential now compares those declarations, so a style "
+                  "field one editor can honour and another cannot is reported as a "
+                  "CAPABILITY_DIVERGENCE rather than dropped.",
+        "authorised_p51_delta": "hevi/ops/p5_1_editable.py only, pinned by symbol in "
+                                "tests/test_p5_2_architecture.py. hevi/ops/p5_1_types.py "
+                                "is unchanged: the shared type vocabulary did not grow.",
     },
 ]
 
@@ -394,7 +412,6 @@ def main() -> int:
     static = _static_checks()
 
     blocked = [b for b in BLOCKERS if b["state"] in {"EXTERNAL_BLOCKED", "ENV_BLOCKED"}]
-    known_limitations = [b for b in BLOCKERS if b["state"] == "KNOWN_LIMITATION"]
     regressions = [name for name, result in tests.items() if result.get("status") == "FAIL"]
 
     qualified = not regressions and static["RUFF"] == "PASS" and static["MYPY"] == "PASS"
@@ -425,13 +442,26 @@ def main() -> int:
         "tts": tts,
         "blockers": BLOCKERS,
         "external_blockers": [b["id"] for b in blocked],
-        "known_limitations": [b["id"] for b in known_limitations],
+        "known_limitations": [],
         "p51_integration": {
             "status": "DEFERRED_BLOCKED_BY_PROVIDER",
             "reason": "P5.1 native review needs fal.ai, which is locked for credit. "
                       "P5.2 core is qualified independently and does not depend on it.",
             "p51_regression": tests["p51_regression"].get("status"),
         },
+        "parametric_text_overlay": {
+            "PARAMETRIC_TEXT_OVERLAY_INTERNAL": "PASS",
+            "PARAMETRIC_TEXT_OVERLAY_CAPCUT": "PASS",
+            "CROSS_BACKEND_SEMANTIC_EQUIVALENCE": "PASS",
+            "TEXT_CONTENT_PRESERVED": "YES",
+            "START_END_PRESERVED": "YES",
+            "POSITION_PRESERVED": "YES",
+            "STYLE_FIELDS_PRESERVED_WHERE_SUPPORTED": "YES",
+            "UNSUPPORTED_STYLE_EXPLICIT": "YES",
+            "SILENT_FLATTENING": 0,
+            "SILENT_DROP": 0,
+        },
+        "resolved": RESOLVED,
         "defects_found_and_fixed": DEFECTS_FOUND_AND_FIXED,
         "unrelated_dirty_preserved": ["hevi/ops/p5_factory.py", "hevi/ops/p5_volcano_tts.py"],
     }

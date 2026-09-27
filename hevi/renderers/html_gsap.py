@@ -31,6 +31,7 @@ import json
 import os
 import shutil
 import tempfile
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -367,25 +368,40 @@ class HtmlGsapRenderer(RendererBackend):
 
             # Launching a fresh browser per shot is the price of a hermetic
             # render, and back-to-back launches occasionally race Chromium's
-            # process teardown and produce nothing at all. One retry separates
-            # that transient from a real failure, and the attempt count is
-            # reported either way so a retry is never invisible.
+            # process teardown and produce nothing at all. Retrying is separated
+            # by a short pause on purpose: an immediate retry relaunches while the
+            # previous browser's processes are still going, which is the race
+            # being avoided. A genuine content failure fails identically on every
+            # attempt, so the attempt count is reported either way and a retry is
+            # never invisible.
             runs: list[subprocess.CompletedProcess[str]] = []
-            for _ in range(2):
+            for attempt in range(1, 4):
                 for stale in frames_dir.glob("*.png"):
                     stale.unlink()
-                run = subprocess.run(
-                    ["node", str(capture_script)],
-                    capture_output=True,
-                    text=True,
-                    timeout=max(120, int(plan.duration_s * 20)),
-                    check=False,
-                    cwd=str(sandbox),
-                    env=render_env,
-                )
+                try:
+                    run = subprocess.run(
+                        ["node", str(capture_script)],
+                        capture_output=True,
+                        text=True,
+                        timeout=max(120, int(plan.duration_s * 20)),
+                        check=False,
+                        cwd=str(sandbox),
+                        env=render_env,
+                    )
+                except (OSError, subprocess.SubprocessError) as exc:
+                    # A missing or unrunnable node is an environment fact, not a
+                    # content problem. Raising here would surface it as a stack
+                    # trace from deep inside a render, which tells the reader
+                    # nothing about what to fix.
+                    result.outcome = RenderOutcome.FAILED
+                    result.attempts = attempt
+                    result.reason = f"CAPTURE_UNRUNNABLE:{type(exc).__name__}:{exc}"
+                    return result
                 runs.append(run)
                 if run.returncode == 0 and list(frames_dir.glob("*.png")):
                     break
+                if attempt < 3:
+                    time.sleep(1.5 * attempt)
             proc = runs[-1]
             result.attempts = len(runs)
             if proc.returncode != 0 or not list(frames_dir.glob("*.png")):

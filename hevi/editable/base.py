@@ -42,6 +42,56 @@ class ProjectOutcome(StrEnum):
     LINT_FAILED = "LINT_FAILED"
 
 
+#: The canonical style vocabulary for a parametric text element.
+#:
+#: One vocabulary, owned by the manifest, because the manifest is the authority.
+#: Each backend then declares which of these it can actually express, and the
+#: differential compares those declarations. Two backends inventing their own
+#: field names is how a style silently disappears on the way to one editor: the
+#: writer spelled it one way, the reader expected another, and the value was
+#: dropped by both without either noticing.
+PARAMETRIC_TEXT_FIELDS: tuple[str, ...] = (
+    "text",
+    "font_size_px",
+    "color",
+    "weight",
+    "align",
+    "max_lines",
+    "x",
+    "y",
+    "scale",
+    "opacity",
+)
+
+#: The field that declares an element parametric. Explicit on purpose: inferring
+#: it from "there is no media file" would let a genuinely missing asset pass as a
+#: text overlay.
+PARAMETRIC_TEXT_KEY = "text"
+
+
+def parametric_text_declaration(
+    element: TrackElement,
+) -> tuple[list[str], list[str]] | None:
+    """Return ``(supported, undeclared)`` fields, or ``None`` if not parametric.
+
+    ``supported`` are the canonical fields this element actually asks for;
+    ``undeclared`` are keys present in ``editable_properties`` that are not part
+    of the vocabulary. The second list is reported, never dropped, because an
+    unknown key is exactly where a style quietly disappears.
+    """
+    if not str(element.editable_properties.get(PARAMETRIC_TEXT_KEY, "")).strip():
+        return None
+    asked = {
+        key
+        for key, value in element.editable_properties.items()
+        if value not in (None, "")
+    }
+    return (
+        sorted(asked & set(PARAMETRIC_TEXT_FIELDS)),
+        sorted(asked - set(PARAMETRIC_TEXT_FIELDS)),
+    )
+
+
 @dataclass
 class TrackElement:
     """One element on one semantic track (§69)."""
@@ -126,6 +176,17 @@ class BackendProjection:
     layer_coverage: list[str] = field(default_factory=list)
     flattened: list[str] = field(default_factory=list)
     lint_errors: list[str] = field(default_factory=list)
+    #: Canonical parametric-text fields this backend actually wrote out.
+    expressed_text_fields: list[str] = field(default_factory=list)
+    #: Fields the manifest asked for that this backend could not express. Recorded
+    #: per backend so the differential can compare capabilities rather than
+    #: compare two projections that both quietly lost the same value.
+    unsupported_text_fields: list[str] = field(default_factory=list)
+    #: Manifest fields outside the canonical vocabulary. Also recorded: an unknown
+    #: key is a spec mismatch, not something to swallow.
+    undeclared_text_fields: list[str] = field(default_factory=list)
+    #: Elements this backend could not place at all.
+    dropped_elements: list[str] = field(default_factory=list)
     reason: str = ""
     version: str = ""
     revision: str = ""
@@ -287,8 +348,67 @@ def compare_projections(
             + ",".join(f"{backend}={sorted(roles)}" for backend, roles in role_sets.items())
         )
 
+    report.divergences.extend(_capability_divergences(manifest, projections))
     report.ok = not report.divergences
     return report
+
+
+def _capability_divergences(
+    manifest: EditableProjectManifest, projections: list[BackendProjection]
+) -> list[str]:
+    """Compare what each backend could express, field by field.
+
+    Two projections that both lost the same style field would look identical, so
+    comparing outputs alone cannot detect a shared loss. Each backend instead
+    declares what it can express, and the declarations are compared here. A field
+    one backend can honour and another cannot is a *capability* divergence: it is
+    reported, never reconciled away and never dropped on the floor.
+    """
+    asked: set[str] = set()
+    for element in manifest.elements:
+        declaration = parametric_text_declaration(element)
+        if declaration is not None:
+            asked.update(declaration[0])
+    if not asked:
+        return []
+
+    divergences: list[str] = []
+    for projection in projections:
+        if projection.dropped_elements:
+            divergences.append(
+                f"ELEMENTS_DROPPED:{projection.backend}="
+                + ",".join(projection.dropped_elements)
+            )
+        if projection.undeclared_text_fields:
+            divergences.append(
+                f"UNDECLARED_TEXT_FIELDS:{projection.backend}="
+                + ",".join(projection.undeclared_text_fields)
+            )
+        lost = sorted(asked - set(projection.expressed_text_fields))
+        if lost:
+            divergences.append(
+                f"TEXT_FIELDS_NOT_EXPRESSED:{projection.backend}=" + ",".join(lost)
+            )
+
+    if len(projections) > 1:
+        by_backend = {p.backend: set(p.expressed_text_fields) for p in projections}
+        # A field is "exclusive" to a backend when that backend expresses it and
+        # some *other* backend does not. Subtracting from the union would be
+        # always empty, since the union contains every backend's own set.
+        for backend, fields in by_backend.items():
+            others = [b for b in by_backend if b != backend]
+            for field in sorted(fields):
+                lacking = sorted(b for b in others if field not in by_backend[b])
+                if not lacking:
+                    continue
+                # Unequal capability is not itself an error; hiding it is. Both
+                # halves are named so the delivery can state exactly who can do
+                # what instead of leaving a reader to infer it from a diff.
+                divergences.append(
+                    f"CAPABILITY_DIVERGENCE:{field}:supported_by={backend}"
+                    ":not_supported_by=" + ",".join(lacking)
+                )
+    return divergences
 
 
 class EditableProjectBackend:
