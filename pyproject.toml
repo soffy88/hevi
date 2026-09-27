@@ -171,6 +171,8 @@ asyncio_mode = "auto"
 # 只收集单元测试目录;scripts/integration/*.py 是需 GPU/服务的手动集成脚本,
 # 不应被 `pytest`(根目录)误收集导致 collection 报错(见 CI 与本地一致性)。
 testpaths = ["tests"]
+# P5.1 renders real media and may call a live provider; those checks are opt-in.
+markers = ["slow: renders media or calls a live provider"]
 # Provider-specific packages currently publish incompatible upper/lower
 # bounds. Keep secure versions in the root runtime while Voicebox/Gen Engine
 # inference environments remain independently pinned.
