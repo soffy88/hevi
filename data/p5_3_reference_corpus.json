@@ -1,0 +1,88 @@
+{
+  "seed_references": [
+    {
+      "name": "OpenMontage",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Video editing and montage tools",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "HyperFrames",
+      "verifiable": true,
+      "license": "MIT",
+      "description": "Composition and rendering engine",
+      "adoption_mode": "CODE_ADOPT_ALLOWED"
+    },
+    {
+      "name": "video-shotcraft",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Shot creation and planning",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "video-talkcraft",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Talking head generation",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "FireRed-OpenStoryline",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Storyline planning",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "vox-director",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Directorial instruction processing",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "Paper-Cut",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Editing abstractions",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "guizang-product-video-skill",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Product video templates",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "codex-storyboard",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Storyboarding language",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "reelbench-skills",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Reel benchmarking",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "story-to-handdrawn-video",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Hand-drawn animation styles",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "data-animation-skills",
+      "verifiable": true,
+      "license": "Unknown",
+      "description": "Data animation references",
+      "adoption_mode": "REFERENCE_ONLY"
+    }
+  ]
+}
