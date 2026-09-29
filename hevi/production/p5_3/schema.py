@@ -78,6 +78,49 @@ class AdoptionMode(StrEnum):
     REJECT = "REJECT"
 
 
+#: Validated viewpoint vocabulary. POV describes the viewer/character viewpoint
+#: relationship; FPV describes high-speed first-view flight/traversal as a
+#: camera platform and motion behavior. They are not synonyms.
+VALID_VIEWPOINTS = frozenset({
+    "POV", "FPV", "FIRST_PERSON", "THIRD_PERSON",
+    "OVER_SHOULDER", "EYE_LEVEL", "LOW_ANGLE", "HIGH_ANGLE",
+})
+
+#: Validated stabilization vocabulary. A platform characteristic, decoupled from
+#: the camera path. TRIPOD is a platform; STATIC is a camera state. A tripod
+#: shot is typically static, but the platform and the state are different facts.
+VALID_STABILIZATION = frozenset({
+    "TRIPOD", "HANDHELD", "GIMBAL", "CRANE", "DRONE", "STATIC_MOUNT",
+})
+
+#: Validated camera-path vocabulary. The route the camera travels, decoupled
+#: from the platform that carries it and from focal-length behavior.
+VALID_PATHS = frozenset({
+    "PAN", "TILT", "DOLLY", "TRUCK", "ELEVATE", "ORBIT", "FOLLOW", "STATIC_PATH",
+})
+
+#: Validated focal behavior. ZOOM changes focal length with a static camera;
+#: DOLLY translates the camera with a static focal length. push_in is neither
+#: until the recipe declares which, which is exactly the ambiguity this
+#: vocabulary exists to remove.
+VALID_FOCAL_BEHAVIOR = frozenset({
+    "ZOOM", "STATIC_FOCAL", "RACK_FOCUS",
+})
+
+#: Validated temporal structure. A temporal/editorial property, not a camera
+#: movement. LONG_TAKE asserts continuous capture; SLOW_MOTION asserts
+#: playback rate. They are different axes.
+VALID_TEMPORAL_STRUCTURE = frozenset({
+    "SINGLE_TAKE", "LONG_TAKE", "MONTAGE", "SLOW_MOTION", "TIME_LAPSE",
+})
+
+#: Validated trigger vocabulary. A structured phase-transition signal, not a
+#: free-text entry description.
+VALID_TRIGGERS = frozenset({
+    "BEAT_START", "NARRATION_CUE", "EVIDENCE_READY", "MANUAL", "NONE",
+})
+
+
 class DeprecationReason(StrEnum):
     """Why a recipe was deprecated."""
 
@@ -113,6 +156,91 @@ class LicenseProvenance:
     source_file_or_doc: str = ""
     commercial_use_allowed: bool = False
     attribution_required: bool = False
+
+
+# ── Terminal state ──────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class TerminalState:
+    """Where a shot or sequence ends, stated explicitly.
+
+    A terminal state names the final camera state, the final composition, and
+    the final hold requirement. Free-text exit_behavior cannot express "the
+    camera must be static on the subject for at least 2 seconds" in a way any
+    downstream stage can verify; this can.
+    """
+
+    final_camera_state: str = ""
+    final_composition: str = ""
+    final_hold_requirement: str = ""
+
+
+# ── Dolly-zoom specification ──────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class DollyZoomSpec:
+    """The verifiable structure of a dolly-zoom (Hitchcock zoom).
+
+    A dolly-zoom is not "push in plus zoom out". It is four coupled facts:
+    the camera genuinely translates, the focal length genuinely changes, the
+    two move in inverse coupling, and the subject's screen size is constrained
+    throughout. Absent any one of these, the claim is not a dolly-zoom.
+    """
+
+    camera_translation: str = ""
+    focal_length_change: str = ""
+    inverse_coupling: bool = False
+    subject_screen_size_constraint: str = ""
+
+
+def validate_dolly_zoom(spec: DollyZoomSpec) -> tuple[bool, list[str]]:
+    """Whether a spec is a genuine dolly-zoom. Returns (valid, violations)."""
+    violations: list[str] = []
+    if not spec.camera_translation:
+        violations.append("MISSING_CAMERA_TRANSLATION")
+    if not spec.focal_length_change:
+        violations.append("MISSING_FOCAL_LENGTH_CHANGE")
+    if not spec.inverse_coupling:
+        violations.append("MISSING_INVERSE_COUPLING")
+    if not spec.subject_screen_size_constraint:
+        violations.append("MISSING_SUBJECT_SCREEN_SIZE_CONSTRAINT")
+    return (not violations), violations
+
+
+def is_dolly_zoom(spec: DollyZoomSpec) -> bool:
+    """True only when all four coupling facts hold."""
+    valid, _ = validate_dolly_zoom(spec)
+    return valid
+
+
+# ── Combined movement ─────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class MovementPhase:
+    """One phase of a combined camera movement."""
+
+    camera_action: str = ""
+    path: str = ""
+    velocity_profile: str = ""
+    hold_constraints: str = ""
+
+
+@dataclass(frozen=True)
+class MovementSequence:
+    """A structured multi-phase camera movement.
+
+    Sequence -> Phase[] -> Trigger -> TerminalState. This replaces free-text
+    entry/hold/exit descriptions for any movement complex enough to need more
+    than one phase. A single-phase move does not need this; a combined move
+    cannot be expressed without it.
+    """
+
+    phases: tuple[MovementPhase, ...] = ()
+    trigger: str = ""
+    terminal_state: TerminalState = field(default_factory=TerminalState)
 
 
 # ── Recipe ──────────────────────────────────────────────────────────────
@@ -160,6 +288,17 @@ class CinematicRecipe:
     motion_behavior: str = ""
     transition_behavior: str = ""
 
+    # Validated cinematic primitives. All optional: existing recipes predate
+    # them and must keep working. When present, each value must belong to its
+    # vocabulary — a primitive that accepts anything is a label, not a primitive.
+    viewpoint: str = ""
+    stabilization: str = ""
+    path: str = ""
+    focal_behavior: str = ""
+    temporal_structure: str = ""
+    trigger: str = ""
+    terminal_state: TerminalState = field(default_factory=TerminalState)
+
     # Timing
     duration_range: tuple[float, float] = (2.0, 5.0)
     information_density_range: tuple[float, float] = (0.3, 0.7)
@@ -202,12 +341,27 @@ class CinematicRecipe:
     def __post_init__(self) -> None:
         if not self.recipe_id:
             raise ValueError("RECIPE_ID_REQUIRED")
+        self._validate_primitives()
         if not self.version:
             raise ValueError("RECIPE_VERSION_REQUIRED")
         if not self.name:
             raise ValueError("RECIPE_NAME_REQUIRED")
         if self.prompt_hint and len(self.prompt_hint) > 500:
             raise ValueError("PROMPT_HINT_TOO_LONG")
+
+    def _validate_primitives(self) -> None:
+        """Every non-empty primitive must belong to its vocabulary."""
+        checks = (
+            (self.viewpoint, VALID_VIEWPOINTS, "VIEWPOINT"),
+            (self.stabilization, VALID_STABILIZATION, "STABILIZATION"),
+            (self.path, VALID_PATHS, "PATH"),
+            (self.focal_behavior, VALID_FOCAL_BEHAVIOR, "FOCAL_BEHAVIOR"),
+            (self.temporal_structure, VALID_TEMPORAL_STRUCTURE, "TEMPORAL_STRUCTURE"),
+            (self.trigger, VALID_TRIGGERS, "TRIGGER"),
+        )
+        for value, allowed, name in checks:
+            if value and value not in allowed:
+                raise ValueError(f"INVALID_{name}:{value}")
 
     @property
     def qualified_id(self) -> str:
@@ -230,6 +384,8 @@ class CinematicRecipe:
             data["source_provenance"] = SourceProvenance(**data["source_provenance"])
         if "license_provenance" in data and isinstance(data["license_provenance"], dict):
             data["license_provenance"] = LicenseProvenance(**data["license_provenance"])
+        if "terminal_state" in data and isinstance(data["terminal_state"], dict):
+            data["terminal_state"] = TerminalState(**data["terminal_state"])
         return cls(**data)
 
     def content_hash(self) -> str:
@@ -254,6 +410,13 @@ class CinematicRecipe:
             "camera_behavior": self.camera_behavior,
             "motion_behavior": self.motion_behavior,
             "transition_behavior": self.transition_behavior,
+            "viewpoint": self.viewpoint,
+            "stabilization": self.stabilization,
+            "path": self.path,
+            "focal_behavior": self.focal_behavior,
+            "temporal_structure": self.temporal_structure,
+            "trigger": self.trigger,
+            "terminal_state": asdict(self.terminal_state),
             "duration_range": list(self.duration_range),
             "information_density_range": list(self.information_density_range),
             "required_assets": sorted(self.required_assets),
@@ -522,11 +685,20 @@ class RecipeUsageRecord:
 
 
 __all__ = [
+    "VALID_FOCAL_BEHAVIOR",
+    "VALID_PATHS",
+    "VALID_STABILIZATION",
+    "VALID_TEMPORAL_STRUCTURE",
+    "VALID_TRIGGERS",
+    "VALID_VIEWPOINTS",
     "AdoptionMode",
     "CinematicRecipe",
     "CreativeVarietyScore",
     "DeprecationReason",
+    "DollyZoomSpec",
     "LicenseProvenance",
+    "MovementPhase",
+    "MovementSequence",
     "QualificationEvidence",
     "QualificationState",
     "RecipeCandidate",
@@ -537,4 +709,7 @@ __all__ = [
     "ReferenceGrammar",
     "ReferenceRepository",
     "SourceProvenance",
+    "TerminalState",
+    "is_dolly_zoom",
+    "validate_dolly_zoom",
 ]
