@@ -15,6 +15,7 @@ from hevi.production.p5_3.schema import (
     QualificationState,
     RecipeFamily,
     SourceProvenance,
+    TerminalState,
 )
 
 
@@ -49,6 +50,13 @@ def _recipe(
     renderer_reqs: list[str] | None = None,
     renderer_prefs: list[str] | None = None,
     prompt_hint: str = "",
+    viewpoint: str = "",
+    stabilization: str = "",
+    path: str = "",
+    focal_behavior: str = "",
+    temporal_structure: str = "",
+    trigger: str = "",
+    terminal_state: TerminalState | None = None,
 ) -> CinematicRecipe:
     """Build a recipe with sensible defaults, so each recipe states only what is distinctive."""
     # required_capabilities defaults to renderer_reqs when not explicitly set,
@@ -84,6 +92,13 @@ def _recipe(
         anti_patterns=anti_patterns or [],
         renderer_requirements=renderer_reqs or [],
         renderer_preferences=renderer_prefs or [],
+        viewpoint=viewpoint,
+        stabilization=stabilization,
+        path=path,
+        focal_behavior=focal_behavior,
+        temporal_structure=temporal_structure,
+        trigger=trigger,
+        terminal_state=terminal_state or TerminalState(),
         source_provenance=SourceProvenance(origin="hand_crafted"),
         license_provenance=LicenseProvenance(license="HEVI-internal", license_confidence="verified"),
         qualification_state=QualificationState.EXPERIMENTAL,
@@ -240,7 +255,9 @@ def _camera() -> list[CinematicRecipe]:
             constraints={"starts_close": True}, anti_patterns=["starts_wide"],
             renderer_reqs=["CSS", "SVG"]),
         _recipe("CAMERA.CONTEXT_TO_DETAIL", F, "Context to Detail",
-            "Starts wide, pushes in to a specific detail. Directs the viewer from the general to the specific.",
+            "The camera physically travels from a wide view to a specific detail. "
+            "Focal length stays fixed; the changing perspective comes from translation, "
+            "which is what makes this a dolly rather than a zoom.",
             intent="FOCUS_DETAIL", semantic_roles=["DETAIL"],
             profiles=["SCIENCE_EXPLAINER", "WHITEBOARD_EXPLAINER"], beat_roles=["DETAIL"],
             composition="wide_to_closeup", subject_role="PRIMARY", evidence_role="NONE",
@@ -249,7 +266,14 @@ def _camera() -> list[CinematicRecipe]:
             duration=(3.0, 6.0), density=(0.5, 0.7),
             parameters={"motion_amplitude": 0.4, "easing": "ease_in"},
             constraints={"ends_on_detail": True}, anti_patterns=["ends_wide"],
-            renderer_reqs=["CSS", "SVG"]),
+            renderer_reqs=["CSS", "SVG"],
+            path="DOLLY", focal_behavior="STATIC_FOCAL", stabilization="GIMBAL",
+            trigger="BEAT_START",
+            terminal_state=TerminalState(
+                final_camera_state="static",
+                final_composition="closeup_on_detail",
+                final_hold_requirement="hold_1s",
+            )),
         _recipe("CAMERA.PARALLAX_DRIFT", F, "Parallax Drift",
             "Multiple layers move at different rates to create depth. Foreground moves faster than background.",
             intent="CREATE_DEPTH", semantic_roles=["EMOTIONAL_PRESENCE"],
@@ -459,7 +483,10 @@ def _explainer() -> list[CinematicRecipe]:
             parameters={"evidence_focus": "question"}, constraints={"question_distinct": True},
             anti_patterns=["question_answer_identical"], renderer_reqs=["TEXT", "SVG", "HTML"]),
         _recipe("EXPLAINER.MACRO_TO_MICRO", F, "Macro to Micro",
-            "Starts with a wide view, zooms into a specific detail. The zoom must be motivated by the narrative.",
+            "The camera holds position while the lens zooms from a wide view into "
+            "a specific detail. Focal length changes; the camera does not travel, "
+            "so perspective stays fixed while scale grows — which is what makes "
+            "this a zoom rather than a dolly.",
             intent="ZOOM_TO_DETAIL", semantic_roles=["DETAIL"],
             profiles=["SCIENCE_EXPLAINER", "WHITEBOARD_EXPLAINER"], beat_roles=["DETAIL"],
             composition="wide_to_closeup", subject_role="PRIMARY", evidence_role="NONE",
@@ -468,7 +495,14 @@ def _explainer() -> list[CinematicRecipe]:
             duration=(3.0, 6.0), density=(0.5, 0.7),
             parameters={"motion_amplitude": 0.5, "easing": "ease_in"},
             constraints={"zoom_motivated": True}, anti_patterns=["unmotivated_zoom"],
-            renderer_reqs=["CSS", "SVG"]),
+            renderer_reqs=["CSS", "SVG"],
+            path="STATIC_PATH", focal_behavior="ZOOM", stabilization="TRIPOD",
+            trigger="BEAT_START",
+            terminal_state=TerminalState(
+                final_camera_state="static",
+                final_composition="closeup_on_detail",
+                final_hold_requirement="hold_1s",
+            )),
     ]
 
 
