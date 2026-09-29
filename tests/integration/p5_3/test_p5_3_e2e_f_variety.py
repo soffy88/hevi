@@ -20,12 +20,25 @@ def test_e2e_f_variety_across_three_videos(tmp_path: Path) -> None:
     ledger = CreativeLedger()
     all_recipe_ids: list[str] = []
 
+    from hevi.production.p5_3.retrieval import retrieve_with_evidence
+
+    evidence_produced = 0
     for video_index in range(3):
         beats = make_beats(4, profile="EMOTIONAL_BOOK_REVIEW", intent="EVOKE_EMOTION")
         for beat in beats:
             cands = retrieve_recipes(lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW")
             assert cands
             selected = cands[0]
+            # The evidence comes from the same canonical path, not a fixture:
+            # same search, same scoring, same order, plus the written decision.
+            ranked, evidence = retrieve_with_evidence(
+                lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW"
+            )
+            assert [c.recipe_id for c in ranked] == [c.recipe_id for c in cands]
+            assert evidence.selected_recipe_id == selected.recipe_id
+            assert evidence.selection_factors["selection_score"] > 0
+            assert set(evidence.rejected_candidates) == set(evidence.rejection_reasons)
+            evidence_produced += 1
             all_recipe_ids.append(selected.recipe_id)
             record_recipe_usage(ledger, RecipeUsageRecord(
                 recipe_id=selected.recipe_id, recipe_version=selected.version,
@@ -42,3 +55,6 @@ def test_e2e_f_variety_across_three_videos(tmp_path: Path) -> None:
 
     # Semantic quality preserved: every retrieval returned candidates
     assert len(all_recipe_ids) == 12
+    # Evidence was produced on the real selection path for every beat, answering
+    # WHY_THIS_RECIPE and WHY_NOT_THE_OTHER_RECIPES without reconstruction.
+    assert evidence_produced == 12

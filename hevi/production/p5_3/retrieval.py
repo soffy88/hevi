@@ -17,6 +17,7 @@ from hevi.production.p5_3.profile_grammar import profile_recipe_preferences
 from hevi.production.p5_3.schema import (
     CinematicRecipe,
     RecipeCandidate,
+    RecipeSelectionEvidence,
 )
 
 
@@ -184,4 +185,100 @@ def _constraint_violations(
     return violations
 
 
-__all__ = ["retrieve_recipes"]
+def retrieve_with_evidence(
+    library: RecipeLibrary,
+    beat: VisualBeat,
+    *,
+    profile_id: str = "",
+    available_assets: list[str] | None = None,
+    renderer_capabilities: list[str] | None = None,
+    duration: float | None = None,
+    information_density: float | None = None,
+    qualification_state: Any = None,
+) -> tuple[list[RecipeCandidate], RecipeSelectionEvidence]:
+    """Retrieve candidates and record why the winner won.
+
+    This is the same canonical path as :func:`retrieve_recipes` — same search,
+    same scoring, same ranking, same order. The only addition is that the
+    decision is written down as a :class:`RecipeSelectionEvidence` so both
+    questions are answerable afterwards: WHY_THIS_RECIPE and
+    WHY_NOT_THE_OTHER_RECIPES.
+
+    Deterministic: identical inputs produce identical candidates in identical
+    order with identical evidence, except for the timestamp. No random selection
+    anywhere in the path.
+    """
+    import datetime
+
+    candidates = retrieve_recipes(
+        library,
+        beat,
+        profile_id=profile_id,
+        available_assets=available_assets,
+        renderer_capabilities=renderer_capabilities,
+        duration=duration,
+        information_density=information_density,
+        qualification_state=qualification_state,
+    )
+
+    # Ranked order is the selection order. The winner is candidates[0]; every
+    # other candidate is rejected, and the reason is its own score deficit —
+    # recorded verbatim so the trace needs no reconstruction.
+    winner = candidates[0] if candidates else None
+    rejected: list[str] = []
+    rejection_reasons: dict[str, str] = {}
+    for candidate in candidates[1:]:
+        rejected.append(candidate.recipe_id)
+        if candidate.constraint_violations:
+            # Candidates with violations never reach ranking; if one appears
+            # here it is recorded as a constraint rejection.
+            rejection_reasons[candidate.recipe_id] = (
+                "constraint: " + "; ".join(candidate.constraint_violations)
+            )
+        else:
+            rejection_reasons[candidate.recipe_id] = (
+                f"lower score {candidate.selection_score:.3f} vs "
+                f"{winner.selection_score:.3f}" if winner else "no winner"
+            )
+
+    constraint_matches: list[str] = []
+    if profile_id:
+        constraint_matches.append(f"profile={profile_id}")
+    if duration is not None:
+        constraint_matches.append(f"duration={duration}")
+    if available_assets:
+        constraint_matches.append(f"assets={len(available_assets)}")
+    if renderer_capabilities:
+        constraint_matches.append(f"capabilities={len(renderer_capabilities)}")
+
+    evidence = RecipeSelectionEvidence(
+        visual_beat_id=beat.beat_id,
+        candidate_recipe_ids=[c.recipe_id for c in candidates],
+        selected_recipe_id=winner.recipe_id if winner else "",
+        selected_version=winner.version if winner else "",
+        selection_factors=(
+            {
+                "semantic_match": winner.semantic_match,
+                "profile_match": winner.profile_match,
+                "asset_match": winner.asset_match,
+                "capability_match": winner.capability_match,
+                "duration_match": winner.duration_match,
+                "variety_score": winner.variety_score,
+                "historical_quality_score": winner.historical_quality_score,
+                "selection_score": winner.selection_score,
+            }
+            if winner
+            else {}
+        ),
+        rejected_candidates=rejected,
+        rejection_reasons=rejection_reasons,
+        creative_variety_context={"candidate_count": len(candidates)},
+        historical_evidence={
+            "selection_reason": winner.selection_reason if winner else ""
+        },
+        timestamp=datetime.datetime.now(datetime.UTC).isoformat(),
+    )
+    return candidates, evidence
+
+
+__all__ = ["retrieve_recipes", "retrieve_with_evidence"]
