@@ -33,10 +33,19 @@ _MOTION_TO_TYPE: dict[str, str] = {
     "pan": "pan",
     "parallax_drift": "parallax",
     "controlled_orbit": "orbit",
-    "map_trace": "static",
+    "map_trace": "map_trace",
     "slow_push": "zoom_in",
     "slow_pull": "zoom_out",
 }
+
+#: Motion types the current renderer set is known to execute natively. A recipe
+#: motion outside this set keeps its own identity in the suggestion — it is
+#: never rewritten to a different motion — and the suggestion carries an
+#: explicit capability note instead. Silent conversion is how a map trace
+#: becomes a static hold with nobody noticing.
+RENDERER_NATIVE_MOTIONS = frozenset({
+    "static", "zoom_in", "zoom_out", "pan", "parallax", "orbit",
+})
 
 
 def parameterize_recipe(
@@ -94,9 +103,8 @@ def _motion_plan_suggestions(
     recipe: CinematicRecipe, params: RecipeParameters, beat: VisualBeat
 ) -> dict[str, Any]:
     """Suggest MotionPlan field values."""
-    motion_type = _MOTION_TO_TYPE.get(
-        _keyword(recipe.motion_behavior), "static"
-    )
+    motion_key = _keyword(recipe.motion_behavior)
+    motion_type = _MOTION_TO_TYPE.get(motion_key, "static")
 
     amplitude = params.motion_amplitude
     if amplitude is None:
@@ -113,12 +121,22 @@ def _motion_plan_suggestions(
     if params.position is not None:
         motion_params["position"] = list(params.position)
 
-    return {
+    suggestion: dict[str, Any] = {
         "motion_type": motion_type,
         "motion_params": motion_params,
         "semantic_justification": recipe.intent or recipe.description,
         "suggested_by": recipe.qualified_id,
     }
+    if motion_type not in RENDERER_NATIVE_MOTIONS:
+        # The recipe's motion is preserved verbatim above. This note states the
+        # boundary explicitly so a renderer that cannot execute it can refuse
+        # rather than mis-execute, and so no downstream stage mistakes the
+        # suggestion for a natively supported motion.
+        suggestion["capability_limitation"] = (
+            f"{motion_type}: recipe motion exceeds renderer-native set; "
+            "renderer must declare support or refuse"
+        )
+    return suggestion
 
 
 def _keyword(text: str) -> str:
