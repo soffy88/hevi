@@ -155,12 +155,24 @@ def test_structured_recipes_keep_their_semantics() -> None:
 
 
 def test_legacy_recipes_resolve_as_before() -> None:
-    """The 61 recipes without structured primitives resolve identically."""
+    """Recipes without structured primitives resolve identically."""
     lib = _lib()
     assert _resolve_motion_type(lib.get("CAMERA.STATIC_HOLD")) == "static"
-    assert _resolve_motion_type(lib.get("CAMERA.SLOW_PUSH_IN")) == "zoom_in"
     assert _resolve_motion_type(lib.get("EVIDENCE.MAP_TRACE")) == "map_trace"
     assert _resolve_motion_type(lib.get("CAMERA.PAN_REVEAL")) == "pan"
+
+
+def test_backfilled_recipes_resolve_from_structured_primitives() -> None:
+    """P5.3.3 backfill: ZOOM/DOLLY_IN/DOLLY_OUT declared, not inferred."""
+    lib = _lib()
+    assert _resolve_motion_type(lib.get("CAMERA.SLOW_PUSH_IN")) == "zoom"
+    for rid in (
+        "EMOTIONAL.TURNING_POINT_PUSH",
+        "CAMERA.DETAIL_TO_CONTEXT",
+        "CAMERA.SLOW_PULL_OUT",
+        "EMOTIONAL.RELIEF_OPENING",
+    ):
+        assert _resolve_motion_type(lib.get(rid)) == "dolly", rid
 
 
 def test_map_trace_identity_preserved() -> None:
