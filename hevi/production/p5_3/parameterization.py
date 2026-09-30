@@ -14,6 +14,14 @@ from hevi.production.p1_types import VisualBeat
 from hevi.production.p5_3.schema import CinematicRecipe, RecipeParameters
 
 # Map recipe camera_behavior keywords to P1 shot_size values
+#: Camera behavior keyword to P1 shot_size value.
+#:
+#: Every key here was consciously reviewed against the recipes that use it.
+#: A locked camera does not determine shot size by itself — framing does — so
+#: "locked" maps to the declared neutral default, which composition and crop
+#: overrides then refine. That is visibly different from the old behavior, where
+#: "locked" was not in any table and fell through to the same string silently.
+#: Anything not in this table raises instead of defaulting.
 _CAMERA_TO_SHOT_SIZE: dict[str, str] = {
     "extreme_closeup": "extreme_closeup",
     "closeup": "closeup",
@@ -22,6 +30,13 @@ _CAMERA_TO_SHOT_SIZE: dict[str, str] = {
     "wide": "wide",
     "full_frame": "wide",
     "pip": "medium",
+    "locked": "medium",
+    "slow_push_in": "medium",
+    "slow_pull_out": "medium",
+    "push_in": "medium",
+    "pull_out": "medium",
+    "pan": "medium",
+    "orbit": "medium",
 }
 
 # Map recipe motion_behavior keywords to P1 motion_type values
@@ -47,6 +62,68 @@ RENDERER_NATIVE_MOTIONS = frozenset({
     "static", "zoom_in", "zoom_out", "pan", "parallax", "orbit",
 })
 
+#: Structured camera path to motion family. When a recipe declares its path,
+#: the path IS the motion — no keyword inference is consulted, and the free-text
+#: motion_behavior string is not read at all. A dolly is translation; a zoom is
+#: focal change; the two are different facts about different physical quantities.
+_STRUCTURED_PATH_TO_MOTION: dict[str, str] = {
+    "DOLLY": "dolly",
+    "PAN": "pan",
+    "TILT": "tilt",
+    "TRUCK": "truck",
+    "ELEVATE": "elevate",
+    "ORBIT": "orbit",
+    "FOLLOW": "follow",
+    "STATIC_PATH": "static",
+}
+
+
+def _resolve_motion_type(recipe: CinematicRecipe) -> str:
+    """Resolve a recipe's motion type with structured-first precedence.
+
+    Precedence:
+      1. Structured primitive (path, focal_behavior). Authoritative.
+      2. Validated explicit parameter. (No motion parameter exists yet; when one
+         does, it slots in here.)
+      3. Legacy compatibility mapping from motion_behavior keywords. Only for
+         recipes that predate the structured primitives.
+      4. REJECT. Unknown values raise; they never become "static".
+
+    A zoom changes focal behavior. A dolly changes camera translation/path.
+    The resolver keeps those separate: focal ZOOM with a static path yields
+    focal semantics, while a translation path yields translation semantics
+    regardless of what the free-text motion_behavior string says.
+    """
+    from hevi.production.p5_3.schema import VALID_FOCAL_BEHAVIOR, VALID_PATHS
+
+    if recipe.path or recipe.focal_behavior:
+        if recipe.path and recipe.path not in VALID_PATHS:
+            raise ValueError(f"UNKNOWN_PRIMITIVE:PATH:{recipe.path}")
+        if recipe.focal_behavior and recipe.focal_behavior not in VALID_FOCAL_BEHAVIOR:
+            raise ValueError(
+                f"UNKNOWN_PRIMITIVE:FOCAL_BEHAVIOR:{recipe.focal_behavior}"
+            )
+        if recipe.path and recipe.path != "STATIC_PATH":
+            # A translation path determines the motion family on its own. The
+            # free-text motion_behavior is not consulted — reading it would let
+            # a stale "push_in" string override a declared DOLLY.
+            return _STRUCTURED_PATH_TO_MOTION[recipe.path]
+        if recipe.focal_behavior == "ZOOM":
+            return "zoom"
+        return "static"
+
+    # No structured primitives: legacy compatibility path. Constrained to the
+    # exact vocabulary the mapping supports; anything else fails closed.
+    key = _keyword(recipe.motion_behavior)
+    if not key:
+        raise ValueError(
+            f"UNKNOWN_PRIMITIVE:MOTION_BEHAVIOR:{recipe.motion_behavior!r}"
+        )
+    try:
+        return _MOTION_TO_TYPE[key]
+    except KeyError:
+        raise ValueError(f"UNKNOWN_PRIMITIVE:MOTION_BEHAVIOR:{key}") from None
+
 
 def parameterize_recipe(
     recipe: CinematicRecipe,
@@ -67,10 +144,18 @@ def parameterize_recipe(
 def _shot_plan_suggestions(
     recipe: CinematicRecipe, params: RecipeParameters, beat: VisualBeat
 ) -> dict[str, Any]:
-    """Suggest ShotPlan field values."""
-    shot_size = _CAMERA_TO_SHOT_SIZE.get(
-        _keyword(recipe.camera_behavior), "medium"
-    )
+    """Suggest ShotPlan field values.
+
+    Shot size has no structured primitive yet, so the legacy mapping remains
+    the authority — but it is now fail-closed. An unrecognized camera behavior
+    raises instead of silently becoming "medium".
+    """
+    key = _keyword(recipe.camera_behavior)
+    if not key or key not in _CAMERA_TO_SHOT_SIZE:
+        raise ValueError(
+            f"UNKNOWN_PRIMITIVE:CAMERA_BEHAVIOR:{recipe.camera_behavior!r}"
+        )
+    shot_size = _CAMERA_TO_SHOT_SIZE[key]
     if params.crop:
         if "detail" in params.crop or "closeup" in params.crop:
             shot_size = "extreme_closeup"
@@ -102,9 +187,12 @@ def _shot_plan_suggestions(
 def _motion_plan_suggestions(
     recipe: CinematicRecipe, params: RecipeParameters, beat: VisualBeat
 ) -> dict[str, Any]:
-    """Suggest MotionPlan field values."""
-    motion_key = _keyword(recipe.motion_behavior)
-    motion_type = _MOTION_TO_TYPE.get(motion_key, "static")
+    """Suggest MotionPlan field values.
+
+    Structured primitives resolve first; legacy keyword mapping only for
+    recipes that predate them; unknown values reject. See _resolve_motion_type.
+    """
+    motion_type = _resolve_motion_type(recipe)
 
     amplitude = params.motion_amplitude
     if amplitude is None:
@@ -140,13 +228,19 @@ def _motion_plan_suggestions(
 
 
 def _keyword(text: str) -> str:
-    """Extract the first recognizable keyword from a behavior description."""
+    """Extract the first recognizable keyword from a behavior description.
+
+    Legacy compatibility only. This exists solely for recipes that predate the
+    structured primitives (path, focal_behavior). It must never override a
+    structured primitive, and it must never silently accept an unknown value:
+    callers treat an empty return as rejection, not as a default.
+
+    The vocabulary is derived from the mapping tables it feeds, so the two
+    cannot drift apart without a test noticing.
+    """
     lowered = (text or "").lower()
-    for key in (
-        "extreme_closeup", "closeup", "detail", "parallax", "orbit",
-        "push_in", "pull_out", "pan", "static", "centered", "wide",
-        "full_frame", "pip", "map_trace", "slow_push", "slow_pull",
-    ):
+    vocabulary = set(_CAMERA_TO_SHOT_SIZE) | set(_MOTION_TO_TYPE)
+    for key in sorted(vocabulary, key=len, reverse=True):
         if key in lowered:
             return key
     return ""
