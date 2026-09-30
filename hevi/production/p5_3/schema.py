@@ -120,6 +120,51 @@ VALID_TRIGGERS = frozenset({
     "BEAT_START", "NARRATION_CUE", "EVIDENCE_READY", "MANUAL", "NONE",
 })
 
+#: Validated camera-height vocabulary. Where the camera sits vertically.
+VALID_CAMERA_HEIGHT = frozenset({
+    "GROUND", "LOW", "EYE_LEVEL", "HIGH", "OVERHEAD",
+})
+
+#: Validated camera-angle vocabulary. The tilt of the optical axis, distinct
+#: from camera height: a HIGH camera can still shoot at EYE_LEVEL angle.
+VALID_CAMERA_ANGLE = frozenset({
+    "EYE_LEVEL", "LOW_ANGLE", "HIGH_ANGLE", "DUTCH", "TOP_DOWN",
+})
+
+#: Validated focal-length detail. Optical categories, not millimeter claims
+#: no renderer here could verify.
+VALID_FOCAL_LENGTH = frozenset({
+    "WIDE", "NORMAL", "TELEPHOTO",
+})
+
+#: Validated focus behavior. RACK means focus changes during the shot;
+#: LOCKED means it does not. Distinct from depth of field, which describes
+#: how much is in focus, not whether focus moves.
+VALID_FOCUS = frozenset({
+    "LOCKED_FOCUS", "RACK_FOCUS",
+})
+
+#: Validated depth of field. How much of the frame is in focus.
+VALID_DEPTH_OF_FIELD = frozenset({
+    "SHALLOW", "MEDIUM", "DEEP",
+})
+
+#: Validated start/end framing states. Closed vocabulary so a state change
+#: (level → rotated) is a verifiable fact, not a turn of phrase. A ROLL is
+#: start_state != end_state on rotation; a static dutch angle has identical
+#: start and end states.
+VALID_FRAME_STATES = frozenset({
+    "LEVEL", "ROTATED_15", "ROTATED_30", "ROTATED_45",
+    "WIDE_VIEW", "CLOSE_VIEW", "DETAIL_VIEW",
+    "CENTERED_SUBJECT", "SUBJECT_LEFT", "SUBJECT_RIGHT",
+})
+
+#: Validated hold-constraint vocabulary. A hold requirement the plan must
+#: satisfy, not an aspiration in a description string.
+VALID_HOLD_CONSTRAINTS = frozenset({
+    "NO_HOLD", "HOLD_1S", "HOLD_2S", "HOLD_UNTIL_CUE",
+})
+
 
 class DeprecationReason(StrEnum):
     """Why a recipe was deprecated."""
@@ -299,6 +344,35 @@ class CinematicRecipe:
     trigger: str = ""
     terminal_state: TerminalState = field(default_factory=TerminalState)
 
+    # Camera optics and framing. All optional with validated vocabularies.
+    # Each participates: validation rejects out-of-vocabulary values at
+    # construction, and parameterization emits present values into the plan.
+    camera_height: str = ""
+    camera_angle: str = ""
+    focal_length_detail: str = ""
+    focus: str = ""
+    depth_of_field: str = ""
+
+    # Phased-movement states. When a recipe traverses states (a ROLL goes
+    # from LEVEL to ROTATED_45), the change is a verifiable fact here rather
+    # than a turn of phrase in a description. Both participate in the plan.
+    start_state: str = ""
+    end_state: str = ""
+    hold_constraints: str = ""
+
+    # Actions this recipe must never produce. Enforced, not advisory:
+    # parameterization rejects a plan whose resolved motion matches one.
+    forbidden_actions: list[str] = field(default_factory=list)
+
+    # Dolly-zoom coupling. Present only when the recipe genuinely couples
+    # translation with focal change; validated as a unit. A plain dolly or
+    # plain zoom carries no spec and must never be read as a dolly-zoom.
+    dolly_zoom: DollyZoomSpec | None = None
+
+    # Combined movement. Present only for multi-phase moves; validated for
+    # structural completeness (phases, trigger, terminal state).
+    movement_sequence: MovementSequence | None = None
+
     # Timing
     duration_range: tuple[float, float] = (2.0, 5.0)
     information_density_range: tuple[float, float] = (0.3, 0.7)
@@ -358,10 +432,45 @@ class CinematicRecipe:
             (self.focal_behavior, VALID_FOCAL_BEHAVIOR, "FOCAL_BEHAVIOR"),
             (self.temporal_structure, VALID_TEMPORAL_STRUCTURE, "TEMPORAL_STRUCTURE"),
             (self.trigger, VALID_TRIGGERS, "TRIGGER"),
+            (self.camera_height, VALID_CAMERA_HEIGHT, "CAMERA_HEIGHT"),
+            (self.camera_angle, VALID_CAMERA_ANGLE, "CAMERA_ANGLE"),
+            (self.focal_length_detail, VALID_FOCAL_LENGTH, "FOCAL_LENGTH"),
+            (self.focus, VALID_FOCUS, "FOCUS"),
+            (self.depth_of_field, VALID_DEPTH_OF_FIELD, "DEPTH_OF_FIELD"),
+            (self.start_state, VALID_FRAME_STATES, "START_STATE"),
+            (self.end_state, VALID_FRAME_STATES, "END_STATE"),
+            (self.hold_constraints, VALID_HOLD_CONSTRAINTS, "HOLD_CONSTRAINTS"),
         )
         for value, allowed, name in checks:
             if value and value not in allowed:
                 raise ValueError(f"INVALID_{name}:{value}")
+        if self.dolly_zoom is not None:
+            valid, violations = validate_dolly_zoom(self.dolly_zoom)
+            if not valid:
+                raise ValueError(
+                    f"INVALID_DOLLY_ZOOM:{';'.join(violations)}"
+                )
+            if self.path != "DOLLY" or self.focal_behavior != "ZOOM":
+                raise ValueError(
+                    "DOLLY_ZOOM_MISMATCH:spec requires path=DOLLY and focal_behavior=ZOOM"
+                )
+        if self.movement_sequence is not None:
+            self._validate_movement_sequence(self.movement_sequence)
+
+    @staticmethod
+    def _validate_movement_sequence(seq: MovementSequence) -> None:
+        """A combined movement must have phases, a trigger, and a terminal."""
+        if not seq.phases:
+            raise ValueError("INVALID_MOVEMENT_SEQUENCE:no phases")
+        for index, phase in enumerate(seq.phases):
+            if not phase.camera_action:
+                raise ValueError(f"INVALID_MOVEMENT_SEQUENCE:phase {index} has no camera_action")
+            if phase.path and phase.path not in VALID_PATHS:
+                raise ValueError(f"INVALID_MOVEMENT_SEQUENCE:phase {index} bad path:{phase.path}")
+        if not seq.trigger:
+            raise ValueError("INVALID_MOVEMENT_SEQUENCE:no trigger")
+        if seq.trigger not in VALID_TRIGGERS:
+            raise ValueError(f"INVALID_MOVEMENT_SEQUENCE:bad trigger:{seq.trigger}")
 
     @property
     def qualified_id(self) -> str:
@@ -386,6 +495,23 @@ class CinematicRecipe:
             data["license_provenance"] = LicenseProvenance(**data["license_provenance"])
         if "terminal_state" in data and isinstance(data["terminal_state"], dict):
             data["terminal_state"] = TerminalState(**data["terminal_state"])
+        if "dolly_zoom" in data and isinstance(data["dolly_zoom"], dict):
+            data["dolly_zoom"] = DollyZoomSpec(**data["dolly_zoom"])
+        if "movement_sequence" in data and isinstance(data["movement_sequence"], dict):
+            seq = data["movement_sequence"]
+            phases = tuple(
+                MovementPhase(**p) if isinstance(p, dict) else p
+                for p in seq.get("phases", ())
+            )
+            terminal = seq.get("terminal_state", {})
+            data["movement_sequence"] = MovementSequence(
+                phases=phases,
+                trigger=seq.get("trigger", ""),
+                terminal_state=(
+                    TerminalState(**terminal)
+                    if isinstance(terminal, dict) else terminal
+                ),
+            )
         return cls(**data)
 
     def content_hash(self) -> str:
@@ -417,6 +543,24 @@ class CinematicRecipe:
             "temporal_structure": self.temporal_structure,
             "trigger": self.trigger,
             "terminal_state": asdict(self.terminal_state),
+            "camera_height": self.camera_height,
+            "camera_angle": self.camera_angle,
+            "focal_length_detail": self.focal_length_detail,
+            "focus": self.focus,
+            "depth_of_field": self.depth_of_field,
+            "start_state": self.start_state,
+            "end_state": self.end_state,
+            "hold_constraints": self.hold_constraints,
+            "forbidden_actions": sorted(self.forbidden_actions),
+            "dolly_zoom": asdict(self.dolly_zoom) if self.dolly_zoom else None,
+            "movement_sequence": (
+                {
+                    "phases": [asdict(p) for p in self.movement_sequence.phases],
+                    "trigger": self.movement_sequence.trigger,
+                    "terminal_state": asdict(self.movement_sequence.terminal_state),
+                }
+                if self.movement_sequence else None
+            ),
             "duration_range": list(self.duration_range),
             "information_density_range": list(self.information_density_range),
             "required_assets": sorted(self.required_assets),
@@ -685,7 +829,14 @@ class RecipeUsageRecord:
 
 
 __all__ = [
+    "VALID_CAMERA_ANGLE",
+    "VALID_CAMERA_HEIGHT",
+    "VALID_DEPTH_OF_FIELD",
     "VALID_FOCAL_BEHAVIOR",
+    "VALID_FOCAL_LENGTH",
+    "VALID_FOCUS",
+    "VALID_FRAME_STATES",
+    "VALID_HOLD_CONSTRAINTS",
     "VALID_PATHS",
     "VALID_STABILIZATION",
     "VALID_TEMPORAL_STRUCTURE",
