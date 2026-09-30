@@ -37,6 +37,13 @@ _CAMERA_TO_SHOT_SIZE: dict[str, str] = {
     "pull_out": "medium",
     "pan": "medium",
     "orbit": "medium",
+    "tilt": "medium",
+    "truck": "medium",
+    "elevate": "medium",
+    "follow": "medium",
+    "whip_pan": "medium",
+    "roll": "medium",
+    "combined": "medium",
 }
 
 # Map recipe motion_behavior keywords to P1 motion_type values
@@ -51,6 +58,13 @@ _MOTION_TO_TYPE: dict[str, str] = {
     "map_trace": "map_trace",
     "slow_push": "zoom_in",
     "slow_pull": "zoom_out",
+    "whip_pan": "whip_pan",
+    "tilt": "tilt",
+    "truck": "truck",
+    "elevate": "elevate",
+    "follow": "follow",
+    "roll": "roll",
+    "combined": "combined",
 }
 
 #: Motion types the current renderer set is known to execute natively. A recipe
@@ -95,6 +109,26 @@ def _resolve_motion_type(recipe: CinematicRecipe) -> str:
     regardless of what the free-text motion_behavior string says.
     """
     from hevi.production.p5_3.schema import VALID_FOCAL_BEHAVIOR, VALID_PATHS
+
+    if recipe.dolly_zoom is not None:
+        # A claimed coupling is checked, not assumed. The schema validates at
+        # construction; this re-checks at the boundary so a spec that arrives
+        # by any other route cannot slip through as a plain dolly or zoom.
+        from hevi.production.p5_3.schema import is_dolly_zoom
+
+        if not is_dolly_zoom(recipe.dolly_zoom):
+            raise ValueError("INVALID_DOLLY_ZOOM:spec incomplete")
+        if recipe.path != "DOLLY" or recipe.focal_behavior != "ZOOM":
+            raise ValueError("DOLLY_ZOOM_MISMATCH:spec requires path=DOLLY and focal=ZOOM")
+        return "dolly_zoom"
+
+    if recipe.movement_sequence is not None:
+        # A multi-phase sequence is its own motion family. Resolving it to the
+        # first phase's path (or to any single motion) would collapse the
+        # sequence into one phase and lose the trigger and terminal that make
+        # it combined. The sequence details travel in the recipe; the motion
+        # type names the family honestly.
+        return "combined"
 
     if recipe.path or recipe.focal_behavior:
         if recipe.path and recipe.path not in VALID_PATHS:
@@ -174,7 +208,7 @@ def _shot_plan_suggestions(
 
     camera_setup = recipe.camera_behavior or "locked"
 
-    return {
+    suggestion: dict[str, Any] = {
         "shot_size": shot_size,
         "camera_setup": camera_setup,
         "start_s": round(start_s, 3),
@@ -182,6 +216,39 @@ def _shot_plan_suggestions(
         "duration_s": round(duration, 3),
         "suggested_by": recipe.qualified_id,
     }
+    # Camera optics and framing states participate in the plan output rather
+    # than sitting inert on the recipe. Each present field is emitted verbatim
+    # under "camera" so a downstream stage can read it without reparsing.
+    camera: dict[str, Any] = {}
+    for field_name in (
+        "camera_height", "camera_angle", "focal_length_detail",
+        "focus", "depth_of_field", "start_state", "end_state",
+        "hold_constraints",
+    ):
+        value = getattr(recipe, field_name, "")
+        if value:
+            camera[field_name] = value
+    if camera:
+        suggestion["camera"] = camera
+    return suggestion
+
+
+def check_forbidden_actions(recipe: CinematicRecipe, motion_type: str) -> None:
+    """Reject a plan whose resolved motion is one the recipe forbids.
+
+    Forbidden actions are enforced, not advisory. A recipe that forbids "zoom"
+    and resolves to any zoom-family motion fails here instead of shipping a
+    plan that contradicts its own contract.
+    """
+    if not recipe.forbidden_actions:
+        return
+    lowered = (motion_type or "").lower()
+    for forbidden in recipe.forbidden_actions:
+        token = str(forbidden or "").lower().strip()
+        if token and token in lowered:
+            raise ValueError(
+                f"FORBIDDEN_ACTION:{recipe.recipe_id}:{forbidden}"
+            )
 
 
 def _motion_plan_suggestions(
@@ -193,6 +260,7 @@ def _motion_plan_suggestions(
     recipes that predate them; unknown values reject. See _resolve_motion_type.
     """
     motion_type = _resolve_motion_type(recipe)
+    check_forbidden_actions(recipe, motion_type)
 
     amplitude = params.motion_amplitude
     if amplitude is None:
@@ -215,6 +283,8 @@ def _motion_plan_suggestions(
         "semantic_justification": recipe.intent or recipe.description,
         "suggested_by": recipe.qualified_id,
     }
+    if recipe.hold_constraints:
+        suggestion["hold_requirement"] = recipe.hold_constraints
     if motion_type not in RENDERER_NATIVE_MOTIONS:
         # The recipe's motion is preserved verbatim above. This note states the
         # boundary explicitly so a renderer that cannot execute it can refuse
@@ -246,4 +316,4 @@ def _keyword(text: str) -> str:
     return ""
 
 
-__all__ = ["parameterize_recipe"]
+__all__ = ["check_forbidden_actions", "parameterize_recipe"]
