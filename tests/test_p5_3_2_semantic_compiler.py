@@ -140,9 +140,10 @@ def test_structured_path_overrides_free_text() -> None:
 # ── E. Existing recipe preservation ─────────────────────────────────────
 
 
-def test_all_63_recipe_ids_load() -> None:
+def test_all_80_recipe_ids_load() -> None:
+    """63 originals plus 17 Article B additions; IDs immutable."""
     lib = _lib()
-    assert lib.stats().total_recipes == 63
+    assert lib.stats().total_recipes == 80
 
 
 def test_structured_recipes_keep_their_semantics() -> None:

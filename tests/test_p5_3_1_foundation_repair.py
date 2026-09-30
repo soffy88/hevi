@@ -66,11 +66,11 @@ def test_duplicate_pair_no_longer_shares_execution() -> None:
 
 
 def test_duplicate_fix_preserves_callers() -> None:
-    """Same IDs, same families, same beats, still 63 recipes."""
+    """Same IDs, same families, same beats; 63 + 17 Article B recipes."""
     lib = _lib()
     assert lib.get("CAMERA.CONTEXT_TO_DETAIL").recipe_family is RecipeFamily.CAMERA
     assert lib.get("EXPLAINER.MACRO_TO_MICRO").recipe_family is RecipeFamily.EXPLAINER
-    assert lib.stats().total_recipes == 63
+    assert lib.stats().total_recipes == 80
 
 
 # ── 2. map_trace not erased ─────────────────────────────────────────────
