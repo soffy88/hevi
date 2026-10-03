@@ -20,6 +20,17 @@ P10c Time-Directed Layer PASS 2026-10-03 (`docs/p10/p10c_acceptance.md`: C1–C8
 P10d Close-the-Loop PASS 2026-10-03 (`docs/p10/p10d_acceptance.md`: D1–D7, 69 tests green).
 **P10 skeletal complete** 2026-10-03 (`docs/p10/skeletal_complete.md`).
 
+## HEVI Director System pointer (S1, 2026-10-03)
+
+S1 PASS (`docs/p10/p10s1_acceptance.md`: S1-1–S1-6, 34 tests green): `hevi/creative/director_brief/`
+ReferencePack (observed/inferred/target/forbidden + provenance/reference identity) + DirectorBrief
+(thesis/treatment pins, visual+motion priorities, constraints, anti-patterns, approval/completeness),
+deterministic hash + fail-loud validation. **Data contracts only** — no Director Agent, no new
+orchestrator, no new semantic authority; NarrativeCanon/CreativeProgram/P10a-lifecycle/P10b-pins are
+referenced by pin, never re-owned. Real vertical test over the P10-S artifacts.
+NOT started: S2 MotionGrammar, S3 Physics/Camera/Lighting, S4 Sound, S5 Compiler, S6 Review,
+S7 Review Surface, S8 Revision Impact, S9 E2E.
+
 ## Video Intelligence closure (2026-09-23)
 
 The existing durable Case Learning runtime is connected and runtime-qualified;
