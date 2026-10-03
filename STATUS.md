@@ -5,6 +5,20 @@
 > Notable 2026-09-06: Duix model audit — weights NOT missing, shim is actual blocker (see In Progress)
 > Sources: git log, `.claude` project memory (tongjian-pipeline-handoff, deploy-topology, e2e-local-llm-json-blocker, gpu-pcie-fallen-off-bus).
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
+> P10 Creative Direction Runtime: gate ladder + specs in `docs/p10/` (see P10 pointer below).
+
+## P10 pointer (2026-10-03)
+
+P10.1 ACCEPT DIRECTION → G0 CONDITIONAL PASS → G0.2 spikes A/B/C + A2 + silence probe PASS →
+P10-S PASS (H1/H2/H3, `docs/p10/p10_s_report.md`, MP4 `artifacts/p10_s/20261003T002838Z/`) →
+**P10a State Skeleton PASS** (`docs/p10/p10a_acceptance.md`: A1–A14, zero-mutation guarantees).
+Permanent risks: `docs/p10/risk_register.md` (R-P10-01 local≠film anchor, R-P10-02 zoompan -loop, R-P10-03 periodic-NCC false peak).
+Still BLOCKED: full G0 (A3/A4/A5/A8/A9/A13 → implementation per `docs/p10/g0_3_cost_estimate.md`); no second Timeline/Asset/Provider/VideoIntelligence; no 15-object freeze.
+Commits: `5e6a800` (G0.2) → `1ab8024` (P10-S).
+P10b Direction Objects PASS 2026-10-03 (`docs/p10/p10b_acceptance.md`: B1–B7, 52 tests green, P10a untouched).
+P10c Time-Directed Layer PASS 2026-10-03 (`docs/p10/p10c_acceptance.md`: C1–C8, 61 tests green).
+P10d Close-the-Loop PASS 2026-10-03 (`docs/p10/p10d_acceptance.md`: D1–D7, 69 tests green).
+**P10 skeletal complete** 2026-10-03 (`docs/p10/skeletal_complete.md`).
 
 ## Video Intelligence closure (2026-09-23)
 
