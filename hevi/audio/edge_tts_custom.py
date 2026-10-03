@@ -19,6 +19,15 @@ from typing import Any
 
 from obase.ffmpeg import run as ffmpeg_run
 
+from hevi.audio.tts_alignment import (
+    AudioAlignment,
+    PhraseTiming,
+    WordTiming,
+    _to_ms,
+    probe_duration_ms,
+    write_alignment_sidecar,
+)
+
 logger = logging.getLogger(__name__)
 
 _CJK_RE = re.compile(r"[一-鿿぀-ヿ가-힯]")
@@ -127,6 +136,22 @@ async def edge_tts_synthesize_smart(
     return out if isinstance(out, Path) else output_path
 
 
+def _alignment_from_result(result: dict[str, Any], index: int) -> AudioAlignment | None:
+    """oprim.edge_tts_word_boundary 的词级边界 → AudioAlignment(段内坐标)。
+
+    duration_ms 用「末词结束」而非音频总长(含尾静音),见 G0.2-B 结论。
+    """
+    words_raw = result.get("words") or []
+    words = tuple(
+        WordTiming(str(w.get("text", "")), _to_ms(float(w.get("start", 0.0))),
+                   _to_ms(float(w.get("end", 0.0))))
+        for w in words_raw
+    )
+    if not words:
+        return None
+    return AudioAlignment(audio_id=f"seg{index:04d}", duration_ms=words[-1].end_ms, words=words)
+
+
 async def synthesize_with_voice_control(
     *,
     config: dict[str, Any] | None = None,
@@ -170,6 +195,7 @@ async def synthesize_with_voice_control(
     with tempfile.TemporaryDirectory(prefix="hevi_edge_tts_") as td:
         tmp = Path(td)
         parts: list[Path] = []
+        alignments: list[tuple[str, AudioAlignment]] = []
         for i, (ln, text) in enumerate(_pairs):
             # 每行优先用该行自带的 .voice(角色专属音色,见 injected_audio_fn 的 edge_tts
             # 多角色分支);没有再退回整批的 voice,最后回退语言默认音色。
@@ -190,15 +216,19 @@ async def synthesize_with_voice_control(
             # (微软侧限流/瞬时故障,实测同一音色反复试成功率飘忽)。不重试就会丢整行
             # 台词 → 成片里这句变哑。重试 3 次(短退避),仍失败才放弃这一行。
             # 单行合成走 oprim.edge_tts_word_boundary 原子(输出路径直写)。
+            # G0.2-A4:保留该原子返回的词级边界(此前丢弃),供锚点解析;
+            # 逐行起点累积成整段偏移,拼接后仍然是全片可用的时间轴。
+            seg_alignment: AudioAlignment | None = None
             for _attempt in range(3):
                 try:
-                    await edge_tts_word_boundary(
+                    result = await edge_tts_word_boundary(
                         text,
                         v,
                         rate=_r or "+0%",
                         pitch=_p or "+0Hz",
                         output_path=seg,
                     )
+                    seg_alignment = _alignment_from_result(result, i)
                 except Exception as e:
                     logger.warning("edge-tts segment %d 第%d次失败: %s", i, _attempt + 1, e)
                     seg.unlink(missing_ok=True)
@@ -207,6 +237,9 @@ async def synthesize_with_voice_control(
                 await asyncio.sleep(0.8 * (_attempt + 1))
             if seg.exists() and seg.stat().st_size > 0:
                 parts.append(seg)
+                if seg_alignment is not None:
+                    alignments.append((getattr(ln, "unit_id", "") or f"line{i + 1:03d}",
+                                       seg_alignment))
             else:
                 logger.warning("edge-tts segment %d 三次仍无音频,该行台词丢失", i)
 
@@ -234,5 +267,27 @@ async def synthesize_with_voice_control(
                 str(output_path),
             ]
         await ffmpeg_run(args=args, expected_output=output_path)
+
+        # G0.2-A4:把逐行词级边界按拼接顺序累加偏移,写成整段 sidecar。返回契约不变(Path)。
+        if alignments:
+            try:
+                merged: list[WordTiming] = []
+                phrases: list[PhraseTiming] = []
+                offset_ms = 0
+                for (unit_id, seg_align), part in zip(alignments, parts, strict=False):
+                    seg_ms = probe_duration_ms(part)
+                    merged.extend(
+                        WordTiming(w.text, offset_ms + w.start_ms, offset_ms + w.end_ms)
+                        for w in seg_align.words
+                    )
+                    phrases.append(PhraseTiming(unit_id, offset_ms, offset_ms + seg_ms))
+                    offset_ms += seg_ms
+                write_alignment_sidecar(
+                    output_path,
+                    AudioAlignment(audio_id=output_path.stem, duration_ms=offset_ms,
+                                   words=tuple(merged), phrases=tuple(phrases)),
+                )
+            except Exception as e:  # 对齐是增强,不是合成成败:不阻断出片
+                logger.warning("edge-tts alignment sidecar 未写出: %s", e)
 
     return output_path

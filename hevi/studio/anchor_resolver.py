@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from hevi.audio.tts_alignment import AudioAlignment
+
 
 @dataclass(frozen=True)
 class Anchor:
@@ -15,6 +17,8 @@ class Anchor:
     target: str  # ScriptUnit unit_id(依赖 Spike A)
     edge: str = "start"
     offset_ms: int = 0  # 可为负,整数;语义:相对 dialogue end 的偏移
+    # R-P10-01:坐标系。line-local = 相对行音频起点;film-global = 成片时间线。
+    coordinate: str = "line-local"
 
 
 @dataclass(frozen=True)
@@ -69,3 +73,44 @@ def resolve_anchor(
         confidence=1.0,  # 确定性换算;含模型推断时再降置信度(后续工作)
         evidence=evidence,
     )
+
+
+# ── A5:供给侧(谁提供 dialogue_end_ms / film 偏移)──────────────────────────
+
+
+def dialogue_end_map(alignment: AudioAlignment) -> dict[str, int]:
+    """A4 sidecar(AudioAlignment)→ {phrase_id(=unit_id): 末词结束 ms}。
+
+    R-P10-01:对话结束必须是词级末词,不是音频总长(后者含尾静音)。
+    """
+    if not alignment.phrases:
+        return {}
+    out: dict[str, int] = {}
+    for phrase in alignment.phrases:
+        words = [w for w in alignment.words if phrase.start_ms <= w.end_ms <= phrase.end_ms]
+        out[phrase.phrase_id] = words[-1].end_ms if words else phrase.end_ms
+    return out
+
+
+def compose_film_anchor(
+    anchor: Anchor,
+    *,
+    alignment: AudioAlignment,
+    segment_offset_ms: int,
+    fps: int,
+    timeline_hash: str = "",
+    alignment_hash: str = "",
+) -> ResolvedAnchor:
+    """行内锚点 + 段偏移 = film 锚点(R-P10-01 的正解)。
+
+    segment_offset_ms: 该段在成片时间线上的起点。输出恒为 film-global。
+    """
+    line_local = resolve_anchor(
+        Anchor(anchor.type, anchor.target, anchor.edge, anchor.offset_ms, "line-local"),
+        dialogue_end_ms=dialogue_end_map(alignment), fps=fps,
+        alignment_hash=alignment_hash, timeline_hash=timeline_hash)
+    time_ms = segment_offset_ms + line_local.time_ms
+    return ResolvedAnchor(
+        anchor_id=line_local.anchor_id, source=line_local.source,
+        time_ms=time_ms, frame=round(time_ms * fps / 1000),
+        confidence=line_local.confidence, evidence=line_local.evidence)

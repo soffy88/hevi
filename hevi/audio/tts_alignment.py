@@ -116,3 +116,31 @@ def alignment_to_json(alignment: AudioAlignment) -> str:
         },
         ensure_ascii=False,
     )
+
+
+def dialogue_end_ms(alignment: AudioAlignment) -> int:
+    """Dialogue End Event = last word end (not audio duration; see G0.2-B finding)."""
+    return alignment.words[-1].end_ms if alignment.words else alignment.duration_ms
+
+
+def write_alignment_sidecar(audio_path: Path, alignment: AudioAlignment) -> Path:
+    """A4:落盘 <audio>.alignment.json。写失败不阻断合成(对齐缺失=不可评估,非失败)。"""
+    sidecar = audio_path.with_suffix(audio_path.suffix + ".alignment.json")
+    try:
+        sidecar.write_text(alignment_to_json(alignment) + "\n", encoding="utf-8")
+    except OSError:
+        return sidecar
+    return sidecar
+
+
+def load_alignment_sidecar(audio_path: Path) -> AudioAlignment | None:
+    sidecar = audio_path.with_suffix(audio_path.suffix + ".alignment.json")
+    if not sidecar.is_file():
+        return None
+    payload = json.loads(sidecar.read_text(encoding="utf-8"))
+    words = tuple(WordTiming(str(w["token"]), int(w["start_ms"]), int(w["end_ms"]))
+                  for w in payload.get("words", []))
+    phrases = tuple(PhraseTiming(str(p["phrase_id"]), int(p["start_ms"]), int(p["end_ms"]))
+                    for p in payload.get("phrases", []))
+    return AudioAlignment(str(payload.get("audio_id", "")), int(payload.get("duration_ms", 0)),
+                          words, phrases)

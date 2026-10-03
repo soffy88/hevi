@@ -16,6 +16,7 @@ ASR 全片反打(旁白轨,不含 BGM/SFX,避免背景音乐干扰识别)、VLM 
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -435,6 +436,28 @@ async def build_final_video(
     narration_path = await concat_narration_track(timeline, audio_dir, output_dir=output_dir)
     bgm_path = await mix_bgm_master(music_plan, output_dir=output_dir)
     sfx_path = await mix_sfx_master(music_plan, timeline.total_duration_ms, output_dir=output_dir)
+
+    # G0.2-A8:分 stem 声部清单(默认关闭)。narration/bgm/sfx 三条混音前的中间产物本
+    # 就存在,这里只登记路径,不新增混音步骤;检测器据此做 stem 级静音/响度检查,
+    # 缺 stem 时相关检查记 NOT_EVALUABLE(不得用 master 混音冒充 stem 证据)。
+    if os.getenv("P10_EXPORT_STEMS", "").strip().lower() in {"1", "true", "yes", "on"}:
+        stems = {
+            "voice": narration_path,
+            "music": bgm_path,
+            "sfx": sfx_path,
+        }
+        (output_dir / "audio_artifact.json").write_text(
+            json.dumps(
+                {
+                    "master": "final.mp4",
+                    "stems": {k: str(v) for k, v in stems.items() if v and Path(v).exists()},
+                    "stem_scopes": ["voice", "music", "sfx"],
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
 
     srt_path = output_dir / "subtitles.srt"
     srt_path.write_text(generate_srt(timeline, script), encoding="utf-8")

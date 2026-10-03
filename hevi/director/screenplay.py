@@ -31,6 +31,26 @@ logger = logging.getLogger(__name__)
 _HIGH_COMPLEXITY_HINTS = ("战争", "爆炸", "千军", "万人", "舰队", "崩塌", "洪水", "巨兽")
 
 
+def _assign_scene_unit_ids(scenes: list[ScreenplayScene]) -> None:
+    """就地补 unit_id(空 ID 才分配;已带 ID 的保留,便于 revision 继承)。
+
+    ID 形态 `scene{scene_no}.line{NNN}`,按场内出现序递增。ScreenplayDialogueLine
+    是 pydantic BaseModel,可变,故就地改写;返回 None。
+    """
+    for scene in scenes:
+        scene_id = f"scene{scene.scene_no}"
+        taken: set[str] = {line.unit_id for line in scene.dialogue if line.unit_id}
+        for index, line in enumerate(scene.dialogue, start=1):
+            if line.unit_id:
+                continue
+            serial = index
+            while f"{scene_id}.line{serial:03d}" in taken:
+                serial += 1
+            unit_id = f"{scene_id}.line{serial:03d}"
+            taken.add(unit_id)
+            line.unit_id = unit_id
+
+
 def _complexity(raw: Any, text: str) -> str:
     value = str(raw or "").strip().lower()
     if value in {"low", "medium", "high"}:
@@ -287,6 +307,9 @@ async def generate_screenplay_draft(
             )
         )
     scenes = scenes or [ScreenplayScene(scene_no=1, narration=material_text)]
+    # G0.2-A3:为每句对白补稳定 unit_id(scene{scene_no}.line{NNN}),供 TTS 对齐/锚点/Cue
+    # 跨 revision 引用。ID 由本层确定性分配,LLM 不需要也不应该自己编 ID。
+    _assign_scene_unit_ids(scenes)
     # 测试用场数上限:只取前 N 场(见 settings.director_max_scenes 注释)。下游全派生自剧本,
     # 一处截断即限住整条链的镜头数/渲染量。None/0 = 不限。
     from hevi.core.config import settings
