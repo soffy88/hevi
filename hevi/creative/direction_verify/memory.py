@@ -26,6 +26,10 @@ class MemoryEntry:
     refusals: int = 0
 
     def validate(self) -> None:
+        if self.scope == "global":
+            # Q2 决策:global 作用域默认禁用,写 global 是显式越权,不是笔误。
+            raise VerifyError(f"memory {self.id}: global scope disabled by decision (Q2)",
+                              code="MEMORY_SCOPE_GLOBAL_DISABLED")
         if self.kind not in KINDS or self.scope not in SCOPES or self.status not in STATUSES:
             raise VerifyError(f"bad memory entry: {self.id}", code="MEMORY_BAD_ENTRY")
         if not self.evidence:

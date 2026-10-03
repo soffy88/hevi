@@ -19,6 +19,8 @@ P10b Direction Objects PASS 2026-10-03 (`docs/p10/p10b_acceptance.md`: B1–B7, 
 P10c Time-Directed Layer PASS 2026-10-03 (`docs/p10/p10c_acceptance.md`: C1–C8, 61 tests green).
 P10d Close-the-Loop PASS 2026-10-03 (`docs/p10/p10d_acceptance.md`: D1–D7, 69 tests green).
 **P10 skeletal complete** 2026-10-03 (`docs/p10/skeletal_complete.md`).
+Post-skeletal production PASS 2026-10-03 (`docs/p10/post_skeletal_acceptance.md`): A3 unit_id in generation · A4 TTS alignment sidecar (contract unchanged) · A5 film-anchor composition · A8 opt-in stem manifest · A9 per-shot content-hash cache · A13 id@version pin · similarity guard (default off) · Q4 attestation log.
+Open questions Q1–Q3/Q5–Q9 RESOLVED (`docs/p10/open_questions_resolution.md`): K<3 by reason · Memory global scope disabled · structure_clone forbidden · multilingual explicit translation index · tolerance calibration (needs real data) · signature budget 2 · cost table per deployment.
 
 ## Video Intelligence closure (2026-09-23)
 

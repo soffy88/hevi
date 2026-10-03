@@ -123,3 +123,51 @@ def inherit_unit_ids(
 def resolve_unit(units: list[ScriptUnit], unit_id: str) -> ScriptUnit | None:
     """引用解析。返回 None = orphan,调用方必须 fail-loud(ANCHOR_ORPHANED)。"""
     return next((u for u in units if u.unit_id == unit_id), None)
+
+
+# ── Q5:多语言单元对应 ──
+
+
+def namespaced_unit_id(unit_id: str, language: str) -> str:
+    """翻译单元 ID 加语言命名空间,避免多语言共用一套 ID 时互相覆盖。
+
+    `scene1.line004` + `zh` → `zh:scene1.line004`;已是命名空间则替换(不叠加)。
+    """
+    base = unit_id.split(":", 1)[1] if ":" in unit_id else unit_id
+    return f"{language}:{base}" if language else base
+
+
+@dataclass(frozen=True)
+class TranslationLink:
+    language: str
+    source_unit_id: str
+    target_unit_id: str
+
+
+@dataclass(frozen=True)
+class TranslationIndex:
+    """同一 Direction 下,源语言单元 → 各语言单元的对应表。"""
+
+    links: tuple[TranslationLink, ...] = ()
+
+    def targets(self, source_unit_id: str) -> tuple[str, ...]:
+        return tuple(link.target_unit_id for link in self.links
+                     if link.source_unit_id == source_unit_id)
+
+    def missing_sources(self, source_unit_ids: tuple[str, ...]) -> tuple[str, ...]:
+        """源单元没有对应译单元 = orphan(删除/合并后翻译侧会缺锚点)。"""
+        linked = {link.source_unit_id for link in self.links}
+        return tuple(uid for uid in source_unit_ids if uid not in linked)
+
+
+def build_translation_index(*, language: str,
+                            pairs: list[tuple[str, str]]) -> TranslationIndex:
+    """由**显式**对应关系建索引(pairs: [(source_unit_id, target_unit_id)])。
+
+    刻意不做按文本的自动配对:翻译后源文与译文文本必然不同,按文本推断等于
+    错连锚点。对应关系由翻译层给出;给不出就是不连边(宁可缺,不可错连)。
+    """
+    return TranslationIndex(tuple(
+        TranslationLink(language, source_id, namespaced_unit_id(target_id, language))
+        for source_id, target_id in pairs
+    ))

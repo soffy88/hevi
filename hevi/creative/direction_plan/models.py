@@ -279,7 +279,12 @@ class SignatureShot:
                                       code="SIGNATURE_NO_REASON")
 
 
-def check_signature_unique(shots: list[SignatureShot]) -> None:
+def check_signature_unique(shots: list[SignatureShot], *, max_count: int = 2) -> None:
+    """Q7:数量上限默认 2(每个镜头都"签名"等于没有签名);同一 project 内
+    camera 签名哈希不得重复。"""
+    if len(shots) > max_count:
+        raise PlanValidationError(f"too many signature shots: {len(shots)} > {max_count}",
+                                  code="SIGNATURE_OVER_BUDGET")
     seen: dict[str, str] = {}
     for shot in shots:
         digest = shot.camera.signature_hash()
