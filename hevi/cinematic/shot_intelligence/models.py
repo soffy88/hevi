@@ -40,6 +40,10 @@ class BeatCue:
     time_s: float
     kind: str = "beat"
     strength: float = 1.0
+    # G0.2-A2:稳定身份,供 Decision→Cue→Shot 追踪。空 = 老数据未补 ID(向后兼容)。
+    cue_id: str = ""
+    # P10 adapter 回指(CreativeCue id);无 creative 上游时为空,不影响现有行为。
+    creative_cue_ref: str = ""
 
 
 @dataclass(frozen=True)

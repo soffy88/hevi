@@ -40,6 +40,9 @@ class ScreenplayDialogueLine(BaseModel):
 
     character_name: str
     text: str  # 白话,不是文言/书面语
+    # G0.2-A Script Stable Identity spike:稳定单元 ID,跨 revision 引用(TTS/Cue/Shot)。
+    # 空 = 老数据未补 ID(向后兼容);新数据由 script_identity.assign_unit_ids 填充。
+    unit_id: str = ""
     # SPEC-004:对谁说(A 对 B 说 → target_name=B)。升到②剧本级,让"谁对谁说"成为场事实的
     # 一部分——③.5 SceneStage.sightlines 从此确定性派生(INC-001 §H 升格),④ShotList 保持一致。
     # 空 = 未指明受话对象(独白/对众)。

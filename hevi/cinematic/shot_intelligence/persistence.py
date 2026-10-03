@@ -65,6 +65,8 @@ def _cue(value: dict[str, Any]) -> BeatCue:
         time_s=float(value["time_s"]),
         kind=str(value.get("kind", "beat")),
         strength=float(value.get("strength", 1.0)),
+        cue_id=str(value.get("cue_id", "")),
+        creative_cue_ref=str(value.get("creative_cue_ref", "")),
     )
 
 
