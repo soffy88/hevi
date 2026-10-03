@@ -82,6 +82,10 @@ class ShotIntent:
     available_providers: tuple[str, ...] = ()
     available_assets: tuple[str, ...] = ()
     beat_map: tuple[BeatCue, ...] = ()
+    # P10-S H1: creative 上游引用(全可选,不影响现有消费者)。
+    creative_direction_ref: str = ""
+    decision_refs: tuple[str, ...] = ()
+    cue_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
