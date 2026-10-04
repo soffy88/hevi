@@ -65,11 +65,15 @@ class GenerationBudget:
 
 @dataclass(frozen=True)
 class VideoGenerationCapabilities:
-    """backend 自述能力。缺键 = False(spec §15:Director 按 capability graph 选,不硬编码)。"""
-    values: dict[str, bool] = field(default_factory=dict)
+    """backend 自述能力。缺键 = False(spec §15:Director 按 capability graph 选,不硬编码)。
+
+    字段名用 `declared` 而非 `values`:后者会遮蔽 dict.values(),调用方
+    `caps.values()` 会静默拿到字段而不是方法。
+    """
+    declared: dict[str, bool] = field(default_factory=dict)
 
     def supports(self, key: str) -> bool:
-        return bool(self.values.get(key, False))
+        return bool(self.declared.get(key, False))
 
     def missing(self, required: tuple[str, ...]) -> tuple[str, ...]:
         return tuple(key for key in required if not self.supports(key))
