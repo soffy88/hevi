@@ -15,9 +15,17 @@ from pathlib import Path
 
 from hevi.generation.evidence import (
     CAPABILITY_KEYS,
+    LONGCAT_UPSTREAM_SOURCE,
     EvidenceStatus,
     ProviderEvidenceBridge,
     longcat_bridge,
+)
+from hevi.generation.external_runtime import (
+    EndpointSpec,
+    EnvironmentRequirements,
+    ExternalRuntimeRef,
+    ProcessSpec,
+    RuntimeKind,
 )
 
 
@@ -106,10 +114,10 @@ def probe(*, source_root: str | os.PathLike[str] | None = None,
           module_name: str = "longcat_video",
           checkpoint_path: str | os.PathLike[str] | None = None,
           runtime_probe: object | None = None) -> ProbeReport:
-    """按证据链顺序执行;卡在第一步失败处,后续记 NOT_EVALUABLE(不跳过、不假装)。
+    """LongCat 专用的**前置**检查(source/import/checkpoint)。
 
-    runtime_probe: 可调用对象或映射,键为 StepName,值为 StepResult 或 bool,
-    用于接入真实 runtime 后的 T2V/I2V/VC/refinement/media 五步。
+    runtime 之后的准入链已抽到 `qualification.qualify`(通用机制,不限 LongCat);
+    本函数保留长视频源码本地化所需的前三步,并把 runtime 部分交给调用方。
     """
     bridge = longcat_bridge()
     steps: list[StepResult] = []
@@ -139,18 +147,16 @@ def probe(*, source_root: str | os.PathLike[str] | None = None,
         else:
             steps.append(StepResult(name, StepStatus.PASS if got else StepStatus.FAIL, ""))
 
-    verified = any(s.status is StepStatus.PASS for s in steps)
-    if verified:
-        for name, capability in (
-            (StepName.T2V_PROBE, "t2v"), (StepName.I2V_PROBE, "i2v"),
-            (StepName.VC_PROBE, "continuation"), (StepName.REFINEMENT_PROBE, "refinement"),
-            (StepName.MEDIA_VALIDATION, "long_video"),
-        ):
-            result = next(s for s in steps if s.name is name)
-            if result.status is StepStatus.PASS:
-                bridge.mark(capability, EvidenceStatus.LOCALLY_VERIFIED)
+    for name, capability in (
+        (StepName.T2V_PROBE, "t2v"), (StepName.I2V_PROBE, "i2v"),
+        (StepName.VC_PROBE, "continuation"), (StepName.REFINEMENT_PROBE, "refinement"),
+        (StepName.MEDIA_VALIDATION, "long_video"),
+    ):
+        result = next(s for s in steps if s.name is name)
+        if result.status is StepStatus.PASS:
+            bridge.mark(capability, EvidenceStatus.LOCALLY_VERIFIED)
 
-    admitted = verified and all(s.status is StepStatus.PASS for s in steps)
+    admitted = all(s.status is StepStatus.PASS for s in steps)
     blocker = next((s.name for s in steps if s.status is not StepStatus.PASS), None)
     steps.append(StepResult(StepName.CAPABILITY_ADMITTED,
                             StepStatus.PASS if admitted else StepStatus.NOT_EVALUABLE,
@@ -158,6 +164,21 @@ def probe(*, source_root: str | os.PathLike[str] | None = None,
                             else f"blocked at {blocker}"))
     bridge.try_admit(runtime_ready=admitted)
     return ProbeReport(bridge.provider, steps, bridge)
+
+
+def runtime_ref_for_longcat(*, source_root: str | None = None,
+                            checkpoint_path: str | None = None,
+                            endpoint_url: str = "") -> ExternalRuntimeRef:
+    """构造 LongCat 的 runtime_ref(契约,不含任何模型内部参数)。"""
+    requirements = EnvironmentRequirements(vram_gb=48.0, disk_gb=25.0, cuda_required=True)
+    endpoint = EndpointSpec(endpoint_url) if endpoint_url else None
+    process = None if endpoint else ProcessSpec(argv_template=("longcat-video",),
+                                                timeout_s=1800)
+    return ExternalRuntimeRef(
+        runtime_id="longcat-video", kind=RuntimeKind.ENDPOINT if endpoint else RuntimeKind.PROCESS,
+        version="", checkpoint_identity=checkpoint_path or "unresolved",
+        endpoint=endpoint, process=process, requirements=requirements,
+        provenance=LONGCAT_UPSTREAM_SOURCE)
 
 
 def admitted_capabilities_from(report: ProbeReport) -> dict[str, bool]:
