@@ -136,3 +136,45 @@ AssetFitness(7 维语义分)  ──✗──>  select_candidate(1 维 confidenc
 | S2 | 加 media probe + candidate/evidence normalization + 接入 p7 `evaluate_policy`。**不碰 scoring。** |
 | S3 | **不是新建评分**。是把「`AssetCandidate.confidence` 由谁生产」这件事归一:要么让 `AssetFitness` 成为唯一生产者并把 `calculate_asset_fitness` 的**硬编码题材替换为可注入的匹配器**,要么明确 `confidence` 由 `Acquirer` 生产且不用 AssetFitness。**二选一,需你拍板。** |
 | 待 reconciliation | `providers/scoring.py:139 choose_provider` 与 `provider_policy` 的重叠(见 S7)。 |
+
+---
+
+## 裁决落地:两套评分并存 + 按适用域自动选择
+
+**裁决**:保留 `AssetFitness`(语义 7 维)与 `Acquirer` 产出的 `confidence`,按视频自动选择。
+
+**实现位置**:canonical 层(`shot_readiness.py` / `p1_pipeline.py`),
+**`hevi/creative/autonomous/` 内零评分代码**(AST 守卫仍绿)。
+
+| 落点 | 内容 |
+|---|---|
+| `shot_readiness.AssetCandidate` | 新增 `scored_by: str = ""`(默认空,向后兼容)——记录分数来源 |
+| `shot_readiness.ScorerLike` | Protocol:必须暴露 `applicable_domains`;未声明 = **不适用** |
+| `shot_readiness.applicable_scorers` | 按域筛出适用 scorer;多个时按 id 字典序(确定性,不「谁分高用谁」) |
+| `shot_readiness.score_candidates` | 用唯一适用 scorer 打分并记录 `scored_by` + lineage;无适用 → **不打分** |
+| `shot_readiness.select_candidate` | 追加条件:`scored_by` 非空才允许自动选 |
+| `p1_pipeline.BlackHoleAssetFitness` | 把题材硬编码的打分器包成**声明适用域**的 scorer(`black_hole`) |
+
+### 关键安全性质:不适用 ≠ 低分
+
+题材硬编码的打分器若对非黑洞内容**打低分**,「低分里挑最高」= 静默误选。
+因此 `applicable_scorers` 对未声明/域不匹配的 scorer 返回**不可用**,
+`score_candidates` 直接不打分(confidence 保持 0、来源保持空),
+`select_candidate` 因此拒绝自动选 → 留 `REVIEW_REQUIRED`。回归测试
+`test_inapplicable_scorer_would_have_been_a_silent_misrank` 锁死这条。
+
+### 契约收紧(有意为之,已记录)
+
+`select_candidate` 现在要求 `confidence` 有 canonical 生产者。这**使一个既有测试变红**
+(`tests/test_p5_2_grammar.py::test_confident_candidate_is_selected_and_others_rejected`,
+它手工设 `confidence=0.95` 而无来源)。已更新该 fixture 声明 `scored_by="fixture"`,
+并**新增**反向测试 `test_candidate_without_scored_by_is_not_auto_selected`。
+
+影响面核查:`director/shot_preparation.py:55 candidates_from_shot()` 产出的候选
+confidence=0.0(无 LLM 打分),因此生产路径本来就从不被自动选 —— 收紧不改变生产行为,
+只堵住「手工塞高分」这条静默通道。
+
+### 验证
+
+`tests/p10` 204 passed;`test_p5_2_* + director + shot_intelligence` 523 passed;
+ruff 干净;`p1_pipeline` mypy 12 errors 为**既有 baseline**(stash 验证前后一致,未新增)。

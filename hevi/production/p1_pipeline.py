@@ -222,12 +222,36 @@ def build_visual_beat_plan(
 # ASSET FITNESS CALCULATOR
 # ──────────────────────────────────────────────────────────────────────
 
+#: 本 scorer 的适用域(S3)。标题硬编码为黑洞题材,故**只**在该域内声明适用;
+# 域外必须视为「不可用」而非「打低分」——否则低分里挑最高 = 静默误选。
+ASSET_FITNESS_APPLICABLE_DOMAINS: frozenset[str] = frozenset({"black_hole"})
+
+
+class BlackHoleAssetFitness:
+    """把 `calculate_asset_fitness` 包成声明适用域的 scorer(可被自动选择机制识别)。
+
+    ⚠️ 题材硬编码:`subject_to_asset` 只认黑洞术语,`provenance_score` 只认 NASA。
+    因此它**不是**通用候选打分器;通用路径请用注入其它 scorer 的 registry。
+    """
+
+    applicable_domains = ASSET_FITNESS_APPLICABLE_DOMAINS
+
+    def __call__(self, beat: VisualBeat, asset: ResolvedAsset) -> AssetFitness:
+        return calculate_asset_fitness(beat, asset)
+
+
+def asset_fitness_applies(domain: str) -> bool:
+    return domain in ASSET_FITNESS_APPLICABLE_DOMAINS
+
+
 def calculate_asset_fitness(
     beat: VisualBeat,
     asset: ResolvedAsset,
 ) -> AssetFitness:
-    """Calculate multi-dimensional asset fitness for a beat."""
-    
+    """Calculate multi-dimensional asset fitness for a beat.
+
+    ⚠️ 题材硬编码(黑洞/NASA),见 `BlackHoleAssetFitness` 的适用域声明。
+    """
     # Entity match: does asset show the right entity?
     entity_score = 0.0
     if beat.semantic_action:

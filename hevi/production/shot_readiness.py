@@ -14,12 +14,25 @@ execution stay with P3/P4.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import Any, Protocol
 
 from hevi.production.entities import ProductionEntityGraph
 from hevi.production.references import audit_summary  # noqa: F401  (parity re-export)
+
+
+class ScorerLike(Protocol):
+    """候选打分器契约(S3:两套评分并存,各自声明适用域)。
+
+    必须暴露 `applicable_domains`;未声明 = 不适用(fail-closed)。
+    调用签名 `fn(candidate) -> float`(0-1)。
+    """
+
+    applicable_domains: frozenset[str]
+
+    def __call__(self, candidate: AssetCandidate) -> float: ...
 
 
 class ShotState(StrEnum):
@@ -55,6 +68,10 @@ class AssetCandidate:
 
     A requirement may have several candidates; the selection is a recorded,
     lineage-bearing decision rather than an implicit "first one wins".
+
+    ``scored_by`` records which scorer produced ``confidence`` (S3: 两套评分并存,
+    按适用域自动选择)。空 = 尚无 canonical 生产者 —— 选择时视为不可自动选,
+    不允许把「来源不明的分数」当成证据(同 R-P10-03 的纪律)。
     """
 
     candidate_id: str
@@ -66,6 +83,7 @@ class AssetCandidate:
     reason: str = ""
     selected_by: str = ""
     lineage: list[str] = field(default_factory=list)
+    scored_by: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -151,6 +169,53 @@ class ShotReadinessError(RuntimeError):
 #: Below this confidence a candidate needs a human rather than automation.
 REVIEW_CONFIDENCE_FLOOR = 0.75
 
+#: 策略不可用时的统一原因(fail-closed,不是「低分」)
+NO_APPLICABLE_SCORER = "NO_APPLICABLE_SCORER"
+UNSCORED_CANDIDATE = "UNSCORED_CANDIDATE"
+
+
+def applicable_scorers(domain: str, registry: Mapping[str, ScorerLike] | None = None
+                       ) -> tuple[tuple[str, ScorerLike], ...]:
+    """S3:两套评分并存,按**适用域**自动选择。
+
+    关键语义:不适用的 scorer 返回「不可用」,**不是**低分。否则题材不匹配的
+    打分器会给所有候选打低分,最后「低分里挑最高」= 静默误选。
+
+    多个适用时按 scorer_id 字典序确定性取第一个(可审计),不做「谁分高用谁」。
+    """
+    if not registry:
+        return ()
+    hits = [(sid, fn) for sid, fn in sorted(registry.items())
+            if _declares_domain(fn, domain)]
+    return tuple(hits)
+
+
+def _declares_domain(scorer: ScorerLike, domain: str) -> bool:
+    domains = getattr(scorer, "applicable_domains", None)
+    if domains is None:
+        return False  # 未声明适用域 = 不默认适用(fail-closed)
+    return domain in domains
+
+
+def score_candidates(candidates: list[AssetCandidate], *, domain: str,
+                      registry: Mapping[str, ScorerLike] | None = None,
+                      ) -> tuple[str, list[AssetCandidate]]:
+    """用唯一适用的 scorer 为候选打分,记录来源。返回 (scorer_id|reason, candidates)。
+
+    无适用 scorer → 不打分(候选 confidence 保持 0),把理由交回调用方 fail-closed。
+    """
+    chosen = applicable_scorers(domain, registry)
+    if not chosen:
+        return NO_APPLICABLE_SCORER, candidates
+    scorer_id, scorer = chosen[0]
+    for candidate in candidates:
+        if candidate.state is AssetCandidateState.REJECTED:
+            continue
+        candidate.confidence = float(scorer(candidate))
+        candidate.scored_by = scorer_id
+        candidate.lineage = [*candidate.lineage, f"scored:{scorer_id}"]
+    return scorer_id, candidates
+
 
 def select_candidate(
     preparation: ShotPreparation,
@@ -163,6 +228,9 @@ def select_candidate(
     Automation refuses to force a pick when nothing is confident enough: a
     low-confidence or unverified candidate leaves the shot in
     ``REVIEW_REQUIRED`` rather than guessing, which is §20.
+
+    S3 追加:候选必须带 `scored_by`(有 canonical 生产者)才允许自动选;
+    来源不明的 confidence 不作为证据。
     """
     options = [c for c in preparation.candidates if c.requirement_id == requirement_id]
     if not options:
@@ -177,6 +245,7 @@ def select_candidate(
         if c.state is AssetCandidateState.CANDIDATE
         and c.verified
         and c.confidence >= REVIEW_CONFIDENCE_FLOOR
+        and c.scored_by
     ]
     if not confident:
         return None

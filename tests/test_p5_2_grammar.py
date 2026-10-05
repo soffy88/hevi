@@ -395,11 +395,13 @@ def test_asset_candidate_may_have_several_options() -> None:
 
 def test_confident_candidate_is_selected_and_others_rejected() -> None:
     prep = _ready_preparation(required_asset_refs=["ev.png"])
+    # S3 契约收紧:自动选择要求 confidence 有 canonical 生产者(scored_by)。
+    # 来源不明的分数不作为证据(同 R-P10-03:高数值不等于真实证据)。
     prep.candidates = [
         AssetCandidate(candidate_id="c1", requirement_id="ev.png", asset_ref="low.png",
-                       confidence=0.3, verified=True),
+                       confidence=0.3, verified=True, scored_by="fixture"),
         AssetCandidate(candidate_id="c2", requirement_id="ev.png", asset_ref="high.png",
-                       confidence=0.95, verified=True),
+                       confidence=0.95, verified=True, scored_by="fixture"),
     ]
     chosen = select_candidate(prep, "ev.png")
     assert chosen is not None and chosen.asset_ref == "high.png"
@@ -407,6 +409,16 @@ def test_confident_candidate_is_selected_and_others_rejected() -> None:
     assert chosen.lineage and chosen.lineage[0].startswith("selected:")
     other = next(c for c in prep.candidates if c.candidate_id == "c1")
     assert other.state is AssetCandidateState.REJECTED
+
+
+def test_candidate_without_scored_by_is_not_auto_selected() -> None:
+    """S3:confidence 无来源 = 不自动选(留 REVIEW_REQUIRED),不猜。"""
+    prep = _ready_preparation(required_asset_refs=["ev.png"])
+    prep.candidates = [
+        AssetCandidate(candidate_id="c1", requirement_id="ev.png", asset_ref="high.png",
+                       confidence=0.99, verified=True)
+    ]
+    assert select_candidate(prep, "ev.png") is None
 
 
 def test_unverified_candidate_is_not_auto_selected() -> None:
