@@ -52,3 +52,54 @@ verification: tests/p10 235 passed · 相邻 596 passed · ruff clean · mypy cl
 - `AssetFitness` 的题材硬编码未替换为可注入匹配器（已在 `NON_AUTHORITATIVE` 登记，
   且 `BlackHoleAssetFitness` 已声明适用域，域外不可用而非低分）。
 - stock / procedural / generation 三个 Acquirer 未实现（仅 local）。
+---
+
+## 接线：`resolve()` —— 先选、再判能否生成（2026-10-03 追加）
+
+S3 报告发出时的 blocker 是「`select_candidate` 无生产调用方」。本节记录接线与其真实边界。
+
+### 交付
+
+`autonomous/selection.py::resolve(preparation) -> ShotResolution`
+
+```text
+ShotPreparation
+  ↓ requirement_ids（canonical id 一侧）
+canonical scorer（scored_by 有来源者）
+  ↓
+canonical selector（select_candidate）
+  ↓
+ShotResolution{selected, unresolved, unbound_asset_refs, human_review_required}
+  ↓
+ready_for_generation = 有选中 且 无未解决
+```
+
+顺序不可颠倒：没有 `SELECTED` 候选就没有决议；没有决议不得进入生成。
+
+### 接线过程中确认的事实（不是我的假设）
+
+1. **`shot_readiness` 整条链在生产中确实无调用方** —— `evaluate_readiness` /
+   `assert_ready_for_generation` / `select_candidate` 全部只有 `__all__` 导出与测试调用；
+   `hevi/production/p6/schema.py:29,476` 只在**文档字符串**里引用它。
+   git 历史（`4c4600f`）显示 P5.2 引入时即如此：`ShotPreparation → VisualBeat → Renderer`
+   是**设计链**，实际渲染走 p0/p1 自己的路径（`p0_pipeline.py:424` 用
+   `next(a for a in resolved_assets if a.intent_id == ...)` 自己选）。
+
+2. **因此本次接线是「建立 canonical 入口」而非「替换生产选择」**。既有 p0 的
+   `next(...)` 仍在生产中；本次不动它（替换属 P1+ 范围，且需要 p0 状态机改造）。
+
+3. **`needs_human_review` 的既有语义被锁定，未改写**：它只检查出现在
+   `required_asset_refs` 里的 requirement。候选的 `requirement_id` 若不在该列表，
+   它按既有语义返回 `False`。测试 `test_resolve_surfaces_human_review_flag` 如实锁定
+   这一行为，而非悄悄「修正」它。
+
+### 一条重要的回归（namespace 类静默失败）
+
+`test_resolve_never_compares_local_ref_against_canonical_id`：
+当 `required_asset_refs` 里出现的字符串**恰好长得像** canonical id（`"VIDEO/SCENE"`），
+`resolve` 不得因此认为它已绑定 —— 它必须出现在 `unbound_asset_refs`。
+两边都是 `str`，直接比较会「成功」，这正是 S2/S3 同类的静默陷阱。
+
+### 验证
+
+`tests/p10` 249 passed（接线 14 用例）；相邻 622 passed；ruff/mypy 干净。

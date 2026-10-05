@@ -16,7 +16,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from hevi.production.shot_readiness import select_candidate
+from hevi.creative.autonomous.identity import RequirementBindingSet
+from hevi.production.shot_readiness import (
+    AssetCandidate,
+    ShotPreparation,
+    needs_human_review,
+    select_candidate,
+)
 
 
 class SelectionPath(StrEnum):
@@ -72,12 +78,55 @@ def select(*args: object, **kwargs: object) -> object:
     return select_candidate(*args, **kwargs)  # type: ignore[arg-type]
 
 
+def resolve(preparation: ShotPreparation) -> ShotResolution:
+    """生产接线:候选 → canonical scorer → canonical selector → 结论。
+
+    这是「先选、再判能否生成」的**唯一**入口。顺序不可颠倒:
+    没有 SELECTED 候选就没有决议;没有决议就不允许进入生成。
+    """
+    assert_single_authority()
+    # 已知 namespace 的一侧是 canonical id;local ref 只能经 RequirementBindingSet 查,
+    # 不得直接与 requirement_id 比较(两者语义空间不同)。
+    bindings = RequirementBindingSet(())  # 空集:本步骤不做 identity 解析,只报未绑定
+    requirement_ids = sorted({c.requirement_id for c in preparation.candidates})
+    selected: dict[str, AssetCandidate | None] = {}
+    for requirement_id in requirement_ids:
+        selected[requirement_id] = select_candidate(preparation, requirement_id)
+    required_refs = tuple(preparation.required_asset_refs)
+    unbound = bindings.unbound_local_refs(required_refs) + tuple(
+        ref for ref in required_refs
+        if not any(c.asset_ref == ref for c in preparation.candidates))
+    return ShotResolution(
+        preparation.shot_id,
+        tuple(k for k, v in selected.items() if v is not None),
+        tuple(k for k, v in selected.items() if v is None),
+        tuple(sorted(set(unbound))),
+        needs_human_review(preparation),
+    )
+
+
+@dataclass(frozen=True)
+class ShotResolution:
+    """一镜的候选选择结论。`unresolved` 非空 = 不得进入生成。"""
+    shot_id: str
+    selected_requirement_ids: tuple[str, ...]
+    unresolved_requirement_ids: tuple[str, ...]
+    unbound_asset_refs: tuple[str, ...]
+    human_review_required: bool
+
+    @property
+    def ready_for_generation(self) -> bool:
+        return bool(self.selected_requirement_ids) and not self.unresolved_requirement_ids
+
+
 __all__ = [
     "CANDIDATE_SELECTION",
     "NON_AUTHORITATIVE",
     "PROVIDER_SELECTION",
     "SelectionAuthority",
     "SelectionPath",
+    "ShotResolution",
     "assert_single_authority",
+    "resolve",
     "select",
 ]

@@ -53,7 +53,9 @@ from hevi.creative.autonomous.selection import (
     PROVIDER_SELECTION,
     SelectionAuthority,
     SelectionPath,
+    ShotResolution,
     assert_single_authority,
+    resolve,
 )
 from hevi.creative.autonomous.verdict import (
     ProductionVerdict,
@@ -93,6 +95,7 @@ __all__ = [
     "ShotListItem",
     "SelectionAuthority",
     "SelectionPath",
+    "ShotResolution",
     "StageProjection",
     "assert_single_authority",
     "VerdictInput",
@@ -107,5 +110,6 @@ __all__ = [
     "to_asset_requirement",
     "to_manifest",
     "normalize_local_asset",
+    "resolve",
     "to_visual_intent",
 ]
