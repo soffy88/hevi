@@ -1,0 +1,1599 @@
+{
+  "schema": "hevi.p11.vocabulary_inventory.v1",
+  "generated_at": "2026-10-05T23:12:06+00:00",
+  "generator": "scripts/qualification/p11_vocabulary_inventory.py",
+  "generated_from": "ast walk of hevi, tests, scripts, services",
+  "semantic_tokens": [
+    "layout",
+    "scale",
+    "visibility",
+    "presenter",
+    "framing",
+    "composition",
+    "split",
+    "inset",
+    "punch",
+    "wide",
+    "screencast",
+    "track",
+    "pip",
+    "full",
+    "medium",
+    "hidden",
+    "crop",
+    "reframe"
+  ],
+  "scanned_python_files": 2611,
+  "enum_bases": [
+    "Enum",
+    "StrEnum"
+  ],
+  "discovery_stages": [
+    "class inheriting StrEnum/Enum, or decorated dataclass",
+    "module-level Name = Literal[...] alias with an uppercase name",
+    "kept only when the name or any member value contains a semantic token"
+  ],
+  "symbols": [
+    {
+      "name": "BudgetLevel",
+      "definition_file": "hevi/generation/models.py",
+      "definition_line": 33,
+      "module": "hevi.generation",
+      "kind": "enum",
+      "members": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/generation/models.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/p10/test_generation_contract.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['medium']"
+      ]
+    },
+    {
+      "name": "CameraMotion",
+      "definition_file": "hevi/video_intelligence/models.py",
+      "definition_line": 70,
+      "module": "hevi.video_intelligence",
+      "kind": "enum",
+      "members": [
+        "LOCKED",
+        "PAN",
+        "TILT",
+        "PUSH",
+        "PULL",
+        "TRUCK",
+        "DOLLY",
+        "ORBIT",
+        "TRACK",
+        "HANDHELD",
+        "ZOOM",
+        "MIXED",
+        "UNKNOWN"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/cinematic/shot_intelligence/catalog.py",
+        "hevi/cinematic/shot_intelligence/models.py",
+        "hevi/cinematic/shot_intelligence/persistence.py",
+        "hevi/video_intelligence/models.py",
+        "scripts/run_video_intelligence_gold.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['track']"
+      ]
+    },
+    {
+      "name": "Capability",
+      "definition_file": "hevi/production/p6/production_runtime.py",
+      "definition_line": 117,
+      "module": "hevi.production.p6",
+      "kind": "enum",
+      "members": [
+        "character",
+        "world",
+        "evidence",
+        "document",
+        "brand",
+        "instruction",
+        "presenter",
+        "narrator",
+        "motion",
+        "asset"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/p6/production_runtime.py",
+        "hevi/production/p7/asset_binding.py",
+        "scripts/qualification/reconcile_ledger.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p6_6_runtime.py",
+        "tests/test_p6_7_product_matrix.py",
+        "tests/test_p7_0_asset_contract.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "CompositionLanguage",
+      "definition_file": "hevi/production/p6/visual_style/model.py",
+      "definition_line": 71,
+      "module": "hevi.production.p6.visual_style",
+      "kind": "enum",
+      "members": [
+        "documentary",
+        "cinematic",
+        "presenter_centered",
+        "infographic",
+        "observational"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/p6/compatibility_policy.py",
+        "hevi/production/p6/visual_grammar.py",
+        "hevi/production/p6/visual_style/compiler.py",
+        "hevi/production/p6/visual_style/model.py",
+        "hevi/production/p6/visual_style/registry.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p6_3_visual_style.py",
+        "tests/test_p6_4_visual_binding.py",
+        "tests/test_p6_5_2_compatibility_policy.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['composition', 'presenter']"
+      ]
+    },
+    {
+      "name": "ContentPipelineState",
+      "definition_file": "hevi/ops/p5_factory.py",
+      "definition_line": 47,
+      "module": "hevi.ops",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_factory.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['pip']"
+      ]
+    },
+    {
+      "name": "CostTracker",
+      "definition_file": "hevi/cost/circuit_breaker.py",
+      "definition_line": 40,
+      "module": "hevi.cost",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/cinematic/video_gen.py",
+        "hevi/cost/estimator.py",
+        "hevi/cost/tracker.py",
+        "hevi/image/resilient_image_gen.py",
+        "hevi/vault/identity_pack.py",
+        "scripts/build_identity_packs_exec01.py",
+        "scripts/build_scene_zhibo_suodi.py",
+        "scripts/g1_shortdrama_run.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_cinematic_video_gen.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['track']"
+      ]
+    },
+    {
+      "name": "CutReason",
+      "definition_file": "hevi/production/raw_footage.py",
+      "definition_line": 52,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "KEEP",
+        "REMOVE_FALSE_START",
+        "REMOVE_RESTART",
+        "REMOVE_DUPLICATE",
+        "TIGHTEN_DEAD_AIR",
+        "SPLIT_AT_BEAT"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/raw_footage.py",
+        "scripts/qualification/produce_first_real_video.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_a_presenter.py",
+        "tests/integration/p5_2/test_p5_2_e2e_b_raw_footage.py",
+        "tests/test_p5_2_capabilities.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['split']"
+      ]
+    },
+    {
+      "name": "EditorialIssueCategory",
+      "definition_file": "hevi/ops/p5_1_types.py",
+      "definition_line": 104,
+      "module": "hevi.ops",
+      "kind": "enum",
+      "members": [
+        "PACING",
+        "DEAD_AIR",
+        "VISUAL_STAGNATION",
+        "SHOT_TOO_SHORT",
+        "SHOT_TOO_LONG",
+        "SUBJECT_JUMP",
+        "LAYOUT_INSTABILITY",
+        "CAPTION_OCCLUSION",
+        "CAPTION_OVERLOAD",
+        "TEXT_DOMINANCE",
+        "WEAK_VISUAL_GROUNDING",
+        "WRONG_EVIDENCE",
+        "FAKE_UI",
+        "LOW_INFORMATION_DENSITY",
+        "EXCESSIVE_INFORMATION_DENSITY",
+        "MOTION_DISTRACTION",
+        "MOTION_MEANINGLESS",
+        "TRANSITION_MISMATCH",
+        "SPEAKER_OVERUSE",
+        "SPEAKER_UNDERUSE",
+        "EVIDENCE_UNDERUSE",
+        "VISUAL_REPETITION",
+        "STYLE_INCONSISTENCY",
+        "AUDIO_VISUAL_MISMATCH",
+        "EMOTIONAL_MISMATCH",
+        "PROFILE_MISMATCH",
+        "UNCLASSIFIED"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_1_diagnosis.py",
+        "hevi/ops/p5_1_presentation.py",
+        "hevi/ops/p5_1_review.py",
+        "hevi/ops/p5_1_session.py",
+        "hevi/ops/p5_1_types.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p5_1_adversarial.py",
+        "tests/test_p5_1_pairwise.py",
+        "tests/test_p5_1_presentation.py",
+        "tests/test_p5_1_repair.py",
+        "tests/test_p5_1_review.py",
+        "tests/test_p5_1_session.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['layout']"
+      ]
+    },
+    {
+      "name": "EvidenceVisibility",
+      "definition_file": "hevi/ops/p5_1_types.py",
+      "definition_line": 350,
+      "module": "hevi.ops",
+      "kind": "enum",
+      "members": [
+        "DOMINANT",
+        "VISIBLE",
+        "PARTIAL",
+        "HIDDEN"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_1_presentation.py",
+        "hevi/ops/p5_1_types.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p5_1_presentation.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['hidden', 'visibility']"
+      ]
+    },
+    {
+      "name": "GrammarKind",
+      "definition_file": "hevi/production/p6/schema.py",
+      "definition_line": 75,
+      "module": "hevi.production.p6",
+      "kind": "enum",
+      "members": [
+        "G01_NarrativeGrammar",
+        "G02_PresenterGrammar",
+        "G03_CharacterGrammar",
+        "G04_WorldGrammar",
+        "G05_EvidenceGrammar",
+        "G06_DocumentaryGrammar",
+        "G07_CommercialGrammar",
+        "G08_InstructionGrammar",
+        "G09_ShortFormGrammar",
+        "G10_CinematicGrammar"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/p6/compiler.py",
+        "hevi/production/p6/product_profiles.py",
+        "hevi/production/p6/registry.py",
+        "hevi/production/p6/schema.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p6_0_architecture.py",
+        "tests/test_p6_1_narrative.py",
+        "tests/test_p6_2_presenter.py",
+        "tests/test_p6_3_visual_style.py",
+        "tests/test_p6_4_visual_binding.py",
+        "tests/test_p6_5_1_semantic_contract.py",
+        "tests/test_p6_5_3_semantic_match_contract.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "HyperComposition",
+      "definition_file": "hevi/providers/hyperframes/compiler.py",
+      "definition_line": 23,
+      "module": "hevi.providers.hyperframes",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/providers/hyperframes/compiler.py",
+        "hevi/providers/hyperframes/fallback.py",
+        "hevi/providers/hyperframes/provider.py",
+        "hevi/qualification/providers/hyperframes.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['composition']"
+      ]
+    },
+    {
+      "name": "IdentityKind",
+      "definition_file": "hevi/creative/layer4/persistent_identity.py",
+      "definition_line": 48,
+      "module": "hevi.creative.layer4",
+      "kind": "enum",
+      "members": [
+        "character",
+        "presenter",
+        "mascot",
+        "narrator"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/api/routers/identities.py",
+        "hevi/creative/layer4/persistent_identity.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/creative_runtime/test_persistent_identity.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "JianyingTrack",
+      "definition_file": "hevi/ops/p5_editable.py",
+      "definition_line": 41,
+      "module": "hevi.ops",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_1_editable.py",
+        "hevi/ops/p5_editable.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['track']"
+      ]
+    },
+    {
+      "name": "JobStatus",
+      "definition_file": "hevi/digital_human/schemas.py",
+      "definition_line": 19,
+      "module": "hevi.digital_human",
+      "kind": "enum",
+      "members": [
+        "intake",
+        "content_locked",
+        "audio_locked",
+        "visual_plan_locked",
+        "presenter_generated",
+        "composition_checked",
+        "rendered",
+        "verified"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/digital_human/content_service.py",
+        "hevi/digital_human/layer4/production.py",
+        "hevi/digital_human/layer4/skill_logic.py",
+        "hevi/digital_human/narration_service.py",
+        "hevi/digital_human/production_service.py",
+        "hevi/digital_human/schemas.py",
+        "hevi/krillinai/schemas.py",
+        "hevi/layer4_legacy/krillinai/oskill_impl/__init__.py",
+        "hevi/magiviz/layer4_oprim.py",
+        "hevi/magiviz/layer4_oskill.py",
+        "hevi/magiviz/schemas.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_runtime_edge_coverage.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['composition', 'presenter']"
+      ]
+    },
+    {
+      "name": "LayoutElement",
+      "definition_file": "hevi/production/layout_boxes.py",
+      "definition_line": 17,
+      "module": "hevi.production",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/production/layout_boxes.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_coverage_contracts.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['layout']"
+      ]
+    },
+    {
+      "name": "LayoutMode",
+      "definition_file": "hevi/explainer/contracts.py",
+      "definition_line": 33,
+      "module": "hevi.explainer",
+      "kind": "literal_alias",
+      "members": [
+        "fullscreen",
+        "broll_pip"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/explainer/contracts.py",
+        "hevi/explainer/schemas.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "DUPLICATE_DEFINITION",
+      "notes": [
+        "matched_tokens=['full', 'layout', 'pip']",
+        "DUPLICATE_DEFINITION"
+      ]
+    },
+    {
+      "name": "LayoutMode",
+      "definition_file": "hevi/explainer/schemas.py",
+      "definition_line": 30,
+      "module": "hevi.explainer",
+      "kind": "literal_alias",
+      "members": [
+        "fullscreen",
+        "broll_pip"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/explainer/contracts.py",
+        "hevi/explainer/schemas.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "DUPLICATE_DEFINITION",
+      "notes": [
+        "matched_tokens=['full', 'layout', 'pip']",
+        "DUPLICATE_DEFINITION"
+      ]
+    },
+    {
+      "name": "LitePipelineType",
+      "definition_file": "hevi/pipeline_lite/schemas.py",
+      "definition_line": 18,
+      "module": "hevi.pipeline_lite",
+      "kind": "literal_alias",
+      "members": [
+        "lite_html"
+      ],
+      "producers": [],
+      "consumers": [],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['pip']"
+      ]
+    },
+    {
+      "name": "MotionClass",
+      "definition_file": "hevi/video_intelligence/models.py",
+      "definition_line": 35,
+      "module": "hevi.video_intelligence",
+      "kind": "enum",
+      "members": [
+        "STATIC",
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/video_intelligence/models.py",
+        "hevi/video_intelligence/motion.py",
+        "scripts/run_video_intelligence_gold.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['medium']"
+      ]
+    },
+    {
+      "name": "PatternFamily",
+      "definition_file": "hevi/production/creative_ledger.py",
+      "definition_line": 24,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "LAYOUT",
+        "TRANSITION",
+        "MOTION",
+        "ENTRANCE",
+        "EXIT",
+        "CAMERA",
+        "SPEAKER",
+        "EVIDENCE",
+        "CAPTION",
+        "ACCENT",
+        "THEME",
+        "DURATION"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/creative_ledger.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_e_variety.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['layout']"
+      ]
+    },
+    {
+      "name": "PipelineCategory",
+      "definition_file": "hevi/montage/schemas.py",
+      "definition_line": 18,
+      "module": "hevi.montage",
+      "kind": "enum",
+      "members": [
+        "generated",
+        "footage_based",
+        "screen_recording",
+        "short_form",
+        "podcast",
+        "cinematic",
+        "animation",
+        "character",
+        "hybrid",
+        "avatar",
+        "localization",
+        "test"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/montage/schemas.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_coverage_contracts.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['pip']"
+      ]
+    },
+    {
+      "name": "PipelineStability",
+      "definition_file": "hevi/montage/schemas.py",
+      "definition_line": 35,
+      "module": "hevi.montage",
+      "kind": "enum",
+      "members": [
+        "production",
+        "beta",
+        "experimental"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/montage/schemas.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_coverage_contracts.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['pip']"
+      ]
+    },
+    {
+      "name": "PipelineStage",
+      "definition_file": "hevi/production/p6/runtime.py",
+      "definition_line": 43,
+      "module": "hevi.production.p6",
+      "kind": "enum",
+      "members": [
+        "resolve_product_profile",
+        "compile_grammar",
+        "validate_constraints",
+        "build_narrative",
+        "build_semantic_plan",
+        "invoke_existing_runtime",
+        "editorial_render_delivery"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/p6/runtime.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p6_0_architecture.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['pip']"
+      ]
+    },
+    {
+      "name": "PresenterArtifact",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 129,
+      "module": "hevi.production",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_a_presenter.py",
+        "tests/test_p5_2_adversarial.py",
+        "tests/test_p5_2_capabilities.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterBackgroundPolicy",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 42,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "TRANSPARENT",
+        "CHROME_KEY",
+        "SOLID",
+        "REAL"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_a_presenter.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterIssue",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 155,
+      "module": "hevi.production",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterKind",
+      "definition_file": "hevi/production/p6/schema.py",
+      "definition_line": 126,
+      "module": "hevi.production.p6",
+      "kind": "enum",
+      "members": [
+        "avatar_presenter",
+        "human_presenter",
+        "voice_only_presenter",
+        "narrator",
+        "character_presenter"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/p6/schema.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterLipSyncPolicy",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 36,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "REQUIRED",
+        "OPTIONAL",
+        "NONE"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterNodeType",
+      "definition_file": "hevi/production/p6/presenter.py",
+      "definition_line": 50,
+      "module": "hevi.production.p6",
+      "kind": "enum",
+      "members": [
+        "INTRO",
+        "HOOK",
+        "IDENTITY",
+        "AUTHORITY",
+        "CONTEXT",
+        "EXPLANATION",
+        "DEMONSTRATION",
+        "EVIDENCE",
+        "CHARACTER",
+        "EVENT",
+        "INTERPRETATION",
+        "EMOTION",
+        "TRANSITION",
+        "CTA",
+        "CONCLUSION"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/p6/presenter.py",
+        "hevi/production/p6/presenter_compiler.py",
+        "hevi/production/p6/presenter_registry.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p6_2_presenter.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterPlan",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 102,
+      "module": "hevi.production",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_a_presenter.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterProviderCapability",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 49,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "AVATAR_GENERATION",
+        "LIP_SYNC",
+        "SOURCE_IMAGE",
+        "SOURCE_VIDEO",
+        "VOICE_CLONING"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_a_presenter.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterQaReport",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 164,
+      "module": "hevi.production",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PresenterScale",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 27,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "FULL",
+        "MEDIUM",
+        "PIP",
+        "HIDDEN"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_a_presenter.py",
+        "tests/test_p5_2_adversarial.py",
+        "tests/test_p5_2_capabilities.py"
+      ],
+      "persisted_forms": [],
+      "status": "CANONICAL_CANDIDATE",
+      "notes": [
+        "matched_tokens=['full', 'hidden', 'medium', 'pip', 'presenter', 'scale']"
+      ]
+    },
+    {
+      "name": "PresenterShotRange",
+      "definition_file": "hevi/production/presenter.py",
+      "definition_line": 82,
+      "module": "hevi.production",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/production/presenter.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_a_presenter.py",
+        "tests/test_p5_2_adversarial.py",
+        "tests/test_p5_2_capabilities.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "ProductionSource",
+      "definition_file": "hevi/production/contracts.py",
+      "definition_line": 9,
+      "module": "hevi.production",
+      "kind": "literal_alias",
+      "members": [
+        "studio",
+        "automatic",
+        "tongjian",
+        "shortdrama",
+        "explainer",
+        "presenter",
+        "seedance",
+        "clip_video",
+        "localize_video",
+        "mpt",
+        "voice_studio_tts",
+        "director_graph",
+        "lot",
+        "local_media",
+        "case_analysis",
+        "case_reproduction",
+        "case_benchmark",
+        "template_qualification"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/api/routers/production_tools_v2.py",
+        "hevi/production/contracts.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "PromiseType",
+      "definition_file": "hevi/production/delivery_promise.py",
+      "definition_line": 24,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "motion_led",
+        "source_led",
+        "data_explainer",
+        "teacher_explainer",
+        "screen_demo",
+        "avatar_presenter",
+        "hybrid",
+        "localization"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/delivery_promise.py",
+        "hevi/season_planner/dispatch.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_delivery_promise.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['presenter']"
+      ]
+    },
+    {
+      "name": "ProsodyTrack",
+      "definition_file": "hevi/production/prosody.py",
+      "definition_line": 30,
+      "module": "hevi.production",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/production/prosody.py",
+        "hevi/production/semantic_motion.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['track']"
+      ]
+    },
+    {
+      "name": "RecipeFamily",
+      "definition_file": "hevi/production/p5_3/schema.py",
+      "definition_line": 37,
+      "module": "hevi.production.p5_3",
+      "kind": "enum",
+      "members": [
+        "COMPOSITION",
+        "CAMERA",
+        "EVIDENCE",
+        "EXPLAINER",
+        "EMOTIONAL",
+        "PRESENTER",
+        "PRODUCT",
+        "DATA"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/p5_3/library.py",
+        "hevi/production/p5_3/metrics.py",
+        "hevi/production/p5_3/profile_grammar.py",
+        "hevi/production/p5_3/recipes/__init__.py",
+        "hevi/production/p5_3/schema.py",
+        "hevi/production/semantic_contract.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_3/test_p5_3_e2e_c_product.py",
+        "tests/integration/p5_3/test_p5_3_e2e_d_whiteboard.py",
+        "tests/test_p5_3_1_foundation_repair.py",
+        "tests/test_p5_3_3_article_b.py",
+        "tests/test_p5_3_adversarial.py",
+        "tests/test_p5_3_library.py",
+        "tests/test_p5_3_recipes.py",
+        "tests/test_p5_3_schema.py",
+        "tests/test_p5_3_versioning.py",
+        "tests/test_p6_5_1_semantic_contract.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['composition', 'presenter']"
+      ]
+    },
+    {
+      "name": "ReferenceDecomposition",
+      "definition_file": "hevi/ops/p5_1_finecut.py",
+      "definition_line": 362,
+      "module": "hevi.ops",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_1_finecut.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['composition']"
+      ]
+    },
+    {
+      "name": "ReframingMode",
+      "definition_file": "hevi/openshorts/schemas.py",
+      "definition_line": 22,
+      "module": "hevi.openshorts",
+      "kind": "enum",
+      "members": [
+        "track",
+        "general",
+        "split"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/layer4_legacy/openshorts/oprim_impl/__init__.py",
+        "hevi/openshorts/layer4_omodul.py",
+        "hevi/openshorts/layer4_oskill.py",
+        "hevi/openshorts/schemas.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_coverage_contracts.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['framing', 'split', 'track']"
+      ]
+    },
+    {
+      "name": "ScaleLevel",
+      "definition_file": "hevi/ops/p5_1_types.py",
+      "definition_line": 357,
+      "module": "hevi.ops",
+      "kind": "enum",
+      "members": [
+        "FULL_FRAME",
+        "LARGE",
+        "MEDIUM",
+        "SMALL",
+        "NONE"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_1_presentation.py",
+        "hevi/ops/p5_1_types.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p5_1_presentation.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['full', 'medium', 'scale']"
+      ]
+    },
+    {
+      "name": "ShotPresentationRole",
+      "definition_file": "hevi/ops/p5_1_types.py",
+      "definition_line": 333,
+      "module": "hevi.ops",
+      "kind": "enum",
+      "members": [
+        "DIRECT_ADDRESS",
+        "EVIDENCE_DOMINANT",
+        "DEMONSTRATION",
+        "EMOTIONAL_PRESENCE",
+        "CONTEXTUAL_BROLL",
+        "TRANSITION",
+        "FULL_SCREEN_INFORMATION"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_1_finecut.py",
+        "hevi/ops/p5_1_presentation.py",
+        "hevi/ops/p5_1_types.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p5_1_adversarial.py",
+        "tests/test_p5_1_presentation.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['full']"
+      ]
+    },
+    {
+      "name": "ShotSize",
+      "definition_file": "hevi/video_intelligence/models.py",
+      "definition_line": 42,
+      "module": "hevi.video_intelligence",
+      "kind": "enum",
+      "members": [
+        "EXTREME_WIDE",
+        "WIDE",
+        "MEDIUM_WIDE",
+        "MEDIUM",
+        "MEDIUM_CLOSE",
+        "CLOSE",
+        "EXTREME_CLOSE",
+        "INSERT",
+        "UNKNOWN"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/video_intelligence/models.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['medium', 'wide']"
+      ]
+    },
+    {
+      "name": "SpeakerVisibility",
+      "definition_file": "hevi/ops/p5_1_types.py",
+      "definition_line": 343,
+      "module": "hevi.ops",
+      "kind": "enum",
+      "members": [
+        "DOMINANT",
+        "VISIBLE",
+        "SMALL_PIP",
+        "HIDDEN"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_1_presentation.py",
+        "hevi/ops/p5_1_types.py",
+        "hevi/production/p6/schema.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p5_1_adversarial.py",
+        "tests/test_p5_1_presentation.py"
+      ],
+      "persisted_forms": [],
+      "status": "DUPLICATE_DEFINITION",
+      "notes": [
+        "matched_tokens=['hidden', 'pip', 'visibility']",
+        "DUPLICATE_DEFINITION"
+      ]
+    },
+    {
+      "name": "SpeakerVisibility",
+      "definition_file": "hevi/production/p6/schema.py",
+      "definition_line": 136,
+      "module": "hevi.production.p6",
+      "kind": "enum",
+      "members": [
+        "DOMINANT",
+        "FULL",
+        "MEDIUM",
+        "PIP",
+        "HIDDEN"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/ops/p5_1_presentation.py",
+        "hevi/ops/p5_1_types.py",
+        "hevi/production/p6/schema.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_p5_1_adversarial.py",
+        "tests/test_p5_1_presentation.py"
+      ],
+      "persisted_forms": [],
+      "status": "DUPLICATE_DEFINITION",
+      "notes": [
+        "matched_tokens=['full', 'hidden', 'medium', 'pip', 'visibility']",
+        "DUPLICATE_DEFINITION"
+      ]
+    },
+    {
+      "name": "TrackElement",
+      "definition_file": "hevi/editable/base.py",
+      "definition_line": 96,
+      "module": "hevi.editable",
+      "kind": "dataclass",
+      "members": [],
+      "producers": [],
+      "consumers": [
+        "hevi/editable/base.py",
+        "hevi/editable/capcut_cli.py",
+        "hevi/editable/jianying.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_f_editable.py",
+        "tests/test_p5_2_adversarial.py",
+        "tests/test_p5_2_capabilities.py",
+        "tests/test_p5_2_parametric_text_equivalence.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['track']"
+      ]
+    },
+    {
+      "name": "TrackKind",
+      "definition_file": "hevi/creative/layer4/editable_delivery.py",
+      "definition_line": 34,
+      "module": "hevi.creative.layer4",
+      "kind": "enum",
+      "members": [
+        "video",
+        "audio",
+        "text"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/creative/layer4/editable_delivery.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/creative_runtime/test_editable_delivery.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['track']"
+      ]
+    },
+    {
+      "name": "TrackSource",
+      "definition_file": "hevi/production/reframe.py",
+      "definition_line": 51,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "injected_detector",
+        "saliency",
+        "human"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/reframe.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/test_production_reframe.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['track']"
+      ]
+    },
+    {
+      "name": "VariationType",
+      "definition_file": "hevi/script2video/schemas.py",
+      "definition_line": 12,
+      "module": "hevi.script2video",
+      "kind": "literal_alias",
+      "members": [
+        "large",
+        "medium",
+        "small"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/layer4_legacy/script2video/oprim_impl/variation.py",
+        "hevi/layer4_legacy/script2video/oskill_impl/shot_decompose.py",
+        "hevi/script2video/schemas.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [
+        "hevi/layer4_legacy/script2video/oskill_impl/shot_decompose.py"
+      ],
+      "tests": [],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['medium']"
+      ]
+    },
+    {
+      "name": "VarietyFindingKind",
+      "definition_file": "hevi/production/creative_ledger.py",
+      "definition_line": 41,
+      "module": "hevi.production",
+      "kind": "enum",
+      "members": [
+        "REPEATED_TRANSITION",
+        "REPEATED_ENTRANCE",
+        "REPEATED_EXIT",
+        "REPEATED_CAMERA_MOVE",
+        "REPEATED_LAYOUT",
+        "UNIFORM_SHOT_LENGTH",
+        "REPEATED_ACCENT",
+        "REPEATED_THEME",
+        "EXCESSIVE_COMPONENT_REUSE"
+      ],
+      "producers": [],
+      "consumers": [
+        "hevi/production/creative_ledger.py"
+      ],
+      "serializers": [],
+      "deserializers": [],
+      "renderers": [],
+      "tests": [
+        "tests/integration/p5_2/test_p5_2_e2e_e_variety.py",
+        "tests/test_p5_2_grammar.py"
+      ],
+      "persisted_forms": [],
+      "status": "REVIEW",
+      "notes": [
+        "matched_tokens=['layout']"
+      ]
+    }
+  ],
+  "duplicate_definitions": {
+    "LayoutMode": {
+      "definition_sites": [
+        "hevi/explainer/contracts.py:33",
+        "hevi/explainer/schemas.py:30"
+      ],
+      "member_sets": [
+        [
+          "fullscreen",
+          "broll_pip"
+        ]
+      ],
+      "identical_members": true,
+      "lossless_alias_candidate": true,
+      "status": "DUPLICATE_DEFINITION"
+    },
+    "SpeakerVisibility": {
+      "definition_sites": [
+        "hevi/ops/p5_1_types.py:343",
+        "hevi/production/p6/schema.py:136"
+      ],
+      "member_sets": [
+        [
+          "DOMINANT",
+          "FULL",
+          "MEDIUM",
+          "PIP",
+          "HIDDEN"
+        ],
+        [
+          "DOMINANT",
+          "VISIBLE",
+          "SMALL_PIP",
+          "HIDDEN"
+        ]
+      ],
+      "identical_members": false,
+      "lossless_alias_candidate": false,
+      "status": "DUPLICATE_DEFINITION"
+    }
+  },
+  "forbidden_vocabulary_names_present": []
+}
