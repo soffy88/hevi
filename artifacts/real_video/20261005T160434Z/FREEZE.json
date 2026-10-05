@@ -1,0 +1,25 @@
+{
+  "schema": "hevi.real_video_freeze.v1",
+  "artifact_id": "REAL_VIDEO_PROOF_001",
+  "run_id": "real-video-20261005T160434Z",
+  "status": "ACCEPTED",
+  "frozen": true,
+  "frozen_at": "2026-10-05",
+  "final_path": "final/FINAL.mp4",
+  "sha256": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585",
+  "duration_s": 36.693,
+  "resolution": "1280x720",
+  "gates": {
+    "production": "PASS",
+    "architecture": "PASS_WITH_CORRECTED_PREMISES",
+    "openshorts_capability": "PARTIAL_REMAINING_3",
+    "real_video_campaign": "OFFICIALLY_STARTED"
+  },
+  "remaining_capabilities": [
+    "reframe",
+    "layout_vocabulary",
+    "shadow_evaluation"
+  ],
+  "mutation_policy": "This artifact and its evidence pack are immutable. Improvements discovered after acceptance go into the next real video, never into this one. Rewriting an ACCEPTED artifact would invalidate the acceptance granted on it.",
+  "successor": "P14 / REAL_VIDEO_PROOF_002"
+}
