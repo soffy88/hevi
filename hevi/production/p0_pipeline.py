@@ -16,12 +16,18 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from hevi.production.audio_master_clock_workflow import execute_audio_master_clock_task
 from hevi.production.delivery_gate import assert_explainer_compose, probe_video
+from hevi.production.p7.asset_contract import AssetSemanticRole, MediaType
+from hevi.production.p7.asset_requirement import AssetRequirement
+from hevi.production.shot_readiness import AssetCandidate, ShotPreparation
 from hevi.production.subtitle_timeline_workflow import execute_subtitle_timeline_task
 from hevi.production.visual_quality_workflow import execute_visual_quality_task
+
+if TYPE_CHECKING:
+    from hevi.creative.autonomous.selection import ShotResolution
 
 
 def _now() -> str:
@@ -115,6 +121,57 @@ class VisualIntent:
 # ──────────────────────────────────────────────────────────────────────
 # RESOLVED ASSET
 # ──────────────────────────────────────────────────────────────────────
+
+# ── P1:discovery 层的 scorer 与 identity ──────────────────────────────────
+# discovery 只产出候选;相关性分必须声明适用域(S3 契约),域外不可用而非低分。
+# 关键词表仍是黑洞/NASA 专用的(F2,见 docs/p10/p1_entry_audit.md),本阶段不通用化。
+P0_ASSET_DOMAIN = "science_nasa"
+P0_SCORER_ID = "p0.science_keyword"
+P0_KEYWORD_RELEVANCE = {
+    "black hole": 0.95, "accretion": 0.92, "binary": 0.88, "orbit": 0.85,
+}
+
+
+class P0_ScienceRelevanceScorer:
+    """按命中关键词给出相关性,并声明只适用于 science_nasa 域。
+
+    未命中任何关键词 → 返回 0.0,但该候选本不该出现(discovery 只在命中时建候选)。
+    """
+
+    applicable_domains = frozenset({P0_ASSET_DOMAIN})
+
+    def __call__(self, candidate: AssetCandidate) -> float:
+        # 分数来自关键词命中强度;候选的 asset_ref 携带命中文件名。
+        for keyword, relevance in P0_KEYWORD_RELEVANCE.items():
+            if keyword and relevance and keyword in candidate.asset_ref.lower():
+                return relevance
+        return 0.0
+
+
+def _canonical_seam() -> tuple[Any, Any, Any, Any]:
+    """取 canonical selection seam(延迟导入,见 `_canonical_seam_doc`)。
+
+    延迟导入的原因:`hevi.creative.autonomous.__init__` → `canonical.py` 反向 import
+    本模块的 `VisualIntent`,所以本模块**不能**在 import 期引入 autonomous 包
+    (会得到 `ImportError: partially initialized`)。该反向边是 S1 遗留,
+    不在 P1 范围内修复。
+    """
+    from hevi.creative.autonomous.identity import RequirementBinding, RequirementBindingSet
+    from hevi.creative.autonomous.selection import admit_generation, resolve
+
+    return RequirementBinding, RequirementBindingSet, resolve, admit_generation
+
+
+def _requirement_for(intent: VisualIntent) -> AssetRequirement:
+    """VisualIntent → canonical p7 requirement id。
+
+    canonical identity 是 `p7.AssetRequirement.requirement_id`(由 media_type/role 派生),
+    这里用它而不是自造字符串,避免出现第二个 identity namespace。
+    """
+    role = (AssetSemanticRole.CHARACTER if intent.required_entities
+            else AssetSemanticRole.SCENE)
+    return AssetRequirement(media_type=MediaType.VIDEO, semantic_role=role)
+
 
 @dataclass(frozen=True)
 class ResolvedAsset:
@@ -220,6 +277,8 @@ class P0ProductionState:
     visual_intents: list[VisualIntent] = field(default_factory=list)
     resolved_assets: list[ResolvedAsset] = field(default_factory=list)
     shot_plans: list[ShotPlan] = field(default_factory=list)
+    # P1:唯一 selection authority 的结论。generation admission 只读它。
+    shot_resolutions: dict[str, Any] = field(default_factory=dict)
     motion_plans: list[MotionPlan] = field(default_factory=list)
 
     # Gate report
@@ -229,9 +288,19 @@ class P0ProductionState:
     proof_mp4: str = ""
     final_mp4: str = ""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.report is None:
             self.report = ProductionGateReport(production_id=self.production_id)
+
+    def gate(self, gate: str, passed: bool, details: dict[str, Any] | None = None) -> None:
+        """P1:canonical resolution 专用记录入口。
+
+        与既有 `state.report.record(...)` 等价,额外做非空收窄 —— P1 新增的
+        SHOT_RESOLUTION / ASSET_RELEVANCE 门要读 `ready_for_generation`,不能
+        在 report 可能为 None 的情况下静默跳过记录。
+        """
+        assert self.report is not None
+        self.report.record(gate, passed, details)
 
 
 async def run_p0_production(
@@ -392,40 +461,98 @@ async def run_p0_production(
         "orbit": "nasa_orrery.webm",
     }
 
+    intent_candidates: dict[str, list[AssetCandidate]] = {}
     for intent in state.visual_intents:
-        matched = False
+        # P1:discovery 只**产出候选**,不再自行决定选哪个(去掉 break + 硬编码 0.95)。
+        # 选择权移交 canonical scorer + selector(resolve)。
+        candidates: list[AssetCandidate] = []
+        seen_files: set[str] = set()
+        text = intent.narration_segment.lower()
         for keyword, asset_file in nasa_assets.items():
-            if keyword in intent.narration_segment.lower():
-                asset_path = asset_base / asset_file
-                if asset_path.exists():
-                    asset_sha = _sha256(asset_path)
-                    asset = ResolvedAsset(
-                        asset_id=f"{production_id}:asset-{intent.intent_id[-4:]}",
-                        intent_id=intent.intent_id,
-                        source_uri=asset_path.as_uri(),
-                        source_sha256=asset_sha,
-                        media_type="video/webm",
-                        provenance={"source": "NASA", "file": asset_file},
-                        semantic_relevance=0.95,
-                    )
-                    state.resolved_assets.append(asset)
-                    state.report.record("ASSET_RELEVANCE", True, {
-                        "intent": intent.intent_id, "asset": asset_file, "relevance": 0.95
-                    })
-                    matched = True
-                    break
+            if keyword not in text or asset_file in seen_files:
+                continue
+            asset_path = asset_base / asset_file
+            if not asset_path.exists():
+                continue
+            seen_files.add(asset_file)
+            candidates.append(AssetCandidate(
+                candidate_id=f"{production_id}:cand-{intent.intent_id[-4:]}-{asset_file}",
+                requirement_id=_requirement_for(intent).requirement_id,
+                asset_ref=asset_path.as_uri(),
+                confidence=0.0,  # 由 canonical scorer 生产(P1:不再硬编码 0.95)
+                verified=True,  # 文件存在;canonical selector 再判门槛
+            ))
+        intent_candidates[intent.intent_id] = candidates
+        matched = bool(candidates)
         if not matched:
-            state.report.record("ASSET_RELEVANCE", False, {
+            state.gate("ASSET_RELEVANCE", False, {
                 "intent": intent.intent_id, "reason": "no semantically relevant asset"
             })
 
+    # ── 4b. CANONICAL RESOLUTION (P1) ─────────────────────────────
+    # 唯一 selection authority。打分/选择/identity 绑定全在 canonical 层完成;
+    # 本层只负责提供候选与声明适用域,不参与「选哪个」。
+    RequirementBinding, RequirementBindingSet, resolve, admit_generation = _canonical_seam()
+    for intent in state.visual_intents:
+        candidates = intent_candidates.get(intent.intent_id, [])
+        if not candidates:
+            state.gate("SHOT_RESOLUTION", False, {
+                "intent": intent.intent_id, "reason": "NO_CANDIDATES"})
+            continue
+        preparation = ShotPreparation(
+            shot_id=f"{production_id}:shot-{intent.intent_id[-4:]}",
+            candidates=list(candidates),
+            required_asset_refs=[c.asset_ref for c in candidates],
+        )
+        # local asset ref → canonical p7 requirement 的显式映射(不得直接比字符串)。
+        bindings = RequirementBindingSet(tuple(
+            RequirementBinding(local_ref=c.asset_ref, requirement=_requirement_for(intent))
+            for c in candidates
+        ))
+        resolution = resolve(
+            preparation,
+            domain=P0_ASSET_DOMAIN,
+            scorer_registry={P0_SCORER_ID: P0_ScienceRelevanceScorer()},
+            bindings=bindings,
+        )
+        state.shot_resolutions[resolution.shot_id] = resolution
+        state.gate("SHOT_RESOLUTION", resolution.ready_for_generation, {
+            "intent": intent.intent_id,
+            "selected": list(resolution.selected_requirement_ids),
+            "unresolved": list(resolution.unresolved_requirement_ids),
+            "unbound": list(resolution.unbound_asset_refs),
+            "human_review": resolution.human_review_required,
+        })
+        if not resolution.ready_for_generation:
+            continue
+        # generation 只经 admission seam 拿资产。
+        selected = admit_generation(resolution, preparation.candidates)
+        asset_path = Path(selected.asset_ref.replace("file://", ""))
+        state.resolved_assets.append(ResolvedAsset(
+            asset_id=f"{production_id}:asset-{intent.intent_id[-4:]}",
+            intent_id=intent.intent_id,
+            source_uri=selected.asset_ref,
+            source_sha256=_sha256(asset_path),
+            media_type="video/webm",
+            provenance={"source": "NASA", "file": asset_path.name,
+                        "scored_by": selected.scored_by,
+                        "candidate_id": selected.candidate_id},
+            semantic_relevance=selected.confidence,
+        ))
+
     # ── 5. SHOT PLAN ──────────────────────────────────────────────
     for intent in state.visual_intents:
+        # P1 (Invariant A/D):generation admission 只认 ShotResolution。
+        # 不再从 resolved_assets 重新推导「其实可以生成」。
+        found = state.shot_resolutions.get(f"{production_id}:shot-{intent.intent_id[-4:]}")
+        if found is None or not found.ready_for_generation:
+            continue
+        admit: ShotResolution = found
         asset = next((a for a in state.resolved_assets if a.intent_id == intent.intent_id), None)
         if not asset:
             continue
         shot = ShotPlan(
-            shot_id=f"{production_id}:shot-{intent.intent_id[-4:]}",
+            shot_id=admit.shot_id,
             timeline_lock_id=state.timeline_lock.timeline_lock_id,
             visual_intent_id=intent.intent_id,
             resolved_asset_id=asset.asset_id,
@@ -442,16 +569,17 @@ async def run_p0_production(
 
     # ── 6. MOTION PLAN ────────────────────────────────────────────
     for shot in state.shot_plans:
-        intent = next((i for i in state.visual_intents if i.intent_id == shot.visual_intent_id), None)
-        if not intent:
+        shot_intent = next((i for i in state.visual_intents
+                            if i.intent_id == shot.visual_intent_id), None)
+        if shot_intent is None:
             continue
         motion = MotionPlan(
             motion_id=f"{production_id}:motion-{shot.shot_id[-4:]}",
             shot_id=shot.shot_id,
-            visual_intent_id=intent.intent_id,
+            visual_intent_id=shot_intent.intent_id,
             motion_type="ken_burns",
             motion_params={"zoom": 1.2, "pan": "slow"},
-            semantic_justification=f"Support visual purpose: {intent.visual_purpose}",
+            semantic_justification=f"Support visual purpose: {shot_intent.visual_purpose}",
         )
         state.motion_plans.append(motion)
 

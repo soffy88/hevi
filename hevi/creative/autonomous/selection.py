@@ -13,14 +13,19 @@ S3 验收目标(裁决原文):「证明 HEVI 已经只有一个真正的 asset s
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
 from hevi.creative.autonomous.identity import RequirementBindingSet
 from hevi.production.shot_readiness import (
+    NO_APPLICABLE_SCORER,
     AssetCandidate,
+    AssetCandidateState,
+    ScorerLike,
     ShotPreparation,
     needs_human_review,
+    score_candidates,
     select_candidate,
 )
 
@@ -78,16 +83,54 @@ def select(*args: object, **kwargs: object) -> object:
     return select_candidate(*args, **kwargs)  # type: ignore[arg-type]
 
 
-def resolve(preparation: ShotPreparation) -> ShotResolution:
+class GenerationNotAdmitted(StrEnum):
+    """generation admission 的拒绝理由。任一成立即禁止自动生成。"""
+
+    NO_RESOLUTION = "NO_RESOLUTION"
+    NO_SELECTED_CANDIDATE = "NO_SELECTED_CANDIDATE"
+    UNRESOLVED = "UNRESOLVED"
+    UNBOUND = "UNBOUND"
+    HUMAN_REVIEW = "HUMAN_REVIEW"
+
+
+class GenerationNotAdmittedError(RuntimeError):
+    """generation 被拒绝。携带机器可读理由,不携带资产引用。"""
+
+    def __init__(self, reason: GenerationNotAdmitted, detail: str = "") -> None:
+        super().__init__(f"{reason.value}:{detail}" if detail else reason.value)
+        self.reason = reason
+
+
+def resolve(
+    preparation: ShotPreparation,
+    *,
+    domain: str,
+    scorer_registry: Mapping[str, ScorerLike],
+    bindings: RequirementBindingSet,
+) -> ShotResolution:
     """生产接线:候选 → canonical scorer → canonical selector → 结论。
 
     这是「先选、再判能否生成」的**唯一**入口。顺序不可颠倒:
     没有 SELECTED 候选就没有决议;没有决议就不允许进入生成。
+
+    Args:
+        domain: 选择所处适用域;域外 scorer 不可用(返回 NO_APPLICABLE_SCORER 决议)。
+        scorer_registry: canonical scorer 注册表,由领域声明,不在本模块实现。
+        bindings: shot-local asset ref → canonical requirement 的显式映射。
+            local ref 只能经它查,不得直接与 requirement_id 比较(两者语义空间不同)。
     """
     assert_single_authority()
-    # 已知 namespace 的一侧是 canonical id;local ref 只能经 RequirementBindingSet 查,
-    # 不得直接与 requirement_id 比较(两者语义空间不同)。
-    bindings = RequirementBindingSet(())  # 空集:本步骤不做 identity 解析,只报未绑定
+    scored_status, _ = score_candidates(
+        list(preparation.candidates), domain=domain, registry=dict(scorer_registry))
+    if scored_status == NO_APPLICABLE_SCORER:
+        return ShotResolution(
+            shot_id=preparation.shot_id,
+            selected_requirement_ids=(),
+            unresolved_requirement_ids=tuple(sorted(
+                {c.requirement_id for c in preparation.candidates})),
+            unbound_asset_refs=tuple(sorted(set(preparation.required_asset_refs))),
+            human_review_required=True,
+        )
     requirement_ids = sorted({c.requirement_id for c in preparation.candidates})
     selected: dict[str, AssetCandidate | None] = {}
     for requirement_id in requirement_ids:
@@ -107,7 +150,8 @@ def resolve(preparation: ShotPreparation) -> ShotResolution:
 
 @dataclass(frozen=True)
 class ShotResolution:
-    """一镜的候选选择结论。`unresolved` 非空 = 不得进入生成。"""
+    """一镜的候选选择结论。任一 blocker 成立即不得进入生成。"""
+
     shot_id: str
     selected_requirement_ids: tuple[str, ...]
     unresolved_requirement_ids: tuple[str, ...]
@@ -116,16 +160,72 @@ class ShotResolution:
 
     @property
     def ready_for_generation(self) -> bool:
-        return bool(self.selected_requirement_ids) and not self.unresolved_requirement_ids
+        """四条 blocker 全部不成立才允许自动生成。
+
+        selected 为空、unresolved 非空、unbound 非空、需人工复核 —— 任一成立即 False。
+        """
+        return (
+            bool(self.selected_requirement_ids)
+            and not self.unresolved_requirement_ids
+            and not self.unbound_asset_refs
+            and not self.human_review_required
+        )
+
+    @property
+    def blockers(self) -> tuple[GenerationNotAdmitted, ...]:
+        """列出**全部**阻断理由(不只第一个),便于 report 与人工排障。"""
+        reasons: list[GenerationNotAdmitted] = []
+        if not self.selected_requirement_ids:
+            reasons.append(GenerationNotAdmitted.NO_SELECTED_CANDIDATE)
+        if self.unresolved_requirement_ids:
+            reasons.append(GenerationNotAdmitted.UNRESOLVED)
+        if self.unbound_asset_refs:
+            reasons.append(GenerationNotAdmitted.UNBOUND)
+        if self.human_review_required:
+            reasons.append(GenerationNotAdmitted.HUMAN_REVIEW)
+        return tuple(reasons)
+
+
+def admit_generation(
+    resolution: ShotResolution | None,
+    candidates: Sequence[AssetCandidate],
+) -> AssetCandidate:
+    """generation admission seam:唯一允许「开始生成」的判定点。
+
+    generation executor 必须经此函数拿资产,不得自行比较候选或自行评估
+    ready_for_generation。返回唯一 SELECTED 候选;不满足条件则抛
+    `GenerationNotAdmittedError`,不产出任何资产引用。
+    """
+    if resolution is None:
+        raise GenerationNotAdmittedError(
+            GenerationNotAdmitted.NO_RESOLUTION, "<missing ShotResolution>")
+    if not resolution.ready_for_generation:
+        raise GenerationNotAdmittedError(
+            resolution.blockers[0],
+            f"shot={resolution.shot_id} "
+            f"unresolved={resolution.unresolved_requirement_ids} "
+            f"unbound={resolution.unbound_asset_refs} "
+            f"human_review={resolution.human_review_required}")
+    selected = [c for c in candidates
+                if c.requirement_id in resolution.selected_requirement_ids
+                and c.state is AssetCandidateState.SELECTED]
+    if len(selected) != 1:
+        raise GenerationNotAdmittedError(
+            GenerationNotAdmitted.NO_SELECTED_CANDIDATE,
+            f"shot={resolution.shot_id} selected_count={len(selected)}")
+    return selected[0]
 
 
 __all__ = [
     "CANDIDATE_SELECTION",
     "NON_AUTHORITATIVE",
     "PROVIDER_SELECTION",
+    "GenerationNotAdmitted",
+    "GenerationNotAdmittedError",
     "SelectionAuthority",
     "SelectionPath",
     "ShotResolution",
+    "admit_generation",
     "assert_single_authority",
     "resolve",
     "select",
