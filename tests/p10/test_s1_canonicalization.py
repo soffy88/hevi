@@ -81,7 +81,9 @@ async def test_resolver_executes_and_returns_execution_ready():
                                considered=["local_assets"])
     out = await AssetResolver(acquirer=Acquirer()).resolve(_req(), provider_decision=decision)
     assert out.usable and out.decision_state == "ACCEPTED"
-    assert out.selected_source == "media_assets/control_room.mp4"
+    # F10:字段名从 selected_source 改为 obtained_source —— 它记录「取得」,
+    # 不是「选中」。旧名会让人把它当成素材取舍结论。
+    assert out.obtained_source == "media_assets/control_room.mp4"
     assert out.evidence_ids  # evidence 已回填
 
 

@@ -157,8 +157,11 @@ async def test_resolver_executes_decision_with_local_acquirer(tmp_path):
     out = await AssetResolver(acquirer=acquirer).resolve(
         _req(duration="2", resolution="1080", aspect="9:16"), provider_decision=decision)
     assert out.usable and out.decision_state == "ACCEPTED"
-    assert out.selected_source.endswith("asset.mp4")
+    # F10:obtained_source 是「拿到的文件」,不是「选中的资产」。
+    assert out.obtained_source.endswith("asset.mp4")
     assert out.evidence_ids
+    # usable 只代表 p7 决策 ACCEPTED,**不代表**这个资产可以直接进生成。
+    assert not hasattr(out, "ready_for_generation")
 
 
 async def test_resolver_blocked_when_local_pool_empty(tmp_path):
