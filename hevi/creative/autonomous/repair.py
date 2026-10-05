@@ -92,7 +92,6 @@ __all__ = [
     "RepairKind",
     "RepairPolicy",
     "RepairRequest",
-    "RootCauseCategory",
     "SelfHealingCoordinator",
     "authorize_auto_safe",
     "open_repair",

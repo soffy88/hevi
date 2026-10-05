@@ -4,6 +4,11 @@
 唯一绿地是 production_manifest.json(durable projection)。
 """
 
+from hevi.creative.autonomous.acquire import (
+    LocalAssetAcquirer,
+    NormalizedCandidate,
+    normalize_local_asset,
+)
 from hevi.creative.autonomous.canonical import (
     DIRECTOR_ENTRY,
     DIRECTOR_STAGES,
@@ -52,6 +57,8 @@ __all__ = [
     "DryRunResult",
     "ExecutionReadyResolution",
     "KNOWN_SPLITS",
+    "LocalAssetAcquirer",
+    "NormalizedCandidate",
     "ProductionManifest",
     "ProductionVerdict",
     "ProductionVerdictAuthority",
@@ -73,5 +80,6 @@ __all__ = [
     "require_canonical",
     "to_asset_requirement",
     "to_manifest",
+    "normalize_local_asset",
     "to_visual_intent",
 ]
