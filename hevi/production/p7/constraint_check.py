@@ -12,6 +12,10 @@ license / locale / aspect)在 `asset_binding.py` 只被**写成字面量**,全�
 - **类型必须显式换算**:constraint 值是字符串("1080" / "3"),probe 产出的是
   tuple(w,h) / float。直接 `EQ` 永不匹配 —— 那正是原实现的静默失败模式。
 - 只判**硬约束**。软分(scoring)不属本模块,归 canonical scorer。
+
+B0 追加:负向硬约束 `forbidden_substitutes`。「不要拿通用星空 / 纯标题卡 /
+大段说明文字代替真实画面」是 `p0/p1 VisualIntent` 早已声明、却从未执行的产品约束;
+本模块提供它唯一的判定原语。
 """
 
 from __future__ import annotations
@@ -19,9 +23,20 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from hevi.production.p7.asset_requirement import AssetRequirement
+from hevi.production.p7.asset_requirement import (
+    FORBIDDEN_SUBSTITUTES_SEPARATOR,
+    AssetRequirement,
+)
 
 # 素材事实字段名 → constraint key 的映射(只覆盖可机械判定的)
+#
+# B0 修正:此前这张表被当作 constraint→observed 反向查(`get(key, key)`),但全部 7 条
+# 都是恒等映射,所以方向错了也没暴露。B0 加入第一条**非恒等**条目
+# (`substitute_kind` → `forbidden_substitutes`)后必须按表名的方向使用。
+#
+# 注意:`license` / `locale` / `period` / `face_required` / `substitute_kind` 都**不在**
+# `hevi/artifact/probes.py::OBSERVABLE_FIELDS` 里 —— 那个集合是字节派生事实。
+# 本 seam 本来就同时接受「字节探测」与「出处/授权/provenance」两类事实。
 OBSERVED_TO_CONSTRAINT = {
     "duration": "duration",
     "resolution": "resolution",
@@ -30,10 +45,17 @@ OBSERVED_TO_CONSTRAINT = {
     "aspect": "aspect",
     "face_required": "face_required",
     "period": "period",
+    # B0:Acquirer 自报「我产出的是什么」。provenance 事实,不是字节探测。
+    "substitute_kind": "forbidden_substitutes",
 }
 
 # 需要换算的 constraint(direct EQ 会静默失败)
 _TYPED_CONSTRAINTS = {"duration", "resolution", "aspect"}
+
+#: 反向索引:constraint key → 素材事实字段名。未登记者同名。
+_CONSTRAINT_TO_OBSERVED: dict[str, str] = {
+    constraint: observed for observed, constraint in OBSERVED_TO_CONSTRAINT.items()
+}
 
 
 @dataclass(frozen=True)
@@ -147,6 +169,26 @@ def check_bool(expected: str, observed: object) -> bool | None:
     return bool(observed) is (str(expected).lower() in {"1", "true", "yes"})
 
 
+def check_forbidden_substitutes(expected: str, observed: object) -> bool | None:
+    """B0 负向硬约束:素材自报的种类**不得**落在禁止集合里。
+
+    `observed` 是 Acquirer/provenance 侧给出的 `substitute_kind`,不是字节探测结果。
+
+    - ``observed`` 缺失或空 → ``None``(**不可判定**,不是通过)。
+      「素材没说自己是什么」必须 fail-closed,否则等于没有这条约束。
+    - ``observed`` ∈ 禁止集合 → ``False``(阻塞)。
+    - ``observed`` ∉ 禁止集合 → ``True``。
+
+    取值两侧都是自由串,精确匹配即为正确语义:禁止集合由 requirement 侧(产品)
+    声明,观测值由执行侧声明。不做封闭 enum —— 那只会把既有取值变成迁移负债。
+    """
+    kind = str(observed).strip() if observed is not None else ""
+    if not kind:
+        return None
+    forbidden = {t for t in expected.split(FORBIDDEN_SUBSTITUTES_SEPARATOR) if t}
+    return kind not in forbidden
+
+
 _CHECKS = {
     "duration": check_duration,
     "resolution": check_resolution,
@@ -155,6 +197,7 @@ _CHECKS = {
     "locale": check_equality,
     "face_required": check_bool,
     "period": check_equality,
+    "forbidden_substitutes": check_forbidden_substitutes,
 }
 
 
@@ -191,7 +234,7 @@ def check_compatibility(requirement: AssetRequirement,
         if key == "query":
             # query 是检索意图,不是可判定约束(由候选来源负责)
             continue
-        observed_key = OBSERVED_TO_CONSTRAINT.get(key, key)
+        observed_key = _CONSTRAINT_TO_OBSERVED.get(key, key)
         checker = _CHECKS.get(key)
         raw = observed.get(observed_key)
         if checker is None:
@@ -214,5 +257,6 @@ __all__ = [
     "check_compatibility",
     "check_duration",
     "check_equality",
+    "check_forbidden_substitutes",
     "check_resolution",
 ]
