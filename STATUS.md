@@ -1,11 +1,77 @@
 # Hevi · STATUS
 
 > Canonical project status. Read at the start of any non-trivial task.
-> Last updated: 2026-09-24
+> Last updated: 2026-10-05
 > Notable 2026-09-06: Duix model audit — weights NOT missing, shim is actual blocker (see In Progress)
 > Sources: git log, `.claude` project memory (tongjian-pipeline-handoff, deploy-topology, e2e-local-llm-json-blocker, gpu-pcie-fallen-off-bus).
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
 > P10 Creative Direction Runtime: gate ladder + specs in `docs/p10/` (see P10 pointer below).
+
+## HEVI_REAL_VIDEO_ACCEPTED (2026-10-05)
+
+One real video, produced end to end through the production chain, verified V0–V3,
+watched, and accepted. Evidence pack:
+`artifacts/real_video/20261005T160434Z/`.
+
+`FINAL.mp4` 36.693s · 1280x720 · h264+aac · decodes clean · 7,332,828 B ·
+sha256 `0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585`
+(hash verified three ways: `sha256sum`, `FINAL_SHA256`, receipt evidence).
+Scenes: 22.647s NASA KSC Michael Collins interview (real speech, 14 burned
+subtitle cues, 97% coverage) + 14.0s Earth-from-ISS. Both public domain
+(`nasa-media`). Driver: `scripts/qualification/produce_first_real_video.py`.
+
+Commits: `4a48ebe3` fail-closed verification · `f02c0c6d` oprim repin ·
+`8521ef96` V0–V3 module + receipts · `2b604770` the video and its evidence pack.
+Decision record: `docs/specs/ARCHITECTURE_DECISION_openshorts_naming.md`.
+
+**What the spec got wrong about HEVI.** `ExecutorRegistry` and `HyperFrame` do
+not exist (zero repo-wide hits). Building them would have violated the spec's
+own §23 non-goals, so they are mapped onto existing seams instead:
+`ExecutorRegistry` → `provider_policy` + `generation.evidence.CapabilityEvidence`
++ `selection.admit_generation`; `HyperFrame` → `providers/hyperframes/compiler.py`
+`HyperComposition`. Mechanical guards in `tests/test_openshorts_integration_gates.py`
+turn a violation red rather than leaving it to memory.
+
+**Fail-closed was not true before this work.** Three live paths let an unknown
+become a PASS: `verdict/case_dimensions.py` returned `PASS` with 14 of 15
+dimensions `NOT_OBSERVED` and persisted `shot_verdict.passed=True`; `qc.production`
+returned `ok=True` from its `except` arm; seven QC tools returned unconditional
+`ok=True`. All closed. `hevi/production/artifact_verification.py` adds the V0–V3
+orchestration, reusing the modules that already own each level rather than
+adding a second authority.
+
+**The gates rejected my own work twice.** Removing 12.1s of dead air dropped the
+interview to 22.6s, under the 30s floor, and V2 REJECTED it — the fix was a
+second real scene, not a relaxed contract.
+
+**Nine defects were found by reading evidence and watching frames, not by green
+tests.** The load-bearing one: `word_table` derived word edges from *segment*
+edges, which made the word-boundary snapper a no-op by construction, since a
+segment's own edges are word edges. The snapper was theatre until real
+`word_timestamps` were used. Also: a 12.1s silence surviving inside one ASR
+segment; an ASR cache keyed on content hash alone silently serving a stale
+transcript; SRT written as bare seconds (libass rejects the file, and the error
+surfaces as a filter-graph failure, not a subtitle failure).
+
+**Limitations recorded, not hidden** (`verification/CREATIVE_REVIEW.json`):
+the NASA corpus is 320x180/320x240 and the 720p master is an upscale that adds
+no detail; the closing frame composition is weak; scene 2 is ambient-only with
+no narration; V3's semantic/composition/motion/continuity/creative dimensions
+were not machine-measured and the human review is what closes them.
+
+**Owed / open debt.** `qc.layout` / `qc.motion` / `qc.gate.*` now honestly report
+`blocked` but have no evaluator behind them. `HyperComposition` still has no
+content hash, so the spec's `HyperFrame hash` evidence field has no producer.
+`ProviderRegistry.get()` is called directly in 60 places and `provider_policy` is
+advisory. `3O_V3_LINT` is FAIL on 4 pre-existing checks (1506 violations in
+`omodul`, 52 in `oprim`, zero from this work). V2 has no single owner
+(`docs/CURRENT_ARCHITECTURE_MAP.md` §3.3).
+
+**Upstream.** `oprim.word_boundary_snap` landed in `bac87708` on branch
+`feat/v3.23.0-word-boundary-snap`; oprim's suite is +15 passed / 0 failed against
+the pinned parent. ⚠ `helios-plat/oprim` is actively written by other processes
+(8 `.veya/worktrees/` sessions; a mid-merge in `oprim/changefeed/` was observed
+and deliberately left alone).
 
 ## P10 pointer (2026-10-03)
 
