@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -60,14 +61,25 @@ def _observed_fields(validation: Any) -> dict[str, object]:
 
 
 def normalize_local_asset(requirement: AssetRequirement, path: Path, *,
-                          source: str = "local", license_name: str = "") -> NormalizedCandidate:
+                          source: str = "local", license_name: str = "",
+                          observed_extra: Mapping[str, object] | None = None,
+                          ) -> NormalizedCandidate:
     """本地文件 → (AssetCandidate, AssetEvidence, CompatibilityReport)。
 
     fail-closed:探测不通过 → evidence 状态 REJECTED/BLOCKED,绝不产 AVAILABLE。
     `license_name` 为空时 evidence 不能标 AVAILABLE(p7 硬规则)。
+
+    `observed_extra`:字节探测之外的事实(`substitute_kind` 等 provenance)。
+    B0 裁决:canonical seam 同时接受字节探测与出处/授权类事实 ——
+    `license` / `locale` / `period` / `face_required` 本来就不在
+    `OBSERVABLE_FIELDS` 里。缺了它,`forbidden_substitutes` 约束只能
+    「不可判定」→ 永远 fail-closed,所以由产出处自报。
+    不传时行为与既有实现完全一致。
     """
     validation = validate_media(path)
     observed = _observed_fields(validation)
+    if observed_extra:
+        observed = {**observed, **observed_extra}
     compatibility = check_compatibility(requirement, observed)
     asset_id = f"local:{path.name}"
 
@@ -76,7 +88,8 @@ def normalize_local_asset(requirement: AssetRequirement, path: Path, *,
         AssetStatus.BLOCKED if validation.passed else AssetStatus.REJECTED)
     evidence = AssetEvidence(
         asset_id=asset_id, source=source, status=status, license=license_name,
-        validation=f"probe_valid={validation.ffprobe_valid} errors={len(validation.errors)}",
+        validation=f"probe_valid={validation.ffprobe_valid} errors={len(validation.errors)}"
+                   f" substitute_kind={observed.get('substitute_kind', '')}",
         content_hash=validation.checksum,
     )
     candidate = AssetCandidate(

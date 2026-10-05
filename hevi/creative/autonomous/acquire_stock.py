@@ -39,7 +39,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from hevi.creative.autonomous.acquire import (
     NormalizedCandidate,
@@ -170,6 +170,16 @@ class StockAssetAcquirer:
 
     def provider_catalogue(self) -> ProviderCatalogue:
         return ProviderCatalogue((self.provider_profile(),))
+
+    def provider_policy(self) -> Any:
+        """canonical provider policy。stock provider 不声明 mode 门槛。
+
+        与 `ProceduralAcquirer.provider_policy()` 同形 —— acquisition 链对两者
+        一视同仁,只要求「这个对象能给出自己的 policy」。
+        """
+        from hevi.provider_policy.policy import ProviderPolicy
+
+        return ProviderPolicy(candidates=[self.provider_id], quality_floor=0)
 
     async def propose(
         self,

@@ -113,8 +113,9 @@ def _acquirer(tmp_path: Path, items: list[StockItem],
 
 async def _run(acquirer, requirement, candidates=None):
     """生产同款闭环。测试与 `run_p0_production` 调的是同一个函数。"""
+    chain = () if acquirer is None else (acquirer,)
     return await _resolve_with_acquisition(SHOT_ID, requirement, list(candidates or []),
-                                          acquirer)
+                                          chain)
 
 
 # ══ P2-A-01 stock requirement → acquired asset ══

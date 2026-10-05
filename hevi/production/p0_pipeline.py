@@ -162,84 +162,92 @@ def _canonical_seam() -> tuple[Any, Any, Any, Any]:
     return RequirementBinding, RequirementBindingSet, resolve, admit_generation
 
 
-def _acquisition_seam() -> tuple[Any, Any]:
-    """取 acquisition 能力(延迟导入,理由同 `_canonical_seam`)。
-
-    返回 (StockAssetAcquirer 类, evaluate_provider_policy)。仅用于类型标注与
-    provider policy 调用;不导出符号到本模块命名空间。
-    """
-    from hevi.creative.autonomous.acquire_stock import StockAssetAcquirer
+def _evaluate_provider_policy() -> Any:
+    """取 canonical provider policy 求值器(延迟导入,理由同 `_canonical_seam`)。"""
     from hevi.provider_policy.policy import evaluate_provider_policy
 
-    return StockAssetAcquirer, evaluate_provider_policy
+    return evaluate_provider_policy
 
 
 async def _acquire_for_unresolved(
-    stock_acquirer: Any | None,
+    acquirer: Any,
     requirement: AssetRequirement,
     unresolved_requirement_ids: tuple[str, ...],
 ) -> tuple[AssetCandidate, ...]:
-    """P2-A:为 unresolved requirement 走 stock acquisition,返回**候选**。
+    """P2:为 unresolved requirement 走**一个** acquirer,返回**候选**。
 
-    fail-closed 三处:provider policy 选不出 provider、检索异常、单条物化异常
+    fail-closed 三处:provider policy 选不出 provider、检索/渲染异常、单条物化异常
     —— 全部返回空,让 resolution 保持 unresolved。绝不返回「已搞定」。
+
+    acquirer 自带 policy(Stock 走 `_stock_provider_policy`,Procedural 走
+    `ProceduralAcquirer.provider_policy()`),因为两者的 `mode` 不同。
     """
-    if stock_acquirer is None:
-        return ()
     if requirement.requirement_id not in unresolved_requirement_ids:
         return ()
-    _, evaluate_provider_policy = _acquisition_seam()
-    decision = await evaluate_provider_policy(
-        _stock_provider_policy(stock_acquirer.provider_id),
-        catalogue=stock_acquirer.provider_catalogue(),
-    )
-    if decision.selected_provider is None:
+    evaluate = _evaluate_provider_policy()
+    decision = await evaluate(acquirer.provider_policy(),
+                              catalogue=acquirer.provider_catalogue())
+    if decision.selected_provider != acquirer.provider_id:
         return ()
-    proposed = await stock_acquirer.propose(requirement)
+    proposed = await acquirer.propose(requirement)
     return tuple(normalized.candidate for normalized in proposed)
-
-
-def _stock_provider_policy(provider_id: str) -> Any:
-    """stock provider 的 provider policy。只声明候选集,不设门槛。"""
-    from hevi.provider_policy.policy import ProviderPolicy
-
-    return ProviderPolicy(candidates=[provider_id], quality_floor=0)
 
 
 async def _resolve_with_acquisition(
     shot_id: str,
     requirement: AssetRequirement,
     candidates: list[AssetCandidate],
-    stock_acquirer: Any | None,
+    acquirer_chain: tuple[Any, ...] = (),
 ) -> tuple[ShotPreparation, ShotResolution, dict[str, Any]]:
-    """P2-A 完整闭环。生产与验收测试走**同一段**代码。
+    """P2 完整闭环(ordered acquisition chain)。生产与验收测试走**同一段**代码。
 
     ```text
-    resolve → unresolved → stock acquire → validate → 重新 resolve
+    resolve → unresolved? → acquirer[0].propose() → 重新 resolve → 仍 unresolved?
+             → acquirer[1].propose() → 重新 resolve → …
     ```
+
+    停止条件是 `resolution.unresolved_requirement_ids` —— **canonical authority
+    说话**,不是某个 acquirer 说「我够了」。链的顺序由配置决定(P2-A stock →
+    P2-B procedural),而选谁永远只由 `scorer → selector` 决定。
 
     第三返回值是 acquisition 事件说明(供 gate 记录);它**不参与**任何取舍判断。
 
     关键纪律:acquire 成功只等于「多了候选」。新候选必须再过一次 canonical
-    scorer + selector 才可能成为 selected —— 「拿到文件」不等于「可以生成」。
+    scorer + selector 才可能成为 selected —— 「渲出来了」不等于「可以生成」。
     """
     preparation = _shot_preparation(shot_id, requirement, candidates)
     resolution = _resolve_shot(preparation, requirement)
-    note: dict[str, Any] = {"attempted": False, "acquired": 0, "reason": ""}
+    note: dict[str, Any] = {
+        "attempted": False, "acquired": 0, "reason": "",
+        "tiers": [], "rounds": 0,
+    }
     if not resolution.unresolved_requirement_ids:
         return preparation, resolution, note
 
     note["attempted"] = True
-    note["reason"] = "NO_ACQUIRER_CONFIGURED" if stock_acquirer is None else "ACQUIRED"
-    acquired = await _acquire_for_unresolved(
-        stock_acquirer, requirement, resolution.unresolved_requirement_ids)
-    note["acquired"] = len(acquired)
-    if acquired:
-        preparation = _shot_preparation(
-            shot_id, requirement, [*candidates, *acquired])
+    if not acquirer_chain:
+        note["reason"] = "NO_ACQUIRER_CONFIGURED"
+        return preparation, resolution, note
+
+    running = list(candidates)
+    for acquirer in acquirer_chain:
+        acquired = await _acquire_for_unresolved(
+            acquirer, requirement, resolution.unresolved_requirement_ids)
+        note["tiers"].append({
+            "provider_id": acquirer.provider_id,
+            "acquired": len(acquired),
+        })
+        if not acquired:
+            continue
+        running = [*running, *acquired]
+        note["acquired"] += len(acquired)
+        note["rounds"] += 1
+        preparation = _shot_preparation(shot_id, requirement, running)
         # 重新 resolve:新候选要经过 canonical scorer + selector。
         resolution = _resolve_shot(preparation, requirement)
-        note["reason"] = "RE_RESOLVED"
+        if not resolution.unresolved_requirement_ids:
+            break
+    note["reason"] = "RE_RESOLVED" if note["acquired"] else "ACQUIRED_NOTHING_USABLE"
     return preparation, resolution, note
 
 
@@ -420,12 +428,14 @@ async def run_p0_production(
     language: str = "en-US",
     voice: str = "en-US-AriaNeural",
     max_proof_seconds: int = 15,
-    stock_acquirer: Any | None = None,
+    acquirer_chain: tuple[Any, ...] = (),
 ) -> P0ProductionState:
     """P0 全流程。
 
-    `stock_acquirer`:P2-A 的 stock acquisition 能力。`None`(默认)= 不做 fallback,
-    unresolved 的镜次不会生成 —— fail closed,而不是「悄悄用旧结论生成」。
+    `acquirer_chain`:P2 的有序 acquisition 链(P2-A stock → P2-B procedural)。
+    空(默认)= 不做 fallback,unresolved 的镜次不会生成 —— fail closed,
+    而不是「悄悄用旧结论生成」。链的停止条件是 canonical resolution 的
+    `unresolved`,不是某个 acquirer 声称够了。
     """
     """Execute the full P0 canonical production chain."""
     production_id = f"p0-{uuid.uuid4().hex[:12]}"
@@ -618,7 +628,7 @@ async def run_p0_production(
         shot_id = f"{production_id}:shot-{intent.intent_id[-4:]}"
         preparation, resolution, note = await _resolve_with_acquisition(
             shot_id, requirement, intent_candidates.get(intent.intent_id, []),
-            stock_acquirer)
+            acquirer_chain)
         if note["attempted"]:
             state.gate("ASSET_ACQUISITION_ATTEMPTED", note["acquired"] > 0, {
                 "intent": intent.intent_id, **note,
