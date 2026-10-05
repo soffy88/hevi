@@ -13,8 +13,11 @@ from hevi.creative.autonomous.canonical import (
     DIRECTOR_ENTRY,
     DIRECTOR_STAGES,
     KNOWN_SPLITS,
+    AssetRequirement,
+    AssetSemanticRole,
     Concept,
     DesignList,
+    MediaType,
     SceneStage,
     SceneStageSet,
     Screenplay,
@@ -28,6 +31,11 @@ from hevi.creative.autonomous.canonical import (
     to_visual_intent,
 )
 from hevi.creative.autonomous.dry_run import DryRunResult, dry_run, to_manifest
+from hevi.creative.autonomous.identity import (
+    RequirementBinding,
+    RequirementBindingSet,
+    RequirementIdentityError,
+)
 from hevi.creative.autonomous.manifest import (
     SCHEMA_VERSION,
     ProductionManifest,
@@ -40,6 +48,13 @@ from hevi.creative.autonomous.resolver import (
     AssetResolver,
     ExecutionReadyResolution,
 )
+from hevi.creative.autonomous.selection import (
+    CANDIDATE_SELECTION,
+    PROVIDER_SELECTION,
+    SelectionAuthority,
+    SelectionPath,
+    assert_single_authority,
+)
 from hevi.creative.autonomous.verdict import (
     ProductionVerdict,
     ProductionVerdictAuthority,
@@ -49,7 +64,9 @@ from hevi.creative.autonomous.verdict import (
 
 __all__ = [
     "Acquirer",
+    "AssetRequirement",
     "AssetResolver",
+    "AssetSemanticRole",
     "Concept",
     "DIRECTOR_ENTRY",
     "DIRECTOR_STAGES",
@@ -58,17 +75,26 @@ __all__ = [
     "ExecutionReadyResolution",
     "KNOWN_SPLITS",
     "LocalAssetAcquirer",
+    "MediaType",
     "NormalizedCandidate",
+    "CANDIDATE_SELECTION",
+    "PROVIDER_SELECTION",
     "ProductionManifest",
     "ProductionVerdict",
     "ProductionVerdictAuthority",
+    "RequirementBinding",
+    "RequirementBindingSet",
+    "RequirementIdentityError",
     "SCHEMA_VERSION",
     "SceneStage",
     "SceneStageSet",
     "Screenplay",
     "ShotList",
     "ShotListItem",
+    "SelectionAuthority",
+    "SelectionPath",
     "StageProjection",
+    "assert_single_authority",
     "VerdictInput",
     "VerdictOutcome",
     "VocabularySplit",
