@@ -90,3 +90,10 @@ artifacts/qualification/autonomous-production/
 data/timelines/
 data/artifacts/
 data/freezone/
+
+# P7 real-video production output. The accepted run is archived under
+# artifacts/real_video/ with its evidence pack; intermediate re-runs are noise.
+artifacts/real_video/*/work/
+artifacts/real_video/*/artifacts/*_finecut.mp4
+artifacts/real_video/*/artifacts/scene_*.mp4
+artifacts/real_video/*/final/concat.txt

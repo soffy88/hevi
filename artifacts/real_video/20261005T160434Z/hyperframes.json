@@ -1,0 +1,13 @@
+{
+  "schema": "hevi.composition_record.v1",
+  "renderer": "raw_footage.execute_fine_cut + ffmpeg",
+  "hyperframes_used": false,
+  "reason": "this run cut a qualified public-domain source rather than composing a HyperComposition; no provider-specific prompt became the creative representation",
+  "creative_program_hash": "fac7eb5dbb4ec3ecd83063fd683adb4748e3a225e244a4ba38d489b4448106d4",
+  "shot_count": 4,
+  "upscale": {
+    "from": "320x180",
+    "to": "1280x720",
+    "adds_detail": false
+  }
+}

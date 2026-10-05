@@ -1,0 +1,2 @@
+file '/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_interview_sub.mp4'
+file '/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4'

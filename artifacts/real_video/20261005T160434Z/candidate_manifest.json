@@ -1,0 +1,34 @@
+{
+  "schema": "hevi.candidate_manifest.v1",
+  "candidates": [
+    {
+      "candidate_id": "cand-0001",
+      "shot_id": "all",
+      "artifact_id": "artifact-FINAL",
+      "artifact_path": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/final/FINAL.mp4",
+      "executor": "scripts/qualification/produce_first_real_video.py",
+      "provider": "QUALIFIED_SOURCE_NASA",
+      "sources": [
+        {
+          "title": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch",
+          "license": "nasa-media (public domain)",
+          "sha256": "dd278f2b975278d36d8ef595dcfc63b92b66c6ea52fbf4d1c0ea6285629e279c"
+        },
+        {
+          "title": "Earth Views from the International Space Station",
+          "license": "nasa-media (public domain)",
+          "sha256": "a7b128374f7493d076f75dbdbd88751b3c8378b83490bca9454d62cfa67f68c6"
+        }
+      ],
+      "technical_score": 1.0,
+      "semantic_score": null,
+      "composition_score": null,
+      "motion_score": null,
+      "continuity_score": null,
+      "creative_score": null,
+      "final_score": null,
+      "decision": "KEEP",
+      "unscored_fields_note": "semantic/composition/motion/continuity/creative are the V3 dimensions and were not machine-measured; they are UNKNOWN, not zero, and a score without evidence is not proof"
+    }
+  ]
+}

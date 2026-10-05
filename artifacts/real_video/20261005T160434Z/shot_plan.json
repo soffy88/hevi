@@ -1,0 +1,59 @@
+{
+  "schema": "hevi.shot_plan.v1",
+  "creative_program_hash": "fac7eb5dbb4ec3ecd83063fd683adb4748e3a225e244a4ba38d489b4448106d4",
+  "shots": [
+    {
+      "shot_id": "s1",
+      "purpose": "open on the retrospective frame",
+      "visual_subject": "Michael Collins",
+      "action": "real interview speech, uninterrupted",
+      "camera_framing": "medium",
+      "duration_sec": 15.0,
+      "audio": "source interview audio (real human speech)",
+      "transition": "cut",
+      "generation_requirement": "none: qualified public-domain source, no generation needed",
+      "verification_requirement": "V0 exist, V1 decode, V2 duration+audio",
+      "source": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch"
+    },
+    {
+      "shot_id": "s2",
+      "purpose": "the flight in order",
+      "visual_subject": "Michael Collins",
+      "action": "real interview speech, uninterrupted",
+      "camera_framing": "medium",
+      "duration_sec": 17.0,
+      "audio": "source interview audio (real human speech)",
+      "transition": "cut",
+      "generation_requirement": "none: qualified public-domain source, no generation needed",
+      "verification_requirement": "V0 exist, V1 decode, V2 duration+audio",
+      "source": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch"
+    },
+    {
+      "shot_id": "s3",
+      "purpose": "the weight of it",
+      "visual_subject": "Michael Collins",
+      "action": "real interview speech, uninterrupted",
+      "camera_framing": "medium",
+      "duration_sec": 16.0,
+      "audio": "source interview audio (real human speech)",
+      "transition": "cut",
+      "generation_requirement": "none: qualified public-domain source, no generation needed",
+      "verification_requirement": "V0 exist, V1 decode, V2 duration+audio",
+      "source": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch"
+    },
+    {
+      "shot_id": "s4",
+      "purpose": "close on what it felt like",
+      "visual_subject": "Michael Collins",
+      "action": "real interview speech, uninterrupted",
+      "camera_framing": "medium",
+      "duration_sec": 14.0,
+      "audio": "source interview audio (real human speech)",
+      "transition": "cut",
+      "generation_requirement": "none: qualified public-domain source, no generation needed",
+      "verification_requirement": "V0 exist, V1 decode, V2 duration+audio",
+      "source": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch"
+    }
+  ],
+  "total_duration_s": 62.0
+}

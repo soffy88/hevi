@@ -1,0 +1,97 @@
+{
+  "run_id": "real-video-20261005T160434Z",
+  "task_id": "real-video-20261005T160434Z",
+  "artifact_id": "artifact-FINAL",
+  "status": "ACCEPTED",
+  "verification": {
+    "levels": [
+      {
+        "level": "V0",
+        "outcome": "PASS",
+        "detail": "",
+        "evidence": {
+          "path": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/final/FINAL.mp4",
+          "size_bytes": 7332828,
+          "sha256": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585"
+        }
+      },
+      {
+        "level": "V1",
+        "outcome": "PASS",
+        "detail": "",
+        "evidence": {
+          "probe": {
+            "duration": 36.693424,
+            "codec": "h264",
+            "width": 1280,
+            "height": 720,
+            "fps": "25/1",
+            "has_audio": true,
+            "audio_codec": "aac",
+            "audio_duration": 36.693424,
+            "aspect_ratio": "16:9"
+          }
+        }
+      },
+      {
+        "level": "V2",
+        "outcome": "PASS",
+        "detail": "",
+        "evidence": {
+          "checks": [
+            {
+              "field": "duration_min_s",
+              "expected": ">=30.0",
+              "observed": 36.693424,
+              "passed": true
+            },
+            {
+              "field": "duration_max_s",
+              "expected": "<=90.0",
+              "observed": 36.693424,
+              "passed": true
+            },
+            {
+              "field": "has_audio",
+              "expected": true,
+              "observed": true,
+              "passed": true
+            }
+          ]
+        }
+      },
+      {
+        "level": "V3",
+        "outcome": "PASS",
+        "detail": "",
+        "evidence": {
+          "aggregate": "PASS",
+          "inputs": [
+            {
+              "source": "v1.media",
+              "passed": true,
+              "detail": ""
+            },
+            {
+              "source": "boundary.word_truncation",
+              "passed": true,
+              "detail": "0 issue(s)"
+            }
+          ],
+          "artifact_validated": true
+        }
+      }
+    ]
+  },
+  "evidence": {
+    "artifact_path": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/final/FINAL.mp4",
+    "artifact_sha256": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585",
+    "artifact_size_bytes": 7332828,
+    "shot_spec_hash": "fac7eb5dbb4ec3ecd83063fd683adb4748e3a225e244a4ba38d489b4448106d4",
+    "verifier_version": "production.verification-v1"
+  },
+  "revision_count": 0,
+  "executor": "scripts/qualification/produce_first_real_video.py",
+  "provider": "QUALIFIED_SOURCE_NASA",
+  "timestamp": "2026-10-05T16:04:39.688711+00:00"
+}

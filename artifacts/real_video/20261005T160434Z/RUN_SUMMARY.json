@@ -1,0 +1,117 @@
+{
+  "run_id": "real-video-20261005T160434Z",
+  "started_at": "2026-10-05T16:04:34+00:00",
+  "output_dir": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z",
+  "final": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/final/FINAL.mp4",
+  "final_sha256": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585",
+  "final_duration_s": 36.693,
+  "final_resolution": "1280x720",
+  "scene_durations_s": {
+    "interview": 22.647,
+    "broll": 14.0
+  },
+  "machine_status": "ACCEPTED",
+  "final_status": "HEVI_REAL_VIDEO_ACCEPTED",
+  "human_review": "ACCEPT",
+  "steps": [
+    {
+      "name": "SOURCE",
+      "at": "2026-10-05T16:04:35+00:00",
+      "title": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch",
+      "license": "nasa-media (public domain)",
+      "sha256": "dd278f2b975278d36d8ef595dcfc63b92b66c6ea52fbf4d1c0ea6285629e279c",
+      "duration_s": 113.2
+    },
+    {
+      "name": "PHASE_A_B",
+      "at": "2026-10-05T16:04:35+00:00",
+      "shots": 4,
+      "program_hash": "fac7eb5dbb4ec3ec",
+      "total_duration_s": 62.0
+    },
+    {
+      "name": "PHASE_C_ASR",
+      "at": "2026-10-05T16:04:35+00:00",
+      "engine": "faster-whisper small (cached, wt1, f26510e4d79fbfc1)",
+      "segments": 22,
+      "words": 102,
+      "audio_duration_s": 113.18
+    },
+    {
+      "name": "PHASE_E_PLAN",
+      "at": "2026-10-05T16:04:35+00:00",
+      "entries": 16,
+      "dropped": 6
+    },
+    {
+      "name": "PHASE_E_WINDOW",
+      "at": "2026-10-05T16:04:35+00:00",
+      "entries": 16,
+      "speech_s": 34.76,
+      "splices": 11,
+      "removed_s": 15.14,
+      "removed_by_long_silence": 0
+    },
+    {
+      "name": "PHASE_E_DEAD_AIR",
+      "at": "2026-10-05T16:04:35+00:00",
+      "splits": 1,
+      "removed_s": 12.1,
+      "detail": [
+        {
+          "at_s": 59.74,
+          "gap_s": 12.1,
+          "after": "So",
+          "before": "50"
+        }
+      ]
+    },
+    {
+      "name": "PHASE_E_SNAP",
+      "at": "2026-10-05T16:04:35+00:00",
+      "boundaries_moved": 0,
+      "boundary_issues": 0,
+      "planned_duration_s": 22.0
+    },
+    {
+      "name": "PHASE_F_CUT",
+      "at": "2026-10-05T16:04:36+00:00",
+      "file": "nasa-collins-0001_finecut.mp4",
+      "duration_s": 22.647,
+      "resolution": "320x180",
+      "within_window": false
+    },
+    {
+      "name": "PHASE_I_ASSEMBLY",
+      "at": "2026-10-05T16:04:39+00:00",
+      "subtitle_words": 83,
+      "cues": 14,
+      "interview_s": 22.65,
+      "broll_s": 14.0,
+      "source_resolution": "320x180",
+      "deliver_resolution": "1280x720",
+      "upscale_note": "lanczos; adds no detail, NASA corpus is 320x180",
+      "broll": {
+        "source": "nasa_Earth_Views_from_the_International_Space.mp4",
+        "title": "Earth Views from the International Space Station",
+        "license": "nasa-media (public domain)",
+        "sha256": "a7b128374f7493d076f75dbdbd88751b3c8378b83490bca9454d62cfa67f68c6",
+        "start_s": 83.0,
+        "duration_s": 14.0,
+        "resolution": "320x180"
+      }
+    },
+    {
+      "name": "PHASE_J_VERIFY",
+      "at": "2026-10-05T16:04:39+00:00",
+      "status": "ACCEPTED",
+      "levels": {
+        "V0": "PASS",
+        "V1": "PASS",
+        "V2": "PASS",
+        "V3": "PASS"
+      }
+    }
+  ],
+  "creative_review": "verification/CREATIVE_REVIEW.json"
+}

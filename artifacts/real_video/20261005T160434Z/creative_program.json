@@ -1,0 +1,65 @@
+{
+  "schema": "hevi.creative_program.v1",
+  "compiled_at": "2026-10-05T16:04:35+00:00",
+  "program_hash": "fac7eb5dbb4ec3ecd83063fd683adb4748e3a225e244a4ba38d489b4448106d4",
+  "brief": {
+    "audience": "general viewers who know Apollo 11 only as a date",
+    "purpose": "show what the crew actually did between launch and splashdown",
+    "tone": "calm, factual, documentary",
+    "duration_s": [
+      30.0,
+      90.0
+    ],
+    "aspect_ratio": "16:9",
+    "visual_style": "archival documentary, natural colour, no grading",
+    "narrative_structure": [
+      "open on the retrospective frame",
+      "move through the flight in order",
+      "close on what it felt like"
+    ],
+    "delivery_target": "single MP4, landscape, burned subtitles",
+    "language": "en"
+  },
+  "scenes": [
+    {
+      "scene_id": "s1",
+      "purpose": "open on the retrospective frame",
+      "visual_subject": "Michael Collins",
+      "camera_framing": "medium",
+      "start_s": 0.0,
+      "end_s": 15.0,
+      "duration_s": 15.0
+    },
+    {
+      "scene_id": "s2",
+      "purpose": "the flight in order",
+      "visual_subject": "Michael Collins",
+      "camera_framing": "medium",
+      "start_s": 15.0,
+      "end_s": 32.0,
+      "duration_s": 17.0
+    },
+    {
+      "scene_id": "s3",
+      "purpose": "the weight of it",
+      "visual_subject": "Michael Collins",
+      "camera_framing": "medium",
+      "start_s": 32.0,
+      "end_s": 48.0,
+      "duration_s": 16.0
+    },
+    {
+      "scene_id": "s4",
+      "purpose": "close on what it felt like",
+      "visual_subject": "Michael Collins",
+      "camera_framing": "medium",
+      "start_s": 48.0,
+      "end_s": 62.0,
+      "duration_s": 14.0
+    }
+  ],
+  "source": {
+    "title": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch",
+    "license": "nasa-media (public domain)"
+  }
+}

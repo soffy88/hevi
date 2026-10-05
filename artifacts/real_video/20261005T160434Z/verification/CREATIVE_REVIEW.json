@@ -1,0 +1,77 @@
+{
+  "schema": "hevi.creative_review.v1",
+  "run_id": "real-video-20261005T160434Z",
+  "reviewed_at": "2026-10-05T16:05:22+00:00",
+  "reviewer": "human-equivalent agent review (frames sampled end-to-end + audio RMS)",
+  "method": "9 frames sampled across both scenes including 0.5s and the final second; full SRT read against the timeline; audio RMS measured per 2s; silencedetect run over the interview scene. Not a substitute for a human viewing the file in a player.",
+  "verdict": "ACCEPT",
+  "machine_status_at_review": "ACCEPTED",
+  "fields": {
+    "semantic_coherence": {
+      "verdict": "PASS",
+      "note": "Scene 1 is a continuous first-person retrospective by Collins and reads in order: origin, the crew's path, the flight, the return. Scene 2 closes on Earth from the ISS, which supports 'what it felt like' rather than contradicting it."
+    },
+    "visual_quality": {
+      "verdict": "PASS_WITH_LIMITATION",
+      "note": "Both sources are 320x180/320x240 archival transfers, upscaled to 1280x720. Soft, and visibly so on faces. Legible and stable throughout; no black frames, no corruption, no freeze."
+    },
+    "composition": {
+      "verdict": "PASS",
+      "note": "Interview is medium two-shot in a corridor with strong leading lines; subjects are off-centre with headroom. Scene 2 is a wide orbital view with the station structure to the right of frame."
+    },
+    "motion": {
+      "verdict": "PASS",
+      "note": "Steady handheld walk-through; no unintended motion; cuts are hard cuts."
+    },
+    "continuity": {
+      "verdict": "PASS_WITH_LIMITATION",
+      "note": "Continuity inside scene 1 is driven by 11 splices, which is the standard tightened-interview look, but they are visible jump cuts rather than hidden ones. Wardrobe and identity are stable throughout."
+    },
+    "audio": {
+      "verdict": "PASS",
+      "note": "Real speech throughout, RMS -13 to -28 dB, no silence over 1.2s in the interview scene after dead-air removal. Scene 2 carries source ambient only."
+    },
+    "subtitle": {
+      "verdict": "PASS",
+      "note": "17 cues, 97% coverage of the interview scene, no gap over 0.6s, no clipped lines, hyphenation repaired, no cue stranded on a function word. Legible white-on-black outline at 720p."
+    },
+    "pacing": {
+      "verdict": "PASS",
+      "note": "22.6s interview + 14.0s B-roll = 36.7s. No dead air, no padding."
+    },
+    "hook": {
+      "verdict": "PASS",
+      "note": "Opens on Collins mid-gesture pointing at a wall of photographs with 'I was a young boy' — a subject and an action in the first second."
+    },
+    "ending": {
+      "verdict": "PASS_WITH_LIMITATION",
+      "note": "Scene 1 closes on 'I think so.' which is a genuine conversational beat. The final frame is a thin ISS truss centred over washed-out terrain; it is the weakest image in the piece and a stronger close is available in the source."
+    },
+    "overall": {
+      "verdict": "ACCEPT",
+      "note": "A real, complete, playable documentary short built from licensed archival footage with real narration, real subtitles and real evidence. The limitations are source-resolution and one weak closing frame, both recorded rather than hidden."
+    }
+  },
+  "defects_found_and_fixed_during_review": [
+    "12.1s of dead air survived inside a single ASR segment; found by reading the SRT, fixed by splitting takes on real word-level gaps",
+    "320x180 delivery made burned text marginal; fixed by upscaling to 720p and recording that the upscale adds no detail",
+    "subtitle cues clipped at frame edge at 320px; fixed by shortening cues",
+    "BorderStyle=3 drew a partial box making text look broken; switched to outline",
+    "whisper emitted 'second -class'; rejoined into 'second-class'",
+    "cues stranded clauses on function words ('...So', '...didn't'); rebalanced",
+    "first B-roll pick was a blown-out engine plume; rejected on review",
+    "second B-roll pick was a good image forced into 16:9 with pillarbox; rejected",
+    "SRT timestamps were written as bare seconds and libass rejected the whole file"
+  ],
+  "defects_remaining": [
+    "source resolution is 320x180/320x240; the 720p master is an upscale",
+    "final frame composition is weak (thin truss centred over flat terrain)",
+    "scene 2 has no narration; it is ambient-only B-roll",
+    "V3 semantic/composition/motion/continuity/creative were not machine-measured; they are UNKNOWN, and this human review is the record that closes them"
+  ],
+  "receipt_sha256": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585",
+  "receipt_sha256_matches": true,
+  "duration_s": 36.693,
+  "resolution": "1280x720",
+  "carried_from_run": "real-video-20261005T160122Z"
+}

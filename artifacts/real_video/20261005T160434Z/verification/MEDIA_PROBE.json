@@ -1,0 +1,18 @@
+{
+  "level": "V1",
+  "outcome": "PASS",
+  "detail": "",
+  "evidence": {
+    "probe": {
+      "duration": 36.693424,
+      "codec": "h264",
+      "width": 1280,
+      "height": 720,
+      "fps": "25/1",
+      "has_audio": true,
+      "audio_codec": "aac",
+      "audio_duration": 36.693424,
+      "aspect_ratio": "16:9"
+    }
+  }
+}
