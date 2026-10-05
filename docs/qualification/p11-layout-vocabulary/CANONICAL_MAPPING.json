@@ -1,0 +1,260 @@
+{
+  "schema": "hevi.p11.canonical_mapping.v1",
+  "generated_at": "2026-10-05T23:18:29+00:00",
+  "generator": "scripts/qualification/p11_canonical_mapping.py",
+  "evidence_source": "docs/qualification/p11-layout-vocabulary/VOCABULARY_INVENTORY.json",
+  "inventory_generated_at": "2026-10-05T23:12:06+00:00",
+  "scanned_python_files": 2611,
+  "decision_table": [
+    {
+      "dimension": "presenter_prominence",
+      "spec_dimension": "PresenterScale",
+      "semantic_question": "How large/prominent is the presenter/subject?",
+      "canonical_owner": "PresenterScale",
+      "canonical_owner_file": "hevi/production/presenter.py",
+      "definition_line": 27,
+      "members": [
+        "FULL",
+        "MEDIUM",
+        "PIP",
+        "HIDDEN"
+      ],
+      "existing_aliases_or_translations": [
+        {
+          "name": "SpeakerVisibility",
+          "file": "hevi/ops/p5_1_types.py",
+          "kind": "EXPLICIT_TRANSLATION",
+          "total": true,
+          "injective": true
+        },
+        {
+          "name": "LayoutMode",
+          "file": "hevi/explainer/contracts.py",
+          "kind": "LOSSLESS_ALIAS_CANDIDATE",
+          "total": true,
+          "injective": false
+        }
+      ],
+      "consumers_evidence": [
+        "hevi/production/presenter.py"
+      ],
+      "renderer_consumers_evidence": [],
+      "tests_evidence": [
+        "tests/integration/p5_2/test_p5_2_e2e_a_presenter.py",
+        "tests/test_p5_2_adversarial.py",
+        "tests/test_p5_2_capabilities.py"
+      ],
+      "persisted_forms_evidence": [],
+      "why": "It is the only definition that answers this question directly, it has the largest consumer set of the prominence-shaped vocabularies, and it already has a total role->scale function (`scale_for_role`) with integration coverage. Choosing it avoids inventing anything.",
+      "falsified_by": "A discovered definition with strictly larger reach that answers prominence rather than presence.",
+      "rejected_alternatives": [
+        {
+          "name": "SpeakerVisibility (p6)",
+          "reason": "Answers 'which speaker is visible', not 'how large'. It overlaps PresenterScale on FULL/MEDIUM/PIP/HIDDEN, which is why the two are reconciled by translation below rather than merged."
+        },
+        {
+          "name": "ShotSize",
+          "reason": "A lens vocabulary, not a composition one."
+        }
+      ]
+    },
+    {
+      "dimension": "speaker_visibility",
+      "spec_dimension": "SpeakerVisibility",
+      "semantic_question": "Which speaker(s), if any, are visible and how?",
+      "canonical_owner": "SpeakerVisibility",
+      "canonical_owner_file": "hevi/production/p6/schema.py",
+      "definition_line": 136,
+      "members": [
+        "DOMINANT",
+        "FULL",
+        "MEDIUM",
+        "PIP",
+        "HIDDEN"
+      ],
+      "existing_aliases_or_translations": [
+        {
+          "name": "SpeakerVisibility",
+          "file": "hevi/ops/p5_1_types.py",
+          "kind": "EXPLICIT_TRANSLATION",
+          "total": true,
+          "injective": true
+        },
+        {
+          "name": "LayoutMode",
+          "file": "hevi/explainer/contracts.py",
+          "kind": "LOSSLESS_ALIAS_CANDIDATE",
+          "total": true,
+          "injective": false
+        }
+      ],
+      "consumers_evidence": [
+        "hevi/ops/p5_1_presentation.py",
+        "hevi/ops/p5_1_types.py",
+        "hevi/production/p6/schema.py"
+      ],
+      "renderer_consumers_evidence": [],
+      "tests_evidence": [
+        "tests/test_p5_1_adversarial.py",
+        "tests/test_p5_1_presentation.py"
+      ],
+      "persisted_forms_evidence": [],
+      "why": "Two definitions exist with different members. The p6 copy is chosen because its member set is the one that composes coherently with the canonical PresenterScale (FULL/MEDIUM/PIP/HIDDEN appear in both), and it sits in the semantic schema alongside PresenterKind, which is the producer of the value it describes.",
+      "falsified_by": "Evidence that the p5_1 copy is the one actually read by the render path — it is not: both record zero renderer consumers.",
+      "rejected_alternatives": [
+        {
+          "name": "SpeakerVisibility (p5_1)",
+          "reason": "Superseded by an explicit, total, injective translation rule rather than an alias. See alias_policy."
+        }
+      ]
+    },
+    {
+      "dimension": "frame_layout",
+      "spec_dimension": "LayoutMode",
+      "semantic_question": "How is the visual space geometrically organised?",
+      "canonical_owner": "ReframingMode",
+      "canonical_owner_file": "hevi/openshorts/schemas.py",
+      "definition_line": 22,
+      "members": [
+        "track",
+        "general",
+        "split"
+      ],
+      "existing_aliases_or_translations": [
+        {
+          "name": "SpeakerVisibility",
+          "file": "hevi/ops/p5_1_types.py",
+          "kind": "EXPLICIT_TRANSLATION",
+          "total": true,
+          "injective": true
+        },
+        {
+          "name": "LayoutMode",
+          "file": "hevi/explainer/contracts.py",
+          "kind": "LOSSLESS_ALIAS_CANDIDATE",
+          "total": true,
+          "injective": false
+        }
+      ],
+      "consumers_evidence": [
+        "hevi/layer4_legacy/openshorts/oprim_impl/__init__.py",
+        "hevi/openshorts/layer4_omodul.py",
+        "hevi/openshorts/layer4_oskill.py",
+        "hevi/openshorts/schemas.py"
+      ],
+      "renderer_consumers_evidence": [],
+      "tests_evidence": [
+        "tests/test_coverage_contracts.py"
+      ],
+      "persisted_forms_evidence": [],
+      "why": "This is the only discovered vocabulary whose members are geometric organisations of the frame (track / general / split) rather than composition states. It is also the vocabulary the OpenShorts integration targets, and it has the widest reach of the candidates. Adopting the explainer LayoutMode instead would leave track/general/split unowned and force a fourth vocabulary to relate them.",
+      "falsified_by": "Evidence that explainer LayoutMode is the wider-reached layout owner.",
+      "rejected_alternatives": [
+        {
+          "name": "LayoutMode (explainer)",
+          "reason": "fullscreen/broll_pip answers 'does a secondary visual share the frame', which the inventory shows overlaps PresenterScale.PIP rather than describing frame geometry. Retained unchanged — it is not renamed or removed, per the migration plan."
+        },
+        {
+          "name": "ShotSize.WIDE / CameraMotion.TRACK",
+          "reason": "Both tokens appear in the spec's candidate list but are lens and dolly vocabularies respectively. Treating them as layout modes would collapse two semantic dimensions into one."
+        }
+      ]
+    }
+  ],
+  "translation_rules": [
+    {
+      "from_symbol": "SpeakerVisibility",
+      "from_file": "hevi/ops/p5_1_types.py",
+      "to_symbol": "SpeakerVisibility",
+      "to_file": "hevi/production/p6/schema.py",
+      "kind": "EXPLICIT_TRANSLATION",
+      "total": true,
+      "injective": true,
+      "lossless_in_forward_direction": true,
+      "rule": {
+        "DOMINANT": "DOMINANT",
+        "VISIBLE": "FULL",
+        "SMALL_PIP": "PIP",
+        "HIDDEN": "HIDDEN"
+      },
+      "unmapped_in_canonical": [
+        "MEDIUM"
+      ],
+      "why_not_an_alias": "canonical_value(alias(x)) != x for every member: VISIBLE maps to FULL and SMALL_PIP maps to PIP. Spec 3.4 therefore forbids calling this an alias and requires an explicit rule, which this is.",
+      "information_discarded": "None in the forward direction: the mapping is total and injective over the p5_1 domain. The canonical MEDIUM value has no p5_1 counterpart, so the reverse direction is not total and must not be attempted."
+    },
+    {
+      "from_symbol": "LayoutMode",
+      "from_file": "hevi/explainer/contracts.py",
+      "to_symbol": "ReframingMode",
+      "to_file": "hevi/openshorts/schemas.py",
+      "kind": "LOSSLESS_ALIAS_CANDIDATE",
+      "total": true,
+      "injective": false,
+      "rule": null,
+      "why": "Not adopted as an alias. The two vocabularies have different domains (composition state vs frame geometry) and identical spelling of the concept is coincidence, not equivalence. The duplicate definition is recorded and left in place; no conversion is defined because none is needed."
+    }
+  ],
+  "duplicate_definitions": {
+    "LayoutMode": {
+      "definition_sites": [
+        "hevi/explainer/contracts.py:33",
+        "hevi/explainer/schemas.py:30"
+      ],
+      "member_sets": [
+        [
+          "fullscreen",
+          "broll_pip"
+        ]
+      ],
+      "identical_members": true,
+      "lossless_alias_candidate": true,
+      "status": "DUPLICATE_DEFINITION"
+    },
+    "SpeakerVisibility": {
+      "definition_sites": [
+        "hevi/ops/p5_1_types.py:343",
+        "hevi/production/p6/schema.py:136"
+      ],
+      "member_sets": [
+        [
+          "DOMINANT",
+          "FULL",
+          "MEDIUM",
+          "PIP",
+          "HIDDEN"
+        ],
+        [
+          "DOMINANT",
+          "VISIBLE",
+          "SMALL_PIP",
+          "HIDDEN"
+        ]
+      ],
+      "identical_members": false,
+      "lossless_alias_candidate": false,
+      "status": "DUPLICATE_DEFINITION"
+    }
+  },
+  "unevidenced_modes": {
+    "modes": [
+      "SCREENCAST",
+      "INSET",
+      "PUNCH_IN"
+    ],
+    "policy": "Spec 6 permits implementing only modes the repository evidences. These appear in the spec's candidate list but have no definition anywhere in the tree, so they are BLOCKED_UNIMPLEMENTED rather than invented.",
+    "scan_evidence": "No class, enum or Literal alias named or containing these tokens was produced by the inventory scan."
+  },
+  "fourth_vocabulary_check": {
+    "forbidden_names": [
+      "LayoutVocabulary",
+      "CompositionMode",
+      "FrameLayout",
+      "VisualLayout",
+      "ShotLayoutMode",
+      "CompositionModeV2"
+    ],
+    "present": [],
+    "pass": true
+  }
+}

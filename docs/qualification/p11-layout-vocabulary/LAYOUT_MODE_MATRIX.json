@@ -1,0 +1,96 @@
+{
+  "schema": "hevi.p11.layout_mode_matrix.v1",
+  "generated_at": "2026-10-05T23:18:29+00:00",
+  "basis": "P10 ships an executable ReframePlan with a native ffmpeg crop, so `track` becomes executable in P11 by consuming it. `general` is the largest target-aspect crop with no subject requirement. `split` is a two-region spatial composition and needs two sources.",
+  "modes": [
+    {
+      "mode": "track",
+      "canonical_type": "ReframingMode",
+      "definition": "hevi/openshorts/schemas.py:22",
+      "preexisting_executable_renderer": false,
+      "preexisting_renderer_evidence": "inventory records 0 renderer consumers",
+      "executable_in_p11": true,
+      "requires_subject_track": true,
+      "missing_track_behaviour": "FAIL_CLOSED: ReframePlanRequiredButAbsent",
+      "inputs": [
+        "SubjectTrack",
+        "source media",
+        "canvas"
+      ],
+      "geometry": "crop window follows the subject, bounded by target aspect",
+      "crop_behaviour": "delegated to hevi.production.reframe.ReframePlan (P10)",
+      "audio_behaviour": "unchanged; layout is a video-space concern",
+      "verification": "V2 asserts the crop origin moved and the subject stays contained; pixel diff against the un-reframed source"
+    },
+    {
+      "mode": "general",
+      "canonical_type": "ReframingMode",
+      "definition": "hevi/openshorts/schemas.py:22",
+      "preexisting_executable_renderer": false,
+      "preexisting_renderer_evidence": "inventory records 0 renderer consumers",
+      "executable_in_p11": true,
+      "requires_subject_track": false,
+      "missing_track_behaviour": "not applicable",
+      "inputs": [
+        "source media",
+        "canvas"
+      ],
+      "geometry": "largest target-aspect crop, no subject requirement",
+      "crop_behaviour": "engine-owned crop, no subject dependency",
+      "audio_behaviour": "unchanged; layout is a video-space concern",
+      "verification": "V2 asserts output dimensions and aspect; pixel diff against source"
+    },
+    {
+      "mode": "split",
+      "canonical_type": "ReframingMode",
+      "definition": "hevi/openshorts/schemas.py:22",
+      "preexisting_executable_renderer": false,
+      "preexisting_renderer_evidence": "inventory records 0 renderer consumers",
+      "executable_in_p11": true,
+      "requires_subject_track": false,
+      "missing_track_behaviour": "not applicable",
+      "inputs": [
+        "source media",
+        "canvas"
+      ],
+      "geometry": "two source regions side by side, split_ratio validated",
+      "crop_behaviour": "engine-owned crop, no subject dependency",
+      "audio_behaviour": "unchanged; layout is a video-space concern",
+      "verification": "V2 asserts output dimensions and aspect; pixel diff against source"
+    },
+    {
+      "mode": "SCREENCAST",
+      "canonical_type": null,
+      "definition": null,
+      "preexisting_executable_renderer": false,
+      "preexisting_renderer_evidence": "no definition found anywhere in the tree",
+      "executable_in_p11": false,
+      "status": "BLOCKED_UNIMPLEMENTED",
+      "blocked_reason": "spec 6: implement only modes the repository supports or evidences; inventing this mode would also risk a fourth vocabulary"
+    },
+    {
+      "mode": "INSET",
+      "canonical_type": null,
+      "definition": null,
+      "preexisting_executable_renderer": false,
+      "preexisting_renderer_evidence": "no definition found anywhere in the tree",
+      "executable_in_p11": false,
+      "status": "BLOCKED_UNIMPLEMENTED",
+      "blocked_reason": "spec 6: implement only modes the repository supports or evidences; inventing this mode would also risk a fourth vocabulary"
+    },
+    {
+      "mode": "PUNCH_IN",
+      "canonical_type": null,
+      "definition": null,
+      "preexisting_executable_renderer": false,
+      "preexisting_renderer_evidence": "no definition found anywhere in the tree",
+      "executable_in_p11": false,
+      "status": "BLOCKED_UNIMPLEMENTED",
+      "blocked_reason": "spec 6: implement only modes the repository supports or evidences; inventing this mode would also risk a fourth vocabulary"
+    }
+  ],
+  "counts": {
+    "executable": 3,
+    "blocked": 3
+  }
+}

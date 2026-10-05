@@ -1,0 +1,47 @@
+{
+  "schema": "hevi.p11.composition_contract.v1",
+  "generated_at": "2026-10-05T23:18:29+00:00",
+  "name": "CompositionSpec",
+  "rule": "A structural plan object holding the three canonical semantic dimensions. It is NOT a fourth vocabulary: it defines no new enum member and reuses the three owners named in CANONICAL_MAPPING.json.",
+  "fields": [
+    {
+      "name": "presenter_scale",
+      "type": "PresenterScale",
+      "owner": "hevi/production/presenter.py",
+      "question": "How large/prominent is the presenter/subject?"
+    },
+    {
+      "name": "speaker_visibility",
+      "type": "SpeakerVisibility",
+      "owner": "hevi/production/p6/schema.py",
+      "question": "Which speaker(s), if any, are visible and how?"
+    },
+    {
+      "name": "layout_mode",
+      "type": "ReframingMode",
+      "owner": "hevi/openshorts/schemas.py",
+      "question": "How is the visual space geometrically organised?"
+    },
+    {
+      "name": "parameters",
+      "type": "LayoutParameters",
+      "owner": "hevi/production/composition.py",
+      "question": "Configuration, not vocabulary. Validated per layout_mode."
+    }
+  ],
+  "non_collapse": "The three dimensions are stored separately and are never folded into a single enum. A change to one must not imply a change to another.",
+  "fail_closed": [
+    "unknown vocabulary member",
+    "missing canonical mapping",
+    "parameters invalid for the selected layout_mode",
+    "layout_mode requires a subject track and none is supplied",
+    "region outside normalised bounds",
+    "non-positive output dimensions",
+    "unsupported aspect ratio"
+  ],
+  "forbidden_behaviours": [
+    "silent fallback to centre crop",
+    "defaulting an unknown semantic value",
+    "persisting a derived value as if it were an authoritative input"
+  ]
+}
