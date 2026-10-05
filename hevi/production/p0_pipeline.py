@@ -16,7 +16,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from hevi.production.audio_master_clock_workflow import execute_audio_master_clock_task
 from hevi.production.delivery_gate import assert_explainer_compose, probe_video
@@ -160,6 +160,116 @@ def _canonical_seam() -> tuple[Any, Any, Any, Any]:
     from hevi.creative.autonomous.selection import admit_generation, resolve
 
     return RequirementBinding, RequirementBindingSet, resolve, admit_generation
+
+
+def _acquisition_seam() -> tuple[Any, Any]:
+    """取 acquisition 能力(延迟导入,理由同 `_canonical_seam`)。
+
+    返回 (StockAssetAcquirer 类, evaluate_provider_policy)。仅用于类型标注与
+    provider policy 调用;不导出符号到本模块命名空间。
+    """
+    from hevi.creative.autonomous.acquire_stock import StockAssetAcquirer
+    from hevi.provider_policy.policy import evaluate_provider_policy
+
+    return StockAssetAcquirer, evaluate_provider_policy
+
+
+async def _acquire_for_unresolved(
+    stock_acquirer: Any | None,
+    requirement: AssetRequirement,
+    unresolved_requirement_ids: tuple[str, ...],
+) -> tuple[AssetCandidate, ...]:
+    """P2-A:为 unresolved requirement 走 stock acquisition,返回**候选**。
+
+    fail-closed 三处:provider policy 选不出 provider、检索异常、单条物化异常
+    —— 全部返回空,让 resolution 保持 unresolved。绝不返回「已搞定」。
+    """
+    if stock_acquirer is None:
+        return ()
+    if requirement.requirement_id not in unresolved_requirement_ids:
+        return ()
+    _, evaluate_provider_policy = _acquisition_seam()
+    decision = await evaluate_provider_policy(
+        _stock_provider_policy(stock_acquirer.provider_id),
+        catalogue=stock_acquirer.provider_catalogue(),
+    )
+    if decision.selected_provider is None:
+        return ()
+    proposed = await stock_acquirer.propose(requirement)
+    return tuple(normalized.candidate for normalized in proposed)
+
+
+def _stock_provider_policy(provider_id: str) -> Any:
+    """stock provider 的 provider policy。只声明候选集,不设门槛。"""
+    from hevi.provider_policy.policy import ProviderPolicy
+
+    return ProviderPolicy(candidates=[provider_id], quality_floor=0)
+
+
+async def _resolve_with_acquisition(
+    shot_id: str,
+    requirement: AssetRequirement,
+    candidates: list[AssetCandidate],
+    stock_acquirer: Any | None,
+) -> tuple[ShotPreparation, ShotResolution, dict[str, Any]]:
+    """P2-A 完整闭环。生产与验收测试走**同一段**代码。
+
+    ```text
+    resolve → unresolved → stock acquire → validate → 重新 resolve
+    ```
+
+    第三返回值是 acquisition 事件说明(供 gate 记录);它**不参与**任何取舍判断。
+
+    关键纪律:acquire 成功只等于「多了候选」。新候选必须再过一次 canonical
+    scorer + selector 才可能成为 selected —— 「拿到文件」不等于「可以生成」。
+    """
+    preparation = _shot_preparation(shot_id, requirement, candidates)
+    resolution = _resolve_shot(preparation, requirement)
+    note: dict[str, Any] = {"attempted": False, "acquired": 0, "reason": ""}
+    if not resolution.unresolved_requirement_ids:
+        return preparation, resolution, note
+
+    note["attempted"] = True
+    note["reason"] = "NO_ACQUIRER_CONFIGURED" if stock_acquirer is None else "ACQUIRED"
+    acquired = await _acquire_for_unresolved(
+        stock_acquirer, requirement, resolution.unresolved_requirement_ids)
+    note["acquired"] = len(acquired)
+    if acquired:
+        preparation = _shot_preparation(
+            shot_id, requirement, [*candidates, *acquired])
+        # 重新 resolve:新候选要经过 canonical scorer + selector。
+        resolution = _resolve_shot(preparation, requirement)
+        note["reason"] = "RE_RESOLVED"
+    return preparation, resolution, note
+
+
+def _shot_preparation(
+    shot_id: str, requirement: AssetRequirement, candidates: list[AssetCandidate],
+) -> ShotPreparation:
+    """候选 → ShotPreparation。local ref 与 canonical id 分处两个 namespace。"""
+    return ShotPreparation(
+        shot_id=shot_id,
+        candidates=candidates,
+        required_asset_refs=[c.asset_ref for c in candidates],
+    )
+
+
+def _resolve_shot(preparation: ShotPreparation, requirement: AssetRequirement) -> ShotResolution:
+    """canonical resolve —— 唯一一次「谁被选」的判定。"""
+    RequirementBinding, RequirementBindingSet, resolve, _ = _canonical_seam()
+    bindings = RequirementBindingSet(tuple(
+        RequirementBinding(local_ref=c.asset_ref, requirement=requirement)
+        for c in preparation.candidates
+    ))
+    # `_canonical_seam()` 是延迟导入(见其 docstring),类型信息在此显式恢复。
+    return cast("ShotResolution", resolve(
+        preparation,
+        domain=P0_ASSET_DOMAIN,
+        scorer_registry={P0_SCORER_ID: P0_ScienceRelevanceScorer()},
+        bindings=bindings,
+        # 零候选的 requirement 必须报 unresolved,否则 acquisition 没有输入。
+        required_requirement_ids=(requirement.requirement_id,),
+    ))
 
 
 def _requirement_for(intent: VisualIntent) -> AssetRequirement:
@@ -310,7 +420,13 @@ async def run_p0_production(
     language: str = "en-US",
     voice: str = "en-US-AriaNeural",
     max_proof_seconds: int = 15,
+    stock_acquirer: Any | None = None,
 ) -> P0ProductionState:
+    """P0 全流程。
+
+    `stock_acquirer`:P2-A 的 stock acquisition 能力。`None`(默认)= 不做 fallback,
+    unresolved 的镜次不会生成 —— fail closed,而不是「悄悄用旧结论生成」。
+    """
     """Execute the full P0 canonical production chain."""
     production_id = f"p0-{uuid.uuid4().hex[:12]}"
     state = P0ProductionState(
@@ -489,32 +605,24 @@ async def run_p0_production(
                 "intent": intent.intent_id, "reason": "no semantically relevant asset"
             })
 
-    # ── 4b. CANONICAL RESOLUTION (P1) ─────────────────────────────
+    # ── 4b. CANONICAL RESOLUTION (P1) + ACQUISITION FALLBACK (P2-A) ──
     # 唯一 selection authority。打分/选择/identity 绑定全在 canonical 层完成;
-    # 本层只负责提供候选与声明适用域,不参与「选哪个」。
-    RequirementBinding, RequirementBindingSet, resolve, admit_generation = _canonical_seam()
+    # 本层只负责提供候选、声明适用域、跑 acquisition,不参与「选哪个」。
+    #
+    # 顺序不可颠倒(P2):
+    #   resolve → unresolved → acquire → validate → **重新 resolve** → admit
+    # Acquirer 永远不宣布成功;它只产出候选。选谁仍由 scorer → selector 决定。
+    admit_generation = _canonical_seam()[3]
     for intent in state.visual_intents:
-        candidates = intent_candidates.get(intent.intent_id, [])
-        if not candidates:
-            state.gate("SHOT_RESOLUTION", False, {
-                "intent": intent.intent_id, "reason": "NO_CANDIDATES"})
-            continue
-        preparation = ShotPreparation(
-            shot_id=f"{production_id}:shot-{intent.intent_id[-4:]}",
-            candidates=list(candidates),
-            required_asset_refs=[c.asset_ref for c in candidates],
-        )
-        # local asset ref → canonical p7 requirement 的显式映射(不得直接比字符串)。
-        bindings = RequirementBindingSet(tuple(
-            RequirementBinding(local_ref=c.asset_ref, requirement=_requirement_for(intent))
-            for c in candidates
-        ))
-        resolution = resolve(
-            preparation,
-            domain=P0_ASSET_DOMAIN,
-            scorer_registry={P0_SCORER_ID: P0_ScienceRelevanceScorer()},
-            bindings=bindings,
-        )
+        requirement = _requirement_for(intent)
+        shot_id = f"{production_id}:shot-{intent.intent_id[-4:]}"
+        preparation, resolution, note = await _resolve_with_acquisition(
+            shot_id, requirement, intent_candidates.get(intent.intent_id, []),
+            stock_acquirer)
+        if note["attempted"]:
+            state.gate("ASSET_ACQUISITION_ATTEMPTED", note["acquired"] > 0, {
+                "intent": intent.intent_id, **note,
+            })
         state.shot_resolutions[resolution.shot_id] = resolution
         state.gate("SHOT_RESOLUTION", resolution.ready_for_generation, {
             "intent": intent.intent_id,

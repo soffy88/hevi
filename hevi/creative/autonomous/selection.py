@@ -107,6 +107,7 @@ def resolve(
     domain: str,
     scorer_registry: Mapping[str, ScorerLike],
     bindings: RequirementBindingSet,
+    required_requirement_ids: tuple[str, ...] = (),
 ) -> ShotResolution:
     """生产接线:候选 → canonical scorer → canonical selector → 结论。
 
@@ -118,16 +119,25 @@ def resolve(
         scorer_registry: canonical scorer 注册表,由领域声明,不在本模块实现。
         bindings: shot-local asset ref → canonical requirement 的显式映射。
             local ref 只能经它查,不得直接与 requirement_id 比较(两者语义空间不同)。
+        required_requirement_ids: 本镜**要求**的 canonical requirement id。
+
+            默认空 = 现有语义(requirement 集合从候选推导)。但那样一来,一个
+            完全没有候选的 requirement 只会安静缺席,不会出现在
+            `unresolved_requirement_ids` —— 而 unresolved 正是 P2 acquisition
+            fallback chain 的输入。生产层自行补这个集合就等于重建第二套
+            resolution 语义,所以由本函数显式接受,让既有 authority 说真话。
+            这不是新增 authority:`select_candidate` 仍是唯一选择实现。
     """
     assert_single_authority()
+    all_required = tuple(sorted(
+        set(required_requirement_ids) | {c.requirement_id for c in preparation.candidates}))
     scored_status, _ = score_candidates(
         list(preparation.candidates), domain=domain, registry=dict(scorer_registry))
     if scored_status == NO_APPLICABLE_SCORER:
         return ShotResolution(
             shot_id=preparation.shot_id,
             selected_requirement_ids=(),
-            unresolved_requirement_ids=tuple(sorted(
-                {c.requirement_id for c in preparation.candidates})),
+            unresolved_requirement_ids=all_required,
             unbound_asset_refs=tuple(sorted(set(preparation.required_asset_refs))),
             human_review_required=True,
         )
@@ -139,10 +149,13 @@ def resolve(
     unbound = bindings.unbound_local_refs(required_refs) + tuple(
         ref for ref in required_refs
         if not any(c.asset_ref == ref for c in preparation.candidates))
+    # 零候选的 required requirement:没有 SELECTED,所以未解决。不静默缺席。
+    unresolved = [rid for rid in all_required
+                  if rid not in set(requirement_ids) or selected.get(rid) is None]
     return ShotResolution(
         preparation.shot_id,
         tuple(k for k, v in selected.items() if v is not None),
-        tuple(k for k, v in selected.items() if v is None),
+        tuple(unresolved),
         tuple(sorted(set(unbound))),
         needs_human_review(preparation),
     )
