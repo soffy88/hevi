@@ -12,7 +12,7 @@ resolution-markers = [
 
 [manifest]
 overrides = [
-    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=8c5eccc7dd411c5d60cc10c0a9e8278d4e750340" },
+    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=bac877084de9fce1300401111d124561ffd153b4" },
     { name = "pillow", specifier = ">=12.3.0" },
     { name = "transformers", specifier = "==5.17.0" },
 ]
@@ -1302,7 +1302,7 @@ requires-dist = [
     { name = "minio", specifier = ">=7.2.20" },
     { name = "obase", extras = ["cache", "docker"], git = "https://github.com/helios-plat/obase.git?rev=210fb151a54e005153427361d7a57679ab775edf" },
     { name = "omodul", git = "https://github.com/helios-plat/omodul.git?rev=c37519a4c77f8bf91cc10f20cc8e63d468b537ec" },
-    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=8c5eccc7dd411c5d60cc10c0a9e8278d4e750340" },
+    { name = "oprim", git = "https://github.com/helios-plat/oprim.git?rev=bac877084de9fce1300401111d124561ffd153b4" },
     { name = "oservi", git = "https://github.com/helios-plat/oservi.git?rev=d8dcea6bb0bad4155ba6e2e7311e6f201a95764d" },
     { name = "oskill", git = "https://github.com/helios-plat/oskill.git?rev=e265469ab297c8d800fd629706fcc20ff5fbff40" },
     { name = "pillow", specifier = ">=10" },
@@ -2389,7 +2389,7 @@ wheels = [
 [[package]]
 name = "oprim"
 version = "3.23.0"
-source = { git = "https://github.com/helios-plat/oprim.git?rev=8c5eccc7dd411c5d60cc10c0a9e8278d4e750340#8c5eccc7dd411c5d60cc10c0a9e8278d4e750340" }
+source = { git = "https://github.com/helios-plat/oprim.git?rev=bac877084de9fce1300401111d124561ffd153b4#bac877084de9fce1300401111d124561ffd153b4" }
 dependencies = [
     { name = "chardet" },
     { name = "dnspython" },
