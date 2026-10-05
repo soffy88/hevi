@@ -53,9 +53,7 @@ def test_no_scoring_or_ranking_implementation_in_autonomous_pkg():
         for kind, name in _functions_and_classes(tree):
             if name in ALLOWED_CONSUMERS:
                 continue
-            if any(token in name for token in SCORING_PATTERNS):
-                hits.append(f"{kind}:{name}")
-            elif any(token in name for token in RANKING_PATTERNS):
+            if any(token in name for token in SCORING_PATTERNS) or any(token in name for token in RANKING_PATTERNS):
                 hits.append(f"{kind}:{name}")
         if hits:
             offenders[module.name] = sorted(hits)
