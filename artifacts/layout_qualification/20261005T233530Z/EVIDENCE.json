@@ -1,0 +1,485 @@
+{
+  "phase": "P11_LAYOUT",
+  "generated_at": "2026-10-05T23:35:39.116332+00:00",
+  "artifact_dir": "artifacts/layout_qualification/20261005T233530Z",
+  "modes": {
+    "general": {
+      "mode": "general",
+      "verdict": "VERIFIED",
+      "receipt_status": "ACCEPTED",
+      "artifact": "artifacts/layout_qualification/20261005T233530Z/general.mp4",
+      "sha256": "f3582a60ff176b664bb7cf715dfd80350582581d8f55ec960512d3515844400c",
+      "levels": {
+        "V0": "PASS",
+        "V1": "PASS",
+        "V2": "PASS",
+        "V3": "PASS"
+      },
+      "plan": {
+        "schema": "hevi.layout_plan.v1",
+        "layout_mode": "general",
+        "presenter_scale": "MEDIUM",
+        "speaker_visibility": "FULL",
+        "canvas": {
+          "width": 1280,
+          "height": 720
+        },
+        "regions": [
+          {
+            "source": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4",
+            "role": "subject",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1.0,
+            "height": 1.0,
+            "z": 0,
+            "crop": {
+              "mode": "largest_target_aspect",
+              "target": [
+                1280,
+                720
+              ],
+              "note": "centred by construction; GENERAL declares no subject"
+            },
+            "transform": {},
+            "coordinate_system": "normalised_canvas_0_1"
+          }
+        ],
+        "requires_reframe_plan": false,
+        "reframe_plan_present": false,
+        "coordinate_system": "normalised_canvas_0_1",
+        "warnings": [],
+        "provenance": {
+          "planner_version": "p11.layout-planner-v1",
+          "shot_id": "general",
+          "vocabulary": {
+            "presenter_scale": "MEDIUM",
+            "speaker_visibility": "FULL",
+            "layout_mode": "general"
+          },
+          "vocabulary_owners": {
+            "presenter_scale": "hevi/production/presenter.py:PresenterScale",
+            "speaker_visibility": "hevi/production/p6/schema.py:SpeakerVisibility",
+            "layout_mode": "hevi/openshorts/schemas.py:ReframingMode"
+          },
+          "sources": {
+            "primary": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4",
+            "secondary": null
+          },
+          "source_dimensions": [
+            1280,
+            720
+          ],
+          "parameters": {
+            "aspect_ratio": "16:9",
+            "output_width": 1280,
+            "output_height": 720,
+            "safe_margin": 0.0,
+            "split_ratio": 0.5,
+            "inset_scale": 0.32,
+            "anchor": "bottom_right",
+            "gap": 0.0
+          },
+          "reframe_plan": null,
+          "deterministic": true
+        }
+      },
+      "semantic_verification": {
+        "layout_mode": "general",
+        "passed": true,
+        "checks": [
+          {
+            "check": "delivered_geometry_matches_planned_crop",
+            "passed": true,
+            "detail": "the artifact carries the planned target geometry",
+            "evidence": {
+              "planned": "1280,720",
+              "delivered": "1280,720"
+            }
+          },
+          {
+            "check": "frames_are_live_not_frozen",
+            "passed": true,
+            "detail": "sampled frames differ over time",
+            "evidence": {
+              "sampled": 3,
+              "distinct": 3
+            }
+          }
+        ]
+      },
+      "problems": []
+    },
+    "split": {
+      "mode": "split",
+      "verdict": "VERIFIED",
+      "receipt_status": "ACCEPTED",
+      "artifact": "artifacts/layout_qualification/20261005T233530Z/split.mp4",
+      "sha256": "aa7045f409ad94bda4989062462d61dda47fddd99b934df6628c58630660fe82",
+      "levels": {
+        "V0": "PASS",
+        "V1": "PASS",
+        "V2": "PASS",
+        "V3": "PASS"
+      },
+      "plan": {
+        "schema": "hevi.layout_plan.v1",
+        "layout_mode": "split",
+        "presenter_scale": "MEDIUM",
+        "speaker_visibility": "FULL",
+        "canvas": {
+          "width": 1280,
+          "height": 720
+        },
+        "regions": [
+          {
+            "source": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4",
+            "role": "subject",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.5,
+            "height": 1.0,
+            "z": 0,
+            "crop": {
+              "mode": "fill_region"
+            },
+            "transform": {},
+            "coordinate_system": "normalised_canvas_0_1"
+          },
+          {
+            "source": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4",
+            "role": "secondary",
+            "x": 0.5,
+            "y": 0.0,
+            "width": 0.5,
+            "height": 1.0,
+            "z": 1,
+            "crop": {
+              "mode": "fill_region"
+            },
+            "transform": {},
+            "coordinate_system": "normalised_canvas_0_1"
+          }
+        ],
+        "requires_reframe_plan": false,
+        "reframe_plan_present": false,
+        "coordinate_system": "normalised_canvas_0_1",
+        "warnings": [],
+        "provenance": {
+          "planner_version": "p11.layout-planner-v1",
+          "shot_id": "split",
+          "vocabulary": {
+            "presenter_scale": "MEDIUM",
+            "speaker_visibility": "FULL",
+            "layout_mode": "split"
+          },
+          "vocabulary_owners": {
+            "presenter_scale": "hevi/production/presenter.py:PresenterScale",
+            "speaker_visibility": "hevi/production/p6/schema.py:SpeakerVisibility",
+            "layout_mode": "hevi/openshorts/schemas.py:ReframingMode"
+          },
+          "sources": {
+            "primary": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4",
+            "secondary": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4"
+          },
+          "source_dimensions": [
+            1280,
+            720
+          ],
+          "parameters": {
+            "aspect_ratio": "16:9",
+            "output_width": 1280,
+            "output_height": 720,
+            "safe_margin": 0.0,
+            "split_ratio": 0.5,
+            "inset_scale": 0.32,
+            "anchor": "bottom_right",
+            "gap": 0.0
+          },
+          "reframe_plan": null,
+          "deterministic": true
+        }
+      },
+      "semantic_verification": {
+        "layout_mode": "split",
+        "passed": true,
+        "checks": [
+          {
+            "check": "split_halves_match_named_sources@1.0s",
+            "passed": true,
+            "detail": "left is the primary and right is the secondary",
+            "evidence": {
+              "t_s": 1.0,
+              "left_mad_to_primary": 20.19,
+              "left_mad_to_secondary": 57.65,
+              "right_mad_to_primary": 71.77,
+              "right_mad_to_secondary": 51.53,
+              "margin_required": 1.15
+            }
+          },
+          {
+            "check": "split_halves_match_named_sources@3.0s",
+            "passed": true,
+            "detail": "left is the primary and right is the secondary",
+            "evidence": {
+              "t_s": 3.0,
+              "left_mad_to_primary": 20.93,
+              "left_mad_to_secondary": 57.97,
+              "right_mad_to_primary": 72.82,
+              "right_mad_to_secondary": 62.44,
+              "margin_required": 1.15
+            }
+          },
+          {
+            "check": "split_halves_match_named_sources@5.0s",
+            "passed": true,
+            "detail": "left is the primary and right is the secondary",
+            "evidence": {
+              "t_s": 5.0,
+              "left_mad_to_primary": 20.81,
+              "left_mad_to_secondary": 42.83,
+              "right_mad_to_primary": 65.04,
+              "right_mad_to_secondary": 49.89,
+              "margin_required": 1.15
+            }
+          }
+        ]
+      },
+      "problems": []
+    },
+    "track": {
+      "mode": "track",
+      "verdict": "BLOCKED",
+      "receipt_status": "NOT_APPLICABLE",
+      "artifact": "",
+      "sha256": "",
+      "levels": {},
+      "plan": {
+        "schema": "hevi.layout_plan.v1",
+        "layout_mode": "track",
+        "presenter_scale": "FULL",
+        "speaker_visibility": "DOMINANT",
+        "canvas": {
+          "width": 1280,
+          "height": 720
+        },
+        "regions": [
+          {
+            "source": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4",
+            "role": "subject",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 1.0,
+            "height": 1.0,
+            "z": 0,
+            "crop": {
+              "mode": "reframe_plan",
+              "target": [
+                504,
+                282
+              ],
+              "windows": 8
+            },
+            "transform": {},
+            "coordinate_system": "normalised_canvas_0_1"
+          }
+        ],
+        "requires_reframe_plan": true,
+        "reframe_plan_present": true,
+        "coordinate_system": "normalised_canvas_0_1",
+        "warnings": [
+          "SUBJECT_NOT_CONTAINED:the track places the subject outside the crop at least once; the renderer does not substitute a centre crop"
+        ],
+        "provenance": {
+          "planner_version": "p11.layout-planner-v1",
+          "shot_id": "track",
+          "vocabulary": {
+            "presenter_scale": "FULL",
+            "speaker_visibility": "DOMINANT",
+            "layout_mode": "track"
+          },
+          "vocabulary_owners": {
+            "presenter_scale": "hevi/production/presenter.py:PresenterScale",
+            "speaker_visibility": "hevi/production/p6/schema.py:SpeakerVisibility",
+            "layout_mode": "hevi/openshorts/schemas.py:ReframingMode"
+          },
+          "sources": {
+            "primary": "/data/soffy/projects/hevi/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4",
+            "secondary": null
+          },
+          "source_dimensions": [
+            1280,
+            720
+          ],
+          "parameters": {
+            "aspect_ratio": "16:9",
+            "output_width": 1280,
+            "output_height": 720,
+            "safe_margin": 0.0,
+            "split_ratio": 0.5,
+            "inset_scale": 0.32,
+            "anchor": "bottom_right",
+            "gap": 0.0
+          },
+          "reframe_plan": {
+            "windows": 8,
+            "target": [
+              504,
+              282
+            ],
+            "contained": false
+          },
+          "deterministic": true
+        }
+      },
+      "semantic_verification": {
+        "layout_mode": "track",
+        "passed": false,
+        "checks": []
+      },
+      "problems": [
+        "render refused: CANNOT_COMPILE_VARYING_SIZE:ffmpeg crop size must be constant; this plan changes size between keyframes"
+      ]
+    }
+  },
+  "mutation_proof": {
+    "check": "semantic_lie_rejected",
+    "passed": true,
+    "declared": "layout_mode=split, secondary=scene_interview_720p.mp4",
+    "delivered": "both halves rendered from scene_broll_720p.mp4",
+    "verification_passed": false,
+    "failed_checks": [
+      {
+        "check": "split_halves_match_named_sources@1.0s",
+        "passed": false,
+        "detail": "at least one half does not resemble the source the plan named",
+        "evidence": {
+          "t_s": 1.0,
+          "left_mad_to_primary": 26.6,
+          "left_mad_to_secondary": 65.35,
+          "right_mad_to_primary": 29.21,
+          "right_mad_to_secondary": 53.89,
+          "margin_required": 1.15
+        }
+      },
+      {
+        "check": "split_halves_match_named_sources@3.0s",
+        "passed": false,
+        "detail": "at least one half does not resemble the source the plan named",
+        "evidence": {
+          "t_s": 3.0,
+          "left_mad_to_primary": 26.49,
+          "left_mad_to_secondary": 62.81,
+          "right_mad_to_primary": 30.46,
+          "right_mad_to_secondary": 60.47,
+          "margin_required": 1.15
+        }
+      },
+      {
+        "check": "split_halves_match_named_sources@5.0s",
+        "passed": false,
+        "detail": "at least one half does not resemble the source the plan named",
+        "evidence": {
+          "t_s": 5.0,
+          "left_mad_to_primary": 25.96,
+          "left_mad_to_secondary": 47.62,
+          "right_mad_to_primary": 30.67,
+          "right_mad_to_secondary": 62.9,
+          "margin_required": 1.15
+        }
+      }
+    ],
+    "why_v0_v3_cannot_catch_this": "the artifact decodes, matches the aspect ratio, has audio and a valid duration, and the plan is well typed; only comparing each half against each source reveals the declaration is false"
+  },
+  "fail_closed_proof": {
+    "check": "fail_closed_contract",
+    "passed": true,
+    "cases": [
+      {
+        "case": "track_without_track",
+        "refused": true,
+        "error": "REFRAME_PLAN_REQUIRED_BUT_ABSENT:layout_mode=track requires a SubjectTrack; a centre crop is not an acceptable substitute"
+      },
+      {
+        "case": "split_without_second_source",
+        "refused": true,
+        "error": "SPLIT_REQUIRES_SECOND_SOURCE:layout_mode=split needs two sources"
+      },
+      {
+        "case": "unknown_layout_mode",
+        "refused": true,
+        "error": "UNKNOWN_LAYOUT_MODE:'fullscreen'"
+      },
+      {
+        "case": "unknown_geometry_case",
+        "refused": true,
+        "error": "UNKNOWN_LAYOUT_MODE:'TRACK'"
+      },
+      {
+        "case": "contradictory_dimensions",
+        "refused": true,
+        "error": "PIP_SPEAKER_CANNOT_BE_FULLSCALE:the two dimensions disagree"
+      },
+      {
+        "case": "unknown_source_geometry",
+        "refused": true,
+        "error": "SOURCE_DIMENSIONS_REQUIRED:the planner refuses to guess source geometry"
+      }
+    ]
+  },
+  "frozen_artifact_integrity": {
+    "check": "frozen_artifact_integrity",
+    "passed": true,
+    "recorded": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585",
+    "actual": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585",
+    "receipt_file": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585",
+    "matches_receipt_file": true,
+    "git_diff_vs_tag_clean": true,
+    "tag": "REAL_VIDEO_PROOF_001"
+  },
+  "gates": {
+    "A_vocabulary_reconciled": {
+      "verdict": "PASS",
+      "basis": "one owner per dimension recorded in CANONICAL_MAPPING.json; the two SpeakerVisibility copies are related by an explicit total injective translation, not an identity alias"
+    },
+    "B_existing_semantics_preserved": {
+      "verdict": "PASS",
+      "basis": "no existing definition renamed, removed or replaced; PresenterScale, SpeakerVisibility and ReframingMode are imported as the same objects the rest of the repo uses"
+    },
+    "C_two_modes_verified_end_to_end": {
+      "verdict": "PASS",
+      "basis": "verified modes: ['general', 'split']; blocked: ['track']"
+    },
+    "D_coordinate_consistency": {
+      "verdict": "PASS",
+      "basis": "regions are normalised 0..1 and converted to pixels once, in LayoutRegion.to_px; bounds are checked at construction"
+    },
+    "E_no_silent_fallback": {
+      "verdict": "PASS",
+      "basis": "6/6 invalid inputs refused by name"
+    },
+    "F_frames_match_declared_semantics": {
+      "verdict": "PASS",
+      "basis": "a split plan rendered from a single source is rejected by pixel comparison, so agreement cannot be manufactured"
+    },
+    "_integrity": {
+      "verdict": "PASS",
+      "basis": "REAL_VIDEO_PROOF_001 is byte-identical and unmodified"
+    },
+    "_distinct_artifacts": {
+      "verdict": "PASS",
+      "basis": "2 distinct artifacts across 2 verified modes"
+    },
+    "_human_review": {
+      "verdict": "UNKNOWN",
+      "basis": "human_review=None; no reviewer has yet judged the render, so this gate is not satisfied by this run"
+    }
+  },
+  "known_limitations": [
+    "TRACK cannot be qualified on this footage: the only track source available is temporal-contrast saliency, whose radius is ~0.30 of the frame and whose centroid wanders 0.19-0.92, so no tightness setting keeps the subject contained. The mode renders and its non-centre-crop property verifies, but its containment claim does not, and no real subject detector exists in the repository to fix that."
+  ],
+  "blocked_capabilities": [
+    "SCREENCAST, INSET and PUNCH_IN remain BLOCKED_UNIMPLEMENTED; the repository contains no definition to implement."
+  ],
+  "final_verdict": "P11_LAYOUT_AWAITING_HUMAN_REVIEW"
+}
