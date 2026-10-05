@@ -361,9 +361,14 @@ async def test_studio_dispatch_ops_return_real_structured_results(tmp_path: Path
     assert (await run_op("camera_plan", {"_tool_id": "camera.close", "topic": "T"}))["plan"][
         "scene"
     ] == "T"
+    # QC ops have no evaluator wired yet, so they must report "blocked" rather
+    # than an unconditional pass. An unobserved check is not a pass.
     assert (await run_op("qc_layout", {"boxes": [1, 2]}))["boxes"] == 2
-    assert (await run_op("qc_motion", {}))["ok"] is True
+    assert (await run_op("qc_layout", {"boxes": [1, 2]}))["passed"] is None
+    assert (await run_op("qc_motion", {}))["status"] == "blocked"
+    assert (await run_op("qc_motion", {}))["reason"] == "QC_MOTION_NOT_EVALUATED"
     assert (await run_op("qc_gate", {"_tool_id": "qc.final"}))["gate"] == "final"
+    assert (await run_op("qc_gate", {"_tool_id": "qc.final"}))["status"] == "blocked"
     assert (
         await run_op(
             "clip_factory", {"edit_plan": {"cuts": [{"action": "keep"}, {"action": "drop"}]}}

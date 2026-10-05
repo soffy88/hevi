@@ -26,6 +26,27 @@ class VerdictDimensionStatus(StrEnum):
     NOT_OBSERVED = "NOT_OBSERVED"
 
 
+class CaseVerdictStatus(StrEnum):
+    """Case-level outcome. ``NOT_OBSERVED`` is not ``PASS``.
+
+    An artifact that merely probes cleanly has had at most one dimension
+    measured. Declaring it ``PASS`` would let an unknown become proof, so the
+    case verdict is only ``PASS`` when every applicable dimension was observed.
+    """
+
+    PASS = "PASS"
+    FAIL = "FAIL"
+    NOT_OBSERVED = "NOT_OBSERVED"
+
+
+#: Statuses that count as "this dimension produced a measurement".
+_OBSERVED = frozenset({
+    VerdictDimensionStatus.PASS.value,
+    VerdictDimensionStatus.FAIL.value,
+    VerdictDimensionStatus.WARN.value,
+})
+
+
 DIMENSIONS = (
     "identity_consistency", "wardrobe_consistency", "scene_consistency",
     "action_completion", "action_contact", "temporal_continuity",
@@ -56,6 +77,29 @@ def _probe(path: Path) -> dict[str, Any]:
         return cast(dict[str, Any], json.loads(proc.stdout or "{}"))
     except json.JSONDecodeError as exc:
         raise RuntimeError("FFPROBE_INVALID_JSON") from exc
+
+
+def _case_outcome(dimensions: dict[str, dict[str, Any]]) -> tuple[CaseVerdictStatus, dict[str, int]]:
+    """Derive the case verdict from dimension statuses. Never infer PASS from a probe."""
+    counts = {"observed": 0, "failed": 0, "warned": 0, "not_observed": 0, "not_applicable": 0}
+    for dimension in dimensions.values():
+        status = str(dimension["status"])
+        if status in _OBSERVED:
+            counts["observed"] += 1
+        if status == VerdictDimensionStatus.FAIL.value:
+            counts["failed"] += 1
+        elif status == VerdictDimensionStatus.WARN.value:
+            counts["warned"] += 1
+        elif status == VerdictDimensionStatus.NOT_OBSERVED.value:
+            counts["not_observed"] += 1
+        elif status == VerdictDimensionStatus.NOT_APPLICABLE.value:
+            counts["not_applicable"] += 1
+    applicable = counts["observed"] + counts["not_observed"] + counts["failed"] + counts["warned"]
+    if counts["failed"]:
+        return CaseVerdictStatus.FAIL, counts
+    if applicable and counts["not_observed"] == 0:
+        return CaseVerdictStatus.PASS, counts
+    return CaseVerdictStatus.NOT_OBSERVED, counts
 
 
 def evaluate_case_artifact(path: str | Path) -> dict[str, Any]:
@@ -90,13 +134,27 @@ def evaluate_case_artifact(path: str | Path) -> dict[str, Any]:
         "score": 1.0 if audios else None,
         "evidence_refs": ["metadata:audio_stream"] if audios else [],
     }
+    outcome, counts = _case_outcome(dimensions)
     return {
         "verdict_id": None,
-        "status": "PASS",
-        "passed": True,
+        "status": outcome.value,
+        "passed": outcome is CaseVerdictStatus.PASS,
         "dimensions": dimensions,
         "evidence": evidence,
-        "reason_codes": [],
+        "reason_codes": (
+            [] if outcome is CaseVerdictStatus.PASS else ["PROVIDER_ERROR"]
+        ),
+        "observation_coverage": {
+            **counts,
+            "applicable": counts["observed"] + counts["not_observed"]
+            + counts["failed"] + counts["warned"],
+            "reason": (
+                "every applicable dimension was observed"
+                if outcome is CaseVerdictStatus.PASS
+                else f"{counts['not_observed']} applicable dimension(s) unobserved; "
+                "an unobserved dimension is not a pass"
+            ),
+        },
         "probe": {
             "duration_s": duration,
             "video_stream": True,
@@ -132,6 +190,10 @@ async def persist_case_verdict(
 
 
 __all__ = [
-    "DIMENSIONS", "REASON_CODES", "VerdictDimensionStatus",
-    "evaluate_case_artifact", "persist_case_verdict",
+    "DIMENSIONS",
+    "REASON_CODES",
+    "CaseVerdictStatus",
+    "VerdictDimensionStatus",
+    "evaluate_case_artifact",
+    "persist_case_verdict",
 ]

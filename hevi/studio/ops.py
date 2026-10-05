@@ -25,6 +25,11 @@ def _fail(reason: str, **kw: Any) -> dict[str, Any]:
     return {"status": "failed", "reason": reason, **kw}
 
 
+def _blocked(reason: str, **kw: Any) -> dict[str, Any]:
+    """Insufficient evidence. Distinct from ``failed``: not a defect, not a pass."""
+    return {"status": "blocked", "reason": reason, "passed": None, **kw}
+
+
 async def run_op(op: str, payload: dict[str, Any]) -> dict[str, Any]:
     fn = OPS.get(op)
     if fn is None:
@@ -490,21 +495,25 @@ def qc_production(p: dict[str, Any]) -> dict[str, Any]:
         verdict = evaluate_director_delivery(p.get("shots") or [], delivery_promise="any")
         return _ok(verdict={"ok": verdict.ok, "status": verdict.status, "reason": verdict.reason})
     except Exception as exc:
-        return _ok(verdict={"ok": True, "note": str(exc)})
+        # A gate that cannot run has produced no evidence. Reporting ok=True here
+        # made an unevaluable production look verified.
+        return _blocked("QC_PRODUCTION_NOT_EVALUATED", detail=str(exc))
 
 
 def qc_layout(p: dict[str, Any]) -> dict[str, Any]:
     boxes = p.get("boxes") or []
-    return _ok(ok=True, boxes=len(boxes))
+    # No layout evaluator is wired to this surface yet. Report the observation
+    # count honestly instead of an unconditional pass.
+    return _blocked("QC_LAYOUT_NOT_EVALUATED", boxes=len(boxes))
 
 
 def qc_motion(_p: dict[str, Any]) -> dict[str, Any]:
-    return _ok(ok=True)
+    return _blocked("QC_MOTION_NOT_EVALUATED")
 
 
 def qc_gate(p: dict[str, Any]) -> dict[str, Any]:
     gate = str(p.get("_tool_id") or "gate").rsplit(".", 1)[-1]
-    return _ok(ok=True, gate=gate)
+    return _blocked("QC_GATE_NOT_EVALUATED", gate=gate)
 
 
 def clip_factory(p: dict[str, Any]) -> dict[str, Any]:
