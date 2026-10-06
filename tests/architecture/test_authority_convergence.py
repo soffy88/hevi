@@ -310,7 +310,7 @@ def test_qualification_authority_is_NOT_yet_canonical() -> None:
         f"qualification runners gained production callers: {with_prod_callers}")
 
 
-@pytest.mark.xfail(strict=True, reason="P0-3: 20 timeline representations, guard covers 0")
+@pytest.mark.xfail(strict=True, reason="P0-5: 20 predecessor representations still coexist as call sites; TimelineIR is canonical but their production paths are not yet rewired")
 def test_timeline_authority_is_NOT_yet_unique() -> None:
     """There must be one timeline model. There are twenty.
 
@@ -334,7 +334,7 @@ def test_timeline_authority_is_NOT_yet_unique() -> None:
     assert count <= 1, f"{count} timeline representations coexist"
 
 
-@pytest.mark.xfail(strict=True, reason="P0-3: timeline compiler is fail-open (hyperframes compiler never raises)")
+@pytest.mark.xfail(strict=True, reason="P0-5: the legacy hyperframes compiler is still fail-open; TimelineIR validates, but its adapter does not yet own that path")
 def test_timeline_validation_is_NOT_yet_fail_closed() -> None:
     """Unknown action / missing timestamp / negative duration must be rejected."""
     compiler = (HEVI / "providers/hyperframes/compiler.py").read_text(encoding="utf-8")
@@ -536,11 +536,18 @@ def test_repo_state_baseline_facts() -> None:
 
 def test_repo_state_frozen_commit_exists() -> None:
     """The P-1 baseline-freeze commit must be an ancestor of HEAD."""
+    # `git log` is on the repository's read-only allowlist
+    # (tests/test_p5_2_mutation_safety.py:201); `merge-base` is not.
     proc = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", "5d8bf783", "HEAD"],
-        capture_output=True, check=False)
-    assert proc.returncode == 0, (
-        "P-1 baseline freeze 5d8bf783 is not in HEAD's history")
+        ["git", "log", "--format=%H", "5d8bf783", "-n", "1"],
+        capture_output=True, text=True, check=False)
+    assert proc.stdout.strip().startswith("5d8bf783"), (
+        f"P-1 baseline freeze is not reachable from HEAD: {proc.stdout!r}")
+    ancestor = subprocess.run(
+        ["git", "log", "--format=%H", "--max-count=50"],
+        capture_output=True, text=True, check=False).stdout.split()
+    assert any(sha.startswith("5d8bf783") for sha in ancestor), (
+        "P-1 baseline freeze 5d8bf783 is not in HEAD's recent history")
 
 
 @pytest.mark.xfail(strict=True, reason="P0-4: environment-sensitive admission test defect")

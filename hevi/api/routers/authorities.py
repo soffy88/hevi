@@ -788,6 +788,11 @@ async def task_editable_export(
         "editable": to_editable_doc(timeline),
         "jianying": for_jianying(snapshot),
         "transitions": transitions,
+        # P0-3: every editable export now also emits the canonical timeline and its
+        # content hash, so a consumer can bind a downstream render to the exact
+        # timeline that produced it. Without this the export is a bag of clips and
+        # the hash has nothing to attach to.
+        "timeline_ir": _canonical_timeline_for_export(timeline, snapshot),
         "selection": {
             "presentation_version": timeline.presentation_version,
             "history_source_version": timeline.history_source_version,
@@ -795,6 +800,34 @@ async def task_editable_export(
             "source_unproven": timeline.source_unproven,
             "snapshot_id": str(snapshot.snapshot_id),
         },
+    }
+
+
+def _canonical_timeline_for_export(timeline: Any, snapshot: Any) -> dict[str, Any]:
+    """Project an ``EditableTimeline`` onto the canonical ``TimelineIR``.
+
+    Fail-closed: if the projection cannot satisfy the IR's invariants this raises, and
+    the export refuses rather than shipping an editable document whose timeline has no
+    canonical identity. A legacy timeline that does not validate is a defect to fix at
+    the source, not something to paper over at the boundary.
+    """
+    from hevi.production.timeline_adapters import from_editable_timeline
+    from hevi.production.timeline_ir import TimelineIRError
+
+    try:
+        canonical = from_editable_timeline(
+            timeline,
+            project_id=str(getattr(timeline, "project_id", "")) or "unknown",
+            revision_id=str(getattr(timeline, "revision_id", "")),
+        )
+    except TimelineIRError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"TIMELINE_NOT_CANONICAL:{exc}",
+        ) from exc
+    return {
+        **canonical.to_dict(),
+        "presentation_snapshot_id": str(snapshot.snapshot_id),
     }
 
 

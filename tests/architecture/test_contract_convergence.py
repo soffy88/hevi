@@ -370,11 +370,30 @@ def test_asset_candidate_is_NOT_yet_immutable() -> None:
         "SELECTED candidate can be flipped to REJECTED with no audit trail")
 
 
-@pytest.mark.xfail(strict=True, reason="P0-3: TimelineIR does not exist")
-def test_timeline_ir_is_NOT_yet_defined() -> None:
-    """The canonical timeline contract with a content hash."""
-    source = _source()
-    assert "class TimelineIR" in source, "no canonical TimelineIR exists"
+def test_timeline_ir_is_now_defined() -> None:
+    """P0-3 delivered this, so the P0-2 xfail marker is retired.
+
+    Kept as a positive assertion so the contract cannot silently disappear: if a
+    later refactor removes TimelineIR, this fails rather than passing because the
+    check was deleted along with it.
+    """
+    from hevi.production.timeline_ir import (  # noqa: F401
+        AudioMasterClock,
+        Canvas,
+        TimelineClip,
+        TimelineIR,
+        TimelineIRError,
+        TrackKind,
+        Transition,
+        TransitionKind,
+        validate_timeline,
+    )
+
+    assert issubclass(TimelineIRError, ValueError)
+    for name in ("canvas", "clips", "audio_master_clock", "content_hash"):
+        assert hasattr(TimelineIR, name) or name in {
+            f.name for f in dataclasses.fields(TimelineIR)}, (
+            f"TimelineIR lost {name}")
 
 
 @pytest.mark.xfail(strict=True, reason="P0-3: no timeline type exposes a content hash")
