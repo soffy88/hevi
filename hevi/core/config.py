@@ -161,6 +161,15 @@ class Settings(BaseSettings):
     # means the global registries (usage ledger, declarative endpoints) are
     # admin-only and deny everyone (fail closed).
     admin_user_ids: str = ""
+    # P0-4.1 tenant scope declarations for the canonical admission seam, as
+    # ``tenant_id|provider,provider;provider|operation,operation`` groups separated
+    # by newlines. Empty means NO tenant is permitted, so admission denies every
+    # execution (fail closed) rather than inheriting "the route was authenticated".
+    #
+    # A deployment that wants execution must declare at least one tenant. There is
+    # no membership table to verify a principal against, so this is a declared scope,
+    # not an authoritative one — see hevi/provider_policy/permission.py.
+    admission_tenant_scopes: str = ""
 
     @field_validator("jwt_secret")
     @classmethod

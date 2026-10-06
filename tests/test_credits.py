@@ -171,7 +171,7 @@ async def test_refund_for_task_no_over_refund(client):
 
 
 @pytest.mark.asyncio
-async def test_task_integration_credits(client):
+async def test_task_integration_credits(client, configure_admission_scopes):
     user_email = f"task_cred_{uuid.uuid4().hex[:6]}@example.com"
     await client.post(
         "/api/auth/register",
@@ -183,7 +183,15 @@ async def test_task_integration_credits(client):
     token = login_resp.json()["access_token"]
 
     # 新用户有 1000 credits(signup bonus),云任务需 720 → 直接够
-    payload = {"topic": "Sci-fi", "duration_archetype": "1-5min", "video_provider": "ltx2_cloud"}
+    # P0-4.1: workspace_id declares the tenant the admission seam admits under.
+    # These tests are about credits accounting; the refusal path is covered in
+    # tests/architecture/test_permission_authority.py.
+    payload = {
+        "topic": "Sci-fi",
+        "duration_archetype": "1-5min",
+        "video_provider": "ltx2_cloud",
+        "workspace_id": "test-tenant",
+    }
     with patch(
         "hevi.tasks.task_service.execute_standard_operation", new_callable=AsyncMock
     ) as mock_exec:
@@ -213,7 +221,7 @@ async def test_task_integration_credits(client):
 
 
 @pytest.mark.asyncio
-async def test_cost_settlement_refunds_cheaper_actual(client):
+async def test_cost_settlement_refunds_cheaper_actual(client, configure_admission_scopes):
     """实际成本 < 预扣(估算) → 完成后结算退差价,余额回升。"""
     import asyncio
 
@@ -229,7 +237,15 @@ async def test_cost_settlement_refunds_cheaper_actual(client):
     headers = {"Authorization": f"Bearer {token}"}
 
     # 估算按 1-5min(~180s) 预扣 720;实际只产出很短的视频 → 应退差价
-    payload = {"topic": "Sci-fi", "duration_archetype": "1-5min", "video_provider": "ltx2_cloud"}
+    # P0-4.1: workspace_id declares the tenant the admission seam admits under.
+    # These tests are about credits accounting; the refusal path is covered in
+    # tests/architecture/test_permission_authority.py.
+    payload = {
+        "topic": "Sci-fi",
+        "duration_archetype": "1-5min",
+        "video_provider": "ltx2_cloud",
+        "workspace_id": "test-tenant",
+    }
     with patch(
         "hevi.tasks.task_service.execute_standard_operation", new_callable=AsyncMock
     ) as mock_exec:
@@ -278,7 +294,15 @@ async def test_task_cloud_insufficient_credits(client):
     await account_svc.consume(user_id, SIGNUP_BONUS, "drain")
 
     # 云任务需 720 credits,余额 0 → 402
-    payload = {"topic": "Sci-fi", "duration_archetype": "1-5min", "video_provider": "ltx2_cloud"}
+    # P0-4.1: workspace_id declares the tenant the admission seam admits under.
+    # These tests are about credits accounting; the refusal path is covered in
+    # tests/architecture/test_permission_authority.py.
+    payload = {
+        "topic": "Sci-fi",
+        "duration_archetype": "1-5min",
+        "video_provider": "ltx2_cloud",
+        "workspace_id": "test-tenant",
+    }
     resp = await client.post(
         "/api/tasks/longvideo", json=payload, headers={"Authorization": f"Bearer {token}"}
     )

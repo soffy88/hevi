@@ -32,6 +32,7 @@ from hevi.production.artifacts import (
 )
 from hevi.production.contracts import ProductionRequest
 from hevi.production.execution import execute_standard_operation, execution_binding
+from hevi.provider_policy.permission import ScopeResolver, resolver_from_settings
 from hevi.queue.task_queue import enqueue
 from hevi.resilience import RetryPolicy, run_with_fallback
 from hevi.tasks.attempt_repository import AttemptRepository
@@ -52,10 +53,16 @@ class TaskService:
         repository: TaskRepository,
         billing_svc: BillingService | None = None,
         production_adapters: ProductionAdapterRegistry | None = None,
+        scope_resolver: ScopeResolver | None = None,
     ):
         self.repository = repository
         self.billing_svc = billing_svc
         self.production_adapters = production_adapters or default_production_adapters()
+        # P0-4.1: the tenant-scope resolver the admission seam consults. Injectable so
+        # a deployment can supply its own, and defaulted to the configured scopes —
+        # which, when unconfigured, deny everything. Fail-closed is deliberate: a
+        # deployment that declares no tenant gets no execution rather than all of it.
+        self.scope_resolver = scope_resolver or resolver_from_settings()
         # Attempts/checkpoints are enabled only for the PostgreSQL execution
         # boundary.  Local/fake repositories retain the old unit-test adapter
         # without pretending that an in-memory checkpoint is durable.
@@ -188,20 +195,80 @@ class TaskService:
             "revision_id": canonical_revision,
         }
 
-    async def _apply_provider_policy(self, task: dict[str, Any]) -> None:
-        """Resolve and persist the dynamic provider decision at execution time."""
+    async def _persist_permission_decision(
+        self, task: dict[str, Any], decision: Any
+    ) -> None:
+        """Write the admission permission decision to the task row.
 
+        The decision is persisted but deliberately **not** merged into the live
+        ``task["config_json"]``: that dict is splatted as ``**config_json`` into
+        ``orchestrate_longvideo`` (``task_service.py:1590``), so anything added to it
+        becomes an orchestration keyword argument. An admission record leaking into
+        creative-render kwargs would be a bug, and one that grows a new required
+        parameter each time the decision gains a field.
+
+        The in-memory copy stays clean; the row carries the record.
+        """
         if not isinstance(self.repository.pool, PgPool):
             return
+        config = {**(task.get("config_json") or {}),
+                  "permission_decision": decision.to_dict()}
+        await self.repository.update_task(
+            uuid.UUID(str(task["id"])),
+            {
+                "config_json": config,
+                "updated_at": datetime.now(UTC).replace(tzinfo=None),
+            },
+        )
+
+    async def _apply_provider_policy(self, task: dict[str, Any]) -> None:
+        """Resolve and persist the dynamic provider decision at execution time.
+
+        P0-4.1: permission is decided here, before provider selection and before
+        ``_start_attempt``, so a refusal produces no attempt row and no dispatch.
+        """
+
         from hevi.provider_policy import (
+            OperationKind,
+            PermissionError,
+            PermissionRequest,
             ProviderPolicy,
             ProviderStateRepository,
+            evaluate_permission,
             evaluate_provider_policy,
+            require_permission,
             require_provider,
         )
 
         config = dict(task.get("config_json") or {})
+
+        # P0-4.1 — permission runs BEFORE the PgPool guard on purpose.
+        #
+        # The provider *policy* below legitimately needs a Postgres pool for its
+        # health and balance state, so skipping it on a local pool is defensible.
+        # Permission is not: it is a pure decision over the task row and the declared
+        # scope, and dispatch happens later regardless of pool type. Putting it under
+        # the guard would make it a bypass for every local-mode deployment — the exact
+        # "route was authenticated, therefore execution is authorized" hole P0-4.0
+        # found. So it is asked first, unconditionally.
+        permission_request = PermissionRequest.from_task(
+            task,
+            provider=str(task.get("video_provider") or "") or "auto",
+            operation=OperationKind.RENDER,
+        )
+        permission_decision = evaluate_permission(
+            permission_request, self.scope_resolver
+        )
+        await self._persist_permission_decision(task, permission_decision)
+        if not permission_decision.allowed:
+            raise PermissionError(permission_decision)
+        require_permission(permission_request, self.scope_resolver)
+
+        if not isinstance(self.repository.pool, PgPool):
+            return
+
         requested = str(task.get("video_provider") or "")
+
         policy = ProviderPolicy(
             mode=str(config.get("provider_mode") or "t2v"),
             duration_archetype=str(task.get("duration_archetype") or "1-5min"),

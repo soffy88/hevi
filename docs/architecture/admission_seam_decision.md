@@ -222,3 +222,67 @@ P0-1's `FAILED_ADMISSION_NO_EXECUTION: PARTIAL` under-reached. No attempt row is
 created, which is correct — but `create_task:1146` persists the task and
 `:1222` reserves budget before admission runs at all, so "no execution state" is not
 the whole truth.
+
+---
+
+## P0-4.1 — permission/tenancy phase report
+
+`PERMISSION_CHECK_FAIL_CLOSED` moves from BLOCKED to **PARTIAL**. The authority
+exists and refuses; what does not exist is a tenancy model behind it.
+
+### What landed
+
+`hevi/provider_policy/permission.py` adds the layer. `evaluate_permission` checks,
+in order: principal, tenant, scope-configured, provider, capability, operation,
+budget authority, budget ceiling, execution target. The first refusal short-circuits
+the reason string but every check is still recorded, so the decision object shows
+which checks ran rather than only why they failed.
+
+`TaskService._apply_provider_policy` (`task_service.py:1364`) asks permission
+**before** the `PgPool` guard and **before** `_start_attempt`. Placing it under the
+pool guard — where the provider *policy* still lives — would have made permission a
+bypass for every local-mode deployment, which is the same
+"route-was-authenticated-therefore-worker-may-execute" hole this document exists to
+close. Local pool and PostgreSQL deployments are now judged identically.
+
+A decision is persisted to `config_json.permission_decision` on both allow and
+refuse, because a refusal that exists only in a log line cannot be audited, and a
+decision record that only records refusals cannot answer why a task *ran*.
+
+Budget is untouched by a permission refusal: the reservation stays `held`, nothing is
+settled or released, because no execution occurred. An admission verdict is not a
+cost measurement, so this layer never settles.
+
+### Two defects found while writing it
+
+The first version wrote the decision into `task["config_json"]`, which is splatted
+as `**kwargs` into `orchestrate_longvideo` (`task_service.py:1590`). That turns an
+audit field into a required render parameter, and adds a new one each time the
+decision gains a field. The persisted row and the in-memory config are now
+deliberately different objects; `test_decision_never_reaches_orchestration_kwargs`
+pins it.
+
+The scope grammar originally let a tenant scope grant `admin` by naming it, which
+contradicted its own comment and would have handed admin capability to whoever edits
+`admission_tenant_scopes` — a capability `require_admin` assumes only an explicit
+admin route can reach. `OperationKind.ADMIN` is now refused unconditionally at this
+seam. `test_admin_operation_denies_even_under_a_deliberately_wide_scope` pins it.
+
+### Why the gate is still not PASS
+
+There is no tenancy model. `hevi/auth/models.py` defines `users` and nothing else;
+`workspace_id` appears only as an optional column in video-intelligence tables. So
+the seam can only compare a caller-supplied tenant against operator-declared
+`admission_tenant_scopes`. It answers "is this tenant permitted", never "does this
+principal belong to this tenant" — the second question is the one that is actually
+an authorization question.
+
+To keep the API usable under fail-closed, `LongVideoRequest` gained an optional
+`workspace_id`, plumbed into `config_json` (`api/routers/tasks.py:39`). It is
+caller-declared, not server-derived, and that is the debt this gate is recording.
+A task created without one is denied, which is correct and also means an
+unconfigured deployment runs nothing.
+
+`PERMISSION_CHECK_FAIL_CLOSED` stays **PARTIAL** on that basis. It becomes PASS when
+a tenant is resolved from the authenticated principal against a real membership
+table, and this field can be deleted rather than trusted.

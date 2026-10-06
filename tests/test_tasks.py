@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from hevi.production.execution import execute_standard_operation
+from hevi.provider_policy.permission import resolver_from_settings
 from hevi.tasks.models import ShotState, VideoTask
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository
@@ -84,9 +85,22 @@ def repository(mock_pool):
     return TaskRepository(mock_pool)
 
 
+# P0-4.1: the admission seam denies by default, because an undeclared tenant is not
+# a permitted tenant. These fixtures exercise run_task end-to-end and are not testing
+# permission, so they declare the scope they run under rather than the seam being
+# relaxed. The permission tests live in tests/architecture/test_permission_authority.py
+# and cover denial explicitly.
+# Execution targets are left unconstrained (empty field) so these fixtures are not
+# about target scoping; provider and capability scope is what they need.
+TEST_TENANT_SCOPE = (
+    "test-tenant|ltx2_cloud,v,wan_local|||render,regenerate,qualification|100000.0"
+)
+
+
 @pytest.fixture
 def task_service(repository):
-    return TaskService(repository)
+    return TaskService(repository, scope_resolver=resolver_from_settings(
+        TEST_TENANT_SCOPE))
 
 
 @pytest.mark.asyncio
@@ -120,7 +134,11 @@ async def test_run_task_success(task_service, repository, tmp_path: Path):
         "duration_archetype": "1-5min",
         "video_provider": "ltx2_cloud",
         "audio_provider": "vibevoice",
-        "config_json": {"style": "cinematic"},
+        "user_id": "user-test",
+        # workspace_id is the tenant the admission seam reads. It rides along in
+        # config_json, which this path splats into orchestrate_longvideo, so the
+        # expected call below accounts for it like any other config key.
+        "config_json": {"style": "cinematic", "workspace_id": "test-tenant"},
         "status": "pending",
         "progress_pct": 0.0,
     }
@@ -162,6 +180,7 @@ async def test_run_task_success(task_service, repository, tmp_path: Path):
             progress_cb=ANY,  # SaaS-4:逐阶段进度回调随调用注入
             character_reference=ANY,  # 角色库:按 subject_id 解析的参考图(此处 None)
             subject_version=ANY,  # shot_verdict 版本快照(此处 None,无 subject_id)
+            workspace_id="test-tenant",  # P0-4.1:tenant,由 admission seam 读取
         )
 
 
@@ -453,7 +472,8 @@ async def test_run_task_auto_rework_on_failed_quality(task_service, repository, 
         "duration_archetype": "1-5min",
         "video_provider": "wan_local",
         "audio_provider": "vibevoice",
-        "config_json": {},  # auto_rework 走 settings 默认(1 轮)
+        "user_id": "user-test",
+        "config_json": {"workspace_id": "test-tenant"},  # auto_rework 走 settings 默认(1 轮)
         "status": "pending",
         "progress_pct": 0.0,
     }
@@ -526,7 +546,8 @@ async def test_run_task_failure(task_service, repository):
         "duration_archetype": "1-5min",
         "video_provider": "v",
         "audio_provider": "a",
-        "config_json": {},
+        "user_id": "user-test",
+        "config_json": {"workspace_id": "test-tenant"},
         "status": "pending",
     }
 

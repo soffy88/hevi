@@ -316,7 +316,7 @@ async def test_run_with_fallback_final_failure_exception():
 
 
 @pytest.mark.asyncio
-async def test_task_service_run_task_with_fallback_integration():
+async def test_task_service_run_task_with_fallback_integration(admission_scope):
     from hevi.tasks.task_service import TaskService
 
     repo = AsyncMock()
@@ -327,10 +327,14 @@ async def test_task_service_run_task_with_fallback_integration():
         "duration_archetype": "1-5min",
         "video_provider": "ltx2_cloud",
         "audio_provider": "vibevoice",
-        "config_json": {"provider_fallback_candidates": ["ltx2_cloud", "happyhorse_1_1_maas_lock"]},
+        "user_id": "user-test",
+        "config_json": {
+            "workspace_id": "test-tenant",
+            "provider_fallback_candidates": ["ltx2_cloud", "happyhorse_1_1_maas_lock"],
+        },
     }
 
-    service = TaskService(repo)
+    service = TaskService(repo, scope_resolver=admission_scope)
 
     with (
         patch("hevi.tasks.task_service.orchestrate_longvideo") as mock_orch,

@@ -42,6 +42,13 @@ class LongVideoRequest(BaseModel):
     # E3 execution preset (economy/balanced/fast). When set, fills provider/quality
     # defaults; any explicitly-set field below still overrides the preset.
     preset: str | None = None
+    # P0-4.1: the tenant this task executes under. The admission seam
+    # (`provider_policy.permission`) reads it to resolve a declared TenantScope and
+    # denies when it is absent or undeclared. It is caller-declared rather than
+    # derived from the authenticated user, because no workspace/membership model
+    # exists yet — see docs/architecture/admission_seam_decision.md. Until one does,
+    # omitting this denies the task instead of silently inheriting a default tenant.
+    workspace_id: str | None = None
     video_provider: str | None = None
     audio_provider: str | None = None
     num_characters: int = 1
@@ -171,6 +178,11 @@ async def _create_task(
             "provider_quality_floor": int(resolved.get("provider_quality_floor", "9")),
             "transition": body.transition,
         }
+        # P0-4.1: carry the declared tenant through to the admission seam. Set even
+        # when None would be noise, so only a real value is written; an absent key
+        # is what the seam reads as "no tenant declared".
+        if body.workspace_id:
+            ctrl["workspace_id"] = body.workspace_id
         for k in (
             "style_preset",
             "prompt_style",

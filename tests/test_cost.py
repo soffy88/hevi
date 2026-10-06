@@ -238,7 +238,7 @@ async def test_task_service_create_task_limit_rejection():
 
 
 @pytest.mark.asyncio
-async def test_task_service_run_task_with_monitoring_and_recording():
+async def test_task_service_run_task_with_monitoring_and_recording(admission_scope):
     repo = AsyncMock()
     task_id = uuid.uuid4()
     repo.get_task.return_value = {
@@ -247,9 +247,10 @@ async def test_task_service_run_task_with_monitoring_and_recording():
         "duration_archetype": "1-5min",
         "video_provider": "ltx2_cloud",
         "audio_provider": "vibevoice",
-        "config_json": {},
+        "user_id": "user-test",
+        "config_json": {"workspace_id": "test-tenant"},
     }
-    service = TaskService(repo)
+    service = TaskService(repo, scope_resolver=admission_scope)
 
     with (
         # 3O 迁移后 run_task 经 hevi.production.execution.execute_standard_operation
@@ -281,7 +282,7 @@ async def test_task_service_run_task_with_monitoring_and_recording():
 
 
 @pytest.mark.asyncio
-async def test_fallback_cost_reestimate():
+async def test_fallback_cost_reestimate(admission_scope):
     repo = AsyncMock()
     task_id = uuid.uuid4()
     repo.get_task.return_value = {
@@ -290,12 +291,14 @@ async def test_fallback_cost_reestimate():
         "duration_archetype": "1-5min",
         "video_provider": "ltx2_cloud",
         "audio_provider": "vibevoice",
+        "user_id": "user-test",
         "config_json": {
+            "workspace_id": "test-tenant",
             "estimated_usd": 7.2,
             "provider_fallback_candidates": ["ltx2_cloud", "happyhorse_1_1_maas_lock"],
         },
     }
-    service = TaskService(repo)
+    service = TaskService(repo, scope_resolver=admission_scope)
 
     # Mock fallback sequence: ltx2 fails, wan succeeds
     with (
