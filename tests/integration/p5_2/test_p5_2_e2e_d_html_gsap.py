@@ -18,7 +18,18 @@ Frame-exactness is *not* claimed for anything but what is measured, and
 from __future__ import annotations
 
 import shutil
+import hashlib
 from pathlib import Path
+
+
+def _digest(path: Path) -> str:
+    """sha256 of an artifact, computed by the *observer*.
+
+    Deliberately not `RenderResult.content_hash`: P9.1.d removed that field because a
+    renderer hashing its own output is a second artifact authority. The test is an
+    observer, so it may measure — the renderer may not.
+    """
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 import pytest
 from p5_2_real_assets import ffprobe_duration
@@ -62,7 +73,10 @@ def test_e2e_d1_html_gsap_renders_a_real_video(tmp_path: Path) -> None:
     duration = ffprobe_duration(output)
     assert abs(duration - 2.0) < 0.15, f"render is {duration:.3f}s, plan asked for 2.0s"
     assert result.frame_count == 60, result.frame_count
-    assert result.content_hash, "no content hash recorded for a real render"
+    # P9.1.d: the renderer no longer hashes its own output (audit R1), so this test
+    # observes the artifact instead. The intent — a real render happened — is
+    # unchanged; only the vantage point moved from the renderer to the test.
+    assert _digest(output), "real render produced no bytes to observe"
 
 
 def test_e2e_d2_two_renders_of_the_same_plan_are_byte_identical(tmp_path: Path) -> None:
@@ -79,7 +93,7 @@ def test_e2e_d2_two_renders_of_the_same_plan_are_byte_identical(tmp_path: Path) 
     left, right = Path(first.output_path).read_bytes(), Path(second.output_path).read_bytes()
     assert len(left) == len(right), f"sizes differ: {len(left)} vs {len(right)}"
     assert left == right, "two renders of one plan produced different bytes"
-    assert first.content_hash == second.content_hash
+    assert _digest(Path(first.output_path)) == _digest(Path(second.output_path))
     assert first.frame_deterministic is True, (
         "the renderer did not claim determinism for a render that was byte-identical"
     )
@@ -97,7 +111,7 @@ def test_e2e_d3_a_different_plan_produces_different_bytes(tmp_path: Path) -> Non
         tmp_path / "worded", renderer_id=RendererId.HTML_GSAP,
     )
     assert plain.outcome is RenderOutcome.OK and worded.outcome is RenderOutcome.OK
-    assert plain.content_hash != worded.content_hash, (
+    assert _digest(Path(plain.output_path)) != _digest(Path(worded.output_path)), (
         "changing the plan's text did not change the render"
     )
 

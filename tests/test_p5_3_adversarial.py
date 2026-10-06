@@ -121,8 +121,8 @@ def test_no_random_selection() -> None:
     lib = _lib()
     beat = _beat()
     from hevi.production.p5_3.retrieval import retrieve_recipes
-    c1 = retrieve_recipes(lib, beat)
-    c2 = retrieve_recipes(lib, beat)
+    c1, _ = retrieve_recipes(lib, beat)
+    c2, _ = retrieve_recipes(lib, beat)
     assert [c.recipe_id for c in c1] == [c.recipe_id for c in c2]
 
 

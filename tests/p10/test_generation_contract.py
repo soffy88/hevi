@@ -41,7 +41,7 @@ class FakeBackend:
     def __init__(self, caps: dict[str, bool], *, name: str = "fake", version: str = "1",
                  bind_state: bool = True, fps: int = 24) -> None:
         self.name, self.version = name, version
-        self._caps = VideoGenerationCapabilities(dict(caps))
+        self._caps = VideoGenerationCapabilities(declared=dict(caps))
         self._bind_state = bind_state
         self._fps = fps
         self.calls: list[VideoGenerationRequest] = []

@@ -13,6 +13,8 @@ from typing import Any
 
 import yaml
 
+from hevi.providers.facts import PROVIDER_CATALOGUE
+
 STATUSES = {
     "PRODUCTION_COMPLETE",
     "QUALIFIED",
@@ -73,15 +75,68 @@ def _hardware_available() -> bool:
     return result.returncode == 0 and bool(result.stdout.strip())
 
 
+class UnknownRenderRuntime(ValueError):
+    """A recipe named a render runtime the catalogue does not declare."""
+
+
+def _declared_providers_for(capability: str) -> list[str]:
+    """Providers the catalogue says can serve ``capability``.
+
+    R3: this used to ``return ["h3_local"]``. A module inside ``hevi/qualification/``
+    naming a provider in code is a miniature second selection authority — eligibility
+    is ``ProviderPolicy``'s question, and identity is ``ProviderCatalogue``'s. The name
+    is now a *query*, so a provider added to the catalogue is discoverable here without
+    this file changing.
+    """
+    return sorted(
+        provider_id
+        for provider_id in PROVIDER_CATALOGUE.list_ids()
+        if capability in PROVIDER_CATALOGUE.resolve(provider_id).capabilities
+    )
+
+
+#: Recipes may name a render runtime; the catalogue decides whether it exists.
+#: R3 removed a hardcoded provider set here, so a typo can no longer silently select a
+#: provider that was never declared.
+_RENDER_CAPABILITY = "t2v"
+
+
+#: R3: an undeclared render runtime is recorded, not selected and not fatal here. The
+#: report turns it into a blocker, so a recipe naming a renderer the catalogue has not
+#: caught up with produces an honest BLOCKED line instead of a crash.
+_last_undeclared: list[str] = []
+
+
+def undeclared_runtimes(recipe: dict[str, Any]) -> list[str]:
+    """Render runtimes the recipe names that the catalogue does not declare."""
+    _provider_needs(recipe)
+    return list(_last_undeclared)
+
+
 def _provider_needs(recipe: dict[str, Any]) -> list[str]:
     tools = set(recipe.get("tools", []))
     providers: list[str] = []
-    if recipe.get("render_runtime") in {"remotion", "hyperframes", "manim"}:
-        providers.append(recipe["render_runtime"])
+    undeclared_runtime: list[str] = []
+
+    runtime = recipe.get("render_runtime")
+    if runtime:
+        if PROVIDER_CATALOGUE.get(str(runtime)) is not None:
+            providers.append(str(runtime))
+        else:
+            # An undeclared render runtime is a *reportable* gap, not an exception.
+            # R3 removed a hardcoded provider set here; validating against the catalogue
+            # is the point, but this module must not crash on a real production recipe
+            # that names a renderer the catalogue has not caught up with. It records
+            # the blocker and refuses to qualify — which is the honest outcome.
+            undeclared_runtime.append(str(runtime))
+
     if any("h3" in tool or "avatar" in tool for tool in tools):
-        providers.append("h3_local")
+        # the avatar provider is queried, not asserted
+        providers.extend(_declared_providers_for("avatar"))
     if any(tool.startswith(("score.", "research.", "script.")) for tool in tools):
         providers.append("llm")
+
+    _last_undeclared[:] = undeclared_runtime
     # Translation is a real provider call in the production localization
     # workflow.  Do not allow a line to appear eligible when its translation
     # dependency is only discovered after the renderer starts.
@@ -96,7 +151,13 @@ def _provider_needs(recipe: dict[str, Any]) -> list[str]:
 
 def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict[str, Any]:
     provider_required = _provider_needs(recipe)
-    hardware_line = "h3_local" in provider_required
+    # derived from declared locality, not from a provider's name
+    hardware_line = any(
+        (PROVIDER_CATALOGUE.get(pid) is not None
+         and PROVIDER_CATALOGUE.resolve(pid).locality.value == "LOCAL"
+         and PROVIDER_CATALOGUE.resolve(pid).capabilities)
+        for pid in provider_required
+    ) or "h3" in json.dumps(recipe.get("tools", []))
     readiness_path = Path("artifacts/qualification/provider_readiness.json")
     readiness = (
         json.loads(readiness_path.read_text(encoding="utf-8"))
@@ -120,7 +181,7 @@ def _base_report(line: str, recipe: dict[str, Any], evidence_root: Path) -> dict
     if hardware_line and not hardware_available:
         status = "BLOCKED_HARDWARE"
         blockers.extend(
-            dependency_blockers or ["h3_local=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable"]
+            dependency_blockers or ["LOCAL_PROVIDER=BLOCKED_HARDWARE:nvidia-smi/CUDA unavailable"]
         )
     elif dependency_blockers:
         blockers.extend(dependency_blockers)

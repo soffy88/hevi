@@ -31,4 +31,5 @@ def test_e2e_b_science_explainer(tmp_path: Path) -> None:
 
 def retrieve_recipes_from_lib(lib, beat, profile):
     from hevi.production.p5_3.retrieval import retrieve_recipes
-    return retrieve_recipes(lib, beat, profile_id=profile)
+    cands, _ = retrieve_recipes(lib, beat, profile_id=profile)
+    return cands

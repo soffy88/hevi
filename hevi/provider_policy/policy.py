@@ -15,6 +15,13 @@ from pydantic import BaseModel, Field
 
 from hevi.cost.estimator import estimate_cost
 from hevi.cost.selector import PROVIDER_QUALITY
+from hevi.providers.facts import (
+    PROVIDER_CATALOGUE,
+    ProviderCapabilityState,
+    ProviderCatalogue,
+    ProviderLicenseClass,
+    ProviderLocality,
+)
 from hevi.resilience.live_state import provider_routable
 from hevi.video.capability_guard import PROVIDER_LIMITS
 
@@ -57,6 +64,13 @@ class ProviderDecision(BaseModel):
     explored: bool = False
     policy_version: int = 1
 
+    # ── structured provider facts (P7.1) ──
+    # The sole source of truth for what a provider *is*. Consumers read these
+    # instead of parsing provider ids. Absent means unknown, never inferred.
+    locality: dict[str, ProviderLocality] = Field(default_factory=dict)
+    license_class: dict[str, ProviderLicenseClass] = Field(default_factory=dict)
+    capability_states: dict[str, ProviderCapabilityState] = Field(default_factory=dict)
+
 
 class ProviderPolicyError(ValueError):
     def __init__(self, decision: ProviderDecision) -> None:
@@ -70,21 +84,45 @@ class ProviderPolicyError(ValueError):
 
 
 async def evaluate_provider_policy(
-    policy: ProviderPolicy, *, state_repository: Any | None = None
+    policy: ProviderPolicy,
+    *,
+    state_repository: Any | None = None,
+    catalogue: ProviderCatalogue | None = None,
 ) -> ProviderDecision:
     candidates = policy.candidates or list(PROVIDER_LIMITS)
     decision = ProviderDecision(
         considered=list(candidates),
         policy_version=policy.policy_version,
     )
+
+    # ── P7.2: materialise declared provider facts ──
+    # Read from the catalogue, never inferred from a provider id. A provider the
+    # catalogue does not know contributes nothing, so consumers see UNRESOLVED
+    # and fail closed rather than receiving a guess.
+    facts_source = catalogue if catalogue is not None else PROVIDER_CATALOGUE
+    decision.locality = {}
+    decision.license_class = {}
+    decision.capability_states = {}
+    for provider_id in candidates:
+        facts = facts_source.facts_for(provider_id)
+        if not facts["locality"]:
+            continue
+        decision.locality.update(facts["locality"])
+        decision.license_class.update(facts["license_class"])
+        decision.capability_states.update(facts["capability_states"])
     eligible: list[tuple[str, float]] = []
     for provider_id in candidates:
         limits = PROVIDER_LIMITS.get(provider_id)
         reasons: list[str] = []
-        if limits is None:
+        # A provider exists if the catalogue declares it, or if the video limits
+        # table describes it. PROVIDER_LIMITS alone was a de facto registry, and a
+        # video-only one: an image or stock provider the catalogue declares had no
+        # route to selection at all. Typos are still rejected — a candidate in
+        # neither source is unknown.
+        if limits is None and not facts_source.has(provider_id):
             reasons.append("unknown_provider")
-        else:
-            runtime_state: dict[str, Any] = {}
+        runtime_state: dict[str, Any] = {}
+        if limits is not None:
             if policy.mode not in limits.modes:
                 reasons.append(f"mode_unsupported:{policy.mode}")
             reasons.extend(
@@ -200,7 +238,10 @@ def require_provider(decision: ProviderDecision) -> str:
 
 
 __all__ = [
+    "ProviderCapabilityState",
     "ProviderDecision",
+    "ProviderLicenseClass",
+    "ProviderLocality",
     "ProviderPolicy",
     "ProviderPolicyError",
     "ProviderRejection",

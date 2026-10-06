@@ -26,7 +26,7 @@ def test_e2e_f_variety_across_three_videos(tmp_path: Path) -> None:
     for video_index in range(3):
         beats = make_beats(4, profile="EMOTIONAL_BOOK_REVIEW", intent="EVOKE_EMOTION")
         for beat in beats:
-            cands = retrieve_recipes(lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW")
+            cands, _ = retrieve_recipes(lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW")
             assert cands
             selected = cands[0]
             # The evidence comes from the same canonical path, not a fixture:

@@ -125,6 +125,30 @@ def _lock(duration: float = 4.2) -> AudioLock:
 # ── test_presenter_plan ──────────────────────────────────────────────────
 
 
+
+
+def _observed(result, *, duration: bool = False):
+    """Measure a rendered artifact as an *observer*.
+
+    P9.1.d removed ``RenderResult.content_hash`` and the renderer's ffprobe duration
+    call (audit R1): a renderer that hashes or probes its own output is a second
+    artifact authority. These tests are observers, so they may measure; the renderer may
+    not. Every assertion below keeps its original intent — only the vantage point moved.
+    """
+    import hashlib
+    import subprocess
+    from pathlib import Path as _Path
+
+    payload = _Path(result.output_path).read_bytes()
+    if duration:
+        proc = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", result.output_path],
+            capture_output=True, text=True, check=False, timeout=60,
+        )
+        return float(proc.stdout.strip() or 0.0)
+    return hashlib.sha256(payload).hexdigest()
+
 def test_presenter_plan_is_bound_to_an_audio_lock() -> None:
     lock = _lock()
     plan = build_presenter_plan(
@@ -859,7 +883,7 @@ def test_frame_determinism_produces_identical_bytes(tmp_path: Path) -> None:
     first = renderer.render(plan, tmp_path / "a")
     second = renderer.render(plan, tmp_path / "b")
     assert first.outcome is RenderOutcome.OK
-    assert first.content_hash == second.content_hash
+    assert _observed(first) == _observed(second)
     assert first.frame_deterministic is True
     assert first.sandbox_report["clean"] is True
 
@@ -879,7 +903,7 @@ def test_frame_determinism_is_content_sensitive(tmp_path: Path) -> None:
     b = renderer.render(
         RenderPlan(shot_id="b", duration_s=1.2, caption_text="第二段"), tmp_path / "b"
     )
-    assert a.content_hash != b.content_hash
+    assert _observed(a) != _observed(b)
 
 
 @pytest.mark.slow
@@ -893,7 +917,9 @@ def test_html_backend_renders_a_real_video(tmp_path: Path) -> None:
     )
     assert result.outcome is RenderOutcome.OK
     assert Path(result.output_path).is_file()
-    assert abs(result.duration_s - 1.5) < 0.1
+    # P9.1.d: the renderer no longer probes its own duration (audit R1); the
+    # observer measures it. Intent unchanged.
+    assert abs(_observed(result, duration=True) - 1.5) < 0.1
 
 
 # ══ H. Editable backends ════════════════════════════════════════════════

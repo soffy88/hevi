@@ -129,9 +129,33 @@ def _render_video(video_id: str, style: dict[str, str], out_dir: Path) -> list[s
         result = render(plan, out_dir / video_id, renderer_id=RendererId.HTML_GSAP)
         assert result.outcome is RenderOutcome.OK, (video_id, result.reason)
         assert Path(result.output_path).is_file()
-        hashes.append(result.content_hash)
+        hashes.append(_observed(result))
     return hashes
 
+
+
+
+def _observed(result, *, duration: bool = False):
+    """Measure a rendered artifact as an *observer*.
+
+    P9.1.d removed ``RenderResult.content_hash`` and the renderer's ffprobe duration
+    call (audit R1): a renderer that hashes or probes its own output is a second
+    artifact authority. These tests are observers, so they may measure; the renderer may
+    not. Every assertion below keeps its original intent — only the vantage point moved.
+    """
+    import hashlib
+    import subprocess
+    from pathlib import Path as _Path
+
+    payload = _Path(result.output_path).read_bytes()
+    if duration:
+        proc = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", result.output_path],
+            capture_output=True, text=True, check=False, timeout=60,
+        )
+        return float(proc.stdout.strip() or 0.0)
+    return hashlib.sha256(payload).hexdigest()
 
 def test_e2e_e1_three_videos_render_for_real_and_differ(tmp_path: Path) -> None:
     """Three real videos, three real sets of bytes."""

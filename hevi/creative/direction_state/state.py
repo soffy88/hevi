@@ -27,6 +27,9 @@ class DirectionState:
     version: int = 1  # state record version, bumped per transition
     compile_receipt: str = ""
     artifact_hash: str = ""
+    # Director Contract V1 binding; defaults preserve legacy snapshots.
+    proposal_hash: str = ""
+    approved_proposal_hash: str = ""
 
 
 @dataclass(frozen=True)

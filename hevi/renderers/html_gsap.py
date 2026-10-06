@@ -26,7 +26,6 @@ frame count derived from the plan duration.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import shutil
@@ -249,28 +248,6 @@ def _ffmpeg() -> str:
     return os.getenv("FFMPEG_BIN", "ffmpeg")
 
 
-def _probe_duration(path: Path) -> float:
-    import subprocess
-
-    try:
-        out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "csv=p=0", str(path)],
-            capture_output=True, text=True, timeout=60, check=False,
-        )
-        return float(out.stdout.strip())
-    except (OSError, ValueError):
-        return 0.0
-
-
-def _hash_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return f"sha256:{digest.hexdigest()}"
-
-
 class HtmlGsapRenderer(RendererBackend):
     """HTML/CSS/JS -> deterministic frames -> encoded video."""
 
@@ -441,10 +418,13 @@ class HtmlGsapRenderer(RendererBackend):
                 result.reason = f"ENCODE_FAILED:{encode.stderr[-200:]}"
                 return result
 
+            # P9.1.d / audit R1: the renderer returns a locator and stops there. It
+            # used to probe duration with ffprobe and hash its own output, which made
+            # it a second artifact authority — and a validator touching the bytes it
+            # judges. Proof now belongs to P8.3 (ProductionReceipt) and P8.4
+            # (ArtifactValidation).
             result.output_path = str(target)
-            result.duration_s = _probe_duration(target)
             result.frame_count = frame_count
-            result.content_hash = _hash_file(target)
             result.frame_deterministic = True
             result.capability_used = [RendererCapability.HTML.value, RendererCapability.FRAME_EXACT.value]
             result.sandbox_report = report.to_dict(

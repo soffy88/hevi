@@ -6,10 +6,70 @@ All metrics are derived from the library state, not hardcoded.
 
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from hevi.production.p5_3.library import RecipeLibrary
-from hevi.production.p5_3.schema import QualificationState, RecipeFamily
+from hevi.production.p5_3.schema import (
+    QualificationState,
+    RecipeCandidate,
+    RecipeFamily,
+    RecipeSelectionEvidence,
+)
+
+
+@dataclass
+class RetrievalMetrics:
+    """Runtime retrieval statistics, accumulated across retrieve_with_evidence calls."""
+
+    total_runs: int = 0
+    total_candidates: int = 0
+    total_accepted: int = 0
+    total_rejected: int = 0
+    semantic_rejections: int = 0
+    constraint_rejections: int = 0
+    renderer_rejections: int = 0
+    no_winner_runs: int = 0
+
+    def record(
+        self,
+        evidence: RecipeSelectionEvidence,
+        candidates: list[RecipeCandidate],
+    ) -> None:
+        self.total_runs += 1
+        self.total_candidates += len(evidence.candidate_recipe_ids)
+        if evidence.selected_recipe_id:
+            self.total_accepted += 1
+        else:
+            self.no_winner_runs += 1
+        self.total_rejected += len(evidence.rejected_candidates)
+        for reason in evidence.rejection_reasons.values():
+            if reason.startswith("constraint:"):
+                self.constraint_rejections += 1
+            elif "CAPABILITY_MISSING" in reason:
+                self.renderer_rejections += 1
+            elif "lower score" in reason:
+                self.semantic_rejections += 1
+
+    def to_dict(self) -> dict[str, Any]:
+        d = asdict(self)
+        d["SEMANTIC_REJECTION_RATE"] = round(
+            self.semantic_rejections / max(self.total_rejected, 1), 3
+        )
+        d["CONSTRAINT_REJECTION_RATE"] = round(
+            self.constraint_rejections / max(self.total_rejected, 1), 3
+        )
+        d["RENDERER_REJECTION_RATE"] = round(
+            self.renderer_rejections / max(self.total_rejected, 1), 3
+        )
+        return d
+
+
+_retrieval_metrics = RetrievalMetrics()
+
+
+def get_retrieval_metrics() -> dict[str, Any]:
+    return _retrieval_metrics.to_dict()
 
 
 def compute_metrics(library: RecipeLibrary) -> dict[str, Any]:
@@ -67,9 +127,9 @@ def compute_metrics(library: RecipeLibrary) -> dict[str, Any]:
         "RECIPE_FAMILY_DIVERSITY": round(family_diversity, 3),
         "RECIPE_REPETITION_RATE": round(repetition_rate, 3),
         "PROFILE_RECIPE_DIVERSITY": round(profile_diversity, 3),
-        "SEMANTIC_REJECTION_RATE": 0.0,  # Not measurable without retrieval runs
-        "CONSTRAINT_REJECTION_RATE": 0.0,  # Not measurable without retrieval runs
-        "RENDERER_REJECTION_RATE": 0.0,  # Not measurable without retrieval runs
+        "SEMANTIC_REJECTION_RATE": get_retrieval_metrics().get("SEMANTIC_REJECTION_RATE", 0.0),
+        "CONSTRAINT_REJECTION_RATE": get_retrieval_metrics().get("CONSTRAINT_REJECTION_RATE", 0.0),
+        "RENDERER_REJECTION_RATE": get_retrieval_metrics().get("RENDERER_REJECTION_RATE", 0.0),
         "QUALIFIED_RECIPE_COUNT": qualified,
         "EXPERIMENTAL_RECIPE_COUNT": experimental,
         "DEPRECATED_RECIPE_COUNT": deprecated,

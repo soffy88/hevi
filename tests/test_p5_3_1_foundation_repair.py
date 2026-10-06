@@ -107,7 +107,7 @@ def test_static_recipes_gain_no_spurious_note() -> None:
 def test_evidence_path_matches_canonical_path() -> None:
     lib = _lib()
     beat = _beat()
-    plain = retrieve_recipes(lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW")
+    plain, _ = retrieve_recipes(lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW")
     ranked, _ = retrieve_with_evidence(lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW")
     assert [c.recipe_id for c in plain] == [c.recipe_id for c in ranked]
 

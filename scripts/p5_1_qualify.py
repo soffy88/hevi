@@ -41,6 +41,8 @@ from hevi.ops.p5_1_types import (  # noqa: E402
 )
 
 GATE_ORDER = [
+    ("P5_1_TEST_REGISTRY", "registry"),
+    ("P5_1_TEST_SUITE", "registry"),
     ("LICENSE_BOUNDARY", "tests/test_p5_1_architecture.py"),
     ("VIDEO_UNDERSTANDING_PROVIDER", "tests/test_p5_1_review.py"),
     ("NATIVE_VIDEO_INPUT", "probe"),
@@ -83,6 +85,26 @@ GATE_ORDER = [
 ]
 
 P5_1_TESTS = sorted((REPO / "tests").glob("test_p5_1_*.py"))
+
+#: Every P5.1 test file qualification is required to execute. Declared
+#: explicitly rather than derived from the glob, so that deleting or renaming a
+#: file fails the coverage gate instead of silently shrinking the set of things
+#: qualification claims to have proved. Two of these (calibration, parametric
+#: text) back no individual gate, so without this list they would never run.
+MANDATORY_P5_1_TESTS = (
+    "test_p5_1_adversarial.py",
+    "test_p5_1_architecture.py",
+    "test_p5_1_calibration.py",
+    "test_p5_1_editable.py",
+    "test_p5_1_evidence.py",
+    "test_p5_1_pairwise.py",
+    "test_p5_1_parametric_text.py",
+    "test_p5_1_presentation.py",
+    "test_p5_1_qualify_harness.py",
+    "test_p5_1_repair.py",
+    "test_p5_1_review.py",
+    "test_p5_1_session.py",
+)
 
 #: The specification's window for a Case A knowledge talk. Not a tuning knob:
 #: widening it to accommodate a short render would be defeating the gate.
@@ -158,6 +180,26 @@ class Qualification:
     def gate(self, name: str) -> Gate | None:
         return next((g for g in self.gates if g.name == name), None)
 
+    def gates_named(self, name: str) -> list[Gate]:
+        """Every gate recorded under ``name``.
+
+        A name can legitimately appear more than once: some gates are proved by
+        a test file and then re-decided by live evidence (e.g.
+        VIDEO_UNDERSTANDING_PROVIDER is both a test-backed gate and a
+        probe-driven one). ``gate()`` returns only the first, so any report
+        built from it silently drops the others. Reporting code must use this.
+        """
+        return [g for g in self.gates if g.name == name]
+
+    def duplicate_gate_names(self) -> dict[str, int]:
+        """Gate names recorded more than once, with their occurrence counts.
+
+        Derived from the recorded gates, so it cannot drift from the list the
+        reader can actually see.
+        """
+        occurrences = Counter(g.name for g in self.gates)
+        return {name: n for name, n in occurrences.items() if n > 1}
+
     def verdict(self) -> str:
         failing = [g.name for g in self.gates if g.status != "PASS"]
         if self.blocked:
@@ -169,7 +211,10 @@ class Qualification:
 
 def _run_tests(selection: list[str]) -> tuple[bool, str]:
     if not selection:
-        return True, "no tests selected"
+        # An empty selection is a failure state, not a vacuous pass. A gate that
+        # executed nothing has verified nothing, and reporting PASS for it would
+        # be exactly the kind of unearned green this harness exists to prevent.
+        return False, "NO_TESTS_SELECTED: refusing to report PASS for an empty selection"
     result = subprocess.run(
         [sys.executable, "-m", "pytest", *selection, "-q", "-p", "no:randomly"],
         capture_output=True, text=True, cwd=REPO, timeout=1800, check=False,
@@ -183,6 +228,29 @@ def _load_case(out: Path, case: str) -> dict[str, Any] | None:
     if not path.is_file():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _test_registry_coverage() -> tuple[bool, str]:
+    """Every mandatory P5.1 test file must exist and be inside P5_1_TESTS.
+
+    Run before the per-gate executions. If the registry has lost a file, the
+    per-gate runs below would quietly cover less than qualification reports, so
+    this is checked first and fails closed.
+    """
+    registered = {p.name for p in P5_1_TESTS}
+    missing = [n for n in MANDATORY_P5_1_TESTS if not (REPO / "tests" / n).is_file()]
+    unregistered = [n for n in MANDATORY_P5_1_TESTS if n not in registered]
+    problems: list[str] = []
+    if missing:
+        problems.append(f"MISSING_TEST_FILES:{','.join(missing)}")
+    if unregistered:
+        problems.append(f"UNREGISTERED_TESTS:{','.join(unregistered)}")
+    if problems:
+        return False, " | ".join(problems)
+    return (
+        True,
+        f"{len(MANDATORY_P5_1_TESTS)}/{len(MANDATORY_P5_1_TESTS)} mandatory P5.1 tests present and registered",
+    )
 
 
 def _stage(case: dict[str, Any], name: str) -> dict[str, Any] | None:
@@ -235,20 +303,43 @@ def main() -> int:
     cases = {case: _load_case(out, case) for case in ("a", "b", "c")}
 
     # ── Gates ──
+    # Coverage is proved before anything is executed. If the registry is short a
+    # mandatory file, the per-gate runs below would under-report what was
+    # checked, so this gate fails first and the verdict follows.
+    coverage_ok, coverage_detail = _test_registry_coverage()
+    qualification.gates.append(
+        Gate("P5_1_TEST_REGISTRY", "PASS" if coverage_ok else "FAIL", coverage_detail)
+    )
+
     test_groups: dict[str, list[str]] = {}
     for name, source in GATE_ORDER:
         if source.endswith(".py"):
             test_groups.setdefault(source, []).append(name)
 
     for source, names in test_groups.items():
-        if source == "tests/test_p5_1_architecture.py":
-            ok, detail = True, "audited by test_p5_1_architecture"
-        else:
-            ok, detail = _run_tests([source])
+        # Every gate backed by a test file is proved by executing that file. A
+        # gate is never PASS because a file it names happens to exist on disk.
+        ok, detail = _run_tests([source])
         for name in names:
             qualification.gates.append(
                 Gate(name, "PASS" if ok else "FAIL", f"{Path(source).name}: {detail}")
             )
+
+    # Run the whole mandatory registry as one suite. This is deliberately in
+    # addition to the per-gate runs above: those give each gate its own evidence,
+    # while this proves the files backing no individual gate (calibration,
+    # parametric text) still execute and the suite is green as a whole.
+    if coverage_ok:
+        suite_ok, suite_detail = _run_tests(
+            [f"tests/{name}" for name in MANDATORY_P5_1_TESTS]
+        )
+        qualification.gates.append(
+            Gate("P5_1_TEST_SUITE", "PASS" if suite_ok else "FAIL", suite_detail)
+        )
+    else:
+        qualification.gates.append(
+            Gate("P5_1_TEST_SUITE", "FAIL", "not run: mandatory test registry incomplete")
+        )
 
     # probe-driven gates
     qualification.gates.append(
@@ -478,7 +569,20 @@ def main() -> int:
     total_gates = len(qualification.gates)
     accounted = pass_gates + fail_gates + blocked_gates + deferred_gates
     gate_accounting_ok = accounted == total_gates
-    remaining = [g.name for g in qualification.gates if g.status != "PASS"]
+    # Keep the gate objects, not just their names. A name list plus a first-match
+    # lookup would report a blocked duplicate under the status of a passing one.
+    remaining_gates = [g for g in qualification.gates if g.status != "PASS"]
+    remaining = [g.name for g in remaining_gates]
+
+    # Duplicate identifiers are surfaced, never collapsed. The check passes when
+    # every recorded gate is individually reported, which is what removes the
+    # ambiguity: a duplicated name is a fact the reader must see, not an error
+    # to be hidden and not a verdict input.
+    duplicate_names = qualification.duplicate_gate_names()
+    reported_non_pass = len(remaining_gates)
+    duplicate_check_ok = reported_non_pass == sum(
+        1 for g in qualification.gates if g.status != "PASS"
+    )
 
     payload = {
         "verdict": qualification.verdict(),
@@ -494,6 +598,18 @@ def main() -> int:
             "REMAINING_COUNT": len(remaining),
             "REMAINING": remaining,
         },
+        "duplicate_gate_identifiers": {
+            "DUPLICATE_GATE_CHECK": "PASS" if duplicate_check_ok else "FAIL",
+            "DUPLICATE_NAMES": duplicate_names,
+            "DUPLICATE_NAME_COUNT": len(duplicate_names),
+            "NON_PASS_GATES_REPORTED": reported_non_pass,
+            "NOTE": (
+                "Gate names may repeat by design when a gate is both test-backed "
+                "and evidence-driven. Every occurrence is reported individually; "
+                "none are collapsed. This block is reporting only and is not an "
+                "input to the verdict."
+            ),
+        },
         "gates": [g.to_dict() for g in qualification.gates],
         "measurements": qualification.measurements,
         "blocked": qualification.blocked,
@@ -505,7 +621,6 @@ def main() -> int:
         json.dumps(payload, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
     )
 
-    failed = remaining
     print(f"VERDICT: {qualification.verdict()}")
     print(
         f"GATES: {pass_gates}/{total_gates} PASS "
@@ -522,11 +637,38 @@ def main() -> int:
             f"{pass_gates}+{fail_gates}+{blocked_gates}+{deferred_gates}"
             f"={accounted} but {total_gates} gates were recorded"
         )
-    if failed:
+    print(
+        f"DUPLICATE_GATE_CHECK: {payload['duplicate_gate_identifiers']['DUPLICATE_GATE_CHECK']} "
+        f"({reported_non_pass} non-PASS gates reported individually)"
+    )
+    if duplicate_names:
+        print("  gate names recorded more than once (every occurrence reported below):")
+        for dup_name, dup_n in sorted(duplicate_names.items()):
+            detail = "; ".join(
+                f"[{i}] {g.status}"
+                for i, g in enumerate(qualification.gates_named(dup_name), 1)
+            )
+            print(f"    {dup_name} x{dup_n}: {detail}")
+    else:
+        print("  no duplicate gate identifiers")
+    if remaining_gates:
         print("NOT PASS:")
-        for name in failed:
-            gate = qualification.gate(name)
-            print(f"  {name}: {gate.status if gate else '?'} - {gate.evidence if gate else ''}")
+        # Iterate the recorded gate objects. Resolving each name to its first
+        # match here printed a passing status for a blocked duplicate, which is
+        # the ambiguity this block exists to remove. The loop variable is not
+        # named ``gate``: that name is already bound to a str earlier in this
+        # function, and reusing it both shadows the real type and reintroduces
+        # the first-match collapse.
+        for non_pass in remaining_gates:
+            occurrences = qualification.gates_named(non_pass.name)
+            if len(occurrences) > 1:
+                index = occurrences.index(non_pass) + 1
+                print(
+                    f"  {non_pass.name} [{index}/{len(occurrences)}]: "
+                    f"{non_pass.status} - {non_pass.evidence}"
+                )
+            else:
+                print(f"  {non_pass.name}: {non_pass.status} - {non_pass.evidence}")
     return 0
 
 

@@ -41,7 +41,7 @@ def test_e2e_e_reference_decomposition(tmp_path: Path) -> None:
     lib = make_library()
     beats = make_beats(5, profile="HISTORICAL_NARRATIVE", intent="NARRATE")
     for beat in beats:
-        cands = retrieve_recipes(lib, beat, profile_id="HISTORICAL_NARRATIVE")
+        cands, _ = retrieve_recipes(lib, beat, profile_id="HISTORICAL_NARRATIVE")
         assert cands
 
     video = render_video(beats, tmp_path / "render")

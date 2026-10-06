@@ -138,6 +138,14 @@ class DirectionRepository:
                 raise ConflictError(
                     f"expected {cmd.expected_state}, actual {state.lifecycle} (no last-write-wins)")
             to_state = machine.resolve(state.lifecycle, cmd.action)  # I1, no mutation yet
+            bound_hash = bindings.get("proposal_hash", "")
+            if cmd.action == "APPROVE" and state.proposal_hash and bound_hash != state.proposal_hash:
+                raise ConflictError("APPROVE proposal_hash does not match current proposal")
+            if cmd.action == "COMPILE" and state.proposal_hash:
+                if bound_hash != state.proposal_hash:
+                    raise ConflictError("COMPILE proposal_hash does not match current proposal")
+                if state.approved_proposal_hash != state.proposal_hash:
+                    raise ConflictError("COMPILE requires approval bound to current proposal")
             machine.check_bindings(cmd.action, to_state, cmd.revision, bindings)  # I5
             if cmd.action == "REJECT":
                 event: TransitionEvent | ReviewEvent = ReviewEvent(
@@ -151,7 +159,12 @@ class DirectionRepository:
                 state.project_id, state.direction_id, state.revision, Lifecycle(to_state),
                 updated_at=_now(), version=state.version + 1,
                 compile_receipt=bindings.get("compile_receipt", state.compile_receipt),
-                artifact_hash=bindings.get("artifact_hash", state.artifact_hash))
+                artifact_hash=bindings.get("artifact_hash", state.artifact_hash),
+                proposal_hash=bindings.get("proposal_hash", state.proposal_hash),
+                approved_proposal_hash=(
+                    bindings.get("proposal_hash", state.approved_proposal_hash)
+                    if cmd.action == "APPROVE" else state.approved_proposal_hash
+                ))
             seq = len(events) + 1
             tev = TransitionEvent(
                 event_id=f"{cmd.direction_id}:r{cmd.revision}:{seq}", command_id=cmd.command_id,

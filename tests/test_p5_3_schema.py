@@ -22,8 +22,8 @@ from hevi.production.p5_3.schema import (
 )
 
 
-def _recipe(**kwargs) -> CinematicRecipe:
-    defaults = dict(
+def _recipe(**kwargs: object) -> CinematicRecipe:
+    defaults: dict[str, object] = dict(
         recipe_id="COMPOSITION.CENTERED_HERO",
         version="1.0.0",
         recipe_family=RecipeFamily.COMPOSITION,
@@ -31,7 +31,7 @@ def _recipe(**kwargs) -> CinematicRecipe:
         description="Subject centered, evidence on right",
     )
     defaults.update(kwargs)
-    return CinematicRecipe(**defaults)
+    return CinematicRecipe(**defaults)  # type: ignore[arg-type]
 
 
 def test_recipe_requires_id_version_name() -> None:

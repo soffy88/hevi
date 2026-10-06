@@ -22,7 +22,7 @@ def test_e2e_a_emotional_book_review(tmp_path: Path) -> None:
 
     families_seen: set[str] = set()
     for beat in beats:
-        cands = retrieve_recipes(lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW")
+        cands, _ = retrieve_recipes(lib, beat, profile_id="EMOTIONAL_BOOK_REVIEW")
         assert cands, f"no candidates for {beat.beat_id}"
         selected = cands[0]
         for c in cands:

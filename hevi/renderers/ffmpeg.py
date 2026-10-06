@@ -9,7 +9,6 @@ still frame that carries no meaning.
 
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
 import subprocess
@@ -47,26 +46,6 @@ def plan_requires_semantic_motion(plan: RenderPlan) -> list[str]:
 
 def _ffmpeg() -> str:
     return os.getenv("FFMPEG_BIN", "ffmpeg")
-
-
-def _probe_duration(path: Path) -> float:
-    try:
-        out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "csv=p=0", str(path)],
-            capture_output=True, text=True, timeout=60, check=False,
-        )
-        return float(out.stdout.strip())
-    except (OSError, ValueError):
-        return 0.0
-
-
-def _hash_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return f"sha256:{digest.hexdigest()}"
 
 
 class FfmpegRenderer(RendererBackend):
@@ -133,10 +112,12 @@ class FfmpegRenderer(RendererBackend):
             result.reason = f"FFMPEG_FAILED:{proc.stderr[-200:]}"
             return result
 
+        # P9.1.d / audit R1: the renderer returns a locator and stops there. It used to
+        # probe duration with ffprobe and hash its own output, which made it a second
+        # artifact authority — and a validator touching the bytes it judges. Proof now
+        # belongs to P8.3 (ProductionReceipt) and P8.4 (ArtifactValidation).
         result.output_path = str(target)
-        result.duration_s = _probe_duration(target)
         result.frame_count = round(plan.duration_s * plan.fps)
-        result.content_hash = _hash_file(target)
         result.frame_deterministic = True
         result.capability_used = [RendererCapability.VIDEO.value]
         result.extra_checks = {  # type: ignore[attr-defined]

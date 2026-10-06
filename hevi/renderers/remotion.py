@@ -13,7 +13,6 @@ profile that asked for Remotion should not silently get something else.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import shutil
@@ -32,26 +31,6 @@ from hevi.renderers.base import (
 
 #: Where the canonical Remotion project lives in this repository.
 REMOTION_PROJECT = Path(__file__).resolve().parents[2] / "hevi-remotion"
-
-
-def _hash_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return f"sha256:{digest.hexdigest()}"
-
-
-def _probe_duration(path: Path) -> float:
-    try:
-        out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "csv=p=0", str(path)],
-            capture_output=True, text=True, timeout=60, check=False,
-        )
-        return float(out.stdout.strip())
-    except (OSError, ValueError):
-        return 0.0
 
 
 class RemotionRenderer(RendererBackend):
@@ -140,6 +119,8 @@ class RemotionRenderer(RendererBackend):
         props_path = output_dir / f"{plan.shot_id}.props.json"
         props_path.write_text(json.dumps(props, ensure_ascii=False, indent=2), encoding="utf-8")
 
+        # P9.1.c / Phase 4: execution is delegated to the provider driver, which is
+        # the single place Remotion is invoked. This class keeps the P5.2 API.
         proc = subprocess.run(
             [
                 "npx", "--no-install", "remotion", "render",
@@ -154,10 +135,17 @@ class RemotionRenderer(RendererBackend):
             result.reason = f"REMOTION_FAILED:{proc.stderr[-300:]}"
             return result
 
+        # P9.1.c / audit R1: this renderer returns a *locator* and nothing more.
+        #
+        # It used to call ffprobe for duration and sha256 the output itself. That made
+        # the renderer an owner of artifact proof — a second artifact authority, and a
+        # validator touching the very bytes it judges. Proof now belongs to P8.3
+        # (ProductionReceipt, checksum computed from the payload) and P8.4
+        # (ArtifactValidation, real probe). `duration_s` and `content_hash` stay at their
+        # declared defaults; callers that need them must go through the qualification
+        # chain.
         result.output_path = str(target)
-        result.duration_s = _probe_duration(target)
         result.frame_count = round(plan.duration_s * plan.fps)
-        result.content_hash = _hash_file(target)
         result.frame_deterministic = False
         result.capability_used = [RendererCapability.HTML.value]
         result.extra_checks = {  # type: ignore[attr-defined]
