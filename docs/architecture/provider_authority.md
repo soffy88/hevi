@@ -248,11 +248,66 @@ repaired before bypasses are discussed:
   Correcting the datum without making the field authoritative would have let it
   drift back, so both were necessary.
 
-Remaining work for the gate to reach PASS:
+## 7. P0-4.2.2 — the migration
 
-1. migrate `PROVIDER_LIMITS` → `ProviderProfile`; delete the table (keep a projection)
-2. migrate `*_CAPABILITY` rows → `ProviderProfile`; delete them
-3. correct the 9 divergent capability rows, starting with the 7 fail-open ones
-4. catalogue the 20 registry-only providers
-5. catalogue the 5 spec-only providers
-6. make `PROVIDER_REGISTRY_SINGLE_SOURCE` a test, not a claim
+`ProviderProfile` now owns capability and limits. `PROVIDER_LIMITS` is a read-only
+projection derived from the catalogue at import time
+(`video/capability_guard.py::_project_limits`), so there is no second table left to
+write a divergent fact into.
+
+### What moved
+
+`max_resolution`, `max_duration_s`, `fps_options`, `native_audio`, `lip_sync` and
+`last_verified` were added to `ProviderProfile`; all 14 rows were migrated and
+verified field-by-field against the old table.
+
+`ProviderProfile` also gained the queries the callers had been hand-rolling:
+`supports()`, `admits_resolution()`, `admits_duration_s()`, `admits_fps()`.
+
+### Every limit defaults to `None`, not to infinity
+
+A provider with no declared ceiling **refuses**. A permissive default would mean
+that adding a provider without limits quietly widened what the fleet could do —
+the same fail-open shape as the i2v over-claim, introduced by the migration itself.
+`test_undeclared_limits_refuse_rather_than_assume_unbounded` pins it.
+
+Providers without declared ceilings are *absent* from the projection rather than
+present with a zero limit, because `validate_request` distinguishes "unknown
+provider" from "provider cannot do this" and those are different refusals.
+
+### The nine divergent rows were corrected, not just relocated
+
+| Provider | was | now | evidence |
+|----------|------|-----|----------|
+| h3_local | catalogue `t2v` | `t2v, i2v, native_audio, zh_prompt` | `H3_LOCAL_CAPABILITY` |
+| manim | catalogue `t2v` / limits `code_scene` | `t2v, code_scene` | `MANIM_CAPABILITY` — the union; neither old source was complete |
+| hailuo, happyhorse_1_1, happyhorse_1_1_maas, kling_v2, veo3, wan_2_7, wan_2_7_maas | catalogue `i2v, t2v` | `t2v` | the t2v entry point takes no reference image; i2v is a separate registered id |
+
+The `*_CAPABILITY` rows in `providers/h3_local/` and `providers/manim/` remain as
+the provenance they are — module-level schema documentation mirroring the spec —
+but they no longer disagree with an authority, because there is no second authority
+left to disagree with.
+
+### Divergence count: 9 → 0
+
+The tests that detected the divergence have been inverted into convergence
+assertions. Asserting `== 9` would have meant editing a list into silence;
+asserting `== 0` plus the structural reason (the projection is derived) is what keeps
+it true.
+
+### Gate status
+
+`PROVIDER_REGISTRY_SINGLE_SOURCE`: **PARTIAL**. Capability and limits are now
+single-sourced in `ProviderProfile`, and the nine divergences are closed.
+
+Still open, unchanged in kind:
+
+1. the per-provider `*_CAPABILITY` rows are provenance, not yet formally declared as
+   such — a reader could still treat them as authoritative
+2. the 20 registry-only providers remain uncatalogued (executable, undescribable)
+3. the 5 spec-only providers remain uncatalogued
+4. `PROVIDER_REGISTRY_SINGLE_SOURCE` as a single test does not exist yet
+
+Items 2 and 3 are catalogue backfill, deliberately sequenced after the authority was
+made sound — backfilling wrong rows into a wrong schema is how the nine divergences
+happened.

@@ -1,13 +1,14 @@
-"""P0-4.2.0 — provider authority invariants.
+"""P0-4.2 — provider authority invariants.
 
-`docs/architecture/provider_authority.md` records the classification. These tests
-pin the four defects that were live at the time of writing, because each one is
-silent: none of them raises, they just produce a confidently wrong answer about a
-provider.
+`docs/architecture/provider_authority.md` records the classification and the four
+defects that were live when it was written.
 
-A passing suite here means the double-source problem is *detected*. The gate
-`PROVIDER_REGISTRY_SINGLE_SOURCE` stays BLOCKED until these are inverted to assert
-convergence rather than divergence.
+The first version of these tests asserted the defects *existed*, so that fixing one
+moved a count rather than being edited into silence. After P0-4.2.2 those detectors
+had nothing left to detect, and they are now convergence assertions: the divergence
+count is zero, and the structural reason it stays zero is asserted directly --
+`PROVIDER_LIMITS` is derived from the catalogue at import time, so there is no
+second table to write a divergent fact into.
 """
 
 from __future__ import annotations
@@ -25,107 +26,139 @@ def _shared_catalogue_and_limits() -> list[str]:
     return sorted(set(PROVIDER_CATALOGUE.list_ids()) & set(PROVIDER_LIMITS))
 
 
-# ------------------------------------------- defect 1: capability divergence
+# ----------------------------------------- convergence: capability is single-sourced
 
 
-def test_catalogue_and_limits_disagree_for_nine_providers():
-    """The headline finding: 9 of 14 shared providers have two capability answers.
+def test_catalogue_and_limits_can_no_longer_disagree():
+    """The 9-provider divergence is closed.
 
-    Pinned as a divergence count rather than a list of names so that fixing one
-    provider moves the number and the test tells the truth about progress, instead
-    of being edited into silence.
+    This was originally asserted as `== 9`: a detector, so that fixing one provider
+    moved a number instead of being edited into silence. Now that the data is
+    single-sourced the number is zero, and the detector has nothing left to detect,
+    so it becomes a convergence assertion. `PROVIDER_LIMITS` is a projection of the
+    catalogue, so this cannot drift again without the import failing first.
     """
     divergent = [
         provider_id
-        for provider_id in _shared_catalogue_and_limits()
+        for provider_id in sorted(set(PROVIDER_CATALOGUE.list_ids()) & set(PROVIDER_LIMITS))
         if set(PROVIDER_CATALOGUE.get(provider_id).capabilities)
         != set(PROVIDER_LIMITS[provider_id].modes)
     ]
-    assert len(divergent) == 9, f"expected 9 divergent, got {divergent}"
+    assert divergent == [], f"capability divergence has returned: {divergent}"
+
+
+def test_limits_is_a_projection_of_the_catalogue_not_a_second_table():
+    """The structural guarantee behind the convergence above.
+
+    `PROVIDER_LIMITS` used to be a writable dict literal. It is now derived from
+    `PROVIDER_CATALOGUE` at import time, which is why there is no second place for a
+    divergent fact to be written. Asserted structurally because that, rather than
+    the current data, is what keeps it true.
+    """
+    from hevi.video import capability_guard
+
+    assert callable(capability_guard._project_limits)
+    for provider_id, limits in PROVIDER_LIMITS.items():
+        profile = PROVIDER_CATALOGUE.get(provider_id)
+        assert set(limits.modes) == set(profile.capabilities)
+        assert limits.max_resolution == profile.max_resolution
+        assert limits.max_duration_s == profile.max_duration_s
+        assert limits.fps_options == (profile.fps_options or frozenset())
+        assert limits.native_audio == profile.native_audio
+        assert limits.lip_sync == profile.lip_sync
+        assert limits.last_verified == profile.last_verified
 
 
 @pytest.mark.parametrize(
     "provider_id",
     [
-        # catalogue claims i2v; the t2v callable takes no reference image and i2v
-        # is registered as a separate provider id (`happyhorse_1_1_ref`,
-        # `wan22_kf2v_maas` under image_to_video).
+        # i2v was over-claimed here. The t2v entry point takes no reference image and
+        # i2v is registered as a separate provider id (`happyhorse_1_1_ref`,
+        # `wan22_kf2v_maas` under image_to_video), so the claim was fail-open.
         "hailuo", "happyhorse_1_1", "happyhorse_1_1_maas", "kling_v2", "veo3",
         "wan_2_7", "wan_2_7_maas",
     ],
 )
-def test_catalogue_over_claims_i2v(provider_id: str):
-    """Fail-open direction: the catalogue advertises a capability that cannot run."""
-    profile = PROVIDER_CATALOGUE.get(provider_id)
-    assert "i2v" in profile.capabilities, (
-        f"{provider_id} no longer over-claims i2v in the catalogue — "
-        "the divergence for this provider may be fixed; move it out of this list"
-    )
-    assert "i2v" not in PROVIDER_LIMITS[provider_id].modes
+def test_i2v_is_no_longer_over_claimed(provider_id: str):
+    """Fail-open capability claims are corrected in the canonical row."""
+    assert "i2v" not in PROVIDER_CATALOGUE.get(provider_id).capabilities
 
 
-def test_limits_agree_with_the_providers_own_capability_row():
-    """A third copy of the same fact must not exist.
+def test_catalogue_agrees_with_the_providers_own_capability_row():
+    """The third copy of the same fact is gone.
 
-    `H3_LOCAL_CAPABILITY` is cited by `capability_guard.py:60` and `registry.py:304`
-    as the evidence for the limits. If the row and the limits drift apart, the
-    comment becomes a lie.
+    `H3_LOCAL_CAPABILITY` was cited by `capability_guard.py:60` and `registry.py:304`
+    as the evidence for the limits table, so the row and the table could drift apart
+    and the comment would become a lie. The catalogue now carries the same set the
+    provider module declares.
     """
     from hevi.providers.h3_local.provider import H3_LOCAL_CAPABILITY
 
-    limits_modes = set(PROVIDER_LIMITS["h3_local"].modes)
-    declared_modes = set(H3_LOCAL_CAPABILITY["capabilities"]) & {"i2v", "t2v"}
-    assert limits_modes == declared_modes
-    # and the native_audio flag agrees too
-    assert PROVIDER_LIMITS["h3_local"].native_audio is (
-        "native_audio" in H3_LOCAL_CAPABILITY["capabilities"]
+    declared = set(H3_LOCAL_CAPABILITY["capabilities"])
+    assert set(PROVIDER_CATALOGUE.get("h3_local").capabilities) == declared
+    assert PROVIDER_CATALOGUE.get("h3_local").native_audio is (
+        "native_audio" in declared
     )
 
 
-def test_manim_capability_neither_source_is_complete():
-    """Neither the catalogue nor the limits holds manim's true capability set.
+def test_manim_capability_is_now_complete():
+    """manim was wrong in *both* sources; the truth is the union.
 
-    Recorded because "pick one source and delete the other" is the wrong fix for
-    this row: the union is the truth, so the migration has to add information
-    rather than only move it.
+    Recorded because "pick one source and delete the other" is the wrong fix for this
+    row: information had to be added, not just moved. The catalogue now carries
+    `MANIM_CAPABILITY`'s modes in full.
     """
     from hevi.providers.manim.provider import MANIM_CAPABILITY
 
-    catalogue = set(PROVIDER_CATALOGUE.get("manim").capabilities)
-    limits = set(PROVIDER_LIMITS["manim"].modes)
     truth = set(MANIM_CAPABILITY["capabilities"]) & {"t2v", "code_scene"}
-    assert catalogue != truth
-    assert limits != truth
-    assert catalogue | limits == truth
+    assert set(PROVIDER_CATALOGUE.get("manim").capabilities) == truth
+    assert truth == {"t2v", "code_scene"}
 
 
-# ------------------------------------- defect 2: the policy capability gate
+# ------------------------------- the policy capability gate can now actually open
 
 
-def test_required_capability_gate_cannot_see_modes():
-    """`policy.py` reads capabilities as boolean attributes that do not exist.
+def test_capability_query_covers_both_schema_shapes():
+    """Modes live in `capabilities`, feature flags are booleans. Both must answer.
 
-    `ProviderLimits` stores modes in a frozenset, so `getattr(limits, "t2v", False)`
-    is False for every provider and every t2v/i2v request is rejected. This asserts
-    the *shape* mismatch rather than the rejection, because the rejection depends on
-    policy configuration and the mismatch does not.
+    `policy.py` used to do `getattr(limits, capability, False)`, which resolved only
+    the boolean shape -- so every t2v/i2v requirement failed against every provider
+    and was reported as `capability_missing`. That refusal looked deliberate and was
+    in fact a shape mismatch. `ProviderProfile.supports()` covers both.
     """
-    limits = PROVIDER_LIMITS["ltx2_cloud"]
-    assert not hasattr(limits, "t2v")
-    assert not hasattr(limits, "i2v")
-    assert "t2v" in limits.modes
-    # The only capability-shaped attributes that actually resolve are the two
-    # genuine booleans, which is why the bug went unnoticed.
-    assert limits.native_audio is True
-    assert limits.lip_sync is False
+    ltx2 = PROVIDER_CATALOGUE.get("ltx2_cloud")
+    assert ltx2.supports("t2v"), "mode shape must resolve"
+    assert ltx2.supports("i2v"), "mode shape must resolve"
+    assert ltx2.supports("native_audio") is True, "flag shape must resolve"
+    assert ltx2.supports("lip_sync") is False, "flag shape must resolve, as False"
+    assert ltx2.supports("nonexistent") is False
+
+
+@pytest.mark.asyncio
+async def test_a_t2v_request_selects_a_provider():
+    """The gate opens. Before P0-4.2 this rejected every provider in the field.
+
+    A refusal that cannot be distinguished from a deliberate policy decision is
+    worse than no check at all, because it reads as a considered answer.
+    """
+    from hevi.provider_policy.policy import ProviderPolicy, evaluate_provider_policy
+
+    decision = await evaluate_provider_policy(
+        ProviderPolicy(mode="t2v", required_capabilities={"t2v"})
+    )
+    rejections = {r.provider_id: r.reasons for r in decision.rejected}
+    assert "capability_missing:t2v" not in str(rejections), (
+        f"the capability gate regressed to refusing everything: {rejections}"
+    )
+    assert decision.selected_provider, "no provider satisfied a plain t2v request"
 
 
 def test_obase_capability_tags_are_mostly_absent():
     """`validate_request` prefers obase tags, which are empty almost everywhere.
 
-    This is why `PROVIDER_LIMITS` is the de facto production authority despite
-    `PROVIDER_CATALOGUE` claiming to be canonical: nothing reads the catalogue's
-    capabilities at all.
+    This is why `PROVIDER_LIMITS` was the de facto production authority despite
+    `PROVIDER_CATALOGUE` claiming to be canonical. Recorded because it explains why
+    the catalogue's capabilities went unchallenged for as long as they did.
     """
     from obase.provider_registry import ProviderRegistry
 
@@ -312,3 +345,55 @@ def test_locality_agrees_with_probeability():
             assert health in local_health_kinds, (
                 f"{provider_id} is LOCAL but probes as {health!r}"
             )
+
+# --------------------------------- fail-closed semantics of the absorbed limits
+
+
+def test_undeclared_limits_refuse_rather_than_assume_unbounded():
+    """A missing ceiling must not become a permissive default.
+
+    `ProviderProfile`'s limit fields default to `None` rather than to infinity or a
+    generous constant. If they defaulted permissively, adding a provider without
+    limits would quietly widen what the fleet can do -- the same fail-open shape as
+    the i2v over-claim, but introduced by the migration itself.
+    """
+    undeclared = [
+        provider_id
+        for provider_id in PROVIDER_CATALOGUE.list_ids()
+        if PROVIDER_CATALOGUE.get(provider_id).max_resolution is None
+    ]
+    assert undeclared, "expected providers without declared ceilings to exist"
+    profile = PROVIDER_CATALOGUE.get(undeclared[0])
+    assert not profile.admits_resolution(640, 480)
+    assert not profile.admits_duration_s(1.0)
+    assert not profile.admits_fps(30)
+    assert not profile.supports("t2v")
+
+
+def test_declared_limits_still_admit_within_range():
+    """The refactor must not have tightened everything into unusability."""
+    wan = PROVIDER_CATALOGUE.get("wan_local")
+    assert wan.admits_resolution(1080, 1920)
+    assert wan.admits_duration_s(5.0)
+    assert wan.admits_fps(24)
+    assert not wan.admits_duration_s(30.0), "wan_local's 10s ceiling must still bite"
+    assert not wan.admits_fps(60)
+
+
+def test_providers_without_ceilings_are_absent_from_the_projection():
+    """Absence and refusal are different answers and stay different.
+
+    `validate_request` distinguishes "unknown provider" from "provider cannot do
+    this". A provider the catalogue leaves undeclared is absent from the projection
+    rather than present with a zero ceiling, so the two refusals do not collapse into
+    one indistinguishable error.
+    """
+    without_ceilings = {
+        provider_id
+        for provider_id in PROVIDER_CATALOGUE.list_ids()
+        if PROVIDER_CATALOGUE.get(provider_id).max_resolution is None
+    }
+    assert not (without_ceilings & set(PROVIDER_LIMITS)), (
+        f"providers without declared ceilings leaked into the projection: "
+        f"{sorted(without_ceilings & set(PROVIDER_LIMITS))}"
+    )

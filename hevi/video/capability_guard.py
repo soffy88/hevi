@@ -11,163 +11,73 @@ class CapabilityError(ValueError):
 
 @dataclass(frozen=True)
 class ProviderLimits:
+    """A read-only projection of one ``ProviderProfile``'s capability facts.
+
+    P0-4.2.2 moved the authoritative data into ``hevi.providers.facts``, which is
+    also where identity, locality, licence and adoption state live. This type exists
+    so the many call sites that read ``limits.modes`` or ``limits.max_duration_s`` keep
+    working; it is derived, never declared.
+
+    Do not add fields here and do not extend ``PROVIDER_LIMITS``. A second writable
+    capability table is what let the catalogue and the limits disagree for 9 of 14
+    shared providers; see ``docs/architecture/provider_authority.md``. Add to
+    ``ProviderProfile`` and this projection follows automatically.
+    """
+
     modes: frozenset[str]
     max_resolution: tuple[int, int]  # (width, height)
     max_duration_s: float
     fps_options: frozenset[int]
-    # HEVI 路线图 Phase2 #35:能力矩阵补列。native_audio/lip_sync 只在有真实依据时
-    # 标 True(见各条目旁注引用的具体证据),不是按"看起来应该支持"猜的。
     native_audio: bool = False
     lip_sync: bool = False
-    # 能力声明最后核实的日期——provider 会悄悄换模型版本/降配额,这张表不该被
-    # 一直信任到 403 才发现过期(HEVI 路线图 §3.1)。这次审的都标今天。
-    last_verified: str = "2026-07-09"
+    last_verified: str = ""
 
     def supports(self, capability: str) -> bool:
         """Whether this provider offers ``capability``.
 
-        A capability can be expressed in two shapes in this schema, and callers used
-        to have to know which: generation modes live in the ``modes`` frozenset
-        (``t2v``, ``i2v``, ``code_scene``), while feature flags are real booleans
-        (``native_audio``, ``lip_sync``).
-
-        The admission policy previously did ``getattr(limits, capability, False)``,
-        which only ever worked for the second shape. Every ``t2v``/``i2v``
-        requirement therefore failed against every provider and was reported as
-        ``capability_missing`` -- a gate that could not open, looking like a
-        deliberate refusal. Answering the question here keeps the two shapes in one
-        place, so a policy never has to guess.
+        A capability has two shapes in this schema and callers used to have to know
+        which: generation modes live in ``modes`` (``t2v``, ``i2v``, ``code_scene``),
+        while feature flags are booleans (``native_audio``, ``lip_sync``). The
+        admission policy used to do ``getattr(limits, capability, False)``, which only
+        ever worked for the second shape -- so every ``t2v``/``i2v`` requirement
+        failed against every provider and was reported as ``capability_missing``: a
+        gate that could not open, looking like a deliberate refusal.
         """
         if capability in self.modes:
             return True
-        flag = getattr(self, capability, None)
-        return flag is True
+        return getattr(self, capability, None) is True
 
 
-PROVIDER_LIMITS: dict[str, ProviderLimits] = {
-    # native_audio=True:hevi 自己的 audio_provider 枚举里就有 "ltx2_native"
-    # (hevi/audio/audio_config.py)专门表示"LTX-2 内核已含原生音视频,音频层不用
-    # 再处理"——这不是猜的,是既有代码路径的既定行为。
-    "ltx2_cloud": ProviderLimits(
-        modes=frozenset({"t2v", "i2v"}),
-        max_resolution=(2160, 3840),
-        max_duration_s=300.0,
-        fps_options=frozenset({24, 30}),
-        native_audio=True,
-    ),
-    "wan_cloud": ProviderLimits(
-        modes=frozenset({"t2v", "i2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=120.0,
-        fps_options=frozenset({24, 30}),  # kernel 对 high 档传 30fps
-    ),
-    # 本地 wan2.1-1.3B: 原生 480p@16fps,但内核按朝向夹取 + 装配器可缩放到目标,
-    # 故接受目标分辨率(上采样)与 16/24/30 目标帧率;单片时长上限 ~10s。
-    # i2v 经 VACE 参考条件化支持(RFC-002 item 1)。
-    "wan_local": ProviderLimits(
-        modes=frozenset({"t2v", "i2v"}),
-        max_resolution=(2160, 3840),
-        max_duration_s=10.0,
-        fps_options=frozenset({16, 24, 30}),
-    ),
-    "ltx2_local": ProviderLimits(
-        modes=frozenset({"t2v", "i2v"}),
-        max_resolution=(2160, 3840),
-        max_duration_s=10.0,
-        fps_options=frozenset({16, 24, 30}),
-    ),
-    # MiniMax H3 本地(ComfyUI,8GB W4A8):能力行见
-    # hevi/providers/h3_local/provider.py::H3_LOCAL_CAPABILITY。声明即规格——
-    # 单镜 ≤8s、24fps 原生(插帧 2× 后由装配器统一 48)、生成分辨率 512/768 档
-    # (FlashVSR 超分后才到目标尺寸,故 max_resolution 按超分产物口径放宽到 1080p;
-    # 生成分辨率由 provider 按 8GB 显存档夹取,见 _DEFAULT_SIZES)。
-    # native_audio=True:H3 视频 VAE + 音频 VAE 同炉出音画,H3 原音是「对白轨优先
-    # H3 原生音」纪律的来源,不是猜的。
-    "h3_local": ProviderLimits(
-        modes=frozenset({"t2v", "i2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=8.0,
-        fps_options=frozenset({24, 48}),
-        native_audio=True,
-        last_verified="2026-08-12",
-    ),
-    # manim:本地代码即画面。时长由 SceneIR 决定,上限 60s;无原生音/口型。
-    # 证据:本仓库 hevi/providers/manim 只出画面轨,配音仍走 explainer voiceover。
-    "manim": ProviderLimits(
-        modes=frozenset({"code_scene"}),
-        max_resolution=(1920, 1080),
-        max_duration_s=60.0,
-        fps_options=frozenset({24, 30, 60}),
-        last_verified="2026-08-18",
-    ),
-    # 高写实云档(fal)。这些 provider 已在 registry 注册但此前无能力声明,
-    # 导致能力矩阵只覆盖 4/7 provider。此处补齐 —— 值为近似上限(fal 内部管理实际
-    # 编码;非路由消费前不生效),待 L0 成本感知路由落地时按 fal 文档校准。
-    # 注:oprim 现注册的是 t2v 原语;三者上游均有 i2v 端点,但 hevi 未接线,故声明 t2v。
-    # native_audio/lip_sync=True:HEVI 路线图 §0 明确写"lip-sync —— Veo3 已原生
-    # 音画,Kling/海螺在跟进"——这是路线图自己的判断依据,不是新猜测。
-    "veo3": ProviderLimits(
-        modes=frozenset({"t2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=8.0,  # veo3/fast 固定 8s
-        fps_options=frozenset({24, 30}),
-        native_audio=True,
-        lip_sync=True,
-    ),
-    "kling_v2": ProviderLimits(
-        modes=frozenset({"t2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=10.0,  # v2 master 支持 5s/10s
-        fps_options=frozenset({24, 30}),
-    ),
-    "hailuo": ProviderLimits(
-        modes=frozenset({"t2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=10.0,  # 海螺02 standard 支持 6s/10s
-        fps_options=frozenset({24, 30}),
-    ),
-    # WaveSpeed AI 聚合网关(hevi/video/wavespeed_service.py)。规格来自 WaveSpeed REST
-    # 文档(非营销页):duration 3~15s、720p/1080p。fps 只标 24——两个端点的请求体都不
-    # 接受 fps 参数(原生固定输出),文档也只对 wan_2_7 写明 "24fps standard",30 没有
-    # 依据故不列入。native_audio/lip_sync 均不标 True——见 wavespeed_service.py 顶部
-    # 注释:营销页的"原生音画/多语种对口型"宣称在 REST API 契约里找不到对应字段。
-    "happyhorse_1_1": ProviderLimits(
-        modes=frozenset({"t2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=15.0,
-        fps_options=frozenset({24}),
-    ),
-    "wan_2_7": ProviderLimits(
-        modes=frozenset({"t2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=15.0,
-        fps_options=frozenset({24}),
-    ),
-    # 阿里云百炼(Model Studio)业务空间专属域名直连版(hevi/video/alibaba_maas_service.py)
-    # —— 同一对模型(happyhorse-1.1-t2v/wan2.7-t2v),但走阿里官方 API 而非 WaveSpeed
-    # 转售,规格来自阿里官方 API 文档:duration 2~15s、720P/1080P。fps/native_audio/
-    # lip_sync 未在官方文档发现对应字段,同上面 WaveSpeed 条目一样不标 True。
-    "happyhorse_1_1_maas": ProviderLimits(
-        modes=frozenset({"t2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=15.0,
-        fps_options=frozenset({24}),
-    ),
-    # Locked-face MAAS adapter (same model, reference_image required). Listed so
-    # Policy Engine can select it; it is not a hardcoded terminal provider.
-    "happyhorse_1_1_maas_lock": ProviderLimits(
-        modes=frozenset({"t2v", "i2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=15.0,
-        fps_options=frozenset({24}),
-    ),
-    "wan_2_7_maas": ProviderLimits(
-        modes=frozenset({"t2v"}),
-        max_resolution=(1080, 1920),
-        max_duration_s=15.0,
-        fps_options=frozenset({24}),
-    ),
-}
+def _project_limits() -> dict[str, ProviderLimits]:
+    """Derive the legacy limits view from the canonical catalogue.
+
+    Only providers with a declared ceiling appear. A provider the catalogue leaves
+    undeclared is *absent* rather than present-with-zero-limits, because ``validate_request``
+    distinguishes "unknown provider" from "provider cannot do this", and inventing a
+    zero ceiling would collapse those two different refusals into one.
+    """
+    from hevi.providers.facts import PROVIDER_CATALOGUE
+
+    projected: dict[str, ProviderLimits] = {}
+    for provider_id in PROVIDER_CATALOGUE.list_ids():
+        profile = PROVIDER_CATALOGUE.resolve(provider_id)
+        if profile.max_resolution is None or profile.max_duration_s is None:
+            continue
+        projected[provider_id] = ProviderLimits(
+            modes=frozenset(profile.capabilities),
+            max_resolution=profile.max_resolution,
+            max_duration_s=profile.max_duration_s,
+            fps_options=profile.fps_options or frozenset(),
+            native_audio=profile.native_audio,
+            lip_sync=profile.lip_sync,
+            last_verified=profile.last_verified,
+        )
+    return projected
+
+
+#: Derived from ``PROVIDER_CATALOGUE``. Read-only by convention: nothing writes here,
+#: and adding to it is no longer possible without editing the catalogue.
+PROVIDER_LIMITS: dict[str, ProviderLimits] = _project_limits()
 
 
 async def validate_request(

@@ -160,6 +160,26 @@ class ProviderProfile:
         default_factory=lambda: ArtifactContract(media_types=("VIDEO",))
     )
 
+    # ── P0-4.2.2: quantitative limits, absorbed from PROVIDER_LIMITS ──
+    #
+    # These lived in a second table (`video/capability_guard.py`) that answered
+    # capability questions in parallel with this one, and the two disagreed for 9 of
+    # 14 shared providers. See docs/architecture/provider_authority.md.
+    #
+    # Every limit defaults to None rather than to a permissive value: a provider with
+    # no declared ceiling must be refused, not assumed unbounded.
+    max_resolution: tuple[int, int] | None = None
+    max_duration_s: float | None = None
+    fps_options: frozenset[int] | None = None
+    #: Feature flags, distinct from generation modes in `capabilities`. True only
+    #: where there is cited evidence, preserving the original table's discipline.
+    native_audio: bool = False
+    lip_sync: bool = False
+    #: When these capabilities were last checked against reality. Providers change
+    #: models and quotas quietly; an unverified row should not be trusted until
+    #: something forced the question.
+    last_verified: str = ""
+
     def __post_init__(self) -> None:
         if not self.provider_id:
             raise ValueError("PROVIDER_PROFILE_WITHOUT_ID:provider_id required")
@@ -169,6 +189,42 @@ class ProviderProfile:
             raise ValueError(f"UNKNOWN_LICENSE_CLASS:{self.license_class!r}")
         if not isinstance(self.capability_state, ProviderCapabilityState):
             raise ValueError(f"UNKNOWN_CAPABILITY_STATE:{self.capability_state!r}")
+        if self.max_resolution is not None and len(self.max_resolution) != 2:
+            raise ValueError(
+                f"INVALID_MAX_RESOLUTION:{self.provider_id}:{self.max_resolution!r}"
+            )
+
+    def supports(self, capability: str) -> bool:
+        """Whether this provider offers ``capability``.
+
+        Modes live in ``capabilities`` (``t2v``, ``i2v``, ``code_scene``); feature
+        flags are booleans (``native_audio``, ``lip_sync``). Answering both shapes in
+        one place is what lets the admission policy stop guessing which it holds.
+
+        Callers used to do ``getattr(limits, capability, False)``, which resolved only
+        the boolean shape, so every t2v/i2v requirement failed against every provider
+        and was reported as a deliberate refusal.
+        """
+        if capability in self.capabilities:
+            return True
+        return getattr(self, capability, None) is True
+
+    def admits_resolution(self, width: int, height: int) -> bool:
+        """Whether a request fits the declared ceiling.
+
+        Per-axis maxima, matching how the original table was written -- not an area
+        budget. An undeclared ceiling refuses rather than passing.
+        """
+        if self.max_resolution is None:
+            return False
+        max_w, max_h = self.max_resolution
+        return width <= max_w and height <= max_h
+
+    def admits_duration_s(self, duration_s: float) -> bool:
+        return self.max_duration_s is not None and duration_s <= self.max_duration_s
+
+    def admits_fps(self, fps: int) -> bool:
+        return self.fps_options is not None and fps in self.fps_options
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -179,6 +235,12 @@ class ProviderProfile:
             "capability_state": self.capability_state.value,
             "capabilities": list(self.capabilities),
             "notes": self.notes,
+            "max_resolution": list(self.max_resolution) if self.max_resolution else None,
+            "max_duration_s": self.max_duration_s,
+            "fps_options": sorted(self.fps_options) if self.fps_options else None,
+            "native_audio": self.native_audio,
+            "lip_sync": self.lip_sync,
+            "last_verified": self.last_verified,
         }
 
 
@@ -197,9 +259,19 @@ _ADOPTED = ProviderCapabilityState.AVAILABLE
 _SEED: tuple[ProviderProfile, ...] = (
     # ── local diffusion runtimes ──
     ProviderProfile("wan_local", ProviderKind.VIDEO, _LOCAL, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "self-hosted diffusion runtime"),
+                    ("t2v", "i2v"), "self-hosted diffusion runtime",
+                        max_resolution=(2160, 3840),
+                        max_duration_s=10.0,
+                        fps_options=frozenset({16, 24, 30}),
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("ltx2_local", ProviderKind.VIDEO, _LOCAL, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "self-hosted LTX-2 runtime"),
+                    ("t2v", "i2v"), "self-hosted LTX-2 runtime",
+                        max_resolution=(2160, 3840),
+                        max_duration_s=10.0,
+                        fps_options=frozenset({16, 24, 30}),
+                        last_verified="2026-07-09",
+                    ),
     # ── node-process video renderer (P9.1.c) ──
     # Remotion runs as a node process driven as a subprocess. Declared LOCAL because
     # that is where it runs — asserted from the mechanism, never from the name.
@@ -239,26 +311,80 @@ _SEED: tuple[ProviderProfile, ...] = (
                     ("t2v", "motion_graphics", "explainer", "captions"),
                     "node process under hevi-remotion/"),
     ProviderProfile("h3_local", ProviderKind.VIDEO, _LOCAL, _GEN, _ADOPTED,
-                    ("t2v",), "self-hosted H3 runtime"),
+                    ('t2v', 'i2v', 'native_audio', 'zh_prompt'), "self-hosted H3 runtime",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=8.0,
+                        fps_options=frozenset({24, 48}),
+                        native_audio=True,
+                        last_verified="2026-08-12",
+                    ),
     ProviderProfile("manim", ProviderKind.VIDEO, _LOCAL, _GEN, _ADOPTED,
-                    ("t2v",), "library render: no inference, generated frames"),
+                    ('t2v', 'code_scene'), "library render: no inference, generated frames",
+                        max_resolution=(1920, 1080),
+                        max_duration_s=60.0,
+                        fps_options=frozenset({24, 30, 60}),
+                        last_verified="2026-08-18",
+                    ),
     # ── hosted endpoints ──
     ProviderProfile("wan_cloud", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "hosted inference"),
+                    ("t2v", "i2v"), "hosted inference",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=120.0,
+                        fps_options=frozenset({24, 30}),
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("ltx2_cloud", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "hosted inference"),
+                    ("t2v", "i2v"), "hosted inference",
+                        max_resolution=(2160, 3840),
+                        max_duration_s=300.0,
+                        fps_options=frozenset({24, 30}),
+                        native_audio=True,
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("veo3", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "third-party model API"),
+                    ('t2v',), "third-party model API",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=8.0,
+                        fps_options=frozenset({24, 30}),
+                        native_audio=True,
+                        lip_sync=True,
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("kling_v2", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "third-party model API"),
+                    ('t2v',), "third-party model API",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=10.0,
+                        fps_options=frozenset({24, 30}),
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("hailuo", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "third-party model API"),
+                    ('t2v',), "third-party model API",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=10.0,
+                        fps_options=frozenset({24, 30}),
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("happyhorse_1_1", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "third-party model API"),
+                    ('t2v',), "third-party model API",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=15.0,
+                        fps_options=frozenset({24}),
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("wan_2_7", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "third-party model API"),
+                    ('t2v',), "third-party model API",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=15.0,
+                        fps_options=frozenset({24}),
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("happyhorse_1_1_maas", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "MaaS endpoint"),
+                    ('t2v',), "MaaS endpoint",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=15.0,
+                        fps_options=frozenset({24}),
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("happyhorse_1_1_maas_lock", ProviderKind.VIDEO, _REMOTE, _GEN,
                     _ADOPTED, ("t2v", "i2v"),
                     "locked MaaS variant: single-reference-image calling convention, "
@@ -266,9 +392,19 @@ _SEED: tuple[ProviderProfile, ...] = (
                     "(registry.py, longvideo_orchestrator, director/shortdrama "
                     "routers). It was previously NOT_ADOPTED with the note 'not for "
                     "general routing', which contradicted both that code and the "
-                    "admission policy treating NOT_ADOPTED as informational."),
+                    "admission policy treating NOT_ADOPTED as informational.",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=15.0,
+                        fps_options=frozenset({24}),
+                        last_verified="2026-07-09",
+                    ),
     ProviderProfile("wan_2_7_maas", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
-                    ("t2v", "i2v"), "MaaS endpoint"),
+                    ('t2v',), "MaaS endpoint",
+                        max_resolution=(1080, 1920),
+                        max_duration_s=15.0,
+                        fps_options=frozenset({24}),
+                        last_verified="2026-07-09",
+                    ),
     # ── runtime / infra providers (PROVIDER_SPECS fleet) ──
     ProviderProfile("voicebox", ProviderKind.AUDIO, _LOCAL,
                     ProviderLicenseClass.LICENSED, _ADOPTED, ("tts",),
