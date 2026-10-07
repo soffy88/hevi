@@ -260,8 +260,13 @@ _SEED: tuple[ProviderProfile, ...] = (
     ProviderProfile("happyhorse_1_1_maas", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
                     ("t2v", "i2v"), "MaaS endpoint"),
     ProviderProfile("happyhorse_1_1_maas_lock", ProviderKind.VIDEO, _REMOTE, _GEN,
-                    ProviderCapabilityState.NOT_ADOPTED, ("t2v", "i2v"),
-                    "locked MaaS variant, not for general routing"),
+                    _ADOPTED, ("t2v", "i2v"),
+                    "locked MaaS variant: single-reference-image calling convention, "
+                    "the mainline create_episode/Series/orchestrate_longvideo path "
+                    "(registry.py, longvideo_orchestrator, director/shortdrama "
+                    "routers). It was previously NOT_ADOPTED with the note 'not for "
+                    "general routing', which contradicted both that code and the "
+                    "admission policy treating NOT_ADOPTED as informational."),
     ProviderProfile("wan_2_7_maas", ProviderKind.VIDEO, _REMOTE, _GEN, _ADOPTED,
                     ("t2v", "i2v"), "MaaS endpoint"),
     # ── runtime / infra providers (PROVIDER_SPECS fleet) ──

@@ -23,6 +23,26 @@ class ProviderLimits:
     # 一直信任到 403 才发现过期(HEVI 路线图 §3.1)。这次审的都标今天。
     last_verified: str = "2026-07-09"
 
+    def supports(self, capability: str) -> bool:
+        """Whether this provider offers ``capability``.
+
+        A capability can be expressed in two shapes in this schema, and callers used
+        to have to know which: generation modes live in the ``modes`` frozenset
+        (``t2v``, ``i2v``, ``code_scene``), while feature flags are real booleans
+        (``native_audio``, ``lip_sync``).
+
+        The admission policy previously did ``getattr(limits, capability, False)``,
+        which only ever worked for the second shape. Every ``t2v``/``i2v``
+        requirement therefore failed against every provider and was reported as
+        ``capability_missing`` -- a gate that could not open, looking like a
+        deliberate refusal. Answering the question here keeps the two shapes in one
+        place, so a policy never has to guess.
+        """
+        if capability in self.modes:
+            return True
+        flag = getattr(self, capability, None)
+        return flag is True
+
 
 PROVIDER_LIMITS: dict[str, ProviderLimits] = {
     # native_audio=True:hevi 自己的 audio_provider 枚举里就有 "ltx2_native"

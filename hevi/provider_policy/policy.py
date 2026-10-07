@@ -25,6 +25,10 @@ from hevi.providers.facts import (
 from hevi.resilience.live_state import provider_routable
 from hevi.video.capability_guard import PROVIDER_LIMITS
 
+#: Adoption states a provider may be selected in. Anything else — BLOCKED, FAILED,
+#: NOT_ADOPTED — is a refusal, not a hint.
+_SELECTABLE_STATES = frozenset({ProviderCapabilityState.AVAILABLE})
+
 
 class ProviderPolicy(BaseModel):
     mode: str = "t2v"
@@ -125,10 +129,22 @@ async def evaluate_provider_policy(
         if limits is not None:
             if policy.mode not in limits.modes:
                 reasons.append(f"mode_unsupported:{policy.mode}")
+            # Adoption state gates selection. This used to be recorded on the
+            # decision and never read, so a provider the catalogue declared
+            # NOT_ADOPTED or BLOCKED was selectable exactly like any other. The
+            # wrong state was also load-bearing: happyhorse_1_1_maas_lock was marked
+            # NOT_ADOPTED while being the mainline pipeline provider. Correcting
+            # that datum was not enough on its own -- an unenforced field drifts
+            # straight back into being a comment.
+            profile = facts_source.get(provider_id)
+            if profile is not None and profile.capability_state not in _SELECTABLE_STATES:
+                reasons.append(
+                    f"capability_state_blocks_selection:{profile.capability_state.value}"
+                )
             reasons.extend(
                 f"capability_missing:{capability}"
                 for capability in sorted(policy.required_capabilities)
-                if not bool(getattr(limits, capability, False))
+                if not limits.supports(capability)
             )
             if not provider_routable(provider_id):
                 reasons.append("not_routable")

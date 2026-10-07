@@ -210,12 +210,37 @@ def test_generated_material_cannot_satisfy_licensed_only():
     assert "wan_local" not in licensed.allowed_ids
 
 
-def test_not_adopted_state_is_declared_not_inferred():
+def test_adoption_state_is_declared_and_enforced():
+    """Adoption state is declared data, and it now actually gates selection.
+
+    Originally this asserted `happyhorse_1_1_maas_lock` was NOT_ADOPTED. That was
+    wrong about the repository: the provider is referenced by `longvideo_orchestrator`,
+    `director`, `shortdrama` and `director_pipeline`, and `registry.py` names it the
+    mainline create_episode/Series path. The state contradicted all of that.
+
+    Worse, the state was inert — `policy.py` populated `capability_states` and never
+    read it — so a wrong value produced no symptom and survived. P0-4.2 made
+    adoption state gate selection, which means the wrong value would have denied the
+    mainline provider outright. The test now pins the corrected value *and* the fact
+    that enforcement exists, because "declared" without "enforced" is what let this
+    drift.
+    """
+    from hevi.provider_policy.policy import _SELECTABLE_STATES
+
     profile = PROVIDER_CATALOGUE.resolve("happyhorse_1_1_maas_lock")
-    assert profile.capability_state is ProviderCapabilityState.NOT_ADOPTED
+    assert profile.capability_state is ProviderCapabilityState.AVAILABLE
+    assert profile.capability_state in _SELECTABLE_STATES
+
+    # A non-selectable state remains representable and remains a refusal.
+    assert ProviderCapabilityState.BLOCKED not in _SELECTABLE_STATES
+    assert ProviderCapabilityState.FAILED not in _SELECTABLE_STATES
+    assert ProviderCapabilityState.NOT_ADOPTED not in _SELECTABLE_STATES
+
+    # And nothing is currently marked unadopted, which is itself the correction:
+    # the sole NOT_ADOPTED row was the mainline provider.
     assert PROVIDER_CATALOGUE.by_capability_state(
         ProviderCapabilityState.NOT_ADOPTED
-    ) == (profile,)
+    ) == ()
 
 
 # ── acceptance criterion 1, restated as an absence: no guessing anywhere ──

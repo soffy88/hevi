@@ -16,7 +16,7 @@ import dataclasses as d
 
 import pytest
 
-from hevi.providers.facts import PROVIDER_CATALOGUE
+from hevi.providers.facts import PROVIDER_CATALOGUE, ProviderCapabilityState
 from hevi.providers.runtime_specs import RUNTIME_SPECS
 from hevi.video.capability_guard import PROVIDER_LIMITS
 
@@ -142,38 +142,91 @@ def test_obase_capability_tags_are_mostly_absent():
 # --------------------------------------- defect 3: availability stated and ignored
 
 
-def test_not_adopted_is_declared_on_a_mainline_provider():
-    """`NOT_ADOPTED` on the provider `registry.py` calls the mainline path."""
+def test_mainline_provider_is_not_mislabelled_unadopted():
+    """`happyhorse_1_1_maas_lock` was NOT_ADOPTED while being the mainline path.
+
+    It is referenced by `longvideo_orchestrator`, `director`, `shortdrama` and
+    `director_pipeline`, and `registry.py` names it the mainline provider. The
+    declared adoption state contradicted all of that. Now that adoption state
+    gates selection, this would have denied the mainline provider outright.
+    """
     profile = PROVIDER_CATALOGUE.get("happyhorse_1_1_maas_lock")
-    assert profile.capability_state.value == "NOT_ADOPTED"
-    assert profile.tenant_id if hasattr(profile, "tenant_id") else True
+    assert profile.capability_state.value == "AVAILABLE"
     assert "happyhorse_1_1_maas_lock" in PROVIDER_LIMITS
     assert "happyhorse_1_1_maas_lock" in RUNTIME_SPECS.list_ids()
 
 
-def test_policy_records_capability_states_without_enforcing_them():
-    """The availability signal is populated, then never consulted.
+def test_capability_state_is_enforced_not_merely_recorded():
+    """Adoption state must gate selection.
 
-    Recorded as a code-shape assertion because the bug is the absence of a use,
-    which no behavioural test can demonstrate without also failing for the wrong
-    reason.
+    `policy.py` used to populate `decision.capability_states` and never read it, so
+    a provider the catalogue declared NOT_ADOPTED was selectable exactly like any
+    other. An unenforced field drifts straight back into being a comment, which is
+    how `NOT_ADOPTED` survived on the mainline provider in the first place.
     """
     import inspect
 
-    from hevi.provider_policy.policy import ProviderDecision, evaluate_provider_policy
+    from hevi.provider_policy.policy import (
+        _SELECTABLE_STATES,
+        evaluate_provider_policy,
+    )
+
+    assert frozenset({"AVAILABLE"}) == _SELECTABLE_STATES, (
+        "more states became selectable; re-check that each one is genuinely "
+        "permission to run rather than a reporting label"
+    )
 
     src = inspect.getsource(evaluate_provider_policy)
-    assert "capability_states" in src, "the field disappeared; re-check this test"
-    tail = src.split("decision.capability_states.update", 1)[1]
-    # drop the remainder of the population statement itself before looking for a read
-    tail = tail.split("\n", 2)[-1]
-    assert "capability_states" not in tail, (
-        "capability_states is now read after population — this test's premise "
-        "(recorded-but-unused) no longer holds and should be rewritten"
+    assert "capability_state_blocks_selection" in src, (
+        "the adoption-state gate disappeared; capability_states is being recorded "
+        "and ignored again"
     )
-    assert hasattr(ProviderDecision, "model_fields") or hasattr(
-        ProviderDecision, "__dataclass_fields__"
-    ), "ProviderDecision no longer carries capability_states at all"
+
+    # And it actually refuses: a provider with no selectable state is rejected even
+    # when it is otherwise perfect.
+    import asyncio
+
+    from hevi.provider_policy.policy import ProviderPolicy
+
+    decision = asyncio.run(
+        evaluate_provider_policy(
+            ProviderPolicy(mode="t2v", candidates=["manim"]),
+            catalogue=_OneBlockedCatalogue(),
+        )
+    )
+    rejected = {r.provider_id: r.reasons for r in decision.rejected}
+    assert "capability_state_blocks_selection:BLOCKED" in rejected.get("manim", []), (
+        f"expected an adoption-state refusal, got {rejected}"
+    )
+
+
+class _OneBlockedCatalogue:
+    """A catalogue that reports BLOCKED for every provider, to exercise the gate.
+
+    Wraps the real catalogue rather than mutating it, so a test cannot leak state
+    into the next one. Reports a *uniform* state on purpose: the gate has to refuse
+    regardless of which provider it is asked about, and a per-provider stand-in
+    would only prove the gate reads one row.
+    """
+
+    def __init__(self):
+        self._inner = PROVIDER_CATALOGUE
+
+    def get(self, provider_id):
+        profile = self._inner.get(provider_id)
+        if profile is None:
+            return None
+        import dataclasses
+
+        return dataclasses.replace(
+            profile, capability_state=ProviderCapabilityState.BLOCKED
+        )
+
+    def has(self, provider_id):
+        return self._inner.has(provider_id)
+
+    def facts_for(self, provider_id):
+        return self._inner.facts_for(provider_id)
 
 
 # ------------------------------------------------------ classification facts

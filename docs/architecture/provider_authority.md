@@ -232,5 +232,27 @@ work now precisely enumerated:
 6. catalogue the 5 spec-only providers
 7. make `PROVIDER_REGISTRY_SINGLE_SOURCE` a test, not a claim
 
-Items 3 and 4 are authority defects, not migrations. They are fixed first, per the
-rule that authority is repaired before bypasses are discussed.
+Items 3 and 4 were authority defects, not migrations. They are fixed in
+`b3214fbb`'s follow-up, before any table was moved, per the rule that authority is
+repaired before bypasses are discussed:
+
+- **`ProviderLimits.supports()`** (`video/capability_guard.py`) answers the
+  capability question in one place, covering both shapes the schema uses — modes in
+  a frozenset, feature flags as booleans. `policy.py` now asks instead of guessing.
+  A default `t2v` request resolves to `ltx2_cloud` instead of rejecting every
+  provider.
+- **`_SELECTABLE_STATES`** (`policy.py`) makes adoption state gate selection.
+  `capability_states` used to be populated and never read.
+- **`happyhorse_1_1_maas_lock` is `AVAILABLE`**, not `NOT_ADOPTED`. With the gate
+  enforced, the old value would have denied the mainline pipeline provider outright.
+  Correcting the datum without making the field authoritative would have let it
+  drift back, so both were necessary.
+
+Remaining work for the gate to reach PASS:
+
+1. migrate `PROVIDER_LIMITS` → `ProviderProfile`; delete the table (keep a projection)
+2. migrate `*_CAPABILITY` rows → `ProviderProfile`; delete them
+3. correct the 9 divergent capability rows, starting with the 7 fail-open ones
+4. catalogue the 20 registry-only providers
+5. catalogue the 5 spec-only providers
+6. make `PROVIDER_REGISTRY_SINGLE_SOURCE` a test, not a claim
