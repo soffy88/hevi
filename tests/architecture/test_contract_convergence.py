@@ -419,10 +419,33 @@ def test_timeline_hash_is_NOT_yet_computable() -> None:
         "hash, so no RenderReceipt can cite a timeline_hash")
 
 
-@pytest.mark.xfail(strict=True, reason="P0-5: RenderReceipt does not exist")
-def test_render_receipt_is_NOT_yet_defined() -> None:
-    """§6.2 requires 10 fields; 6 of them exist nowhere today."""
-    assert "class RenderReceipt" in _source()
+def test_render_receipt_exists_with_the_fields_the_spec_requires() -> None:
+    """§6.2's RenderReceipt now exists, with all 10 required fields.
+
+    Originally a strict xfail asserting absence. It inverted when
+    HEVI-P0-EXECUTION-CONTRACT-001 P0.4 landed `hevi/production/render_job.py`, which
+    is the intended outcome rather than a test to be deleted -- so the xfail is
+    replaced with a real assertion.
+
+    The absence-detection is now redundant and was not simply dropped: the field list
+    is asserted against the model, which also catches a receipt that exists but omits
+    `ffprobe_summary` or `timeline_hash` and therefore cannot answer whether the output
+    matched the spec.
+    """
+    from hevi.production.render_job import RenderReceipt
+
+    fields = set(RenderReceipt.model_fields)
+    required = {
+        "receipt_id", "job_id", "production_id", "renderer", "renderer_version",
+        "input_hash", "timeline_hash", "output_artifact", "duration_ms", "width",
+        "height", "fps", "audio_present", "ffprobe_summary",
+    }
+    assert required <= fields, f"missing: {sorted(required - fields)}"
+
+    # §12: the receipt must be immutable.
+    assert RenderReceipt.model_config.get("frozen") is True
+    # ffprobe is required, not optional -- a receipt without it is a claim.
+    assert RenderReceipt.model_fields["ffprobe_summary"].is_required()
 
 
 @pytest.mark.xfail(strict=True, reason="P0-2: EvidencePack does not exist")
