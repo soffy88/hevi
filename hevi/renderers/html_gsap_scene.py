@@ -229,15 +229,25 @@ def _animation_sample_times(scene: VisualSceneIR) -> tuple[int, ...]:
 
 
 def _fps_for(scene: VisualSceneIR) -> int:
-    """The scene's declared frame rate.
+    """The scene's exact frame rate, narrowed to what ``RenderPlan`` can carry.
 
-    Read from the scene field, not from ``metadata``. An earlier version looked in
-    metadata and fell back to 30 when it was absent, which meant a scene that said
-    nothing about fps produced 30fps output regardless of what the caller requested --
-    and the E2E caught it as a validation failure on a render that had already been
-    committed. The default now lives on the model where it is visible and validated.
+    ``RenderPlan.fps`` is typed ``int`` in the existing renderer base, so an exact
+    fractional rate (30000/1001) cannot be represented there without widening that
+    contract. Rather than silently rounding -- which would put a different frame rate in
+    the render than the scene declared -- the exact value travels in
+    ``extra["fps_exact"]`` and a non-integral rate is refused here.
+
+    Integral rates (24, 25, 30, 60) pass through unchanged, which is what the E2E and
+    the existing P5.2 acceptance path use.
     """
-    return scene.fps
+    if scene.fps.denominator != 1:
+        raise UnsupportedSceneComponent(
+            f"NON_INTEGER_FPS_NOT_REPRESENTABLE:{scene.fps}; RenderPlan.fps is an int. "
+            "Widening hevi/renderers/base.py is required before a fractional rate can "
+            "be rendered -- rounding it here would render at a different rate than the "
+            "scene declares."
+        )
+    return int(scene.fps)
 
 
 def _extra_for(scene: VisualSceneIR, animation_times: tuple[int, ...]) -> dict[str, Any]:
@@ -262,6 +272,7 @@ def _extra_for(scene: VisualSceneIR, animation_times: tuple[int, ...]) -> dict[s
         "title_size": title_size,
         "scene_hash": scene.content_hash(),
         "scene_duration_ms": scene.duration_ms,
+        "fps_exact": str(scene.fps),
         "layout_mode": scene.layout_mode.value,
         "animation_sample_times_ms": list(animation_times),
         "element_count": len(scene.elements),

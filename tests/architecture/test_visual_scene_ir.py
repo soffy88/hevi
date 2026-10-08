@@ -15,6 +15,8 @@ cause. So each way a scene can be well-formed-but-unrenderable is pinned here.
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 import pytest
 from pydantic import ValidationError
 
@@ -37,6 +39,7 @@ def _scene(**overrides) -> VisualSceneIR:
         "width": 1080,
         "height": 1920,
         "duration_ms": 2000,
+        "fps": 30,
         "background": BackgroundSpec(color="#0B1220"),
         "elements": (
             VisualElement(
@@ -406,3 +409,83 @@ def test_all_temporal_values_are_integer_milliseconds():
 def test_negative_time_is_rejected():
     with pytest.raises(ValidationError):
         Keyframe(time_ms=-1, value=0.0)
+
+
+# ------------------------------------------------- fps contract (closure §11)
+
+
+def test_fps_is_required_and_not_defaulted():
+    """A default frame rate is a trapdoor.
+
+    The first E2E run rendered 30fps for a 24fps request because the compiler read
+    ``metadata["fps"]`` and fell back when absent. Making ``fps`` required removes the
+    fallback entirely: a scene that forgets to state its frame rate fails to build
+    instead of silently rendering at 30.
+    """
+    with pytest.raises(ValidationError):
+        _scene_without_fps()
+
+
+def _scene_without_fps():
+    from hevi.production.visual_scene_ir import VisualSceneIR
+
+    return VisualSceneIR(
+        scene_id="s", width=100, height=100, duration_ms=1000,
+        elements=(
+            VisualElement(element_id="t", element_type=VisualElementType.TEXT,
+                          content={"text": "x"}),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("supplied", "expected"),
+    [
+        (24, "24"), ("24", "24"), (Fraction(30000, 1001), "30000/1001"),
+        ("30000/1001", "30000/1001"), (29.97, "2997/100"),
+    ],
+)
+def test_fps_is_exact_and_normalised(supplied, expected):
+    """Exact, because 30000/1001 rounded to 30 changes the artifact's identity.
+
+    The float form is accepted for convenience but normalised immediately: 29.97 as a
+    float is 29.969999999999999, and that value would go into the scene hash.
+    """
+    from hevi.production.visual_scene_ir import VisualSceneIR
+
+    scene = VisualSceneIR(
+        scene_id="s", fps=supplied, width=100, height=100, duration_ms=1000,
+        elements=(VisualElement(element_id="t", element_type=VisualElementType.TEXT,
+                                content={"text": "x"}),),
+    )
+    assert str(scene.fps) == expected
+
+
+def test_fps_hash_is_stable_across_input_forms():
+    """The rational, not the literal you typed, is what gets hashed."""
+    from hevi.production.visual_scene_ir import VisualSceneIR
+
+    def build(fps):
+        return VisualSceneIR(
+            scene_id="s", fps=fps, width=100, height=100, duration_ms=1000,
+            elements=(VisualElement(element_id="t", element_type=VisualElementType.TEXT,
+                                    content={"text": "x"}),),
+        )
+
+    assert build("30000/1001").content_hash() == build(Fraction(30000, 1001)).content_hash()
+
+
+@pytest.mark.parametrize("bad", [0, -30, "not-a-rate", "30/", True])
+def test_fps_rejects_non_positive_and_unparseable(bad):
+    from hevi.production.visual_scene_ir import VisualSceneIR
+
+    with pytest.raises(ValidationError):
+        VisualSceneIR(scene_id="s", fps=bad, width=100, height=100, duration_ms=1000,
+                      elements=(VisualElement(element_id="t",
+                                              element_type=VisualElementType.TEXT,
+                                              content={"text": "x"}),))
+
+
+def test_changing_fps_changes_scene_identity():
+    """fps is part of the render identity, so it belongs in the hash."""
+    assert _scene(fps=24).content_hash() != _scene(fps=30).content_hash()

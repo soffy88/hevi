@@ -36,6 +36,7 @@ import hashlib
 import json
 from collections.abc import Callable
 from enum import StrEnum
+from fractions import Fraction
 from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -300,12 +301,17 @@ class VisualSceneIR(BaseModel):
     width: int
     height: int
     duration_ms: int
-    #: Output frame rate, alongside width/height rather than buried in ``metadata``.
-    #: §17's integer-millisecond discipline has an fps analogue: 30000/1001 must not be
-    #: rounded to 30 on the way into a render identity. This field was added after the
-    #: first E2E run silently produced 30fps output for a 24fps request, because the
-    #: adapter was reading ``metadata["fps"]`` and fell back to a default when absent.
-    fps: int = 30
+    #: Output frame rate. Exact (``Fraction``), first-class, and **required**.
+    #:
+    #: Exact because 30000/1001 is a real frame rate and rounding it to 30 changes the
+    #: artifact's identity -- the same argument as integer milliseconds in §17.
+    #: First-class because it sits beside width/height rather than in ``metadata``; the
+    #: first E2E run silently produced 30fps for a 24fps request precisely because the
+    #: adapter was reading ``metadata["fps"]`` and fell back when it was absent.
+    #: Required because a default of 30 is a trapdoor: a scene that forgets to say what
+    #: frame rate it wants gets 30, and a renderer honouring that produces a plausible
+    #: video at the wrong rate. Forcing it to be stated is the fix.
+    fps: Fraction
 
     background: BackgroundSpec = Field(default_factory=BackgroundSpec)
     layout_mode: LayoutMode = LayoutMode.ABSOLUTE
@@ -338,12 +344,41 @@ class VisualSceneIR(BaseModel):
             raise ValueError("VISUAL_SCENE_NEGATIVE_DURATION")
         return value
 
-    @field_validator("fps")
+    @field_validator("fps", mode="before")
     @classmethod
-    def _positive_fps(cls, value: int) -> int:
-        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+    def _exact_positive_fps(cls, value: Any) -> Fraction:
+        """Coerce to an exact ``Fraction`` and refuse anything non-positive.
+
+        Accepts an ``int``, a float or a rational string so callers can write
+        ``30`` / ``29.97`` / ``"30000/1001"``, but normalises immediately: 29.97 as a
+        float is 29.969999999999999, and that value goes into the scene hash.
+        """
+        if isinstance(value, Fraction):
+            exact = value
+        elif isinstance(value, bool):
+            raise ValueError(f"VISUAL_SCENE_FPS_NOT_A_NUMBER:{value!r}")
+        elif isinstance(value, int):
+            exact = Fraction(value)
+        elif isinstance(value, float):
+            exact = Fraction(value).limit_denominator(100_000)
+        elif isinstance(value, str):
+            # Accepts "30" and "30000/1001". A bare numeric string is common in config
+            # and in the OutputSpec dict round-trip, so rejecting it would be pedantry.
+            num, sep, den = value.partition("/")
+            try:
+                # Test `sep`, not `den`: partition() on "30/" yields an empty
+                # denominator, and an emptiness check would read that as "no rational
+                # given" and quietly accept "30" -- the lenient reading is exactly how
+                # a malformed value becomes a valid one nobody notices.
+                exact = (Fraction(int(num), int(den)) if sep
+                         else Fraction(num.strip()))
+            except (ValueError, ZeroDivisionError) as exc:
+                raise ValueError(f"VISUAL_SCENE_FPS_UNPARSEABLE:{value!r}") from exc
+        else:
+            raise ValueError(f"VISUAL_SCENE_FPS_NOT_A_NUMBER:{value!r}")
+        if exact <= 0:
             raise ValueError(f"VISUAL_SCENE_NON_POSITIVE_FPS:{value!r}")
-        return value
+        return exact
 
     @model_validator(mode="after")
     def _references_resolve(self) -> Self:
@@ -404,7 +439,8 @@ class VisualSceneIR(BaseModel):
             ],
             "background": self.background.model_dump(mode="json"),
             "dimensions": [self.width, self.height],
-            "fps": self.fps,
+            # str, not float: 30000/1001 as a float would not hash stably.
+            "fps": str(self.fps),
             "duration_ms": self.duration_ms,
             "elements": [
                 {
