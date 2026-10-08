@@ -173,6 +173,10 @@ class TransactionReceipt(BaseModel):
     committed_operation_ids: tuple[str, ...]
     artifact_ids: tuple[str, ...]
     receipt_refs: tuple[str, ...] = ()
+    #: §36: failures that did not block the commit -- optional operations only. On the
+    #: receipt so an optional failure is reported downstream instead of disappearing at
+    #: commit time.
+    tolerated_failures: tuple[str, ...] = ()
     committed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -349,19 +353,47 @@ class ProductionExecutionTransaction:
 
     # ── completion ──
 
-    def commit(self) -> TransactionReceipt:
-        """§8. Commit only from COMMITTING.
+    def _required_operation_ids(self) -> set[str]:
+        return {op.operation_id for op in self.operations if op.required}
 
-        A transaction with a recorded failure cannot commit. That is the whole point:
-        an operation that failed and a production that committed are contradictory
-        states, and allowing the second would let §35's no-silent-failure rule be
-        bypassed at the last step.
+    def _blocking_failures(self) -> list[ExecutionFailureRecord]:
+        """Failures belonging to required operations, plus unoperationed ones.
+
+        A failure with no ``operation_id`` is blocking by default: it happened during
+        the transaction and cannot be attributed to something declared optional, so
+        assuming it was benign would be the unsafe reading.
+        """
+        required = self._required_operation_ids()
+        return [
+            failure
+            for failure in self._failures
+            if failure.operation_id is None or failure.operation_id in required
+        ]
+
+    def commit(self) -> TransactionReceipt:
+        """§8/§36. Commit once running, unless a *required* operation failed.
+
+        Two rules pull against each other here and the resolution matters:
+
+        * §35 — an operation that failed must never be silently passed over.
+        * §36 — an operation declaring ``required=False`` may fail without blocking.
+
+        So commit refuses when a **required** operation has a recorded failure, and
+        permits commit when only optional ones failed. Nothing is lost either way: the
+        failure records stay attached to the transaction and are carried on the receipt,
+        so an optional failure is reported rather than swallowed.
+
+        An earlier version refused on *any* failure, which made §36 unimplementable --
+        the only way past it would have been for the caller to drop the failure record,
+        which is exactly the silent failure §35 forbids.
         """
         if self._state is TransactionState.RUNNING:
-            if self._failures:
+            blocking = self._blocking_failures()
+            if blocking:
                 raise TransactionError(
-                    f"TRANSACTION_HAS_FAILURES:{len(self._failures)}; roll back instead "
-                    "of committing a run that failed"
+                    f"TRANSACTION_HAS_REQUIRED_FAILURES:{len(blocking)};"
+                    f"{sorted(f.operation_id or '?' for f in blocking)}; roll back "
+                    "instead of committing a run that failed"
                 )
             self._transition(TransactionState.COMMITTING)
         if self._state is not TransactionState.COMMITTING:
@@ -384,6 +416,9 @@ class ProductionExecutionTransaction:
             committed_operation_ids=committed_ops,
             artifact_ids=self.artifacts_in_state(ArtifactState.COMMITTED),
             receipt_refs=tuple(self._receipt_refs),
+            tolerated_failures=tuple(
+                failure.failure_id for failure in self._failures
+            ),
         )
 
     def rollback(self, reason: str) -> RollbackReceipt:

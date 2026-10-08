@@ -207,6 +207,23 @@ class ExecutionFailureRecord(BaseModel):
         return self.model_dump(mode="json")
 
 
+class AdapterError(RuntimeError):
+    """An adapter declaring *why* it failed, in the vocabulary above.
+
+    Without this, `failure_from_exception` has to infer the error kind from the
+    exception class name, so a `RuntimeError("simulated timeout")` classifies as
+    SEMANTIC and a genuinely transient failure is never retried. Inferring from the
+    message string would be worse: it makes retry policy depend on prose.
+
+    An adapter raises this with an explicit ``error_type``; the executor never guesses.
+    """
+
+    def __init__(self, error_type: str, message: str = "") -> None:
+        super().__init__(message or error_type)
+        self.error_type = error_type
+        self.message = message or error_type
+
+
 def failure_from_exception(
     *,
     production_id: str,
@@ -215,11 +232,23 @@ def failure_from_exception(
     stage: str,
     exc: BaseException,
 ) -> ExecutionFailureRecord:
-    """Build a record from an exception, mapping the known types onto the vocabulary.
+    """Build a record from an exception.
 
-    Existing ``ExecutionFailure`` members are matched by value first, so the established
-    vocabulary is preferred over inventing a parallel spelling of the same condition.
+    An `AdapterError` carries its own vocabulary term and is trusted. Anything else
+    falls back to the exception class name, matched against the existing
+    ``ExecutionFailure`` members first so the established vocabulary is preferred over
+    inventing a parallel spelling of the same condition.
     """
+    if isinstance(exc, AdapterError):
+        return ExecutionFailureRecord.for_operation(
+            production_id=production_id,
+            operation=operation,
+            transaction_id=transaction_id,
+            stage=stage,
+            error_type=exc.error_type,
+            message=exc.message,
+        )
+
     known = {member.value for member in ExecutionFailure}
     error_type = type(exc).__name__.lower()
     for member in ExecutionFailure:
@@ -260,6 +289,7 @@ class AttemptRecord:
 
 
 __all__ = [
+    "AdapterError",
     "AttemptRecord",
     "ExecutionFailureLevel",
     "ExecutionFailureRecord",
