@@ -229,8 +229,15 @@ def _animation_sample_times(scene: VisualSceneIR) -> tuple[int, ...]:
 
 
 def _fps_for(scene: VisualSceneIR) -> int:
-    declared = scene.metadata.get("fps")
-    return int(declared) if isinstance(declared, int) and declared > 0 else 30
+    """The scene's declared frame rate.
+
+    Read from the scene field, not from ``metadata``. An earlier version looked in
+    metadata and fell back to 30 when it was absent, which meant a scene that said
+    nothing about fps produced 30fps output regardless of what the caller requested --
+    and the E2E caught it as a validation failure on a render that had already been
+    committed. The default now lives on the model where it is visible and validated.
+    """
+    return scene.fps
 
 
 def _extra_for(scene: VisualSceneIR, animation_times: tuple[int, ...]) -> dict[str, Any]:

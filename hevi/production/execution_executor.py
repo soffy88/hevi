@@ -53,6 +53,7 @@ from hevi.production.operation import (
     ProductionOperation,
     resolve_execution_order,
 )
+from hevi.production.render_cache import digest_file
 from hevi.production.render_job import RenderReceipt
 
 
@@ -475,9 +476,18 @@ class ProductionExecutor:
         result: ExecutionResult,
     ) -> None:
         for artifact_id in result.artifacts:
+            # The artifact layer hashes the produced file. Adapters supply a locator and
+            # are explicitly forbidden from proving their own output (P9.1D T2), so the
+            # digest is computed here from the bytes on disk.
+            content_hash = result.metadata.get(f"hash:{artifact_id}", "")
+            if not content_hash:
+                uri = str(result.metadata.get(f"uri:{artifact_id}", ""))
+                candidate = Path(uri)
+                if uri and candidate.is_file():
+                    content_hash = digest_file(candidate)
             transaction.record_artifact(
                 artifact_id=artifact_id,
-                content_hash=result.metadata.get(f"hash:{artifact_id}", ""),
+                content_hash=content_hash,
                 kind=str(result.metadata.get(f"kind:{artifact_id}", "unknown")),
                 uri=str(result.metadata.get(f"uri:{artifact_id}", artifact_id)),
                 operation_id=operation.operation_id,

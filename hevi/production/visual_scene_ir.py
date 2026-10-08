@@ -300,6 +300,12 @@ class VisualSceneIR(BaseModel):
     width: int
     height: int
     duration_ms: int
+    #: Output frame rate, alongside width/height rather than buried in ``metadata``.
+    #: §17's integer-millisecond discipline has an fps analogue: 30000/1001 must not be
+    #: rounded to 30 on the way into a render identity. This field was added after the
+    #: first E2E run silently produced 30fps output for a 24fps request, because the
+    #: adapter was reading ``metadata["fps"]`` and fell back to a default when absent.
+    fps: int = 30
 
     background: BackgroundSpec = Field(default_factory=BackgroundSpec)
     layout_mode: LayoutMode = LayoutMode.ABSOLUTE
@@ -330,6 +336,13 @@ class VisualSceneIR(BaseModel):
     def _non_negative_duration(cls, value: int) -> int:
         if value < 0:
             raise ValueError("VISUAL_SCENE_NEGATIVE_DURATION")
+        return value
+
+    @field_validator("fps")
+    @classmethod
+    def _positive_fps(cls, value: int) -> int:
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise ValueError(f"VISUAL_SCENE_NON_POSITIVE_FPS:{value!r}")
         return value
 
     @model_validator(mode="after")
@@ -391,6 +404,7 @@ class VisualSceneIR(BaseModel):
             ],
             "background": self.background.model_dump(mode="json"),
             "dimensions": [self.width, self.height],
+            "fps": self.fps,
             "duration_ms": self.duration_ms,
             "elements": [
                 {
