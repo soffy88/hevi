@@ -1,0 +1,87 @@
+{
+  "artifact_bytes": 8824,
+  "artifact_path": "artifacts/execution_contract/e2e/render/render-1_html.mp4",
+  "cache_hit_on_repeat": "CACHE_HIT",
+  "committed": true,
+  "failures": [],
+  "ffprobe": {
+    "duration_s": "2.000000",
+    "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+    "streams": [
+      {
+        "avg_frame_rate": "24/1",
+        "codec_type": "video",
+        "height": 360,
+        "width": 640
+      }
+    ]
+  },
+  "idempotency_key": "889ce8a4c7230c6f0a03c1d13af695504d04e9d9a3c956d56c4e10910264252a",
+  "receipt_id": "rreceipt-fc12d70d9375159f",
+  "receipt_matches_spec": true,
+  "receipt_spec_mismatches": [],
+  "scene_hash": "64f3493bbb81b887709cbcfadd538bce1c3b401377e94424e96fea904e5250f4",
+  "timeline_hash": "31bdc334b4211ed486b3cbab504a104ea7039022ea888b2917ac8fbdaab50058",
+  "transaction_id": "tx-4a7665f0be53945d",
+  "validation": {
+    "checks": [
+      {
+        "detail": "",
+        "name": "artifact_exists",
+        "passed": true
+      },
+      {
+        "detail": "",
+        "name": "ffprobe_succeeds",
+        "passed": true
+      },
+      {
+        "detail": "",
+        "name": "video_stream_valid",
+        "passed": true
+      },
+      {
+        "detail": "mov,mp4,m4a,3gp,3g2,mj2",
+        "name": "container_valid",
+        "passed": true
+      },
+      {
+        "detail": "640x360",
+        "name": "resolution_correct",
+        "passed": true
+      },
+      {
+        "detail": "24.0",
+        "name": "fps_correct",
+        "passed": true
+      },
+      {
+        "detail": "2000ms",
+        "name": "duration_within_tolerance",
+        "passed": true
+      },
+      {
+        "detail": "",
+        "name": "audio_present_when_required",
+        "passed": true
+      },
+      {
+        "detail": "",
+        "name": "timeline_hash_present",
+        "passed": true
+      },
+      {
+        "detail": "",
+        "name": "receipt_chain_complete",
+        "passed": true
+      }
+    ],
+    "failures": [],
+    "passed": true,
+    "production_id": "hevi-p0-e2e",
+    "receipt_refs": [
+      "rreceipt-fc12d70d9375159f"
+    ]
+  },
+  "verdict": "PASS"
+}
