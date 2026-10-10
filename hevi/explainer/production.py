@@ -60,6 +60,16 @@ async def _render_talkcraft_storyboard(
     return await render_storyboard_talkcraft(storyboard_data, output_dir, config)
 
 
+async def _render_artmotion_storyboard(
+    storyboard_data: dict[str, Any], output_dir: Path, config: dict[str, Any]
+) -> dict[str, Any]:
+    """Injected artmotion renderer: style + grammar on CPU + local TTS."""
+
+    from hevi.artmotion.adapter import render_storyboard_artmotion
+
+    return await render_storyboard_artmotion(storyboard_data, output_dir, config)
+
+
 def _path_from_artifact(result: dict[str, Any], *, primary: bool) -> Path | None:
     artifacts = result.get("artifacts")
     if not isinstance(artifacts, list):
@@ -93,7 +103,7 @@ async def render_narrated_storyboard(
     """
 
     renderer = (renderer or os.environ.get("HEVI_EXPLAINER_RENDERER") or "hevi-remotion").strip()
-    if renderer not in {"hevi-remotion", "talkcraft"}:
+    if renderer not in {"hevi-remotion", "talkcraft", "artmotion"}:
         raise NarratedProductionError(f"UNKNOWN_RENDERER: {renderer}")
     if talkcraft_avatar not in (None, False) and renderer != "talkcraft":
         raise NarratedProductionError("AVATAR_REQUIRES_TALKCRAFT: avatar option needs renderer=talkcraft")
@@ -111,7 +121,9 @@ async def render_narrated_storyboard(
         "schema_version": 1,
         "storyboard": storyboard.model_dump(mode="json"),
         "renderer": (
-            _render_talkcraft_storyboard if renderer == "talkcraft" else _render_remotion_storyboard
+            _render_talkcraft_storyboard if renderer == "talkcraft" else
+            _render_artmotion_storyboard if renderer == "artmotion" else
+            _render_remotion_storyboard
         ),
     }
 
