@@ -1,4 +1,4 @@
-from PIL import Image, ImageChops, ImageStat
+from PIL import Image, ImageChops, ImageStat, ImageFilter
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +25,14 @@ def run_quality_gates(images: list[Path]) -> list[dict[str, Any]]:
                 
                 # 3. Subtitle completeness
                 # Check if bottom part of image has text or is cut off
-                # Here we just do a dummy check since it's hard to OCR
-                gates.append({"name": "subtitle_completeness", "threshold": "true", "passed": True, "value": True, "image": img_path.name})
+                bottom_30 = gray.crop((0, int(gray.height * 0.7), gray.width, gray.height))
+                edges = ImageChops.subtract(bottom_30, bottom_30.filter(ImageFilter.MinFilter(3)))
+                edge_stat = ImageStat.Stat(edges)
+                edge_mean = edge_stat.mean[0]
+                
+                # If edge mean is very low, it means there is no text in the subtitle bands (it's blurry background)
+                completeness_pass = edge_mean > 0.5
+                gates.append({"name": "subtitle_completeness", "threshold": "edge_mean>0.5", "passed": completeness_pass, "value": round(edge_mean, 2), "image": img_path.name})
                 
         except Exception as e:
             gates.append({"name": "image_error", "threshold": "none", "passed": False, "value": str(e), "image": img_path.name})

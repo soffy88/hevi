@@ -245,6 +245,42 @@ def speaker_label(speaker, text):
     return f"{speaker}{separator}"
 
 
+
+def calculate_unified_font_size(lines, base_font, font_path, max_width):
+    minimum_allowed = max(12, round(base_font * 0.55))
+    unified_size = base_font
+    for line in lines:
+        text = line["text"]
+        speaker = line.get("prefix")
+        label = speaker_label(speaker, text) if speaker else ""
+        
+        # We need to simulate the size finding for this line
+        line_fit_size = minimum_allowed
+        for size in range(base_font, minimum_allowed - 1, -2):
+            label_width = 0
+            if label:
+                label_size = max(12, round(size * SPEAKER_PREFIX_SCALE))
+                label_font = load_subtitle_font(font_path, label_size, label)
+                label_stroke = max(2, label_size // 14)
+                # use temp image to get draw
+                dummy = Image.new("RGB", (1, 1))
+                draw = ImageDraw.Draw(dummy)
+                label_box = draw.textbbox((0, 0), label, font=label_font, stroke_width=label_stroke)
+                label_width = label_box[2] - label_box[0]
+            
+            font = load_subtitle_font(font_path, size, text)
+            stroke = max(2, size // 14)
+            dummy = Image.new("RGB", (1, 1))
+            draw = ImageDraw.Draw(dummy)
+            candidate_box = draw.textbbox((0, 0), text, font=font, stroke_width=stroke)
+            
+            if label_width + candidate_box[2] - candidate_box[0] <= max_width:
+                line_fit_size = size
+                break
+        if line_fit_size < unified_size:
+            unified_size = line_fit_size
+    return unified_size
+
 def draw_scripted_subtitle(
     image, text, y_center, font_path, font_size, max_width, speaker=None
 ):
@@ -261,22 +297,26 @@ def draw_scripted_subtitle(
             (0, 0), label, font=label_font, stroke_width=label_stroke
         )
         label_width = label_box[2] - label_box[0]
-    chosen = None
-    box = None
-    for size in range(font_size, minimum - 1, -2):
-        font = load_subtitle_font(font_path, size, text)
-        stroke = max(2, size // 14)
-        candidate_box = draw.textbbox(
-            (0, 0), text, font=font, stroke_width=stroke
-        )
-        if label_width + candidate_box[2] - candidate_box[0] <= max_width:
-            chosen = (font, stroke)
-            box = candidate_box
-            break
-    if chosen is None:
-        raise SystemExit(
-            f"台词过长，缩小到可读下限后仍放不下: {text!r}；请拆句或删减"
-        )
+    font = load_subtitle_font(font_path, font_size, text)
+    stroke = max(2, font_size // 14)
+    candidate_box = draw.textbbox((0, 0), text, font=font, stroke_width=stroke)
+    
+    if label_width + candidate_box[2] - candidate_box[0] > max_width:
+        # Fallback to shrink if still too large, but shouldn't happen with unified size
+        chosen = None
+        for size in range(font_size, minimum - 1, -2):
+            font = load_subtitle_font(font_path, size, text)
+            stroke = max(2, size // 14)
+            candidate_box = draw.textbbox((0, 0), text, font=font, stroke_width=stroke)
+            if label_width + candidate_box[2] - candidate_box[0] <= max_width:
+                chosen = (font, stroke)
+                box = candidate_box
+                break
+        if chosen is None:
+            raise SystemExit(f"台词过长，缩小到可读下限后仍放不下: {text!r}；请拆句或删减")
+    else:
+        chosen = (font, stroke)
+        box = candidate_box
     font, stroke = chosen
     text_width = box[2] - box[0]
     text_height = box[3] - box[1]
@@ -584,6 +624,7 @@ def scripted_render_one(
         source_strip_height = min(first_frame.height, max(1, round(first_frame.width * 0.05625)))
         strip_height = max(1, round(source_strip_height * out_width / first_frame.width))
         base_font = font_size or max(16, round(strip_height * 0.62))
+        base_font = calculate_unified_font_size(lines, base_font, font_path, round(out_width * 0.92))
         draw_scripted_subtitle(
             hero, lines[0]["text"], hero.height - strip_height // 2,
             font_path, base_font, round(out_width * 0.92),
@@ -620,6 +661,8 @@ def scripted_render_one(
         strip_heights = [base_strip] * strip_count
         strip_heights[-1] += remaining - sum(strip_heights)
         base_font = font_size or max(24, round(out_width / 18))
+        
+    base_font = calculate_unified_font_size(lines, base_font, font_path, round(out_width * 0.92))
 
     hero = ImageOps.fit(
         first_frame,
@@ -636,7 +679,7 @@ def scripted_render_one(
         lines[0]["text"],
         first_line_y,
         font_path,
-        min(base_font, max(16, round(first_strip_height * 0.62))),
+        base_font,
         round(out_width * 0.92),
         speaker=lines[0].get("prefix"),
     )
@@ -661,7 +704,7 @@ def scripted_render_one(
             line["text"],
             strip.height // 2,
             font_path,
-            min(base_font, max(16, round(strip.height * 0.62))),
+            base_font,
             round(out_width * 0.92),
             speaker=line.get("prefix"),
         )
