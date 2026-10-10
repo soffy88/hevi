@@ -1,0 +1,9 @@
+OpenMontage
+Copyright (c) calesthio
+License: AGPL-3.0
+- Includes `mocap-clips` data from OpenMontage (`ink-theater/mocap`).
+
+Lanshu
+Copyright (c) cclank
+License: MIT
+- Includes explainer tools and HyperFrames styles from `cclank/lanshu`.
