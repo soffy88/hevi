@@ -51,6 +51,10 @@ services:
       - VIBEVOICE_MODEL_DIR=${VIBEVOICE_MODEL_DIR:-/models/vibevoice-1.5b}
       - VIBEVOICE_ASR_MODEL_DIR=${VIBEVOICE_ASR_MODEL_DIR:-/models/vibeasr}
       - COSYVOICE_MODEL_DIR=/opt/cosyvoice/model
+      # 宿主挂载的 /opt/cosyvoice/model 即 Fun-CosyVoice3-0.5B(cosyvoice3.yaml 布局);
+      # 不设此变量时 /api/ai/health 的 cosyvoice3 恒为 false, 且 model=CosyVoice3 的请求
+      # 找不到模型目录。
+      - COSYVOICE3_MODEL_DIR=${COSYVOICE3_MODEL_DIR:-/opt/cosyvoice/model}
       - FISH_SPEECH_MODEL_DIR=${FISH_SPEECH_MODEL_DIR:-/models/fish-speech-1.5}
       - LONGCAT_MODEL_PATH=/data/models/LongCat-Voice
 

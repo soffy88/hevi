@@ -1,7 +1,8 @@
 # 纯 CPU 覆盖层: 去掉基础 compose 的 nvidia GPU reservation。
 # 宿主无可用 NVIDIA GPU(或 nvidia-container-cli 报 nvml error)时, 基础 compose
 # 会在 prestart hook 失败而起不来。用法:
-#   docker compose -f services/gen_engine/docker-compose.yml #     -f services/gen_engine/docker-compose.cpu.yml up -d
+#   docker compose -f services/gen_engine/docker-compose.yml \
+#     -f services/gen_engine/docker-compose.cpu.yml up -d
 services:
   gen-engine:
     deploy:

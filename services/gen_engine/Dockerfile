@@ -8,6 +8,16 @@
 # Build context: 仓库根(需含 services/voicebox 子模块检出)
 # Usage: docker compose -f deploy/docker-compose-cftunnel.yml build hevi-gen-engine
 
+# PYTORCH_VARIANT: cpu(默认) | rocm | 其他(=PyPI 默认 CUDA 轮子)。
+# 注意: FROM 之前的全局 ARG 不会自动进入各 stage —— 每个装 torch 的 stage 必须
+# 自己再声明 `ARG PYTORCH_VARIANT`, 否则变量为空, 走 else 分支装成 PyPI 的
+# CUDA 版 torch(2026-10-10 cosy-ref-v1 镜像因此装成 torch 2.14.1+cu130 + 16 个
+# nvidia-* 包, 29 GB)。
+# cpu 变体: torch/torchaudio 一律从 download.pytorch.org/whl/cpu 装, 随即把装上的
+# 版本(+cpu)写成 pip constraints(PIP_CONSTRAINT), 并把 cpu 索引加到
+# PIP_EXTRA_INDEX_URL; 后续 requirements/依赖解析既不能换成 CUDA 版 torch, 也拉
+# 不进 nvidia-*(版本冲突时构建直接失败而不是静默换包)。最终 stage 末尾逐个
+# python 环境校验 +cpu / cuda=None / 无 nvidia-*。
 ARG PYTORCH_VARIANT=cpu
 
 FROM oven/bun:1 AS frontend
@@ -34,8 +44,13 @@ RUN if [ "$PYTORCH_VARIANT" = "rocm" ]; then \
     elif [ "$PYTORCH_VARIANT" = "cpu" ]; then \
       pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio && \
       printf '[global]\nindex-url = https://download.pytorch.org/whl/cpu\nextra-index-url = https://pypi.org/simple\n' > /etc/pip.conf; \
-    fi
-RUN pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install -r requirements.txt
+    fi && \
+    # cpu: 钉住刚装的 torch/torchaudio(+cpu), requirements 的 torch>=2.2.0 等不得换包
+    if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
+      pip freeze --path /install/lib/python3.11/site-packages | grep -iE '^(torch|torchaudio)==' > /tmp/torch-pin-system.txt && \
+      grep -q '+cpu' /tmp/torch-pin-system.txt; \
+    else : > /tmp/torch-pin-system.txt; fi && cat /tmp/torch-pin-system.txt
+RUN PIP_CONSTRAINT=/tmp/torch-pin-system.txt pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install -r requirements.txt
 RUN pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install --no-deps chatterbox-tts
 RUN pip install --no-cache-dir --timeout 120 --retries 8 --prefix=/install --no-deps hume-tada
 
@@ -49,7 +64,12 @@ RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get
 RUN python -m venv /opt/ai-venv && \
     /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --upgrade pip && \
     if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
-      /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio; \
+      /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio && \
+      /opt/ai-venv/bin/pip freeze | grep -iE '^(torch|torchaudio)==' > /tmp/torch-pin-ai.txt && \
+      grep -q '+cpu' /tmp/torch-pin-ai.txt && \
+      # 本 stage 的 /etc/pip.conf 已是 index-url=cpu + extra-index-url=pypi; 这里不能再设
+      # PIP_EXTRA_INDEX_URL(环境变量会覆盖 pip.conf 的 pypi extra, vibevoice 就找不到)。
+      export PIP_CONSTRAINT=/tmp/torch-pin-ai.txt; \
     else \
       /opt/ai-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 torch torchaudio; \
     fi && \
@@ -74,13 +94,17 @@ RUN python -m venv /opt/ai-venv && \
 # (同 asr-venv 模式)。cosyvoice/ + third_party/Matcha-TTS 为 vendored 代码,
 # 拷入 site-packages(见 services/gen_engine/cosyvoice/README.md)。
 FROM python:3.11-slim AS cosy-builder
+ARG PYTORCH_VARIANT
 WORKDIR /build
 RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends build-essential git ffmpeg \
     && rm -rf /var/lib/apt/lists/*  # apt retries: sing-box 代理间歇 502
 RUN python -m venv /opt/cosy-venv && \
     /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --upgrade pip && \
     if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
-      /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio; \
+      /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --index-url "https://download.pytorch.org/whl/cpu" torch torchaudio && \
+      /opt/cosy-venv/bin/pip freeze | grep -iE '^(torch|torchaudio)==' > /tmp/torch-pin-cosy.txt && \
+      grep -q '+cpu' /tmp/torch-pin-cosy.txt && \
+      export PIP_CONSTRAINT=/tmp/torch-pin-cosy.txt PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cpu"; \
     else \
       /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 torch torchaudio; \
     fi && \
@@ -111,6 +135,7 @@ WORKDIR /build/vibeasr
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_NATIVE=OFF \
     && cmake --build build -j4 --target asr_infer
 FROM python:3.11-slim
+ARG PYTORCH_VARIANT
 RUN groupadd -r voicebox && useradd -r -g voicebox -m -s /bin/bash voicebox
 WORKDIR /app
 RUN apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 update && apt-get -o Acquire::Retries=8 -o Acquire::http::Timeout=60 install -y --no-install-recommends \
@@ -128,8 +153,23 @@ COPY --chown=voicebox:voicebox services/voicebox/backend/ /app/backend/
 # ── ASR 独立 venv: VibeVoice-ASR-HF 需要 transformers>=5.3.0, 与 ai-venv 的 4.51.3 隔离。 ──
 RUN python -m venv /opt/asr-venv && \
     /opt/asr-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --upgrade pip && \
+    if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
+      /opt/asr-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --index-url "https://download.pytorch.org/whl/cpu" torch && \
+      /opt/asr-venv/bin/pip freeze | grep -iE '^torch==' > /tmp/torch-pin-asr.txt && \
+      grep -q '+cpu' /tmp/torch-pin-asr.txt && \
+      export PIP_CONSTRAINT=/tmp/torch-pin-asr.txt PIP_EXTRA_INDEX_URL="https://download.pytorch.org/whl/cpu"; \
+    fi && \
     /opt/asr-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 \
-      "transformers>=5.3.0" "torch" "accelerate" "bitsandbytes" "soundfile" "librosa" "numpy" "huggingface-hub"
+      "transformers>=5.3.0" "torch" "accelerate" "bitsandbytes" "soundfile" "librosa" "numpy" "huggingface-hub" && \
+    rm -f /tmp/torch-pin-asr.txt
+
+# ── cpu 变体守门: 每个 python 环境必须是 +cpu torch、cuda=None、无 nvidia-* ──
+RUN if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
+      for py in /usr/local/bin/python /opt/ai-venv/bin/python /opt/cosy-venv/bin/python /opt/asr-venv/bin/python; do \
+        $py -c "import sys, torch; v = torch.__version__; print(sys.executable, v, torch.version.cuda); assert v.endswith('+cpu') and torch.version.cuda is None, v" || exit 1; \
+        if $py -m pip list 2>/dev/null | grep -i nvidia; then echo "FAIL: nvidia-* packages in $py"; exit 1; fi; \
+      done; \
+    fi
 
 COPY --chown=voicebox:voicebox services/gen_engine/ /app/gen_engine/
 COPY --chown=voicebox:voicebox services/gen_engine/vibevoice_asr/modular/modeling_vibevoice_asr.py \
