@@ -40,23 +40,5 @@
     enabled = false
     log_level = "INFO"
 
-# 数据库配置 (共享 hevi PostgreSQL)
-[database]
-    postgres_host = "postgres"
-    postgres_port = 5432
-    postgres_user = "hevi"
-    postgres_password = "hevi"
-    postgres_db = "hevi_vault"
-
-# MinIO 对象存储 (共享 hevi Vault)
-[storage]
-    endpoint = "minio:9000"
-    access_key = "hevi"
-    secret_key = "hevi1234"
-    bucket = "vault"
-
-# Redis 缓存 (共享)
-[redis]
-    host = "redis"
-    port = 6379
-    db = 0
+# hevi 集成说明: MPT 不直接访问 hevi 的 PostgreSQL/MinIO/Redis(原 [database]/[storage]/[redis]
+# 段从未被代码读取, 且含弱口令, 2026-10-11 删除)。与 hevi 的对接只走 HTTP API。
