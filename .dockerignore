@@ -9,6 +9,8 @@ output/
 *.log
 *.mp4
 *.wav
+# cosy-ref-v1: 仓库内置 CosyVoice 默认参考音必须进引擎镜像
+!services/gen_engine/assets/voice_refs/*.wav
 *.jpg
 *.png
 !hevi/

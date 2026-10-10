@@ -239,23 +239,19 @@ async def _synthesize_formal(
 
         mode = os.getenv("HEVI_COSY_INFERENCE_MODE", "").strip() or None
         celeb = (_kw.get("celeb") or os.getenv("COSY_CELEB") or "").strip()
-        voice_ref = None
-        ref_text = None
-        if celeb:
-            from hevi.studio.voices import find_voice
-
-            spec = find_voice(celeb)
-            if spec and spec.local:
-                voice_ref = spec.audio_path
-                ref_text = spec.transcript
+        # cosy-ref-v1: 参考音由 cosyvoice_service 统一解析(显式 voice_ref →
+        # 名人/音色目录 → 内置默认)。显式点名的 celeb 必须解析成功(strict),
+        # 不再在目录缺失时静默退成"只传文本"。
         await cosyvoice_synthesize(
+            config={"strict_voice": bool(celeb)},
             script=[
                 SimpleNamespace(
                     text=text,
                     inference_mode=mode,
                     instruct_text=instruct,
-                    voice_ref=voice_ref,
-                    ref_text=ref_text,
+                    voice_ref=str(_kw.get("reference_audio") or "") or None,
+                    ref_text=str(_kw.get("reference_text") or "") or None,
+                    voice_id=celeb or voice,
                 )
             ],
             output_path=output_path,

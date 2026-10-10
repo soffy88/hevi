@@ -178,7 +178,14 @@ async def _synthesize_with_engine(
         line.instruct_text = str(config.get("instruct") or emotion or "") or None
         line.voice_ref = str(config.get("reference_audio") or "") or None
         line.ref_text = str(config.get("reference_text") or "") or None
-        await cosyvoice_synthesize(config=config, script=[line], output_path=output_path)
+        # cosy-ref-v1: voice 字段(音色目录 id / builtin:<name>)解析为参考音;
+        # API 显式点名的音色解析不到时报 422, 未给则用内置默认参考音。
+        line.voice_id = str(config.get("voice") or "") or None
+        await cosyvoice_synthesize(
+            config={**config, "strict_voice": bool(line.voice_id)},
+            script=[line],
+            output_path=output_path,
+        )
         return
     if engine == "f5_tts":
         from hevi.audio.f5_tts_service import f5_tts_synthesize

@@ -171,6 +171,58 @@ async def _run_worker_async(worker: Path, args: dict[str, Any], *, python: str) 
     return code, stdout.decode(errors="replace") if stdout else ""
 
 
+#: 仓库内置参考音(cosy-ref-v1 契约 ``builtin:<name>``)。引擎镜像 COPY 了
+#: services/gen_engine/ → /app/gen_engine/, 故相对本文件解析, 容器内外一致。
+_BUILTIN_VOICE_REF_DIR = Path(__file__).resolve().parent / "assets" / "voice_refs"
+_BUILTIN_PREFIX = "builtin:"
+_CV3_PROMPT_MARK = "<|endofprompt|>"
+
+
+def _builtin_ref_path(raw: str) -> tuple[Path, str] | None:
+    """``builtin:<name>`` → (wav 路径, 转录)。非 builtin 或缺文件返回 None。"""
+    if not raw.startswith(_BUILTIN_PREFIX):
+        return None
+    name = raw[len(_BUILTIN_PREFIX) :].strip() or "zh_default"
+    if "/" in name or "\\" in name or name.startswith("."):
+        return None
+    wav = _BUILTIN_VOICE_REF_DIR / f"{name}.wav"
+    if not wav.is_file():
+        return None
+    txt = _BUILTIN_VOICE_REF_DIR / f"{name}.txt"
+    transcript = txt.read_text(encoding="utf-8").strip() if txt.is_file() else ""
+    return wav, transcript
+
+
+def _normalize_cosy_script(script: list[Any]) -> list[dict[str, Any]]:
+    """cosy-ref-v1: 解析 builtin 参考音, prompt_text 兜底 ref_text(去掉 CV3 前缀)。"""
+    rows: list[dict[str, Any]] = []
+    for line in script:
+        row = dict(line) if isinstance(line, dict) else {"text": str(line)}
+        ref = str(row.get("voice_ref") or "").strip()
+        if ref.startswith(_BUILTIN_PREFIX):
+            hit = _builtin_ref_path(ref)
+            if hit is None:
+                raise HTTPException(status_code=422, detail=f"未知或缺失的内置参考音: {ref}")
+            row["voice_ref"] = str(hit[0])
+            if not str(row.get("ref_text") or "").strip() and hit[1]:
+                row["ref_text"] = hit[1]
+        if not str(row.get("ref_text") or "").strip() and row.get("prompt_text"):
+            prompt = str(row["prompt_text"])
+            if _CV3_PROMPT_MARK in prompt:
+                prompt = prompt.split(_CV3_PROMPT_MARK, 1)[1]
+            row["ref_text"] = prompt.strip() or None
+        rows.append(row)
+    return rows
+
+
+def _cosy_line_ready(line: dict[str, Any]) -> bool:
+    """有参考音, 或显式 sft + spk_id。"""
+    if line.get("voice_ref"):
+        return True
+    mode = str(line.get("inference_mode") or "").strip().lower()
+    return mode == "sft" and bool(str(line.get("spk_id") or "").strip())
+
+
 @router.post("/cosyvoice")
 async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
     """CosyVoice 风格解说 TTS(引擎侧合成)。
@@ -185,6 +237,7 @@ async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
     script = payload.get("script") or []
     if not script:
         raise HTTPException(status_code=422, detail="script 不能为空")
+    script = _normalize_cosy_script(script)
     config = payload.get("config") or {}
     watermark = bool(config.get("watermark", True))
     requested_model = str(config.get("model_dir") or "").strip()
@@ -218,14 +271,25 @@ async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
 
     # 2) 重供货 CosyVoice2/3 worker(cosy-venv, transformers==5.13 + 行为补丁)
     #    —— 需要 voice_ref 克隆音色; 失败降级 vibevoice, 不阻断。
-    has_voice_ref = any(line.get("voice_ref") for line in script)
+    cosy_ready = all(_cosy_line_ready(line) for line in script)
     model_choice = str(config.get("model") or "").strip()
     if model_choice in ("Fun-CosyVoice3-0.5B", "CosyVoice3"):
         cosy_model_dir = _cosyvoice3_model_dir() or requested_model or None
     else:
         cosy_model_dir = requested_model or _cosyvoice_model_dir() or None
 
-    if has_voice_ref and cosy_model_dir is not None:
+    if cosy_model_dir is not None and not cosy_ready:
+        # cosy-ref-v1: 无参考音且非 sft 的行 CosyVoice 合不出来 —— 明确 422,
+        # 不再静默降级到同样需要参考音的 vibevoice 再报含糊的 501。
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "CosyVoice 契约(cosy-ref-v1): 每行需要 voice_ref(参考音, zero_shot 另需 "
+                "ref_text), 或 inference_mode=sft + spk_id。"
+            ),
+        )
+
+    if cosy_ready and cosy_model_dir is not None:
         worker = Path(__file__).resolve().parent / "cosy_worker.py"
         # voice_ref 必须是引擎容器内可见路径(跨容器宿主路径不可达)。
         refs_ok = all(
@@ -245,6 +309,7 @@ async def synthesize_cosyvoice(payload: dict[str, Any]) -> Response:
                         "inference_mode": line.get("inference_mode")
                         or config.get("inference_mode"),
                         "instruct_text": line.get("instruct_text"),
+                        "spk_id": line.get("spk_id"),
                     }
                     for line in script
                 ],

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from hevi.layer4_legacy.voicepro.oskill_impl.cosy_payload import (
+    bind_cosy_reference,
     build_cosy_line,
     build_engine_script,
+    resolve_cosy_reference,
 )
 from hevi.layer4_legacy.voicepro.oskill_impl.f5_speakers import (
     BoundTurn,
@@ -36,8 +38,10 @@ from hevi.layer4_legacy.voicepro.oskill_impl.vocal_remix import (
 __all__ = [
     "BoundTurn",
     "SpeakerRef",
+    "bind_cosy_reference",
     "build_cosy_line",
     "build_engine_script",
+    "resolve_cosy_reference",
     "conversation_turns",
     "fill_missing_lines",
     "merge_and_split_cues",

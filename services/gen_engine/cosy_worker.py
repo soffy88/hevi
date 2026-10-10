@@ -18,6 +18,8 @@ Args JSON schema:
           "text": "要合成的文本",
           "voice_ref": "/models/.../ref.wav",   # 必填(克隆音色)
           "ref_text": "参考音频转录" | null,     # 有 → zero-shot; 无 → cross-lingual
+          "inference_mode": "zero_shot|cross_lingual|instruct|sft" | null,
+          "spk_id": "中文女" | null,             # sft 必填(此时 voice_ref 可省)
           "speed": 1.0
         }
       ],
@@ -84,6 +86,8 @@ def _normalize_mode(raw: str | None) -> str:
         return "cross_lingual"
     if key in {"zero_shot", "zeroshot"}:
         return "zero_shot"
+    if key == "sft":
+        return "sft"
     return ""
 
 
@@ -91,22 +95,41 @@ def _synthesize_line(
     cosyvoice: Any,
     family: str,
     text: str,
-    voice_ref: Path,
+    voice_ref: Path | None,
     ref_text: str | None,
     speed: float,
     tmp_dir: Path,
     inference_mode: str | None = None,
     instruct_text: str | None = None,
+    spk_id: str | None = None,
 ) -> Any:
     """单行合成, 返回 tts_speech tensor(24k / 22.05k, 取决于模型)。"""
     import torch  # type: ignore[import-not-found]
 
-    prompt_wav = _prepare_prompt_wav(voice_ref, tmp_dir)
     prefix = _CV3_SYSTEM_PROMPT if family == "cosyvoice3" else ""
     mode = _normalize_mode(inference_mode)
     if not mode:
         mode = "instruct" if instruct_text else ("zero_shot" if ref_text else "cross_lingual")
     chunks: list[Any] = []
+    if mode == "sft":
+        if not spk_id:
+            raise ValueError("sft 模式缺 spk_id(CosyVoice 内置说话人)")
+        available = list(getattr(cosyvoice, "list_available_spks", list)() or [])
+        if available and spk_id not in available:
+            raise ValueError(f"spk_id 不在模型内置说话人中: {spk_id}; 可用: {available[:10]}")
+        gen = cosyvoice.inference_sft(text, spk_id, stream=False, speed=speed)
+        for chunk in gen:
+            speech = chunk["tts_speech"]
+            if speech is not None:
+                chunks.append(speech.detach().cpu())
+        if not chunks:
+            raise RuntimeError(f"CosyVoice sft 未产出音频(行: {text[:40]}…)")
+        return torch.cat(chunks, dim=1)
+    if voice_ref is None:
+        raise ValueError(f"{mode} 模式缺 voice_ref(参考音)")
+    if mode == "zero_shot" and not ref_text:
+        raise ValueError("zero_shot 模式缺 ref_text(参考音转录)")
+    prompt_wav = _prepare_prompt_wav(voice_ref, tmp_dir)
     if mode == "instruct":
         instruct = instruct_text or ""
         instruct = prefix + instruct if family == "cosyvoice3" else instruct
@@ -175,11 +198,14 @@ def _main(args_path: str) -> None:
             ref_raw = line.get("voice_ref")
             if not text:
                 raise ValueError("script 行 text 为空")
-            if not ref_raw:
-                raise ValueError("script 行缺 voice_ref(F5/CosyVoice 克隆必须参考音频)")
-            voice_ref = Path(str(ref_raw))
-            if not voice_ref.exists():
-                raise FileNotFoundError(f"voice_ref 不可达: {voice_ref}")
+            is_sft = _normalize_mode(line.get("inference_mode")) == "sft"
+            voice_ref: Path | None = None
+            if not ref_raw and not is_sft:
+                raise ValueError("script 行缺 voice_ref(CosyVoice 非 sft 模式必须参考音频)")
+            if ref_raw and not is_sft:
+                voice_ref = Path(str(ref_raw))
+                if not voice_ref.exists():
+                    raise FileNotFoundError(f"voice_ref 不可达: {voice_ref}")
             chunks.append(
                 _synthesize_line(
                     cosyvoice,
@@ -191,6 +217,7 @@ def _main(args_path: str) -> None:
                     tmp_dir,
                     inference_mode=line.get("inference_mode"),
                     instruct_text=line.get("instruct_text"),
+                    spk_id=line.get("spk_id"),
                 )
             )
 

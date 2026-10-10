@@ -32,10 +32,36 @@ AudioStyle = Literal["formal", "conversational"]
 
 LayoutMode = Literal["fullscreen", "broll_pip"]
 
+#: 旁白音色契约(cosy-ref-v1): voice_profile 会作为 voice_id 交给
+#: hevi.audio.cosyvoice_service 解析成 CosyVoice 参考音(voice_ref + prompt_text):
+#: "cosyvoice_default"/空 → 仓库内置参考音 builtin:zh_default;
+#: "builtin:<name>" → 指定内置参考音; 其他 → 用户音色库 / studio 音色目录。
+#: 解析不到时 explainer 回落内置默认参考音(或配置的 sft 说话人), 不会只传文本。
+COSYVOICE_DEFAULT_VOICE_PROFILE = "cosyvoice_default"
+_VOICE_PROFILE_MAX = 128
+
+
+def normalize_voice_profile(value: Any) -> str:
+    """校验/规范 voice_profile: 去空白, 空值 → 默认音色, 拒绝超长与控制字符。"""
+    text = str(value or "").strip()
+    if not text:
+        return COSYVOICE_DEFAULT_VOICE_PROFILE
+    if len(text) > _VOICE_PROFILE_MAX:
+        raise ValueError(f"voice_profile 过长(>{_VOICE_PROFILE_MAX})")
+    if any(ord(ch) < 32 for ch in text):
+        raise ValueError("voice_profile 含控制字符")
+    return text
+
 
 class ExplainerResearchRequest(BaseModel):
     topic_or_url: str = Field(min_length=1, max_length=20_000)
-    voice_profile: str = "cosyvoice_default"
+    voice_profile: str = COSYVOICE_DEFAULT_VOICE_PROFILE
+
+    @field_validator("voice_profile", mode="before")
+    @classmethod
+    def voice_profile_contract(cls, value: Any) -> str:
+        return normalize_voice_profile(value)
+
     heygen_presenter_id: str | None = None
     # 断点续传:客户端可携带已有 session_id 覆盖旧缓存;空值由服务端生成。
     session_id: str = Field(default="", max_length=64)
@@ -403,7 +429,13 @@ class ExplainerAssembleRequest(BaseModel):
     # optional because the research session may already be persisted server
     # side; clients that keep it locally can still send it for traceability.
     topic_or_url: str = Field(default="", max_length=20_000)
-    voice_profile: str = "cosyvoice_default"
+    voice_profile: str = COSYVOICE_DEFAULT_VOICE_PROFILE
+
+    @field_validator("voice_profile", mode="before")
+    @classmethod
+    def voice_profile_contract(cls, value: Any) -> str:
+        return normalize_voice_profile(value)
+
     # ``presenter_id`` is the HEVI-owned reusable preset.  The legacy
     # ``heygen_presenter_id`` remains accepted for older clients and is
     # resolved to a provider ID only at the authenticated API boundary.

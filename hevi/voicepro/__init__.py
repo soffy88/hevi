@@ -12,7 +12,10 @@ Hevi 护城河(阈值/路由/成片导出)留在 dub / audio / production,不进
 from __future__ import annotations
 
 from hevi.voicepro.schemas import (
+    COSY_CONTRACT_VERSION,
+    CosyContractError,
     CosyLinePayload,
+    CosyReference,
     DubPlan,
     F5ModelSpec,
     MixPlan,
@@ -23,7 +26,10 @@ from hevi.voicepro.schemas import (
 )
 
 __all__ = [
+    "COSY_CONTRACT_VERSION",
+    "CosyContractError",
     "CosyLinePayload",
+    "CosyReference",
     "DubPlan",
     "F5ModelSpec",
     "MixPlan",
