@@ -313,6 +313,9 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
             "需要脚本或主题文本", target=str(order.get("target") or "explainer"), line_id=line_id
         )
 
+    if order.get("research"):
+        _write_json_atomic(output_dir / "research_report.json", order["research"])
+
     avatar_lines = {"avatar_spokesperson", "talking_head"}
     presenter_image = _slot(order, "image_path") or _slot(order, "presenter_image_path")
     presenter_video = _slot(order, "presenter_video_path")

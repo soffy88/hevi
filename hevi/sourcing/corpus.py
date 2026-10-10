@@ -58,14 +58,9 @@ def _ensure_open_clip_model():
                 raise RuntimeError(f"Missing deps for open_clip: {e}")
             
             local_dir = "/home/soffy/models/open_clip"
-            model_bin = Path(local_dir) / "open_clip_pytorch_model.bin"
+            model_bin = Path(local_dir) / "open_clip_model.safetensors"
             if not model_bin.exists():
-                try:
-                    from modelscope import snapshot_download
-                    logger.info("Downloading open_clip weights via modelscope...")
-                    snapshot_download('AI-ModelScope/CLIP-ViT-B-32-laion2B-s34B-b79K', local_dir=local_dir)
-                except Exception as e:
-                    raise RuntimeError(f"Failed to download open_clip weights: {e}")
+                raise RuntimeError("open_clip weights not found, expecting open_clip_model.safetensors")
             
             logger.info("Loading open_clip ViT-B-32 (CPU)...")
             # Force CPU to avoid taking up GPU memory (as per spec)
