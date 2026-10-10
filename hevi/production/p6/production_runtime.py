@@ -131,6 +131,7 @@ class Capability(StrEnum):
     NARRATOR = "narrator"
     MOTION = "motion"
     ASSET = "asset"
+    QUOTE_IMAGE = "quote_image"
 
 
 @dataclass(frozen=True)
