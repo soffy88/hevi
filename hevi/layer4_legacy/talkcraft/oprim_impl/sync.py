@@ -101,19 +101,30 @@ class TalkcraftPlan:
 
 AvatarMode = Literal["lipsync", "still"]
 AvatarPosition = Literal["right", "left"]
+# ``pip``: round picture-in-picture (default, unchanged).  ``host``: presenter
+# takes a large panel (16:9: ~40% left/right column; 9:16: upper half) and the
+# card stage sits beside/below it.
+AvatarLayout = Literal["pip", "host"]
+# host-panel styling (backdrop/accent); ignored by ``pip``
+AvatarStyle = Literal["studio", "brand"]
 
 
 @dataclass(frozen=True)
 class AvatarSpec:
-    """Optional digital-human picture-in-picture.  ``None`` anywhere = no avatar.
+    """Optional digital-human presenter.  ``None`` anywhere = no avatar.
 
     image: local path to a frontal portrait; omitted -> bundled AI-generated presenter.
     mode: ``lipsync`` (Wav2Lip, non-commercial weights) or ``still`` (no model).
+    position: side of the PiP circle, or of the host column for ``layout="host"``.
+    layout: ``pip`` (default) or ``host`` (large presenter panel + card stage).
+    style: host-panel look, ``studio`` (dark) or ``brand`` (warm, accent band).
     """
 
     mode: AvatarMode = "lipsync"
     image: str | None = None
     position: AvatarPosition = "right"
+    layout: AvatarLayout = "pip"
+    style: AvatarStyle = "studio"
 
     @staticmethod
     def from_config(value: object) -> AvatarSpec | None:
@@ -121,14 +132,25 @@ class AvatarSpec:
             return None
         if value is True or value in ("lipsync", "still"):
             return AvatarSpec(mode="lipsync" if value is True else value)  # type: ignore[arg-type]
+        if value == "host":
+            return AvatarSpec(layout="host", position="left")
         if isinstance(value, dict):
             if value.get("enabled") is False:
                 return None
             mode = value.get("mode", "lipsync")
             pos = value.get("position", "right")
-            if mode not in ("lipsync", "still") or pos not in ("right", "left"):
+            layout = value.get("layout", "pip")
+            if pos == "host":  # shorthand: position="host" == layout="host", host on the left
+                layout, pos = "host", value.get("side", "left")
+            style = value.get("style", "studio")
+            if (
+                mode not in ("lipsync", "still")
+                or pos not in ("right", "left")
+                or layout not in ("pip", "host")
+                or style not in ("studio", "brand")
+            ):
                 raise ValueError(f"bad avatar spec: {value}")
-            return AvatarSpec(mode=mode, image=value.get("image") or None, position=pos)
+            return AvatarSpec(mode=mode, image=value.get("image") or None, position=pos, layout=layout, style=style)
         raise ValueError(f"bad avatar spec: {value!r}")
 
 
@@ -156,6 +178,9 @@ class TalkcraftRecord:
     gates: list[GateMeasure]
     provenance: dict[str, Any]
     passed: bool = False
+    # sha256 of the decoded audio stream (s16le) - lets cross-line dedupe tell
+    # "same narration" apart from "same container bytes"
+    audio_sha256: str = ""
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)

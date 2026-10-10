@@ -8,8 +8,13 @@ Modes
   this when the lip-sync licence is a problem or the weights are absent.
 
 Output is a 512x512 avatar clip composited as a round picture-in-picture: lower
-right/left on 16:9, in the free band under the stage on 9:16.  Every run
-measures how strongly mouth motion follows voice loudness (``lipsync_corr``).
+right/left on 16:9, in the free band under the stage on 9:16.  With
+``AvatarSpec.layout="host"`` the clip is rendered at presenter-panel size
+instead (16:9: ~40% column, 9:16: upper half) and the card stage is placed
+beside/below it (:func:`composite_host`).  Every run measures how strongly
+mouth motion follows voice loudness (``lipsync_corr``); host outputs are also
+re-measured from the delivered MP4 (:func:`measure_host_face`,
+:func:`video_mouth_corr`).
 """
 
 from __future__ import annotations
@@ -27,10 +32,12 @@ from hevi.layer4_legacy.talkcraft.omodul_impl._media import FFMPEG, MediaError, 
 from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AvatarSpec
 from hevi.layer4_legacy.talkcraft.oskill_impl.avatar_math import (
     FACE,
+    HOST_ZOOM,
     SR,
     avatar_square,
     decode_yoloface,
     frame_rms,
+    host_crop,
     idle_motion,
     lagged_correlation,
     letterbox,
@@ -54,6 +61,8 @@ class AvatarResult:
     face_box: tuple[float, float, float, float]
     face_score: float
     frames: int
+    size: tuple[int, int]
+    face_in_clip: tuple[int, int, int, int]
     lipsync_corr: float | None
     lipsync_lag_frames: int
     mouth_energy_mean: float
@@ -79,8 +88,8 @@ def _load_wav16k(path: Path) -> np.ndarray:
     return np.frombuffer(raw, dtype=np.float32).copy()
 
 
-def _detect_face(img: Image.Image) -> tuple[float, float, float, float, float]:
-    sess = _session("yoloface_8n.onnx")
+def _detect_face(img: Image.Image, *, sess: Any = None, required: bool = True) -> tuple[float, float, float, float, float] | None:
+    sess = sess or _session("yoloface_8n.onnx")
     w, h = img.size
     s, px, py = letterbox(w=w, h=h)
     canvas = Image.new("RGB", (640, 640), (0, 0, 0))
@@ -88,25 +97,41 @@ def _detect_face(img: Image.Image) -> tuple[float, float, float, float, float]:
     x = (np.asarray(canvas, dtype=np.float32) / 255.0).transpose(2, 0, 1)[None]
     out = sess.run(None, {"input": x})[0]
     face = decode_yoloface(output=out, scale=s, pad_x=px, pad_y=py)
-    if face is None:
+    if face is None and required:
         raise MediaError("no face found in avatar portrait")
     return face
 
 
-def build_avatar_clip(*, spec: AvatarSpec, voice_wav: Path, duration_s: float, work: Path) -> AvatarResult:
+def build_avatar_clip(
+    *,
+    spec: AvatarSpec,
+    voice_wav: Path,
+    duration_s: float,
+    work: Path,
+    size: tuple[int, int] = (SIDE, SIDE),
+    face_share: float | None = None,
+    name: str = "avatar.mp4",
+) -> AvatarResult:
+    """Render the presenter clip.  Default = 512 square PiP crop (unchanged);
+    with ``face_share`` the crop is ``size``-shaped around the face (host panel)."""
     import time
 
     t0 = time.monotonic()
     portrait = Path(spec.image) if spec.image else DEFAULT_PORTRAIT
     img = Image.open(portrait).convert("RGB")
     W, H = img.size
-    x1, y1, x2, y2, score = _detect_face(img)
-    sx, sy, side = avatar_square(face=(x1, y1, x2, y2), w=W, h=H)
-    base = img.crop((sx, sy, sx + side, sy + side)).resize((SIDE, SIDE), Image.LANCZOS)
-    k = SIDE / side
-    # face box inside the avatar square (Wav2Lip pads the chin by ~10px)
-    fx1, fy1 = (x1 - sx) * k, (y1 - sy) * k
-    fx2, fy2 = (x2 - sx) * k, min(SIDE, (y2 - sy) * k + 10 * k)
+    x1, y1, x2, y2, score = _detect_face(img)  # type: ignore[misc]
+    OW, OH = size
+    if face_share is None:
+        sx, sy, side = avatar_square(face=(x1, y1, x2, y2), w=W, h=H)
+        cw = ch = side
+    else:
+        sx, sy, cw, ch = host_crop(face=(x1, y1, x2, y2), w=W, h=H, aspect=OW / OH, face_share=face_share)
+    base = img.crop((sx, sy, sx + cw, sy + ch)).resize((OW, OH), Image.LANCZOS)
+    kx, ky = OW / cw, OH / ch
+    # face box inside the clip (Wav2Lip pads the chin by ~10px)
+    fx1, fy1 = (x1 - sx) * kx, (y1 - sy) * ky
+    fx2, fy2 = (x2 - sx) * kx, min(OH, (y2 - sy) * ky + 10 * ky)
     fb = tuple(round(v) for v in (fx1, fy1, fx2, fy2))
     fw, fh = fb[2] - fb[0], fb[3] - fb[1]
 
@@ -132,9 +157,9 @@ def build_avatar_clip(*, spec: AvatarSpec, voice_wav: Path, duration_s: float, w
             out = sess.run(None, {"source": mels[a:b, None], "target": np.repeat(target, b - a, axis=0).astype(np.float32)})[0]
             preds[a:b] = out.transpose(0, 2, 3, 1)[..., ::-1]  # BGR -> RGB, 0..1
 
-    clip = work / "avatar.mp4"
+    clip = work / name
     enc = subprocess.Popen(
-        [FFMPEG, "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{SIDE}x{SIDE}",
+        [FFMPEG, "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{OW}x{OH}",
          "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", str(clip)],
         stdin=subprocess.PIPE,
     )
@@ -153,20 +178,23 @@ def build_avatar_clip(*, spec: AvatarSpec, voice_wav: Path, duration_s: float, w
             lower = slice(fh // 2, fh)
             mouth_energy[i] = float(np.mean(np.abs(blended[lower] - ref_face_px[lower])))
         scale, dx, dy = idle_motion(i=i, fps=FPS, rms=float(rms[i]))
+        if face_share is not None:
+            scale *= HOST_ZOOM
         im = Image.fromarray(np.clip(frame, 0, 255).astype(np.uint8))
         # inverse affine about the centre: zoom + translate
-        c = SIDE / 2
+        cx_, cy_ = OW / 2, OH / 2
         a_ = 1 / scale
-        im = im.transform((SIDE, SIDE), Image.AFFINE, (a_, 0, c - a_ * (c + dx), 0, a_, c - a_ * (c + dy)), resample=Image.BILINEAR)
+        im = im.transform((OW, OH), Image.AFFINE, (a_, 0, cx_ - a_ * (cx_ + dx), 0, a_, cy_ - a_ * (cy_ + dy)), resample=Image.BILINEAR)
         enc.stdin.write(im.tobytes())
     enc.stdin.close()
     if enc.wait() != 0:
         raise MediaError("avatar encode failed")
     corr, lag = lagged_correlation(mouth_energy, rms) if preds is not None else (None, 0)
-    np.savez_compressed(work / "avatar_metrics.npz", mouth_energy=mouth_energy, rms=rms)
+    np.savez_compressed(work / (Path(name).stem + "_metrics.npz"), mouth_energy=mouth_energy, rms=rms)
     return AvatarResult(
         clip=clip, mode=spec.mode, portrait=str(portrait), face_box=(x1, y1, x2, y2), face_score=score,
-        frames=n, lipsync_corr=corr, lipsync_lag_frames=lag,
+        frames=n, size=(OW, OH), face_in_clip=fb,  # type: ignore[arg-type]
+        lipsync_corr=corr, lipsync_lag_frames=lag,
         mouth_energy_mean=round(float(mouth_energy.mean()), 3), seconds=round(time.monotonic() - t0, 1),
     )
 
@@ -213,3 +241,107 @@ def composite(*, video: Path, avatar: Path, out: Path, position: str, portrait: 
          "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p", "-c:a", "copy",
          "-t", str(float(info["format"]["duration"])), str(out)])
     return {"x": x, "y": y, "diameter": d}
+
+
+# ---------------- host (presenter) layout ----------------
+HOST_STYLES: dict[str, dict[str, Any]] = {
+    # dark studio: navy backdrop, thin blue divider on the host edge
+    "studio": {"bg": "0x0f1724", "accent": "0x3b82f6", "accent_px": 6, "frame": None},
+    # brand: warm cream backdrop, thick orange band + framed stage
+    "brand": {"bg": "0xf3ece0", "accent": "0xe4572e", "accent_px": 14, "frame": "0x1f2937"},
+}
+
+
+def composite_host(
+    *, video: Path, avatar: Path, out: Path, layout: dict[str, tuple[int, int, int, int]],
+    frame: tuple[int, int], style: str, side: str, portrait: bool,
+) -> dict[str, Any]:
+    """Presenter panel + card stage on a styled backdrop (16:9 or 9:16)."""
+    from hevi.layer4_legacy.talkcraft.omodul_impl._media import probe
+
+    st = HOST_STYLES[style]
+    W, H = frame
+    hx, hy, hw, hh = layout["host"]
+    sx, sy, sw, sh = layout["stage"]
+    dur = float(probe(video)["format"]["duration"])
+    a, ap = st["accent"], st["accent_px"]
+    if portrait:
+        accent = f"drawbox=x=0:y={hy + hh - ap // 2}:w={W}:h={ap}:color={a}:t=fill"
+    else:
+        ax = hx + hw - ap if side == "left" else hx
+        accent = f"drawbox=x={ax}:y=0:w={ap}:h={H}:color={a}:t=fill"
+    frame_box = ""
+    if st["frame"]:
+        b = 6
+        frame_box = f",drawbox=x={sx - b}:y={sy - b}:w={sw + 2 * b}:h={sh + 2 * b}:color={st['frame']}:t={b}"
+    fc = (
+        f"color=c={st['bg']}:s={W}x{H}:r={FPS}:d={dur:.3f}[bg];"
+        f"[0:v]scale={sw}:{sh}:flags=lanczos,setsar=1[st];"
+        f"[1:v]scale={hw}:{hh},setsar=1[hv];"
+        f"[bg][st]overlay={sx}:{sy}[a];[a][hv]overlay={hx}:{hy}:shortest=1,{accent}{frame_box}[v]"
+    )
+    run([FFMPEG, "-y", "-v", "error", "-i", str(video), "-i", str(avatar), "-filter_complex", fc,
+         "-map", "[v]", "-map", "0:a", "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-pix_fmt", "yuv420p",
+         "-r", str(FPS), "-c:a", "copy", "-t", f"{dur:.3f}", str(out)])
+    return {"layout": "host", "style": style, "side": side, "host": list(layout["host"]), "stage": list(layout["stage"])}
+
+
+def _grab_frame(path: Path, t: float) -> Image.Image | None:
+    raw = subprocess.run([FFMPEG, "-v", "error", "-ss", f"{t:.3f}", "-i", str(path), "-frames:v", "1",
+                          "-f", "image2pipe", "-vcodec", "png", "-"], capture_output=True)
+    if raw.returncode or not raw.stdout:
+        return None
+    import io
+
+    return Image.open(io.BytesIO(raw.stdout)).convert("RGB")
+
+
+def measure_host_face(*, path: Path, host: tuple[int, int, int, int], samples: int = 12) -> dict[str, Any]:
+    """Re-detect the presenter face on frames of the delivered MP4 (yoloface, CPU).
+
+    A sample counts only if a face (score >= 0.5) is found whose centre lies in
+    the host panel.  ``face_height_share`` = median face height / min(frame w, h).
+    """
+    from hevi.layer4_legacy.talkcraft.omodul_impl._media import probe
+
+    info = probe(path)
+    dur = float(info["format"]["duration"])
+    sess = _session("yoloface_8n.onnx")
+    hx, hy, hw, hh = host
+    hits, heights, boxes = 0, [], []
+    short = None
+    for k in range(samples):
+        t = dur * (k + 0.5) / samples
+        im = _grab_frame(path, t)
+        if im is None:
+            continue
+        short = min(im.size)
+        f = _detect_face(im, sess=sess, required=False)
+        ok = False
+        if f is not None:
+            cx, cy = (f[0] + f[2]) / 2, (f[1] + f[3]) / 2
+            ok = hx <= cx <= hx + hw and hy <= cy <= hy + hh
+        if ok:
+            hits += 1
+            heights.append(f[3] - f[1])  # type: ignore[index]
+            boxes.append([round(v, 1) for v in f])  # type: ignore[union-attr]
+    share = float(np.median(heights)) / short if heights and short else 0.0
+    return {"samples": samples, "detected": hits, "detect_rate": round(hits / samples, 3),
+            "face_height_share": round(share, 3), "boxes": boxes}
+
+
+def video_mouth_corr(*, path: Path, box: tuple[int, int, int, int], max_lag: int = 6) -> dict[str, Any]:
+    """Lip-sync re-measured from the delivered MP4: darkness of the inner mouth
+    crop (an open mouth shows the dark cavity) vs. the MP4's own audio RMS,
+    best lagged Pearson r.  ``max_lag`` 6 frames (0.2 s): Wav2Lip's mel window
+    starts at the frame time, so mouth shapes lead loudness by ~3-4 frames."""
+    x, y, w, h = (int(v) // 2 * 2 for v in box)
+    raw = subprocess.run([FFMPEG, "-v", "error", "-i", str(path), "-vf", f"fps={FPS},crop={w}:{h}:{x}:{y},format=gray",
+                          "-f", "rawvideo", "-"], capture_output=True, check=True).stdout
+    frames = np.frombuffer(raw, dtype=np.uint8).reshape(-1, h, w).astype(np.float32)
+    inner = frames[:, h // 4 : 3 * h // 4, w // 4 : 3 * w // 4]
+    darkness = -inner.mean(axis=(1, 2))
+    wav = _load_wav16k(path)
+    rms = frame_rms(wav=wav, fps=FPS, n_frames=len(frames))
+    r, lag = lagged_correlation(darkness, rms, max_lag=max_lag)
+    return {"corr": r, "lag_frames": lag, "frames": len(frames), "box": [x, y, w, h], "metric": "inner-mouth darkness"}

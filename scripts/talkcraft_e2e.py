@@ -1,6 +1,9 @@
 """CPU end-to-end proof for the talkcraft line (no GPU, no paid calls).
 
-usage: python scripts/talkcraft_e2e.py <output_dir>
+usage: python scripts/talkcraft_e2e.py <output_dir> [--host-only | --with-host]
+
+--with-host also renders the presenter (host) layout for the talking_head and
+avatar_spokesperson lines; --host-only renders just those two.
 """
 from __future__ import annotations
 
@@ -47,23 +50,59 @@ PROMO = [
     ),
 ]
 
+HOST_SCRIPTS = {
+    "talking_head": (
+        "三分钟看懂指数基金",
+        [
+            "大家好，今天用三分钟讲清楚指数基金。",
+            "指数基金买的不是一只股票，而是一整篮子股票。",
+            "它跟踪一个指数，比如沪深三百，涨跌跟着市场走。",
+            "最大的好处是费用低，而且不用挑股票。",
+            "长期定投，再加上耐心，就是普通人的好朋友。",
+            "下期我们聊聊，怎么挑一只好的指数基金。",
+        ],
+    ),
+    "avatar_spokesperson": (
+        "晨光咖啡",
+        [
+            "你好，我是晨光咖啡的品牌代言人。",
+            "我们只用当季新鲜烘焙的阿拉比卡豆子。",
+            "每一颗豆子，都能追溯到具体的庄园。",
+            "早上七点之前下单，半小时送到你楼下。",
+            "这个月新用户首杯半价，会员再送一杯。",
+            "晨光咖啡，让每个早晨都值得期待。",
+        ],
+    ),
+}
+
 if __name__ == "__main__":
     from hevi.layer4_legacy.talkcraft.omodul_impl._whisper import WhisperAligner
+    from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AvatarSpec
+    from hevi.talkcraft.host_lines import produce_host_line
 
-    root = Path(sys.argv[1] if len(sys.argv) > 1 else "output/talkcraft_e2e")
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    flags = {a for a in sys.argv[1:] if a.startswith("--")}
+    root = Path(args[0] if args else "output/talkcraft_e2e")
     aligner = WhisperAligner()
     summary = {}
-    from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AvatarSpec
+
+    def _summ(res: dict) -> dict:
+        return {
+            "status": res["status"],
+            "wall_seconds": res["wall_seconds"],
+            "gates": {Path(r["video_path"]).name: {g["name"]: [g["value"], g["passed"]] for g in r["gates"]} for r in res["records"]},
+        }
 
     runs = (
         ("explainer", SEGMENTS, "复利的力量", AvatarSpec(mode="lipsync")),  # avatar on
         ("kinetic_promo", PROMO, "晨光咖啡", None),  # avatar off (optional)
     )
-    for line, segs, name, avatar in runs:
-        res = produce_talkcraft(segments=segs, output_dir=root / line, line=line, name=name, aligner=aligner, avatar=avatar)
-        summary[line] = {
-            "status": res["status"],
-            "wall_seconds": res["wall_seconds"],
-            "gates": {Path(r["video_path"]).name: {g["name"]: [g["value"], g["passed"]] for g in r["gates"]} for r in res["records"]},
-        }
+    if "--host-only" not in flags:
+        for line, segs, name, avatar in runs:
+            res = produce_talkcraft(segments=segs, output_dir=root / line, line=line, name=name, aligner=aligner, avatar=avatar)
+            summary[line] = _summ(res)
+    if flags & {"--host-only", "--with-host"}:
+        for line, (topic, texts) in HOST_SCRIPTS.items():
+            res = produce_host_line(line, texts=texts, topic=topic, output_dir=root / line, aligner=aligner)
+            summary[line] = _summ(res)
     print(json.dumps(summary, ensure_ascii=False, indent=1))

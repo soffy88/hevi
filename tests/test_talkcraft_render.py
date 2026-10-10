@@ -197,3 +197,121 @@ def test_layouts_stay_inside_frame():
 def test_mouth_mask_only_lower_face():
     m = am.mouth_mask(w=100, h=100)
     assert m[:45].max() == 0 and m[75, 50] == pytest.approx(1.0)
+
+
+# ---------------- presenter (host) layout ----------------
+def test_avatar_spec_host_layout_is_opt_in_and_back_compatible():
+    assert AvatarSpec().layout == "pip" and AvatarSpec.from_config(True).layout == "pip"
+    assert AvatarSpec.from_config({"mode": "still"}).layout == "pip"
+    h = AvatarSpec.from_config({"layout": "host", "position": "right", "style": "brand"})
+    assert (h.layout, h.position, h.style) == ("host", "right", "brand")
+    alias = AvatarSpec.from_config({"position": "host"})
+    assert (alias.layout, alias.position) == ("host", "left")
+    assert AvatarSpec.from_config("host").layout == "host"
+    with pytest.raises(ValueError):
+        AvatarSpec.from_config({"layout": "fullscreen"})
+    with pytest.raises(ValueError):
+        AvatarSpec.from_config({"layout": "host", "style": "neon"})
+
+
+def _inside(r, w, h):
+    x, y, rw, rh = r
+    return x >= 0 and y >= 0 and x + rw <= w and y + rh <= h
+
+
+def _overlap(a, b):
+    return not (a[0] + a[2] <= b[0] or b[0] + b[2] <= a[0] or a[1] + a[3] <= b[1] or b[1] + b[3] <= a[1])
+
+
+def test_host_layout_landscape_left_and_right():
+    for side in ("left", "right"):
+        lay = am.host_layout(frame_w=1920, frame_h=1080, portrait=False, side=side)
+        host, stage = lay["host"], lay["stage"]
+        assert host[2] == 768 and host[3] == 1080  # ~40% column, full height
+        assert _inside(host, 1920, 1080) and _inside(stage, 1920, 1080) and not _overlap(host, stage)
+        assert abs(stage[2] / stage[3] - 16 / 9) < 0.01 and stage[2] >= 1000
+        assert (host[0] == 0) == (side == "left")
+        assert all(v % 2 == 0 for v in host + stage)
+
+
+def test_host_layout_portrait_host_on_top():
+    lay = am.host_layout(frame_w=1080, frame_h=1920, portrait=True)
+    host, stage = lay["host"], lay["stage"]
+    assert host == (0, 0, 1080, 960)
+    assert stage[1] >= 960 and stage[2] == 1080 and _inside(stage, 1080, 1920)
+    assert abs(stage[2] / stage[3] - 16 / 9) < 0.01
+
+
+def test_host_crop_keeps_face_large_and_inside():
+    face = (300, 230, 640, 640)
+    for aspect, share in ((768 / 1080, 0.38), (1080 / 960, 0.46)):
+        x, y, cw, ch = am.host_crop(face=face, w=928, h=1152, aspect=aspect, face_share=share)
+        assert x >= 0 and y >= 0 and x + cw <= 928 and y + ch <= 1152
+        assert abs(cw / ch - aspect) < 0.01
+        assert x <= face[0] and x + cw >= face[2] and y <= face[1] and y + ch >= face[3]
+        assert (face[3] - face[1]) / ch >= 0.3  # face is a big part of the panel
+
+
+def test_host_lines_are_distinct_products():
+    from hevi.talkcraft.host_lines import HOST_LINES, host_avatar_spec, host_segments
+
+    th, sp = host_avatar_spec("talking_head"), host_avatar_spec("avatar_spokesperson")
+    assert th.layout == sp.layout == "host"
+    assert (th.position, th.style) != (sp.position, sp.style)
+    assert HOST_LINES["talking_head"].tts_length_scale != HOST_LINES["avatar_spokesperson"].tts_length_scale
+    texts = ["第一句。第二句。", "第三句。", "第四句。"]
+    a = host_segments("talking_head", texts=texts, topic="主题")
+    b = host_segments("avatar_spokesperson", texts=texts, topic="主题")
+    assert [s.role for s in a] == ["hook", "plain", "outro"]
+    assert sum(len(s.sentences) for s in a) == 4
+    assert a[0].props["subtitle"] != b[0].props["subtitle"]
+
+
+def test_studio_routes_host_lines_only_on_opt_in(monkeypatch):
+    from hevi.studio import fulfill
+
+    monkeypatch.delenv("HEVI_AVATAR_LINE_RENDERER", raising=False)
+    assert not fulfill._wants_talkcraft_host({"line_id": "talking_head"})
+    assert fulfill._wants_talkcraft_host({"slots": {"renderer": "talkcraft"}})
+    monkeypatch.setenv("HEVI_AVATAR_LINE_RENDERER", "talkcraft")
+    assert fulfill._wants_talkcraft_host({"line_id": "avatar_spokesperson"})
+
+
+def test_host_beats_are_short_clauses():
+    from hevi.talkcraft.host_lines import MAX_BEAT_CHARS, beat_sentences
+
+    beats = beat_sentences("它跟踪一个指数，比如沪深三百，涨跌跟着市场走。短句。")
+    assert "".join(beats) == "它跟踪一个指数，比如沪深三百，涨跌跟着市场走。短句。"
+    assert all(len(b) <= MAX_BEAT_CHARS + 4 for b in beats) and len(beats) >= 3
+
+
+def test_studio_host_dispatch_without_portrait_uses_talkcraft(monkeypatch, tmp_path):
+    import asyncio
+
+    from hevi.studio import fulfill
+    from hevi.talkcraft import host_lines
+
+    seen = {}
+
+    async def fake_render(line_id, **kw):
+        seen.update(kw, line_id=line_id)
+        return {"portrait_path": str(tmp_path / "p.mp4"), "landscape_path": str(tmp_path / "l.mp4"), "record": {}}
+
+    class _M:
+        def model_dump(self, mode="json"):
+            return {"ok": True}
+
+    async def fake_manifest(paths, require_audio=False):
+        seen["manifest"] = [str(p[0]) for p in paths]
+        return _M(), {"passed": True}
+
+    monkeypatch.setattr(host_lines, "render_host_line", fake_render)
+    monkeypatch.setattr(fulfill, "_verified_video_manifest", fake_manifest)
+    order = {"line_id": "avatar_spokesperson", "topic": "晨光咖啡", "script_lines": ["你好。"], "slots": {"renderer": "talkcraft"}}
+    out = asyncio.run(fulfill._render_explainer_line(order, tmp_path))
+    assert out["status"] == "completed" and out["render_runtime"] == "talkcraft_host"
+    assert seen["line_id"] == "avatar_spokesperson" and seen["image"] is None
+    # without opt-in the legacy contract still blocks on a missing portrait
+    monkeypatch.delenv("HEVI_AVATAR_LINE_RENDERER", raising=False)
+    legacy = asyncio.run(fulfill._render_explainer_line({**order, "slots": {}}, tmp_path))
+    assert legacy["status"] == "blocked"

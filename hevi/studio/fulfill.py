@@ -258,6 +258,45 @@ async def _verified_video_manifest(
     }
 
 
+def _wants_talkcraft_host(order: dict[str, Any]) -> bool:
+    """Opt-in: ``renderer="talkcraft"`` on the order or HEVI_AVATAR_LINE_RENDERER=talkcraft."""
+    chosen = _slot(order, "renderer") or os.getenv("HEVI_AVATAR_LINE_RENDERER") or ""
+    return str(chosen).strip().lower() == "talkcraft"
+
+
+async def _render_talkcraft_host_line(
+    order: dict[str, Any], output_dir: Path, *, line_id: str, topic: str, texts: list[str], image: str | None
+) -> dict[str, Any]:
+    """talking_head / avatar_spokesperson on the talkcraft presenter (host) layout.
+
+    CPU only (Piper + Wav2Lip ONNX); a missing portrait falls back to the bundled
+    AI-generated presenter.  Any failed measured gate raises -> fail-closed.
+    """
+    from hevi.talkcraft.host_lines import render_host_line
+
+    out = await render_host_line(
+        line_id, texts=texts, topic=topic or line_id, output_dir=output_dir, image=image,
+        lang=str(_slot(order, "language") or "zh"),
+    )
+    manifest, quality = await _verified_video_manifest(
+        [
+            (Path(out["portrait_path"]), True, "portrait_video"),
+            (Path(out["landscape_path"]), False, "landscape_video"),
+        ],
+        require_audio=True,
+    )
+    return {
+        "status": "completed",
+        "target": str(order.get("target") or "explainer"),
+        "line_id": line_id,
+        "result_video_path": str(out["portrait_path"]),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": quality,
+        "render_runtime": "talkcraft_host",
+        "talkcraft_record": str(Path(output_dir) / "record.json"),
+    }
+
+
 async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     """Render explainer-compatible Studio lines into portrait + landscape MP4."""
 
@@ -277,6 +316,11 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
     avatar_lines = {"avatar_spokesperson", "talking_head"}
     presenter_image = _slot(order, "image_path") or _slot(order, "presenter_image_path")
     presenter_video = _slot(order, "presenter_video_path")
+    if line_id in avatar_lines and _wants_talkcraft_host(order):
+        return await _render_talkcraft_host_line(
+            order, output_dir, line_id=line_id, topic=topic, texts=texts,
+            image=str(presenter_image) if presenter_image else None,
+        )
     if line_id in avatar_lines and not (presenter_image or presenter_video):
         return _blocked(
             "数字人口播需要 image_path 或 presenter_video_path",

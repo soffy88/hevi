@@ -25,6 +25,15 @@ HEVI 内化的是 video-talkcraft 的「口播动效」方法与卡片库，而�
 - 默认人像 `hevi/layer4_legacy/talkcraft/assets/presenter_default.jpg` 为 AI 生成的虚构人物；模型文件放在 `HEVI_TALKCRAFT_AVATAR_MODELS`（默认 `/home/soffy/models/wav2lip`，不进库）。
 - 许可：Wav2Lip 权重仅限研究/非商业；商用请用 `still` 模式或另行授权。
 
+## 主持人布局（host）与 talking_head / avatar_spokesperson
+
+- 默认关闭、向后兼容：`AvatarSpec.layout` 默认 `"pip"`，原圆形画中画路径不变。开启：`AvatarSpec(layout="host", position="left"|"right", style="studio"|"brand")`，或配置 `{"layout": "host"}` / `{"position": "host"}` / `"host"`。
+- 版式（`oskill_impl/avatar_math.py::host_layout`）：16:9 主持人占 40% 列（768×1080），16:9 卡片舞台放在另外 60% 并垂直居中；9:16 主持人占上半（1080×960），全宽卡片舞台在下半居中。头像片段按面板尺寸直接生成（`host_crop`，人脸约占面板高 38%/46%），不再是 512 方形放大。
+- 产线（`hevi/talkcraft/host_lines.py`）：`talking_head` = 主持人左、`studio` 深色底、语速 1.0、标题标签"主讲"；`avatar_spokesperson` = 主持人右、`brand` 暖色底+强调色带+舞台描边、语速 0.92、标签"品牌口播"。同一脚本两条线音轨与画面也不会相同。
+- Studio 接入：`hevi/studio/fulfill.py` 中这两条线在订单 `renderer="talkcraft"`（或环境变量 `HEVI_AVATAR_LINE_RENDERER=talkcraft`）时走主持人布局，缺人像时用内置 AI 生成人像；未开启时仍是原 heygen/remotion 合同（缺人像 → blocked）。
+- 实测门禁（从交付 MP4 重新测量）：`host_face_detect_rate`（yoloface 12 帧抽样，人脸中心须在主持人面板内，≥0.9）、`host_face_height_share`（人脸高/短边，≥0.25；PiP 约 0.16）、`video_mouth_corr`（MP4 内嘴部内区暗度 vs MP4 音轨 RMS，±6 帧滞后，≥0.35）、`video_mouth_vs_eyes`（嘴部 r 减眼部对照 r ≥0.10，排除点头造成的相关）。`record.json` 另记 `audio_sha256`（解码后 PCM）。
+- 验收：`scripts/talkcraft_e2e.py <out> --host-only|--with-host`；`scripts/acceptance_matrix.py --talkcraft-root <out> [--talkcraft-host]` 增加 T6（MP4 抽帧人脸可见）、T7（渲染期与 MP4 复测口型相关取小值 ≥0.35）、T8（跨产线视频 sha256 与解码音频 sha256 均不重复）。
+
 ## 3O 映射
 
 沿用 HEVI 的 Layer4 布局（与 montage/VideoAgent 相同），在原有 `compile_talkcraft_plan`（只出计划、`render_handoff` 占位）之上补齐渲染：

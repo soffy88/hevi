@@ -204,8 +204,9 @@ def evaluate(e2e_evidence: dict | None) -> list[Gate]:
     return gates
 
 
-def evaluate_talkcraft(root: Path) -> list[Gate]:
-    """T1-T5: talkcraft renderer, measured from record.json + re-hash + ffprobe."""
+def evaluate_talkcraft(root: Path, *, require_host: bool = False) -> list[Gate]:
+    """T1-T5: talkcraft renderer, measured from record.json + re-hash + ffprobe.
+    T6-T8 are added when host-layout records exist (or ``require_host``)."""
     import hashlib
     import subprocess
 
@@ -256,6 +257,76 @@ def evaluate_talkcraft(root: Path) -> list[Gate]:
         f"lipsync_corr min {min(corrs):.3f}" if corrs else "no lip-sync avatar output")
     add("T5", "avatar is optional", with_av > 0 and without_av > 0,
         f"{with_av} outputs with avatar, {without_av} without")
+    hosts = [(p, r) for p in records for r in json.loads(p.read_text()).get("records", [])
+             if ((r.get("provenance") or {}).get("avatar") or {}).get("layout") == "host"]
+    if hosts or require_host:
+        gates += evaluate_talkcraft_host(hosts)
+    return gates
+
+
+def _decoded_audio_sha(path: Path) -> str:
+    import hashlib
+    import subprocess
+
+    from hevi.layer4_legacy.talkcraft.omodul_impl._media import FFMPEG
+
+    r = subprocess.run([FFMPEG, "-v", "error", "-i", str(path), "-map", "0:a:0", "-f", "s16le", "-ac", "2",
+                        "-ar", "48000", "-"], capture_output=True)
+    return hashlib.sha256(r.stdout).hexdigest() if r.returncode == 0 and r.stdout else ""
+
+
+def evaluate_talkcraft_host(hosts: list[tuple[Path, dict]]) -> list[Gate]:
+    """T6-T8: presenter (host) layout.  T6 re-detects the face on frames of the MP4
+    (yoloface), T7 re-measures lip motion from the MP4, T8 re-hashes video + decoded
+    audio across product lines (no two lines may share either)."""
+    import hashlib
+
+    gates: list[Gate] = []
+
+    def add(key: str, requirement: str, ok: bool, evidence: str) -> None:
+        gates.append(Gate(key=key, requirement=requirement, status="PASS" if ok else "BLOCKED", evidence=evidence))
+
+    if not hosts:
+        for key, req in (("T6", "host face visible"), ("T7", "host lip-sync >= 0.35"), ("T8", "host lines dedupe")):
+            add(key, req, False, "no host-layout records")
+        return gates
+    from hevi.layer4_legacy.talkcraft.omodul_impl._avatar import measure_host_face, video_mouth_corr
+
+    face_bad, face_ev, sync_bad, sync_ev = [], [], [], []
+    by_line: dict[str, list[tuple[str, str, str]]] = {}
+    for rec_path, r in hosts:
+        path = Path(r["video_path"])
+        av = r["provenance"]["avatar"]
+        key = "portrait" if r["height"] > r["width"] else "landscape"
+        lay = av["layouts"][key]
+        f = measure_host_face(path=path, host=tuple(lay["host"]))
+        face_ev.append(f"{path.name}:{f['detect_rate']}/{f['face_height_share']}")
+        if f["detect_rate"] < 0.9 or f["face_height_share"] < 0.25:
+            face_bad.append(path.name)
+        if av.get("mode") == "lipsync":
+            m = video_mouth_corr(path=path, box=tuple(lay["mouth_box"]))
+            c = min(float(lay.get("lipsync_corr") or 0.0), m["corr"])
+            sync_ev.append(f"{path.name}:{c:.3f}")
+            if c < 0.35:
+                sync_bad.append(path.name)
+        else:
+            sync_bad.append(f"{path.name}(still)")
+        by_line.setdefault(rec_path.parent.name, []).append(
+            (path.name, hashlib.sha256(path.read_bytes()).hexdigest(), _decoded_audio_sha(path)))
+    add("T6", "host face visible (yoloface on MP4 frames)", not face_bad,
+        "detect_rate/face_height_share " + ", ".join(face_ev) if not face_bad else f"failed: {face_bad} ({face_ev})")
+    add("T7", "host lip-sync >= 0.35 (render + MP4 re-measure)", not sync_bad,
+        "min(render, mp4) " + ", ".join(sync_ev) if not sync_bad else f"failed: {sync_bad} ({sync_ev})")
+    dup = []
+    lines = sorted(by_line)
+    for i, a in enumerate(lines):
+        for b in lines[i + 1:]:
+            vids = {v for _, v, _ in by_line[a]} & {v for _, v, _ in by_line[b]}
+            auds = {x for _, _, x in by_line[a] if x} & {x for _, _, x in by_line[b] if x}
+            if vids or auds:
+                dup.append(f"{a}~{b}")
+    add("T8", "host lines dedupe (video + decoded-audio sha256 differ across lines)", len(lines) >= 2 and not dup,
+        f"{len(lines)} lines: {lines}" if len(lines) >= 2 and not dup else (f"duplicates: {dup}" if dup else f"need >=2 host lines, got {lines}"))
     return gates
 
 
@@ -263,7 +334,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--e2e-evidence", help="path to the E2E JSON evidence file")
     parser.add_argument("--suite-summary", help="path to a full-suite summary JSON")
-    parser.add_argument("--talkcraft-root", help="talkcraft E2E output dir (adds T1-T5)")
+    parser.add_argument("--talkcraft-root", help="talkcraft E2E output dir (adds T1-T5, T6-T8 for host layout)")
+    parser.add_argument("--talkcraft-host", action="store_true", help="require host-layout lines (T6-T8)")
     args = parser.parse_args()
 
     e2e = None
@@ -280,7 +352,7 @@ def main() -> int:
 
     gates = evaluate(merged if merged else None)
     if args.talkcraft_root:
-        gates += evaluate_talkcraft(Path(args.talkcraft_root))
+        gates += evaluate_talkcraft(Path(args.talkcraft_root), require_host=args.talkcraft_host)
 
     passed = sum(1 for g in gates if g.status == "PASS")
     width = max(len(g.key) for g in gates)

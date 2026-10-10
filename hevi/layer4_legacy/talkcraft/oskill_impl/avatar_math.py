@@ -156,3 +156,64 @@ def overlay_layout(*, frame_w: int, frame_h: int, position: str, portrait: bool)
     x = frame_w - d - margin if position == "right" else margin
     y = frame_h - d - round(frame_h * 0.06)
     return x, y, d
+
+
+# ---------------- host (presenter) layout ----------------
+HOST_SHARE = 0.40  # 16:9: presenter column width / frame width
+HOST_FACE_SHARE = {"landscape": 0.38, "portrait": 0.46}  # face height / host panel height
+HOST_ZOOM = 1.03  # host clips are always slightly zoomed so idle sway never shows an edge
+
+
+def _even(v: float) -> int:
+    return int(v) // 2 * 2
+
+
+def host_layout(*, frame_w: int, frame_h: int, portrait: bool, side: str = "left") -> dict[str, tuple[int, int, int, int]]:
+    """Host + stage rectangles ``(x, y, w, h)`` for the presenter layout.
+
+    16:9: presenter column of ~40% frame width on ``side``; the 16:9 card stage
+    is fitted (with margin) into the other 60%, vertically centred.
+    9:16: presenter fills the upper half; the full-width 16:9 stage is centred
+    in the lower half.  All values are even (yuv420p-safe).
+    """
+    if portrait:
+        hh = _even(frame_h / 2)
+        host = (0, 0, frame_w, hh)
+        sw = frame_w
+        sh = _even(sw * 9 / 16)
+        sy = _even(hh + (frame_h - hh - sh) / 2)
+        return {"host": host, "stage": (0, sy, sw, sh)}
+    hw = _even(frame_w * HOST_SHARE)
+    margin = _even(frame_w * 0.016)
+    area_w = frame_w - hw
+    sw = _even(area_w - 2 * margin)
+    sh = _even(sw * 9 / 16)
+    if sh > frame_h - 2 * margin:
+        sh = _even(frame_h - 2 * margin)
+        sw = _even(sh * 16 / 9)
+    sy = _even((frame_h - sh) / 2)
+    if side == "right":
+        host = (frame_w - hw, 0, hw, frame_h)
+        sx = _even((area_w - sw) / 2)
+    else:
+        host = (0, 0, hw, frame_h)
+        sx = _even(hw + (area_w - sw) / 2)
+    return {"host": host, "stage": (sx, sy, sw, sh)}
+
+
+def host_crop(*, face: Sequence[float], w: int, h: int, aspect: float, face_share: float) -> tuple[int, int, int, int]:
+    """Crop ``(x, y, cw, ch)`` of aspect ``aspect`` (w/h) around ``face`` so the face
+    is ~``face_share`` of the crop height, clamped to the image (face kept in the upper-middle)."""
+    x1, y1, x2, y2 = face[:4]
+    fh = max(1.0, y2 - y1)
+    ch = fh / face_share
+    cw = ch * aspect
+    if cw > w:
+        cw, ch = float(w), w / aspect
+    if ch > h:
+        ch, cw = float(h), h * aspect
+    cx = (x1 + x2) / 2
+    cy = (y1 + y2) / 2 + 0.14 * ch
+    x = min(max(0.0, cx - cw / 2), w - cw)
+    y = min(max(0.0, cy - ch / 2), h - ch)
+    return round(x), round(y), round(cw), round(ch)
