@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import (
     APIRouter,
@@ -55,8 +55,18 @@ _KIND = "explainer"
 _LAYER_ORDER = ["E0", "E1", "E2"]
 
 
+class TalkcraftAvatarOption(BaseModel):
+    """Optional digital-human picture-in-picture (talkcraft renderer only)."""
+
+    mode: Literal["lipsync", "still"] = "lipsync"
+    image: str | None = None  # local portrait path; omitted -> bundled presenter
+    position: Literal["right", "left"] = "right"
+
+
 class RunRequest(BaseModel):
     topic: str
+    renderer: Literal["hevi-remotion", "talkcraft"] | None = None
+    avatar: TalkcraftAvatarOption | None = None
 
 
 class PresenterImageCheckRequest(BaseModel):
@@ -170,6 +180,8 @@ def _record_from_row(row: dict[str, Any]) -> dict[str, Any]:
         "topic": (row.get("input_json") or {}).get(
             "topic", (row.get("input_json") or {}).get("topic_or_url", "")
         ),
+        "renderer": (row.get("input_json") or {}).get("renderer"),
+        "avatar": (row.get("input_json") or {}).get("avatar"),
         "created_at": row["created_at"],
         "completed_at": row.get("completed_at"),
         "current_layer": state.get("current_layer"),
@@ -316,7 +328,12 @@ async def _run_pipeline(repo: AutomationRunRepository, run_id: str) -> None:
 
         ws = WorkspaceManager(task_id or run_id, pipeline_type="main_remotion")
         ws.update_progress("running", 60)
-        result = await render_narrated_storyboard(storyboard, ws.root)
+        render_kwargs: dict[str, Any] = {}
+        if rec.get("renderer"):
+            render_kwargs["renderer"] = rec["renderer"]
+        if rec.get("avatar"):
+            render_kwargs["talkcraft_avatar"] = rec["avatar"]
+        result = await render_narrated_storyboard(storyboard, ws.root, **render_kwargs)
         ws.mark_step_done("render", progress=100)
         # v9.1 产物身份: 成片 SHA-256 绑定(竖屏主片), 返工/审核对同一稿。
         ws.record_result_sha(result.portrait_path)
@@ -763,6 +780,8 @@ async def start_run(
 ) -> dict[str, str]:
     if not body.topic.strip():
         raise HTTPException(status_code=422, detail="topic 不能为空")
+    if body.avatar is not None and body.renderer != "talkcraft":
+        raise HTTPException(status_code=422, detail="avatar 仅支持 renderer=talkcraft")
     if len(body.topic) > 200:
         raise HTTPException(status_code=422, detail="选题过长(上限 200 字)")
 
@@ -786,7 +805,11 @@ async def start_run(
             "kind": _KIND,
             "user_id": str(user["id"]),
             "status": "PENDING",
-            "input_json": {"topic": body.topic},
+            "input_json": {
+                "topic": body.topic,
+                "renderer": body.renderer,
+                "avatar": body.avatar.model_dump() if body.avatar else None,
+            },
             "state_json": {"current_layer": None, "layers": _initial_layers()},
             "task_ids": task_ids,
         }

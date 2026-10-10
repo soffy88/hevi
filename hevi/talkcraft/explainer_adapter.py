@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from hevi.layer4_legacy.talkcraft.oprim_impl.sync import NarrationSegment
+from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AvatarSpec, NarrationSegment
 
 _SENT = re.compile(r"[^。！？!?]+[。！？!?]?")
 _ROLES = {"hook", "definition", "cards", "reason", "method", "outro"}
@@ -62,6 +62,7 @@ async def render_storyboard_talkcraft(
         lang=str(config.get("language") or "zh"),
         name=str(storyboard_data.get("topic") or "explainer"),
         portrait=True,
+        avatar=AvatarSpec.from_config(config.get("avatar")),
     )
     if result["status"] != "succeeded":
         failed = [

@@ -14,7 +14,7 @@ from __future__ import annotations
 import difflib
 from collections.abc import Sequence
 
-from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AlignedChar, SentenceTiming, norm_chars
+from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AlignedChar, norm_chars
 
 try:  # Simplified-Chinese folding; whisper sometimes emits traditional forms.
     from zhconv import convert as _zh_convert  # type: ignore[import-not-found]

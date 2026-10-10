@@ -21,17 +21,26 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from hevi.layer4_legacy.talkcraft.omodul_impl._gates import contact_sheet, measure
+from hevi.layer4_legacy.talkcraft.omodul_impl._media import (
+    FFMPEG,
+    concat_with_gaps,
+    duration,
+    piper_tts,
+    run,
+    sha256,
+)
 from hevi.layer4_legacy.talkcraft.omodul_impl._whisper import WhisperAligner
 from hevi.layer4_legacy.talkcraft.oprim_impl.sync import (
     FPS,
     AlignedChar,
+    AvatarSpec,
+    GateMeasure,
     NarrationSegment,
     SentenceTiming,
     TalkcraftRecord,
 )
-from hevi.layer4_legacy.talkcraft.omodul_impl._media import FFMPEG, concat_with_gaps, duration, piper_tts, run, sha256
 from hevi.layer4_legacy.talkcraft.oskill_impl.shotbook import plan_project
-from hevi.layer4_legacy.talkcraft.omodul_impl._gates import contact_sheet, measure
 
 REPO = Path(__file__).resolve().parents[4]
 REMOTION_DIR = Path(os.environ.get("HEVI_TALKCRAFT_REMOTION", REPO / "hevi-remotion-talkcraft"))
@@ -87,7 +96,7 @@ def _reframe_portrait(src: Path, out: Path) -> None:
     """16:9 card stage centred on a blurred, slowly scaled copy of itself (9:16)."""
     fc = (
         "[0:v]split[a][b];"
-        "[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2,eq=brightness=-0.04[bg];"
+        "[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=60:3,eq=brightness=-0.04[bg];"
         "[b]scale=1080:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2[v]"
     )
     run([FFMPEG, "-y", "-v", "error", "-i", str(src), "-filter_complex", fc, "-map", "[v]", "-map", "0:a",
@@ -103,6 +112,7 @@ def produce_talkcraft(
     name: str = "talkcraft",
     portrait: bool = True,
     aligner: WhisperAligner | None = None,
+    avatar: AvatarSpec | None = None,
 ) -> dict[str, Any]:
     output_dir = output_dir.resolve()
     work = output_dir / "work"
@@ -154,17 +164,39 @@ def produce_talkcraft(
     raw = work / "render_raw.mp4"
     render_s = _render(props_path=props, out=raw, log=work / "render.log")
     landscape = output_dir / f"{line}_landscape.mp4"
-    _finish_landscape(raw, landscape)
+    base_land = work / "base_landscape.mp4" if avatar else landscape
+    _finish_landscape(raw, base_land)
     outputs = [(landscape, 1920, 1080)]
+    port = output_dir / f"{line}_portrait.mp4"
+    base_port = work / "base_portrait.mp4" if avatar else port
     if portrait:
-        port = output_dir / f"{line}_portrait.mp4"
-        _reframe_portrait(landscape, port)
+        _reframe_portrait(base_land, base_port)
         outputs.append((port, 1080, 1920))
+
+    # 4b) optional digital-human avatar (picture-in-picture)
+    avatar_info: dict[str, Any] | None = None
+    if avatar:
+        from hevi.layer4_legacy.talkcraft.omodul_impl._avatar import build_avatar_clip, composite
+
+        av = build_avatar_clip(spec=avatar, voice_wav=voice, duration_s=expected_s, work=work)
+        layouts = {"landscape": composite(video=base_land, avatar=av.clip, out=landscape, position=avatar.position, portrait=False, work=work)}
+        if portrait:
+            layouts["portrait"] = composite(video=base_port, avatar=av.clip, out=port, position=avatar.position, portrait=True, work=work)
+        avatar_info = {
+            "mode": av.mode, "portrait_image": av.portrait, "face_score": round(av.face_score, 3),
+            "frames": av.frames, "lipsync_corr": av.lipsync_corr, "lipsync_lag_frames": av.lipsync_lag_frames, "mouth_energy_mean": av.mouth_energy_mean,
+            "build_seconds": av.seconds, "layouts": layouts,
+            "model": "wav2lip_gan_96.onnx + yoloface_8n.onnx (CPU)" if av.mode == "lipsync" else "none (idle motion)",
+            "licence_note": "Wav2Lip weights: research/non-commercial" if av.mode == "lipsync" else "no model weights",
+        }
 
     # 5) gates
     records = []
     for path, w, h in outputs:
         gates, facts = measure(path=path, expected_s=expected_s, timings=timings, cards=plan.card_ids(), expect_w=w, expect_h=h)
+        if avatar_info and avatar_info["lipsync_corr"] is not None:
+            c = avatar_info["lipsync_corr"]
+            gates.append(GateMeasure("avatar_lipsync_corr", c, ">=0.35", c >= 0.35, "mouth-region change vs voice RMS per frame"))
         sheet = contact_sheet(path=path, out=path.with_suffix(".sheet.jpg"), total_s=facts["duration_s"])
         rec = TalkcraftRecord(
             line=line,
@@ -192,6 +224,7 @@ def produce_talkcraft(
                 "gpu": False,
                 "contact_sheet": str(sheet),
                 "freeze_spans": facts["freeze_spans"],
+                "avatar": avatar_info,
             },
         )
         rec.passed = all(g.passed for g in gates)

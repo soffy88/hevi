@@ -9,8 +9,8 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
-from hevi.layer4_legacy.talkcraft.oprim_impl.sync import GateMeasure, SentenceTiming
 from hevi.layer4_legacy.talkcraft.omodul_impl._media import FFMPEG, probe, run
+from hevi.layer4_legacy.talkcraft.oprim_impl.sync import GateMeasure, SentenceTiming
 
 _FREEZE_START = re.compile(r"freeze_start: ([\d.]+)")
 _FREEZE_END = re.compile(r"freeze_end: ([\d.]+)")

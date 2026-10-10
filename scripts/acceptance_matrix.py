@@ -204,10 +204,66 @@ def evaluate(e2e_evidence: dict | None) -> list[Gate]:
     return gates
 
 
+def evaluate_talkcraft(root: Path) -> list[Gate]:
+    """T1-T5: talkcraft renderer, measured from record.json + re-hash + ffprobe."""
+    import hashlib
+    import subprocess
+
+    gates: list[Gate] = []
+
+    def add(key: str, requirement: str, ok: bool, evidence: str) -> None:
+        gates.append(Gate(key=key, requirement=requirement, status="PASS" if ok else "BLOCKED", evidence=evidence))
+
+    records = sorted(root.glob("*/record.json"))
+    if not records:
+        for key, req in (("T1", "talkcraft render succeeds"), ("T2", "artifact hash matches record"),
+                         ("T3", "ffprobe matches record"), ("T4", "avatar lip-sync measured"),
+                         ("T5", "avatar is optional")):
+            add(key, req, False, f"no record.json under {root}")
+        return gates
+    outs, failed, hash_bad, probe_bad, with_av, without_av, corrs = [], [], [], [], 0, 0, []
+    for rec_path in records:
+        rec = json.loads(rec_path.read_text())
+        if rec.get("status") != "succeeded":
+            failed.append(rec_path.parent.name)
+        for r in rec.get("records", []):
+            path = Path(r["video_path"])
+            outs.append(path.name)
+            if not all(g["passed"] for g in r.get("gates", [])):
+                failed.append(path.name)
+            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != r.get("sha256"):
+                hash_bad.append(path.name)
+            try:
+                dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                                            "-of", "csv=p=0", str(path)], capture_output=True, text=True,
+                                           check=True).stdout.strip())
+                if abs(dur - float(r.get("duration_s", 0))) > 0.1:
+                    probe_bad.append(path.name)
+            except Exception:
+                probe_bad.append(path.name)
+            av = (r.get("provenance") or {}).get("avatar")
+            if av:
+                with_av += 1
+                if av.get("lipsync_corr") is not None:
+                    corrs.append(float(av["lipsync_corr"]))
+            else:
+                without_av += 1
+    add("T1", "talkcraft render succeeds", not failed and bool(outs),
+        f"{len(outs)} outputs, all gates passed" if not failed else f"failed: {failed}")
+    add("T2", "artifact hash matches record", not hash_bad, "sha256 re-computed" if not hash_bad else f"mismatch: {hash_bad}")
+    add("T3", "ffprobe matches record", not probe_bad, "durations within 0.1 s" if not probe_bad else f"mismatch: {probe_bad}")
+    add("T4", "avatar lip-sync measured", bool(corrs) and min(corrs) >= 0.35,
+        f"lipsync_corr min {min(corrs):.3f}" if corrs else "no lip-sync avatar output")
+    add("T5", "avatar is optional", with_av > 0 and without_av > 0,
+        f"{with_av} outputs with avatar, {without_av} without")
+    return gates
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--e2e-evidence", help="path to the E2E JSON evidence file")
     parser.add_argument("--suite-summary", help="path to a full-suite summary JSON")
+    parser.add_argument("--talkcraft-root", help="talkcraft E2E output dir (adds T1-T5)")
     args = parser.parse_args()
 
     e2e = None
@@ -223,6 +279,8 @@ def main() -> int:
         merged.update(summary)
 
     gates = evaluate(merged if merged else None)
+    if args.talkcraft_root:
+        gates += evaluate_talkcraft(Path(args.talkcraft_root))
 
     passed = sum(1 for g in gates if g.status == "PASS")
     width = max(len(g.key) for g in gates)

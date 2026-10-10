@@ -8,8 +8,8 @@ import json
 import sys
 from pathlib import Path
 
-from hevi.layer4_legacy.talkcraft.oprim_impl.sync import NarrationSegment
 from hevi.layer4_legacy.talkcraft.omodul_impl.produce import produce_talkcraft
+from hevi.layer4_legacy.talkcraft.oprim_impl.sync import NarrationSegment
 
 SEGMENTS = [
     NarrationSegment(
@@ -53,8 +53,14 @@ if __name__ == "__main__":
     root = Path(sys.argv[1] if len(sys.argv) > 1 else "output/talkcraft_e2e")
     aligner = WhisperAligner()
     summary = {}
-    for line, segs, name in (("explainer", SEGMENTS, "复利的力量"), ("kinetic_promo", PROMO, "晨光咖啡")):
-        res = produce_talkcraft(segments=segs, output_dir=root / line, line=line, name=name, aligner=aligner)
+    from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AvatarSpec
+
+    runs = (
+        ("explainer", SEGMENTS, "复利的力量", AvatarSpec(mode="lipsync")),  # avatar on
+        ("kinetic_promo", PROMO, "晨光咖啡", None),  # avatar off (optional)
+    )
+    for line, segs, name, avatar in runs:
+        res = produce_talkcraft(segments=segs, output_dir=root / line, line=line, name=name, aligner=aligner, avatar=avatar)
         summary[line] = {
             "status": res["status"],
             "wall_seconds": res["wall_seconds"],

@@ -59,7 +59,7 @@ def wrap_lines(text: str, *, width: int = 12, max_lines: int = 4) -> list[str]:
     if len(out) > max_lines:
         head = out[: max_lines - 1]
         tail = "".join(out[max_lines - 1 :])
-        out = head + [tail[: width - 1] + "…" if len(tail) > width else tail]
+        out = [*head, tail[: width - 1] + "…" if len(tail) > width else tail]
     return out
 
 
@@ -303,12 +303,12 @@ def plan_project(
     prev_card = ""
     used: dict[str, int] = {}
     rot = 0
-    end_frame_total = int(round((total_s + tail_s) * FPS))
+    end_frame_total = round((total_s + tail_s) * FPS)
 
     for n, ((seg, k, text), tm) in enumerate(zip(flat, timings, strict=True)):
-        start_f = int(round(tm.start_s * FPS))
+        start_f = round(tm.start_s * FPS)
         nxt = timings[n + 1].start_s if n + 1 < len(timings) else total_s + tail_s
-        dur_f = max(15, int(round(nxt * FPS)) - start_f)
+        dur_f = max(15, round(nxt * FPS) - start_f)
         beat_s = dur_f / FPS
         kw = pick_keyword(text, seg.keywords)
 

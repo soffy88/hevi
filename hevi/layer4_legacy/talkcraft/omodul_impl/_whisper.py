@@ -36,11 +36,7 @@ class WhisperAligner:
             condition_on_previous_text=False,
             initial_prompt=prompt,
         )
-        out: list[tuple[str, float, float]] = []
-        for seg in segments:
-            for w in seg.words or []:
-                out.append((w.word, float(w.start), float(w.end)))
-        return out
+        return [(w.word, float(w.start), float(w.end)) for seg in segments for w in seg.words or []]
 
     def align(
         self, *, index: int, text: str, audio_path: str, start_s: float, end_s: float, language: str

@@ -82,18 +82,24 @@ async def render_narrated_storyboard(
     rate: str = DEFAULT_RATE,
     tts_provider: str | None = None,
     renderer: str | None = None,
+    talkcraft_avatar: Any = None,
 ) -> NarratedRenderResult:
     """Execute E2 through standard 3O transaction + stateless service engine.
 
     ``renderer``: ``"hevi-remotion"`` (default, legacy scene templates) or
     ``"talkcraft"`` (motion-card renderer, see docs/TALKCRAFT-INTERNALIZATION.md).
+    ``talkcraft_avatar``: optional digital-human PiP for the talkcraft renderer
+    (``None``/False = off; ``"lipsync"``/``"still"`` or a dict with mode/image/position).
     """
 
     renderer = (renderer or os.environ.get("HEVI_EXPLAINER_RENDERER") or "hevi-remotion").strip()
     if renderer not in {"hevi-remotion", "talkcraft"}:
         raise NarratedProductionError(f"UNKNOWN_RENDERER: {renderer}")
+    if talkcraft_avatar not in (None, False) and renderer != "talkcraft":
+        raise NarratedProductionError("AVATAR_REQUIRES_TALKCRAFT: avatar option needs renderer=talkcraft")
     config = {
         "renderer": renderer,
+        "avatar": talkcraft_avatar,
         "voice": voice,
         "rate": rate,
         "tts_provider": tts_provider or "",

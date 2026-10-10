@@ -3,13 +3,24 @@
 from __future__ import annotations
 
 import json
+from itertools import pairwise
 
 import pytest
 
+from hevi.layer4_legacy.talkcraft.oprim_impl.sync import (
+    AlignedChar,
+    NarrationSegment,
+    SentenceTiming,
+    norm_chars,
+)
 from hevi.layer4_legacy.talkcraft.oskill_impl.align import align_script, chars_from_words
-from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AlignedChar, NarrationSegment, SentenceTiming, norm_chars
+from hevi.layer4_legacy.talkcraft.oskill_impl.shotbook import (
+    CARDS,
+    pick_keyword,
+    plan_project,
+    wrap_lines,
+)
 from hevi.talkcraft.explainer_adapter import segments_from_storyboard, split_sentences
-from hevi.layer4_legacy.talkcraft.oskill_impl.shotbook import CARDS, pick_keyword, plan_project, wrap_lines
 
 
 def _timing(i: int, text: str, start: float, end: float) -> SentenceTiming:
@@ -87,13 +98,13 @@ def test_plan_is_deterministic_and_well_formed():
     assert json.dumps(a.to_json(), sort_keys=True) == json.dumps(b.to_json(), sort_keys=True)
     ids = a.card_ids()
     assert len(ids) == 5
-    assert all(x != y for x, y in zip(ids, ids[1:]))  # never back-to-back
+    assert all(x != y for x, y in pairwise(ids))  # never back-to-back
     assert all(c in CARDS for c in ids)
     tracks = {t["id"]: t for t in a.project["tracks"]}
     assert set(tracks) == {"fx", "subs", "cards", "bg", "voice"}
     assert len(tracks["fx"]["clips"]) == 1  # one wipe at the single segment change
     clips = tracks["cards"]["clips"]
-    for x, y in zip(clips, clips[1:]):
+    for x, y in pairwise(clips):
         assert x["start"] + x["duration"] == y["start"]  # gapless beats
 
 
@@ -126,3 +137,63 @@ def test_lead_is_capped_so_stage_is_never_empty_long():
         for key in ("lead", "delay", "startDelay", "startAt"):
             if key in b.props:
                 assert b.props[key] <= MAX_LEAD_S
+
+
+# ---------------- optional digital-human avatar ----------------
+import numpy as np  # noqa: E402
+
+from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AvatarSpec  # noqa: E402
+from hevi.layer4_legacy.talkcraft.oskill_impl import avatar_math as am  # noqa: E402
+
+
+def test_avatar_spec_is_optional_and_validated():
+    assert AvatarSpec.from_config(None) is None
+    assert AvatarSpec.from_config(False) is None
+    assert AvatarSpec.from_config({"enabled": False}) is None
+    assert AvatarSpec.from_config(True) == AvatarSpec()
+    assert AvatarSpec.from_config("still").mode == "still"
+    spec = AvatarSpec.from_config({"mode": "lipsync", "position": "left", "image": "/x.jpg"})
+    assert spec == AvatarSpec(mode="lipsync", image="/x.jpg", position="left")
+    with pytest.raises(ValueError):
+        AvatarSpec.from_config({"mode": "deepfake"})
+
+
+def test_mel_chunks_cover_every_frame():
+    mel = np.random.default_rng(0).normal(size=(80, 300)).astype(np.float32)
+    ch = am.mel_chunks(mel=mel, fps=30, n_frames=120)
+    assert ch.shape == (120, 80, 16)
+    assert np.allclose(ch[3], mel[:, 8:24])  # int(80*3/30)=8
+    assert np.allclose(ch[-1], mel[:, 284:300])  # past the end -> last full window
+
+
+def test_yolo_decode_maps_back_through_letterbox():
+    s, px, py = am.letterbox(w=1000, h=500)
+    out = np.zeros((1, 20, 8400), dtype=np.float32)
+    out[0, :5, 7] = [320, 320, 64, 64, 0.9]
+    x1, y1, x2, y2, sc = am.decode_yoloface(output=out, scale=s, pad_x=px, pad_y=py)
+    assert sc == pytest.approx(0.9)
+    assert (x1 + x2) / 2 == pytest.approx(500, abs=1) and (y1 + y2) / 2 == pytest.approx(250, abs=1)
+    out[0, 4, 7] = 0.1
+    assert am.decode_yoloface(output=out, scale=s, pad_x=px, pad_y=py) is None
+
+
+def test_lagged_correlation_finds_shift():
+    rng = np.random.default_rng(1)
+    b = rng.random(200)
+    a = np.roll(b, 3)
+    r, lag = am.lagged_correlation(a, b, smooth=1)
+    assert r > 0.95 and lag == 3
+
+
+def test_layouts_stay_inside_frame():
+    for portrait, (w, h) in ((False, (1920, 1080)), (True, (1080, 1920))):
+        for pos in ("right", "left"):
+            x, y, d = am.overlay_layout(frame_w=w, frame_h=h, position=pos, portrait=portrait)
+            assert x >= 0 and x + d <= w and y >= 0 and y + d <= h
+    x, y, d = am.overlay_layout(frame_w=1080, frame_h=1920, position="right", portrait=True)
+    assert y >= (1920 + 608) // 2  # below the 16:9 stage band
+
+
+def test_mouth_mask_only_lower_face():
+    m = am.mouth_mask(w=100, h=100)
+    assert m[:45].max() == 0 and m[75, 50] == pytest.approx(1.0)

@@ -99,6 +99,39 @@ class TalkcraftPlan:
         return {"project": self.project, "beats": [asdict(b) for b in self.beats]}
 
 
+AvatarMode = Literal["lipsync", "still"]
+AvatarPosition = Literal["right", "left"]
+
+
+@dataclass(frozen=True)
+class AvatarSpec:
+    """Optional digital-human picture-in-picture.  ``None`` anywhere = no avatar.
+
+    image: local path to a frontal portrait; omitted -> bundled AI-generated presenter.
+    mode: ``lipsync`` (Wav2Lip, non-commercial weights) or ``still`` (no model).
+    """
+
+    mode: AvatarMode = "lipsync"
+    image: str | None = None
+    position: AvatarPosition = "right"
+
+    @staticmethod
+    def from_config(value: object) -> AvatarSpec | None:
+        if value in (None, False, "", "none", "off"):
+            return None
+        if value is True or value in ("lipsync", "still"):
+            return AvatarSpec(mode="lipsync" if value is True else value)  # type: ignore[arg-type]
+        if isinstance(value, dict):
+            if value.get("enabled") is False:
+                return None
+            mode = value.get("mode", "lipsync")
+            pos = value.get("position", "right")
+            if mode not in ("lipsync", "still") or pos not in ("right", "left"):
+                raise ValueError(f"bad avatar spec: {value}")
+            return AvatarSpec(mode=mode, image=value.get("image") or None, position=pos)
+        raise ValueError(f"bad avatar spec: {value!r}")
+
+
 @dataclass
 class GateMeasure:
     name: str
@@ -125,5 +158,4 @@ class TalkcraftRecord:
     passed: bool = False
 
     def to_json(self) -> dict[str, Any]:
-        d = asdict(self)
-        return d
+        return asdict(self)
