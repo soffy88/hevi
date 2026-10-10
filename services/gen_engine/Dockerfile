@@ -92,10 +92,13 @@ RUN python -m venv /opt/cosy-venv && \
       "openai-whisper" "tiktoken" \
       "conformer==0.3.2" "diffusers==0.29.0" "lightning==2.2.4" \
       "wget" "rich" "json5" "matplotlib" "rootutils" "pillow" && \
-    # hydra-core 钉 antlr==4.9.* 但 PyPI 已无 4.9 wheel(2026-08-16 实跑踩坑),
-    # 运行时仅需 >=4.9 的 runtime API, 故 --no-deps 单装 4.13。
+    # hydra-core 1.3.2 的 OverrideLexer/Parser 由 antlr 4.9 生成(ATN v3), 只能配
+    # antlr4-python3-runtime==4.9.3; 装 4.13 会在 import cosyvoice.flow.flow_matching
+    # 时报 "Could not deserialize ATN with version 3 (expected 4)", cosy_worker
+    # exit=1(2026-10-10 CPU 部署实测)。4.9.3 只有 sdist, pip 可本地构建(ai-venv 同样
+    # 如此装上)。omegaconf 同步钉 2.3.0(hydra 1.3.2 声明 omegaconf<2.4)。
     /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --no-deps \
-      "hydra-core==1.3.2" "antlr4-python3-runtime>=4.11,<5"
+      "hydra-core==1.3.2" "omegaconf==2.3.0" "antlr4-python3-runtime==4.9.3"
 COPY services/gen_engine/cosyvoice/ /opt/cosy-venv/lib/python3.11/site-packages/cosyvoice/
 COPY services/gen_engine/third_party/Matcha-TTS/matcha/ /opt/cosy-venv/lib/python3.11/site-packages/matcha/
 
@@ -150,8 +153,10 @@ COPY --from=frontend --chown=voicebox:voicebox /build/web/dist /app/frontend/
 RUN mkdir -p /app/data/generations /app/data/profiles /app/data/cache /home/voicebox/.cache/huggingface && chown -R voicebox:voicebox /app/data /home/voicebox/.cache
 EXPOSE 17493
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s CMD curl -f http://localhost:17493/api/ai/health || exit 1
-COPY --chmod=755 services/voicebox/scripts/rocm-entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh
+COPY --chmod=755 services/voicebox/scripts/rocm-entrypoint.sh /usr/local/bin/rocm-entrypoint.sh
+# 非 root 运行时 rocm-entrypoint 的 gosu 会失败, 由 gen_engine 自带入口按 uid 分流。
+COPY --chmod=755 services/gen_engine/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/entrypoint.sh /usr/local/bin/rocm-entrypoint.sh
 USER voicebox
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["uvicorn", "gen_engine.server:app", "--host", "0.0.0.0", "--port", "17493"]
