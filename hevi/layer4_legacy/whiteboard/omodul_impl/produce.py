@@ -58,17 +58,13 @@ def produce_whiteboard(storyboard_data: dict, output_dir: Path, config: dict):
     tts_and_align(output_dir)
     
     # Render
-    try:
-        subprocess.run(["node", "/data/soffy/projects/vendor/trustfuture__simon-skills/skills/whiteboard-video/lib/render.js", str(output_dir)], check=True)
-        # Mix
-        subprocess.run(["node", "/data/soffy/projects/vendor/trustfuture__simon-skills/skills/whiteboard-video/lib/mix-bgm.mjs", str(output_dir)], check=True)
-    except subprocess.CalledProcessError:
-        # Playwright fails on ubuntu 26.04, copy dummy
-        vendor_build_dir = Path("/data/soffy/projects/vendor/trustfuture__simon-skills/skills/whiteboard-video/build")
-        project_name = output_dir.name
-        out_dir = vendor_build_dir / project_name / "outputs"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2("/data/soffy/projects/vendor/trustfuture__simon-skills/skills/investigation-video/assets/sample-preview.mp4", out_dir / "final.mp4")
+    # Render
+    import os
+    env = os.environ.copy()
+    env["PATH"] = f"/home/soffy/.local/bin:{env.get('PATH', '')}"
+    subprocess.run(["node", "/data/soffy/projects/vendor/trustfuture__simon-skills/skills/whiteboard-video/lib/render.js", str(output_dir)], check=True, env=env)
+    # Mix
+    subprocess.run(["node", "/data/soffy/projects/vendor/trustfuture__simon-skills/skills/whiteboard-video/lib/mix-bgm.mjs", str(output_dir)], check=True, env=env)
     
     # Result
     vendor_build_dir = Path("/data/soffy/projects/vendor/trustfuture__simon-skills/skills/whiteboard-video/build")
