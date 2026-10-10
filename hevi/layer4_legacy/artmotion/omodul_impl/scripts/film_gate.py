@@ -681,23 +681,7 @@ def measure(path, sub_band=None, vertical="auto", template=DEFAULT_TEMPLATE, all
         import cv2
         if cv2 is None: raise ImportError
     except ImportError:
-        res = {
-            "file": path, "duration_s": 10.0, "orientation": "landscape", "shots": 1, 
-            "hard_cuts": 0, "dissolves": 0, "asl_s": 10.0, "fast_ratio": 0.1, "still_ratio": 0.0, 
-            "drift_ratio": 0.0, "slow_zoom_share": 0.0, "blank_runs_s": [], "blue_purple_share": 0.0, 
-            "blue_purple_spans_s": [], "blank_run_s": 0.0, "fast_ratio_worst_window": 0.1, 
-            "top10_share": 0.1, "longest_still_s": 0.0, "event_rate": 5.0, 
-            "longest_eventless_s": 0.0, "longest_eventless_start_s": 0.0
-        }
-        if allow_blue_purple and allow_blue_purple.strip():
-            res["allow_blue_purple"] = allow_blue_purple.strip()
-        rows, red = grade(res)
-        res["lights"] = {k: lv for k, _, _, lv, _, _ in rows}
-        res["gate_metrics"] = [k for k, _, _, _, gate, _ in rows if gate]
-        res["gate_light"] = "green"
-        res["verdict"] = "pass"
-        res["explain"] = {"summary": "Mocked", "why": [], "fix": None, "look": [], "worst_window": None, "blank_runs": []}
-        return res, rows
+        raise RuntimeError("cv2 缺失：必须安装 opencv-python-headless 才能执行质量门判断。严禁兜底！")
     tpl = template if template and os.path.exists(template) else None
     cv2.setNumThreads(max(1, (os.cpu_count() or 2) // 2))
     res = analyze(path, sub_band=sub_band, vertical=vertical, template=tpl)
