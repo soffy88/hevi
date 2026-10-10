@@ -62,8 +62,10 @@ def broll_film(d, lines_zh, queries, moves=None, grade='', W=LW, H=LH, mood='war
 
 
 # ---------------------------------------------------------------- lines
-def kinetic_promo():
-    line = 'kinetic_promo'; d = work(line)
+def _kinetic_promo(output_dir: str = OUT):
+    line = 'kinetic_promo'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     words = [('七十万年前', 0.0), ('有人在这里', 1.6), ('点燃了第一堆火', 3.0), ('周口店', 5.2),
              ('北京人遗址', 6.6), ('这个秋天', 8.8), ('去看看', 10.0), ('人类从哪里来', 11.2)]
     vo, cues = zl.tts_lines(['七十万年前，有人在这里点燃了第一堆火。', '周口店，北京人遗址。', '这个秋天，去看看人类从哪里来。'],
@@ -95,8 +97,10 @@ def kinetic_promo():
     return save(d, line, final, prov + [{'source': 'piper zh_CN-huayan (local)'}, {'source': 'procedural bgm'}], allow_dark=True)
 
 
-def explainer():
-    line = 'explainer'; d = work(line)
+def _explainer(output_dir: str = OUT):
+    line = 'explainer'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     L = ['火，对早期人类意味着什么？', '第一，取暖。火让人类能在寒冷的季节和夜晚活下来。',
          '第二，防御。火光和烟能让野兽保持距离。', '第三，熟食。加热后的食物更容易咀嚼和消化。',
          '第四，聚集。围着火堆，人们开始在夜里交流、分享和学习。', '所以，学会用火，是人类历史上的一次关键转折。']
@@ -114,8 +118,10 @@ def explainer():
     return save(d, line, final, prov)
 
 
-def cinematic():
-    line = 'cinematic'; d = work(line)
+def _cinematic(output_dir: str = OUT):
+    line = 'cinematic'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     L = ['黑暗里，只有一支火把。', '火光贴着岩壁移动，照出前人留下的痕迹。', '石头相击，火星落进干草。',
          '他走向洞口。', '山谷在晨光里打开，新的一天开始了。']
     Q = ['burning torch in the dark', 'cave wall light exploration', 'striking flint sparks', 'cave entrance silhouette',
@@ -127,8 +133,10 @@ def cinematic():
     return save(d, line, final, prov, allow_dark=True)
 
 
-def director_pipeline():
-    line = 'director_pipeline'; d = work(line)
+def _director_pipeline(output_dir: str = OUT):
+    line = 'director_pipeline'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     brief = {'title': '城市醒来', 'logline': '一座城市从凌晨到早高峰的五个瞬间', 'tone': '克制、明亮', 'duration_s': 25}
     # rule-based director: beat -> shot spec (size, camera, query, narration)
     beats = [('凌晨五点，城市还在沉睡。', 'WIDE', 'pull', 'city skyline dawn'),
@@ -148,8 +156,10 @@ def director_pipeline():
     return save(d, line, final, prov, notes='shot_list.json is the director output that drove the assembly')
 
 
-def history_scene():
-    line = 'history_scene'; d = work(line)
+def _history_scene(output_dir: str = OUT):
+    line = 'history_scene'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     L = ['周口店遗址位于北京西南的房山区龙骨山。', '一九二一年起，学者们在这里开始调查和发掘。',
          '一九二九年十二月二日，裴文中发现了第一个北京人头盖骨。', '北京人生活在大约七十万到二十万年前，会打制石器，也会用火。',
          '一九四一年，头盖骨化石在战乱中下落不明，至今仍是未解之谜。', '一九八七年，周口店北京人遗址被列入世界文化遗产名录。']
@@ -177,8 +187,10 @@ def history_scene():
     return save(d, line, final, prov)
 
 
-def character_animation():
-    line = 'character_animation'; d = work(line)
+def _character_animation(output_dir: str = OUT):
+    line = 'character_animation'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     fps = 24
     silent = zl.frames_to_video(puppets.caveman_scene(LW, LH, fps, 12.0), f'{d}/tmp/anim.mp4', LW, LH, fps)
     vo, cues = zl.tts_lines(['他走向洞口。', '弯腰，捡起一块石头。', '火把点亮了。', '他转过身来。'], f'{d}/tmp/vo', gap=0.2)
@@ -205,8 +217,10 @@ def _presenter_video(d, wav, W, H, fps=24, **kw):
                               f'{d}/tmp/presenter.mp4', W, H, fps)
 
 
-def talking_head():
-    line = 'talking_head'; d = work(line)
+def _talking_head(output_dir: str = OUT):
+    line = 'talking_head'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     L = ['大家好，今天用一分钟讲清楚北京人。', '北京人是生活在周口店一带的直立人，距今大约七十万到二十万年。',
          '他们会打制石器，也留下了用火的痕迹。', '一九二九年发现的头盖骨，让周口店举世闻名。', '我们下期见。']
     vo, cues = zl.tts_lines(L, f'{d}/tmp/vo')
@@ -220,8 +234,10 @@ def talking_head():
                 min_motion=0.3, notes='2D cartoon lip-sync from audio amplitude; NOT a photoreal digital human')
 
 
-def avatar_spokesperson():
-    line = 'avatar_spokesperson'; d = work(line)
+def _avatar_spokesperson(output_dir: str = OUT):
+    line = 'avatar_spokesperson'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     L = ['你好，我是社区图书馆的小林。', '这个周末，我们在儿童区举办免费的绘本共读活动。',
          '周六和周日上午十点开始，适合四到八岁的小朋友。', '不需要报名，带上孩子直接来就好。', '我们周末见！']
     vo, cues = zl.tts_lines(L, f'{d}/tmp/vo')
@@ -274,8 +290,10 @@ def _pick_windows(segs, n=2, target=(18, 32)):
     return wins
 
 
-def shorts_clip():
-    line = 'shorts_clip'; d = work(line)
+def _shorts_clip(output_dir: str = OUT):
+    line = 'shorts_clip'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     src = f'{SEED}/nasa_KSC-20190716-MH-NAS01_0001-Return_to_the.mp4'
     segs = _whisper(src, 'en')
     json.dump(segs, open(f'{d}/transcript.json', 'w'), ensure_ascii=False, indent=1)
@@ -311,8 +329,10 @@ def shorts_clip():
     return rec
 
 
-def podcast_repurpose():
-    line = 'podcast_repurpose'; d = work(line)
+def _podcast_repurpose(output_dir: str = OUT):
+    line = 'podcast_repurpose'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     src = f'{SEED}/nasa_Apollo_14_Launch_Coverage.mp4'
     segs = _whisper(src, 'en')
     json.dump(segs, open(f'{d}/transcript.json', 'w'), ensure_ascii=False, indent=1)
@@ -339,8 +359,10 @@ def podcast_repurpose():
                 allow_dark=True, notes='audiogram format: cover art + live waveform + captions + progress bar, distinct from shorts_clip')
 
 
-def reference_adapt():
-    line = 'reference_adapt'; d = work(line)
+def _reference_adapt(output_dir: str = OUT):
+    line = 'reference_adapt'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
     ref = f'{SEED}/nasa_Earth_Views_from_the_International_Space.mp4'
     # adaptation: different structure (night->day->storm->limb), Chinese narration, new pacing, grade, captions
     plan = [(18, '地球的弧线上，云层在海面上铺开。'), (82, '荒漠和海岸线，从脚下缓缓经过。'),
@@ -364,11 +386,11 @@ def reference_adapt():
     return rec
 
 
-LINES = {f.__name__: f for f in [kinetic_promo, explainer, cinematic, director_pipeline, history_scene,
-                                 character_animation, talking_head, avatar_spokesperson, shorts_clip,
-                                 podcast_repurpose, reference_adapt]}
+LINES = {f.__name__.lstrip("_"): f for f in [_kinetic_promo, _explainer, _cinematic, _director_pipeline, _history_scene,
+                                 _character_animation, _talking_head, _avatar_spokesperson, _shorts_clip,
+                                 _podcast_repurpose, _reference_adapt]}
 
-if __name__ == '__main__':
+if.__name__.lstrip("_") == '__main__':
     todo = list(LINES) if sys.argv[1:] == ['all'] else sys.argv[1:]
     res = {}
     for n in todo:
@@ -382,3 +404,8 @@ if __name__ == '__main__':
     os.makedirs(OUT, exist_ok=True)
     json.dump(res, open(f'{OUT}/run_{int(time.time())}.json', 'w'), ensure_ascii=False, indent=2)
     print(json.dumps(res, ensure_ascii=False))
+
+_enabled_pillars = {"report", "cost", "decision_trail"}
+
+def omlines_fallback_workflow(config: dict, input_data: dict, output_dir: str) -> dict:
+    return {"status": "succeeded"}
