@@ -138,10 +138,13 @@ async def synthesize_storyboard(
             if provider == "cosyvoice":
                 mode = os.environ.get("HEVI_COSY_INFERENCE_MODE", "").strip() or None
                 await cosyvoice_synthesize(
+                    # cosy-ref-v1: voice(=voice_profile)作为 voice_id 交给
+                    # cosyvoice_service 解析参考音(目录/内置默认), 不再只传文本。
                     script=[
                         SimpleNamespace(
                             text=seg.narration,
                             inference_mode=mode,
+                            voice_id=voice,
                         )
                     ],
                     output_path=out_path,
@@ -186,6 +189,7 @@ async def synthesize_storyboard(
                             script=[
                                 SimpleNamespace(
                                     text=retry_text,
+                                    voice_id=voice,
                                     inference_mode=os.environ.get(
                                         "HEVI_COSY_INFERENCE_MODE", ""
                                     ).strip()

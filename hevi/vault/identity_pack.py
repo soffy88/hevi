@@ -494,12 +494,16 @@ async def build_identity_pack(
             speaker_id: str
             text: str
 
+        voice_text = f"{name},{appearance}。"
         await tts_fn(
-            script=[_VoiceLine(speaker_id=character_id, text=f"{name},{appearance}。")],
+            script=[_VoiceLine(speaker_id=character_id, text=voice_text)],
             output_path=voice_path,
         )
         voice_meta = {
             "voice_ref_audio": str(voice_path),
+            # cosy-ref-v1: 声线样本的转录, 供后续 CosyVoice zero_shot 作 prompt_text
+            # (cosyvoice_synthesize(config={"identity_voice": voice_meta}))。
+            "voice_ref_text": voice_text,
             "tts_voice_id": (
                 f"edge_tts:{voice}"
                 if _using_edge_tts_fallback

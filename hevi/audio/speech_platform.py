@@ -260,6 +260,16 @@ def list_voice_profiles() -> list[VoiceProfile]:
         VoiceProfile("edge_zh_female_standard", "中文女声·标准", "builtin", "edge_tts", "zh"),
         VoiceProfile("edge_zh_male_standard", "中文男声·标准", "builtin", "edge_tts", "zh"),
         VoiceProfile("edge_en_female_standard", "English female", "builtin", "edge_tts", "en"),
+        # cosy-ref-v1: CosyVoice 默认音色 = 仓库内置参考音(引擎侧解析 builtin:)。
+        VoiceProfile(
+            "cosyvoice_default",
+            "CosyVoice 默认(内置参考音)",
+            "builtin",
+            "cosyvoice",
+            "zh",
+            reference_audio="builtin:zh_default",
+            reference_text="希望你以后能够做的比我还好呦。",
+        ),
     ]
     try:
         from hevi.audio.edge_tts_custom import CURATED_VOICES

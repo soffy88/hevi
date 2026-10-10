@@ -8,7 +8,29 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-CosyInferenceMode = Literal["zero_shot", "cross_lingual", "instruct"]
+CosyInferenceMode = Literal["zero_shot", "cross_lingual", "instruct", "sft"]
+#: 参考音来源。request=调用方显式给 voice_ref; catalog=studio 音色目录;
+#: identity=身份包声线样本; env=部署级默认; builtin=仓库内置默认参考音;
+#: sft=无参考音, 走 CosyVoice 内置说话人(spk_id)。
+CosyRefSource = Literal["request", "catalog", "identity", "env", "builtin", "sft"]
+
+#: CosyVoice 调用契约版本(随 /api/ai/cosyvoice payload.config.contract 下发)。
+#:
+#: 契约(cosy-ref-v1):
+#:   * zero_shot     必须 voice_ref(参考音) + ref_text(=prompt_text, 参考音转录)
+#:   * cross_lingual 必须 voice_ref
+#:   * instruct      必须 voice_ref(CosyVoice2/3 instruct2 以参考音定音色)
+#:   * sft           不需要参考音, 必须 spk_id(模型内置说话人)
+#: 生产路径不得只传文本: 客户端在发请求前解析参考音(请求 → 音色目录 →
+#: 身份包 → 部署默认 → 仓库内置默认 builtin:zh_default), 解析不到时显式
+#: 走 sft(配置了 spk_id)或抛 CosyContractError, 绝不静默发出无参考音的行。
+COSY_CONTRACT_VERSION = "cosy-ref-v1"
+
+
+class CosyContractError(ValueError):
+    """CosyVoice 调用契约不满足(缺参考音/缺转录/缺 spk_id 等)。"""
+
+
 MixStrategyName = Literal["replace", "remix"]
 
 
@@ -92,6 +114,8 @@ class CosyLinePayload:
     ref_text: str | None = None
     speed: float = 1.0
     speaker_id: str = "host"
+    spk_id: str | None = None
+    ref_source: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         row: dict[str, Any] = {
@@ -102,6 +126,10 @@ class CosyLinePayload:
         }
         if self.voice_ref:
             row["voice_ref"] = self.voice_ref
+        if self.spk_id:
+            row["spk_id"] = self.spk_id
+        if self.ref_source:
+            row["ref_source"] = self.ref_source
         if self.ref_text is not None:
             row["ref_text"] = self.ref_text
         if self.prompt_text:
@@ -109,6 +137,24 @@ class CosyLinePayload:
         if self.instruct_text:
             row["instruct_text"] = self.instruct_text
         return row
+
+
+@dataclass(frozen=True)
+class CosyReference:
+    """解析后的 CosyVoice 参考音(或 sft 说话人)。"""
+
+    source: CosyRefSource
+    voice_ref: str | None = None
+    ref_text: str | None = None
+    spk_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source": self.source,
+            "voice_ref": self.voice_ref,
+            "ref_text": self.ref_text,
+            "spk_id": self.spk_id,
+        }
 
 
 @dataclass

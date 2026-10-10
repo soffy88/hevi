@@ -156,11 +156,17 @@ async def synthesize_minimax_tts(
 async def synthesize_cosyvoice(
     text: str,
     voice_ref: str = "",
-    inference_mode: str = "zero_shot",
+    inference_mode: str = "",
     speed: float = 1.0,
     output_path: str = "",
+    ref_text: str = "",
 ) -> TTSSResult:
-    """使用 CosyVoice 合成语音（支持零样本克隆）。"""
+    """使用 CosyVoice 合成语音（支持零样本克隆）。
+
+    cosy-ref-v1: inference_mode 留空=自动(有 ref_text → zero_shot, 否则
+    cross_lingual);未给 voice_ref 时由 cosyvoice_service 解析内置默认参考音。
+    旧默认 "zero_shot" + 无参考音会被引擎拒绝, 故改为自动。
+    """
     from types import SimpleNamespace
 
     from hevi.audio.cosyvoice_service import cosyvoice_synthesize
@@ -169,7 +175,9 @@ async def synthesize_cosyvoice(
     line = SimpleNamespace(
         text=text,
         voice_ref=voice_ref or None,
-        inference_mode=inference_mode,
+        ref_text=ref_text or None,
+        inference_mode=inference_mode or None,
+        speed=speed,
     )
     await cosyvoice_synthesize(script=[line], output_path=output)
     _require_nonempty_audio(output, "CosyVoice")

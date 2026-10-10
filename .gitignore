@@ -52,6 +52,8 @@ Thumbs.db
 # Generated media & task artifacts
 *.mp4
 *.wav
+# cosy-ref-v1: 仓库内置 CosyVoice 默认参考音(Apache-2.0, 见 services/gen_engine/assets/voice_refs/README.md)
+!services/gen_engine/assets/voice_refs/*.wav
 output/
 
 # Docker

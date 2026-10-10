@@ -6,22 +6,52 @@ v9.1 基建解耦: CosyVoice / LongCat 等重型推理已整体迁移到 GPU 算
   2. 等待引擎合成完成并下载 WAV 到 output_path
 
 本模块不 import torch / transformers / oprim 推理原子 —— API 容器是纯控制节点。
+
+参考音契约(cosy-ref-v1, 见 hevi.voicepro.schemas.COSY_CONTRACT_VERSION):
+CosyVoice zero_shot / cross_lingual / instruct 都需要参考音。生产调用方(explainer
+旁白、voice_platform API、各产品线 TTS)大多只传文本, 因此本模块在发请求前
+**总是**为每行解析参考音: 行内 voice_ref → voice_id(内置名/studio 音色目录)
+→ 身份包声线(config.identity_voice) → HEVI_COSY_DEFAULT_VOICE_REF →
+仓库内置默认 ``builtin:zh_default``;都没有时显式走 sft(HEVI_COSY_SFT_SPEAKER)
+或抛 :class:`CosyVoiceContractError`, 不再把无参考音的行发给引擎静默失败。
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-__all__ = ["AiEngineError", "cosyvoice_synthesize"]
+from hevi.layer4_legacy.voicepro.oskill_impl.cosy_payload import (
+    bind_cosy_reference,
+    resolve_cosy_reference,
+)
+from hevi.voicepro.schemas import COSY_CONTRACT_VERSION, CosyContractError
+
+__all__ = [
+    "AiEngineError",
+    "CosyVoiceContractError",
+    "cosyvoice_synthesize",
+    "resolve_cosy_script",
+]
+
+logger = logging.getLogger(__name__)
 
 
 class AiEngineError(RuntimeError):
     """AI 算力引擎不可用或返回了无效的生成结果。"""
+
+
+class CosyVoiceContractError(AiEngineError, CosyContractError):
+    """请求不满足 CosyVoice 参考音契约(发请求前即失败, 不打引擎)。
+
+    同时是 AiEngineError(调用方现有降级逻辑照常生效, 但带清晰原因)与
+    ValueError(API 层映射为 422)。
+    """
 
 
 def _base_url() -> str:
@@ -58,8 +88,93 @@ def _serialize_script(script: list[Any]) -> list[dict[str, Any]]:
             row["instruct_text"] = str(line.instruct_text)
         if getattr(line, "prompt_text", None):
             row["prompt_text"] = str(line.prompt_text)
+        if getattr(line, "voice_id", None):
+            row["voice_id"] = str(line.voice_id)
+        if getattr(line, "spk_id", None):
+            row["spk_id"] = str(line.spk_id)
         rows.append(row)
     return rows
+
+
+def _gallery_lookup(voice_id: str) -> tuple[str, str] | None:
+    """voice_platform 用户音色(create_voice_profile)→ (参考音, 转录)。"""
+    try:
+        from hevi.layer4_legacy.voicepro.omodul_impl.platform import list_gallery_profiles
+    except ImportError:  # pragma: no cover - 平台模块可选
+        return None
+    for item in list_gallery_profiles():
+        if voice_id in {item.get("profile_id"), item.get("name")} and item.get("reference_audio"):
+            return str(item["reference_audio"]), str(item.get("reference_text") or "")
+    return None
+
+
+def _catalog_lookup(voice_id: str) -> tuple[str, str] | None:
+    """用户音色库 / studio 音色目录 → (参考音路径, 转录)。未知返回 None, 未拉取抛契约错误。"""
+    gallery = _gallery_lookup(voice_id)
+    if gallery is not None:
+        return gallery
+    try:
+        from hevi.studio.voices import find_voice
+    except ImportError:  # pragma: no cover - studio 可选
+        return None
+    spec = find_voice(voice_id)
+    if spec is None:
+        return None
+    if not spec.local:
+        raise CosyContractError(
+            f"音色 '{spec.display}' 的参考音未拉取到本地: 先执行 asset.pull pack=celebrities30s"
+        )
+    return spec.audio_path, spec.transcript
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def resolve_cosy_script(
+    rows: list[dict[str, Any]], *, config: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """为每行解析参考音并按 cosy-ref-v1 契约校验, 返回可直接下发引擎的行。"""
+    cfg = config or {}
+    env_ref = os.environ.get("HEVI_COSY_DEFAULT_VOICE_REF", "").strip()
+    env_default = (env_ref, os.environ.get("HEVI_COSY_DEFAULT_REF_TEXT", "")) if env_ref else None
+    allow_builtin = bool(
+        cfg["allow_builtin_ref"]
+        if cfg.get("allow_builtin_ref") is not None
+        else _env_flag("HEVI_COSY_BUILTIN_REF", True)
+    )
+    cfg_voice = cfg.get("voice_id") or cfg.get("voice")
+    sft_default = cfg.get("sft_speaker") or os.environ.get("HEVI_COSY_SFT_SPEAKER")
+    identity = cfg.get("identity_voice") if isinstance(cfg.get("identity_voice"), dict) else None
+    out: list[dict[str, Any]] = []
+    for index, row in enumerate(rows):
+        try:
+            reference = resolve_cosy_reference(
+                voice_ref=row.get("voice_ref"),
+                ref_text=row.get("ref_text") or row.get("prompt_text"),
+                voice_id=row.get("voice_id") or cfg_voice,
+                identity_voice=identity,
+                catalog_lookup=_catalog_lookup,
+                env_default=env_default,
+                allow_builtin=allow_builtin,
+                sft_speaker=row.get("spk_id") or sft_default,
+                requested_mode=row.get("inference_mode"),
+                strict_voice_id=bool(cfg.get("strict_voice")),
+            )
+            bound = bind_cosy_reference(row=row, reference=reference)
+        except CosyContractError as exc:
+            raise CosyVoiceContractError(f"script[{index}]: {exc}") from exc
+        logger.info(
+            "cosyvoice contract: script[%d] ref_source=%s mode=%s",
+            index,
+            bound.get("ref_source"),
+            bound.get("inference_mode"),
+        )
+        out.append(bound)
+    return out
 
 
 async def cosyvoice_synthesize(
@@ -86,9 +201,11 @@ async def cosyvoice_synthesize(
     if default_mode:
         for row in rows:
             row.setdefault("inference_mode", default_mode)
+    rows = resolve_cosy_script(rows, config=cfg)
     payload = {
         "script": rows,
         "config": {
+            "contract": COSY_CONTRACT_VERSION,
             "model_dir": cfg.get("COSYVOICE_MODEL_DIR")
             or os.environ.get("COSYVOICE_MODEL_DIR")
             or None,
