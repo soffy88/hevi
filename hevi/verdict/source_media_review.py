@@ -97,6 +97,16 @@ def _sample_timestamps(duration: float, count: int = 4) -> list[float]:
     return [round(step * (i + 1), 2) for i in range(count)]
 
 
+
+def _detect_scenes(path: Path) -> list[dict[str, Any]]:
+    try:
+        from scenedetect import detect, ContentDetector
+        scene_list = detect(str(path), ContentDetector())
+        return [{"start_time": s[0].get_seconds(), "end_time": s[1].get_seconds()} for s in scene_list]
+    except Exception as exc:
+        logger.warning(f"scene detect failed: {exc}")
+        return []
+
 def _probe_video(path: Path, transcribe: Callable[[Path], str] | None = None) -> dict[str, Any]:
     """视频: ffprobe 技术探测 + 代表帧 + 质量风险。"""
     result: dict[str, Any] = {
@@ -117,9 +127,11 @@ def _probe_video(path: Path, transcribe: Callable[[Path], str] | None = None) ->
             (s for s in streams if isinstance(s, dict) and s.get("codec_type") == "audio"),
             {},
         )
+        scenes = _detect_scenes(path)
         result["technical_probe"] = {
             "duration_seconds": float(fmt.get("duration", 0) or 0),
-            "resolution": f"{v.get('width', '?')}x{v.get('height', '?')}",
+            "resolution": f"{v.get('width', '?'),
+            "scenes": scenes}x{v.get('height', '?')}",
             "fps": _parse_fps(str(v.get("r_frame_rate", "0/1"))),
             "codec": v.get("codec_name", "unknown"),
             "audio_codec": a.get("codec_name", ""),
