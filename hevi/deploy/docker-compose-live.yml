@@ -1,3 +1,4 @@
+# DEPRECATED 2026-10-11: 不要再用此文件起容器，见仓库根目录 DEPLOY.md
 # Disposable live-closure stack. Host ports are offset so this can run next to
 # hevi-prod / hevi-vault / mneme without stealing 5432/9000/6379.
 #

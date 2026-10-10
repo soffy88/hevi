@@ -1,3 +1,4 @@
+# DEPRECATED 2026-10-11: 不要再用此文件起容器，见仓库根目录 DEPLOY.md
 ---
 # hevi v6 — production compose (app + postgres + minio + nginx)
 # Usage: docker compose --env-file .env -f hevi/deploy/docker-compose-prod.yml up -d

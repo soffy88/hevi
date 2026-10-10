@@ -23,3 +23,4 @@ debug_*.py
 test_*.py
 repro_*.py
 step3_*.log
+.veya/
