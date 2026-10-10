@@ -63,6 +63,23 @@ class CapabilityDescriptor:
         }
 
 
+def _talkcraft_ready() -> bool:
+    """Local-only readiness: render CLI, Piper binary + voice, Whisper model dir."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    remotion = Path(os.getenv("HEVI_TALKCRAFT_REMOTION", str(root / "hevi-remotion-talkcraft")))
+    piper = Path(os.getenv("HEVI_TALKCRAFT_PIPER", "/data/soffy/projects/hevi-zero/.venv/bin/piper"))
+    voices = Path(os.getenv("HEVI_TALKCRAFT_VOICES", "/data/soffy/projects/hevi-zero/voices"))
+    whisper = Path(os.getenv("HEVI_TALKCRAFT_WHISPER", "/home/soffy/models/faster-whisper-large-v3-turbo"))
+    return (
+        (remotion / "node_modules/.bin/remotion").exists()
+        and piper.is_file()
+        and (voices / "zh_CN-huayan-medium.onnx").is_file()
+        and (whisper / "model.bin").is_file()
+    )
+
+
 _CATALOG: dict[str, CapabilityDescriptor] = {
     "longvideo": CapabilityDescriptor(
         "longvideo",
@@ -84,6 +101,16 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         ("/api/explainer/run",),
         True,
         "通过统一 Task 生命周期执行。",
+    ),
+    "talkcraft_explainer": CapabilityDescriptor(
+        "talkcraft_explainer",
+        "口播动效解说（talkcraft）",
+        ("/api/explainer/run",),
+        _talkcraft_ready(),
+        "字级对齐 + 参数化动效卡，CPU 本地渲染，零付费调用；explainer 以 renderer=talkcraft 调用。"
+        if _talkcraft_ready()
+        else "talkcraft 本地依赖未就绪（Remotion 子工程 / Piper / Whisper 模型）。",
+        None if _talkcraft_ready() else "在 hevi-remotion-talkcraft 执行 npm ci，并配置 HEVI_TALKCRAFT_PIPER / VOICES / WHISPER。",
     ),
     "tongjian": CapabilityDescriptor(
         "tongjian",
