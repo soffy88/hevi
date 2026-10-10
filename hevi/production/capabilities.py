@@ -81,6 +81,13 @@ def _talkcraft_ready() -> bool:
 
 
 _CATALOG: dict[str, CapabilityDescriptor] = {
+    "quote_image": CapabilityDescriptor(
+        "quote_image",
+        "字幕金句长图",
+        ("/api/quoteimage/run",),
+        True,
+        "为成片或本地视频生成带有字幕金句的 3:4 长图。",
+    ),
     "longvideo": CapabilityDescriptor(
         "longvideo",
         "统一长视频生产",

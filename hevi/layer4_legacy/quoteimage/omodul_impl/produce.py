@@ -11,6 +11,8 @@ import argparse
 from hevi.layer4_legacy.quoteimage.oskill_impl.sentence_picker import pick_sentences
 from hevi.layer4_legacy.quoteimage.oprim_impl.vendor_stitch import command_render, command_render_script
 from hevi.layer4_legacy.quoteimage.oprim_impl.whisper import WhisperAligner
+from hevi.layer4_legacy.quoteimage.omodul_impl.quality_gates import run_quality_gates
+
 
 def produce_quote_image(
     *,
@@ -109,10 +111,7 @@ def produce_quote_image(
     # Check generated files
     images = list(output_dir.glob("*.jpg")) + list(output_dir.glob("*.png"))
     
-    # Mock gates
-    gates = [
-        {"name": "resolution", "threshold": ">=720", "passed": True, "value": 1080},
-    ]
+    gates = run_quality_gates(list(output_dir.glob("*.jpg")) + list(output_dir.glob("*.png")))
     
     res = {
         "status": "succeeded",
