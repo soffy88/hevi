@@ -14,8 +14,45 @@ class ShotBoundaryDetector:
     threshold: float = 0.35
     minimum_shot_duration_ms: int = 500
     version: str = "ffmpeg-scene-v1"
+    backend: str = "auto"  # "auto" | "scenedetect" | "ffmpeg"
 
     def detect(self, path: str, probe: VideoProbe) -> list[ShotBoundaryEvidence]:
+        if self.backend in ("auto", "scenedetect"):
+            try:
+                from scenedetect import ContentDetector, detect
+
+                fps = (
+                    (probe.fps_num / probe.fps_den)
+                    if (getattr(probe, "fps_num", None) and getattr(probe, "fps_den", None))
+                    else (getattr(probe, "frame_rate", None) or 25.0)
+                )
+                scene_list = detect(
+                    path,
+                    ContentDetector(
+                        threshold=float(self.threshold * 80.0 if self.threshold <= 1.0 else self.threshold),
+                        min_scene_len=max(5, int(fps * self.minimum_shot_duration_ms / 1000)),
+                    ),
+                )
+                points: list[ShotBoundaryEvidence] = []
+                last = None
+                for _start, end in scene_list:
+                    sec = getattr(end, "seconds", None)
+                    ts = round(float(sec if sec is not None else end.get_seconds()) * 1000)
+                    if ts < probe.duration_ms and (last is None or ts - last >= self.minimum_shot_duration_ms):
+                        points.append(
+                            ShotBoundaryEvidence(
+                                timestamp_ms=ts,
+                                method="scenedetect-content-v1",
+                                source="AUTO_SCENE_DETECT",
+                            )
+                        )
+                        last = ts
+                if points or self.backend == "scenedetect":
+                    return points
+            except Exception:
+                if self.backend == "scenedetect":
+                    raise
+
         command = [
             "ffmpeg",
             "-hide_banner",
@@ -36,11 +73,13 @@ class ShotBoundaryDetector:
             raise RuntimeError(f"SHOT_DETECTION_FAILED:{exc}") from exc
         if completed.returncode != 0:
             raise RuntimeError(f"SHOT_DETECTION_FAILED:{completed.stderr[-400:]}")
-        points: list[ShotBoundaryEvidence] = []
-        last = 0
+        points = []
+        last = None
         for raw in re.findall(r"pts_time:([0-9.]+)", completed.stderr):
             timestamp = round(float(raw) * 1000)
-            if timestamp - last >= self.minimum_shot_duration_ms and timestamp < probe.duration_ms:
+            if timestamp <= 0 or timestamp >= probe.duration_ms:
+                continue
+            if last is None or (timestamp - last >= self.minimum_shot_duration_ms):
                 points.append(
                     ShotBoundaryEvidence(
                         timestamp_ms=timestamp,
