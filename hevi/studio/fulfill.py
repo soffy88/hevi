@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import tempfile
@@ -15,6 +16,7 @@ from hevi.production.artifacts import (
     verify_local_manifest,
     verify_production_artifact,
 )
+from hevi.layer4_legacy.zerolines.oprim_impl.specs import ZERO_LINES, resolve_engine
 from hevi.studio.kit import explainer_cues_from_text, storygraph_extract, tongjian_l0
 
 TARGETS = ("explainer", "tongjian", "shortdrama")
@@ -262,6 +264,103 @@ def _wants_talkcraft_host(order: dict[str, Any]) -> bool:
     """Opt-in: ``renderer="talkcraft"`` on the order or HEVI_AVATAR_LINE_RENDERER=talkcraft."""
     chosen = _slot(order, "renderer") or os.getenv("HEVI_AVATAR_LINE_RENDERER") or ""
     return str(chosen).strip().lower() == "talkcraft"
+
+
+def _line_engine(order: dict[str, Any]) -> str:
+    """``engine`` slot on the order > ``HEVI_LINE_ENGINE`` env > ``legacy``.
+
+    ``zero`` = CPU-only, no-paid-API engine (hevi.zerolines) for the 11 lines in
+    ``ZERO_LINES``; documentary_montage / localization_dub always resolve to
+    legacy.  An unknown engine name raises ValueError (-> blocked, never guessed).
+    """
+    return resolve_engine(
+        line_id=str(order.get("line_id") or ""),
+        slot_engine=_slot(order, "engine"),
+        env_engine=os.getenv("HEVI_LINE_ENGINE"),
+    )
+
+
+def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
+    """Map a Studio order onto the zero-line request (inputs only, nothing invented)."""
+    raw_lines = _slot(order, "script_lines") or order.get("script_lines") or []
+    texts = _texts_from_order({"script_lines": raw_lines})
+    return {
+        "line_id": line_id,
+        "texts": texts,
+        "queries": _slot(order, "queries") or _slot(order, "broll_queries") or [],
+        "topic": str(_slot(order, "topic") or ""),
+        "title": str(_slot(order, "title") or ""),
+        "lang": str(_slot(order, "language") or "zh"),
+        "media_path": str(_slot(order, "media_path") or _slot(order, "reference_path") or _slot(order, "source") or ""),
+        "offsets": _slot(order, "offsets") or [],
+        "labels": _slot(order, "labels") or [],
+        "extras": _slot(order, "zero_extras") or {},
+    }
+
+
+async def _render_zero_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    """Zero-cost engine: Piper TTS + Pexels free stock / procedural 2D + ffmpeg.
+
+    The engine's own measured QA gate and then the canonical media quality gate
+    must both pass; anything else is ``failed``/``blocked`` (never completed).
+    """
+    from hevi.layer4_legacy.zerolines import zero_line_workflow
+
+    line_id = str(order.get("line_id") or "")
+    target = str(order.get("target") or line_id)
+    out = await asyncio.to_thread(zero_line_workflow, {}, _zero_input(order, line_id), Path(output_dir))
+    base = {"target": target, "line_id": line_id, "engine": "zero", "zero_record": out.get("record_path")}
+    if out["status"] == "blocked":
+        return {**_blocked(str(out["reason"]), target=target, line_id=line_id), **base}
+    if out["status"] != "succeeded":
+        return {
+            **base,
+            "status": "failed",
+            "reason": str(out.get("reason") or "zero engine failed"),
+            "quality": {"verdict": "fail", "passed": False, "violations": [str(out.get("reason"))],
+                        "checks": {"zero_line_qa": out.get("qa") or []}},
+        }
+    finals = [Path(p) for p in out["finals"]]
+    manifest, quality = await _verified_video_manifest(
+        [(p, i == 0, "video" if i == 0 else f"video_{i + 1}") for i, p in enumerate(finals)],
+        require_audio=True,
+    )
+    quality.setdefault("checks", {})["zero_line_qa"] = out.get("qa") or []
+    if not quality.get("passed"):
+        return {**base, "status": "failed", "reason": "CANONICAL_QUALITY_GATE_FAILED", "quality": quality}
+    return {
+        **base,
+        "status": "completed",
+        "result_video_path": str(finals[0]),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": quality,
+        "render_runtime": "zero",
+        "provenance": {
+            "line_id": line_id,
+            "engine": "zero",
+            "cost_usd": 0.0,
+            "gpu": False,
+            "paid_api": False,
+            "sources": out.get("provenance") or [],
+            "record": out.get("record_path"),
+        },
+        "provider_trace": [{"resolved_provider": "zero", "fallback_used": False}],
+    }
+
+
+def _engine_switch(line_id: str, legacy: Any) -> Any:
+    """Route a zero-capable line by engine; the original renderer stays the default."""
+
+    async def render(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+        if line_id in {"talking_head", "avatar_spokesperson"} and _wants_talkcraft_host(order):
+            return await legacy(order, output_dir)  # explicit photoreal talkcraft host wins
+        if _line_engine(order) == "zero":
+            return await _render_zero_line(order, output_dir)
+        return await legacy(order, output_dir)
+
+    render.__name__ = f"{getattr(legacy, '__name__', 'render')}_or_zero"
+    render.legacy = legacy  # type: ignore[attr-defined]
+    return render
 
 
 async def _render_talkcraft_host_line(
@@ -610,6 +709,9 @@ _RENDERERS = {
     "talking_head": _render_explainer_line,
     "avatar_spokesperson": _render_explainer_line,
 }
+
+for _zero_line in ZERO_LINES:
+    _RENDERERS[_zero_line] = _engine_switch(_zero_line, _RENDERERS[_zero_line])
 
 
 def _enforce_final_contract(result: dict[str, Any], *, line_id: str) -> dict[str, Any]:
