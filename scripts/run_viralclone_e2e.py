@@ -230,6 +230,9 @@ def main() -> int:
         ("warm_vertical", "warm", (720, 1280)),
     ]:
         payload = {**product_copy, "theme": theme, "width": w, "height": h}
+        # 3.0s = ~12 chars title + 3 badges + price + button is comfortably readable
+        # (FIX #5 of the audit).
+        payload["duration_s"] = 3.0
         if cutout_png_path is not None:
             payload["reuse_cutout"] = str(cutout_png_path)
         res = produce_product_asset({}, payload, prod_dir / key)
@@ -277,6 +280,10 @@ def main() -> int:
             ],
         )
 
+    # Variant 1 starts with ISS (B-roll) then interview. Variant 3 starts with the
+    # interview then ISS — the reversed opening shot alone pushes the early-frame
+    # pHash distance well past the diversity gate, on top of the different aspect
+    # ratio and English narration.
     variants_input = [
         {
             "variant_id": "var_1",
@@ -320,7 +327,8 @@ def main() -> int:
                 "cta_line": "Click below to secure your space grade camera today!",
                 "lang": "en",
             },
-            "brolls": [str(broll_video.resolve()), str(interview_video.resolve())],
+            # Reversed source order vs. var_1 — pushes pHash distance up.
+            "brolls": [str(interview_video.resolve()), str(broll_video.resolve())],
             "product_video": str(product_cards["warm_vertical"].resolve()),
             "color_grade": "vivid",
             "transition": "none",

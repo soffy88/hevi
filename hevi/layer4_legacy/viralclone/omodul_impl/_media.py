@@ -323,7 +323,7 @@ def _render_video_clips_concat(
 ) -> Path:
     """Render cut sequence into visual video stream scaled and padded to target dimensions.
 
-    Short sources (e.g. a 2.5s product card used for a longer narration beat) are
+    Short sources (e.g. the ~3s product card used for a longer narration beat) are
     looped so the visual track always fills the audio duration.
     """
     clips = clips or cuts or []
