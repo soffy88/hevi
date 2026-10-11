@@ -90,6 +90,11 @@ def _slots(line: str, engine: str = "zero", host_renderer: str = "talkcraft") ->
     if line == "history_scene": values["source_text"] = values["topic"]
     if line == "director_pipeline": values["manuscript"] = values["topic"]
     if line == "reference_adapt": values["transcript"] = values["topic"]
+    asset_root = os.environ.get("HEVI_ASSET_ROOT")
+    if asset_root:  # run from a worktree: canonical input assets live in the main checkout
+        for key in ("image_path", "source", "media_path"):
+            if isinstance(values.get(key), str) and not Path(values[key]).is_absolute():
+                values[key] = str(Path(asset_root) / values[key])
     if line in {"documentary_montage", "explainer", "reference_adapt", "history_scene", "cinematic", "director_pipeline", "talking_head", "avatar_spokesperson"}:
         values["tts_engine"] = "edge_tts"
     return values
