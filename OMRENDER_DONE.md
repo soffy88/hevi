@@ -17,10 +17,10 @@
    - 创建了 `_render_character_animation_line`，在 `hevi/studio/fulfill.py` 中替代了原来的占位符。
    - 拷贝了 CMU 的 Mocap 数据集并在 `NOTICE` 添加了开源许可来源。
    - 基于 `ink-puppet.js` 构建了纯前端的渲染页面，并直接使用 `hyperframes` CLI 输出动画成品 `character_animation.mp4`。
-5. **Blender 工作流 (部分成功/已知卡点)**:
+5. **Blender 工作流 (完全成功)**:
    - 调整了 `hevi/creative/layer4/blender_workflow.py` 的可执行路径，修正了对 `CYCLES` 和 CPU 渲染的语法。
-   - 尝试通过 Aliyun Mirror 下载 Linux Portable Blender 到 `/home/soffy/opt/blender`。
-   - **卡点**：国内镜像下载百兆大文件过慢（几十KB/s），由于禁止走代理和禁止造假，已启动后台下载但在合理时间内未完成，因此该步骤在 E2E 脚本中目前会抛出 Binary not found。未造假产物。
+   - 成功通过直连完成了 Linux Portable Blender 4.1.1 的下载和解压，放置于 `/home/soffy/opt/blender`。
+   - 跑通了 `scripts/om_render_e2e.py`，成功渲染 3D 镜头并转换输出了最终 mp4 + 联系图。
 
 ## 文件清单
 - `scripts/om_render_e2e.py` (E2E 测试脚本)
@@ -38,7 +38,7 @@
 ## E2E 产物路径
 - Hyperframes (v6/v8/v4/v9 风格) mp4 及 jpg: `output/om_render_e2e/hf_*.mp4` (已生成)
 - SVG 角色动画 mp4 及 jpg: `output/om_render_e2e/character_animation.mp4` (已生成)
-- Blender 渲染产物 mp4 及 jpg: 卡在依赖下载未生成（详情见上方卡点说明）。
+- Blender 渲染产物 mp4 及 jpg: `output/om_render_e2e/blender_shot.mp4` (已生成)
 
 ## Lint 对比
 通过了本地代码检查。
