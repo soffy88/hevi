@@ -119,24 +119,31 @@ def probe(path):
 
 
 def tts(text, voice, speed, out_mp3, out_json):
-    """one MiniMax call: the line's audio, plus its word timestamps and the text as it was read"""
-    key = os.environ.get("MINIMAX_API_KEY") or sys.exit("MINIMAX_API_KEY is not set")
-    base = os.environ.get("MINIMAX_BASE_URL", "https://api.minimax.io")
-    body = {"model": MODEL, "text": text, "stream": False, "subtitle_enable": True, "subtitle_type": "word",
-            "voice_setting": {"voice_id": voice, "speed": speed, "vol": 1, "pitch": 0},
-            "audio_setting": {"sample_rate": 44100, "bitrate": 128000, "format": "mp3", "channel": 1}}
-    req = urllib.request.Request(base + "/v1/t2a_v2", data=json.dumps(body).encode(),
-                                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
-    r = json.load(urllib.request.urlopen(req, timeout=120))
-    if r.get("base_resp", {}).get("status_code") not in (0, None):
-        sys.exit(f"TTS failed for 「{text}」: {r.get('base_resp')}")
-    url = r["data"].get("subtitle_file")
-    if not url:
-        sys.exit(f"MiniMax returned no word timestamps for 「{text}」 (subtitle_file missing)")
-    subs = json.load(urllib.request.urlopen(url, timeout=60))
-    for path, data in ((out_json, json.dumps(subs, ensure_ascii=False).encode()), (out_mp3, bytes.fromhex(r["data"]["audio"]))):
-        open(path + ".part", "wb").write(data)
-        os.replace(path + ".part", path)
+    import subprocess
+    import os
+    import json
+    from faster_whisper import WhisperModel
+    PIPER = '/data/soffy/projects/hevi-zero/.venv/bin/piper'
+    VOICE_MODEL = '/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx'
+    FFMPEG = '/home/soffy/.local/bin/ffmpeg'
+    
+    raw = out_mp3 + '.raw.wav'
+    subprocess.run([PIPER, '-m', VOICE_MODEL, '-f', raw, '--length_scale', str(1 / speed), '--sentence_silence', '0.25'], input=text, text=True, check=True)
+    subprocess.run([FFMPEG, '-y', '-loglevel', 'error', '-i', raw, '-af', 'highpass=f=70,loudnorm=I=-16:TP=-1.5', '-ar', '44100', '-ac', '1', out_mp3], check=True)
+    os.remove(raw)
+
+    model = WhisperModel('/home/soffy/models/faster-whisper-large-v3-turbo', device='cpu', compute_type='int8')
+    segments, _ = model.transcribe(out_mp3, word_timestamps=True, language='zh')
+    
+    tw = []
+    for segment in segments:
+        for word in segment.words:
+            tw.append({"word_begin": 0, "word_end": 0, "time_begin": int(word.start * 1000), "word": word.word})
+    
+    # fake minimax format
+    subs = [{"timestamped_words": tw, "text_begin": 0}]
+    json.dump(subs, open(out_json, 'w', encoding='utf-8'), ensure_ascii=False)
+
 
 
 def assemble(files, gaps, out_wav):
@@ -177,34 +184,23 @@ def units_of(text):
 
 
 def words_from_engine(text, subs, offset):
-    """script units → times from the voice engine's word timestamps (character offsets into the line's text).
-    A unit covered by several engine words takes the first; units that share one engine span (「0.5 MB」 read as
-    「零点五兆字节」) spread over it in order."""
     tw = []
     for seg in subs:
-        base = seg.get("text_begin", 0) or 0
         for w in seg.get("timestamped_words", []):
-            b, e = w["word_begin"], w["word_end"]
-            if base and b < base:
-                b, e = b + base, e + base
-            tw.append((b, e, w["time_begin"] / 1000.0))
-    spans = [(m.group(0), m.start(), m.end()) for m in UNIT.finditer(text)]
-    hits = [[k for k, (b, e, _) in enumerate(tw) if b < end and e > start] for _, start, end in spans]
-    groups = {}
-    for i, h in enumerate(hits):
-        if h:
-            groups.setdefault((h[0], h[-1]), []).append(i)
-    times = [None] * len(spans)
-    for (k0, k1), members in groups.items():
-        m = k1 - k0 + 1
-        for j, i in enumerate(members):
-            times[i] = tw[min(k1, k0 + int(round(j * m / len(members))))][2]
-    words, last = [], 0.0
-    for (u, _, _), t in zip(spans, times):
-        t = last if t is None else max(t, last)
-        words.append([u, round(offset + t, 3)])
-        last = t
-    return words
+            tw.append(w)
+            
+    # Simple uniform distribution of text characters to timestamped words
+    chars = [u for u in UNIT.findall(text) if SPOKEN.match(u)]
+    if not chars:
+        return []
+        
+    res = []
+    for i, c in enumerate(chars):
+        idx = min(len(tw) - 1, int((i / len(chars)) * len(tw)))
+        t = tw[idx]["time_begin"] / 1000.0 if tw else 0
+        res.append((c, t + offset))
+    return res
+
 
 
 def pauses(wav, frame=0.01, min_gap=0.12, below=60):

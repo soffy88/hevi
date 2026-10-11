@@ -7,3 +7,6 @@ Lanshu
 Copyright (c) cclank
 License: MIT
 - Includes explainer tools and HyperFrames styles from `cclank/lanshu`.
+
+CMU Graphics Lab Motion Capture Database:
+All bundled clips derive from the CMU Graphics Lab Motion Capture Database (http://mocap.cs.cmu.edu), which is free for all uses, research and commercial.

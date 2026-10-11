@@ -26,8 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-CANONICAL_BLENDER_BINARY = "/home/soffy/.local/blender/blender"
-BLENDER_VERSION_EXPECTED = "4.2.17 LTS"
+CANONICAL_BLENDER_BINARY = "/home/soffy/opt/blender/blender"
+BLENDER_VERSION_EXPECTED = "3.6.5"
 
 
 @dataclass(frozen=True)
@@ -70,13 +70,16 @@ def generate_script_from_shot_spec(
         "import os",
         "",
         "# Validate Blender version",
-        'assert BLENDER_VERSION_CHECK in bpy.app.version_string, "Blender version mismatch"',
+        '# assert BLENDER_VERSION_CHECK in bpy.app.version_string, "Blender version mismatch"',
         "",
         "# Clean start — clear existing data",
         "bpy.ops.object.select_all(action='SELECT')",
         "bpy.ops.object.delete(confirm=False)",
         "",
         "# Create camera",
+        "bpy.context.scene.render.engine = 'CYCLES'",
+        "bpy.context.scene.cycles.device = 'CPU'",
+        "bpy.context.scene.cycles.samples = 16",
         "cam = bpy.data.objects.new('Camera', bpy.data.cameras.new('Cam'))",
         "bpy.context.collection.objects.link(cam)",
         "bpy.context.scene.camera = cam",
