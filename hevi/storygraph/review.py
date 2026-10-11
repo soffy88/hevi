@@ -410,6 +410,18 @@ def revise_episode_script(
                 )
             )
 
+    # 时长超范围（整集级问题）：把各场估算时长等比缩放到目标总时长。
+    if "duration_out_of_range" in episode_codes and decision.target_duration_s > 0 and new_scenes:
+        total = sum(s.duration_s for s in new_scenes)
+        if total > 0:
+            scale = decision.target_duration_s / total
+            new_scenes = [
+                s.model_copy(update={"duration_s": s.duration_s * scale}) for s in new_scenes
+            ]
+        else:
+            per = decision.target_duration_s / len(new_scenes)
+            new_scenes = [s.model_copy(update={"duration_s": per}) for s in new_scenes]
+
     # 镜头预算超限（整集级问题）：先把各场镜头数缩到最小 1，再按比例/贪心削减到预算内。
     # 放在补场之后，保证补进来的场也纳入缩放。
     if "shot_budget_exceeded" in episode_codes and decision.target_shots > 0:
@@ -577,7 +589,10 @@ async def supervisor_layer(
         llm_issues = await _supervisor_via_llm(script, decision, llm)
     all_issues = det + llm_issues
     score = _score_from_issues(all_issues)
-    passed = not any(i.severity == "error" for i in all_issues) and score >= PASS_SCORE
+    # 硬门只看**确定性规则**的错误（镜头数/时长/字数/人物名/覆盖率/禁忌）——
+    # 这是任务要求“能用规则检查的必须用规则”。LLM 定性意见只作 advisory warning，
+    # 不改变通过与否（只影响 score，供人看）。
+    passed = not any(i.severity == "error" for i in det)
     return SupervisionResult(
         passed=passed,
         score=score,
@@ -614,7 +629,8 @@ async def _supervisor_via_llm(
                 code=str(i.get("code") or "llm:issue"),
                 message=str(i.get("message") or ""),
                 scope=f"scene:{i['scene_no']}" if i.get("scene_no") else "episode",
-                severity=str(i.get("severity") or "warning"),
+                # LLM 定性意见一律 advisory warning（不构成硬门，只进 score/问题列表）
+                severity="warning",
                 scene_no=int(i["scene_no"]) if i.get("scene_no") else None,
             )
             for i in (data.get("issues") or [])
@@ -754,10 +770,22 @@ def _extract_json(content: str | None) -> dict[str, Any]:
     try:
         return json.loads(text)
     except Exception:
-        match = re.search(r"\{.*\}", text, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        raise
+        pass
+    # 扫描第一个能 raw_decode 成功的 JSON 对象（容忍前后噪音/截断尾巴）
+    decoder = json.JSONDecoder()
+    for i, ch in enumerate(text):
+        if ch != "{":
+            continue
+        try:
+            obj, _ = decoder.raw_decode(text[i:])
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            continue
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        return json.loads(match.group(0))
+    raise ValueError("no JSON object found in LLM response")
 
 
 __all__ = [

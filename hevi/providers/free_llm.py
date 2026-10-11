@@ -125,11 +125,18 @@ def _build_nim() -> Any | None:
     if not keys:
         return None
     model = os.getenv("HEVI_NIM_MODEL", DEFAULT_NIM_MODEL)
+    # reasoning 模型(nemotron-3-super 等)会把大量 token 花在 reasoning_content,
+    # 结构化 JSON 任务里常常 reasoning 吃光 max_tokens 导致 content 为空。默认关掉
+    # thinking(实测 0.7s 返回干净 JSON);HEVI_NIM_THINKING=1 可恢复。
+    extra_body: dict[str, Any] = {}
+    if os.getenv("HEVI_NIM_THINKING", "0").strip() not in ("1", "true", "True"):
+        extra_body["chat_template_kwargs"] = {"thinking": False}
     try:
         return _make_nim_caller(
             keys,
             model=model,
             timeout=float(os.getenv("HEVI_NIM_TIMEOUT", "60")),
+            extra_body=extra_body or None,
         )
     except Exception as exc:  # pragma: no cover - defensive
         logger.warning("nim 通道构造失败: %s", exc)

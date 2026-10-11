@@ -243,3 +243,27 @@ def test_outline_to_story_filters_events_and_characters():
     assert {e.event_id for e in story.events} == kept
     assert story.adaptation_outline is not None
     assert all(c.char_id in {a for e in story.events for a in e.actors} for c in story.characters)
+
+
+@pytest.mark.asyncio
+async def test_outline_feeds_season_planner():
+    """大纲 → 裁剪后的 StoryGraph → season_planner.build_season_plan（任务要求的衔接）。"""
+    from hevi.season_planner import build_season_plan
+
+    book = _book_with_events(6)
+    outline = build_adaptation_outline(book, target_episodes=2, episode_duration_s=60)
+    trimmed = outline_to_story(book, outline)
+    event_ids = [e.event_id for e in trimmed.events]
+    half = len(event_ids) // 2
+    split = {
+        "episodes": [
+            {"ep_number": 1, "title": "一", "event_ids": event_ids[:half], "target_emotion_arc": "起"},
+            {"ep_number": 2, "title": "二", "event_ids": event_ids[half:], "target_emotion_arc": "收"},
+        ]
+    }
+    llm = AsyncMock()
+    llm.return_value = {"content": json.dumps(split, ensure_ascii=False)}
+    plan, _gate = await build_season_plan(trimmed, target_episodes=2, llm=llm, n=1)
+    assert len(plan.episodes) == 2
+    covered = {eid for ep in plan.episodes for eid in ep.event_ids}
+    assert covered == set(event_ids)

@@ -14,11 +14,11 @@
 
 ## 阶段状态
 - [x] 侦察 + 基线
-- [ ] 1. LLM 通道（free_llm + llm_channel 配置 + 探测脚本）
-- [ ] 2. shot_budget_for_duration（bug1）
-- [ ] 3. 章节事件图（storygraph）
-- [ ] 4. 三层审稿 agent
-- [ ] 5. bug2（定向返工 + 阈值系统性错配）
+- [x] 1. LLM 通道（free_llm + llm_channel 配置 + 探测脚本）
+- [x] 2. shot_budget_for_duration（bug1）
+- [x] 3. 章节事件图（storygraph）
+- [x] 4. 三层审稿 agent
+- [x] 5. bug2（定向返工 + 阈值系统性错配）
 - [ ] 6. 单测 + E2E 真跑 + DONE + commit
 
 ## 关键发现
