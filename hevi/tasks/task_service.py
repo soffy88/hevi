@@ -1795,6 +1795,11 @@ class TaskService:
                                 shots=views,
                                 consistency_floor=settings.rework_consistency_floor,
                                 min_rework_count=settings.rework_min_shots,
+                                full_rework=bool(
+                                    (task.get("config_json") or {}).get(
+                                        "rework_full_round", settings.rework_full_round
+                                    )
+                                ),
                             )
                             shot_ids = list(decision.regenerate_shot_ids) or patch.shot_indexes
                             if not shot_ids:

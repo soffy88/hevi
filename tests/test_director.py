@@ -223,7 +223,7 @@ async def test_director_loop_reworks_then_delivers():
         shots_by_round=[
             [
                 {"shot_index": 0, "selection_json": {"passed": True, "consistency_score": 0.95}},
-                {"shot_index": 1, "selection_json": {"passed": True, "consistency_score": 0.55}},
+                {"shot_index": 1, "selection_json": {"passed": True, "consistency_score": 0.30}},
             ]
         ],
     )

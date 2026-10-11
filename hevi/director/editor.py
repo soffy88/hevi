@@ -49,12 +49,54 @@ class EditDecision:
     reasons: list[str] = field(default_factory=list)
 
 
+# 返工一致性门槛默认值。**尺度警告**:shot_states.consistency_score 是 scorecard 的
+# identity_score(CLIP 余弦,scorecard 自己的 identity_floor=0.2),不是 0-1 均匀分布的
+# 质量分。2026-07-11 G1 真跑实测 mean 0.591 / min 0.454、全部 passed=True,却因旧默认
+# 0.75 被判 100% “参考图角色错配” → 整轮重烧。0.35 与 scorecard 尺度对齐。
+DEFAULT_CONSISTENCY_FLOOR = 0.35
+
+
+def select_rework_shots(
+    shots: list[dict[str, Any]],
+    *,
+    consistency_floor: float = DEFAULT_CONSISTENCY_FLOOR,
+    min_rework_count: int = 1,
+    full_rework: bool = False,
+) -> list[int]:
+    """确定性挑选需要返工的镜头。**只挑未通过/低分/有诊断的镜头**,已通过的镜头不选。
+
+    - `full_rework=True`:显式整轮重做(旧行为,保留给人工兜底/换风格场景),返回全部。
+    - `passed=False` → 硬失败,必须返工。
+    - `consistency_score < consistency_floor` → 软错配,受 `min_rework_count` 门槛过滤
+      (零星软错配只记诊断不返工)。
+    - 已通过且无诊断的镜头永远不进列表 → 调用方复用其产物。
+    """
+    indexes = [s.get("index") for s in shots if s.get("index") is not None]
+    if full_rework:
+        return sorted(indexes)
+    hard: set[int] = set()
+    soft: set[int] = set()
+    for s in shots:
+        idx = s.get("index")
+        if idx is None:
+            continue
+        score = s.get("consistency_score")
+        if not s.get("passed", False):
+            hard.add(idx)
+        elif score is not None and score < consistency_floor:
+            soft.add(idx)
+    if soft and len(soft) < min_rework_count:
+        soft = set()
+    return sorted(hard | soft)
+
+
 def review(
     *,
     quality: dict[str, Any] | None,
     shots: list[dict[str, Any]],
-    consistency_floor: float = 0.75,
+    consistency_floor: float = DEFAULT_CONSISTENCY_FLOOR,
     min_rework_count: int = 1,
+    full_rework: bool = False,
 ) -> EditDecision:
     """裁决:哪些镜头返工、能否交付。
 
@@ -64,6 +106,7 @@ def review(
     - `min_rework_count`:错配镜头数门槛(G1 实测身份匹配系统性偏低,
       零星 1-2 镜错配直接返工 = 每任务白付 2× 云费;低于门槛只记录诊断,
       不触发整片返工 —— 全废(黑帧/大面积错配)仍会返工)。
+    - `full_rework=True`:显式整轮重做(所有镜头),不再按镜头级判定。
     """
     hard: dict[int, str] = {}  # passed=False(黑帧/全废) → 必须返工
     soft: dict[int, str] = {}  # 一致性分偏低(软错配) → 可按门槛过滤
@@ -92,7 +135,14 @@ def review(
         )
         soft = {}
 
-    regen: dict[int, str] = {**hard, **soft}
+    if full_rework:
+        all_idx = [s.get("index") for s in shots if s.get("index") is not None]
+        regen = {idx: f"[显式整轮重做] 重生成镜头 {idx}" for idx in all_idx}
+        for idx in all_idx:
+            diagnosis.setdefault(idx, REFERENCE_MISMATCH)
+        reasons.append(f"显式整轮重做:{len(regen)} 个镜头")
+    else:
+        regen = {**hard, **soft}
 
     quality_ok = quality is not None and quality.get("passed") is True
     if not quality_ok and quality is not None:

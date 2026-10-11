@@ -106,6 +106,7 @@ class OutlineEpisode(BaseModel):
     """改编大纲的一集:覆盖哪些事件、镜头/时长预算。"""
 
     ep_number: int
+    title: str = ""
     event_ids: list[str] = Field(default_factory=list)
     shot_budget: int = 0
     target_duration_s: float = 0.0

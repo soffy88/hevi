@@ -409,6 +409,7 @@ def build_adaptation_outline(
         episodes.append(
             OutlineEpisode(
                 ep_number=ep,
+                title=f"第{ep}集",
                 event_ids=[ev.event_id for ev in chunk],
                 shot_budget=per_ep_budget,
                 target_duration_s=float(episode_duration_s),

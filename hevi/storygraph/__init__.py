@@ -11,6 +11,24 @@ from hevi.storygraph.chapters import (
     split_novel_chapters,
 )
 from hevi.storygraph.extract import extract_story_graph
+from hevi.storygraph.review import (
+    AdaptationDecision,
+    EpisodeReviewLog,
+    EpisodeScript,
+    ReviewIssue,
+    ReviewLog,
+    RoundRecord,
+    ScriptLine,
+    ScriptScene,
+    decision_layer,
+    deterministic_checks,
+    execution_layer,
+    revise_episode_script,
+    review_episode,
+    run_three_layer_review,
+    supervisor_layer,
+    write_review_log,
+)
 from hevi.storygraph.schemas import (
     AdaptationOutline,
     OutlineEpisode,
@@ -26,8 +44,16 @@ from hevi.storygraph.schemas import (
 )
 
 __all__ = [
+    "AdaptationDecision",
     "AdaptationOutline",
+    "EpisodeReviewLog",
+    "EpisodeScript",
     "OutlineEpisode",
+    "ReviewIssue",
+    "ReviewLog",
+    "RoundRecord",
+    "ScriptLine",
+    "ScriptScene",
     "StoryArc",
     "StoryChapter",
     "StoryCharacter",
@@ -39,9 +65,17 @@ __all__ = [
     "StoryRelationship",
     "build_adaptation_outline",
     "build_book_event_graph",
+    "decision_layer",
+    "deterministic_checks",
+    "execution_layer",
     "extract_chapter_graphs",
     "extract_story_graph",
     "merge_chapter_graphs",
     "outline_to_story",
+    "revise_episode_script",
+    "review_episode",
+    "run_three_layer_review",
     "split_novel_chapters",
+    "supervisor_layer",
+    "write_review_log",
 ]
