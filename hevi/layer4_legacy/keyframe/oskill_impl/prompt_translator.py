@@ -14,6 +14,11 @@ import urllib.request
 from typing import Any
 
 from hevi.layer4_legacy.keyframe.oprim_impl.character_card import CharacterCard
+from hevi.prompt.style_presets import (
+    DEFAULT_KEYFRAME_STYLE,
+    KEYFRAME_STYLE_PRESETS,
+    get_keyframe_style,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +64,44 @@ DEFAULT_STYLE = (
 DEFAULT_NEGATIVE = (
     "modern clothing, glasses, cars, distorted anatomy, extra limbs, bad face, watermark, text, low quality, blurry"
 )
+
+
+def resolve_style_preset(style: str | None) -> dict[str, object]:
+    """Return a normalized keyframe style preset dict (never raises).
+
+    Known preset names (and None/"") map to their preset. An unknown non-empty
+    string is treated as legacy raw style tags: it keeps the default anime prefix
+    off, uses the raw string as tags, and adds no extra negative.
+    """
+    if style and style not in KEYFRAME_STYLE_PRESETS:
+        return {
+            "name": DEFAULT_KEYFRAME_STYLE,
+            "prompt_prefix": "",
+            "style_tags": style,
+            "negative": "",
+            "photoreal": False,
+            "legacy_tags": style,
+        }
+    name = style or DEFAULT_KEYFRAME_STYLE
+    preset = dict(get_keyframe_style(name))
+    preset["name"] = name
+    preset["legacy_tags"] = ""
+    return preset
+
+
+def _resolve_style(style: str | None) -> tuple[str, str, str, bool]:
+    """Resolve a style argument into (prompt_prefix, style_tags, style_negative, is_photoreal).
+
+    - None / "" / a known preset name -> that keyframe style preset (default anime_guofeng).
+    - Any other non-empty string is treated as legacy raw style tags (backward compatible).
+    """
+    preset = resolve_style_preset(style)
+    return (
+        str(preset.get("prompt_prefix") or ""),
+        str(preset.get("style_tags") or ""),
+        str(preset.get("negative") or ""),
+        bool(preset.get("photoreal")),
+    )
 
 
 def _try_llm_translate(zh_text: str, timeout_s: float = 2.0) -> str | None:
@@ -110,14 +153,16 @@ def zh_shot_to_sd_prompt(
     shot: Any,
     *,
     character_cards: list[CharacterCard] | dict[str, CharacterCard] | None = None,
-    style: str | None = None,
+    style: str | None = DEFAULT_KEYFRAME_STYLE,
 ) -> tuple[str, str]:
     """Convert Chinese shot details into English Stable Diffusion prompt & negative prompt.
 
     Args:
         shot: dict or KernelShot with visual_desc, visible_chars, environment, etc.
         character_cards: character dossier registry to pull locked appearance tokens.
-        style: optional visual style tags.
+        style: keyframe style preset name (``anime_guofeng`` default, ``ink``,
+            ``flat_comic``, ``photoreal``). An unknown non-empty string is treated as
+            raw legacy style tags; ``None`` selects the default anime style.
 
     Returns:
         (prompt_en, negative_prompt)
@@ -139,6 +184,9 @@ def zh_shot_to_sd_prompt(
         focal_char = getattr(shot, "primary_char", None) or getattr(shot, "focal_char", None)
 
     full_zh = f"{env} {visual_desc}".strip()
+
+    style_prefix, style_tags, style_negative, is_photoreal = _resolve_style(style)
+    base_negative = f"{DEFAULT_NEGATIVE}, {style_negative}" if style_negative else DEFAULT_NEGATIVE
 
     # 1. Resolve character card lookup
     card_lookup: dict[str, CharacterCard] = {}
@@ -164,7 +212,7 @@ def zh_shot_to_sd_prompt(
             focal_char = "老道长"
 
     char_tokens: list[str] = []
-    negative = DEFAULT_NEGATIVE
+    negative = base_negative
 
     # 2. Assign character tokens prioritizing focal character
     if focal_char == "王生":
@@ -178,7 +226,7 @@ def zh_shot_to_sd_prompt(
                     char_tokens.append(other_card.appearance_en_tokens)
         # If Wang Sheng is solo, forbid elderly / white beard in negative prompt
         if not any(c in visible_chars for c in ["老道长", "宾客", "众人", "师父"]):
-            negative = f"{DEFAULT_NEGATIVE}, elderly, old man, white beard, white hair, grey hair, wrinkled face"
+            negative = f"{base_negative}, elderly, old man, white beard, white hair, grey hair, wrinkled face"
     elif focal_char == "老道长":
         dao_card = card_lookup.get("老道长")
         if dao_card and dao_card.appearance_en_tokens:
@@ -193,7 +241,7 @@ def zh_shot_to_sd_prompt(
         is_moon_shot = any(pattern.search(full_zh) for pattern, k, _ in REQUIRED_SUBJECT_MAP if k == "moon")
         if is_moon_shot:
             char_tokens.append("a large radiant glowing bright full moon on the wall, luminous lunar sphere shining brightly, soft moonlight beam")
-            negative = f"{DEFAULT_NEGATIVE}, person, human, character, man, woman"
+            negative = f"{base_negative}, person, human, character, man, woman"
         else:
             # Normal multi-character or generic
             for char_name in visible_chars:
@@ -220,12 +268,12 @@ def zh_shot_to_sd_prompt(
 
     # 4. Assemble prompt parts
     prompt_parts: list[str] = []
+    if style_prefix:
+        prompt_parts.append(style_prefix)
     prompt_parts.extend(char_tokens)
     prompt_parts.extend(scene_tokens)
-
-    style_tag = style if style is not None else DEFAULT_STYLE
-    if style_tag:
-        prompt_parts.append(style_tag)
+    if style_tags:
+        prompt_parts.append(style_tags)
 
     # Dedup preserving order and trim excess
     deduped: list[str] = []

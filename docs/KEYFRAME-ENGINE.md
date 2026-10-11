@@ -101,3 +101,42 @@ To prevent CPU overload and OOM errors when concurrent agents (e.g. DRAMAKEY and
 ## 5. Licensing Notice
 
 `SD-Turbo` is released under the Stability AI Non-Commercial Research Community License. It is free for non-commercial research and commercial use under $1M/year revenue. All deliverables using this engine must acknowledge this community license.
+
+---
+
+## 6. Keyframe Style Presets (shared with comicnarr)
+
+On CPU, photoreal live-action faces are not competitive (SD-Turbo at 512px renders
+blurry, non-consistent faces), so the **default style is `anime_guofeng` (国风动漫插画)**
+and `photoreal` is an opt-in preset that is **off by default**.
+
+Canonical definition (single source of truth):
+`hevi/prompt/style_presets.py` → `KEYFRAME_STYLE_PRESETS`, so `dramakey`,
+`comicnarr`, and `script2video` share the exact same presets. Convenience re-exports
+live in `hevi.layer4_legacy.keyframe.oskill_impl` (`get_keyframe_style`,
+`list_keyframe_styles`, `resolve_style_preset`).
+
+| Style key | Label | prompt_prefix | photoreal |
+|---|---|---|---|
+| `anime_guofeng` | 国风动漫插画（默认） | `chinese anime illustration, guofeng donghua art style, 2d animation cel, stylized character design` | No |
+| `ink` | 国风水墨 | `traditional chinese ink wash painting, shuimo guofeng style` | No |
+| `flat_comic` | 平涂漫画 | `flat comic book illustration, graphic novel panel art` | No |
+| `photoreal` | 写实真人（可选，默认关闭） | `cinematic photorealistic live-action film still` | Yes |
+
+Each preset supplies `prompt_prefix` (front-loaded style words), `style_tags`
+(postfix detail), and `negative` (merged into the final negative prompt). The
+non-photoreal presets add `photo, photograph, photorealistic, realistic, 3d render,
+cgi, ...` to the negative prompt so the CPU model stays illustrative.
+
+Usage:
+
+```python
+from hevi.layer4_legacy.keyframe.omodul_impl.video_render import RenderConfig
+
+cfg = RenderConfig(style="anime_guofeng")  # default; also: ink | flat_comic | photoreal
+```
+
+`RenderConfig.style`, `Novel2VideoConfig.style`, and `Script2VideoKernelConfig.style`
+are all accepted from CLI/API. The QA report records a measured style gate
+(`compute_style_alignment`, OpenCLIP anime-vs-photoreal) per shot; `stylized_pass`
+is false if any winner keyframe reads more like a photograph than an illustration.

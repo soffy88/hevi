@@ -34,6 +34,7 @@ class Novel2VideoConfig:
     enable_tts: bool = True
     enable_subtitles: bool = True
     base_seed: int = 42
+    style: str = "anime_guofeng"
 
 
 @dataclass
@@ -138,6 +139,7 @@ async def novel2video_workflow(
                 enable_tts=config.enable_tts,
                 enable_subtitles=config.enable_subtitles,
                 base_seed=config.base_seed,
+                style=config.style,
             )
 
             render_res = render_dramakey_pipeline(

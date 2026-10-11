@@ -32,13 +32,16 @@ from hevi.layer4_legacy.keyframe.oprim_impl.face_gate import (
 )
 from hevi.layer4_legacy.keyframe.oprim_impl.image_score import (
     compute_clip_similarity,
+    compute_style_alignment,
     score_keyframe,
 )
 from hevi.layer4_legacy.keyframe.oprim_impl.registry import get_engine, resolve_keyframe_engine
 from hevi.layer4_legacy.keyframe.oskill_impl.prompt_translator import (
     DEFAULT_NEGATIVE,
+    resolve_style_preset,
     zh_shot_to_sd_prompt,
 )
+from hevi.prompt.style_presets import DEFAULT_KEYFRAME_STYLE
 from hevi.layer4_legacy.talkcraft.omodul_impl._media import (
     FFMPEG,
     FFPROBE,
@@ -66,6 +69,7 @@ class RenderConfig:
     enable_tts: bool = True
     enable_subtitles: bool = True
     base_seed: int = 42
+    style: str = DEFAULT_KEYFRAME_STYLE
 
 
 def _format_srt_time(seconds: float) -> str:
@@ -193,10 +197,16 @@ def generate_character_portraits(
     kf_width: int = 512,
     kf_height: int = 512,
     seeds: tuple[int, int, int] = (101, 102, 103),
+    style: str = DEFAULT_KEYFRAME_STYLE,
 ) -> list[CharacterCard]:
     """Generate 3 seed candidates per character card, pick best face as reference portrait."""
     portraits_dir = output_dir / "portraits"
     portraits_dir.mkdir(parents=True, exist_ok=True)
+
+    style_preset = resolve_style_preset(style)
+    style_prefix = str(style_preset.get("prompt_prefix") or "")
+    style_tags = str(style_preset.get("style_tags") or "")
+    portrait_negative = f"{DEFAULT_NEGATIVE}, {style_preset.get('negative') or ''}".strip(", ")
 
     for card in cards:
         if card.ref_image and card.ref_face_embedding:
@@ -206,13 +216,17 @@ def generate_character_portraits(
         best_path = None
         best_score = -1.0
 
-        prompt = f"{card.name}, {card.appearance_en_tokens}, close-up portrait, clean background, sharp focus"
+        prompt = (
+            f"{style_prefix}, {card.name}, {card.appearance_en_tokens}, "
+            f"close-up character portrait, clean background, {style_tags}"
+        )
 
         for s in seeds:
             cand_path = portraits_dir / f"{card.id}_cand_seed_{s}.png"
             if not cand_path.is_file():
                 engine.generate(
                     prompt_en=prompt,
+                    negative=portrait_negative,
                     width=kf_width,
                     height=kf_height,
                     steps=2,
@@ -297,6 +311,7 @@ def render_dramakey_pipeline(
         output_dir=out_dir,
         kf_width=cfg.kf_width,
         kf_height=cfg.kf_height,
+        style=cfg.style,
     )
 
     # Save characters.json
@@ -373,6 +388,7 @@ def render_dramakey_pipeline(
         prompt_en, neg = zh_shot_to_sd_prompt(
             shot,
             character_cards=character_cards,
+            style=cfg.style,
         )
 
         # C. Dual Candidate Keyframe Generation (ViMax strategy)
@@ -494,6 +510,8 @@ def render_dramakey_pipeline(
         final_kf_path = kf_dir / f"shot_{shot_idx:02d}_kf.png"
         shutil.copy2(winner_path, final_kf_path)
 
+        style_alignment = compute_style_alignment(final_kf_path)
+
         # Record shot metadata
         shot_records.append(
             {
@@ -515,6 +533,7 @@ def render_dramakey_pipeline(
                 "retry_count": retry_count,
                 "identity_weak": identity_weak,
                 "subject_alignment": winner_score.get("subject_alignment"),
+                "style_alignment": style_alignment,
                 "keyframe_sha256": sha256(final_kf_path),
             }
         )
@@ -636,7 +655,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     )
 
     # Subtitle burn-in with precise ASS style
-    if cfg.enable_subtitles and ass_path.stat().st_size > 0:
+    has_subtitles = bool(cfg.enable_subtitles and ass_path.stat().st_size > 0)
+    if has_subtitles:
         sub_filter = f"subtitles='{ass_path}'"
         subprocess.run(
             [
@@ -659,7 +679,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     else:
         shutil.move(str(temp_concat_mp4), str(final_mp4_path))
 
-    temp_concat_mp4.unlink(missing_ok=True)
     concat_list_path.unlink(missing_ok=True)
 
     total_wall_sec = time.time() - start_time
@@ -745,25 +764,64 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     final_mp4_sha256 = sha256(final_mp4_path)
 
-    # Subtitle safe margin verification (ensure >= 6% margin on both sides)
+    # Subtitle safe margin verification (ensure >= 6% margin on both sides).
+    # True subtitle pixels are isolated by diffing the burned frame against the
+    # identical no-subtitle concat frame, so bright image content (white beards,
+    # moons, walls) is never mistaken for subtitle text.
     subtitle_margin_passed = True
     min_margin_left_px = float("inf")
     min_margin_right_px = float("inf")
-    if cfg.enable_subtitles and sampled_frames:
-        for f_arr in sampled_frames:
-            h, w = f_arr.shape[:2]
-            bottom_zone = f_arr[int(h * 0.75) :, :]
-            gray_zone = cv2.cvtColor(bottom_zone, cv2.COLOR_BGR2GRAY)
-            white_coords = np.column_stack(np.where(gray_zone > 220))
-            if len(white_coords) > 60:
-                min_x = int(white_coords[:, 1].min())
-                max_x = int(white_coords[:, 1].max())
-                margin_l = min_x
-                margin_r = w - 1 - max_x
-                min_margin_left_px = min(min_margin_left_px, margin_l)
-                min_margin_right_px = min(min_margin_right_px, margin_r)
-                if margin_l < w * 0.06 or margin_r < w * 0.06:
-                    subtitle_margin_passed = False
+    subtitle_pixels_checked = 0
+    if has_subtitles and temp_concat_mp4.is_file():
+        margin_timestamps = [measured_dur * (i + 0.5) / 8.0 for i in range(8)]
+        for t_s in margin_timestamps:
+            burned_tmp = out_dir / f"_subframe_{int(t_s * 100)}.jpg"
+            clean_tmp = out_dir / f"_cleanframe_{int(t_s * 100)}.jpg"
+            for src, dst in ((final_mp4_path, burned_tmp), (temp_concat_mp4, clean_tmp)):
+                subprocess.run(
+                    [FFMPEG, "-y", "-v", "error", "-ss", f"{t_s:.2f}", "-i", str(src),
+                     "-vframes", "1", "-q:v", "2", str(dst)],
+                    check=True,
+                )
+            burned = cv2.imread(str(burned_tmp))
+            clean = cv2.imread(str(clean_tmp))
+            burned_tmp.unlink(missing_ok=True)
+            clean_tmp.unlink(missing_ok=True)
+            if burned is None or clean is None or burned.shape != clean.shape:
+                continue
+            diff = cv2.absdiff(burned, clean).max(axis=2)
+            mask = diff > 45
+            # Subtitles live in the lower half of the frame; ignore encode noise elsewhere.
+            frame_h, frame_w = mask.shape
+            mask[: int(frame_h * 0.5), :] = False
+            ys, xs = np.where(mask)
+            if xs.size < 80:
+                continue
+            min_x = int(xs.min())
+            max_x = int(xs.max())
+            margin_l = min_x
+            margin_r = frame_w - 1 - max_x
+            min_margin_left_px = min(min_margin_left_px, margin_l)
+            min_margin_right_px = min(min_margin_right_px, margin_r)
+            subtitle_pixels_checked += 1
+            if margin_l < frame_w * 0.06 or margin_r < frame_w * 0.06:
+                subtitle_margin_passed = False
+        if subtitle_pixels_checked == 0:
+            # No subtitle pixels isolated -> cannot claim the margin is verified.
+            subtitle_margin_passed = False
+
+    # Style gate: default anime_guofeng must not read as a photoreal photograph.
+    style_alignment_pass = bool(shot_records) and all(
+        (r.get("style_alignment") or {}).get("is_stylized") for r in shot_records
+    )
+    mean_style_margin = round(
+        float(np.mean([(r.get("style_alignment") or {}).get("margin", 0.0) for r in shot_records]))
+        if shot_records
+        else 0.0,
+        4,
+    )
+
+    temp_concat_mp4.unlink(missing_ok=True)
 
     qa_passed = (
         measured_dur >= 30.0
@@ -772,6 +830,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         and mean_frame_diff > 5.0
         and len(shot_records) == len(shots)
         and (subtitle_margin_passed or not cfg.enable_subtitles)
+        and style_alignment_pass
     )
 
     qa_report = {
@@ -800,11 +859,26 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             "max_volume_db": round(max_vol, 2),
         },
         "subtitles": {
-            "burned": cfg.enable_subtitles,
+            "burned": has_subtitles,
             "safe_margin_verified": subtitle_margin_passed,
             "min_margin_left_px": min_margin_left_px if min_margin_left_px != float("inf") else 0.0,
             "min_margin_right_px": min_margin_right_px if min_margin_right_px != float("inf") else 0.0,
             "safe_threshold_px": round(cfg.target_width * 0.06, 1),
+            "frames_checked": subtitle_pixels_checked,
+            "method": "diff_vs_no_subtitle_concat",
+        },
+        "style": {
+            "name": cfg.style,
+            "photoreal": bool(resolve_style_preset(cfg.style).get("photoreal")),
+            "stylized_pass": style_alignment_pass,
+            "mean_margin": mean_style_margin,
+            "per_shot": [
+                {
+                    "shot_idx": r["shot_idx"],
+                    **(r.get("style_alignment") or {}),
+                }
+                for r in shot_records
+            ],
         },
         "motion": {
             "sample_count": len(sampled_frames),
@@ -824,6 +898,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     record_report = {
         "engine": engine.name,
         "model": "sd-turbo",
+        "style": cfg.style,
+        "style_photoreal": bool(resolve_style_preset(cfg.style).get("photoreal")),
         "total_wall_sec": round(total_wall_sec, 2),
         "keyframe_gen_sec": round(total_kf_gen_sec, 2),
         "peak_rss_mb": round(rss_mb, 1),

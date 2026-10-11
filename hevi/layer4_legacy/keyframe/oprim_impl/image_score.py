@@ -143,6 +143,30 @@ def compute_clip_similarity(
         return 0.5
 
 
+_STYLE_ANIME_PROMPT = "anime illustration, 2d cel shaded drawing, flat colors, clean line art, cartoon"
+_STYLE_PHOTOREAL_PROMPT = (
+    "photograph, realistic photo, live action film still, real human face, photorealistic"
+)
+
+
+def compute_style_alignment(image_path: Path | str) -> dict[str, Any]:
+    """Measure whether an image reads as stylized illustration vs a photoreal photo.
+
+    Uses OpenCLIP to score the image against an anime-illustration prompt and a
+    photoreal-photo prompt. ``is_stylized`` is true when the illustration prompt wins.
+    This is a real measured signal used to enforce the default anime_guofeng style
+    (no photoreal faces) on CPU.
+    """
+    anime = compute_clip_similarity(image_path, prompt_en=_STYLE_ANIME_PROMPT)
+    photo = compute_clip_similarity(image_path, prompt_en=_STYLE_PHOTOREAL_PROMPT)
+    return {
+        "anime_score": round(anime, 4),
+        "photoreal_score": round(photo, 4),
+        "margin": round(anime - photo, 4),
+        "is_stylized": bool(anime >= photo),
+    }
+
+
 SUBJECT_KEYWORD_RULES: list[tuple[str, str, str]] = [
     (r"明月|圆月|皓月|月亮|月华|月光", "moon", "a radiant glowing bright full moon"),
     (r"斧头|利斧|采樵|砍柴", "axe", "woodchopping axe"),

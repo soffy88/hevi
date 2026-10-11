@@ -178,7 +178,7 @@ CHAR_CARDS = [
         gender="male",
         age_band="young",
         appearance_zh="青年英俊书生，头戴深蓝纶巾儒巾，身着青衫汉服白领边",
-        appearance_en_tokens="young handsome 20-year-old Chinese scholar, neat topknot bun with blue cloth scholar cap headwrap, elegant cyan blue Hanfu silk robe with white collar trim",
+        appearance_en_tokens="anime illustration character design, young handsome Chinese scholar, neat black topknot bun with blue cloth scholar cap headwrap, cyan blue Hanfu silk robe with white collar trim, slim build, expressive eyes",
         voice="zh_CN-huayan-medium.onnx",
         voice_speed=1.05,
     ),
@@ -189,7 +189,7 @@ CHAR_CARDS = [
         gender="male",
         age_band="elderly",
         appearance_zh="仙风道骨白须老道士，头挽发髻插木簪，身着粗布灰白色道袍",
-        appearance_en_tokens="venerable elderly Taoist master with long flowing white beard and white hair, hair tied in topknot with wooden hairpin, traditional coarse grey Taoist robe",
+        appearance_en_tokens="anime illustration character design, venerable elderly Taoist master, long flowing white beard, white hair tied in topknot with wooden hairpin, coarse grey Taoist robe, holding a white horsetail whisk, kind wise eyes",
         voice="zh_CN-huayan-medium.onnx",
         voice_speed=0.92,
     ),
@@ -226,6 +226,7 @@ def run_novel2video_e2e(run_id: str) -> dict:
         enable_tts=True,
         enable_subtitles=True,
         base_seed=100,
+        style="anime_guofeng",
     )
 
     t0 = time.time()
@@ -250,6 +251,11 @@ def run_novel2video_e2e(run_id: str) -> dict:
 
     qa = result["qa_report"]
     logger.info("QA Verdict: passed=%s, duration=%.2fs", qa["passed"], qa["video"]["duration"])
+    assert qa["subtitles"]["safe_margin_verified"], (
+        f"Subtitle safe margin gate failed: {qa['subtitles']}"
+    )
+    assert qa["style"]["stylized_pass"], f"Style gate failed (photoreal look): {qa['style']}"
+    assert qa["passed"], f"Novel2Video QA gate failed: {json.dumps(qa, ensure_ascii=False)[:400]}"
     return result
 
 
@@ -266,7 +272,7 @@ def run_script2video_30s_sample(run_id: str) -> dict:
     sample_shots = LAOSHAN_SHOTS[:6]
 
     cfg = Script2VideoKernelConfig(
-        style="cinematic",
+        style="anime_guofeng",
         render=True,
         engine="sdturbo_cpu",
         target_width=1080,
@@ -296,6 +302,16 @@ def run_script2video_30s_sample(run_id: str) -> dict:
     final_mp4 = Path(result["final_mp4"])
     assert final_mp4.is_file(), f"Missing final.mp4 for script2video at {final_mp4}"
     assert Path(result["qa_path"]).is_file(), "Missing qa.json for script2video"
+    script_qa = result["qa_report"]
+    assert script_qa["subtitles"]["safe_margin_verified"], (
+        f"Script2Video subtitle safe margin gate failed: {script_qa['subtitles']}"
+    )
+    assert script_qa["style"]["stylized_pass"], (
+        f"Script2Video style gate failed (photoreal look): {script_qa['style']}"
+    )
+    assert script_qa["passed"], (
+        f"Script2Video QA gate failed: {json.dumps(script_qa, ensure_ascii=False)[:400]}"
+    )
     return result
 
 

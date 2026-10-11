@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Script2VideoKernelConfig:
-    style: str = "cinematic"
+    style: str = "anime_guofeng"
     generate_portraits: bool = False
     generate_transitions: bool = False
     render: bool = False
@@ -155,6 +155,7 @@ async def script2video_kernel_workflow(
                 enable_tts=config.enable_tts,
                 enable_subtitles=config.enable_subtitles,
                 base_seed=config.base_seed,
+                style=config.style,
             )
 
             render_res = render_dramakey_pipeline(
