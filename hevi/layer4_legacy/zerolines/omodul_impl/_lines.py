@@ -405,7 +405,7 @@ def comic_narration(req: ZeroLineRequest, d: Path) -> Result:
     input_data = {
         "topic": req.topic or (req.texts[0] if req.texts else ""),
         "texts": list(req.texts),
-        "style": req.extras.get("style", "comic_color"),
+        "style": req.extras.get("style", "guofeng_anime"),
         "subtitle_style": req.extras.get("subtitle_style", "bottom"),
         "keyframe_engine": req.extras.get("keyframe_engine", "sdturbo_cpu"),
         "base_seed": int(req.extras.get("base_seed", 42)),

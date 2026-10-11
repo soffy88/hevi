@@ -1,8 +1,12 @@
 """Comic script planning oskill.
 
 Transforms a topic, prompt, or article fragment into a structured comic script
-with 6–14 sentences (each <=30 Chinese characters) and paired visual descriptions.
-Supports free LLM channel with immediate deterministic rule-based fallback.
+with 6-14 sentences and paired visual descriptions.  Supports a free LLM
+channel with an immediate deterministic rule-based fallback.
+
+No narration is ever hard-truncated: over-long sentences are split at
+punctuation boundaries into complete sentences, and every narration ends with a
+sentence-final punctuation mark.
 
 3O Pillar: oskill.comicnarr_script_planner
 """
@@ -21,17 +25,22 @@ from hevi.layer4_legacy.comicnarr.oprim_impl.templates import get_style_template
 
 logger = logging.getLogger(__name__)
 
+#: Sentence-final punctuation accepted for a completed narration.
+_TERMINAL_PUNCT = "。！？…!?"
+_CLAUSE_BREAK = "，,、；;：:"
+
 # Pre-crafted high quality domain fallback templates for required acceptance themes
 FALLBACK_SCRIPTS: dict[str, dict[str, Any]] = {
     "cat_knock": {
         "title": "为什么猫总爱把东西推下桌？",
         "character_desc_zh": "一只圆脸大眼的金渐层虎斑猫，毛茸茸的白色手套爪子，表情好奇又机智",
-        "character_desc_en": "adorable cute chubby orange tabby cat with emerald green eyes and white paws",
+        "character_desc_en": "cute chubby orange tabby cat with white paws and an expressive curious face",
+        "character_tokens": ("橘猫", "猫咪", "虎斑猫"),
         "scenes": [
             ("你一定见过这样的场景：猫咪坐在桌边，盯着杯子，然后伸出一只小爪子。", "一只胖乎乎的橘猫坐在整洁的书桌边缘，眼睛紧紧盯着一只玻璃水杯"),
             ("啪嗒一声，水杯应声落地，而它却一脸无辜地低头观望。", "水杯在木地板上摔碎水花飞溅，橘猫从桌沿探出小脑袋好奇向下张望"),
             ("其实，猫咪推倒东西并不是为了恶作剧，这背后有深层的动物本能。", "橘猫蹲坐在书架旁，耳朵微微竖起，眼神中充满智慧和野性好奇"),
-            ("首先，在野外生存中，猫的肉垫极其敏感，触碰物体是在测试猎物。", "橘猫特写，特写粉嫩的小肉垫轻轻伸出，试探性地拨弄桌上的小笔筒"),
+            ("首先，在野外生存中，猫的肉垫极其敏感，触碰物体是在测试猎物。", "橘猫特写，粉嫩的小肉垫轻轻伸出，试探性地拨弄桌上的小笔筒"),
             ("轻轻一推，如果物体会动或者会逃跑，就意味着那可能是活物。", "桌上的木头小玩具向前滑动，橘猫全身紧绷摆出专注扑击姿势"),
             ("其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈的感官刺激。", "橘猫歪着小脑袋，大眼睛眨巴着，仔细观察铅笔顺着桌沿滚落"),
             ("这就像人类按动圆珠笔或者捏泡泡纸一样，给猫咪带来了纯粹的探索快感。", "阳光洒在书桌上，橘猫开心地用两只前爪轻快玩弄着纸团"),
@@ -44,7 +53,8 @@ FALLBACK_SCRIPTS: dict[str, dict[str, Any]] = {
     "classical_story": {
         "title": "促织：古画里的秋声",
         "character_desc_zh": "明清时期的年轻书生成名，身穿青色布衫，头戴儒巾，面容清瘦儒雅",
-        "character_desc_en": "young ancient Chinese scholar in simple cyan Hanfu robe and scholar cap",
+        "character_desc_en": "young ancient Chinese scholar in a simple cyan Hanfu robe and scholar cap",
+        "character_tokens": ("书生", "成名", "读书人"),
         "scenes": [
             ("宣德年间，宫中盛行斗蟋蟀之风，每年民间都要征收上等的促织。", "繁华古朴的明代宫廷殿堂，金碧辉煌，香烟缭绕，官员正在呈送名贵蟋蟀"),
             ("华阴县有个读书人名叫成名，为人忠厚木讷，却被里胥摊派了采办之差。", "简朴清幽的农家书斋前，年轻书生手握账册，面容忧愁"),
@@ -59,7 +69,109 @@ FALLBACK_SCRIPTS: dict[str, dict[str, Any]] = {
             ("人世间的悲欢离合，竟系于微虫之手，令后人感慨万千。", "秋风落叶的古道旁，书生远望苍茫云山，意境深邃悠远"),
         ],
     },
+    "three_kingdoms": {
+        "title": "草船借箭：雾锁长江的智谋",
+        "character_desc_zh": "三国时期蜀汉军师诸葛亮，头戴纶巾，身披鹤氅，手持白羽扇，神情从容",
+        "character_desc_en": "ancient Chinese strategist in a crane-feather cloak and silk headwrap holding a white feather fan",
+        "character_tokens": ("诸葛亮", "孔明", "周瑜"),
+        "scenes": [
+            ("东汉末年，曹操率大军南下，孙刘联军在赤壁严阵以待。", "东汉末年长江赤壁江面，战船林立，旌旗蔽日，大军压境"),
+            ("周瑜忌惮诸葛亮的才智，故意命他十日内造出十万支箭。", "东吴军帐内，周瑜眉头紧锁，将令箭拍在案上，诸葛亮从容而立"),
+            ("诸葛亮却笑着立下军令状，只需三天便可如数交箭。", "诸葛亮羽扇纶巾，微笑着写下军令状，帐中将领面面相觑"),
+            ("他向鲁肃借来二十只快船，每船三十名军士，布满草人。", "江边二十只快船整齐排列，军士搬运草人扎满船舷"),
+            ("第三天四更时分，大雾弥漫江面，船队悄然驶向曹营。", "第三天四更，大雾弥漫江面，船队悄然驶向曹营水寨"),
+            ("军士擂鼓呐喊，佯装进攻，声震云霄，惊动了曹军水寨。", "军士在船头擂鼓呐喊，雾气中曹军水寨隐约可见，一片骚动"),
+            ("曹操不明虚实，大雾之中不敢出战，急令弓弩手乱箭齐发。", "曹军水寨中弓箭手列阵，万箭齐发，箭雨划破浓雾"),
+            ("万箭如雨点般射向草船，纷纷扎在草人之上，密如刺猬。", "草人特写，密密麻麻的羽箭扎满草人，如同刺猬"),
+            ("诸葛亮又令船队调转方向，让另一侧也受满箭矢。", "船队在江心缓缓调头，让另一侧草人迎向箭雨"),
+            ("天亮雾散，船上的草人已插满十万余支羽箭，满载而归。", "天亮雾散，草人插满羽箭，军士欢呼，快船满载而归"),
+            ("周瑜得知经过，长叹一声，自愧不如孔明神机妙算。", "东吴军帐中，周瑜长叹，诸葛亮轻摇羽扇微笑不语"),
+            ("草船借箭的故事流传千古，成为智慧与胆识的不朽传奇。", "长江落日，古战船剪影，草船借箭的传奇意境悠远"),
+        ],
+    },
 }
+
+
+def _finalize_sentence(clause: str) -> str:
+    """Trim dangling clause punctuation and guarantee a terminal mark."""
+    c = (clause or "").strip().rstrip(_CLAUSE_BREAK).strip()
+    if not c:
+        return ""
+    if c[-1] not in _TERMINAL_PUNCT:
+        c += "。"
+    return c
+
+
+def _split_text_to_sentences(text: str, max_chars: int = 30) -> list[str]:
+    """Split text into complete sentences <= *max_chars* without losing text.
+
+    Splits first on sentence-final punctuation (preserved), then breaks any
+    still-too-long sentence at comma/clause boundaries.  Every returned item
+    ends with sentence-final punctuation; no character is dropped (only a
+    trailing comma may be normalised to a full stop).
+    """
+    if not text:
+        return []
+    raw = str(text)
+    # Keep terminal punctuation attached to its sentence.
+    segments = re.findall(rf"[^{_TERMINAL_PUNCT}\n]+[{_TERMINAL_PUNCT}]*", raw)
+    sentences: list[str] = []
+
+    for seg in segments:
+        seg = seg.strip()
+        if not seg:
+            continue
+        if len(seg) <= max_chars:
+            finalized = _finalize_sentence(seg)
+            if len(finalized) >= 2:
+                sentences.append(finalized)
+            continue
+
+        clauses = re.findall(rf"[^{_CLAUSE_BREAK}]+[{_CLAUSE_BREAK}]*", seg)
+        cur = ""
+        for clause in clauses:
+            if not clause.strip():
+                continue
+            if cur and len(cur) + len(clause) > max_chars:
+                finalized = _finalize_sentence(cur)
+                if len(finalized) >= 2:
+                    sentences.append(finalized)
+                cur = clause
+            else:
+                cur += clause
+        if cur.strip():
+            finalized = _finalize_sentence(cur)
+            if len(finalized) >= 2:
+                sentences.append(finalized)
+
+    return sentences
+
+
+def _split_long_sentence(narration: str, max_chars: int = 30, max_parts: int = 2) -> list[str]:
+    """Split one narration into at most *max_parts* complete sentences."""
+    parts = _split_text_to_sentences(narration, max_chars=max_chars)
+    if not parts:
+        return []
+    if len(parts) <= max_parts:
+        return parts
+    # Merge overflow back into the last kept part (never drop characters).
+    kept = parts[: max_parts - 1]
+    kept.append("".join(parts[max_parts - 1 :]))
+    return kept
+
+
+def _derive_character_tokens(character_desc_zh: str) -> tuple[str, ...]:
+    """Best-effort protagonist identity tokens from a Chinese description."""
+    tokens: list[str] = []
+    for chunk in re.split(r"[，,。.、；;：:\s]+", character_desc_zh or ""):
+        chunk = chunk.strip()
+        if len(chunk) >= 2:
+            for n in (3, 2):
+                if len(chunk) >= n:
+                    tok = chunk[-n:]
+                    if tok not in tokens:
+                        tokens.append(tok)
+    return tuple(tokens[:6])
 
 
 def _try_llm_script(topic: str, timeout_s: float = 3.0) -> dict[str, Any] | None:
@@ -113,150 +225,193 @@ def _try_llm_script(topic: str, timeout_s: float = 3.0) -> dict[str, Any] | None
     return None
 
 
-def _split_text_to_sentences(text: str, max_chars: int = 30) -> list[str]:
-    """Split input paragraph into well-formed sentences <= max_chars."""
-    raw_parts = re.split(r"[。！？\n；;!?]+", text)
-    sentences: list[str] = []
+def probe_free_llm(timeout_s: float = 4.0) -> dict[str, Any]:
+    """Probe the local free Omniroute channel with a tiny request.
 
-    for part in raw_parts:
-        part = part.strip()
-        if not part:
-            continue
-        if len(part) <= max_chars:
-            sentences.append(part)
-        else:
-            # Sub-split by commas
-            clauses = re.split(r"[，,]+", part)
-            cur = ""
-            for c in clauses:
-                c = c.strip()
-                if not c:
-                    continue
-                if cur and len(cur) + len(c) + 1 <= max_chars:
-                    cur = f"{cur}，{c}"
-                else:
-                    if cur:
-                        sentences.append(cur)
-                    cur = c
-            if cur:
-                sentences.append(cur)
+    Returns a JSON-serialisable dict describing the outcome so the pipeline can
+    record the *actual* channel used.  Never raises.
+    """
+    if os.environ.get("HEVI_USE_LLM", "1") == "0":
+        return {"available": False, "reason": "HEVI_USE_LLM=0", "model": None}
 
-    return [s for s in sentences if len(s.strip()) >= 2]
+    model = os.environ.get("HEVI_LLM_MODEL", "auto/best-free")
+    api_url = os.environ.get("HEVI_OMNIROUTE_URL", "http://127.0.0.1:20128/v1/chat/completions")
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": "reply with OK"}],
+        "max_tokens": 4,
+    }
+    try:
+        req = urllib.request.Request(
+            api_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            if content:
+                return {"available": True, "reason": "ok", "model": model}
+            return {"available": False, "reason": "empty response", "model": model}
+    except Exception as exc:  # noqa: BLE001 - probe must never raise
+        return {"available": False, "reason": f"{type(exc).__name__}: {exc}", "model": model}
 
 
 def generate_comic_script(
     *,
     topic: str,
     raw_texts: list[str] | tuple[str, ...] | None = None,
-    style_name: str = "comic_color",
+    style_name: str = "guofeng_anime",
     base_seed: int = 42,
     timeout_s: float = 3.0,
+    max_chars: int = 30,
+    max_scenes: int = 14,
+    use_llm: bool = True,
 ) -> tuple[ComicScript, str]:
     """Generate structured comic script. Returns (ComicScript, channel_used)."""
     t_clean = (topic or "").strip()
     style = get_style_template(style_name)
 
-    # 1. If explicit multi-line texts provided (> 4 lines)
-    if raw_texts and len(raw_texts) >= 5:
+    # 1. Explicit user-provided narration lines take priority.  Each line is
+    #    split into complete sentences; nothing is truncated.
+    provided = [str(t).strip() for t in (raw_texts or []) if str(t).strip()]
+    if provided:
         channel_used = "user_input_texts"
-        title = t_clean or raw_texts[0][:20]
+        title = t_clean or provided[0][:20]
         char_zh = "故事主人公，生动鲜明的外貌"
         char_en = "main character with distinctive iconic comic attire"
         scenes: list[ComicScene] = []
-        for i, t in enumerate(raw_texts[:14]):
-            text_str = str(t).strip()
-            if not text_str:
-                continue
-            scenes.append(
-                ComicScene(
-                    index=i,
-                    narration=text_str[:30],
-                    visual_desc=text_str,
-                    prompt_en="",
-                    negative_prompt=style.negative_prompt,
-                    seed=base_seed + i * 17,
+        for line in provided:
+            for sentence in _split_text_to_sentences(line, max_chars=max_chars):
+                scenes.append(
+                    ComicScene(
+                        index=len(scenes),
+                        narration=sentence,
+                        visual_desc=sentence,
+                        prompt_en="",
+                        negative_prompt=style.negative_prompt,
+                        seed=base_seed + len(scenes) * 17,
+                    )
                 )
-            )
-        return ComicScript(title=title, topic=t_clean, character_desc_zh=char_zh, character_desc_en=char_en, scenes=scenes), channel_used
+                if len(scenes) >= max_scenes:
+                    break
+            if len(scenes) >= max_scenes:
+                break
+        return (
+            ComicScript(
+                title=title,
+                topic=t_clean,
+                character_desc_zh=char_zh,
+                character_desc_en=char_en,
+                scenes=scenes,
+                character_tokens=(),
+            ),
+            channel_used,
+        )
 
     # 2. Try LLM channel
-    llm_data = _try_llm_script(t_clean, timeout_s=timeout_s)
+    llm_data = _try_llm_script(t_clean, timeout_s=timeout_s) if use_llm else None
     if llm_data is not None:
         channel_used = f"omniroute_llm:{os.environ.get('HEVI_LLM_MODEL', 'auto/best-free')}"
         title = str(llm_data.get("title") or t_clean)
         char_zh = str(llm_data.get("character_desc_zh") or "故事主角")
         char_en = str(llm_data.get("character_desc_en") or "iconic character in comic style")
         scenes = []
-        for idx, item in enumerate(llm_data.get("scenes", [])):
-            if idx >= 14:
-                break
+        for item in llm_data.get("scenes", []):
             narr = str(item.get("narration") or "").strip()
             vis = str(item.get("visual_desc") or narr).strip()
             if not narr:
                 continue
-            # Ensure sentence is <= 30 chars
-            if len(narr) > 30:
-                narr = narr[:30]
-            scenes.append(
-                ComicScene(
-                    index=idx,
-                    narration=narr,
-                    visual_desc=vis,
-                    prompt_en="",
-                    negative_prompt=style.negative_prompt,
-                    seed=base_seed + idx * 17,
+            for sentence in _split_long_sentence(narr, max_chars=max_chars, max_parts=2):
+                if len(scenes) >= max_scenes:
+                    break
+                scenes.append(
+                    ComicScene(
+                        index=len(scenes),
+                        narration=sentence,
+                        visual_desc=vis,
+                        prompt_en="",
+                        negative_prompt=style.negative_prompt,
+                        seed=base_seed + len(scenes) * 17,
+                    )
                 )
-            )
+            if len(scenes) >= max_scenes:
+                break
         if len(scenes) >= 6:
-            return ComicScript(title=title, topic=t_clean, character_desc_zh=char_zh, character_desc_en=char_en, scenes=scenes), channel_used
+            return (
+                ComicScript(
+                    title=title,
+                    topic=t_clean,
+                    character_desc_zh=char_zh,
+                    character_desc_en=char_en,
+                    scenes=scenes,
+                    character_tokens=_derive_character_tokens(char_zh),
+                ),
+                channel_used,
+            )
 
     # 3. Deterministic rule-based fallback
     channel_used = "deterministic_rule_fallback"
-    # Detect best matching domain
     if any(k in t_clean for k in ("猫", "宠物", "推下", "爪", "动物")):
         tmpl = FALLBACK_SCRIPTS["cat_knock"]
+    elif any(
+        k in t_clean
+        for k in ("三国", "诸葛", "孔明", "草船", "借箭", "赤壁", "周瑜", "曹操")
+    ):
+        tmpl = FALLBACK_SCRIPTS["three_kingdoms"]
     elif any(k in t_clean for k in ("聊斋", "促织", "道士", "故事", "书生", "古代", "古")):
         tmpl = FALLBACK_SCRIPTS["classical_story"]
     else:
-        # Check if topic contains multiple sentences itself
-        sentences = _split_text_to_sentences(t_clean)
+        sentences = _split_text_to_sentences(t_clean, max_chars=max_chars)
         if len(sentences) >= 6:
             tmpl = {
                 "title": sentences[0][:20],
                 "character_desc_zh": "核心叙述角色",
                 "character_desc_en": "expressive animated protagonist character",
-                "scenes": [(s, s) for s in sentences[:12]],
+                "character_tokens": (),
+                "scenes": [(s, s) for s in sentences[:max_scenes]],
             }
         else:
-            # Default to rich cat topic if generic
             tmpl = FALLBACK_SCRIPTS["cat_knock"]
 
     title = t_clean or tmpl["title"]
     char_zh = tmpl["character_desc_zh"]
     char_en = tmpl["character_desc_en"]
+    char_tokens = tuple(tmpl.get("character_tokens") or _derive_character_tokens(char_zh))
     scenes = []
-    for idx, (narr, vis) in enumerate(tmpl["scenes"]):
-        scenes.append(
-            ComicScene(
-                index=idx,
-                narration=narr[:30],
-                visual_desc=vis,
-                prompt_en="",
-                negative_prompt=style.negative_prompt,
-                seed=base_seed + idx * 17,
+    for narr, vis in tmpl["scenes"]:
+        # Split any over-long curated sentence into complete sentences.
+        for sentence in _split_text_to_sentences(narr, max_chars=max_chars):
+            if len(scenes) >= max_scenes:
+                break
+            scenes.append(
+                ComicScene(
+                    index=len(scenes),
+                    narration=sentence,
+                    visual_desc=vis,
+                    prompt_en="",
+                    negative_prompt=style.negative_prompt,
+                    seed=base_seed + len(scenes) * 17,
+                )
             )
-        )
+        if len(scenes) >= max_scenes:
+            break
 
-    return ComicScript(
-        title=title,
-        topic=t_clean,
-        character_desc_zh=char_zh,
-        character_desc_en=char_en,
-        scenes=scenes,
-    ), channel_used
+    return (
+        ComicScript(
+            title=title,
+            topic=t_clean,
+            character_desc_zh=char_zh,
+            character_desc_en=char_en,
+            scenes=scenes,
+            character_tokens=char_tokens,
+        ),
+        channel_used,
+    )
 
 
 __all__ = [
     "FALLBACK_SCRIPTS",
     "generate_comic_script",
+    "probe_free_llm",
 ]

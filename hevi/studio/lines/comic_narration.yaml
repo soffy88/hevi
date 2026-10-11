@@ -9,7 +9,7 @@ slots:
     description: 解说主题或故事片段
   - name: style
     required: false
-    description: 漫画风格模板 (comic_color | manga_bw)
+    description: 漫画风格模板 (guofeng_anime | comic_color | manga_bw)
   - name: subtitle_style
     required: false
     description: 字幕形式 (bottom | bubble)

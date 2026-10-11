@@ -1,7 +1,7 @@
 """CLI entry point for Comic Narration line.
 
 Usage:
-    python -m hevi.comicnarr.cli --topic "为什么猫总爱把东西推下桌" --style comic_color --output output/comic_cat/
+    python -m hevi.comicnarr.cli --topic "三国演义·草船借箭" --style guofeng_anime --output output/comic_sanguo/
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ def main() -> int:
     parser.add_argument("--topic", required=True, help="Topic or story snippet")
     parser.add_argument(
         "--style",
-        default="comic_color",
-        choices=["comic_color", "manga_bw"],
+        default="guofeng_anime",
+        choices=["guofeng_anime", "comic_color", "manga_bw"],
         help="Visual style template",
     )
     parser.add_argument(

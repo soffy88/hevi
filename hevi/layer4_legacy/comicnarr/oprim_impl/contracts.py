@@ -8,6 +8,13 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+# ComicStyle is the shared keyframe-layer style preset (single source of truth
+# shared with dramakey).  Re-exported under the historical name for backward
+# compatibility with existing comicnarr call sites.
+from hevi.layer4_legacy.keyframe.oprim_impl.style_presets import (
+    StylePreset as ComicStyle,
+)
+
 
 @dataclass
 class ComicScene:
@@ -32,21 +39,6 @@ class ComicScene:
         return asdict(self)
 
 
-@dataclass(frozen=True)
-class ComicStyle:
-    """Visual and layout template for comic generation."""
-
-    name: str
-    style_tokens: str
-    negative_prompt: str
-    subtitle_style: str
-    transition: str
-    bgm_mood: str = "bright"
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
 @dataclass
 class ComicScript:
     """The complete comic narration script."""
@@ -56,6 +48,7 @@ class ComicScript:
     character_desc_zh: str
     character_desc_en: str
     scenes: list[ComicScene] = field(default_factory=list)
+    character_tokens: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -63,6 +56,7 @@ class ComicScript:
             "topic": self.topic,
             "character_desc_zh": self.character_desc_zh,
             "character_desc_en": self.character_desc_en,
+            "character_tokens": list(self.character_tokens),
             "scenes": [s.to_dict() for s in self.scenes],
         }
 

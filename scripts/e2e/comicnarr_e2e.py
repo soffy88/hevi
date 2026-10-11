@@ -2,8 +2,9 @@
 """E2E Acceptance Runner for COMICNARR line (real neural models on CPU, zero mock).
 
 Executes:
-1. Topic input: "为什么猫总爱把东西推下桌？" with comic_color style (45–75s)
-2. Classical story adaptation: "促织：古画里的秋声" (聊斋自编改编) with manga_bw style (45–75s)
+1. Topic input: "为什么猫总爱把东西推下桌？" with comic_color style (45-75s)
+2. Classical story adaptation: "促织：古画里的秋声" (聊斋自编改编) with manga_bw style (45-75s)
+3. Three Kingdoms story: "草船借箭" with guofeng_anime style (45-75s)
 
 Generates full product directory with:
   final.mp4, frames/ (winner + loser candidates), script.json, record.json, qa.json, contact_sheet.jpg, subtitles.srt.
@@ -109,7 +110,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--run-only",
-        choices=["story1", "story2", "all"],
+        choices=["story1", "story2", "story3", "all"],
         default="all",
         help="Run specific story or all",
     )
@@ -148,12 +149,26 @@ def main() -> int:
         )
         results.append(("Story 2 (Cuozhi Fable, manga_bw)", res2))
 
+    # Story 3: Three Kingdoms (草船借箭) with the shared guofeng_anime preset
+    if args.run_only in ("story3", "all"):
+        res3 = run_story(
+            name="Story 3: 三国·草船借箭 (guofeng_anime)",
+            topic="三国演义·草船借箭：诸葛亮大雾之中向曹军借来十万支箭的智谋",
+            style="guofeng_anime",
+            output_dir=root_out / "story3_sanguo_guofeng",
+            base_seed=2024,
+            engine=args.engine,
+            tts_engine=args.tts_engine,
+            subtitle_style="bottom",
+        )
+        results.append(("Story 3 (Sanguo, guofeng_anime)", res3))
+
     # Summary table
     print("\n" + "=" * 80)
     print("COMICNARR E2E ACCEPTANCE SUMMARY REPORT")
     print("=" * 80)
     print(
-        f"{'STORY':<35} | {'DUR(s)':<7} | {'RES':<10} | {'AUDIO(dB)':<10} | {'MOTION':<7} | {'DISTINCT_KF':<11} | {'QA_PASS'}"
+        f"{'STORY':<35} | {'DUR(s)':<7} | {'RES':<10} | {'AUDIO(dB)':<10} | {'MOTION':<7} | {'OCR_MIN':<8} | {'GRAY':<5} | {'DISTINCT_KF':<11} | {'QA_PASS'}"
     )
     print("-" * 80)
 
@@ -163,16 +178,22 @@ def main() -> int:
         v = qa.get("video") or {}
         a = qa.get("audio") or {}
         m = qa.get("motion") or {}
+        rd = qa.get("subtitle_readability") or {}
+        gy = qa.get("grayscale") or {}
         dur = v.get("duration", 0)
         res_str = f"{v.get('width', 0)}x{v.get('height', 0)}"
         vol = a.get("mean_volume_db", -99)
-        diff = m.get("mean_frame_difference", 0)
+        diff = m.get("mean_within_shot_difference", 0)
+        ocr_min = rd.get("min_similarity", 0)
+        gray = "YES" if gy.get("all_grayscale") else ("n/a" if not gy.get("required") else "NO")
         dist = "YES" if qa.get("all_keyframes_distinct") else "NO"
         p = "PASS" if qa.get("passed") else "FAIL"
         if not qa.get("passed"):
             all_passed = False
 
-        print(f"{label:<35} | {dur:<7.1f} | {res_str:<10} | {vol:<10.1f} | {diff:<7.2f} | {dist:<11} | {p}")
+        print(
+            f"{label:<35} | {dur:<7.1f} | {res_str:<10} | {vol:<10.1f} | {diff:<7.2f} | {ocr_min:<8.3f} | {gray:<5} | {dist:<11} | {p}"
+        )
 
     print("=" * 80)
 

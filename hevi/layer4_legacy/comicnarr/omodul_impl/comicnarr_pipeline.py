@@ -28,13 +28,23 @@ from hevi.layer4_legacy.comicnarr.oprim_impl.ken_burns import (
     CAMERA_MOVES,
     build_ken_burns_filter,
 )
+from hevi.layer4_legacy.comicnarr.oprim_impl.postprocess import (
+    apply_style_postprocess,
+    is_grayscale,
+)
 from hevi.layer4_legacy.comicnarr.oprim_impl.subtitle import (
     build_comic_ass,
     build_srt_content,
 )
-from hevi.layer4_legacy.comicnarr.oprim_impl.templates import get_style_template
+from hevi.layer4_legacy.comicnarr.oprim_impl.subtitle_ocr import (
+    measure_subtitle_readability,
+)
+from hevi.layer4_legacy.comicnarr.oprim_impl.templates import DEFAULT_STYLE, get_style_template
 from hevi.layer4_legacy.comicnarr.oskill_impl.prompt_builder import build_scene_prompt
-from hevi.layer4_legacy.comicnarr.oskill_impl.script_planner import generate_comic_script
+from hevi.layer4_legacy.comicnarr.oskill_impl.script_planner import (
+    generate_comic_script,
+    probe_free_llm,
+)
 from hevi.layer4_legacy.keyframe.oprim_impl.image_score import score_keyframe
 from hevi.layer4_legacy.keyframe.oprim_impl.registry import resolve_keyframe_engine
 from hevi.layer4_legacy.talkcraft.omodul_impl._media import (
@@ -83,7 +93,7 @@ def comic_narration_workflow(
     raw_texts = input_data.get("texts") or input_data.get("script_lines") or []
     if isinstance(raw_texts, str):
         raw_texts = [raw_texts]
-    style_name = str(input_data.get("style") or cfg.get("style") or "comic_color")
+    style_name = str(input_data.get("style") or cfg.get("style") or DEFAULT_STYLE)
     style = get_style_template(style_name)
     subtitle_style = str(input_data.get("subtitle_style") or cfg.get("subtitle_style") or "bottom")
     use_bubble = subtitle_style == "bubble"
@@ -115,18 +125,22 @@ def comic_narration_workflow(
         tts_engine=tts_engine,
     )
 
-    # 2. Step: Script Planning
+    # 2. Step: Script Planning (probe the free LLM channel first, then fall back)
+    llm_probe = probe_free_llm(timeout_s=float(cfg.get("llm_probe_timeout_s", 4.0)))
+    llm_available = bool(llm_probe.get("available"))
     script, script_channel = generate_comic_script(
         topic=topic,
         raw_texts=list(raw_texts),
         style_name=style.name,
         base_seed=base_seed,
+        use_llm=llm_available,
     )
     step(
         "script_planning",
         scene_count=len(script.scenes),
         title=script.title,
         channel=script_channel,
+        llm_probe=llm_probe,
     )
 
     # 3. Step: Build Prompts for each scene
@@ -135,6 +149,8 @@ def comic_narration_workflow(
             visual_desc_zh=scene.visual_desc,
             character_desc_en=script.character_desc_en,
             style=style,
+            character_tokens=script.character_tokens,
+            use_llm=llm_available,
         )
         scene.prompt_en = prompt_en
         scene.negative_prompt = neg
@@ -214,6 +230,7 @@ def comic_narration_workflow(
                 seed=seed_1,
                 output_path=cand1_path,
             )
+            apply_style_postprocess(cand1_path, style.postprocess)
         if not cand2_path.is_file() or cand2_path.stat().st_size == 0:
             engine.generate(
                 prompt_en=scene.prompt_en,
@@ -224,6 +241,7 @@ def comic_narration_workflow(
                 seed=seed_2,
                 output_path=cand2_path,
             )
+            apply_style_postprocess(cand2_path, style.postprocess)
         total_kf_gen_sec += time.time() - t_kf_0
 
         score1 = score_keyframe(cand1_path, prompt_en=scene.prompt_en)
@@ -458,20 +476,9 @@ def comic_narration_workflow(
         if "max_volume:" in line:
             max_vol = float(line.split("max_volume:")[1].split("dB")[0].strip())
 
-    # Sample 6 frames across duration for contact sheet and motion verification
-    sample_timestamps = [
-        measured_dur * 0.10,
-        measured_dur * 0.25,
-        measured_dur * 0.50,
-        measured_dur * 0.65,
-        measured_dur * 0.80,
-        measured_dur * 0.95,
-    ]
-    sampled_frames = []
-    frame_diffs = []
-
-    for t_s in sample_timestamps:
-        frame_tmp = out_dir / f"_frame_{int(t_s * 100)}.jpg"
+    # ---- Frame grabber (single frame -> BGR array) ----
+    def _grab_frame(t_s: float) -> np.ndarray | None:
+        frame_tmp = out_dir / f"_frame_{int(t_s * 1000)}.jpg"
         subprocess.run(
             [
                 FFMPEG,
@@ -479,7 +486,7 @@ def comic_narration_workflow(
                 "-v",
                 "error",
                 "-ss",
-                f"{t_s:.2f}",
+                f"{t_s:.3f}",
                 "-i",
                 str(final_mp4),
                 "-vframes",
@@ -490,16 +497,26 @@ def comic_narration_workflow(
             ],
             check=True,
         )
-        if frame_tmp.is_file():
-            arr = cv2.imread(str(frame_tmp))
-            sampled_frames.append(arr)
-            frame_tmp.unlink(missing_ok=True)
+        arr = cv2.imread(str(frame_tmp)) if frame_tmp.is_file() else None
+        frame_tmp.unlink(missing_ok=True)
+        return arr
 
-    for i in range(1, len(sampled_frames)):
-        diff = float(np.mean(np.abs(sampled_frames[i] - sampled_frames[i - 1])))
-        frame_diffs.append(round(diff, 2))
+    # Sample 6 frames across duration for the contact sheet + cross-shot diff.
+    sample_timestamps = [
+        measured_dur * 0.10,
+        measured_dur * 0.25,
+        measured_dur * 0.50,
+        measured_dur * 0.65,
+        measured_dur * 0.80,
+        measured_dur * 0.95,
+    ]
+    sampled_frames = [f for f in (_grab_frame(t) for t in sample_timestamps) if f is not None]
 
-    mean_frame_diff = float(np.mean(frame_diffs)) if frame_diffs else 0.0
+    cross_frame_diffs = [
+        round(float(np.mean(np.abs(sampled_frames[i] - sampled_frames[i - 1]))), 2)
+        for i in range(1, len(sampled_frames))
+    ]
+    mean_cross_diff = float(np.mean(cross_frame_diffs)) if cross_frame_diffs else 0.0
 
     # Build 6-frame contact sheet (2 rows x 3 columns)
     contact_sheet_path = out_dir / "contact_sheet.jpg"
@@ -509,6 +526,55 @@ def comic_narration_workflow(
         row2 = np.hstack(thumbs[3:])
         sheet = np.vstack([row1, row2])
         cv2.imwrite(str(contact_sheet_path), sheet)
+
+    # ---- Within-shot motion (two frames 1s apart inside the SAME shot) ----
+    scene_starts: list[float] = []
+    t_acc = 0.0
+    for scene in script.scenes:
+        scene_starts.append(t_acc)
+        t_acc += scene.duration_s
+
+    within_shot_diffs: list[float] = []
+    readability: list[dict[str, Any]] = []
+    grayscale_flags: list[bool] = []
+    qa_ocr_enabled = bool(input_data.get("qa_ocr", cfg.get("qa_ocr", True)))
+
+    for idx, scene in enumerate(script.scenes):
+        start = scene_starts[idx]
+        t_a = start + min(0.6, scene.duration_s * 0.25)
+        t_b = min(t_a + 1.0, start + scene.duration_s - 0.15)
+        fa = _grab_frame(t_a)
+        fb = _grab_frame(t_b) if t_b > t_a + 0.1 else None
+        if fa is not None and fb is not None:
+            diff = float(
+                np.mean(np.abs(fa.astype(np.int16) - fb.astype(np.int16)))
+            )
+            within_shot_diffs.append(round(diff, 2))
+
+        mid = _grab_frame(start + scene.duration_s * 0.5)
+        if mid is not None:
+            grayscale_flags.append(is_grayscale(mid))
+            if qa_ocr_enabled:
+                readability.append(
+                    {"index": idx, **measure_subtitle_readability(mid, scene.narration)}
+                )
+
+    mean_within_diff = float(np.mean(within_shot_diffs)) if within_shot_diffs else 0.0
+    min_ocr_sim = min((r["similarity"] for r in readability), default=0.0)
+    mean_ocr_sim = (
+        float(np.mean([r["similarity"] for r in readability])) if readability else 0.0
+    )
+    all_subtitles_readable = (not qa_ocr_enabled) or (
+        bool(readability)
+        and all(r.get("readable") for r in readability)
+        and min_ocr_sim >= 0.6
+    )
+
+    grayscale_required = style.postprocess == "manga_bw"
+    grayscale_ok = (
+        (not grayscale_required)
+        or (bool(grayscale_flags) and all(grayscale_flags))
+    )
 
     # Keyframe SHA256 hashes (verify distinctness)
     kf_hashes = {}
@@ -522,9 +588,11 @@ def comic_narration_workflow(
         45.0 <= measured_dur <= 75.0
         and bool(audio_stream)
         and mean_vol > -45.0
-        and mean_frame_diff > 5.0
+        and mean_within_diff > 1.0
         and unique_kf_hashes
         and len(script.scenes) >= 6
+        and all_subtitles_readable
+        and grayscale_ok
     )
 
     qa_report = {
@@ -545,15 +613,32 @@ def comic_narration_workflow(
             "max_volume_db": round(max_vol, 2),
         },
         "motion": {
-            "sample_count": len(sampled_frames),
-            "frame_differences": frame_diffs,
-            "mean_frame_difference": round(mean_frame_diff, 2),
-            "is_dynamic": bool(mean_frame_diff > 5.0),
+            "sample_count": len(within_shot_diffs),
+            "within_shot_differences": within_shot_diffs,
+            "mean_within_shot_difference": round(mean_within_diff, 2),
+            "cross_shot_frame_differences": cross_frame_diffs,
+            "mean_cross_shot_difference": round(mean_cross_diff, 2),
+            "is_dynamic": bool(mean_within_diff > 1.0),
+        },
+        "subtitle_readability": {
+            "ocr_engine": "rapidocr_onnxruntime",
+            "enabled": qa_ocr_enabled,
+            "threshold": 0.6,
+            "min_similarity": round(min_ocr_sim, 4),
+            "mean_similarity": round(mean_ocr_sim, 4),
+            "all_readable": all_subtitles_readable,
+            "per_scene": readability,
+        },
+        "grayscale": {
+            "required": grayscale_required,
+            "postprocess": style.postprocess,
+            "all_grayscale": grayscale_ok,
         },
         "scenes": [s.to_dict() for s in script.scenes],
         "keyframe_hashes": kf_hashes,
         "all_keyframes_distinct": unique_kf_hashes,
         "llm_channel": script_channel,
+        "llm_probe": llm_probe,
         "tts_channel": f"{tts_engine}_zh_huayan",
     }
     qa_path = out_dir / "qa.json"
@@ -566,12 +651,15 @@ def comic_narration_workflow(
         "engine": engine.name,
         "model": "sd-turbo",
         "style": style.name,
+        "style_presets_module": "hevi.layer4_legacy.keyframe.oprim_impl.style_presets",
+        "style_postprocess": style.postprocess,
         "total_wall_sec": round(wall_sec, 2),
         "keyframe_gen_sec": round(total_kf_gen_sec, 2),
         "peak_rss_mb": round(rss_mb, 1),
         "scene_count": len(script.scenes),
         "video_duration_s": round(measured_dur, 2),
         "llm_channel": script_channel,
+        "llm_probe": llm_probe,
         "tts_engine": tts_engine,
         "subtitles_burned": True,
         "subtitle_style": subtitle_style,
