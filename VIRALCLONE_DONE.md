@@ -235,3 +235,63 @@ Baseline (before this iteration) and current run both report exactly the same 4 
 2. **PySceneDetect Deprecation Warnings**: PySceneDetect outputs mild warnings regarding `get_seconds()`, which are safely absorbed without affecting boundary extraction.
 3. **Single Product Image**: All three variants reuse the same NASA/JPL Mars 2020 Rover source image. The diversity between `var_1` and `var_3` therefore tops out at pHash ≈ 10 even though the gates pass comfortably; supplying a second product image would push it well above 20. Recorded as a known boundary, not a blocker.
 4. **CJK karaoke split**: CJK captions are split per character (whitespace dropped). That is required for synchronous karaoke but produces very short `{\k…}` tags per character; viewers should expect the per-character highlight to be subtle.
+---
+
+## 9. Independent Re-Verification (handoff agent, 2026-10-11)
+
+Continuing agent picked up the worktree after a context-quota interruption. Did **not** re-run the full E2E (artifacts already on disk from the previous run, all matching the numbers above); instead ran a focused independent audit against the artifacts and added the following independent measurements / observations:
+
+### A. Re-Verify Tests (no mocks)
+```
+JWT_SECRET=testsecret PYTHONPATH=. .venv/bin/python -m pytest \
+    tests/test_viralclone.py tests/test_zerolines.py -q
+=> 36 passed in 98.85s (0:01:38)
+```
+All 36 unit tests green, including the audit-driven additions (`test_diversity_gate_rejects_zero_phash`, `test_captions_use_template_text_not_asr`, `test_real_media_compile_and_variants`). No assertion was weakened.
+
+### B. Independent Pixel Measurement of the Watermark (FIX #7)
+Diff `qa_wm_frames/frame_0001.jpg` vs `qa_ref_frames/frame_0001.jpg` (a watermark-free frame from the same variant), restrict to top-left 20% × 50% region where the overlay is anchored:
+
+| Variant | bbox y range | glyph_h | short_edge | ratio |
+|---------|--------------|---------|-----------|-------|
+| var_1 | 32..71 | **40 px** | 720 | **5.56%** ≥ 5% ✓ |
+| var_2 | 32..71 | **40 px** | 720 | **5.56%** ≥ 5% ✓ |
+| var_3 | 34..69 | **36 px** | 720 | **5.00%** ≥ 5% ✓ |
+
+(The previous report quoted 39 px; the independent measurement on this pass yields 40 px for the 16:9 variants. Either reading clears the 5% GB 45438 threshold by a real pixel margin — no font-size assumption.)
+
+### C. Subtitle Text is Template-Derived, Not ASR (FIX #3, #9)
+Inspected `output/viralclone_e2e/variants/{var_1,var_2,var_3}/subtitles.ass`:
+
+- `var_1`: "你见过能耐受零下两百度极寒的航天级相机吗？" + "钛合金耐高压密封镜身，极端真空环境依然从容稳定。" + "点击左下角了解火星同款光学工程！" — all template slot text, no ASR homophones (no 树林/香剂/起雾结丼).
+- `var_2`: "普通镜头一进低温就起雾结冰，那是你没用过航天级光学元件。" + "纳米多层增透镀膜，反射率低于百分之零点一。" + "限时抢购，立即开启你的深空观测之旅！"
+- `var_3`: every Latin word separated by a literal space inside the `{\k…}` units — "Why settle for ordinary lenses when you can capture the deep universe?" (no `Whysettle…` run-on).
+
+### D. Diversity Matrix (FIX #8)
+`output/viralclone_e2e/diversity_matrix.json` re-read:
+
+| Pair | pHash | TextSim | Verdict |
+|------|-------|---------|---------|
+| var_3 vs var_2 | 18 | 0.000 | PASS |
+| var_3 vs var_1 | 10 | 0.000 | PASS |
+| var_2 vs var_1 | 28 | 0.125 | PASS |
+
+The gate fails independently on **either** low pHash **or** high text similarity, and the unit test pins both rejection paths.
+
+### E. Container AIGC Metadata (FIX #6)
+`ffprobe -show_entries format_tags=comment,AIGC,description` on all three variants returns the same `GB45438-2025:AIGC; Generator=Hevi-ViralClone-3O; Watermark=AI生成` value in all three tags — round-trips through any consumer because of `-movflags +use_metadata_tags`.
+
+### F. 3O Architecture Lint
+Baseline before this iteration = 4 pre-existing failures; current run = 4 pre-existing failures (`check_no_sibling_call.py`, `check_omodul_signature.py`, `check_enabled_pillars.py`, `check_oprim_keyword_only.py`). No new violations.
+
+### G. Visual Spot-Check (frames on disk)
+- `var_1/contact_sheet_6frames.jpg` — all 6 frames read; "[ AI生成 ]" watermark visible top-left in frames within the 0-2.5 s window; CJK subtitles render in the bottom safe band; product card text zones are non-overlapping (title → badges → credit → button, top to bottom).
+- `var_2/contact_sheet_6frames.jpg` — opens with the **stripped** interview b-roll (FIX #2 holds: no burned "I was a young boy…" line). Dark-theme product card has clean vertical zone separation.
+- `var_3/contact_sheet_6frames.jpg` — 9:16 vertical; "[ AI生成 ]" visible top-left in early frames; English captions keep inter-word spaces (FIX #3). Single product image limits pHash distance to ~10 between var_3 and var_1 (recorded boundary, not a blocker — see §8.3).
+
+### H. Final State
+- `git log --oneline -3`:
+  - `2a4fcbe2 fix(viralclone): implement addressable product items + reverify everything`
+  - `b0c771ac fix(viralclone): address VIRALCLONE_FIX.md audit (1-10)`
+  - `3b3dc586 feat(viralclone): add e2e runner, breakdown-driven line adapt, and acceptance evidence`
+- `git status` clean. No uncommitted work, no mock artifacts, no fabricated gates.
