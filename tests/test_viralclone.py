@@ -405,3 +405,109 @@ def test_real_media_compile_and_variants(tmp_path: Path) -> None:
     assert res_var["report"]["variant_count"] == 2
     assert Path(res_var["report"]["diversity_matrix_json"]).is_file()
 
+
+def test_zerolines_reference_adapt_breakdown_driven(tmp_path: Path) -> None:
+    from hevi.layer4_legacy.zerolines.omodul_impl._lines import reference_adapt
+    from hevi.layer4_legacy.zerolines.oprim_impl.specs import ZeroLineRequest
+
+    dummy_ref = tmp_path / "ref.mp4"
+    dummy_ref.write_bytes(b"dummy")
+
+    dummy_breakdown = {
+        "source_video": str(dummy_ref),
+        "width": 1280,
+        "height": 720,
+        "fps": 25.0,
+        "duration_s": 5.0,
+        "sentences": [{"index": 0, "role": "hook", "text": "Hello world", "start_s": 0.0, "end_s": 2.0}],
+    }
+
+    req = ZeroLineRequest(
+        line_id="reference_adapt",
+        media_path=str(dummy_ref),
+        texts=("Special offer today",),
+        title="Super Gadget",
+        extras={"mode": "breakdown_driven", "breakdown": dummy_breakdown},
+    )
+
+    with patch("hevi.viralclone.compile_viral_template") as mock_compile:
+        out_mp4 = tmp_path / "reference_adapt.mp4"
+        out_mp4.write_bytes(b"fake_video")
+        mock_compile.return_value = {
+            "status": "succeeded",
+            "report": {
+                "video_path": str(out_mp4),
+                "timeline_path": str(tmp_path / "timeline.json"),
+                "ass_path": str(tmp_path / "subtitles.ass"),
+            },
+        }
+        res = reference_adapt(req, tmp_path)
+        assert res["finals"] == [out_mp4]
+        assert "breakdown-driven" in res["notes"]
+        assert Path(res["artifacts"]["timeline"]).name == "timeline.json"
+
+
+def test_word_anchored_dynamic_timing_shift_with_different_scripts() -> None:
+    spec = TemplateSpec(
+        template_id="tpl_timing_shift",
+        segments=[
+            TemplateSegment(
+                segment_id="seg_0",
+                role="hook",
+                narration_slot="hook",
+                anchors=[VisualAnchor(event_type="cut", sentence_idx=0, word_offset_idx=0)],
+            ),
+            TemplateSegment(
+                segment_id="seg_1",
+                role="cta",
+                narration_slot="cta",
+                anchors=[VisualAnchor(event_type="cut", sentence_idx=1, word_offset_idx=0)],
+            ),
+        ],
+    )
+
+    # Script 1: Short hook
+    slots_1 = {"hook": "Look now.", "cta": "Buy."}
+    sents_1 = [
+        {"text": "Look now.", "start_s": 0.0, "end_s": 1.0},
+        {"text": "Buy.", "start_s": 1.2, "end_s": 2.0},
+    ]
+    words_1 = [
+        WordToken("Look", 0.0, 0.5),
+        WordToken("now.", 0.5, 1.0),
+        WordToken("Buy.", 1.2, 2.0),
+    ]
+    aligned_1 = align_segments_to_word_timestamps(spec, slots_1, sents_1, words_1)
+
+    # Script 2: Long hook with multiple words
+    slots_2 = {
+        "hook": "Take a very close look at this revolutionary space camera today.",
+        "cta": "Order yours now with immediate delivery.",
+    }
+    sents_2 = [
+        {"text": slots_2["hook"], "start_s": 0.0, "end_s": 4.5},
+        {"text": slots_2["cta"], "start_s": 4.8, "end_s": 8.0},
+    ]
+    words_2 = [
+        WordToken("Take", 0.0, 0.4),
+        WordToken("a", 0.4, 0.6),
+        WordToken("very", 0.6, 1.0),
+        WordToken("close", 1.0, 1.5),
+        WordToken("look", 1.5, 2.0),
+        WordToken("today.", 3.8, 4.5),
+        WordToken("Order", 4.8, 5.3),
+        WordToken("delivery.", 7.2, 8.0),
+    ]
+    aligned_2 = align_segments_to_word_timestamps(spec, slots_2, sents_2, words_2)
+
+    # Cut to seg_1 in Script 1 is at 1.2s
+    cut_time_1 = aligned_1[1]["start_s"]
+    assert cut_time_1 == 1.2
+
+    # Cut to seg_1 in Script 2 dynamically follows the new longer speech and shifts to 4.8s
+    cut_time_2 = aligned_2[1]["start_s"]
+    assert cut_time_2 == 4.8
+    assert cut_time_2 > cut_time_1 + 3.0
+
+
+

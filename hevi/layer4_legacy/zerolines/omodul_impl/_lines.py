@@ -373,6 +373,58 @@ def reference_adapt(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
     ref = _source(req)
+
+    # Breakdown-driven mode: if breakdown card or mode is specified in extras
+    if req.extras.get("mode") == "breakdown_driven" or req.extras.get("breakdown_path") or req.extras.get("breakdown"):
+        from hevi.viralclone import compile_viral_template, draft_template_from_breakdown, reference_breakdown
+        bd_path = req.extras.get("breakdown_path")
+        if bd_path and Path(bd_path).is_file():
+            bd_dict = json.loads(Path(bd_path).read_text(encoding="utf-8"))
+        elif isinstance(req.extras.get("breakdown"), dict):
+            bd_dict = req.extras["breakdown"]
+        else:
+            bd_res = reference_breakdown({}, {"video_path": str(ref)}, tmp / "breakdown")
+            if bd_res.get("status") != "succeeded":
+                raise ZeroMediaError(f"breakdown failed: {bd_res.get('reason')}")
+            bd_dict = json.loads(Path(bd_res["report"]["breakdown_json"]).read_text(encoding="utf-8"))
+
+        template_spec = req.extras.get("template") or draft_template_from_breakdown(bd_dict).to_dict()
+        slots = dict(req.extras.get("slots") or {})
+        if req.texts:
+            slots["hook_line"] = req.texts[0]
+            for idx, txt in enumerate(req.texts[1:], start=1):
+                slots[f"selling_point_{idx}"] = txt
+        if req.title and "product" not in slots:
+            slots["product"] = req.title
+
+        compile_inp = {
+            "template": template_spec,
+            "slots": slots,
+            "brolls": [str(ref)] + list(req.extras.get("brolls") or []),
+            "product_video": str(req.extras.get("product_video") or ""),
+            "output_name": req.line_id,
+            "aspect_ratio": "9:16" if (W, H) == (720, 1280) else "16:9",
+        }
+        compile_res = compile_viral_template(compile_inp["template"], compile_inp["slots"], d,
+                                             brolls=compile_inp["brolls"], product_video=compile_inp["product_video"],
+                                             aspect_ratio=compile_inp["aspect_ratio"])
+        if compile_res.get("status") != "succeeded":
+            raise ZeroMediaError(f"compile_and_render_template failed: {compile_res.get('reason')}")
+        final = Path(compile_res["report"]["video_path"])
+        return {
+            "finals": [final],
+            "provenance": [
+                {"source": "breakdown-driven reference media", "path": str(ref)},
+                PIPER_PROV,
+            ],
+            "notes": "reference breakdown-driven: word-anchored template with GB 45438 AI watermark and dynamic cuts",
+            "artifacts": {
+                "timeline": compile_res["report"]["timeline_path"],
+                "subtitles": compile_res["report"]["ass_path"],
+                "breakdown": bd_path or str(tmp / "breakdown" / "breakdown.json"),
+            },
+        }
+
     ref_d = dur(ref)
     bad = [o for o in req.offsets if not 0 <= o < ref_d]
     if bad:

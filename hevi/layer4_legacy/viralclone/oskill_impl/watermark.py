@@ -82,6 +82,7 @@ def verify_implicit_watermark_metadata(video_path: str | Path) -> dict[str, Any]
         has_aigc = "GB45438" in comment or "AIGC" in comment or "Hevi" in comment
         return {
             "has_implicit_watermark": bool(has_aigc),
+            "comment": comment,
             "metadata_tags": tags,
         }
     except Exception as exc:
