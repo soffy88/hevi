@@ -2,9 +2,20 @@
 
 from __future__ import annotations
 
+from hevi.storygraph.chapters import (
+    build_adaptation_outline,
+    build_book_event_graph,
+    extract_chapter_graphs,
+    merge_chapter_graphs,
+    outline_to_story,
+    split_novel_chapters,
+)
 from hevi.storygraph.extract import extract_story_graph
 from hevi.storygraph.schemas import (
+    AdaptationOutline,
+    OutlineEpisode,
     StoryArc,
+    StoryChapter,
     StoryCharacter,
     StoryEvent,
     StoryGraph,
@@ -15,7 +26,10 @@ from hevi.storygraph.schemas import (
 )
 
 __all__ = [
+    "AdaptationOutline",
+    "OutlineEpisode",
     "StoryArc",
+    "StoryChapter",
     "StoryCharacter",
     "StoryEvent",
     "StoryGraph",
@@ -23,5 +37,11 @@ __all__ = [
     "StoryMeta",
     "StoryQuote",
     "StoryRelationship",
+    "build_adaptation_outline",
+    "build_book_event_graph",
+    "extract_chapter_graphs",
     "extract_story_graph",
+    "merge_chapter_graphs",
+    "outline_to_story",
+    "split_novel_chapters",
 ]

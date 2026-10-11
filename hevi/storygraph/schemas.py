@@ -57,6 +57,11 @@ class StoryEvent(BaseModel):
     beat_type: str = ""  # 铺垫/冲突/转折/高潮/收束/过场
     dramatic_weight: int = 3  # 1-5,戏剧性权重,决定该事件是否必入某一集(规划器用)
     source_span: tuple[int, int] = (0, 0)
+    # DRAMAPLAN 章节事件图:该事件来自哪一章(StoryChapter.chapter_id)。
+    # 单篇(不分章)抽取时为 "",向后兼容旧 StoryGraph。
+    chapter_ref: str = ""
+    # 跨章合并后保留的原始逐章 event_id(便于回溯/调试);单章时为空。
+    merged_from: list[str] = Field(default_factory=list)
 
 
 class StoryQuote(BaseModel):
@@ -86,6 +91,44 @@ class StoryArc(BaseModel):
     events: list[str] = Field(default_factory=list)  # event_id 列表
 
 
+class StoryChapter(BaseModel):
+    """长篇按章节切分的一章元数据(DRAMAPLAN 章节事件图)。"""
+
+    chapter_id: str  # "CH01"(稳定、按顺序分配)
+    index: int  # 1 起
+    title: str = ""
+    summary: str = ""  # 该章摘要(供 memory store 检索/长上下文压缩)
+    char_count: int = 0  # 该章正文字数
+    event_ids: list[str] = Field(default_factory=list)  # 归入该章的事件(合并后全局 ID)
+
+
+class OutlineEpisode(BaseModel):
+    """改编大纲的一集:覆盖哪些事件、镜头/时长预算。"""
+
+    ep_number: int
+    event_ids: list[str] = Field(default_factory=list)
+    shot_budget: int = 0
+    target_duration_s: float = 0.0
+    emotion_arc: str = ""
+    summary: str = ""
+
+
+class AdaptationOutline(BaseModel):
+    """按“目标集数 × 每集时长”从全书事件图挑选/压缩出的改编大纲。
+
+    接到 season_planner:可用 `outline_to_story()` 把大纲落回一个裁剪后的 StoryGraph,
+    再喂 `season_planner.build_season_plan`。
+    """
+
+    story_source: str = ""
+    target_episodes: int = 0
+    episode_duration_s: float = 0.0
+    total_shot_budget: int = 0
+    episodes: list[OutlineEpisode] = Field(default_factory=list)
+    dropped_event_ids: list[str] = Field(default_factory=list)  # 因预算被压缩掉的事件
+    compressed: bool = False  # 是否发生了挑选/压缩(全量保留时为 False)
+
+
 class StoryMeta(BaseModel):
     source: str  # 小说标题/卷名
     char_count: int = 0
@@ -100,3 +143,7 @@ class StoryGraph(BaseModel):
     quotes: list[StoryQuote] = Field(default_factory=list)
     locations: list[StoryLocation] = Field(default_factory=list)
     arcs: list[StoryArc] = Field(default_factory=list)  # 阶段 1 空
+    # DRAMAPLAN 章节事件图:逐章元数据(旧单篇抽取为空列表,向后兼容)。
+    chapters: list[StoryChapter] = Field(default_factory=list)
+    # 改编大纲(可选;由 chapters.build_adaptation_outline 生成后回填)。
+    adaptation_outline: AdaptationOutline | None = None

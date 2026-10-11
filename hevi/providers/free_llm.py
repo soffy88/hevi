@@ -29,11 +29,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# 免费通道优先序。``default`` 放最后（它在本机可能退化为本地 adapter，也可能被部署
-# 显式配成付费端点——但短剧规划默认不选它，只有前面全不可用时才兜底）。
+# 免费通道优先序。实测（见 scripts/dramaplan/llm_channel_probe.py 与 DONE）：NIM 免费层
+# 稳定（~1.5s、JSON 干净），omniroute auto/* 实测超时、oc/* 需 key，opencode 需 session
+# 头，teamo TCP 不通，ollama 可但慢。故 auto 首选 NIM；``default`` 放最后（可能被部署
+# 配成付费端点，短剧规划默认不选它）。
 FREE_CHANNEL_ORDER: tuple[str, ...] = (
-    "omniroute_free",
     "nim",
+    "omniroute_free",
     "opencode",
     "teamo_free",
     "ollama",
