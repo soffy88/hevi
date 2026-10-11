@@ -380,6 +380,7 @@ def generate_animated_scene_script(*, shot_spec: dict[str, Any]) -> BlenderScrip
     frame_start = int(shot_spec.get("frame_start", 1))
     frame_end = int(shot_spec.get("frame_end", 120))
     samples = int(shot_spec.get("samples", 24))
+    denoise = bool(shot_spec.get("denoise", True))
     output_path = str(shot_spec.get("output_path", "output/blender_scene.mp4"))
     orbit_radius = float(shot_spec.get("orbit_radius", 11.0))
     orbit_height = float(shot_spec.get("orbit_height", 5.2))
@@ -402,7 +403,7 @@ def generate_animated_scene_script(*, shot_spec: dict[str, Any]) -> BlenderScrip
         "scene.render.engine = 'CYCLES'",
         "scene.cycles.device = 'CPU'",
         f"scene.cycles.samples = {samples}",
-        "scene.cycles.use_denoising = True",
+        f"scene.cycles.use_denoising = {denoise}",
         f"scene.render.resolution_x = {width}",
         f"scene.render.resolution_y = {height}",
         "scene.render.resolution_percentage = 100",
@@ -549,7 +550,8 @@ def blender_render_animated_scene(
     out_dir.mkdir(parents=True, exist_ok=True)
     # Blender appends the frame range to FFmpeg output names, so render to a
     # staging prefix and move the produced file to the requested path.
-    stage_prefix = out_dir / f".{Path(effective_output).stem}_stage"
+    clean_stem = Path(effective_output).stem.lstrip(".")
+    stage_prefix = out_dir / f".{clean_stem}_stage"
     for stale in out_dir.glob(f"{stage_prefix.name}*.mp4"):
         stale.unlink(missing_ok=True)
     resolved = {**shot_spec, "output_path": str(stage_prefix)}
@@ -575,6 +577,11 @@ def blender_render_animated_scene(
         exists = os.path.isfile(effective_output)
         size = os.path.getsize(effective_output) if exists else 0
         sha = hashlib.sha256(Path(effective_output).read_bytes()).hexdigest() if exists else None
+        err_msg = execution["stderr"] if execution["exit_code"] != 0 else None
+        if execution["exit_code"] != 0 and not err_msg:
+            err_msg = execution["stdout"][-800:]
+        elif execution["exit_code"] == 0 and not (exists and size > 0):
+            err_msg = f"Blender exited 0 but produced no output at {effective_output}"
         return BlenderRenderResult(
             success=execution["exit_code"] == 0 and exists and size > 0,
             script_sha256=script_result.script_sha256,
@@ -584,7 +591,7 @@ def blender_render_animated_scene(
             render_output_sha256=sha,
             blender_version=execution.get("blender_version"),
             exit_code=execution["exit_code"],
-            error_message=(execution["stderr"] if execution["exit_code"] != 0 else None),
+            error_message=err_msg,
             failure_code=failure_code,
             repair_action=repair_action,
             execution_metadata={

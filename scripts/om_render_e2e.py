@@ -201,17 +201,18 @@ def render_blender() -> dict:
             "fps": 24,
             "frame_start": 1,
             "frame_end": 144,
-            "samples": 24,
+            "samples": 12,
+            "denoise": True,
             "output_path": str(silent),
         },
         timeout_s=1800,
     )
     if not result.success:
         raise RuntimeError(f"blender render failed: {result.error_message}\n{(result.execution_metadata or {}).get('stderr','')[-800:]}")
-    narration_text = "这是一个用 Blender 的 Cycles 渲染器，在 CPU 上跑出来的三维场景。相机在物体之间缓缓移动。"
+    narration_text = "用 Blender 在 CPU 上渲染的三维场景，相机在几何体之间平滑环绕。"
     narration = OUT / ".blender_narration.wav"
     synth_line(narration_text, narration)
-    music = _music_bed(OUT / ".blender_music.wav", 8.0)
+    music = _music_bed(OUT / ".blender_music.wav", 6.5)
     _mux_audio(silent, narration, music, out)
     silent.unlink(missing_ok=True)
     contact_sheet(out, tile="4x2")
@@ -249,9 +250,21 @@ async def main() -> int:
             report["blender_shot"] = {"error": str(exc)[-600:]}
             print(f"[blender] FAILED: {exc}", flush=True)
 
-    (OUT / "om_render_e2e_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    report_path = OUT / "om_render_e2e_report.json"
+    existing: dict[str, dict] = {}
+    if report_path.is_file():
+        try:
+            existing = json.loads(report_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            existing = {}
+    existing.update(report)
+    report_path.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+    report = existing
     print("\n=== OMRENDER E2E report ===")
     for name, info in report.items():
+        if info.get("error"):
+            print(f"{name:28s} FAILED: {str(info['error'])[:140]}")
+            continue
         audio = "audio" if info.get("has_audio") else "NO-AUDIO"
         print(
             f"{name:28s} {info.get('duration'):>7}s {info.get('width')}x{info.get('height')} "

@@ -141,15 +141,53 @@ def _vendor_cdn(project: Path) -> None:
             raise StyledRenderError(f"vendored three missing: {three_src}")
         vendor.mkdir(parents=True, exist_ok=True)
         shutil.copy2(three_src / "build" / "three.module.js", vendor / "three.module.js")
+        shutil.copy2(three_src / "build" / "three.core.js", vendor / "three.core.js")
         addons = vendor / "three-addons"
         if not addons.is_dir():
             shutil.copytree(three_src / "examples" / "jsm", addons)
-        html = html.replace(_THREE_MODULE_URL, "assets/vendor/three.module.js")
-        html = html.replace(_THREE_ADDONS_URL, "assets/vendor/three-addons/")
+        html = html.replace(_THREE_MODULE_URL, "./assets/vendor/three.module.js")
+        html = html.replace(_THREE_ADDONS_URL, "./assets/vendor/three-addons/")
         changed = True
 
     if changed:
         html_path.write_text(html, encoding="utf-8")
+
+
+def _patch_puppeteer_sandbox(project: Path) -> None:
+    """Add ``--no-sandbox`` to any kit helper that launches the bundled Chrome.
+
+    Some kits read their sound cues back by driving puppeteer; on this host the
+    headless shell cannot start its own sandbox, so the launch args are patched
+    in the copied project (the vendored kit is left untouched).
+    """
+    kit_dir = project / "lib" / "kit"
+    if not kit_dir.is_dir():
+        return
+    for mjs in kit_dir.glob("*.mjs"):
+        text = mjs.read_text(encoding="utf-8")
+        if "--no-sandbox" in text or ".launch(" not in text:
+            continue
+        patched = re.sub(r"args:\s*\[", 'args: ["--no-sandbox", ', text, count=1)
+        if patched != text:
+            mjs.write_text(patched, encoding="utf-8")
+
+
+def _patch_sfxlib(project: Path) -> None:
+    """Make the procedural sound-bed generators safe for non-positive lengths.
+
+    The reference films hard-code a few cue times from the story they were built
+    with; with a re-voiced story a computed span can go negative.  Clamp the
+    sample counts instead of letting numpy raise (the vendored kit is untouched).
+    """
+    lib = project / "lib" / "sfxlib.py"
+    if not lib.is_file():
+        return
+    text = lib.read_text(encoding="utf-8")
+    patched = text.replace("n = int(dur * SR)", "n = max(1, int(dur * SR))")
+    patched = patched.replace("i = int(start * SR)", "i = max(0, int(start * SR))")
+    patched = patched.replace("i = int(t * SR)", "i = max(0, int(t * SR))")
+    if patched != text:
+        lib.write_text(patched, encoding="utf-8")
 
 
 def _stamp_durations(project: Path, story: dict[str, Any]) -> None:
@@ -247,6 +285,8 @@ def build_film(
         ).group(1)
     )
     _stamp_durations(project_dir, story)
+    _patch_puppeteer_sandbox(project_dir)
+    _patch_sfxlib(project_dir)
     _run([sys.executable, str(lanshu_root() / "tools" / "fonts.py"), str(project_dir)], env=_render_env())
     _vendor_cdn(project_dir)
     _build_sfx(project_dir, style)
